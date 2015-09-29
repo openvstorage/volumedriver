@@ -1,0 +1,69 @@
+package vfsprotocol;
+
+message PingMessage
+{
+	required string sender_id = 1;
+}
+
+message ReadRequest
+{
+	required string object_id = 1;
+	required uint32 object_type = 2;
+	required uint64 size = 3;
+	required uint64 offset = 4;
+}
+
+message WriteRequest
+{
+	required string object_id = 1;
+	required uint32 object_type = 2;
+	required uint64 size = 3;
+	required uint64 offset = 4;
+}
+
+message WriteResponse
+{
+	required uint64 size = 1;
+}
+
+message SyncRequest
+{
+	required string object_id = 1;
+	required uint32 object_type = 2;
+}
+
+message GetSizeRequest
+{
+	required string object_id = 1;
+	required uint32 object_type = 2;
+}
+
+message GetSizeResponse
+{
+	required uint64 size = 1;
+}
+
+message ResizeRequest
+{
+	required string object_id = 1;
+	required uint32 object_type = 2;
+	required uint64 size = 3;
+}
+
+message DeleteRequest
+{
+	required string object_id = 1;
+	required uint32 object_type = 2;
+}
+
+message TransferRequest
+{
+	required string object_id = 1;
+	required uint32 object_type = 2;
+	required string target_node_id = 3;
+	optional uint64 sync_timeout_ms = 4;
+}
+
+// Local Variables: **
+// mode: protobuf **
+// End: **

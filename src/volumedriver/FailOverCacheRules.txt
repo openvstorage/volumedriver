@@ -1,0 +1,38 @@
+Three constituents of the volume determing the failover cache state
+1) the failovercacheconfig_ variable in Volume (foc_v): hold port and host the foc is running on.
+2) the failovercacheconfig_ on the Backend (foc_b): serialized version of foc_v that is stored in the backend
+3) the failovercache_ on volume (foc_i): implements an interface to the failovercache
+
+We define with |=| as "agrees with" and foc_v, foc_b, foc_i as functions on a volume that return the
+relevant parts. vs is a funtion that returns the volumestate of a volume whose values are DEGRADED,
+OK_SYNC, OK_STANDALONE, OK_KETCHUP. We define a function deg(v) that says is a volume is degraded:
+deg(v) = vs(v) != DEGRADED
+
+Two functions on a volume change the state of the failovercache, setFailOver.
+setFailOver takes an argument of type foc_r (requested foc) and that participates in the "agrees
+with relation"
+
+finally we define a
+Rules
+1) A volume always has a failovercache config on the backend.
+
+2) let v be a volume that has just been created through createNewVolume or createClone,
+   i.e. no setFailOver has happened on that volume yet.
+   foc_v(v) |=| foc_b(v) and foc_b(v) |=| foc_i(v) and vs(v) = OK_STANDALONE
+
+3) A non degraded volume has a correct failovercache config on the backend.
+   vs(v) != DEGRADED => foc_v(v) |=| foc_b(v) and foc_b(v) |=| foc_i(v)
+
+3) Volume failovercacheconfig_ *always* reflects the last requested configuration.
+    setFailover(v, foc_r) after return or abnormal exit:
+    foc_v(v) |=| foc_r
+
+4) after a non abnormal exit from setFailover:
+   fov_v(v) |=| foc_r and foc_v(v) |=| foc_b(v) and { vs(v) == DEGRADED or  foc_r |=| foc_i(r) }
+
+5) Volumes don't automatically go from DEGRADED or OK_STANDALONE.
+
+6) Volume may go from OK_SYNC or OK_KETCHUP to DEGRADED at any time
+
+
+// Add stuff for localrestart and backend restart

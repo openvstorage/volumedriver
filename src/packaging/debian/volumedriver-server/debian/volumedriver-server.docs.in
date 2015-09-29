@@ -1,0 +1,3 @@
+@prefix@/share/volumedriver/Events.proto
+@prefix@/share/volumedriver/VolumeDriverEvents.proto
+@prefix@/share/volumedriverfs/FileSystemEvents.proto

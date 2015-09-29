@@ -1,0 +1,6 @@
+#!/bin/bash
+set -ux
+
+. @script_directory@/python_test.sh
+
+python_test backend_python_test.py

@@ -1,0 +1,3 @@
+file @prefix@/bin/volumedriverfs_ganesha_test
+
+set args --ganesha-binary-path=@buildtoolsdir@/bin/ganesha.nfsd --volumedriver-fsal-path=@prefix@/lib/ganesha/ --gdbserver-port=6667 "$@"

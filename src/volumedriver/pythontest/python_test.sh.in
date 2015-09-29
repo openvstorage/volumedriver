@@ -1,0 +1,21 @@
+#!/bin/bash
+set -ux
+
+. @script_directory@/python_test.sh
+
+TEST_CFG_DIR=${prefix}/etc/volumedriver
+
+export PATH=${prefix}/bin:$PATH
+export CFG_DIR=${TEST_CFG_DIR}
+
+# example form of an argument passed to this script, *note the :*
+# volumedrivertest.voldrv.backup_locking_test:Backup_locking_tests.failbackup_test
+if [ $# -eq 0 ]
+then
+    python_test volumedrivertest.voldrv
+else
+    python_test "$@"
+fi
+
+
+

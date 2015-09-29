@@ -1,0 +1,10 @@
+bin/backend_test /usr/bin
+bin/failovercache_test /usr/bin
+bin/locked_executable /usr/bin
+bin/volumedriver_test /usr/bin
+bin/volumereader /usr/bin
+bin/volumewriter /usr/bin
+bin/volumewriter_random /usr/bin
+bin/volumewriter_skipoffset /usr/bin
+bin/youtils_test /usr/bin
+bin/volumedriver_fs_test /usr/bin

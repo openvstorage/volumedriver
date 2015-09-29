@@ -1,0 +1,24 @@
+#! /bin/bash
+# format to generate
+# <location of file relative to prefix> <directory to install to>
+function add_directory {
+    dist_package_dir=@prefix@/lib/python@PYTHON_VERSION@/dist-packages/$1
+    debian_source_dir=lib/python@PYTHON_VERSION@/dist-packages/$1
+    dist_install_dir=/usr/lib/python@PYTHON_VERSION@/dist-packages/$1
+    echo "Adding directory $1 to the debian package in file $2"
+    if [ ! -d  $dist_package_dir ]
+    then 
+        echo "error -- directory $dist_package_dir not found"
+        exit 1
+    fi
+    for i in `ls $dist_package_dir`
+    do
+	if [ -f $dist_package_dir/$i ]
+	then
+	    echo "Adding file $dist_package_dir/$i to the installed files"
+	    echo "$debian_source_dir/$i $dist_install_dir" >> $TARGET_FILE
+	fi
+    done
+}
+
+

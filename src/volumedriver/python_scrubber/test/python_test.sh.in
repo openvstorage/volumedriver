@@ -1,0 +1,5 @@
+#! /bin/bash
+
+# . @script_directory@/python_test.sh
+
+# python_test toolcut_test.py

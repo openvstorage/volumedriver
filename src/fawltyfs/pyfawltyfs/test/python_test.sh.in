@@ -1,0 +1,6 @@
+#! /bin/bash
+set -ex
+
+. @script_directory@/python_test.sh
+
+python_test TestBasicTests.py

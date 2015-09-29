@@ -1,0 +1,16 @@
+#! /bin/bash
+
+if [ "$#" -ne 1 ]
+then
+    echo "Usage: $0 <namespace_to_delete>" >&2
+    exit 1
+fi
+
+PATH=@BUILDTOOLS@/bin:$PATH
+
+
+HOST="s3-eu-west-1.amazonaws.com"
+USER="AKIAJCZNDLAW64YPHVMA"
+PASSWORD=5Mhk5Q8doaoTQqMtM3bql7JjlV4vjmB7FOSNsmVp
+wscmd -H $HOST -i $USER -s $PASSWORD -a delAll -n $1
+wscmd -H $HOST -i $USER -s $PASSWORD -a delBucket -n $1

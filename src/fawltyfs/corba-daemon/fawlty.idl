@@ -1,0 +1,122 @@
+module Fawlty {
+  typedef sequence<string> FuseArguments;
+  enum FileSystemCall {
+    Getattr,
+    Access,
+    Readlink,
+    Readdir,
+    Mknod,
+    Mkdir,
+    Unlink,
+    Rmdir,
+    Symlink,
+    Rename,
+    Link,
+    Chown,
+    Chmod,
+    Truncate,
+    Open,
+    Read,
+    Write,
+    Statfs,
+    Utimens,
+    Release,
+    Fsync,
+    Opendir,
+    Releasedir
+  };
+
+  typedef sequence<FileSystemCall> FileSystemCalls;
+  typedef unsigned long rule_id;
+
+  struct DelayRule {
+    rule_id id;
+    string path_regex;
+    FileSystemCalls calls;
+    unsigned long ramp_up;
+    unsigned long duration;
+    unsigned long delay_usecs;
+  };
+
+  typedef sequence<DelayRule> DelayRules;
+
+  struct FailureRule {
+    rule_id id;
+    string path_regex;
+    FileSystemCalls calls;
+    unsigned long ramp_up;
+    unsigned long duration;
+    unsigned long errcode;
+  };
+
+
+  typedef sequence<FailureRule> FailureRules;
+
+  struct DirectIORule{
+    rule_id id;
+    string path_regex;
+    boolean direct_io;
+  };
+
+  typedef sequence<DirectIORule> DirectIORules;
+
+  interface FileSystem {
+    void
+    mount();
+
+    void
+    umount();
+
+    void addFailureRule(in rule_id id,
+			in string path_regex,
+			in FileSystemCalls calls,
+			in unsigned long ramp_up,
+			in unsigned long duration,
+			in unsigned long errcode);
+
+    void removeFailureRule(in rule_id id);
+
+    DelayRules
+    listDelayRules();
+
+    void addDelayRule(in rule_id id,
+		      in string path_regex,
+		      in FileSystemCalls calls,
+		      in unsigned long ramp_up,
+		      in unsigned long duration,
+		      in unsigned long errcode);
+
+    void
+    removeDelayRule(in rule_id id);
+
+    FailureRules
+    listFailureRules();
+
+    void
+    addDirectIORule(in rule_id id,
+		     in string path_regex,
+		     in boolean direct_io);
+
+    void
+    removeDirectIORule(in rule_id id);
+
+    DirectIORules
+    listDirectIORules();
+
+  };
+
+  interface FileSystemFactory {
+    string ping(in string mesg);
+    void shutdown(in boolean wait_for_completion);
+
+    FileSystem
+    create(in string backend_path,
+	   in string frontend_path,
+	   in string filesystem_name);
+
+    void
+    release(in FileSystem file_system);
+
+
+  };
+};

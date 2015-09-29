@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<!DOCTYPE boost_serialization>
+<boost_serialization signature="serialization::archive" version="9">
+<snapshots class_id="0" tracking_level="0" version="0">
+	<parent_ns></parent_ns>
+	<parent_snap></parent_snap>
+	<current class_id="1" tracking_level="0" version="0">
+		<tlogs class_id="2" tracking_level="0" version="0">
+			<count>1</count>
+			<item_version>0</item_version>
+			<item class_id="3" tracking_level="0" version="0">
+				<uuid class_id="4" tracking_level="0" version="0">
+					<uuid>df930b96-6883-4e1d-8273-a267269c71d7</uuid>
+				</uuid>
+				<written_to_backend>0</written_to_backend>
+			</item>
+		</tlogs>
+	</current>
+	<snapshots class_id="5" tracking_level="0" version="0">
+		<snapshots class_id="6" tracking_level="0" version="0">
+			<count>6</count>
+			<item_version>2</item_version>
+			<item class_id="7" tracking_level="0" version="2">
+				<tlogs>
+					<tlogs>
+						<count>2</count>
+						<item_version>0</item_version>
+						<item>
+							<uuid>
+								<uuid>9b8b2e32-614a-4b89-9fcf-45b363cc61d2</uuid>
+							</uuid>
+							<written_to_backend>1</written_to_backend>
+						</item>
+						<item>
+							<uuid>
+								<uuid>9f44a070-2b76-41e8-a6ef-cdb876037829</uuid>
+							</uuid>
+							<written_to_backend>1</written_to_backend>
+						</item>
+					</tlogs>
+				</tlogs>
+				<num>0</num>
+				<name>A</name>
+				<scrubbed>0</scrubbed>
+				<backend_size_>61440</backend_size_>
+				<date>Mon Jan  9 11:48:21 2012
+</date>
+				<snapshot-uuid>
+					<uuid>dafa782f-6abc-4e36-bfe2-f43ef636a371</uuid>
+				</snapshot-uuid>
+			</item>
+			<item>
+				<tlogs>
+					<tlogs>
+						<count>1</count>
+						<item_version>0</item_version>
+						<item>
+							<uuid>
+								<uuid>d1b88928-68d5-4a56-a47b-a6c0ab2956a3</uuid>
+							</uuid>
+							<written_to_backend>1</written_to_backend>
+						</item>
+					</tlogs>
+				</tlogs>
+				<num>1</num>
+				<name>B</name>
+				<scrubbed>0</scrubbed>
+				<backend_size_>1052672</backend_size_>
+				<date>Mon Jan  9 11:49:36 2012
+</date>
+				<snapshot-uuid>
+					<uuid>dd62940d-a87f-4136-89bd-9fc93e052d91</uuid>
+				</snapshot-uuid>
+			</item>
+			<item>
+				<tlogs>
+					<tlogs>
+						<count>1</count>
+						<item_version>0</item_version>
+						<item>
+							<uuid>
+								<uuid>cdb59ec2-cc86-4550-bc39-9f7a127564db</uuid>
+							</uuid>
+							<written_to_backend>1</written_to_backend>
+						</item>
+					</tlogs>
+				</tlogs>
+				<num>2</num>
+				<name>C</name>
+				<scrubbed>0</scrubbed>
+				<backend_size_>1052672</backend_size_>
+				<date>Mon Jan  9 11:49:43 2012
+</date>
+				<snapshot-uuid>
+					<uuid>a3cc4e3e-62fd-4d8c-8293-f93a99ebc1e0</uuid>
+				</snapshot-uuid>
+			</item>
+			<item>
+				<tlogs>
+					<tlogs>
+						<count>1</count>
+						<item_version>0</item_version>
+						<item>
+							<uuid>
+								<uuid>f50541f0-7838-488c-9051-6a9bfa583e41</uuid>
+							</uuid>
+							<written_to_backend>1</written_to_backend>
+						</item>
+					</tlogs>
+				</tlogs>
+				<num>3</num>
+				<name>D</name>
+				<scrubbed>0</scrubbed>
+				<backend_size_>12288</backend_size_>
+				<date>Mon Jan  9 11:49:50 2012
+</date>
+				<snapshot-uuid>
+					<uuid>5fa49a1e-6dc2-40f3-9e66-75d52c7bf089</uuid>
+				</snapshot-uuid>
+			</item>
+			<item>
+				<tlogs>
+					<tlogs>
+						<count>1</count>
+						<item_version>0</item_version>
+						<item>
+							<uuid>
+								<uuid>515b1f2e-2c89-458e-ac4c-ff3a7d7c9186</uuid>
+							</uuid>
+							<written_to_backend>1</written_to_backend>
+						</item>
+					</tlogs>
+				</tlogs>
+				<num>4</num>
+				<name>E</name>
+				<scrubbed>0</scrubbed>
+				<backend_size_>8192</backend_size_>
+				<date>Mon Jan  9 11:50:07 2012
+</date>
+				<snapshot-uuid>
+					<uuid>0053ded0-909c-4ff2-b827-d5dcd979db48</uuid>
+				</snapshot-uuid>
+			</item>
+			<item>
+				<tlogs>
+					<tlogs>
+						<count>1</count>
+						<item_version>0</item_version>
+						<item>
+							<uuid>
+								<uuid>587ed32d-f303-49f3-a0ae-9c3e688b308f</uuid>
+							</uuid>
+							<written_to_backend>1</written_to_backend>
+						</item>
+					</tlogs>
+				</tlogs>
+				<num>5</num>
+				<name>F</name>
+				<scrubbed>0</scrubbed>
+				<backend_size_>4096</backend_size_>
+				<date>Mon Jan  9 11:50:13 2012
+</date>
+				<snapshot-uuid>
+					<uuid>6d827b7a-fa75-445d-9d7f-639b89bd62d0</uuid>
+				</snapshot-uuid>
+			</item>
+		</snapshots>
+	</snapshots>
+	<current_size>0</current_size>
+</snapshots>

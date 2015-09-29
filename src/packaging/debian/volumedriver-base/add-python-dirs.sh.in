@@ -1,0 +1,8 @@
+#! /bin/bash
+
+. ../add-installdir.sh
+
+TARGET_FILE=debian/volumedriver-base.install
+add_directory volumedriver
+add_directory volumedriver/base
+add_directory volumedriver/toolcut

@@ -1,0 +1,22 @@
+Summary: Volumedriver Base
+Name: volumedriver-base
+Version: @VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@.@VD_EXTRA_VERSION@
+Release: 1
+License: Copyright (C) 2013 Open vStorage NV, Licensed under the Apache License Version 2.0
+URL: http://www.openvstorage.com
+
+%description
+VolumeDriver common infrastructure. This package contains common Python infrastructure for VolumeDriver components and ToolCut.
+
+%changelog
+* Thu Oct 03 2014 Kenneth Henderick <kenneth.henderick@openvstorage.com> - @VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@.@VD_EXTRA_VERSION@-1
+- Create RPM packages
+
+%global __spec_install_pre %{___build_pre}
+%define _unpackaged_files_terminate_build 0
+%debug_package
+
+%install
+# nothing to do, but needed for debug package info
+
+%files

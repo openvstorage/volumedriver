@@ -1,0 +1,133 @@
+#include <inttypes.h>
+
+TRACEPOINT_EVENT(
+	openvstorage_filesystem,
+	object_write_start,
+	TP_ARGS(const char*, object_id_arg,
+		uint64_t, offset_arg,
+		uint64_t, size_arg,
+		int, sync_arg),
+	TP_FIELDS(ctf_string(object_id, object_id_arg)
+		  ctf_integer(uint64_t, offset, offset_arg)
+		  ctf_integer(size_t, size, size_arg)
+		  ctf_integer(int, sync, sync_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_filesystem,
+	object_write_end,
+	TP_ARGS(const char*, object_id_arg,
+		uint64_t, offset_arg,
+		uint64_t, size_arg,
+		int, status_arg),
+	TP_FIELDS(ctf_string(object_id, object_id_arg)
+		  ctf_integer(uint64_t, offset, offset_arg)
+		  ctf_integer(size_t, size, size_arg)
+		  ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_filesystem,
+	local_object_write_start,
+	TP_ARGS(const char*, object_id_arg,
+		uint64_t, offset_arg,
+		uint64_t, size_arg),
+	TP_FIELDS(ctf_string(object_id, object_id_arg)
+		  ctf_integer(uint64_t, offset, offset_arg)
+		  ctf_integer(size_t, size, size_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_filesystem,
+	local_object_write_end,
+	TP_ARGS(const char*, object_id_arg,
+		uint64_t, offset_arg,
+		uint64_t, size_arg,
+		int, status_arg),
+	TP_FIELDS(ctf_string(object_id, object_id_arg)
+		  ctf_integer(uint64_t, offset, offset_arg)
+		  ctf_integer(size_t, size, size_arg)
+		  ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_filesystem,
+	object_sync_start,
+	TP_ARGS(const char*, object_id_arg,
+		int, datasync_arg),
+	TP_FIELDS(ctf_string(object_id, object_id_arg)
+		  ctf_integer(int, datasync, datasync_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_filesystem,
+	object_sync_end,
+	TP_ARGS(const char*, object_id_arg,
+		int, status_arg),
+	TP_FIELDS(ctf_string(object_id, object_id_arg)
+		  ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_filesystem,
+	local_object_sync_start,
+	TP_ARGS(const char*, object_id_arg),
+	TP_FIELDS(ctf_string(object_id, object_id_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_filesystem,
+	local_object_sync_end,
+	TP_ARGS(const char*, object_id_arg,
+		int, status_arg),
+	TP_FIELDS(ctf_string(object_id, object_id_arg)
+		  ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_filesystem,
+	object_read_start,
+	TP_ARGS(const char*, object_id_arg,
+		uint64_t, offset_arg,
+		uint64_t, size_arg),
+	TP_FIELDS(ctf_string(object_id, object_id_arg)
+		  ctf_integer(uint64_t, offset, offset_arg)
+		  ctf_integer(size_t, size, size_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_filesystem,
+	object_read_end,
+	TP_ARGS(const char*, object_id_arg,
+		uint64_t, offset_arg,
+		uint64_t, size_arg,
+		int, status_arg),
+	TP_FIELDS(ctf_string(object_id, object_id_arg)
+		  ctf_integer(uint64_t, offset, offset_arg)
+		  ctf_integer(size_t, size, size_arg)
+		  ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_filesystem,
+	local_object_read_start,
+	TP_ARGS(const char*, object_id_arg,
+		uint64_t, offset_arg,
+		uint64_t, size_arg),
+	TP_FIELDS(ctf_string(object_id, object_id_arg)
+		  ctf_integer(uint64_t, offset, offset_arg)
+		  ctf_integer(size_t, size, size_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_filesystem,
+	local_object_read_end,
+	TP_ARGS(const char*, object_id_arg,
+		uint64_t, offset_arg,
+		uint64_t, size_arg,
+		int, status_arg),
+	TP_FIELDS(ctf_string(object_id, object_id_arg)
+		  ctf_integer(uint64_t, offset, offset_arg)
+		  ctf_integer(size_t, size, size_arg)
+		  ctf_integer(int, status, status_arg))
+)

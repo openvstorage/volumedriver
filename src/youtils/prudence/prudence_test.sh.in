@@ -1,0 +1,11 @@
+#!/bin/bash
+
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+. @script_directory@/cpp_test.sh
+ export PATH=@bindir@:$PATH
+cpp_test prudence_test "$@"
+
+## Local Variables: **
+## compile-command: "./prudence_test.sh " **
+## End: **

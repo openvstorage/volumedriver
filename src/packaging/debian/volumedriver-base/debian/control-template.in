@@ -1,0 +1,15 @@
+Source: volumedriver-base
+Section: unknown
+Priority: extra
+Maintainer: volumedriverteam@openvstorage.com
+Build-Depends: debhelper (>= 7.0.0)
+Standards-Version: 3.9.2
+Homepage: www.openvstorage.com
+
+Package: volumedriver-base
+Architecture: any
+Depends: ${shlibs:Depends}
+Conflicts: volumedriver-base (<< 3.6.0)
+Description: VolumeDriver common infrastructure
+ This package contains common Python infrastructure for VolumeDriver
+ components and ToolCut.

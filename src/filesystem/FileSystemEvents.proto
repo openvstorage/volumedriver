@@ -1,0 +1,99 @@
+import "Events.proto";
+
+package events;
+
+// ObjectRouter
+message RedirectTimeoutWhileOnlineMessage
+{
+    required string remote_node_id = 1;
+}
+
+extend Event
+{
+    optional RedirectTimeoutWhileOnlineMessage redirect_timeout_while_online = 2001;
+}
+
+// FileSystem
+message VolumeCreateMessage
+{
+    required string name = 1;
+    required uint64 size = 2;
+    required string path = 3;
+}
+
+message VolumeResizeMessage
+{
+    required string name = 1;
+    required uint64 size = 2;
+    required string path = 3;
+}
+
+message VolumeDeleteMessage
+{
+    required string name = 1;
+    required string path = 2;
+}
+
+message VolumeRenameMessage
+{
+    required string name = 1;
+    required string old_path = 2;
+    required string new_path = 3;
+}
+
+message FileCreateMessage
+{
+    required string path = 1;
+}
+
+message FileDeleteMessage
+{
+    required string path = 1;
+}
+
+message FileWriteMessage
+{
+    required string path = 1;
+}
+
+message FileRenameMessage
+{
+    required string old_path = 1;
+    required string new_path = 2;
+}
+
+message UpAndRunningMessage
+{
+    required string mountpoint = 1;
+}
+
+message VolumeCreateFailedMessage
+{
+    required string path = 1;
+    required string reason = 2;
+}
+
+extend Event
+{
+    optional VolumeCreateMessage volume_create = 3001;
+    optional VolumeResizeMessage volume_resize = 3002;
+    optional VolumeDeleteMessage volume_delete = 3003;
+    optional VolumeRenameMessage volume_rename = 3004;
+    optional FileCreateMessage file_create = 3005;
+    optional FileDeleteMessage file_delete = 3006;
+    optional FileWriteMessage file_write = 3007;
+    optional FileRenameMessage file_rename = 3008;
+    optional UpAndRunningMessage up_and_running = 3009;
+    optional VolumeCreateFailedMessage volume_create_failed = 3010;
+}
+
+message EventMessage
+{
+    required string cluster_id = 1;
+    required string node_id = 2;
+    required Event event = 3;
+}
+
+// Local Variables: **
+// mode: protobuf **
+// End: **

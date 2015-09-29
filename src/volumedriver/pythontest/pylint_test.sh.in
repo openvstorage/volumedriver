@@ -1,0 +1,9 @@
+#! /bin/bash
+
+DISABLED_INFO=I0011
+DISABLED_CONVENTIONS=C0103,C0111,C0301,C0324
+DISABLED_REFACTORS=R0201,R0904,R0801,R0913
+
+. @script_directory@/pylint_test.sh
+
+pylint_test volumedrivertest.voldrv

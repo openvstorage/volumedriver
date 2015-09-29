@@ -1,0 +1,6 @@
+package events;
+
+message Event
+{
+	extensions 1000 to max;
+}

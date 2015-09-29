@@ -1,0 +1,9 @@
+#! /bin/bash
+
+TARGET_FILE=SPECS/volumedriver-base.spec
+
+. ../add-installdir.sh
+
+add_directory volumedriver
+add_directory volumedriver/base
+add_directory volumedriver/toolcut

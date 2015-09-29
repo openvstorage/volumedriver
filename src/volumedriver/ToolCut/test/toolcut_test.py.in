@@ -1,0 +1,647 @@
+import random
+import subprocess
+import nose
+import time
+import unittest
+import os
+import types
+import sys
+import shutil
+from string import Template
+import os
+
+import volumedriver.toolcut.ToolCut as ToolCut
+from volumedriver.backend import Backend
+# ToolCut.BuildInfo.checkVersion(['3.2.1'])
+testdatadir = Template("@datarootdir@/volumedrivertest/toolcut").substitute(
+    prefix=os.environ['prefix'])
+
+
+def _testfilePath(filename):
+    return os.path.join(testdatadir, filename)
+
+
+class BackendTest(unittest.TestCase):
+
+    def setUp(self):
+        self.backend_path = os.path.join(os.getcwd(), 'testlocalbackend')
+#        os.mkdir(self.backend_path)
+        self.namespace = "namespace"
+        self.namespace_path = os.path.join(self.backend_path, self.namespace)
+ #       os.mkdir(self.namespace_path)
+        self.file1 = os.path.join(self.namespace_path, 'file1')
+        open(self.file1, 'w').close()
+        self.file2 = os.path.join(self.namespace_path, 'file2')
+        open(self.file2, 'w').close()
+        self.configuration_template = Template('''{
+    "version": "1",
+    "volume_manager":
+    {
+        "metadata_path": "\/tmp\/VolumeDriverConfigurationTest\/metadatastores",
+        "tlog_path": "\/tmp\/VolumeDriverConfigurationTest\/tlogs",
+        "open_scos_per_volume": "32",
+        "clean_interval": "60",
+        "number_of_scos_in_tlog": "20",
+        "debug_metadata_path": "\/tmp\/VolumeDriverConfigurationTest\/dump_on_halt_dir"
+    },
+    "threadpool_component":
+    {
+        "num_threads": "4"
+    },
+    "scocache":
+    {
+        "backoff_gap": "500MiB",
+        "trigger_gap": "250MiB",
+        "scocache_mount_points":
+        [
+            {
+                "path": "\/tmp\/VolumeDriverConfigurationTest\/scocache_mp1",
+                "size": "1GiB"
+            },
+            {
+                "path": "\/tmp\/VolumeDriverConfigurationTest\/scocache_mp2",
+                "size": "1GiB"
+            }
+        ]
+    },
+    "backend_connection_manager":
+    {
+        "backend_type": "LOCAL",
+        "local_connection_path": "$backend_path",
+        "local_connection_tv_sec": "0",
+        "local_connection_tv_nsec": "0"
+    },
+    "content_addressed_cache":
+    {
+        "read_cache_serialization_path": "\/tmp\/VolumeDriverConfigurationTest\/metadatastores",
+        "clustercache_mount_points":
+        [
+            {
+                "path": "\/tmp\/VolumeDriverConfigurationTest\/readcachethefirst",
+                "size": "10MiB"
+            },
+            {
+                "path": "\/tmp\/VolumeDriverConfigurationTest\/readcachethesecond",
+                "size": "10MiB"
+            }
+        ]
+    }
+}''')
+        self.configuration = self.configuration_template.substitute(
+            backend_path=self.backend_path)
+        self.configuration_file = os.path.join(
+            os.getcwd(), 'configuration_dump')
+        with open(self.configuration_file, 'w') as f:
+            f.write(self.configuration)
+
+    def tearDown(self):
+        shutil.rmtree(self.backend_path)
+#        os.unlink(self.configuration_file)
+
+    # def test1(self):
+    # b1 = ToolCut.BackendInterface(self.configuration_file,
+    # self.namespace)
+    # b2 = ToolCut.BackendInterface.makeLocalBackend(self.backend_path,
+    # self.namespace)
+    # l1 = b1.list()
+    # l2 = b2.list()
+    # self.assertTrue(frozenset(l1) == frozenset(l2))
+    #     connection_manager = Backend.ConnectionManager(self.configuration_file)
+    #     conn = connection_manager.getConnection()
+    #     self.assertTrue(conn.namespaceExists(self.namespace))
+    #     list_of_objects = conn.listObjects()
+    # b2 = Backend.makeLocalBackend(self.backend_path)
+    #     self.assertTrue("00_00000001_00" in list_of_object)
+
+
+class LoggerTest(unittest.TestCase):
+
+    def disable(self):
+        ToolCut.Logger.disableLogging()
+        self.assertFalse(ToolCut.Logger.loggingEnabled())
+
+    def enable(self):
+        ToolCut.Logger.enableLogging()
+        self.assertTrue(ToolCut.Logger.loggingEnabled())
+
+    def unconfigured_logging_throws(self):
+        with self.assertRaises(RuntimeError):
+            ToolCut.Logger.getGeneralLoggingLevel()
+        with self.assertRaises(RuntimeError):
+            ToolCut.Logger.setGeneralLoggingLevel(ToolCut.Severity.info)
+        with self.assertRaises(RuntimeError):
+            ToolCut.Logger.listFilters()
+        with self.assertRaises(RuntimeError):
+            ToolCut.Logger.addFilter("a_name", ToolCut.Severity.info)
+        with self.assertRaises(RuntimeError):
+            ToolCut.Logger.removeFilter("a_name")
+        with self.assertRaises(RuntimeError):
+            ToolCut.Logger.removeAllFilters()
+
+    def test_enabling(self):
+        # if(Logger.loggingEnabled()):
+        #     Logger.disableLogging();
+        ToolCut.Logger.setupLogging()
+        self.assertFalse(ToolCut.Logger.loggingEnabled())
+        self.enable()
+        self.enable()
+        self.disable()
+        self.disable()
+
+    def test_invalid_calls(self):
+        self.assertFalse(ToolCut.Logger.loggingEnabled())
+        self.unconfigured_logging_throws()
+
+    def test_initialization(self):
+        ToolCut.Logger.setupLogging()
+        self.enable()
+        self.assertEqual(
+            ToolCut.Logger.getGeneralLoggingLevel(), ToolCut.Severity.info)
+        logger = ToolCut.Logging("a logger")
+        logger(ToolCut.Severity.info, "this is an info message you should see")
+        logger(ToolCut.Severity.trace, "this is a message you should not see")
+        ToolCut.Logger.setGeneralLoggingLevel(ToolCut.Severity.fatal)
+        logger(ToolCut.Severity.info,
+               "this is an info message you should not see")
+        ToolCut.Logger.teardownLogging()
+        self.assertFalse(ToolCut.Logger.loggingEnabled())
+
+    def test_filter(self):
+        ToolCut.Logger.setupLogging()
+        logger = ToolCut.Logging("toolcut_logger")
+        self.enable()
+        self.assertEqual(
+            ToolCut.Logger.getGeneralLoggingLevel(), ToolCut.Severity.info)
+        logger(ToolCut.Severity.info, "This is a message you should see")
+        logger(ToolCut.Severity.trace, "This is a message you should not see")
+        ToolCut.Logger.addFilter("toolcut_logger", ToolCut.Severity.trace)
+        filter_dict = ToolCut.Logger.listFilters()
+        self.assertEqual(len(filter_dict), 1)
+        self.assertEqual(filter_dict["toolcut_logger"], ToolCut.Severity.trace)
+        logger(ToolCut.Severity.fatal, "This is a message you should see")
+        ToolCut.Logger.removeFilter("toolcut_logger")
+        filter_dict = ToolCut.Logger.listFilters()
+        self.assertEqual(len(filter_dict), 0)
+        logger(ToolCut.Severity.trace, "This is a message you should not see")
+        ToolCut.Logger.setGeneralLoggingLevel(ToolCut.Severity.trace)
+        logger(ToolCut.Severity.trace, "This is a message you should see")
+        ToolCut.Logger.addFilter("info", ToolCut.Severity.info)
+        ToolCut.Logger.addFilter("notification", ToolCut.Severity.notification)
+        ToolCut.Logger.addFilter("trace", ToolCut.Severity.trace)
+        filter_dict = ToolCut.Logger.listFilters()
+        self.assertEqual(len(filter_dict), 3)
+        self.assertEqual(filter_dict["info"], ToolCut.Severity.info)
+        self.assertEqual(
+            filter_dict["notification"], ToolCut.Severity.notification)
+        self.assertEqual(filter_dict["trace"], ToolCut.Severity.trace)
+        ToolCut.Logger.removeAllFilters()
+        filter_dict = ToolCut.Logger.listFilters()
+        self.assertEqual(len(filter_dict), 0)
+        ToolCut.Logger.teardownLogging()
+
+# class VersionTest(unittest.TestCase):
+#     def test(self):
+#         rev1 = BuildInfo.revision()
+#         rev2 = BuildInfo.revision()
+#         self.assertEqual(rev1, rev2)
+#         b1 = BuildInfo.branch()
+#         b2 = BuildInfo.branch()
+#         self.assertEqual(b1, b2)
+#         qpver = BuildInfo.qpackageVersion()
+#         self.assertEqual(qpver, '3.2.1')
+#         t1 = BuildInfo.buildTime()
+#         BuildInfo.checkVersion(['3.2.1'])
+#         with self.assertRaises(RuntimeError):
+#             BuildInfo.checkVersion(['3.1.0'])
+#         with self.assertRaises(RuntimeError):
+#             BuildInfo.checkVersion(['3.2.2', '3.1.0'])
+#         BuildInfo.checkVersion(['3.1.0', '3.2.1', '3.2.0'])
+
+# class ToolCutTest1(unittest.TestCase):
+#     def test_volumeInfo(self):
+#         c = ToolCut.VolumeInfo(_testfilePath("volume_configuration_for_test1"),
+#                          _testfilePath("failovercache_configuration_for_test1"))
+#         self.assertEqual(c.volumeID(),'volume')
+#         self.assertEqual(c.volumeNamespace(), 'namespace')
+#         self.assertEqual(c.role(), ToolCut.WanBackupVolumeRole.Normal)
+#         self.assertEqual(c.size(), 134217728)
+#         self.assertEqual(c.parentNamespace(),'')
+#         self.assertEqual(c.parentSnapshot(),'')
+#         self.assertEqual(c.lbaSize(), 512)
+#         self.assertEqual(c.lbaCount(), 262144)
+#         self.assertEqual(c.clusterMultiplier(), 8)
+#         self.assertEqual(c.scoMultiplier(), 32)
+#         self.assertEqual(c.minSCOCache(), 0);
+#         self.assertEqual(c.maxSCOCache(), 18446744073709551615L)
+#         self.assertEqual(c.failOverCacheType(), ToolCut.FailOverCacheType.NoFailOverCache)
+#         self.assertEqual(c.failOverCacheHost(), '')
+#         self.assertEqual(c.failOverCachePort(),0)
+
+
+# class ToolCutTest2(unittest.TestCase):
+
+#      def test_volumeInfo(self):
+#          c = ToolCut.VolumeInfo(_testfilePath("volume_configuration_for_test2"),
+#                           _testfilePath("failovercache_configuration_for_test2"))
+#          self.assertEqual(c.volumeID(),'clone')
+#          self.assertEqual(c.volumeNamespace(), 'clone_namespace')
+#          self.assertEqual(c.parentNamespace(),'namespace')
+#          self.assertEqual(c.parentSnapshot(),'snapshot')
+#          self.assertEqual(c.role(), ToolCut.WanBackupVolumeRole.Normal)
+#          self.assertEqual(c.size(), 134217728)
+#          self.assertEqual(c.lbaSize(), 512)
+#          self.assertEqual(c.lbaCount(), 262144)
+#          self.assertEqual(c.clusterMultiplier(), 8)
+#          self.assertEqual(c.scoMultiplier(), 32)
+#          self.assertEqual(c.minSCOCache(), 0);
+#          self.assertEqual(c.maxSCOCache(), 18446744073709551615L)
+#          self.assertEqual(c.failOverCacheType(), ToolCut.FailOverCacheType.NoFailOverCache)
+#          self.assertEqual(c.failOverCacheHost(), '')
+#          self.assertEqual(c.failOverCachePort(),0)
+
+# def test_snapshotInfo(self):
+# c = SnapShotInfoFromBackend(makeBuchlaBackendConfig(), "namespace")
+# self.assertEqual(c.getSnapshots(), ['snapshot'])
+# self.assertEqual(c.getSnapshotNum('snapshot'), 0)
+# self.assertEqual(c.getSnapshotName(0), 'snapshot')
+
+# def tearDown(self):
+# self.process.wait()
+
+class SnapshotPrinter():
+
+    def __init__(self, filename):
+        self.file_name = filename
+        self.snapshotPersistor = ToolCut.SnapshotPersistor(filename)
+
+    def __call__(self, snap):
+        print "- " + snap.name()
+        snap.forEach(self.tlog_printer)
+
+    def tlog_printer(self, tlog):
+        print "-- " + tlog.name()
+
+
+class TLogFinder():
+
+    class FoundException():
+        pass
+
+    def __init__(self, filename, tlogname_):
+        self.file_name = filename
+        self.tlog_name = tlogname
+        self.count = 0
+
+    def __call__(self):
+        try:
+            ToolCut.SnapshotPersistor(filename).forEach(onSnapshot)
+            return False
+        except self.FoundException:
+            return True
+
+    def onSnapshot(self, snap_):
+        self.snap = snap
+        self.count = 0
+        snap.forEach(self.tlog_printer)
+
+    def tlog_finder(self, tlog):
+        if(tlog.name() == self.tlog_name):
+            print "Found " + self.tlog_name + " in snapshot " + self.snap.name() + " at offset " + str(self.count)
+            self.snap = self.snap.name()
+            raise self.FoundException()
+        else:
+            count += 1
+
+
+class ToolCutTest3(unittest.TestCase):
+
+    def setUp(self):
+        pass
+
+    def test_snip(self):
+        sp = ToolCut.SnapshotPersistor(_testfilePath('testfile'))
+        cur1 = sp.getCurrentTLogs()
+        self.assertTrue(len(cur1) >= 3)
+        sp.snip(cur1[1])
+        cur2 = sp.getCurrentTLogs()
+        self.assertTrue(len(cur2) >= 2)
+        self.assertEqual(cur2,
+                         cur1[:2])
+        sp.snip(cur1[1])
+        self.assertEqual(cur2,
+                         sp.getCurrentTLogs())
+        sp.snip(cur2[-1])
+        self.assertEqual(cur2,
+                         sp.getCurrentTLogs())
+
+    def testSnapshotPersistor(self):
+        self._run(_testfilePath("testfile"), False)
+
+    def _run(self, path, recurring):
+        sp = ToolCut.SnapshotPersistor(path)
+        snaps = []
+        sp.forEach(lambda snap: snaps.append(snap.name()))
+
+        if recurring:
+            self.assertEqual(2,
+                             len(snaps))
+        else:
+            self.assertEqual(3,
+                             len(snaps))
+
+        snap0 = "snap-0"
+        self.assertEqual(snap0,
+                         str(snaps[0]))
+        self.assertEqual(0,
+                         sp.getSnapshotNum(snap0))
+        self.assertEqual(snap0,
+                         sp.getSnapshotName(0))
+        self.assertEqual([],
+                         sp.getSnapshotsTill(snap0, False))
+        self.assertEqual([snap0],
+                         sp.getSnapshotsTill(snap0, True))
+        self.assertEqual(snaps[1:],
+                         sp.getSnapshotsAfter(snap0))
+
+        current_tlog = "tlog_22610fa5-c488-4364-bfec-c38a6e8e40ad"
+        self.assertEqual(current_tlog,
+                         sp.getCurrentTLog())
+
+        tlogs = []
+        sp.forEach(lambda snap: snap.forEach(
+            lambda tlog: tlogs.append(tlog.name())))
+
+        self.assertTrue(len(tlogs) > 0)
+
+        self.assertEqual(tlogs,
+                         sp.getAllTLogs(False))
+
+        tlogs += sp.getCurrentTLogs()
+        self.assertEqual(tlogs,
+                         sp.getAllTLogs(True))
+
+        self.assertEqual(current_tlog,
+                         tlogs[-1])
+
+        self.assertEqual('',
+                         sp.getParentNamespace())
+        self.assertEqual('',
+                         sp.getParentSnapshot())
+        self.assertEqual(['tlog_a3d23b48-9f06-4aea-b15c-d89d69621f35',
+                          'tlog_78134b49-e2d8-4230-bfb4-2a41bcd45273',
+                          'tlog_efae97f9-8128-41d7-8ddb-03621df9956c',
+                          'tlog_0f96befd-9db0-43d0-8d79-a287992f159b'],
+                         sp.getTLogsInSnapshot(snap0))
+
+        self.assertEqual(sp.getTLogsInSnapshot(snap0),
+                         sp.getTLogsTillSnapshot(snap0))
+
+        self.assertEqual(tlogs,
+                         sp.getTLogsTillSnapshot(snap0) +
+                         sp.getTLogsAfterSnapshot(snap0))
+
+        snap1 = "snap-1"
+        if not recurring:
+            self.assertTrue(sp.snapshotExists(snap1))
+            sp.deleteSnapshot(snap1)
+
+        self.assertFalse(sp.snapshotExists(snap1))
+
+        not_in_backend = sp.getTLogsNotWrittenToBackend()
+        work = sp.getScrubbingWork()
+        work_size = len(work)
+        self.assertEqual(2, work_size)
+
+        for snap in work:
+            sp.setSnapshotScrubbed(snap, True)
+
+        self.assertEqual(0,
+                         len(sp.getScrubbingWork()))
+
+        for snap in work:
+            sp.setSnapshotScrubbed(snap, False)
+
+        self.assertEqual(work_size,
+                         len(sp.getScrubbingWork()))
+
+        if recurring:
+            self.assertEqual(len(not_in_backend), 0)
+        else:
+            self.assertEqual(1, len(not_in_backend))
+            tlog = not_in_backend[0]
+            self.assertFalse(sp.isTLogWrittenToBackend(tlog))
+            sp.setTLogWrittenToBackend(tlog)
+            self.assertTrue(sp.isTLogWrittenToBackend(tlog))
+
+        tmpfile = "snapshots.xml.2"
+
+        try:
+            if not recurring:
+                sp.saveToFile(tmpfile)
+                self._run(tmpfile, True)
+            else:
+                sp.trimToBackend()
+                os.remove(tmpfile)
+        finally:
+            if os.path.exists(tmpfile):
+                os.remove(tmpfile)
+
+    def tearDown(self):
+        pass
+
+
+class SCOTest(unittest.TestCase):
+
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+    def test_SCO(self):
+        self.assertFalse(ToolCut.SCO.isSCOString('00_0000003d_0'))
+        self.assertFalse(ToolCut.SCO.isSCOString('00_0000003k_00'))
+        self.assertTrue(ToolCut.SCO.isSCOString('00_0000003d_00'))
+        sco = ToolCut.SCO('00_0000003d_00')
+        self.assertEqual(sco.number(), 16 * 3 + 13)
+        self.assertEqual(sco.version(), 0)
+        self.assertEqual(sco.cloneID(), 0)
+        self.assertTrue(sco.asBool())
+        self.assertEqual(sco.str(), '00_0000003d_00')
+        sco = ToolCut.SCO('00_00000000_00')
+        self.assertFalse(sco.asBool())
+
+
+class ClusterLocationTest(unittest.TestCase):
+
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+    def test_ClusterLocation(self):
+        self.assertFalse(
+            ToolCut.ClusterLocation.isClusterLocationString('00_0000003d_00:000'))
+        self.assertFalse(
+            ToolCut.ClusterLocation.isClusterLocationString('00_0000003p_0:0000'))
+        self.assertFalse(
+            ToolCut.ClusterLocation.isClusterLocationString('00_0000003d_00:000k'))
+        self.assertTrue(
+            ToolCut.ClusterLocation.isClusterLocationString('00_0000003d_00:0001'))
+        cl = ToolCut.ClusterLocation('00_0000003d_00:0001')
+        self.assertEqual(cl.number(), 0x3d)
+        self.assertEqual(cl.version(), 0)
+        self.assertEqual(cl.cloneID(), 0)
+        self.assertEqual(cl.offset(), 1)
+        self.assertEqual(cl.str(), '00_0000003d_00:0001')
+
+
+class TLogReaderTest(unittest.TestCase):
+
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+    def makeClusterLocationLister(self, lst):
+        def lister(ca, cl):
+            lst.append(cl)
+        return lister
+
+    def makeEntryCounter(self, dct):
+        #        dct[ToolCut.EntryType.SyncTC] = 0
+        dct[ToolCut.EntryType.TLogCRC] = 0
+        dct[ToolCut.EntryType.SCOCRC] = 0
+        dct[ToolCut.EntryType.CLoc] = 0
+
+        def counter(entry):
+            dct[entry.type()] += 1
+        return counter
+
+    def test_TLog1(self):
+        tlogreader = ToolCut.TLogReader(_testfilePath("testtlog"))
+        lst = tlogreader.SCONames()
+        self.assertTrue(len(lst) > 0)
+        self.assertEqual(lst[0].str(), '00_0000003d_00')
+        lst = []
+        tlogreader.forEach(onClusterEntry=self.makeClusterLocationLister(lst))
+        self.assertTrue(len(lst) == 0)
+        tlogreader.rewind()
+        tlogreader.forEach(onClusterEntry=self.makeClusterLocationLister(lst))
+        self.assertTrue(len(lst) > 0)
+        self.assertEqual(lst[0].sco().str(), '00_0000003d_00')
+        self.assertTrue(ToolCut.TLogReader.isTLogString(
+            'tlog_e733574e-5654-4b71-bdde-0489940e6028'))
+        self.assertTrue(not ToolCut.TLogReader.isTLogString(
+            'tlog_e733574e-5654-4b71-bdde-0489940e68'))
+        self.assertTrue(not ToolCut.TLogReader.isTLogString(
+            'og_e733574e-5654-4b71-bdde-0489940e6028'))
+        self.assertTrue(not ToolCut.TLogReader.isTLogString(
+            'tlog_e733574e_5654-4b71-bdde-0489940e6028'))
+        self.assertTrue(not ToolCut.TLogReader.isTLogString(
+            'tlog_e733574e-k654-4b71-bdde-0489940e6028'))
+
+    def test_TLog2(self):
+        tlogreader = ToolCut.TLogReader(_testfilePath("testtlog"))
+        dct = dict()
+        counter = self.makeEntryCounter(dct)
+        tlogreader.forEachEntry(counter)
+        #        self.assertEqual(dct[ToolCut.EntryType.SyncTC], 0)
+        self.assertEqual(dct[ToolCut.EntryType.TLogCRC],  0)
+        self.assertTrue(dct[ToolCut.EntryType.SCOCRC] > 0)
+        self.assertTrue(dct[ToolCut.EntryType.CLoc] > 0)
+
+
+class ScrubbingResultTest(unittest.TestCase):
+
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+    def test_scrub_result(self):
+        scrub_res = ToolCut.ScrubbingResult(
+            _testfilePath("scrubbing_result40c99e69-5a28-42ce-a731-4d5280a8170d"))
+        self.assertEqual("snap-6",
+                         scrub_res.snapshotName())
+
+        self.assertEqual(['tlog_270abbfe-44ae-457d-b3a2-d5e04a714ea2',
+                          'tlog_17477856-02db-492f-8621-8cc9b6633441',
+                          'tlog_66340352-2f75-44f7-bf4e-3559d3178c84',
+                          'tlog_c7e7f131-1ca7-42d5-89d3-74909b4e3f9d'],
+                         scrub_res.tlogsIn())
+
+        self.assertEqual(['tlog_c91fa223-5787-4ffe-9d72-4bd2f2ead12f'],
+                         scrub_res.tlogsOut())
+
+        self.assertEqual([],
+                         scrub_res.relocations())
+
+        self.assertEqual(0,
+                         scrub_res.numRelocations())
+
+        self.assertEqual(['00_0000000a_00',
+                          '00_0000000b_00',
+                          '00_0000000c_00',
+                          '00_0000000d_00',
+                          '00_0000000e_00',
+                          '00_0000000f_00',
+                          '00_00000010_00',
+                          '00_00000011_00',
+                          '00_00000012_00'],
+                         scrub_res.scosToBeDeleted())
+
+        self.assertEqual([],
+                         scrub_res.prefetch())
+
+        self.assertEqual(10 * 1024 * 1024,
+                         scrub_res.referenced())
+
+        with self.assertRaises(RuntimeError):
+            scrub_res.stored()
+
+        with self.assertRaises(RuntimeError):
+            scrub_res.newScos()
+
+
+class GetScrubWorkTest(unittest.TestCase):
+
+    def test_get_scrub_work(self):
+        sp = ToolCut.SnapshotPersistor(
+            _testfilePath("test-get-scrub-work-snapshots.xml"))
+        snaps = ['A', 'B', 'C']
+        self.assertEqual(snaps, sp.getScrubbingWork())
+        self.assertEqual(snaps, sp.getScrubbingWork(None, None))
+        self.assertEqual(snaps, sp.getScrubbingWork(None, 'C'))
+        self.assertEqual(snaps[1:], sp.getScrubbingWork('A', None))
+        self.assertEqual(snaps[2:], sp.getScrubbingWork('B', None))
+        self.assertEqual([], sp.getScrubbingWork('C', None))
+        self.assertEqual(snaps[1:2], sp.getScrubbingWork('A', 'B'))
+        self.assertEqual([], sp.getScrubbingWork('B', 'B'))
+        self.assertRaises(Exception, sp.getScrubbingWork, 'X', None)
+        self.assertRaises(Exception, sp.getScrubbingWork, None, 'Y')
+        self.assertRaises(Exception, sp.getScrubbingWork, 'C', 'B')
+
+# Needs to be revisited for the new
+# class MetadataStoreTest(unittest.TestCase):
+#     def setUp(self):
+#         pass
+
+#     def tearDown(self):
+#         pass
+
+#     def test_MDStore(self):
+#         mdstore = ToolCut.MetadataStore(_testfilePath("test_mdstore"))
+#         mdstore.readCluster(0)
+
+if __name__ == '__main__':
+    unittest.main()
+
+
+# Local Variables: **
+# mode: python **
+# compile-command: "./runtest.sh test.py:ToolCutTest4" **
+# End: **

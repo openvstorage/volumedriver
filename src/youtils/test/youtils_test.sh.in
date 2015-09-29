@@ -1,0 +1,17 @@
+#!/bin/bash
+
+. @script_directory@/cpp_test.sh
+
+if [ "x${WITH_ARAKOON_METADATA_STORE:-no}" != "xyes" ]
+then
+    echo "Testing youtils without arakoon, set WITH_ARAKOON_METADATA_STORE to yes to enable"
+    cpp_test youtils_test --gtest_filter=-ArakoonTest* "$@"
+else
+    echo "Testing youtils with Arakoon, set WITH_ARAKOON_METADATA_STORE to anything but 'yes' to disable"
+    cpp_test youtils_test \
+	--arakoon-binary-path=$ARAKOON_BINARY \
+	--arakoon-port-base=$ARAKOON_PORT_BASE \
+	"$@"
+fi
+
+

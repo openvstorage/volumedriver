@@ -1,0 +1,5 @@
+* How to mount a loopback device on linux:
+  man losetup
+* How to let an ordinary user do loop stuff:
+  #usermod -G disk <username>
+  chmod 777 /dev/loop*

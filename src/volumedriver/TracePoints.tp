@@ -1,0 +1,218 @@
+#include <inttypes.h>
+
+TRACEPOINT_EVENT(
+	openvstorage_volumedriver,
+	volume_write_start,
+	TP_ARGS(const char*, volume_id_arg,
+		uint64_t, lba_arg,
+		uint64_t, size_arg),
+	TP_FIELDS(ctf_string(volume_id, volume_id_arg)
+		  ctf_integer(uint64_t, lba, lba_arg)
+		  ctf_integer(size_t, size, size_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_volumedriver,
+	volume_write_end,
+	TP_ARGS(const char*, volume_id_arg,
+		uint64_t, lba_arg,
+		uint64_t, size_arg,
+		int, status_arg),
+	TP_FIELDS(ctf_string(volume_id, volume_id_arg)
+		  ctf_integer(uint64_t, lba, lba_arg)
+		  ctf_integer(size_t, size, size_arg)
+		  ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_volumedriver,
+	volume_sync_start,
+	TP_ARGS(const char*, volume_id_arg),
+	TP_FIELDS(ctf_string(volume_id, volume_id_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_volumedriver,
+	volume_sync_end,
+	TP_ARGS(const char*, volume_id_arg,
+		int, status_arg),
+	TP_FIELDS(ctf_string(volume_id, volume_id_arg)
+		  ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_volumedriver,
+	volume_read_start,
+	TP_ARGS(const char*, volume_id_arg,
+		uint64_t, lba_arg,
+		uint64_t, size_arg),
+	TP_FIELDS(ctf_string(volume_id, volume_id_arg)
+		  ctf_integer(uint64_t, lba, lba_arg)
+		  ctf_integer(size_t, size, size_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_volumedriver,
+	volume_read_end,
+	TP_ARGS(const char*, volume_id_arg,
+		uint64_t, lba_arg,
+		uint64_t, size_arg,
+		int, status_arg),
+	TP_FIELDS(ctf_string(volume_id, volume_id_arg)
+		  ctf_integer(uint64_t, lba, lba_arg)
+		  ctf_integer(size_t, size, size_arg)
+		  ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_volumedriver,
+	new_sco,
+	TP_ARGS(const char*, nspace_arg,
+		const uint64_t, sco_number_arg),
+	TP_FIELDS(ctf_string(nspace, nspace_arg)
+		  ctf_integer(uint64_t, sco_number, sco_number_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_volumedriver,
+	new_tlog,
+	TP_ARGS(const char*, nspace_arg,
+		const char*, tlogname_arg),
+	TP_FIELDS(ctf_string(nspace, nspace_arg)
+		  ctf_string(tlogname, tlogname_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_volumedriver,
+	mdstore_cork,
+	TP_ARGS(const char*, nspace_arg,
+		const uint8_t*, cork_id_arg),
+	TP_FIELDS(ctf_string(nspace, nspace_arg)
+		  ctf_array(uint8_t, cork_id, cork_id_arg, 16))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_volumedriver,
+	mdstore_uncork_start,
+	TP_ARGS(const char*, nspace_arg,
+		const uint8_t*, cork_id_arg),
+	TP_FIELDS(ctf_string(nspace, nspace_arg)
+		  ctf_array(uint8_t, cork_id, cork_id_arg, 16))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_volumedriver,
+	mdstore_uncork_end,
+	TP_ARGS(const char*, nspace_arg,
+		const uint8_t*, cork_id_arg,
+		int, status_arg),
+	TP_FIELDS(ctf_string(nspace, nspace_arg)
+		  ctf_array(uint8_t, cork_id, cork_id_arg, 16)
+		  ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_volumedriver,
+	volume_throttle_start,
+	TP_ARGS(const char*, volume_id_arg,
+		unsigned, throttle_usecs_arg),
+	TP_FIELDS(ctf_string(volume_id, volume_id_arg)
+		  ctf_integer(unsigned, throttle_usecs, throttle_usecs_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_volumedriver,
+	volume_throttle_end,
+	TP_ARGS(const char*, volume_id_arg,
+		unsigned, throttle_usecs_arg),
+	TP_FIELDS(ctf_string(volume_id, volume_id_arg)
+		  ctf_integer(unsigned, throttle_usecs, throttle_usecs_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_volumedriver,
+	volume_foc_write_start,
+	TP_ARGS(const char*, volume_id_arg,
+		uint64_t, lba_arg,
+		uint64_t, clusterlocation_arg),
+	TP_FIELDS(ctf_string(volume_id, volume_id_arg)
+		  ctf_integer(uint64_t, lba, lba_arg)
+		  ctf_integer(uint64_t, clusterlocation, clusterlocation_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_volumedriver,
+	volume_foc_write_end,
+	TP_ARGS(const char*, volume_id_arg,
+		uint64_t, lba_arg,
+		uint64_t, clusterlocation_arg,
+		int, status_arg),
+	TP_FIELDS(ctf_string(volume_id, volume_id_arg)
+		  ctf_integer(uint64_t, lba, lba_arg)
+		  ctf_integer(uint64_t, clusterlocation, clusterlocation_arg)
+		  ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_volumedriver,
+	tlog_written_callback_start,
+	TP_ARGS(const char*, nspace_arg,
+		const char*, tlog_arg,
+		uint64_t, sco_arg),
+	TP_FIELDS(ctf_string(nspace, nspace_arg)
+		  ctf_string(tlog, tlog_arg)
+		  ctf_integer(uint64_t, sco, sco_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_volumedriver,
+	tlog_written_callback_end,
+	TP_ARGS(const char*, nspace_arg,
+		const char*, tlog_arg,
+		uint64_t, sco_arg,
+		int, status_arg),
+	TP_FIELDS(ctf_string(nspace, nspace_arg)
+		  ctf_string(tlog, tlog_arg)
+		  ctf_integer(uint64_t, sco, sco_arg)
+		  ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_volumedriver,
+	snapshots_persist_start,
+	TP_ARGS(const char*, filename_arg,
+                int, sync_and_rename_arg),
+	TP_FIELDS(ctf_string(filename, filename_arg)
+		  ctf_integer(int, sync_and_rename, sync_and_rename_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_volumedriver,
+	snapshots_persist_end,
+	TP_ARGS(const char*, filename_arg,
+                int, sync_and_rename_arg,
+		int, status_arg),
+	TP_FIELDS(ctf_string(filename, filename_arg)
+		  ctf_integer(int, sync_and_rename, sync_and_rename_arg)
+		  ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_volumedriver,
+	mark_sco_disposable_start,
+	TP_ARGS(const char*, nspace_arg,
+		const uint64_t, sco_number_arg),
+	TP_FIELDS(ctf_string(nspace, nspace_arg)
+		  ctf_integer(uint64_t, sco_number, sco_number_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_volumedriver,
+	mark_sco_disposable_end,
+	TP_ARGS(const char*, nspace_arg,
+		const uint64_t, sco_number_arg,
+		int, status_arg),
+	TP_FIELDS(ctf_string(nspace, nspace_arg)
+		  ctf_integer(uint64_t, sco_number, sco_number_arg)
+		  ctf_integer(int, status, status_arg))
+)

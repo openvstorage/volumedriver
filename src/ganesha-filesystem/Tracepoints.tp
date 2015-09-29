@@ -1,0 +1,385 @@
+#include <inttypes.h>
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_release_handle_enter,
+    TP_ARGS(const char *, object_id_arg),
+    TP_FIELDS(ctf_string(object_id, object_id_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_release_handle_exit,
+    TP_ARGS(const char *, object_id_arg,
+            int, status_arg),
+    TP_FIELDS(ctf_string(object_id, object_id_arg)
+              ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_lookup_enter,
+    TP_ARGS(const char *, parent_object_id_arg,
+            const char *, path_arg),
+    TP_FIELDS(ctf_string(parent_object_id, parent_object_id_arg)
+              ctf_string(path, path_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_lookup_exit,
+    TP_ARGS(const char *, parent_object_id_arg,
+            const char *, path_arg,
+            const char *, new_object_id_arg,
+            int, status_arg),
+    TP_FIELDS(ctf_string(parent_object_id, parent_object_id_arg)
+              ctf_string(path, path_arg)
+              ctf_string(new_object_id, new_object_id_arg)
+              ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_read_dirents_enter,
+    TP_ARGS(const char *, object_id_arg),
+    TP_FIELDS(ctf_string(object_id, object_id_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_read_dirents_exit,
+    TP_ARGS(const char *, object_id_arg,
+            int, status_arg),
+    TP_FIELDS(ctf_string(object_id, object_id_arg)
+              ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_create_enter,
+    TP_ARGS(const char *, dir_object_id_arg,
+            const char *, name_arg),
+    TP_FIELDS(ctf_string(dir_object_id, dir_object_id_arg)
+              ctf_string(name, name_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_create_exit,
+    TP_ARGS(const char *, dir_object_id_arg,
+            const char *, name_arg,
+            const char *, new_object_id_arg,
+            int, status_arg),
+    TP_FIELDS(ctf_string(dir_object_id, dir_object_id_arg)
+              ctf_string(name, name_arg)
+              ctf_string(new_object_id, new_object_id_arg)
+              ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_mkdir_enter,
+    TP_ARGS(const char *, parent_object_id_arg,
+            const char *, path_arg),
+    TP_FIELDS(ctf_string(parent_object_id, parent_object_id_arg)
+              ctf_string(path, path_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_mkdir_exit,
+    TP_ARGS(const char *, parent_object_id_arg,
+            const char *, path_arg,
+            const char *, new_object_id_arg,
+            int, status_arg),
+    TP_FIELDS(ctf_string(parent_object_id, parent_object_id_arg)
+              ctf_string(path, path_arg)
+              ctf_string(new_object_id, new_object_id_arg)
+              ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_rename_enter,
+    TP_ARGS(const char *, olddir_object_id_arg,
+            const char *, old_name_arg,
+            const char *, newdir_object_id_arg,
+            const char *, new_name_arg),
+    TP_FIELDS(ctf_string(olddir_object_id, olddir_object_id_arg)
+              ctf_string(old_name, old_name_arg)
+              ctf_string(newdir_object_id, newdir_object_id_arg)
+              ctf_string(new_name, new_name_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_rename_exit,
+    TP_ARGS(const char *, olddir_object_id_arg,
+            const char *, old_name_arg,
+            const char *, newdir_object_id_arg,
+            const char *, new_name_arg,
+            int, status_arg),
+    TP_FIELDS(ctf_string(olddir_object_id, olddir_object_id_arg)
+              ctf_string(old_name, old_name_arg)
+              ctf_string(newdir_object_id, newdir_object_id_arg)
+              ctf_string(new_name, new_name_arg)
+              ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_unlink_enter,
+    TP_ARGS(const char *, dir_object_id_arg,
+            const char *, path_arg),
+    TP_FIELDS(ctf_string(dir_object_id, dir_object_id_arg)
+              ctf_string(path, path_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_unlink_exit,
+    TP_ARGS(const char *, dir_object_id_arg,
+            const char *, path_arg,
+            int, status_arg),
+    TP_FIELDS(ctf_string(dir_object_id, dir_object_id_arg)
+              ctf_string(path, path_arg)
+              ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_getattrs_enter,
+    TP_ARGS(const char *, object_id_arg),
+    TP_FIELDS(ctf_string(object_id, object_id_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_getattrs_exit,
+    TP_ARGS(const char *, object_id_arg,
+            int, status_arg),
+    TP_FIELDS(ctf_string(object_id, object_id_arg)
+              ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_handle_digest_enter,
+    TP_ARGS(const char *, object_id_arg),
+    TP_FIELDS(ctf_string(object_id, object_id_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_handle_digest_exit,
+    TP_ARGS(const char *, object_id_arg,
+            int, status_arg),
+    TP_FIELDS(ctf_string(object_id, object_id_arg)
+              ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_handle_to_key_enter,
+    TP_ARGS(const char *, object_id_arg),
+    TP_FIELDS(ctf_string(object_id, object_id_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_handle_to_key_exit,
+    TP_ARGS(const char *, object_id_arg,
+            int, status_arg),
+    TP_FIELDS(ctf_string(object_id, object_id_arg)
+              ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_open_enter,
+    TP_ARGS(const char *, object_id_arg),
+    TP_FIELDS(ctf_string(object_id, object_id_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_open_exit,
+    TP_ARGS(const char *, object_id_arg,
+            int, status_arg),
+    TP_FIELDS(ctf_string(object_id, object_id_arg)
+              ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_status_enter,
+    TP_ARGS(const char *, object_id_arg),
+    TP_FIELDS(ctf_string(object_id, object_id_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_status_exit,
+    TP_ARGS(const char *, object_id_arg,
+            int, status_arg),
+    TP_FIELDS(ctf_string(object_id, object_id_arg)
+              ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_read_enter,
+    TP_ARGS(const char *, object_id_arg,
+            uint64_t, offset_arg,
+            size_t, size_arg),
+    TP_FIELDS(ctf_string(object_id, object_id_arg)
+              ctf_integer(uint64_t, offset, offset_arg)
+              ctf_integer(size_t, size, size_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_read_exit,
+    TP_ARGS(const char *, object_id_arg,
+            uint64_t, offset_arg,
+            size_t, size_arg,
+            int, status_arg),
+    TP_FIELDS(ctf_string(object_id, object_id_arg)
+              ctf_integer(uint64_t, offset, offset_arg)
+              ctf_integer(size_t, size, size_arg)
+              ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_write_enter,
+    TP_ARGS(const char *, object_id_arg,
+            uint64_t, offset_arg,
+            size_t, size_arg),
+    TP_FIELDS(ctf_string(object_id, object_id_arg)
+              ctf_integer(uint64_t, offset, offset_arg)
+              ctf_integer(size_t, size, size_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_write_exit,
+    TP_ARGS(const char *, object_id_arg,
+            uint64_t, offset_arg,
+            size_t, size_arg,
+            int, status_arg),
+    TP_FIELDS(ctf_string(object_id, object_id_arg)
+              ctf_integer(uint64_t, offset, offset_arg)
+              ctf_integer(size_t, size, size_arg)
+              ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_commit_enter,
+    TP_ARGS(const char *, object_id_arg,
+            off_t, offset_arg,
+            size_t, len_arg),
+    TP_FIELDS(ctf_string(object_id, object_id_arg)
+              ctf_integer(off_t, offset, offset_arg)
+              ctf_integer(size_t, len, len_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_commit_exit,
+    TP_ARGS(const char *, object_id_arg,
+            off_t, offset_arg,
+            size_t, len_arg,
+            int, status_arg),
+    TP_FIELDS(ctf_string(object_id, object_id_arg)
+              ctf_integer(off_t, offset, offset_arg)
+              ctf_integer(size_t, len, len_arg)
+              ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_close_enter,
+    TP_ARGS(const char *, object_id_arg),
+    TP_FIELDS(ctf_string(object_id, object_id_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_close_exit,
+    TP_ARGS(const char *, object_id_arg,
+            int, status_arg),
+    TP_FIELDS(ctf_string(object_id, object_id_arg)
+              ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_lru_cleanup_enter,
+    TP_ARGS(const char *, object_id_arg),
+    TP_FIELDS(ctf_string(object_id, object_id_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_lru_cleanup_exit,
+    TP_ARGS(const char *, object_id_arg,
+            int, status_arg),
+    TP_FIELDS(ctf_string(object_id, object_id_arg)
+              ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    lookup_path_enter,
+    TP_ARGS(const char *, path_arg),
+    TP_FIELDS(ctf_string(path, path_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    lookup_path_exit,
+    TP_ARGS(const char *, path_arg,
+            const char *, object_id_arg,
+            int, status_arg),
+    TP_FIELDS(ctf_string(path, path_arg)
+              ctf_string(object_id, object_id_arg)
+              ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_setattrs_enter,
+    TP_ARGS(const char *, object_id_arg),
+    TP_FIELDS(ctf_string(object_id, object_id_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    fsal_setattrs_exit,
+    TP_ARGS(const char *, object_id_arg,
+            int, status_arg),
+    TP_FIELDS(ctf_string(object_id, object_id_arg)
+              ctf_integer(int, status, status_arg))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    create_handle_enter,
+    TP_ARGS(char *, hdl_desc_arg,
+            size_t, hdl_desc_arg_len),
+    TP_FIELDS(ctf_sequence_text(char, hdl_desc, hdl_desc_arg, size_t, hdl_desc_arg_len))
+)
+
+TRACEPOINT_EVENT(
+    openvstorage_fsalovs,
+    create_handle_exit,
+    TP_ARGS(char *, hdl_desc_arg,
+            size_t, hdl_desc_arg_len,
+            const char *, object_id_arg,
+            int, status_arg),
+    TP_FIELDS(ctf_sequence_text(char, hdl_desc, hdl_desc_arg, size_t, hdl_desc_arg_len)
+              ctf_string(object_id, object_id_arg)
+              ctf_integer(int, status, status_arg))
+)

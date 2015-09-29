@@ -1,0 +1,5 @@
+repo: 5a06f264d946f2f9bc238c3b2193538c5d096d47
+node: 9db12d5bf3d1861008301713985d63949576a5fe
+branch: 3.6-dev-dynsyslibs
+latesttag: release-4.9.10.1
+latesttagdistance: 88

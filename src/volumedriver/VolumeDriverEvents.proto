@@ -1,0 +1,46 @@
+import "Events.proto";
+
+package events;
+
+enum VolumeDriverErrorCode
+{
+	Unknown = 0;
+	ReadFromDisposableSCO = 1;
+	ReadFromNonDisposableSCO = 2;
+	PutSCOToBackend = 3;
+	PutTLogToBackend = 4;
+	PutSnapshotsToBackend = 5;
+	GetSCOFromBackend = 6;
+	GetTLogFromBackend = 7;
+	GetSnapshotsFromBackend = 8;
+	ReadSourceSCOWhileMoving = 9;
+	MetaDataStore = 10;
+	ReadTLog = 11;
+	ReadSnapshots = 12;
+	ApplyScrubbingRelocs = 13;
+	GetScrubbingResultsFromBackend = 14;
+	WriteToSCO = 15;
+	WriteDestinationSCOWhileMoving = 16;
+	WriteTLog = 17;
+	WriteSnapshots = 18;
+	ApplyScrubbingToSnapshotMamager = 19;
+	SCOCacheMountPointOfflined = 20;
+	ClusterCacheMountPointOfflined = 21;
+	GetSCOFromFOC = 22;
+	VolumeHalted = 23;
+	DiskSpace = 24;
+	MDSFailover = 25;
+}
+
+message VolumeDriverErrorEvent
+{
+	// `optional' as we want Code to be extended in the future
+	optional VolumeDriverErrorCode code = 1;
+	optional string volume_name = 2;
+	optional string info = 3;
+}
+
+extend Event
+{
+	optional VolumeDriverErrorEvent volumedriver_error = 1001;
+}

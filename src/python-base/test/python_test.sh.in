@@ -1,0 +1,10 @@
+#!/bin/bash
+
+
+. @script_directory@/python_test.sh
+
+python_test volumedrivertest.base
+# nosetests -v -s --with-xunit --xunit-file=$TEST_OUTPUT_FILE || true
+
+#-w @prefix@/lib/python@PYTHON_VERSION@/dist-packages/volumedrivertest/base
+

@@ -1,0 +1,628 @@
+# disable no-member errors from pylint
+# pylint: disable=E1101
+
+import os
+import shutil
+import unittest
+import timeit
+import time
+import volumedriver.fawltyfs.PyFawltyFS as PyFawltyFS
+from threading import Thread
+from nose.tools import ok_, eq_
+
+
+log_ = PyFawltyFS.Logging("TestBasicTests")
+
+
+def _tmpdir():
+    return "/tmp/fawltyfstests"
+
+_usec_seconds = 1000000
+
+
+def _mkdir(newdir):
+    # mostly copied from q.system.fs.createDir - potentially racy
+    try:
+        if os.path.isdir(newdir):
+            pass
+        else:
+            head, tail = os.path.split(newdir)
+            if head and not os.path.isdir(head):
+                _mkdir(head)
+            if tail:
+                try:
+                    os.mkdir(newdir)
+                except OSError, e:
+                    if e.errno != os.errno.EEXIST:  # File exists
+                        raise
+    except:
+        raise RuntimeError("Failed to create the directory [%s]" %
+                           newdir.encode("utf-8"))
+
+
+def _make_empty_file(path):
+    try:
+        open(path, "w").close()
+    except Exception:
+        raise RuntimeError("Failed to create empty file %s" % path)
+
+
+def _write_to_file(path, content):
+    with open(path, "wb") as f:
+        f.write(content)
+
+# TODO: move to a place where it can be reused
+
+
+class Timer(object):
+
+    def __init__(self):
+        self._timer = timeit.default_timer
+        self._start = None
+        self._duration = None
+
+    def __enter__(self):
+        self._start = self._timer()
+        return self
+
+    def __exit__(self, *args):
+        self._duration = self._timer() - self._start
+
+    def duration(self):
+        return self._duration
+
+
+class TestBasicTests(unittest.TestCase):
+
+    def setUp(self):
+        PyFawltyFS.Logger.setupLogging()
+        PyFawltyFS.Logger.enableLogging()
+        log_(PyFawltyFS.Severity.info, 'setUp: Create needed directories.')
+        self._mntpoint = os.path.join(_tmpdir(),
+                                      'mntpoint')
+        self._sourcedir = os.path.join(_tmpdir(),
+                                       'sourcedir')
+        try:
+            _mkdir(self._mntpoint)
+            _mkdir(self._sourcedir)
+            self._fs = PyFawltyFS.PyFawltyFS(self._sourcedir,
+                                             self._mntpoint,
+                                             ["-f", "-omax_readahead=0", "-s"])
+            self._fs.mount()
+        except:
+            shutil.rmtree(self._sourcedir,
+                          ignore_errors=True)
+            shutil.rmtree(self._mntpoint,
+                          ignore_errors=True)
+            raise
+
+    def tearDown(self):
+        log_(PyFawltyFS.Severity.info, 'tearDown: remove fawlty_fs Dirs.')
+        # ugly but necessary: immediate attempts to umount fail quite frequently
+        # with an error indicating that the filesystem is still busy. The actual user
+        # is unclear.
+        time.sleep(3)
+        #        PyFawltyFS.Logger.disableLogging()
+        self._fs.umount()
+        log_(PyFawltyFS.Severity.info, "Removing the directory %s" %
+             self._sourcedir)
+        shutil.rmtree(self._sourcedir)
+        log_(PyFawltyFS.Severity.info, "Removed the directory %s" %
+             self._sourcedir)
+
+    def testQShellAPI(self):
+        """
+        * FLTYFS-1: qshell API.
+        """
+        calls = [PyFawltyFS.FileSystemCall.Read,
+                 PyFawltyFS.FileSystemCall.Read]
+        _ = [self._fs.addDelayRule(rule_id=i,
+                                   path_regex='/tmp',
+                                   calls=calls,
+                                   ramp_up=1,
+                                   duration=10,
+                                   delay_usecs=3 * _usec_seconds) for i in range(5)]
+
+        _ = [self._fs.removeDelayRule(i) for i in range(2)]
+
+        drules = self._fs.listDelayRules()
+        eq_(3, len(drules))
+
+        for r in drules:
+            eq_(True, r['rule_id'] in range(2, 5))
+            eq_('/tmp', r['path_regex'])
+            eq_(set(calls), set(r['calls']))
+            eq_(1, r['ramp_up'])
+            eq_(10, r['duration'])
+            eq_(3000000, r['delay_usecs'])
+
+        _ = [self._fs.addFailureRule(rule_id=i,
+                                     path_regex='/tmp',
+                                     calls=[PyFawltyFS.FileSystemCall.Read],
+                                     ramp_up=1,
+                                     duration=10,
+                                     error_code=5) for i in range(5)]
+
+        _ = [self._fs.removeFailureRule(i) for i in range(2)]
+
+        frules = self._fs.listFailureRules()
+        eq_(3, len(frules))
+        for r in frules:
+            eq_(True, r['rule_id'] in range(2, 5))
+            eq_('/tmp', r['path_regex'])
+            eq_(set(calls), set(r['calls']))
+            eq_(1, r['ramp_up'])
+            eq_(10, r['duration'])
+            eq_(5, r['error_code'])
+
+    def testMetadataOpsWithoutErrorInjection(self):
+        """
+        * FLTYFS-2: Metadata ops without error injection.
+        """
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-2: Metadata ops without error injection ****STARTED')
+        time.sleep(2)
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-2: 1- create a directory hierarchy: depth 2, 2 subdirs per dir, 2 files per dir.')
+        dir1 = os.path.join(self._mntpoint, 'dir1')
+        dir2 = os.path.join(self._mntpoint, 'dir2')
+        dirs = [dir1, dir2]
+        _ = [_mkdir(d) for d in dirs]
+        log_(PyFawltyFS.Severity.info, 'FLTYFS-2: created directories.')
+        log_(PyFawltyFS.Severity.info, 'FLTYFS-2: 2- creating files.')
+        file_1_1 = os.path.join(dir1, 'file_1_1.log')
+        file_1_2 = os.path.join(dir1, 'file_1_2.log')
+        file_2_1 = os.path.join(dir2, 'file_2_1.log')
+        file_2_2 = os.path.join(dir2, 'file_2_2.log')
+        files = [file_1_1, file_1_2, file_2_1, file_2_2]
+        _ = [_make_empty_file(f) for f in files]
+        log_(PyFawltyFS.Severity.info, 'FLTYFS-2: 2- created files.')
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-3: 2- check for the dires and files are created correctly..!')
+        [self.assertTrue(os.path.isdir(d),
+                         'dir %s does not exist' % d) for d in dirs]
+        [self.assertTrue(os.path.isfile(f),
+                         'file %s does not exist' % f) for f in files]
+
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-2: 3- remove files and directories one by one, check directory hierarchy after each step.')
+        while files:
+            f = files.pop()
+            os.unlink(f)
+            self.assertFalse(os.path.isfile(f), 'file %s should not exist' % f)
+            if files:
+                [self.assertTrue(os.path.isfile(f),
+                                 'file %s should exist' % f) for f in files]
+            [self.assertTrue(os.path.isdir(d),
+                             'dir %s should exist' % d) for d in dirs]
+        while dirs:
+            d = dirs.pop()
+            os.rmdir(d)
+            self.assertFalse(os.path.isdir(d), 'dir %s should not exist' % d)
+            if dirs:
+                [self.assertTrue(os.path.isdir(d),
+                                 'dir %s should exist' % d) for d in dirs]
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-2: Metadata ops without error injection ****ENDED')
+
+    def testFileOpsWithoutErrorInjection(self):
+        """
+        * FLTYFS-3: File ops without error injection.
+        """
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-3: File ops without error injection ****STARTED')
+        time.sleep(2)
+
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-3: 1- create a number of testfiles and assert testfiles exist')
+        files = dict()
+        for i in range(1, 6):
+            f = os.path.join(self._mntpoint, 'testfile_%d.log' % i)
+            _make_empty_file(f)
+            files[i] = dict()
+            files[i]['id'] = i
+            files[i]['path'] = f
+
+        [self.assertTrue(os.path.isfile(f['path']),
+                         'file %s should  exist' % f) for f in files.values()]
+
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-3: 2- write to testfiles, using a different pattern for each file.')
+        for f in files.values():
+            pattern = f['id'] * f['path']
+
+            with open(f['path'], 'w') as fh:
+                fh.write(pattern)
+
+            files[f['id']]['pattern'] = pattern
+            testsize = os.path.join(_tmpdir(), 'testsize.log')
+            _make_empty_file(testsize)
+
+            with open(testsize, 'w') as fh:
+                fh.write(pattern)
+
+            files[f['id']]['expectedsize'] = os.path.getsize(testsize)
+            os.unlink(testsize)
+
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-3: 3- assert testfiles exists, testfiles size matches written size.')
+        [self.assertTrue(os.path.isfile(f['path']),
+                         'file %s should exist' % f['path'])
+         for f in files.values()]
+
+        [eq_(os.path.getsize(f['path']),
+             f['expectedsize'],
+             'The file size is not equal to the written pattern size %s' % f['expectedsize'])
+         for f in files.values()]
+
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-3: 4- read from the testfiles, verify that the data read matches the written data.')
+        for f in files.values():
+            with open(f['path'], 'r') as fh:
+                data = fh.read()
+                eq_(data,
+                    f['pattern'],
+                    'The read data does not match the pattern.')
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-3: File ops without error injection ****ENDED')
+
+    def _find_rule(self, rules, rule_id):
+        filtered = [r for r in rules if r['rule_id'] == rule_id]
+        eq_(1, len(filtered))
+        return filtered[0]
+
+    def _timed_write_to_file(self, file_path, pattern):
+        t = Timer()
+        with open(file_path, 'w', buffering=0) as f:
+            with t:
+                f.write(pattern)
+
+        return t.duration()
+
+    def _timed_read_from_file(self, file_path, size):
+        t = Timer()
+        with open(file_path, 'r', buffering=0) as f:
+            with t:
+                data = f.read(size)
+
+        return (t.duration(), data)
+
+    def testDelayInjection(self):
+        """
+        * FLTYFS-4: Test delay injection.
+        """
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-4: Test delay injection ****STARTED')
+        time.sleep(2)
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-4: 1- create a directory, and check directory exists.')
+        dir1 = os.path.join(self._mntpoint, 'dir1')
+        _mkdir(dir1)
+        self.assertTrue(os.path.isdir(dir1),
+                        'directory %s should exist' % dir1)
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-4: 2- create and write to a file, and check file exists and size matches the amount of written data.')
+        file_1 = os.path.join(dir1, 'file_1.log')
+        _make_empty_file(file_1)
+        self.assertTrue(os.path.isfile(file_1),
+                        'file %s should exist' % file_1)
+        pattern = '* FLTYFS-4: Test delay injection.\n'
+        # check the size of written data
+        testsize = os.path.join(_tmpdir(), 'testsize.log')
+        _make_empty_file(testsize)
+        _write_to_file(testsize, pattern)
+        file_expectedsize = os.path.getsize(testsize)
+        os.unlink(testsize)
+        # write pattern to the file and check the size.
+        _write_to_file(file_1, pattern)
+        eq_(os.path.getsize(file_1),
+            file_expectedsize,
+            'The file size is not equal to the pattern size %s' %
+            file_expectedsize)
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-4: 3- add a delay rule for write operations on that file with a ramp up of X, a delay of T, and a duration of 1.')
+        X = 3
+        delay_secs = 3
+        wdelay_rule_id = 1
+        filename = file_1.split(self._mntpoint)[1]
+        _ = self._fs.addDelayRule(rule_id=wdelay_rule_id,
+                                  path_regex=filename,
+                                  calls=[PyFawltyFS.FileSystemCall.Write],
+                                  ramp_up=X,
+                                  duration=1,
+                                  delay_usecs=delay_secs * _usec_seconds)
+
+        _ = self._fs.addDirectIORule(rule_id=wdelay_rule_id,
+                                     path_regex=filename,
+                                     direct_io=True)
+
+        rule = self._find_rule(self._fs.listDelayRules(), wdelay_rule_id)
+        eq_(False, rule['is_expired'])
+
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-4: 4- perform X write requests and measure the time it takes.')
+        for i in range(X):
+            write_time = self._timed_write_to_file(file_1, pattern)
+            self.assertTrue(write_time < delay_secs,
+                            'The time per request should be less than T')
+
+        rule = self._find_rule(self._fs.listDelayRules(), wdelay_rule_id)
+        eq_(X, rule['num_matches'])
+        eq_(False, rule['is_expired'])
+
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-4: 5- perform 1 morewrite requests.')
+        write_time = self._timed_write_to_file(file_1, pattern)
+
+        rule = self._find_rule(self._fs.listDelayRules(), wdelay_rule_id)
+        eq_(X + 1, rule['num_matches'])
+        eq_(True, rule['is_expired'])
+
+        log_(PyFawltyFS.Severity.info, "write time: %d, expected: %d" %
+             (write_time, delay_secs))
+
+        self.assertTrue(write_time >= delay_secs,
+                        'The time per request should be bigger than T')
+
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-4: 6- perform more write requests.')
+        for i in range(X):
+            write_time = self._timed_write_to_file(file_1, pattern)
+            self.assertTrue(write_time < delay_secs,
+                            'The time per request should be less than T')
+
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-4: 7- add a delay for read operations on any file in that directory with a ramp up of Y, a delay of U and a duration of 1.')
+        Y = 3
+        delay_secs = 3
+        rdelay_rule_id = 2
+        self._fs.addDelayRule(rule_id=rdelay_rule_id,
+                              path_regex=filename,
+                              calls=[PyFawltyFS.FileSystemCall.Read],
+                              ramp_up=Y,
+                              duration=1,
+                              delay_usecs=delay_secs * _usec_seconds)
+
+        rule = self._find_rule(self._fs.listDelayRules(), rdelay_rule_id)
+        eq_(False, rule['is_expired'])
+
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-4: 8- perform read requests and measure the time it takes.')
+        while True:
+            (read_time, data) = self._timed_read_from_file(
+                file_1, len(pattern))
+
+            log_(PyFawltyFS.Severity.info, "read time: %d, expected: %d" %
+                 (read_time, delay_secs))
+
+            self.assertTrue(read_time < delay_secs,
+                            'The time per request should be less than U')
+            eq_(data,
+                pattern,
+                'The read data does not match the pattern.')
+
+            rule = self._find_rule(self._fs.listDelayRules(), rdelay_rule_id)
+            eq_(False, rule['is_expired'])
+            if rule['num_matches'] == Y:
+                break
+
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-4: 9- perform 1  more read request.')
+        (read_time, data) = self._timed_read_from_file(file_1, len(pattern))
+
+        rule = self._find_rule(self._fs.listDelayRules(), rdelay_rule_id)
+        eq_(Y + 1, rule['num_matches'])
+        eq_(True, rule['is_expired'])
+
+        self.assertTrue(read_time >= delay_secs,
+                        'The time per request should be bigger than U')
+
+        eq_(data,
+            pattern,
+            'The read data does not match the pattern.')
+
+        rule = self._find_rule(self._fs.listDelayRules(), rdelay_rule_id)
+        eq_(True, rule['is_expired'])
+
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-4: 10- perform more read requests.')
+        for i in range(Y):
+            (read_time, data) = self._timed_read_from_file(
+                file_1, len(pattern))
+            self.assertTrue(read_time < delay_secs,
+                            'The time per request should be less than U')
+            rule = self._find_rule(self._fs.listDelayRules(), rdelay_rule_id)
+            eq_(True, rule['is_expired'])
+            eq_(data,
+                pattern,
+                'The read data does not match the pattern.')
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-4: Test delay injection ****ENDED')
+
+    def testErrorInjection(self):
+        """
+        * FLTYFS-5: Test error injection.
+        """
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-5: Test error injection ****STARTED')
+        time.sleep(2)
+        log_(PyFawltyFS.Severity.info, 'FLTYFS-5: 1- create a directory.')
+        dir1 = os.path.join(self._mntpoint, 'dir1')
+        _mkdir(dir1)
+        self.assertTrue(os.path.isdir(dir1),
+                        'directory %s should exist' % dir1)
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-5: 2- create and write to a file, and check file exists and size matches the amount of written data.')
+        file_1 = os.path.join(dir1, 'file_1.log')
+        _make_empty_file(file_1)
+        self.assertTrue(os.path.isfile(file_1),
+                        'file %s should be exist' % file_1)
+        pattern = '* FLTYFS-5: Test error injection.\n'
+        # check the size of written data
+        testsize = os.path.join(_tmpdir(), 'testsize.log')
+        _make_empty_file(testsize)
+        _write_to_file(testsize, pattern)
+        file_expectedsize = os.path.getsize(testsize)
+        os.unlink(testsize)
+        # write pattern to the file and check the size.
+        _write_to_file(file_1, pattern)
+        eq_(os.path.getsize(file_1),
+            file_expectedsize,
+            'The file size is not equal to the pattern size %d' %
+            file_expectedsize)
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-5: 3- add an error rule that matches this file, applies to write operations, has a ramp up of X, a duration of 1 and injects an error E.')
+        X = 3
+        E = 5
+        wfailure_rule_id = 1
+        filename = file_1.split(self._mntpoint)[1]
+        self._fs.addFailureRule(rule_id=wfailure_rule_id,
+                                path_regex=filename,
+                                calls=[PyFawltyFS.FileSystemCall.Write],
+                                ramp_up=X,
+                                duration=1,
+                                error_code=E)
+
+        self._find_rule(self._fs.listFailureRules(), wfailure_rule_id)
+
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-5: 4- perform X write requests to this file.')
+        [_write_to_file(file_1, pattern) for _ in range(X)]
+
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-5: 5- perform 1 morewrite requests; should fail with error E')
+        self.assertRaises(IOError, _write_to_file, file_1, pattern)
+        rule = self._find_rule(self._fs.listFailureRules(), wfailure_rule_id)
+        eq_(True, rule['is_expired'])
+
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-5: 6- perform more write requests to that file.')
+        [_write_to_file(file_1, pattern) for i in range(X)]
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-5: 7- add a failure rule that matches the directory, applies to read operations, has a ramp up of Y, a duration of 1 and injects an error E.')
+        Y = 3
+        rfailure_rule_id = 2
+        self._fs.addFailureRule(rule_id=rfailure_rule_id,
+                                path_regex=filename,
+                                calls=[PyFawltyFS.FileSystemCall.Read],
+                                ramp_up=Y,
+                                duration=1,
+                                error_code=E)
+
+        self._find_rule(self._fs.listFailureRules(), rfailure_rule_id)
+
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-5: 8- perform Y read requests on that file.')
+        for i in range(Y):
+            (_, data) = self._timed_read_from_file(file_1, len(pattern))
+            eq_(data,
+                pattern,
+                'The read data does not match the pattern.')
+
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-5: 9- perform 1 read request on that file.')
+        with open(file_1, 'r', buffering=0) as f:
+            self.assertRaises(IOError, f.read)
+
+        rule = self._find_rule(self._fs.listFailureRules(), rfailure_rule_id)
+        eq_(True, rule['is_expired'])
+
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-5: 10- perform more read requests on that file.')
+        for i in range(Y):
+            (_, data) = self._timed_read_from_file(file_1, len(pattern))
+            eq_(data,
+                pattern,
+                'The readed data does not match the pattern.')
+        log_(PyFawltyFS.Severity.info,
+             'FLTYFS-5: Test error injection ****ENDED')
+
+    def testActiveDelayRuleRemoval(self):
+        """
+        Test removal of active delay rules
+        """
+        class Writer(Thread):
+
+            def __init__(self, _id_, path):
+                Thread.__init__(self)
+                self._id = _id_
+                self._path = "%s_%d" % (path, _id_)
+
+            def run(self):
+                log_(PyFawltyFS.Severity.info, "Starting writer %d" % self._id)
+                # WITHOUT THIS SLEEP HANGS IN THE DEBUGGER
+                #  time.sleep(1)
+                with open(self._path, "w", buffering=0) as f:
+                    log_(PyFawltyFS.Severity.info, "writer %d writing to %s" %
+                         (self._id, self._path))
+                    f.write(64 * str(self._id))
+                    f.flush()
+                    log_(PyFawltyFS.Severity.info, "writer %d done writing to %s" %
+                         (self._id, self._path))
+
+        testfile = "/testfile"
+        delay_secs = 30
+        # with more writers this hangs in the debugger
+        num_writers = 1
+        rule_id = 1
+        self._fs.addDelayRule(rule_id=rule_id,
+                              path_regex=testfile + ".*",
+                              calls=[PyFawltyFS.FileSystemCall.Write],
+                              ramp_up=0,
+                              duration=num_writers,
+                              delay_usecs=delay_secs * _usec_seconds)
+        log_(PyFawltyFS.Severity.info, "creating %d writers" % num_writers)
+        writers = [Writer(i,
+                          os.path.join(self._mntpoint,
+                                       os.path.basename(testfile)))
+                   for i in range(0, num_writers)]
+
+        t = Timer()
+        with t:
+            log_(PyFawltyFS.Severity.info, "starting %d writers" % num_writers)
+            map(lambda w: w.start(), writers)
+            time.sleep(10)
+            log_(PyFawltyFS.Severity.info, "Removing the delay rule")
+            self._fs.removeDelayRule(rule_id)
+            log_(PyFawltyFS.Severity.info, "Joining the writers")
+            map(lambda w: w.join(), writers)
+
+        ok_(t.duration() < delay_secs)
+
+    def testUnlinkOpenFiles(self):
+        """
+        Test unlinking of open files and directories containing them
+        """
+
+        def checkHidden(expected):
+            pfx = ".fuse_hidden"
+            l = len(pfx)
+            eq_(expected,
+                len(filter(lambda s: s[0:l] == pfx,
+                           os.listdir(self._mntpoint))))
+
+        checkHidden(0)
+
+        testdir = os.path.join(self._mntpoint, "testdir")
+        os.mkdir(testdir)
+        eq_(True, os.path.exists(testdir))
+
+        count = 13
+        files = [os.path.join(self._mntpoint, "testfile" + str(i))
+                 for i in range(0, count)]
+        handles = [open(f, "w") for f in files]
+
+        ok_(False not in map(os.path.exists, files))
+        map(os.unlink, files)
+        ok_(True not in map(os.path.exists, files))
+
+        os.rmdir(testdir)
+        eq_(False, os.path.exists(testdir))
+
+        checkHidden(count)
+        map(lambda f: f.close(), handles)
+        checkHidden(0)
+
+# Local Variables: **
+# mode: python **
+# End: **

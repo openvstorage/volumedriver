@@ -1,0 +1,5 @@
+volumedriver-server (@VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@-@VD_EXTRA_VERSION@) unstable; urgency=low
+
+  * Initial Release.
+
+ -- volumedriver team <volumedriverteam@openvstorage.com>  Fri, 24 May 2013 11:11:17 +0200

@@ -1,0 +1,3 @@
+bin/backup_volumedriver /usr/bin
+bin/restore_volumedriver /usr/bin
+etc/volumedriver/backupConfigTemplate.json /etc/volumedriver

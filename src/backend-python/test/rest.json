@@ -1,0 +1,11 @@
+{
+    "backend_connection_manager":
+    {
+        "backend_type": "REST",
+        "rest_connection_host": "10.100.195.1",
+        "rest_connection_port": "8080",
+        "rest_connection_policy_id": "2555304832d04a88be2044bda19a4a85",
+        "rest_connection_user": "immanuel_1",
+        "rest_connection_password": "immanuel_password_1"
+    }
+}

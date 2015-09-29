@@ -1,0 +1,230 @@
+// Copyright 2015 Open vStorage NV
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include <youtils/Assert.h>
+
+#include "../ClusterCache.h"
+#include "../ClusterCacheEntry.h"
+#include "../ClusterCacheMap.h"
+
+#include "ExGTest.h"
+
+#include <algorithm>
+
+#include <youtils/SourceOfUncertainty.h>
+
+namespace volumedrivertest
+{
+
+using namespace volumedriver;
+namespace bi = boost::intrusive;
+namespace yt = youtils;
+
+class ClusterCacheMapTest
+    : public ExGTest
+{
+protected:
+    std::unique_ptr<ClusterCacheEntry>
+    random_entry()
+    {
+        const uint64_t max = std::numeric_limits<uint64_t>::max();
+        return std::make_unique<ClusterCacheEntry>(ClusterCacheHandle(sou_(max)),
+                                                   sou_(max));
+    }
+
+    yt::SourceOfUncertainty sou_;
+
+    TODO("AR: can this be simplified - not only here but also in ClusterCache.h?");
+    using SListClusterCacheEntryValueTraits = SListNodeValueTraits<ClusterCacheEntry>;
+    using SListClusterCacheEntryValueTraitsOption =
+        bi::value_traits<SListClusterCacheEntryValueTraits>;
+    using ClusterCacheMapType = ClusterCacheMap<ClusterCacheEntry,
+                                                SListClusterCacheEntryValueTraitsOption>;
+};
+
+TEST_F(ClusterCacheMapTest, test0)
+{
+    ClusterCacheMapType map;
+
+    map.resize(0);
+
+    ASSERT_EQ(0, map.entries());
+    ASSERT_EQ(1, map.spine_size());
+
+    const std::map<uint64_t, uint64_t>& stats = map.stats();
+
+    for (const auto& val : stats)
+    {
+        ASSERT_EQ(0,
+                  val.first);
+        ASSERT_EQ(1,
+                  val.second);
+    }
+
+    std::vector<std::unique_ptr<ClusterCacheEntry>> entries;
+    entries.reserve(1024);
+
+    for(uint64_t i = 0; i < 1024; ++i)
+    {
+        entries.emplace_back(random_entry());
+        if(map.find(entries.back()->key) == 0)
+        {
+            map.insert(*entries.back());
+            ASSERT_EQ(entries.back().get(),
+                      map.insert_checked(*entries.back()));
+        }
+    }
+
+    ASSERT_EQ(1024, map.entries());
+    ASSERT_EQ(1, map.spine_size());
+
+    for (const auto& val : stats)
+    {
+        ASSERT_TRUE((val.first == 1024 and val.second == 1) or
+                    (val.second == 0));
+    }
+
+    for (const auto& e : entries)
+    {
+        ClusterCacheEntry* e2 = map.find(e->key);
+        ASSERT_EQ(e.get(),
+                  e2);
+    }
+}
+
+TEST_F(ClusterCacheMapTest, test1)
+{
+    // #define PRINT_OUT
+    uint32_t val = sou_(0, 10);
+    ClusterCacheMapType map;
+
+    map.resize(val + 10);
+    const uint64_t size = 1 << (val+10);
+#ifdef PRINT_OUT
+    std::cout << "Size of the map " << size << std::endl;
+#endif
+    std::vector<std::unique_ptr<ClusterCacheEntry>> entries;
+
+    ASSERT_EQ(0, map.entries());
+    ASSERT_EQ(size, map.spine_size());
+
+    const std::map<uint64_t, uint64_t>& stats = map.stats();
+
+    for (const auto& val : stats)
+    {
+        ASSERT_EQ(0,
+                  val.first);
+        ASSERT_EQ(size,
+                  val.second);
+    }
+
+    for(uint64_t i = 0; i < 1024*1024; ++i)
+    {
+        entries.emplace_back(random_entry());
+        map.insert(*entries.back());
+    }
+
+    for (const auto& e : entries)
+    {
+        ClusterCacheEntry* e2 = map.find(e->key);
+        ASSERT_EQ(e.get(),
+                  e2);
+    }
+
+    uint64_t res = 0;
+    uint64_t bins = 0;
+
+    for (const auto& val : stats)
+    {
+        res += val.first * val.second;
+        bins += val.second;
+
+#ifdef PRINT_OUT
+        if(val.second > 0)
+        {
+            std::cout << val.second << " entries with " << val.first << " length." << std::endl;
+        }
+#endif
+    }
+
+    ASSERT_EQ(1024 * 1024,
+              res);
+
+#ifdef PRINT_OUT
+    std::cout << "average length " << (double)res / (double) bins;
+#endif
+
+}
+
+TEST_F(ClusterCacheMapTest, resize)
+{
+    ClusterCacheMapType map;
+
+    map.resize(0);
+    ASSERT_EQ(0,
+              map.entries());
+    ASSERT_EQ(1,
+              map.spine_size());
+
+    const size_t count = 4;
+
+    ASSERT_LT(0,
+              count);
+    ASSERT_EQ(0,
+              count % 2);
+
+    std::vector<std::unique_ptr<ClusterCacheEntry>> entries;
+    entries.reserve(count);
+
+    for (size_t i = 0; i < count; ++i)
+    {
+        entries.emplace_back(random_entry());
+        map.insert(*entries.back());
+    }
+
+    map.resize(1,
+               count);
+
+    ASSERT_EQ(count,
+              map.spine_size());
+
+    auto check([&]()
+               {
+                   ASSERT_EQ(count,
+                             map.entries());
+
+                   for (const auto& e : entries)
+                   {
+                       ClusterCacheEntry* f = map.find(e->key);
+                       ASSERT_EQ(e.get(),
+                                 f);
+                   }
+               });
+
+    check();
+
+    map.resize(2,
+               count);
+
+    ASSERT_EQ(count / 2,
+              map.spine_size());
+
+    check();
+}
+
+}
+
+// Local Variables: **
+// mode: c++ **
+// End: **

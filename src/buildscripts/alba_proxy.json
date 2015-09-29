@@ -1,0 +1,9 @@
+{
+    "ips" : ["::1"], // optional
+    "log_level": "debug",
+    "port": 44433,
+    "albamgr_cfg_file": "./alba_config.cfg",
+    "manifest_cache_size" : 100000, // optional, default 100_000
+    "fragment_cache_dir" : "/tmp/proxy_fragment_cache",
+    "fragment_cache_size" : 100000000 // optional, default 100_000_000
+}

@@ -1,0 +1,104 @@
+{
+    "backend_connection_manager":
+    {
+        "backend_type": "LOCAL",
+        "local_connection_path": "\/tmp\/localbackend",
+        "local_connection_tv_sec": "0",
+        "local_connection_tv_nsec": "0"
+    },
+    "scocache":
+    {
+        "scocache_mount_points":
+        [
+            {
+                "path": "\/tmp\/RemoteTest\/remote\/scache\/0",
+                "size": "1GiB"
+            }
+        ],
+        "trigger_gap": "250MiB",
+        "backoff_gap": "500MiB",
+        "datastore_throttle_usecs": "4000"
+    },
+    "content_addressed_cache":
+    {
+        "clustercache_mount_points":
+        [
+            {
+                "path": "\/tmp\/RemoteTest\/remote\/ccache\/0",
+                "size": "20MiB"
+            }
+        ],
+        "read_cache_serialization_path": "\/tmp\/RemoteTest\/remote\/ccache\/readcache_serialization"
+    },
+    "volume_manager":
+    {
+        "tlog_path": "\/tmp\/RemoteTest\/remote\/tlogs",
+        "metadata_path": "\/tmp\/RemoteTest\/remote\/meta",
+        "open_scos_per_volume": "32",
+        "clean_interval": "60",
+        "number_of_scos_in_tlog": "20",
+        "debug_metadata_path": "\/tmp\/RemoteTest\/remote\/dump_on_halt"
+    },
+    "threadpool_component":
+    {
+        "num_threads": "4"
+    },
+    "filesystem":
+    {
+        "fs_ignore_sync": "false",
+        "fs_backend_path": "\/tmp\/RemoteTest\/src",
+        "fs_virtual_disk_format": "vmdk"
+    },
+    "volume_router":
+    {
+        "vrouter_redirect_timeout_ms": "5000",
+        "vrouter_backend_sync_timeout_ms": "5000",
+        "vrouter_id": "node_1",
+        "vrouter_arakoon_cluster_id": "",
+        "vrouter_arakoon_cluster_nodes":
+        [
+            {
+                "node_id": "arakoon_node_0",
+                "host": "127.0.0.1",
+                "port": "12345"
+            }
+        ]
+    },
+    "volume_router_cluster":
+    {
+        "vrouter_cluster_id": "volumedriverfs-cluster",
+        "vrouter_cluster_nodes":
+        [
+            {
+                "vrouter_id": "node_0",
+                "host": "localhost",
+                "message_port": "12322",
+                "xmlrpc_port": "12324",
+                "failovercache_port": "12326"
+            },
+            {
+                "vrouter_id": "node_1",
+                "host": "localhost",
+                "message_port": "12323",
+                "xmlrpc_port": "12325",
+                "failovercache_port": "12327"
+            }
+        ]
+    },
+    "failovercache":
+    {
+        "failovercache_path": "TODO change"
+    },
+    "volume_registry":
+    {
+        "vregistry_arakoon_cluster_id": "arakoon_cluster",
+        "vregistry_arakoon_cluster_nodes":
+        [
+            {
+                "node_id": "arakoon_node_0",
+                "host": "127.0.0.1",
+                "port": "12345"
+            }
+        ]
+    }
+}

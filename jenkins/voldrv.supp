@@ -1,0 +1,1134 @@
+{
+   boost::program_options pseudo(?) leak in testers #1
+   Memcheck:Leak
+   fun:_Znwm
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs4_Rep8_M_cloneERKSaIcEm
+   fun:_ZNSs7reserveEm
+   fun:_ZStplIcSt11char_traitsIcESaIcEESbIT_T0_T1_ES3_RKS6_
+   fun:_ZN5boost15program_options18option_description8set_nameEPKc
+   fun:_ZN5boost15program_options18option_descriptionC1EPKcPKNS0_14value_semanticES3_
+   fun:_ZN5boost15program_options29options_description_easy_initclEPKcS3_
+   ...
+}
+
+{
+   boost::program_options pseudo(?) leak in testers #2
+   Memcheck:Leak
+   fun:_Znwm
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPcEES0_T_S1_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSsC1ERKSsmm
+   fun:_ZNKSs6substrEmm
+   fun:_ZN5boost15program_options18option_description8set_nameEPKc
+   fun:_ZN5boost15program_options18option_descriptionC1EPKcPKNS0_14value_semanticES3_
+   fun:_ZN5boost15program_options29options_description_easy_initclEPKcS3_
+   ...
+}
+
+{
+   boost::program_options pseudo(?) leak in testers #3
+   Memcheck:Leak
+   fun:_Znwm
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN5boost15program_options18option_descriptionC1EPKcPKNS0_14value_semanticES3_
+   fun:_ZN5boost15program_options29options_description_easy_initclEPKcS3_
+   ...
+}
+
+{
+   boost::program_options pseudo(?) leak in testers #4
+   Memcheck:Leak
+   fun:_Znwm
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs4_Rep8_M_cloneERKSaIcEm
+   fun:_ZNSs7reserveEm
+   fun:_ZStplIcSt11char_traitsIcESaIcEESbIT_T0_T1_ES3_RKS6_
+   fun:_ZN5boost15program_options18option_description8set_nameEPKc
+   fun:_ZN5boost15program_options18option_descriptionC1EPKcPKNS0_14value_semanticES3_
+   fun:_ZN5boost15program_options29options_description_easy_initclEPKcPKNS0_14value_semanticES3_
+   ...
+}
+
+{
+   boost::program_options pseudo(?) leak in testers #5
+   Memcheck:Leak
+   fun:_Znwm
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPcEES0_T_S1_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSsC1ERKSsmm
+   fun:_ZNKSs6substrEmm
+   fun:_ZN5boost15program_options18option_description8set_nameEPKc
+   fun:_ZN5boost15program_options18option_descriptionC1EPKcPKNS0_14value_semanticES3_
+   fun:_ZN5boost15program_options29options_description_easy_initclEPKcPKNS0_14value_semanticES3_
+   ...
+}
+
+{
+   boost::program_options pseudo(?) leak in testers #6
+   Memcheck:Leak
+   fun:_Znwm
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs9_M_mutateEmmm
+   fun:_ZNSs15_M_replace_safeEmmPKcm
+   fun:_ZNSs7replaceEmmPKcm
+   fun:_ZNSs6assignIPcEERSsT_S2_
+   fun:_ZN5boost6detail26lexical_stream_limited_srcIcNS0_22lexical_streambuf_fakeESt11char_traitsIcEErsISaIcEEEbRSbIcS4_T_E
+   fun:_ZN5boost6detail12lexical_castISstLb0EcEET_NS_11call_traitsIT0_E10param_typeEPT2_m
+   fun:_ZN5boost6detail20lexical_cast_do_castISstE17lexical_cast_implERKt
+   fun:_ZN5boost12lexical_castISstEET_RKT0_
+   fun:_ZN5boost15program_options11typed_valueItcE13default_valueERKt
+   ...
+}
+
+{
+   boost::program_options pseudo(?) leak in testers #7
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs9_M_mutateEmmm
+   fun:_ZNSs14_M_replace_auxEmmmc
+   fun:_ZNSs6insertEmmc
+   fun:_ZStplIcSt11char_traitsIcESaIcEESbIT_T0_T1_ES3_OS6_
+   fun:_ZN5boost15program_options18option_description8set_nameEPKc
+   fun:_ZN5boost15program_options18option_descriptionC1EPKcPKNS0_14value_semanticES3_
+   fun:_ZN5boost15program_options29options_description_easy_initclEPKcS3_
+   ...
+}
+
+{
+   boost::program_options pseudo(?) leak in testers #8
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs9_M_mutateEmmm
+   fun:_ZNSs14_M_replace_auxEmmmc
+   fun:_ZNSs6insertEmmc
+   fun:_ZStplIcSt11char_traitsIcESaIcEESbIT_T0_T1_ES3_OS6_
+   fun:_ZN5boost15program_options18option_description8set_nameEPKc
+   fun:_ZN5boost15program_options18option_descriptionC1EPKcPKNS0_14value_semanticES3_
+   fun:_ZN5boost15program_options29options_description_easy_initclEPKcPKNS0_14value_semanticES3_
+   ...
+}
+
+{
+   boost::program_options pseudo(?) leak in testers #9
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPcEES0_T_S1_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPcEES0_T_S1_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPcEES0_T_S1_RKSaIcE
+   fun:_ZNSsC1ERKSsmm
+   fun:_ZNKSs6substrEmm
+   fun:_ZN5boost15program_options18option_description8set_nameEPKc
+   fun:_ZN5boost15program_options18option_descriptionC1EPKcPKNS0_14value_semanticES3_
+   fun:_ZN5boost15program_options29options_description_easy_initclEPKcS3_
+   ...
+}
+
+{
+   boost::program_options pseudo(?) leak in testers #10
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN5boost15program_options18option_descriptionC1EPKcPKNS0_14value_semanticES3_
+   fun:_ZN5boost15program_options29options_description_easy_initclEPKcPKNS0_14value_semanticES3_
+   ...
+}
+
+{
+   boost::program_options pseudo(?) leak in testers #11
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN5boost15program_options18option_descriptionC1EPKcPKNS0_14value_semanticES3_
+   fun:_ZN5boost15program_options29options_description_easy_initclEPKcS3_
+   ...
+}
+
+{
+   boost::program_options pseudo(?) leak in testers #12
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPcEES0_T_S1_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPcEES0_T_S1_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPcEES0_T_S1_RKSaIcE
+   fun:_ZNSsC1ERKSsmm
+   fun:_ZNKSs6substrEmm
+   fun:_ZN5boost15program_options18option_description8set_nameEPKc
+   fun:_ZN5boost15program_options18option_descriptionC1EPKcPKNS0_14value_semanticES3_
+   fun:_ZN5boost15program_options29options_description_easy_initclEPKcPKNS0_14value_semanticES3_
+}
+
+{
+   pseudo(?) leak in testers
+   Memcheck:Leak
+   fun:_Znwm
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSsC1EPKcRKSaIcE
+   ...
+}
+
+{
+   pseudo(?) leak in testers #2
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_Z41__static_initialization_and_destruction_0ii
+   ...
+}
+
+{
+   pseudo(?) leak in testers #3
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs9_M_mutateEmmm
+   fun:_ZNSs15_M_replace_safeEmmPKcm
+   fun:_ZNSs7replaceEmmPKcm
+   fun:_ZNSs7replaceEN9__gnu_cxx17__normal_iteratorIPcSsEES2_S1_S1_
+   fun:_ZNSs6assignIPcEERSsT_S2_
+   fun:_ZN5boost6detail26lexical_stream_limited_srcIcSt11char_traitsIcELb0EErsISaIcEEEbRSbIcS3_T_E
+   fun:_ZN5boost6detail20lexical_cast_do_castISstE17lexical_cast_implERKt
+   fun:_ZN5boost12lexical_castISstEET_RKT0_
+}
+
+{
+   pseudo(?) leak in testers #4
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:main
+}
+
+{
+   pseudo(?) leak in testers #5 - youtils::Severity
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs9_M_mutateEmmm
+   fun:_ZNSs15_M_replace_safeEmmPKcm
+   fun:_ZNSs7replaceEmmPKcm
+   fun:_ZNSs7replaceEN9__gnu_cxx17__normal_iteratorIPcSsEES2_S1_S1_
+   fun:_ZNSs6assignIPcEERSsT_S2_
+   fun:_ZN5boost6detail26lexical_stream_limited_srcIcSt11char_traitsIcELb1EErsISaIcEEEbRSbIcS3_T_E
+   fun:_ZN5boost6detail20lexical_cast_do_castISsN7youtils8SeverityEE17lexical_cast_implERKS3_
+   fun:_ZN5boost12lexical_castISsN7youtils8SeverityEEET_RKT0_
+}
+
+{
+   pseudo(?) leak in testers #6 - MainHelper
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN5boost15program_options18option_description8set_nameEPKc
+   fun:_ZN5boost15program_options18option_descriptionC1EPKcPKNS0_14value_semanticES3_
+   fun:_ZN5boost15program_options29options_description_easy_initclEPKcPKNS0_14value_semanticES3_
+   fun:_ZN7youtils10MainHelperC1ERKSt4pairISsNSt7__debug6vectorISsSaISsEEEE
+}
+
+{
+   pseudo(?) leak in testers #7 - MainHelper
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN5boost15program_options18option_description8set_nameEPKc
+   fun:_ZN5boost15program_options18option_descriptionC1EPKcPKNS0_14value_semanticES3_
+   fun:_ZN5boost15program_options29options_description_easy_initclEPKcS3_
+   fun:_ZN7youtils10MainHelperC1ERKSt4pairISsNSt7__debug6vectorISsSaISsEEEE
+}
+
+{
+   pseudo(?) leak in testers #8 - BackupMain
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN12_GLOBAL__N_110BackupMainC1EiPPc
+   fun:_Z8the_mainIN12_GLOBAL__N_110BackupMainEEiiPPc
+   fun:main
+}
+
+{
+   pseudo(?) leak in testers #9 - BackupMain
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN7youtils10MainHelperC1ERKSt4pairISsNSt7__debug6vectorISsSaISsEEEE
+   fun:_ZN7youtils10MainHelperC1EiPPc
+   fun:_ZN12_GLOBAL__N_110BackupMainC1EiPPc
+   fun:_Z8the_mainIN12_GLOBAL__N_110BackupMainEEiiPPc
+}
+
+{
+   pseudo(?) leak in testers #10 - BackupMain
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN7youtils10MainHelperC1ERKSt4pairISsNSt7__debug6vectorISsSaISsEEEE
+   fun:_ZN7youtils10MainHelperC1EiPPc
+   fun:_ZN12_GLOBAL__N_110BackupMainC1EiPPc
+   fun:_Z8the_mainIN12_GLOBAL__N_110BackupMainEEiiPPc
+}
+
+{
+   pseudo(?) leak in testers #11 - BackupMain
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN5boost13property_tree11json_parser9read_jsonINS0_11basic_ptreeISsSsSt4lessISsEEEEEvRKSsRT_RKSt6locale
+   fun:_ZN12_GLOBAL__N_110BackupMain3runEv
+   fun:_ZN7youtils10MainHelperclEv
+   fun:_Z8the_mainIN12_GLOBAL__N_110BackupMainEEiiPPc
+}
+
+{
+   pseudo(?) leak in testers #12 - BackupMain
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN5boost15program_options18option_description8set_nameEPKc
+   fun:_ZN5boost15program_options18option_descriptionC1EPKcPKNS0_14value_semanticES3_
+   fun:_ZN5boost15program_options29options_description_easy_initclEPKcPKNS0_14value_semanticES3_
+   fun:_ZN12_GLOBAL__N_110BackupMainC1EiPPc
+}
+
+{
+   pseudo(?) leak in testers #13 - BackupMain
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPcEES0_T_S1_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPcEES0_T_S1_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPcEES0_T_S1_RKSaIcE
+   fun:_ZNSsC1ERKSsmm
+   fun:_ZNKSs6substrEmm
+   fun:_ZN5boost15program_options6detail7cmdline17parse_long_optionERNSt7__debug6vectorISsSaISsEEE
+   fun:_ZNK5boost4_mfi3mf1INSt7__debug6vectorINS_15program_options12basic_optionIcEESaIS6_EEENS4_6detail7cmdlineERNS3_ISsSaISsEEEEclEPSA_SD_
+   fun:_ZN5boost3_bi5list2INS0_5valueIPNS_15program_options6detail7cmdlineEEENS_3argILi1EEEEclINSt7__debug6vectorINS3_12basic_optionIcEESaISF_EEENS_4_mfi3mf1ISH_S5_RNSD_ISsSaISsEEEEENS0_5list1ISM_EEEET_NS0_4typeISQ_EERT0_RT1_l
+}
+
+{
+   pseudo(?) leak in testers #14 - BackupMain
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs4_Rep8_M_cloneERKSaIcEm
+   fun:_ZNSs7reserveEm
+   fun:_ZStplIcSt11char_traitsIcESaIcEESbIT_T0_T1_EPKS3_RKS6_
+   fun:_ZNK5boost15program_options18option_description22canonical_display_nameEi
+   fun:_ZN5boost15program_options5storeERKNS0_20basic_parsed_optionsIcEERNS0_13variables_mapEb
+   fun:_ZN12_GLOBAL__N_110BackupMain28parse_command_line_argumentsEv
+   fun:_ZN7youtils10MainHelperclEv
+   fun:_Z8the_mainIN12_GLOBAL__N_110BackupMainEEiiPPc
+}
+
+{
+   pseudo(?) leak in testers #15 - BackupMain
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN7youtils10MainHelper12fromArgcArgvEiPPc
+   fun:_ZN7youtils10MainHelperC1EiPPc
+   fun:_ZN12_GLOBAL__N_110BackupMainC1EiPPc
+   fun:_Z8the_mainIN12_GLOBAL__N_110BackupMainEEiiPPc
+}
+
+{
+   pseudo(?) leak in testers #16 - BackupMain
+   Memcheck:Leak
+   fun:malloc
+   fun:__cxa_allocate_exception
+   fun:_ZN5boost15throw_exceptionINS_16exception_detail19error_info_injectorINS_13property_tree11json_parser17json_parser_errorEEEEEvRKT_
+   fun:_ZN5boost16exception_detail16throw_exception_INS_13property_tree11json_parser17json_parser_errorEEEvRKT_PKcS9_i
+   fun:_ZN5boost13property_tree11json_parser9read_jsonINS0_11basic_ptreeISsSsSt4lessISsEEEEEvRKSsRT_RKSt6locale
+   fun:_ZN12_GLOBAL__N_110BackupMain3runEv
+   fun:_ZN7youtils10MainHelperclEv
+   fun:_Z8the_mainIN12_GLOBAL__N_110BackupMainEEiiPPc
+   fun:main
+}
+
+{
+   pseudo(?) leak in testers #17 - BackupMain
+   Memcheck:Leak
+   fun:malloc
+   fun:__cxa_allocate_exception
+   fun:_ZN12_GLOBAL__N_110BackupMain3runEv
+   fun:_ZN7youtils10MainHelperclEv
+   fun:_Z8the_mainIN12_GLOBAL__N_110BackupMainEEiiPPc
+   fun:main
+}
+
+{
+   pseudo(?) leak in testers #18 - BackupMain
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN12_GLOBAL__N_110BackupMain3runEv
+   fun:_ZN7youtils10MainHelperclEv
+   fun:_Z8the_mainIN12_GLOBAL__N_110BackupMainEEiiPPc
+   fun:main
+}
+
+{
+   pseudo(?) leak in testers #19 - RestoreMain
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN7youtils10MainHelperC1ERKSt4pairISsNSt7__debug6vectorISsSaISsEEEE
+   fun:_ZN7youtils10MainHelperC1EiPPc
+   fun:_ZN12_GLOBAL__N_111RestoreMainC1EiPPc
+   fun:_Z8the_mainIN12_GLOBAL__N_111RestoreMainEEiiPPc
+}
+
+{
+   pseudo(?) leak in testers #20 - RestoreMain
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN7youtils10MainHelperC1ERKSt4pairISsNSt7__debug6vectorISsSaISsEEEE
+   fun:_ZN7youtils10MainHelperC1EiPPc
+   fun:_ZN12_GLOBAL__N_111RestoreMainC1EiPPcs
+   fun:_Z8the_mainIN12_GLOBAL__N_111RestoreMainEEiiPPc
+}
+
+{
+   pseudo(?) leak in testers #21 - RestoreMain
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN12_GLOBAL__N_111RestoreMainC1EiPPc
+   fun:_Z8the_mainIN12_GLOBAL__N_111RestoreMainEEiiPPc
+   fun:main
+}
+
+{
+   pseudo(?) leak in testers #22 - RestoreMain
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN5boost15program_options18option_description8set_nameEPKc
+   fun:_ZN5boost15program_options18option_descriptionC1EPKcPKNS0_14value_semanticES3_
+   fun:_ZN5boost15program_options29options_description_easy_initclEPKcPKNS0_14value_semanticES3_
+   fun:_ZN12_GLOBAL__N_111RestoreMainC1EiPPc
+}
+
+{
+   pseudo(?) leak in testers #23 - RestoreMain
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs4_Rep8_M_cloneERKSaIcEm
+   fun:_ZNSs7reserveEm
+   fun:_ZStplIcSt11char_traitsIcESaIcEESbIT_T0_T1_EPKS3_RKS6_
+   fun:_ZNK5boost15program_options18option_description22canonical_display_nameEi
+   fun:_ZN5boost15program_options5storeERKNS0_20basic_parsed_optionsIcEERNS0_13variables_mapEb
+   fun:_ZN12_GLOBAL__N_111RestoreMain28parse_command_line_argumentsEv
+   fun:_ZN7youtils10MainHelperclEv
+   fun:_Z8the_mainIN12_GLOBAL__N_111RestoreMainEEiiPPc
+}
+
+{
+   pseudo(?) leak in testers #24 - RestoreMain
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN5boost15program_options18option_description8set_nameEPKc
+   fun:_ZN5boost15program_options18option_descriptionC1EPKcPKNS0_14value_semanticES3_
+   fun:_ZN5boost15program_options29options_description_easy_initclEPKcPKNS0_14value_semanticES3_
+   fun:_ZN12_GLOBAL__N_111RestoreMainC1EiPPc
+}
+
+{
+   pseudo(?) leak in testers #25 - RestoreMain
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN7youtils10MainHelper12fromArgcArgvEiPPc
+   fun:_ZN7youtils10MainHelperC1EiPPc
+   fun:_ZN12_GLOBAL__N_111RestoreMainC1EiPPc
+   fun:_Z8the_mainIN12_GLOBAL__N_111RestoreMainEEiiPPc
+}
+
+{
+   pseudo(?) leak in testers #26 - RestoreMain
+   Memcheck:Leak
+   fun:malloc
+   fun:__cxa_allocate_exception
+   fun:_ZN19volumedriver_backup7Restore8promote_EN12volumedriver12VolumeConfig19WanBackupVolumeRoleESt10unique_ptrIN7backend16BackendInterfaceESt14default_deleteIS6_EERS2_
+   fun:_ZN19volumedriver_backup7RestoreclEv
+   fun:_ZN12_GLOBAL__N_111RestoreMain3runEv
+   fun:_ZN7youtils10MainHelperclEv
+   fun:_Z8the_mainIN12_GLOBAL__N_111RestoreMainEEiiPPc
+   fun:main
+}
+
+{
+   pseudo(?) leak in testers #27 - FileSystemTest
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN5boost15program_options18option_description8set_nameEPKc
+   fun:_ZN5boost15program_options18option_descriptionC1EPKcPKNS0_14value_semanticES3_
+   fun:_ZN5boost15program_options29options_description_easy_initclEPKcPKNS0_14value_semanticES3_
+   fun:_ZN12_GLOBAL__N_114FileSystemTestC1EiPPc
+}
+
+{
+   pseudo(?) leak in testers #28 - FileSystemTest
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN7youtils10MainHelperC1ERKSt4pairISsNSt7__debug6vectorISsSaISsEEEE
+   fun:_ZN7youtils10MainHelperC1EiPPc
+   fun:_ZN7youtils14TestMainHelperC1EiPPc
+   fun:_ZN12_GLOBAL__N_114FileSystemTestC1EiPPc
+}
+
+{
+   pseudo(?) leak in testers #29 - FileSystemTest
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN7youtils10MainHelperC1ERKSt4pairISsNSt7__debug6vectorISsSaISsEEEE
+   fun:_ZN7youtils10MainHelperC1EiPPc
+   fun:_ZN7youtils14TestMainHelperC1EiPPc
+   fun:_ZN12_GLOBAL__N_114FileSystemTestC1EiPPc
+}
+
+{
+   pseudo(?) leak in testers #30 - FileSystemTest
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN5boost15program_options18option_description8set_nameEPKc
+   fun:_ZN5boost15program_options18option_descriptionC1EPKcPKNS0_14value_semanticES3_
+   fun:_ZN5boost15program_options29options_description_easy_initclEPKcPKNS0_14value_semanticES3_
+   fun:_ZN12_GLOBAL__N_114FileSystemTestC1EiPPc
+}
+
+{
+   pseudo(?) leak in testers #31 - FileSystemTest
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs4_Rep8_M_cloneERKSaIcEm
+   fun:_ZNSs7reserveEm
+   fun:_ZStplIcSt11char_traitsIcESaIcEESbIT_T0_T1_EPKS3_RKS6_
+   fun:_ZNK5boost15program_options18option_description22canonical_display_nameEi
+   fun:_ZN5boost15program_options5storeERKNS0_20basic_parsed_optionsIcEERNS0_13variables_mapEb
+   fun:_ZN12_GLOBAL__N_114FileSystemTest28parse_command_line_argumentsEv
+   fun:_ZN7youtils10MainHelperclEv
+   fun:_Z8the_mainIN12_GLOBAL__N_114FileSystemTestEEiiPPc
+}
+
+{
+   pseudo(?) leak in testers #32 - FileSystemTest
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN12_GLOBAL__N_114FileSystemTestC1EiPPc
+   fun:_Z8the_mainIN12_GLOBAL__N_114FileSystemTestEEiiPPc
+   fun:main
+}
+
+{
+   pseudo(?) leak in testers #33 - FileSystemTest
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN5boost15program_options18option_description8set_nameEPKc
+   fun:_ZN5boost15program_options18option_descriptionC1EPKcPKNS0_14value_semanticES3_
+   fun:_ZN5boost15program_options29options_description_easy_initclEPKcPKNS0_14value_semanticES3_
+   fun:_ZN12_GLOBAL__N_114FileSystemTestC1EiPPc
+}
+
+{
+   pseudo(?) leak in testers #34 - FileSystemTest
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs4_Rep8_M_cloneERKSaIcEm
+   fun:_ZNSs7reserveEm
+   fun:_ZNSs6appendERKSs
+   fun:_ZNSspLERKSs
+   fun:_ZN5fungi11IOExceptionC1EPKcS2_i
+   fun:_ZN7youtils10MainHelper21check_no_unrecognizedEv
+   fun:_ZN7youtils10MainHelperclEv
+   fun:_Z8the_mainIN12_GLOBAL__N_114FileSystemTestEEiiPPc
+}
+
+{
+   pseudo(?) leak in testers #35 - FileSystemTest
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN7youtils10MainHelper12fromArgcArgvEiPPc
+   fun:_ZN7youtils10MainHelperC1EiPPc
+   fun:_ZN7youtils14TestMainHelperC1EiPPc
+   fun:_ZN12_GLOBAL__N_114FileSystemTestC1EiPPc
+}
+
+{
+   pseudo(?) leak in testers #36 - FileSystemTest
+   Memcheck:Leak
+   fun:malloc
+   fun:__cxa_allocate_exception
+   fun:_ZN7youtils10MainHelper21check_no_unrecognizedEv
+   fun:_ZN7youtils10MainHelperclEv
+   fun:_Z8the_mainIN12_GLOBAL__N_114FileSystemTestEEiiPPc
+   fun:main
+}
+
+{
+   pseudo(?) leak in testers #37
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN7youtils10MainHelperC1ERKSt4pairISsNSt7__debug6vectorISsSaISsEEEE
+   fun:_ZN7youtils10MainHelperC1EiPPc
+   ...
+}
+
+{
+   pseudo(?) leak in testers #38
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN7youtils10MainHelperC1ERKSt4pairISsNSt7__debug6vectorISsSaISsEEEE
+   fun:_ZN7youtils10MainHelperC1EiPPc
+   ...
+}
+
+{
+   pseudo(?) leak in testers #39
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN12_GLOBAL__N_114FileSystemMainC1EiPPc
+   fun:_Z8the_mainIN12_GLOBAL__N_114FileSystemMainEEiiPPc
+   ...
+}
+
+{
+   pseudo(?) leak in testers #40
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs4_Rep8_M_cloneERKSaIcEm
+   fun:_ZNSs7reserveEm
+   fun:_ZStplIcSt11char_traitsIcESaIcEESbIT_T0_T1_EPKS3_RKS6_
+   fun:_ZNK5boost15program_options18option_description22canonical_display_nameEi
+   fun:_ZN5boost15program_options5storeERKNS0_20basic_parsed_optionsIcEERNS0_13variables_mapEb
+   fun:_ZN7youtils12_GLOBAL__N_112parse_helperENSt7__debug6vectorISsSaISsEEERKN5boost15program_options19options_descriptionENS_24AllowUnregisteredOptionsERNS6_13variables_mapE
+   fun:_ZN7youtils10MainHelper22parse_unparsed_optionsERKN5boost15program_options19options_descriptionENS_24AllowUnregisteredOptionsERNS2_13variables_mapE
+   fun:_ZN12_GLOBAL__N_114FileSystemMain28parse_command_line_argumentsEv
+}
+
+{
+   pseudo(?) leak in testers #41
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN7youtils10MainHelper12fromArgcArgvEiPPc
+   fun:_ZN7youtils10MainHelperC1EiPPc
+   fun:_ZN12_GLOBAL__N_114FileSystemMainC1EiPPc
+   fun:_Z8the_mainIN12_GLOBAL__N_114FileSystemMainEEiiPPc
+}
+
+{
+   pseudo(?) leak in testers #42
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs4_Rep8_M_cloneERKSaIcEm
+   fun:_ZNSs7reserveEm
+   fun:_ZNSs6appendERKSs
+   fun:_ZNSspLERKSs
+   fun:_ZN5fungi11IOExceptionC1EPKcS2_i
+   fun:_ZN14volumedriverfs9ExceptionC1EPKcS2_i
+   fun:_ZN14volumedriverfs10FileSystemclEv
+   fun:_ZN12_GLOBAL__N_114FileSystemMain3runEv
+}
+
+{
+   pseudo(?) leak in MainHelper binaries #1
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs4_Rep8_M_cloneERKSaIcEm
+   fun:_ZNSs7reserveEm
+   fun:_ZStplIcSt11char_traitsIcESaIcEESbIT_T0_T1_EPKS3_RKS6_
+   fun:_ZNK5boost15program_options18option_description22canonical_display_nameEi
+   fun:_ZN5boost15program_options5storeERKNS0_20basic_parsed_optionsIcEERNS0_13variables_mapEb
+   fun:_ZN7youtils12_GLOBAL__N_112parse_helperENSt7__debug6vectorISsSaISsEEERKN5boost15program_options19options_descriptionENS_24AllowUnregisteredOptionsERNS6_13variables_mapE
+   fun:_ZN7youtils10MainHelper22parse_unparsed_optionsERKN5boost15program_options19options_descriptionENS_24AllowUnregisteredOptionsERNS2_13variables_mapE
+   ...
+}
+
+{
+   pseudo(?) leak in test related binaries #1
+   Memcheck:Leak
+   fun:malloc
+   fun:_Znwm
+   fun:_ZN9__gnu_cxx13new_allocatorIcE8allocateEmPKv
+   fun:_ZNSs4_Rep9_S_createEmmRKSaIcE
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcESt20forward_iterator_tag
+   fun:_ZNSs16_S_construct_auxIPKcEEPcT_S3_RKSaIcESt12__false_type
+   fun:_ZNSs12_S_constructIPKcEEPcT_S3_RKSaIcE
+   fun:_ZNSsC1EPKcRKSaIcE
+   fun:_ZN5boost10filesystem4pathC1EPKc
+   fun:_Z41__static_initialization_and_destruction_0ii
+   fun:_GLOBAL__sub_I_operations.cpp
+   fun:__libc_csu_init
+}
+
+{
+   invalid read on exit
+   Memcheck:Addr8
+   fun:wcscmp
+   fun:_ZNSt10moneypunctIwLb0EED1Ev
+   fun:_ZNSt10moneypunctIwLb0EED0Ev
+   fun:_ZNKSt6locale5facet19_M_remove_referenceEv
+   fun:_ZNSt6locale5_ImplD1Ev
+   fun:_ZNSt6locale5_Impl19_M_remove_referenceEv
+   fun:_ZNSt6localeD1Ev
+   fun:__run_exit_handlers
+   fun:exit
+   fun:(below main)
+}
+
+{
+   invalid read on exit #2
+   Memcheck:Addr8
+   fun:wcscmp
+   fun:_ZNSt10moneypunctIwLb1EED1Ev
+   fun:_ZNSt10moneypunctIwLb1EED0Ev
+   fun:_ZNKSt6locale5facet19_M_remove_referenceEv
+   fun:_ZNSt6locale5_ImplD1Ev
+   fun:_ZNSt6locale5_Impl19_M_remove_referenceEv
+   fun:_ZNSt6localeD1Ev
+   fun:__run_exit_handlers
+   fun:exit
+   fun:(below main)
+}
+
+{
+   use of uninitialized bytes in fuse
+   Memcheck:Param
+   writev(vector[...])
+   fun:writev
+   fun:fuse_kern_chan_send
+   fun:fuse_chan_send
+   fun:fuse_send_msg
+   fun:fuse_send_reply_iov_nofree
+   fun:send_reply_iov
+   fun:send_reply
+   fun:send_reply_ok
+   fun:fuse_reply_attr
+   fun:fuse_lib_setattr
+   fun:do_setattr
+   fun:fuse_ll_process_buf
+}
+
+{
+   leak in 'tar' called from volumedriver #1
+   Memcheck:Leak
+   fun:malloc
+   fun:nss_parse_service_list
+   fun:__nss_database_lookup
+   obj:*
+   fun:getpwuid_r@@GLIBC_2.2.5
+   fun:getpwuid
+   obj:/bin/tar
+   ...
+}
+
+{
+   leak in 'tar' called from volumedriver #2
+   Memcheck:Leak
+   fun:malloc
+   fun:nss_parse_service_list
+   fun:__nss_database_lookup
+   obj:*
+   fun:getgrgid_r@@GLIBC_2.2.5
+   fun:getgrgid
+   obj:/bin/tar
+   ...
+}
+
+{
+   OCaml / Arakoon issues: conditional jumps based on uninitialized values
+   Memcheck:Cond
+   obj:/usr/bin/arakoon
+}
+
+{
+   OCaml / Arakoon issues: use of uninitialized values
+   Memcheck:Value8
+   obj:/usr/bin/arakoon
+}
+
+{
+   OCaml / Arakoon issues: memory leaks: {c,m}alloc
+   Memcheck:Leak
+   fun:*alloc
+   ...
+   obj:/usr/bin/arakoon
+}
+
+{
+   libpython issues: invalid addr #1
+   Memcheck:Addr4
+   fun:PyObject_Free
+   obj:/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0
+   ...
+}
+
+{
+   libpython issues: invalid addr #3
+   Memcheck:Addr4
+   fun:PyObject_Realloc
+   ...
+}
+
+{
+   libpython issues: use uninitialized memory #1
+   Memcheck:Cond
+   fun:PyObject_Free
+   obj:/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0
+   ...
+}
+
+{
+   libpython issues: use of uninitialized memory #2
+   Memcheck:Cond
+   fun:PyObject_Realloc
+   ...
+}
+
+{
+   libpython issues: invalid read #1
+   Memcheck:Value8
+   fun:PyObject_Free
+   obj:/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0
+   ...
+}
+
+{
+   libpython issues: invalid read #2
+   Memcheck:Value8
+   fun:PyObject_Realloc
+   ...
+}
+
+{
+   libpython issues: pseudo(?) leak
+   Memcheck:Leak
+   fun:malloc
+   fun:_PyObject_GC_Malloc
+   ...
+}
+
+{
+   libpython issues: pseudo(?) leak #2
+   Memcheck:Leak
+   fun:malloc
+   obj:/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0
+   fun:PyString_InternInPlace
+   ...
+}
+
+{
+   libpython issues: pseudo(?) leak #3
+   Memcheck:Leak
+   fun:realloc
+   fun:_PyObject_GC_Resize
+   ...
+}
+
+{
+   libpython issues: pseudo(?) leak #4
+   Memcheck:Leak
+   fun:malloc
+   fun:PyString_FromStringAndSize
+   ...
+}
+
+{
+   libpython issues: pseudo(?) leak #4
+   Memcheck:Leak
+   fun:malloc
+   obj:/usr/lib/x86_64-linux-gnu/libpython2.7.so.1.0
+   fun:PyDict_SetItemString
+   ...
+}
+
+{
+   omniorb sends uninitialized bytes #1
+   Memcheck:Param
+   socketcall.sendto(msg)
+   fun:send
+   fun:_ZN4omni13tcpConnection4SendEPvmmm
+   fun:_ZN4omni10giopStream9sendChunkEPNS_17giopStream_BufferE
+   fun:_ZN4omni10giopImpl1216outputMessageEndEPNS_10giopStreamE
+   fun:_ZN4omni10giopImpl1217sendLocateRequestEPNS_10giopStreamE
+   fun:_ZN4omni6GIOP_C18IssueLocateRequestEv
+   fun:_ZN18omniRemoteIdentity13locateRequestER18omniCallDescriptor
+   fun:_ZN10omniObjRef14_locateRequestEv
+   fun:_ZN10omniObjRef28_assertExistsAndTypeVerifiedEv
+   fun:_ZN10omniObjRef7_invokeER18omniCallDescriptorb
+   ...
+}
+
+{
+   omniorb sends uninitialized bytes #2
+   Memcheck:Param
+   socketcall.sendto(msg)
+   fun:send
+   fun:_ZN4omni13tcpConnection4SendEPvmRK11omni_time_t
+   fun:_ZN4omni10giopStream9sendChunkEPNS_17giopStream_BufferE
+   fun:_ZN4omni10giopImpl1216outputMessageEndEPNS_10giopStreamE
+   fun:_ZN4omni10giopImpl1217sendLocateRequestEPNS_10giopStreamE
+   fun:_ZN4omni6GIOP_C18IssueLocateRequestEv
+   fun:_ZN18omniRemoteIdentity13locateRequestER18omniCallDescriptor
+   fun:_ZN18omniRemoteIdentity8dispatchER18omniCallDescriptor
+   fun:_ZN10omniObjRef7_invokeER18omniCallDescriptorb
+   fun:_ZN10omniObjRef14_locateRequestEv
+   fun:_ZN10omniObjRef28_assertExistsAndTypeVerifiedEv
+   fun:_ZN10omniObjRef7_invokeER18omniCallDescriptorb
+}
+
+{
+   malloc_info uses uninitialized value
+   Memcheck:Cond
+   fun:mi_arena.13171
+   fun:malloc_info
+   fun:_ZN7youtils6System11malloc_infoEv
+   ...
+}
+
+{
+   lttng-ust pseudo leak #1
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   fun:allocate_dtv
+   fun:_dl_allocate_tls
+   fun:allocate_stack
+   fun:pthread_create@@GLIBC_2.2.5
+   fun:lttng_ust_init
+   ...
+}

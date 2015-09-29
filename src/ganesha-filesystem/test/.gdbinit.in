@@ -1,0 +1,11 @@
+file @buildtoolsdir@/bin/ganesha.nfsd
+
+define ganesha_connect
+  target remote localhost:6667
+  dont-repeat
+end
+
+document ganesha_connect
+connect to ganesha started under gdbserver on port 6667
+end
+

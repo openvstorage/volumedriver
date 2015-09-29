@@ -1,0 +1,5 @@
+#! /bin/bash
+
+. @script_directory@/cpp_test.sh
+
+# cpp_test fawltyfs_test

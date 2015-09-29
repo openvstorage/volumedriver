@@ -1,0 +1,28 @@
+package volumedriverfstest;
+
+message OldMessage
+{
+	enum Type
+	{
+		UNKNOWN = 0;
+		OldType = 1;
+	}
+
+	required Type type = 1;
+}
+
+message NewMessage
+{
+	enum Type
+	{
+		UNKNOWN = 0;
+		OldType = 1;
+		NewType = 2;
+	}
+
+	required Type type = 1;
+}
+
+// Local Variables: **
+// mode: protobuf **
+// End: **

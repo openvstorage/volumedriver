@@ -1,0 +1,5 @@
+module youtils_test {
+  interface corba_test {
+    void stop();
+  };
+};

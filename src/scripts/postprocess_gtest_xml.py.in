@@ -1,0 +1,21 @@
+#!/usr/bin/env @PYTHON_BIN@
+
+import sys
+import os
+
+if len(sys.argv) != 3:
+    print 'Usage: postprocess_gtest_xml package_name path_to_xml_report'
+    exit(1)
+
+package_name = sys.argv[1]
+
+report_file = sys.argv[2]
+new_report_file = report_file + ".tmp"
+
+with open(report_file) as src:
+    with open(new_report_file, "w") as dst:
+        dst.write(
+            src.read().replace("classname=\"", "classname=\"" + package_name + "."))
+
+
+os.rename(new_report_file, report_file)

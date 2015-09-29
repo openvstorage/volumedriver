@@ -1,0 +1,95 @@
+import random
+import subprocess
+import nose
+import time
+import unittest
+import os
+import types
+import sys
+import shutil
+from string import Template
+
+
+from volumedriver.backend import Backend
+
+_THISDIR = os.path.dirname(os.path.abspath(__file__))
+
+
+class BackendTest(unittest.TestCase):
+
+    def setUp(self):
+        self.backend_path = os.path.join(_THISDIR, 'testlocalbackend')
+        os.mkdir(self.backend_path)
+        self.configuration_template = Template('''{
+    "backend_connection_manager":
+    {
+        "backend_type": "LOCAL",
+        "local_connection_path": "$backend_path",
+        "local_connection_tv_sec": "0",
+        "local_connection_tv_nsec": "0"
+    }
+}''')
+        self.configuration = self.configuration_template.substitute(
+            backend_path=self.backend_path)
+        self.configuration_file = os.path.join(_THISDIR, 'configuration_dump')
+        with open(self.configuration_file, 'w') as f:
+            f.write(self.configuration)
+
+    def tearDown(self):
+        shutil.rmtree(self.backend_path)
+        os.unlink(self.configuration_file)
+
+    def test1(self):
+        connection_manager = Backend.ConnectionManager(self.configuration_file)
+        connection = connection_manager.getConnection()
+        self.assertFalse(connection.namespaceExists("a-namespace"))
+
+    def test2(self):
+        connection_manager = Backend.ConnectionManager(self.configuration_file)
+        connection = connection_manager.getConnection()
+
+    def test3(self):
+        connection_manager = Backend.ConnectionManager(self.configuration_file)
+        connection = connection_manager.getConnection()
+        ns = "a-namespace"
+        self.assertFalse(connection.namespaceExists(ns))
+        connection.createNamespace(ns)
+        self.assertTrue(connection.namespaceExists(ns))
+        connection.deleteNamespace(ns)
+        self.assertFalse(connection.namespaceExists(ns))
+
+    def test4(self):
+        connection_manager = Backend.ConnectionManager(self.configuration_file)
+        ns = "a-namespace"
+        connection_manager.getConnection().createNamespace(ns)
+        connection = connection_manager.getConnection()
+        object_name = "an-object"
+        self.assertFalse(connection.objectExists(ns,
+                                                 object_name))
+        connection.write(ns,
+                         self.configuration_file,
+                         object_name,
+                         Backend.OverwriteObject.F)
+        self.assertTrue(connection.objectExists(ns,
+                                                object_name))
+        self.assertRaises(RuntimeError,
+                          connection.write,
+                          ns,
+                          self.configuration_file,
+                          object_name,
+                          Backend.OverwriteObject.F)
+        connection.write(ns,
+                         self.configuration_file,
+                         object_name,
+                         Backend.OverwriteObject.T)
+        connection.remove(ns,
+                          object_name,
+                          False)
+        self.assertFalse(connection.objectExists(ns,
+                                                 object_name))
+
+
+# Local Variables: **
+# mode: python **
+# compile-command: "./runtest.sh test.py:BackendTest" **
+# End: **

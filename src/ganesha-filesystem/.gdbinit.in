@@ -1,0 +1,3 @@
+file @buildtoolsdir@/bin/ganesha.nfsd
+set args -p @prefix@/ganeshafs.pid -f @prefix@/share/ganeshafs/ganesha.conf
+

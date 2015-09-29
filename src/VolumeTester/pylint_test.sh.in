@@ -1,0 +1,8 @@
+#!/bin/bash
+. @script_directory@/pylint_test.sh
+
+DISABLED_INFO=I0011
+DISABLED_CONVENTIONS=C0103,C0111,
+DISABLED_REFACTORS=R0913,R0201
+
+pylint_test volumedrivertest.volumetester

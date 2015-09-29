@@ -1,0 +1,6 @@
+#!/bin/bash
+set -ux
+
+. @script_directory@/python_test.sh
+
+python_test fs_python_client_test.py

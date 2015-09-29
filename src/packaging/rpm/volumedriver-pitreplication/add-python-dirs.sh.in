@@ -1,0 +1,7 @@
+#! /bin/bash
+
+TARGET_FILE=SPECS/volumedriver-pitreplication.spec
+
+. ../add-installdir.sh
+
+add_directory volumedriver/pitreplication

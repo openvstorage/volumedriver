@@ -1,0 +1,15 @@
+Changes in these files might need a note in the release notes - config changes:
+src/filesystem/FileSystemParameters.h
+src/filesystem/FileSystemParameters.cpp
+src/volumedriver/VolumeDriverParameters.h
+src/volumedriver/VolumeDriverParameters.cpp
+src/backend/BackendParameters.h
+src/backend/BackendParameters.cpp
+
+
+Changes in these files might need a note in the release notes - API changes:
+src/filesystem-python-client/LocalClient.h
+src/filesystem-python-client/LocalClient.cpp
+src/filesystem-python-client/StorageRouterClient.cpp
+src/filesystem/EventMessages.proto
+

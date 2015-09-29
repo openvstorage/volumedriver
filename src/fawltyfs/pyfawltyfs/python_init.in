@@ -1,0 +1,4 @@
+import volumedriver.fawltyfs as fawltyfs
+import nose
+nose.run()
+

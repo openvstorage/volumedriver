@@ -1,0 +1,18 @@
+Source: volumedriver-server
+Section: unknown
+Priority: extra
+Maintainer: volumedriverteam@openvstorage.com
+Build-Depends: debhelper (>= 7.0.0)
+Standards-Version: 3.9.2
+Homepage: www.openvstorage.com
+
+Package: volumedriver-server
+Architecture: any
+Depends: ${shlibs:Depends}
+Suggests: lttng-tools
+Pre-Depends: volumedriver-base (>= 3.6.0)
+Conflicts: volumedriver-server (<< 3.6.0)
+Description: VolumeDriver daemon and helpers
+ This package contains the binaries and the Python extensions
+ necessary to run the VolumeDriver daemon as well as the FailOverCache
+ and the Scrubber.

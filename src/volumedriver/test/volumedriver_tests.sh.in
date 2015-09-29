@@ -1,0 +1,7 @@
+#!/bin/bash
+
+. @script_directory@/cpp_test.sh
+
+export PATH=${prefix}/bin:$PATH
+# export TEST_LOGGING="--loglevel=info"
+cpp_test_with_backend volumedriver_test

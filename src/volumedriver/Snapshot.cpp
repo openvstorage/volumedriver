@@ -1,0 +1,752 @@
+// Copyright 2015 Open vStorage NV
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "Snapshot.h"
+
+#include <boost/bind.hpp>
+
+#include <youtils/IOException.h>
+#include <youtils/Assert.h>
+
+namespace volumedriver
+{
+
+namespace yt = youtils;
+
+namespace
+{
+
+// XXX:
+// Converted from a static member to an anon callable (with a plain function the
+// logging would become a headache). Ultimately this has to go - there must be a
+// boost or a C++-11 helper for this type of stuff, e.g.:
+//
+//     auto now(std::chrono::system_clock::now());
+//     std::time_t t(std::chrono::system_clock::to_time_t(now));
+//     return std::ctime(t);
+// ?
+struct CurrentTimeAsString
+{
+    DECLARE_LOGGER("CurrentTimeAsString");
+
+    std::string
+    operator()()
+    {
+        const time_t tim = time(0);
+        if(tim == (time_t)(-1))
+        {
+            LOG_ERROR("Could not get the time");
+            return "unknown";
+        }
+
+        char buf[128];
+        char* res = ctime_r(&tim, buf);
+        if(res == 0)
+        {
+            LOG_ERROR("Could not get the time");
+            return "unknown";
+        }
+        else
+        {
+            VERIFY(res == buf);
+            return std::string(buf);
+        }
+    }
+};
+
+}
+
+Snapshot::Snapshot(const SnapshotNum i_num,
+                   const std::string& i_name,
+                   const TLogs& tlogs,
+                   const SnapshotMetaData& metadata,
+                   const UUID& uuid,
+                   const bool set_scrubbed)
+    : TLogs(tlogs)
+    , num(i_num)
+    , name(i_name)
+    , uuid_(uuid)
+    , metadata_(metadata)
+    , scrubbed(set_scrubbed)
+    , date(CurrentTimeAsString()())
+    , hasUUIDSpecified_(true)
+    , cork_uuid_(tlogs.empty() ? UUID() : tlogs.back().getID())
+{}
+
+bool
+Snapshot::inBackend() const
+{
+    for (const auto& tl : *this)
+    {
+        if (not tl.writtenToBackend())
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool
+Snapshot::getReversedTLogsOnBackendSinceLastCork(const boost::optional<yt::UUID>& cork,
+                                                 OrderedTLogNames& reverse_vec) const
+{
+    if (cork != boost::none and
+        cork_uuid_ == *cork and
+        writtenToBackend())
+    {
+        return true;
+    }
+
+    return TLogs::getReversedTLogsOnBackendSinceLastCork(cork,
+                                                         reverse_vec);
+}
+
+uint64_t
+Snapshot::backend_size() const
+{
+    uint64_t s = 0;
+
+    for (const auto& t : *this)
+    {
+        s += t.backend_size();
+    }
+
+    return s;
+}
+
+bool
+Snapshots::tlogReferenced(const std::string& tlog_name) const
+{
+    for(auto i = begin(); i != end(); ++i)
+    {
+        if(i->tlogReferenced(tlog_name))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool
+Snapshots::setTLogWrittenToBackend(const TLogID& tid)
+{
+    for(iterator i = begin(); i != end(); ++i)
+    {
+        if (i->setTLogWrittenToBackend(tid))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool
+Snapshots::isTLogWrittenToBackend(const TLogID& tid) const
+{
+    for(const_iterator i = begin(); i != end(); ++i)
+    {
+        boost::tribool b = i->isTLogWrittenToBackend(tid);
+        if(b)
+        {
+            return true;
+        }
+        if(!b)
+        {
+            return false;
+        }
+    }
+    return false;
+}
+
+Snapshots::const_iterator
+Snapshots::find_(const std::string& name) const
+{
+    return find_if(begin(),
+                   end(),
+                   [&](const Snapshot& snap)
+                   {
+                       return snap.name == name;
+                   });
+}
+
+Snapshots::iterator
+Snapshots::find_(const std::string& name)
+{
+    return find_if(begin(),
+                   end(),
+                   [&](const Snapshot& snap)
+                   {
+                       return snap.name == name;
+                   });
+}
+
+Snapshots::const_iterator
+Snapshots::find_(const UUID& uuid) const
+{
+    return find_if(begin(),
+                   end(),
+                   [&](const Snapshot& snap)
+                   {
+                       return snap.uuid_ == uuid;
+                   });
+}
+
+Snapshots::iterator
+Snapshots::find_(const UUID& uuid)
+{
+    return find_if(begin(),
+                   end(),
+                   [&](const Snapshot& snap)
+                   {
+                       return snap.uuid_ == uuid;
+                   });
+}
+
+Snapshots::const_iterator
+Snapshots::find_(const SnapshotNum num) const
+{
+    return find_if(begin(),
+                   end(),
+                   [&](const Snapshot& snap)
+                   {
+                       return snap.num == num;
+                   });
+}
+
+Snapshots::iterator
+Snapshots::find_(const SnapshotNum num)
+{
+    return find_if(begin(),
+                   end(),
+                   [&](const Snapshot& snap)
+                   {
+                       return snap.num == num;
+                   });
+}
+
+template<typename T>
+Snapshots::const_iterator
+Snapshots::find_or_throw_(const T& t) const
+{
+    auto it = find_(t);
+    if (it == end())
+    {
+        std::stringstream ss;
+        ss << "Could not find snapshot " << t;
+        std::string msg = ss.str();
+        LOG_ERROR(msg);
+        throw SnapshotNotFoundException(msg.c_str());
+    }
+
+    return it;
+}
+
+template<typename T>
+Snapshots::iterator
+Snapshots::find_or_throw_(const T& t)
+{
+    auto it = find_(t);
+    if (it == end())
+    {
+        std::stringstream ss;
+        ss << "Could not find snapshot " << t;
+        std::string msg = ss.str();
+        LOG_ERROR(msg);
+        throw SnapshotNotFoundException(msg.c_str());
+    }
+
+    return it;
+}
+
+bool
+Snapshots::getTLogsInSnapshot(const SnapshotNum num,
+                              OrderedTLogNames& out) const
+{
+    auto it = find_(num);
+    if(it == end())
+    {
+        return false;
+    }
+    else
+    {
+        it->getOrderedTLogNames(out);
+        return true;
+    }
+}
+
+const UUID&
+Snapshots::getSnapshotCork(const std::string& name) const
+{
+    return find_or_throw_(name)->cork_uuid_;
+}
+
+bool
+Snapshots::checkSnapshotUUID(const std::string& name,
+                             const UUID& uuid) const
+{
+    auto it = find_(name);
+    if(it == end())
+    {
+        return false;
+    }
+    else
+    {
+        return it->uuid_ == uuid;
+    }
+}
+
+SnapshotNum
+Snapshots::getNextSnapshotNum() const
+{
+    if(empty())
+    {
+        return 0;
+    }
+    else
+    {
+        return back().num + 1;
+    }
+}
+
+bool
+Snapshots::snapshotExists(const std::string& name) const
+{
+    return find_(name) != end();
+}
+
+bool
+Snapshots::snapshotExists(const SnapshotNum num) const
+{
+    return find_(num) != end();
+}
+
+bool
+Snapshots::hasSnapshotWithUUID(const UUID& uuid) const
+{
+    return find_(uuid) != end();
+}
+
+SnapshotNum
+Snapshots::getSnapshotNum(const std::string& name) const
+{
+    return find_or_throw_(name)->num;
+}
+
+Snapshot
+Snapshots::getSnapshot(const std::string& snapname) const
+{
+    return *find_or_throw_(snapname);
+}
+
+SnapshotNum
+Snapshots::getSnapshotNumFromUUID(const UUID& uuid) const
+{
+    return find_or_throw_(uuid)->num;
+}
+
+uint64_t
+Snapshots::getBackendSize(const std::string& name) const
+{
+    return find_or_throw_(name)->backend_size();
+}
+
+uint64_t
+Snapshots::getTotalBackendSize() const
+{
+    uint64_t result = 0;
+
+    for(const_iterator it = begin();
+        it != end();
+        ++it)
+    {
+        result += it->backend_size();
+    }
+    return result;
+}
+
+uint64_t
+Snapshots::getBackendSize(const std::string& end_snapshot,
+                          boost::optional<std::string> start_snapshot) const
+{
+    VERIFY(size() > 0);
+
+    uint64_t result = 0;
+    const_iterator start = start_snapshot ?
+        find_(*start_snapshot) :
+        begin();
+
+    VERIFY(start != end());
+    if(start_snapshot)
+    {
+        ++start;
+    }
+
+    const_iterator stop = find_(end_snapshot);
+    VERIFY(stop != end());
+    ++stop;
+
+    for(const_iterator it = start;
+        it != stop;
+        ++it)
+    {
+        if(it == end())
+        {
+            LOG_WARN("rolling of the end of the snapshots list, arguments are probably wrong");
+            throw fungi::IOException("Wrong args for getBackendSize()!!!");
+        }
+
+        result += it->backend_size();
+    }
+    return result;
+}
+
+const std::string&
+Snapshots::getSnapshotName(const SnapshotNum num) const
+{
+    return find_or_throw_(num)->name;
+}
+
+const UUID&
+Snapshots::getUUID(const SnapshotNum num) const
+{
+    return find_or_throw_(num)->uuid_;
+}
+
+void
+Snapshots::getSnapshotsTill(SnapshotNum num,
+                            std::vector<SnapshotNum>& out,
+                            bool including) const
+{
+    for(const_iterator it = begin(); it != end(); ++it)
+    {
+        if(it->num == num)
+        {
+            if(including)
+            {
+                out.push_back(it->num);
+                return;
+            }
+            else
+            {
+                return;
+            }
+        }
+        else
+        {
+            out.push_back(it->num);
+        }
+    }
+    LOG_ERROR("Snapshot with id " << num << " does not exist");
+    throw fungi::IOException("Snapshot does not exist");
+}
+
+void
+Snapshots::getSnapshotsAfter(SnapshotNum num,
+                             std::vector<SnapshotNum>& out) const
+{
+    for(const_reverse_iterator it = rbegin(); it != rend(); ++it)
+    {
+        if(it->num == num)
+        {
+            std::reverse(out.begin(),out.end());
+            return;
+        }
+        else
+        {
+            out.push_back(it->num);
+        }
+    }
+
+    LOG_ERROR("Snapshot with id " << num << " does not exist");
+    throw fungi::IOException("Snapshot does not exist");
+}
+
+void
+Snapshots::deleteSnapshot(const SnapshotNum num,
+                          TLogs& io)
+{
+    iterator it = find_or_throw_(num);
+    iterator it2 = it;
+
+    if(++it2 == end())
+    {
+        io.splice(io.begin(), *it);
+    }
+    else
+    {
+        it2->splice(it2->begin(), *it);
+        it2->scrubbed = false;
+    }
+
+    erase(it);
+}
+
+void
+Snapshots::deleteAllButLastSnapshot()
+{
+    reverse_iterator the_last = rbegin();
+    VERIFY(the_last != rend());
+
+    for (reverse_iterator it = ++rbegin(); it != rend(); ++it)
+    {
+        the_last->splice(the_last->begin(), *it);
+        the_last->scrubbed = false;
+    }
+    erase(begin(), --end());
+}
+
+void
+Snapshots::getTLogsTillSnapshot(const SnapshotNum num,
+                                OrderedTLogNames& out) const
+{
+    bool including = true; //false makes never sense
+    for(const_iterator i = begin(); i != end(); ++i)
+    {
+        if(i->num == num)
+        {
+            if(including)
+            {
+                i->getOrderedTLogNames(out);
+                return;
+            }
+            else
+            {
+                return;
+            }
+        }
+        else
+        {
+            i->getOrderedTLogNames(out);
+        }
+    }
+    LOG_ERROR("Snapshot with id " << num << " does not exist");
+    throw fungi::IOException("Snapshot does not exist");
+}
+
+void
+Snapshots::getTLogsAfterSnapshot(const SnapshotNum num,
+                                 OrderedTLogNames& out) const
+{
+    for(const_reverse_iterator i = rbegin(); i !=rend();++i)
+    {
+        if(i->num == num)
+        {
+            std::reverse(out.begin(), out.end());
+            return;
+        }
+        else
+        {
+            i->getReverseOrderedTLogNames(out);
+        }
+    }
+    LOG_ERROR("Snapshot with id " << num << " does not exist");
+    throw fungi::IOException("Snapshot does not exist");
+}
+
+void
+Snapshots::getTLogsBetweenSnapshots(const SnapshotNum start,
+                                    const SnapshotNum end_snap,
+                                    OrderedTLogNames& out,
+                                    IncludingEndSnapshot include_last) const
+{
+    if(start > end_snap)
+    {
+        LOG_ERROR("Start snapshot with num " << start << " is bigger than end " << end_snap);
+        throw fungi::IOException("Snapshots passed are not correctly ordered");
+    }
+
+    bool start_seen = false;
+    for(const_iterator i = begin(); i != end(); ++i)
+    {
+        if(i->num == start)
+        {
+            start_seen = true;
+        }
+
+        if((i->num > start)
+           and (i->num < end_snap))
+        {
+            if(not start_seen)
+            {
+                LOG_ERROR("Snapshot with id " << start << " does not exist");
+                throw fungi::IOException("Snapshot does not exist");
+            }
+
+            i->getOrderedTLogNames(out);
+        }
+        else if(i->num == end_snap)
+        {
+            if(not start_seen)
+            {
+                LOG_ERROR("Snapshot with id " << start << " does not exist");
+                throw fungi::IOException("Snapshot does not exist");
+            }
+
+            if(include_last == IncludingEndSnapshot::T)
+            {
+                i->getOrderedTLogNames(out);
+                return;
+            }
+            else
+            {
+                return;
+            }
+        }
+    }
+
+    LOG_ERROR("Snapshot with id " << end_snap << " does not exist");
+    throw fungi::IOException("Snapshot does not exist");
+}
+
+bool
+Snapshots::snip(const std::string tlog_name,
+                const boost::optional<uint64_t>& backend_size)
+{
+    bool found = false;
+    iterator it;
+
+    for(it = begin(); it != end() and not found; ++it)
+    {
+        LOG_INFO("Checking snapshot " << it->getName() << " for tlog " << tlog_name);
+
+        found = it->snip(tlog_name,
+                         backend_size);
+    }
+
+    if(it != end())
+    {
+        LOG_INFO("Snipping at snapshot " << it->getName()
+                 << " tlog " << tlog_name);
+
+        for(const_iterator it2 = it; it2 != end(); ++it2)
+        {
+            LOG_INFO("Snipping away " << it2->getName());
+        }
+
+        erase(it, end());
+    }
+    return found;
+}
+
+void
+Snapshots::deleteTLogsAndSnapshotsAfterSnapshot(const SnapshotNum num)
+{
+    iterator i = find_or_throw_(num);
+    erase(++i, end());
+}
+
+void
+Snapshots::getAllSnapshots(std::vector<SnapshotNum>& out) const
+{
+    for(const_iterator i = begin(); i != end(); ++i)
+    {
+        out.push_back(i->num);
+    }
+}
+
+void
+Snapshots::replace(const OrderedTLogNames& in,
+                   const std::vector<TLog>& out,
+                   const SnapshotNum num)
+{
+    for (const auto& t : out)
+    {
+        VERIFY(t.writtenToBackend());
+    }
+
+    iterator i = find_or_throw_(num);
+    i->replace(in, out);
+}
+
+// start_snap (if specified) is *exclusive*, end_snap (if specified) is *inclusive*, IOW:
+// ( start_snap, end_snap ]
+void
+Snapshots::getSnapshotScrubbingWork(const boost::optional<std::string>& start_snap,
+                                    const boost::optional<std::string>& end_snap,
+                                    SnapshotWork& out) const
+{
+    LOG_TRACE("start: " << start_snap << ", end: " << end_snap);
+
+    // Iterating twice is of course less efficient but the code becomes much easier to
+    // digest (at least for yours truly).
+    // If this should become a bottleneck there are too many snapshots anyway.
+
+    boost::optional<const_iterator> sit = boost::none;
+    boost::optional<const_iterator> eit = boost::none;
+
+    if (start_snap or end_snap)
+    {
+        for (auto it = begin(); it != end(); ++it)
+        {
+            if (start_snap and it->name == *start_snap)
+            {
+                VERIFY(sit == boost::none);
+                if (eit)
+                {
+                    LOG_ERROR("Requested end snapshot " << *end_snap <<
+                              " precedes requested start snapshot " << *start_snap);
+                    throw fungi::IOException("Requested end snapshot precedes requested start snapshot");
+                }
+
+                auto tmp = it;
+                sit = ++tmp;
+            }
+
+            if (end_snap and it->name == *end_snap)
+            {
+                VERIFY(eit == boost::none);
+                auto tmp = it;
+                eit = ++tmp;
+            }
+        }
+    }
+
+    if (not sit)
+    {
+        if (start_snap)
+        {
+            LOG_ERROR("Requested start snapshot " << *start_snap << " does not exist");
+            throw fungi::IOException("Requested start snapshot does not exist",
+                                     (*start_snap).c_str());
+        }
+    }
+
+    if (not eit)
+    {
+        if (end_snap)
+        {
+            LOG_ERROR("Requested end snapshot " << *end_snap << " does not exist");
+            throw fungi::IOException("Requested end snapshot does not exist",
+                                     (*end_snap).c_str());
+        }
+    }
+
+    for(const_iterator it = sit.get_value_or(begin());
+        it != eit.get_value_or(end());
+        ++it)
+    {
+        if(not it->scrubbed and
+           it->writtenToBackend())
+        {
+            const SnapshotWorkUnit workunit(it->name);
+            out.push_back(workunit);
+        }
+    }
+}
+
+}
+
+// Local Variables: **
+// mode: c++ **
+// End: **

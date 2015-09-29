@@ -1,0 +1,10 @@
+handle SIGUSR1 noprint nostop pass
+handle SIGPIPE noprint nostop pass
+path @prefix@/bin
+
+define only_test
+set args --gtest_filter=$arg0
+end
+
+file @prefix@/bin/volumedriver_test
+

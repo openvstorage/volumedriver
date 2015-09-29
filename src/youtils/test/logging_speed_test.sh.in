@@ -1,0 +1,16 @@
+#! /bin/bash
+set -eux
+export TEST_LOGGING_PERFORMANCE_TIMES_K=128
+for i in fatal error warning info debug trace
+do
+rm -f out
+time ./youtils_test --gtest_filter=TestLogging.performance --logfile=out --loglevel=$i
+wc -l out
+done
+rm -f out
+time ./youtils_test --gtest_filter=TestLogging.performance --disable-logging
+
+
+# Local Variables: *
+# compile-command: "./speed-test.sh" *
+# End: *

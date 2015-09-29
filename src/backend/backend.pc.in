@@ -1,0 +1,11 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: backend
+Description: backend library for volumedriver
+Version: @VERSION@
+Libs: -L${libdir} -lbackend
+Cflags: -I${includedir}
+Requires: youtils

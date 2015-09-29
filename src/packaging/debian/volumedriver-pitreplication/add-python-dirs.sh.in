@@ -1,0 +1,6 @@
+#! /bin/bash
+
+. ../add-installdir.sh
+
+TARGET_FILE=debian/volumedriver-pitreplication.install
+add_directory volumedriver/pitreplication

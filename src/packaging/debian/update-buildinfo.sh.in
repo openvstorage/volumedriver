@@ -1,0 +1,51 @@
+#! /bin/bash
+# This needs to be called from current working directory above the debian dir.
+
+function update-buildinfo {
+#    The current build number, such as "153"
+    echo " BUILD_NUMBER is $BUILD_NUMBER" >> $1
+
+#    The current build id, such as "2005-08-22_23-59-59" (YYYY-MM-DD_hh-mm-ss)
+    echo " BUILD_ID is $BUILD_ID" >> $1
+
+#    The display name of the current build, which is something like "#153" by default.
+    echo " BUILD_DISPLAY_NAME is $BUILD_DISPLAY_NAME" >> $1
+
+#    Name of the project of this build, such as "foo" or "foo/bar"
+    echo " JOB_NAME is $JOB_NAME" >> $1
+
+# String of "jenkins-${JOB_NAME}-${BUILD_NUMBER}". Convenient to put into a resource file, a jar file, etc for easier identification.
+    echo " BUILD_TAG is $BUILD_TAG" >> $1
+
+# The unique number that identifies the current executor (among executors of the same machine) that's carrying out this build. This is the number you see in the "build executor status", except that the number starts from 0, not 1.
+    echo " EXECUTOR_NUMBER is $EXECUTOR_NUMBER" >> $1
+
+# Name of the slave if the build is on a slave, or "master" if run on master
+    echo " NODE_NAME is $NODE_NAME" >> $1
+
+# Whitespace-separated list of labels that the node is assigned.
+    echo " NODE_LABELS is $NODE_LABELS" >> $1
+
+#  The absolute path of the directory assigned to the build as a workspace.
+    echo " WORKSPACE is $WORKSPACE" >> $1
+
+# The absolute path of the directory assigned on the master node for Jenkins to store data.
+    echo " JENKINS_HOME is $JENKINS_HOME" >> $1
+
+#    Full URL of Jenkins, like http://server:port/jenkins/
+    echo " JENKINS_URL is $JENKINS_URL" >> $1
+
+# Full URL of this build, like http://server:port/jenkins/job/foo/15/
+    echo " BUILD_URL is $BUILD_URL" >> $1
+
+# Full URL of this job, like http://server:port/jenkins/job/foo/
+    echo " JOB_URL is $JOB_URL" >> $1
+
+# Subversion revision number that's currently checked out to the workspace, such as "12345"
+    echo " MERCURIAL_REVISION is $MERCURIAL_REVISION" >> $1
+
+# Subversion URL that's currently checked out to the workspace.
+    echo " MERCURIAL_REVISION_NUMBER is $MERCURIAL_REVISION_NUMBER" >> $1
+}
+
+update-buildinfo debian/control

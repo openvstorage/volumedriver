@@ -1,0 +1,28 @@
+#!/bin/bash
+
+ALLOCATOR=""
+
+check_allocator ()
+{
+    [ x${ALLOCATOR} == x ] && [ -f ${1} ] && ALLOCATOR=${1}
+}
+
+check_allocator "/usr/lib/libtcmalloc_minimal.so.4"
+check_allocator "/usr/lib/libtcmalloc.so.4"
+check_allocator "/usr/lib/libtcmalloc_minimal.so"
+check_allocator "/usr/lib/libtcmalloc.so"
+
+if [ x${ALLOCATOR} != x ]
+then
+    echo "Using ${ALLOCATOR} instead of libc's allocator"
+    if [ x${LD_PRELOAD} == x ]
+    then
+	_LD_PRELOAD=${LD_PRELOAD}:${ALLOCATOR}
+    else
+	_LD_PRELOAD=${ALLOCATOR}
+    fi
+else
+    echo "No officially blessed alternative allocator found, using libc's allocator"
+fi
+
+LD_PRELOAD=${_LD_PRELOAD} metadata_server $@

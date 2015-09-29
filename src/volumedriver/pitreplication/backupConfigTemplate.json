@@ -1,0 +1,38 @@
+{
+    "global_lock_update_interval_in_seconds" : "120",
+    "grace_period_in_seconds": "30",
+    "report_interval_in_seconds" : "120",
+    "target_configuration":
+    {
+        "content_addressed_cache":
+        {
+            "read_cache_serialization_path": "/some/unused/path/",
+            "serialize_read_cache" : "0"
+        },
+        "volume_manager":
+        {
+            "open_scos_per_volume": "2",
+            "clean_interval": "1",
+            "number_of_scos_in_tlog": "20"
+        },
+        "scocache":
+        {
+            "datastore_throttle_usecs": "4000",
+            "trigger_gap": "500MiB",
+            "backoff_gap": "1GiB"
+        },
+        "threadpool_component":
+        {
+            "num_threads": "4"
+        },
+        "backend_connection_manager":
+        {
+        }
+    },
+    "source_configuration":
+    {
+        "backend_connection_manager":
+        {
+        }
+    }
+}

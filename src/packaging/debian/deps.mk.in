@@ -1,0 +1,5 @@
+debian/% : $(srcdir)/%.in
+	./config.status
+
+add-python-dirs.sh: $(srcdir)/add-python-dirs.sh.in
+	./config.status

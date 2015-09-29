@@ -1,0 +1,5 @@
+#!/bin/bash
+
+. @script_directory@/python_test.sh
+
+python_test event_message_test.py

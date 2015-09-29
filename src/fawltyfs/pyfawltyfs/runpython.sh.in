@@ -1,0 +1,3 @@
+prefix=@prefix@
+export LOG_DIR=/tmp
+PYTHONPATH=@prefix@/lib/python@PYTHON_VERSION@/dist-packages:$PYTHONPATH ipython -i -c 'import volumedriver.fawltyfs '

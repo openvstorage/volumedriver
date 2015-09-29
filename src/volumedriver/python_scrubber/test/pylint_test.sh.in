@@ -1,0 +1,9 @@
+#!/bin/bash
+# . @script_directory@/pylint_test.sh
+
+# DISABLED_INFO=I0011
+# DISABLED_CONVENTIONS=C0103,C0111,C0301
+# PYLINT_IGNORED_FILES=ToolCut.so
+# pylint_test volumedriver.toolcut
+
+

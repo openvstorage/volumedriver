@@ -1,0 +1,9 @@
+#! /bin/bash
+
+TARGET_FILE=SPECS/volumedriver-test.spec
+
+. ../add-installdir.sh
+
+add_directory volumedrivertest
+# add_directory volumedrivertest/voldrv
+add_directory volumedrivertest/volumetester

@@ -1,0 +1,125 @@
+import unittest
+import nose
+from nose.tools import eq_, ok_
+import volumedriver.storagerouter.Events_pb2 as Events
+import volumedriver.storagerouter.VolumeDriverEvents_pb2 as VolumeDriverEvents
+import volumedriver.storagerouter.FileSystemEvents_pb2 as FileSystemEvents
+
+
+class EventMessageTest(unittest.TestCase):
+
+    def _make_volume_create_message(self,
+                                    cluster_id,
+                                    node_id,
+                                    volume,
+                                    path,
+                                    size):
+
+        msg = FileSystemEvents.EventMessage()
+        msg.cluster_id = cluster_id
+        msg.node_id = node_id
+
+        ev = msg.event
+
+        ext = ev.Extensions[FileSystemEvents.volume_create]
+        ext.name = volume
+        ext.path = path
+        ext.size = size
+
+        ok_(msg.IsInitialized())
+
+        return msg.SerializeToString()
+
+    def test_volume_create_message(self):
+
+        vname = "volume"
+        vpath = "/path/to/volume"
+        vsize = 1234567890
+
+        cluster_id = "cluster_id"
+        node_id = "node_id"
+
+        cereal = self._make_volume_create_message(cluster_id,
+                                                  node_id,
+                                                  vname,
+                                                  vpath,
+                                                  vsize)
+
+        msg = FileSystemEvents.EventMessage()
+        ok_(not msg.IsInitialized())
+
+        msg.ParseFromString(cereal)
+        ok_(msg.IsInitialized())
+
+        ok_(msg.HasField("cluster_id"))
+        eq_(cluster_id, msg.cluster_id)
+
+        ok_(msg.HasField("node_id"))
+        eq_(node_id, msg.node_id)
+
+        ok_(msg.HasField("event"))
+        ev = msg.event
+
+        ok_(ev.HasExtension(FileSystemEvents.volume_create))
+        ext = ev.Extensions[FileSystemEvents.volume_create]
+
+        eq_(vname, ext.name)
+        eq_(vpath, ext.path)
+        eq_(vsize, ext.size)
+
+    def _make_volumedriver_error_message(self,
+                                         cluster_id,
+                                         node_id,
+                                         code,
+                                         volume,
+                                         info):
+        msg = FileSystemEvents.EventMessage()
+        msg.cluster_id = cluster_id
+        msg.node_id = node_id
+
+        ev = msg.event
+
+        ext = ev.Extensions[VolumeDriverEvents.volumedriver_error]
+        ext.code = code
+        ext.volume_name = volume
+        ext.info = info
+
+        ok_(msg.IsInitialized())
+
+        return msg.SerializeToString()
+
+    def test_volumedriver_error_message(self):
+
+        vname = "volume"
+        info = "some info string"
+        cluster_id = "cluster_id"
+        node_id = "node_id"
+        code = VolumeDriverEvents.MDSFailover
+
+        cereal = self._make_volumedriver_error_message(cluster_id,
+                                                       node_id,
+                                                       code,
+                                                       vname,
+                                                       info)
+
+        msg = FileSystemEvents.EventMessage()
+        ok_(not msg.IsInitialized())
+
+        msg.ParseFromString(cereal)
+        ok_(msg.IsInitialized())
+
+        ok_(msg.HasField("cluster_id"))
+        eq_(cluster_id, msg.cluster_id)
+
+        ok_(msg.HasField("node_id"))
+        eq_(node_id, msg.node_id)
+
+        ok_(msg.HasField("event"))
+        ev = msg.event
+
+        ok_(ev.HasExtension(VolumeDriverEvents.volumedriver_error))
+        ext = ev.Extensions[VolumeDriverEvents.volumedriver_error]
+
+        eq_(vname, ext.volume_name)
+        eq_(info, ext.info)
+        eq_(code, ext.code)

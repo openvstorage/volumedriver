@@ -1,0 +1,31 @@
+{
+    "content_addressed_cache": {
+	"read_cache_serialization_path": "@VOLUMEDRIVER_DATA_DIR@/data",
+        "clustercache_mount_points": [
+            {
+                "path": "@VOLUMEDRIVER_DATA_DIR@/content_addressed_cache",
+                "size": "500MiB"
+            }
+        ]
+    },
+    "volume_manager": {
+        "metadata_path": "@VOLUMEDRIVER_DATA_DIR@/meta",
+        "clean_interval": 1,
+        "tlog_path": "@VOLUMEDRIVER_DATA_DIR@/tlogs",
+        "foc_throttle_usecs": "4000"
+    },
+    "scocache": {
+        "backoff_gap": "2GB",
+        "trigger_gap": "1GB",
+        "scocache_mount_points": [
+            {
+                "path": "@VOLUMEDRIVER_DATA_DIR@/scocache",
+                "size": "UNLIMITED"
+            }
+        ]
+    },
+    "backend_connection_manager": {
+	"backend_type" : "LOCAL",
+        "local_connection_path" : "@VOLUMEDRIVER_DATA_DIR@/localbackend"
+    }
+}

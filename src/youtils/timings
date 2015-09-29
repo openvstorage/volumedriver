@@ -1,0 +1,28 @@
+// Immanuels Machine
+// With Precompiled
+make
+real	7m8.319s
+user	5m51.669s
+sys	0m36.947s
+make -j 6
+real	1m29.549s
+user	7m16.148s
+sys	0m46.746s
+make -j 10
+real	1m19.074s
+user	9m27.196s
+sys	1m0.143s
+
+// Without Precompiled
+make
+real	5m50.198s
+user	5m17.021s
+sys	0m27.598s
+make -j 6
+real	1m19.800s
+user	6m16.012s
+sys	0m33.363s
+make -j 10
+real	1m10.709s
+user	8m21.873s
+sys	0m43.909s

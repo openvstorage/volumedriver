@@ -1,0 +1,6 @@
+#! /bin/bash
+
+. ../add-installdir.sh
+TARGET_FILE=debian/volumedriver-server.install
+add_directory volumedriver/scrubber
+add_directory volumedriver/storagerouter

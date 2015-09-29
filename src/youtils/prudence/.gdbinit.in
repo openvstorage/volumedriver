@@ -1,0 +1,5 @@
+handle SIGUSR1 noprint nostop pass
+handle SIGPIPE noprint nostop pass
+
+path=@prefix@/bin
+file @prefix@/bin/prudence_test

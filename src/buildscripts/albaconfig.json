@@ -1,0 +1,8 @@
+{
+    "backend_connection_manager":
+    {
+	"backend_type": "ALBA",
+	"alba_connection_host" : "127.0.0.1",
+	"alba_connection_port" : "44433"
+    }
+}

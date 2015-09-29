@@ -1,0 +1,12 @@
+handle SIGUSR1 noprint nostop pass
+handle SIGPIPE noprint nostop pass
+path @prefix@/bin
+
+define only_test
+set args --gtest_filter=$arg0
+end
+
+set environment PYTHONPATH  @prefix@/lib/python@PYTHON_VERSION@/dist-packages/volumedriver/toolcut
+set environment LD_LIBARARY_PATH  @prefix@/lib/python@PYTHON_VERSION@/dist-packages/volumedriver/toolcut
+file @PYTHON@
+

@@ -1,0 +1,50 @@
+set -ux
+set -o pipefail
+
+export prefix=${prefix:-@prefix@}
+. @script_directory@/catch_errors_maybe_generate_xml.sh
+. @script_directory@/skip_selected_tests.sh
+
+USE_BACKEND=no
+
+function cpp_test {
+    binary_name=$1
+    shift
+
+    BACKEND_CONFIG_FILE_ARG=""
+    SKIP_BACKEND_SETUP_ARG=""
+
+    if [ "x$USE_BACKEND" == "xyes" ]
+    then
+	BACKEND_CONFIG_FILE=${BACKEND_CONFIG_FILE:-""}
+
+	if [ "x$BACKEND_CONFIG_FILE" != "x" ]
+	then
+	    BACKEND_CONFIG_FILE_ARG="--backend-config-file=$BACKEND_CONFIG_FILE"
+	fi
+
+	SKIP_BACKEND_SETUP=${SKIP_BACKEND_SETUP:-""}
+	SKIP_BACKEND_SETUP_ARG="--skip-backend-setup=0"
+	if [ "x$SKIP_BACKEND_SETUP" == "xyes" ]
+	then
+	    SKIP_BACKEND_SETUP_ARG="--skip-backend-setup=1"
+	fi
+    fi
+
+    export PATH=${prefix}/bin:${PATH}
+
+    TEST_OUTPUT_DIR=${prefix}/tests
+    mkdir -p ${TEST_OUTPUT_DIR}
+    TEST_OUTPUT_FILE=${TEST_OUTPUT_DIR}/${binary_name}_cpptest.xml
+    rm -f ${TEST_OUTPUT_FILE}
+
+    skip_selected_tests "c++"
+
+    ${prefix}/bin/${binary_name} ${TEST_LOGGING:-"--disable-logging"} --gtest_output=xml:$TEST_OUTPUT_FILE ${BACKEND_CONFIG_FILE_ARG} ${SKIP_BACKEND_SETUP_ARG} "$@"
+    catch_errors_maybe_generate_xml $? ${binary_name} $TEST_OUTPUT_FILE
+}
+
+function cpp_test_with_backend {
+    USE_BACKEND=yes
+    cpp_test $@
+}

@@ -1,0 +1,73 @@
+TRACEPOINT_EVENT(
+	openvstorage_backend,
+	backend_interface_put_object_start,
+	TP_ARGS(const char*, nspace_arg,
+		const char*, object_arg,
+		const char*, source_arg,
+		int, overwrite_arg),
+	TP_FIELDS(ctf_string(nspace, nspace_arg)
+		  ctf_string(object, object_arg)
+		  ctf_string(source, source_arg)
+		  ctf_integer(int, overwrite, overwrite_arg))
+		)
+
+TRACEPOINT_EVENT(
+	openvstorage_backend,
+	backend_interface_put_object_end,
+	TP_ARGS(const char*, nspace_arg,
+		const char*, object_arg,
+		int, status_arg),
+	TP_FIELDS(ctf_string(nspace, nspace_arg)
+		  ctf_string(object, object_arg)
+		  ctf_integer(int, status, status_arg))
+		)
+
+TRACEPOINT_EVENT(
+	openvstorage_backend,
+	backend_interface_get_object_start,
+	TP_ARGS(const char*, nspace_arg,
+		const char*, object_arg,
+		const char*, target_arg,
+		int, insist_on_latest_arg),
+	TP_FIELDS(ctf_string(nspace, nspace_arg)
+		  ctf_string(object, object_arg)
+		  ctf_string(target, target_arg)
+		  ctf_integer(int, insist_on_latest, insist_on_latest_arg))
+		)
+
+TRACEPOINT_EVENT(
+	openvstorage_backend,
+	backend_interface_get_object_end,
+	TP_ARGS(const char*, nspace_arg,
+		const char*, object_arg,
+		int, status_arg),
+	TP_FIELDS(ctf_string(nspace, nspace_arg)
+		  ctf_string(object, object_arg)
+		  ctf_integer(int, status, status_arg))
+		)
+
+TRACEPOINT_EVENT(
+	openvstorage_backend,
+	backend_interface_partial_read_start,
+	TP_ARGS(const char*, nspace_arg,
+		int, num_descs_arg,
+		int, total_size_arg,
+		int, insist_on_latest_arg),
+	TP_FIELDS(ctf_string(nspace, nspace_arg)
+		  ctf_integer(size_t, num_descs, num_descs_arg)
+		  ctf_integer(size_t, total_size, total_size_arg)
+		  ctf_integer(int, insist_on_latest, insist_on_latest_arg))
+		)
+
+TRACEPOINT_EVENT(
+	openvstorage_backend,
+	backend_interface_partial_read_end,
+	TP_ARGS(const char*, nspace_arg,
+		int, num_descs_arg,
+		int, total_size_arg,
+		int, status_arg),
+	TP_FIELDS(ctf_string(nspace, nspace_arg)
+		  ctf_integer(size_t, num_descs, num_descs_arg)
+		  ctf_integer(size_t, total_size, total_size_arg)
+		  ctf_integer(int, status, status_arg))
+		)

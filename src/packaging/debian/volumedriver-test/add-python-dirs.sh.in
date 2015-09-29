@@ -1,0 +1,9 @@
+#! /bin/bash
+
+. ../add-installdir.sh
+
+TARGET_FILE=debian/volumedriver-test.install
+add_directory volumedrivertest
+# add_directory volumedrivertest/base
+# add_directory volumedrivertest/voldrv
+add_directory volumedrivertest/volumetester

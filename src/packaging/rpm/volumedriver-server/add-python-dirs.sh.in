@@ -1,0 +1,8 @@
+#! /bin/bash
+
+TARGET_FILE=SPECS/volumedriver-server.spec
+
+. ../add-installdir.sh
+
+add_directory volumedriver/scrubber
+add_directory volumedriver/storagerouter
