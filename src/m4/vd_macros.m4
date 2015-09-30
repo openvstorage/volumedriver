@@ -4,7 +4,7 @@ AC_ARG_WITH(pkgconfigdir,
             [pkgconfigdir=$withval],
             [pkgconfigdir='${libdir}/pkgconfig'])
 AC_SUBST(pkgconfigdir)
-PKG_CHECK_MODULES([BUILDTOOLS], [buildtools = 4.0])
+PKG_CHECK_MODULES([BUILDTOOLS], [buildtools = 5.0])
 ])
 
 AC_DEFUN([OMNIIDL], [
