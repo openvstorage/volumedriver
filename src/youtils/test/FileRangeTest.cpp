@@ -60,7 +60,7 @@ typedef FileRange<FileRangeTest::file_type> file_range_type;
 TEST_F(FileRangeTest, construction)
 {
     const uint64_t size = test_file_->size();
-    EXPECT_LT(0, size);
+    EXPECT_LT(0UL, size);
 
     EXPECT_THROW(file_range_type(test_file_,
                                  0,
@@ -72,7 +72,7 @@ TEST_F(FileRangeTest, construction)
                                  1),
                  FileRangeViolation);
 
-    EXPECT_LT(0, size / 3);
+    EXPECT_LT(0U, size / 3);
     file_range_type r(test_file_,
                       size / 3,
                       size / 3);
@@ -81,11 +81,11 @@ TEST_F(FileRangeTest, construction)
 TEST_F(FileRangeTest, basics)
 {
     const size_t size = test_file_->size();
-    EXPECT_LT(0, size);
+    EXPECT_LT(0U, size);
 
     const uint8_t segments = 17;
-    const ssize_t seg_size = size / segments;
-    EXPECT_LT(0, seg_size);
+    const size_t seg_size = size / segments;
+    EXPECT_LT(0U, seg_size);
 
     for (uint8_t i = 0; i < segments; ++ i)
     {
@@ -93,9 +93,10 @@ TEST_F(FileRangeTest, basics)
         file_range_type r(test_file_,
                           i * seg_size,
                           seg_size);
-        EXPECT_EQ(seg_size, r.pwrite(&b[0],
-                                     b.size(),
-                                     0));
+        EXPECT_EQ(static_cast<ssize_t>(seg_size),
+                  r.pwrite(&b[0],
+                           b.size(),
+                           0));
     }
 
     for (uint8_t i = 0; i < segments; ++i)
@@ -107,9 +108,10 @@ TEST_F(FileRangeTest, basics)
                           i * seg_size,
                           seg_size);
 
-        EXPECT_EQ(seg_size, r.pread(&b[0],
-                                    b.size(),
-                                    0));
+        EXPECT_EQ(static_cast<ssize_t>(seg_size),
+                  r.pread(&b[0],
+                          b.size(),
+                          0));
         EXPECT_EQ(0, memcmp(&ref[0], &b[0], ref.size()));
 
         EXPECT_EQ(seg_size, test_file_->pread(&b[0],
@@ -122,11 +124,11 @@ TEST_F(FileRangeTest, basics)
 TEST_F(FileRangeTest, boundaries)
 {
     const size_t size = test_file_->size();
-    EXPECT_LT(0, size);
+    EXPECT_LT(0U, size);
 
     const uint8_t segments = 7;
-    const ssize_t seg_size = size / segments;
-    EXPECT_LT(0, seg_size);
+    const size_t seg_size = size / segments;
+    EXPECT_LT(0U, seg_size);
 
     const std::vector<uint8_t> ref(seg_size, segments);
 
@@ -158,17 +160,19 @@ TEST_F(FileRangeTest, boundaries)
 
         std::vector<uint8_t> rbuf(seg_size);
 
-        EXPECT_EQ(seg_size, r.pread(&rbuf[0], rbuf.size(), 0));
+        EXPECT_EQ(static_cast<ssize_t>(seg_size),
+                  r.pread(&rbuf[0], rbuf.size(), 0));
         EXPECT_EQ(0, memcmp(&ref[0], &rbuf[0], ref.size()));
 
-        EXPECT_EQ(seg_size, test_file_->pread(&rbuf[0], rbuf.size(), seg_size * i));
+        EXPECT_EQ(seg_size,
+                  test_file_->pread(&rbuf[0], rbuf.size(), seg_size * i));
         EXPECT_EQ(0, memcmp(&ref[0], &rbuf[0], ref.size()));
     }
 }
 
 TEST_F(FileRangeTest, streaming)
 {
-    const size_t size = test_file_->size();
+    const ssize_t size = test_file_->size();
     EXPECT_LT(0, size);
 
     const uint8_t segments = 2;
@@ -176,7 +180,7 @@ TEST_F(FileRangeTest, streaming)
 
     EXPECT_LT(0, seg_size);
 
-    const size_t iosize = 4096;
+    const ssize_t iosize = 4096;
     EXPECT_EQ(0, seg_size % iosize);
     EXPECT_LT(iosize, seg_size);
 
@@ -190,7 +194,7 @@ TEST_F(FileRangeTest, streaming)
                                                         i * seg_size,
                                                         seg_size),
                                         4096);
-        for (size_t j = 0; j < seg_size / iosize; ++j)
+        for (ssize_t j = 0; j < seg_size / iosize; ++j)
         {
             const std::vector<uint8_t> wbuf(4096, i + j);
             io.write(reinterpret_cast<const char*>(&wbuf[0]), wbuf.size());
@@ -208,7 +212,7 @@ TEST_F(FileRangeTest, streaming)
                                                         i * seg_size,
                                                         seg_size),
                                         4096);
-        for (size_t j = 0; j < seg_size / iosize; ++j)
+        for (ssize_t j = 0; j < seg_size / iosize; ++j)
         {
             const std::vector<uint8_t> ref(iosize, i + j);
             std::vector<uint8_t> rbuf(iosize);

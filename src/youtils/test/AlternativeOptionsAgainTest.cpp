@@ -147,9 +147,9 @@ TEST_F(AlternativeOptionsAgainTest, test)
     po::store(parsed, vm);
     po::notify(vm);
 
-    EXPECT_EQ(1, vm.count("some-option"));
+    EXPECT_EQ(1UL, vm.count("some-option"));
     EXPECT_EQ("some-value", vm["some-option"].as<std::string>());
-    EXPECT_EQ(0, vm.count("some-other-option"));
+    EXPECT_EQ(0UL, vm.count("some-other-option"));
 
     EXPECT_THROW((opt = ::youtils::get_option<OptsTest,
                                               options_t>("foobar")),

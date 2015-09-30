@@ -152,7 +152,7 @@ TEST_F(PeriodicActionTest, seppuku)
                        period);
 
     boost::this_thread::sleep_for(boost::chrono::seconds(5));
-    EXPECT_EQ(1, count);
+    EXPECT_EQ(1U, count);
 }
 
 // This is not expected to succeed at the moment, as locking a boost mutex

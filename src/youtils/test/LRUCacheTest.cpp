@@ -164,9 +164,9 @@ TEST_F(LRUCacheTest, insert_and_erase)
         EXPECT_EQ(v1, *val);
     }
 
-    EXPECT_EQ(1, cache.keys().size());
+    EXPECT_EQ(1U, cache.keys().size());
     EXPECT_EQ(k1, cache.keys().front());
-    EXPECT_EQ(1, evicted.size());
+    EXPECT_EQ(1U, evicted.size());
 
     {
         auto it = evicted.find(k0);
@@ -179,7 +179,7 @@ TEST_F(LRUCacheTest, insert_and_erase)
     EXPECT_TRUE(cache.find(k1, [](const LRUCache::Key&){ return nullptr; }) == nullptr);
 
     EXPECT_TRUE(cache.keys().empty());
-    EXPECT_EQ(2, evicted.size());
+    EXPECT_EQ(2U, evicted.size());
 
     auto it = evicted.find(k0);
     ASSERT_TRUE(it != evicted.end());
@@ -352,7 +352,7 @@ TEST_F(LRUCacheTest, resize)
         }
 
         EXPECT_EQ(cap, cache.size());
-        EXPECT_LT(1, cache.capacity());
+        EXPECT_LT(1U, cache.capacity());
 
         EXPECT_THROW(cache.capacity(cap - 1),
                      LRUCache::BusyCacheException);

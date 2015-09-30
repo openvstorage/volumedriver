@@ -102,15 +102,15 @@ private:
 
 TEST_F(ThreadedGeneratorTest, templatedTypes)
 {
-    int n = 100;
+    const int n = 100;
     ThreadedGenerator<intptr> g2(std::unique_ptr<IntPtrGen>(new IntPtrGen(n)), 10);
-    int g2_size = g2.toList()->size();
+    const int g2_size = g2.toList()->size();
     EXPECT_EQ(n, g2_size);
 }
 
 TEST_F(ThreadedGeneratorTest, test1)
 {
-    int n = 100;
+    const unsigned n = 100;
     IntGen g1(n);
     ThreadedGenerator<int> g2(std::unique_ptr<IntGen>(new IntGen(n)), 10);
     std::unique_ptr<std::vector<int>> g1_list(g1.toList());
@@ -121,7 +121,7 @@ TEST_F(ThreadedGeneratorTest, test1)
 
 TEST_F(ThreadedGeneratorTest, test2)
 {
-    int n = 100;
+    const unsigned n = 100;
     IntGen g1(n);
     ThreadedGenerator<int> g2(std::unique_ptr<IntGen>(new IntGen(n)), 10);
     std::unique_ptr<std::vector<int>> g1_list(g1.toList());

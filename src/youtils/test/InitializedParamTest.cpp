@@ -225,9 +225,9 @@ protected:
 
         ASSERT_FALSE(t.was_defaulted());
 
-        ASSERT_EQ(0,
+        ASSERT_EQ(0U,
                   urep.update_size());
-        ASSERT_EQ(1,
+        ASSERT_EQ(1U,
                   urep.no_update_size());
     }
 
@@ -263,18 +263,18 @@ protected:
 
         if (T::resettable())
         {
-            ASSERT_EQ(1,
+            ASSERT_EQ(1U,
                       urep.update_size());
-            ASSERT_EQ(0,
+            ASSERT_EQ(0U,
                       urep.no_update_size());
             ASSERT_EQ(newval,
                       t.value());
         }
         else
         {
-            ASSERT_EQ(0,
+            ASSERT_EQ(0U,
                       urep.update_size());
-            ASSERT_EQ(1,
+            ASSERT_EQ(1U,
                       urep.no_update_size());
             ASSERT_EQ(oldval,
                       t.value());
@@ -320,9 +320,9 @@ protected:
         {
             ASSERT_TRUE(t.was_defaulted());
 
-            ASSERT_EQ(1,
+            ASSERT_EQ(1U,
                       urep.update_size());
-            ASSERT_EQ(0,
+            ASSERT_EQ(0U,
                       urep.no_update_size());
 
             ASSERT_EQ(*T::default_value_,
@@ -332,9 +332,9 @@ protected:
         {
             ASSERT_FALSE(t.was_defaulted());
 
-            ASSERT_EQ(0,
+            ASSERT_EQ(0U,
                       urep.update_size());
-            ASSERT_EQ(1,
+            ASSERT_EQ(1U,
                       urep.no_update_size());
             ASSERT_EQ(val,
                       t.value());
@@ -423,9 +423,9 @@ protected:
         t.update(pt,
                  urep);
 
-        ASSERT_EQ(0,
+        ASSERT_EQ(0U,
                   urep.update_size()) << T::name();
-        ASSERT_EQ(1,
+        ASSERT_EQ(1U,
                   urep.no_update_size()) << T::name();
         ASSERT_EQ(val,
                   t.value()) << T::name();

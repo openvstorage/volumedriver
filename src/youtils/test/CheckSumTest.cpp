@@ -381,22 +381,22 @@ TEST_F(CheckSumTest, known_values)
 
 TEST_F(CheckSumTest, zero)
 {
-    EXPECT_EQ(0,
+    EXPECT_EQ(0U,
               yt::CheckSum().getValue());
 
-    EXPECT_EQ(0,
+    EXPECT_EQ(0U,
               yt::CheckSum(0).getValue());
 
-    EXPECT_EQ(0,
+    EXPECT_EQ(0UL,
               SWCheckSum().value());
 
-    EXPECT_EQ(0,
+    EXPECT_EQ(0U,
               SWCheckSum(0).value());
 
     EXPECT_EQ(~0U,
               BuchlaCheckSum().value());
 
-    EXPECT_EQ(0,
+    EXPECT_EQ(0U,
               BuchlaCheckSum(0).value());
 }
 

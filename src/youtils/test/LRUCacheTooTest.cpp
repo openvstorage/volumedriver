@@ -47,8 +47,8 @@ TEST_F(LRUCacheTooTest, basics)
     const uint64_t k = 1;
     const auto v(boost::lexical_cast<std::string>(k));
 
-    ASSERT_EQ(1, cache.capacity());
-    ASSERT_EQ(0, cache.size());
+    ASSERT_EQ(1U, cache.capacity());
+    ASSERT_EQ(0U, cache.size());
 
     ASSERT_TRUE(cache.keys().empty());
     ASSERT_EQ(boost::none,
@@ -62,15 +62,15 @@ TEST_F(LRUCacheTooTest, basics)
     ASSERT_EQ(v,
               *r);
 
-    ASSERT_EQ(1, cache.size());
+    ASSERT_EQ(1U, cache.size());
 
     const auto keys(cache.keys());
-    ASSERT_EQ(1, keys.size());
+    ASSERT_EQ(1U, keys.size());
     ASSERT_EQ(k,
               keys[0]);
 
     cache.erase(keys[0]);
-    ASSERT_EQ(0,
+    ASSERT_EQ(0U,
               cache.size());
 }
 
