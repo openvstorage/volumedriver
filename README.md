@@ -60,7 +60,7 @@ correctly. By way of example:
     export BUILD_NUM_PROCESSES=2
     export BUILD_DEBIAN_PACKAGES=${BUILD_DEBIAN_PACKAGES:-no}
     export CLEAN_BUILD=${CLEAN_BUILD:-"no"}
-    export CXX_WARNINGS="-Wall -Wextra -Wno-unknown-pragmas -Wctor-dtor-privacy -Wsign-promo -Woverloaded-virtual -Wnon-virtual-dtor -Wno-unused-parameter -Wno-unused-local-typedef -Wno-mismatched-tags -Wno-deprecated-register -Wno-macro-redefined -Wno-redeclared-class-member"
+    export CXX_WARNINGS="-Wall -Wextra -Wno-unknown-pragmas -Wctor-dtor-privacy -Wsign-promo -Woverloaded-virtual -Wnon-virtual-dtor"
     export SUPPRESS_WARNINGS=no
 
     mkdir -p ${BUILD_DIR}
