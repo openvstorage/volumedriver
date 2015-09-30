@@ -7,7 +7,7 @@ are part of this source tree (e.g. xmlrpc++, msgpack-c, TODO: remove these).
 
 ## Prerequisites
 
-volumedriver-buildtools and its prerequisites need to be installed. In addition to
+[volumedriver-buildtools](https://github.com/openvstorage/volumedriver-buildtools) and its prerequisites need to be installed. In addition to
 that, the following tools and libraries (their development versions) need to be
 present:
 
