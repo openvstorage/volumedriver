@@ -5,7 +5,7 @@ set -eux
 export CXX_OPTIMIZE_FLAGS="-ggdb3 -O2"
 export CXX_DEFINES="-DNDEBUG -DBOOST_FILESYSTEM_VERSION=3"
 
-BUILDTOOLS_TO_USE=$(realpath ${WORKSPACE}/BUILDS/volumedriver-buildtools-4.0/release)
+BUILDTOOLS_TO_USE=$(realpath ${WORKSPACE}/BUILDS/volumedriver-buildtools-5.0/release)
 
 VOLUMEDRIVER_DIR=$1
 
