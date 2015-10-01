@@ -279,8 +279,8 @@ TEST_F(LockTest, test_mutual_exclusion)
         delete callables[i];
     }
 
-    EXPECT_EQ(p0, 0);
-    EXPECT_EQ(p1, max_test);
+    EXPECT_EQ(0U, p0);
+    EXPECT_EQ(max_test, p1);
 }
 namespace
 {

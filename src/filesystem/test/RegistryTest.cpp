@@ -87,7 +87,7 @@ TEST_F(RegistryTest, check_config_nok)
     ASSERT_FALSE(registry_->checkConfig(pt,
                                         crep));
 
-    ASSERT_EQ(1, crep.size());
+    ASSERT_EQ(1U, crep.size());
 
     const auto& prob = crep.front();
 
@@ -124,7 +124,7 @@ TEST_F(RegistryTest, reconfigure_ok)
                                                         cfg.port_));
     }
 
-    ASSERT_LT(0,
+    ASSERT_LT(0U,
               new_configs.size());
 
     const ip::PARAMETER_TYPE(vregistry_arakoon_timeout_ms) timeout(2000);
@@ -140,7 +140,7 @@ TEST_F(RegistryTest, reconfigure_ok)
         registry_->update(pt,
                           urep);
 
-        EXPECT_EQ(2,
+        EXPECT_EQ(2U,
                   urep.update_size());
     }
 
@@ -183,7 +183,7 @@ TEST_F(RegistryTest, reconfigure_nok)
         registry_->update(pt,
                           urep);
 
-        EXPECT_EQ(1,
+        EXPECT_EQ(1U,
                   urep.update_size());
     }
 

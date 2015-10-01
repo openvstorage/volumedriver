@@ -237,7 +237,7 @@ TEST_F(FileSystemEventTest, multithreaded)
         for (unsigned i = 0; i < nthreads * nevents; ++i)
         {
             auto msg(get_event(events::volume_create));
-            EXPECT_EQ(1, events.erase(msg.name()));
+            EXPECT_EQ(1U, events.erase(msg.name()));
         }
 
         EXPECT_TRUE(events.empty());
@@ -348,7 +348,7 @@ TEST_F(FileSystemEventTest, config_check)
 
                  if (not ok)
                  {
-                     EXPECT_EQ(1, crep.size());
+                     EXPECT_EQ(1U, crep.size());
                      const yt::ConfigurationProblem& prob(crep.front());
 
                      EXPECT_EQ(uris.name(),
@@ -386,7 +386,7 @@ TEST_F(FileSystemEventTest, config_update)
 
     if (use_amqp())
     {
-        ASSERT_EQ(1, uris.value().size());
+        ASSERT_EQ(1U, uris.value().size());
         EXPECT_EQ(amqp_uri().str(),
                   uris.value()[0]);
     }
@@ -449,7 +449,7 @@ TEST_F(FileSystemEventTest, config_update)
         publisher_->update(pt,
                            urep);
 
-        ASSERT_EQ(3,
+        ASSERT_EQ(3U,
                   urep.update_size());
     }
 
@@ -474,7 +474,7 @@ TEST_F(FileSystemEventTest, config_update)
     publisher_->update(pt,
                        urep);
 
-    ASSERT_EQ(3,
+    ASSERT_EQ(3U,
               urep.update_size());
 
     test_publish(use_amqp());

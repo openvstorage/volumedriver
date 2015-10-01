@@ -89,14 +89,14 @@ public:
 
         if (must_exist)
         {
-            EXPECT_THROW(sad = std::move(sadp.pull(must_exist)),
+            EXPECT_THROW(sad = sadp.pull(must_exist),
                          BackendObjectDoesNotExistException);
         }
         else
         {
-            EXPECT_NO_THROW(sad = std::move(sadp.pull()));
+            EXPECT_NO_THROW(sad = sadp.pull());
             EXPECT_EQ(nspace, sad->getNamespace());
-            EXPECT_EQ(0, sad->getVector().size());
+            EXPECT_EQ(0U, sad->getVector().size());
         }
     }
 
@@ -127,7 +127,7 @@ public:
             SCOAccessData sad(nspace);
             EXPECT_NO_THROW(sadp.pull(sad));
             EXPECT_EQ(nspace, sad.getNamespace());
-            EXPECT_EQ(0, sad.getVector().size());
+            EXPECT_EQ(0U, sad.getVector().size());
         }
     }
 };
@@ -147,7 +147,7 @@ TEST_P(SCOAccessDataTest, test1)
 
     {
         std::unique_ptr<SCOAccessData> sad;
-        ASSERT_NO_THROW(sad = std::move(makeSCOAccessData(*v1)));
+        ASSERT_NO_THROW(sad = makeSCOAccessData(*v1));
         EXPECT_EQ(nspace, sad->getNamespace());
     }
 

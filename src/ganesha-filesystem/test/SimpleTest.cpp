@@ -92,7 +92,7 @@ TEST_F(SimpleTest, create_and_remove_file)
 
     const std::list<simple_nfs::DirectoryEntry> l(nfs_->readdir(root_));
 
-    ASSERT_EQ(1, l.size());
+    ASSERT_EQ(1U, l.size());
     simple_nfs::DirectoryEntry de = l.front();
 
     ASSERT_EQ(testfile.filename(), de.name);
@@ -102,7 +102,7 @@ TEST_F(SimpleTest, create_and_remove_file)
 
     const struct stat st(nfs_->stat(testfile));
     EXPECT_TRUE(S_ISREG(st.st_mode));
-    EXPECT_EQ(0, st.st_size);
+    EXPECT_EQ(0U, st.st_size);
 
     nfs_->unlink(testfile);
     ASSERT_TRUE(nfs_->readdir(root_).empty());
@@ -117,7 +117,7 @@ TEST_F(SimpleTest, create_and_remove_dir)
 
     {
         const std::list<simple_nfs::DirectoryEntry> l(nfs_->readdir(root_));
-        ASSERT_EQ(1, l.size());
+        ASSERT_EQ(1U, l.size());
         simple_nfs::DirectoryEntry de = l.front();
         ASSERT_EQ(testdir.filename(), de.name);
         ASSERT_TRUE(simple_nfs::EntryType::NF3DIR == de.type);
@@ -139,7 +139,7 @@ TEST_F(SimpleTest, create_file_in_new_dir)
 
     {
         const std::list<simple_nfs::DirectoryEntry> l(nfs_->readdir(root_));
-        ASSERT_EQ(1, l.size());
+        ASSERT_EQ(1U, l.size());
         ASSERT_EQ(testdir.filename(), l.front().name);
         ASSERT_TRUE(simple_nfs::EntryType::NF3DIR == l.front().type);
 
@@ -151,7 +151,7 @@ TEST_F(SimpleTest, create_file_in_new_dir)
 
     {
         const std::list<simple_nfs::DirectoryEntry> l(nfs_->readdir(testdir));
-        ASSERT_EQ(1, l.size());
+        ASSERT_EQ(1U, l.size());
         ASSERT_EQ(testfile.filename(), l.front().name);
         ASSERT_TRUE(simple_nfs::EntryType::NF3REG == l.front().type);
     }
@@ -169,7 +169,7 @@ TEST_F(SimpleTest, create_subdirs)
 
     {
         const std::list<simple_nfs::DirectoryEntry> l(nfs_->readdir(root_));
-        ASSERT_EQ(1, l.size());
+        ASSERT_EQ(1U, l.size());
         ASSERT_EQ(dir1.filename(), l.front().name);
         ASSERT_TRUE(simple_nfs::EntryType::NF3DIR == l.front().type);
         ASSERT_TRUE(nfs_->readdir(dir1).empty());
@@ -180,7 +180,7 @@ TEST_F(SimpleTest, create_subdirs)
 
     {
         const std::list<simple_nfs::DirectoryEntry> l(nfs_->readdir(dir1));
-        ASSERT_EQ(1, l.size());
+        ASSERT_EQ(1U, l.size());
         ASSERT_EQ(dir2.filename(), l.front().name);
         ASSERT_TRUE(simple_nfs::EntryType::NF3DIR == l.front().type);
         ASSERT_TRUE(nfs_->readdir(dir2).empty());
@@ -199,7 +199,7 @@ TEST_F(SimpleTest, remove_non_empty_dir)
 
     {
         const std::list<simple_nfs::DirectoryEntry> l(nfs_->readdir(root_));
-        ASSERT_EQ(1, l.size());
+        ASSERT_EQ(1U, l.size());
         ASSERT_EQ(dir1.filename(), l.front().name);
         ASSERT_TRUE(simple_nfs::EntryType::NF3DIR == l.front().type);
         ASSERT_TRUE(nfs_->readdir(dir1).empty());
@@ -231,7 +231,7 @@ TEST_F(SimpleTest, create_read_write_remove_file)
 
         const std::list<simple_nfs::DirectoryEntry> l(nfs_->readdir(root_));
 
-        ASSERT_EQ(1, l.size());
+        ASSERT_EQ(1U, l.size());
         simple_nfs::DirectoryEntry de = l.front();
 
         ASSERT_EQ(testfile.filename(), de.name);
@@ -246,7 +246,7 @@ TEST_F(SimpleTest, create_read_write_remove_file)
     EXPECT_NO_THROW(res = testf.pread(buf.data(),
                                       buf_size,
                                       0));
-    EXPECT_EQ(res, 0);
+    EXPECT_EQ(0, res);
 
     std::vector<char> buf2(buf_size,
                            'a');
@@ -254,14 +254,14 @@ TEST_F(SimpleTest, create_read_write_remove_file)
     ASSERT_NO_THROW(res = testf.pwrite(buf2.data(),
                                        buf_size,
                                        0));
-    ASSERT_EQ(res, buf_size);
+    ASSERT_EQ(res, static_cast<ssize_t>(buf_size));
 
     ASSERT_NO_THROW(res = testf.pread(buf.data(),
                                       buf_size,
                                       0));
-    EXPECT_TRUE(res = buf_size);
+    EXPECT_TRUE(res == buf_size);
 
-    ASSERT_TRUE(buf ==  buf2);
+    ASSERT_TRUE(buf == buf2);
 
     nfs_->unlink(testfile);
 
@@ -314,7 +314,7 @@ TEST_F(SimpleTest, create_read_write_remove_files_and_dirs)
     EXPECT_NO_THROW(res = testf1.pread(buf.data(),
                                        buf_size,
                                        0));
-    EXPECT_EQ(res, truncate_size);
+    EXPECT_EQ(res, static_cast<ssize_t>(truncate_size));
 
     EXPECT_NO_THROW(testf1.truncate(0));
 
@@ -326,7 +326,7 @@ TEST_F(SimpleTest, create_read_write_remove_files_and_dirs)
     ASSERT_NO_THROW(res = testf1.pwrite(buf1.data(),
                                         buf_size,
                                         0));
-    ASSERT_EQ(res, buf_size);
+    ASSERT_EQ(res, static_cast<ssize_t>(buf_size));
 
     ASSERT_NO_THROW(res = testf1.pread(buf.data(),
                                        buf_size,
@@ -344,11 +344,11 @@ TEST_F(SimpleTest, create_and_remove_volume)
     {
 
         const std::list<simple_nfs::DirectoryEntry> entries(nfs_->readdir(root_));
-        ASSERT_EQ(1, entries.size());
+        ASSERT_EQ(1U, entries.size());
 
         const simple_nfs::DirectoryEntry& entry = entries.front();
         ASSERT_EQ(vpath.filename(), entry.name);
-        ASSERT_EQ(0, entry.size);
+        ASSERT_EQ(0U, entry.size);
 
         ASSERT_TRUE(simple_nfs::EntryType::NF3REG == entry.type);
 
@@ -361,7 +361,7 @@ TEST_F(SimpleTest, create_and_remove_volume)
     vol.truncate(vsize);
 
     const std::list<simple_nfs::DirectoryEntry> entries(nfs_->readdir(root_));
-    ASSERT_EQ(1, entries.size());
+    ASSERT_EQ(1U, entries.size());
 
     const simple_nfs::DirectoryEntry& entry = entries.front();
     ASSERT_EQ(vpath.filename(), entry.name);
@@ -373,7 +373,7 @@ TEST_F(SimpleTest, create_and_remove_volume)
 
     const struct stat st(nfs_->stat(vpath));
     EXPECT_TRUE(S_ISREG(st.st_mode));
-    EXPECT_EQ(vsize, st.st_size);
+    EXPECT_EQ(static_cast<ssize_t>(vsize), st.st_size);
 
     nfs_->unlink(vpath);
 
@@ -422,7 +422,7 @@ TEST_F(SimpleTest, write_and_read_volume)
 
     const std::vector<char> wbuf(4096, 'z');
 
-    ASSERT_EQ(0, vsize % wbuf.size());
+    ASSERT_EQ(0U, vsize % wbuf.size());
 
     for (uint64_t off = 0; off < vsize; off += wbuf.size())
     {
@@ -800,7 +800,7 @@ public:
         struct stat stat = nfs_file.stat();
         ASSERT_TRUE(S_ISREG(stat.st_mode));
 
-        ASSERT_EQ(stat.st_size, written_size());
+        ASSERT_EQ(stat.st_size, static_cast<ssize_t>(written_size()));
         nfs_.unlink(s_path);
     }
 
@@ -854,7 +854,7 @@ public:
         ASSERT_NO_THROW(res = nfs_file.pwrite(buf.data(),
                                               sz,
                                               written_size()));
-        ASSERT_EQ(res, sz);
+        ASSERT_EQ(res, static_cast<ssize_t>(sz));
         content_.emplace_back(cont, sz);
     }
 };
@@ -980,7 +980,7 @@ public:
 
         ASSERT_TRUE(S_ISREG(stat.st_mode));
 
-        ASSERT_EQ(stat.st_size, volume_size_);
+        ASSERT_EQ(stat.st_size, static_cast<ssize_t>(volume_size_));
         nfs_.unlink(s_path);
     }
 

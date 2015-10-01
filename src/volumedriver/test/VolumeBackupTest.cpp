@@ -143,7 +143,7 @@ public:
                   pt.get<uint64_t>("seen"));
         ASSERT_EQ(pt.get<std::string>("status"), "finished");
         ASSERT_EQ(pt.get<uint64_t>("sent_to_backend"), kept);
-        ASSERT_EQ(pt.get<uint64_t>("pending"), 0);
+        ASSERT_EQ(0U, pt.get<uint64_t>("pending"));
     }
 
     void
@@ -543,7 +543,7 @@ TEST_P(VolumeBackupTest, simple_backup_restore)
     ASSERT_NO_THROW(get_backup_snapshots_list(ns2,
                                               snapshots));
 
-    ASSERT_EQ(snapshots.size(), 1);
+    ASSERT_EQ(1U, snapshots.size());
 
     auto restore_to_ptr = make_random_namespace();
 
@@ -606,7 +606,7 @@ TEST_P(VolumeBackupTest, report_threshold)
     ASSERT_NO_THROW(get_backup_snapshots_list(ns2,
                                               snapshots));
 
-    ASSERT_EQ(snapshots.size(), 1);
+    ASSERT_EQ(1U, snapshots.size());
 
     auto restore_to_ptr = make_random_namespace();
 
@@ -840,7 +840,7 @@ TEST_P(VolumeBackupTest, delete_snapshot)
     std::vector<std::string> snapshots;
     ASSERT_NO_THROW(get_backup_snapshots_list(ns2,
                                               snapshots));
-    ASSERT_EQ(snapshots.size(), 2);
+    ASSERT_EQ(2U, snapshots.size());
 
     auto restore_to_ptr = make_random_namespace();
 
@@ -864,13 +864,13 @@ TEST_P(VolumeBackupTest, delete_snapshot)
 
     snapshots.pop_back();
 
-    ASSERT_EQ(snapshots.size(), 1);
+    ASSERT_EQ(1U, snapshots.size());
 
     ASSERT_TRUE(start_snapshot_delete_program(snapshots));
     snapshots.clear();
     ASSERT_NO_THROW(get_backup_snapshots_list(ns2,
                                               snapshots));
-    ASSERT_EQ(snapshots.size(), 1);
+    ASSERT_EQ(1U, snapshots.size());
 }
 
 TEST_P(VolumeBackupTest, delete_snapshot_has_no_influence_on_restore)
@@ -915,7 +915,7 @@ TEST_P(VolumeBackupTest, delete_snapshot_has_no_influence_on_restore)
     std::vector<std::string> snapshots;
     ASSERT_NO_THROW(get_backup_snapshots_list(ns2,
                                               snapshots));
-    ASSERT_EQ(snapshots.size(), 2);
+    ASSERT_EQ(2U, snapshots.size());
 
     ASSERT_FALSE(start_snapshot_delete_program(snapshots));
     snapshots.pop_back();
@@ -923,7 +923,7 @@ TEST_P(VolumeBackupTest, delete_snapshot_has_no_influence_on_restore)
     snapshots.clear();
     ASSERT_NO_THROW(get_backup_snapshots_list(ns2,
                                               snapshots));
-    ASSERT_EQ(snapshots.size(), 1);
+    ASSERT_EQ(1U, snapshots.size());
 
     auto restore_to_ptr = make_random_namespace();
 
@@ -1753,7 +1753,7 @@ TEST_P(VolumeBackupTest, dont_delete_last_or_first_snapshot)
 
     ASSERT_NO_THROW(get_backup_snapshots_list(ns1,
                                               snapshots));
-    ASSERT_EQ(2, snapshots.size());
+    ASSERT_EQ(2U, snapshots.size());
 
     std::vector<std::string> snapshots_to_delete;
 
@@ -1764,7 +1764,7 @@ TEST_P(VolumeBackupTest, dont_delete_last_or_first_snapshot)
     snapshots.clear();
     EXPECT_NO_THROW(get_backup_snapshots_list(ns1,
                                               snapshots));
-    ASSERT_EQ(2, snapshots.size());
+    ASSERT_EQ(2U, snapshots.size());
 
     snapshots_to_delete.clear();
     snapshots_to_delete.push_back(snapshots.front());
@@ -1774,7 +1774,7 @@ TEST_P(VolumeBackupTest, dont_delete_last_or_first_snapshot)
     snapshots.clear();
     ASSERT_NO_THROW(get_backup_snapshots_list(ns1,
                                               snapshots));
-    ASSERT_EQ(1, snapshots.size());
+    ASSERT_EQ(1U, snapshots.size());
 
     snapshots_to_delete.clear();
     snapshots_to_delete.push_back(snapshots.back());
@@ -1784,7 +1784,7 @@ TEST_P(VolumeBackupTest, dont_delete_last_or_first_snapshot)
     snapshots.clear();
     ASSERT_NO_THROW(get_backup_snapshots_list(ns1,
                                               snapshots));
-    ASSERT_EQ(1, snapshots.size());
+    ASSERT_EQ(1U, snapshots.size());
 
     Namespace ns2;
     ensure_target_namespace(ns2);
@@ -1798,7 +1798,7 @@ TEST_P(VolumeBackupTest, dont_delete_last_or_first_snapshot)
     snapshots.clear();
     ASSERT_NO_THROW(get_backup_snapshots_list(ns2,
                                               snapshots));
-    ASSERT_EQ(2, snapshots.size());
+    ASSERT_EQ(2U, snapshots.size());
 
     create_backup_config(ns2,
                          ns,
@@ -1809,7 +1809,7 @@ TEST_P(VolumeBackupTest, dont_delete_last_or_first_snapshot)
     snapshots.clear();
     ASSERT_NO_THROW(get_backup_snapshots_list(ns2,
                                               snapshots));
-    ASSERT_EQ(3, snapshots.size());
+    ASSERT_EQ(3U, snapshots.size());
 
     create_backup_config(ns2,
                          ns,
@@ -1820,7 +1820,7 @@ TEST_P(VolumeBackupTest, dont_delete_last_or_first_snapshot)
     snapshots.clear();
     ASSERT_NO_THROW(get_backup_snapshots_list(ns2,
                                               snapshots));
-    ASSERT_EQ(4, snapshots.size());
+    ASSERT_EQ(4U, snapshots.size());
 
     snapshots_to_delete.clear();
     snapshots_to_delete.push_back(snapshots.front());
@@ -1830,7 +1830,7 @@ TEST_P(VolumeBackupTest, dont_delete_last_or_first_snapshot)
     snapshots.clear();
     ASSERT_NO_THROW(get_backup_snapshots_list(ns2,
                                               snapshots));
-    ASSERT_EQ(4, snapshots.size());
+    ASSERT_EQ(4U, snapshots.size());
 
     snapshots_to_delete.clear();
 
@@ -1840,7 +1840,7 @@ TEST_P(VolumeBackupTest, dont_delete_last_or_first_snapshot)
 
     ASSERT_NO_THROW(get_backup_snapshots_list(ns2,
                                               snapshots));
-    ASSERT_EQ(4, snapshots.size());
+    ASSERT_EQ(4U, snapshots.size());
 
     snapshots_to_delete.clear();
     snapshots_to_delete.push_back(snapshots[0]);
@@ -1851,7 +1851,7 @@ TEST_P(VolumeBackupTest, dont_delete_last_or_first_snapshot)
     snapshots.clear();
     ASSERT_NO_THROW(get_backup_snapshots_list(ns2,
                                               snapshots));
-    ASSERT_EQ(4, snapshots.size());
+    ASSERT_EQ(4U, snapshots.size());
 
     snapshots_to_delete.clear();
     snapshots_to_delete.push_back(snapshots[2]);
@@ -1862,7 +1862,7 @@ TEST_P(VolumeBackupTest, dont_delete_last_or_first_snapshot)
     snapshots.clear();
     ASSERT_NO_THROW(get_backup_snapshots_list(ns2,
                                               snapshots));
-    ASSERT_EQ(4, snapshots.size());
+    ASSERT_EQ(4U, snapshots.size());
 
     snapshots_to_delete.clear();
 
@@ -1874,13 +1874,13 @@ TEST_P(VolumeBackupTest, dont_delete_last_or_first_snapshot)
     snapshots.clear();
     ASSERT_NO_THROW(get_backup_snapshots_list(ns2,
                                               snapshots));
-    ASSERT_EQ(2, snapshots.size());
+    ASSERT_EQ(2U, snapshots.size());
 
     ASSERT_FALSE(start_snapshot_delete_program(snapshots));
     snapshots.clear();
     ASSERT_NO_THROW(get_backup_snapshots_list(ns2,
                                               snapshots));
-    ASSERT_EQ(2, snapshots.size());
+    ASSERT_EQ(2U, snapshots.size());
 
     snapshots_to_delete.clear();
 
@@ -1890,7 +1890,7 @@ TEST_P(VolumeBackupTest, dont_delete_last_or_first_snapshot)
 
     ASSERT_NO_THROW(get_backup_snapshots_list(ns2,
                                               snapshots));
-    ASSERT_EQ(2, snapshots.size());
+    ASSERT_EQ(2U, snapshots.size());
 
     snapshots_to_delete.clear();
 
@@ -1900,7 +1900,7 @@ TEST_P(VolumeBackupTest, dont_delete_last_or_first_snapshot)
 
     ASSERT_NO_THROW(get_backup_snapshots_list(ns2,
                                               snapshots));
-    ASSERT_EQ(2, snapshots.size());
+    ASSERT_EQ(2U, snapshots.size());
 }
 
 INSTANTIATE_TEST(VolumeBackupTest);

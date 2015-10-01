@@ -150,7 +150,7 @@ TEST_P(SimpleVolumeTest, update_tlog_multiplier)
     const uint64_t pot = volume_potential_sco_cache(v->getSCOMultiplier(),
                                                     tm_eff);
 
-    ASSERT_LT(1, pot);
+    ASSERT_LT(1U, pot);
 
     EXPECT_THROW(v->setTLogMultiplier(TLogMultiplier(tm_eff.t * (pot + 10))),
                  fungi::IOException);
@@ -1043,8 +1043,8 @@ TEST_P(SimpleVolumeTest, dontLeakStorageOnSnapshotRollback)
                  tlogGlob,
                  tlogs);
 
-    EXPECT_EQ(2, scos.size());
-    EXPECT_EQ(2, tlogs.size());
+    EXPECT_EQ(2U, scos.size());
+    EXPECT_EQ(2U, tlogs.size());
 
 
     ASSERT_NO_THROW(restoreSnapshot(v, "snap1"));
@@ -1061,8 +1061,8 @@ TEST_P(SimpleVolumeTest, dontLeakStorageOnSnapshotRollback)
                  tlogGlob,
                  tlogs);
 
-    EXPECT_EQ(1, scos.size()) << "sco leaked";
-    EXPECT_EQ(1, tlogs.size()) << "tlog leaked";
+    EXPECT_EQ(1U, scos.size()) << "sco leaked";
+    EXPECT_EQ(1U, tlogs.size()) << "tlog leaked";
 }
 
 TEST_P(SimpleVolumeTest, cleanupAfterInvalidVolume)
@@ -1620,31 +1620,31 @@ TEST_P(SimpleVolumeTest,  readCacheHits)
     fungi::ScopedLock l(api::getManagementMutex());
     uint64_t  hits =  api::getClusterCacheHits(VolumeId("volume1"));
     uint64_t  misses =  api::getClusterCacheMisses(VolumeId("volume1"));
-    EXPECT_EQ(hits,0);
-    EXPECT_EQ(misses, 0);
+    EXPECT_EQ(0U, hits);
+    EXPECT_EQ(0U, misses);
     checkVolume(v1,0, v1->getClusterSize(), "kristafke");
     hits =  api::getClusterCacheHits(VolumeId("volume1"));
     misses =  api::getClusterCacheMisses(VolumeId("volume1"));
-    EXPECT_EQ(hits, 0);
-    EXPECT_EQ(misses, 1);
+    EXPECT_EQ(0U, hits);
+    EXPECT_EQ(1U, misses);
 
     checkVolume(v1,0, v1->getClusterSize(), "kristafke");
     hits =  api::getClusterCacheHits(VolumeId("volume1"));
     misses =  api::getClusterCacheMisses(VolumeId("volume1"));
-    EXPECT_EQ(hits, 1);
-    EXPECT_EQ(misses, 1);
+    EXPECT_EQ(1U, hits);
+    EXPECT_EQ(1U, misses);
 
     checkVolume(v1,0, v1->getClusterSize(), "kristafke");
     hits =  api::getClusterCacheHits(VolumeId("volume1"));
     misses =  api::getClusterCacheMisses(VolumeId("volume1"));
-    EXPECT_EQ(hits, 2);
-    EXPECT_EQ(misses, 1);
+    EXPECT_EQ(2U, hits);
+    EXPECT_EQ(1U, misses);
 
     checkVolume(v1,0, v1->getClusterSize(), "kristafke");
     hits =  api::getClusterCacheHits(VolumeId("volume1"));
     misses =  api::getClusterCacheMisses(VolumeId("volume1"));
-    EXPECT_EQ(hits, 3);
-    EXPECT_EQ(misses, 1);
+    EXPECT_EQ(3U, hits);
+    EXPECT_EQ(1U, misses);
 }
 
 
@@ -1811,9 +1811,9 @@ TEST_P(SimpleVolumeTest, writeConfigToBackend)
 			   ns1);
 
     std::unique_ptr<VolumeConfig> f;
-    ASSERT_NO_THROW(f = std::move(VolManager::get()->get_config_from_backend<VolumeConfig>(ns1)));
+    ASSERT_NO_THROW(f = VolManager::get()->get_config_from_backend<VolumeConfig>(ns1));
     ASSERT_NO_THROW(writeVolumeConfigToBackend(v1));
-    ASSERT_NO_THROW(f = std::move(VolManager::get()->get_config_from_backend<VolumeConfig>(ns1)));
+    ASSERT_NO_THROW(f = VolManager::get()->get_config_from_backend<VolumeConfig>(ns1));
     const VolumeConfig cf1 = v1->get_config();
     EXPECT_TRUE(cf1.id_ == f->id_);
     EXPECT_TRUE(cf1.getNS() == f->getNS());
@@ -1899,7 +1899,7 @@ TEST_P(SimpleVolumeTest, prefetch)
 
     VolumeConfig cfg = v->get_config();
 
-    const int num_scos = 7;
+    const unsigned num_scos = 7;
     const uint64_t size = cfg.lba_size_ * cfg.cluster_mult_ * cfg.sco_mult_ * num_scos;
     const std::string pattern("prefetchin'");
     writeToVolume(v,
@@ -1938,8 +1938,8 @@ TEST_P(SimpleVolumeTest, prefetch)
 
     ASSERT_NO_THROW(updateReadActivity());
     persistXVals(volname);
-    EXPECT_LT(0, vm->readActivity());
-    EXPECT_EQ(0, v->getCacheMisses());
+    EXPECT_LT(0U, vm->readActivity());
+    EXPECT_EQ(0U, v->getCacheMisses());
     destroyVolume(v,
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::F);
@@ -1963,7 +1963,7 @@ TEST_P(SimpleVolumeTest, prefetch)
                       true);
 
     EXPECT_EQ(num_scos, l.size());
-    EXPECT_TRUE(0 < vm->readActivity());
+    EXPECT_LT(0U, vm->readActivity());
 
     checkVolume(v,
                 0,
@@ -1972,8 +1972,8 @@ TEST_P(SimpleVolumeTest, prefetch)
 
     ASSERT_NO_THROW(updateReadActivity());
 
-    EXPECT_LT(0, vm->readActivity());
-    EXPECT_EQ(0, v->getCacheMisses());
+    EXPECT_LT(0U, vm->readActivity());
+    EXPECT_EQ(0U, v->getCacheMisses());
 }
 
 TEST_P(SimpleVolumeTest, startPrefetch)
@@ -2086,8 +2086,8 @@ TEST_P(SimpleVolumeTest, zero_sized_volume)
     Volume* v = newVolume(vname, ns, VolumeSize(0));
     EXPECT_TRUE(v != nullptr);
 
-    EXPECT_EQ(0, v->getLBACount());
-    EXPECT_EQ(0, v->getSize());
+    EXPECT_EQ(0U, v->getLBACount());
+    EXPECT_EQ(0U, v->getSize());
 
     uint8_t pattern = 0xab;
     const std::vector<uint8_t> wbuf(v->getClusterSize(), pattern);
@@ -2121,7 +2121,7 @@ TEST_P(SimpleVolumeTest, shrink)
     const uint64_t csize = v->getClusterSize();
 
     const uint64_t nclusters = (vsize - csize) / csize;
-    EXPECT_LT(0, nclusters);
+    EXPECT_LT(0U, nclusters);
 
     EXPECT_THROW(v->resize(nclusters), std::exception);
 
@@ -2197,7 +2197,7 @@ TEST_P(SimpleVolumeTest, tlog_entries)
     const auto tlog1(sm.getCurrentTLogPath());
 
     EXPECT_LE(sco_mult, tlog_entries);
-    EXPECT_EQ(0, tlog_entries % sco_mult);
+    EXPECT_EQ(0U, tlog_entries % sco_mult);
 
     // block the backend to spare us the exercise of having
     // to fetch the TLog
@@ -2270,7 +2270,7 @@ TEST_P(SimpleVolumeTest, sco_cache_limits)
     const uint64_t max_non_disposable = scosize * scos * factor;
     const SCOCacheNamespaceInfo info(vm->getSCOCache()->getNamespaceInfo(ns));
 
-    EXPECT_EQ(0, info.min);
+    EXPECT_EQ(0U, info.min);
     EXPECT_EQ(max_non_disposable, info.max_non_disposable);
 }
 

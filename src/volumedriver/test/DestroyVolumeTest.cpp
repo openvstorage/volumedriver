@@ -60,7 +60,7 @@ public:
                 const auto nspaces(client->list_namespaces());
                 if (delete_global == RemoveVolumeCompletely::F)
                 {
-                    ASSERT_EQ(1, nspaces.size());
+                    ASSERT_EQ(1U, nspaces.size());
                     ASSERT_EQ(nspaces.front(),
                               cfg.getNS().str());
                 }

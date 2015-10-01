@@ -98,7 +98,7 @@ protected:
                       mdb->backend_type());
             auto mdscfg(boost::dynamic_pointer_cast<vd::MDSMetaDataBackendConfig>(mdb));
             ASSERT_TRUE(mdscfg != nullptr);
-            ASSERT_EQ(1,
+            ASSERT_EQ(1U,
                       mdscfg->node_configs().size());
             ASSERT_EQ(addr,
                       mdscfg->node_configs()[0].address());
@@ -116,7 +116,7 @@ protected:
                       mdb->backend_type());
             auto mdscfg(boost::dynamic_pointer_cast<vd::MDSMetaDataBackendConfig>(mdb));
             ASSERT_TRUE(mdscfg != nullptr);
-            ASSERT_EQ(1,
+            ASSERT_EQ(1U,
                       mdscfg->node_configs().size());
             ASSERT_EQ(addr,
                       mdscfg->node_configs()[0].address());

@@ -30,7 +30,7 @@ struct VolumeDriverErrorTest
 
 TEST_P(VolumeDriverErrorTest, simple)
 {
-    ASSERT_EQ(0,
+    ASSERT_EQ(0U,
               event_collector_->size());
     ASSERT_TRUE(boost::none == event_collector_->pop());
 
@@ -43,12 +43,12 @@ TEST_P(VolumeDriverErrorTest, simple)
                               msg1,
                               id);
 
-    ASSERT_EQ(1, event_collector_->size());;
+    ASSERT_EQ(1U, event_collector_->size());;
 
     VolumeDriverError::report(ec,
                               msg2);
 
-    ASSERT_EQ(2, event_collector_->size());;
+    ASSERT_EQ(2U, event_collector_->size());;
 
     using MaybeEvent = boost::optional<events::Event>;
 
@@ -87,7 +87,7 @@ TEST_P(VolumeDriverErrorTest, simple)
         ASSERT_FALSE(err.has_volume_name());
     }
 
-    ASSERT_EQ(0, event_collector_->size());
+    ASSERT_EQ(0U, event_collector_->size());
 }
 
 INSTANTIATE_TEST(VolumeDriverErrorTest);

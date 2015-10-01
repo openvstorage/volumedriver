@@ -1104,7 +1104,7 @@ TEST_P(ClusterCacheTest, device_awol_after_restart)
 
     {
         auto& devs(get_cache_devices(VolManager::get()->getClusterCache()));
-        ASSERT_EQ(2, devs.size());
+        ASSERT_EQ(2U, devs.size());
 
         {
             const auto dev_info(devs.front()->info());
@@ -1134,7 +1134,7 @@ TEST_P(ClusterCacheTest, device_awol_after_restart)
     VolManager::start(pt);
 
     auto& devs(get_cache_devices(VolManager::get()->getClusterCache()));
-    ASSERT_EQ(1, devs.size());
+    ASSERT_EQ(1U, devs.size());
 
     const auto dev_info(devs.front()->info());
     ASSERT_EQ(unsoiled, dev_info.path);
@@ -1146,7 +1146,7 @@ TEST_P(ClusterCacheTest, namespaces)
 
     {
         const std::vector<ClusterCacheHandle> nspaces(cc.list_namespaces());
-        ASSERT_EQ(1,
+        ASSERT_EQ(1U,
                   nspaces.size());
         ASSERT_EQ(ClusterCacheHandle(0),
                   nspaces.front());
@@ -1160,7 +1160,7 @@ TEST_P(ClusterCacheTest, namespaces)
 
     {
         const std::vector<ClusterCacheHandle> nspaces(cc.list_namespaces());
-        ASSERT_EQ(1,
+        ASSERT_EQ(1U,
                   nspaces.size());
         ASSERT_EQ(ClusterCacheHandle(0),
                   nspaces.front());
@@ -1176,7 +1176,7 @@ TEST_P(ClusterCacheTest, namespaces)
         const std::vector<ClusterCacheHandle> nspaces(cc.list_namespaces());
         const std::set<ClusterCacheHandle> handles(nspaces.begin(),
                                                    nspaces.end());
-        ASSERT_EQ(2,
+        ASSERT_EQ(2U,
                   handles.size());
         ASSERT_TRUE(handles.find(chandle) != handles.end());
         ASSERT_TRUE(handles.find(lhandle) != handles.end());
@@ -1186,7 +1186,7 @@ TEST_P(ClusterCacheTest, namespaces)
 
     {
         const std::vector<ClusterCacheHandle> nspaces(cc.list_namespaces());
-        ASSERT_EQ(1,
+        ASSERT_EQ(1U,
                   nspaces.size());
         ASSERT_EQ(chandle,
                   nspaces.front());
@@ -1195,7 +1195,7 @@ TEST_P(ClusterCacheTest, namespaces)
     cc.deregisterVolume(ltag);
     {
         const std::vector<ClusterCacheHandle> nspaces(cc.list_namespaces());
-        ASSERT_EQ(1,
+        ASSERT_EQ(1U,
                   nspaces.size());
         ASSERT_EQ(chandle,
                   nspaces.front());
@@ -1204,7 +1204,7 @@ TEST_P(ClusterCacheTest, namespaces)
     cc.deregisterVolume(ctag);
     {
         const std::vector<ClusterCacheHandle> nspaces(cc.list_namespaces());
-        ASSERT_EQ(1,
+        ASSERT_EQ(1U,
                   nspaces.size());
         ASSERT_EQ(chandle,
                   nspaces.front());
@@ -1224,7 +1224,7 @@ TEST_P(ClusterCacheTest, reregister)
         const std::vector<ClusterCacheHandle> nspaces(cc.list_namespaces());
         const std::set<ClusterCacheHandle> handles(nspaces.begin(),
                                                    nspaces.end());
-        ASSERT_EQ(2,
+        ASSERT_EQ(2U,
                   handles.size());
         ASSERT_TRUE(handles.find(chandle) != handles.end());
         ASSERT_TRUE(handles.find(lhandle) != handles.end());
@@ -1238,7 +1238,7 @@ TEST_P(ClusterCacheTest, reregister)
         const std::vector<ClusterCacheHandle> nspaces(cc.list_namespaces());
         const std::set<ClusterCacheHandle> handles(nspaces.begin(),
                                                    nspaces.end());
-        ASSERT_EQ(2,
+        ASSERT_EQ(2U,
                   handles.size());
         ASSERT_TRUE(handles.find(chandle) != handles.end());
         ASSERT_TRUE(handles.find(lhandle) != handles.end());
@@ -1250,7 +1250,7 @@ TEST_P(ClusterCacheTest, reregister)
 
     {
         const std::vector<ClusterCacheHandle> nspaces(cc.list_namespaces());
-        ASSERT_EQ(1,
+        ASSERT_EQ(1U,
                   nspaces.size());
         ASSERT_EQ(chandle,
                   nspaces.front());
@@ -1287,7 +1287,7 @@ TEST_P(ClusterCacheTest, limits)
     const boost::optional<uint64_t> max(cc.get_max_entries(chandle));
     ASSERT_NE(boost::none,
               max);
-    EXPECT_EQ(1,
+    EXPECT_EQ(1U,
               *max);
 }
 
@@ -1317,7 +1317,7 @@ TEST_P(ClusterCacheTest, impose_limit_on_unlimited_namespace)
     }
 
     const size_t new_count = old_count / 2;
-    ASSERT_NE(0,
+    ASSERT_NE(0U,
               new_count);
 
     cc.set_max_entries(handle,
@@ -1381,7 +1381,7 @@ TEST_P(ClusterCacheTest, shrink_limited_namespace)
     }
 
     const size_t new_count = old_count / 2;
-    ASSERT_NE(0,
+    ASSERT_NE(0U,
               new_count);
 
     cc.set_max_entries(handle,

@@ -340,7 +340,7 @@ TEST_F(ObjectRouterTest, node_map)
     const vfs::ObjectRouter& router = fs_->object_router();
     NodeMap nm(node_map(router));
 
-    EXPECT_EQ(2,
+    EXPECT_EQ(2U,
               nm.size());
 
     std::shared_ptr<vfs::ClusterNode> local(nm[local_config().vrouter_id]);
@@ -365,7 +365,7 @@ TEST_F(ObjectRouterTest, expand_cluster)
         NodeMap nm(node_map(router));
 
         ASSERT_FALSE(nm.empty());
-        ASSERT_EQ(2,
+        ASSERT_EQ(2U,
                   nm.size());
 
         ASSERT_TRUE(nm[local_config().vrouter_id] != nullptr);
@@ -392,7 +392,7 @@ TEST_F(ObjectRouterTest, expand_cluster)
         NodeMap nm(node_map(router));
 
         EXPECT_FALSE(nm.empty());
-        EXPECT_EQ(3,
+        EXPECT_EQ(3U,
                   nm.size());
 
         EXPECT_TRUE(nm[local_config().vrouter_id] != nullptr);
@@ -416,7 +416,7 @@ TEST_F(ObjectRouterTest, shrink_cluster)
     {
         NodeMap nm(node_map(router));
 
-        EXPECT_EQ(2,
+        EXPECT_EQ(2U,
                   nm.size());
 
         EXPECT_TRUE(nm[local_config().vrouter_id] != nullptr);
@@ -434,7 +434,7 @@ TEST_F(ObjectRouterTest, shrink_cluster)
     {
         NodeMap nm(node_map(router));
 
-        EXPECT_EQ(1,
+        EXPECT_EQ(1U,
                   nm.size());
 
         EXPECT_TRUE(nm[local_config().vrouter_id] != nullptr);
@@ -453,7 +453,7 @@ TEST_F(ObjectRouterTest, enforce_local_node)
     {
         NodeMap nm(node_map(router));
 
-        EXPECT_EQ(2,
+        EXPECT_EQ(2U,
                   nm.size());
 
         EXPECT_TRUE(nm[local_config().vrouter_id] != nullptr);
@@ -475,7 +475,7 @@ TEST_F(ObjectRouterTest, enforce_local_node)
     {
         NodeMap nm(node_map(router));
 
-        EXPECT_EQ(2,
+        EXPECT_EQ(2U,
                   nm.size());
 
         EXPECT_TRUE(nm[local_config().vrouter_id] != nullptr);
@@ -491,7 +491,7 @@ TEST_F(ObjectRouterTest, no_modification_of_existing_node_config)
     {
         NodeMap nm(node_map(router));
 
-        EXPECT_EQ(2,
+        EXPECT_EQ(2U,
                   nm.size());
 
         EXPECT_TRUE(nm[local_config().vrouter_id] != nullptr);
@@ -514,7 +514,7 @@ TEST_F(ObjectRouterTest, no_modification_of_existing_node_config)
     {
         NodeMap nm(node_map(router));
 
-        EXPECT_EQ(2,
+        EXPECT_EQ(2U,
                   nm.size());
 
         EXPECT_TRUE(nm[local_config().vrouter_id] != nullptr);

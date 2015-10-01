@@ -132,7 +132,7 @@ TEST_F(LocalPythonClientTest, update_configuration)
 
     const yt::UpdateReport report(local_client_->update_configuration(path.string()));
 
-    ASSERT_EQ(1, report.update_size());
+    ASSERT_EQ(1U, report.update_size());
     ASSERT_EQ(new_ignore_sync.name(), report.getUpdates().front().parameter_name);
 
     ip::PARAMETER_TYPE(num_threads) old_num_threads(pt);
@@ -192,13 +192,13 @@ TEST_F(LocalPythonClientTest, logging_filters)
         const yt::Logger::filter_t filter2("Match2", yt::Severity::error);
         local_client_->add_logging_filter(filter2.first, filter2.second);
 
-        EXPECT_EQ(2, local_client_->get_logging_filters().size());
+        EXPECT_EQ(2U, local_client_->get_logging_filters().size());
 
         local_client_->remove_logging_filter(filter1.first);
 
         {
             const std::vector<yt::Logger::filter_t> rfilters(local_client_->get_logging_filters());
-            EXPECT_EQ(1, rfilters.size());
+            EXPECT_EQ(1U, rfilters.size());
             EXPECT_TRUE(filter2 == rfilters[0]);
         }
 
@@ -278,7 +278,7 @@ TEST_F(LocalPythonClientTest, cluster_cache_handles)
                                  {
                                      std::vector<vd::ClusterCacheHandle>
                                          v(local_client_->list_cluster_cache_handles());
-                                     ASSERT_EQ(1,
+                                     ASSERT_EQ(1U,
                                                v.size());
                                      EXPECT_EQ(vd::ClusterCacheHandle(0),
                                                v[0]);
@@ -293,7 +293,7 @@ TEST_F(LocalPythonClientTest, cluster_cache_handles)
                                     vd::ClusterCount(limit));
 
     const std::vector<vd::ClusterCacheHandle> v(local_client_->list_cluster_cache_handles());
-    ASSERT_EQ(2,
+    ASSERT_EQ(2U,
               v.size());
 
     for (const auto& h : v)
@@ -302,7 +302,7 @@ TEST_F(LocalPythonClientTest, cluster_cache_handles)
             info(local_client_->get_cluster_cache_handle_info(h));
         EXPECT_EQ(h,
                   info.cluster_cache_handle);
-        EXPECT_EQ(0,
+        EXPECT_EQ(0U,
                   info.entries);
 
         if (h == vd::ClusterCacheHandle(0))

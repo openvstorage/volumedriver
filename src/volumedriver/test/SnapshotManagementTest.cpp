@@ -126,14 +126,14 @@ TEST_P(SnapshotManagementTest, getTLogsBetweenSnapshots)
                                                out,
                                                IncludingEndSnapshot::T),
                  fungi::IOException);
-    ASSERT_EQ(out.size(), 0);
+    ASSERT_EQ(0U, out.size());
     // Cannot be tested since it will abort in a non debug release
     ASSERT_THROW(pers.getTLogsBetweenSnapshots(fourth,
                                                 first,
                                                 out,
                                                IncludingEndSnapshot::T),
                   fungi::IOException);
-    ASSERT_EQ(out.size(), 0);
+    ASSERT_EQ(0U, out.size());
     out.clear();
 
     ASSERT_THROW(pers.getTLogsBetweenSnapshots(third,
@@ -141,21 +141,21 @@ TEST_P(SnapshotManagementTest, getTLogsBetweenSnapshots)
                                                out,
                                                IncludingEndSnapshot::T),
                  fungi::IOException);
-    ASSERT_EQ(out.size(), 0);
+    ASSERT_EQ(0U, out.size());
     out.clear();
 
     ASSERT_NO_THROW(pers.getTLogsBetweenSnapshots(fourth,
                                                fourth,
                                                out,
                                                IncludingEndSnapshot::T));
-    ASSERT_EQ(out.size(), 2);
+    ASSERT_EQ(2U, out.size());
     out.clear();
 
     ASSERT_NO_THROW(pers.getTLogsBetweenSnapshots(fourth,
                                                fourth,
                                                out,
                                                IncludingEndSnapshot::F));
-    ASSERT_EQ(out.size(), 0);
+    ASSERT_EQ(0U, out.size());
     out.clear();
 
 
@@ -164,29 +164,27 @@ TEST_P(SnapshotManagementTest, getTLogsBetweenSnapshots)
                                                   out,
                                                   IncludingEndSnapshot::T));
 
-    ASSERT_EQ(2, out.size());
+    ASSERT_EQ(2U, out.size());
     out.clear();
     ASSERT_NO_THROW(pers.getTLogsBetweenSnapshots(second,
                                                   fourth,
                                                   out,
                                                   IncludingEndSnapshot::F));
-    EXPECT_EQ(0, out.size());
+    EXPECT_EQ(0U, out.size());
     out.clear();
 
     ASSERT_NO_THROW(pers.getTLogsBetweenSnapshots(first,
                                                   second,
                                                   out,
                                                   IncludingEndSnapshot::T));
-    EXPECT_EQ(1, out.size());
+    EXPECT_EQ(1U, out.size());
     out.clear();
 
     ASSERT_NO_THROW(pers.getTLogsBetweenSnapshots(first,
                                                   second,
                                                   out,
                                                   IncludingEndSnapshot::F));
-    EXPECT_EQ(0, out.size());
-
-
+    EXPECT_EQ(0U, out.size());
 }
 
 TEST_P(SnapshotManagementTest, TheRevengeOfGetScrubbingWorkTest)
@@ -231,7 +229,7 @@ TEST_P(SnapshotManagementTest, TheRevengeOfGetScrubbingWorkTest)
                                                 arg_type("more_nothing"),
                                                 out),
                  fungi::IOException);
-    EXPECT_EQ(out.size(), 0);
+    EXPECT_EQ(0U, out.size());
     out.clear();
 
     for(unsigned i = 0; i < size; ++i)
@@ -266,9 +264,9 @@ TEST_P(SnapshotManagementTest, backendSizeBetweenSnapshots)
 
     SnapshotManagement* c = getSnapshotManagement(vol_);
 
-    ASSERT_EQ(c->getSnapshotPersistor().getBackendSize("9",
-                                                      boost::none),
-              10*4096);
+    ASSERT_EQ(10U *4096U,
+              c->getSnapshotPersistor().getBackendSize("9",
+                                                       boost::none));
 
     for(size_t j = 0; j < 9; j++)
     {
@@ -279,10 +277,9 @@ TEST_P(SnapshotManagementTest, backendSizeBetweenSnapshots)
         {
             std::stringstream ss;
             ss << i;
-            ASSERT_EQ(c->getSnapshotPersistor().getBackendSize(js.str(),
-                                                               ss.str()),
-                      (j-i)*4096);
-
+            ASSERT_EQ((j-i) * 4096U,
+                      c->getSnapshotPersistor().getBackendSize(js.str(),
+                                                               ss.str()));
         }
     }
 }
@@ -297,7 +294,7 @@ TEST_P(SnapshotManagementTest, deleteSnaps2)
                 "tlog_.*",
                 names);
 
-    EXPECT_EQ(names.size(),(size_t)1);
+    EXPECT_EQ(1U, names.size());
     names.clear();
 
     backendRegex(Namespace(ns()),
@@ -305,7 +302,7 @@ TEST_P(SnapshotManagementTest, deleteSnaps2)
                 names);
 
     // EXPECT_EQ(names.size(),(size_t)5);
-    EXPECT_EQ(names.size(),(size_t)1); // Y42: is this a valid fix?
+    EXPECT_EQ(1U, names.size());
     names.clear();
 
 
@@ -316,13 +313,13 @@ TEST_P(SnapshotManagementTest, deleteSnaps2)
     backendRegex(Namespace(ns()),
                 "tlog_.*",
                 names);
-    EXPECT_EQ(names.size(),(size_t)1);
+    EXPECT_EQ(1U, names.size());
     names.clear();
     backendRegex(Namespace(ns()),
                 "snapshots\\.xml",
                 names);
     //EXPECT_EQ(names.size(),(size_t)6);
-    EXPECT_EQ((size_t)1, names.size()); // Y42: is this a valid fix?
+    EXPECT_EQ(1U, names.size());
 }
 
 TEST_P(SnapshotManagementTest, test1)
@@ -340,7 +337,7 @@ TEST_P(SnapshotManagementTest, test1)
     backendRegex(Namespace(ns()),
                  "tlog_.*",
                  tlognames);
-    ASSERT_EQ(tlognames.size(), (size_t)1);
+    ASSERT_EQ(1U, tlognames.size());
 }
 
 TEST_P(SnapshotManagementTest, test2)
@@ -359,7 +356,7 @@ TEST_P(SnapshotManagementTest, test2)
     backendRegex(Namespace(ns()),
                  "tlog_.*",
                  tlognames);
-    ASSERT_EQ(tlognames.size(), (size_t)1);
+    ASSERT_EQ(1U, tlognames.size());
 
     ASSERT_TRUE(tlognames.size() > 0);
     BOOST_FOREACH(const std::string& tlogname, tlognames)
@@ -376,7 +373,7 @@ TEST_P(SnapshotManagementTest, test2)
     std::list<std::string> snapshotnames;
     backendRegex(Namespace(ns()), "snapshots\\.xml", snapshotnames);
     // scrubbing disabled EXPECT_EQ(snapshotnames.size(),(size_t)2);
-    EXPECT_EQ(snapshotnames.size(),(size_t)1);
+    EXPECT_EQ(1U, snapshotnames.size());
 }
 
 TEST_P(SnapshotManagementTest, test3)
@@ -511,7 +508,7 @@ TEST_P(SnapshotManagementTest, test6)
 //    waitForThisBackendWrite();
 
     c.getSnapshotScrubbingWork(out);
-    EXPECT_EQ(0, out.size());
+    EXPECT_EQ(0U, out.size());
     unblockBackendWrites();
     waitForThisBackendWrite();
 
@@ -639,7 +636,7 @@ TEST_P(SnapshotManagementTest, dontLeakTLogCheckSumsOnRestore)
 
     OrderedTLogNames tlogpaths;
     getSnapshotManagement(vol_)->getCurrentTLogs(tlogpaths, AbsolutePath::T);
-    EXPECT_LT(0, tlogpaths.size());
+    EXPECT_LT(0U, tlogpaths.size());
 
     //CheckSumStore<std::string>& chksums = getCheckSumStore();
 

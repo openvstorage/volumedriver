@@ -92,7 +92,7 @@ const byte mem_tlog[] =
 
 TEST_F(BackwardsCompatibilityTest, tlog)
 {
-    ASSERT_EQ(sizeof(mem_tlog) % sizeof(Entry), 0);
+    ASSERT_EQ(0U, sizeof(mem_tlog) % sizeof(Entry));
 
     fs::path tlog = FileUtils::create_temp_file(FileUtils::temp_path(),
                                                 "tlog");
@@ -107,27 +107,27 @@ TEST_F(BackwardsCompatibilityTest, tlog)
 
     const Entry* e = t.nextLocation();
     ASSERT_TRUE(e);
-    EXPECT_EQ(e->clusterLocation().number(), 1);
-    EXPECT_TRUE(e->clusterLocation().version() ==  SCOVersion(1));
-    EXPECT_TRUE(e->clusterLocation().cloneID() == SCOCloneID(0));
-    EXPECT_EQ(e->clusterLocation().offset(), 0);
-    EXPECT_EQ(e->clusterAddress(), 0);
+    EXPECT_EQ(1U, e->clusterLocation().number());
+    EXPECT_EQ(SCOVersion(1), e->clusterLocation().version());
+    EXPECT_EQ(SCOCloneID(0), e->clusterLocation().cloneID());
+    EXPECT_EQ(0U, e->clusterLocation().offset());
+    EXPECT_EQ(0U, e->clusterAddress());
 
     e = t.nextLocation();
     ASSERT_TRUE(e);
-    EXPECT_EQ(e->clusterLocation().number(), 0xffffffff);
-    EXPECT_TRUE(e->clusterLocation().version() == SCOVersion(0));
-    EXPECT_TRUE(e->clusterLocation().cloneID() == SCOCloneID(1));
-    EXPECT_EQ(e->clusterLocation().offset(), 0xFF);
-    EXPECT_EQ(e->clusterAddress(), 0xFF);
+    EXPECT_EQ(0xffffffffU, e->clusterLocation().number());
+    EXPECT_EQ(SCOVersion(0), e->clusterLocation().version());
+    EXPECT_EQ(SCOCloneID(1), e->clusterLocation().cloneID());
+    EXPECT_EQ(0xFFU, e->clusterLocation().offset());
+    EXPECT_EQ(0xFFU, e->clusterAddress());
 
     e = t.nextLocation();
     ASSERT_TRUE(e);
-    EXPECT_EQ(e->clusterLocation().number(), 0xff0000);
-    EXPECT_TRUE(e->clusterLocation().version() == SCOVersion(0xff));
-    EXPECT_TRUE(e->clusterLocation().cloneID() == SCOCloneID(0xff));
-    EXPECT_EQ(e->clusterLocation().offset(), 0xffff);
-    EXPECT_EQ(e->clusterAddress(), 0xffffffff);
+    EXPECT_EQ(0xff0000U, e->clusterLocation().number());
+    EXPECT_EQ(SCOVersion(0xff), e->clusterLocation().version());
+    EXPECT_EQ(SCOCloneID(0xff), e->clusterLocation().cloneID());
+    EXPECT_EQ(0xffffU, e->clusterLocation().offset());
+    EXPECT_EQ(0xffffffffU, e->clusterAddress());
 
     e = t.nextLocation();
     ASSERT_FALSE(e);
@@ -158,7 +158,7 @@ TEST_F(BackwardsCompatibilityTest, scoaccessdata_2_0_0)
 
     SCOAccessData ad((backend::Namespace()));
     ia & ad;
-    ASSERT_EQ(ad.getVector().size(), 0);
+    ASSERT_EQ(0U, ad.getVector().size());
 }
 
 const char sco_access_data_def[] =  {
@@ -183,7 +183,7 @@ TEST_F(BackwardsCompatibilityTest, scoaccessdata_def)
 
     SCOAccessData ad((backend::Namespace()));
     ia & ad;
-    ASSERT_EQ(ad.getVector().size(), 2);
+    ASSERT_EQ(2U, ad.getVector().size());
     typedef const std::pair<SCO, float> fp;
     BOOST_FOREACH(fp& p, ad.getVector())
     {

@@ -36,7 +36,7 @@ public:
                size_t iterations = 1)
     {
         const size_t scosize = sco->getSize();
-        EXPECT_EQ(0,  scosize % chunksize) << "Fix your test";
+        EXPECT_EQ(0U,  scosize % chunksize) << "Fix your test";
 
         for (size_t i = 0; i < iterations; ++i)
         {
@@ -161,7 +161,8 @@ TEST_F(CachedSCOTest, createAndUseOne)
                      &st);
     EXPECT_EQ(0, ret);
     EXPECT_FALSE((st.st_mode & S_ISVTX));
-    EXPECT_EQ(sizeof(buf), st.st_size);
+    EXPECT_EQ(static_cast<long>(sizeof(buf)),
+              st.st_size);
 
     setDisposable(sco);
 
@@ -171,7 +172,8 @@ TEST_F(CachedSCOTest, createAndUseOne)
                  &st);
     EXPECT_EQ(0, ret);
     EXPECT_TRUE((st.st_mode & S_ISVTX));
-    EXPECT_EQ(sizeof(buf), st.st_size);
+    EXPECT_EQ(static_cast<ssize_t>(sizeof(buf)),
+              st.st_size);
 
     int cnt = 1024;
     for (int i = 0; i < cnt; ++i)

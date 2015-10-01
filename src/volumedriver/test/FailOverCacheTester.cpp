@@ -597,7 +597,7 @@ TEST_P(FailOverCacheTester, TLogsAreRemoved)
 
                  EXPECT_NE(boost::none,
                            nspace_dir);
-                 EXPECT_EQ(2,
+                 EXPECT_EQ(2U,
                            count);
 
                  return *nspace_dir;

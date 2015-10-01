@@ -182,7 +182,7 @@ TEST_F(ClusterRegistryTest, node_states)
 
     const vfs::ClusterRegistry::NodeStatusMap
         status_map(cluster_registry_->get_node_status_map());
-    ASSERT_EQ(1, status_map.size());
+    ASSERT_EQ(1U, status_map.size());
     EXPECT_EQ(vfs::ClusterNodeStatus::State::Offline,
               status_map.begin()->second.state);
 

@@ -209,7 +209,7 @@ TEST_F(LockingTest, test1)
     EXPECT_TRUE(lock.owns_lock());
     EXPECT_NO_THROW(la.protected_call(&lock));
 
-    EXPECT_EQ(la.total_calls(), 4);
+    EXPECT_EQ(4U, la.total_calls());
 
 }
 
@@ -257,7 +257,7 @@ TEST_F(LockingTest, test2)
         EXPECT_NO_THROW(la.unlocking_call(&lock));
     }
 
-    EXPECT_EQ(la.total_calls(), 7);
+    EXPECT_EQ(7U, la.total_calls());
 
 }
 

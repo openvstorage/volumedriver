@@ -89,7 +89,7 @@ protected:
     {
         const mds::ServerConfigs scfgs(mgr.server_configs());
 
-        EXPECT_EQ(2,
+        EXPECT_EQ(2U,
                   scfgs.size());
 
         MDSNodeConfigs ncfgs;
@@ -515,7 +515,7 @@ protected:
                            boost::none,
                            snap2);
 
-        EXPECT_EQ(1, scrub_work.size());
+        EXPECT_EQ(1U, scrub_work.size());
 
         auto scrub_res_str(scrub(scrub_work[0]));
 
@@ -821,7 +821,7 @@ TEST_P(MDSVolumeTest, catch_up)
                                                   std::chrono::seconds(7200)));
 
     const mds::ServerConfigs scfgs(mds_manager->server_configs());
-    ASSERT_EQ(1,
+    ASSERT_EQ(1U,
               scfgs.size());
 
     mds::ClientNG::Ptr client(mds::ClientNG::create(scfgs[0].node_config));
@@ -837,10 +837,10 @@ TEST_P(MDSVolumeTest, catch_up)
     EXPECT_EQ(num_tlogs,
               table->catch_up(DryRun::F));
 
-    EXPECT_EQ(0,
+    EXPECT_EQ(0U,
               table->catch_up(DryRun::F));
 
-    EXPECT_EQ(0,
+    EXPECT_EQ(0U,
               table->catch_up(DryRun::T));
 
     EXPECT_TRUE(mds::Role::Slave == table->get_role());
@@ -864,10 +864,10 @@ TEST_P(MDSVolumeTest, catch_up)
 
     EXPECT_TRUE(mds::Role::Master == table->get_role());
 
-    EXPECT_EQ(0,
+    EXPECT_EQ(0U,
               table->catch_up(DryRun::F));
 
-    EXPECT_EQ(0,
+    EXPECT_EQ(0U,
               table->catch_up(DryRun::T));
 }
 
@@ -899,7 +899,7 @@ TEST_P(MDSVolumeTest, failover_monkey_business)
 
                    if (ncfgs[0] != scfg1.node_config)
                    {
-                       EXPECT_EQ(2,
+                       EXPECT_EQ(2U,
                                  ncfgs.size());
 
                        EXPECT_EQ(scfg1.node_config,
@@ -935,7 +935,7 @@ TEST_P(MDSVolumeTest, failover_monkey_business)
                LOG_INFO("monkey exiting after " << monkey_iterations <<
                         " iterations, " << failovers << " failovers");
 
-               EXPECT_LT(0,
+               EXPECT_LT(0U,
                          failovers);
            });
 
@@ -963,7 +963,7 @@ TEST_P(MDSVolumeTest, migration_monkey_business)
                    EXPECT_TRUE(mcfg != nullptr);
 
                    const auto& ncfgs(mcfg->node_configs());
-                   EXPECT_EQ(2, ncfgs.size());
+                   EXPECT_EQ(2U, ncfgs.size());
 
                    const std::vector<MDSNodeConfig> cfgs{ ncfgs[1],
                            ncfgs[0] };
@@ -1072,7 +1072,7 @@ TEST_P(MDSVolumeTest, futile_scrub)
                         boost::none,
                         snap2);
 
-    ASSERT_EQ(1, scrub_work.size());
+    ASSERT_EQ(1U, scrub_work.size());
 
     auto scrub_res_str(scrub(scrub_work[0],
                              0.0));
@@ -1234,7 +1234,7 @@ TEST_P(MDSVolumeTest, failover_performance)
                                       poll_secs);
 
     const MDSNodeConfigs ncfgs(node_configs());
-    ASSERT_EQ(2,
+    ASSERT_EQ(2U,
               ncfgs.size());
 
     const auto wrns(make_random_namespace());

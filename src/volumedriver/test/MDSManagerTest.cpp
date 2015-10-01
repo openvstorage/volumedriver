@@ -103,7 +103,7 @@ TEST_F(MDSManagerTest, start_twice)
     mds_manager_->start_one(scfg);
 
     mds::ServerConfigs scfgs(mds_manager_->server_configs());
-    ASSERT_EQ(1,
+    ASSERT_EQ(1U,
               scfgs.size());
 
     ASSERT_EQ(scfg,
@@ -113,7 +113,7 @@ TEST_F(MDSManagerTest, start_twice)
                  std::exception);
 
     scfgs = mds_manager_->server_configs();
-    ASSERT_EQ(1,
+    ASSERT_EQ(1U,
               scfgs.size());
 
     ASSERT_EQ(scfg,
@@ -141,7 +141,7 @@ TEST_F(MDSManagerTest, conflicting_configs)
                  std::exception);
 
     const mds::ServerConfigs scfgs(mds_manager_->server_configs());
-    ASSERT_EQ(1,
+    ASSERT_EQ(1U,
               scfgs.size());
 
     ASSERT_EQ(scfg,
@@ -235,7 +235,7 @@ TEST_F(MDSManagerTest, conflicting_ptree_updates)
 
     {
         const mds::ServerConfigs scfgs(mds_manager_->server_configs());
-        ASSERT_EQ(1,
+        ASSERT_EQ(1U,
                   scfgs.size());
         ASSERT_EQ(scfg,
                   scfgs[0]);

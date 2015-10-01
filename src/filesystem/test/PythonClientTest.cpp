@@ -301,7 +301,7 @@ TEST_F(PythonClientTest, volume_potential)
 {
     uint64_t res = 0;
     ASSERT_NO_THROW(res = client_.volume_potential(local_node_id()) );
-    EXPECT_LT(0, res);
+    EXPECT_LT(0U, res);
     EXPECT_EQ(res,
               fs_->object_router().local_volume_potential(boost::none,
                                                           boost::none));
@@ -389,11 +389,11 @@ TEST_F(PythonClientTest, performance_counters)
 
     auto expect_nothing([&](const vd::PerformanceCounter<uint64_t>& ctr)
     {
-        EXPECT_EQ(0,
+        EXPECT_EQ(0U,
                   ctr.events());
-        EXPECT_EQ(0,
+        EXPECT_EQ(0U,
                   ctr.sum());
-        EXPECT_EQ(0,
+        EXPECT_EQ(0U,
                   ctr.sum_of_squares());
         EXPECT_EQ(std::numeric_limits<uint64_t>::max(),
                   ctr.min());
@@ -420,7 +420,7 @@ TEST_F(PythonClientTest, performance_counters)
     {
         const vfs::XMLRPCStatistics stats(client_.statistics_volume(vname,
                                                                     true));
-        EXPECT_EQ(1,
+        EXPECT_EQ(1U,
                   stats.performance_counters.write_request_size.events());
         EXPECT_EQ(csize,
                   stats.performance_counters.write_request_size.sum());
@@ -428,7 +428,7 @@ TEST_F(PythonClientTest, performance_counters)
                   stats.performance_counters.write_request_size.sum_of_squares());
         EXPECT_GT(std::numeric_limits<uint64_t>::max(),
                   stats.performance_counters.write_request_size.min());
-        EXPECT_EQ(4096,
+        EXPECT_EQ(4096U,
                   stats.performance_counters.write_request_size.min());
         EXPECT_LT(std::numeric_limits<uint64_t>::min(),
                   stats.performance_counters.write_request_size.max());
@@ -775,7 +775,7 @@ TEST_F(PythonClientTest, prevent_orphaned_clones)
                         api::showSnapshots(static_cast<const vd::VolumeId>(pname),
                                            l);
 
-                        ASSERT_EQ(1, l.size());
+                        ASSERT_EQ(1U, l.size());
                         ASSERT_EQ(snap, l.front());
                     });
 
@@ -1149,8 +1149,8 @@ TEST_F(PythonClientTest, sync_ignore)
 
     uint64_t maximum_time_to_ignore_syncs_in_seconds = bpy::extract<uint64_t>(res[vfs::XMLRPCKeys::maximum_time_to_ignore_syncs_in_seconds]);
 
-    EXPECT_EQ(0, number_of_syncs_to_ignore);
-    EXPECT_EQ(0, maximum_time_to_ignore_syncs_in_seconds);
+    EXPECT_EQ(0U, number_of_syncs_to_ignore);
+    EXPECT_EQ(0U, maximum_time_to_ignore_syncs_in_seconds);
 
     const uint64_t number_of_syncs_to_ignore_c = 234;
     const uint64_t maximum_time_to_ignore_syncs_in_seconds_c = 3234;
@@ -1175,8 +1175,8 @@ TEST_F(PythonClientTest, sync_ignore)
     number_of_syncs_to_ignore = bpy::extract<uint64_t>(res[vfs::XMLRPCKeys::number_of_syncs_to_ignore]);
     maximum_time_to_ignore_syncs_in_seconds = bpy::extract<uint64_t>(res[vfs::XMLRPCKeys::maximum_time_to_ignore_syncs_in_seconds]);
 
-    EXPECT_EQ(0, number_of_syncs_to_ignore);
-    EXPECT_EQ(0, maximum_time_to_ignore_syncs_in_seconds);
+    EXPECT_EQ(0U, number_of_syncs_to_ignore);
+    EXPECT_EQ(0U, maximum_time_to_ignore_syncs_in_seconds);
 }
 
 TEST_F(PythonClientTest, sco_multiplier)
@@ -1185,7 +1185,7 @@ TEST_F(PythonClientTest, sco_multiplier)
     const std::string vname(create_file(vpath, 10 << 20));
 
     uint32_t sco_multiplier = client_.get_sco_multiplier(vname);
-    EXPECT_EQ(1024, sco_multiplier);
+    EXPECT_EQ(1024U, sco_multiplier);
 
     const uint32_t sco_multiplier_c = sco_multiplier + 1;
     client_.set_sco_multiplier(vname, sco_multiplier_c);
@@ -1217,7 +1217,7 @@ TEST_F(PythonClientTest, tlog_multiplier)
     ASSERT_NE(boost::none,
               tlog_multiplier);
 
-    EXPECT_EQ(1024,
+    EXPECT_EQ(1024U,
               *tlog_multiplier);
 
     client_.set_tlog_multiplier(vname,

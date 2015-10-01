@@ -59,16 +59,16 @@ TEST_F(ClusterCacheMapTest, test0)
 
     map.resize(0);
 
-    ASSERT_EQ(0, map.entries());
-    ASSERT_EQ(1, map.spine_size());
+    ASSERT_EQ(0U, map.entries());
+    ASSERT_EQ(1U, map.spine_size());
 
     const std::map<uint64_t, uint64_t>& stats = map.stats();
 
     for (const auto& val : stats)
     {
-        ASSERT_EQ(0,
+        ASSERT_EQ(0U,
                   val.first);
-        ASSERT_EQ(1,
+        ASSERT_EQ(1U,
                   val.second);
     }
 
@@ -86,8 +86,8 @@ TEST_F(ClusterCacheMapTest, test0)
         }
     }
 
-    ASSERT_EQ(1024, map.entries());
-    ASSERT_EQ(1, map.spine_size());
+    ASSERT_EQ(1024U, map.entries());
+    ASSERT_EQ(1U, map.spine_size());
 
     for (const auto& val : stats)
     {
@@ -116,14 +116,14 @@ TEST_F(ClusterCacheMapTest, test1)
 #endif
     std::vector<std::unique_ptr<ClusterCacheEntry>> entries;
 
-    ASSERT_EQ(0, map.entries());
+    ASSERT_EQ(0U, map.entries());
     ASSERT_EQ(size, map.spine_size());
 
     const std::map<uint64_t, uint64_t>& stats = map.stats();
 
     for (const auto& val : stats)
     {
-        ASSERT_EQ(0,
+        ASSERT_EQ(0U,
                   val.first);
         ASSERT_EQ(size,
                   val.second);
@@ -158,7 +158,7 @@ TEST_F(ClusterCacheMapTest, test1)
 #endif
     }
 
-    ASSERT_EQ(1024 * 1024,
+    ASSERT_EQ(1024U * 1024U,
               res);
 
 #ifdef PRINT_OUT
@@ -172,16 +172,16 @@ TEST_F(ClusterCacheMapTest, resize)
     ClusterCacheMapType map;
 
     map.resize(0);
-    ASSERT_EQ(0,
+    ASSERT_EQ(0U,
               map.entries());
-    ASSERT_EQ(1,
+    ASSERT_EQ(1U,
               map.spine_size());
 
     const size_t count = 4;
 
-    ASSERT_LT(0,
+    ASSERT_LT(0U,
               count);
-    ASSERT_EQ(0,
+    ASSERT_EQ(0U,
               count % 2);
 
     std::vector<std::unique_ptr<ClusterCacheEntry>> entries;

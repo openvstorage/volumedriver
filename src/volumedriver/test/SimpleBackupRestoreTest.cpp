@@ -342,7 +342,7 @@ TEST_P(SimpleBackupRestoreTest, rollback_to_previous_snap_if_snapshot_didnt_make
     checkVolume(v, 0, size, pattern);
     std::list<std::string> snaps;
     v->listSnapshots(snaps);
-    EXPECT_EQ(1, snaps.size());
+    EXPECT_EQ(1U, snaps.size());
     EXPECT_EQ(snap, snaps.front());
 }
 

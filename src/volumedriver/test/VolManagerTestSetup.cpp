@@ -134,7 +134,7 @@ void VolumeRandomIOThread::run()
                     {
                         for(uint8_t i : bufv_)
                         {
-                            ASSERT_EQ(i,0);
+                            ASSERT_EQ(i,0U);
                         }
                     }
 
@@ -260,8 +260,8 @@ VolumeCheckerThread::VolumeCheckerThread(Volume* v,
     , thread_(nullptr)
 {
     EXPECT_LE(block_size, read_size) << "Fix your test";
-    EXPECT_EQ(0, read_size_ % read_size) << "Fix your test";
-    EXPECT_EQ(0, buf_.size() % v_->getLBASize()) << "Fix your test";
+    EXPECT_EQ(0U, read_size_ % read_size) << "Fix your test";
+    EXPECT_EQ(0U, buf_.size() % v_->getLBASize()) << "Fix your test";
     EXPECT_FALSE(pattern_.empty()) << "Fix your test";
 
     for (size_t i = 0; i < buf_.size(); ++i)
@@ -1386,7 +1386,7 @@ VolManagerTestSetup::readVolume_(Volume* volume,
                                  const std::string* const pattern,
                                  unsigned retries)
 {
-    EXPECT_EQ(0, block_size % volume->getLBASize()) << "Fix your test";
+    EXPECT_EQ(0U, block_size % volume->getLBASize()) << "Fix your test";
     EXPECT_GE(volume->getSize(), lba * volume->getLBASize() + block_size)
         << "Fix your test";
 
@@ -1767,7 +1767,7 @@ VolManagerTestSetup::clearNamespaceRestarting(const Namespace& ns)
 {
     fungi::ScopedLock l(api::getManagementMutex());
     size_t res = VolManager::get()->restartMap_.erase(ns);
-    EXPECT_EQ(1, res);
+    EXPECT_EQ(1U, res);
 }
 
 void

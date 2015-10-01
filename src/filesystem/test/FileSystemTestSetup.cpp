@@ -388,7 +388,7 @@ FileSystemTestSetup::SetUp()
     mds_manager_ = mds_test_setup_->make_manager(cm_);
     const mds::ServerConfigs scfgs(mds_manager_->server_configs());
 
-    ASSERT_EQ(1,
+    ASSERT_EQ(1U,
               scfgs.size());
 
     mds_server_config_ = std::make_unique<mds::ServerConfig>(scfgs[0]);

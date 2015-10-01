@@ -84,7 +84,7 @@ TEST_F(VolumeConfigParametersTest, vanilla)
                   cfg.backend_type());
         const auto& mcfg(dynamic_cast<const vd::MDSMetaDataBackendConfig&>(cfg));
 
-        EXPECT_EQ(1, mcfg.node_configs().size());
+        EXPECT_EQ(1U, mcfg.node_configs().size());
         EXPECT_EQ(host, mcfg.node_configs()[0].address());
         EXPECT_EQ(port, mcfg.node_configs()[0].port());
     }

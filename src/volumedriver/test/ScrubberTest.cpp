@@ -155,7 +155,7 @@ TEST_P(ScrubberTest, DeletedSnap)
     waitForThisBackendWrite(v1);
     auto scrub_work_units = getScrubbingWork(vid);
 
-    ASSERT_EQ(scrub_work_units.size(), 1);
+    ASSERT_EQ(1U, scrub_work_units.size());
 
     v1->deleteSnapshot(snap1);
     persistXVals(v1->getName());
@@ -195,7 +195,7 @@ TEST_P(ScrubberTest, DeletedSnap2)
     waitForThisBackendWrite(v1);
     auto scrub_work_units = getScrubbingWork(vid);
 
-    ASSERT_EQ(scrub_work_units.size(), 1);
+    ASSERT_EQ(1U, scrub_work_units.size());
 
     ScrubberArgs args;
     persistXVals(v1->getName());
@@ -242,31 +242,31 @@ TEST_P(ScrubberTest, GetWork)
 
     {
         auto scrub_work_units = getScrubbingWork(vid);
-        ASSERT_EQ(scrub_work_units.size(), 0);
+        ASSERT_EQ(0U, scrub_work_units.size());
     }
 
     v1->createSnapshot("snap1");
     waitForThisBackendWrite(v1);
     {
-        auto scrub_work_units  = getScrubbingWork(vid);
-        ASSERT_EQ(scrub_work_units.size(), 1);
+        auto scrub_work_units = getScrubbingWork(vid);
+        ASSERT_EQ(1U, scrub_work_units.size());
         ScrubWork w(scrub_work_units.front());
         ASSERT_TRUE(w.backend_config_.get());
         EXPECT_TRUE(*(w.backend_config_.get()) == VolManager::get()->getBackendConfig());
         EXPECT_EQ(w.ns_, ns);
-        EXPECT_EQ(w.cluster_exponent_, 12);
-        EXPECT_EQ(w.sco_size_, 32);
+        EXPECT_EQ(12U, w.cluster_exponent_);
+        EXPECT_EQ(32U, w.sco_size_);
     }
-    auto scrub_work_units  = getScrubbingWork(vid);
+    auto scrub_work_units = getScrubbingWork(vid);
     {
-        auto scrub_work_units  = getScrubbingWork(vid);
-        ASSERT_EQ(scrub_work_units.size(), 1);
+        auto scrub_work_units = getScrubbingWork(vid);
+        ASSERT_EQ(1U, scrub_work_units.size());
         ScrubWork w(scrub_work_units.front());
         EXPECT_EQ(w.ns_, ns);
         ASSERT_TRUE(w.backend_config_.get());
         EXPECT_TRUE(*(w.backend_config_.get()) == VolManager::get()->getBackendConfig());
-        EXPECT_EQ(w.cluster_exponent_, 12);
-        EXPECT_EQ(w.sco_size_, 32);
+        EXPECT_EQ(12U, w.cluster_exponent_);
+        EXPECT_EQ(32U, w.sco_size_);
     }
 
     ScrubberArgs args;
@@ -282,15 +282,12 @@ TEST_P(ScrubberTest, GetWork)
 
     {
         auto scrub_work_units = getScrubbingWork(vid);
-        ASSERT_EQ(scrub_work_units.size(), 0);
+        ASSERT_EQ(0U, scrub_work_units.size());
     }
-
-
 
     destroyVolume(v1,
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::T);
-
 }
 
 TEST_P(ScrubberTest, GetWork2)
@@ -321,7 +318,7 @@ TEST_P(ScrubberTest, GetWork2)
 
     {
         auto scrub_work_units = getScrubbingWork(vid);
-        ASSERT_EQ(3, scrub_work_units.size());
+        ASSERT_EQ(3U, scrub_work_units.size());
         EXPECT_EQ(snapa, ScrubWork(scrub_work_units[0]).snapshot_name_);
         EXPECT_EQ(snapb, ScrubWork(scrub_work_units[1]).snapshot_name_);
         EXPECT_EQ(snapc, ScrubWork(scrub_work_units[2]).snapshot_name_);
@@ -331,7 +328,7 @@ TEST_P(ScrubberTest, GetWork2)
         auto scrub_work_units = getScrubbingWork(vid,
                                                  boost::none,
                                                  snapa);
-        ASSERT_EQ(1, scrub_work_units.size());
+        ASSERT_EQ(1U, scrub_work_units.size());
         EXPECT_EQ(snapa, ScrubWork(scrub_work_units[0]).snapshot_name_);
     }
 
@@ -340,7 +337,7 @@ TEST_P(ScrubberTest, GetWork2)
                                                  boost::none,
                                                  snapb);
 
-        ASSERT_EQ(2, scrub_work_units.size());
+        ASSERT_EQ(2U, scrub_work_units.size());
         EXPECT_EQ(snapa, ScrubWork(scrub_work_units[0]).snapshot_name_);
         EXPECT_EQ(snapb, ScrubWork(scrub_work_units[1]).snapshot_name_);
     }
@@ -350,7 +347,7 @@ TEST_P(ScrubberTest, GetWork2)
                                                  boost::none,
                                                  snapc);
 
-        ASSERT_EQ(3, scrub_work_units.size());
+        ASSERT_EQ(3U, scrub_work_units.size());
         EXPECT_EQ(snapa, ScrubWork(scrub_work_units[0]).snapshot_name_);
         EXPECT_EQ(snapb, ScrubWork(scrub_work_units[1]).snapshot_name_);
         EXPECT_EQ(snapc, ScrubWork(scrub_work_units[2]).snapshot_name_);
@@ -360,7 +357,7 @@ TEST_P(ScrubberTest, GetWork2)
         auto scrub_work_units = getScrubbingWork(vid,
                                                  snapa,
                                                  boost::none);
-        ASSERT_EQ(2, scrub_work_units.size());
+        ASSERT_EQ(2U, scrub_work_units.size());
         EXPECT_EQ(snapb, ScrubWork(scrub_work_units[0]).snapshot_name_);
         EXPECT_EQ(snapc, ScrubWork(scrub_work_units[1]).snapshot_name_);
 
@@ -370,7 +367,7 @@ TEST_P(ScrubberTest, GetWork2)
         auto scrub_work_units = getScrubbingWork(vid,
                                                  snapa,
                                                  snapb);
-        ASSERT_EQ(1, scrub_work_units.size());
+        ASSERT_EQ(1U, scrub_work_units.size());
         EXPECT_EQ(snapb, ScrubWork(scrub_work_units[0]).snapshot_name_);
     }
 
@@ -378,7 +375,7 @@ TEST_P(ScrubberTest, GetWork2)
         auto scrub_work_units = getScrubbingWork(vid,
                                                  snapa,
                                                  snapa);
-        ASSERT_EQ(0, scrub_work_units.size());
+        ASSERT_EQ(0U, scrub_work_units.size());
 
     }
 
@@ -433,13 +430,13 @@ TEST_P(ScrubberTest, Serialization)
 
     v1->createSnapshot("snap1");
     waitForThisBackendWrite(v1);
-    EXPECT_EQ( 2048 * 4096, v1->getSnapshotBackendSize("snap1"));
+    EXPECT_EQ(2048U * 4096U, v1->getSnapshotBackendSize("snap1"));
 
 
     persistXVals(v1->getName());
     waitForThisBackendWrite(v1);
     auto scrub_work_units  = getScrubbingWork(vid);
-    ASSERT_EQ(scrub_work_units.size(), 1);
+    ASSERT_EQ(1U, scrub_work_units.size());
     std::string scrub_result;
 
     ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
@@ -449,7 +446,7 @@ TEST_P(ScrubberTest, Serialization)
 
     checkVolume(v1, 0, 4096,what);
     checkVolume(v1,1 << 10, 4096, what + "-");
-    EXPECT_EQ( 8192, v1->getSnapshotBackendSize("snap1"));
+    EXPECT_EQ(8192U, v1->getSnapshotBackendSize("snap1"));
 }
 
 TEST_P(ScrubberTest, ScrubNothing)
@@ -465,7 +462,7 @@ TEST_P(ScrubberTest, ScrubNothing)
     v1->createSnapshot("snap1");
     waitForThisBackendWrite(v1);
     auto scrub_work_units  = getScrubbingWork(vid);
-    ASSERT_EQ(scrub_work_units.size(), 1);
+    ASSERT_EQ(1U, scrub_work_units.size());
 
 
     std::string scrub_result;
@@ -479,7 +476,7 @@ TEST_P(ScrubberTest, ScrubNothing)
     {
 
         auto scrub_work_units  = getScrubbingWork(vid);
-        ASSERT_EQ(scrub_work_units.size(), 0);
+        ASSERT_EQ(0U, scrub_work_units.size());
     }
 
     writeToVolume(v1, 0, 4096, "arner");
@@ -516,7 +513,7 @@ TEST_P(ScrubberTest, SimpleScrub2)
     waitForThisBackendWrite(v1);
 
     auto scrub_work_units  = getScrubbingWork(vid);
-    ASSERT_EQ(scrub_work_units.size(), 1);
+    ASSERT_EQ(1U, scrub_work_units.size());
     std::string scrub_result;
     ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
     ASSERT_NO_THROW(apply_scrubbing(vid,
@@ -553,8 +550,8 @@ TEST_P(ScrubberTest, SimpleScrub3)
     persistXVals(v1->getName());
     waitForThisBackendWrite(v1);
 
-    auto scrub_work_units  = getScrubbingWork(vid);
-    ASSERT_EQ(scrub_work_units.size(), 1);
+    auto scrub_work_units = getScrubbingWork(vid);
+    ASSERT_EQ(1U, scrub_work_units.size());
 
     std::string scrub_result;
 
@@ -602,7 +599,7 @@ TEST_P(ScrubberTest, SimpleScrub4)
     waitForThisBackendWrite(v1);
 
     auto scrub_work_units  = getScrubbingWork(vid);
-    ASSERT_EQ(scrub_work_units.size(), 1);
+    ASSERT_EQ(1U, scrub_work_units.size());
 
     std::string scrub_result;
     ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
@@ -644,7 +641,7 @@ TEST_P(ScrubberTest, SmallRegionScrub1)
     persistXVals(v1->getName());
     waitForThisBackendWrite(v1);
 
-    auto scrub_work_units  = getScrubbingWork(vid);
+    auto scrub_work_units = getScrubbingWork(vid);
 
     std::string scrub_result;
     ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
@@ -773,7 +770,7 @@ TEST_P(ScrubberTest, CloneScrubbin)
     persistXVals(c2->getName());
 
     auto scrub_work_units = getScrubbingWork(vid);
-    ASSERT_EQ(scrub_work_units.size(), 1);
+    ASSERT_EQ(1U, scrub_work_units.size());
 
     std::string scrub_result;
 
@@ -810,7 +807,7 @@ TEST_P(ScrubberTest, CloneScrubbin)
     check_consistency(*c2);
 
     scrub_work_units = getScrubbingWork(clone1);
-    ASSERT_EQ(scrub_work_units.size(), 1);
+    ASSERT_EQ(1U, scrub_work_units.size());
     ASSERT_TRUE(check_work_unit_snapshot_name(scrub_work_units[0], c1_snap1));
 
     ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
@@ -838,7 +835,7 @@ TEST_P(ScrubberTest, CloneScrubbin)
     check_consistency(*c2);
 
     scrub_work_units = getScrubbingWork(clone2);
-    ASSERT_EQ(scrub_work_units.size(), 1);
+    ASSERT_EQ(1U, scrub_work_units.size());
     ASSERT_TRUE(check_work_unit_snapshot_name(scrub_work_units[0], c2_snap1));
 
     ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
@@ -892,7 +889,7 @@ TEST_P(ScrubberTest, ApplyScrubTwice)
     VolumeConfig volume_config = v1->get_config();
 
     auto scrub_work_units  = getScrubbingWork(vid);
-    ASSERT_EQ(scrub_work_units.size(), 1);
+    ASSERT_EQ(1U, scrub_work_units.size());
     std::string scrub_result;
     ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
 
@@ -948,7 +945,7 @@ TEST_P(ScrubberTest, consistency)
 
     persistXVals(volume1);
     auto scrub_work_units  = getScrubbingWork(volume1);
-    ASSERT_EQ(scrub_work_units.size(), 1);
+    ASSERT_EQ(1U, scrub_work_units.size());
     ASSERT_TRUE(check_work_unit_snapshot_name(scrub_work_units[0], v1_snap1));
 
     std::string scrub_result;

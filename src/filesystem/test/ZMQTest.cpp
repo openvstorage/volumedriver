@@ -128,7 +128,7 @@ TEST_F(ZMQTest, DISABLED_inproc)
     const unsigned nclients = yt::System::get_env_with_default("ZMQTEST_CLIENT_THREADS",
                                                                1);
 
-    ASSERT_LT(0, nclients);
+    ASSERT_LT(0U, nclients);
 
     zmq::context_t ztx(0); // ::sysconf(_SC_NPROCESSORS_ONLN));
 
@@ -161,7 +161,7 @@ TEST_F(ZMQTest, DISABLED_inproc)
 
                           zmq::message_t delim;
                           router.recv(&delim);
-                          ASSERT_EQ(0, delim.size());
+                          ASSERT_EQ(0U, delim.size());
 
                           vfsprotocol::RequestType req_type;
                           vfs::ZUtils::deserialize_from_socket(router, req_type);
@@ -305,7 +305,7 @@ TEST_F(ZMQTest, no_echoes_from_the_past)
                  zmq::message_t delim;
                  router.recv(&delim);
 
-                 ASSERT_EQ(0, delim.size());
+                 ASSERT_EQ(0U, delim.size());
 
                  uint32_t n = 0;
                  vfs::ZUtils::deserialize_from_socket(router, n);
@@ -340,14 +340,14 @@ TEST_F(ZMQTest, no_echoes_from_the_past)
 
     fun();
 
-    ASSERT_EQ(1, count);
+    ASSERT_EQ(1U, count);
     vfs::ZUtils::serialize_to_socket(*zock, count, vfs::MoreMessageParts::F);
 
     fun();
 
     uint32_t n = 0;
     vfs::ZUtils::deserialize_from_socket(*zock, n);
-    EXPECT_EQ(2, n);
+    EXPECT_EQ(2U, n);
 }
 
 namespace
@@ -485,7 +485,7 @@ struct Worker
 
             zmq::message_t delim;
             zock.recv(&delim);
-            ASSERT_EQ(0, delim.size());
+            ASSERT_EQ(0U, delim.size());
 
             vfsprotocol::RequestType req_type;
             vfs::ZUtils::deserialize_from_socket(zock, req_type);
@@ -585,11 +585,11 @@ TEST_F(ZMQTest, DISABLED_inproc_shared_queue)
                                                             4096U);
     const unsigned nclients = yt::System::get_env_with_default("ZMQTEST_CLIENT_THREADS",
                                                                1);
-    ASSERT_LT(0, nclients);
+    ASSERT_LT(0U, nclients);
 
     const unsigned nworkers = yt::System::get_env_with_default("ZMQTEST_WORKER_THREADS",
                                                                1);
-    ASSERT_LT(0, nworkers);
+    ASSERT_LT(0U, nworkers);
 
     zmq::context_t ztx(0); // ::sysconf(_SC_NPROCESSORS_ONLN));
 
@@ -706,7 +706,7 @@ TEST_F(ZMQTest, DISABLED_elastic_worker_pool_based_on_dealer)
                                   zmq::message_t delim;
                                   router.recv(&delim);
 
-                                  EXPECT_EQ(0, delim.size());
+                                  EXPECT_EQ(0U, delim.size());
 
                                   ZEXPECT_MORE(router, "payload");
 

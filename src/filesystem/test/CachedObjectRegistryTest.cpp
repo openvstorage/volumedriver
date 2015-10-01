@@ -90,7 +90,7 @@ protected:
 
         for (const auto& v : voll)
         {
-            EXPECT_EQ(1, vols.erase(v)) << "volume id: " << v;
+            EXPECT_EQ(1U, vols.erase(v)) << "volume id: " << v;
         }
 
         EXPECT_TRUE(vols.empty());

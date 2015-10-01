@@ -358,7 +358,7 @@ public:
                                           rbuf.size(),
                                           i * rbuf.size());
 
-            EXPECT_EQ(rbuf.size(), r);
+            EXPECT_EQ(static_cast<ssize_t>(rbuf.size()), r);
             EXPECT_EQ(0, memcmp(&rbuf[0], &ref[0], rbuf.size()));
 
             verify_registration(*maybe_id, remote_node_id());
@@ -370,7 +370,7 @@ public:
                                       rbuf.size(),
                                       (rthresh - 1) * rbuf.size());
 
-        EXPECT_EQ(rbuf.size(), r);
+        EXPECT_EQ(static_cast<ssize_t>(rbuf.size()), r);
         EXPECT_EQ(0, memcmp(&rbuf[0], &ref[0], rbuf.size()));
 
         verify_registration(*maybe_id, local_node_id());
@@ -526,7 +526,7 @@ public:
         EXPECT_EQ(rpath, make_remote_file(fname, 0));
 
         check_stat(fname, 0);
-        EXPECT_EQ(0, fs::file_size(rpath));
+        EXPECT_EQ(0U, fs::file_size(rpath));
 
         {
             const auto maybe_id(find_object(fname));
@@ -783,7 +783,7 @@ TEST_F(RemoteTest, remote_temporarily_out_of_service)
 
     mount_remote();
 
-    EXPECT_EQ(pattern.size(),
+    EXPECT_EQ(static_cast<ssize_t>(pattern.size()),
               read(fname,
                    buf.data(),
                    buf.size(),
@@ -854,7 +854,7 @@ TEST_F(RemoteTest, remote_gone_and_offlined_after_a_while)
 
     yt::wall_timer w;
 
-    EXPECT_EQ(pattern.size(),
+    EXPECT_EQ(static_cast<ssize_t>(pattern.size()),
               read(fname,
                    buf.data(),
                    buf.size(),
@@ -943,10 +943,10 @@ TEST_F(RemoteTest, directory_listing)
         ++it;
     }
 
-    EXPECT_EQ(1, paths.erase(rparent)) << rparent << " not found";
-    EXPECT_EQ(1, paths.erase(rvolume)) << rvolume << " not found";
-    EXPECT_EQ(1, paths.erase(rfile)) << rfile << " not found";
-    EXPECT_EQ(1, paths.erase(rchild)) << rchild << " not found";
+    EXPECT_EQ(1U, paths.erase(rparent)) << rparent << " not found";
+    EXPECT_EQ(1U, paths.erase(rvolume)) << rvolume << " not found";
+    EXPECT_EQ(1U, paths.erase(rfile)) << rfile << " not found";
+    EXPECT_EQ(1U, paths.erase(rchild)) << rchild << " not found";
 
     EXPECT_TRUE(paths.empty());
 }
@@ -976,7 +976,7 @@ TEST_F(RemoteTest, locally_list_remote_volumes)
 
     for (const auto& v : voll)
     {
-        EXPECT_EQ(1, vols.erase(v));
+        EXPECT_EQ(1U, vols.erase(v));
     }
 
     EXPECT_TRUE(vols.empty());
@@ -1226,7 +1226,7 @@ TEST_F(RemoteTest, destruction)
     const std::string pfx("");
 
     std::shared_ptr<vfs::LockedArakoon> reg(new vfs::Registry(pt, RegisterComponent::F));
-    EXPECT_LT(0, reg->prefix(pfx).size());
+    EXPECT_LT(0U, reg->prefix(pfx).size());
 
     vfs::FileSystem::destroy(pt);
 
@@ -1237,7 +1237,7 @@ TEST_F(RemoteTest, destruction)
     EXPECT_FALSE(vbi->namespaceExists());
 
     const ara::value_list l(reg->prefix(pfx));
-    EXPECT_EQ(0, l.size());
+    EXPECT_EQ(0U, l.size());
 
     auto it = l.begin();
     ara::arakoon_buffer kbuf;
@@ -1336,7 +1336,7 @@ TEST_F(RemoteTest, volume_migrate_timeout)
                                       buf.data(),
                                       buf.size(),
                                       off);
-        EXPECT_EQ(buf.size(),
+        EXPECT_EQ(static_cast<ssize_t>(buf.size()),
                   r);
 
         const std::string s(buf.data(),
@@ -1457,7 +1457,7 @@ TEST_F(RemoteTest, auto_migration_without_foc)
                                       rbuf.size(),
                                       0);
 
-        EXPECT_EQ(rbuf.size(), r);
+        EXPECT_EQ(static_cast<ssize_t>(rbuf.size()), r);
         EXPECT_EQ(0, memcmp(rbuf.data(),
                             ref.data(),
                             ref.size()));

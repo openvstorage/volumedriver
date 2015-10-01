@@ -117,7 +117,7 @@ TEST_F(ObjectRegistryTest, destruction)
         object_registry_->register_file(oid);
     }
 
-    ASSERT_EQ(4, object_registry_->list().size());
+    ASSERT_EQ(4U, object_registry_->list().size());
 
     object_registry_->destroy();
 
@@ -254,7 +254,7 @@ TEST_F(ObjectRegistryTest, list_registrations)
 
     for (const auto& v : voll)
     {
-        EXPECT_EQ(1, vols.erase(v)) << "volume id: " << v;
+        EXPECT_EQ(1U, vols.erase(v)) << "volume id: " << v;
     }
 
     EXPECT_TRUE(vols.empty());

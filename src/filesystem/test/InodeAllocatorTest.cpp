@@ -41,13 +41,13 @@ TEST_F(InodeAllocatorTest, construction)
 {
     const vfs::ClusterId cluster_id("cluster");
 
-    ASSERT_EQ(0, registry_->prefix(std::string("")).size());
+    ASSERT_EQ(0U, registry_->prefix(std::string("")).size());
 
     vfs::InodeAllocator alloc(cluster_id,
                               registry_);
 
     const ara::value_list l(registry_->prefix(std::string("")));
-    EXPECT_EQ(1, l.size());
+    EXPECT_EQ(1U, l.size());
 
     auto it = l.begin();
     ara::arakoon_buffer kbuf;

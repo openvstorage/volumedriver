@@ -198,7 +198,7 @@ TEST_F(ContainerManagerTest, zero_sized)
 
         mgr.create(cid);
 
-        EXPECT_EQ(0,
+        EXPECT_EQ(0U,
                   mgr.size(cid));
     }
 
@@ -210,7 +210,7 @@ TEST_F(ContainerManagerTest, zero_sized)
 
     mgr.restart(cid);
 
-    EXPECT_EQ(0,
+    EXPECT_EQ(0U,
               mgr.size(cid));
 }
 
@@ -227,7 +227,7 @@ TEST_F(ContainerManagerTest, read_and_write_and_read)
 
     mgr.create(cid);
 
-    EXPECT_EQ(0, mgr.read(cid, 0, rbuf.data(), rbuf.size()));
+    EXPECT_EQ(0U, mgr.read(cid, 0, rbuf.data(), rbuf.size()));
 
     const std::vector<char> wbuf(rbuf.size(), 'q');
     const off_t off = 3;
@@ -237,8 +237,8 @@ TEST_F(ContainerManagerTest, read_and_write_and_read)
 
     EXPECT_EQ(wbuf.size() + off, mgr.size(cid));
 
-    ASSERT_LE(off, rbuf.size());
-    EXPECT_EQ(off, mgr.read(cid, 0, rbuf.data(), off));
+    ASSERT_LE(off, static_cast<off_t>(rbuf.size()));
+    EXPECT_EQ(off, static_cast<off_t>(mgr.read(cid, 0, rbuf.data(), off)));
 
     EXPECT_TRUE(memcmp(std::vector<char>(rbuf.size(), 0).data(),
                        rbuf.data(),
@@ -259,7 +259,7 @@ TEST_F(ContainerManagerTest, write_and_read_across_extents)
     const size_t wsize = fd::Extent::capacity();
     const off_t off = wsize / 2;
 
-    EXPECT_EQ(0, mgr.size(cid));
+    EXPECT_EQ(0U, mgr.size(cid));
 
     const std::vector<char> wbuf1(wsize / 2, 'X');
     const std::vector<char> wbuf2(wsize / 2, 'Y');
@@ -284,7 +284,7 @@ TEST_F(ContainerManagerTest, write_and_read_across_extents)
     EXPECT_EQ(rbuf.size(), mgr.read(cid, 2 * rbuf.size(), rbuf.data(), rbuf.size()));
     EXPECT_EQ(0, memcmp(wbuf2.data(), rbuf.data(), rbuf.size()));
 
-    EXPECT_EQ(0, mgr.read(cid, off + wsize, rbuf.data(), rbuf.size()));
+    EXPECT_EQ(0U, mgr.read(cid, off + wsize, rbuf.data(), rbuf.size()));
 }
 
 TEST_F(ContainerManagerTest, restart_container)
@@ -335,7 +335,7 @@ TEST_F(ContainerManagerTest, resize_container)
                });
 
     mgr.create(cid);
-    EXPECT_EQ(0, mgr.size(cid));
+    EXPECT_EQ(0U, mgr.size(cid));
 
     check(fd::Extent::capacity());
     check(fd::Extent::capacity() + 1);

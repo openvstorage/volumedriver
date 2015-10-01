@@ -215,7 +215,7 @@ public:
     void
     writeTest(bool with_foc)
     {
-        EXPECT_EQ(2, getMountPointList().size());
+        EXPECT_EQ(2U, getMountPointList().size());
 
         const std::string pattern("abcd");
         const size_t size = vol_->getClusterSize();
@@ -249,7 +249,7 @@ public:
                         2 * size,
                         pattern);
 
-            EXPECT_EQ(1, getMountPointList().size());
+            EXPECT_EQ(1U, getMountPointList().size());
 
             breakCurrentSCO();
 
@@ -270,11 +270,11 @@ public:
 
         if (with_foc)
         {
-            EXPECT_EQ(0, getMountPointList().size());
+            EXPECT_EQ(0U, getMountPointList().size());
         }
         else
         {
-            EXPECT_EQ(1, getMountPointList().size());
+            EXPECT_EQ(1U, getMountPointList().size());
         }
 
         EXPECT_TRUE(vol_->is_halted());
@@ -287,7 +287,7 @@ public:
              uint64_t size,
              SCONumber sco_to_break)
     {
-        EXPECT_EQ(2, getMountPointList().size());
+        EXPECT_EQ(2U, getMountPointList().size());
 
         std::unique_ptr<ScopedBackendBlocker> blocker;
         if (block)
@@ -336,7 +336,7 @@ public:
                         size,
                         pattern);
 
-            EXPECT_EQ(1, getMountPointList().size());
+            EXPECT_EQ(1U, getMountPointList().size());
 
             scocorrupter(sco_to_break);
 
@@ -346,7 +346,7 @@ public:
                                      pattern),
                          std::exception);
 
-            EXPECT_EQ(0, getMountPointList().size());
+            EXPECT_EQ(0U, getMountPointList().size());
 
             EXPECT_THROW(writeToVolume(vol_,
                                        0,
@@ -363,7 +363,7 @@ public:
                                      pattern),
                          std::exception);
 
-            EXPECT_EQ(1, getMountPointList().size());
+            EXPECT_EQ(1U, getMountPointList().size());
         }
 
         EXPECT_TRUE(vol_->is_halted());
@@ -372,7 +372,7 @@ public:
     void
     backendPutTest(bool with_foc)
     {
-        EXPECT_EQ(2, getMountPointList().size());
+        EXPECT_EQ(2U, getMountPointList().size());
 
         const size_t size = sco_size_ * 2 - lba_size_ * cluster_mult_;
 
@@ -397,13 +397,13 @@ public:
         SCOCache* cache = VolManager::get()->getSCOCache();
         cache->getSCONameList(volns_, scos, false);
 
-        EXPECT_EQ(2, scos.size());
-        EXPECT_LT(1,
+        EXPECT_EQ(2U, scos.size());
+        EXPECT_LT(1U,
                   vol_->getDataStore()->currentSCO_()->sco_ptr()->getSCO().number());
 
         scos.clear();
         cache->getSCONameList(volns_, scos, true);
-        EXPECT_EQ(0, scos.size());
+        EXPECT_EQ(0U, scos.size());
 
         ClusterLocation loc(1);
         SCOTruncater truncater(volns_);
@@ -415,12 +415,12 @@ public:
 
             waitForThisBackendWrite(vol_);
 
-            EXPECT_EQ(1, getMountPointList().size());
+            EXPECT_EQ(1U, getMountPointList().size());
 
             syncToBackend(vol_);
 
             cache->getSCONameList(volns_, scos, true);
-            EXPECT_EQ(2, scos.size());
+            EXPECT_EQ(2U, scos.size());
             EXPECT_TRUE(loc.sco() == scos.front() ||
                         loc.sco() == scos.back());
 
@@ -460,11 +460,11 @@ public:
 
         if (with_foc)
         {
-            EXPECT_EQ(0, getMountPointList().size());
+            EXPECT_EQ(0U, getMountPointList().size());
         }
         else
         {
-            EXPECT_EQ(1, getMountPointList().size());
+            EXPECT_EQ(1U, getMountPointList().size());
         }
 
         EXPECT_TRUE(vol_->is_halted());
@@ -473,7 +473,7 @@ public:
     void
     fetcherTest(bool with_foc)
     {
-        EXPECT_EQ(2, getMountPointList().size());
+        EXPECT_EQ(2U, getMountPointList().size());
 
         const std::string pattern("efgh");
         const size_t size = vol_->getClusterSize() * (vol_->getSCOMultiplier() + 1);
@@ -516,7 +516,7 @@ public:
                                     size,
                                     pattern));
 
-        EXPECT_EQ(1, getMountPointList().size());
+        EXPECT_EQ(1U, getMountPointList().size());
         ASSERT_NO_THROW(writeToVolume(vol_,
                                       size / vol_->getLBASize(),
                                       size,
@@ -535,7 +535,7 @@ public:
                                  pattern),
                      std::exception);
 
-        EXPECT_EQ(0, getMountPointList().size());
+        EXPECT_EQ(0U, getMountPointList().size());
 
         EXPECT_THROW(writeToVolume(vol_,
                                    0,
@@ -743,7 +743,7 @@ TEST_P(ErrorHandlingTest, cleanupError)
     //     "this test will fail if run with root permissions";
 
     size_t mp_count = getMountPointList().size();
-    EXPECT_EQ(2, mp_count);
+    EXPECT_EQ(2U, mp_count);
 
     const std::string pattern("wxyz");
     size_t size = 2 * mp_size_ - (2 * sco_size_);
@@ -778,7 +778,7 @@ TEST_P(ErrorHandlingTest, cleanupError)
 
     cache->cleanup();
 
-    EXPECT_EQ(1, getMountPointList().size());
+    EXPECT_EQ(1U, getMountPointList().size());
     EXPECT_TRUE(mp != getMountPointList().front());
 
     BOOST_FOREACH(SCO sconame, broken)
@@ -829,12 +829,12 @@ TEST_P(ErrorHandlingTest, cleanupError)
 
     scos.clear();
     cache->getSCONameList(volns_, scos, true);
-    EXPECT_EQ(0, scos.size());
+    EXPECT_EQ(0U, scos.size());
 
     cache->getSCONameList(volns_, scos, false);
-    EXPECT_EQ(0, scos.size());
+    EXPECT_EQ(0U, scos.size());
 
-    EXPECT_EQ(0, getMountPointList().size());
+    EXPECT_EQ(0U, getMountPointList().size());
 
     //    TODO("No joy here anymore with the partial_reads")
     // EXPECT_THROW(checkVolume(vol_,
@@ -907,7 +907,7 @@ TEST_P(ErrorHandlingTest, haltedVolume)
     std::list<std::string> snaps;
     vol_->listSnapshots(snaps);
 
-    ASSERT_EQ(1, snaps.size());
+    ASSERT_EQ(1U, snaps.size());
     ASSERT_EQ(snap1, snaps.front());
 
     ASSERT_THROW(vol_->restoreSnapshot(snap1),
@@ -927,11 +927,11 @@ TEST_P(ErrorHandlingTest, reportOfflineMountPoint)
     CachedSCOPtr sco = c->findSCO(volns_,
                                   loc.sco());
 
-    ASSERT_EQ(0, event_collector_->size());
+    ASSERT_EQ(0U, event_collector_->size());
 
     c->reportIOError(sco);
 
-    ASSERT_EQ(1, event_collector_->size());
+    ASSERT_EQ(1U, event_collector_->size());
 
     const boost::optional<events::Event> maybe_ev(event_collector_->pop());
     ASSERT_TRUE(boost::none != maybe_ev);

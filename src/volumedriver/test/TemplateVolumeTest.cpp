@@ -63,7 +63,7 @@ TEST_P(TemplateVolumeTest, forbidden_actions)
 
     std::list<std::string> snapshots;
     v->listSnapshots(snapshots);
-    ASSERT_EQ(1, snapshots.size());
+    ASSERT_EQ(1U, snapshots.size());
     EXPECT_THROW(v->deleteSnapshot(snapshots.front()),
                  VolumeIsTemplateException);
 
@@ -91,10 +91,9 @@ TEST_P(TemplateVolumeTest, set_template_no_data_no_snapshot)
 
     std::list<std::string> snapshots;
     v->listSnapshots(snapshots);
-    EXPECT_EQ(snapshots.size(), 1);
+    EXPECT_EQ(1U, snapshots.size());
 
     checkVolume(v, 0, 4096, std::string(1, 0));
-
 }
 
 TEST_P(TemplateVolumeTest, idempotency)
@@ -155,7 +154,7 @@ TEST_P(TemplateVolumeTest, set_template_data_no_snapshot)
 
     std::list<std::string> snapshots;
     v->listSnapshots(snapshots);
-    EXPECT_EQ(snapshots.size(), 1);
+    EXPECT_EQ(1U, snapshots.size());
     checkVolume(v, 0, 4096, "blah");
 }
 
@@ -188,7 +187,7 @@ TEST_P(TemplateVolumeTest, set_template_with_last_snapshot)
 
     std::list<std::string> snapshots;
     v->listSnapshots(snapshots);
-    EXPECT_EQ(snapshots.size(), 1);
+    EXPECT_EQ(1U, snapshots.size());
     EXPECT_EQ(snapshots.front(), second_snap);
 
     checkVolume(v, 0, 4096, "blah2");
@@ -233,7 +232,7 @@ TEST_P(TemplateVolumeTest, set_template_with_data_beyond_last_snapshot)
 
     std::list<std::string> snapshots;
     v->listSnapshots(snapshots);
-    EXPECT_EQ(snapshots.size(),1);
+    EXPECT_EQ(1U, snapshots.size());
     EXPECT_NE(snapshots.front(), first_snap);
     EXPECT_NE(snapshots.front(), second_snap);
     EXPECT_NE(snapshots.front(), third_snap);
@@ -480,7 +479,7 @@ TEST_P(TemplateVolumeTest, return_of_the_zombie_snapshots)
     {
         std::list<std::string> snapshots;
         v->listSnapshots(snapshots);
-        EXPECT_EQ(2, snapshots.size());
+        EXPECT_EQ(2U, snapshots.size());
     }
 
     EXPECT_NO_THROW(set_as_template(vid1));
@@ -488,7 +487,7 @@ TEST_P(TemplateVolumeTest, return_of_the_zombie_snapshots)
     {
         std::list<std::string> snapshots;
         v->listSnapshots(snapshots);
-        EXPECT_EQ(1, snapshots.size());
+        EXPECT_EQ(1U, snapshots.size());
         EXPECT_EQ(last_snap, snapshots.front());
     }
 
@@ -515,7 +514,7 @@ TEST_P(TemplateVolumeTest, return_of_the_zombie_snapshots)
     {
         std::list<std::string> snapshots;
         v->listSnapshots(snapshots);
-        EXPECT_EQ(1, snapshots.size());
+        EXPECT_EQ(1U, snapshots.size());
         EXPECT_EQ(last_snap, snapshots.front());
     }
 }
