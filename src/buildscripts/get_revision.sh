@@ -2,7 +2,7 @@
 
 function get_revision() {
     pushd $1 > /dev/null
-    local extra=`hg id -i`
+    local extra=`git describe --always --dirty`
     popd > /dev/null
     echo "$extra"
 }
