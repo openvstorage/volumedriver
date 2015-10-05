@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS=-I ../m4
-lib_LTLIBRARIES=libxmlrpc.la
+noinst_LTLIBRARIES=libxmlrpc.la
 
 libxmlrpc_la_CXXFLAGS=$(BUILDTOOLS_CFLAGS)
 libxmlrpc_la_CPPFLAGS=-I@abs_top_srcdir@/..
