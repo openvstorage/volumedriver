@@ -1,8 +1,8 @@
 Open vStorage VolumeDriver
 ==========================
-The Open vStorage Volumedriver is the core of the Open vStorage solution: a high performance distributed block layer. It is the technology that converts block storage into object (Storage Container Objects) which can be stored on the different supported backends. To minimize the latency and boost the performance, it offers read and write acceleration on SSDs or PCI-e flash cards. 
+The Open vStorage Volumedriver is the core of the Open vStorage solution: a high performance distributed block layer. It is the technology that converts block storage into object (Storage Container Objects) which can be stored on the different supported backends. To minimize the latency and boost the performance, it offers read and write acceleration on SSDs or PCI-e flash cards.
 
-The Volumedriver implements functionality such as zero-copy snapshots, thin-cloning, scrubbing of data out of the retention, thin provisioning and a distributed transaction log. 
+The Volumedriver implements functionality such as zero-copy snapshots, thin-cloning, scrubbing of data out of the retention, thin provisioning and a distributed transaction log.
 
 The Volumedriver currently supports KVM (.raw) and VMware (.vmdk) as hypervisor.
 
@@ -60,7 +60,7 @@ correctly. By way of example:
     export BUILD_NUM_PROCESSES=2
     export BUILD_DEBIAN_PACKAGES=${BUILD_DEBIAN_PACKAGES:-no}
     export CLEAN_BUILD=${CLEAN_BUILD:-"no"}
-    export CXX_WARNINGS="-Wall -Wextra -Wno-unknown-pragmas -Wctor-dtor-privacy -Wsign-promo -Woverloaded-virtual -Wnon-virtual-dtor"
+    export CXX_WARNINGS="-Wall -Wextra -Wno-unknown-pragmas -Wsign-promo -Woverloaded-virtual -Wnon-virtual-dtor"
     export SUPPRESS_WARNINGS=no
 
     mkdir -p ${BUILD_DIR}
