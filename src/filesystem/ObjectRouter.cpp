@@ -1486,41 +1486,6 @@ ObjectRouter::checkConfig(const bpt::ptree& pt,
     return result;
 }
 
-namespace
-{
-
-bool
-foc_off()
-{
-    static const unsigned foc_off = yt::System::get_env_with_default("FOC_OFF",
-                                                                     0U);
-    return foc_off;
-}
-
-boost::optional<vd::FailOverCacheConfig>
-foc_config()
-{
-    static const std::string
-        foc_host(yt::System::get_env_with_default("FOC_HOST",
-                                                  std::string()));
-    static const unsigned
-        foc_port = yt::System::get_env_with_default("FOC_PORT",
-                                                    0);
-
-    if (not foc_host.empty() and
-        foc_port != 0)
-    {
-        return vd::FailOverCacheConfig(foc_host,
-                                       foc_port);
-    }
-    else
-    {
-        return boost::none;
-    }
-}
-
-}
-
 boost::optional<vd::FailOverCacheConfig>
 ObjectRouter::failoverconfig_as_it_should_be() const
 {
