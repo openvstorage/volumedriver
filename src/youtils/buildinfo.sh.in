@@ -12,7 +12,7 @@ fi
 
 BUILD_TIME=`LANG=C date -u`
 
-cat <<EOF > @abs_top_srcdir@/BuildInfo.cpp
+cat <<EOF > @abs_top_builddir@/BuildInfo.cpp
 #include "BuildInfo.h"
 
 const char* BuildInfo::revision = "$REVISION";
