@@ -191,11 +191,11 @@ protected:
 
     void
     check_foc_state(const std::string& vname,
-                    const vd::VolumeFailoverState state)
+                    const vd::VolumeFailOverState state)
     {
         const vfs::XMLRPCVolumeInfo info(client_.info_volume(vname));
         EXPECT_EQ(state,
-                  boost::lexical_cast<vd::VolumeFailoverState>(info.failover_mode));
+                  boost::lexical_cast<vd::VolumeFailOverState>(info.failover_mode));
     }
 
     vd::FailOverCacheConfig
@@ -373,7 +373,7 @@ TEST_F(PythonClientTest, volume_queries)
     vfs::XMLRPCVolumeInfo vol_info;
     EXPECT_NO_THROW(vol_info = client_.info_volume(vname));
 
-    EXPECT_EQ(vd::volumeFailoverStateToString(vd::VolumeFailoverState::OK_SYNC),
+    EXPECT_EQ(vd::volumeFailoverStateToString(vd::VolumeFailOverState::OK_SYNC),
               vol_info.failover_mode);
 
     vfs::XMLRPCStatistics vol_statistics;
@@ -1488,7 +1488,7 @@ TEST_F(PythonClientTest, failovercache_config)
     const vd::FailOverCacheConfig cfg1(check_initial_foc_config(vname));
 
     check_foc_state(vname,
-                    vd::VolumeFailoverState::OK_SYNC);
+                    vd::VolumeFailOverState::OK_SYNC);
 
     client_.set_manual_failover_cache_config(vname,
                                              boost::none);
@@ -1497,7 +1497,7 @@ TEST_F(PythonClientTest, failovercache_config)
                      boost::none);
 
     check_foc_state(vname,
-                    vd::VolumeFailoverState::OK_STANDALONE);
+                    vd::VolumeFailOverState::OK_STANDALONE);
 
     const vd::FailOverCacheConfig cfg2(local_config().host,
                                        local_config().failovercache_port);
@@ -1513,7 +1513,7 @@ TEST_F(PythonClientTest, failovercache_config)
                      cfg2);
 
     check_foc_state(vname,
-                    vd::VolumeFailoverState::OK_SYNC);
+                    vd::VolumeFailOverState::OK_SYNC);
 
     const vd::FailOverCacheConfig cfg3("somewhereoutthere"s,
                                        local_config().failovercache_port);
@@ -1526,7 +1526,7 @@ TEST_F(PythonClientTest, failovercache_config)
                      cfg3);
 
     check_foc_state(vname,
-                    vd::VolumeFailoverState::DEGRADED);
+                    vd::VolumeFailOverState::DEGRADED);
 
     client_.set_automatic_failover_cache_config(vname);
 
@@ -1535,7 +1535,7 @@ TEST_F(PythonClientTest, failovercache_config)
                      cfg1);
 
     check_foc_state(vname,
-                    vd::VolumeFailoverState::OK_SYNC);
+                    vd::VolumeFailOverState::OK_SYNC);
 }
 
 

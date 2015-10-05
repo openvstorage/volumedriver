@@ -578,19 +578,19 @@ public:
     check_foc_state(const vfs::ObjectId& id,
                     const vfs::FailOverCacheConfigMode exp_mode,
                     const boost::optional<vd::FailOverCacheConfig>& exp_config,
-                    const vd::VolumeFailoverState exp_state)
+                    const vd::VolumeFailOverState exp_state)
     {
         EXPECT_EQ(exp_mode,
                   client_.get_failover_cache_config_mode(id.str()));
         EXPECT_EQ(exp_config,
                   client_.get_failover_cache_config(id.str()));
         EXPECT_EQ(exp_state,
-                  boost::lexical_cast<vd::VolumeFailoverState>(client_.info_volume(id.str()).failover_mode));
+                  boost::lexical_cast<vd::VolumeFailOverState>(client_.info_volume(id.str()).failover_mode));
     }
 
     void
     test_migration_and_manual_foc_config(const boost::optional<vd::FailOverCacheConfig>& manual_cfg,
-                                         const vd::VolumeFailoverState state)
+                                         const vd::VolumeFailOverState state)
     {
         const uint64_t vsize = 1ULL << 20;
 
@@ -1118,17 +1118,17 @@ TEST_F(RemoteTest, focced)
     {
         EXPECT_EQ(remote_config().failovercache_port, local_info.failover_port);
         std::stringstream ss(local_info.failover_mode);
-        vd::VolumeFailoverState st;
+        vd::VolumeFailOverState st;
         ss >> st;
-        EXPECT_EQ(vd::VolumeFailoverState::OK_SYNC, st);
+        EXPECT_EQ(vd::VolumeFailOverState::OK_SYNC, st);
     }
 
     {
         EXPECT_EQ(local_config().failovercache_port, remote_info.failover_port);
         std::stringstream ss(remote_info.failover_mode);
-        vd::VolumeFailoverState st;
+        vd::VolumeFailOverState st;
         ss >> st;
-        EXPECT_EQ(vd::VolumeFailoverState::OK_SYNC, st);
+        EXPECT_EQ(vd::VolumeFailOverState::OK_SYNC, st);
     }
 }
 

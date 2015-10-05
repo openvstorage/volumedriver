@@ -92,8 +92,8 @@ class Volume
     friend void backend_task::WriteTLog::run(int);
 
 public:
-    VolumeFailoverState
-    getVolumeFailoverState() const
+    VolumeFailOverState
+    getVolumeFailOverState() const
     {
         return failoverstate_;
     }
@@ -517,7 +517,7 @@ private:
     mutable fungi::SpinLock config_lock_;
 
     void
-    setVolumeFailoverState(const VolumeFailoverState instate)
+    setVolumeFailOverState(const VolumeFailOverState instate)
     {
         failoverstate_ = instate;
         //std::swap(instate, failoverstate_);
@@ -561,7 +561,7 @@ private:
 
     NSIDMap nsidmap_;
 
-    VolumeFailoverState failoverstate_;
+    VolumeFailOverState failoverstate_;
     std::string last_tlog_not_on_failover_;
 
     std::atomic<uint64_t> readcounter_;

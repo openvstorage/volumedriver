@@ -625,11 +625,11 @@ api::getVolumeSCOCacheInfo(const backend::Namespace ns)
     return VolManager::get()->getSCOCache()->getNamespaceInfo(ns);
 }
 
-vd::VolumeFailoverState
+vd::VolumeFailOverState
 api::getFailOverMode(const vd::VolumeId& volName)
 {
     Volume* v = VolManager::get()->findVolume_(volName);
-    return v->getVolumeFailoverState();
+    return v->getVolumeFailOverState();
 }
 
 boost::optional<vd::FailOverCacheConfig>

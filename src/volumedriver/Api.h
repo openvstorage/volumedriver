@@ -329,7 +329,7 @@ public:
     static volumedriver::ClusterCacheVolumeInfo
     getClusterCacheVolumeInfo(const volumedriver::VolumeId& volName);
 
-    static volumedriver::VolumeFailoverState
+    static volumedriver::VolumeFailOverState
     getFailOverMode(const volumedriver::VolumeId&);
 
     static void

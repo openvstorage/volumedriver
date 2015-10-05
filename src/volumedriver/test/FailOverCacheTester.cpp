@@ -269,7 +269,7 @@ TEST_P(FailOverCacheTester, CacheServerHasNoMemory)
         v->setFailOverCacheConfig(foc_ctx->config());
 
 
-        ASSERT_TRUE(v->getVolumeFailoverState() == VolumeFailoverState::OK_SYNC);
+        ASSERT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::OK_SYNC);
 
         const std::string tlogname = v->getSnapshotManagement().getCurrentTLogName();
 
@@ -285,7 +285,7 @@ TEST_P(FailOverCacheTester, CacheServerHasNoMemory)
         check_num_entries(*v, numClusters);
     }
 
-    ASSERT_TRUE(v->getVolumeFailoverState() == VolumeFailoverState::DEGRADED);
+    ASSERT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::DEGRADED);
 
     {
         auto foc_ctx(start_one_foc());
@@ -492,7 +492,7 @@ TEST_P(FailOverCacheTester, resetToOther)
     {
         writeToVolume(v, i * 4096, 4096, "bdv");
     }
-    EXPECT_TRUE(v->getVolumeFailoverState() == VolumeFailoverState::OK_STANDALONE);
+    EXPECT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::OK_STANDALONE);
 
     EXPECT_NO_THROW(v->setFailOverCacheConfig(foc_ctx1->config()));
 
@@ -500,17 +500,17 @@ TEST_P(FailOverCacheTester, resetToOther)
 
     EXPECT_NO_THROW(v->setFailOverCacheConfig(foc_ctx1->config()));
 
-    EXPECT_TRUE(v->getVolumeFailoverState() == VolumeFailoverState::KETCHUP or
-                v->getVolumeFailoverState() == VolumeFailoverState::OK_SYNC);
+    EXPECT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::KETCHUP or
+                v->getVolumeFailOverState() == VolumeFailOverState::OK_SYNC);
 
     for(unsigned i = 0; i < 10; ++i)
     {
-        if(v->getVolumeFailoverState() == VolumeFailoverState::OK_SYNC)
+        if(v->getVolumeFailOverState() == VolumeFailOverState::OK_SYNC)
             break;
         sleep(1);
     }
 
-    EXPECT_TRUE(v->getVolumeFailoverState() == VolumeFailoverState::OK_SYNC);
+    EXPECT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::OK_SYNC);
 
     for(unsigned i = 0; i < entries; i++)
     {
@@ -532,12 +532,12 @@ TEST_P(FailOverCacheTester, AutoRecoveries)
                                                          port)),
                  fungi::IOException);
 
-    ASSERT_TRUE(v->getVolumeFailoverState() == VolumeFailoverState::DEGRADED);
+    ASSERT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::DEGRADED);
     auto foc_ctx(start_one_foc());
     ASSERT_TRUE(port == foc_ctx->port());
 
     sleep(2* failovercache_check_interval_in_seconds_);
-    ASSERT_TRUE(v->getVolumeFailoverState() == VolumeFailoverState::OK_SYNC);
+    ASSERT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::OK_SYNC);
 
 }
 
@@ -701,7 +701,7 @@ TEST_P(FailOverCacheTester, DISABLED_tarpit)
     waitForThisBackendWrite(v);
     waitForThisBackendWrite(v);
 
-    EXPECT_EQ(VolumeInterface::VolumeState::DEGRADED, v->getVolumeFailoverState());
+    EXPECT_EQ(VolumeInterface::VolumeState::DEGRADED, v->getVolumeFailOverState());
 
     Volume* c = createClone("clone",
                             "cloneNamespace",

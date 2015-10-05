@@ -18,7 +18,7 @@
 #include "PerformanceCounters.h"
 #include "SCO.h"
 #include "Types.h"
-#include "VolumeFailoverState.h"
+#include "VolumeFailOverState.h"
 
 #include <string>
 
@@ -51,8 +51,8 @@ public:
     virtual VolumeInterface*
     getVolumeInterface() = 0;
 
-    // virtual VolumeFailoverState
-    // setVolumeFailoverState(VolumeFailoverState) = 0;
+    // virtual VolumeFailOverState
+    // setVolumeFailOverState(VolumeFailOverState) = 0;
 
     virtual const VolumeId
     getName() const = 0;
@@ -96,8 +96,8 @@ public:
     virtual FailOverCacheBridge*
     getFailOver() = 0;
 
-    // virtual VolumeFailoverState
-    // getVolumeFailoverState() const = 0;
+    // virtual VolumeFailOverState
+    // getVolumeFailOverState() const = 0;
 
     virtual void
     removeUpToFromFailOverCache(const SCO sconame) = 0;
