@@ -620,7 +620,7 @@ FileSystem::releasedir(const FrontendPath& path,
 }
 
 std::unique_ptr<vd::MetaDataBackendConfig>
-FileSystem::make_metadata_backend_config_()
+FileSystem::make_metadata_backend_config()
 {
     LOCK_CONFIG();
 
@@ -671,7 +671,7 @@ FileSystem::do_mknod(const FrontendPath& path,
     vd::VolumeConfig::MetaDataBackendConfigPtr mdb;
     if (is_volume)
     {
-        mdb = make_metadata_backend_config_();
+        mdb = make_metadata_backend_config();
     }
 
     DirectoryEntryPtr
@@ -1324,7 +1324,7 @@ FileSystem::vaai_copy(const FrontendPath& src_path,
             }
             using MaybeObjectId = boost::optional<ObjectId>;
 
-            vd::VolumeConfig::MetaDataBackendConfigPtr mdb_config(make_metadata_backend_config_());
+            vd::VolumeConfig::MetaDataBackendConfigPtr mdb_config(make_metadata_backend_config());
             router_.vaai_copy(src_dentry->object_id(),
                               dst_dentry ?
                               MaybeObjectId(dst_dentry->object_id()) :

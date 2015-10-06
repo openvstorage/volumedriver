@@ -494,6 +494,8 @@ public:
     void
     drop_from_cache(const FrontendPath&);
 
+    std::unique_ptr<volumedriver::MetaDataBackendConfig>
+    make_metadata_backend_config();
 private:
     DECLARE_LOGGER("FileSystem");
 
@@ -584,9 +586,6 @@ private:
     volumedriver::VolumeId
     create_volume_or_clone_(const FrontendPath&,
                             CreateVolumeOrCloneFun&&);
-
-    std::unique_ptr<volumedriver::MetaDataBackendConfig>
-    make_metadata_backend_config_();
 
     template<typename ...A>
     void
