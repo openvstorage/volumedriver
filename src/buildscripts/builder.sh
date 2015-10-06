@@ -127,6 +127,9 @@ LIBS="-lrdmacm ${LIBS}"
 CFLAGS=${CFLAGS:-"-ggdb3 -gdwarf-3 -O0 -Wall"}
 CFLAGS="${CFLAGS} -fPIC"
 
+CPPFLAGS=${CPPFLAGS:-""}
+CPPFLAGS="${CPPFLAGS} -isystem ${BUILDTOOLS}/include"
+
 CXX_INCLUDES=${CXX_INCLUDES:-""}
 CXX_WARNINGS=${CXX_WARNINGS:-"-Wall -Wextra -Wno-unknown-pragmas -Wctor-dtor-privacy -Wsign-promo -Woverloaded-virtual -Wnon-virtual-dtor"}
 CXX_SETTINGS=${CXX_SETTINGS:-"-std=gnu++14 -fPIC"}
@@ -237,6 +240,7 @@ function configure_build {
 	CC=${CC?} \
 	CPP=${CPP} \
 	CFLAGS=${CFLAGS?} \
+	CPPFLAGS=${CPPFLAGS?} \
 	CXXFLAGS=${CXXFLAGS?} \
 	LDFLAGS=${LDFLAGS} \
 	LIBS=${LIBS} \
