@@ -232,10 +232,8 @@ function configure_build {
     pushd ${BUILD_DIR_NAME?}
     mkdir -p ${SCAN_BUILD_DIR_NAME?}
     autoreconf -isv ${SOURCE_DIR?}
-    VD_MAJOR_VERSION=`cat ${SOURCE_DIR}/major.txt`
-    VD_MINOR_VERSION=`cat ${SOURCE_DIR}/minor.txt`
-    VD_PATCH_VERSION=`cat ${SOURCE_DIR}/patch.txt`
-    echo "VD_MAJOR_VERSION : $VD_MAJOR_VERSION"
+    VD_VERSION_STR=$(git describe --abbrev=0)
+    VD_VERSION=(${VD_VERSION_STR//./ })
     CXX=${CXX?} \
 	CC=${CC?} \
 	CPP=${CPP} \
@@ -244,9 +242,9 @@ function configure_build {
 	CXXFLAGS=${CXXFLAGS?} \
 	LDFLAGS=${LDFLAGS} \
 	LIBS=${LIBS} \
-	VD_MAJOR_VERSION=${VD_MAJOR_VERSION} \
-	VD_MINOR_VERSION=${VD_MINOR_VERSION} \
-	VD_PATCH_VERSION=${VD_PATCH_VERSION} \
+	VD_MAJOR_VERSION=${VD_VERSION[0]} \
+	VD_MINOR_VERSION=${VD_VERSION[1]} \
+	VD_PATCH_VERSION=${VD_VERSION[2]} \
 	VD_EXTRA_VERSION=${VD_EXTRA_VERSION?} \
 	${SCAN_BUILD_CMDLINE} \
 	${SOURCE_DIR}/configure \
