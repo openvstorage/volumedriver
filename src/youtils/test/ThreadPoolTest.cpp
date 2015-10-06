@@ -1053,25 +1053,31 @@ TEST_F(TestThreadPool,fairness3)
     sleep(1);
     m.unlock();
 
-    for(int i =0 ;i < 10000;i++)
+    auto check([&](int i, int j)
+               {
+                   EXPECT_LT(abs(static_cast<int>(tp.getNumberOfTasks(i)) - static_cast<int>(tp.getNumberOfTasks(j))),
+                             20);
+               });
+
+    for(int i = 0; i < 10000; i++)
     {
         tp.addTask(new TestTask(i,2,2));
         tp.addTask(new TestTask(i,1,0));
         tp.addTask(new TestTask(i,3,1));
         if(not i%30)
         {
-            EXPECT_TRUE( abs(tp.getNumberOfTasks(0) - tp.getNumberOfTasks(1)) < 20);
-            EXPECT_TRUE( abs(tp.getNumberOfTasks(0) - tp.getNumberOfTasks(2)) < 20);
-            EXPECT_TRUE( abs(tp.getNumberOfTasks(1) - tp.getNumberOfTasks(2)) < 20);
+            check(0, 1);
+            check(0, 2);
+            check(1, 2);
         }
     }
 
     sleep(20);
-    EXPECT_TRUE( abs(tp.getNumberOfTasks(0) - tp.getNumberOfTasks(1)) < 20);
-    EXPECT_TRUE( abs(tp.getNumberOfTasks(0) - tp.getNumberOfTasks(2)) < 20);
-    EXPECT_TRUE( abs(tp.getNumberOfTasks(1) - tp.getNumberOfTasks(2)) < 20);
-}
 
+    check(0, 1);
+    check(0, 2);
+    check(1, 2);
+}
 
 TEST_F(TestThreadPool, barriertest1)
 {
@@ -1086,7 +1092,6 @@ TEST_F(TestThreadPool, barriertest1)
     Test1Task* t4 = new Test1Task(ba5,ba4,4,s1);
     ThisThreadPoolType tp(4);
 
-
     tp.addTask(t1);
     s1.wait();
     tp.addTask(t2);
@@ -1095,7 +1100,6 @@ TEST_F(TestThreadPool, barriertest1)
     s1.wait();
     tp.addTask(t4);
     s1.wait();
-
 
     while (Test1Task::endorder.size() < 4)
     {

@@ -263,7 +263,7 @@ TEST_F(ArakoonTest, test_value_list)
 {
     value_list v_list;
     ASSERT_TRUE(v_list.get());
-    ASSERT_EQ(0, v_list.size());
+    ASSERT_EQ(0UL, v_list.size());
     const void* v_p = v_list.get();
 
 
@@ -271,19 +271,19 @@ TEST_F(ArakoonTest, test_value_list)
 
     v_list.add(string_value);
 
-    ASSERT_EQ(1,v_list.size());
+    ASSERT_EQ(1UL, v_list.size());
 
     value_list v_list2(std::move(v_list));
 
     ASSERT_FALSE(v_list.get());
     ASSERT_TRUE(v_list2.get());
-    ASSERT_EQ(1,v_list2.size());
+    ASSERT_EQ(1UL, v_list2.size());
     ASSERT_EQ(v_p, v_list2.get());
 
     std::vector<uint8_t> vector_value(20, 'a');
 
     v_list2.add(vector_value);
-    ASSERT_EQ(2,v_list2.size());
+    ASSERT_EQ(2UL, v_list2.size());
 
     value_list::iterator it(v_list2.begin());
     arakoon_buffer b;
@@ -527,7 +527,7 @@ TEST_F(ArakoonTest, sequence_api)
                                                         None(),
                                                         false,
                                                         40));
-        ASSERT_EQ(20, kvlist_1.size());
+        ASSERT_EQ(20UL, kvlist_1.size());
         arakoon_buffer key;
         arakoon_buffer value;
         key_value_list::iterator it(kvlist_1.begin());
@@ -539,8 +539,8 @@ TEST_F(ArakoonTest, sequence_api)
                                          key.first);
             const std::string value_string((const char*)value.second,
                                            value.first);
-            ASSERT_EQ(0, key_string.find(key_prefix));
-            ASSERT_EQ(0, value_string.find(value_prefix));
+            ASSERT_EQ(0UL, key_string.find(key_prefix));
+            ASSERT_EQ(0UL, value_string.find(value_prefix));
         }
         for(int i = 0; i < 10; ++i)
         {
@@ -566,7 +566,7 @@ TEST_F(ArakoonTest, sequence_api)
                                                  None(),
                                                  false,
                                                  40));
-        ASSERT_EQ(0, kvlist_1.size());
+        ASSERT_EQ(0UL, kvlist_1.size());
     }
 
     cluster->sequence(s1);
@@ -574,7 +574,7 @@ TEST_F(ArakoonTest, sequence_api)
     {
        value_list vlist_1 (cluster->prefix(key_prefix,
                                           40));
-        ASSERT_EQ(20, vlist_1.size());
+        ASSERT_EQ(20UL, vlist_1.size());
         arakoon_buffer key;
         value_list::iterator it(vlist_1.begin());
 
@@ -582,7 +582,7 @@ TEST_F(ArakoonTest, sequence_api)
         {
             const std::string key_string((const char*)key.second,
                                            key.first);
-            ASSERT_EQ(0, key_string.find(key_prefix));
+            ASSERT_EQ(0UL, key_string.find(key_prefix));
         }
         for(int i = 0; i < 10; ++i)
         {
@@ -590,7 +590,7 @@ TEST_F(ArakoonTest, sequence_api)
         }
 
         value_list vlist_2(cluster->multi_get(vlist_1));
-        ASSERT_EQ(20, vlist_2.size());
+        ASSERT_EQ(20UL, vlist_2.size());
         arakoon_buffer val;
         value_list::iterator it2(vlist_2.begin());
 
@@ -598,7 +598,7 @@ TEST_F(ArakoonTest, sequence_api)
         {
             const std::string val_string((const char*)val.second,
                                            val.first);
-            ASSERT_EQ(0, val_string.find(value_prefix));
+            ASSERT_EQ(0UL, val_string.find(value_prefix));
         }
         for(int i = 0; i < 10; ++i)
         {
@@ -674,7 +674,7 @@ TEST_F(ArakoonTest, DISABLED_multi_get_order)
     {
         arakoon::arakoon_buffer b;
         EXPECT_FALSE(vit.next(b));
-        EXPECT_EQ(0, b.first);
+        EXPECT_EQ(0UL, b.first);
         EXPECT_EQ(nullptr, b.second);
     }
 }
@@ -789,7 +789,7 @@ TEST_F(ArakoonTest, DISABLED_performance)
     assert(batch_size != 0); // Yo, clang analyzer - this one goes out to you.
 
     ASSERT_TRUE(batch_size != 0) << "arakoon batch size of 0 is not supported";
-    ASSERT_EQ(0, keys % batch_size) <<
+    ASSERT_EQ(0UL, keys % batch_size) <<
         "number of keys needs to be a multiple of batch size";
 
     const std::string pfx("perftest");

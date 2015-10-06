@@ -657,7 +657,7 @@ TEST_P(MetaDataStoreTest, DataStoreMap)
     ASSERT_NO_THROW(vol_->getMetaDataStore()->for_each(c,
                                                        1000000));
 
-    ASSERT_EQ(2, c.map.size());
+    ASSERT_EQ(2U, c.map.size());
 
     writeToVolume(vol_,0, 4096, "pattern");
 
@@ -669,7 +669,7 @@ TEST_P(MetaDataStoreTest, DataStoreMap)
 
     ASSERT_NO_THROW(vol_->getMetaDataStore()->for_each(c,
                                                        100000));
-    ASSERT_EQ(3,c.map.size());
+    ASSERT_EQ(3U, c.map.size());
 
     writeToVolume(vol_, 25,4096,"pattern");
 
@@ -679,7 +679,7 @@ TEST_P(MetaDataStoreTest, DataStoreMap)
 
     ASSERT_NO_THROW(vol_->getMetaDataStore()->for_each(c,
                                                        100000));
-    ASSERT_EQ(5, c.map.size());
+    ASSERT_EQ(5U, c.map.size());
 }
 
 TEST_P(MetaDataStoreTest, strided_volume_access)
@@ -793,10 +793,10 @@ TEST_P(MetaDataStoreTest, stats1)
     MetaDataStoreStats mds;
 
     md->getStats(mds);
-    EXPECT_EQ(0, mds.used_clusters);
-    EXPECT_EQ(0, mds.cached_pages);
+    EXPECT_EQ(0U, mds.used_clusters);
+    EXPECT_EQ(0U, mds.cached_pages);
     EXPECT_EQ(max_pages, mds.max_pages);
-    EXPECT_EQ(0, corked_clusters(mds));
+    EXPECT_EQ(0U, corked_clusters(mds));
 
     for (uint64_t i = 0; i < locs; ++i)
     {
@@ -806,8 +806,8 @@ TEST_P(MetaDataStoreTest, stats1)
     }
 
     md->getStats(mds);
-    EXPECT_EQ(0, mds.used_clusters);
-    EXPECT_EQ(0, mds.cached_pages);
+    EXPECT_EQ(0U, mds.used_clusters);
+    EXPECT_EQ(0U, mds.cached_pages);
     EXPECT_EQ(max_pages, mds.max_pages);
     EXPECT_EQ(locs, corked_clusters(mds));
 
@@ -819,7 +819,7 @@ TEST_P(MetaDataStoreTest, stats1)
     EXPECT_EQ(locs, mds.used_clusters);
     EXPECT_EQ(max_pages, mds.cached_pages);
     EXPECT_EQ(max_pages, mds.max_pages);
-    EXPECT_EQ(0, corked_clusters(mds));
+    EXPECT_EQ(0U, corked_clusters(mds));
 
     for (uint64_t i = 0; i < locs; ++i)
     {
@@ -836,7 +836,7 @@ TEST_P(MetaDataStoreTest, stats1)
     EXPECT_EQ(locs, mds.used_clusters);
     EXPECT_EQ(max_pages, mds.cached_pages);
     EXPECT_EQ(max_pages, mds.max_pages);
-    EXPECT_EQ(0, corked_clusters(mds));
+    EXPECT_EQ(0U, corked_clusters(mds));
 }
 
 TEST_P(MetaDataStoreTest, stats2)
@@ -864,12 +864,12 @@ TEST_P(MetaDataStoreTest, stats2)
     MetaDataStoreStats mds;
 
     md->getStats(mds);
-    EXPECT_EQ(0, mds.cache_hits);
-    EXPECT_EQ(0, mds.cache_misses);
-    EXPECT_EQ(0, mds.used_clusters);
-    EXPECT_EQ(0, mds.cached_pages);
+    EXPECT_EQ(0U, mds.cache_hits);
+    EXPECT_EQ(0U, mds.cache_misses);
+    EXPECT_EQ(0U, mds.used_clusters);
+    EXPECT_EQ(0U, mds.cached_pages);
     EXPECT_EQ(max_pages, mds.max_pages);
-    EXPECT_EQ(0, corked_clusters(mds));
+    EXPECT_EQ(0U, corked_clusters(mds));
 
     for (size_t i = 0; i < max_pages * page_size; i += page_size)
     {
@@ -884,11 +884,11 @@ TEST_P(MetaDataStoreTest, stats2)
 
     md->getStats(mds);
     EXPECT_EQ(max_pages, mds.cache_misses);
-    EXPECT_EQ(0, mds.cache_hits);
+    EXPECT_EQ(0U, mds.cache_hits);
     EXPECT_EQ(max_pages, mds.used_clusters);
     EXPECT_EQ(max_pages, mds.cached_pages);
     EXPECT_EQ(max_pages, mds.max_pages);
-    EXPECT_EQ(0, corked_clusters(mds));
+    EXPECT_EQ(0U, corked_clusters(mds));
 
     for (size_t i = 0; i < max_pages * page_size; i += page_size)
     {
@@ -907,7 +907,7 @@ TEST_P(MetaDataStoreTest, stats2)
     EXPECT_EQ(max_pages, mds.used_clusters);
     EXPECT_EQ(max_pages, mds.cached_pages);
     EXPECT_EQ(max_pages, mds.max_pages);
-    EXPECT_EQ(0, corked_clusters(mds));
+    EXPECT_EQ(0U, corked_clusters(mds));
 
     MetaDataStoreStats mds_copy = mds;
 
@@ -928,7 +928,7 @@ TEST_P(MetaDataStoreTest, stats2)
     EXPECT_EQ(max_pages * page_size, mds.used_clusters);
     EXPECT_EQ(max_pages, mds.cached_pages);
     EXPECT_EQ(max_pages, mds.max_pages);
-    EXPECT_EQ(0, corked_clusters(mds));
+    EXPECT_EQ(0U, corked_clusters(mds));
 
     mds_copy = mds;
 
@@ -951,7 +951,7 @@ TEST_P(MetaDataStoreTest, stats2)
     EXPECT_EQ(locs, mds.used_clusters);
     EXPECT_EQ(max_pages, mds.cached_pages);
     EXPECT_EQ(max_pages, mds.max_pages);
-    EXPECT_EQ(0, corked_clusters(mds));
+    EXPECT_EQ(0U, corked_clusters(mds));
 
     mds_copy = mds;
 
@@ -973,7 +973,7 @@ TEST_P(MetaDataStoreTest, stats2)
     EXPECT_EQ(locs, mds.used_clusters);
     EXPECT_EQ(max_pages, mds.cached_pages);
     EXPECT_EQ(max_pages, mds.max_pages);
-    EXPECT_EQ(0, corked_clusters(mds));
+    EXPECT_EQ(0U, corked_clusters(mds));
 
     mds_copy = mds;
 
@@ -990,7 +990,7 @@ TEST_P(MetaDataStoreTest, stats2)
     EXPECT_EQ(locs, mds.used_clusters);
     EXPECT_EQ(max_pages, mds.cached_pages);
     EXPECT_EQ(max_pages, mds.max_pages);
-    EXPECT_EQ(0, corked_clusters(mds));
+    EXPECT_EQ(0U, corked_clusters(mds));
 }
 
 struct MetaDataCounter
@@ -1151,7 +1151,7 @@ TEST_P(MetaDataStoreTest, DISABLED_page_compression)
         size_t res = snappy::Compress(reinterpret_cast<const char*>(data.data()),
                                       data.size() * sizeof(ClusterLocationAndHash),
                                       &compressed);
-        ASSERT_GT(res, 0);
+        ASSERT_LT(0U, res);
 
         compressed_page_sizes[i] = compressed.size();
     }

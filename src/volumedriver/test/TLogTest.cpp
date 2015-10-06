@@ -297,7 +297,7 @@ TEST_F(TLogTest, sync)
     ASSERT_FALSE(e->isTLogCRC());               \
     ASSERT_FALSE(e->isSCOCRC());                \
     ASSERT_FALSE(e->isSync());                  \
-    ASSERT_EQ(e->clusterAddress(),0);           \
+    ASSERT_EQ(0U, e->clusterAddress());        \
     ASSERT_EQ(e->clusterLocation(),l);
 
 #define ASSERT_SYNC                             \
@@ -353,8 +353,8 @@ TEST_F(TLogTest, checksums)
     ASSERT_FALSE(e->isTLogCRC());               \
     ASSERT_FALSE(e->isSCOCRC());                \
     ASSERT_FALSE(e->isSync());                  \
-    ASSERT_EQ(e->clusterAddress(),0);           \
-    ASSERT_EQ(e->clusterLocation(),l);
+    ASSERT_EQ(0U, e->clusterAddress());         \
+    ASSERT_EQ(e->clusterLocation(), l);
 
 #define ASSERT_CRC                                      \
     e = t.nextAny();                                    \
@@ -364,7 +364,6 @@ TEST_F(TLogTest, checksums)
     ASSERT_TRUE(e->isSCOCRC());                         \
     ASSERT_FALSE(e->isSync());                          \
     ASSERT_EQ(e->getCheckSum(), checksum.getValue())
-
 
     ASSERT_LOC;
     ASSERT_CRC;
@@ -417,7 +416,7 @@ TEST_F(TLogTest, syncchecksums)
     ASSERT_FALSE(e->isTLogCRC());                       \
     ASSERT_FALSE(e->isSCOCRC());                        \
     ASSERT_FALSE(e->isSync());                          \
-    ASSERT_EQ(0, e->clusterAddress());                  \
+    ASSERT_EQ(0U, e->clusterAddress());                  \
     ASSERT_EQ(l.clusterLocation, e->clusterLocation()); \
     ASSERT_EQ(l.weed, weed)
 
@@ -467,7 +466,7 @@ TEST_F(TLogTest, forth_and_back)
     EXPECT_FALSE(e->isSync());
     EXPECT_FALSE(e->isTLogCRC());
 
-    EXPECT_EQ(0, e->clusterAddress());
+    EXPECT_EQ(0U, e->clusterAddress());
     EXPECT_EQ(clh.clusterLocation, e->clusterLocation());
     EXPECT_EQ(clh.weed, e->clusterLocationAndHash().weed);
 

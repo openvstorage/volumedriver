@@ -70,9 +70,9 @@ protected:
         EXPECT_FALSE(vm.updateConfiguration(pt,
                                             urep,
                                             crep));
-        EXPECT_EQ(1,
+        EXPECT_EQ(1U,
                   crep.size());
-        EXPECT_EQ(0,
+        EXPECT_EQ(0U,
                   urep.update_size());
 
         vm.persistConfiguration(pt,
@@ -100,7 +100,7 @@ TEST_P(VolumeDriverConfigurationTest, DISABLED_checkConfiguration)
 
     ASSERT_FALSE(VolManager::get()->checkConfiguration(pt,
                                                        rep));
-    ASSERT_EQ(rep.size(),1);
+    ASSERT_EQ(1U, rep.size());
     EXPECT_EQ(std::string(rep.front().param_name()),std::string("open_scos_per_volume"));
 }
 
@@ -185,7 +185,7 @@ TEST_P(VolumeDriverConfigurationTest, componentTest)
     ComponentCounter counter;
     VolManager::get()->for_each_components(counter);
     // Maintain a list of expected components here?
-    ASSERT_EQ(6, counter.count_);
+    ASSERT_EQ(6U, counter.count_);
 }
 
 TEST_P(VolumeDriverConfigurationTest, mount_points)
@@ -196,7 +196,7 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
         ConfigurationReport c_rep;
         ASSERT_TRUE(VolManager::get()->getClusterCache().checkConfig(pt,
                                                                 c_rep));
-        ASSERT_EQ(c_rep.size(), 0);
+        ASSERT_EQ(0U, c_rep.size());
     }
 
     {
@@ -206,8 +206,8 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
 
         ASSERT_NO_THROW(VolManager::get()->getClusterCache().update(pt,
                                                                u_rep));
-        EXPECT_EQ(u_rep.getNoUpdates().size(),3);
-        EXPECT_EQ(u_rep.getUpdates().size(),0);
+        EXPECT_EQ(3U, u_rep.getNoUpdates().size());
+        EXPECT_EQ(0U, u_rep.getUpdates().size());
     }
 
     {
@@ -226,7 +226,7 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
 
         ASSERT_FALSE(VolManager::get()->getClusterCache().checkConfig(pt,
                                                                  c_rep));
-        ASSERT_EQ(c_rep.size(), 1);
+        ASSERT_EQ(1U, c_rep.size());
     }
 
     {
@@ -253,7 +253,7 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
 
         ASSERT_FALSE(VolManager::get()->getClusterCache().checkConfig(pt,
                                                                  c_rep));
-        ASSERT_EQ(c_rep.size(), 1);
+        ASSERT_EQ(1U, c_rep.size());
     }
 
     {
@@ -281,7 +281,7 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
 
         ASSERT_FALSE(VolManager::get()->getClusterCache().checkConfig(pt,
                                                                  c_rep));
-        EXPECT_EQ(c_rep.size(), 2);
+        EXPECT_EQ(2U, c_rep.size());
     }
 
     {
@@ -302,7 +302,7 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
 
         ASSERT_FALSE(VolManager::get()->getClusterCache().checkConfig(pt,
                                                                  c_rep));
-        EXPECT_EQ(c_rep.size(), 2);
+        EXPECT_EQ(2U, c_rep.size());
         for (const auto& msg: c_rep)
         {
             std::cout << msg.problem() << std::endl;
@@ -316,7 +316,7 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
 
         ClusterCache::ManagerType::Info device_info;
         VolManager::get()->getClusterCache().deviceInfo(device_info);
-        EXPECT_TRUE(device_info.size() == 2);
+        EXPECT_EQ(2U, device_info.size());
         VolumeId vid1("volume1");
         auto ns1_ptr = make_random_namespace();
         const Namespace& ns1 = ns1_ptr->ns();
@@ -329,9 +329,9 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
         uint64_t hits = 0, misses = 0, entries = 0;
 
         VolManager::get()->getClusterCache().get_stats(hits, misses, entries);
-        EXPECT_EQ(0, entries);
-        EXPECT_EQ(0, hits);
-        EXPECT_EQ(0, misses);
+        EXPECT_EQ(0U, entries);
+        EXPECT_EQ(0U, hits);
+        EXPECT_EQ(0U, misses);
 
         writeToVolume(v, 0, 4096, pattern);
         const uint64_t test_times = 5;
@@ -342,9 +342,9 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
         }
 
         VolManager::get()->getClusterCache().get_stats(hits, misses, entries);
-        EXPECT_EQ(1, entries);
+        EXPECT_EQ(1U, entries);
         EXPECT_EQ(test_times - 1, hits);
-        EXPECT_EQ(1, misses);
+        EXPECT_EQ(1U, misses);
 
         ip::PARAMETER_TYPE(clustercache_mount_points) mps(pt);
 
@@ -358,14 +358,14 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
         EXPECT_TRUE(device_info.size() == 0);
 
         VolManager::get()->getClusterCache().get_stats(hits, misses, entries);
-        EXPECT_EQ(0, entries);
+        EXPECT_EQ(0U, entries);
         EXPECT_EQ(test_times - 1, hits);
-        EXPECT_EQ(1, misses);
+        EXPECT_EQ(1U, misses);
 
         ConfigurationReport c_rep;
         ASSERT_TRUE(VolManager::get()->getClusterCache().checkConfig(pt,
                                                                 c_rep));
-        EXPECT_EQ(c_rep.size(), 0);
+        EXPECT_EQ(0U, c_rep.size());
         UpdateReport u_rep;
 
         for(unsigned i = 0; i < test_times; ++i)
@@ -374,7 +374,7 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
         }
 
         VolManager::get()->getClusterCache().get_stats(hits, misses, entries);
-        EXPECT_EQ(0, entries);
+        EXPECT_EQ(0U, entries);
         EXPECT_EQ(test_times - 1, hits);
         EXPECT_EQ(test_times + 1, misses);
 
@@ -393,7 +393,7 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
         }
 
         VolManager::get()->getClusterCache().get_stats(hits, misses, entries);
-        EXPECT_EQ(entries, 1);
+        EXPECT_EQ(1U, entries);
         EXPECT_EQ(hits, 2*test_times - 2);
         EXPECT_EQ(misses, test_times + 2);
     }
@@ -421,9 +421,9 @@ TEST_P(VolumeDriverConfigurationTest, num_threads)
         ASSERT_FALSE(VolManager::get()->updateConfiguration(pt,
                                                             u_rep,
                                                             c_rep));
-        ASSERT_EQ(c_rep.size(), 1);
-        ASSERT_EQ(u_rep.update_size(), 0);
-        ASSERT_EQ(u_rep.no_update_size(), 0);
+        ASSERT_EQ(1U, c_rep.size());
+        ASSERT_EQ(0U, u_rep.update_size());
+        ASSERT_EQ(0U, u_rep.no_update_size());
     }
 
     {
@@ -437,15 +437,15 @@ TEST_P(VolumeDriverConfigurationTest, num_threads)
         ASSERT_TRUE(VolManager::get()->updateConfiguration(pt,
                                                            u_rep,
                                                            c_rep));
-        EXPECT_EQ(0, c_rep.size());
-        EXPECT_EQ(1, u_rep.update_size());
+        EXPECT_EQ(0U, c_rep.size());
+        EXPECT_EQ(1U, u_rep.update_size());
 
         for (const auto& u: u_rep.getUpdates())
         {
             LOG_INFO("updated: " << u.parameter_name);
         }
 
-        EXPECT_EQ(32,
+        EXPECT_EQ(32U,
                   u_rep.no_update_size());
     }
 
@@ -459,14 +459,14 @@ TEST_P(VolumeDriverConfigurationTest, num_threads)
         ASSERT_TRUE(VolManager::get()->updateConfiguration(pt,
                                                            u_rep,
                                                            c_rep));
-        EXPECT_EQ(0, u_rep.update_size());
+        EXPECT_EQ(0U, u_rep.update_size());
 
         for (const auto& u: u_rep.getUpdates())
         {
             std::cerr << u.parameter_name << std::endl;
         }
 
-        EXPECT_EQ(33, u_rep.no_update_size());
+        EXPECT_EQ(33U, u_rep.no_update_size());
     }
 }
 
@@ -570,7 +570,7 @@ TEST_P(VolumeDriverConfigurationTest, verify_property_tree)
         // Some component completely absent in the config, used to trigger a segfault
         // in the binary, unfortunately not in the test
         bpt::ptree::size_type count =  pt.erase(cname);
-        EXPECT_EQ(1, count);
+        EXPECT_EQ(1U, count);
         auto it = pt.find(cname);
         EXPECT_TRUE(pt.not_found() == it);
         EXPECT_NO_THROW(yt::VolumeDriverComponent::verify_property_tree(pt));
@@ -593,8 +593,8 @@ TEST_P(VolumeDriverConfigurationTest, obscenely_large_volume)
         ConfigurationReport crep;
 
         ASSERT_FALSE(VolManager::get()->updateConfiguration(pt, urep, crep));
-        ASSERT_EQ(1, crep.size());
-        ASSERT_EQ(0, urep.update_size());
+        ASSERT_EQ(1U, crep.size());
+        ASSERT_EQ(0U, urep.update_size());
     }
 
     {
@@ -607,8 +607,8 @@ TEST_P(VolumeDriverConfigurationTest, obscenely_large_volume)
         ConfigurationReport crep;
 
         ASSERT_TRUE(VolManager::get()->updateConfiguration(pt, urep, crep));
-        ASSERT_EQ(0, crep.size());
-        ASSERT_EQ(1, urep.update_size());
+        ASSERT_EQ(0U, crep.size());
+        ASSERT_EQ(1U, urep.update_size());
     }
 }
 

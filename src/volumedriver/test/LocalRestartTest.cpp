@@ -99,7 +99,7 @@ public:
         {
             OrderedTLogNames tlogs;
             v->getSnapshotManagement().getTLogsNotWrittenToBackend(tlogs);
-            EXPECT_EQ(1, tlogs.size());
+            EXPECT_EQ(1U, tlogs.size());
             tlog1 = tlogs.front();
         }
 
@@ -113,7 +113,7 @@ public:
         {
             OrderedTLogNames tlogs;
             v->getSnapshotManagement().getTLogsWrittenToBackend(tlogs);
-            EXPECT_EQ(1, tlogs.size());
+            EXPECT_EQ(1U, tlogs.size());
             EXPECT_EQ(tlog1, tlogs.front());
         }
 
@@ -122,7 +122,7 @@ public:
         {
             OrderedTLogNames tlogs;
             v->getSnapshotManagement().getTLogsNotWrittenToBackend(tlogs);
-            EXPECT_EQ(1, tlogs.size());
+            EXPECT_EQ(1U, tlogs.size());
             tlog2 = tlogs.front();
         }
 
@@ -232,7 +232,7 @@ public:
         const uint64_t cluster_size = v->getClusterSize();
         const uint32_t sco_mult = v->getSCOMultiplier();
 
-        ASSERT_LE(2, sco_mult);
+        ASSERT_LE(2U, sco_mult);
 
         const std::string pattern1("bart");
         const std::string pattern2("immanuel");
@@ -884,7 +884,7 @@ TEST_P(LocalRestartTest, DISABLED_NoSyncToTC)
                          tlogs);
 
         v1->getMetaDataStore()->getStats(mds1);
-        EXPECT_LT(0, mds1.used_clusters);
+        EXPECT_LT(0U, mds1.used_clusters);
     }
 
     v1 = 0;
@@ -946,7 +946,7 @@ TEST_P(LocalRestartTest, MetaDataStoreRunsAhead)
         writeToVolume(v1, 0, v1->getClusterSize(),"ar");
 
         v1->getMetaDataStore()->getStats(mds1);
-        EXPECT_LT(0, mds1.used_clusters);
+        EXPECT_LT(0U, mds1.used_clusters);
 
         v1->getMetaDataStore()->writeCluster(3,
                                              ClusterLocationAndHash(ClusterLocation(30),
@@ -2616,7 +2616,7 @@ TEST_P(LocalRestartTest, LostMDStoreCacheAndNoUsableLocalData)
     fupper();
 
     EXPECT_TRUE(fupper.seen());
-    EXPECT_EQ(0, fupper.sco_crcs_seen());
+    EXPECT_EQ(0U, fupper.sco_crcs_seen());
 
     ASSERT_NO_THROW(v = localRestart(ns1));
     ASSERT_TRUE(v);
@@ -2666,7 +2666,7 @@ TEST_P(LocalRestartTest, LostMDStoreCacheAndUsableLocalData)
     fupper();
 
     EXPECT_TRUE(fupper.seen());
-    EXPECT_EQ(1, fupper.sco_crcs_seen());
+    EXPECT_EQ(1U, fupper.sco_crcs_seen());
 
     ASSERT_NO_THROW(v = localRestart(ns1));
     ASSERT(v);
@@ -2722,12 +2722,12 @@ TEST_P(LocalRestartTest, DISABLED_ReliabilityOfTheBigOneIfTheMDStoreLRUWouldWork
     const auto max_tlog_entries = scos_per_tlog * sco_mult;
     const auto page_entries = CachePage::capacity();
 
-    ASSERT_LT(1, page_entries);
+    ASSERT_LT(1U, page_entries);
 
     const auto cluster_mult = VolumeConfig::default_cluster_multiplier();
     const auto cluster_size = VolumeConfig::default_lba_size() * cluster_mult;
 
-    ASSERT_LT(3, max_tlog_entries);
+    ASSERT_LT(3U, max_tlog_entries);
 
     const auto mdstore_cache_pages = max_tlog_entries - 2;
 
@@ -2753,7 +2753,7 @@ TEST_P(LocalRestartTest, DISABLED_ReliabilityOfTheBigOneIfTheMDStoreLRUWouldWork
     {
         OrderedTLogNames tlogs;
         v->getSnapshotManagement().getTLogsNotWrittenToBackend(tlogs);
-        EXPECT_EQ(1, tlogs.size());
+        EXPECT_EQ(1U, tlogs.size());
         tlog1 = tlogs.front();
     }
 
@@ -2784,7 +2784,7 @@ TEST_P(LocalRestartTest, DISABLED_ReliabilityOfTheBigOneIfTheMDStoreLRUWouldWork
     {
         OrderedTLogNames tlogs;
         v->getSnapshotManagement().getTLogsWrittenToBackend(tlogs);
-        EXPECT_EQ(1, tlogs.size());
+        EXPECT_EQ(1U, tlogs.size());
         EXPECT_EQ(tlog1, tlogs.front());
     }
 
@@ -2793,7 +2793,7 @@ TEST_P(LocalRestartTest, DISABLED_ReliabilityOfTheBigOneIfTheMDStoreLRUWouldWork
     {
         OrderedTLogNames tlogs;
         v->getSnapshotManagement().getTLogsNotWrittenToBackend(tlogs);
-        EXPECT_EQ(1, tlogs.size());
+        EXPECT_EQ(1U, tlogs.size());
         tlog2 = tlogs.front();
     }
 
@@ -2834,7 +2834,7 @@ TEST_P(LocalRestartTest, DISABLED_ReliabilityOfTheBigOneIfTheMDStoreLRUWouldWork
     fupper();
 
     EXPECT_TRUE(fupper.seen());
-    EXPECT_EQ(0, fupper.sco_crcs_seen());
+    EXPECT_EQ(0U, fupper.sco_crcs_seen());
 
     ASSERT_NO_THROW(v = localRestart(ns1));
     ASSERT_TRUE(v);

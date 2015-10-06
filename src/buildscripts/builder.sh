@@ -303,13 +303,13 @@ function tag_repo {
     echo "TAGGING"
     pushd ${SOURCE_DIR}
     # Getting the current revision
-    local rev=`hg id -i`
+    local rev=`git rev-parse HEAD`
     # Update the code (make sure we don't have merge stuff to do later on)
-    hg pull -u
+    git pull --rebase
     # Tag the previously selected revision
-    hg tag -r $rev ${VD_TAG}
+    git tag -r ${VD_TAG} ${rev}
     # Push the tag
-    hg push
+    git push origin ${VD_TAG}
     popd
 }
 

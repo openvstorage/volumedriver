@@ -206,10 +206,10 @@ public:
     virtual const VolumeId
     getName() const override final;
 
-    // virtual VolumeFailoverState
-    // setVolumeFailoverState(VolumeFailoverState /*instate*/) override
+    // virtual VolumeFailOverState
+    // setVolumeFailOverState(VolumeFailOverState /*instate*/) override
     // {
-    //     return VolumeFailoverState::OK_STANDALONE;
+    //     return VolumeFailOverState::OK_STANDALONE;
     // };
 
     virtual void
@@ -229,10 +229,10 @@ public:
     VolumeConfig
     get_config() const override final;
 
-    // virtual VolumeFailoverState
-    // getVolumeFailoverState() const override
+    // virtual VolumeFailOverState
+    // getVolumeFailOverState() const override
     // {
-    //     return VolumeFailoverState::OK_STANDALONE;
+    //     return VolumeFailOverState::OK_STANDALONE;
     // }
 
     virtual void

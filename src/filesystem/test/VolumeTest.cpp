@@ -96,7 +96,7 @@ TEST_F(VolumeTest, create_and_destroy)
 
         std::list<vd::VolumeId> l;
         api::getVolumeList(l);
-        ASSERT_EQ(1, l.size());
+        ASSERT_EQ(1U, l.size());
         ASSERT_TRUE(vname.str() == l.front().str());
         ASSERT_TRUE(api::getVolumePointer(l.front()) != nullptr);
     }
@@ -134,7 +134,7 @@ TEST_F(VolumeTest, uuid_create_and_destroy)
 
         std::list<vd::VolumeId> l;
         api::getVolumeList(l);
-        ASSERT_EQ(1, l.size());
+        ASSERT_EQ(1U, l.size());
         ASSERT_TRUE(volume_id.str() == l.front().str());
         ASSERT_TRUE(api::getVolumePointer(l.front()) != nullptr);
     }
@@ -282,11 +282,11 @@ TEST_F(VolumeTest, resize)
         v = api::getVolumePointer(vd::VolumeId(vname.str()));
     }
 
-    EXPECT_EQ(0, api::GetSize(v));
+    EXPECT_EQ(0U, api::GetSize(v));
     check_stat(fname, 0);
 
     EXPECT_EQ(0, truncate(fname, 0));
-    EXPECT_EQ(0, api::GetSize(v));
+    EXPECT_EQ(0U, api::GetSize(v));
     check_stat(fname, 0);
 
     const uint64_t csize = api::GetClusterSize();
@@ -314,11 +314,11 @@ TEST_F(VolumeTest, uuid_resize)
         v = api::getVolumePointer(vd::VolumeId(volume_id.str()));
     }
 
-    EXPECT_EQ(0, api::GetSize(v));
+    EXPECT_EQ(0U, api::GetSize(v));
     check_stat(volume_id, 0);
 
     EXPECT_EQ(0, truncate(volume_id, 0));
-    EXPECT_EQ(0, api::GetSize(v));
+    EXPECT_EQ(0U, api::GetSize(v));
     check_stat(volume_id, 0);
 
     const uint64_t csize = api::GetClusterSize();
@@ -345,7 +345,8 @@ TEST_F(VolumeTest, read_empty_aligned)
     for (size_t i = 0; i < vsize; i += csize)
     {
         std::vector<char> buf(csize);
-        EXPECT_EQ(buf.size(), read_from_file(fname, buf.data(), buf.size(), i));
+        EXPECT_EQ(static_cast<ssize_t>(buf.size()),
+                  read_from_file(fname, buf.data(), buf.size(), i));
         EXPECT_TRUE(ref == buf);
     }
     // Reads beyond the end return nothing
@@ -357,7 +358,8 @@ TEST_F(VolumeTest, read_empty_aligned)
     // Reads across the end return data to the end
     {
         std::vector<char> buf(2*csize);
-        EXPECT_EQ(csize, read_from_file(fname, buf.data(), buf.size(), vsize-csize));
+        EXPECT_EQ(static_cast<ssize_t>(csize),
+                  read_from_file(fname, buf.data(), buf.size(), vsize-csize));
         for(size_t i = 0; i < csize; ++i)
         {
             EXPECT_EQ(ref[i], buf[i]);
@@ -380,7 +382,8 @@ TEST_F(VolumeTest, uuid_read_empty_aligned)
     for (size_t i = 0; i < vsize; i += csize)
     {
         std::vector<char> buf(csize);
-        EXPECT_EQ(buf.size(), read_from_file(volume_id, buf.data(), buf.size(), i));
+        EXPECT_EQ(static_cast<ssize_t>(buf.size()),
+                  read_from_file(volume_id, buf.data(), buf.size(), i));
         EXPECT_TRUE(ref == buf);
     }
     // Reads beyond the end return nothing
@@ -392,7 +395,8 @@ TEST_F(VolumeTest, uuid_read_empty_aligned)
     // Reads across the end return data to the end
     {
         std::vector<char> buf(2*csize);
-        EXPECT_EQ(csize, read_from_file(volume_id, buf.data(), buf.size(), vsize-csize));
+        EXPECT_EQ(static_cast<ssize_t>(csize),
+                  read_from_file(volume_id, buf.data(), buf.size(), vsize-csize));
         for(size_t i = 0; i < csize; ++i)
         {
             EXPECT_EQ(ref[i], buf[i]);
@@ -421,7 +425,8 @@ TEST_F(VolumeTest, read_write_aligned)
     // Reads across the end return data to the end
     {
         std::vector<char> buf(2*csize);
-        EXPECT_EQ(csize, read_from_file(fname, buf.data(), buf.size(), vsize-csize));
+        EXPECT_EQ(static_cast<ssize_t>(csize),
+                  read_from_file(fname, buf.data(), buf.size(), vsize-csize));
         for (size_t i = 0; i < csize; ++i)
         {
             EXPECT_EQ(pattern[i % pattern.size()], buf[i]) << "mismatch at offset " << i;
@@ -452,7 +457,8 @@ TEST_F(VolumeTest, uuid_read_write_aligned)
     // Reads across the end return data to the end
     {
         std::vector<char> buf(2*csize);
-        EXPECT_EQ(csize, read_from_file(volume_id, buf.data(), buf.size(), vsize-csize));
+        EXPECT_EQ(static_cast<ssize_t>(csize),
+                  read_from_file(volume_id, buf.data(), buf.size(), vsize-csize));
         for (size_t i = 0; i < csize; ++i)
         {
             EXPECT_EQ(pattern[i % pattern.size()], buf[i]) << "mismatch at offset " << i;
@@ -512,7 +518,8 @@ TEST_F(VolumeTest, read_write_unaligned)
         write_to_file(fname, pattern, half_a_c, vsize-half_a_c);
 
         std::vector<char> buf(csize);
-        EXPECT_EQ(half_a_c, read_from_file(fname, buf.data(), buf.size(), vsize-half_a_c));
+        EXPECT_EQ(static_cast<ssize_t>(half_a_c),
+                  read_from_file(fname, buf.data(), buf.size(), vsize-half_a_c));
         for (size_t i = 0; i < half_a_c; ++i)
         {
             EXPECT_EQ(pattern[i % pattern.size()], buf[i]) << "mismatch at offset " << i;
@@ -544,7 +551,8 @@ TEST_F(VolumeTest, uuid_read_write_unaligned)
         write_to_file(volume_id, pattern, half_a_c, vsize-half_a_c);
 
         std::vector<char> buf(csize);
-        EXPECT_EQ(half_a_c, read_from_file(volume_id, buf.data(), buf.size(), vsize-half_a_c));
+        EXPECT_EQ(static_cast<ssize_t>(half_a_c),
+                  read_from_file(volume_id, buf.data(), buf.size(), vsize-half_a_c));
         for (size_t i = 0; i < half_a_c; ++i)
         {
             EXPECT_EQ(pattern[i % pattern.size()], buf[i]) << "mismatch at offset " << i;
@@ -1203,7 +1211,8 @@ TEST_F(VolumeTest, start_while_running)
     const std::string pattern("some data");
     const uint64_t wsize = pattern.size();
 
-    EXPECT_EQ(wsize, write_to_file(fname, pattern, wsize, 0));
+    EXPECT_EQ(static_cast<ssize_t>(wsize),
+              write_to_file(fname, pattern, wsize, 0));
     check_file(fname, pattern, wsize, 0);
 
     fs_->object_router().migrate(id);
@@ -1223,7 +1232,8 @@ TEST_F(VolumeTest, uuid_start_while_running)
     const std::string pattern("some data");
     const uint64_t wsize = pattern.size();
 
-    EXPECT_EQ(wsize, write_to_file(id, pattern, wsize, 0));
+    EXPECT_EQ(static_cast<ssize_t>(wsize),
+              write_to_file(id, pattern, wsize, 0));
     check_file(id, pattern, wsize, 0);
 
     fs_->object_router().migrate(id);
@@ -1240,7 +1250,8 @@ TEST_F(VolumeTest, stop_and_start)
     const std::string pattern1("written-first");
     const uint64_t wsize = pattern1.size();
 
-    EXPECT_EQ(wsize, write_to_file(fname, pattern1, wsize, 0));
+    EXPECT_EQ(static_cast<ssize_t>(wsize),
+              write_to_file(fname, pattern1, wsize, 0));
     check_file(fname, pattern1, wsize, 0);
 
     fs_->object_router().stop(id);
@@ -1271,7 +1282,8 @@ TEST_F(VolumeTest, uuid_stop_and_start)
     const std::string pattern1("written-first");
     const uint64_t wsize = pattern1.size();
 
-    EXPECT_EQ(wsize, write_to_file(id, pattern1, wsize, 0));
+    EXPECT_EQ(static_cast<ssize_t>(wsize),
+              write_to_file(id, pattern1, wsize, 0));
     check_file(id, pattern1, wsize, 0);
 
     fs_->object_router().stop(id);
@@ -1299,7 +1311,8 @@ TEST_F(VolumeTest, hygiene)
     const std::string pattern1("not of any importance");
     const uint64_t wsize = pattern1.size();
 
-    EXPECT_EQ(wsize, write_to_file(fname, pattern1, wsize, 0));
+    EXPECT_EQ(static_cast<ssize_t>(wsize),
+              write_to_file(fname, pattern1, wsize, 0));
     check_file(fname, pattern1, wsize, 0);
 
     auto conn(cm_->getConnection());
@@ -1331,7 +1344,8 @@ TEST_F(VolumeTest, uuid_hygiene)
     const std::string pattern1("not of any importance");
     const uint64_t wsize = pattern1.size();
 
-    EXPECT_EQ(wsize, write_to_file(id, pattern1, wsize, 0));
+    EXPECT_EQ(static_cast<ssize_t>(wsize),
+              write_to_file(id, pattern1, wsize, 0));
     check_file(id, pattern1, wsize, 0);
 
     auto conn(cm_->getConnection());
@@ -1408,7 +1422,7 @@ TEST_F(VolumeTest, update_mds_config)
     fs_->update(pt,
                 urep);
 
-    ASSERT_EQ(1, urep.update_size());
+    ASSERT_EQ(1U, urep.update_size());
 
     const vfs::FrontendPath vname2(make_volume_name("/volume2"));
     const vfs::ObjectId id2(create_file(vname2));

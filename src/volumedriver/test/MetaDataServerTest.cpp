@@ -110,7 +110,7 @@ public:
     mds_config()
     {
         const mds::ServerConfigs cfgs(mds_manager_->server_configs());
-        EXPECT_EQ(1, cfgs.size());
+        EXPECT_EQ(1U, cfgs.size());
         return cfgs[0].node_config;
     }
 
@@ -127,7 +127,7 @@ public:
     void
     test_multi_set_n_get_n_delete(size_t multi)
     {
-        ASSERT_LT(0, multi) << "fix your test";
+        ASSERT_LT(0U, multi) << "fix your test";
 
         be::BackendTestSetup::WithRandomNamespace wrns("",
                                                        cm_);
@@ -264,10 +264,10 @@ public:
             yt::System::get_env_with_default<size_t>("MDS_TEST_CLIENTS",
                                                      1);
 
-        ASSERT_LT(0, iterations) << "fix your test";
-        ASSERT_LT(0, batch_size) << "fix your test";
-        ASSERT_LT(0, vsize) << "fix your test";
-        ASSERT_LT(0, nclients) << "fix your test";
+        ASSERT_LT(0U, iterations) << "fix your test";
+        ASSERT_LT(0U, batch_size) << "fix your test";
+        ASSERT_LT(0U, vsize) << "fix your test";
+        ASSERT_LT(0U, nclients) << "fix your test";
 
         auto fun([&]() -> double
                  {
@@ -415,7 +415,7 @@ TEST_P(MetaDataServerTest, tables)
 
                            for (const auto& n : nspacev)
                            {
-                               EXPECT_EQ(1, nspaces2.erase(n));
+                               EXPECT_EQ(1U, nspaces2.erase(n));
                            }
                        });
 
@@ -565,7 +565,7 @@ TEST_P(MetaDataServerTest, python_client_role)
 
     client.create_namespace(nspace);
 
-    ASSERT_EQ(1,
+    ASSERT_EQ(1U,
               client.list_namespaces().size());
 
     ASSERT_EQ(nspace,
@@ -708,19 +708,19 @@ TEST_P(MetaDataServerTest, exceeding_the_shmem_size)
                                 return in.shmem_overruns;
                             });
 
-    EXPECT_EQ(0, shmem_out_overruns());
-    EXPECT_EQ(0, shmem_in_overruns());
+    EXPECT_EQ(0U, shmem_out_overruns());
+    EXPECT_EQ(0U, shmem_in_overruns());
 
     table->multiset(recs,
                     Barrier::F);
 
-    EXPECT_EQ(expect_overrun ? 1 : 0, shmem_out_overruns());
-    EXPECT_EQ(0, shmem_in_overruns());
+    EXPECT_EQ(expect_overrun ? 1U : 0U, shmem_out_overruns());
+    EXPECT_EQ(0U, shmem_in_overruns());
 
     mds::TableInterface::MaybeStrings mvals(table->multiget(keys));
 
-    EXPECT_EQ(expect_overrun ? 2 : 0, shmem_out_overruns());
-    EXPECT_EQ(expect_overrun ? 1 : 0, shmem_in_overruns());
+    EXPECT_EQ(expect_overrun ? 2U : 0U, shmem_out_overruns());
+    EXPECT_EQ(expect_overrun ? 1U : 0U, shmem_in_overruns());
 
     ASSERT_EQ(keys.size(),
               mvals.size());

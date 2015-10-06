@@ -299,7 +299,7 @@ public:
         , idle_queues_(youtils::System::get_env_with_default("IDLE_QUEUES", 0U))
         , delay_us_(youtils::System::get_env_with_default("DELAY_US", 0ULL))
     {
-        EXPECT_LT(0, num_threads_);
+        EXPECT_LT(0U, num_threads_);
     }
 
     typedef std::shared_ptr<Blocker> blocker_ptr;
@@ -318,9 +318,9 @@ public:
              uint64_t delay_us,
              unsigned idle_queues)
     {
-        EXPECT_LT(0, tasks_per_queue);
-        EXPECT_LT(0, num_queues);
-        EXPECT_LE(0, idle_queues);
+        EXPECT_LT(0U, tasks_per_queue);
+        EXPECT_LT(0U, num_queues);
+        EXPECT_LE(0U, idle_queues);
 
         boost::property_tree::ptree pt;
         PARAMETER_TYPE(ip::perf_threadpool_test_threads)(num_threads).persist(pt);

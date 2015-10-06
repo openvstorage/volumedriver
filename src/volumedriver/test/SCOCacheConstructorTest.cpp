@@ -122,7 +122,7 @@ TEST_F(SCOCacheConstructorTest, invalidMountPoint)
     // EXPECT_FALSE(fs::exists(pathPfx_ / "lost+found"));
 
     SCOCacheMountPointList& l = getMountPointList(*scoCache);
-    EXPECT_EQ(2, l.size());
+    EXPECT_EQ(2U, l.size());
 
     BOOST_FOREACH(SCOCacheMountPointPtr mp, l)
     {
@@ -153,7 +153,7 @@ TEST_F(SCOCacheConstructorTest, duplicateMountPoints)
     std::unique_ptr<SCOCache> scocache(new SCOCache(pt));
     {
         SCOCacheMountPointList& l = getMountPointList(*scocache);
-        EXPECT_EQ(1, l.size());
+        EXPECT_EQ(1U, l.size());
         EXPECT_EQ(mppath, l.front()->getPath());
     }
 
@@ -179,7 +179,7 @@ TEST_F(SCOCacheConstructorTest, duplicateMountPoints)
     scocache.reset(new SCOCache(pt));
     {
         SCOCacheMountPointList& l = getMountPointList(*scocache);
-        EXPECT_EQ(1, l.size());
+        EXPECT_EQ(1U, l.size());
         EXPECT_EQ(mppath, l.front()->getPath());
     }
 }

@@ -35,9 +35,9 @@ public:
 TEST_F(ConnectionManagerTest, limited_pool)
 {
     const size_t cap = cm_->capacity();
-    ASSERT_LT(0, cap);
+    ASSERT_LT(0U, cap);
 
-    ASSERT_EQ(0,
+    ASSERT_EQ(0U,
               cm_->size());
 
     for (size_t i = 0; i < cap; ++i)
@@ -92,7 +92,7 @@ TEST_F(ConnectionManagerTest, limited_pool_on_errors)
 TEST_F(ConnectionManagerTest, no_pool)
 {
     cm_->getConnection(ForceNewConnection::T);
-    ASSERT_EQ(1,
+    ASSERT_EQ(1U,
               cm_->size());
 
     using CapacityParam = ip::PARAMETER_TYPE(backend_connection_pool_capacity);
@@ -109,23 +109,23 @@ TEST_F(ConnectionManagerTest, no_pool)
                     urep);
     }
 
-    ASSERT_EQ(0,
+    ASSERT_EQ(0U,
               cm_->capacity());
-    ASSERT_EQ(0,
+    ASSERT_EQ(0U,
               cm_->size());
 
     {
         bpt::ptree pt;
         cm_->persist(pt);
         const CapacityParam new_cap(pt);
-        ASSERT_EQ(0,
+        ASSERT_EQ(0U,
                   new_cap.value());
     }
 
     ASSERT_NO_THROW(cm_->getConnection(ForceNewConnection::F));
     ASSERT_NO_THROW(cm_->getConnection(ForceNewConnection::T));
 
-    ASSERT_EQ(0,
+    ASSERT_EQ(0U,
               cm_->size());
 
 }

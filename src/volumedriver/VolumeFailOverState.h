@@ -21,7 +21,7 @@
 namespace volumedriver
 {
 
-enum class VolumeFailoverState
+enum class VolumeFailOverState
 {
     OK_SYNC,
     OK_STANDALONE,
@@ -30,15 +30,15 @@ enum class VolumeFailoverState
 };
 
 const std::string&
-volumeFailoverStateToString(VolumeFailoverState st);
+volumeFailoverStateToString(VolumeFailOverState st);
 
 std::ostream&
 operator<<(std::ostream& os,
-           const VolumeFailoverState st);
+           const VolumeFailOverState st);
 
 std::istream&
 operator>>(std::istream& is,
-           VolumeFailoverState& st);
+           VolumeFailOverState& st);
 
 }
 

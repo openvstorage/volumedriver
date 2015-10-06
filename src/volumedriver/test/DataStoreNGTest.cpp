@@ -95,11 +95,11 @@ protected:
             *p = pattern;
 
         size_t wsize = 0;
-        for (ssize_t i = 0; i < n; i += wsize)
+        for (size_t i = 0; i < n; i += wsize)
         {
             wsize = std::min(dStore_->getRemainingSCOCapacity(),
                              static_cast<ssize_t>(n - i));
-            ASSERT_LT(0,
+            ASSERT_LT(0U,
                       wsize);
 
             int tries = retries;
@@ -396,11 +396,11 @@ TEST_P(DataStoreNGTest, destroyCache)
 
     // non disposable SCOs
     dStore_->listSCOs(scoList, false);
-    EXPECT_EQ(scoList.size(), 0);
+    EXPECT_EQ(0U, scoList.size());
 
     // disposable SCOs
     dStore_->listSCOs(scoList, true);
-    EXPECT_EQ(scoList.size(), 0);
+    EXPECT_EQ(0U, scoList.size());
 }
 
 TEST_P(DataStoreNGTest, corruptedReadSCO)
@@ -468,7 +468,7 @@ TEST_P(DataStoreNGTest, corruptedReadSCO2)
                               &locs[0]),
                  std::exception);
 
-    EXPECT_LT(0,
+    EXPECT_LT(0U,
               event_collector_->size());
 }
 
@@ -496,7 +496,7 @@ TEST_P(DataStoreNGTest, corruptedWriteSCO)
                               &locs[0]),
                  fungi::IOException);
 
-    EXPECT_LT(0, event_collector_->size());
+    EXPECT_LT(0U, event_collector_->size());
 }
 
 TEST_P(DataStoreNGTest, fakeRead)
@@ -578,7 +578,7 @@ TEST_P(DataStoreNGTest, removeSCO)
     ClusterLocation loc2 = loc;
     writeClusters(1, pattern, &loc);
     EXPECT_EQ(loc2.number() + 1, loc.number());
-    EXPECT_EQ(0, loc.offset());
+    EXPECT_EQ(0U, loc.offset());
 
     //checksums.find(loc.sco());
 
@@ -808,7 +808,7 @@ TEST_P(DataStoreNGTest, scoFullTest)
     }
 
     dStore_->writeClusters(&buf[0], loc, loc.size(), throttle);
-    EXPECT_EQ(0,
+    EXPECT_EQ(0U,
               dStore_->getRemainingSCOCapacity());
 
     MaybeCheckSum cs = dStore_->finalizeCurrentSCO();
@@ -828,7 +828,7 @@ TEST_P(DataStoreNGTest, scoFullTest)
 
     loco.incrementOffset();
     dStore_->writeClusterToLocation(&buf[0], loco, throttle);
-    EXPECT_EQ(0,
+    EXPECT_EQ(0U,
               dStore_->getRemainingSCOCapacity());
 }
 

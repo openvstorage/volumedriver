@@ -725,27 +725,27 @@ protected:
                    {
                        ClusterCacheType::ManagerType::Info device_info;
                        read_cache.deviceInfo(device_info);
-                       EXPECT_EQ(3, device_info.size());
+                       EXPECT_EQ(3U, device_info.size());
 
                        for (const auto& val : device_info)
                        {
                            if(val.first.string() == three_path)
                            {
-                               EXPECT_EQ(3 * 4096,
+                               EXPECT_EQ(3U * 4096,
                                          val.second.total_size);
                                EXPECT_EQ(exp_used_clusters_1 * 4096,
                                          val.second.used_size);
                            }
                            else if(val.first.string() == five_path)
                            {
-                               EXPECT_EQ(5 * 4096,
+                               EXPECT_EQ(5U * 4096,
                                          val.second.total_size);
                                EXPECT_EQ(exp_used_clusters_2 * 4096,
                                          val.second.used_size);
                            }
                            else if(val.first.string() == seven_path)
                            {
-                               EXPECT_EQ(7 * 4096,
+                               EXPECT_EQ(7U * 4096,
                                          val.second.total_size);
                                EXPECT_EQ(exp_used_clusters_3 * 4096,
                                          val.second.used_size);
@@ -821,7 +821,7 @@ TEST_P(ClusterCacheSerializationTest, DoubleMountPoints)
         ClusterCache read_cache(pt);
         ClusterCache::ManagerType::Info info;
         read_cache.deviceInfo(info);
-        EXPECT_EQ(info.size(),2);
+        EXPECT_EQ(2U, info.size());
     }
 
     {
@@ -830,14 +830,14 @@ TEST_P(ClusterCacheSerializationTest, DoubleMountPoints)
         ClusterCache read_cache(pt);
         ClusterCache::ManagerType::Info info;
         read_cache.deviceInfo(info);
-        EXPECT_EQ(info.size(),1);
+        EXPECT_EQ(1U, info.size());
         UpdateReport rep;
 
         read_cache.update(pt,
                           rep);
 
         read_cache.deviceInfo(info);
-        EXPECT_EQ(info.size(),1);
+        EXPECT_EQ(1U, info.size());
 
         fs::remove(p2);
         SetupDevice("dev2",
@@ -845,7 +845,7 @@ TEST_P(ClusterCacheSerializationTest, DoubleMountPoints)
                     vec);
         read_cache.update(pt, rep);
         read_cache.deviceInfo(info);
-        EXPECT_EQ(info.size(),2);
+        EXPECT_EQ(2U, info.size());
     }
 }
 
@@ -1011,16 +1011,14 @@ TEST_P(ClusterCacheSerializationTest, multiple_deregistrations_with_same_owner_t
     const OwnerTag otag(1);
     readCache.deregisterVolume(otag);
 
-    const ClusterCacheHandle
-        lhandle(readCache.registerVolume(otag,
-                                         ClusterCacheMode::LocationBased));
+    readCache.registerVolume(otag,
+                             ClusterCacheMode::LocationBased);
 
     readCache.deregisterVolume(otag);
     EXPECT_NO_THROW(readCache.deregisterVolume(otag));
 
-    const ClusterCacheHandle
-        chandle(readCache.registerVolume(otag,
-                                         ClusterCacheMode::ContentBased));
+    readCache.registerVolume(otag,
+                             ClusterCacheMode::ContentBased);
     EXPECT_NO_THROW(readCache.deregisterVolume(otag));
     EXPECT_NO_THROW(readCache.deregisterVolume(otag));
 }
@@ -1297,7 +1295,7 @@ TEST_P(ClusterCacheSerializationTest, limited_entries_serialization)
                        {
                            const std::vector<ClusterCacheHandle>
                                nspaces(cache->list_namespaces());
-                           EXPECT_EQ(2,
+                           EXPECT_EQ(2U,
                                      nspaces.size());
                            for (const auto& h : nspaces)
                            {

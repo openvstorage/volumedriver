@@ -309,7 +309,7 @@ TEST_F(FileTest, backend_error_on_unlink)
         }
     }
 
-    EXPECT_LT(0,
+    EXPECT_LT(0U,
               removed);
 
     EXPECT_EQ(0,

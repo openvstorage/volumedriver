@@ -247,7 +247,7 @@ TEST_F(HierarchicalArakoonTest, destruction)
 {
     {
         const ara::value_list l(larakoon_->prefix(prefix_));
-        ASSERT_EQ(0, l.size());
+        ASSERT_EQ(0U, l.size());
     }
 
     const std::string s("some metadata for the root node");
@@ -255,13 +255,13 @@ TEST_F(HierarchicalArakoonTest, destruction)
 
     {
         ara::value_list l(larakoon_->prefix(prefix_));
-        ASSERT_LT(0, l.size());
+        ASSERT_LT(0U, l.size());
     }
 
     vfs::HierarchicalArakoon::destroy(larakoon_, prefix_);
 
     ara::value_list l(larakoon_->prefix(prefix_));
-    EXPECT_EQ(0, l.size());
+    EXPECT_EQ(0U, l.size());
 }
 
 TEST_F(HierarchicalArakoonTest, setting_and_getting)

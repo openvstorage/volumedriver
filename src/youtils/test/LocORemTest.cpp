@@ -61,7 +61,7 @@ protected:
         , hdr_bytes_(0)
         , msg_bytes_(0)
     {
-        EXPECT_LT(0, hdr_size_) << "Fix your test";
+        EXPECT_LT(0U, hdr_size_) << "Fix your test";
     }
 
     std::unique_ptr<yt::LocORemClient>

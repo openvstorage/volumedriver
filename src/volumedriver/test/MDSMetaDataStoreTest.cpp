@@ -113,7 +113,7 @@ TEST_F(MDSMetaDataStoreTest, construction_with_awol_master_and_present_slave)
                                                    cm_);
 
     const mds::ServerConfigs scfgs(mds_manager_->server_configs());
-    ASSERT_EQ(1,
+    ASSERT_EQ(1U,
               scfgs.size());
 
     const vd::MDSNodeConfigs ncfgs{ mds_test_setup_->next_server_config().node_config,
@@ -130,7 +130,7 @@ TEST_F(MDSMetaDataStoreTest, construction_with_awol_master_and_present_slave)
     const vd::MDSNodeConfigs ncfgs2(mdstore->get_config().node_configs());
 
     ASSERT_EQ(ncfgs.size(), ncfgs2.size());
-    ASSERT_EQ(2, ncfgs2.size());
+    ASSERT_EQ(2U, ncfgs2.size());
     EXPECT_EQ(ncfgs.front(), ncfgs2.back());
     EXPECT_EQ(ncfgs.back(), ncfgs2.front());
 }

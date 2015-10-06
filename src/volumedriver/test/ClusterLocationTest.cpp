@@ -50,8 +50,8 @@ public:
 TEST_F(ClusterLocationTest, SCONameTest1)
 {
     ASSERT_EQ(sizeof(ClusterLocation), sizeof(SCO) + sizeof(SCOOffset));
-    ASSERT_EQ(sizeof(SCO), 6);
-    ASSERT_EQ(sizeof(ClusterLocation),8);
+    ASSERT_EQ(6U, sizeof(SCO));
+    ASSERT_EQ(8U, sizeof(ClusterLocation));
 
     ClusterLocation loc;
     // Check for unavailability of these operators

@@ -65,7 +65,7 @@ protected:
     void
     test_multi_set_n_get_n_delete(size_t multi)
     {
-        ASSERT_LT(0, multi) << "fix your test";
+        ASSERT_LT(0U, multi) << "fix your test";
 
         const std::string nspace("some-namespace");
 
@@ -252,7 +252,7 @@ TEST_F(RocksTest, tables)
 
                            for (const auto& n : nspacev)
                            {
-                               EXPECT_EQ(1, nspaces2.erase(n));
+                               EXPECT_EQ(1U, nspaces2.erase(n));
                            }
                        });
 

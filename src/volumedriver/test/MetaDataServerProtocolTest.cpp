@@ -164,6 +164,7 @@ TEST_F(MetaDataServerProtocolTest, list_request)
 
     capnp::MallocMessageBuilder builder;
     auto txroot(builder.initRoot<Traits::Params>());
+    (void) txroot;
 
     kj::Array<capnp::word> txdata(capnp::messageToFlatArray(builder));
 
@@ -179,6 +180,7 @@ TEST_F(MetaDataServerProtocolTest, list_request)
     capnp::FlatArrayMessageReader reader(rxdata);
 
     auto rxroot(reader.getRoot<Traits::Params>());
+    (void)rxroot;
 }
 
 TEST_F(MetaDataServerProtocolTest, capnp_performance)

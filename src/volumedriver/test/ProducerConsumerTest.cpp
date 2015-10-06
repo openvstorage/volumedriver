@@ -83,7 +83,7 @@ public:
 
 TEST_F(ProducerConsumerTest , producerStops1)
 {
-    int n = 10;
+    const unsigned n = 10;
     yin::Channel<int> ch;
     yin::Latch noLatch(true);
     SimpleIntProducer prod(n, ch, noLatch);
@@ -98,7 +98,7 @@ TEST_F(ProducerConsumerTest , producerStops1)
 
 TEST_F(ProducerConsumerTest , producerStops2)
 {
-    int n = 200;
+    const unsigned n = 200;
     yin::Channel<int> ch;
     yin::Latch noLatch(true);
     SimpleIntProducer prod(n, ch, noLatch);
@@ -113,7 +113,7 @@ TEST_F(ProducerConsumerTest , producerStops2)
 
 TEST_F(ProducerConsumerTest , producerStops3)
 {
-    int n = 10;
+    const unsigned n = 10;
     yin::Channel<int> ch;
     yin::Latch noLatch(true);
     SimpleIntProducer prod(n, ch, noLatch);
@@ -131,7 +131,7 @@ TEST_F(ProducerConsumerTest , producerStops3)
 
 TEST_F(ProducerConsumerTest , consumerStops)
 {
-    int n = 200;
+    const unsigned n = 200;
     yin::Channel<int> ch;
     yin::Latch noLatch(true);
     SimpleIntProducer prod(-1, ch, noLatch);

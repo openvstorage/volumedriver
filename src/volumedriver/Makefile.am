@@ -191,7 +191,7 @@ libvolumedriver_la_SOURCES = \
 	VolumeDriverError.cpp \
 	VolumeDriverEvents.pb.cc \
 	VolumeFactory.cpp \
-	VolumeFailoverState.cpp \
+	VolumeFailOverState.cpp \
 	VolumeOverview.cpp \
 	VolumeThreadPool.cpp \
 	WriteOnlyVolume.cpp \

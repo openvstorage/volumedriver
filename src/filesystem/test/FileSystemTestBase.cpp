@@ -984,7 +984,7 @@ FileSystemTestBase::set_volume_write_threshold(uint64_t wthresh)
     vd::UpdateReport urep;
 
     fs_->object_router().update(pt, urep);
-    EXPECT_EQ(1, urep.update_size()) << "fix yer test";
+    EXPECT_EQ(1U, urep.update_size()) << "fix yer test";
 }
 
 void
@@ -997,7 +997,7 @@ FileSystemTestBase::set_volume_read_threshold(uint64_t rthresh)
     vd::UpdateReport urep;
 
     fs_->object_router().update(pt, urep);
-    EXPECT_EQ(1, urep.update_size()) << "fix yer test";
+    EXPECT_EQ(1U, urep.update_size()) << "fix yer test";
 }
 
 void
@@ -1010,7 +1010,7 @@ FileSystemTestBase::set_file_write_threshold(uint64_t wthresh)
     vd::UpdateReport urep;
 
     fs_->object_router().update(pt, urep);
-    EXPECT_EQ(1, urep.update_size()) << "fix yer test";
+    EXPECT_EQ(1U, urep.update_size()) << "fix yer test";
 }
 
 void
@@ -1023,7 +1023,7 @@ FileSystemTestBase::set_file_read_threshold(uint64_t rthresh)
     vd::UpdateReport urep;
 
     fs_->object_router().update(pt, urep);
-    EXPECT_EQ(1, urep.update_size()) << "fix yer test";
+    EXPECT_EQ(1U, urep.update_size()) << "fix yer test";
 }
 
 void
@@ -1036,7 +1036,7 @@ FileSystemTestBase::set_backend_sync_timeout(const boost::chrono::milliseconds& 
     vd::UpdateReport urep;
 
     fs_->object_router().update(pt, urep);
-    EXPECT_EQ(1, urep.update_size()) << "fix yer test";
+    EXPECT_EQ(1U, urep.update_size()) << "fix yer test";
 }
 
 void
@@ -1128,11 +1128,13 @@ FileSystemTestBase::check_snapshots(const vfs::ObjectId& volume_id,
 {
     TODO("AR: expect a VolumeId instead of an ObjectId?");
     const bpy::list snap_list = client_.list_snapshots(volume_id.str());
-    ASSERT_EQ(expected_snapshots.size(), bpy::len(snap_list));
+    ASSERT_EQ(static_cast<ssize_t>(expected_snapshots.size()),
+              bpy::len(snap_list));
 
     for (uint32_t i = 0; i < expected_snapshots.size(); i++)
     {
-        ASSERT_EQ(expected_snapshots[i], std::string(bpy::extract<std::string>(snap_list[i])));
+        ASSERT_EQ(expected_snapshots[i],
+                  std::string(bpy::extract<std::string>(snap_list[i])));
     }
 }
 
@@ -1158,7 +1160,7 @@ FileSystemTestBase::set_lock_reaper_interval(uint64_t seconds)
     vd::UpdateReport urep;
 
     fs_->object_router().update(pt, urep);
-    EXPECT_EQ(1, urep.update_size()) << "fix yer test";
+    EXPECT_EQ(1U, urep.update_size()) << "fix yer test";
 }
 
 }

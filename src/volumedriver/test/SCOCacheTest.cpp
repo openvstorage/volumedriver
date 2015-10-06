@@ -270,7 +270,7 @@ protected:
     void
     testBalancing(const MPTestConfigs& mptestcfgs)
     {
-        ASSERT_EQ(1, getMountPointList().size()) << "fix your test";
+        ASSERT_EQ(1U, getMountPointList().size()) << "fix your test";
 
         unsigned sco_count = mpSizeSCO_;
 
@@ -326,7 +326,7 @@ protected:
             }
         }
 
-        EXPECT_EQ(0, mpscos.size());
+        EXPECT_EQ(0U, mpscos.size());
 
         removeNamespace(nspace);
 
@@ -380,7 +380,7 @@ TEST_F(SCOCacheTest, namespaces)
 
         NSMap& m = getNSMap();
 
-        EXPECT_EQ(1, m.size());
+        EXPECT_EQ(1U, m.size());
         EXPECT_EQ(nspace, m.begin()->first);
     }
 
@@ -397,7 +397,7 @@ TEST_F(SCOCacheTest, namespaces)
     {
         NSMap& m = getNSMap();
 
-        EXPECT_EQ(0, m.size());
+        EXPECT_EQ(0U, m.size());
 
         SCOCacheMountPointList& l = getMountPointList();
         EXPECT_EQ(mpcfgs_.size(), l.size());
@@ -431,7 +431,7 @@ TEST_F(SCOCacheTest, NamespaceActivation)
 
     SCONameList l;
     scoCache_->getSCONameList(nspace, l, true);
-    EXPECT_EQ(0, l.size());
+    EXPECT_EQ(0U, l.size());
 
     scoCache_->getSCONameList(nspace, l, false);
     EXPECT_EQ(mpSizeSCO_, l.size());
@@ -472,7 +472,7 @@ TEST_F(SCOCacheTest, NamespaceActivation)
 
     l.clear();
     scoCache_->getSCONameList(nspace, l, true);
-    EXPECT_EQ(0, l.size());
+    EXPECT_EQ(0U, l.size());
 
     scoCache_->getSCONameList(nspace, l, false);
     EXPECT_EQ(mpSizeSCO_, l.size());
@@ -517,7 +517,7 @@ TEST_F(SCOCacheTest, scos)
         scoCache_->getSCONameList(nspace,
                                   l,
                                   false);
-        EXPECT_EQ(1, l.size());
+        EXPECT_EQ(1U, l.size());
         EXPECT_EQ(locs[0].sco(), l.front());
     }
 
@@ -526,7 +526,7 @@ TEST_F(SCOCacheTest, scos)
         scoCache_->getSCONameList(nspace,
                                   l,
                                   true);
-        EXPECT_EQ(1, l.size());
+        EXPECT_EQ(1U, l.size());
         EXPECT_EQ(locs[1].sco(), l.front());
     }
 
@@ -558,12 +558,12 @@ TEST_F(SCOCacheTest, scos)
     scoCache_->getSCONameList(nspace,
                               l,
                               false);
-    EXPECT_EQ(0, l.size());
+    EXPECT_EQ(0U, l.size());
 
     scoCache_->getSCONameList(nspace,
                               l,
                               true);
-    EXPECT_EQ(0, l.size());
+    EXPECT_EQ(0U, l.size());
 }
 
 TEST_F(SCOCacheTest, scosAgain)
@@ -1120,7 +1120,7 @@ TEST_F(SCOCacheTest, addAndRemoveMountPoints)
 
     {
         SCOCacheMountPointList& l = getMountPointList();
-        EXPECT_EQ(2, l.size());
+        EXPECT_EQ(2U, l.size());
     }
 
     EXPECT_TRUE(fs::exists(mp2 / nspace.str())) <<
@@ -1131,7 +1131,7 @@ TEST_F(SCOCacheTest, addAndRemoveMountPoints)
 
     {
         SCOCacheMountPointList& l = getMountPointList();
-        EXPECT_EQ(1, l.size());
+        EXPECT_EQ(1U, l.size());
         EXPECT_EQ(mp2, l.front()->getPath());
     }
 
@@ -1141,7 +1141,7 @@ TEST_F(SCOCacheTest, addAndRemoveMountPoints)
 
     {
         SCOCacheMountPointList& l = getMountPointList();
-        EXPECT_EQ(1, l.size());
+        EXPECT_EQ(1U, l.size());
         EXPECT_EQ(mp2, l.front()->getPath());
     }
 }
@@ -1149,7 +1149,7 @@ TEST_F(SCOCacheTest, addAndRemoveMountPoints)
 TEST_F(SCOCacheTest, cleanup)
 {
     SCOCacheMountPointList& l = getMountPointList();
-    EXPECT_EQ(1, l.size());
+    EXPECT_EQ(1U, l.size());
     SCOCacheMountPointPtr mp = l.front();
 
     const backend::Namespace nspace;
@@ -1184,7 +1184,7 @@ TEST_F(SCOCacheTest, cleanup)
 
     {
         SCOCacheMountPointList& l = getMountPointList();
-        EXPECT_EQ(1, l.size());
+        EXPECT_EQ(1U, l.size());
         SCOCacheMountPointPtr mp = l.front();
         EXPECT_EQ(scoSize_ * numSCOs, mp->getUsedSize()) <<
             "disposable scos cannot be cleaned up";
@@ -1208,7 +1208,7 @@ TEST_F(SCOCacheTest, cleanup)
     {
         SCONameList l;
         scoCache_->getSCONameList(nspace, l, false);
-        EXPECT_EQ(0, l.size());
+        EXPECT_EQ(0U, l.size());
     }
 
     scoCache_->cleanup();
@@ -1406,7 +1406,7 @@ TEST_F(SCOCacheTest, SAPs)
 
     SCONameList l;
     scoCache_->getSCONameList(nspace, l, false);
-    EXPECT_EQ(0, l.size());
+    EXPECT_EQ(0U, l.size());
 
     scoCache_->getSCONameList(nspace, l, true);
 
@@ -1453,7 +1453,7 @@ TEST_F(SCOCacheTest, MountPointsInfo)
 
     SCOCacheMountPointsInfo info;
     scoCache_->getMountPointsInfo(info);
-    EXPECT_EQ(2, info.size());
+    EXPECT_EQ(2U, info.size());
 
     uint64_t used = 0;
 
@@ -1461,7 +1461,7 @@ TEST_F(SCOCacheTest, MountPointsInfo)
     {
         EXPECT_EQ(p.first, p.second.path);
         const SCOCacheMountPointInfo& mpinfo = p.second;
-        EXPECT_EQ(0, mpinfo.used % scoSize_);
+        EXPECT_EQ(0U, mpinfo.used % scoSize_);
         used += mpinfo.used;
     }
 
@@ -1516,13 +1516,13 @@ TEST_F(SCOCacheTest, offlineMountPoint)
     uint64_t errcnt;
     {
         SCOCacheMountPointList& l = getMountPointList();
-        EXPECT_EQ(2, l.size());
+        EXPECT_EQ(2U, l.size());
 
         SCOCacheMountPointPtr mp1 = l.front();
         SCOCacheMountPointPtr mp2 = l.back();
 
         errcnt = getMountPointErrorCount();
-        EXPECT_EQ(1, errcnt);
+        EXPECT_EQ(1U, errcnt);
         EXPECT_EQ(errcnt, mp1->getErrorCount());
         EXPECT_EQ(errcnt, mp2->getErrorCount());
     }
@@ -1576,7 +1576,7 @@ TEST_F(SCOCacheTest, offlineMountPoint)
 
         {
             SCOCacheMountPointList& l = getMountPointList();
-            EXPECT_EQ(1, l.size());
+            EXPECT_EQ(1U, l.size());
             EXPECT_TRUE(l.front() != brokenmp);
             EXPECT_EQ(errcnt + 1, l.front()->getErrorCount());
             EXPECT_EQ(errcnt, brokenmp->getErrorCount());
@@ -1650,7 +1650,7 @@ TEST_F(SCOCacheTest, recursiveOffliningDuringCleanup)
     {
         SCOCacheMountPointsInfo info;
         scoCache_->getMountPointsInfo(info);
-        EXPECT_EQ(2, info.size());
+        EXPECT_EQ(2U, info.size());
 
         for (const auto& v : info)
         {
@@ -1665,7 +1665,7 @@ TEST_F(SCOCacheTest, recursiveOffliningDuringCleanup)
     {
         SCOCacheMountPointsInfo info;
         scoCache_->getMountPointsInfo(info);
-        EXPECT_EQ(2, info.size());
+        EXPECT_EQ(2U, info.size());
 
         for (const auto& v : info)
         {
@@ -1690,7 +1690,7 @@ TEST_F(SCOCacheTest, recursiveOffliningDuringCleanup)
     {
         SCOCacheMountPointsInfo info;
         scoCache_->getMountPointsInfo(info);
-        EXPECT_EQ(3, info.size());
+        EXPECT_EQ(3U, info.size());
 
         for (const auto& v : info)
         {
@@ -1726,7 +1726,7 @@ TEST_F(SCOCacheTest, restart_after_offlining)
     SCOCacheMountPointsInfo info_old;
     scoCache_->getMountPointsInfo(info_old);
 
-    EXPECT_EQ(2,
+    EXPECT_EQ(2U,
               info_old.size());
 
     for (const auto& v : info_old)
@@ -1789,7 +1789,7 @@ TEST_F(SCOCacheTest, restart_after_offlining_a_recently_added_mountpoint)
     {
         ++mpcounter; // the initial startup set it to 1
         SCOCacheMountPointList& l = getMountPointList();
-        EXPECT_EQ(1, l.size());
+        EXPECT_EQ(1U, l.size());
         EXPECT_EQ(mpcounter,
                   l.front()->getErrorCount());
     }
@@ -1819,7 +1819,7 @@ TEST_F(SCOCacheTest, restart_after_offlining_a_recently_added_mountpoint)
     SCOCacheMountPointsInfo info_old;
     scoCache_->getMountPointsInfo(info_old);
 
-    EXPECT_EQ(2,
+    EXPECT_EQ(2U,
               info_old.size());
 
     for (const auto& v : info_old)

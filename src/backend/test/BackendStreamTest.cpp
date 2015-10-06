@@ -398,7 +398,8 @@ TEST_F(BackendStreamTest, rawSource)
     for (size_t i = 0; i < size; i += std::min(size - i, pattern.size()))
     {
         std::vector<char> buf(std::min(size - i, pattern.size()));
-        EXPECT_EQ(buf.size(), src.read(&buf[0], buf.size()));
+        EXPECT_EQ(static_cast<ssize_t>(buf.size()),
+                  src.read(&buf[0], buf.size()));
         const std::string read(&buf[0], buf.size());
         EXPECT_EQ(read, pattern.substr(0, buf.size()));
         chksum2.update(&buf[0], buf.size());

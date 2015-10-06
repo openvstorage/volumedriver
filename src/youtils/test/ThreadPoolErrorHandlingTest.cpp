@@ -195,7 +195,7 @@ TEST_F(ThreadPoolErrorHandlingTest, eins)
 
     Callback cb(lock, cond);
 
-    const uint32_t num_errors = 10;
+    const int num_errors = 10;
     ErrorHandlingTask<Callback>* t =
         new ErrorHandlingTask<Callback>(cb,
                                         BarrierTask::F,

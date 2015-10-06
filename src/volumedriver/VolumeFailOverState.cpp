@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "VolumeFailoverState.h"
+#include "VolumeFailOverState.h"
 
 #include <iostream>
 #include <vector>
@@ -28,21 +28,21 @@ namespace volumedriver
 namespace
 {
 
-DECLARE_LOGGER("VolumeFailoverState");
+DECLARE_LOGGER("VolumeFailOverState");
 
 // Hack around boost::bimap not supporting initializer lists by building a vector first
 // and then filling the bimap from it. And since we don't want the vector to stick around
 // forever we use a function.
-typedef boost::bimap<VolumeFailoverState, std::string> TranslationsMap;
+typedef boost::bimap<VolumeFailOverState, std::string> TranslationsMap;
 
 TranslationsMap
 init_translations()
 {
     const std::vector<TranslationsMap::value_type> initv{
-        { VolumeFailoverState::OK_SYNC, "OK_SYNC" },
-        { VolumeFailoverState::OK_STANDALONE, "OK_STANDALONE" },
-        { VolumeFailoverState::KETCHUP, "CATCHUP" },
-        { VolumeFailoverState::DEGRADED, "DEGRADED" }
+        { VolumeFailOverState::OK_SYNC, "OK_SYNC" },
+        { VolumeFailOverState::OK_STANDALONE, "OK_STANDALONE" },
+        { VolumeFailOverState::KETCHUP, "CATCHUP" },
+        { VolumeFailOverState::DEGRADED, "DEGRADED" }
     };
 
     return TranslationsMap(initv.begin(), initv.end());
@@ -51,20 +51,20 @@ init_translations()
 const TranslationsMap translations(init_translations());
 
 void
-reminder(VolumeFailoverState st) __attribute__((unused));
+reminder(VolumeFailOverState st) __attribute__((unused));
 
 void
-reminder(VolumeFailoverState st)
+reminder(VolumeFailOverState st)
 {
     // If the compiler yells at you here chances are that you also forgot to update
     // the above translations. DO IT NOW!
 
     switch (st)
     {
-    case VolumeFailoverState::OK_SYNC:
-    case VolumeFailoverState::OK_STANDALONE:
-    case VolumeFailoverState::KETCHUP:
-    case VolumeFailoverState::DEGRADED:
+    case VolumeFailOverState::OK_SYNC:
+    case VolumeFailOverState::OK_STANDALONE:
+    case VolumeFailOverState::KETCHUP:
+    case VolumeFailOverState::DEGRADED:
         break;
     }
 };
@@ -72,7 +72,7 @@ reminder(VolumeFailoverState st)
 }
 
 const std::string&
-volumeFailoverStateToString(VolumeFailoverState st)
+volumeFailoverStateToString(VolumeFailOverState st)
 {
     const auto it = translations.left.find(st);
     VERIFY(it != translations.left.end());
@@ -82,7 +82,7 @@ volumeFailoverStateToString(VolumeFailoverState st)
 
 std::ostream&
 operator<<(std::ostream& os,
-           const VolumeFailoverState st)
+           const VolumeFailOverState st)
 {
     const auto it = translations.left.find(st);
     if (it != translations.left.end())
@@ -100,7 +100,7 @@ operator<<(std::ostream& os,
 
 std::istream&
 operator>>(std::istream& is,
-           VolumeFailoverState& st)
+           VolumeFailOverState& st)
 {
     std::string str;
     is >> str;

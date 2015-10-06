@@ -20,7 +20,7 @@ EOF
 export CXX_SETTINGS="-std=gnu++14 -fPIC -fprofile-arcs -ftest-coverage"
 export LIBS="-lgcov"
 
-BUILDTOOLS_TO_USE=$(realpath ${WORKSPACE}/BUILDS/volumedriver-buildtools-4.0/rtchecked)
+BUILDTOOLS_TO_USE=$(realpath ${WORKSPACE}/BUILDS/volumedriver-buildtools-5.0/rtchecked)
 
 VOLUMEDRIVER_DIR=$1
 
@@ -45,7 +45,7 @@ export ARAKOON_PORT_BASE=${ARAKOON_PORT_BASE:-$((FOC_PORT_BASE + 10))}
 export ARAKOON_VERSION=$(${ARAKOON_BINARY} --version | grep version | cut -f 2 -d ' ')
 export VFS_PORT_BASE=${VFS_PORT_BASE:-$((FOC_PORT_BASE + 20))}
 export MDS_PORT_BASE=${MDS_PORT_BASE:-$((VFS_PORT_BASE + 20))}
-export CXX_WARNINGS="-Wall -Wextra -Wno-unknown-pragmas -Wctor-dtor-privacy -Wsign-promo -Woverloaded-virtual -Wnon-virtual-dtor"
+export CXX_WARNINGS="-Wall -Wextra -Wno-unknown-pragmas -Wsign-promo -Woverloaded-virtual -Wnon-virtual-dtor"
 export VD_EXTRA_VERSION=`get_debug_extra_version $VOLUMEDRIVER_DIR`
 
 rm -rf ${TEMP}

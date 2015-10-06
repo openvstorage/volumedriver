@@ -3,7 +3,7 @@ set -eux
 # test .. this file should be in `pwd`!!!
 
 
-BUILDTOOLS_TO_USE=$(realpath ${WORKSPACE}/BUILDS/volumedriver-buildtools-4.0/rtchecked)
+BUILDTOOLS_TO_USE=$(realpath ${WORKSPACE}/BUILDS/volumedriver-buildtools-5.0/rtchecked)
 
 VOLUMEDRIVER_DIR=$(realpath $1)
 . ${VOLUMEDRIVER_DIR}/src/buildscripts/get_revision.sh

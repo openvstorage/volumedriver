@@ -44,7 +44,7 @@ protected:
     vfs::ZWorkerPool::MessageParts
     sleeping_worker(vfs::ZWorkerPool::MessageParts&& parts_in)
     {
-        EXPECT_EQ(1, parts_in.size());
+        EXPECT_EQ(1U, parts_in.size());
         EXPECT_EQ(sizeof(uint32_t), parts_in[0].size());
 
         uint32_t timeout_secs = *static_cast<uint32_t*>(parts_in[0].data());

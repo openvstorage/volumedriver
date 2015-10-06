@@ -143,10 +143,11 @@ protected:
                off_t off)
     {
         EXPECT_FALSE(pattern.empty()) << "fix your test";
-        EXPECT_LT(0, size);
+        EXPECT_LT(0U, size);
 
         std::vector<char> buf(size);
-        EXPECT_EQ(size, read_from_file(entity, &buf[0], buf.size(), off));
+        EXPECT_EQ(static_cast<ssize_t>(size),
+                  read_from_file(entity, &buf[0], buf.size(), off));
         for (size_t i = 0; i < size; ++i)
         {
             EXPECT_EQ(pattern[i % pattern.size()], buf[i]) << "mismatch at offset " << i;
@@ -323,7 +324,7 @@ protected:
         st.st_mode = 0;
 
         ASSERT_EQ(0, getattr(entity, st));
-        ASSERT_EQ(size, st.st_size);
+        ASSERT_EQ(static_cast<ssize_t>(size), st.st_size);
         ASSERT_TRUE(S_ISREG(st.st_mode));
 
         if (maybe_mode)

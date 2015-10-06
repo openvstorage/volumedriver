@@ -117,7 +117,7 @@ protected:
 
         if (in_snapshot)
         {
-            ASSERT_EQ(1, sp_->snapshots.size());
+            ASSERT_EQ(1U, sp_->snapshots.size());
             Snapshot& snap = sp_->snapshots.front();
 
             for (auto& tlog : snap)
@@ -209,13 +209,13 @@ TEST_F(SnapshotPersistorTest, removeallbuttlast2)
     tlogs.push_back(sp_->getCurrentTLog());
     sp_->snapshot("Third");
 
-    EXPECT_EQ(tlogs.size(), 12);
+    EXPECT_EQ(12U, tlogs.size());
 
     sp_->deleteAllButLastSnapshot();
     const Snapshots snaps = sp_->getSnapshots();
-    EXPECT_EQ(snaps.size(), 1);
+    EXPECT_EQ(1U, snaps.size());
     EXPECT_TRUE(snaps.front().getName() == "Third");
-    EXPECT_EQ(snaps.front().size(), 12);
+    EXPECT_EQ(12U, snaps.front().size());
 
     size_t i = 0;
     for(const auto& tlog : snaps.front())
@@ -751,7 +751,7 @@ TEST_F(SnapshotPersistorTest, tlogWrittenToBackendConsistencyCheck)
 
         tlog_names.clear();
         sp_->getTLogsNotWrittenToBackend(tlog_names);
-        EXPECT_EQ(1, tlog_names.size());
+        EXPECT_EQ(1U, tlog_names.size());
     }
 }
 

@@ -4,7 +4,7 @@ set -eux
 
 # no valgrind invocations here - the jenkins valgrind plugin does that.
 
-BUILDTOOLS_TO_USE=$(realpath ${WORKSPACE}/BUILDS/volumedriver-buildtools-4.0/rtchecked)
+BUILDTOOLS_TO_USE=$(realpath ${WORKSPACE}/BUILDS/volumedriver-buildtools-5.0/rtchecked)
 
 VOLUMEDRIVER_DIR=$1
 

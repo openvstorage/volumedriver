@@ -43,7 +43,7 @@
 #include <volumedriver/Types.h>
 #include <volumedriver/VolManager.h>
 #include <volumedriver/VolumeDriverError.h>
-#include <volumedriver/VolumeFailoverState.h>
+#include <volumedriver/VolumeFailOverState.h>
 #include <volumedriver/VolumeOverview.h>
 #include <volumedriver/VolumeException.h>
 

@@ -352,21 +352,22 @@ TEST_P(ApiTest, QueueCount)
 
         {
             fungi::ScopedLock l(api::getManagementMutex());
-            EXPECT_EQ(0,
+            EXPECT_EQ(0U,
                       api::getQueueCount(VolumeId("volume1")));
-            EXPECT_EQ(0,
+            EXPECT_EQ(0U,
                       api::getQueueSize(VolumeId("volume1")));
-            EXPECT_EQ(0,
+            EXPECT_EQ(0U,
                       api::performance_counters(VolumeId("volume1")).backend_write_request_size.sum());
         }
 
         v->createSnapshot("snap1");
         {
             fungi::ScopedLock l(api::getManagementMutex());
-            EXPECT_EQ(1, api::getQueueCount(VolumeId("volume1")));
+            EXPECT_EQ(1U,
+                      api::getQueueCount(VolumeId("volume1")));
             EXPECT_EQ(v->get_config().getSCOSize(),
                       api::getQueueSize(VolumeId("volume1")));
-            EXPECT_EQ(0,
+            EXPECT_EQ(0U,
                       api::performance_counters(VolumeId("volume1")).backend_write_request_size.sum());
         }
     }
@@ -376,13 +377,13 @@ TEST_P(ApiTest, QueueCount)
     }
     {
         fungi::ScopedLock l(api::getManagementMutex());
-        EXPECT_EQ(0,
+        EXPECT_EQ(0U,
                   api::getQueueCount(VolumeId("volume1")));
-        EXPECT_EQ(0,
+        EXPECT_EQ(0U,
                   api::getQueueSize(VolumeId("volume1")));
-        EXPECT_EQ(20480,
+        EXPECT_EQ(20480U,
                   api::performance_counters(VolumeId("volume1")).backend_write_request_size.sum());
-        EXPECT_EQ(20480,
+        EXPECT_EQ(20480U,
                   api::getStored(VolumeId("volume1")));
     }
 };
@@ -460,8 +461,8 @@ TEST_P(ApiTest, SyncSettings)
 
     }
 
-    EXPECT_EQ(number_of_syncs_to_ignore, 0);
-    EXPECT_EQ(maximum_time_to_ignore_syncs_in_seconds, 0);
+    EXPECT_EQ(0U, number_of_syncs_to_ignore);
+    EXPECT_EQ(0U, maximum_time_to_ignore_syncs_in_seconds);
 
     const uint64_t number_of_syncs_to_ignore_c = 23;
     const uint64_t maximum_time_to_ignore_syncs_in_seconds_c = 127;
@@ -688,7 +689,7 @@ TEST_P(ApiTest, MetaDataStoreMaxPages)
     {
         const MetaDataStoreStats mds = api::getMetaDataStoreStats(volid);
         EXPECT_EQ(max_pages, mds.max_pages);
-        EXPECT_EQ(0, mds.cached_pages);
+        EXPECT_EQ(0U, mds.cached_pages);
     }
 
     api::destroyVolume(volid,
@@ -705,7 +706,7 @@ TEST_P(ApiTest, MetaDataStoreMaxPages)
     {
         const MetaDataStoreStats mds = api::getMetaDataStoreStats(volid);
         EXPECT_EQ(max_pages, mds.max_pages);
-        EXPECT_EQ(0, mds.cached_pages);
+        EXPECT_EQ(0U, mds.cached_pages);
     }
 
     api::destroyVolume(volid,
@@ -722,7 +723,7 @@ TEST_P(ApiTest, MetaDataStoreMaxPages)
     {
         const MetaDataStoreStats mds = api::getMetaDataStoreStats(volid);
         EXPECT_EQ(max_pages, mds.max_pages);
-        EXPECT_EQ(0, mds.cached_pages);
+        EXPECT_EQ(0U, mds.cached_pages);
     }
 }
 

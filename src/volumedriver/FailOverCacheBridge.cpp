@@ -223,7 +223,7 @@ FailOverCacheBridge::run()
             LOG_ERROR("Exception in failover thread: " << e.what());
             if(vol_)
             {
-                vol_->setVolumeFailoverState(VolumeFailoverState::DEGRADED);
+                vol_->setVolumeFailOverState(VolumeFailOverState::DEGRADED);
             }
 
             fungi::ScopedLock l(newOnesMutex_);

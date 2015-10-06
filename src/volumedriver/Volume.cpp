@@ -125,7 +125,7 @@ Volume::Volume(const VolumeConfig& vCfg,
     , snapshotManagement_(snapshotManagement.release())
     , volOffset_(ilogb(vCfg.lba_size_ ))
     , nsidmap_(std::move(nsidmap))
-    , failoverstate_(VolumeFailoverState::DEGRADED)
+    , failoverstate_(VolumeFailOverState::DEGRADED)
     , last_tlog_not_on_failover_("")
     , readcounter_(0)
     , read_activity_(0)
@@ -463,22 +463,22 @@ Volume::localRestart()
         catch(std::exception& e)
         {
             LOG_VINFO("Could not start with previous failover settings: " << e.what());
-            failoverstate_ = VolumeFailoverState::DEGRADED;
+            failoverstate_ = VolumeFailOverState::DEGRADED;
         }
         catch(...)
         {
             LOG_VINFO("Could not start with previous failover settings: unknown problem");
-            failoverstate_ = VolumeFailoverState::DEGRADED;
+            failoverstate_ = VolumeFailOverState::DEGRADED;
         }
         if(cache)
         {
             failover_->newCache(std::move(cache));
-            failoverstate_ = VolumeFailoverState::OK_SYNC;
+            failoverstate_ = VolumeFailOverState::OK_SYNC;
         }
     }
     else
     {
-        failoverstate_ = VolumeFailoverState::OK_STANDALONE;
+        failoverstate_ = VolumeFailOverState::OK_STANDALONE;
     }
 
     snapshotManagement_->scheduleTLogsToBeWrittenToBackend();
@@ -527,7 +527,7 @@ Volume::newVolume()
     snapshotManagement_->scheduleWriteSnapshotToBackend();
     writeConfigToBackend_(cfg);
     writeFailOverCacheConfigToBackend_();
-    failoverstate_ = VolumeFailoverState::OK_STANDALONE;
+    failoverstate_ = VolumeFailOverState::OK_STANDALONE;
 
     register_with_cluster_cache_(getOwnerTag());
     return this;
@@ -624,14 +624,14 @@ Volume::backend_restart(const CloneTLogs& restartTLogs,
                           lastSCOInBackend);
                 cache->clear();
             }
-            failoverstate_ = VolumeFailoverState::OK_SYNC;
+            failoverstate_ = VolumeFailOverState::OK_SYNC;
         }
         failover_->newCache(std::move(cache));
 
     }
     else
     {
-        failoverstate_ = VolumeFailoverState::OK_STANDALONE;
+        failoverstate_ = VolumeFailOverState::OK_STANDALONE;
     }
 
     snapshotManagement_->scheduleWriteSnapshotToBackend();
@@ -1404,13 +1404,13 @@ Volume::restoreSnapshot(const std::string& name)
             {
                 failover_->Flush();
                 failover_->Clear();
-                failoverstate_ = VolumeFailoverState::OK_SYNC;
+                failoverstate_ = VolumeFailOverState::OK_SYNC;
 
             }
             // Z42: std::exception?
             catch (std::exception& e)
             {
-                failoverstate_ = VolumeFailoverState::DEGRADED;
+                failoverstate_ = VolumeFailOverState::DEGRADED;
                 LOG_VERROR("Error resetting the failover cache:" << e.what());
             }
         }
@@ -1470,7 +1470,7 @@ Volume::cloneFromParentSnapshot(const yt::UUID& parent_snap_uuid,
 
     writeConfigToBackend_(cfg);
     writeFailOverCacheConfigToBackend_();
-    failoverstate_ = VolumeFailoverState::OK_STANDALONE;
+    failoverstate_ = VolumeFailOverState::OK_STANDALONE;
 
     metaDataStore_->processCloneTLogs(clone_tlogs,
                                       nsidmap_,
@@ -2119,7 +2119,7 @@ Volume::getTLogUsed() const
 void
 Volume::check_and_fix_failovercache()
 {
-    if(failoverstate_ == VolumeFailoverState::DEGRADED)
+    if(failoverstate_ == VolumeFailOverState::DEGRADED)
     {
         LOG_VPERIODIC("Volume State is " << failoverstate_ << ", will try to fix");
         if(not foc_config_wrapper_.config())
@@ -2215,7 +2215,7 @@ Volume::setFailOverCache_(const FailOverCacheConfig& config)
 {
     // This seems only to be called externally.
     checkNotHalted_();
-    failoverstate_ = VolumeFailoverState::DEGRADED;
+    failoverstate_ = VolumeFailOverState::DEGRADED;
     foc_config_wrapper_.set(config);
 
     last_tlog_not_on_failover_ = "";
@@ -2247,17 +2247,17 @@ Volume::setFailOverCache_(const FailOverCacheConfig& config)
         if(snapshotManagement_->currentTLogHasData() )
         {
             last_tlog_not_on_failover_ = curTLog;
-            failoverstate_ = VolumeFailoverState::KETCHUP;
+            failoverstate_ = VolumeFailOverState::KETCHUP;
         }
         else if(size > 1)
         {
             last_tlog_not_on_failover_ = out[size - 2];
-            failoverstate_ = VolumeFailoverState::KETCHUP;
+            failoverstate_ = VolumeFailOverState::KETCHUP;
         }
         else
         {
             //Y42 ONLY CORRECT IF THE CURRENT TLOG HOLDS NO DATA!!
-            failoverstate_ = VolumeFailoverState::OK_SYNC;
+            failoverstate_ = VolumeFailOverState::OK_SYNC;
         }
     }
 
@@ -2271,7 +2271,7 @@ Volume::setNoFailOverCache_()
     ASSERT_WLOCKED();
     checkNotHalted_();
 
-    failoverstate_ = VolumeFailoverState::DEGRADED;
+    failoverstate_ = VolumeFailOverState::DEGRADED;
     last_tlog_not_on_failover_ = "";
     foc_config_wrapper_.set(boost::none);
 
@@ -2279,7 +2279,7 @@ Volume::setNoFailOverCache_()
     failover_->newCache(nullptr);
     writeFailOverCacheConfigToBackend_();
 
-    failoverstate_ = VolumeFailoverState::OK_STANDALONE;
+    failoverstate_ = VolumeFailOverState::OK_STANDALONE;
 }
 
 void
@@ -2289,7 +2289,7 @@ Volume::checkState(const std::string& tlogname)
 
     if(tlogname == last_tlog_not_on_failover_)
     {
-        failoverstate_ = VolumeFailoverState::OK_SYNC;
+        failoverstate_ = VolumeFailOverState::OK_SYNC;
     }
 }
 
