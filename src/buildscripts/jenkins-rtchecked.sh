@@ -24,7 +24,6 @@ export SKIP_TESTS=
 export SKIP_BUILD=no
 export FAILOVERCACHE_TEST_PORT=${FOC_PORT_BASE}
 export COVERAGE=yes
-export WITH_ARAKOON_METADATA_STORE=no
 export ARAKOON_BINARY=/usr/bin/arakoon
 export ARAKOON_PORT_BASE=${ARAKOON_PORT_BASE:-$((FOC_PORT_BASE + 10))}
 export ARAKOON_VERSION=$(${ARAKOON_BINARY} --version | grep version | cut -f 2 -d ' ')
