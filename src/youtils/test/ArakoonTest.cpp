@@ -64,9 +64,9 @@ public:
     void
     test_hello(arakoon::Cluster& cluster)
     {
-
-        EXPECT_TRUE(boost::regex_match(cluster.hello("hullo?"),
-                                              arakoon_hello_string_regex));
+        const std::string rsp(cluster.hello("hullo?"));
+        EXPECT_TRUE(boost::regex_match(rsp,
+                                       arakoon_hello_string_regex)) << rsp << " does not match the regex " << arakoon_hello_string_regex;
     }
 
 protected:
