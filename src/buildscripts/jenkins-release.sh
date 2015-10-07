@@ -30,7 +30,6 @@ export VFS_PORT_BASE=${VFS_PORT_BASE:-$((FOC_PORT_BASE + 20))}
 export MDS_PORT_BASE=${MDS_PORT_BASE:-$((VFS_PORT_BASE + 20))}
 export CXX_WARNINGS="-Wall -Wextra -Wno-unknown-pragmas -Wsign-promo -Woverloaded-virtual -Wnon-virtual-dtor"
 export SUPPRESS_WARNINGS=yes
-export VD_EXTRA_VERSION=`get_release_extra_version $VOLUMEDRIVER_DIR`
 
 #oooh this is dangerous...
 rm -rf ${TEMP}
