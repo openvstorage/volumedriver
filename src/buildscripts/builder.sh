@@ -29,18 +29,9 @@ PREFIX=$(pwd)
 #number of parallel makes to run
 PALLALLELLIZATION=${BUILD_NUM_PROCESSES:-6}
 
-# less configurables
-COMPONENTS="youtils backend persistent_cache volumedriver xmlrpc++0.7 VolumeTester kernel daemon"
-
 export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig:$BUILDTOOLS/lib/pkgconfig
 
-if [ "x${USE_RTAGS}" == "xyes" ]
-then
-    echo 'not yet supported'; exit 1
-    CXX=${BUILDTOOLS?}/bin/rtags-g++
-    CC=${BUILDTOOLS?}/bin/rtags-gcc
-    CPP=${BUILDTOOLS?}/bin/rtags-cpp
-elif [ "x${USE_CLANG}" == "xyes" ]
+if [ "x${USE_CLANG}" == "xyes" ]
 then
     CXX=/usr/bin/clang++
     CC=/usr/bin/clang
@@ -151,7 +142,6 @@ if [ "x${SUPPRESS_WARNINGS}" == "xyes" ]
 then
     CXXFLAGS="${CXXFLAGS} -DSUPPRESS_WARNINGS"
 fi
-
 
 BUILD_DIR_NAME=build
 COVERAGE_DIR_NAME=coverage
