@@ -23,7 +23,6 @@ export SKIP_TESTS=yes
 export FAILOVERCACHE_TEST_PORT=${FOC_PORT_BASE}
 export ARAKOON_BINARY=/usr/bin/arakoon
 export ARAKOON_PORT_BASE=${ARAKOON_PORT_BASE:-$((FOC_PORT_BASE + 10))}
-export ARAKOON_VERSION=$(${ARAKOON_BINARY} --version | grep version | cut -f 2 -d ' ')
 export VFS_PORT_BASE=${VFS_PORT_BASE:-$((FOC_PORT_BASE + 20))}
 export CXX_WARNINGS="-Wall -Wextra -Wno-unknown-pragmas -Wctor-dtor-privacy -Wsign-promo -Woverloaded-virtual -Wnon-virtual-dtor"
 export VD_EXTRA_VERSION=`get_debug_extra_version $VOLUMEDRIVER_DIR`

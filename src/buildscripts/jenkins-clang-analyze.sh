@@ -23,7 +23,6 @@ export FAILOVERCACHE_TEST_PORT=32322
 export COVERAGE=nyet
 export ARAKOON_BINARY=/usr/bin/arakoon
 export ARAKOON_PORT_BASE=${ARAKOON_PORT_BASE:-$((FOC_PORT_BASE + 10))}
-export ARAKOON_VERSION=$(${ARAKOON_BINARY} --version | grep version | cut -f 2 -d ' ')
 export VFS_PORT_BASE=${VFS_PORT_BASE:-$((FOC_PORT_BASE + 20))}
 export USE_CLANG_ANALYZER=yes
 export VD_EXTRA_VERSION=clang-analyzer
