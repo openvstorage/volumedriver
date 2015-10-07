@@ -15,7 +15,6 @@ export CLEAN_BUILD=yes
 export RECONFIGURE_BUILD=yes
 export TEMP=${TEMP:-${VOLUMEDRIVER_DIR}/tmp}
 export FOC_PORT_BASE=${FOC_PORT_BASE:-19050}
-export BUILD_QSHELL_PYTHON=no
 export BUILD_DEBIAN_PACKAGES=nah
 export BUILD_DOCS=no
 export SKIP_BUILD=no

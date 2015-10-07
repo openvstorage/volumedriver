@@ -338,12 +338,6 @@ function build_docs {
     popd
 }
 
-if [ "x$ONLY_BUILD_QSHELL_PYTHON" = "xyes" ]
-then
-    build_qshell
-    exit
-fi
-
 if [ "x${CLEAN_BUILD}" = "xyes" ]
 then
     clean_build
