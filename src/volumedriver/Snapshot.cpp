@@ -655,6 +655,33 @@ Snapshots::getAllSnapshots(std::vector<SnapshotNum>& out) const
     }
 }
 
+namespace
+{
+
+bool
+already_replaced(const std::vector<TLog>& vec,
+                 const std::list<TLog>& list)
+{
+    size_t i = 0;
+
+    if (vec.size() and vec.size() == list.size())
+    {
+        for (const auto& t : list)
+        {
+            if (t != vec[i++])
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
+}
+
 void
 Snapshots::replace(const OrderedTLogNames& in,
                    const std::vector<TLog>& out,
@@ -666,7 +693,17 @@ Snapshots::replace(const OrderedTLogNames& in,
     }
 
     iterator i = find_or_throw_(num);
-    i->replace(in, out);
+
+    if (already_replaced(out,
+                         *i))
+    {
+        LOG_INFO("Snapshot " << i->getUUID() << " (" << i->getName() <<
+                 "): already replaced");
+    }
+    else
+    {
+        i->replace(in, out);
+    }
 }
 
 // start_snap (if specified) is *exclusive*, end_snap (if specified) is *inclusive*, IOW:

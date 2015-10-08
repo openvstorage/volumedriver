@@ -860,7 +860,7 @@ TEST_P(ScrubberTest, CloneScrubbin)
                   RemoveVolumeCompletely::T);
 }
 
-TEST_P(ScrubberTest, ApplyScrubTwice)
+TEST_P(ScrubberTest, idempotent_scrub_result_application)
 {
     auto ns_ptr = make_random_namespace();
 
@@ -886,21 +886,31 @@ TEST_P(ScrubberTest, ApplyScrubTwice)
     v1->createSnapshot(snap1);
     persistXVals(vid);
     waitForThisBackendWrite(v1);
-    VolumeConfig volume_config = v1->get_config();
+    const VolumeConfig volume_config = v1->get_config();
 
     auto scrub_work_units  = getScrubbingWork(vid);
     ASSERT_EQ(1U, scrub_work_units.size());
     std::string scrub_result;
     ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
 
-    ASSERT_NO_THROW(apply_scrubbing(vid,
+    EXPECT_NO_THROW(apply_scrubbing(vid,
+                                    scrub_result,
+                                    CleanupScrubbingOnError::T,
+                                    CleanupScrubbingOnSuccess::F));
+
+    waitForThisBackendWrite(v1);
+
+    EXPECT_NO_THROW(apply_scrubbing(vid,
                                     scrub_result));
+
+    waitForThisBackendWrite(v1);
 
     EXPECT_THROW(apply_scrubbing(vid,
                                  scrub_result),
                  std::exception);
 
     waitForThisBackendWrite(v1);
+
     destroyVolume(v1,
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::F);

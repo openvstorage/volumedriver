@@ -88,6 +88,20 @@ public:
         size += s;
     }
 
+    bool
+    operator==(const TLog& other) const
+    {
+        return uuid == other.uuid and
+            written_to_backend == other.written_to_backend and
+            size == other.size;
+    }
+
+    bool
+    operator!=(const TLog& other) const
+    {
+        return not operator==(other);
+    }
+
 private:
     DECLARE_LOGGER("TLog");
 

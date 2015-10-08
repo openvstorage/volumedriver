@@ -1755,12 +1755,14 @@ Volume::applyScrubbing(const std::string& res_name,
 {
     if(T(isVolumeTemplate()))
     {
-        LOG_ERROR("Volume " << getName() << " has been templated, applying scrubbing is not allowed.");
+        LOG_ERROR("Volume " << getName() <<
+                  " has been templated, applying scrubbing is not allowed.");
         throw VolumeIsTemplateException("Templated Volume, applying scrubbing is forbidden");
     }
+
     checkNotHalted_();
 
-   LOG_VINFO("preliminary work");
+    LOG_VINFO("preliminary work");
 
     if(res_name.empty())
     {
@@ -1768,8 +1770,8 @@ Volume::applyScrubbing(const std::string& res_name,
         throw fungi::IOException("No result name passed");
     }
 
-    fs::path result_path = FileUtils::temp_path() / res_name;
-    SCOCloneID scid = nsidmap_.getCloneID(Namespace(ns));
+    const fs::path result_path(FileUtils::temp_path() / res_name);
+    const SCOCloneID scid = nsidmap_.getCloneID(Namespace(ns));
 
     try
     {
@@ -1823,7 +1825,7 @@ Volume::applyScrubbing(const std::string& res_name,
     {
         if(scid == 0)
         {
-            LOG_VINFO("ApplyScrub: replacing tlogs for snapshot" <<
+            LOG_VINFO("ApplyScrub: replacing tlogs for snapshot " <<
                       scrub_result.snapshot_name);
 
             VERIFY(getNamespace() == Namespace(ns));
@@ -1951,7 +1953,7 @@ Volume::applyScrubbing(const std::string& res_name,
         for (const std::string& tlog : scrub_result.tlog_names_in)
         {
             backend_task::DeleteTLog* task = new backend_task::DeleteTLog(this,
-                                                                tlog);
+                                                                          tlog);
             VolManager::get()->backend_thread_pool()->addTask(task);
         }
 
