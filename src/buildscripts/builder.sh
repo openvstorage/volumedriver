@@ -29,18 +29,9 @@ PREFIX=$(pwd)
 #number of parallel makes to run
 PALLALLELLIZATION=${BUILD_NUM_PROCESSES:-6}
 
-# less configurables
-COMPONENTS="youtils backend persistent_cache volumedriver xmlrpc++0.7 VolumeTester kernel daemon"
-
 export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig:$BUILDTOOLS/lib/pkgconfig
 
-if [ "x${USE_RTAGS}" == "xyes" ]
-then
-    echo 'not yet supported'; exit 1
-    CXX=${BUILDTOOLS?}/bin/rtags-g++
-    CC=${BUILDTOOLS?}/bin/rtags-gcc
-    CPP=${BUILDTOOLS?}/bin/rtags-cpp
-elif [ "x${USE_CLANG}" == "xyes" ]
+if [ "x${USE_CLANG}" == "xyes" ]
 then
     CXX=/usr/bin/clang++
     CC=/usr/bin/clang
@@ -127,6 +118,9 @@ LIBS="-lrdmacm ${LIBS}"
 CFLAGS=${CFLAGS:-"-ggdb3 -gdwarf-3 -O0 -Wall"}
 CFLAGS="${CFLAGS} -fPIC"
 
+CPPFLAGS=${CPPFLAGS:-""}
+CPPFLAGS="${CPPFLAGS} -isystem ${BUILDTOOLS}/include"
+
 CXX_INCLUDES=${CXX_INCLUDES:-""}
 CXX_WARNINGS=${CXX_WARNINGS:-"-Wall -Wextra -Wno-unknown-pragmas -Wctor-dtor-privacy -Wsign-promo -Woverloaded-virtual -Wnon-virtual-dtor"}
 CXX_SETTINGS=${CXX_SETTINGS:-"-std=gnu++14 -fPIC"}
@@ -135,6 +129,7 @@ CXX_OPTIMIZE_FLAGS=${CXX_OPTIMIZE_FLAGS:-"-ggdb3 -gdwarf-3 -O0"}
 CXX_COVERAGE_FLAGS=${CXX_COVERAGE_FLAGS:-"-fprofile-arcs -ftest-coverage"}
 CXX_SANITIZE_FLAGS=${CXX_SANITIZE_FLAGS:-""}
 CXXFLAGS="$CXX_INCLUDES $CXX_WARNINGS $CXX_SETTINGS $CXX_DEFINES $CXX_OPTIMIZE_FLAGS $CXX_SANITIZE_FLAGS"
+VD_EXTRA_VERSION=${VD_EXTRA_VERSION:-"0"}
 
 if [ "x${COVERAGE}" == "xyes" ]
 then
@@ -147,7 +142,6 @@ if [ "x${SUPPRESS_WARNINGS}" == "xyes" ]
 then
     CXXFLAGS="${CXXFLAGS} -DSUPPRESS_WARNINGS"
 fi
-
 
 BUILD_DIR_NAME=build
 COVERAGE_DIR_NAME=coverage
@@ -229,20 +223,19 @@ function configure_build {
     pushd ${BUILD_DIR_NAME?}
     mkdir -p ${SCAN_BUILD_DIR_NAME?}
     autoreconf -isv ${SOURCE_DIR?}
-    VD_MAJOR_VERSION=`cat ${SOURCE_DIR}/major.txt`
-    VD_MINOR_VERSION=`cat ${SOURCE_DIR}/minor.txt`
-    VD_PATCH_VERSION=`cat ${SOURCE_DIR}/patch.txt`
-    echo "VD_MAJOR_VERSION : $VD_MAJOR_VERSION"
+    VD_VERSION_STR=$(git describe --abbrev=0)
+    VD_VERSION=(${VD_VERSION_STR//./ })
     CXX=${CXX?} \
 	CC=${CC?} \
 	CPP=${CPP} \
 	CFLAGS=${CFLAGS?} \
+	CPPFLAGS=${CPPFLAGS?} \
 	CXXFLAGS=${CXXFLAGS?} \
 	LDFLAGS=${LDFLAGS} \
 	LIBS=${LIBS} \
-	VD_MAJOR_VERSION=${VD_MAJOR_VERSION} \
-	VD_MINOR_VERSION=${VD_MINOR_VERSION} \
-	VD_PATCH_VERSION=${VD_PATCH_VERSION} \
+	VD_MAJOR_VERSION=${VD_VERSION[0]} \
+	VD_MINOR_VERSION=${VD_VERSION[1]} \
+	VD_PATCH_VERSION=${VD_VERSION[2]} \
 	VD_EXTRA_VERSION=${VD_EXTRA_VERSION?} \
 	${SCAN_BUILD_CMDLINE} \
 	${SOURCE_DIR}/configure \
@@ -334,12 +327,6 @@ function build_docs {
     fi
     popd
 }
-
-if [ "x$ONLY_BUILD_QSHELL_PYTHON" = "xyes" ]
-then
-    build_qshell
-    exit
-fi
 
 if [ "x${CLEAN_BUILD}" = "xyes" ]
 then

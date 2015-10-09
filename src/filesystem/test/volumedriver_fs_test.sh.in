@@ -9,20 +9,8 @@ set -ux
 ARAKOON_PORT_BASE=${ARAKOON_PORT_BASE:-12345}
 ARAKOON_BINARY=${ARAKOON_BINARY:-/usr/bin/arakoon}
 
-if [ "x${WITH_ARAKOON_METADATA_STORE:-no}" != "xyes" ]
-then
-    echo "Running volumedriverfs tests with default metadatastore"
-    cpp_test_with_backend volumedriver_fs_test  \
+cpp_test_with_backend volumedriver_fs_test  \
 	--volumedriverfs-binary-path=@prefix@/bin/volumedriver_fs \
 	--arakoon-binary-path=${ARAKOON_BINARY} \
 	--arakoon-port=${ARAKOON_PORT_BASE} \
 	"$@"
-else
-    echo "Running volumedriverfs tests against ARAKOON for volume metadata"
-    cpp_test_with_backend volumedriver_fs_test  \
-	--volumedriverfs-binary-path=@prefix@/bin/volumedriver_fs \
-	--arakoon-binary-path=${ARAKOON_BINARY} \
-	--arakoon-port=${ARAKOON_PORT_BASE} \
-	--metadata-store=ARAKOON \
-	"$@"
-fi

@@ -17,7 +17,6 @@ export VFS_PORT_BASE=${VFS_PORT_BASE:-$((FOC_PORT_BASE + 20))}
 export CLEAN_BUILD=yes
 export RECONFIGURE_BUILD=yes
 export BUILD_DEBIAN_PACKAGES=no
-export BUILD_QSHELL_PYTHON=no
 export BUILD_DOCS=no
 export SKIP_BUILD=no
 export REPORTS=${WORKSPACE}/report
