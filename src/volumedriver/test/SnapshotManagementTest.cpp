@@ -43,7 +43,7 @@ class SnapshotManagementTest
 
     void
     createSnapshot(SnapshotManagement* c,
-                   const std::string& name)
+                   const SnapshotName& name)
     {
         c->createSnapshot(name,
                           0);
@@ -84,59 +84,70 @@ class SnapshotManagementTest
 
 TEST_P(SnapshotManagementTest, deleteSnaps1)
 {
-    vol_->createSnapshot("first");
+    vol_->createSnapshot(SnapshotName("first"));
 
-    ASSERT_THROW(vol_->deleteSnapshot("__zero__"),fungi::IOException);
-    ASSERT_THROW(vol_->deleteSnapshot("second"),fungi::IOException);
+    ASSERT_THROW(vol_->deleteSnapshot(SnapshotName("__zero__")),
+                 fungi::IOException);
+    ASSERT_THROW(vol_->deleteSnapshot(SnapshotName("second")),
+                 fungi::IOException);
 }
 
 
 TEST_P(SnapshotManagementTest, double_snap_results_in_non_halted_volume)
 {
-    vol_->createSnapshot("first");
+    const SnapshotName first("first");
+    vol_->createSnapshot(first);
     waitForThisBackendWrite(vol_);
-    ASSERT_THROW(vol_->createSnapshot("first"), std::exception);
+    ASSERT_THROW(vol_->createSnapshot(SnapshotName(first)),
+                 std::exception);
     ASSERT_FALSE(vol_->is_halted());
 
 }
 
 TEST_P(SnapshotManagementTest, getTLogsBetweenSnapshots)
 {
-    vol_->createSnapshot("first");
+    const SnapshotName first("first");
+    vol_->createSnapshot(first);
     waitForThisBackendWrite(vol_);
-    vol_->createSnapshot("second");
+
+    const SnapshotName second("second");
+    vol_->createSnapshot(second);
     waitForThisBackendWrite(vol_);
-    vol_->createSnapshot("third");
+
+    const SnapshotName third("third");
+    vol_->createSnapshot(third);
     waitForThisBackendWrite(vol_);
-    vol_->createSnapshot("fourth");
+
+    const SnapshotName fourth("fourth");
+    vol_->createSnapshot(fourth);
     waitForThisBackendWrite(vol_);
     SnapshotManagement* sman = getSnapshotManagement(vol_);
 
-    SnapshotNum first = sman->getSnapshotNumberByName("first");
-    SnapshotNum second = sman->getSnapshotNumberByName("second");
-    SnapshotNum third = sman->getSnapshotNumberByName("third");
-    SnapshotNum fourth = sman->getSnapshotNumberByName("fourth");
+    SnapshotNum firstn = sman->getSnapshotNumberByName(first);
+    SnapshotNum secondn = sman->getSnapshotNumberByName(second);
+    SnapshotNum thirdn = sman->getSnapshotNumberByName(third);
+    SnapshotNum fourthn = sman->getSnapshotNumberByName(fourth);
 
-    vol_->deleteSnapshot("third");
+    vol_->deleteSnapshot(third);
 
     OrderedTLogNames out;
     const SnapshotPersistor& pers = getSnapshotManagement(vol_)->getSnapshotPersistor();
-    ASSERT_THROW(pers.getTLogsBetweenSnapshots(third,
-                                               fourth,
+    ASSERT_THROW(pers.getTLogsBetweenSnapshots(thirdn,
+                                               fourthn,
                                                out,
                                                IncludingEndSnapshot::T),
                  fungi::IOException);
     ASSERT_EQ(0U, out.size());
     // Cannot be tested since it will abort in a non debug release
-    ASSERT_THROW(pers.getTLogsBetweenSnapshots(fourth,
-                                                first,
-                                                out,
+    ASSERT_THROW(pers.getTLogsBetweenSnapshots(fourthn,
+                                               firstn,
+                                               out,
                                                IncludingEndSnapshot::T),
                   fungi::IOException);
     ASSERT_EQ(0U, out.size());
     out.clear();
 
-    ASSERT_THROW(pers.getTLogsBetweenSnapshots(third,
+    ASSERT_THROW(pers.getTLogsBetweenSnapshots(thirdn,
                                                10,
                                                out,
                                                IncludingEndSnapshot::T),
@@ -144,44 +155,44 @@ TEST_P(SnapshotManagementTest, getTLogsBetweenSnapshots)
     ASSERT_EQ(0U, out.size());
     out.clear();
 
-    ASSERT_NO_THROW(pers.getTLogsBetweenSnapshots(fourth,
-                                               fourth,
-                                               out,
-                                               IncludingEndSnapshot::T));
+    ASSERT_NO_THROW(pers.getTLogsBetweenSnapshots(fourthn,
+                                                  fourthn,
+                                                  out,
+                                                  IncludingEndSnapshot::T));
     ASSERT_EQ(2U, out.size());
     out.clear();
 
-    ASSERT_NO_THROW(pers.getTLogsBetweenSnapshots(fourth,
-                                               fourth,
-                                               out,
-                                               IncludingEndSnapshot::F));
+    ASSERT_NO_THROW(pers.getTLogsBetweenSnapshots(fourthn,
+                                                  fourthn,
+                                                  out,
+                                                  IncludingEndSnapshot::F));
     ASSERT_EQ(0U, out.size());
     out.clear();
 
 
-    ASSERT_NO_THROW(pers.getTLogsBetweenSnapshots(second,
-                                                  fourth,
+    ASSERT_NO_THROW(pers.getTLogsBetweenSnapshots(secondn,
+                                                  fourthn,
                                                   out,
                                                   IncludingEndSnapshot::T));
 
     ASSERT_EQ(2U, out.size());
     out.clear();
-    ASSERT_NO_THROW(pers.getTLogsBetweenSnapshots(second,
-                                                  fourth,
+    ASSERT_NO_THROW(pers.getTLogsBetweenSnapshots(secondn,
+                                                  fourthn,
                                                   out,
                                                   IncludingEndSnapshot::F));
     EXPECT_EQ(0U, out.size());
     out.clear();
 
-    ASSERT_NO_THROW(pers.getTLogsBetweenSnapshots(first,
-                                                  second,
+    ASSERT_NO_THROW(pers.getTLogsBetweenSnapshots(firstn,
+                                                  secondn,
                                                   out,
                                                   IncludingEndSnapshot::T));
     EXPECT_EQ(1U, out.size());
     out.clear();
 
-    ASSERT_NO_THROW(pers.getTLogsBetweenSnapshots(first,
-                                                  second,
+    ASSERT_NO_THROW(pers.getTLogsBetweenSnapshots(firstn,
+                                                  secondn,
                                                   out,
                                                   IncludingEndSnapshot::F));
     EXPECT_EQ(0U, out.size());
@@ -192,12 +203,10 @@ TEST_P(SnapshotManagementTest, TheRevengeOfGetScrubbingWorkTest)
     youtils::SourceOfUncertainty soc;
     const unsigned size = soc(5, 10);
 
-    std::vector<std::string> snapshot_names;
+    std::vector<SnapshotName> snapshot_names;
     for( unsigned i = 0; i < size; ++i)
     {
-        std::stringstream ss;
-        ss << i;
-        snapshot_names.push_back(ss.str());
+        snapshot_names.push_back(boost::lexical_cast<SnapshotName>(i));
     }
 
     for(unsigned i = 0; i < size; ++i)
@@ -208,10 +217,7 @@ TEST_P(SnapshotManagementTest, TheRevengeOfGetScrubbingWorkTest)
 
     SnapshotManagement* sman = getSnapshotManagement(vol_);
 
-    typedef boost::optional<std::string> arg_type;
-
     SnapshotWork out;
-
 
     EXPECT_NO_THROW(sman->getSnapshotScrubbingWork(boost::none,
                                                    boost::none,
@@ -225,8 +231,8 @@ TEST_P(SnapshotManagementTest, TheRevengeOfGetScrubbingWorkTest)
     out.clear();
 
 
-    EXPECT_THROW(sman->getSnapshotScrubbingWork(arg_type("nothing"),
-                                                arg_type("more_nothing"),
+    EXPECT_THROW(sman->getSnapshotScrubbingWork(SnapshotName("nothing"),
+                                                SnapshotName("more_nothing"),
                                                 out),
                  fungi::IOException);
     EXPECT_EQ(0U, out.size());
@@ -234,7 +240,7 @@ TEST_P(SnapshotManagementTest, TheRevengeOfGetScrubbingWorkTest)
 
     for(unsigned i = 0; i < size; ++i)
     {
-        sman->getSnapshotScrubbingWork(arg_type(snapshot_names[i]),
+        sman->getSnapshotScrubbingWork(snapshot_names[i],
                                        boost::none,
                                        out);
         EXPECT_EQ(out.size(), size - (i + 1)) << "Size tested was " << size << "i was " << i;
@@ -244,49 +250,39 @@ TEST_P(SnapshotManagementTest, TheRevengeOfGetScrubbingWorkTest)
         }
         out.clear();
     }
-
 }
-
 
 TEST_P(SnapshotManagementTest, backendSizeBetweenSnapshots)
 {
 
     for(size_t i = 0; i < 10; ++i)
     {
-
         writeToVolume(vol_, 0,  4096,"blue");
-        std::stringstream ss;
-        ss << i;
         waitForThisBackendWrite(vol_);
-
-        vol_->createSnapshot(ss.str());
+        vol_->createSnapshot(boost::lexical_cast<SnapshotName>(i));
     }
 
     SnapshotManagement* c = getSnapshotManagement(vol_);
 
     ASSERT_EQ(10U *4096U,
-              c->getSnapshotPersistor().getBackendSize("9",
+              c->getSnapshotPersistor().getBackendSize(SnapshotName("9"),
                                                        boost::none));
 
     for(size_t j = 0; j < 9; j++)
     {
-        std::stringstream js;
-        js << j;
-
         for (size_t i = 0; i < j; ++i)
         {
-            std::stringstream ss;
-            ss << i;
             ASSERT_EQ((j-i) * 4096U,
-                      c->getSnapshotPersistor().getBackendSize(js.str(),
-                                                               ss.str()));
+                      c->getSnapshotPersistor().getBackendSize(boost::lexical_cast<SnapshotName>(j),
+                                                               boost::lexical_cast<SnapshotName>(i)));
         }
     }
 }
 
 TEST_P(SnapshotManagementTest, deleteSnaps2)
 {
-    vol_->createSnapshot("first");
+    const SnapshotName snap("first");
+    vol_->createSnapshot(snap);
     waitForThisBackendWrite(vol_);
 
     std::list<std::string> names;
@@ -305,8 +301,7 @@ TEST_P(SnapshotManagementTest, deleteSnaps2)
     EXPECT_EQ(1U, names.size());
     names.clear();
 
-
-    vol_->deleteSnapshot("first");
+    vol_->deleteSnapshot(snap);
     waitForThisBackendWrite(vol_);
     // scrubbing disabled waitForScrubJobs();
 
@@ -325,7 +320,7 @@ TEST_P(SnapshotManagementTest, deleteSnaps2)
 TEST_P(SnapshotManagementTest, test1)
 {
     SnapshotManagement* c = getSnapshotManagement(vol_);
-    std::string snapname("snap1");
+    const SnapshotName snapname("snap1");
     createSnapshot(c,snapname);
     EXPECT_TRUE(c->snapshotExists(snapname));
     SnapshotNum n = c->getSnapshotNumberByName(snapname);
@@ -348,7 +343,7 @@ TEST_P(SnapshotManagementTest, test2)
     {
         writeToVolume(vol_,0,4096,"blue");
     }
-    std::string snapname("snap1");
+    const SnapshotName snapname("snap1");
     createSnapshot(c,snapname);
     waitForThisBackendWrite(vol_);
     std::list<std::string> tlognames;
@@ -385,7 +380,7 @@ TEST_P(SnapshotManagementTest, test3)
         writeToVolume(vol_, 0, 4096, "wartdebever");
     }
 
-    std::string snapname("snap1");
+    const SnapshotName snapname("snap1");
     createSnapshot(c,snapname);
 
     SnapshotWork out;
@@ -395,14 +390,14 @@ TEST_P(SnapshotManagementTest, test3)
     ASSERT_TRUE(out.size() == 1);
 
     OrderedTLogNames tlogs;
-    c->getTLogsInSnapshot(c->getSnapshotNumberByName("snap1"),
+    c->getTLogsInSnapshot(c->getSnapshotNumberByName(snapname),
                        tlogs,
                        AbsolutePath::F);
     SnapshotWorkUnit& one = out[0];
-    EXPECT_TRUE(one == "snap1");
+    EXPECT_EQ(snapname,
+              one);
 
     //    EXPECT_TRUE(one.second == tlogs);
-
 }
 
 TEST_P(SnapshotManagementTest, test4)
@@ -413,7 +408,8 @@ TEST_P(SnapshotManagementTest, test4)
     {
         writeToVolume(vol_,0,4096,"dartbewever");
     }
-    std::string snapname("snap1");
+
+    const SnapshotName snapname("snap1");
     createSnapshot(c,snapname);
     // SnapshotNum num = c.getSnapshotNumberByName("snap1");
     //    c.setSnapshotReadOnly(num, 0);
@@ -436,14 +432,14 @@ TEST_P(SnapshotManagementTest, test5)
         writeToVolume(vol_,0,4096,"drtdwvraee");
 
     }
-    std::string snapname("snap1");
+    const SnapshotName snapname("snap1");
     createSnapshot(c,snapname);
     //SnapshotNum num1 = c.getSnapshotNumberByName(snapname);
     for(size_t i = 0; i < 10; ++i)
     {
         writeToVolume(vol_,0,4096,"eearvwdtrd");
     }
-    std::string snapname2("snap2");
+    const SnapshotName snapname2("snap2");
     createSnapshot(c,snapname2);
     // SnapshotNum num2 = c.getSnapshotNumberByName(snapname2);
 
@@ -451,7 +447,7 @@ TEST_P(SnapshotManagementTest, test5)
     {
         writeToVolume(vol_,0,4096,"help");
     }
-    std::string snapname3("snap3");
+    const SnapshotName snapname3("snap3");
     createSnapshot(c,snapname3);
     // SnapshotNum num3 = c.getSnapshotNumberByName(snapname3);
 
@@ -484,14 +480,14 @@ TEST_P(SnapshotManagementTest, test6)
     {
         write(0,4096);
     }
-    std::string snapname("snap1");
+    const SnapshotName snapname("snap1");
     createSnapshot(c,snapname);
     //SnapshotNum num1 = c.getSnapshotNumberByName(snapname);
     for(size_t i = 0; i < 10; ++i)
     {
         write(0,4096);
     }
-    std::string snapname2("snap2");
+    const SnapshotName snapname2("snap2");
     createSnapshot(c,snapname2);
     //SnapshotNum num2 = c.getSnapshotNumberByName(snapname2);
 
@@ -499,7 +495,7 @@ TEST_P(SnapshotManagementTest, test6)
     {
         write(0,4096);
     }
-    std::string snapname3("snap3");
+    const SnapshotName snapname3("snap3");
     createSnapshot(c,snapname3);
     //SnapshotNum num3 = c.getSnapshotNumberByName(snapname3);
 
@@ -545,8 +541,7 @@ TEST_P(SnapshotManagementTest, test7)
         writeTovolume(vol_,0, 4096,"val");
     }
 
-
-    std::string snapname1("snap1");
+    const SnapshotName snapname1("snap1");
     read(20,4096, std::string(1,'\0'));
     createSnapshot(c,snapname1);
 
@@ -572,7 +567,7 @@ TEST_P(SnapshotManagementTest, test8)
         std::stringstream ss;
         ss << "snap_" << i;
         blockBackendWrites();
-        createSnapshot(c,ss.str());
+        createSnapshot(c, SnapshotName(ss.str()));
         //EXPECT_FALSE(c.isSnapshotWrittenToBackend(ss.str()));
         unblockBackendWrites();
     }
@@ -584,10 +579,9 @@ TEST_P(SnapshotManagementTest, test8)
         //        EXPECT_TRUE(c.isSnapshotWrittenToBackend(ss.str()));
     }
 
-    c.deleteSnapshot("snap_3");
-    c.deleteSnapshot("snap_7");
-    c.deleteSnapshot("snap_11");
-
+    c.deleteSnapshot(SnapshotName("snap_3"));
+    c.deleteSnapshot(SnapshotName("snap_7"));
+    c.deleteSnapshot(SnapshotName("snap_11"));
 
     for(int i = 0; i < 25; ++i)
     {
@@ -623,14 +617,14 @@ TEST_P(SnapshotManagementTest, test9)
 // better move to SimpleVolumeTest?
 TEST_P(SnapshotManagementTest, dontLeakTLogCheckSumsOnRestore)
 {
-    const std::string snap1("snap1");
+    const SnapshotName snap1("snap1");
 
     writeToVolume(vol_, 0, vol_->getClusterSize(), snap1);
     VolManagerTestSetup::createSnapshot(vol_, snap1);
 
     waitForThisBackendWrite(vol_);
 
-    const std::string snap2("snap2");
+    const SnapshotName snap2("snap2");
     writeToVolume(vol_, 0, vol_->getClusterSize(), snap2);
     vol_->sync();
 
@@ -648,7 +642,6 @@ TEST_P(SnapshotManagementTest, dontLeakTLogCheckSumsOnRestore)
     //     EXPECT_NO_THROW(chksums.find(tlogname));
     // }
 
-
     restoreSnapshot(vol_, snap1);
 
     // BOOST_FOREACH(const TLogName& n, tlogpaths)
@@ -661,7 +654,6 @@ TEST_P(SnapshotManagementTest, dontLeakTLogCheckSumsOnRestore)
     // }
 
     checkVolume(vol_, 0, vol_->getClusterSize(), snap1);
-
 }
 
 INSTANTIATE_TEST(SnapshotManagementTest);

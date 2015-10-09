@@ -15,6 +15,8 @@
 #ifndef TYPES_H_
 #define TYPES_H_
 
+#include "SnapshotName.h"
+
 #include <stdint.h>
 
 #include <list>
@@ -38,8 +40,6 @@
 #include <backend/BackendInterface.h>
 
 STRONG_TYPED_STRING(volumedriver, VolumeId);
-
-STRONG_TYPED_STRING(volumedriver, SnapshotName);
 
 namespace youtils
 {
@@ -145,7 +145,7 @@ void serialize(Archive& ar,
     ar & static_cast<std::vector<TLogName>& >(res);
 }
 
-typedef std::string SnapshotWorkUnit;
+typedef SnapshotName SnapshotWorkUnit;
 
 typedef std::vector<std::pair<SCOCloneID, OrderedTLogNames> > CloneTLogs;
 typedef std::vector<SnapshotWorkUnit> SnapshotWork;

@@ -569,7 +569,7 @@ TEST_P(cases, DISABLED_bartNonLocalRestart)
 
     }
 
-    v1->createSnapshot("snap1");
+    v1->createSnapshot(SnapshotName("snap1"));
 
     for(int i = 0; i < 100; i++)
     {
@@ -924,7 +924,7 @@ TEST_P(cases, DISABLED_weirdSnapshotsFile)
                   v->getClusterSize(),
                   pattern1);
 
-    v->createSnapshot("snap1");
+    v->createSnapshot(SnapshotName("snap1"));
 
     waitForThisBackendWrite(v);
     waitForThisBackendWrite(v);
@@ -935,7 +935,7 @@ TEST_P(cases, DISABLED_weirdSnapshotsFile)
                   v->getClusterSize(),
                   pattern2);
 
-    v->createSnapshot("snap2");
+    v->createSnapshot(SnapshotName("snap2"));
 
     const std::string pattern3 = "33333333";
     writeToVolume(v,
@@ -947,7 +947,7 @@ TEST_P(cases, DISABLED_weirdSnapshotsFile)
     waitForThisBackendWrite(v);
 
     // break here ...
-    v->restoreSnapshot("snap1");
+    v->restoreSnapshot(SnapshotName("snap1"));
 
     checkVolume(v,
                 0,
@@ -976,7 +976,7 @@ TEST_P(cases, DISABLED_weirdSnapshotsFile)
     v = getVolume(VolumeId(volName));
 
     // and here, and look at snapshots.xml in the metadatastore and in the backend
-    ASSERT_THROW(v->restoreSnapshot("snap2"),
+    ASSERT_THROW(v->restoreSnapshot(SnapshotName("snap2")),
                  fungi::IOException);
 }
 

@@ -744,16 +744,16 @@ GetScrubbingWork::execute_internal(::XmlRpc::XmlRpcValue& params,
     std::vector<std::string> work;
     std::string begin_snapshot;
     std::string end_snapshot;
-    boost::optional<std::string> ssnap;
+    boost::optional<vd::SnapshotName> ssnap;
     if (params[0].hasMember(XMLRPCKeys::start_snapshot))
     {
-        ssnap = std::string(params[0][XMLRPCKeys::start_snapshot]);
+        ssnap = vd::SnapshotName(params[0][XMLRPCKeys::start_snapshot]);
     }
 
-    boost::optional<std::string> esnap;
+    boost::optional<vd::SnapshotName> esnap;
     if (params[0].hasMember(XMLRPCKeys::end_snapshot))
     {
-        esnap = std::string(params[0][XMLRPCKeys::end_snapshot]);
+        esnap = vd::SnapshotName(params[0][XMLRPCKeys::end_snapshot]);
     }
 
     fs_.object_router().get_scrub_work(volid,
@@ -848,7 +848,7 @@ SnapshotCreate::execute_internal(::XmlRpc::XmlRpcValue& params,
     with_api_exception_conversion([&]()
     {
         const vd::VolumeId volName(getID(params[0]));
-        const std::string snap_id(getSnapID(params[0]));
+        const vd::SnapshotName snap_id(getSnapID(params[0]));
 
         vd::SnapshotMetaData metadata;
 
@@ -885,7 +885,7 @@ SnapshotsList::execute_internal(::XmlRpc::XmlRpcValue& params,
 {
     with_api_exception_conversion([&]()
     {
-        std::list<std::string> l;
+        std::list<vd::SnapshotName> l;
         const vd::VolumeId volName(getID(params[0]));
         api::showSnapshots(volName, l);
 
@@ -893,7 +893,7 @@ SnapshotsList::execute_internal(::XmlRpc::XmlRpcValue& params,
         result.setSize(0);
         size_t k = 0;
 
-        for(std::list<std::string>::const_iterator i = l.begin();  i != l.end(); ++i)
+        for(std::list<vd::SnapshotName>::const_iterator i = l.begin();  i != l.end(); ++i)
         {
             result[k++] = *i;
         }
@@ -908,7 +908,7 @@ SnapshotInfo::execute_internal(::XmlRpc::XmlRpcValue& params,
     {
         std::list<std::string> l;
         const vd::VolumeId vol_id(getID(params[0]));
-        const std::string snap_id(getSnapID(params[0]));
+        const vd::SnapshotName snap_id(getSnapID(params[0]));
 
         const auto snap(api::getSnapshot(vol_id, snap_id));
         const auto& meta(snap.metadata());
@@ -1069,8 +1069,10 @@ IsVolumeSyncedUpTo::execute_internal(XmlRpc::XmlRpcValue& params,
     with_api_exception_conversion([&]()
                                   {
                                       const vd::VolumeId volName(getID(params[0]));
-                                      const std::string snapshotName(getSnapID(params[0]));
-                                      result = XMLVAL(api::isVolumeSyncedUpTo(volName, snapshotName));
+                                      const vd::SnapshotName
+                                          snapshotName(getSnapID(params[0]));
+                                      result = XMLVAL(api::isVolumeSyncedUpTo(volName,
+                                                                              snapshotName));
                                   });
 }
 
@@ -1230,7 +1232,7 @@ SnapshotSCOCount::execute_internal(XmlRpc::XmlRpcValue& params,
                                    XmlRpc::XmlRpcValue& result)
 {
     const vd::VolumeId volName(getID(params[0]));
-    const std::string snapName(getSnapID(params[0]));
+    const vd::SnapshotName snapName(getSnapID(params[0]));
     uint64_t res  = api::getSnapshotSCOCount(volName,
                                              snapName);
     result[XMLRPCKeys::snapshot_sco_count] = XMLVAL(res);
@@ -1259,7 +1261,7 @@ SnapshotBackendSize::execute_internal(XmlRpc::XmlRpcValue& params,
                                       XmlRpc::XmlRpcValue& result)
 {
     const vd::VolumeId volName(getID(params[0]));
-    const std::string snapName(getSnapID(params[0]));
+    const vd::SnapshotName snapName(getSnapID(params[0]));
     uint64_t res = api::getSnapshotBackendSize(volName,
                                                snapName);
     result = XMLVAL(res);

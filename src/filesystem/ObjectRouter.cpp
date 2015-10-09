@@ -1338,8 +1338,8 @@ ObjectRouter::delete_snapshot(const ObjectId& oid,
 
 void
 ObjectRouter::get_scrub_work(const ObjectId& oid,
-                             const boost::optional<std::string>& start_snap,
-                             const boost::optional<std::string>& end_snap,
+                             const boost::optional<vd::SnapshotName>& start_snap,
+                             const boost::optional<vd::SnapshotName>& end_snap,
                              std::vector<std::string>& work)
 {
     LOG_INFO(oid << ": getting scrub work, start snapshot " << start_snap <<

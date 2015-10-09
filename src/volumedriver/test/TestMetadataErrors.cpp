@@ -43,7 +43,7 @@ TEST_P(TestMetadataErrors, testHaltingVolumeWhenWritingToSnapshotsFailsInMgmtPat
                   4096,
                   "kutmetperen");
 
-    ASSERT_NO_THROW(v1->createSnapshot("snap1"));
+    ASSERT_NO_THROW(v1->createSnapshot(SnapshotName("snap1")));
     waitForThisBackendWrite(v1);
     writeToVolume(v1,
                   0,
@@ -58,7 +58,7 @@ TEST_P(TestMetadataErrors, testHaltingVolumeWhenWritingToSnapshotsFailsInMgmtPat
                      0,
                      10,
                      5);
-    ASSERT_THROW(v1->createSnapshot("snap2"),
+    ASSERT_THROW(v1->createSnapshot(SnapshotName("snap2")),
                  youtils::SerializationFlushException);
     ASSERT_TRUE(v1->is_halted());
 
@@ -78,7 +78,7 @@ TEST_P(TestMetadataErrors, testHaltingVolumeWhenWritingToSnapshotsFailsInIOPath)
                   4096,
                   "kutmetperen");
 
-    ASSERT_NO_THROW(v1->createSnapshot("snap1"));
+    ASSERT_NO_THROW(v1->createSnapshot(SnapshotName("snap1")));
     waitForThisBackendWrite(v1);
 
     const std::string path_regex = "/" + ns.str() + "/snapshot.*";
@@ -117,7 +117,7 @@ TEST_P(TestMetadataErrors, testHaltingVolumeWhenWritingToTlogFailsInMgmtPath)
                   4096,
                   "kutmetperen");
 
-    ASSERT_NO_THROW(v1->createSnapshot("snap1"));
+    ASSERT_NO_THROW(v1->createSnapshot(SnapshotName("snap1")));
 
     writeToVolume(v1,
                   0,
@@ -135,7 +135,7 @@ TEST_P(TestMetadataErrors, testHaltingVolumeWhenWritingToTlogFailsInMgmtPath)
                      10,
                      5);
 
-    EXPECT_THROW(v1->createSnapshot("snap2"),
+    EXPECT_THROW(v1->createSnapshot(SnapshotName("snap2")),
                  youtils::FileDescriptorException);
     EXPECT_TRUE(v1->is_halted());
     // here because otherwise the destroy fails.
@@ -160,7 +160,7 @@ TEST_P(TestMetadataErrors, testHaltingVolumeWhenWritingToTlogFailsInIOPath)
                   4096,
                   "kutmetperen");
 
-    ASSERT_NO_THROW(v1->createSnapshot("snap1"));
+    ASSERT_NO_THROW(v1->createSnapshot(SnapshotName("snap1")));
 
     writeToVolume(v1,
                   0,

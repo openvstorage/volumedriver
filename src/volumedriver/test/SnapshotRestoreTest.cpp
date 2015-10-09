@@ -37,26 +37,26 @@ TEST_P(SnapshotRestoreTest, SimpleRestore)
 
     writeToVolume(v, 0, 4096, pattern1);
     waitForThisBackendWrite(v);
-    v->createSnapshot("snap1");
+    v->createSnapshot(SnapshotName("snap1"));
 
     const std::string pattern2("Frederik");
 
     writeToVolume(v, 0, 4096, pattern2);
     waitForThisBackendWrite(v);
-    v->createSnapshot("snap2");
+    v->createSnapshot(SnapshotName("snap2"));
 
 
     const std::string pattern3("Arne");
 
     writeToVolume(v, 0, 4096, pattern3);
     waitForThisBackendWrite(v);
-    v->createSnapshot("snap3");
+    v->createSnapshot(SnapshotName("snap3"));
 
     const std::string pattern4("Bart");
 
     writeToVolume(v, 0, 4096, pattern4);
     waitForThisBackendWrite(v);
-    v->createSnapshot("snap4");
+    v->createSnapshot(SnapshotName("snap4"));
 
     const std::string pattern5("Wouter");
     writeToVolume(v, 0, 4096, pattern5);
@@ -64,36 +64,40 @@ TEST_P(SnapshotRestoreTest, SimpleRestore)
     checkVolume(v,0,4096,pattern5);
     waitForThisBackendWrite(v);
 
-    EXPECT_NO_THROW(restoreSnapshot(v,"snap4"));
+    EXPECT_NO_THROW(restoreSnapshot(v,
+                                    "snap4"));
 
     checkVolume(v,0,4096,pattern4);
     writeToVolume(v, 0, 4096, "Bollocks");
     waitForThisBackendWrite(v);
-    v->createSnapshot("snapper");
+    v->createSnapshot(SnapshotName("snapper"));
     waitForThisBackendWrite(v);
 
-    EXPECT_NO_THROW(restoreSnapshot(v,"snap3"));
+    EXPECT_NO_THROW(restoreSnapshot(v,
+                                    "snap3"));
 
     checkVolume(v,0,4096,pattern3);
     writeToVolume(v, 0, 4096, "Bollocks");
     waitForThisBackendWrite(v);
-    v->createSnapshot("snapper");
+    v->createSnapshot(SnapshotName("snapper"));
     waitForThisBackendWrite(v);
 
-    EXPECT_NO_THROW(restoreSnapshot(v,"snap2"));
+    EXPECT_NO_THROW(restoreSnapshot(v,
+                                    "snap2"));
 
     checkVolume(v,0,4096,pattern2);
     writeToVolume(v, 0, 4096, "Bollocks");
     waitForThisBackendWrite(v);
-    v->createSnapshot("snapper");
+    v->createSnapshot(SnapshotName("snapper"));
     waitForThisBackendWrite(v);
 
-    EXPECT_NO_THROW(restoreSnapshot(v,"snap1"));
+    EXPECT_NO_THROW(restoreSnapshot(v,
+                                    "snap1"));
 
     checkVolume(v,0,4096,pattern1);
     writeToVolume(v, 0, 4096, "Bollocks");
     waitForThisBackendWrite(v);
-    v->createSnapshot("snapper");
+    v->createSnapshot(SnapshotName("snapper"));
     waitForThisBackendWrite(v);
     checkCurrentBackendSize(v);
 }
@@ -110,28 +114,28 @@ TEST_P(SnapshotRestoreTest, NoSCOGap)
     ASSERT_TRUE(getCurrentSCO(v)->getSCO().number() == 1);
 
     waitForThisBackendWrite(v);
-    v->createSnapshot("snap1");
+    v->createSnapshot(SnapshotName("snap1"));
 
     const std::string pattern2("Frederik");
 
     writeToVolume(v, 0, 4096, pattern2);
     ASSERT_TRUE(getCurrentSCO(v)->getSCO().number() == 2);
     waitForThisBackendWrite(v);
-    v->createSnapshot("snap2");
+    v->createSnapshot(SnapshotName("snap2"));
 
     const std::string pattern3("Arne");
 
     writeToVolume(v, 0, 4096, pattern3);
     ASSERT_TRUE(getCurrentSCO(v)->getSCO().number() == 3);
     waitForThisBackendWrite(v);
-    v->createSnapshot("snap3");
+    v->createSnapshot(SnapshotName("snap3"));
 
     const std::string pattern4("Bart");
 
     writeToVolume(v, 0, 4096, pattern4);
     ASSERT_TRUE(getCurrentSCO(v)->getSCO().number() == 4);
     waitForThisBackendWrite(v);
-    v->createSnapshot("snap4");
+    v->createSnapshot(SnapshotName("snap4"));
 
     const std::string pattern5("Wouter");
     writeToVolume(v, 0, 4096, pattern5);
@@ -144,25 +148,25 @@ TEST_P(SnapshotRestoreTest, NoSCOGap)
     writeToVolume(v, 0, 4096, "Bollocks");
     ASSERT_TRUE(getCurrentSCO(v)->getSCO().number() == 5);
     waitForThisBackendWrite(v);
-    v->createSnapshot("snapper");
+    v->createSnapshot(SnapshotName("snapper"));
     waitForThisBackendWrite(v);
 
-    EXPECT_NO_THROW(restoreSnapshot(v,"snap3"));
+    EXPECT_NO_THROW(restoreSnapshot(v, "snap3"));
 
     checkVolume(v,0,4096,pattern3);
     writeToVolume(v, 0, 4096, "Bollocks");
     ASSERT_TRUE(getCurrentSCO(v)->getSCO().number() == 4);
     waitForThisBackendWrite(v);
-    v->createSnapshot("snapper");
+    v->createSnapshot(SnapshotName("snapper"));
     waitForThisBackendWrite(v);
 
-    EXPECT_NO_THROW(restoreSnapshot(v,"snap2"));
+    EXPECT_NO_THROW(restoreSnapshot(v, "snap2"));
 
     checkVolume(v,0,4096,pattern2);
     writeToVolume(v, 0, 4096, "Bollocks");
     ASSERT_TRUE(getCurrentSCO(v)->getSCO().number() == 3);
     waitForThisBackendWrite(v);
-    v->createSnapshot("snapper");
+    v->createSnapshot(SnapshotName("snapper"));
     waitForThisBackendWrite(v);
 
     EXPECT_NO_THROW(restoreSnapshot(v,"snap1"));
@@ -171,7 +175,7 @@ TEST_P(SnapshotRestoreTest, NoSCOGap)
     writeToVolume(v, 0, 4096, "Bollocks");
     ASSERT_TRUE(getCurrentSCO(v)->getSCO().number() == 2);
     waitForThisBackendWrite(v);
-    v->createSnapshot("snapper");
+    v->createSnapshot(SnapshotName("snapper"));
     waitForThisBackendWrite(v);
     checkCurrentBackendSize(v);
 }
@@ -186,7 +190,7 @@ TEST_P(SnapshotRestoreTest, RestoreAndWriteAgain1)
 
     const std::string pattern("e-manual");
 
-    v->createSnapshot("snap1");
+    v->createSnapshot(SnapshotName("snap1"));
     waitForThisBackendWrite(v);
 
     writeToVolume(v, 0, 5 * 4096, pattern);
@@ -209,11 +213,11 @@ TEST_P(SnapshotRestoreTest, RestoreAndWriteAgain2)
 
     const std::string pattern("e-manual");
 
-    v->createSnapshot("snap1");
+    v->createSnapshot(SnapshotName("snap1"));
     waitForThisBackendWrite(v);
 
     writeToVolume(v, 0, 5 * 4096, pattern);
-    v->createSnapshot("snap2");
+    v->createSnapshot(SnapshotName("snap2"));
     waitForThisBackendWrite(v);
 
     restoreSnapshot(v,"snap1");
@@ -235,7 +239,7 @@ TEST_P(SnapshotRestoreTest, TestFailOver)
     v->setFailOverCacheConfig(foc_ctx->config());
 
     VolumeConfig cfg = v->get_config();
-    v->createSnapshot("snap0");
+    v->createSnapshot(SnapshotName("snap0"));
 
     for(int i = 0; i < 5; ++i)
     {
@@ -247,7 +251,7 @@ TEST_P(SnapshotRestoreTest, TestFailOver)
 
 
     waitForThisBackendWrite(v);
-    v->restoreSnapshot("snap0");
+    v->restoreSnapshot(SnapshotName("snap0"));
 
     for(int i = 0; i < 7; ++i)
     {
@@ -285,7 +289,7 @@ TEST_P(SnapshotRestoreTest, HaltOnError)
     const std::string tlog(v->getSnapshotManagement().getCurrentTLogName());
 
     writeToVolume(v, 0, 4096, pattern1);
-    v->createSnapshot("snap1");
+    v->createSnapshot(SnapshotName("snap1"));
     waitForThisBackendWrite(v);
 
     EXPECT_THROW(restoreSnapshot(v, "snap42"),
@@ -313,7 +317,7 @@ TEST_P(SnapshotRestoreTest, snapshot_restoration_on_a_clone)
                   parent->getClusterSize(),
                   pattern1);
 
-    const std::string parent_snap("parent-snapshot");
+    const SnapshotName parent_snap("parent-snapshot");
     parent->createSnapshot(parent_snap);
 
     waitForThisBackendWrite(parent);
@@ -333,7 +337,7 @@ TEST_P(SnapshotRestoreTest, snapshot_restoration_on_a_clone)
                   clone->getClusterSize(),
                   pattern2);
 
-    const std::string clone_snap("clone-snapshot");
+    const SnapshotName clone_snap("clone-snapshot");
     clone->createSnapshot(clone_snap);
 
     waitForThisBackendWrite(clone);

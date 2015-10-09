@@ -575,7 +575,7 @@ TEST_P(LocalRestartTest, restartWithSnapshotButNoSCO)
 
     waitForThisBackendWrite(v1);
 
-    ASSERT_TRUE(v1->isSyncedToBackendUpTo("snapshot2"));
+    ASSERT_TRUE(v1->isSyncedToBackendUpTo(SnapshotName("snapshot2")));
     checkCurrentBackendSize(v1);
 }
 
@@ -964,7 +964,7 @@ TEST_P(LocalRestartTest, MetaDataStoreRunsAhead)
     MetaDataStoreStats mds2;
     v1->getMetaDataStore()->getStats(mds2);
     EXPECT_EQ(mds1.used_clusters, mds2.used_clusters);
-    ASSERT_TRUE(v1->isSyncedToBackendUpTo("asnapshot"));
+    ASSERT_TRUE(v1->isSyncedToBackendUpTo(SnapshotName("asnapshot")));
     checkVolume(v1, 0, v1->getClusterSize(), "ar");
     checkCurrentBackendSize(v1);
 }
@@ -1641,7 +1641,7 @@ TEST_P(LocalRestartTest, CreateSnapshotPutsSCOCRCInTLog)
 
     const uint64_t cluster_size = v->getClusterSize();
     writeToVolume(v,0, cluster_size, "immanuel");
-    v->createSnapshot("snap1");
+    v->createSnapshot(SnapshotName("snap1"));
     writeToVolume(v,0, cluster_size, "bart");
     const fs::path tlogs_path = VolManager::get()->getTLogPath(cfg);
     OrderedTLogNames tlogs;
@@ -1712,7 +1712,7 @@ TEST_P(LocalRestartTest, SetFailOVerPutsSCOCRCInTLog)
     ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config()));
 
     writeToVolume(v,0, cluster_size, "bart");
-    v->createSnapshot("snap1");
+    v->createSnapshot(SnapshotName("snap1"));
     writeToVolume(v,0, cluster_size, "arne");
 
     const fs::path tlogs_path = VolManager::get()->getTLogPath(cfg);
@@ -2409,7 +2409,7 @@ TEST_P(LocalRestartTest, testRescheduledSCOS)
     std::string scoptr_name =
         v->getDataStore()->getSCO(l.sco(), 0)->path().string();
 
-    v->createSnapshot("first");
+    v->createSnapshot(SnapshotName("first"));
 
     waitForThisBackendWrite(v);
 

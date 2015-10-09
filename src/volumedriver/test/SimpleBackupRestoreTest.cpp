@@ -128,7 +128,7 @@ public:
         const std::string pattern("back up?");
         const size_t size = 1024 * 1024;
         writeToVolume(wov, 0, size, pattern);
-        wov->createSnapshot("snap");
+        wov->createSnapshot(SnapshotName("snap"));
         waitForThisBackendWrite(wov);
         destroyVolume(wov,
                       RemoveVolumeCompletely::F);
@@ -212,7 +212,7 @@ TEST_P(SimpleBackupRestoreTest, no_promotion_without_snapshot)
 
     {
         wov = restartWriteOnlyVolume(cfg);
-        wov->createSnapshot("snap");
+        wov->createSnapshot(SnapshotName("snap"));
         waitForThisBackendWrite(wov);
         destroyVolume(wov,
                       RemoveVolumeCompletely::F);
@@ -252,7 +252,7 @@ TEST_P(SimpleBackupRestoreTest, discard_trailing_tlogs_on_promotion)
     const std::string pattern("back up?");
     const size_t size = 1024 * 1024;
     writeToVolume(wov, 0, size, pattern);
-    wov->createSnapshot("snap");
+    wov->createSnapshot(SnapshotName("snap"));
 
     const std::string pattern2("This is invisible. Or is it?");
     writeToVolume(wov, 0, size, pattern2);
@@ -303,7 +303,7 @@ TEST_P(SimpleBackupRestoreTest, rollback_to_previous_snap_if_snapshot_didnt_make
     const std::string pattern("a mysteriously returning message");
     const size_t size = 1024 * 1024;
     writeToVolume(wov, 0, size, pattern);
-    const std::string snap("snap");
+    const SnapshotName snap("snap");
     wov->createSnapshot(snap);
     waitForThisBackendWrite(wov);
     const std::string pattern2("a mysteriously disappearing message");
@@ -312,7 +312,7 @@ TEST_P(SimpleBackupRestoreTest, rollback_to_previous_snap_if_snapshot_didnt_make
     waitForThisBackendWrite(wov);
     {
         SCOPED_DESTROY_WRITE_ONLY_VOLUME_UNBLOCK_BACKEND_FOR_BACKEND_RESTART(wov, 3);
-        wov->createSnapshot("snap2");
+        wov->createSnapshot(SnapshotName("snap2"));
 
         const SnapshotPersistor& sp =
             wov->getSnapshotManagement().getSnapshotPersistor();
@@ -340,7 +340,7 @@ TEST_P(SimpleBackupRestoreTest, rollback_to_previous_snap_if_snapshot_didnt_make
 
     Volume* v = getVolume(vid);
     checkVolume(v, 0, size, pattern);
-    std::list<std::string> snaps;
+    std::list<SnapshotName> snaps;
     v->listSnapshots(snaps);
     EXPECT_EQ(1U, snaps.size());
     EXPECT_EQ(snap, snaps.front());
@@ -366,7 +366,7 @@ TEST_P(SimpleBackupRestoreTest,
     const std::string pattern("blah");
     const size_t size = 1024 * 1024;
     writeToVolume(wov, 0, size, pattern);
-    const std::string snap("snap");
+    const SnapshotName snap("snap");
     wov->createSnapshot(snap);
     waitForThisBackendWrite(wov);
     const std::string pattern2("meh");
@@ -376,7 +376,7 @@ TEST_P(SimpleBackupRestoreTest,
 
     {
         SCOPED_DESTROY_WRITE_ONLY_VOLUME_UNBLOCK_BACKEND_FOR_BACKEND_RESTART(wov, 3);
-        wov->createSnapshot("snap2");
+        wov->createSnapshot(SnapshotName("snap2"));
         const std::string pattern3("blub");
         writeToVolume(wov, 0, size, pattern3);
         wov->scheduleBackendSync();

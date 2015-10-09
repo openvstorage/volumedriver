@@ -148,7 +148,7 @@ public:
 
     void
     get_backup_snapshots_list(const be::Namespace& target_ns,
-                              std::vector<std::string>& result)
+                              std::vector<SnapshotName>& result)
     {
         bpt::ptree pt;
         ip::PARAMETER_TYPE(backend_type)(be::BackendType::LOCAL).persist(pt);
@@ -203,8 +203,8 @@ public:
     void
     create_source_config(bpt::ptree& pt,
                          const be::Namespace& source_ns,
-                         const std::string& end_snapshot,
-                         const std::string& start_snapshot,
+                         const SnapshotName& end_snapshot,
+                         const SnapshotName& start_snapshot,
                          bool to_backup_backend)
     {
         pt.put("namespace", source_ns.str());
@@ -251,9 +251,9 @@ public:
     create_backup_config(const be::Namespace& target_ns,
                          const be::Namespace& source_ns,
                          bool to_backup_backend,
-                         const std::string& end_snapshot = std::string(""),
-                         const std::string& start_snapshot = std::string(""),
-                         const std::string& report_threshold = std::string(""))
+                         const SnapshotName& end_snapshot = SnapshotName(),
+                         const SnapshotName& start_snapshot = SnapshotName(),
+                         const std::string& report_threshold = std::string())
     {
         bpt::ptree pt;
         bpt::ptree target_ptree;
@@ -394,7 +394,7 @@ public:
     }
 
     bool
-    start_snapshot_delete_program(const std::vector<std::string>& snapshots)
+    start_snapshot_delete_program(const std::vector<SnapshotName>& snapshots)
     {
         fs::remove_all(scratch_dir);
         pid_t pid = fork();
@@ -407,7 +407,7 @@ public:
             const std::string arg1("--configuration-file=" + (directory_ / "backup_configuration_file").string()); args[1] = arg1.c_str();
             const std::string default_loglevel;
             std::string loglevel = yt::System::get_env_with_default("VOLUMEDRIVER_BACKUP_TEST_LOGLEVEL",
-                                                                         default_loglevel);
+                                                                    default_loglevel);
             if(not loglevel.empty())
             {
                 loglevel = std::string("--loglevel=") + loglevel;
@@ -430,9 +430,8 @@ public:
 
             args[ssize+3] = 0;
 
-
-            int ret =  execvp("backup_volumedriver",
-                              (char* const*)args);
+            int ret = execvp("backup_volumedriver",
+                             (char* const*)args);
 
             if(ret < 0)
             {
@@ -517,7 +516,7 @@ TEST_P(VolumeBackupTest, simple_backup_restore)
 
     writeToVolume(v, 0, 4096,"immanuel");
 
-    const std::string snap1("snap1");
+    const SnapshotName snap1("snap1");
 
     v->createSnapshot(snap1);
 
@@ -538,7 +537,7 @@ TEST_P(VolumeBackupTest, simple_backup_restore)
     ASSERT_NO_THROW(check_backup_info(ns2,
                                       4096));
 
-    std::vector<std::string> snapshots;
+    std::vector<SnapshotName> snapshots;
 
     ASSERT_NO_THROW(get_backup_snapshots_list(ns2,
                                               snapshots));
@@ -577,7 +576,7 @@ TEST_P(VolumeBackupTest, report_threshold)
         writeToVolume(v, 0, 4096,"immanuel");
     }
 
-    const std::string snap1("snap1");
+    const SnapshotName snap1("snap1");
 
     v->createSnapshot(snap1);
 
@@ -589,7 +588,7 @@ TEST_P(VolumeBackupTest, report_threshold)
                          ns1,
                          false,
                          snap1,
-                         "",
+                         SnapshotName(),
                          "4KiB");
 
     ensure_target_namespace(ns2);
@@ -601,7 +600,7 @@ TEST_P(VolumeBackupTest, report_threshold)
     ASSERT_NO_THROW(check_backup_info(ns2,
                                       4096));
 
-    std::vector<std::string> snapshots;
+    std::vector<SnapshotName> snapshots;
 
     ASSERT_NO_THROW(get_backup_snapshots_list(ns2,
                                               snapshots));
@@ -637,7 +636,7 @@ TEST_P(VolumeBackupTest, backup_backup)
 
     writeToVolume(v, 0, 4096,"immanuel");
 
-    const std::string snap1("snap1");
+    const SnapshotName snap1("snap1");
 
     v->createSnapshot(snap1);
 
@@ -698,14 +697,14 @@ TEST_P(VolumeBackupTest, backup_backup2)
 
     writeToVolume(v, 0, 4096,"immanuel");
 
-    const std::string snap1("snap1");
+    const SnapshotName snap1("snap1");
 
     v->createSnapshot(snap1);
 
     writeToVolume(v, 0, 8192,"bartdv");
     waitForThisBackendWrite(v);
 
-    const std::string snap2("snap2");
+    const SnapshotName snap2("snap2");
 
     v->createSnapshot(snap2);
 
@@ -807,11 +806,11 @@ TEST_P(VolumeBackupTest, delete_snapshot)
                           ns);
 
     writeToVolume(v, 0, 4096,"immanuel");
-    const std::string snap1("snap1");
+    const SnapshotName snap1("snap1");
     v->createSnapshot(snap1);
     waitForThisBackendWrite(v);
     writeToVolume(v, 8, 4096,"arne");
-    const std::string snap2("snap2");
+    const SnapshotName snap2("snap2");
     v->createSnapshot(snap2);
     waitForThisBackendWrite(v);
     writeToVolume(v, 0, 2*4096,"bart");
@@ -837,7 +836,7 @@ TEST_P(VolumeBackupTest, delete_snapshot)
     ASSERT_NO_THROW(check_backup_info(ns2,
                                       4096));
 
-    std::vector<std::string> snapshots;
+    std::vector<SnapshotName> snapshots;
     ASSERT_NO_THROW(get_backup_snapshots_list(ns2,
                                               snapshots));
     ASSERT_EQ(2U, snapshots.size());
@@ -882,11 +881,11 @@ TEST_P(VolumeBackupTest, delete_snapshot_has_no_influence_on_restore)
                           ns);
 
     writeToVolume(v, 0, 4096,"immanuel");
-    const std::string snap1("snap1");
+    const SnapshotName snap1("snap1");
     v->createSnapshot(snap1);
     waitForThisBackendWrite(v);
     writeToVolume(v, 8, 4096,"arne");
-    const std::string snap2("snap2");
+    const SnapshotName snap2("snap2");
     v->createSnapshot(snap2);
     waitForThisBackendWrite(v);
     writeToVolume(v, 0, 2*4096,"bart");
@@ -912,7 +911,7 @@ TEST_P(VolumeBackupTest, delete_snapshot_has_no_influence_on_restore)
     ASSERT_NO_THROW(check_backup_info(ns2,
                                       4096));
 
-    std::vector<std::string> snapshots;
+    std::vector<SnapshotName> snapshots;
     ASSERT_NO_THROW(get_backup_snapshots_list(ns2,
                                               snapshots));
     ASSERT_EQ(2U, snapshots.size());
@@ -952,7 +951,7 @@ TEST_P(VolumeBackupTest, start_and_end_snap_are_the_same)
 
     writeToVolume(v, 0, 4096,"immanuel");
 
-    const std::string snap1("snap1");
+    const SnapshotName snap1("snap1");
     v->createSnapshot(snap1);
     waitForThisBackendWrite(v);
 
@@ -985,7 +984,7 @@ TEST_P(VolumeBackupTest, start_and_end_snap_are_the_same)
     // Do an incremental backup to ns2
     writeToVolume(v, 0, 4096,"bart");
 
-    const std::string snap2("snap2");
+    const SnapshotName snap2("snap2");
 
     v->createSnapshot(snap2);
     waitForThisBackendWrite(v);
@@ -1036,7 +1035,7 @@ TEST_P(VolumeBackupTest, end_snapshot_negotiation)
 
     writeToVolume(v, 0, 4096,"immanuel");
 
-    const std::string snap1("snap1");
+    const SnapshotName snap1("snap1");
 
     v->createSnapshot(snap1);
 
@@ -1044,7 +1043,7 @@ TEST_P(VolumeBackupTest, end_snapshot_negotiation)
 
     writeToVolume(v, 0, 4096,"bart");
 
-    const std::string snap2("snap2");
+    const SnapshotName snap2("snap2");
 
     v->createSnapshot(snap2);
 
@@ -1090,7 +1089,7 @@ TEST_P(VolumeBackupTest, restore_to_backup)
 
     writeToVolume(v, 0, 4096,"immanuel");
 
-    const std::string snap1("snap1");
+    const SnapshotName snap1("snap1");
 
     v->createSnapshot(snap1);
 
@@ -1131,7 +1130,7 @@ TEST_P(VolumeBackupTest, backup_fails_when_guids_do_not_match)
 
     writeToVolume(v, 0, 4096,"immanuel");
 
-    const std::string snap1("snap1");
+    const SnapshotName snap1("snap1");
 
     v->createSnapshot(snap1);
 
@@ -1153,7 +1152,7 @@ TEST_P(VolumeBackupTest, backup_fails_when_guids_do_not_match)
     waitForThisBackendWrite(v);
 
     writeToVolume(v,0, 4096,"arne");
-    const std::string snap2("snap2");
+    const SnapshotName snap2("snap2");
     v->createSnapshot(snap2);
     waitForThisBackendWrite(v);
 
@@ -1180,7 +1179,7 @@ TEST_P(VolumeBackupTest, change_name_and_test_no_restore_from_incremental)
     (void)v;
     writeToVolume(v, 0, 4096,"immanuel");
 
-    const std::string snap1("snap1");
+    const SnapshotName snap1("snap1");
 
     v->createSnapshot(snap1);
 
@@ -1259,7 +1258,7 @@ TEST_P(VolumeBackupTest, incremental_with_snapshot_negotiation)
 
     writeToVolume(v, 0, 4096,"immanuel");
 
-    v->createSnapshot("snap1");
+    v->createSnapshot(SnapshotName("snap1"));
     writeToVolume(v, 0, 4096,"arne");
     waitForThisBackendWrite(v);
 
@@ -1289,7 +1288,7 @@ TEST_P(VolumeBackupTest, incremental_with_snapshot_negotiation)
         removeVolumeCompletely(v1);
     }
 
-    v->createSnapshot("snap2");
+    v->createSnapshot(SnapshotName("snap2"));
     writeToVolume(v, 0, 4096,"immanuel");
     waitForThisBackendWrite(v);
 
@@ -1329,7 +1328,7 @@ TEST_P(VolumeBackupTest, incremental_with_faulty_snapshot)
     (void)v;
     writeToVolume(v, 0, 4096,"immanuel");
 
-    v->createSnapshot("snap1");
+    v->createSnapshot(SnapshotName("snap1"));
 
     waitForThisBackendWrite(v);
 
@@ -1359,12 +1358,12 @@ TEST_P(VolumeBackupTest, incremental_with_faulty_snapshot)
     removeVolumeCompletely(v1);
     v1 = 0;
 
-    v->deleteSnapshot("snap1");
-    v->createSnapshot("snap1");
+    v->deleteSnapshot(SnapshotName("snap1"));
+    v->createSnapshot(SnapshotName("snap1"));
     waitForThisBackendWrite(v);
 
     writeToVolume(v, 0, 4096,"arne");
-    v->createSnapshot("snap2");
+    v->createSnapshot(SnapshotName("snap2"));
     writeToVolume(v, 0, 4096,"immanuel");
     waitForThisBackendWrite(v);
 
@@ -1399,7 +1398,7 @@ TEST_P(VolumeBackupTest, string_of_incremental_backup_restore)
 
     writeToVolume(v, 0, 4096, "immanuel");
 
-    const std::string snap1("snap1");
+    const SnapshotName snap1("snap1");
     v->createSnapshot(snap1);
 
     waitForThisBackendWrite(v);
@@ -1437,7 +1436,7 @@ TEST_P(VolumeBackupTest, string_of_incremental_backup_restore)
     writeToVolume(v, 0, 4096, "arne");
     writeToVolume(v, 8, 4096, "bart");
 
-    const std::string snap2("snap2");
+    const SnapshotName snap2("snap2");
     v->createSnapshot(snap2);
     waitForThisBackendWrite(v);
 
@@ -1477,11 +1476,11 @@ TEST_P(VolumeBackupTest, simple_incremental_and_apply)
                           ns1);
 
     writeToVolume(v, 0, 4096,"immanuel");
-    const std::string snap1("snap1");
+    const SnapshotName snap1("snap1");
     v->createSnapshot(snap1);
     waitForThisBackendWrite(v);
     writeToVolume(v, 8, 4096,"arne");
-    const std::string snap2("snap2");
+    const SnapshotName snap2("snap2");
     v->createSnapshot(snap2);
     waitForThisBackendWrite(v);
     writeToVolume(v, 0, 2*4096,"bart");
@@ -1546,7 +1545,7 @@ TEST_P(VolumeBackupTest, simple_backup_restore_with_clones)
 
     writeToVolume(v, 0, 4096,"immanuel");
 
-    const std::string snap1("snap1");
+    const SnapshotName snap1("snap1");
 
     v->createSnapshot(snap1);
     waitForThisBackendWrite(v);
@@ -1619,7 +1618,7 @@ TEST_P(VolumeBackupTest, impotence_test)
 
     writeToVolume(v, 0, 4096,"immanuel");
 
-    const std::string snap1("snap1");
+    const SnapshotName snap1("snap1");
 
     v->createSnapshot(snap1);
     waitForThisBackendWrite(v);
@@ -1642,7 +1641,7 @@ TEST_P(VolumeBackupTest, impotence_test)
 
     writeToVolume(v, 0, 4096,"bart");
 
-    const std::string snap2("snap2");
+    const SnapshotName snap2("snap2");
 
     v->createSnapshot(snap2);
     waitForThisBackendWrite(v);
@@ -1688,7 +1687,7 @@ TEST_P(VolumeBackupTest, unfuck_fucked_up_backend)
 
     writeToVolume(v, 0, 4096,"immanuel");
 
-    const std::string snap1("snap1");
+    const SnapshotName snap1("snap1");
 
     v->createSnapshot(snap1);
     waitForThisBackendWrite(v);
@@ -1719,23 +1718,23 @@ TEST_P(VolumeBackupTest, dont_delete_last_or_first_snapshot)
     Volume* v = newVolume(VolumeId("volume1"),
                           ns);
 
-    const std::string snap1("snap1");
+    const SnapshotName snap1("snap1");
     v->createSnapshot(snap1);
     waitForThisBackendWrite(v);
 
-    const std::string snap2("snap2");
+    const SnapshotName snap2("snap2");
     v->createSnapshot(snap2);
     waitForThisBackendWrite(v);
 
-    const std::string snap3("snap3");
+    const SnapshotName snap3("snap3");
     v->createSnapshot(snap3);
     waitForThisBackendWrite(v);
 
-    const std::string snap4("snap4");
+    const SnapshotName snap4("snap4");
     v->createSnapshot(snap4);
     waitForThisBackendWrite(v);
 
-    std::vector<std::string> snapshots;
+    std::vector<SnapshotName> snapshots;
     Namespace ns1;
     ensure_target_namespace(ns1);
     create_backup_config(ns1,
@@ -1755,7 +1754,7 @@ TEST_P(VolumeBackupTest, dont_delete_last_or_first_snapshot)
                                               snapshots));
     ASSERT_EQ(2U, snapshots.size());
 
-    std::vector<std::string> snapshots_to_delete;
+    std::vector<SnapshotName> snapshots_to_delete;
 
     snapshots_to_delete.push_back(snapshots.back());
 

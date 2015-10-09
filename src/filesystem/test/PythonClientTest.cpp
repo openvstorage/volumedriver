@@ -769,7 +769,7 @@ TEST_F(PythonClientTest, prevent_orphaned_clones)
 
     auto check_snap([&]
                     {
-                        std::list<std::string> l;
+                        std::list<vd::SnapshotName> l;
 
                         LOCKVD();
                         api::showSnapshots(static_cast<const vd::VolumeId>(pname),
@@ -836,7 +836,7 @@ TEST_F(PythonClientTest, prevent_rollback_beyond_clone)
 
     for (size_t i = 0; i < snaps.capacity(); ++i)
     {
-        const std::string snap("iteration" + boost::lexical_cast<std::string>(i));
+        const vd::SnapshotName snap("iteration" + boost::lexical_cast<std::string>(i));
         write_to_file(ppath, snap, size, off);
         client_.create_snapshot(pname, snap);
         snaps.emplace_back(snap);
@@ -845,7 +845,7 @@ TEST_F(PythonClientTest, prevent_rollback_beyond_clone)
 
     auto check_snaps([&](size_t snaps_left)
                      {
-                         std::list<std::string> l;
+                         std::list<vd::SnapshotName> l;
 
                          {
                              LOCKVD();

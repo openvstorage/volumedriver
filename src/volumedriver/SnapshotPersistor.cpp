@@ -157,7 +157,7 @@ SnapshotPersistor::getFormatedTime()
 bool
 SnapshotPersistor::isSnapshotInBackend(const SnapshotNum num) const
 {
-    return snapshots.find_or_throw_(num)->inBackend();
+    return snapshots.getSnapshot(num).inBackend();
 }
 
 void
@@ -308,7 +308,7 @@ SnapshotPersistor::getTLogsWrittenToBackend(OrderedTLogNames& out) const
 }
 
 void
-SnapshotPersistor::snapshot(const std::string& name,
+SnapshotPersistor::snapshot(const SnapshotName& name,
                             const SnapshotMetaData& metadata,
                             const yt::UUID& uuid,
                             const bool create_scrubbed)
@@ -343,7 +343,7 @@ SnapshotPersistor::snapshot(const std::string& name,
 }
 
 bool
-SnapshotPersistor::checkSnapshotUUID(const std::string& snapshotName,
+SnapshotPersistor::checkSnapshotUUID(const SnapshotName& snapshotName,
                                      const volumedriver::UUID& uuid) const
 {
     return snapshots.checkSnapshotUUID(snapshotName,
@@ -372,7 +372,7 @@ SnapshotPersistor::getCurrentTLog() const
 }
 
 bool
-SnapshotPersistor::snapshotExists(const std::string& name) const
+SnapshotPersistor::snapshotExists(const SnapshotName& name) const
 {
     return snapshots.snapshotExists(name);
 }
@@ -384,27 +384,27 @@ SnapshotPersistor::snapshotExists(SnapshotNum num) const
 }
 
 SnapshotNum
-SnapshotPersistor::getSnapshotNum(const std::string& name) const
+SnapshotPersistor::getSnapshotNum(const SnapshotName& name) const
 {
-    return snapshots.getSnapshotNum(name);
+    return getSnapshot(name).snapshotNumber();
 }
 
-Snapshot
-SnapshotPersistor::getSnapshot(const std::string& name) const
+const Snapshot&
+SnapshotPersistor::getSnapshot(const SnapshotName& name) const
 {
     return snapshots.getSnapshot(name);
 }
 
-std::string
+SnapshotName
 SnapshotPersistor::getSnapshotName(SnapshotNum num) const
 {
-    return snapshots.getSnapshotName(num);
+    return snapshots.getSnapshot(num).getName();
 }
 
 const yt::UUID&
 SnapshotPersistor::getUUID(SnapshotNum num) const
 {
-    return snapshots.getUUID(num);
+    return snapshots.getSnapshot(num).getUUID();
 }
 
 bool
@@ -445,7 +445,7 @@ SnapshotPersistor::deleteAllButLastSnapshot()
 }
 
 void
-SnapshotPersistor::getTLogsTillSnapshot(const std::string name,
+SnapshotPersistor::getTLogsTillSnapshot(const SnapshotName& name,
                                         OrderedTLogNames& out) const
 {
     getTLogsTillSnapshot(getSnapshotNum(name),
@@ -568,7 +568,7 @@ SnapshotPersistor::getSnapshotScrubbed(SnapshotNum num,
         }
     }
 
-    return snapshots.find_or_throw_(num)->scrubbed;
+    return snapshots.getSnapshot(num).scrubbed;
 }
 
 void
@@ -579,8 +579,8 @@ SnapshotPersistor::setSnapshotScrubbed(SnapshotNum num,
 }
 
 void
-SnapshotPersistor::getSnapshotScrubbingWork(const boost::optional<std::string>& start_snap,
-                                            const boost::optional<std::string>& end_snap,
+SnapshotPersistor::getSnapshotScrubbingWork(const boost::optional<SnapshotName>& start_snap,
+                                            const boost::optional<SnapshotName>& end_snap,
                                             SnapshotWork& out) const
 {
     snapshots.getSnapshotScrubbingWork(start_snap,
@@ -681,9 +681,9 @@ SnapshotPersistor::trimToBackend()
 }
 
 uint64_t
-SnapshotPersistor::getSnapshotBackendSize(const std::string& name) const
+SnapshotPersistor::getSnapshotBackendSize(const SnapshotName& name) const
 {
-    return snapshots.getBackendSize(name);
+    return getSnapshot(name).backend_size();
 }
 
 uint64_t
@@ -766,17 +766,17 @@ SnapshotPersistor::hasUUIDSpecified() const
 }
 
 uint64_t
-SnapshotPersistor::getBackendSize(const std::string& end_snapshot,
-                                  boost::optional<std::string> start_snapshot) const
+SnapshotPersistor::getBackendSize(const SnapshotName& end_snapshot,
+                                  const boost::optional<SnapshotName>& start_snapshot) const
 {
     return snapshots.getBackendSize(end_snapshot,
                                     start_snapshot);
 }
 
 const yt::UUID&
-SnapshotPersistor::getSnapshotCork(const std::string& snapshot_name) const
+SnapshotPersistor::getSnapshotCork(const SnapshotName& name) const
 {
-    return snapshots.getSnapshotCork(snapshot_name);
+    return getSnapshot(name).getCork();
 }
 
 }

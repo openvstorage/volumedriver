@@ -109,7 +109,7 @@ public:
     void
     testApi(//const Namespace& ns,
             // const Namespace& clone_ns,
-            std::string& snap)
+            SnapshotName& snap)
     {
         auto ns1ptr = make_random_namespace();
         auto ns2ptr = make_random_namespace();
@@ -173,7 +173,7 @@ public:
 
         EXPECT_TRUE(found);
 
-        std::list<std::string> snap_list;
+        std::list<SnapshotName> snap_list;
         {
             LOCK_MGMT();
             EXPECT_NO_THROW(api::showSnapshots(vol_id, snap_list));
@@ -235,7 +235,7 @@ public:
 
         writeAndCheckFirstCluster(clone, '2');
 
-        std::string snap2;
+        SnapshotName snap2;
         {
             LOCK_MGMT();
             EXPECT_NO_THROW(snap2 = api::createSnapshot(clone_id));
@@ -360,7 +360,7 @@ TEST_P(ApiTest, QueueCount)
                       api::performance_counters(VolumeId("volume1")).backend_write_request_size.sum());
         }
 
-        v->createSnapshot("snap1");
+        v->createSnapshot(SnapshotName("snap1"));
         {
             fungi::ScopedLock l(api::getManagementMutex());
             EXPECT_EQ(1U,
@@ -543,9 +543,9 @@ TEST_P(ApiTest, concurrentCalls)
     const Namespace nspace2;
     const Namespace nspace3;
     const VolumeId vol_id(nspace.str());
-    std::string snap;
-    std::string snap2;
-    std::string snap3;
+    SnapshotName snap;
+    SnapshotName snap2;
+    SnapshotName snap3;
 
     testApi(
             // nspace,
@@ -838,7 +838,7 @@ TEST_P(ApiTest, snapshot_metadata)
 
     Volume* vol = api::getVolumePointer(volid);
 
-    const std::string sname1("snapshot");
+    const SnapshotName sname1("snapshot");
     const SnapshotMetaData meta1;
     api::createSnapshot(volid, meta1, &sname1);
 
@@ -851,7 +851,7 @@ TEST_P(ApiTest, snapshot_metadata)
         EXPECT_EQ(sname1, snap.getName());
     }
 
-    const std::string sname2("snopshat");
+    const SnapshotName sname2("snopshat");
     const SnapshotMetaData meta2(sname2.begin(), sname2.end());
     api::createSnapshot(volid, meta2, &sname2);
 
@@ -865,7 +865,7 @@ TEST_P(ApiTest, snapshot_metadata)
     }
 
     {
-        const std::string sname3("tanshops");
+        const SnapshotName sname3("tanshops");
         const SnapshotMetaData meta3(SnapshotPersistor::max_snapshot_metadata_size + 1,
                                      'x');
         EXPECT_THROW(api::createSnapshot(volid, meta3, &sname3),
@@ -1038,7 +1038,7 @@ TEST_P(ApiTest, snapshot_restoration)
         vol = api::getVolumePointer(volid);
     }
 
-    const std::string snapid("snapshot");
+    const SnapshotName snapid("snapshot");
 
     {
         LOCK_MGMT();
@@ -1046,7 +1046,7 @@ TEST_P(ApiTest, snapshot_restoration)
                      std::exception);
     }
 
-    const std::string before("before snapshot");
+    const SnapshotName before("before snapshot");
 
     writeToVolume(vol, before);
 
@@ -1057,7 +1057,7 @@ TEST_P(ApiTest, snapshot_restoration)
                             &snapid);
     }
 
-    const std::string after("after snapshot");
+    const SnapshotName after("after snapshot");
 
     writeToVolume(vol, after);
 
@@ -1067,7 +1067,8 @@ TEST_P(ApiTest, snapshot_restoration)
 
     {
         LOCK_MGMT();
-        EXPECT_THROW(api::restoreSnapshot(volid, "no-such-snapshot"),
+        EXPECT_THROW(api::restoreSnapshot(volid,
+                                          SnapshotName("no-such-snapshot")),
                      std::exception);
     }
 

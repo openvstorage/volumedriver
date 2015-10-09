@@ -41,7 +41,7 @@ protected:
         fs::remove_all(basedir_);
         fs::create_directories(basedir_);
         sp_.reset(new SnapshotPersistor(ParentConfig(parentnamespace,
-                                                     "parentsnapshot")));
+                                                     SnapshotName("parentsnapshot"))));
     }
 
     virtual void
@@ -102,7 +102,7 @@ protected:
             tlog_ids[i] = TLog::getTLogIDFromName(sp_->getCurrentTLog());
             if (i == snap_idx)
             {
-                sp_->snapshot("snapper");
+                sp_->snapshot(SnapshotName("snapper"));
             }
             else
             {
@@ -196,25 +196,26 @@ TEST_F(SnapshotPersistorTest, removeallbuttlast2)
     NT;
     NT;
     tlogs.push_back(sp_->getCurrentTLog());
-    sp_->snapshot("First");
+    sp_->snapshot(SnapshotName("First"));
     NT;
     NT;
     NT;
     tlogs.push_back(sp_->getCurrentTLog());
-    sp_->snapshot("Second");
+    sp_->snapshot(SnapshotName("Second"));
     NT;
     NT;
     NT;
     NT;
     tlogs.push_back(sp_->getCurrentTLog());
-    sp_->snapshot("Third");
+    sp_->snapshot(SnapshotName("Third"));
 
     EXPECT_EQ(12U, tlogs.size());
 
     sp_->deleteAllButLastSnapshot();
     const Snapshots snaps = sp_->getSnapshots();
     EXPECT_EQ(1U, snaps.size());
-    EXPECT_TRUE(snaps.front().getName() == "Third");
+    EXPECT_EQ(SnapshotName("Third"),
+              snaps.front().getName());
     EXPECT_EQ(12U, snaps.front().size());
 
     size_t i = 0;
@@ -237,7 +238,7 @@ TEST_F(SnapshotPersistorTest, simple)
     EXPECT_EQ(parentnamespace,
               sp_->parent()->nspace);
 
-    EXPECT_EQ("parentsnapshot",
+    EXPECT_EQ(SnapshotName("parentsnapshot"),
               sp_->parent()->snapshot);
 }
 
@@ -264,7 +265,7 @@ TEST_F(SnapshotPersistorTest, test3)
     // std::string tlogname3 =
     sp_->newTLog();
     //    EXPECT_TRUE(tlogname3 == "tlog_00_0000000000000004");
-    sp_->snapshot("FirstSnap");
+    sp_->snapshot(SnapshotName("FirstSnap"));
     //std::string tlogname4 =
     sp_->newTLog();
     //    EXPECT_TRUE(tlogname4 == "tlog_00_0000000000000006");
@@ -274,9 +275,10 @@ TEST_F(SnapshotPersistorTest, test3)
     // std::string tlogname6 =
     sp_->newTLog();
     //    EXPECT_TRUE(tlogname6 == "tlog_00_0000000000000008");
-    ASSERT_THROW(sp_->snapshot("FirstSnap"),fungi::IOException);
+    ASSERT_THROW(sp_->snapshot(SnapshotName("FirstSnap")),
+                 fungi::IOException);
 
-    sp_->snapshot("SecondSnap");
+    sp_->snapshot(SnapshotName("SecondSnap"));
     //sp_->saveToFile();
     OrderedTLogNames tlogs;
     sp_->getTLogsInSnapshot(0,
@@ -294,7 +296,7 @@ TEST_F(SnapshotPersistorTest, test4)
     const unsigned numsnaps = 50;
     const unsigned numtlogs = 10;
 
-    std::vector<std::string> snapshotnames;
+    std::vector<SnapshotName> snapshotnames;
     std::vector<std::string> tlognames;
 
     for(unsigned i = 0; i < numsnaps; i++)
@@ -302,7 +304,7 @@ TEST_F(SnapshotPersistorTest, test4)
         tlognames.push_back(sp_->getCurrentTLog());
         std::stringstream ss;
         ss << "snapshot_" << i;
-        snapshotnames.push_back(ss.str());
+        snapshotnames.push_back(SnapshotName(ss.str()));
         for(unsigned j = 0; j < numtlogs-1; j++)
         {
             sp_->newTLog();
@@ -359,7 +361,7 @@ TEST_F(SnapshotPersistorTest, test5)
     const unsigned numsnaps = 10;
     const unsigned numtlogs = 50;
 
-    std::vector<std::string> snapshotnames;
+    std::vector<SnapshotName> snapshotnames;
     std::vector<std::string> tlognames;
 
     for(unsigned i = 0; i < numsnaps; i++)
@@ -372,7 +374,7 @@ TEST_F(SnapshotPersistorTest, test5)
         }
         std::stringstream ss;
         ss << "snapshot_" << i;
-        snapshotnames.push_back(ss.str());
+        snapshotnames.push_back(SnapshotName(ss.str()));
         sp_->snapshot(snapshotnames[i]);
     }
     tlognames.push_back(sp_->getCurrentTLog());
@@ -408,7 +410,7 @@ TEST_F(SnapshotPersistorTest, test6)
     const unsigned numsnaps = 10;
     const unsigned numtlogs = 50;
 
-    std::vector<std::string> snapshotnames;
+    std::vector<SnapshotName> snapshotnames;
     std::vector<std::string> tlognames;
 
     for(unsigned i = 0; i < numsnaps; i++)
@@ -416,7 +418,7 @@ TEST_F(SnapshotPersistorTest, test6)
         tlognames.push_back(sp_->getCurrentTLog());
         std::stringstream ss;
         ss << "snapshot_" << i;
-        snapshotnames.push_back(ss.str());
+        snapshotnames.push_back(SnapshotName(ss.str()));
         for(unsigned j = 0; j < numtlogs-1; j++)
         {
             sp_->newTLog();
@@ -446,7 +448,7 @@ TEST_F(SnapshotPersistorTest, test7)
     const unsigned numsnaps = 10;
     const unsigned numtlogs = 50;
 
-    std::vector<std::string> snapshotnames;
+    std::vector<SnapshotName> snapshotnames;
     std::vector<std::string> tlognames;
 
     for(unsigned i = 0; i < numsnaps; i++)
@@ -459,7 +461,7 @@ TEST_F(SnapshotPersistorTest, test7)
         }
         std::stringstream ss;
         ss << "snapshot_" << i;
-        snapshotnames.push_back(ss.str());
+        snapshotnames.push_back(SnapshotName(ss.str()));
         sp_->snapshot(snapshotnames[i]);
 
     }
@@ -484,7 +486,7 @@ TEST_F(SnapshotPersistorTest, test8)
     const unsigned numsnaps = 5;
     const unsigned numtlogs = 10;
 
-    std::vector<std::string> snapshotnames;
+    std::vector<SnapshotName> snapshotnames;
     std::vector<std::string> tlognames;
 
     for(unsigned i = 0; i < numsnaps; i++)
@@ -497,7 +499,7 @@ TEST_F(SnapshotPersistorTest, test8)
         }
         std::stringstream ss;
         ss << "snapshot_" << i;
-        snapshotnames.push_back(ss.str());
+        snapshotnames.push_back(SnapshotName(ss.str()));
         sp_->snapshot(snapshotnames[i]);
 
     }
@@ -531,7 +533,7 @@ TEST_F(SnapshotPersistorTest, test9)
     const unsigned numsnaps = 5;
     const unsigned numtlogs = 10;
 
-    std::vector<std::string> snapshotnames;
+    std::vector<SnapshotName> snapshotnames;
     std::vector<std::string> tlognames;
 
     for(unsigned i = 0; i < numsnaps; i++)
@@ -545,7 +547,7 @@ TEST_F(SnapshotPersistorTest, test9)
         }
         std::stringstream ss;
         ss << "snapshot_" << i;
-        snapshotnames.push_back(ss.str());
+        snapshotnames.push_back(SnapshotName(ss.str()));
         sp_->snapshot(snapshotnames[i]);
 
     }
@@ -570,7 +572,7 @@ TEST_F(SnapshotPersistorTest, test10)
     const unsigned numsnaps = 5;
     const unsigned numtlogs = 10;
 
-    std::vector<std::string> snapshotnames;
+    std::vector<SnapshotName> snapshotnames;
     std::vector<std::string> tlognames;
 
     for(unsigned i = 0; i < numsnaps; i++)
@@ -584,7 +586,7 @@ TEST_F(SnapshotPersistorTest, test10)
         }
         std::stringstream ss;
         ss << "snapshot_" << i;
-        snapshotnames.push_back(ss.str());
+        snapshotnames.push_back(SnapshotName(ss.str()));
         sp_->snapshot(snapshotnames[i]);
 
     }
@@ -613,8 +615,8 @@ TEST_F(SnapshotPersistorTest, test11)
     {
         std::stringstream ss;
         ss << "snapshot_" << i;
-        sp_->snapshot(ss.str());
-        nums.push_back(sp_->getSnapshotNum(ss.str()));
+        sp_->snapshot(SnapshotName(ss.str()));
+        nums.push_back(sp_->getSnapshotNum(SnapshotName(ss.str())));
         //EXPECT_TRUE(not sp_->getSnapshotReadOnly(nums[i]));
         //        sp_->setSnapshotReadOnly(nums[i], i);
         for(unsigned j = 0; j < i; j++)
@@ -647,7 +649,7 @@ TEST_F(SnapshotPersistorTest, test11)
 
 TEST_F(SnapshotPersistorTest, test12)
 {
-    sp_->snapshot("snap1");
+    sp_->snapshot(SnapshotName("snap1"));
     //SnapshotNum n = sp_->getSnapshotNum("snap1");
     //sp_->unsetSnapshotReadOnly(n,0);
     //EXPECT_FALSE(sp_->getSnapshotReadOnly(n));
@@ -663,8 +665,6 @@ TEST_F(SnapshotPersistorTest, test12)
     //EXPECT_TRUE(sp_->getSnapshotReadOnly(n));
     //sp_->unsetSnapshotReadOnly(n,1);
     //EXPECT_TRUE(sp_->getSnapshotReadOnly(n));
-
-
 }
 
 TEST_F(SnapshotPersistorTest, test13)
@@ -672,7 +672,7 @@ TEST_F(SnapshotPersistorTest, test13)
     const unsigned numsnaps = 5;
     const unsigned numtlogs = 10;
 
-    std::vector<std::string> snapshotnames;
+    std::vector<SnapshotName> snapshotnames;
     std::vector<std::string> tlognames;
 
     for(unsigned i = 0; i < numsnaps; i++)
@@ -685,7 +685,7 @@ TEST_F(SnapshotPersistorTest, test13)
         }
         std::stringstream ss;
         ss << "snapshot_" << i;
-        snapshotnames.push_back(ss.str());
+        snapshotnames.push_back(SnapshotName(ss.str()));
         sp_->snapshot(snapshotnames[i]);
     }
     SnapshotWork out;
@@ -706,7 +706,7 @@ TEST_F(SnapshotPersistorTest, tlogWrittenToBackendConsistencyCheck)
 
         if (i == snap_idx)
         {
-            sp_->snapshot("snapper");
+            sp_->snapshot(SnapshotName("snapper"));
         }
         else
         {
@@ -767,7 +767,7 @@ TEST_F(SnapshotPersistorTest, deserialization_consistency_check_2)
 
 TEST_F(SnapshotPersistorTest, no_metadata)
 {
-    const std::string s("snapshot");
+    const SnapshotName s("snapshot");
     sp_->snapshot(s);
 
     const Snapshot snap(sp_->getSnapshot(s));
@@ -777,7 +777,7 @@ TEST_F(SnapshotPersistorTest, no_metadata)
 
 TEST_F(SnapshotPersistorTest, metadata)
 {
-    const std::string s("pansshot");
+    const SnapshotName s("pansshot");
     const SnapshotMetaData m(s.begin(), s.end());
     sp_->snapshot(s, m);
 
@@ -788,7 +788,7 @@ TEST_F(SnapshotPersistorTest, metadata)
 
 TEST_F(SnapshotPersistorTest, excessive_metadata)
 {
-    const std::string s("tansposh");
+    const SnapshotName s("tansposh");
     const SnapshotMetaData m(SnapshotPersistor::max_snapshot_metadata_size + 1, 'x');
     EXPECT_THROW(sp_->snapshot(s, m),
                  std::exception);
@@ -796,7 +796,7 @@ TEST_F(SnapshotPersistorTest, excessive_metadata)
 
 TEST_F(SnapshotPersistorTest, persistent_metadata)
 {
-    const std::string s("antshops");
+    const SnapshotName s("antshops");
     const SnapshotMetaData m(s.begin(), s.end());
     sp_->snapshot(s, m);
 

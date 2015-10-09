@@ -136,7 +136,7 @@ TEST_P(WriteOnlyVolumeTest, no_clone_from_incremental)
     const std::string pattern("All work and no play makes Jack a dull boy.");
     writeToVolume(wov, 0, 16384, pattern);
 
-    const std::string snap("snap");
+    const SnapshotName snap("snap");
     wov->createSnapshot(snap);
     waitForThisBackendWrite(wov);
 
@@ -203,7 +203,7 @@ TEST_P(WriteOnlyVolumeTest, test2)
         std::stringstream ss;
         ss << std::setfill('_') << std::setw(2) << i;
         writeToVolume(v, 0, 4096, ss.str());
-        v->createSnapshot(ss.str());
+        v->createSnapshot(SnapshotName(ss.str()));
         waitForThisBackendWrite(v);
     }
     writeToVolume(v,0, 4096, "blah");
@@ -221,7 +221,7 @@ TEST_P(WriteOnlyVolumeTest, test2)
         setVolumeRole(ns, VolumeConfig::WanBackupVolumeRole::WanBackupIncremental);
         v = restartWriteOnlyVolume(vCfg);
         ASSERT_TRUE(v);
-        v->restoreSnapshot(ss.str());
+        v->restoreSnapshot(SnapshotName(ss.str()));
         waitForThisBackendWrite(v);
         waitForThisBackendWrite(v);
         destroyVolume(v,

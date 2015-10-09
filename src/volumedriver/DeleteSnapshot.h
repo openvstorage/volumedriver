@@ -15,6 +15,8 @@
 #ifndef DELETE_SNAPSHOT_H_
 #define DELETE_SNAPSHOT_H_
 
+#include "SnapshotName.h"
+
 #include <vector>
 #include <string>
 
@@ -23,6 +25,8 @@
 
 #include <youtils/Logging.h>
 #include <youtils/GlobalLockedCallable.h>
+
+
 namespace volumedriver_backup
 {
 
@@ -31,9 +35,8 @@ namespace bpt = boost::property_tree;
 class DeleteSnapshot : public youtils::GlobalLockedCallable
 {
 public:
-
     DeleteSnapshot(const boost::property_tree::ptree&,
-                   const std::vector<std::string>& snapshots);
+                   const std::vector<volumedriver::SnapshotName>& snapshots);
 
     void
     operator()();
@@ -52,7 +55,7 @@ private:
 
     bpt::ptree configuration_ptree_;
     const bpt::ptree& target_ptree_;
-    const std::vector<std::string>& snapshots_;
+    const std::vector<volumedriver::SnapshotName>& snapshots_;
     const youtils::GracePeriod grace_period_;
 };
 

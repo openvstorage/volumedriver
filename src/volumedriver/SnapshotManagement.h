@@ -19,6 +19,7 @@
 #include "ClusterLocationAndHash.h"
 #include "RestartContext.h"
 #include "ScrubId.h"
+#include "SnapshotName.h"
 #include "SnapshotPersistor.h"
 #include "VolumeBackPointer.h"
 #include "VolumeConfig.h"
@@ -86,16 +87,16 @@ public:
     }
 
     void
-    listSnapshots(std::list<std::string>& snapshots) const;
+    listSnapshots(std::list<SnapshotName>& snapshots) const;
 
     void
-    deleteSnapshot(const std::string& name);
+    deleteSnapshot(const SnapshotName&);
 
     SnapshotNum
-    getSnapshotNumberByName(const std::string& name) const;
+    getSnapshotNumberByName(const SnapshotName&) const;
 
     Snapshot
-    getSnapshot(const std::string& snapname) const;
+    getSnapshot(const SnapshotName&) const;
 
     void
     getAllTLogs(OrderedTLogNames&,
@@ -115,8 +116,8 @@ public:
                        const AbsolutePath) const;
 
     bool
-    getTLogsInSnapshot(const std::string& snapname,
-                       OrderedTLogNames& out,
+    getTLogsInSnapshot(const SnapshotName&,
+                       OrderedTLogNames&,
                        const AbsolutePath) const;
 
     void
@@ -145,13 +146,13 @@ public:
     snapshotExists(SnapshotNum num) const;
 
     bool
-    snapshotExists(const std::string& name) const;
+    snapshotExists(const SnapshotName& name) const;
 
     void
     eraseSnapshotsAndTLogsAfterSnapshot(SnapshotNum num);
 
     uint64_t
-    getSnapshotBackendSize(const std::string& name) const;
+    getSnapshotBackendSize(const SnapshotName& name) const;
 
     uint64_t
     getCurrentBackendSize() const;
@@ -166,12 +167,12 @@ public:
     Accumulator&
     vold(Accumulator& accumulator,
          BackendInterfacePtr bi,
-         const std::string& snapshot_name = std::string(""),
+         const SnapshotName& snap_name = SnapshotName(),
          SCOCloneID start = SCOCloneID(0)) const
     {
         return sp->vold(accumulator,
                         std::move(bi),
-                        snapshot_name,
+                        snap_name,
                         start);
     }
 
@@ -184,7 +185,7 @@ public:
     void
     destroy(const DeleteLocalData delete_snaps);
 
-    std::string
+    SnapshotName
     getLastSnapshotName() const;
 
     void
@@ -219,7 +220,7 @@ public:
     lastSnapshotOnBackend() const;
 
     void
-    setSnapshotScrubbed(const std::string&);
+    setSnapshotScrubbed(const SnapshotName&);
 
     fs::path
     getTLogsPath() const;
@@ -261,8 +262,8 @@ public:
     saveSnapshotToTempFile();
 
     void
-    getSnapshotScrubbingWork(const boost::optional<std::string>& start_snap,
-                             const boost::optional<std::string>& end_snap,
+    getSnapshotScrubbingWork(const boost::optional<SnapshotName>& start_snap,
+                             const boost::optional<SnapshotName>& end_snap,
                              SnapshotWork& out) const;
 
     void
@@ -286,7 +287,7 @@ public:
     }
 
     const youtils::UUID&
-    getSnapshotCork(const std::string& snapshot_name) const;
+    getSnapshotCork(const SnapshotName& snapshot_name) const;
 
     void
     setAsTemplate(const MaybeCheckSum& maybe_sco_crc);
@@ -358,14 +359,14 @@ private:
     getTLogSizes(const OrderedTLogNames&);
 
     void
-    createSnapshot(const std::string& name,
+    createSnapshot(const SnapshotName& name,
                    const MaybeCheckSum& maybe_sco_crc,
                    const SnapshotMetaData& metadata = SnapshotMetaData(),
                    const UUID& = UUID(),
                    const bool set_scrubbed = false);
 
     bool
-    checkSnapshotUUID(const std::string& snapshotName,
+    checkSnapshotUUID(const SnapshotName& snapshotName,
                       const volumedriver::UUID& uuid) const;
 
     void

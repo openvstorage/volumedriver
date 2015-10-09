@@ -52,7 +52,7 @@ TEST_P(CloneVolumeTest, requireParentSnapshotOnNormalClone)
                   ns1);
     ASSERT_TRUE(v);
 
-    v->createSnapshot("snap1");
+    v->createSnapshot(SnapshotName("snap1"));
     waitForThisBackendWrite(v);
     VolumeId c1ID("clone1");
     auto ns2_ptr = make_random_namespace();
@@ -83,7 +83,7 @@ TEST_P(CloneVolumeTest, test1)
                   4096,
                   "a");
 
-    v->createSnapshot("snap1");
+    v->createSnapshot(SnapshotName("snap1"));
     checkCurrentBackendSize(v);
     waitForThisBackendWrite(v);
 
@@ -104,7 +104,7 @@ TEST_P(CloneVolumeTest, test1)
                   4096,
                   "x");
 
-    c1->createSnapshot("snap2");
+    c1->createSnapshot(SnapshotName("snap2"));
 
     waitForThisBackendWrite(c1);
     writeToVolume(c1,
@@ -121,7 +121,7 @@ TEST_P(CloneVolumeTest, test1)
     waitForThisBackendWrite(c1);
 
 
-    c1->restoreSnapshot("snap2");
+    c1->restoreSnapshot(SnapshotName("snap2"));
 
     checkVolume(c1, 0, 4096, "a");
     checkVolume(c1, 4096, 4096, "x");

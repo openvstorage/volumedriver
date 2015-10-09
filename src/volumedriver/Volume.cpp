@@ -1182,7 +1182,7 @@ Volume::getFailOverCacheConfig()
 }
 
 void
-Volume::createSnapshot(const std::string& name,
+Volume::createSnapshot(const SnapshotName& name,
                        const SnapshotMetaData& metadata,
                        const UUID& uuid)
 {
@@ -1213,7 +1213,7 @@ Volume::createSnapshot(const std::string& name,
 }
 
 bool
-Volume::checkSnapshotUUID(const std::string& snapshotName,
+Volume::checkSnapshotUUID(const SnapshotName& snapshotName,
                           const volumedriver::UUID& uuid) const
 {
     return snapshotManagement_->checkSnapshotUUID(snapshotName,
@@ -1221,24 +1221,24 @@ Volume::checkSnapshotUUID(const std::string& snapshotName,
 }
 
 bool
-Volume::snapshotExists(const std::string& name) const
+Volume::snapshotExists(const SnapshotName& name) const
 {
     return snapshotManagement_->snapshotExists(name);
 }
 
 void
-Volume::listSnapshots(std::list<std::string>& snapshots) const
+Volume::listSnapshots(std::list<SnapshotName>& snapshots) const
 {
     snapshotManagement_->listSnapshots(snapshots);
 }
 
 Snapshot
-Volume::getSnapshot(const std::string& snapname) const
+Volume::getSnapshot(const SnapshotName& snapname) const
 {
     return snapshotManagement_->getSnapshot(snapname);
 }
 
-void Volume::deleteSnapshot(const std::string& name)
+void Volume::deleteSnapshot(const SnapshotName& name)
 {
     if(T(isVolumeTemplate()))
     {
@@ -1299,7 +1299,7 @@ Volume::dumpDebugData()
 
 // TODO: this only works when the backend is online
 void
-Volume::restoreSnapshot(const std::string& name)
+Volume::restoreSnapshot(const SnapshotName& name)
 {
     WLOCK();
 
@@ -1628,16 +1628,16 @@ Volume::isSyncedToBackend() const
 }
 
 bool
-Volume::isSyncedToBackendUpTo(const std::string& snapshotName) const
+Volume::isSyncedToBackendUpTo(const SnapshotName& snapshotName) const
 {
     SnapshotNum num = snapshotManagement_->getSnapshotNumberByName(snapshotName);
     return snapshotManagement_->isSnapshotInBackend(num);
 }
 
 void
-Volume::getScrubbingWork(std::vector<std::string>& w,
-                         const boost::optional<std::string>& start_snap,
-                         const boost::optional<std::string>& end_snap) const
+Volume::getScrubbingWork(std::vector<std::string>& scrub_work,
+                         const boost::optional<SnapshotName>& start_snap,
+                         const boost::optional<SnapshotName>& end_snap) const
 {
     if(T(isVolumeTemplate()))
     {
@@ -1645,17 +1645,17 @@ Volume::getScrubbingWork(std::vector<std::string>& w,
         throw VolumeIsTemplateException("Templated Volume, getting scrub work is forbidden");
     }
 
-    std::vector<std::string> snapshots;
+    SnapshotWork work;
 
     snapshotManagement_->getSnapshotScrubbingWork(start_snap,
                                                   end_snap,
-                                                  snapshots);
+                                                  work);
 
-    if (not snapshots.empty())
+    if (not work.empty())
     {
         metaDataStore_->sync();
     }
-    for( const std::string& snap_name : snapshots)
+    for(const auto& w : work)
     {
         const VolumeConfig cfg(get_config());
 
@@ -1664,9 +1664,9 @@ Volume::getScrubbingWork(std::vector<std::string>& w,
                                cfg.id_,
                                ilogb(cfg.cluster_mult_ * cfg.lba_size_),
                                getSCOMultiplier(),
-                               snap_name);
+                               w);
 
-        w.push_back(s.str());
+        scrub_work.push_back(s.str());
     }
 }
 
@@ -1975,11 +1975,11 @@ Volume::applyScrubbing(const std::string& res_name,
     }
 }
 
-std::string
+SnapshotName
 Volume::getParentSnapName() const
 {
     LOCK_CONFIG();
-    return std::string(config_.parent_snapshot_);
+    return config_.parent_snapshot_;
 }
 
 void
@@ -2304,7 +2304,7 @@ Volume::tlogWrittenToBackendCallback(const TLogID& tid,
 }
 
 uint64_t
-Volume::getSnapshotSCOCount(const std::string& snapshotName)
+Volume::getSnapshotSCOCount(const SnapshotName& snapshotName)
 {
     OrderedTLogNames out;
     if(snapshotName.empty())
@@ -2519,7 +2519,7 @@ struct CheckConsistencyAcc
     void
     operator()(const SnapshotPersistor* s,
                BackendInterfacePtr&,
-               const std::string& snap,
+               const SnapshotName& snap,
                SCOCloneID clone_id)
     {
         OrderedTLogNames tlogs;
@@ -2555,7 +2555,7 @@ Volume::checkConsistency()
 }
 
 uint64_t
-Volume::getSnapshotBackendSize(const std::string& snapName)
+Volume::getSnapshotBackendSize(const SnapshotName& snapName)
 {
     return snapshotManagement_->getSnapshotBackendSize(snapName);
 }

@@ -44,7 +44,7 @@ BackendRestartAccumulator::BackendRestartAccumulator(NSIDMap& nsid,
 void
 BackendRestartAccumulator::operator()(const SnapshotPersistor& sp,
                                       be::BackendInterfacePtr& bi,
-                                      const std::string& snapshot_name,
+                                      const SnapshotName& snapshot_name,
                                       SCOCloneID clone_id)
 {
     nsid_.set(clone_id,

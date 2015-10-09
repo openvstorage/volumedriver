@@ -494,7 +494,7 @@ protected:
                           tmp_pattern);
         }
 
-        const std::string snap1("snap1-"s + yt::UUID().str());
+        const SnapshotName snap1("snap1-"s + yt::UUID().str());
         v.createSnapshot(snap1);
         waitForThisBackendWrite(&v);
 
@@ -503,7 +503,7 @@ protected:
                       wsize,
                       snd_cluster_pattern);
 
-        const std::string snap2("snap2-"s + yt::UUID().str());
+        const SnapshotName snap2("snap2-"s + yt::UUID().str());
         v.createSnapshot(snap2);
         waitForThisBackendWrite(&v);
 
@@ -694,7 +694,7 @@ TEST_P(MDSVolumeTest, sole_mds_temporarily_gone)
                   wsize,
                   pattern);
 
-    const std::string snap("snap");
+    const SnapshotName snap("snap");
     v->createSnapshot(snap);
     waitForThisBackendWrite(v);
 
@@ -740,7 +740,7 @@ TEST_P(MDSVolumeTest, slave_catchup)
                   v->getClusterSize(),
                   pattern1);
 
-    const std::string snap1("first-snap");
+    const SnapshotName snap1("first-snap");
     v->createSnapshot(snap1);
     waitForThisBackendWrite(v);
 
@@ -754,7 +754,7 @@ TEST_P(MDSVolumeTest, slave_catchup)
                   v->getClusterSize(),
                   pattern2);
 
-    const std::string snap2("second-snap");
+    const SnapshotName snap2("second-snap");
     v->createSnapshot(snap2);
     waitForThisBackendWrite(v);
 
@@ -1049,7 +1049,7 @@ TEST_P(MDSVolumeTest, futile_scrub)
                   wsize,
                   pattern1);
 
-    const std::string snap1("snap1");
+    const SnapshotName snap1("snap1");
     v->createSnapshot(snap1);
     waitForThisBackendWrite(v);
 
@@ -1060,7 +1060,7 @@ TEST_P(MDSVolumeTest, futile_scrub)
                   wsize,
                   pattern2);
 
-    const std::string snap2("snap2");
+    const SnapshotName snap2("snap2");
     v->createSnapshot(snap2);
     waitForThisBackendWrite(v);
 

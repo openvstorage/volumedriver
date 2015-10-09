@@ -27,7 +27,7 @@ using namespace volumedriver;
 namespace be = backend;
 
 DeleteSnapshot::DeleteSnapshot(const bpt::ptree& config_ptree,
-                               const std::vector<std::string>& snapshots)
+                               const std::vector<SnapshotName>& snapshots)
     : configuration_ptree_(config_ptree)
     , target_ptree_(configuration_ptree_.get_child("target_configuration"))
     , snapshots_(snapshots)
@@ -104,7 +104,7 @@ DeleteSnapshot::operator()()
         return;
     }
 
-    BOOST_FOREACH(const std::string& snapshot, snapshots_)
+    BOOST_FOREACH(const auto& snapshot, snapshots_)
     {
         LOG_INFO("trying to get snapshot_num for " << snapshot);
         const SnapshotNum s_num = target_snapshot_persistor.getSnapshotNum(snapshot);

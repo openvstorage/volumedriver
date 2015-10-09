@@ -55,7 +55,7 @@ SnapshotPersistorToolCut::getSnapshots() const
 vd::SnapshotNum
 SnapshotPersistorToolCut::getSnapshotNum(const std::string& snapshot) const
 {
-    return snapshot_persistor_->getSnapshotNum(snapshot);
+    return snapshot_persistor_->getSnapshotNum(vd::SnapshotName(snapshot));
 }
 
 std::string
@@ -65,11 +65,11 @@ SnapshotPersistorToolCut::getSnapshotName(const vd::SnapshotNum snapshot) const
 }
 
 bpy::list
-SnapshotPersistorToolCut::getSnapshotsAfter(const std::string& snapshotName) const
+SnapshotPersistorToolCut::getSnapshotsAfter(const std::string& snap_name) const
 {
     bpy::list result;
     std::vector<vd::SnapshotNum> snapshotNums;
-    vd::SnapshotNum snum = snapshot_persistor_->getSnapshotNum(snapshotName);
+    vd::SnapshotNum snum = snapshot_persistor_->getSnapshotNum(vd::SnapshotName(snap_name));
 
     snapshot_persistor_->getSnapshotsAfter(snum,
                                            snapshotNums);
@@ -91,7 +91,7 @@ SnapshotPersistorToolCut::currentStored() const
 uint64_t
 SnapshotPersistorToolCut::snapshotStored(const std::string& name) const
 {
-    return snapshot_persistor_->getSnapshotBackendSize(name);
+    return snapshot_persistor_->getSnapshotBackendSize(vd::SnapshotName(name));
 }
 
 uint64_t
@@ -101,12 +101,12 @@ SnapshotPersistorToolCut::stored() const
 }
 
 bpy::list
-SnapshotPersistorToolCut::getSnapshotsTill(const std::string& snapshotName,
+SnapshotPersistorToolCut::getSnapshotsTill(const std::string& snap_name,
                                            bool including) const
 {
     bpy::list result;
     std::vector<vd::SnapshotNum> snapshotNums;
-    vd::SnapshotNum snum = snapshot_persistor_->getSnapshotNum(snapshotName);
+    vd::SnapshotNum snum = snapshot_persistor_->getSnapshotNum(vd::SnapshotName(snap_name));
     snapshot_persistor_->getSnapshotsTill(snum,
                                           snapshotNums,
                                           including);
@@ -180,11 +180,11 @@ SnapshotPersistorToolCut::getCurrentTLog() const
 }
 
 bpy::list
-SnapshotPersistorToolCut::getTLogsTillSnapshot(const std::string& snapshotName) const
+SnapshotPersistorToolCut::getTLogsTillSnapshot(const std::string& snap_name) const
 {
     bpy::list result;
     vd::OrderedTLogNames tlogs;
-    vd::SnapshotNum snum = snapshot_persistor_->getSnapshotNum(snapshotName);
+    vd::SnapshotNum snum = snapshot_persistor_->getSnapshotNum(vd::SnapshotName(snap_name));
     snapshot_persistor_->getTLogsTillSnapshot(snum,
                                               tlogs);
 
@@ -196,11 +196,11 @@ SnapshotPersistorToolCut::getTLogsTillSnapshot(const std::string& snapshotName) 
 }
 
 bpy::list
-SnapshotPersistorToolCut::getTLogsInSnapshot(const std::string& snapshotName) const
+SnapshotPersistorToolCut::getTLogsInSnapshot(const std::string& snap_name) const
 {
     bpy::list result;
     vd::OrderedTLogNames tlogs;
-    vd::SnapshotNum snum = snapshot_persistor_->getSnapshotNum(snapshotName);
+    vd::SnapshotNum snum = snapshot_persistor_->getSnapshotNum(vd::SnapshotName(snap_name));
     snapshot_persistor_->getTLogsInSnapshot(snum,
                                               tlogs);
 
@@ -212,11 +212,11 @@ SnapshotPersistorToolCut::getTLogsInSnapshot(const std::string& snapshotName) co
 }
 
 bpy::list
-SnapshotPersistorToolCut::getTLogsAfterSnapshot(const std::string& snapshotName) const
+SnapshotPersistorToolCut::getTLogsAfterSnapshot(const std::string& snap_name) const
 {
     bpy::list result;
     vd::OrderedTLogNames tlogs;
-    vd::SnapshotNum snum = snapshot_persistor_->getSnapshotNum(snapshotName);
+    vd::SnapshotNum snum = snapshot_persistor_->getSnapshotNum(vd::SnapshotName(snap_name));
     snapshot_persistor_->getTLogsAfterSnapshot(snum,
                                               tlogs);
 
@@ -229,15 +229,15 @@ SnapshotPersistorToolCut::getTLogsAfterSnapshot(const std::string& snapshotName)
 }
 
 bool
-SnapshotPersistorToolCut::snapshotExists(const std::string& snapshotName)
+SnapshotPersistorToolCut::snapshotExists(const std::string& snap_name)
 {
-    return snapshot_persistor_->snapshotExists(snapshotName);
+    return snapshot_persistor_->snapshotExists(vd::SnapshotName(snap_name));
 }
 
 void
-SnapshotPersistorToolCut::deleteSnapshot(const std::string& snapshotName)
+SnapshotPersistorToolCut::deleteSnapshot(const std::string& snap_name)
 {
-    vd::SnapshotNum snum = snapshot_persistor_->getSnapshotNum(snapshotName);
+    vd::SnapshotNum snum = snapshot_persistor_->getSnapshotNum(vd::SnapshotName(snap_name));
     snapshot_persistor_->deleteSnapshot(snum);
 }
 
@@ -276,17 +276,17 @@ SnapshotPersistorToolCut::getTLogsNotWrittenToBackend() const
 }
 
 bool
-SnapshotPersistorToolCut::isSnapshotScrubbed(const std::string& snapshotName) const
+SnapshotPersistorToolCut::isSnapshotScrubbed(const std::string& snap_name) const
 {
-    vd::SnapshotNum snum = snapshot_persistor_->getSnapshotNum(snapshotName);
+    vd::SnapshotNum snum = snapshot_persistor_->getSnapshotNum(vd::SnapshotName(snap_name));
     return snapshot_persistor_->getSnapshotScrubbed(snum, false);
 }
 
 void
-SnapshotPersistorToolCut::setSnapshotScrubbed(const std::string& snapshotName,
+SnapshotPersistorToolCut::setSnapshotScrubbed(const std::string& snap_name,
                                               bool scrubbed) const
 {
-    vd::SnapshotNum snum = snapshot_persistor_->getSnapshotNum(snapshotName);
+    vd::SnapshotNum snum = snapshot_persistor_->getSnapshotNum(vd::SnapshotName(snap_name));
     snapshot_persistor_->setSnapshotScrubbed(snum, scrubbed);
 }
 
@@ -325,9 +325,9 @@ SnapshotPersistorToolCut::snip(const std::string& tlogname)
 
 void
 SnapshotPersistorToolCut::replace(const bpy::list& new_ones,
-                                  const std::string& snapshot_name)
+                                  const std::string& snap_name)
 {
-    vd::SnapshotNum snap_num = snapshot_persistor_->getSnapshotNum(snapshot_name);
+    vd::SnapshotNum snap_num = snapshot_persistor_->getSnapshotNum(vd::SnapshotName(snap_name));
     vd::OrderedTLogNames olden_ones;
     snapshot_persistor_->getTLogsInSnapshot(snap_num,
                                             olden_ones);
@@ -349,16 +349,16 @@ bpy::list
 SnapshotPersistorToolCut::getScrubbingWork(bpy::object start_snap,
                                            bpy::object end_snap)
 {
-    boost::optional<std::string> ssnap;
+    boost::optional<vd::SnapshotName> ssnap;
     if (start_snap != bpy::object())
     {
-        ssnap = bpy::extract<std::string>(start_snap);
+        ssnap = bpy::extract<vd::SnapshotName>(start_snap);
     }
 
-    boost::optional<std::string> esnap;
+    boost::optional<vd::SnapshotName> esnap;
     if (end_snap != bpy::object())
     {
-        esnap = bpy::extract<std::string>(end_snap);
+        esnap = bpy::extract<vd::SnapshotName>(end_snap);
     }
 
     // Keep this in line with VolumeGetWork XMLRPC call so client sees the same interface

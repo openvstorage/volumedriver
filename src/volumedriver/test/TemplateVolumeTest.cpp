@@ -58,10 +58,10 @@ TEST_P(TemplateVolumeTest, forbidden_actions)
                                4096,
                               "blah"),
                  VolumeIsTemplateException);
-    EXPECT_THROW(v->createSnapshot("snap1"),
+    EXPECT_THROW(v->createSnapshot(SnapshotName("snap1")),
                  VolumeIsTemplateException);
 
-    std::list<std::string> snapshots;
+    std::list<SnapshotName> snapshots;
     v->listSnapshots(snapshots);
     ASSERT_EQ(1U, snapshots.size());
     EXPECT_THROW(v->deleteSnapshot(snapshots.front()),
@@ -89,7 +89,7 @@ TEST_P(TemplateVolumeTest, set_template_no_data_no_snapshot)
     EXPECT_NO_THROW(set_as_template(vid1));
     EXPECT_TRUE(T(v->isVolumeTemplate()));
 
-    std::list<std::string> snapshots;
+    std::list<SnapshotName> snapshots;
     v->listSnapshots(snapshots);
     EXPECT_EQ(1U, snapshots.size());
 
@@ -152,7 +152,7 @@ TEST_P(TemplateVolumeTest, set_template_data_no_snapshot)
     EXPECT_NO_THROW(set_as_template(vid1));
     EXPECT_TRUE(T(v->isVolumeTemplate()));
 
-    std::list<std::string> snapshots;
+    std::list<SnapshotName> snapshots;
     v->listSnapshots(snapshots);
     EXPECT_EQ(1U, snapshots.size());
     checkVolume(v, 0, 4096, "blah");
@@ -170,7 +170,7 @@ TEST_P(TemplateVolumeTest, set_template_with_last_snapshot)
                   4096,
                   "blah1");
 
-    std::string first_snap("first_snap");
+    const SnapshotName first_snap("first_snap");
 
     v->createSnapshot(first_snap);
     writeToVolume(v,
@@ -178,14 +178,14 @@ TEST_P(TemplateVolumeTest, set_template_with_last_snapshot)
                   4096,
                   "blah2");
     waitForThisBackendWrite(v);
-    std::string second_snap("second_snap");
+    const SnapshotName second_snap("second_snap");
 
     v->createSnapshot(second_snap);
 
     EXPECT_NO_THROW(set_as_template(vid1));
     EXPECT_TRUE(T(v->isVolumeTemplate()));
 
-    std::list<std::string> snapshots;
+    std::list<SnapshotName> snapshots;
     v->listSnapshots(snapshots);
     EXPECT_EQ(1U, snapshots.size());
     EXPECT_EQ(snapshots.front(), second_snap);
@@ -204,7 +204,7 @@ TEST_P(TemplateVolumeTest, set_template_with_data_beyond_last_snapshot)
                   0,
                   4096,
                   "blaha");
-    std::string first_snap("first_snap");
+    const SnapshotName first_snap("first_snap");
 
     v->createSnapshot(first_snap);
     writeToVolume(v,
@@ -212,7 +212,7 @@ TEST_P(TemplateVolumeTest, set_template_with_data_beyond_last_snapshot)
                   4096,
                   "blah2");
     waitForThisBackendWrite(v);
-    std::string second_snap("second_snap");
+    const SnapshotName second_snap("second_snap");
 
     v->createSnapshot(second_snap);
     writeToVolume(v,
@@ -220,7 +220,7 @@ TEST_P(TemplateVolumeTest, set_template_with_data_beyond_last_snapshot)
                   4096,
                   "blah3");
     waitForThisBackendWrite(v);
-    std::string third_snap("third_snap");
+    const SnapshotName third_snap("third_snap");
 
     v->createSnapshot(third_snap);
     writeToVolume(v,
@@ -230,7 +230,7 @@ TEST_P(TemplateVolumeTest, set_template_with_data_beyond_last_snapshot)
 
     EXPECT_NO_THROW(set_as_template(vid1));
 
-    std::list<std::string> snapshots;
+    std::list<SnapshotName> snapshots;
     v->listSnapshots(snapshots);
     EXPECT_EQ(1U, snapshots.size());
     EXPECT_NE(snapshots.front(), first_snap);
@@ -250,7 +250,7 @@ TEST_P(TemplateVolumeTest, localrestart)
                   0,
                   4096,
                   "blaha");
-    std::string first_snap("first_snap");
+    const SnapshotName first_snap("first_snap");
 
     v->createSnapshot(first_snap);
     writeToVolume(v,
@@ -258,7 +258,7 @@ TEST_P(TemplateVolumeTest, localrestart)
                   4096,
                   "blah2");
     waitForThisBackendWrite(v);
-    std::string second_snap("second_snap");
+    const SnapshotName second_snap("second_snap");
 
     v->createSnapshot(second_snap);
     writeToVolume(v,
@@ -267,7 +267,7 @@ TEST_P(TemplateVolumeTest, localrestart)
                   "blah3");
 
     waitForThisBackendWrite(v);
-    std::string third_snap("third_snap");
+    const SnapshotName third_snap("third_snap");
 
     v->createSnapshot(third_snap);
     writeToVolume(v,
@@ -326,7 +326,7 @@ TEST_P(TemplateVolumeTest, backend_restart)
                   0,
                   4096,
                   "blaha");
-    std::string first_snap("first_snap");
+    const SnapshotName first_snap("first_snap");
 
     v->createSnapshot(first_snap);
     writeToVolume(v,
@@ -334,7 +334,7 @@ TEST_P(TemplateVolumeTest, backend_restart)
                   4096,
                   "blah2");
     waitForThisBackendWrite(v);
-    std::string second_snap("second_snap");
+    const SnapshotName second_snap("second_snap");
 
     v->createSnapshot(second_snap);
     writeToVolume(v,
@@ -342,7 +342,7 @@ TEST_P(TemplateVolumeTest, backend_restart)
                   4096,
                   "blah3");
     waitForThisBackendWrite(v);
-    std::string third_snap("third_snap");
+    const SnapshotName third_snap("third_snap");
 
     v->createSnapshot(third_snap);
     writeToVolume(v,
@@ -403,7 +403,7 @@ TEST_P(TemplateVolumeTest, cloneTemplatedVolume)
                   0,
                   4096,
                   "blaha");
-    std::string first_snap("first_snap");
+    const SnapshotName first_snap("first_snap");
 
     v->createSnapshot(first_snap);
     writeToVolume(v,
@@ -411,7 +411,7 @@ TEST_P(TemplateVolumeTest, cloneTemplatedVolume)
                   4096,
                   "blah2");
     waitForThisBackendWrite(v);
-    std::string second_snap("second_snap");
+    const SnapshotName second_snap("second_snap");
 
     v->createSnapshot(second_snap);
     writeToVolume(v,
@@ -419,7 +419,7 @@ TEST_P(TemplateVolumeTest, cloneTemplatedVolume)
                   4096,
                   "blah3");
     waitForThisBackendWrite(v);
-    std::string third_snap("third_snap");
+    const SnapshotName third_snap("third_snap");
 
     v->createSnapshot(third_snap);
     writeToVolume(v,
@@ -468,16 +468,16 @@ TEST_P(TemplateVolumeTest, return_of_the_zombie_snapshots)
     Volume* v = newVolume(vid1,
                           ns1);
 
-    const std::string first_snap("first_snap");
+    const SnapshotName first_snap("first_snap");
     v->createSnapshot(first_snap);
     waitForThisBackendWrite(v);
 
-    const std::string last_snap("last_snap");
+    const SnapshotName last_snap("last_snap");
     v->createSnapshot(last_snap);
     waitForThisBackendWrite(v);
 
     {
-        std::list<std::string> snapshots;
+        std::list<SnapshotName> snapshots;
         v->listSnapshots(snapshots);
         EXPECT_EQ(2U, snapshots.size());
     }
@@ -485,7 +485,7 @@ TEST_P(TemplateVolumeTest, return_of_the_zombie_snapshots)
     EXPECT_NO_THROW(set_as_template(vid1));
 
     {
-        std::list<std::string> snapshots;
+        std::list<SnapshotName> snapshots;
         v->listSnapshots(snapshots);
         EXPECT_EQ(1U, snapshots.size());
         EXPECT_EQ(last_snap, snapshots.front());
@@ -512,7 +512,7 @@ TEST_P(TemplateVolumeTest, return_of_the_zombie_snapshots)
     ASSERT_TRUE(v);
 
     {
-        std::list<std::string> snapshots;
+        std::list<SnapshotName> snapshots;
         v->listSnapshots(snapshots);
         EXPECT_EQ(1U, snapshots.size());
         EXPECT_EQ(last_snap, snapshots.front());

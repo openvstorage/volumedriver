@@ -17,6 +17,7 @@
 
 #include "SCO.h"
 #include "ScrubbingTypes.h"
+#include "SnapshotName.h"
 #include "SnapshotPersistor.h"
 #include "Types.h"
 #include "VolumeConfig.h"
@@ -106,7 +107,7 @@ struct ScrubberArgs
     /* Directory to use for temporary files */
     std::string scratch_dir;
     /* Snapshot to scrub */
-    std::string snapshot_name;
+    volumedriver::SnapshotName snapshot_name;
     /* size of a region in clusters as a power of two*/
     RegionExponent region_size_exponent;
     /* size of a SCO in number of clusters */
@@ -138,7 +139,7 @@ private:
 
 struct ScrubberResult
 {
-    std::string snapshot_name;
+    volumedriver::SnapshotName snapshot_name;
     volumedriver::OrderedTLogNames tlog_names_in;
     std::vector<volumedriver::TLog> tlogs_out;
     std::vector<std::string> relocs;
@@ -205,7 +206,7 @@ void serialize(Archive& ar,
     }
     else
     {
-        ar & res.snapshot_name;
+        ar & static_cast<std::string&>(res.snapshot_name);
         ar & res.tlog_names_in;
         ar & res.tlogs_out;
         ar & res.relocs;

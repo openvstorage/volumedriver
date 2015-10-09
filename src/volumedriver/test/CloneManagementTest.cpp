@@ -52,7 +52,7 @@ TEST_P(CloneManagementTest, noclonesfromsnapshotsnotinbackend)
                       0,
                       4096,
                       "xyz");
-        v->createSnapshot("snap1");
+        v->createSnapshot(SnapshotName("snap1"));
 
 
         ASSERT_THROW(c = createClone("clone1",
@@ -98,7 +98,7 @@ TEST_P(CloneManagementTest, sad_clone)
                   0,
                   4096,
                   "xyz");
-    v->createSnapshot("snap1");
+    v->createSnapshot(SnapshotName("snap1"));
     persistXVals(VolumeId("volume1"));
 
     waitForThisBackendWrite(v);
@@ -145,7 +145,7 @@ TEST_P(CloneManagementTest, recursiveclonelookup)
                   0,
                   4096,
                   "xyz");
-    v->createSnapshot("snap1");
+    v->createSnapshot(SnapshotName("snap1"));
     waitForThisBackendWrite(v);
     waitForThisBackendWrite(v);
 
@@ -173,7 +173,7 @@ TEST_P(CloneManagementTest, recursiveclonelookup)
                   "abc");
 
 
-    c->createSnapshot("snap1");
+    c->createSnapshot(SnapshotName("snap1"));
     waitForThisBackendWrite(c);
     waitForThisBackendWrite(c);
 

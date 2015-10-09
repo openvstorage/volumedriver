@@ -47,12 +47,11 @@ public:
     {
         backup_options_.add_options()
             ("delete-snapshot",
-             po::value<std::vector<std::string> >(&snapshots_)->composing(),
+             po::value<std::vector<std::string>>(&snapshots_)->composing(),
              "Delete the named snapshot")
             ("configuration-file",
              po::value<std::string>(&configuration_file_)->required(),
              "File that holds the configuration for this job");
-
     }
 
     virtual void
@@ -103,8 +102,16 @@ public:
             const uint64_t update_interval = config_ptree.get<uint64_t>("global_lock_update_interval_in_seconds", 30);
 
             LOG_INFO("lock update interval" << update_interval);
+
+            std::vector<vd::SnapshotName> snaps;
+            snaps.reserve(snapshots_.size());
+            for (const auto& s : snapshots_)
+            {
+                snaps.emplace_back(vd::SnapshotName(s));
+            }
+
             vd_bu::DeleteSnapshot deleter(config_ptree,
-                                          snapshots_);
+                                          snaps);
 
 
             typedef backend::GlobalLockService::WithGlobalLock<youtils::ExceptionPolicy::ThrowExceptions,

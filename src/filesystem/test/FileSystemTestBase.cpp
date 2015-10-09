@@ -1058,7 +1058,7 @@ FileSystemTestBase::wait_for_snapshot(const vfs::ObjectId& volume_id,
     uint32_t waited = 0;
 
     while (not api::isVolumeSyncedUpTo(vd::VolumeId(volume_id.str()),
-                                       snapshot_name))
+                                       vd::SnapshotName(snapshot_name)))
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(wait_msecs));
         waited += wait_msecs;

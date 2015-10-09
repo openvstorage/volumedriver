@@ -126,8 +126,8 @@ Backup::figure_out_end_snapshot()
     VERIFY(source_snapshot_persistor);
     VERIFY(not start_snapshot_);
 
-    const boost::optional<std::string>
-        optional_end_snapshot(source_ptree.get_optional<std::string>("end_snapshot"));
+    const boost::optional<SnapshotName>
+        optional_end_snapshot(source_ptree.get_optional<SnapshotName>("end_snapshot"));
 
     if(optional_end_snapshot)
     {
@@ -165,7 +165,7 @@ Backup::figure_out_start_snapshot()
     LOG_INFO(__FUNCTION__);
     VERIFY(source_snapshot_persistor);
 
-    start_snapshot_ = source_ptree.get_optional<std::string>("start_snapshot");
+    start_snapshot_ = source_ptree.get_optional<SnapshotName>("start_snapshot");
 
     if(start_snapshot_ and
        not source_snapshot_persistor->snapshotExists(*start_snapshot_))
@@ -246,8 +246,9 @@ Backup::preexisting_volume_checks()
 
     if(start_snapshot_)
     {
-        const std::string& start_snapshot_name = *start_snapshot_;
-        const SnapshotNum start_snapshot_num = source_snapshot_persistor->getSnapshotNum(*start_snapshot_);
+        const SnapshotName& start_snapshot_name = *start_snapshot_;
+        const SnapshotNum start_snapshot_num =
+            source_snapshot_persistor->getSnapshotNum(*start_snapshot_);
         const UUID start_snapshot_uuid = source_snapshot_persistor->getUUID(start_snapshot_num);
 
         LOG_INFO("Backup target volume existed, figuring out if we need to do work");
@@ -301,7 +302,7 @@ Backup::preexisting_volume_checks()
         LOG_INFO("Backup volume existed but no start snapshot was given... trying to find the best place to backup from");
         LOG_INFO("Getting the list of snapshots from the target");
 
-        std::list<std::string> snapshots_list;
+        std::list<SnapshotName> snapshots_list;
         api::showSnapshots(target_volume_.get(),
                            snapshots_list);
 
@@ -340,15 +341,15 @@ Backup::preexisting_volume_checks()
             throw RetryCreateVolume();
         }
 
-        std::string snapshot_to_be_restored;
+        SnapshotName snapshot_to_be_restored;
 
         LOG_INFO("Looping of target snapshotshots to find latest that can be matched");
 
-        for(std::list<std::string>::const_reverse_iterator i = snapshots_list.rbegin();
+        for(std::list<SnapshotName>::const_reverse_iterator i = snapshots_list.rbegin();
             i != snapshots_list.rend();
             ++i)
         {
-            const std::string& snap_name = *i;
+            const SnapshotName& snap_name = *i;
             if(source_snapshot_persistor->snapshotExists(snap_name))
             {
                 SnapshotNum num = source_snapshot_persistor->getSnapshotNum(snap_name);
@@ -362,7 +363,8 @@ Backup::preexisting_volume_checks()
                 }
                 else
                 {
-                    LOG_FATAL("Snapshot with the same name but different guid found, " << snap_name);
+                    LOG_FATAL("Snapshot with the same name but different guid found, " <<
+                              snap_name);
                     throw BackupException("Guid confusion");
                 }
 
@@ -393,7 +395,7 @@ Backup::preexisting_volume_checks()
         start_snapshot_ = snapshot_to_be_restored;
 
     }
-    status_.start_snapshot(start_snapshot_.get_value_or(""));
+    status_.start_snapshot(start_snapshot_.get_value_or(SnapshotName()));
 
     return true;
 }
@@ -487,7 +489,7 @@ Backup::create_backup_volume()
         LOG_INFO("Just created a volume and start snapshot was given... we create a snapshot in the beginning of the volume");
         const SnapshotNum start_snapshot_num =
             source_snapshot_persistor->getSnapshotNum(*start_snapshot_);
-        const std::string& start_snapshot_name = *start_snapshot_;
+        const SnapshotName& start_snapshot_name = *start_snapshot_;
 
         const UUID
             start_snapshot_uuid(source_snapshot_persistor->getUUID(start_snapshot_num));
@@ -585,7 +587,7 @@ struct BackupAccumulator
     void
     operator()(const volumedriver::SnapshotPersistor& sp,
                const BackendInterfacePtr& bi,
-               const std::string& snapshot_name,
+               const SnapshotName& snapshot_name,
                const volumedriver::SCOCloneID clone_id)
     {
         OrderedTLogNames tlogs;

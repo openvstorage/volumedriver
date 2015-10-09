@@ -19,6 +19,7 @@
 #include "ParentConfig.h"
 #include "ScrubId.h"
 #include "Snapshot.h"
+#include "SnapshotName.h"
 #include "TLog.h"
 #include "Types.h"
 
@@ -89,7 +90,7 @@ public:
     Accumulator&
     vold(Accumulator& accumulator,
          BackendInterfacePtr bi,
-         const std::string& snapshot_name = std::string(""),
+         const SnapshotName& snapshot_name = SnapshotName(),
          SCOCloneID start = SCOCloneID(0)) const
     {
         if(Accumulator::direction == FromOldest::F)
@@ -132,13 +133,13 @@ public:
                const SyncAndRename sync_and_rename) const;
 
     void
-    snapshot(const std::string& name,
+    snapshot(const SnapshotName& name,
              const SnapshotMetaData& metadata = SnapshotMetaData(),
              const youtils::UUID& guid = youtils::UUID(),
              const bool create_scrubbed = false);
 
     bool
-    checkSnapshotUUID(const std::string& snapshotName,
+    checkSnapshotUUID(const SnapshotName& snapshotName,
                       const volumedriver::UUID& uuid) const;
 
     /** Return the tlogs in this snapshot in the order they were taken
@@ -151,13 +152,13 @@ public:
     isSnapshotInBackend(const SnapshotNum num) const;
 
     SnapshotNum
-    getSnapshotNum(const std::string& name) const;
+    getSnapshotNum(const SnapshotName& name) const;
 
-    std::string
+    SnapshotName
     getSnapshotName(SnapshotNum num) const;
 
-    Snapshot
-    getSnapshot(const std::string& snapname) const;
+    const Snapshot&
+    getSnapshot(const SnapshotName& snapname) const;
 
     void
     getSnapshotsTill(SnapshotNum num,
@@ -169,7 +170,7 @@ public:
                       std::vector<SnapshotNum>&) const;
 
     bool
-    snapshotExists(const std::string& name) const;
+    snapshotExists(const SnapshotName& name) const;
 
     bool
     snapshotExists(SnapshotNum num) const;
@@ -197,7 +198,7 @@ public:
     std::string
     getCurrentTLog() const;
 
-    void getTLogsTillSnapshot(const std::string name,
+    void getTLogsTillSnapshot(const SnapshotName& name,
                               OrderedTLogNames& out) const;
 
     void
@@ -285,14 +286,14 @@ public:
     getCurrentBackendSize() const;
 
     uint64_t
-    getSnapshotBackendSize(const std::string& name) const;
+    getSnapshotBackendSize(const SnapshotName& name) const;
 
     uint64_t
     getTotalBackendSize() const;
 
     void
-    getSnapshotScrubbingWork(const boost::optional<std::string>& start_snap,
-                             const boost::optional<std::string>& end_snap,
+    getSnapshotScrubbingWork(const boost::optional<SnapshotName>& start_snap,
+                             const boost::optional<SnapshotName>& end_snap,
                              SnapshotWork& out) const;
 
     void
@@ -300,8 +301,8 @@ public:
 
     // Y42 align the backendsize calls.
     uint64_t
-    getBackendSize(const std::string& end_snapshot,
-                   boost::optional<std::string> start_snapshot) const;
+    getBackendSize(const SnapshotName& end_snapshot,
+                   const boost::optional<SnapshotName>& start_snapshot) const;
 
     bool
     snip(const std::string& tlog_name,
@@ -331,7 +332,7 @@ public:
             const SnapshotNum num);
 
     const youtils::UUID&
-    getSnapshotCork(const std::string& snapshot_name) const;
+    getSnapshotCork(const SnapshotName& snapshot_name) const;
 
     boost::optional<youtils::UUID>
     lastCork() const;

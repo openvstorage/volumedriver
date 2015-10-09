@@ -237,8 +237,8 @@ public:
 
     void
     get_scrub_work(const ObjectId& oid,
-                   const boost::optional<std::string>& start_snap,
-                   const boost::optional<std::string>& end_snap,
+                   const boost::optional<volumedriver::SnapshotName>& start_snap,
+                   const boost::optional<volumedriver::SnapshotName>& end_snap,
                    std::vector<std::string>& work);
 
     void

@@ -1023,7 +1023,7 @@ VolManager::ensureNamespace(const Namespace& ns,
 
 void
 VolManager::restoreSnapshot(const VolumeId& volid,
-                            const std::string& snapid)
+                            const SnapshotName& snapid)
 {
     mgmtMutex_.assertLocked();
 

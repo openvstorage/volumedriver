@@ -68,7 +68,7 @@ struct CurrentTimeAsString
 }
 
 Snapshot::Snapshot(const SnapshotNum i_num,
-                   const std::string& i_name,
+                   const SnapshotName& i_name,
                    const TLogs& tlogs,
                    const SnapshotMetaData& metadata,
                    const UUID& uuid,
@@ -170,7 +170,7 @@ Snapshots::isTLogWrittenToBackend(const TLogID& tid) const
 }
 
 Snapshots::const_iterator
-Snapshots::find_(const std::string& name) const
+Snapshots::find_(const SnapshotName& name) const
 {
     return find_if(begin(),
                    end(),
@@ -181,7 +181,7 @@ Snapshots::find_(const std::string& name) const
 }
 
 Snapshots::iterator
-Snapshots::find_(const std::string& name)
+Snapshots::find_(const SnapshotName& name)
 {
     return find_if(begin(),
                    end(),
@@ -235,40 +235,6 @@ Snapshots::find_(const SnapshotNum num)
                    });
 }
 
-template<typename T>
-Snapshots::const_iterator
-Snapshots::find_or_throw_(const T& t) const
-{
-    auto it = find_(t);
-    if (it == end())
-    {
-        std::stringstream ss;
-        ss << "Could not find snapshot " << t;
-        std::string msg = ss.str();
-        LOG_ERROR(msg);
-        throw SnapshotNotFoundException(msg.c_str());
-    }
-
-    return it;
-}
-
-template<typename T>
-Snapshots::iterator
-Snapshots::find_or_throw_(const T& t)
-{
-    auto it = find_(t);
-    if (it == end())
-    {
-        std::stringstream ss;
-        ss << "Could not find snapshot " << t;
-        std::string msg = ss.str();
-        LOG_ERROR(msg);
-        throw SnapshotNotFoundException(msg.c_str());
-    }
-
-    return it;
-}
-
 bool
 Snapshots::getTLogsInSnapshot(const SnapshotNum num,
                               OrderedTLogNames& out) const
@@ -285,14 +251,8 @@ Snapshots::getTLogsInSnapshot(const SnapshotNum num,
     }
 }
 
-const UUID&
-Snapshots::getSnapshotCork(const std::string& name) const
-{
-    return find_or_throw_(name)->cork_uuid_;
-}
-
 bool
-Snapshots::checkSnapshotUUID(const std::string& name,
+Snapshots::checkSnapshotUUID(const SnapshotName& name,
                              const UUID& uuid) const
 {
     auto it = find_(name);
@@ -320,7 +280,7 @@ Snapshots::getNextSnapshotNum() const
 }
 
 bool
-Snapshots::snapshotExists(const std::string& name) const
+Snapshots::snapshotExists(const SnapshotName& name) const
 {
     return find_(name) != end();
 }
@@ -337,28 +297,22 @@ Snapshots::hasSnapshotWithUUID(const UUID& uuid) const
     return find_(uuid) != end();
 }
 
-SnapshotNum
-Snapshots::getSnapshotNum(const std::string& name) const
-{
-    return find_or_throw_(name)->num;
-}
-
-Snapshot
-Snapshots::getSnapshot(const std::string& snapname) const
+const Snapshot&
+Snapshots::getSnapshot(const SnapshotName& snapname) const
 {
     return *find_or_throw_(snapname);
 }
 
-SnapshotNum
-Snapshots::getSnapshotNumFromUUID(const UUID& uuid) const
+const Snapshot&
+Snapshots::getSnapshot(const SnapshotNum num) const
 {
-    return find_or_throw_(uuid)->num;
+    return *find_or_throw_(num);
 }
 
-uint64_t
-Snapshots::getBackendSize(const std::string& name) const
+const Snapshot&
+Snapshots::getSnapshot(const UUID& uuid) const
 {
-    return find_or_throw_(name)->backend_size();
+    return *find_or_throw_(uuid);
 }
 
 uint64_t
@@ -376,8 +330,8 @@ Snapshots::getTotalBackendSize() const
 }
 
 uint64_t
-Snapshots::getBackendSize(const std::string& end_snapshot,
-                          boost::optional<std::string> start_snapshot) const
+Snapshots::getBackendSize(const SnapshotName& end_snapshot,
+                          const boost::optional<SnapshotName>& start_snapshot) const
 {
     VERIFY(size() > 0);
 
@@ -409,18 +363,6 @@ Snapshots::getBackendSize(const std::string& end_snapshot,
         result += it->backend_size();
     }
     return result;
-}
-
-const std::string&
-Snapshots::getSnapshotName(const SnapshotNum num) const
-{
-    return find_or_throw_(num)->name;
-}
-
-const UUID&
-Snapshots::getUUID(const SnapshotNum num) const
-{
-    return find_or_throw_(num)->uuid_;
 }
 
 void
@@ -709,8 +651,8 @@ Snapshots::replace(const OrderedTLogNames& in,
 // start_snap (if specified) is *exclusive*, end_snap (if specified) is *inclusive*, IOW:
 // ( start_snap, end_snap ]
 void
-Snapshots::getSnapshotScrubbingWork(const boost::optional<std::string>& start_snap,
-                                    const boost::optional<std::string>& end_snap,
+Snapshots::getSnapshotScrubbingWork(const boost::optional<SnapshotName>& start_snap,
+                                    const boost::optional<SnapshotName>& end_snap,
                                     SnapshotWork& out) const
 {
     LOG_TRACE("start: " << start_snap << ", end: " << end_snap);

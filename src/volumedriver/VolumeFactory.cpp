@@ -864,7 +864,7 @@ struct CloneFromParentSnapshotAcc
     void
     operator()(const SnapshotPersistor& sp,
                BackendInterfacePtr& bi,
-               const std::string& snap_name,
+               const SnapshotName& snap_name,
                const SCOCloneID clone_id)
     {
         if(clone_id == SCOCloneID(0))

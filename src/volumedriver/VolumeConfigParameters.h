@@ -17,6 +17,7 @@
 
 #include "MetaDataBackendConfig.h"
 #include "OwnerTag.h"
+#include "SnapshotName.h"
 #include "Types.h"
 #include "VolumeConfig.h"
 
@@ -72,7 +73,7 @@ public:
         , C(sco_multiplier_)
         , C(tlog_multiplier_)
         , C(max_non_disposable_factor_)
-        , metadata_backend_config_(std::move(other.metadata_backend_config_->clone()))
+        , metadata_backend_config_(other.metadata_backend_config_->clone())
         , C(parent_nspace_)
         , C(parent_snapshot_)
         , C(volume_role_)
@@ -138,7 +139,7 @@ private:                                        \
     OPTIONAL_PARAM(SCOCacheNonDisposableFactor, max_non_disposable_factor) = boost::none;
     PARAM(VolumeConfig::MetaDataBackendConfigPtr, metadata_backend_config);
     OPTIONAL_PARAM(backend::Namespace, parent_nspace);
-    OPTIONAL_PARAM(std::string, parent_snapshot);
+    OPTIONAL_PARAM(SnapshotName, parent_snapshot);
     OPTIONAL_PARAM(VolumeConfig::WanBackupVolumeRole, volume_role);
     PARAM(bool, cluster_cache_enabled) = true; // OPTIONAL_PARAM?
     OPTIONAL_PARAM(ClusterCacheBehaviour, cluster_cache_behaviour);

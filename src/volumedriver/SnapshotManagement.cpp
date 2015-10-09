@@ -49,6 +49,8 @@ namespace volumedriver
 
 namespace yt = youtils;
 
+using namespace std::literals::string_literals;
+
 #define LOCKSNAP \
     boost::lock_guard<lock_type> gs__(snapshot_lock_)
 
@@ -173,7 +175,7 @@ SnapshotManagement::getTLogsPath() const
 }
 
 fs::path
-SnapshotManagement::makeTLogPath(const std::string&tlogName) const
+SnapshotManagement::makeTLogPath(const std::string& tlogName) const
 {
     return tlogPath_ / tlogName;
 }
@@ -219,7 +221,7 @@ SnapshotManagement::setAsTemplate(const MaybeCheckSum& maybe_sco_crc)
     {
         // Change the name here
         UUID uuid;
-        createSnapshot("VolumeTemplateSnapshot_" + uuid.str(),
+        createSnapshot(SnapshotName("VolumeTemplateSnapshot_"s + uuid.str()),
                        maybe_sco_crc,
                        SnapshotMetaData(),
                        uuid);
@@ -239,7 +241,7 @@ SnapshotManagement::tlogReferenced(const std::string& tlog_name) const
 }
 
 void
-SnapshotManagement::createSnapshot(const std::string& name,
+SnapshotManagement::createSnapshot(const SnapshotName& name,
                                    const MaybeCheckSum& maybe_sco_crc,
                                    const SnapshotMetaData& metadata,
                                    const UUID& guid,
@@ -293,7 +295,7 @@ SnapshotManagement::createSnapshot(const std::string& name,
 }
 
 bool
-SnapshotManagement::checkSnapshotUUID(const std::string& snapshotName,
+SnapshotManagement::checkSnapshotUUID(const SnapshotName& snapshotName,
                                       const volumedriver::UUID& uuid) const
 {
     LOCKSNAP;
@@ -394,7 +396,7 @@ SnapshotManagement::getCurrentTLogPath() const
 }
 
 SnapshotNum
-SnapshotManagement::getSnapshotNumberByName(const std::string& name) const
+SnapshotManagement::getSnapshotNumberByName(const SnapshotName& name) const
 {
     LOCKSNAP;
     return sp->getSnapshotNum(name);
@@ -439,7 +441,7 @@ SnapshotManagement::eraseSnapshotsAndTLogsAfterSnapshot(SnapshotNum num)
 }
 
 void
-SnapshotManagement::deleteSnapshot(const std::string& name)
+SnapshotManagement::deleteSnapshot(const SnapshotName& name)
 {
     {
         LOCKSNAP;
@@ -487,7 +489,7 @@ SnapshotManagement::getTLogsInSnapshot(SnapshotNum num,
 }
 
 bool
-SnapshotManagement::getTLogsInSnapshot(const std::string& snapname,
+SnapshotManagement::getTLogsInSnapshot(const SnapshotName& snapname,
                                        OrderedTLogNames& out,
                                        AbsolutePath absolute) const
 {
@@ -524,7 +526,7 @@ SnapshotManagement::destroy(const DeleteLocalData delete_local_data)
 }
 
 void
-SnapshotManagement::listSnapshots(std::list<std::string>& snapshots) const
+SnapshotManagement::listSnapshots(std::list<SnapshotName>& snapshots) const
 {
     LOCKSNAP;
     std::vector<SnapshotNum> snapshotNums;
@@ -539,7 +541,7 @@ SnapshotManagement::listSnapshots(std::list<std::string>& snapshots) const
 }
 
 Snapshot
-SnapshotManagement::getSnapshot(const std::string& snapname) const
+SnapshotManagement::getSnapshot(const SnapshotName& snapname) const
 {
     LOCKSNAP;
     return sp->getSnapshot(snapname);
@@ -607,9 +609,9 @@ SnapshotManagement::maybeCloseTLog_()
 
 void
 SnapshotManagement::scheduleWriteTLogToBackend(const std::string& tlogname,
-                                           const fs::path& tlogpath,
-                                           const SCO sconame,
-                                           const CheckSum& tlog_crc)
+                                               const fs::path& tlogpath,
+                                               const SCO sconame,
+                                               const CheckSum& tlog_crc)
 {
     try
     {
@@ -628,7 +630,7 @@ SnapshotManagement::scheduleWriteTLogToBackend(const std::string& tlogname,
                                              events::VolumeDriverErrorCode::WriteTLog)
 }
 
-std::string
+SnapshotName
 SnapshotManagement::getLastSnapshotName() const
 {
     std::vector<SnapshotNum> snapshotNums;
@@ -636,18 +638,18 @@ SnapshotManagement::getLastSnapshotName() const
         LOCKSNAP;
         sp->getAllSnapshots(snapshotNums);
     }
+
     if(not snapshotNums.empty())
     {
 
         SnapshotNum max = *std::max_element(snapshotNums.begin(), snapshotNums.end());
-        std::string name;
         {
             LOCKSNAP;
-            name = sp->getSnapshotName(max);
+            return sp->getSnapshotName(max);
         }
-        return name;
     }
-    return "";
+
+    return SnapshotName();
 }
 
 fs::path
@@ -881,14 +883,14 @@ SnapshotManagement::snapshotExists(SnapshotNum num) const
 }
 
 bool
-SnapshotManagement::snapshotExists(const std::string& name) const
+SnapshotManagement::snapshotExists(const SnapshotName& name) const
 {
     LOCKSNAP;
     return sp->snapshotExists(name);
 }
 
 const youtils::UUID&
-SnapshotManagement::getSnapshotCork(const std::string& snapshot_name) const
+SnapshotManagement::getSnapshotCork(const SnapshotName& snapshot_name) const
 {
     LOCKSNAP;
     return sp->getSnapshotCork(snapshot_name);
@@ -948,7 +950,7 @@ SnapshotManagement::replaceTLogsWithScrubbedOnes(const OrderedTLogNames &in,
 }
 
 void
-SnapshotManagement::setSnapshotScrubbed(const std::string& snapname)
+SnapshotManagement::setSnapshotScrubbed(const SnapshotName& snapname)
 {
     LOCKSNAP;
     SnapshotNum num = sp->getSnapshotNum(snapname);
@@ -957,8 +959,8 @@ SnapshotManagement::setSnapshotScrubbed(const std::string& snapname)
 }
 
 void
-SnapshotManagement::getSnapshotScrubbingWork(const boost::optional<std::string>& start_snap,
-                                             const boost::optional<std::string>& end_snap,
+SnapshotManagement::getSnapshotScrubbingWork(const boost::optional<SnapshotName>& start_snap,
+                                             const boost::optional<SnapshotName>& end_snap,
                                              SnapshotWork& out) const
 {
     LOCKSNAP;
@@ -1023,7 +1025,7 @@ SnapshotManagement::isSyncedToBackend()
 }
 
 uint64_t
-SnapshotManagement::getSnapshotBackendSize(const std::string& name) const
+SnapshotManagement::getSnapshotBackendSize(const SnapshotName& name) const
 {
     return sp->getSnapshotBackendSize(name);
 }

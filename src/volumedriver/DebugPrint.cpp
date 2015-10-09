@@ -15,15 +15,18 @@
 #ifndef NDEBUG
 
 
-#include "VolumeConfig.h"
-#include "NSIDMap.h"
 #include "ClusterLocation.h"
-
 #include "DebugPrint.h"
+#include "NSIDMap.h"
+#include "Types.h"
+#include "VolumeConfig.h"
+
 #include <stdio.h>
 #include <iostream>
 #include <sstream>
+
 #include <boost/property_tree/info_parser.hpp>
+
 // Enhance this by passing stream &indentation -> prettyprinter
 namespace debug
 {

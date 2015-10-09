@@ -121,7 +121,7 @@ TEST_P(MetaDataStoreBuilderTest, basics)
                   v->getSize() / 2,
                   pattern1);
 
-    const std::string snap1("snap1");
+    const SnapshotName snap1("snap1");
     v->createSnapshot(snap1);
     waitForThisBackendWrite(v);
 
@@ -137,7 +137,7 @@ TEST_P(MetaDataStoreBuilderTest, basics)
                   v->getSize() / 4,
                   pattern2);
 
-    const std::string snap2("snap2");
+    const SnapshotName snap2("snap2");
     v->createSnapshot(snap2);
     waitForThisBackendWrite(v);
 
@@ -162,7 +162,7 @@ TEST_P(MetaDataStoreBuilderTest, clone)
                   v->getSize() / 2,
                   pattern1);
 
-    const std::string psnap("psnap");
+    const SnapshotName psnap("psnap");
     v->createSnapshot(psnap);
     waitForThisBackendWrite(v);
 
@@ -178,7 +178,7 @@ TEST_P(MetaDataStoreBuilderTest, clone)
                   v->getSize() / 4,
                   pattern2);
 
-    const std::string csnap("csnap");
+    const SnapshotName csnap("csnap");
     c->createSnapshot(csnap);
     waitForThisBackendWrite(c);
 

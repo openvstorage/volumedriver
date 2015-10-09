@@ -1507,7 +1507,7 @@ VolManagerTestSetup::createSnapshot(Volume *v, const std::string &name)
 {
     VolManager *vm = VolManager::get();
     fungi::ScopedLock m(vm->getLock_());
-    v->createSnapshot(name);
+    v->createSnapshot(SnapshotName(name));
 }
 
 void
@@ -1515,7 +1515,7 @@ VolManagerTestSetup::restoreSnapshot(Volume *v, const std::string &name)
 {
     VolManager *vm = VolManager::get();
     fungi::ScopedLock m(vm->getLock_());
-    v->restoreSnapshot(name);
+    v->restoreSnapshot(SnapshotName(name));
 }
 
 void

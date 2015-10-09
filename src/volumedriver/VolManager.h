@@ -126,7 +126,7 @@ public:
 
     void
     restoreSnapshot(const VolumeId& volid,
-                    const std::string& snapid);
+                    const SnapshotName& snapid);
 
     Volume*
     backend_restart(const Namespace& ns,

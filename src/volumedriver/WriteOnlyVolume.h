@@ -22,6 +22,7 @@
 #include "SCO.h"
 #include "SCOAccessData.h"
 #include "Snapshot.h"
+#include "SnapshotName.h"
 #include "VolumeConfig.h"
 #include "VolumeInterface.h"
 
@@ -68,7 +69,7 @@ public:
                     const OwnerTag,
                     std::unique_ptr<SnapshotManagement>,
                     std::unique_ptr<DataStoreNG>,
-                    NSIDMap nsidmap);
+                    NSIDMap);
 
     WriteOnlyVolume(const WriteOnlyVolume&) = delete;
     WriteOnlyVolume& operator=(const WriteOnlyVolume&) = delete;
@@ -140,25 +141,25 @@ public:
     backend_restart(SCONumber restartSCO);
 
     void
-    createSnapshot(const std::string& name,
-                   const SnapshotMetaData& metadata = SnapshotMetaData(),
+    createSnapshot(const SnapshotName&,
+                   const SnapshotMetaData& = SnapshotMetaData(),
                    const UUID& = UUID());
 
     bool
-    snapshotExists(const std::string& name) const;
+    snapshotExists(const SnapshotName&) const;
 
     bool
-    checkSnapshotUUID(const std::string& snapshotName,
-                      const volumedriver::UUID& uuid) const;
+    checkSnapshotUUID(const SnapshotName&,
+                      const volumedriver::UUID&) const;
 
     void
-    listSnapshots(std::list<std::string>& snapshots) const;
+    listSnapshots(std::list<SnapshotName>&) const;
 
     Snapshot
-    getSnapshot(const std::string& name) const;
+    getSnapshot(const SnapshotName&) const;
 
     void
-    deleteSnapshot(const std::string& name);
+    deleteSnapshot(const SnapshotName&);
 
     fs::path
     getTempTLogPath() const;
@@ -247,13 +248,13 @@ public:
     metaDataBackendConfigHasChanged(const MetaDataBackendConfig& cfg) override final;
 
     void
-    restoreSnapshot(const std::string& name);
+    restoreSnapshot(const SnapshotName&);
 
     const SnapshotManagement&
     getSnapshotManagement() const;
 
     uint64_t
-    getSnapshotBackendSize(const std::string& snapName);
+    getSnapshotBackendSize(const SnapshotName&);
 
     uint64_t
     getCurrentBackendSize() const;
@@ -270,10 +271,10 @@ public:
 
     void
     getScrubbingWork(std::vector<std::string>& scrubbing_work_units,
-                     const boost::optional<std::string>& start_snap,
-                     const boost::optional<std::string>& end_snap) const;
+                     const boost::optional<SnapshotName>& start_snap,
+                     const boost::optional<SnapshotName>& end_snap) const;
 
-    std::string
+    SnapshotName
     getParentSnapName() const;
 
     uint64_t
@@ -295,14 +296,14 @@ public:
     getTLogUsed() const;
 
     uint64_t
-    getSnapshotSCOCount(const std::string& snapshotName = "");
+    getSnapshotSCOCount(const SnapshotName& = SnapshotName());
 
     // Y42 should be made const
     bool
     isSyncedToBackend() const;
 
     bool
-    isSyncedToBackendUpTo(const std::string& snapshotName) const;
+    isSyncedToBackendUpTo(const SnapshotName&) const;
 
     // Maximum number of times to try to sync to the FOC
     const static uint32_t max_num_retries = 6000;
@@ -339,7 +340,6 @@ private:
     const unsigned volOffset_;
 
     const NSIDMap nsidmap_;
-
 
     std::vector<ClusterLocation> cluster_locations_;
 

@@ -297,7 +297,7 @@ TEST_P(VolManagerRestartTest, testRescheduledSCOS)
     std::string scoptr_name =
         v->getDataStore()->getSCO(l.sco(), 0)->path().string();
 
-    v->createSnapshot("first");
+    v->createSnapshot(SnapshotName("first"));
 
     waitForThisBackendWrite(v);
 
@@ -336,7 +336,7 @@ TEST_P(VolManagerRestartTest, test3)
     writeToVolume(v, 0, 4096, "xyz");
     checkVolume(v, 0, 4096, "xyz");
 
-    v->createSnapshot("first");
+    v->createSnapshot(SnapshotName("first"));
 
     writeToVolume(v, 0, 4096, "abc");
     checkVolume(v, 0, 4096, "abc");
@@ -388,7 +388,7 @@ TEST_P(VolManagerRestartTest, RestoreSnapWith)
     v->setFailOverCacheConfig(boost::none);
     waitForThisBackendWrite(v);
 
-    v->restoreSnapshot("snap1");
+    v->restoreSnapshot(SnapshotName("snap1"));
 
     v->setFailOverCacheConfig(foc_ctx->config());
     v->scheduleBackendSync();
@@ -559,13 +559,13 @@ TEST_P(VolManagerRestartTest, test4)
     writeToVolume(v, 0, size, "xyz");
     checkVolume(v, 0, size, "xyz");
 
-    v->createSnapshot("first");
+    v->createSnapshot(SnapshotName("first"));
 
     writeToVolume(v, 0, size, "abc");
     checkVolume(v, 0, size, "abc");
     waitForThisBackendWrite(v);
 
-    v->createSnapshot("second");
+    v->createSnapshot(SnapshotName("second"));
 
     writeToVolume(v, 0, size, "def");
     checkVolume(v, 0, size, "def");
@@ -611,7 +611,7 @@ TEST_P(VolManagerRestartTest, clone1)
     writeToVolume(v, 0, size, "xyz");
     checkVolume(v, 0, size, "xyz");
 
-    v->createSnapshot("first");
+    v->createSnapshot(SnapshotName("first"));
     waitForThisBackendWrite(v);
     waitForThisBackendWrite(v);
     auto ns1_ptr = make_random_namespace();
@@ -621,7 +621,7 @@ TEST_P(VolManagerRestartTest, clone1)
                                 ns1,
                                 ns,
                                 "first");
-    clone->createSnapshot("snap1");
+    clone->createSnapshot(SnapshotName("snap1"));
 
     checkVolume(v, 0, size, "xyz");
 
@@ -673,12 +673,12 @@ TEST_P(VolManagerRestartTest, test5)
     writeToVolume(v, 0, size, "xyz");
     checkVolume(v, 0, size, "xyz");
 
-    v->createSnapshot("first");
+    v->createSnapshot(SnapshotName("first"));
 
     writeToVolume(v, 0, size, "abc");
     checkVolume(v, 0, size, "abc");
     waitForThisBackendWrite(v);
-    v->createSnapshot("second");\
+    v->createSnapshot(SnapshotName("second"));\
     while(not isVolumeSyncedToBackend(v))
     {
         sleep(1);
@@ -698,7 +698,7 @@ TEST_P(VolManagerRestartTest, test5)
                 size,
                 "def");
 
-    clone->createSnapshot("firstclonesnap");
+    clone->createSnapshot(SnapshotName("firstclonesnap"));
     VolumeConfig vCfg = v->get_config();
     VolumeConfig cCfg = clone->get_config();
 
@@ -779,7 +779,7 @@ TEST_P(VolManagerRestartTest, test6)
 
     checkVolume(v, 0, 16384, "xyz");
 
-    v->createSnapshot("first");
+    v->createSnapshot(SnapshotName("first"));
 
     writeToVolume(v, 0, 16384, "abc");
     checkVolume(v, 0, 16384, "abc");
@@ -794,7 +794,7 @@ TEST_P(VolManagerRestartTest, test6)
 
     //    setTLogMaxEntries(clone, 3);
 
-    v->createSnapshot("second");
+    v->createSnapshot(SnapshotName("second"));
 
     writeToVolume(clone,
                   0,
@@ -811,7 +811,7 @@ TEST_P(VolManagerRestartTest, test6)
                 "zxy");
     checkCurrentBackendSize(clone);
 
-    clone->createSnapshot("firstclonesnap");
+    clone->createSnapshot(SnapshotName("firstclonesnap"));
 
     VolumeConfig vCfg = v->get_config();
     VolumeConfig cCfg = clone->get_config();
@@ -891,7 +891,7 @@ TEST_P(VolManagerRestartTest,test7)
     checkVolume(v, 0, 8192, "g");
     checkCurrentBackendSize(v);
 
-    v->createSnapshot("first");
+    v->createSnapshot(SnapshotName("first"));
 
     waitForThisBackendWrite(v);
     waitForThisBackendWrite(v);
@@ -923,7 +923,7 @@ TEST_P(VolManagerRestartTest,test7)
         checkVolume(clone, (i+1)*16, 8192, is);
         checkCurrentBackendSize(clone);
 
-        clone->createSnapshot("first");
+        clone->createSnapshot(SnapshotName("first"));
         waitForThisBackendWrite(clone);
         waitForThisBackendWrite(clone);
     }
@@ -979,7 +979,7 @@ TEST_P(VolManagerRestartTest, same_volume_name_different_namespaces)
 
     Volume* v = newVolume(vid1, nid1);
     writeToVolume(v, 0, 4096, "xyz");
-    v->createSnapshot("first");
+    v->createSnapshot(SnapshotName("first"));
     VolumeConfig cfg1 = v->get_config();
     waitForThisBackendWrite(v);
 
@@ -1000,7 +1000,7 @@ TEST_P(VolManagerRestartTest, same_volume_name_different_namespaces)
     v = newVolume(vid1,
                   nid2);
     writeToVolume(v, 0, 4096, "abc");
-    v->createSnapshot("first");
+    v->createSnapshot(SnapshotName("first"));
     VolumeConfig cfg2 = v->get_config();
     waitForThisBackendWrite(v);
 
@@ -1043,7 +1043,7 @@ TEST_P(VolManagerRestartTest, DISABLED_differenttlogpath)
     writeToVolume(v, 0, 4096, "xyz");
     checkVolume(v, 0, 4096, "xyz");
 
-    v->createSnapshot("first");
+    v->createSnapshot(SnapshotName("first"));
 
     writeToVolume(v, 0, 4096, "abc");
     checkVolume(v, 0, 4096, "abc");
@@ -1145,7 +1145,7 @@ TEST_P(VolManagerRestartTest, failovercache1)
                   4096,
                   "abc");
 
-    v->createSnapshot("snap1");
+    v->createSnapshot(SnapshotName("snap1"));
     waitForThisBackendWrite(v);
     {
         SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v,3,
@@ -1194,7 +1194,7 @@ TEST_P(VolManagerRestartTest, failovercache2)
                   4096,
                   "abc");
 
-    v->createSnapshot("snap1");
+    v->createSnapshot(SnapshotName("snap1"));
     waitForThisBackendWrite(v);
     waitForThisBackendWrite(v);
     {
@@ -1253,7 +1253,7 @@ TEST_P(VolManagerRestartTest, failovercache3)
                       4096,
                       "abc");
 
-    v->createSnapshot("snap1");
+    v->createSnapshot(SnapshotName("snap1"));
     waitForThisBackendWrite(v);
     waitForThisBackendWrite(v);
     {
@@ -1303,7 +1303,7 @@ TEST_P(VolManagerRestartTest, failovercache4)
                       4096,
                       "abc");
 
-    v->createSnapshot("snap1");
+    v->createSnapshot(SnapshotName("snap1"));
     waitForThisBackendWrite(v);
     waitForThisBackendWrite(v);
     const uint32_t sz = 6;
@@ -1367,7 +1367,7 @@ TEST_P(VolManagerRestartTest, failovercache5)
                   4096,
                   "abc");
 
-    v->createSnapshot("snap1");
+    v->createSnapshot(SnapshotName("snap1"));
     waitForThisBackendWrite(v);
     {
         SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v,
@@ -1424,7 +1424,7 @@ TEST_P(VolManagerRestartTest, focReplayAcrossTLogs)
                   4096,
                   "abc");
 
-    v->createSnapshot("snap1");
+    v->createSnapshot(SnapshotName("snap1"));
 
     uint64_t wsize = v->getClusterSize() * (v->getSCOMultiplier() - 1);
 
@@ -1497,7 +1497,7 @@ TEST_P(VolManagerRestartTest, partialsnapshots)
                   4096,
                   "a");
 
-    v->createSnapshot("snap1");
+    v->createSnapshot(SnapshotName("snap1"));
     writeToVolume(v,
                   8,
                   4096,
@@ -1577,7 +1577,7 @@ TEST_P(VolManagerRestartTest, datastoreOverwrite)
                       "abc");
     }
 
-    v->createSnapshot("snap1");
+    v->createSnapshot(SnapshotName("snap1"));
 
     for(int i=0;i<32;i++)
     {
@@ -1640,7 +1640,7 @@ TEST_P(VolManagerRestartTest, backend_restart_non_empty_datastore)
                   4096,
                   pattern1);
 
-    v->createSnapshot("snap");
+    v->createSnapshot(SnapshotName("snap"));
     waitForThisBackendWrite(v);
 
     {
@@ -1711,7 +1711,7 @@ TEST_P(VolManagerRestartTest, testAllTlogEntriesAreReplayed)
     writeToVolume(v, "xyz", 4096);
     checkVolume(v, "xyz", 4096);
 
-    v->createSnapshot("first");
+    v->createSnapshot(SnapshotName("first"));
 
     VolumeConfig cfg = v->get_config();
 

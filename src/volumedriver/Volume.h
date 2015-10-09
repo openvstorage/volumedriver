@@ -27,6 +27,7 @@
 #include "SCO.h"
 #include "SCOAccessData.h"
 #include "Snapshot.h"
+#include "SnapshotName.h"
 #include "TLogReader.h"
 #include "VolumeConfig.h"
 #include "VolumeInterface.h"
@@ -192,25 +193,26 @@ public:
                const boost::optional<youtils::UUID>& last_snapshot_cork);
 
     void
-    createSnapshot(const std::string& name,
+    createSnapshot(const
+                   SnapshotName& name,
                    const SnapshotMetaData& metadata = SnapshotMetaData(),
                    const UUID& = UUID());
 
     bool
-    snapshotExists(const std::string& name) const;
+    snapshotExists(const SnapshotName&) const;
 
     bool
-    checkSnapshotUUID(const std::string& snapshotName,
-                      const volumedriver::UUID& uuid) const;
+    checkSnapshotUUID(const SnapshotName&,
+                      const volumedriver::UUID&) const;
 
     void
-    listSnapshots(std::list<std::string>& snapshots) const;
+    listSnapshots(std::list<SnapshotName>&) const;
 
     Snapshot
-    getSnapshot(const std::string& snapname) const;
+    getSnapshot(const SnapshotName&) const;
 
     void
-    deleteSnapshot(const std::string& name);
+    deleteSnapshot(const SnapshotName&);
 
     void
     setFailOverCacheConfig(const boost::optional<FailOverCacheConfig>& config);
@@ -331,7 +333,7 @@ public:
     }
 
     void
-    restoreSnapshot(const std::string& name);
+    restoreSnapshot(const SnapshotName& name);
 
     void
     cloneFromParentSnapshot(const youtils::UUID& parent_snap_uuid,
@@ -341,7 +343,7 @@ public:
     getSnapshotManagement() const;
 
     uint64_t
-    getSnapshotBackendSize(const std::string& snapName);
+    getSnapshotBackendSize(const SnapshotName&);
 
     uint64_t
     getCurrentBackendSize() const;
@@ -359,8 +361,8 @@ public:
 
     void
     getScrubbingWork(std::vector<std::string>& scrubbing_work_units,
-                     const boost::optional<std::string>& start_snap,
-                     const boost::optional<std::string>& end_snap) const;
+                     const boost::optional<SnapshotName>& start_snap,
+                     const boost::optional<SnapshotName>& end_snap) const;
 
 
     void
@@ -369,7 +371,7 @@ public:
                        const CleanupScrubbingOnSuccess = CleanupScrubbingOnSuccess::T);
 
 
-    std::string
+    SnapshotName
     getParentSnapName() const;
 
     uint64_t
@@ -397,14 +399,14 @@ public:
     getTLogUsed() const;
 
     uint64_t
-    getSnapshotSCOCount(const std::string& snapshotName = "");
+    getSnapshotSCOCount(const SnapshotName& = SnapshotName());
 
     // Y42 should be made const
     bool
     isSyncedToBackend() const;
 
     bool
-    isSyncedToBackendUpTo(const std::string& snapshotName) const;
+    isSyncedToBackendUpTo(const SnapshotName&) const;
 
     void
     setFOCTimeout(uint32_t timeout);
