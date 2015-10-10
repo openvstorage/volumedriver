@@ -99,6 +99,7 @@ volumedriver_test_SOURCES = \
 	TestMetadataErrors.cpp \
 	ThrottlingTest.cpp \
 	TimeZoneTests.cpp \
+	TLogIdTest.cpp \
 	TLogTest.cpp \
 	TokyoCabinetMetaDataStoreTest.cpp \
 	ToolCutTest.cpp \

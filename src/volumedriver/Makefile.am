@@ -173,6 +173,7 @@ libvolumedriver_la_SOURCES = \
 	StatusWriter.cpp \
 	TheSonOfTLogCutter.cpp \
 	TLog.cpp \
+	TLogId.cpp \
 	TLogCutter.cpp \
 	TLogMerger.cpp \
 	TLogReader.cpp \
