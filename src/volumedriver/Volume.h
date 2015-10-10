@@ -177,7 +177,7 @@ public:
     void
     resize(uint64_t clusters);
 
-    void
+    TLogID
     scheduleBackendSync();
 
     void
@@ -188,9 +188,9 @@ public:
 
     Volume*
     backend_restart(const CloneTLogs& restartTLogs,
-               const SCONumber restartSCO,
-               const IgnoreFOCIfUnreachable,
-               const boost::optional<youtils::UUID>& last_snapshot_cork);
+                    const SCONumber restartSCO,
+                    const IgnoreFOCIfUnreachable,
+                    const boost::optional<youtils::UUID>& last_snapshot_cork);
 
     void
     createSnapshot(const
@@ -407,6 +407,9 @@ public:
 
     bool
     isSyncedToBackendUpTo(const SnapshotName&) const;
+
+    bool
+    isSyncedToBackendUpTo(const TLogID&) const;
 
     void
     setFOCTimeout(uint32_t timeout);
@@ -720,7 +723,7 @@ private:
     void
     setNoFailOverCache_();
 
-    void
+    TLogID
     scheduleBackendSync_();
 };
 

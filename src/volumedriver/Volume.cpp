@@ -1634,6 +1634,12 @@ Volume::isSyncedToBackendUpTo(const SnapshotName& snapshotName) const
     return snapshotManagement_->isSnapshotInBackend(num);
 }
 
+bool
+Volume::isSyncedToBackendUpTo(const TLogID& tlog_id) const
+{
+    return snapshotManagement_->isTLogWrittenToBackend(TLog::getName(tlog_id));
+}
+
 void
 Volume::getScrubbingWork(std::vector<std::string>& scrub_work,
                          const boost::optional<SnapshotName>& start_snap,
@@ -2172,23 +2178,23 @@ Volume::check_and_fix_failovercache()
     }
 }
 
-void
+TLogID
 Volume::scheduleBackendSync()
 {
     WLOCK();
 
     checkNotHalted_();
-    scheduleBackendSync_();
+    return scheduleBackendSync_();
 }
 
-void
+TLogID
 Volume::scheduleBackendSync_()
 {
     // TODO: halt the volume in case of non-recoverable errors
     sync_(AppendCheckSum::F);
 
     const auto maybe_sco_crc(dataStore_->finalizeCurrentSCO());
-    snapshotManagement_->scheduleBackendSync(maybe_sco_crc);
+    return snapshotManagement_->scheduleBackendSync(maybe_sco_crc);
 }
 
 void

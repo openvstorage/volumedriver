@@ -814,6 +814,18 @@ TEST_F(SnapshotPersistorTest, persistent_metadata)
     EXPECT_TRUE(m == snap.metadata());
 }
 
+TEST_F(SnapshotPersistorTest, synced_to_backend)
+{
+    const TLogID tlog(TLog::getTLogIDFromName(sp_->getCurrentTLog()));
+    // Does the SnapshotPersistor even care if the current TLog is marked as being
+    // on the backend? Should it care?
+    sp_->newTLog();
+
+    EXPECT_FALSE(sp_->isTLogWrittenToBackend(tlog));
+    sp_->setTLogWrittenToBackend(tlog);
+    EXPECT_TRUE(sp_->isTLogWrittenToBackend(tlog));
+}
+
 }
 
 // Local Variables: **

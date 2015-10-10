@@ -1490,8 +1490,7 @@ TEST_P(SimpleVolumeTest, DISABLED_SnapPerformance)
 
 }
 
-
-TEST_P(SimpleVolumeTest, zinked)
+TEST_P(SimpleVolumeTest, backend_sync_up_to_snapshot)
 {
     auto ns_ptr = make_random_namespace();
 
@@ -1506,13 +1505,47 @@ TEST_P(SimpleVolumeTest, zinked)
                  fungi::IOException);
 
     {
-        SCOPED_BLOCK_BACKEND (v1);
+        SCOPED_BLOCK_BACKEND(v1);
 
             v1->createSnapshot(snap);
             EXPECT_FALSE(v1->isSyncedToBackendUpTo(snap));
     }
+
     waitForThisBackendWrite(v1);
     EXPECT_TRUE(v1->isSyncedToBackendUpTo(snap));
+}
+
+TEST_P(SimpleVolumeTest, backend_sync_up_to_tlog)
+{
+    auto ns(make_random_namespace());
+    Volume* v = newVolume(*ns);
+
+    const SnapshotManagement& sm = v->getSnapshotManagement();
+    const TLogID old_tlog_id(TLog::getTLogIDFromName(sm.getCurrentTLogName()));
+
+    EXPECT_FALSE(v->isSyncedToBackendUpTo(old_tlog_id));
+
+    TLogID new_tlog_id;
+
+    {
+        SCOPED_BLOCK_BACKEND(v);
+
+        EXPECT_EQ(old_tlog_id,
+                  v->scheduleBackendSync());
+
+        new_tlog_id = TLog::getTLogIDFromName(sm.getCurrentTLogName());
+
+        EXPECT_NE(old_tlog_id,
+                  new_tlog_id);
+
+        EXPECT_FALSE(v->isSyncedToBackendUpTo(old_tlog_id));
+        EXPECT_FALSE(v->isSyncedToBackendUpTo(new_tlog_id));
+    }
+
+    waitForThisBackendWrite(v);
+
+    EXPECT_TRUE(v->isSyncedToBackendUpTo(old_tlog_id));
+    EXPECT_FALSE(v->isSyncedToBackendUpTo(new_tlog_id));
 }
 
 TEST_P(SimpleVolumeTest, consistency)

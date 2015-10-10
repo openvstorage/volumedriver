@@ -569,11 +569,11 @@ api::getTLogUsed(const vd::VolumeId& volName)
     return v->getTLogUsed();
 }
 
-void
+vd::TLogID
 api::scheduleBackendSync(const vd::VolumeId& volName)
 {
     Volume* v = VolManager::get()->findVolume_(volName);
-    v->scheduleBackendSync();
+    return v->scheduleBackendSync();
 }
 
 bool
@@ -590,6 +590,14 @@ api::isVolumeSyncedUpTo(const vd::VolumeId& volName,
 {
     Volume* v = VolManager::get()->findVolume_(volName);
     return v->isSyncedToBackendUpTo(snapshotName);
+}
+
+bool
+api::isVolumeSyncedUpTo(const vd::VolumeId& vol_id,
+                        const vd::TLogID& tlog_id)
+{
+    Volume* v = VolManager::get()->findVolume_(vol_id);
+    return v->isSyncedToBackendUpTo(tlog_id);
 }
 
 bool

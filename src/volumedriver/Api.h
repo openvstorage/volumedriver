@@ -289,7 +289,7 @@ public:
     static uint64_t
     getTLogUsed(const volumedriver::VolumeId&);
 
-    static void
+    static volumedriver::TLogID
     scheduleBackendSync(const volumedriver::VolumeId&);
 
     static uint32_t
@@ -311,6 +311,10 @@ public:
     static bool
     isVolumeSyncedUpTo(const volumedriver::WriteOnlyVolume*,
                        const volumedriver::SnapshotName&);
+
+    static bool
+    isVolumeSyncedUpTo(const volumedriver::VolumeId&,
+                       const volumedriver::TLogID&);
 
     static void
     removeNamespaceFromSCOCache(const backend::Namespace&);

@@ -143,6 +143,9 @@ public:
     }
 
     bool
+    isTLogWrittenToBackend(const TLogName& name) const;
+
+    bool
     snapshotExists(SnapshotNum num) const;
 
     bool
@@ -369,7 +372,7 @@ private:
     checkSnapshotUUID(const SnapshotName& snapshotName,
                       const volumedriver::UUID& uuid) const;
 
-    void
+    TLogID
     scheduleBackendSync(const MaybeCheckSum& maybe_tlog_crc);
 
     template<typename T>

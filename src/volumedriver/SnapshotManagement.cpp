@@ -322,17 +322,20 @@ SnapshotManagement::halt_on_error_(T&& op, const char* desc)
     CATCH_STD_ALL_VLOG_HALT_RETHROW("could not " << desc);
 }
 
-void
+TLogID
 SnapshotManagement::scheduleBackendSync(const MaybeCheckSum& maybe_sco_crc)
 {
     LOG_VTRACE("cs " << maybe_sco_crc);
+    TLogID tlog_id(yt::UUID::NullUUID());
+
     halt_on_error_([&]()
                    {
                        LOCKSNAP;
 
                        SCO sconame;
 
-                       const std::string tlogname(sp->getCurrentTLog());
+                       ASSERT(currentTLogName_ == sp->getCurrentTLog());
+                       const std::string tlogname = currentTLogName_;
                        const fs::path tlogpath(makeTLogPath(tlogname));
                        sp->newTLog();
 
@@ -341,6 +344,8 @@ SnapshotManagement::scheduleBackendSync(const MaybeCheckSum& maybe_sco_crc)
                        {
                            currentTLog_->add(*maybe_sco_crc);
                        }
+
+                       tlog_id = TLog::getTLogIDFromName(currentTLogName_);
 
                        sconame = currentTLog_->getClusterLocation().sco();
                        const auto tlog_crc(closeTLog_(&tlogpath));
@@ -364,6 +369,9 @@ SnapshotManagement::scheduleBackendSync(const MaybeCheckSum& maybe_sco_crc)
                                               tlog_crc);
                    },
                    "schedule backend sync");
+
+    VERIFY(not tlog_id.isNull());
+    return tlog_id;
 }
 
 void
@@ -717,9 +725,9 @@ SnapshotManagement::maybe_switch_tlog_()
 
         openTLog_();
         scheduleWriteTLogToBackend(tlogname,
-                               tlogpath,
-                               location.sco(),
-                               tlog_crc);
+                                   tlogpath,
+                                   location.sco(),
+                                   tlog_crc);
         sp->saveToFile(snapshots_file_path_(), SyncAndRename::T);
     }
 }
@@ -844,7 +852,9 @@ SnapshotManagement::tlogWrittenToBackendCallback(const TLogID& tlogid,
         getVolume()->checkState(tlogname);
     }
     CATCH_STD_ALL_VLOGLEVEL_IGNORE("problem after setting TLog written to backend",
-                                   WARN)
+                                   WARN);
+
+    ASSERT(isTLogWrittenToBackend(TLog::getName(tlogid)));
 }
 
 void
@@ -1004,6 +1014,13 @@ SnapshotManagement::getTLogsWrittenToBackend(OrderedTLogNames& out) const
 {
     LOCKSNAP;
     sp->getTLogsWrittenToBackend(out);
+}
+
+bool
+SnapshotManagement::isTLogWrittenToBackend(const TLogName& tlog_name) const
+{
+    LOCKSNAP;
+    return sp->isTLogWrittenToBackend(tlog_name);
 }
 
 bool
