@@ -55,13 +55,15 @@ public:
 
     DECLARE_LOGGER("TLogTest");
 
-    virtual void SetUp()
+    virtual void
+    SetUp()
     {
         fs::remove_all(directory_);
         fs::create_directories(directory_);
     }
 
-    virtual void TearDown()
+    virtual void
+    TearDown()
     {
         fs::remove_all(directory_);
     }

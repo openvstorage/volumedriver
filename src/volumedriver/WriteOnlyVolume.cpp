@@ -132,7 +132,7 @@ WriteOnlyVolume::maybe_update_owner_tag_(const OwnerTag owner_tag)
 }
 
 void
-WriteOnlyVolume::tlogWrittenToBackendCallback(const TLogID& tid,
+WriteOnlyVolume::tlogWrittenToBackendCallback(const TLogId& tid,
                                               const SCO sconame)
 {
     snapshotManagement_->tlogWrittenToBackendCallback(tid,

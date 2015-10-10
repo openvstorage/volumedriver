@@ -114,7 +114,7 @@ LocalTLogScanner::scanTLog(const std::string& tlog)
     last_good_tlog_.first = tlog;
     last_good_tlog_.second = 0;
 
-    mdstore_.cork(TLog::getTLogIDFromName(tlog));
+    mdstore_.cork(boost::lexical_cast<TLogId>(tlog));
 
     current_proc_.reset(new CheckTLogAndSCOCRCProcessor(tlog));
     auto proc = make_combined_processor(*this, *current_proc_);

@@ -15,13 +15,14 @@
 #ifndef _TLOG_H_
 #define _TLOG_H_
 
+#include "TLogId.h"
 #include "Types.h"
 
 #include <boost/logic/tribool.hpp>
 #include <boost/serialization/list.hpp>
 
+#include <youtils/Serialization.h>
 #include <youtils/UUID.h>
-#include "youtils/Serialization.h"
 
 namespace volumedriver
 {
@@ -49,32 +50,17 @@ public:
     bool
     writtenToBackend() const;
 
-    const TLogID&
-    getID() const
+    const TLogId&
+    id() const
     {
         return uuid;
     }
 
-    bool
-    hasID(const TLogID& tid) const;
-
     TLogName
-    getName() const
-    {
-        return getName(uuid);
-    }
+    getName() const;
 
     static bool
     isTLogString(const std::string& in);
-
-    static TLogName
-    getName(const TLogID& tid)
-    {
-        return "tlog_" + tid.str();
-    }
-
-    static TLogID
-    getTLogIDFromName(const TLogName& tlogName);
 
     uint64_t
     backend_size() const
@@ -114,7 +100,8 @@ private:
     {
         if (version >= 1)
         {
-            ar & BOOST_SERIALIZATION_NVP(uuid);
+            ar & boost::serialization::make_nvp("uuid",
+                                                uuid.t);
 
             if (version == 1)
             {
@@ -140,7 +127,8 @@ private:
     {
         if(version == 2)
         {
-            ar & BOOST_SERIALIZATION_NVP(uuid);
+            ar & boost::serialization::make_nvp("uuid",
+                                                uuid.t);
             ar & BOOST_SERIALIZATION_NVP(written_to_backend);
             ar & BOOST_SERIALIZATION_NVP(size);
         }
@@ -150,7 +138,7 @@ private:
         }
     }
 
-    TLogID uuid;
+    TLogId uuid;
     bool written_to_backend;
     uint64_t size;
 };
@@ -170,10 +158,10 @@ public:
             const std::vector<TLog>& out);
 
     bool
-    setTLogWrittenToBackend(const TLogID& tid);
+    setTLogWrittenToBackend(const TLogId& tid);
 
     boost::tribool
-    isTLogWrittenToBackend(const TLogID& tid) const;
+    isTLogWrittenToBackend(const TLogId& tid) const;
 
     bool
     writtenToBackend() const;

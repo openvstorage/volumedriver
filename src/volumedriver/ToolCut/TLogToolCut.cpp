@@ -16,8 +16,9 @@
 
 namespace toolcut
 {
-namespace fs = boost::filesystem;
 
+namespace fs = boost::filesystem;
+namespace yt = youtils;
 
 TLogToolCut::TLogToolCut(const vd::TLog& tlog)
     : tlog_(tlog)
@@ -38,9 +39,8 @@ TLogToolCut::getName() const
 std::string
 TLogToolCut::getUUID() const
 {
-    return tlog_.getID().str();
+    return static_cast<yt::UUID>(tlog_.id()).str();
 }
-
 
 bool
 TLogToolCut::isTLogString(const std::string& in)
@@ -48,11 +48,10 @@ TLogToolCut::isTLogString(const std::string& in)
     return vd::TLog::isTLogString(in);
 }
 
-
 std::string
 TLogToolCut::getUUIDFromTLogName(const std::string& tlogName)
 {
-    return vd::TLog::getTLogIDFromName(tlogName).str();
+    return static_cast<yt::UUID>(boost::lexical_cast<vd::TLogId>(tlogName)).str();
 }
 
 std::string
@@ -63,9 +62,7 @@ TLogToolCut::str() const
     ss << "writtenToBackend: " << writtenToBackend() << std::endl;
     ss << "uuid: " << getUUID() << std::endl;
     return ss.str();
-
 }
-
 
 std::string
 TLogToolCut::repr() const
@@ -73,9 +70,8 @@ TLogToolCut::repr() const
     return std::string("< TLog \n") + str() + "\n>";
 }
 
-
 }
 
 // Local Variables: **
-// compile-command: "scons --kernel_version=system -D -j 4" **
+// mode: c++ **
 // End: **

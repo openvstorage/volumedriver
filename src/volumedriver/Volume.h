@@ -177,7 +177,7 @@ public:
     void
     resize(uint64_t clusters);
 
-    TLogID
+    TLogId
     scheduleBackendSync();
 
     void
@@ -267,7 +267,7 @@ public:
     saveSnapshotToTempFile() override final;
 
     virtual void
-    tlogWrittenToBackendCallback(const TLogID& tid,
+    tlogWrittenToBackendCallback(const TLogId& tid,
                              const SCO sconame) override final;
 
     virtual SCOMultiplier
@@ -409,7 +409,7 @@ public:
     isSyncedToBackendUpTo(const SnapshotName&) const;
 
     bool
-    isSyncedToBackendUpTo(const TLogID&) const;
+    isSyncedToBackendUpTo(const TLogId&) const;
 
     void
     setFOCTimeout(uint32_t timeout);
@@ -723,7 +723,7 @@ private:
     void
     setNoFailOverCache_();
 
-    TLogID
+    TLogId
     scheduleBackendSync_();
 };
 

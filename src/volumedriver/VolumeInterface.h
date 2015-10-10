@@ -17,6 +17,7 @@
 
 #include "PerformanceCounters.h"
 #include "SCO.h"
+#include "TLogId.h"
 #include "Types.h"
 #include "VolumeFailOverState.h"
 
@@ -71,7 +72,7 @@ public:
                                 boost::chrono::microseconds write_time) = 0 ;
 
     virtual void
-    tlogWrittenToBackendCallback(const TLogID&,
+    tlogWrittenToBackendCallback(const TLogId&,
                                  const SCO) = 0;
 
     virtual ClusterSize

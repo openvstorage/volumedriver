@@ -19,7 +19,6 @@
 #include <youtils/Assert.h>
 #include <youtils/IOException.h>
 
-
 namespace volumedriver
 {
 
@@ -36,30 +35,26 @@ TLog::writtenToBackend(bool in_backend)
     written_to_backend = in_backend;
 }
 
-bool
-TLog::isTLogString(const std::string& in)
+TLogName
+TLog::getName() const
 {
-    return  (in.substr(0,5) == "tlog_")
-        and UUID::isUUIDString(in.substr(5));
+    return boost::lexical_cast<TLogName>(uuid);
 }
 
 bool
-TLog::hasID(const TLogID& tid) const
+TLog::isTLogString(const std::string& in)
 {
-    return tid == uuid;
+    std::stringstream ss;
+    ss << in;
+    TLogId id;
+    ss >> id;
+    return not ss.fail();
 }
 
 bool
 TLog::writtenToBackend() const
 {
     return written_to_backend;
-}
-
-TLogID
-TLog::getTLogIDFromName(const std::string& tlogName)
-{
-    static const size_t len = sizeof("tlog_") -1;
-    return TLogID(tlogName.substr(len));
 }
 
 TLogs
@@ -104,7 +99,7 @@ TLogs::tlogReferenced(const std::string& tlog_name) const
 {
     for(auto it = begin(); it != end(); ++it)
     {
-        if (it->getID() == TLog::getTLogIDFromName(tlog_name))
+        if (it->id() == boost::lexical_cast<TLogId>(tlog_name))
         {
             return true;
         }
@@ -152,9 +147,14 @@ bool
 TLogs::snip(const std::string& tlogname,
             const boost::optional<uint64_t>& backend_size)
 {
-    TLogID tid = TLog::getTLogIDFromName(tlogname);
+    const auto tid(boost::lexical_cast<TLogId>(tlogname));
 
-    iterator it = find_if(begin(), end(), boost::bind(&TLog::hasID, _1, tid));
+    iterator it = find_if(begin(),
+                          end(),
+                          [&](const TLog& tlog) -> bool
+                          {
+                              return tid == tlog.id();
+                          });
 
     if(it == end())
     {
@@ -173,11 +173,11 @@ TLogs::snip(const std::string& tlogname,
 }
 
 bool
-TLogs::setTLogWrittenToBackend(const TLogID& tid)
+TLogs::setTLogWrittenToBackend(const TLogId& tid)
 {
     for (auto& tlog : *this)
     {
-        if (tlog.hasID(tid))
+        if (tlog.id() == tid)
         {
             tlog.written_to_backend = true;
             return true;
@@ -198,9 +198,14 @@ TLogs::setTLogWrittenToBackend(const TLogID& tid)
 }
 
 boost::tribool
-TLogs::isTLogWrittenToBackend(const TLogID& tid) const
+TLogs::isTLogWrittenToBackend(const TLogId& tid) const
 {
-    const_iterator it = find_if(begin(), end(), boost::bind(&TLog::hasID, _1, tid));
+    const_iterator it = find_if(begin(),
+                                end(),
+                                [&](const TLog& tlog) -> bool
+                                {
+                                    return tid == tlog.id();
+                                });
     if(it == end())
     {
         return boost::indeterminate;
@@ -234,7 +239,6 @@ TLogs::getNames(OrderedTLogNames& out) const
     return;
 }
 
-
 TLogName
 TLogs::checkAndGetAllTLogsWrittenToBackendAndRemoveLaterOnes(OrderedTLogNames& vec)
 {
@@ -264,7 +268,7 @@ TLogs::getReversedTLogsOnBackendSinceLastCork(const boost::optional<yt::UUID>& c
 
     for(const_reverse_iterator it = rbegin(); it != rend(); ++it)
     {
-        if(cork != boost::none and it->getID() == *cork)
+        if(cork != boost::none and it->id() == TLogId(*cork))
         {
             VERIFY(it->writtenToBackend());
             return true;

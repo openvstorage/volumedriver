@@ -207,7 +207,7 @@ public:
                                  SnapshotNum /*relatedSnapshot*/);
 
     void
-    tlogWrittenToBackendCallback(const TLogID& tlogcounter,
+    tlogWrittenToBackendCallback(const TLogId& tlogcounter,
                              const SCO sconame);
 
     const MaybeParentConfig&
@@ -372,7 +372,7 @@ private:
     checkSnapshotUUID(const SnapshotName& snapshotName,
                       const volumedriver::UUID& uuid) const;
 
-    TLogID
+    TLogId
     scheduleBackendSync(const MaybeCheckSum& maybe_tlog_crc);
 
     template<typename T>

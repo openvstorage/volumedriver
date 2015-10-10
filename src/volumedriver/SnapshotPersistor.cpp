@@ -214,11 +214,11 @@ void
 SnapshotPersistor::newTLog()
 {
     current.emplace_back(TLog());
-    LOG_INFO("Starting new TLog " << current.back().getName());
+    LOG_INFO("Starting new TLog " << current.back().id());
 }
 
 void
-SnapshotPersistor::setTLogWrittenToBackend(const TLogID& tlogid)
+SnapshotPersistor::setTLogWrittenToBackend(const TLogId& tlogid)
 {
     // The "snapshots before current" order needs to be maintained as the
     // consistency check in TLogs::setTLogWrittenToBackend() relies on it.
@@ -226,14 +226,14 @@ SnapshotPersistor::setTLogWrittenToBackend(const TLogID& tlogid)
     {
         if (not current.setTLogWrittenToBackend(tlogid))
         {
-            LOG_WARN("Couldn't find tlog " << tlogid.str()
-                     << " probably snapshot restore. These messages should not persist!");
+            LOG_WARN("Couldn't find tlog " << tlogid <<
+                     " probably snapshot restore. These messages should not persist!");
         }
     }
 }
 
 bool
-SnapshotPersistor::isTLogWrittenToBackend(const TLogID& tlogid) const
+SnapshotPersistor::isTLogWrittenToBackend(const TLogId& tlogid) const
 {
     boost::tribool b = current.isTLogWrittenToBackend(tlogid);
     if(b or not b)
@@ -249,7 +249,7 @@ SnapshotPersistor::isTLogWrittenToBackend(const TLogID& tlogid) const
 bool
 SnapshotPersistor::isTLogWrittenToBackend(const std::string& tlogname) const
 {
-    return isTLogWrittenToBackend(TLog::getTLogIDFromName(tlogname));
+    return isTLogWrittenToBackend(boost::lexical_cast<TLogId>(tlogname));
 }
 
 void
@@ -636,7 +636,7 @@ SnapshotPersistor::lastCork() const
     {
         if(it->writtenToBackend())
         {
-            return it->getID();
+            return it->id().t;
         }
     }
 

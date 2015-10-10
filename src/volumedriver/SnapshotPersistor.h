@@ -241,10 +241,10 @@ public:
     }
 
     void
-    setTLogWrittenToBackend(const TLogID& tlogid);
+    setTLogWrittenToBackend(const TLogId& tlogid);
 
     bool
-    isTLogWrittenToBackend(const TLogID& tlogid) const;
+    isTLogWrittenToBackend(const TLogId& tlogid) const;
 
     bool
     isTLogWrittenToBackend(const std::string& tlogname) const;

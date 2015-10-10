@@ -212,10 +212,10 @@ class Snapshots
 {
 public:
     bool
-    setTLogWrittenToBackend(const TLogID& tid);
+    setTLogWrittenToBackend(const TLogId& tid);
 
     bool
-    isTLogWrittenToBackend(const TLogID& tid) const;
+    isTLogWrittenToBackend(const TLogId& tid) const;
 
     bool
     getTLogsInSnapshot(const SnapshotNum,

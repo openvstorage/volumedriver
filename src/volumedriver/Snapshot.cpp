@@ -81,7 +81,7 @@ Snapshot::Snapshot(const SnapshotNum i_num,
     , scrubbed(set_scrubbed)
     , date(CurrentTimeAsString()())
     , hasUUIDSpecified_(true)
-    , cork_uuid_(tlogs.empty() ? UUID() : tlogs.back().getID())
+    , cork_uuid_(tlogs.empty() ? UUID() : tlogs.back().id())
 {}
 
 bool
@@ -139,7 +139,7 @@ Snapshots::tlogReferenced(const std::string& tlog_name) const
 }
 
 bool
-Snapshots::setTLogWrittenToBackend(const TLogID& tid)
+Snapshots::setTLogWrittenToBackend(const TLogId& tid)
 {
     for(iterator i = begin(); i != end(); ++i)
     {
@@ -152,7 +152,7 @@ Snapshots::setTLogWrittenToBackend(const TLogID& tid)
 }
 
 bool
-Snapshots::isTLogWrittenToBackend(const TLogID& tid) const
+Snapshots::isTLogWrittenToBackend(const TLogId& tid) const
 {
     for(const_iterator i = begin(); i != end(); ++i)
     {

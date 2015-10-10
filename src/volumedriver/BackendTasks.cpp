@@ -108,7 +108,7 @@ WriteSCO::run(int threadid)
 WriteTLog::WriteTLog(VolumeInterface* vol,
                      const fs::path& tlogpath,
                      const std::string& name,
-                     const TLogID& tlogid,
+                     const TLogId& tlogid,
                      const SCO sconame,
                      const CheckSum& checksum)
     : TaskBase(vol, BarrierTask::T)

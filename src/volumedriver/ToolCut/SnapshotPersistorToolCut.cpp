@@ -250,14 +250,14 @@ SnapshotPersistorToolCut::trimToBackend()
 void
 SnapshotPersistorToolCut::setTLogWrittenToBackend(const std::string& tlog)
 {
-    vd::TLogID id = vd::TLog::getTLogIDFromName(tlog);
+    const auto id(boost::lexical_cast<vd::TLogId>(tlog));
     snapshot_persistor_->setTLogWrittenToBackend(id);
 }
 
 bool
 SnapshotPersistorToolCut::isTLogWrittenToBackend(const std::string& tlog) const
 {
-    vd::TLogID id = vd::TLog::getTLogIDFromName(tlog);
+    const auto id(boost::lexical_cast<vd::TLogId>(tlog));
     return snapshot_persistor_->isTLogWrittenToBackend(id);
 }
 

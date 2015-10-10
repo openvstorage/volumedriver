@@ -218,7 +218,7 @@ public:
                                 boost::chrono::microseconds write_time) override final;
 
     virtual void
-    tlogWrittenToBackendCallback(const TLogID& tid,
+    tlogWrittenToBackendCallback(const TLogId& tid,
                                  const SCO sconame) override final;
 
     virtual fs::path

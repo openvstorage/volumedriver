@@ -1521,11 +1521,11 @@ TEST_P(SimpleVolumeTest, backend_sync_up_to_tlog)
     Volume* v = newVolume(*ns);
 
     const SnapshotManagement& sm = v->getSnapshotManagement();
-    const TLogID old_tlog_id(TLog::getTLogIDFromName(sm.getCurrentTLogName()));
+    const auto old_tlog_id(boost::lexical_cast<TLogId>(sm.getCurrentTLogName()));
 
     EXPECT_FALSE(v->isSyncedToBackendUpTo(old_tlog_id));
 
-    TLogID new_tlog_id;
+    TLogId new_tlog_id;
 
     {
         SCOPED_BLOCK_BACKEND(v);
@@ -1533,7 +1533,7 @@ TEST_P(SimpleVolumeTest, backend_sync_up_to_tlog)
         EXPECT_EQ(old_tlog_id,
                   v->scheduleBackendSync());
 
-        new_tlog_id = TLog::getTLogIDFromName(sm.getCurrentTLogName());
+        new_tlog_id = boost::lexical_cast<TLogId>(sm.getCurrentTLogName());
 
         EXPECT_NE(old_tlog_id,
                   new_tlog_id);

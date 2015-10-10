@@ -115,8 +115,6 @@ using backend::BackendConnectionManager;
 using backend::Namespace;
 #endif
 
-typedef UUID TLogID;
-
 typedef uint64_t ClusterAddress;
 typedef uint32_t ClusterExponent;
 typedef uint32_t SCONumber;

@@ -60,7 +60,7 @@ TEST_F(BackendNamesFilterTest, tlogs)
     const int ntlogs = 1000;
     for (auto i = 0; i < ntlogs; ++i)
     {
-        const std::string s(TLog::getName(TLogID()));
+        const std::string s(TLog::getName(TLogId()));
         test(s);
     }
 }

@@ -117,7 +117,7 @@ public:
     WriteTLog(VolumeInterface*,
               const fs::path & source,
               const std::string& name,
-              const TLogID& tlogid,
+              const TLogId& tlogid,
               const SCO sconame,
               const CheckSum& checksum);
 
@@ -132,7 +132,7 @@ private:
 
     const fs::path tlogpath_; // just an alias for path_
     const std::string name_;
-    const TLogID tlogid_;
+    const TLogId tlogid_;
     const SCO sconame_;
     const CheckSum checksum_;
 };

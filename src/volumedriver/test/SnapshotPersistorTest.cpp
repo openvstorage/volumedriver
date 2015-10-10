@@ -94,12 +94,12 @@ protected:
     testDeserializationConsistencyCheck(bool in_snapshot)
     {
         const size_t num_tlogs = 7;
-        std::vector<TLogID> tlog_ids(num_tlogs);
+        std::vector<TLogId> tlog_ids(num_tlogs);
         const size_t snap_idx = 3;
 
         for (size_t i = 0; i < num_tlogs; ++i)
         {
-            tlog_ids[i] = TLog::getTLogIDFromName(sp_->getCurrentTLog());
+            tlog_ids[i] = boost::lexical_cast<TLogId>(sp_->getCurrentTLog());
             if (i == snap_idx)
             {
                 sp_->snapshot(SnapshotName("snapper"));
@@ -122,7 +122,7 @@ protected:
 
             for (auto& tlog : snap)
             {
-                if (tlog.hasID(tlog_ids[snap_idx - 1]))
+                if (tlog.id() == tlog_ids[snap_idx - 1])
                 {
                     tlog.written_to_backend = false;
                 }
@@ -134,7 +134,7 @@ protected:
 
             for (auto& tlog : tlogs)
             {
-                if (tlog.hasID(tlog_ids[snap_idx + 1]))
+                if (tlog.id() == tlog_ids[snap_idx + 1])
                 {
                     tlog.written_to_backend = false;
                 }
@@ -227,13 +227,13 @@ TEST_F(SnapshotPersistorTest, removeallbuttlast2)
 
 TEST_F(SnapshotPersistorTest, simple)
 {
-    EXPECT_NO_THROW(TLog::getTLogIDFromName(sp_->getCurrentTLog()));
+    EXPECT_NO_THROW(boost::lexical_cast<TLogId>(sp_->getCurrentTLog()));
 
-    EXPECT_THROW(TLog::getTLogIDFromName("tlog_e733574e-5654-4b71-bdde-0489940e68"),
-                 fungi::IOException);
+    EXPECT_THROW(boost::lexical_cast<TLogId>("tlog_e733574e-5654-4b71-bdde-0489940e68"),
+                 boost::bad_lexical_cast);
 
-    EXPECT_THROW(TLog::getTLogIDFromName("tlog_e733574e-5654-4b71-bdde-0489940e68"),
-                 fungi::IOException);
+    EXPECT_THROW(boost::lexical_cast<TLogId>("tlog_e733574e-5654-4b71-bdde-0489940e68"),
+                 boost::bad_lexical_cast);
 
     EXPECT_EQ(parentnamespace,
               sp_->parent()->nspace);
@@ -698,11 +698,11 @@ TEST_F(SnapshotPersistorTest, tlogWrittenToBackendConsistencyCheck)
 {
     const size_t num_tlogs = 13;
     const size_t snap_idx = 5;
-    std::vector<TLogID> tlog_ids(num_tlogs);
+    std::vector<TLogId> tlog_ids(num_tlogs);
 
     for (size_t i = 0; i < num_tlogs; ++i)
     {
-        tlog_ids[i] = TLog::getTLogIDFromName(sp_->getCurrentTLog());
+        tlog_ids[i] = boost::lexical_cast<TLogId>(sp_->getCurrentTLog());
 
         if (i == snap_idx)
         {
@@ -715,7 +715,7 @@ TEST_F(SnapshotPersistorTest, tlogWrittenToBackendConsistencyCheck)
     }
 
     {
-        const TLogID& tid = tlog_ids[snap_idx - 1];
+        const TLogId& tid = tlog_ids[snap_idx - 1];
         EXPECT_THROW(sp_->setTLogWrittenToBackend(tid),
                      std::exception);
         EXPECT_FALSE(sp_->isTLogWrittenToBackend(tid));
@@ -727,7 +727,7 @@ TEST_F(SnapshotPersistorTest, tlogWrittenToBackendConsistencyCheck)
     }
 
     {
-        const TLogID& tid = tlog_ids[snap_idx + 2];
+        const TLogId& tid = tlog_ids[snap_idx + 2];
         EXPECT_THROW(sp_->setTLogWrittenToBackend(tid),
                      std::exception);
         EXPECT_FALSE(sp_->isTLogWrittenToBackend(tid));
@@ -745,7 +745,7 @@ TEST_F(SnapshotPersistorTest, tlogWrittenToBackendConsistencyCheck)
 
         for (const auto& id : tlog_ids)
         {
-            EXPECT_EQ(tlog_names[i], TLog::getName(id));
+            EXPECT_EQ(tlog_names[i], boost::lexical_cast<std::string>(id));
             ++i;
         }
 
@@ -816,7 +816,7 @@ TEST_F(SnapshotPersistorTest, persistent_metadata)
 
 TEST_F(SnapshotPersistorTest, synced_to_backend)
 {
-    const TLogID tlog(TLog::getTLogIDFromName(sp_->getCurrentTLog()));
+    const TLogId tlog(boost::lexical_cast<TLogId>(sp_->getCurrentTLog()));
     // Does the SnapshotPersistor even care if the current TLog is marked as being
     // on the backend? Should it care?
     sp_->newTLog();

@@ -322,11 +322,11 @@ SnapshotManagement::halt_on_error_(T&& op, const char* desc)
     CATCH_STD_ALL_VLOG_HALT_RETHROW("could not " << desc);
 }
 
-TLogID
+TLogId
 SnapshotManagement::scheduleBackendSync(const MaybeCheckSum& maybe_sco_crc)
 {
     LOG_VTRACE("cs " << maybe_sco_crc);
-    TLogID tlog_id(yt::UUID::NullUUID());
+    TLogId tlog_id(yt::UUID::NullUUID());
 
     halt_on_error_([&]()
                    {
@@ -345,7 +345,7 @@ SnapshotManagement::scheduleBackendSync(const MaybeCheckSum& maybe_sco_crc)
                            currentTLog_->add(*maybe_sco_crc);
                        }
 
-                       tlog_id = TLog::getTLogIDFromName(currentTLogName_);
+                       tlog_id = boost::lexical_cast<TLogId>(currentTLogName_);
 
                        sconame = currentTLog_->getClusterLocation().sco();
                        const auto tlog_crc(closeTLog_(&tlogpath));
@@ -370,7 +370,7 @@ SnapshotManagement::scheduleBackendSync(const MaybeCheckSum& maybe_sco_crc)
                    },
                    "schedule backend sync");
 
-    VERIFY(not tlog_id.isNull());
+    VERIFY(not static_cast<youtils::UUID&>(tlog_id).isNull());
     return tlog_id;
 }
 
@@ -558,7 +558,7 @@ SnapshotManagement::getSnapshot(const SnapshotName& snapname) const
 void
 SnapshotManagement::openTLog_()
 {
-    getVolume()->cork(TLog::getTLogIDFromName(currentTLogName_));
+    getVolume()->cork(boost::lexical_cast<TLogId>(currentTLogName_));
 
     numTLogEntries_ = 0;
     previous_tlog_time_ = time(0);
@@ -625,11 +625,11 @@ SnapshotManagement::scheduleWriteTLogToBackend(const std::string& tlogname,
     {
         std::unique_ptr<backend_task::WriteTLog>
             task(new backend_task::WriteTLog(getVolume(),
-                                        tlogpath,
-                                        tlogname,
-                                        TLog::getTLogIDFromName(tlogname),
-                                        sconame,
-                                        tlog_crc));
+                                             tlogpath,
+                                             tlogname,
+                                             boost::lexical_cast<TLogId>(tlogname),
+                                             sconame,
+                                             tlog_crc));
 
         VolManager::get()->backend_thread_pool()->addTask(task.release());
     }
@@ -758,10 +758,10 @@ SnapshotManagement::sync(const MaybeCheckSum& maybe_sco_crc)
 }
 
 void
-SnapshotManagement::tlogWrittenToBackendCallback(const TLogID& tlogid,
+SnapshotManagement::tlogWrittenToBackendCallback(const TLogId& tlogid,
                                                  const SCO sconame)
 {
-    const TLogName tlog_name(TLog::getName(tlogid));
+    const TLogName tlog_name(boost::lexical_cast<TLogName>(tlogid));
     std::unique_ptr<SnapshotPersistor> tmp;
 
     tracepoint(openvstorage_volumedriver,
@@ -836,7 +836,7 @@ SnapshotManagement::tlogWrittenToBackendCallback(const TLogID& tlogid,
 
     try
     {
-        const std::string tlogname(TLog::getName(tlogid));
+        const std::string tlogname(boost::lexical_cast<std::string>(tlogid));
 
         // This seems to give problems with snapshotrestore.
         // but that should be solved now because tlog are automatically
@@ -854,7 +854,7 @@ SnapshotManagement::tlogWrittenToBackendCallback(const TLogID& tlogid,
     CATCH_STD_ALL_VLOGLEVEL_IGNORE("problem after setting TLog written to backend",
                                    WARN);
 
-    ASSERT(isTLogWrittenToBackend(TLog::getName(tlogid)));
+    ASSERT(isTLogWrittenToBackend(boost::lexical_cast<std::string>(tlogid)));
 }
 
 void

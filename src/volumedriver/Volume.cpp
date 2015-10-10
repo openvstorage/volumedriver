@@ -1635,9 +1635,9 @@ Volume::isSyncedToBackendUpTo(const SnapshotName& snapshotName) const
 }
 
 bool
-Volume::isSyncedToBackendUpTo(const TLogID& tlog_id) const
+Volume::isSyncedToBackendUpTo(const TLogId& tlog_id) const
 {
-    return snapshotManagement_->isTLogWrittenToBackend(TLog::getName(tlog_id));
+    return snapshotManagement_->isTLogWrittenToBackend(boost::lexical_cast<TLogName>(tlog_id));
 }
 
 void
@@ -2178,7 +2178,7 @@ Volume::check_and_fix_failovercache()
     }
 }
 
-TLogID
+TLogId
 Volume::scheduleBackendSync()
 {
     WLOCK();
@@ -2187,7 +2187,7 @@ Volume::scheduleBackendSync()
     return scheduleBackendSync_();
 }
 
-TLogID
+TLogId
 Volume::scheduleBackendSync_()
 {
     // TODO: halt the volume in case of non-recoverable errors
@@ -2302,7 +2302,7 @@ Volume::checkState(const std::string& tlogname)
 }
 
 void
-Volume::tlogWrittenToBackendCallback(const TLogID& tid,
+Volume::tlogWrittenToBackendCallback(const TLogId& tid,
                                  const SCO sconame)
 {
     snapshotManagement_->tlogWrittenToBackendCallback(tid,

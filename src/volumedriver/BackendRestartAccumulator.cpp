@@ -84,7 +84,7 @@ BackendRestartAccumulator::operator()(const SnapshotPersistor& sp,
             for (const auto& tlog : sp.getCurrentTLogsWrittenToBackend())
             {
                 if (start_cork_ != boost::none and
-                    tlog == TLog::getName(*start_cork_))
+                    tlog == boost::lexical_cast<TLogName>(TLogId(*start_cork_)))
                 {
                     VERIFY(not start_seen_);
                     start_seen_ = true;
@@ -96,7 +96,7 @@ BackendRestartAccumulator::operator()(const SnapshotPersistor& sp,
                 }
 
                 if (end_cork_ != boost::none and
-                    tlog == TLog::getName(*end_cork_))
+                    tlog == boost::lexical_cast<TLogName>(TLogId(*end_cork_)))
                 {
                     end_seen_ = true;
                     break;
