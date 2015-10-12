@@ -271,8 +271,6 @@ TEST_P(FailOverCacheTester, CacheServerHasNoMemory)
 
         ASSERT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::OK_SYNC);
 
-        const std::string tlogname = v->getSnapshotManagement().getCurrentTLogName();
-
         for (int i = 0; i < numClusters; ++i)
         {
             writeToVolume(v,
@@ -446,7 +444,7 @@ TEST_P(FailOverCacheTester, resetToSelf)
                           ns);
     v->setFailOverCacheConfig(foc_ctx->config());
 
-    const std::string tlogname1 = v->getSnapshotManagement().getCurrentTLogName();
+    const TLogId tlog_id1(v->getSnapshotManagement().getCurrentTLogId());
     const unsigned entries = 32;
 
     for(unsigned i = 0; i < entries; i++)
@@ -455,8 +453,9 @@ TEST_P(FailOverCacheTester, resetToSelf)
     }
     v->setFailOverCacheConfig(foc_ctx->config());
 
-    const std::string tlogname2 = v->getSnapshotManagement().getCurrentTLogName();
-    EXPECT_FALSE(tlogname1 == tlogname2);
+    const TLogId tlog_id2(v->getSnapshotManagement().getCurrentTLogId());
+    EXPECT_NE(tlog_id1,
+              tlog_id2);
 
     for(unsigned i = 0; i < entries; i++)
     {
@@ -465,7 +464,8 @@ TEST_P(FailOverCacheTester, resetToSelf)
 
     flushFailOverCache(v);
 
-    check_num_entries(*v, entries);
+    check_num_entries(*v,
+                      entries);
 
     destroyVolume(v,
                   DeleteLocalData::T,
@@ -484,14 +484,13 @@ TEST_P(FailOverCacheTester, resetToOther)
     Volume* v = newVolume("vol1",
                           ns);
 
-
-    const std::string tlogname1 = v->getSnapshotManagement().getCurrentTLogName();
     const unsigned entries = 32;
 
     for(unsigned i = 0; i < entries; i++)
     {
         writeToVolume(v, i * 4096, 4096, "bdv");
     }
+
     EXPECT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::OK_STANDALONE);
 
     EXPECT_NO_THROW(v->setFailOverCacheConfig(foc_ctx1->config()));

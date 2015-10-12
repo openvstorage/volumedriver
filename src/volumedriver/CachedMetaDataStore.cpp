@@ -390,7 +390,7 @@ CachedMetaDataStore::processCloneTLogs(const CloneTLogs& ctl,
         }
         prev_cloneid = cloneid;
 
-        const OrderedTLogNames& tlogs = ctl[i].second;
+        const OrderedTLogIds& tlogs = ctl[i].second;
 
         std::shared_ptr<TLogReaderInterface>
             r(makeCombinedTLogReader(tlog_path,

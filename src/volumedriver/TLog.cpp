@@ -77,29 +77,29 @@ TLogs::tlogsOnDss()
 }
 
 void
-TLogs::getOrderedTLogNames(OrderedTLogNames& out) const
+TLogs::getOrderedTLogIds(OrderedTLogIds& out) const
 {
     for(const_iterator it = begin(); it != end(); ++it)
     {
-        out.push_back(it->getName());
+        out.push_back(it->id());
     }
 }
 
 void
-TLogs::getReverseOrderedTLogNames(OrderedTLogNames& out) const
+TLogs::getReverseOrderedTLogIds(OrderedTLogIds& out) const
 {
     for(const_reverse_iterator it = rbegin(); it !=rend(); ++it)
     {
-        out.push_back(it->getName());
+        out.push_back(it->id());
     }
 }
 
 bool
-TLogs::tlogReferenced(const std::string& tlog_name) const
+TLogs::tlogReferenced(const TLogId& tlog_id) const
 {
     for(auto it = begin(); it != end(); ++it)
     {
-        if (it->id() == boost::lexical_cast<TLogId>(tlog_name))
+        if (it->id() == tlog_id)
         {
             return true;
         }
@@ -108,7 +108,7 @@ TLogs::tlogReferenced(const std::string& tlog_name) const
 }
 
 void
-TLogs::replace(const OrderedTLogNames& in,
+TLogs::replace(const OrderedTLogIds& in,
                const std::vector<TLog>& out)
 {
     if(in.size() != size())
@@ -122,7 +122,7 @@ TLogs::replace(const OrderedTLogNames& in,
 
     for (const auto& t : *this)
     {
-        if(t.getName() != in[i++])
+        if(t.id() != in[i++])
         {
             LOG_WARN("not replacing TLogs because snapshot has changed!");
             throw fungi::IOException("In tlogs not equal to out ones");
@@ -144,16 +144,14 @@ TLogs::replace(const OrderedTLogNames& in,
 }
 
 bool
-TLogs::snip(const std::string& tlogname,
+TLogs::snip(const TLogId& tlog_id,
             const boost::optional<uint64_t>& backend_size)
 {
-    const auto tid(boost::lexical_cast<TLogId>(tlogname));
-
     iterator it = find_if(begin(),
                           end(),
                           [&](const TLog& tlog) -> bool
                           {
-                              return tid == tlog.id();
+                              return tlog_id == tlog.id();
                           });
 
     if(it == end())
@@ -230,39 +228,40 @@ TLogs::writtenToBackend() const
 }
 
 void
-TLogs::getNames(OrderedTLogNames& out) const
+TLogs::getTLogIds(OrderedTLogIds& out) const
 {
     for(const_iterator it = begin(); it != end(); ++it)
     {
-        out.push_back(it->getName());
+        out.push_back(it->id());
     }
-    return;
 }
 
-TLogName
-TLogs::checkAndGetAllTLogsWrittenToBackendAndRemoveLaterOnes(OrderedTLogNames& vec)
+boost::optional<TLogId>
+TLogs::checkAndGetAllTLogsWrittenToBackendAndRemoveLaterOnes(OrderedTLogIds& vec)
 {
-    TLogName retval;
+    boost::optional<TLogId> tlog_id;
+
     for(iterator i = begin(); i != end(); ++i)
     {
         if(i->written_to_backend)
         {
-            vec.push_back(i->getName());
+            vec.push_back(i->id());
         }
         else
         {
-            retval = i->getName();
-            erase(i,end());
-            return retval;
+            tlog_id = i->id();
+            erase(i, end());
+            return tlog_id;
         }
     }
-    VERIFY(retval.empty());
-    return retval;
+
+    VERIFY(tlog_id == boost::none);
+    return tlog_id;
 }
 
 bool
 TLogs::getReversedTLogsOnBackendSinceLastCork(const boost::optional<yt::UUID>& cork,
-                                              OrderedTLogNames& reverse_vec) const
+                                              OrderedTLogIds& reverse_vec) const
 {
     bool seen_written_to_backend = false;
 
@@ -276,7 +275,7 @@ TLogs::getReversedTLogsOnBackendSinceLastCork(const boost::optional<yt::UUID>& c
         else if(it->writtenToBackend())
         {
             seen_written_to_backend = true;
-            reverse_vec.push_back(it->getName());
+            reverse_vec.push_back(it->id());
         }
         else
         {

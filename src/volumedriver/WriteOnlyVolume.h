@@ -241,7 +241,7 @@ public:
     {}
 
     virtual void
-    checkState(const std::string&) override final
+    checkState(const TLogId&) override final
     {};
 
     virtual void

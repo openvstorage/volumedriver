@@ -240,10 +240,10 @@ Restore::sanitize_snapshots_(be::BackendInterfacePtr bi) const
     }
 
     bool current_tlog_ok = false;
-    std::string current_tlog;
+    vd::TLogId current_tlog(yt::UUID::NullUUID());
 
     {
-        const auto current_tlogs(sp->getCurrentTLogs());
+        const vd::OrderedTLogIds current_tlogs(sp->getCurrentTLogs());
 
         current_tlog_ok = current_tlogs.size() == 1 and
             not sp->isTLogWrittenToBackend(current_tlogs[0]);
@@ -263,7 +263,7 @@ Restore::sanitize_snapshots_(be::BackendInterfacePtr bi) const
             FAILED_BACKUP("only one snapshot found and that one is not in the backend");
         }
 
-        vd::OrderedTLogNames tlogs;
+        vd::OrderedTLogIds tlogs;
         sp->getTLogsAfterSnapshot(snap_nums.back(), tlogs);
         if (not tlogs.empty())
         {
@@ -301,7 +301,7 @@ Restore::sanitize_snapshots_(be::BackendInterfacePtr bi) const
     LOG_INFO(bi->getNS() << ": restoring to snapshot " << snap_num <<
              ", named " << sp->getSnapshotName(snap_num));
 
-    vd::OrderedTLogNames doomed_tlogs;
+    vd::OrderedTLogIds doomed_tlogs;
     sp->getTLogsAfterSnapshot(snap_num, doomed_tlogs);
 
     // We could be more rigid: snapshot creation will always create a new empty
@@ -343,28 +343,31 @@ Restore::sanitize_snapshots_(be::BackendInterfacePtr bi) const
 
 void
 Restore::collect_garbage_(be::BackendInterfacePtr bi,
-                          const vd::OrderedTLogNames& doomed_tlogs) const
+                          const vd::OrderedTLogIds& doomed_tlogs) const
 {
     LOG_INFO(bi->getNS() << ": collecting garbage");
 
-    for (const auto& tlog : doomed_tlogs)
+    for (const auto& tlog_id : doomed_tlogs)
     {
+        const auto tlog_name(boost::lexical_cast<std::string>(tlog_id));
+
         try
         {
             std::unique_ptr<vd::TLogReaderInterface>
                 r(new vd::TLogReader(scratch_dir_,
-                                     tlog,
+                                     tlog_name,
                                      bi->clone()));
 
             std::vector<vd::SCO> doomed_scos;
             r->SCONames(doomed_scos);
 
-            LOG_INFO(bi->getNS() << ": removing surplus tlog " << tlog);
+            LOG_INFO(bi->getNS() << ": removing surplus tlog " << tlog_name);
             try
             {
-                bi->remove(tlog, ObjectMayNotExist::T);
+                bi->remove(tlog_name,
+                           ObjectMayNotExist::T);
             }
-            CATCH_STD_ALL_LOGLEVEL_IGNORE(bi->getNS() << ": failed to remove " << tlog,
+            CATCH_STD_ALL_LOGLEVEL_IGNORE(bi->getNS() << ": failed to remove " << tlog_name,
                                           WARN);
 
 
@@ -381,7 +384,7 @@ Restore::collect_garbage_(be::BackendInterfacePtr bi,
             }
         }
         CATCH_STD_ALL_LOGLEVEL_IGNORE(bi->getNS() <<
-                                      ": failed to process tlog " << tlog <<
+                                      ": failed to process tlog " << tlog_name <<
                                       " - it probably didn't make it to the backend?",
                                       WARN);
     }

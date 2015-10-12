@@ -347,7 +347,7 @@ Scrubber::operator()()
         backend_interface_->write(new_snaps,
                                   snapshotFilename(),
                                   OverwriteObject::T);
-        LOG_INFO("Written the new snapshots.xml and its data to the backend, cleaning up");
+        LOG_INFO("Wrote the new snapshots.xml and its data to the backend, cleaning up");
         boost::this_thread::interruption_point();
         for (const SCO sconame : result_.sconames_to_be_deleted)
         {
@@ -355,10 +355,11 @@ Scrubber::operator()()
             backend_interface_->remove(sconame.str());
         }
         boost::this_thread::interruption_point();
-        for (const std::string& tlog : result_.tlog_names_in)
+        for (const auto& tlog_id : result_.tlog_names_in)
         {
-            LOG_INFO("Deleting tlog " << tlog);
-            backend_interface_->remove(tlog);
+            const auto tlog_name(boost::lexical_cast<std::string>(tlog_id));
+            LOG_INFO("Deleting TLog " << tlog_name);
+            backend_interface_->remove(tlog_name);
         }
     }
 }

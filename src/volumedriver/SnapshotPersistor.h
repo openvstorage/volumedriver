@@ -146,7 +146,7 @@ public:
      */
     bool
     getTLogsInSnapshot(SnapshotNum num,
-                       OrderedTLogNames& out) const;
+                       OrderedTLogIds& out) const;
 
     bool
     isSnapshotInBackend(const SnapshotNum num) const;
@@ -179,12 +179,12 @@ public:
     deleteSnapshot(SnapshotNum num);
 
     void
-    getCurrentTLogs(OrderedTLogNames& outTLogs) const;
+    getCurrentTLogs(OrderedTLogIds& outTLogs) const;
 
-    OrderedTLogNames
+    OrderedTLogIds
     getCurrentTLogs() const
     {
-        OrderedTLogNames tlogs;
+        OrderedTLogIds tlogs;
         getCurrentTLogs(tlogs);
         return tlogs;
     }
@@ -195,19 +195,19 @@ public:
         return parent_;
     }
 
-    std::string
+    TLogId
     getCurrentTLog() const;
 
     void getTLogsTillSnapshot(const SnapshotName& name,
-                              OrderedTLogNames& out) const;
+                              OrderedTLogIds& out) const;
 
     void
     getTLogsTillSnapshot(SnapshotNum num,
-                         OrderedTLogNames& out)  const;
+                         OrderedTLogIds& out)  const;
 
     void
     getTLogsAfterSnapshot(SnapshotNum num,
-                          OrderedTLogNames& out) const;
+                          OrderedTLogIds& out) const;
 
     void
     deleteTLogsAndSnapshotsAfterSnapshot(SnapshotNum num);
@@ -215,14 +215,14 @@ public:
     void
     getTLogsBetweenSnapshots(const SnapshotNum start,
                              const SnapshotNum end,
-                             OrderedTLogNames& out,
+                             OrderedTLogIds& out,
                              IncludingEndSnapshot = IncludingEndSnapshot::T) const;
 
     void
     getAllSnapshots(std::vector<SnapshotNum>& vec) const;
 
     void
-    getAllTLogs(OrderedTLogNames& vec,
+    getAllTLogs(OrderedTLogIds& vec,
                 const WithCurrent with_current) const;
 
     // DOES NOT SET CURRENT SIZE!!
@@ -230,12 +230,12 @@ public:
     trimToBackend();
 
     void
-    getCurrentTLogsWrittenToBackend(OrderedTLogNames&) const;
+    getCurrentTLogsWrittenToBackend(OrderedTLogIds&) const;
 
-    OrderedTLogNames
+    OrderedTLogIds
     getCurrentTLogsWrittenToBackend() const
     {
-        OrderedTLogNames tlogs;
+        OrderedTLogIds tlogs;
         getCurrentTLogsWrittenToBackend(tlogs);
         return tlogs;
     }
@@ -246,30 +246,27 @@ public:
     bool
     isTLogWrittenToBackend(const TLogId& tlogid) const;
 
-    bool
-    isTLogWrittenToBackend(const std::string& tlogname) const;
-
     void
-    getTLogsNotWrittenToBackend(OrderedTLogNames& out) const;
+    getTLogsNotWrittenToBackend(OrderedTLogIds& out) const;
 
     void
     deleteAllButLastSnapshot();
 
-    OrderedTLogNames
+    OrderedTLogIds
     getTLogsNotWrittenToBackend() const
     {
-        OrderedTLogNames tlogs;
+        OrderedTLogIds tlogs;
         getTLogsNotWrittenToBackend(tlogs);
         return tlogs;
     }
 
     void
-    getTLogsWrittenToBackend(OrderedTLogNames& out) const;
+    getTLogsWrittenToBackend(OrderedTLogIds& out) const;
 
-    OrderedTLogNames
+    OrderedTLogIds
     getTLogsWrittenToBackend() const
     {
-        OrderedTLogNames tlogs;
+        OrderedTLogIds tlogs;
         getTLogsWrittenToBackend(tlogs);
         return tlogs;
     }
@@ -305,11 +302,11 @@ public:
                    const boost::optional<SnapshotName>& start_snapshot) const;
 
     bool
-    snip(const std::string& tlog_name,
+    snip(const TLogId&,
          const boost::optional<uint64_t>& backend_size);
 
     bool
-    tlogReferenced(const std::string& tlog_name);
+    tlogReferenced(const TLogId&);
 
     bool
     hasUUIDSpecified() const;
@@ -327,7 +324,7 @@ public:
     }
 
     ScrubId
-    replace(const OrderedTLogNames& in,
+    replace(const OrderedTLogIds& in,
             const std::vector<TLog>& out,
             const SnapshotNum num);
 
@@ -337,7 +334,7 @@ public:
     boost::optional<youtils::UUID>
     lastCork() const;
 
-    OrderedTLogNames
+    OrderedTLogIds
     getTLogsOnBackendSinceLastCork(const boost::optional<youtils::UUID>& cork,
                                    const boost::optional<youtils::UUID>& implicit_start_cork) const;
 

@@ -692,20 +692,22 @@ TEST_P(SimpleVolumeTest, switchTLog)
     Volume* v = newVolume(VolumeId("volume1"),
                           ns);
 
-    std::string init_tlog = v->getSnapshotManagement().getCurrentTLogName();
+    const TLogId init_tlog(v->getSnapshotManagement().getCurrentTLogId());
     std::vector<uint8_t> v1(4096);
 
-    uint64_t clusters   = VolManager::get()->number_of_scos_in_tlog.value() *  v->getSCOMultiplier();
+    uint64_t clusters = VolManager::get()->number_of_scos_in_tlog.value() *  v->getSCOMultiplier();
 
     for(unsigned i = 0; i < clusters - 1; ++i) {
         writeToVolume(v, 0, 4096, &v1[0]);
     }
 
-    ASSERT_EQ(init_tlog, v->getSnapshotManagement().getCurrentTLogName());
+    ASSERT_EQ(init_tlog,
+              v->getSnapshotManagement().getCurrentTLogId());
 
     writeToVolume(v, 0, 4096, &v1[0]);
 
-    ASSERT_NE(init_tlog, v->getSnapshotManagement().getCurrentTLogName());
+    ASSERT_NE(init_tlog,
+              v->getSnapshotManagement().getCurrentTLogId());
 }
 
 TEST_P(SimpleVolumeTest, restoreSnapshot)
@@ -769,29 +771,23 @@ TEST_P(SimpleVolumeTest, restoreSnapshot)
                 "tlog_.*",
                 tlogsInBackend);
 
-    OrderedTLogNames allTLogs;
-    v->getSnapshotManagement().getAllTLogs(allTLogs,
-                                           AbsolutePath::F);
+    const OrderedTLogIds allTLogs(v->getSnapshotManagement().getAllTLogs());
 
-    for (std::list<std::string>::iterator i = tlogsInBackend.begin();
-         i != tlogsInBackend.end();
-         ++i) {
-        for (OrderedTLogNames::iterator j = allTLogs.begin();
-             j != allTLogs.end();
-             ++j)
+    for (auto& tlog_name : tlogsInBackend)
+    {
+        for (const auto& tlog_id : allTLogs)
         {
-            if (*i == *j) {
-                *i = "";
+            if (tlog_name == boost::lexical_cast<std::string>(tlog_id))
+            {
+                tlog_name = "";
                 break;
             }
         }
     }
 
-    for (std::list<std::string>::iterator i = tlogsInBackend.begin();
-         i != tlogsInBackend.end();
-         ++i)
+    for (const auto& tlog_name : tlogsInBackend)
     {
-        EXPECT_EQ("", *i) << "TLog " << *i << " leaked in backend";
+        EXPECT_EQ("", tlog_name) << "TLog " << tlog_name << " leaked in backend";
     }
 }
 
@@ -881,29 +877,23 @@ TEST_P(SimpleVolumeTest, restoreSnapshot2)
                 "tlog_.*",
                 tlogsInBackend);
 
-    OrderedTLogNames allTLogs;
-    v->getSnapshotManagement().getAllTLogs(allTLogs,
-                                           AbsolutePath::F);
+    const OrderedTLogIds allTLogs(v->getSnapshotManagement().getAllTLogs());
 
-    for (std::list<std::string>::iterator i = tlogsInBackend.begin();
-         i != tlogsInBackend.end();
-         ++i) {
-        for (OrderedTLogNames::iterator j = allTLogs.begin();
-             j != allTLogs.end();
-             ++j)
+    for (auto& tlog_name : tlogsInBackend)
+    {
+        for (const auto& tlog_id : allTLogs)
         {
-            if (*i == *j) {
-                *i = "";
+            if (tlog_name == boost::lexical_cast<std::string>(tlog_id))
+            {
+                tlog_name = "";
                 break;
             }
         }
     }
 
-    for (std::list<std::string>::iterator i = tlogsInBackend.begin();
-         i != tlogsInBackend.end();
-         ++i)
+    for (const auto& tlog_name : tlogsInBackend)
     {
-        EXPECT_EQ("", *i) << "TLog " << *i << " leaked in backend";
+        EXPECT_EQ("", tlog_name) << "TLog " << tlog_name << " leaked in backend";
     }
 }
 
@@ -932,14 +922,22 @@ TEST_P(SimpleVolumeTest, restoreSnapshotWithFuckedUpTLogs)
     waitForThisBackendWrite(v);
 
     //make sure we delete some tlog in the middle, not just the first one
-    for (uint32_t i = 0 ; i < 5 * clustersInSco * scosInTlog; i++) {
-        writeToVolume(v, 0, count, "there are no rules without exceptions, so there are rules without exceptions");
+    for (uint32_t i = 0 ; i < 5 * clustersInSco * scosInTlog; i++)
+    {
+        writeToVolume(v,
+                      0,
+                      count,
+                      "there are no rules without exceptions, so there are rules without exceptions");
     }
 
-    const std::string tlogname = v->getSnapshotManagement().getCurrentTLogName();
+    const TLogId tlog_id(v->getSnapshotManagement().getCurrentTLogId());
 
-    for (uint32_t i = 0 ; i < 5 * clustersInSco * scosInTlog; i++) {
-        writeToVolume(v, 0, count, "there are no rules without exceptions, so there are rules without exceptions");
+    for (uint32_t i = 0 ; i < 5 * clustersInSco * scosInTlog; i++)
+    {
+        writeToVolume(v,
+                      0,
+                      count,
+                      "there are no rules without exceptions, so there are rules without exceptions");
     }
 
     const std::string snapshotName2("nikon2");
@@ -947,8 +945,7 @@ TEST_P(SimpleVolumeTest, restoreSnapshotWithFuckedUpTLogs)
     createSnapshot(v, snapshotName2);
     waitForThisBackendWrite(v);
 
-    v->getBackendInterface()->remove(tlogname);
-
+    v->getBackendInterface()->remove(boost::lexical_cast<std::string>(tlog_id));
 
     ASSERT_NO_THROW(restoreSnapshot(v, snapshotName1));
     checkVolume(v,0,count,snapshotName1);
@@ -978,15 +975,17 @@ TEST_P(SimpleVolumeTest, restoreSnapshotWithFuckedUpNeededTLogs)
         writeToVolume(v, 0, count, "should be overwritten");
     }
 
-    const std::string tlogname = v->getSnapshotManagement().getCurrentTLogName();
+    const TLogId tlog_id = v->getSnapshotManagement().getCurrentTLogId();
 
-    for (uint32_t i = 0 ; i < 5 * clustersInSco * scosInTlog; i++) {
+    for (uint32_t i = 0 ; i < 5 * clustersInSco * scosInTlog; i++)
+    {
         writeToVolume(v, 0, count, "should be overwritten");
     }
 
     writeToVolume(v, 0, count, snapshotName1);
 
-    for (uint32_t i = 0 ; i < 5 * clustersInSco * scosInTlog; i++) {
+    for (uint32_t i = 0 ; i < 5 * clustersInSco * scosInTlog; i++)
+    {
         writeToVolume(v, 0, count, "there are no rules without exceptions, so there are rules without exceptions");
     }
 
@@ -998,8 +997,7 @@ TEST_P(SimpleVolumeTest, restoreSnapshotWithFuckedUpNeededTLogs)
     createSnapshot(v, snapshotName2);
     waitForThisBackendWrite(v);
 
-    v->getBackendInterface()->remove(tlogname);
-
+    v->getBackendInterface()->remove(boost::lexical_cast<std::string>(tlog_id));
 
     ASSERT_THROW(restoreSnapshot(v, snapshotName1), std::exception);
 }
@@ -1521,7 +1519,7 @@ TEST_P(SimpleVolumeTest, backend_sync_up_to_tlog)
     Volume* v = newVolume(*ns);
 
     const SnapshotManagement& sm = v->getSnapshotManagement();
-    const auto old_tlog_id(boost::lexical_cast<TLogId>(sm.getCurrentTLogName()));
+    const auto old_tlog_id(sm.getCurrentTLogId());
 
     EXPECT_FALSE(v->isSyncedToBackendUpTo(old_tlog_id));
 
@@ -1533,7 +1531,7 @@ TEST_P(SimpleVolumeTest, backend_sync_up_to_tlog)
         EXPECT_EQ(old_tlog_id,
                   v->scheduleBackendSync());
 
-        new_tlog_id = boost::lexical_cast<TLogId>(sm.getCurrentTLogName());
+        new_tlog_id = sm.getCurrentTLogId();
 
         EXPECT_NE(old_tlog_id,
                   new_tlog_id);

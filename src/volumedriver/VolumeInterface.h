@@ -104,7 +104,7 @@ public:
     removeUpToFromFailOverCache(const SCO sconame) = 0;
 
     virtual void
-    checkState(const std::string& tlogname) = 0;
+    checkState(const TLogId&) = 0;
 
     virtual void
     cork(const youtils::UUID&) = 0;

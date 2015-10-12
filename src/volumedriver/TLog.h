@@ -148,13 +148,13 @@ class TLogs
 {
 public:
     void
-    getOrderedTLogNames(OrderedTLogNames& out) const;
+    getOrderedTLogIds(OrderedTLogIds& out) const;
 
     void
-    getReverseOrderedTLogNames(OrderedTLogNames& out) const;
+    getReverseOrderedTLogIds(OrderedTLogIds& out) const;
 
     void
-    replace(const OrderedTLogNames& in,
+    replace(const OrderedTLogIds& in,
             const std::vector<TLog>& out);
 
     bool
@@ -169,22 +169,22 @@ public:
     TLogs tlogsOnDss();
 
     void
-    getNames(OrderedTLogNames& outTLogs) const;
+    getTLogIds(OrderedTLogIds& outTLogs) const;
 
-    TLogName
-    checkAndGetAllTLogsWrittenToBackendAndRemoveLaterOnes(OrderedTLogNames&);
-
-    bool
-    tlogReferenced(const TLogName& tlog_name) const;
+    boost::optional<TLogId>
+    checkAndGetAllTLogsWrittenToBackendAndRemoveLaterOnes(OrderedTLogIds&);
 
     bool
-    snip(const TLogName& tlog,
+    tlogReferenced(const TLogId&) const;
+
+    bool
+    snip(const TLogId&,
          const boost::optional<uint64_t>& backend_size);
 
     //returns whether cork was seen
     bool
     getReversedTLogsOnBackendSinceLastCork(const boost::optional<youtils::UUID>& cork,
-                                           OrderedTLogNames& reverse_vec) const;
+                                           OrderedTLogIds& reverse_vec) const;
 
     uint64_t
     backend_size() const;

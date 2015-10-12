@@ -130,7 +130,7 @@ TEST_P(SnapshotManagementTest, getTLogsBetweenSnapshots)
 
     vol_->deleteSnapshot(third);
 
-    OrderedTLogNames out;
+    OrderedTLogIds out;
     const SnapshotPersistor& pers = getSnapshotManagement(vol_)->getSnapshotPersistor();
     ASSERT_THROW(pers.getTLogsBetweenSnapshots(thirdn,
                                                fourthn,
@@ -354,12 +354,13 @@ TEST_P(SnapshotManagementTest, test2)
     ASSERT_EQ(1U, tlognames.size());
 
     ASSERT_TRUE(tlognames.size() > 0);
-    BOOST_FOREACH(const std::string& tlogname, tlognames)
+
+    for (const std::string& tlogname : tlognames)
     {
-        EXPECT_TRUE(c->getSnapshotPersistor().isTLogWrittenToBackend(tlogname));
+        EXPECT_TRUE(c->getSnapshotPersistor().isTLogWrittenToBackend(boost::lexical_cast<TLogId>(tlogname)));
     }
 
-    OrderedTLogNames writtentobackend;
+    OrderedTLogIds writtentobackend;
     // c.getSnapshotPersistor().getTLogsWrittenToBackend(writtentobackend);
     // for(size_t i = 0; i < writtentobackend.size();++i)
     // {
@@ -389,10 +390,10 @@ TEST_P(SnapshotManagementTest, test3)
     c->getSnapshotScrubbingWork(boost::none, boost::none, out);
     ASSERT_TRUE(out.size() == 1);
 
-    OrderedTLogNames tlogs;
+    OrderedTLogIds tlogs;
     c->getTLogsInSnapshot(c->getSnapshotNumberByName(snapname),
-                       tlogs,
-                       AbsolutePath::F);
+                          tlogs);
+
     SnapshotWorkUnit& one = out[0];
     EXPECT_EQ(snapname,
               one);
@@ -459,7 +460,7 @@ TEST_P(SnapshotManagementTest, test5)
 //     c.getSnapshotScrubbingWork(out);
 //     ASSERT_TRUE(out.size() == 1);
 
-//     OrderedTLogNames tlogs;
+//     OrderedTLogIds tlogs;
 //     c.getTLogsInSnapshot(num3,
 //                        tlogs,
 //                        false);
@@ -515,7 +516,7 @@ TEST_P(SnapshotManagementTest, test6)
 //     SnapshotWorkUnit& first = out[0];
 
 //     ASSERT_TRUE(first.first == snapname2);
-//     OrderedTLogNames tlogs2;
+//     OrderedTLogIds tlogs2;
 //     c.getTLogsInSnapshot(num2,
 //                          tlogs2,
 //                          false);
@@ -524,7 +525,7 @@ TEST_P(SnapshotManagementTest, test6)
 //     SnapshotWorkUnit& second = out[1];
 
 //     ASSERT_TRUE(second.first == snapname3);
-//     OrderedTLogNames tlogs3;
+//     OrderedTLogIds tlogs3;
 //     c.getTLogsInSnapshot(num3,
 //                          tlogs3,
 //                          false);
@@ -628,9 +629,9 @@ TEST_P(SnapshotManagementTest, dontLeakTLogCheckSumsOnRestore)
     writeToVolume(vol_, 0, vol_->getClusterSize(), snap2);
     vol_->sync();
 
-    OrderedTLogNames tlogpaths;
-    getSnapshotManagement(vol_)->getCurrentTLogs(tlogpaths, AbsolutePath::T);
-    EXPECT_LT(0U, tlogpaths.size());
+    const OrderedTLogIds tlogpaths(getSnapshotManagement(vol_)->getCurrentTLogs());
+    EXPECT_LT(0U,
+              tlogpaths.size());
 
     //CheckSumStore<std::string>& chksums = getCheckSumStore();
 

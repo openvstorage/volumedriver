@@ -412,7 +412,7 @@ TEST_P(cases, DISABLED_multisnapshot)
         //     // ASSERT_TRUE(it->in.size() == 1);
         //     // ASSERT_TRUE(it->out.size() == 1);
         //     // ASSERT_TRUE(it->reloc.size() == 1);
-        //     OrderedTLogNames out;
+        //     OrderedTLogIds out;
         //     v1->getSnapshotManagement().getTLogsInSnapshot(*it,
         //                                                    out,
         //                                                    AbsolutePath::F);

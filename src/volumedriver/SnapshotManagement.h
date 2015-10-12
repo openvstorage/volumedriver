@@ -47,7 +47,7 @@ namespace volumedriver
 class TLogWriter;
 class TLogBackendWriter;
 class WriteOnlyVolume;
-BOOLEAN_ENUM(AbsolutePath)
+
 /**
  * service for managing the snapshots. It is backed by a /snapshots.xml file.
  */
@@ -65,7 +65,7 @@ public:
     friend class SnapshotWriter;
 
     static bool
-    exists(const fs::path& dir);
+    exists(const boost::filesystem::path& dir);
 
     SnapshotManagement(const VolumeConfig&,
                        const RestartContext);
@@ -98,52 +98,41 @@ public:
     Snapshot
     getSnapshot(const SnapshotName&) const;
 
-    void
-    getAllTLogs(OrderedTLogNames&,
-                const AbsolutePath) const;
-
-    OrderedTLogNames
-    getAllTLogs(const AbsolutePath abs) const
-    {
-        OrderedTLogNames tlogs;
-        getAllTLogs(tlogs, abs);
-        return tlogs;
-    }
+    OrderedTLogIds
+    getAllTLogs() const;
 
     bool
-    getTLogsInSnapshot(SnapshotNum num,
-                       OrderedTLogNames& out,
-                       const AbsolutePath) const;
+    getTLogsInSnapshot(SnapshotNum,
+                       OrderedTLogIds&) const;
 
     bool
     getTLogsInSnapshot(const SnapshotName&,
-                       OrderedTLogNames&,
-                       const AbsolutePath) const;
+                       OrderedTLogIds&) const;
 
     void
-    getTLogsNotWrittenToBackend(OrderedTLogNames& out) const;
+    getTLogsNotWrittenToBackend(OrderedTLogIds& out) const;
 
-    OrderedTLogNames
+    OrderedTLogIds
     getTLogsNotWrittenToBackend() const
     {
-        OrderedTLogNames tlogs;
+        OrderedTLogIds tlogs;
         getTLogsNotWrittenToBackend(tlogs);
         return tlogs;
     }
 
     void
-    getTLogsWrittenToBackend(OrderedTLogNames& out) const;
+    getTLogsWrittenToBackend(OrderedTLogIds& out) const;
 
-    OrderedTLogNames
+    OrderedTLogIds
     getTLogsWrittenToBackend() const
     {
-        OrderedTLogNames tlogs;
+        OrderedTLogIds tlogs;
         getTLogsWrittenToBackend(tlogs);
         return tlogs;
     }
 
     bool
-    isTLogWrittenToBackend(const TLogName& name) const;
+    isTLogWrittenToBackend(const TLogId& name) const;
 
     bool
     snapshotExists(SnapshotNum num) const;
@@ -202,7 +191,7 @@ public:
     addSCOCRC(const CheckSum& t);
 
     ScrubId
-    replaceTLogsWithScrubbedOnes(const OrderedTLogNames& /*in*/,
+    replaceTLogsWithScrubbedOnes(const OrderedTLogIds& /*in*/,
                                  const std::vector<TLog>& /*out*/,
                                  SnapshotNum /*relatedSnapshot*/);
 
@@ -225,34 +214,32 @@ public:
     void
     setSnapshotScrubbed(const SnapshotName&);
 
-    fs::path
+    const boost::filesystem::path&
     getTLogsPath() const;
 
-    void
-    getCurrentTLogs(OrderedTLogNames& tlogs,
-                    const AbsolutePath) const;
+    OrderedTLogIds
+    getCurrentTLogs() const;
 
-    const std::string&
-    getCurrentTLogName() const;
+    const TLogId&
+    getCurrentTLogId() const;
 
-    fs::path
+    boost::filesystem::path
     getCurrentTLogPath() const;
 
-    fs::path
-    makeTLogPath(const std::string& tlogName) const;
+    boost::filesystem::path
+    tlogPathPrepender(const std::string&) const;
 
-    void
-    tlogPathPrepender(OrderedTLogNames& vec) const;
+    boost::filesystem::path
+    tlogPathPrepender(const TLogId&) const;
 
-    void
-    getTLogsTillSnapshot(SnapshotNum num,
-                         OrderedTLogNames& out,
-                         AbsolutePath absolute) const;
+    std::vector<boost::filesystem::path>
+    tlogPathPrepender(const OrderedTLogIds&) const;
 
-    void
-    getTLogsAfterSnapshot(SnapshotNum num,
-                          OrderedTLogNames& out,
-                          AbsolutePath absolute) const;
+    OrderedTLogIds
+    getTLogsTillSnapshot(SnapshotNum) const;
+
+    OrderedTLogIds
+    getTLogsAfterSnapshot(SnapshotNum) const;
 
     // Don't use this. You probably want to enrich the snapshotmanagement api
     const SnapshotPersistor&
@@ -261,7 +248,7 @@ public:
         return *sp;
     }
 
-    fs::path
+    boost::filesystem::path
     saveSnapshotToTempFile();
 
     void
@@ -281,7 +268,7 @@ public:
     getLastSCO();
 
     bool
-    tlogReferenced(const std::string& tlog_name) const;
+    tlogReferenced(const TLogId&) const;
 
     unsigned
     maxTLogEntries() const
@@ -304,8 +291,8 @@ public:
     ScrubId
     new_scrub_id();
 
-    static fs::path
-    snapshots_file_path(const fs::path& snaps_path);
+    static boost::filesystem::path
+    snapshots_file_path(const boost::filesystem::path& snaps_path);
 
 private:
     DECLARE_LOGGER("SnapshotManagement");
@@ -314,7 +301,7 @@ private:
     std::unique_ptr<TLogWriter> currentTLog_;
 
     //    static const char* snapshotConfigName_;
-    std::string currentTLogName_;
+    TLogId currentTLogId_;
 
     unsigned maxTLogEntries_;
     unsigned numTLogEntries_;
@@ -326,11 +313,11 @@ private:
     mutable lock_type snapshot_lock_;
     mutable lock_type tlog_lock_;
 
-    fs::path snapshotPath_;
-    fs::path tlogPath_;
+    boost::filesystem::path snapshotPath_;
+    boost::filesystem::path tlogPath_;
     const backend::Namespace nspace_;
 
-    fs::path
+    boost::filesystem::path
     snapshots_file_path_() const;
 
     // To be called by Volume on local restart
@@ -341,7 +328,7 @@ private:
     syncTLog_(const MaybeCheckSum& maybe_sco_crc);
 
     CheckSum
-    closeTLog_(const fs::path* pth = 0);
+    closeTLog_(const boost::filesystem::path* pth = 0);
 
     void
     maybeCloseTLog_();
@@ -350,16 +337,16 @@ private:
     openTLog_();
 
     void
-    scheduleWriteTLogToBackend(const std::string& tlogname,
-                           const fs::path& tlogpath,
-                           const SCO sconame,
-                           const CheckSum& tlog_crc);
+    scheduleWriteTLogToBackend(const TLogId&,
+                               const boost::filesystem::path&,
+                               const SCO,
+                               const CheckSum&);
 
     bool
     isSyncedToBackend();
 
     uint64_t
-    getTLogSizes(const OrderedTLogNames&);
+    getTLogSizes(const OrderedTLogIds&);
 
     void
     createSnapshot(const SnapshotName& name,

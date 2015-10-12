@@ -16,6 +16,7 @@
 #define TYPES_H_
 
 #include "SnapshotName.h"
+#include "TLogId.h"
 
 #include <stdint.h>
 
@@ -134,18 +135,11 @@ typedef uint64_t timestamp_t;
 class TLogBackendReader;
 
 typedef std::string TLogName;
-class OrderedTLogNames : public std::vector<TLogName> {};
-template<class Archive>
-void serialize(Archive& ar,
-               OrderedTLogNames& res,
-               const unsigned)
-{
-    ar & static_cast<std::vector<TLogName>& >(res);
-}
 
 typedef SnapshotName SnapshotWorkUnit;
 
-typedef std::vector<std::pair<SCOCloneID, OrderedTLogNames> > CloneTLogs;
+typedef std::vector<std::pair<SCOCloneID, OrderedTLogIds> > CloneTLogs;
+
 typedef std::vector<SnapshotWorkUnit> SnapshotWork;
 
 class CachedSCO;
@@ -160,9 +154,9 @@ typedef boost::intrusive_ptr<SCOCacheMountPoint> SCOCacheMountPointPtr;
 
 // next doesn't work for some reason in combination with logging :(
 inline std::ostream & operator<<(std::ostream &o,
-                                 const OrderedTLogNames &n)
+                                 const OrderedTLogIds &n)
 {
-    OrderedTLogNames::const_iterator i = n.begin();
+    OrderedTLogIds::const_iterator i = n.begin();
     o << "[";
     while (i != n.end())
     {

@@ -99,7 +99,7 @@ Snapshot::inBackend() const
 
 bool
 Snapshot::getReversedTLogsOnBackendSinceLastCork(const boost::optional<yt::UUID>& cork,
-                                                 OrderedTLogNames& reverse_vec) const
+                                                 OrderedTLogIds& reverse_vec) const
 {
     if (cork != boost::none and
         cork_uuid_ == *cork and
@@ -126,11 +126,11 @@ Snapshot::backend_size() const
 }
 
 bool
-Snapshots::tlogReferenced(const std::string& tlog_name) const
+Snapshots::tlogReferenced(const TLogId& tlog_id) const
 {
     for(auto i = begin(); i != end(); ++i)
     {
-        if(i->tlogReferenced(tlog_name))
+        if(i->tlogReferenced(tlog_id))
         {
             return true;
         }
@@ -237,7 +237,7 @@ Snapshots::find_(const SnapshotNum num)
 
 bool
 Snapshots::getTLogsInSnapshot(const SnapshotNum num,
-                              OrderedTLogNames& out) const
+                              OrderedTLogIds& out) const
 {
     auto it = find_(num);
     if(it == end())
@@ -246,7 +246,7 @@ Snapshots::getTLogsInSnapshot(const SnapshotNum num,
     }
     else
     {
-        it->getOrderedTLogNames(out);
+        it->getOrderedTLogIds(out);
         return true;
     }
 }
@@ -450,7 +450,7 @@ Snapshots::deleteAllButLastSnapshot()
 
 void
 Snapshots::getTLogsTillSnapshot(const SnapshotNum num,
-                                OrderedTLogNames& out) const
+                                OrderedTLogIds& out) const
 {
     bool including = true; //false makes never sense
     for(const_iterator i = begin(); i != end(); ++i)
@@ -459,7 +459,7 @@ Snapshots::getTLogsTillSnapshot(const SnapshotNum num,
         {
             if(including)
             {
-                i->getOrderedTLogNames(out);
+                i->getOrderedTLogIds(out);
                 return;
             }
             else
@@ -469,7 +469,7 @@ Snapshots::getTLogsTillSnapshot(const SnapshotNum num,
         }
         else
         {
-            i->getOrderedTLogNames(out);
+            i->getOrderedTLogIds(out);
         }
     }
     LOG_ERROR("Snapshot with id " << num << " does not exist");
@@ -478,7 +478,7 @@ Snapshots::getTLogsTillSnapshot(const SnapshotNum num,
 
 void
 Snapshots::getTLogsAfterSnapshot(const SnapshotNum num,
-                                 OrderedTLogNames& out) const
+                                 OrderedTLogIds& out) const
 {
     for(const_reverse_iterator i = rbegin(); i !=rend();++i)
     {
@@ -489,7 +489,7 @@ Snapshots::getTLogsAfterSnapshot(const SnapshotNum num,
         }
         else
         {
-            i->getReverseOrderedTLogNames(out);
+            i->getReverseOrderedTLogIds(out);
         }
     }
     LOG_ERROR("Snapshot with id " << num << " does not exist");
@@ -499,7 +499,7 @@ Snapshots::getTLogsAfterSnapshot(const SnapshotNum num,
 void
 Snapshots::getTLogsBetweenSnapshots(const SnapshotNum start,
                                     const SnapshotNum end_snap,
-                                    OrderedTLogNames& out,
+                                    OrderedTLogIds& out,
                                     IncludingEndSnapshot include_last) const
 {
     if(start > end_snap)
@@ -525,7 +525,7 @@ Snapshots::getTLogsBetweenSnapshots(const SnapshotNum start,
                 throw fungi::IOException("Snapshot does not exist");
             }
 
-            i->getOrderedTLogNames(out);
+            i->getOrderedTLogIds(out);
         }
         else if(i->num == end_snap)
         {
@@ -537,7 +537,7 @@ Snapshots::getTLogsBetweenSnapshots(const SnapshotNum start,
 
             if(include_last == IncludingEndSnapshot::T)
             {
-                i->getOrderedTLogNames(out);
+                i->getOrderedTLogIds(out);
                 return;
             }
             else
@@ -552,7 +552,7 @@ Snapshots::getTLogsBetweenSnapshots(const SnapshotNum start,
 }
 
 bool
-Snapshots::snip(const std::string tlog_name,
+Snapshots::snip(const TLogId& tlog_id,
                 const boost::optional<uint64_t>& backend_size)
 {
     bool found = false;
@@ -560,16 +560,16 @@ Snapshots::snip(const std::string tlog_name,
 
     for(it = begin(); it != end() and not found; ++it)
     {
-        LOG_INFO("Checking snapshot " << it->getName() << " for tlog " << tlog_name);
+        LOG_INFO("Checking snapshot " << it->getName() << " for tlog " << tlog_id);
 
-        found = it->snip(tlog_name,
+        found = it->snip(tlog_id,
                          backend_size);
     }
 
     if(it != end())
     {
         LOG_INFO("Snipping at snapshot " << it->getName()
-                 << " tlog " << tlog_name);
+                 << " tlog " << tlog_id);
 
         for(const_iterator it2 = it; it2 != end(); ++it2)
         {
@@ -625,7 +625,7 @@ already_replaced(const std::vector<TLog>& vec,
 }
 
 void
-Snapshots::replace(const OrderedTLogNames& in,
+Snapshots::replace(const OrderedTLogIds& in,
                    const std::vector<TLog>& out,
                    const SnapshotNum num)
 {

@@ -20,6 +20,7 @@
 #include "SnapshotManagement.h"
 #include "TransientException.h"
 
+#include <youtils/Catchers.h>
 #include <youtils/Timer.h>
 
 #include <backend/BackendException.h>
@@ -107,13 +108,11 @@ WriteSCO::run(int threadid)
 
 WriteTLog::WriteTLog(VolumeInterface* vol,
                      const fs::path& tlogpath,
-                     const std::string& name,
                      const TLogId& tlogid,
                      const SCO sconame,
                      const CheckSum& checksum)
     : TaskBase(vol, BarrierTask::T)
     , tlogpath_(tlogpath)
-    , name_(name)
     , tlogid_(tlogid)
     , sconame_(sconame)
     , checksum_(checksum)
@@ -143,11 +142,11 @@ WriteTLog::run(int /*threadid*/)
     try
     {
         volume_->getBackendInterface()->write(tlogpath_.string(),
-                                              name_,
+                                              boost::lexical_cast<std::string>(tlogid_),
                                               OverwriteObject::T,
                                               &checksum_);
         volume_->tlogWrittenToBackendCallback(tlogid_,
-                                          sconame_);
+                                              sconame_);
     }
     catch (backend::BackendInputException& e)
     {
@@ -232,14 +231,8 @@ DeleteTLog::run(int /*threadID*/)
                                                ObjectMayNotExist::T);
         LOG_INFO("Deleted TLog " << tlog_);
     }
-    catch(std::exception& e)
-    {
-        LOG_WARN("Ignoring exception deleleting TLog " << tlog_ << ", " << e.what());
-    }
-    catch(...)
-    {
-        LOG_WARN("Ignoring unknown exception deleleting TLog " << tlog_);
-    }
+    CATCH_STD_ALL_LOGLEVEL_IGNORE("Exception deleting TLog " << tlog_,
+                                  WARN);
 }
 
 BlockDeleteTLogs::BlockDeleteTLogs(VolumeInterface* vol,

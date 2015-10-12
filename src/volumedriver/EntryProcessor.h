@@ -197,9 +197,9 @@ class CheckTLogAndSCOCRCProcessor
     : public CheckSCOCRCProcessor
 {
 public:
-    CheckTLogAndSCOCRCProcessor(const std::string tlogname)
+    CheckTLogAndSCOCRCProcessor(const TLogId& tlog_id)
         : last_entry_was_tlog_crc_(false)
-        , tlogname_(tlogname)
+        , tlog_id_(tlog_id)
         , num_entries_(0)
     {}
 
@@ -228,12 +228,13 @@ public:
     CheckSum checksum_;
 
     const
-    std::string& tlogname() const
+    TLogId&
+    tlog_id() const
     {
-        return tlogname_;
+        return tlog_id_;
     }
 
-    const std::string tlogname_;
+    const TLogId tlog_id_;
     uint64_t num_entries_;
 };
 

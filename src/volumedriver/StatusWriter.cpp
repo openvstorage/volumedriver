@@ -125,10 +125,11 @@ StatusWriter::add_kept(const uint64_t size)
 }
 
 void
-StatusWriter::current_tlog(const std::string& tlog)
+StatusWriter::current_tlog(const boost::optional<vd::TLogId>& tlog_id)
 {
     WITH_LOCK;
-    put("current_tlog", tlog);
+    put("current_tlog",
+        boost::lexical_cast<std::string>(tlog_id));
 }
 
 // Call finish to stop the action and write a last report to the backend

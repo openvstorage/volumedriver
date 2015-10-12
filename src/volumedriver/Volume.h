@@ -304,7 +304,7 @@ public:
     removeUpToFromFailOverCache(const SCO sconame) override final;
 
     virtual void
-    checkState(const std::string& tlogname) override final;
+    checkState(const TLogId&) override final;
 
     virtual void
     cork(const youtils::UUID&) override final;
@@ -567,7 +567,7 @@ private:
     NSIDMap nsidmap_;
 
     VolumeFailOverState failoverstate_;
-    std::string last_tlog_not_on_failover_;
+    boost::optional<TLogId> last_tlog_not_on_failover_;
 
     std::atomic<uint64_t> readcounter_;
 

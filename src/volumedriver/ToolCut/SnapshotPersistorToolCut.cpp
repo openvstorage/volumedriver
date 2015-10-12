@@ -122,7 +122,7 @@ bpy::list
 SnapshotPersistorToolCut::getAllTLogs(bool withCurrent) const
 {
     bpy::list result;
-    vd::OrderedTLogNames tlogs;
+    vd::OrderedTLogIds tlogs;
     snapshot_persistor_->getAllTLogs(tlogs,
                                      withCurrent? WithCurrent::T : WithCurrent::F);
 
@@ -137,7 +137,7 @@ bpy::list
 SnapshotPersistorToolCut::getCurrentTLogs() const
 {
     bpy::list result;
-    vd::OrderedTLogNames tlogs;
+    vd::OrderedTLogIds tlogs;
     snapshot_persistor_->getCurrentTLogs(tlogs);
 
     for (const auto& tlog : tlogs)
@@ -176,14 +176,14 @@ SnapshotPersistorToolCut::getParentSnapshot() const
 std::string
 SnapshotPersistorToolCut::getCurrentTLog() const
 {
-    return snapshot_persistor_->getCurrentTLog();
+    return boost::lexical_cast<std::string>(snapshot_persistor_->getCurrentTLog());
 }
 
 bpy::list
 SnapshotPersistorToolCut::getTLogsTillSnapshot(const std::string& snap_name) const
 {
     bpy::list result;
-    vd::OrderedTLogNames tlogs;
+    vd::OrderedTLogIds tlogs;
     vd::SnapshotNum snum = snapshot_persistor_->getSnapshotNum(vd::SnapshotName(snap_name));
     snapshot_persistor_->getTLogsTillSnapshot(snum,
                                               tlogs);
@@ -199,7 +199,7 @@ bpy::list
 SnapshotPersistorToolCut::getTLogsInSnapshot(const std::string& snap_name) const
 {
     bpy::list result;
-    vd::OrderedTLogNames tlogs;
+    vd::OrderedTLogIds tlogs;
     vd::SnapshotNum snum = snapshot_persistor_->getSnapshotNum(vd::SnapshotName(snap_name));
     snapshot_persistor_->getTLogsInSnapshot(snum,
                                               tlogs);
@@ -215,7 +215,7 @@ bpy::list
 SnapshotPersistorToolCut::getTLogsAfterSnapshot(const std::string& snap_name) const
 {
     bpy::list result;
-    vd::OrderedTLogNames tlogs;
+    vd::OrderedTLogIds tlogs;
     vd::SnapshotNum snum = snapshot_persistor_->getSnapshotNum(vd::SnapshotName(snap_name));
     snapshot_persistor_->getTLogsAfterSnapshot(snum,
                                               tlogs);
@@ -224,8 +224,8 @@ SnapshotPersistorToolCut::getTLogsAfterSnapshot(const std::string& snap_name) co
     {
         result.append(tlog);
     }
-    return result;
 
+    return result;
 }
 
 bool
@@ -265,7 +265,7 @@ bpy::list
 SnapshotPersistorToolCut::getTLogsNotWrittenToBackend() const
 {
     bpy::list result;
-    vd::OrderedTLogNames tlogs;
+    vd::OrderedTLogIds tlogs;
     snapshot_persistor_->getTLogsNotWrittenToBackend(tlogs);
 
     for (const auto& tlog : tlogs)
@@ -303,12 +303,10 @@ SnapshotPersistorToolCut::SnapshotPersistorToolCut(bpy::object& backend,
     snapshot_persistor_.reset(new vd::SnapshotPersistor(p));
 }
 
-
 SnapshotPersistorToolCut::SnapshotPersistorToolCut(const std::string& p)
 {
     snapshot_persistor_.reset(new vd::SnapshotPersistor(p));
 }
-
 
 void
 SnapshotPersistorToolCut::saveToFile(const std::string& p) const
@@ -319,7 +317,7 @@ SnapshotPersistorToolCut::saveToFile(const std::string& p) const
 void
 SnapshotPersistorToolCut::snip(const std::string& tlogname)
 {
-    snapshot_persistor_->snip(tlogname,
+    snapshot_persistor_->snip(boost::lexical_cast<vd::TLogId>(tlogname),
                               boost::none);
 }
 
@@ -328,7 +326,7 @@ SnapshotPersistorToolCut::replace(const bpy::list& new_ones,
                                   const std::string& snap_name)
 {
     vd::SnapshotNum snap_num = snapshot_persistor_->getSnapshotNum(vd::SnapshotName(snap_name));
-    vd::OrderedTLogNames olden_ones;
+    vd::OrderedTLogIds olden_ones;
     snapshot_persistor_->getTLogsInSnapshot(snap_num,
                                             olden_ones);
     uint64_t len_new_ones = len(new_ones);
@@ -406,7 +404,7 @@ SnapshotPersistorToolCut::str() const
                             });
 
     ss << "current:\n";
-    const vd::OrderedTLogNames cur(snapshot_persistor_->getCurrentTLogs());
+    const vd::OrderedTLogIds cur(snapshot_persistor_->getCurrentTLogs());
     for (const auto& tlog : cur)
     {
         ss << "\t\t" << tlog << std::endl;

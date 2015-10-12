@@ -95,7 +95,7 @@ public:
     //returns whether cork was seen
     bool
     getReversedTLogsOnBackendSinceLastCork(const boost::optional<youtils::UUID>& cork,
-                                           OrderedTLogNames& reverse_vec) const;
+                                           OrderedTLogIds& reverse_vec) const;
 
     const SnapshotMetaData&
     metadata() const
@@ -219,7 +219,7 @@ public:
 
     bool
     getTLogsInSnapshot(const SnapshotNum,
-                       OrderedTLogNames&) const;
+                       OrderedTLogIds&) const;
 
     SnapshotNum
     getNextSnapshotNum() const;
@@ -259,7 +259,7 @@ public:
     deleteAllButLastSnapshot();
 
     bool
-    snip(const std::string tlog_name,
+    snip(const TLogId&,
          const boost::optional<uint64_t>& backend_size);
 
     uint64_t
@@ -271,16 +271,16 @@ public:
 
     void
     getTLogsTillSnapshot(const SnapshotNum num,
-                         OrderedTLogNames& out) const;
+                         OrderedTLogIds& out) const;
 
     void
     getTLogsAfterSnapshot(SnapshotNum num,
-                          OrderedTLogNames& out) const;
+                          OrderedTLogIds& out) const;
 
     void
     getTLogsBetweenSnapshots(const SnapshotNum start,
                              const SnapshotNum end,
-                             OrderedTLogNames& out,
+                             OrderedTLogIds& out,
                              IncludingEndSnapshot) const;
 
     void
@@ -290,7 +290,7 @@ public:
     getAllSnapshots(std::vector<SnapshotNum>& vec) const;
 
     void
-    replace(const OrderedTLogNames& in,
+    replace(const OrderedTLogIds& in,
             const std::vector<TLog>& out,
             const SnapshotNum num);
 
@@ -300,10 +300,10 @@ public:
                              SnapshotWork& out) const;
 
     bool
-    tlogReferenced(const std::string& tlog_name) const;
+    tlogReferenced(const TLogId&) const;
 
-    TLogName
-    checkAndGetAllTLogsWrittenToBackendAndRemoveLaterOnes(OrderedTLogNames&);
+    boost::optional<TLogId>
+    checkAndGetAllTLogsWrittenToBackendAndRemoveLaterOnes(OrderedTLogIds&);
 
     bool
     hasUUIDSpecified() const

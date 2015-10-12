@@ -16,6 +16,7 @@
 #define VD_TLOG_ID_H_
 
 #include <iosfwd>
+#include <vector>
 
 #include <boost/serialization/strong_typedef.hpp>
 
@@ -28,6 +29,14 @@ namespace volumedriver
 BOOST_STRONG_TYPEDEF(youtils::UUID,
                      TLogId);
 
+template<class Archive>
+void serialize(Archive& ar,
+               TLogId& tlog_id,
+               const unsigned)
+{
+    ar & static_cast<youtils::UUID&>(tlog_id);
+}
+
 std::ostream&
 operator<<(std::ostream&,
            const TLogId&);
@@ -35,6 +44,8 @@ operator<<(std::ostream&,
 std::istream&
 operator>>(std::istream&,
            TLogId&);
+
+using OrderedTLogIds = std::vector<TLogId>;
 
 }
 

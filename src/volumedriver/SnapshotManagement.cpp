@@ -92,8 +92,8 @@ SnapshotManagement::SnapshotManagement(const VolumeConfig& cfg,
                context == RestartContext::BackendRestart);
 
         sp.reset(new SnapshotPersistor(snapshots_file_path_()));
-        currentTLogName_ = sp->getCurrentTLog();
-        const fs::path last_tlog(makeTLogPath(currentTLogName_));
+        currentTLogId_ = sp->getCurrentTLog();
+        const fs::path last_tlog(tlogPathPrepender(currentTLogId_));
 
         if(not fs::exists(last_tlog))
         {
@@ -115,7 +115,7 @@ SnapshotManagement::SnapshotManagement(const VolumeConfig& cfg,
 
         LOCKSNAP;
         sp->saveToFile(snapshots_file_path_(), SyncAndRename::T);
-        currentTLogName_ = sp->getCurrentTLog();
+        currentTLogId_ = sp->getCurrentTLog();
     }
 }
 
@@ -163,30 +163,40 @@ SnapshotManagement::currentTLogHasData()
     // this sync is necessary to see the last data in the TLOG.
     sync(boost::none);
 
-    TLogReader r(tlogPath_ / currentTLogName_);
-
-    return r.nextLocation() != 0;
+    TLogReader r(tlogPath_ / boost::lexical_cast<std::string>(currentTLogId_));
+    return r.nextLocation() != nullptr;
 }
 
-fs::path
+const fs::path&
 SnapshotManagement::getTLogsPath() const
 {
     return tlogPath_;
 }
 
 fs::path
-SnapshotManagement::makeTLogPath(const std::string& tlogName) const
+SnapshotManagement::tlogPathPrepender(const std::string& tlogName) const
 {
     return tlogPath_ / tlogName;
 }
 
-void
-SnapshotManagement::tlogPathPrepender(OrderedTLogNames& vec) const
+fs::path
+SnapshotManagement::tlogPathPrepender(const TLogId& tlog_id) const
 {
-    for(unsigned i = 0; i < vec.size(); ++i)
+    return tlogPathPrepender(boost::lexical_cast<std::string>(tlog_id));
+}
+
+std::vector<fs::path>
+SnapshotManagement::tlogPathPrepender(const OrderedTLogIds& vec) const
+{
+    std::vector<fs::path> paths;
+    paths.reserve(vec.size());
+
+    for (const auto& tlog_id : vec)
     {
-        vec[i] = makeTLogPath(vec[i]).string();
+        paths.emplace_back(tlogPathPrepender(tlog_id));
     }
+
+    return paths;
 }
 
 fs::path
@@ -235,9 +245,9 @@ SnapshotManagement::setAsTemplate(const MaybeCheckSum& maybe_sco_crc)
 }
 
 bool
-SnapshotManagement::tlogReferenced(const std::string& tlog_name) const
+SnapshotManagement::tlogReferenced(const TLogId& tlog_id) const
 {
-    return sp->tlogReferenced(tlog_name);
+    return sp->tlogReferenced(tlog_id);
 }
 
 void
@@ -247,15 +257,15 @@ SnapshotManagement::createSnapshot(const SnapshotName& name,
                                    const UUID& guid,
                                    const bool create_scrubbed)
 {
-    std::string tlogname;
-    SCO sconame;
-    CheckSum tlog_crc;
-
     try
     {
+        TLogId tlog_id;
+        SCO sconame;
+        CheckSum tlog_crc;
+
         {
             LOCKSNAP;
-            tlogname = sp->getCurrentTLog();
+            tlog_id = sp->getCurrentTLog();
 
             sp->snapshot(name,
                          metadata,
@@ -271,19 +281,20 @@ SnapshotManagement::createSnapshot(const SnapshotName& name,
                 }
 
                 tlog_crc = closeTLog_();
-                currentTLogName_ = sp->getCurrentTLog();
+                currentTLogId_ = sp->getCurrentTLog();
                 openTLog_();
             }
-            sp->saveToFile(snapshots_file_path_(), SyncAndRename::T);
+            sp->saveToFile(snapshots_file_path_(),
+                           SyncAndRename::T);
             // num = sp->getSnapshotNum(name);
             sp->getSnapshotNum(name);
         }
 
-        const fs::path tlogpath(makeTLogPath(tlogname));
-        scheduleWriteTLogToBackend(tlogname,
-                               tlogpath,
-                               sconame,
-                               tlog_crc);
+        const fs::path tlogpath(tlogPathPrepender(tlog_id));
+        scheduleWriteTLogToBackend(tlog_id,
+                                   tlogpath,
+                                   sconame,
+                                   tlog_crc);
     }
     catch (SnapshotPersistor::SnapshotNameAlreadyExists&)
     {
@@ -334,9 +345,9 @@ SnapshotManagement::scheduleBackendSync(const MaybeCheckSum& maybe_sco_crc)
 
                        SCO sconame;
 
-                       ASSERT(currentTLogName_ == sp->getCurrentTLog());
-                       const std::string tlogname = currentTLogName_;
-                       const fs::path tlogpath(makeTLogPath(tlogname));
+                       ASSERT(currentTLogId_ == sp->getCurrentTLog());
+                       tlog_id = currentTLogId_;
+                       const fs::path tlogpath(tlogPathPrepender(tlog_id));
                        sp->newTLog();
 
                        LOCKTLOG;
@@ -345,28 +356,26 @@ SnapshotManagement::scheduleBackendSync(const MaybeCheckSum& maybe_sco_crc)
                            currentTLog_->add(*maybe_sco_crc);
                        }
 
-                       tlog_id = boost::lexical_cast<TLogId>(currentTLogName_);
-
                        sconame = currentTLog_->getClusterLocation().sco();
                        const auto tlog_crc(closeTLog_(&tlogpath));
 
                        DEBUG_CHECK(FileUtils::calculate_checksum(tlogpath) == tlog_crc);
 
-                       currentTLogName_ = sp->getCurrentTLog();
+                       currentTLogId_ = sp->getCurrentTLog();
                        openTLog_();
 
                        tracepoint(openvstorage_volumedriver,
                                   new_tlog,
                                   nspace_.str().c_str(),
-                                  currentTLogName_.c_str());
+                                  boost::lexical_cast<std::string>(currentTLogId_).c_str());
 
                        sp->saveToFile(snapshots_file_path_(),
                                       SyncAndRename::T);
 
-                       scheduleWriteTLogToBackend(tlogname,
-                                              tlogpath,
-                                              sconame,
-                                              tlog_crc);
+                       scheduleWriteTLogToBackend(tlog_id,
+                                                  tlogpath,
+                                                  sconame,
+                                                  tlog_crc);
                    },
                    "schedule backend sync");
 
@@ -374,33 +383,29 @@ SnapshotManagement::scheduleBackendSync(const MaybeCheckSum& maybe_sco_crc)
     return tlog_id;
 }
 
-void
-SnapshotManagement::getCurrentTLogs(OrderedTLogNames& vec,
-                                    const AbsolutePath absolute_path) const
+OrderedTLogIds
+SnapshotManagement::getCurrentTLogs() const
 {
-    {
-        LOCKSNAP;
-        sp->getCurrentTLogs(vec);
-    }
+    OrderedTLogIds tlog_ids;
 
-    if(T(absolute_path))
-    {
-        tlogPathPrepender(vec);
-    }
+    LOCKSNAP;
+    sp->getCurrentTLogs(tlog_ids);
+
+    return tlog_ids;
 }
 
-const std::string&
-SnapshotManagement::getCurrentTLogName() const
+const TLogId&
+SnapshotManagement::getCurrentTLogId() const
 {
     LOCKSNAP;
-    return currentTLogName_;
+    return currentTLogId_;
 }
 
 fs::path
 SnapshotManagement::getCurrentTLogPath() const
 {
     LOCKSNAP;
-    return makeTLogPath(currentTLogName_);
+    return tlogPathPrepender(currentTLogId_);
 }
 
 SnapshotNum
@@ -413,38 +418,35 @@ SnapshotManagement::getSnapshotNumberByName(const SnapshotName& name) const
 void
 SnapshotManagement::eraseSnapshotsAndTLogsAfterSnapshot(SnapshotNum num)
 {
-    OrderedTLogNames vec;
+    OrderedTLogIds tlog_ids;
     {
         LOCKSNAP;
 
-        sp->getTLogsAfterSnapshot(num, vec);
+        sp->getTLogsAfterSnapshot(num,
+                                  tlog_ids);
 
         sp->deleteTLogsAndSnapshotsAfterSnapshot(num);
 
         {
             LOCKTLOG;
             maybeCloseTLog_();
-            currentTLogName_ = sp->getCurrentTLog();
+            currentTLogId_ = sp->getCurrentTLog();
             openTLog_();
         }
 
         sp->saveToFile(snapshots_file_path_(), SyncAndRename::T);
     }
 
-    // Z42: Huh?
-    {
-        LOCKTLOG;
-    }
-
-    tlogPathPrepender(vec);
-    for(size_t i = 0; i < vec.size();++i)
+    const std::vector<fs::path> paths(tlogPathPrepender(tlog_ids));
+    for (const auto& p : paths)
     {
         // ignore delete as some of them are
         // already written to the backend!
         // TODO: it would be more appropriate to just only unlink the
         // CORRECT tlog files
-        fs::remove(vec[i]);
+        fs::remove(p);
     }
+
     scheduleWriteSnapshotToBackend();
 }
 
@@ -459,51 +461,33 @@ SnapshotManagement::deleteSnapshot(const SnapshotName& name)
     scheduleWriteSnapshotToBackend();
 }
 
-void
-SnapshotManagement::getAllTLogs(OrderedTLogNames& out,
-                                AbsolutePath absolute) const
+OrderedTLogIds
+SnapshotManagement::getAllTLogs() const
 {
-    {
-        LOCKSNAP;
-        sp->getAllTLogs(out,
-                        WithCurrent::T);
+    OrderedTLogIds tlog_ids;
 
-    }
+    LOCKSNAP;
+    sp->getAllTLogs(tlog_ids,
+                    WithCurrent::T);
 
-    if(absolute == AbsolutePath::T)
-    {
-        tlogPathPrepender(out);
-    }
+    return tlog_ids;
 }
 
 bool
 SnapshotManagement::getTLogsInSnapshot(SnapshotNum num,
-                                       OrderedTLogNames& out,
-                                       AbsolutePath absolute) const
+                                       OrderedTLogIds& out) const
 {
-    bool res = false;
-    {
-        LOCKSNAP;
-        res = sp->getTLogsInSnapshot(num,
-                                     out);
-
-    }
-
-    if(T(absolute))
-    {
-        tlogPathPrepender(out);
-    }
-    return res;
+    LOCKSNAP;
+    return sp->getTLogsInSnapshot(num,
+                                  out);
 }
 
 bool
 SnapshotManagement::getTLogsInSnapshot(const SnapshotName& snapname,
-                                       OrderedTLogNames& out,
-                                       AbsolutePath absolute) const
+                                       OrderedTLogIds& out) const
 {
     return getTLogsInSnapshot(getSnapshotNumberByName(snapname),
-                              out,
-                              absolute);
+                              out);
 }
 
 void
@@ -517,13 +501,13 @@ SnapshotManagement::destroy(const DeleteLocalData delete_local_data)
     if(T(delete_local_data))
     {
         LOCKSNAP;
-        OrderedTLogNames vec;
+        OrderedTLogIds vec;
         sp->getAllTLogs(vec,
                         WithCurrent::T);
 
-        tlogPathPrepender(vec);
+        const std::vector<fs::path> paths(tlogPathPrepender(vec));
 
-        for(const auto& tlogpath : vec)
+        for(const auto& tlogpath : paths)
         {
             fs::remove(tlogpath);
         }
@@ -558,7 +542,7 @@ SnapshotManagement::getSnapshot(const SnapshotName& snapname) const
 void
 SnapshotManagement::openTLog_()
 {
-    getVolume()->cork(boost::lexical_cast<TLogId>(currentTLogName_));
+    getVolume()->cork(currentTLogId_);
 
     numTLogEntries_ = 0;
     previous_tlog_time_ = time(0);
@@ -571,7 +555,7 @@ SnapshotManagement::openTLog_()
 
     try
     {
-        currentTLog_.reset(new TLogWriter(makeTLogPath(currentTLogName_),
+        currentTLog_.reset(new TLogWriter(tlogPathPrepender(currentTLogId_),
                                           nullptr));
     }
     CATCH_STD_ALL_LOG_RETHROW("could not open new TLOG, entering ZOMBIE volume state")
@@ -616,7 +600,7 @@ SnapshotManagement::maybeCloseTLog_()
 }
 
 void
-SnapshotManagement::scheduleWriteTLogToBackend(const std::string& tlogname,
+SnapshotManagement::scheduleWriteTLogToBackend(const TLogId& tlog_id,
                                                const fs::path& tlogpath,
                                                const SCO sconame,
                                                const CheckSum& tlog_crc)
@@ -626,15 +610,14 @@ SnapshotManagement::scheduleWriteTLogToBackend(const std::string& tlogname,
         std::unique_ptr<backend_task::WriteTLog>
             task(new backend_task::WriteTLog(getVolume(),
                                              tlogpath,
-                                             tlogname,
-                                             boost::lexical_cast<TLogId>(tlogname),
+                                             tlog_id,
                                              sconame,
                                              tlog_crc));
 
         VolManager::get()->backend_thread_pool()->addTask(task.release());
     }
     CATCH_STD_ALL_VLOG_ADDERROR_HALT_RETHROW("couldn't schedule writing of tlog " <<
-                                             (tlogpath / tlogname).string(),
+                                             tlogpath.string(),
                                              events::VolumeDriverErrorCode::WriteTLog)
 }
 
@@ -707,28 +690,31 @@ SnapshotManagement::maybe_switch_tlog_()
 
     if (numTLogEntries_ >= maxTLogEntries_)
     {
-        const std::string tlogname(sp->getCurrentTLog());
+        const TLogId tlog_id(sp->getCurrentTLog());
         const ClusterLocation location(currentTLog_->getClusterLocation());
 
-        const fs::path tlogpath(makeTLogPath(tlogname));
+        const fs::path tlogpath(tlogPathPrepender(tlog_id));
         sp->newTLog();
         const auto tlog_crc(closeTLog_());
-        currentTLogName_ = sp->getCurrentTLog();
+        currentTLogId_ = sp->getCurrentTLog();
 
         tracepoint(openvstorage_volumedriver,
                    new_tlog,
                    nspace_.str().c_str(),
-                   currentTLogName_.c_str());
+                   boost::lexical_cast<std::string>(currentTLogId_).c_str());
 
         // the datastore also logs SCO rollover with INFO, after all
-        LOG_VINFO("switching to TLog " << currentTLogName_);
+        LOG_VINFO("switching to TLog " << currentTLogId_);
 
         openTLog_();
-        scheduleWriteTLogToBackend(tlogname,
+
+        scheduleWriteTLogToBackend(tlog_id,
                                    tlogpath,
                                    location.sco(),
                                    tlog_crc);
-        sp->saveToFile(snapshots_file_path_(), SyncAndRename::T);
+
+        sp->saveToFile(snapshots_file_path_(),
+                       SyncAndRename::T);
     }
 }
 
@@ -758,10 +744,10 @@ SnapshotManagement::sync(const MaybeCheckSum& maybe_sco_crc)
 }
 
 void
-SnapshotManagement::tlogWrittenToBackendCallback(const TLogId& tlogid,
+SnapshotManagement::tlogWrittenToBackendCallback(const TLogId& tlog_id,
                                                  const SCO sconame)
 {
-    const TLogName tlog_name(boost::lexical_cast<TLogName>(tlogid));
+    const auto tlog_name(boost::lexical_cast<std::string>(tlog_id));
     std::unique_ptr<SnapshotPersistor> tmp;
 
     tracepoint(openvstorage_volumedriver,
@@ -787,7 +773,7 @@ SnapshotManagement::tlogWrittenToBackendCallback(const TLogId& tlogid,
 
     try
     {
-        tmp->setTLogWrittenToBackend(tlogid);
+        tmp->setTLogWrittenToBackend(tlog_id);
 
         const fs::path tmp_file(FileUtils::create_temp_file(tlogPath_,
                                                             "snapshots"));
@@ -806,14 +792,14 @@ SnapshotManagement::tlogWrittenToBackendCallback(const TLogId& tlogid,
     {
         {
             LOCKSNAP;
-            sp->setTLogWrittenToBackend(tlogid);
+            sp->setTLogWrittenToBackend(tlog_id);
             tmp = std::make_unique<SnapshotPersistor>(*sp);
         }
 
         tmp->saveToFile(snapshots_file_path_(),
                         SyncAndRename::T);
     }
-    CATCH_STD_ALL_VLOG_HALT_RETHROW("problem setting TLog " << tlogid <<
+    CATCH_STD_ALL_VLOG_HALT_RETHROW("problem setting TLog " << tlog_id <<
                                     " written to backend");
 
     try
@@ -830,59 +816,52 @@ SnapshotManagement::tlogWrittenToBackendCallback(const TLogId& tlogid,
 
     try
     {
-        getVolume()->unCorkAndTrySync(tlogid);
+        getVolume()->unCorkAndTrySync(tlog_id);
     }
-    CATCH_STD_ALL_VLOG_HALT_RETHROW("problem unCorking tlog " << tlogid)
+    CATCH_STD_ALL_VLOG_HALT_RETHROW("problem unCorking tlog " << tlog_id)
 
     try
     {
-        const std::string tlogname(boost::lexical_cast<std::string>(tlogid));
-
         // This seems to give problems with snapshotrestore.
         // but that should be solved now because tlog are automatically
         // fetched again from the backend as needed --
-        fs::remove(getTLogsPath() / tlogname);
-        //        checkSumStore_.erase(tlogname);
+        fs::remove(tlogPathPrepender(tlog_id));
         if(sconame.asBool())
         {
             getVolume()->removeUpToFromFailOverCache(sconame);
         }
         // This has to happen *after* setting the tlog written to backend as it might
         // otherwise race with the setFailOver on Volume.
-        getVolume()->checkState(tlogname);
+        getVolume()->checkState(tlog_id);
     }
     CATCH_STD_ALL_VLOGLEVEL_IGNORE("problem after setting TLog written to backend",
                                    WARN);
 
-    ASSERT(isTLogWrittenToBackend(boost::lexical_cast<std::string>(tlogid)));
+    ASSERT(isTLogWrittenToBackend(tlog_id));
 }
 
-void
-SnapshotManagement::getTLogsTillSnapshot(SnapshotNum num,
-                                         OrderedTLogNames& out,
-                                         AbsolutePath absolute) const
+OrderedTLogIds
+SnapshotManagement::getTLogsTillSnapshot(SnapshotNum num) const
 {
+    OrderedTLogIds tlog_ids;
+
     LOCKSNAP;
     sp->getTLogsTillSnapshot(num,
-                             out);
-    if(T(absolute))
-    {
-        tlogPathPrepender(out);
-    }
+                             tlog_ids);
+
+    return tlog_ids;
 }
 
-void
-SnapshotManagement::getTLogsAfterSnapshot(SnapshotNum num,
-                                   OrderedTLogNames& out,
-                                   AbsolutePath absolute) const
+OrderedTLogIds
+SnapshotManagement::getTLogsAfterSnapshot(SnapshotNum num) const
 {
+    OrderedTLogIds tlog_ids;
+
     LOCKSNAP;
     sp->getTLogsAfterSnapshot(num,
-                              out);
-    if(T(absolute))
-    {
-        tlogPathPrepender(out);
-    }
+                              tlog_ids);
+
+    return tlog_ids;
 }
 
 bool
@@ -900,10 +879,10 @@ SnapshotManagement::snapshotExists(const SnapshotName& name) const
 }
 
 const youtils::UUID&
-SnapshotManagement::getSnapshotCork(const SnapshotName& snapshot_name) const
+SnapshotManagement::getSnapshotCork(const SnapshotName& name) const
 {
     LOCKSNAP;
-    return sp->getSnapshotCork(snapshot_name);
+    return sp->getSnapshotCork(name);
 }
 
 boost::optional<youtils::UUID>
@@ -937,7 +916,7 @@ SnapshotManagement::new_scrub_id()
 }
 
 ScrubId
-SnapshotManagement::replaceTLogsWithScrubbedOnes(const OrderedTLogNames &in,
+SnapshotManagement::replaceTLogsWithScrubbedOnes(const OrderedTLogIds &in,
                                                  const std::vector<TLog>& out,
                                                  SnapshotNum num)
 {
@@ -982,51 +961,51 @@ SnapshotManagement::getSnapshotScrubbingWork(const boost::optional<SnapshotName>
 void
 SnapshotManagement::scheduleTLogsToBeWrittenToBackend()
 {
-    OrderedTLogNames names;
+    OrderedTLogIds tlog_ids;
     LOCKSNAP;
-    sp->getTLogsNotWrittenToBackend(names);
+    sp->getTLogsNotWrittenToBackend(tlog_ids);
 
-    for (size_t i = 0; i < names.size() - 1; ++i)
+    for (size_t i = 0; i < tlog_ids.size() - 1; ++i)
     {
-        const fs::path tlogpath(makeTLogPath(names[i]));
+        const fs::path tlogpath(tlogPathPrepender(tlog_ids[i]));
 
         const SCO sconame = BackwardTLogReader(tlogpath).nextClusterLocation().sco();
         const auto tlog_crc(FileUtils::calculate_checksum(tlogpath));
 
         LOG_INFO("Scheduling: " << tlogpath << " last sconame " << sconame);
 
-        scheduleWriteTLogToBackend(names[i],
-                               tlogpath,
-                               sconame,
-                               tlog_crc);
+        scheduleWriteTLogToBackend(tlog_ids[i],
+                                   tlogpath,
+                                   sconame,
+                                   tlog_crc);
     }
 }
 
 void
-SnapshotManagement::getTLogsNotWrittenToBackend(OrderedTLogNames& out) const
+SnapshotManagement::getTLogsNotWrittenToBackend(OrderedTLogIds& out) const
 {
     LOCKSNAP;
     sp->getTLogsNotWrittenToBackend(out);
 }
 
 void
-SnapshotManagement::getTLogsWrittenToBackend(OrderedTLogNames& out) const
+SnapshotManagement::getTLogsWrittenToBackend(OrderedTLogIds& out) const
 {
     LOCKSNAP;
     sp->getTLogsWrittenToBackend(out);
 }
 
 bool
-SnapshotManagement::isTLogWrittenToBackend(const TLogName& tlog_name) const
+SnapshotManagement::isTLogWrittenToBackend(const TLogId& tlog_id) const
 {
     LOCKSNAP;
-    return sp->isTLogWrittenToBackend(tlog_name);
+    return sp->isTLogWrittenToBackend(tlog_id);
 }
 
 bool
 SnapshotManagement::isSyncedToBackend()
 {
-    OrderedTLogNames out;
+    OrderedTLogIds out;
     getTLogsNotWrittenToBackend(out);
     VERIFY(out.size() > 0);
     if(out.size() > 1)
@@ -1060,7 +1039,7 @@ SnapshotManagement::getTotalBackendSize() const
 }
 
 uint64_t
-SnapshotManagement::getTLogSizes(const OrderedTLogNames& in)
+SnapshotManagement::getTLogSizes(const OrderedTLogIds& in)
 {
     LOCKSNAP;
     {
@@ -1070,13 +1049,14 @@ SnapshotManagement::getTLogSizes(const OrderedTLogNames& in)
     }
 
     uint64_t totalSize = 0;
-    for(OrderedTLogNames::const_iterator it = in.begin();
+    for(OrderedTLogIds::const_iterator it = in.begin();
         it != in.end();
         ++it)
     {
         if(sp->isTLogWrittenToBackend(*it))
         {
-            uint64_t size = getVolume()->getBackendInterface()->getSize(*it);
+            uint64_t size =
+                getVolume()->getBackendInterface()->getSize(boost::lexical_cast<std::string>(*it));
             if(size > Entry::getDataSize())
             {
                 totalSize += size - Entry::getDataSize();
@@ -1084,7 +1064,7 @@ SnapshotManagement::getTLogSizes(const OrderedTLogNames& in)
         }
         else
         {
-            uint64_t size = fs::file_size(makeTLogPath(*it));
+            uint64_t size = fs::file_size(tlogPathPrepender(*it));
                 if(size > Entry::getDataSize())
            {
                 totalSize += size - Entry::getDataSize();
@@ -1097,7 +1077,7 @@ SnapshotManagement::getTLogSizes(const OrderedTLogNames& in)
 ClusterLocation
 SnapshotManagement::getLastSCOInBackend()
 {
-    OrderedTLogNames tlogs_on_backend;
+    OrderedTLogIds tlogs_on_backend;
     sp->getTLogsWrittenToBackend(tlogs_on_backend);
     return makeCombinedBackwardTLogReader(tlogPath_,
                                           tlogs_on_backend,
@@ -1107,7 +1087,7 @@ SnapshotManagement::getLastSCOInBackend()
 ClusterLocation
 SnapshotManagement::getLastSCO()
 {
-    OrderedTLogNames tlogs;
+    OrderedTLogIds tlogs;
     sp->getAllTLogs(tlogs, WithCurrent::T);
     return makeCombinedBackwardTLogReader(getTLogsPath(),
                                           tlogs,

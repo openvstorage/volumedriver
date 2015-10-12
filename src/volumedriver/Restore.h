@@ -95,7 +95,7 @@ private:
 
     void
     collect_garbage_(be::BackendInterfacePtr bi,
-                     const vd::OrderedTLogNames& doomed_tlogs) const;
+                     const vd::OrderedTLogIds& doomed_tlogs) const;
 public:
     const youtils::GracePeriod grace_period_;
 

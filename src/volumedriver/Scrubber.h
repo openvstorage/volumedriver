@@ -140,7 +140,7 @@ private:
 struct ScrubberResult
 {
     volumedriver::SnapshotName snapshot_name;
-    volumedriver::OrderedTLogNames tlog_names_in;
+    volumedriver::OrderedTLogIds tlog_names_in;
     std::vector<volumedriver::TLog> tlogs_out;
     std::vector<std::string> relocs;
     uint64_t relocNum;

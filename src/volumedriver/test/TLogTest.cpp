@@ -84,7 +84,7 @@ TEST_F(TLogTest, second)
 {
     TLogs tlogs;
 
-    OrderedTLogNames in;
+    OrderedTLogIds in;
     std::vector<TLog> out(1);
     out.back().writtenToBackend(true);
 

@@ -590,7 +590,7 @@ struct BackupAccumulator
                const SnapshotName& snapshot_name,
                const volumedriver::SCOCloneID clone_id)
     {
-        OrderedTLogNames tlogs;
+        OrderedTLogIds tlogs;
         sp.getTLogsTillSnapshot(snapshot_name, tlogs);
         clone_tlogs_.push_back(std::make_pair(clone_id,
                                               std::move(tlogs)));
@@ -641,7 +641,7 @@ Backup::get_tlogs_to_replay()
         LOG_INFO("Start snapshot given, we do a backup from snapshot " << *start_snapshot_ << " to " << end_snapshot_name);
 
         const SnapshotNum start_snapshot_num = source_snapshot_persistor->getSnapshotNum(*start_snapshot_);
-        OrderedTLogNames recentTLogs;
+        OrderedTLogIds recentTLogs;
         source_snapshot_persistor->getTLogsBetweenSnapshots(start_snapshot_num,
                                                             end_snapshot_number,
                                                             recentTLogs);
@@ -709,7 +709,7 @@ Backup::replay_tlogs_on_target()
         uint64_t usleep_micro_sec = 100000;
         const uint64_t ten_seconds = 10000000;
 
-        for(OrderedTLogNames::const_reverse_iterator tlog_it = i->second.rbegin();
+        for(OrderedTLogIds::const_reverse_iterator tlog_it = i->second.rbegin();
             tlog_it != i->second.rend();
             ++tlog_it)
         {
@@ -718,7 +718,7 @@ Backup::replay_tlogs_on_target()
 
             std::unique_ptr<TLogReaderInterface>
                 tlog_reader(new volumedriver::BackwardTLogReader(tlogDir,
-                                                                 *tlog_it,
+                                                                 boost::lexical_cast<std::string>(*tlog_it),
                                                                  nsid.get(i->first)->clone()));
 
             SCO current_sco;
@@ -809,7 +809,7 @@ Backup::replay_tlogs_on_target()
                             end_snapshot_guid);
     }
 
-    status_.current_tlog("");
+    status_.current_tlog(boost::none);
 
     WAIT_FOR_THIS_VOLUME_WRITE(target_volume_.get());
     {

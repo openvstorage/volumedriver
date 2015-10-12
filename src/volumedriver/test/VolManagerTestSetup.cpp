@@ -970,10 +970,8 @@ VolManagerTestSetup::checkCurrentBackendSize(Volume* vol)
 {
     vol->sync();
     uint64_t size_in_snapshot = vol->getSnapshotManagement().getCurrentBackendSize();
-    OrderedTLogNames current_tlogs;
-
-    vol->getSnapshotManagement().getCurrentTLogs(current_tlogs,
-                                                 AbsolutePath::F);
+    const OrderedTLogIds
+        current_tlogs(vol->getSnapshotManagement().getCurrentTLogs());
 
     std::shared_ptr<TLogReaderInterface>
         t(makeCombinedBackwardTLogReader(VolManager::get()->getTLogPath(vol),
@@ -984,8 +982,10 @@ VolManagerTestSetup::checkCurrentBackendSize(Volume* vol)
     {
         current_size_calculated += vol->getClusterSize();
     }
-    EXPECT_EQ(size_in_snapshot, current_size_calculated) << "Current size in snapshot " << size_in_snapshot
-                                                           << ", Checked from TLogs " << current_size_calculated;
+    EXPECT_EQ(size_in_snapshot, current_size_calculated) <<
+        "Current size in snapshot " <<
+        size_in_snapshot << ", Checked from TLogs " <<
+        current_size_calculated;
 }
 
 void
@@ -1048,7 +1048,7 @@ VolManagerTestSetup::getCurrentTLog(const VolumeId& volid) const
 
 void
 VolManagerTestSetup::getTLogsNotInBackend(const VolumeId& volid,
-                                      OrderedTLogNames& tlogs) const
+                                      OrderedTLogIds& tlogs) const
 {
     VolManager *vm = VolManager::get();
     Volume *v = 0;

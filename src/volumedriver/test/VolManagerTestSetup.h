@@ -512,7 +512,7 @@ public:
 
     void
     getTLogsNotInBackend(const VolumeId& volid,
-                     OrderedTLogNames& tlogs) const;
+                     OrderedTLogIds& tlogs) const;
 
     fs::path
     getDCDir(const std::string& volName) const;

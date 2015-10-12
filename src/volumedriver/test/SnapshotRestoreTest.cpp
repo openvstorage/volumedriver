@@ -286,7 +286,7 @@ TEST_P(SnapshotRestoreTest, HaltOnError)
 
     const std::string pattern1("blah");
 
-    const std::string tlog(v->getSnapshotManagement().getCurrentTLogName());
+    const TLogId tlog_id(v->getSnapshotManagement().getCurrentTLogId());
 
     writeToVolume(v, 0, 4096, pattern1);
     v->createSnapshot(SnapshotName("snap1"));
@@ -296,7 +296,7 @@ TEST_P(SnapshotRestoreTest, HaltOnError)
                  std::exception);
     EXPECT_FALSE(v->is_halted());
 
-    v->getBackendInterface()->remove(tlog);
+    v->getBackendInterface()->remove(boost::lexical_cast<std::string>(tlog_id));
     EXPECT_THROW(restoreSnapshot(v, "snap1"),
                  std::exception);
     EXPECT_TRUE(v->is_halted());

@@ -246,31 +246,23 @@ SnapshotPersistor::isTLogWrittenToBackend(const TLogId& tlogid) const
     }
 }
 
-bool
-SnapshotPersistor::isTLogWrittenToBackend(const std::string& tlogname) const
-{
-    return isTLogWrittenToBackend(boost::lexical_cast<TLogId>(tlogname));
-}
-
 void
-SnapshotPersistor::getCurrentTLogsWrittenToBackend(OrderedTLogNames& out) const
+SnapshotPersistor::getCurrentTLogsWrittenToBackend(OrderedTLogIds& out) const
 {
 
     for(const TLog& t: current)
     {
-        std::string name = t.getName();
-
-        if(isTLogWrittenToBackend(name))
+        if(isTLogWrittenToBackend(t.id()))
         {
-            out.push_back(std::move(name));
+            out.push_back(t.id());
         }
     }
 }
 
 void
-SnapshotPersistor::getTLogsNotWrittenToBackend(OrderedTLogNames& out) const
+SnapshotPersistor::getTLogsNotWrittenToBackend(OrderedTLogIds& out) const
 {
-    OrderedTLogNames tmp;
+    OrderedTLogIds tmp;
     getAllTLogs(tmp, WithCurrent::T);
     bool no_non_written_tlog_seen = true;
     for(size_t i = 0; i < tmp.size(); i++)
@@ -288,9 +280,9 @@ SnapshotPersistor::getTLogsNotWrittenToBackend(OrderedTLogNames& out) const
 }
 
 void
-SnapshotPersistor::getTLogsWrittenToBackend(OrderedTLogNames& out) const
+SnapshotPersistor::getTLogsWrittenToBackend(OrderedTLogIds& out) const
 {
-    OrderedTLogNames tmp;
+    OrderedTLogIds tmp;
     getAllTLogs(tmp, WithCurrent::T);
     bool no_non_written_tlog_seen = true;
     for(size_t i = 0; i < tmp.size(); i++)
@@ -352,23 +344,23 @@ SnapshotPersistor::checkSnapshotUUID(const SnapshotName& snapshotName,
 
 bool
 SnapshotPersistor::getTLogsInSnapshot(const SnapshotNum num,
-                                      OrderedTLogNames& outTLogs) const
+                                      OrderedTLogIds& outTLogs) const
 {
     return snapshots.getTLogsInSnapshot(num,
                                         outTLogs);
 }
 
 void
-SnapshotPersistor::getCurrentTLogs(OrderedTLogNames& outTLogs) const
+SnapshotPersistor::getCurrentTLogs(OrderedTLogIds& outTLogs) const
 {
-    current.getNames(outTLogs);
+    current.getTLogIds(outTLogs);
 }
 
-std::string
+TLogId
 SnapshotPersistor::getCurrentTLog() const
 {
     VERIFY(!current.empty());
-    return current.back().getName();
+    return current.back().id();
 }
 
 bool
@@ -446,7 +438,7 @@ SnapshotPersistor::deleteAllButLastSnapshot()
 
 void
 SnapshotPersistor::getTLogsTillSnapshot(const SnapshotName& name,
-                                        OrderedTLogNames& out) const
+                                        OrderedTLogIds& out) const
 {
     getTLogsTillSnapshot(getSnapshotNum(name),
                          out);
@@ -454,7 +446,7 @@ SnapshotPersistor::getTLogsTillSnapshot(const SnapshotName& name,
 
 void
 SnapshotPersistor::getTLogsTillSnapshot(SnapshotNum num,
-                                        OrderedTLogNames& out) const
+                                        OrderedTLogIds& out) const
 {
     snapshots.getTLogsTillSnapshot(num,
                                    out);
@@ -462,17 +454,17 @@ SnapshotPersistor::getTLogsTillSnapshot(SnapshotNum num,
 
 void
 SnapshotPersistor::getTLogsAfterSnapshot(SnapshotNum num,
-                                         OrderedTLogNames& out) const
+                                         OrderedTLogIds& out) const
 {
     snapshots.getTLogsAfterSnapshot(num,
                                     out);
-    current.getNames(out);
+    current.getTLogIds(out);
 }
 
 void
 SnapshotPersistor::getTLogsBetweenSnapshots(const SnapshotNum start,
                                             const SnapshotNum end,
-                                            OrderedTLogNames& out,
+                                            OrderedTLogIds& out,
                                             IncludingEndSnapshot including) const
 {
     snapshots.getTLogsBetweenSnapshots(start,
@@ -490,10 +482,10 @@ SnapshotPersistor::deleteTLogsAndSnapshotsAfterSnapshot(SnapshotNum num)
 }
 
 bool
-SnapshotPersistor::snip(const std::string& tlogname,
+SnapshotPersistor::snip(const TLogId& tlog_id,
                         const boost::optional<uint64_t>& backend_size)
 {
-    bool found = snapshots.snip(tlogname,
+    bool found = snapshots.snip(tlog_id,
                                 backend_size);
     if(found)
     {
@@ -504,16 +496,16 @@ SnapshotPersistor::snip(const std::string& tlogname,
     }
     else
     {
-        return current.snip(tlogname,
+        return current.snip(tlog_id,
                             backend_size);
     }
 }
 
 bool
-SnapshotPersistor::tlogReferenced(const std::string& tlog_name)
+SnapshotPersistor::tlogReferenced(const TLogId& tlog_id)
 {
-    return snapshots.tlogReferenced(tlog_name) or
-        current.tlogReferenced(tlog_name);
+    return snapshots.tlogReferenced(tlog_id) or
+        current.tlogReferenced(tlog_id);
 }
 
 void
@@ -523,7 +515,7 @@ SnapshotPersistor::getAllSnapshots(std::vector<SnapshotNum>& vec) const
 }
 
 void
-SnapshotPersistor::getAllTLogs(OrderedTLogNames& vec,
+SnapshotPersistor::getAllTLogs(OrderedTLogIds& vec,
                                const WithCurrent with_current) const
 {
     std::vector<SnapshotNum> snaps;
@@ -542,7 +534,7 @@ SnapshotPersistor::getAllTLogs(OrderedTLogNames& vec,
 }
 
 ScrubId
-SnapshotPersistor::replace(const OrderedTLogNames& in,
+SnapshotPersistor::replace(const OrderedTLogIds& in,
                            const std::vector<TLog>& out,
                            const SnapshotNum num){
     snapshots.replace(in,
@@ -589,16 +581,16 @@ SnapshotPersistor::getSnapshotScrubbingWork(const boost::optional<SnapshotName>&
 }
 
 // DOES NOT SET CURRENT SIZE!!
-OrderedTLogNames
+OrderedTLogIds
 SnapshotPersistor::getTLogsOnBackendSinceLastCork(const boost::optional<yt::UUID>& cork,
                                                   const boost::optional<yt::UUID>& implicit_start_cork) const
 {
     VERIFY((parent_ and implicit_start_cork != boost::none) or
            (not parent_ and implicit_start_cork == boost::none));
 
-    OrderedTLogNames tlog_names;
+    OrderedTLogIds tlog_names;
 
-    auto done([&tlog_names]() -> OrderedTLogNames
+    auto done([&tlog_names]() -> OrderedTLogIds
               {
                   std::reverse(tlog_names.begin(), tlog_names.end());
                   return tlog_names;
