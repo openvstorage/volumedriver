@@ -27,16 +27,21 @@
 #include <youtils/WithGlobalLock.h>
 
 #include <backend/GlobalLockService.h>
+#include <backend/LockStore.h>
 
 namespace
 {
 
+namespace be = backend;
 namespace po = boost::program_options;
 namespace vd = volumedriver;
 namespace vd_bu = volumedriver_backup;
+namespace yt = youtils;
+
+using LockService = be::GlobalLockService;
 
 class BackupMain
-    : public youtils::MainHelper
+    : public yt::MainHelper
 {
 public:
     BackupMain(int argc,
@@ -64,7 +69,7 @@ public:
     parse_command_line_arguments() override final
     {
         parse_unparsed_options(backup_options_,
-                               youtils::AllowUnregisteredOptions::T,
+                               yt::AllowUnregisteredOptions::T,
                                vm_);
     }
 
@@ -83,7 +88,7 @@ public:
 
         boost::property_tree::ptree& target_ptree = config_ptree.get_child("target_configuration");
 
-        auto bcm(backend::BackendConnectionManager::create(target_ptree));
+        auto bcm(be::BackendConnectionManager::create(target_ptree));
 
         {
             //[BDV] bit hackish as a useless parameter should not be configurable in the first place
@@ -113,33 +118,31 @@ public:
             vd_bu::DeleteSnapshot deleter(config_ptree,
                                           snaps);
 
+            using LockedDeleter = LockService::WithGlobalLock<yt::ExceptionPolicy::ThrowExceptions,
+                                                              vd_bu::DeleteSnapshot,
+                                                              &vd_bu::DeleteSnapshot::info>::type_;
 
-            typedef backend::GlobalLockService::WithGlobalLock<youtils::ExceptionPolicy::ThrowExceptions,
-                                                                         vd_bu::DeleteSnapshot,
-                                                                         &vd_bu::DeleteSnapshot::info>::type_
-                LockedDeleter;
-
-
-
+            be::GlobalLockStorePtr
+                lock_store(new be::LockStore(bcm->newBackendInterface(be::Namespace(target_namespace))));
 
             LockedDeleter locked_deleter(boost::ref(deleter),
-                                         youtils::NumberOfRetries(1),
+                                         yt::NumberOfRetries(1),
                                          LockedDeleter::connection_retry_timeout_default(),
-                                         bcm,
-                                         backend::UpdateInterval(boost::posix_time::seconds(update_interval)),
-                                         backend::Namespace(target_namespace));
+                                         lock_store,
+                                         be::UpdateInterval(boost::posix_time::seconds(update_interval)));
+
             LOG_INFO("Starting Locked Snapshot Deletion");
             try
             {
                 locked_deleter();
             }
-            catch(youtils::WithGlobalLockExceptions::CouldNotInterruptCallable& e)
+            catch(yt::WithGlobalLockExceptions::CouldNotInterruptCallable& e)
             {
                 LOG_FATAL("Aborting because the worker thread could not be interrupted and we *don't* have the lock anymore");
                 exit(1);
             }
 
-            catch(youtils::WithGlobalLockExceptions::CallableException& e)
+            catch(yt::WithGlobalLockExceptions::CallableException& e)
             {
                 std::rethrow_exception(e.exception_);
             }
@@ -155,31 +158,32 @@ public:
             LOG_INFO("lock update interval" << update_interval);
 
             vd_bu::Backup backup(config_ptree);
-            typedef backend::GlobalLockService::WithGlobalLock<youtils::ExceptionPolicy::ThrowExceptions,
-                                                                         vd_bu::Backup,
-                                                                         &vd_bu::Backup::info>::type_ LockedBackup;
 
-
+            using LockedBackup = LockService::WithGlobalLock<yt::ExceptionPolicy::ThrowExceptions,
+                                                             vd_bu::Backup,
+                                                             &vd_bu::Backup::info>::type_;
+            be::GlobalLockStorePtr
+                lock_store(new be::LockStore(bcm->newBackendInterface(be::Namespace(target_namespace))));
 
             LockedBackup locked_backup(boost::ref(backup),
-                                       youtils::NumberOfRetries(1),
+                                       yt::NumberOfRetries(1),
                                        LockedBackup::connection_retry_timeout_default(),
-                                       bcm,
-                                       backend::UpdateInterval(boost::posix_time::seconds(update_interval)),
-                                       backend::Namespace(target_namespace));
+                                       lock_store,
+                                       be::UpdateInterval(boost::posix_time::seconds(update_interval)));
+
             LOG_INFO("Starting Locked Backup");
 
             try
             {
                 locked_backup();
             }
-            catch(youtils::WithGlobalLockExceptions::CouldNotInterruptCallable& e)
+            catch(yt::WithGlobalLockExceptions::CouldNotInterruptCallable& e)
             {
                 LOG_FATAL("Aborting because the worker thread could not be interrupted and we *don't* have the lock anymore");
                 exit(1);
             }
 
-            catch(youtils::WithGlobalLockExceptions::CallableException& e)
+            catch(yt::WithGlobalLockExceptions::CallableException& e)
             {
                 std::rethrow_exception(e.exception_);
             }

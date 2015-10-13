@@ -15,51 +15,45 @@
 #ifndef BACKEND_GLOBAL_LOCK_SERVICE_H
 #define BACKEND_GLOBAL_LOCK_SERVICE_H
 
-#include "BackendConnectionInterface.h"
-#include "BackendConnectionManager.h"
-
-#include <map>
+#include "GlobalLockStore.h"
 
 #include <boost/thread.hpp>
-#include "boost/date_time/posix_time/posix_time.hpp"
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 #include <youtils/GlobalLockService.h>
-#include <youtils/System.h>
-#include "youtils/TimeDurationType.h"
+#include <youtils/Logging.h>
+#include <youtils/TimeDurationType.h>
 #include <youtils/UUID.h>
 #include <youtils/WithGlobalLock.h>
 
 namespace backend
 {
 
-class HeartBeat;
-class LockCommunicator;
-
 DECLARE_DURATION_TYPE(UpdateInterval)
 
 class GlobalLockService
     : public youtils::GlobalLockService
 {
-    friend class HeartBeat;
-    friend class LockCommunicator;
-
 public:
     GlobalLockService(const youtils::GracePeriod& grace_period,
                       lost_lock_callback callback,
                       void* data,
-                      BackendConnectionManagerPtr cm,
-                      const UpdateInterval& update_interval,
-                      const Namespace& ns);
+                      GlobalLockStorePtr lock_store,
+                      const UpdateInterval& update_interval);
 
     virtual ~GlobalLockService();
 
+    const std::string&
+    name() const
+    {
+        return lock_store_->name();
+    }
+
     virtual bool
-    lock();
+    lock() override;
 
     virtual void
-    unlock();
-
-    DECLARE_LOGGER("BackendGlobalLockService");
+    unlock() override;
 
     // Hopefully one day!
     // template<youtils::ExceptionPolicy policy,
@@ -79,16 +73,17 @@ public:
              std::string(Callable::*info_member_function)() = &Callable::info>
     struct WithGlobalLock
     {
-        typedef youtils::WithGlobalLock<policy,
-                                        Callable,
-                                        info_member_function,
-                                        GlobalLockService,
-                                        BackendConnectionManagerPtr,
-                                        const UpdateInterval&,
-                                        const Namespace&> type_;
+        using type_ = youtils::WithGlobalLock<policy,
+                                              Callable,
+                                              info_member_function,
+                                              GlobalLockService,
+                                              GlobalLockStorePtr,
+                                              const UpdateInterval&>;
     };
 
 private:
+    DECLARE_LOGGER("BackendGlobalLockService");
+
     void
     finish_thread();
 
@@ -105,9 +100,7 @@ private:
 
     boost::mutex heartbeat_thread_mutex_;
     std::unique_ptr<boost::thread> heartbeat_thread_;
-    BackendConnectionManagerPtr cm_;
-    const Namespace ns_;
-
+    GlobalLockStorePtr lock_store_;
     const boost::posix_time::time_duration update_interval_;
 };
 

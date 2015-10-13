@@ -49,6 +49,7 @@ libbackend_la_SOURCES = \
 	Local_Source.cpp \
 	Lock.cpp \
 	LockCommunicator.cpp \
+	LockStore.cpp \
 	ManagedBackendSink.cpp \
 	ManagedBackendSource.cpp \
 	MultiConfig.cpp \

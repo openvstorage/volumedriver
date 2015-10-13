@@ -41,7 +41,7 @@ protected:
     {
         ASSERT_NO_THROW(backend::Lock lock(str));
         backend::Lock lock(str);
-        EXPECT_TRUE(lock.hasLock);
+        EXPECT_TRUE(lock.hasLock());
         EXPECT_EQ(lock.session_timeout_, boost::posix_time::seconds(42));
         EXPECT_EQ(lock.interrupt_timeout_, boost::posix_time::seconds(10));
     }

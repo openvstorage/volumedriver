@@ -17,168 +17,131 @@
 namespace backend
 {
 
-const std::string
-LockCommunicator::lock_name_("lock_name");
+namespace yt = youtils;
 
-LockCommunicator::LockCommunicator(GlobalLockService& lock_service,
-                                           const boost::posix_time::time_duration connection_timeout,
-                                           const boost::posix_time::time_duration interrupt_timeout)
-    : lock_service_(lock_service)
-    , bi_(lock_service_.cm_->newBackendInterface(lock_service_.ns_, 0))
-    , connection_timeout_(connection_timeout)
+LockCommunicator::LockCommunicator(GlobalLockStorePtr lock_store,
+                                   const boost::posix_time::time_duration connection_timeout,
+                                   const boost::posix_time::time_duration interrupt_timeout)
+    : lock_store_(lock_store)
     , lock_(connection_timeout,
             interrupt_timeout)
 {}
 
 bool
-LockCommunicator::namespace_exists()
-{
-    try
-    {
-        return bi_->namespaceExists();
-    }
-    catch(std::exception& e)
-    {
-        LOG_INFO("Could not find out whether namespace " << ns() <<
-                 " exists: " << e.what());
-        return false;
-    }
-}
-
-bool
 LockCommunicator::lock_exists()
 {
-    return bi_->objectExists(lock_name_);
+    return lock_store_->exists();
 }
 
 void
 LockCommunicator::freeLock()
 {
-    lock_.hasLock = false;
+    lock_.hasLock(false);
     overwriteLock();
 }
 
 Lock
 LockCommunicator::getLock()
 {
-    LOG_INFO("Getting the lock and updateding the etag for namespace " << ns() );
+    LOG_INFO(name() << ": getting the lock and updating the tag");
 
-    std::string str;
-    etag_ = bi_->x_read(str,
-                        lock_name_,
-                        InsistOnLatestVersion::T).etag_;
+    Lock lock(lock_);
+    std::tie(lock, tag_) = lock_store_->read();
 
-    LOG_TRACE("Leaving, new etag: " << etag_.str() << " for namespace " << ns());
-    return Lock(str);
+    LOG_INFO(name() << ": new tag " << tag_);
+    return lock;
 }
 
 bool
 LockCommunicator::overwriteLock()
 {
-    LOG_INFO("Overwriting the lock with etag " << etag_.str() << " for namespace " << ns());
+    LOG_INFO(name() << ": overwriting the lock with tag " << tag_);
     try
     {
-        std::string str;
-        lock_.save(str);
-        etag_ = bi_->x_write(str,
-                             lock_name_,
-                             OverwriteObject::T,
-                             &etag_).etag_;
+        tag_ = lock_store_->write(lock_,
+                                 tag_);
 
-        LOG_INFO("Overwrote the lock for namespace " << ns());
+        LOG_INFO(name() << ": overwrote the lock");
         return true;
     }
-    catch(const std::exception& e)
-    {
-        LOG_INFO("Exception while overwriting the lock " << e.what() << " for namespace " << ns());
-        return false;
-    }
-    catch(...)
-    {
-        LOG_INFO("Unknown exception while overwriting the lock for namespace" << ns());
-        return false;
-    }
+    CATCH_STD_ALL_EWHAT({
+            LOG_INFO(name() <<
+                     ": exception while overwriting the lock: " << EWHAT);
+            return false;
+        });
 }
 
 bool
 LockCommunicator::putLock()
 {
-    LOG_INFO("Putting the lock");
+    LOG_INFO(name() << ": putting the lock");
+
     try
     {
-        std::string str;
-        lock_.save(str);
-        etag_ = bi_->x_write(str,
-                             lock_name_,
-                             OverwriteObject::F).etag_;
+        tag_ = lock_store_->write(lock_,
+                                 boost::none);
 
-        LOG_INFO("put the lock");
+        LOG_INFO(name() << ": put the lock");
         return true;
     }
-    catch(const std::exception& e)
-    {
-        LOG_WARN("Exception while putting the lock " << e.what());
-        return false;
-    }
-    catch(...)
-    {
-        LOG_WARN("Unknown exception while putting the lock ");
-        return false;
-    }
+    CATCH_STD_ALL_EWHAT({
+            LOG_WARN(name() <<
+                     ": exception while putting the lock: " << EWHAT);
+            return false;
+        });
 }
 
 bool
-LockCommunicator::TryToAcquireLock()
+LockCommunicator::tryToAcquireLock()
 {
-    LOG_INFO("Trying to Acquire the Lock for namespace " << ns());
+    LOG_INFO(name() << ": trying to acquire the lock");
     try
     {
-        Lock l = getLock();
-        if(not l.hasLock)
+        Lock l(getLock());
+        if(not l.hasLock())
         {
-            LOG_INFO("got the lock for namespace " << ns() << ", was unlocked" );
+            LOG_INFO(name() << ": got the lock");
             return overwriteLock();
         }
         else
         {
             boost::this_thread::sleep(l.get_timeout());
-            LOG_INFO("Trying to stealing the lock with etag: " << etag_.str() << " for namespace " << ns());
+            LOG_INFO(name() <<
+                     ": trying to steal the lock with tag " << tag_);
             return overwriteLock();
         }
     }
-    catch(std::exception& e)
-    {
-        LOG_WARN("Exception while trying to acquire the lock " << e.what() << " for namespace " << ns());
-        return false;
-    }
-    catch(...)
-    {
-        LOG_WARN("Unknown exception while trying to acquire the lock for namespace " << ns());
-        return false;
-    }
+    CATCH_STD_ALL_EWHAT({
+            LOG_WARN(name() <<
+                     ": exception while trying to acquire the lock " << EWHAT);
+            return false;
+        });
 }
 
 bool
-LockCommunicator::Update(duration_type max_wait_time)
+LockCommunicator::refreshLock(MilliSeconds max_wait_time)
 {
-    LOG_INFO("Update of lock for " << ns());
+    LOG_INFO(name() << ": refreshing the lock");
 
     ++lock_;
     uint64_t count = 0;
-    clock_type::time_point start_of_update = clock_type::now();
+    Clock::time_point start_of_update = Clock::now();
 
     while (count++ < max_update_retries)
     {
-        LOG_INFO("Once more into the breach dear friends, for namespace " << ns() << " for the " << count << "th time");
+        LOG_INFO(name() <<
+                 ": once more into the breach dear friends (retry " <<
+                 count << ")");
 
-        if(overwriteLock())
+        if (overwriteLock())
         {
-            LOG_INFO("Update of lock for " << ns() << " without problem");
+            LOG_INFO(name() <<
+                     ": lock was successfully refreshed");
             return true;
         }
         else
         {
-            LOG_WARN("Update of lock for " << ns() << " failed");
+            LOG_WARN(name() << ": failed to refresh lock");
             try
             {
                 boost::optional<Lock> local_lock;
@@ -188,47 +151,53 @@ LockCommunicator::Update(duration_type max_wait_time)
                 {
                     try
                     {
-                        LOG_INFO("Reading the lock to check we're still owner");
-                        local_lock.reset(getLock());
+                        LOG_INFO(name() <<
+                                 ": reading the lock to see whether we're still owning it");
+                        local_lock = (getLock());
                         break;
                     }
-                    catch(...)
+                    catch (...)
                     {
-                        clock_type::duration update_duration = clock_type::now() - start_of_update;
-                        if(update_duration + boost::chrono::seconds(sleep_seconds) > max_wait_time)
+                        Clock::duration update_duration =
+                            Clock::now() - start_of_update;
+                        if (update_duration + boost::chrono::seconds(sleep_seconds) > max_wait_time)
                         {
                             throw;
                         }
                         else
                         {
-                            LOG_WARN("Reading failed, we have " << boost::chrono::duration_cast<boost::chrono::seconds>(max_wait_time - update_duration) << " left");
+                            LOG_WARN(name() <<
+                                     ": reading the lock failed, we have " <<
+                                     boost::chrono::duration_cast<boost::chrono::seconds>(max_wait_time - update_duration) << " left");
                         }
                     }
                     //boost::this_thread::sleep uses get_system_time() and might hang on system time reset
                     sleep(sleep_seconds);
                 }
+
                 VERIFY(local_lock);
                 if(local_lock->different_owner(lock_))
                 {
-                    LOG_WARN("Lost the lock for " << ns());
+                    LOG_WARN(name() << ": lost the lock");
                     return false;
                 }
             }
-
-            catch(const std::exception& e)
-            {
-                LOG_WARN("Getting the lock for " << ns() << " threw exception " << e.what());
-                return false;
-            }
-            catch(...)
-            {
-                LOG_WARN("Getting the lock for " << ns() << " threw unknown exception ");
-                return false;
-            }
+            CATCH_STD_ALL_EWHAT({
+                    LOG_WARN(name() <<
+                             ": exception getting the lock: " << EWHAT);
+                    return false;
+                });
         }
     }
-    LOG_ERROR("Ran out of retries for namespace " << ns());
+
+    LOG_ERROR(name() << ": ran out of retries");
     return false;
+}
+
+const std::string&
+LockCommunicator::name() const
+{
+    return lock_store_->name();
 }
 
 }

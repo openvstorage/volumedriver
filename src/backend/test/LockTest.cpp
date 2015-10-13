@@ -20,23 +20,32 @@
 
 #include <youtils/WithGlobalLock.h>
 
+#include "../BackendConnectionManager.h"
+#include "../BackendInterface.h"
 #include "../GlobalLockService.h"
 #include "../LockCommunicator.h"
+#include "../LockStore.h"
 
 namespace backendtest
 {
-using youtils::WithGlobalLock;
 namespace be = backend;
+namespace yt = youtils;
+
+using yt::WithGlobalLock;
 
 namespace
 {
+
 DECLARE_LOGGER("LockTest");
+
 }
 
 class LockTest
     : public be::BackendTestBase
 {
 public:
+    using LockService = be::GlobalLockService;
+
     LockTest()
         : be::BackendTestBase("LockTest")
     {};
@@ -46,7 +55,6 @@ public:
     {
         be::BackendTestBase::SetUp();
         nspace_ = make_random_namespace();
-
     }
 
     virtual void
@@ -100,7 +108,6 @@ TEST_F(LockTest, dump_restlock)
     // std::cout << std::endl << str << std::endl;
 }
 
-
 TEST_F(LockTest, test_no_lock_if_namespace_doesnt_exist)
 {
     {
@@ -112,16 +119,17 @@ TEST_F(LockTest, test_no_lock_if_namespace_doesnt_exist)
         }
     }
 
-    const be::Namespace ns(youtils::UUID().str());
+    const be::Namespace ns(yt::UUID().str());
 
     TestCallBack callback;
 
-    backend::GlobalLockService lock_service(youtils::GracePeriod(boost::posix_time::seconds(1)),
-                                                      &trampoline<TestCallBack>,
-                                                      &callback,
-                                                      cm_,
-                                                      backend::UpdateInterval(boost::posix_time::seconds(1)),
-                                                      ns);
+    be::GlobalLockStorePtr
+        lock_store(new be::LockStore(cm_->newBackendInterface(ns)));
+    LockService lock_service(yt::GracePeriod(boost::posix_time::seconds(1)),
+                             &trampoline<TestCallBack>,
+                             &callback,
+                             lock_store,
+                             be::UpdateInterval(boost::posix_time::seconds(1)));
 
     ASSERT_FALSE(lock_service.lock());
     EXPECT_NO_THROW(lock_service.unlock());
@@ -140,15 +148,17 @@ TEST_F(LockTest, test_lock_if_namespace_exists)
         }
     }
 
-    const youtils::GracePeriod grace_period(boost::posix_time::milliseconds(100));
+    const yt::GracePeriod grace_period(boost::posix_time::milliseconds(100));
     TestCallBack callback;
 
-    backend::GlobalLockService lock_service(grace_period,
-                                                      &trampoline<TestCallBack>,
-                                                      &callback,
-                                                      cm_,
-                                                      backend::UpdateInterval(boost::posix_time::seconds(1)),
-                                                      testNamespace());
+    be::GlobalLockStorePtr
+        lock_store(new be::LockStore(cm_->newBackendInterface(testNamespace())));
+
+    LockService lock_service(yt::GracePeriod(boost::posix_time::seconds(1)),
+                             &trampoline<TestCallBack>,
+                             &callback,
+                             lock_store,
+                             be::UpdateInterval(boost::posix_time::seconds(1)));
 
     ASSERT_TRUE(lock_service.lock());
     EXPECT_NO_THROW(lock_service.unlock());
@@ -158,13 +168,15 @@ TEST_F(LockTest, test_lock_if_namespace_exists)
 
 namespace
 {
-class SharedMemCallable : public youtils::GlobalLockedCallable
+
+class SharedMemCallable
+    : public yt::GlobalLockedCallable
 {
 public:
     SharedMemCallable(const uint64_t id,
                       const key_t key,
                       const uint64_t max_id,
-                      const youtils::GracePeriod grace_period)
+                      const yt::GracePeriod grace_period)
         : id_(id)
         , key_(key)
         , max_id_(max_id)
@@ -203,7 +215,7 @@ public:
 
     DECLARE_LOGGER("SharedMemCallable");
 
-    virtual const youtils::GracePeriod&
+    virtual const yt::GracePeriod&
     grace_period() const
     {
         return grace_period_;
@@ -213,7 +225,7 @@ private:
     const uint64_t id_ ;
     const key_t key_;
     const uint64_t max_id_;
-    const youtils::GracePeriod grace_period_;
+    const yt::GracePeriod grace_period_;
 };
 
 }
@@ -229,11 +241,9 @@ TEST_F(LockTest, test_mutual_exclusion)
         }
     }
 
-    typedef backend::GlobalLockService::WithGlobalLock<youtils::ExceptionPolicy::DisableExceptions,
-        SharedMemCallable,
-        &SharedMemCallable::info>::type_
-
-        CallableT;
+    using CallableT = LockService::WithGlobalLock<yt::ExceptionPolicy::DisableExceptions,
+                                                  SharedMemCallable,
+                                                  &SharedMemCallable::info>::type_;
 
     const uint64_t max_test = 4;
 
@@ -247,36 +257,35 @@ TEST_F(LockTest, test_mutual_exclusion)
     volatile uint64_t& p1 = p[1];
     p1 = 0;
 
-    std::vector<boost::thread*> threads(max_test);
-    std::vector<CallableT*> locked_callables(max_test);
-    std::vector<SharedMemCallable*> callables(max_test);
+    std::vector<boost::thread> threads;
+    std::vector<std::unique_ptr<CallableT>> locked_callables;
+    std::vector<std::unique_ptr<SharedMemCallable>> callables;
 
-    const youtils::GracePeriod grace_period(boost::posix_time::milliseconds(100));
+    const yt::GracePeriod grace_period(boost::posix_time::milliseconds(100));
     for(unsigned i = 0; i < max_test; ++i)
     {
-        callables[i] = new SharedMemCallable(i,
-                                             ipc_id,
-                                             max_test,
-                                             grace_period);
+        callables.emplace_back(std::make_unique<SharedMemCallable>(i,
+                                                                   ipc_id,
+                                                                   max_test,
+                                                                   grace_period));
 
+        be::GlobalLockStorePtr
+            lock_store(new be::LockStore(cm_->newBackendInterface(testNamespace())));
 
-        locked_callables[i] = new CallableT(boost::ref(*callables[i]),
-                                            CallableT::retry_connection_times_default(),
-                                            CallableT::connection_retry_timeout_default(),
-                                            cm_,
-                                            backend::UpdateInterval(boost::posix_time::seconds(1)),
-                                            testNamespace());
+        locked_callables.emplace_back(std::make_unique<CallableT>(boost::ref(*callables[i]),
+                                                                  CallableT::retry_connection_times_default(),
+                                                                  CallableT::connection_retry_timeout_default(),
+                                                                  lock_store,
+                                                                  be::UpdateInterval(boost::posix_time::seconds(1))));
 
-        threads[i] = new boost::thread(boost::ref(*locked_callables[i]));
+        threads.emplace_back(boost::thread(boost::ref(*locked_callables[i])));
     }
+
     for(unsigned i = 0; i < max_test; ++i)
     {
-        threads[i]->join();
+        threads[i].join();
         std::exception_ptr no_exception;
         EXPECT_TRUE(locked_callables[i]->exit_exception == no_exception);
-        delete threads[i];
-        delete locked_callables[i];
-        delete callables[i];
     }
 
     EXPECT_EQ(0U, p0);
@@ -304,10 +313,8 @@ public:
 struct LockAwayThrower
 {
 public:
-    LockAwayThrower(be::BackendConnectionManagerPtr cm,
-                    const be::Namespace& ns)
-        : cm_(cm)
-        , ns_(ns)
+    explicit LockAwayThrower(be::GlobalLockStorePtr lock_store)
+        : lock_store_(lock_store)
     {}
 
     DECLARE_LOGGER("LockAwayThrower");
@@ -320,10 +327,7 @@ public:
             try
             {
                 boost::this_thread::sleep(boost::posix_time::milliseconds(100));
-                be::BackendConnectionInterfacePtr conn(cm_->getConnection());
-                conn->timeout(boost::posix_time::seconds(10));
-                conn->remove(ns_,
-                             backend::LockCommunicator::lock_name_);
+                lock_store_->erase();
                 LOG_INFO("Threw away the lock");
                 return;
             }
@@ -339,16 +343,15 @@ public:
         }
     }
 
-    be::BackendConnectionManagerPtr cm_;
-    const be::Namespace ns_;
+    be::GlobalLockStorePtr lock_store_;
 };
 
 }
 
 TEST_F(LockTest, test_throwing_away_the_lock)
 {
-        {
-            be::BackendConnectionInterfacePtr c(cm_->getConnection());
+    {
+        be::BackendConnectionInterfacePtr c(cm_->getConnection());
         if (not c->hasExtendedApi())
         {
             SUCCEED() << "these tests require a backend that supports the extended api";
@@ -356,17 +359,19 @@ TEST_F(LockTest, test_throwing_away_the_lock)
         }
     }
 
-    LockAwayThrower thrower(cm_, testNamespace());
-    const youtils::GracePeriod grace_period(boost::posix_time::milliseconds(100));
+    be::GlobalLockStorePtr
+        lock_store(new be::LockStore(cm_->newBackendInterface(testNamespace())));
+
+    LockAwayThrower thrower(lock_store);
+    const yt::GracePeriod grace_period(boost::posix_time::milliseconds(100));
     boost::thread t(thrower);
     TestCallBack callback;
 
-    backend::GlobalLockService lock_service(grace_period,
-                                                      &trampoline<TestCallBack>,
-                                                      &callback,
-                                                      cm_,
-                                                      backend::UpdateInterval(boost::posix_time::seconds(1)),
-                                                      testNamespace());
+    LockService lock_service(yt::GracePeriod(boost::posix_time::seconds(1)),
+                             &trampoline<TestCallBack>,
+                             &callback,
+                             lock_store,
+                             be::UpdateInterval(boost::posix_time::seconds(1)));
 
     ASSERT_TRUE(lock_service.lock());
 
@@ -378,6 +383,7 @@ TEST_F(LockTest, test_throwing_away_the_lock)
 
 namespace
 {
+
 class SleepingCallable
 {
 public:
@@ -404,10 +410,10 @@ public:
 
     const be::Namespace ns_;
 
-    virtual const youtils::GracePeriod&
+    virtual const yt::GracePeriod&
     grace_period() const
     {
-        static const youtils::GracePeriod grace_period_(boost::posix_time::milliseconds(100));
+        static const yt::GracePeriod grace_period_(boost::posix_time::milliseconds(100));
         return grace_period_;
     }
 
@@ -426,44 +432,42 @@ TEST_F(LockTest, test_parallel_locks)
         }
     }
 
-    typedef backend::GlobalLockService::WithGlobalLock<youtils::ExceptionPolicy::DisableExceptions,
-                                                                 SleepingCallable,
-                                                                 &SleepingCallable::info>::type_
-        CallableT;
+    using CallableT = LockService::WithGlobalLock<yt::ExceptionPolicy::DisableExceptions,
+                                                  SleepingCallable,
+                                                  &SleepingCallable::info>::type_;
+
     const int num_tests = 16;
-    std::vector<std::unique_ptr<WithRandomNamespace> > namespaces;
+    std::vector<std::unique_ptr<WithRandomNamespace>> namespaces;
 
     for(int i = 0; i < num_tests; ++i)
     {
         namespaces.push_back(make_random_namespace());
     }
 
-    std::vector<boost::thread*> threads(num_tests);
-    std::vector<CallableT*> locked_callables(num_tests);
-    std::vector<SleepingCallable*> callables(num_tests);
-    //    std::vector<std::unique_ptr<backend::GlobalLockService> > lock_services;
+    std::vector<boost::thread> threads;
+    std::vector<std::unique_ptr<CallableT>> locked_callables;
+    std::vector<std::unique_ptr<SleepingCallable>> callables;
 
     for(int i = 0; i < num_tests; ++i)
     {
-        callables[i] = new SleepingCallable(namespaces[i]->ns());
+        be::GlobalLockStorePtr
+            lock_store(new be::LockStore(cm_->newBackendInterface(namespaces[i]->ns())));
 
-        locked_callables[i] = new CallableT(boost::ref(*callables[i]),
-                                            CallableT::retry_connection_times_default(),
-                                            CallableT::connection_retry_timeout_default(),
-                                            cm_,
-                                            backend::UpdateInterval(boost::posix_time::seconds(1)),
-                                            namespaces[i]->ns());
+        callables.emplace_back(std::make_unique<SleepingCallable>(namespaces[i]->ns()));
 
-        threads[i] = new boost::thread(boost::ref(*locked_callables[i]));
+        locked_callables.emplace_back(std::make_unique<CallableT>(boost::ref(*callables[i]),
+                                                                  CallableT::retry_connection_times_default(),
+                                                                  CallableT::connection_retry_timeout_default(),
+                                                                  lock_store,
+                                                                  be::UpdateInterval(boost::posix_time::seconds(1))));
+
+        threads.emplace_back(boost::thread(boost::ref(*locked_callables[i])));
     }
     for(int i = 0; i < num_tests; ++i)
     {
-        threads[i]->join();
+        threads[i].join();
         std::exception_ptr no_exception;
         EXPECT_TRUE(locked_callables[i]->exit_exception == no_exception);
-        delete threads[i];
-        delete locked_callables[i];
-        delete callables[i];
     }
 }
 
@@ -478,14 +482,13 @@ TEST_F(LockTest, test_serial_locks)
         }
     }
 
+    using CallableT = LockService::WithGlobalLock<yt::ExceptionPolicy::DisableExceptions,
+                                                  SleepingCallable,
+                                                  &SleepingCallable::info>::type_;
 
-    typedef backend::GlobalLockService::WithGlobalLock<youtils::ExceptionPolicy::DisableExceptions,
-                                                       SleepingCallable,
-                                                       &SleepingCallable::info>::type_
-        CallableT;
     const int num_tests = 4;
-
     const int serial_num_tests = 16;
+
     std::vector<std::unique_ptr<WithRandomNamespace> > namespaces;
 
     for(int i = 0; i < num_tests; ++i)
@@ -493,36 +496,32 @@ TEST_F(LockTest, test_serial_locks)
         namespaces.push_back(make_random_namespace());
     }
 
-
     for(int k = 0; k < serial_num_tests; ++k)
     {
-        std::vector<boost::thread*> threads(num_tests);
-        std::vector<CallableT*> locked_callables(num_tests);
-        std::vector<SleepingCallable*> callables(num_tests);
-
+        std::vector<boost::thread> threads;
+        std::vector<std::unique_ptr<CallableT>> locked_callables;
+        std::vector<std::unique_ptr<SleepingCallable>> callables;
 
         for(int i = 0; i < num_tests; ++i)
         {
-            callables[i] = new SleepingCallable(be::Namespace(namespaces[i]->ns()));
+            be::GlobalLockStorePtr
+                lock_store(new be::LockStore(cm_->newBackendInterface(namespaces[i]->ns())));
 
-            locked_callables[i] = new CallableT(boost::ref(*callables[i]),
-                                                youtils::NumberOfRetries(10),
-                                                CallableT::connection_retry_timeout_default(),
-                                                cm_,
-                                                backend::UpdateInterval(boost::posix_time::seconds(1)),
-                                                namespaces[i]->ns());
+            callables.emplace_back(std::make_unique<SleepingCallable>(be::Namespace(namespaces[i]->ns())));
 
-            threads[i] = new boost::thread(boost::ref(*locked_callables[i]));
+            locked_callables.emplace_back(std::make_unique<CallableT>(boost::ref(*callables[i]),
+                                                                      yt::NumberOfRetries(10),
+                                                                      CallableT::connection_retry_timeout_default(),
+                                                                      lock_store,
+                                                                      be::UpdateInterval(boost::posix_time::seconds(1))));
+            threads.emplace_back(boost::thread(boost::ref(*locked_callables[i])));
         }
+
         for(int i = 0; i < num_tests; ++i)
         {
-            threads[i]->join();
+            threads[i].join();
             std::exception_ptr no_exception;
             EXPECT_TRUE(locked_callables[i]->exit_exception == no_exception);
-
-            delete threads[i];
-            delete locked_callables[i];
-            delete callables[i];
         }
     }
 }

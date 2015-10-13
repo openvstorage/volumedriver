@@ -32,7 +32,7 @@ namespace backend
 class LockCommunicator
 {
 public:
-    LockCommunicator(GlobalLockStorePtr lock_store,
+    LockCommunicator(LockStorePtr lock_store,
                      const boost::posix_time::time_duration connection_timeout,
                      const boost::posix_time::time_duration interrupt_timeout);
 
@@ -66,7 +66,7 @@ public:
 private:
     DECLARE_LOGGER("BackendLockCommunicator");
 
-    GlobalLockStorePtr lock_store_;
+    LockStorePtr lock_store_;
     LockTag tag_;
     Lock lock_;
 

@@ -28,17 +28,20 @@
 #include <youtils/WithGlobalLock.h>
 
 #include <backend/GlobalLockService.h>
+#include <backend/LockStore.h>
 
 namespace
 {
 
+namespace be = backend;
 namespace bpt = boost::property_tree;
 namespace po = boost::program_options;
 namespace vd = volumedriver;
 namespace vd_bu = volumedriver_backup;
+namespace yt = youtils;
 
 class RestoreMain
-    : public youtils::MainHelper
+    : public yt::MainHelper
 {
 public:
     RestoreMain(int argc,
@@ -73,7 +76,7 @@ public:
     parse_command_line_arguments()
     {
         parse_unparsed_options(restore_options_,
-                               youtils::AllowUnregisteredOptions::T,
+                               yt::AllowUnregisteredOptions::T,
                                vm_);
     }
 
@@ -89,7 +92,7 @@ public:
                 config_ptree.get_child_optional("source_configuration");
             if(source_ptree_opt)
             {
-                auto bcm(backend::BackendConnectionManager::create(*source_ptree_opt));
+                auto bcm(be::BackendConnectionManager::create(*source_ptree_opt));
 
                 const uint64_t update_interval = config_ptree.get<uint64_t>("global_lock_update_interval_in_seconds", 30);
                 const uint64_t grace_period_in_seconds = config_ptree.get<uint64_t>("grace_period_in_seconds", 30);
@@ -97,33 +100,36 @@ public:
 
                 vd_bu::Restore restore(configuration_file_,
                                        barf_on_busted_backup_,
-                                       youtils::GracePeriod(boost::posix_time::seconds(grace_period_in_seconds)));
+                                       yt::GracePeriod(boost::posix_time::seconds(grace_period_in_seconds)));
 
-                typedef backend::GlobalLockService::WithGlobalLock<youtils::ExceptionPolicy::ThrowExceptions,
-                                                                   vd_bu::Restore,
-                                                                   &vd_bu::Restore::info>::type_
-                    LockedRestore;
+                using LockedRestore =
+                    be::GlobalLockService::WithGlobalLock<yt::ExceptionPolicy::ThrowExceptions,
+                                                          vd_bu::Restore,
+                                                          &vd_bu::Restore::info>::type_;
 
-                const std::string locking_namespace = source_ptree_opt->get<std::string>("namespace");
+                const std::string locking_namespace =
+                    source_ptree_opt->get<std::string>("namespace");
 
+                be::GlobalLockStorePtr
+                    lock_store(new be::LockStore(bcm->newBackendInterface(be::Namespace(locking_namespace))));
 
                 LockedRestore locked_restore(boost::ref(restore),
-                                             youtils::NumberOfRetries(1),
+                                             yt::NumberOfRetries(1),
                                              LockedRestore::connection_retry_timeout_default(),
-                                             bcm,
-                                             backend::UpdateInterval(boost::posix_time::seconds(update_interval)),
-                                             backend::Namespace(locking_namespace));
+                                             lock_store,
+                                             be::UpdateInterval(boost::posix_time::seconds(update_interval)));
+
                 try
                 {
                     locked_restore();
                 }
-                catch(youtils::WithGlobalLockExceptions::CouldNotInterruptCallable& e)
+                catch(yt::WithGlobalLockExceptions::CouldNotInterruptCallable& e)
                 {
                     LOG_FATAL("Aborting because the worker thread could not be interrupted and we *don't* have the lock anymore");
                     exit(1);
                 }
 
-                catch(youtils::WithGlobalLockExceptions::CallableException& e)
+                catch(yt::WithGlobalLockExceptions::CallableException& e)
                 {
                     std::rethrow_exception(e.exception_);
                 }
@@ -132,7 +138,7 @@ public:
             {
                 vd_bu::Restore restore(configuration_file_,
                                        barf_on_busted_backup_,
-                                       youtils::GracePeriod(boost::posix_time::seconds(30)));
+                                       yt::GracePeriod(boost::posix_time::seconds(30)));
                 restore();
             }
             return 0;

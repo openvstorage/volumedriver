@@ -20,14 +20,14 @@ namespace backend
 
 Lock::Lock(const boost::posix_time::time_duration& session_timeout,
            const boost::posix_time::time_duration& interrupt_timeout)
-    : hasLock(true)
+    : has_lock_(true)
     , counter(0)
     , session_timeout_(session_timeout)
     , interrupt_timeout_(interrupt_timeout)
 {}
 
 Lock::Lock(const std::string& str)
-    : hasLock(true)
+    : has_lock_(true)
 {
     std::stringstream ss(str);
     boost::archive::xml_iarchive ia(ss);

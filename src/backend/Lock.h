@@ -33,15 +33,12 @@ class BackwardsCompatibilityTest;
 namespace backend
 {
 
-class LockCommunicator;
-
 class Lock
 {
-    friend class LockCommunicator;
     friend class volumedrivertest::BackwardsCompatibilityTest;
 public:
     Lock(const boost::posix_time::time_duration& session_timeout,
-             const boost::posix_time::time_duration& interrupt_timeout);
+         const boost::posix_time::time_duration& interrupt_timeout);
 
     Lock(const std::string& str);
 
@@ -65,9 +62,21 @@ public:
     boost::posix_time::time_duration
     get_timeout() const;
 
+    bool
+    hasLock() const
+    {
+        return has_lock_;
+    }
+
+    void
+    hasLock(bool has_lock)
+    {
+        has_lock_ = has_lock;
+    }
+
 private:
     youtils::UUID uuid;
-    bool hasLock;
+    bool has_lock_;
     uint64_t counter;
     boost::posix_time::time_duration session_timeout_;
     boost::posix_time::time_duration interrupt_timeout_;
@@ -83,7 +92,8 @@ private:
         if(version == 0)
         {
             ar & BOOST_SERIALIZATION_NVP(uuid);
-            ar & BOOST_SERIALIZATION_NVP(hasLock);
+            ar & boost::serialization::make_nvp("hasLock",
+                                                has_lock_);
             ar & BOOST_SERIALIZATION_NVP(counter);
             uint64_t session_timeout_milliseconds;
             ar & BOOST_SERIALIZATION_NVP(session_timeout_milliseconds);
@@ -110,7 +120,8 @@ private:
         {
 
             ar & BOOST_SERIALIZATION_NVP(uuid);
-            ar & BOOST_SERIALIZATION_NVP(hasLock);
+            ar & boost::serialization::make_nvp("hasLock",
+                                                has_lock_);
             ar & BOOST_SERIALIZATION_NVP(counter);
             uint64_t session_timeout_milliseconds = session_timeout_.total_milliseconds();
             ar & BOOST_SERIALIZATION_NVP(session_timeout_milliseconds);

@@ -12,66 +12,54 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "BackendException.h"
 #include "GlobalLockService.h"
 #include "HeartBeat.h"
 
-#include <boost/foreach.hpp>
-#include <boost/scope_exit.hpp>
+#include <youtils/System.h>
 
 namespace backend
 {
 
-GlobalLockService::GlobalLockService(const youtils::GracePeriod& grace_period,
+namespace yt = youtils;
+
+#define LOCK()                                                \
+    boost::lock_guard<decltype(heartbeat_thread_mutex_)> hbtg__(heartbeat_thread_mutex_)
+
+GlobalLockService::GlobalLockService(const yt::GracePeriod& grace_period,
                                      lost_lock_callback callback,
                                      void* data,
-                                     BackendConnectionManagerPtr cm,
-                                     const UpdateInterval& update_interval,
-                                     const Namespace& ns)
-    : youtils::GlobalLockService(grace_period,
-                                 callback,
-                                 data)
-    , cm_(cm)
-    , ns_(ns)
+                                     GlobalLockStorePtr lock_store,
+                                     const UpdateInterval& update_interval)
+    : yt::GlobalLockService(grace_period,
+                            callback,
+                            data)
+    , lock_store_(lock_store)
     , update_interval_(update_interval)
-
-{
-    const auto ext_api = cm_->newBackendInterface(ns_)->hasExtendedApi();
-    if (not ext_api)
-    {
-        LOG_ERROR("Global lock server cannot be created as the configured backend doesn't support the extended API");
-        throw BackendNotImplementedException();
-    }
-}
+{}
 
 GlobalLockService::~GlobalLockService()
 {
-    unlock(std::string("Destructor of GlobalLockService for namespace ") + ns_.str());
-    LOG_INFO("Destructor finished");
-}
-
-boost::posix_time::time_duration
-GlobalLockService::get_session_wait_time() const
-{
-    // 1 update_interval as time_out for the connection
-    // 1 update interval as heart_beat timeout
-    // 1 grace period to make sure the executable is stopped
-    return update_interval_ + update_interval_ + grace_period_;
+    unlock("Destruction of GlobalLockService");
+    LOG_INFO(name() << ": destructed");
 }
 
 bool
 GlobalLockService::lock()
 {
+    LOCK();
 
-    boost::lock_guard<boost::mutex> lock(heartbeat_thread_mutex_);
     if(heartbeat_thread_)
     {
         return false;
     }
 
-    HeartBeat heartbeat(*this,
-                            update_interval_,
-                            get_session_wait_time());
+    HeartBeat heartbeat(lock_store_,
+                        [&]()
+                        {
+                            finish_thread();
+                        },
+                        update_interval_,
+                        get_session_wait_time());
 
     if(heartbeat.grab_lock())
     {
@@ -86,32 +74,17 @@ GlobalLockService::lock()
 }
 
 void
-GlobalLockService::do_callback(const std::string& reason)
+GlobalLockService::unlock()
 {
-    if(callback_)
-    {
-        LOG_INFO("Calling callback for namespace " << ns_);
-        try
-        {
-            callback_(data_,
-                      reason);
-        }
-        catch(...)
-        {
-            LOG_FATAL("Got an exception while notifying of a lost lock, "
-                      << "hold on to your seats as we attempt an emergency landing");
-
-            std::unexpected();
-        }
-    }
+    unlock("Unlock by client");
 }
 
 void
 GlobalLockService::finish_thread()
 {
-    LOG_INFO("finishing thread for " << ns_ << " because we lost the lock");
+    LOG_INFO(name() << ": finishing thread because we lost the lock");
 
-    boost::lock_guard<boost::mutex> lock(heartbeat_thread_mutex_);
+    LOCK();
     if(heartbeat_thread_)
     {
         do_callback("lost the lock");
@@ -124,31 +97,50 @@ GlobalLockService::finish_thread()
 }
 
 void
-GlobalLockService::unlock()
+GlobalLockService::do_callback(const std::string& reason)
 {
-    unlock("Unlock by client");
+    if(callback_)
+    {
+        LOG_INFO(name() << ": calling callback");
+        try
+        {
+            callback_(data_,
+                      reason);
+        }
+        CATCH_STD_ALL_EWHAT({
+                LOG_FATAL("Got an exception while notifying of a lost lock: " <<
+                          EWHAT << ". Hold on to your seats as we attempt an emergency landing");
+                std::unexpected();
+            });
+    }
 }
 
 void
 GlobalLockService::unlock(const std::string& reason)
 {
-    LOG_INFO("Got an unlock for namespace " << ns_ << ", reason: " << reason);
-    boost::lock_guard<boost::mutex> lock(heartbeat_thread_mutex_);
+    LOG_INFO(name() << ": got an unlock request, reason: " << reason);
+    LOCK();
     if(heartbeat_thread_)
     {
         heartbeat_thread_->interrupt();
         do_callback("unlock called");
-        LOG_INFO("joining heartbeat thread for " << ns_);
+        LOG_INFO(name() << ": joining heartbeat thread");
         heartbeat_thread_->join();
-        LOG_INFO("exit finishing thread for " << ns_);
+        LOG_INFO(name() << ": destructing thread");
         heartbeat_thread_.reset(0);
 
     }
     VERIFY(not heartbeat_thread_);
 }
 
+// Returns the time another contender has to wait before trying to grab the lock.
+boost::posix_time::time_duration
+GlobalLockService::get_session_wait_time() const
+{
+    // 1 update_interval as time_out for the connection
+    // 1 update interval as heart_beat timeout
+    // 1 grace period to make sure the executable is stopped
+    return update_interval_ + update_interval_ + grace_period_;
 }
 
-// Local Variables: **
-// mode: c++ **
-// End: **
+}

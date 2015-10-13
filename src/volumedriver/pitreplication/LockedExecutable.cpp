@@ -25,19 +25,22 @@
 #include <youtils/BuildInfo.h>
 #include <youtils/Logger.h>
 #include <youtils/Logging.h>
+#include <youtils/Main.h>
 #include <youtils/WithGlobalLock.h>
 
 #include <backend/BackendConfig.h>
 #include <backend/BackendConnectionManager.h>
 #include <backend/GlobalLockService.h>
-#include <youtils/Main.h>
-
-namespace po = boost::program_options;
-namespace fs = boost::filesystem;
-namespace yt = youtils;
+#include <backend/LockStore.h>
 
 namespace
 {
+
+namespace be = backend;
+namespace bpt = boost::property_tree;
+namespace po = boost::program_options;
+namespace fs = boost::filesystem;
+namespace yt = youtils;
 
 boost::condition_variable cond_var;
 boost::mutex cond_var_mutex;
@@ -57,6 +60,7 @@ shutdown()
         kill(getpid(), SIGUSR1);
     }
 }
+
 }
 
 struct SignalHandler
@@ -113,9 +117,9 @@ private:
 };
 
 struct MyCallable
-    : public youtils::GlobalLockedCallable
+    : public yt::GlobalLockedCallable
 {
-    MyCallable(const youtils::GracePeriod& grace_period,
+    MyCallable(const yt::GracePeriod& grace_period,
                const uint64_t timeout = 0)
         : timeout_(timeout)
         , grace_period_(grace_period)
@@ -143,24 +147,25 @@ struct MyCallable
         std::cout << "OK tolc kanek" << std::endl;
     }
 
-    virtual const youtils::GracePeriod&
+    virtual const yt::GracePeriod&
     grace_period() const
     {
         return grace_period_;
     }
 
     const uint64_t timeout_;
-    const youtils::GracePeriod grace_period_;
+    const yt::GracePeriod grace_period_;
 
     DECLARE_LOGGER("MyCallable");
 };
 
 template <typename T1>
 struct GlobalCallableWrapper
-    : public youtils::GlobalLockedCallable
+    : public yt::GlobalLockedCallable
 {
-    typedef typename backend::GlobalLockService::WithGlobalLock<youtils::ExceptionPolicy::ThrowExceptions,
-                                                                          T1>::type_ CallableT;
+    using CallableT =
+        typename be::GlobalLockService::WithGlobalLock<yt::ExceptionPolicy::ThrowExceptions,
+                                                       T1>::type_;
 
     GlobalCallableWrapper(CallableT& callable)
         : callable_(callable)
@@ -173,7 +178,7 @@ struct GlobalCallableWrapper
         {
             callable_();
         }
-        catch(youtils::WithGlobalLockExceptions::UnableToGetLockException& e)
+        catch(yt::WithGlobalLockExceptions::UnableToGetLockException& e)
         {
             shutdown();
             std::cout << "FAILURE ta toke lack" << std::endl;
@@ -184,7 +189,7 @@ struct GlobalCallableWrapper
         }
     }
 
-    virtual const youtils::GracePeriod&
+    virtual const yt::GracePeriod&
     grace_period() const
     {
         return callable_.grace_period();
@@ -194,7 +199,7 @@ struct GlobalCallableWrapper
 };
 
 
-class LockedExecutableMain : public youtils::MainHelper
+class LockedExecutableMain : public yt::MainHelper
 {
 public:
     LockedExecutableMain(int argc,
@@ -239,7 +244,7 @@ public:
                                yt::AllowUnregisteredOptions::T,
                                vm_);
 
-        ns_.reset(new backend::Namespace(ns_temp));
+        ns_.reset(new be::Namespace(ns_temp));
     }
 
     virtual void
@@ -253,19 +258,21 @@ public:
     {
         pt_.put("version", 1);
 
-        auto bcm(backend::BackendConnectionManager::create(pt_));
+        auto bcm(be::BackendConnectionManager::create(pt_));
 
         typedef GlobalCallableWrapper<MyCallable>::CallableT CallableT;
 
-        MyCallable my_callable(youtils::GracePeriod(boost::posix_time::seconds(grace_period_)),
+        MyCallable my_callable(yt::GracePeriod(boost::posix_time::seconds(grace_period_)),
                                timeout_);
 
+        be::GlobalLockStorePtr
+            lock_store(new be::LockStore(bcm->newBackendInterface(*ns_)));
+
         CallableT callable(boost::ref(my_callable),
-                           youtils::NumberOfRetries(num_retries_),
+                           yt::NumberOfRetries(num_retries_),
                            CallableT::connection_retry_timeout_default(),
-                           bcm,
-                           backend::UpdateInterval(boost::posix_time::seconds(lock_session_timeout_seconds_)),
-                           *ns_);
+                           lock_store,
+                           be::UpdateInterval(boost::posix_time::seconds(lock_session_timeout_seconds_)));
 
         GlobalCallableWrapper<MyCallable> callable2(callable);
 
@@ -278,7 +285,7 @@ public:
     SignalHandler sighandler_;
     po::options_description normal_options_;
 
-    std::unique_ptr<backend::Namespace> ns_;
+    std::unique_ptr<be::Namespace> ns_;
     std::string ns_temp;
 
     uint64_t timeout_;
@@ -287,7 +294,7 @@ public:
     uint64_t lock_session_timeout_seconds_;
     uint64_t num_retries_;
     uint64_t grace_period_;
-    boost::property_tree::ptree pt_;
+    bpt::ptree pt_;
 };
 
 MAIN(LockedExecutableMain)

@@ -15,25 +15,28 @@
 #ifndef BACKEND_HEARTBEAT_H_
 #define BACKEND_HEARTBEAT_H_
 
+#include "GlobalLockStore.h"
 #include "LockCommunicator.h"
 
-#include <youtils/GlobalLockService.h>
 #include <youtils/Logging.h>
 
 namespace backend
 {
 
-class GlobalLockService;
-
 class HeartBeat
 {
 public:
-    typedef youtils::GlobalLockService::lost_lock_callback lost_lock_callback;
+    using FinishThreadFun = std::function<void()>;
+    using TimeDuration = boost::posix_time::time_duration;
 
-    // Carefull these are copied *by value* before the thread sees them!
-    HeartBeat(GlobalLockService& rest_global_lock_service,
-              const boost::posix_time::time_duration& heartbeat_timeout,
-              const boost::posix_time::time_duration& interrupt_timeout);
+    // Careful these are copied *by value* before the thread sees them!
+    HeartBeat(GlobalLockStorePtr lock_store,
+              FinishThreadFun finish_thread_fun,
+              const TimeDuration& heartbeat_timeout,
+              const TimeDuration& interrupt_timeout);
+
+    const std::string&
+    name() const;
 
     void
     operator()();
@@ -44,10 +47,10 @@ public:
 private:
     DECLARE_LOGGER("BackendHeartBeat");
 
-    GlobalLockService& global_lock_service_;
+    FinishThreadFun finish_thread_fun_;
     // Only instantiate the communicator when the lock is grabbed??
     LockCommunicator lock_communicator_;
-    const boost::posix_time::time_duration heartbeat_timeout_;
+    const TimeDuration heartbeat_timeout_;
 };
 
 }
