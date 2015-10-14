@@ -23,6 +23,7 @@
 #include <boost/thread.hpp>
 
 #include <youtils/BuildInfo.h>
+#include <youtils/HeartBeatLockService.h>
 #include <youtils/Logger.h>
 #include <youtils/Logging.h>
 #include <youtils/Main.h>
@@ -30,7 +31,6 @@
 
 #include <backend/BackendConfig.h>
 #include <backend/BackendConnectionManager.h>
-#include <backend/HeartBeatLockService.h>
 #include <backend/LockStore.h>
 
 namespace
@@ -164,7 +164,7 @@ struct GlobalCallableWrapper
     : public yt::GlobalLockedCallable
 {
     using CallableT =
-        typename be::HeartBeatLockService::WithGlobalLock<yt::ExceptionPolicy::ThrowExceptions,
+        typename yt::HeartBeatLockService::WithGlobalLock<yt::ExceptionPolicy::ThrowExceptions,
                                                           T1>::type_;
 
     GlobalCallableWrapper(CallableT& callable)
@@ -265,14 +265,14 @@ public:
         MyCallable my_callable(yt::GracePeriod(boost::posix_time::seconds(grace_period_)),
                                timeout_);
 
-        be::GlobalLockStorePtr
+        yt::GlobalLockStorePtr
             lock_store(new be::LockStore(bcm->newBackendInterface(*ns_)));
 
         CallableT callable(boost::ref(my_callable),
                            yt::NumberOfRetries(num_retries_),
                            CallableT::connection_retry_timeout_default(),
                            lock_store,
-                           be::UpdateInterval(boost::posix_time::seconds(lock_session_timeout_seconds_)));
+                           yt::UpdateInterval(boost::posix_time::seconds(lock_session_timeout_seconds_)));
 
         GlobalCallableWrapper<MyCallable> callable2(callable);
 

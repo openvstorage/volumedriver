@@ -15,14 +15,14 @@
 #ifndef BACKEND_GLOBAL_LOCK_STORE_H_
 #define BACKEND_GLOBAL_LOCK_STORE_H_
 
-#include "Lock.h"
-#include "LockTag.h"
+#include "HeartBeatLock.h"
+#include "GlobalLockTag.h"
 
 #include <boost/shared_ptr.hpp>
 
 #include <memory>
 
-namespace backend
+namespace youtils
 {
 
 struct GlobalLockStore
@@ -32,12 +32,12 @@ struct GlobalLockStore
     virtual bool
     exists() = 0;
 
-    virtual std::tuple<Lock, LockTag>
+    virtual std::tuple<HeartBeatLock, GlobalLockTag>
     read() = 0;
 
-    virtual LockTag
-    write(const Lock&,
-          const boost::optional<LockTag>&) = 0;
+    virtual GlobalLockTag
+    write(const HeartBeatLock&,
+          const boost::optional<GlobalLockTag>&) = 0;
 
     virtual const std::string&
     name() const = 0;

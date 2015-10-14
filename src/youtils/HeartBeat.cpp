@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "Catchers.h"
 #include "HeartBeat.h"
 
 #include <boost/thread.hpp>
 
-#include <youtils/Catchers.h>
-
-namespace backend
+namespace youtils
 {
 
 HeartBeat::HeartBeat(GlobalLockStorePtr lock_store,

@@ -12,54 +12,48 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef BACKEND_LOCK_H_
-#define BACKEND_LOCK_H_
+#ifndef YT_HEARTBEAT_LOCK_H_
+#define YT_HEARTBEAT_LOCK_H_
+
+#include "Serialization.h"
+#include "System.h"
+#include "UUID.h"
 
 #include <boost/archive/xml_iarchive.hpp>
 #include <boost/archive/xml_oarchive.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
-#include <youtils/Serialization.h>
-#include <youtils/System.h>
-#include <youtils/UUID.h>
-
-namespace volumedrivertest
+namespace youtils
 {
 
-class BackwardsCompatibilityTest;
-
-}
-
-namespace backend
+class HeartBeatLock
 {
-
-class Lock
-{
-    friend class volumedrivertest::BackwardsCompatibilityTest;
 public:
-    Lock(const boost::posix_time::time_duration& session_timeout,
-         const boost::posix_time::time_duration& interrupt_timeout);
+    using TimeDuration = boost::posix_time::time_duration;
 
-    Lock(const std::string& str);
+    HeartBeatLock(const TimeDuration& session_timeout,
+                  const TimeDuration& interrupt_timeout);
 
-    Lock(const Lock&) = default;
+    HeartBeatLock(const std::string&);
 
-    Lock&
-    operator=(const Lock&) = default;
+    HeartBeatLock(const HeartBeatLock&) = default;
+
+    HeartBeatLock&
+    operator=(const HeartBeatLock&) = default;
 
     void
     operator++();
 
     void
-    save(std::string& str) const;
+    save(std::string&) const;
 
     bool
-    same_owner(const Lock& inOther) const;
+    same_owner(const HeartBeatLock&) const;
 
     bool
-    different_owner(const Lock& inOther) const;
+    different_owner(const HeartBeatLock&) const;
 
-    boost::posix_time::time_duration
+    TimeDuration
     get_timeout() const;
 
     bool
@@ -74,12 +68,24 @@ public:
         has_lock_ = has_lock;
     }
 
+    TimeDuration
+    session_timeout() const
+    {
+        return session_timeout_;
+    }
+
+    TimeDuration
+    interrupt_timeout() const
+    {
+        return interrupt_timeout_;
+    }
+
 private:
-    youtils::UUID uuid;
+    UUID uuid;
     bool has_lock_;
     uint64_t counter;
-    boost::posix_time::time_duration session_timeout_;
-    boost::posix_time::time_duration interrupt_timeout_;
+    TimeDuration session_timeout_;
+    TimeDuration interrupt_timeout_;
 
     friend class boost::serialization::access;
 
@@ -127,8 +133,8 @@ private:
             ar & BOOST_SERIALIZATION_NVP(session_timeout_milliseconds);
             uint64_t interrupt_timeout_milliseconds  = interrupt_timeout_.total_milliseconds();
             ar & BOOST_SERIALIZATION_NVP(interrupt_timeout_milliseconds);
-            std::string hostname = youtils::System::getHostName();
-            uint64_t pid = youtils::System::getPID();
+            std::string hostname = System::getHostName();
+            uint64_t pid = System::getPID();
             ar & BOOST_SERIALIZATION_NVP(hostname);
             ar & BOOST_SERIALIZATION_NVP(pid);
         }
@@ -138,11 +144,12 @@ private:
         }
     }
 };
+
 }
 
-BOOST_CLASS_VERSION(backend::Lock, 0);
+BOOST_CLASS_VERSION(youtils::HeartBeatLock, 0);
 
-#endif // RESTLOCK_H_
+#endif // YT_HEARTBEAT_LOCK_H_
 
 
 // Local Variables: **

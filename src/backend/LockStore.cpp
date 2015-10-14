@@ -19,6 +19,8 @@
 namespace backend
 {
 
+namespace yt = youtils;
+
 namespace
 {
 
@@ -47,20 +49,20 @@ LockStore::exists()
     return bi_->objectExists(lock_name());
 }
 
-std::tuple<Lock, LockTag>
+std::tuple<yt::HeartBeatLock, yt::GlobalLockTag>
 LockStore::read()
 {
     std::string s;
     const ETag etag(bi_->x_read(s,
                                 lock_name(),
                                 InsistOnLatestVersion::T).etag_);
-    return std::make_tuple(Lock(s),
-                           static_cast<const LockTag>(etag));
+    return std::make_tuple(yt::HeartBeatLock(s),
+                           static_cast<const yt::GlobalLockTag>(etag));
 }
 
-LockTag
-LockStore::write(const Lock& lock,
-                 const boost::optional<LockTag>& lock_tag)
+yt::GlobalLockTag
+LockStore::write(const yt::HeartBeatLock& lock,
+                 const boost::optional<yt::GlobalLockTag>& lock_tag)
 {
     std::string s;
     lock.save(s);
@@ -73,7 +75,7 @@ LockStore::write(const Lock& lock,
                                  lock_tag ?
                                  &static_cast<const ETag&>(*lock_tag) :
                                  nullptr).etag_);
-    return static_cast<const LockTag&>(etag);
+    return static_cast<const yt::GlobalLockTag&>(etag);
 }
 
 const std::string&

@@ -21,12 +21,12 @@
 #include <boost/program_options.hpp>
 
 #include <youtils/BuildInfoString.h>
+#include <youtils/HeartBeatLockService.h>
 #include <youtils/Logger.h>
 #include <youtils/Main.h>
 #include <youtils/NoGlobalLockingService.h>
 #include <youtils/WithGlobalLock.h>
 
-#include <backend/HeartBeatLockService.h>
 #include <backend/LockStore.h>
 
 namespace
@@ -38,7 +38,7 @@ namespace vd = volumedriver;
 namespace vd_bu = volumedriver_backup;
 namespace yt = youtils;
 
-using LockService = be::HeartBeatLockService;
+using LockService = yt::HeartBeatLockService;
 
 class BackupMain
     : public yt::MainHelper
@@ -122,14 +122,14 @@ public:
                                                               vd_bu::DeleteSnapshot,
                                                               &vd_bu::DeleteSnapshot::info>::type_;
 
-            be::GlobalLockStorePtr
+            yt::GlobalLockStorePtr
                 lock_store(new be::LockStore(bcm->newBackendInterface(be::Namespace(target_namespace))));
 
             LockedDeleter locked_deleter(boost::ref(deleter),
                                          yt::NumberOfRetries(1),
                                          LockedDeleter::connection_retry_timeout_default(),
                                          lock_store,
-                                         be::UpdateInterval(boost::posix_time::seconds(update_interval)));
+                                         yt::UpdateInterval(boost::posix_time::seconds(update_interval)));
 
             LOG_INFO("Starting Locked Snapshot Deletion");
             try
@@ -162,14 +162,14 @@ public:
             using LockedBackup = LockService::WithGlobalLock<yt::ExceptionPolicy::ThrowExceptions,
                                                              vd_bu::Backup,
                                                              &vd_bu::Backup::info>::type_;
-            be::GlobalLockStorePtr
+            yt::GlobalLockStorePtr
                 lock_store(new be::LockStore(bcm->newBackendInterface(be::Namespace(target_namespace))));
 
             LockedBackup locked_backup(boost::ref(backup),
                                        yt::NumberOfRetries(1),
                                        LockedBackup::connection_retry_timeout_default(),
                                        lock_store,
-                                       be::UpdateInterval(boost::posix_time::seconds(update_interval)));
+                                       yt::UpdateInterval(boost::posix_time::seconds(update_interval)));
 
             LOG_INFO("Starting Locked Backup");
 

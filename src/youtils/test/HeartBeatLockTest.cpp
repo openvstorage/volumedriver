@@ -18,23 +18,19 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
-#include <youtils/TestBase.h>
-#include <youtils/Weed.h>
-#include <youtils/WithGlobalLock.h>
-
-#include "../BackendConnectionManager.h"
-#include "../BackendInterface.h"
+#include "../GlobalLockStore.h"
 #include "../HeartBeatLockService.h"
-#include "../Lock.h"
-#include "../LockCommunicator.h"
+#include "../HeartBeatLockService.h"
+#include "../HeartBeatLockCommunicator.h"
+#include "../TestBase.h"
+#include "../Weed.h"
+#include "../WithGlobalLock.h"
 
-namespace backendtest
+namespace youtilstest
 {
-namespace be = backend;
-namespace yt = youtils;
 
 using namespace std::literals::string_literals;
-using yt::WithGlobalLock;
+using namespace youtils;
 
 namespace
 {
@@ -44,10 +40,10 @@ BOOLEAN_ENUM(MustBeEmpty);
 struct Locks
 {
     boost::mutex lock;
-    std::map<yt::UUID, std::string> map;
+    std::map<UUID, std::string> map;
 
     decltype(map)::iterator
-    find(const yt::UUID& uuid,
+    find(const UUID& uuid,
          MustBeEmpty must_be_empty)
     {
         auto it = map.find(uuid);
@@ -67,11 +63,11 @@ struct Locks
 };
 
 class LockStore
-    : public be::GlobalLockStore
+    : public GlobalLockStore
 {
 public:
     LockStore(Locks& locks,
-              const yt::UUID& uuid)
+              const UUID& uuid)
         : locks_(locks)
         , uuid_(uuid)
         , name_(uuid_.str())
@@ -94,7 +90,7 @@ public:
         return not it->second.empty();
     }
 
-    std::tuple<be::Lock, be::LockTag>
+    std::tuple<HeartBeatLock, GlobalLockTag>
     read() override final
     {
         boost::lock_guard<decltype(Locks::lock)> g(locks_.lock);
@@ -105,15 +101,15 @@ public:
         EXPECT_TRUE(locks_.map.end() != it);
         EXPECT_FALSE(it->second.empty());
 
-        return
-            std::make_tuple(be::Lock(it->second),
-                            boost::lexical_cast<be::LockTag>(yt::Weed(reinterpret_cast<const byte*>(it->second.data()),
-                                                                      it->second.size())));
+        const Weed weed(reinterpret_cast<const byte*>(it->second.data()),
+                        it->second.size());
+        return std::make_tuple(HeartBeatLock(it->second),
+                               boost::lexical_cast<GlobalLockTag>(weed));
     }
 
-    be::LockTag
-    write(const be::Lock& lock,
-          const boost::optional<be::LockTag>& tag) override final
+    GlobalLockTag
+    write(const HeartBeatLock& lock,
+          const boost::optional<GlobalLockTag>& tag) override final
     {
         boost::lock_guard<decltype(Locks::lock)> g(locks_.lock);
 
@@ -124,8 +120,11 @@ public:
         if (tag)
         {
             EXPECT_FALSE(it->second.empty());
-            const auto current_tag(boost::lexical_cast<be::LockTag>(yt::Weed(reinterpret_cast<const byte*>(it->second.data()),
-                                                                             it->second.size())));
+
+            const Weed weed(reinterpret_cast<const byte*>(it->second.data()),
+                        it->second.size());
+
+            const auto current_tag(boost::lexical_cast<GlobalLockTag>(weed));
             if (*tag != current_tag)
             {
                 throw std::runtime_error("lock has changed for "s + name());
@@ -136,8 +135,9 @@ public:
         lock.save(s);
         locks_.map[uuid_] = s;
 
-        return boost::lexical_cast<be::LockTag>(yt::Weed(reinterpret_cast<const byte*>(s.data()),
-                                                         s.size()));
+        const Weed weed(reinterpret_cast<const byte*>(s.data()),
+                        s.size());
+        return boost::lexical_cast<GlobalLockTag>(weed);
     }
 
     const std::string&
@@ -154,22 +154,22 @@ public:
     }
 
 private:
-    DECLARE_LOGGER("BackendLockStore");
+    DECLARE_LOGGER("TestLockStore");
 
     Locks& locks_;
-    yt::UUID uuid_;
+    UUID uuid_;
     std::string name_;
 };
 
-DECLARE_LOGGER("LockTest");
+DECLARE_LOGGER("HeartBeatLockTest");
 
 }
 
-class LockTest
+class HeartBeatLockTest
     : public youtilstest::TestBase
 {
 public:
-    using LockService = be::HeartBeatLockService;
+    using LockService = HeartBeatLockService;
 };
 
 struct TestCallBack
@@ -195,20 +195,20 @@ trampoline(void* data,
     static_cast<T*>(data)->callback(reason);
 }
 
-TEST_F(LockTest, test_no_lock_if_namespace_doesnt_exist)
+TEST_F(HeartBeatLockTest, test_no_lock_if_namespace_doesnt_exist)
 {
     Locks locks;
     TestCallBack callback;
 
-    be::GlobalLockStorePtr
+    GlobalLockStorePtr
         lock_store(new LockStore(locks,
-                                 yt::UUID()));
+                                 UUID()));
 
-    LockService lock_service(yt::GracePeriod(boost::posix_time::seconds(1)),
+    LockService lock_service(GracePeriod(boost::posix_time::seconds(1)),
                              &trampoline<TestCallBack>,
                              &callback,
                              lock_store,
-                             be::UpdateInterval(boost::posix_time::seconds(1)));
+                             UpdateInterval(boost::posix_time::seconds(1)));
 
     ASSERT_FALSE(lock_service.lock());
     EXPECT_NO_THROW(lock_service.unlock());
@@ -216,24 +216,24 @@ TEST_F(LockTest, test_no_lock_if_namespace_doesnt_exist)
     EXPECT_FALSE(callback.called_);
 }
 
-TEST_F(LockTest, test_lock_if_namespace_exists)
+TEST_F(HeartBeatLockTest, test_lock_if_namespace_exists)
 {
-    const yt::GracePeriod grace_period(boost::posix_time::milliseconds(100));
+    const GracePeriod grace_period(boost::posix_time::milliseconds(100));
     TestCallBack callback;
 
-    yt::UUID uuid;
+    UUID uuid;
     Locks locks;
     locks.map = { { uuid, std::string() } };
 
-    be::GlobalLockStorePtr
+    GlobalLockStorePtr
         lock_store(new LockStore(locks,
                                  uuid));
 
-    LockService lock_service(yt::GracePeriod(boost::posix_time::seconds(1)),
+    LockService lock_service(GracePeriod(boost::posix_time::seconds(1)),
                              &trampoline<TestCallBack>,
                              &callback,
                              lock_store,
-                             be::UpdateInterval(boost::posix_time::seconds(1)));
+                             UpdateInterval(boost::posix_time::seconds(1)));
 
     ASSERT_TRUE(lock_service.lock());
     EXPECT_NO_THROW(lock_service.unlock());
@@ -245,13 +245,13 @@ namespace
 {
 
 class SharedMemCallable
-    : public yt::GlobalLockedCallable
+    : public GlobalLockedCallable
 {
 public:
     SharedMemCallable(const uint64_t id,
                       const key_t key,
                       const uint64_t max_id,
-                      const yt::GracePeriod grace_period)
+                      const GracePeriod grace_period)
         : id_(id)
         , key_(key)
         , max_id_(max_id)
@@ -293,7 +293,7 @@ public:
 
     DECLARE_LOGGER("SharedMemCallable");
 
-    virtual const yt::GracePeriod&
+    virtual const GracePeriod&
     grace_period() const
     {
         return grace_period_;
@@ -303,14 +303,14 @@ private:
     const uint64_t id_ ;
     const key_t key_;
     const uint64_t max_id_;
-    const yt::GracePeriod grace_period_;
+    const GracePeriod grace_period_;
 };
 
 }
 
-TEST_F(LockTest, test_mutual_exclusion)
+TEST_F(HeartBeatLockTest, test_mutual_exclusion)
 {
-    using CallableT = LockService::WithGlobalLock<yt::ExceptionPolicy::DisableExceptions,
+    using CallableT = LockService::WithGlobalLock<ExceptionPolicy::DisableExceptions,
                                                   SharedMemCallable,
                                                   &SharedMemCallable::info>::type_;
 
@@ -332,11 +332,11 @@ TEST_F(LockTest, test_mutual_exclusion)
     std::vector<std::unique_ptr<CallableT>> locked_callables;
     std::vector<std::unique_ptr<SharedMemCallable>> callables;
 
-    yt::UUID uuid;
+    UUID uuid;
     Locks locks;
     locks.map = { { uuid, std::string() } };
 
-    const yt::GracePeriod grace_period(boost::posix_time::milliseconds(100));
+    const GracePeriod grace_period(boost::posix_time::milliseconds(100));
     for(unsigned i = 0; i < max_test; ++i)
     {
         callables.emplace_back(std::make_unique<SharedMemCallable>(i,
@@ -344,7 +344,7 @@ TEST_F(LockTest, test_mutual_exclusion)
                                                                    max_test,
                                                                    grace_period));
 
-        be::GlobalLockStorePtr
+        GlobalLockStorePtr
             lock_store(new LockStore(locks,
                                      uuid));
 
@@ -352,7 +352,7 @@ TEST_F(LockTest, test_mutual_exclusion)
                                                                   CallableT::retry_connection_times_default(),
                                                                   CallableT::connection_retry_timeout_default(),
                                                                   lock_store,
-                                                                  be::UpdateInterval(boost::posix_time::seconds(1))));
+                                                                  UpdateInterval(boost::posix_time::seconds(1))));
 
         threads.emplace_back(boost::thread(boost::ref(*locked_callables[i])));
     }
@@ -391,7 +391,7 @@ public:
 struct LockAwayThrower
 {
 public:
-    explicit LockAwayThrower(be::GlobalLockStorePtr lock_store)
+    explicit LockAwayThrower(GlobalLockStorePtr lock_store)
         : lock_store_(lock_store)
     {}
 
@@ -421,32 +421,32 @@ public:
         }
     }
 
-    be::GlobalLockStorePtr lock_store_;
+    GlobalLockStorePtr lock_store_;
 };
 
 }
 
-TEST_F(LockTest, test_throwing_away_the_lock)
+TEST_F(HeartBeatLockTest, test_throwing_away_the_lock)
 {
-    yt::UUID uuid;
+    UUID uuid;
     Locks locks;
     locks.map = {{ uuid, std::string() }};
 
-    be::GlobalLockStorePtr
+    GlobalLockStorePtr
         lock_store(new LockStore(locks,
                                  uuid));
 
     LockAwayThrower thrower(lock_store);
 
-    const yt::GracePeriod grace_period(boost::posix_time::milliseconds(100));
+    const GracePeriod grace_period(boost::posix_time::milliseconds(100));
     boost::thread t(thrower);
     TestCallBack callback;
 
-    LockService lock_service(yt::GracePeriod(boost::posix_time::seconds(1)),
+    LockService lock_service(GracePeriod(boost::posix_time::seconds(1)),
                              &trampoline<TestCallBack>,
                              &callback,
                              lock_store,
-                             be::UpdateInterval(boost::posix_time::seconds(1)));
+                             UpdateInterval(boost::posix_time::seconds(1)));
 
     ASSERT_TRUE(lock_service.lock());
 
@@ -463,9 +463,9 @@ struct SleepingCallable
 {
     DECLARE_LOGGER("SleepingCallable");
 
-    const yt::UUID uuid_;
+    const UUID uuid_;
 
-    explicit SleepingCallable(const yt::UUID& uuid)
+    explicit SleepingCallable(const UUID& uuid)
         : uuid_(uuid)
     {}
 
@@ -485,24 +485,24 @@ struct SleepingCallable
     }
 
 
-    virtual const yt::GracePeriod&
+    virtual const GracePeriod&
     grace_period() const
     {
-        static const yt::GracePeriod grace_period_(boost::posix_time::milliseconds(100));
+        static const GracePeriod grace_period_(boost::posix_time::milliseconds(100));
         return grace_period_;
     }
 };
 
 }
 
-TEST_F(LockTest, test_parallel_locks)
+TEST_F(HeartBeatLockTest, test_parallel_locks)
 {
-    using CallableT = LockService::WithGlobalLock<yt::ExceptionPolicy::DisableExceptions,
+    using CallableT = LockService::WithGlobalLock<ExceptionPolicy::DisableExceptions,
                                                   SleepingCallable,
                                                   &SleepingCallable::info>::type_;
 
     const int num_tests = 16;
-    std::vector<yt::UUID> uuids(num_tests);
+    std::vector<UUID> uuids(num_tests);
 
     Locks locks;
 
@@ -518,7 +518,7 @@ TEST_F(LockTest, test_parallel_locks)
 
     for(int i = 0; i < num_tests; ++i)
     {
-        be::GlobalLockStorePtr
+        GlobalLockStorePtr
             lock_store(new LockStore(locks,
                                      uuids[i]));
 
@@ -527,7 +527,7 @@ TEST_F(LockTest, test_parallel_locks)
                                                                   CallableT::retry_connection_times_default(),
                                                                   CallableT::connection_retry_timeout_default(),
                                                                   lock_store,
-                                                                  be::UpdateInterval(boost::posix_time::seconds(1))));
+                                                                  UpdateInterval(boost::posix_time::seconds(1))));
 
         threads.emplace_back(boost::thread(boost::ref(*locked_callables[i])));
     }
@@ -539,16 +539,16 @@ TEST_F(LockTest, test_parallel_locks)
     }
 }
 
-TEST_F(LockTest, test_serial_locks)
+TEST_F(HeartBeatLockTest, test_serial_locks)
 {
-    using CallableT = LockService::WithGlobalLock<yt::ExceptionPolicy::DisableExceptions,
+    using CallableT = LockService::WithGlobalLock<ExceptionPolicy::DisableExceptions,
                                                   SleepingCallable,
                                                   &SleepingCallable::info>::type_;
 
     const int num_tests = 4;
     const int serial_num_tests = 16;
 
-    std::vector<yt::UUID> uuids(num_tests);
+    std::vector<UUID> uuids(num_tests);
 
     Locks locks;
 
@@ -566,17 +566,17 @@ TEST_F(LockTest, test_serial_locks)
 
         for(int i = 0; i < num_tests; ++i)
         {
-            be::GlobalLockStorePtr
+            GlobalLockStorePtr
                 lock_store(new LockStore(locks,
                                          uuids[i]));
 
             callables.emplace_back(std::make_unique<SleepingCallable>(uuids[i]));
 
             locked_callables.emplace_back(std::make_unique<CallableT>(boost::ref(*callables[i]),
-                                                                      yt::NumberOfRetries(10),
+                                                                      NumberOfRetries(10),
                                                                       CallableT::connection_retry_timeout_default(),
                                                                       lock_store,
-                                                                      be::UpdateInterval(boost::posix_time::seconds(1))));
+                                                                      UpdateInterval(boost::posix_time::seconds(1))));
             threads.emplace_back(boost::thread(boost::ref(*locked_callables[i])));
         }
 

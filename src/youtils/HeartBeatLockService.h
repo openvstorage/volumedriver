@@ -12,34 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef BACKEND_GLOBAL_LOCK_SERVICE_H
-#define BACKEND_GLOBAL_LOCK_SERVICE_H
+#ifndef YT_HEARTBEAT_LOCK_SERVICE_H
+#define YT_HEARTBEAT_LOCK_SERVICE_H
 
 #include "GlobalLockStore.h"
+#include "GlobalLockService.h"
+#include "HeartBeat.h"
+#include "TimeDurationType.h"
+#include "UUID.h"
+#include "WithGlobalLock.h"
 
 #include <boost/thread.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
-#include <youtils/GlobalLockService.h>
-#include <youtils/Logging.h>
-#include <youtils/TimeDurationType.h>
-#include <youtils/UUID.h>
-#include <youtils/WithGlobalLock.h>
-
-namespace backend
+namespace youtils
 {
 
 DECLARE_DURATION_TYPE(UpdateInterval)
 
 class HeartBeatLockService
-    : public youtils::GlobalLockService
+    : public GlobalLockService
 {
 public:
     HeartBeatLockService(const youtils::GracePeriod& grace_period,
-                      lost_lock_callback callback,
-                      void* data,
-                      GlobalLockStorePtr lock_store,
-                      const UpdateInterval& update_interval);
+                         lost_lock_callback callback,
+                         void* data,
+                         GlobalLockStorePtr lock_store,
+                         const UpdateInterval& update_interval);
 
     virtual ~HeartBeatLockService();
 
@@ -55,20 +54,7 @@ public:
     virtual void
     unlock() override;
 
-    // Hopefully one day!
-    // template<youtils::ExceptionPolicy policy,
-    //          typename Callable,
-    //          std::string(Callable::*info_member_function)() = &Callable::info()>
-    // using WithGlobalLockType = youtils::WithGlobalLock<policy,
-    //                                                    Callable,
-    //                                                    info_member_function,
-    //                                                    HeartBeatLockService,
-    //                                                    BackendConnectionManagerPtr cm,
-    //                                                    const boost::posix_time::time_duration& session_timeout,
-    //                                                    const std::string& ns,
-    //                                                    const boost::posix_time::time_duration& interrupt_timeout>;
-
-    template<youtils::ExceptionPolicy policy,
+    template<ExceptionPolicy policy,
              typename Callable,
              std::string(Callable::*info_member_function)() = &Callable::info>
     struct WithGlobalLock
@@ -82,7 +68,7 @@ public:
     };
 
 private:
-    DECLARE_LOGGER("BackendHeartBeatLockService");
+    DECLARE_LOGGER("HeartBeatLockService");
 
     void
     finish_thread();
@@ -106,7 +92,7 @@ private:
 
 }
 
-#endif // BACKEND_GLOBAL_LOCK_SERVICE_H
+#endif // YT_HEARTBEAT_LOCK_SERVICE_H
 
 // Local Variables: **
 // mode: c++ **

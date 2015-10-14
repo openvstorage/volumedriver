@@ -12,16 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "LockCommunicator.h"
+#include "Catchers.h"
+#include "HeartBeatLockCommunicator.h"
 
 #include <boost/thread.hpp>
 
-namespace backend
+namespace youtils
 {
 
-namespace yt = youtils;
-
-LockCommunicator::LockCommunicator(GlobalLockStorePtr lock_store,
+HeartBeatLockCommunicator::HeartBeatLockCommunicator(GlobalLockStorePtr lock_store,
                                    const boost::posix_time::time_duration connection_timeout,
                                    const boost::posix_time::time_duration interrupt_timeout)
     : lock_store_(lock_store)
@@ -30,24 +29,24 @@ LockCommunicator::LockCommunicator(GlobalLockStorePtr lock_store,
 {}
 
 bool
-LockCommunicator::lock_exists()
+HeartBeatLockCommunicator::lock_exists()
 {
     return lock_store_->exists();
 }
 
 void
-LockCommunicator::freeLock()
+HeartBeatLockCommunicator::freeLock()
 {
     lock_.hasLock(false);
     overwriteLock();
 }
 
-Lock
-LockCommunicator::getLock()
+HeartBeatLock
+HeartBeatLockCommunicator::getLock()
 {
     LOG_INFO(name() << ": getting the lock and updating the tag");
 
-    Lock lock(lock_);
+    HeartBeatLock lock(lock_);
     std::tie(lock, tag_) = lock_store_->read();
 
     LOG_INFO(name() << ": new tag " << tag_);
@@ -55,13 +54,13 @@ LockCommunicator::getLock()
 }
 
 bool
-LockCommunicator::overwriteLock()
+HeartBeatLockCommunicator::overwriteLock()
 {
     LOG_INFO(name() << ": overwriting the lock with tag " << tag_);
     try
     {
         tag_ = lock_store_->write(lock_,
-                                 tag_);
+                                  tag_);
 
         LOG_INFO(name() << ": overwrote the lock");
         return true;
@@ -74,14 +73,14 @@ LockCommunicator::overwriteLock()
 }
 
 bool
-LockCommunicator::putLock()
+HeartBeatLockCommunicator::putLock()
 {
     LOG_INFO(name() << ": putting the lock");
 
     try
     {
         tag_ = lock_store_->write(lock_,
-                                 boost::none);
+                                  boost::none);
 
         LOG_INFO(name() << ": put the lock");
         return true;
@@ -94,12 +93,12 @@ LockCommunicator::putLock()
 }
 
 bool
-LockCommunicator::tryToAcquireLock()
+HeartBeatLockCommunicator::tryToAcquireLock()
 {
     LOG_INFO(name() << ": trying to acquire the lock");
     try
     {
-        Lock l(getLock());
+        HeartBeatLock l(getLock());
         if(not l.hasLock())
         {
             LOG_INFO(name() << ": got the lock");
@@ -121,7 +120,7 @@ LockCommunicator::tryToAcquireLock()
 }
 
 bool
-LockCommunicator::refreshLock(MilliSeconds max_wait_time)
+HeartBeatLockCommunicator::refreshLock(MilliSeconds max_wait_time)
 {
     LOG_INFO(name() << ": refreshing the lock");
 
@@ -146,7 +145,7 @@ LockCommunicator::refreshLock(MilliSeconds max_wait_time)
             LOG_WARN(name() << ": failed to refresh lock");
             try
             {
-                boost::optional<Lock> local_lock;
+                boost::optional<HeartBeatLock> local_lock;
                 const int sleep_seconds = 1;
 
                 while(true)
@@ -197,7 +196,7 @@ LockCommunicator::refreshLock(MilliSeconds max_wait_time)
 }
 
 const std::string&
-LockCommunicator::name() const
+HeartBeatLockCommunicator::name() const
 {
     return lock_store_->name();
 }

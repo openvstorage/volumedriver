@@ -63,6 +63,10 @@ libyoutils_la_SOURCES = \
 	IncrementalChecksum.cpp \
 	InitializedParam.cpp \
 	IOException.cpp \
+	HeartBeat.cpp \
+	HeartBeatLock.cpp \
+	HeartBeatLockCommunicator.cpp \
+	HeartBeatLockService.cpp \
 	LocORemClient.cpp \
 	LocORemConnection.cpp \
 	LocORemServer.cpp \

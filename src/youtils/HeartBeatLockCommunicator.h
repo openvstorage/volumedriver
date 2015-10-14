@@ -12,28 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef BACKEND_LOCK_COMMUNICATOR_H_
-#define BACKEND_LOCK_COMMUNICATOR_H_
+#ifndef YT_LOCK_COMMUNICATOR_H_
+#define YT_LOCK_COMMUNICATOR_H_
 
 #include "GlobalLockStore.h"
-#include "Lock.h"
-#include "LockTag.h"
+#include "HeartBeatLock.h"
+#include "GlobalLockTag.h"
+#include "HeartBeatLock.h"
+#include "Logging.h"
 
 #include <boost/chrono.hpp>
 #include <boost/chrono/system_clocks.hpp>
+#include <boost/thread.hpp>
 
-#include <youtils/Catchers.h>
-#include <youtils/Logging.h>
-
-namespace backend
+namespace youtils
 {
 
-class LockCommunicator
+class HeartBeatLockCommunicator
 {
 public:
-    LockCommunicator(GlobalLockStorePtr lock_store,
-                     const boost::posix_time::time_duration connection_timeout,
-                     const boost::posix_time::time_duration interrupt_timeout);
+    HeartBeatLockCommunicator(GlobalLockStorePtr lock_store,
+                              const boost::posix_time::time_duration connection_timeout,
+                              const boost::posix_time::time_duration interrupt_timeout);
 
     using MilliSeconds = boost::chrono::milliseconds;
     using Clock = boost::chrono::steady_clock;
@@ -44,7 +44,7 @@ public:
     void
     freeLock();
 
-    Lock
+    HeartBeatLock
     getLock();
 
     bool
@@ -63,11 +63,11 @@ public:
     name() const;
 
 private:
-    DECLARE_LOGGER("BackendLockCommunicator");
+    DECLARE_LOGGER("HeartBeatLockCommunicator");
 
     GlobalLockStorePtr lock_store_;
-    LockTag tag_;
-    Lock lock_;
+    GlobalLockTag tag_;
+    HeartBeatLock lock_;
 
     // Don't try to update more than this number of times...
     // apparantly a conforming application can otherwise put this thing in an

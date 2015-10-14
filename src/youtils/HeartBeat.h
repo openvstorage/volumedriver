@@ -12,15 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef BACKEND_HEARTBEAT_H_
-#define BACKEND_HEARTBEAT_H_
+#ifndef YT_HEARTBEAT_H_
+#define YT_HEARTBEAT_H_
 
 #include "GlobalLockStore.h"
-#include "LockCommunicator.h"
+#include "HeartBeatLockCommunicator.h"
+#include "Logging.h"
 
-#include <youtils/Logging.h>
-
-namespace backend
+namespace youtils
 {
 
 class HeartBeat
@@ -45,17 +44,17 @@ public:
     grab_lock();
 
 private:
-    DECLARE_LOGGER("BackendHeartBeat");
+    DECLARE_LOGGER("HeartBeat");
 
     FinishThreadFun finish_thread_fun_;
     // Only instantiate the communicator when the lock is grabbed??
-    LockCommunicator lock_communicator_;
+    HeartBeatLockCommunicator lock_communicator_;
     const TimeDuration heartbeat_timeout_;
 };
 
 }
 
-#endif // BACKEND_HEARTBEAT_H_
+#endif // YT_HEARTBEAT_H_
 
 // Local Variables: **
 // mode: c++ **

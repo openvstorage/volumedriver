@@ -22,12 +22,12 @@
 #include <boost/property_tree/json_parser.hpp>
 
 #include <youtils/BuildInfoString.h>
+#include <youtils/HeartBeatLockService.h>
 #include <youtils/Logger.h>
 #include <youtils/Main.h>
 #include <youtils/NoGlobalLockingService.h>
 #include <youtils/WithGlobalLock.h>
 
-#include <backend/HeartBeatLockService.h>
 #include <backend/LockStore.h>
 
 namespace
@@ -103,21 +103,21 @@ public:
                                        yt::GracePeriod(boost::posix_time::seconds(grace_period_in_seconds)));
 
                 using LockedRestore =
-                    be::HeartBeatLockService::WithGlobalLock<yt::ExceptionPolicy::ThrowExceptions,
+                    yt::HeartBeatLockService::WithGlobalLock<yt::ExceptionPolicy::ThrowExceptions,
                                                              vd_bu::Restore,
                                                              &vd_bu::Restore::info>::type_;
 
                 const std::string locking_namespace =
                     source_ptree_opt->get<std::string>("namespace");
 
-                be::GlobalLockStorePtr
+                yt::GlobalLockStorePtr
                     lock_store(new be::LockStore(bcm->newBackendInterface(be::Namespace(locking_namespace))));
 
                 LockedRestore locked_restore(boost::ref(restore),
                                              yt::NumberOfRetries(1),
                                              LockedRestore::connection_retry_timeout_default(),
                                              lock_store,
-                                             be::UpdateInterval(boost::posix_time::seconds(update_interval)));
+                                             yt::UpdateInterval(boost::posix_time::seconds(update_interval)));
 
                 try
                 {

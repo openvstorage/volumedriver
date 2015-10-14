@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef BACKEND_LOCK_TAG_H_
-#define BACKEND_LOCK_TAG_H_
+#ifndef YT_GLOBAL_LOCK_TAG_H_
+#define YT_GLOBAL_LOCK_TAG_H_
 
-#include <youtils/StrongTypedString.h>
+#include "StrongTypedString.h"
 
-STRONG_TYPED_STRING(backend, LockTag);
+STRONG_TYPED_STRING(youtils, GlobalLockTag);
 
-#endif // !BACKEND_LOCK_TAG_H_
+#endif // !YT_GLOBAL_LOCK_TAG_H_

@@ -41,14 +41,10 @@ libbackend_la_SOURCES = \
 	BackendParameters.cpp \
 	BackendTestSetup.cpp \
 	BackendWrapper.cpp \
-	HeartBeat.cpp \
-	HeartBeatLockService.cpp \
 	LocalConfig.cpp \
 	Local_Connection.cpp \
 	Local_Sink.cpp \
 	Local_Source.cpp \
-	Lock.cpp \
-	LockCommunicator.cpp \
 	LockStore.cpp \
 	ManagedBackendSink.cpp \
 	ManagedBackendSource.cpp \

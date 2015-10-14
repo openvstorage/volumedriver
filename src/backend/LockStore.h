@@ -16,17 +16,17 @@
 #define BACKEND_LOCK_STORE_H_
 
 #include "BackendInterface.h"
-#include "GlobalLockStore.h"
-#include "Lock.h"
-#include "LockTag.h"
 
+#include <youtils/GlobalLockStore.h>
+#include <youtils/GlobalLockTag.h>
+#include <youtils/HeartBeatLock.h>
 #include <youtils/Logging.h>
 
 namespace backend
 {
 
 class LockStore
-    : public GlobalLockStore
+    : public youtils::GlobalLockStore
 {
 public:
     explicit LockStore(BackendInterfacePtr);
@@ -41,12 +41,12 @@ public:
     bool
     exists() override final;
 
-    std::tuple<Lock, LockTag>
+    std::tuple<youtils::HeartBeatLock, youtils::GlobalLockTag>
     read() override final;
 
-    LockTag
-    write(const Lock&,
-          const boost::optional<LockTag>&) override final;
+    youtils::GlobalLockTag
+    write(const youtils::HeartBeatLock&,
+          const boost::optional<youtils::GlobalLockTag>&) override final;
 
     const std::string&
     name() const override final;

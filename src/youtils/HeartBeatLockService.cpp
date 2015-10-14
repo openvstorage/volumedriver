@@ -12,27 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "Catchers.h"
 #include "HeartBeatLockService.h"
 #include "HeartBeat.h"
 
 #include <youtils/System.h>
 
-namespace backend
+namespace youtils
 {
-
-namespace yt = youtils;
 
 #define LOCK()                                                \
     boost::lock_guard<decltype(heartbeat_thread_mutex_)> hbtg__(heartbeat_thread_mutex_)
 
-HeartBeatLockService::HeartBeatLockService(const yt::GracePeriod& grace_period,
-                                     lost_lock_callback callback,
-                                     void* data,
-                                     GlobalLockStorePtr lock_store,
-                                     const UpdateInterval& update_interval)
-    : yt::GlobalLockService(grace_period,
-                            callback,
-                            data)
+HeartBeatLockService::HeartBeatLockService(const GracePeriod& grace_period,
+                                           lost_lock_callback callback,
+                                           void* data,
+                                           GlobalLockStorePtr lock_store,
+                                           const UpdateInterval& update_interval)
+    : GlobalLockService(grace_period,
+                        callback,
+                        data)
     , lock_store_(lock_store)
     , update_interval_(update_interval)
 {}
