@@ -31,17 +31,17 @@ namespace backend
 
 DECLARE_DURATION_TYPE(UpdateInterval)
 
-class GlobalLockService
+class HeartBeatLockService
     : public youtils::GlobalLockService
 {
 public:
-    GlobalLockService(const youtils::GracePeriod& grace_period,
+    HeartBeatLockService(const youtils::GracePeriod& grace_period,
                       lost_lock_callback callback,
                       void* data,
                       GlobalLockStorePtr lock_store,
                       const UpdateInterval& update_interval);
 
-    virtual ~GlobalLockService();
+    virtual ~HeartBeatLockService();
 
     const std::string&
     name() const
@@ -62,7 +62,7 @@ public:
     // using WithGlobalLockType = youtils::WithGlobalLock<policy,
     //                                                    Callable,
     //                                                    info_member_function,
-    //                                                    GlobalLockService,
+    //                                                    HeartBeatLockService,
     //                                                    BackendConnectionManagerPtr cm,
     //                                                    const boost::posix_time::time_duration& session_timeout,
     //                                                    const std::string& ns,
@@ -76,13 +76,13 @@ public:
         using type_ = youtils::WithGlobalLock<policy,
                                               Callable,
                                               info_member_function,
-                                              GlobalLockService,
+                                              HeartBeatLockService,
                                               GlobalLockStorePtr,
                                               const UpdateInterval&>;
     };
 
 private:
-    DECLARE_LOGGER("BackendGlobalLockService");
+    DECLARE_LOGGER("BackendHeartBeatLockService");
 
     void
     finish_thread();

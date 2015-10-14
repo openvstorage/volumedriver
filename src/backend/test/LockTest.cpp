@@ -24,7 +24,7 @@
 
 #include "../BackendConnectionManager.h"
 #include "../BackendInterface.h"
-#include "../GlobalLockService.h"
+#include "../HeartBeatLockService.h"
 #include "../Lock.h"
 #include "../LockCommunicator.h"
 
@@ -169,7 +169,7 @@ class LockTest
     : public youtilstest::TestBase
 {
 public:
-    using LockService = be::GlobalLockService;
+    using LockService = be::HeartBeatLockService;
 };
 
 struct TestCallBack

@@ -14,6 +14,8 @@
 
 #include "LockCommunicator.h"
 
+#include <boost/thread.hpp>
+
 namespace backend
 {
 

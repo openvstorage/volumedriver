@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "GlobalLockService.h"
+#include "HeartBeatLockService.h"
 #include "HeartBeat.h"
 
 #include <youtils/System.h>
@@ -25,7 +25,7 @@ namespace yt = youtils;
 #define LOCK()                                                \
     boost::lock_guard<decltype(heartbeat_thread_mutex_)> hbtg__(heartbeat_thread_mutex_)
 
-GlobalLockService::GlobalLockService(const yt::GracePeriod& grace_period,
+HeartBeatLockService::HeartBeatLockService(const yt::GracePeriod& grace_period,
                                      lost_lock_callback callback,
                                      void* data,
                                      GlobalLockStorePtr lock_store,
@@ -37,14 +37,14 @@ GlobalLockService::GlobalLockService(const yt::GracePeriod& grace_period,
     , update_interval_(update_interval)
 {}
 
-GlobalLockService::~GlobalLockService()
+HeartBeatLockService::~HeartBeatLockService()
 {
-    unlock("Destruction of GlobalLockService");
+    unlock("Destruction of HeartBeatLockService");
     LOG_INFO(name() << ": destructed");
 }
 
 bool
-GlobalLockService::lock()
+HeartBeatLockService::lock()
 {
     LOCK();
 
@@ -74,13 +74,13 @@ GlobalLockService::lock()
 }
 
 void
-GlobalLockService::unlock()
+HeartBeatLockService::unlock()
 {
     unlock("Unlock by client");
 }
 
 void
-GlobalLockService::finish_thread()
+HeartBeatLockService::finish_thread()
 {
     LOG_INFO(name() << ": finishing thread because we lost the lock");
 
@@ -97,7 +97,7 @@ GlobalLockService::finish_thread()
 }
 
 void
-GlobalLockService::do_callback(const std::string& reason)
+HeartBeatLockService::do_callback(const std::string& reason)
 {
     if(callback_)
     {
@@ -116,7 +116,7 @@ GlobalLockService::do_callback(const std::string& reason)
 }
 
 void
-GlobalLockService::unlock(const std::string& reason)
+HeartBeatLockService::unlock(const std::string& reason)
 {
     LOG_INFO(name() << ": got an unlock request, reason: " << reason);
     LOCK();
@@ -135,7 +135,7 @@ GlobalLockService::unlock(const std::string& reason)
 
 // Returns the time another contender has to wait before trying to grab the lock.
 boost::posix_time::time_duration
-GlobalLockService::get_session_wait_time() const
+HeartBeatLockService::get_session_wait_time() const
 {
     // 1 update_interval as time_out for the connection
     // 1 update interval as heart_beat timeout

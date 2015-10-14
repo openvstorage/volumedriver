@@ -14,6 +14,8 @@
 
 #include "HeartBeat.h"
 
+#include <boost/thread.hpp>
+
 #include <youtils/Catchers.h>
 
 namespace backend

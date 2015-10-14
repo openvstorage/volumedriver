@@ -41,8 +41,8 @@ libbackend_la_SOURCES = \
 	BackendParameters.cpp \
 	BackendTestSetup.cpp \
 	BackendWrapper.cpp \
-	GlobalLockService.cpp \
 	HeartBeat.cpp \
+	HeartBeatLockService.cpp \
 	LocalConfig.cpp \
 	Local_Connection.cpp \
 	Local_Sink.cpp \

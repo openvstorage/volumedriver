@@ -30,7 +30,7 @@
 
 #include <backend/BackendConfig.h>
 #include <backend/BackendConnectionManager.h>
-#include <backend/GlobalLockService.h>
+#include <backend/HeartBeatLockService.h>
 #include <backend/LockStore.h>
 
 namespace
@@ -164,8 +164,8 @@ struct GlobalCallableWrapper
     : public yt::GlobalLockedCallable
 {
     using CallableT =
-        typename be::GlobalLockService::WithGlobalLock<yt::ExceptionPolicy::ThrowExceptions,
-                                                       T1>::type_;
+        typename be::HeartBeatLockService::WithGlobalLock<yt::ExceptionPolicy::ThrowExceptions,
+                                                          T1>::type_;
 
     GlobalCallableWrapper(CallableT& callable)
         : callable_(callable)

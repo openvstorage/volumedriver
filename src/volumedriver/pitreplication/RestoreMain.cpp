@@ -27,7 +27,7 @@
 #include <youtils/NoGlobalLockingService.h>
 #include <youtils/WithGlobalLock.h>
 
-#include <backend/GlobalLockService.h>
+#include <backend/HeartBeatLockService.h>
 #include <backend/LockStore.h>
 
 namespace
@@ -103,9 +103,9 @@ public:
                                        yt::GracePeriod(boost::posix_time::seconds(grace_period_in_seconds)));
 
                 using LockedRestore =
-                    be::GlobalLockService::WithGlobalLock<yt::ExceptionPolicy::ThrowExceptions,
-                                                          vd_bu::Restore,
-                                                          &vd_bu::Restore::info>::type_;
+                    be::HeartBeatLockService::WithGlobalLock<yt::ExceptionPolicy::ThrowExceptions,
+                                                             vd_bu::Restore,
+                                                             &vd_bu::Restore::info>::type_;
 
                 const std::string locking_namespace =
                     source_ptree_opt->get<std::string>("namespace");

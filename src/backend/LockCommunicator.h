@@ -15,7 +15,7 @@
 #ifndef BACKEND_LOCK_COMMUNICATOR_H_
 #define BACKEND_LOCK_COMMUNICATOR_H_
 
-#include "GlobalLockService.h"
+#include "GlobalLockStore.h"
 #include "Lock.h"
 #include "LockTag.h"
 
@@ -24,7 +24,6 @@
 
 #include <youtils/Catchers.h>
 #include <youtils/Logging.h>
-
 
 namespace backend
 {

@@ -26,7 +26,7 @@
 #include <youtils/NoGlobalLockingService.h>
 #include <youtils/WithGlobalLock.h>
 
-#include <backend/GlobalLockService.h>
+#include <backend/HeartBeatLockService.h>
 #include <backend/LockStore.h>
 
 namespace
@@ -38,7 +38,7 @@ namespace vd = volumedriver;
 namespace vd_bu = volumedriver_backup;
 namespace yt = youtils;
 
-using LockService = be::GlobalLockService;
+using LockService = be::HeartBeatLockService;
 
 class BackupMain
     : public yt::MainHelper
