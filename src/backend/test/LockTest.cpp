@@ -12,66 +12,164 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "BackendTestBase.h"
+#include <map>
 
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
+#include <youtils/TestBase.h>
+#include <youtils/Weed.h>
 #include <youtils/WithGlobalLock.h>
 
 #include "../BackendConnectionManager.h"
 #include "../BackendInterface.h"
 #include "../GlobalLockService.h"
+#include "../Lock.h"
 #include "../LockCommunicator.h"
-#include "../LockStore.h"
 
 namespace backendtest
 {
 namespace be = backend;
 namespace yt = youtils;
 
+using namespace std::literals::string_literals;
 using yt::WithGlobalLock;
 
 namespace
 {
+
+BOOLEAN_ENUM(MustBeEmpty);
+
+struct Locks
+{
+    boost::mutex lock;
+    std::map<yt::UUID, std::string> map;
+
+    decltype(map)::iterator
+    find(const yt::UUID& uuid,
+         MustBeEmpty must_be_empty)
+    {
+        auto it = map.find(uuid);
+        if (it == map.end())
+        {
+            throw std::runtime_error(uuid.str() + " not found"s);
+        }
+
+        if (must_be_empty == MustBeEmpty::T and
+            not it->second.empty())
+        {
+            throw std::runtime_error(uuid.str() + " does not have empty value");
+        }
+
+        return it;
+    }
+};
+
+class LockStore
+    : public be::GlobalLockStore
+{
+public:
+    LockStore(Locks& locks,
+              const yt::UUID& uuid)
+        : locks_(locks)
+        , uuid_(uuid)
+        , name_(uuid_.str())
+    {}
+
+    virtual ~LockStore() = default;
+
+    LockStore(const LockStore&) = delete;
+
+    LockStore&
+    operator=(const LockStore&) = delete;
+
+    bool
+    exists() override final
+    {
+        boost::lock_guard<decltype(Locks::lock)> g(locks_.lock);
+
+        auto it = locks_.find(uuid_,
+                              MustBeEmpty::F);
+        return not it->second.empty();
+    }
+
+    std::tuple<be::Lock, be::LockTag>
+    read() override final
+    {
+        boost::lock_guard<decltype(Locks::lock)> g(locks_.lock);
+
+        auto it = locks_.find(uuid_,
+                              MustBeEmpty::F);
+
+        EXPECT_TRUE(locks_.map.end() != it);
+        EXPECT_FALSE(it->second.empty());
+
+        return
+            std::make_tuple(be::Lock(it->second),
+                            boost::lexical_cast<be::LockTag>(yt::Weed(reinterpret_cast<const byte*>(it->second.data()),
+                                                                      it->second.size())));
+    }
+
+    be::LockTag
+    write(const be::Lock& lock,
+          const boost::optional<be::LockTag>& tag) override final
+    {
+        boost::lock_guard<decltype(Locks::lock)> g(locks_.lock);
+
+        auto it = locks_.find(uuid_,
+                              tag ? MustBeEmpty::F : MustBeEmpty::T);
+        EXPECT_TRUE(locks_.map.end() != it);
+
+        if (tag)
+        {
+            EXPECT_FALSE(it->second.empty());
+            const auto current_tag(boost::lexical_cast<be::LockTag>(yt::Weed(reinterpret_cast<const byte*>(it->second.data()),
+                                                                             it->second.size())));
+            if (*tag != current_tag)
+            {
+                throw std::runtime_error("lock has changed for "s + name());
+            }
+        }
+
+        std::string s;
+        lock.save(s);
+        locks_.map[uuid_] = s;
+
+        return boost::lexical_cast<be::LockTag>(yt::Weed(reinterpret_cast<const byte*>(s.data()),
+                                                         s.size()));
+    }
+
+    const std::string&
+    name() const override final
+    {
+        return name_;
+    }
+
+    void
+    erase() override final
+    {
+        boost::lock_guard<decltype(Locks::lock)> g(locks_.lock);
+        locks_.map.erase(uuid_);
+    }
+
+private:
+    DECLARE_LOGGER("BackendLockStore");
+
+    Locks& locks_;
+    yt::UUID uuid_;
+    std::string name_;
+};
 
 DECLARE_LOGGER("LockTest");
 
 }
 
 class LockTest
-    : public be::BackendTestBase
+    : public youtilstest::TestBase
 {
 public:
     using LockService = be::GlobalLockService;
-
-    LockTest()
-        : be::BackendTestBase("LockTest")
-    {};
-
-    virtual void
-    SetUp()
-    {
-        be::BackendTestBase::SetUp();
-        nspace_ = make_random_namespace();
-    }
-
-    virtual void
-    TearDown()
-    {
-        nspace_.reset();
-        be::BackendTestBase::TearDown();
-    }
-
-    const be::Namespace&
-    testNamespace()
-    {
-        return nspace_->ns();
-    }
-
-    DECLARE_LOGGER("LockTest");
-    std::unique_ptr<WithRandomNamespace> nspace_;
 };
 
 struct TestCallBack
@@ -97,34 +195,15 @@ trampoline(void* data,
     static_cast<T*>(data)->callback(reason);
 }
 
-TEST_F(LockTest, dump_restlock)
-{
-    // WON'T COMPILE WITHOUT CHANGING RESTLOCK FUNCTIONS TO PUBLIC!!
-    // be::rest::Lock lock(boost::posix_time::seconds(42),
-    //                         boost::posix_time::seconds(10));
-
-    // std::string str;
-    // lock.save(str);
-    // std::cout << std::endl << str << std::endl;
-}
-
 TEST_F(LockTest, test_no_lock_if_namespace_doesnt_exist)
 {
-    {
-        be::BackendConnectionInterfacePtr c(cm_->getConnection());
-        if (not c->hasExtendedApi())
-        {
-            SUCCEED() << "these tests require a backend that supports the extended api";
-            return;
-        }
-    }
-
-    const be::Namespace ns(yt::UUID().str());
-
+    Locks locks;
     TestCallBack callback;
 
     be::GlobalLockStorePtr
-        lock_store(new be::LockStore(cm_->newBackendInterface(ns)));
+        lock_store(new LockStore(locks,
+                                 yt::UUID()));
+
     LockService lock_service(yt::GracePeriod(boost::posix_time::seconds(1)),
                              &trampoline<TestCallBack>,
                              &callback,
@@ -139,20 +218,16 @@ TEST_F(LockTest, test_no_lock_if_namespace_doesnt_exist)
 
 TEST_F(LockTest, test_lock_if_namespace_exists)
 {
-    {
-        be::BackendConnectionInterfacePtr c(cm_->getConnection());
-        if (not c->hasExtendedApi())
-        {
-            SUCCEED() << "these tests require a backend that supports the extended api";
-            return;
-        }
-    }
-
     const yt::GracePeriod grace_period(boost::posix_time::milliseconds(100));
     TestCallBack callback;
 
+    yt::UUID uuid;
+    Locks locks;
+    locks.map = { { uuid, std::string() } };
+
     be::GlobalLockStorePtr
-        lock_store(new be::LockStore(cm_->newBackendInterface(testNamespace())));
+        lock_store(new LockStore(locks,
+                                 uuid));
 
     LockService lock_service(yt::GracePeriod(boost::posix_time::seconds(1)),
                              &trampoline<TestCallBack>,
@@ -198,14 +273,17 @@ public:
         LOG_INFO("Entering");
 
         int shmid = shmget(key_, 2*sizeof(uint64_t), 0666);
-        VERIFY(shmid >= 0);
+        ASSERT_LE(0, shmid);
         uint64_t* p  = reinterpret_cast<uint64_t*>(shmat(shmid, NULL, 0));
-        VERIFY(p != (uint64_t*) -1);
+        ASSERT_NE(reinterpret_cast<uint64_t*>(-1),
+                  p);
         LOG_INFO(id_ << ": Value of p[0] " << p[0]);
-        VERIFY(p[0] == 0);
+        ASSERT_EQ(0,
+                  p[0]);
         uint64_t b = p[1];
         LOG_INFO(id_ << ": Value of b " << b);
-        VERIFY(b < max_id_);
+        ASSERT_GT(max_id_,
+                  b);
         p[0] = 1;
         usleep(10000);
         p[1] = b + 1;
@@ -232,15 +310,6 @@ private:
 
 TEST_F(LockTest, test_mutual_exclusion)
 {
-    {
-        be::BackendConnectionInterfacePtr c(cm_->getConnection());
-        if (not c->hasExtendedApi())
-        {
-            SUCCEED() << "these tests require a backend that supports the extended api";
-            return;
-        }
-    }
-
     using CallableT = LockService::WithGlobalLock<yt::ExceptionPolicy::DisableExceptions,
                                                   SharedMemCallable,
                                                   &SharedMemCallable::info>::type_;
@@ -249,9 +318,11 @@ TEST_F(LockTest, test_mutual_exclusion)
 
     const key_t ipc_id = 5678;
     int shmid = shmget(ipc_id, 2*sizeof(uint64_t), IPC_CREAT | 0666);
-    VERIFY(shmid >= 0);
+    ASSERT_LE(0,
+              shmid);
     uint64_t* p = reinterpret_cast<uint64_t*>(shmat(shmid, NULL, 0));
-    VERIFY(p != (uint64_t*) -1);
+    ASSERT_NE(reinterpret_cast<uint64_t*>(-1),
+              p);
     volatile uint64_t& p0 = p[0];
     p0 = 0;
     volatile uint64_t& p1 = p[1];
@@ -260,6 +331,10 @@ TEST_F(LockTest, test_mutual_exclusion)
     std::vector<boost::thread> threads;
     std::vector<std::unique_ptr<CallableT>> locked_callables;
     std::vector<std::unique_ptr<SharedMemCallable>> callables;
+
+    yt::UUID uuid;
+    Locks locks;
+    locks.map = { { uuid, std::string() } };
 
     const yt::GracePeriod grace_period(boost::posix_time::milliseconds(100));
     for(unsigned i = 0; i < max_test; ++i)
@@ -270,7 +345,8 @@ TEST_F(LockTest, test_mutual_exclusion)
                                                                    grace_period));
 
         be::GlobalLockStorePtr
-            lock_store(new be::LockStore(cm_->newBackendInterface(testNamespace())));
+            lock_store(new LockStore(locks,
+                                     uuid));
 
         locked_callables.emplace_back(std::make_unique<CallableT>(boost::ref(*callables[i]),
                                                                   CallableT::retry_connection_times_default(),
@@ -291,6 +367,7 @@ TEST_F(LockTest, test_mutual_exclusion)
     EXPECT_EQ(0U, p0);
     EXPECT_EQ(max_test, p1);
 }
+
 namespace
 {
 class SettingCallable
@@ -299,7 +376,8 @@ public:
     SettingCallable(uint64_t& test)
         :test_(test)
     {
-        VERIFY(test == 0);
+        EXPECT_EQ(0,
+                  test);
     }
     void
     operator()()
@@ -350,19 +428,16 @@ public:
 
 TEST_F(LockTest, test_throwing_away_the_lock)
 {
-    {
-        be::BackendConnectionInterfacePtr c(cm_->getConnection());
-        if (not c->hasExtendedApi())
-        {
-            SUCCEED() << "these tests require a backend that supports the extended api";
-            return;
-        }
-    }
+    yt::UUID uuid;
+    Locks locks;
+    locks.map = {{ uuid, std::string() }};
 
     be::GlobalLockStorePtr
-        lock_store(new be::LockStore(cm_->newBackendInterface(testNamespace())));
+        lock_store(new LockStore(locks,
+                                 uuid));
 
     LockAwayThrower thrower(lock_store);
+
     const yt::GracePeriod grace_period(boost::posix_time::milliseconds(100));
     boost::thread t(thrower);
     TestCallBack callback;
@@ -384,31 +459,31 @@ TEST_F(LockTest, test_throwing_away_the_lock)
 namespace
 {
 
-class SleepingCallable
+struct SleepingCallable
 {
-public:
-    explicit SleepingCallable(const be::Namespace& ns)
-        : ns_(ns)
+    DECLARE_LOGGER("SleepingCallable");
+
+    const yt::UUID uuid_;
+
+    explicit SleepingCallable(const yt::UUID& uuid)
+        : uuid_(uuid)
     {}
 
-    virtual ~SleepingCallable()
-    {}
+    virtual ~SleepingCallable() = default;
 
     void
     operator()()
     {
         boost::this_thread::sleep(boost::posix_time::seconds(3));
-        LOG_INFO("Finished for namespace " << ns_);
+        LOG_INFO("Finished for " << uuid_);
     }
-    DECLARE_LOGGER("SleepingCallable");
 
     std::string
     info()
     {
-        return ("SleepingCallable " + ns_.str());
+        return ("SleepingCallable "s + uuid_.str());
     }
 
-    const be::Namespace ns_;
 
     virtual const yt::GracePeriod&
     grace_period() const
@@ -416,32 +491,25 @@ public:
         static const yt::GracePeriod grace_period_(boost::posix_time::milliseconds(100));
         return grace_period_;
     }
-
 };
 
 }
 
 TEST_F(LockTest, test_parallel_locks)
 {
-    {
-        be::BackendConnectionInterfacePtr c(cm_->getConnection());
-        if (not c->hasExtendedApi())
-        {
-            SUCCEED() << "these tests require a backend that supports the extended api";
-            return;
-        }
-    }
-
     using CallableT = LockService::WithGlobalLock<yt::ExceptionPolicy::DisableExceptions,
                                                   SleepingCallable,
                                                   &SleepingCallable::info>::type_;
 
     const int num_tests = 16;
-    std::vector<std::unique_ptr<WithRandomNamespace>> namespaces;
+    std::vector<yt::UUID> uuids(num_tests);
 
-    for(int i = 0; i < num_tests; ++i)
+    Locks locks;
+
+    for (const auto& u : uuids)
     {
-        namespaces.push_back(make_random_namespace());
+        locks.map.emplace(std::make_pair(u,
+                                         std::string()));
     }
 
     std::vector<boost::thread> threads;
@@ -451,10 +519,10 @@ TEST_F(LockTest, test_parallel_locks)
     for(int i = 0; i < num_tests; ++i)
     {
         be::GlobalLockStorePtr
-            lock_store(new be::LockStore(cm_->newBackendInterface(namespaces[i]->ns())));
+            lock_store(new LockStore(locks,
+                                     uuids[i]));
 
-        callables.emplace_back(std::make_unique<SleepingCallable>(namespaces[i]->ns()));
-
+        callables.emplace_back(std::make_unique<SleepingCallable>(uuids[i]));
         locked_callables.emplace_back(std::make_unique<CallableT>(boost::ref(*callables[i]),
                                                                   CallableT::retry_connection_times_default(),
                                                                   CallableT::connection_retry_timeout_default(),
@@ -473,15 +541,6 @@ TEST_F(LockTest, test_parallel_locks)
 
 TEST_F(LockTest, test_serial_locks)
 {
-    {
-        be::BackendConnectionInterfacePtr c(cm_->getConnection());
-        if (not c->hasExtendedApi())
-        {
-            SUCCEED() << "these tests require a backend that supports the extended api";
-            return;
-        }
-    }
-
     using CallableT = LockService::WithGlobalLock<yt::ExceptionPolicy::DisableExceptions,
                                                   SleepingCallable,
                                                   &SleepingCallable::info>::type_;
@@ -489,11 +548,14 @@ TEST_F(LockTest, test_serial_locks)
     const int num_tests = 4;
     const int serial_num_tests = 16;
 
-    std::vector<std::unique_ptr<WithRandomNamespace> > namespaces;
+    std::vector<yt::UUID> uuids(num_tests);
 
-    for(int i = 0; i < num_tests; ++i)
+    Locks locks;
+
+    for (const auto& u : uuids)
     {
-        namespaces.push_back(make_random_namespace());
+        locks.map.emplace(std::make_pair(u,
+                                         std::string()));
     }
 
     for(int k = 0; k < serial_num_tests; ++k)
@@ -505,9 +567,10 @@ TEST_F(LockTest, test_serial_locks)
         for(int i = 0; i < num_tests; ++i)
         {
             be::GlobalLockStorePtr
-                lock_store(new be::LockStore(cm_->newBackendInterface(namespaces[i]->ns())));
+                lock_store(new LockStore(locks,
+                                         uuids[i]));
 
-            callables.emplace_back(std::make_unique<SleepingCallable>(be::Namespace(namespaces[i]->ns())));
+            callables.emplace_back(std::make_unique<SleepingCallable>(uuids[i]));
 
             locked_callables.emplace_back(std::make_unique<CallableT>(boost::ref(*callables[i]),
                                                                       yt::NumberOfRetries(10),
