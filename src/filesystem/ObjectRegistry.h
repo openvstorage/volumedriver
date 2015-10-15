@@ -17,7 +17,6 @@
 
 #include "ClusterId.h"
 #include "FileSystemParameters.h"
-#include "LockedArakoon.h"
 #include "NodeId.h"
 #include "ObjectRegistration.h"
 #include "OwnerTagAllocator.h"
@@ -28,6 +27,7 @@
 #include <boost/property_tree/ptree_fwd.hpp>
 #include <boost/exception/all.hpp>
 
+#include <youtils/LockedArakoon.h>
 #include <youtils/Logging.h>
 
 namespace volumedriverfs
@@ -54,7 +54,7 @@ class ObjectRegistry
 public:
     ObjectRegistry(const ClusterId& cluster_id,
                    const NodeId& node_id,
-                   std::shared_ptr<LockedArakoon> larakoon);
+                   std::shared_ptr<youtils::LockedArakoon> larakoon);
 
     ~ObjectRegistry() = default;
 
@@ -151,7 +151,7 @@ private:
 
     const ClusterId cluster_id_;
     const NodeId node_id_;
-    std::shared_ptr<LockedArakoon> larakoon_;
+    std::shared_ptr<youtils::LockedArakoon> larakoon_;
     OwnerTagAllocator owner_tag_allocator_;
 
     std::string
@@ -176,8 +176,8 @@ private:
     void
     run_sequence_(const ObjectId& id,
                   const char* desc,
-                  LockedArakoon::PrepareSequenceFun&& prep_fun,
-                  RetryOnArakoonAssert retry_on_assert);
+                  youtils::LockedArakoon::PrepareSequenceFun&& prep_fun,
+                  youtils::RetryOnArakoonAssert retry_on_assert);
 
     ObjectRegistrationPtr
     prepare_register_base_or_file_(arakoon::sequence&,

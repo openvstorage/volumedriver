@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "LockedArakoon.h"
 #include "ObjectRegistry.h"
 
 #include <boost/archive/text_iarchive.hpp>
@@ -20,6 +19,7 @@
 
 #include <youtils/ArakoonInterface.h>
 #include <youtils/Assert.h>
+#include <youtils/LockedArakoon.h>
 
 namespace volumedriverfs
 {
@@ -91,7 +91,7 @@ deserialize_volume_registration(const ara::buffer& buf)
 
 ObjectRegistry::ObjectRegistry(const ClusterId& cluster_id,
                                const NodeId& node_id,
-                               std::shared_ptr<LockedArakoon> larakoon)
+                               std::shared_ptr<yt::LockedArakoon> larakoon)
     : cluster_id_(cluster_id)
     , node_id_(node_id)
     , larakoon_(larakoon)
@@ -164,7 +164,7 @@ ObjectRegistry::maybe_upgrade_(ObjectRegistrationPtr reg)
                                                     serialize_volume_registration(new_reg));
                                     }
                                 },
-                                RetryOnArakoonAssert::T);
+                                yt::RetryOnArakoonAssert::T);
     }
 
     return reg;
@@ -307,8 +307,8 @@ ObjectRegistry::with_owned_volume_(const ObjectId& id,
 void
 ObjectRegistry::run_sequence_(const ObjectId& id,
                               const char* desc,
-                              LockedArakoon::PrepareSequenceFun&& prep_fun,
-                              RetryOnArakoonAssert retry_on_assert)
+                              yt::LockedArakoon::PrepareSequenceFun&& prep_fun,
+                              yt::RetryOnArakoonAssert retry_on_assert)
 {
     LOG_TRACE(desc);
 
@@ -382,7 +382,7 @@ ObjectRegistry::register_base_or_file_(const ObjectId& vol_id,
                                                                typ,
                                                                foccmode);
                       },
-                      RetryOnArakoonAssert::F);
+                      yt::RetryOnArakoonAssert::F);
     }
     catch (ConflictingUpdateException&)
     {
@@ -596,7 +596,7 @@ ObjectRegistry::register_clone(const ObjectId& clone_id,
                                                     ConvertBaseToClone::F,
                                                     foccmode);
                   },
-                  RetryOnArakoonAssert::T);
+                  yt::RetryOnArakoonAssert::T);
 
     VERIFY(reg);
     return reg;
@@ -623,7 +623,7 @@ ObjectRegistry::convert_base_to_clone(const ObjectId& clone_id,
                                                   ConvertBaseToClone::T,
                                                   foccmode);
                   },
-                  RetryOnArakoonAssert::T);
+                  yt::RetryOnArakoonAssert::T);
 
     VERIFY(reg);
     return reg;
@@ -683,7 +683,7 @@ ObjectRegistry::migrate(const ObjectId& vol_id,
                                                 from,
                                                 to);
                       },
-                      RetryOnArakoonAssert::F);
+                      yt::RetryOnArakoonAssert::F);
     }
     catch (ConflictingUpdateException&)
     {
@@ -863,7 +863,7 @@ ObjectRegistry::unregister(const ObjectId& id)
                       {
                           prepare_unregister_file_(seq, id);
                       },
-                      RetryOnArakoonAssert::F);
+                      yt::RetryOnArakoonAssert::F);
         break;
     case ObjectType::Volume:
     case ObjectType::Template:
@@ -875,7 +875,7 @@ ObjectRegistry::unregister(const ObjectId& id)
                       {
                           prepare_unregister_volumoid_(seq, id);
                       },
-                      RetryOnArakoonAssert::T);
+                      yt::RetryOnArakoonAssert::T);
         break;
     }
 }
@@ -978,7 +978,7 @@ ObjectRegistry::set_volume_as_template(const ObjectId& vol_id)
                   {
                       reg = prepare_set_volume_as_template_(seq, vol_id);
                   },
-                  RetryOnArakoonAssert::F);
+                  yt::RetryOnArakoonAssert::F);
 
     VERIFY(reg);
     return reg;
@@ -994,7 +994,7 @@ ObjectRegistry::TESTONLY_add_to_registry(const ObjectRegistration& reg)
                                 seq.add_assert(key, ara::None());
                                 seq.add_set(key, serialize_volume_registration(reg));
                             },
-                            RetryOnArakoonAssert::F);
+                            yt::RetryOnArakoonAssert::F);
 }
 
 ObjectRegistrationPtr
@@ -1068,7 +1068,7 @@ ObjectRegistry::set_foc_config_mode(const ObjectId& vol_id,
                   {
                       reg = prepare_set_foc_config_mode_(seq, vol_id, foc_cm);
                   },
-                  RetryOnArakoonAssert::F);
+                  yt::RetryOnArakoonAssert::F);
 
     VERIFY(reg);
     return reg;

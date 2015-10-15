@@ -12,8 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef VFS_LOCKED_ARAKOON_H_
-#define VFS_LOCKED_ARAKOON_H_
+#ifndef YT_LOCKED_ARAKOON_H_
+#define YT_LOCKED_ARAKOON_H_
+
+#include "ArakoonInterface.h"
+#include "Logging.h"
 
 #include <chrono>
 #include <functional>
@@ -22,20 +25,18 @@
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/lock_guard.hpp>
 
-#include <youtils/ArakoonInterface.h>
-#include <youtils/Logging.h>
-
-namespace volumedriverfs
+namespace youtils
 {
 
 BOOLEAN_ENUM(RetryOnArakoonAssert);
 
 // The idea - besides serializing access to the arakoon client - is to provide a
 // number of read-only accessors and to funnel write access through run_sequence.
-// This is to support different "views" (e.g. ClusterRegistry vs. VolumeRegistry
-// at the time of writing) and the composition of arakoon sequences from these
-// views, e.g. only allow volume migration (VolumeRegistry's responsibility) if
-// the clusternode currently owning it is offline (ClusterRegistry's responsibility).
+// This is to support different "views" (e.g. filesystem's ClusterRegistry vs.
+// VolumeRegistry at the time of writing) and the composition of arakoon sequences
+// from these views, e.g. only allow volume migration (VolumeRegistry's
+// responsibility) if the clusternode currently owning it is offline
+// (ClusterRegistry's responsibility).
 class LockedArakoon
 {
 
@@ -203,4 +204,4 @@ private:
 
 }
 
-#endif // VFS_LOCKED_ARAKOON_H_
+#endif // YT_LOCKED_ARAKOON_H_

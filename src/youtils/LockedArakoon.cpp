@@ -16,7 +16,7 @@
 
 namespace ara = arakoon;
 
-namespace volumedriverfs
+namespace youtils
 {
 
 void

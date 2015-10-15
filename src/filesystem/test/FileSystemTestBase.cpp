@@ -24,13 +24,13 @@
 
 #include <youtils/Assert.h>
 #include <youtils/DimensionedValue.h>
+#include <youtils/LockedArakoon.h>
 #include <youtils/System.h>
 
 #include <volumedriver/Api.h>
 #include <volumedriver/VolumeDriverParameters.h>
 
 #include "../FuseInterface.h"
-#include "../LockedArakoon.h"
 #include "../ObjectRegistry.h"
 #include "../Registry.h"
 #include "../VirtualDiskFormat.h"
@@ -1080,7 +1080,7 @@ FileSystemTestBase::find_registration(const vfs::ObjectId& id)
     auto registry(std::make_shared<vfs::Registry>(make_registry_config_(pt)));
     vfs::ObjectRegistry reg(vrouter_cluster_id(),
                             tmp,
-                            std::static_pointer_cast<vfs::LockedArakoon>(registry));
+                            std::static_pointer_cast<yt::LockedArakoon>(registry));
 
     return reg.find(id);
 }

@@ -67,6 +67,7 @@ libyoutils_la_SOURCES = \
 	HeartBeatLock.cpp \
 	HeartBeatLockCommunicator.cpp \
 	HeartBeatLockService.cpp \
+	LockedArakoon.cpp \
 	LocORemClient.cpp \
 	LocORemConnection.cpp \
 	LocORemServer.cpp \

@@ -28,11 +28,11 @@
 #include <boost/python/register_ptr_to_python.hpp>
 #include <boost/python/return_value_policy.hpp>
 
+#include <youtils/LockedArakoon.h>
 #include <youtils/Logger.h>
 
 #include <volumedriver/OwnerTag.h>
 
-#include <filesystem/LockedArakoon.h>
 #include <filesystem/ObjectRegistration.h>
 #include <filesystem/ObjectRegistry.h>
 
@@ -69,8 +69,8 @@ class Wrapper
     Ptr
     registry_(const NodeId& node_id = default_node_id_()) const
     {
-        auto larakoon(std::make_shared<LockedArakoon>(ara_cluster_id_,
-                                                      ara_node_configs_));
+        auto larakoon(std::make_shared<yt::LockedArakoon>(ara_cluster_id_,
+                                                          ara_node_configs_));
         return boost::make_shared<ObjectRegistry>(cluster_id_,
                                                   node_id,
                                                   larakoon);

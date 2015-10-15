@@ -154,11 +154,11 @@ FileSystem::FileSystem(const bpt::ptree& pt,
     , fs_dtl_port(pt)
     , registry_(std::make_shared<Registry>(pt))
     , router_(pt,
-              std::static_pointer_cast<LockedArakoon>(registry_),
+              std::static_pointer_cast<yt::LockedArakoon>(registry_),
               fs_dtl_config_mode.value(),
               make_foc_config(fs_dtl_host.value(),
                               fs_dtl_port.value()))
-    , mdstore_(std::static_pointer_cast<LockedArakoon>(registry_),
+    , mdstore_(std::static_pointer_cast<yt::LockedArakoon>(registry_),
                router_.cluster_id(),
                fs_cache_dentries.value() ?
                UseCache::T :
@@ -201,7 +201,7 @@ FileSystem::destroy(const bpt::ptree& pt)
 
     LOG_INFO(cluster_id << ": removal of all non-local data and metadata requested");
 
-    std::shared_ptr<LockedArakoon> larakoon(new Registry(pt));
+    std::shared_ptr<yt::LockedArakoon> larakoon(new Registry(pt));
 
     try
     {

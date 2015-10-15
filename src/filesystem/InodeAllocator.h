@@ -16,9 +16,9 @@
 #define VFS_INODE_ALLOCATOR_H_
 
 #include "DirectoryEntry.h"
-#include "LockedArakoon.h"
 #include "LockedArakoonCounter.h"
 
+#include <youtils/LockedArakoon.h>
 #include <youtils/Logging.h>
 
 namespace arakoon

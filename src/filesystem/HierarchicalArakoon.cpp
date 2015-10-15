@@ -23,7 +23,7 @@ namespace yt = youtils;
 
 const ArakoonEntryId HierarchicalArakoon::root_("root");
 
-HierarchicalArakoon::HierarchicalArakoon(std::shared_ptr<LockedArakoon> arakoon,
+HierarchicalArakoon::HierarchicalArakoon(std::shared_ptr<yt::LockedArakoon> arakoon,
                                          const std::string& prefix)
     : arakoon_(arakoon)
     , prefix_(prefix)
@@ -311,7 +311,7 @@ HierarchicalArakoon::erase(const ArakoonPath& path)
                            {
                                prepare_erase_sequence_(path, pkey, seq);
                            },
-                           RetryOnArakoonAssert::T);
+                           yt::RetryOnArakoonAssert::T);
 }
 
 void
@@ -325,7 +325,7 @@ HierarchicalArakoon::erase(const yt::UUID& parent_id,
                            {
                                prepare_erase_sequence_(parent_id, name, seq);
                            },
-                           RetryOnArakoonAssert::T);
+                           yt::RetryOnArakoonAssert::T);
 }
 
 bool
@@ -349,7 +349,7 @@ HierarchicalArakoon::is_prefix_(const fs::path& pfx, const fs::path& path)
 }
 
 void
-HierarchicalArakoon::destroy(std::shared_ptr<LockedArakoon> larakoon,
+HierarchicalArakoon::destroy(std::shared_ptr<yt::LockedArakoon> larakoon,
                              const std::string& prefix)
 {
     LOG_INFO("Destroying HierarchicalArakoon, prefix " << prefix);

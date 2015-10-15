@@ -24,11 +24,11 @@
 #include <boost/python/register_ptr_to_python.hpp>
 #include <boost/python/return_value_policy.hpp>
 
+#include <youtils/LockedArakoon.h>
 #include <youtils/Logger.h>
 
 #include <filesystem/DirectoryEntry.h>
 #include <filesystem/FrontendPath.h>
-#include <filesystem/LockedArakoon.h>
 #include <filesystem/MetaDataStore.h>
 
 namespace volumedriverfs
@@ -54,8 +54,8 @@ make_metadata_store(const ClusterId& cluster_id,
                     const ara::ClusterID& ara_cluster_id,
                     const std::vector<ara::ArakoonNodeConfig>& ara_node_configs)
 {
-    auto larakoon(std::make_shared<LockedArakoon>(ara_cluster_id,
-                                                  ara_node_configs));
+    auto larakoon(std::make_shared<yt::LockedArakoon>(ara_cluster_id,
+                                                      ara_node_configs));
     return boost::make_shared<MetaDataStore>(larakoon,
                                              cluster_id,
                                              UseCache::F);

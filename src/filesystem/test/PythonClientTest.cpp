@@ -520,7 +520,7 @@ TEST_F(PythonClientTest, redirection_response)
     auto registry(fs_->object_router().object_registry());
 
     bpt::ptree pt;
-    std::shared_ptr<vfs::LockedArakoon>
+    std::shared_ptr<yt::LockedArakoon>
         larakoon(new vfs::Registry(make_registry_config_(pt),
                                    RegisterComponent::F));
     vfs::OwnerTagAllocator owner_tag_allocator(vrouter_cluster_id(),

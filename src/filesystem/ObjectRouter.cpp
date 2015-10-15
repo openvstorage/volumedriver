@@ -15,7 +15,6 @@
 #include "FileSystem.h"
 #include "FileSystemEvents.h"
 #include "LocalNode.h"
-#include "LockedArakoon.h"
 #include "MessageUtils.h"
 #include "Messages.pb.h"
 #include "Protocol.h"
@@ -28,6 +27,7 @@
 
 #include <youtils/Assert.h>
 #include <youtils/Catchers.h>
+#include <youtils/LockedArakoon.h>
 #include <youtils/System.h>
 
 #include <volumedriver/Api.h>
@@ -58,7 +58,7 @@ namespace vd = volumedriver;
 namespace yt = youtils;
 
 ObjectRouter::ObjectRouter(const bpt::ptree& pt,
-                           std::shared_ptr<LockedArakoon>(larakoon),
+                           std::shared_ptr<yt::LockedArakoon>(larakoon),
                            const FailOverCacheConfigMode foccmode,
                            const boost::optional<vd::FailOverCacheConfig>& focconfig,
                            const RegisterComponent registrate)
@@ -226,7 +226,7 @@ ObjectRouter::update_cluster_node_configs()
 }
 
 void
-ObjectRouter::destroy(std::shared_ptr<LockedArakoon> larakoon,
+ObjectRouter::destroy(std::shared_ptr<yt::LockedArakoon> larakoon,
                       const bpt::ptree& pt)
 {
     const ClusterId cluster_id(PARAMETER_VALUE_FROM_PROPERTY_TREE(vrouter_cluster_id, pt));
@@ -576,7 +576,7 @@ ObjectRouter::steal_(const ObjectRegistration& reg,
     {
         larakoon_->run_sequence("steal volume",
                                 fun,
-                                RetryOnArakoonAssert::T);
+                                yt::RetryOnArakoonAssert::T);
 
         // XXX: try to push this into the CachedObjectRegistry
         object_registry_->drop_entry_from_cache(reg.volume_id);

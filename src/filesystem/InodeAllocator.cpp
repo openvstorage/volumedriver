@@ -14,7 +14,8 @@
 
 #include "DirectoryEntry.h"
 #include "InodeAllocator.h"
-#include "LockedArakoon.h"
+
+#include <youtils/LockedArakoon.h>
 
 namespace arakoon
 {
@@ -55,7 +56,7 @@ namespace volumedriverfs
 namespace ara = arakoon;
 
 InodeAllocator::InodeAllocator(const ClusterId& cluster_id,
-                               std::shared_ptr<LockedArakoon> larakoon)
+                               std::shared_ptr<yt::LockedArakoon> larakoon)
     : larakoon_(larakoon)
     , cluster_id_(cluster_id)
 {
@@ -116,7 +117,7 @@ InodeAllocator::operator()()
 
     larakoon_->run_sequence("allocating inode",
                             std::move(alloc),
-                            RetryOnArakoonAssert::T);
+                            yt::RetryOnArakoonAssert::T);
 
     LOG_INFO("Allocated inode " << inode);
     VERIFY(inode != Inode(0));

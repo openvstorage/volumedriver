@@ -53,7 +53,7 @@ make_harakoon_prefix(const ClusterId& cid)
 
 }
 
-MetaDataStore::MetaDataStore(std::shared_ptr<LockedArakoon> larakoon,
+MetaDataStore::MetaDataStore(std::shared_ptr<yt::LockedArakoon> larakoon,
                              const ClusterId& cid,
                              UseCache use_cache)
     : harakoon_(larakoon, make_harakoon_prefix(cid))
@@ -64,7 +64,7 @@ MetaDataStore::MetaDataStore(std::shared_ptr<LockedArakoon> larakoon,
 }
 
 void
-MetaDataStore::destroy(std::shared_ptr<LockedArakoon> larakoon,
+MetaDataStore::destroy(std::shared_ptr<yt::LockedArakoon> larakoon,
                        const ClusterId& cid)
 {
     LOG_INFO(cid << ": destroying MetaDataStore");

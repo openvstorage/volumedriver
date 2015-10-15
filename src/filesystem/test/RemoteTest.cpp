@@ -168,7 +168,7 @@ public:
         ASSERT_TRUE(fs_->object_router().node_id() == local_node_id());
 
         bpt::ptree pt;
-        std::shared_ptr<vfs::LockedArakoon>
+        std::shared_ptr<yt::LockedArakoon>
             larakoon(new vfs::Registry(make_registry_config_(pt),
                                        RegisterComponent::F));
         vfs::OwnerTagAllocator owner_tag_allocator(vrouter_cluster_id(),
@@ -1225,7 +1225,7 @@ TEST_F(RemoteTest, destruction)
 
     const std::string pfx("");
 
-    std::shared_ptr<vfs::LockedArakoon> reg(new vfs::Registry(pt, RegisterComponent::F));
+    std::shared_ptr<yt::LockedArakoon> reg(new vfs::Registry(pt, RegisterComponent::F));
     EXPECT_LT(0U, reg->prefix(pfx).size());
 
     vfs::FileSystem::destroy(pt);

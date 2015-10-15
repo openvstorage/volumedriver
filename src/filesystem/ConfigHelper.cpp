@@ -16,16 +16,18 @@
 #include "ClusterRegistry.h"
 #include "ConfigHelper.h"
 #include "FileSystemParameters.h"
-#include "LockedArakoon.h"
 #include "NodeId.h"
 #include "Registry.h"
 
 #include <youtils/InitializedParam.h>
+#include <youtils/LockedArakoon.h>
 
-namespace bpt = boost::property_tree;
 
 namespace volumedriverfs
 {
+
+namespace bpt = boost::property_tree;
+namespace yt = youtils;
 
 ConfigHelper::ConfigHelper(const bpt::ptree& pt)
     : failover_cache_path_(PARAMETER_VALUE_FROM_PROPERTY_TREE(failovercache_path,
@@ -39,8 +41,8 @@ ConfigHelper::ConfigHelper(const bpt::ptree& pt)
     cluster_id_ = ClusterId(PARAMETER_VALUE_FROM_PROPERTY_TREE(vrouter_cluster_id,
                                                                pt));
 
-    std::shared_ptr<LockedArakoon>
-        arakoon(std::static_pointer_cast<LockedArakoon>(std::make_shared<Registry>(pt)));
+    std::shared_ptr<yt::LockedArakoon>
+        arakoon(std::static_pointer_cast<yt::LockedArakoon>(std::make_shared<Registry>(pt)));
     ClusterRegistry cluster_registry(cluster_id_,
                                      arakoon);
 
