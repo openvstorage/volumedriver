@@ -21,7 +21,7 @@ namespace youtils
 
 void
 LockedArakoon::run_sequence(const char* desc,
-                            LockedArakoon::PrepareSequenceFun&& prepare_fun,
+                            LockedArakoon::PrepareSequenceFun prepare_fun,
                             RetryOnArakoonAssert retry_on_assert)
 {
     // CAUTION! When using this function you need to make sure to

@@ -307,7 +307,7 @@ ObjectRegistry::with_owned_volume_(const ObjectId& id,
 void
 ObjectRegistry::run_sequence_(const ObjectId& id,
                               const char* desc,
-                              yt::LockedArakoon::PrepareSequenceFun&& prep_fun,
+                              yt::LockedArakoon::PrepareSequenceFun prep_fun,
                               yt::RetryOnArakoonAssert retry_on_assert)
 {
     LOG_TRACE(desc);

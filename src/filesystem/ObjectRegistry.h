@@ -176,7 +176,7 @@ private:
     void
     run_sequence_(const ObjectId& id,
                   const char* desc,
-                  youtils::LockedArakoon::PrepareSequenceFun&& prep_fun,
+                  youtils::LockedArakoon::PrepareSequenceFun prep_fun,
                   youtils::RetryOnArakoonAssert retry_on_assert);
 
     ObjectRegistrationPtr

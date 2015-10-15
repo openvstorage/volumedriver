@@ -575,7 +575,7 @@ ObjectRouter::steal_(const ObjectRegistration& reg,
     try
     {
         larakoon_->run_sequence("steal volume",
-                                fun,
+                                std::move(fun),
                                 yt::RetryOnArakoonAssert::T);
 
         // XXX: try to push this into the CachedObjectRegistry

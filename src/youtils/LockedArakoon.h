@@ -112,7 +112,7 @@ public:
 
     void
     run_sequence(const char* desc,
-                 PrepareSequenceFun&& prep_fun,
+                 PrepareSequenceFun prep_fun,
                  RetryOnArakoonAssert retry_on_assert = RetryOnArakoonAssert::F);
 
     // escape hatch / open the flood gates:
