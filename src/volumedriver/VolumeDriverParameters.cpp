@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "LockStoreFactory.h"
 #include "VolumeDriverParameters.h"
 
 namespace initialized_params
@@ -234,6 +235,14 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(clustercache_mount_points,
                                       "An array of directories and sizes to be used as Read Cache mount points",
                                       ShowDocumentation::T,
                                       vd::MountPointConfigs());
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(dls_type,
+                                      vd::LockStoreFactory::name(),
+                                      "dls_type",
+                                      "Type of distributed lock store to use (default / currently only supported value: \"Backend\")",
+                                      ShowDocumentation::T,
+                                      vd::LockStoreType::Backend);
+
 }
 
 // Local Variables: **

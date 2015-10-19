@@ -15,11 +15,11 @@
 #ifndef VOLMANAGER_H_
 #define VOLMANAGER_H_
 
+#include "ClusterCache.h"
 #include "DataStoreCallBack.h"
 #include "Events.h"
 #include "SCOCache.h"
 #include "SnapshotManagement.h"
-#include "ClusterCache.h"
 #include "Volume.h"
 #include "VolumeConfigParameters.h"
 #include "VolumeDriverParameters.h"
@@ -63,6 +63,7 @@ namespace volumedriver
 {
 
 class ClusterClusterCache;
+class LockStoreFactory;
 class PeriodicAction;
 class Volume;
 
@@ -482,6 +483,7 @@ private:
     bool readOnlyMode_;
 
     backend::BackendConnectionManagerPtr backend_conn_manager_;
+    std::unique_ptr<LockStoreFactory> lock_store_factory_;
 
     ClusterCache ClusterCache_;
 

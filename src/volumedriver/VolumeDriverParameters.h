@@ -17,6 +17,7 @@
 
 #include "ClusterCacheBehaviour.h"
 #include "ClusterCacheMode.h"
+#include "LockStoreType.h"
 #include "MountPointConfig.h"
 #include "Types.h"
 
@@ -88,6 +89,9 @@ DECLARE_INITIALIZED_PARAM(read_cache_serialization_path, std::string);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(average_entries_per_bin, uint32_t);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(clustercache_mount_points,
                                        volumedriver::MountPointConfigs);
+
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(dls_type,
+                                       volumedriver::LockStoreType);
 
 }
 

@@ -119,6 +119,8 @@ libvolumedriver_la_SOURCES = \
 	failovercache/fungilib/Thread.cpp \
 	failovercache/fungilib/WrapByteArray.cpp \
 	LocalTLogScanner.cpp \
+	LockStoreFactory.cpp \
+	LockStoreType.cpp \
 	MDSMetaDataBackend.cpp \
 	MDSMetaDataStore.cpp \
 	MDSNodeConfig.cpp \
