@@ -40,7 +40,7 @@ private:
     using list_type = boost::intrusive::slist<value_type,
                                               value_type_traits,
                                               boost::intrusive::cache_last<true>>;
-    using vec_type = std::vector<std::unique_ptr<list_type>>;
+    using vec_type = std::vector<list_type>;
     using stats_type = std::map<uint64_t, uint64_t>;
 
     DECLARE_LOGGER("ClusterCacheMap");
@@ -64,24 +64,19 @@ public:
         VERIFY(size < 64);
         const uint64_t mask = (1UL << size) - 1;
         vec_type vec;
-        vec.reserve(size);
+        vec.resize(1UL << size);
 
         stats_type stats;
 
-        for (size_t i = 0; i < (1UL << size); ++i)
-        {
-            vec.emplace_back(std::make_unique<list_type>());
-        }
-
         for (auto& l : vec_)
         {
-            while (not l->empty())
+            while (not l.empty())
             {
-                auto it = l->begin();
-                VERIFY(it != l->end());
+                auto it = l.begin();
+                VERIFY(it != l.end());
 
                 value_type& e = *it;
-                l->erase(it);
+                l.erase(it);
                 insert_(e,
                         vec,
                         stats,
@@ -112,7 +107,7 @@ public:
     {
         for (auto& slst : vec_)
         {
-            for (auto& val : *slst)
+            for (auto& val : slst)
             {
                 fun(val);
             }
@@ -123,7 +118,7 @@ public:
     find(const key_type& key)
     {
         uint64_t ind = index_(key);
-        list_type& lst = *vec_[ind];
+        list_type& lst = vec_[ind];
         HasKey pred(key);
 
         auto it = std::find_if(lst.begin(), lst.end(), pred);
@@ -157,7 +152,7 @@ public:
     insert_checked(value_type& entry)
     {
         uint64_t ind = index_(entry.key);
-        list_type& lst = *vec_[ind];
+        list_type& lst = vec_[ind];
         HasKey pred(entry.key);
         auto it = std::find_if(lst.begin(), lst.end(), pred);
         if (it == lst.end())
@@ -182,7 +177,7 @@ public:
     {
         uint64_t ind = index_(entry.key);
         VERIFY(ind < vec_.size());
-        list_type& lst = *vec_[ind];
+        list_type& lst = vec_[ind];
         HasKey pred(entry.key);
         auto it = std::find_if(lst.begin(), lst.end(), pred);
         if (it == lst.end())
@@ -317,7 +312,7 @@ private:
         uint64_t ind = index_(entry.key,
                               vec,
                               mask);
-        list_type& lst = *vec[ind];
+        list_type& lst = vec[ind];
 
         lst.push_back(entry);
         uint64_t size = lst.size();
