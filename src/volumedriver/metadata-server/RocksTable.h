@@ -16,6 +16,7 @@
 #define META_DATA_SERVER_ROCKS_TABLE_H_
 
 #include "Interface.h"
+#include "RocksConfig.h"
 
 #include <memory>
 
@@ -37,7 +38,8 @@ class RocksTable
 public:
     RocksTable(const std::string& nspace,
                std::shared_ptr<rocksdb::DB>& db,
-               std::unique_ptr<rocksdb::ColumnFamilyHandle> column_family);
+               std::unique_ptr<rocksdb::ColumnFamilyHandle> column_family,
+               const RocksConfig& rocks_config);
 
     virtual ~RocksTable() = default;
 
@@ -82,6 +84,11 @@ private:
     mutable boost::shared_mutex rwlock_;
     std::shared_ptr<rocksdb::DB> db_;
     std::unique_ptr<rocksdb::ColumnFamilyHandle> column_family_;
+    // Getting the options from the old handle leads to a use-after-free when
+    // re-creating the column family, so we keep our own copy of it.
+    const rocksdb::ColumnFamilyOptions column_family_options_;
+    const rocksdb::ReadOptions read_options_;
+    const rocksdb::WriteOptions write_options_;
     const std::string nspace_;
 };
 

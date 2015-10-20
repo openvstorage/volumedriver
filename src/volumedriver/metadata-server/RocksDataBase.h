@@ -16,6 +16,7 @@
 #define META_DATA_SERVER_ROCKS_DATA_BASE_H_
 
 #include "Interface.h"
+#include "RocksConfig.h"
 #include "RocksTable.h"
 
 #include <map>
@@ -34,7 +35,8 @@ class RocksDataBase
     : public DataBaseInterface
 {
 public:
-    explicit RocksDataBase(const boost::filesystem::path& path);
+    explicit RocksDataBase(const boost::filesystem::path& path,
+                           const RocksConfig& = RocksConfig());
 
     virtual ~RocksDataBase();
 
@@ -52,11 +54,6 @@ public:
     virtual void
     drop(const std::string& nspace);
 
-    // Used by RocksTable::clear as recreating a column family with the options retrieved
-    // before dropping the old one leads to a use-after-free.
-    static rocksdb::ColumnFamilyOptions
-    column_family_options();
-
 private:
     DECLARE_LOGGER("MetaDataServerRocksDataBase");
 
@@ -64,11 +61,11 @@ private:
     mutable boost::mutex lock_;
     std::shared_ptr<rocksdb::DB> db_;
     std::map<std::string, RocksTablePtr> tables_;
+    RocksConfig rocks_config_;
 
     RocksTablePtr
     make_table_(const std::string& nspace,
                 rocksdb::ColumnFamilyHandle* h);
-
 };
 
 typedef std::shared_ptr<RocksDataBase> RocksDataBasePtr;
