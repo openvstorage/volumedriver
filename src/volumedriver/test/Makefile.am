@@ -64,6 +64,7 @@ volumedriver_test_SOURCES = \
 	LockingTest.cpp \
 	MDSManagerTest.cpp \
 	MDSMetaDataStoreTest.cpp \
+	MDSServerConfigTest.cpp \
 	MDSVolumeTest.cpp \
 	MetaDataBackendConfigTest.cpp \
 	MetaDataServerTest.cpp \

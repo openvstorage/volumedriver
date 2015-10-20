@@ -135,6 +135,7 @@ libvolumedriver_la_SOURCES = \
 	metadata-server/Protocol.cpp \
 	metadata-server/Protocol-capnp.cpp \
 	metadata-server/PythonClient.cpp \
+	metadata-server/RocksConfig.cpp \
 	metadata-server/RocksDataBase.cpp \
 	metadata-server/RocksTable.cpp \
 	metadata-server/ServerConfig.cpp \
