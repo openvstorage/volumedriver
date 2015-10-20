@@ -214,7 +214,7 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(s3_connection_username,
                                       "s3_connection_username",
                                       "When backend_type is S3: the S3 username, otherwise ignored",
                                       ShowDocumentation::T,
-                                      "wim.leus@openvstorage.com"s);
+                                      ""s);
 
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(s3_connection_password,
                                       backend_connection_manager_name,
