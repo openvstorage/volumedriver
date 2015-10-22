@@ -12,30 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef VFS_FAILOVER_CACHE_CONFIG_MODE_H_
-#define VFS_FAILOVER_CACHE_CONFIG_MODE_H_
+#ifndef VD_FAILOVER_CACHE_MODE_H_
+#define VD_FAILOVER_CACHE_MODE_H_
 
 #include <iosfwd>
 #include <cstdint>
 
-namespace volumedriverfs
+namespace volumedriver
 {
 
-enum class FailOverCacheConfigMode: uint8_t
+enum class FailOverCacheMode: uint8_t
 {
     // We are using 0 in serialization to
-    Automatic = 1,
-    Manual = 2,
+    Asynchronous = 1,
+    Synchronous = 2,
 };
 
 std::ostream&
 operator<<(std::ostream&,
-           const FailOverCacheConfigMode a);
+           const FailOverCacheMode a);
 
 std::istream&
 operator>>(std::istream&,
-        FailOverCacheConfigMode&);
+        FailOverCacheMode&);
 
 }
 
-#endif // !VFS_FAILOVER_CACHE_CONFIG_MODE_H_
+#endif // !VD_FAILOVER_CACHE_MODE_H_

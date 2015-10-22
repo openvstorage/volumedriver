@@ -67,7 +67,8 @@ vd::FailOverCacheConfig
 FailOverCacheTestContext::config() const
 {
     return vd::FailOverCacheConfig(FailOverCacheTestSetup::host(),
-                                   port());
+                                   port(),
+                                   FailOverCacheTestSetup::mode());
 }
 
 std::string
@@ -79,6 +80,9 @@ FailOverCacheTestSetup::port_base_ =
 
 vd::FailOverCacheTransport
 FailOverCacheTestSetup::transport_(vd::FailOverCacheTransport::TCP);
+
+vd::FailOverCacheMode
+FailOverCacheTestSetup::mode_(vd::FailOverCacheMode::Asynchronous);
 
 FailOverCacheTestSetup::FailOverCacheTestSetup(const fs::path& p)
         : path(p)

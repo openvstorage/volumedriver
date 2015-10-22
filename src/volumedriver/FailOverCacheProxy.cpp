@@ -164,9 +164,9 @@ FailOverCacheProxy::setRequestTimeout(const uint32_t seconds)
 }
 
 void
-FailOverCacheProxy::addEntries( boost::ptr_vector<FailOverCacheEntry>& entries)
+FailOverCacheProxy::addEntries(std::vector<FailOverCacheEntry> entries)
 {
-    const CommandData<AddEntries> comd(entries);
+    const CommandData<AddEntries> comd(std::move(entries));
     *stream_ << comd;
 }
 
@@ -185,6 +185,58 @@ FailOverCacheProxy::clear()
     OUT_ENUM(*stream_, Clear);
     *stream_ << fungi::IOBaseStream::uncork;
     checkStreamOK(__FUNCTION__);
+}
+
+void
+FailOverCacheProxy::getEntries(SCOProcessorFun processor)
+{
+    // Y42 review later
+    *stream_ << fungi::IOBaseStream::cork;
+    OUT_ENUM(*stream_, GetEntries);
+    *stream_ << fungi::IOBaseStream::uncork;
+
+    getObject_(processor);
+}
+
+uint64_t
+FailOverCacheProxy::getSCOFromFailOver(SCO a,
+                                       SCOProcessorFun processor)
+{
+    *stream_ << fungi::IOBaseStream::cork;
+    OUT_ENUM(*stream_, GetSCO);
+    *stream_ << a;
+    *stream_ << fungi::IOBaseStream::uncork;
+    return getObject_(processor);
+}
+
+uint64_t
+FailOverCacheProxy::getObject_(SCOProcessorFun processor)
+{
+    fungi::Buffer buf;
+    *stream_ >> fungi::IOBaseStream::cork;
+    uint64_t ret = 0;
+    while (true)
+    {
+        ClusterLocation cli;
+        *stream_ >> cli;
+        if(cli.isNull())
+        {
+            return ret;
+        }
+        else
+        {
+            uint64_t lba = 0;
+            *stream_ >> lba;
+
+            int64_t bal; // byte array length
+            *stream_ >> bal;
+
+            int32_t size = (int32_t) bal;
+            buf.store(stream_->getSink(), size);
+            processor(cli, lba, buf.data(), size);
+            ret += size;
+        }
+    }
 }
 
 }

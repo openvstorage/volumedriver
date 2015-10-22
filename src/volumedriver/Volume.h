@@ -17,7 +17,9 @@
 
 #include "BackendTasks.h"
 #include "ClusterCacheHandle.h"
-#include "FailOverCacheBridge.h"
+#include "FailOverCacheAsyncBridge.h"
+#include "FailOverCacheSyncBridge.h"
+#include "FailOverCacheBridgeFactory.h"
 #include "FailOverCacheConfigWrapper.h"
 #include "FailOverCacheProxy.h"
 #include "NSIDMap.h"
@@ -87,8 +89,8 @@ class Volume
     friend class VolManagerTestSetup;
     friend class ErrorHandlingTest;
     friend class ::volumedrivertest::MetaDataStoreTest;
-    friend void FailOverCacheBridge::run();
-
+    friend void FailOverCacheAsyncBridge::run();
+    friend void FailOverCacheSyncBridge::handleException(std::exception&, const char*);
     friend void backend_task::WriteTLog::run(int);
 
 public:
@@ -222,7 +224,7 @@ public:
     getTempTLogPath() const;
 
     // VolumeInterface
-    FailOverCacheBridge*
+    FailOverCacheClientInterface*
     getFailOver() override final
     {
         return failover_.get();
@@ -543,7 +545,7 @@ private:
     // eventually we need accessors
     std::unique_ptr<DataStoreNG> dataStore_;
 
-    std::unique_ptr<FailOverCacheBridge> failover_;
+    std::unique_ptr<FailOverCacheClientInterface> failover_;
 
     std::unique_ptr<MetaDataStoreInterface> metaDataStore_;
 
@@ -648,10 +650,11 @@ private:
                                     const uint8_t* buf);
 
     void
-    writeClusterToFailOverCache_(const ClusterLocation& loc,
-                                 uint64_t lba,
-                                 const uint8_t* buf,
-                                 unsigned& throttled_usecs);
+    writeClustersToFailOverCache_(const std::vector<ClusterLocation>& locs,
+                                  size_t num_locs,
+                                  uint64_t start_address,
+                                  const uint8_t* buf,
+                                  unsigned& throttled_usecs);
 
     void
     writeConfigToBackend_(const VolumeConfig& cfg);
@@ -713,7 +716,10 @@ private:
                         const backend::Namespace& nsname);
 
     void
-    setFailOverCache_(const FailOverCacheConfig&);
+    setFailOverCacheMode_(const FailOverCacheMode mode);
+
+    void
+    setFailOverCacheConfig_(const FailOverCacheConfig&);
 
     void
     setNoFailOverCache_();

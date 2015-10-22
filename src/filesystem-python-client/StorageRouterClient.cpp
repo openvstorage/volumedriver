@@ -240,8 +240,11 @@ owner_tag_repr(vd::OwnerTag t)
 std::string
 failovercache_config_repr(const vd::FailOverCacheConfig* cfg)
 {
-    return "DTLConfig("s + cfg->host + ":"s +
-        boost::lexical_cast<std::string>(cfg->port) + ")"s;
+    std::stringstream ss;
+    ss << cfg->mode;
+    return "DTLConfig("s + cfg->host
+            + ":"s + boost::lexical_cast<std::string>(cfg->port)
+            + "," + ss.str() + ")";
 }
 
 // boost::python cannot deal with the cluster_cache_limit member without registering a class
@@ -325,8 +328,9 @@ BOOST_PYTHON_MODULE(storagerouterclient)
 
     bpy::class_<vd::FailOverCacheConfig>("DTLConfig",
                                          "DTL (Distributed Transaction Log) Configuration",
-                                         bpy::init<std::string, uint16_t>((bpy::args("host"),
-                                                                           bpy::args("port")),
+                                         bpy::init<std::string, uint16_t, vd::FailOverCacheMode>((bpy::args("host"),
+                                                                           bpy::args("port"),
+                                                                           bpy::args("mode")),
                                                                           "Instantiate a FailOverCacheConfig\n"
                                                                           "@param host, string, IP address\n"
                                                                           "@param port, uint16, port\n"))
@@ -339,12 +343,20 @@ BOOST_PYTHON_MODULE(storagerouterclient)
 
         DEF_READONLY_PROP_(host)
         DEF_READONLY_PROP_(port)
+        DEF_READONLY_PROP_(mode)
 
 #undef DEF_READONLY_PROP_
         ;
 
 
     REGISTER_OPTIONAL_CONVERTER(vd::FailOverCacheConfig);
+
+    bpy::enum_<vd::FailOverCacheMode>("DTLMode")
+        .value("ASYNCHRONOUS", vd::FailOverCacheMode::Asynchronous)
+        .value("SYNCHRONOUS", vd::FailOverCacheMode::Synchronous)
+        ;
+
+    REGISTER_OPTIONAL_CONVERTER(vd::FailOverCacheMode);
 
     bpy::class_<vd::OwnerTag>("OwnerTag",
                               "OwnerTag",
@@ -659,10 +671,11 @@ BOOST_PYTHON_MODULE(storagerouterclient)
                "@returns the DTL configuration of the volume\n")
           .def("set_manual_dtl_config",
                &vfs::PythonClient::set_manual_failover_cache_config,
-               (bpy::args("node_id")),
+               (bpy::args("node_id"),
+                bpy::args("config")),
                "set a volume's DTL configuration\n"
                "@param volume_id: string, volume identifier\n"
-               "@param config: string in the format host:port, or 'None' for no DTL")
+               "@param config: a DTLConfig, or 'None' for no DTL")
           .def("set_automatic_dtl_config",
                &vfs::PythonClient::set_automatic_failover_cache_config,
                (bpy::args("node_id")),

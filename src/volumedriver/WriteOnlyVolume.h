@@ -47,7 +47,6 @@ class ScrubberResult;
 class DataStoreNG;
 class SnapshotManagement;
 class ClusterReadDescriptor;
-class FailOverCacheBridge;
 
 class WriteOnlyVolume
     : public VolumeInterface
@@ -176,7 +175,7 @@ public:
         return clusterSize_;
     }
 
-    FailOverCacheBridge*
+    FailOverCacheClientInterface*
     getFailOver() override final
     {
         throw fungi::IOException("Not Implemented");

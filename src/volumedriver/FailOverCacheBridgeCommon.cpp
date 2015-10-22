@@ -12,30 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef VFS_FAILOVER_CACHE_CONFIG_MODE_H_
-#define VFS_FAILOVER_CACHE_CONFIG_MODE_H_
+#include "FailOverCacheBridgeCommon.h"
+#include "Volume.h"
 
-#include <iosfwd>
-#include <cstdint>
-
-namespace volumedriverfs
+namespace volumedriver
 {
 
-enum class FailOverCacheConfigMode: uint8_t
+void
+VolumeFailOverCacheAdaptor::processCluster(ClusterLocation cli,
+                                           uint64_t lba,
+                                           const byte* buf,
+                                           size_t size)
 {
-    // We are using 0 in serialization to
-    Automatic = 1,
-    Manual = 2,
-};
-
-std::ostream&
-operator<<(std::ostream&,
-           const FailOverCacheConfigMode a);
-
-std::istream&
-operator>>(std::istream&,
-        FailOverCacheConfigMode&);
-
+    volume_.processFailOverCacheEntry(cli, lba, buf, size);
 }
 
-#endif // !VFS_FAILOVER_CACHE_CONFIG_MODE_H_
+} // namespace volumedriver

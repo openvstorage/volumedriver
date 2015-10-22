@@ -14,7 +14,6 @@
 
 #include "ClusterLocation.h"
 #include "DataStoreNG.h"
-#include "FailOverCacheBridge.h"
 #include "FailOverCacheConfig.h"
 #include "SCOFetcher.h"
 #include "Volume.h"
@@ -122,7 +121,7 @@ FailOverCacheSCOFetcher::operator()(const fs::path& dst)
         // this needs to be reworked once ->getSCO throws if it cannot find
         // the SCO.
         uint64_t scosize = vol_->getFailOver()->getSCOFromFailOver(sconame_,
-                                                                   *this);
+                                                                   SCOPROCESSORFUN(FailOverCacheSCOFetcher, processCluster, this));
         if (scosize == 0)
         {
             std::stringstream ss;
@@ -182,10 +181,10 @@ FailOverCacheSCOFetcher::operator()(const fs::path& dst)
 }
 
 void
-FailOverCacheSCOFetcher::operator()(ClusterLocation cli,
-                                    uint64_t /* lba */,
-                                    const byte* buf,
-                                    uint32_t size)
+FailOverCacheSCOFetcher::processCluster(ClusterLocation cli,
+                                        uint64_t /* lba */,
+                                        const byte* buf,
+                                        size_t size)
 {
     VERIFY(sio_.get());
     //    VERIFY(sconame_ != 0);
@@ -242,7 +241,7 @@ RawFailOverCacheSCOFetcher::operator()(const fs::path& dst)
         // this needs to be reworked once ->getSCO throws if it cannot find
         // the SCO.
         uint64_t scosize = foc->getSCOFromFailOver(sconame_,
-                                                   *this);
+                                                   SCOPROCESSORFUN(RawFailOverCacheSCOFetcher, processCluster, this));
         if (scosize == 0)
         {
             throw fungi::IOException("Could not get SCO from the foc");
@@ -260,10 +259,10 @@ RawFailOverCacheSCOFetcher::operator()(const fs::path& dst)
 
 
 void
-RawFailOverCacheSCOFetcher::operator()(ClusterLocation cli,
-                                       uint64_t /* lba */,
-                                       const byte* buf,
-                                       uint32_t size)
+RawFailOverCacheSCOFetcher::processCluster(ClusterLocation cli,
+                                           uint64_t /* lba */,
+                                           const byte* buf,
+                                           size_t size)
 {
     VERIFY(sio_.get());
     //VERIFY(sconame_ != 0);

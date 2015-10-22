@@ -12,30 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef VFS_FAILOVER_CACHE_CONFIG_MODE_H_
-#define VFS_FAILOVER_CACHE_CONFIG_MODE_H_
+#ifndef VD_SCOPROCESSORINTERFACE_H
+#define VD_SCOPROCESSORINTERFACE_H
 
-#include <iosfwd>
-#include <cstdint>
+#include "ClusterLocation.h"
 
-namespace volumedriverfs
+namespace volumedriver
 {
 
-enum class FailOverCacheConfigMode: uint8_t
-{
-    // We are using 0 in serialization to
-    Automatic = 1,
-    Manual = 2,
-};
+using SCOProcessorFun = std::function<void(ClusterLocation,
+                       uint64_t /* lba */,
+                       const uint8_t* /* buf */,
+                       size_t /* bufsize */)>;
 
-std::ostream&
-operator<<(std::ostream&,
-           const FailOverCacheConfigMode a);
+#define SCOPROCESSORFUN(ttype, mmethod, inst) SCOProcessorFun(std::bind(&ttype::mmethod, inst, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4))
 
-std::istream&
-operator>>(std::istream&,
-        FailOverCacheConfigMode&);
+} // namespace volumedriver
 
-}
-
-#endif // !VFS_FAILOVER_CACHE_CONFIG_MODE_H_
+#endif // VD_SCOPROCESSORINTERFACE_H

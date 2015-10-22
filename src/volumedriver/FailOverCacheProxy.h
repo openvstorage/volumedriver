@@ -16,6 +16,7 @@
 #define FAILOVERCACHEPROXY_H
 
 #include "FailOverCacheStreamers.h"
+#include "SCOProcessorInterface.h"
 
 #include "failovercache/fungilib/Socket.h"
 #include "failovercache/fungilib/IOBaseStream.h"
@@ -44,21 +45,13 @@ public:
     ~FailOverCacheProxy();
 
     void
-    addEntries(boost::ptr_vector<FailOverCacheEntry>& entries);
+    addEntries(std::vector<FailOverCacheEntry> entries);
 
     // returns the SCO size - 0 indicates a problem.
     // Z42: throw instead!
-    template<typename T>
     uint64_t
     getSCOFromFailOver(SCO a,
-                       T& processor)
-    {
-        *stream_ << fungi::IOBaseStream::cork;
-        OUT_ENUM(*stream_, GetSCO);
-        *stream_ << a;
-        *stream_ << fungi::IOBaseStream::uncork;
-        return getObject_<T>(processor);
-    }
+                       SCOProcessorFun processor);
 
     void
     getSCORange(SCO& oldest,
@@ -78,17 +71,8 @@ public:
     void
     setRequestTimeout(const uint32_t seconds);
 
-    template<typename T>
     void
-    getEntries(T& processor)
-    {
-        // Y42 review later
-        *stream_ << fungi::IOBaseStream::cork;
-        OUT_ENUM(*stream_, GetEntries);
-        *stream_ << fungi::IOBaseStream::uncork;
-
-        getObject_<T>(processor);
-    }
+    getEntries(SCOProcessorFun processor);
 
     void
     delete_failover_dir()
@@ -107,36 +91,8 @@ private:
     void
     checkStreamOK(const std::string& ex);
 
-    template<typename T>
     uint64_t
-    getObject_(T& processor)
-    {
-        fungi::Buffer buf;
-        *stream_ >> fungi::IOBaseStream::cork;
-        uint64_t ret = 0;
-        while (true)
-        {
-            ClusterLocation cli;
-            *stream_ >> cli;
-            if(cli.isNull())
-            {
-                return ret;
-            }
-            else
-            {
-                uint64_t lba = 0;
-                *stream_ >> lba;
-
-                int64_t bal; // byte array length
-                *stream_ >> bal;
-
-                int32_t size = (int32_t) bal;
-                buf.store(stream_->getSink(), size);
-                processor(cli, lba, buf.data(), size);
-                ret += size;
-            }
-        }
-    }
+    getObject_(SCOProcessorFun processor);
 
     fungi::Socket* socket_;
     fungi :: IOBaseStream *stream_;

@@ -171,8 +171,8 @@ TEST_P(VolumeStateManagementTest, CreateVolumeWithRemoteCache)
         EXPECT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::OK_SYNC);
     }
 
-    // Volume might take some time to find out it's failover is not there anymore.
-    sleep(2);
+    flushFailOverCache(v); // It is only detected for sure that the FOC is gone when something happens over the wire
+
     EXPECT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::DEGRADED);
     v->setFailOverCacheConfig(boost::none);
     EXPECT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::OK_STANDALONE);
@@ -460,7 +460,8 @@ TEST_P(VolumeStateManagementTest, CreateVolumeNonLocalRestart2)
         EXPECT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::OK_SYNC);
     }
 
-    sleep(2);
+    flushFailOverCache(v); // It is only detected for sure that the FOC is gone when something happens over the wire
+
     EXPECT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::DEGRADED);
     destroyVolume(v,
                   DeleteLocalData::T,
