@@ -44,9 +44,6 @@ public:
     void
     freeLock();
 
-    HeartBeatLock
-    getLock();
-
     bool
     overwriteLock();
 
@@ -73,6 +70,9 @@ private:
     // apparantly a conforming application can otherwise put this thing in an
     // infinite loop.
     static const uint64_t max_update_retries = 100;
+
+    HeartBeatLock
+    getLock();
 };
 
 }
