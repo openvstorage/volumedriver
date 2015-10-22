@@ -33,9 +33,9 @@ class SCOPool
 {
 public:
     SCOPool(scrubbing::ScrubbingSCODataVector& scos_,
-            const fs::path& metadatascrubbed_tlog,
+            const boost::filesystem::path& metadatascrubbed_tlog,
             volumedriver::FilePool& filepool,
-            volumedriver::BackendInterface* backendinterface,
+            volumedriver::BackendInterface& backendinterface,
             const volumedriver::ClusterExponent& cluster_exponent,
             const uint64_t scosize,
             uint16_t minimum_number_of_clusters_in_sco,
@@ -43,25 +43,25 @@ public:
             volumedriver::SCO lastSCONumber,
             std::vector<volumedriver::SCO>& new_scos);
 
-    ~SCOPool();
+    ~SCOPool() = default;
 
     // Returns the checksum of the relocations tlog
-    std::pair<volumedriver::CheckSum, uint64_t>
+    std::pair<youtils::CheckSum, uint64_t>
     operator()();
 
-    const fs::path&
+    const boost::filesystem::path&
     nonrewritten_tlog_path() const
     {
         return nonrewritten_tlog_path_;
     }
 
-    const fs::path&
+    const boost::filesystem::path&
     rewritten_tlog_path() const
     {
         return rewritten_tlog_path_;
     }
 
-    const fs::path&
+    const boost::filesystem::path&
     relocations_tlog_path() const
     {
         return relocations_tlog_path_;
@@ -116,37 +116,30 @@ public:
  private:
     DECLARE_LOGGER("SCOPool");
 
-    fs::path nonrewritten_tlog_path_;
+    boost::filesystem::path nonrewritten_tlog_path_;
     std::unique_ptr<volumedriver::TLogWriter> nonrewritten_tlog_writer;
-    fs::path rewritten_tlog_path_;
+    boost::filesystem::path rewritten_tlog_path_;
     std::unique_ptr<volumedriver::TLogWriter> rewritten_tlog_writer;
-    fs::path relocations_tlog_path_;
+    boost::filesystem::path relocations_tlog_path_;
     std::unique_ptr<volumedriver::TLogWriter> relocations_tlog_writer;
 
-    const volumedriver::Entry* e;
     ScrubbingSCODataVector::iterator scodata_iterator_;
 
     ScrubbingSCODataVector::iterator to_be_reused_iterator_;
 
     ScrubbingSCODataVector& scodata_;
     volumedriver::FilePool& filepool_;
-    volumedriver::BackendInterface* backendinterface_;
-    typedef std::map<volumedriver::SCO, youtils::FileDescriptor*> SCONameMap;
+    volumedriver::BackendInterface& backendinterface_;
 
-    struct Deleter
-    {
-        void operator()(SCONameMap::value_type& in)
-        {
-            delete in.second;
-        }
-    };
+    using SCONameMap =
+        std::map<volumedriver::SCO, std::unique_ptr<youtils::FileDescriptor>>;
 
-    SCONameMap sconame_map;
+    SCONameMap sconame_map_;
     const uint64_t cluster_size_;
     const uint64_t sco_size_;
-    void* buffer_;
+    std::vector<uint8_t> buffer_;
 
-    youtils::FileDescriptor* current_sco_;
+    std::unique_ptr<youtils::FileDescriptor> current_sco_;
     volumedriver::SCOOffset current_offset_;
     volumedriver::SCO current_sco_name_;
 
@@ -155,7 +148,7 @@ public:
 
     volumedriver::CheckSum checksum_;
 
-    const fs::path metadatascrubbed_tlog_;
+    const boost::filesystem::path metadatascrubbed_tlog_;
 
     const uint16_t minimum_used_entries_;
 
@@ -168,7 +161,7 @@ public:
     uint64_t number_of_scos_written_to_backend;
 
     void
-    doEntry();
+    doEntry(const volumedriver::Entry& e);
 
     volumedriver::SCO
     makeNewSCOName(const volumedriver::SCO in) const;

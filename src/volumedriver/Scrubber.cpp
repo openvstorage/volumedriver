@@ -230,7 +230,7 @@ Scrubber::operator()()
     SCOPool scopool(scrubbing_data_vector,
                     metadata_scrubbed,
                     filepool,
-                    backend_interface_.get(),
+                    *backend_interface_,
                     args_.cluster_size_exponent,
                     args_.sco_size,
                     minimum_number_of_used_entries,
