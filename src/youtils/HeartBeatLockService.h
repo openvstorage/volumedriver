@@ -54,18 +54,15 @@ public:
     virtual void
     unlock() override;
 
-    template<ExceptionPolicy policy,
+    template<ExceptionPolicy exception_policy,
              typename Callable,
              std::string(Callable::*info_member_function)() = &Callable::info>
-    struct WithGlobalLock
-    {
-        using type_ = youtils::WithGlobalLock<policy,
-                                              Callable,
-                                              info_member_function,
-                                              HeartBeatLockService,
-                                              GlobalLockStorePtr,
-                                              const UpdateInterval&>;
-    };
+    using WithGlobalLock = youtils::WithGlobalLock<exception_policy,
+                                                   Callable,
+                                                   info_member_function,
+                                                   HeartBeatLockService,
+                                                   GlobalLockStorePtr,
+                                                   const UpdateInterval&>;
 
 private:
     DECLARE_LOGGER("HeartBeatLockService");

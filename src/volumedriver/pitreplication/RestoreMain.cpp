@@ -105,7 +105,7 @@ public:
                 using LockedRestore =
                     yt::HeartBeatLockService::WithGlobalLock<yt::ExceptionPolicy::ThrowExceptions,
                                                              vd_bu::Restore,
-                                                             &vd_bu::Restore::info>::type_;
+                                                             &vd_bu::Restore::info>;
 
                 const std::string locking_namespace =
                     source_ptree_opt->get<std::string>("namespace");

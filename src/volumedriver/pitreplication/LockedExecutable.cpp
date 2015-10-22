@@ -165,7 +165,7 @@ struct GlobalCallableWrapper
 {
     using CallableT =
         typename yt::HeartBeatLockService::WithGlobalLock<yt::ExceptionPolicy::ThrowExceptions,
-                                                          T1>::type_;
+                                                          T1>;
 
     GlobalCallableWrapper(CallableT& callable)
         : callable_(callable)

@@ -118,9 +118,10 @@ public:
             vd_bu::DeleteSnapshot deleter(config_ptree,
                                           snaps);
 
-            using LockedDeleter = LockService::WithGlobalLock<yt::ExceptionPolicy::ThrowExceptions,
-                                                              vd_bu::DeleteSnapshot,
-                                                              &vd_bu::DeleteSnapshot::info>::type_;
+            using LockedDeleter =
+                LockService::WithGlobalLock<yt::ExceptionPolicy::ThrowExceptions,
+                                            vd_bu::DeleteSnapshot,
+                                            &vd_bu::DeleteSnapshot::info>;
 
             yt::GlobalLockStorePtr
                 lock_store(new be::LockStore(bcm->newBackendInterface(be::Namespace(target_namespace))));
@@ -159,9 +160,10 @@ public:
 
             vd_bu::Backup backup(config_ptree);
 
-            using LockedBackup = LockService::WithGlobalLock<yt::ExceptionPolicy::ThrowExceptions,
-                                                             vd_bu::Backup,
-                                                             &vd_bu::Backup::info>::type_;
+            using LockedBackup =
+                LockService::WithGlobalLock<yt::ExceptionPolicy::ThrowExceptions,
+                                            vd_bu::Backup,
+                                            &vd_bu::Backup::info>;
             yt::GlobalLockStorePtr
                 lock_store(new be::LockStore(bcm->newBackendInterface(be::Namespace(target_namespace))));
 

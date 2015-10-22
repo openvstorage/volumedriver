@@ -40,15 +40,11 @@ public:
     template<youtils::ExceptionPolicy policy,
              typename Callable,
              std::string(Callable::*info_member_function)() = &Callable::info()>
-    struct WithGlobalLock
-    {
-
-        typedef youtils::WithGlobalLock<policy,
-                                        Callable,
-                                        info_member_function,
-                                        TestGlobalLockService,
-                                        const std::string&> type_;
-    };
+    using WithGlobalLock = youtils::WithGlobalLock<policy,
+                                                   Callable,
+                                                   info_member_function,
+                                                   TestGlobalLockService,
+                                                   const std::string&>;
 
     virtual bool
     lock();

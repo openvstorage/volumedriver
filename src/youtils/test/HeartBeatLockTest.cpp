@@ -312,7 +312,7 @@ TEST_F(HeartBeatLockTest, test_mutual_exclusion)
 {
     using CallableT = LockService::WithGlobalLock<ExceptionPolicy::DisableExceptions,
                                                   SharedMemCallable,
-                                                  &SharedMemCallable::info>::type_;
+                                                  &SharedMemCallable::info>;
 
     const uint64_t max_test = 4;
 
@@ -499,7 +499,7 @@ TEST_F(HeartBeatLockTest, test_parallel_locks)
 {
     using CallableT = LockService::WithGlobalLock<ExceptionPolicy::DisableExceptions,
                                                   SleepingCallable,
-                                                  &SleepingCallable::info>::type_;
+                                                  &SleepingCallable::info>;
 
     const int num_tests = 16;
     std::vector<UUID> uuids(num_tests);
@@ -543,7 +543,7 @@ TEST_F(HeartBeatLockTest, test_serial_locks)
 {
     using CallableT = LockService::WithGlobalLock<ExceptionPolicy::DisableExceptions,
                                                   SleepingCallable,
-                                                  &SleepingCallable::info>::type_;
+                                                  &SleepingCallable::info>;
 
     const int num_tests = 4;
     const int serial_num_tests = 16;

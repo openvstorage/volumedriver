@@ -120,11 +120,10 @@ struct SleepingCallable : public youtils::GlobalLockedCallable
 TEST_F(GlobalLockTest, test_unlocking)
 {
     {
-
-        typedef UnlockingGlobalLockService::WithGlobalLock<youtils::ExceptionPolicy::ThrowExceptions,
-                                                           SleepingCallable,
-                                                           &SleepingCallable::info>::type_
-            CallableT;
+        using CallableT =
+            UnlockingGlobalLockService::WithGlobalLock<youtils::ExceptionPolicy::ThrowExceptions,
+                                                       SleepingCallable,
+                                                       &SleepingCallable::info>;
 
         SleepingCallable sleeper;
 
@@ -138,12 +137,10 @@ TEST_F(GlobalLockTest, test_unlocking)
                      WithGlobalLockExceptions::LostLockException);
     }
     {
-
-        typedef UnlockingGlobalLockService::WithGlobalLock<youtils::ExceptionPolicy::DisableExceptions,
-                                                           SleepingCallable,
-                                                           &SleepingCallable::info>::type_
-            CallableT;
-
+        using CallableT =
+            UnlockingGlobalLockService::WithGlobalLock<youtils::ExceptionPolicy::DisableExceptions,
+                                                       SleepingCallable,
+                                                       &SleepingCallable::info>;
 
         SleepingCallable sleeper;
 
@@ -160,11 +157,10 @@ TEST_F(GlobalLockTest, test_unlocking)
     }
 }
 
-
-
 namespace
 {
-class SharedMemCallable : public youtils::GlobalLockedCallable
+class SharedMemCallable
+    : public youtils::GlobalLockedCallable
 {
 public:
     SharedMemCallable(const uint64_t id,
@@ -223,10 +219,9 @@ private:
 
 TEST_F(GlobalLockTest, test_mutual_exclusion)
 {
-    typedef TestGlobalLockService::WithGlobalLock<youtils::ExceptionPolicy::DisableExceptions,
-                                                  SharedMemCallable,
-                                                  &SharedMemCallable::info>::type_ CallableT;
-
+    using CallableT = TestGlobalLockService::WithGlobalLock<youtils::ExceptionPolicy::DisableExceptions,
+                                                            SharedMemCallable,
+                                                            &SharedMemCallable::info>;
 
     const uint64_t max_test = 32;
     SourceOfUncertainty soc;
@@ -313,10 +308,10 @@ public:
 
 TEST_F(GlobalLockTest, test_rethrowing_exceptions)
 {
-    typedef UnlockingGlobalLockService::WithGlobalLock<youtils::ExceptionPolicy::ThrowExceptions,
-                                                       ThrowingCallable,
-                                                       &ThrowingCallable::info>::type_
-        CallableT;
+    using CallableT =
+        UnlockingGlobalLockService::WithGlobalLock<youtils::ExceptionPolicy::ThrowExceptions,
+                                                   ThrowingCallable,
+                                                   &ThrowingCallable::info>;
 
     ThrowingCallable throwing_callable;
 
@@ -382,11 +377,13 @@ public:
 };
 
 }
+
 TEST_F(GlobalLockTest, test_retrying_lock)
 {
-    typedef DenyLockService::WithGlobalLock<youtils::ExceptionPolicy::ThrowExceptions,
-                                            LazyCallable,
-                                            &LazyCallable::info>::type_ CallableT;
+    using CallableT =
+        DenyLockService::WithGlobalLock<youtils::ExceptionPolicy::ThrowExceptions,
+                                        LazyCallable,
+                                        &LazyCallable::info>;
 
     LazyCallable lazy_callable;
     // DenyLockService deny_service;
@@ -400,12 +397,8 @@ TEST_F(GlobalLockTest, test_retrying_lock)
 
 };
 
-
-
 }
 
 // Local Variables: **
-// bvirtual-targets: ("target/bin/youtils_test") **
-// compile-command: "scons -D --kernel_version=system --ignore-buildinfo -j 5" **
 // mode: c++ **
 // End: **

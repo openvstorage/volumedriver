@@ -35,13 +35,10 @@ public:
     template<youtils::ExceptionPolicy policy,
              typename Callable,
              std::string(Callable::*info_member_function)() = &Callable::info()>
-    struct WithGlobalLock
-    {
-        typedef youtils::WithGlobalLock<policy,
-                                        Callable,
-                                        info_member_function,
-                                        DenyLockService> type_;
-    };
+    using WithGlobalLock = youtils::WithGlobalLock<policy,
+                                                   Callable,
+                                                   info_member_function,
+                                                   DenyLockService>;
 
     virtual bool
     lock()
@@ -52,14 +49,12 @@ public:
     virtual void
     unlock()
     {};
-
 };
+
 }
+
 #endif // DENY_LOCK_SERVICE_H_
 
 // Local Variables: **
-// bvirtual-targets: ("target/bin/youtils_test") **
-// compile-command: "scons -D --kernel_version=system --ignore-buildinfo -j 5" **
 // mode: c++ **
 // End: **
-
