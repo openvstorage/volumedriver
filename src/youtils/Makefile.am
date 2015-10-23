@@ -78,7 +78,6 @@ libyoutils_la_SOURCES = \
 	LRUCache.cpp \
 	MainEvent.cpp \
 	MainHelper.cpp \
-	NoGlobalLockingService.cpp \
 	Notifier.cpp \
 	OptionValidators.cpp \
 	OrbHelper.cpp \

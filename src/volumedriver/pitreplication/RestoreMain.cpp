@@ -25,7 +25,6 @@
 #include <youtils/HeartBeatLockService.h>
 #include <youtils/Logger.h>
 #include <youtils/Main.h>
-#include <youtils/NoGlobalLockingService.h>
 #include <youtils/WithGlobalLock.h>
 
 #include <backend/LockStore.h>
