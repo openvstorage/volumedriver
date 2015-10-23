@@ -18,6 +18,8 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
+#include <boost/make_shared.hpp>
+
 #include "../GlobalLockStore.h"
 #include "../HeartBeatLockService.h"
 #include "../HeartBeatLockService.h"
@@ -168,8 +170,20 @@ DECLARE_LOGGER("HeartBeatLockTest");
 class HeartBeatLockTest
     : public youtilstest::TestBase
 {
-public:
+protected:
     using LockService = HeartBeatLockService;
+
+    HeartBeatLockTest()
+        : youtilstest::TestBase()
+    {
+        locks_.map = { { uuid_, std::string() } };
+        lock_store_ = boost::make_shared<LockStore>(locks_,
+                                                    uuid_);
+    }
+
+    UUID uuid_;
+    Locks locks_;
+    GlobalLockStorePtr lock_store_;
 };
 
 struct TestCallBack
@@ -197,17 +211,14 @@ trampoline(void* data,
 
 TEST_F(HeartBeatLockTest, test_no_lock_if_namespace_doesnt_exist)
 {
-    Locks locks;
     TestCallBack callback;
 
-    GlobalLockStorePtr
-        lock_store(new LockStore(locks,
-                                 UUID()));
+    locks_.map.clear();
 
     LockService lock_service(GracePeriod(boost::posix_time::seconds(1)),
                              &trampoline<TestCallBack>,
                              &callback,
-                             lock_store,
+                             lock_store_,
                              UpdateInterval(boost::posix_time::seconds(1)));
 
     ASSERT_FALSE(lock_service.lock());
@@ -221,18 +232,10 @@ TEST_F(HeartBeatLockTest, test_lock_if_namespace_exists)
     const GracePeriod grace_period(boost::posix_time::milliseconds(100));
     TestCallBack callback;
 
-    UUID uuid;
-    Locks locks;
-    locks.map = { { uuid, std::string() } };
-
-    GlobalLockStorePtr
-        lock_store(new LockStore(locks,
-                                 uuid));
-
     LockService lock_service(GracePeriod(boost::posix_time::seconds(1)),
                              &trampoline<TestCallBack>,
                              &callback,
-                             lock_store,
+                             lock_store_,
                              UpdateInterval(boost::posix_time::seconds(1)));
 
     ASSERT_TRUE(lock_service.lock());
@@ -332,10 +335,6 @@ TEST_F(HeartBeatLockTest, test_mutual_exclusion)
     std::vector<std::unique_ptr<CallableT>> locked_callables;
     std::vector<std::unique_ptr<SharedMemCallable>> callables;
 
-    UUID uuid;
-    Locks locks;
-    locks.map = { { uuid, std::string() } };
-
     const GracePeriod grace_period(boost::posix_time::milliseconds(100));
     for(unsigned i = 0; i < max_test; ++i)
     {
@@ -345,8 +344,8 @@ TEST_F(HeartBeatLockTest, test_mutual_exclusion)
                                                                    grace_period));
 
         GlobalLockStorePtr
-            lock_store(new LockStore(locks,
-                                     uuid));
+            lock_store(boost::make_shared<LockStore>(locks_,
+                                                     uuid_));
 
         locked_callables.emplace_back(std::make_unique<CallableT>(boost::ref(*callables[i]),
                                                                   CallableT::retry_connection_times_default(),
@@ -428,15 +427,7 @@ public:
 
 TEST_F(HeartBeatLockTest, test_throwing_away_the_lock)
 {
-    UUID uuid;
-    Locks locks;
-    locks.map = {{ uuid, std::string() }};
-
-    GlobalLockStorePtr
-        lock_store(new LockStore(locks,
-                                 uuid));
-
-    LockAwayThrower thrower(lock_store);
+    LockAwayThrower thrower(lock_store_);
 
     const GracePeriod grace_period(boost::posix_time::milliseconds(100));
     boost::thread t(thrower);
@@ -445,7 +436,7 @@ TEST_F(HeartBeatLockTest, test_throwing_away_the_lock)
     LockService lock_service(GracePeriod(boost::posix_time::seconds(1)),
                              &trampoline<TestCallBack>,
                              &callback,
-                             lock_store,
+                             lock_store_,
                              UpdateInterval(boost::posix_time::seconds(1)));
 
     ASSERT_TRUE(lock_service.lock());
@@ -504,12 +495,10 @@ TEST_F(HeartBeatLockTest, test_parallel_locks)
     const int num_tests = 16;
     std::vector<UUID> uuids(num_tests);
 
-    Locks locks;
-
     for (const auto& u : uuids)
     {
-        locks.map.emplace(std::make_pair(u,
-                                         std::string()));
+        locks_.map.emplace(std::make_pair(u,
+                                          std::string()));
     }
 
     std::vector<boost::thread> threads;
@@ -519,7 +508,7 @@ TEST_F(HeartBeatLockTest, test_parallel_locks)
     for(int i = 0; i < num_tests; ++i)
     {
         GlobalLockStorePtr
-            lock_store(new LockStore(locks,
+            lock_store(new LockStore(locks_,
                                      uuids[i]));
 
         callables.emplace_back(std::make_unique<SleepingCallable>(uuids[i]));
@@ -550,12 +539,10 @@ TEST_F(HeartBeatLockTest, test_serial_locks)
 
     std::vector<UUID> uuids(num_tests);
 
-    Locks locks;
-
     for (const auto& u : uuids)
     {
-        locks.map.emplace(std::make_pair(u,
-                                         std::string()));
+        locks_.map.emplace(std::make_pair(u,
+                                          std::string()));
     }
 
     for(int k = 0; k < serial_num_tests; ++k)
@@ -567,7 +554,7 @@ TEST_F(HeartBeatLockTest, test_serial_locks)
         for(int i = 0; i < num_tests; ++i)
         {
             GlobalLockStorePtr
-                lock_store(new LockStore(locks,
+                lock_store(new LockStore(locks_,
                                          uuids[i]));
 
             callables.emplace_back(std::make_unique<SleepingCallable>(uuids[i]));
