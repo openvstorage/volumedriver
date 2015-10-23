@@ -1,19 +1,19 @@
-libopenvstorage(7)
-==================
+libovsvolumedriver(7)
+=====================
 
 NAME
 ----
 
-libopenvstorage - Open vStorage VolumeDriver Shared Memory Access C library
+libovsvolumedriver - Open vStorage VolumeDriver Shared Memory Access C library
 
 SYNOPSIS
 --------
-*cc* ['flags'] 'files' *-lopenvstorage* ['libraries']
+*cc* ['flags'] 'files' *-lovsvolumedriver* ['libraries']
 
 DESCRIPTION
 -----------
 
-The following functions are exported by libopenvstorage library:
+The following functions are exported by libovsvolumedriver library:
 
 Initialize Open vStorage context::
     ovs_ctx_t *ovs_ctx_init(const char *volname, int oflag);
