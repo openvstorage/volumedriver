@@ -11,10 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
-//
-// contains excerpts from "The Lyre Of Orpheus", by Nick Cave.
-//
+
 #include "VolManagerTestSetup.h"
 
 #include <errno.h>
