@@ -100,7 +100,7 @@ operator<<(fungi::IOBaseStream& stream, const CommandData<AddEntries>& data)
 fungi::IOBaseStream&
 operator>>(fungi::IOBaseStream& stream, CommandData<AddEntries>& data)
 {
-    int32_t cluster_size = (int32_t) VolumeConfig::default_cluster_size();
+    uint32_t cluster_size = static_cast<uint32_t>(VolumeConfig::default_cluster_size());
 
     size_t size;
     stream >> size;
@@ -118,10 +118,9 @@ operator>>(fungi::IOBaseStream& stream, CommandData<AddEntries>& data)
         stream >> lba;
         int64_t bal; // byte array length
         stream >> bal;
-        int32_t size32 = (int32_t) bal;
-        VERIFY(size32 == cluster_size);
-        stream.readIntoByteArray(ptr, size32);
-        data.entries_.emplace_back(cli, lba, ptr, (uint32_t) size32);
+        VERIFY(static_cast<uint32_t>(bal) == cluster_size);
+        stream.readIntoByteArray(ptr, cluster_size);
+        data.entries_.emplace_back(cli, lba, ptr, cluster_size);
         ptr += cluster_size;
     }
 

@@ -95,11 +95,18 @@ struct FailOverCacheConfig
 
     template<class Archive>
     void
-    load(Archive& ar, const unsigned int /* version */)
+    load(Archive& ar, const unsigned int version)
     {
         ar & host;
         ar & port;
-        ar & mode;
+        if (version >= 1)
+        {
+            ar & mode;
+        }
+        else
+        {
+            mode = FailOverCacheMode::Asynchronous;
+        }
     }
 
     template<class Archive>
@@ -142,7 +149,7 @@ load_construct_data(Archive& /* ar */,
 
 }
 
-BOOST_CLASS_VERSION(volumedriver::FailOverCacheConfig, 0);
+BOOST_CLASS_VERSION(volumedriver::FailOverCacheConfig, 1);
 
 #endif // FAILOVERCACHECONFIG_H_
 

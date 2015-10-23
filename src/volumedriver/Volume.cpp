@@ -2221,8 +2221,7 @@ getFailOverCacheConfig()
 void
 Volume::setFailOverCacheMode_(const FailOverCacheMode mode)
 {
-    bool isSameMode = failover_->isMode(mode);
-    if (not isSameMode)
+    if (mode != failover_->mode())
     {
         failover_->destroy(SyncFailOverToBackend::T);
         std::unique_ptr<FailOverCacheClientInterface> newBridge(FailOverCacheBridgeFactory::create(mode,

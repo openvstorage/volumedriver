@@ -22,9 +22,9 @@ namespace volumedriver
 {
 
 FailOverCacheSyncBridge::FailOverCacheSyncBridge()
-    : cluster_size_(VolumeConfig::default_cluster_size())
+    : mutex_("FailOverCacheSyncBridge", fungi::Mutex::ErrorCheckingMutex)
+    , cluster_size_(VolumeConfig::default_cluster_size())
     , cluster_multiplier_(VolumeConfig::default_cluster_multiplier())
-    , stop_(true)
 {
 }
 
@@ -33,20 +33,41 @@ FailOverCacheSyncBridge::initialize(Volume* vol)
 {
     ASSERT(not vol_);
     vol_ = vol;
-    stop_ = false;
+}
+
+const char*
+FailOverCacheSyncBridge::getName() const
+{
+    return "FailOverCacheSyncBridge";
+}
+
+bool
+FailOverCacheSyncBridge::backup()
+{
+    return cache_ != 0;
+}
+
+fungi::Mutex&
+FailOverCacheSyncBridge::getMutex()
+{
+    return mutex_;
+}
+
+std::unique_ptr<FailOverCacheProxy>&
+FailOverCacheSyncBridge::getCache()
+{
+    return cache_;
 }
 
 void
 FailOverCacheSyncBridge::newCache(std::unique_ptr<FailOverCacheProxy> cache)
 {
     fungi::ScopedLock l(mutex_);
-    stop_ = true;
     if(cache_)
     {
         cache_->delete_failover_dir();
     }
     cache_ = std::move(cache);
-    stop_ = false;
 }
 
 // Called from Volume::destroy
@@ -54,7 +75,6 @@ void
 FailOverCacheSyncBridge::destroy(SyncFailOverToBackend sync)
 {
     fungi::ScopedLock l(mutex_);
-    stop_ = true;
     cache_ = nullptr;
 }
 
@@ -62,10 +82,6 @@ void
 FailOverCacheSyncBridge::setRequestTimeout(const uint32_t seconds)
 {
     fungi::ScopedLock l(mutex_);
-    if (stop_)
-    {
-        return;
-    }
     if(cache_)
     {
         try
@@ -86,10 +102,6 @@ FailOverCacheSyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
                                     const uint8_t* data)
 {
     fungi::ScopedLock l(mutex_);
-    if (stop_)
-    {
-        return true;
-    }
     if(cache_)
     {
         std::vector<FailOverCacheEntry> entries;
@@ -115,10 +127,6 @@ FailOverCacheSyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
 void FailOverCacheSyncBridge::Flush()
 {
     fungi::ScopedLock l(mutex_);
-    if (stop_)
-    {
-        return;
-    }
     if(cache_)
     {
         try
@@ -192,10 +200,10 @@ FailOverCacheSyncBridge::getSCOFromFailOver(SCO sconame,
     return ret;
 }
 
-bool
-FailOverCacheSyncBridge::isMode(FailOverCacheMode mode)
+FailOverCacheMode
+FailOverCacheSyncBridge::mode() const
 {
-    return mode == FailOverCacheMode::Synchronous;
+    return FailOverCacheMode::Synchronous;
 }
 
 void
@@ -207,7 +215,6 @@ FailOverCacheSyncBridge::handleException(std::exception& e,
     {
         vol_->setVolumeFailOverState(VolumeFailOverState::DEGRADED);
     }
-    stop_ = true;
     cache_ = nullptr;
 }
 

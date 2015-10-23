@@ -23,7 +23,7 @@ namespace volumedriver
 
 class FailOverCacheBridgeFactory
 {
-    FailOverCacheBridgeFactory() {}; // no instances
+    FailOverCacheBridgeFactory() = delete; // no instances
 
 public:
 

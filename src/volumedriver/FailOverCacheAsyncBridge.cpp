@@ -23,8 +23,12 @@ namespace volumedriver
 
 FailOverCacheAsyncBridge::FailOverCacheAsyncBridge(const std::atomic<unsigned>& max_entries,
                                                    const std::atomic<unsigned>& write_trigger)
-    : cluster_size_(VolumeConfig::default_cluster_size())
+    : mutex_("FailOverCacheAsyncBridge", fungi::Mutex::ErrorCheckingMutex)
+    , cluster_size_(VolumeConfig::default_cluster_size())
     , cluster_multiplier_(VolumeConfig::default_cluster_multiplier())
+    , newData(cluster_size_ * max_entries)
+    , oldData(cluster_size_ * max_entries)
+    , initial_max_entries_(max_entries)
     , condvar_(mutex_)
     , max_entries_(max_entries)
     , write_trigger_(write_trigger)
@@ -33,10 +37,6 @@ FailOverCacheAsyncBridge::FailOverCacheAsyncBridge(const std::atomic<unsigned>& 
     , newOnesMutex_("NewOnes")
     , throttling(false)
 {
-    initial_max_entries_ = max_entries_;
-    size_t reserve = cluster_size_ * initial_max_entries_;
-    newData.reserve(reserve);
-    oldData.reserve(reserve);
 }
 
 void
@@ -61,6 +61,30 @@ FailOverCacheAsyncBridge::initialize(Volume* vol)
     // ASSERT(vol);
     vol_ = vol;
     initCache();
+}
+
+const char*
+FailOverCacheAsyncBridge::getName() const
+{
+    return "FailOverCacheAsyncBridge";
+}
+
+bool
+FailOverCacheAsyncBridge::backup()
+{
+    return cache_ != 0;
+}
+
+fungi::Mutex&
+FailOverCacheAsyncBridge::getMutex()
+{
+    return mutex_;
+}
+
+std::unique_ptr<FailOverCacheProxy>&
+FailOverCacheAsyncBridge::getCache()
+{
+    return cache_;
 }
 
 void
@@ -388,10 +412,10 @@ FailOverCacheAsyncBridge::getSCOFromFailOver(SCO sconame,
     }
 }
 
-bool
-FailOverCacheAsyncBridge::isMode(FailOverCacheMode mode)
+FailOverCacheMode
+FailOverCacheAsyncBridge::mode() const
 {
-    return mode == FailOverCacheMode::Asynchronous;
+    return FailOverCacheMode::Asynchronous;
 }
 
 }

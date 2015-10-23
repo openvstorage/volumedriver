@@ -240,11 +240,10 @@ owner_tag_repr(vd::OwnerTag t)
 std::string
 failovercache_config_repr(const vd::FailOverCacheConfig* cfg)
 {
-    std::stringstream ss;
-    ss << cfg->mode;
     return "DTLConfig("s + cfg->host
             + ":"s + boost::lexical_cast<std::string>(cfg->port)
-            + "," + ss.str() + ")";
+            + ","s + boost::lexical_cast<std::string>(cfg->mode)
+            + ")"s;
 }
 
 // boost::python cannot deal with the cluster_cache_limit member without registering a class
@@ -333,7 +332,8 @@ BOOST_PYTHON_MODULE(storagerouterclient)
                                                                            bpy::args("mode")),
                                                                           "Instantiate a FailOverCacheConfig\n"
                                                                           "@param host, string, IP address\n"
-                                                                          "@param port, uint16, port\n"))
+                                                                          "@param port, uint16, port\n"
+                                                                          "@param mode (Asynchronous | Synchronous)\n"))
         .def("__eq__",
              &vd::FailOverCacheConfig::operator==)
         .def("__repr__",

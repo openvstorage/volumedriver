@@ -26,15 +26,6 @@ namespace volumedriver
 
 class FailOverCacheClientInterface
 {
-protected:
-    std::unique_ptr<FailOverCacheProxy> cache_;
-    fungi::Mutex mutex_;
-
-    FailOverCacheClientInterface()
-    : cache_(nullptr)
-    , mutex_("FailOverCacheClientInterface", fungi::Mutex::ErrorCheckingMutex)
-    {}
-
 public:
 
     virtual ~FailOverCacheClientInterface() = default;
@@ -55,10 +46,7 @@ public:
                const uint8_t* data) = 0;
 
     virtual bool
-    backup()
-    {
-        return cache_ != 0;
-    }
+    backup() = 0;
 
     virtual void
     newCache(std::unique_ptr<FailOverCacheProxy>) = 0;
@@ -85,20 +73,14 @@ public:
     getSCOFromFailOver(SCO sconame,
                        SCOProcessorFun processor) = 0;
 
-    virtual bool
-    isMode(FailOverCacheMode mode) = 0;
+    virtual FailOverCacheMode
+    mode() const = 0;
 
-    fungi::Mutex&
-    getMutex()
-    {
-        return mutex_;
-    }
+    virtual fungi::Mutex&
+    getMutex() = 0;
 
-    std::unique_ptr<FailOverCacheProxy>&
-    getCache()
-    {
-        return cache_;
-    }
+    virtual std::unique_ptr<FailOverCacheProxy>&
+    getCache() = 0;
 
 };
 

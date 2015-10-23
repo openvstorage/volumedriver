@@ -46,44 +46,50 @@ public:
     ~FailOverCacheSyncBridge() = default;
 
     virtual void
-    initialize(Volume* vol);
+    initialize(Volume* vol) override;
 
     virtual const char*
-    getName() const
-    {
-        return "FailOverCacheSyncBridge";
-    }
+    getName() const override;
 
     virtual void
-    destroy(SyncFailOverToBackend);
+    destroy(SyncFailOverToBackend) override;
 
     virtual bool
     addEntries(const std::vector<ClusterLocation>& locs,
                size_t num_locs,
                uint64_t start_address,
-               const uint8_t* data);
+               const uint8_t* data) override;
+
+    virtual bool
+    backup() override;
 
     virtual void
-    newCache(std::unique_ptr<FailOverCacheProxy> cache);
+    newCache(std::unique_ptr<FailOverCacheProxy> cache) override;
 
     virtual void
-    setRequestTimeout(const uint32_t seconds);
+    setRequestTimeout(const uint32_t seconds) override;
 
     virtual void
-    removeUpTo(const SCO& sconame);
+    removeUpTo(const SCO& sconame) override;
 
     virtual uint64_t
     getSCOFromFailOver(SCO sconame,
-                       SCOProcessorFun processor);
+                       SCOProcessorFun processor) override;
 
     virtual void
-    Flush();
+    Flush() override;
 
     virtual void
-    Clear();
+    Clear() override;
 
-    virtual bool
-    isMode(FailOverCacheMode mode);
+    virtual FailOverCacheMode
+    mode() const override;
+
+    virtual fungi::Mutex&
+    getMutex() override;
+
+    virtual std::unique_ptr<FailOverCacheProxy>&
+    getCache() override;
 
     void
     handleException(std::exception& e,
@@ -92,9 +98,11 @@ public:
 private:
     DECLARE_LOGGER("FailOverCacheSyncBridge");
 
+    std::unique_ptr<FailOverCacheProxy> cache_;
+    fungi::Mutex mutex_;
+
     ClusterSize cluster_size_;
     ClusterMultiplier cluster_multiplier_;
-    bool stop_;
     Volume* vol_ = { nullptr };
 
 };

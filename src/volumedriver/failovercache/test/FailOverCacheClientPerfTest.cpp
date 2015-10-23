@@ -207,27 +207,27 @@ public:
         MainHelper::setup_logging();
     }
 
-    bool addEntry(FailOverCacheClientInterface* focItf, ClusterHolder& ch)
+    bool addEntry(FailOverCacheClientInterface& focItf, ClusterHolder& ch)
     {
         std::vector<ClusterLocation> locs;
         locs.emplace_back(ch.cli_);
-        return focItf->addEntries(locs, 1, ch.lba_, ch.buffer_.get());
+        return focItf.addEntries(locs, 1, ch.lba_, ch.buffer_.get());
     }
 
     virtual int
     run()
     {
         LOG_INFO("Run with host " << host_ << " port " << port_ << " namespace " << *ns_ << " sleep micro " << sleep_micro_);
-        std::unique_ptr<FailOverCacheClientInterface> failover_bridge(FailOverCacheBridgeFactory::create(FailOverCacheMode::Asynchronous, 1024, 8));
+        FailOverCacheClientInterface& failover_bridge = *FailOverCacheBridgeFactory::create(FailOverCacheMode::Asynchronous, 1024, 8);
         Volume * fake_vol = 0;
-        failover_bridge->initialize(fake_vol);
+        failover_bridge.initialize(fake_vol);
 
-        failover_bridge->newCache(std::make_unique<FailOverCacheProxy>(FailOverCacheConfig(host_,
+        failover_bridge.newCache(std::make_unique<FailOverCacheProxy>(FailOverCacheConfig(host_,
                                                                                           port_),
                                                                       *ns_,
                                                                       4096,
-                                                                      failover_bridge->getDefaultRequestTimeout()));
-        failover_bridge->Clear();
+                                                                      failover_bridge.getDefaultRequestTimeout()));
+        failover_bridge.Clear();
 
         ClusterFactory source(ClusterSize(4096), 1024);
         ClusterLocation next_location;
@@ -257,7 +257,7 @@ public:
             ClusterHolder ch = source(next_location);
             uint64_t cycles = 0;
 
-            while(not addEntry(failover_bridge.get(), ch))
+            while(not addEntry(failover_bridge, ch))
             {
                 if (cycles++ == 0)
                 {
