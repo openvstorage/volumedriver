@@ -12,23 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "../../TestBase.h"
 #include "../../Assert.h"
-#include "../../TestMainHelper.h"
+#include "../../FileUtils.h"
 #include "../../Main.h"
 #include "../../pstream.h"
+#include "../../wall_timer.h"
+#include "../../TestBase.h"
+#include "../../TestMainHelper.h"
+
 #include "../prudence.h"
-#include "../../FileUtils.h"
-#include <boost/filesystem/fstream.hpp>
+
 #include <sys/wait.h>
+
+#include <boost/filesystem/fstream.hpp>
 #include <boost/thread.hpp>
 
 namespace youtils_test
 {
+
 using namespace youtils;
+
+namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
-class TestPrudence : public youtilstest::TestBase
+class TestPrudence
+    : public youtilstest::TestBase
 {
 
 protected:
@@ -36,9 +44,9 @@ protected:
     write_script(const std::vector<std::string>& lines,
                  const std::string& name)
     {
-        CleanedUpFile p(new boost::filesystem::path(FileUtils::create_temp_file_in_temp_dir(name)));
+        CleanedUpFile p(new fs::path(FileUtils::create_temp_file_in_temp_dir(name)));
 
-        boost::filesystem::ofstream os(*p);
+        fs::ofstream os(*p);
         os << "#! /bin/bash" << std::endl;
         os << "# This script was written as part of the prudence tester" << std::endl;
         for(const std::string& line : lines)
@@ -53,8 +61,8 @@ protected:
         return p;
 
     }
-    DECLARE_LOGGER("TestPrudence");
 
+    DECLARE_LOGGER("TestPrudence");
 
     void
     read_stream_till_exit(redi::ipstream& ipstream)
@@ -65,11 +73,30 @@ protected:
         {
             std::cout << line << std::endl;
         }
-        EXPECT_TRUE(ipstream.rdbuf()->exited());
+
+        // Occasionally the tests failed b/c
+        // ipstream.rdbuf()->exited is not immediately
+        // true after the loop (race condition?).
+        // Let's give it some time.
+        const size_t count = 100;
+        const size_t msecs = 10;
+        wall_timer t;
+
+        for (size_t i = 0; i < count; ++i)
+        {
+            if (ipstream.rdbuf()->exited())
+            {
+                return;
+            }
+            else
+            {
+                boost::this_thread::sleep_for(boost::chrono::milliseconds(msecs));
+            }
+        }
+
+        FAIL() << "child has not exited after " << t.elapsed() << " seconds";
     }
-
 };
-
 
 TEST_F(TestPrudence, test1)
 {
@@ -79,8 +106,6 @@ TEST_F(TestPrudence, test1)
 
     redi::ipstream test1(argv);
     read_stream_till_exit(test1);
-
-
 
     auto exit_status = test1.rdbuf()->status();
     EXPECT_TRUE(WIFEXITED(exit_status));
@@ -127,7 +152,6 @@ TEST_F(TestPrudence, test3)
     CleanedUpFile p = write_script(start_script_lines,
                                    "test3_start_script");
 
-
     std::vector<std::string> argv;
     argv.push_back("prudence");
     argv.push_back("--loglevel=trace");
@@ -164,7 +188,6 @@ TEST_F(TestPrudence, test4)
         start = write_script(start_script_lines,
                              "test3_start_script");
     }
-
 
     CleanedUpFile stop;
     {
@@ -219,7 +242,6 @@ TEST_F(TestPrudence, test5)
                              "test3_start_script");
     }
 
-
     CleanedUpFile stop;
     fs::path stop_file = FileUtils::create_temp_file_in_temp_dir("stopper");
     ALWAYS_CLEANUP_FILE(stop_file);
@@ -259,9 +281,8 @@ TEST_F(TestPrudence, test5)
     EXPECT_TRUE(fs::exists(stop_file));
 }
 
-
-
-class TestPrudenceMain : public TestMainHelper
+class TestPrudenceMain
+    : public TestMainHelper
 {
 public:
     TestPrudenceMain(int argc,
@@ -296,6 +317,7 @@ public:
 private:
     po::options_description opts_;
 };
+
 }
 
 MAIN(youtils_test::TestPrudenceMain)
