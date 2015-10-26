@@ -221,7 +221,9 @@ public:
     run()
     {
         LOG_INFO("Run with host " << host_ << " port " << port_ << " mode " << mode_ << " namespace " << *ns_ << " sleep micro " << sleep_micro_);
-        FailOverCacheClientInterface& failover_bridge = *FailOverCacheBridgeFactory::create(mode_, 1024, 8);
+        max_entries_ = 1024;
+        write_trigger_ = 8;
+        FailOverCacheClientInterface& failover_bridge = *FailOverCacheBridgeFactory::create(mode_, max_entries_, write_trigger_);
         Volume * fake_vol = 0;
         failover_bridge.initialize(fake_vol);
 
@@ -286,6 +288,8 @@ public:
         return 0;
     }
 
+    std::atomic<unsigned> max_entries_;
+    std::atomic<unsigned> write_trigger_;
     std::string host_;
     uint16_t port_;
     volumedriver::FailOverCacheMode mode_;
