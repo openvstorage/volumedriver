@@ -27,9 +27,9 @@ namespace bs = boost::system;
 
 
 SignalThread::SignalThread(const SignalSet& sigset,
-                           Handler&& handler)
+                           Handler handler)
     : blocker_(sigset)
-    , handler_(handler)
+    , handler_(std::move(handler))
 {
      thread_ = boost::thread([this, sigset]
                              {
