@@ -459,8 +459,8 @@ public:
                 {
                     latestSCOOnFailOver = next_location_;
                 }
-                vec.push_back(factory_(next_location_,
-                                       FailOverCacheTestMain::ns().str()));
+                vec.emplace_back(factory_(next_location_,
+                                          FailOverCacheTestMain::ns().str()));
             }
 
             cache_.addEntries(vec);
