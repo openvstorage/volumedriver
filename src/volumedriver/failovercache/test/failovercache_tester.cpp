@@ -189,10 +189,15 @@ TEST_F(FailOverCacheTest, PutRetrieve)
         std::vector<FailOverCacheEntry> vec;
         for(uint32_t k = 0; k < num_clusters_per_sco; ++k)
         {
-            vec.push_back(factory(next_location,
-                                  "bart"));
+            vec.emplace_back(factory(next_location,
+                                     "bart"));
         }
         cache.addEntries(vec);
+        auto end = vec.end();
+        for (auto it = vec.begin(); it != end; it++)
+        {
+            delete it->buffer_;
+        }
     }
 
     for(int i = 0; i < 8; ++i)
@@ -250,16 +255,21 @@ TEST_F(FailOverCacheTest, GetSCORange)
 
             if(next_sco_number == 4)
             {
-                vec.push_back(factory(next_location,
-                                      "arne"));
+                vec.emplace_back(factory(next_location,
+                                         "arne"));
             }
             else
             {
-                vec.push_back(factory(next_location,
-                                      "bart"));
+                vec.emplace_back(factory(next_location,
+                                         "bart"));
             }
         }
         cache.addEntries(vec);
+        auto end = vec.end();
+        for (auto it = vec.begin(); it != end; it++)
+        {
+            delete it->buffer_;
+        }
     }
 
     cache.getSCORange(oldest, youngest);
@@ -312,16 +322,21 @@ TEST_F(FailOverCacheTest, GetOneSCO)
 
             if(next_sco_number == 4)
             {
-                vec.push_back(factory(next_location,
-                                      "arne"));
+                vec.emplace_back(factory(next_location,
+                                         "arne"));
             }
             else
             {
-                vec.push_back(factory(next_location,
-                                      "bart"));
+                vec.emplace_back(factory(next_location,
+                                         "bart"));
             }
         }
         cache.addEntries(vec);
+        auto end = vec.end();
+        for (auto it = vec.begin(); it != end; it++)
+        {
+            delete it->buffer_;
+        }
     }
 
     {
