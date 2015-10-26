@@ -206,9 +206,10 @@ pkgconfig_DATA = volumedriver.pc
 SUBDIRS = \
 	. \
 	test \
-	ToolCut \
-	python_scrubber \
-	pitreplication \
 	failovercache \
 	metadata-server \
+	pitreplication \
+	python_scrubber \
+	scrubber \
+	ToolCut \
 	pythontest
