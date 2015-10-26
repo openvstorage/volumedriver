@@ -32,7 +32,7 @@ namespace scrubbing
 {
 struct ScrubWork
 {
-    ScrubWork(std::unique_ptr<backend::BackendConfig>&& backend_config,
+    ScrubWork(std::unique_ptr<backend::BackendConfig> backend_config,
               const volumedriver::Namespace& ns,
               const volumedriver::VolumeId& id,
               const volumedriver::ClusterExponent cluster_exponent,
