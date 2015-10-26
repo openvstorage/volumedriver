@@ -464,6 +464,11 @@ public:
             }
 
             cache_.addEntries(vec);
+            auto end = vec.end();
+            for (auto it = vec.begin(); it != end; it++)
+            {
+                delete it->buffer_;
+            }
             switch(dist(gen_))
             {
             case 0:
