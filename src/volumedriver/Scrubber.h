@@ -20,28 +20,19 @@
 #include "SnapshotName.h"
 #include "SnapshotPersistor.h"
 #include "Types.h"
-#include "VolumeConfig.h"
 
 #include <memory>
 
-#include "youtils/Serialization.h"
 #include <boost/serialization/base_object.hpp>
 #include <boost/serialization/utility.hpp>
 #include <boost/serialization/vector.hpp>
 #include <boost/serialization/assume_abstract.hpp>
 
-#include "backend/BackendConfig.h"
-#include "backend/BackendConnectionManager.h"
-#include "youtils/WithGlobalLock.h"
-
 #include <youtils/Logging.h>
+#include <youtils/Serialization.h>
 
-namespace backend
-{
-
-class BackendInterface;
-
-}
+#include <backend/BackendConfig.h>
+#include <backend/Namespace.h>
 
 namespace scrubbing
 {
@@ -80,8 +71,9 @@ private:
 
 struct ScrubberArgs
 {
-    ScrubberArgs()
-    {}
+    ScrubberArgs() = default;
+
+    ~ScrubberArgs() = default;
 
     ScrubberArgs(const ScrubberArgs& other)
     {
@@ -105,7 +97,7 @@ struct ScrubberArgs
     /* Namespace to scrub */
     std::string name_space;
     /* Directory to use for temporary files */
-    std::string scratch_dir;
+    boost::filesystem::path scratch_dir;
     /* Snapshot to scrub */
     volumedriver::SnapshotName snapshot_name;
     /* size of a region in clusters as a power of two*/

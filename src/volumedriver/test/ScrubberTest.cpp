@@ -64,13 +64,12 @@ public:
              bool apply_immediately = false,
              bool verbose_scrubbing = true)
     {
-        ScrubberAdapter t;
-        return t.scrub_(scrub_work_str,
-                        getTempPath(testName_).string(),
-                        region_size_exponent,
-                        fill_ratio,
-                        apply_immediately,
-                        verbose_scrubbing).second;
+        return ScrubberAdapter::scrub(scrub_work_str,
+                                      getTempPath(testName_),
+                                      region_size_exponent,
+                                      fill_ratio,
+                                      apply_immediately,
+                                      verbose_scrubbing).second;
     }
 
     void

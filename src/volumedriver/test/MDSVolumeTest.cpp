@@ -438,12 +438,12 @@ protected:
     scrub(const std::string& work,
           double fill_ratio = 1.0)
     {
-        return scrubbing::ScrubberAdapter().scrub_(work,
-                                                   getTempPath(testName_).string(),
-                                                   5, // region_size_exponent
-                                                   fill_ratio, // fill ratio
-                                                   false, // apply immediately
-                                                   true).second; // verbose
+        return scrubbing::ScrubberAdapter::scrub(work,
+                                                 getTempPath(testName_),
+                                                 5, // region_size_exponent
+                                                 fill_ratio, // fill ratio
+                                                 false, // apply immediately
+                                                 true).second; // verbose
     }
 
     scrubbing::ScrubberResult
