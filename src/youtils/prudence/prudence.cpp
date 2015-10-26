@@ -18,10 +18,11 @@
 #include <prudence.h>
 #include <boost/thread.hpp>
 #include <boost/filesystem/fstream.hpp>
+
 using namespace youtils;
+
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
-
 
 namespace
 {
