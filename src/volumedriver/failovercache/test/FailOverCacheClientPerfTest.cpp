@@ -177,6 +177,9 @@ public:
                 ("port",
                  po::value<uint16_t>(&port_)->required(),
                  "port of the failovercache server")
+                ("mode",
+                 po::value<volumedriver::FailOverCacheMode>(&mode_)->default_value(FailOverCacheMode::Asynchronous),
+                 "mode of the failovercache server (Asynchronous|Synchronous)")
                 ("namespace",
                  po::value<std::string>(&ns_tmp_)->required(),
                  "namespace to use for testing")
@@ -217,13 +220,14 @@ public:
     virtual int
     run()
     {
-        LOG_INFO("Run with host " << host_ << " port " << port_ << " namespace " << *ns_ << " sleep micro " << sleep_micro_);
-        FailOverCacheClientInterface& failover_bridge = *FailOverCacheBridgeFactory::create(FailOverCacheMode::Asynchronous, 1024, 8);
+        LOG_INFO("Run with host " << host_ << " port " << port_ << " mode " << mode_ << " namespace " << *ns_ << " sleep micro " << sleep_micro_);
+        FailOverCacheClientInterface& failover_bridge = *FailOverCacheBridgeFactory::create(mode_, 1024, 8);
         Volume * fake_vol = 0;
         failover_bridge.initialize(fake_vol);
 
         failover_bridge.newCache(std::make_unique<FailOverCacheProxy>(FailOverCacheConfig(host_,
-                                                                                          port_),
+                                                                                          port_,
+                                                                                          mode_),
                                                                       *ns_,
                                                                       4096,
                                                                       failover_bridge.getDefaultRequestTimeout()));
@@ -284,6 +288,7 @@ public:
 
     std::string host_;
     uint16_t port_;
+    volumedriver::FailOverCacheMode mode_;
     std::unique_ptr<backend::Namespace> ns_;
     std::string ns_tmp_;
 

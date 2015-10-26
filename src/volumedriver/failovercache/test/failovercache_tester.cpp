@@ -196,7 +196,7 @@ TEST_F(FailOverCacheTest, PutRetrieve)
         auto end = vec.end();
         for (auto it = vec.begin(); it != end; it++)
         {
-            delete it->buffer_;
+            delete[] it->buffer_;
         }
     }
 
@@ -268,7 +268,7 @@ TEST_F(FailOverCacheTest, GetSCORange)
         auto end = vec.end();
         for (auto it = vec.begin(); it != end; it++)
         {
-            delete it->buffer_;
+            delete[] it->buffer_;
         }
     }
 
@@ -335,7 +335,7 @@ TEST_F(FailOverCacheTest, GetOneSCO)
         auto end = vec.end();
         for (auto it = vec.begin(); it != end; it++)
         {
-            delete it->buffer_;
+            delete[] it->buffer_;
         }
     }
 
@@ -482,7 +482,7 @@ public:
             auto end = vec.end();
             for (auto it = vec.begin(); it != end; it++)
             {
-                delete it->buffer_;
+                delete[] it->buffer_;
             }
             switch(dist(gen_))
             {
