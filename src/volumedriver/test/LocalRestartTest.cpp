@@ -313,12 +313,17 @@ TEST_P(LocalRestartTest, normalRestart)
 
     Volume* v1 = newVolume("volume1",
                            ns);
-    for(int i = 0; i < 1024; i++)
+
+    v1->set_cluster_cache_behaviour(ClusterCacheBehaviour::NoCache);
+
+    const size_t count = 1023;
+
+    for(size_t i = 0; i < count; i++)
     {
         writeToVolume(v1,
                       0,
                       v1->getClusterSize(),
-                      "kristafke");
+                      boost::lexical_cast<std::string>(i));
     }
 
     destroyVolume(v1,
@@ -330,10 +335,19 @@ TEST_P(LocalRestartTest, normalRestart)
     ASSERT_TRUE(v1);
     // EXPECT_FALSE(v1->mdstore_was_rebuilt_);
 
-    checkVolume(v1, 0, v1->getClusterSize(), "kristafke");
+    checkVolume(v1,
+                0,
+                v1->getClusterSize(),
+                boost::lexical_cast<std::string>(count - 1));
+
     checkCurrentBackendSize(v1);
 
-    ASSERT_FALSE(v1->get_cluster_cache_behaviour());
+    boost::optional<ClusterCacheBehaviour> b(v1->get_cluster_cache_behaviour());
+    ASSERT_NE(boost::none,
+              b);
+
+    EXPECT_EQ(ClusterCacheBehaviour::NoCache,
+              *b);
 }
 
 TEST_P(LocalRestartTest, readCacheRestart1)
