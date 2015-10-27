@@ -32,10 +32,10 @@ struct CacheEntryProcessor
     {}
 
     void
-    operator()(ClusterLocation /* loc */ ,
-               uint64_t /* lba */,
-               const uint8_t* /* buf */,
-               int32_t /* size */)
+    processCluster(ClusterLocation /* loc */ ,
+                   uint64_t /* lba */,
+                   const byte* /* buf */,
+                   size_t /* size */)
     {
         num_clusters_++;
     }
@@ -60,10 +60,10 @@ public:
         auto bridge = getFailOverWriter(&v);
 
         // Otherwise we might clash with the FailOverCacheBridge's ping mechanism!
-        fungi::ScopedLock g(bridge->mutex_);
+        fungi::ScopedLock g(bridge->getMutex());
 
         CacheEntryProcessor proc;
-        bridge->cache_->getEntries(proc);
+        bridge->getCache()->getEntries(SCOPROCESSORFUN(CacheEntryProcessor, processCluster, &proc));
         EXPECT_EQ(expected, proc.num_clusters_);
     }
 };
@@ -146,7 +146,8 @@ TEST_P(FailOverCacheTester, VolumeWithoutFOC)
                           ns);
 
     ASSERT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
-                                                         5610)),
+                                                               5610,
+                                                               FailOverCacheTestSetup::mode())),
                  fungi::IOException);
 
 
@@ -285,6 +286,8 @@ TEST_P(FailOverCacheTester, CacheServerHasNoMemory)
         check_num_entries(*v, numClusters);
     }
 
+    flushFailOverCache(v); // It is only detected for sure that the FOC is gone when something happens over the wire
+
     ASSERT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::DEGRADED);
 
     {
@@ -309,7 +312,8 @@ TEST_P(FailOverCacheTester, ResetCacheServer)
                           ns);
     uint16_t port = 2999;
     ASSERT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
-                                                         port)),
+                                                               port,
+                                                               FailOverCacheTestSetup::mode())),
                   fungi::IOException);
 
     auto foc_ctx(start_one_foc());
@@ -529,7 +533,8 @@ TEST_P(FailOverCacheTester, AutoRecoveries)
 
     const auto port = get_next_foc_port();
     ASSERT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
-                                                         port)),
+                                                               port,
+                                                               FailOverCacheTestSetup::mode())),
                  fungi::IOException);
 
     ASSERT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::DEGRADED);

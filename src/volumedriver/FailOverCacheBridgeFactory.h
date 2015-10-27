@@ -12,30 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef VFS_FAILOVER_CACHE_CONFIG_MODE_H_
-#define VFS_FAILOVER_CACHE_CONFIG_MODE_H_
+#ifndef VD_FAILOVER_CACHE_BRIDGE_FACTORY_H
+#define VD_FAILOVER_CACHE_BRIDGE_FACTORY_H
 
-#include <iosfwd>
-#include <cstdint>
+#include "FailOverCacheClientInterface.h"
+#include "FailOverCacheMode.h"
 
-namespace volumedriverfs
+namespace volumedriver
 {
 
-enum class FailOverCacheConfigMode: uint8_t
+class FailOverCacheBridgeFactory
 {
-    // We are using 0 in serialization to
-    Automatic = 1,
-    Manual = 2,
+    FailOverCacheBridgeFactory() = delete; // no instances
+
+public:
+
+    static FailOverCacheClientInterface*
+    create(FailOverCacheMode mode,
+           const std::atomic<unsigned>& max_entries,
+           const std::atomic<unsigned>& write_trigger);
 };
 
-std::ostream&
-operator<<(std::ostream&,
-           const FailOverCacheConfigMode a);
+} // namespace volumedriver
 
-std::istream&
-operator>>(std::istream&,
-        FailOverCacheConfigMode&);
-
-}
-
-#endif // !VFS_FAILOVER_CACHE_CONFIG_MODE_H_
+#endif // VD_FAILOVER_CACHE_BRIDGE_FACTORY_H

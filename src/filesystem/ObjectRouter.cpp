@@ -1520,6 +1520,7 @@ ObjectRouter::failoverconfig_as_it_should_be() const
                     it = node_map_.begin();
                 }
 
+                TODO("ArneT: Add FailOverCacheMode to ClusterConfig")
                 return vd::FailOverCacheConfig(it->second->config.host,
                                                it->second->config.failovercache_port);
             }

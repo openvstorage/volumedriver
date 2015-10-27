@@ -93,11 +93,15 @@ libvolumedriver_la_SOURCES = \
 	BackendTasks.cpp \
 	Entry.cpp \
 	Events.pb.cc \
-	FailOverCacheBridge.cpp \
+	FailOverCacheAsyncBridge.cpp \
+	FailOverCacheBridgeCommon.cpp \
+	FailOverCacheBridgeFactory.cpp \
 	FailOverCacheConfig.cpp \
 	FailOverCacheConfigWrapper.cpp \
+	FailOverCacheMode.cpp \
 	FailOverCacheProxy.cpp \
 	FailOverCacheStreamers.cpp \
+	FailOverCacheSyncBridge.cpp \
 	FailOverCacheTransport.cpp \
 	FilePool.cpp \
 	failovercache/FailOverCacheAcceptor.cpp \

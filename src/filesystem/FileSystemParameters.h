@@ -128,6 +128,9 @@ DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(fs_dtl_host,
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(fs_dtl_port,
                                        uint16_t);
 
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(fs_dtl_mode,
+                                       volumedriver::FailOverCacheMode);
+
 
 // FUSE:
 extern const char fuse_component_name[];

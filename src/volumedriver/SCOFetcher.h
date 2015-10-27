@@ -92,10 +92,10 @@ public:
     operator()(const boost::filesystem::path& dest) override final;
 
     void
-    operator()(ClusterLocation cli,
-               uint64_t lba,
-               const byte* buf,
-               uint32_t size);
+    processCluster(ClusterLocation cli,
+                   uint64_t lba,
+                   const byte* buf,
+                   size_t size);
 
     virtual bool
     disposable() const override final;
@@ -129,10 +129,10 @@ public:
     operator()(const boost::filesystem::path& dest) override final;
 
     void
-    operator()(ClusterLocation cli,
-               uint64_t lba,
-               const byte* buf,
-               uint32_t size);
+    processCluster(ClusterLocation cli,
+                   uint64_t lba,
+                   const byte* buf,
+                   size_t size);
 
     virtual bool
     disposable() const override final;

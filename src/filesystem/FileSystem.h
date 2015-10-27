@@ -517,6 +517,7 @@ private:
     DECLARE_PARAMETER(fs_dtl_config_mode);
     DECLARE_PARAMETER(fs_dtl_host);
     DECLARE_PARAMETER(fs_dtl_port);
+    DECLARE_PARAMETER(fs_dtl_mode);
 
     std::shared_ptr<Registry> registry_;
     ObjectRouter router_;

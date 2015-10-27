@@ -113,6 +113,7 @@ public:
     IOBaseStream& operator >>(double& number);
     IOBaseStream &operator>>(std::string &i);
     byte* readByteArray(int32_t &size);
+    void readIntoByteArray(byte* buf, uint32_t size);
     IOBaseStream &operator>>(const Cork &);
 
 private:

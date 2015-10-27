@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "FailOverCacheStreamers.h"
+#include "VolumeConfig.h"
+
 #include "failovercache/fungilib/WrapByteArray.h"
 #include "failovercache/fungilib/Socket.h"
 
@@ -74,7 +76,7 @@ operator<<(fungi::IOBaseStream& stream, const CommandData<AddEntries>& data)
         stream << fungi::IOBaseStream::uncork;
     }
 
-    for (boost::ptr_vector<FailOverCacheEntry>::const_iterator it = data.entries_.begin();
+    for (std::vector<FailOverCacheEntry>::const_iterator it = data.entries_.begin();
         it!= data.entries_.end();
         ++it)
     {
@@ -84,7 +86,8 @@ operator<<(fungi::IOBaseStream& stream, const CommandData<AddEntries>& data)
         }
         stream << it->cli_;
         stream << it->lba_;
-        stream << fungi::WrapByteArray(it->buffer_.get(), it->size_);
+        TODO("ArneT: funky cast...");
+        stream << fungi::WrapByteArray((byte*) it->buffer_, it->size_);
         if (isRDMA) // make small but finished packets with RDMA
         {
             stream << fungi::IOBaseStream::uncork;
@@ -97,21 +100,28 @@ operator<<(fungi::IOBaseStream& stream, const CommandData<AddEntries>& data)
 fungi::IOBaseStream&
 operator>>(fungi::IOBaseStream& stream, CommandData<AddEntries>& data)
 {
+    uint32_t cluster_size = static_cast<uint32_t>(VolumeConfig::default_cluster_size());
+
     size_t size;
     stream >> size;
     data.entries_.reserve(size);
 
+    size_t capacity = cluster_size * size;
+    data.buf_.reserve(capacity);
+    uint8_t* ptr = data.buf_.data();
+
     for(size_t i = 0; i < size; ++i)
     {
-        data.entries_.push_back(new FailOverCacheEntry());
-
-//        stream >> fungi::IOBaseStream::cork;
-        stream >> data.entries_.back().cli_;
-        stream >> data.entries_.back().lba_;
-        int32_t size32 = 0;
-        data.entries_.back().buffer_.reset(stream.readByteArray(size32));
-        assert(size32 > 0);
-        data.entries_.back().size_ = size32;
+        ClusterLocation cli;
+        stream >> cli;
+        uint64_t lba;
+        stream >> lba;
+        int64_t bal; // byte array length
+        stream >> bal;
+        VERIFY(static_cast<uint32_t>(bal) == cluster_size);
+        stream.readIntoByteArray(ptr, cluster_size);
+        data.entries_.emplace_back(cli, lba, ptr, cluster_size);
+        ptr += cluster_size;
     }
 
     return stream;
@@ -141,6 +151,18 @@ operator<<(fungi::IOBaseStream& stream, const CommandData<Clear>& /*data*/)
     stream << fungi::IOBaseStream::uncork;
     return checkStreamOK(stream, "Clear");
 }
+
+FailOverCacheEntry::FailOverCacheEntry(ClusterLocation cli,
+                                       uint64_t lba,
+                                       const uint8_t* buffer,
+                                       uint32_t size)
+    : cli_(cli)
+    , lba_(lba)
+    , size_(size)
+    , buffer_(buffer)
+{
+}
+
 }
 
 // Local Variables: **

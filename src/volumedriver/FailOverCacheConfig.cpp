@@ -25,7 +25,7 @@ std::ostream&
 operator<<(std::ostream& os,
            const FailOverCacheConfig& cfg)
 {
-    return os << "foc://" << cfg.host << ":" << cfg.port;
+    return os << "foc://" << cfg.host << ":" << cfg.port << "," << cfg.mode;
 }
 
 std::istream&
@@ -38,8 +38,11 @@ operator>>(std::istream& is,
     {
         std::getline(is, cfg.host, ':');
         std::string port;
-        std::getline(is, port);
+        std::getline(is, port, ',');
         cfg.port = boost::lexical_cast<uint16_t>(port);
+        std::string mode;
+        std::getline(is, mode);
+        cfg.mode = boost::lexical_cast<FailOverCacheMode>(port);
     }
     return is;
 }

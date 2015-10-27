@@ -223,7 +223,7 @@ function configure_build {
     pushd ${BUILD_DIR_NAME?}
     mkdir -p ${SCAN_BUILD_DIR_NAME?}
     autoreconf -isv ${SOURCE_DIR?}
-    VD_VERSION_STR=$(git describe --abbrev=0)
+    VD_VERSION_STR=$(cd ${SOURCE_DIR}; git describe --abbrev=0)
     VD_VERSION=(${VD_VERSION_STR//./ })
     CXX=${CXX?} \
 	CC=${CC?} \

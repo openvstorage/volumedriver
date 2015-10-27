@@ -72,6 +72,9 @@ public:
             ("foc-transport",
              po::value<decltype(vdt::FailOverCacheTestSetup::transport_)>(&vdt::FailOverCacheTestSetup::transport_)->default_value(vdt::FailOverCacheTestSetup::transport_),
              "FailOverCache transport (TCP|RSocket)")
+            ("foc-mode",
+             po::value<decltype(vdt::FailOverCacheTestSetup::mode_)>(&vdt::FailOverCacheTestSetup::mode_)->default_value(vdt::FailOverCacheTestSetup::mode_),
+             "FailOverCache mode (Asynchronous|Synchronous)")
             ("mds-port-base",
              po::value<uint16_t>(&vdt::MDSTestSetup::base_port_)->default_value(vdt::MDSTestSetup::base_port_),
              "start of port range to use for MDS")

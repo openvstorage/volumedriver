@@ -1527,7 +1527,7 @@ VolManagerTestSetup::flushFailOverCache(Volume* v)
     }
 }
 
-FailOverCacheBridge*
+FailOverCacheClientInterface*
 VolManagerTestSetup::getFailOverWriter(Volume* v)
 {
     auto b = v->failover_.get();

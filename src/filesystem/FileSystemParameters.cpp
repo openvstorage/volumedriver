@@ -280,16 +280,23 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(fs_dtl_config_mode,
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(fs_dtl_host,
                                       filesystem_component_name,
                                       "fs_dtl_config",
-                                      "failover cache config - host",
+                                      "DTL host",
                                       ShowDocumentation::T,
                                       ""s);
 
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(fs_dtl_port,
                                       filesystem_component_name,
                                       "fs_dtl_config",
-                                      "failover cache config - port",
+                                      "DTL port",
                                       ShowDocumentation::T,
                                       (uint16_t) 0);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(fs_dtl_mode,
+                                      filesystem_component_name,
+                                      "fs_dtl_mode",
+                                      "DTL mode : Asynchronous | Synchronous",
+                                      ShowDocumentation::T,
+                                      vd::FailOverCacheMode::Asynchronous);
 
 // EventPublisher
 const char events_component_name[] = "event_publisher";
