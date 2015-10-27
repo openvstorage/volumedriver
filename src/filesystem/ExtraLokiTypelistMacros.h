@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -421,4 +421,3 @@ Loki::Typelist<T1, LOKI_TYPELIST_98(T2,T3,T4,T5,T6,T7,T8,T9,T10,T11,T12,T13,T14,
 */
 
 #endif
-
