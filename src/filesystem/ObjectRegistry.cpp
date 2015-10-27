@@ -1063,7 +1063,7 @@ ObjectRegistry::set_foc_config_mode(const ObjectId& vol_id,
     ObjectRegistrationPtr reg;
 
     run_sequence_(vol_id,
-                  "set volume as template",
+                  "set FOC config mode",
                   [&](ara::sequence& seq)
                   {
                       reg = prepare_set_foc_config_mode_(seq, vol_id, foc_cm);
