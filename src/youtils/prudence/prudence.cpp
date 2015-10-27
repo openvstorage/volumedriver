@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "../Main.h"
-#include "../pstream.h"
+#include <pstreams/pstream.h>
 #include <poll.h>
 #include <prudence.h>
 #include <boost/thread.hpp>

@@ -15,7 +15,7 @@
 #include "../../Assert.h"
 #include "../../FileUtils.h"
 #include "../../Main.h"
-#include "../../pstream.h"
+#include <pstreams/pstream.h>
 #include "../../wall_timer.h"
 #include "../../TestBase.h"
 #include "../../TestMainHelper.h"

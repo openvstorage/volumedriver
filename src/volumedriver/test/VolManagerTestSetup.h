@@ -37,7 +37,7 @@
 #include <volumedriver/VolumeConfig.h>
 
 #include "fawlty.hh"
-#include <youtils/pstream.h>
+#include <pstreams/pstream.h>
 #include <fawltyfs/FileSystem.h>
 
 namespace metadata_server

@@ -14,8 +14,10 @@
 
 #ifndef CORBA_TEST_SETUP_H_
 #define CORBA_TEST_SETUP_H_
+
 #include <boost/filesystem.hpp>
-#include "pstream.h"
+#include <pstreams/pstream.h>
+
 namespace youtils
 {
 class CorbaTestSetup

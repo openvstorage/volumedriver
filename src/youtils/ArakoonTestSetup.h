@@ -17,7 +17,7 @@
 
 #include "ArakoonInterface.h"
 #include "ArakoonNodeConfig.h"
-#include "pstream.h"
+#include <pstreams/pstream.h>
 #include "Logging.h"
 
 #include <boost/filesystem.hpp>

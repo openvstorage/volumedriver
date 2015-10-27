@@ -25,7 +25,7 @@ endif
 BUILT_SOURCES = LibyoutilsPrecompiledHeader.h.$(PCH_SUFFIX)
 
 LibyoutilsPrecompiledHeader.h.$(PCH_SUFFIX) : LibyoutilsPrecompiledHeader.h.hxx
-	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CPPFLAGS) $(libyoutils_la_CXXFLAGS) $(CXXFLAGS) -MT $@ -MD -MP -MF $(DEPDIR)/LibyoutilsPrecompiledHeader.Tpo -x c++-header -o $@ $<
+	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CPPFLAGS) $(libyoutils_la_CXXFLAGS) $(libyoutils_la_CPPFLAGS) $(CXXFLAGS) -MT $@ -MD -MP -MF $(DEPDIR)/LibyoutilsPrecompiledHeader.Tpo -x c++-header -o $@ $<
 	$(am__mv) $(DEPDIR)/LibyoutilsPrecompiledHeader.Tpo $(DEPDIR)/LibyoutilsPrecompiledHeader.Po
 
 -include ./$(DEPDIR)/LibyoutilsPrecompiledHeader.Po
@@ -36,6 +36,7 @@ libyoutils_la_CXXFLAGS = $(BUILDTOOLS_CFLAGS)
 # `-include LibyoutilsPrecompiledHeader.h'
 libyoutils_la_CPPFLAGS = \
 	-I@abs_top_builddir@ \
+	-I@abs_top_srcdir@ \
 	-I@abs_top_srcdir@/.. \
 	-Winvalid-pch
 #	-include LibyoutilsPrecompiledHeader.h

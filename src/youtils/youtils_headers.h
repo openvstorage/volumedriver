@@ -60,7 +60,7 @@
 #include "PeriodicAction.h"
 #include "ProCon.h"
 #include "ProtobufLogger.h"
-#include "pstream.h"
+#include <pstreams/pstream.h>
 #include "PThreadMutexLockable.h"
 #include "RWLock.h"
 #include "ScopeExit.h"

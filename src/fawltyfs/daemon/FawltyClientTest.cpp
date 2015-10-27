@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include <youtils/TestBase.h>
-#include <youtils/pstream.h>
+#include <pstreams/pstream.h>
 #include <youtils/Logging.h>
 #include <youtils/FileUtils.h>
 #include "Fawlty.h"

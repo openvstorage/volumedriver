@@ -14,7 +14,7 @@
 
 #include "Assert.h"
 #include "System.h"
-#include "pstream.h"
+#include <pstreams/pstream.h>
 
 #include <malloc.h>
 #include <sys/param.h>

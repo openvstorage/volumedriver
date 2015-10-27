@@ -3,7 +3,8 @@ bin_PROGRAMS = youtils_test mainhelpertest_executable testmainhelpertest_executa
 
 # if you want to disable precompiled headers drop
 # `-include LibyoutilsPrecompiledHeader.h'
-youtils_test_CPPFLAGS= \
+youtils_test_CPPFLAGS = \
+	-I@abs_top_srcdir@/.. \
 	-I@abs_top_builddir@/test \
 	-Winvalid-pch
 #	-include YoutilsTestPrecompiledHeader.h
@@ -21,7 +22,7 @@ endif
 BUILT_SOURCES = YoutilsTestPrecompiledHeader.h.$(PCH_SUFFIX)
 
 YoutilsTestPrecompiledHeader.h.$(PCH_SUFFIX) : YoutilsTestPrecompiledHeader.h.hxx
-	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CPPFLAGS) $(youtils_test_CXXFLAGS) $(CXXFLAGS) -MT $@ -MD -MP -MF $(DEPDIR)/YoutilsTestPrecompiledHeader.Tpo -x c++-header -o $@ $<
+	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CPPFLAGS) $(youtils_test_CPPFLAGS) $(youtils_test_CXXFLAGS) $(CXXFLAGS) -MT $@ -MD -MP -MF $(DEPDIR)/YoutilsTestPrecompiledHeader.Tpo -x c++-header -o $@ $<
 	$(am__mv) $(DEPDIR)/YoutilsTestPrecompiledHeader.Tpo $(DEPDIR)/YoutilsTestPrecompiledHeader.Po
 
 youtils_test_SOURCES = \
