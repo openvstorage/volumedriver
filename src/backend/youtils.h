@@ -52,7 +52,7 @@
 #include "../youtils/Writable.h"
 #include "../youtils/CondVar.h"
 #include "../youtils/IOBaseStream.h"
-#include "../youtils/ProCon.h"
+#include "<procon/ProCon.h>
 #include "../youtils/StrongTypedString.h"
 #include "../youtils/ConfigurationReport.h"
 #include "../youtils/IOException.h"

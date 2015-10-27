@@ -58,7 +58,7 @@
 #include "OrbParameters.h"
 #include "OurStrongTypedef.h"
 #include "PeriodicAction.h"
-#include "ProCon.h"
+#include <procon/ProCon.h>
 #include "ProtobufLogger.h"
 #include <pstreams/pstream.h>
 #include "PThreadMutexLockable.h"

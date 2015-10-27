@@ -16,8 +16,9 @@
 #define GENERATOR_H_
 
 #include "Catchers.h"
-#include "ProCon.h"
 #include "Logging.h"
+
+#include <procon/ProCon.h>
 
 namespace youtils
 {
