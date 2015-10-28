@@ -27,7 +27,6 @@ namespace volumedriver
 class FailOverCacheClientInterface
 {
 public:
-
     virtual ~FailOverCacheClientInterface() = default;
 
     virtual void
@@ -75,13 +74,6 @@ public:
 
     virtual FailOverCacheMode
     mode() const = 0;
-
-    virtual fungi::Mutex&
-    getMutex() = 0;
-
-    virtual std::unique_ptr<FailOverCacheProxy>&
-    getCache() = 0;
-
 };
 
 } // namespace volumedriver

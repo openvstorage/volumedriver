@@ -47,18 +47,6 @@ FailOverCacheSyncBridge::backup()
     return cache_ != 0;
 }
 
-fungi::Mutex&
-FailOverCacheSyncBridge::getMutex()
-{
-    return mutex_;
-}
-
-std::unique_ptr<FailOverCacheProxy>&
-FailOverCacheSyncBridge::getCache()
-{
-    return cache_;
-}
-
 void
 FailOverCacheSyncBridge::newCache(std::unique_ptr<FailOverCacheProxy> cache)
 {

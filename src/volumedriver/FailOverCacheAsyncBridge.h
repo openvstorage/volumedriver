@@ -31,9 +31,13 @@
 namespace volumedriver
 {
 
+class FailOverCacheTester;
+
 class FailOverCacheAsyncBridge
-    : public fungi::Runnable, public FailOverCacheClientInterface
+    : public fungi::Runnable
+    , public FailOverCacheClientInterface
 {
+    friend class FailOverCacheTester;
 
 public:
     FailOverCacheAsyncBridge(const std::atomic<unsigned>& max_entries,
@@ -88,12 +92,6 @@ public:
 
     virtual FailOverCacheMode
     mode() const override;
-
-    virtual fungi::Mutex&
-    getMutex() override;
-
-    virtual std::unique_ptr<FailOverCacheProxy>&
-    getCache() override;
 
 private:
     DECLARE_LOGGER("FailOverCacheAsyncBridge");

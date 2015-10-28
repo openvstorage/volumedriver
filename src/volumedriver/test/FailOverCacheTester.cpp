@@ -53,18 +53,39 @@ public:
         :VolManagerTestSetup("FailOverCacheTester")
     {}
 
+    template<typename B>
+    uint64_t
+    get_num_entries(B& bridge)
+    {
+        // Otherwise we might clash with the FailOverCacheBridge's ping mechanism!
+        fungi::ScopedLock g(bridge.mutex_);
+        CacheEntryProcessor proc;
+        bridge.cache_->getEntries(SCOPROCESSORFUN(CacheEntryProcessor,
+                                                  processCluster,
+                                                  &proc));
+
+        return proc.num_clusters_;
+    }
+
     void
     check_num_entries(Volume& v,
                       uint64_t expected)
     {
-        auto bridge = getFailOverWriter(&v);
+        FailOverCacheClientInterface* bridge = getFailOverWriter(&v);
+        uint64_t entries = 0;
 
-        // Otherwise we might clash with the FailOverCacheBridge's ping mechanism!
-        fungi::ScopedLock g(bridge->getMutex());
+        switch (bridge->mode())
+        {
+        case FailOverCacheMode::Asynchronous:
+            entries = get_num_entries(dynamic_cast<FailOverCacheAsyncBridge&>(*bridge));
+            break;
+        case FailOverCacheMode::Synchronous:
+            entries = get_num_entries(dynamic_cast<FailOverCacheSyncBridge&>(*bridge));
+            break;
+        }
 
-        CacheEntryProcessor proc;
-        bridge->getCache()->getEntries(SCOPROCESSORFUN(CacheEntryProcessor, processCluster, &proc));
-        EXPECT_EQ(expected, proc.num_clusters_);
+        EXPECT_EQ(expected,
+                  entries);
     }
 };
 

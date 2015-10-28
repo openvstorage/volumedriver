@@ -31,9 +31,12 @@
 namespace volumedriver
 {
 
+class FailOverCacheTester;
+
 class FailOverCacheSyncBridge
     : public FailOverCacheClientInterface
 {
+    friend class FailOverCacheTester;
 
 public:
     FailOverCacheSyncBridge();
@@ -85,12 +88,6 @@ public:
     virtual FailOverCacheMode
     mode() const override;
 
-    virtual fungi::Mutex&
-    getMutex() override;
-
-    virtual std::unique_ptr<FailOverCacheProxy>&
-    getCache() override;
-
     void
     handleException(std::exception& e,
                     const char* where);
@@ -104,7 +101,6 @@ private:
     ClusterSize cluster_size_;
     ClusterMultiplier cluster_multiplier_;
     Volume* vol_ = { nullptr };
-
 };
 
 }
