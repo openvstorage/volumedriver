@@ -104,11 +104,21 @@ DataStoreNG::localRestart(uint64_t nspace_min,
             {
                 if (sco.number() > lastClusterLocation.sco().number())
                 {
-                    LOG_INFO("Removing too recent SCO " << sco
-                             << " from namespace " << nspace_);
+                    LOG_INFO(nspace_ << ": removing too recent SCO " << sco <<
+                             " from SCO cache");
 
                     try
                     {
+                        {
+                            CachedSCOPtr sco_ptr(scoCache_->findSCO(nspace_,
+                                                                    sco));
+                            if (sco_ptr)
+                            {
+                                LOG_INFO(nspace_ << ": size of SCO to be removed: " <<
+                                         sco_ptr->getSize());
+                            }
+                        }
+
                         removeSCO_(sco, true);
                     }
                     catch (TransientException& e)
