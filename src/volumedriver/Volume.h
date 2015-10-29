@@ -17,8 +17,6 @@
 
 #include "BackendTasks.h"
 #include "ClusterCacheHandle.h"
-#include "FailOverCacheAsyncBridge.h"
-#include "FailOverCacheSyncBridge.h"
 #include "FailOverCacheBridgeFactory.h"
 #include "FailOverCacheConfigWrapper.h"
 #include "FailOverCacheProxy.h"
@@ -62,13 +60,15 @@ BOOLEAN_ENUM(DeleteFailOverCache);
 BOOLEAN_ENUM(CleanupScrubbingOnError);
 BOOLEAN_ENUM(CleanupScrubbingOnSuccess);
 
-class SnapshotPersistor;
-class ScrubberResult;
-class DataStoreNG;
-class SnapshotManagement;
 class ClusterReadDescriptor;
-class MetaDataStoreInterface;
+class DataStoreNG;
+class FailOverCacheAsyncBridge;
+class FailOverCacheSyncBridge;
 class MetaDataBackendConfig;
+class MetaDataStoreInterface;
+class ScrubberResult;
+class SnapshotManagement;
+class SnapshotPersistor;
 
 struct ClusterCacheVolumeInfo
 {
@@ -89,8 +89,8 @@ class Volume
     friend class VolManagerTestSetup;
     friend class ErrorHandlingTest;
     friend class ::volumedrivertest::MetaDataStoreTest;
-    friend void FailOverCacheAsyncBridge::run();
-    friend void FailOverCacheSyncBridge::handleException(std::exception&, const char*);
+    friend class FailOverCacheAsyncBridge;
+    friend class FailOverCacheSyncBridge;
     friend void backend_task::WriteTLog::run(int);
 
 public:
@@ -646,8 +646,7 @@ private:
     writeClustersToFailOverCache_(const std::vector<ClusterLocation>& locs,
                                   size_t num_locs,
                                   uint64_t start_address,
-                                  const uint8_t* buf,
-                                  unsigned& throttled_usecs);
+                                  const uint8_t* buf);
 
     void
     writeConfigToBackend_(const VolumeConfig& cfg);

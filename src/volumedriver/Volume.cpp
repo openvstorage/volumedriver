@@ -739,15 +739,10 @@ void
 Volume::writeClustersToFailOverCache_(const std::vector<ClusterLocation>& locs,
                                       size_t num_locs,
                                       uint64_t start_address,
-                                      const uint8_t* buf,
-                                      unsigned& throttled_usecs)
+                                      const uint8_t* buf)
 {
     ASSERT_WRITES_SERIALIZED();
     ASSERT_WLOCKED();
-
-    struct timeval start, end;
-    long mtime, seconds, useconds;
-    gettimeofday(&start, NULL);
 
     if (failover_->backup())
     {
@@ -765,18 +760,18 @@ Volume::writeClustersToFailOverCache_(const std::vector<ClusterLocation>& locs,
                        start_address,
                        reinterpret_cast<const uint64_t&>(locs[0]),
                        std::uncaught_exception());
-
-            gettimeofday(&end, NULL);
-            seconds  = end.tv_sec  - start.tv_sec;
-            useconds = end.tv_usec - start.tv_usec;
-            mtime = ((seconds) * 1000 + useconds/1000.0) + 0.5;
-            throttled_usecs = (unsigned) mtime;
         }));
 
-        LOG_VTRACE("sending tlog " << snapshotManagement_->getCurrentTLogName() <<
+        LOG_VTRACE("sending TLog " << snapshotManagement_->getCurrentTLogName() <<
                    ", start_address " << start_address);
 
-        failover_->addEntries(locs, num_locs, start_address, buf);
+        while (not failover_->addEntries(locs,
+                                         num_locs,
+                                         start_address,
+                                         buf))
+        {
+            throttle_(foc_throttle_usecs_);
+        }
     }
 }
 
@@ -889,8 +884,6 @@ Volume::writeClusters_(uint64_t addr,
     ClusterCache& cache = VolManager::get()->getClusterCache();
 
     {
-        unsigned foc_throttled_usecs = 0;
-
         // prevent concurrent writes and tlog rollover interfering with snapshotting
         // and friends
         WLOCK();
@@ -940,12 +933,13 @@ Volume::writeClusters_(uint64_t addr,
 
         }
 
+        yt::SteadyTimer t;
         writeClustersToFailOverCache_(cluster_locations_,
                                       num_locs,
                                       addr >> volOffset_,
-                                      buf,
-                                      foc_throttled_usecs);
-        throttle_usecs += foc_throttled_usecs;
+                                      buf);
+
+        throttle_usecs += bc::duration_cast<bc::microseconds>(t.elapsed()).count();
 
         const ssize_t sco_cap = dataStore_->getRemainingSCOCapacity();
         VERIFY(sco_cap >= 0);
@@ -2598,7 +2592,7 @@ Volume::replayFOC_(FailOverCacheProxy& foc)
                          {
                              throw;
                          }
-                         boost::this_thread::sleep_for(boost::chrono::seconds(1));
+                         boost::this_thread::sleep_for(bc::seconds(1));
                      }
                  }
              });
