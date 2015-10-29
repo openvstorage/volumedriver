@@ -159,6 +159,7 @@ FileSystem::FileSystem(const bpt::ptree& pt,
     , router_(pt,
               std::static_pointer_cast<LockedArakoon>(registry_),
               fs_dtl_config_mode.value(),
+              fs_dtl_mode.value(),
               make_foc_config(fs_dtl_host.value(),
                               fs_dtl_port.value(),
                               fs_dtl_mode.value()))

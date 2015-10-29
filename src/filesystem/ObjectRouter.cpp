@@ -59,8 +59,9 @@ namespace yt = youtils;
 
 ObjectRouter::ObjectRouter(const bpt::ptree& pt,
                            std::shared_ptr<LockedArakoon>(larakoon),
-                           const FailOverCacheConfigMode foccmode,
-                           const boost::optional<vd::FailOverCacheConfig>& focconfig,
+                           const FailOverCacheConfigMode foc_config_mode,
+                           const vd::FailOverCacheMode foc_mode,
+                           const boost::optional<vd::FailOverCacheConfig>& foc_config,
                            const RegisterComponent registrate)
     : VolumeDriverComponent(registrate,
                             pt)
@@ -89,8 +90,9 @@ ObjectRouter::ObjectRouter(const bpt::ptree& pt,
     , publisher_(std::make_shared<EventPublisher>(cluster_id(),
                                                   node_id(),
                                                   pt))
-    , foc_config_mode_(foccmode)
-    , foc_config_(focconfig)
+    , foc_config_mode_(foc_config_mode)
+    , foc_mode_(foc_mode)
+    , foc_config_(foc_config)
 {
     LOG_TRACE("setting up");
 
@@ -1520,9 +1522,9 @@ ObjectRouter::failoverconfig_as_it_should_be() const
                     it = node_map_.begin();
                 }
 
-                TODO("ArneT: Add FailOverCacheMode to ClusterConfig")
                 return vd::FailOverCacheConfig(it->second->config.host,
-                                               it->second->config.failovercache_port);
+                                               it->second->config.failovercache_port,
+                                               foc_mode_);
             }
         }
     }
