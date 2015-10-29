@@ -14,20 +14,27 @@
 
 #ifndef VOLUMEFAILOVERCACHEWRITERMAP_H
 #define VOLUMEFAILOVERCACHEWRITERMAP_H
+
+#include "FailOverCacheWriter.h"
+
+#include "../Types.h"
+
+#include "fungilib/Mutex.h"
+
 #include <map>
 #include <string>
-#include "../Types.h"
-#include "FailOverCacheWriter.h"
-#include "fungilib/Mutex.h"
+
 #include <youtils/FileUtils.h>
 #include <youtils/Logging.h>
+
 namespace failovercache
 {
-class VolumeFailOverCacheWriterMap : private std::map<std::string,FailOverCacheWriter*>
+
+class VolumeFailOverCacheWriterMap
+    : private std::map<std::string,FailOverCacheWriter*>
 {
 public:
-    explicit VolumeFailOverCacheWriterMap(const fs::path& root);
-    DECLARE_LOGGER("FailOverCacheWriter");
+    explicit VolumeFailOverCacheWriterMap(const boost::filesystem::path& root);
 
     ~VolumeFailOverCacheWriterMap();
 
@@ -39,8 +46,11 @@ public:
     remove(const FailOverCacheWriter*);
 
 private:
-    const fs::path root_;
+    DECLARE_LOGGER("FailOverCacheWriter");
+
+    const boost::filesystem::path root_;
 };
+
 }
 
 // Local Variables: **
