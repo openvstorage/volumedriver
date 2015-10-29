@@ -22,25 +22,7 @@
 namespace volumedriver
 {
 
-class Volume;
-
 BOOLEAN_ENUM(SyncFailOverToBackend);
-
-class VolumeFailOverCacheAdaptor
-{
-public:
-    VolumeFailOverCacheAdaptor(Volume& volume)
-        : volume_(volume)
-    {}
-
-    void
-    processCluster(ClusterLocation cli,
-                   uint64_t lba,
-                   const byte* buf,
-                   size_t size);
-
-    Volume& volume_;
-};
 
 // Z42: we want an exception hierarchy here.
 class FailOverCacheNotConfiguredException
