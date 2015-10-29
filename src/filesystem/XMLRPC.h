@@ -502,16 +502,6 @@ REGISTER_XMLRPC(XMLRPCCallTimingLock,
                 "Returns current failover mode of a volume");
 
 REGISTER_XMLRPC(XMLRPCCallTimingLock,
-                SetFailOver,
-                "setFailover",
-                "Sets the failover mode of a volume");
-
-REGISTER_XMLRPC(XMLRPCCallTimingLock,
-                SetStandAlone,
-                "setStandalone",
-                "Sets a volume to standalone status");
-
-REGISTER_XMLRPC(XMLRPCCallTimingLock,
                 SnapshotSCOCount,
                 "snapshotSCOCount",
                 "Counts the number of scos in a snapshot");
@@ -666,7 +656,7 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirect,
                 "vaaiCopy",
                 "VAAI support");
 
-typedef LOKI_TYPELIST_80(
+typedef LOKI_TYPELIST_78(
 // ================== EXPOSED IN XMLRPC CLIENT ===================
                          VolumeCreate,
                          VolumesList,
@@ -725,8 +715,6 @@ typedef LOKI_TYPELIST_80(
                          SetManualFailOverCacheConfig,
                          // ================== NOT EXPOSED, NOT TESTED   ==================
                          GetFailOverMode,
-                         SetFailOver,
-                         SetStandAlone,
                          ScoCacheInfo,
                          VolumeScoCacheInfo,
                          RemoveNamespaceFromSCOCache,

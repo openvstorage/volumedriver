@@ -1194,29 +1194,6 @@ GetFailOverMode::execute_internal(XmlRpc::XmlRpcValue& params,
 }
 
 void
-SetFailOver::execute_internal(XmlRpc::XmlRpcValue& params,
-                              XmlRpc::XmlRpcValue& /*result*/)
-{
-    XMLRPCUtils::ensure_arg(params[0], XMLRPCKeys::failover_ip);
-    XMLRPCUtils::ensure_arg(params[0], XMLRPCKeys::failover_port);
-    const vd::VolumeId volName(getID(params[0]));
-    const std::string host = std::string(params[0][XMLRPCKeys::failover_ip]);
-    const uint16_t port = getUIntVal<uint16_t>(params[0][XMLRPCKeys::failover_port]);
-    api::setFailOverCacheConfig(volName,
-                     vd::FailOverCacheConfig(host,
-                                             port));
-}
-
-void
-SetStandAlone::execute_internal(XmlRpc::XmlRpcValue& params,
-                                XmlRpc::XmlRpcValue& /*result*/)
-{
-    const vd::VolumeId volName(getID(params[0]));
-    api::setFailOverCacheConfig(volName,
-                     boost::none);
-}
-
-void
 CurrentSCOCount::execute_internal(XmlRpc::XmlRpcValue& params,
                                   XmlRpc::XmlRpcValue& result)
 {
