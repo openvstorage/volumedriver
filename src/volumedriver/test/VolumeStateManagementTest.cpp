@@ -550,6 +550,90 @@ TEST_P(VolumeStateManagementTest, CreateVolumeNonLocalRestart3)
                  fungi::IOException);
 }
 
+TEST_P(VolumeStateManagementTest, events)
+{
+    auto wrns(make_random_namespace());
+    Volume* v = newVolume(*wrns);
+
+    auto check_ev([&](events::DTLState old_state,
+                      events::DTLState new_state)
+                  {
+                      const boost::optional<events::Event> ev(event_collector_->pop());
+
+                      ASSERT_NE(boost::none,
+                                ev);
+
+                      ASSERT_TRUE(ev->HasExtension(events::dtl_state_transition));
+
+                      const events::DTLStateTransitionEvent&
+                          trans(ev->GetExtension(events::dtl_state_transition));
+
+                      ASSERT_TRUE(trans.has_volume_name());
+                      EXPECT_EQ(v->getName().str(),
+                                trans.volume_name());
+
+                      ASSERT_TRUE(trans.has_old_state());
+                      EXPECT_EQ(old_state,
+                                trans.old_state());
+
+                      ASSERT_TRUE(trans.has_new_state());
+                      EXPECT_EQ(new_state,
+                                trans.new_state());
+                  });
+
+    ASSERT_EQ(1U,
+              event_collector_->size());
+
+    check_ev(events::DTLState::Degraded,
+             events::DTLState::Standalone);
+
+    const std::string s("some data");
+
+    writeToVolume(v,
+                  0,
+                  4096,
+                  s);
+
+    {
+        auto foc_ctx(start_one_foc());
+        v->setFailOverCacheConfig(foc_ctx->config());
+
+        ASSERT_EQ(2U,
+                  event_collector_->size());
+
+        check_ev(events::DTLState::Standalone,
+                 events::DTLState::Degraded);
+
+        check_ev(events::DTLState::Degraded,
+                 events::DTLState::Catchup);
+
+        v->scheduleBackendSync();
+        waitForThisBackendWrite(v);
+
+        ASSERT_EQ(1U,
+                  event_collector_->size());
+
+        check_ev(events::DTLState::Catchup,
+                 events::DTLState::Sync);
+    }
+
+    v->sync();
+
+    ASSERT_EQ(1U,
+              event_collector_->size());
+
+    check_ev(events::DTLState::Sync,
+             events::DTLState::Degraded);
+
+    v->setFailOverCacheConfig(boost::none);
+
+    ASSERT_EQ(1U,
+              event_collector_->size());
+
+    check_ev(events::DTLState::Degraded,
+             events::DTLState::Standalone);
+}
+
 INSTANTIATE_TEST(VolumeStateManagementTest);
 
 }

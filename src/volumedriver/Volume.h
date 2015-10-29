@@ -512,12 +512,7 @@ private:
     mutable fungi::SpinLock config_lock_;
 
     void
-    setVolumeFailOverState(const VolumeFailOverState instate)
-    {
-        failoverstate_ = instate;
-        //std::swap(instate, failoverstate_);
-         //     return instate;
-    }
+    setVolumeFailOverState(VolumeFailOverState);
 
     // LOCKING:
     // - rwlock allows concurrent reads / one write
