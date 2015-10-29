@@ -275,8 +275,8 @@ TEST_P(FailOverCacheTester, CacheServerHasNoMemory)
 
         v->setFailOverCacheConfig(foc_ctx->config());
 
-
-        ASSERT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::OK_SYNC);
+        ASSERT_EQ(VolumeFailOverState::OK_SYNC,
+                  v->getVolumeFailOverState());
 
         const std::string tlogname = v->getSnapshotManagement().getCurrentTLogName();
 
@@ -294,7 +294,8 @@ TEST_P(FailOverCacheTester, CacheServerHasNoMemory)
 
     flushFailOverCache(v); // It is only detected for sure that the FOC is gone when something happens over the wire
 
-    ASSERT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::DEGRADED);
+    ASSERT_EQ(VolumeFailOverState::DEGRADED,
+              v->getVolumeFailOverState());
 
     {
         auto foc_ctx(start_one_foc());
@@ -466,7 +467,8 @@ TEST_P(FailOverCacheTester, resetToSelf)
     v->setFailOverCacheConfig(foc_ctx->config());
 
     const std::string tlogname2 = v->getSnapshotManagement().getCurrentTLogName();
-    EXPECT_FALSE(tlogname1 == tlogname2);
+    EXPECT_NE(tlogname1,
+              tlogname2);
 
     for(unsigned i = 0; i < entries; i++)
     {
@@ -502,7 +504,8 @@ TEST_P(FailOverCacheTester, resetToOther)
     {
         writeToVolume(v, i * 4096, 4096, "bdv");
     }
-    EXPECT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::OK_STANDALONE);
+    EXPECT_EQ(VolumeFailOverState::OK_STANDALONE,
+              v->getVolumeFailOverState());
 
     EXPECT_NO_THROW(v->setFailOverCacheConfig(foc_ctx1->config()));
 
@@ -520,7 +523,8 @@ TEST_P(FailOverCacheTester, resetToOther)
         sleep(1);
     }
 
-    EXPECT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::OK_SYNC);
+    EXPECT_EQ(VolumeFailOverState::OK_SYNC,
+              v->getVolumeFailOverState());
 
     for(unsigned i = 0; i < entries; i++)
     {
@@ -543,13 +547,16 @@ TEST_P(FailOverCacheTester, AutoRecoveries)
                                                                FailOverCacheTestSetup::mode())),
                  fungi::IOException);
 
-    ASSERT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::DEGRADED);
+    ASSERT_EQ(VolumeFailOverState::DEGRADED,
+              v->getVolumeFailOverState());
+
     auto foc_ctx(start_one_foc());
-    ASSERT_TRUE(port == foc_ctx->port());
+    ASSERT_EQ(port,
+              foc_ctx->port());
 
-    sleep(2* failovercache_check_interval_in_seconds_);
-    ASSERT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::OK_SYNC);
-
+    sleep(2 * failovercache_check_interval_in_seconds_);
+    ASSERT_EQ(VolumeFailOverState::OK_SYNC,
+              v->getVolumeFailOverState());
 }
 
 TEST_P(FailOverCacheTester, TLogsAreRemoved)
