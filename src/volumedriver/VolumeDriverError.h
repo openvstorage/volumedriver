@@ -18,6 +18,7 @@
 #include "Events.pb.h"
 #include "Types.h"
 #include "VolumeDriverEvents.pb.h"
+#include "VolumeFailOverState.h"
 
 #include <boost/optional.hpp>
 
@@ -29,6 +30,11 @@ namespace volumedriver
 struct VolumeDriverError
 {
     DECLARE_LOGGER("VolumeDriverError");
+
+    static void
+    report(const VolumeId& volid,
+           VolumeFailOverState old_state,
+           VolumeFailOverState new_state) noexcept;
 
     static void
     report(const events::Event& ev) noexcept;
