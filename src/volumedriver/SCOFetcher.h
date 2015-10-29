@@ -91,12 +91,6 @@ public:
     virtual void
     operator()(const boost::filesystem::path& dest) override final;
 
-    void
-    processCluster(ClusterLocation cli,
-                   uint64_t lba,
-                   const byte* buf,
-                   size_t size);
-
     virtual bool
     disposable() const override final;
 
@@ -127,12 +121,6 @@ public:
 
     virtual void
     operator()(const boost::filesystem::path& dest) override final;
-
-    void
-    processCluster(ClusterLocation cli,
-                   uint64_t lba,
-                   const byte* buf,
-                   size_t size);
 
     virtual bool
     disposable() const override final;

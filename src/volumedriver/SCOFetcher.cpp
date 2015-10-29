@@ -20,7 +20,7 @@
 #include "VolumeDriverError.h"
 
 #include <youtils/FileDescriptor.h>
-#include "youtils/FileUtils.h"
+#include <youtils/FileUtils.h>
 #include <youtils/IOException.h>
 
 #include <backend/BackendInterface.h>
@@ -120,8 +120,25 @@ FailOverCacheSCOFetcher::operator()(const fs::path& dst)
 
         // this needs to be reworked once ->getSCO throws if it cannot find
         // the SCO.
+
+        auto fun([&](ClusterLocation loc,
+                     uint64_t /* lba */,
+                     const byte* buf,
+                     size_t size)
+                 {
+                     VERIFY(sio_.get());
+                     //    VERIFY(sconame_ != 0);
+
+                     VERIFY(loc.sco() == sconame_);
+
+                     sio_->write(buf,
+                                 size);
+
+                     calc_.update(buf, size);
+                 });
+
         uint64_t scosize = vol_->getFailOver()->getSCOFromFailOver(sconame_,
-                                                                   SCOPROCESSORFUN(FailOverCacheSCOFetcher, processCluster, this));
+                                                                   std::move(fun));
         if (scosize == 0)
         {
             std::stringstream ss;
@@ -180,25 +197,6 @@ FailOverCacheSCOFetcher::operator()(const fs::path& dst)
         });
 }
 
-void
-FailOverCacheSCOFetcher::processCluster(ClusterLocation cli,
-                                        uint64_t /* lba */,
-                                        const byte* buf,
-                                        size_t size)
-{
-    VERIFY(sio_.get());
-    //    VERIFY(sconame_ != 0);
-
-    ClusterLocation loc(cli);
-
-    VERIFY(loc.sco() == sconame_);
-
-    sio_->write(buf,
-                size);
-
-    calc_.update(buf, size);
-}
-
 bool
 FailOverCacheSCOFetcher::disposable() const
 {
@@ -240,8 +238,21 @@ RawFailOverCacheSCOFetcher::operator()(const fs::path& dst)
 
         // this needs to be reworked once ->getSCO throws if it cannot find
         // the SCO.
+        auto fun([&](ClusterLocation loc,
+                     uint64_t /* lba */,
+                     const byte* buf,
+                     size_t size)
+                 {
+                     VERIFY(sio_.get());
+
+                     VERIFY(loc.sco() == sconame_);
+
+                     sio_->write(buf,
+                                 size);
+                 });
+
         uint64_t scosize = foc->getSCOFromFailOver(sconame_,
-                                                   SCOPROCESSORFUN(RawFailOverCacheSCOFetcher, processCluster, this));
+                                                   std::move(fun));
         if (scosize == 0)
         {
             throw fungi::IOException("Could not get SCO from the foc");
@@ -254,25 +265,6 @@ RawFailOverCacheSCOFetcher::operator()(const fs::path& dst)
     {
         throw fungi::IOException("FOC not available");
     }
-
-}
-
-
-void
-RawFailOverCacheSCOFetcher::processCluster(ClusterLocation cli,
-                                           uint64_t /* lba */,
-                                           const byte* buf,
-                                           size_t size)
-{
-    VERIFY(sio_.get());
-    //VERIFY(sconame_ != 0);
-
-    ClusterLocation loc(cli);
-
-    VERIFY(loc.sco() == sconame_);
-
-    sio_->write(buf,
-                size);
 
 }
 
