@@ -148,13 +148,6 @@ public:
         return config_.getSCOSize();
     }
 
-    void
-    processFailOverCacheEntry(ClusterLocation /*cli*/,
-                              uint64_t /*lba*/,
-                              const byte* /*buf*/,
-                              int64_t /*size*/);
-
-
     /** @exception IOException */
     void
     validateIOLength(uint64_t lba, uint64_t len) const;

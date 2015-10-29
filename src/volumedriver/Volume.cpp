@@ -2051,44 +2051,6 @@ Volume::replayClusterFromFailOverCache_(ClusterAddress ca,
     }
 }
 
-void
-Volume::processFailOverCacheEntry(ClusterLocation  cli,
-                                  uint64_t lba,
-                                  const byte* buf,
-                                  int64_t size)
-{
-    ASSERT_WRITES_SERIALIZED();
-    ASSERT_WLOCKED();
-
-    uint32_t counter = 0;
-    LOG_VTRACE("Replaying " << cli << "lba " << lba);
-
-    VERIFY(size == (int64_t) clusterSize_);
-
-    ClusterLocation loc(cli);
-    validateIOAlignment(lba, size);
-
-    while (true)
-    {
-        try
-        {
-            replayClusterFromFailOverCache_(addr2CA(LBA2Addr(lba)),
-                                            loc,
-                                            buf);
-            return;
-        }
-        catch (TransientException& e)
-        {
-            LOG_VINFO("TransientException");
-            if (++counter == 256)
-            {
-                throw;
-            }
-            sleep(1);
-        }
-    }
-}
-
 uint64_t
 Volume::VolumeDataStoreWriteUsed() const
 {
@@ -2608,11 +2570,43 @@ Volume::replayFOC_(FailOverCacheProxy& foc)
     ASSERT_WRITES_SERIALIZED();
     ASSERT_WLOCKED();
 
+    auto fun([&](ClusterLocation loc,
+                 uint64_t lba,
+                 const byte* buf,
+                 size_t size)
+             {
+                 uint32_t counter = 0;
+                 LOG_VTRACE("Replaying " << loc << "lba " << lba);
+
+                 VERIFY(size == static_cast<size_t>(clusterSize_));
+
+                 validateIOAlignment(lba, size);
+
+                 while (true)
+                 {
+                     try
+                     {
+                         replayClusterFromFailOverCache_(addr2CA(LBA2Addr(lba)),
+                                                         loc,
+                                                         buf);
+                         return;
+                     }
+                     catch (TransientException& e)
+                     {
+                         LOG_VINFO("TransientException");
+                         if (++counter == 256)
+                         {
+                             throw;
+                         }
+                         boost::this_thread::sleep_for(boost::chrono::seconds(1));
+                     }
+                 }
+             });
+
     try
     {
-        VolumeFailOverCacheAdaptor voladaptor(*this);
+        foc.getEntries(std::move(fun));
 
-        foc.getEntries(SCOPROCESSORFUN(VolumeFailOverCacheAdaptor, processCluster, &voladaptor));
         MaybeCheckSum cs = dataStore_->finalizeCurrentSCO();
 
         if (snapshotManagement_->currentTLogHasData())
@@ -2620,16 +2614,10 @@ Volume::replayFOC_(FailOverCacheProxy& foc)
             snapshotManagement_->scheduleBackendSync(cs);
         }
     }
-    catch (std::exception& e)
-    {
-        LOG_VERROR("Problem with failover cache " << e.what());
-        throw fungi::IOException((std::string("Problem with failover cache ") + e.what()).c_str());
-    }
-    catch (...)
-    {
-        LOG_VERROR("Problem with failover cache ");
-        throw fungi::IOException("Problem with failover cache ");
-    }
+    CATCH_STD_ALL_EWHAT({
+            LOG_VERROR("Problem with failover cache " << EWHAT);
+            throw fungi::IOException((std::string("Problem with failover cache ") + EWHAT));
+        });
 }
 
 double
