@@ -197,15 +197,19 @@ TEST_P(CloneManagementTest, recursiveclonelookup)
                 8,
                 4096,
                 "abc");
-
 }
 
-static const VolumeDriverTestConfig a_config(false);
+namespace
+{
+
+const VolumeDriverTestConfig a_config =
+    VolumeDriverTestConfig().use_cluster_cache(false);
+
+}
 
 INSTANTIATE_TEST_CASE_P(CloneManagementTests,
                         CloneManagementTest,
                         ::testing::Values(a_config));
-
 
 }
 

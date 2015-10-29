@@ -208,8 +208,11 @@ TEST_P(ReadParallelismTest, DISABLED_single_read)
 
 }
 
-
-VolumeDriverTestConfig thisConfig(false);
+namespace
+{
+const VolumeDriverTestConfig thisConfig =
+    VolumeDriverTestConfig().use_cluster_cache(false);
+}
 
 INSTANTIATE_TEST_CASE_P(ReadParallelismTests,
                         ReadParallelismTest,

@@ -554,8 +554,7 @@ public:
 
     DECLARE_LOGGER("VolManagerTestSetup");
 
-    static VolumeDriverTestConfig defConfig;
-    static VolumeDriverTestConfig clusterCacheConfig;
+    static const VolumeDriverTestConfig defConfig;
 
     void
     waitForPrefetching(Volume* v) const;

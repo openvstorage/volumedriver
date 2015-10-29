@@ -30,20 +30,28 @@ namespace volumedriver
 // TODO: this is not the best approach; please remake sometime by overriding the calling of the testbody
 // directly, which will require some more subtle changes to google test
 
-class VolumeDriverTestConfig
+struct VolumeDriverTestConfig
 {
-public:
-    VolumeDriverTestConfig(bool useClusterCache = false)
-         : useClusterCache_(useClusterCache)
-    {};
+#define PARAM(type, name)                                       \
+                                                                \
+    const type&                                                 \
+    name() const                                                \
+    {                                                           \
+        return name ## _;                                       \
+    }                                                           \
+                                                                \
+    VolumeDriverTestConfig&                                     \
+    name(const type& val)                                       \
+    {                                                           \
+        name ## _ = val;                                        \
+        return *this;                                           \
+    }                                                           \
+                                                                \
+    type name ## _
 
-    bool useClusterCache() const
-    {
-        return useClusterCache_;
-    }
+    PARAM(bool, use_cluster_cache) = false;
 
-private:
-    bool useClusterCache_;
+#undef PARAM
 };
 
 // Z42: rename ExGTest to VolumeDriverTest

@@ -959,7 +959,13 @@ TEST_P(ErrorHandlingTest, DISABLED_fetchToFaultyMountPointFromFOC)
     fetcherTest(true);
 }
 
-static const VolumeDriverTestConfig a_config(false);
+namespace
+{
+
+const VolumeDriverTestConfig a_config =
+    VolumeDriverTestConfig().use_cluster_cache(false);
+
+}
 
 INSTANTIATE_TEST_CASE_P(ErrorHandlingTests,
                         ErrorHandlingTest,
