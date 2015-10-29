@@ -21,11 +21,9 @@ namespace volumedriver
 {
 
 using SCOProcessorFun = std::function<void(ClusterLocation,
-                       uint64_t /* lba */,
-                       const uint8_t* /* buf */,
-                       size_t /* bufsize */)>;
-
-#define SCOPROCESSORFUN(ttype, mmethod, inst) SCOProcessorFun(std::bind(&ttype::mmethod, inst, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4))
+                                           uint64_t /* lba */,
+                                           const uint8_t* /* buf */,
+                                           size_t /* bufsize */)>;
 
 } // namespace volumedriver
 
