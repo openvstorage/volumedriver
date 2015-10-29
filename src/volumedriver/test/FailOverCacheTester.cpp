@@ -16,8 +16,12 @@
 
 #include "../VolumeConfig.h"
 #include "../Api.h"
+#include "../FailOverCacheAsyncBridge.h"
+#include "../FailOverCacheSyncBridge.h"
 
 #include <stdlib.h>
+
+#include <future>
 
 namespace volumedriver
 {
@@ -662,6 +666,80 @@ TEST_P(FailOverCacheTester, DirectoryRemovedOnUnRegister)
 
     ASSERT_FALSE(fs::exists(foc_ns_path));
     ASSERT_FALSE(fs::is_directory(foc_ns_path));
+}
+
+// OVS-3430: a nasty race between flush and addEntries for the newData buffer
+TEST_P(FailOverCacheTester, adding_and_flushing)
+{
+    auto foc_ctx(start_one_foc());
+    auto wrns(make_random_namespace());
+
+    Volume* v = newVolume(*wrns);
+    v->setFailOverCacheConfig(foc_ctx->config());
+
+    FailOverCacheClientInterface& foc = *v->getFailOver();
+
+    std::atomic<bool> stop(false);
+    size_t flushes = 0;
+
+    auto future(std::async(std::launch::async,
+                           [&]
+                           {
+                               while (not stop)
+                               {
+                                   foc.Flush();
+                                   ++flushes;
+                                   boost::this_thread::sleep_for(boost::chrono::milliseconds(5));
+                               }
+                           }));
+
+    const size_t csize = v->getClusterSize();
+    std::vector<byte> buf(csize);
+    std::vector<ClusterLocation> locs(1);
+
+    const size_t max = (1ULL << 27) / buf.size();
+
+    for (size_t i = 1; i <= max; ++i)
+    {
+        *reinterpret_cast<size_t*>(buf.data()) = i;
+        locs[0] = ClusterLocation(i);
+
+        while (not foc.addEntries(locs,
+                                  locs.size(),
+                                  i,
+                                  buf.data()))
+        {
+            boost::this_thread::sleep_for(boost::chrono::milliseconds(5));
+        }
+    }
+
+    EXPECT_LT(0, flushes);
+
+    stop.store(true);
+
+    future.wait();
+
+    foc.Flush();
+
+    size_t count = 0;
+
+    for (size_t i = 1; i <= max; ++i)
+    {
+        foc.getSCOFromFailOver(SCO(i),
+                               [&](ClusterLocation loc,
+                                   uint64_t lba,
+                                   const uint8_t* buf,
+                                   size_t bufsize)
+                               {
+                                   ++count;
+                                   ASSERT_EQ(i, loc.sco().number());
+                                   ASSERT_EQ(i, lba);
+                                   ASSERT_EQ(i, *reinterpret_cast<const size_t*>(buf));
+                                   ASSERT_EQ(csize, bufsize);
+                               });
+    }
+
+    EXPECT_EQ(max, count);
 }
 
 // needs to be run as root, and messes with the iptables, so use with _extreme_

@@ -336,29 +336,28 @@ FailOverCacheAsyncBridge::Flush_()
 {
     if(cache_)
     {
+        fungi::ScopedLock l(newOnesMutex_);
+
+        LOG_DEBUG("oldOnes: " << oldOnes.size() << " ,newOnes: " << newOnes.size());
+
+        oldOnes.reserve(oldOnes.size() + newOnes.size());
+        for (auto&& v : newOnes)
         {
-            fungi::ScopedLock l(newOnesMutex_);
-            LOG_DEBUG("oldOnes: " << oldOnes.size() << " ,newOnes: " << newOnes.size());
-
-            oldOnes.reserve(oldOnes.size() + newOnes.size());
-            for (auto&& v : newOnes)
-            {
-                oldOnes.emplace_back(std::move(v));
-            }
-
-            newOnes.clear();
-            VERIFY(newOnes.empty());
+            oldOnes.emplace_back(std::move(v));
         }
+
+        newOnes.clear();
+
         try
         {
             cache_->addEntries(std::move(oldOnes));
+            oldOnes.clear();
             cache_->flush();
         }
-        // Z42: std::exception?
-        catch(fungi::IOException& e)
-        {
-            LOG_ERROR("IOException while flushing the failover cache, willbe retriggered in the run thread");
-        }
+        CATCH_STD_ALL_EWHAT({
+                LOG_ERROR(vol_->getName() << ": failed to flush: " << EWHAT);
+                vol_->setVolumeFailOverState(VolumeFailOverState::DEGRADED);
+            });
     }
 }
 
