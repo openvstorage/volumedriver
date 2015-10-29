@@ -22,35 +22,12 @@
 namespace volumedriver
 {
 
-namespace
-{
-
-struct CacheEntryProcessor
-{
-    CacheEntryProcessor()
-        : num_clusters_(0)
-    {}
-
-    void
-    processCluster(ClusterLocation /* loc */ ,
-                   uint64_t /* lba */,
-                   const byte* /* buf */,
-                   size_t /* size */)
-    {
-        num_clusters_++;
-    }
-
-    uint64_t num_clusters_;
-};
-
-}
-
 class FailOverCacheTester
     : public VolManagerTestSetup
 {
 public:
     FailOverCacheTester()
-        :VolManagerTestSetup("FailOverCacheTester")
+        : VolManagerTestSetup("FailOverCacheTester")
     {}
 
     template<typename B>
@@ -59,12 +36,16 @@ public:
     {
         // Otherwise we might clash with the FailOverCacheBridge's ping mechanism!
         fungi::ScopedLock g(bridge.mutex_);
-        CacheEntryProcessor proc;
-        bridge.cache_->getEntries(SCOPROCESSORFUN(CacheEntryProcessor,
-                                                  processCluster,
-                                                  &proc));
+        size_t num_clusters = 0;
+        bridge.cache_->getEntries([&](ClusterLocation,
+                                      uint64_t /* lba */,
+                                      const byte* /* buf */,
+                                      size_t /* size */)
+                                  {
+                                      ++num_clusters;
+                                  });
 
-        return proc.num_clusters_;
+        return num_clusters;
     }
 
     void
