@@ -256,43 +256,15 @@ FailOverCacheAsyncBridge::setThrottling(bool v)
     throttling = v;
 }
 
-bool
+void
 FailOverCacheAsyncBridge::addEntry(ClusterLocation loc,
                                    uint64_t lba,
                                    const uint8_t* buf,
                                    size_t bufsize)
 {
-    if (not stop_)
-    {
-    	setThrottling(newOnes.size() >= max_entries_);
-
-    	if(not throttling)
-    	{
-            uint8_t *ptr = newData.data() + (newOnes.size() * cluster_size_);
-            memcpy(ptr, buf, cluster_size_);
-            newOnes.emplace_back(loc, lba, ptr, cluster_size_);
-    	}
-
-    	if (newOnes.size() >= write_trigger_)
-    	{
-            //must be trylock otherwize risk for deadlock
-    	    if(mutex_.try_lock())
-            {
-                if (oldOnes.empty())
-                {
-                    std::swap(newOnes, oldOnes);
-                    std::swap(newData, oldData);
-                    condvar_.signal_no_lock();
-                }
-                mutex_.unlock();
-            }
-        }
-        return not throttling;
-    }
-    else
-    {
-        return true;
-    }
+    uint8_t* ptr = newData.data() + (newOnes.size() * cluster_size_);
+    memcpy(ptr, buf, cluster_size_);
+    newOnes.emplace_back(loc, lba, ptr, cluster_size_);
 }
 
 bool
@@ -302,6 +274,8 @@ FailOverCacheAsyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
                                      const uint8_t* data)
 {
     VERIFY(initial_max_entries_ == max_entries_);
+    VERIFY(num_locs <= max_entries_);
+
     fungi::ScopedLock l(newOnesMutex_);
 
     // Needs improvement!!!
@@ -309,20 +283,44 @@ FailOverCacheAsyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
     {
         return true;
     }
+
     // Just see if there is enough space for the whole batch
-    setThrottling(max_entries_ - newOnes.size() < locs.size());
-    if (throttling)
+    setThrottling(newOnes.size() + num_locs >= max_entries_);
+    if (not throttling)
     {
-        return false;
+        // Otherwise work the batch
+        for (size_t i = 0; i < num_locs; ++i)
+        {
+            addEntry(locs[i],
+                     start_address + i * cluster_multiplier_,
+                     data + i * cluster_size_,
+                     cluster_size_);
+        }
+
     }
-    // Otherwise work the batch
-    uint64_t lba = start_address;
-    for (size_t i = 0; i < num_locs; i++)
+
+    maybe_swap_();
+
+    return not throttling;
+}
+
+void
+FailOverCacheAsyncBridge::maybe_swap_()
+{
+    if (newOnes.size() >= write_trigger_)
     {
-        addEntry(locs[i], lba, data + i * cluster_size_, cluster_size_);
-        lba += cluster_multiplier_;
+        //must be trylock otherwize risk for deadlock
+        if(mutex_.try_lock())
+        {
+            if (oldOnes.empty())
+            {
+                std::swap(newOnes, oldOnes);
+                std::swap(newData, oldData);
+                condvar_.signal_no_lock();
+            }
+            mutex_.unlock();
+        }
     }
-    return true;
 }
 
 void FailOverCacheAsyncBridge::Flush()

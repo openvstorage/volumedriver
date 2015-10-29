@@ -96,14 +96,17 @@ public:
 private:
     DECLARE_LOGGER("FailOverCacheAsyncBridge");
 
-    bool
+    void
     addEntry(ClusterLocation loc,
-            uint64_t lba,
-            const uint8_t* buf,
-            size_t bufsize);
+             uint64_t lba,
+             const uint8_t* buf,
+             size_t bufsize);
 
     void
     setThrottling(bool v);
+
+    void
+    maybe_swap_();
 
     void
     initCache();
@@ -136,7 +139,6 @@ private:
     bool throttling;
 
     Volume* vol_ = { nullptr };
-
 };
 
 }
