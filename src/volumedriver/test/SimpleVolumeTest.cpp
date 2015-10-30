@@ -2556,6 +2556,61 @@ TEST_P(SimpleVolumeTest, sco_multiplier_updates)
                 "three");
 }
 
+TEST_P(SimpleVolumeTest, synchronous_foc)
+{
+    auto wrns(make_random_namespace());
+
+    Volume* v = newVolume(*wrns);
+
+    auto foc_ctx(start_one_foc());
+    FailOverCacheConfig foc_config(foc_ctx->config(FailOverCacheMode::Synchronous));
+
+    v->setFailOverCacheConfig(foc_config);
+
+    ASSERT_EQ(VolumeFailOverState::OK_SYNC,
+              v->getVolumeFailOverState());
+
+    const std::string s("a single cluster");
+    const size_t csize = v->getClusterSize();
+    writeToVolume(v,
+                  0,
+                  csize,
+                  s);
+
+    ASSERT_EQ(VolumeFailOverState::OK_SYNC,
+              v->getVolumeFailOverState());
+
+    FailOverCacheProxy proxy(foc_config,
+                             wrns->ns(),
+                             csize,
+                             10);
+
+    size_t count = 0;
+
+    proxy.getEntries([&](ClusterLocation loc,
+                         uint64_t lba,
+                         const byte* buf,
+                         size_t bufsize)
+                     {
+                         ++count;
+                         EXPECT_EQ(ClusterLocation(1),
+                                   loc);
+                         EXPECT_EQ(0,
+                                   lba);
+                         EXPECT_EQ(csize,
+                                   bufsize);
+
+                         for (size_t i = 0; i < csize; ++i)
+                         {
+                             EXPECT_EQ(s[i % s.size()],
+                                       buf[i]);
+                         }
+                     });
+
+    EXPECT_EQ(1,
+              count);
+}
+
 INSTANTIATE_TEST(SimpleVolumeTest);
 
 }
