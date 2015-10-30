@@ -129,7 +129,8 @@ private:
             if (t == CacheType::Remote)
             {
                 config_ = FailOverCacheConfig(h,
-                                              p);
+                                              p,
+                                              FailOverCacheMode::Asynchronous);
             }
             else
             {

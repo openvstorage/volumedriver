@@ -35,15 +35,6 @@ struct FailOverCacheConfig
     FailOverCacheMode mode;
 
     FailOverCacheConfig(const std::string& h,
-                        const uint16_t p)
-        : host(h)
-        , port(p)
-        , mode(FailOverCacheMode::Asynchronous)
-    {
-        TODO("ArneT: Investigate all callers of this constructor");
-    }
-
-    FailOverCacheConfig(const std::string& h,
                         const uint16_t p,
                         const FailOverCacheMode m)
         : host(h)
@@ -142,7 +133,8 @@ load_construct_data(Archive& /* ar */,
                     const unsigned /* version */)
 {
     new(config) volumedriver::FailOverCacheConfig("",
-                                                  0);
+                                                  0,
+                                                  volumedriver::FailOverCacheMode::Asynchronous);
 }
 
 }

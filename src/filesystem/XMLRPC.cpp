@@ -1751,7 +1751,9 @@ SetManualFailOverCacheConfig::execute_internal(::XmlRpc::XmlRpcValue& params,
         if (param.hasMember(XMLRPCKeys::foc_config))
         {
             std::stringstream ss(param[XMLRPCKeys::foc_config]);
-            vd::FailOverCacheConfig fc("", 0);
+            vd::FailOverCacheConfig fc("",
+                                       0,
+                                       vd::FailOverCacheMode::Asynchronous);
             boost::archive::text_iarchive ia(ss);
             ia >> fc;
             foc_config = fc;
