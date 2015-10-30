@@ -23,9 +23,6 @@ FailOverCacheTestMain::host_("127.0.0.1");
 uint16_t
 FailOverCacheTestMain::port_ = 23096;
 
-vd::FailOverCacheMode
-FailOverCacheTestMain::mode_(vd::FailOverCacheMode::Asynchronous);
-
 vd::FailOverCacheTransport
 FailOverCacheTestMain::transport_(vd::FailOverCacheTransport::TCP);
 
@@ -44,9 +41,6 @@ FailOverCacheTestMain::FailOverCacheTestMain(int argc,
         ("port",
          po::value<uint16_t>(&port_)->default_value(port_),
          "port of the failovercache server")
-        ("mode",
-         po::value<vd::FailOverCacheMode>(&mode_)->default_value(mode_),
-         "mode of the failovercache server (Asynchronous|Synchronous)")
         ("transport",
          po::value<vd::FailOverCacheTransport>(&transport_)->default_value(transport_),
          "transport type of the failovercache server (TCP|RSocket)")

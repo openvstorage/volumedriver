@@ -27,7 +27,6 @@ class FailOverCacheTestMain
     : public youtils::TestMainHelper
 {
 public:
-
     FailOverCacheTestMain(int argc,
                           char** argv);
 
@@ -46,7 +45,7 @@ public:
         using namespace std::literals::string_literals;
         return volumedriver::FailOverCacheConfig(host() ? *host() : "127.0.0.1"s,
                                                  port(),
-                                                 mode());
+                                                 volumedriver::FailOverCacheMode::Asynchronous);
     }
 
     static const boost::optional<std::string>
@@ -68,12 +67,6 @@ public:
         return port_;
     }
 
-    static volumedriver::FailOverCacheMode
-    mode()
-    {
-        return mode_;
-    }
-
     static volumedriver::FailOverCacheTransport
     transport()
     {
@@ -90,7 +83,6 @@ private:
     boost::program_options::options_description normal_options_;
     static std::string host_;
     static uint16_t port_;
-    static volumedriver::FailOverCacheMode mode_;
     static volumedriver::FailOverCacheTransport transport_;
     std::string ns_temp_;
 
