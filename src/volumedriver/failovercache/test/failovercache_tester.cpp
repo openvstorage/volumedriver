@@ -396,7 +396,7 @@ struct FailOverCacheOneProcessor
 
     ~FailOverCacheOneProcessor()
     {
-        EXPECT_TRUE(cluster_count_ == 0);
+        EXPECT_EQ(0, cluster_count_);
     }
 
     void
@@ -557,11 +557,13 @@ public:
                         clusters_in_sco = latestSCOOnFailOver.offset() + 1;
                     }
 
+                    FailOverCacheOneProcessor proc(FailOverCacheTestMain::ns().str(),
+                                                   cluster_size_,
+                                                   sconame,
+                                                   clusters_in_sco);
+
                     cache_.getSCOFromFailOver(sconame,
-                                              FailOverCacheOneProcessor(FailOverCacheTestMain::ns().str(),
-                                                                        cluster_size_,
-                                                                        sconame,
-                                                                        clusters_in_sco));
+                                              BIND_SCO_PROCESSOR(proc));
                 }
                 break;
             case 4:
