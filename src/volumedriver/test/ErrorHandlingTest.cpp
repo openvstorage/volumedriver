@@ -962,14 +962,19 @@ TEST_P(ErrorHandlingTest, DISABLED_fetchToFaultyMountPointFromFOC)
 namespace
 {
 
-const VolumeDriverTestConfig a_config =
+const VolumeDriverTestConfig no_cluster_cache_config =
     VolumeDriverTestConfig().use_cluster_cache(false);
 
+const VolumeDriverTestConfig sync_foc_config =
+    VolumeDriverTestConfig()
+    .use_cluster_cache(false)
+    .foc_mode(FailOverCacheMode::Synchronous);
 }
 
 INSTANTIATE_TEST_CASE_P(ErrorHandlingTests,
                         ErrorHandlingTest,
-                        ::testing::Values(a_config));
+                        ::testing::Values(no_cluster_cache_config,
+                                          sync_foc_config));
 }
 
 // Local Variables: **

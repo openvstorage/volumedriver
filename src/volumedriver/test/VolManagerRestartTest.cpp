@@ -1765,7 +1765,23 @@ TEST_P(VolManagerRestartTest, plain_backend_restart)
     checkVolume(v, pattern, 4096);
 }
 
-INSTANTIATE_TEST(VolManagerRestartTest);
+namespace
+{
+
+const VolumeDriverTestConfig cluster_cache_config =
+    VolumeDriverTestConfig().use_cluster_cache(true);
+
+const VolumeDriverTestConfig sync_foc_config =
+    VolumeDriverTestConfig()
+    .use_cluster_cache(true)
+    .foc_mode(FailOverCacheMode::Synchronous);
+
+}
+
+INSTANTIATE_TEST_CASE_P(VolManagerRestartTests,
+                        VolManagerRestartTest,
+                        ::testing::Values(cluster_cache_config,
+                                          sync_foc_config));
 
 }
 

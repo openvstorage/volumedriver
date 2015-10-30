@@ -641,8 +641,23 @@ TEST_P(VolumeStateManagementTest, events)
              events::DTLState::Standalone);
 }
 
-INSTANTIATE_TEST(VolumeStateManagementTest);
+namespace
+{
 
+const VolumeDriverTestConfig cluster_cache_config =
+    VolumeDriverTestConfig().use_cluster_cache(true);
+
+const VolumeDriverTestConfig sync_foc_config =
+    VolumeDriverTestConfig()
+    .use_cluster_cache(true)
+    .foc_mode(FailOverCacheMode::Synchronous);
+
+}
+
+INSTANTIATE_TEST_CASE_P(VolumeStateManagementTests,
+                        VolumeStateManagementTest,
+                        ::testing::Values(cluster_cache_config,
+                                          sync_foc_config));
 }
 
 // Local Variables: **

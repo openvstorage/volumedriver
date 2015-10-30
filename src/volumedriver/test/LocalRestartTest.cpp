@@ -3084,7 +3084,23 @@ TEST_P(LocalRestartTest, fall_back_to_backend_restart)
                  FallBackToBackendRestart::T);
 }
 
-INSTANTIATE_TEST(LocalRestartTest);
+namespace
+{
+
+const VolumeDriverTestConfig cluster_cache_config =
+    VolumeDriverTestConfig().use_cluster_cache(true);
+
+const VolumeDriverTestConfig sync_foc_config =
+    VolumeDriverTestConfig()
+    .use_cluster_cache(true)
+    .foc_mode(FailOverCacheMode::Synchronous);
+
+}
+
+INSTANTIATE_TEST_CASE_P(LocalRestartTests,
+                        LocalRestartTest,
+                        ::testing::Values(cluster_cache_config,
+                                          sync_foc_config));
 
 }
 
