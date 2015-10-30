@@ -15,6 +15,8 @@
 #ifndef EXGTEST_H_
 #define EXGTEST_H_
 
+#include "../FailOverCacheMode.h"
+
 #include <stdexcept>
 
 #include <boost/filesystem.hpp>
@@ -50,6 +52,7 @@ struct VolumeDriverTestConfig
     type name ## _
 
     PARAM(bool, use_cluster_cache) = false;
+    PARAM(FailOverCacheMode, foc_mode) = FailOverCacheMode::Asynchronous;
 
 #undef PARAM
 };

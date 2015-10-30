@@ -78,7 +78,8 @@ TEST_P(cases, DISABLED_cacheserver1)
                            backend::Namespace());
 
     v1->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
-                                             FailOverCacheTestSetup::port_base()));
+                                                   FailOverCacheTestSetup::port_base(),
+                                                   GetParam().foc_mode()));
 
     ASSERT_TRUE(v1);
     LOG_INFO("Volume v1 Size: " << v1->getSize() / ((1024.0) * (1024.0)) << "MiB");
@@ -100,7 +101,8 @@ TEST_P(cases, DISABLED_cacheserver1)
     ASSERT_TRUE(v2);
 
     v2->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
-                                             45017));
+                                                   45017,
+                                                   GetParam().foc_mode()));
 
     const VolumeConfig cfg(v2->get_config());
     for(unsigned i = 0; i < num_writes; i++)
@@ -109,7 +111,6 @@ TEST_P(cases, DISABLED_cacheserver1)
         {
             writeToVolume(v2, i*distance, sizew, "Y");
         }
-
     }
     createSnapshot(v2,"snap1");
     while(not v2->isSyncedToBackend())
@@ -337,7 +338,7 @@ TEST_P(cases, DISABLED_restartALittle) // Ev'ry time you go away, I ...
 
     auto foc_ctx(start_one_foc());
 
-    v1->setFailOverCacheConfig(foc_ctx->config());
+    v1->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     writeToVolume(v1,0,4096*2048, t);
     const VolumeConfig vCfg(v1->get_config());
@@ -354,7 +355,7 @@ TEST_P(cases, DISABLED_restartALittle) // Ev'ry time you go away, I ...
                        backend::Namespace());
 
         ASSERT_TRUE(v1);
-        v1->setFailOverCacheConfig(foc_ctx->config());
+        v1->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
         checkVolume(v1,0,4096*2048,t);
 

@@ -64,11 +64,11 @@ FailOverCacheTestContext::~FailOverCacheTestContext()
 }
 
 vd::FailOverCacheConfig
-FailOverCacheTestContext::config() const
+FailOverCacheTestContext::config(const vd::FailOverCacheMode mode) const
 {
     return vd::FailOverCacheConfig(FailOverCacheTestSetup::host(),
                                    port(),
-                                   FailOverCacheTestSetup::mode());
+                                   mode);
 }
 
 std::string

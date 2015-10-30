@@ -62,7 +62,8 @@ TEST_P(VolumeStateManagementTest, NoCache)
     Volume* v = newVolume("vol1",
 			  ns1);
     ASSERT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
-                                                         FailOverCacheTestSetup::port_base())),
+                                                               FailOverCacheTestSetup::port_base(),
+                                                               GetParam().foc_mode())),
                  fungi::IOException);
 
     ASSERT_EQ(VolumeFailOverState::DEGRADED,
@@ -98,7 +99,7 @@ TEST_P(VolumeStateManagementTest, test2)
     {
         auto foc_ctx(start_one_foc());
 
-        v->setFailOverCacheConfig(foc_ctx->config());
+        v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
         ASSERT_EQ(VolumeFailOverState::OK_SYNC,
                   v->getVolumeFailOverState());
@@ -144,14 +145,16 @@ TEST_P(VolumeStateManagementTest, CreateVolumeWithRemoteCache)
 			  ns1);
 
     ASSERT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
-                                                         FailOverCacheTestSetup::port_base())),
+                                                               FailOverCacheTestSetup::port_base(),
+                                                               GetParam().foc_mode())),
                  fungi::IOException);
 
     EXPECT_EQ(VolumeFailOverState::DEGRADED,
               v->getVolumeFailOverState());
 
     ASSERT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
-                                                         FailOverCacheTestSetup::port_base())),
+                                                               FailOverCacheTestSetup::port_base(),
+                                                               GetParam().foc_mode())),
                  fungi::IOException);
 
     EXPECT_EQ(VolumeFailOverState::DEGRADED,
@@ -163,7 +166,8 @@ TEST_P(VolumeStateManagementTest, CreateVolumeWithRemoteCache)
               v->getVolumeFailOverState());
 
     ASSERT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
-                                                         FailOverCacheTestSetup::port_base())),
+                                                               FailOverCacheTestSetup::port_base(),
+                                                               GetParam().foc_mode())),
                  fungi::IOException);
 
     EXPECT_EQ(VolumeFailOverState::DEGRADED,
@@ -176,7 +180,7 @@ TEST_P(VolumeStateManagementTest, CreateVolumeWithRemoteCache)
             SCOPED_BLOCK_BACKEND(v);
 
             writeToVolume(v,0,4096,"bart");
-            EXPECT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config()));
+            EXPECT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
             EXPECT_EQ(VolumeFailOverState::KETCHUP,
                       v->getVolumeFailOverState());
         }
@@ -207,7 +211,8 @@ TEST_P(VolumeStateManagementTest, CreateVolumeStandalone)
     EXPECT_EQ(VolumeFailOverState::OK_STANDALONE,
               v->getVolumeFailOverState());
     EXPECT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
-                                                         FailOverCacheTestSetup::port_base())),
+                                                               FailOverCacheTestSetup::port_base(),
+                                                               GetParam().foc_mode())),
                  fungi::IOException);
 
     EXPECT_EQ(VolumeFailOverState::DEGRADED,
@@ -223,7 +228,7 @@ TEST_P(VolumeStateManagementTest, CreateVolumeStandalone)
         {
             SCOPED_BLOCK_BACKEND(v);
 
-            EXPECT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config()));
+            EXPECT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
             EXPECT_EQ(VolumeFailOverState::OK_SYNC,
                       v->getVolumeFailOverState());
         }
@@ -280,7 +285,7 @@ TEST_P(VolumeStateManagementTest, CreateVolumeWithFailoverLocalRestart)
     EXPECT_EQ(VolumeFailOverState::OK_STANDALONE,
               v->getVolumeFailOverState());
 
-    ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config()));
+    ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
 
     writeToVolume (v, 0, 4096, "bart");
     EXPECT_EQ(VolumeFailOverState::OK_SYNC,
@@ -312,7 +317,7 @@ TEST_P(VolumeStateManagementTest, CreateVolumeWithFailoverLocalRestart2)
     {
         auto foc_ctx(start_one_foc());
 
-        ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config()));
+        ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
 
         writeToVolume (v, 0, 4096, "bart");
         EXPECT_EQ(VolumeFailOverState::OK_SYNC,
@@ -370,7 +375,7 @@ TEST_P(VolumeStateManagementTest, CreateVolumeStandaloneLocalRestartWithFailOver
         SCOPED_BLOCK_BACKEND(v);
 
         ASSERT_NO_THROW(v = localRestart(ns1));
-        v->setFailOverCacheConfig(foc_ctx->config());
+        v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
         checkVolume(v,0,4096, "bart");
     }
@@ -403,7 +408,7 @@ TEST_P(VolumeStateManagementTest, CreateVolumeStandaloneLocalRestartWithFailOver
         SCOPED_BLOCK_BACKEND(v);
 
         ASSERT_NO_THROW(v = localRestart(ns1));
-        v->setFailOverCacheConfig(foc_ctx->config());
+        v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
         EXPECT_EQ(VolumeFailOverState::OK_SYNC,
                   v->getVolumeFailOverState());
@@ -432,7 +437,8 @@ TEST_P(VolumeStateManagementTest, CreateVolumeStandaloneLocalRestartWithFailOver
     ASSERT_NO_THROW(v = localRestart(ns1));
 
     ASSERT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
-                                                         FailOverCacheTestSetup::port_base())),
+                                                               FailOverCacheTestSetup::port_base(),
+                                                               GetParam().foc_mode())),
                  fungi::IOException);
 
     EXPECT_EQ(VolumeFailOverState::DEGRADED,
@@ -453,7 +459,8 @@ TEST_P(VolumeStateManagementTest, CreateVolumeNonLocalRestart1)
 			  ns1);
 
     ASSERT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
-                                                         FailOverCacheTestSetup::port_base())),
+                                                               FailOverCacheTestSetup::port_base(),
+                                                               GetParam().foc_mode())),
                  fungi::IOException);
 
     EXPECT_EQ(VolumeFailOverState::DEGRADED,
@@ -494,7 +501,7 @@ TEST_P(VolumeStateManagementTest, CreateVolumeNonLocalRestart2)
 
     {
         auto foc_ctx(start_one_foc());
-        v->setFailOverCacheConfig(foc_ctx->config());
+        v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
         EXPECT_EQ(VolumeFailOverState::OK_SYNC,
                   v->getVolumeFailOverState());
@@ -530,7 +537,7 @@ TEST_P(VolumeStateManagementTest, CreateVolumeNonLocalRestart3)
 			  ns1);
 
     auto foc_ctx(start_one_foc());
-    v->setFailOverCacheConfig(foc_ctx->config());
+    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     EXPECT_EQ(VolumeFailOverState::OK_SYNC,
               v->getVolumeFailOverState());
@@ -596,7 +603,7 @@ TEST_P(VolumeStateManagementTest, events)
 
     {
         auto foc_ctx(start_one_foc());
-        v->setFailOverCacheConfig(foc_ctx->config());
+        v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
         ASSERT_EQ(2U,
                   event_collector_->size());

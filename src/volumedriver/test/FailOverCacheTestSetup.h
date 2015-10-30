@@ -77,7 +77,7 @@ public:
     }
 
     volumedriver::FailOverCacheConfig
-    config() const;
+    config(const volumedriver::FailOverCacheMode) const;
 };
 
 typedef std::shared_ptr<FailOverCacheTestContext> foctest_context_ptr;

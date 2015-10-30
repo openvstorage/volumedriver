@@ -226,7 +226,7 @@ public:
 
         if (focmode != FOCMode::None)
         {
-            ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config()));
+            ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
         }
 
         const uint64_t cluster_size = v->getClusterSize();
@@ -605,7 +605,7 @@ TEST_P(LocalRestartTest, RestartWithFOC)
 
     Volume* v = newVolume("vol1",
                           ns);
-    ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config()));
+    ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
 
     writeToVolume(v,0,v->getClusterSize(), "bart");
     destroyVolume(v,
@@ -993,7 +993,7 @@ TEST_P(LocalRestartTest, RestartWithFOCAndRemovedSCO)
 
     Volume* v = newVolume("vol1",
                           ns);
-    ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config()));
+    ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
 
     const uint64_t cluster_size = v->getClusterSize();
     MetaDataStoreStats mds1;
@@ -1112,7 +1112,7 @@ TEST_P(LocalRestartTest, RestartWithFuckedUpFOCAndTruncatedSCO)
     {
         auto foc_ctx(start_one_foc());
 
-        ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config()));
+        ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
 
         {
             SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v, 2,
@@ -1329,7 +1329,7 @@ TEST_P(LocalRestartTest, WithFOCAndTruncatedSCO)
 
     Volume* v = newVolume("vol1",
                           ns);
-    ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config()));
+    ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
 
     const uint64_t cluster_size = v->getClusterSize();
 
@@ -1451,7 +1451,7 @@ TEST_P(LocalRestartTest, RestartWithFOCAndRemovedSCO2)
 
     Volume* v = newVolume("vol1",
                           ns);
-    ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config()));
+    ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
 
     const uint64_t cluster_size = v->getClusterSize();
 
@@ -1514,7 +1514,7 @@ TEST_P(LocalRestartTest, RestartWithFOCAndFuckedUpSCO)
 
     Volume* v = newVolume("vol1",
                           ns);
-    ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config()));
+    ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
 
     const uint64_t cluster_size = v->getClusterSize();
 
@@ -1723,7 +1723,7 @@ TEST_P(LocalRestartTest, SetFailOVerPutsSCOCRCInTLog)
 
     const uint64_t cluster_size = v->getClusterSize();
     writeToVolume(v,0, cluster_size, "immanuel");
-    ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config()));
+    ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
 
     writeToVolume(v,0, cluster_size, "bart");
     v->createSnapshot("snap1");
@@ -1758,7 +1758,7 @@ TEST_P(LocalRestartTest, FailOverRestartPutsSCOCRCInTLog)
                           ns);
 
     VolumeConfig cfg = v->get_config();
-    ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config()));
+    ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
 
     const uint64_t cluster_size = v->getClusterSize();
     uint64_t clusters   = VolManager::get()->number_of_scos_in_tlog.value() *  v->getSCOMultiplier();
@@ -2088,7 +2088,7 @@ TEST_P(LocalRestartTest, RestartWithFOCAndFuckedUpSCO2)
 
     Volume* v = newVolume("vol1",
                           ns);
-    ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config()));
+    ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
 
     const uint64_t cluster_size = v->getClusterSize();
     MetaDataStoreStats mds1;
@@ -2217,7 +2217,7 @@ TEST_P(LocalRestartTest, RestartWithFOCAndOfflinedMountPoint)
 
     Volume* v = newVolume("vol1",
                           ns);
-    ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config()));
+    ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
 
     const uint64_t cluster_size = v->getClusterSize();
 

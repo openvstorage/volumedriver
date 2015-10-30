@@ -180,7 +180,7 @@ public:
     startFOC()
     {
         foc_ctx_ = start_one_foc();
-        vol_->setFailOverCacheConfig(foc_ctx_->config());
+        vol_->setFailOverCacheConfig(foc_ctx_->config(GetParam().foc_mode()));
     }
 
     void
@@ -580,7 +580,7 @@ public:
         ASSERT_THROW(vol_->setFailOverCacheConfig(boost::none),
                      std::exception);
 
-        ASSERT_THROW(vol_->setFailOverCacheConfig(foc_ctx_->config()),
+        ASSERT_THROW(vol_->setFailOverCacheConfig(foc_ctx_->config(GetParam().foc_mode())),
                      std::exception);
 
         // this one's fishy, since there's no proof that it throws because it's halted

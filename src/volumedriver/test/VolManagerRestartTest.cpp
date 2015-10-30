@@ -379,7 +379,7 @@ TEST_P(VolManagerRestartTest, RestoreSnapWith)
                           ns);
     VolumeConfig cfg = v->get_config();
 
-    v->setFailOverCacheConfig(foc_ctx->config());
+    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     writeToVolume(v, 0, 4096, "Immanuel");
     createSnapshot(v,"snap1");
@@ -390,7 +390,7 @@ TEST_P(VolManagerRestartTest, RestoreSnapWith)
 
     v->restoreSnapshot("snap1");
 
-    v->setFailOverCacheConfig(foc_ctx->config());
+    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
     v->scheduleBackendSync();
 
     while(not isVolumeSyncedToBackend(v))
@@ -1114,7 +1114,7 @@ TEST_P(VolManagerRestartTest, failovercache0)
                           ns);
     ASSERT_TRUE(v);
 
-    v->setFailOverCacheConfig(foc_ctx->config());
+    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     VolumeConfig cfg = v->get_config();
     writeToVolume(v,
@@ -1137,7 +1137,7 @@ TEST_P(VolManagerRestartTest, failovercache1)
 			  ns);
 
     ASSERT_TRUE(v);
-    ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config()));
+    ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
 
     VolumeConfig cfg = v->get_config();
     writeToVolume(v,
@@ -1186,7 +1186,7 @@ TEST_P(VolManagerRestartTest, failovercache2)
 			  ns);
     ASSERT_TRUE(v);
 
-    v->setFailOverCacheConfig(foc_ctx->config());
+    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     VolumeConfig cfg = v->get_config();
     writeToVolume(v,
@@ -1245,7 +1245,7 @@ TEST_P(VolManagerRestartTest, failovercache3)
 			  ns);
 
     ASSERT_TRUE(v);
-    v->setFailOverCacheConfig(foc_ctx->config());
+    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     VolumeConfig cfg = v->get_config();
         writeToVolume(v,
@@ -1295,7 +1295,7 @@ TEST_P(VolManagerRestartTest, failovercache4)
 			  ns);
     ASSERT_TRUE(v);
 
-    v->setFailOverCacheConfig(foc_ctx->config());
+    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     VolumeConfig cfg = v->get_config();
         writeToVolume(v,
@@ -1359,7 +1359,7 @@ TEST_P(VolManagerRestartTest, failovercache5)
 			  ns);
     ASSERT_TRUE(v);
 
-    v->setFailOverCacheConfig(foc_ctx->config());
+    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     VolumeConfig cfg = v->get_config();
     writeToVolume(v,
@@ -1382,7 +1382,7 @@ TEST_P(VolManagerRestartTest, failovercache5)
 
     restartVolume(cfg);
     v1 = getVolume(VolumeId("volume1"));
-    v1->setFailOverCacheConfig(foc_ctx->config());
+    v1->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
     waitForThisBackendWrite(v1);
 
     ASSERT_TRUE(v1);
@@ -1416,7 +1416,7 @@ TEST_P(VolManagerRestartTest, focReplayAcrossTLogs)
 			  ns);
 
     ASSERT_TRUE(v);
-    ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config()));
+    ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
 
     VolumeConfig cfg = v->get_config();
     writeToVolume(v,
@@ -1489,7 +1489,7 @@ TEST_P(VolManagerRestartTest, partialsnapshots)
 
     ASSERT_TRUE(v);
 
-    v->setFailOverCacheConfig(foc_ctx->config());
+    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     VolumeConfig cfg = v->get_config();
     writeToVolume(v,
@@ -1566,7 +1566,7 @@ TEST_P(VolManagerRestartTest, datastoreOverwrite)
 			  ns);
     ASSERT_TRUE(v);
 
-    v->setFailOverCacheConfig(foc_ctx->config());
+    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     VolumeConfig cfg = v->get_config();
     for(int i=0;i<64;i++)

@@ -521,7 +521,7 @@ TEST_P(ApiTest, failOverCacheConfig)
     {
         fungi::ScopedLock l(api::getManagementMutex());
         api::setFailOverCacheConfig(vol_id,
-                                    foc_ctx->config());
+                                    foc_ctx->config(GetParam().foc_mode()));
 
         const boost::optional<FailOverCacheConfig>& foc_cfg =
             api::getFailOverCacheConfig(vol_id);
@@ -529,7 +529,7 @@ TEST_P(ApiTest, failOverCacheConfig)
         ASSERT_NE(boost::none,
                   foc_cfg);
 
-        EXPECT_EQ(foc_ctx->config(),
+        EXPECT_EQ(foc_ctx->config(GetParam().foc_mode()),
                   *foc_cfg);
     }
 }
@@ -790,7 +790,7 @@ TEST_P(ApiTest, destroyVolumeVariants)
         auto foc_ctx(start_one_foc());
 
         setFailOverCacheConfig(volid,
-                               foc_ctx->config());
+                               foc_ctx->config(GetParam().foc_mode()));
 
         const fs::path foc_ns_path = foc_ctx->path() / nsid.str();
 
