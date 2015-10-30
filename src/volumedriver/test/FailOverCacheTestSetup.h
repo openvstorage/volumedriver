@@ -121,12 +121,6 @@ public:
         return transport_;
     }
 
-    static volumedriver::FailOverCacheMode
-    mode()
-    {
-        return mode_;
-    }
-
     const boost::filesystem::path path;
 
 private:
@@ -135,7 +129,6 @@ private:
     static std::string addr_;
     static uint16_t port_base_;
     static volumedriver::FailOverCacheTransport transport_;
-    static volumedriver::FailOverCacheMode mode_;
 
     typedef std::set<uint16_t> set_type;
     set_type ports_;
