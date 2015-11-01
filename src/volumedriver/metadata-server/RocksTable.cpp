@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -55,33 +55,17 @@ item_to_slice(const T& t)
                       t.size);
 }
 
-rdb::ReadOptions
-make_read_options()
-{
-    rdb::ReadOptions opts;
-    opts.verify_checksums = false;
-    return opts;
-}
-
-rdb::WriteOptions
-make_write_options()
-{
-    rdb::WriteOptions opts;
-    opts.disableWAL = true;
-    opts.sync = false;
-    return opts;
-}
-
-const rdb::ReadOptions read_options(make_read_options());
-const rdb::WriteOptions write_options(make_write_options());
-
 }
 
 RocksTable::RocksTable(const std::string& nspace,
                        std::shared_ptr<rdb::DB>& db,
-                       std::unique_ptr<rdb::ColumnFamilyHandle> column_family)
+                       std::unique_ptr<rdb::ColumnFamilyHandle> column_family,
+                       const RocksConfig& rocks_config)
     : db_(db)
     , column_family_(std::move(column_family))
+    , column_family_options_(rocks_config.column_family_options())
+    , read_options_(rocks_config.read_options())
+    , write_options_(rocks_config.write_options())
     , nspace_(nspace)
 {
     LOG_INFO(nspace_ << ": creating table");
@@ -127,7 +111,7 @@ RocksTable::multiset(const TableInterface::Records& records,
                           column_family_.get()));
     }
 
-    HANDLE(db_->Write(write_options,
+    HANDLE(db_->Write(write_options_,
                       &batch));
 }
 
@@ -150,7 +134,7 @@ RocksTable::multiget(const TableInterface::Keys& keys)
     const std::vector<rdb::ColumnFamilyHandle*> handles(keys.size(),
                                                         column_family_.get());
 
-    const std::vector<rdb::Status> statv(db_->MultiGet(read_options,
+    const std::vector<rdb::Status> statv(db_->MultiGet(read_options_,
                                                        handles,
                                                        keyv,
                                                        &valv));
@@ -195,12 +179,6 @@ RocksTable::clear()
     // ColumnFamilyHandle.
     LOCKW();
 
-    // getting the options from the old handle leads to a use-after-free when re-creating
-    // the column family. Creating new opts from scratch avoids that, but this duplicates
-    // code from RocksDataBase.
-    const rdb::ColumnFamilyOptions opts(// db_->GetOptions(column_family_.get())
-                                        RocksDataBase::column_family_options());
-
     HANDLE(db_->DropColumnFamily(column_family_.get()));
 
     // Rather take down the thing by dereferencing a nullptr than continuing with the
@@ -210,7 +188,7 @@ RocksTable::clear()
 
     rdb::ColumnFamilyHandle* h;
 
-    HANDLE(db_->CreateColumnFamily(opts,
+    HANDLE(db_->CreateColumnFamily(column_family_options_,
                                    nspace_,
                                    &h));
 

@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,6 +34,9 @@
 #include <youtils/TestBase.h>
 #include <youtils/System.h>
 
+namespace failovercachetest
+{
+
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 namespace yt = youtils;
@@ -41,8 +44,8 @@ namespace yt = youtils;
 using namespace volumedriver;
 using namespace std::literals::string_literals;
 
-namespace failovercachetest
-{
+#define BIND_SCO_PROCESSOR(proc) \
+    SCOProcessorFun(boost::bind(&decltype(proc)::operator(), &proc, _1, _2, _3, _4))
 
 class FailOverCacheEntryFactory
 {
@@ -55,7 +58,7 @@ public:
           cluster_loc(startLocation)
     {}
 
-    FailOverCacheEntry*
+    FailOverCacheEntry
     operator()(ClusterLocation& next_location,
                const std::string& content = "")
     {
@@ -71,10 +74,10 @@ public:
             }
         }
 
-        FailOverCacheEntry* ret = new FailOverCacheEntry(cluster_loc,
-                                                         0,
-                                                         b,
-                                                         cluster_size_);
+        FailOverCacheEntry ret(cluster_loc,
+                               0,
+                               b,
+                               cluster_size_);
         SCOOffset a = cluster_loc.offset();
 
         if(a  >= num_clusters_ -1)
@@ -102,7 +105,7 @@ class FailOverCacheEntryProcessor
 public:
     FailOverCacheEntryProcessor(const std::string& content,
                                 const ClusterSize cluster_size)
-        :sco_count(0)
+        : sco_count(0)
         , cluster_count(0)
         , content_(content)
         , prev_sconame(0)
@@ -112,9 +115,8 @@ public:
     void
     operator()(ClusterLocation cl,
                uint64_t lba,
-               byte* buf,
-               int32_t size)
-
+               const byte* buf,
+               size_t size)
     {
         LOG_TRACE("Got cli " << cl
                   << ", lba " << lba
@@ -128,7 +130,7 @@ public:
         }
         EXPECT_TRUE((uint32_t)size == cluster_size_);
 
-        for(int32_t i = 0; i < size; ++i)
+        for(uint32_t i = 0; i < size; ++i)
         {
             size_t mysize = content_.length();
             ASSERT_TRUE(buf[i] == content_[i%mysize]);
@@ -186,20 +188,26 @@ TEST_F(FailOverCacheTest, PutRetrieve)
     ClusterLocation next_location(1);
     for(uint32_t i = 0; i < num_scos_to_produce; ++i)
     {
-        boost::ptr_vector<FailOverCacheEntry> vec;
+        std::vector<FailOverCacheEntry> vec;
         for(uint32_t k = 0; k < num_clusters_per_sco; ++k)
         {
-            vec.push_back(factory(next_location,
-                                  "bart"));
+            vec.emplace_back(factory(next_location,
+                                     "bart"));
         }
         cache.addEntries(vec);
+        auto end = vec.end();
+        for (auto it = vec.begin(); it != end; it++)
+        {
+            delete[] it->buffer_;
+        }
     }
 
     for(int i = 0; i < 8; ++i)
     {
         FailOverCacheEntryProcessor processor("bart",
                                               cluster_size);
-        cache.getEntries(processor);
+        cache.getEntries(BIND_SCO_PROCESSOR(processor));
+
         EXPECT_EQ(processor.sco_count, num_scos_to_produce);
         EXPECT_EQ(processor.cluster_count, num_clusters_per_sco * num_scos_to_produce);
     }
@@ -207,7 +215,7 @@ TEST_F(FailOverCacheTest, PutRetrieve)
     cache.clear();
     FailOverCacheEntryProcessor processor("bart",
                                           cluster_size);
-    cache.getEntries(processor);
+    cache.getEntries(BIND_SCO_PROCESSOR(processor));
     EXPECT_EQ(processor.sco_count, 0);
     EXPECT_EQ(processor.cluster_count, 0);
 }
@@ -237,7 +245,7 @@ TEST_F(FailOverCacheTest, GetSCORange)
     EXPECT_EQ(youngest,SCO(0));
     while(not stopping)
     {
-        boost::ptr_vector<FailOverCacheEntry> vec;
+        std::vector<FailOverCacheEntry> vec;
         for(uint32_t l = 0; l < num_clusters_per_vector; ++l)
         {
             SCONumber next_sco_number = next_location.number();
@@ -250,16 +258,21 @@ TEST_F(FailOverCacheTest, GetSCORange)
 
             if(next_sco_number == 4)
             {
-                vec.push_back(factory(next_location,
-                                      "arne"));
+                vec.emplace_back(factory(next_location,
+                                         "arne"));
             }
             else
             {
-                vec.push_back(factory(next_location,
-                                      "bart"));
+                vec.emplace_back(factory(next_location,
+                                         "bart"));
             }
         }
         cache.addEntries(vec);
+        auto end = vec.end();
+        for (auto it = vec.begin(); it != end; it++)
+        {
+            delete[] it->buffer_;
+        }
     }
 
     cache.getSCORange(oldest, youngest);
@@ -299,7 +312,7 @@ TEST_F(FailOverCacheTest, GetOneSCO)
     bool stopping = false;
     while(not stopping)
     {
-        boost::ptr_vector<FailOverCacheEntry> vec;
+        std::vector<FailOverCacheEntry> vec;
         for(uint32_t l = 0; l < num_clusters_per_vector; ++l)
         {
             SCONumber next_sco_number = next_location.number();
@@ -312,16 +325,21 @@ TEST_F(FailOverCacheTest, GetOneSCO)
 
             if(next_sco_number == 4)
             {
-                vec.push_back(factory(next_location,
-                                      "arne"));
+                vec.emplace_back(factory(next_location,
+                                         "arne"));
             }
             else
             {
-                vec.push_back(factory(next_location,
-                                      "bart"));
+                vec.emplace_back(factory(next_location,
+                                         "bart"));
             }
         }
         cache.addEntries(vec);
+        auto end = vec.end();
+        for (auto it = vec.begin(); it != end; it++)
+        {
+            delete[] it->buffer_;
+        }
     }
 
     {
@@ -329,7 +347,7 @@ TEST_F(FailOverCacheTest, GetOneSCO)
                                               cluster_size);
 
         cache.getSCOFromFailOver(ClusterLocation(4).sco(),
-                                 processor);
+                                 BIND_SCO_PROCESSOR(processor));
         EXPECT_EQ(processor.sco_count, 1);
         EXPECT_EQ(processor.cluster_count, num_clusters_per_sco);
     }
@@ -339,7 +357,7 @@ TEST_F(FailOverCacheTest, GetOneSCO)
                                               cluster_size);
 
         cache.getSCOFromFailOver(ClusterLocation(7).sco(),
-                                 processor);
+                                 BIND_SCO_PROCESSOR(processor));
         EXPECT_EQ(processor.sco_count, 1);
         EXPECT_EQ(processor.cluster_count, num_clusters_per_sco);
     }
@@ -347,7 +365,7 @@ TEST_F(FailOverCacheTest, GetOneSCO)
     cache.clear();
     FailOverCacheEntryProcessor processor("bart",
                                           cluster_size);
-    cache.getEntries(processor);
+    cache.getEntries(BIND_SCO_PROCESSOR(processor));
     EXPECT_EQ(processor.sco_count, 0);
     EXPECT_EQ(processor.cluster_count, 0);
 }
@@ -362,14 +380,13 @@ TEST_F(FailOverCacheTest, DISABLED_DoubleRegister)
                8);
 }
 
-class FailOverCacheOneProcessor
+struct FailOverCacheOneProcessor
 {
-public:
     FailOverCacheOneProcessor(const std::string& content,
                               const ClusterSize cluster_size,
                               const SCO sconame,
                               const uint64_t cluster_count)
-        :sco_count(0)
+        : sco_count(0)
         , cluster_num_(cluster_count)
         , content_(content)
         , sconame_(sconame)
@@ -379,14 +396,14 @@ public:
 
     ~FailOverCacheOneProcessor()
     {
-        EXPECT_TRUE(cluster_count_ == 0);
+        EXPECT_EQ(0, cluster_count_);
     }
 
     void
     operator()(ClusterLocation cl,
                uint64_t lba,
-               byte* buf,
-               int32_t size)
+               const byte* buf,
+               size_t size)
     {
         LOG_TRACE("Got cli " << cl
                   << ", lba " << lba
@@ -398,16 +415,16 @@ public:
         ASSERT_TRUE(sconame_ == sconame);
         ASSERT_TRUE((uint32_t)size == cluster_size_);
 
-        for(int32_t i = 0; i < size; ++i)
+        for(uint32_t i = 0; i < size; ++i)
         {
             size_t size = content_.length();
             ASSERT_TRUE(buf[i] == content_[i%size]);
         }
     }
-    DECLARE_LOGGER("FailOverCacheProcessor");
+
+    DECLARE_LOGGER("FailOverCacheOneProcessor");
     unsigned sco_count;
     const uint32_t cluster_num_;
-
     const std::string content_;
     SCO sconame_ ;
     const ClusterSize cluster_size_;
@@ -449,7 +466,7 @@ public:
         {
             LOG_NOTIFY("run " << i << " of " << test_size_ << " for " << content_);
 
-            boost::ptr_vector<FailOverCacheEntry> vec;
+            std::vector<FailOverCacheEntry> vec;
             latestSCOOnFailOver = next_location_;
             // Fill her up
             for(uint32_t l = 0; l < num_clusters_per_vector_; ++l)
@@ -459,11 +476,16 @@ public:
                 {
                     latestSCOOnFailOver = next_location_;
                 }
-                vec.push_back(factory_(next_location_,
-                                       FailOverCacheTestMain::ns().str()));
+                vec.emplace_back(factory_(next_location_,
+                                          FailOverCacheTestMain::ns().str()));
             }
 
             cache_.addEntries(vec);
+            auto end = vec.end();
+            for (auto it = vec.begin(); it != end; it++)
+            {
+                delete[] it->buffer_;
+            }
             switch(dist(gen_))
             {
             case 0:
@@ -476,7 +498,7 @@ public:
 
                     FailOverCacheEntryProcessor processor(FailOverCacheTestMain::ns().str(),
                                                           cluster_size_);
-                    cache_.getEntries(processor);
+                    cache_.getEntries(BIND_SCO_PROCESSOR(processor));
                     EXPECT_EQ(processor.sco_count, 0);
                     EXPECT_EQ(processor.cluster_count, cluster_count_);
                 }
@@ -487,7 +509,7 @@ public:
 
                     FailOverCacheEntryProcessor processor(FailOverCacheTestMain::ns().str(),
                                                           cluster_size_);
-                    cache_.getEntries(processor);
+                    cache_.getEntries(BIND_SCO_PROCESSOR(processor));
                     EXPECT_EQ(processor.cluster_count, cluster_count_);
                 }
                 break;
@@ -535,12 +557,13 @@ public:
                         clusters_in_sco = latestSCOOnFailOver.offset() + 1;
                     }
 
-                    FailOverCacheOneProcessor processor(FailOverCacheTestMain::ns().str(),
-                                                        cluster_size_,
-                                                        sconame,
-                                                        clusters_in_sco);
+                    FailOverCacheOneProcessor proc(FailOverCacheTestMain::ns().str(),
+                                                   cluster_size_,
+                                                   sconame,
+                                                   clusters_in_sco);
+
                     cache_.getSCOFromFailOver(sconame,
-                                             processor);
+                                              BIND_SCO_PROCESSOR(proc));
                 }
                 break;
             case 4:

@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -246,6 +246,18 @@ byte* IOBaseStream :: readByteArray(int32_t &s32){
     }
     return buffer;
 }
+
+void IOBaseStream :: readIntoByteArray(byte* buffer, uint32_t size)
+{
+    if (size > STREAM_MAX_BYTEARRAY_SIZE)
+    {
+        LOG_ERROR("Got " << size << " for the array size, is too big");
+        throw IOException("Unexpectedly large size encountered");
+    }
+    read(buffer, size);
+}
+
+
 
 int64_t IOBaseStream::readLong_() {
 	int64_t l;

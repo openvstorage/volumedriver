@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,9 @@
 #define GENERATOR_H_
 
 #include "Catchers.h"
-#include "ProCon.h"
 #include "Logging.h"
+
+#include <procon/ProCon.h>
 
 namespace youtils
 {

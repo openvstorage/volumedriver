@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -202,7 +202,8 @@ protected:
     check_initial_foc_config(const std::string& vname)
     {
         const vd::FailOverCacheConfig cfg(remote_config().host,
-                                          remote_config().failovercache_port);
+                                          remote_config().failovercache_port,
+                                          vd::FailOverCacheMode::Asynchronous);
         check_foc_config(vname,
                          vfs::FailOverCacheConfigMode::Automatic,
                          cfg);
@@ -1490,6 +1491,8 @@ TEST_F(PythonClientTest, failovercache_config)
     check_foc_state(vname,
                     vd::VolumeFailOverState::OK_SYNC);
 
+    //
+
     client_.set_manual_failover_cache_config(vname,
                                              boost::none);
     check_foc_config(vname,
@@ -1499,8 +1502,11 @@ TEST_F(PythonClientTest, failovercache_config)
     check_foc_state(vname,
                     vd::VolumeFailOverState::OK_STANDALONE);
 
+    //
+
     const vd::FailOverCacheConfig cfg2(local_config().host,
-                                       local_config().failovercache_port);
+                                       local_config().failovercache_port,
+                                       vd::FailOverCacheMode::Asynchronous);
 
     ASSERT_NE(cfg1,
               cfg2);
@@ -1515,8 +1521,11 @@ TEST_F(PythonClientTest, failovercache_config)
     check_foc_state(vname,
                     vd::VolumeFailOverState::OK_SYNC);
 
+    //
+
     const vd::FailOverCacheConfig cfg3("somewhereoutthere"s,
-                                       local_config().failovercache_port);
+                                       local_config().failovercache_port,
+                                       vd::FailOverCacheMode::Asynchronous);
 
     client_.set_manual_failover_cache_config(vname,
                                              cfg3);
@@ -1536,6 +1545,23 @@ TEST_F(PythonClientTest, failovercache_config)
 
     check_foc_state(vname,
                     vd::VolumeFailOverState::OK_SYNC);
+
+    //
+
+    const vd::FailOverCacheConfig cfg4(cfg1.host,
+                                       cfg1.port,
+                                       vd::FailOverCacheMode::Synchronous);
+
+    client_.set_manual_failover_cache_config(vname,
+                                             cfg4);
+
+    check_foc_config(vname,
+                     vfs::FailOverCacheConfigMode::Manual,
+                     cfg4);
+
+    check_foc_state(vname,
+                    vd::VolumeFailOverState::OK_SYNC);
+
 }
 
 

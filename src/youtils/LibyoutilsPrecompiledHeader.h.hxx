@@ -8,7 +8,7 @@
 #include <features.h>
 #include <algorithm>
 // youtils
-#include "pstream.h"
+#include <pstreams/pstream.h>
 #include "BooleanEnum.h"
 // standard c++ lib
 #include <functional>

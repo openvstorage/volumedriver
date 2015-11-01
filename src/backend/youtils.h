@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -52,7 +52,7 @@
 #include "../youtils/Writable.h"
 #include "../youtils/CondVar.h"
 #include "../youtils/IOBaseStream.h"
-#include "../youtils/ProCon.h"
+#include "<procon/ProCon.h>
 #include "../youtils/StrongTypedString.h"
 #include "../youtils/ConfigurationReport.h"
 #include "../youtils/IOException.h"

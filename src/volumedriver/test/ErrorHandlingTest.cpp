@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -180,7 +180,7 @@ public:
     startFOC()
     {
         foc_ctx_ = start_one_foc();
-        vol_->setFailOverCacheConfig(foc_ctx_->config());
+        vol_->setFailOverCacheConfig(foc_ctx_->config(GetParam().foc_mode()));
     }
 
     void
@@ -580,7 +580,7 @@ public:
         ASSERT_THROW(vol_->setFailOverCacheConfig(boost::none),
                      std::exception);
 
-        ASSERT_THROW(vol_->setFailOverCacheConfig(foc_ctx_->config()),
+        ASSERT_THROW(vol_->setFailOverCacheConfig(foc_ctx_->config(GetParam().foc_mode())),
                      std::exception);
 
         // this one's fishy, since there's no proof that it throws because it's halted
@@ -959,11 +959,22 @@ TEST_P(ErrorHandlingTest, DISABLED_fetchToFaultyMountPointFromFOC)
     fetcherTest(true);
 }
 
-static const VolumeDriverTestConfig a_config(false);
+namespace
+{
+
+const VolumeDriverTestConfig no_cluster_cache_config =
+    VolumeDriverTestConfig().use_cluster_cache(false);
+
+const VolumeDriverTestConfig sync_foc_config =
+    VolumeDriverTestConfig()
+    .use_cluster_cache(false)
+    .foc_mode(FailOverCacheMode::Synchronous);
+}
 
 INSTANTIATE_TEST_CASE_P(ErrorHandlingTests,
                         ErrorHandlingTest,
-                        ::testing::Values(a_config));
+                        ::testing::Values(no_cluster_cache_config,
+                                          sync_foc_config));
 }
 
 // Local Variables: **

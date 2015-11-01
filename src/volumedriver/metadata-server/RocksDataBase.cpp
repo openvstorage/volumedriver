@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -45,50 +45,17 @@ namespace
 
 const std::string default_column_family("default");
 
-// pretty much arbitrarily chosen values for now (also applies to
-// column_family_options() below) - revisit to see what we want to make
-// configurable from the outside
-rdb::DBOptions
-db_options(const std::string& id)
-{
-    rdb::DBOptions opts;
-
-    opts.IncreaseParallelism(::sysconf(_SC_NPROCESSORS_ONLN));
-    opts.disableDataSync = true;
-    opts.paranoid_checks = false;
-    opts.create_if_missing = true;
-    opts.info_log = std::make_shared<yt::RocksLogger>(id);
-    return opts;
 }
 
-}
-
-rdb::ColumnFamilyOptions
-RocksDataBase::column_family_options()
-{
-    rdb::ColumnFamilyOptions opts;
-
-    opts.OptimizeLevelStyleCompaction();
-
-    // we don't need no iterators, no! 32 MiB block cache is ok?
-    opts.OptimizeForPointLookup(32);
-    opts.write_buffer_size = 32ULL << 20; // default: 4 MiB
-    // moved to BlockBasedTableOptions
-    // opts.block_size = vd::CachePage::size();
-    // default: kSnappyCompression, which is claimed to be fast enough
-    opts.compression = rdb::CompressionType::kNoCompression;
-    opts.verify_checksums_in_compaction = false;
-
-    return opts;
-}
-
-RocksDataBase::RocksDataBase(const fs::path& path)
+RocksDataBase::RocksDataBase(const fs::path& path,
+                             const RocksConfig& rocks_config)
+    : rocks_config_(rocks_config)
 {
     rdb::DB* db;
 
     std::vector<std::string> family_names;
 
-    const rdb::DBOptions db_opts(db_options(path.string()));
+    const rdb::DBOptions db_opts(rocks_config_.db_options(path.string()));
 
     // Dear reader, you probably ask yourself why this explicit check is here
     // instead of having fs::create_directories throw eventually:
@@ -134,7 +101,8 @@ RocksDataBase::RocksDataBase(const fs::path& path)
         family_names.push_back(rdb::kDefaultColumnFamilyName);
     }
 
-    const rdb::ColumnFamilyOptions family_opts(column_family_options());
+    const rdb::ColumnFamilyOptions family_opts(rocks_config_.column_family_options());
+
     std::vector<rdb::ColumnFamilyDescriptor> family_descs;
     family_descs.reserve(family_names.size());
 
@@ -199,10 +167,9 @@ RocksDataBase::open(const std::string& nspace)
     }
     else
     {
-        const rdb::ColumnFamilyOptions family_opts(column_family_options());
         rdb::ColumnFamilyHandle* h;
 
-        HANDLE(db_->CreateColumnFamily(family_opts,
+        HANDLE(db_->CreateColumnFamily(rocks_config_.column_family_options(),
                                        nspace,
                                        &h));
 
@@ -223,7 +190,8 @@ RocksDataBase::make_table_(const std::string& nspace,
 
     auto table(std::make_shared<RocksTable>(nspace,
                                             db_,
-                                            std::move(handle)));
+                                            std::move(handle),
+                                            rocks_config_));
 
     const auto r(tables_.insert(std::make_pair(nspace,
                                                table)));

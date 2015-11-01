@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@
 #include "CombinedTLogReader.h"
 #include "DataStoreNG.h"
 #include "BackendTasks.h"
-#include "FailOverCacheBridge.h"
 #include "MDSMetaDataStore.h"
 #include "MetaDataStoreInterface.h"
 #include "SCOAccessData.h"
@@ -117,8 +116,9 @@ Volume::Volume(const VolumeConfig& vCfg,
     , rwlock_(vCfg.id_ + "-volume-rwlock")
     , halted_(false)
     , dataStore_(datastore.release())
-    , failover_(new FailOverCacheBridge(VolManager::get()->foc_queue_depth.value(),
-                                        VolManager::get()->foc_write_trigger.value()))
+    , failover_(FailOverCacheBridgeFactory::create(FailOverCacheMode::Asynchronous,
+                                                   VolManager::get()->foc_queue_depth.value(),
+                                                   VolManager::get()->foc_write_trigger.value()))
     , metaDataStore_(metadatastore.release())
     , clusterSize_(vCfg.getClusterSize())
     , config_(vCfg)
@@ -450,35 +450,32 @@ Volume::localRestart()
 
     if (foc_config_wrapper_.config())
     {
+        FailOverCacheConfig foc_cfg = foc_config_wrapper_.config().get();
         std::unique_ptr<FailOverCacheProxy> cache;
 
         try
         {
             cache =
-                std::make_unique<FailOverCacheProxy>(*foc_config_wrapper_.config(),
+                std::make_unique<FailOverCacheProxy>(foc_cfg,
                                                      cfg.getNS(),
                                                      getClusterSize(),
-                                                     FailOverCacheBridge::RequestTimeout);
+                                                     failover_->getDefaultRequestTimeout());
         }
-        catch(std::exception& e)
-        {
-            LOG_VINFO("Could not start with previous failover settings: " << e.what());
-            failoverstate_ = VolumeFailOverState::DEGRADED;
-        }
-        catch(...)
-        {
-            LOG_VINFO("Could not start with previous failover settings: unknown problem");
-            failoverstate_ = VolumeFailOverState::DEGRADED;
-        }
+        CATCH_STD_ALL_EWHAT({
+                LOG_VINFO("Could not start with previous failover settings: " << EWHAT);
+                setVolumeFailOverState(VolumeFailOverState::DEGRADED);
+            });
+
         if(cache)
         {
+            setFailOverCacheMode_(foc_cfg.mode);
             failover_->newCache(std::move(cache));
-            failoverstate_ = VolumeFailOverState::OK_SYNC;
+            setVolumeFailOverState(VolumeFailOverState::OK_SYNC);
         }
     }
     else
     {
-        failoverstate_ = VolumeFailOverState::OK_STANDALONE;
+        setVolumeFailOverState(VolumeFailOverState::OK_STANDALONE);
     }
 
     snapshotManagement_->scheduleTLogsToBeWrittenToBackend();
@@ -527,7 +524,7 @@ Volume::newVolume()
     snapshotManagement_->scheduleWriteSnapshotToBackend();
     writeConfigToBackend_(cfg);
     writeFailOverCacheConfigToBackend_();
-    failoverstate_ = VolumeFailOverState::OK_STANDALONE;
+    setVolumeFailOverState(VolumeFailOverState::OK_STANDALONE);
 
     register_with_cluster_cache_(getOwnerTag());
     return this;
@@ -571,15 +568,16 @@ Volume::backend_restart(const CloneTLogs& restartTLogs,
 
     if (foc_config_wrapper_.config())
     {
+        FailOverCacheConfig foc_cfg = foc_config_wrapper_.config().get();
         std::unique_ptr<FailOverCacheProxy> cache;
 
         try
         {
             cache =
-                std::make_unique<FailOverCacheProxy>(*foc_config_wrapper_.config(),
+                std::make_unique<FailOverCacheProxy>(foc_cfg,
                                                      cfg.getNS(),
                                                      getClusterSize(),
-                                                     FailOverCacheBridge::RequestTimeout);
+                                                     failover_->getDefaultRequestTimeout());
         }
         CATCH_STD_ALL_EWHAT({
                 if (T(ignoreFOCIfUnreachable))
@@ -624,14 +622,16 @@ Volume::backend_restart(const CloneTLogs& restartTLogs,
                           lastSCOInBackend);
                 cache->clear();
             }
-            failoverstate_ = VolumeFailOverState::OK_SYNC;
+
+            setVolumeFailOverState(VolumeFailOverState::OK_SYNC);
         }
+        setFailOverCacheMode_(foc_cfg.mode);
         failover_->newCache(std::move(cache));
 
     }
     else
     {
-        failoverstate_ = VolumeFailOverState::OK_STANDALONE;
+        setVolumeFailOverState(VolumeFailOverState::OK_STANDALONE);
     }
 
     snapshotManagement_->scheduleWriteSnapshotToBackend();
@@ -732,46 +732,41 @@ Volume::setAsTemplate()
 }
 
 void
-Volume::writeClusterToFailOverCache_(const ClusterLocation& loc,
-                                     uint64_t lba,
-                                     const uint8_t* buf,
-                                     unsigned& throttled_usecs)
+Volume::writeClustersToFailOverCache_(const std::vector<ClusterLocation>& locs,
+                                      size_t num_locs,
+                                      uint64_t start_address,
+                                      const uint8_t* buf)
 {
     ASSERT_WRITES_SERIALIZED();
     ASSERT_WLOCKED();
-
-    throttled_usecs = 0;
 
     if (failover_->backup())
     {
         tracepoint(openvstorage_volumedriver,
                    volume_foc_write_start,
                    config_.id_.str().c_str(),
-                   lba,
-                   reinterpret_cast<const uint64_t&>(loc));
+                   start_address,
+                   reinterpret_cast<const uint64_t&>(locs[0]));
 
         auto on_exit(yt::make_scope_exit([&]
         {
             tracepoint(openvstorage_volumedriver,
                        volume_foc_write_end,
                        config_.id_.str().c_str(),
-                       lba,
-                       reinterpret_cast<const uint64_t&>(loc),
+                       start_address,
+                       reinterpret_cast<const uint64_t&>(locs[0]),
                        std::uncaught_exception());
         }));
 
-        LOG_VTRACE("sending tlog " << snapshotManagement_->getCurrentTLogName() <<
-                   ", lba " << lba);
+        LOG_VTRACE("sending TLog " << snapshotManagement_->getCurrentTLogName() <<
+                   ", start_address " << start_address);
 
-        FailOverCacheEntry* m = new FailOverCacheEntry(loc,
-                                                       lba,
-                                                       buf,
-                                                       getClusterSize());
-
-        while (not failover_->addEntry(m))
+        while (not failover_->addEntries(locs,
+                                         num_locs,
+                                         start_address,
+                                         buf))
         {
             throttle_(foc_throttle_usecs_);
-            throttled_usecs += foc_throttle_usecs_;
         }
     }
 }
@@ -889,6 +884,8 @@ Volume::writeClusters_(uint64_t addr,
         // and friends
         WLOCK();
 
+        TODO("ArneT: reserve/clear vector \"cluster_locations\" so the nr of clusters can be derived in the failover_->addEntries call");
+
         dataStore_->writeClusters(buf,
                                   cluster_locations_,
                                   num_locs,
@@ -911,7 +908,6 @@ Volume::writeClusters_(uint64_t addr,
 
             writeClusterMetaData_(ca,
                                   loc_and_hash);
-            unsigned foc_throttled_usecs = 0;
 
             if (isCacheOnWrite())
             {
@@ -931,16 +927,15 @@ Volume::writeClusters_(uint64_t addr,
                                  loc_and_hash.weed);
             }
 
-            writeClusterToFailOverCache_(cluster_locations_[i],
-                                         clusteraddr >> volOffset_,
-                                         data,
-                                         foc_throttled_usecs);
-
-            throttle_usecs += foc_throttled_usecs;
-
-            LOG_VTRACE("lba " << (clusteraddr / getLBASize()) <<
-                       " CA " << cluster_locations_[i]);
         }
+
+        yt::SteadyTimer t;
+        writeClustersToFailOverCache_(cluster_locations_,
+                                      num_locs,
+                                      addr >> volOffset_,
+                                      buf);
+
+        throttle_usecs += bc::duration_cast<bc::microseconds>(t.elapsed()).count();
 
         const ssize_t sco_cap = dataStore_->getRemainingSCOCapacity();
         VERIFY(sco_cap >= 0);
@@ -953,6 +948,9 @@ Volume::writeClusters_(uint64_t addr,
             snapshotManagement_->addSCOCRC(*cs);
         }
     }
+
+    LOG_VTRACE("start_address " << addr <<
+               " CA " << cluster_locations_[0]);
 
     if (ds_throttle > 0)
     {
@@ -1404,13 +1402,12 @@ Volume::restoreSnapshot(const std::string& name)
             {
                 failover_->Flush();
                 failover_->Clear();
-                failoverstate_ = VolumeFailOverState::OK_SYNC;
-
+                setVolumeFailOverState(VolumeFailOverState::OK_SYNC);
             }
             // Z42: std::exception?
             catch (std::exception& e)
             {
-                failoverstate_ = VolumeFailOverState::DEGRADED;
+                setVolumeFailOverState(VolumeFailOverState::DEGRADED);
                 LOG_VERROR("Error resetting the failover cache:" << e.what());
             }
         }
@@ -1470,7 +1467,7 @@ Volume::cloneFromParentSnapshot(const yt::UUID& parent_snap_uuid,
 
     writeConfigToBackend_(cfg);
     writeFailOverCacheConfigToBackend_();
-    failoverstate_ = VolumeFailOverState::OK_STANDALONE;
+    setVolumeFailOverState(VolumeFailOverState::OK_STANDALONE);
 
     metaDataStore_->processCloneTLogs(clone_tlogs,
                                       nsidmap_,
@@ -2043,44 +2040,6 @@ Volume::replayClusterFromFailOverCache_(ClusterAddress ca,
     }
 }
 
-void
-Volume::processFailOverCacheEntry(ClusterLocation  cli,
-                                  uint64_t lba,
-                                  const byte* buf,
-                                  int64_t size)
-{
-    ASSERT_WRITES_SERIALIZED();
-    ASSERT_WLOCKED();
-
-    uint32_t counter = 0;
-    LOG_VTRACE("Replaying " << cli << "lba " << lba);
-
-    VERIFY(size == (int64_t) clusterSize_);
-
-    ClusterLocation loc(cli);
-    validateIOAlignment(lba, size);
-
-    while (true)
-    {
-        try
-        {
-            replayClusterFromFailOverCache_(addr2CA(LBA2Addr(lba)),
-                                            loc,
-                                            buf);
-            return;
-        }
-        catch (TransientException& e)
-        {
-            LOG_VINFO("TransientException");
-            if (++counter == 256)
-            {
-                throw;
-            }
-            sleep(1);
-        }
-    }
-}
-
 uint64_t
 Volume::VolumeDataStoreWriteUsed() const
 {
@@ -2196,7 +2155,7 @@ Volume::setFailOverCacheConfig(const boost::optional<FailOverCacheConfig>& confi
 
     if (config)
     {
-        setFailOverCache_(*config);
+        setFailOverCacheConfig_(*config);
     }
     else
     {
@@ -2211,11 +2170,26 @@ getFailOverCacheConfig()
 }
 
 void
-Volume::setFailOverCache_(const FailOverCacheConfig& config)
+Volume::setFailOverCacheMode_(const FailOverCacheMode mode)
+{
+    if (mode != failover_->mode())
+    {
+        failover_->destroy(SyncFailOverToBackend::T);
+        std::unique_ptr<FailOverCacheClientInterface> newBridge(FailOverCacheBridgeFactory::create(mode,
+                                                                                                   VolManager::get()->foc_queue_depth.value(),
+                                                                                                   VolManager::get()->foc_write_trigger.value()));
+        failover_ = std::move(newBridge);
+        failover_->initialize(this);
+    }
+}
+
+
+void
+Volume::setFailOverCacheConfig_(const FailOverCacheConfig& config)
 {
     // This seems only to be called externally.
     checkNotHalted_();
-    failoverstate_ = VolumeFailOverState::DEGRADED;
+    setVolumeFailOverState(VolumeFailOverState::DEGRADED);
     foc_config_wrapper_.set(config);
 
     last_tlog_not_on_failover_ = "";
@@ -2224,10 +2198,11 @@ Volume::setFailOverCache_(const FailOverCacheConfig& config)
     writeFailOverCacheConfigToBackend_();
 
     LOG_VINFO("Setting the failover cache to " << config);
+    setFailOverCacheMode_(config.mode);
     failover_->newCache(std::make_unique<FailOverCacheProxy>(config,
                                                              getNamespace(),
                                                              getClusterSize(),
-                                                             FailOverCacheBridge::RequestTimeout));
+                                                             failover_->getDefaultRequestTimeout()));
     failover_->Clear();
 
     MaybeCheckSum cs = dataStore_->finalizeCurrentSCO();
@@ -2247,17 +2222,17 @@ Volume::setFailOverCache_(const FailOverCacheConfig& config)
         if(snapshotManagement_->currentTLogHasData() )
         {
             last_tlog_not_on_failover_ = curTLog;
-            failoverstate_ = VolumeFailOverState::KETCHUP;
+            setVolumeFailOverState(VolumeFailOverState::KETCHUP);
         }
         else if(size > 1)
         {
             last_tlog_not_on_failover_ = out[size - 2];
-            failoverstate_ = VolumeFailOverState::KETCHUP;
+            setVolumeFailOverState(VolumeFailOverState::KETCHUP);
         }
         else
         {
             //Y42 ONLY CORRECT IF THE CURRENT TLOG HOLDS NO DATA!!
-            failoverstate_ = VolumeFailOverState::OK_SYNC;
+            setVolumeFailOverState(VolumeFailOverState::OK_SYNC);
         }
     }
 
@@ -2271,7 +2246,7 @@ Volume::setNoFailOverCache_()
     ASSERT_WLOCKED();
     checkNotHalted_();
 
-    failoverstate_ = VolumeFailOverState::DEGRADED;
+    setVolumeFailOverState(VolumeFailOverState::DEGRADED);
     last_tlog_not_on_failover_ = "";
     foc_config_wrapper_.set(boost::none);
 
@@ -2279,7 +2254,7 @@ Volume::setNoFailOverCache_()
     failover_->newCache(nullptr);
     writeFailOverCacheConfigToBackend_();
 
-    failoverstate_ = VolumeFailOverState::OK_STANDALONE;
+    setVolumeFailOverState(VolumeFailOverState::OK_STANDALONE);
 }
 
 void
@@ -2289,13 +2264,28 @@ Volume::checkState(const std::string& tlogname)
 
     if(tlogname == last_tlog_not_on_failover_)
     {
-        failoverstate_ = VolumeFailOverState::OK_SYNC;
+        setVolumeFailOverState(VolumeFailOverState::OK_SYNC);
+    }
+}
+
+void
+Volume::setVolumeFailOverState(VolumeFailOverState s)
+{
+    std::swap(failoverstate_, s);
+
+    if (s != failoverstate_)
+    {
+        LOG_VINFO("transitioned from " << s << " -> " << failoverstate_);
+
+        VolumeDriverError::report(getName(),
+                                  s,
+                                  failoverstate_);
     }
 }
 
 void
 Volume::tlogWrittenToBackendCallback(const TLogID& tid,
-                                 const SCO sconame)
+                                     const SCO sconame)
 {
     snapshotManagement_->tlogWrittenToBackendCallback(tid,
                                                   sconame);
@@ -2584,11 +2574,43 @@ Volume::replayFOC_(FailOverCacheProxy& foc)
     ASSERT_WRITES_SERIALIZED();
     ASSERT_WLOCKED();
 
+    auto fun([&](ClusterLocation loc,
+                 uint64_t lba,
+                 const byte* buf,
+                 size_t size)
+             {
+                 uint32_t counter = 0;
+                 LOG_VTRACE("Replaying " << loc << "lba " << lba);
+
+                 VERIFY(size == static_cast<size_t>(clusterSize_));
+
+                 validateIOAlignment(lba, size);
+
+                 while (true)
+                 {
+                     try
+                     {
+                         replayClusterFromFailOverCache_(addr2CA(LBA2Addr(lba)),
+                                                         loc,
+                                                         buf);
+                         return;
+                     }
+                     catch (TransientException& e)
+                     {
+                         LOG_VINFO("TransientException");
+                         if (++counter == 256)
+                         {
+                             throw;
+                         }
+                         boost::this_thread::sleep_for(bc::seconds(1));
+                     }
+                 }
+             });
+
     try
     {
-        VolumeFailOverCacheAdaptor voladaptor(*this);
+        foc.getEntries(std::move(fun));
 
-        foc.getEntries(voladaptor);
         MaybeCheckSum cs = dataStore_->finalizeCurrentSCO();
 
         if (snapshotManagement_->currentTLogHasData())
@@ -2596,16 +2618,10 @@ Volume::replayFOC_(FailOverCacheProxy& foc)
             snapshotManagement_->scheduleBackendSync(cs);
         }
     }
-    catch (std::exception& e)
-    {
-        LOG_VERROR("Problem with failover cache " << e.what());
-        throw fungi::IOException((std::string("Problem with failover cache ") + e.what()).c_str());
-    }
-    catch (...)
-    {
-        LOG_VERROR("Problem with failover cache ");
-        throw fungi::IOException("Problem with failover cache ");
-    }
+    CATCH_STD_ALL_EWHAT({
+            LOG_VERROR("Problem with failover cache " << EWHAT);
+            throw fungi::IOException((std::string("Problem with failover cache ") + EWHAT));
+        });
 }
 
 double

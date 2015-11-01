@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 #include "BuildInfoString.h"
 #include "BuildInfo.h"
 #include <sstream>
+
 namespace youtils
 {
 
@@ -23,16 +24,15 @@ buildInfoString()
 {
     std::stringstream ss;
 
-    ss << "hg branch: " << BuildInfo::branch << std::endl
-       << "hg revision: " << BuildInfo::revision << std::endl
-       << "buildTime: " << BuildInfo::buildTime << std::endl;
+    ss << "branch: " << BuildInfo::branch << std::endl
+       << "revision: " << BuildInfo::revision << std::endl
+       << "build time: " << BuildInfo::buildTime << std::endl;
 
     return ss.str();
 }
+
 }
 
 // Local Variables: **
-// bvirtual-targets: ("/bin/vd_test", "libdssvoldrv.a") **
-// compile-command: "scons -D --kernel_version=system --ignore-buildinfo -j 5" **
 // mode: c++ **
 // End: **

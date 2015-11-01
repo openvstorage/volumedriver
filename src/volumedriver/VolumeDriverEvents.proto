@@ -40,7 +40,23 @@ message VolumeDriverErrorEvent
 	optional string info = 3;
 }
 
+enum DTLState
+{
+	Sync = 0;
+	Standalone = 1;
+	Catchup = 2;
+	Degraded = 3;
+}
+
+message DTLStateTransitionEvent
+{
+	optional string volume_name = 1;
+	optional DTLState old_state = 2;
+	optional DTLState new_state = 3;
+}
+
 extend Event
 {
 	optional VolumeDriverErrorEvent volumedriver_error = 1001;
+	optional DTLStateTransitionEvent dtl_state_transition = 1002;
 }

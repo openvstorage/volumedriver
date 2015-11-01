@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -113,6 +113,7 @@ public:
     IOBaseStream& operator >>(double& number);
     IOBaseStream &operator>>(std::string &i);
     byte* readByteArray(int32_t &size);
+    void readIntoByteArray(byte* buf, uint32_t size);
     IOBaseStream &operator>>(const Cork &);
 
 private:

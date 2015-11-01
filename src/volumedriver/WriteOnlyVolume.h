@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -47,7 +47,6 @@ class ScrubberResult;
 class DataStoreNG;
 class SnapshotManagement;
 class ClusterReadDescriptor;
-class FailOverCacheBridge;
 
 class WriteOnlyVolume
     : public VolumeInterface
@@ -176,7 +175,7 @@ public:
         return clusterSize_;
     }
 
-    FailOverCacheBridge*
+    FailOverCacheClientInterface*
     getFailOver() override final
     {
         throw fungi::IOException("Not Implemented");

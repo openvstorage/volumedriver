@@ -2,7 +2,7 @@ Summary: Volumedriver PIT replication
 Name: volumedriver-pitreplication
 Version: @VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@.@VD_EXTRA_VERSION@
 Release: 1
-License: Copyright (C) 2013 Open vStorage NV, Licensed under the Apache License Version 2.0
+License: Copyright (C) 2013 iNuron NV, Licensed under the Apache License Version 2.0
 Requires: volumedriver-base = @VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@.@VD_EXTRA_VERSION@-1
 URL: http://www.openvstorage.com
 

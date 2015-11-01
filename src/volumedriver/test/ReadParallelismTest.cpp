@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -208,8 +208,11 @@ TEST_P(ReadParallelismTest, DISABLED_single_read)
 
 }
 
-
-VolumeDriverTestConfig thisConfig(false);
+namespace
+{
+const VolumeDriverTestConfig thisConfig =
+    VolumeDriverTestConfig().use_cluster_cache(false);
+}
 
 INSTANTIATE_TEST_CASE_P(ReadParallelismTests,
                         ReadParallelismTest,

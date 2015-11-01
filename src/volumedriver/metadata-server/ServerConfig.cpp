@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,10 +24,12 @@ namespace vd = volumedriver;
 
 ServerConfig::ServerConfig(const volumedriver::MDSNodeConfig& ncfg,
                            const boost::filesystem::path& db,
-                           const boost::filesystem::path& scratch)
+                           const boost::filesystem::path& scratch,
+                           const RocksConfig& rocks_cfg)
     : node_config(ncfg)
     , db_path(db)
     , scratch_path(scratch)
+    , rocks_config(rocks_cfg)
 {}
 
 bool
@@ -35,7 +37,8 @@ ServerConfig::operator==(const ServerConfig& other) const
 {
     return node_config == other.node_config and
         db_path == other.db_path and
-        scratch_path == other.scratch_path;
+        scratch_path == other.scratch_path and
+        rocks_config == other.rocks_config;
 }
 
 bool
@@ -57,10 +60,11 @@ operator<<(std::ostream& os,
            const ServerConfig& cfg)
 {
     return os <<
-        "(addr=" << cfg.node_config <<
+        "ServerConfig{addr=" << cfg.node_config <<
         ",db=" << cfg.db_path <<
         ",scratch=" << cfg.scratch_path <<
-        ")";
+        ",rocks_config=" << cfg.rocks_config <<
+        "}";
 }
 
 std::ostream&
@@ -83,5 +87,20 @@ PropertyTreeVectorAccessor<mds::ServerConfig>::db_path_key("db_directory");
 
 const std::string
 PropertyTreeVectorAccessor<mds::ServerConfig>::scratch_path_key("scratch_directory");
+
+const std::string
+PropertyTreeVectorAccessor<mds::ServerConfig>::db_threads_key("rocksdb_threads");
+
+const std::string
+PropertyTreeVectorAccessor<mds::ServerConfig>::write_cache_size_key("rocksdb_write_cache_size");
+
+const std::string
+PropertyTreeVectorAccessor<mds::ServerConfig>::read_cache_size_key("rocksdb_read_cache_size");
+
+const std::string
+PropertyTreeVectorAccessor<mds::ServerConfig>::enable_wal_key("rocksdb_enable_wal");
+
+const std::string
+PropertyTreeVectorAccessor<mds::ServerConfig>::data_sync_key("rocksdb_data_sync");
 
 }

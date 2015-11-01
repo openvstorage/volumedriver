@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -127,6 +127,9 @@ DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(fs_dtl_host,
 
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(fs_dtl_port,
                                        uint16_t);
+
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(fs_dtl_mode,
+                                       volumedriver::FailOverCacheMode);
 
 
 // FUSE:

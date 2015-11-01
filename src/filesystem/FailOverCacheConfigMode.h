@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef VD_FAILOVER_CACHE_CONFIG_MODE_H_
-#define VD_FAILOVER_CACHE_CONFIG_MODE_H_
+#ifndef VFS_FAILOVER_CACHE_CONFIG_MODE_H_
+#define VFS_FAILOVER_CACHE_CONFIG_MODE_H_
 
 #include <iosfwd>
 #include <cstdint>
@@ -38,4 +38,4 @@ operator>>(std::istream&,
 
 }
 
-#endif // !VD_FAILOVER_CACHE_CONFIG_MODE_H_
+#endif // !VFS_FAILOVER_CACHE_CONFIG_MODE_H_

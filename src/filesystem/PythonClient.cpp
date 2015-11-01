@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -322,7 +322,6 @@ PythonClient::get_failover_cache_config_mode(const std::string& volume_id)
     return foc_cm;
 }
 
-
 boost::optional<vd::FailOverCacheConfig>
 PythonClient::get_failover_cache_config(const std::string& volume_id)
 {
@@ -334,7 +333,9 @@ PythonClient::get_failover_cache_config(const std::string& volume_id)
     {
         std::stringstream ss(rsp[XMLRPCKeys::foc_config]);
         boost::archive::text_iarchive ia(ss);
-        vd::FailOverCacheConfig fc("", 0);
+        vd::FailOverCacheConfig fc("",
+                                   0,
+                                   vd::FailOverCacheMode::Asynchronous);
         ia >> fc;
         foc_config = fc;
     }

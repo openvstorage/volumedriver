@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ namespace volumedriver
 
 class Volume;
 class VolumeConfig;
-class FailOverCacheBridge;
+class FailOverCacheClientInterface;
 class DataStoreNG;
 class MetaDataBackendConfig;
 
@@ -93,7 +93,7 @@ public:
     virtual DataStoreNG*
     getDataStore() = 0;
 
-    virtual FailOverCacheBridge*
+    virtual FailOverCacheClientInterface*
     getFailOver() = 0;
 
     // virtual VolumeFailOverState

@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 
 #include "BackendTasks.h"
 #include "ClusterCacheHandle.h"
-#include "FailOverCacheBridge.h"
+#include "FailOverCacheBridgeFactory.h"
 #include "FailOverCacheConfigWrapper.h"
 #include "FailOverCacheProxy.h"
 #include "NSIDMap.h"
@@ -60,13 +60,15 @@ BOOLEAN_ENUM(DeleteFailOverCache);
 BOOLEAN_ENUM(CleanupScrubbingOnError);
 BOOLEAN_ENUM(CleanupScrubbingOnSuccess);
 
-class SnapshotPersistor;
-class ScrubberResult;
-class DataStoreNG;
-class SnapshotManagement;
 class ClusterReadDescriptor;
-class MetaDataStoreInterface;
+class DataStoreNG;
+class FailOverCacheAsyncBridge;
+class FailOverCacheSyncBridge;
 class MetaDataBackendConfig;
+class MetaDataStoreInterface;
+class ScrubberResult;
+class SnapshotManagement;
+class SnapshotPersistor;
 
 struct ClusterCacheVolumeInfo
 {
@@ -87,8 +89,8 @@ class Volume
     friend class VolManagerTestSetup;
     friend class ErrorHandlingTest;
     friend class ::volumedrivertest::MetaDataStoreTest;
-    friend void FailOverCacheBridge::run();
-
+    friend class FailOverCacheAsyncBridge;
+    friend class FailOverCacheSyncBridge;
     friend void backend_task::WriteTLog::run(int);
 
 public:
@@ -145,13 +147,6 @@ public:
         std::lock_guard<decltype(config_lock_)> g(config_lock_);
         return config_.getSCOSize();
     }
-
-    void
-    processFailOverCacheEntry(ClusterLocation /*cli*/,
-                              uint64_t /*lba*/,
-                              const byte* /*buf*/,
-                              int64_t /*size*/);
-
 
     /** @exception IOException */
     void
@@ -222,7 +217,7 @@ public:
     getTempTLogPath() const;
 
     // VolumeInterface
-    FailOverCacheBridge*
+    FailOverCacheClientInterface*
     getFailOver() override final
     {
         return failover_.get();
@@ -517,12 +512,7 @@ private:
     mutable fungi::SpinLock config_lock_;
 
     void
-    setVolumeFailOverState(const VolumeFailOverState instate)
-    {
-        failoverstate_ = instate;
-        //std::swap(instate, failoverstate_);
-         //     return instate;
-    }
+    setVolumeFailOverState(VolumeFailOverState);
 
     // LOCKING:
     // - rwlock allows concurrent reads / one write
@@ -543,7 +533,7 @@ private:
     // eventually we need accessors
     std::unique_ptr<DataStoreNG> dataStore_;
 
-    std::unique_ptr<FailOverCacheBridge> failover_;
+    std::unique_ptr<FailOverCacheClientInterface> failover_;
 
     std::unique_ptr<MetaDataStoreInterface> metaDataStore_;
 
@@ -648,10 +638,10 @@ private:
                                     const uint8_t* buf);
 
     void
-    writeClusterToFailOverCache_(const ClusterLocation& loc,
-                                 uint64_t lba,
-                                 const uint8_t* buf,
-                                 unsigned& throttled_usecs);
+    writeClustersToFailOverCache_(const std::vector<ClusterLocation>& locs,
+                                  size_t num_locs,
+                                  uint64_t start_address,
+                                  const uint8_t* buf);
 
     void
     writeConfigToBackend_(const VolumeConfig& cfg);
@@ -713,7 +703,10 @@ private:
                         const backend::Namespace& nsname);
 
     void
-    setFailOverCache_(const FailOverCacheConfig&);
+    setFailOverCacheMode_(const FailOverCacheMode mode);
+
+    void
+    setFailOverCacheConfig_(const FailOverCacheConfig&);
 
     void
     setNoFailOverCache_();

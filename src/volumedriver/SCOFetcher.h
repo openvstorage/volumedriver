@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -91,12 +91,6 @@ public:
     virtual void
     operator()(const boost::filesystem::path& dest) override final;
 
-    void
-    operator()(ClusterLocation cli,
-               uint64_t lba,
-               const byte* buf,
-               uint32_t size);
-
     virtual bool
     disposable() const override final;
 
@@ -127,12 +121,6 @@ public:
 
     virtual void
     operator()(const boost::filesystem::path& dest) override final;
-
-    void
-    operator()(ClusterLocation cli,
-               uint64_t lba,
-               const byte* buf,
-               uint32_t size);
 
     virtual bool
     disposable() const override final;

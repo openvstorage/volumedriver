@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,7 +27,6 @@ class FailOverCacheTestMain
     : public youtils::TestMainHelper
 {
 public:
-
     FailOverCacheTestMain(int argc,
                           char** argv);
 
@@ -45,7 +44,8 @@ public:
     {
         using namespace std::literals::string_literals;
         return volumedriver::FailOverCacheConfig(host() ? *host() : "127.0.0.1"s,
-                                                 port());
+                                                 port(),
+                                                 volumedriver::FailOverCacheMode::Asynchronous);
     }
 
     static const boost::optional<std::string>

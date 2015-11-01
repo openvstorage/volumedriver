@@ -93,11 +93,14 @@ libvolumedriver_la_SOURCES = \
 	BackendTasks.cpp \
 	Entry.cpp \
 	Events.pb.cc \
-	FailOverCacheBridge.cpp \
+	FailOverCacheAsyncBridge.cpp \
+	FailOverCacheBridgeFactory.cpp \
 	FailOverCacheConfig.cpp \
 	FailOverCacheConfigWrapper.cpp \
+	FailOverCacheMode.cpp \
 	FailOverCacheProxy.cpp \
 	FailOverCacheStreamers.cpp \
+	FailOverCacheSyncBridge.cpp \
 	FailOverCacheTransport.cpp \
 	FilePool.cpp \
 	failovercache/FailOverCacheAcceptor.cpp \
@@ -135,6 +138,7 @@ libvolumedriver_la_SOURCES = \
 	metadata-server/Protocol.cpp \
 	metadata-server/Protocol-capnp.cpp \
 	metadata-server/PythonClient.cpp \
+	metadata-server/RocksConfig.cpp \
 	metadata-server/RocksDataBase.cpp \
 	metadata-server/RocksTable.cpp \
 	metadata-server/ServerConfig.cpp \

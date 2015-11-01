@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,10 @@
 #ifndef FAILOVERCACHECONFIG_H_
 #define FAILOVERCACHECONFIG_H_
 
+#include <youtils/Assert.h>
+
+#include "FailOverCacheMode.h"
+
 #include <iosfwd>
 
 #include <boost/serialization/string.hpp>
@@ -28,11 +32,14 @@ struct FailOverCacheConfig
 {
     std::string host;
     uint16_t port;
+    FailOverCacheMode mode;
 
     FailOverCacheConfig(const std::string& h,
-                        const uint16_t p)
+                        const uint16_t p,
+                        const FailOverCacheMode m)
         : host(h)
         , port(p)
+        , mode(m)
     {}
 
     ~FailOverCacheConfig() = default;
@@ -45,6 +52,7 @@ struct FailOverCacheConfig
     FailOverCacheConfig(FailOverCacheConfig&& other)
         : host(std::move(other.host))
         , port(other.port)
+        , mode(other.mode)
     {}
 
     FailOverCacheConfig&
@@ -54,6 +62,7 @@ struct FailOverCacheConfig
         {
             host = std::move(other.host);
             port = other.port;
+            mode = other.mode;
         }
 
         return *this;
@@ -63,7 +72,8 @@ struct FailOverCacheConfig
     operator==(const FailOverCacheConfig& other) const
     {
         return host == other.host and
-            port == other.port;
+               port == other.port and
+               mode == other.mode;
     }
 
     bool
@@ -76,10 +86,18 @@ struct FailOverCacheConfig
 
     template<class Archive>
     void
-    load(Archive& ar, const unsigned int /* version */)
+    load(Archive& ar, const unsigned int version)
     {
         ar & host;
         ar & port;
+        if (version >= 1)
+        {
+            ar & mode;
+        }
+        else
+        {
+            mode = FailOverCacheMode::Asynchronous;
+        }
     }
 
     template<class Archive>
@@ -88,6 +106,7 @@ struct FailOverCacheConfig
     {
         ar & host;
         ar & port;
+        ar & mode;
     }
 };
 
@@ -114,14 +133,15 @@ load_construct_data(Archive& /* ar */,
                     const unsigned /* version */)
 {
     new(config) volumedriver::FailOverCacheConfig("",
-                                                  0);
+                                                  0,
+                                                  volumedriver::FailOverCacheMode::Asynchronous);
 }
 
 }
 
 }
 
-BOOST_CLASS_VERSION(volumedriver::FailOverCacheConfig, 0);
+BOOST_CLASS_VERSION(volumedriver::FailOverCacheConfig, 1);
 
 #endif // FAILOVERCACHECONFIG_H_
 

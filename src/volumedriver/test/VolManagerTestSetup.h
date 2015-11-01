@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@
 #include <volumedriver/VolumeConfig.h>
 
 #include "fawlty.hh"
-#include <youtils/pstream.h>
+#include <pstreams/pstream.h>
 #include <fawltyfs/FileSystem.h>
 
 namespace metadata_server
@@ -536,7 +536,7 @@ public:
     void
     flushFailOverCache(Volume* v);
 
-    FailOverCacheBridge*
+    FailOverCacheClientInterface*
     getFailOverWriter(Volume* vol);
 
     bool
@@ -554,8 +554,7 @@ public:
 
     DECLARE_LOGGER("VolManagerTestSetup");
 
-    static VolumeDriverTestConfig defConfig;
-    static VolumeDriverTestConfig clusterCacheConfig;
+    static const VolumeDriverTestConfig defConfig;
 
     void
     waitForPrefetching(Volume* v) const;

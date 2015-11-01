@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,55 +16,61 @@
 
 #include "../VolumeConfig.h"
 #include "../Api.h"
+#include "../FailOverCacheAsyncBridge.h"
+#include "../FailOverCacheSyncBridge.h"
 
 #include <stdlib.h>
 
+#include <future>
+
 namespace volumedriver
 {
-
-namespace
-{
-
-struct CacheEntryProcessor
-{
-    CacheEntryProcessor()
-        : num_clusters_(0)
-    {}
-
-    void
-    operator()(ClusterLocation /* loc */ ,
-               uint64_t /* lba */,
-               const uint8_t* /* buf */,
-               int32_t /* size */)
-    {
-        num_clusters_++;
-    }
-
-    uint64_t num_clusters_;
-};
-
-}
 
 class FailOverCacheTester
     : public VolManagerTestSetup
 {
 public:
     FailOverCacheTester()
-        :VolManagerTestSetup("FailOverCacheTester")
+        : VolManagerTestSetup("FailOverCacheTester")
     {}
+
+    template<typename B>
+    uint64_t
+    get_num_entries(B& bridge)
+    {
+        // Otherwise we might clash with the FailOverCacheBridge's ping mechanism!
+        fungi::ScopedLock g(bridge.mutex_);
+        size_t num_clusters = 0;
+        bridge.cache_->getEntries([&](ClusterLocation,
+                                      uint64_t /* lba */,
+                                      const byte* /* buf */,
+                                      size_t /* size */)
+                                  {
+                                      ++num_clusters;
+                                  });
+
+        return num_clusters;
+    }
 
     void
     check_num_entries(Volume& v,
                       uint64_t expected)
     {
-        auto bridge = getFailOverWriter(&v);
+        FailOverCacheClientInterface* bridge = getFailOverWriter(&v);
+        uint64_t entries = 0;
 
-        // Otherwise we might clash with the FailOverCacheBridge's ping mechanism!
-        fungi::ScopedLock g(bridge->mutex_);
+        switch (bridge->mode())
+        {
+        case FailOverCacheMode::Asynchronous:
+            entries = get_num_entries(dynamic_cast<FailOverCacheAsyncBridge&>(*bridge));
+            break;
+        case FailOverCacheMode::Synchronous:
+            entries = get_num_entries(dynamic_cast<FailOverCacheSyncBridge&>(*bridge));
+            break;
+        }
 
-        CacheEntryProcessor proc;
-        bridge->cache_->getEntries(proc);
-        EXPECT_EQ(expected, proc.num_clusters_);
+        EXPECT_EQ(expected,
+                  entries);
     }
 };
 
@@ -78,7 +84,7 @@ TEST_P(FailOverCacheTester, empty_flush)
 
     Volume* v = newVolume(vid,
                           ns);
-    v->setFailOverCacheConfig(foc_ctx->config());
+    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
     v->sync();
 }
 
@@ -92,7 +98,7 @@ TEST_P(FailOverCacheTester, focTimeout)
 
     Volume* v = newVolume(vid,
                           ns);
-    v->setFailOverCacheConfig(foc_ctx->config());
+    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     {
         fungi::ScopedLock l(api::getManagementMutex());
@@ -116,7 +122,7 @@ TEST_P(FailOverCacheTester, VolumeWithFOC)
 
     Volume* v = newVolume("vol1",
                           ns);
-    v->setFailOverCacheConfig(foc_ctx->config());
+    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     for(int i =0; i < 128; ++i)
     {
@@ -146,7 +152,8 @@ TEST_P(FailOverCacheTester, VolumeWithoutFOC)
                           ns);
 
     ASSERT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
-                                                         5610)),
+                                                               5610,
+                                                               GetParam().foc_mode())),
                  fungi::IOException);
 
 
@@ -182,7 +189,7 @@ TEST_P(FailOverCacheTester, StopRace)
                       ns);
         ASSERT_TRUE(v);
 
-        v->setFailOverCacheConfig(foc_ctx->config());
+        v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
         for(int i =0; i < 128; ++i)
         {
@@ -225,7 +232,7 @@ TEST_P(FailOverCacheTester, StopCacheServer)
 
         ASSERT_TRUE(v);
 
-        v->setFailOverCacheConfig(foc_ctx->config());
+        v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
         for(int i = 0; i < 128; ++i)
         {
@@ -266,10 +273,10 @@ TEST_P(FailOverCacheTester, CacheServerHasNoMemory)
                        ns);
         ASSERT_TRUE(v);
 
-        v->setFailOverCacheConfig(foc_ctx->config());
+        v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
-
-        ASSERT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::OK_SYNC);
+        ASSERT_EQ(VolumeFailOverState::OK_SYNC,
+                  v->getVolumeFailOverState());
 
         const std::string tlogname = v->getSnapshotManagement().getCurrentTLogName();
 
@@ -285,12 +292,15 @@ TEST_P(FailOverCacheTester, CacheServerHasNoMemory)
         check_num_entries(*v, numClusters);
     }
 
-    ASSERT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::DEGRADED);
+    flushFailOverCache(v); // It is only detected for sure that the FOC is gone when something happens over the wire
+
+    ASSERT_EQ(VolumeFailOverState::DEGRADED,
+              v->getVolumeFailOverState());
 
     {
         auto foc_ctx(start_one_foc());
 
-        v->setFailOverCacheConfig(foc_ctx->config());
+        v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
         check_num_entries(*v, 0);
         destroyVolume(v,
@@ -309,7 +319,8 @@ TEST_P(FailOverCacheTester, ResetCacheServer)
                           ns);
     uint16_t port = 2999;
     ASSERT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
-                                                         port)),
+                                                               port,
+                                                               GetParam().foc_mode())),
                   fungi::IOException);
 
     auto foc_ctx(start_one_foc());
@@ -318,7 +329,7 @@ TEST_P(FailOverCacheTester, ResetCacheServer)
         if(i % 2)
         {
             auto foc_ctx(start_one_foc());
-            v->setFailOverCacheConfig(foc_ctx->config());
+            v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
         }
 
         writeToVolume(v,
@@ -341,7 +352,7 @@ TEST_P(FailOverCacheTester, ClearCacheServer)
     Volume* v = newVolume("vol1",
 			  ns);
 
-    v->setFailOverCacheConfig(foc_ctx->config());
+    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     const unsigned numwrites = drand48() * 128;
 
@@ -376,7 +387,7 @@ TEST_P(FailOverCacheTester, test2)
     Volume* v = newVolume("vol1",
                           ns);
 
-    v->setFailOverCacheConfig(foc_ctx->config());
+    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     writeToVolume(v,
                   0,
@@ -415,7 +426,7 @@ TEST_P(FailOverCacheTester, test3)
     Volume* v = newVolume("vol1",
                           ns);
 
-    v->setFailOverCacheConfig(foc_ctx->config());
+    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     for(int i =0; i < 50; ++i)
     {
@@ -444,7 +455,7 @@ TEST_P(FailOverCacheTester, resetToSelf)
 
     Volume* v = newVolume("vol1",
                           ns);
-    v->setFailOverCacheConfig(foc_ctx->config());
+    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     const std::string tlogname1 = v->getSnapshotManagement().getCurrentTLogName();
     const unsigned entries = 32;
@@ -453,10 +464,11 @@ TEST_P(FailOverCacheTester, resetToSelf)
     {
         writeToVolume(v, i * 4096, 4096, "bdv");
     }
-    v->setFailOverCacheConfig(foc_ctx->config());
+    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     const std::string tlogname2 = v->getSnapshotManagement().getCurrentTLogName();
-    EXPECT_FALSE(tlogname1 == tlogname2);
+    EXPECT_NE(tlogname1,
+              tlogname2);
 
     for(unsigned i = 0; i < entries; i++)
     {
@@ -484,7 +496,6 @@ TEST_P(FailOverCacheTester, resetToOther)
     Volume* v = newVolume("vol1",
                           ns);
 
-
     const std::string tlogname1 = v->getSnapshotManagement().getCurrentTLogName();
     const unsigned entries = 32;
 
@@ -492,13 +503,14 @@ TEST_P(FailOverCacheTester, resetToOther)
     {
         writeToVolume(v, i * 4096, 4096, "bdv");
     }
-    EXPECT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::OK_STANDALONE);
+    EXPECT_EQ(VolumeFailOverState::OK_STANDALONE,
+              v->getVolumeFailOverState());
 
-    EXPECT_NO_THROW(v->setFailOverCacheConfig(foc_ctx1->config()));
+    EXPECT_NO_THROW(v->setFailOverCacheConfig(foc_ctx1->config(GetParam().foc_mode())));
 
-    EXPECT_NO_THROW(v->setFailOverCacheConfig(foc_ctx2->config()));
+    EXPECT_NO_THROW(v->setFailOverCacheConfig(foc_ctx2->config(GetParam().foc_mode())));
 
-    EXPECT_NO_THROW(v->setFailOverCacheConfig(foc_ctx1->config()));
+    EXPECT_NO_THROW(v->setFailOverCacheConfig(foc_ctx1->config(GetParam().foc_mode())));
 
     EXPECT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::KETCHUP or
                 v->getVolumeFailOverState() == VolumeFailOverState::OK_SYNC);
@@ -510,7 +522,8 @@ TEST_P(FailOverCacheTester, resetToOther)
         sleep(1);
     }
 
-    EXPECT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::OK_SYNC);
+    EXPECT_EQ(VolumeFailOverState::OK_SYNC,
+              v->getVolumeFailOverState());
 
     for(unsigned i = 0; i < entries; i++)
     {
@@ -529,16 +542,20 @@ TEST_P(FailOverCacheTester, AutoRecoveries)
 
     const auto port = get_next_foc_port();
     ASSERT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
-                                                         port)),
+                                                               port,
+                                                               GetParam().foc_mode())),
                  fungi::IOException);
 
-    ASSERT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::DEGRADED);
+    ASSERT_EQ(VolumeFailOverState::DEGRADED,
+              v->getVolumeFailOverState());
+
     auto foc_ctx(start_one_foc());
-    ASSERT_TRUE(port == foc_ctx->port());
+    ASSERT_EQ(port,
+              foc_ctx->port());
 
-    sleep(2* failovercache_check_interval_in_seconds_);
-    ASSERT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::OK_SYNC);
-
+    sleep(2 * failovercache_check_interval_in_seconds_);
+    ASSERT_EQ(VolumeFailOverState::OK_SYNC,
+              v->getVolumeFailOverState());
 }
 
 TEST_P(FailOverCacheTester, TLogsAreRemoved)
@@ -551,7 +568,7 @@ TEST_P(FailOverCacheTester, TLogsAreRemoved)
     Volume* v = newVolume("vol1",
                           ns);
 
-    v->setFailOverCacheConfig(foc_ctx->config());
+    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     for(int i =0; i < 16; ++i)
     {
@@ -635,7 +652,7 @@ TEST_P(FailOverCacheTester, DirectoryRemovedOnUnRegister)
 
     Volume* v = newVolume("vol1",
                           ns);
-    v->setFailOverCacheConfig(foc_ctx->config());
+    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     const fs::path foc_ns_path(foc_ctx->path() / ns.str());
 
@@ -657,6 +674,80 @@ TEST_P(FailOverCacheTester, DirectoryRemovedOnUnRegister)
     ASSERT_FALSE(fs::is_directory(foc_ns_path));
 }
 
+// OVS-3430: a nasty race between flush and addEntries for the newData buffer
+TEST_P(FailOverCacheTester, adding_and_flushing)
+{
+    auto foc_ctx(start_one_foc());
+    auto wrns(make_random_namespace());
+
+    Volume* v = newVolume(*wrns);
+    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+
+    FailOverCacheClientInterface& foc = *v->getFailOver();
+
+    std::atomic<bool> stop(false);
+    size_t flushes = 0;
+
+    auto future(std::async(std::launch::async,
+                           [&]
+                           {
+                               while (not stop)
+                               {
+                                   foc.Flush();
+                                   ++flushes;
+                                   boost::this_thread::sleep_for(boost::chrono::milliseconds(5));
+                               }
+                           }));
+
+    const size_t csize = v->getClusterSize();
+    std::vector<byte> buf(csize);
+    std::vector<ClusterLocation> locs(1);
+
+    const size_t max = (1ULL << 27) / buf.size();
+
+    for (size_t i = 1; i <= max; ++i)
+    {
+        *reinterpret_cast<size_t*>(buf.data()) = i;
+        locs[0] = ClusterLocation(i);
+
+        while (not foc.addEntries(locs,
+                                  locs.size(),
+                                  i,
+                                  buf.data()))
+        {
+            boost::this_thread::sleep_for(boost::chrono::milliseconds(5));
+        }
+    }
+
+    EXPECT_LT(0, flushes);
+
+    stop.store(true);
+
+    future.wait();
+
+    foc.Flush();
+
+    size_t count = 0;
+
+    for (size_t i = 1; i <= max; ++i)
+    {
+        foc.getSCOFromFailOver(SCO(i),
+                               [&](ClusterLocation loc,
+                                   uint64_t lba,
+                                   const uint8_t* buf,
+                                   size_t bufsize)
+                               {
+                                   ++count;
+                                   ASSERT_EQ(i, loc.sco().number());
+                                   ASSERT_EQ(i, lba);
+                                   ASSERT_EQ(i, *reinterpret_cast<const size_t*>(buf));
+                                   ASSERT_EQ(csize, bufsize);
+                               });
+    }
+
+    EXPECT_EQ(max, count);
+}
+
 // needs to be run as root, and messes with the iptables, so use with _extreme_
 // caution
 /*
@@ -671,7 +762,7 @@ TEST_P(FailOverCacheTester, DISABLED_tarpit)
     Volume* v = newVolume("volume",
 			  "volumeNamespace");
 
-    v->setFailOverCache(foc_ctx->config());
+    v->setFailOverCache(foc_ctx->config(GetParam().foc_mode()));
 
     VolumeConfig cfg = v->get_config();
 
@@ -717,7 +808,24 @@ TEST_P(FailOverCacheTester, DISABLED_tarpit)
 }
 */
 
-INSTANTIATE_TEST(FailOverCacheTester);
+
+namespace
+{
+
+const VolumeDriverTestConfig cluster_cache_config =
+    VolumeDriverTestConfig().use_cluster_cache(true);
+
+const VolumeDriverTestConfig sync_foc_config =
+    VolumeDriverTestConfig()
+    .use_cluster_cache(true)
+    .foc_mode(FailOverCacheMode::Synchronous);
+
+}
+
+INSTANTIATE_TEST_CASE_P(FailOverCacheTesters,
+                        FailOverCacheTester,
+                        ::testing::Values(cluster_cache_config,
+                                          sync_foc_config));
 
 }
 

@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -910,7 +910,7 @@ VolManagerTestSetup::startVolManager()
         getCacheConfig(pt);
 
         std::vector<MountPointConfig> vec;
-        if(GetParam().useClusterCache())
+        if(GetParam().use_cluster_cache())
         {
             yt::DimensionedValue theFirst("10MiB");
             yt::DimensionedValue theSecond("20MiB");
@@ -1527,7 +1527,7 @@ VolManagerTestSetup::flushFailOverCache(Volume* v)
     }
 }
 
-FailOverCacheBridge*
+FailOverCacheClientInterface*
 VolManagerTestSetup::getFailOverWriter(Volume* v)
 {
     auto b = v->failover_.get();
@@ -1829,8 +1829,8 @@ VolManagerTestSetup::metadata_backend_type() const
     return mdstore_test_setup_->backend_type_;
 }
 
-VolumeDriverTestConfig
-VolManagerTestSetup::defConfig(true);
+const VolumeDriverTestConfig
+VolManagerTestSetup::defConfig = VolumeDriverTestConfig().use_cluster_cache(true);
 
 void
 VolManagerTestSetup::fill_backend_cache(const backend::Namespace& ns)

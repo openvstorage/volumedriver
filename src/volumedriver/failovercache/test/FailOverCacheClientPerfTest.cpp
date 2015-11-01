@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,10 +31,85 @@ namespace yt = youtils;
 namespace be = backend;
 namespace po = boost::program_options;
 
-class FailOverCacheEntryFactory
+struct ClusterHolder // This is the old FailOverCacheEntry... (as it must hold the memory of the cluster)
+{
+    ClusterHolder(ClusterLocation cli,
+                  uint64_t lba,
+                  const uint8_t* buffer,
+                  uint32_t size)
+        : cli_(cli)
+        , lba_(lba)
+        , size_(size)
+        , buffer_(new byte[size])
+    {
+        memcpy(&buffer_[0], buffer, size_);
+    }
+
+    ClusterHolder(ClusterLocation cli,
+                  uint64_t lba,
+                  byte* buffer,
+                  uint32_t size)
+        : cli_(cli)
+        , lba_(lba)
+        , size_(size)
+        , buffer_(buffer)
+    {
+    }
+
+    ClusterHolder()
+        : lba_(0)
+        , size_(0)
+        , buffer_(0)
+    {
+    }
+
+    ClusterHolder(const ClusterHolder& other)
+        : cli_(other.cli_)
+        , lba_(other.lba_)
+        , size_(other.size_)
+        , buffer_(new byte[size_])
+    {
+        memcpy(&buffer_[0], &other.buffer_[0], size_);
+    }
+
+    ClusterHolder(ClusterHolder&& other)
+        : cli_(std::move(other.cli_))
+        , lba_(other.lba_)
+        , size_(other.size_)
+        , buffer_(0)
+    {
+        other.size_ = 0;
+        buffer_.swap(other.buffer_);
+    }
+
+    ClusterHolder& operator=(ClusterHolder&& other)
+    {
+        if (this != &other)
+        {
+            std::swap(cli_, other.cli_);
+            std::swap(lba_, other.lba_);
+            std::swap(size_, other.size_);
+            buffer_.swap(other.buffer_);
+        }
+        return *this;
+    }
+
+
+    //ClusterHolder& operator=(const ClusterHolder&)
+    //{
+    //
+    //}
+
+    ClusterLocation cli_;
+    uint64_t lba_;
+    uint32_t size_;
+    boost::scoped_array<byte> buffer_;
+};
+
+class ClusterFactory
 {
 public:
-    FailOverCacheEntryFactory(ClusterSize cluster_size,
+    ClusterFactory(ClusterSize cluster_size,
                               uint32_t num_clusters,
                               ClusterLocation startLocation =  ClusterLocation(1))
         : cluster_size_(cluster_size),
@@ -42,7 +117,7 @@ public:
           cluster_loc(startLocation)
     {}
 
-    FailOverCacheEntry*
+    ClusterHolder
     operator()(ClusterLocation& next_location,
                const std::string& content = "")
     {
@@ -58,10 +133,10 @@ public:
             }
         }
 
-        FailOverCacheEntry* ret = new FailOverCacheEntry(cluster_loc,
-                                                         0,
-                                                         b,
-                                                         cluster_size_);
+        ClusterHolder ret(cluster_loc,
+                               0,
+                               b,
+                               cluster_size_);
         SCOOffset a = cluster_loc.offset();
 
         if(a  >= num_clusters_ -1)
@@ -102,6 +177,9 @@ public:
                 ("port",
                  po::value<uint16_t>(&port_)->required(),
                  "port of the failovercache server")
+                ("mode",
+                 po::value<volumedriver::FailOverCacheMode>(&mode_)->default_value(FailOverCacheMode::Asynchronous),
+                 "mode of the failovercache server (Asynchronous|Synchronous)")
                 ("namespace",
                  po::value<std::string>(&ns_tmp_)->required(),
                  "namespace to use for testing")
@@ -132,30 +210,39 @@ public:
         MainHelper::setup_logging();
     }
 
+    bool addEntry(FailOverCacheClientInterface& focItf, ClusterHolder& ch)
+    {
+        std::vector<ClusterLocation> locs;
+        locs.emplace_back(ch.cli_);
+        return focItf.addEntries(locs, 1, ch.lba_, ch.buffer_.get());
+    }
+
     virtual int
     run()
     {
-        LOG_INFO("Run with host " << host_ << " port " << port_ << " namespace " << *ns_ << " sleep micro " << sleep_micro_);
-        FailOverCacheBridge failover_bridge(1024, 8);
+        LOG_INFO("Run with host " << host_ << " port " << port_ << " mode " << mode_ << " namespace " << *ns_ << " sleep micro " << sleep_micro_);
+        max_entries_ = 1024;
+        write_trigger_ = 8;
+        FailOverCacheClientInterface& failover_bridge = *FailOverCacheBridgeFactory::create(mode_, max_entries_, write_trigger_);
         Volume * fake_vol = 0;
         failover_bridge.initialize(fake_vol);
 
         failover_bridge.newCache(std::make_unique<FailOverCacheProxy>(FailOverCacheConfig(host_,
-                                                                                          port_),
+                                                                                          port_,
+                                                                                          mode_),
                                                                       *ns_,
                                                                       4096,
-                                                                      FailOverCacheBridge::RequestTimeout));
+                                                                      failover_bridge.getDefaultRequestTimeout()));
         failover_bridge.Clear();
 
-        FailOverCacheEntryFactory source(ClusterSize(4096), 1024);
+        ClusterFactory source(ClusterSize(4096), 1024);
         ClusterLocation next_location;
 
         uint64_t count = 1000000;
         LOG_INFO("Test entry generation: creating " << count << " entries");
         for(uint64_t i =0; i < count; i++)
         {
-            FailOverCacheEntry* e = source(next_location);
-            delete e;
+            ClusterHolder e = source(next_location);
             if (i % 100000 == 0)
             {
             }
@@ -173,10 +260,10 @@ public:
 
         while (true)
         {
-            FailOverCacheEntry* e = source(next_location);
+            ClusterHolder ch = source(next_location);
             uint64_t cycles = 0;
 
-            while(not failover_bridge.addEntry(e))
+            while(not addEntry(failover_bridge, ch))
             {
                 if (cycles++ == 0)
                 {
@@ -201,8 +288,11 @@ public:
         return 0;
     }
 
+    std::atomic<unsigned> max_entries_;
+    std::atomic<unsigned> write_trigger_;
     std::string host_;
     uint16_t port_;
+    volumedriver::FailOverCacheMode mode_;
     std::unique_ptr<backend::Namespace> ns_;
     std::string ns_tmp_;
 

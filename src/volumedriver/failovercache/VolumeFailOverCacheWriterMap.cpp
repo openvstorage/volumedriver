@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,16 +13,19 @@
 // limitations under the License.
 
 #include "VolumeFailOverCacheWriterMap.h"
+
 #include <youtils/Assert.h>
+
 namespace failovercache
 {
 
 using namespace volumedriver;
 
+namespace fs = boost::filesystem;
+
 VolumeFailOverCacheWriterMap::VolumeFailOverCacheWriterMap(const fs::path& root)
     :root_(root)
 {}
-
 
 VolumeFailOverCacheWriterMap::~VolumeFailOverCacheWriterMap()
 {
@@ -62,7 +65,9 @@ VolumeFailOverCacheWriterMap::remove(const FailOverCacheWriter* writer)
     DEBUG_CHECK(it != end());
     if(it == end())
     {
-        LOG_WARN("Got a remove for namespace " << writer->getNamespace() << " which I don't know");
+        LOG_WARN("Got a remove for namespace " <<
+                 writer->getNamespace() <<
+                 " which I don't know");
         return;
     }
 
@@ -73,6 +78,5 @@ VolumeFailOverCacheWriterMap::remove(const FailOverCacheWriter* writer)
 }
 
 // Local Variables: **
-// compile-command: "scons -D --kernel_version=system --ignore-buildinfo -j 5" **
 // mode: c++ **
 // End: **

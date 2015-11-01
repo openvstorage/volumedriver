@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -237,7 +237,8 @@ Manager::make_nodes_(const ServerConfigs& configs) const
 Manager::ServerPtr
 Manager::make_server_(const ServerConfig& cfg) const
 {
-    auto db(std::make_shared<DataBase>(std::make_shared<RocksDataBase>(cfg.db_path),
+    auto db(std::make_shared<DataBase>(std::make_shared<RocksDataBase>(cfg.db_path,
+                                                                       cfg.rocks_config),
                                        cm_,
                                        cfg.scratch_path,
                                        mds_cached_pages.value(),

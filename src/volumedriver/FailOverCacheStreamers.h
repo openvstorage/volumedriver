@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -81,40 +81,12 @@ struct FailOverCacheEntry
     FailOverCacheEntry(ClusterLocation cli,
                        uint64_t lba,
                        const uint8_t* buffer,
-                       uint32_t size)
-        : cli_(cli)
-        , lba_(lba)
-        , buffer_(new byte[size])
-        , size_(size)
-    {
-        memcpy(&buffer_[0], buffer, size_);
-    }
-
-    FailOverCacheEntry(ClusterLocation cli,
-                       uint64_t lba,
-                       byte* buffer,
-                       uint32_t size)
-        : cli_(cli)
-        , lba_(lba)
-        , buffer_(buffer)
-        , size_(size)
-    {}
-
-    ~FailOverCacheEntry()
-    {
-    }
-
-
-    FailOverCacheEntry()
-        : lba_(0)
-        , buffer_(0)
-
-    {}
+                       uint32_t size);
 
     ClusterLocation cli_;
     uint64_t lba_;
-    boost::scoped_array<byte> buffer_;
     uint32_t size_;
+    const uint8_t* buffer_;
 };
 
 
@@ -122,11 +94,20 @@ template<>
 struct CommandData<AddEntries>
 
 {
-    CommandData(boost::ptr_vector<FailOverCacheEntry>& entries)
-        : entries_(entries)
+    using EntryVector = std::vector<FailOverCacheEntry>;
+
+    // Only used when streaming in
+    CommandData(EntryVector entries)
+        : entries_(std::move(entries))
     {}
 
-    boost::ptr_vector<FailOverCacheEntry>& entries_;
+    // Only used when streaming in
+    std::vector<uint8_t> buf_;
+
+    // Only used when streaming out
+    CommandData() = default;
+
+    EntryVector entries_;
 };
 
 fungi::IOBaseStream&

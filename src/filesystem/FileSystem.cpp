@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -119,7 +119,8 @@ is_volume(const DirectoryEntryPtr& dentry)
 
 boost::optional<vd::FailOverCacheConfig>
 make_foc_config(const std::string& host,
-                const uint16_t port)
+                const uint16_t port,
+                const vd::FailOverCacheMode mode)
 {
     if (host.empty())
     {
@@ -128,7 +129,8 @@ make_foc_config(const std::string& host,
     else
     {
         return vd::FailOverCacheConfig(host,
-                                       port);
+                                       port,
+                                       mode);
     }
 }
 
@@ -152,12 +154,15 @@ FileSystem::FileSystem(const bpt::ptree& pt,
     , fs_dtl_config_mode(pt)
     , fs_dtl_host(pt)
     , fs_dtl_port(pt)
+    , fs_dtl_mode(pt)
     , registry_(std::make_shared<Registry>(pt))
     , router_(pt,
               std::static_pointer_cast<LockedArakoon>(registry_),
               fs_dtl_config_mode.value(),
+              fs_dtl_mode.value(),
               make_foc_config(fs_dtl_host.value(),
-                              fs_dtl_port.value()))
+                              fs_dtl_port.value(),
+                              fs_dtl_mode.value()))
     , mdstore_(std::static_pointer_cast<LockedArakoon>(registry_),
                router_.cluster_id(),
                fs_cache_dentries.value() ?
@@ -246,6 +251,7 @@ FileSystem::update(const bpt::ptree& pt,
     U(fs_dtl_config_mode);
     U(fs_dtl_host);
     U(fs_dtl_port);
+    U(fs_dtl_mode);
 
     U(ip::PARAMETER_TYPE(fs_virtual_disk_format)(vdisk_format_->name()));
     U(ip::PARAMETER_TYPE(fs_file_event_rules)(file_event_rules_));

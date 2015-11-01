@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 #include "Events.pb.h"
 #include "Types.h"
 #include "VolumeDriverEvents.pb.h"
+#include "VolumeFailOverState.h"
 
 #include <boost/optional.hpp>
 
@@ -29,6 +30,11 @@ namespace volumedriver
 struct VolumeDriverError
 {
     DECLARE_LOGGER("VolumeDriverError");
+
+    static void
+    report(const VolumeId& volid,
+           VolumeFailOverState old_state,
+           VolumeFailOverState new_state) noexcept;
 
     static void
     report(const events::Event& ev) noexcept;

@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -272,16 +272,16 @@ FailOverCacheProtocol::addEntries_()
 {
     VERIFY(cache_);
 
-    boost::ptr_vector<volumedriver::FailOverCacheEntry> entries;
-    volumedriver::CommandData<volumedriver::AddEntries> data(entries);
+    volumedriver::CommandData<volumedriver::AddEntries> data; // default constructor, as we are streaming in
     *stream_ >> data;
-    for(boost::ptr_vector<volumedriver::FailOverCacheEntry>::const_iterator it = entries.begin();
-        it != entries.end();
+    for(std::vector<volumedriver::FailOverCacheEntry>::const_iterator it = data.entries_.begin();
+        it != data.entries_.end();
         ++it)
     {
+        TODO("ArneT: funky cast...");
         cache_->addEntry(it->cli_,
                          it->lba_,
-                         it->buffer_.get(),
+                         (byte*) it->buffer_,
                          it->size_);
     }
     returnOk();

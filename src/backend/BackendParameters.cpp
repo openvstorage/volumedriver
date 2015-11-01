@@ -1,4 +1,4 @@
-// Copyright 2015 Open vStorage NV
+// Copyright 2015 iNuron NV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -214,7 +214,7 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(s3_connection_username,
                                       "s3_connection_username",
                                       "When backend_type is S3: the S3 username, otherwise ignored",
                                       ShowDocumentation::T,
-                                      "wim.leus@openvstorage.com"s);
+                                      ""s);
 
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(s3_connection_password,
                                       backend_connection_manager_name,
