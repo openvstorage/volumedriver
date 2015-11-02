@@ -1477,6 +1477,22 @@ TEST_P(cases, DISABLED_optional_streaming)
     std::cout << "Some: " << some << std::endl;
 }
 
+TEST_P(cases, DISABLED_future_interruption)
+{
+    boost::promise<void> promise;
+    auto future(promise.get_future());
+
+    boost::thread t([&]()
+                    {
+                        EXPECT_THROW(future.wait(),
+                                     boost::thread_interrupted);
+                    });
+
+    boost::this_thread::sleep_for(boost::chrono::seconds(5));
+    t.interrupt();
+    t.join();
+}
+
 INSTANTIATE_TEST(cases);
 
 }
