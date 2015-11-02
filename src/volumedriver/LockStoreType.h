@@ -22,6 +22,7 @@ namespace volumedriver
 
 enum class LockStoreType
 {
+    Arakoon,
     Backend,
 };
 

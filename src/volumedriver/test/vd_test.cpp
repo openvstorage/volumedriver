@@ -33,6 +33,7 @@
 #include <boost/optional/optional_io.hpp>
 #include <boost/ptr_container/ptr_map.hpp>
 
+#include <youtils/ArakoonTestSetup.h>
 #include <youtils/BuildInfo.h>
 #include <youtils/Logger.h>
 #include <youtils/Main.h>
@@ -63,6 +64,12 @@ public:
             default_mdstore(boost::lexical_cast<std::string>(vdt::MetaDataStoreTestSetup::backend_type_));
 
         desc_.add_options()
+            ("arakoon-binary-path",
+             po::value<std::string>(&arakoon_binary_path_)->default_value("/usr/bin/arakoon"),
+             "path to arakoon binary")
+            ("arakoon-port-base",
+             po::value<uint16_t>(&arakoon_port_base_)->default_value(12345),
+             "arakoon port base")
             ("foc-address",
              po::value<std::string>(&vdt::FailOverCacheTestSetup::addr_)->default_value(vdt::FailOverCacheTestSetup::addr_),
              "address to bind the failovercache to")
@@ -111,15 +118,17 @@ public:
                                vm_);
 
         parse_mdstore_config_();
+
+        ara::ArakoonTestSetup::setArakoonBinaryPath(arakoon_binary_path_);
+        ara::ArakoonTestSetup::setArakoonBasePort(arakoon_port_base_);
     }
 
-
     po::options_description desc_;
-    //    std::unique_ptr<yt::AlternativeOptionsAgain> mdstore_options_;
+    std::string arakoon_binary_path_;
+    uint16_t arakoon_port_base_;
     std::string mdstore_type_;
 
 private:
-
     void
     parse_mdstore_config_()
     {
@@ -132,7 +141,6 @@ private:
                                vm);
 
         opt->actions();
-
     }
 };
 

@@ -160,7 +160,6 @@ public:
         LOG_INFO("New arakoon config in place");
     }
 
-protected:
     void
     timeout(const arakoon::Cluster::MaybeMilliSeconds& mms)
     {

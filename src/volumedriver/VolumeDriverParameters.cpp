@@ -18,6 +18,7 @@
 namespace initialized_params
 {
 
+namespace ara = arakoon;
 namespace vd = volumedriver;
 namespace yt = youtils;
 
@@ -242,6 +243,27 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(dls_type,
                                       "Type of distributed lock store to use (default / currently only supported value: \"Backend\")",
                                       ShowDocumentation::T,
                                       vd::LockStoreType::Backend);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(dls_arakoon_timeout_ms,
+                                      vd::LockStoreFactory::name(),
+                                      "dls_arakoon_timeout_ms",
+                                      "Arakoon client timeout in milliseconds for the distributed lock store",
+                                      ShowDocumentation::T,
+                                      60000);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(dls_arakoon_cluster_id,
+                                      vd::LockStoreFactory::name(),
+                                      "dls_arakoon_cluster_id",
+                                      "Arakoon cluster identifier for the distributed lock store",
+                                      ShowDocumentation::T,
+                                      ""s);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(dls_arakoon_cluster_nodes,
+                                      vd::LockStoreFactory::name(),
+                                      "dls_arakoon_cluster_nodes",
+                                      "an array of arakoon cluster node configurations for the distributed lock store, each containing node_id, host and port",
+                                      ShowDocumentation::T,
+                                      ara::ArakoonNodeConfigs());
 
 }
 

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "ArakoonLockStoreBuilder.h"
 #include "BackendLockStoreBuilder.h"
 #include "LockStoreFactory.h"
 #include "LockStoreType.h"
@@ -35,6 +36,8 @@ make_builder(LockStoreType t,
 {
     switch (t)
     {
+    case LockStoreType::Arakoon:
+        return std::unique_ptr<LockStoreBuilder>(new ArakoonLockStoreBuilder(pt));
     case LockStoreType::Backend:
         return std::unique_ptr<LockStoreBuilder>(new BackendLockStoreBuilder(pt,
                                                                              cm));

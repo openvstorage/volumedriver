@@ -36,6 +36,7 @@ reminder(LockStoreType m)
 {
     switch (m)
     {
+    case LockStoreType::Arakoon:
     case LockStoreType::Backend:
         // If the compiler yells at you that you've forgotten dealing with an enum
         // value here chances are that it's also missing from the translations map
@@ -50,6 +51,7 @@ TranslationsMap
 init_translations()
 {
     const std::vector<TranslationsMap::value_type> initv{
+        { LockStoreType::Arakoon, "Arakoon" },
         { LockStoreType::Backend, "Backend" },
     };
 

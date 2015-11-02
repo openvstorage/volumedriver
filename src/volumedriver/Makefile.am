@@ -69,6 +69,7 @@ CLEANFILES = $(bin_SCRIPTS)
 
 libvolumedriver_la_SOURCES = \
 	Api.cpp \
+	ArakoonLockStoreBuilder.cpp \
 	ArakoonMetaDataBackend.cpp \
 	BackendNamesFilter.cpp \
 	BackendRestartAccumulator.cpp \

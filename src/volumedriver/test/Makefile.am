@@ -62,6 +62,7 @@ volumedriver_test_SOURCES = \
 	LocalRestartTest.cpp \
 	LocalRestartTestNoBackend.cpp \
 	LockingTest.cpp \
+	LockStoreFactoryTest.cpp \
 	MDSManagerTest.cpp \
 	MDSMetaDataStoreTest.cpp \
 	MDSVolumeTest.cpp \
