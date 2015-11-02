@@ -27,6 +27,7 @@ YoutilsTestPrecompiledHeader.h.$(PCH_SUFFIX) : YoutilsTestPrecompiledHeader.h.hx
 youtils_test_SOURCES = \
 	AlternativeOptionsAgainTest.cpp \
 	ArakoonTest.cpp \
+	ArakoonLockStoreTest.cpp \
 	Bartest.cpp \
 	BooleanEnumTest.cpp \
 	CheckSumTest.cpp \

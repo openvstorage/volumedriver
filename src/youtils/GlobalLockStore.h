@@ -27,6 +27,9 @@ namespace youtils
 
 struct GlobalLockStore
 {
+    MAKE_EXCEPTION(LockHasChanged,
+                   fungi::IOException);
+
     virtual ~GlobalLockStore() = default;
 
     virtual bool

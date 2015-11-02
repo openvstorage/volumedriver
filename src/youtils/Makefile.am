@@ -44,6 +44,7 @@ libyoutils_la_LDFLAGS = -static
 
 libyoutils_la_SOURCES = \
 	ArakoonInterface.cpp \
+	ArakoonLockStore.cpp \
 	ArakoonNodeConfig.cpp \
 	ArakoonTestSetup.cpp \
 	BuildInfo.cpp \
