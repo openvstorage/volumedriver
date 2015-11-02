@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "FailOverCacheConfigMode.h"
+#include "LockedPythonClient.h"
 #include "PythonClient.h"
 #include "XMLRPCKeys.h"
 #include "XMLRPCUtils.h"
@@ -400,16 +401,23 @@ PythonClient::get_scrubbing_work(const std::string& volume_id)
     return l;
 }
 
-
 void
 PythonClient::apply_scrubbing_result(const bpy::tuple& tup)
 {
     const std::string volume_id = bpy::extract<std::string>(tup[0]);
     const std::string work = bpy::extract<std::string>(tup[1]);
 
+    apply_scrubbing_result(volume_id,
+                           work);
+}
+
+void
+PythonClient::apply_scrubbing_result(const std::string& volume_id,
+                                     const std::string& scrub_res)
+{
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
-    req[XMLRPCKeys::scrubbing_work_result] = work;
+    req[XMLRPCKeys::scrubbing_work_result] = scrub_res;
 
     call(ApplyScrubbingResult::method_name(), req);
 }
@@ -824,6 +832,18 @@ PythonClient::vaai_copy(const std::string& src_path,
 
     call(VAAICopy::method_name(),
          req);
+}
+
+LockedPythonClient::Ptr
+PythonClient::make_locked_client(const std::string& volume_id,
+                                 const unsigned update_interval_secs,
+                                 const unsigned grace_period_secs)
+{
+    return LockedPythonClient::create(cluster_id_,
+                                      cluster_contacts_,
+                                      volume_id,
+                                      update_interval_secs,
+                                      grace_period_secs);
 }
 
 }

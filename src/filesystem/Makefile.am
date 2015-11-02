@@ -70,6 +70,7 @@ libvolumedriverfs_la_SOURCES = \
 		HierarchicalArakoon.cpp \
 		LocalNode.cpp \
 		LocalPythonClient.cpp \
+		LockedPythonClient.cpp \
 		Messages.pb.cc \
 		MessageUtils.cpp \
 		MetaDataStore.cpp \

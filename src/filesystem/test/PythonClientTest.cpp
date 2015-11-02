@@ -35,13 +35,14 @@
 #include <volumedriver/ScrubberAdapter.h>
 #include <volumedriver/test/MDSTestSetup.h>
 
+#include "../CloneFileFlags.h"
+#include "../LockedPythonClient.h"
 #include "../PythonClient.h"
 #include "../ObjectRouter.h"
 #include "../Registry.h"
 #include "../XMLRPC.h"
 #include "../XMLRPCKeys.h"
 #include "../XMLRPCStructs.h"
-#include "../CloneFileFlags.h"
 
 namespace volumedriverfstest
 {
@@ -173,8 +174,10 @@ protected:
     bpy::tuple
     scrub_wrap(const bpy::object& work_item)
     {
-        auto cpp_result = scrubber_.scrub_(std::string(bpy::extract<std::string>(work_item)), "/tmp");
-        bpy::tuple py_result = boost::python::make_tuple(cpp_result.first, cpp_result.second);
+        const auto cpp_result =
+            scrubbing::ScrubberAdapter::scrub(std::string(bpy::extract<std::string>(work_item)), "/tmp");
+        const bpy::tuple py_result =
+            boost::python::make_tuple(cpp_result.first, cpp_result.second);
         return py_result;
     }
 
@@ -211,7 +214,6 @@ protected:
     }
 
     vfs::PythonClient client_;
-    scrubbing::ScrubberAdapter scrubber_;
 };
 
 // Oh yeah, without Py_Initialize (and its Py_Finalize counterpart) even things
@@ -1538,5 +1540,110 @@ TEST_F(PythonClientTest, failovercache_config)
                     vd::VolumeFailOverState::OK_SYNC);
 }
 
+TEST_F(PythonClientTest, locked_client)
+{
+    const vfs::FrontendPath vpath(make_volume_name("/some-volume"));
+    const std::string vname(create_file(vpath, 10 << 20));
+
+    int counter = 0;
+    std::atomic<bool> stop(false);
+
+    auto fun([&](int n)
+             {
+                 boost::shared_ptr<vfs::LockedPythonClient>
+                     lclient(client_.make_locked_client(vname));
+
+                 while (not stop)
+                 {
+                     lclient->enter();
+
+                     bpy::object dummy;
+                     auto on_exit(yt::make_scope_exit([&]
+                                                      {
+                                                          lclient->exit(dummy,
+                                                                        dummy,
+                                                                        dummy);
+                                                      }));
+                     counter = 0;
+
+                     for (size_t i = 0; i < 1000000; ++i)
+                     {
+                         counter += n;
+                         EXPECT_EQ(0,
+                                   counter % n);
+                     }
+                 }
+             });
+
+    auto f1(std::async(std::launch::async,
+                       [&]
+                       {
+                           fun(3);
+                       }));
+
+    auto f2(std::async(std::launch::async,
+                       [&]
+                       {
+                           fun(5);
+                       }));
+
+    boost::this_thread::sleep_for(boost::chrono::seconds(10));
+    stop.store(true);
+
+    f1.wait();
+    f2.wait();
+}
+
+TEST_F(PythonClientTest, locked_scrub)
+{
+    const vfs::FrontendPath vpath(make_volume_name("/some-volume"));
+    const std::string vname(create_file(vpath, 10 << 20));
+
+    const uint64_t csize = api::GetClusterSize();
+    const std::string fst("first");
+
+    write_to_file(vpath,
+                  fst,
+                  csize,
+                  0);
+
+    const std::string snd("second");
+    write_to_file(vpath,
+                  snd,
+                  csize,
+                  0);
+
+    const std::string snap(client_.create_snapshot(vname));
+
+    wait_for_snapshot(vfs::ObjectId(vname),
+                      snap);
+
+    boost::shared_ptr<vfs::LockedPythonClient>
+        lclient(client_.make_locked_client(vname)->enter());
+
+    bpy::object dummy;
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         lclient->exit(dummy,
+                                                       dummy,
+                                                       dummy);
+                                     }));
+
+    const bpy::list work(lclient->get_scrubbing_work());
+    ASSERT_EQ(1,
+              bpy::len(work));
+
+    const fs::path tmp(topdir_ / "scrubscratchspace");
+    fs::create_directories(tmp);
+
+    const std::string res(lclient->scrub(bpy::extract<std::string>(work[0]),
+                                         tmp.string(),
+                                         scrubbing::ScrubberAdapter::region_size_exponent_default,
+                                         scrubbing::ScrubberAdapter::fill_ratio_default,
+                                         scrubbing::ScrubberAdapter::verbose_scrubbing_default,
+                                         "ovs_scrubber"));
+
+    lclient->apply_scrubbing_result(res);
+}
 
 }
