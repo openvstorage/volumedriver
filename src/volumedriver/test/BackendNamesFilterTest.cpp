@@ -16,10 +16,11 @@
 
 #include <boost/random/uniform_int_distribution.hpp>
 
-#include <backend/RestLockCommunicator.h>
+#include <backend/LockCommunicator.h>
 
 #include <volumedriver/BackendNamesFilter.h>
 #include <volumedriver/FailOverCacheConfig.h>
+#include <volumedriver/FailOverCacheConfigWrapper.h>
 #include <volumedriver/SCOAccessData.h>
 #include <volumedriver/SnapshotManagement.h>
 #include <volumedriver/VolumeConfig.h>
@@ -82,9 +83,9 @@ TEST_F(BackendNamesFilterTest, scos)
 TEST_F(BackendNamesFilterTest, configs_etc)
 {
     test(SCOAccessDataPersistor::backend_name);
-    test(FailOverCacheConfig::config_backend_name);
+    test(FailOverCacheConfigWrapper::config_backend_name);
     test(VolumeConfig::config_backend_name);
-    test(SnapshotManagement::getSnapshotFilename());
+    test(snapshotFilename());
 }
 
 TEST_F(BackendNamesFilterTest, things_that_must_not_match)
@@ -92,7 +93,7 @@ TEST_F(BackendNamesFilterTest, things_that_must_not_match)
     BackendNamesFilter f;
     EXPECT_FALSE(f("replicationMetaInitialized"));
     EXPECT_FALSE(f("replicationConfig"));
-    EXPECT_FALSE(f(be::rest::RestLockCommunicator::lock_name_));
+    EXPECT_FALSE(f(be::LockCommunicator::lock_name_));
 }
 
 TEST_F(BackendNamesFilterTest, random)
@@ -122,9 +123,9 @@ TEST_F(BackendNamesFilterTest, random)
 
         const std::string s = ss.str();
         if (s != SCOAccessDataPersistor::backend_name and
-            s != FailOverCacheConfig::config_backend_name and
+            s != FailOverCacheConfigWrapper::config_backend_name and
             s != VolumeConfig::config_backend_name and
-            s != SnapshotManagement::getSnapshotFilename() and
+            s != snapshotFilename() and
             not TLog::isTLogString(s) and
             not SCO::isSCOString(s))
         {
