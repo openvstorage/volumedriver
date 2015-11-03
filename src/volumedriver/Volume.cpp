@@ -126,7 +126,6 @@ Volume::Volume(const VolumeConfig& vCfg,
     , volOffset_(ilogb(vCfg.lba_size_ ))
     , nsidmap_(std::move(nsidmap))
     , failoverstate_(VolumeFailOverState::DEGRADED)
-    , last_tlog_not_on_failover_("")
     , readcounter_(0)
     , read_activity_(0)
     , cluster_locations_(vCfg.sco_mult_)
@@ -387,7 +386,7 @@ Volume::localRestartDataStore_(SCONumber last_sco_num_in_backend,
                                                      false);
 
     {
-        OrderedTLogNames tlogs;
+        OrderedTLogIds tlogs;
         snapshotManagement_->getTLogsNotWrittenToBackend(tlogs);
         // explicitly say no fetch from backend should be done by not passing in a
         // backend pointer
@@ -758,8 +757,8 @@ Volume::writeClustersToFailOverCache_(const std::vector<ClusterLocation>& locs,
                        std::uncaught_exception());
         }));
 
-        LOG_VTRACE("sending TLog " << snapshotManagement_->getCurrentTLogName() <<
-                   ", start_address " << start_address);
+        LOG_VTRACE("sending TLog " << snapshotManagement_->getCurrentTLogId() <<
+                   ", start address " << start_address);
 
         while (not failover_->addEntries(locs,
                                          num_locs,
@@ -1180,7 +1179,7 @@ Volume::getFailOverCacheConfig()
 }
 
 void
-Volume::createSnapshot(const std::string& name,
+Volume::createSnapshot(const SnapshotName& name,
                        const SnapshotMetaData& metadata,
                        const UUID& uuid)
 {
@@ -1211,7 +1210,7 @@ Volume::createSnapshot(const std::string& name,
 }
 
 bool
-Volume::checkSnapshotUUID(const std::string& snapshotName,
+Volume::checkSnapshotUUID(const SnapshotName& snapshotName,
                           const volumedriver::UUID& uuid) const
 {
     return snapshotManagement_->checkSnapshotUUID(snapshotName,
@@ -1219,24 +1218,24 @@ Volume::checkSnapshotUUID(const std::string& snapshotName,
 }
 
 bool
-Volume::snapshotExists(const std::string& name) const
+Volume::snapshotExists(const SnapshotName& name) const
 {
     return snapshotManagement_->snapshotExists(name);
 }
 
 void
-Volume::listSnapshots(std::list<std::string>& snapshots) const
+Volume::listSnapshots(std::list<SnapshotName>& snapshots) const
 {
     snapshotManagement_->listSnapshots(snapshots);
 }
 
 Snapshot
-Volume::getSnapshot(const std::string& snapname) const
+Volume::getSnapshot(const SnapshotName& snapname) const
 {
     return snapshotManagement_->getSnapshot(snapname);
 }
 
-void Volume::deleteSnapshot(const std::string& name)
+void Volume::deleteSnapshot(const SnapshotName& name)
 {
     if(T(isVolumeTemplate()))
     {
@@ -1297,7 +1296,7 @@ Volume::dumpDebugData()
 
 // TODO: this only works when the backend is online
 void
-Volume::restoreSnapshot(const std::string& name)
+Volume::restoreSnapshot(const SnapshotName& name)
 {
     WLOCK();
 
@@ -1345,15 +1344,13 @@ Volume::restoreSnapshot(const std::string& name)
 
         // 2) get list of excess SCOs - to be removed only after persisting the new snapshots file
         std::vector<SCO> doomedSCOs;
-        OrderedTLogNames doomedTLogs;
+        OrderedTLogIds doomedTLogs;
 
         try
         {
             LOG_VINFO("Finding out which TLogs and SCO's to delete");
 
-            snapshotManagement_->getTLogsAfterSnapshot(num,
-                                                       doomedTLogs,
-                                                       AbsolutePath::F);
+            doomedTLogs = snapshotManagement_->getTLogsAfterSnapshot(num);
 
             LOG_VINFO("Deleting " << doomedTLogs.size() << " TLogs");
 
@@ -1382,8 +1379,8 @@ Volume::restoreSnapshot(const std::string& name)
 
         LOG_VINFO("Finding out last sco on backend");
 
-        OrderedTLogNames out;
-        snapshotManagement_->getAllTLogs(out,AbsolutePath::F);
+        const OrderedTLogIds out(snapshotManagement_->getAllTLogs());
+
         std::shared_ptr<TLogReaderInterface> itf =
             makeCombinedBackwardTLogReader(snapshotManagement_->getTLogsPath(),
                                            out,
@@ -1413,10 +1410,11 @@ Volume::restoreSnapshot(const std::string& name)
         }
 
         // 6) remove the doomed TLogs
-        for (const std::string& tlog : doomedTLogs)
+        for (const auto& tlog_id : doomedTLogs)
         {
-            backend_task::DeleteTLog* task = new backend_task::DeleteTLog(this,
-                                                                tlog);
+            backend_task::DeleteTLog* task =
+                new backend_task::DeleteTLog(this,
+                                             boost::lexical_cast<std::string>(tlog_id));
             VolManager::get()->backend_thread_pool()->addTask(task);
         }
 
@@ -1432,18 +1430,12 @@ Volume::restoreSnapshot(const std::string& name)
 
         VolManager::get()->backend_thread_pool()->addTask(new backend_task::Barrier(this));
     }
-    catch(std::exception& e)
-    {
-        LOG_VERROR("Snapshot Restore failed, setting volume halted " << e.what());
-        halt();
-        throw;
-    }
-    catch(...)
-    {
-        LOG_VERROR("Snapshot Restore failed, setting volume halted, unknown exception");
-        halt();
-        throw;
-    }
+    CATCH_STD_ALL_EWHAT({
+            LOG_VERROR("snapshot restoration failed: " << EWHAT <<
+                       " - halting volume");
+            halt();
+            throw;
+        });
 
     // 8) invalidate any location based cache entries
     reregister_with_cluster_cache_();
@@ -1625,16 +1617,22 @@ Volume::isSyncedToBackend() const
 }
 
 bool
-Volume::isSyncedToBackendUpTo(const std::string& snapshotName) const
+Volume::isSyncedToBackendUpTo(const SnapshotName& snapshotName) const
 {
     SnapshotNum num = snapshotManagement_->getSnapshotNumberByName(snapshotName);
     return snapshotManagement_->isSnapshotInBackend(num);
 }
 
+bool
+Volume::isSyncedToBackendUpTo(const TLogId& tlog_id) const
+{
+    return snapshotManagement_->isTLogWrittenToBackend(tlog_id);
+}
+
 void
-Volume::getScrubbingWork(std::vector<std::string>& w,
-                         const boost::optional<std::string>& start_snap,
-                         const boost::optional<std::string>& end_snap) const
+Volume::getScrubbingWork(std::vector<std::string>& scrub_work,
+                         const boost::optional<SnapshotName>& start_snap,
+                         const boost::optional<SnapshotName>& end_snap) const
 {
     if(T(isVolumeTemplate()))
     {
@@ -1642,17 +1640,17 @@ Volume::getScrubbingWork(std::vector<std::string>& w,
         throw VolumeIsTemplateException("Templated Volume, getting scrub work is forbidden");
     }
 
-    std::vector<std::string> snapshots;
+    SnapshotWork work;
 
     snapshotManagement_->getSnapshotScrubbingWork(start_snap,
                                                   end_snap,
-                                                  snapshots);
+                                                  work);
 
-    if (not snapshots.empty())
+    if (not work.empty())
     {
         metaDataStore_->sync();
     }
-    for( const std::string& snap_name : snapshots)
+    for(const auto& w : work)
     {
         const VolumeConfig cfg(get_config());
 
@@ -1661,9 +1659,9 @@ Volume::getScrubbingWork(std::vector<std::string>& w,
                                cfg.id_,
                                ilogb(cfg.cluster_mult_ * cfg.lba_size_),
                                getSCOMultiplier(),
-                               snap_name);
+                               w);
 
-        w.push_back(s.str());
+        scrub_work.push_back(s.str());
     }
 }
 
@@ -1674,12 +1672,12 @@ Volume::cleanupScrubbingOnError_(const scrubbing::ScrubberResult& scrub_result,
     LOG_VINFO("Cleaning up, don't reapply scrubbing " << res_name);
     for (const auto& tlog : scrub_result.tlogs_out)
     {
-        if(snapshotManagement_->tlogReferenced(tlog.getName()))
-         {
-             LOG_VERROR("Scrubbing cleanup wanted to remove " << tlog.getName());
-             LOG_VERROR("But it is still referenced in the snapshots file... exiting cleanup");
-             return;
-         }
+        if(snapshotManagement_->tlogReferenced(tlog.id()))
+        {
+            LOG_VERROR("Scrubbing cleanup wanted to remove " << tlog.id() <<
+                       " but it is still referenced in the snapshots file... exiting cleanup");
+            return;
+        }
     }
 
     try
@@ -1694,31 +1692,24 @@ Volume::cleanupScrubbingOnError_(const scrubbing::ScrubberResult& scrub_result,
         for (const auto& tlog : scrub_result.tlogs_out)
         {
             backend_task::DeleteTLog* task = new backend_task::DeleteTLog(this,
-                                                                tlog.getName());
+                                                                          tlog.getName());
             VolManager::get()->backend_thread_pool()->addTask(task);
         }
 
-        for (const std::string& tlog : scrub_result.relocs)
+        for (const std::string& reloc_log : scrub_result.relocs)
         {
             backend_task::DeleteTLog* task = new backend_task::DeleteTLog(this,
-                                                                tlog);
+                                                                          reloc_log);
             VolManager::get()->backend_thread_pool()->addTask(task);
         }
 
         backend_task::DeleteTLog* task = new backend_task::DeleteTLog(this,
-                                                            res_name);
+                                                                      res_name);
+
         VolManager::get()->backend_thread_pool()->addTask(task);
     }
-    catch(std::exception& e)
-    {
-        LOG_VWARN("Exception while removing scrubbing garbage " << e.what() << ", will be ignored");
-
-    }
-    catch(...)
-    {
-        LOG_VWARN("Exception while removing scrubbing garbage, will be ignored");
-    }
-
+    CATCH_STD_ALL_LOGLEVEL_IGNORE(getName() << ": failed to remove scrubbing garbage",
+                                  WARN);
 }
 
 void
@@ -1752,12 +1743,14 @@ Volume::applyScrubbing(const std::string& res_name,
 {
     if(T(isVolumeTemplate()))
     {
-        LOG_ERROR("Volume " << getName() << " has been templated, applying scrubbing is not allowed.");
+        LOG_ERROR("Volume " << getName() <<
+                  " has been templated, applying scrubbing is not allowed.");
         throw VolumeIsTemplateException("Templated Volume, applying scrubbing is forbidden");
     }
+
     checkNotHalted_();
 
-   LOG_VINFO("preliminary work");
+    LOG_VINFO("preliminary work");
 
     if(res_name.empty())
     {
@@ -1765,8 +1758,8 @@ Volume::applyScrubbing(const std::string& res_name,
         throw fungi::IOException("No result name passed");
     }
 
-    fs::path result_path = FileUtils::temp_path() / res_name;
-    SCOCloneID scid = nsidmap_.getCloneID(Namespace(ns));
+    const fs::path result_path(FileUtils::temp_path() / res_name);
+    const SCOCloneID scid = nsidmap_.getCloneID(Namespace(ns));
 
     try
     {
@@ -1820,7 +1813,7 @@ Volume::applyScrubbing(const std::string& res_name,
     {
         if(scid == 0)
         {
-            LOG_VINFO("ApplyScrub: replacing tlogs for snapshot" <<
+            LOG_VINFO("ApplyScrub: replacing tlogs for snapshot " <<
                       scrub_result.snapshot_name);
 
             VERIFY(getNamespace() == Namespace(ns));
@@ -1945,24 +1938,24 @@ Volume::applyScrubbing(const std::string& res_name,
     {
         LOG_VINFO("ApplyScrub: deleting backend data");
 
-        for (const std::string& tlog : scrub_result.tlog_names_in)
+        for (const auto& tlog_id : scrub_result.tlog_names_in)
         {
             backend_task::DeleteTLog* task = new backend_task::DeleteTLog(this,
-                                                                tlog);
+                                                                          boost::lexical_cast<std::string>(tlog_id));
             VolManager::get()->backend_thread_pool()->addTask(task);
         }
 
-        for (const std::string& tlog : scrub_result.relocs)
+        for (const std::string& reloc_log : scrub_result.relocs)
         {
             backend_task::DeleteTLog* task = new backend_task::DeleteTLog(this,
-                                                                tlog);
+                                                                          reloc_log);
             VolManager::get()->backend_thread_pool()->addTask(task);
         }
 
         for (const SCO sconame : scrub_result.sconames_to_be_deleted)
         {
             backend_task::DeleteSCO* task = new backend_task::DeleteSCO(this,
-                                                              sconame);
+                                                                        sconame);
             VolManager::get()->backend_thread_pool()->addTask(task);
         }
 
@@ -1970,11 +1963,11 @@ Volume::applyScrubbing(const std::string& res_name,
     }
 }
 
-std::string
+SnapshotName
 Volume::getParentSnapName() const
 {
     LOCK_CONFIG();
-    return std::string(config_.parent_snapshot_);
+    return config_.parent_snapshot_;
 }
 
 void
@@ -2055,14 +2048,14 @@ Volume::VolumeDataStoreReadUsed() const
 uint64_t
 Volume::getTLogUsed() const
 {
-    OrderedTLogNames out;
-    snapshotManagement_->getAllTLogs(out, AbsolutePath::T);
+    const std::vector<fs::path>
+        paths(snapshotManagement_->tlogPathPrepender(snapshotManagement_->getAllTLogs()));
     uint64_t res = 0;
     struct stat st;
 
-    for(unsigned i = 0; i < out.size(); ++i)
+    for (const auto& path : paths)
     {
-        if(stat(out[i].c_str(), &st) == 0)
+        if (::stat(path.string().c_str(), &st) == 0)
         {
             if(S_ISREG(st.st_mode))
             {
@@ -2129,23 +2122,23 @@ Volume::check_and_fix_failovercache()
     }
 }
 
-void
+TLogId
 Volume::scheduleBackendSync()
 {
     WLOCK();
 
     checkNotHalted_();
-    scheduleBackendSync_();
+    return scheduleBackendSync_();
 }
 
-void
+TLogId
 Volume::scheduleBackendSync_()
 {
     // TODO: halt the volume in case of non-recoverable errors
     sync_(AppendCheckSum::F);
 
     const auto maybe_sco_crc(dataStore_->finalizeCurrentSCO());
-    snapshotManagement_->scheduleBackendSync(maybe_sco_crc);
+    return snapshotManagement_->scheduleBackendSync(maybe_sco_crc);
 }
 
 void
@@ -2192,7 +2185,7 @@ Volume::setFailOverCacheConfig_(const FailOverCacheConfig& config)
     setVolumeFailOverState(VolumeFailOverState::DEGRADED);
     foc_config_wrapper_.set(config);
 
-    last_tlog_not_on_failover_ = "";
+    last_tlog_not_on_failover_ = boost::none;
     failover_->newCache(0);
 
     writeFailOverCacheConfigToBackend_();
@@ -2209,17 +2202,17 @@ Volume::setFailOverCacheConfig_(const FailOverCacheConfig& config)
 
     LOG_VINFO("finding out volume state");
     {
-        OrderedTLogNames out;
+        OrderedTLogIds out;
         fungi::ScopedSpinLock l(volumeStateSpinLock_);
 
         snapshotManagement_->getTLogsNotWrittenToBackend(out);
         const int size = out.size();
 
         VERIFY(out.size() >= 1);
-        const std::string curTLog(snapshotManagement_->getCurrentTLogName());
+        const TLogId curTLog(snapshotManagement_->getCurrentTLogId());
         VERIFY(out.back() == curTLog);
 
-        if(snapshotManagement_->currentTLogHasData() )
+        if(snapshotManagement_->currentTLogHasData())
         {
             last_tlog_not_on_failover_ = curTLog;
             setVolumeFailOverState(VolumeFailOverState::KETCHUP);
@@ -2247,7 +2240,7 @@ Volume::setNoFailOverCache_()
     checkNotHalted_();
 
     setVolumeFailOverState(VolumeFailOverState::DEGRADED);
-    last_tlog_not_on_failover_ = "";
+    last_tlog_not_on_failover_ = boost::none;
     foc_config_wrapper_.set(boost::none);
 
     // these can throw
@@ -2258,11 +2251,12 @@ Volume::setNoFailOverCache_()
 }
 
 void
-Volume::checkState(const std::string& tlogname)
+Volume::checkState(const TLogId& tlog_id)
 {
     fungi::ScopedSpinLock l(volumeStateSpinLock_);
 
-    if(tlogname == last_tlog_not_on_failover_)
+    if(last_tlog_not_on_failover_ and
+       *last_tlog_not_on_failover_ == tlog_id)
     {
         setVolumeFailOverState(VolumeFailOverState::OK_SYNC);
     }
@@ -2284,37 +2278,35 @@ Volume::setVolumeFailOverState(VolumeFailOverState s)
 }
 
 void
-Volume::tlogWrittenToBackendCallback(const TLogID& tid,
+Volume::tlogWrittenToBackendCallback(const TLogId& tid,
                                      const SCO sconame)
 {
     snapshotManagement_->tlogWrittenToBackendCallback(tid,
-                                                  sconame);
+                                                      sconame);
 }
 
 uint64_t
-Volume::getSnapshotSCOCount(const std::string& snapshotName)
+Volume::getSnapshotSCOCount(const SnapshotName& snapshotName)
 {
-    OrderedTLogNames out;
+    OrderedTLogIds tlog_ids;
     if(snapshotName.empty())
     {
-        snapshotManagement_->getCurrentTLogs(out,
-                                             AbsolutePath::F);
+        tlog_ids = snapshotManagement_->getCurrentTLogs();
     }
     else
     {
-
-        SnapshotNum snap = snapshotManagement_->getSnapshotNumberByName(snapshotName);
+        const SnapshotNum snap = snapshotManagement_->getSnapshotNumberByName(snapshotName);
         snapshotManagement_->getTLogsInSnapshot(snap,
-                                               out,
-                                               AbsolutePath::F);
+                                                tlog_ids);
     }
 
-    std::shared_ptr<TLogReaderInterface>  r = makeCombinedTLogReader(snapshotManagement_->getTLogsPath(),
-                                                                     out,
-                                                                     getBackendInterface()->clone());
+    std::shared_ptr<TLogReaderInterface>
+        treader(makeCombinedTLogReader(snapshotManagement_->getTLogsPath(),
+                                       tlog_ids,
+                                       getBackendInterface()->clone()));
 
     std::vector<SCO> lst;
-    r->SCONames(lst);
+    treader->SCONames(lst);
     return lst.size();
 }
 
@@ -2323,6 +2315,7 @@ Volume::getCacheHits() const
 {
     return dataStore_->getCacheHits();
 }
+
 uint64_t
 Volume::getCacheMisses() const
 {
@@ -2335,7 +2328,6 @@ Volume::getNonSequentialReads() const
     // Z42: reinstate once we've got a good idea what to measure :)
     return 0;
 }
-
 
 uint64_t
 Volume::getClusterCacheHits() const
@@ -2450,20 +2442,22 @@ Volume::checkTLogsConsistency_(CloneTLogs& ctl) const
     {
         SCOCloneID cloneid = ctl[i].first;
         BackendInterfacePtr bi = getBackendInterface(cloneid)->clone();
-        OrderedTLogNames& tlogs = ctl[i].second;
+        OrderedTLogIds& tlogs = ctl[i].second;
         SCONumber lastSCONumber = 0;
 
         for(unsigned k = 0; k < tlogs.size(); k++)
         {
             std::vector<SCO> scoNames;
-            TLogReader(tlog_temp_location, tlogs[k], bi->clone()).SCONames(scoNames);;
+            TLogReader(tlog_temp_location,
+                       boost::lexical_cast<std::string>(tlogs[k]),
+                       bi->clone()).SCONames(scoNames);
 
             if (not (scoNames.empty() or
                      (scoNames.front().number() > lastSCONumber)))
             {
-                LOG_VERROR("SCO number at beginning of tlog "
+                LOG_VERROR("SCO number at beginning of TLog "
                            << tlogs[k] <<
-                           "has not increased compared to last SCO from previous tlog");
+                           "has not increased compared to last SCO from previous TLog");
                 return false;
             }
 
@@ -2507,10 +2501,10 @@ struct CheckConsistencyAcc
     void
     operator()(const SnapshotPersistor* s,
                BackendInterfacePtr&,
-               const std::string& snap,
+               const SnapshotName& snap,
                SCOCloneID clone_id)
     {
-        OrderedTLogNames tlogs;
+        OrderedTLogIds tlogs;
         if(clone_id == SCOCloneID(0))
         {
             VERIFY(snap.empty());
@@ -2543,7 +2537,7 @@ Volume::checkConsistency()
 }
 
 uint64_t
-Volume::getSnapshotBackendSize(const std::string& snapName)
+Volume::getSnapshotBackendSize(const SnapshotName& snapName)
 {
     return snapshotManagement_->getSnapshotBackendSize(snapName);
 }

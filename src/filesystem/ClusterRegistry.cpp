@@ -26,12 +26,13 @@ namespace volumedriverfs
 {
 
 namespace ara = arakoon;
+namespace yt = youtils;
 
 typedef boost::archive::text_iarchive iarchive_type;
 typedef boost::archive::text_oarchive oarchive_type;
 
 ClusterRegistry::ClusterRegistry(const ClusterId& cluster_id,
-                                 std::shared_ptr<LockedArakoon> arakoon)
+                                 std::shared_ptr<yt::LockedArakoon> arakoon)
     : cluster_id_(cluster_id)
     , arakoon_(arakoon)
 {
@@ -114,7 +115,7 @@ ClusterRegistry::erase_node_configs()
                                {
                                    seq.add_delete(make_key());
                                },
-                               RetryOnArakoonAssert::F);
+                               yt::RetryOnArakoonAssert::F);
     }
     catch (ara::error_not_found&)
     {
@@ -153,7 +154,7 @@ ClusterRegistry::set_node_configs(const ClusterNodeConfigs& configs)
                                seq.add_set(make_key(),
                                            serialize_node_map(map));
                            },
-                           RetryOnArakoonAssert::F);
+                           yt::RetryOnArakoonAssert::F);
 
     LOG_INFO("Registry for cluster " << cluster_id_ << " initialized");
 }
@@ -229,7 +230,7 @@ try
                                it->second = ClusterNodeStatus(it->second.config, state);
                                seq.add_set(key, serialize_node_map(map));
                            },
-                           RetryOnArakoonAssert::T);
+                           yt::RetryOnArakoonAssert::T);
 }
 catch (ara::error_assertion_failed&)
 {

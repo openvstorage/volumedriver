@@ -12,37 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef NO_GLOBAL_LOCKING_SERVICE_H
-#define NO_GLOBAL_LOCKING_SERVICE_H
+#ifndef VD_LOCK_STORE_TYPE_H_
+#define VD_LOCK_STORE_TYPE_H_
 
-#include "GlobalLockService.h"
-namespace youtils
+#include <iosfwd>
+
+namespace volumedriver
 {
-class NoGlobalLockingService : public GlobalLockService
+
+enum class LockStoreType
 {
-public:
-    NoGlobalLockingService(const GracePeriod& grace_period)
-        : GlobalLockService(grace_period)
-    {}
-
-    ~NoGlobalLockingService()
-    {}
-
-    virtual bool
-    lock()
-    {
-        return true;
-    }
-
-    virtual void
-    unlock()
-    {}
+    Arakoon,
+    Backend,
 };
 
+std::ostream&
+operator<<(std::ostream&,
+           const LockStoreType);
+
+std::istream&
+operator>>(std::istream&,
+           LockStoreType&);
 }
 
-#endif // NO_GLOBAL_LOCKING_SERVICE_H
-
-// Local Variables: **
-// compile-command: "scons -D --kernel_version=system --ignore-buildinfo -j 5" **
-// End: **
+#endif // !VD_LOCK_STORE_TYPE_H_

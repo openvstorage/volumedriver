@@ -24,6 +24,7 @@
 #include "MetaDataBackendConfig.h"
 #include "OwnerTag.h"
 #include "ParentConfig.h"
+#include "SnapshotName.h"
 #include "Types.h"
 
 #include <stdint.h>
@@ -70,7 +71,7 @@ public:
                      boost::none)
         , parent_snapshot_(t.get_parent_snapshot() ?
                            *t.get_parent_snapshot() :
-                           std::string(""))
+                           SnapshotName())
         , lba_size_(t.get_lba_size())
         , lba_count_(t.get_size() / lba_size_)
         , cluster_mult_(t.get_cluster_multiplier())
@@ -151,7 +152,7 @@ public:
 
 public:
     /* If the volume is a clone this holds the snapshot that was cloned */
-    const std::string parent_snapshot_;
+    const SnapshotName parent_snapshot_;
 
     /* Size of an LBA typically 512 bytes */
     const LBASize lba_size_;
@@ -320,7 +321,13 @@ private:
         ar & const_cast<VolumeId&>(id_);
         ar & ns_;
         ar & const_cast<boost::optional<std::string>& >(parent_ns_);
-        ar & const_cast<std::string&>(parent_snapshot_);
+
+        {
+            std::string psnap;
+            ar & psnap;
+            const_cast<SnapshotName&>(parent_snapshot_) = SnapshotName(psnap);
+        }
+
         ar & const_cast<LBASize&>(lba_size_);
         ar & lba_count_;
         ar & const_cast<ClusterMultiplier&>(cluster_mult_);
@@ -426,7 +433,7 @@ private:
         ar & id_;
         ar & ns_;
         ar & parent_ns_;
-        ar & parent_snapshot_;
+        ar & static_cast<const std::string>(parent_snapshot_);
         ar & lba_size_;
         ar & lba_count_;
         ar & cluster_mult_;

@@ -135,9 +135,9 @@ private:
     const ::volumedriver::Namespace target_namespace;
 
     volumedriver::SnapshotNum end_snapshot_number;
-    std::string end_snapshot_name;
+    volumedriver::SnapshotName end_snapshot_name;
 
-    boost::optional<std::string> start_snapshot_;
+    boost::optional<volumedriver::SnapshotName> start_snapshot_;
     ::volumedriver::CloneTLogs replayTLogs;
     volumedriver::ScopedWriteOnlyVolumeWithLocalDeletion target_volume_;
     std::unique_ptr< ::volumedriver::VolumeConfig> target_volume_config;

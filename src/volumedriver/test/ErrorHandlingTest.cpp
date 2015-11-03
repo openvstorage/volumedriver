@@ -567,11 +567,11 @@ public:
         ASSERT_THROW(vol_->sync(),
                      std::exception);
 
-        const std::string snap2("snap2");
+        const SnapshotName snap2("snap2");
         ASSERT_THROW(vol_->createSnapshot(snap2),
                      std::exception);
 
-        std::list<std::string> snaps;
+        std::list<SnapshotName> snaps;
         vol_->listSnapshots(snaps);
 
         ASSERT_THROW(vol_->setFOCTimeout(42),
@@ -872,7 +872,7 @@ TEST_P(ErrorHandlingTest, haltedVolume)
                   size,
                   "blah");
 
-    const std::string snap1("snap1");
+    const SnapshotName snap1("snap1");
     vol_->createSnapshot(snap1);
 
     waitForThisBackendWrite(vol_);
@@ -886,8 +886,7 @@ TEST_P(ErrorHandlingTest, haltedVolume)
     checkHalted();
 
     const boost::optional<events::Event> maybe_ev(event_collector_->pop());
-    ASSERT_NE(boost::none,
-              maybe_ev);
+    ASSERT_TRUE(boost::none != maybe_ev);
 
     ASSERT_TRUE(maybe_ev->HasExtension(events::volumedriver_error));
 
@@ -901,11 +900,11 @@ TEST_P(ErrorHandlingTest, haltedVolume)
     EXPECT_EQ(volname_.str(),
               err.volume_name());
 
-    const std::string snap2("snap2");
+    const SnapshotName snap2("snap2");
     EXPECT_THROW(vol_->createSnapshot(snap2),
                  std::exception);
 
-    std::list<std::string> snaps;
+    std::list<SnapshotName> snaps;
     vol_->listSnapshots(snaps);
 
     ASSERT_EQ(1U, snaps.size());
@@ -935,8 +934,7 @@ TEST_P(ErrorHandlingTest, reportOfflineMountPoint)
     ASSERT_EQ(1U, event_collector_->size());
 
     const boost::optional<events::Event> maybe_ev(event_collector_->pop());
-    ASSERT_NE(boost::none,
-              maybe_ev);
+    ASSERT_TRUE(boost::none != maybe_ev);
 
     ASSERT_TRUE(maybe_ev->HasExtension(events::volumedriver_error));
 

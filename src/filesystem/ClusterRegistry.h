@@ -18,7 +18,6 @@
 #include "ClusterId.h"
 #include "ClusterNodeConfig.h"
 #include "ClusterNodeStatus.h"
-#include "LockedArakoon.h"
 #include "NodeId.h"
 
 #include <map>
@@ -26,6 +25,7 @@
 
 #include <youtils/ArakoonNodeConfig.h>
 #include <youtils/IOException.h>
+#include <youtils/LockedArakoon.h>
 #include <youtils/Logging.h>
 #include <youtils/Serialization.h>
 
@@ -43,16 +43,16 @@ public:
     typedef std::map<NodeId, ClusterNodeStatus> NodeStatusMap;
 
     ClusterRegistry(const ClusterId& cluster_id,
-                    std::shared_ptr<LockedArakoon> arakoon);
+                    std::shared_ptr<youtils::LockedArakoon> arakoon);
 
     template<typename T>
     ClusterRegistry(const ClusterId& cluster_id,
                     const arakoon::ClusterID& ara_cluster_id,
                     const T& arakoon_configs)
         : ClusterRegistry(cluster_id,
-                          std::make_shared<LockedArakoon>(ara_cluster_id,
-                                                          arakoon_configs,
-                                                          arakoon::Cluster::MilliSeconds(2000)))
+                          std::make_shared<youtils::LockedArakoon>(ara_cluster_id,
+                                                                   arakoon_configs,
+                                                                   arakoon::Cluster::MilliSeconds(2000)))
     {}
 
     ~ClusterRegistry() = default;
@@ -98,7 +98,7 @@ private:
     DECLARE_LOGGER("ClusterRegistry");
 
     const ClusterId cluster_id_;
-    std::shared_ptr<LockedArakoon> arakoon_;
+    std::shared_ptr<youtils::LockedArakoon> arakoon_;
 
     void
     verify_(const ClusterNodeConfigs& node_configs);

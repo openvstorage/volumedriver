@@ -413,7 +413,7 @@ TEST_P(cases, DISABLED_multisnapshot)
         //     // ASSERT_TRUE(it->in.size() == 1);
         //     // ASSERT_TRUE(it->out.size() == 1);
         //     // ASSERT_TRUE(it->reloc.size() == 1);
-        //     OrderedTLogNames out;
+        //     OrderedTLogIds out;
         //     v1->getSnapshotManagement().getTLogsInSnapshot(*it,
         //                                                    out,
         //                                                    AbsolutePath::F);
@@ -570,7 +570,7 @@ TEST_P(cases, DISABLED_bartNonLocalRestart)
 
     }
 
-    v1->createSnapshot("snap1");
+    v1->createSnapshot(SnapshotName("snap1"));
 
     for(int i = 0; i < 100; i++)
     {
@@ -925,7 +925,7 @@ TEST_P(cases, DISABLED_weirdSnapshotsFile)
                   v->getClusterSize(),
                   pattern1);
 
-    v->createSnapshot("snap1");
+    v->createSnapshot(SnapshotName("snap1"));
 
     waitForThisBackendWrite(v);
     waitForThisBackendWrite(v);
@@ -936,7 +936,7 @@ TEST_P(cases, DISABLED_weirdSnapshotsFile)
                   v->getClusterSize(),
                   pattern2);
 
-    v->createSnapshot("snap2");
+    v->createSnapshot(SnapshotName("snap2"));
 
     const std::string pattern3 = "33333333";
     writeToVolume(v,
@@ -948,7 +948,7 @@ TEST_P(cases, DISABLED_weirdSnapshotsFile)
     waitForThisBackendWrite(v);
 
     // break here ...
-    v->restoreSnapshot("snap1");
+    v->restoreSnapshot(SnapshotName("snap1"));
 
     checkVolume(v,
                 0,
@@ -977,7 +977,7 @@ TEST_P(cases, DISABLED_weirdSnapshotsFile)
     v = getVolume(VolumeId(volName));
 
     // and here, and look at snapshots.xml in the metadatastore and in the backend
-    ASSERT_THROW(v->restoreSnapshot("snap2"),
+    ASSERT_THROW(v->restoreSnapshot(SnapshotName("snap2")),
                  fungi::IOException);
 }
 
@@ -1476,6 +1476,22 @@ TEST_P(cases, DISABLED_optional_streaming)
 
     const boost::optional<volumedrivertest::CasesTestId> some("RandomIdentifier");
     std::cout << "Some: " << some << std::endl;
+}
+
+TEST_P(cases, DISABLED_future_interruption)
+{
+    boost::promise<void> promise;
+    auto future(promise.get_future());
+
+    boost::thread t([&]()
+                    {
+                        EXPECT_THROW(future.wait(),
+                                     boost::thread_interrupted);
+                    });
+
+    boost::this_thread::sleep_for(boost::chrono::seconds(5));
+    t.interrupt();
+    t.join();
 }
 
 INSTANTIATE_TEST(cases);

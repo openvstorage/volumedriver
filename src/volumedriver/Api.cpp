@@ -291,15 +291,15 @@ api::removeLocalVolumeData(const be::Namespace& nspace)
     VolManager::get()->removeLocalVolumeData(nspace);
 }
 
-std::string
+SnapshotName
 api::createSnapshot(vd::Volume* v,
                     const vd::SnapshotMetaData& metadata,
-                    const std::string* const snapid,
+                    const vd::SnapshotName* const snapid,
                     const UUID& uuid)
 {
     VERIFY(v);
 
-    std::string snapname;
+    vd::SnapshotName snapname;
 
     if (snapid == nullptr or
         snapid->empty())
@@ -321,7 +321,7 @@ api::createSnapshot(vd::Volume* v,
             throw fungi::IOException(v->getName().c_str(),
                                      "failed to get timestamp for snapshot");
         }
-        snapname = std::string(s) + UUID().str();
+        snapname = vd::SnapshotName(std::string(s) + UUID().str());
     }
     else
     {
@@ -335,15 +335,15 @@ api::createSnapshot(vd::Volume* v,
 }
 
 
-std::string
+vd::SnapshotName
 api::createSnapshot(vd::WriteOnlyVolume* v,
                     const vd::SnapshotMetaData& metadata,
-                    const std::string* const snapid,
+                    const vd::SnapshotName* const snapid,
                     const UUID& uuid)
 {
     VERIFY(v);
 
-    std::string snapname;
+    SnapshotName snapname;
 
     if (snapid == nullptr or
         snapid->empty())
@@ -365,7 +365,7 @@ api::createSnapshot(vd::WriteOnlyVolume* v,
             throw fungi::IOException(v->getName().c_str(),
                                      "failed to get timestamp for snapshot");
         }
-        snapname = std::string(s) + UUID().str();
+        snapname = SnapshotName(std::string(s) + UUID().str());
     }
     else
     {
@@ -380,7 +380,7 @@ api::createSnapshot(vd::WriteOnlyVolume* v,
 
 Snapshot
 api::getSnapshot(const vd::VolumeId& id,
-                 const std::string& snapname)
+                 const vd::SnapshotName& snapname)
 {
     ASSERT_LOCKABLE_LOCKED(getManagementMutex());
     const auto vol = VolManager::get()->findVolume_(id);
@@ -389,7 +389,7 @@ api::getSnapshot(const vd::VolumeId& id,
 
 Snapshot
 api::getSnapshot(const vd::Volume* vol,
-                 const std::string& snapname)
+                 const vd::SnapshotName& snapname)
 {
     VERIFY(vol);
     return vol->getSnapshot(snapname);
@@ -397,7 +397,7 @@ api::getSnapshot(const vd::Volume* vol,
 
 Snapshot
 api::getSnapshot(const vd::WriteOnlyVolume* vol,
-                 const std::string& snapname)
+                 const vd::SnapshotName& snapname)
 {
     VERIFY(vol);
     return vol->getSnapshot(snapname);
@@ -405,7 +405,7 @@ api::getSnapshot(const vd::WriteOnlyVolume* vol,
 
 bool
 api::checkSnapshotUUID(const WriteOnlyVolume* vol,
-                       const std::string& snapshotName,
+                       const vd::SnapshotName& snapshotName,
                        const vd::UUID& uuid)
 {
     VERIFY(vol);
@@ -415,16 +415,16 @@ api::checkSnapshotUUID(const WriteOnlyVolume* vol,
 
 bool
 api::snapshotExists(const vd::WriteOnlyVolume* vol,
-                    const std::string& snapshotName)
+                    const vd::SnapshotName& snapshotName)
 {
     VERIFY(vol);
     return vol->snapshotExists(snapshotName);
 }
 
-std::string
+vd::SnapshotName
 api::createSnapshot(const VolumeId& volName,
                     const vd::SnapshotMetaData& metadata,
-                    const std::string* const snapid)
+                    const vd::SnapshotName* const snapid)
 {
     auto v = VolManager::get()->findVolume_(volName);
     return createSnapshot(v,
@@ -440,7 +440,7 @@ api::setAsTemplate(const VolumeId& volId)
 
 void
 api::showSnapshots(const VolumeId& volName,
-                   std::list<std::string>& l)
+                   std::list<vd::SnapshotName>& l)
 {
     Volume* v = VolManager::get()->findVolume_(volName);
     v->listSnapshots(l);
@@ -448,7 +448,7 @@ api::showSnapshots(const VolumeId& volName,
 
 void
 api::showSnapshots(const WriteOnlyVolume* v,
-                   std::list<std::string>& l)
+                   std::list<vd::SnapshotName>& l)
 {
     VERIFY(v);
     v->listSnapshots(l);
@@ -456,7 +456,7 @@ api::showSnapshots(const WriteOnlyVolume* v,
 
 void
 api::destroySnapshot(const VolumeId& volName,
-                     const std::string& snapid)
+                     const vd::SnapshotName& snapid)
 {
     Volume* v = VolManager::get()->findVolume_(volName);
     v->deleteSnapshot(snapid);
@@ -464,14 +464,14 @@ api::destroySnapshot(const VolumeId& volName,
 
 void
 api::restoreSnapshot(const VolumeId& volName,
-                     const std::string& snapid)
+                     const vd::SnapshotName& snapid)
 {
     VolManager::get()->restoreSnapshot(volName, snapid);
 }
 
 void
 api::restoreSnapshot(WriteOnlyVolume* vol,
-                     const std::string& snapid)
+                     const vd::SnapshotName& snapid)
 {
     VERIFY(vol);
     vol->restoreSnapshot(snapid);
@@ -569,11 +569,11 @@ api::getTLogUsed(const vd::VolumeId& volName)
     return v->getTLogUsed();
 }
 
-void
+vd::TLogId
 api::scheduleBackendSync(const vd::VolumeId& volName)
 {
     Volume* v = VolManager::get()->findVolume_(volName);
-    v->scheduleBackendSync();
+    return v->scheduleBackendSync();
 }
 
 bool
@@ -586,15 +586,23 @@ api::isVolumeSynced(const vd::VolumeId& volName)
 
 bool
 api::isVolumeSyncedUpTo(const vd::VolumeId& volName,
-                        const std::string& snapshotName)
+                        const vd::SnapshotName& snapshotName)
 {
     Volume* v = VolManager::get()->findVolume_(volName);
     return v->isSyncedToBackendUpTo(snapshotName);
 }
 
 bool
+api::isVolumeSyncedUpTo(const vd::VolumeId& vol_id,
+                        const vd::TLogId& tlog_id)
+{
+    Volume* v = VolManager::get()->findVolume_(vol_id);
+    return v->isSyncedToBackendUpTo(tlog_id);
+}
+
+bool
 api::isVolumeSyncedUpTo(const WriteOnlyVolume* v,
-                        const std::string& snapshotName)
+                        const vd::SnapshotName& snapshotName)
 {
     VERIFY(v);
     return v->isSyncedToBackendUpTo(snapshotName);
@@ -656,7 +664,7 @@ api::getCurrentSCOCount(const vd::VolumeId& volName)
 
 uint64_t
 api::getSnapshotSCOCount(const vd::VolumeId& volName,
-                         const std::string& snapid)
+                         const vd::SnapshotName& snapid)
 {
     Volume* v = VolManager::get()->findVolume_(volName);
     return v->getSnapshotSCOCount(snapid);
@@ -679,7 +687,7 @@ api::checkVolumeConsistency(const vd::VolumeId& volName)
 
 uint64_t
 api::getSnapshotBackendSize(const vd::VolumeId& volName,
-                            const std::string& snapName)
+                            const vd::SnapshotName& snapName)
 {
     Volume* v = VolManager::get()->findVolume_(volName);
     return v->getSnapshotBackendSize(snapName);
@@ -896,8 +904,8 @@ api::getClusterCacheLimit(const vd::VolumeId& volName)
 void
 api::getScrubbingWork(const vd::VolumeId& volName,
                       std::vector<std::string>& scrubbing_work_units,
-                      const boost::optional<std::string>& start_snap,
-                      const boost::optional<std::string>& end_snap)
+                      const boost::optional<vd::SnapshotName>& start_snap,
+                      const boost::optional<vd::SnapshotName>& end_snap)
 {
     return VolManager::get()->findVolume_(volName)->getScrubbingWork(scrubbing_work_units,
                                                                      start_snap,

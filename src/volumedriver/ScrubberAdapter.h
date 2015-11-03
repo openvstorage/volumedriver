@@ -14,21 +14,29 @@
 
 #ifndef SCRUBBER_ADAPTER_H_
 #define SCRUBBER_ADAPTER_H_
+
+#include "Types.h"
+
 #include <utility>
 #include <string>
-#include "Types.h"
-//#include <boost/python/tuple.hpp>
+
+#include <boost/filesystem.hpp>
 
 namespace scrubbing
 {
 
-class ScrubberAdapter
+struct ScrubberAdapter
 {
+    using result_type = std::pair<std::string, std::string>;
 
-public:
-    typedef std::pair<std::string, std::string> result_type;
+    ScrubberAdapter() = default;
 
-    ScrubberAdapter();
+    ~ScrubberAdapter() = default;
+
+    ScrubberAdapter(const ScrubberAdapter&) = default;
+
+    ScrubberAdapter&
+    operator=(const ScrubberAdapter&) = default;
 
     const static uint64_t region_size_exponent_default;
     const static float fill_ratio_default;
@@ -36,12 +44,12 @@ public:
     const static bool verbose_scrubbing_default;
 
     static result_type
-    scrub_(const std::string& work_unit,
-           const std::string& workdir,
-           const uint64_t region_size_exponent = region_size_exponent_default,
-           const float fill_ratio = fill_ratio_default,
-           const bool apply_immediately = apply_immediately_default,
-           const bool verbose_scrubbing = verbose_scrubbing_default);
+    scrub(const std::string& work_unit,
+          const boost::filesystem::path& workdir,
+          const uint64_t region_size_exponent = region_size_exponent_default,
+          const float fill_ratio = fill_ratio_default,
+          const bool apply_immediately = apply_immediately_default,
+          const bool verbose_scrubbing = verbose_scrubbing_default);
 };
 
 }

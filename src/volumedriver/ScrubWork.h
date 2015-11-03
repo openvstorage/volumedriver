@@ -15,24 +15,29 @@
 #ifndef _SCRUBWORK_H_
 #define _SCRUBWORK_H_
 
-#include <string>
-#include <youtils/Serialization.h>
-#include <backend/BackendConfig.h>
+#include "SnapshotName.h"
 #include "Types.h"
+
+#include <string>
+
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
+
+#include <youtils/Serialization.h>
+
+#include <backend/BackendConfig.h>
 
 
 namespace scrubbing
 {
 struct ScrubWork
 {
-    ScrubWork(std::unique_ptr<backend::BackendConfig>&& backend_config,
+    ScrubWork(std::unique_ptr<backend::BackendConfig> backend_config,
               const volumedriver::Namespace& ns,
               const volumedriver::VolumeId& id,
               const volumedriver::ClusterExponent cluster_exponent,
               const uint32_t sco_size,
-              const std::string& snapshot_name)
+              const volumedriver::SnapshotName& snapshot_name)
         : backend_config_(std::move(backend_config))
         , ns_(ns)
         , id_(id)
@@ -45,7 +50,7 @@ struct ScrubWork
         : ns_()
     {}
 
-    ScrubWork(const std::string& in)
+    explicit ScrubWork(const std::string& in)
         : ns_()
     {
         std::stringstream iss(in);
@@ -74,16 +79,17 @@ struct ScrubWork
     volumedriver::VolumeId id_;
     volumedriver::ClusterExponent cluster_exponent_;
     uint32_t sco_size_;
-    std::string snapshot_name_;
+    volumedriver::SnapshotName snapshot_name_;
 
     BOOST_SERIALIZATION_SPLIT_MEMBER();
 
     template<class Archive>
-    inline void save(Archive & ar,
-                     const unsigned int version) const
+    inline void
+    save(Archive & ar,
+         const unsigned int version) const
     {
         VERIFY(backend_config_.get());
-        if(version == 1)
+        if(version == 2)
         {
             boost::property_tree::ptree pt;
             backend_config_->persist_internal(pt,
@@ -105,8 +111,8 @@ struct ScrubWork
         {
             throw youtils::SerializationVersionException("ScrubWork",
                                                          version,
-                                                         1,
-                                                         1);
+                                                         2,
+                                                         2);
         }
     }
 
@@ -115,28 +121,31 @@ struct ScrubWork
     load(Archive& ar,
          const unsigned int version)
     {
-        if(version == 1)
-        {
-            std::string backend_config;
-            ar & BOOST_SERIALIZATION_NVP(backend_config);
-            backend_config_ = backend::BackendConfig::makeBackendConfig(backend_config);
+        std::string backend_config;
+        ar & BOOST_SERIALIZATION_NVP(backend_config);
+        backend_config_ = backend::BackendConfig::makeBackendConfig(backend_config);
 
-            ar & BOOST_SERIALIZATION_NVP(ns_);
-            ar & BOOST_SERIALIZATION_NVP(id_);
-            ar & BOOST_SERIALIZATION_NVP(cluster_exponent_);
-            ar & BOOST_SERIALIZATION_NVP(sco_size_);
-            ar & BOOST_SERIALIZATION_NVP(snapshot_name_);
+        ar & BOOST_SERIALIZATION_NVP(ns_);
+        ar & BOOST_SERIALIZATION_NVP(id_);
+        ar & BOOST_SERIALIZATION_NVP(cluster_exponent_);
+        ar & BOOST_SERIALIZATION_NVP(sco_size_);
+
+        if(version < 2)
+        {
+            std::string snap;
+            ar & boost::serialization::make_nvp("snapshot_name_",
+                                                snap);
+            snapshot_name_ = volumedriver::SnapshotName(snap);
         }
         else
         {
-            throw youtils::SerializationVersionException("ScrubWork",
-                                                         version,
-                                                         1,
-                                                         1);
+            ar & BOOST_SERIALIZATION_NVP(snapshot_name_);
         }
     }
 };
 
 }
-BOOST_CLASS_VERSION(scrubbing::ScrubWork,1);
+
+BOOST_CLASS_VERSION(scrubbing::ScrubWork, 2);
+
 #endif // _SCRUBWORK_H_

@@ -57,6 +57,8 @@ AC_CONFIG_FILES([python_scrubber/test/scrubber_test.py])
 AC_CONFIG_FILES([python_scrubber/test/pylint_test.sh], [chmod +x python_scrubber/test/pylint_test.sh])
 AC_CONFIG_FILES([python_scrubber/test/python_test.sh], [chmod +x python_scrubber/test/python_test.sh])
 
+AC_CONFIG_FILES([scrubber/Makefile])
+
 AC_CONFIG_FILES([failovercache/Makefile])
 AC_CONFIG_FILES([failovercache/.gdbinit])
 

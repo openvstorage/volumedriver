@@ -94,10 +94,10 @@ public:
         const auto cluster_size = v->getClusterSize();
         const auto cluster_mult = v->getClusterMultiplier();
 
-        std::string tlog1;
+        TLogId tlog1;
 
         {
-            OrderedTLogNames tlogs;
+            OrderedTLogIds tlogs;
             v->getSnapshotManagement().getTLogsNotWrittenToBackend(tlogs);
             EXPECT_EQ(1U, tlogs.size());
             tlog1 = tlogs.front();
@@ -111,16 +111,16 @@ public:
         waitForThisBackendWrite(v);
 
         {
-            OrderedTLogNames tlogs;
+            OrderedTLogIds tlogs;
             v->getSnapshotManagement().getTLogsWrittenToBackend(tlogs);
             EXPECT_EQ(1U, tlogs.size());
             EXPECT_EQ(tlog1, tlogs.front());
         }
 
-        std::string tlog2;
+        TLogId tlog2;
 
         {
-            OrderedTLogNames tlogs;
+            OrderedTLogIds tlogs;
             v->getSnapshotManagement().getTLogsNotWrittenToBackend(tlogs);
             EXPECT_EQ(1U, tlogs.size());
             tlog2 = tlogs.front();
@@ -128,7 +128,8 @@ public:
 
         EXPECT_NE(tlog1, tlog2);
 
-        const fs::path tlog_path(VolManager::get()->getTLogPath(v) / tlog2);
+        const fs::path tlog_path(VolManager::get()->getTLogPath(v) /
+                                 boost::lexical_cast<std::string>(tlog2));
 
         {
             SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v, 2,
@@ -150,9 +151,15 @@ public:
     void
     check_backend_tlogs(Volume* v, uint32_t expected)
     {
-        OrderedTLogNames out;
+        OrderedTLogIds out;
         v->getSnapshotManagement().getTLogsWrittenToBackend(out);
-        std::list<std::string> tlognames(out.begin(), out.end());
+        std::list<std::string> tlognames;
+
+        for (const auto& tlog_id : out)
+        {
+            tlognames.push_back(boost::lexical_cast<std::string>(tlog_id));
+        }
+
         tlognames.sort();
 
         auto bi = v->getBackendInterface()->clone();
@@ -161,7 +168,8 @@ public:
         tlogs_on_backend.remove_if(boost::not1(TLog::isTLogString));
         tlogs_on_backend.sort();
 
-        ASSERT_EQ(expected, tlognames.size());
+        ASSERT_EQ(expected,
+                  tlognames.size());
         ASSERT_TRUE(tlognames == tlogs_on_backend);
     }
 
@@ -589,7 +597,7 @@ TEST_P(LocalRestartTest, restartWithSnapshotButNoSCO)
 
     waitForThisBackendWrite(v1);
 
-    ASSERT_TRUE(v1->isSyncedToBackendUpTo("snapshot2"));
+    ASSERT_TRUE(v1->isSyncedToBackendUpTo(SnapshotName("snapshot2")));
     checkCurrentBackendSize(v1);
 }
 
@@ -648,7 +656,14 @@ class TLogFuckerUpper
 public:
     typedef TLogFuckerUpper<T> this_type;
 
-    TLogFuckerUpper(const fs::path& tlog_path)
+    TLogFuckerUpper(const fs::path& tlog_path,
+                    const TLogId& tlog_id)
+        : T()
+        , tlog_path_(tlog_path / boost::lexical_cast<std::string>(tlog_id))
+        , reader_(new TLogReader(tlog_path_))
+    {}
+
+    explicit TLogFuckerUpper(const fs::path& tlog_path)
         : T()
         , tlog_path_(tlog_path)
         , reader_(new TLogReader(tlog_path_))
@@ -811,7 +826,7 @@ TEST_P(LocalRestartTest, funnyTLogCRC)
                   "bdv");
     waitForThisBackendWrite(v1);
     const fs::path tlog_dir = VolManager::get()->getTLogPath(v1);
-    OrderedTLogNames tlogs;
+    OrderedTLogIds tlogs;
 
     {
         SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v1, 2,
@@ -824,12 +839,16 @@ TEST_P(LocalRestartTest, funnyTLogCRC)
 
     v1 = 0;
     ASSERT_FALSE(v1 = getVolume(vid1));
-    BOOST_FOREACH(const std::string& tlog, tlogs)
+
+    for (const auto& tlog_id : tlogs)
     {
-        TLogFuckerUpper<FuckUpTLogCRC> tlfck(tlog_dir / tlog);
+        TLogFuckerUpper<FuckUpTLogCRC> tlfck(tlog_dir,
+                                             tlog_id);
         tlfck();
     }
-    ASSERT_THROW(v1 = localRestart(ns), TLogWrongCRC);
+
+    ASSERT_THROW(v1 = localRestart(ns),
+                 TLogWrongCRC);
 }
 
 namespace
@@ -886,7 +905,7 @@ TEST_P(LocalRestartTest, DISABLED_NoSyncToTC)
                   "bdv");
     waitForThisBackendWrite(v1);
     const fs::path tlog_dir = VolManager::get()->getTLogPath(v1);
-    OrderedTLogNames tlogs;
+    OrderedTLogIds tlogs;
 
     MetaDataStoreStats mds1;
     {
@@ -903,14 +922,15 @@ TEST_P(LocalRestartTest, DISABLED_NoSyncToTC)
 
     v1 = 0;
     ASSERT_FALSE(v1 = getVolume(vid1));
-    BOOST_FOREACH(const std::string& tlog, tlogs)
+
+    for (const auto& tlog_id : tlogs)
     {
-        TLogFuckerUpper<RemoveSync2TC> tlfck( tlog_dir / tlog);
+        TLogFuckerUpper<RemoveSync2TC> tlfck(tlog_dir,
+                                             tlog_id);
         tlfck();
     }
 
     ASSERT_NO_THROW(v1 = localRestart(ns));
-
 
     ASSERT_TRUE(v1);
 
@@ -978,7 +998,7 @@ TEST_P(LocalRestartTest, MetaDataStoreRunsAhead)
     MetaDataStoreStats mds2;
     v1->getMetaDataStore()->getStats(mds2);
     EXPECT_EQ(mds1.used_clusters, mds2.used_clusters);
-    ASSERT_TRUE(v1->isSyncedToBackendUpTo("asnapshot"));
+    ASSERT_TRUE(v1->isSyncedToBackendUpTo(SnapshotName("asnapshot")));
     checkVolume(v1, 0, v1->getClusterSize(), "ar");
     checkCurrentBackendSize(v1);
 }
@@ -1242,7 +1262,7 @@ TEST_P(LocalRestartTest, RestartWithMetaDataReplay)
 
             fs::path tmp_mdstore = FileUtils::create_temp_file(mdstore);
             const fs::path tlog_dir = VolManager::get()->getTLogPath(v);
-            OrderedTLogNames tlogs;
+            OrderedTLogIds tlogs;
 
             MetaDataStoreStats mds1;
 
@@ -1281,7 +1301,9 @@ TEST_P(LocalRestartTest, RestartWithMetaDataReplay)
             }
             v = 0;
             ASSERT(tlogs.size() == 1);
-            TLogFuckerUpper<RemoveAllButFirstSync2TC> tflk(tlog_dir / tlogs[0]);
+
+            TLogFuckerUpper<RemoveAllButFirstSync2TC> tflk(tlog_dir,
+                                                           tlogs[0]);
             tflk();
 
             fs::rename(tmp_mdstore, mdstore);
@@ -1655,16 +1677,16 @@ TEST_P(LocalRestartTest, CreateSnapshotPutsSCOCRCInTLog)
 
     const uint64_t cluster_size = v->getClusterSize();
     writeToVolume(v,0, cluster_size, "immanuel");
-    v->createSnapshot("snap1");
+    v->createSnapshot(SnapshotName("snap1"));
     writeToVolume(v,0, cluster_size, "bart");
     const fs::path tlogs_path = VolManager::get()->getTLogPath(cfg);
-    OrderedTLogNames tlogs;
-    v->getSnapshotManagement().getAllTLogs(tlogs,
-                                           AbsolutePath::F);
+    OrderedTLogIds tlogs(v->getSnapshotManagement().getAllTLogs());
+
     ASSERT_TRUE(tlogs.size() > 0);
-    std::shared_ptr<TLogReaderInterface> tlog_reader = makeCombinedTLogReader(tlogs_path,
-                                                                              tlogs,
-                                                                              v->getBackendInterface()->clone());
+    std::shared_ptr<TLogReaderInterface>
+        tlog_reader(makeCombinedTLogReader(tlogs_path,
+                                           tlogs,
+                                           v->getBackendInterface()->clone()));
     FailOverRestartPutsSCOCRCInTLogProcessor callback;
     ASSERT_NO_THROW(tlog_reader->for_each(callback));
     checkCurrentBackendSize(v);
@@ -1692,13 +1714,12 @@ TEST_P(LocalRestartTest, BigWritesPutSCOCRCInTLog)
     writeToVolume(v,0, sco_size, "wouter");
     VolumeConfig cfg = v->get_config();
     const fs::path tlogs_path = VolManager::get()->getTLogPath(cfg);
-    OrderedTLogNames tlogs;
-    v->getSnapshotManagement().getAllTLogs(tlogs,
-                                           AbsolutePath::F);
+    const OrderedTLogIds tlogs(v->getSnapshotManagement().getAllTLogs());
 
-    std::shared_ptr<TLogReaderInterface> tlog_reader = makeCombinedTLogReader(tlogs_path,
-                                                                              tlogs,
-                                                                              v->getBackendInterface()->clone());
+    std::shared_ptr<TLogReaderInterface>
+        tlog_reader(makeCombinedTLogReader(tlogs_path,
+                                           tlogs,
+                                           v->getBackendInterface()->clone()));
 
     FailOverRestartPutsSCOCRCInTLogProcessor callback;
     ASSERT_NO_THROW(tlog_reader->for_each(callback));
@@ -1726,18 +1747,17 @@ TEST_P(LocalRestartTest, SetFailOVerPutsSCOCRCInTLog)
     ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
 
     writeToVolume(v,0, cluster_size, "bart");
-    v->createSnapshot("snap1");
+    v->createSnapshot(SnapshotName("snap1"));
     writeToVolume(v,0, cluster_size, "arne");
 
     const fs::path tlogs_path = VolManager::get()->getTLogPath(cfg);
-    OrderedTLogNames tlogs;
-    v->getSnapshotManagement().getAllTLogs(tlogs,
-                                           AbsolutePath::F);
+    const OrderedTLogIds tlogs(v->getSnapshotManagement().getAllTLogs());
     ASSERT_TRUE(tlogs.size() > 0);
     FailOverRestartPutsSCOCRCInTLogProcessor callback;
-    std::shared_ptr<TLogReaderInterface> tlog_reader = makeCombinedTLogReader(tlogs_path,
-                                                                              tlogs,
-                                                                              v->getBackendInterface()->clone());
+    std::shared_ptr<TLogReaderInterface>
+        tlog_reader(makeCombinedTLogReader(tlogs_path,
+                                           tlogs,
+                                           v->getBackendInterface()->clone()));
 
     ASSERT_NO_THROW(tlog_reader->for_each(callback));
     checkCurrentBackendSize(v);
@@ -1768,7 +1788,7 @@ TEST_P(LocalRestartTest, FailOverRestartPutsSCOCRCInTLog)
         writeToVolume(v,0, cluster_size, "immanuel");
     }
     waitForThisBackendWrite(v);
-    OrderedTLogNames tlogs;
+    OrderedTLogIds tlogs;
     ASSERT_TRUE(tlogs.empty());
 
     v->getSnapshotManagement().getTLogsWrittenToBackend(tlogs);
@@ -1781,7 +1801,7 @@ TEST_P(LocalRestartTest, FailOverRestartPutsSCOCRCInTLog)
                                               2,
                                               DeleteLocalData::T,
                                               RemoveVolumeCompletely::F);
-        std::string init_tlog = v->getSnapshotManagement().getCurrentTLogName();
+
         uint64_t rand  = drand48() * v->getSCOMultiplier();
         for(unsigned i = 0; i <  clusters; ++i)
         {
@@ -1809,21 +1829,21 @@ TEST_P(LocalRestartTest, FailOverRestartPutsSCOCRCInTLog)
 
     checkVolume(v,0, cluster_size,"bart");
 
-    OrderedTLogNames tlogs2;
-    v->getSnapshotManagement().getAllTLogs(tlogs2,
-                                           AbsolutePath::F);
+    const OrderedTLogIds tlogs2(v->getSnapshotManagement().getAllTLogs());
+
     ASSERT_TRUE(tlogs2.size() > tlogs.size());
 
     for(unsigned i = 0; i < tlogs.size(); i++)
     {
-        ASSERT_TRUE(tlogs[i] == tlogs2[i]);
+        ASSERT_EQ(tlogs[i],
+                  tlogs2[i]);
     }
     FailOverRestartPutsSCOCRCInTLogProcessor callback;
     const fs::path tlogs_path = VolManager::get()->getTLogPath(cfg);
     for(unsigned i = tlogs.size() ; i < tlogs2.size(); ++i)
     {
         TLogReader tlog_reader(tlogs_path,
-                               tlogs2[i],
+                               boost::lexical_cast<std::string>(tlogs2[i]),
                                v->getBackendInterface()->clone());
 
         ASSERT_NO_THROW(tlog_reader.for_each(callback));
@@ -1846,7 +1866,7 @@ TEST_P(LocalRestartTest, DISABLED_NoLocalTLogs)
         VolManager::get()->number_of_scos_in_tlog.value() *  v->getSCOMultiplier();
     const uint64_t clusters_to_write = clusters_in_tlog - 1;
 
-    std::string init_tlog = v->getSnapshotManagement().getCurrentTLogName();
+    const TLogId init_tlog(v->getSnapshotManagement().getCurrentTLogId());
 
     {
         SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v,
@@ -1855,12 +1875,13 @@ TEST_P(LocalRestartTest, DISABLED_NoLocalTLogs)
                                               RemoveVolumeCompletely::F);
 
         writeClusters(v, clusters_to_write);
-        ASSERT_EQ(init_tlog, v->getSnapshotManagement().getCurrentTLogName());
+        ASSERT_EQ(init_tlog,
+                  v->getSnapshotManagement().getCurrentTLogId());
     }
 
     v = 0;
 
-    fs::remove(tlog_path / init_tlog);
+    fs::remove(tlog_path / boost::lexical_cast<std::string>(init_tlog));
     ASSERT_NO_THROW(v = localRestart(ns));
 }
 
@@ -1877,8 +1898,8 @@ TEST_P(LocalRestartTest, NonNeededTLogsMissing)
     uint64_t clusters_in_tlog   = VolManager::get()->number_of_scos_in_tlog.value() *  v->getSCOMultiplier();
     uint64_t clusters_to_write = (clusters_in_tlog / 2) + 2;
 
-    std::string init_tlog = v->getSnapshotManagement().getCurrentTLogName();
-    std::string next_tlog;
+    const TLogId init_tlog(v->getSnapshotManagement().getCurrentTLogId());
+    TLogId next_tlog;
 
     {
         SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v,
@@ -1889,8 +1910,9 @@ TEST_P(LocalRestartTest, NonNeededTLogsMissing)
         writeClusters(v, clusters_to_write);
         v->sync();
         writeClusters(v, clusters_to_write);
-        next_tlog = v->getSnapshotManagement().getCurrentTLogName();
-        ASSERT_TRUE(init_tlog != next_tlog);
+        next_tlog = v->getSnapshotManagement().getCurrentTLogId();
+        ASSERT_NE(init_tlog,
+                  next_tlog);
 
     }
     v = 0;
@@ -1911,7 +1933,7 @@ TEST_P(LocalRestartTest, NonNeededTLogsMissing)
     FuckUpSCO(sco_ptr->path());
     sc->disableNamespace(ns);
 
-    fs::remove(tlog_path / next_tlog);
+    fs::remove(tlog_path / boost::lexical_cast<std::string>(next_tlog));
     ASSERT_NO_THROW(v = localRestart(ns));
 }
 
@@ -1933,11 +1955,12 @@ TEST_P(LocalRestartTest,  TLogRolloverRestartTest)
         SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v, 2,
                                               DeleteLocalData::F,
                                               RemoveVolumeCompletely::F);
-        std::string init_tlog = v->getSnapshotManagement().getCurrentTLogName();
+        const TLogId init_tlog(v->getSnapshotManagement().getCurrentTLogId());
 
         writeClusters(v, clusters_to_write);
 
-        ASSERT_NE(init_tlog, v->getSnapshotManagement().getCurrentTLogName());
+        ASSERT_NE(init_tlog,
+                  v->getSnapshotManagement().getCurrentTLogId());
         v->getMetaDataStore()->getStats(mds1);
         // EXPECT_LT(0, mds1.used_clusters);
     }
@@ -1970,7 +1993,7 @@ TEST_P(LocalRestartTest,  NoTlogCRCFound)
     uint64_t clusters_in_tlog   = VolManager::get()->number_of_scos_in_tlog.value() *  v->getSCOMultiplier();
     uint64_t clusters_to_write  = clusters_in_tlog + 3;
 
-    boost::optional<std::string> init_tlog;
+    boost::optional<TLogId> init_tlog;
 
     MetaDataStoreStats mds1;
     {
@@ -1979,18 +2002,20 @@ TEST_P(LocalRestartTest,  NoTlogCRCFound)
                                               DeleteLocalData::F,
                                               RemoveVolumeCompletely::F);
 
-        init_tlog = v->getSnapshotManagement().getCurrentTLogName();
+        init_tlog = v->getSnapshotManagement().getCurrentTLogId();
 
         writeClusters(v, clusters_to_write);
 
-        ASSERT_NE(init_tlog, v->getSnapshotManagement().getCurrentTLogName());
+        ASSERT_NE(init_tlog,
+                  v->getSnapshotManagement().getCurrentTLogId());
         v->getMetaDataStore()->getStats(mds1);
         // EXPECT_LT(0, mds1.used_clusters);
     }
 
     v = 0;
 
-    TLogFuckerUpper<DropTLogCRC> fupper(tlog_dir / (*init_tlog));
+    TLogFuckerUpper<DropTLogCRC> fupper(tlog_dir,
+                                        (*init_tlog));
     fupper();
 
     ASSERT_THROW(v = localRestart(ns), TLogWithoutFinalCRC);
@@ -2049,7 +2074,7 @@ TEST_P(LocalRestartTest, RestartWithMissingSCOCRC)
 
     waitForThisBackendWrite(v1);
     const fs::path tlog_dir = VolManager::get()->getTLogPath(v1);
-    OrderedTLogNames tlogs;
+    OrderedTLogIds tlogs;
 
     {
         SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v1,
@@ -2067,9 +2092,10 @@ TEST_P(LocalRestartTest, RestartWithMissingSCOCRC)
     v1 = 0;
 
     ASSERT_FALSE(v1 = getVolume(vid1));
-    BOOST_FOREACH(const std::string& tlog, tlogs)
+    for (const auto& tlog_id : tlogs)
     {
-        TLogFuckerUpper<RemoveSCOCRC> tlfck( tlog_dir / tlog);
+        TLogFuckerUpper<RemoveSCOCRC> tlfck(tlog_dir,
+                                            tlog_id);
         tlfck();
     }
     ASSERT_THROW(v1 = localRestart(ns), SCOSwitchWithoutSCOCRC);
@@ -2423,7 +2449,7 @@ TEST_P(LocalRestartTest, testRescheduledSCOS)
     std::string scoptr_name =
         v->getDataStore()->getSCO(l.sco(), 0)->path().string();
 
-    v->createSnapshot("first");
+    v->createSnapshot(SnapshotName("first"));
 
     waitForThisBackendWrite(v);
 
@@ -2762,10 +2788,10 @@ TEST_P(LocalRestartTest, DISABLED_ReliabilityOfTheBigOneIfTheMDStoreLRUWouldWork
     EXPECT_EQ(max_tlog_entries, v->getSnapshotManagement().maxTLogEntries());
     EXPECT_EQ(sco_mult, v->getSCOMultiplier());
 
-    std::string tlog1;
+    TLogId tlog1;
 
     {
-        OrderedTLogNames tlogs;
+        OrderedTLogIds tlogs;
         v->getSnapshotManagement().getTLogsNotWrittenToBackend(tlogs);
         EXPECT_EQ(1U, tlogs.size());
         tlog1 = tlogs.front();
@@ -2796,22 +2822,20 @@ TEST_P(LocalRestartTest, DISABLED_ReliabilityOfTheBigOneIfTheMDStoreLRUWouldWork
     waitForThisBackendWrite(v);
 
     {
-        OrderedTLogNames tlogs;
+        OrderedTLogIds tlogs;
         v->getSnapshotManagement().getTLogsWrittenToBackend(tlogs);
         EXPECT_EQ(1U, tlogs.size());
         EXPECT_EQ(tlog1, tlogs.front());
     }
 
-    std::string tlog2;
+    TLogId tlog2;
 
     {
-        OrderedTLogNames tlogs;
+        OrderedTLogIds tlogs;
         v->getSnapshotManagement().getTLogsNotWrittenToBackend(tlogs);
         EXPECT_EQ(1U, tlogs.size());
         tlog2 = tlogs.front();
     }
-
-    const fs::path tlog_path(VolManager::get()->getTLogPath(v) / tlog2);
 
     {
         SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v,
@@ -2842,7 +2866,8 @@ TEST_P(LocalRestartTest, DISABLED_ReliabilityOfTheBigOneIfTheMDStoreLRUWouldWork
         // dropMetaDataStoreCache(*v);
     }
 
-    TLogFuckerUpper<RemoveAfterClusterAddress> fupper(tlog_path);
+    TLogFuckerUpper<RemoveAfterClusterAddress> fupper(VolManager::get()->getTLogPath(v),
+                                                      tlog2);
 
     fupper.address(2 * page_entries);
     fupper();
@@ -2883,7 +2908,7 @@ TEST_P(LocalRestartTest, SanityCheckOfTheBackendMissingTLog1)
                                parent_ns,
                                clone_ns);
 
-    OrderedTLogNames tlogs_on_backend;
+    OrderedTLogIds tlogs_on_backend;
     the_clone->getSnapshotManagement().getTLogsWrittenToBackend(tlogs_on_backend);
     BackendInterfacePtr clone_bi = the_clone->getBackendInterface()->clone();
     backend::Namespace restartnmspace = the_clone->getNamespace();
@@ -2891,7 +2916,7 @@ TEST_P(LocalRestartTest, SanityCheckOfTheBackendMissingTLog1)
     destroyVolume(the_clone,
                   DeleteLocalData::F,
                   RemoveVolumeCompletely::F);
-    clone_bi->remove(tlogs_on_backend.front(),
+    clone_bi->remove(boost::lexical_cast<std::string>(tlogs_on_backend.front()),
                      ObjectMayNotExist::T);
 
     // this used to throw but was only working
@@ -2913,7 +2938,7 @@ TEST_P(LocalRestartTest, SanityCheckOfTheBackendMissingTLog2)
                                parent_ns,
                                clone_ns);
 
-    OrderedTLogNames tlogs_on_backend;
+    OrderedTLogIds tlogs_on_backend;
     the_clone->getSnapshotManagement().getTLogsWrittenToBackend(tlogs_on_backend);
     BackendInterfacePtr clone_bi = the_clone->getBackendInterface()->clone();
     backend::Namespace restartnmspace = the_clone->getNamespace();
@@ -2921,7 +2946,7 @@ TEST_P(LocalRestartTest, SanityCheckOfTheBackendMissingTLog2)
     destroyVolume(the_clone,
                   DeleteLocalData::F,
                   RemoveVolumeCompletely::F);
-    clone_bi->remove(tlogs_on_backend.back());
+    clone_bi->remove(boost::lexical_cast<std::string>(tlogs_on_backend.back()));
 
     ASSERT_THROW(localRestart(restartnmspace),
                  std::exception);
@@ -2949,10 +2974,10 @@ TEST_P(LocalRestartTest, SanityCheckOfTheBackendMissingParentTLog)
                   DeleteLocalData::F,
                   RemoveVolumeCompletely::F);
 
-    const OrderedTLogNames
+    const OrderedTLogIds
         tlogs_on_parent_backend(parent->getSnapshotManagement().getTLogsWrittenToBackend());
     BackendInterfacePtr parent_bi(parent->getBackendInterface()->clone());
-    parent_bi->remove(tlogs_on_parent_backend[1]);
+    parent_bi->remove(boost::lexical_cast<std::string>(tlogs_on_parent_backend[1]));
 
     ASSERT_NO_THROW(localRestart(nspace));
 }
@@ -2979,11 +3004,11 @@ TEST_P(LocalRestartTest, SanityCheckOfTheBackendMissingUnusedParentTLog)
                   DeleteLocalData::F,
                   RemoveVolumeCompletely::F);
 
-    const OrderedTLogNames
+    const OrderedTLogIds
         tlogs_on_parent_backend(parent->getSnapshotManagement().getTLogsWrittenToBackend());
     BackendInterfacePtr parent_bi(parent->getBackendInterface()->clone());
 
-    parent_bi->remove(tlogs_on_parent_backend[3]); //snapshot from which is cloned contains only tlogs 0,1,2
+    parent_bi->remove(boost::lexical_cast<std::string>(tlogs_on_parent_backend[3])); //snapshot from which is cloned contains only tlogs 0,1,2
 
     ASSERT_NO_THROW(localRestart(nspace));
 }

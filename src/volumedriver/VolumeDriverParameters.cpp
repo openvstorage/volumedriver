@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "LockStoreFactory.h"
 #include "VolumeDriverParameters.h"
 
 namespace initialized_params
 {
 
+namespace ara = arakoon;
 namespace vd = volumedriver;
 namespace yt = youtils;
 
@@ -234,6 +236,35 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(clustercache_mount_points,
                                       "An array of directories and sizes to be used as Read Cache mount points",
                                       ShowDocumentation::T,
                                       vd::MountPointConfigs());
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(dls_type,
+                                      vd::LockStoreFactory::name(),
+                                      "dls_type",
+                                      "Type of distributed lock store to use (default / currently only supported value: \"Backend\")",
+                                      ShowDocumentation::T,
+                                      vd::LockStoreType::Backend);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(dls_arakoon_timeout_ms,
+                                      vd::LockStoreFactory::name(),
+                                      "dls_arakoon_timeout_ms",
+                                      "Arakoon client timeout in milliseconds for the distributed lock store",
+                                      ShowDocumentation::T,
+                                      60000);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(dls_arakoon_cluster_id,
+                                      vd::LockStoreFactory::name(),
+                                      "dls_arakoon_cluster_id",
+                                      "Arakoon cluster identifier for the distributed lock store",
+                                      ShowDocumentation::T,
+                                      ""s);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(dls_arakoon_cluster_nodes,
+                                      vd::LockStoreFactory::name(),
+                                      "dls_arakoon_cluster_nodes",
+                                      "an array of arakoon cluster node configurations for the distributed lock store, each containing node_id, host and port",
+                                      ShowDocumentation::T,
+                                      ara::ArakoonNodeConfigs());
+
 }
 
 // Local Variables: **

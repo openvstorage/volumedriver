@@ -28,6 +28,7 @@ YoutilsTestPrecompiledHeader.h.$(PCH_SUFFIX) : YoutilsTestPrecompiledHeader.h.hx
 youtils_test_SOURCES = \
 	AlternativeOptionsAgainTest.cpp \
 	ArakoonTest.cpp \
+	ArakoonLockStoreTest.cpp \
 	Bartest.cpp \
 	BooleanEnumTest.cpp \
 	CheckSumTest.cpp \
@@ -39,6 +40,7 @@ youtils_test_SOURCES = \
 	GeneratorTest.cpp \
 	GlobalLockTest.cpp \
 	Go.cpp \
+	HeartBeatLockTest.cpp \
 	IncrementalChecksumTest.cpp \
 	InitializedParamTest.cpp \
 	LocORemTest.cpp \

@@ -35,9 +35,9 @@ typedef boost::archive::text_oarchive oarchive_type;
 Registry::Registry(const bpt::ptree& pt,
                    const RegisterComponent registrate)
     : yt::VolumeDriverComponent(registrate, pt)
-    , LockedArakoon(ara::ClusterID(decltype(vregistry_arakoon_cluster_id)(pt).value()),
-                    decltype(vregistry_arakoon_cluster_nodes)(pt).value(),
-                    ara::Cluster::MaybeMilliSeconds(decltype(vregistry_arakoon_timeout_ms)(pt).value()))
+    , yt::LockedArakoon(ara::ClusterID(decltype(vregistry_arakoon_cluster_id)(pt).value()),
+                        decltype(vregistry_arakoon_cluster_nodes)(pt).value(),
+                        ara::Cluster::MaybeMilliSeconds(decltype(vregistry_arakoon_timeout_ms)(pt).value()))
     , vregistry_arakoon_cluster_id(pt)
     , vregistry_arakoon_cluster_nodes(pt)
     , vregistry_arakoon_timeout_ms(pt)

@@ -15,6 +15,7 @@
 #include "FileSystemTestSetup.h"
 
 #include <youtils/Assert.h>
+#include <youtils/LockedArakoon.h>
 #include <youtils/System.h>
 
 #include <volumedriver/metadata-server/Manager.h>
@@ -28,7 +29,6 @@
 #include <filesystem/ClusterRegistry.h>
 #include <filesystem/FileSystem.h>
 #include <filesystem/FileSystemParameters.h>
-#include <filesystem/LockedArakoon.h>
 #include <filesystem/VirtualDiskFormatVmdk.h>
 
 namespace volumedriverfstest
@@ -140,8 +140,8 @@ FileSystemTestSetup::put_cluster_node_configs_in_registry(const bpt::ptree& pt)
     const std::vector<ara::ArakoonNodeConfig>
         ara_node_configs(PARAMETER_VALUE_FROM_PROPERTY_TREE(vregistry_arakoon_cluster_nodes,
                                                             pt));
-    auto arakoon(std::make_shared<vfs::LockedArakoon>(ara_cluster_id,
-                                                      ara_node_configs));
+    auto arakoon(std::make_shared<yt::LockedArakoon>(ara_cluster_id,
+                                                     ara_node_configs));
     const vfs::ClusterId
         vrouter_cluster_id(PARAMETER_VALUE_FROM_PROPERTY_TREE(vrouter_cluster_id,
                                                               pt));
@@ -308,6 +308,17 @@ FileSystemTestSetup::make_config_(bpt::ptree& pt,
                                              scfgs);
     }
 
+    // distributed_lock_store
+    {
+        ip::PARAMETER_TYPE(dls_type)(vd::LockStoreType::Arakoon).persist(pt);
+        ip::PARAMETER_TYPE(dls_arakoon_cluster_id)(arakoon_test_setup_->clusterID().str()).persist(pt);
+        const auto node_configs(arakoon_test_setup_->node_configs());
+        const ip::PARAMETER_TYPE(dls_arakoon_cluster_nodes)::ValueType
+            node_configv(node_configs.begin(),
+                         node_configs.end());
+
+        ip::PARAMETER_TYPE(dls_arakoon_cluster_nodes)(node_configv).persist(pt);
+    }
     // filedriver
     {
         ip::PARAMETER_TYPE(fd_cache_path)(fdriver_cache_dir(topdir).string()).persist(pt);

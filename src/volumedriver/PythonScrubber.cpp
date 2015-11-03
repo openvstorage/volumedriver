@@ -38,12 +38,14 @@ Scrubber::scrub(const std::string& scrub_work_str,
                 const bool apply_immediately,
                 const bool verbose_scrubbing)
 {
-    scrubbing::ScrubberAdapter::result_type res = scrub_(scrub_work_str,
-                                                         scratch_dir,
-                                                         region_size_exponent,
-                                                         fill_ratio,
-                                                         apply_immediately,
-                                                         verbose_scrubbing);
+    scrubbing::ScrubberAdapter::result_type res =
+        scrubbing::ScrubberAdapter::scrub(scrub_work_str,
+                                          scratch_dir,
+                                          region_size_exponent,
+                                          fill_ratio,
+                                          apply_immediately,
+                                          verbose_scrubbing);
+
     return bpy::make_tuple(res.first, res.second);
 }
 

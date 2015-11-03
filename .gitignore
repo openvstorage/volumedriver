@@ -4,6 +4,7 @@
 **/config.sub
 **/configure
 **/Makefile.in
+**/*~
 
 src/compile
 src/depcomp

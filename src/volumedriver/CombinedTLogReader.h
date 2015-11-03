@@ -15,34 +15,38 @@
 #ifndef COMBINEDTLOGBACKENDREADER_H_
 #define COMBINEDTLOGBACKENDREADER_H_
 
+#include "TLogReader.h"
+#include "TLogReaderInterface.h"
+
 #include <vector>
 #include <string>
 
 #include <boost/smart_ptr/shared_ptr.hpp>
 #include <boost/utility.hpp>
 
-#include "youtils/Generator.h"
-#include "TLogReader.h"
+#include <youtils/Generator.h>
 #include <youtils/Logging.h>
-#include "TLogReaderInterface.h"
 
 namespace volumedriver
 {
-typedef boost::shared_ptr<TLogReaderInterface> TLogGenItem;
-typedef youtils::Generator< TLogGenItem > TLogGen;
 
-template<class ReaderType>
+typedef boost::shared_ptr<TLogReaderInterface> TLogGenItem;
+typedef youtils::Generator<TLogGenItem> TLogGen;
+
+template<typename ReaderType,
+         typename Items>
 class TLogReaderGen
     : public TLogGen
 {
 public:
-    TLogReaderGen(const fs::path& TLogPath,
-                  const std::vector<std::string>& names,
+    TLogReaderGen(const boost::filesystem::path& tlog_path,
+                  const Items& items,
                   BackendInterfacePtr bi)
-        : TLogPath_(TLogPath)
-        , nextIndex(0)
+        : tlog_path_(tlog_path)
+        , next_index_(0)
         , bi_(std::move(bi))
-        , names_(names.begin(), names.end())
+        , items_(items.begin(),
+                 items.end())
     {
         update();
     }
@@ -69,15 +73,18 @@ private:
     void
     update()
     {
-        if (nextIndex < names_.size())
+        if (next_index_ < items_.size())
         {
+            const auto name(boost::lexical_cast<std::string>(items_[next_index_++]));
             if(bi_)
             {
-                current_.reset(new ReaderType(TLogPath_, names_[nextIndex++], bi_->clone()));
+                current_.reset(new ReaderType(tlog_path_,
+                                              name,
+                                              bi_->clone()));
             }
             else
             {
-                current_.reset(new ReaderType(TLogPath_ / names_[nextIndex++]));
+                current_.reset(new ReaderType(tlog_path_ / name));
             }
         }
         else
@@ -87,10 +94,10 @@ private:
     }
 
     TLogGenItem current_;
-    const fs::path TLogPath_;
-    uint64_t nextIndex;
+    const boost::filesystem::path tlog_path_;
+    uint64_t next_index_;
     BackendInterfacePtr bi_;
-    std::vector<std::string> names_;
+    const std::vector<typename Items::value_type> items_;
 };
 
 class CombinedTLogReader

@@ -43,8 +43,8 @@ public:
 
     std::vector<std::string>
     getScrubbingWork(const volumedriver::VolumeId& vid,
-                     const boost::optional<std::string>& start_snap = boost::none,
-                     const boost::optional<std::string>& end_snap = boost::none)
+                     const boost::optional<SnapshotName>& start_snap = boost::none,
+                     const boost::optional<SnapshotName>& end_snap = boost::none)
     {
         std::vector<std::string> scrubbing_work_units;
         fungi::ScopedLock l(api::getManagementMutex());
@@ -64,13 +64,12 @@ public:
              bool apply_immediately = false,
              bool verbose_scrubbing = true)
     {
-        ScrubberAdapter t;
-        return t.scrub_(scrub_work_str,
-                        getTempPath(testName_).string(),
-                        region_size_exponent,
-                        fill_ratio,
-                        apply_immediately,
-                        verbose_scrubbing).second;
+        return ScrubberAdapter::scrub(scrub_work_str,
+                                      getTempPath(testName_),
+                                      region_size_exponent,
+                                      fill_ratio,
+                                      apply_immediately,
+                                      verbose_scrubbing).second;
     }
 
     void
@@ -111,7 +110,7 @@ public:
 
     bool
     check_work_unit_snapshot_name(const std::string& work_unit,
-                                  const std::string& snapshot_name)
+                                  const SnapshotName& snapshot_name)
     {
         ScrubWork w(work_unit);
         return(w.snapshot_name_ == snapshot_name);
@@ -149,7 +148,7 @@ TEST_P(ScrubberTest, DeletedSnap)
         writeToVolume(v1, 1 << 10, 4096, what + "-" );
     }
 
-    const std::string snap1("snap1");
+    const SnapshotName snap1("snap1");
 
     v1->createSnapshot(snap1);
     waitForThisBackendWrite(v1);
@@ -189,7 +188,7 @@ TEST_P(ScrubberTest, DeletedSnap2)
         writeToVolume(v1, 1 << 10, 4096, what + "-" );
     }
 
-    const std::string snap1("snap1");
+    const SnapshotName snap1("snap1");
 
     v1->createSnapshot(snap1);
     waitForThisBackendWrite(v1);
@@ -206,7 +205,7 @@ TEST_P(ScrubberTest, DeletedSnap2)
 
     ASSERT_NO_THROW(result = do_scrub(scrub_work_units.front()));
 
-    v1->deleteSnapshot("snap1");
+    v1->deleteSnapshot(snap1);
     {
         fungi::ScopedLock l(api::getManagementMutex());
         EXPECT_THROW(apply_scrubbing(vid,
@@ -245,7 +244,7 @@ TEST_P(ScrubberTest, GetWork)
         ASSERT_EQ(0U, scrub_work_units.size());
     }
 
-    v1->createSnapshot("snap1");
+    v1->createSnapshot(SnapshotName("snap1"));
     waitForThisBackendWrite(v1);
     {
         auto scrub_work_units = getScrubbingWork(vid);
@@ -301,17 +300,17 @@ TEST_P(ScrubberTest, GetWork2)
     auto v = newVolume(vid,
                        ns);
 
-    const std::string snapa("A");
+    const SnapshotName snapa("A");
     writeToVolume(v, 0, 4096, snapa);
     v->createSnapshot(snapa);
     waitForThisBackendWrite(v);
 
-    const std::string snapb("B");
+    const SnapshotName snapb("B");
     writeToVolume(v, 0, 4096, snapb);
     v->createSnapshot(snapb);
     waitForThisBackendWrite(v);
 
-    const std::string snapc("C");
+    const SnapshotName snapc("C");
     writeToVolume(v, 0, 4096, snapc);
     v->createSnapshot(snapc);
     waitForThisBackendWrite(v);
@@ -388,7 +387,7 @@ TEST_P(ScrubberTest, GetWork2)
 
     {
         EXPECT_THROW(getScrubbingWork(vid,
-                                      std::string("does_not_exists"),
+                                      SnapshotName("does_not_exists"),
                                       boost::none),
                      fungi::IOException);
 
@@ -397,7 +396,7 @@ TEST_P(ScrubberTest, GetWork2)
     {
         EXPECT_THROW(getScrubbingWork(vid,
                                       boost::none,
-                                      std::string("does_not_exists")),
+                                      SnapshotName("does_not_exists")),
                      fungi::IOException);
 
     }
@@ -428,9 +427,10 @@ TEST_P(ScrubberTest, Serialization)
     }
 
 
-    v1->createSnapshot("snap1");
+    const SnapshotName snap1("snap1");
+    v1->createSnapshot(snap1);
     waitForThisBackendWrite(v1);
-    EXPECT_EQ(2048U * 4096U, v1->getSnapshotBackendSize("snap1"));
+    EXPECT_EQ(2048U * 4096U, v1->getSnapshotBackendSize(snap1));
 
 
     persistXVals(v1->getName());
@@ -446,7 +446,7 @@ TEST_P(ScrubberTest, Serialization)
 
     checkVolume(v1, 0, 4096,what);
     checkVolume(v1,1 << 10, 4096, what + "-");
-    EXPECT_EQ(8192U, v1->getSnapshotBackendSize("snap1"));
+    EXPECT_EQ(8192U, v1->getSnapshotBackendSize(snap1));
 }
 
 TEST_P(ScrubberTest, ScrubNothing)
@@ -459,7 +459,7 @@ TEST_P(ScrubberTest, ScrubNothing)
 
     Volume* v1 = newVolume(vid,
                            ns);
-    v1->createSnapshot("snap1");
+    v1->createSnapshot(SnapshotName("snap1"));
     waitForThisBackendWrite(v1);
     auto scrub_work_units  = getScrubbingWork(vid);
     ASSERT_EQ(1U, scrub_work_units.size());
@@ -508,7 +508,7 @@ TEST_P(ScrubberTest, SimpleScrub2)
         writeToVolume(v1, 0, 4096,what);
     }
 
-    v1->createSnapshot("snap1");
+    v1->createSnapshot(SnapshotName("snap1"));
     persistXVals(v1->getName());
     waitForThisBackendWrite(v1);
 
@@ -545,7 +545,7 @@ TEST_P(ScrubberTest, SimpleScrub3)
         writeToVolume(v1, 1 << 10, 4096, what + "-" );
     }
 
-    v1->createSnapshot("snap1");
+    v1->createSnapshot(SnapshotName("snap1"));
 
     persistXVals(v1->getName());
     waitForThisBackendWrite(v1);
@@ -593,7 +593,7 @@ TEST_P(ScrubberTest, SimpleScrub4)
         writeToVolume(v1, 1 << 15, 4096, what + "--" );
     }
 
-    v1->createSnapshot("snap1");
+    v1->createSnapshot(SnapshotName("snap1"));
 
     persistXVals(v1->getName());
     waitForThisBackendWrite(v1);
@@ -634,10 +634,9 @@ TEST_P(ScrubberTest, SmallRegionScrub1)
         what = ss.str();
         writeToVolume(v1, i*8, 4096,what);
         writeToVolume(v1, (513*8), 4096, "rest");
-
     }
 
-    v1->createSnapshot("snap1");
+    v1->createSnapshot(SnapshotName("snap1"));
     persistXVals(v1->getName());
     waitForThisBackendWrite(v1);
 
@@ -645,7 +644,6 @@ TEST_P(ScrubberTest, SmallRegionScrub1)
 
     std::string scrub_result;
     ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
-
 
     ASSERT_NO_THROW(apply_scrubbing(vid,
                                     scrub_result,
@@ -688,7 +686,7 @@ TEST_P(ScrubberTest, CloneScrubbin)
     writeToVolume (v1, 8, 4096, "arne");
     writeToVolume (v1, 16, 4096, "immanuel");
 
-    const std::string v1_snap1("v1_snap1");
+    const SnapshotName v1_snap1("v1_snap1");
 
     v1->createSnapshot(v1_snap1);
     persistXVals(v1->getName());
@@ -715,7 +713,7 @@ TEST_P(ScrubberTest, CloneScrubbin)
     writeToVolume(c1, 8, 4096,"joost");
     writeToVolume(c1, 16, 4096, "wouter");
 
-    const std::string c1_snap1("c1_snap1");
+    const SnapshotName c1_snap1("c1_snap1");
 
     c1->createSnapshot(c1_snap1);
     waitForThisBackendWrite(c1);
@@ -739,7 +737,7 @@ TEST_P(ScrubberTest, CloneScrubbin)
 
     writeToVolume(c2, 16, 4096, "wim");
 
-    const std::string c2_snap1("c2_snap1");
+    const SnapshotName c2_snap1("c2_snap1");
 
     c2->createSnapshot(c2_snap1);
     waitForThisBackendWrite(c2);
@@ -860,7 +858,7 @@ TEST_P(ScrubberTest, CloneScrubbin)
                   RemoveVolumeCompletely::T);
 }
 
-TEST_P(ScrubberTest, ApplyScrubTwice)
+TEST_P(ScrubberTest, idempotent_scrub_result_application)
 {
     auto ns_ptr = make_random_namespace();
 
@@ -882,25 +880,35 @@ TEST_P(ScrubberTest, ApplyScrubTwice)
     writeToVolume (v1, 8, 4096, "arne");
     writeToVolume (v1, 16, 4096, "immanuel");
 
-    const std::string snap1("snap1");
+    const SnapshotName snap1("snap1");
     v1->createSnapshot(snap1);
     persistXVals(vid);
     waitForThisBackendWrite(v1);
-    VolumeConfig volume_config = v1->get_config();
+    const VolumeConfig volume_config = v1->get_config();
 
     auto scrub_work_units  = getScrubbingWork(vid);
     ASSERT_EQ(1U, scrub_work_units.size());
     std::string scrub_result;
     ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
 
-    ASSERT_NO_THROW(apply_scrubbing(vid,
+    EXPECT_NO_THROW(apply_scrubbing(vid,
+                                    scrub_result,
+                                    CleanupScrubbingOnError::T,
+                                    CleanupScrubbingOnSuccess::F));
+
+    waitForThisBackendWrite(v1);
+
+    EXPECT_NO_THROW(apply_scrubbing(vid,
                                     scrub_result));
+
+    waitForThisBackendWrite(v1);
 
     EXPECT_THROW(apply_scrubbing(vid,
                                  scrub_result),
                  std::exception);
 
     waitForThisBackendWrite(v1);
+
     destroyVolume(v1,
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::F);
@@ -925,7 +933,7 @@ TEST_P(ScrubberTest, consistency)
     {
         writeToVolume (v1, 0, 4096, "xxx");
     }
-    const std::string v1_snap1("v1_snap1");
+    const SnapshotName v1_snap1("v1_snap1");
     v1->createSnapshot(v1_snap1);
     persistXVals(v1->getName());
     waitForThisBackendWrite(v1);

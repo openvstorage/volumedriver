@@ -10,6 +10,7 @@ storagerouterclient_la_SOURCES = \
 	ArakoonClient.cpp \
 	FileSystemMetaDataClient.cpp \
 	LocalClient.cpp \
+	LockedClient.cpp \
 	MDSClient.cpp \
 	ObjectRegistryClient.cpp \
 	StorageRouterClient.cpp \

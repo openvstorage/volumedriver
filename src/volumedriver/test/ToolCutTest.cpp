@@ -75,7 +75,7 @@ TEST_P(ToolCutTest, DISABLED_toolcut_create_volume)
 
     writeToVolume(v, 0, 4096,"immanuel");
 
-    const std::string snap1("snap1");
+    const SnapshotName snap1("snap1");
 
     v->createSnapshot(snap1);
 

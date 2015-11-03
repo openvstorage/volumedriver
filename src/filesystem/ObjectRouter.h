@@ -133,7 +133,7 @@ class ObjectRouter
 
 public:
     ObjectRouter(const boost::property_tree::ptree& pt,
-                 std::shared_ptr<LockedArakoon> larakoon,
+                 std::shared_ptr<youtils::LockedArakoon> larakoon,
                  const FailOverCacheConfigMode,
                  const volumedriver::FailOverCacheMode,
                  const boost::optional<volumedriver::FailOverCacheConfig>&,
@@ -147,7 +147,7 @@ public:
     operator=(const ObjectRouter&) = delete;
 
     static void
-    destroy(std::shared_ptr<LockedArakoon> larakoon,
+    destroy(std::shared_ptr<youtils::LockedArakoon> larakoon,
             const boost::property_tree::ptree& pt);
 
     void
@@ -238,8 +238,8 @@ public:
 
     void
     get_scrub_work(const ObjectId& oid,
-                   const boost::optional<std::string>& start_snap,
-                   const boost::optional<std::string>& end_snap,
+                   const boost::optional<volumedriver::SnapshotName>& start_snap,
+                   const boost::optional<volumedriver::SnapshotName>& end_snap,
                    std::vector<std::string>& work);
 
     void
@@ -364,7 +364,7 @@ private:
     DECLARE_PARAMETER(vrouter_max_workers);
     DECLARE_PARAMETER(vrouter_registry_cache_capacity);
 
-    std::shared_ptr<LockedArakoon> larakoon_;
+    std::shared_ptr<youtils::LockedArakoon> larakoon_;
     std::shared_ptr<CachedObjectRegistry> object_registry_;
     std::shared_ptr<ClusterRegistry> cluster_registry_;
     std::shared_ptr<zmq::context_t> ztx_;

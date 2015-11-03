@@ -15,6 +15,7 @@
 #ifndef VD_BACKEND_RESTART_ACCUMULATOR_H_
 #define VD_BACKEND_RESTART_ACCUMULATOR_H_
 
+#include "SnapshotName.h"
 #include "SnapshotPersistor.h"
 #include "Types.h"
 #include "VolumeConfig.h"
@@ -48,7 +49,7 @@ public:
     void
     operator()(const SnapshotPersistor& sp,
                backend::BackendInterfacePtr& bi,
-               const std::string& snapshot_name,
+               const SnapshotName& snapshot_name,
                SCOCloneID clone_id);
 
     static const FromOldest direction = FromOldest::T;

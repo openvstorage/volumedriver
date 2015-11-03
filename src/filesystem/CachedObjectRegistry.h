@@ -36,10 +36,13 @@ class FileSystemTestSetup;
 class RemoteTest;
 }
 
+namespace youtils
+{
+class LockedArakoon;
+}
+
 namespace volumedriverfs
 {
-
-class LockedArakoon;
 
 BOOLEAN_ENUM(IgnoreCache);
 BOOLEAN_ENUM(RefreshCache);
@@ -53,7 +56,7 @@ class CachedObjectRegistry
 public:
     CachedObjectRegistry(const ClusterId& cluster_id,
                          const NodeId& node_id,
-                         std::shared_ptr<LockedArakoon> registry,
+                         std::shared_ptr<youtils::LockedArakoon> registry,
                          size_t cache_capacity = 1024);
 
     ~CachedObjectRegistry() = default;

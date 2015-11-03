@@ -132,7 +132,7 @@ WriteOnlyVolume::maybe_update_owner_tag_(const OwnerTag owner_tag)
 }
 
 void
-WriteOnlyVolume::tlogWrittenToBackendCallback(const TLogID& tid,
+WriteOnlyVolume::tlogWrittenToBackendCallback(const TLogId& tid,
                                               const SCO sconame)
 {
     snapshotManagement_->tlogWrittenToBackendCallback(tid,
@@ -404,7 +404,7 @@ WriteOnlyVolume::get_config() const
     return cfg_;
 }
 
-void WriteOnlyVolume::createSnapshot(const std::string& name,
+void WriteOnlyVolume::createSnapshot(const SnapshotName& name,
                                      const SnapshotMetaData& metadata,
                                      const UUID& uuid)
 {
@@ -430,33 +430,33 @@ void WriteOnlyVolume::createSnapshot(const std::string& name,
 }
 
 bool
-WriteOnlyVolume::checkSnapshotUUID(const std::string& snapshotName,
-                          const volumedriver::UUID& uuid) const
+WriteOnlyVolume::checkSnapshotUUID(const SnapshotName& snapshotName,
+                                   const volumedriver::UUID& uuid) const
 {
     return snapshotManagement_->checkSnapshotUUID(snapshotName,
                                                   uuid);
 }
 
 bool
-WriteOnlyVolume::snapshotExists(const std::string& name) const
+WriteOnlyVolume::snapshotExists(const SnapshotName& name) const
 {
     return snapshotManagement_->snapshotExists(name);
 }
 
 void
-WriteOnlyVolume::listSnapshots(std::list<std::string>& snapshots) const
+WriteOnlyVolume::listSnapshots(std::list<SnapshotName>& snapshots) const
 {
     snapshotManagement_->listSnapshots(snapshots);
 }
 
 Snapshot
-WriteOnlyVolume::getSnapshot(const std::string& snapname) const
+WriteOnlyVolume::getSnapshot(const SnapshotName& snapname) const
 {
     return snapshotManagement_->getSnapshot(snapname);
 }
 
 void
-WriteOnlyVolume::deleteSnapshot(const std::string& name)
+WriteOnlyVolume::deleteSnapshot(const SnapshotName& name)
 {
     checkNotHalted_();
     snapshotManagement_->deleteSnapshot(name);
@@ -513,7 +513,7 @@ WriteOnlyVolume::dumpDebugData()
 }
 
 // TODO: this only works when the backend is online
-void WriteOnlyVolume::restoreSnapshot(const std::string& name)
+void WriteOnlyVolume::restoreSnapshot(const SnapshotName& name)
 {
     WLOCK();
 
@@ -536,15 +536,13 @@ void WriteOnlyVolume::restoreSnapshot(const std::string& name)
 
         // 2) get list of excess SCOs - to be removed only after persisting the new snapshots file
         std::vector<SCO> doomedSCOs;
-        OrderedTLogNames doomedTLogs;
+        OrderedTLogIds doomedTLogs;
 
         try
         {
             LOG_INFO("Finding out which TLogs and SCO's to delete");
 
-            snapshotManagement_->getTLogsAfterSnapshot(num,
-                                                       doomedTLogs,
-                                                       AbsolutePath::F);
+            doomedTLogs = snapshotManagement_->getTLogsAfterSnapshot(num);
 
             LOG_INFO("Deleting " << doomedTLogs.size() << " TLogs");
 
@@ -570,11 +568,10 @@ void WriteOnlyVolume::restoreSnapshot(const std::string& name)
 
         LOG_INFO("Finding out last sco on backend for WriteOnlyVolume " << getName());
 
-        OrderedTLogNames out;
-        snapshotManagement_->getAllTLogs(out, AbsolutePath::F);
+        const OrderedTLogIds tlog_ids(snapshotManagement_->getAllTLogs());
         std::shared_ptr<TLogReaderInterface> itf =
             makeCombinedBackwardTLogReader(snapshotManagement_->getTLogsPath(),
-                                           out,
+                                           tlog_ids,
                                            getBackendInterface()->clone());
 
         ClusterLocation last_in_backend = itf->nextClusterLocation();
@@ -587,11 +584,11 @@ void WriteOnlyVolume::restoreSnapshot(const std::string& name)
 
 
         // 6) remove the doomed TLogs
-        for (const std::string& tlog : doomedTLogs)
+        for (const auto& tlog_id : doomedTLogs)
         {
 
             backend_task::DeleteTLog* task = new backend_task::DeleteTLog(this,
-                                                                tlog);
+                                                                          boost::lexical_cast<std::string>(tlog_id));
             VolManager::get()->backend_thread_pool()->addTask(task);
         }
 
@@ -677,42 +674,42 @@ WriteOnlyVolume::isSyncedToBackend() const
 }
 
 bool
-WriteOnlyVolume::isSyncedToBackendUpTo(const std::string& snapshotName) const
+WriteOnlyVolume::isSyncedToBackendUpTo(const SnapshotName& snapshotName) const
 {
     SnapshotNum num = snapshotManagement_->getSnapshotNumberByName(snapshotName);
     return snapshotManagement_->isSnapshotInBackend(num);
 }
 
 void
-WriteOnlyVolume::getScrubbingWork(std::vector<std::string>& w,
-                                  const boost::optional<std::string>& start_snap,
-                                  const boost::optional<std::string>& end_snap) const
+WriteOnlyVolume::getScrubbingWork(std::vector<std::string>& scrub_work,
+                                  const boost::optional<SnapshotName>& start_snap,
+                                  const boost::optional<SnapshotName>& end_snap) const
 {
-    std::vector<std::string> snapshots;
+    SnapshotWork work;
 
     snapshotManagement_->getSnapshotScrubbingWork(start_snap,
                                                   end_snap,
-                                                  snapshots);
+                                                  work);
 
     const VolumeConfig cfg(get_config());
 
-    for(const std::string& snap_name : snapshots)
+    for(const auto& w : work)
     {
         scrubbing::ScrubWork s(VolManager::get()->getBackendConfig().clone(),
                                cfg.getNS(),
                                cfg.id_,
                                ilogb(cfg.cluster_mult_ * cfg.lba_size_),
                                cfg.sco_mult_,
-                               snap_name);
+                               w);
 
-        w.push_back(s.str());
+        scrub_work.push_back(s.str());
     }
 }
 
-std::string
+SnapshotName
 WriteOnlyVolume::getParentSnapName() const
 {
-    return std::string(cfg_.parent_snapshot_);
+    return cfg_.parent_snapshot_;
 }
 
 
@@ -731,14 +728,14 @@ WriteOnlyVolume::VolumeDataStoreReadUsed() const
 uint64_t
 WriteOnlyVolume::getTLogUsed() const
 {
-    OrderedTLogNames out;
-    snapshotManagement_->getAllTLogs(out, AbsolutePath::T);
+    const std::vector<fs::path>
+        paths(snapshotManagement_->tlogPathPrepender(snapshotManagement_->getAllTLogs()));
     uint64_t res = 0;
     struct stat st;
 
-    for(unsigned i = 0; i < out.size(); ++i)
+    for (const auto& path : paths)
     {
-        if(stat(out[i].c_str(), &st) == 0)
+        if (::stat(path.string().c_str(), &st) == 0)
         {
             if(S_ISREG(st.st_mode))
             {
@@ -749,7 +746,6 @@ WriteOnlyVolume::getTLogUsed() const
 
     return res;
 }
-
 
 void
 WriteOnlyVolume::scheduleBackendSync()
@@ -764,31 +760,28 @@ WriteOnlyVolume::scheduleBackendSync()
     snapshotManagement_->scheduleBackendSync(cs);
 }
 
-
 uint64_t
-WriteOnlyVolume::getSnapshotSCOCount(const std::string& snapshotName)
+WriteOnlyVolume::getSnapshotSCOCount(const SnapshotName& snapshotName)
 {
-    OrderedTLogNames out;
+    OrderedTLogIds tlog_ids;
     if(snapshotName.empty())
     {
-        snapshotManagement_->getCurrentTLogs(out,
-                                             AbsolutePath::F);
+        tlog_ids = snapshotManagement_->getCurrentTLogs();
     }
     else
     {
-
-        SnapshotNum snap = snapshotManagement_->getSnapshotNumberByName(snapshotName);
+        const SnapshotNum snap = snapshotManagement_->getSnapshotNumberByName(snapshotName);
         snapshotManagement_->getTLogsInSnapshot(snap,
-                                               out,
-                                               AbsolutePath::F);
+                                                tlog_ids);
     }
 
-    std::shared_ptr<TLogReaderInterface>  r = makeCombinedTLogReader(snapshotManagement_->getTLogsPath(),
-                                                                       out,
-                                                                     getBackendInterface()->clone());
+    std::shared_ptr<TLogReaderInterface>
+        treader(makeCombinedTLogReader(snapshotManagement_->getTLogsPath(),
+                                       tlog_ids,
+                                       getBackendInterface()->clone()));
 
     std::vector<SCO> lst;
-    r->SCONames(lst);
+    treader->SCONames(lst);
     return lst.size();
 }
 
@@ -797,6 +790,7 @@ WriteOnlyVolume::getCacheHits() const
 {
     return dataStore_->getCacheHits();
 }
+
 uint64_t
 WriteOnlyVolume::getCacheMisses() const
 {
@@ -871,13 +865,15 @@ WriteOnlyVolume::checkTLogsConsistency_(CloneTLogs& ctl) const
     {
         SCOCloneID cloneid = ctl[i].first;
         BackendInterfacePtr bi = getBackendInterface(cloneid)->clone();
-        OrderedTLogNames& tlogs = ctl[i].second;
+        OrderedTLogIds& tlogs = ctl[i].second;
         SCONumber lastSCONumber = 0;
 
         for(unsigned k = 0; k < tlogs.size(); k++)
         {
             std::vector<SCO> scoNames;
-            TLogReader(tlog_temp_location, tlogs[k], bi->clone()).SCONames(scoNames);;
+            TLogReader(tlog_temp_location,
+                       boost::lexical_cast<std::string>(tlogs[k]),
+                       bi->clone()).SCONames(scoNames);;
 
             if (not (scoNames.empty() or
                      (scoNames.front().number() > lastSCONumber)))
@@ -896,7 +892,7 @@ WriteOnlyVolume::checkTLogsConsistency_(CloneTLogs& ctl) const
 
             for (unsigned i = 0; i < scoNames.size(); i++)
             {
-                std::string name =scoNames[i].str();
+                const std::string name = scoNames[i].str();
                 if (not bi->objectExists(name))
                 {
                     LOG_ERROR("SCO " << name << " in tlog " << tlogs[k] << " does not exist on backend");
@@ -915,7 +911,7 @@ WriteOnlyVolume::checkTLogsConsistency_(CloneTLogs& ctl) const
 }
 
 uint64_t
-WriteOnlyVolume::getSnapshotBackendSize(const std::string& snapName)
+WriteOnlyVolume::getSnapshotBackendSize(const SnapshotName& snapName)
 {
     return snapshotManagement_->getSnapshotBackendSize(snapName);
 }

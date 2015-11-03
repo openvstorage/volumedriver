@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "NoGlobalLockingService.h"
+#ifndef VD_SNAPSHOT_NAME_H_
+#define VD_SNAPSHOT_NAME_H_
 
-namespace youtils
-{
-}
+#include <youtils/StrongTypedString.h>
 
-// Local Variables: **
-// compile-command: "scons -D --kernel_version=system --ignore-buildinfo -j 5" **
-// End: **
+STRONG_TYPED_STRING(volumedriver, SnapshotName);
+
+#endif // !VD_SNAPSHOT_NAME_H_

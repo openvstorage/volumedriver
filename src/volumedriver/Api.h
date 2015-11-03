@@ -18,20 +18,21 @@
 // currently the api leaks too many implementation details - this needs to be
 // revised
 
+#include "ClusterCache.h"
 #include "ClusterCount.h"
 #include "Events.h"
 #include "FailOverCacheConfig.h"
 #include "MetaDataStoreStats.h"
 #include "OwnerTag.h"
 #include "PerformanceCounters.h"
+#include "SCOCacheInfo.h"
+#include "Snapshot.h"
+#include "SnapshotName.h"
+#include "Types.h"
 #include "Volume.h"
 #include "VolumeConfig.h"
 #include "VolumeConfigParameters.h"
-#include "SCOCacheInfo.h"
-#include "Snapshot.h"
-#include "ClusterCache.h"
 #include "VolumeOverview.h"
-#include "Types.h"
 
 #include <string>
 #include <limits>
@@ -197,63 +198,63 @@ public:
     static void
     removeLocalVolumeData(const backend::Namespace& nspace);
 
-    static std::string
+    static volumedriver::SnapshotName
     createSnapshot(volumedriver::Volume*,
                    const volumedriver::SnapshotMetaData& = volumedriver::SnapshotMetaData(),
-                   const std::string* const snapname = 0,
+                   const volumedriver::SnapshotName* const snapname = 0,
                    const volumedriver::UUID& uuid = volumedriver::UUID());
 
-    static std::string
+    static volumedriver::SnapshotName
     createSnapshot(const volumedriver::VolumeId&,
                    const volumedriver::SnapshotMetaData& = volumedriver::SnapshotMetaData(),
-                   const std::string* const snapname = 0);
+                   const volumedriver::SnapshotName* const snapname = 0);
 
-    static std::string
+    static volumedriver::SnapshotName
     createSnapshot(volumedriver::WriteOnlyVolume*,
                    const volumedriver::SnapshotMetaData& = volumedriver::SnapshotMetaData(),
-                   const std::string* const snapname = 0,
+                   const volumedriver::SnapshotName* const snapname = 0,
                    const volumedriver::UUID& uuid = volumedriver::UUID());
 
     static bool
     checkSnapshotUUID(const volumedriver::WriteOnlyVolume*,
-                      const std::string& snapshotName,
+                      const volumedriver::SnapshotName&,
                       const volumedriver::UUID& uuid);
 
     static bool
     snapshotExists(const volumedriver::WriteOnlyVolume*,
-                   const std::string& snapshotName);
+                   const volumedriver::SnapshotName&);
 
     static void
     showSnapshots(const volumedriver::VolumeId&,
-                  std::list<std::string>& l);
+                  std::list<volumedriver::SnapshotName>&);
 
     static void
     showSnapshots(const volumedriver::WriteOnlyVolume*,
-                  std::list<std::string>& l);
+                  std::list<volumedriver::SnapshotName>&);
 
     static volumedriver::Snapshot
     getSnapshot(const volumedriver::VolumeId&,
-                const std::string& snapname);
+                const volumedriver::SnapshotName&);
 
     static volumedriver::Snapshot
     getSnapshot(const volumedriver::Volume*,
-                const std::string& snapname);
+                const volumedriver::SnapshotName&);
 
     static volumedriver::Snapshot
     getSnapshot(const volumedriver::WriteOnlyVolume*,
-                const std::string& snapname);
+                const volumedriver::SnapshotName&);
 
     static void
     destroySnapshot(const volumedriver::VolumeId&,
-                     const std::string& snapName);
+                    const volumedriver::SnapshotName&);
 
     static void
     restoreSnapshot(const volumedriver::VolumeId&,
-                    const std::string& snapid);
+                    const volumedriver::SnapshotName&);
 
     static void
     restoreSnapshot(volumedriver::WriteOnlyVolume*,
-                    const std::string& snapid);
+                    const volumedriver::SnapshotName&);
 
     static uint64_t
     VolumeDataStoreWriteUsed(const volumedriver::VolumeId&);
@@ -288,7 +289,7 @@ public:
     static uint64_t
     getTLogUsed(const volumedriver::VolumeId&);
 
-    static void
+    static volumedriver::TLogId
     scheduleBackendSync(const volumedriver::VolumeId&);
 
     static uint32_t
@@ -305,11 +306,15 @@ public:
 
     static bool
     isVolumeSyncedUpTo(const volumedriver::VolumeId&,
-                       const std::string& snapshotName);
+                       const volumedriver::SnapshotName&);
 
     static bool
-    isVolumeSyncedUpTo(const volumedriver::WriteOnlyVolume* v,
-                       const std::string& snapshotName);
+    isVolumeSyncedUpTo(const volumedriver::WriteOnlyVolume*,
+                       const volumedriver::SnapshotName&);
+
+    static bool
+    isVolumeSyncedUpTo(const volumedriver::VolumeId&,
+                       const volumedriver::TLogId&);
 
     static void
     removeNamespaceFromSCOCache(const backend::Namespace&);
@@ -347,7 +352,7 @@ public:
 
     static uint64_t
     getSnapshotSCOCount(const volumedriver::VolumeId&,
-                        const std::string& snapid);
+                        const volumedriver::SnapshotName&);
 
     static void
     setFOCTimeout(const volumedriver::VolumeId& volName,
@@ -358,7 +363,7 @@ public:
 
     static uint64_t
     getSnapshotBackendSize(const volumedriver::VolumeId&,
-                            const std::string& snapName);
+                           const volumedriver::SnapshotName&);
 
     static uint64_t
     getCurrentBackendSize(const volumedriver::VolumeId&);
@@ -378,7 +383,7 @@ public:
 
     static void
     addClusterCacheDevice(const std::string& path,
-                       const uint64_t size);
+                          const uint64_t size);
 
     static void
     removeClusterCacheDevice(const std::string& path);
@@ -459,8 +464,8 @@ public:
     static void
     getScrubbingWork(const volumedriver::VolumeId&,
                      std::vector<std::string>& scrubbing_work_units,
-                     const boost::optional<std::string>& start_snap,
-                     const boost::optional<std::string>& end_snap);
+                     const boost::optional<volumedriver::SnapshotName>& start_snap,
+                     const boost::optional<volumedriver::SnapshotName>& end_snap);
 
     static void
     applyScrubbingWork(const volumedriver::VolumeId&,

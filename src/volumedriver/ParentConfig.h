@@ -15,6 +15,8 @@
 #ifndef VD_PARENT_CONFIG_H_
 #define VD_PARENT_CONFIG_H_
 
+#include "SnapshotName.h"
+
 #include <string>
 
 #include <boost/archive/xml_iarchive.hpp>
@@ -31,7 +33,7 @@ namespace volumedriver
 struct ParentConfig
 {
     backend::Namespace nspace;
-    std::string snapshot;
+    SnapshotName snapshot;
 
     DECLARE_LOGGER("ParentConfig");
 
@@ -78,8 +80,12 @@ struct ParentConfig
 
         ar & make_nvp("nspace",
                       nspace);
+
+        std::string snap;
         ar & make_nvp("snapshot",
-                      snapshot);
+                      snap);
+
+        snapshot = SnapshotName(snap);
     }
 
     template<class Archive>
@@ -92,7 +98,7 @@ struct ParentConfig
         ar & make_nvp("nspace",
                       nspace);
         ar & make_nvp("snapshot",
-                      snapshot);
+                      static_cast<const std::string>(snapshot));
     }
 };
 
@@ -112,7 +118,7 @@ load_construct_data(Archive& /* ar */,
                     const unsigned /* version */)
 {
     new(cfg) volumedriver::ParentConfig(backend::Namespace(std::string("uninitialized")),
-                                        "uninitialized");
+                                        volumedriver::SnapshotName("uninitialized"));
 }
 
 }

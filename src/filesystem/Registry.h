@@ -16,13 +16,13 @@
 #define VFS_REGISTRY_H_
 
 #include "FileSystemParameters.h"
-#include "LockedArakoon.h"
 
 #include <boost/property_tree/ptree_fwd.hpp>
 #include <boost/thread/mutex.hpp>
 
 #include <youtils/ArakoonInterface.h>
 #include <youtils/InitializedParam.h>
+#include <youtils/LockedArakoon.h>
 #include <youtils/Logging.h>
 #include <youtils/VolumeDriverComponent.h>
 
@@ -31,7 +31,7 @@ namespace volumedriverfs
 
 class Registry final
     : public youtils::VolumeDriverComponent
-    , public LockedArakoon
+    , public youtils::LockedArakoon
 {
 public:
     explicit Registry(const boost::property_tree::ptree& pt,

@@ -42,7 +42,7 @@ public:
                      MetaDataStoreInterface& mdstore);
 
     void
-    scanTLog(const std::string& tlog);
+    scanTLog(const TLogId&);
 
     bool
     isAborted() const
@@ -63,9 +63,9 @@ public:
     virtual void
     processSync() override final;
 
-    using TLogNameAndSize = std::pair<TLogName, uint64_t>;
+    using TLogIdAndSize = std::pair<TLogId, uint64_t>;
 
-    const TLogNameAndSize&
+    const TLogIdAndSize&
     last_good_tlog() const;
 
 private:
@@ -76,7 +76,7 @@ private:
     ZCOVetcher zcovetcher_;
     MetaDataStoreInterface& mdstore_;
     bool aborted_;
-    TLogNameAndSize last_good_tlog_;
+    TLogIdAndSize last_good_tlog_;
     const fs::path tlogs_path_;
     bool tlog_without_final_crc_;
     std::vector<std::pair<ClusterAddress,

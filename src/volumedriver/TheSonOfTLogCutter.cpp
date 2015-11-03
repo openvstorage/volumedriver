@@ -13,11 +13,10 @@
 // limitations under the License.
 
 #include "TheSonOfTLogCutter.h"
-#include <youtils/UUID.h>
 #include "TLog.h"
+#include "TLogId.h"
 
 namespace volumedriver
-
 {
 
 TheSonOfTLogCutter::TheSonOfTLogCutter(BackendInterface* bi,
@@ -36,9 +35,9 @@ TheSonOfTLogCutter::TheSonOfTLogCutter(BackendInterface* bi,
 void
 TheSonOfTLogCutter::makeNewTLog()
 {
-    LOG_DEBUG("Creating an new tlog");
-    UUID new_id;
-    const std::string new_tlog =  TLog::getName(new_id);
+    LOG_DEBUG("Creating a new tlog");
+    TLogId new_id;
+    const auto new_tlog(boost::lexical_cast<std::string>(new_id));
     current_tlog_path = filepool_.newFile(new_tlog);
     tlog_writer.reset(new TLogWriter(current_tlog_path));
     LOG_DEBUG("Created " << new_tlog << " at " << current_tlog_path);
@@ -48,7 +47,6 @@ TheSonOfTLogCutter::makeNewTLog()
 void
 TheSonOfTLogCutter::writeTLogToBackend()
 {
-
     VERIFY(tlog_writer.get());
     VERIFY(!tlog_names_.empty());
 
