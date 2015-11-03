@@ -37,6 +37,7 @@ volumedriver_test_CPPFLAGS = \
 volumedriver_test_SOURCES = \
 	ApiTest.cpp \
 	BackendNamesFilterTest.cpp \
+	BackendNamesFilterVolumeTest.cpp \
 	BackwardsCompatibilityTest.cpp \
 	BigReadWriteTest.cpp \
 	CachedSCOTest.cpp \
