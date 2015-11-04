@@ -228,9 +228,9 @@ FuseInterface::operator()(const fs::path& mntpoint,
                                    // our code can deal with being interrupted.
                                });
 
-    ShmOrbInterface *shm_orb_server = new ShmOrbInterface(ptree_,
-                                                          RegisterComponent::T,
-                                                          fs_);
+    shm_orb_server.reset(new ShmOrbInterface(ptree_,
+                                             RegisterComponent::T,
+                                             fs_));
 
     boost::thread shmthread([&]
             {
@@ -242,21 +242,22 @@ FuseInterface::operator()(const fs::path& mntpoint,
 
     boost::thread fsthread([&]
                            {
-                               try
-                               {
-                                   run_(fuse,
-                                        multithreaded ? true : false);
-                               }
-                               CATCH_STD_ALL_LOG_IGNORE("exception running FUSE");
+                             try
+                             {
+                                 run_(fuse,
+                                      multithreaded ? true : false);
+                             }
+                             CATCH_STD_ALL_LOG_IGNORE("exception running FUSE");
                            });
 
     auto fsthread_exit(yt::make_scope_exit([&]
                                            {
-                                               LOG_INFO("waiting for fs thread to finish");
-                                               fsthread.join();
-                                               shm_orb_server->stop_all_and_exit();
-                                               LOG_INFO("waiting for shm thread to finish");
-                                               shmthread.join();
+                                             LOG_INFO("waiting for fs thread to finish");
+                                             fsthread.join();
+                                             shm_orb_server->stop_all_and_exit();
+                                             LOG_INFO("waiting for shm thread to finish");
+                                             shmthread.join();
+                                             shm_orb_server.reset();
                                            }));
 
     TODO("AR: push down to FileSystem?");
