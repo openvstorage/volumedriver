@@ -10,12 +10,23 @@ LTTNG_GEN_TP = @lttng_gen_tp@
 	echo "generating $@ from $<"
 	$(LTTNG_GEN_TP) $< -o $@
 
-lib_LTLIBRARIES = libvolumedriverfs.la
+lib_LTLIBRARIES = libvolumedriverfs.la libovsvolumedriver.la
 
 libvolumedriverfs_la_CXXFLAGS = $(BUILDTOOLS_CFLAGS) -D_FILE_OFFSET_BITS=64
 libvolumedriverfs_la_CFLAGS = $(BUILDTOOLS_CFLAGS) -D_FILE_OFFSET_BITS=64
 libvolumedriverfs_la_CPPFLAGS = -I@abs_top_srcdir@/.. -I@abs_top_builddir@/../volumedriver
 libvolumedriverfs_la_LDFLAGS = -static
+
+libovsvolumedriver_la_SOURCES = \
+	c-api/libovsvolumedriver.cpp \
+	ShmClient.cpp \
+	ShmIdlInterface.cpp
+libovsvolumedriver_la_CXXFLAGS = ${BUILDTOOLS_CFLAGS}
+libovsvolumedriver_la_LIBADD = ../youtils/libyoutils.la ${BUILDTOOLS_LIBS}
+libovsvolumedriver_la_CPPFLAGS = \
+	-I@abs_top_srcdir@/.. \
+	-I@abs_top_builddir@/../volumedriver
+libovsvolumedriver_la_LDFLAGS = -static
 
 # this path trickery is necessary as protobuf imports need to start at the same root
 %.pb.cc %.pb.h %_pb2.py: %.proto
@@ -47,6 +58,11 @@ MOSTLYCLEANFILES = \
 bin_SCRIPTS = volumedriver_fs.sh
 
 CLEANFILES = $(bin_SCRIPTS)
+
+OMNIIDL=@omniidl@
+
+ShmIdlInterface.cpp : ShmIdlInterface.idl
+	$(OMNIIDL) -bcxx -Wbh=.h -Wbs=.cpp -Wbtp $<
 
 # XXX: the PythonClient lives here for ease of testing
 libvolumedriverfs_la_SOURCES = \
@@ -91,7 +107,11 @@ libvolumedriverfs_la_SOURCES = \
 		XMLRPCKeys.cpp \
 		XMLRPCStructs.cpp \
 		XMLRPCUtils.cpp \
-		ZWorkerPool.cpp
+		ZWorkerPool.cpp \
+		ShmOrbInterface.cpp \
+		ShmInterface.cpp \
+		ShmIdlInterface.cpp \
+		ShmServer.cpp
 
 volumedriverfs_pythondir = @prefix@/lib/python@PYTHON_VERSION@/dist-packages/volumedriver/storagerouter
 
