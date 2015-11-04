@@ -15,6 +15,7 @@
 #include "FileSystemEvents.h"
 #include "FileSystemParameters.h"
 #include "FuseInterface.h"
+#include "ShmOrbInterface.h"
 
 #include <boost/property_tree/ptree.hpp>
 
@@ -80,6 +81,7 @@ FuseInterface::FuseInterface(const bpt::ptree& pt,
     , fs_(pt,
           registerizle)
     , fuse_(nullptr)
+    , ptree_(pt)
 {}
 
 
@@ -226,6 +228,18 @@ FuseInterface::operator()(const fs::path& mntpoint,
                                    // our code can deal with being interrupted.
                                });
 
+    ShmOrbInterface *shm_orb_server = new ShmOrbInterface(ptree_,
+                                                          RegisterComponent::T,
+                                                          fs_);
+
+    boost::thread shmthread([&]
+            {
+                try
+                {
+                    shm_orb_server->run();
+                }CATCH_STD_ALL_LOG_IGNORE("exception running SHM server");
+            });
+
     boost::thread fsthread([&]
                            {
                                try
@@ -240,6 +254,9 @@ FuseInterface::operator()(const fs::path& mntpoint,
                                            {
                                                LOG_INFO("waiting for fs thread to finish");
                                                fsthread.join();
+                                               shm_orb_server->stop_all_and_exit();
+                                               LOG_INFO("waiting for shm thread to finish");
+                                               shmthread.join();
                                            }));
 
     TODO("AR: push down to FileSystem?");

@@ -277,6 +277,7 @@ private:
 
     FileSystem fs_;
     fuse* fuse_;
+    boost::property_tree::ptree ptree_;
 
     void
     init_ops_(fuse_operations& ops) const;
