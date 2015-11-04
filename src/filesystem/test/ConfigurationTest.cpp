@@ -106,6 +106,7 @@ TEST_F(ConfigurationTest, print_framework_parameter_dict)
         "backend_connection_manager",
         "content_addressed_cache",
         "event_publisher",
+        "distributed_lock_store",
         "failovercache",
         "file_driver",
         "filesystem",
