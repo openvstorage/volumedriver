@@ -140,6 +140,12 @@ DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(fuse_min_workers,
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(fuse_max_workers,
                                                   std::atomic<uint32_t>);
 
+// SHM:
+extern const char shm_interface_component_name[];
+
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(shm_region_size,
+                                       size_t);
+
 // EventPublisher:
 extern const char events_component_name[];
 

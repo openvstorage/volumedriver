@@ -177,6 +177,16 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(fuse_max_workers,
                                       ShowDocumentation::T,
                                       8U);
 
+// SHM:
+const char shm_interface_component_name[] = "shm_interface";
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(shm_region_size,
+                                      shm_interface_component_name,
+                                      "shm_region_size",
+                                      "size in bytes of the shared memory segment",
+                                      ShowDocumentation::T,
+                                      268435456); // 256 MB
+
 // FileSystem:
 const char filesystem_component_name[] = "filesystem";
 
