@@ -521,8 +521,8 @@ Asynchronous volume synchronization::
         - ENOSYS ovs_aio_flushcb() is not implemented
 
 Shared memory allocation::
-    void* ovs_allocate(ovs_ctx_t *ctx,
-                       size_t size)
+    ovs_buffer_t* ovs_allocate(ovs_ctx_t *ctx,
+                               size_t size)
 
     Description
     -----------
@@ -542,7 +542,7 @@ Shared memory allocation::
 
 Shared memory deallocation::
     int ovs_deallocate(ovs_ctx_t *ctx,
-                       void *shptr)
+                       ovs_buffer_t *shptr)
 
     Description
     -----------
