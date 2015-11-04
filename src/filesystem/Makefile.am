@@ -31,7 +31,9 @@ libovsvolumedriver_la_LIBADD = ../youtils/libyoutils.la ${BUILDTOOLS_LIBS}
 libovsvolumedriver_la_CPPFLAGS = \
 	-I@abs_top_srcdir@/.. \
 	-I@abs_top_builddir@/../volumedriver
-libovsvolumedriver_la_LDFLAGS = -static
+libovsvolumedriver_nobase_includedir = @prefix@/include/openvstorage
+libovsvolumedriver_nobase_include_HEADERS = c-api/volumedriver.h
+libovsvolumedriver_la_LDFLAGS = -shared
 
 # this path trickery is necessary as protobuf imports need to start at the same root
 %.pb.cc %.pb.h %_pb2.py: %.proto
