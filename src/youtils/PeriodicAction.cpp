@@ -28,7 +28,7 @@ namespace
 {
 
 PeriodicAction::AbortableAction
-make_abortable_action(PeriodicAction::Action&& action)
+make_abortable_action(PeriodicAction::Action action)
 {
     auto a([act = std::move(action)]() mutable -> auto
            {
@@ -41,7 +41,7 @@ make_abortable_action(PeriodicAction::Action&& action)
 }
 
 PeriodicAction::PeriodicAction(const std::string& name,
-                               AbortableAction&& action,
+                               AbortableAction action,
                                const std::atomic<uint64_t>& period,
                                const bool period_in_seconds,
                                const boost::chrono::milliseconds& ramp_up)
@@ -63,7 +63,7 @@ CATCH_STD_ALL_EWHAT({
     });
 
 PeriodicAction::PeriodicAction(const std::string& name,
-                               Action&& action,
+                               Action action,
                                const std::atomic<uint64_t>& period,
                                const bool period_in_seconds,
                                const boost::chrono::milliseconds& ramp_up)

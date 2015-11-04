@@ -38,14 +38,14 @@ public:
 
     // period is in milliseconds if periodInSeconds is false
     PeriodicAction(const std::string& name,
-                   Action&& action,
+                   Action action,
                    const std::atomic<uint64_t>& period,
                    const bool periodInSeconds = true,
                    const boost::chrono::milliseconds& ramp_up =
                    boost::chrono::milliseconds(0));
 
     PeriodicAction(const std::string& name,
-                   AbortableAction&& action,
+                   AbortableAction action,
                    const std::atomic<uint64_t>& period,
                    const bool periodInSeconds = true,
                    const boost::chrono::milliseconds& ramp_up =
