@@ -1,0 +1,74 @@
+// Copyright 2015 iNuron NV
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+module ShmIdlInterface {
+
+    struct CreateShmArguments {
+    string volume_name;
+    boolean for_creation;
+    };
+
+    struct CreateResult {
+    string writerequest_uuid;
+    string writereply_uuid;
+    string readrequest_uuid;
+    string readreply_uuid;
+    unsigned long long volume_size_in_bytes;
+    };
+
+    exception VolumeNameAlreadyRegistered {
+    string volume_name;
+    };
+
+    exception VolumeDoesNotExist {
+    string volume_name;
+    };
+
+    exception VolumeExists {
+    string volume_name;
+    };
+
+    exception NoSuchVolumeRegistered {
+    string volume_name;
+    };
+
+    exception CouldNotCreateVolume {
+    string volume_name;
+    string reason;
+    };
+
+    exception CouldNotCreateHandler {
+    string volume_name;
+    string reason;
+    };
+
+    interface VolumeFactory {
+    void
+    create_volume(in string volume_name,
+                  in unsigned long long volume_size_in_bytes)
+    raises(CouldNotCreateVolume, VolumeExists);
+
+    ShmIdlInterface::CreateResult
+    create_shm_interface(in ShmIdlInterface::CreateShmArguments args)
+    raises(VolumeNameAlreadyRegistered, CouldNotCreateHandler,
+    VolumeDoesNotExist);
+
+    void
+    stop_volume(in string volume_name)
+    raises(NoSuchVolumeRegistered);
+
+    void
+    stop_all_and_exit();
+    };
+};
