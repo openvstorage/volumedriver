@@ -37,7 +37,11 @@ class ShmServer
 {
 public:
     ShmServer(std::unique_ptr<Handler>&& handler)
-    : handler_(std::move(handler))
+        : writerequest_msg_(new ShmWriteRequest())
+        , writereply_msg_(new ShmWriteReply())
+        , readrequest_msg_(new ShmReadRequest())
+        , readreply_msg_(new ShmReadReply())
+        , handler_(std::move(handler))
     {
         VERIFY(not writerequest_mq_uuid_.isNull());
 
@@ -187,40 +191,32 @@ private:
         ipc::message_queue::size_type received_size;
         while (true)
         {
-            ShmWriteRequest *writerequest_ = new ShmWriteRequest();
-            ShmWriteReply *writereply_ = new ShmWriteReply();
-            writerequest_mq_->receive(writerequest_,
+            writerequest_mq_->receive(writerequest_msg_.get(),
                                       writerequest_size,
                                       received_size,
                                       priority);
             VERIFY(received_size == writerequest_size);
-            writereply_->opaque = writerequest_->opaque;
+            writereply_msg_->opaque = writerequest_msg_->opaque;
 
-            if (writerequest_->stop)
+            if (writerequest_msg_->stop)
             {
-                delete writereply_;
-                delete writerequest_;
                 break;
             }
-            else if (writerequest_->size_in_bytes == 0)
+            else if (writerequest_msg_->size_in_bytes == 0)
             {
                 handler_->flush();
-                writereply_->size_in_bytes = 0;
-                writereply_mq_->send(writereply_,
+                writereply_msg_->size_in_bytes = 0;
+                writereply_mq_->send(writereply_msg_.get(),
                                      writereply_size,
                                      0);
-                delete writereply_;
-                delete writerequest_;
             }
             else
             {
-                handler_->write(writerequest_,
-                                writereply_);
-                writereply_mq_->send(writereply_,
+                handler_->write(writerequest_msg_.get(),
+                                writereply_msg_.get());
+                writereply_mq_->send(writereply_msg_.get(),
                                      writereply_size,
                                      0);
-                delete writerequest_;
-                delete writereply_;
             }
         }
     }
@@ -232,28 +228,23 @@ private:
         ipc::message_queue::size_type received_size;
         while (true)
         {
-            ShmReadRequest *readrequest_ = new ShmReadRequest();
-            readrequest_mq_->receive(readrequest_,
+            readrequest_mq_->receive(readrequest_msg_.get(),
                                      readrequest_size,
                                      received_size,
                                      priority);
 
-            if (readrequest_->stop)
+            if (readrequest_msg_->stop)
             {
-                delete readrequest_;
                 break;
             }
             {
-                ShmReadReply *readreply_ = new ShmReadReply();
-                readreply_->opaque = readrequest_->opaque;
-                handler_->read(readrequest_,
-                               readreply_);
-                VERIFY(readreply_->size_in_bytes == readrequest_->size_in_bytes);
-                readreply_mq_->send(readreply_,
+                readreply_msg_->opaque = readrequest_msg_->opaque;
+                handler_->read(readrequest_msg_.get(),
+                               readreply_msg_.get());
+                VERIFY(readreply_msg_->size_in_bytes == readrequest_msg_->size_in_bytes);
+                readreply_mq_->send(readreply_msg_.get(),
                                     readreply_size,
                                     0);
-                delete readrequest_;
-                delete readreply_;
             }
         }
     }
@@ -273,6 +264,10 @@ private:
     youtils::UUID readreply_mq_uuid_;
     std::unique_ptr<ipc::message_queue> readreply_mq_;
 
+    std::unique_ptr<ShmWriteRequest> writerequest_msg_;
+    std::unique_ptr<ShmWriteReply> writereply_msg_;
+    std::unique_ptr<ShmReadRequest> readrequest_msg_;
+    std::unique_ptr<ShmReadReply> readreply_msg_;
     std::unique_ptr<Handler> handler_;
 };
 
