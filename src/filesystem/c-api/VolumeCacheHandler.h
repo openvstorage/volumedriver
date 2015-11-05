@@ -20,14 +20,6 @@
 #include <youtils/SpinLock.h>
 #include <queue>
 
-#define BUFFER_SIZE_4K      4096
-#define BUFFER_SIZE_32K     32768
-#define BUFFER_SIZE_128K    131072
-
-#define QUEUE_SIZE_4K       512
-#define QUEUE_SIZE_32K      48
-#define QUEUE_SIZE_128K     4
-
 class VolumeCacheHandler
 {
 public:
@@ -36,7 +28,7 @@ public:
              size_t size)
     {
         void *buf = NULL;
-        int max = BUFFER_SIZE_4K;
+        size_t max = BufferSize::s_4k;
         buf = _maybe_allocate_from_queue(ctx,
                                          size,
                                          chunks_4k,
@@ -44,7 +36,7 @@ public:
                                          max);
         if (not buf)
         {
-            max = BUFFER_SIZE_32K;
+            max = BufferSize::s_32k;
             buf = _maybe_allocate_from_queue(ctx,
                                              size,
                                              chunks_32k,
@@ -53,7 +45,7 @@ public:
         }
         if (not buf)
         {
-            max = BUFFER_SIZE_128K;
+            max = BufferSize::s_128k;
             buf = _maybe_allocate_from_queue(ctx,
                                              size,
                                              chunks_128k,
@@ -87,24 +79,24 @@ public:
         {
             switch ((*shptr)->size)
             {
-            case BUFFER_SIZE_4K:
+            case BufferSize::s_4k:
                 return _maybe_deallocate_to_queue(ctx,
                                                   shptr,
                                                   chunks_4k,
                                                   lock_4k,
-                                                  QUEUE_SIZE_4K);
-            case BUFFER_SIZE_32K:
+                                                  QueueSize::qs_4k);
+            case BufferSize::s_32k:
                 return _maybe_deallocate_to_queue(ctx,
                                                   shptr,
                                                   chunks_32k,
                                                   lock_32k,
-                                                  QUEUE_SIZE_32K);
-            case BUFFER_SIZE_128K:
+                                                  QueueSize::qs_32k);
+            case BufferSize::s_128k:
                 return _maybe_deallocate_to_queue(ctx,
                                                   shptr,
                                                   chunks_128k,
                                                   lock_128k,
-                                                  QUEUE_SIZE_128K);
+                                                  QueueSize::qs_128k);
             default:
                 shm_deallocate(static_cast<ShmClientHandle>(ctx->shm_handle_),
                                (*shptr)->buf);
@@ -122,10 +114,10 @@ public:
     int
     preallocate(ovs_ctx_t *ctx)
     {
-        for (int i = 0; i < QUEUE_SIZE_4K; i++)
+        for (int i = 0; i < QueueSize::qs_4k; i++)
         {
             void *ptr = shm_allocate(static_cast<ShmClientHandle>(ctx->shm_handle_),
-                                     BUFFER_SIZE_4K);
+                                     BufferSize::s_4k);
             if (ptr)
             {
                 chunks_4k.push(ptr);
@@ -135,10 +127,10 @@ public:
                 return -1;
             }
         }
-        for (int i = 0; i < QUEUE_SIZE_32K; i++)
+        for (int i = 0; i < QueueSize::qs_32k; i++)
         {
             void *ptr = shm_allocate(static_cast<ShmClientHandle>(ctx->shm_handle_),
-                                     BUFFER_SIZE_32K);
+                                     BufferSize::s_32k);
             if (ptr)
             {
                 chunks_32k.push(ptr);
@@ -148,10 +140,10 @@ public:
                 return -1;
             }
         }
-        for (int i = 0; i < QUEUE_SIZE_128K; i++)
+        for (int i = 0; i < QueueSize::qs_128k; i++)
         {
             void *ptr = shm_allocate(static_cast<ShmClientHandle>(ctx->shm_handle_),
-                                     BUFFER_SIZE_128K);
+                                     BufferSize::s_128k);
             if (ptr)
             {
                 chunks_128k.push(ptr);
@@ -201,6 +193,20 @@ public:
 
 private:
     typedef std::queue<void*> BufferQueue;
+
+    enum BufferSize
+    {
+        s_4k = 4096,
+        s_32k = 32768,
+        s_128k = 131072,
+    };
+
+    enum QueueSize
+    {
+        qs_4k = 512,
+        qs_32k = 48,
+        qs_128k = 8,
+    };
 
     BufferQueue chunks_4k;
     BufferQueue chunks_32k;
