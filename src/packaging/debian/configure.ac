@@ -7,7 +7,7 @@ AM_INIT_AUTOMAKE(m4_esyscmd([case `automake --version | head -n 1` in
                              esac]))
 dnl AM_INIT_AUTOMAKE([foreign])
 AM_PATH_PYTHON([2.6])
-AC_CONFIG_SUBDIRS([volumedriver-base volumedriver-pitreplication volumedriver-server volumedriver-test])
+AC_CONFIG_SUBDIRS([volumedriver-base volumedriver-pitreplication volumedriver-server volumedriver-test volumedriver-dev])
 AC_CONFIG_FILES([Makefile add-installdir.sh deps.mk])
 AC_CONFIG_FILES([update-buildinfo.sh], [chmod +x update-buildinfo.sh])
 AC_OUTPUT

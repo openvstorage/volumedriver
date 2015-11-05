@@ -4,7 +4,8 @@ SUBDIRS = . \
 	volumedriver-base \
 	volumedriver-server \
 	volumedriver-pitreplication \
-	volumedriver-test
+	volumedriver-test \
+	volumedriver-dev
 
 
 noinst_data = add_installdir.sh
