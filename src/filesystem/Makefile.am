@@ -10,7 +10,10 @@ LTTNG_GEN_TP = @lttng_gen_tp@
 	echo "generating $@ from $<"
 	$(LTTNG_GEN_TP) $< -o $@
 
-lib_LTLIBRARIES = libvolumedriverfs.la libovsvolumedriver.la
+libovsvolumedriverdir = @prefix@/lib/openvstorage
+libovsvolumedriver_LTLIBRARIES = libovsvolumedriver.la
+
+lib_LTLIBRARIES = libvolumedriverfs.la
 
 OMNIIDL=@omniidl@
 
