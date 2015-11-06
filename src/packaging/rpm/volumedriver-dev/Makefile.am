@@ -23,7 +23,6 @@ $(ARTEFACT):
                  --define "buildroot ${PWD}/BUILDROOT/" \
                  -ba SPECS/$(BASE_NAME).spec
 	mv RPMS/x86_64/$(BASE_NAME)-@VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@.@VD_EXTRA_VERSION@-1.x86_64.rpm $(ARTEFACT)
-	mv RPMS/x86_64/$(BASE_NAME)-debuginfo-@VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@.@VD_EXTRA_VERSION@-1.x86_64.rpm $(ARTEFACT_DBGSYM)
 
 install-data-local: $(ARTEFACT)
 	$(INSTALL) -d $(RPM_LOCATION)
