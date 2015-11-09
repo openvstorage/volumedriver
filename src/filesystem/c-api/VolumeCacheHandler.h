@@ -73,11 +73,11 @@ public:
 
     int
     deallocate(ovs_ctx_t *ctx,
-               ovs_buffer_t **shptr)
+               ovs_buffer_t *shptr)
     {
-        if (shptr && *shptr)
+        if (shptr)
         {
-            switch ((*shptr)->size)
+            switch (shptr->size)
             {
             case BufferSize::s_4k:
                 return _maybe_deallocate_to_queue(ctx,
@@ -99,8 +99,8 @@ public:
                                                   QueueSize::qs_128k);
             default:
                 shm_deallocate(static_cast<ShmClientHandle>(ctx->shm_handle_),
-                               (*shptr)->buf);
-                delete *shptr;
+                               shptr->buf);
+                delete shptr;
                 return 0;
             }
         }
@@ -244,7 +244,7 @@ private:
 
     int
     _maybe_deallocate_to_queue(ovs_ctx_t *ctx,
-                               ovs_buffer_t **shptr,
+                               ovs_buffer_t *shptr,
                                BufferQueue& queue,
                                fungi::SpinLock& lock_,
                                size_t queue_size)
@@ -252,16 +252,16 @@ private:
         lock_.lock();
         if (queue.size() < queue_size + 1)
         {
-            queue.push((*shptr)->buf);
+            queue.push(shptr->buf);
             lock_.unlock();
         }
         else
         {
             lock_.unlock();
             shm_deallocate(static_cast<ShmClientHandle>(ctx->shm_handle_),
-                           (*shptr)->buf);
+                           shptr->buf);
         }
-        delete *shptr;
+        delete shptr;
         return 0;
     }
 };

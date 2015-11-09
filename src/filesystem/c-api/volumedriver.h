@@ -31,15 +31,10 @@ typedef struct _ovs_buffer
     size_t size;
 } ovs_buffer_t;
 
-typedef struct _ovs_ctx_t
-{
-    void *shm_handle_;
-    int oflag;
-    /* Asynchronous I/O members */
-    void *async_iothreads_;
-} ovs_ctx_t;
-
+typedef struct _ovs_ctx_t ovs_ctx_t;
 typedef struct _ovs_aio_request ovs_aio_request;
+typedef struct _ovs_completion_t ovs_completion_t;
+typedef void (*ovs_callback_t)(ovs_completion_t *cb, void *arg);
 
 struct ovs_aiocb
 {
@@ -59,29 +54,6 @@ struct ovs_aiocb
     pthread_mutex_t _mutex;
 };
 
-typedef struct _ovs_completion_t ovs_completion_t;
-
-typedef void (*ovs_callback_t)(ovs_completion_t *cb, void *arg);
-
-struct _ovs_completion_t
-{
-    ovs_callback_t complete_cb;
-    void *cb_arg;
-    /* Internal members */
-    bool _on_wait;
-    bool _calling;
-    bool _signaled;
-    ssize_t _rv;
-    pthread_cond_t _cond;
-    pthread_mutex_t _mutex;
-};
-
-struct _ovs_aio_request
-{
-    struct ovs_aiocb *ovs_aiocbp;
-    ovs_completion_t *completion;
-};
-
 /*
  * Initialize Open vStorage context
  * param volume_name: Volume name
@@ -98,7 +70,7 @@ ovs_ctx_init(const char *volume_name,
  * return: 0 on success, -1 on fail
  */
 int
-ovs_ctx_destroy(ovs_ctx_t **ctx);
+ovs_ctx_destroy(ovs_ctx_t *ctx);
 
 /*
  * Create an Open vStorage volume
@@ -127,7 +99,7 @@ ovs_allocate(ovs_ctx_t *ctx,
  */
 int
 ovs_deallocate(ovs_ctx_t *ctx,
-               ovs_buffer_t **ptr);
+               ovs_buffer_t *ptr);
 
 /*
  * Read from a volume
@@ -315,7 +287,7 @@ ovs_aio_signal_completion(ovs_completion_t *completion);
  * return: 0 on success, -1 on fail
  */
 int
-ovs_aio_release_completion(ovs_completion_t **completion);
+ovs_aio_release_completion(ovs_completion_t *completion);
 
 #ifdef __cplusplus
 } //extern "C" endif

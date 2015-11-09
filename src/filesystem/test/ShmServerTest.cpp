@@ -80,7 +80,7 @@ TEST_F(ShmServerTest, ovs_create_destroy_context)
               0);
     ovs_ctx_t *ctx = ovs_ctx_init("volume", O_RDWR);
     ASSERT_TRUE(ctx != nullptr);
-    EXPECT_EQ(ovs_ctx_destroy(&ctx),
+    EXPECT_EQ(ovs_ctx_destroy(ctx),
               0);
 }
 
@@ -142,7 +142,7 @@ TEST_F(ShmServerTest, ovs_create_write_read_destroy)
               pattern.length());
 
     ovs_deallocate(ctx,
-                   &wbuf);
+                   wbuf);
 
     ovs_buffer_t *rbuf = ovs_allocate(ctx,
                               pattern.length());
@@ -172,9 +172,9 @@ TEST_F(ShmServerTest, ovs_create_write_read_destroy)
                        pattern.length()) == 0);
 
     ovs_deallocate(ctx,
-                   &rbuf);
+                   rbuf);
 
-    EXPECT_EQ(ovs_ctx_destroy(&ctx),
+    EXPECT_EQ(ovs_ctx_destroy(ctx),
               0);
 }
 
@@ -187,7 +187,7 @@ TEST_F(ShmServerTest, ovs_completion)
             ssize_t *len = (ssize_t*)arg;
             EXPECT_EQ(ovs_aio_return_completion(comp),
                       *len);
-            EXPECT_EQ(ovs_aio_release_completion(&comp),
+            EXPECT_EQ(ovs_aio_release_completion(comp),
                       0);
         }
         static void finish_read(ovs_completion_t *comp, void *arg)
@@ -195,14 +195,14 @@ TEST_F(ShmServerTest, ovs_completion)
             ssize_t *len = (ssize_t*)arg;
             EXPECT_EQ(ovs_aio_return_completion(comp),
                       *len);
-            EXPECT_EQ(ovs_aio_release_completion(&comp),
+            EXPECT_EQ(ovs_aio_release_completion(comp),
                       0);
         }
         static void finish_flush(ovs_completion_t *comp, void * /*arg*/)
         {
             EXPECT_EQ(ovs_aio_return_completion(comp),
                       0);
-            EXPECT_EQ(ovs_aio_release_completion(&comp),
+            EXPECT_EQ(ovs_aio_release_completion(comp),
                       0);
         }
     };
@@ -213,7 +213,7 @@ TEST_F(ShmServerTest, ovs_completion)
               0);
     ovs_ctx_t *ctx = ovs_ctx_init("volume", O_RDWR);
     ASSERT_TRUE(ctx != nullptr);
-    EXPECT_EQ(ovs_ctx_destroy(&ctx),
+    EXPECT_EQ(ovs_ctx_destroy(ctx),
               0);
 
     ctx = ovs_ctx_init("volume", O_RDWR);
@@ -262,7 +262,7 @@ TEST_F(ShmServerTest, ovs_completion)
               pattern_len);
 
     ovs_deallocate(ctx,
-                   &wbuf);
+                   wbuf);
 
     ovs_buffer_t *rbuf = ovs_allocate(ctx,
                               pattern_len);
@@ -297,9 +297,9 @@ TEST_F(ShmServerTest, ovs_completion)
                        pattern_len) == 0);
 
     ovs_deallocate(ctx,
-                   &rbuf);
+                   rbuf);
 
-    EXPECT_EQ(ovs_ctx_destroy(&ctx),
+    EXPECT_EQ(ovs_ctx_destroy(ctx),
               0);
 }
 
@@ -318,7 +318,7 @@ TEST_F(ShmServerTest, ovs_stat)
     EXPECT_EQ(st.st_size,
               volume_size);
 
-    EXPECT_EQ(ovs_ctx_destroy(&ctx),
+    EXPECT_EQ(ovs_ctx_destroy(ctx),
               0);
 }
 
@@ -331,7 +331,7 @@ TEST_F(ShmServerTest, ovs_completion_two_ctxs)
             ssize_t *len = (ssize_t*)arg;
             EXPECT_EQ(ovs_aio_return_completion(comp),
                       *len);
-            EXPECT_EQ(ovs_aio_release_completion(&comp),
+            EXPECT_EQ(ovs_aio_release_completion(comp),
                       0);
         }
         static void finish_read(ovs_completion_t *comp, void *arg)
@@ -339,7 +339,7 @@ TEST_F(ShmServerTest, ovs_completion_two_ctxs)
             ssize_t *len = (ssize_t*)arg;
             EXPECT_EQ(ovs_aio_return_completion(comp),
                       *len);
-            EXPECT_EQ(ovs_aio_release_completion(&comp),
+            EXPECT_EQ(ovs_aio_release_completion(comp),
                       0);
         }
     };
@@ -427,9 +427,9 @@ TEST_F(ShmServerTest, ovs_completion_two_ctxs)
               pattern_len);
 
     ovs_deallocate(ctx1,
-                   &w1_buf);
+                   w1_buf);
     ovs_deallocate(ctx2,
-                   &w2_buf);
+                   w2_buf);
 
     ovs_buffer_t *rbuf = ovs_allocate(ctx2,
                               pattern_len);
@@ -462,11 +462,11 @@ TEST_F(ShmServerTest, ovs_completion_two_ctxs)
                        pattern_len) == 0);
 
     ovs_deallocate(ctx2,
-                   &rbuf);
+                   rbuf);
 
-    EXPECT_EQ(ovs_ctx_destroy(&ctx1),
+    EXPECT_EQ(ovs_ctx_destroy(ctx1),
               0);
-    EXPECT_EQ(ovs_ctx_destroy(&ctx2),
+    EXPECT_EQ(ovs_ctx_destroy(ctx2),
               0);
 }
 
@@ -499,7 +499,7 @@ TEST_F(ShmServerTest, ovs_write_flush_read)
     EXPECT_EQ(ovs_flush(ctx), 0);
 
     ovs_deallocate(ctx,
-                   &wbuf);
+                   wbuf);
 
     ovs_buffer_t *rbuf = ovs_allocate(ctx,
                               pattern.length());
@@ -517,9 +517,9 @@ TEST_F(ShmServerTest, ovs_write_flush_read)
                        pattern.length()) == 0);
 
     ovs_deallocate(ctx,
-                   &rbuf);
+                   rbuf);
 
-    EXPECT_EQ(ovs_ctx_destroy(&ctx),
+    EXPECT_EQ(ovs_ctx_destroy(ctx),
               0);
 }
 

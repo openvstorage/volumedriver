@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "volumedriver.h"
+#include "libovsvolumedriver.h"
 #include "AioCompletion.h"
 #include "../ShmClient.h"
 #include "VolumeCacheHandler.h"
@@ -34,29 +35,17 @@ enum class RequestOp
     AsyncFlush,
 };
 
-typedef struct _ovs_iothread
-{
-    pthread_t io_t;
-    pthread_mutex_t io_mutex;
-    pthread_cond_t io_cond;
-    bool stopped;
-    bool stopping;
-} ovs_iothread_t;
-
-typedef struct _ovs_async_threads
-{
-    ovs_iothread_t *rr_iothread;
-    ovs_iothread_t *wr_iothread;
-} ovs_async_threads;
-
 struct ovs_ctx_wrapper
 {
     ovs_ctx_t *ctx;
     int n;
 };
 
-fungi::SpinLock cache_spinlock_;
-std::map<void*, VolumeCacheHandlerPtr> cache_;
+static fungi::SpinLock cache_spinlock_;
+static std::map<void*, VolumeCacheHandlerPtr> cache_;
+
+static fungi::SpinLock shm_iothreads_spinlock_;
+static std::map<ovs_ctx_t*, ovs_async_threads*> shm_iothreads_map_;
 
 /* Only one AioCompletion instance atm */
 AioCompletion* AioCompletion::_aio_completion_instance = NULL;
@@ -118,7 +107,17 @@ _aio_readreply_handler(void *arg)
 {
     ovs_ctx_wrapper *wrapper = (ovs_ctx_wrapper *)arg;
     ovs_ctx_t *ctx = (ovs_ctx_t *)wrapper->ctx;
-    ovs_async_threads *async_threads_ = static_cast<ovs_async_threads*>(ctx->async_iothreads_);
+    /* Normally it should never fail but in any other case abort() */
+    ovs_async_threads *async_threads_;
+    {
+        fungi::ScopedSpinLock lock_(shm_iothreads_spinlock_);
+        auto it = shm_iothreads_map_.find(ctx);
+        if (it == shm_iothreads_map_.end())
+        {
+            abort();
+        }
+        async_threads_ = it->second;
+    }
     ovs_iothread_t *iothread = &async_threads_->rr_iothread[wrapper->n];
     ssize_t ret;
     while (not iothread->stopping)
@@ -145,7 +144,17 @@ _aio_writereply_handler(void *arg)
 {
     ovs_ctx_wrapper *wrapper = (ovs_ctx_wrapper *)arg;
     ovs_ctx_t *ctx = (ovs_ctx_t *)wrapper->ctx;
-    ovs_async_threads *async_threads_ = static_cast<ovs_async_threads*>(ctx->async_iothreads_);
+    /* Normally it should never fail but in any other case abort() */
+    ovs_async_threads *async_threads_;
+    {
+        fungi::ScopedSpinLock lock_(shm_iothreads_spinlock_);
+        auto it = shm_iothreads_map_.find(ctx);
+        if (it == shm_iothreads_map_.end())
+        {
+            abort();
+        }
+        async_threads_ = it->second;
+    }
     ovs_iothread_t *iothread = &async_threads_->wr_iothread[wrapper->n];
     ssize_t ret;
     while (not iothread->stopping)
@@ -227,7 +236,10 @@ _aio_init(ovs_ctx_t* ctx)
         return -1;
     }
 
-    ctx->async_iothreads_ = static_cast<void*>(async_threads_);
+    {
+        fungi::ScopedSpinLock lock_(shm_iothreads_spinlock_);
+        shm_iothreads_map_.insert(std::make_pair(ctx, async_threads_));
+    }
 
     for (int i = 0; i < NUM_THREADS; i++)
     {
@@ -258,13 +270,25 @@ _aio_init(ovs_ctx_t* ctx)
 static int
 _aio_destroy(ovs_ctx_t *ctx)
 {
+    ovs_async_threads *async_threads_;
+
     if (ctx == NULL)
     {
         return -1;
     }
-
-    ovs_async_threads *async_threads_ =
-        static_cast<ovs_async_threads*>(ctx->async_iothreads_);
+    {
+        fungi::ScopedSpinLock lock_(shm_iothreads_spinlock_);
+        auto it = shm_iothreads_map_.find(ctx);
+        if (it != shm_iothreads_map_.end())
+        {
+            async_threads_ = it->second;
+            shm_iothreads_map_.erase(it);
+        }
+        else
+        {
+            return -1;
+        }
+    }
 
     for (int i = 0; i < NUM_THREADS; i++)
     {
@@ -390,18 +414,25 @@ ovs_ctx_init(const char* volume_name, int oflag)
 }
 
 int
-ovs_ctx_destroy(ovs_ctx_t **ctx)
+ovs_ctx_destroy(ovs_ctx_t *ctx)
 {
     int ret;
-    if (*ctx == NULL)
+    if (ctx == NULL)
     {
-        errno = EINVAL;
-        return -1;
+        ret = -1;
+        goto err;
     }
-    _aio_destroy(*ctx);
-    _drop_caches(*ctx);
-    ret = shm_destroy_handle(static_cast<ShmClientHandle>((*ctx)->shm_handle_));
-    free(*ctx);
+    ret = _aio_destroy(ctx);
+    if (ret < 0)
+    {
+        goto err;
+    }
+    _drop_caches(ctx);
+    ret = shm_destroy_handle(static_cast<ShmClientHandle>(ctx->shm_handle_));
+    free(ctx);
+    return ret;
+err:
+    errno = EINVAL;
     return ret;
 }
 
@@ -652,7 +683,7 @@ ovs_allocate(ovs_ctx_t *ctx,
 
 int
 ovs_deallocate(ovs_ctx_t *ctx,
-               ovs_buffer_t **ptr)
+               ovs_buffer_t *ptr)
 {
     auto it = cache_.find(ctx->shm_handle_);
     if (it != cache_.end())
@@ -768,14 +799,14 @@ ovs_aio_signal_completion(ovs_completion_t *completion)
 }
 
 int
-ovs_aio_release_completion(ovs_completion_t **comp)
+ovs_aio_release_completion(ovs_completion_t *comp)
 {
-    if (*comp == NULL)
+    if (comp == NULL)
     {
         errno = EINVAL;
         return -1;
     }
-    delete *comp;
+    delete comp;
     return 0;
 }
 
