@@ -44,9 +44,6 @@ struct ovs_ctx_wrapper
 static fungi::SpinLock cache_spinlock_;
 static std::map<void*, VolumeCacheHandlerPtr> cache_;
 
-static fungi::SpinLock shm_iothreads_spinlock_;
-static std::map<ovs_ctx_t*, ovs_async_threads*> shm_iothreads_map_;
-
 /* Only one AioCompletion instance atm */
 AioCompletion* AioCompletion::_aio_completion_instance = NULL;
 static int aio_completion_instances = 0;
@@ -107,17 +104,7 @@ _aio_readreply_handler(void *arg)
 {
     ovs_ctx_wrapper *wrapper = (ovs_ctx_wrapper *)arg;
     ovs_ctx_t *ctx = (ovs_ctx_t *)wrapper->ctx;
-    /* Normally it should never fail but in any other case abort() */
-    ovs_async_threads *async_threads_;
-    {
-        fungi::ScopedSpinLock lock_(shm_iothreads_spinlock_);
-        auto it = shm_iothreads_map_.find(ctx);
-        if (it == shm_iothreads_map_.end())
-        {
-            abort();
-        }
-        async_threads_ = it->second;
-    }
+    ovs_async_threads *async_threads_ = &ctx->async_threads_;
     ovs_iothread_t *iothread = &async_threads_->rr_iothread[wrapper->n];
     ssize_t ret;
     while (not iothread->stopping)
@@ -144,17 +131,7 @@ _aio_writereply_handler(void *arg)
 {
     ovs_ctx_wrapper *wrapper = (ovs_ctx_wrapper *)arg;
     ovs_ctx_t *ctx = (ovs_ctx_t *)wrapper->ctx;
-    /* Normally it should never fail but in any other case abort() */
-    ovs_async_threads *async_threads_;
-    {
-        fungi::ScopedSpinLock lock_(shm_iothreads_spinlock_);
-        auto it = shm_iothreads_map_.find(ctx);
-        if (it == shm_iothreads_map_.end())
-        {
-            abort();
-        }
-        async_threads_ = it->second;
-    }
+    ovs_async_threads *async_threads_ = &ctx->async_threads_;
     ovs_iothread_t *iothread = &async_threads_->wr_iothread[wrapper->n];
     ssize_t ret;
     while (not iothread->stopping)
@@ -182,17 +159,7 @@ _aio_init(ovs_ctx_t* ctx)
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-    ovs_async_threads *async_threads_;
-
-    try
-    {
-        async_threads_ = new ovs_async_threads();
-    }
-    catch (std::bad_alloc&)
-    {
-        pthread_attr_destroy(&attr);
-        return -1;
-    }
+    ovs_async_threads *async_threads_ = &ctx->async_threads_;
 
     try
     {
@@ -208,7 +175,6 @@ _aio_init(ovs_ctx_t* ctx)
     catch (std::bad_alloc)
     {
         pthread_attr_destroy(&attr);
-        delete async_threads_;
         return -1;
     }
 
@@ -231,14 +197,8 @@ _aio_init(ovs_ctx_t* ctx)
             pthread_mutex_destroy(&async_threads_->rr_iothread[i].io_mutex);
         }
         delete[] async_threads_->rr_iothread;
-        delete async_threads_;
         pthread_attr_destroy(&attr);
         return -1;
-    }
-
-    {
-        fungi::ScopedSpinLock lock_(shm_iothreads_spinlock_);
-        shm_iothreads_map_.insert(std::make_pair(ctx, async_threads_));
     }
 
     for (int i = 0; i < NUM_THREADS; i++)
@@ -270,25 +230,12 @@ _aio_init(ovs_ctx_t* ctx)
 static int
 _aio_destroy(ovs_ctx_t *ctx)
 {
-    ovs_async_threads *async_threads_;
-
     if (ctx == NULL)
     {
         return -1;
     }
-    {
-        fungi::ScopedSpinLock lock_(shm_iothreads_spinlock_);
-        auto it = shm_iothreads_map_.find(ctx);
-        if (it != shm_iothreads_map_.end())
-        {
-            async_threads_ = it->second;
-            shm_iothreads_map_.erase(it);
-        }
-        else
-        {
-            return -1;
-        }
-    }
+
+    ovs_async_threads *async_threads_ = &ctx->async_threads_;
 
     for (int i = 0; i < NUM_THREADS; i++)
     {
@@ -342,7 +289,6 @@ _aio_destroy(ovs_ctx_t *ctx)
 
     delete[] async_threads_->rr_iothread;
     delete[] async_threads_->wr_iothread;
-    delete async_threads_;
     return 0;
 }
 

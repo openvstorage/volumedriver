@@ -30,12 +30,6 @@ struct _ovs_buffer
     size_t size;
 };
 
-struct _ovs_ctx_t
-{
-    void *shm_handle_;
-    int oflag;
-};
-
 typedef struct _ovs_iothread
 {
     pthread_t io_t;
@@ -50,6 +44,13 @@ typedef struct _ovs_async_threads
     ovs_iothread_t *rr_iothread;
     ovs_iothread_t *wr_iothread;
 } ovs_async_threads;
+
+struct _ovs_ctx_t
+{
+    void *shm_handle_;
+    int oflag;
+    ovs_async_threads async_threads_;
+};
 
 struct _ovs_completion_t
 {
