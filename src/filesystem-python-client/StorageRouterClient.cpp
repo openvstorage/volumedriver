@@ -327,15 +327,24 @@ BOOST_PYTHON_MODULE(storagerouterclient)
     REGISTER_OPTIONAL_CONVERTER(uint64_t);
     REGISTER_OPTIONAL_CONVERTER(float);
 
+    bpy::enum_<vd::FailOverCacheMode>("DTLMode")
+        .value("ASYNCHRONOUS", vd::FailOverCacheMode::Asynchronous)
+        .value("SYNCHRONOUS", vd::FailOverCacheMode::Synchronous)
+        ;
+
+    REGISTER_OPTIONAL_CONVERTER(vd::FailOverCacheMode);
+
     bpy::class_<vd::FailOverCacheConfig>("DTLConfig",
                                          "DTL (Distributed Transaction Log) Configuration",
-                                         bpy::init<std::string, uint16_t, vd::FailOverCacheMode>((bpy::args("host"),
-                                                                           bpy::args("port"),
-                                                                           bpy::args("mode")),
+                                         bpy::init<std::string,
+                                         uint16_t,
+                                         vd::FailOverCacheMode>((bpy::args("host"),
+                                                                 bpy::args("port"),
+                                                                 bpy::args("mode") = vd::FailOverCacheMode::Asynchronous),
                                                                           "Instantiate a FailOverCacheConfig\n"
                                                                           "@param host, string, IP address\n"
                                                                           "@param port, uint16, port\n"
-                                                                          "@param mode (Asynchronous | Synchronous)\n"))
+                                                                          "@param mode (Asynchronous|Synchronous)\n"))
         .def("__eq__",
              &vd::FailOverCacheConfig::operator==)
         .def("__repr__",
@@ -350,15 +359,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
 #undef DEF_READONLY_PROP_
         ;
 
-
     REGISTER_OPTIONAL_CONVERTER(vd::FailOverCacheConfig);
-
-    bpy::enum_<vd::FailOverCacheMode>("DTLMode")
-        .value("ASYNCHRONOUS", vd::FailOverCacheMode::Asynchronous)
-        .value("SYNCHRONOUS", vd::FailOverCacheMode::Synchronous)
-        ;
-
-    REGISTER_OPTIONAL_CONVERTER(vd::FailOverCacheMode);
 
     bpy::class_<vd::OwnerTag>("OwnerTag",
                               "OwnerTag",
