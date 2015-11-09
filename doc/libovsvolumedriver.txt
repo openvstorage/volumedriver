@@ -540,6 +540,42 @@ Shared memory allocation::
     ------
         - ENOMEM Not enough memory to allocate the specified size
 
+Retrieve pointer to buffer content::
+    void *ovs_buffer_data(ovs_buffer_t *ptr)
+
+    Description
+    -----------
+    Return pointer to the buffer content previously allocated by
+    ovs_allocate().
+
+    Return Value
+    ------------
+    If the function succeeds pointer to the allocated buffer is returned.
+    Otherwise NULL is returned and errno is set to one of the values defined
+    below.
+
+    Errors
+    ------
+        - EINVAL The value specified by 'ptr' is invalid.
+
+Retrieve size of buffer::
+    size_t ovs_buffer_size(ovs_buffer_t *ptr)
+
+    Description
+    -----------
+    Return size of the buffer content previously allocated by
+    ovs_allocate().
+
+    Return Value
+    ------------
+    If the function succeeds the size of the buffer content is returned.
+    Otherwise -1 is returned and errno is set to one of the values defined
+    below.
+
+    Errors
+    ------
+        - EINVAL The value specified by 'ptr' is invalid.
+
 Shared memory deallocation::
     int ovs_deallocate(ovs_ctx_t *ctx,
                        ovs_buffer_t *shptr)
