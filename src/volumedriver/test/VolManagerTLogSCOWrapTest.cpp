@@ -88,18 +88,16 @@ TEST_P(VolManagerTLogSCOWrapTest, DISABLED_one)
     // tlog tlog_00_0000000000000001 should now have 3 entries: 1 sync_to_tc and 2 LOC's
 
     {
-        OrderedTLogNames currentTLogs;
-        v->getSnapshotManagement().getCurrentTLogs(currentTLogs,AbsolutePath::F);
-
+        const OrderedTLogIds currentTLogs(v->getSnapshotManagement().getCurrentTLogs());
         ASSERT_TRUE(currentTLogs.size() > 0);
 
 
-        const std::string tlog1 = currentTLogs[0];
+        const TLogId tlog1 = currentTLogs[0];
         //        const fs::path tlog1d = tlogDir / tlog1;
         //        std::cerr << "inspecting " << tlog1 << std::endl;
 
         TLogReader r(tlogDir.string(),
-                      tlog1,
+                     boost::lexical_cast<std::string>(tlog1),
                      v->getBackendInterface()->clone());
         //        TLogBackendReader *br = brf.create();
         //        TLogReader r(br);
@@ -113,7 +111,6 @@ TEST_P(VolManagerTLogSCOWrapTest, DISABLED_one)
         ASSERT_TRUE((e = r.nextLocation()));
         //        EXPECT_EQ(Entry::LOC, e->getType());
         EXPECT_FALSE(r.nextLocation());
-
     }
 
     EXPECT_FALSE(checkSCO(*v, SCO("00_00000001_00"), false));
@@ -127,16 +124,17 @@ TEST_P(VolManagerTLogSCOWrapTest, DISABLED_one)
     ::sync();
 
     {
-        OrderedTLogNames currentTLogs;
-        v->getSnapshotManagement().getCurrentTLogs(currentTLogs,AbsolutePath::F);
+        const OrderedTLogIds currentTLogs(v->getSnapshotManagement().getCurrentTLogs());
 
         ASSERT_TRUE(currentTLogs.size() == 2);
 
-        const std::string tlog2 =  currentTLogs[1];
+        const TLogId tlog2 = currentTLogs[1];
         //const std::string tlog2d = tlogDir + tlog2;
         //        std::cerr << "inspecting " << tlog2 << std::endl;
 
-        TLogReader r(tlogDir.string(), tlog2, v->getBackendInterface()->clone());
+        TLogReader r(tlogDir.string(),
+                     boost::lexical_cast<std::string>(tlog2),
+                     v->getBackendInterface()->clone());
         //        TLogBackendReader *br = brf.create();
         //        TLogReader r(br);
         // r.rewind();

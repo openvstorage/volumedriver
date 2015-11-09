@@ -14,8 +14,6 @@
 
 #include "VolManagerTestSetup.h"
 
-#include <boost/foreach.hpp>
-
 #include <youtils/UUID.h>
 
 #include <backend/BackendInterface.h>
@@ -39,22 +37,31 @@ protected:
 
 TEST_P(BackendNamespaceFilterVolumeTest, ditto)
 {
+    auto wrns(make_random_namespace());
+
+    auto v = newVolume(*wrns);
+
     auto foc_ctx(start_one_foc());
 
-    const std::string name(yt::UUID().str());
-    auto v = newVolume(name, name, VolumeSize(64 << 20));
-    v->setFailOverCache(foc_ctx->config());
+    v->setFailOverCacheConfig(foc_ctx->config(FailOverCacheMode::Asynchronous));
 
-    writeToVolume(v, "Not of any importance");
+    writeToVolume(v,
+                  0,
+                  v->getClusterSize(),
+                  "Not of any importance");
+
+    const std::string snap("snap");
+    createSnapshot(v,
+                   snap);
 
     waitForThisBackendWrite(v);
 
-    auto bi = v->getBackendInterface();
+    auto bi = v->getBackendInterface()->clone();
     std::list<std::string> objects;
     bi->listObjects(objects);
 
     BackendNamesFilter f;
-    BOOST_FOREACH(const auto& o, objects)
+    for (const auto& o : objects)
     {
         EXPECT_TRUE(f(o)) << o;
     }

@@ -51,7 +51,6 @@
 #include "MainEvent.h"
 #include "Main.h"
 #include "MainHelper.h"
-#include "NoGlobalLockingService.h"
 #include "Notifier.h"
 #include "OptionValidators.h"
 #include "OrbHelper.h"

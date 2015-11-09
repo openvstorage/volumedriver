@@ -567,8 +567,7 @@ TEST_P(VolumeStateManagementTest, events)
                   {
                       const boost::optional<events::Event> ev(event_collector_->pop());
 
-                      ASSERT_NE(boost::none,
-                                ev);
+                      ASSERT_TRUE(boost::none != ev);
 
                       ASSERT_TRUE(ev->HasExtension(events::dtl_state_transition));
 

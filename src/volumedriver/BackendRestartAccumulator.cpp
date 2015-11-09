@@ -44,13 +44,13 @@ BackendRestartAccumulator::BackendRestartAccumulator(NSIDMap& nsid,
 void
 BackendRestartAccumulator::operator()(const SnapshotPersistor& sp,
                                       be::BackendInterfacePtr& bi,
-                                      const std::string& snapshot_name,
+                                      const SnapshotName& snapshot_name,
                                       SCOCloneID clone_id)
 {
     nsid_.set(clone_id,
               bi->clone());
 
-    OrderedTLogNames tlogs;
+    OrderedTLogIds tlogs;
 
     if (not end_seen_)
     {
@@ -65,7 +65,7 @@ BackendRestartAccumulator::operator()(const SnapshotPersistor& sp,
 
             if (start_seen_)
             {
-                snap.getOrderedTLogNames(tlogs);
+                snap.getOrderedTLogIds(tlogs);
             }
 
             if (end_cork_ != boost::none and
@@ -84,7 +84,7 @@ BackendRestartAccumulator::operator()(const SnapshotPersistor& sp,
             for (const auto& tlog : sp.getCurrentTLogsWrittenToBackend())
             {
                 if (start_cork_ != boost::none and
-                    tlog == TLog::getName(*start_cork_))
+                    tlog == TLogId(*start_cork_))
                 {
                     VERIFY(not start_seen_);
                     start_seen_ = true;
@@ -96,7 +96,7 @@ BackendRestartAccumulator::operator()(const SnapshotPersistor& sp,
                 }
 
                 if (end_cork_ != boost::none and
-                    tlog == TLog::getName(*end_cork_))
+                    tlog == TLogId(*end_cork_))
                 {
                     end_seen_ = true;
                     break;

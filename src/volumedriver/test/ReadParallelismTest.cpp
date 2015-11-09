@@ -172,7 +172,7 @@ TEST_P(ReadParallelismTest, DISABLED_single_read)
                                       100);
 
 
-    ASSERT_NO_THROW(v->createSnapshot("snap1"));
+    ASSERT_NO_THROW(v->createSnapshot(SnapshotName("snap1")));
     waitForThisBackendWrite(v);
     youtils::wall_timer wt;
 

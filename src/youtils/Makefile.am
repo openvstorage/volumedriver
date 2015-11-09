@@ -45,6 +45,7 @@ libyoutils_la_LDFLAGS = -static
 
 libyoutils_la_SOURCES = \
 	ArakoonInterface.cpp \
+	ArakoonLockStore.cpp \
 	ArakoonNodeConfig.cpp \
 	ArakoonTestSetup.cpp \
 	BuildInfo.cpp \
@@ -64,6 +65,11 @@ libyoutils_la_SOURCES = \
 	IncrementalChecksum.cpp \
 	InitializedParam.cpp \
 	IOException.cpp \
+	HeartBeat.cpp \
+	HeartBeatLock.cpp \
+	HeartBeatLockCommunicator.cpp \
+	HeartBeatLockService.cpp \
+	LockedArakoon.cpp \
 	LocORemClient.cpp \
 	LocORemConnection.cpp \
 	LocORemServer.cpp \
@@ -74,7 +80,6 @@ libyoutils_la_SOURCES = \
 	LRUCache.cpp \
 	MainEvent.cpp \
 	MainHelper.cpp \
-	NoGlobalLockingService.cpp \
 	Notifier.cpp \
 	OptionValidators.cpp \
 	OrbHelper.cpp \

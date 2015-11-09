@@ -111,7 +111,7 @@ TEST_P(Test1, DISABLED_filedescriptors)
                   4096,
                   "foo");
 
-    const std::string snapname("snap");
+    const SnapshotName snapname("snap");
     v2->createSnapshot(snapname);
 
     writeToVolume(v2,

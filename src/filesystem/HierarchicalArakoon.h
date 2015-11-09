@@ -15,8 +15,6 @@
 #ifndef VFS_HIERARCHICAL_ARAKOON_H_
 #define VFS_HIERARCHICAL_ARAKOON_H_
 
-#include "LockedArakoon.h"
-
 #include <map>
 #include <memory>
 #include <type_traits>
@@ -28,11 +26,12 @@
 #include <boost/serialization/map.hpp>
 
 #include <youtils/IOException.h>
+#include <youtils/LockedArakoon.h>
 #include <youtils/Logging.h>
 #include <youtils/StrongTypedPath.h>
 #include <youtils/UUID.h>
 
-// Push this thing to youtils? We'd have to take LockedArakoon with us.
+// Push this thing to youtils?
 
 // rules for ArakoonPaths:
 // * must not be empty
@@ -168,7 +167,7 @@ public:
     MAKE_EXCEPTION(InvalidPathException, fungi::IOException);
     MAKE_EXCEPTION(PreconditionFailedException, fungi::IOException);
 
-    HierarchicalArakoon(std::shared_ptr<LockedArakoon> arakoon,
+    HierarchicalArakoon(std::shared_ptr<youtils::LockedArakoon> arakoon,
                         const std::string& prefix);
 
     ~HierarchicalArakoon() = default;
@@ -182,7 +181,7 @@ public:
     initialized();
 
     static void
-    destroy(std::shared_ptr<LockedArakoon> arakoon,
+    destroy(std::shared_ptr<youtils::LockedArakoon> arakoon,
             const std::string& prefix);
 
     template<typename T,
@@ -223,7 +222,7 @@ public:
 
         arakoon_->run_sequence("initialize hierarchical arakoon",
                                fun,
-                               RetryOnArakoonAssert::F);
+                               youtils::RetryOnArakoonAssert::F);
     }
 
     template<typename T,
@@ -249,7 +248,7 @@ public:
                                                                                  boost::none,
                                                                                  seq);
                                },
-                               RetryOnArakoonAssert::T);
+                               youtils::RetryOnArakoonAssert::T);
     }
 
     template<typename T,
@@ -272,7 +271,7 @@ public:
                                                                                   boost::none,
                                                                                   seq);
                                 },
-                                RetryOnArakoonAssert::T);
+                                youtils::RetryOnArakoonAssert::T);
     }
 
     template<typename T,
@@ -299,7 +298,7 @@ public:
                                                                                  oldval,
                                                                                  seq);
                                },
-                               RetryOnArakoonAssert::T);
+                               youtils::RetryOnArakoonAssert::T);
     }
 
     template<typename T,
@@ -324,7 +323,7 @@ public:
                                                                                   oldval,
                                                                                   seq);
                                 },
-                                RetryOnArakoonAssert::T);
+                                youtils::RetryOnArakoonAssert::T);
     }
 
     template<typename T,
@@ -345,7 +344,7 @@ public:
                                                                                   oldval,
                                                                                   seq);
                                 },
-                                RetryOnArakoonAssert::T);
+                                youtils::RetryOnArakoonAssert::T);
     }
 
     template<typename T,
@@ -439,7 +438,7 @@ public:
                                                                                  pto,
                                                                                  seq);
                                    },
-                                   RetryOnArakoonAssert::T);
+                                   youtils::RetryOnArakoonAssert::T);
         }
 
         return ret;
@@ -468,7 +467,7 @@ public:
                                                                               to_name,
                                                                               seq);
                                    },
-                                   RetryOnArakoonAssert::T);
+                                   youtils::RetryOnArakoonAssert::T);
         }
 
         return ret;
@@ -562,7 +561,7 @@ private:
 
     static const ArakoonEntryId root_;
 
-    std::shared_ptr<LockedArakoon> arakoon_;
+    std::shared_ptr<youtils::LockedArakoon> arakoon_;
     const std::string prefix_;
 
     static void

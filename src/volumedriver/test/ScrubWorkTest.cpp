@@ -59,7 +59,7 @@ public:
 
     const Namespace ns_ = { std::string("a-namespace") };
     const VolumeId vid_ = VolumeId("a_volume_id");
-    const std::string snapshot_name_ =  { "a_snapshot_name" };
+    const SnapshotName snapshot_name_ = SnapshotName("a_snapshot_name");
     const volumedriver::ClusterExponent cluster_exponent_ = 25;
     const uint32_t sco_size_ = 3;
 };

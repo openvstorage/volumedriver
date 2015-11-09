@@ -1057,7 +1057,7 @@ LocalNode::vaai_copy(const ObjectId& src_id,
     const bool is_guarded = flags & CloneFileFlags::Guarded;
     const bool is_skipzeroes = flags & CloneFileFlags::SkipZeroes;
 
-    std::string snapname;
+    vd::SnapshotName snapname;
     const vd::VolumeId src_volid(src_id);
     {
         fungi::ScopedLock l(api::getManagementMutex());
@@ -1196,8 +1196,9 @@ LocalNode::rollback_volume(const ObjectId& id,
     {
         const vd::VolumeId vid(static_cast<const vd::VolumeId>(id));
 
-        std::list<std::string> snaps;
-        api::showSnapshots(vid, snaps);
+        std::list<vd::SnapshotName> snaps;
+        api::showSnapshots(vid,
+                           snaps);
 
         std::set<vd::SnapshotName> doomed_snaps;
         bool seen = false;
@@ -1212,7 +1213,7 @@ LocalNode::rollback_volume(const ObjectId& id,
             if (seen)
             {
 
-                doomed_snaps.insert(vd::SnapshotName(s));
+                doomed_snaps.insert(s);
             }
         }
 
@@ -1317,8 +1318,8 @@ LocalNode::scrub_wrapper_(const char* desc,
 
 void
 LocalNode::get_scrub_work(const ObjectId& id,
-                          const boost::optional<std::string>& start_snap,
-                          const boost::optional<std::string>& end_snap,
+                          const boost::optional<vd::SnapshotName>& start_snap,
+                          const boost::optional<vd::SnapshotName>& end_snap,
                           std::vector<std::string>& work)
 {
     LOG_INFO(id << ": getting scrub work, start snapshot " << start_snap <<

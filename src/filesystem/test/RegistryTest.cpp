@@ -43,7 +43,7 @@ protected:
                                     seq.add_set(key,
                                                 val);
                                 },
-                                vfs::RetryOnArakoonAssert::F);
+                                yt::RetryOnArakoonAssert::F);
     }
 
     const std::string

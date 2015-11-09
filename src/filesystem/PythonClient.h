@@ -40,6 +40,8 @@
 namespace volumedriverfs
 {
 
+class LockedPythonClient;
+
 namespace clienterrors
 {
 
@@ -164,6 +166,10 @@ public:
     void
     apply_scrubbing_result(const boost::python::tuple& tuple);
 
+    void
+    apply_scrubbing_result(const std::string& volume_id,
+                           const std::string& scrub_res);
+
     std::string
     server_revision();
 
@@ -267,6 +273,11 @@ public:
               const std::string& target_path,
               const uint64_t& timeout,
               const CloneFileFlags& flags);
+
+    boost::shared_ptr<LockedPythonClient>
+    make_locked_client(const std::string& volume_id,
+                       const unsigned update_interval_secs = 3,
+                       const unsigned grace_period_secs = 5);
 
 protected:
     PythonClient()

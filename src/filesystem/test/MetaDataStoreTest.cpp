@@ -14,7 +14,7 @@
 
 #include "RegistryTestSetup.h"
 
-#include <filesystem/LockedArakoon.h>
+#include <youtils/LockedArakoon.h>
 #include <filesystem/MetaDataStore.h>
 
 #include <youtils/UUID.h>
@@ -44,7 +44,7 @@ protected:
 
 TEST_F(MetaDataStoreTest, root)
 {
-    vfs::MetaDataStore mds(std::static_pointer_cast<vfs::LockedArakoon>(registry_),
+    vfs::MetaDataStore mds(std::static_pointer_cast<yt::LockedArakoon>(registry_),
                            cluster_id_,
                            vfs::UseCache::F);
 
@@ -61,7 +61,7 @@ TEST_F(MetaDataStoreTest, root)
 
 TEST_F(MetaDataStoreTest, path_and_id)
 {
-    vfs::MetaDataStore mds(std::static_pointer_cast<vfs::LockedArakoon>(registry_),
+    vfs::MetaDataStore mds(std::static_pointer_cast<yt::LockedArakoon>(registry_),
                            cluster_id_,
                            vfs::UseCache::T);
 
@@ -115,7 +115,7 @@ TEST_F(MetaDataStoreTest, path_and_id)
 // used in all subsequent iterations.
 TEST_F(MetaDataStoreTest, conflicting_updates_for_volumes)
 {
-    vfs::MetaDataStore mds1(std::static_pointer_cast<vfs::LockedArakoon>(registry_),
+    vfs::MetaDataStore mds1(std::static_pointer_cast<yt::LockedArakoon>(registry_),
                             cluster_id_,
                             vfs::UseCache::T);
 
@@ -139,7 +139,7 @@ TEST_F(MetaDataStoreTest, conflicting_updates_for_volumes)
         ASSERT_EQ(perms, dentry->permissions());
     }
 
-    vfs::MetaDataStore mds2(std::static_pointer_cast<vfs::LockedArakoon>(registry_),
+    vfs::MetaDataStore mds2(std::static_pointer_cast<yt::LockedArakoon>(registry_),
                             cluster_id_,
                             vfs::UseCache::T);
 
@@ -174,7 +174,7 @@ TEST_F(MetaDataStoreTest, conflicting_updates_for_volumes)
 
 TEST_F(MetaDataStoreTest, uuid_conflicting_updates_for_volumes)
 {
-    vfs::MetaDataStore mds1(std::static_pointer_cast<vfs::LockedArakoon>(registry_),
+    vfs::MetaDataStore mds1(std::static_pointer_cast<yt::LockedArakoon>(registry_),
                             cluster_id_,
                             vfs::UseCache::T);
 
@@ -198,7 +198,7 @@ TEST_F(MetaDataStoreTest, uuid_conflicting_updates_for_volumes)
         ASSERT_EQ(perms, volume_dentry->permissions());
     }
 
-    vfs::MetaDataStore mds2(std::static_pointer_cast<vfs::LockedArakoon>(registry_),
+    vfs::MetaDataStore mds2(std::static_pointer_cast<yt::LockedArakoon>(registry_),
                             cluster_id_,
                             vfs::UseCache::T);
 

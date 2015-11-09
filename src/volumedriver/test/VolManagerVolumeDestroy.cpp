@@ -50,9 +50,7 @@ TEST_P(VolManagerVolumeDestroy, one)
     ::sync();
 
     const std::string ssx = snapshotFilename();;
-
-    OrderedTLogNames nms;
-    v->getSnapshotManagement().getCurrentTLogs(nms, AbsolutePath::F);
+    const OrderedTLogIds tlog_ids(v->getSnapshotManagement().getCurrentTLogs());
     waitForThisBackendWrite(v);
     // /tmp/VolManagerVolumeDestroy/localbackend/namespace1/tlog_00_0000000000000001
     // /tmp/VolManagerVolumeDestroy/localbackend/namespace1/snapshots.xml_00
@@ -63,19 +61,18 @@ TEST_P(VolManagerVolumeDestroy, one)
     //    const std::string tlog1 = namespaceDir + "tlog_00_0000000000000001";
     //    const std::string tlog2 = namespaceDir + "tlog_00_0000000000000002";
     const std::string assx = namespaceDir + ssx;
-    for(unsigned i = 0; i < nms.size() - 1; i++)
+    for(unsigned i = 0; i < tlog_ids.size() - 1; i++)
     {
-        EXPECT_TRUE(fungi::File::exists(namespaceDir + nms[i]));
+        EXPECT_TRUE(fungi::File::exists(namespaceDir + boost::lexical_cast<std::string>(tlog_ids[i])));
     }
 
-    EXPECT_FALSE(fungi::File::exists(namespaceDir + nms[nms.size() -1]));
+    EXPECT_FALSE(fungi::File::exists(namespaceDir + boost::lexical_cast<std::string>(tlog_ids[tlog_ids.size() - 1])));
     // Y42 there will be discussion about this.
     //    EXPECT_TRUE(fungi::File::exists(assx));
 
     destroyVolume(v,
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::T);
-
 
 //     EXPECT_FALSE(fungi::File::exists(tlog1));
 //     EXPECT_FALSE(fungi::File::exists(tlog2));

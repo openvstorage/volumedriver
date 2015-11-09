@@ -17,6 +17,7 @@
 
 #include "PerformanceCounters.h"
 #include "SCO.h"
+#include "TLogId.h"
 #include "Types.h"
 #include "VolumeFailOverState.h"
 
@@ -71,7 +72,7 @@ public:
                                 boost::chrono::microseconds write_time) = 0 ;
 
     virtual void
-    tlogWrittenToBackendCallback(const TLogID&,
+    tlogWrittenToBackendCallback(const TLogId&,
                                  const SCO) = 0;
 
     virtual ClusterSize
@@ -103,7 +104,7 @@ public:
     removeUpToFromFailOverCache(const SCO sconame) = 0;
 
     virtual void
-    checkState(const std::string& tlogname) = 0;
+    checkState(const TLogId&) = 0;
 
     virtual void
     cork(const youtils::UUID&) = 0;

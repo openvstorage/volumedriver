@@ -16,11 +16,11 @@
 #define VFS_LOCKED_ARAKOON_COUNTER_H_
 
 #include "ClusterId.h"
-#include "LockedArakoon.h"
 
 #include <memory>
 
 #include <youtils/Assert.h>
+#include <youtils/LockedArakoon.h>
 #include <youtils/Logging.h>
 
 namespace volumedriverfs
@@ -36,7 +36,7 @@ class LockedArakoonCounter
 {
 public:
     LockedArakoonCounter(const ClusterId& cluster_id,
-                         std::shared_ptr<LockedArakoon> larakoon)
+                         std::shared_ptr<youtils::LockedArakoon> larakoon)
         : larakoon_(larakoon)
         , cluster_id_(cluster_id)
     {
@@ -66,7 +66,7 @@ public:
 
         larakoon_->run_sequence("updating counter",
                                 std::move(fun),
-                                RetryOnArakoonAssert::T);
+                                youtils::RetryOnArakoonAssert::T);
 
         return t;
     }
@@ -87,7 +87,7 @@ public:
 private:
     DECLARE_LOGGER("LockedArakoonCounter");
 
-    std::shared_ptr<LockedArakoon> larakoon_;
+    std::shared_ptr<youtils::LockedArakoon> larakoon_;
     const ClusterId cluster_id_;
 
     void

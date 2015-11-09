@@ -21,7 +21,6 @@ backend_test_SOURCES = \
 	BackendTestBase.cpp \
 	ConnectionManagerTest.cpp \
 	ExtendedApiTest.cpp \
-	LockTest.cpp \
 	MultiBackendTest.cpp \
 	NamespaceTest.cpp \
 	PartialReadTest.cpp \

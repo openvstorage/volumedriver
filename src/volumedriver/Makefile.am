@@ -69,6 +69,7 @@ CLEANFILES = $(bin_SCRIPTS)
 
 libvolumedriver_la_SOURCES = \
 	Api.cpp \
+	ArakoonLockStoreBuilder.cpp \
 	ArakoonMetaDataBackend.cpp \
 	BackendNamesFilter.cpp \
 	BackendRestartAccumulator.cpp \
@@ -122,6 +123,8 @@ libvolumedriver_la_SOURCES = \
 	failovercache/fungilib/Thread.cpp \
 	failovercache/fungilib/WrapByteArray.cpp \
 	LocalTLogScanner.cpp \
+	LockStoreFactory.cpp \
+	LockStoreType.cpp \
 	MDSMetaDataBackend.cpp \
 	MDSMetaDataStore.cpp \
 	MDSNodeConfig.cpp \
@@ -177,6 +180,7 @@ libvolumedriver_la_SOURCES = \
 	StatusWriter.cpp \
 	TheSonOfTLogCutter.cpp \
 	TLog.cpp \
+	TLogId.cpp \
 	TLogCutter.cpp \
 	TLogMerger.cpp \
 	TLogReader.cpp \
@@ -207,9 +211,10 @@ pkgconfig_DATA = volumedriver.pc
 SUBDIRS = \
 	. \
 	test \
-	ToolCut \
-	python_scrubber \
-	pitreplication \
 	failovercache \
 	metadata-server \
+	pitreplication \
+	python_scrubber \
+	scrubber \
+	ToolCut \
 	pythontest

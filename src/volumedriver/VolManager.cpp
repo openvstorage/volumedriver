@@ -14,6 +14,7 @@
 
 #include "BackendTasks.h"
 #include "Entry.h"
+#include "LockStoreFactory.h"
 #include "SCOCache.h"
 #include "SCOCacheAccessDataPersistor.h"
 #include "SnapshotManagement.h"
@@ -115,6 +116,9 @@ try
           , scoCache_(pt)
           , readOnlyMode_(false)
           , backend_conn_manager_(backend::BackendConnectionManager::create(pt))
+          , lock_store_factory_(std::make_unique<LockStoreFactory>(pt,
+                                                                   RegisterComponent::T,
+                                                                   backend_conn_manager_))
           , ClusterCache_(pt)
           , mds_manager_(std::make_shared<metadata_server::Manager>(pt,
                                                                     RegisterComponent::T,
@@ -1023,7 +1027,7 @@ VolManager::ensureNamespace(const Namespace& ns,
 
 void
 VolManager::restoreSnapshot(const VolumeId& volid,
-                            const std::string& snapid)
+                            const SnapshotName& snapid)
 {
     mgmtMutex_.assertLocked();
 

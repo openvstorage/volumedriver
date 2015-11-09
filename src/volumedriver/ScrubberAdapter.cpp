@@ -19,10 +19,9 @@
 
 namespace scrubbing
 {
-using namespace volumedriver;
 
-ScrubberAdapter::ScrubberAdapter()
-{}
+using namespace volumedriver;
+namespace fs = boost::filesystem;
 
 const uint64_t
 ScrubberAdapter::region_size_exponent_default = 25;
@@ -38,12 +37,12 @@ const bool
 ScrubberAdapter::verbose_scrubbing_default = true;
 
 ScrubberAdapter::result_type
-ScrubberAdapter::scrub_(const std::string& scrub_work_str,
-                        const std::string& scratch_dir,
-                        const uint64_t region_size_exponent,
-                        const float fill_ratio,
-                        const bool apply_immediately,
-                        const bool verbose_scrubbing)
+ScrubberAdapter::scrub(const std::string& scrub_work_str,
+                       const fs::path& scratch_dir,
+                       const uint64_t region_size_exponent,
+                       const float fill_ratio,
+                       const bool apply_immediately,
+                       const bool verbose_scrubbing)
 {
     ScrubWork scrub_work(scrub_work_str);
 

@@ -15,11 +15,13 @@
 #ifndef STATUSWRITER_H_
 #define STATUSWRITER_H_
 
+#include "TLogId.h"
 #include "VolManager.h"
 
 #include <exception>
 #include <iosfwd>
 
+#include <boost/optional.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
@@ -65,7 +67,7 @@ public:
     add_kept(const uint64_t size = 4096);
 
     void
-    current_tlog(const std::string& tlog);
+    current_tlog(const boost::optional<volumedriver::TLogId>& tlog);
 
     void
     finish();

@@ -52,7 +52,7 @@ TEST_P(LocalRestartTestNoBackend, restartWithSnapshot1)
                   0,
                   v1->getClusterSize(),
                   "kristafke");
-    createSnapshot(v1, "snapshot1");
+    createSnapshot(v1, SnapshotName("snapshot1"));
 
 
     destroyVolume(v1,
@@ -64,7 +64,7 @@ TEST_P(LocalRestartTestNoBackend, restartWithSnapshot1)
     ASSERT_NO_THROW(v1 = localRestart(ns1));
     ASSERT_TRUE(getVolume(vid1));
     checkVolume(v1, 0, v1->getClusterSize(), "kristafke");
-    EXPECT_FALSE(v1->isSyncedToBackendUpTo("snapshot1"));
+    EXPECT_FALSE(v1->isSyncedToBackendUpTo(SnapshotName("snapshot1")));
 }
 
 INSTANTIATE_TEST(LocalRestartTestNoBackend);

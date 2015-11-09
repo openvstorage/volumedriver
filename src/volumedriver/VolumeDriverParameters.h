@@ -17,9 +17,11 @@
 
 #include "ClusterCacheBehaviour.h"
 #include "ClusterCacheMode.h"
+#include "LockStoreType.h"
 #include "MountPointConfig.h"
 #include "Types.h"
 
+#include <youtils/ArakoonNodeConfig.h>
 #include <youtils/InitializedParam.h>
 
 namespace initialized_params
@@ -88,6 +90,15 @@ DECLARE_INITIALIZED_PARAM(read_cache_serialization_path, std::string);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(average_entries_per_bin, uint32_t);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(clustercache_mount_points,
                                        volumedriver::MountPointConfigs);
+
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(dls_type,
+                                       volumedriver::LockStoreType);
+
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(dls_arakoon_cluster_nodes,
+                                                  arakoon::ArakoonNodeConfigs);
+
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(dls_arakoon_cluster_id, std::string);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(dls_arakoon_timeout_ms, uint32_t);
 
 }
 

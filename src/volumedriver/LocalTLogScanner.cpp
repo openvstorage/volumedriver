@@ -18,8 +18,12 @@
 #include "TLogReaderInterface.h"
 #include "VolumeConfig.h"
 
+#include <youtils/UUID.h>
+
 namespace volumedriver
 {
+
+namespace yt = youtils;
 
 LocalTLogScanner::LocalTLogScanner(const VolumeConfig& volume_config,
                                    MetaDataStoreInterface& mdstore)
@@ -27,7 +31,7 @@ LocalTLogScanner::LocalTLogScanner(const VolumeConfig& volume_config,
         , zcovetcher_(volume_config)
         , mdstore_(mdstore)
         , aborted_(false)
-        , last_good_tlog_("", 0)
+        , last_good_tlog_(TLogId(yt::UUID::NullUUID()), 0)
         , tlogs_path_(VolManager::get()->getTLogPath(volume_config_))
         , tlog_without_final_crc_(false)
 {}
@@ -88,37 +92,40 @@ LocalTLogScanner::processSync()
 }
 
 void
-LocalTLogScanner::scanTLog(const std::string& tlog)
+LocalTLogScanner::scanTLog(const TLogId& tlog_id)
 {
     if(tlog_without_final_crc_)
     {
         ASSERT(aborted_);
         ASSERT(current_proc_);
-        LOG_ERROR("Seen a TLog " << current_proc_->tlogname_ <<
+        LOG_ERROR("Seen a TLog " << current_proc_->tlog_id() <<
                   " without a final TLog CRC, but other TLogs after it");
         throw TLogWithoutFinalCRC("TLog has no CRC and TLogs following");
     }
 
+    const auto tlog_name(boost::lexical_cast<std::string>(tlog_id));
+    const fs::path tlog_path(tlogs_path_ / tlog_name);
+
     if (aborted_)
     {
-        LOG_INFO("Removing TLog " << tlog <<
+        LOG_INFO("Removing TLog " << tlog_id <<
                  " because a problem was found in an earlier TLog");
-        fs::remove(tlogs_path_ / tlog);
+        fs::remove(tlog_path);
         return;
     }
 
     VERIFY(replay_queue_.empty());
 
-    LOG_INFO("Checking TLog " << tlog);
+    LOG_INFO("Checking TLog " << tlog_id);
 
-    last_good_tlog_.first = tlog;
+    last_good_tlog_.first = tlog_id;
     last_good_tlog_.second = 0;
 
-    mdstore_.cork(TLog::getTLogIDFromName(tlog));
+    mdstore_.cork(tlog_id);
 
-    current_proc_.reset(new CheckTLogAndSCOCRCProcessor(tlog));
+    current_proc_.reset(new CheckTLogAndSCOCRCProcessor(tlog_id));
     auto proc = make_combined_processor(*this, *current_proc_);
-    TLogReader tlog_reader(tlogs_path_ / tlog);
+    TLogReader tlog_reader(tlog_path);
 
     bool current_tlog_scanned_to_the_end = true;
     try
@@ -145,7 +152,7 @@ LocalTLogScanner::scanTLog(const std::string& tlog)
 
     if(aborted_)
     {
-        LOG_INFO("Cutting " << tlog << " at clusteroffset " <<
+        LOG_INFO("Cutting " << tlog_name << " at clusteroffset " <<
                  (last_good_tlog_.second + 1));
         //Assert relies on the fact that
         //  - last_good_tlog_size_ is only updated when seen a SCOCRC
@@ -157,10 +164,10 @@ LocalTLogScanner::scanTLog(const std::string& tlog)
     VERIFY(replay_queue_.empty());
 }
 
-const LocalTLogScanner::TLogNameAndSize&
+const LocalTLogScanner::TLogIdAndSize&
 LocalTLogScanner::last_good_tlog() const
 {
-    VERIFY(not last_good_tlog_.first.empty());
+    VERIFY(last_good_tlog_.first != TLogId(yt::UUID::NullUUID()));
     return last_good_tlog_;
 }
 

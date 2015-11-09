@@ -16,6 +16,7 @@
 #include "FileSystemMetaDataClient.h"
 #include "IterableConverter.h"
 #include "LocalClient.h"
+#include "LockedClient.h"
 #include "MDSClient.h"
 #include "ObjectRegistryClient.h"
 #include "OptionalConverter.h"
@@ -61,6 +62,7 @@
 #include <filesystem/ClusterId.h>
 #include <filesystem/ClusterRegistry.h>
 #include <filesystem/FailOverCacheConfigMode.h>
+#include <filesystem/LockedPythonClient.h>
 #include <filesystem/NodeId.h>
 #include <filesystem/Object.h>
 #include <filesystem/PythonClient.h>
@@ -325,15 +327,24 @@ BOOST_PYTHON_MODULE(storagerouterclient)
     REGISTER_OPTIONAL_CONVERTER(uint64_t);
     REGISTER_OPTIONAL_CONVERTER(float);
 
+    bpy::enum_<vd::FailOverCacheMode>("DTLMode")
+        .value("ASYNCHRONOUS", vd::FailOverCacheMode::Asynchronous)
+        .value("SYNCHRONOUS", vd::FailOverCacheMode::Synchronous)
+        ;
+
+    REGISTER_OPTIONAL_CONVERTER(vd::FailOverCacheMode);
+
     bpy::class_<vd::FailOverCacheConfig>("DTLConfig",
                                          "DTL (Distributed Transaction Log) Configuration",
-                                         bpy::init<std::string, uint16_t, vd::FailOverCacheMode>((bpy::args("host"),
-                                                                           bpy::args("port"),
-                                                                           bpy::args("mode")),
+                                         bpy::init<std::string,
+                                         uint16_t,
+                                         vd::FailOverCacheMode>((bpy::args("host"),
+                                                                 bpy::args("port"),
+                                                                 bpy::args("mode") = vd::FailOverCacheMode::Asynchronous),
                                                                           "Instantiate a FailOverCacheConfig\n"
                                                                           "@param host, string, IP address\n"
                                                                           "@param port, uint16, port\n"
-                                                                          "@param mode (Asynchronous | Synchronous)\n"))
+                                                                          "@param mode (Asynchronous|Synchronous)\n"))
         .def("__eq__",
              &vd::FailOverCacheConfig::operator==)
         .def("__repr__",
@@ -348,15 +359,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
 #undef DEF_READONLY_PROP_
         ;
 
-
     REGISTER_OPTIONAL_CONVERTER(vd::FailOverCacheConfig);
-
-    bpy::enum_<vd::FailOverCacheMode>("DTLMode")
-        .value("ASYNCHRONOUS", vd::FailOverCacheMode::Asynchronous)
-        .value("SYNCHRONOUS", vd::FailOverCacheMode::Synchronous)
-        ;
-
-    REGISTER_OPTIONAL_CONVERTER(vd::FailOverCacheMode);
 
     bpy::class_<vd::OwnerTag>("OwnerTag",
                               "OwnerTag",
@@ -534,24 +537,24 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "@raises \n"
              "      ObjectNotFoundException\n"
              "      InvalidOperationException (on clone)\n")
-        .def("get_scrubbing_workunits",
-             &vfs::PythonClient::get_scrubbing_work,
-             (bpy::args("volume_id")),
-             "get a list of scrubbing work units -- opaque string\n"
-             "@param volume_id: string, volume identifier\n"
-             "@returns: list of strings\n"
-             "@raises \n"
-             "      ObjectNotFoundException\n"
-             "      InvalidOperationException (on template)\n")
-        .def("apply_scrubbing_result",
-             &vfs::PythonClient::apply_scrubbing_result,
-             (bpy::args("scrubbing_work_result")),
-             "Apply a scrubbing result on the volume it's meant for\n"
-             "@param scrubbing work result an opaque tuple returned by the scrubber\n"
-             "@raises \n"
-             "      ObjectNotFoundException\n"
-             "      SnapshotNotFoundException\n"
-             "      InvalidOperationException (on template)\n")
+        // .def("get_scrubbing_workunits",
+        //      &vfs::PythonClient::get_scrubbing_work,
+        //      (bpy::args("volume_id")),
+        //      "get a list of scrubbing work units -- opaque string\n"
+        //      "@param volume_id: string, volume identifier\n"
+        //      "@returns: list of strings\n"
+        //      "@raises \n"
+        //      "      ObjectNotFoundException\n"
+        //      "      InvalidOperationException (on template)\n")
+        // .def("apply_scrubbing_result",
+        //      &vfs::PythonClient::apply_scrubbing_result,
+        //      (bpy::args("scrubbing_work_result")),
+        //      "Apply a scrubbing result on the volume it's meant for\n"
+        //      "@param scrubbing work result an opaque tuple returned by the scrubber\n"
+        //      "@raises \n"
+        //      "      ObjectNotFoundException\n"
+        //      "      SnapshotNotFoundException\n"
+        //      "      InvalidOperationException (on template)\n")
         .def("get_volume_id",
              &vfs::PythonClient::get_volume_id,
              (bpy::args("path")),
@@ -728,6 +731,16 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              (bpy::args("node_id") = ""),
              "Re-read the cluster configuration from the ClusterRegistry.\n"
              "@param node_id: string, on which storagerouter to re-read the configuration\n")
+        .def("make_locked_client",
+             &vfs::PythonClient::make_locked_client,
+             (bpy::args("nspace"),
+              bpy::args("update_interval_secs") = 3,
+              bpy::args("grace_period_secs") = 7),
+             "Create a context manager for a locked namespace.\n"
+             "@param nspace: string, namespace.\n"
+             "@param update_interval_secs: unsigned, update interval\n"
+             "@param grace_period_secs: unsigned, grace period\n"
+             "@returns: LockedClient context manager\n")
         ;
 
     vfspy::LocalClient::registerize();
@@ -1025,6 +1038,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
     REGISTER_ITERABLE_CONVERTER(std::vector<std::string>);
     REGISTER_ITERABLE_CONVERTER(std::list<std::string>);
 
+    vfspy::LockedClient::registerize();
     vfspy::MDSClient::registerize();
     youtils::python::BuildInfo::registerize();
     scrubbing::python::Scrubber::registerize();

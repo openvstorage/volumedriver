@@ -24,6 +24,7 @@ VolumeDriver daemon and helpers. This package contains the binaries and the Pyth
 /usr/bin/metadata_server
 /usr/bin/metadata_server.sh
 /usr/bin/volumedriver_fs
+/usr/bin/ovs_scrubber
 /usr/bin/volumedriver_fs.sh
 /usr/bin/failovercache
 /usr/bin/failovercachehelper

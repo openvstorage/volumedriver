@@ -15,7 +15,6 @@
 #include "FileSystem.h"
 #include "FileSystemEvents.h"
 #include "LocalNode.h"
-#include "LockedArakoon.h"
 #include "MessageUtils.h"
 #include "Messages.pb.h"
 #include "Protocol.h"
@@ -28,6 +27,7 @@
 
 #include <youtils/Assert.h>
 #include <youtils/Catchers.h>
+#include <youtils/LockedArakoon.h>
 #include <youtils/System.h>
 
 #include <volumedriver/Api.h>
@@ -58,7 +58,7 @@ namespace vd = volumedriver;
 namespace yt = youtils;
 
 ObjectRouter::ObjectRouter(const bpt::ptree& pt,
-                           std::shared_ptr<LockedArakoon>(larakoon),
+                           std::shared_ptr<yt::LockedArakoon>(larakoon),
                            const FailOverCacheConfigMode foc_config_mode,
                            const vd::FailOverCacheMode foc_mode,
                            const boost::optional<vd::FailOverCacheConfig>& foc_config,
@@ -228,7 +228,7 @@ ObjectRouter::update_cluster_node_configs()
 }
 
 void
-ObjectRouter::destroy(std::shared_ptr<LockedArakoon> larakoon,
+ObjectRouter::destroy(std::shared_ptr<yt::LockedArakoon> larakoon,
                       const bpt::ptree& pt)
 {
     const ClusterId cluster_id(PARAMETER_VALUE_FROM_PROPERTY_TREE(vrouter_cluster_id, pt));
@@ -577,8 +577,8 @@ ObjectRouter::steal_(const ObjectRegistration& reg,
     try
     {
         larakoon_->run_sequence("steal volume",
-                                fun,
-                                RetryOnArakoonAssert::T);
+                                std::move(fun),
+                                yt::RetryOnArakoonAssert::T);
 
         // XXX: try to push this into the CachedObjectRegistry
         object_registry_->drop_entry_from_cache(reg.volume_id);
@@ -1340,8 +1340,8 @@ ObjectRouter::delete_snapshot(const ObjectId& oid,
 
 void
 ObjectRouter::get_scrub_work(const ObjectId& oid,
-                             const boost::optional<std::string>& start_snap,
-                             const boost::optional<std::string>& end_snap,
+                             const boost::optional<vd::SnapshotName>& start_snap,
+                             const boost::optional<vd::SnapshotName>& end_snap,
                              std::vector<std::string>& work)
 {
     LOG_INFO(oid << ": getting scrub work, start snapshot " << start_snap <<

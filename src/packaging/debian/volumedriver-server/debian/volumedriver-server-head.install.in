@@ -1,5 +1,6 @@
 bin/metadata_server /usr/bin
 bin/metadata_server.sh /usr/bin
+bin/ovs_scrubber /usr/bin
 bin/volumedriver_fs /usr/bin
 bin/volumedriver_fs.sh /usr/bin
 bin/failovercache /usr/bin

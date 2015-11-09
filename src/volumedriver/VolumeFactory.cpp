@@ -346,11 +346,11 @@ check_clone_tlogs_in_backend(const VolumeConfig& config,
     {
         BackendInterfacePtr bi = nsid.get(pair.first)->clone();
 
-        for (const auto& tlog : pair.second)
+        for (const auto& tlog_id : pair.second)
         {
-            if (not bi->objectExists(tlog))
+            if (not bi->objectExists(boost::lexical_cast<std::string>(tlog_id)))
             {
-                LOG_ERROR(config.id_ << ": TLog " << tlog <<
+                LOG_ERROR(config.id_ << ": TLog " << tlog_id <<
                           " does not exist in namespace " << bi->getNS());
                 throw fungi::IOException("TLog missing from the backend");
             }
@@ -388,7 +388,7 @@ try
         LOG_INFO("Snapshot Cork: " << sp_cork << ", MetaDataStore Cork: " << md_cork <<
                  ", implicit start Cork " << start_cork);
 
-        OrderedTLogNames tlogs_to_replay_now(sp.getTLogsOnBackendSinceLastCork(md_cork,
+        OrderedTLogIds tlogs_to_replay_now(sp.getTLogsOnBackendSinceLastCork(md_cork,
                                                                                start_cork));
 
         if (not tlogs_to_replay_now.empty())
@@ -429,9 +429,10 @@ CATCH_STD_ALL_LOG_THROWFUNGI("Local restart not possible, exception during repla
 void
 trim_current_tlogs(SnapshotPersistor& sp,
                    const VolumeConfig& config,
-                   const TLogName& tlog)
+                   const TLogId& tlog_id)
 {
-    TLogReader treader(VolManager::get()->getTLogPath(config) / tlog);
+    TLogReader treader(VolManager::get()->getTLogPath(config) /
+                       boost::lexical_cast<std::string>(tlog_id));
     uint64_t newsize = 0;
     const Entry* e;
 
@@ -440,7 +441,7 @@ trim_current_tlogs(SnapshotPersistor& sp,
         newsize += config.getClusterSize();
     }
 
-    const auto res = sp.snip(tlog,
+    const auto res = sp.snip(tlog_id,
                              newsize);
     VERIFY(res);
 
@@ -463,19 +464,19 @@ replay_tlogs_not_on_backend(const VolumeConfig& config,
     LOG_INFO(vname <<
              ": checking local TLog and SCO checksums and preparing TLog replay");
 
-    OrderedTLogNames tlogs_not_on_backend;
+    OrderedTLogIds tlogs_not_on_backend;
     sp.getTLogsNotWrittenToBackend(tlogs_not_on_backend);
     LocalTLogScanner tlog_scanner(config,
                                   mdstore);
 
-    for (const auto& tlog : tlogs_not_on_backend)
+    for (const auto& tlog_id : tlogs_not_on_backend)
     {
-        LOG_INFO(vname << ": checking local TLog " << tlog <<
+        LOG_INFO(vname << ": checking local TLog " << tlog_id <<
                  " for restart consistency and preparing replay");
-        tlog_scanner.scanTLog(tlog);
+        tlog_scanner.scanTLog(tlog_id);
     }
 
-    TLogName tlog;
+    TLogId tlog_id;
 
     if (tlog_scanner.isAborted())
     {
@@ -484,22 +485,23 @@ replay_tlogs_not_on_backend(const VolumeConfig& config,
         // LOG_WARN(vname << ": aborted TLog detected, refusing local restart");
         // throw AbortException("Aborted TLog detected");
 
-        const LocalTLogScanner::TLogNameAndSize& tnas =
+        const LocalTLogScanner::TLogIdAndSize& tnas =
             tlog_scanner.last_good_tlog();
-        tlog = tnas.first;
-        FileUtils::truncate(VolManager::get()->getTLogPath(config) / tlog,
+        tlog_id = tnas.first;
+        FileUtils::truncate(VolManager::get()->getTLogPath(config) /
+                            boost::lexical_cast<std::string>(tlog_id),
                             tnas.second * Entry::getDataSize());
     }
     else
     {
-        const OrderedTLogNames current_ones(sp.getCurrentTLogs());
+        const OrderedTLogIds current_ones(sp.getCurrentTLogs());
         VERIFY(not current_ones.empty());
-        tlog = current_ones.back();
+        tlog_id = current_ones.back();
     }
 
     trim_current_tlogs(sp,
                        config,
-                       tlog);
+                       tlog_id);
 }
 
 std::unique_ptr<MetaDataStoreInterface>
@@ -598,7 +600,7 @@ fall_back_to_backend_restart(const VolumeConfig& config,
 
     be::BackendInterfacePtr bi(vm->createBackendInterface(config.getNS()));
     SnapshotPersistor sp(bi);
-    const OrderedTLogNames dirty_tlogs(sp.getTLogsNotWrittenToBackend());
+    const OrderedTLogIds dirty_tlogs(sp.getTLogsNotWrittenToBackend());
     if (dirty_tlogs.size() != 1)
     {
         LOG_ERROR(config.getNS() <<
@@ -717,7 +719,7 @@ VolumeFactory::backend_restart(const VolumeConfig& config,
         // To figure out the restart SCO, we need to look at all TLogs (i.e.
         // restartTLogs.back().second is *not* sufficient as that might point to an empty
         // TLog in case the cork in the mdstore is pretty much up to date).
-        const OrderedTLogNames latest_tlogs(sp.getTLogsWrittenToBackend());
+        const OrderedTLogIds latest_tlogs(sp.getTLogsWrittenToBackend());
         SCONumber restart_sco_num = 0;
 
         FileUtils::with_temp_dir(vm->getTLogPath(config) / "tmp",
@@ -820,7 +822,7 @@ VolumeFactory::backend_restart_write_only_volume(const VolumeConfig& config,
     sp.saveToFile(VolManager::get()->getSnapshotsPath(config),
                   SyncAndRename::T);
 
-    OrderedTLogNames recentTLogs(sp.getTLogsWrittenToBackend());
+    OrderedTLogIds recentTLogs(sp.getTLogsWrittenToBackend());
 
     SCONumber restart_sco_num = 0;
     FileUtils::with_temp_dir(vm->getTLogPath(config) / "tmp",
@@ -864,19 +866,19 @@ struct CloneFromParentSnapshotAcc
     void
     operator()(const SnapshotPersistor& sp,
                BackendInterfacePtr& bi,
-               const std::string& snap_name,
+               const SnapshotName& snap_name,
                const SCOCloneID clone_id)
     {
         if(clone_id == SCOCloneID(0))
         {
-            clone_tlogs_.push_back(std::make_pair(clone_id, OrderedTLogNames()));
+            clone_tlogs_.push_back(std::make_pair(clone_id, OrderedTLogIds()));
             nsid_map_.set(clone_id,
                           bi->clone());
         }
         else
         {
             VERIFY(not snap_name.empty());
-            OrderedTLogNames tlogs;
+            OrderedTLogIds tlogs;
             sp.getTLogsTillSnapshot(snap_name, tlogs);
             clone_tlogs_.push_back(std::make_pair(clone_id, std::move(tlogs)));
             nsid_map_.set(clone_id,

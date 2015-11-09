@@ -175,8 +175,8 @@ protected:
     {
         setUpArakoon();
 
-        larakoon_ = std::make_shared<vfs::LockedArakoon>(clusterID(),
-                                                         node_configs());
+        larakoon_ = std::make_shared<yt::LockedArakoon>(clusterID(),
+                                                        node_configs());
         harakoon_.reset(new vfs::HierarchicalArakoon(larakoon_,
                                                      prefix_));
 
@@ -210,7 +210,7 @@ protected:
     }
 
     const std::string prefix_;
-    std::shared_ptr<vfs::LockedArakoon> larakoon_;
+    std::shared_ptr<yt::LockedArakoon> larakoon_;
     std::unique_ptr<vfs::HierarchicalArakoon> harakoon_;
 };
 

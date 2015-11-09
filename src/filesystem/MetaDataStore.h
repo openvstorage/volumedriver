@@ -90,7 +90,7 @@ class MetaDataStore
     friend class volumedriverfstest::FileSystemTestBase;
 
 public:
-    MetaDataStore(std::shared_ptr<LockedArakoon> larakoon,
+    MetaDataStore(std::shared_ptr<youtils::LockedArakoon> larakoon,
                   const ClusterId& cid,
                   UseCache use_cache);
 
@@ -102,7 +102,7 @@ public:
     operator=(const MetaDataStore&) = delete;
 
     static void
-    destroy(std::shared_ptr<LockedArakoon> larakoon,
+    destroy(std::shared_ptr<youtils::LockedArakoon> larakoon,
             const ClusterId& cid);
 
     void

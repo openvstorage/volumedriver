@@ -42,7 +42,7 @@ public:
     using Handler = std::function<void(int signal)>;
 
     SignalThread(const SignalSet& sigset,
-                  Handler&& handler);
+                  Handler handler);
 
     ~SignalThread();
 

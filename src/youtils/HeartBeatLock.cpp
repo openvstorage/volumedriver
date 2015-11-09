@@ -13,21 +13,21 @@
 // limitations under the License.
 
 
-#include "Lock.h"
+#include "HeartBeatLock.h"
 
-namespace backend
+namespace youtils
 {
 
-Lock::Lock(const boost::posix_time::time_duration& session_timeout,
-           const boost::posix_time::time_duration& interrupt_timeout)
-    : hasLock(true)
+HeartBeatLock::HeartBeatLock(const TimeDuration& session_timeout,
+                             const TimeDuration& interrupt_timeout)
+    : has_lock_(true)
     , counter(0)
     , session_timeout_(session_timeout)
     , interrupt_timeout_(interrupt_timeout)
 {}
 
-Lock::Lock(const std::string& str)
-    : hasLock(true)
+HeartBeatLock::HeartBeatLock(const std::string& str)
+    : has_lock_(true)
 {
     std::stringstream ss(str);
     boost::archive::xml_iarchive ia(ss);
@@ -36,13 +36,13 @@ Lock::Lock(const std::string& str)
 }
 
 void
-Lock::operator++()
+HeartBeatLock::operator++()
 {
     ++counter;
 }
 
 void
-Lock::save(std::string& str) const
+HeartBeatLock::save(std::string& str) const
 {
     std::stringstream ss;
     boost::archive::xml_oarchive oa(ss);
@@ -52,19 +52,19 @@ Lock::save(std::string& str) const
 }
 
 bool
-Lock::same_owner(const Lock& inOther) const
+HeartBeatLock::same_owner(const HeartBeatLock& inOther) const
 {
     return uuid == inOther.uuid;
 }
 
 bool
-Lock::different_owner(const Lock& inOther) const
+HeartBeatLock::different_owner(const HeartBeatLock& inOther) const
 {
     return uuid != inOther.uuid;
 }
 
-boost::posix_time::time_duration
-Lock::get_timeout() const
+HeartBeatLock::TimeDuration
+HeartBeatLock::get_timeout() const
 {
     return boost::posix_time::milliseconds(3* session_timeout_.total_milliseconds()) + interrupt_timeout_;
 }
@@ -72,6 +72,5 @@ Lock::get_timeout() const
 }
 
 // Local Variables: **
-// bvirtual-targets: ("bin/backup_volume_driver") **
 // mode: c++ **
 // End: **

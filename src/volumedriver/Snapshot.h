@@ -15,13 +15,15 @@
 #ifndef _SNAPSHOT_H_
 #define _SNAPSHOT_H_
 
+#include "SnapshotName.h"
 #include "TLog.h"
-#include <youtils/IOException.h>
 
 #include <string>
 #include <vector>
 
 #include <boost/serialization/vector.hpp>
+
+#include <youtils/IOException.h>
 
 BOOLEAN_ENUM(IncludingStartSnapshot);
 BOOLEAN_ENUM(IncludingEndSnapshot);
@@ -42,7 +44,7 @@ class Snapshot
 {
 public:
     Snapshot(const SnapshotNum num,
-             const std::string& name,
+             const SnapshotName& name,
              const TLogs& i_tlogs,
              const SnapshotMetaData& metadata = SnapshotMetaData(),
              const UUID& uuid = UUID(),
@@ -60,10 +62,10 @@ public:
     bool
     inBackend() const;
 
-    const std::string&
+    const SnapshotName&
     getName() const
     {
-        return name;
+        return static_cast<const SnapshotName&>(name);
     }
 
     const UUID&
@@ -93,7 +95,7 @@ public:
     //returns whether cork was seen
     bool
     getReversedTLogsOnBackendSinceLastCork(const boost::optional<youtils::UUID>& cork,
-                                           OrderedTLogNames& reverse_vec) const;
+                                           OrderedTLogIds& reverse_vec) const;
 
     const SnapshotMetaData&
     metadata() const
@@ -122,7 +124,7 @@ private:
     friend class SnapshotsTLogsTest;
 
     const SnapshotNum num;
-    const std::string name;
+    const SnapshotName name;
     const UUID uuid_;
     const SnapshotMetaData metadata_;
     bool scrubbed;
@@ -154,8 +156,13 @@ private:
                           base_object<TLogs>(*this));
             ar & make_nvp("num",
                           const_cast<SnapshotNum&>(num));
-            ar & make_nvp("name",
-                          const_cast<std::string&>(name));
+
+            {
+                std::string s;
+                ar & make_nvp("name",
+                              s);
+                const_cast<SnapshotName&>(name) = SnapshotName(s);
+            }
 
             ar & make_nvp("scrubbed",
                           scrubbed);
@@ -189,7 +196,8 @@ private:
             ar & make_nvp("tlogs",
                           base_object<TLogs>(*this));
             ar & BOOST_SERIALIZATION_NVP(num);
-            ar & BOOST_SERIALIZATION_NVP(name);
+            ar & make_nvp("name",
+                          static_cast<const std::string>(name));
             ar & BOOST_SERIALIZATION_NVP(scrubbed);
             ar & BOOST_SERIALIZATION_NVP(date);
             ar & make_nvp("snapshot-uuid", uuid_);
@@ -203,43 +211,36 @@ class Snapshots
     : public std::list<Snapshot>
 {
 public:
+    bool
+    setTLogWrittenToBackend(const TLogId& tid);
 
     bool
-    setTLogWrittenToBackend(const TLogID& tid);
-
-    bool
-    isTLogWrittenToBackend(const TLogID& tid) const;
+    isTLogWrittenToBackend(const TLogId& tid) const;
 
     bool
     getTLogsInSnapshot(const SnapshotNum,
-                       OrderedTLogNames&) const;
-
-    const UUID&
-    getSnapshotCork(const std::string& snapshot_name) const;
+                       OrderedTLogIds&) const;
 
     SnapshotNum
     getNextSnapshotNum() const;
 
     bool
-    snapshotExists(const std::string& name) const;
+    snapshotExists(const SnapshotName&) const;
 
     bool
-    snapshotExists(const SnapshotNum num) const;
+    snapshotExists(const SnapshotNum) const;
 
-    SnapshotNum
-    getSnapshotNum(const std::string& name) const;
+    bool
+    snapshotExists(const UUID&) const;
 
-    SnapshotNum
-    getSnapshotNumFromUUID(const UUID&) const;
+    const Snapshot&
+    getSnapshot(const SnapshotName&) const;
 
-    const std::string&
-    getSnapshotName(const SnapshotNum num) const;
+    const Snapshot&
+    getSnapshot(const SnapshotNum) const;
 
-    const std::string&
-    getSnapshotName(const UUID& uuid) const;
-
-    Snapshot
-    getSnapshot(const std::string& snapname) const;
+    const Snapshot&
+    getSnapshot(const UUID&) const;
 
     void
     getSnapshotsTill(SnapshotNum num,
@@ -258,31 +259,28 @@ public:
     deleteAllButLastSnapshot();
 
     bool
-    snip(const std::string tlog_name,
+    snip(const TLogId&,
          const boost::optional<uint64_t>& backend_size);
-
-    uint64_t
-    getBackendSize(const std::string& name) const;
 
     uint64_t
     getTotalBackendSize() const;
 
     uint64_t
-    getBackendSize(const std::string& end_snapshot,
-                   boost::optional<std::string> start_snapshot) const;
+    getBackendSize(const SnapshotName& end_snapshot,
+                   const boost::optional<SnapshotName>& start_snapshot) const;
 
     void
     getTLogsTillSnapshot(const SnapshotNum num,
-                         OrderedTLogNames& out) const;
+                         OrderedTLogIds& out) const;
 
     void
     getTLogsAfterSnapshot(SnapshotNum num,
-                          OrderedTLogNames& out) const;
+                          OrderedTLogIds& out) const;
 
     void
     getTLogsBetweenSnapshots(const SnapshotNum start,
                              const SnapshotNum end,
-                             OrderedTLogNames& out,
+                             OrderedTLogIds& out,
                              IncludingEndSnapshot) const;
 
     void
@@ -292,20 +290,20 @@ public:
     getAllSnapshots(std::vector<SnapshotNum>& vec) const;
 
     void
-    replace(const OrderedTLogNames& in,
+    replace(const OrderedTLogIds& in,
             const std::vector<TLog>& out,
             const SnapshotNum num);
 
     void
-    getSnapshotScrubbingWork(const boost::optional<std::string>& start_snap,
-                             const boost::optional<std::string>& end_snap,
+    getSnapshotScrubbingWork(const boost::optional<SnapshotName>& start_snap,
+                             const boost::optional<SnapshotName>& end_snap,
                              SnapshotWork& out) const;
 
     bool
-    tlogReferenced(const std::string& tlog_name) const;
+    tlogReferenced(const TLogId&) const;
 
-    TLogName
-    checkAndGetAllTLogsWrittenToBackendAndRemoveLaterOnes(OrderedTLogNames&);
+    boost::optional<TLogId>
+    checkAndGetAllTLogsWrittenToBackendAndRemoveLaterOnes(OrderedTLogIds&);
 
     bool
     hasUUIDSpecified() const
@@ -321,7 +319,7 @@ public:
     hasSnapshotWithUUID(const UUID& uuid) const;
 
     bool
-    checkSnapshotUUID(const std::string& name,
+    checkSnapshotUUID(const SnapshotName& name,
                       const UUID& uuid) const;
 
     template<typename T>
@@ -343,10 +341,10 @@ private:
     friend class SnapshotsTLogsTest;
 
     const_iterator
-    find_(const std::string& name) const;
+    find_(const SnapshotName& name) const;
 
     iterator
-    find_(const std::string& name);
+    find_(const SnapshotName& name);
 
     const_iterator
     find_(const SnapshotNum num) const;
@@ -362,11 +360,37 @@ private:
 
     template<typename T>
     const_iterator
-    find_or_throw_(const T&) const;
+    find_or_throw_(const T& t) const
+    {
+        auto it = find_(t);
+        if (it == end())
+        {
+            std::stringstream ss;
+            ss << "Could not find snapshot " << t;
+            std::string msg = ss.str();
+            LOG_ERROR(msg);
+            throw SnapshotNotFoundException(msg.c_str());
+        }
+
+        return it;
+    }
 
     template<typename T>
     iterator
-    find_or_throw_(const T&);
+    find_or_throw_(const T& t)
+    {
+        auto it = find_(t);
+        if (it == end())
+        {
+            std::stringstream ss;
+            ss << "Could not find snapshot " << t;
+            std::string msg = ss.str();
+            LOG_ERROR(msg);
+            throw SnapshotNotFoundException(msg.c_str());
+        }
+
+        return it;
+    }
 
     BOOST_SERIALIZATION_SPLIT_MEMBER();
 

@@ -43,7 +43,6 @@
 #include "../youtils/WithGlobalLock.h"
 #include "../youtils/CheckSum.h"
 #include "../youtils/IncrementalChecksum.h"
-#include "../youtils/NoGlobalLockingService.h"
 #include "../youtils/SpinLock.h"
 #include "../youtils/WrapByteArray.h"
 #include "../youtils/InitializedParam.h"

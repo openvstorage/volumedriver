@@ -526,7 +526,7 @@ TEST_P(SimpleVolumeTest, test3)
                   0,
                   4096,
                   "immanuel");
-    v->createSnapshot("snap1");
+    v->createSnapshot(SnapshotName("snap1"));
     waitForThisBackendWrite(v);
     waitForThisBackendWrite(v);
     auto ns1_ptr = make_random_namespace();
@@ -563,7 +563,7 @@ TEST_P(SimpleVolumeTest, test4)
                   4096,
                   "a");
 
-    v->createSnapshot("snap1");
+    v->createSnapshot(SnapshotName("snap1"));
 
     waitForThisBackendWrite(v);
     auto ns1_ptr = make_random_namespace();
@@ -593,7 +593,7 @@ TEST_P(SimpleVolumeTest, test4)
                 4096,
                 "b");
 
-    c1->createSnapshot("snap2");
+    c1->createSnapshot(SnapshotName("snap2"));
 
     waitForThisBackendWrite(c1);
     auto ns2_ptr = make_random_namespace();
@@ -605,7 +605,7 @@ TEST_P(SimpleVolumeTest, test4)
     c2 = createClone("clone2",
                      ns_clone2,
                      ns_clone1,
-                  "snap2");
+                     "snap2");
     ASSERT_TRUE(c2);
 
      checkVolume(c2,
@@ -626,7 +626,7 @@ TEST_P(SimpleVolumeTest, test4)
                 2*4096,
                 4096,
                 "c");
-    c2->createSnapshot("snap3");
+    c2->createSnapshot(SnapshotName("snap3"));
     waitForThisBackendWrite(c2);
 
 
@@ -666,7 +666,7 @@ TEST_P(SimpleVolumeTest, test4)
                 4096,
                 "d");
 
-    c3->createSnapshot("snap4");
+    c3->createSnapshot(SnapshotName("snap4"));
     waitForThisBackendWrite(c3);
 
     Volume* c4 = 0;
@@ -692,20 +692,22 @@ TEST_P(SimpleVolumeTest, switchTLog)
     Volume* v = newVolume(VolumeId("volume1"),
                           ns);
 
-    std::string init_tlog = v->getSnapshotManagement().getCurrentTLogName();
+    const TLogId init_tlog(v->getSnapshotManagement().getCurrentTLogId());
     std::vector<uint8_t> v1(4096);
 
-    uint64_t clusters   = VolManager::get()->number_of_scos_in_tlog.value() *  v->getSCOMultiplier();
+    uint64_t clusters = VolManager::get()->number_of_scos_in_tlog.value() *  v->getSCOMultiplier();
 
     for(unsigned i = 0; i < clusters - 1; ++i) {
         writeToVolume(v, 0, 4096, &v1[0]);
     }
 
-    ASSERT_EQ(init_tlog, v->getSnapshotManagement().getCurrentTLogName());
+    ASSERT_EQ(init_tlog,
+              v->getSnapshotManagement().getCurrentTLogId());
 
     writeToVolume(v, 0, 4096, &v1[0]);
 
-    ASSERT_NE(init_tlog, v->getSnapshotManagement().getCurrentTLogName());
+    ASSERT_NE(init_tlog,
+              v->getSnapshotManagement().getCurrentTLogId());
 }
 
 TEST_P(SimpleVolumeTest, restoreSnapshot)
@@ -769,29 +771,23 @@ TEST_P(SimpleVolumeTest, restoreSnapshot)
                 "tlog_.*",
                 tlogsInBackend);
 
-    OrderedTLogNames allTLogs;
-    v->getSnapshotManagement().getAllTLogs(allTLogs,
-                                           AbsolutePath::F);
+    const OrderedTLogIds allTLogs(v->getSnapshotManagement().getAllTLogs());
 
-    for (std::list<std::string>::iterator i = tlogsInBackend.begin();
-         i != tlogsInBackend.end();
-         ++i) {
-        for (OrderedTLogNames::iterator j = allTLogs.begin();
-             j != allTLogs.end();
-             ++j)
+    for (auto& tlog_name : tlogsInBackend)
+    {
+        for (const auto& tlog_id : allTLogs)
         {
-            if (*i == *j) {
-                *i = "";
+            if (tlog_name == boost::lexical_cast<std::string>(tlog_id))
+            {
+                tlog_name = "";
                 break;
             }
         }
     }
 
-    for (std::list<std::string>::iterator i = tlogsInBackend.begin();
-         i != tlogsInBackend.end();
-         ++i)
+    for (const auto& tlog_name : tlogsInBackend)
     {
-        EXPECT_EQ("", *i) << "TLog " << *i << " leaked in backend";
+        EXPECT_EQ("", tlog_name) << "TLog " << tlog_name << " leaked in backend";
     }
 }
 
@@ -881,29 +877,23 @@ TEST_P(SimpleVolumeTest, restoreSnapshot2)
                 "tlog_.*",
                 tlogsInBackend);
 
-    OrderedTLogNames allTLogs;
-    v->getSnapshotManagement().getAllTLogs(allTLogs,
-                                           AbsolutePath::F);
+    const OrderedTLogIds allTLogs(v->getSnapshotManagement().getAllTLogs());
 
-    for (std::list<std::string>::iterator i = tlogsInBackend.begin();
-         i != tlogsInBackend.end();
-         ++i) {
-        for (OrderedTLogNames::iterator j = allTLogs.begin();
-             j != allTLogs.end();
-             ++j)
+    for (auto& tlog_name : tlogsInBackend)
+    {
+        for (const auto& tlog_id : allTLogs)
         {
-            if (*i == *j) {
-                *i = "";
+            if (tlog_name == boost::lexical_cast<std::string>(tlog_id))
+            {
+                tlog_name = "";
                 break;
             }
         }
     }
 
-    for (std::list<std::string>::iterator i = tlogsInBackend.begin();
-         i != tlogsInBackend.end();
-         ++i)
+    for (const auto& tlog_name : tlogsInBackend)
     {
-        EXPECT_EQ("", *i) << "TLog " << *i << " leaked in backend";
+        EXPECT_EQ("", tlog_name) << "TLog " << tlog_name << " leaked in backend";
     }
 }
 
@@ -932,14 +922,22 @@ TEST_P(SimpleVolumeTest, restoreSnapshotWithFuckedUpTLogs)
     waitForThisBackendWrite(v);
 
     //make sure we delete some tlog in the middle, not just the first one
-    for (uint32_t i = 0 ; i < 5 * clustersInSco * scosInTlog; i++) {
-        writeToVolume(v, 0, count, "there are no rules without exceptions, so there are rules without exceptions");
+    for (uint32_t i = 0 ; i < 5 * clustersInSco * scosInTlog; i++)
+    {
+        writeToVolume(v,
+                      0,
+                      count,
+                      "there are no rules without exceptions, so there are rules without exceptions");
     }
 
-    const std::string tlogname = v->getSnapshotManagement().getCurrentTLogName();
+    const TLogId tlog_id(v->getSnapshotManagement().getCurrentTLogId());
 
-    for (uint32_t i = 0 ; i < 5 * clustersInSco * scosInTlog; i++) {
-        writeToVolume(v, 0, count, "there are no rules without exceptions, so there are rules without exceptions");
+    for (uint32_t i = 0 ; i < 5 * clustersInSco * scosInTlog; i++)
+    {
+        writeToVolume(v,
+                      0,
+                      count,
+                      "there are no rules without exceptions, so there are rules without exceptions");
     }
 
     const std::string snapshotName2("nikon2");
@@ -947,8 +945,7 @@ TEST_P(SimpleVolumeTest, restoreSnapshotWithFuckedUpTLogs)
     createSnapshot(v, snapshotName2);
     waitForThisBackendWrite(v);
 
-    v->getBackendInterface()->remove(tlogname);
-
+    v->getBackendInterface()->remove(boost::lexical_cast<std::string>(tlog_id));
 
     ASSERT_NO_THROW(restoreSnapshot(v, snapshotName1));
     checkVolume(v,0,count,snapshotName1);
@@ -978,15 +975,17 @@ TEST_P(SimpleVolumeTest, restoreSnapshotWithFuckedUpNeededTLogs)
         writeToVolume(v, 0, count, "should be overwritten");
     }
 
-    const std::string tlogname = v->getSnapshotManagement().getCurrentTLogName();
+    const TLogId tlog_id = v->getSnapshotManagement().getCurrentTLogId();
 
-    for (uint32_t i = 0 ; i < 5 * clustersInSco * scosInTlog; i++) {
+    for (uint32_t i = 0 ; i < 5 * clustersInSco * scosInTlog; i++)
+    {
         writeToVolume(v, 0, count, "should be overwritten");
     }
 
     writeToVolume(v, 0, count, snapshotName1);
 
-    for (uint32_t i = 0 ; i < 5 * clustersInSco * scosInTlog; i++) {
+    for (uint32_t i = 0 ; i < 5 * clustersInSco * scosInTlog; i++)
+    {
         writeToVolume(v, 0, count, "there are no rules without exceptions, so there are rules without exceptions");
     }
 
@@ -998,8 +997,7 @@ TEST_P(SimpleVolumeTest, restoreSnapshotWithFuckedUpNeededTLogs)
     createSnapshot(v, snapshotName2);
     waitForThisBackendWrite(v);
 
-    v->getBackendInterface()->remove(tlogname);
-
+    v->getBackendInterface()->remove(boost::lexical_cast<std::string>(tlog_id));
 
     ASSERT_THROW(restoreSnapshot(v, snapshotName1), std::exception);
 }
@@ -1122,7 +1120,9 @@ TEST_P(SimpleVolumeTest, createUseAndDestroyVolume)
     ASSERT_NO_THROW(v = newVolume(volname,
 				  ns));
     ASSERT_TRUE(v);
-    ASSERT_NO_THROW(v->createSnapshot("snap1"));
+
+    const SnapshotName snap("snap1");
+    ASSERT_NO_THROW(v->createSnapshot(snap));
 
     while(not isVolumeSyncedToBackend(v))
     {
@@ -1132,7 +1132,7 @@ TEST_P(SimpleVolumeTest, createUseAndDestroyVolume)
 
     //    ASSERT_THROW(v->restoreSnapshot("snap1"),fungi::IOException);
 
-    ASSERT_NO_THROW(v->restoreSnapshot("snap1"));
+    ASSERT_NO_THROW(v->restoreSnapshot(snap));
     ASSERT_NO_THROW(destroyVolume(v,
                                   DeleteLocalData::T,
                                   RemoveVolumeCompletely::T));
@@ -1145,13 +1145,15 @@ TEST_P(SimpleVolumeTest, RollBack)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
+    const SnapshotName snap("snap1");
     Volume* v1 = newVolume("1volume",
                            ns);
     {
         SCOPED_BLOCK_BACKEND(v1);
-        v1->createSnapshot("snap1");
+        v1->createSnapshot(snap);
 
-        EXPECT_THROW(v1->restoreSnapshot("snap1"), fungi::IOException);
+        EXPECT_THROW(v1->restoreSnapshot(snap),
+                     fungi::IOException);
 
 
 
@@ -1159,13 +1161,11 @@ TEST_P(SimpleVolumeTest, RollBack)
     waitForThisBackendWrite(v1);
     waitForThisBackendWrite(v1);
 
-    EXPECT_NO_THROW(v1->restoreSnapshot("snap1"));
-
+    EXPECT_NO_THROW(v1->restoreSnapshot(snap));
 
     destroyVolume(v1,
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::T);
-
 }
 
 TEST_P(SimpleVolumeTest, RollBack2)
@@ -1176,24 +1176,23 @@ TEST_P(SimpleVolumeTest, RollBack2)
 
     Volume* v1 = newVolume("1volume",
 			   ns);
-    v1->createSnapshot("snap1");
+
+    const SnapshotName snap("snap1");
+    v1->createSnapshot(snap);
     waitForThisBackendWrite(v1);
 
     {
         SCOPED_BLOCK_BACKEND(v1);
-        v1->createSnapshot("snap2");
+        v1->createSnapshot(SnapshotName("snap2"));
     }
 
-    v1->restoreSnapshot("snap1");
-
+    v1->restoreSnapshot(snap);
 
     waitForThisBackendWrite(v1);
     destroyVolume(v1,
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::T);
-
 }
-
 
 TEST_P(SimpleVolumeTest, LocalRestartClone)
 {
@@ -1213,7 +1212,7 @@ TEST_P(SimpleVolumeTest, LocalRestartClone)
                       "immanuel");
     }
 
-    v1->createSnapshot("snap1");
+    v1->createSnapshot(SnapshotName("snap1"));
     waitForThisBackendWrite(v1);
     waitForThisBackendWrite(v1);
 
@@ -1262,7 +1261,9 @@ TEST_P(SimpleVolumeTest, RollBackClone)
                       "immanuel");
     }
 
-    v1->createSnapshot("snap1");
+    const SnapshotName snap1("snap1");
+
+    v1->createSnapshot(snap1);
     waitForThisBackendWrite(v1);
     waitForThisBackendWrite(v1);
 
@@ -1275,7 +1276,7 @@ TEST_P(SimpleVolumeTest, RollBackClone)
     Volume* v2 = createClone("2volume",
                              ns2,
                              ns1,
-                             "snap1");
+                             snap1);
 
     auto ns3_ptr = make_random_namespace();
 
@@ -1303,7 +1304,7 @@ TEST_P(SimpleVolumeTest, RollBackClone)
 
     EXPECT_FALSE(checkVolumesIdentical(v2,v3));
     EXPECT_TRUE(checkVolumesIdentical(v1,v2));
-    v2->createSnapshot("snap1");
+    v2->createSnapshot(snap1);
 
     for(int i = 50; i < 100; i++)
     {
@@ -1312,14 +1313,13 @@ TEST_P(SimpleVolumeTest, RollBackClone)
                       v1->getClusterSize(),
                       "kristaf");
     }
+
     EXPECT_FALSE(checkVolumesIdentical(v3,v2));
     EXPECT_FALSE(checkVolumesIdentical(v1,v2));
     waitForThisBackendWrite(v2);
     waitForThisBackendWrite(v2);
 
-
-    v2->restoreSnapshot("snap1");
-
+    v2->restoreSnapshot(snap1);
 
     EXPECT_FALSE(checkVolumesIdentical(v2,v3));
     EXPECT_TRUE(checkVolumesIdentical(v2,v1));
@@ -1488,8 +1488,7 @@ TEST_P(SimpleVolumeTest, DISABLED_SnapPerformance)
 
 }
 
-
-TEST_P(SimpleVolumeTest, zinked)
+TEST_P(SimpleVolumeTest, backend_sync_up_to_snapshot)
 {
     auto ns_ptr = make_random_namespace();
 
@@ -1497,16 +1496,54 @@ TEST_P(SimpleVolumeTest, zinked)
 
     Volume* v1 = newVolume(VolumeId("volume1"),
 			   ns);
-    EXPECT_THROW(v1->isSyncedToBackendUpTo("snap1"),fungi::IOException);
+
+    const SnapshotName snap("snap1");
+
+    EXPECT_THROW(v1->isSyncedToBackendUpTo(snap),
+                 fungi::IOException);
 
     {
-        SCOPED_BLOCK_BACKEND (v1);
+        SCOPED_BLOCK_BACKEND(v1);
 
-            v1->createSnapshot("snap1");
-            EXPECT_FALSE(v1->isSyncedToBackendUpTo("snap1"));
+            v1->createSnapshot(snap);
+            EXPECT_FALSE(v1->isSyncedToBackendUpTo(snap));
     }
+
     waitForThisBackendWrite(v1);
-    EXPECT_TRUE(v1->isSyncedToBackendUpTo("snap1"));
+    EXPECT_TRUE(v1->isSyncedToBackendUpTo(snap));
+}
+
+TEST_P(SimpleVolumeTest, backend_sync_up_to_tlog)
+{
+    auto ns(make_random_namespace());
+    Volume* v = newVolume(*ns);
+
+    const SnapshotManagement& sm = v->getSnapshotManagement();
+    const auto old_tlog_id(sm.getCurrentTLogId());
+
+    EXPECT_FALSE(v->isSyncedToBackendUpTo(old_tlog_id));
+
+    TLogId new_tlog_id;
+
+    {
+        SCOPED_BLOCK_BACKEND(v);
+
+        EXPECT_EQ(old_tlog_id,
+                  v->scheduleBackendSync());
+
+        new_tlog_id = sm.getCurrentTLogId();
+
+        EXPECT_NE(old_tlog_id,
+                  new_tlog_id);
+
+        EXPECT_FALSE(v->isSyncedToBackendUpTo(old_tlog_id));
+        EXPECT_FALSE(v->isSyncedToBackendUpTo(new_tlog_id));
+    }
+
+    waitForThisBackendWrite(v);
+
+    EXPECT_TRUE(v->isSyncedToBackendUpTo(old_tlog_id));
+    EXPECT_FALSE(v->isSyncedToBackendUpTo(new_tlog_id));
 }
 
 TEST_P(SimpleVolumeTest, consistency)
@@ -1557,7 +1594,8 @@ TEST_P(SimpleVolumeTest, consistencyClone)
                       v1->getClusterSize(),
                       "kristaf");
     }
-    v1->createSnapshot("snap1");
+
+    v1->createSnapshot(SnapshotName("snap1"));
     waitForThisBackendWrite(v1);
 
     // backend::Namespace ns2;
@@ -1585,7 +1623,6 @@ TEST_P(SimpleVolumeTest, consistencyClone)
     // but with small tlogsizes that doesn't need to be the case
     // EXPECT_THROW(v1->checkConsistency(), fungi::IOException);
     // EXPECT_THROW(v2->checkConsistency(), fungi::IOException);
-
 
     v1->scheduleBackendSync();
     v2->scheduleBackendSync();
@@ -1671,20 +1708,22 @@ TEST_P(SimpleVolumeTest, backendSize)
     ASSERT_NO_THROW(size = v1->getCurrentBackendSize());
     EXPECT_TRUE(size == 1024 * v1->getClusterSize());
 
+    const SnapshotName snap("testsnap");
+
     {
         SCOPED_BLOCK_BACKEND(v1);
-        v1->createSnapshot("testsnap");
+        v1->createSnapshot(snap);
         size = 0;
         ASSERT_NO_THROW(size = v1->getCurrentBackendSize());
         EXPECT_TRUE(size == 0);
         size = 0;
-        ASSERT_NO_THROW(size = v1->getSnapshotBackendSize("testsnap"));
+        ASSERT_NO_THROW(size = v1->getSnapshotBackendSize(snap));
         EXPECT_TRUE(size == 1024 * v1->getClusterSize());
 
     }
     waitForThisBackendWrite(v1);
 
-    ASSERT_NO_THROW(size = v1->getSnapshotBackendSize("testsnap"));
+    ASSERT_NO_THROW(size = v1->getSnapshotBackendSize(snap));
 
     EXPECT_TRUE(size == 1024 * v1->getClusterSize());
     for(int i = 0; i < 1024 ; i++)
@@ -1698,9 +1737,7 @@ TEST_P(SimpleVolumeTest, backendSize)
     size =  0;
     ASSERT_NO_THROW(size = v1->getCurrentBackendSize());
     EXPECT_TRUE(size == 1024 * v1->getClusterSize());
-
 }
-
 
 TEST_P(SimpleVolumeTest, backendSize2)
 {
@@ -1713,19 +1750,21 @@ TEST_P(SimpleVolumeTest, backendSize2)
     uint64_t size =  0;
     ASSERT_NO_THROW(size = v1->getCurrentBackendSize());
     EXPECT_TRUE(size == 0);
+
+    const SnapshotName snap("testsnap");
     {
         SCOPED_BLOCK_BACKEND(v1);
 
-        v1->createSnapshot("testsnap");
+        v1->createSnapshot(snap);
         size = 0;
-        ASSERT_NO_THROW(size = v1->getSnapshotBackendSize("testsnap"));
+        ASSERT_NO_THROW(size = v1->getSnapshotBackendSize(snap));
         EXPECT_TRUE(size == 0);
     }
 
 
     waitForThisBackendWrite(v1);
     size = 0;
-    ASSERT_NO_THROW(size = v1->getSnapshotBackendSize("testsnap"));
+    ASSERT_NO_THROW(size = v1->getSnapshotBackendSize(snap));
     EXPECT_TRUE(size == 0);
     const unsigned int mult = v1->getClusterSize()/ v1->getLBASize();
     for(int i = 0; i < 1024 ; i++)
@@ -1760,20 +1799,22 @@ TEST_P(SimpleVolumeTest, backendSize3)
                       "kristaf");
     }
 
-    v1->createSnapshot("testsnap");
+    const SnapshotName snap("testsnap");
+
+    v1->createSnapshot(snap);
     waitForThisBackendWrite(v1);
     uint64_t size = 0;
     ASSERT_NO_THROW(size = v1->getCurrentBackendSize());
     EXPECT_TRUE(size == 0);
-    ASSERT_NO_THROW(size = v1->getSnapshotBackendSize("testsnap"));
+    ASSERT_NO_THROW(size = v1->getSnapshotBackendSize(snap));
     EXPECT_TRUE(size  == 1024 * v1->getClusterSize());
-    v1->deleteSnapshot("testsnap");
+    v1->deleteSnapshot(snap);
 
     ASSERT_NO_THROW(size = v1->getCurrentBackendSize());
     EXPECT_TRUE(size == 1024 * v1->getClusterSize());
-    EXPECT_THROW(size = v1->getSnapshotBackendSize("testsnap"), fungi::IOException);
+    EXPECT_THROW(size = v1->getSnapshotBackendSize(snap), fungi::IOException);
     //    EXPECT_TRUE(size  == 1024 * v1->getClusterSize()0);
-    v1->createSnapshot("testsnap");
+    v1->createSnapshot(snap);
     for(int i = 0; i < 1024 ; i++)
     {
 
@@ -1783,21 +1824,22 @@ TEST_P(SimpleVolumeTest, backendSize3)
                       "joost");
     }
     waitForThisBackendWrite(v1);
-    v1->createSnapshot("testsnap2");
+
+    const SnapshotName snap2("testsnap2");
+    v1->createSnapshot(snap2);
     waitForThisBackendWrite(v1);
 
     ASSERT_NO_THROW(size = v1->getCurrentBackendSize());
     EXPECT_TRUE(size == 0);
-    ASSERT_NO_THROW(size = v1->getSnapshotBackendSize("testsnap"));
+    ASSERT_NO_THROW(size = v1->getSnapshotBackendSize(snap));
     EXPECT_TRUE(size  == 1024 * v1->getClusterSize());
-    ASSERT_NO_THROW(size = v1->getSnapshotBackendSize("testsnap2"));
+    ASSERT_NO_THROW(size = v1->getSnapshotBackendSize(snap2));
     EXPECT_TRUE(size  == 1024 * v1->getClusterSize());
-    v1->deleteSnapshot("testsnap");
-    ASSERT_NO_THROW(size = v1->getSnapshotBackendSize("testsnap2"));
+    v1->deleteSnapshot(snap);
+    ASSERT_NO_THROW(size = v1->getSnapshotBackendSize(snap2));
     EXPECT_TRUE(size  == 2048 * v1->getClusterSize());
     ASSERT_NO_THROW(size = v1->getCurrentBackendSize());
     EXPECT_TRUE(size == 0);
-
 }
 
 TEST_P(SimpleVolumeTest, writeConfigToBackend)
@@ -1857,7 +1899,6 @@ TEST_P(SimpleVolumeTest, readActivity)
     uint8_t buf[8192];
     for(int i = 0; i < 128; ++i)
     {
-
         v1->read(0,buf,4092);
         v2->read(0,buf, 8192);
     }

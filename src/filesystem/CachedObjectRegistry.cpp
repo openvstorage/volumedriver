@@ -33,7 +33,7 @@ namespace yt = youtils;
 // We'll make use of this by keeping the locked sections small.
 CachedObjectRegistry::CachedObjectRegistry(const ClusterId& cluster_id,
                                            const NodeId& node_id,
-                                           std::shared_ptr<LockedArakoon> larakoon,
+                                           std::shared_ptr<yt::LockedArakoon> larakoon,
                                            size_t cache_capacity)
     : registry_(cluster_id, node_id, larakoon)
     , cache_("ObjectRegistryCache",
