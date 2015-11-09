@@ -681,6 +681,34 @@ ovs_allocate(ovs_ctx_t *ctx,
     return NULL;
 }
 
+void*
+ovs_buffer_data(ovs_buffer_t *ptr)
+{
+    if (likely(ptr != NULL))
+    {
+        return ptr->buf;
+    }
+    else
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+}
+
+size_t
+ovs_buffer_size(ovs_buffer_t *ptr)
+{
+    if (likely(ptr != NULL))
+    {
+        return ptr->size;
+    }
+    else
+    {
+        errno = EINVAL;
+        return -1;
+    }
+}
+
 int
 ovs_deallocate(ovs_ctx_t *ctx,
                ovs_buffer_t *ptr)

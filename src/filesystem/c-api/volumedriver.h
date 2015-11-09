@@ -25,12 +25,7 @@ extern "C"
 {
 #endif
 
-typedef struct _ovs_buffer
-{
-    void *buf;
-    size_t size;
-} ovs_buffer_t;
-
+typedef struct _ovs_buffer ovs_buffer_t;
 typedef struct _ovs_ctx_t ovs_ctx_t;
 typedef struct _ovs_aio_request ovs_aio_request;
 typedef struct _ovs_completion_t ovs_completion_t;
@@ -90,6 +85,20 @@ ovs_create_volume(const char *volume_name,
 ovs_buffer_t*
 ovs_allocate(ovs_ctx_t *ctx,
              size_t size);
+
+/* Retrieve pointer to buffer content
+ * param ptr: Pointer to buffer structure
+ * return: Buffer pointer on success, or NULL on fail
+ */
+void*
+ovs_buffer_data(ovs_buffer_t *ptr);
+
+/* Retrieve size of buffer
+ * param ptr: Pointer to buffer structure
+ * return: Size of buffer on success, -1 on fail
+ */
+size_t
+ovs_buffer_size(ovs_buffer_t *ptr);
 
 /*
  * Deallocate previously allocated buffer
