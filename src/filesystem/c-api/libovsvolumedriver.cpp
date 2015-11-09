@@ -432,7 +432,16 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
         return -1;
     }
 
-    ovs_aio_request *request = new ovs_aio_request();
+    try
+    {
+        ovs_aio_request *request = new ovs_aio_request();
+    }
+    catch (std::bad_alloc&)
+    {
+        errno = ENOMEM;
+        return -1;
+    }
+
     request->ovs_aiocbp = ovs_aiocbp;
     request->completion = completion;
 
@@ -640,7 +649,7 @@ ovs_aio_create_completion(ovs_callback_t complete_cb,
     }
     catch (const std::bad_alloc&)
     {
-        errno = ENOSPC;
+        errno = ENOMEM;
         return NULL;
     }
 }
@@ -769,6 +778,11 @@ ovs_aio_flushcb(ovs_ctx_t *ctx,
 
     struct ovs_aiocb *aio = (struct ovs_aiocb*) calloc(1,
                                                        sizeof(struct ovs_aiocb));
+    if (aio == NULL)
+    {
+        errno = ENOMEM;
+        return -1;
+    }
     aio->aio_nbytes = 0;
     aio->aio_offset = 0;
     aio->aio_buf = NULL;
