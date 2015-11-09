@@ -47,7 +47,7 @@ std::map<void*, VolumeCacheHandlerPtr> cache_;
 AioCompletion* AioCompletion::_aio_completion_instance = NULL;
 static int aio_completion_instances = 0;
 
-bool
+static bool
 _is_volume_name_valid(const char *volume_name)
 {
     if (volume_name == NULL || strlen(volume_name) == 0 ||
@@ -150,7 +150,8 @@ _aio_writereply_handler(void *arg)
     pthread_exit(NULL);
 }
 
-int _aio_init(ovs_ctx_t* ctx)
+static int
+_aio_init(ovs_ctx_t* ctx)
 {
     pthread_attr_t attr;
     pthread_attr_init(&attr);
@@ -222,7 +223,7 @@ int _aio_init(ovs_ctx_t* ctx)
     return 0;
 }
 
-int
+static int
 _aio_destroy(ovs_ctx_t *ctx)
 {
     if (ctx == NULL)
@@ -285,7 +286,7 @@ _aio_destroy(ovs_ctx_t *ctx)
     return 0;
 }
 
-void
+static void
 _drop_caches(ovs_ctx_t *ctx)
 {
     auto it = cache_.find(ctx->shm_handle_);
@@ -432,18 +433,18 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
         return -1;
     }
 
+    ovs_aio_request *request;
     try
     {
-        ovs_aio_request *request = new ovs_aio_request();
+        request = new ovs_aio_request();
+        request->ovs_aiocbp = ovs_aiocbp;
+        request->completion = completion;
     }
     catch (std::bad_alloc&)
     {
         errno = ENOMEM;
         return -1;
     }
-
-    request->ovs_aiocbp = ovs_aiocbp;
-    request->completion = completion;
 
     pthread_cond_init(&ovs_aiocbp->_cond, NULL);
     pthread_mutex_init(&ovs_aiocbp->_mutex, NULL);
