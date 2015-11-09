@@ -13,34 +13,42 @@
 // limitations under the License.
 //
 //
-#ifndef __LIB_OVS_VOLUMEDRIVER_H
-#define __LIB_OVS_VOLUMEDRIVER_H
+#ifndef __LIB_OVS_COMMON_H
+#define __LIB_OVS_COMMON_H
 
-
-#ifdef __GNUC__
-#define likely(x)       __builtin_expect(!!(x), 1)
-#define unlikely(x)     __builtin_expect(!!(x), 0)
-#else
-#define likely(x)       (x)
-#define unlikely(x)     (x)
-#endif
-
-#include "common.h"
-#include "VolumeCacheHandler.h"
-
-typedef struct _ovs_async_threads
+struct _ovs_buffer
 {
-    ovs_iothread_t *rr_iothread;
-    ovs_iothread_t *wr_iothread;
-} ovs_async_threads;
-
-struct _ovs_ctx_t
-{
-    void *shm_handle_;
-    int oflag;
-    ovs_async_threads async_threads_;
-    VolumeCacheHandlerPtr cache_;
+    void *buf;
+    size_t size;
 };
 
+typedef struct _ovs_iothread
+{
+    pthread_t io_t;
+    pthread_mutex_t io_mutex;
+    pthread_cond_t io_cond;
+    bool stopped;
+    bool stopping;
+} ovs_iothread_t;
+
+
+struct _ovs_completion_t
+{
+    ovs_callback_t complete_cb;
+    void *cb_arg;
+    /* Internal members */
+    bool _on_wait;
+    bool _calling;
+    bool _signaled;
+    ssize_t _rv;
+    pthread_cond_t _cond;
+    pthread_mutex_t _mutex;
+};
+
+struct _ovs_aio_request
+{
+    struct ovs_aiocb *ovs_aiocbp;
+    ovs_completion_t *completion;
+};
 
 #endif

@@ -15,8 +15,6 @@
 #include "volumedriver.h"
 #include "libovsvolumedriver.h"
 #include "AioCompletion.h"
-#include "../ShmClient.h"
-#include "VolumeCacheHandler.h"
 
 #include <limits.h>
 #include <boost/asio.hpp>
@@ -40,9 +38,6 @@ struct ovs_ctx_wrapper
     ovs_ctx_t *ctx;
     int n;
 };
-
-static fungi::SpinLock cache_spinlock_;
-static std::map<void*, VolumeCacheHandlerPtr> cache_;
 
 /* Only one AioCompletion instance atm */
 AioCompletion* AioCompletion::_aio_completion_instance = NULL;
@@ -292,21 +287,6 @@ _aio_destroy(ovs_ctx_t *ctx)
     return 0;
 }
 
-static void
-_drop_caches(ovs_ctx_t *ctx)
-{
-    cache_spinlock_.lock();
-    auto it = cache_.find(ctx->shm_handle_);
-    if (it != cache_.end())
-    {
-        VolumeCacheHandler *c_hdl_ = it->second.release();
-        cache_.erase(it);
-        cache_spinlock_.unlock();
-        c_hdl_->drop_caches(ctx);
-        delete c_hdl_;
-    }
-}
-
 ovs_ctx_t*
 ovs_ctx_init(const char* volume_name, int oflag)
 {
@@ -343,15 +323,13 @@ ovs_ctx_init(const char* volume_name, int oflag)
     ret = _aio_init(ctx);
     if (ret == 0)
     {
-        VolumeCacheHandlerPtr volcache_(new VolumeCacheHandler);
-        int ret = volcache_->preallocate(ctx);
+        ctx->cache_.reset(new VolumeCacheHandler(ctx->shm_handle_));
+        int ret = ctx->cache_->preallocate();
         if (ret < 0)
         {
             /* drop caches to free some memory */
-            volcache_->drop_caches(ctx);
+            ctx->cache_->drop_caches();
         }
-        fungi::ScopedSpinLock lock_(cache_spinlock_);
-        cache_.emplace(ctx->shm_handle_, std::move(volcache_));
         return ctx;
     }
     /*never here I hope*/
@@ -376,8 +354,9 @@ ovs_ctx_destroy(ovs_ctx_t *ctx)
     {
         goto err;
     }
-    _drop_caches(ctx);
+    ctx->cache_->drop_caches();
     ret = shm_destroy_handle(static_cast<ShmClientHandle>(ctx->shm_handle_));
+    ctx->cache_.reset();
     free(ctx);
     return ret;
 err:
@@ -620,17 +599,7 @@ ovs_buffer_t*
 ovs_allocate(ovs_ctx_t *ctx,
              size_t size)
 {
-    cache_spinlock_.lock();
-    auto it = cache_.find(ctx->shm_handle_);
-    if (it != cache_.end())
-    {
-        cache_spinlock_.unlock();
-        return it->second->allocate(ctx,
-                                    size);
-    }
-    cache_spinlock_.unlock();
-    errno = ENOMEM;
-    return NULL;
+    return ctx->cache_->allocate(size);
 }
 
 void*
@@ -665,17 +634,7 @@ int
 ovs_deallocate(ovs_ctx_t *ctx,
                ovs_buffer_t *ptr)
 {
-    cache_spinlock_.lock();
-    auto it = cache_.find(ctx->shm_handle_);
-    if (it != cache_.end())
-    {
-        cache_spinlock_.unlock();
-        return it->second->deallocate(ctx,
-                                      ptr);
-    }
-    cache_spinlock_.unlock();
-    errno = EFAULT;
-    return -1;
+    return ctx->cache_->deallocate(ptr);
 }
 
 ovs_completion_t*

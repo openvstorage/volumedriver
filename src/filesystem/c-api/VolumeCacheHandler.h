@@ -15,7 +15,7 @@
 #ifndef _VOLUME_CACHE_H
 #define _VOLUME_CACHE_H
 
-#include "volumedriver.h"
+#include "../ShmClient.h"
 
 #include <youtils/SpinLock.h>
 #include <queue>
@@ -23,22 +23,23 @@
 class VolumeCacheHandler
 {
 public:
+    VolumeCacheHandler(void *shm_handle)
+    : shm_handle_(shm_handle)
+    {}
+
     ovs_buffer_t*
-    allocate(ovs_ctx_t *ctx,
-             size_t size)
+    allocate(size_t size)
     {
         void *buf = NULL;
         size_t max = BufferSize::s_4k;
-        buf = _maybe_allocate_from_queue(ctx,
-                                         size,
+        buf = _maybe_allocate_from_queue(size,
                                          chunks_4k,
                                          lock_4k,
                                          max);
         if (not buf)
         {
             max = BufferSize::s_32k;
-            buf = _maybe_allocate_from_queue(ctx,
-                                             size,
+            buf = _maybe_allocate_from_queue(size,
                                              chunks_32k,
                                              lock_32k,
                                              max);
@@ -46,8 +47,7 @@ public:
         if (not buf)
         {
             max = BufferSize::s_128k;
-            buf = _maybe_allocate_from_queue(ctx,
-                                             size,
+            buf = _maybe_allocate_from_queue(size,
                                              chunks_128k,
                                              lock_128k,
                                              max);
@@ -55,7 +55,7 @@ public:
         if (not buf)
         {
             max = size;
-            buf = shm_allocate(static_cast<ShmClientHandle>(ctx->shm_handle_),
+            buf = shm_allocate(static_cast<ShmClientHandle>(shm_handle_),
                                size);
         }
         if (buf)
@@ -67,38 +67,35 @@ public:
         }
         else
         {
+            errno = ENOMEM;
             return NULL;
         }
     }
 
     int
-    deallocate(ovs_ctx_t *ctx,
-               ovs_buffer_t *shptr)
+    deallocate(ovs_buffer_t *shptr)
     {
         if (shptr)
         {
             switch (shptr->size)
             {
             case BufferSize::s_4k:
-                return _maybe_deallocate_to_queue(ctx,
-                                                  shptr,
+                return _maybe_deallocate_to_queue(shptr,
                                                   chunks_4k,
                                                   lock_4k,
                                                   QueueSize::qs_4k);
             case BufferSize::s_32k:
-                return _maybe_deallocate_to_queue(ctx,
-                                                  shptr,
+                return _maybe_deallocate_to_queue(shptr,
                                                   chunks_32k,
                                                   lock_32k,
                                                   QueueSize::qs_32k);
             case BufferSize::s_128k:
-                return _maybe_deallocate_to_queue(ctx,
-                                                  shptr,
+                return _maybe_deallocate_to_queue(shptr,
                                                   chunks_128k,
                                                   lock_128k,
                                                   QueueSize::qs_128k);
             default:
-                shm_deallocate(static_cast<ShmClientHandle>(ctx->shm_handle_),
+                shm_deallocate(static_cast<ShmClientHandle>(shm_handle_),
                                shptr->buf);
                 delete shptr;
                 return 0;
@@ -112,11 +109,11 @@ public:
     }
 
     int
-    preallocate(ovs_ctx_t *ctx)
+    preallocate()
     {
         for (int i = 0; i < QueueSize::qs_4k; i++)
         {
-            void *ptr = shm_allocate(static_cast<ShmClientHandle>(ctx->shm_handle_),
+            void *ptr = shm_allocate(static_cast<ShmClientHandle>(shm_handle_),
                                      BufferSize::s_4k);
             if (ptr)
             {
@@ -129,7 +126,7 @@ public:
         }
         for (int i = 0; i < QueueSize::qs_32k; i++)
         {
-            void *ptr = shm_allocate(static_cast<ShmClientHandle>(ctx->shm_handle_),
+            void *ptr = shm_allocate(static_cast<ShmClientHandle>(shm_handle_),
                                      BufferSize::s_32k);
             if (ptr)
             {
@@ -142,7 +139,7 @@ public:
         }
         for (int i = 0; i < QueueSize::qs_128k; i++)
         {
-            void *ptr = shm_allocate(static_cast<ShmClientHandle>(ctx->shm_handle_),
+            void *ptr = shm_allocate(static_cast<ShmClientHandle>(shm_handle_),
                                      BufferSize::s_128k);
             if (ptr)
             {
@@ -157,7 +154,7 @@ public:
     }
 
     void
-    drop_caches(ovs_ctx_t *ctx)
+    drop_caches()
     {
         {
             fungi::ScopedSpinLock lock_(lock_4k);
@@ -165,7 +162,7 @@ public:
             {
                 void *buf = chunks_4k.front();
                 chunks_4k.pop();
-                shm_deallocate(static_cast<ShmClientHandle>(ctx->shm_handle_),
+                shm_deallocate(static_cast<ShmClientHandle>(shm_handle_),
                                buf);
             }
         }
@@ -175,7 +172,7 @@ public:
             {
                 void *buf = chunks_32k.front();
                 chunks_32k.pop();
-                shm_deallocate(static_cast<ShmClientHandle>(ctx->shm_handle_),
+                shm_deallocate(static_cast<ShmClientHandle>(shm_handle_),
                                buf);
             }
         }
@@ -185,7 +182,7 @@ public:
             {
                 void *buf = chunks_128k.front();
                 chunks_128k.pop();
-                shm_deallocate(static_cast<ShmClientHandle>(ctx->shm_handle_),
+                shm_deallocate(static_cast<ShmClientHandle>(shm_handle_),
                                buf);
             }
         }
@@ -193,6 +190,7 @@ public:
 
 private:
     typedef std::queue<void*> BufferQueue;
+    void *shm_handle_;
 
     enum BufferSize
     {
@@ -216,8 +214,7 @@ private:
     fungi::SpinLock lock_128k;
 
     void*
-    _maybe_allocate_from_queue(ovs_ctx_t *ctx,
-                               size_t size,
+    _maybe_allocate_from_queue(size_t size,
                                BufferQueue& queue,
                                fungi::SpinLock& lock_,
                                size_t max)
@@ -233,7 +230,7 @@ private:
                     return buf;
                 }
             }
-            return shm_allocate(static_cast<ShmClientHandle>(ctx->shm_handle_),
+            return shm_allocate(static_cast<ShmClientHandle>(shm_handle_),
                                 max);
         }
         else
@@ -243,8 +240,7 @@ private:
     }
 
     int
-    _maybe_deallocate_to_queue(ovs_ctx_t *ctx,
-                               ovs_buffer_t *shptr,
+    _maybe_deallocate_to_queue(ovs_buffer_t *shptr,
                                BufferQueue& queue,
                                fungi::SpinLock& lock_,
                                size_t queue_size)
@@ -258,7 +254,7 @@ private:
         else
         {
             lock_.unlock();
-            shm_deallocate(static_cast<ShmClientHandle>(ctx->shm_handle_),
+            shm_deallocate(static_cast<ShmClientHandle>(shm_handle_),
                            shptr->buf);
         }
         delete shptr;
