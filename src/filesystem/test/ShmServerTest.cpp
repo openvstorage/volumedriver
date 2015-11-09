@@ -119,14 +119,14 @@ TEST_F(ShmServerTest, ovs_create_write_read_destroy)
 
     ASSERT_TRUE(wbuf != nullptr);
 
-    memcpy(wbuf->buf,
+    memcpy(ovs_buffer_data(wbuf),
            pattern.c_str(),
            pattern.length());
 
     struct ovs_aiocb w_aio;
     w_aio.aio_nbytes = pattern.length();
     w_aio.aio_offset = 0;
-    w_aio.aio_buf = wbuf->buf;
+    w_aio.aio_buf = ovs_buffer_data(wbuf);
 
     EXPECT_EQ(ovs_aio_write(ctx,
                             &w_aio),
@@ -152,7 +152,7 @@ TEST_F(ShmServerTest, ovs_create_write_read_destroy)
     struct ovs_aiocb r_aio;
     r_aio.aio_nbytes = pattern.length();
     r_aio.aio_offset = 0;
-    r_aio.aio_buf = rbuf->buf;
+    r_aio.aio_buf = ovs_buffer_data(rbuf);
 
     EXPECT_EQ(ovs_aio_read(ctx,
                            &r_aio),
@@ -167,7 +167,7 @@ TEST_F(ShmServerTest, ovs_create_write_read_destroy)
                              &r_aio),
               pattern.length());
 
-    EXPECT_TRUE(memcmp(rbuf->buf,
+    EXPECT_TRUE(memcmp(ovs_buffer_data(rbuf),
                        pattern.c_str(),
                        pattern.length()) == 0);
 
@@ -234,14 +234,14 @@ TEST_F(ShmServerTest, ovs_completion)
         ovs_aio_create_completion(completion_function::finish_flush,
                                   NULL);
 
-    memcpy(wbuf->buf,
+    memcpy(ovs_buffer_data(wbuf),
            pattern.c_str(),
            pattern_len);
 
     struct ovs_aiocb w_aio;
     w_aio.aio_nbytes = pattern_len;
     w_aio.aio_offset = 0;
-    w_aio.aio_buf = wbuf->buf;
+    w_aio.aio_buf = ovs_buffer_data(wbuf);
 
     EXPECT_EQ(ovs_aio_writecb(ctx,
                               &w_aio,
@@ -272,7 +272,7 @@ TEST_F(ShmServerTest, ovs_completion)
     struct ovs_aiocb r_aio;
     r_aio.aio_nbytes = pattern_len;
     r_aio.aio_offset = 0;
-    r_aio.aio_buf = rbuf->buf;
+    r_aio.aio_buf = ovs_buffer_data(rbuf);
 
     ovs_completion_t *r_completion =
         ovs_aio_create_completion(completion_function::finish_read,
@@ -292,7 +292,7 @@ TEST_F(ShmServerTest, ovs_completion)
                              &r_aio),
               pattern_len);
 
-    EXPECT_TRUE(memcmp(rbuf->buf,
+    EXPECT_TRUE(memcmp(ovs_buffer_data(rbuf),
                        pattern.c_str(),
                        pattern_len) == 0);
 
@@ -380,23 +380,23 @@ TEST_F(ShmServerTest, ovs_completion_two_ctxs)
         ovs_aio_create_completion(completion_function::finish_write,
                                   &pattern_len);
 
-    memcpy(w1_buf->buf,
+    memcpy(ovs_buffer_data(w1_buf),
            pattern.c_str(),
            pattern_len);
 
-    memcpy(w2_buf->buf,
+    memcpy(ovs_buffer_data(w2_buf),
            pattern.c_str(),
            pattern_len);
 
     struct ovs_aiocb w1_aio;
     w1_aio.aio_nbytes = pattern_len;
     w1_aio.aio_offset = 0;
-    w1_aio.aio_buf = w1_buf->buf;
+    w1_aio.aio_buf = ovs_buffer_data(w1_buf);
 
     struct ovs_aiocb w2_aio;
     w2_aio.aio_nbytes = pattern_len;
     w2_aio.aio_offset = 0;
-    w2_aio.aio_buf = w2_buf->buf;
+    w2_aio.aio_buf = ovs_buffer_data(w2_buf);
 
     EXPECT_EQ(ovs_aio_writecb(ctx1,
                               &w1_aio,
@@ -437,7 +437,7 @@ TEST_F(ShmServerTest, ovs_completion_two_ctxs)
     struct ovs_aiocb r_aio;
     r_aio.aio_nbytes = pattern_len;
     r_aio.aio_offset = 0;
-    r_aio.aio_buf = rbuf->buf;
+    r_aio.aio_buf = ovs_buffer_data(rbuf);
 
     ovs_completion_t *r_completion =
         ovs_aio_create_completion(completion_function::finish_read,
@@ -457,7 +457,7 @@ TEST_F(ShmServerTest, ovs_completion_two_ctxs)
                              &r_aio),
               pattern_len);
 
-    EXPECT_TRUE(memcmp(rbuf->buf,
+    EXPECT_TRUE(memcmp(ovs_buffer_data(rbuf),
                        pattern.c_str(),
                        pattern_len) == 0);
 
@@ -486,12 +486,12 @@ TEST_F(ShmServerTest, ovs_write_flush_read)
 
     ASSERT_TRUE(wbuf != nullptr);
 
-    memcpy(wbuf->buf,
+    memcpy(ovs_buffer_data(wbuf),
            pattern.c_str(),
            pattern.length());
 
     EXPECT_EQ(ovs_write(ctx,
-                        wbuf->buf,
+                        ovs_buffer_data(wbuf),
                         pattern.length(),
                         1024),
               pattern.length());
@@ -507,12 +507,12 @@ TEST_F(ShmServerTest, ovs_write_flush_read)
     ASSERT_TRUE(rbuf != nullptr);
 
     EXPECT_EQ(ovs_read(ctx,
-                       rbuf->buf,
+                       ovs_buffer_data(rbuf),
                        pattern.length(),
                        1024),
               pattern.length());
 
-    EXPECT_TRUE(memcmp(rbuf->buf,
+    EXPECT_TRUE(memcmp(ovs_buffer_data(rbuf),
                        pattern.c_str(),
                        pattern.length()) == 0);
 
