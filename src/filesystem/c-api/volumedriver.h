@@ -31,22 +31,12 @@ typedef struct _ovs_buffer
     size_t size;
 } ovs_buffer_t;
 
-typedef struct _ovs_iothread
-{
-    pthread_t io_t;
-    pthread_mutex_t io_mutex;
-    pthread_cond_t io_cond;
-    bool stopped;
-    bool stopping;
-} ovs_iothread_t;
-
 typedef struct _ovs_ctx_t
 {
     void *shm_handle_;
     int oflag;
     /* Asynchronous I/O members */
-    ovs_iothread_t *rr_iothread;
-    ovs_iothread_t *wr_iothread;
+    void *async_iothreads_;
 } ovs_ctx_t;
 
 typedef struct _ovs_aio_request ovs_aio_request;
