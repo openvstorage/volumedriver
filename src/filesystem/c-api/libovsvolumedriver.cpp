@@ -295,12 +295,15 @@ _aio_destroy(ovs_ctx_t *ctx)
 static void
 _drop_caches(ovs_ctx_t *ctx)
 {
+    cache_spinlock_.lock();
     auto it = cache_.find(ctx->shm_handle_);
     if (it != cache_.end())
     {
-        it->second->drop_caches(ctx);
-        fungi::ScopedSpinLock lock_(cache_spinlock_);
+        VolumeCacheHandler *c_hdl_ = it->second.release();
         cache_.erase(it);
+        cache_spinlock_.unlock();
+        c_hdl_->drop_caches(ctx);
+        delete c_hdl_;
     }
 }
 
@@ -617,12 +620,15 @@ ovs_buffer_t*
 ovs_allocate(ovs_ctx_t *ctx,
              size_t size)
 {
+    cache_spinlock_.lock();
     auto it = cache_.find(ctx->shm_handle_);
     if (it != cache_.end())
     {
+        cache_spinlock_.unlock();
         return it->second->allocate(ctx,
                                     size);
     }
+    cache_spinlock_.unlock();
     errno = ENOMEM;
     return NULL;
 }
@@ -659,12 +665,15 @@ int
 ovs_deallocate(ovs_ctx_t *ctx,
                ovs_buffer_t *ptr)
 {
+    cache_spinlock_.lock();
     auto it = cache_.find(ctx->shm_handle_);
     if (it != cache_.end())
     {
+        cache_spinlock_.unlock();
         return it->second->deallocate(ctx,
                                       ptr);
     }
+    cache_spinlock_.unlock();
     errno = EFAULT;
     return -1;
 }
