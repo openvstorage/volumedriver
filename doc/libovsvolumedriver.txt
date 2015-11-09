@@ -46,7 +46,7 @@ Initialize Open vStorage context::
         - EIO An error occurred during context creation
 
 Terminate Open vStorage context::
-    int ovs_ctx_destroy(ovs_ctx_t **ctx);
+    int ovs_ctx_destroy(ovs_ctx_t *ctx);
 
     Description
     -----------
@@ -469,7 +469,7 @@ Unblock a thread waiting for a completion::
         - EINVAL The value specified by 'comp' is invalid.
 
 Release a completion::
-    int ovs_aio_release_completion(ovs_completion_t **comp);
+    int ovs_aio_release_completion(ovs_completion_t *comp);
 
     Description
     -----------
