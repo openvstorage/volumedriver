@@ -3,13 +3,13 @@ set -eux
 # this script is mean to be packaged and run against the openvstorage packaged version of
 # ganesha
 
-VFS_FSAL_LOGFILE=${VFS_FSAL_LOGFILE:-/var/log/volumedriver/vpool.log}
-VFS_FSAL_LOGLEVEL=${VFS_FSAL_LOGLEVEL:-INFO}
-VFS_FSAL_LOGROTATION=${VFS_FSAL_LOGROTATION:-true}
-VFS_FSAL_LOGDISABLE=${VFS_FSAL_LOGDISABLE:-false}
+export VFS_FSAL_LOGFILE=${VFS_FSAL_LOGFILE:-/var/log/volumedriver/vpool.log}
+export VFS_FSAL_LOGLEVEL=${VFS_FSAL_LOGLEVEL:-INFO}
+export VFS_FSAL_LOGROTATION=${VFS_FSAL_LOGROTATION:-true}
+export VFS_FSAL_LOGDISABLE=${VFS_FSAL_LOGDISABLE:-false}
 
 GANESHA_EXECUTABLE=${GANESHA_EXECUTABLE:-/usr/bin/ganesha.nfsd}
 GANESHA_PID_FILE=${GANESHA_PID_FILE:-/var/run/ganesha-cf.pid}
 GANESHA_LOG_FILE=${GANESHA_LOG_FILE:-/var/log/volumedriver/ganesha-cf.log}
 GANESHA_CONFIG_FILE=${GANESHA_CONFIG_FILE:-/opt/OpenvStorage/config/voldrv_vpools/ganesha-cf.conf}
-exec ${GANESHA_EXECUTABLE} -p ${GANESHA_PID_FILE} -L $GANESHA_LOG_FILE -f ${GANESHA_CONFIG_FILE}
+exec ${GANESHA_EXECUTABLE} -p ${GANESHA_PID_FILE} -L ${GANESHA_LOG_FILE} -f ${GANESHA_CONFIG_FILE}
