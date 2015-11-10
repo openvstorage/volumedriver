@@ -235,7 +235,7 @@ FuseInterface::operator()(const fs::path& mntpoint,
                 try
                 {
                     shm_orb_server.run();
-                }CATCH_STD_ALL_LOG_IGNORE("exception running SHM server");
+                }CATCH_STD_ALL_LOG_IGNORE("exception when running SHM server");
             });
 
     boost::thread fsthread([&]
@@ -252,7 +252,10 @@ FuseInterface::operator()(const fs::path& mntpoint,
                                            {
                                              LOG_INFO("waiting for fs thread to finish");
                                              fsthread.join();
-                                             shm_orb_server.stop_all_and_exit();
+                                             try
+                                             {
+                                                 shm_orb_server.stop_all_and_exit();
+                                             }CATCH_STD_ALL_LOG_IGNORE("exception while stopping SHM server");
                                              LOG_INFO("waiting for shm thread to finish");
                                              shmthread.join();
                                            }));
