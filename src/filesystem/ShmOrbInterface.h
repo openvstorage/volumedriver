@@ -36,9 +36,23 @@ public:
     , shm_region_size(pt)
     , fs_(fs)
     , orb_helper_("volumedriverfs_shm_server")
-    {}
+    {
+        try
+        {
+            boost::interprocess::shared_memory_object::remove("openvstorage_segment");
+            shm_segment_ =
+                boost::interprocess::managed_shared_memory(boost::interprocess::create_only,
+                                                           "openvstorage_segment",
+                                                           shm_size());
+        }
+        catch (boost::interprocess::interprocess_exception&)
+        {
+            LOG_FATAL("SHM: Cannot remove/allocate the shared memory segment");
+            throw;
+        }
+    }
 
-    ~ShmOrbInterface() = default;
+    ~ShmOrbInterface();
 
     ShmOrbInterface(const ShmOrbInterface&) = delete;
 

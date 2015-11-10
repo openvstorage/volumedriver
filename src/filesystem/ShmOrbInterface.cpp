@@ -83,19 +83,6 @@ ShmOrbInterface::run()
             throw;
         }
 
-        try
-        {
-            bi::shared_memory_object::remove("openvstorage_segment");
-            shm_segment_ = bi::managed_shared_memory(bi::create_only,
-                                                     "openvstorage_segment",
-                                                     shm_size());
-        }
-        catch (bi::interprocess_exception&)
-        {
-            LOG_FATAL("SHM: Cannot remove/allocate the shared memory segment");
-            throw;
-        }
-
         LOG_INFO("Starting SHM server");
         orb_helper_.orb()->run();
     }
@@ -124,7 +111,6 @@ ShmOrbInterface::stop_all_and_exit()
 {
     try
     {
-        TODO("cnanakos: export volume factory and call it directly");
         CORBA::Object_var obj = orb_helper_.getObjectReference(vd_context_name,
                                                                vd_context_kind,
                                                                vd_object_name,
@@ -147,9 +133,18 @@ ShmOrbInterface::stop_all_and_exit()
                   << " line: " << fe.line()
                   << " mesg: " << fe.errmsg());
     }
+}
 
-    //cnanakos: cleanup?
-    bi::shared_memory_object::remove("openvstorage_segment");
+ShmOrbInterface::~ShmOrbInterface()
+{
+    try
+    {
+        bi::shared_memory_object::remove("openvstorage_segment");
+    }
+    catch (bi::interprocess_exception&)
+    {
+        LOG_FATAL("SHM: Cannot remove shared memory segment");
+    }
 }
 
 const char*
