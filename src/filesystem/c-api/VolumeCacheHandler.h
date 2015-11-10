@@ -67,7 +67,6 @@ public:
         }
         else
         {
-            errno = ENOMEM;
             return NULL;
         }
     }
@@ -103,7 +102,6 @@ public:
         }
         else
         {
-            errno = EFAULT;
             return -1;
         }
     }

@@ -15,7 +15,7 @@
 #ifndef __AIO_COMPLETION_H
 #define __AIO_COMPLETION_H
 
-#include "volumedriver.h"
+#include "common.h"
 
 #include <limits.h>
 #include <boost/asio.hpp>

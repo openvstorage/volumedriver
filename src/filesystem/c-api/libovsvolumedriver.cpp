@@ -599,7 +599,12 @@ ovs_buffer_t*
 ovs_allocate(ovs_ctx_t *ctx,
              size_t size)
 {
-    return ctx->cache_->allocate(size);
+    ovs_buffer_t *buf = ctx->cache_->allocate(size);
+    if (!buf)
+    {
+        errno = ENOMEM;
+    }
+    return buf;
 }
 
 void*
@@ -634,7 +639,12 @@ int
 ovs_deallocate(ovs_ctx_t *ctx,
                ovs_buffer_t *ptr)
 {
-    return ctx->cache_->deallocate(ptr);
+    int ret = ctx->cache_->deallocate(ptr);
+    if (ret < 0)
+    {
+        errno = EFAULT;
+    }
+    return ret;
 }
 
 ovs_completion_t*
