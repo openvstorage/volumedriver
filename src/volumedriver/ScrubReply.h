@@ -17,11 +17,10 @@
 
 #include "Types.h"
 
+#include <iosfwd>
 #include <string>
-#include <sstream>
 
 #include <youtils/Serialization.h>
-
 #include <backend/Namespace.h>
 
 namespace scrubbing
@@ -45,6 +44,15 @@ struct ScrubReply
     ScrubReply&
     operator=(const ScrubReply&) = default;
 
+    bool
+    operator==(const ScrubReply&) const;
+
+    bool
+    operator!=(const ScrubReply& other) const;
+
+    bool
+    operator<(const ScrubReply&) const;
+
     std::string
     str() const;
 
@@ -64,6 +72,10 @@ struct ScrubReply
     backend::Namespace ns_;
     std::string scrub_result_name_;
 };
+
+std::ostream&
+operator<<(std::ostream&,
+           const ScrubReply&);
 
 }
 

@@ -155,4 +155,64 @@ TEST_F(ScrubWorkTest, serialization_of_scrub_reply)
     ASSERT_TRUE(reply2.scrub_result_name_ == scrub_result_name);
 }
 
+TEST_F(ScrubWorkTest, scrub_reply_equality)
+{
+    const backend::Namespace ns1;
+    const std::string res1("scrub_result_1");
+
+    const ScrubReply rep1(ns1,
+                          res1);
+
+    EXPECT_EQ(rep1,
+              ScrubReply(ns1,
+                         res1));
+
+    const backend::Namespace ns2;
+    const std::string res2("scrub_result_2");
+
+    EXPECT_NE(rep1,
+              ScrubReply(ns2,
+                         res1));
+
+    EXPECT_NE(rep1,
+              ScrubReply(ns1,
+                         res2));
+
+    EXPECT_NE(rep1,
+              ScrubReply(ns2,
+                         res2));
+}
+
+TEST_F(ScrubWorkTest, scrub_reply_order)
+{
+    const backend::Namespace ns1;
+    const backend::Namespace ns2;
+
+    const std::string res1("scrub_result_1");
+
+    const ScrubReply rep1(ns1,
+                          res1);
+
+    ASSERT_NE(ns1, ns2);
+
+    if (ns1 < ns2)
+    {
+        EXPECT_LT(rep1,
+                  ScrubReply(ns2,
+                             res1));
+        EXPECT_LT(rep1,
+                  ScrubReply(ns2,
+                             "scrub_result_0"));
+    }
+    else
+    {
+        EXPECT_LT(ScrubReply(ns2,
+                             res1),
+                  rep1);
+        EXPECT_LT(ScrubReply(ns2,
+                             "scrub_result_2"),
+                  rep1);
+    }
+}
+
 }

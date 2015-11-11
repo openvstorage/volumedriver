@@ -14,6 +14,9 @@
 
 #include "ScrubReply.h"
 
+#include <iostream>
+#include <sstream>
+
 namespace scrubbing
 {
 
@@ -43,6 +46,44 @@ ScrubReply::str() const
     oa & boost::serialization::make_nvp(archive_name,
                                         *this);
     return os.str();
+}
+
+bool
+ScrubReply::operator==(const ScrubReply& other) const
+{
+    return
+        ns_ == other.ns_ and
+        scrub_result_name_ == other.scrub_result_name_;
+}
+
+bool
+ScrubReply::operator!=(const ScrubReply& other) const
+{
+    return not operator==(other);
+}
+
+bool
+ScrubReply::operator<(const ScrubReply& other) const
+{
+    if (ns_ < other.ns_)
+    {
+        return true;
+    }
+    else if (ns_ == other.ns_)
+    {
+        return scrub_result_name_ < other.scrub_result_name_;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+std::ostream&
+operator<<(std::ostream& os,
+           const ScrubReply& rep)
+{
+    return os << "ScrubReply(" << rep.ns_ << ", " << rep.scrub_result_name_ << ")";
 }
 
 }
