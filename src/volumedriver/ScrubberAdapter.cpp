@@ -63,9 +63,8 @@ ScrubberAdapter::scrub(const std::string& scrub_work_str,
 
     scrubber();
 
-    ScrubReply scrub_reply(scrub_work.id_,
-                           scrub_work.ns_,
-                           scrubber.getScrubbingResultName());
+    const ScrubReply scrub_reply(scrub_work.ns_,
+                                 scrubber.getScrubbingResultName());
 
     return std::make_pair(scrub_work.id_.str(), scrub_reply.str());
 }

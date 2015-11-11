@@ -141,19 +141,16 @@ TEST_F(ScrubWorkTest, serialization1_alba)
 
 TEST_F(ScrubWorkTest, serialization_of_scrub_reply)
 {
-    VolumeId id("a_volume_id");
     backend::Namespace ns;
     std::string scrub_result_name;
 
-    ScrubReply reply(id,
-                     ns,
+    ScrubReply reply(ns,
                      scrub_result_name);
 
     std::string serialized = reply.str();
 
     ScrubReply reply2(serialized);
 
-    ASSERT_TRUE(reply2.id_ == id);
     ASSERT_TRUE(reply2.ns_ == ns);
     ASSERT_TRUE(reply2.scrub_result_name_ == scrub_result_name);
 }

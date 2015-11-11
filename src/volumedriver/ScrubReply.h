@@ -28,11 +28,9 @@ namespace scrubbing
 {
 struct ScrubReply
 {
-    ScrubReply(const volumedriver::VolumeId& id,
-               const backend::Namespace& ns,
+    ScrubReply(const backend::Namespace& ns,
                const std::string& scrub_result_name)
-        : id_(id)
-        , ns_(ns)
+        : ns_(ns)
         , scrub_result_name_(scrub_result_name)
     {}
 
@@ -51,26 +49,18 @@ struct ScrubReply
     str() const;
 
     template<class Archive>
-    inline void
-    serialize(Archive & ar,
-              const unsigned int version)
+    void
+    serialize(Archive& ar,
+              const unsigned int /* version */)
     {
-        if(version == 1)
-        {
-            ar & BOOST_SERIALIZATION_NVP(ns_);
-            ar & BOOST_SERIALIZATION_NVP(id_);
-            ar & BOOST_SERIALIZATION_NVP(scrub_result_name_);
-        }
-        else
-        {
-            throw youtils::SerializationVersionException("ScrubWork",
-                                                         version,
-                                                         1,
-                                                         1);
-        }
+        ar & BOOST_SERIALIZATION_NVP(ns_);
+
+        volumedriver::VolumeId id_;
+        ar & BOOST_SERIALIZATION_NVP(id_);
+
+        ar & BOOST_SERIALIZATION_NVP(scrub_result_name_);
     }
 
-    volumedriver::VolumeId id_;
     backend::Namespace ns_;
     std::string scrub_result_name_;
 };

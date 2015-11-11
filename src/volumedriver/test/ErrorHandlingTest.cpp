@@ -586,8 +586,7 @@ public:
 
         // this one's fishy, since there's no proof that it throws because it's halted
         // -- it could also throw b/c the scrubres does not exist
-        const scrubbing::ScrubReply scrub_rep(vol_->getName(),
-                                              vol_->getNamespace(),
+        const scrubbing::ScrubReply scrub_rep(vol_->getNamespace(),
                                               "scrub_res");
         ASSERT_THROW(vol_->applyScrubbingWork(scrub_rep),
                      std::exception);
