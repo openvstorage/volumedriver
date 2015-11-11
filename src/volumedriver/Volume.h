@@ -26,6 +26,7 @@
 #include "RestartContext.h"
 #include "SCO.h"
 #include "SCOAccessData.h"
+#include "ScrubbingCleanup.h"
 #include "Snapshot.h"
 #include "SnapshotName.h"
 #include "TLogReader.h"
@@ -58,8 +59,6 @@ class MetaDataStoreTest;
 namespace volumedriver
 {
 BOOLEAN_ENUM(DeleteFailOverCache);
-BOOLEAN_ENUM(CleanupScrubbingOnError);
-BOOLEAN_ENUM(CleanupScrubbingOnSuccess);
 
 class ClusterReadDescriptor;
 class DataStoreNG;
@@ -359,12 +358,9 @@ public:
                      const boost::optional<SnapshotName>& start_snap,
                      const boost::optional<SnapshotName>& end_snap) const;
 
-
     void
     applyScrubbingWork(const std::string& scrubbing_result,
-                       const CleanupScrubbingOnError = CleanupScrubbingOnError::F,
-                       const CleanupScrubbingOnSuccess = CleanupScrubbingOnSuccess::T);
-
+                       const ScrubbingCleanup = ScrubbingCleanup::OnSuccess);
 
     SnapshotName
     getParentSnapName() const;
@@ -672,8 +668,7 @@ private:
     void
     applyScrubbing(const std::string& res_name,
                    const std::string& ns,
-                   const CleanupScrubbingOnError,
-                   const CleanupScrubbingOnSuccess = CleanupScrubbingOnSuccess::T,
+                   const ScrubbingCleanup = ScrubbingCleanup::OnSuccess,
                    const PrefetchVolumeData = PrefetchVolumeData::F);
 
     using UpdateFun = std::function<void(VolumeConfig& cfg)>;

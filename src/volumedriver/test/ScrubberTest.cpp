@@ -73,12 +73,9 @@ public:
     }
 
     void
-    apply_scrubbing(const volumedriver::VolumeId& vid,
+    apply_scrubbing(const VolumeId& vid,
                     const std::string& scrub_result,
-                    const volumedriver::CleanupScrubbingOnError cleanup_on_error =
-                    volumedriver::CleanupScrubbingOnError::T,
-                    const volumedriver::CleanupScrubbingOnSuccess cleanup_on_success =
-                    volumedriver::CleanupScrubbingOnSuccess::T)
+                    const ScrubbingCleanup cleanup = ScrubbingCleanup::Always)
     {
         fungi::ScopedLock l(api::getManagementMutex());
 
@@ -93,8 +90,7 @@ public:
 
         api::applyScrubbingWork(vid,
                                 scrub_result,
-                                cleanup_on_error,
-                                cleanup_on_success);
+                                cleanup);
 
         const MaybeScrubId md_scrub_id2(v->getMetaDataStore()->scrub_id());
         ASSERT_TRUE(md_scrub_id2 != boost::none);
@@ -559,7 +555,7 @@ TEST_P(ScrubberTest, SimpleScrub3)
 
     ASSERT_NO_THROW(apply_scrubbing(vid,
                                     scrub_result,
-                                    CleanupScrubbingOnError::T));
+                                    ScrubbingCleanup::OnError));
 
     checkVolume(v1, 0, 4096,what);
     checkVolume(v1,1 << 10, 4096, what + "-");
@@ -598,21 +594,19 @@ TEST_P(ScrubberTest, SimpleScrub4)
     persistXVals(v1->getName());
     waitForThisBackendWrite(v1);
 
-    auto scrub_work_units  = getScrubbingWork(vid);
+    const auto scrub_work_units = getScrubbingWork(vid);
     ASSERT_EQ(1U, scrub_work_units.size());
 
     std::string scrub_result;
     ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
 
     ASSERT_NO_THROW(apply_scrubbing(vid,
-                                   scrub_result,
-                                   CleanupScrubbingOnError::T));
+                                    scrub_result,
+                                    ScrubbingCleanup::OnError));
     checkVolume(v1, 0, 4096,what);
     checkVolume(v1,1 << 10, 4096, what + "-");
     checkVolume(v1,1 << 15, 4096, what + "--");
-
 }
-
 
 TEST_P(ScrubberTest, SmallRegionScrub1)
 {
@@ -647,7 +641,7 @@ TEST_P(ScrubberTest, SmallRegionScrub1)
 
     ASSERT_NO_THROW(apply_scrubbing(vid,
                                     scrub_result,
-                                    CleanupScrubbingOnError::T));
+                                    ScrubbingCleanup::OnError));
 
     for(int i = 0; i < 512; ++i)
     {
@@ -776,8 +770,7 @@ TEST_P(ScrubberTest, CloneScrubbin)
 
     ASSERT_NO_THROW(apply_scrubbing(clone1,
                                     scrub_result,
-                                    CleanupScrubbingOnError::F,
-                                    CleanupScrubbingOnSuccess::F));
+                                    ScrubbingCleanup::Never));
 
     check_volumes();
 
@@ -785,8 +778,7 @@ TEST_P(ScrubberTest, CloneScrubbin)
 
     ASSERT_NO_THROW(apply_scrubbing(clone2,
                                     scrub_result,
-                                    CleanupScrubbingOnError::T,
-                                    CleanupScrubbingOnSuccess::F));
+                                    ScrubbingCleanup::OnError));
 
     check_volumes();
 
@@ -794,8 +786,7 @@ TEST_P(ScrubberTest, CloneScrubbin)
 
     ASSERT_NO_THROW(apply_scrubbing(vid,
                                     scrub_result,
-                                    CleanupScrubbingOnError::T,
-                                    CleanupScrubbingOnSuccess::F));
+                                    ScrubbingCleanup::OnError));
 
     check_consistency(*v1);
 
@@ -811,8 +802,7 @@ TEST_P(ScrubberTest, CloneScrubbin)
     ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
     ASSERT_NO_THROW(apply_scrubbing(clone2,
                                     scrub_result,
-                                    CleanupScrubbingOnError::T,
-                                    CleanupScrubbingOnSuccess::F));
+                                    ScrubbingCleanup::OnError));
 
     check_volumes();
 
@@ -824,8 +814,7 @@ TEST_P(ScrubberTest, CloneScrubbin)
 
     ASSERT_NO_THROW(apply_scrubbing(clone1,
                                     scrub_result,
-                                    CleanupScrubbingOnError::T,
-                                    CleanupScrubbingOnSuccess::T));
+                                    ScrubbingCleanup::OnError));
 
     check_volumes();
     check_consistency(*v1);
@@ -839,8 +828,7 @@ TEST_P(ScrubberTest, CloneScrubbin)
     ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
     ASSERT_NO_THROW(apply_scrubbing(clone2,
                                     scrub_result,
-                                    CleanupScrubbingOnError::T,
-                                    CleanupScrubbingOnSuccess::F));
+                                    ScrubbingCleanup::OnError));
 
     check_volumes();
     check_consistency(*v1);
@@ -893,8 +881,7 @@ TEST_P(ScrubberTest, idempotent_scrub_result_application)
 
     EXPECT_NO_THROW(apply_scrubbing(vid,
                                     scrub_result,
-                                    CleanupScrubbingOnError::T,
-                                    CleanupScrubbingOnSuccess::F));
+                                    ScrubbingCleanup::OnError));
 
     waitForThisBackendWrite(v1);
 
@@ -960,13 +947,11 @@ TEST_P(ScrubberTest, consistency)
     ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
     ASSERT_NO_THROW(apply_scrubbing(clone1,
                                     scrub_result,
-                                    CleanupScrubbingOnError::T,
-                                    CleanupScrubbingOnSuccess::F));
+                                    ScrubbingCleanup::OnError));
 
     ASSERT_NO_THROW(apply_scrubbing(volume1,
                                     scrub_result,
-                                    CleanupScrubbingOnError::T,
-                                    CleanupScrubbingOnSuccess::F));
+                                    ScrubbingCleanup::OnError));
 
     checkVolume(c1,0,4096,"xxx");
     checkVolume(v1,0,4096,"xxx");

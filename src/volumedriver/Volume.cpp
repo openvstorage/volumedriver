@@ -1714,8 +1714,7 @@ Volume::cleanupScrubbingOnError_(const scrubbing::ScrubberResult& scrub_result,
 
 void
 Volume::applyScrubbingWork(const std::string& scrubbing_result,
-                           const CleanupScrubbingOnError cleanup_on_error,
-                           const CleanupScrubbingOnSuccess cleanup_on_success)
+                           const ScrubbingCleanup cleanup)
 {
     if(T(isVolumeTemplate()))
     {
@@ -1729,18 +1728,21 @@ Volume::applyScrubbingWork(const std::string& scrubbing_result,
 
     applyScrubbing(res.scrub_result_name_,
                    res.ns_.str(),
-                   cleanup_on_error,
-                   cleanup_on_success,
+                   cleanup,
                    PrefetchVolumeData::F);
 }
 
 void
 Volume::applyScrubbing(const std::string& res_name,
                        const std::string& ns,
-                       const CleanupScrubbingOnError cleanup_on_error,
-                       const CleanupScrubbingOnSuccess cleanup_on_success,
+                       const ScrubbingCleanup cleanup,
                        const PrefetchVolumeData prefetch)
 {
+    LOG_VINFO("nspace: " << ns <<
+              ", result name: " << res_name <<
+              ", cleanup: " << cleanup <<
+              ", prefetch: " << prefetch);
+
     if(T(isVolumeTemplate()))
     {
         LOG_ERROR("Volume " << getName() <<
@@ -1778,15 +1780,22 @@ Volume::applyScrubbing(const std::string& res_name,
 
     ALWAYS_CLEANUP_FILE(result_path);
 
-    if (T(cleanup_on_success))
+    switch (cleanup)
     {
-        try
+    case ScrubbingCleanup::OnSuccess:
+    case ScrubbingCleanup::Always:
         {
-            // VOLDRV-716 removed this
-            // nsidmap_[scid]->write(result_path, res_name + "_applied");
-            nsidmap_.get(scid)->remove(res_name);
+            try
+            {
+                // VOLDRV-716 removed this
+                // nsidmap_[scid]->write(result_path, res_name + "_applied");
+                nsidmap_.get(scid)->remove(res_name);
+            }
+            CATCH_STD_ALL_LOG_RETHROW("Could not remove scrubbing result " << res_name);
+            break;
         }
-        CATCH_STD_ALL_LOG_RETHROW("Could not remove scrubbing result " << res_name);
+    default:
+        break;
     }
 
     scrubbing::ScrubberResult scrub_result;
@@ -1845,10 +1854,15 @@ Volume::applyScrubbing(const std::string& res_name,
                        scrub_result.snapshot_name <<
                        " to SnapshotManagement: " << EWHAT);
 
-            if(T(cleanup_on_error))
+            switch (cleanup)
             {
+            case ScrubbingCleanup::OnError:
+            case ScrubbingCleanup::Always:
                 cleanupScrubbingOnError_(scrub_result,
                                          res_name);
+                break;
+            default:
+                break;
             }
 
             VolumeDriverError::report(events::VolumeDriverErrorCode::ApplyScrubbingToSnapshotMamager,

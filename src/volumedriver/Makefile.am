@@ -170,6 +170,7 @@ libvolumedriver_la_SOURCES = \
 	SCOPool.cpp \
 	Scrubber.cpp \
 	ScrubberAdapter.cpp \
+	ScrubbingCleanup.cpp \
 	ScrubWork.cpp \
 	ScrubReply.cpp \
 	ScrubbingSCOData.cpp \

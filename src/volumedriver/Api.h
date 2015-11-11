@@ -26,6 +26,7 @@
 #include "OwnerTag.h"
 #include "PerformanceCounters.h"
 #include "SCOCacheInfo.h"
+#include "ScrubbingCleanup.h"
 #include "Snapshot.h"
 #include "SnapshotName.h"
 #include "Types.h"
@@ -470,8 +471,7 @@ public:
     static void
     applyScrubbingWork(const volumedriver::VolumeId&,
                        const std::string& scrub_work,
-                       const volumedriver::CleanupScrubbingOnError = volumedriver::CleanupScrubbingOnError::F,
-                       const volumedriver::CleanupScrubbingOnSuccess = volumedriver::CleanupScrubbingOnSuccess::T);
+                       const volumedriver::ScrubbingCleanup = volumedriver::ScrubbingCleanup::OnSuccess);
 
     static uint64_t
     volumePotential(const volumedriver::SCOMultiplier,
