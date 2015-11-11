@@ -33,8 +33,6 @@
 
 #include <volumedriver/OwnerTag.h>
 
-class ObjectRegistry;
-
 namespace volumedriverfs
 {
 
