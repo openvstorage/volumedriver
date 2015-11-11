@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "VolManagerTestSetup.h"
+
 #include "../Api.h"
+#include "../ScrubReply.h"
 
 #include <youtils/FileUtils.h>
 
@@ -73,10 +75,13 @@ TEST_P(TemplateVolumeTest, forbidden_actions)
                                      boost::none),
                  VolumeIsTemplateException);
 
-    EXPECT_THROW(v->applyScrubbingWork(""),
+    const scrubbing::ScrubReply scrub_rep(v->getName(),
+                                          v->getNamespace(),
+                                          "scrub_res");
+
+    EXPECT_THROW(v->applyScrubbingWork(scrub_rep),
                  VolumeIsTemplateException);
 }
-
 
 TEST_P(TemplateVolumeTest, set_template_no_data_no_snapshot)
 {

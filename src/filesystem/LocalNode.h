@@ -34,6 +34,11 @@
 
 #include <filedriver/ContainerManager.h>
 
+namespace scrubbing
+{
+class ScrubReply;
+}
+
 namespace volumedriverfstest
 {
 class LocalNodeTest;
@@ -168,7 +173,7 @@ public:
 
     void
     apply_scrub_result(const ObjectId& oid,
-                       const std::string& result);
+                       const scrubbing::ScrubReply&);
 
     void
     set_volume_as_template(const ObjectId& id);

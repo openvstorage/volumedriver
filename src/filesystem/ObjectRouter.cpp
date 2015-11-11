@@ -1354,11 +1354,11 @@ ObjectRouter::get_scrub_work(const ObjectId& oid,
 
 void
 ObjectRouter::apply_scrub_result(const ObjectId& oid,
-                                 const std::string& result)
+                                 const scrubbing::ScrubReply& scrub_rsp)
 {
     LOG_INFO(oid << ": applying scrub result");
     local_node_()->apply_scrub_result(oid,
-                                      result);
+                                      scrub_rsp);
 }
 
 const char*

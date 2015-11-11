@@ -57,24 +57,25 @@ public:
 
     // This code is duplicate from the code in python_scrubber ->unify
 
-    std::string
+    scrubbing::ScrubReply
     do_scrub(const std::string& scrub_work_str,
              uint64_t region_size_exponent = 5,
              float fill_ratio = 1.0,
              bool apply_immediately = false,
              bool verbose_scrubbing = true)
     {
-        return ScrubberAdapter::scrub(scrub_work_str,
-                                      getTempPath(testName_),
-                                      region_size_exponent,
-                                      fill_ratio,
-                                      apply_immediately,
-                                      verbose_scrubbing).second;
+        return
+            scrubbing::ScrubReply(ScrubberAdapter::scrub(scrub_work_str,
+                                                         getTempPath(testName_),
+                                                         region_size_exponent,
+                                                         fill_ratio,
+                                                         apply_immediately,
+                                                         verbose_scrubbing).second);
     }
 
     void
     apply_scrubbing(const VolumeId& vid,
-                    const std::string& scrub_result,
+                    const scrubbing::ScrubReply& scrub_reply,
                     const ScrubbingCleanup cleanup = ScrubbingCleanup::Always)
     {
         fungi::ScopedLock l(api::getManagementMutex());
@@ -89,7 +90,7 @@ public:
                   *md_scrub_id);
 
         api::applyScrubbingWork(vid,
-                                scrub_result,
+                                scrub_reply,
                                 cleanup);
 
         const MaybeScrubId md_scrub_id2(v->getMetaDataStore()->scrub_id());
@@ -197,7 +198,7 @@ TEST_P(ScrubberTest, DeletedSnap2)
     waitForThisBackendWrite(v1);
 
 
-    std::string result;
+    scrubbing::ScrubReply result;
 
     ASSERT_NO_THROW(result = do_scrub(scrub_work_units.front()));
 
@@ -205,7 +206,7 @@ TEST_P(ScrubberTest, DeletedSnap2)
     {
         fungi::ScopedLock l(api::getManagementMutex());
         EXPECT_THROW(apply_scrubbing(vid,
-                                    result),
+                                     result),
                      fungi::IOException);
     }
     waitForThisBackendWrite(v1);
@@ -268,7 +269,7 @@ TEST_P(ScrubberTest, GetWork)
     persistXVals(v1->getName());
     waitForThisBackendWrite(v1);
 
-    std::string scrub_result;
+    scrubbing::ScrubReply scrub_result;
 
     ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
 
@@ -433,7 +434,7 @@ TEST_P(ScrubberTest, Serialization)
     waitForThisBackendWrite(v1);
     auto scrub_work_units  = getScrubbingWork(vid);
     ASSERT_EQ(1U, scrub_work_units.size());
-    std::string scrub_result;
+    scrubbing::ScrubReply scrub_result;
 
     ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
 
@@ -461,7 +462,7 @@ TEST_P(ScrubberTest, ScrubNothing)
     ASSERT_EQ(1U, scrub_work_units.size());
 
 
-    std::string scrub_result;
+    scrubbing::ScrubReply scrub_result;
 
     ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
 
@@ -510,7 +511,7 @@ TEST_P(ScrubberTest, SimpleScrub2)
 
     auto scrub_work_units  = getScrubbingWork(vid);
     ASSERT_EQ(1U, scrub_work_units.size());
-    std::string scrub_result;
+    scrubbing::ScrubReply scrub_result;
     ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
     ASSERT_NO_THROW(apply_scrubbing(vid,
                                     scrub_result));
@@ -549,7 +550,7 @@ TEST_P(ScrubberTest, SimpleScrub3)
     auto scrub_work_units = getScrubbingWork(vid);
     ASSERT_EQ(1U, scrub_work_units.size());
 
-    std::string scrub_result;
+    scrubbing::ScrubReply scrub_result;
 
     ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
 
@@ -597,7 +598,7 @@ TEST_P(ScrubberTest, SimpleScrub4)
     const auto scrub_work_units = getScrubbingWork(vid);
     ASSERT_EQ(1U, scrub_work_units.size());
 
-    std::string scrub_result;
+    scrubbing::ScrubReply scrub_result;
     ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
 
     ASSERT_NO_THROW(apply_scrubbing(vid,
@@ -636,7 +637,7 @@ TEST_P(ScrubberTest, SmallRegionScrub1)
 
     auto scrub_work_units = getScrubbingWork(vid);
 
-    std::string scrub_result;
+    scrubbing::ScrubReply scrub_result;
     ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
 
     ASSERT_NO_THROW(apply_scrubbing(vid,
@@ -764,7 +765,7 @@ TEST_P(ScrubberTest, CloneScrubbin)
     auto scrub_work_units = getScrubbingWork(vid);
     ASSERT_EQ(1U, scrub_work_units.size());
 
-    std::string scrub_result;
+    scrubbing::ScrubReply scrub_result;
 
     ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
 
@@ -876,7 +877,7 @@ TEST_P(ScrubberTest, idempotent_scrub_result_application)
 
     auto scrub_work_units  = getScrubbingWork(vid);
     ASSERT_EQ(1U, scrub_work_units.size());
-    std::string scrub_result;
+    scrubbing::ScrubReply scrub_result;
     ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
 
     EXPECT_NO_THROW(apply_scrubbing(vid,
@@ -939,11 +940,11 @@ TEST_P(ScrubberTest, consistency)
                              v1_snap1);
 
     persistXVals(volume1);
-    auto scrub_work_units  = getScrubbingWork(volume1);
+    auto scrub_work_units = getScrubbingWork(volume1);
     ASSERT_EQ(1U, scrub_work_units.size());
     ASSERT_TRUE(check_work_unit_snapshot_name(scrub_work_units[0], v1_snap1));
 
-    std::string scrub_result;
+    scrubbing::ScrubReply scrub_result;
     ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
     ASSERT_NO_THROW(apply_scrubbing(clone1,
                                     scrub_result,

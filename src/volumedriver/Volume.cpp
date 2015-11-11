@@ -100,6 +100,7 @@ namespace volumedriver
 using youtils::BarrierTask;
 
 namespace bc = boost::chrono;
+namespace be = backend;
 namespace yt = youtils;
 
 Volume::Volume(const VolumeConfig& vCfg,
@@ -1713,32 +1714,14 @@ Volume::cleanupScrubbingOnError_(const scrubbing::ScrubberResult& scrub_result,
 }
 
 void
-Volume::applyScrubbingWork(const std::string& scrubbing_result,
-                           const ScrubbingCleanup cleanup)
+Volume::applyScrubbingWork(const scrubbing::ScrubReply& scrub_reply,
+                           const ScrubbingCleanup cleanup,
+                           const PrefetchVolumeData prefetch)
 {
-    if(T(isVolumeTemplate()))
-    {
-        LOG_ERROR("Volume " << getName() << " has been templated, applying scrubbing is not allowed.");
-        throw VolumeIsTemplateException("Templated Volume, applying scrubbing is forbidden");
-    }
-    checkNotHalted_();
-    scrubbing::ScrubReply res(scrubbing_result);
-    // This does not have to be so: scrubbing of parent might be applied to the clone!!
-    // VERIFY(res.id_ == config_.id_);
+    const be::Namespace& ns = scrub_reply.ns_;
+    const std::string& res_name = scrub_reply.scrub_result_name_;
 
-    applyScrubbing(res.scrub_result_name_,
-                   res.ns_.str(),
-                   cleanup,
-                   PrefetchVolumeData::F);
-}
-
-void
-Volume::applyScrubbing(const std::string& res_name,
-                       const std::string& ns,
-                       const ScrubbingCleanup cleanup,
-                       const PrefetchVolumeData prefetch)
-{
-    LOG_VINFO("nspace: " << ns <<
+    LOG_VINFO("namespace: " << ns <<
               ", result name: " << res_name <<
               ", cleanup: " << cleanup <<
               ", prefetch: " << prefetch);
@@ -1761,7 +1744,7 @@ Volume::applyScrubbing(const std::string& res_name,
     }
 
     const fs::path result_path(FileUtils::temp_path() / res_name);
-    const SCOCloneID scid = nsidmap_.getCloneID(Namespace(ns));
+    const SCOCloneID scid = nsidmap_.getCloneID(ns);
 
     try
     {
@@ -1771,7 +1754,8 @@ Volume::applyScrubbing(const std::string& res_name,
     }
     CATCH_STD_ALL_EWHAT({
         // Manual cleanup required?
-            LOG_VERROR("Could not retrieve scrubbing result " << res_name << ": " << EWHAT);
+            LOG_VERROR("Could not retrieve scrubbing result " << res_name << ": " <<
+                       EWHAT);
             VolumeDriverError::report(events::VolumeDriverErrorCode::GetScrubbingResultsFromBackend,
                                       EWHAT,
                                       getName());
@@ -1825,7 +1809,7 @@ Volume::applyScrubbing(const std::string& res_name,
             LOG_VINFO("ApplyScrub: replacing tlogs for snapshot " <<
                       scrub_result.snapshot_name);
 
-            VERIFY(getNamespace() == Namespace(ns));
+            VERIFY(getNamespace() == ns);
             if(not scrub_result.tlogs_out.empty())
             {
                 const SnapshotNum n =

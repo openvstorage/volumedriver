@@ -48,6 +48,7 @@
 
 namespace scrubbing
 {
+struct ScrubReply;
 struct ScrubberResult;
 }
 
@@ -359,8 +360,9 @@ public:
                      const boost::optional<SnapshotName>& end_snap) const;
 
     void
-    applyScrubbingWork(const std::string& scrubbing_result,
-                       const ScrubbingCleanup = ScrubbingCleanup::OnSuccess);
+    applyScrubbingWork(const scrubbing::ScrubReply&,
+                       const ScrubbingCleanup = ScrubbingCleanup::OnSuccess,
+                       const PrefetchVolumeData = PrefetchVolumeData::F);
 
     SnapshotName
     getParentSnapName() const;
@@ -664,12 +666,6 @@ private:
 
     void
     check_cork_match_();
-
-    void
-    applyScrubbing(const std::string& res_name,
-                   const std::string& ns,
-                   const ScrubbingCleanup = ScrubbingCleanup::OnSuccess,
-                   const PrefetchVolumeData = PrefetchVolumeData::F);
 
     using UpdateFun = std::function<void(VolumeConfig& cfg)>;
 

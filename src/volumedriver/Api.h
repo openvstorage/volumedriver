@@ -470,7 +470,7 @@ public:
 
     static void
     applyScrubbingWork(const volumedriver::VolumeId&,
-                       const std::string& scrub_work,
+                       const scrubbing::ScrubReply&,
                        const volumedriver::ScrubbingCleanup = volumedriver::ScrubbingCleanup::OnSuccess);
 
     static uint64_t

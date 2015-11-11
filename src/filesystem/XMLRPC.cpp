@@ -40,6 +40,7 @@
 
 #include <volumedriver/Api.h>
 #include <volumedriver/MetaDataBackendInterface.h>
+#include <volumedriver/ScrubReply.h>
 #include <volumedriver/Types.h>
 #include <volumedriver/VolManager.h>
 #include <volumedriver/VolumeDriverError.h>
@@ -776,10 +777,10 @@ ApplyScrubbingResult::execute_internal(::XmlRpc::XmlRpcValue&  params,
                                        ::XmlRpc::XmlRpcValue& /*result*/)
 {
     const ObjectId volid(getID(params[0]));
-    const std::string scrub_result(getScrubbingWorkResult(params[0]));
+    const std::string scrub_rsp_str(getScrubbingWorkResult(params[0]));
 
     fs_.object_router().apply_scrub_result(volid,
-                                           scrub_result);
+                                           scrubbing::ScrubReply(scrub_rsp_str));
 }
 
 void

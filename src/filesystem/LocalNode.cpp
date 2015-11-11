@@ -1338,7 +1338,7 @@ LocalNode::get_scrub_work(const ObjectId& id,
 
 void
 LocalNode::apply_scrub_result(const ObjectId& id,
-                              const std::string& result)
+                              const scrubbing::ScrubReply& rsp)
 {
     LOG_INFO(id << ": applying scrub result");
 
@@ -1347,7 +1347,7 @@ LocalNode::apply_scrub_result(const ObjectId& id,
                    [&]
                    {
                        api::applyScrubbingWork(static_cast<const vd::VolumeId>(id),
-                                               result);
+                                               rsp);
                    });
 }
 

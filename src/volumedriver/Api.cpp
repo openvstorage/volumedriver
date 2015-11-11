@@ -915,11 +915,11 @@ api::getScrubbingWork(const vd::VolumeId& volName,
 
 void
 api::applyScrubbingWork(const vd::VolumeId& volName,
-                        const std::string& scrub_work,
+                        const scrubbing::ScrubReply& scrub_reply,
                         const vd::ScrubbingCleanup cleanup)
 {
     Volume* v = VolManager::get()->findVolume_(volName);
-    v->applyScrubbingWork(scrub_work,
+    v->applyScrubbingWork(scrub_reply,
                           cleanup);
 }
 

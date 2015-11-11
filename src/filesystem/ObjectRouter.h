@@ -61,6 +61,11 @@ class TransferRequest;
 
 }
 
+namespace scrubbing
+{
+class ScrubReply;
+}
+
 namespace volumedriver
 {
 class Volume;
@@ -244,7 +249,7 @@ public:
 
     void
     apply_scrub_result(const ObjectId& oid,
-                       const std::string& scrub_result);
+                       const scrubbing::ScrubReply&);
 
     void
     mark_node_offline(const NodeId& node_id);

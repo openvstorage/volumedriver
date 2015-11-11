@@ -21,6 +21,7 @@
 
 #include "../Api.h"
 #include "../DataStoreNG.h"
+#include "../ScrubReply.h"
 #include "../TransientException.h"
 #include "../VolManager.h"
 
@@ -585,8 +586,10 @@ public:
 
         // this one's fishy, since there's no proof that it throws because it's halted
         // -- it could also throw b/c the scrubres does not exist
-        const std::string scrubres("scrubres");
-        ASSERT_THROW(vol_->applyScrubbingWork(scrubres),
+        const scrubbing::ScrubReply scrub_rep(vol_->getName(),
+                                              vol_->getNamespace(),
+                                              "scrub_res");
+        ASSERT_THROW(vol_->applyScrubbingWork(scrub_rep),
                      std::exception);
 
         ASSERT_THROW(vol_->checkConsistency(),
