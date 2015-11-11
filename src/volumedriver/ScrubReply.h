@@ -14,46 +14,41 @@
 
 #ifndef SCRUB_REPLY_H_
 #define SCRUB_REPLY_H_
+
+#include "Types.h"
+
 #include <string>
 #include <sstream>
+
 #include <youtils/Serialization.h>
-#include "Types.h"
+
+#include <backend/Namespace.h>
 
 namespace scrubbing
 {
 struct ScrubReply
 {
     ScrubReply(const volumedriver::VolumeId& id,
-               const volumedriver::Namespace& ns,
+               const backend::Namespace& ns,
                const std::string& scrub_result_name)
         : id_(id)
         , ns_(ns)
         , scrub_result_name_(scrub_result_name)
     {}
 
+    ScrubReply() = default;
 
-    ScrubReply()
-        : ns_()
-    {}
+    explicit ScrubReply(const std::string&);
 
-     ScrubReply(const std::string& in)
-         : ns_()
-     {
-         std::stringstream iss(in);
-         iarchive_type ia(iss);
-         ia & boost::serialization::make_nvp("scrubreply",
-                                             *this);
-     }
+    ~ScrubReply() = default;
+
+    ScrubReply(const ScrubReply&) = default;
+
+    ScrubReply&
+    operator=(const ScrubReply&) = default;
 
     std::string
-    str() const
-    {
-        std::stringstream oss;
-        oarchive_type oa(oss);
-        oa & boost::serialization::make_nvp("scrubreply",
-                                            *this);
-        return oss.str();
-    }
+    str() const;
 
     template<class Archive>
     inline void
@@ -75,18 +70,13 @@ struct ScrubReply
         }
     }
 
-    DECLARE_LOGGER("ScrubReply");
-
-    typedef boost::archive::xml_iarchive iarchive_type;
-    typedef boost::archive::xml_oarchive oarchive_type;
-
-
     volumedriver::VolumeId id_;
-    volumedriver::Namespace ns_;
+    backend::Namespace ns_;
     std::string scrub_result_name_;
-
 };
 
 }
+
 BOOST_CLASS_VERSION(scrubbing::ScrubReply, 1);
+
 #endif // SCRUB_REPLY_H_

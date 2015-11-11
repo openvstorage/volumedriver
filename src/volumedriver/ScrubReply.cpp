@@ -13,3 +13,36 @@
 // limitations under the License.
 
 #include "ScrubReply.h"
+
+namespace scrubbing
+{
+
+namespace
+{
+
+using IArchive = boost::archive::xml_iarchive;
+using OArchive = boost::archive::xml_oarchive;
+
+const char archive_name[] = "scrubreply";
+
+}
+
+ScrubReply::ScrubReply(const std::string& s)
+{
+    std::istringstream is(s);
+    IArchive ia(is);
+    ia & boost::serialization::make_nvp(archive_name,
+                                        *this);
+}
+
+std::string
+ScrubReply::str() const
+{
+    std::ostringstream os;
+    OArchive oa(os);
+    oa & boost::serialization::make_nvp(archive_name,
+                                        *this);
+    return os.str();
+}
+
+}
