@@ -33,6 +33,8 @@
 #include <volumedriver/SnapshotPersistor.h>
 #include <volumedriver/Volume.h>
 #include <volumedriver/ScrubberAdapter.h>
+#include <volumedriver/ScrubReply.h>
+#include <volumedriver/ScrubWork.h>
 #include <volumedriver/test/MDSTestSetup.h>
 
 #include "../CloneFileFlags.h"
@@ -174,11 +176,14 @@ protected:
     bpy::tuple
     scrub_wrap(const bpy::object& work_item)
     {
-        const auto cpp_result =
-            scrubbing::ScrubberAdapter::scrub(std::string(bpy::extract<std::string>(work_item)), "/tmp");
-        const bpy::tuple py_result =
-            boost::python::make_tuple(cpp_result.first, cpp_result.second);
-        return py_result;
+        using namespace scrubbing;
+
+        const std::string work_str = bpy::extract<std::string>(work_item);
+        const ScrubWork work(work_str);
+        const ScrubReply reply(ScrubberAdapter::scrub(work,
+                                                      "/tmp"));
+        return bpy::make_tuple(work.id_.str(),
+                               reply.str());
     }
 
     void

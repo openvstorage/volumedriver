@@ -1,4 +1,6 @@
 #include "../ScrubberAdapter.h"
+#include "../ScrubReply.h"
+#include "../ScrubWork.h"
 
 #include <sys/prctl.h>
 
@@ -22,7 +24,7 @@ class Main
     DECLARE_LOGGER("ScrubberMain");
 
     po::options_description opts_;
-    std::string scrub_work_;
+    std::string scrub_work_str_;
     fs::path scratch_dir_;
     uint64_t region_size_exponent_ =
         scrubbing::ScrubberAdapter::region_size_exponent_default;
@@ -38,7 +40,7 @@ public:
     {
         opts_.add_options()
             ("scrub-work",
-             po::value<std::string>(&scrub_work_)->required(),
+             po::value<std::string>(&scrub_work_str_)->required(),
              "scrub work description (serialized to a string, obtained from volumedriver")
             ("scratch-dir",
              po::value<fs::path>(&scratch_dir_)->required(),
@@ -78,6 +80,8 @@ public:
     virtual int
     run() override final
     {
+        using namespace scrubbing;
+
         const int signal = SIGUSR2;
 
         const yt::SignalSet sigset({signal});
@@ -99,15 +103,14 @@ public:
             return ret;
         }
 
-        const scrubbing::ScrubberAdapter::result_type
-            res(scrubbing::ScrubberAdapter::scrub(scrub_work_,
-                                                  scratch_dir_,
-                                                  region_size_exponent_,
-                                                  fill_ratio_,
-                                                  false,
-                                                  verbose_));
+        const ScrubReply reply(ScrubberAdapter::scrub(ScrubWork(scrub_work_str_),
+                                                      scratch_dir_,
+                                                      region_size_exponent_,
+                                                      fill_ratio_,
+                                                      false,
+                                                      verbose_));
 
-        std::cout << res.second << std::endl;
+        std::cout << reply.str() << std::endl;
 
         return 0;
     }

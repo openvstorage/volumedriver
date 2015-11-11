@@ -13,13 +13,15 @@
 // limitations under the License.
 
 #include "VolManagerTestSetup.h"
-#include "../Scrubber.h"
-#include <boost/filesystem/fstream.hpp>
+
 #include "../Api.h"
-#include "../VolManager.h"
+#include "../Scrubber.h"
+#include "../ScrubberAdapter.h"
 #include "../ScrubWork.h"
 #include "../ScrubReply.h"
-#include "../ScrubberAdapter.h"
+#include "../VolManager.h"
+
+#include <boost/filesystem/fstream.hpp>
 
 namespace volumedrivertest
 {
@@ -64,13 +66,12 @@ public:
              bool apply_immediately = false,
              bool verbose_scrubbing = true)
     {
-        return
-            scrubbing::ScrubReply(ScrubberAdapter::scrub(scrub_work_str,
-                                                         getTempPath(testName_),
-                                                         region_size_exponent,
-                                                         fill_ratio,
-                                                         apply_immediately,
-                                                         verbose_scrubbing).second);
+        return ScrubberAdapter::scrub(scrubbing::ScrubWork(scrub_work_str),
+                                      getTempPath(testName_),
+                                      region_size_exponent,
+                                      fill_ratio,
+                                      apply_immediately,
+                                      verbose_scrubbing);
     }
 
     void

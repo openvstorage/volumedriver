@@ -25,10 +25,11 @@
 namespace scrubbing
 {
 
+class ScrubReply;
+class ScrubWork;
+
 struct ScrubberAdapter
 {
-    using result_type = std::pair<std::string, std::string>;
-
     ScrubberAdapter() = default;
 
     ~ScrubberAdapter() = default;
@@ -43,8 +44,8 @@ struct ScrubberAdapter
     const static bool apply_immediately_default;
     const static bool verbose_scrubbing_default;
 
-    static result_type
-    scrub(const std::string& work_unit,
+    static ScrubReply
+    scrub(const ScrubWork&,
           const boost::filesystem::path& workdir,
           const uint64_t region_size_exponent = region_size_exponent_default,
           const float fill_ratio = fill_ratio_default,

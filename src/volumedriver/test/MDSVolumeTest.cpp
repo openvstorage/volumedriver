@@ -36,6 +36,7 @@
 #include "../Scrubber.h"
 #include "../ScrubberAdapter.h"
 #include "../ScrubReply.h"
+#include "../ScrubWork.h"
 #include "../TLogReaderUtils.h"
 
 namespace volumedrivertest
@@ -435,16 +436,15 @@ protected:
     }
 
     scrubbing::ScrubReply
-    scrub(const std::string& work,
+    scrub(const std::string& work_str,
           double fill_ratio = 1.0)
     {
-        return
-            scrubbing::ScrubReply(scrubbing::ScrubberAdapter::scrub(work,
-                                                                    getTempPath(testName_),
-                                                                    5, // region_size_exponent
-                                                                    fill_ratio, // fill ratio
-                                                                    false, // apply immediately
-                                                                    true).second); // verbose
+        return scrubbing::ScrubberAdapter::scrub(scrubbing::ScrubWork(work_str),
+                                                 getTempPath(testName_),
+                                                 5, // region_size_exponent
+                                                 fill_ratio, // fill ratio
+                                                 false, // apply immediately
+                                                 true); // verbose
     }
 
     scrubbing::ScrubberResult
