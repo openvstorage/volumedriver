@@ -28,6 +28,8 @@
 #include "common.h"
 #include "VolumeCacheHandler.h"
 
+#include <boost/asio.hpp>
+
 typedef struct _ovs_async_threads
 {
     ovs_iothread_t *rr_iothread;
@@ -40,6 +42,8 @@ struct _ovs_ctx_t
     int oflag;
     ovs_async_threads async_threads_;
     VolumeCacheHandlerPtr cache_;
+    std::unique_ptr<boost::asio::io_service> io_service_;
+    std::unique_ptr<boost::asio::local::stream_protocol::socket> socket_;
 };
 
 

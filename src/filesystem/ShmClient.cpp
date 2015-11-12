@@ -69,6 +69,7 @@ ShmClient::ShmClient(const std::string& volume_name,
                                                  create_result->readrequest_uuid));
     readreply_mq_.reset(new ipc::message_queue(ipc::open_only,
                                                create_result->readreply_uuid));
+    key_ = create_result->writerequest_uuid;
 }
 
 ShmClient::~ShmClient()
@@ -409,4 +410,10 @@ shm_create_volume(const char* volume_name,
         return -EIO;
     }
     return 0;
+}
+
+const char*
+shm_get_key(ShmClientHandle h)
+{
+    return static_cast<volumedriverfs::ShmClient*>(h)->get_key().c_str();
 }

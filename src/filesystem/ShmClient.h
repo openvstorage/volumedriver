@@ -89,6 +89,12 @@ public:
         return create_result->volume_size_in_bytes;
     }
 
+    const std::string&
+    get_key() const
+    {
+        return key_;
+    }
+
     void
     flush();
 
@@ -116,6 +122,7 @@ private:
     ShmIdlInterface::VolumeFactory_var volumefactory_ref_;
 
     const std::string volume_name_;
+    std::string key_;
 
     std::unique_ptr<ShmIdlInterface::CreateResult> create_result;
 
@@ -189,6 +196,9 @@ shm_stat(ShmClientHandle h,
 int
 shm_create_volume(const char *volume_name,
                   const uint64_t volume_size_in_bytes);
+
+const char*
+shm_get_key(ShmClientHandle h);
 
 #ifdef __cplusplus
 }

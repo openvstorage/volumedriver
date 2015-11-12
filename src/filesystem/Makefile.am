@@ -20,7 +20,9 @@ OMNIIDL=@omniidl@
 ShmIdlInterface.cpp : ShmIdlInterface.idl
 	$(OMNIIDL) -bcxx -Wbh=.h -Wbs=.cpp -Wbtp $<
 
-libvolumedriverfs_la_CXXFLAGS = $(BUILDTOOLS_CFLAGS) -D_FILE_OFFSET_BITS=64
+libvolumedriverfs_la_CXXFLAGS = \
+	$(BUILDTOOLS_CFLAGS) -D_FILE_OFFSET_BITS=64 \
+	-I@abs_top_srcdir@/../msgpack-c/include
 libvolumedriverfs_la_CFLAGS = $(BUILDTOOLS_CFLAGS) -D_FILE_OFFSET_BITS=64
 libvolumedriverfs_la_CPPFLAGS = -I@abs_top_srcdir@/.. -I@abs_top_builddir@/../volumedriver
 libvolumedriverfs_la_LDFLAGS = -static
@@ -29,7 +31,8 @@ libovsvolumedriver_la_SOURCES = \
 	ShmIdlInterface.cpp \
 	ShmClient.cpp \
 	c-api/libovsvolumedriver.cpp
-libovsvolumedriver_la_CXXFLAGS = ${BUILDTOOLS_CFLAGS}
+libovsvolumedriver_la_CXXFLAGS = ${BUILDTOOLS_CFLAGS} \
+	-I@abs_top_srcdir@/../msgpack-c/include
 libovsvolumedriver_la_LIBADD = ../youtils/libyoutils.la ${BUILDTOOLS_LIBS}
 libovsvolumedriver_la_CPPFLAGS = \
 	-I@abs_top_srcdir@/.. \
