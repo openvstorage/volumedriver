@@ -75,6 +75,12 @@ struct PerfTestThreadPoolTraits
     {
         return 10000;
     }
+
+    static int
+    default_producer_id()
+    {
+        return 0;
+    }
 };
 
 const char* PerfTestThreadPoolTraits::component_name =

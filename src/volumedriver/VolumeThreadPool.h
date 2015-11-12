@@ -74,6 +74,12 @@ struct ThreadPoolTraits<volumedriver::VolumeInterface*>
 #undef SECS
         }
     }
+
+    static volumedriver::VolumeInterface*
+    default_producer_id()
+    {
+        return nullptr;
+    }
 };
 
 }
