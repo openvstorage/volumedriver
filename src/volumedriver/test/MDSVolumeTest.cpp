@@ -1081,8 +1081,8 @@ TEST_P(MDSVolumeTest, futile_scrub)
 
     ASSERT_TRUE(scrub_res.relocs.empty());
 
-    v->applyScrubbingWork(scrub_reply);
-    waitForThisBackendWrite(v);
+    apply_scrub_reply(*v,
+                      scrub_reply);
 
     const auto new_scrub_id(v->getMetaDataStore()->scrub_id());
 
@@ -1111,8 +1111,8 @@ TEST_P(MDSVolumeTest, happy_scrub)
 
     const scrubbing::ScrubReply scrub_reply(prepare_scrub_test(*v));
 
-    v->applyScrubbingWork(scrub_reply);
-    waitForThisBackendWrite(v);
+    apply_scrub_reply(*v,
+                      scrub_reply);
 
     const auto new_scrub_id(v->getMetaDataStore()->scrub_id());
 
@@ -1150,8 +1150,8 @@ TEST_P(MDSVolumeTest, scrub_with_master_out_to_lunch)
     const MDSNodeConfigs ncfgs(node_configs());
     mds_manager_->stop_one(ncfgs[0]);
 
-    v->applyScrubbingWork(scrub_reply);
-    waitForThisBackendWrite(v);
+    apply_scrub_reply(*v,
+                      scrub_reply);
 
     const auto new_scrub_id(v->getMetaDataStore()->scrub_id());
     EXPECT_NE(old_scrub_id,
@@ -1187,8 +1187,8 @@ TEST_P(MDSVolumeTest, scrub_with_slave_out_to_lunch)
 
     mds_manager_->stop_one(scfgs[1].node_config);
 
-    v->applyScrubbingWork(scrub_reply);
-    waitForThisBackendWrite(v);
+    apply_scrub_reply(*v,
+                      scrub_reply);
 
     check_reloc_map(*v,
                     relocmap);
@@ -1306,8 +1306,8 @@ TEST_P(MDSVolumeTest, no_relocations_on_slaves)
 
         const scrubbing::ScrubReply scrub_reply(prepare_scrub_test(*v));
 
-        v->applyScrubbingWork(scrub_reply);
-        waitForThisBackendWrite(v);
+        apply_scrub_reply(*v,
+                          scrub_reply);
 
         const auto new_scrub_id(v->getMetaDataStore()->scrub_id());
         EXPECT_NE(old_scrub_id, new_scrub_id);

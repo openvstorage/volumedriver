@@ -46,6 +46,8 @@
 #include <youtils/Logging.h>
 #include <youtils/RWLock.h>
 
+#include <backend/Garbage.h>
+
 namespace scrubbing
 {
 struct ScrubReply;
@@ -359,7 +361,7 @@ public:
                      const boost::optional<SnapshotName>& start_snap,
                      const boost::optional<SnapshotName>& end_snap) const;
 
-    void
+    boost::optional<backend::Garbage>
     applyScrubbingWork(const scrubbing::ScrubReply&,
                        const ScrubbingCleanup = ScrubbingCleanup::OnSuccess,
                        const PrefetchVolumeData = PrefetchVolumeData::F);
@@ -659,7 +661,9 @@ private:
     sync_(AppendCheckSum append_chksum);
 
     void
-    cleanupScrubbingOnError_(const scrubbing::ScrubberResult&, const std::string&);
+    cleanupScrubbingOnError_(const backend::Namespace&,
+                             const scrubbing::ScrubberResult&,
+                             const std::string&);
 
     void
     throttle_(unsigned throttle_usecs) const;

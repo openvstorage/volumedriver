@@ -29,6 +29,8 @@
 #include <youtils/Timer.h>
 #include <youtils/IOException.h>
 
+#include <backend/GarbageCollector.h>
+
 #include <volumedriver/Api.h>
 #include <volumedriver/TransientException.h>
 #include <volumedriver/VolManager.h>
@@ -1346,8 +1348,28 @@ LocalNode::apply_scrub_result(const ObjectId& id,
                    id,
                    [&]
                    {
-                       api::applyScrubbingWork(static_cast<const vd::VolumeId>(id),
-                                               rsp);
+                       boost::optional<be::Garbage>
+                           garbage(api::applyScrubbingWork(static_cast<const vd::VolumeId>(id),
+                                                           rsp));
+                       // TODO: just a stop-gap measure to maintain the old behaviour.
+                       // It has to go away once the ScrubManager is taking over and
+                       // clones can be scrubbed.
+                       if (garbage)
+                       {
+                           vd::Volume* v =
+                               api::getVolumePointer(static_cast<const vd::VolumeId>(id));
+                           VERIFY(v);
+
+                           // be::Garbage cannot be copied so we need to take a
+                           // detour via a shared_ptr as a std::function capturing
+                           // a move-only type does not work.
+                           auto g(std::make_shared<be::Garbage>(std::move(*garbage)));
+
+                           v->wait_for_backend_and_run([g]() mutable
+                                                       {
+                                                           api::backend_garbage_collector()->queue(std::move(*g));
+                                                       });
+                       }
                    });
 }
 

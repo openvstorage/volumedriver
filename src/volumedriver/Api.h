@@ -49,6 +49,7 @@
 #include <youtils/UpdateReport.h>
 #include <youtils/UUID.h>
 
+#include <backend/GarbageCollectorFwd.h>
 #include <backend/Namespace.h>
 
 namespace volumedriver
@@ -468,7 +469,7 @@ public:
                      const boost::optional<volumedriver::SnapshotName>& start_snap,
                      const boost::optional<volumedriver::SnapshotName>& end_snap);
 
-    static void
+    static boost::optional<backend::Garbage>
     applyScrubbingWork(const volumedriver::VolumeId&,
                        const scrubbing::ScrubReply&,
                        const volumedriver::ScrubbingCleanup = volumedriver::ScrubbingCleanup::OnSuccess);
@@ -483,11 +484,13 @@ public:
     static backend::BackendConnectionManagerPtr
     backend_connection_manager();
 
+    static backend::GarbageCollectorPtr
+    backend_garbage_collector();
+
     static void
     setSyncIgnore(const volumedriver::VolumeId& volName,
                   const uint64_t number_of_syncs_to_ignore,
                   const uint64_t maximum_time_to_ignore_syncs_in_seconds);
-
 
     static void
     getSyncIgnore(const volumedriver::VolumeId& volName,
@@ -514,7 +517,6 @@ public:
 
     static boost::optional<volumedriver::SCOCacheNonDisposableFactor>
     getSCOCacheMaxNonDisposableFactor(const volumedriver::VolumeId& volName);
-
 };
 
 #endif // API_H_

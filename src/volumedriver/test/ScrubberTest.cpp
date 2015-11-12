@@ -90,9 +90,9 @@ public:
         ASSERT_EQ(sp_scrub_id,
                   *md_scrub_id);
 
-        api::applyScrubbingWork(vid,
-                                scrub_reply,
-                                cleanup);
+        apply_scrub_reply(*v,
+                          scrub_reply,
+                          cleanup);
 
         const MaybeScrubId md_scrub_id2(v->getMetaDataStore()->scrub_id());
         ASSERT_TRUE(md_scrub_id2 != boost::none);

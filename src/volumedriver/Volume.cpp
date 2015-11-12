@@ -60,6 +60,8 @@
 #include <youtils/UUID.h>
 
 #include <backend/BackendInterface.h>
+#include <backend/Garbage.h>
+#include <backend/GarbageCollector.h>
 
 // sanity check
 static_assert(FLT_RADIX == 2, "Need to check code for non conforming FLT_RADIX");
@@ -1667,7 +1669,8 @@ Volume::getScrubbingWork(std::vector<std::string>& scrub_work,
 }
 
 void
-Volume::cleanupScrubbingOnError_(const scrubbing::ScrubberResult& scrub_result,
+Volume::cleanupScrubbingOnError_(const be::Namespace& nspace,
+                                 const scrubbing::ScrubberResult& scrub_result,
                                  const std::string& res_name)
 {
     LOG_VINFO("Cleaning up, don't reapply scrubbing " << res_name);
@@ -1681,39 +1684,34 @@ Volume::cleanupScrubbingOnError_(const scrubbing::ScrubberResult& scrub_result,
         }
     }
 
-    try
+    std::vector<std::string> garbage;
+    garbage.reserve(scrub_result.new_sconames.size() +
+                    scrub_result.tlogs_out.size() +
+                    scrub_result.relocs.size() +
+                    1);
+
+    for (const SCO sco : scrub_result.new_sconames)
     {
-        for (const SCO sconame : scrub_result.new_sconames)
-        {
-            backend_task::DeleteSCO* task = new backend_task::DeleteSCO(this,
-                                                              sconame);
-            VolManager::get()->backend_thread_pool()->addTask(task);
-        }
-
-        for (const auto& tlog : scrub_result.tlogs_out)
-        {
-            backend_task::DeleteTLog* task = new backend_task::DeleteTLog(this,
-                                                                          tlog.getName());
-            VolManager::get()->backend_thread_pool()->addTask(task);
-        }
-
-        for (const std::string& reloc_log : scrub_result.relocs)
-        {
-            backend_task::DeleteTLog* task = new backend_task::DeleteTLog(this,
-                                                                          reloc_log);
-            VolManager::get()->backend_thread_pool()->addTask(task);
-        }
-
-        backend_task::DeleteTLog* task = new backend_task::DeleteTLog(this,
-                                                                      res_name);
-
-        VolManager::get()->backend_thread_pool()->addTask(task);
+        garbage.emplace_back(sco.str());
     }
-    CATCH_STD_ALL_LOGLEVEL_IGNORE(getName() << ": failed to remove scrubbing garbage",
-                                  WARN);
+
+    for (const auto& tlog : scrub_result.tlogs_out)
+    {
+        garbage.emplace_back(tlog.getName());
+    }
+
+    for (const std::string& reloc_log : scrub_result.relocs)
+    {
+        garbage.emplace_back(reloc_log);
+    }
+
+    garbage.emplace_back(res_name);
+
+    VolManager::get()->backend_garbage_collector()->queue(be::Garbage(nspace,
+                                                                      std::move(garbage)));
 }
 
-void
+boost::optional<be::Garbage>
 Volume::applyScrubbingWork(const scrubbing::ScrubReply& scrub_reply,
                            const ScrubbingCleanup cleanup,
                            const PrefetchVolumeData prefetch)
@@ -1763,24 +1761,6 @@ Volume::applyScrubbingWork(const scrubbing::ScrubReply& scrub_reply,
         });
 
     ALWAYS_CLEANUP_FILE(result_path);
-
-    switch (cleanup)
-    {
-    case ScrubbingCleanup::OnSuccess:
-    case ScrubbingCleanup::Always:
-        {
-            try
-            {
-                // VOLDRV-716 removed this
-                // nsidmap_[scid]->write(result_path, res_name + "_applied");
-                nsidmap_.get(scid)->remove(res_name);
-            }
-            CATCH_STD_ALL_LOG_RETHROW("Could not remove scrubbing result " << res_name);
-            break;
-        }
-    default:
-        break;
-    }
 
     scrubbing::ScrubberResult scrub_result;
 
@@ -1842,7 +1822,8 @@ Volume::applyScrubbingWork(const scrubbing::ScrubReply& scrub_reply,
             {
             case ScrubbingCleanup::OnError:
             case ScrubbingCleanup::Always:
-                cleanupScrubbingOnError_(scrub_result,
+                cleanupScrubbingOnError_(ns,
+                                         scrub_result,
                                          res_name);
                 break;
             default:
@@ -1932,33 +1913,42 @@ Volume::applyScrubbingWork(const scrubbing::ScrubReply& scrub_reply,
         LOG_VINFO("Not Prefetching");
     }
 
+    boost::optional<be::Garbage> maybe_garbage;
+
     if(scid == 0)
     {
-        LOG_VINFO("ApplyScrub: deleting backend data");
+        LOG_VINFO("Determining garbage");
+
+        std::vector<std::string> garbage;
+        garbage.reserve(scrub_result.tlog_names_in.size() +
+                        scrub_result.relocs.size() +
+                        scrub_result.sconames_to_be_deleted.size() +
+                        1);
 
         for (const auto& tlog_id : scrub_result.tlog_names_in)
         {
-            backend_task::DeleteTLog* task = new backend_task::DeleteTLog(this,
-                                                                          boost::lexical_cast<std::string>(tlog_id));
-            VolManager::get()->backend_thread_pool()->addTask(task);
+            garbage.emplace_back(boost::lexical_cast<std::string>(tlog_id));
         }
 
-        for (const std::string& reloc_log : scrub_result.relocs)
+        for (const auto& reloc_log : scrub_result.relocs)
         {
-            backend_task::DeleteTLog* task = new backend_task::DeleteTLog(this,
-                                                                          reloc_log);
-            VolManager::get()->backend_thread_pool()->addTask(task);
+            garbage.emplace_back(reloc_log);
         }
 
-        for (const SCO sconame : scrub_result.sconames_to_be_deleted)
+        for (const SCO sco : scrub_result.sconames_to_be_deleted)
         {
-            backend_task::DeleteSCO* task = new backend_task::DeleteSCO(this,
-                                                                        sconame);
-            VolManager::get()->backend_thread_pool()->addTask(task);
+            garbage.emplace_back(sco.str());
         }
 
-        LOG_VINFO("ApplyScrub: finished deleting backend data");
+        garbage.emplace_back(res_name);
+
+        maybe_garbage = be::Garbage(ns,
+                                    std::move(garbage));
+
+        LOG_VINFO("finished determining garbage");
     }
+
+    return maybe_garbage;
 }
 
 SnapshotName

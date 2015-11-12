@@ -579,6 +579,11 @@ public:
     SCOCache::NSMap&
     getSCOCacheNamespaceMap();
 
+    void
+    apply_scrub_reply(Volume&,
+                      const scrubbing::ScrubReply&,
+                      const ScrubbingCleanup = ScrubbingCleanup::Always);
+
     static youtils::Weed
     growWeed();
 

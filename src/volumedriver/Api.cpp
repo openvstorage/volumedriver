@@ -912,17 +912,15 @@ api::getScrubbingWork(const vd::VolumeId& volName,
                                                                      end_snap);
 }
 
-
-void
+boost::optional<be::Garbage>
 api::applyScrubbingWork(const vd::VolumeId& volName,
                         const scrubbing::ScrubReply& scrub_reply,
                         const vd::ScrubbingCleanup cleanup)
 {
     Volume* v = VolManager::get()->findVolume_(volName);
-    v->applyScrubbingWork(scrub_reply,
-                          cleanup);
+    return v->applyScrubbingWork(scrub_reply,
+                                 cleanup);
 }
-
 
 uint64_t
 api::volumePotential(const vd::SCOMultiplier s,
@@ -942,6 +940,12 @@ backend::BackendConnectionManagerPtr
 api::backend_connection_manager()
 {
     return VolManager::get()->getBackendConnectionManager();
+}
+
+backend::GarbageCollectorPtr
+api::backend_garbage_collector()
+{
+    return VolManager::get()->backend_garbage_collector();
 }
 
 void
