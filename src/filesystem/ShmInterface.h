@@ -15,9 +15,12 @@
 #ifndef __SHM_INTERFACE_H
 #define __SHM_INTERFACE_H
 
+#include <mutex>
 #include <youtils/OrbHelper.h>
+
 #include "ShmIdlInterface.h"
 #include "ShmServer.h"
+#include "ShmControlChannel.h"
 
 namespace volumedriverfs
 {
@@ -32,10 +35,21 @@ public:
                  handler_args_t& handler_args)
         : orb_helper_(orb_helper)
         , handler_args_(handler_args)
-    {}
+        , shm_ctl_chan_(ShmConnectionDetails::Endpoint())
+    {
+        shm_ctl_chan_.create_control_channel(boost::bind(&ShmInterface::try_stop_volume,
+                                                         this,
+                                                         _1),
+                                             boost::bind(&ShmInterface::is_volume_valid,
+                                                         this,
+                                                         _1,
+                                                         _2));
+    }
 
     ~ShmInterface()
-    {}
+    {
+        shm_ctl_chan_.destroy_control_channel();
+    }
 
     typedef ShmServer<Handler> ServerType;
 
@@ -52,9 +66,8 @@ public:
 
         if (shm_servers_.count(volume_name) != 0)
         {
-            TODO("cnanakos: we should have cleaned up here if we faced a client error");
             LOG_ERROR("Creating shm server failed, volume '" << args.volume_name
-                      << "' already present");
+                      << "' already present and open");
             throw ShmIdlInterface::VolumeNameAlreadyRegistered(volume_name.c_str());
         }
 
@@ -79,6 +92,7 @@ public:
 
         create_result->volume_size_in_bytes = h->volume_size_in_bytes();
 
+        std::lock_guard<std::mutex> lock_(shm_servers_lock_);
         shm_servers_.emplace(volume_name,
                              std::unique_ptr<ServerType>(new ServerType(std::move(h))));
 
@@ -95,11 +109,43 @@ public:
         LOG_INFO("Stopping shm server for '"
                  << volume_name << "'");
 
+        std::lock_guard<std::mutex> lock_(shm_servers_lock_);
         size_t erased = shm_servers_.erase(volume_name);
         if (erased == 0)
         {
             throw ShmIdlInterface::NoSuchVolumeRegistered(volume_name);
         }
+    }
+
+    bool
+    try_stop_volume(const std::string& volume_name)
+    {
+        std::lock_guard<std::mutex> lock_(shm_servers_lock_);
+        auto it = shm_servers_.find(volume_name);
+        if (it != shm_servers_.end())
+        {
+            LOG_INFO("Stopping shm server for '"
+                     << volume_name << "'");
+            shm_servers_.erase(it);
+            return true;
+        }
+        return false;
+    }
+
+    bool
+    is_volume_valid(const std::string& volume_name,
+                    const std::string& key)
+    {
+        std::lock_guard<std::mutex> lock_(shm_servers_lock_);
+        auto it = shm_servers_.find(volume_name);
+        if (it != shm_servers_.end())
+        {
+            if (it->second->writerequest_uuid().str() == key)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     void
@@ -122,7 +168,9 @@ public:
 private:
     youtils::OrbHelper& orb_helper_;
     handler_args_t& handler_args_;
+    std::mutex shm_servers_lock_;
     std::map<std::string, std::unique_ptr<ServerType>> shm_servers_;
+    ShmControlChannel shm_ctl_chan_;
 };
 
 }
