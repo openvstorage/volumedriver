@@ -104,6 +104,7 @@ TEST_F(ConfigurationTest, print_framework_parameter_dict)
     sections["storagedriver"] =
     {
         "backend_connection_manager",
+        "backend_garbage_collector",
         "content_addressed_cache",
         "event_publisher",
         "distributed_lock_store",

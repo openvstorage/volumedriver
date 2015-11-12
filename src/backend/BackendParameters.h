@@ -85,6 +85,8 @@ DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_port, uint16_t);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_timeout, uint16_t);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_preset, std::string);
 
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(bgc_threads, uint32_t);
+
 }
 
 #endif /* BACKENDPARAMETERS_H_ */
