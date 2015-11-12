@@ -505,6 +505,9 @@ public:
     void
     check_and_fix_failovercache();
 
+    void
+    wait_for_backend_and_run(std::function<void()>);
+
 private:
     DECLARE_LOGGER("Volume");
 

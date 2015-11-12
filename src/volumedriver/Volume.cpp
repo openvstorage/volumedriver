@@ -3190,6 +3190,16 @@ Volume::getEffectiveTLogMultiplier() const
     }
 }
 
+void
+Volume::wait_for_backend_and_run(std::function<void()> fun)
+{
+    auto t(std::make_unique<backend_task::FunTask>(*this,
+                                                   std::move(fun),
+                                                   yt::BarrierTask::T));
+
+    VolManager::get()->backend_thread_pool()->addTask(std::move(t));
+}
+
 }
 
 // Local Variables: **
