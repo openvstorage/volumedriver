@@ -42,7 +42,7 @@ enum class ShmMsgOpcode
     Failed,
     Success,
     Register,
-    Unregister,
+    Deregister,
     Allocate,
     Deallocate,
     Allocatev,

@@ -21,7 +21,9 @@
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
 #include <boost/lexical_cast.hpp>
+
 #include <youtils/SpinLock.h>
+#include <youtils/Assert.h>
 
 #include "ShmControlChannelProtocol.h"
 
@@ -151,7 +153,7 @@ public:
         {
         case ShmMsgOpcode::Register:
             return handle_register(i_msg);
-        case ShmMsgOpcode::Unregister:
+        case ShmMsgOpcode::Deregister:
             return handle_unregister();
         default:
             return ShmControlChannelMsg(ShmMsgOpcode::Failed);
@@ -164,19 +166,19 @@ public:
     {
         if (not error)
         {
-            assert(payload_size_ == bytes_transferred);
+            VERIFY(payload_size_ == bytes_transferred);
             ShmControlChannelMsg msg(handle_state(data_.data(),
                                                   bytes_transferred));
             std::string msg_str(msg.pack_msg());
-            uint64_t payload_size = msg_str.length();
+            uint64_t reply_payload_size = msg_str.length();
 
             boost::asio::async_write(socket_,
-                                     boost::asio::buffer(&payload_size,
+                                     boost::asio::buffer(&reply_payload_size,
                                                          header_size),
                                      boost::bind(&ControlSession::handle_header_write,
                                                  shared_from_this(),
                                                  msg_str,
-                                                 payload_size,
+                                                 reply_payload_size,
                                                  boost::asio::placeholders::error));
         }
         else if (error == boost::asio::error::eof ||
@@ -222,6 +224,8 @@ public:
     }
 
 private:
+    DECLARE_LOGGER("ShmControlSession");
+
     boost::asio::local::stream_protocol::socket socket_;
     std::vector<char> data_;
     uint64_t payload_size_;

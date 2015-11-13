@@ -385,7 +385,7 @@ failed:
 static int
 _ctl_channel_unregister(ovs_ctx_t *ctx)
 {
-    ShmControlChannelMsg msg(ShmMsgOpcode::Unregister);
+    ShmControlChannelMsg msg(ShmMsgOpcode::Deregister);
     if (_ctl_channel_sendmsg(ctx, msg) < 0)
     {
         goto failed;
