@@ -14,9 +14,10 @@ noinst_DATA = debian/control-template \
 	debian/compat \
 	debian/$(BASE_NAME).docs \
 	debian/$(BASE_NAME)-head.install \
+	debian/$(BASE_NAME)-head.postinst \
 	add-python-dirs.sh
 
-.PHONY : debian/control debian/$(BASE_NAME).install $(ARTEFACT)
+.PHONY : debian/control debian/$(BASE_NAME).install debian/$(BASE_NAME).postinst $(ARTEFACT)
 
 debian/control : debian/control-template
 	cp debian/control-template debian/control
@@ -26,11 +27,14 @@ debian/$(BASE_NAME).install: debian/$(BASE_NAME)-head.install
 	cp debian/$(BASE_NAME)-head.install debian/$(BASE_NAME).install
 	./add-python-dirs.sh
 
+debian/$(BASE_NAME).postinst: debian/$(BASE_NAME)-head.postinst
+	cp debian/$(BASE_NAME)-head.postinst debian/$(BASE_NAME).postinst
+
 clean-local:
 	-rm -rf ../$(BASE_NAME)_*
 
 
-$(ARTEFACT) : debian/control debian/$(BASE_NAME).install
+$(ARTEFACT) : debian/control debian/$(BASE_NAME).install debian/$(BASE_NAME).postinst
 	dpkg-buildpackage -us -uc
 
 install-data-local: $(ARTEFACT)
