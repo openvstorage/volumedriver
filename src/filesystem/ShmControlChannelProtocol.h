@@ -75,6 +75,54 @@ public:
     long opaque_;
 
 public:
+    const ShmMsgOpcode&
+    opcode() const
+    {
+        return opcode_;
+    }
+
+    void
+    opcode(const ShmMsgOpcode& op)
+    {
+        opcode_ = op;
+    }
+
+    const std::string&
+    volume_name() const
+    {
+        return volname_;
+    }
+
+    void
+    volume_name(const std::string& volume)
+    {
+        volname_ = volume;
+    }
+
+    const std::string&
+    key() const
+    {
+        return key_;
+    }
+
+    void
+    key(const std::string& key)
+    {
+        key_ = key;
+    }
+
+    const long&
+    opaque() const
+    {
+        return opaque_;
+    }
+
+    void
+    opaque(const long& opq)
+    {
+        opaque_ = opq;
+    }
+
     const std::string
     pack_msg() const
     {

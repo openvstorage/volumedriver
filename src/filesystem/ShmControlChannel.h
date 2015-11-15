@@ -83,12 +83,12 @@ public:
         if (state_ == ShmConnectionState::Connected)
         {
             fungi::ScopedSpinLock lock_(sessions_lock_);
-            if (is_volume_valid_(msg.volname_, msg.key_))
+            if (is_volume_valid_(msg.volume_name(), msg.key()))
             {
                 sessions_.emplace(socket_.native(),
-                                  msg.volname_);
+                                  msg.volume_name());
                 state_ = ShmConnectionState::Registered;
-                o_msg.opcode_ = ShmMsgOpcode::Success;
+                o_msg.opcode(ShmMsgOpcode::Success);
             }
         }
         return o_msg;
@@ -106,7 +106,7 @@ public:
             {
                 sessions_.erase(it);
                 state_ = ShmConnectionState::Connected;
-                o_msg.opcode_ = ShmMsgOpcode::Success;
+                o_msg.opcode(ShmMsgOpcode::Success);
             }
         }
         return o_msg;
@@ -149,7 +149,7 @@ public:
     {
         ShmControlChannelMsg i_msg;
         i_msg.unpack_msg(data, size);
-        switch (i_msg.opcode_)
+        switch (i_msg.opcode())
         {
         case ShmMsgOpcode::Register:
             return handle_register(i_msg);

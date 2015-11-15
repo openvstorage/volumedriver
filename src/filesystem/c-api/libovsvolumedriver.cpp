@@ -350,8 +350,8 @@ _ctl_channel_register(ovs_ctx_t *ctx,
 {
     boost::system::error_code ec;
     ShmControlChannelMsg msg(ShmMsgOpcode::Register);
-    msg.volname_= volume_name;
-    msg.key_ = key;
+    msg.volume_name(volume_name);
+    msg.key(key);
 
     ctx->io_service_.reset(new boost::asio::io_service);
     ctx->socket_.reset(new stream_protocol::socket(*(ctx->io_service_)));
@@ -372,7 +372,7 @@ _ctl_channel_register(ovs_ctx_t *ctx,
         goto failed;
     }
 
-    if (msg.opcode_ == ShmMsgOpcode::Success)
+    if (msg.opcode() == ShmMsgOpcode::Success)
     {
         return 0;
     }
@@ -396,7 +396,7 @@ _ctl_channel_unregister(ovs_ctx_t *ctx)
         goto failed;
     }
 
-    if (msg.opcode_ == ShmMsgOpcode::Success)
+    if (msg.opcode() == ShmMsgOpcode::Success)
     {
         return 0;
     }
