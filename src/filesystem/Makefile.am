@@ -32,6 +32,7 @@ libovsvolumedriver_la_SOURCES = \
 	ShmClient.cpp \
 	c-api/libovsvolumedriver.cpp
 libovsvolumedriver_la_CXXFLAGS = ${BUILDTOOLS_CFLAGS} \
+	-DBOOST_DATE_TIME_POSIX_TIME_STD_CONFIG \
 	-I@abs_top_srcdir@/../msgpack-c/include
 libovsvolumedriver_la_LIBADD = ../youtils/libyoutils.la ${BUILDTOOLS_LIBS}
 libovsvolumedriver_la_CPPFLAGS = \

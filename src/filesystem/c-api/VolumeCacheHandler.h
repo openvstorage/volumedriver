@@ -17,6 +17,9 @@
 
 #include "../ShmClient.h"
 
+#include <boost/date_time/posix_time/posix_time_duration.hpp>
+#include <boost/thread.hpp>
+
 #include <youtils/SpinLock.h>
 #include <queue>
 
@@ -30,45 +33,20 @@ public:
     ovs_buffer_t*
     allocate(size_t size)
     {
-        void *buf = NULL;
-        size_t max = BufferSize::s_4k;
-        buf = _maybe_allocate_from_queue(size,
-                                         chunks_4k,
-                                         lock_4k,
-                                         max);
-        if (not buf)
+        ovs_buffer_t *buffer;
+        int retries = 10;
+        boost::posix_time::time_duration delay = boost::posix_time::nanoseconds(10);
+        while ((buffer = _try_allocate(size)) == NULL)
         {
-            max = BufferSize::s_32k;
-            buf = _maybe_allocate_from_queue(size,
-                                             chunks_32k,
-                                             lock_32k,
-                                             max);
+            boost::this_thread::sleep(delay);
+            retries--;
+            delay *= 2;
+            if (not retries)
+            {
+                break;
+            }
         }
-        if (not buf)
-        {
-            max = BufferSize::s_128k;
-            buf = _maybe_allocate_from_queue(size,
-                                             chunks_128k,
-                                             lock_128k,
-                                             max);
-        }
-        if (not buf)
-        {
-            max = size;
-            buf = shm_allocate(static_cast<ShmClientHandle>(shm_handle_),
-                               size);
-        }
-        if (buf)
-        {
-            ovs_buffer_t *ovs_buff = new ovs_buffer_t();
-            ovs_buff->buf = buf;
-            ovs_buff->size = max;
-            return ovs_buff;
-        }
-        else
-        {
-            return NULL;
-        }
+        return buffer;
     }
 
     int
@@ -210,6 +188,50 @@ private:
     fungi::SpinLock lock_4k;
     fungi::SpinLock lock_32k;
     fungi::SpinLock lock_128k;
+
+    ovs_buffer_t*
+    _try_allocate(size_t size)
+    {
+        void *buf = NULL;
+        size_t max = BufferSize::s_4k;
+        buf = _maybe_allocate_from_queue(size,
+                                         chunks_4k,
+                                         lock_4k,
+                                         max);
+        if (not buf)
+        {
+            max = BufferSize::s_32k;
+            buf = _maybe_allocate_from_queue(size,
+                                             chunks_32k,
+                                             lock_32k,
+                                             max);
+        }
+        if (not buf)
+        {
+            max = BufferSize::s_128k;
+            buf = _maybe_allocate_from_queue(size,
+                                             chunks_128k,
+                                             lock_128k,
+                                             max);
+        }
+        if (not buf)
+        {
+            max = size;
+            buf = shm_allocate(static_cast<ShmClientHandle>(shm_handle_),
+                               size);
+        }
+        if (buf)
+        {
+            ovs_buffer_t *ovs_buff = new ovs_buffer_t();
+            ovs_buff->buf = buf;
+            ovs_buff->size = max;
+            return ovs_buff;
+        }
+        else
+        {
+            return NULL;
+        }
+    }
 
     void*
     _maybe_allocate_from_queue(size_t size,
