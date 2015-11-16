@@ -62,6 +62,7 @@ ScrubberAdapter::scrub(const ScrubWork& scrub_work,
     scrubber();
 
     return ScrubReply(scrub_work.ns_,
+                      scrub_work.snapshot_name_,
                       scrubber.getScrubbingResultName());
 }
 

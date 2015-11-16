@@ -28,8 +28,10 @@ namespace scrubbing
 struct ScrubReply
 {
     ScrubReply(const backend::Namespace& ns,
+               const volumedriver::SnapshotName& snapshot_name,
                const std::string& scrub_result_name)
         : ns_(ns)
+        , snapshot_name_(snapshot_name)
         , scrub_result_name_(scrub_result_name)
     {}
 
@@ -59,17 +61,17 @@ struct ScrubReply
     template<class Archive>
     void
     serialize(Archive& ar,
-              const unsigned int /* version */)
+              const unsigned int version)
     {
+        CHECK_VERSION(version, 2);
+
         ar & BOOST_SERIALIZATION_NVP(ns_);
-
-        volumedriver::VolumeId id_;
-        ar & BOOST_SERIALIZATION_NVP(id_);
-
+        ar & BOOST_SERIALIZATION_NVP(snapshot_name_);
         ar & BOOST_SERIALIZATION_NVP(scrub_result_name_);
     }
 
     backend::Namespace ns_;
+    volumedriver::SnapshotName snapshot_name_;
     std::string scrub_result_name_;
 };
 
@@ -79,6 +81,6 @@ operator<<(std::ostream&,
 
 }
 
-BOOST_CLASS_VERSION(scrubbing::ScrubReply, 1);
+BOOST_CLASS_VERSION(scrubbing::ScrubReply, 2);
 
 #endif // SCRUB_REPLY_H_

@@ -53,6 +53,7 @@ ScrubReply::operator==(const ScrubReply& other) const
 {
     return
         ns_ == other.ns_ and
+        snapshot_name_ == other.snapshot_name_ and
         scrub_result_name_ == other.scrub_result_name_;
 }
 
@@ -71,19 +72,26 @@ ScrubReply::operator<(const ScrubReply& other) const
     }
     else if (ns_ == other.ns_)
     {
-        return scrub_result_name_ < other.scrub_result_name_;
+        if (snapshot_name_  < other.snapshot_name_)
+        {
+            return true;
+        }
+        else if (snapshot_name_ == other.snapshot_name_)
+        {
+            return scrub_result_name_ < other.scrub_result_name_;
+        }
     }
-    else
-    {
-        return false;
-    }
+
+    return false;
 }
 
 std::ostream&
 operator<<(std::ostream& os,
            const ScrubReply& rep)
 {
-    return os << "ScrubReply(" << rep.ns_ << ", " << rep.scrub_result_name_ << ")";
+    return os << "ScrubReply(ns=" << rep.ns_ <<
+        ", snap=" << rep.snapshot_name_ <<
+        ", res=" << rep.scrub_result_name_ << ")";
 }
 
 }

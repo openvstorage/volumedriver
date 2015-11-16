@@ -76,6 +76,7 @@ TEST_P(TemplateVolumeTest, forbidden_actions)
                  VolumeIsTemplateException);
 
     const scrubbing::ScrubReply scrub_rep(v->getNamespace(),
+                                          SnapshotName("snap"),
                                           "scrub_res");
 
     EXPECT_THROW(v->applyScrubbingWork(scrub_rep),

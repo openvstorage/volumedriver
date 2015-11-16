@@ -141,45 +141,57 @@ TEST_F(ScrubWorkTest, serialization1_alba)
 
 TEST_F(ScrubWorkTest, serialization_of_scrub_reply)
 {
-    backend::Namespace ns;
-    std::string scrub_result_name;
+    const backend::Namespace ns;
+    const std::string scrub_result_name("some-result");
+    const SnapshotName snap_name("some-snapshot");
 
     ScrubReply reply(ns,
+                     snap_name,
                      scrub_result_name);
 
     std::string serialized = reply.str();
 
     ScrubReply reply2(serialized);
 
-    ASSERT_TRUE(reply2.ns_ == ns);
-    ASSERT_TRUE(reply2.scrub_result_name_ == scrub_result_name);
+    ASSERT_EQ(ns, reply2.ns_);
+    ASSERT_EQ(snap_name,
+              reply2.snapshot_name_);
+    ASSERT_EQ(scrub_result_name,
+              reply2.scrub_result_name_);
 }
 
 TEST_F(ScrubWorkTest, scrub_reply_equality)
 {
     const backend::Namespace ns1;
     const std::string res1("scrub_result_1");
+    const SnapshotName snap1("some-snapshot-1");
 
     const ScrubReply rep1(ns1,
+                          snap1,
                           res1);
 
     EXPECT_EQ(rep1,
               ScrubReply(ns1,
+                         snap1,
                          res1));
 
     const backend::Namespace ns2;
     const std::string res2("scrub_result_2");
+    const SnapshotName snap2("some-snapshot-2");
 
     EXPECT_NE(rep1,
               ScrubReply(ns2,
+                         snap2,
                          res1));
 
     EXPECT_NE(rep1,
               ScrubReply(ns1,
+                         snap2,
                          res2));
 
     EXPECT_NE(rep1,
               ScrubReply(ns2,
+                         snap2,
                          res2));
 }
 
@@ -188,9 +200,11 @@ TEST_F(ScrubWorkTest, scrub_reply_order)
     const backend::Namespace ns1;
     const backend::Namespace ns2;
 
+    const SnapshotName snap1("snap1");
     const std::string res1("scrub_result_1");
 
     const ScrubReply rep1(ns1,
+                          snap1,
                           res1);
 
     ASSERT_NE(ns1, ns2);
@@ -199,17 +213,21 @@ TEST_F(ScrubWorkTest, scrub_reply_order)
     {
         EXPECT_LT(rep1,
                   ScrubReply(ns2,
+                             snap1,
                              res1));
         EXPECT_LT(rep1,
                   ScrubReply(ns2,
+                             SnapshotName("snap0"),
                              "scrub_result_0"));
     }
     else
     {
         EXPECT_LT(ScrubReply(ns2,
+                             snap1,
                              res1),
                   rep1);
         EXPECT_LT(ScrubReply(ns2,
+                             SnapshotName("snap2"),
                              "scrub_result_2"),
                   rep1);
     }
