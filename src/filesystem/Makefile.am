@@ -108,6 +108,7 @@ libvolumedriverfs_la_SOURCES = \
 		PythonClient.cpp \
 		Registry.cpp \
 		RemoteNode.cpp \
+		ScrubManager.cpp \
 		TracePoints_tp.c \
 		VirtualDiskFormat.cpp \
 		VirtualDiskFormatVmdk.cpp \

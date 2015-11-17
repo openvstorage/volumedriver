@@ -76,6 +76,7 @@ volumedriver_fs_test_SOURCES = \
 	RegistryTestSetup.cpp \
 	RemoteTest.cpp \
 	RestartTest.cpp \
+	ScrubManagerTest.cpp \
 	VolumeTest.cpp \
 	ZMQTest.cpp \
 	ZWorkerPoolTest.cpp \
