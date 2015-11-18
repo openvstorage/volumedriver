@@ -109,6 +109,7 @@ libvolumedriverfs_la_SOURCES = \
 		Registry.cpp \
 		RemoteNode.cpp \
 		ScrubManager.cpp \
+		ScrubTreeBuilder.cpp \
 		TracePoints_tp.c \
 		VirtualDiskFormat.cpp \
 		VirtualDiskFormatVmdk.cpp \
