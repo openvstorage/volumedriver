@@ -45,6 +45,8 @@ public:
 
     FailOverCacheAsyncBridge(const FailOverCacheAsyncBridge&) = delete;
 
+    ~FailOverCacheAsyncBridge() = default;
+
     FailOverCacheAsyncBridge&
     operator=(const FailOverCacheAsyncBridge&) = delete;
 
@@ -57,10 +59,8 @@ public:
     virtual const char*
     getName() const override;
 
-    ~FailOverCacheAsyncBridge() = default;
-
     virtual void
-    destroy(SyncFailOverToBackend);
+    destroy(SyncFailOverToBackend) override;
 
     virtual bool
     addEntries(const std::vector<ClusterLocation>& locs,
