@@ -338,6 +338,15 @@ TEST_F(ScrubManagerTest, parent_gone)
 
     run_scrub_manager(mgr);
 
+    EXPECT_EQ(0,
+              mgr.get_counters().parent_scrubs_ok);
+    EXPECT_EQ(1,
+              mgr.get_counters().parent_scrubs_nok);
+    EXPECT_EQ(0,
+              mgr.get_counters().clone_scrubs_ok);
+    EXPECT_EQ(0,
+              mgr.get_counters().clone_scrubs_nok);
+
     EXPECT_TRUE(mgr.get_parent_scrubs().empty());
 }
 
@@ -425,6 +434,16 @@ TEST_F(ScrubManagerTest, clone_gone)
 
     EXPECT_EQ(num_clones,
               count);
+
+    EXPECT_EQ(1,
+              mgr.get_counters().parent_scrubs_ok);
+    EXPECT_EQ(0,
+              mgr.get_counters().parent_scrubs_nok);
+    EXPECT_EQ(num_clones - 1,
+              mgr.get_counters().clone_scrubs_ok);
+    EXPECT_EQ(1,
+              mgr.get_counters().clone_scrubs_nok);
+
 }
 
 TEST_F(ScrubManagerTest, failure_to_apply_to_parent)
@@ -493,6 +512,15 @@ TEST_F(ScrubManagerTest, failure_to_apply_to_parent)
 
     EXPECT_EQ(1,
               count);
+
+    EXPECT_EQ(0,
+              mgr.get_counters().parent_scrubs_ok);
+    EXPECT_EQ(1,
+              mgr.get_counters().parent_scrubs_nok);
+    EXPECT_EQ(0,
+              mgr.get_counters().clone_scrubs_ok);
+    EXPECT_EQ(0,
+              mgr.get_counters().clone_scrubs_nok);
 }
 
 TEST_F(ScrubManagerTest, random_stress)
@@ -544,6 +572,7 @@ TEST_F(ScrubManagerTest, random_stress)
     std::atomic<bool> parent_scrubbed(false);
     std::atomic<bool> garbage_collected(false);
     std::atomic<size_t> count(0);
+    std::atomic<size_t> errors(0);
 
     const scrubbing::ScrubReply scrub_reply(be::Namespace(id),
                                             vd::SnapshotName(id),
@@ -559,6 +588,7 @@ TEST_F(ScrubManagerTest, random_stress)
 
                                if (count++ and not sou(0, 4))
                                {
+                                   errors++;
                                    throw std::runtime_error("some exception");
                                }
 
@@ -646,6 +676,30 @@ TEST_F(ScrubManagerTest, random_stress)
     EXPECT_LE(regs.size(),
               count);
     EXPECT_TRUE(oids.empty());
+
+    size_t parent_scrubs_ok = 0;
+    size_t parent_scrubs_nok = 0;
+    size_t clone_scrubs_ok = 0;
+    size_t clone_scrubs_nok = 0;
+
+    for (const auto& m : managers)
+    {
+        ScrubManager::Counters c(m->get_counters());
+
+        parent_scrubs_ok += c.parent_scrubs_ok;
+        parent_scrubs_nok += c.parent_scrubs_nok;
+        clone_scrubs_ok += c.clone_scrubs_ok;
+        clone_scrubs_nok += c.clone_scrubs_nok;
+    }
+
+    EXPECT_EQ(1,
+              parent_scrubs_ok);
+    EXPECT_EQ(0,
+              parent_scrubs_nok);
+    EXPECT_EQ(regs.size() - 1,
+              clone_scrubs_ok);
+        EXPECT_EQ(errors,
+              clone_scrubs_nok);
 }
 
 }

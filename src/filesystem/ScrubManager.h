@@ -18,6 +18,8 @@
 #include "ClusterId.h"
 #include "Object.h"
 
+#include <boost/thread/mutex.hpp>
+
 #include <youtils/IOException.h>
 #include <youtils/LockedArakoon.h>
 #include <youtils/Logging.h>
@@ -149,6 +151,17 @@ public:
     ClonePtrList
     get_scrub_tree(const scrubbing::ScrubReply&);
 
+    struct Counters
+    {
+        uint64_t parent_scrubs_ok = 0;
+        uint64_t parent_scrubs_nok = 0;
+        uint64_t clone_scrubs_ok = 0;
+        uint64_t clone_scrubs_nok = 0;
+    };
+
+    Counters
+    get_counters() const;
+
 private:
     DECLARE_LOGGER("ScrubManager");
 
@@ -163,6 +176,9 @@ private:
     CollectGarbageFun collect_garbage_;
 
     youtils::PeriodicAction periodic_action_;
+
+    mutable boost::mutex counters_lock_;
+    Counters counters_;
 
     void
     work_();

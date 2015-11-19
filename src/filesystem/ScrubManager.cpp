@@ -38,6 +38,9 @@ namespace yt = youtils;
 
 using namespace std::literals::string_literals;
 
+#define LOCK_COUNTERS()                         \
+    boost::lock_guard<decltype(counters_lock_)> clg__(counters_lock_)
+
 namespace
 {
 
@@ -309,6 +312,13 @@ ScrubManager::get_scrub_tree(const scrubbing::ScrubReply& reply)
     return l;
 }
 
+ScrubManager::Counters
+ScrubManager::get_counters() const
+{
+    LOCK_COUNTERS();
+    return counters_;
+}
+
 void
 ScrubManager::work_()
 {
@@ -404,12 +414,21 @@ ScrubManager::apply_to_parent_(const ObjectId& oid,
     if (not res)
     {
         TODO("AR: plug storage leak");
+        {
+            LOCK_COUNTERS();
+            ++counters_.parent_scrubs_nok;
+        }
         drop_parent_(oid,
                      reply);
     }
     else if (*res)
     {
         VERIFY(maybe_garbage);
+
+        {
+            LOCK_COUNTERS();
+            ++counters_.parent_scrubs_ok;
+        }
 
         queue_to_clones_(oid,
                          reply,
@@ -596,14 +615,29 @@ ScrubManager::apply_to_clone_(const yt::UUID& uuid,
     LOG_INFO(reply << ": applying to clone " << oid << ", UUID " << uuid);
 
     MaybeGarbage maybe_garbage;
-    const boost::optional<bool> res(apply_(oid,
-                                           reply,
-                                           vd::ScrubbingCleanup::Never,
-                                           maybe_garbage));
+    boost::optional<bool> res;
+    try
+    {
+         res = apply_(oid,
+                      reply,
+                      vd::ScrubbingCleanup::Never,
+                      maybe_garbage);
+    }
+    CATCH_STD_ALL_EWHAT({
+            LOG_ERROR(oid << ": failed to apply " << reply << ", UUID " <<
+                      uuid << ": " << EWHAT);
+            LOCK_COUNTERS();
+            ++counters_.clone_scrubs_nok;
+            throw;
+        });
+
     if (not res)
     {
         LOG_INFO(oid << ": failed to apply " << reply << ", UUID " << uuid <<
                  ": not present anymore, dropping it");
+
+        LOCK_COUNTERS();
+        ++counters_.clone_scrubs_nok;
 
         drop_clone_(uuid,
                     oid,
@@ -613,6 +647,11 @@ ScrubManager::apply_to_clone_(const yt::UUID& uuid,
     else if (*res)
     {
         VERIFY(not maybe_garbage);
+
+        {
+            LOCK_COUNTERS();
+            ++counters_.clone_scrubs_ok;
+        }
 
         LOG_INFO(oid << ": successfully applied " << reply << ", UUID " << uuid <<
                  " - dropping it");
