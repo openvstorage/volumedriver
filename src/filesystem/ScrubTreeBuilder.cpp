@@ -27,7 +27,6 @@ namespace vd = volumedriver;
 
 namespace
 {
-DECLARE_LOGGER("ScrubTreeBuilderUtils");
 
 void
 collect_clones(ObjectRegistry& registry,
