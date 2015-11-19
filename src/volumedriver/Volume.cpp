@@ -1632,9 +1632,8 @@ Volume::isSyncedToBackendUpTo(const TLogId& tlog_id) const
     return snapshotManagement_->isTLogWrittenToBackend(tlog_id);
 }
 
-void
-Volume::getScrubbingWork(std::vector<std::string>& scrub_work,
-                         const boost::optional<SnapshotName>& start_snap,
+std::vector<scrubbing::ScrubWork>
+Volume::getScrubbingWork(const boost::optional<SnapshotName>& start_snap,
                          const boost::optional<SnapshotName>& end_snap) const
 {
     if(T(isVolumeTemplate()))
@@ -1643,29 +1642,32 @@ Volume::getScrubbingWork(std::vector<std::string>& scrub_work,
         throw VolumeIsTemplateException("Templated Volume, getting scrub work is forbidden");
     }
 
-    SnapshotWork work;
+    SnapshotWork snap_work;
 
     snapshotManagement_->getSnapshotScrubbingWork(start_snap,
                                                   end_snap,
-                                                  work);
+                                                  snap_work);
 
-    if (not work.empty())
+    if (not snap_work.empty())
     {
         metaDataStore_->sync();
     }
-    for(const auto& w : work)
+
+    std::vector<scrubbing::ScrubWork> scrub_work;
+    scrub_work.reserve(snap_work.size());
+    const VolumeConfig cfg(get_config());
+
+    for(const auto& w : snap_work)
     {
-        const VolumeConfig cfg(get_config());
-
-        scrubbing::ScrubWork s(VolManager::get()->getBackendConfig().clone(),
-                               cfg.getNS(),
-                               cfg.id_,
-                               ilogb(cfg.cluster_mult_ * cfg.lba_size_),
-                               getSCOMultiplier(),
-                               w);
-
-        scrub_work.push_back(s.str());
+        scrub_work.emplace_back(VolManager::get()->getBackendConfig().clone(),
+                                cfg.getNS(),
+                                cfg.id_,
+                                ilogb(cfg.cluster_mult_ * cfg.lba_size_),
+                                getSCOMultiplier(),
+                                w);
     }
+
+    return scrub_work;
 }
 
 void

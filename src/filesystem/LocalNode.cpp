@@ -32,6 +32,7 @@
 #include <backend/GarbageCollector.h>
 
 #include <volumedriver/Api.h>
+#include <volumedriver/ScrubWork.h>
 #include <volumedriver/TransientException.h>
 #include <volumedriver/VolManager.h>
 #include <volumedriver/VolumeConfig.h>
@@ -1319,24 +1320,26 @@ LocalNode::scrub_wrapper_(const char* desc,
                                   });
 }
 
-void
+std::vector<scrubbing::ScrubWork>
 LocalNode::get_scrub_work(const ObjectId& id,
                           const boost::optional<vd::SnapshotName>& start_snap,
-                          const boost::optional<vd::SnapshotName>& end_snap,
-                          std::vector<std::string>& work)
+                          const boost::optional<vd::SnapshotName>& end_snap)
 {
     LOG_INFO(id << ": getting scrub work, start snapshot " << start_snap <<
              ", end snapshot " << end_snap);
+
+    std::vector<scrubbing::ScrubWork> w;
 
     scrub_wrapper_("hand out scrub work",
                    id,
                    [&]
                    {
-                       api::getScrubbingWork(static_cast<const vd::VolumeId>(id),
-                                             work,
-                                             start_snap,
-                                             end_snap);
+                       w = api::getScrubbingWork(static_cast<const vd::VolumeId>(id),
+                                                 start_snap,
+                                                 end_snap);
                    });
+
+    return w;
 }
 
 boost::optional<be::Garbage>

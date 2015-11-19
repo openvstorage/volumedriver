@@ -16,6 +16,7 @@
 
 #include "../Api.h"
 #include "../ScrubReply.h"
+#include "../ScrubWork.h"
 
 #include <youtils/FileUtils.h>
 
@@ -69,9 +70,7 @@ TEST_P(TemplateVolumeTest, forbidden_actions)
     EXPECT_THROW(v->deleteSnapshot(snapshots.front()),
                  VolumeIsTemplateException);
 
-    std::vector<std::string> w;
-    EXPECT_THROW(v->getScrubbingWork(w,
-                                     boost::none,
+    EXPECT_THROW(v->getScrubbingWork(boost::none,
                                      boost::none),
                  VolumeIsTemplateException);
 

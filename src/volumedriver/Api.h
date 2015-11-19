@@ -463,9 +463,8 @@ public:
     static boost::optional<volumedriver::ClusterCount>
     getClusterCacheLimit(const volumedriver::VolumeId&);
 
-    static void
+    static std::vector<scrubbing::ScrubWork>
     getScrubbingWork(const volumedriver::VolumeId&,
-                     std::vector<std::string>& scrubbing_work_units,
                      const boost::optional<volumedriver::SnapshotName>& start_snap,
                      const boost::optional<volumedriver::SnapshotName>& end_snap);
 

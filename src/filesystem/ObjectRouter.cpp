@@ -31,6 +31,7 @@
 #include <youtils/System.h>
 
 #include <volumedriver/Api.h>
+#include <volumedriver/ScrubWork.h>
 #include <volumedriver/TransientException.h>
 #include <volumedriver/VolManager.h>
 #include <volumedriver/VolumeConfig.h>
@@ -1338,18 +1339,16 @@ ObjectRouter::delete_snapshot(const ObjectId& oid,
                                    snap);
 }
 
-void
+std::vector<scrubbing::ScrubWork>
 ObjectRouter::get_scrub_work(const ObjectId& oid,
                              const boost::optional<vd::SnapshotName>& start_snap,
-                             const boost::optional<vd::SnapshotName>& end_snap,
-                             std::vector<std::string>& work)
+                             const boost::optional<vd::SnapshotName>& end_snap)
 {
     LOG_INFO(oid << ": getting scrub work, start snapshot " << start_snap <<
              ", end snapshot " << end_snap);
-    local_node_()->get_scrub_work(oid,
-                                  start_snap,
-                                  end_snap,
-                                  work);
+    return local_node_()->get_scrub_work(oid,
+                                         start_snap,
+                                         end_snap);
 }
 
 boost::optional<be::Garbage>

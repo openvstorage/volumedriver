@@ -64,6 +64,7 @@ class TransferRequest;
 namespace scrubbing
 {
 class ScrubReply;
+class ScrubWork;
 }
 
 namespace volumedriver
@@ -241,11 +242,10 @@ public:
     delete_snapshot(const ObjectId& oid,
                     const volumedriver::SnapshotName& snap);
 
-    void
+    std::vector<scrubbing::ScrubWork>
     get_scrub_work(const ObjectId& oid,
                    const boost::optional<volumedriver::SnapshotName>& start_snap,
-                   const boost::optional<volumedriver::SnapshotName>& end_snap,
-                   std::vector<std::string>& work);
+                   const boost::optional<volumedriver::SnapshotName>& end_snap);
 
     boost::optional<backend::Garbage>
     apply_scrub_reply(const ObjectId& oid,

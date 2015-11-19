@@ -41,6 +41,7 @@
 #include <volumedriver/Api.h>
 #include <volumedriver/MetaDataBackendInterface.h>
 #include <volumedriver/ScrubReply.h>
+#include <volumedriver/ScrubWork.h>
 #include <volumedriver/Types.h>
 #include <volumedriver/VolManager.h>
 #include <volumedriver/VolumeDriverError.h>
@@ -742,7 +743,6 @@ GetScrubbingWork::execute_internal(::XmlRpc::XmlRpcValue& params,
                                    ::XmlRpc::XmlRpcValue& result)
 {
     const ObjectId volid(getID(params[0]));
-    std::vector<std::string> work;
     std::string begin_snapshot;
     std::string end_snapshot;
     boost::optional<vd::SnapshotName> ssnap;
@@ -757,18 +757,17 @@ GetScrubbingWork::execute_internal(::XmlRpc::XmlRpcValue& params,
         esnap = vd::SnapshotName(params[0][XMLRPCKeys::end_snapshot]);
     }
 
-    fs_.object_router().get_scrub_work(volid,
-                                       ssnap,
-                                       esnap,
-                                       work);
-
+    const std::vector<scrubbing::ScrubWork>
+        work(fs_.object_router().get_scrub_work(volid,
+                                                ssnap,
+                                                esnap));
 
     result.clear();
     result.setSize(0);
     int k = 0;
     for(const auto& w : work)
     {
-        result[k++] = ::XmlRpc::XmlRpcValue(w);
+        result[k++] = ::XmlRpc::XmlRpcValue(w.str());
     }
 }
 

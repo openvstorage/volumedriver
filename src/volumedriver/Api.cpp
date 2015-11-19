@@ -14,6 +14,7 @@
 
 #include "Api.h"
 #include "MetaDataStoreInterface.h"
+#include "ScrubWork.h"
 #include "SnapshotManagement.h"
 #include "TransientException.h"
 #include "VolManager.h"
@@ -901,14 +902,12 @@ api::getClusterCacheLimit(const vd::VolumeId& volName)
     return VolManager::get()->findVolume_(volName)->get_cluster_cache_limit();
 }
 
-void
+std::vector<scrubbing::ScrubWork>
 api::getScrubbingWork(const vd::VolumeId& volName,
-                      std::vector<std::string>& scrubbing_work_units,
                       const boost::optional<vd::SnapshotName>& start_snap,
                       const boost::optional<vd::SnapshotName>& end_snap)
 {
-    return VolManager::get()->findVolume_(volName)->getScrubbingWork(scrubbing_work_units,
-                                                                     start_snap,
+    return VolManager::get()->findVolume_(volName)->getScrubbingWork(start_snap,
                                                                      end_snap);
 }
 

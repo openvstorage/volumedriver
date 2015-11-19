@@ -15,12 +15,12 @@
 #ifndef VFS_LOCAL_NODE_H_
 #define VFS_LOCAL_NODE_H_
 
+#include "CloneFileFlags.h"
 #include "ClusterNode.h"
 #include "ClusterNodeConfig.h"
 #include "FileSystemParameters.h"
 #include "ForceRestart.h"
 #include "NodeId.h"
-#include "CloneFileFlags.h"
 
 #include <boost/property_tree/ptree_fwd.hpp>
 
@@ -37,6 +37,7 @@
 namespace scrubbing
 {
 class ScrubReply;
+class ScrubWork;
 }
 
 namespace volumedriverfstest
@@ -165,11 +166,10 @@ public:
     delete_snapshot(const ObjectId& volume_id,
                     const volumedriver::SnapshotName& snap_id);
 
-    void
+    std::vector<scrubbing::ScrubWork>
     get_scrub_work(const ObjectId& oid,
                    const boost::optional<volumedriver::SnapshotName>& start_snap,
-                   const boost::optional<volumedriver::SnapshotName>& end_snap,
-                   std::vector<std::string>& work);
+                   const boost::optional<volumedriver::SnapshotName>& end_snap);
 
     boost::optional<backend::Garbage>
     apply_scrub_reply(const ObjectId& oid,

@@ -436,10 +436,10 @@ protected:
     }
 
     scrubbing::ScrubReply
-    scrub(const std::string& work_str,
+    scrub(const scrubbing::ScrubWork& work,
           double fill_ratio = 1.0)
     {
-        return scrubbing::ScrubberAdapter::scrub(scrubbing::ScrubWork(work_str),
+        return scrubbing::ScrubberAdapter::scrub(work,
                                                  getTempPath(testName_),
                                                  5, // region_size_exponent
                                                  fill_ratio, // fill ratio
@@ -509,10 +509,9 @@ protected:
         v.deleteSnapshot(snap1);
         waitForThisBackendWrite(&v);
 
-        std::vector<std::string> scrub_work;
-        v.getScrubbingWork(scrub_work,
-                           boost::none,
-                           snap2);
+        const std::vector<scrubbing::ScrubWork>
+            scrub_work(v.getScrubbingWork(boost::none,
+                                          snap2));
 
         EXPECT_EQ(1U, scrub_work.size());
 
@@ -1066,10 +1065,9 @@ TEST_P(MDSVolumeTest, futile_scrub)
     v->deleteSnapshot(snap1);
     waitForThisBackendWrite(v);
 
-    std::vector<std::string> scrub_work;
-    v->getScrubbingWork(scrub_work,
-                        boost::none,
-                        snap2);
+    const std::vector<scrubbing::ScrubWork>
+        scrub_work(v->getScrubbingWork(boost::none,
+                                       snap2));
 
     ASSERT_EQ(1U, scrub_work.size());
 

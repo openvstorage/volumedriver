@@ -356,9 +356,8 @@ public:
     bool
     is_halted() const;
 
-    void
-    getScrubbingWork(std::vector<std::string>& scrubbing_work_units,
-                     const boost::optional<SnapshotName>& start_snap,
+    std::vector<scrubbing::ScrubWork>
+    getScrubbingWork(const boost::optional<SnapshotName>& start_snap,
                      const boost::optional<SnapshotName>& end_snap) const;
 
     boost::optional<backend::Garbage>
