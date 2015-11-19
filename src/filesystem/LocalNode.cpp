@@ -1287,7 +1287,8 @@ LocalNode::scrub_wrapper_(const char* desc,
     RWLockPtr l(get_lock_(id));
     fungi::ScopedReadLock rg(*l);
 
-    ObjectRegistrationPtr reg(vrouter_.object_registry()->find_throw(id, IgnoreCache::T));
+    ObjectRegistrationPtr reg(vrouter_.object_registry()->find_throw(id,
+                                                                     IgnoreCache::T));
     if (reg->node_id != vrouter_.node_id())
     {
         LOG_WARN(id << ": not running here (" << vrouter_.node_id() << ") but on " <<
@@ -1338,23 +1339,27 @@ LocalNode::get_scrub_work(const ObjectId& id,
                    });
 }
 
-void
-LocalNode::apply_scrub_result(const ObjectId& id,
-                              const scrubbing::ScrubReply& rsp)
+boost::optional<be::Garbage>
+LocalNode::apply_scrub_reply(const ObjectId& id,
+                             const scrubbing::ScrubReply& rsp,
+                             const vd::ScrubbingCleanup cleanup)
 {
     LOG_INFO(id << ": applying scrub result");
 
-    scrub_wrapper_("apply scrub result",
+    boost::optional<be::Garbage> maybe_garbage;
+
+    scrub_wrapper_("apply scrub reply",
                    id,
                    [&]
                    {
-                       boost::optional<be::Garbage>
-                           garbage(api::applyScrubbingWork(static_cast<const vd::VolumeId>(id),
-                                                           rsp));
+                       maybe_garbage =
+                           api::applyScrubbingWork(static_cast<const vd::VolumeId>(id),
+                                                   rsp,
+                                                   cleanup);
                        // TODO: just a stop-gap measure to maintain the old behaviour.
                        // It has to go away once the ScrubManager is taking over and
                        // clones can be scrubbed.
-                       if (garbage)
+                       if (maybe_garbage)
                        {
                            vd::Volume* v =
                                api::getVolumePointer(static_cast<const vd::VolumeId>(id));
@@ -1363,7 +1368,7 @@ LocalNode::apply_scrub_result(const ObjectId& id,
                            // be::Garbage cannot be copied so we need to take a
                            // detour via a shared_ptr as a std::function capturing
                            // a move-only type does not work.
-                           auto g(std::make_shared<be::Garbage>(std::move(*garbage)));
+                           auto g(std::make_shared<be::Garbage>(std::move(*maybe_garbage)));
 
                            v->wait_for_backend_and_run([g]() mutable
                                                        {
@@ -1371,6 +1376,8 @@ LocalNode::apply_scrub_result(const ObjectId& id,
                                                        });
                        }
                    });
+
+    return boost::none;
 }
 
 void

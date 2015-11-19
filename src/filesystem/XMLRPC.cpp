@@ -779,8 +779,9 @@ ApplyScrubbingResult::execute_internal(::XmlRpc::XmlRpcValue&  params,
     const ObjectId volid(getID(params[0]));
     const std::string scrub_rsp_str(getScrubbingWorkResult(params[0]));
 
-    fs_.object_router().apply_scrub_result(volid,
-                                           scrubbing::ScrubReply(scrub_rsp_str));
+    fs_.object_router().apply_scrub_reply(volid,
+                                          scrubbing::ScrubReply(scrub_rsp_str),
+                                          vd::ScrubbingCleanup::Always);
 }
 
 void

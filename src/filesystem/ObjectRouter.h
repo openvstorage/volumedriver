@@ -247,9 +247,10 @@ public:
                    const boost::optional<volumedriver::SnapshotName>& end_snap,
                    std::vector<std::string>& work);
 
-    void
-    apply_scrub_result(const ObjectId& oid,
-                       const scrubbing::ScrubReply&);
+    boost::optional<backend::Garbage>
+    apply_scrub_reply(const ObjectId& oid,
+                      const scrubbing::ScrubReply&,
+                      const volumedriver::ScrubbingCleanup);
 
     void
     mark_node_offline(const NodeId& node_id);
