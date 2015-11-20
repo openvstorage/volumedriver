@@ -21,7 +21,6 @@
 
 #include <future>
 
-#include <youtils/PeriodicAction.h>
 #include <youtils/SourceOfUncertainty.h>
 
 #include <backend/Garbage.h>

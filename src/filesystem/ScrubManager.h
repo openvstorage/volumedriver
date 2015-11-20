@@ -23,6 +23,7 @@
 #include <youtils/IOException.h>
 #include <youtils/LockedArakoon.h>
 #include <youtils/Logging.h>
+#include <youtils/PeriodicAction.h>
 
 #include <backend/Garbage.h>
 
@@ -31,7 +32,6 @@
 
 namespace youtils
 {
-class PeriodicAction;
 class UUID;
 }
 
