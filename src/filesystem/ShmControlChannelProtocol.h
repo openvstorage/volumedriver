@@ -15,6 +15,7 @@
 #ifndef __SHM_CONTROL_CHANNEL_PROTOCOL_H_
 #define __SHM_CONTROL_CHANNEL_PROTOCOL_H_
 
+#include <boost/interprocess/managed_shared_memory.hpp>
 #include <msgpack.hpp>
 
 enum class ShmConnectionState
@@ -45,23 +46,23 @@ enum class ShmMsgOpcode
     Deregister,
     Allocate,
     Deallocate,
-    Allocatev,
-    Deallocatev,
 };
 
 class ShmControlChannelMsg
 {
 public:
     ShmControlChannelMsg(ShmMsgOpcode opcode,
-                         const std::vector<uint64_t>& handles = std::vector<uint64_t>(),
+                         const boost::interprocess::managed_shared_memory::handle_t& hdl =
+                            boost::interprocess::managed_shared_memory::handle_t(0),
                          const std::string& volname = "",
                          const std::string& key = "",
                          const long& opaque = 0)
     : opcode_(opcode)
-    , handles_(handles)
     , volname_(volname)
     , key_(key)
     , opaque_(opaque)
+    , hdl_(hdl)
+    , size_(0)
     {}
 
     ShmControlChannelMsg()
@@ -69,10 +70,11 @@ public:
 
 public:
     ShmMsgOpcode opcode_;
-    std::vector<uint64_t> handles_;
     std::string volname_;
     std::string key_;
     long opaque_;
+    boost::interprocess::managed_shared_memory::handle_t hdl_;
+    size_t size_;
 
 public:
     const ShmMsgOpcode&
@@ -132,6 +134,30 @@ public:
     }
 
     void
+    handle(const boost::interprocess::managed_shared_memory::handle_t& hdl)
+    {
+        hdl_ = hdl;
+    }
+
+    const boost::interprocess::managed_shared_memory::handle_t&
+    handle() const
+    {
+        return hdl_;
+    }
+
+    const size_t&
+    size() const
+    {
+        return size_;
+    }
+
+    void
+    size(const size_t& size)
+    {
+        size_ = size;
+    }
+
+    void
     unpack_msg(const char *sbuf,
                const size_t size)
     {
@@ -150,24 +176,32 @@ public:
         obj.convert(this);
     }
 
+    bool
+    is_success()
+    {
+        return (opcode() == ShmMsgOpcode::Success);
+    }
+
     void
     clear()
     {
-        handles_.clear();
         volname_.clear();
         key_.clear();
         opaque_ = 0;
+        hdl_ = 0;
+        size_ = 0;
     }
 public:
     MSGPACK_DEFINE(opcode_,
-                   handles_,
                    volname_,
                    key_,
-                   opaque_);
+                   opaque_,
+                   hdl_,
+                   size_);
 };
 
 MSGPACK_ADD_ENUM(ShmMsgOpcode);
 
-static const uint64_t header_size = sizeof(uint64_t);
+static const uint64_t shm_msg_header_size = sizeof(uint64_t);
 
 #endif //__SHM_CONTROL_CHANNEL_PROTOCOL_H_
