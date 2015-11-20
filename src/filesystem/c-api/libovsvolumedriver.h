@@ -27,6 +27,7 @@
 
 #include "common.h"
 #include "VolumeCacheHandler.h"
+#include "ShmControlChannelClient.h"
 
 #include <boost/asio.hpp>
 
@@ -42,8 +43,7 @@ struct _ovs_ctx_t
     int oflag;
     ovs_async_threads async_threads_;
     VolumeCacheHandlerPtr cache_;
-    std::unique_ptr<boost::asio::io_service> io_service_;
-    std::unique_ptr<boost::asio::local::stream_protocol::socket> socket_;
+    ShmControlChannelClientPtr ctl_client_;
 };
 
 

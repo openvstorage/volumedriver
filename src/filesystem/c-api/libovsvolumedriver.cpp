@@ -18,16 +18,10 @@
 #include "../ShmControlChannelProtocol.h"
 
 #include <limits.h>
-#include <boost/asio.hpp>
-#include <boost/thread.hpp>
-#include <boost/array.hpp>
-
 #include <map>
 #include <youtils/SpinLock.h>
 
 #define NUM_THREADS  1
-
-using boost::asio::local::stream_protocol;
 
 enum class RequestOp
 {
@@ -171,7 +165,7 @@ _aio_init(ovs_ctx_t* ctx)
             async_threads_->rr_iothread[i].stopping = false;
         }
     }
-    catch (std::bad_alloc)
+    catch (std::bad_alloc&)
     {
         pthread_attr_destroy(&attr);
         return -1;
@@ -188,7 +182,7 @@ _aio_init(ovs_ctx_t* ctx)
             async_threads_->wr_iothread[i].stopping = false;
         }
     }
-    catch (std::bad_alloc)
+    catch (std::bad_alloc&)
     {
         for (int i = 0; i < NUM_THREADS; i++)
         {
@@ -291,132 +285,6 @@ _aio_destroy(ovs_ctx_t *ctx)
     return 0;
 }
 
-static int
-_ctl_channel_sendmsg(const ovs_ctx_t *ctx,
-                     const ShmControlChannelMsg& msg)
-{
-    const std::string msg_str(msg.pack_msg());
-    uint64_t msg_payload = msg_str.length();
-
-    try
-    {
-        size_t len = boost::asio::write(*(ctx->socket_),
-                                        boost::asio::buffer(&msg_payload,
-                                                            header_size));
-        assert(len == header_size);
-        len = boost::asio::write(*(ctx->socket_),
-                                 boost::asio::buffer(msg_str,
-                                                     msg_payload));
-        assert(len == msg_payload);
-    }
-    catch(boost::system::system_error&)
-    {
-        return -1;
-    }
-    return 0;
-}
-
-static int
-_ctl_channel_recvmsg(const ovs_ctx_t *ctx,
-                     ShmControlChannelMsg& msg)
-{
-    uint64_t payload_size;
-    try
-    {
-        std::vector<char> reply;
-        std::size_t len = boost::asio::read(*(ctx->socket_),
-                                            boost::asio::buffer(&payload_size,
-                                                                header_size));
-        assert(len == header_size);
-        reply.resize(payload_size);
-        len = boost::asio::read(*(ctx->socket_),
-                                boost::asio::buffer(reply,
-                                                    payload_size));
-        assert(len == payload_size);
-        msg.unpack_msg(reply.data(),
-                       len);
-    }
-    catch(boost::system::system_error&)
-    {
-        return -1;
-    }
-    return 0;
-}
-
-static int
-_ctl_channel_register(ovs_ctx_t *ctx,
-                      const std::string& volume_name,
-                      const std::string& key)
-{
-    boost::system::error_code ec;
-    ShmControlChannelMsg msg(ShmMsgOpcode::Register);
-    msg.volume_name(volume_name);
-    msg.key(key);
-
-    ctx->io_service_.reset(new boost::asio::io_service);
-    ctx->socket_.reset(new stream_protocol::socket(*(ctx->io_service_)));
-    ctx->socket_->connect(stream_protocol::endpoint(ShmConnectionDetails::Endpoint()),
-                          ec);
-    if (ec)
-    {
-        goto failed;
-    }
-
-    if (_ctl_channel_sendmsg(ctx, msg) < 0)
-    {
-        goto failed;
-    }
-
-    if (_ctl_channel_recvmsg(ctx, msg) < 0)
-    {
-        goto failed;
-    }
-
-    if (msg.opcode() == ShmMsgOpcode::Success)
-    {
-        return 0;
-    }
-failed:
-    ctx->io_service_.reset();
-    ctx->socket_.reset();
-    return -1;
-}
-
-static int
-_ctl_channel_unregister(ovs_ctx_t *ctx)
-{
-    ShmControlChannelMsg msg(ShmMsgOpcode::Deregister);
-    if (_ctl_channel_sendmsg(ctx, msg) < 0)
-    {
-        goto failed;
-    }
-
-    if (_ctl_channel_recvmsg(ctx, msg) < 0)
-    {
-        goto failed;
-    }
-
-    if (msg.opcode() == ShmMsgOpcode::Success)
-    {
-        return 0;
-    }
-failed:
-    return -1;
-}
-
-static void
-_ctl_channel_close(ovs_ctx_t *ctx)
-{
-    try
-    {
-        ctx->socket_->shutdown(stream_protocol::socket::shutdown_both);
-        ctx->socket_->close();
-    }
-    catch(boost::system::system_error&)
-    {
-        return;
-    }
-}
 
 ovs_ctx_t*
 ovs_ctx_init(const char* volume_name,
@@ -436,13 +304,12 @@ ovs_ctx_init(const char* volume_name,
         return NULL;
     }
 
-    ovs_ctx_t *ctx = (ovs_ctx_t*) calloc(1,
-                                         sizeof(ovs_ctx_t));
+    ovs_ctx_t *ctx = new ovs_ctx_t;
     if (ctx == NULL)
     {
         return NULL;
     }
-    /* Error: EACCES or EIO */
+    /* Error: EACCESS or EIO */
     ret = shm_create_handle(volume_name,
                             reinterpret_cast<ShmClientHandle*>(&ctx->shm_handle_));
     if (ret < 0)
@@ -452,11 +319,9 @@ ovs_ctx_init(const char* volume_name,
         return NULL;
     }
 
-    /* Error: -1 - socket is already free'd */
-    ret = _ctl_channel_register(ctx,
-                                volume_name,
-                                shm_get_key(reinterpret_cast<ShmClientHandle>(ctx->shm_handle_)));
-    if (ret < 0)
+    ctx->ctl_client_.reset(new ShmControlChannelClient());
+    if (not ctx->ctl_client_->connect_and_register(volume_name,
+            shm_get_key(reinterpret_cast<ShmClientHandle>(ctx->shm_handle_))))
     {
         goto register_err;
     }
@@ -465,7 +330,8 @@ ovs_ctx_init(const char* volume_name,
     ret = _aio_init(ctx);
     if (ret == 0)
     {
-        ctx->cache_.reset(new VolumeCacheHandler(ctx->shm_handle_));
+        ctx->cache_.reset(new VolumeCacheHandler(ctx->shm_handle_,
+                                                 ctx->ctl_client_));
         int ret = ctx->cache_->preallocate();
         if (ret < 0)
         {
@@ -476,12 +342,13 @@ ovs_ctx_init(const char* volume_name,
     }
     else
     {
-        _ctl_channel_close(ctx);
+        ctx->ctl_client_->close();
     }
 register_err:
     /*never here I hope*/
     shm_destroy_handle(static_cast<ShmClientHandle>(ctx->shm_handle_));
-    free(ctx);
+    ctx->ctl_client_.reset();
+    delete ctx;
 
     errno = EIO;
     return NULL;
@@ -503,15 +370,13 @@ ovs_ctx_destroy(ovs_ctx_t *ctx)
     }
     ctx->cache_->drop_caches();
     shm_destroy_handle(static_cast<ShmClientHandle>(ctx->shm_handle_));
-    ret = _ctl_channel_unregister(ctx);
-    if (not ret)
+    if (ctx->ctl_client_->deregister())
     {
-        _ctl_channel_close(ctx);
+        ctx->ctl_client_->close();
     }
     ctx->cache_.reset();
-    ctx->socket_.reset();
-    ctx->io_service_.reset();
-    free(ctx);
+    ctx->ctl_client_.reset();
+    delete ctx;
     return ret;
 err:
     errno = EINVAL;
