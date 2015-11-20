@@ -20,7 +20,7 @@
 
 #include "ShmIdlInterface.h"
 #include "ShmServer.h"
-#include "ShmControlChannel.h"
+#include "ShmControlChannelServer.h"
 
 namespace volumedriverfs
 {
@@ -35,20 +35,20 @@ public:
                  handler_args_t& handler_args)
         : orb_helper_(orb_helper)
         , handler_args_(handler_args)
-        , shm_ctl_chan_(ShmConnectionDetails::Endpoint())
+        , shm_ctl_server_(ShmConnectionDetails::Endpoint())
     {
-        shm_ctl_chan_.create_control_channel(boost::bind(&ShmInterface::try_stop_volume,
-                                                         this,
-                                                         _1),
-                                             boost::bind(&ShmInterface::is_volume_valid,
-                                                         this,
-                                                         _1,
-                                                         _2));
+        shm_ctl_server_.create_control_channel(boost::bind(&ShmInterface::try_stop_volume,
+                                                           this,
+                                                           _1),
+                                               boost::bind(&ShmInterface::is_volume_valid,
+                                                           this,
+                                                           _1,
+                                                           _2));
     }
 
     ~ShmInterface()
     {
-        shm_ctl_chan_.destroy_control_channel();
+        shm_ctl_server_.destroy_control_channel();
     }
 
     typedef ShmServer<Handler> ServerType;
@@ -79,7 +79,7 @@ public:
         }
         catch (ShmIdlInterface::VolumeDoesNotExist& e)
         {
-            LOG_ERROR("Volume '" << volume_name << "'does not exist");
+            LOG_ERROR("Volume '" << volume_name << "' does not exist");
             throw;
         }
         catch (std::exception& e)
@@ -170,9 +170,9 @@ private:
     handler_args_t& handler_args_;
     std::mutex shm_servers_lock_;
     std::map<std::string, std::unique_ptr<ServerType>> shm_servers_;
-    ShmControlChannel shm_ctl_chan_;
+    ShmControlChannelServer shm_ctl_server_;
 };
 
-}
+} //namespace volumedriverfs
 
 #endif
