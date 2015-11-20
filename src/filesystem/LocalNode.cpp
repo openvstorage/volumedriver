@@ -72,7 +72,7 @@ is_file(const Object& o)
 }
 
 void
-with_api_exception_conversion(std::function<void()>&& fn)
+with_api_exception_conversion(std::function<void()> fn)
 {
     try
     {
