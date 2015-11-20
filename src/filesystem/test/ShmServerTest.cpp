@@ -141,8 +141,9 @@ TEST_F(ShmServerTest, ovs_create_write_read_destroy)
                              &w_aio),
               pattern.length());
 
-    ovs_deallocate(ctx,
-                   wbuf);
+    EXPECT_EQ(ovs_deallocate(ctx,
+                             wbuf),
+              0);
 
     ovs_buffer_t *rbuf = ovs_allocate(ctx,
                               pattern.length());
@@ -171,8 +172,9 @@ TEST_F(ShmServerTest, ovs_create_write_read_destroy)
                        pattern.c_str(),
                        pattern.length()) == 0);
 
-    ovs_deallocate(ctx,
-                   rbuf);
+    EXPECT_EQ(ovs_deallocate(ctx,
+                             rbuf),
+              0);
 
     EXPECT_EQ(ovs_ctx_destroy(ctx),
               0);
@@ -261,8 +263,9 @@ TEST_F(ShmServerTest, ovs_completion)
                              &w_aio),
               pattern_len);
 
-    ovs_deallocate(ctx,
-                   wbuf);
+    EXPECT_EQ(ovs_deallocate(ctx,
+                             wbuf),
+              0);
 
     ovs_buffer_t *rbuf = ovs_allocate(ctx,
                               pattern_len);
@@ -296,8 +299,9 @@ TEST_F(ShmServerTest, ovs_completion)
                        pattern.c_str(),
                        pattern_len) == 0);
 
-    ovs_deallocate(ctx,
-                   rbuf);
+    EXPECT_EQ(ovs_deallocate(ctx,
+                             rbuf),
+              0);
 
     EXPECT_EQ(ovs_ctx_destroy(ctx),
               0);
@@ -426,10 +430,12 @@ TEST_F(ShmServerTest, ovs_completion_two_ctxs)
                              &w2_aio),
               pattern_len);
 
-    ovs_deallocate(ctx1,
-                   w1_buf);
-    ovs_deallocate(ctx2,
-                   w2_buf);
+    EXPECT_EQ(ovs_deallocate(ctx1,
+                             w1_buf),
+              0);
+    EXPECT_EQ(ovs_deallocate(ctx2,
+                             w2_buf),
+              0);
 
     ovs_buffer_t *rbuf = ovs_allocate(ctx2,
                               pattern_len);
@@ -461,8 +467,9 @@ TEST_F(ShmServerTest, ovs_completion_two_ctxs)
                        pattern.c_str(),
                        pattern_len) == 0);
 
-    ovs_deallocate(ctx2,
-                   rbuf);
+    EXPECT_EQ(ovs_deallocate(ctx2,
+                             rbuf),
+              0);
 
     EXPECT_EQ(ovs_ctx_destroy(ctx1),
               0);
@@ -498,8 +505,9 @@ TEST_F(ShmServerTest, ovs_write_flush_read)
 
     EXPECT_EQ(ovs_flush(ctx), 0);
 
-    ovs_deallocate(ctx,
-                   wbuf);
+    EXPECT_EQ(ovs_deallocate(ctx,
+                             wbuf),
+              0);
 
     ovs_buffer_t *rbuf = ovs_allocate(ctx,
                               pattern.length());
@@ -516,8 +524,9 @@ TEST_F(ShmServerTest, ovs_write_flush_read)
                        pattern.c_str(),
                        pattern.length()) == 0);
 
-    ovs_deallocate(ctx,
-                   rbuf);
+    EXPECT_EQ(ovs_deallocate(ctx,
+                             rbuf),
+              0);
 
     EXPECT_EQ(ovs_ctx_destroy(ctx),
               0);
