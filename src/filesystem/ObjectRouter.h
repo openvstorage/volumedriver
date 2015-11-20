@@ -16,15 +16,15 @@
 #define VFS_OBJECT_ROUTER_H_
 
 #include "CachedObjectRegistry.h"
+#include "CloneFileFlags.h"
 #include "ClusterRegistry.h"
 #include "EventPublisher.h"
 #include "FailOverCacheConfigMode.h"
 #include "FileSystemParameters.h"
 #include "ForceRestart.h"
+#include "LocalNode.h"
 #include "Object.h"
 #include "ZWorkerPool.h"
-#include "LocalNode.h"
-#include "CloneFileFlags.h"
 
 #include <chrono>
 #include <functional>
@@ -247,10 +247,9 @@ public:
                    const boost::optional<volumedriver::SnapshotName>& start_snap,
                    const boost::optional<volumedriver::SnapshotName>& end_snap);
 
-    boost::optional<backend::Garbage>
-    apply_scrub_reply(const ObjectId& oid,
-                      const scrubbing::ScrubReply&,
-                      const volumedriver::ScrubbingCleanup);
+    void
+    queue_scrub_reply(const ObjectId& oid,
+                      const scrubbing::ScrubReply&);
 
     void
     mark_node_offline(const NodeId& node_id);

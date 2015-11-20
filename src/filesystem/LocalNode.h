@@ -51,6 +51,7 @@ namespace volumedriverfs
 class ObjectRegistration;
 class ObjectRegistry;
 class ObjectRouter;
+class ScrubManager;
 
 MAKE_EXCEPTION(OwnershipException, fungi::IOException);
 MAKE_EXCEPTION(TimeoutException, fungi::IOException);
@@ -171,11 +172,6 @@ public:
                    const boost::optional<volumedriver::SnapshotName>& start_snap,
                    const boost::optional<volumedriver::SnapshotName>& end_snap);
 
-    boost::optional<backend::Garbage>
-    apply_scrub_reply(const ObjectId& oid,
-                      const scrubbing::ScrubReply&,
-                      const volumedriver::ScrubbingCleanup);
-
     void
     set_volume_as_template(const ObjectId& id);
 
@@ -199,6 +195,13 @@ public:
     boost::optional<volumedriver::FailOverCacheConfig>
     get_foc_config(const ObjectId& oid);
 
+    void
+    queue_scrub_reply(const ObjectId& oid,
+                      const scrubbing::ScrubReply&);
+
+    ScrubManager&
+    scrub_manager();
+
     // This isn't a VolumeDriverComponent, only part of one.
     void
     update_config(const boost::property_tree::ptree& pt,
@@ -218,6 +221,8 @@ private:
     DECLARE_PARAMETER(vrouter_local_io_retries);
     DECLARE_PARAMETER(vrouter_sco_multiplier);
     DECLARE_PARAMETER(vrouter_lock_reaper_interval);
+    DECLARE_PARAMETER(scrub_manager_interval);
+    DECLARE_PARAMETER(scrub_manager_sync_wait_secs);
 
     std::unique_ptr<filedriver::ContainerManager> fdriver_;
 
@@ -243,6 +248,8 @@ private:
     // is updated.
     // XXX: Enhance the PeriodicAction interface instead.
     std::unique_ptr<youtils::PeriodicAction> lock_reaper_;
+
+    std::unique_ptr<ScrubManager> scrub_manager_;
 
     void
     reset_lock_reaper_();
@@ -323,10 +330,16 @@ private:
     stop_volume_(const ObjectId& id,
                  volumedriver::DeleteLocalData);
 
+    static void
+    destroy_scrub_manager_(ObjectRegistry&);
+
+    boost::optional<backend::Garbage>
+    apply_scrub_reply_(const ObjectId& oid,
+                       const scrubbing::ScrubReply&,
+                       const volumedriver::ScrubbingCleanup);
+
     void
-    scrub_wrapper_(const char* desc,
-                   const ObjectId& oid,
-                   std::function<void()> fun);
+    collect_scrub_garbage_(backend::Garbage);
 };
 
 }

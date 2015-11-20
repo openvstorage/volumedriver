@@ -1351,15 +1351,13 @@ ObjectRouter::get_scrub_work(const ObjectId& oid,
                                          end_snap);
 }
 
-boost::optional<be::Garbage>
-ObjectRouter::apply_scrub_reply(const ObjectId& oid,
-                                const scrubbing::ScrubReply& scrub_rsp,
-                                const vd::ScrubbingCleanup cleanup)
+void
+ObjectRouter::queue_scrub_reply(const ObjectId& oid,
+                                const scrubbing::ScrubReply& scrub_reply)
 {
-    LOG_INFO(oid << ": applying scrub reply");
-    return local_node_()->apply_scrub_reply(oid,
-                                            scrub_rsp,
-                                            cleanup);
+    LOG_INFO(oid << ": queuing scrub reply");
+    return local_node_()->queue_scrub_reply(oid,
+                                            scrub_reply);
 }
 
 const char*

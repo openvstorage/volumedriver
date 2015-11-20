@@ -79,6 +79,7 @@ struct FileSystemTestSetupParameters
     PARAM(uint64_t, migrate_timeout_ms) = 0;
     PARAM(uint64_t, redirect_timeout_ms) = 0;
     PARAM(uint64_t, redirect_retries) = 2;
+    PARAM(uint64_t, scrub_manager_interval_secs) = 1;
 
 #undef PARAM
 };
@@ -313,6 +314,7 @@ protected:
     uint64_t migrate_timeout_ms_;
     uint64_t redirect_timeout_ms_;
     uint32_t redirect_retries_;
+    uint64_t scrub_manager_interval_secs_;
 
     const backend::Namespace fdriver_namespace_;
 

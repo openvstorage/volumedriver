@@ -370,6 +370,22 @@ DEFINE_INITIALIZED_PARAM(vregistry_arakoon_cluster_nodes,
                          "an array of arakoon cluster node configurations for the volume registry, each containing node_id, host and port",
                          ShowDocumentation::T);
 
+// ScrubManager
+const char scrub_manager_component_name[] = "scrub_manager";
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(scrub_manager_interval,
+                                      scrub_manager_component_name,
+                                      "scrub_manager_interval",
+                                      "interval (in seconds) of the ScrubManager",
+                                      ShowDocumentation::T,
+                                      300);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(scrub_manager_sync_wait_secs,
+                                      scrub_manager_component_name,
+                                      "scrub_manager_sync_wait_secs",
+                                      "number of seconds to wait for a scrub result application to be on the backend before giving up",
+                                      ShowDocumentation::T,
+                                      600);
 }
 
 // Local Variables: **

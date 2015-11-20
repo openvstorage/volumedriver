@@ -113,6 +113,7 @@ TEST_F(ConfigurationTest, print_framework_parameter_dict)
         "filesystem",
         "metadata_server",
         "scocache",
+        "scrub_manager",
         "threadpool_component",
         "volume_manager",
         "volume_registry",

@@ -76,6 +76,7 @@ FileSystemTestSetup::FileSystemTestSetup(const FileSystemTestSetupParameters& pa
     , migrate_timeout_ms_(params.migrate_timeout_ms_)
     , redirect_timeout_ms_(params.redirect_timeout_ms_)
     , redirect_retries_(params.redirect_retries_)
+    , scrub_manager_interval_secs_(params.scrub_manager_interval_secs_)
     , fdriver_namespace_("ovs-fdnspc-fstest-"s + yt::UUID().str())
     , arakoon_test_setup_(std::make_shared<ara::ArakoonTestSetup>(topdir_ / "arakoon"))
     , client_(vrouter_cluster_id(),
@@ -344,6 +345,7 @@ FileSystemTestSetup::make_config_(bpt::ptree& pt,
         ip::PARAMETER_TYPE(vrouter_redirect_timeout_ms)(redirect_timeout_ms_).persist(pt);
         ip::PARAMETER_TYPE(vrouter_redirect_retries)(redirect_retries_).persist(pt);
         ip::PARAMETER_TYPE(vrouter_id)(vrouter_id).persist(pt);
+        ip::PARAMETER_TYPE(scrub_manager_interval)(scrub_manager_interval_secs_).persist(pt);
     }
 
     // volume_router_cluster

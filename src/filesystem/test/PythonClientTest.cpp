@@ -42,6 +42,7 @@
 #include "../PythonClient.h"
 #include "../ObjectRouter.h"
 #include "../Registry.h"
+#include "../ScrubManager.h"
 #include "../XMLRPC.h"
 #include "../XMLRPCKeys.h"
 #include "../XMLRPCStructs.h"
@@ -108,7 +109,8 @@ class PythonClientTest
 {
 protected:
     PythonClientTest()
-        : FileSystemTestBase(FileSystemTestSetupParameters("PythonClientTest"))
+        : FileSystemTestBase(FileSystemTestSetupParameters("PythonClientTest")
+                             .scrub_manager_interval_secs(1))
         , client_(vrouter_cluster_id(),
                   {{address(), local_config().xmlrpc_port}})
     {
@@ -676,16 +678,30 @@ TEST_F(PythonClientTest, scrubbing)
     client_.apply_scrubbing_result(scrub_wrap(scrub_workitems[1]));
 
     //one snapshot deleted, one scrubbed
-    ASSERT_EQ(snapshot_num - 2, bpy::len(client_.get_scrubbing_work(vol_id)));
+    ASSERT_EQ(snapshot_num - 2,
+              bpy::len(client_.get_scrubbing_work(vol_id)));
 
     //deleted snapshot before scrubbing
     ASSERT_THROW(scrub_wrap(scrub_workitems[2]), std::exception);
 
-    //deleted snapshot after scrubbing but before applyscrubbing
+    // deleted snapshot after scrubbing but before applyscrubbing
+    // ... the ScrubManager will notice.
     {
         auto result = scrub_wrap(scrub_workitems[3]);
         client_.delete_snapshot(vol_id, snapshot_names[3]);
-        ASSERT_THROW(client_.apply_scrubbing_result(result), std::exception);
+        vfs::ScrubManager& sm = local_node(fs_->object_router())->scrub_manager();
+        EXPECT_EQ(0,
+                  sm.get_counters().parent_scrubs_nok);
+
+        EXPECT_NO_THROW(client_.apply_scrubbing_result(result));
+
+        while (not sm.get_parent_scrubs().empty())
+        {
+            boost::this_thread::sleep_for(boost::chrono::seconds(scrub_manager_interval_secs_));
+        }
+
+        EXPECT_EQ(1,
+                  sm.get_counters().parent_scrubs_nok);
     }
 
     uint32_t togo = bpy::len(client_.get_scrubbing_work(vol_id));
@@ -913,64 +929,29 @@ TEST_F(PythonClientTest, prevent_rollback_beyond_clone)
     check_snaps(1);
 }
 
-TEST_F(PythonClientTest, no_scrub_work_from_parents)
+TEST_F(PythonClientTest, family_scrubbing)
 {
     const vfs::FrontendPath ppath(make_volume_name("/parent"));
-    const vfs::ObjectId pname(create_file(ppath));
+    const size_t vsize = 10 << 20;
+    const size_t csize = api::GetClusterSize();
 
-    const vd::SnapshotName snap("snapshot");
-    EXPECT_EQ(snap, client_.create_snapshot(pname,
-                                            snap));
-    wait_for_snapshot(pname,
-                      snap);
+    const vfs::ObjectId pname(create_file(ppath,
+                                          vsize));
 
-    const vfs::FrontendPath cpath("/clone");
-    const vfs::ObjectId cname(client_.create_clone(cpath.str(),
-                                                   make_metadata_backend_config(),
-                                                   pname,
-                                                   snap));
-
-    EXPECT_THROW(client_.get_scrubbing_work(pname),
-                 vfs::clienterrors::ObjectStillHasChildrenException);
-
-    EXPECT_EQ(0, unlink(clone_path_to_volume_path(cpath)));
-    EXPECT_EQ(0, unlink(cpath));
-
-    EXPECT_NO_THROW(client_.get_scrubbing_work(pname));
-}
-
-TEST_F(PythonClientTest, no_scrub_application_to_parents)
-{
-    const vfs::FrontendPath ppath(make_volume_name("/parent"));
-    const vfs::ObjectId pname(create_file(ppath, 10ULL << 20));
-
-    const off_t off = 1 * api::GetClusterSize();
-    const uint64_t size = 9 * api::GetClusterSize();
-
-
-    const std::string pattern("Have you ever heard about the Higgs Boson Blues?");
-    const uint32_t snapshot_num = 3;
-
-    std::vector<std::string> snapshot_names;
-    snapshot_names.reserve(snapshot_num);
-
-    for (uint32_t i = 0; i < snapshot_num; i++)
+    const std::string pattern("Blackstar");
+    for (size_t i = 0; i < 64; ++i)
     {
-        write_to_file(ppath, pattern, size, off);
-        snapshot_names.emplace_back(client_.create_snapshot(pname));
-        wait_for_snapshot(pname, snapshot_names.back());
+        write_to_file(pname,
+                      pattern,
+                      csize,
+                      0);
     }
 
     const vd::SnapshotName snap("snapshot");
     EXPECT_EQ(snap, client_.create_snapshot(pname,
                                             snap));
-
     wait_for_snapshot(pname,
                       snap);
-
-    client_.delete_snapshot(pname, snapshot_names[1]);
-
-    auto work(client_.get_scrubbing_work(pname));
 
     const vfs::FrontendPath cpath("/clone");
     const vfs::ObjectId cname(client_.create_clone(cpath.str(),
@@ -978,15 +959,87 @@ TEST_F(PythonClientTest, no_scrub_application_to_parents)
                                                    pname,
                                                    snap));
 
-    auto result(scrub_wrap(work[0]));
+    const bpy::list scrub_work(client_.get_scrubbing_work(pname));
+    ASSERT_EQ(1,
+              bpy::len(scrub_work));
 
-    EXPECT_THROW(client_.apply_scrubbing_result(result),
-                 vfs::clienterrors::ObjectStillHasChildrenException);
+    client_.apply_scrubbing_result(scrub_wrap(scrub_work[0]));
 
-    EXPECT_EQ(0, unlink(clone_path_to_volume_path(cpath)));
-    EXPECT_EQ(0, unlink(cpath));
+    vfs::ScrubManager& sm = local_node(fs_->object_router())->scrub_manager();
 
-    EXPECT_NO_THROW(client_.apply_scrubbing_result(result));
+    while (not sm.get_parent_scrubs().empty() or
+           not sm.get_clone_scrubs().empty())
+    {
+        boost::this_thread::sleep_for(boost::chrono::seconds(scrub_manager_interval_secs_));
+    }
+
+    const vfs::ScrubManager::Counters c(sm.get_counters());
+    EXPECT_EQ(1,
+              c.parent_scrubs_ok);
+    EXPECT_EQ(0,
+              c.parent_scrubs_nok);
+    EXPECT_EQ(1,
+              c.clone_scrubs_ok);
+    EXPECT_EQ(0,
+              c.clone_scrubs_nok);
+}
+
+TEST_F(PythonClientTest, templates_and_scrubbing)
+{
+    const vfs::FrontendPath ppath(make_volume_name("/parent"));
+    const size_t vsize = 10 << 20;
+    const size_t csize = api::GetClusterSize();
+
+    const vfs::ObjectId pname(create_file(ppath,
+                                          vsize));
+
+    const std::string pattern("White Chalk");
+    for (size_t i = 0; i < 64; ++i)
+    {
+        write_to_file(pname,
+                      pattern,
+                      csize,
+                      0);
+    }
+
+    const vd::SnapshotName snap("snapshot");
+    EXPECT_EQ(snap, client_.create_snapshot(pname,
+                                            snap));
+    wait_for_snapshot(pname,
+                      snap);
+
+    const bpy::list scrub_work(client_.get_scrubbing_work(pname));
+    ASSERT_EQ(1,
+              bpy::len(scrub_work));
+
+    client_.set_volume_as_template(pname);
+    EXPECT_EQ(vfs::ObjectType::Template,
+              client_.info_volume(pname).object_type);
+
+    // no more scrub work from a template
+    EXPECT_THROW(client_.get_scrubbing_work(pname),
+                 std::exception);
+
+    // queuing it up works, the ScrubManager will however not be able to apply it
+    client_.apply_scrubbing_result(scrub_wrap(scrub_work[0]));
+
+    vfs::ScrubManager& sm = local_node(fs_->object_router())->scrub_manager();
+
+    while (not sm.get_parent_scrubs().empty() or
+           not sm.get_clone_scrubs().empty())
+    {
+        boost::this_thread::sleep_for(boost::chrono::seconds(scrub_manager_interval_secs_));
+    }
+
+    const vfs::ScrubManager::Counters c(sm.get_counters());
+    EXPECT_EQ(0,
+              c.parent_scrubs_ok);
+    EXPECT_EQ(1,
+              c.parent_scrubs_nok);
+    EXPECT_EQ(0,
+              c.clone_scrubs_ok);
+    EXPECT_EQ(0,
+              c.clone_scrubs_nok);
 }
 
 TEST_F(PythonClientTest, no_templating_of_files)

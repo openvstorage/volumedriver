@@ -375,6 +375,14 @@ ScrubManager::apply_(const ObjectId& oid,
         return boost::none;
     }
 
+    if (reg->treeconfig.object_type != ObjectType::Volume)
+    {
+        // AR: throw a fit/exception in case of ObjectType::File?
+        LOG_INFO(oid << ": not a volume (anymore?) but a " <<
+                 reg->treeconfig.object_type);
+        return boost::none;
+    }
+
     if (reg->node_id == registry_.node_id())
     {
         LOG_INFO(oid << ": registered locally, applying scrub reply");

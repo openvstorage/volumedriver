@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "CloneFileFlags.h"
 #include "LocalNode.h"
 #include "ObjectRegistry.h"
 #include "ObjectRouter.h"
+#include "ScrubManager.h"
+#include "ScrubTreeBuilder.h"
 #include "TracePoints_tp.h"
-#include "CloneFileFlags.h"
 
 #include <mutex>
 #include <set>
@@ -41,9 +43,11 @@ namespace volumedriverfs
 {
 
 namespace ara = arakoon;
+namespace bc = boost::chrono;
 namespace be = backend;
 namespace bpt = boost::property_tree;
 namespace fd = filedriver;
+namespace ph = std::placeholders;
 namespace vd = volumedriver;
 namespace yt = youtils;
 
@@ -86,11 +90,14 @@ with_api_exception_conversion(std::function<void()>&& fn)
 LocalNode::LocalNode(ObjectRouter& router,
                      const ClusterNodeConfig& cfg,
                      const bpt::ptree& pt)
-    : ClusterNode(router, cfg)
+    : ClusterNode(router,
+                  cfg)
     , vrouter_local_io_sleep_before_retry_usecs(pt)
     , vrouter_local_io_retries(pt)
     , vrouter_sco_multiplier(pt)
     , vrouter_lock_reaper_interval(pt)
+    , scrub_manager_interval(pt)
+    , scrub_manager_sync_wait_secs(pt)
 {
     LOG_TRACE("Initializing volumedriver");
 
@@ -101,10 +108,27 @@ LocalNode::LocalNode(ObjectRouter& router,
                                             pt));
 
     reset_lock_reaper_();
+
+    ObjectRegistry& reg = router.object_registry()->registry();
+
+    scrub_manager_ =
+        std::make_unique<ScrubManager>(reg,
+                                       reg.locked_arakoon(),
+                                       scrub_manager_interval.value(),
+                                       std::bind(&LocalNode::apply_scrub_reply_,
+                                                 this,
+                                                 ph::_1,
+                                                 ph::_2,
+                                                 ph::_3),
+                                       ScrubTreeBuilder(reg),
+                                       std::bind(&LocalNode::collect_scrub_garbage_,
+                                                 this,
+                                                 ph::_1));
 }
 
 LocalNode::~LocalNode()
 {
+    scrub_manager_ = nullptr;
     api::Exit();
 }
 
@@ -112,6 +136,8 @@ void
 LocalNode::destroy(ObjectRegistry& registry,
                    const bpt::ptree& pt)
 {
+    destroy_scrub_manager_(registry);
+
     auto cm(be::BackendConnectionManager::create(pt, RegisterComponent::F));
 
     TODO("AR: push volume namespace removal down to voldrv");
@@ -144,6 +170,31 @@ LocalNode::destroy(ObjectRegistry& registry,
 }
 
 void
+LocalNode::destroy_scrub_manager_(ObjectRegistry& registry)
+{
+    std::atomic<uint64_t> sm_interval(std::numeric_limits<uint64_t>::max());
+
+    ScrubManager sm(registry,
+                    registry.locked_arakoon(),
+                    sm_interval,
+                    [](const ObjectId&,
+                       const scrubbing::ScrubReply&,
+                       const vd::ScrubbingCleanup) -> ScrubManager::MaybeGarbage
+                    {
+                        throw std::runtime_error("ScrubManager is about to be destroyed");
+                    },
+                    [](const ObjectId&,
+                       const vd::SnapshotName&) -> ScrubManager::ClonePtrList
+                    {
+                        throw std::runtime_error("ScrubManager is about to be destroyed");
+                    },
+                    [](be::Garbage)
+                    {});
+
+    sm.destroy();
+}
+
+void
 LocalNode::update_config(const bpt::ptree& pt,
                          vd::UpdateReport& rep)
 {
@@ -162,6 +213,9 @@ LocalNode::update_config(const bpt::ptree& pt,
         reset_lock_reaper_();
     }
 
+    U(scrub_manager_interval);
+    U(scrub_manager_sync_wait_secs);
+
 #undef U
 }
 
@@ -175,6 +229,8 @@ LocalNode::persist_config(bpt::ptree& pt,
     P(vrouter_local_io_sleep_before_retry_usecs);
     P(vrouter_local_io_retries);
     P(vrouter_sco_multiplier);
+    P(scrub_manager_interval);
+    P(scrub_manager_sync_wait_secs);
 
 #undef P
 }
@@ -687,7 +743,7 @@ LocalNode::destroy_(vd::Volume* vol,
             }
             else
             {
-                boost::this_thread::sleep_for(boost::chrono::milliseconds(10));
+                boost::this_thread::sleep_for(bc::milliseconds(10));
             }
         }
     }
@@ -1279,47 +1335,6 @@ LocalNode::delete_snapshot(const ObjectId& id,
     });
 }
 
-void
-LocalNode::scrub_wrapper_(const char* desc,
-                          const ObjectId& id,
-                          std::function<void()> fun)
-{
-    // not strictly necessary?
-    RWLockPtr l(get_lock_(id));
-    fungi::ScopedReadLock rg(*l);
-
-    ObjectRegistrationPtr reg(vrouter_.object_registry()->find_throw(id,
-                                                                     IgnoreCache::T));
-    if (reg->node_id != vrouter_.node_id())
-    {
-        LOG_WARN(id << ": not running here (" << vrouter_.node_id() << ") but on " <<
-                 reg->node_id);
-        throw ObjectNotRunningHereException("object not running here",
-                                            id.str().c_str());
-    }
-
-    if (not reg->treeconfig.descendants.empty())
-    {
-        LOG_ERROR(id << ": refusing to " << desc << " as there are clones");
-        throw ObjectStillHasChildrenException("volume or template still has children",
-                                              id.str().c_str());
-    }
-
-    if (reg->treeconfig.object_type != ObjectType::Volume)
-    {
-        LOG_ERROR(id << ": refusing to " << desc << " - invalid object type " <<
-                  reg->treeconfig.object_type);
-        throw InvalidOperationException() <<
-            error_object_id(id) <<
-            error_desc("invalid object type");
-    }
-
-    with_api_exception_conversion([&]
-                                  {
-                                      fun();
-                                  });
-}
-
 std::vector<scrubbing::ScrubWork>
 LocalNode::get_scrub_work(const ObjectId& id,
                           const boost::optional<vd::SnapshotName>& start_snap,
@@ -1328,59 +1343,157 @@ LocalNode::get_scrub_work(const ObjectId& id,
     LOG_INFO(id << ": getting scrub work, start snapshot " << start_snap <<
              ", end snapshot " << end_snap);
 
-    std::vector<scrubbing::ScrubWork> w;
+    std::vector<scrubbing::ScrubWork> work;
 
-    scrub_wrapper_("hand out scrub work",
-                   id,
-                   [&]
-                   {
-                       w = api::getScrubbingWork(static_cast<const vd::VolumeId>(id),
-                                                 start_snap,
-                                                 end_snap);
-                   });
+    {
+        // not strictly necessary?
+        RWLockPtr l(get_lock_(id));
+        fungi::ScopedReadLock rg(*l);
 
-    return w;
+        ObjectRegistrationPtr reg(vrouter_.object_registry()->find_throw(id,
+                                                                         IgnoreCache::T));
+        if (reg->node_id != vrouter_.node_id())
+        {
+            LOG_WARN(id << ": not running here (" << vrouter_.node_id() << ") but on " <<
+                     reg->node_id);
+            throw ObjectNotRunningHereException("object not running here",
+                                                id.str().c_str());
+        }
+
+        if (reg->treeconfig.object_type != ObjectType::Volume)
+        {
+            LOG_ERROR(id << ": refusing to get scrub work - invalid object type " <<
+                      reg->treeconfig.object_type);
+            throw InvalidOperationException() <<
+                error_object_id(id) <<
+                error_desc("invalid object type");
+        }
+
+        auto fun([&]
+                 {
+                     const auto& vid = static_cast<const vd::VolumeId&>(id.str());
+                     work = api::getScrubbingWork(vid,
+                                                  start_snap,
+                                                  end_snap);
+                 });
+
+        with_api_exception_conversion(std::move(fun));
+    }
+
+    const ScrubManager::ParentScrubs
+        pending_scrubs(scrub_manager_->get_parent_scrubs());
+
+    std::vector<scrubbing::ScrubWork> res;
+    res.reserve(work.size());
+
+    // Sub-awesome time complexity. Do we care?
+    for (auto&& w : work)
+    {
+        bool pending = false;
+        for (const auto& p : pending_scrubs)
+        {
+            if (p.second == id and
+                p.first.ns_ == w.ns_ and
+                p.first.snapshot_name_ == w.snapshot_name_)
+            {
+                pending = true;
+                break;
+            }
+        }
+
+        if (not pending)
+        {
+            res.emplace_back(std::move(w));
+        }
+    }
+
+    return res;
+}
+
+void
+LocalNode::queue_scrub_reply(const ObjectId& oid,
+                             const scrubbing::ScrubReply& reply)
+{
+    scrub_manager_->queue_scrub_reply(oid,
+                                      reply);
 }
 
 boost::optional<be::Garbage>
-LocalNode::apply_scrub_reply(const ObjectId& id,
-                             const scrubbing::ScrubReply& rsp,
-                             const vd::ScrubbingCleanup cleanup)
+LocalNode::apply_scrub_reply_(const ObjectId& id,
+                              const scrubbing::ScrubReply& rsp,
+                              const vd::ScrubbingCleanup cleanup)
 {
     LOG_INFO(id << ": applying scrub result");
 
+    const vd::VolumeId& vid = static_cast<const vd::VolumeId&>(id.str());
     boost::optional<be::Garbage> maybe_garbage;
+    vd::TLogId tlog_id;
 
-    scrub_wrapper_("apply scrub reply",
-                   id,
-                   [&]
-                   {
-                       maybe_garbage =
-                           api::applyScrubbingWork(static_cast<const vd::VolumeId>(id),
-                                                   rsp,
-                                                   cleanup);
-                       // TODO: just a stop-gap measure to maintain the old behaviour.
-                       // It has to go away once the ScrubManager is taking over and
-                       // clones can be scrubbed.
-                       if (maybe_garbage)
-                       {
-                           vd::Volume* v =
-                               api::getVolumePointer(static_cast<const vd::VolumeId>(id));
-                           VERIFY(v);
+    {
+        // not strictly necessary?
+        RWLockPtr l(get_lock_(id));
+        fungi::ScopedReadLock rg(*l);
 
-                           // be::Garbage cannot be copied so we need to take a
-                           // detour via a shared_ptr as a std::function capturing
-                           // a move-only type does not work.
-                           auto g(std::make_shared<be::Garbage>(std::move(*maybe_garbage)));
+        auto fun([&]
+                 {
+                     maybe_garbage = api::applyScrubbingWork(vid,
+                                                             rsp,
+                                                             cleanup);
+                     tlog_id = api::scheduleBackendSync(vid);
+                 });
 
-                           v->wait_for_backend_and_run([g]() mutable
-                                                       {
-                                                           api::backend_garbage_collector()->queue(std::move(*g));
-                                                       });
-                       }
-                   });
+        with_api_exception_conversion(std::move(fun));
+    }
 
-    return boost::none;
+    yt::SteadyTimer timer;
+
+    while (true)
+    {
+        bool nsync = false;
+
+        {
+            // not strictly necessary?
+            RWLockPtr l(get_lock_(id));
+            fungi::ScopedReadLock rg(*l);
+
+            try
+            {
+                LOCKVD();
+                nsync = api::isVolumeSyncedUpTo(vid,
+                                                tlog_id);
+            }
+            catch (vd::VolManager::VolumeDoesNotExistException&)
+            {
+                LOG_INFO(vid << ": volume does not exist (anymore?) - assuming it's gone for good or it was moved to another node, either of which is fine.");
+                nsync = true;
+            }
+        }
+
+        if (nsync)
+        {
+            break;
+        }
+        else if (timer.elapsed() > bc::seconds(scrub_manager_sync_wait_secs.value()))
+        {
+            LOG_ERROR(id << ": applying " << rsp << " timed out");
+            throw fungi::IOException("scrub reply application timed out",
+                                     id.str().c_str());
+        }
+        else
+        {
+            LOG_INFO(vid <<
+                     ": not sync'ed to backend yet - going to sleep for a while");
+            boost::this_thread::sleep_for(bc::seconds(1));
+        }
+    }
+
+    return maybe_garbage;
+}
+
+void
+LocalNode::collect_scrub_garbage_(be::Garbage garbage)
+{
+    api::backend_garbage_collector()->queue(std::move(garbage));
 }
 
 void
@@ -1555,6 +1668,12 @@ LocalNode::get_foc_config_mode(const ObjectId& oid)
         reg(vrouter_.object_registry()->find_throw(oid,
                                                    IgnoreCache::T));
     return reg->foc_config_mode;
+}
+
+ScrubManager&
+LocalNode::scrub_manager()
+{
+    return *scrub_manager_;
 }
 
 }
