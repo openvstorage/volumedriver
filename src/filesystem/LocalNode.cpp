@@ -136,7 +136,8 @@ void
 LocalNode::destroy(ObjectRegistry& registry,
                    const bpt::ptree& pt)
 {
-    destroy_scrub_manager_(registry);
+    ScrubManager(registry,
+                 registry.locked_arakoon()).destroy();
 
     auto cm(be::BackendConnectionManager::create(pt, RegisterComponent::F));
 
@@ -167,31 +168,6 @@ LocalNode::destroy(ObjectRegistry& registry,
 
         registry.wipe_out(reg->volume_id);
     }
-}
-
-void
-LocalNode::destroy_scrub_manager_(ObjectRegistry& registry)
-{
-    std::atomic<uint64_t> sm_interval(std::numeric_limits<uint64_t>::max());
-
-    ScrubManager sm(registry,
-                    registry.locked_arakoon(),
-                    sm_interval,
-                    [](const ObjectId&,
-                       const scrubbing::ScrubReply&,
-                       const vd::ScrubbingCleanup) -> ScrubManager::MaybeGarbage
-                    {
-                        throw std::runtime_error("ScrubManager is about to be destroyed");
-                    },
-                    [](const ObjectId&,
-                       const vd::SnapshotName&) -> ScrubManager::ClonePtrList
-                    {
-                        throw std::runtime_error("ScrubManager is about to be destroyed");
-                    },
-                    [](be::Garbage)
-                    {});
-
-    sm.destroy();
 }
 
 void

@@ -23,7 +23,6 @@
 #include <youtils/IOException.h>
 #include <youtils/LockedArakoon.h>
 #include <youtils/Logging.h>
-#include <youtils/PeriodicAction.h>
 
 #include <backend/Garbage.h>
 
@@ -32,6 +31,7 @@
 
 namespace youtils
 {
+class PeriodicAction;
 class UUID;
 }
 
@@ -122,6 +122,9 @@ public:
                                    const volumedriver::SnapshotName&)>;
 
     ScrubManager(ObjectRegistry&,
+                 std::shared_ptr<youtils::LockedArakoon>);
+
+    ScrubManager(ObjectRegistry&,
                  std::shared_ptr<youtils::LockedArakoon>,
                  const std::atomic<uint64_t>& period_secs,
                  ApplyScrubReplyFun,
@@ -175,7 +178,7 @@ private:
     BuildScrubTreeFun build_scrub_tree_;
     CollectGarbageFun collect_garbage_;
 
-    youtils::PeriodicAction periodic_action_;
+    std::unique_ptr<youtils::PeriodicAction> periodic_action_;
 
     mutable boost::mutex counters_lock_;
     Counters counters_;

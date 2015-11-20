@@ -22,6 +22,7 @@
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/serialization/shared_ptr.hpp>
 
+#include <youtils/PeriodicAction.h>
 #include <youtils/Serialization.h>
 
 #include <backend/Garbage.h>
@@ -165,23 +166,31 @@ maybe_init_key(yt::LockedArakoon& larakoon,
 }
 
 ScrubManager::ScrubManager(ObjectRegistry& registry,
+                           std::shared_ptr<yt::LockedArakoon> larakoon)
+    : registry_(registry)
+    , parent_scrubs_key_(parent_scrubs_key(registry_.cluster_id()))
+    , clone_scrubs_index_key_(clone_scrubs_index_key(registry_.cluster_id()))
+    , larakoon_(larakoon)
+{}
+
+ScrubManager::ScrubManager(ObjectRegistry& registry,
                            std::shared_ptr<yt::LockedArakoon> larakoon,
                            const std::atomic<uint64_t>& period_secs,
                            ApplyScrubReplyFun apply_scrub_reply,
                            BuildScrubTreeFun build_scrub_tree,
                            CollectGarbageFun collect_garbage)
-    : registry_(registry)
-    , parent_scrubs_key_(parent_scrubs_key(registry_.cluster_id()))
-    , clone_scrubs_index_key_(clone_scrubs_index_key(registry_.cluster_id()))
-    , larakoon_(larakoon)
-    , apply_scrub_reply_(std::move(apply_scrub_reply))
-    , build_scrub_tree_(std::move(build_scrub_tree))
-    , collect_garbage_(std::move(collect_garbage))
-    , periodic_action_("ScrubManager",
-                       boost::bind(&ScrubManager::work_,
-                                   this),
-                       period_secs)
+    : ScrubManager(registry,
+                   larakoon)
 {
+    apply_scrub_reply_= std::move(apply_scrub_reply);
+    build_scrub_tree_ = std::move(build_scrub_tree);
+    collect_garbage_ = std::move(collect_garbage);
+    periodic_action_ =
+        std::make_unique<yt::PeriodicAction>("ScrubManager",
+                                             boost::bind(&ScrubManager::work_,
+                                                         this),
+                                             period_secs);
+
     maybe_init_key<ParentScrubs>(*larakoon_,
                                  parent_scrubs_key_);
     maybe_init_key<CloneScrubs>(*larakoon_,

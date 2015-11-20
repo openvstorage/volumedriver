@@ -330,9 +330,6 @@ private:
     stop_volume_(const ObjectId& id,
                  volumedriver::DeleteLocalData);
 
-    static void
-    destroy_scrub_manager_(ObjectRegistry&);
-
     boost::optional<backend::Garbage>
     apply_scrub_reply_(const ObjectId& oid,
                        const scrubbing::ScrubReply&,
