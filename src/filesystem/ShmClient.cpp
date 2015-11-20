@@ -21,6 +21,7 @@
 
 namespace volumedriverfs
 {
+namespace ipc = boost::interprocess;
 
 youtils::OrbHelper&
 ShmClient::orb_helper()
@@ -114,6 +115,18 @@ void
 ShmClient::deallocate(void *shptr)
 {
     shm_segment_->deallocate(shptr);
+}
+
+void*
+ShmClient::get_address_from_handle(ipc::managed_shared_memory::handle_t handle)
+{
+    return shm_segment_->get_address_from_handle(handle);
+}
+
+ipc::managed_shared_memory::handle_t
+ShmClient::get_handle_from_address(void *shptr)
+{
+    return shm_segment_->get_handle_from_address(shptr);
 }
 
 int
@@ -416,4 +429,17 @@ const char*
 shm_get_key(ShmClientHandle h)
 {
     return static_cast<volumedriverfs::ShmClient*>(h)->get_key().c_str();
+}
+
+void*
+shm_get_address_from_handle(ShmClientHandle h,
+        boost::interprocess::managed_shared_memory::handle_t handle)
+{
+    return static_cast<volumedriverfs::ShmClient*>(h)->get_address_from_handle(handle);
+}
+
+boost::interprocess::managed_shared_memory::handle_t
+shm_get_handle_from_address(ShmClientHandle h, void *ptr)
+{
+    return static_cast<volumedriverfs::ShmClient*>(h)->get_handle_from_address(ptr);
 }

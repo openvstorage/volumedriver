@@ -31,7 +31,6 @@ struct _ShmClientStruct
 namespace volumedriverfs
 {
 namespace ipc = boost::interprocess;
-//class CreateResult;
 
 class ShmClient final : public _ShmClientStruct
 {
@@ -102,6 +101,12 @@ public:
     create_volume(const std::string& volume_name,
                   const uint64_t volume_size);
 
+    void*
+    get_address_from_handle(ipc::managed_shared_memory::handle_t handle);
+
+    ipc::managed_shared_memory::handle_t
+    get_handle_from_address(void *buf);
+
 private:
 
     static youtils::OrbHelper&
@@ -129,7 +134,7 @@ private:
     std::unique_ptr<ipc::managed_shared_memory> shm_segment_;
 };
 
-} //namespace
+} //namespace volumedriverfs
 #endif
 
 #ifdef __cplusplus
@@ -199,6 +204,13 @@ shm_create_volume(const char *volume_name,
 
 const char*
 shm_get_key(ShmClientHandle h);
+
+boost::interprocess::managed_shared_memory::handle_t
+shm_get_handle_from_address(ShmClientHandle h, void *ptr);
+
+void*
+shm_get_address_from_handle(ShmClientHandle h,
+               boost::interprocess::managed_shared_memory::handle_t);
 
 #ifdef __cplusplus
 }
