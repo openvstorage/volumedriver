@@ -11,8 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#ifndef __SHM_CONTROL_CHANNEL_H
-#define __SHM_CONTROL_CHANNEL_H
+#ifndef __SHM_CONTROL_CHANNEL_SERVER_H
+#define __SHM_CONTROL_CHANNEL_SERVER_H
 
 #include <boost/bind.hpp>
 #include <boost/array.hpp>
@@ -26,6 +26,10 @@
 #include <youtils/Assert.h>
 
 #include "ShmControlChannelProtocol.h"
+#include "ShmVolumeCache.h"
+
+namespace volumedriverfs
+{
 
 typedef boost::function<bool(const std::string&)> TryStopVolume;
 typedef boost::function<bool(const std::string&,
@@ -37,11 +41,13 @@ class ControlSession
 public:
     ControlSession(boost::asio::io_service& io_service,
                    std::map<int, std::string>& sess_,
+                   std::map<int, ShmVolumeCachePtr>& cache,
                    fungi::SpinLock& lock_,
                    TryStopVolume try_stop_volume,
                    IsVolumeValid is_volume_valid)
     : socket_(io_service)
     , sessions_(sess_)
+    , cache_(cache)
     , sessions_lock_(lock_)
     , state_(ShmConnectionState::Connected)
     , try_stop_volume_(try_stop_volume)
@@ -74,6 +80,11 @@ public:
             try_stop_volume_(it->second);
             sessions_.erase(it);
         }
+        auto cit = cache_.find(socket_.native());
+        if (cit != cache_.end())
+        {
+            cache_.erase(cit);
+        }
     }
 
     ShmControlChannelMsg
@@ -87,7 +98,44 @@ public:
             {
                 sessions_.emplace(socket_.native(),
                                   msg.volume_name());
+                cache_.emplace(socket_.native(),
+                               ShmVolumeCachePtr(new ShmVolumeCache()));
                 state_ = ShmConnectionState::Registered;
+                o_msg.opcode(ShmMsgOpcode::Success);
+            }
+        }
+        return o_msg;
+    }
+
+    ShmControlChannelMsg
+    handle_allocate(const ShmControlChannelMsg& msg)
+    {
+        ShmControlChannelMsg o_msg;
+        if (state_ == ShmConnectionState::Registered)
+        {
+            try
+            {
+                o_msg.handle(cache_[socket_.native()]->allocate(msg.size()));
+                o_msg.opcode(ShmMsgOpcode::Success);
+            }
+            catch (boost::interprocess::bad_alloc&)
+            {
+                o_msg.opcode(ShmMsgOpcode::Failed);
+            }
+        }
+        return o_msg;
+    }
+
+    ShmControlChannelMsg
+    handle_deallocate(const ShmControlChannelMsg& msg)
+    {
+        ShmControlChannelMsg o_msg(ShmMsgOpcode::Failed);
+        if (state_ == ShmConnectionState::Registered)
+        {
+            //cnanakos: make deallocation async and return immediately
+            bool ret = cache_[socket_.native()]->deallocate(msg.handle());
+            if (ret)
+            {
                 o_msg.opcode(ShmMsgOpcode::Success);
             }
         }
@@ -102,9 +150,15 @@ public:
         {
             fungi::ScopedSpinLock lock_(sessions_lock_);
             auto it = sessions_.find(socket_.native());
-            if (it != sessions_.end())
+            if (it == sessions_.end())
             {
-                sessions_.erase(it);
+                return o_msg;
+            }
+            sessions_.erase(it);
+            auto cit = cache_.find(socket_.native());
+            if (cit != cache_.end())
+            {
+                cache_.erase(cit);
                 state_ = ShmConnectionState::Connected;
                 o_msg.opcode(ShmMsgOpcode::Success);
             }
@@ -116,7 +170,7 @@ public:
     {
         boost::asio::async_read(socket_,
                                 boost::asio::buffer(&payload_size_,
-                                                    header_size),
+                                                    shm_msg_header_size),
                                 boost::bind(&ControlSession::handle_header_read,
                                             shared_from_this(),
                                             boost::asio::placeholders::error));
@@ -155,6 +209,10 @@ public:
             return handle_register(i_msg);
         case ShmMsgOpcode::Deregister:
             return handle_unregister();
+        case ShmMsgOpcode::Allocate:
+            return handle_allocate(i_msg);
+        case ShmMsgOpcode::Deallocate:
+            return handle_deallocate(i_msg);
         default:
             return ShmControlChannelMsg(ShmMsgOpcode::Failed);
         }
@@ -174,7 +232,7 @@ public:
 
             boost::asio::async_write(socket_,
                                      boost::asio::buffer(&reply_payload_size,
-                                                         header_size),
+                                                         shm_msg_header_size),
                                      boost::bind(&ControlSession::handle_header_write,
                                                  shared_from_this(),
                                                  msg_str,
@@ -230,6 +288,7 @@ private:
     std::vector<char> data_;
     uint64_t payload_size_;
     std::map<int, std::string>& sessions_;
+    std::map<int, ShmVolumeCachePtr>& cache_;
     fungi::SpinLock& sessions_lock_;
     ShmConnectionState state_;
     TryStopVolume try_stop_volume_;
@@ -238,10 +297,10 @@ private:
 
 typedef boost::shared_ptr<ControlSession> ctl_session_ptr;
 
-class ShmControlChannel
+class ShmControlChannelServer
 {
 public:
-    ShmControlChannel(const std::string& file)
+    ShmControlChannelServer(const std::string& file)
         : acceptor_(io_service_)
         , file_(file)
     {
@@ -262,11 +321,12 @@ public:
         }
         new_session.reset(new ControlSession(io_service_,
                                              sessions_,
+                                             cache_,
                                              sessions_lock_,
                                              try_stop_volume_,
                                              is_volume_valid_));
         acceptor_.async_accept(new_session->socket(),
-                                boost::bind(&ShmControlChannel::handle_accept,
+                                boost::bind(&ShmControlChannelServer::handle_accept,
                                             this,
                                             new_session,
                                             boost::asio::placeholders::error));
@@ -279,11 +339,12 @@ public:
 
         ctl_session_ptr new_session(new ControlSession(io_service_,
                                                        sessions_,
+                                                       cache_,
                                                        sessions_lock_,
                                                        try_stop_volume,
                                                        is_volume_valid));
         acceptor_.async_accept(new_session->socket(),
-                               boost::bind(&ShmControlChannel::handle_accept,
+                               boost::bind(&ShmControlChannelServer::handle_accept,
                                            this,
                                            new_session,
                                            boost::asio::placeholders::error));
@@ -305,6 +366,7 @@ private:
     boost::asio::io_service io_service_;
     boost::asio::local::stream_protocol::acceptor acceptor_;
     std::map<int, std::string> sessions_;
+    std::map<int, ShmVolumeCachePtr> cache_;
     fungi::SpinLock sessions_lock_;
     boost::thread_group grp_;
     std::string file_;
@@ -312,4 +374,6 @@ private:
     IsVolumeValid is_volume_valid_;
 };
 
-#endif //__SHM_CONTROL_CHANNEL_H
+} //namespace volumedriverfs
+
+#endif //__SHM_CONTROL_CHANNEL_SERVER_H
