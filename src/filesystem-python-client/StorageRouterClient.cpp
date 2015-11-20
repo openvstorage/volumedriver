@@ -22,6 +22,7 @@
 #include "OptionalConverter.h"
 #include "Piccalilli.h"
 #include "PythonTestHelpers.h"
+#include "ScrubManagerClient.h"
 #include "StringyConverter.h"
 #include "StrongArithmeticTypedefConverter.h"
 
@@ -214,6 +215,7 @@ export_debug_module()
     vfspy::FileSystemMetaDataClient::registerize();
 
     vfspy::ObjectRegistryClient::registerize();
+    vfspy::ScrubManagerClient::registerize();
 }
 
 template<typename T>
