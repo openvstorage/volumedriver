@@ -16,6 +16,7 @@
 #define _VOLUME_CACHE_H
 
 #include "../ShmClient.h"
+#include "ShmControlChannelClient.h"
 
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
 #include <boost/thread.hpp>
@@ -26,22 +27,29 @@
 class VolumeCacheHandler
 {
 public:
-    VolumeCacheHandler(void *shm_handle)
+    VolumeCacheHandler(void *shm_handle,
+                       ShmControlChannelClientPtr ctl_client)
     : shm_handle_(shm_handle)
+    , ctl_client_(ctl_client)
     {}
+
+    ~VolumeCacheHandler() = default;
+
+    VolumeCacheHandler(const VolumeCacheHandler&) = delete;
+    VolumeCacheHandler& operator=(const VolumeCacheHandler&) = delete;
 
     ovs_buffer_t*
     allocate(size_t size)
     {
         ovs_buffer_t *buffer;
-        int retries = 10;
+        int retries = 15;
         boost::posix_time::time_duration delay = boost::posix_time::nanoseconds(10);
         while ((buffer = _try_allocate(size)) == NULL)
         {
             boost::this_thread::sleep(delay);
             retries--;
             delay *= 2;
-            if (not retries)
+            if (retries == 0)
             {
                 break;
             }
@@ -72,10 +80,9 @@ public:
                                                   lock_128k,
                                                   QueueSize::qs_128k);
             default:
-                shm_deallocate(static_cast<ShmClientHandle>(shm_handle_),
-                               shptr->buf);
+                void *ptr = shptr->buf;
                 delete shptr;
-                return 0;
+                return ctl_channel_deallocate(ptr);
             }
         }
         else
@@ -89,8 +96,7 @@ public:
     {
         for (int i = 0; i < QueueSize::qs_4k; i++)
         {
-            void *ptr = shm_allocate(static_cast<ShmClientHandle>(shm_handle_),
-                                     BufferSize::s_4k);
+            void *ptr = ctl_channel_allocate(BufferSize::s_4k);
             if (ptr)
             {
                 chunks_4k.push(ptr);
@@ -102,8 +108,7 @@ public:
         }
         for (int i = 0; i < QueueSize::qs_32k; i++)
         {
-            void *ptr = shm_allocate(static_cast<ShmClientHandle>(shm_handle_),
-                                     BufferSize::s_32k);
+            void *ptr = ctl_channel_allocate(BufferSize::s_32k);
             if (ptr)
             {
                 chunks_32k.push(ptr);
@@ -115,8 +120,7 @@ public:
         }
         for (int i = 0; i < QueueSize::qs_128k; i++)
         {
-            void *ptr = shm_allocate(static_cast<ShmClientHandle>(shm_handle_),
-                                     BufferSize::s_128k);
+            void *ptr = ctl_channel_allocate(BufferSize::s_128k);
             if (ptr)
             {
                 chunks_128k.push(ptr);
@@ -138,8 +142,7 @@ public:
             {
                 void *buf = chunks_4k.front();
                 chunks_4k.pop();
-                shm_deallocate(static_cast<ShmClientHandle>(shm_handle_),
-                               buf);
+                ctl_channel_deallocate(buf);
             }
         }
         {
@@ -148,8 +151,7 @@ public:
             {
                 void *buf = chunks_32k.front();
                 chunks_32k.pop();
-                shm_deallocate(static_cast<ShmClientHandle>(shm_handle_),
-                               buf);
+                ctl_channel_deallocate(buf);
             }
         }
         {
@@ -158,8 +160,7 @@ public:
             {
                 void *buf = chunks_128k.front();
                 chunks_128k.pop();
-                shm_deallocate(static_cast<ShmClientHandle>(shm_handle_),
-                               buf);
+                ctl_channel_deallocate(buf);
             }
         }
     }
@@ -167,6 +168,7 @@ public:
 private:
     typedef std::queue<void*> BufferQueue;
     void *shm_handle_;
+    ShmControlChannelClientPtr ctl_client_;
 
     enum BufferSize
     {
@@ -177,9 +179,9 @@ private:
 
     enum QueueSize
     {
-        qs_4k = 512,
-        qs_32k = 48,
-        qs_128k = 8,
+        qs_4k = 256,
+        qs_32k = 32,
+        qs_128k = 4,
     };
 
     BufferQueue chunks_4k;
@@ -217,8 +219,7 @@ private:
         if (not buf)
         {
             max = size;
-            buf = shm_allocate(static_cast<ShmClientHandle>(shm_handle_),
-                               size);
+            buf = ctl_channel_allocate(size);
         }
         if (buf)
         {
@@ -231,6 +232,31 @@ private:
         {
             return NULL;
         }
+    }
+
+
+    void*
+    ctl_channel_allocate(size_t size)
+    {
+        boost::interprocess::managed_shared_memory::handle_t handle;
+        bool ret = ctl_client_->allocate(handle, size);
+        if (ret)
+        {
+            void *ptr =
+                shm_get_address_from_handle(static_cast<ShmClientHandle>(shm_handle_),
+                                            handle);
+            return ptr;
+        }
+        return NULL;
+    }
+
+    int
+    ctl_channel_deallocate(void *buf)
+    {
+        boost::interprocess::managed_shared_memory::handle_t handle =
+            shm_get_handle_from_address(static_cast<ShmClientHandle>(shm_handle_),
+                                        buf);
+        return (ctl_client_->deallocate(handle) ? 0 : -1);
     }
 
     void*
@@ -250,8 +276,7 @@ private:
                     return buf;
                 }
             }
-            return shm_allocate(static_cast<ShmClientHandle>(shm_handle_),
-                                max);
+            return ctl_channel_allocate(max);
         }
         else
         {
@@ -265,19 +290,20 @@ private:
                                fungi::SpinLock& lock_,
                                size_t queue_size)
     {
+        void *ptr = shptr->buf;
+        delete shptr;
+
         lock_.lock();
         if (queue.size() < queue_size + 1)
         {
-            queue.push(shptr->buf);
+            queue.push(ptr);
             lock_.unlock();
         }
         else
         {
             lock_.unlock();
-            shm_deallocate(static_cast<ShmClientHandle>(shm_handle_),
-                           shptr->buf);
+            return ctl_channel_deallocate(ptr);
         }
-        delete shptr;
         return 0;
     }
 };
