@@ -16,6 +16,7 @@
 #define __SHM_PROTOCOL_H_
 
 #include <boost/interprocess/managed_shared_memory.hpp>
+#include <cstdint>
 
 namespace volumedriverfs
 {
@@ -34,7 +35,7 @@ struct ShmWriteRequest
     bool stop = false;
     uint64_t offset_in_bytes = 0;
     uint64_t size_in_bytes = 0;
-    long opaque;
+    uintptr_t opaque;
     boost::interprocess::managed_shared_memory::handle_t handle;
 };
 
@@ -45,7 +46,7 @@ struct ShmReadRequest
     bool stop = false;
     uint64_t offset_in_bytes = 0;
     uint64_t size_in_bytes = 0;
-    long opaque;
+    uintptr_t opaque;
     boost::interprocess::managed_shared_memory::handle_t handle;
 };
 
@@ -54,7 +55,7 @@ static const uint64_t readrequest_size = sizeof(ShmReadRequest);
 struct ShmReadReply
 {
     bool stop = false;
-    long opaque;
+    uintptr_t opaque;
     uint64_t size_in_bytes = 0;
 };
 
@@ -63,7 +64,7 @@ static const uint64_t readreply_size = sizeof(ShmReadReply);
 struct ShmWriteReply
 {
     bool stop = false;
-    long opaque;
+    uintptr_t opaque;
     uint64_t size_in_bytes = 0;
 };
 

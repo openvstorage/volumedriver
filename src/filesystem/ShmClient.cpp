@@ -139,7 +139,7 @@ ShmClient::send_write_request(const void *buf,
     writerequest_.size_in_bytes = size_in_bytes;
     writerequest_.offset_in_bytes = offset_in_bytes;
     writerequest_.handle = shm_segment_->get_handle_from_address(buf);
-    writerequest_.opaque = reinterpret_cast<long>(opaque);
+    writerequest_.opaque = reinterpret_cast<uintptr_t>(opaque);
 
     try
     {
@@ -189,7 +189,7 @@ ShmClient::send_read_request(const void *buf,
     readrequest_.size_in_bytes = size_in_bytes;
     readrequest_.offset_in_bytes = offset_in_bytes;
     readrequest_.handle = shm_segment_->get_handle_from_address(buf);
-    readrequest_.opaque = reinterpret_cast<long>(opaque);
+    readrequest_.opaque = reinterpret_cast<uintptr_t>(opaque);
 
     try
     {
