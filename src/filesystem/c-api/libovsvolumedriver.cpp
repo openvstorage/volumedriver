@@ -76,17 +76,19 @@ _aio_request_handler(ovs_aio_request *request,
 {
     /* errno already set by shm_receive_*_reply function */
     request->ovs_aiocbp->_errno = errno;
+    request->ovs_aiocbp->_rv = ret;
+    request->ovs_aiocbp->_completed = true;
+    _aio_wake_up_suspended_aiocb(request->ovs_aiocbp);
     if (request->completion)
     {
         request->completion->_rv = ret;
         AioCompletion::get_aio_context()->schedule(request->completion);
     }
-    request->ovs_aiocbp->_rv = ret;
-    request->ovs_aiocbp->_completed = true;
-    _aio_wake_up_suspended_aiocb(request->ovs_aiocbp);
     if (RequestOp::AsyncFlush ==
             static_cast<RequestOp>(request->ovs_aiocbp->_op))
     {
+        pthread_mutex_destroy(&request->ovs_aiocbp->_mutex);
+        pthread_cond_destroy(&request->ovs_aiocbp->_cond);
         free(request->ovs_aiocbp);
     }
     delete request;
@@ -552,13 +554,16 @@ ovs_aio_error(ovs_ctx_t *ctx,
 
 ssize_t
 ovs_aio_return(ovs_ctx_t *ctx,
-               const struct ovs_aiocb *ovs_aiocbp)
+               struct ovs_aiocb *ovs_aiocbp)
 {
     if (ctx == NULL || ovs_aiocbp == NULL)
     {
         errno = EINVAL;
         return -1;
     }
+
+    pthread_cond_destroy(&ovs_aiocbp->_cond);
+    pthread_mutex_destroy(&ovs_aiocbp->_mutex);
     errno = ovs_aiocbp->_errno;
     return ovs_aiocbp->_rv;
 }
@@ -770,14 +775,16 @@ ovs_aio_signal_completion(ovs_completion_t *completion)
 }
 
 int
-ovs_aio_release_completion(ovs_completion_t *comp)
+ovs_aio_release_completion(ovs_completion_t *completion)
 {
-    if (comp == NULL)
+    if (completion == NULL)
     {
         errno = EINVAL;
         return -1;
     }
-    delete comp;
+    pthread_mutex_destroy(&completion->_mutex);
+    pthread_cond_destroy(&completion->_cond);
+    delete completion;
     return 0;
 }
 

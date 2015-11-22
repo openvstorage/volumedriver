@@ -186,7 +186,7 @@ ovs_aio_error(ovs_ctx_t *ctx,
  */
 ssize_t
 ovs_aio_return(ovs_ctx_t *ctx,
-               const struct ovs_aiocb *ovs_aiocbp);
+               struct ovs_aiocb *ovs_aiocbp);
 
 /*
  * Cancel an oustanding asynchronous I/O operation
