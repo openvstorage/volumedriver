@@ -226,8 +226,23 @@ TEST_F(ScrubManagerTest, queue_work)
         const std::string s(uuid.str());
         const ObjectId oid(s);
 
-        scrubbing::ScrubReply reply(be::Namespace(s),
-                                    vd::SnapshotName(s),
+        // g++ (4.9.2) is having issues with this
+        //
+        // scrubbing::ScrubReply reply(be::Namespace(s),
+        //                             vd::SnapshotName(s),
+        //                             s);
+        //
+        //         /home/arne/Projects/openvstorage/dev/volumedriver-core/src/filesystem/test/ScrubManagerTest.cpp:230:55: error: conflicting declaration ‘volumedriver::SnapshotName s’
+        //                                      vd::SnapshotName(s),
+        //                                                        ^
+        // /home/arne/Projects/openvstorage/dev/volumedriver-core/src/filesystem/test/ScrubManagerTest.cpp:229:52: note: previous declaration as ‘backend::Namespace s’
+        //          scrubbing::ScrubReply reply(be::Namespace(s),
+        //
+        const be::Namespace nspace(s);
+        const vd::SnapshotName snap(s);
+
+        scrubbing::ScrubReply reply(nspace,
+                                    snap,
                                     s);
 
         scrubs.emplace(std::make_pair(reply,
@@ -259,8 +274,12 @@ TEST_F(ScrubManagerTest, requeue_work)
 
     const std::string s(yt::UUID().str());
     const ObjectId oid(s);
-    const scrubbing::ScrubReply reply(be::Namespace(s),
-                                      vd::SnapshotName(s),
+
+    // cf. ScrubManagerTest.queue_work for an explanation of this verbosity
+    const be::Namespace nspace(s);
+    const vd::SnapshotName snap(s);
+    const scrubbing::ScrubReply reply(nspace,
+                                      snap,
                                       s);
 
     mgr.queue_scrub_reply(oid,
@@ -329,8 +348,12 @@ TEST_F(ScrubManagerTest, parent_gone)
 
     const std::string s(yt::UUID().str());
     const ObjectId oid(s);
-    const scrubbing::ScrubReply reply(be::Namespace(s),
-                                      vd::SnapshotName(s),
+
+    // cf. ScrubManagerTest.queue_work for an explanation of this verbosity
+    const be::Namespace nspace(s);
+    const vd::SnapshotName snap(s);
+    const scrubbing::ScrubReply reply(nspace,
+                                      snap,
                                       s);
 
     mgr.queue_scrub_reply(oid,
@@ -364,8 +387,12 @@ TEST_F(ScrubManagerTest, clone_gone)
     object_registry_->unregister(parent.clones.front()->id);
 
     const std::string id(parent.id.str());
-    const scrubbing::ScrubReply scrub_reply(be::Namespace(id),
-                                            vd::SnapshotName(id),
+
+    // cf. ScrubManagerTest.queue_work for an explanation of this verbosity
+    const be::Namespace nspace(id);
+    const vd::SnapshotName snap(id);
+    const scrubbing::ScrubReply scrub_reply(nspace,
+                                            snap,
                                             id);
 
     std::atomic<uint64_t> period_secs(std::numeric_limits<uint64_t>::max());
@@ -463,8 +490,12 @@ TEST_F(ScrubManagerTest, failure_to_apply_to_parent)
     size_t count = 0;
 
     const std::string id(parent.id.str());
-    const scrubbing::ScrubReply scrub_reply(be::Namespace(id),
-                                            vd::SnapshotName(id),
+
+    // cf. ScrubManagerTest.queue_work for an explanation of this verbosity
+    const be::Namespace nspace(id);
+    const vd::SnapshotName snap(id);
+    const scrubbing::ScrubReply scrub_reply(nspace,
+                                            snap,
                                             id);
 
     std::atomic<uint64_t> period_secs(std::numeric_limits<uint64_t>::max());
@@ -474,7 +505,7 @@ TEST_F(ScrubManagerTest, failure_to_apply_to_parent)
                      period_secs,
                      [&](const ObjectId& oid,
                          const scrubbing::ScrubReply& reply,
-                         const volumedriver::ScrubbingCleanup cleanup)
+                         const volumedriver::ScrubbingCleanup /* cleanup */)
                      -> ScrubManager::MaybeGarbage
                      {
                          EXPECT_EQ(0,
@@ -574,8 +605,11 @@ TEST_F(ScrubManagerTest, random_stress)
     std::atomic<size_t> count(0);
     std::atomic<size_t> errors(0);
 
-    const scrubbing::ScrubReply scrub_reply(be::Namespace(id),
-                                            vd::SnapshotName(id),
+    // cf. ScrubManagerTest.queue_work for an explanation of this verbosity
+    const be::Namespace nspace(id);
+    const vd::SnapshotName snap(id);
+    const scrubbing::ScrubReply scrub_reply(nspace,
+                                            snap,
                                             id);
 
     auto apply_scrub_reply([&](const ObjectId& oid,
