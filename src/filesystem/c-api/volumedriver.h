@@ -41,7 +41,6 @@ struct ovs_aiocb
     bool _canceled;
     bool _completed;
     bool _signaled;
-    int _op;
     int _errno;
     ssize_t _rv;
     ovs_aio_request *_request;

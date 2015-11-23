@@ -28,6 +28,7 @@
 #include "common.h"
 #include "VolumeCacheHandler.h"
 #include "ShmControlChannelClient.h"
+#include "../ShmClient.h"
 
 #include <boost/asio.hpp>
 
@@ -39,8 +40,8 @@ typedef struct _ovs_async_threads
 
 struct _ovs_ctx_t
 {
-    void *shm_handle_;
     int oflag;
+    volumedriverfs::ShmClientPtr shm_client_;
     ovs_async_threads async_threads_;
     VolumeCacheHandlerPtr cache_;
     ShmControlChannelClientPtr ctl_client_;

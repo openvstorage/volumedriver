@@ -47,6 +47,7 @@ struct _ovs_completion_t
 
 struct _ovs_aio_request
 {
+    int _op;
     struct ovs_aiocb *ovs_aiocbp;
     ovs_completion_t *completion;
 };

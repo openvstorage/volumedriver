@@ -85,11 +85,11 @@ _aio_request_handler(ovs_aio_request *request,
         AioCompletion::get_aio_context()->schedule(request->completion);
     }
     if (RequestOp::AsyncFlush ==
-            static_cast<RequestOp>(request->ovs_aiocbp->_op))
+            static_cast<RequestOp>(request->_op))
     {
         pthread_mutex_destroy(&request->ovs_aiocbp->_mutex);
         pthread_cond_destroy(&request->ovs_aiocbp->_cond);
-        free(request->ovs_aiocbp);
+        delete request->ovs_aiocbp;
     }
     delete request;
 }
@@ -105,8 +105,7 @@ _aio_readreply_handler(void *arg)
     while (not iothread->stopping)
     {
         ovs_aio_request *request;
-        ret = shm_receive_read_reply(static_cast<ShmClientHandle>(ctx->shm_handle_),
-                                     (void**)&request);
+        ret = ctx->shm_client_->receive_read_reply(reinterpret_cast<void**>(&request));
         if (request)
         {
             _aio_request_handler(request,
@@ -132,8 +131,7 @@ _aio_writereply_handler(void *arg)
     while (not iothread->stopping)
     {
         ovs_aio_request *request;
-        ret = shm_receive_write_reply(static_cast<ShmClientHandle>(ctx->shm_handle_),
-                                      (void**)&request);
+        ret = ctx->shm_client_->receive_write_reply(reinterpret_cast<void**>(&request));
         if (request)
         {
             _aio_request_handler(request,
@@ -238,8 +236,7 @@ _aio_destroy(ovs_ctx_t *ctx)
         async_threads_->wr_iothread[i].stopping = true;
     }
 
-    shm_stop_reply_queues(static_cast<ShmClientHandle>(ctx->shm_handle_),
-                          NUM_THREADS);
+    ctx->shm_client_->stop_reply_queues(NUM_THREADS);
 
     for (int i = 0; i < NUM_THREADS; i++)
     {
@@ -312,18 +309,35 @@ ovs_ctx_init(const char* volume_name,
         return NULL;
     }
     /* Error: EACCESS or EIO */
-    ret = shm_create_handle(volume_name,
-                            reinterpret_cast<ShmClientHandle*>(&ctx->shm_handle_));
-    if (ret < 0)
+    try
+    {
+        ctx->shm_client_ =
+            std::make_shared<volumedriverfs::ShmClient>(volume_name);
+    }
+    catch (ShmIdlInterface::VolumeDoesNotExist)
     {
         delete ctx;
-        errno = -ret;
+        errno = EACCES;
+        return NULL;
+    }
+    catch (...)
+    {
+        delete ctx;
+        errno = EIO;
         return NULL;
     }
 
-    ctx->ctl_client_.reset(new ShmControlChannelClient());
+    try
+    {
+        ctx->ctl_client_ = std::make_shared<ShmControlChannelClient>();
+    }
+    catch (std::bad_alloc&)
+    {
+        goto client_err;
+
+    }
     if (not ctx->ctl_client_->connect_and_register(volume_name,
-            shm_get_key(reinterpret_cast<ShmClientHandle>(ctx->shm_handle_))))
+                ctx->shm_client_->get_key()))
     {
         goto register_err;
     }
@@ -332,12 +346,11 @@ ovs_ctx_init(const char* volume_name,
     ret = _aio_init(ctx);
     if (ret == 0)
     {
-        ctx->cache_.reset(new VolumeCacheHandler(ctx->shm_handle_,
+        ctx->cache_.reset(new VolumeCacheHandler(ctx->shm_client_,
                                                  ctx->ctl_client_));
         int ret = ctx->cache_->preallocate();
         if (ret < 0)
         {
-            /* drop caches to free some memory */
             ctx->cache_->drop_caches();
         }
         return ctx;
@@ -347,9 +360,9 @@ ovs_ctx_init(const char* volume_name,
         ctx->ctl_client_->close();
     }
 register_err:
-    /*never here I hope*/
-    shm_destroy_handle(static_cast<ShmClientHandle>(ctx->shm_handle_));
     ctx->ctl_client_.reset();
+client_err:
+    ctx->shm_client_.reset();
     delete ctx;
 
     errno = EIO;
@@ -371,7 +384,7 @@ ovs_ctx_destroy(ovs_ctx_t *ctx)
         goto err;
     }
     ctx->cache_->drop_caches();
-    shm_destroy_handle(static_cast<ShmClientHandle>(ctx->shm_handle_));
+    ctx->shm_client_.reset();
     if (ctx->ctl_client_->deregister())
     {
         ctx->ctl_client_->close();
@@ -388,20 +401,27 @@ err:
 int
 ovs_create_volume(const char *volume_name, uint64_t size)
 {
-    int ret;
     if (not _is_volume_name_valid(volume_name))
     {
         errno = EINVAL;
         return -1;
     }
-    /* Error: EEXIST, EIO */
-    ret = shm_create_volume(volume_name, size);
-    if (ret < 0)
+
+    try
     {
-        errno = -ret;
-        ret = -1;
+        volumedriverfs::ShmClient::create_volume(volume_name, size);
     }
-    return ret;
+    catch (ShmIdlInterface::VolumeExists)
+    {
+        errno = EEXIST;
+        return -1;
+    }
+    catch (...)
+    {
+        errno = EIO;
+        return -1;
+    }
+    return 0;
 }
 
 static int
@@ -455,6 +475,7 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
         request = new ovs_aio_request();
         request->ovs_aiocbp = ovs_aiocbp;
         request->completion = completion;
+        request->_op = static_cast<int>(op);
     }
     catch (std::bad_alloc&)
     {
@@ -469,33 +490,31 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
     ovs_aiocbp->_completed = false;
     ovs_aiocbp->_signaled = false;
     ovs_aiocbp->_rv = 0;
-    ovs_aiocbp->_op = static_cast<int>(op);
     ovs_aiocbp->_request = request;
     switch (op)
     {
     case RequestOp::Read:
         /* on error returns -1 */
-        ret = shm_send_read_request(static_cast<ShmClientHandle>(ctx->shm_handle_),
-                                    ovs_aiocbp->aio_buf,
-                                    ovs_aiocbp->aio_nbytes,
-                                    ovs_aiocbp->aio_offset,
-                                    (void*) request);
+        ret = ctx->shm_client_->send_read_request(ovs_aiocbp->aio_buf,
+                                                  ovs_aiocbp->aio_nbytes,
+                                                  ovs_aiocbp->aio_offset,
+                                                  reinterpret_cast<void*>(request));
         break;
     case RequestOp::Write:
     case RequestOp::Flush:
     case RequestOp::AsyncFlush:
         /* on error returns -1 */
-        ret = shm_send_write_request(static_cast<ShmClientHandle>(ctx->shm_handle_),
-                                     ovs_aiocbp->aio_buf,
-                                     ovs_aiocbp->aio_nbytes,
-                                     ovs_aiocbp->aio_offset,
-                                     (void*) request);
+        ret = ctx->shm_client_->send_write_request(ovs_aiocbp->aio_buf,
+                                                   ovs_aiocbp->aio_nbytes,
+                                                   ovs_aiocbp->aio_offset,
+                                                   reinterpret_cast<void*>(request));
         break;
     default:
         ret = -1;
     }
     if (ret < 0)
     {
+        delete request;
         errno = EIO;
     }
     return ret;
@@ -579,7 +598,7 @@ _aio_suspend_on_aiocb(struct ovs_aiocb *aiocbp,
                                      __ATOMIC_RELAXED))
     {
         pthread_mutex_lock(&aiocbp->_mutex);
-        if (not aiocbp->_signaled)
+        while (not aiocbp->_signaled)
         {
             if (timeout)
             {
@@ -734,7 +753,7 @@ ovs_aio_wait_completion(ovs_completion_t *completion,
                                      __ATOMIC_RELAXED))
     {
         pthread_mutex_lock(&completion->_mutex);
-        if (not completion->_signaled)
+        while (not completion->_signaled)
         {
             if (timeout)
             {
@@ -822,8 +841,7 @@ ovs_aio_flushcb(ovs_ctx_t *ctx,
         return -1;
     }
 
-    struct ovs_aiocb *aio = (struct ovs_aiocb*) calloc(1,
-                                                       sizeof(struct ovs_aiocb));
+    ovs_aiocb *aio = new ovs_aiocb;
     if (aio == NULL)
     {
         errno = ENOMEM;
@@ -897,8 +915,7 @@ ovs_stat(ovs_ctx_t *ctx, struct stat *st)
         errno = EINVAL;
         return -1;
     }
-    return shm_stat(static_cast<ShmClientHandle>(ctx->shm_handle_),
-                    st);
+    return ctx->shm_client_->stat(st);
 }
 
 int

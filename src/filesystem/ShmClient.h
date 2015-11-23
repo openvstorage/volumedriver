@@ -15,7 +15,6 @@
 #ifndef __SHM_CLIENT_H_
 #define __SHM_CLIENT_H_
 
-#ifdef __cplusplus
 #include <boost/interprocess/ipc/message_queue.hpp>
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/errors.hpp>
@@ -25,14 +24,11 @@
 #include "ShmProtocol.h"
 #include "ShmIdlInterface.h"
 
-struct _ShmClientStruct
-{};
-
 namespace volumedriverfs
 {
 namespace ipc = boost::interprocess;
 
-class ShmClient final : public _ShmClientStruct
+class ShmClient
 {
 public:
     ShmClient(const std::string& volume_name,
@@ -134,86 +130,7 @@ private:
     std::unique_ptr<ipc::managed_shared_memory> shm_segment_;
 };
 
+typedef std::shared_ptr<ShmClient> ShmClientPtr;
+
 } //namespace volumedriverfs
-#endif
-
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-
-#include <sys/types.h>
-#include <stdint.h>
-
-struct _ShmClientStruct;
-
-typedef struct _ShmClientStruct* ShmClientHandle;
-
-
-int
-shm_create_handle(const char *volume_name,
-                  ShmClientHandle* handle);
-
-int
-shm_destroy_handle(ShmClientHandle h);
-
-void*
-shm_allocate(ShmClientHandle h,
-             const uint64_t size_in_bytes);
-
-void
-shm_deallocate(ShmClientHandle h,
-               void *shmptr);
-
-int
-shm_send_read_request(ShmClientHandle h,
-                      const void *buf,
-                      const uint64_t size_in_bytes,
-                      const uint64_t offset_in_bytes,
-                      const void *opaque);
-
-ssize_t
-shm_receive_read_reply(ShmClientHandle h,
-                       void **opaque);
-
-int
-shm_send_write_request(ShmClientHandle h,
-                       const void *buf,
-                       const uint64_t size_in_bytes,
-                       const uint64_t offset_in_bytes,
-                       const void *opaque);
-
-ssize_t
-shm_receive_write_reply(ShmClientHandle h,
-                        void **opaque);
-
-bool
-shm_stop_reply_queues(ShmClientHandle h,
-                      int n);
-
-bool
-shm_flush(ShmClientHandle h);
-
-int
-shm_stat(ShmClientHandle h,
-         struct stat *st);
-
-int
-shm_create_volume(const char *volume_name,
-                  const uint64_t volume_size_in_bytes);
-
-const char*
-shm_get_key(ShmClientHandle h);
-
-boost::interprocess::managed_shared_memory::handle_t
-shm_get_handle_from_address(ShmClientHandle h, void *ptr);
-
-void*
-shm_get_address_from_handle(ShmClientHandle h,
-               boost::interprocess::managed_shared_memory::handle_t);
-
-#ifdef __cplusplus
-}
-#endif
-
 #endif
