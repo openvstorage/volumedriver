@@ -316,7 +316,7 @@ ovs_ctx_init(const char* volume_name,
                             reinterpret_cast<ShmClientHandle*>(&ctx->shm_handle_));
     if (ret < 0)
     {
-        free(ctx);
+        delete ctx;
         errno = -ret;
         return NULL;
     }
