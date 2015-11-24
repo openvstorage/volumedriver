@@ -556,8 +556,7 @@ ovs_aio_error(ovs_ctx_t *ctx,
 
     if (ovs_aiocbp->request_->_failed)
     {
-        errno = ovs_aiocbp->request_->_errno;
-        return -1;
+        return ovs_aiocbp->request_->_errno;
     }
     else
     {
@@ -585,7 +584,7 @@ ovs_aio_return(ovs_ctx_t *ctx,
     }
     else
     {
-        errno = EIO;
+        errno = ovs_aiocbp->request_->_errno;
         ret = -1;
     }
     delete ovs_aiocbp->request_;
