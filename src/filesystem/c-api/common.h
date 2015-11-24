@@ -16,6 +16,20 @@
 #ifndef __LIB_OVS_COMMON_H
 #define __LIB_OVS_COMMON_H
 
+enum class RequestOp
+{
+    Read,
+    Write,
+    Flush,
+    AsyncFlush,
+};
+
+struct ovs_ctx_wrapper
+{
+    ovs_ctx_t *ctx;
+    int n;
+};
+
 struct _ovs_buffer
 {
     void *buf;
@@ -40,16 +54,26 @@ struct _ovs_completion_t
     bool _on_wait;
     bool _calling;
     bool _signaled;
-    ssize_t _rv;
+    bool _failed;
+    size_t _rv;
     pthread_cond_t _cond;
     pthread_mutex_t _mutex;
 };
 
 struct _ovs_aio_request
 {
-    int _op;
     struct ovs_aiocb *ovs_aiocbp;
     ovs_completion_t *completion;
+    RequestOp _op;
+    bool _on_suspend;
+    bool _canceled;
+    bool _completed;
+    bool _signaled;
+    bool _failed;
+    int _errno;
+    size_t _rv;
+    pthread_cond_t _cond;
+    pthread_mutex_t _mutex;
 };
 
 #endif

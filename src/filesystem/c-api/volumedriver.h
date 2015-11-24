@@ -35,17 +35,8 @@ struct ovs_aiocb
 {
     void *aio_buf;
     off_t aio_offset;
-    ssize_t aio_nbytes;
-    /* Internal members */
-    bool _on_suspend;
-    bool _canceled;
-    bool _completed;
-    bool _signaled;
-    int _errno;
-    ssize_t _rv;
+    size_t aio_nbytes;
     ovs_aio_request *_request;
-    pthread_cond_t _cond;
-    pthread_mutex_t _mutex;
 };
 
 /*

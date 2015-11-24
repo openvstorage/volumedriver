@@ -23,20 +23,6 @@
 
 #define NUM_THREADS  1
 
-enum class RequestOp
-{
-    Read,
-    Write,
-    Flush,
-    AsyncFlush,
-};
-
-struct ovs_ctx_wrapper
-{
-    ovs_ctx_t *ctx;
-    int n;
-};
-
 /* Only one AioCompletion instance atm */
 AioCompletion* AioCompletion::_aio_completion_instance = NULL;
 static int aio_completion_instances = 0;
@@ -56,42 +42,44 @@ _is_volume_name_valid(const char *volume_name)
 }
 
 static void
-_aio_wake_up_suspended_aiocb(struct ovs_aiocb *aiocbp)
+_aio_wake_up_suspended_aiocb(ovs_aio_request *request)
 {
-    if (not __sync_bool_compare_and_swap(&aiocbp->_on_suspend,
+    if (not __sync_bool_compare_and_swap(&request->_on_suspend,
                                          false,
                                          true,
                                          __ATOMIC_RELAXED))
     {
-        pthread_mutex_lock(&aiocbp->_mutex);
-        aiocbp->_signaled = true;
-        pthread_cond_signal(&aiocbp->_cond);
-        pthread_mutex_unlock(&aiocbp->_mutex);
+        pthread_mutex_lock(&request->_mutex);
+        request->_signaled = true;
+        pthread_cond_signal(&request->_cond);
+        pthread_mutex_unlock(&request->_mutex);
     }
 }
 
 static void
 _aio_request_handler(ovs_aio_request *request,
-                     ssize_t ret)
+                     size_t ret,
+                     bool failed)
 {
     /* errno already set by shm_receive_*_reply function */
-    request->ovs_aiocbp->_errno = errno;
-    request->ovs_aiocbp->_rv = ret;
-    request->ovs_aiocbp->_completed = true;
-    _aio_wake_up_suspended_aiocb(request->ovs_aiocbp);
+    request->_errno = errno;
+    request->_rv = ret;
+    request->_completed = true;
+    request->_failed = failed;
+    _aio_wake_up_suspended_aiocb(request);
     if (request->completion)
     {
         request->completion->_rv = ret;
+        request->completion->_failed = failed;
         AioCompletion::get_aio_context()->schedule(request->completion);
     }
-    if (RequestOp::AsyncFlush ==
-            static_cast<RequestOp>(request->_op))
+    if (RequestOp::AsyncFlush == request->_op)
     {
-        pthread_mutex_destroy(&request->ovs_aiocbp->_mutex);
-        pthread_cond_destroy(&request->ovs_aiocbp->_cond);
+        pthread_mutex_destroy(&request->_mutex);
+        pthread_cond_destroy(&request->_cond);
         delete request->ovs_aiocbp;
+        delete request;
     }
-    delete request;
 }
 
 static void*
@@ -101,15 +89,18 @@ _aio_readreply_handler(void *arg)
     ovs_ctx_t *ctx = (ovs_ctx_t *)wrapper->ctx;
     ovs_async_threads *async_threads_ = &ctx->async_threads_;
     ovs_iothread_t *iothread = &async_threads_->rr_iothread[wrapper->n];
-    ssize_t ret;
+    size_t size_in_bytes;
+    bool failed;
     while (not iothread->stopping)
     {
         ovs_aio_request *request;
-        ret = ctx->shm_client_->receive_read_reply(reinterpret_cast<void**>(&request));
+        failed = ctx->shm_client_->receive_read_reply(size_in_bytes,
+                                                      reinterpret_cast<void**>(&request));
         if (request)
         {
             _aio_request_handler(request,
-                                 ret);
+                                 size_in_bytes,
+                                 failed);
         }
     }
     pthread_mutex_lock(&iothread->io_mutex);
@@ -127,15 +118,18 @@ _aio_writereply_handler(void *arg)
     ovs_ctx_t *ctx = (ovs_ctx_t *)wrapper->ctx;
     ovs_async_threads *async_threads_ = &ctx->async_threads_;
     ovs_iothread_t *iothread = &async_threads_->wr_iothread[wrapper->n];
-    ssize_t ret;
+    size_t size_in_bytes;
+    bool failed;
     while (not iothread->stopping)
     {
         ovs_aio_request *request;
-        ret = ctx->shm_client_->receive_write_reply(reinterpret_cast<void**>(&request));
+        failed = ctx->shm_client_->receive_write_reply(size_in_bytes,
+                                                       reinterpret_cast<void**>(&request));
         if (request)
         {
             _aio_request_handler(request,
-                                 ret);
+                                 size_in_bytes,
+                                 failed);
         }
     }
     pthread_mutex_lock(&iothread->io_mutex);
@@ -472,10 +466,10 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
     ovs_aio_request *request;
     try
     {
-        request = new ovs_aio_request();
+        request = new ovs_aio_request;
         request->ovs_aiocbp = ovs_aiocbp;
         request->completion = completion;
-        request->_op = static_cast<int>(op);
+        request->_op = op;
     }
     catch (std::bad_alloc&)
     {
@@ -483,13 +477,13 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
         return -1;
     }
 
-    pthread_cond_init(&ovs_aiocbp->_cond, NULL);
-    pthread_mutex_init(&ovs_aiocbp->_mutex, NULL);
-    ovs_aiocbp->_on_suspend = false;
-    ovs_aiocbp->_canceled = false;
-    ovs_aiocbp->_completed = false;
-    ovs_aiocbp->_signaled = false;
-    ovs_aiocbp->_rv = 0;
+    pthread_cond_init(&request->_cond, NULL);
+    pthread_mutex_init(&request->_mutex, NULL);
+    request->_on_suspend = false;
+    request->_canceled = false;
+    request->_completed = false;
+    request->_signaled = false;
+    request->_rv = 0;
     ovs_aiocbp->_request = request;
     switch (op)
     {
@@ -550,19 +544,19 @@ ovs_aio_error(ovs_ctx_t *ctx,
         return -1;
     }
 
-    if (ovs_aiocbp->_canceled)
+    if (ovs_aiocbp->_request->_canceled)
     {
         return ECANCELED;
     }
 
-    if (not ovs_aiocbp->_completed)
+    if (not ovs_aiocbp->_request->_completed)
     {
         return EINPROGRESS;
     }
 
-    if (ovs_aiocbp->_rv == -1)
+    if (ovs_aiocbp->_request->_rv == -1)
     {
-        errno = ovs_aiocbp->_errno;
+        errno = ovs_aiocbp->_request->_errno;
         return -1;
     }
     else
@@ -575,16 +569,27 @@ ssize_t
 ovs_aio_return(ovs_ctx_t *ctx,
                struct ovs_aiocb *ovs_aiocbp)
 {
+    int ret;
     if (ctx == NULL || ovs_aiocbp == NULL)
     {
         errno = EINVAL;
         return -1;
     }
 
-    pthread_cond_destroy(&ovs_aiocbp->_cond);
-    pthread_mutex_destroy(&ovs_aiocbp->_mutex);
-    errno = ovs_aiocbp->_errno;
-    return ovs_aiocbp->_rv;
+    pthread_cond_destroy(&ovs_aiocbp->_request->_cond);
+    pthread_mutex_destroy(&ovs_aiocbp->_request->_mutex);
+    errno = ovs_aiocbp->_request->_errno;
+    if (not ovs_aiocbp->_request->_failed)
+    {
+        ret = ovs_aiocbp->_request->_rv;
+    }
+    else
+    {
+        errno = EIO;
+        ret = -1;
+    }
+    delete ovs_aiocbp->_request;
+    return ret;
 }
 
 static int
@@ -592,27 +597,27 @@ _aio_suspend_on_aiocb(struct ovs_aiocb *aiocbp,
                       const struct timespec *timeout)
 {
     int ret = 0;
-    if (__sync_bool_compare_and_swap(&aiocbp->_on_suspend,
+    if (__sync_bool_compare_and_swap(&aiocbp->_request->_on_suspend,
                                      false,
                                      true,
                                      __ATOMIC_RELAXED))
     {
-        pthread_mutex_lock(&aiocbp->_mutex);
-        while (not aiocbp->_signaled)
+        pthread_mutex_lock(&aiocbp->_request->_mutex);
+        while (not aiocbp->_request->_signaled)
         {
             if (timeout)
             {
-                ret = pthread_cond_timedwait(&aiocbp->_cond,
-                                             &aiocbp->_mutex,
+                ret = pthread_cond_timedwait(&aiocbp->_request->_cond,
+                                             &aiocbp->_request->_mutex,
                                              timeout);
             }
             else
             {
-                ret = pthread_cond_wait(&aiocbp->_cond,
-                                        &aiocbp->_mutex);
+                ret = pthread_cond_wait(&aiocbp->_request->_cond,
+                                        &aiocbp->_request->_mutex);
             }
         }
-        pthread_mutex_unlock(&aiocbp->_mutex);
+        pthread_mutex_unlock(&aiocbp->_request->_mutex);
     }
     return ret;
 }
@@ -732,7 +737,15 @@ ovs_aio_return_completion(ovs_completion_t *completion)
     }
     else
     {
-        return completion->_rv;
+        if (not completion->_failed)
+        {
+            return completion->_rv;
+        }
+        else
+        {
+            errno = EIO;
+            return -1;
+        }
     }
 }
 
