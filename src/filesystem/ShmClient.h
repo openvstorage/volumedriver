@@ -51,16 +51,18 @@ public:
                       const uint64_t offset_in_bytes,
                       const void *opaque);
 
-    ssize_t
-    receive_read_reply(void **opaque);
+    bool
+    receive_read_reply(size_t& size_in_bytes,
+                       void **opaque);
 
     int send_write_request(const void* buf,
                            const uint64_t size_in_bytes,
                            const uint64_t offset_in_bytes,
                            const void *opaque);
 
-    ssize_t
-    receive_write_reply(void **opaque);
+    bool
+    receive_write_reply(size_t& size_in_bytes,
+                        void **opaque);
 
     bool
     stop_reply_queues(int n);

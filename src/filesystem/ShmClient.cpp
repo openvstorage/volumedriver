@@ -155,8 +155,9 @@ ShmClient::send_write_request(const void *buf,
     return 0;
 }
 
-ssize_t
-ShmClient::receive_write_reply(void **opaque)
+bool
+ShmClient::receive_write_reply(size_t& size_in_bytes,
+                               void **opaque)
 {
     ShmWriteReply writereply_;
     unsigned int priority;
@@ -174,9 +175,10 @@ ShmClient::receive_write_reply(void **opaque)
     catch (ipc::interprocess_exception& e)
     {
         errno = EIO;
-        return -1;
+        return true;
     }
-    return writereply_.size_in_bytes;
+    size_in_bytes = writereply_.size_in_bytes;
+    return writereply_.failed;
 }
 
 int
@@ -205,8 +207,9 @@ ShmClient::send_read_request(const void *buf,
     return 0;
 }
 
-ssize_t
-ShmClient::receive_read_reply(void **opaque)
+bool
+ShmClient::receive_read_reply(size_t& size_in_bytes,
+                              void **opaque)
 {
     ShmReadReply readreply_;
     unsigned int priority;
@@ -224,9 +227,10 @@ ShmClient::receive_read_reply(void **opaque)
     catch (ipc::interprocess_exception& e)
     {
         errno = EIO;
-        return -1;
+        return true;
     }
-    return readreply_.size_in_bytes;
+    size_in_bytes = readreply_.size_in_bytes;
+    return readreply_.failed;
 }
 
 bool
