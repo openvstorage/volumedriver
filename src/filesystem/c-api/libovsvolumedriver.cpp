@@ -554,7 +554,7 @@ ovs_aio_error(ovs_ctx_t *ctx,
         return EINPROGRESS;
     }
 
-    if (ovs_aiocbp->_request->_rv == -1)
+    if (ovs_aiocbp->_request->_failed)
     {
         errno = ovs_aiocbp->_request->_errno;
         return -1;
