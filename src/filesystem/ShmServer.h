@@ -197,14 +197,13 @@ private:
                                       priority);
             VERIFY(received_size == writerequest_size);
             writereply_msg_->opaque = writerequest_msg_->opaque;
-
             if (writerequest_msg_->stop)
             {
                 break;
             }
             else if (writerequest_msg_->size_in_bytes == 0)
             {
-                handler_->flush();
+                writereply_msg_->failed = handler_->flush() ? false : true;
                 writereply_msg_->size_in_bytes = 0;
                 writereply_mq_->send(writereply_msg_.get(),
                                      writereply_size,
@@ -232,7 +231,7 @@ private:
                                      readrequest_size,
                                      received_size,
                                      priority);
-
+            VERIFY(received_size == readrequest_size);
             if (readrequest_msg_->stop)
             {
                 break;
@@ -241,7 +240,6 @@ private:
                 readreply_msg_->opaque = readrequest_msg_->opaque;
                 handler_->read(readrequest_msg_.get(),
                                readreply_msg_.get());
-                VERIFY(readreply_msg_->size_in_bytes == readrequest_msg_->size_in_bytes);
                 readreply_mq_->send(readreply_msg_.get(),
                                     readreply_size,
                                     0);

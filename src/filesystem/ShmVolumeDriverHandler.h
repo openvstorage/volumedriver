@@ -16,6 +16,7 @@
 #define __SHM_VOLUME_DRIVER_HANDLER_H_
 
 #include <youtils/Assert.h>
+#include <youtils/Catchers.h>
 #include <ObjectRouter.h>
 #include <FileSystem.h>
 #include <volumedriver/Api.h>
@@ -70,17 +71,33 @@ public:
         reply->opaque = request->opaque;
         reply->size_in_bytes = request->size_in_bytes;
 
-        fs_.object_router().write(objectid_,
-                                  data,
-                                  reply->size_in_bytes,
-                                  request->offset_in_bytes);
+        try
+        {
+            fs_.object_router().write(objectid_,
+                                      data,
+                                      reply->size_in_bytes,
+                                      request->offset_in_bytes);
+            reply->failed = false;
+        }
+        CATCH_STD_ALL_EWHAT({
+            LOG_ERROR("Write I/O error: " << EWHAT);
+            reply->failed = true;
+        });
     }
 
-    void
+    bool
     flush()
     {
         LOG_TRACE("Flushing");
-        fs_.object_router().sync(objectid_);
+        try
+        {
+            fs_.object_router().sync(objectid_);
+        }
+        CATCH_STD_ALL_EWHAT({
+            LOG_ERROR("Flush I/O error: " << EWHAT);
+            return false;
+        });
+        return true;
     }
 
     void
@@ -95,10 +112,18 @@ public:
 
         uint8_t *data = static_cast<uint8_t*>(shm_segment_->get_address_from_handle(request->handle));
 
-        fs_.object_router().read(objectid_,
-                                 data,
-                                 reply->size_in_bytes,
-                                 request->offset_in_bytes);
+        try
+        {
+            fs_.object_router().read(objectid_,
+                                     data,
+                                     reply->size_in_bytes,
+                                     request->offset_in_bytes);
+            reply->failed = false;
+        }
+        CATCH_STD_ALL_EWHAT({
+            LOG_ERROR("Read I/O error: " << EWHAT);
+            reply->failed = true;
+        });
     }
 
     uint64_t
