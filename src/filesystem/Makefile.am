@@ -110,6 +110,10 @@ libvolumedriverfs_la_SOURCES = \
 		RemoteNode.cpp \
 		ScrubManager.cpp \
 		ScrubTreeBuilder.cpp \
+		ShmIdlInterface.cpp \
+		ShmInterface.cpp \
+		ShmOrbInterface.cpp \
+		ShmServer.cpp \
 		TracePoints_tp.c \
 		VirtualDiskFormat.cpp \
 		VirtualDiskFormatVmdk.cpp \
@@ -118,11 +122,7 @@ libvolumedriverfs_la_SOURCES = \
 		XMLRPCKeys.cpp \
 		XMLRPCStructs.cpp \
 		XMLRPCUtils.cpp \
-		ZWorkerPool.cpp \
-		ShmIdlInterface.cpp \
-		ShmInterface.cpp \
-		ShmServer.cpp \
-		ShmOrbInterface.cpp
+		ZWorkerPool.cpp
 
 volumedriverfs_pythondir = @prefix@/lib/python@PYTHON_VERSION@/dist-packages/volumedriver/storagerouter
 

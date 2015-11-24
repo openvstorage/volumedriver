@@ -30,13 +30,13 @@ struct ovs_ctx_wrapper
     int n;
 };
 
-struct _ovs_buffer
+struct ovs_buffer
 {
     void *buf;
     size_t size;
 };
 
-typedef struct _ovs_iothread
+typedef struct ovs_iothread
 {
     pthread_t io_t;
     pthread_mutex_t io_mutex;
@@ -46,7 +46,7 @@ typedef struct _ovs_iothread
 } ovs_iothread_t;
 
 
-struct _ovs_completion_t
+struct ovs_completion
 {
     ovs_callback_t complete_cb;
     void *cb_arg;
@@ -60,7 +60,7 @@ struct _ovs_completion_t
     pthread_mutex_t _mutex;
 };
 
-struct _ovs_aio_request
+struct ovs_aio_request
 {
     struct ovs_aiocb *ovs_aiocbp;
     ovs_completion_t *completion;

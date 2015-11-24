@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef __SHM__VOLUME_DRIVER_HANDLER_H_
+#ifndef __SHM_VOLUME_DRIVER_HANDLER_H_
 #define __SHM_VOLUME_DRIVER_HANDLER_H_
 
 #include <youtils/Assert.h>

@@ -35,11 +35,7 @@ ShmClient::ShmClient(const std::string& volume_name,
                      const std::string& vd_context_kind,
                      const std::string& vd_object_name,
                      const std::string& vd_object_kind)
-    : writerequest_msg_(new ShmWriteRequest())
-    , writereply_msg_(new ShmWriteReply())
-    , readrequest_msg_(new ShmReadRequest())
-    , readreply_msg_(new ShmReadReply())
-    , volume_name_(volume_name)
+    : volume_name_(volume_name)
     , shm_segment_(new ipc::managed_shared_memory(ipc::open_only,
                                                   "openvstorage_segment"))
 {

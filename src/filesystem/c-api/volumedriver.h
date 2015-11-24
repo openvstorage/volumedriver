@@ -25,10 +25,10 @@ extern "C"
 {
 #endif
 
-typedef struct _ovs_buffer ovs_buffer_t;
-typedef struct _ovs_ctx_t ovs_ctx_t;
-typedef struct _ovs_aio_request ovs_aio_request;
-typedef struct _ovs_completion_t ovs_completion_t;
+typedef struct ovs_buffer ovs_buffer_t;
+typedef struct ovs_context_t ovs_ctx_t;
+typedef struct ovs_aio_request ovs_aio_request;
+typedef struct ovs_completion ovs_completion_t;
 typedef void (*ovs_callback_t)(ovs_completion_t *cb, void *arg);
 
 struct ovs_aiocb
@@ -36,7 +36,7 @@ struct ovs_aiocb
     void *aio_buf;
     off_t aio_offset;
     size_t aio_nbytes;
-    ovs_aio_request *_request;
+    ovs_aio_request *request_;
 };
 
 /*

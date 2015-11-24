@@ -78,10 +78,10 @@ volumedriver_fs_test_SOURCES = \
 	RestartTest.cpp \
 	ScrubManagerTest.cpp \
 	ScrubTreeBuilderTest.cpp \
+	ShmServerTest.cpp \
 	VolumeTest.cpp \
 	ZMQTest.cpp \
-	ZWorkerPoolTest.cpp \
-	ShmServerTest.cpp
+	ZWorkerPoolTest.cpp
 
 nodist_volumedriver_fs_test_SOURCES = \
 	ProtobufTest.pb.cc \

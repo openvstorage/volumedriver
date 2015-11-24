@@ -24,7 +24,7 @@
 #define NUM_THREADS  1
 
 /* Only one AioCompletion instance atm */
-AioCompletion* AioCompletion::_aio_completion_instance = NULL;
+AioCompletion* AioCompletion::aio_completion_instance_ = NULL;
 static int aio_completion_instances = 0;
 
 static bool
@@ -484,7 +484,7 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
     request->_completed = false;
     request->_signaled = false;
     request->_rv = 0;
-    ovs_aiocbp->_request = request;
+    ovs_aiocbp->request_ = request;
     switch (op)
     {
     case RequestOp::Read:
@@ -544,19 +544,19 @@ ovs_aio_error(ovs_ctx_t *ctx,
         return -1;
     }
 
-    if (ovs_aiocbp->_request->_canceled)
+    if (ovs_aiocbp->request_->_canceled)
     {
         return ECANCELED;
     }
 
-    if (not ovs_aiocbp->_request->_completed)
+    if (not ovs_aiocbp->request_->_completed)
     {
         return EINPROGRESS;
     }
 
-    if (ovs_aiocbp->_request->_failed)
+    if (ovs_aiocbp->request_->_failed)
     {
-        errno = ovs_aiocbp->_request->_errno;
+        errno = ovs_aiocbp->request_->_errno;
         return -1;
     }
     else
@@ -576,19 +576,19 @@ ovs_aio_return(ovs_ctx_t *ctx,
         return -1;
     }
 
-    pthread_cond_destroy(&ovs_aiocbp->_request->_cond);
-    pthread_mutex_destroy(&ovs_aiocbp->_request->_mutex);
-    errno = ovs_aiocbp->_request->_errno;
-    if (not ovs_aiocbp->_request->_failed)
+    pthread_cond_destroy(&ovs_aiocbp->request_->_cond);
+    pthread_mutex_destroy(&ovs_aiocbp->request_->_mutex);
+    errno = ovs_aiocbp->request_->_errno;
+    if (not ovs_aiocbp->request_->_failed)
     {
-        ret = ovs_aiocbp->_request->_rv;
+        ret = ovs_aiocbp->request_->_rv;
     }
     else
     {
         errno = EIO;
         ret = -1;
     }
-    delete ovs_aiocbp->_request;
+    delete ovs_aiocbp->request_;
     return ret;
 }
 
@@ -597,27 +597,27 @@ _aio_suspend_on_aiocb(struct ovs_aiocb *aiocbp,
                       const struct timespec *timeout)
 {
     int ret = 0;
-    if (__sync_bool_compare_and_swap(&aiocbp->_request->_on_suspend,
+    if (__sync_bool_compare_and_swap(&aiocbp->request_->_on_suspend,
                                      false,
                                      true,
                                      __ATOMIC_RELAXED))
     {
-        pthread_mutex_lock(&aiocbp->_request->_mutex);
-        while (not aiocbp->_request->_signaled)
+        pthread_mutex_lock(&aiocbp->request_->_mutex);
+        while (not aiocbp->request_->_signaled)
         {
             if (timeout)
             {
-                ret = pthread_cond_timedwait(&aiocbp->_request->_cond,
-                                             &aiocbp->_request->_mutex,
+                ret = pthread_cond_timedwait(&aiocbp->request_->_cond,
+                                             &aiocbp->request_->_mutex,
                                              timeout);
             }
             else
             {
-                ret = pthread_cond_wait(&aiocbp->_request->_cond,
-                                        &aiocbp->_request->_mutex);
+                ret = pthread_cond_wait(&aiocbp->request_->_cond,
+                                        &aiocbp->request_->_mutex);
             }
         }
-        pthread_mutex_unlock(&aiocbp->_request->_mutex);
+        pthread_mutex_unlock(&aiocbp->request_->_mutex);
     }
     return ret;
 }

@@ -32,13 +32,13 @@
 
 #include <boost/asio.hpp>
 
-typedef struct _ovs_async_threads
+typedef struct ovs_async_threads
 {
     ovs_iothread_t *rr_iothread;
     ovs_iothread_t *wr_iothread;
 } ovs_async_threads;
 
-struct _ovs_ctx_t
+struct ovs_context_t
 {
     int oflag;
     volumedriverfs::ShmClientPtr shm_client_;

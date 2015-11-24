@@ -111,16 +111,12 @@ private:
     orb_helper();
 
     std::unique_ptr<ipc::message_queue> writerequest_mq_;
-    std::unique_ptr<ShmWriteRequest> writerequest_msg_;
 
     std::unique_ptr<ipc::message_queue> writereply_mq_;
-    std::unique_ptr<ShmWriteReply> writereply_msg_;
 
     std::unique_ptr<ipc::message_queue> readrequest_mq_;
-    std::unique_ptr<ShmReadRequest> readrequest_msg_;
 
     std::unique_ptr<ipc::message_queue> readreply_mq_;
-    std::unique_ptr<ShmReadReply> readreply_msg_;
 
     ShmIdlInterface::VolumeFactory_var volumefactory_ref_;
 

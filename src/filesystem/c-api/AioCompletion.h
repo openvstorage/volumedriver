@@ -29,46 +29,46 @@ public:
     void
     stop_completion_loop()
     {
-        _io_service.stop();
-        _group.join_all();
+        io_service_.stop();
+        group_.join_all();
     }
 
     void
     schedule(ovs_completion_t *completion)
     {
         completion->_calling = true;
-        _io_service.post(boost::bind(completion->complete_cb,
+        io_service_.post(boost::bind(completion->complete_cb,
                                      completion,
                                      completion->cb_arg));
     }
 private:
     AioCompletion()
-    : _work(_io_service)
+    : work_(io_service_)
     {
         //cnanakos: scaling?
         for (int i = 0; i < 4; i++)
         {
-            _group.create_thread(boost::bind(&boost::asio::io_service::run,
-                                             &_io_service));
+            group_.create_thread(boost::bind(&boost::asio::io_service::run,
+                                             &io_service_));
         }
     };
     AioCompletion(const AioCompletion&) = delete;
     AioCompletion& operator=(const AioCompletion&) = delete;
-    static AioCompletion* _aio_completion_instance;
+    static AioCompletion* aio_completion_instance_;
 
-    boost::asio::io_service _io_service;
-    boost::asio::io_service::work _work;
-    boost::thread_group _group;
+    boost::asio::io_service io_service_;
+    boost::asio::io_service::work work_;
+    boost::thread_group group_;
 };
 
 AioCompletion*
 AioCompletion::get_aio_context()
 {
-    if (not _aio_completion_instance)
+    if (not aio_completion_instance_)
     {
-        _aio_completion_instance = new AioCompletion();
+        aio_completion_instance_ = new AioCompletion();
     }
-    return _aio_completion_instance;
+    return aio_completion_instance_;
 }
 
 #endif
