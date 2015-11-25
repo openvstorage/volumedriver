@@ -138,10 +138,12 @@ BackendConnectionInterface::namespaceExists(const Namespace& nspace)
 }
 
 void
-BackendConnectionInterface::createNamespace(const Namespace& nspace)
+BackendConnectionInterface::createNamespace(const Namespace& nspace,
+                                            const NamespaceMustNotExist must_not_exist)
 {
     Logger l(__FUNCTION__, nspace);
-    return createNamespace_(nspace);
+    return createNamespace_(nspace,
+                            must_not_exist);
 }
 
 void

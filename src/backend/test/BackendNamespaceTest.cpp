@@ -47,11 +47,13 @@ public:
     }
 
     void
-    createNamespace(const Namespace& nspace)
+    createNamespace(const Namespace& nspace,
+                    const NamespaceMustNotExist must_not_exist = NamespaceMustNotExist::T)
     {
         BackendConnectionInterfacePtr conn = cm_->getConnection();
         // conn->timeout(BackendTestSetup::backend_timeout());
-        conn->createNamespace(nspace);
+        conn->createNamespace(nspace,
+                              must_not_exist);
     }
 
     void
@@ -129,6 +131,19 @@ TEST_F(BackendNamespaceTest, ns)
         // deleteTestNamespace(nspace);
     }
 
+}
+
+TEST_F(BackendNamespaceTest, recreation)
+{
+    ASSERT_FALSE(namespaceExists(ns_));
+    createNamespace(ns_);
+
+    EXPECT_THROW(createNamespace(ns_,
+                                 NamespaceMustNotExist::T),
+                 BackendException);
+
+    EXPECT_NO_THROW(createNamespace(ns_,
+                                    NamespaceMustNotExist::F));
 }
 
 TEST_F(BackendNamespaceTest, list)

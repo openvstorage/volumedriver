@@ -112,14 +112,16 @@ Connection::getCheckSum_(const Namespace& nspace,
 }
 
 void
-Connection::createNamespace_(const Namespace& nspace)
+Connection::createNamespace_(const Namespace& nspace,
+                             const NamespaceMustNotExist must_not_exist)
 {
     iterator_t start_iterator = current_iterator_;
     while(maybe_switch_back_to_default())
     {
         try
         {
-            return (*current_iterator_)->createNamespace(nspace);
+            return (*current_iterator_)->createNamespace(nspace,
+                                                         must_not_exist);
         }
         catch(BackendNotImplementedException)
         {

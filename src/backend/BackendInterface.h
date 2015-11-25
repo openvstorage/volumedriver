@@ -64,7 +64,7 @@ public:
     namespaceExists();
 
     void
-    createNamespace();
+    createNamespace(const NamespaceMustNotExist = NamespaceMustNotExist::T);
 
     void
     partial_read(const BackendConnectionInterface::PartialReads& partial_reads,

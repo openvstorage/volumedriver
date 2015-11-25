@@ -79,7 +79,8 @@ public:
     namespaceExists_(const Namespace& nspace) override final;
 
     virtual void
-    createNamespace_(const Namespace& nspace) override final;
+    createNamespace_(const Namespace& nspace,
+                     const NamespaceMustNotExist = NamespaceMustNotExist::T) override final;
 
     virtual void
     deleteNamespace_(const Namespace& nspace) override final;

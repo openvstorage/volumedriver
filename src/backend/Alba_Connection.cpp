@@ -226,19 +226,25 @@ Connection::getCheckSum_(const Namespace& nspace,
 }
 
 void
-Connection::createNamespace_(const Namespace& nspace)
-try
+Connection::createNamespace_(const Namespace& nspace,
+                             const NamespaceMustNotExist must_not_exist)
 {
-    convert_exceptions_<void>("create namespace",
-                              [&]
+    try
+    {
+        convert_exceptions_<void>("create namespace",
+                                  [&]
         {
             client_->create_namespace(nspace.str(),
                                       preset_);
         });
-}
-catch (BackendNamespaceAlreadyExistsException&)
-{
-    throw BackendCouldNotCreateNamespaceException();
+    }
+    catch (BackendNamespaceAlreadyExistsException&)
+    {
+        if (must_not_exist == NamespaceMustNotExist::T)
+        {
+            throw BackendCouldNotCreateNamespaceException();
+        }
+    }
 }
 
 void

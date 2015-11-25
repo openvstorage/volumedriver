@@ -100,9 +100,11 @@ Connection::getCheckSum_(const Namespace& nspace,
 }
 
 void
-Connection::createNamespace_(const Namespace& nspace)
+Connection::createNamespace_(const Namespace& nspace,
+                             const NamespaceMustNotExist must_not_exist)
 {
-    if (fs::exists(nspacePath_(nspace)))
+    if (must_not_exist == NamespaceMustNotExist::T and
+        fs::exists(nspacePath_(nspace)))
     {
         LOG_ERROR("Namespace " << nspace << " already exists");
         throw BackendCouldNotCreateNamespaceException();

@@ -197,8 +197,16 @@ Connection::listNamespaces_(std::list<std::string>& /*objects*/)
 }
 
 void
-Connection::createNamespace_(const Namespace& nspace)
+Connection::createNamespace_(const Namespace& nspace,
+                             const NamespaceMustNotExist must_not_exist)
 {
+    if (must_not_exist == NamespaceMustNotExist::T and
+        namespaceExists_(nspace))
+    {
+        LOG_ERROR("Namespace " << nspace << " already exists");
+        throw BackendCouldNotCreateNamespaceException();
+    }
+
     try
     {
         ws_connection_->createBucket(nspace.c_str(),
