@@ -22,10 +22,6 @@
 #include <youtils/SpinLock.h>
 #include <youtils/System.h>
 
-/* Only one AioCompletion instance atm */
-AioCompletion* AioCompletion::aio_completion_instance_ = NULL;
-static int aio_completion_instances = 0;
-
 static bool
 _is_volume_name_valid(const char *volume_name)
 {
@@ -70,7 +66,7 @@ _aio_request_handler(ovs_aio_request *request,
     {
         request->completion->_rv = ret;
         request->completion->_failed = failed;
-        AioCompletion::get_aio_context()->schedule(request->completion);
+        AioCompletion::get_aio_context().schedule(request->completion);
     }
     if (RequestOp::AsyncFlush == request->_op)
     {
@@ -208,7 +204,6 @@ _aio_init(ovs_ctx_t* ctx)
                        (void *) wrapper);
     }
 
-    aio_completion_instances++;
     pthread_attr_destroy(&attr);
     return 0;
 }
@@ -259,11 +254,6 @@ _aio_destroy(ovs_ctx_t *ctx)
         pthread_join(async_threads_->wr_iothread[i].io_t, NULL);
     }
 
-    aio_completion_instances--;
-    if (aio_completion_instances == 0)
-    {
-        AioCompletion::get_aio_context()->stop_completion_loop();
-    }
     for (int i = 0; i < ctx->io_threads_pool_size_; i++)
     {
         pthread_cond_destroy(&async_threads_->rr_iothread[i].io_cond);

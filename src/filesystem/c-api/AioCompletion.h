@@ -24,14 +24,7 @@
 class AioCompletion
 {
 public:
-    static AioCompletion* get_aio_context();
-
-    void
-    stop_completion_loop()
-    {
-        io_service_.stop();
-        group_.join_all();
-    }
+    static AioCompletion& get_aio_context();
 
     void
     schedule(ovs_completion_t *completion)
@@ -52,22 +45,29 @@ private:
                                              &io_service_));
         }
     };
+
+    ~AioCompletion()
+    {
+        try
+        {
+            io_service_.stop();
+            group_.join_all();
+        }
+        catch (...) {}
+    }
+
     AioCompletion(const AioCompletion&) = delete;
     AioCompletion& operator=(const AioCompletion&) = delete;
-    static AioCompletion* aio_completion_instance_;
 
     boost::asio::io_service io_service_;
     boost::asio::io_service::work work_;
     boost::thread_group group_;
 };
 
-AioCompletion*
+AioCompletion&
 AioCompletion::get_aio_context()
 {
-    if (not aio_completion_instance_)
-    {
-        aio_completion_instance_ = new AioCompletion();
-    }
+    static AioCompletion aio_completion_instance_;
     return aio_completion_instance_;
 }
 

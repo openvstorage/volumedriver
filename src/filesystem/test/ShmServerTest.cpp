@@ -204,7 +204,7 @@ TEST_F(ShmServerTest, ovs_completion)
             EXPECT_EQ(0,
                       ovs_aio_return_completion(comp));
             EXPECT_EQ(0,
-                      ovs_aio_release_completion(comp));
+                      ovs_aio_signal_completion(comp));
         }
     };
 
@@ -265,6 +265,11 @@ TEST_F(ShmServerTest, ovs_completion)
     EXPECT_EQ(0,
               ovs_deallocate(ctx,
                              wbuf));
+
+    EXPECT_EQ(0,
+              ovs_aio_wait_completion(f_completion, NULL));
+    EXPECT_EQ(0,
+              ovs_aio_release_completion(f_completion));
 
     ovs_buffer_t *rbuf = ovs_allocate(ctx,
                               pattern_len);
