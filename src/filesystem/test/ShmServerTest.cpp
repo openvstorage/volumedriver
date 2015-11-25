@@ -102,6 +102,23 @@ TEST_F(ShmServerTest, ovs_already_created_volume)
     EXPECT_EQ(EEXIST, errno);
 }
 
+TEST_F(ShmServerTest, ovs_open_same_volume_twice)
+{
+    uint64_t volume_size = 1 << 30;
+    EXPECT_EQ(0,
+              ovs_create_volume("volume",
+                                volume_size));
+    ovs_ctx_t *ctx1 = ovs_ctx_init("volume",
+                                   O_RDWR);
+    ASSERT_TRUE(ctx1 != nullptr);
+    ovs_ctx_t *ctx2 = ovs_ctx_init("volume",
+                                   O_RDWR);
+    ASSERT_TRUE(ctx2 == nullptr);
+    EXPECT_EQ(EBUSY, errno);
+    EXPECT_EQ(0,
+              ovs_ctx_destroy(ctx1));
+}
+
 TEST_F(ShmServerTest, ovs_create_write_read_destroy)
 {
     uint64_t volume_size = 1 << 30;
