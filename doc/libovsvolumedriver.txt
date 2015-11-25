@@ -43,6 +43,7 @@ Initialize Open vStorage context::
           volume did not exist yet or write access to the parent
           directory is not allowed.
         - EINVAL Invalid arguments supplied
+        - EBUSY The volume is already open by another process
         - EIO An error occurred during context creation
 
 Terminate Open vStorage context::
