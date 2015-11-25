@@ -20,8 +20,7 @@
 #include <limits.h>
 #include <map>
 #include <youtils/SpinLock.h>
-
-#define NUM_THREADS  1
+#include <youtils/System.h>
 
 /* Only one AioCompletion instance atm */
 AioCompletion* AioCompletion::aio_completion_instance_ = NULL;
@@ -150,8 +149,8 @@ _aio_init(ovs_ctx_t* ctx)
 
     try
     {
-        async_threads_->rr_iothread = new ovs_iothread_t [NUM_THREADS];
-        for (int i = 0; i < NUM_THREADS; i++)
+        async_threads_->rr_iothread = new ovs_iothread_t [ctx->io_threads_pool_size_];
+        for (int i = 0; i < ctx->io_threads_pool_size_; i++)
         {
             pthread_cond_init(&async_threads_->rr_iothread[i].io_cond, NULL);
             pthread_mutex_init(&async_threads_->rr_iothread[i].io_mutex, NULL);
@@ -167,8 +166,8 @@ _aio_init(ovs_ctx_t* ctx)
 
     try
     {
-        async_threads_->wr_iothread = new ovs_iothread_t [NUM_THREADS];
-        for (int i = 0; i < NUM_THREADS; i++)
+        async_threads_->wr_iothread = new ovs_iothread_t [ctx->io_threads_pool_size_];
+        for (int i = 0; i < ctx->io_threads_pool_size_; i++)
         {
             pthread_cond_init(&async_threads_->wr_iothread[i].io_cond, NULL);
             pthread_mutex_init(&async_threads_->wr_iothread[i].io_mutex, NULL);
@@ -178,7 +177,7 @@ _aio_init(ovs_ctx_t* ctx)
     }
     catch (std::bad_alloc&)
     {
-        for (int i = 0; i < NUM_THREADS; i++)
+        for (int i = 0; i < ctx->io_threads_pool_size_; i++)
         {
             pthread_cond_destroy(&async_threads_->rr_iothread[i].io_cond);
             pthread_mutex_destroy(&async_threads_->rr_iothread[i].io_mutex);
@@ -188,7 +187,7 @@ _aio_init(ovs_ctx_t* ctx)
         return -1;
     }
 
-    for (int i = 0; i < NUM_THREADS; i++)
+    for (int i = 0; i < ctx->io_threads_pool_size_; i++)
     {
         ovs_ctx_wrapper *wrapper = new ovs_ctx_wrapper();
         wrapper->ctx = ctx;
@@ -198,7 +197,7 @@ _aio_init(ovs_ctx_t* ctx)
                        _aio_readreply_handler,
                        (void *) wrapper);
     }
-    for (int i = 0; i < NUM_THREADS; i++)
+    for (int i = 0; i < ctx->io_threads_pool_size_; i++)
     {
         ovs_ctx_wrapper *wrapper = new ovs_ctx_wrapper();
         wrapper->ctx = ctx;
@@ -224,15 +223,15 @@ _aio_destroy(ovs_ctx_t *ctx)
 
     ovs_async_threads *async_threads_ = &ctx->async_threads_;
 
-    for (int i = 0; i < NUM_THREADS; i++)
+    for (int i = 0; i < ctx->io_threads_pool_size_; i++)
     {
         async_threads_->rr_iothread[i].stopping = true;
         async_threads_->wr_iothread[i].stopping = true;
     }
 
-    ctx->shm_client_->stop_reply_queues(NUM_THREADS);
+    ctx->shm_client_->stop_reply_queues(ctx->io_threads_pool_size_);
 
-    for (int i = 0; i < NUM_THREADS; i++)
+    for (int i = 0; i < ctx->io_threads_pool_size_; i++)
     {
         pthread_mutex_lock(&async_threads_->rr_iothread[i].io_mutex);
         while (!async_threads_->rr_iothread[i].stopped)
@@ -243,7 +242,7 @@ _aio_destroy(ovs_ctx_t *ctx)
         pthread_mutex_unlock(&async_threads_->rr_iothread[i].io_mutex);
     }
 
-    for (int i = 0; i < NUM_THREADS; i++)
+    for (int i = 0; i < ctx->io_threads_pool_size_; i++)
     {
         pthread_mutex_lock(&async_threads_->wr_iothread[i].io_mutex);
         while (!async_threads_->wr_iothread[i].stopped)
@@ -254,7 +253,7 @@ _aio_destroy(ovs_ctx_t *ctx)
         pthread_mutex_unlock(&async_threads_->wr_iothread[i].io_mutex);
     }
 
-    for (int i = 0; i < NUM_THREADS; i++)
+    for (int i = 0; i < ctx->io_threads_pool_size_; i++)
     {
         pthread_join(async_threads_->rr_iothread[i].io_t, NULL);
         pthread_join(async_threads_->wr_iothread[i].io_t, NULL);
@@ -265,7 +264,7 @@ _aio_destroy(ovs_ctx_t *ctx)
     {
         AioCompletion::get_aio_context()->stop_completion_loop();
     }
-    for (int i = 0; i < NUM_THREADS; i++)
+    for (int i = 0; i < ctx->io_threads_pool_size_; i++)
     {
         pthread_cond_destroy(&async_threads_->rr_iothread[i].io_cond);
         pthread_mutex_destroy(&async_threads_->rr_iothread[i].io_mutex);
@@ -302,6 +301,10 @@ ovs_ctx_init(const char* volume_name,
     {
         return NULL;
     }
+
+    ctx->io_threads_pool_size_ =
+        youtils::System::get_env_with_default<int>("LIBOVSVOLUMEDRIVER_IO_THREADS_POOL_SIZE",
+                                                   1);
     /* Error: EACCESS or EIO */
     try
     {

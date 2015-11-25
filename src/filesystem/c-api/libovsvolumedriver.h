@@ -41,6 +41,7 @@ typedef struct ovs_async_threads
 struct ovs_context_t
 {
     int oflag;
+    int io_threads_pool_size_;
     volumedriverfs::ShmClientPtr shm_client_;
     ovs_async_threads async_threads_;
     VolumeCacheHandlerPtr cache_;
