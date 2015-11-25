@@ -810,6 +810,7 @@ public:
         {
             try
             {
+                manager_.sync();
                 fs::path serialization_path(getClusterCacheSerializationPath());
                 FileUtils::removeFileNoThrow(serialization_path);
                 fs::ofstream ofs(serialization_path);

@@ -192,6 +192,19 @@ public:
     }
 
     void
+    sync()
+    {
+        VERIFY(device_fd_ >= 0);
+        int ret = ::fsync(device_fd_);
+        if (ret < 0)
+        {
+            LOG_ERROR(path_ << ": failed to sync: " << strerror(errno));
+            throw fungi::IOException("Could not sync file",
+                                     path_.string().c_str());
+        }
+    }
+
+    void
     check(const youtils::Weed& key,
           uint32_t index)
     {

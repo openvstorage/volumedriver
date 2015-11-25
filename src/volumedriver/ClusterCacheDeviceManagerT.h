@@ -490,6 +490,15 @@ public:
         full = true;
         return 0;
     }
+
+    void
+    sync()
+    {
+        for (auto& dev : devices)
+        {
+            dev->sync();
+        }
+    }
 };
 
 }

@@ -886,8 +886,7 @@ TEST_P(ErrorHandlingTest, haltedVolume)
     checkHalted();
 
     const boost::optional<events::Event> maybe_ev(event_collector_->pop());
-    ASSERT_NE(boost::none,
-              maybe_ev);
+    ASSERT_TRUE(boost::none != maybe_ev);
 
     ASSERT_TRUE(maybe_ev->HasExtension(events::volumedriver_error));
 
@@ -935,8 +934,7 @@ TEST_P(ErrorHandlingTest, reportOfflineMountPoint)
     ASSERT_EQ(1U, event_collector_->size());
 
     const boost::optional<events::Event> maybe_ev(event_collector_->pop());
-    ASSERT_NE(boost::none,
-              maybe_ev);
+    ASSERT_TRUE(boost::none != maybe_ev);
 
     ASSERT_TRUE(maybe_ev->HasExtension(events::volumedriver_error));
 
