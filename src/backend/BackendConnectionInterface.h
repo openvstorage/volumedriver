@@ -34,6 +34,7 @@
 BOOLEAN_ENUM(OverwriteObject);
 BOOLEAN_ENUM(ObjectMayNotExist);
 BOOLEAN_ENUM(InsistOnLatestVersion);
+BOOLEAN_ENUM(NamespaceMustNotExist);
 
 namespace backend
 {
@@ -78,7 +79,8 @@ protected:
     namespaceExists(const Namespace& nspace);
 
     void
-    createNamespace(const Namespace& nspace);
+    createNamespace(const Namespace&,
+                    const NamespaceMustNotExist = NamespaceMustNotExist::T);
 
     void
     deleteNamespace(const Namespace& nspace);
@@ -239,7 +241,8 @@ private:
     namespaceExists_(const Namespace&) = 0;
 
     virtual void
-    createNamespace_(const Namespace&) = 0;
+    createNamespace_(const Namespace&,
+                     const NamespaceMustNotExist = NamespaceMustNotExist::T) = 0;
 
     virtual void
     deleteNamespace_(const Namespace& nspace) = 0;

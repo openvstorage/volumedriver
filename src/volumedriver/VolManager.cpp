@@ -1017,7 +1017,11 @@ VolManager::ensureNamespace(const Namespace& ns,
      //LOG_INFO("ensuring namespace " << ns.str());
     if(T(create_namespace))
     {
-        createBackendInterface(ns)->createNamespace();
+        BackendInterfacePtr bi(createBackendInterface(ns));
+        VERIFY(not bi->namespaceExists());
+        // OVS-2996: use NamespaceMustNotExist::F to work around a retry race during
+        // namespace creation with ALBA.
+        bi->createNamespace(NamespaceMustNotExist::F);
     }
     else if (not createBackendInterface(ns)->namespaceExists())
     {
