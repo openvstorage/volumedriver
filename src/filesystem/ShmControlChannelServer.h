@@ -40,15 +40,9 @@ class ControlSession
 {
 public:
     ControlSession(boost::asio::io_service& io_service,
-                   std::map<int, std::string>& sess_,
-                   std::map<int, ShmVolumeCachePtr>& cache,
-                   fungi::SpinLock& lock_,
                    TryStopVolume try_stop_volume,
                    IsVolumeValid is_volume_valid)
     : socket_(io_service)
-    , sessions_(sess_)
-    , cache_(cache)
-    , sessions_lock_(lock_)
     , state_(ShmConnectionState::Connected)
     , try_stop_volume_(try_stop_volume)
     , is_volume_valid_(is_volume_valid)
@@ -73,18 +67,8 @@ public:
     void
     remove_session()
     {
-        fungi::ScopedSpinLock lock_(sessions_lock_);
-        auto it = sessions_.find(socket_.native());
-        if (it != sessions_.end())
-        {
-            try_stop_volume_(it->second);
-            sessions_.erase(it);
-        }
-        auto cit = cache_.find(socket_.native());
-        if (cit != cache_.end())
-        {
-            cache_.erase(cit);
-        }
+        try_stop_volume_(volume_name_);
+        cache_.reset();
     }
 
     ShmControlChannelMsg
@@ -93,13 +77,10 @@ public:
         ShmControlChannelMsg o_msg(ShmMsgOpcode::Failed);
         if (state_ == ShmConnectionState::Connected)
         {
-            fungi::ScopedSpinLock lock_(sessions_lock_);
             if (is_volume_valid_(msg.volume_name(), msg.key()))
             {
-                sessions_.emplace(socket_.native(),
-                                  msg.volume_name());
-                cache_.emplace(socket_.native(),
-                               ShmVolumeCachePtr(new ShmVolumeCache()));
+                volume_name_ = msg.volume_name();
+                cache_.reset(new ShmVolumeCache());
                 state_ = ShmConnectionState::Registered;
                 o_msg.opcode(ShmMsgOpcode::Success);
             }
@@ -115,7 +96,7 @@ public:
         {
             try
             {
-                o_msg.handle(cache_[socket_.native()]->allocate(msg.size()));
+                o_msg.handle(cache_->allocate(msg.size()));
                 o_msg.opcode(ShmMsgOpcode::Success);
             }
             catch (boost::interprocess::bad_alloc&)
@@ -133,7 +114,7 @@ public:
         if (state_ == ShmConnectionState::Registered)
         {
             //cnanakos: make deallocation async and return immediately
-            bool ret = cache_[socket_.native()]->deallocate(msg.handle());
+            bool ret = cache_->deallocate(msg.handle());
             if (ret)
             {
                 o_msg.opcode(ShmMsgOpcode::Success);
@@ -148,20 +129,9 @@ public:
         ShmControlChannelMsg o_msg(ShmMsgOpcode::Failed);
         if (state_ == ShmConnectionState::Registered)
         {
-            fungi::ScopedSpinLock lock_(sessions_lock_);
-            auto it = sessions_.find(socket_.native());
-            if (it == sessions_.end())
-            {
-                return o_msg;
-            }
-            sessions_.erase(it);
-            auto cit = cache_.find(socket_.native());
-            if (cit != cache_.end())
-            {
-                cache_.erase(cit);
-                state_ = ShmConnectionState::Connected;
-                o_msg.opcode(ShmMsgOpcode::Success);
-            }
+            cache_.reset();
+            state_ = ShmConnectionState::Connected;
+            o_msg.opcode(ShmMsgOpcode::Success);
         }
         return o_msg;
     }
@@ -287,9 +257,8 @@ private:
     boost::asio::local::stream_protocol::socket socket_;
     std::vector<char> data_;
     uint64_t payload_size_;
-    std::map<int, std::string>& sessions_;
-    std::map<int, ShmVolumeCachePtr>& cache_;
-    fungi::SpinLock& sessions_lock_;
+    ShmVolumeCachePtr cache_;
+    std::string volume_name_;
     ShmConnectionState state_;
     TryStopVolume try_stop_volume_;
     IsVolumeValid is_volume_valid_;
@@ -320,9 +289,6 @@ public:
             new_session->async_start();
         }
         new_session.reset(new ControlSession(io_service_,
-                                             sessions_,
-                                             cache_,
-                                             sessions_lock_,
                                              try_stop_volume_,
                                              is_volume_valid_));
         acceptor_.async_accept(new_session->socket(),
@@ -338,9 +304,6 @@ public:
     {
 
         ctl_session_ptr new_session(new ControlSession(io_service_,
-                                                       sessions_,
-                                                       cache_,
-                                                       sessions_lock_,
                                                        try_stop_volume,
                                                        is_volume_valid));
         acceptor_.async_accept(new_session->socket(),
@@ -365,9 +328,6 @@ public:
 private:
     boost::asio::io_service io_service_;
     boost::asio::local::stream_protocol::acceptor acceptor_;
-    std::map<int, std::string> sessions_;
-    std::map<int, ShmVolumeCachePtr> cache_;
-    fungi::SpinLock sessions_lock_;
     boost::thread_group grp_;
     std::string file_;
     TryStopVolume try_stop_volume_;
