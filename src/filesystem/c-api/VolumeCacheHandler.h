@@ -33,7 +33,10 @@ public:
     , ctl_client_(ctl_client)
     {}
 
-    ~VolumeCacheHandler() = default;
+    ~VolumeCacheHandler()
+    {
+        drop_caches();
+    };
 
     VolumeCacheHandler(const VolumeCacheHandler&) = delete;
     VolumeCacheHandler& operator=(const VolumeCacheHandler&) = delete;

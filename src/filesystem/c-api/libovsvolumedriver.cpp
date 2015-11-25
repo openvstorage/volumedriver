@@ -377,13 +377,12 @@ ovs_ctx_destroy(ovs_ctx_t *ctx)
     {
         goto err;
     }
-    ctx->cache_->drop_caches();
+    ctx->cache_.reset();
     ctx->shm_client_.reset();
     if (ctx->ctl_client_->deregister())
     {
         ctx->ctl_client_->close();
     }
-    ctx->cache_.reset();
     ctx->ctl_client_.reset();
     delete ctx;
     return ret;
