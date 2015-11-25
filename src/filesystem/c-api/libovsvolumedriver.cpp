@@ -13,14 +13,110 @@
 // limitations under the License.
 
 #include "volumedriver.h"
-#include "libovsvolumedriver.h"
+#include "common.h"
+#include "VolumeCacheHandler.h"
+#include "ShmControlChannelClient.h"
 #include "AioCompletion.h"
 #include "../ShmControlChannelProtocol.h"
+#include "../ShmClient.h"
 
 #include <limits.h>
 #include <map>
 #include <youtils/SpinLock.h>
 #include <youtils/System.h>
+#include <youtils/IOException.h>
+
+#ifdef __GNUC__
+#define likely(x)       __builtin_expect(!!(x), 1)
+#define unlikely(x)     __builtin_expect(!!(x), 0)
+#else
+#define likely(x)       (x)
+#define unlikely(x)     (x)
+#endif
+
+typedef struct ovs_async_threads
+{
+    ovs_iothread_t *rr_iothread;
+    ovs_iothread_t *wr_iothread;
+} ovs_async_threads;
+
+static void ovs_aio_init(ovs_ctx_t *ctx);
+static void ovs_aio_destroy(ovs_ctx_t *ctx);
+
+struct ovs_context_t
+{
+    ovs_context_t(const std::string& volume_name, int flag)
+    : oflag(flag)
+    {
+        io_threads_pool_size_ =
+        youtils::System::get_env_with_default<int>("LIBOVSVOLUMEDRIVER_IO_THREADS_POOL_SIZE",
+                                                   1);
+        shm_client_ = std::make_shared<volumedriverfs::ShmClient>(volume_name);
+        try
+        {
+            ctl_client_ = std::make_shared<ShmControlChannelClient>();
+        }
+        catch (std::bad_alloc&)
+        {
+            shm_client_.reset();
+            throw;
+        }
+
+        if (not ctl_client_->connect_and_register(volume_name,
+                                                  shm_client_->get_key()))
+        {
+            shm_client_.reset();
+            ctl_client_.reset();
+            throw fungi::IOException("cannot connect and register to server");
+        }
+
+        try
+        {
+            ovs_aio_init(this);
+        }
+        catch (std::bad_alloc&)
+        {
+            shm_client_.reset();
+            ctl_client_.reset();
+            throw;
+        }
+
+        try
+        {
+            cache_ = std::make_unique<VolumeCacheHandler>(shm_client_,
+                                                          ctl_client_);
+        }
+        catch (std::bad_alloc&)
+        {
+            ovs_aio_destroy(this);
+            shm_client_.reset();
+            ctl_client_->deregister();
+            ctl_client_.reset();
+            throw;
+        }
+        int ret = cache_->preallocate();
+        if (ret < 0)
+        {
+            cache_->drop_caches();
+        }
+    }
+
+    ~ovs_context_t()
+    {
+        ovs_aio_destroy(this);
+        cache_.reset();
+        shm_client_.reset();
+        ctl_client_->deregister();
+        ctl_client_.reset();
+    }
+
+    int oflag;
+    int io_threads_pool_size_;
+    volumedriverfs::ShmClientPtr shm_client_;
+    ovs_async_threads async_threads_;
+    VolumeCacheHandlerPtr cache_;
+    ShmControlChannelClientPtr ctl_client_;
+};
 
 static bool
 _is_volume_name_valid(const char *volume_name)
@@ -135,8 +231,8 @@ _aio_writereply_handler(void *arg)
     pthread_exit(NULL);
 }
 
-static int
-_aio_init(ovs_ctx_t* ctx)
+static void
+ovs_aio_init(ovs_ctx_t* ctx)
 {
     pthread_attr_t attr;
     pthread_attr_init(&attr);
@@ -157,7 +253,7 @@ _aio_init(ovs_ctx_t* ctx)
     catch (std::bad_alloc&)
     {
         pthread_attr_destroy(&attr);
-        return -1;
+        throw;
     }
 
     try
@@ -180,7 +276,7 @@ _aio_init(ovs_ctx_t* ctx)
         }
         delete[] async_threads_->rr_iothread;
         pthread_attr_destroy(&attr);
-        return -1;
+        throw;
     }
 
     for (int i = 0; i < ctx->io_threads_pool_size_; i++)
@@ -205,17 +301,11 @@ _aio_init(ovs_ctx_t* ctx)
     }
 
     pthread_attr_destroy(&attr);
-    return 0;
 }
 
-static int
-_aio_destroy(ovs_ctx_t *ctx)
+static void
+ovs_aio_destroy(ovs_ctx_t *ctx)
 {
-    if (ctx == NULL)
-    {
-        return -1;
-    }
-
     ovs_async_threads *async_threads_ = &ctx->async_threads_;
 
     for (int i = 0; i < ctx->io_threads_pool_size_; i++)
@@ -224,6 +314,7 @@ _aio_destroy(ovs_ctx_t *ctx)
         async_threads_->wr_iothread[i].stopping = true;
     }
 
+    /* nonexcept */
     ctx->shm_client_->stop_reply_queues(ctx->io_threads_pool_size_);
 
     for (int i = 0; i < ctx->io_threads_pool_size_; i++)
@@ -264,7 +355,6 @@ _aio_destroy(ovs_ctx_t *ctx)
 
     delete[] async_threads_->rr_iothread;
     delete[] async_threads_->wr_iothread;
-    return 0;
 }
 
 
@@ -272,7 +362,6 @@ ovs_ctx_t*
 ovs_ctx_init(const char* volume_name,
              int oflag)
 {
-    int ret;
     if (not _is_volume_name_valid(volume_name))
     {
         errno = EINVAL;
@@ -286,102 +375,44 @@ ovs_ctx_init(const char* volume_name,
         return NULL;
     }
 
-    ovs_ctx_t *ctx = new ovs_ctx_t;
-    if (ctx == NULL)
-    {
-        return NULL;
-    }
-
-    ctx->io_threads_pool_size_ =
-        youtils::System::get_env_with_default<int>("LIBOVSVOLUMEDRIVER_IO_THREADS_POOL_SIZE",
-                                                   1);
-    /* Error: EACCESS or EIO */
+    /* On Error: EACCESS or EIO */
     try
     {
-        ctx->shm_client_ =
-            std::make_shared<volumedriverfs::ShmClient>(volume_name);
+        ovs_ctx_t *ctx = new ovs_ctx_t(volume_name, oflag);
+        return ctx;
     }
     catch (ShmIdlInterface::VolumeDoesNotExist)
     {
-        delete ctx;
         errno = EACCES;
+        return NULL;
+    }
+    catch (ShmIdlInterface::VolumeNameAlreadyRegistered)
+    {
+        errno = EBUSY;
+        return NULL;
+    }
+    catch (std::bad_alloc&)
+    {
+        errno = ENOMEM;
         return NULL;
     }
     catch (...)
     {
-        delete ctx;
         errno = EIO;
         return NULL;
     }
-
-    try
-    {
-        ctx->ctl_client_ = std::make_shared<ShmControlChannelClient>();
-    }
-    catch (std::bad_alloc&)
-    {
-        goto client_err;
-
-    }
-    if (not ctx->ctl_client_->connect_and_register(volume_name,
-                ctx->shm_client_->get_key()))
-    {
-        goto register_err;
-    }
-
-    ctx->oflag = oflag;
-    ret = _aio_init(ctx);
-    if (ret == 0)
-    {
-        ctx->cache_.reset(new VolumeCacheHandler(ctx->shm_client_,
-                                                 ctx->ctl_client_));
-        int ret = ctx->cache_->preallocate();
-        if (ret < 0)
-        {
-            ctx->cache_->drop_caches();
-        }
-        return ctx;
-    }
-    else
-    {
-        ctx->ctl_client_->close();
-    }
-register_err:
-    ctx->ctl_client_.reset();
-client_err:
-    ctx->shm_client_.reset();
-    delete ctx;
-
-    errno = EIO;
-    return NULL;
 }
 
 int
 ovs_ctx_destroy(ovs_ctx_t *ctx)
 {
-    int ret;
     if (ctx == NULL)
     {
-        ret = -1;
-        goto err;
+        errno = EINVAL;
+        return -1;
     }
-    ret = _aio_destroy(ctx);
-    if (ret < 0)
-    {
-        goto err;
-    }
-    ctx->cache_.reset();
-    ctx->shm_client_.reset();
-    if (ctx->ctl_client_->deregister())
-    {
-        ctx->ctl_client_->close();
-    }
-    ctx->ctl_client_.reset();
     delete ctx;
-    return ret;
-err:
-    errno = EINVAL;
-    return ret;
+    return 0;
 }
 
 int
@@ -584,7 +615,7 @@ ovs_aio_return(ovs_ctx_t *ctx,
 }
 
 static int
-_aio_suspend_on_aiocb(struct ovs_aiocb *aiocbp,
+ovs_aio_suspend_on_aiocb(struct ovs_aiocb *aiocbp,
                       const struct timespec *timeout)
 {
     int ret = 0;
@@ -623,7 +654,7 @@ ovs_aio_suspend(ovs_ctx_t *ctx,
         errno = EINVAL;
         return -1;
     }
-    return _aio_suspend_on_aiocb(ovs_aiocbp, timeout);
+    return ovs_aio_suspend_on_aiocb(ovs_aiocbp, timeout);
 }
 
 int
@@ -697,11 +728,13 @@ ovs_aio_create_completion(ovs_callback_t complete_cb,
     }
     try
     {
-        ovs_completion_t *completion = new ovs_completion_t();
+        ovs_completion_t *completion = new ovs_completion_t;
         completion->complete_cb = complete_cb;
         completion->cb_arg = arg;
         completion->_calling = false;
         completion->_on_wait = false;
+        completion->_signaled = false;
+        completion->_failed = false;
         pthread_cond_init(&completion->_cond, NULL);
         pthread_mutex_init(&completion->_mutex, NULL);
         return completion;

@@ -28,7 +28,11 @@ public:
     , ep_(ShmConnectionDetails::Endpoint())
     {}
 
-    ~ShmControlChannelClient() = default;
+    ~ShmControlChannelClient()
+    {
+        socket_.shutdown(boost::asio::local::stream_protocol::socket::shutdown_both);
+        socket_.close();
+    };
 
     ShmControlChannelClient(const ShmControlChannelClient&) = delete;
     ShmControlChannelClient& operator=(const ShmControlChannelClient&) = delete;
@@ -83,13 +87,6 @@ public:
             return true;
         }
         return false;
-    }
-
-    void
-    close()
-    {
-        socket_.shutdown(boost::asio::local::stream_protocol::socket::shutdown_both);
-        socket_.close();
     }
 
     bool
