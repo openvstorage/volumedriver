@@ -163,9 +163,9 @@ public:
         }
     }
 
+private:
     DECLARE_LOGGER("ShmVolumeDriverHandler");
 
-private:
     FileSystem& fs_;
     const ObjectId objectid_;
     const uint64_t volume_size_in_bytes_;

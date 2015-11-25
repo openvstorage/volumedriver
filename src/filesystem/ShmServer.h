@@ -146,8 +146,6 @@ public:
         }
     }
 
-    DECLARE_LOGGER("ShmServer");
-
     const youtils::UUID&
     writerequest_uuid()
     {
@@ -179,6 +177,8 @@ public:
     }
 
 private:
+    DECLARE_LOGGER("ShmServer");
+
     template<typename T>
     static T*
     getStopRequest()

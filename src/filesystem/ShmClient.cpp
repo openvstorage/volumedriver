@@ -82,12 +82,10 @@ ShmClient::~ShmClient()
     catch (std::exception& e)
     {
         //LOG_INFO("std::exception when stopping mem client: server down?");
-        return;
     }
     catch (...)
     {
         //LOG_INFO("unknown exception when stopping mem client: server down?");
-        return;
     }
 
     try
@@ -229,7 +227,7 @@ ShmClient::receive_read_reply(size_t& size_in_bytes,
     return readreply_.failed;
 }
 
-bool
+void
 ShmClient::stop_reply_queues(int n)
 {
     ShmReadReply readreply_;
@@ -261,7 +259,6 @@ ShmClient::stop_reply_queues(int n)
         catch (ipc::interprocess_exception& e)
         {}
     }
-    return true;
 }
 
 void

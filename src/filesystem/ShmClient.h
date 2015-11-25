@@ -64,7 +64,7 @@ public:
     receive_write_reply(size_t& size_in_bytes,
                         void **opaque);
 
-    bool
+    void
     stop_reply_queues(int n);
 
     ssize_t

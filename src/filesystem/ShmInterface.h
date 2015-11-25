@@ -53,8 +53,6 @@ public:
 
     typedef ShmServer<Handler> ServerType;
 
-    DECLARE_LOGGER("ShmInterface");
-
     ShmIdlInterface::CreateResult*
     create_shm_interface(const ShmIdlInterface::CreateShmArguments& args)
     {
@@ -166,6 +164,8 @@ public:
     }
 
 private:
+    DECLARE_LOGGER("ShmInterface");
+
     youtils::OrbHelper& orb_helper_;
     handler_args_t& handler_args_;
     std::mutex shm_servers_lock_;
