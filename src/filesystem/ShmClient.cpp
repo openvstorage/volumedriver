@@ -237,9 +237,14 @@ ShmClient::stop_reply_queues(int n)
 
     for (int i = 0; i < n; i++)
     {
-        readreply_mq_->send(&readreply_,
-                            readreply_size,
-                            0);
+        try
+        {
+            readreply_mq_->send(&readreply_,
+                                readreply_size,
+                                0);
+        }
+        catch (ipc::interprocess_exception& e)
+        {}
     }
 
     ShmWriteReply writereply_;
@@ -247,9 +252,14 @@ ShmClient::stop_reply_queues(int n)
 
     for (int i = 0; i < n; i++)
     {
-        writereply_mq_->send(&writereply_,
-                             writereply_size,
-                             0);
+        try
+        {
+            writereply_mq_->send(&writereply_,
+                                 writereply_size,
+                                 0);
+        }
+        catch (ipc::interprocess_exception& e)
+        {}
     }
     return true;
 }
