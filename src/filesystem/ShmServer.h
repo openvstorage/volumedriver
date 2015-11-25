@@ -23,14 +23,15 @@
 #include <youtils/UUID.h>
 #include <youtils/Assert.h>
 #include <youtils/Logging.h>
+#include <youtils/System.h>
 
 #include "ShmProtocol.h"
 
-#define NUM_THREADS 1
-
 namespace volumedriverfs
 {
+
 namespace ipc = boost::interprocess;
+namespace yt = youtils;
 
 template<typename Handler>
 class ShmServer
@@ -65,7 +66,10 @@ public:
                                                    max_reply_queue_size,
                                                    readreply_size));
 
-        for (int i = 0; i < NUM_THREADS; i++)
+        thread_pool_size_ = yt::System::get_env_with_default<int>("SHM_SERVER_THREAD_POOL_SIZE",
+                                                                  1);
+
+        for (int i = 0; i < thread_pool_size_; i++)
         {
             read_group_.create_thread(boost::bind(&ShmServer::handle_reads,
                                                   this));
@@ -76,7 +80,7 @@ public:
 
     ~ShmServer()
     {
-        for (int i = 0; i < NUM_THREADS; i++)
+        for (int i = 0; i < thread_pool_size_; i++)
         {
             writerequest_mq_->send(getStopRequest<ShmWriteRequest>(),
                                    writerequest_size,
@@ -95,7 +99,7 @@ public:
             }
         }
 
-        for (int i = 0; i < NUM_THREADS; i++)
+        for (int i = 0; i < thread_pool_size_; i++)
         {
             readrequest_mq_->send(getStopRequest<ShmReadRequest>(),
                                   readrequest_size,
@@ -249,6 +253,7 @@ private:
 
     boost::thread_group read_group_;
     boost::thread_group write_group_;
+    int thread_pool_size_;
 
     youtils::UUID writerequest_mq_uuid_;
     std::unique_ptr<ipc::message_queue> writerequest_mq_;
