@@ -185,7 +185,7 @@ TEST_P(VolumeDriverConfigurationTest, componentTest)
     ComponentCounter counter;
     VolManager::get()->for_each_components(counter);
     // Maintain a list of expected components here?
-    ASSERT_EQ(7U, counter.count_);
+    ASSERT_EQ(8U, counter.count_);
 }
 
 TEST_P(VolumeDriverConfigurationTest, mount_points)
@@ -445,7 +445,7 @@ TEST_P(VolumeDriverConfigurationTest, num_threads)
             LOG_INFO("updated: " << u.parameter_name);
         }
 
-        EXPECT_EQ(33U,
+        EXPECT_EQ(35U,
                   u_rep.no_update_size());
     }
 
@@ -466,7 +466,7 @@ TEST_P(VolumeDriverConfigurationTest, num_threads)
             std::cerr << u.parameter_name << std::endl;
         }
 
-        EXPECT_EQ(34U, u_rep.no_update_size());
+        EXPECT_EQ(36U, u_rep.no_update_size());
     }
 }
 
