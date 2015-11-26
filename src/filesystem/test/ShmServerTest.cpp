@@ -158,6 +158,9 @@ TEST_F(ShmServerTest, ovs_create_write_read_destroy)
                              &w_aio));
 
     EXPECT_EQ(0,
+              ovs_aio_finish(ctx, &w_aio));
+
+    EXPECT_EQ(0,
               ovs_deallocate(ctx,
                              wbuf));
 
@@ -183,6 +186,9 @@ TEST_F(ShmServerTest, ovs_create_write_read_destroy)
     EXPECT_EQ(pattern.length(),
               ovs_aio_return(ctx,
                              &r_aio));
+
+    EXPECT_EQ(0,
+              ovs_aio_finish(ctx, &r_aio));
 
     EXPECT_TRUE(memcmp(ovs_buffer_data(rbuf),
                        pattern.c_str(),
@@ -280,6 +286,9 @@ TEST_F(ShmServerTest, ovs_completion)
                              &w_aio));
 
     EXPECT_EQ(0,
+              ovs_aio_finish(ctx, &w_aio));
+
+    EXPECT_EQ(0,
               ovs_deallocate(ctx,
                              wbuf));
 
@@ -315,6 +324,9 @@ TEST_F(ShmServerTest, ovs_completion)
     EXPECT_EQ(pattern_len,
               ovs_aio_return(ctx,
                              &r_aio));
+
+    EXPECT_EQ(0,
+              ovs_aio_finish(ctx, &r_aio));
 
     EXPECT_TRUE(memcmp(ovs_buffer_data(rbuf),
                        pattern.c_str(),
@@ -443,6 +455,9 @@ TEST_F(ShmServerTest, ovs_completion_two_ctxs)
                              &w1_aio));
 
     EXPECT_EQ(0,
+              ovs_aio_finish(ctx1, &w1_aio));
+
+    EXPECT_EQ(0,
               ovs_aio_suspend(ctx2,
                               &w2_aio,
                               NULL));
@@ -450,6 +465,9 @@ TEST_F(ShmServerTest, ovs_completion_two_ctxs)
     EXPECT_EQ(pattern_len,
               ovs_aio_return(ctx2,
                              &w2_aio));
+
+    EXPECT_EQ(0,
+              ovs_aio_finish(ctx2, &w2_aio));
 
     EXPECT_EQ(0,
               ovs_deallocate(ctx1,
@@ -483,6 +501,9 @@ TEST_F(ShmServerTest, ovs_completion_two_ctxs)
     EXPECT_EQ(pattern_len,
               ovs_aio_return(ctx2,
                              &r_aio));
+
+    EXPECT_EQ(0,
+              ovs_aio_finish(ctx2, &r_aio));
 
     EXPECT_TRUE(memcmp(ovs_buffer_data(rbuf),
                        pattern.c_str(),
