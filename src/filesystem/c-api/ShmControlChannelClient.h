@@ -143,6 +143,24 @@ public:
         return socket_.is_open();
     }
 
+    bool
+    is_connected()
+    {
+        char buf;
+        ssize_t ret = recv(socket_.native_handle(),
+                           &buf,
+                           1,
+                           MSG_DONTWAIT | MSG_PEEK);
+        if (ret == 0)
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
+    }
+
 private:
     boost::asio::io_service io_service_;
     boost::asio::local::stream_protocol::socket socket_;

@@ -189,7 +189,7 @@ struct ovs_context_t
             async_threads_.wr_iothread[i].stopping = true;
         }
         /* nonexcept */
-        if (ctl_client_->is_open())
+        if (ctl_client_->is_connected())
         {
             shm_client_->stop_reply_queues(io_threads_pool_size_);
         }
