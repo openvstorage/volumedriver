@@ -189,6 +189,16 @@ ovs_aio_cancel(ovs_ctx_t *ctx,
                struct ovs_aiocb *ovs_aiocbp);
 
 /*
+ * Finish an asynchronous I/O operation
+ * param ctx: Open vStorage context
+ * param ovs_aiocb: Pointer to an AIO Control Block structure
+ * return: 0 on success, -1 on fail
+ */
+int
+ovs_aio_finish(ovs_ctx_t *ctx,
+               struct ovs_aiocb* ovs_aiocbp);
+
+/*
  * Asynchronous read from a volume
  * param ctx: Open vStorage context
  * param ovs_aiocb: Pointer to an AIO Control Block structure

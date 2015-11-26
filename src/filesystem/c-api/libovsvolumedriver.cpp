@@ -598,8 +598,6 @@ ovs_aio_return(ovs_ctx_t *ctx,
         return -1;
     }
 
-    pthread_cond_destroy(&ovs_aiocbp->request_->_cond);
-    pthread_mutex_destroy(&ovs_aiocbp->request_->_mutex);
     errno = ovs_aiocbp->request_->_errno;
     if (not ovs_aiocbp->request_->_failed)
     {
@@ -610,8 +608,23 @@ ovs_aio_return(ovs_ctx_t *ctx,
         errno = ovs_aiocbp->request_->_errno;
         ret = -1;
     }
-    delete ovs_aiocbp->request_;
     return ret;
+}
+
+int
+ovs_aio_finish(ovs_ctx_t *ctx,
+               struct ovs_aiocb *ovs_aiocbp)
+{
+    if (ctx == NULL || ovs_aiocbp == NULL)
+    {
+        errno = EINVAL;
+        return -1;
+    }
+
+    pthread_cond_destroy(&ovs_aiocbp->request_->_cond);
+    pthread_mutex_destroy(&ovs_aiocbp->request_->_mutex);
+    delete ovs_aiocbp->request_;
+    return 0;
 }
 
 static int
