@@ -62,6 +62,9 @@ DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(mds_timeout_secs,
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(mds_threads,
                                        uint32_t);
 
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(mds_bg_threads,
+                                       uint32_t);
+
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(mds_nodes,
                                                   metadata_server::ServerConfigs);
 

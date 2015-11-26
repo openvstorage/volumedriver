@@ -233,9 +233,21 @@ BackendInterface::namespaceExists()
 }
 
 void
-BackendInterface::createNamespace()
+BackendInterface::createNamespace(const NamespaceMustNotExist must_not_exist)
 {
-    wrap_<void>(&BackendConnectionInterface::createNamespace);
+    try
+    {
+        wrap_<void,
+              NamespaceMustNotExist>(&BackendConnectionInterface::createNamespace,
+                                     must_not_exist);
+    }
+    catch (BackendNamespaceAlreadyExistsException&)
+    {
+        if (must_not_exist == NamespaceMustNotExist::T)
+        {
+            throw;
+        }
+    }
 }
 
 void

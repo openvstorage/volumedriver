@@ -131,6 +131,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(mds_threads,
                                       ShowDocumentation::T,
                                       1);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(mds_bg_threads,
+                                      mds_component_name,
+                                      "mds_bg_threads",
+                                      "Number of MDS background threads per node (0 -> autoconfiguration based on the number of available CPUs)",
+                                      ShowDocumentation::F,
+                                      4);
+
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(mds_nodes,
                                       mds_component_name,
                                       "mds_nodes",

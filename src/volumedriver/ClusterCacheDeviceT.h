@@ -76,6 +76,12 @@ public:
         return store_.write(buf, getIndex(entry));
     }
 
+    void
+    sync()
+    {
+        store_.sync();
+    }
+
     bool
     hasEntry(const ClusterCacheEntry* entry) const
     {

@@ -24,7 +24,7 @@
 
 #include <youtils/IOException.h>
 #include <youtils/Logging.h>
-#include <youtils/PeriodicAction.h>
+#include <youtils/PeriodicActionPool.h>
 
 #include <backend/BackendInterface.h>
 
@@ -67,11 +67,12 @@ public:
 
     Table(DataBaseInterfacePtr db,
           backend::BackendInterfacePtr bi,
+          youtils::PeriodicActionPool::Ptr,
           const boost::filesystem::path& scratch_dir,
           const uint32_t max_cached_pages,
           const std::atomic<uint64_t>& poll_secs,
-          const boost::chrono::milliseconds& ramp_up =
-          boost::chrono::milliseconds(0));
+          const std::chrono::milliseconds& ramp_up =
+          std::chrono::milliseconds(0));
 
     virtual ~Table();
 
@@ -122,7 +123,8 @@ private:
     TableInterfacePtr table_;
     backend::BackendInterfacePtr bi_;
 
-    std::unique_ptr<youtils::PeriodicAction> act_;
+    youtils::PeriodicActionPool::Ptr act_pool_;
+    std::unique_ptr<youtils::PeriodicActionPool::Task> act_;
     const std::atomic<uint64_t>& poll_secs_;
 
     const uint32_t max_cached_pages_;
@@ -131,7 +133,7 @@ private:
     volumedriver::NSIDMap nsid_map_;
 
     void
-    start_(const boost::chrono::milliseconds& ramp_up);
+    start_(const std::chrono::milliseconds& ramp_up);
 
     void
     drop_and_stop_();

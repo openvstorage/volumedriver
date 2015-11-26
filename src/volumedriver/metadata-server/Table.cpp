@@ -25,8 +25,9 @@ namespace metadata_server
 
 using namespace std::string_literals;
 
-namespace bc = boost::chrono;
 namespace be = backend;
+namespace fs = boost::filesystem;
+namespace sc = std::chrono;
 namespace vd = volumedriver;
 namespace yt = youtils;
 
@@ -37,14 +38,16 @@ namespace yt = youtils;
     boost::unique_lock<decltype(rwlock_)> wlg__(rwlock_)
 
 Table::Table(DataBaseInterfacePtr db,
-             backend::BackendInterfacePtr bi,
-             const boost::filesystem::path& scratch_dir,
+             be::BackendInterfacePtr bi,
+             yt::PeriodicActionPool::Ptr act_pool,
+             const fs::path& scratch_dir,
              const uint32_t max_cached_pages,
              const std::atomic<uint64_t>& poll_secs,
-             const bc::milliseconds& ramp_up)
+             const sc::milliseconds& ramp_up)
     : db_(db)
     , table_(db_->open(bi->getNS().str()))
     , bi_(std::move(bi))
+    , act_pool_(act_pool)
     , poll_secs_(poll_secs)
     , max_cached_pages_(max_cached_pages)
     , scratch_dir_(scratch_dir)
@@ -58,7 +61,9 @@ Table::Table(DataBaseInterfacePtr db,
 Table::~Table()
 {
     LOG_INFO(table_->nspace() << ": bye");
-    act_.reset();
+    // stop the periodic action first to prevent it from firing while
+    // half the members are destructed already
+    act_ = nullptr;
 }
 
 std::unique_ptr<vd::CachedMetaDataStore>
@@ -73,7 +78,7 @@ Table::make_mdstore_()
 }
 
 void
-Table::start_(const bc::milliseconds& ramp_up)
+Table::start_(const sc::milliseconds& ramp_up)
 {
     LOG_INFO(table_->nspace() << ": starting periodic background check");
 
@@ -82,11 +87,11 @@ Table::start_(const bc::milliseconds& ramp_up)
                                               return work_();
                                           });
 
-    act_.reset(new yt::PeriodicAction("mds-poll-namespace-"s + table_->nspace(),
-                                      std::move(a),
-                                      poll_secs_,
-                                      true,
-                                      ramp_up));
+    act_ = act_pool_->create_task("mds-poll-namespace-"s + table_->nspace(),
+                                  std::move(a),
+                                  poll_secs_,
+                                  true,
+                                  ramp_up);
 }
 
 Role
@@ -119,7 +124,7 @@ Table::set_role(Role role)
             }
         case Role::Slave:
             {
-                start_(bc::milliseconds(0));
+                start_(sc::milliseconds(0));
                 break;
             }
         }

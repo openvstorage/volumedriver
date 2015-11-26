@@ -45,7 +45,12 @@ Manager::Manager(const bpt::ptree& pt,
     , mds_threads(pt)
     , mds_timeout_secs(pt)
     , mds_cached_pages(pt)
+    , mds_bg_threads(pt)
     , cm_(cm)
+    , act_pool_(yt::PeriodicActionPool::create("mds-periodic-actions",
+                                               mds_bg_threads.value() ?
+                                               mds_bg_threads.value() :
+                                               boost::thread::hardware_concurrency()))
 {
     LOCK();
     nodes_ = make_nodes_((ip::PARAMETER_TYPE(mds_nodes)(pt)).value());
@@ -103,6 +108,7 @@ Manager::update(const bpt::ptree& pt,
     U(mds_threads);
     U(mds_timeout_secs);
     U(mds_cached_pages);
+    U(mds_bg_threads);
 
     PARAMETER_TYPE(ip::mds_nodes) nodes(pt);
     nodes_ = make_nodes_(nodes.value());
@@ -124,6 +130,7 @@ Manager::persist(bpt::ptree& pt,
     P(mds_threads);
     P(mds_timeout_secs);
     P(mds_cached_pages);
+    P(mds_bg_threads);
 
     using MDSNodesType = PARAMETER_TYPE(ip::mds_nodes);
     MDSNodesType::ValueType nodes;
@@ -240,6 +247,7 @@ Manager::make_server_(const ServerConfig& cfg) const
     auto db(std::make_shared<DataBase>(std::make_shared<RocksDataBase>(cfg.db_path,
                                                                        cfg.rocks_config),
                                        cm_,
+                                       act_pool_,
                                        cfg.scratch_path,
                                        mds_cached_pages.value(),
                                        mds_poll_secs.value()));

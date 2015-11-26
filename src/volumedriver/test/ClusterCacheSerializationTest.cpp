@@ -101,6 +101,10 @@ public:
     reinstate()
     {}
 
+    void
+    sync()
+    {}
+
 private:
 
     friend class boost::serialization::access;
