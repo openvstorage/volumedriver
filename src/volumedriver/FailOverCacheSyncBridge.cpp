@@ -60,7 +60,7 @@ FailOverCacheSyncBridge::newCache(std::unique_ptr<FailOverCacheProxy> cache)
 
 // Called from Volume::destroy
 void
-FailOverCacheSyncBridge::destroy(SyncFailOverToBackend sync)
+FailOverCacheSyncBridge::destroy(SyncFailOverToBackend /*sync*/)
 {
     fungi::ScopedLock l(mutex_);
     cache_ = nullptr;
