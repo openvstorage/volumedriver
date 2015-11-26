@@ -361,6 +361,24 @@ Retrieve return status of an async I/O operation::
           I/O request of which the return status has not been retrieved yet.
         - ENOSYS ovs_aio_return() is not implemented.
 
+Finish an async I/O operation:
+    int ovs_aio_finish(ovs_ctx_t *ctx, struct ovs_aiocb* ovs_aiocbp);
+
+    Description
+    -----------
+    The ovs_aio_finish() function finishes the asynchronous I/O request with
+    control block pointed to by ovs_aiocbp. This function should be called
+    only once for any given request after ovs_aio_return().
+
+    Return Value
+    ------------
+    The ovs_aio_finish() function shall return -1 on error and 0 on success.
+
+    Errors
+    ------
+    The ovs_aio_finish() will fail if:
+        - EINVAL The context or the request is not valid
+
 Suspend until asynchronous I/O operation or timeout complete::
 int ovs_aio_suspend(ovs_cts_t *ctx,
                     struct ovs_aiocb *ovs_aiocbp,
