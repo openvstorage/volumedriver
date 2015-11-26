@@ -22,6 +22,7 @@ namespace metadata_server
 
 namespace be = backend;
 namespace fs = boost::filesystem;
+namespace sc = std::chrono;
 namespace yt = youtils;
 
 #define LOCK()                                          \
@@ -29,11 +30,13 @@ namespace yt = youtils;
 
 DataBase::DataBase(DataBaseInterfacePtr db,
                    be::BackendConnectionManagerPtr cm,
+                   yt::PeriodicActionPool::Ptr act_pool,
                    const fs::path& scratch_dir,
                    uint32_t cached_pages,
                    const std::atomic<uint64_t>& poll_secs)
     : db_(db)
     , cm_(cm)
+    , act_pool_(act_pool)
     , scratch_dir_(scratch_dir)
     , cached_pages_(cached_pages)
     , poll_secs_(poll_secs)
@@ -66,9 +69,10 @@ DataBase::restart_()
     for (const auto& n : nspaces)
     {
         VERIFY(tables_.find(n) == tables_.end());
-        const boost::chrono::milliseconds ramp_up(rand(max_ramp_up));
+        const sc::milliseconds ramp_up(rand(max_ramp_up));
 
-        LOG_INFO("restarting " << n << " with a ramp up of " << ramp_up);
+        LOG_INFO("restarting " << n << " with a ramp up of " << ramp_up.count() <<
+                 " milliseconds");
 
         create_table_(n,
                       ramp_up);
@@ -77,10 +81,11 @@ DataBase::restart_()
 
 TablePtr
 DataBase::create_table_(const std::string& nspace,
-                             const boost::chrono::milliseconds ramp_up)
+                        const sc::milliseconds ramp_up)
 {
     auto table(std::make_shared<Table>(db_,
                                        cm_->newBackendInterface(be::Namespace(nspace)),
+                                       act_pool_,
                                        scratch_dir(nspace),
                                        cached_pages_,
                                        poll_secs_,
@@ -106,7 +111,7 @@ DataBase::open(const std::string& nspace)
     else
     {
         table = create_table_(nspace,
-                              boost::chrono::milliseconds(0));
+                              sc::milliseconds(0));
     }
 
     VERIFY(table != nullptr);

@@ -25,6 +25,7 @@
 #include <boost/thread/thread.hpp>
 
 #include <youtils/Logger.h>
+#include <youtils/PeriodicActionPool.h>
 #include <youtils/VolumeDriverComponent.h>
 
 #include <backend/BackendConnectionManager.h>
@@ -109,11 +110,13 @@ private:
     DECLARE_PARAMETER(mds_threads);
     DECLARE_PARAMETER(mds_timeout_secs);
     DECLARE_PARAMETER(mds_cached_pages);
+    DECLARE_PARAMETER(mds_bg_threads);
 
     using ServerPtr = std::shared_ptr<ServerNG>;
     using ConfigsAndServers = std::vector<std::pair<ServerConfig, ServerPtr>>;
 
     backend::BackendConnectionManagerPtr cm_;
+    youtils::PeriodicActionPool::Ptr act_pool_;
 
     // protects nodes_
     mutable boost::mutex lock_;
