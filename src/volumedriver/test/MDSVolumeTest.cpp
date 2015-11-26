@@ -794,6 +794,19 @@ TEST_P(MDSVolumeTest, catch_up)
     const auto wrns(make_random_namespace());
     Volume* v = make_volume(*wrns);
 
+    std::unique_ptr<mds::Manager>
+        mds_manager(mds_test_setup_->make_manager(cm_,
+                                                  1,
+                                                  std::chrono::seconds(7200)));
+
+    const mds::ServerConfigs scfgs(mds_manager->server_configs());
+    ASSERT_EQ(1U,
+              scfgs.size());
+
+    mds::ClientNG::Ptr client(mds::ClientNG::create(scfgs[0].node_config));
+
+    mds::TableInterfacePtr table(client->open(wrns->ns().str()));
+
     const size_t csize = v->getClusterSize();
     ASSERT_LT(num_tlogs * CachePage::capacity() * csize,
               v->getSize());
@@ -812,19 +825,6 @@ TEST_P(MDSVolumeTest, catch_up)
 
     EXPECT_EQ(num_tlogs,
               v->getSnapshotManagement().getTLogsWrittenToBackend().size());
-
-    std::unique_ptr<mds::Manager>
-        mds_manager(mds_test_setup_->make_manager(cm_,
-                                                  1,
-                                                  std::chrono::seconds(7200)));
-
-    const mds::ServerConfigs scfgs(mds_manager->server_configs());
-    ASSERT_EQ(1U,
-              scfgs.size());
-
-    mds::ClientNG::Ptr client(mds::ClientNG::create(scfgs[0].node_config));
-
-    mds::TableInterfacePtr table(client->open(wrns->ns().str()));
 
     EXPECT_EQ(num_tlogs,
               table->catch_up(DryRun::T));

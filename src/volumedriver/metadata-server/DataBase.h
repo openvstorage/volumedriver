@@ -22,6 +22,7 @@
 #include <boost/thread/mutex.hpp>
 
 #include <youtils/Logger.h>
+#include <youtils/PeriodicActionPool.h>
 
 namespace metadata_server
 {
@@ -33,8 +34,9 @@ class DataBase
     : public DataBaseInterface
 {
 public:
-    DataBase(DataBaseInterfacePtr db,
-             backend::BackendConnectionManagerPtr cm,
+    DataBase(DataBaseInterfacePtr,
+             backend::BackendConnectionManagerPtr,
+             youtils::PeriodicActionPool::Ptr,
              const boost::filesystem::path& scratch_dir,
              uint32_t cached_pages,
              const std::atomic<uint64_t>& poll_secs);
@@ -72,6 +74,7 @@ private:
 
     DataBaseInterfacePtr db_;
     backend::BackendConnectionManagerPtr cm_;
+    youtils::PeriodicActionPool::Ptr act_pool_;
     const boost::filesystem::path scratch_dir_;
     const uint32_t cached_pages_;
     const std::atomic<uint64_t>& poll_secs_;
@@ -81,7 +84,7 @@ private:
 
     TablePtr
     create_table_(const std::string& nspace,
-                  const boost::chrono::milliseconds ramp_up);
+                  const std::chrono::milliseconds ramp_up);
 };
 
 typedef std::shared_ptr<DataBase> DataBasePtr;
