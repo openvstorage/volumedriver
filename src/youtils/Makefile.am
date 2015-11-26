@@ -79,6 +79,7 @@ libyoutils_la_SOURCES = \
 	OrbHelper.cpp \
 	OrbParameters.cpp \
 	PeriodicAction.cpp \
+	PeriodicActionPool.cpp \
 	PythonLogging.cpp \
 	PythonBuildInfo.cpp \
 	RocksLogger.cpp \
