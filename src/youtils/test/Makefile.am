@@ -51,6 +51,7 @@ youtils_test_SOURCES = \
 	OurStrongTypedefTest.cpp \
 	PathTest.cpp \
 	PeriodicActionTest.cpp \
+	PeriodicActionPoolTest.cpp \
 	PosixMQTest.cpp \
 	RWLockTest.cpp \
 	ScopedExitTest.cpp \
