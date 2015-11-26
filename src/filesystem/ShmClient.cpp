@@ -175,6 +175,47 @@ ShmClient::receive_write_reply(size_t& size_in_bytes,
     return writereply_.failed;
 }
 
+bool
+ShmClient::timed_receive_write_reply(size_t& size_in_bytes,
+                                     void **opaque,
+                                     const struct timespec* timeout)
+{
+    ShmWriteReply writereply_;
+    unsigned int priority;
+    ipc::message_queue::size_type received_size;
+    boost::posix_time::time_duration delay(boost::posix_time::seconds(timeout->tv_sec));
+    boost::posix_time::ptime ptimeout =
+        boost::posix_time::ptime(boost::posix_time::second_clock::universal_time());
+    ptimeout += delay;
+
+    try
+    {
+        int ret = writereply_mq_->timed_receive(&writereply_,
+                                                writereply_size,
+                                                received_size,
+                                                priority,
+                                                ptimeout);
+        if (ret)
+        {
+            assert(received_size == writereply_size);
+            *opaque = reinterpret_cast<void*>(writereply_.opaque);
+        }
+        else
+        {
+            *opaque = NULL;
+            errno = ETIMEDOUT;
+            return true;
+        }
+    }
+    catch (ipc::interprocess_exception& e)
+    {
+        errno = EIO;
+        return true;
+    }
+    size_in_bytes = writereply_.size_in_bytes;
+    return writereply_.failed;
+}
+
 int
 ShmClient::send_read_request(const void *buf,
                              const uint64_t size_in_bytes,
@@ -217,6 +258,47 @@ ShmClient::receive_read_reply(size_t& size_in_bytes,
                                priority);
         assert(received_size == readreply_size);
         *opaque = reinterpret_cast<void*>(readreply_.opaque);
+    }
+    catch (ipc::interprocess_exception& e)
+    {
+        errno = EIO;
+        return true;
+    }
+    size_in_bytes = readreply_.size_in_bytes;
+    return readreply_.failed;
+}
+
+bool
+ShmClient::timed_receive_read_reply(size_t& size_in_bytes,
+                                    void **opaque,
+                                    const struct timespec* timeout)
+{
+    ShmReadReply readreply_;
+    unsigned int priority;
+    ipc::message_queue::size_type received_size;
+    boost::posix_time::time_duration delay(boost::posix_time::seconds(timeout->tv_sec));
+    boost::posix_time::ptime ptimeout =
+        boost::posix_time::ptime(boost::posix_time::second_clock::universal_time());
+    ptimeout += delay;
+
+    try
+    {
+        int ret = readreply_mq_->timed_receive(&readreply_,
+                                               readreply_size,
+                                               received_size,
+                                               priority,
+                                               ptimeout);
+        if (ret)
+        {
+            assert(received_size == readreply_size);
+            *opaque = reinterpret_cast<void*>(readreply_.opaque);
+        }
+        else
+        {
+            *opaque = NULL;
+            errno = ETIMEDOUT;
+            return true;
+        }
     }
     catch (ipc::interprocess_exception& e)
     {

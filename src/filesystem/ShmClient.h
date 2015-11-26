@@ -55,6 +55,11 @@ public:
     receive_read_reply(size_t& size_in_bytes,
                        void **opaque);
 
+    bool
+    timed_receive_read_reply(size_t& size_in_bytes,
+                             void **opaque,
+                             const struct timespec* timeout);
+
     int send_write_request(const void* buf,
                            const uint64_t size_in_bytes,
                            const uint64_t offset_in_bytes,
@@ -63,6 +68,11 @@ public:
     bool
     receive_write_reply(size_t& size_in_bytes,
                         void **opaque);
+
+    bool
+    timed_receive_write_reply(size_t& size_in_bytes,
+                              void **opaque,
+                              const struct timespec* timeout);
 
     void
     stop_reply_queues(int n);
