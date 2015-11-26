@@ -137,6 +137,12 @@ public:
         return false;
     }
 
+    bool
+    is_open() const
+    {
+        return socket_.is_open();
+    }
+
 private:
     boost::asio::io_service io_service_;
     boost::asio::local::stream_protocol::socket socket_;
