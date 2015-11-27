@@ -24,27 +24,11 @@ enum class RequestOp
     AsyncFlush,
 };
 
-struct ovs_ctx_wrapper
-{
-    ovs_ctx_t *ctx;
-    int n;
-};
-
 struct ovs_buffer
 {
     void *buf;
     size_t size;
 };
-
-typedef struct ovs_iothread
-{
-    pthread_t io_t;
-    pthread_mutex_t io_mutex;
-    pthread_cond_t io_cond;
-    bool stopped;
-    bool stopping;
-} ovs_iothread_t;
-
 
 struct ovs_completion
 {

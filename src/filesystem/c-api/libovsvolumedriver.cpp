@@ -34,14 +34,37 @@
 #define unlikely(x)     (x)
 #endif
 
-typedef struct ovs_async_threads
+struct IOThread
 {
-    ovs_iothread_t *rr_iothread;
-    ovs_iothread_t *wr_iothread;
-} ovs_async_threads;
+    ovs_ctx_t* ctx;
+    std::thread iothread_;
+    std::mutex mutex_;
+    std::condition_variable cv_;
+    bool stopped = false;
+    bool stopping = false;
 
-static void* _aio_readreply_handler(void*);
-static void* _aio_writereply_handler(void*);
+    void
+    reset_iothread()
+    {
+        stopping = true;
+        {
+            std::unique_lock<std::mutex> lock_(mutex_);
+            cv_.wait(lock_, [&]{ return stopped == true; });
+        }
+        iothread_.join();
+    }
+
+    void
+    stop()
+    {
+        stopping = true;
+    }
+};
+
+typedef std::unique_ptr<IOThread> IOThreadPtr;
+
+static void _aio_readreply_handler(void*);
+static void _aio_writereply_handler(void*);
 
 struct ovs_context_t
 {
@@ -56,10 +79,8 @@ struct ovs_context_t
         {
             ctl_client_ = std::make_shared<ShmControlChannelClient>();
         }
-        catch (std::bad_alloc&)
+        catch (std::bad_alloc& e)
         {
-            shm_client_.reset();
-            throw;
         }
 
         if (not ctl_client_->connect_and_register(volume_name,
@@ -75,6 +96,12 @@ struct ovs_context_t
             ovs_aio_init();
         }
         catch (std::bad_alloc&)
+        {
+            shm_client_.reset();
+            ctl_client_.reset();
+            throw;
+        }
+        catch (std::system_error&)
         {
             shm_client_.reset();
             ctl_client_.reset();
@@ -111,132 +138,102 @@ struct ovs_context_t
     }
 
     void
+    close_rr_iothreads()
+    {
+        for (auto& x: rr_iothreads)
+        {
+            x->reset_iothread();
+        }
+        rr_iothreads.clear();
+    }
+    void
+    close_wr_iothreads()
+    {
+        for (auto& x: wr_iothreads)
+        {
+            x->reset_iothread();
+        }
+        wr_iothreads.clear();
+    }
+
+    void
     ovs_aio_init()
     {
-        pthread_attr_t attr;
-        pthread_attr_init(&attr);
-        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-
-        try
+        for (int i = 0; i < io_threads_pool_size_; i++)
         {
-            async_threads_.rr_iothread = new ovs_iothread_t [io_threads_pool_size_];
-            for (int i = 0; i < io_threads_pool_size_; i++)
+            IOThreadPtr iot;
+            try
             {
-                pthread_cond_init(&async_threads_.rr_iothread[i].io_cond, NULL);
-                pthread_mutex_init(&async_threads_.rr_iothread[i].io_mutex, NULL);
-                async_threads_.rr_iothread[i].stopped = false;
-                async_threads_.rr_iothread[i].stopping = false;
+                iot = std::make_unique<IOThread>();
+                iot->ctx = this;
+                iot->iothread_ = std::move(std::thread(_aio_readreply_handler,
+                                                       (void*)iot.get()));
+                rr_iothreads.push_back(std::move(iot));
             }
-        }
-        catch (std::bad_alloc&)
-        {
-            pthread_attr_destroy(&attr);
-            throw;
-        }
-
-        try
-        {
-            async_threads_.wr_iothread = new ovs_iothread_t [io_threads_pool_size_];
-            for (int i = 0; i < io_threads_pool_size_; i++)
+            catch (std::bad_alloc& e)
             {
-                pthread_cond_init(&async_threads_.wr_iothread[i].io_cond, NULL);
-                pthread_mutex_init(&async_threads_.wr_iothread[i].io_mutex, NULL);
-                async_threads_.wr_iothread[i].stopped = false;
-                async_threads_.wr_iothread[i].stopping = false;
+                close_rr_iothreads();
+                throw;
             }
-        }
-        catch (std::bad_alloc&)
-        {
-            for (int i = 0; i < io_threads_pool_size_; i++)
+            catch (std::system_error& e)
             {
-                pthread_cond_destroy(&async_threads_.rr_iothread[i].io_cond);
-                pthread_mutex_destroy(&async_threads_.rr_iothread[i].io_mutex);
+                close_rr_iothreads();
+                throw;
             }
-            delete[] async_threads_.rr_iothread;
-            pthread_attr_destroy(&attr);
-            throw;
         }
 
         for (int i = 0; i < io_threads_pool_size_; i++)
         {
-            ovs_ctx_wrapper *wrapper = new ovs_ctx_wrapper;
-            wrapper->ctx = this;
-            wrapper->n = i;
-            pthread_create(&async_threads_.rr_iothread[i].io_t,
-                           &attr,
-                           _aio_readreply_handler,
-                           (void *) wrapper);
+            IOThreadPtr iot;
+            try
+            {
+                iot = std::make_unique<IOThread>();
+                iot->ctx = this;
+                iot->iothread_ = std::move(std::thread(_aio_writereply_handler,
+                                                       (void*)iot.get()));
+                wr_iothreads.push_back(std::move(iot));
+            }
+            catch (std::bad_alloc& e)
+            {
+                close_wr_iothreads();
+                close_rr_iothreads();
+                throw;
+            }
+            catch (std::system_error& e)
+            {
+                close_wr_iothreads();
+                close_rr_iothreads();
+                throw;
+            }
         }
-        for (int i = 0; i < io_threads_pool_size_; i++)
-        {
-            ovs_ctx_wrapper *wrapper = new ovs_ctx_wrapper;
-            wrapper->ctx = this;
-            wrapper->n = i;
-            pthread_create(&async_threads_.wr_iothread[i].io_t,
-                           &attr,
-                           _aio_writereply_handler,
-                           (void *) wrapper);
-        }
-        pthread_attr_destroy(&attr);
     }
 
     void
     ovs_aio_destroy()
     {
-        for (int i = 0; i < io_threads_pool_size_; i++)
+        for (auto& iot: rr_iothreads)
         {
-            async_threads_.rr_iothread[i].stopping = true;
-            async_threads_.wr_iothread[i].stopping = true;
+            iot->stop();
         }
+        for (auto& iot: wr_iothreads)
+        {
+            iot->stop();
+        }
+
         /* nonexcept */
         if (ctl_client_->is_connected())
         {
             shm_client_->stop_reply_queues(io_threads_pool_size_);
         }
-
-        for (int i = 0; i < io_threads_pool_size_; i++)
-        {
-            pthread_mutex_lock(&async_threads_.rr_iothread[i].io_mutex);
-            while (!async_threads_.rr_iothread[i].stopped)
-            {
-                pthread_cond_wait(&async_threads_.rr_iothread[i].io_cond,
-                                  &async_threads_.rr_iothread[i].io_mutex);
-            }
-            pthread_mutex_unlock(&async_threads_.rr_iothread[i].io_mutex);
-        }
-
-        for (int i = 0; i < io_threads_pool_size_; i++)
-        {
-            pthread_mutex_lock(&async_threads_.wr_iothread[i].io_mutex);
-            while (!async_threads_.wr_iothread[i].stopped)
-            {
-                pthread_cond_wait(&async_threads_.wr_iothread[i].io_cond,
-                                  &async_threads_.wr_iothread[i].io_mutex);
-            }
-            pthread_mutex_unlock(&async_threads_.wr_iothread[i].io_mutex);
-        }
-
-        for (int i = 0; i < io_threads_pool_size_; i++)
-        {
-            pthread_join(async_threads_.rr_iothread[i].io_t, NULL);
-            pthread_join(async_threads_.wr_iothread[i].io_t, NULL);
-        }
-
-        for (int i = 0; i < io_threads_pool_size_; i++)
-        {
-            pthread_cond_destroy(&async_threads_.rr_iothread[i].io_cond);
-            pthread_mutex_destroy(&async_threads_.rr_iothread[i].io_mutex);
-            pthread_cond_destroy(&async_threads_.wr_iothread[i].io_cond);
-            pthread_mutex_destroy(&async_threads_.wr_iothread[i].io_mutex);
-        }
-        delete[] async_threads_.rr_iothread;
-        delete[] async_threads_.wr_iothread;
+        close_wr_iothreads();
+        close_rr_iothreads();
     }
 
     int oflag;
     int io_threads_pool_size_;
     volumedriverfs::ShmClientPtr shm_client_;
-    ovs_async_threads async_threads_;
+    std::vector<IOThreadPtr> rr_iothreads;
+    std::vector<IOThreadPtr> wr_iothreads;
     VolumeCacheHandlerPtr cache_;
     ShmControlChannelClientPtr ctl_client_;
 };
@@ -296,14 +293,12 @@ _aio_request_handler(ovs_aio_request *request,
     }
 }
 
-static void*
+static void
 _aio_readreply_handler(void *arg)
 {
-    ovs_ctx_wrapper *wrapper = (ovs_ctx_wrapper *)arg;
-    ovs_ctx_t *ctx = (ovs_ctx_t *)wrapper->ctx;
-    ovs_async_threads *async_threads_ = &ctx->async_threads_;
-    ovs_iothread_t *iothread = &async_threads_->rr_iothread[wrapper->n];
-    struct timespec timeout = { 5, 0 };
+    IOThread *iothread = (IOThread*) arg;
+    ovs_ctx_t *ctx = iothread->ctx;
+    const struct timespec timeout = {2, 0};
     size_t size_in_bytes;
     bool failed;
     while (not iothread->stopping)
@@ -319,22 +314,17 @@ _aio_readreply_handler(void *arg)
                                  failed);
         }
     }
-    pthread_mutex_lock(&iothread->io_mutex);
+    std::lock_guard<std::mutex> lock_(iothread->mutex_);
     iothread->stopped = true;
-    pthread_cond_signal(&iothread->io_cond);
-    pthread_mutex_unlock(&iothread->io_mutex);
-    delete wrapper;
-    pthread_exit(NULL);
+    iothread->cv_.notify_all();
 }
 
-static void*
+static void
 _aio_writereply_handler(void *arg)
 {
-    ovs_ctx_wrapper *wrapper = (ovs_ctx_wrapper *)arg;
-    ovs_ctx_t *ctx = (ovs_ctx_t *)wrapper->ctx;
-    ovs_async_threads *async_threads_ = &ctx->async_threads_;
-    ovs_iothread_t *iothread = &async_threads_->wr_iothread[wrapper->n];
-    struct timespec timeout = { 5, 0 };
+    IOThread *iothread = (IOThread*) arg;
+    ovs_ctx_t *ctx = iothread->ctx;
+    const struct timespec timeout = {2, 0};
     size_t size_in_bytes;
     bool failed;
     while (not iothread->stopping)
@@ -350,12 +340,9 @@ _aio_writereply_handler(void *arg)
                                  failed);
         }
     }
-    pthread_mutex_lock(&iothread->io_mutex);
+    std::lock_guard<std::mutex> lock_(iothread->mutex_);
     iothread->stopped = true;
-    pthread_cond_signal(&iothread->io_cond);
-    pthread_mutex_unlock(&iothread->io_mutex);
-    delete wrapper;
-    pthread_exit(NULL);
+    iothread->cv_.notify_all();
 }
 
 ovs_ctx_t*
@@ -929,7 +916,13 @@ ovs_read(ovs_ctx_t *ctx,
         return ret;
     }
 
-    return ovs_aio_return(ctx, &aio);
+    ret = ovs_aio_return(ctx, &aio);
+    if (ovs_aio_finish(ctx, &aio) < 0)
+    {
+         return -1;
+    }
+
+    return ret;
 }
 
 ssize_t
@@ -954,7 +947,12 @@ ovs_write(ovs_ctx_t *ctx,
         return ret;
     }
 
-    return ovs_aio_return(ctx, &aio);
+    ret = ovs_aio_return(ctx, &aio);
+    if (ovs_aio_finish(ctx, &aio) < 0)
+    {
+         return -1;
+    }
+    return ret;
 }
 
 int
@@ -996,5 +994,10 @@ ovs_flush(ovs_ctx_t *ctx)
         return ret;
     }
 
-    return ovs_aio_return(ctx, &aio);
+    ret = ovs_aio_return(ctx, &aio);
+    if (ovs_aio_finish(ctx, &aio) < 0)
+    {
+        return -1;
+    }
+    return ret;
 }
