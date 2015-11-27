@@ -213,22 +213,25 @@ BackendConnectionInterface::partial_read(const Namespace& ns,
     {
         LOG_TRACE(ns << ": partial read not supported - falling back to emulation");
 
-        for(const auto& partial_read : partial_reads)
+        for(const auto& p : partial_reads)
         {
             youtils::FileDescriptor& sio = fallback_fun(ns,
-                                                        partial_read.object_name,
+                                                        p.first,
                                                         insist_on_latest);
 
-            const size_t res = sio.pread(partial_read.buf,
-                                         partial_read.size,
-                                         partial_read.offset);
-            if(res != partial_read.size)
+            for (const auto& s : p.second)
             {
-                LOG_ERROR(ns << "/" << partial_read.object_name <<
-                          ": read less (" << res <<
-                          ") than expected (" << partial_read.size << ") from offset " <<
-                          partial_read.offset);
-                throw BackendRestoreException();
+                const size_t res = sio.pread(s.buf,
+                                             s.size,
+                                             s.offset);
+                if(res != s.size)
+                {
+                    LOG_ERROR(ns << "/" << p.first <<
+                              ": read less (" << res <<
+                              ") than expected (" << s.size << ") from offset " <<
+                              s.offset);
+                    throw BackendRestoreException();
+                }
             }
         }
     }

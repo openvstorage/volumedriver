@@ -279,32 +279,39 @@ Connection::partial_read_(const Namespace& ns,
         return true;
     }
 
-    std::vector<alba::proxy_protocol::ObjectSlices> object_slices;
-    TODO("Do we want to go through remapping the Partial Reads?")
-    for(const auto& partial_read : partial_reads)
-    {
-        // VERIFY(partial_read.size <= std::numeric_limits<uint32_t>::max());
-        // const uint32_t sz = partial_read.size;
+    std::vector<app::ObjectSlices> app_slicesv;
+    app_slicesv.reserve(partial_reads.size());
 
-        // const std::vector<alba::proxy_protocol::SliceDescriptor> slices = {
-        //     { partial_read.buf,
-        //       partial_read.offset,
-        //       sz
-        //     }
-        // };
-        object_slices.push_back({
-                partial_read.object_name,
-                {{ partial_read.buf,
-                            partial_read.offset,
-                            partial_read.size
-                            }}});
-    }
+    for (const auto& partial_read : partial_reads)
+    {
+        const ObjectSlices& slices = partial_read.second;
+        VERIFY(not slices.empty());
+
+        std::vector<app::SliceDescriptor> app_descs;
+        app_descs.reserve(slices.size());
+
+        uint64_t off = 0;
+
+        for (const auto& s : slices)
+        {
+            VERIFY(s.size != 0);
+            VERIFY(off <= s.offset);
+            off = s.offset + s.size;
+
+            app_descs.emplace_back(app::SliceDescriptor{ s.buf,
+                                                         s.offset,
+                                                         s.size });
+        }
+
+        app_slicesv.emplace_back(app::ObjectSlices { partial_read.first,
+                                                     std::move(app_descs) });
+    };
 
     convert_exceptions_<void>("partial read",
                               [&]
         {
             client_->read_objects_slices(ns.str(),
-                                         object_slices,
+                                         app_slicesv,
                                          insist_on_latest_version == InsistOnLatestVersion::T ?
                                          alba::proxy_client::consistent_read::T :
                                          alba::proxy_client::consistent_read::F);

@@ -317,15 +317,18 @@ Connection::partial_read_(const Namespace& ns,
         for(const auto& partial_read : partial_reads)
         {
             auto sio = lruCache().find(objectPath_(ns,
-                                                   partial_read.object_name),
+                                                   partial_read.first),
                                        OpenASCO);
 
-            size_t res = sio->pread(partial_read.buf,
-                                    partial_read.size,
-                                    partial_read.offset);
-            if(res != partial_read.size)
+            for (const auto& slice : partial_read.second)
             {
-                throw BackendObjectDoesNotExistException();
+                size_t res = sio->pread(slice.buf,
+                                        slice.size,
+                                        slice.offset);
+                if(res != slice.size)
+                {
+                    throw BackendRestoreException();
+                }
             }
         }
 

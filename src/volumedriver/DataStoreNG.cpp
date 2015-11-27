@@ -517,6 +517,8 @@ DataStoreNG::readClusters(const std::vector<ClusterReadDescriptor>& descs)
         std::map<SCOCloneID, backend::BackendConnectionInterface::PartialReads>;
     PartialReadsMap partial_reads_map;
 
+    const size_t csize = getClusterSize();
+
     for (size_t start = 0; start < num_descs; )
     {
         size_t num_clusters = 1;
@@ -564,13 +566,15 @@ DataStoreNG::readClusters(const std::vector<ClusterReadDescriptor>& descs)
             {
                 // the SCO is (supposed to be) on the backend
                 sco.cloneID(SCOCloneID(0));
+                be::BackendConnectionInterface::ObjectSlice
+                    slice(num_clusters * csize,
+                          descs[start].getClusterLocation().offset() * csize,
+                          descs[start].getBuffer());
 
-                partial_reads_map[start_cid].emplace_back(sco.str());
-                auto& partial_read = partial_reads_map[start_cid].back();
-                partial_read.buf = descs[start].getBuffer();
-                partial_read.offset =
-                    descs[start].getClusterLocation().offset() * getClusterSize();
-                partial_read.size = num_clusters * getClusterSize();
+                be::BackendConnectionInterface::PartialReads&
+                    partial_reads = partial_reads_map[start_cid];
+                const auto res(partial_reads[sco.str()].emplace(std::move(slice)));
+                VERIFY(res.second);
             }
         }
 
@@ -625,7 +629,10 @@ DataStoreNG::readClusters(const std::vector<ClusterReadDescriptor>& descs)
             uint64_t bytes = 0;
             for (const auto& pr : partial_reads.second)
             {
-                bytes += pr.size;
+                for (const auto& slice : pr.second)
+                {
+                    bytes += slice.size;
+                }
             }
 
             c.backend_read_request_size.count(bytes);

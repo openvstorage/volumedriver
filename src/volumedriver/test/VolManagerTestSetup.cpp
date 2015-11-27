@@ -1846,12 +1846,28 @@ VolManagerTestSetup::fill_backend_cache(const backend::Namespace& ns)
             {
                 fs::path p = FileUtils::create_temp_file_in_temp_dir("backend_temp");
                 ALWAYS_CLEANUP_FILE(p);
+                const std::string
+                    s("arbitrary string to write to an object in the cache");
+
+                FileDescriptor(p, FDMode::Write).write(s.data(),
+                                                       s.size());
+
+                std::vector<char> rbuf(s.size());
+
                 for(unsigned i = 0; i < backend::local::Connection::lru_cache_size; ++i)
                 {
+                    const std::string
+                        oname(boost::lexical_cast<std::string>(i));
                     con->write(ns,
                                p,
-                               boost::lexical_cast<std::string>(i));
-                    partial_reads.emplace_back(boost::lexical_cast<std::string>(i));
+                               oname);
+
+                    be::BackendConnectionInterface::ObjectSlices
+                        slices { be::BackendConnectionInterface::ObjectSlice(rbuf.size(),
+                                                                             0,
+                                                                             reinterpret_cast<uint8_t*>(rbuf.data())) };
+                    EXPECT_TRUE(partial_reads.emplace(std::make_pair(oname,
+                                                                     std::move(slices))).second);
                 }
 
                 const fs::path cache_dir(yt::FileUtils::temp_path() / "partial-read-cache");
@@ -1866,6 +1882,10 @@ VolManagerTestSetup::fill_backend_cache(const backend::Namespace& ns)
                                   partial_reads,
                                   InsistOnLatestVersion::T,
                                   fetcher);
+
+                EXPECT_EQ(s,
+                          std::string(rbuf.data(),
+                                      rbuf.size()));
             }
         }
 

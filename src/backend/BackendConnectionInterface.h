@@ -97,29 +97,52 @@ protected:
          const std::string& name,
          const InsistOnLatestVersion insist_on_latest);
 
-    struct PartialRead
+    struct ObjectSlice
     {
-        PartialRead(std::string&& str)
-            : object_name(std::move(str))
-            , size(0)
-            , offset(0)
-            , buf(nullptr)
+        uint32_t size;
+        uint64_t offset;
+        byte* buf;
+
+        ObjectSlice(const uint32_t s,
+                    const uint64_t o,
+                    byte* b)
+            : size(s)
+            , offset(o)
+            , buf(b)
         {}
 
-        PartialRead(const PartialRead& other)
-            : object_name(other.object_name)
-            , size(other.size)
+        ObjectSlice(const ObjectSlice& other)
+            : size(other.size)
             , offset(other.offset)
             , buf(other.buf)
         {}
 
-        const std::string object_name;
-        uint32_t size;
-        uint64_t offset;
-        byte* buf;
+        bool
+        operator<(const ObjectSlice& other) const
+        {
+            return offset < other.offset;
+        }
+
+        bool
+        operator==(const ObjectSlice& other) const
+        {
+            return
+                size == other.size and
+                offset == other.offset and
+                buf == other.buf;
+        }
+
+        bool
+        operator!=(const ObjectSlice& other) const
+        {
+            return not operator==(other);
+        }
     };
 
-    using PartialReads = std::vector<PartialRead>;
+    // We want slices to be ordered by offset ...
+    using ObjectSlices = std::set<ObjectSlice>;
+    // ... and to be grouped by object.
+    using PartialReads = std::map<std::string, ObjectSlices>;
 
     // Make this a std::function? On the upside this would allow lambdas, but then
     // again this also means an allocation.
