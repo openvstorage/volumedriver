@@ -149,6 +149,43 @@ ShmClient::send_write_request(const void *buf,
     return 0;
 }
 
+int
+ShmClient::timed_send_write_request(const void *buf,
+                                    const uint64_t size_in_bytes,
+                                    const uint64_t offset_in_bytes,
+                                    const void *opaque,
+                                    const struct timespec* timeout)
+{
+    ShmWriteRequest writerequest_;
+    writerequest_.size_in_bytes = size_in_bytes;
+    writerequest_.offset_in_bytes = offset_in_bytes;
+    writerequest_.handle = shm_segment_->get_handle_from_address(buf);
+    writerequest_.opaque = reinterpret_cast<uintptr_t>(opaque);
+    boost::posix_time::time_duration delay(boost::posix_time::seconds(timeout->tv_sec));
+    boost::posix_time::ptime ptimeout =
+        boost::posix_time::ptime(boost::posix_time::second_clock::universal_time());
+    ptimeout += delay;
+
+    try
+    {
+        int ret = writerequest_mq_->timed_send(&writerequest_,
+                                               writerequest_size,
+                                               0,
+                                               ptimeout);
+        if (not ret)
+        {
+            errno = ETIMEDOUT;
+            return -1;
+        }
+    }
+    catch (ipc::interprocess_exception& e)
+    {
+        errno = EIO;
+        return -1;
+    }
+    return 0;
+}
+
 bool
 ShmClient::receive_write_reply(size_t& size_in_bytes,
                                void **opaque)
@@ -233,6 +270,43 @@ ShmClient::send_read_request(const void *buf,
         readrequest_mq_->send(&readrequest_,
                               readrequest_size,
                               0);
+    }
+    catch (ipc::interprocess_exception& e)
+    {
+        errno = EIO;
+        return -1;
+    }
+    return 0;
+}
+
+int
+ShmClient::timed_send_read_request(const void *buf,
+                                   const uint64_t size_in_bytes,
+                                   const uint64_t offset_in_bytes,
+                                   const void *opaque,
+                                   const struct timespec* timeout)
+{
+    ShmReadRequest readrequest_;
+    readrequest_.size_in_bytes = size_in_bytes;
+    readrequest_.offset_in_bytes = offset_in_bytes;
+    readrequest_.handle = shm_segment_->get_handle_from_address(buf);
+    readrequest_.opaque = reinterpret_cast<uintptr_t>(opaque);
+    boost::posix_time::time_duration delay(boost::posix_time::seconds(timeout->tv_sec));
+    boost::posix_time::ptime ptimeout =
+        boost::posix_time::ptime(boost::posix_time::second_clock::universal_time());
+    ptimeout += delay;
+
+    try
+    {
+        int ret = readrequest_mq_->timed_send(&readrequest_,
+                                              readrequest_size,
+                                              0,
+                                              ptimeout);
+        if (not ret)
+        {
+            errno = ETIMEDOUT;
+            return -1;
+        }
     }
     catch (ipc::interprocess_exception& e)
     {
