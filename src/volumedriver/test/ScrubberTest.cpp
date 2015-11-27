@@ -23,8 +23,12 @@
 
 #include <boost/filesystem/fstream.hpp>
 
+#include <backend/GarbageCollector.h>
+
 namespace volumedrivertest
 {
+
+BOOLEAN_ENUM(CollectScrubGarbage);
 
 using namespace scrubbing;
 using namespace volumedriver;
@@ -74,7 +78,8 @@ public:
     void
     apply_scrubbing(const VolumeId& vid,
                     const scrubbing::ScrubReply& scrub_reply,
-                    const ScrubbingCleanup cleanup = ScrubbingCleanup::Always)
+                    const ScrubbingCleanup cleanup = ScrubbingCleanup::Always,
+                    const CollectScrubGarbage collect_garbage = CollectScrubGarbage::T)
     {
         fungi::ScopedLock l(api::getManagementMutex());
 
@@ -87,9 +92,17 @@ public:
         ASSERT_EQ(sp_scrub_id,
                   *md_scrub_id);
 
-        apply_scrub_reply(*v,
-                          scrub_reply,
-                          cleanup);
+        boost::optional<be::Garbage> garbage(v->applyScrubbingWork(scrub_reply,
+                                                                   cleanup));
+
+        if (garbage and collect_garbage == CollectScrubGarbage::T)
+        {
+            waitForThisBackendWrite(v);
+
+            be::GarbageCollectorPtr gc(api::backend_garbage_collector());
+            gc->queue(std::move(*garbage));
+            EXPECT_TRUE(gc->barrier(v->getNamespace()).get());
+        }
 
         const MaybeScrubId md_scrub_id2(v->getMetaDataStore()->scrub_id());
         ASSERT_TRUE(md_scrub_id2 != boost::none);
@@ -862,14 +875,15 @@ TEST_P(ScrubberTest, idempotent_scrub_result_application)
 
     EXPECT_NO_THROW(apply_scrubbing(vid,
                                     scrub_result,
-                                    ScrubbingCleanup::OnError));
+                                    ScrubbingCleanup::OnError,
+                                    CollectScrubGarbage::F));
 
     waitForThisBackendWrite(v1);
 
     EXPECT_NO_THROW(apply_scrubbing(vid,
-                                    scrub_result));
-
-    waitForThisBackendWrite(v1);
+                                    scrub_result,
+                                    ScrubbingCleanup::Always,
+                                    CollectScrubGarbage::T));
 
     EXPECT_THROW(apply_scrubbing(vid,
                                  scrub_result),
