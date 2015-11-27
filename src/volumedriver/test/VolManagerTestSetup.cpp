@@ -1959,10 +1959,12 @@ VolManagerTestSetup::apply_scrub_reply(Volume& v,
         std::future<void> future(promise.get_future());
 
         auto fun([&garbage,
-                  &promise]()
+                  &promise,
+                  nspace = v.getNamespace()]()
                  {
-                     api::backend_garbage_collector()->queue(std::move(*garbage));
-                     api::backend_garbage_collector().get();
+                     be::GarbageCollectorPtr gc(api::backend_garbage_collector());
+                     gc->queue(std::move(*garbage));
+                     gc->barrier(nspace).get();
                      promise.set_value();
                  });
 
