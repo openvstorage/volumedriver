@@ -296,9 +296,13 @@ BackendInterface::partial_read(const BackendConnectionInterface::PartialReads& p
                                InsistOnLatestVersion insist_on_latest)
 {
     size_t bytes = 0;
+
     for (const auto& p : partial_reads)
     {
-        bytes += p.size;
+        for (const auto& slice : p.second)
+        {
+            bytes += slice.size;
+        }
     }
 
     tracepoint(openvstorage_backend,

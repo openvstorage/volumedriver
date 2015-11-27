@@ -171,6 +171,11 @@ protected:
         std::vector<ClusterReadDescriptor> descs;
         descs.reserve(n);
 
+        // DataStoreNG::readClusters (more precisely, the partial backend read path)
+        // asserts that it is not passed duplicate ClusterLocations. Intercept these
+        // here and fail the test instead of taking down the whole process.
+        std::set<std::string> locs;
+
         for (int i = 0; i < n; ++i)
         {
             ClusterLocationAndHash loc_and_hash(loc[i],
@@ -181,6 +186,10 @@ protected:
                                                   i * dStore_->getClusterSize(),
                                                   &buf[i * dStore_->getClusterSize()],
                                                   std::move(bi)));
+
+            const ClusterLocation& loc = loc_and_hash.clusterLocation;
+            ASSERT_TRUE(locs.emplace(boost::lexical_cast<std::string>(loc)).second) <<
+                "duplicate detected: " << loc_and_hash;
         }
 
         while (true)
@@ -371,9 +380,20 @@ TEST_P(DataStoreNGTest, overflowCache2)
                  true,
                  0);
 
-    EXPECT_THROW(readClusters(num_clusters_second_pass,
+    EXPECT_NE(ClusterLocation(0),
+              locs[num_clusters_first_pass]);
+    EXPECT_EQ(ClusterLocation(0),
+              locs[num_clusters_first_pass + 1]);
+
+    readClusters(1,
+                 0x9ABCDEF0,
+                 &locs[num_clusters_first_pass],
+                 true,
+                 0);
+
+    EXPECT_THROW(readClusters(1,
                               0x9ABCDEF0,
-                              &locs[num_clusters_first_pass],
+                              &locs[num_clusters_first_pass + 1],
                               true,
                               0),
                  std::exception);

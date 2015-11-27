@@ -21,11 +21,13 @@
 #include <youtils/FileUtils.h>
 #include <youtils/FileDescriptor.h>
 
-namespace backend
+namespace backendtest
 {
 
 namespace fs = boost::filesystem;
+
 using namespace youtils;
+using namespace backend;
 
 class PartialReadTest
     : public BackendTestBase
@@ -45,19 +47,44 @@ public:
         nspace_ = make_random_namespace();
     }
 
+    using PartialReads = BackendConnectionInterface::PartialReads;
+    using ObjectSlices = BackendConnectionInterface::ObjectSlices;
+
     void
-    TearDown() override final
-    {}
+    partial_read_and_check(const PartialReads& partial_reads,
+                           const std::vector<byte>& src,
+                           const std::vector<byte>& dst)
+    {
+        BackendConnectionInterfacePtr conn(cm_->getConnection());
+        SimpleFetcher fetch(*conn,
+                            nspace_->ns(),
+                            partial_read_cache_);
+
+        bi_(nspace_->ns())->partial_read(partial_reads,
+                                         fetch,
+                                         InsistOnLatestVersion::T);
+
+        for(const auto& partial_read : partial_reads)
+        {
+            for (const auto& slice : partial_read.second)
+            {
+                for(unsigned i = 0; i < slice.size; ++i)
+                {
+                    EXPECT_EQ(src[slice.offset + i],
+                              dst[slice.offset +i ]);
+                }
+            }
+        }
+    }
 
 protected:
+
     const fs::path partial_read_cache_;
     std::unique_ptr<WithRandomNamespace> nspace_;
 };
 
 TEST_F(PartialReadTest, simple)
 {
-    using PartialReads = backend::BackendConnectionInterface::PartialReads;
-
     const uint64_t max_test_size = 1024 * 16;
 
     std::vector<byte> buf(max_test_size);
@@ -71,7 +98,6 @@ TEST_F(PartialReadTest, simple)
     fs::path tmp = FileUtils::create_temp_file_in_temp_dir("anobject");
     ALWAYS_CLEANUP_FILE(tmp);
     {
-
         FileDescriptor io(tmp,
                           FDMode::Write);
         io.write(buf.data(),
@@ -87,43 +113,29 @@ TEST_F(PartialReadTest, simple)
     uint64_t last = 0;
     std::vector<byte> the_buffer(max_test_size);
 
-    PartialReads partial_reads;
+    ObjectSlices slices;
 
     while(last < max_test_size)
     {
-        partial_reads.emplace_back(std::string(object_name));
-        auto& partial_read = partial_reads.back();
-        partial_read.offset = last;
-        uint64_t size = sou(0UL, max_test_size - last);
-        partial_read.buf = the_buffer.data() + last;
-        partial_read.size = size;
+        const uint64_t off = last;
+        const uint64_t size = sou(1UL, max_test_size - last);
+
+        ASSERT_TRUE(slices.emplace(size,
+                                   off,
+                                   the_buffer.data() + last).second);
         last += size;
         ASSERT(last <= max_test_size);
     }
 
-    BackendConnectionInterfacePtr conn(cm_->getConnection());
-    SimpleFetcher fetch(*conn,
-                        nspace_->ns(),
-                        partial_read_cache_);
+    const PartialReads partial_reads{ { object_name, std::move(slices) } };
 
-    bi_(nspace_->ns())->partial_read(partial_reads,
-                                     fetch,
-                                     InsistOnLatestVersion::T);
-
-    for(const auto& partial_read : partial_reads)
-    {
-        for(unsigned i = 0; i < partial_read.size; ++i)
-        {
-            EXPECT_EQ(the_buffer[partial_read.offset + i],
-                      buf[partial_read.offset +i]);
-        }
-    }
+    partial_read_and_check(partial_reads,
+                           buf,
+                           the_buffer);
 }
 
-TEST_F(PartialReadTest, simple_to)
+TEST_F(PartialReadTest, simple_too)
 {
-    using PartialReads = backend::BackendConnectionInterface::PartialReads;
-
     const uint64_t max_test_size = 1024 * 16;
 
     std::vector<byte> buf(max_test_size);
@@ -153,39 +165,92 @@ TEST_F(PartialReadTest, simple_to)
     uint64_t last = 0;
     std::vector<byte> the_buffer(max_test_size);
 
-    PartialReads partial_reads;
+    ObjectSlices slices;
 
     while(last < max_test_size)
     {
-        partial_reads.emplace_back(std::string(object_name));
-        auto& partial_read = partial_reads.back();
-        partial_read.offset = last;
-        uint64_t size = sou(0UL, max_test_size - last);
-        partial_read.buf = the_buffer.data() + last;
-        partial_read.size = size;
+        const uint64_t off = last;
+        const uint64_t size = sou(1UL, max_test_size - last);
 
+        ASSERT_TRUE(slices.emplace(size,
+                                   off,
+                                   the_buffer.data() + last).second);
         last += size;
-        last += sou(0UL, max_test_size - last);
         ASSERT(last <= max_test_size);
     }
 
-    BackendConnectionInterfacePtr conn(cm_->getConnection());
-    SimpleFetcher fetch(*conn,
-                        nspace_->ns(),
-                        partial_read_cache_);
+    const PartialReads partial_reads{ { object_name, std::move(slices) } };
 
-    bi_(nspace_->ns())->partial_read(partial_reads,
-                                     fetch,
-                                     InsistOnLatestVersion::T);
+    partial_read_and_check(partial_reads,
+                           buf,
+                           the_buffer);
+}
 
-    for(const auto& partial_read : partial_reads)
+TEST_F(PartialReadTest, multiple_objects)
+{
+    const size_t nfiles = 16;
+    const size_t fsize = 1024;
+    const uint64_t max_test_size = fsize * nfiles;
+
+    std::vector<byte> buf(max_test_size);
+    SourceOfUncertainty sou;
+
+    auto make_object_name([](const size_t n) -> std::string
+                          {
+                              return "object-" + boost::lexical_cast<std::string>(n);
+                          });
+
+    for(unsigned i = 0; i < max_test_size; ++i)
     {
-        for(unsigned i = 0; i < partial_read.size; ++i)
-        {
-            EXPECT_EQ(the_buffer[partial_read.offset + i],
-                      buf[partial_read.offset +i]);
-        }
+        buf[i] = sou.operator()<byte>();
     }
+
+    for (size_t i = 0; i < nfiles; ++i)
+    {
+        const fs::path tmp(FileUtils::create_temp_file_in_temp_dir("anobject"));
+        ALWAYS_CLEANUP_FILE(tmp);
+        {
+            FileDescriptor io(tmp,
+                              FDMode::Write);
+            io.write(buf.data() + i * fsize,
+                     fsize);
+        }
+
+        bi_(nspace_->ns())->write(tmp,
+                                  make_object_name(i),
+                                  OverwriteObject::F);
+    }
+
+    std::vector<byte> the_buffer(max_test_size);
+
+    const size_t nslices = 4;
+    const size_t slice_size = fsize / nslices;
+    ASSERT_EQ(0, fsize % nslices);
+    ASSERT_NE(0, slice_size);
+
+    PartialReads partial_reads;
+
+    for (size_t i = 0; i < nfiles; ++i)
+    {
+        ObjectSlices slices;
+
+        for (size_t off = 0; off < fsize; off += slice_size)
+        {
+            ASSERT_TRUE(slices.emplace(slice_size,
+                                       off,
+                                       the_buffer.data() + i * fsize + off).second);
+        }
+
+        ASSERT_TRUE(partial_reads.emplace(std::make_pair(make_object_name(i),
+                                                         std::move(slices))).second);
+    }
+
+    EXPECT_EQ(nfiles,
+              partial_reads.size());
+
+    partial_read_and_check(partial_reads,
+                           buf,
+                           the_buffer);
 }
 
 }
