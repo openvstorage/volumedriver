@@ -220,7 +220,7 @@ TEST_F(ShmServerTest, ovs_completion)
             EXPECT_EQ(*len,
                       ovs_aio_return_completion(comp));
             EXPECT_EQ(0,
-                      ovs_aio_release_completion(comp));
+                      ovs_aio_signal_completion(comp));
         }
         static void finish_flush(ovs_completion_t *comp, void * /*arg*/)
         {
@@ -335,6 +335,11 @@ TEST_F(ShmServerTest, ovs_completion)
     EXPECT_EQ(0,
               ovs_deallocate(ctx,
                              rbuf));
+
+    EXPECT_EQ(0,
+              ovs_aio_wait_completion(r_completion, NULL));
+    EXPECT_EQ(0,
+              ovs_aio_release_completion(r_completion));
 
     EXPECT_EQ(0,
               ovs_ctx_destroy(ctx));
