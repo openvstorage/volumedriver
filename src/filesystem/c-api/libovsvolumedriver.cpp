@@ -81,6 +81,8 @@ struct ovs_context_t
         }
         catch (std::bad_alloc& e)
         {
+            shm_client_.reset();
+            throw;
         }
 
         if (not ctl_client_->connect_and_register(volume_name,
