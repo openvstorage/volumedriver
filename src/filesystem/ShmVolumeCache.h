@@ -14,6 +14,8 @@
 #ifndef __SHM_VOLUME_CACHE_H
 #define __SHM_VOLUME_CACHE_H
 
+#include "ShmCommon.h"
+
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <set>
 #include <memory>
@@ -30,7 +32,7 @@ public:
         try
         {
             shm_segment_ = ipc::managed_shared_memory(ipc::open_only,
-                                                      "openvstorage_segment");
+                                                      ShmSegmentDetails::Name());
         }
         catch (ipc::interprocess_exception&)
         {

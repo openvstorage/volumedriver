@@ -15,6 +15,8 @@
 #ifndef __SHM_ORB_INTERFACE_H_
 #define __SHM_ORB_INTERFACE_H_
 
+#include "ShmCommon.h"
+
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/property_tree/ptree_fwd.hpp>
 #include <youtils/OrbHelper.h>
@@ -39,10 +41,10 @@ public:
     {
         try
         {
-            boost::interprocess::shared_memory_object::remove("openvstorage_segment");
+            boost::interprocess::shared_memory_object::remove(ShmSegmentDetails::Name());
             shm_segment_ =
                 boost::interprocess::managed_shared_memory(boost::interprocess::create_only,
-                                                           "openvstorage_segment",
+                                                           ShmSegmentDetails::Name(),
                                                            shm_size());
         }
         catch (boost::interprocess::interprocess_exception&)

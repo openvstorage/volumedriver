@@ -139,7 +139,7 @@ ShmOrbInterface::~ShmOrbInterface()
 {
     try
     {
-        bi::shared_memory_object::remove("openvstorage_segment");
+        bi::shared_memory_object::remove(ShmSegmentDetails::Name());
     }
     catch (bi::interprocess_exception&)
     {

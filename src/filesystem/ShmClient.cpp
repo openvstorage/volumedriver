@@ -14,6 +14,7 @@
 
 #include "ShmIdlInterface.h"
 #include "ShmClient.h"
+#include "ShmCommon.h"
 
 #include <youtils/Assert.h>
 #include <youtils/UUID.h>
@@ -37,7 +38,7 @@ ShmClient::ShmClient(const std::string& volume_name,
                      const std::string& vd_object_kind)
     : volume_name_(volume_name)
     , shm_segment_(new ipc::managed_shared_memory(ipc::open_only,
-                                                  "openvstorage_segment"))
+                                                  ShmSegmentDetails::Name()))
 {
     CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
                                                             vd_context_kind,

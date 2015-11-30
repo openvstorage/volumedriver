@@ -15,6 +15,8 @@
 #ifndef __SHM_VOLUME_DRIVER_HANDLER_H_
 #define __SHM_VOLUME_DRIVER_HANDLER_H_
 
+#include "ShmCommon.h"
+
 #include <youtils/Assert.h>
 #include <youtils/Catchers.h>
 #include <ObjectRouter.h>
@@ -41,7 +43,7 @@ public:
         , objectid_(*get_objectid(make_volume_path(std::string(args.volume_name))))
         , volume_size_in_bytes_(get_volume_size(objectid_))
         , shm_segment_(new boost::interprocess::managed_shared_memory(boost::interprocess::open_only,
-                                                                      "openvstorage_segment"))
+                                                                      ShmSegmentDetails::Name()))
     {
         LOG_INFO("created a new volume handler for volume '" <<
                 args.volume_name << "'");
