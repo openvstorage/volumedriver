@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef __LIB_VOLUMEDRIVER_H_
-#define __LIB_VOLUMEDRIVER_H_
+#ifndef __LIB_OVS_VOLUMEDRIVER_H_
+#define __LIB_OVS_VOLUMEDRIVER_H_
 
 #include <pthread.h>
 #include <sys/types.h>
@@ -302,4 +302,4 @@ ovs_aio_release_completion(ovs_completion_t *completion);
 } //extern "C" endif
 #endif
 
-#endif // __LIB_OPENVSTORAGE_H_
+#endif // __LIB_OVS_VOLUMEDRIVER_H_

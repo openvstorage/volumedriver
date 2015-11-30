@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _VOLUME_CACHE_H
-#define _VOLUME_CACHE_H
+#ifndef _VOLUME_CACHE_HANDLER_H
+#define _VOLUME_CACHE_HANDLER_H
 
 #include "../ShmClient.h"
 #include "ShmControlChannelClient.h"
@@ -310,4 +310,4 @@ private:
 
 typedef std::unique_ptr<VolumeCacheHandler> VolumeCacheHandlerPtr;
 
-#endif //_VOLUME_CACHE_H
+#endif //_VOLUME_CACHE_HANDLER_H
