@@ -53,11 +53,11 @@ public:
             return false;
         }
 
-        if (_ctl_sendmsg(msg) < 0)
+        if (not _ctl_sendmsg(msg))
         {
             return false;
         }
-        if (_ctl_recvmsg(msg) < 0)
+        if (not _ctl_recvmsg(msg))
         {
             return false;
         }

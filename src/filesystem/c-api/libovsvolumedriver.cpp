@@ -168,8 +168,8 @@ struct ovs_context_t
             {
                 iot = std::make_unique<IOThread>();
                 iot->ctx = this;
-                iot->iothread_ = std::move(std::thread(_aio_readreply_handler,
-                                                       (void*)iot.get()));
+                iot->iothread_ = std::thread(_aio_readreply_handler,
+                                             (void*)iot.get());
                 rr_iothreads.push_back(std::move(iot));
             }
             catch (std::bad_alloc& e)
@@ -191,8 +191,8 @@ struct ovs_context_t
             {
                 iot = std::make_unique<IOThread>();
                 iot->ctx = this;
-                iot->iothread_ = std::move(std::thread(_aio_writereply_handler,
-                                                       (void*)iot.get()));
+                iot->iothread_ = std::thread(_aio_writereply_handler,
+                                             (void*)iot.get());
                 wr_iothreads.push_back(std::move(iot));
             }
             catch (std::bad_alloc& e)
