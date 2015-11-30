@@ -29,6 +29,7 @@ namespace python
 
 namespace bpy = boost::python;
 namespace vfs = volumedriverfs;
+namespace yt = youtils;
 
 void
 LockedClient::registerize()
@@ -66,8 +67,10 @@ LockedClient::registerize()
               bpy::args("region_size_exponent") = scrubbing::ScrubberAdapter::region_size_exponent_default,
               bpy::args("fill_ratio") = scrubbing::ScrubberAdapter::fill_ratio_default,
               bpy::args("verbose_scrubbing") = scrubbing::ScrubberAdapter::verbose_scrubbing_default,
-              bpy::args("scrubber_binary") = "ovs_scrubber"),
-              "Scrubs a work unit and returns a scrub_result\n",
+              bpy::args("scrubber_binary") = "ovs_scrubber",
+              bpy::args("severity") = yt::Severity::info,
+              bpy::args("logfile") = boost::optional<std::string>()),
+              "Scrubs a work unit and returns a scrub_result\n"
              "@param work_unit: a string, a opaque string that encodes the scrub work\n"
              "@param region_size_exponent: a number, "
              "region_size_exponent don't change from default if you don't know what you're doing, default 25\n"
@@ -76,6 +79,8 @@ LockedClient::registerize()
              "@param verbose_scrubbing: a boolean, "
              "whether the scrubbing should print it's intermediate result, default True\n"
              "@param scrubber_binary: string, scrubber binary to use\n"
+             "@param severity: Severity, log level to use\n"
+             "@param logfile: string (optional), log file to use (if None, stderr is used)\n"
              "@result a (n opaque) string that encodes the scrub result to apply")
         ;
 }

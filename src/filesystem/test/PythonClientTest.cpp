@@ -1725,7 +1725,9 @@ TEST_F(PythonClientTest, locked_scrub)
                                          scrubbing::ScrubberAdapter::region_size_exponent_default,
                                          scrubbing::ScrubberAdapter::fill_ratio_default,
                                          scrubbing::ScrubberAdapter::verbose_scrubbing_default,
-                                         "ovs_scrubber"));
+                                         "ovs_scrubber",
+                                         yt::Severity::info,
+                                         boost::none));
 
     lclient->apply_scrubbing_result(res);
 }
