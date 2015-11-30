@@ -66,8 +66,9 @@ public:
                                                    max_reply_queue_size,
                                                    readreply_size));
 
-        thread_pool_size_ = yt::System::get_env_with_default<int>("SHM_SERVER_THREAD_POOL_SIZE",
-                                                                  1);
+        const std::string shm_server_env_var("SHM_SERVER_THREAD_POOL_SIZE");
+        thread_pool_size_ =
+            yt::System::get_env_with_default<int>(shm_server_env_var, 1);
 
         for (int i = 0; i < thread_pool_size_; i++)
         {

@@ -71,9 +71,9 @@ struct ovs_context_t
     ovs_context_t(const std::string& volume_name, int flag)
     : oflag(flag)
     {
+        const std::string io_env_var("LIBOVSVOLUMEDRIVER_IO_THREADS_POOL_SIZE");
         io_threads_pool_size_ =
-        youtils::System::get_env_with_default<int>("LIBOVSVOLUMEDRIVER_IO_THREADS_POOL_SIZE",
-                                                   1);
+        youtils::System::get_env_with_default<int>(io_env_var, 1);
         shm_client_ = std::make_shared<volumedriverfs::ShmClient>(volume_name);
         try
         {

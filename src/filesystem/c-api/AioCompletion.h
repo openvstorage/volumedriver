@@ -20,6 +20,7 @@
 #include <limits.h>
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
+#include <youtils/System.h>
 
 class AioCompletion
 {
@@ -39,7 +40,10 @@ private:
     : work_(io_service_)
     {
         //cnanakos: scaling?
-        for (int i = 0; i < 4; i++)
+        const std::string aio_env_var("LIBOVSVOLUMEDRIVER_AIO_COMP_POOL_SIZE");
+        int pool_size =
+            youtils::System::get_env_with_default<int>(aio_env_var, 4);
+        for (int i = 0; i < pool_size; i++)
         {
             group_.create_thread(boost::bind(&boost::asio::io_service::run,
                                              &io_service_));
