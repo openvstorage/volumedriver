@@ -70,7 +70,7 @@ public:
 
         shm_orb_thread_ = boost::thread([&]
                                         {
-                                            shm_orb_server_->run(std::move(promise));
+                                            ASSERT_NO_THROW(shm_orb_server_->run(std::move(promise)));
                                         });
 
         ASSERT_NO_THROW(future.get());
