@@ -212,7 +212,7 @@ TEST_F(ShmServerTest, ovs_completion)
             EXPECT_EQ(*len,
                       ovs_aio_return_completion(comp));
             EXPECT_EQ(0,
-                      ovs_aio_release_completion(comp));
+                      ovs_aio_signal_completion(comp));
         }
         static void finish_read(ovs_completion_t *comp, void *arg)
         {
@@ -297,6 +297,11 @@ TEST_F(ShmServerTest, ovs_completion)
     EXPECT_EQ(0,
               ovs_aio_release_completion(f_completion));
 
+    EXPECT_EQ(0,
+              ovs_aio_wait_completion(w_completion, NULL));
+    EXPECT_EQ(0,
+              ovs_aio_release_completion(w_completion));
+
     ovs_buffer_t *rbuf = ovs_allocate(ctx,
                               pattern_len);
 
@@ -374,7 +379,7 @@ TEST_F(ShmServerTest, ovs_completion_two_ctxs)
             EXPECT_EQ(*len,
                       ovs_aio_return_completion(comp));
             EXPECT_EQ(0,
-                      ovs_aio_release_completion(comp));
+                      ovs_aio_signal_completion(comp));
         }
         static void finish_read(ovs_completion_t *comp, void *arg)
         {
@@ -382,7 +387,7 @@ TEST_F(ShmServerTest, ovs_completion_two_ctxs)
             EXPECT_EQ(*len,
                       ovs_aio_return_completion(comp));
             EXPECT_EQ(0,
-                      ovs_aio_release_completion(comp));
+                      ovs_aio_signal_completion(comp));
         }
     };
 
@@ -475,6 +480,16 @@ TEST_F(ShmServerTest, ovs_completion_two_ctxs)
               ovs_aio_finish(ctx2, &w2_aio));
 
     EXPECT_EQ(0,
+              ovs_aio_wait_completion(w1_completion, NULL));
+    EXPECT_EQ(0,
+              ovs_aio_release_completion(w1_completion));
+
+    EXPECT_EQ(0,
+              ovs_aio_wait_completion(w2_completion, NULL));
+    EXPECT_EQ(0,
+              ovs_aio_release_completion(w2_completion));
+
+    EXPECT_EQ(0,
               ovs_deallocate(ctx1,
                              w1_buf));
     EXPECT_EQ(0,
@@ -513,6 +528,11 @@ TEST_F(ShmServerTest, ovs_completion_two_ctxs)
     EXPECT_TRUE(memcmp(ovs_buffer_data(rbuf),
                        pattern.c_str(),
                        pattern_len) == 0);
+
+    EXPECT_EQ(0,
+              ovs_aio_wait_completion(r_completion, NULL));
+    EXPECT_EQ(0,
+              ovs_aio_release_completion(r_completion));
 
     EXPECT_EQ(0,
               ovs_deallocate(ctx2,
