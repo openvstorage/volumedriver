@@ -14,6 +14,9 @@
 
 #include "FileSystemTestBase.h"
 
+#include "../PythonClient.h"
+#include "../ShmOrbInterface.h"
+
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -32,13 +35,13 @@
 #include <filesystem/ShmClient.h>
 #include <filesystem/c-api/volumedriver.h>
 
-#include "../PythonClient.h"
-
 namespace volumedriverfstest
 {
 
+namespace bpt = boost::property_tree;
 namespace fs = boost::filesystem;
-namespace vfs = volumedriverfs;
+
+using namespace volumedriverfs;
 
 class ShmServerTest
     : public FileSystemTestBase
@@ -50,26 +53,44 @@ public:
                              .backend_sync_timeout_ms(9500)
                              .migrate_timeout_ms(500)
                              .redirect_retries(1))
-        , remote_root_(mount_dir(remote_dir(topdir_)))
     {}
 
     virtual void
     SetUp()
     {
         FileSystemTestBase::SetUp();
-        start_failovercache_for_remote_node();
-        mount_remote();
+        bpt::ptree pt;
+        // simply use the defaults
+        shm_orb_server_ = std::make_unique<ShmOrbInterface>(pt,
+                                                            RegisterComponent::F,
+                                                            *fs_);
+
+        std::promise<void> promise;
+        std::future<void> future(promise.get_future());
+
+        shm_orb_thread_ = boost::thread([&]
+                                        {
+                                            shm_orb_server_->run(std::move(promise));
+                                        });
+
+        ASSERT_NO_THROW(future.get());
+
+        ShmClient::init();
     }
 
     virtual void
     TearDown()
     {
-        umount_remote();
-        stop_failovercache_for_remote_node();
+        ShmClient::fini();
+
+        shm_orb_server_->stop_all_and_exit();
+        shm_orb_thread_.join();
+        shm_orb_server_ = nullptr;
         FileSystemTestBase::TearDown();
     }
 
-    const fs::path remote_root_;
+    std::unique_ptr<ShmOrbInterface> shm_orb_server_;
+    boost::thread shm_orb_thread_;
 };
 
 TEST_F(ShmServerTest, ovs_create_destroy_context)
