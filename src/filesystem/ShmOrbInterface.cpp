@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <boost/exception_ptr.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -35,9 +36,11 @@ namespace yt = youtils;
 namespace ip = initialized_params;
 
 void
-ShmOrbInterface::run()
+ShmOrbInterface::run(std::promise<void> promise)
 {
     using youtils::OrbHelper;
+    bool initialized = false;
+
     try
     {
         //OrbHelper orb_helper("volumedriverfs_shm_server");
@@ -68,42 +71,46 @@ ShmOrbInterface::run()
                                          vd_object_name,
                                          vd_object_kind);
         }
-        catch(std::exception& e)
-        {
-            LOG_FATAL("Exception binding to Name: " << e.what());
-            poa->deactivate_object(myecho_id);
-            pman->deactivate(false, true);
-            throw;
-        }
-        catch(...)
-        {
-            LOG_FATAL("Unknown exception binding to Name");
-            poa->deactivate_object(myecho_id);
-            pman->deactivate(false, true);
-            throw;
-        }
+        CATCH_STD_ALL_EWHAT({
+                LOG_ERROR("Exception binding to name: " << EWHAT);
+                poa->deactivate_object(myecho_id);
+                pman->deactivate(false, true);
+                throw;
+            });
 
+        initialized = true;
+        promise.set_value();
         LOG_INFO("Starting SHM server");
         orb_helper_.orb()->run();
     }
-    catch (CORBA::SystemException& ex)
+    catch (CORBA::Exception& e)
     {
-        LOG_FATAL("Caught CORBA::SystemException " << ex._name());
-        throw;
-
-    }
-    catch (CORBA::Exception& ex)
-    {
-        LOG_FATAL("Caught CORBA::Exception " << ex._name());
+        LOG_ERROR("Caught CORBA::Exception " << e._name());
+        if (not initialized)
+        {
+            promise.set_exception(std::current_exception());
+        }
         throw;
     }
-    catch (omniORB::fatalException& fe)
+    catch (omniORB::fatalException& e)
     {
-        LOG_FATAL("Caught omniORB::fatalException " << fe.file()
-                  << " line: " << fe.line()
-                  << " mesg: " << fe.errmsg());
+        LOG_ERROR("Caught omniORB::fatalException, file: " << e.file()
+                  << " line: " << e.line()
+                  << " mesg: " << e.errmsg());
+        if (not initialized)
+        {
+            promise.set_exception(std::current_exception());
+        }
         throw;
     }
+    CATCH_STD_ALL_EWHAT({
+            LOG_ERROR("Caught exception: " << EWHAT);
+            if (not initialized)
+            {
+                promise.set_exception(std::current_exception());
+            }
+            throw;
+        });
 }
 
 void

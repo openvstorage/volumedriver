@@ -230,13 +230,19 @@ FuseInterface::operator()(const fs::path& mntpoint,
                                    // our code can deal with being interrupted.
                                });
 
+    std::promise<void> promise;
+    std::future<void> future(promise.get_future());
+
     boost::thread shmthread([&]
             {
                 try
                 {
-                    shm_orb_server.run();
-                }CATCH_STD_ALL_LOG_IGNORE("exception when running SHM server");
+                    shm_orb_server.run(std::move(promise));
+                }
+                CATCH_STD_ALL_LOG_IGNORE("exception when running SHM server");
             });
+
+    future.get();
 
     boost::thread fsthread([&]
                            {
@@ -255,7 +261,8 @@ FuseInterface::operator()(const fs::path& mntpoint,
                                              try
                                              {
                                                  shm_orb_server.stop_all_and_exit();
-                                             }CATCH_STD_ALL_LOG_IGNORE("exception while stopping SHM server");
+                                             }
+                                             CATCH_STD_ALL_LOG_IGNORE("exception while stopping SHM server");
                                              LOG_INFO("waiting for shm thread to finish");
                                              shmthread.join();
                                            }));

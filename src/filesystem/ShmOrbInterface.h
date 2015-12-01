@@ -17,6 +17,8 @@
 
 #include "ShmCommon.h"
 
+#include <future>
+
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/property_tree/ptree_fwd.hpp>
 #include <youtils/OrbHelper.h>
@@ -77,7 +79,7 @@ public:
                 youtils::ConfigurationReport&) const override final;
 
     void
-    run();
+    run(std::promise<void>);
 
     void
     stop_all_and_exit();
