@@ -22,13 +22,57 @@
 
 namespace volumedriverfs
 {
+
 namespace ipc = boost::interprocess;
+namespace yt = youtils;
+
+namespace
+{
+
+TODO("AR: get rid of static OrbHelper");
+// This is just a stopgap measure to fix the problems with the ShmServerTests (race
+// with remote server startup, static OrbHelper instance used across several tests).
+// In the long run it's cleaner to have an OrbHelper instance per ovs_context_t
+// (e.g. via the associated ShmClient) if possible?
+// Do we need locking around OrbHelper calls?
+DECLARE_LOGGER("ShmClientUtils");
+
+boost::mutex orb_helper_lock;
+std::unique_ptr<yt::OrbHelper> orb_helper_instance;
+
+#define LOCK_ORB_HELPER()                       \
+    boost::lock_guard<decltype(orb_helper_lock)> g(orb_helper_lock)
+
+}
+
+void
+ShmClient::init()
+{
+    LOCK_ORB_HELPER();
+
+    VERIFY(not orb_helper_instance);
+    orb_helper_instance = std::make_unique<yt::OrbHelper>("ShmClient");
+}
+
+void
+ShmClient::fini()
+{
+    LOCK_ORB_HELPER();
+
+    VERIFY(orb_helper_instance);
+    orb_helper_instance = nullptr;
+}
 
 youtils::OrbHelper&
 ShmClient::orb_helper()
 {
-    static youtils::OrbHelper orb_helper("ShmClient");
-    return orb_helper;
+    LOCK_ORB_HELPER();
+
+    if (not orb_helper_instance)
+    {
+        orb_helper_instance = std::make_unique<yt::OrbHelper>("ShmClient");
+    }
+    return *orb_helper_instance;
 }
 
 ShmClient::ShmClient(const std::string& volume_name,
