@@ -258,23 +258,32 @@ _aio_request_handler(ovs_aio_request *request,
                      bool failed)
 {
     /* errno already set by shm_receive_*_reply function */
+    ovs_completion_t *completion = request->completion;
+    RequestOp op = request->_op;
     request->_errno = errno;
     request->_rv = ret;
     request->_completed = true;
     request->_failed = failed;
-    _aio_wake_up_suspended_aiocb(request);
-    if (request->completion)
+    if (op != RequestOp::AsyncFlush)
     {
-        request->completion->_rv = ret;
-        request->completion->_failed = failed;
-        AioCompletion::get_aio_context().schedule(request->completion);
+        _aio_wake_up_suspended_aiocb(request);
     }
-    if (RequestOp::AsyncFlush == request->_op)
+    if (completion)
     {
-        pthread_mutex_destroy(&request->_mutex);
-        pthread_cond_destroy(&request->_cond);
-        delete request->ovs_aiocbp;
-        delete request;
+        completion->_rv = ret;
+        completion->_failed = failed;
+        if (RequestOp::AsyncFlush == op)
+        {
+            pthread_mutex_destroy(&request->_mutex);
+            pthread_cond_destroy(&request->_cond);
+            delete request->ovs_aiocbp;
+            delete request;
+            AioCompletion::get_aio_context().schedule(completion);
+        }
+        else
+        {
+            AioCompletion::get_aio_context().schedule(completion);
+        }
     }
 }
 
