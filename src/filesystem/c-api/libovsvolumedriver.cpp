@@ -79,7 +79,7 @@ struct ovs_context_t
         {
             ctl_client_ = std::make_shared<ShmControlChannelClient>();
         }
-        catch (std::bad_alloc& e)
+        catch (...)
         {
             shm_client_.reset();
             throw;
@@ -97,13 +97,7 @@ struct ovs_context_t
         {
             ovs_aio_init();
         }
-        catch (std::bad_alloc&)
-        {
-            shm_client_.reset();
-            ctl_client_.reset();
-            throw;
-        }
-        catch (std::system_error&)
+        catch (...)
         {
             shm_client_.reset();
             ctl_client_.reset();
@@ -115,7 +109,7 @@ struct ovs_context_t
             cache_ = std::make_unique<VolumeCacheHandler>(shm_client_,
                                                           ctl_client_);
         }
-        catch (std::bad_alloc&)
+        catch (...)
         {
             ovs_aio_destroy();
             shm_client_.reset();
@@ -172,12 +166,7 @@ struct ovs_context_t
                                              (void*)iot.get());
                 rr_iothreads.push_back(std::move(iot));
             }
-            catch (std::bad_alloc& e)
-            {
-                close_rr_iothreads();
-                throw;
-            }
-            catch (std::system_error& e)
+            catch (...)
             {
                 close_rr_iothreads();
                 throw;
@@ -195,13 +184,7 @@ struct ovs_context_t
                                              (void*)iot.get());
                 wr_iothreads.push_back(std::move(iot));
             }
-            catch (std::bad_alloc& e)
-            {
-                close_wr_iothreads();
-                close_rr_iothreads();
-                throw;
-            }
-            catch (std::system_error& e)
+            catch (...)
             {
                 close_wr_iothreads();
                 close_rr_iothreads();
