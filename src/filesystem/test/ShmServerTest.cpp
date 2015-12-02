@@ -307,11 +307,9 @@ TEST_F(ShmServerTest, ovs_completion)
                              &w_aio));
 
     EXPECT_EQ(0,
-              ovs_aio_finish(ctx, &w_aio));
-
+              ovs_aio_wait_completion(w_completion, NULL));
     EXPECT_EQ(0,
-              ovs_deallocate(ctx,
-                             wbuf));
+              ovs_aio_release_completion(w_completion));
 
     EXPECT_EQ(0,
               ovs_aio_wait_completion(f_completion, NULL));
@@ -319,9 +317,12 @@ TEST_F(ShmServerTest, ovs_completion)
               ovs_aio_release_completion(f_completion));
 
     EXPECT_EQ(0,
-              ovs_aio_wait_completion(w_completion, NULL));
+              ovs_aio_finish(ctx, &w_aio));
+
     EXPECT_EQ(0,
-              ovs_aio_release_completion(w_completion));
+              ovs_deallocate(ctx,
+                             wbuf));
+
 
     ovs_buffer_t *rbuf = ovs_allocate(ctx,
                               pattern_len);
@@ -352,6 +353,11 @@ TEST_F(ShmServerTest, ovs_completion)
                              &r_aio));
 
     EXPECT_EQ(0,
+              ovs_aio_wait_completion(r_completion, NULL));
+    EXPECT_EQ(0,
+              ovs_aio_release_completion(r_completion));
+
+    EXPECT_EQ(0,
               ovs_aio_finish(ctx, &r_aio));
 
     EXPECT_TRUE(memcmp(ovs_buffer_data(rbuf),
@@ -361,11 +367,6 @@ TEST_F(ShmServerTest, ovs_completion)
     EXPECT_EQ(0,
               ovs_deallocate(ctx,
                              rbuf));
-
-    EXPECT_EQ(0,
-              ovs_aio_wait_completion(r_completion, NULL));
-    EXPECT_EQ(0,
-              ovs_aio_release_completion(r_completion));
 
     EXPECT_EQ(0,
               ovs_ctx_destroy(ctx));
@@ -484,6 +485,10 @@ TEST_F(ShmServerTest, ovs_completion_two_ctxs)
     EXPECT_EQ(pattern_len,
               ovs_aio_return(ctx1,
                              &w1_aio));
+    EXPECT_EQ(0,
+              ovs_aio_wait_completion(w1_completion, NULL));
+    EXPECT_EQ(0,
+              ovs_aio_release_completion(w1_completion));
 
     EXPECT_EQ(0,
               ovs_aio_finish(ctx1, &w1_aio));
@@ -498,17 +503,12 @@ TEST_F(ShmServerTest, ovs_completion_two_ctxs)
                              &w2_aio));
 
     EXPECT_EQ(0,
-              ovs_aio_finish(ctx2, &w2_aio));
-
-    EXPECT_EQ(0,
-              ovs_aio_wait_completion(w1_completion, NULL));
-    EXPECT_EQ(0,
-              ovs_aio_release_completion(w1_completion));
-
-    EXPECT_EQ(0,
               ovs_aio_wait_completion(w2_completion, NULL));
     EXPECT_EQ(0,
               ovs_aio_release_completion(w2_completion));
+
+    EXPECT_EQ(0,
+              ovs_aio_finish(ctx2, &w2_aio));
 
     EXPECT_EQ(0,
               ovs_deallocate(ctx1,
@@ -543,9 +543,6 @@ TEST_F(ShmServerTest, ovs_completion_two_ctxs)
               ovs_aio_return(ctx2,
                              &r_aio));
 
-    EXPECT_EQ(0,
-              ovs_aio_finish(ctx2, &r_aio));
-
     EXPECT_TRUE(memcmp(ovs_buffer_data(rbuf),
                        pattern.c_str(),
                        pattern_len) == 0);
@@ -554,6 +551,9 @@ TEST_F(ShmServerTest, ovs_completion_two_ctxs)
               ovs_aio_wait_completion(r_completion, NULL));
     EXPECT_EQ(0,
               ovs_aio_release_completion(r_completion));
+
+    EXPECT_EQ(0,
+              ovs_aio_finish(ctx2, &r_aio));
 
     EXPECT_EQ(0,
               ovs_deallocate(ctx2,
