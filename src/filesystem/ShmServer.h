@@ -115,7 +115,7 @@ public:
                                            received_size,
                                            priority))
             {
-                LOG_INFO("readreply queue, client error?")
+                LOG_INFO("readreply queue is not empty, client error?")
             }
         }
 
