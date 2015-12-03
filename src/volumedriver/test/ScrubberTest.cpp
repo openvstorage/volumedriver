@@ -866,6 +866,16 @@ TEST_P(ScrubberTest, idempotent_scrub_result_application)
     v1->createSnapshot(snap1);
     persistXVals(vid);
     waitForThisBackendWrite(v1);
+
+    const auto cns(make_random_namespace());
+    const VolumeId cid(cns->ns().str());
+    Volume* c = createClone(cid,
+                            cns->ns(),
+                            ns_ptr->ns(),
+                            snap1);
+
+    ASSERT_TRUE(c);
+
     const VolumeConfig volume_config = v1->get_config();
 
     auto scrub_work_units = getScrubbingWork(vid);
@@ -879,6 +889,16 @@ TEST_P(ScrubberTest, idempotent_scrub_result_application)
                                     CollectScrubGarbage::F));
 
     waitForThisBackendWrite(v1);
+
+    EXPECT_NO_THROW(apply_scrubbing(cid,
+                                    scrub_result,
+                                    ScrubbingCleanup::OnError,
+                                    CollectScrubGarbage::F));
+
+    EXPECT_NO_THROW(apply_scrubbing(cid,
+                                    scrub_result,
+                                    ScrubbingCleanup::OnError,
+                                    CollectScrubGarbage::F));
 
     EXPECT_NO_THROW(apply_scrubbing(vid,
                                     scrub_result,
