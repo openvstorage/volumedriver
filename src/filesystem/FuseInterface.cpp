@@ -15,6 +15,7 @@
 #include "FileSystemEvents.h"
 #include "FileSystemParameters.h"
 #include "FuseInterface.h"
+#include "ShmOrbInterface.h"
 
 #include <boost/property_tree/ptree.hpp>
 
@@ -80,6 +81,9 @@ FuseInterface::FuseInterface(const bpt::ptree& pt,
     , fs_(pt,
           registerizle)
     , fuse_(nullptr)
+    , shm_orb_server(pt,
+                     registerizle,
+                     fs_)
 {}
 
 
@@ -226,20 +230,41 @@ FuseInterface::operator()(const fs::path& mntpoint,
                                    // our code can deal with being interrupted.
                                });
 
+    std::promise<void> promise;
+    std::future<void> future(promise.get_future());
+
+    boost::thread shmthread([&]
+            {
+                try
+                {
+                    shm_orb_server.run(std::move(promise));
+                }
+                CATCH_STD_ALL_LOG_IGNORE("exception when running SHM server");
+            });
+
+    future.get();
+
     boost::thread fsthread([&]
                            {
-                               try
-                               {
-                                   run_(fuse,
-                                        multithreaded ? true : false);
-                               }
-                               CATCH_STD_ALL_LOG_IGNORE("exception running FUSE");
+                             try
+                             {
+                                 run_(fuse,
+                                      multithreaded ? true : false);
+                             }
+                             CATCH_STD_ALL_LOG_IGNORE("exception running FUSE");
                            });
 
     auto fsthread_exit(yt::make_scope_exit([&]
                                            {
-                                               LOG_INFO("waiting for fs thread to finish");
-                                               fsthread.join();
+                                             LOG_INFO("waiting for fs thread to finish");
+                                             fsthread.join();
+                                             try
+                                             {
+                                                 shm_orb_server.stop_all_and_exit();
+                                             }
+                                             CATCH_STD_ALL_LOG_IGNORE("exception while stopping SHM server");
+                                             LOG_INFO("waiting for shm thread to finish");
+                                             shmthread.join();
                                            }));
 
     TODO("AR: push down to FileSystem?");

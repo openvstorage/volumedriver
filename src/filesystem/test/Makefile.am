@@ -36,6 +36,7 @@ volumedriverfs_pytest_PYTHON = \
 volumedriver_fs_test_LDADD = \
 	./libvolumedriverfstest.la \
 	../../filesystem/libvolumedriverfs.la \
+	../../filesystem/libovsvolumedriver.la \
 	../../filedriver/libfiledriver.la \
 	../../volumedriver/test/libvolumedrivertest.la \
 	../../volumedriver/libvolumedriver.la \
@@ -44,7 +45,9 @@ volumedriver_fs_test_LDADD = \
 	../../youtils/libyoutils.la \
 	-lfuse \
 	$(BUILDTOOLS_LIBS) \
-	-lpython2.7
+	-lpython2.7 \
+	-lomniORB4 \
+	-lomnithread
 
 volumedriver_fs_test_SOURCES = \
 	CachedObjectRegistryTest.cpp \
@@ -73,6 +76,9 @@ volumedriver_fs_test_SOURCES = \
 	RegistryTestSetup.cpp \
 	RemoteTest.cpp \
 	RestartTest.cpp \
+	ScrubManagerTest.cpp \
+	ScrubTreeBuilderTest.cpp \
+	ShmServerTest.cpp \
 	VolumeTest.cpp \
 	ZMQTest.cpp \
 	ZWorkerPoolTest.cpp

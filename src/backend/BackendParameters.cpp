@@ -14,6 +14,7 @@
 
 #include "BackendConfig.h"
 #include "BackendParameters.h"
+#include "GarbageCollector.h"
 
 #include <boost/bimap.hpp>
 
@@ -292,6 +293,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_preset,
                                       "When backend_type is ALBA: the ALBA preset to use for new namespaces",
                                       ShowDocumentation::T,
                                       ""s);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(bgc_threads,
+                                      backend::GarbageCollector::name(),
+                                      "bgc_threads",
+                                      "Number of threads employed by the BackendGarbageCollector",
+                                      ShowDocumentation::T,
+                                      4);
 
 }
 

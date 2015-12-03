@@ -11,4 +11,7 @@ lib/ganesha/libfsalovs.la /usr/lib/ganesha
 lib/ganesha/libfsalovs.so /usr/lib/ganesha
 lib/ganesha/libfsalovs.so.0 /usr/lib/ganesha
 lib/ganesha/libfsalovs.so.0.0.0 /usr/lib/ganesha
+lib/openvstorage/libovsvolumedriver.so /usr/lib/openvstorage
+lib/openvstorage/libovsvolumedriver.so.0 /usr/lib/openvstorage
+lib/openvstorage/libovsvolumedriver.so.0.0.0 /usr/lib/openvstorage
 opt/OpenvStorage/config/templates/ganesha-cf.conf /opt/OpenvStorage/config/templates

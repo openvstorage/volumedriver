@@ -22,6 +22,7 @@ AC_CONFIG_FILES([Makefile
 		 debian/rules
 		 debian/compat
 		 debian/volumedriver-server.docs
+		 debian/volumedriver-server-head.postinst
 		 debian/volumedriver-server-head.install])
 AC_CONFIG_FILES([add-python-dirs.sh], [chmod +x add-python-dirs.sh])
 AC_OUTPUT

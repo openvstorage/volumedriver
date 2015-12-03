@@ -13,6 +13,7 @@ storagerouterclient_la_SOURCES = \
 	LockedClient.cpp \
 	MDSClient.cpp \
 	ObjectRegistryClient.cpp \
+	ScrubManagerClient.cpp \
 	StorageRouterClient.cpp \
 	PythonTestHelpers.cpp
 

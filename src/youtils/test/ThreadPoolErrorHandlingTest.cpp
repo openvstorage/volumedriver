@@ -65,6 +65,12 @@ struct ErrorHandlingTestPoolTraits
     {
         return 10;
     }
+
+    static int
+    default_producer_id()
+    {
+        return 0;
+    }
 };
 
 const char*

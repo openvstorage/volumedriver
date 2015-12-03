@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "ScrubReply.h"
+#include "ScrubWork.h"
 #include "PythonScrubber.h"
 
 #include <boost/python/class.hpp>
@@ -38,15 +40,18 @@ Scrubber::scrub(const std::string& scrub_work_str,
                 const bool apply_immediately,
                 const bool verbose_scrubbing)
 {
-    scrubbing::ScrubberAdapter::result_type res =
-        scrubbing::ScrubberAdapter::scrub(scrub_work_str,
-                                          scratch_dir,
-                                          region_size_exponent,
-                                          fill_ratio,
-                                          apply_immediately,
-                                          verbose_scrubbing);
+    using namespace scrubbing;
 
-    return bpy::make_tuple(res.first, res.second);
+    const ScrubWork work(scrub_work_str);
+    const ScrubReply reply(ScrubberAdapter::scrub(work,
+                                                  scratch_dir,
+                                                  region_size_exponent,
+                                                  fill_ratio,
+                                                  apply_immediately,
+                                                  verbose_scrubbing));
+
+    return bpy::make_tuple(work.id_.str(),
+                           reply.str());
 }
 
 void

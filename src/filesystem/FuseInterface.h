@@ -16,6 +16,7 @@
 #define VFS_FUSE_INTERFACE_H_
 
 #include "FileSystem.h"
+#include "ShmOrbInterface.h"
 
 #include <system_error>
 
@@ -277,6 +278,7 @@ private:
 
     FileSystem fs_;
     fuse* fuse_;
+    ShmOrbInterface shm_orb_server;
 
     void
     init_ops_(fuse_operations& ops) const;

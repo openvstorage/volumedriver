@@ -14,79 +14,73 @@
 
 #ifndef SCRUB_REPLY_H_
 #define SCRUB_REPLY_H_
-#include <string>
-#include <sstream>
-#include <youtils/Serialization.h>
+
 #include "Types.h"
+
+#include <iosfwd>
+#include <string>
+
+#include <youtils/Serialization.h>
+#include <backend/Namespace.h>
 
 namespace scrubbing
 {
 struct ScrubReply
 {
-    ScrubReply(const volumedriver::VolumeId& id,
-               const volumedriver::Namespace& ns,
+    ScrubReply(const backend::Namespace& ns,
+               const volumedriver::SnapshotName& snapshot_name,
                const std::string& scrub_result_name)
-        : id_(id)
-        , ns_(ns)
+        : ns_(ns)
+        , snapshot_name_(snapshot_name)
         , scrub_result_name_(scrub_result_name)
     {}
 
+    ScrubReply() = default;
 
-    ScrubReply()
-        : ns_()
-    {}
+    explicit ScrubReply(const std::string&);
 
-     ScrubReply(const std::string& in)
-         : ns_()
-     {
-         std::stringstream iss(in);
-         iarchive_type ia(iss);
-         ia & boost::serialization::make_nvp("scrubreply",
-                                             *this);
-     }
+    ~ScrubReply() = default;
+
+    ScrubReply(const ScrubReply&) = default;
+
+    ScrubReply&
+    operator=(const ScrubReply&) = default;
+
+    bool
+    operator==(const ScrubReply&) const;
+
+    bool
+    operator!=(const ScrubReply& other) const;
+
+    bool
+    operator<(const ScrubReply&) const;
 
     std::string
-    str() const
-    {
-        std::stringstream oss;
-        oarchive_type oa(oss);
-        oa & boost::serialization::make_nvp("scrubreply",
-                                            *this);
-        return oss.str();
-    }
+    str() const;
 
     template<class Archive>
-    inline void
-    serialize(Archive & ar,
+    void
+    serialize(Archive& ar,
               const unsigned int version)
     {
-        if(version == 1)
-        {
-            ar & BOOST_SERIALIZATION_NVP(ns_);
-            ar & BOOST_SERIALIZATION_NVP(id_);
-            ar & BOOST_SERIALIZATION_NVP(scrub_result_name_);
-        }
-        else
-        {
-            throw youtils::SerializationVersionException("ScrubWork",
-                                                         version,
-                                                         1,
-                                                         1);
-        }
+        CHECK_VERSION(version, 2);
+
+        ar & BOOST_SERIALIZATION_NVP(ns_);
+        ar & BOOST_SERIALIZATION_NVP(snapshot_name_);
+        ar & BOOST_SERIALIZATION_NVP(scrub_result_name_);
     }
 
-    DECLARE_LOGGER("ScrubReply");
-
-    typedef boost::archive::xml_iarchive iarchive_type;
-    typedef boost::archive::xml_oarchive oarchive_type;
-
-
-    volumedriver::VolumeId id_;
-    volumedriver::Namespace ns_;
+    backend::Namespace ns_;
+    volumedriver::SnapshotName snapshot_name_;
     std::string scrub_result_name_;
-
 };
 
+std::ostream&
+operator<<(std::ostream&,
+           const ScrubReply&);
+
 }
-BOOST_CLASS_VERSION(scrubbing::ScrubReply, 1);
+
+BOOST_CLASS_VERSION(scrubbing::ScrubReply, 2);
+
 #endif // SCRUB_REPLY_H_

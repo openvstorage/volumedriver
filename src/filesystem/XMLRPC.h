@@ -313,7 +313,7 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirect,
                 "getScrubbingWork",
                 "Get scrubbing work");
 
-REGISTER_XMLRPC(XMLRPCCallTimingRedirect,
+REGISTER_XMLRPC(XMLRPCCallTiming,
                 ApplyScrubbingResult,
                 "applyScrubbingResult",
                 "Apply scrubbing work");

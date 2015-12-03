@@ -55,7 +55,7 @@ public:
     ClusterReadDescriptor(const ClusterLocationAndHash& loc_and_hash,
                           ClusterAddress ca,
                           uint8_t* buf,
-                          BackendInterfacePtr&& bi)
+                          BackendInterfacePtr bi)
         : loc_and_hash_(loc_and_hash)
         , ca_(ca)
         , buf_(buf)

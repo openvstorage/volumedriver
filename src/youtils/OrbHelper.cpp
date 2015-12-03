@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "OrbHelper.h"
 #include "Assert.h"
+#include "Catchers.h"
+#include "OrbHelper.h"
 #include "OrbParameters.h"
+
 namespace youtils
 {
 namespace fs = boost::filesystem;
@@ -44,16 +46,19 @@ OrbHelper::OrbHelper(const std::string& executable_name,
 
 OrbHelper::~OrbHelper()
 {
-    if(shutdown_thread_)
+    try
     {
-        shutdown_thread_->join();
-    }
+        if(shutdown_thread_)
+        {
+            shutdown_thread_->join();
+        }
 
-    if(not CORBA::is_nil(orb_))
-    {
-        orb_->destroy();
+        if(not CORBA::is_nil(orb_))
+        {
+            orb_->destroy();
+        }
     }
-
+    CATCH_STD_ALL_LOG_IGNORE("Failed to clean up OrbHelper");
 }
 
 void
@@ -69,8 +74,12 @@ OrbHelper::stop()
         shutdown_thread_ =
             std::make_unique<boost::thread>([this]()
                                             {
-                                                // wait for completion
-                                                orb_->shutdown(true);
+                                                try
+                                                {
+                                                    // wait for completion
+                                                    orb_->shutdown(true);
+                                                }
+                                                CATCH_STD_ALL_LOG_IGNORE("Failed to shut down OrbHelper");
                                             });
 
     }

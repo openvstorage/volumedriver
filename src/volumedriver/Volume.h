@@ -26,6 +26,7 @@
 #include "RestartContext.h"
 #include "SCO.h"
 #include "SCOAccessData.h"
+#include "ScrubbingCleanup.h"
 #include "Snapshot.h"
 #include "SnapshotName.h"
 #include "TLogReader.h"
@@ -45,8 +46,11 @@
 #include <youtils/Logging.h>
 #include <youtils/RWLock.h>
 
+#include <backend/Garbage.h>
+
 namespace scrubbing
 {
+struct ScrubReply;
 struct ScrubberResult;
 }
 
@@ -58,8 +62,6 @@ class MetaDataStoreTest;
 namespace volumedriver
 {
 BOOLEAN_ENUM(DeleteFailOverCache);
-BOOLEAN_ENUM(CleanupScrubbingOnError);
-BOOLEAN_ENUM(CleanupScrubbingOnSuccess);
 
 class ClusterReadDescriptor;
 class DataStoreNG;
@@ -354,17 +356,14 @@ public:
     bool
     is_halted() const;
 
-    void
-    getScrubbingWork(std::vector<std::string>& scrubbing_work_units,
-                     const boost::optional<SnapshotName>& start_snap,
+    std::vector<scrubbing::ScrubWork>
+    getScrubbingWork(const boost::optional<SnapshotName>& start_snap,
                      const boost::optional<SnapshotName>& end_snap) const;
 
-
-    void
-    applyScrubbingWork(const std::string& scrubbing_result,
-                       const CleanupScrubbingOnError = CleanupScrubbingOnError::F,
-                       const CleanupScrubbingOnSuccess = CleanupScrubbingOnSuccess::T);
-
+    boost::optional<backend::Garbage>
+    applyScrubbingWork(const scrubbing::ScrubReply&,
+                       const ScrubbingCleanup = ScrubbingCleanup::OnSuccess,
+                       const PrefetchVolumeData = PrefetchVolumeData::F);
 
     SnapshotName
     getParentSnapName() const;
@@ -506,6 +505,9 @@ public:
 
     void
     check_and_fix_failovercache();
+
+    void
+    wait_for_backend_and_run(std::function<void()>);
 
 private:
     DECLARE_LOGGER("Volume");
@@ -658,7 +660,9 @@ private:
     sync_(AppendCheckSum append_chksum);
 
     void
-    cleanupScrubbingOnError_(const scrubbing::ScrubberResult&, const std::string&);
+    cleanupScrubbingOnError_(const backend::Namespace&,
+                             const scrubbing::ScrubberResult&,
+                             const std::string&);
 
     void
     throttle_(unsigned throttle_usecs) const;
@@ -668,13 +672,6 @@ private:
 
     void
     check_cork_match_();
-
-    void
-    applyScrubbing(const std::string& res_name,
-                   const std::string& ns,
-                   const CleanupScrubbingOnError,
-                   const CleanupScrubbingOnSuccess = CleanupScrubbingOnSuccess::T,
-                   const PrefetchVolumeData = PrefetchVolumeData::F);
 
     using UpdateFun = std::function<void(VolumeConfig& cfg)>;
 

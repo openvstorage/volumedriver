@@ -47,6 +47,7 @@
 #include <backend/BackendConnectionManager.h>
 #include <backend/BackendInterface.h>
 #include <backend/BackendPolicyConfig.h>
+#include <backend/GarbageCollectorFwd.h>
 
 #include "failovercache/fungilib/Mutex.h"
 
@@ -393,6 +394,12 @@ public:
         return backend_conn_manager_;
     }
 
+    backend::GarbageCollectorPtr
+    backend_garbage_collector() const
+    {
+        return backend_garbage_collector_;
+    }
+
     uint64_t
     volumePotential(const SCOMultiplier,
                     const boost::optional<TLogMultiplier>&);
@@ -483,6 +490,8 @@ private:
     bool readOnlyMode_;
 
     backend::BackendConnectionManagerPtr backend_conn_manager_;
+    backend::GarbageCollectorPtr backend_garbage_collector_;
+
     std::unique_ptr<LockStoreFactory> lock_store_factory_;
 
     ClusterCache ClusterCache_;

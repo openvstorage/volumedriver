@@ -74,7 +74,8 @@ public:
                              .redirect_timeout_ms(10000)
                              .backend_sync_timeout_ms(9500)
                              .migrate_timeout_ms(500)
-                             .redirect_retries(1))
+                             .redirect_retries(1)
+                             .scrub_manager_interval_secs(3600))
         , remote_root_(mount_dir(remote_dir(topdir_)))
     {}
 

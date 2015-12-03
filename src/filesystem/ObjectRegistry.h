@@ -146,6 +146,12 @@ public:
     set_foc_config_mode(const ObjectId&,
                         FailOverCacheConfigMode foc_cm);
 
+    std::shared_ptr<youtils::LockedArakoon>
+    locked_arakoon()
+    {
+        return larakoon_;
+    }
+
 private:
     DECLARE_LOGGER("ObjectRegistry");
 

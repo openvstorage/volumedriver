@@ -55,6 +55,7 @@
 #include <backend/BackendConfig.h>
 #include <backend/BackendConnectionManager.h>
 #include <backend/BackendInterface.h>
+#include <backend/GarbageCollector.h>
 #include <backend/Local_Connection.h>
 
 namespace volumedriver
@@ -115,7 +116,10 @@ try
           , read_activity_time_(::time(0))
           , scoCache_(pt)
           , readOnlyMode_(false)
-          , backend_conn_manager_(backend::BackendConnectionManager::create(pt))
+          , backend_conn_manager_(be::BackendConnectionManager::create(pt))
+          , backend_garbage_collector_(std::make_shared<be::GarbageCollector>(backend_conn_manager_,
+                                                                              pt,
+                                                                              RegisterComponent::T))
           , lock_store_factory_(std::make_unique<LockStoreFactory>(pt,
                                                                    RegisterComponent::T,
                                                                    backend_conn_manager_))

@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "Scrubber.h"
 #include "ScrubberAdapter.h"
 #include "ScrubWork.h"
 #include "ScrubReply.h"
-#include "Scrubber.h"
 
 namespace scrubbing
 {
@@ -36,19 +36,17 @@ ScrubberAdapter::apply_immediately_default = false;
 const bool
 ScrubberAdapter::verbose_scrubbing_default = true;
 
-ScrubberAdapter::result_type
-ScrubberAdapter::scrub(const std::string& scrub_work_str,
+ScrubReply
+ScrubberAdapter::scrub(const ScrubWork& scrub_work,
                        const fs::path& scratch_dir,
                        const uint64_t region_size_exponent,
                        const float fill_ratio,
                        const bool apply_immediately,
                        const bool verbose_scrubbing)
 {
-    ScrubWork scrub_work(scrub_work_str);
-
     ScrubberArgs scrubber_args;
-    scrubber_args.backend_config = std::move(scrub_work.backend_config_);
 
+    scrubber_args.backend_config = scrub_work.backend_config_->clone();
     scrubber_args.name_space = scrub_work.ns_.str();
     scrubber_args.scratch_dir = scratch_dir;
     scrubber_args.snapshot_name = scrub_work.snapshot_name_;
@@ -63,10 +61,9 @@ ScrubberAdapter::scrub(const std::string& scrub_work_str,
 
     scrubber();
 
-    ScrubReply scrub_reply(scrub_work.id_,
-                           scrub_work.ns_,
-                           scrubber.getScrubbingResultName());
-
-    return std::make_pair(scrub_work.id_.str(), scrub_reply.str());
+    return ScrubReply(scrub_work.ns_,
+                      scrub_work.snapshot_name_,
+                      scrubber.getScrubbingResultName());
 }
+
 }

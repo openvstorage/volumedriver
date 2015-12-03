@@ -132,6 +132,12 @@ public:
         return registry_.node_id();
     }
 
+    ObjectRegistry&
+    registry()
+    {
+        return registry_;
+    }
+
     void
     set_volume_as_template(const ObjectId& vol_id);
 

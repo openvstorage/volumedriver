@@ -42,8 +42,9 @@
 #include <youtils/DimensionedValue.h>
 #include <youtils/ScopeExit.h>
 
-#include <backend/Local_Connection.h>
 #include <backend/BackendInterface.h>
+#include <backend/GarbageCollector.h>
+#include <backend/Local_Connection.h>
 #include <backend/SimpleFetcher.h>
 
 namespace volumedriver
@@ -1962,6 +1963,35 @@ VolManagerTestSetup::volume_potential_sco_cache(const SCOMultiplier s,
 {
     return VolManager::get()->volumePotentialSCOCache(s,
                                                       t);
+}
+
+void
+VolManagerTestSetup::apply_scrub_reply(Volume& v,
+                                       const scrubbing::ScrubReply& scrub_reply,
+                                       const ScrubbingCleanup cleanup)
+{
+    boost::optional<be::Garbage> garbage(v.applyScrubbingWork(scrub_reply,
+                                                              cleanup));
+
+    if (garbage)
+    {
+        std::promise<void> promise;
+        std::future<void> future(promise.get_future());
+
+        auto fun([&garbage,
+                  &promise,
+                  nspace = v.getNamespace()]()
+                 {
+                     be::GarbageCollectorPtr gc(api::backend_garbage_collector());
+                     gc->queue(std::move(*garbage));
+                     gc->barrier(nspace).get();
+                     promise.set_value();
+                 });
+
+        v.wait_for_backend_and_run(std::move(fun));
+
+        future.wait();
+    }
 }
 
 }

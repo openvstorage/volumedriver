@@ -14,6 +14,7 @@
 
 #include "Api.h"
 #include "MetaDataStoreInterface.h"
+#include "ScrubWork.h"
 #include "SnapshotManagement.h"
 #include "TransientException.h"
 #include "VolManager.h"
@@ -901,30 +902,24 @@ api::getClusterCacheLimit(const vd::VolumeId& volName)
     return VolManager::get()->findVolume_(volName)->get_cluster_cache_limit();
 }
 
-void
+std::vector<scrubbing::ScrubWork>
 api::getScrubbingWork(const vd::VolumeId& volName,
-                      std::vector<std::string>& scrubbing_work_units,
                       const boost::optional<vd::SnapshotName>& start_snap,
                       const boost::optional<vd::SnapshotName>& end_snap)
 {
-    return VolManager::get()->findVolume_(volName)->getScrubbingWork(scrubbing_work_units,
-                                                                     start_snap,
+    return VolManager::get()->findVolume_(volName)->getScrubbingWork(start_snap,
                                                                      end_snap);
 }
 
-
-void
+boost::optional<be::Garbage>
 api::applyScrubbingWork(const vd::VolumeId& volName,
-                        const std::string& scrub_work,
-                        const vd::CleanupScrubbingOnError cleanup_on_error,
-                        const vd::CleanupScrubbingOnSuccess cleanup_on_success)
+                        const scrubbing::ScrubReply& scrub_reply,
+                        const vd::ScrubbingCleanup cleanup)
 {
     Volume* v = VolManager::get()->findVolume_(volName);
-    v->applyScrubbingWork(scrub_work,
-                          cleanup_on_error,
-                          cleanup_on_success);
+    return v->applyScrubbingWork(scrub_reply,
+                                 cleanup);
 }
-
 
 uint64_t
 api::volumePotential(const vd::SCOMultiplier s,
@@ -944,6 +939,12 @@ backend::BackendConnectionManagerPtr
 api::backend_connection_manager()
 {
     return VolManager::get()->getBackendConnectionManager();
+}
+
+backend::GarbageCollectorPtr
+api::backend_garbage_collector()
+{
+    return VolManager::get()->backend_garbage_collector();
 }
 
 void

@@ -78,7 +78,9 @@ public:
           const uint64_t region_size_exponent,
           const float fill_ratio,
           const bool verbose,
-          const std::string& scrubber_name);
+          const std::string& scrubber_name,
+          const youtils::Severity,
+          const boost::optional<std::string>& logfile);
 
     // Make the following ones private, with access granted only to the
     // global locking code?

@@ -89,6 +89,12 @@ struct MTThreadPoolTraits
 #undef SECS
         }
     }
+
+    static uint32_t
+    default_producer_id()
+    {
+        return 0;
+    }
 };
 
 const uint32_t

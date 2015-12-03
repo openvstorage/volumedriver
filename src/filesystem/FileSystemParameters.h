@@ -140,6 +140,12 @@ DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(fuse_min_workers,
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(fuse_max_workers,
                                                   std::atomic<uint32_t>);
 
+// SHM:
+extern const char shm_interface_component_name[];
+
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(shm_region_size,
+                                       size_t);
+
 // EventPublisher:
 extern const char events_component_name[];
 
@@ -165,6 +171,14 @@ DECLARE_RESETTABLE_INITIALIZED_PARAM(vregistry_arakoon_cluster_nodes,
 
 DECLARE_INITIALIZED_PARAM(vregistry_arakoon_cluster_id, std::string);
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(vregistry_arakoon_timeout_ms, uint32_t);
+
+// ScrubManager
+extern const char scrub_manager_name[];
+
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(scrub_manager_interval,
+                                                  std::atomic<uint64_t>);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(scrub_manager_sync_wait_secs,
+                                                  std::atomic<uint64_t>);
 
 }
 

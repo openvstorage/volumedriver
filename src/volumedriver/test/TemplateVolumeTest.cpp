@@ -13,7 +13,10 @@
 // limitations under the License.
 
 #include "VolManagerTestSetup.h"
+
 #include "../Api.h"
+#include "../ScrubReply.h"
+#include "../ScrubWork.h"
 
 #include <youtils/FileUtils.h>
 
@@ -67,16 +70,17 @@ TEST_P(TemplateVolumeTest, forbidden_actions)
     EXPECT_THROW(v->deleteSnapshot(snapshots.front()),
                  VolumeIsTemplateException);
 
-    std::vector<std::string> w;
-    EXPECT_THROW(v->getScrubbingWork(w,
-                                     boost::none,
+    EXPECT_THROW(v->getScrubbingWork(boost::none,
                                      boost::none),
                  VolumeIsTemplateException);
 
-    EXPECT_THROW(v->applyScrubbingWork(""),
+    const scrubbing::ScrubReply scrub_rep(v->getNamespace(),
+                                          SnapshotName("snap"),
+                                          "scrub_res");
+
+    EXPECT_THROW(v->applyScrubbingWork(scrub_rep),
                  VolumeIsTemplateException);
 }
-
 
 TEST_P(TemplateVolumeTest, set_template_no_data_no_snapshot)
 {

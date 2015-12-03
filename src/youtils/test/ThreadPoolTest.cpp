@@ -91,6 +91,12 @@ struct ThreadPoolTestTraits
 #undef SECS
         }
     }
+
+    static int
+    default_producer_id()
+    {
+        return 0;
+    }
 };
 
 const char* ThreadPoolTestTraits::component_name =

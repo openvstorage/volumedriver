@@ -324,8 +324,8 @@ private:
 
                     for (size_t i = 0; i < threads_.size(); i++)
                     {
-                        T theT = 0;
-                        addTask(new typename ThreadPool::NOPTask(theT));
+                        T t = traits::default_producer_id();
+                        addTask(new typename ThreadPool::NOPTask(t));
                     }
                         LOG_DEBUG("waiting for threads to finish");
 
@@ -728,8 +728,8 @@ public:
 
         for (size_t i = 0; i < threads_.size(); i++)
         {
-            T theT = 0;
-            addTask(new typename ThreadPool::NOPTask(theT));
+            T t = traits::default_producer_id();
+            addTask(new typename ThreadPool::NOPTask(t));
         }
 
         LOG_DEBUG("waiting for threads to finish");

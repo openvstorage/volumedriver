@@ -60,6 +60,8 @@
 #include <youtils/UUID.h>
 
 #include <backend/BackendInterface.h>
+#include <backend/Garbage.h>
+#include <backend/GarbageCollector.h>
 
 // sanity check
 static_assert(FLT_RADIX == 2, "Need to check code for non conforming FLT_RADIX");
@@ -100,6 +102,7 @@ namespace volumedriver
 using youtils::BarrierTask;
 
 namespace bc = boost::chrono;
+namespace be = backend;
 namespace yt = youtils;
 
 Volume::Volume(const VolumeConfig& vCfg,
@@ -1629,9 +1632,8 @@ Volume::isSyncedToBackendUpTo(const TLogId& tlog_id) const
     return snapshotManagement_->isTLogWrittenToBackend(tlog_id);
 }
 
-void
-Volume::getScrubbingWork(std::vector<std::string>& scrub_work,
-                         const boost::optional<SnapshotName>& start_snap,
+std::vector<scrubbing::ScrubWork>
+Volume::getScrubbingWork(const boost::optional<SnapshotName>& start_snap,
                          const boost::optional<SnapshotName>& end_snap) const
 {
     if(T(isVolumeTemplate()))
@@ -1640,33 +1642,37 @@ Volume::getScrubbingWork(std::vector<std::string>& scrub_work,
         throw VolumeIsTemplateException("Templated Volume, getting scrub work is forbidden");
     }
 
-    SnapshotWork work;
+    SnapshotWork snap_work;
 
     snapshotManagement_->getSnapshotScrubbingWork(start_snap,
                                                   end_snap,
-                                                  work);
+                                                  snap_work);
 
-    if (not work.empty())
+    if (not snap_work.empty())
     {
         metaDataStore_->sync();
     }
-    for(const auto& w : work)
+
+    std::vector<scrubbing::ScrubWork> scrub_work;
+    scrub_work.reserve(snap_work.size());
+    const VolumeConfig cfg(get_config());
+
+    for(const auto& w : snap_work)
     {
-        const VolumeConfig cfg(get_config());
-
-        scrubbing::ScrubWork s(VolManager::get()->getBackendConfig().clone(),
-                               cfg.getNS(),
-                               cfg.id_,
-                               ilogb(cfg.cluster_mult_ * cfg.lba_size_),
-                               getSCOMultiplier(),
-                               w);
-
-        scrub_work.push_back(s.str());
+        scrub_work.emplace_back(VolManager::get()->getBackendConfig().clone(),
+                                cfg.getNS(),
+                                cfg.id_,
+                                ilogb(cfg.cluster_mult_ * cfg.lba_size_),
+                                getSCOMultiplier(),
+                                w);
     }
+
+    return scrub_work;
 }
 
 void
-Volume::cleanupScrubbingOnError_(const scrubbing::ScrubberResult& scrub_result,
+Volume::cleanupScrubbingOnError_(const be::Namespace& nspace,
+                                 const scrubbing::ScrubberResult& scrub_result,
                                  const std::string& res_name)
 {
     LOG_VINFO("Cleaning up, don't reapply scrubbing " << res_name);
@@ -1680,67 +1686,46 @@ Volume::cleanupScrubbingOnError_(const scrubbing::ScrubberResult& scrub_result,
         }
     }
 
-    try
+    std::vector<std::string> garbage;
+    garbage.reserve(scrub_result.new_sconames.size() +
+                    scrub_result.tlogs_out.size() +
+                    scrub_result.relocs.size() +
+                    1);
+
+    for (const SCO sco : scrub_result.new_sconames)
     {
-        for (const SCO sconame : scrub_result.new_sconames)
-        {
-            backend_task::DeleteSCO* task = new backend_task::DeleteSCO(this,
-                                                              sconame);
-            VolManager::get()->backend_thread_pool()->addTask(task);
-        }
-
-        for (const auto& tlog : scrub_result.tlogs_out)
-        {
-            backend_task::DeleteTLog* task = new backend_task::DeleteTLog(this,
-                                                                          tlog.getName());
-            VolManager::get()->backend_thread_pool()->addTask(task);
-        }
-
-        for (const std::string& reloc_log : scrub_result.relocs)
-        {
-            backend_task::DeleteTLog* task = new backend_task::DeleteTLog(this,
-                                                                          reloc_log);
-            VolManager::get()->backend_thread_pool()->addTask(task);
-        }
-
-        backend_task::DeleteTLog* task = new backend_task::DeleteTLog(this,
-                                                                      res_name);
-
-        VolManager::get()->backend_thread_pool()->addTask(task);
+        garbage.emplace_back(sco.str());
     }
-    CATCH_STD_ALL_LOGLEVEL_IGNORE(getName() << ": failed to remove scrubbing garbage",
-                                  WARN);
+
+    for (const auto& tlog : scrub_result.tlogs_out)
+    {
+        garbage.emplace_back(tlog.getName());
+    }
+
+    for (const std::string& reloc_log : scrub_result.relocs)
+    {
+        garbage.emplace_back(reloc_log);
+    }
+
+    garbage.emplace_back(res_name);
+
+    VolManager::get()->backend_garbage_collector()->queue(be::Garbage(nspace,
+                                                                      std::move(garbage)));
 }
 
-void
-Volume::applyScrubbingWork(const std::string& scrubbing_result,
-                           const CleanupScrubbingOnError cleanup_on_error,
-                           const CleanupScrubbingOnSuccess cleanup_on_success)
+boost::optional<be::Garbage>
+Volume::applyScrubbingWork(const scrubbing::ScrubReply& scrub_reply,
+                           const ScrubbingCleanup cleanup,
+                           const PrefetchVolumeData prefetch)
 {
-    if(T(isVolumeTemplate()))
-    {
-        LOG_ERROR("Volume " << getName() << " has been templated, applying scrubbing is not allowed.");
-        throw VolumeIsTemplateException("Templated Volume, applying scrubbing is forbidden");
-    }
-    checkNotHalted_();
-    scrubbing::ScrubReply res(scrubbing_result);
-    // This does not have to be so: scrubbing of parent might be applied to the clone!!
-    // VERIFY(res.id_ == config_.id_);
+    const be::Namespace& ns = scrub_reply.ns_;
+    const std::string& res_name = scrub_reply.scrub_result_name_;
 
-    applyScrubbing(res.scrub_result_name_,
-                   res.ns_.str(),
-                   cleanup_on_error,
-                   cleanup_on_success,
-                   PrefetchVolumeData::F);
-}
+    LOG_VINFO("namespace: " << ns <<
+              ", result name: " << res_name <<
+              ", cleanup: " << cleanup <<
+              ", prefetch: " << prefetch);
 
-void
-Volume::applyScrubbing(const std::string& res_name,
-                       const std::string& ns,
-                       const CleanupScrubbingOnError cleanup_on_error,
-                       const CleanupScrubbingOnSuccess cleanup_on_success,
-                       const PrefetchVolumeData prefetch)
-{
     if(T(isVolumeTemplate()))
     {
         LOG_ERROR("Volume " << getName() <<
@@ -1759,7 +1744,7 @@ Volume::applyScrubbing(const std::string& res_name,
     }
 
     const fs::path result_path(FileUtils::temp_path() / res_name);
-    const SCOCloneID scid = nsidmap_.getCloneID(Namespace(ns));
+    const SCOCloneID scid = nsidmap_.getCloneID(ns);
 
     try
     {
@@ -1769,7 +1754,8 @@ Volume::applyScrubbing(const std::string& res_name,
     }
     CATCH_STD_ALL_EWHAT({
         // Manual cleanup required?
-            LOG_VERROR("Could not retrieve scrubbing result " << res_name << ": " << EWHAT);
+            LOG_VERROR("Could not retrieve scrubbing result " << res_name << ": " <<
+                       EWHAT);
             VolumeDriverError::report(events::VolumeDriverErrorCode::GetScrubbingResultsFromBackend,
                                       EWHAT,
                                       getName());
@@ -1777,17 +1763,6 @@ Volume::applyScrubbing(const std::string& res_name,
         });
 
     ALWAYS_CLEANUP_FILE(result_path);
-
-    if (T(cleanup_on_success))
-    {
-        try
-        {
-            // VOLDRV-716 removed this
-            // nsidmap_[scid]->write(result_path, res_name + "_applied");
-            nsidmap_.get(scid)->remove(res_name);
-        }
-        CATCH_STD_ALL_LOG_RETHROW("Could not remove scrubbing result " << res_name);
-    }
 
     scrubbing::ScrubberResult scrub_result;
 
@@ -1816,7 +1791,7 @@ Volume::applyScrubbing(const std::string& res_name,
             LOG_VINFO("ApplyScrub: replacing tlogs for snapshot " <<
                       scrub_result.snapshot_name);
 
-            VERIFY(getNamespace() == Namespace(ns));
+            VERIFY(getNamespace() == ns);
             if(not scrub_result.tlogs_out.empty())
             {
                 const SnapshotNum n =
@@ -1845,10 +1820,16 @@ Volume::applyScrubbing(const std::string& res_name,
                        scrub_result.snapshot_name <<
                        " to SnapshotManagement: " << EWHAT);
 
-            if(T(cleanup_on_error))
+            switch (cleanup)
             {
-                cleanupScrubbingOnError_(scrub_result,
+            case ScrubbingCleanup::OnError:
+            case ScrubbingCleanup::Always:
+                cleanupScrubbingOnError_(ns,
+                                         scrub_result,
                                          res_name);
+                break;
+            default:
+                break;
             }
 
             VolumeDriverError::report(events::VolumeDriverErrorCode::ApplyScrubbingToSnapshotMamager,
@@ -1934,33 +1915,42 @@ Volume::applyScrubbing(const std::string& res_name,
         LOG_VINFO("Not Prefetching");
     }
 
+    boost::optional<be::Garbage> maybe_garbage;
+
     if(scid == 0)
     {
-        LOG_VINFO("ApplyScrub: deleting backend data");
+        LOG_VINFO("Determining garbage");
+
+        std::vector<std::string> garbage;
+        garbage.reserve(scrub_result.tlog_names_in.size() +
+                        scrub_result.relocs.size() +
+                        scrub_result.sconames_to_be_deleted.size() +
+                        1);
 
         for (const auto& tlog_id : scrub_result.tlog_names_in)
         {
-            backend_task::DeleteTLog* task = new backend_task::DeleteTLog(this,
-                                                                          boost::lexical_cast<std::string>(tlog_id));
-            VolManager::get()->backend_thread_pool()->addTask(task);
+            garbage.emplace_back(boost::lexical_cast<std::string>(tlog_id));
         }
 
-        for (const std::string& reloc_log : scrub_result.relocs)
+        for (const auto& reloc_log : scrub_result.relocs)
         {
-            backend_task::DeleteTLog* task = new backend_task::DeleteTLog(this,
-                                                                          reloc_log);
-            VolManager::get()->backend_thread_pool()->addTask(task);
+            garbage.emplace_back(reloc_log);
         }
 
-        for (const SCO sconame : scrub_result.sconames_to_be_deleted)
+        for (const SCO sco : scrub_result.sconames_to_be_deleted)
         {
-            backend_task::DeleteSCO* task = new backend_task::DeleteSCO(this,
-                                                                        sconame);
-            VolManager::get()->backend_thread_pool()->addTask(task);
+            garbage.emplace_back(sco.str());
         }
 
-        LOG_VINFO("ApplyScrub: finished deleting backend data");
+        garbage.emplace_back(res_name);
+
+        maybe_garbage = be::Garbage(ns,
+                                    std::move(garbage));
+
+        LOG_VINFO("finished determining garbage");
     }
+
+    return maybe_garbage;
 }
 
 SnapshotName
@@ -3190,6 +3180,16 @@ Volume::getEffectiveTLogMultiplier() const
     {
         return TLogMultiplier(VolManager::get()->number_of_scos_in_tlog.value());
     }
+}
+
+void
+Volume::wait_for_backend_and_run(std::function<void()> fun)
+{
+    auto t(std::make_unique<backend_task::FunTask>(*this,
+                                                   std::move(fun),
+                                                   yt::BarrierTask::T));
+
+    VolManager::get()->backend_thread_pool()->addTask(std::move(t));
 }
 
 }
