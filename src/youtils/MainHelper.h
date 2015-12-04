@@ -41,7 +41,7 @@ class MainHelper
 protected:
     typedef std::pair<std::string, std::vector<std::string> > constructor_type;
 
-    constructor_type
+    static constructor_type
     fromArgcArgv(int argc,
                  char** argv);
 
