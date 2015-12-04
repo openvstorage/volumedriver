@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "CloneFileFlags.h"
+#include "FileSystemEvents.h"
 #include "LocalNode.h"
 #include "ObjectRegistry.h"
 #include "ObjectRouter.h"
@@ -1505,6 +1506,9 @@ LocalNode::transfer(const Object& obj,
     vrouter_.object_registry()->migrate(obj.id,
                                         vrouter_.node_id(),
                                         target_node);
+
+    vrouter_.event_publisher()->publish(FileSystemEvents::owner_changed(obj.id,
+                                                                        target_node));
 }
 
 void

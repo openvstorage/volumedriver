@@ -73,6 +73,12 @@ message VolumeCreateFailedMessage
     required string reason = 2;
 }
 
+message OwnerChangedMessage
+{
+    required string name = 1;
+    required string new_owner_id = 2;
+}
+
 extend Event
 {
     optional VolumeCreateMessage volume_create = 3001;
@@ -85,6 +91,7 @@ extend Event
     optional FileRenameMessage file_rename = 3008;
     optional UpAndRunningMessage up_and_running = 3009;
     optional VolumeCreateFailedMessage volume_create_failed = 3010;
+    optional OwnerChangedMessage owner_changed = 3011;
 }
 
 message EventMessage
