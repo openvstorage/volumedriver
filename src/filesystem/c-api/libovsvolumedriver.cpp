@@ -278,12 +278,8 @@ _aio_request_handler(ovs_aio_request *request,
             pthread_cond_destroy(&request->_cond);
             delete request->ovs_aiocbp;
             delete request;
-            AioCompletion::get_aio_context().schedule(completion);
         }
-        else
-        {
-            AioCompletion::get_aio_context().schedule(completion);
-        }
+        AioCompletion::get_aio_context().schedule(completion);
     }
 }
 
@@ -359,7 +355,8 @@ ovs_ctx_init(const char* volume_name,
     /* On Error: EACCESS or EIO */
     try
     {
-        ovs_ctx_t *ctx = new ovs_ctx_t(volume_name, oflag);
+        ovs_ctx_t *ctx = new ovs_ctx_t(volume_name,
+                                       oflag);
         return ctx;
     }
     catch (ShmIdlInterface::VolumeDoesNotExist)
@@ -913,7 +910,7 @@ ovs_read(ovs_ctx_t *ctx,
     ret = ovs_aio_return(ctx, &aio);
     if (ovs_aio_finish(ctx, &aio) < 0)
     {
-         return -1;
+        return -1;
     }
 
     return ret;
@@ -944,7 +941,7 @@ ovs_write(ovs_ctx_t *ctx,
     ret = ovs_aio_return(ctx, &aio);
     if (ovs_aio_finish(ctx, &aio) < 0)
     {
-         return -1;
+        return -1;
     }
     return ret;
 }

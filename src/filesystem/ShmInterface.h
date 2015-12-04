@@ -56,7 +56,7 @@ public:
     ShmIdlInterface::CreateResult*
     create_shm_interface(const ShmIdlInterface::CreateShmArguments& args)
     {
-        LOG_INFO("Create shm server for '"
+        LOG_INFO("Create shm server for volume '"
                  << args.volume_name << "'");
 
         const std::string volume_name(args.volume_name);
@@ -104,7 +104,7 @@ public:
     void
     stop_volume(const char* volume_name)
     {
-        LOG_INFO("Stopping shm server for '"
+        LOG_INFO("Stopping shm server for volume '"
                  << volume_name << "'");
 
         std::lock_guard<std::mutex> lock_(shm_servers_lock_);
@@ -122,7 +122,7 @@ public:
         auto it = shm_servers_.find(volume_name);
         if (it != shm_servers_.end())
         {
-            LOG_INFO("Stopping shm server for '"
+            LOG_INFO("Stopping shm server for volume '"
                      << volume_name << "'");
             shm_servers_.erase(it);
             return true;

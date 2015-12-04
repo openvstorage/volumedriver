@@ -226,7 +226,7 @@ private:
         }
         if (buf)
         {
-            ovs_buffer_t *ovs_buff = new ovs_buffer_t();
+            ovs_buffer_t *ovs_buff = new ovs_buffer_t;
             ovs_buff->buf = buf;
             ovs_buff->size = max;
             return ovs_buff;
