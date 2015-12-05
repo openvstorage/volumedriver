@@ -37,7 +37,7 @@ template<typename Handler>
 class ShmServer
 {
 public:
-    ShmServer(std::unique_ptr<Handler>&& handler)
+    ShmServer(std::unique_ptr<Handler> handler)
         : writerequest_msg_(new ShmWriteRequest())
         , writereply_msg_(new ShmWriteReply())
         , readrequest_msg_(new ShmReadRequest())
