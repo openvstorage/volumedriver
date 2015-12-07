@@ -233,6 +233,10 @@ protected:
           off_t off);
 
     int
+    fsync(const volumedriverfs::Handle&,
+          bool datasync);
+
+    int
     read(const volumedriverfs::FrontendPath& path,
          char* buf,
          uint64_t size,

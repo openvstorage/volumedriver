@@ -1483,6 +1483,37 @@ TEST_F(RemoteTest, resize)
                size);
 }
 
+TEST_F(RemoteTest, fsync)
+{
+    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const fs::path rpath(make_remote_file(fname,
+                                          1ULL << 20));
+
+
+    vfs::Handle::Ptr h;
+    EXPECT_EQ(0,
+              open(fname,
+                   h,
+                   O_WRONLY));
+
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         EXPECT_EQ(0, release(fname,
+                                                              std::move(h)));
+                                     }));
+
+    const std::string pattern("not that interesting really");
+    EXPECT_EQ(pattern.size(),
+              write(*h,
+                    pattern.data(),
+                    pattern.size(),
+                    0));
+
+    EXPECT_EQ(0,
+              fsync(*h,
+                    false));
+}
+
 TEST_F(RemoteTest, DISABLED_setup_remote_hack)
 {
     sleep(1000000);

@@ -623,6 +623,17 @@ FileSystemTestBase::write(const vfs::Handle& h,
 }
 
 int
+FileSystemTestBase::fsync(const volumedriverfs::Handle& h,
+                          bool datasync)
+{
+    return fs_convert_exceptions<const vfs::Handle&,
+                                 bool>(*fs_,
+                                       &vfs::FileSystem::fsync,
+                                       h,
+                                       datasync);
+}
+
+int
 FileSystemTestBase::read(const vfs::FrontendPath& path,
                          char* buf,
                          uint64_t size,
