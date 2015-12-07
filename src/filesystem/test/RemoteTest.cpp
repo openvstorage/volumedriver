@@ -1467,6 +1467,22 @@ TEST_F(RemoteTest, auto_migration_without_foc)
     verify_registration(*maybe_id, local_node_id());
 }
 
+TEST_F(RemoteTest, resize)
+{
+    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const fs::path rpath(make_remote_file(fname,
+                                          0));
+
+    const size_t size = 1ULL << 20;
+
+    EXPECT_EQ(0,
+              truncate(fname,
+                       size));
+
+    check_stat(fname,
+               size);
+}
+
 TEST_F(RemoteTest, DISABLED_setup_remote_hack)
 {
     sleep(1000000);
