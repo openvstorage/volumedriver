@@ -262,7 +262,7 @@ FuseInterface::operator()(const fs::path& mntpoint,
                                 {
                                     shm_orb_server_->stop_all_and_exit();
                                 }
-                                CATCH_STD_ALL_LOG_IGNORE("sailed to stop SHM server");
+                                CATCH_STD_ALL_LOG_IGNORE("failed to stop SHM server");
                                 LOG_INFO("waiting for shm thread to finish");
                                 shm_thread->join();
                             }
@@ -329,8 +329,8 @@ FuseInterface::opendir(const char* path,
     fi->fh = 0;
     Handle::Ptr h;
     int ret = route_to_fs_instance_<Handle::Ptr&>(&FileSystem::opendir,
-                                                              path,
-                                                              h);
+                                                  path,
+                                                  h);
     set_handle(*fi,
                std::move(h));
 
