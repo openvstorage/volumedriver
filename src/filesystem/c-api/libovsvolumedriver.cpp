@@ -291,6 +291,7 @@ _aio_readreply_handler(void *arg)
     const struct timespec timeout = {2, 0};
     size_t size_in_bytes;
     bool failed;
+    //cnanakos: stop thread by sending a stop request?
     while (not iothread->stopping)
     {
         ovs_aio_request *request;
@@ -317,6 +318,7 @@ _aio_writereply_handler(void *arg)
     const struct timespec timeout = {2, 0};
     size_t size_in_bytes;
     bool failed;
+    //cnanakos: stop thread by sending a stop request?
     while (not iothread->stopping)
     {
         ovs_aio_request *request;

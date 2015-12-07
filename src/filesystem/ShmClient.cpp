@@ -433,6 +433,7 @@ ShmClient::stop_reply_queues(int n)
 {
     ShmReadReply readreply_;
     readreply_.opaque = 0;
+    readreply_.stop = true;
 
     for (int i = 0; i < n; i++)
     {
@@ -448,6 +449,7 @@ ShmClient::stop_reply_queues(int n)
 
     ShmWriteReply writereply_;
     writereply_.opaque = 0;
+    writereply_.stop = true;
 
     for (int i = 0; i < n; i++)
     {

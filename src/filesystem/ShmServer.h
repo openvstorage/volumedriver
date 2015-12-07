@@ -90,13 +90,18 @@ public:
         {
             unsigned int priority;
             ipc::message_queue::size_type received_size;
+            ShmWriteReply write_reply_;
 
-            if (writereply_mq_->try_receive(getStopRequest<ShmReadReply>(),
-                                            writereply_size,
-                                            received_size,
-                                            priority))
+            while (writereply_mq_->try_receive(&write_reply_,
+                                               writereply_size,
+                                               received_size,
+                                               priority))
             {
-                LOG_INFO("writereply queue is not empty, client error?")
+                if (not write_reply_.stop)
+                {
+                    LOG_INFO("writereply queue is not empty, client error?");
+                    break;
+                }
             }
         }
 
@@ -109,13 +114,18 @@ public:
         {
             unsigned int priority;
             ipc::message_queue::size_type received_size;
+            ShmReadReply read_reply_;
 
-            if (readreply_mq_->try_receive(getStopRequest<ShmReadReply>(),
-                                           readreply_size,
-                                           received_size,
-                                           priority))
+            while (readreply_mq_->try_receive(&read_reply_,
+                                              readreply_size,
+                                              received_size,
+                                              priority))
             {
-                LOG_INFO("readreply queue is not empty, client error?")
+                if (not read_reply_.stop)
+                {
+                    LOG_INFO("readreply queue is not empty, client error?");
+                    break;
+                }
             }
         }
 
