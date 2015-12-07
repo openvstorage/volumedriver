@@ -308,6 +308,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(fs_dtl_mode,
                                       ShowDocumentation::T,
                                       vd::FailOverCacheMode::Asynchronous);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(fs_enable_shm_interface,
+                                      filesystem_component_name,
+                                      "fs_enable_shm_interface",
+                                      "Whether to enable the SHM interface",
+                                      ShowDocumentation::T,
+                                      false);
+
 // EventPublisher
 const char events_component_name[] = "event_publisher";
 

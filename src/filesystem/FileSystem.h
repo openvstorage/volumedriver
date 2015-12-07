@@ -496,6 +496,13 @@ public:
 
     std::unique_ptr<volumedriver::MetaDataBackendConfig>
     make_metadata_backend_config();
+
+    bool
+    enable_shm_interface() const
+    {
+        return fs_enable_shm_interface.value();
+    }
+
 private:
     DECLARE_LOGGER("FileSystem");
 
@@ -518,6 +525,7 @@ private:
     DECLARE_PARAMETER(fs_dtl_host);
     DECLARE_PARAMETER(fs_dtl_port);
     DECLARE_PARAMETER(fs_dtl_mode);
+    DECLARE_PARAMETER(fs_enable_shm_interface);
 
     std::shared_ptr<Registry> registry_;
     ObjectRouter router_;

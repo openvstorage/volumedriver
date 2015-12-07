@@ -278,7 +278,7 @@ private:
 
     FileSystem fs_;
     fuse* fuse_;
-    ShmOrbInterface shm_orb_server;
+    std::unique_ptr<ShmOrbInterface> shm_orb_server_;
 
     void
     init_ops_(fuse_operations& ops) const;

@@ -81,11 +81,12 @@ FuseInterface::FuseInterface(const bpt::ptree& pt,
     , fs_(pt,
           registerizle)
     , fuse_(nullptr)
-    , shm_orb_server(pt,
-                     registerizle,
-                     fs_)
+    , shm_orb_server_(fs_.enable_shm_interface() ?
+                      std::make_unique<ShmOrbInterface>(pt,
+                                                        registerizle,
+                                                        fs_) :
+                      nullptr)
 {}
-
 
 void
 FuseInterface::init_ops_(fuse_operations& ops) const
@@ -230,41 +231,57 @@ FuseInterface::operator()(const fs::path& mntpoint,
                                    // our code can deal with being interrupted.
                                });
 
-    std::promise<void> promise;
-    std::future<void> future(promise.get_future());
+    boost::optional<boost::thread> shm_thread;
 
-    boost::thread shmthread([&]
-            {
-                try
-                {
-                    shm_orb_server.run(std::move(promise));
-                }
-                CATCH_STD_ALL_LOG_IGNORE("exception when running SHM server");
-            });
+    if (shm_orb_server_)
+    {
+        std::promise<void> promise;
+        std::future<void> future(promise.get_future());
 
-    future.get();
+        shm_thread =
+            boost::thread([&]
+                          {
+                              try
+                              {
+                                  VERIFY(shm_orb_server_);
+                                  shm_orb_server_->run(std::move(promise));
+                              }
+                              CATCH_STD_ALL_LOG_IGNORE("exception running SHM server");
+                          });
 
-    boost::thread fsthread([&]
+        future.get();
+    }
+
+    auto shm_thread_exit(yt::make_scope_exit([&]
+                        {
+                            if (shm_thread)
+                            {
+                                VERIFY(shm_orb_server_);
+                                LOG_INFO("stopping SHM server");
+                                try
+                                {
+                                    shm_orb_server_->stop_all_and_exit();
+                                }
+                                CATCH_STD_ALL_LOG_IGNORE("sailed to stop SHM server");
+                                LOG_INFO("waiting for shm thread to finish");
+                                shm_thread->join();
+                            }
+                        }));
+
+    boost::thread fs_thread([&]
                            {
-                             try
-                             {
-                                 run_(fuse,
-                                      multithreaded ? true : false);
-                             }
-                             CATCH_STD_ALL_LOG_IGNORE("exception running FUSE");
+                               try
+                               {
+                                   run_(fuse,
+                                        multithreaded ? true : false);
+                               }
+                               CATCH_STD_ALL_LOG_IGNORE("exception running FUSE");
                            });
 
-    auto fsthread_exit(yt::make_scope_exit([&]
+    auto fs_thread_exit(yt::make_scope_exit([&]
                                            {
-                                             LOG_INFO("waiting for fs thread to finish");
-                                             fsthread.join();
-                                             try
-                                             {
-                                                 shm_orb_server.stop_all_and_exit();
-                                             }
-                                             CATCH_STD_ALL_LOG_IGNORE("exception while stopping SHM server");
-                                             LOG_INFO("waiting for shm thread to finish");
-                                             shmthread.join();
+                                               LOG_INFO("waiting for fs thread to finish");
+                                               fs_thread.join();
                                            }));
 
     TODO("AR: push down to FileSystem?");
