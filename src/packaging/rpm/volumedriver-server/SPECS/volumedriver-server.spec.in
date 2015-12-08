@@ -21,11 +21,11 @@ VolumeDriver daemon and helpers. This package contains the binaries and the Pyth
 
 %post
 echo "/usr/lib/openvstorage" > /etc/ld.so.conf.d/openvstorage-x86_64.conf
-- /sbin/ldconfig
+/sbin/ldconfig
 
 %postun
 rm /etc/ld.so.conf.d/openvstorage-x86_64.conf
-- /sbin/ldconfig
+/sbin/ldconfig
 
 %install
 # nothing to do, but needed for debug package info
