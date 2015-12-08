@@ -230,13 +230,19 @@ SCOPool::operator()()
     if(current_offset_ > 0)
     {
         LOG_INFO("setting sco access data for " << current_sco_name_
-                 << " to " << new_sco_access_data[current_sco_name_] << " / "  <<current_offset_);
+                 << " to " << new_sco_access_data[current_sco_name_] << " / "  <<
+                 current_offset_);
         new_sco_access_data[current_sco_name_] /= current_offset_;
         fs::path new_sco_path = current_sco_->path();
         ++number_of_scos_written_to_backend;
+
+        // work around ALBA uploads timing out but eventually succeeding in the
+        // background, leading to overwrite on retry.
+        TODO("AR: use OverwriteObject::F instead");
+        VERIFY(not backendinterface_.objectExists(current_sco_name_.str()));
         backendinterface_.write(new_sco_path,
                                  current_sco_name_.str(),
-                                 OverwriteObject::F,
+                                 OverwriteObject::T,
                                  &checksum_);
         new_scos_.push_back(current_sco_name_);
 
@@ -323,15 +329,19 @@ SCOPool::MaybeUpdateCurrentSCO()
             current_sco_ = nullptr;
 
             VERIFY(sco_size_ > 0);
-
             LOG_INFO("setting sco access data for " << current_sco_name_
                      << " to " << new_sco_access_data[current_sco_name_]
                      << " / " <<  sco_size_);
             new_sco_access_data[current_sco_name_] /= sco_size_;
             ++number_of_scos_written_to_backend;
+
+            // work around ALBA uploads timing out but eventually succeeding in the
+            // background, leading to overwrite on retry.
+            TODO("AR: use OverwriteObject::F instead");
+            VERIFY(not backendinterface_.objectExists(current_sco_name_.str()));
             backendinterface_.write(old_sco_path,
                                     current_sco_name_.str(),
-                                    OverwriteObject::F,
+                                    OverwriteObject::T,
                                     &checksum_);
             new_scos_.push_back(current_sco_name_);
             fs::remove(filepool_.directory() / current_sco_name_.str());
