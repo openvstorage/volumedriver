@@ -1494,7 +1494,7 @@ TEST_P(cases, DISABLED_future_interruption)
     t.join();
 }
 
-TEST_P(cases, gtest_and_scrub_ids)
+TEST_P(cases, DISABLED_gtest_and_scrub_ids)
 {
     // observed on jenkins: a failed comparison of an optional<ScrubId> (with the
     // specific bytes below) and boost::none
