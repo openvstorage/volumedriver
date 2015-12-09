@@ -585,6 +585,9 @@ ObjectRouter::steal_(const ObjectRegistration& reg,
         object_registry_->drop_entry_from_cache(reg.volume_id);
 
         LOG_INFO("registry updated, we're now owner of " << reg.volume_id);
+
+        event_publisher()->publish(FileSystemEvents::owner_changed(reg.volume_id,
+                                                                   node_id()));
     }
     catch (ClusterNodeNotOfflineException&)
     {

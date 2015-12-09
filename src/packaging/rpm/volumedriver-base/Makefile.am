@@ -19,7 +19,7 @@ clean-local:
 $(ARTEFACT):
 	mkdir -p BUILDROOT
 	ln -nsf . ../../../../usr
-	awk '/^\// { printf("."); print; }' SPECS/$(BASE_NAME).spec > file.list
+	awk 'BEGIN { fsection=0; } /^%files/  { fsection=1; } /^\// { if (fsection) { printf("."); print; } }' SPECS/$(BASE_NAME).spec > file.list
 	d="${PWD}/BUILDROOT"; (cd $(prefix); cpio -pdm "$$d") < file.list
 	rpmbuild --define "_topdir ${PWD}" \
                  --define "buildroot ${PWD}/BUILDROOT/" \

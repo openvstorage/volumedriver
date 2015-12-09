@@ -28,6 +28,7 @@
 #include "../FileSystemEvents.pb.h"
 #include "../FileSystemParameters.h"
 #include "../FrontendPath.h"
+#include "../Object.h"
 
 namespace volumedriverfstest
 {
@@ -181,6 +182,30 @@ TEST_F(FileSystemEventTest, volume_create_failed)
 
         EXPECT_TRUE(msg.has_reason());
         EXPECT_EQ(reason, msg.reason());
+    }
+    else
+    {
+        LOG_WARN("Not running test as AMQP is not configured");
+    }
+}
+
+TEST_F(FileSystemEventTest, owner_changed)
+{
+    if (use_amqp())
+    {
+        const vfs::ObjectId oid("ObjectX");
+        const vfs::NodeId nid("NodeY");
+
+        publish_event(vfs::FileSystemEvents::owner_changed(oid,
+                                                           nid));
+
+        const events::OwnerChangedMessage msg(get_event(events::owner_changed));
+
+        EXPECT_TRUE(msg.has_name());
+        EXPECT_EQ(oid.str(), msg.name());
+
+        EXPECT_TRUE(msg.has_new_owner_id());
+        EXPECT_EQ(nid.str(), msg.new_owner_id());
     }
     else
     {

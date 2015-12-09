@@ -54,6 +54,12 @@ TLogCutter::writeTLogToBackend()
               tlogs_.back().getName());
     tlog_writer->sync();
     CheckSum check = tlog_writer->getCheckSum();
+
+    // work around ALBA uploads timing out but eventually succeeding in the
+    // background, leading to overwrite on retry.
+    TODO("AR: use OverwriteObject::F instead");
+    VERIFY(not bi_->objectExists(tlogs_.back().getName()));
+
     bi_->write(current_tlog_path,
                tlogs_.back().getName(),
                OverwriteObject::F,

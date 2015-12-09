@@ -186,7 +186,7 @@ ShmClient::send_write_request(const void *buf,
                                writerequest_size,
                                0);
     }
-    catch (ipc::interprocess_exception& e)
+    catch (...)
     {
         errno = EIO;
         return -1;
@@ -223,7 +223,7 @@ ShmClient::timed_send_write_request(const void *buf,
             return -1;
         }
     }
-    catch (ipc::interprocess_exception& e)
+    catch (...)
     {
         errno = EIO;
         return -1;
@@ -248,8 +248,9 @@ ShmClient::receive_write_reply(size_t& size_in_bytes,
         assert(received_size == writereply_size);
         *opaque = reinterpret_cast<void*>(writereply_.opaque);
     }
-    catch (ipc::interprocess_exception& e)
+    catch (...)
     {
+        *opaque = NULL;
         errno = EIO;
         return true;
     }
@@ -289,8 +290,9 @@ ShmClient::timed_receive_write_reply(size_t& size_in_bytes,
             return true;
         }
     }
-    catch (ipc::interprocess_exception& e)
+    catch (...)
     {
+        *opaque = NULL;
         errno = EIO;
         return true;
     }
@@ -316,7 +318,7 @@ ShmClient::send_read_request(const void *buf,
                               readrequest_size,
                               0);
     }
-    catch (ipc::interprocess_exception& e)
+    catch (...)
     {
         errno = EIO;
         return -1;
@@ -353,7 +355,7 @@ ShmClient::timed_send_read_request(const void *buf,
             return -1;
         }
     }
-    catch (ipc::interprocess_exception& e)
+    catch (...)
     {
         errno = EIO;
         return -1;
@@ -378,8 +380,9 @@ ShmClient::receive_read_reply(size_t& size_in_bytes,
         assert(received_size == readreply_size);
         *opaque = reinterpret_cast<void*>(readreply_.opaque);
     }
-    catch (ipc::interprocess_exception& e)
+    catch (...)
     {
+        *opaque = NULL;
         errno = EIO;
         return true;
     }
@@ -419,8 +422,9 @@ ShmClient::timed_receive_read_reply(size_t& size_in_bytes,
             return true;
         }
     }
-    catch (ipc::interprocess_exception& e)
+    catch (...)
     {
+        *opaque = NULL;
         errno = EIO;
         return true;
     }
@@ -433,6 +437,7 @@ ShmClient::stop_reply_queues(int n)
 {
     ShmReadReply readreply_;
     readreply_.opaque = 0;
+    readreply_.stop = true;
 
     for (int i = 0; i < n; i++)
     {
@@ -442,12 +447,13 @@ ShmClient::stop_reply_queues(int n)
                                 readreply_size,
                                 0);
         }
-        catch (ipc::interprocess_exception& e)
+        catch (...)
         {}
     }
 
     ShmWriteReply writereply_;
     writereply_.opaque = 0;
+    writereply_.stop = true;
 
     for (int i = 0; i < n; i++)
     {
@@ -457,7 +463,7 @@ ShmClient::stop_reply_queues(int n)
                                  writereply_size,
                                  0);
         }
-        catch (ipc::interprocess_exception& e)
+        catch (...)
         {}
     }
 }

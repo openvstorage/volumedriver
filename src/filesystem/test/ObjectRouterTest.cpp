@@ -30,6 +30,7 @@
 namespace volumedriverfstest
 {
 
+namespace be = backend;
 namespace fs = boost::filesystem;
 namespace vd = volumedriver;
 namespace vfs = volumedriverfs;
@@ -45,6 +46,7 @@ public:
         : FileSystemTestBase(FileSystemTestSetupParameters("ObjectRouterTest"))
         , ztx(1)
         , zock(ztx, ZMQ_REQ)
+        , next_port_off_(2)
     {
         const std::string addr("tcp://"s +
                                local_config().host +
@@ -165,8 +167,45 @@ public:
         return r.build_node_map_(boost::none);
     }
 
+    vfs::ClusterNodeConfig
+    expand_cluster(vfs::ObjectRouter& router,
+                   const vfs::NodeId& new_node_id)
+    {
+        std::shared_ptr<vfs::ClusterRegistry> registry(router.cluster_registry());
+
+        vfs::ClusterNodeConfigs configs(registry->get_node_configs());
+
+        const vfs::ClusterNodeConfig
+            new_config(new_node_id,
+                       local_config().host,
+                       vfs::MessagePort(local_config().message_port + next_port_off_),
+                       vfs::XmlRpcPort(local_config().xmlrpc_port + next_port_off_),
+                       vfs::FailoverCachePort(local_config().failovercache_port + next_port_off_));
+
+        ++next_port_off_;
+
+        configs.push_back(new_config);
+
+        registry->erase_node_configs();
+        registry->set_node_configs(configs);
+
+        router.update_cluster_node_configs();
+
+        return new_config;
+    }
+
+    bool
+    steal(vfs::ObjectRouter& router,
+          const vfs::ObjectRegistration& reg,
+          const vfs::OnlyStealFromOfflineNode only_steal_from_offline_node)
+    {
+        return router.steal_(reg,
+                             only_steal_from_offline_node);
+    }
+
     zmq::context_t ztx;
     zmq::socket_t zock;
+    uint16_t next_port_off_;
 };
 
 TEST_F(ObjectRouterTest, remote_read)
@@ -372,21 +411,9 @@ TEST_F(ObjectRouterTest, expand_cluster)
         ASSERT_TRUE(nm[remote_config().vrouter_id] != nullptr);
     }
 
-    vfs::ClusterNodeConfigs configs(registry->get_node_configs());
     const vfs::NodeId new_node_id(yt::UUID().str());
-    const vfs::ClusterNodeConfig
-            new_config(new_node_id,
-                       local_config().host,
-                       vfs::MessagePort(local_config().message_port + 2),
-                       vfs::XmlRpcPort(local_config().xmlrpc_port + 2),
-                       vfs::FailoverCachePort(local_config().failovercache_port + 2));
-
-    configs.push_back(new_config);
-
-    registry->erase_node_configs();
-    registry->set_node_configs(configs);
-
-    router.update_cluster_node_configs();
+    const vfs::ClusterNodeConfig new_config(expand_cluster(router,
+                                                           new_node_id));
 
     {
         NodeMap nm(node_map(router));

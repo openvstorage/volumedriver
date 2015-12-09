@@ -36,7 +36,7 @@ public:
         }
         catch (ipc::interprocess_exception&)
         {
-            LOG_FATAL("Cannot open shared memory segment");
+            LOG_FATAL("cannot open shared memory segment");
             throw;
         }
     }

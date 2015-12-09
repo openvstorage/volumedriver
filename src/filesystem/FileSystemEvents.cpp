@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "FileSystemEvents.h"
+#include "Object.h"
 
 namespace volumedriverfs
 {
@@ -154,6 +155,19 @@ FileSystemEvents::redirect_timeout_while_online(const NodeId& remote_node_id)
     auto msg = ev.MutableExtension(events::redirect_timeout_while_online);
 
     msg->set_remote_node_id(remote_node_id.str());
+
+    return ev;
+}
+
+events::Event
+FileSystemEvents::owner_changed(const ObjectId& oid,
+                                const NodeId& new_owner_id)
+{
+    events::Event ev;
+    auto msg = ev.MutableExtension(events::owner_changed);
+
+    msg->set_name(oid.str());
+    msg->set_new_owner_id(new_owner_id.str());
 
     return ev;
 }

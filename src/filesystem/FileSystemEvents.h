@@ -26,6 +26,8 @@
 namespace volumedriverfs
 {
 
+class ObjectId;
+
 struct FileSystemEvents
 {
     DECLARE_LOGGER("FileSystemEvents");
@@ -71,6 +73,10 @@ struct FileSystemEvents
 
     static events::Event
     redirect_timeout_while_online(const NodeId& remote_node_id);
+
+    static events::Event
+    owner_changed(const ObjectId&,
+                  const NodeId&);
 };
 
 }

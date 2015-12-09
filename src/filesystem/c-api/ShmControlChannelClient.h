@@ -218,5 +218,4 @@ private:
 
 typedef std::shared_ptr<ShmControlChannelClient> ShmControlChannelClientPtr;
 
-
 #endif //__SHM_CONTROL_CHANNEL_CLIENT_H

@@ -82,7 +82,7 @@ public:
             reply->failed = false;
         }
         CATCH_STD_ALL_EWHAT({
-            LOG_ERROR("Write I/O error: " << EWHAT);
+            LOG_ERROR("write I/O error: " << EWHAT);
             reply->failed = true;
         });
     }
@@ -96,7 +96,7 @@ public:
             fs_.object_router().sync(objectid_);
         }
         CATCH_STD_ALL_EWHAT({
-            LOG_ERROR("Flush I/O error: " << EWHAT);
+            LOG_ERROR("flush I/O error: " << EWHAT);
             return false;
         });
         return true;
@@ -123,7 +123,7 @@ public:
             reply->failed = false;
         }
         CATCH_STD_ALL_EWHAT({
-            LOG_ERROR("Read I/O error: " << EWHAT);
+            LOG_ERROR("read I/O error: " << EWHAT);
             reply->failed = true;
         });
     }

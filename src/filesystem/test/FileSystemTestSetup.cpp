@@ -334,6 +334,7 @@ FileSystemTestSetup::make_config_(bpt::ptree& pt,
         ip::PARAMETER_TYPE(fs_virtual_disk_format)(vdisk_format_->name()).persist(pt);
 
         ip::PARAMETER_TYPE(fs_cache_dentries)(true).persist(pt);
+        ip::PARAMETER_TYPE(fs_enable_shm_interface)(true).persist(pt);
 
         make_mdstore_config_(pt);
     }

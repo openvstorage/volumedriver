@@ -313,19 +313,24 @@ Scrubber::operator()()
         std::string result_name = std::string(scrub_result_string) + result_id.str();
         VERIFY(isScrubbingResultString(result_name));
 
-         //         No interruption points here
-         fs::path result_file_name = filepool.newFile(result_name);
-         youtils::Serialization::serializeAndFlush<boost::archive::text_oarchive>(result_file_name,
-                                                                                  result_);
-         backend_interface_->write(result_file_name,
-                                   result_name,
-                                   OverwriteObject::F);
+        //         No interruption points here
+        fs::path result_file_name = filepool.newFile(result_name);
+        youtils::Serialization::serializeAndFlush<boost::archive::text_oarchive>(result_file_name,
+                                                                                 result_);
+
+        // work around ALBA uploads timing out but eventually succeeding in the
+        // background, leading to overwrite on retry.
+        TODO("AR: use OverwriteObject::F instead");
+        VERIFY(not backend_interface_->objectExists(result_name));
+        backend_interface_->write(result_file_name,
+                                  result_name,
+                                  OverwriteObject::T);
         LOG_INFO("Gotten " << result_.tlog_names_in.size()
                  << " tlogs from the backend and written "
                  << result_.tlogs_out.size() << " back");
         LOG_INFO("Metadata scrub took " << metadata_scrubbed_time << " seconds");
         LOG_INFO("Gotten " << scopool.numberOfSCOSReadFromBackend()
-                  << " scos from the backend and written "
+                 << " scos from the backend and written "
                  << scopool.numberOfSCOSWrittenToBackend() << " back");
         LOG_INFO("Data scrub took " << data_scrub_time << " seconds ");
         LOG_INFO("Scrubbing result is in " << result_name);

@@ -53,9 +53,14 @@ TheSonOfTLogCutter::writeTLogToBackend()
     LOG_DEBUG("Writing " << current_tlog_path << " To the backend as " << tlog_names_.back());
     tlog_writer->sync();
     CheckSum check = tlog_writer->getCheckSum();
+
+    // work around ALBA uploads timing out but eventually succeeding in the
+    // background, leading to overwrite on retry.
+    TODO("AR: use OverwriteObject::F instead");
+    VERIFY(not bi_->objectExists(tlog_names_.back()));
     bi_->write(current_tlog_path,
                tlog_names_.back(),
-               OverwriteObject::F,
+               OverwriteObject::T,
                &check);
 }
 
@@ -81,8 +86,8 @@ TheSonOfTLogCutter::operator()()
     }
 
     writeTLogToBackend();
-
 }
+
 }
 
 // Local Variables: **

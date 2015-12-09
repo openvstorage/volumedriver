@@ -1494,6 +1494,22 @@ TEST_P(cases, DISABLED_future_interruption)
     t.join();
 }
 
+TEST_P(cases, DISABLED_gtest_and_scrub_ids)
+{
+    // observed on jenkins: a failed comparison of an optional<ScrubId> (with the
+    // specific bytes below) and boost::none
+    // ends up looping - if not infinitely - for a very long time.
+    // Not reproducible locally (debug build whereas so far it was only observed once
+    // in a release build on jenkins).
+    const uint8_t raw_bytes[] = {0x72, 0xb3, 0x36, 0xe8, 0xc5, 0xc0, 0x4e, 0x4f,
+                                 0xb3, 0x3, 0x42, 0x91, 0x97, 0xc7, 0x95, 0x78};
+
+    const auto scrub_id = *reinterpret_cast<const ScrubId*>(raw_bytes);
+    const boost::optional<ScrubId> maybe_scrub_id(scrub_id);
+    EXPECT_EQ(boost::none,
+              maybe_scrub_id);
+}
+
 INSTANTIATE_TEST(cases);
 
 }
