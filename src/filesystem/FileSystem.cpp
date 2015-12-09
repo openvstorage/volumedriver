@@ -672,7 +672,7 @@ FileSystem::do_mknod(const FrontendPath& path,
                      UserId uid,
                      GroupId gid,
                      Permissions pms,
-                     A... args)
+                     A&&... args)
 {
     const bool is_volume = is_volume_path_(path);
 
@@ -718,7 +718,7 @@ FileSystem::do_mknod(const FrontendPath& path,
 
     try
     {
-        mdstore_.add(args...,
+        mdstore_.add(std::forward<A>(args)...,
                      dentry);
     }
     CATCH_STD_ALL_EWHAT({
@@ -796,7 +796,7 @@ void
 FileSystem::do_mkdir(UserId uid,
                      GroupId gid,
                      Permissions pms,
-                     A... args)
+                     A&&... args)
 {
     DirectoryEntryPtr
         dentry(boost::make_shared<DirectoryEntry>(DirectoryEntry::Type::Directory,
@@ -805,7 +805,7 @@ FileSystem::do_mkdir(UserId uid,
                                                   uid,
                                                   gid));
 
-    mdstore_.add(args...,
+    mdstore_.add(std::forward<A>(args)...,
                  dentry);
 }
 

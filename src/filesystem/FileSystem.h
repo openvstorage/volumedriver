@@ -602,14 +602,14 @@ private:
              UserId uid,
              GroupId gid,
              Permissions pms,
-             A... args);
+             A&&... args);
 
     template<typename ...A>
     void
     do_mkdir(UserId uid,
              GroupId gid,
              Permissions pms,
-             A... args);
+             A&&... args);
 
     template<typename ...A>
     void
