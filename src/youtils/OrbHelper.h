@@ -49,13 +49,6 @@ public:
     ~OrbHelper();
 
     void
-    setup_corba();
-
-    void
-    destroy_corba();
-
-
-    void
     dump_object_to_file(boost::filesystem::path&,
                         CORBA::Object_ptr p);
 
