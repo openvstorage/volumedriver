@@ -69,8 +69,6 @@ public:
                        const std::string& object_name,
                        const std::string& object_kind);
 
-    DECLARE_LOGGER("OrbHelper");
-
     void
     stop();
 
@@ -82,6 +80,8 @@ public:
 
 
 private:
+    DECLARE_LOGGER("OrbHelper");
+
     CORBA::ORB_var orb_;
 
     std::unique_ptr<boost::thread> shutdown_thread_;
