@@ -19,4 +19,8 @@ VolumeDriver common infrastructure. This package contains common Python infrastr
 %install
 # nothing to do, but needed for debug package info
 
+%define __debug_install_post   \
+   %{_rpmconfigdir}/find-debuginfo.sh %{?_find_debuginfo_opts} "%{_builddir}/%{?buildsubdir}"\
+%{nil}
+
 %files
