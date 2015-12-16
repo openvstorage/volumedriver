@@ -75,6 +75,7 @@ CLEANFILES = $(bin_SCRIPTS)
 
 # XXX: the PythonClient lives here for ease of testing
 libvolumedriverfs_la_SOURCES = \
+		AmqpEventPublisher.cpp \
 		AmqpTypes.cpp \
 		CachedObjectRegistry.cpp \
 		ClusterNode.cpp \
@@ -83,7 +84,6 @@ libvolumedriverfs_la_SOURCES = \
 		ClusterRegistry.cpp \
 		ConfigHelper.cpp \
 		DirectoryEntry.cpp \
-		EventPublisher.cpp \
 		FailOverCacheConfigMode.cpp \
 		FileEventRule.cpp \
 		FileSystem.cpp \

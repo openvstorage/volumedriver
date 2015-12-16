@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "EventPublisher.h"
+#include "AmqpEventPublisher.h"
 #include "FileSystemEvents.pb.h"
 
 #include <boost/property_tree/ptree.hpp>
@@ -35,7 +35,7 @@ namespace yt = youtils;
 namespace
 {
 
-DECLARE_LOGGER("EventPublisherUtils");
+DECLARE_LOGGER("AmqpEventPublisherUtils");
 
 void
 check_uri(const AmqpUri& uri)
@@ -72,7 +72,7 @@ check_uris(const ip::PARAMETER_TYPE(events_amqp_uris)& uris)
 
 }
 
-EventPublisher::EventPublisher(const ClusterId& cluster_id,
+AmqpEventPublisher::AmqpEventPublisher(const ClusterId& cluster_id,
                                const NodeId& node_id,
                                const bpt::ptree& pt,
                                const RegisterComponent registrate)
@@ -93,20 +93,20 @@ EventPublisher::EventPublisher(const ClusterId& cluster_id,
 }
 
 bool
-EventPublisher::enabled() const
+AmqpEventPublisher::enabled() const
 {
     LOCK();
     return enabled_();
 }
 
 bool
-EventPublisher::enabled_() const
+AmqpEventPublisher::enabled_() const
 {
     return not events_amqp_uris.value().empty();
 }
 
 const char*
-EventPublisher::componentName() const
+AmqpEventPublisher::componentName() const
 {
     return initialized_params::events_component_name;
 }
@@ -135,7 +135,7 @@ do_update(T& t,
 }
 
 void
-EventPublisher::update(const boost::property_tree::ptree& pt,
+AmqpEventPublisher::update(const boost::property_tree::ptree& pt,
                        yt::UpdateReport& urep)
 {
     LOCK();
@@ -165,7 +165,7 @@ EventPublisher::update(const boost::property_tree::ptree& pt,
 }
 
 void
-EventPublisher::persist(boost::property_tree::ptree& pt,
+AmqpEventPublisher::persist(boost::property_tree::ptree& pt,
                         const ReportDefault report_default) const
 {
     LOCK();
@@ -181,7 +181,7 @@ EventPublisher::persist(boost::property_tree::ptree& pt,
 }
 
 bool
-EventPublisher::checkConfig(const boost::property_tree::ptree& pt,
+AmqpEventPublisher::checkConfig(const boost::property_tree::ptree& pt,
                             yt::ConfigurationReport& crep) const
 {
     const decltype(events_amqp_uris) uris(pt);
@@ -200,7 +200,7 @@ EventPublisher::checkConfig(const boost::property_tree::ptree& pt,
 }
 
 void
-EventPublisher::publish(const events::Event& ev) noexcept
+AmqpEventPublisher::publish(const events::Event& ev) noexcept
 {
     try
     {

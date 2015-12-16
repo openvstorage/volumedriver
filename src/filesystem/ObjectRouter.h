@@ -18,7 +18,6 @@
 #include "CachedObjectRegistry.h"
 #include "CloneFileFlags.h"
 #include "ClusterRegistry.h"
-#include "EventPublisher.h"
 #include "FailOverCacheConfigMode.h"
 #include "FileSystemParameters.h"
 #include "ForceRestart.h"
@@ -43,6 +42,7 @@
 #include <youtils/VolumeDriverComponent.h>
 
 #include <volumedriver/Api.h>
+#include <volumedriver/Events.h>
 #include <volumedriver/VolumeDriverParameters.h>
 
 // Fwd declarations to avoid having to include the generated Messages.pb.h
@@ -326,7 +326,7 @@ public:
     boost::optional<volumedriver::FailOverCacheConfig>
     failoverconfig_as_it_should_be() const;
 
-    std::shared_ptr<EventPublisher>
+    std::shared_ptr<events::PublisherInterface>
     event_publisher() const
     {
         return publisher_;
@@ -373,7 +373,7 @@ private:
     std::shared_ptr<CachedObjectRegistry> object_registry_;
     std::shared_ptr<ClusterRegistry> cluster_registry_;
     std::shared_ptr<zmq::context_t> ztx_;
-    std::shared_ptr<EventPublisher> publisher_;
+    std::shared_ptr<events::PublisherInterface> publisher_;
 
     std::unique_ptr<ZWorkerPool> worker_pool_;
 

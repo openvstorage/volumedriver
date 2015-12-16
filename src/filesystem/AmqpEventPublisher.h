@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef VFS_EVENT_PUBLISHER_H_
-#define VFS_EVENT_PUBLISHER_H_
+#ifndef VFS_AMQP_EVENT_PUBLISHER_H_
+#define VFS_AMQP_EVENT_PUBLISHER_H_
 
 #include "AmqpTypes.h"
 #include "ClusterId.h"
@@ -42,22 +42,22 @@ class Event;
 namespace volumedriverfs
 {
 
-class EventPublisher
+class AmqpEventPublisher
     : public youtils::VolumeDriverComponent
     , public events::PublisherInterface
 {
 public:
-    explicit EventPublisher(const ClusterId& cluster_id,
+    explicit AmqpEventPublisher(const ClusterId& cluster_id,
                             const NodeId& node_id,
                             const boost::property_tree::ptree& pt,
                             const RegisterComponent registrate = RegisterComponent::T);
 
-    virtual ~EventPublisher() = default;
+    virtual ~AmqpEventPublisher() = default;
 
-    EventPublisher(const EventPublisher&) = delete;
+    AmqpEventPublisher(const AmqpEventPublisher&) = delete;
 
-    EventPublisher&
-    operator=(const EventPublisher&) = delete;
+    AmqpEventPublisher&
+    operator=(const AmqpEventPublisher&) = delete;
 
     virtual void
     publish(const events::Event& ev) noexcept override final;
@@ -84,7 +84,7 @@ public:
     static constexpr unsigned max_frame_size = 131072;
 
 private:
-    DECLARE_LOGGER("EventPublisher");
+    DECLARE_LOGGER("AmqpEventPublisher");
 
     unsigned index_;
     AmqpClient::Channel::ptr_t channel_;
@@ -106,4 +106,4 @@ private:
 
 }
 
-#endif // !VFS_EVENT_PUBLISHER_H_
+#endif // !VFS_AMQP_EVENT_PUBLISHER_H_
