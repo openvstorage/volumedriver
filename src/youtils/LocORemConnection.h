@@ -24,6 +24,7 @@
 #include <memory>
 
 #include <boost/asio.hpp>
+#include <boost/asio/basic_socket.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/bind.hpp>
 #include <boost/optional.hpp>
@@ -216,6 +217,8 @@ private:
     {
         LOG_INFO(this << ": new connection " << sock_.local_endpoint() <<
                  " (local) <-> " << sock_.remote_endpoint() << " (remote)");
+
+        sock_.set_option(boost::asio::socket_base::keep_alive());
     }
 
     // Moved out of the constructor as the caller needs to hold the instance in a
