@@ -15,6 +15,9 @@
 #include "AmqpEventPublisher.h"
 #include "FileSystemEvents.pb.h"
 
+#include <sys/types.h>
+#include <sys/socket.h>
+
 #include <boost/property_tree/ptree.hpp>
 
 #include <amqp.h>
@@ -70,12 +73,34 @@ check_uris(const ip::PARAMETER_TYPE(events_amqp_uris)& uris)
                   check_uri);
 }
 
+
+void
+enable_keepalive(AmqpClient::Channel& channel)
+{
+    int sock = channel.SockFd();
+    VERIFY(sock >= 0);
+
+    int opt = 1;
+    int ret = ::setsockopt(sock,
+                           SOL_SOCKET,
+                           SO_KEEPALIVE,
+                           &opt,
+                           sizeof(opt));
+    if (ret < 0)
+    {
+        ret = errno;
+        LOG_ERROR("Failed to enable TCP KeepAlive on socket " << sock << ": " <<
+                  strerror(errno));
+        throw fungi::IOException("Failed to enable TCP KeepAlive on socket");
+    }
+}
+
 }
 
 AmqpEventPublisher::AmqpEventPublisher(const ClusterId& cluster_id,
-                               const NodeId& node_id,
-                               const bpt::ptree& pt,
-                               const RegisterComponent registrate)
+                                       const NodeId& node_id,
+                                       const bpt::ptree& pt,
+                                       const RegisterComponent registrate)
     : VolumeDriverComponent(registrate, pt)
     , index_(0)
     , events_amqp_uris(pt)
@@ -136,7 +161,7 @@ do_update(T& t,
 
 void
 AmqpEventPublisher::update(const boost::property_tree::ptree& pt,
-                       yt::UpdateReport& urep)
+                           yt::UpdateReport& urep)
 {
     LOCK();
 
@@ -166,7 +191,7 @@ AmqpEventPublisher::update(const boost::property_tree::ptree& pt,
 
 void
 AmqpEventPublisher::persist(boost::property_tree::ptree& pt,
-                        const ReportDefault report_default) const
+                            const ReportDefault report_default) const
 {
     LOCK();
 
@@ -182,7 +207,7 @@ AmqpEventPublisher::persist(boost::property_tree::ptree& pt,
 
 bool
 AmqpEventPublisher::checkConfig(const boost::property_tree::ptree& pt,
-                            yt::ConfigurationReport& crep) const
+                                yt::ConfigurationReport& crep) const
 {
     const decltype(events_amqp_uris) uris(pt);
     try
@@ -231,6 +256,8 @@ AmqpEventPublisher::publish(const events::Event& ev) noexcept
                         LOG_INFO("Trying to establish channel with " << uri);
                         channel_ = AmqpClient::Channel::CreateFromUri(uri.str(),
                                                                       max_frame_size);
+                        VERIFY(channel_);
+                        enable_keepalive(*channel_);
                     }
 
                     channel_->BasicPublish(events_amqp_exchange.value(),
