@@ -1063,19 +1063,18 @@ GetNodesStatusMap::execute_internal(XmlRpc::XmlRpcValue& /*params*/,
 }
 
 void
-IsVolumeSyncedUpTo::execute_internal(XmlRpc::XmlRpcValue& params,
-                                     XmlRpc::XmlRpcValue& result)
+IsVolumeSyncedUpToSnapshot::execute_internal(XmlRpc::XmlRpcValue& params,
+                                             XmlRpc::XmlRpcValue& result)
 {
+    const vd::VolumeId volName(getID(params[0]));
+    const vd::SnapshotName snapshotName(getSnapID(params[0]));
+
     with_api_exception_conversion([&]()
                                   {
-                                      const vd::VolumeId volName(getID(params[0]));
-                                      const vd::SnapshotName
-                                          snapshotName(getSnapID(params[0]));
                                       result = XMLVAL(api::isVolumeSyncedUpTo(volName,
                                                                               snapshotName));
                                   });
 }
-
 
 void
 DataStoreWriteUsed::execute_internal(XmlRpc::XmlRpcValue& params,
@@ -1125,20 +1124,34 @@ TLogUsed::execute_internal(XmlRpc::XmlRpcValue& params,
 
 void
 ScheduleBackendSync::execute_internal(XmlRpc::XmlRpcValue& params,
-                                      XmlRpc::XmlRpcValue& /*result*/)
+                                      XmlRpc::XmlRpcValue& result)
 {
     const vd::VolumeId volName(getID(params[0]));
-    api::scheduleBackendSync(volName);
+    with_api_exception_conversion([&]
+                                  {
+                                      const vd::TLogId
+                                          tlog_id(api::scheduleBackendSync(volName));
+                                      result[XMLRPCKeys::tlog_name] =
+                                          XMLVAL(boost::lexical_cast<std::string>(tlog_id));
+                                  });
 }
 
 void
-IsVolumeSynced::execute_internal(XmlRpc::XmlRpcValue& params,
-                                 XmlRpc::XmlRpcValue& result)
+IsVolumeSyncedUpToTLog::execute_internal(XmlRpc::XmlRpcValue& params,
+                                         XmlRpc::XmlRpcValue& result)
 {
     const vd::VolumeId volName(getID(params[0]));
-    result = XMLVAL(api::isVolumeSynced(volName));
-}
+    XMLRPCUtils::ensure_arg(params[0],
+                            XMLRPCKeys::tlog_name);
+    const vd::TLogName tlog_name(params[0][XMLRPCKeys::tlog_name]);
+    const auto tlog_id(boost::lexical_cast<vd::TLogId>(tlog_name));
 
+    with_api_exception_conversion([&]
+                                  {
+                                      result = XMLVAL(api::isVolumeSyncedUpTo(volName,
+                                                                              tlog_id));
+                                  });
+}
 
 void
 RemoveNamespaceFromSCOCache::execute_internal(XmlRpc::XmlRpcValue& params,

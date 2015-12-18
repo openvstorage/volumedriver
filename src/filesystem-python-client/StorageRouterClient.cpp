@@ -730,7 +730,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              &vfs::PythonClient::set_cluster_cache_limit,
              (bpy::args("volume_id"),
               bpy::args("limit")),
-             "set a volume's readcache limit (when in LocationBsaed mode)\n"
+             "set a volume's readcache limit (when in LocationBased mode)\n"
              "@param volume_id: string, volume identifier\n"
              "@param limit: None (= no limit) or an integer specifying the maximum number of clusters\n"
              "@returns: nothing, eventually\n")
@@ -749,6 +749,28 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "@param update_interval_secs: unsigned, update interval\n"
              "@param grace_period_secs: unsigned, grace period\n"
              "@returns: LockedClient context manager\n")
+        .def("schedule_backend_sync",
+             &vfs::PythonClient::schedule_backend_sync,
+             (bpy::args("volume_id")),
+             "Schedule a backend sync of the given Volume\n"
+             "@param volume_id: string, volume identifier\n"
+             "@returns: string, name of the TLog covering the data written out\n")
+        .def("is_volume_synced_up_to_tlog",
+             &vfs::PythonClient::is_volume_synced_up_to_tlog,
+             (bpy::args("volume_id"),
+              bpy::args("tlog_name")),
+             "Check whether a volume is synced to the backend up to a given TLog\n"
+             "@param volume_id: string, volume identifier\n"
+             "@param tlog_name: string, TLog name\n"
+             "@returns: boolean\n")
+        .def("is_volume_synced_up_to_snapshot",
+             &vfs::PythonClient::is_volume_synced_up_to_snapshot,
+             (bpy::args("volume_id"),
+              bpy::args("snapshot_name")),
+             "Check whether a volume is synced to the backend up to a given snapshot\n"
+             "@param volume_id: string, volume identifier\n"
+             "@param snapshot_name: string, snapshot name\n"
+             "@returns: boolean\n")
         ;
 
     vfspy::LocalClient::registerize();

@@ -605,6 +605,11 @@ TEST_F(PythonClientTest, redirection_response)
                                                            boost::none));
     CHECK_REDIRECT(client.set_automatic_failover_cache_config(dummy_volume));
     CHECK_REDIRECT(client.get_failover_cache_config(dummy_volume));
+    CHECK_REDIRECT(client.schedule_backend_sync(dummy_volume));
+    CHECK_REDIRECT(client.is_volume_synced_up_to_tlog(dummy_volume,
+                                                      boost::lexical_cast<std::string>(vd::TLogId())));
+    CHECK_REDIRECT(client.is_volume_synced_up_to_snapshot(dummy_volume,
+                                                          "some-snapshot"));
 
 //redirection based on nodeID
     CHECK_REDIRECT(client.migrate("non-existing volume",
@@ -1730,6 +1735,65 @@ TEST_F(PythonClientTest, locked_scrub)
                                          boost::none));
 
     lclient->apply_scrubbing_result(res);
+}
+
+TEST_F(PythonClientTest, backend_sync_tlog)
+{
+    const vfs::FrontendPath vpath(make_volume_name("/some-volume"));
+    const std::string vname(create_file(vpath, 10 << 20));
+
+    const vd::TLogName tlog_name(client_.schedule_backend_sync(vname));
+    ASSERT_TRUE(vd::TLog::isTLogString(tlog_name));
+
+    const size_t sleep_msecs = 100;
+    const size_t count = 60 * 1000 / sleep_msecs;
+    for (size_t i = 0; i < count; ++i)
+    {
+        if (client_.is_volume_synced_up_to_tlog(vname,
+                                                tlog_name))
+        {
+            break;
+        }
+        else
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(sleep_msecs));
+        }
+    }
+
+    ASSERT_TRUE(client_.is_volume_synced_up_to_tlog(vname,
+                                                    tlog_name));
+}
+
+TEST_F(PythonClientTest, backend_sync_snapshot)
+{
+    const vfs::FrontendPath vpath(make_volume_name("/some-volume"));
+    const std::string vname(create_file(vpath, 10 << 20));
+
+    const std::string snap("some-snapshot");
+    EXPECT_THROW(client_.is_volume_synced_up_to_snapshot(vname,
+                                                         snap),
+                 std::exception);
+
+    client_.create_snapshot(vname,
+                            snap);
+
+    const size_t sleep_msecs = 100;
+    const size_t count = 60 * 1000 / sleep_msecs;
+    for (size_t i = 0; i < count; ++i)
+    {
+        if (client_.is_volume_synced_up_to_snapshot(vname,
+                                                    snap))
+        {
+            break;
+        }
+        else
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(sleep_msecs));
+        }
+    }
+
+    ASSERT_TRUE(client_.is_volume_synced_up_to_snapshot(vname,
+                                                        snap));
 }
 
 }

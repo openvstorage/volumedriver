@@ -72,6 +72,7 @@ struct XMLRPCKeys
     static const std::string log_filter_name;
     static const std::string map_stats;
     static const std::string max_size;
+    static const std::string max_non_disposable_factor;
     static const std::string max_non_disposable_size;
     static const std::string maximum_time_to_ignore_syncs_in_seconds;
     static const std::string metadata;
@@ -103,8 +104,6 @@ struct XMLRPCKeys
     static const std::string sco_cache_hits;
     static const std::string sco_cache_misses;
     static const std::string sco_multiplier;
-    static const std::string tlog_multiplier;
-    static const std::string max_non_disposable_factor;
     static const std::string sco_size;
     static const std::string scrubbing_name;
     static const std::string scrubbing_work_result;
@@ -121,6 +120,8 @@ struct XMLRPCKeys
     static const std::string target_path;
     static const std::string src_path;
     static const std::string timestamp;
+    static const std::string tlog_multiplier;
+    static const std::string tlog_name;
     static const std::string tlog_used;
     static const std::string updates;
     static const std::string used;

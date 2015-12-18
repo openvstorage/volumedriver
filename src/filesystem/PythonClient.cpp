@@ -847,4 +847,40 @@ PythonClient::make_locked_client(const std::string& volume_id,
                                       grace_period_secs);
 }
 
+vd::TLogName
+PythonClient::schedule_backend_sync(const std::string& volume_id)
+{
+    XmlRpc::XmlRpcValue req;
+    req[XMLRPCKeys::volume_id] = volume_id;
+    auto rsp(call(ScheduleBackendSync::method_name(),
+                  req));
+
+    const vd::TLogName tlog_name(rsp[XMLRPCKeys::tlog_name]);
+    return tlog_name;
+}
+
+bool
+PythonClient::is_volume_synced_up_to_tlog(const std::string& volume_id,
+                                          const vd::TLogName& tlog_name)
+{
+    XmlRpc::XmlRpcValue req;
+    req[XMLRPCKeys::volume_id] = volume_id;
+    req[XMLRPCKeys::tlog_name] = tlog_name;
+
+    return call(IsVolumeSyncedUpToTLog::method_name(),
+                req);
+}
+
+bool
+PythonClient::is_volume_synced_up_to_snapshot(const std::string& volume_id,
+                                              const std::string& snapshot_name)
+{
+    XmlRpc::XmlRpcValue req;
+    req[XMLRPCKeys::volume_id] = volume_id;
+    req[XMLRPCKeys::snapshot_id] = snapshot_name;
+
+    return call(IsVolumeSyncedUpToSnapshot::method_name(),
+                req);
+}
+
 }

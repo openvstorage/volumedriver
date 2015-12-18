@@ -279,6 +279,17 @@ public:
                        const unsigned update_interval_secs = 3,
                        const unsigned grace_period_secs = 5);
 
+    volumedriver::TLogName
+    schedule_backend_sync(const std::string& volume_id);
+
+    bool
+    is_volume_synced_up_to_tlog(const std::string& volume_id,
+                                const volumedriver::TLogName&);
+
+    bool
+    is_volume_synced_up_to_snapshot(const std::string& volume_id,
+                                    const std::string& snapshot_name);
+
 protected:
     PythonClient()
         : max_redirects(max_redirects_default)

@@ -439,17 +439,22 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
                 "setManualFailOverCacheConfig",
                 "Set manual DTL configuration");
 
-// ================== NOT EXPOSED, NOT TESTED   ==================
+REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
+                IsVolumeSyncedUpToTLog,
+                "isVolumeSyncedUpToTLog",
+                "Checks whether the volume is synced or not up to a certain TLog");
 
 REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
-                IsVolumeSyncedUpTo,
-                "isVolumeSyncedUpTo",
+                IsVolumeSyncedUpToSnapshot,
+                "isVolumeSyncedUpToSnapshot",
                 "Returns whether the volume is synced up to a particular snapshot");
 
-REGISTER_XMLRPC(XMLRPCCallTimingLock,
+REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
                 ScheduleBackendSync,
                 "scheduleBackendSync",
-                "Closes current sco and tlog and schedules them for write to backend");
+                "Closes current SCO and TLog and schedules them for write to backend");
+
+// ================== NOT EXPOSED, NOT TESTED   ==================
 
 REGISTER_XMLRPC(XMLRPCCallTimingLock,
                 DataStoreWriteUsed,
@@ -475,11 +480,6 @@ REGISTER_XMLRPC(XMLRPCCallTimingLock,
                 TLogUsed,
                 "tlogUsed",
                 "Returns total size used by the tlogs");
-
-REGISTER_XMLRPC(XMLRPCCallTimingLock,
-                IsVolumeSynced,
-                "isVolumeSynced",
-                "Checks whether the volume is synced or not");
 
 REGISTER_XMLRPC(XMLRPCCallTimingLock,
                 ScoCacheInfo,
@@ -668,7 +668,7 @@ typedef LOKI_TYPELIST_78(
                          UpdateMetaDataBackendConfig,
                          SnapshotRestore,
                          SnapshotDestroy,
-                         IsVolumeSyncedUpTo,
+                         IsVolumeSyncedUpToSnapshot,
                          VolumePerformanceCounters,
                          SetVolumeAsTemplate,
                          GetScrubbingWork,
@@ -713,13 +713,14 @@ typedef LOKI_TYPELIST_78(
                          GetFailOverCacheConfig,
                          SetAutomaticFailOverCacheConfig,
                          SetManualFailOverCacheConfig,
+                         IsVolumeSyncedUpToTLog,
+                         ScheduleBackendSync,
+                         VAAICopy,
                          // ================== NOT EXPOSED, NOT TESTED   ==================
                          GetFailOverMode,
                          ScoCacheInfo,
                          VolumeScoCacheInfo,
                          RemoveNamespaceFromSCOCache,
-                         IsVolumeSynced,
-                         ScheduleBackendSync,
                          VolumeDestroy,
                          // These are not supposed to be executed via xmlrpc but only
                          // (implicitly) via the filesystem interface.
@@ -739,8 +740,7 @@ typedef LOKI_TYPELIST_78(
                          StartPrefetching,
                          CheckConfiguration,
                          GetVolumeDriverState,
-                         VolumesOverview,
-                         VAAICopy
+                         VolumesOverview
                          ) xmlrpcs;
 
 #undef REGISTER_XMLRPC
