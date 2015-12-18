@@ -17,6 +17,7 @@
 
 #include "MDSNodeConfig.h"
 
+#include <chrono>
 #include <iosfwd>
 #include <type_traits>
 #include <vector>
@@ -280,14 +281,24 @@ BOOLEAN_ENUM(ApplyRelocationsToSlaves);
 struct MDSMetaDataBackendConfig
     : public MetaDataBackendConfig
 {
+    static unsigned default_timeout_secs_;
+
     template<typename T>
     MDSMetaDataBackendConfig(const T& cfgs,
-                             ApplyRelocationsToSlaves apply_scrub)
+                             ApplyRelocationsToSlaves apply_scrub,
+                             unsigned timeout_secs = default_timeout_secs_)
         : MetaDataBackendConfig(MetaDataBackendType::MDS)
         , node_configs_(cfgs.begin(),
                         cfgs.end())
         , apply_relocations_to_slaves_(apply_scrub)
+        , timeout_(timeout_secs)
     {
+        if (timeout_secs == 0)
+        {
+            LOG_ERROR("MDS timeout of 0 secs is not permitted");
+            throw fungi::IOException("MDS timeout of 0 seconds is not permitted");
+        }
+
         if (node_configs_.empty())
         {
             LOG_ERROR("Empty node configs are not permitted");
@@ -311,11 +322,18 @@ struct MDSMetaDataBackendConfig
         return apply_relocations_to_slaves_;
     }
 
+    std::chrono::seconds
+    timeout() const
+    {
+        return timeout_;
+    }
+
     virtual std::unique_ptr<MetaDataBackendConfig>
     clone() const override final
     {
         return std::unique_ptr<MetaDataBackendConfig>(new MDSMetaDataBackendConfig(node_configs(),
-                                                                                   apply_relocations_to_slaves()));
+                                                                                   apply_relocations_to_slaves(),
+                                                                                   timeout_.count()));
     }
 
 protected:
@@ -325,7 +343,8 @@ protected:
         auto o(dynamic_cast<const MDSMetaDataBackendConfig*>(&other));
         return o != nullptr and
             node_configs_ == o->node_configs_ and
-            apply_relocations_to_slaves_ == o->apply_relocations_to_slaves_;
+            apply_relocations_to_slaves_ == o->apply_relocations_to_slaves_ and
+            timeout_ == o->timeout_;
     }
 
 private:
@@ -333,6 +352,7 @@ private:
 
     NodeConfigs node_configs_;
     ApplyRelocationsToSlaves apply_relocations_to_slaves_;
+    std::chrono::seconds timeout_;
 
     friend class boost::serialization::access;
 
@@ -362,6 +382,18 @@ private:
         {
             apply_relocations_to_slaves_ = ApplyRelocationsToSlaves::T;
         }
+
+        if (version > 2)
+        {
+            uint64_t t;
+            ar & boost::serialization::make_nvp("timeout_secs",
+                                                t);
+            timeout_ = std::chrono::seconds(t);
+        }
+        else
+        {
+            timeout_ = std::chrono::seconds(default_timeout_secs_);
+        }
     }
 
     template<typename A>
@@ -369,13 +401,16 @@ private:
     save(A& ar,
          const unsigned version) const
     {
-        CHECK_VERSION(version, 2);
+        CHECK_VERSION(version, 3);
 
         boost::serialization::void_cast_register<MDSMetaDataBackendConfig,
                                                  MetaDataBackendConfig>();
 
         ar & BOOST_SERIALIZATION_NVP(node_configs_);
         ar & BOOST_SERIALIZATION_NVP(apply_relocations_to_slaves_);
+        uint64_t t = timeout_.count();
+        ar & boost::serialization::make_nvp("timeout_secs",
+                                            t);
     }
 };
 
@@ -393,7 +428,7 @@ BOOST_CLASS_EXPORT_KEY(volumedriver::RocksDBMetaDataBackendConfig);
 BOOST_CLASS_VERSION(volumedriver::ArakoonMetaDataBackendConfig, 1);
 BOOST_CLASS_EXPORT_KEY(volumedriver::ArakoonMetaDataBackendConfig);
 
-BOOST_CLASS_VERSION(volumedriver::MDSMetaDataBackendConfig, 2);
+BOOST_CLASS_VERSION(volumedriver::MDSMetaDataBackendConfig, 3);
 BOOST_CLASS_EXPORT_KEY(volumedriver::MDSMetaDataBackendConfig);
 
 #endif // !VD_META_DATA_BACKEND_CONFIG_H_

@@ -519,6 +519,7 @@ private:
     DECLARE_PARAMETER(fs_metadata_backend_arakoon_cluster_nodes);
     DECLARE_PARAMETER(fs_metadata_backend_mds_nodes);
     DECLARE_PARAMETER(fs_metadata_backend_mds_apply_relocations_to_slaves);
+    DECLARE_PARAMETER(fs_metadata_backend_mds_timeout_secs);
     DECLARE_PARAMETER(fs_cache_dentries);
     DECLARE_PARAMETER(fs_nullio);
     DECLARE_PARAMETER(fs_dtl_config_mode);

@@ -149,6 +149,7 @@ FileSystem::FileSystem(const bpt::ptree& pt,
     , fs_metadata_backend_arakoon_cluster_nodes(pt)
     , fs_metadata_backend_mds_nodes(pt)
     , fs_metadata_backend_mds_apply_relocations_to_slaves(pt)
+    , fs_metadata_backend_mds_timeout_secs(pt)
     , fs_cache_dentries(pt)
     , fs_nullio(pt)
     , fs_dtl_config_mode(pt)
@@ -247,6 +248,7 @@ FileSystem::update(const bpt::ptree& pt,
     U(fs_metadata_backend_arakoon_cluster_nodes);
     U(fs_metadata_backend_mds_nodes);
     U(fs_metadata_backend_mds_apply_relocations_to_slaves);
+    U(fs_metadata_backend_mds_timeout_secs);
     U(fs_cache_dentries);
     U(fs_nullio);
     U(fs_dtl_config_mode);
@@ -275,6 +277,7 @@ FileSystem::persist(bpt::ptree& pt,
     P(fs_metadata_backend_arakoon_cluster_nodes);
     P(fs_metadata_backend_mds_nodes);
     P(fs_metadata_backend_mds_apply_relocations_to_slaves);
+    P(fs_metadata_backend_mds_timeout_secs);
     P(fs_cache_dentries);
     P(fs_nullio);
     P(fs_dtl_config_mode);
@@ -327,6 +330,15 @@ FileSystem::checkConfig(const bpt::ptree& pt,
                 crep.push_front(yt::ConfigurationProblem(nodes.name(),
                                                          nodes.section_name(),
                                                          "value must not be empty"));
+                res = false;
+            }
+
+            ip::PARAMETER_TYPE(fs_metadata_backend_mds_timeout_secs) timeout_secs(pt);
+            if (timeout_secs.value() == 0)
+            {
+                crep.push_front(yt::ConfigurationProblem(timeout_secs.name(),
+                                                         timeout_secs.section_name(),
+                                                         "value must not be 0"));
                 res = false;
             }
 
@@ -652,7 +664,8 @@ FileSystem::make_metadata_backend_config()
                              vd::ApplyRelocationsToSlaves::T :
                              vd::ApplyRelocationsToSlaves::F);
             mdb.reset(new vd::MDSMetaDataBackendConfig(configv,
-                                                       apply_relocs));
+                                                       apply_relocs,
+                                                       fs_metadata_backend_mds_timeout_secs.value()));
             break;
         }
     case vd::MetaDataBackendType::RocksDB:

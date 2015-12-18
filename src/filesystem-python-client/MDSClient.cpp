@@ -45,10 +45,13 @@ MDSClient::registerize()
 
     bpy::class_<mds::PythonClient>("MDSClient",
                                    "management and monitoring of MetaDataServer (MDS)",
-                                   bpy::init<const vd::MDSNodeConfig&>
-                                   (bpy::args("mds_node_config"),
+                                   bpy::init<const vd::MDSNodeConfig&,
+                                             unsigned>
+                                   ((bpy::args("mds_node_config"),
+                                     bpy::args("timeout_secs") = vd::MDSMetaDataBackendConfig::default_timeout_secs_),
                                    "Create an MDSClient for the given server\n"
-                                    "@param: mds_node_config: MDSNodeConfig pointing to the desired MDS\n"))
+                                    "@param: mds_node_config: MDSNodeConfig pointing to the desired MDS\n"
+                                    "@param: timeout_secs: unsigned, timeout (in seconds) for remote MDS calls\n"))
         .def("create_namespace",
              &mds::PythonClient::create_namespace,
              "Create a namespace on an MDS.\n"

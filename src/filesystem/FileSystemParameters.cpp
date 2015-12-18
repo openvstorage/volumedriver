@@ -266,6 +266,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(fs_metadata_backend_mds_apply_relocations_
                                       ShowDocumentation::T,
                                       true);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(fs_metadata_backend_mds_timeout_secs,
+                                      filesystem_component_name,
+                                      "fs_metadata_backend_timeout_secs",
+                                      "timeout (in seconds) for calls to MDS servers",
+                                      ShowDocumentation::T,
+                                      vd::MDSMetaDataBackendConfig::default_timeout_secs_);
+
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(fs_cache_dentries,
                                       filesystem_component_name,
                                       "fs_cache_dentries",

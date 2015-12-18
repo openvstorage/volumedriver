@@ -49,6 +49,7 @@ MDSMetaDataStore::MDSMetaDataStore(const MDSMetaDataBackendConfig& cfg,
     , bi_(std::move(bi))
     , node_configs_(cfg.node_configs())
     , apply_relocations_to_slaves_(cfg.apply_relocations_to_slaves())
+    , timeout_(cfg.timeout())
     , num_pages_cached_(num_pages_cached)
     , home_(home)
 {
@@ -57,7 +58,8 @@ MDSMetaDataStore::MDSMetaDataStore(const MDSMetaDataBackendConfig& cfg,
     LOG_INFO(bi_->getNS() <<
              ": home " << home_ <<
              ", cache capacity (pages) " << num_pages_cached_ <<
-             ", apply scrub results to slaves: " << apply_relocations_to_slaves_);
+             ", apply scrub results to slaves: " << apply_relocations_to_slaves_ <<
+             ", MDS timeout: " << timeout_.count() << " secs");
 
     LOG_INFO("MDS nodes:");
 
@@ -178,8 +180,7 @@ MDSMetaDataStore::failover_(MetaDataStorePtr& md,
 
         try
         {
-            getVolume()->metaDataBackendConfigHasChanged(MDSMetaDataBackendConfig(node_configs_,
-                                                                                  apply_relocations_to_slaves_));
+            getVolume()->metaDataBackendConfigHasChanged(get_config_());
         }
         CATCH_STD_ALL_LOG_IGNORE(bi_->getNS() <<
                                  ": notifying our owner of the failover failed");
@@ -239,7 +240,8 @@ MDSMetaDataStore::connect_(const MDSNodeConfig& ncfg) const
     LOG_INFO(bi_->getNS() << ": connecting to " << ncfg);
 
     auto mdb(std::make_shared<MDSMetaDataBackend>(ncfg,
-                                                  bi_->getNS()));
+                                                  bi_->getNS(),
+                                                  timeout_));
 
     auto md(std::make_shared<CachedMetaDataStore>(mdb,
                                                   bi_->getNS().str(),
@@ -591,8 +593,15 @@ MDSMetaDataBackendConfig
 MDSMetaDataStore::get_config() const
 {
     LOCKR();
+    return get_config_();
+}
+
+MDSMetaDataBackendConfig
+MDSMetaDataStore::get_config_() const
+{
     return MDSMetaDataBackendConfig(node_configs_,
-                                    apply_relocations_to_slaves_);
+                                    apply_relocations_to_slaves_,
+                                    timeout_.count());
 }
 
 MDSNodeConfig

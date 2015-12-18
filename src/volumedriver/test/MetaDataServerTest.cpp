@@ -611,7 +611,8 @@ TEST_P(MetaDataServerTest, python_client_cork_id)
 
     {
         vd::MDSMetaDataBackend backend(mds_config(),
-                                       wrns.ns());
+                                       wrns.ns(),
+                                       boost::none);
         backend.setCork(cork);
     }
 

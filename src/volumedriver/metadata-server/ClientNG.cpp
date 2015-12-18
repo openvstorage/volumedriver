@@ -280,7 +280,9 @@ ClientNG::ClientNG(const vd::MDSNodeConfig& cfg,
     , timeout_(timeout)
 {
     LOG_INFO(this << ": " << cfg << ", shmem size " << shmem_size <<
-             ", is local: " << client_.is_local());
+             ", is local: " << client_.is_local() << ", timeout: " <<
+             (timeout_ ? boost::lexical_cast<std::string>(timeout->count()) : "--") <<
+             " secs");
 }
 
 ClientNG::~ClientNG()

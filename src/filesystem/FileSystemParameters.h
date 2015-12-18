@@ -113,6 +113,9 @@ DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(fs_metadata_backend_mds_nodes,
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(fs_metadata_backend_mds_apply_relocations_to_slaves,
                                                   bool);
 
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(fs_metadata_backend_mds_timeout_secs,
+                                                  uint32_t);
+
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(fs_cache_dentries,
                                        bool);
 

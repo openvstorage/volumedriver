@@ -264,6 +264,12 @@ get_volume_info_owner_tag(const vfs::XMLRPCVolumeInfo* i)
     return i->owner_tag;
 }
 
+unsigned
+mds_mdb_config_timeout_secs(const vd::MDSMetaDataBackendConfig* c)
+{
+    return c->timeout().count();
+}
+
 }
 
 TODO("AR: this is a bit of a mess - split into smaller, logical pieces");
@@ -1025,16 +1031,21 @@ BOOST_PYTHON_MODULE(storagerouterclient)
         ("MDSMetaDataBackendConfig",
          "MDS metadata backend configuration",
          bpy::init<const std::vector<vd::MDSNodeConfig>&,
-                   vd::ApplyRelocationsToSlaves>((bpy::args("mds_node_configs"),
-                                                  bpy::args("apply_relocations_to_slaves") = vd::ApplyRelocationsToSlaves::T),
-                                                 "Create an MDSMetaDataBackendConfig\n"
-                                                 "@param mds_node_configs: list of MDSNodeConfigs\n"
-                                                 "@param apply_relocations_to_slaves: ApplyRelocationsToSlaves boolean enum"))
+                   vd::ApplyRelocationsToSlaves,
+                   unsigned>((bpy::args("mds_node_configs"),
+                              bpy::args("apply_relocations_to_slaves") = vd::ApplyRelocationsToSlaves::T,
+                              bpy::args("timeout_secs") = vd::MDSMetaDataBackendConfig::default_timeout_secs_),
+                             "Create an MDSMetaDataBackendConfig\n"
+                             "@param mds_node_configs: list of MDSNodeConfigs\n"
+                             "@param apply_relocations_to_slaves: ApplyRelocationsToSlaves boolean enum\n"
+                             "@param timeout_secs: unsigned, timeout for remote MDS calls in seconds"))
         .def("node_configs",
              &vd::MDSMetaDataBackendConfig::node_configs,
              bpy::return_value_policy<bpy::copy_const_reference>())
         .def("apply_relocations_to_slaves",
              &vd::MDSMetaDataBackendConfig::apply_relocations_to_slaves)
+        .def("timeout_secs",
+             &mds_mdb_config_timeout_secs)
         ;
 
     REGISTER_ITERABLE_CONVERTER(std::vector<std::string>);

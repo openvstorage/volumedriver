@@ -27,23 +27,33 @@ namespace be = backend;
 namespace vd = volumedriver;
 namespace yt = youtils;
 
-PythonClient::PythonClient(const vd::MDSNodeConfig& cfg)
+PythonClient::PythonClient(const vd::MDSNodeConfig& cfg,
+                           unsigned timeout_secs)
     : PythonClient(cfg,
-                   ForceRemote::F)
+                   ForceRemote::F,
+                   timeout_secs)
 {}
 
 PythonClient::PythonClient(const vd::MDSNodeConfig& cfg,
-                           ForceRemote force_remote)
+                           ForceRemote force_remote,
+                           unsigned timeout_secs)
     : config_(cfg)
     , force_remote_(force_remote)
-{}
+    , timeout_(timeout_secs)
+{
+    if (timeout_secs == 0)
+    {
+        LOG_ERROR("Timeout of 0 seconds is not supported");
+        throw fungi::IOException("timeout of 0 seconds is not supported");
+    }
+}
 
 ClientNG::Ptr
 PythonClient::client_() const
 {
     return ClientNG::create(config_,
                             0,
-                            boost::none,
+                            timeout_,
                             force_remote_);
 }
 
@@ -112,7 +122,8 @@ PythonClient::get_cork_id(const std::string& nspace) const
     get_table_(nspace);
 
     vd::MDSMetaDataBackend backend(config_,
-                                   be::Namespace(nspace));
+                                   be::Namespace(nspace),
+                                   timeout_);
     const boost::optional<yt::UUID> cork(backend.lastCorkUUID());
     if (cork != boost::none)
     {
@@ -131,7 +142,8 @@ PythonClient::get_scrub_id(const std::string& nspace) const
     get_table_(nspace);
 
     vd::MDSMetaDataBackend backend(config_,
-                                   be::Namespace(nspace));
+                                   be::Namespace(nspace),
+                                   timeout_);
     const vd::MaybeScrubId scrub_id(backend.scrub_id());
     if (scrub_id != boost::none)
     {

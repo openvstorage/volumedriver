@@ -66,7 +66,8 @@ DECLARE_LOGGER("MDSMetaDataBackendHelpers");
 
 mds::DataBaseInterfacePtr
 make_db(const MDSNodeConfig& cfg,
-        size_t shmem_size)
+        size_t shmem_size,
+        const boost::optional<std::chrono::seconds>& timeout)
 {
     mds::DataBaseInterfacePtr db;
 
@@ -82,7 +83,8 @@ make_db(const MDSNodeConfig& cfg,
     if (not db)
     {
         db = mds::ClientNG::create(cfg,
-                                   shmem_size);
+                                   shmem_size,
+                                   timeout);
     }
     else
     {
@@ -96,13 +98,15 @@ make_db(const MDSNodeConfig& cfg,
 
 }
 
-TODO("AR: add a timeout param and expose shmem size!");
+TODO("AR: expose shmem size!?");
 
 MDSMetaDataBackend::MDSMetaDataBackend(const MDSNodeConfig& config,
-                                       const be::Namespace& nspace)
+                                       const be::Namespace& nspace,
+                                       const boost::optional<std::chrono::seconds>& timeout)
 try
     : db_(make_db(config,
-                  64ULL << 10))
+                  64ULL << 10,
+                  timeout))
     , table_(db_->open(nspace.str()))
     , used_clusters_(0)
 {
