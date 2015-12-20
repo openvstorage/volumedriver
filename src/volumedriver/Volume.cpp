@@ -205,13 +205,16 @@ Volume::setSCOMultiplier(SCOMultiplier sco_mult)
 
     checkNotHalted_();
 
-    const uint64_t sco_size_new = getClusterSize() * sco_mult;
+    const size_t csize = getClusterSize();
+    const uint64_t sco_size_new = csize * sco_mult;
     static const uint64_t sco_size_min =
-        yt::System::get_env_with_default("VOLUMEDRIVER_MIN_SCO_SIZE",
-                                         1ULL << 20); // 1 MiB
+        std::min((1ULL << (8 * sizeof(SCOOffset))) * csize,
+                 yt::System::get_env_with_default("VOLUMEDRIVER_MIN_SCO_SIZE",
+                                                  1ULL << 20)); // 1 MiB
     static const uint64_t sco_size_max =
-        yt::System::get_env_with_default("VOLUMEDRIVER_MAX_SCO_SIZE",
-                                         128ULL << 20); // 128 MiB
+        std::min((1ULL << (8 * sizeof(SCOOffset))) * csize,
+                 yt::System::get_env_with_default("VOLUMEDRIVER_MAX_SCO_SIZE",
+                                                  128ULL << 20)); // 128 MiB
 
     if (sco_size_new < sco_size_min)
     {

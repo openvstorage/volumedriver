@@ -102,6 +102,9 @@ LocalNode::LocalNode(ObjectRouter& router,
 {
     LOG_TRACE("Initializing volumedriver");
 
+    THROW_WHEN(vrouter_sco_multiplier.value() == 0);
+    THROW_WHEN(vrouter_sco_multiplier.value() >= (1U << (8 * sizeof(vd::SCOOffset))));
+
     api::Init(pt,
               router.event_publisher());
 
