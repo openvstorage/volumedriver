@@ -160,15 +160,13 @@ public:
     local_restart(const volumedriver::Namespace&,
                   const volumedriver::OwnerTag,
                   const volumedriver::FallBackToBackendRestart,
-                  const volumedriver::IgnoreFOCIfUnreachable,
-                  const uint32_t num_pages_cached);
+                  const volumedriver::IgnoreFOCIfUnreachable);
 
     static void
     backend_restart(const volumedriver::Namespace&,
                     const volumedriver::OwnerTag,
                     const volumedriver::PrefetchVolumeData,
-                    const volumedriver::IgnoreFOCIfUnreachable,
-                    const uint32_t num_pages_cached);
+                    const volumedriver::IgnoreFOCIfUnreachable);
 
     static volumedriver::WriteOnlyVolume*
     restartVolumeWriteOnly(const volumedriver::Namespace& ns,

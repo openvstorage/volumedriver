@@ -86,6 +86,7 @@ VolumeConfig::VolumeConfig(const VolumeConfig& other)
     , cluster_cache_behaviour_(other.cluster_cache_behaviour_)
     , cluster_cache_mode_(other.cluster_cache_mode_)
     , cluster_cache_limit_(other.cluster_cache_limit_)
+    , metadata_cache_capacity_(other.metadata_cache_capacity_)
     , metadata_backend_config_(other.metadata_backend_config_->clone())
     , is_volume_template_(other.is_volume_template_)
     , number_of_syncs_to_ignore_(other.number_of_syncs_to_ignore_)
@@ -157,6 +158,8 @@ VolumeConfig::operator=(const VolumeConfig& other)
             other.cluster_cache_mode_;
         const_cast<boost::optional<ClusterCount>& >(cluster_cache_limit_) =
             other.cluster_cache_limit_;
+        const_cast<boost::optional<size_t>& >(metadata_cache_capacity_) =
+            other.metadata_cache_capacity_;
         const_cast<MetaDataBackendConfigPtr&>(metadata_backend_config_) =
             other.metadata_backend_config_->clone();
         const_cast<IsVolumeTemplate&>(is_volume_template_) = other.is_volume_template_;

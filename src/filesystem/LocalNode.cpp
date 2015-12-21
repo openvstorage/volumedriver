@@ -94,7 +94,6 @@ LocalNode::LocalNode(ObjectRouter& router,
     , vrouter_local_io_sleep_before_retry_usecs(pt)
     , vrouter_local_io_retries(pt)
     , vrouter_sco_multiplier(pt)
-    , vrouter_metadata_cache_capacity(pt)
     , vrouter_lock_reaper_interval(pt)
     , scrub_manager_interval(pt)
     , scrub_manager_sync_wait_secs(pt)
@@ -103,7 +102,6 @@ LocalNode::LocalNode(ObjectRouter& router,
 
     THROW_WHEN(vrouter_sco_multiplier.value() == 0);
     THROW_WHEN(vrouter_sco_multiplier.value() >= (1U << (8 * sizeof(vd::SCOOffset))));
-    THROW_WHEN(vrouter_metadata_cache_capacity.value() == 0);
 
     api::Init(pt,
               router.event_publisher());
@@ -184,7 +182,6 @@ LocalNode::update_config(const bpt::ptree& pt,
     U(vrouter_local_io_sleep_before_retry_usecs);
     U(vrouter_local_io_retries);
     U(vrouter_sco_multiplier);
-    U(vrouter_metadata_cache_capacity);
 
     const uint32_t old_reaper_interval = vrouter_lock_reaper_interval.value();
     U(vrouter_lock_reaper_interval);
@@ -210,7 +207,6 @@ LocalNode::persist_config(bpt::ptree& pt,
     P(vrouter_local_io_sleep_before_retry_usecs);
     P(vrouter_local_io_retries);
     P(vrouter_sco_multiplier);
-    P(vrouter_metadata_cache_capacity);
     P(scrub_manager_interval);
     P(scrub_manager_sync_wait_secs);
 
@@ -783,8 +779,7 @@ LocalNode::local_restart_volume_(const ObjectRegistration& reg,
                                vd::FallBackToBackendRestart::T,
                                force == ForceRestart::T ?
                                vd::IgnoreFOCIfUnreachable::T :
-                               vd::IgnoreFOCIfUnreachable::F,
-                               vrouter_metadata_cache_capacity.value());
+                               vd::IgnoreFOCIfUnreachable::F);
         }
         else
         {
@@ -856,8 +851,7 @@ LocalNode::restart_volume_from_backend_(const ObjectId& id,
                                  vd::PrefetchVolumeData::F,
                                  force == ForceRestart::T ?
                                  vd::IgnoreFOCIfUnreachable::T :
-                                 vd::IgnoreFOCIfUnreachable::F,
-                                 vrouter_metadata_cache_capacity.value());
+                                 vd::IgnoreFOCIfUnreachable::F);
         }
         else
         {
@@ -950,7 +944,6 @@ LocalNode::create_volume_(const ObjectId& id,
                                                          vd::VolumeSize(0),
                                                          reg->owner_tag)
                        .sco_multiplier(vd::SCOMultiplier(vrouter_sco_multiplier.value()))
-                       .metadata_cache_pages(vrouter_metadata_cache_capacity.value())
                        .metadata_backend_config(std::move(mdb_config)));
 
             api::createNewVolume(params,
@@ -1009,7 +1002,6 @@ LocalNode::create_clone(const ObjectId& clone_id,
                                             clone_nspace,
                                             parent_reg->getNS(),
                                             reg->owner_tag)
-            .metadata_cache_pages(vrouter_metadata_cache_capacity.value())
             .metadata_backend_config(std::move(mdb_config))
             ;
         if (maybe_parent_snap)
@@ -1068,7 +1060,6 @@ LocalNode::clone_to_existing_volume(const ObjectId& clone_id,
                                         clone_nspace,
                                         parent_reg->getNS(),
                                         clone_reg->owner_tag)
-        .metadata_cache_pages(vrouter_metadata_cache_capacity.value())
         .metadata_backend_config(std::move(mdb_config))
         ;
     if (maybe_parent_snap)

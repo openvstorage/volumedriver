@@ -145,6 +145,7 @@ try
           , foc_write_trigger(pt)
           , number_of_scos_in_tlog(pt)
           , non_disposable_scos_factor(pt)
+          , metadata_cache_capacity(pt)
           , debug_metadata_path(pt)
           , arakoon_metadata_sequence_size(pt)
           , allow_inconsistent_partial_reads(pt)
@@ -901,7 +902,6 @@ VolManager::createClone(const CloneVolumeConfigParameters& clone_params,
              {
                  return VolumeFactory::createClone(cfg,
                                                    prefetch,
-                                                   params.get_metadata_cache_pages(),
                                                    parent_snap_uuid).release();
 
                  LOG_NOTIFY("Volume Clone complete, VolumeId: " << params.get_volume_id());
@@ -1000,9 +1000,7 @@ VolManager::createNewVolume(const VanillaVolumeConfigParameters& params,
     const VolumeConfig cfg(params);
     ensureResourceLimits(cfg);
 
-    Volume* vol =
-        VolumeFactory::createNewVolume(cfg,
-                                       params.get_metadata_cache_pages()).release();
+    Volume* vol = VolumeFactory::createNewVolume(cfg).release();
     ASSERT(vol);
 
     volMap_[vol->getName()] = vol;
@@ -1069,8 +1067,7 @@ Volume*
 VolManager::local_restart(const Namespace& ns,
                           const OwnerTag owner_tag,
                           const FallBackToBackendRestart fallback,
-                          const IgnoreFOCIfUnreachable ignoreFOCIfUnreachable,
-                          const uint32_t num_pages_cached)
+                          const IgnoreFOCIfUnreachable ignoreFOCIfUnreachable)
 {
     mgmtMutex_.assertLocked();
     MAIN_EVENT("Local Restart, Namespace " << ns << ", owner tag " << owner_tag);
@@ -1088,15 +1085,13 @@ VolManager::local_restart(const Namespace& ns,
 
     auto fun([fallback,
               ignoreFOCIfUnreachable,
-              num_pages_cached,
               owner_tag](const Namespace&,
                          const VolumeConfig& cfg) -> Volume*
              {
                  return VolumeFactory::local_restart(cfg,
                                                      owner_tag,
                                                      fallback,
-                                                     ignoreFOCIfUnreachable,
-                                                     num_pages_cached).release();
+                                                     ignoreFOCIfUnreachable).release();
              });
 
     return with_restart_map_and_unlocked_mgmt_vol_(fun,
@@ -1120,8 +1115,7 @@ Volume*
 VolManager::backend_restart(const Namespace& ns,
                             const OwnerTag owner_tag,
                             const PrefetchVolumeData prefetch,
-                            const IgnoreFOCIfUnreachable ignore_foc,
-                            const uint32_t num_pages_cached)
+                            const IgnoreFOCIfUnreachable ignore_foc)
 {
     mgmtMutex_.assertLocked();
     MAIN_EVENT("Backend Restart, Namespace: " << ns << ", owner tag " << owner_tag);
@@ -1153,14 +1147,12 @@ VolManager::backend_restart(const Namespace& ns,
 
     auto fun([prefetch,
               ignore_foc,
-              &num_pages_cached,
               owner_tag](const Namespace&, const VolumeConfig& cfg) -> Volume*
              {
                  return VolumeFactory::backend_restart(cfg,
                                                        owner_tag,
                                                        prefetch,
-                                                       ignore_foc,
-                                                       num_pages_cached).release();
+                                                       ignore_foc).release();
              });
 
     return with_restart_map_and_unlocked_mgmt_vol_(fun, ns, *config);
@@ -1764,6 +1756,7 @@ VolManager::update(const boost::property_tree::ptree& pt,
     max_volume_size.update(pt, report);
     number_of_scos_in_tlog.update(pt, report);
     non_disposable_scos_factor.update(pt, report);
+    metadata_cache_capacity.update(pt, report);
     debug_metadata_path.update(pt, report);
     arakoon_metadata_sequence_size.update(pt, report);
     allow_inconsistent_partial_reads.update(pt, report);
@@ -1790,6 +1783,7 @@ VolManager::persist(boost::property_tree::ptree& pt,
 
     number_of_scos_in_tlog.persist(pt, reportDefault);
     non_disposable_scos_factor.persist(pt, reportDefault);
+    metadata_cache_capacity.persist(pt, reportDefault);
     debug_metadata_path.persist(pt, reportDefault);
     arakoon_metadata_sequence_size.persist(pt, reportDefault);
     allow_inconsistent_partial_reads.persist(pt, reportDefault);
@@ -1811,6 +1805,14 @@ ClusterCacheMode
 VolManager::get_cluster_cache_default_mode() const
 {
     return read_cache_default_mode.value();
+}
+
+size_t
+VolManager::effective_metadata_cache_capacity(const VolumeConfig& cfg) const
+{
+    return cfg.metadata_cache_capacity_ ?
+        *cfg.metadata_cache_capacity_ :
+        metadata_cache_capacity.value();
 }
 
 }

@@ -144,13 +144,6 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_max_workers,
                                       ShowDocumentation::T,
                                       16);
 
-DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_metadata_cache_capacity,
-                                      volumerouter_component_name,
-                                      "vrouter_metadata_cache_capacity",
-                                      "number of metadata pages to keep cached",
-                                      ShowDocumentation::T,
-                                      8192);
-
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_registry_cache_capacity,
                                       volumerouter_component_name,
                                       "vrouter_registry_cache_capacity",

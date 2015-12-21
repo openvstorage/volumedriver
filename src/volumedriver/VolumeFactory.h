@@ -47,31 +47,27 @@ class SnapshotPersistor;
 struct VolumeFactory
 {
     static std::unique_ptr<Volume>
-    createNewVolume(const VolumeConfig& config,
-                    const uint32_t metadata_cache_pages);
+    createNewVolume(const VolumeConfig&);
 
     static std::unique_ptr<WriteOnlyVolume>
-    createWriteOnlyVolume(const VolumeConfig& config);
+    createWriteOnlyVolume(const VolumeConfig&);
 
     static std::unique_ptr<Volume>
     createClone(const VolumeConfig&,
                 const PrefetchVolumeData,
-                const uint32_t metadata_cache_pages,
                 const youtils::UUID& parent_snap_uuid);
 
     static std::unique_ptr<Volume>
-    local_restart(const VolumeConfig& config,
-                  const OwnerTag owner_tag,
+    local_restart(const VolumeConfig&,
+                  const OwnerTag,
                   const FallBackToBackendRestart,
-                  const IgnoreFOCIfUnreachable,
-                  const uint32_t num_pages_cached);
+                  const IgnoreFOCIfUnreachable);
 
     static std::unique_ptr<Volume>
-    backend_restart(const VolumeConfig& volume_config,
-                    const OwnerTag owner_tag,
+    backend_restart(const VolumeConfig&,
+                    const OwnerTag,
                     const PrefetchVolumeData,
-                    const IgnoreFOCIfUnreachable,
-                    const uint32_t num_pages_cached);
+                    const IgnoreFOCIfUnreachable);
 
     static std::unique_ptr<WriteOnlyVolume>
     backend_restart_write_only_volume(const VolumeConfig&,

@@ -129,7 +129,7 @@ protected:
                                              vsize,
                                              new_owner_tag())
             .metadata_backend_config(metadata_backend_config())
-            .metadata_cache_pages(1);
+            .metadata_cache_capacity(1);
     }
 
     Volume*

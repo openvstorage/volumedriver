@@ -68,8 +68,6 @@ DECLARE_INITIALIZED_PARAM(vrouter_id,
                           std::string);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_sco_multiplier,
                                        uint32_t);
-DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_metadata_cache_capacity,
-                                       uint32_t);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_registry_cache_capacity,
                                        uint32_t);
 

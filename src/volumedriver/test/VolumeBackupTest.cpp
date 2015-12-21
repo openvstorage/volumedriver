@@ -290,8 +290,7 @@ public:
         api::backend_restart(ns,
                              new_owner_tag(),
                              PrefetchVolumeData::T,
-                             IgnoreFOCIfUnreachable::T,
-                             1024);
+                             IgnoreFOCIfUnreachable::T);
 
         Volume* ret = api::getVolumePointer(ns);
         return ret;

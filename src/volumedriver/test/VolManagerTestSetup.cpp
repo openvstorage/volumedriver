@@ -1118,7 +1118,7 @@ VolManagerTestSetup::newVolume(const be::BackendTestSetup::WithRandomNamespace& 
                                const SCOMultiplier sco_mult,
                                const uint32_t lba_size,
                                const uint32_t cluster_mult,
-                               const uint32_t num_cached_pages)
+                               const boost::optional<size_t> num_cached_pages)
 {
     return newVolume(wrns.ns().str(),
                      wrns.ns(),
@@ -1136,7 +1136,7 @@ VolManagerTestSetup::newVolume(const std::string& id,
                                const SCOMultiplier sco_mult,
                                const uint32_t lba_size,
                                const uint32_t cluster_mult,
-                               const uint32_t num_cached_pages)
+                               const boost::optional<size_t> num_cached_pages)
 {
     // Push VolumeID out!
     auto params(VanillaVolumeConfigParameters(VolumeId(id),
@@ -1146,7 +1146,7 @@ VolManagerTestSetup::newVolume(const std::string& id,
                 .sco_multiplier(sco_mult)
                 .lba_size(LBASize(lba_size))
                 .cluster_multiplier(ClusterMultiplier(cluster_mult))
-                .metadata_cache_pages(num_cached_pages)
+                .metadata_cache_capacity(num_cached_pages)
                 .metadata_backend_config(mdstore_test_setup_->make_config()));
 
     return newVolume(params);
@@ -1293,12 +1293,10 @@ VolManagerTestSetup::localRestart(const be::Namespace& ns,
     Volume* v = vm->local_restart(ns,
                                   cfg.owner_tag_,
                                   fallback,
-                                  IgnoreFOCIfUnreachable::F,
-                                  1024);
+                                  IgnoreFOCIfUnreachable::F);
 
     // yo, clang analyzer: this one's especially for you.
     VERIFY(v != nullptr);
-
     return v;
 }
 

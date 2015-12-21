@@ -85,6 +85,7 @@ public:
         , cluster_cache_behaviour_(t.get_cluster_cache_behaviour())
         , cluster_cache_mode_(t.get_cluster_cache_mode())
         , cluster_cache_limit_(t.get_cluster_cache_limit())
+        , metadata_cache_capacity_(t.get_metadata_cache_capacity())
         , metadata_backend_config_(t.get_metadata_backend_config() ?
                                    t.get_metadata_backend_config()->clone().release() :
                                    new TCBTMetaDataBackendConfig())
@@ -178,6 +179,8 @@ public:
     boost::optional<ClusterCacheBehaviour> cluster_cache_behaviour_;
     boost::optional<ClusterCacheMode> cluster_cache_mode_;
     boost::optional<ClusterCount> cluster_cache_limit_;
+
+    boost::optional<size_t> metadata_cache_capacity_;
 
     using MetaDataBackendConfigPtr = std::unique_ptr<MetaDataBackendConfig>;
     MetaDataBackendConfigPtr metadata_backend_config_;
@@ -309,7 +312,7 @@ private:
             // No backward compatibility for now.
             // The below checks are left in place in case we ever want to change that
             // and serve as documentation.
-            THROW_SERIALIZATION_ERROR(version, 11, 14);
+            THROW_SERIALIZATION_ERROR(version, 11, 15);
         }
 
         if(version == 4)
@@ -414,6 +417,11 @@ private:
             ar & cluster_cache_limit_;
         }
 
+        if (version >= 15)
+        {
+            ar & metadata_cache_capacity_;
+        }
+
         // cf. comment in constructor.
 
         THROW_UNLESS(cluster_mult_ == default_cluster_multiplier());
@@ -425,9 +433,9 @@ private:
     void
     save(Archive& ar, const unsigned int version) const
     {
-        if (version != 14)
+        if (version != 15)
         {
-            THROW_SERIALIZATION_ERROR(version, 14, 14);
+            THROW_SERIALIZATION_ERROR(version, 15, 15);
         }
 
         ar & id_;
@@ -450,6 +458,7 @@ private:
         ar & cluster_cache_mode_;
         ar & owner_tag_;
         ar & cluster_cache_limit_;
+        ar & metadata_cache_capacity_;
     }
 };
 
@@ -475,7 +484,7 @@ struct EnumTraits<volumedriver::VolumeConfig::WanBackupVolumeRole>
 
 }
 
-BOOST_CLASS_VERSION(volumedriver::VolumeConfig, 14);
+BOOST_CLASS_VERSION(volumedriver::VolumeConfig, 15);
 
 #endif /* !VOLUMECONFIG_H_ */
 

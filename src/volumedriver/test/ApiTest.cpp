@@ -272,8 +272,7 @@ public:
             ASSERT_NO_THROW(api::backend_restart(clone_ns,
                                                  clone_owner_tag,
                                                  PrefetchVolumeData::F,
-                                                 IgnoreFOCIfUnreachable::T,
-                                                 1024));
+                                                 IgnoreFOCIfUnreachable::T));
         }
 
         {
@@ -305,8 +304,7 @@ public:
             ASSERT_NO_THROW(api::local_restart(ns,
                                                parent_owner_tag,
                                                FallBackToBackendRestart::F,
-                                               IgnoreFOCIfUnreachable::T,
-                                               1024));
+                                               IgnoreFOCIfUnreachable::T));
         }
 
         {
@@ -592,8 +590,7 @@ TEST_P(ApiTest, concurrentCalls)
         EXPECT_THROW(api::local_restart(clone_ns,
                                         new_owner_tag(),
                                         FallBackToBackendRestart::F,
-                                        IgnoreFOCIfUnreachable::T,
-                                        1024),
+                                        IgnoreFOCIfUnreachable::T),
                      std::exception);
     }
 
@@ -602,8 +599,7 @@ TEST_P(ApiTest, concurrentCalls)
         EXPECT_THROW(api::backend_restart(clone_ns,
                                           new_owner_tag(),
                                           PrefetchVolumeData::F,
-                                          IgnoreFOCIfUnreachable::T,
-                                          1024),
+                                          IgnoreFOCIfUnreachable::T),
                      std::exception);
     }
 
@@ -682,7 +678,7 @@ TEST_P(ApiTest, MetaDataStoreMaxPages)
                                                 nsid,
                                                 volsize,
                                                 otag)
-        .metadata_cache_pages(max_pages);
+        .metadata_cache_capacity(max_pages);
 
     api::createNewVolume(params);
 
@@ -700,8 +696,7 @@ TEST_P(ApiTest, MetaDataStoreMaxPages)
     api::local_restart(nsid,
                        otag,
                        FallBackToBackendRestart::F,
-                       IgnoreFOCIfUnreachable::T,
-                       max_pages);
+                       IgnoreFOCIfUnreachable::T);
 
     {
         const MetaDataStoreStats mds = api::getMetaDataStoreStats(volid);
@@ -717,8 +712,7 @@ TEST_P(ApiTest, MetaDataStoreMaxPages)
     api::backend_restart(nsid,
                          new_owner_tag(),
                          PrefetchVolumeData::F,
-                         IgnoreFOCIfUnreachable::T,
-                         max_pages);
+                         IgnoreFOCIfUnreachable::T);
 
     {
         const MetaDataStoreStats mds = api::getMetaDataStoreStats(volid);
@@ -756,17 +750,14 @@ TEST_P(ApiTest, destroyVolumeVariants)
         ASSERT_THROW(api::backend_restart(nsid,
                                           otag,
                                           PrefetchVolumeData::F,
-                                          IgnoreFOCIfUnreachable::T,
-                                          1024),
+                                          IgnoreFOCIfUnreachable::T),
                      fungi::IOException);
 
 
         ASSERT_NO_THROW(api::local_restart(nsid,
                                            otag,
                                            FallBackToBackendRestart::F,
-                                           IgnoreFOCIfUnreachable::T,
-                                           1024));
-
+                                           IgnoreFOCIfUnreachable::T));
 
         ASSERT_NO_THROW(api::destroyVolume(volid,
                                            DeleteLocalData::T,
@@ -777,15 +768,13 @@ TEST_P(ApiTest, destroyVolumeVariants)
         ASSERT_THROW(api::local_restart(nsid,
                                         otag,
                                         FallBackToBackendRestart::F,
-                                        IgnoreFOCIfUnreachable::T,
-                                        1024),
+                                        IgnoreFOCIfUnreachable::T),
                      fungi::IOException);
 
         ASSERT_NO_THROW(api::backend_restart(nsid,
                                              otag,
                                              PrefetchVolumeData::F,
-                                             IgnoreFOCIfUnreachable::T,
-                                             1024));
+                                             IgnoreFOCIfUnreachable::T));
 
         auto foc_ctx(start_one_foc());
 
@@ -806,16 +795,13 @@ TEST_P(ApiTest, destroyVolumeVariants)
     ASSERT_THROW(api::local_restart(nsid,
                                     otag,
                                     FallBackToBackendRestart::F,
-                                    IgnoreFOCIfUnreachable::T,
-                                    1024),
+                                    IgnoreFOCIfUnreachable::T),
                  fungi::IOException);
-
 
     ASSERT_THROW(api::backend_restart(nsid,
                                       otag,
                                       PrefetchVolumeData::F,
-                                      IgnoreFOCIfUnreachable::T,
-                                      1024),
+                                      IgnoreFOCIfUnreachable::T),
                  fungi::IOException);
 }
 
@@ -881,8 +867,7 @@ TEST_P(ApiTest, snapshot_metadata)
     api::local_restart(nsid,
                        otag,
                        FallBackToBackendRestart::F,
-                       IgnoreFOCIfUnreachable::T,
-                       1024);
+                       IgnoreFOCIfUnreachable::T);
 
     const Snapshot snap1(api::getSnapshot(volid, sname1));
     EXPECT_TRUE(snap1.metadata().empty());

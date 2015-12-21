@@ -360,7 +360,7 @@ public:
               const SCOMultiplier sco_mult = default_sco_mult(),
               const uint32_t lba_size = default_lba_size(),
               const uint32_t cluster_mult = default_cluster_mult(),
-              const uint32_t num_cached_pages = 1024);
+              const boost::optional<size_t> num_cached_pages = boost::none);
 
     Volume*
     newVolume(const std::string& volumeName,
@@ -369,7 +369,7 @@ public:
               const SCOMultiplier sco_mult = default_sco_mult(),
               const uint32_t lba_size = default_lba_size(),
               const uint32_t cluster_mult = default_cluster_mult(),
-              const uint32_t num_cached_pages = 1024);
+              const boost::optional<size_t> num_cached_pages = boost::none);
 
     WriteOnlyVolume*
     newWriteOnlyVolume(const std::string& volumeName,
