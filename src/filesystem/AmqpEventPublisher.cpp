@@ -15,6 +15,8 @@
 #include "AmqpEventPublisher.h"
 #include "FileSystemEvents.pb.h"
 
+#include <netinet/tcp.h>
+
 #include <sys/types.h>
 #include <sys/socket.h>
 
@@ -24,6 +26,7 @@
 
 #include <youtils/Assert.h>
 #include <youtils/Catchers.h>
+#include <youtils/System.h>
 
 namespace volumedriverfs
 {
@@ -73,26 +76,63 @@ check_uris(const ip::PARAMETER_TYPE(events_amqp_uris)& uris)
                   check_uri);
 }
 
-
 void
 enable_keepalive(AmqpClient::Channel& channel)
 {
     int sock = channel.SockFd();
     VERIFY(sock >= 0);
 
-    int opt = 1;
-    int ret = ::setsockopt(sock,
-                           SOL_SOCKET,
-                           SO_KEEPALIVE,
-                           &opt,
-                           sizeof(opt));
-    if (ret < 0)
-    {
-        ret = errno;
-        LOG_ERROR("Failed to enable TCP KeepAlive on socket " << sock << ": " <<
-                  strerror(errno));
-        throw fungi::IOException("Failed to enable TCP KeepAlive on socket");
-    }
+    auto set([&](const char* desc,
+                 int level,
+                 int optname,
+                 int val)
+             {
+                 int ret = ::setsockopt(sock,
+                                        level,
+                                        optname,
+                                        &val,
+                                        sizeof(val));
+                 if (ret < 0)
+                 {
+                     ret = errno;
+                     LOG_ERROR("Failed to set " << desc << " on socket " << sock <<
+                               ": " << strerror(errno));
+                     throw fungi::IOException("Failed to set socket option",
+                                              desc);
+                 }
+             });
+
+    set("KeepAlive",
+        SOL_SOCKET,
+        SO_KEEPALIVE,
+        1);
+
+    static const int keep_cnt =
+        yt::System::get_env_with_default("AMQP_CLIENT_KEEPCNT",
+                                         5);
+
+    set("keepalive probes",
+        SOL_TCP,
+        TCP_KEEPCNT,
+        keep_cnt);
+
+    static const int keep_idle =
+        yt::System::get_env_with_default("AMQP_CLIENT_KEEPIDLE",
+                                         60);
+
+    set("keepalive time",
+        SOL_TCP,
+        TCP_KEEPIDLE,
+        keep_idle);
+
+    static const int keep_intvl =
+        yt::System::get_env_with_default("AMQP_CLIENT_KEEPINTVL",
+                                         60);
+
+    set("keepalive interval",
+        SOL_TCP,
+        TCP_KEEPINTVL,
+        keep_intvl);
 }
 
 }
