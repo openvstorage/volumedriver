@@ -414,7 +414,7 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirect,
                 "restartVolume",
                 "restart an object on its owning node");
 
-REGISTER_XMLRPC(XMLRPCCallTiming,
+REGISTER_XMLRPC(XMLRPCCallTimingRedirect,
                 StopObject,
                 "stopVolume",
                 "stop an object");

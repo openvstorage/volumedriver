@@ -588,6 +588,16 @@ BOOST_PYTHON_MODULE(storagerouterclient)
               "Check how many more volumes this node is capable of running"
               "@param node_id: string, target node"
               "@returns: int, the number of volumes the node can host")
+        .def("stop_object",
+             &vfs::PythonClient::stop_object,
+             (bpy::args("object_id"),
+              bpy::args("delete_local_data")),
+             "Request that an object (volume or file) is stopped.\n"
+             "\n"
+             "NOTE: This does not remove the associated file - any I/O to it will lead to an error.\n"
+             "@param: object_id: string, ID of the object to be stopped\n"
+             "@param: delete_local_data: boolean, whether to remove local data\n"
+             "@returns: eventually\n")
         .def("migrate",
              &vfs::PythonClient::migrate,
              (bpy::args("object_id",
@@ -597,6 +607,14 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "@param volume_id: string, object identifier\n"
              "@param node_id: string, node to move the object to\n"
              "@param force_restart: boolean, whether to forcibly restart on the new node even if that means data loss (e.g. if the FOC is not available)\n")
+        .def("restart_object",
+             &vfs::PythonClient::restart_object,
+             (bpy::args("object_id"),
+              bpy::args("force_restart")),
+             "Request that an object (volume or file) is restarted.\n"
+             "@param: object_id: string, ID of the object to be restarted\n"
+             "@param: force: boolean, whether to force the restart even at the expense of data loss\n"
+             "@returns: eventually\n")
         .def("mark_node_offline",
              &vfs::PythonClient::mark_node_offline,
              (bpy::args("node_id")),

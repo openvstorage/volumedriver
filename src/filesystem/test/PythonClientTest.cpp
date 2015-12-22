@@ -1849,4 +1849,58 @@ TEST_F(PythonClientTest, metadata_cache_capacity)
               client_.get_metadata_cache_capacity(vname));
 }
 
+TEST_F(PythonClientTest, restart_volume)
+{
+    mount_remote();
+
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         umount_remote();
+                                     }));
+
+    const vfs::FrontendPath vname(make_volume_name("/volume"));
+    const vfs::ObjectId oid(create_file(vname,
+                                        1ULL << 20));
+
+    const std::string pattern("a rather important message");
+
+    write_to_file(vname,
+                  pattern.c_str(),
+                  pattern.size(),
+                  0);
+
+    vfs::PythonClient remote_client(vrouter_cluster_id(),
+                                    {{address(), remote_config().xmlrpc_port}});
+
+    remote_client.stop_object(oid.str());
+
+    std::vector<char> buf(pattern.size());
+
+    ASSERT_GT(0,
+              read_from_file(vname,
+                             buf.data(),
+                             buf.size(),
+                             0));
+
+    const std::string pattern2("a much less important message");
+    ASSERT_GT(0,
+              write_to_file(vname,
+                            pattern2.c_str(),
+                            pattern2.size(),
+                            0));
+
+    remote_client.restart_object(oid.str(),
+                                 false);
+    read_from_file(vname,
+                   buf.data(),
+                   buf.size(),
+                   0);
+
+    const std::string s(buf.data(),
+                        buf.size());
+
+    ASSERT_EQ(pattern,
+              s);
+}
+
 }

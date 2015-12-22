@@ -299,6 +299,14 @@ public:
     set_metadata_cache_capacity(const std::string& volume_id,
                                 const boost::optional<size_t>& num_pages);
 
+    void
+    stop_object(const std::string& id,
+                bool delete_local_data = true);
+
+    void
+    restart_object(const std::string& id,
+                   bool force_restart);
+
 protected:
     PythonClient()
         : max_redirects(max_redirects_default)

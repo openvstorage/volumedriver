@@ -73,14 +73,6 @@ public:
     std::string
     malloc_info();
 
-    void
-    stop_object(const std::string& id,
-                bool delete_local_data = true);
-
-    void
-    restart_object(const std::string& id,
-                   bool force_restart);
-
     std::vector<volumedriver::ClusterCacheHandle>
     list_cluster_cache_handles();
 

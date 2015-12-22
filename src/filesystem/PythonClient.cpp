@@ -667,6 +667,34 @@ PythonClient::migrate(const std::string& object_id,
 }
 
 void
+PythonClient::stop_object(const std::string& object_id,
+                          bool delete_local_data)
+{
+    XmlRpc::XmlRpcValue req;
+
+    req[XMLRPCKeys::volume_id] = object_id;
+    XMLRPCUtils::put(req,
+                     XMLRPCKeys::delete_local_data,
+                     delete_local_data);
+
+    call(StopObject::method_name(),
+         req);
+}
+
+
+void
+PythonClient::restart_object(const std::string& object_id,
+                             bool force_restart)
+{
+    XmlRpc::XmlRpcValue req;
+    req[XMLRPCKeys::volume_id] = object_id;
+    XMLRPCUtils::put(req,
+                     XMLRPCKeys::force,
+                     force_restart);
+    call(RestartObject::method_name(), req);
+}
+
+void
 PythonClient::set_cluster_cache_behaviour(const std::string& volume_id,
                                           const boost::optional<vd::ClusterCacheBehaviour>& b)
 {

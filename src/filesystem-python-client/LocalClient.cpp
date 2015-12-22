@@ -105,25 +105,6 @@ LocalClient::registerize()
              "Request that the filesystem is destroyed.\n"
              "All data and metadata in Arakoon and the backend will be removed.\n"
              "Local data (caches) will not be removed.\n")
-        .def("stop_object",
-             &vfs::LocalPythonClient::stop_object,
-             (bpy::args("object_id"),
-              bpy::args("delete_local_data")),
-             "Request that an object (volume or file) is stopped.\n"
-             "\n"
-             "NOTE: This does not remove the associated file - any I/O to it will lead to an error.\n"
-             "@param: object_id: string, ID of the object to be stopped\n"
-             "@param: delete_local_data: boolean, whether to remove local data\n"
-             "@returns: eventually\n")
-        .def("restart_object",
-             &vfs::LocalPythonClient::restart_object,
-             (bpy::args("object_id"),
-              bpy::args("force_restart")),
-             "Request that an object (volume or file) is restarted.\n"
-             "@param: object_id: string, ID of the object to be restarted\n"
-             "@param: force: boolean, whether to force the restart even at the expense of data loss\n"
-             "@returns: eventually\n")
-
         .def("get_running_configuration",
              &vfs::LocalPythonClient::get_running_configuration,
              (bpy::args("report_defaults") = false),
