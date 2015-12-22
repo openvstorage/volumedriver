@@ -656,7 +656,17 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirect,
                 "vaaiCopy",
                 "VAAI support");
 
-typedef LOKI_TYPELIST_78(
+REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
+                SetMetaDataCacheCapacity,
+                "setMetaDataCacheCapacity",
+                "set capacity of the metadata cache (in pages)");
+
+REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
+                GetMetaDataCacheCapacity,
+                "getMetaDataCacheCapacity",
+                "get capacity of the metadata cache (in pages)");
+
+typedef LOKI_TYPELIST_80(
 // ================== EXPOSED IN XMLRPC CLIENT ===================
                          VolumeCreate,
                          VolumesList,
@@ -706,6 +716,8 @@ typedef LOKI_TYPELIST_78(
                          SetSCOMultiplier,
                          GetTLogMultiplier,
                          SetTLogMultiplier,
+                         GetMetaDataCacheCapacity,
+                         SetMetaDataCacheCapacity,
                          GetSCOCacheMaxNonDisposableFactor,
                          SetSCOCacheMaxNonDisposableFactor,
                          UpdateClusterNodeConfigs,

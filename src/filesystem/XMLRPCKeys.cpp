@@ -75,6 +75,7 @@ DEFINE_XMLRPC_KEY(max_non_disposable_factor);
 DEFINE_XMLRPC_KEY(max_non_disposable_size);
 DEFINE_XMLRPC_KEY(metadata);
 DEFINE_XMLRPC_KEY(metadata_backend_config);
+DEFINE_XMLRPC_KEY(metadata_cache_capacity);
 DEFINE_XMLRPC_KEY(metadata_store_hits);
 DEFINE_XMLRPC_KEY(metadata_store_misses);
 DEFINE_XMLRPC_KEY(migrate_cache_to_parent);

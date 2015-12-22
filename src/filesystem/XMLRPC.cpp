@@ -639,10 +639,7 @@ SetSCOMultiplier::execute_internal(::XmlRpc::XmlRpcValue& params,
     catch (vd::InvalidOperation& e)
     {
         setError(result, XMLRPCErrorCode::InvalidOperation, e.what());
-        return;
     }
-    // OK
-    result.clear();
 }
 
 void
@@ -1786,6 +1783,44 @@ SetAutomaticFailOverCacheConfig::execute_internal(::XmlRpc::XmlRpcValue& params,
         auto param = params[0];
         const ObjectId oid(getID(param));
         fs_.object_router().set_automatic_foc_config(oid);
+    });
+}
+
+void
+GetMetaDataCacheCapacity::execute_internal(::XmlRpc::XmlRpcValue& params,
+                                           ::XmlRpc::XmlRpcValue& result)
+{
+    const vd::VolumeId vol_id(getID(params[0]));
+
+    with_api_exception_conversion([&]
+    {
+        const boost::optional<size_t>
+            cap(api::getVolumeConfig(vol_id).metadata_cache_capacity_);
+
+        ensureStruct(result);
+        if (cap)
+        {
+            result[XMLRPCKeys::metadata_cache_capacity] = XMLVAL(*cap);
+        }
+    });
+}
+
+void
+SetMetaDataCacheCapacity::execute_internal(::XmlRpc::XmlRpcValue& params,
+                                           ::XmlRpc::XmlRpcValue& result)
+{
+    with_api_exception_conversion([&]
+    {
+        auto param = params[0];
+        const vd::VolumeId vol_id(getID(param));
+        boost::optional<size_t> cap;
+        if (param.hasMember(XMLRPCKeys::metadata_cache_capacity))
+        {
+            const std::string s(param[XMLRPCKeys::metadata_cache_capacity]);
+            cap = boost::lexical_cast<size_t>(s);
+        }
+        api::setMetaDataCacheCapacity(vol_id,
+                                      cap);
     });
 }
 

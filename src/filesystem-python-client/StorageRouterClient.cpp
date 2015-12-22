@@ -771,6 +771,19 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "@param volume_id: string, volume identifier\n"
              "@param snapshot_name: string, snapshot name\n"
              "@returns: boolean\n")
+        .def("set_metadata_cache_capacity",
+             &vfs::PythonClient::set_metadata_cache_capacity,
+             (bpy::args("volume_id"),
+              bpy::args("num_pages")),
+             "Set the volume's metadata cache capacity\n"
+             "@param volume_id: string, volume identifier\n"
+             "@param num_pages, unsigned, number of metadata pages\n")
+        .def("get_metadata_cache_capacity",
+             &vfs::PythonClient::get_metadata_cache_capacity,
+             (bpy::args("volume_id")),
+             "Get the volume's metadata cache capacity\n"
+             "@param volume_id: string, volume identifier\n"
+             "@returns num_pages, unsigned, number of metadata pages or None\n")
         ;
 
     vfspy::LocalClient::registerize();

@@ -77,6 +77,7 @@ struct XMLRPCKeys
     static const std::string maximum_time_to_ignore_syncs_in_seconds;
     static const std::string metadata;
     static const std::string metadata_backend_config;
+    static const std::string metadata_cache_capacity;
     static const std::string metadata_store_hits;
     static const std::string metadata_store_misses;
     static const std::string migrate_cache_to_parent;

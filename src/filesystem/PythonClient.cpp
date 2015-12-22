@@ -236,10 +236,9 @@ PythonClient::get_sco_multiplier(const std::string& volume_id)
     return val;
 }
 
-
 void
 PythonClient::set_sco_multiplier(const std::string& volume_id,
-                              const uint32_t sco_multiplier)
+                                 const uint32_t sco_multiplier)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
@@ -262,7 +261,6 @@ PythonClient::get_tlog_multiplier(const std::string& volume_id)
     }
     return tm;
 }
-
 
 void
 PythonClient::set_tlog_multiplier(const std::string& volume_id,
@@ -881,6 +879,37 @@ PythonClient::is_volume_synced_up_to_snapshot(const std::string& volume_id,
 
     return call(IsVolumeSyncedUpToSnapshot::method_name(),
                 req);
+}
+
+boost::optional<size_t>
+PythonClient::get_metadata_cache_capacity(const std::string& volume_id)
+{
+    XmlRpc::XmlRpcValue req;
+    req[XMLRPCKeys::volume_id] = volume_id;
+    auto rsp(call(GetMetaDataCacheCapacity::method_name(), req));
+
+    if (rsp.hasMember(XMLRPCKeys::metadata_cache_capacity))
+    {
+        return boost::lexical_cast<size_t>(static_cast<std::string>(rsp[XMLRPCKeys::metadata_cache_capacity]));
+    }
+    else
+    {
+        return boost::none;
+    }
+}
+
+void
+PythonClient::set_metadata_cache_capacity(const std::string& volume_id,
+                                          const boost::optional<size_t>& num_pages)
+{
+    XmlRpc::XmlRpcValue req;
+    req[XMLRPCKeys::volume_id] = volume_id;
+    if (num_pages)
+    {
+        req[XMLRPCKeys::metadata_cache_capacity] =
+            boost::lexical_cast<std::string>(*num_pages);
+    }
+    auto rsp(call(SetMetaDataCacheCapacity::method_name(), req));
 }
 
 }

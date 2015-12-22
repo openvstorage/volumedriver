@@ -610,6 +610,9 @@ TEST_F(PythonClientTest, redirection_response)
                                                       boost::lexical_cast<std::string>(vd::TLogId())));
     CHECK_REDIRECT(client.is_volume_synced_up_to_snapshot(dummy_volume,
                                                           "some-snapshot"));
+    CHECK_REDIRECT(client.set_metadata_cache_capacity(dummy_volume,
+                                                      boost::none));
+    CHECK_REDIRECT(client.get_metadata_cache_capacity(dummy_volume));
 
 //redirection based on nodeID
     CHECK_REDIRECT(client.migrate("non-existing volume",
@@ -1794,6 +1797,37 @@ TEST_F(PythonClientTest, backend_sync_snapshot)
 
     ASSERT_TRUE(client_.is_volume_synced_up_to_snapshot(vname,
                                                         snap));
+}
+
+TEST_F(PythonClientTest, metadata_cache_capacity)
+{
+    const vfs::FrontendPath vpath(make_volume_name("/some-volume"));
+    const std::string vname(create_file(vpath, 10 << 20));
+
+    EXPECT_EQ(boost::none,
+              client_.get_metadata_cache_capacity(vname));
+
+    EXPECT_THROW(client_.set_metadata_cache_capacity(vname,
+                                                     boost::optional<size_t>(0)),
+                 std::exception);
+
+    EXPECT_EQ(boost::none,
+              client_.get_metadata_cache_capacity(vname));
+
+    client_.set_metadata_cache_capacity(vname,
+                                        boost::optional<size_t>(256U));
+
+    boost::optional<size_t> cap(client_.get_metadata_cache_capacity(vname));
+    ASSERT_NE(boost::none,
+              cap);
+
+    EXPECT_EQ(256,
+              *cap);
+
+    client_.set_metadata_cache_capacity(vname,
+                                        boost::none);
+    EXPECT_EQ(boost::none,
+              client_.get_metadata_cache_capacity(vname));
 }
 
 }

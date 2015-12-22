@@ -290,6 +290,13 @@ public:
     is_volume_synced_up_to_snapshot(const std::string& volume_id,
                                     const std::string& snapshot_name);
 
+    boost::optional<size_t>
+    get_metadata_cache_capacity(const std::string& volume_id);
+
+    void
+    set_metadata_cache_capacity(const std::string& volume_id,
+                                const boost::optional<size_t>& num_pages);
+
 protected:
     PythonClient()
         : max_redirects(max_redirects_default)
