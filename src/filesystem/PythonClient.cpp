@@ -498,6 +498,24 @@ PythonClient::get_volume_id(const std::string& path)
     }
 }
 
+boost::optional<ObjectId>
+PythonClient::get_object_id(const std::string& path)
+{
+    XmlRpc::XmlRpcValue req;
+    req[XMLRPCKeys::target_path] = path;
+    auto rsp(call(GetObjectId::method_name(), req));
+
+    const std::string id(rsp[XMLRPCKeys::object_id]);
+    if (id.empty())
+    {
+        return boost::none;
+    }
+    else
+    {
+        return ObjectId(id);
+    }
+}
+
 std::string
 PythonClient::create_snapshot(const std::string& volume_id,
                               const std::string& snapshot_id,

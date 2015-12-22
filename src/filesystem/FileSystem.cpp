@@ -1258,6 +1258,7 @@ FileSystem::fsync(const FrontendPath& path,
           datasync);
 }
 
+TODO("Phase out get_volume_id in favour of get_object_id");
 boost::optional<vd::VolumeId>
 FileSystem::get_volume_id(const FrontendPath& path)
 {
@@ -1266,6 +1267,20 @@ FileSystem::get_volume_id(const FrontendPath& path)
     {
         const vd::VolumeId id(dentry->object_id().str());
         return id;
+    }
+    else
+    {
+        return boost::none;
+    }
+}
+
+boost::optional<ObjectId>
+FileSystem::get_object_id(const FrontendPath& path)
+{
+    DirectoryEntryPtr dentry(mdstore_.find(path));
+    if (dentry and not is_directory(dentry))
+    {
+        return dentry->object_id();
     }
     else
     {

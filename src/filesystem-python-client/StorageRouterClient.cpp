@@ -298,6 +298,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
     REGISTER_STRINGY_CONVERTER(vfs::ObjectId);
     REGISTER_STRINGY_CONVERTER(vd::VolumeId);
 
+    REGISTER_OPTIONAL_CONVERTER(vfs::ObjectId);
     REGISTER_OPTIONAL_CONVERTER(vd::VolumeId);
 
     REGISTER_OPTIONAL_CONVERTER(std::string);
@@ -569,6 +570,12 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "Look up the volume ID behind path (if any)\n"
              "@param path: string, path to check\n"
              "@returns: string (volume ID) or None\n")
+        .def("get_object_id",
+             &vfs::PythonClient::get_object_id,
+             (bpy::args("path")),
+             "Look up the object ID behind path (if any)\n"
+             "@param path: string, path to check\n"
+             "@returns: string (object ID) or None\n")
         .def("server_revision",
              &vfs::PythonClient::server_revision,
              "Get server revision information")

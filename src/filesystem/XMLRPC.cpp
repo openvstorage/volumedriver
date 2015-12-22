@@ -1689,6 +1689,24 @@ GetVolumeId::execute_internal(XmlRpc::XmlRpcValue& params,
 }
 
 void
+GetObjectId::execute_internal(XmlRpc::XmlRpcValue& params,
+                              XmlRpc::XmlRpcValue& result)
+{
+    XMLRPCUtils::ensure_arg(params[0], XMLRPCKeys::target_path);
+    const FrontendPath path(static_cast<const std::string&>(params[0][XMLRPCKeys::target_path]));
+    const boost::optional<ObjectId> maybe_id(fs_.get_object_id(path));
+
+    if (maybe_id)
+    {
+        result[XMLRPCKeys::object_id] = *maybe_id;
+    }
+    else
+    {
+        result[XMLRPCKeys::object_id] = "";
+    }
+}
+
+void
 UpdateClusterNodeConfigs::execute_internal(::XmlRpc::XmlRpcValue& /* params */,
                                      ::XmlRpc::XmlRpcValue& /*result*/)
 {

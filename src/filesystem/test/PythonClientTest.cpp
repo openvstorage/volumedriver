@@ -1125,31 +1125,50 @@ TEST_F(PythonClientTest, remote_clone)
     EXPECT_EQ(remote_node_id(), vfs::NodeId(info.vrouter_id));
 }
 
-TEST_F(PythonClientTest, get_volume_id)
+TEST_F(PythonClientTest, volume_and_object_id)
 {
     {
         const vfs::FrontendPath vpath(make_volume_name("/some-volume"s));
         const vfs::ObjectId vname(create_file(vpath, 10 << 20));
 
-        const boost::optional<vd::VolumeId> maybe_id(client_.get_volume_id(vpath.str()));
-        ASSERT_TRUE(static_cast<bool>(maybe_id));
-        EXPECT_EQ(vname, *maybe_id);
+        const boost::optional<vd::VolumeId>
+            maybe_vid(client_.get_volume_id(vpath.str()));
+        ASSERT_NE(boost::none,
+                  maybe_vid);
+        EXPECT_EQ(vname,
+                  *maybe_vid);
+
+        const boost::optional<vfs::ObjectId>
+            maybe_oid(client_.get_object_id(vpath.str()));
+        ASSERT_NE(boost::none,
+                  maybe_oid);
+        EXPECT_EQ(vname,
+                  *maybe_oid);
     }
 
     {
         const vfs::FrontendPath fpath("/some-file");
-        create_file(fpath);
+        const vfs::ObjectId fname(create_file(fpath));
 
-        const boost::optional<vd::VolumeId> maybe_id(client_.get_volume_id(fpath.str()));
-        ASSERT_FALSE(maybe_id);
+        ASSERT_EQ(boost::none,
+                  client_.get_volume_id(fpath.str()));
+
+        const boost::optional<vfs::ObjectId>
+            maybe_oid(client_.get_object_id(fpath.str()));
+        ASSERT_NE(boost::none,
+                  maybe_oid);
+        EXPECT_EQ(fname,
+                  *maybe_oid);
     }
 
     {
         const vfs::FrontendPath nopath("/does-not-exist");
         verify_absence(nopath);
 
-        const boost::optional<vd::VolumeId> maybe_id(client_.get_volume_id(nopath.str()));
-        ASSERT_FALSE(maybe_id);
+        ASSERT_EQ(boost::none,
+                  client_.get_volume_id(nopath.str()));
+        ASSERT_EQ(boost::none,
+                  client_.get_object_id(nopath.str()));
     }
 }
 

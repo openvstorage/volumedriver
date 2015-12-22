@@ -460,7 +460,10 @@ public:
     migrate(const ObjectId& id);
 
     boost::optional<volumedriver::VolumeId>
-    get_volume_id(const FrontendPath& p);
+    get_volume_id(const FrontendPath&);
+
+    boost::optional<ObjectId>
+    get_object_id(const FrontendPath&);
 
     FrontendPath
     find_path(const ObjectId& id);

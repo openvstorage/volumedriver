@@ -190,9 +190,11 @@ public:
     uint64_t
     volume_potential(const std::string& node_id);
 
-
     std::map<NodeId, ClusterNodeStatus::State>
     info_cluster();
+
+    boost::optional<ObjectId>
+    get_object_id(const std::string& path);
 
     boost::optional<volumedriver::VolumeId>
     get_volume_id(const std::string& path);

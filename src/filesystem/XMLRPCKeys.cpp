@@ -86,6 +86,7 @@ DEFINE_XMLRPC_KEY(nspace);
 DEFINE_XMLRPC_KEY(new_value);
 DEFINE_XMLRPC_KEY(non_disposable);
 DEFINE_XMLRPC_KEY(no_updates);
+DEFINE_XMLRPC_KEY(object_id);
 DEFINE_XMLRPC_KEY(offlined);
 DEFINE_XMLRPC_KEY(old_value);
 DEFINE_XMLRPC_KEY(param_name);

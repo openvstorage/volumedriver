@@ -352,6 +352,11 @@ REGISTER_XMLRPC(XMLRPCCallTimingLock,
                 "getVolumeId",
                 "returns the volume ID for a given path (if backed by a volume)");
 
+REGISTER_XMLRPC(XMLRPCCallTimingLock,
+                GetObjectId,
+                "getObjectId",
+                "returns the object ID for a given path (volume or file)");
+
 //No redirection here - we only want to operate on the local node
 REGISTER_XMLRPC(XMLRPCCallTimingLock,
                 PersistConfigurationToString,
@@ -666,7 +671,7 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
                 "getMetaDataCacheCapacity",
                 "get capacity of the metadata cache (in pages)");
 
-typedef LOKI_TYPELIST_80(
+typedef LOKI_TYPELIST_81(
 // ================== EXPOSED IN XMLRPC CLIENT ===================
                          VolumeCreate,
                          VolumesList,
@@ -689,6 +694,7 @@ typedef LOKI_TYPELIST_80(
                          GetNodesStatusMap,
                          PersistConfigurationToString,
                          UpdateConfiguration,
+                         GetObjectId,
                          GetVolumeId,
                          SetGeneralLoggingLevel,
                          GetGeneralLoggingLevel,

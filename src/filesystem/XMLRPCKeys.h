@@ -89,6 +89,7 @@ struct XMLRPCKeys
     static const std::string non_disposable;
     static const std::string no_updates;
     static const std::string number_of_syncs_to_ignore;
+    static const std::string object_id;
     static const std::string offlined;
     static const std::string old_value;
     static const std::string param_name;
