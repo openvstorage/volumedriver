@@ -1273,21 +1273,6 @@ FileSystem::get_volume_id(const FrontendPath& path)
     }
 }
 
-boost::optional<vd::VolumeId>
-FileSystem::get_volume_id(const ObjectId& objid)
-{
-    DirectoryEntryPtr dentry(mdstore_.find(objid));
-    if (dentry and is_volume(dentry))
-    {
-        const  vd::VolumeId id(dentry->object_id().str());
-        return id;
-    }
-    else
-    {
-        return boost::none;
-    }
-}
-
 FrontendPath
 FileSystem::find_path(const ObjectId& id)
 {

@@ -462,9 +462,6 @@ public:
     boost::optional<volumedriver::VolumeId>
     get_volume_id(const FrontendPath& p);
 
-    boost::optional<volumedriver::VolumeId>
-    get_volume_id(const ObjectId& id);
-
     FrontendPath
     find_path(const ObjectId& id);
 
