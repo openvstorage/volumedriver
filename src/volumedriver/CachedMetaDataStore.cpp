@@ -99,7 +99,7 @@ CachedMetaDataStore::init_pages_(size_t capacity)
 {
     pages_.reserve(capacity);
 
-    for (uint64_t i = 0; i < pages_.capacity(); ++i)
+    for (uint64_t i = 0; i < capacity; ++i)
     {
         VERIFY((i + 1) * CachePage::capacity() <= page_data_.size());
         pages_.emplace_back(i, &page_data_[i * CachePage::capacity()]);
