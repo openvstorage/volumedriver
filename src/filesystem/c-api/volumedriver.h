@@ -67,6 +67,13 @@ ovs_create_volume(const char *volume_name,
                   uint64_t size);
 
 /*
+ * Remove an Open vStorage volume
+ * param volume_name: Volume name
+ */
+int
+ovs_remove_volume(const char *volume_name);
+
+/*
  * Allocate buffer from the shared memory segment
  * param ctx: Open vStorage context
  * param size: Buffer size in bytes

@@ -396,7 +396,7 @@ ovs_ctx_destroy(ovs_ctx_t *ctx)
 }
 
 int
-ovs_create_volume(const char *volume_name, uint64_t size)
+ovs_create_volume(const char* volume_name, uint64_t size)
 {
     if (not _is_volume_name_valid(volume_name))
     {
@@ -411,6 +411,32 @@ ovs_create_volume(const char *volume_name, uint64_t size)
     catch (ShmIdlInterface::VolumeExists)
     {
         errno = EEXIST;
+        return -1;
+    }
+    catch (...)
+    {
+        errno = EIO;
+        return -1;
+    }
+    return 0;
+}
+
+int
+ovs_remove_volume(const char* volume_name)
+{
+    if (not _is_volume_name_valid(volume_name))
+    {
+        errno = EINVAL;
+        return -1;
+    }
+
+    try
+    {
+        volumedriverfs::ShmClient::remove_volume(volume_name);
+    }
+    catch (ShmIdlInterface::VolumeDoesNotExist)
+    {
+        errno = ENOENT;
         return -1;
     }
     catch (...)
