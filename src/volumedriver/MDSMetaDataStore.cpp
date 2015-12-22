@@ -639,4 +639,13 @@ MDSMetaDataStore::getBackendConfig() const
     return std::unique_ptr<MetaDataBackendConfig>(new MDSMetaDataBackendConfig(get_config()));
 }
 
+void
+MDSMetaDataStore::set_cache_capacity(const size_t num_pages)
+{
+    LOCKW();
+
+    VERIFY(mdstore_);
+    mdstore_->set_cache_capacity(num_pages);
+}
+
 }

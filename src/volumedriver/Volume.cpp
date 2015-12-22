@@ -3195,6 +3195,43 @@ Volume::wait_for_backend_and_run(std::function<void()> fun)
     VolManager::get()->backend_thread_pool()->addTask(std::move(t));
 }
 
+void
+Volume::set_metadata_cache_capacity(const boost::optional<size_t>& num_pages)
+{
+    WLOCK();
+    checkNotHalted_();
+
+    const size_t new_capacity = num_pages ?
+        *num_pages :
+        VolManager::get()->metadata_cache_capacity.value();
+
+    THROW_WHEN(new_capacity == 0);
+
+    try
+    {
+        metaDataStore_->set_cache_capacity(new_capacity);
+    }
+    CATCH_STD_ALL_EWHAT({
+            LOG_VERROR("Failed to update metadata store cache capacity: " << EWHAT);
+            VolumeDriverError::report(events::VolumeDriverErrorCode::MetaDataStore,
+                                      EWHAT,
+                                      getName());
+            halt();
+            throw;
+        });
+
+    update_config_([&](VolumeConfig& cfg)
+                   {
+                       cfg.metadata_cache_capacity_ = num_pages;
+                   });
+}
+
+size_t
+Volume::effective_metadata_cache_capacity() const
+{
+    return VolManager::get()->effective_metadata_cache_capacity(get_config());
+}
+
 }
 
 // Local Variables: **

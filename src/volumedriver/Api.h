@@ -514,6 +514,10 @@ public:
 
     static boost::optional<volumedriver::SCOCacheNonDisposableFactor>
     getSCOCacheMaxNonDisposableFactor(const volumedriver::VolumeId& volName);
+
+    static void
+    setMetaDataCacheCapacity(const volumedriver::VolumeId&,
+                             const boost::optional<size_t>& num_pages);
 };
 
 #endif // API_H_

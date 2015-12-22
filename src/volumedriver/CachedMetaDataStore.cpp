@@ -85,6 +85,18 @@ CachedMetaDataStore::CachedMetaDataStore(const MetaDataBackendInterfacePtr& back
         scrub_id_ = backend_->scrub_id();
     }
 
+    init_pages_(capacity);
+}
+
+CachedMetaDataStore::~CachedMetaDataStore()
+{
+    write_dirty_pages_to_backend_and_clear_page_list(true,
+                                                     true);
+}
+
+void
+CachedMetaDataStore::init_pages_(size_t capacity)
+{
     pages_.reserve(capacity);
 
     for (uint64_t i = 0; i < pages_.capacity(); ++i)
@@ -96,11 +108,6 @@ CachedMetaDataStore::CachedMetaDataStore(const MetaDataBackendInterfacePtr& back
     LOG_INFO(id_ <<
              ": page capacity (entries): " << CachePage::capacity() <<
              ", max cached pages: " << pages_.size());
-}
-
-CachedMetaDataStore::~CachedMetaDataStore()
-{
-    write_dirty_pages_to_backend_and_clear_page_list(true, true);
 }
 
 void
@@ -469,7 +476,14 @@ CachedMetaDataStore::write_dirty_pages_to_backend_and_clear_page_list(bool sync,
                                                                       bool ignore_errors)
 {
     LOCK_CACHE_WRITE;
+    do_write_dirty_pages_to_backend_and_clear_page_list(sync,
+                                                        ignore_errors);
+}
 
+void
+CachedMetaDataStore::do_write_dirty_pages_to_backend_and_clear_page_list(bool sync,
+                                                                         bool ignore_errors)
+{
     while (not page_list_.empty())
     {
         CachePage& p(page_list_.front());
@@ -622,6 +636,29 @@ CachedMetaDataStore::get_page_(const ClusterAddress ca,
     return get_page_unlocked_(ca,
                               loc,
                               for_write);
+}
+
+void
+CachedMetaDataStore::set_cache_capacity(const size_t new_capacity)
+{
+    LOG_INFO(id_ << ": request to change cache capacity from " <<
+             pages_.size() << " to " << new_capacity);
+
+    VERIFY(new_capacity > 0);
+
+    LOCK_CORKS_WRITE;
+    LOCK_CACHE_WRITE;
+
+    if (new_capacity != pages_.size())
+    {
+        do_write_dirty_pages_to_backend_and_clear_page_list(true,
+                                                            true);
+
+        page_data_.resize(new_capacity * CachePage::capacity());
+        pages_.clear();
+
+        init_pages_(new_capacity);
+    }
 }
 
 bool

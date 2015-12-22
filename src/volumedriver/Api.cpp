@@ -1000,6 +1000,14 @@ api::getSCOCacheMaxNonDisposableFactor(const vd::VolumeId& volName)
     return VolManager::get()->findVolume_(volName)->getSCOCacheMaxNonDisposableFactor();
 }
 
+void
+api::setMetaDataCacheCapacity(const vd::VolumeId& volName,
+                              const boost::optional<size_t>& npages)
+{
+    ASSERT_LOCKABLE_LOCKED(getManagementMutex());
+    return VolManager::get()->findVolume_(volName)->set_metadata_cache_capacity(npages);
+}
+
 // Local Variables: **
 // mode: c++ **
 // End: **

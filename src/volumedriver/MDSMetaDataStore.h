@@ -125,6 +125,9 @@ public:
     virtual void
     set_scrub_id(const ScrubId& id) override;
 
+    virtual void
+    set_cache_capacity(const size_t num_pages) override final;
+
     void
     set_config(const MDSMetaDataBackendConfig& cfg);
 

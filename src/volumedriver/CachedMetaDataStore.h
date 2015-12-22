@@ -52,8 +52,7 @@ public:
                         const std::string& id,
                         uint64_t capacity = default_capacity_);
 
-    virtual
-    ~CachedMetaDataStore();
+    virtual ~CachedMetaDataStore();
 
     CachedMetaDataStore(const CachedMetaDataStore&) = delete;
 
@@ -143,13 +142,16 @@ public:
     updateBackendConfig(const MetaDataBackendConfig& cfg) override;
 
     virtual std::unique_ptr<MetaDataBackendConfig>
-    getBackendConfig() const override;
+    getBackendConfig() const override final;
 
     virtual MaybeScrubId
-    scrub_id() override;
+    scrub_id() override final;
 
     virtual void
-    set_scrub_id(const ScrubId& id) override;
+    set_scrub_id(const ScrubId& id) override final;
+
+    virtual void
+    set_cache_capacity(const size_t num_pages) override final;
 
     void
     discardCluster(const ClusterAddress caddr);
@@ -176,6 +178,12 @@ public:
     default_capacity()
     {
         return default_capacity_;
+    }
+
+    uint32_t
+    capacity() const
+    {
+        return pages_.size();
     }
 
     void
@@ -250,10 +258,17 @@ private:
     processPages(std::unique_ptr<youtils::Generator<PageDataPtr>> r,
                  SCOCloneID cloneid);
 
+    void
+    init_pages_(size_t capacity);
+
     // bit of a misnomer - if sync is false nothing is written out!
     void
     write_dirty_pages_to_backend_and_clear_page_list(bool sync,
                                                      bool ignore_errors = false);
+
+    void
+    do_write_dirty_pages_to_backend_and_clear_page_list(bool sync,
+                                                        bool ignore_errors);
 
     void
     write_dirty_pages_to_backend_keeping_page_list();
