@@ -59,6 +59,10 @@ module ShmIdlInterface {
                   in unsigned long long volume_size_in_bytes)
     raises(CouldNotCreateVolume, VolumeExists);
 
+    void
+    remove_volume(in string volume_name)
+    raises(VolumeDoesNotExist);
+
     ShmIdlInterface::CreateResult
     create_shm_interface(in ShmIdlInterface::CreateShmArguments args)
     raises(VolumeNameAlreadyRegistered, CouldNotCreateHandler,
