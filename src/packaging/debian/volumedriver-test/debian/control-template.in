@@ -8,7 +8,7 @@ Homepage: www.openvstorage.com
 
 Package: volumedriver-test
 Architecture: any
-Depends: ${shlibs:Depends}
+Depends: omniorb-nameserver, ${shlibs:Depends}
 Pre-Depends: volumedriver-base (>= 3.6.0), volumedriver-pitreplication (>= 3.6.0), volumedriver-server (>= 3.6.0)
 Conflicts: volumedriver-test (<< 3.6.0)
 Description: Testing code for volumedriver
