@@ -930,7 +930,12 @@ VolumeCreate::execute_internal(::XmlRpc::XmlRpcValue& params,
     const uint64_t vsize(getVOLSIZE(params[0]));
 
     vd::VolumeConfig::MetaDataBackendConfigPtr mdb_config;
-    mdb_config = XMLRPCStructs::deserialize_from_xmlrpc_value<decltype(mdb_config)>(params[0][XMLRPCKeys::metadata_backend_config]);
+
+    if (params[0].hasMember(XMLRPCKeys::metadata_backend_config))
+    {
+        mdb_config =
+            XMLRPCStructs::deserialize_from_xmlrpc_value<decltype(mdb_config)>(params[0][XMLRPCKeys::metadata_backend_config]);
+    }
 
     const ObjectId id(fs_.create_volume(path,
                                         std::move(mdb_config),

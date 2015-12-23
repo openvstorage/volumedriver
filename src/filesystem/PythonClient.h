@@ -128,8 +128,8 @@ public:
 
     std::string
     create_volume(const std::string& target_path,
-                  boost::shared_ptr<volumedriver::MetaDataBackendConfig> mdb_config,
-                  const std::string& volume_size,
+                  boost::shared_ptr<volumedriver::MetaDataBackendConfig> mdb_config = nullptr,
+                  const std::string& volume_size = "",
                   const std::string& node_id = "");
 
     std::string

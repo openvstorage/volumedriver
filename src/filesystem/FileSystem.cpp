@@ -540,6 +540,11 @@ FileSystem::create_volume(const FrontendPath& path,
 {
     LOG_INFO("Trying to create volume of size " << size << " @ " << path);
 
+    if (not mdb_config)
+    {
+        mdb_config = make_metadata_backend_config();
+    }
+
     return create_volume_or_clone_(path,
                                    [&](const FrontendPath& p,
                                        DirectoryEntryPtr dentry)

@@ -743,6 +743,19 @@ TEST_F(PythonClientTest, volume_creation)
     EXPECT_EQ(local_node_id(), vfs::NodeId(info.vrouter_id));
 }
 
+TEST_F(PythonClientTest, volume_creation_again)
+{
+    const vfs::FrontendPath vpath("/volume");
+    const yt::DimensionedValue size("0B");
+    const vfs::ObjectId vname(client_.create_volume(vpath.str(),
+                                                    nullptr,
+                                                    size.toString()));
+
+    const vfs::XMLRPCVolumeInfo info(client_.info_volume(vname.str()));
+    EXPECT_EQ(vfs::ObjectType::Volume, info.object_type);
+    EXPECT_EQ(local_node_id(), vfs::NodeId(info.vrouter_id));
+}
+
 TEST_F(PythonClientTest, clone_from_template)
 {
     const vfs::FrontendPath tpath(make_volume_name("/template"));

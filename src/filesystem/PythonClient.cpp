@@ -541,8 +541,11 @@ PythonClient::create_volume(const std::string& target_path,
 
     req[XMLRPCKeys::target_path] = target_path;
     req[XMLRPCKeys::volume_size] = volume_size;
-    req[XMLRPCKeys::metadata_backend_config] =
-        XMLRPCStructs::serialize_to_xmlrpc_value(mdb_config->clone());
+    if (mdb_config)
+    {
+        req[XMLRPCKeys::metadata_backend_config] =
+            XMLRPCStructs::serialize_to_xmlrpc_value(mdb_config->clone());
+    }
 
     if (not node_id.empty())
     {
