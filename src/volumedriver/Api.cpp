@@ -217,28 +217,24 @@ void
 api::local_restart(const Namespace& ns,
                    const vd::OwnerTag owner_tag,
                    const vd::FallBackToBackendRestart fallback,
-                   const vd::IgnoreFOCIfUnreachable ignoreFOCIfUnreachable,
-                   const uint32_t num_pages_cached)
+                   const vd::IgnoreFOCIfUnreachable ignoreFOCIfUnreachable)
 {
     VolManager::get()->local_restart(ns,
                                      owner_tag,
                                      fallback,
-                                     ignoreFOCIfUnreachable,
-                                     num_pages_cached);
+                                     ignoreFOCIfUnreachable);
 }
 
 void
 api::backend_restart(const Namespace& ns,
                      const vd::OwnerTag owner_tag,
                      const vd::PrefetchVolumeData prefetch,
-                     const vd::IgnoreFOCIfUnreachable ignoreFOCIfUnreachable,
-                     const uint32_t num_pages_cached)
+                     const vd::IgnoreFOCIfUnreachable ignoreFOCIfUnreachable)
 {
     VolManager::get()->backend_restart(ns,
                                        owner_tag,
                                        prefetch,
-                                       ignoreFOCIfUnreachable,
-                                       num_pages_cached);
+                                       ignoreFOCIfUnreachable);
 }
 
 WriteOnlyVolume*
@@ -725,7 +721,7 @@ api::removeSCOCacheMountPoint(const std::string& path)
 
 void
 api::addClusterCacheDevice(const std::string& /*path*/,
-                      const uint64_t /*size*/)
+                           const uint64_t /*size*/)
 {
     //    VolManager::get()->getClusterCache().addDevice(path,
     //    size);
@@ -1004,7 +1000,13 @@ api::getSCOCacheMaxNonDisposableFactor(const vd::VolumeId& volName)
     return VolManager::get()->findVolume_(volName)->getSCOCacheMaxNonDisposableFactor();
 }
 
-
+void
+api::setMetaDataCacheCapacity(const vd::VolumeId& volName,
+                              const boost::optional<size_t>& npages)
+{
+    ASSERT_LOCKABLE_LOCKED(getManagementMutex());
+    return VolManager::get()->findVolume_(volName)->set_metadata_cache_capacity(npages);
+}
 
 // Local Variables: **
 // mode: c++ **

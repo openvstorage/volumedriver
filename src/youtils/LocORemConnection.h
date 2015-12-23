@@ -19,17 +19,22 @@
 #include "Catchers.h"
 #include "IOException.h"
 #include "Logging.h"
+#include "System.h"
 
 #include <chrono>
 #include <memory>
 
 #include <boost/asio.hpp>
+#include <boost/asio/basic_socket.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/bind.hpp>
 #include <boost/optional.hpp>
 
 namespace youtils
 {
+
+using UnixSocket = boost::asio::local::stream_protocol::socket;
+using TcpSocket = boost::asio::ip::tcp::socket;
 
 template<typename S>
 class LocORemConnection
@@ -216,6 +221,73 @@ private:
     {
         LOG_INFO(this << ": new connection " << sock_.local_endpoint() <<
                  " (local) <-> " << sock_.remote_endpoint() << " (remote)");
+
+        sock_.set_option(boost::asio::socket_base::keep_alive());
+
+        configure_keepalive_(sock_);
+    }
+
+    void
+    configure_keepalive_(UnixSocket&)
+    {}
+
+    void
+    configure_keepalive_(TcpSocket& sock)
+    {
+        int fd = sock.native_handle();
+        VERIFY(fd >= 0);
+
+        auto set([&](const char* desc,
+                     int level,
+                     int optname,
+                     int val)
+                 {
+                     int ret = ::setsockopt(fd,
+                                            level,
+                                            optname,
+                                            &val,
+                                            sizeof(val));
+                     if (ret < 0)
+                     {
+                         ret = errno;
+                         LOG_ERROR("Failed to set " << desc << " on socket " <<
+                                   fd << ": " << strerror(errno));
+                         throw Exception("Failed to set socket option",
+                                         desc);
+                     }
+                 });
+
+        set("KeepAlive",
+            SOL_SOCKET,
+            SO_KEEPALIVE,
+            1);
+
+        static const int keep_cnt =
+            youtils::System::get_env_with_default("LOCOREM_TCP_KEEPCNT",
+                                                  5);
+
+        set("keepalive probes",
+            SOL_TCP,
+            TCP_KEEPCNT,
+            keep_cnt);
+
+        static const int keep_idle =
+            youtils::System::get_env_with_default("LOCOREM_TCP_KEEPIDLE",
+                                                  60);
+
+        set("keepalive time",
+            SOL_TCP,
+            TCP_KEEPIDLE,
+            keep_idle);
+
+        static const int keep_intvl =
+            youtils::System::get_env_with_default("LOCOREM_TCP_KEEPINTVL",
+                                                  60);
+
+        set("keepalive interval",
+            SOL_TCP,
+            TCP_KEEPINTVL,
+            keep_intvl);
     }
 
     // Moved out of the constructor as the caller needs to hold the instance in a
@@ -280,9 +352,6 @@ private:
         }
     }
 };
-
-using UnixSocket = boost::asio::local::stream_protocol::socket;
-using TcpSocket = boost::asio::ip::tcp::socket;
 
 using LocORemUnixConnection = LocORemConnection<UnixSocket>;
 using LocORemTcpConnection = LocORemConnection<TcpSocket>;

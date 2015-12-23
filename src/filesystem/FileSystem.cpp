@@ -149,6 +149,7 @@ FileSystem::FileSystem(const bpt::ptree& pt,
     , fs_metadata_backend_arakoon_cluster_nodes(pt)
     , fs_metadata_backend_mds_nodes(pt)
     , fs_metadata_backend_mds_apply_relocations_to_slaves(pt)
+    , fs_metadata_backend_mds_timeout_secs(pt)
     , fs_cache_dentries(pt)
     , fs_nullio(pt)
     , fs_dtl_config_mode(pt)
@@ -247,6 +248,7 @@ FileSystem::update(const bpt::ptree& pt,
     U(fs_metadata_backend_arakoon_cluster_nodes);
     U(fs_metadata_backend_mds_nodes);
     U(fs_metadata_backend_mds_apply_relocations_to_slaves);
+    U(fs_metadata_backend_mds_timeout_secs);
     U(fs_cache_dentries);
     U(fs_nullio);
     U(fs_dtl_config_mode);
@@ -275,6 +277,7 @@ FileSystem::persist(bpt::ptree& pt,
     P(fs_metadata_backend_arakoon_cluster_nodes);
     P(fs_metadata_backend_mds_nodes);
     P(fs_metadata_backend_mds_apply_relocations_to_slaves);
+    P(fs_metadata_backend_mds_timeout_secs);
     P(fs_cache_dentries);
     P(fs_nullio);
     P(fs_dtl_config_mode);
@@ -327,6 +330,15 @@ FileSystem::checkConfig(const bpt::ptree& pt,
                 crep.push_front(yt::ConfigurationProblem(nodes.name(),
                                                          nodes.section_name(),
                                                          "value must not be empty"));
+                res = false;
+            }
+
+            ip::PARAMETER_TYPE(fs_metadata_backend_mds_timeout_secs) timeout_secs(pt);
+            if (timeout_secs.value() == 0)
+            {
+                crep.push_front(yt::ConfigurationProblem(timeout_secs.name(),
+                                                         timeout_secs.section_name(),
+                                                         "value must not be 0"));
                 res = false;
             }
 
@@ -652,7 +664,8 @@ FileSystem::make_metadata_backend_config()
                              vd::ApplyRelocationsToSlaves::T :
                              vd::ApplyRelocationsToSlaves::F);
             mdb.reset(new vd::MDSMetaDataBackendConfig(configv,
-                                                       apply_relocs));
+                                                       apply_relocs,
+                                                       fs_metadata_backend_mds_timeout_secs.value()));
             break;
         }
     case vd::MetaDataBackendType::RocksDB:
@@ -672,7 +685,7 @@ FileSystem::do_mknod(const FrontendPath& path,
                      UserId uid,
                      GroupId gid,
                      Permissions pms,
-                     A... args)
+                     A&&... args)
 {
     const bool is_volume = is_volume_path_(path);
 
@@ -718,7 +731,7 @@ FileSystem::do_mknod(const FrontendPath& path,
 
     try
     {
-        mdstore_.add(args...,
+        mdstore_.add(std::forward<A>(args)...,
                      dentry);
     }
     CATCH_STD_ALL_EWHAT({
@@ -796,7 +809,7 @@ void
 FileSystem::do_mkdir(UserId uid,
                      GroupId gid,
                      Permissions pms,
-                     A... args)
+                     A&&... args)
 {
     DirectoryEntryPtr
         dentry(boost::make_shared<DirectoryEntry>(DirectoryEntry::Type::Directory,
@@ -805,7 +818,7 @@ FileSystem::do_mkdir(UserId uid,
                                                   uid,
                                                   gid));
 
-    mdstore_.add(args...,
+    mdstore_.add(std::forward<A>(args)...,
                  dentry);
 }
 
@@ -1245,6 +1258,7 @@ FileSystem::fsync(const FrontendPath& path,
           datasync);
 }
 
+TODO("Phase out get_volume_id in favour of get_object_id");
 boost::optional<vd::VolumeId>
 FileSystem::get_volume_id(const FrontendPath& path)
 {
@@ -1260,14 +1274,13 @@ FileSystem::get_volume_id(const FrontendPath& path)
     }
 }
 
-boost::optional<vd::VolumeId>
-FileSystem::get_volume_id(const ObjectId& objid)
+boost::optional<ObjectId>
+FileSystem::get_object_id(const FrontendPath& path)
 {
-    DirectoryEntryPtr dentry(mdstore_.find(objid));
-    if (dentry and is_volume(dentry))
+    DirectoryEntryPtr dentry(mdstore_.find(path));
+    if (dentry and not is_directory(dentry))
     {
-        const  vd::VolumeId id(dentry->object_id().str());
-        return id;
+        return dentry->object_id();
     }
     else
     {

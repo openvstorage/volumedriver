@@ -605,6 +605,14 @@ TEST_F(PythonClientTest, redirection_response)
                                                            boost::none));
     CHECK_REDIRECT(client.set_automatic_failover_cache_config(dummy_volume));
     CHECK_REDIRECT(client.get_failover_cache_config(dummy_volume));
+    CHECK_REDIRECT(client.schedule_backend_sync(dummy_volume));
+    CHECK_REDIRECT(client.is_volume_synced_up_to_tlog(dummy_volume,
+                                                      boost::lexical_cast<std::string>(vd::TLogId())));
+    CHECK_REDIRECT(client.is_volume_synced_up_to_snapshot(dummy_volume,
+                                                          "some-snapshot"));
+    CHECK_REDIRECT(client.set_metadata_cache_capacity(dummy_volume,
+                                                      boost::none));
+    CHECK_REDIRECT(client.get_metadata_cache_capacity(dummy_volume));
 
 //redirection based on nodeID
     CHECK_REDIRECT(client.migrate("non-existing volume",
@@ -1117,31 +1125,50 @@ TEST_F(PythonClientTest, remote_clone)
     EXPECT_EQ(remote_node_id(), vfs::NodeId(info.vrouter_id));
 }
 
-TEST_F(PythonClientTest, get_volume_id)
+TEST_F(PythonClientTest, volume_and_object_id)
 {
     {
         const vfs::FrontendPath vpath(make_volume_name("/some-volume"s));
         const vfs::ObjectId vname(create_file(vpath, 10 << 20));
 
-        const boost::optional<vd::VolumeId> maybe_id(client_.get_volume_id(vpath.str()));
-        ASSERT_TRUE(static_cast<bool>(maybe_id));
-        EXPECT_EQ(vname, *maybe_id);
+        const boost::optional<vd::VolumeId>
+            maybe_vid(client_.get_volume_id(vpath.str()));
+        ASSERT_NE(boost::none,
+                  maybe_vid);
+        EXPECT_EQ(vname,
+                  *maybe_vid);
+
+        const boost::optional<vfs::ObjectId>
+            maybe_oid(client_.get_object_id(vpath.str()));
+        ASSERT_NE(boost::none,
+                  maybe_oid);
+        EXPECT_EQ(vname,
+                  *maybe_oid);
     }
 
     {
         const vfs::FrontendPath fpath("/some-file");
-        create_file(fpath);
+        const vfs::ObjectId fname(create_file(fpath));
 
-        const boost::optional<vd::VolumeId> maybe_id(client_.get_volume_id(fpath.str()));
-        ASSERT_FALSE(maybe_id);
+        ASSERT_EQ(boost::none,
+                  client_.get_volume_id(fpath.str()));
+
+        const boost::optional<vfs::ObjectId>
+            maybe_oid(client_.get_object_id(fpath.str()));
+        ASSERT_NE(boost::none,
+                  maybe_oid);
+        EXPECT_EQ(fname,
+                  *maybe_oid);
     }
 
     {
         const vfs::FrontendPath nopath("/does-not-exist");
         verify_absence(nopath);
 
-        const boost::optional<vd::VolumeId> maybe_id(client_.get_volume_id(nopath.str()));
-        ASSERT_FALSE(maybe_id);
+        ASSERT_EQ(boost::none,
+                  client_.get_volume_id(nopath.str()));
+        ASSERT_EQ(boost::none,
+                  client_.get_object_id(nopath.str()));
     }
 }
 
@@ -1730,6 +1757,150 @@ TEST_F(PythonClientTest, locked_scrub)
                                          boost::none));
 
     lclient->apply_scrubbing_result(res);
+}
+
+TEST_F(PythonClientTest, backend_sync_tlog)
+{
+    const vfs::FrontendPath vpath(make_volume_name("/some-volume"));
+    const std::string vname(create_file(vpath, 10 << 20));
+
+    const vd::TLogName tlog_name(client_.schedule_backend_sync(vname));
+    ASSERT_TRUE(vd::TLog::isTLogString(tlog_name));
+
+    const size_t sleep_msecs = 100;
+    const size_t count = 60 * 1000 / sleep_msecs;
+    for (size_t i = 0; i < count; ++i)
+    {
+        if (client_.is_volume_synced_up_to_tlog(vname,
+                                                tlog_name))
+        {
+            break;
+        }
+        else
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(sleep_msecs));
+        }
+    }
+
+    ASSERT_TRUE(client_.is_volume_synced_up_to_tlog(vname,
+                                                    tlog_name));
+}
+
+TEST_F(PythonClientTest, backend_sync_snapshot)
+{
+    const vfs::FrontendPath vpath(make_volume_name("/some-volume"));
+    const std::string vname(create_file(vpath, 10 << 20));
+
+    const std::string snap("some-snapshot");
+    EXPECT_THROW(client_.is_volume_synced_up_to_snapshot(vname,
+                                                         snap),
+                 std::exception);
+
+    client_.create_snapshot(vname,
+                            snap);
+
+    const size_t sleep_msecs = 100;
+    const size_t count = 60 * 1000 / sleep_msecs;
+    for (size_t i = 0; i < count; ++i)
+    {
+        if (client_.is_volume_synced_up_to_snapshot(vname,
+                                                    snap))
+        {
+            break;
+        }
+        else
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(sleep_msecs));
+        }
+    }
+
+    ASSERT_TRUE(client_.is_volume_synced_up_to_snapshot(vname,
+                                                        snap));
+}
+
+TEST_F(PythonClientTest, metadata_cache_capacity)
+{
+    const vfs::FrontendPath vpath(make_volume_name("/some-volume"));
+    const std::string vname(create_file(vpath, 10 << 20));
+
+    EXPECT_EQ(boost::none,
+              client_.get_metadata_cache_capacity(vname));
+
+    EXPECT_THROW(client_.set_metadata_cache_capacity(vname,
+                                                     boost::optional<size_t>(0)),
+                 std::exception);
+
+    EXPECT_EQ(boost::none,
+              client_.get_metadata_cache_capacity(vname));
+
+    client_.set_metadata_cache_capacity(vname,
+                                        boost::optional<size_t>(256U));
+
+    boost::optional<size_t> cap(client_.get_metadata_cache_capacity(vname));
+    ASSERT_NE(boost::none,
+              cap);
+
+    EXPECT_EQ(256,
+              *cap);
+
+    client_.set_metadata_cache_capacity(vname,
+                                        boost::none);
+    EXPECT_EQ(boost::none,
+              client_.get_metadata_cache_capacity(vname));
+}
+
+TEST_F(PythonClientTest, restart_volume)
+{
+    mount_remote();
+
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         umount_remote();
+                                     }));
+
+    const vfs::FrontendPath vname(make_volume_name("/volume"));
+    const vfs::ObjectId oid(create_file(vname,
+                                        1ULL << 20));
+
+    const std::string pattern("a rather important message");
+
+    write_to_file(vname,
+                  pattern.c_str(),
+                  pattern.size(),
+                  0);
+
+    vfs::PythonClient remote_client(vrouter_cluster_id(),
+                                    {{address(), remote_config().xmlrpc_port}});
+
+    remote_client.stop_object(oid.str());
+
+    std::vector<char> buf(pattern.size());
+
+    ASSERT_GT(0,
+              read_from_file(vname,
+                             buf.data(),
+                             buf.size(),
+                             0));
+
+    const std::string pattern2("a much less important message");
+    ASSERT_GT(0,
+              write_to_file(vname,
+                            pattern2.c_str(),
+                            pattern2.size(),
+                            0));
+
+    remote_client.restart_object(oid.str(),
+                                 false);
+    read_from_file(vname,
+                   buf.data(),
+                   buf.size(),
+                   0);
+
+    const std::string s(buf.data(),
+                        buf.size());
+
+    ASSERT_EQ(pattern,
+              s);
 }
 
 }

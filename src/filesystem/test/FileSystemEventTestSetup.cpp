@@ -41,7 +41,7 @@ FileSystemEventTestSetup::FileSystemEventTestSetup(const std::string& name)
     if (use_amqp())
     {
         channel_ = AmqpClient::Channel::CreateFromUri(amqp_uri(),
-                                                      vfs::EventPublisher::max_frame_size);
+                                                      vfs::AmqpEventPublisher::max_frame_size);
         channel_->DeclareExchange(amqp_exchange(),
                                   AmqpClient::Channel::EXCHANGE_TYPE_FANOUT);
 
@@ -51,9 +51,9 @@ FileSystemEventTestSetup::FileSystemEventTestSetup(const std::string& name)
     }
 
     bpt::ptree pt;
-    publisher_ = std::make_unique<vfs::EventPublisher>(cluster_id_,
-                                                       node_id_,
-                                                       make_config(pt));
+    publisher_ = std::make_unique<vfs::AmqpEventPublisher>(cluster_id_,
+                                                           node_id_,
+                                                           make_config(pt));
 }
 
 FileSystemEventTestSetup::~FileSystemEventTestSetup()

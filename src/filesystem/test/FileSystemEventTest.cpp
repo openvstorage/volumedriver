@@ -23,7 +23,7 @@
 #include <youtils/UUID.h>
 #include <thread>
 
-#include "../EventPublisher.h"
+#include "../AmqpEventPublisher.h"
 #include "../FileSystemEvents.h"
 #include "../FileSystemEvents.pb.h"
 #include "../FileSystemParameters.h"
@@ -282,9 +282,9 @@ TEST_F(FileSystemEventTest, invalid_uri)
     bpt::ptree pt;
     FileSystemEventTestSetup::make_config(pt, invalid_uri, exchange, rkey);
 
-    EXPECT_THROW(vfs::EventPublisher p(cluster_id(),
-                                       node_id(),
-                                       pt),
+    EXPECT_THROW(vfs::AmqpEventPublisher p(cluster_id(),
+                                           node_id(),
+                                           pt),
                  std::exception);
 }
 
@@ -301,9 +301,9 @@ TEST_F(FileSystemEventTest, no_one_listening)
     bpt::ptree pt;
     FileSystemEventTestSetup::make_config(pt, uris, exchange, rkey);
 
-    vfs::EventPublisher p(cluster_id(),
-                          node_id(),
-                          pt);
+    vfs::AmqpEventPublisher p(cluster_id(),
+                              node_id(),
+                              pt);
 
     const vd::VolumeId vid("volume-name");
     const vfs::FrontendPath vpath("/volume-path");
@@ -328,9 +328,9 @@ TEST_F(FileSystemEventTest, cluster_of_uris)
                                     amqp_exchange(),
                                     amqp_routing_key());
 
-        vfs::EventPublisher p(cluster_id(),
-                              node_id(),
-                              pt);
+        vfs::AmqpEventPublisher p(cluster_id(),
+                                  node_id(),
+                                  pt);
 
         p.publish(vfs::FileSystemEvents::volume_delete(vd::VolumeId("volume-name"),
                                                        vfs::FrontendPath("/volume-path")));

@@ -224,51 +224,6 @@ TEST_F(LocalPythonClientTest, malloc_info)
     LOG_INFO(mi);
 }
 
-TEST_F(LocalPythonClientTest, restart_volume)
-{
-    const vfs::FrontendPath fname(make_volume_name("/volume"));
-
-    const vfs::ObjectId oid(create_file(fname,
-                                        1ULL << 20));
-
-    const std::string pattern("a rather important message");
-
-    write_to_file(fname,
-                  pattern.c_str(),
-                  pattern.size(),
-                  0);
-
-    local_client_->stop_object(oid.str());
-
-    std::vector<char> buf(pattern.size());
-
-    ASSERT_GT(0,
-              read_from_file(fname,
-                             buf.data(),
-                             buf.size(),
-                             0));
-
-    const std::string pattern2("a much less important message");
-    ASSERT_GT(0,
-              write_to_file(fname,
-                            pattern2.c_str(),
-                            pattern2.size(),
-                            0));
-
-    local_client_->restart_object(oid.str(),
-                                  false);
-    read_from_file(fname,
-                   buf.data(),
-                   buf.size(),
-                   0);
-
-    const std::string s(buf.data(),
-                        buf.size());
-
-    ASSERT_EQ(pattern,
-              s);
-}
-
 TEST_F(LocalPythonClientTest, cluster_cache_handles)
 {
     const vfs::FrontendPath vpath(make_volume_name("/cluster-cache-handles-test"));

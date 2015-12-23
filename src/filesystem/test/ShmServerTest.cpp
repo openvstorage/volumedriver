@@ -110,6 +110,13 @@ TEST_F(ShmServerTest, ovs_non_existent_volume)
     EXPECT_EQ(EACCES, errno);
 }
 
+TEST_F(ShmServerTest, ovs_remove_non_existent_volume)
+{
+    EXPECT_EQ(-1,
+              ovs_remove_volume("volume"));
+    EXPECT_EQ(ENOENT, errno);
+}
+
 TEST_F(ShmServerTest, ovs_already_created_volume)
 {
     uint64_t volume_size = 1 << 30;
@@ -120,6 +127,11 @@ TEST_F(ShmServerTest, ovs_already_created_volume)
               ovs_create_volume("volume",
                                 volume_size));
     EXPECT_EQ(EEXIST, errno);
+    EXPECT_EQ(0,
+              ovs_remove_volume("volume"));
+    EXPECT_EQ(-1,
+              ovs_remove_volume("volume"));
+    EXPECT_EQ(ENOENT, errno);
 }
 
 TEST_F(ShmServerTest, ovs_open_same_volume_twice)

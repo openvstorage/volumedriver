@@ -264,6 +264,12 @@ get_volume_info_owner_tag(const vfs::XMLRPCVolumeInfo* i)
     return i->owner_tag;
 }
 
+unsigned
+mds_mdb_config_timeout_secs(const vd::MDSMetaDataBackendConfig* c)
+{
+    return c->timeout().count();
+}
+
 }
 
 TODO("AR: this is a bit of a mess - split into smaller, logical pieces");
@@ -292,6 +298,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
     REGISTER_STRINGY_CONVERTER(vfs::ObjectId);
     REGISTER_STRINGY_CONVERTER(vd::VolumeId);
 
+    REGISTER_OPTIONAL_CONVERTER(vfs::ObjectId);
     REGISTER_OPTIONAL_CONVERTER(vd::VolumeId);
 
     REGISTER_OPTIONAL_CONVERTER(std::string);
@@ -563,6 +570,12 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "Look up the volume ID behind path (if any)\n"
              "@param path: string, path to check\n"
              "@returns: string (volume ID) or None\n")
+        .def("get_object_id",
+             &vfs::PythonClient::get_object_id,
+             (bpy::args("path")),
+             "Look up the object ID behind path (if any)\n"
+             "@param path: string, path to check\n"
+             "@returns: string (object ID) or None\n")
         .def("server_revision",
              &vfs::PythonClient::server_revision,
              "Get server revision information")
@@ -575,6 +588,16 @@ BOOST_PYTHON_MODULE(storagerouterclient)
               "Check how many more volumes this node is capable of running"
               "@param node_id: string, target node"
               "@returns: int, the number of volumes the node can host")
+        .def("stop_object",
+             &vfs::PythonClient::stop_object,
+             (bpy::args("object_id"),
+              bpy::args("delete_local_data")),
+             "Request that an object (volume or file) is stopped.\n"
+             "\n"
+             "NOTE: This does not remove the associated file - any I/O to it will lead to an error.\n"
+             "@param: object_id: string, ID of the object to be stopped\n"
+             "@param: delete_local_data: boolean, whether to remove local data\n"
+             "@returns: eventually\n")
         .def("migrate",
              &vfs::PythonClient::migrate,
              (bpy::args("object_id",
@@ -584,6 +607,14 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "@param volume_id: string, object identifier\n"
              "@param node_id: string, node to move the object to\n"
              "@param force_restart: boolean, whether to forcibly restart on the new node even if that means data loss (e.g. if the FOC is not available)\n")
+        .def("restart_object",
+             &vfs::PythonClient::restart_object,
+             (bpy::args("object_id"),
+              bpy::args("force_restart")),
+             "Request that an object (volume or file) is restarted.\n"
+             "@param: object_id: string, ID of the object to be restarted\n"
+             "@param: force: boolean, whether to force the restart even at the expense of data loss\n"
+             "@returns: eventually\n")
         .def("mark_node_offline",
              &vfs::PythonClient::mark_node_offline,
              (bpy::args("node_id")),
@@ -724,7 +755,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              &vfs::PythonClient::set_cluster_cache_limit,
              (bpy::args("volume_id"),
               bpy::args("limit")),
-             "set a volume's readcache limit (when in LocationBsaed mode)\n"
+             "set a volume's readcache limit (when in LocationBased mode)\n"
              "@param volume_id: string, volume identifier\n"
              "@param limit: None (= no limit) or an integer specifying the maximum number of clusters\n"
              "@returns: nothing, eventually\n")
@@ -743,6 +774,41 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "@param update_interval_secs: unsigned, update interval\n"
              "@param grace_period_secs: unsigned, grace period\n"
              "@returns: LockedClient context manager\n")
+        .def("schedule_backend_sync",
+             &vfs::PythonClient::schedule_backend_sync,
+             (bpy::args("volume_id")),
+             "Schedule a backend sync of the given Volume\n"
+             "@param volume_id: string, volume identifier\n"
+             "@returns: string, name of the TLog covering the data written out\n")
+        .def("is_volume_synced_up_to_tlog",
+             &vfs::PythonClient::is_volume_synced_up_to_tlog,
+             (bpy::args("volume_id"),
+              bpy::args("tlog_name")),
+             "Check whether a volume is synced to the backend up to a given TLog\n"
+             "@param volume_id: string, volume identifier\n"
+             "@param tlog_name: string, TLog name\n"
+             "@returns: boolean\n")
+        .def("is_volume_synced_up_to_snapshot",
+             &vfs::PythonClient::is_volume_synced_up_to_snapshot,
+             (bpy::args("volume_id"),
+              bpy::args("snapshot_name")),
+             "Check whether a volume is synced to the backend up to a given snapshot\n"
+             "@param volume_id: string, volume identifier\n"
+             "@param snapshot_name: string, snapshot name\n"
+             "@returns: boolean\n")
+        .def("set_metadata_cache_capacity",
+             &vfs::PythonClient::set_metadata_cache_capacity,
+             (bpy::args("volume_id"),
+              bpy::args("num_pages")),
+             "Set the volume's metadata cache capacity\n"
+             "@param volume_id: string, volume identifier\n"
+             "@param num_pages, unsigned, number of metadata pages\n")
+        .def("get_metadata_cache_capacity",
+             &vfs::PythonClient::get_metadata_cache_capacity,
+             (bpy::args("volume_id")),
+             "Get the volume's metadata cache capacity\n"
+             "@param volume_id: string, volume identifier\n"
+             "@returns num_pages, unsigned, number of metadata pages or None\n")
         ;
 
     vfspy::LocalClient::registerize();
@@ -1025,16 +1091,21 @@ BOOST_PYTHON_MODULE(storagerouterclient)
         ("MDSMetaDataBackendConfig",
          "MDS metadata backend configuration",
          bpy::init<const std::vector<vd::MDSNodeConfig>&,
-                   vd::ApplyRelocationsToSlaves>((bpy::args("mds_node_configs"),
-                                                  bpy::args("apply_relocations_to_slaves") = vd::ApplyRelocationsToSlaves::T),
-                                                 "Create an MDSMetaDataBackendConfig\n"
-                                                 "@param mds_node_configs: list of MDSNodeConfigs\n"
-                                                 "@param apply_relocations_to_slaves: ApplyRelocationsToSlaves boolean enum"))
+                   vd::ApplyRelocationsToSlaves,
+                   unsigned>((bpy::args("mds_node_configs"),
+                              bpy::args("apply_relocations_to_slaves") = vd::ApplyRelocationsToSlaves::T,
+                              bpy::args("timeout_secs") = vd::MDSMetaDataBackendConfig::default_timeout_secs_),
+                             "Create an MDSMetaDataBackendConfig\n"
+                             "@param mds_node_configs: list of MDSNodeConfigs\n"
+                             "@param apply_relocations_to_slaves: ApplyRelocationsToSlaves boolean enum\n"
+                             "@param timeout_secs: unsigned, timeout for remote MDS calls in seconds"))
         .def("node_configs",
              &vd::MDSMetaDataBackendConfig::node_configs,
              bpy::return_value_policy<bpy::copy_const_reference>())
         .def("apply_relocations_to_slaves",
              &vd::MDSMetaDataBackendConfig::apply_relocations_to_slaves)
+        .def("timeout_secs",
+             &mds_mdb_config_timeout_secs)
         ;
 
     REGISTER_ITERABLE_CONVERTER(std::vector<std::string>);

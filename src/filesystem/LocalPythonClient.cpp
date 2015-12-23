@@ -184,33 +184,6 @@ LocalPythonClient::malloc_info()
                 req);
 }
 
-void
-LocalPythonClient::stop_object(const std::string& object_id,
-                               bool delete_local_data)
-{
-    XmlRpc::XmlRpcValue req;
-
-    req[XMLRPCKeys::volume_id] = object_id;
-    XMLRPCUtils::put(req,
-                     XMLRPCKeys::delete_local_data,
-                     delete_local_data);
-
-    call(StopObject::method_name(),
-         req);
-}
-
-void
-LocalPythonClient::restart_object(const std::string& object_id,
-                                  bool force_restart)
-{
-    XmlRpc::XmlRpcValue req;
-    req[XMLRPCKeys::volume_id] = object_id;
-    XMLRPCUtils::put(req,
-                     XMLRPCKeys::force,
-                     force_restart);
-    call(RestartObject::method_name(), req);
-}
-
 std::vector<vd::ClusterCacheHandle>
 LocalPythonClient::list_cluster_cache_handles()
 {

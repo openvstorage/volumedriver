@@ -214,9 +214,6 @@ public:
 private:
     DECLARE_LOGGER("VFSLocalNode");
 
-    // TODO: make configurable
-    static const uint32_t cached_md_pages_;
-
     DECLARE_PARAMETER(vrouter_local_io_sleep_before_retry_usecs);
     DECLARE_PARAMETER(vrouter_local_io_retries);
     DECLARE_PARAMETER(vrouter_sco_multiplier);

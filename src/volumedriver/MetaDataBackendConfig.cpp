@@ -87,4 +87,7 @@ operator>>(std::istream& is,
                                       t);
 }
 
+unsigned
+MDSMetaDataBackendConfig::default_timeout_secs_ = 20;
+
 }

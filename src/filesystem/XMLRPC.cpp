@@ -639,10 +639,7 @@ SetSCOMultiplier::execute_internal(::XmlRpc::XmlRpcValue& params,
     catch (vd::InvalidOperation& e)
     {
         setError(result, XMLRPCErrorCode::InvalidOperation, e.what());
-        return;
     }
-    // OK
-    result.clear();
 }
 
 void
@@ -1063,19 +1060,18 @@ GetNodesStatusMap::execute_internal(XmlRpc::XmlRpcValue& /*params*/,
 }
 
 void
-IsVolumeSyncedUpTo::execute_internal(XmlRpc::XmlRpcValue& params,
-                                     XmlRpc::XmlRpcValue& result)
+IsVolumeSyncedUpToSnapshot::execute_internal(XmlRpc::XmlRpcValue& params,
+                                             XmlRpc::XmlRpcValue& result)
 {
+    const vd::VolumeId volName(getID(params[0]));
+    const vd::SnapshotName snapshotName(getSnapID(params[0]));
+
     with_api_exception_conversion([&]()
                                   {
-                                      const vd::VolumeId volName(getID(params[0]));
-                                      const vd::SnapshotName
-                                          snapshotName(getSnapID(params[0]));
                                       result = XMLVAL(api::isVolumeSyncedUpTo(volName,
                                                                               snapshotName));
                                   });
 }
-
 
 void
 DataStoreWriteUsed::execute_internal(XmlRpc::XmlRpcValue& params,
@@ -1125,20 +1121,34 @@ TLogUsed::execute_internal(XmlRpc::XmlRpcValue& params,
 
 void
 ScheduleBackendSync::execute_internal(XmlRpc::XmlRpcValue& params,
-                                      XmlRpc::XmlRpcValue& /*result*/)
+                                      XmlRpc::XmlRpcValue& result)
 {
     const vd::VolumeId volName(getID(params[0]));
-    api::scheduleBackendSync(volName);
+    with_api_exception_conversion([&]
+                                  {
+                                      const vd::TLogId
+                                          tlog_id(api::scheduleBackendSync(volName));
+                                      result[XMLRPCKeys::tlog_name] =
+                                          XMLVAL(boost::lexical_cast<std::string>(tlog_id));
+                                  });
 }
 
 void
-IsVolumeSynced::execute_internal(XmlRpc::XmlRpcValue& params,
-                                 XmlRpc::XmlRpcValue& result)
+IsVolumeSyncedUpToTLog::execute_internal(XmlRpc::XmlRpcValue& params,
+                                         XmlRpc::XmlRpcValue& result)
 {
     const vd::VolumeId volName(getID(params[0]));
-    result = XMLVAL(api::isVolumeSynced(volName));
-}
+    XMLRPCUtils::ensure_arg(params[0],
+                            XMLRPCKeys::tlog_name);
+    const vd::TLogName tlog_name(params[0][XMLRPCKeys::tlog_name]);
+    const auto tlog_id(boost::lexical_cast<vd::TLogId>(tlog_name));
 
+    with_api_exception_conversion([&]
+                                  {
+                                      result = XMLVAL(api::isVolumeSyncedUpTo(volName,
+                                                                              tlog_id));
+                                  });
+}
 
 void
 RemoveNamespaceFromSCOCache::execute_internal(XmlRpc::XmlRpcValue& params,
@@ -1679,6 +1689,24 @@ GetVolumeId::execute_internal(XmlRpc::XmlRpcValue& params,
 }
 
 void
+GetObjectId::execute_internal(XmlRpc::XmlRpcValue& params,
+                              XmlRpc::XmlRpcValue& result)
+{
+    XMLRPCUtils::ensure_arg(params[0], XMLRPCKeys::target_path);
+    const FrontendPath path(static_cast<const std::string&>(params[0][XMLRPCKeys::target_path]));
+    const boost::optional<ObjectId> maybe_id(fs_.get_object_id(path));
+
+    if (maybe_id)
+    {
+        result[XMLRPCKeys::object_id] = *maybe_id;
+    }
+    else
+    {
+        result[XMLRPCKeys::object_id] = "";
+    }
+}
+
+void
 UpdateClusterNodeConfigs::execute_internal(::XmlRpc::XmlRpcValue& /* params */,
                                      ::XmlRpc::XmlRpcValue& /*result*/)
 {
@@ -1773,6 +1801,44 @@ SetAutomaticFailOverCacheConfig::execute_internal(::XmlRpc::XmlRpcValue& params,
         auto param = params[0];
         const ObjectId oid(getID(param));
         fs_.object_router().set_automatic_foc_config(oid);
+    });
+}
+
+void
+GetMetaDataCacheCapacity::execute_internal(::XmlRpc::XmlRpcValue& params,
+                                           ::XmlRpc::XmlRpcValue& result)
+{
+    const vd::VolumeId vol_id(getID(params[0]));
+
+    with_api_exception_conversion([&]
+    {
+        const boost::optional<size_t>
+            cap(api::getVolumeConfig(vol_id).metadata_cache_capacity_);
+
+        ensureStruct(result);
+        if (cap)
+        {
+            result[XMLRPCKeys::metadata_cache_capacity] = XMLVAL(*cap);
+        }
+    });
+}
+
+void
+SetMetaDataCacheCapacity::execute_internal(::XmlRpc::XmlRpcValue& params,
+                                           ::XmlRpc::XmlRpcValue& result)
+{
+    with_api_exception_conversion([&]
+    {
+        auto param = params[0];
+        const vd::VolumeId vol_id(getID(param));
+        boost::optional<size_t> cap;
+        if (param.hasMember(XMLRPCKeys::metadata_cache_capacity))
+        {
+            const std::string s(param[XMLRPCKeys::metadata_cache_capacity]);
+            cap = boost::lexical_cast<size_t>(s);
+        }
+        api::setMetaDataCacheCapacity(vol_id,
+                                      cap);
     });
 }
 

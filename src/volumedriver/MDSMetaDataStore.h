@@ -125,6 +125,9 @@ public:
     virtual void
     set_scrub_id(const ScrubId& id) override;
 
+    virtual void
+    set_cache_capacity(const size_t num_pages) override final;
+
     void
     set_config(const MDSMetaDataBackendConfig& cfg);
 
@@ -148,6 +151,7 @@ private:
     // Rotated on failover.
     std::vector<MDSNodeConfig> node_configs_;
     ApplyRelocationsToSlaves apply_relocations_to_slaves_;
+    std::chrono::seconds timeout_;
 
     const uint64_t num_pages_cached_;
     const boost::filesystem::path home_;
@@ -180,6 +184,9 @@ private:
     R
     do_handle_(const char* desc,
                F&& fun);
+
+    MDSMetaDataBackendConfig
+    get_config_() const;
 
     void
     check_config_(const MDSMetaDataBackendConfig&);

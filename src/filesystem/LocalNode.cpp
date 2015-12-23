@@ -58,8 +58,6 @@ namespace yt = youtils;
 #define LOCK_LOCKS()                                                    \
     std::lock_guard<decltype(object_lock_map_lock_)> vlmlg_(object_lock_map_lock_)
 
-const uint32_t LocalNode::cached_md_pages_ = 8 * 1024;
-
 #define CONTAINER_ID(obj)                       \
     static_cast<fd::ContainerId>(obj.id)
 
@@ -101,6 +99,9 @@ LocalNode::LocalNode(ObjectRouter& router,
     , scrub_manager_sync_wait_secs(pt)
 {
     LOG_TRACE("Initializing volumedriver");
+
+    THROW_WHEN(vrouter_sco_multiplier.value() == 0);
+    THROW_WHEN(vrouter_sco_multiplier.value() >= (1U << (8 * sizeof(vd::SCOOffset))));
 
     api::Init(pt,
               router.event_publisher());
@@ -778,8 +779,7 @@ LocalNode::local_restart_volume_(const ObjectRegistration& reg,
                                vd::FallBackToBackendRestart::T,
                                force == ForceRestart::T ?
                                vd::IgnoreFOCIfUnreachable::T :
-                               vd::IgnoreFOCIfUnreachable::F,
-                               cached_md_pages_);
+                               vd::IgnoreFOCIfUnreachable::F);
         }
         else
         {
@@ -851,8 +851,7 @@ LocalNode::restart_volume_from_backend_(const ObjectId& id,
                                  vd::PrefetchVolumeData::F,
                                  force == ForceRestart::T ?
                                  vd::IgnoreFOCIfUnreachable::T :
-                                 vd::IgnoreFOCIfUnreachable::F,
-                                 cached_md_pages_);
+                                 vd::IgnoreFOCIfUnreachable::F);
         }
         else
         {
@@ -945,7 +944,6 @@ LocalNode::create_volume_(const ObjectId& id,
                                                          vd::VolumeSize(0),
                                                          reg->owner_tag)
                        .sco_multiplier(vd::SCOMultiplier(vrouter_sco_multiplier.value()))
-                       .metadata_cache_pages(cached_md_pages_)
                        .metadata_backend_config(std::move(mdb_config)));
 
             api::createNewVolume(params,
@@ -1004,7 +1002,6 @@ LocalNode::create_clone(const ObjectId& clone_id,
                                             clone_nspace,
                                             parent_reg->getNS(),
                                             reg->owner_tag)
-            .metadata_cache_pages(cached_md_pages_)
             .metadata_backend_config(std::move(mdb_config))
             ;
         if (maybe_parent_snap)
@@ -1063,7 +1060,6 @@ LocalNode::clone_to_existing_volume(const ObjectId& clone_id,
                                         clone_nspace,
                                         parent_reg->getNS(),
                                         clone_reg->owner_tag)
-        .metadata_cache_pages(cached_md_pages_)
         .metadata_backend_config(std::move(mdb_config))
         ;
     if (maybe_parent_snap)

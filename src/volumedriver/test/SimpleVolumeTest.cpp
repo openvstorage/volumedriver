@@ -2652,6 +2652,82 @@ TEST_P(SimpleVolumeTest, synchronous_foc)
               count);
 }
 
+TEST_P(SimpleVolumeTest, metadata_cache_capacity)
+{
+    auto wrns(make_random_namespace());
+
+    Volume* v = newVolume(*wrns);
+
+    auto check_cap([&](const boost::optional<size_t>& cap)
+                   {
+                       ASSERT_EQ(cap,
+                                 v->get_config().metadata_cache_capacity_);
+
+                       const VolumeConfig cfg(v->get_config());
+                       ASSERT_EQ(cap,
+                                 cfg.metadata_cache_capacity_);
+
+                       if (not cap)
+                       {
+                           ASSERT_EQ(VolManager::get()->metadata_cache_capacity.value(),
+                                     v->effective_metadata_cache_capacity());
+                       }
+                       else
+                       {
+                           ASSERT_EQ(*cap,
+                                     v->effective_metadata_cache_capacity());
+                       }
+                   });
+
+    check_cap(boost::none);
+
+    const std::string fst("first");
+    const size_t csize = v->getClusterSize();
+
+    writeToVolume(v,
+                  0,
+                  csize,
+                  fst);
+
+    syncToBackend(v);
+
+    const std::string snd("second");
+    writeToVolume(v,
+                  csize,
+                  csize,
+                  snd);
+
+    ASSERT_THROW(v->set_metadata_cache_capacity(0UL),
+                 std::exception);
+
+    auto check_([&](const boost::optional<size_t>& cap)
+               {
+                   check_cap(cap);
+
+                   checkVolume(v,
+                               0,
+                               csize,
+                               fst);
+
+                   checkVolume(v,
+                               csize,
+                               csize,
+                               snd);
+               });
+
+    check_(boost::none);
+
+    auto check([&](const boost::optional<size_t>& cap)
+               {
+                    v->set_metadata_cache_capacity(cap);
+                    check_(cap);
+               });
+
+    check(128);
+    check(256);
+    check(boost::none);
+}
+
 INSTANTIATE_TEST(SimpleVolumeTest);
 
 }

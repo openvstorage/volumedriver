@@ -81,7 +81,7 @@ public:
         , C(cluster_cache_behaviour_)
         , C(cluster_cache_mode_)
         , C(cluster_cache_limit_)
-        , C(metadata_cache_pages_)
+        , C(metadata_cache_capacity_)
     {}
 
     VolumeConfigParameters(VolumeConfigParameters&& other)
@@ -102,7 +102,7 @@ public:
         , M(cluster_cache_behaviour_)
         , M(cluster_cache_mode_)
         , M(cluster_cache_limit_)
-        , M(metadata_cache_pages_)
+        , M(metadata_cache_capacity_)
     {}
 
 #undef M
@@ -145,10 +145,7 @@ private:                                        \
     OPTIONAL_PARAM(ClusterCacheBehaviour, cluster_cache_behaviour);
     OPTIONAL_PARAM(ClusterCacheMode, cluster_cache_mode);
     OPTIONAL_PARAM(ClusterCount, cluster_cache_limit);
-
-    // It'd be better to default it to CachedMetaDataStore<void>::default_capacity()
-    // but we have a mutual inclusion problem.
-    PARAM(uint32_t, metadata_cache_pages) = 1024;
+    OPTIONAL_PARAM(uint32_t, metadata_cache_capacity);
 
 #undef OPTIONAL_PARAM
 #undef PARAM
@@ -209,7 +206,7 @@ struct VanillaVolumeConfigParameters
     SETTER(sco_multiplier);
     SETTER(tlog_multiplier);
     SETTER(max_non_disposable_factor);
-    SETTER(metadata_cache_pages);
+    SETTER(metadata_cache_capacity);
     SETTER(metadata_backend_config);
 };
 
@@ -245,7 +242,7 @@ struct CloneVolumeConfigParameters
     SETTER(cluster_cache_behaviour);
     SETTER(cluster_cache_mode);
     SETTER(cluster_cache_limit);
-    SETTER(metadata_cache_pages);
+    SETTER(metadata_cache_capacity);
     SETTER(metadata_backend_config);
 };
 
@@ -263,7 +260,6 @@ struct WriteOnlyVolumeConfigParameters
     {
         size_ = size;
         volume_role_ = role;
-        metadata_cache_pages_ = 0;
         cluster_cache_enabled_ = false;
     }
 

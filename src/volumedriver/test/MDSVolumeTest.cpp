@@ -129,7 +129,7 @@ protected:
                                              vsize,
                                              new_owner_tag())
             .metadata_backend_config(metadata_backend_config())
-            .metadata_cache_pages(1);
+            .metadata_cache_capacity(1);
     }
 
     Volume*
@@ -332,7 +332,8 @@ protected:
                      bool wait = true)
     {
         MetaDataBackendInterfacePtr mdb(std::make_shared<MDSMetaDataBackend>(cfg,
-                                                                             wrns.ns()));
+                                                                             wrns.ns(),
+                                                                             boost::none));
 
         const uint32_t secs = mds_manager_->poll_interval().count();
         const uint32_t sleep_msecs = 100;
@@ -727,7 +728,8 @@ TEST_P(MDSVolumeTest, slave_catchup)
 
     const MDSNodeConfigs ncfgs(node_configs());
     MDSMetaDataBackend mdb(ncfgs[1],
-                           wrns->ns());
+                           wrns->ns(),
+                           boost::none);
 
     EXPECT_EQ(boost::none,
               mdb.lastCorkUUID());
@@ -1033,7 +1035,8 @@ TEST_P(MDSVolumeTest, futile_scrub)
 
     const MDSNodeConfigs ncfgs(node_configs());
     MDSMetaDataBackend mdb(ncfgs[1],
-                           wrns->ns());
+                           wrns->ns(),
+                           boost::none);
 
     const auto old_scrub_id(v->getMetaDataStore()->scrub_id());
 
@@ -1105,7 +1108,8 @@ TEST_P(MDSVolumeTest, happy_scrub)
 
     const MDSNodeConfigs ncfgs(node_configs());
     MDSMetaDataBackend mdb(ncfgs[1],
-                           wrns->ns());
+                           wrns->ns(),
+                           boost::none);
 
     const scrubbing::ScrubReply scrub_reply(prepare_scrub_test(*v));
 
@@ -1312,7 +1316,8 @@ TEST_P(MDSVolumeTest, no_relocations_on_slaves)
 
         MetaDataBackendInterfacePtr
             mdb(std::make_shared<MDSMetaDataBackend>(node_configs(*mgr)[1],
-                                                     wrns->ns()));
+                                                     wrns->ns(),
+                                                     boost::none));
         const MaybeScrubId maybe_scrub_id(mdb->scrub_id());
 
         if (apply_relocs == ApplyRelocationsToSlaves::F)
@@ -1396,11 +1401,6 @@ TEST_P(MDSVolumeTest, local_restart_of_pristine_clone_with_empty_mds)
                 c->getClusterSize(),
                 pattern);
 }
-
-
-
-
-
 
 INSTANTIATE_TEST(MDSVolumeTest);
 

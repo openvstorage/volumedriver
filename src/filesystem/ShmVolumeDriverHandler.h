@@ -53,7 +53,7 @@ public:
         : fs_(handler_args.fs)
         , volume_size_in_bytes_(0)
     {
-        LOG_INFO("created a handler for creating a volume");
+        LOG_INFO("created a new volume handler");
     }
 
     ~ShmVolumeDriverHandler()
@@ -161,6 +161,32 @@ public:
         {
             LOG_INFO("Problem creating volume: " << volume_name
                      << ":" << e.what());
+            throw;
+        }
+    }
+
+    void
+    remove_volume(const std::string& volume_name)
+    {
+        LOG_INFO("Removing volume with name: " << volume_name);
+
+        const std::string root_("/");
+        const std::string dot_(".");
+        const FrontendPath volume_path(root_ + volume_name + dot_ +
+                                       fs_.vdisk_format().name());
+        try
+        {
+            fs_.unlink(volume_path);
+        }
+        catch (HierarchicalArakoon::DoesNotExistException&)
+        {
+            LOG_INFO("Volume '" << volume_name << "' does not exist");
+            throw ShmIdlInterface::VolumeDoesNotExist(volume_name.c_str());
+        }
+        catch (std::exception& e)
+        {
+            LOG_INFO("Problem removing volume: " << volume_name
+                     << ": " << e.what());
             throw;
         }
     }

@@ -105,9 +105,11 @@ make_data_store(const VolumeConfig& config)
 }
 
 std::unique_ptr<MetaDataStoreInterface>
-make_metadata_store(const VolumeConfig& config,
-                    const uint32_t num_pages_cached)
+make_metadata_store(const VolumeConfig& config)
 {
+    VolManager& vm = *VolManager::get();
+    const size_t num_pages_cached = vm.effective_metadata_cache_capacity(config);
+
     MetaDataBackendInterfacePtr mdb;
     switch (config.metadata_backend_config_->backend_type())
     {
@@ -128,9 +130,8 @@ make_metadata_store(const VolumeConfig& config,
         {
             const auto& mcfg(dynamic_cast<const MDSMetaDataBackendConfig&>(*config.metadata_backend_config_));
             const be::Namespace nspace(config.ns_);
-            be::BackendInterfacePtr
-                bi(VolManager::get()->createBackendInterface(nspace));
-            const fs::path home(VolManager::get()->getMetaDataPath(nspace));
+            be::BackendInterfacePtr bi(vm.createBackendInterface(nspace));
+            const fs::path home(vm.getMetaDataPath(nspace));
             return std::unique_ptr<MetaDataStoreInterface>(new MDSMetaDataStore(mcfg,
                                                                                 std::move(bi),
                                                                                 home,
@@ -145,12 +146,9 @@ make_metadata_store(const VolumeConfig& config,
 
 std::unique_ptr<MetaDataStoreInterface>
 make_metadata_store(const VolumeConfig& config,
-                    const uint32_t num_pages_cached,
                     const ScrubId& sp_scrub_id)
 {
-    auto md(make_metadata_store(config,
-                                num_pages_cached));
-
+    auto md(make_metadata_store(config));
     const MaybeScrubId md_scrub_id(md->scrub_id());
 
     if (md_scrub_id != boost::none)
@@ -180,7 +178,6 @@ std::unique_ptr<Volume, FreshVolumeDestroyer<delete_local_data,
 create_volume_stage_1(const VolumeConfig& config,
                       const OwnerTag owner_tag,
                       const RestartContext context,
-                      const uint32_t num_pages_cached,
                       NSIDMap nsid,
                       std::unique_ptr<MetaDataStoreInterface> md)
 {
@@ -190,7 +187,6 @@ create_volume_stage_1(const VolumeConfig& config,
     if (not md)
     {
         md = make_metadata_store(config,
-                                 num_pages_cached,
                                  sm->scrub_id());
     }
 
@@ -274,8 +270,7 @@ new_volume_prechecks(const VolumeConfig& config)
 } // anon namespace
 
 std::unique_ptr<Volume>
-VolumeFactory::createNewVolume(const VolumeConfig& config,
-                               const uint32_t metadata_cache_pages)
+VolumeFactory::createNewVolume(const VolumeConfig& config)
 {
     new_volume_prechecks(config);
 
@@ -286,7 +281,6 @@ VolumeFactory::createNewVolume(const VolumeConfig& config,
                                    RemoveVolumeCompletely::T>(config,
                                                               config.owner_tag_,
                                                               RestartContext::Creation,
-                                                              metadata_cache_pages,
                                                               std::move(nsid),
                                                               nullptr));
 
@@ -505,12 +499,10 @@ replay_tlogs_not_on_backend(const VolumeConfig& config,
 }
 
 std::unique_ptr<MetaDataStoreInterface>
-local_restart_metadata_store(const VolumeConfig& config,
-                             const uint32_t num_pages_cached)
+local_restart_metadata_store(const VolumeConfig& config)
 {
     SnapshotPersistor sp(VolManager::get()->getSnapshotsPath(config));
     std::unique_ptr<MetaDataStoreInterface> mdstore(make_metadata_store(config,
-                                                                        num_pages_cached,
                                                                         sp.scrub_id()));
 
     LOG_INFO("Trying to get the cork from the SnapshotPersistor");
@@ -555,13 +547,11 @@ private:
 std::unique_ptr<Volume>
 local_restart_volume(const VolumeConfig& config,
                      const OwnerTag owner_tag,
-                     const IgnoreFOCIfUnreachable,
-                     uint32_t num_pages_cached)
+                     const IgnoreFOCIfUnreachable)
 try
 {
     std::unique_ptr<MetaDataStoreInterface>
-        mdstore(local_restart_metadata_store(config,
-                                             num_pages_cached));
+        mdstore(local_restart_metadata_store(config));
     NSIDMap nsid;
     SnapshotPersistor sp(config.parent());
     NSIDMapBuilder builder(nsid);
@@ -573,7 +563,6 @@ try
                                    RemoveVolumeCompletely::F>(config,
                                                               owner_tag,
                                                               RestartContext::LocalRestart,
-                                                              num_pages_cached,
                                                               std::move(nsid),
                                                               std::move(mdstore)));
     vol->localRestart();
@@ -587,8 +576,7 @@ CATCH_STD_ALL_LOGLEVEL_RETHROW("Cannot restart volume for namespace " <<
 std::unique_ptr<Volume>
 fall_back_to_backend_restart(const VolumeConfig& config,
                              const OwnerTag owner_tag,
-                             const IgnoreFOCIfUnreachable ignore_foc,
-                             uint32_t num_pages_cached)
+                             const IgnoreFOCIfUnreachable ignore_foc)
 {
     LOG_INFO(config.getNS() <<
              ": checking feasibility of falling back to a backend restart");
@@ -612,8 +600,7 @@ fall_back_to_backend_restart(const VolumeConfig& config,
     return VolumeFactory::backend_restart(config,
                                           owner_tag,
                                           PrefetchVolumeData::F,
-                                          ignore_foc,
-                                          num_pages_cached);
+                                          ignore_foc);
 }
 
 }
@@ -622,22 +609,19 @@ std::unique_ptr<Volume>
 VolumeFactory::local_restart(const VolumeConfig& config,
                              const OwnerTag owner_tag,
                              const FallBackToBackendRestart fallback,
-                             const IgnoreFOCIfUnreachable ignore_foc,
-                             uint32_t num_pages_cached)
+                             const IgnoreFOCIfUnreachable ignore_foc)
 {
     if (fs::exists(VolManager::get()->getSnapshotsPath(config)))
     {
         return local_restart_volume(config,
                                     owner_tag,
-                                    ignore_foc,
-                                    num_pages_cached);
+                                    ignore_foc);
     }
     else if (fallback == FallBackToBackendRestart::T)
     {
         return fall_back_to_backend_restart(config,
                                             owner_tag,
-                                            ignore_foc,
-                                            num_pages_cached);
+                                            ignore_foc);
     }
     else
     {
@@ -650,8 +634,7 @@ std::unique_ptr<Volume>
 VolumeFactory::backend_restart(const VolumeConfig& config,
                                const OwnerTag owner_tag,
                                const PrefetchVolumeData prefetch,
-                               const IgnoreFOCIfUnreachable ignoreFOCIfUnreachable,
-                               const uint32_t num_pages_cached)
+                               const IgnoreFOCIfUnreachable ignoreFOCIfUnreachable)
 {
     const be::Namespace nspace(config.getNS());
 
@@ -696,7 +679,6 @@ VolumeFactory::backend_restart(const VolumeConfig& config,
 
         std::unique_ptr<MetaDataStoreInterface>
             mdstore(make_metadata_store(config,
-                                        num_pages_cached,
                                         sp.scrub_id()));
 
         const boost::optional<yt::UUID> maybe_cork(mdstore->lastCork());
@@ -741,7 +723,6 @@ VolumeFactory::backend_restart(const VolumeConfig& config,
                                        RemoveVolumeCompletely::F>(config,
                                                                   owner_tag,
                                                                   RestartContext::BackendRestart,
-                                                                  num_pages_cached,
                                                                   std::move(nsid),
                                                                   std::move(mdstore)));
         vol->backend_restart(restartTLogs,
@@ -897,7 +878,6 @@ struct CloneFromParentSnapshotAcc
 std::unique_ptr<Volume>
 VolumeFactory::createClone(const VolumeConfig& config,
                            const PrefetchVolumeData prefetch,
-                           const uint32_t metadata_cache_pages,
                            const yt::UUID& parent_snap_uuid)
 {
     NSIDMap nsid;
@@ -915,7 +895,6 @@ VolumeFactory::createClone(const VolumeConfig& config,
                                    RemoveVolumeCompletely::T>(config,
                                                               config.owner_tag_,
                                                               RestartContext::Cloning,
-                                                              metadata_cache_pages,
                                                               std::move(nsid),
                                                               nullptr));
 

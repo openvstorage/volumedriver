@@ -509,6 +509,12 @@ public:
     void
     wait_for_backend_and_run(std::function<void()>);
 
+    void
+    set_metadata_cache_capacity(const boost::optional<size_t>& num_pages);
+
+    size_t
+    effective_metadata_cache_capacity() const;
+
 private:
     DECLARE_LOGGER("Volume");
 

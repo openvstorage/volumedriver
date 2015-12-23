@@ -162,13 +162,19 @@ fsw_exception_handler(FileSystemWrapper& fsw_,
     {
         TRACE_("Caught a GetAttrOnInexistentPath exception: "
                << e.what());
-        return fsalstat((fsal_errors_t)ERR_FSAL_NOENT, 0);
+        return fsalstat(ERR_FSAL_NOENT, 0);
     }
     catch (volumedriverfs::HierarchicalArakoon::DoesNotExistException& e)
     {
         TRACE_("Caught a DoesNotExistException exception: "
                << e.what());
-        return fsalstat((fsal_errors_t)ERR_FSAL_NOENT, 0);
+        return fsalstat(ERR_FSAL_NOENT, 0);
+    }
+    catch (volumedriverfs::FileExistsException& e)
+    {
+        TRACE_("Caught a FileExistsException exception: "
+               << e.what());
+        return fsalstat(ERR_FSAL_EXIST, 0);
     }
     catch (std::exception& e)
     {
@@ -180,6 +186,7 @@ fsw_exception_handler(FileSystemWrapper& fsw_,
         ERROR("Caught an unknown exception") ;
         return fsalstat(ERR_FSAL_SERVERFAULT, 0);
     }
+
     return fsalstat(ERR_FSAL_NO_ERROR, 0);
 }
 

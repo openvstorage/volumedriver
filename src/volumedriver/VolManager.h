@@ -134,8 +134,7 @@ public:
     backend_restart(const Namespace& ns,
                     const OwnerTag,
                     const PrefetchVolumeData,
-                    const IgnoreFOCIfUnreachable,
-                    const uint32_t num_pages_cached = 1024);
+                    const IgnoreFOCIfUnreachable);
 
     WriteOnlyVolume*
     restartWriteOnlyVolume(const Namespace& ns,
@@ -467,6 +466,9 @@ public:
     ClusterCacheMode
     get_cluster_cache_default_mode() const;
 
+    size_t
+    effective_metadata_cache_capacity(const VolumeConfig&) const;
+
 private:
     DECLARE_LOGGER("VolManager");
 
@@ -524,6 +526,7 @@ public:
 
     DECLARE_PARAMETER(number_of_scos_in_tlog);
     DECLARE_PARAMETER(non_disposable_scos_factor);
+    DECLARE_PARAMETER(metadata_cache_capacity);
     DECLARE_PARAMETER(debug_metadata_path);
     DECLARE_PARAMETER(arakoon_metadata_sequence_size);
     DECLARE_PARAMETER(allow_inconsistent_partial_reads);
@@ -555,8 +558,7 @@ private:
     local_restart(const Namespace& ns,
                   const OwnerTag,
                   const FallBackToBackendRestart,
-                  const IgnoreFOCIfUnreachable,
-                  const uint32_t num_pages_cached);
+                  const IgnoreFOCIfUnreachable);
 
     uint64_t
     getQueueCount(const VolumeId& volName);

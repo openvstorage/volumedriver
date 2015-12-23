@@ -15,20 +15,15 @@
 #ifndef VFS_EVENT_PUBLISHER_H_
 #define VFS_EVENT_PUBLISHER_H_
 
-#include "AmqpTypes.h"
 #include "ClusterId.h"
 #include "FileSystemParameters.h"
 #include "NodeId.h"
 
-#include <mutex>
+#include <boost/thread.hpp>
+#include <boost/thread/condition_variable.hpp>
+#include <boost/thread/mutex.hpp>
 
-#include <boost/property_tree/ptree_fwd.hpp>
-
-#include <SimpleAmqpClient/SimpleAmqpClient.h>
-
-#include <youtils/InitializedParam.h>
 #include <youtils/Logging.h>
-#include <youtils/VolumeDriverComponent.h>
 
 #include <volumedriver/Events.h>
 
@@ -39,20 +34,23 @@ class Event;
 
 }
 
+namespace volumedriverfstest
+{
+class EventPublisherTest;
+}
+
 namespace volumedriverfs
 {
 
 class EventPublisher
-    : public youtils::VolumeDriverComponent
-    , public events::PublisherInterface
+    : public events::PublisherInterface
 {
-public:
-    explicit EventPublisher(const ClusterId& cluster_id,
-                            const NodeId& node_id,
-                            const boost::property_tree::ptree& pt,
-                            const RegisterComponent registrate = RegisterComponent::T);
+    friend class volumedriverfstest::EventPublisherTest;
 
-    virtual ~EventPublisher() = default;
+public:
+    explicit EventPublisher(std::unique_ptr<events::PublisherInterface>);
+
+    virtual ~EventPublisher();
 
     EventPublisher(const EventPublisher&) = delete;
 
@@ -62,46 +60,27 @@ public:
     virtual void
     publish(const events::Event& ev) noexcept override final;
 
-    bool
-    enabled() const;
-
-    virtual const char*
-    componentName() const override final;
-
-    virtual void
-    update(const boost::property_tree::ptree& pt,
-           youtils::UpdateReport& rep) override final;
-
-    virtual void
-    persist(boost::property_tree::ptree& pt,
-            const ReportDefault reportDefault) const override final;
-
-    virtual bool
-    checkConfig(const boost::property_tree::ptree&,
-                youtils::ConfigurationReport&) const override final;
-
-    // default taken from AmqpClient::Channel
-    static constexpr unsigned max_frame_size = 131072;
+    events::PublisherInterface&
+    publisher()
+    {
+        return *publisher_;
+    }
 
 private:
     DECLARE_LOGGER("EventPublisher");
 
-    unsigned index_;
-    AmqpClient::Channel::ptr_t channel_;
+    std::unique_ptr<events::PublisherInterface> publisher_;
+    mutable boost::mutex lock_;
 
-    DECLARE_PARAMETER(events_amqp_uris);
-    DECLARE_PARAMETER(events_amqp_exchange);
-    DECLARE_PARAMETER(events_amqp_routing_key);
+    using EventPtr = std::unique_ptr<events::Event>;
+    std::deque<EventPtr> queue_; // push back, pop front
 
-    const ClusterId cluster_id_;
-    const NodeId node_id_;
+    std::atomic<bool> stop_;
+    boost::condition_variable cond_;
+    boost::thread thread_;
 
-    // Protects the channel - the underlying -lrabbitmq-c is not thread safe.
-    typedef std::mutex lock_type;
-    mutable lock_type lock_;
-
-    bool
-    enabled_() const;
+    void
+    run_();
 };
 
 }

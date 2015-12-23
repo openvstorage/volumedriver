@@ -122,6 +122,9 @@ public:
     create_volume(const std::string& volume_name,
                   const uint64_t volume_size);
 
+    static void
+    remove_volume(const std::string& volume_name);
+
     void*
     get_address_from_handle(ipc::managed_shared_memory::handle_t handle);
 

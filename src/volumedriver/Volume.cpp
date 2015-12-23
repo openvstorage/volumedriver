@@ -205,13 +205,16 @@ Volume::setSCOMultiplier(SCOMultiplier sco_mult)
 
     checkNotHalted_();
 
-    const uint64_t sco_size_new = getClusterSize() * sco_mult;
+    const size_t csize = getClusterSize();
+    const uint64_t sco_size_new = csize * sco_mult;
     static const uint64_t sco_size_min =
-        yt::System::get_env_with_default("VOLUMEDRIVER_MIN_SCO_SIZE",
-                                         1ULL << 20); // 1 MiB
+        std::min((1ULL << (8 * sizeof(SCOOffset))) * csize,
+                 yt::System::get_env_with_default("VOLUMEDRIVER_MIN_SCO_SIZE",
+                                                  1ULL << 20)); // 1 MiB
     static const uint64_t sco_size_max =
-        yt::System::get_env_with_default("VOLUMEDRIVER_MAX_SCO_SIZE",
-                                         128ULL << 20); // 128 MiB
+        std::min((1ULL << (8 * sizeof(SCOOffset))) * csize,
+                 yt::System::get_env_with_default("VOLUMEDRIVER_MAX_SCO_SIZE",
+                                                  128ULL << 20)); // 128 MiB
 
     if (sco_size_new < sco_size_min)
     {
@@ -3190,6 +3193,43 @@ Volume::wait_for_backend_and_run(std::function<void()> fun)
                                                    yt::BarrierTask::T));
 
     VolManager::get()->backend_thread_pool()->addTask(std::move(t));
+}
+
+void
+Volume::set_metadata_cache_capacity(const boost::optional<size_t>& num_pages)
+{
+    WLOCK();
+    checkNotHalted_();
+
+    const size_t new_capacity = num_pages ?
+        *num_pages :
+        VolManager::get()->metadata_cache_capacity.value();
+
+    THROW_WHEN(new_capacity == 0);
+
+    try
+    {
+        metaDataStore_->set_cache_capacity(new_capacity);
+    }
+    CATCH_STD_ALL_EWHAT({
+            LOG_VERROR("Failed to update metadata store cache capacity: " << EWHAT);
+            VolumeDriverError::report(events::VolumeDriverErrorCode::MetaDataStore,
+                                      EWHAT,
+                                      getName());
+            halt();
+            throw;
+        });
+
+    update_config_([&](VolumeConfig& cfg)
+                   {
+                       cfg.metadata_cache_capacity_ = num_pages;
+                   });
+}
+
+size_t
+Volume::effective_metadata_cache_capacity() const
+{
+    return VolManager::get()->effective_metadata_cache_capacity(get_config());
 }
 
 }

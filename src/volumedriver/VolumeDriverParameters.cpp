@@ -160,6 +160,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(non_disposable_scos_factor,
                                       ShowDocumentation::T,
                                       1.5);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(metadata_cache_capacity,
+                                      volmanager_component_name,
+                                      "metadata_cache_capacity",
+                                      "number of metadata pages to keep cached",
+                                      ShowDocumentation::T,
+                                      8192);
+
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(debug_metadata_path,
                                       volmanager_component_name,
                                       "no_python_name",

@@ -65,6 +65,8 @@ DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(number_of_scos_in_tlog,
                                        uint32_t);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(non_disposable_scos_factor,
                                        float);
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(metadata_cache_capacity,
+                                       uint32_t);
 
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(debug_metadata_path, std::string);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(arakoon_metadata_sequence_size, uint32_t);

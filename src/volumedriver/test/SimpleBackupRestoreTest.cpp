@@ -152,8 +152,7 @@ public:
                     api::backend_restart(nspace,
                                          new_owner_tag(),
                                          PrefetchVolumeData::T,
-                                         IgnoreFOCIfUnreachable::T,
-                                         1024);
+                                         IgnoreFOCIfUnreachable::T);
                 }
                 Volume* v = getVolume(vid);
                 checkVolume(v, 0, size, pattern);
@@ -226,7 +225,7 @@ TEST_P(SimpleBackupRestoreTest, no_promotion_without_snapshot)
         api::backend_restart(nspace,
                              new_owner_tag(),
                              PrefetchVolumeData::T,
-                             IgnoreFOCIfUnreachable::T, 1024);
+                             IgnoreFOCIfUnreachable::T);
     }
 
     Volume* v = getVolume(vid);
@@ -275,8 +274,7 @@ TEST_P(SimpleBackupRestoreTest, discard_trailing_tlogs_on_promotion)
         api::backend_restart(nspace,
                              new_owner_tag(),
                              PrefetchVolumeData::T,
-                             IgnoreFOCIfUnreachable::T,
-                             1024);
+                             IgnoreFOCIfUnreachable::T);
     }
 
     Volume* v = getVolume(vid);
@@ -334,8 +332,7 @@ TEST_P(SimpleBackupRestoreTest, rollback_to_previous_snap_if_snapshot_didnt_make
         api::backend_restart(nspace,
                              new_owner_tag(),
                              PrefetchVolumeData::T,
-                             IgnoreFOCIfUnreachable::T,
-                             1024);
+                             IgnoreFOCIfUnreachable::T);
     }
 
     Volume* v = getVolume(vid);

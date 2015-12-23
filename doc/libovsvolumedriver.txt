@@ -87,6 +87,26 @@ Create a new volume::
         - ENOSPC The backend that would contain the new volume cannot be
           expanded
 
+Remove a new volume::
+    int ovs_remove_volume(const char *volname);
+
+    Description
+    -----------
+    The ovs_remove_volume() shall remove a volume of name 'volname'.
+
+    Return Value
+    ------------
+    Upon successful completion the function shall remove the volume and shall
+    return 0 if successful otherwise -1 is returned, no volume shall be
+    removed.
+
+    Errors
+    ------
+    The function shall fail if:
+        - ENOENT The named volume doesn't exist
+        - EINVAL Invalid arguments supplied
+        - EIO An error occured during ovs_remove_volume()
+
 Get volume status::
     int ovs_stat(ovs_ctx_t *ctx, struct stat *buf);
 

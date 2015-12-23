@@ -18,7 +18,10 @@
 #include "MetaDataBackendInterface.h"
 #include "metadata-server/Interface.h"
 
+#include <chrono>
 #include <memory>
+
+#include <boost/optional.hpp>
 
 #include <youtils/Logging.h>
 
@@ -37,7 +40,8 @@ class MDSMetaDataBackend
 {
 public:
     MDSMetaDataBackend(const MDSNodeConfig& config,
-                       const backend::Namespace& nspace);
+                       const backend::Namespace& nspace,
+                       const boost::optional<std::chrono::seconds>& timeout);
 
     MDSMetaDataBackend(metadata_server::DataBaseInterfacePtr db,
                        const backend::Namespace& nspace);

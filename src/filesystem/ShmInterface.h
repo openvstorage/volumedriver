@@ -155,12 +155,19 @@ public:
     }
 
     void
-    create_volume(const char *volume_name,
+    create_volume(const char* volume_name,
                   CORBA::ULongLong volume_size)
     {
         std::unique_ptr<Handler> h(new Handler(handler_args_));
         h->create_volume(volume_name,
                          volume_size);
+    }
+
+    void
+    remove_volume(const char* volume_name)
+    {
+        std::unique_ptr<Handler> h(new Handler(handler_args_));
+        h->remove_volume(volume_name);
     }
 
 private:

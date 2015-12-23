@@ -190,9 +190,11 @@ public:
     uint64_t
     volume_potential(const std::string& node_id);
 
-
     std::map<NodeId, ClusterNodeStatus::State>
     info_cluster();
+
+    boost::optional<ObjectId>
+    get_object_id(const std::string& path);
 
     boost::optional<volumedriver::VolumeId>
     get_volume_id(const std::string& path);
@@ -278,6 +280,32 @@ public:
     make_locked_client(const std::string& volume_id,
                        const unsigned update_interval_secs = 3,
                        const unsigned grace_period_secs = 5);
+
+    volumedriver::TLogName
+    schedule_backend_sync(const std::string& volume_id);
+
+    bool
+    is_volume_synced_up_to_tlog(const std::string& volume_id,
+                                const volumedriver::TLogName&);
+
+    bool
+    is_volume_synced_up_to_snapshot(const std::string& volume_id,
+                                    const std::string& snapshot_name);
+
+    boost::optional<size_t>
+    get_metadata_cache_capacity(const std::string& volume_id);
+
+    void
+    set_metadata_cache_capacity(const std::string& volume_id,
+                                const boost::optional<size_t>& num_pages);
+
+    void
+    stop_object(const std::string& id,
+                bool delete_local_data = true);
+
+    void
+    restart_object(const std::string& id,
+                   bool force_restart);
 
 protected:
     PythonClient()

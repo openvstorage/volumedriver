@@ -86,7 +86,7 @@ protected:
                                           new_owner_tag())
             .sco_multiplier(SCOMultiplier(4096))
             .cluster_multiplier(ClusterMultiplier(8))
-            .metadata_cache_pages(cache_pages);
+            .metadata_cache_capacity(cache_pages);
 
         Volume* v = newVolume(params);
 
@@ -424,7 +424,7 @@ TEST_P(MetaDataStoreTest, single_cache_page)
                                       ns,
                                       VolumeSize(10 << 20),
                                       new_owner_tag())
-        .metadata_cache_pages(1);
+        .metadata_cache_capacity(1);
 
     Volume* v = newVolume(params);
 

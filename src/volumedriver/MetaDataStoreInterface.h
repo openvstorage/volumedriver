@@ -125,6 +125,9 @@ public:
 
     virtual void
     set_scrub_id(const ScrubId&) = 0;
+
+    virtual void
+    set_cache_capacity(const size_t npages) = 0;
 };
 
 }

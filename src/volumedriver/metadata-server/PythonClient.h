@@ -26,6 +26,7 @@
 #include <youtils/Logging.h>
 
 #include "../MDSNodeConfig.h"
+#include "../MetaDataBackendConfig.h"
 
 namespace metadata_server
 {
@@ -33,10 +34,12 @@ namespace metadata_server
 class PythonClient
 {
 public:
-    explicit PythonClient(const volumedriver::MDSNodeConfig& cfg);
+    explicit PythonClient(const volumedriver::MDSNodeConfig& cfg,
+                          unsigned timeout_secs = volumedriver::MDSMetaDataBackendConfig::default_timeout_secs_);
 
     PythonClient(const volumedriver::MDSNodeConfig& cfg,
-                 ForceRemote force_remote);
+                 ForceRemote force_remote,
+                 unsigned timeout_secs = volumedriver::MDSMetaDataBackendConfig::default_timeout_secs_);
 
     ~PythonClient() = default;
 
@@ -71,6 +74,7 @@ private:
 
     const volumedriver::MDSNodeConfig config_;
     const ForceRemote force_remote_;
+    const std::chrono::seconds timeout_;
 
     TableInterfacePtr
     get_table_(const std::string& nspace) const;

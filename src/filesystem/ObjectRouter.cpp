@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "AmqpEventPublisher.h"
+#include "EventPublisher.h"
 #include "FileSystem.h"
 #include "FileSystemEvents.h"
 #include "LocalNode.h"
@@ -88,9 +90,9 @@ ObjectRouter::ObjectRouter(const bpt::ptree& pt,
                                                               larakoon_,
                                                               vrouter_registry_cache_capacity.value()))
     , ztx_(new zmq::context_t(::sysconf(_SC_NPROCESSORS_ONLN)))
-    , publisher_(std::make_shared<EventPublisher>(cluster_id(),
-                                                  node_id(),
-                                                  pt))
+    , publisher_(std::make_shared<EventPublisher>(std::make_unique<AmqpEventPublisher>(cluster_id(),
+                                                                                       node_id(),
+                                                                                       pt)))
     , foc_config_mode_(foc_config_mode)
     , foc_mode_(foc_mode)
     , foc_config_(foc_config)

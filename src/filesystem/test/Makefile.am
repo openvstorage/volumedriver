@@ -54,6 +54,7 @@ volumedriver_fs_test_SOURCES = \
 	ClusterRegistryTest.cpp \
 	ConfigurationTest.cpp \
 	DirectoryTest.cpp \
+	EventPublisherTest.cpp \
 	FailOverCacheHelperTest.cpp \
 	FileEventRuleTest.cpp \
 	FileSystemCallTest.cpp \

@@ -24,7 +24,7 @@
 
 #include "../AmqpTypes.h"
 #include "../ClusterId.h"
-#include "../EventPublisher.h"
+#include "../AmqpEventPublisher.h"
 #include "../FileSystemEvents.h"
 #include "../NodeId.h"
 
@@ -140,7 +140,7 @@ public:
 
 protected:
     AmqpClient::Channel::ptr_t channel_;
-    std::unique_ptr<volumedriverfs::EventPublisher> publisher_;
+    std::unique_ptr<volumedriverfs::AmqpEventPublisher> publisher_;
 
 private:
     DECLARE_LOGGER("FileSystemEventTestSetup");
