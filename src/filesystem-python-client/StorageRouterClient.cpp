@@ -419,7 +419,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "Unlink directory entry.\n",
              "@param target_path: string, volume location\n"
              "@raises \n"
-             "      RuntimeError\n")
+             "      InvalidOperationException\n")
         .def("update_metadata_backend_config",
              &vfs::PythonClient::update_metadata_backend_config,
              (bpy::args("volume_id"),
