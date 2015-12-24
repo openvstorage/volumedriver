@@ -383,7 +383,7 @@ XMLRPCTimingWrapper<T>::execute(::XmlRpc::XmlRpcValue& params,
     }
     catch(fungi::IOException& e)
     {
-        LOG_XMLRPCERROR(T::_name << " Caught fungi::IOexception: " << e.what());
+        LOG_XMLRPCERROR(T::_name << " Caught fungi::IOException: " << e.what());
         throw ::XmlRpc::XmlRpcException(T::_name + " Caught fungi::IOException: " + e.what(),
                                         1);
     }
