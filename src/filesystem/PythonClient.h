@@ -140,6 +140,9 @@ public:
                  const std::string& node_id = "");
 
     void
+    unlink(const std::string& target_path);
+
+    void
     update_metadata_backend_config(const std::string& volume_id,
                                    boost::shared_ptr<volumedriver::MetaDataBackendConfig> mdb_config);
 

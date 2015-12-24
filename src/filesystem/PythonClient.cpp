@@ -594,6 +594,15 @@ PythonClient::create_clone_from_template(const std::string& target_path,
 }
 
 void
+PythonClient::unlink(const std::string& target_path)
+{
+    XmlRpc::XmlRpcValue req;
+    req[XMLRPCKeys::target_path] = target_path;
+
+    call(Unlink::method_name(), req);
+}
+
+void
 PythonClient::update_metadata_backend_config(const std::string& volume_id,
                                              boost::shared_ptr<vd::MetaDataBackendConfig>
                                              mdb_config)

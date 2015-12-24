@@ -945,6 +945,15 @@ VolumeCreate::execute_internal(::XmlRpc::XmlRpcValue& params,
 }
 
 void
+Unlink::execute_internal(::XmlRpc::XmlRpcValue& params,
+                         ::XmlRpc::XmlRpcValue& /*result*/)
+{
+    XMLRPCUtils::ensure_arg(params[0], XMLRPCKeys::target_path);
+    const FrontendPath path(static_cast<const std::string&>(params[0][XMLRPCKeys::target_path]));
+    fs_.unlink(path);
+}
+
+void
 VolumeClone::execute_internal(::XmlRpc::XmlRpcValue& params,
                               ::XmlRpc::XmlRpcValue& result)
 {
@@ -1830,7 +1839,7 @@ GetMetaDataCacheCapacity::execute_internal(::XmlRpc::XmlRpcValue& params,
 
 void
 SetMetaDataCacheCapacity::execute_internal(::XmlRpc::XmlRpcValue& params,
-                                           ::XmlRpc::XmlRpcValue& result)
+                                           ::XmlRpc::XmlRpcValue& /*result*/)
 {
     with_api_exception_conversion([&]
     {
