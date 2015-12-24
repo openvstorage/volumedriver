@@ -413,6 +413,13 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "@raises \n"
              "      InsufficientResourcesException\n"
              "      FileExistsException\n")
+        .def("unlink",
+             &vfs::PythonClient::unlink,
+             (bpy::args("target_path")),
+             "Unlink directory entry.\n",
+             "@param target_path: string, volume location\n"
+             "@raises \n"
+             "      RuntimeError\n")
         .def("update_metadata_backend_config",
              &vfs::PythonClient::update_metadata_backend_config,
              (bpy::args("volume_id"),
