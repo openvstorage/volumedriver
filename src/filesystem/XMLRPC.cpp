@@ -375,16 +375,20 @@ XMLRPCTimingWrapper<T>::execute(::XmlRpc::XmlRpcValue& params,
                     e.what());
         return;
     }
+    catch(fungi::IOException& e)
+    {
+        LOG_XMLRPCERROR(T::_name << " Caught fungi::IOException: " << e.what());
+        //throw ::XmlRpc::XmlRpcException(T::_name + " Caught fungi::IOException: " + e.what(),
+                                        //1);
+        T::setError(result,
+                    XMLRPCErrorCode::InvalidOperation,
+                    e.what());
+        return;
+    }
     catch(boost::exception& e)
     {
         LOG_XMLRPCERROR(T::_name << " " << boost::diagnostic_information(e));
         throw ::XmlRpc::XmlRpcException(T::_name + " Caught boost::exception: " + boost::diagnostic_information(e),
-                                        1);
-    }
-    catch(fungi::IOException& e)
-    {
-        LOG_XMLRPCERROR(T::_name << " Caught fungi::IOException: " << e.what());
-        throw ::XmlRpc::XmlRpcException(T::_name + " Caught fungi::IOException: " + e.what(),
                                         1);
     }
     catch(std::exception& e)
