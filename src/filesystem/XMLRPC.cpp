@@ -378,12 +378,8 @@ XMLRPCTimingWrapper<T>::execute(::XmlRpc::XmlRpcValue& params,
     catch(fungi::IOException& e)
     {
         LOG_XMLRPCERROR(T::_name << " Caught fungi::IOException: " << e.what());
-        //throw ::XmlRpc::XmlRpcException(T::_name + " Caught fungi::IOException: " + e.what(),
-                                        //1);
-        T::setError(result,
-                    XMLRPCErrorCode::InvalidOperation,
-                    e.what());
-        return;
+        throw ::XmlRpc::XmlRpcException(T::_name + " Caught fungi::IOException: " + e.what(),
+                                        1);
     }
     catch(boost::exception& e)
     {
@@ -541,6 +537,31 @@ VolumesList::execute_internal(::XmlRpc::XmlRpcValue& /* params */,
             reg->object().type == ObjectType::Template)
         {
             result[k++] = ::XmlRpc::XmlRpcValue(o);
+        }
+    }
+}
+
+void
+VolumesListByPath::execute_internal(::XmlRpc::XmlRpcValue& /* params */,
+                                    ::XmlRpc::XmlRpcValue& result)
+{
+    auto registry(fs_.object_router().object_registry());
+    const auto objs(registry->list());
+
+    result.clear();
+    result.setSize(0);
+
+    int k = 0;
+
+    for (const auto& o: objs)
+    {
+        const auto reg(registry->find(o,
+                                      IgnoreCache::F));
+        if (reg->object().type == ObjectType::Volume or
+            reg->object().type == ObjectType::Template)
+        {
+            const FrontendPath volume_path(fs_.find_path(reg->volume_id));
+            result[k++] = ::XmlRpc::XmlRpcValue(volume_path.string());
         }
     }
 }

@@ -108,6 +108,9 @@ public:
     list_volumes();
 
     boost::python::list
+    list_volumes_by_path();
+
+    boost::python::list
     list_snapshots(const std::string& volume_id);
 
     XMLRPCSnapshotInfo

@@ -384,6 +384,24 @@ PythonClient::list_volumes()
 }
 
 bpy::list
+PythonClient::list_volumes_by_path()
+{
+    XmlRpc::XmlRpcValue req;
+    auto rsp(call(VolumesListByPath::method_name(), req));
+
+    bpy::list l;
+
+    for (auto i = 0; i < rsp.size(); ++i)
+    {
+        const std::string v(rsp[i]);
+        LOG_TRACE("found volume " << v);
+        l.append(v);
+    }
+
+    return l;
+}
+
+bpy::list
 PythonClient::get_scrubbing_work(const std::string& volume_id)
 {
     XmlRpc::XmlRpcValue req;
