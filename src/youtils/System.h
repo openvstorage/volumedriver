@@ -272,6 +272,12 @@ struct System
 
     static std::pair<std::string, int>
     exec(const std::string& command);
+
+    static void
+    setup_tcp_keepalive(int fd,
+                        int keep_cnt,
+                        int keep_idle,
+                        int keep_intvl);
 };
 
 }

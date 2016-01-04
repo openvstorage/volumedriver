@@ -235,59 +235,23 @@ private:
     configure_keepalive_(TcpSocket& sock)
     {
         int fd = sock.native_handle();
-        VERIFY(fd >= 0);
-
-        auto set([&](const char* desc,
-                     int level,
-                     int optname,
-                     int val)
-                 {
-                     int ret = ::setsockopt(fd,
-                                            level,
-                                            optname,
-                                            &val,
-                                            sizeof(val));
-                     if (ret < 0)
-                     {
-                         ret = errno;
-                         LOG_ERROR("Failed to set " << desc << " on socket " <<
-                                   fd << ": " << strerror(errno));
-                         throw Exception("Failed to set socket option",
-                                         desc);
-                     }
-                 });
-
-        set("KeepAlive",
-            SOL_SOCKET,
-            SO_KEEPALIVE,
-            1);
 
         static const int keep_cnt =
             youtils::System::get_env_with_default("LOCOREM_TCP_KEEPCNT",
                                                   5);
 
-        set("keepalive probes",
-            SOL_TCP,
-            TCP_KEEPCNT,
-            keep_cnt);
-
         static const int keep_idle =
             youtils::System::get_env_with_default("LOCOREM_TCP_KEEPIDLE",
                                                   60);
-
-        set("keepalive time",
-            SOL_TCP,
-            TCP_KEEPIDLE,
-            keep_idle);
 
         static const int keep_intvl =
             youtils::System::get_env_with_default("LOCOREM_TCP_KEEPINTVL",
                                                   60);
 
-        set("keepalive interval",
-            SOL_TCP,
-            TCP_KEEPINTVL,
-            keep_intvl);
+        System::setup_tcp_keepalive(fd,
+                                    keep_cnt,
+                                    keep_idle,
+                                    keep_intvl);
     }
 
     // Moved out of the constructor as the caller needs to hold the instance in a
