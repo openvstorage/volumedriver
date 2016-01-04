@@ -213,8 +213,6 @@ export_debug_module()
     scope.attr("__doc__") = "debugging helpers - this ain't no stable public API!";
 
     vfspy::FileSystemMetaDataClient::registerize();
-
-    vfspy::ObjectRegistryClient::registerize();
     vfspy::ScrubManagerClient::registerize();
 }
 
@@ -1125,6 +1123,8 @@ BOOST_PYTHON_MODULE(storagerouterclient)
     vfspy::MDSClient::registerize();
     youtils::python::BuildInfo::registerize();
     scrubbing::python::Scrubber::registerize();
+
+    vfspy::ObjectRegistryClient::registerize();
 
     export_debug_module();
 }
