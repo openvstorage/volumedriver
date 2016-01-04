@@ -120,8 +120,6 @@ XmlRpcSocket::listen(int fd, int backlog)
 int
 XmlRpcSocket::accept(int fd)
 {
-  enable_keepalive(fd);
-
   struct sockaddr_in addr;
 #if defined(_WINDOWS)
   int
@@ -130,14 +128,35 @@ XmlRpcSocket::accept(int fd)
 #endif
     addrlen = sizeof(addr);
 
-  return (int) ::accept(fd, (struct sockaddr*)&addr, &addrlen);
+  int res = ::accept(fd, (struct sockaddr*)&addr, &addrlen);
+  if (res >= 0)
+  {
+     try
+     {
+         enable_keepalive(res);
+     }
+     catch (...)
+     {
+         ::close(res);
+         res = -1;
+     }
+  }
+
+  return res;
 }
 
 // Connect a socket to a server (from a client)
 bool
 XmlRpcSocket::connect(int fd, std::string& host, int port)
 {
-  enable_keepalive(fd);
+  try
+  {
+     enable_keepalive(fd);
+  }
+  catch (...)
+  {
+      return -1;
+  }
 
   struct sockaddr_in saddr;
   memset(&saddr, 0, sizeof(saddr));
