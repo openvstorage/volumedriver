@@ -208,7 +208,7 @@ ObjectRegistryClient::registerize()
         .def("owner_tag",
              registration_owner_tag,
              "@return OwnerTag\n")
-        .def("foc_config_mode",
+        .def("dtl_config_mode",
              foc_config_mode,
              "@return DTLConfigMode\n")
         ;
@@ -234,7 +234,7 @@ ObjectRegistryClient::registerize()
              "Look up an object's registration\n"
              "@param object_id, string, ObjectId\n"
              "@return ObjectRegistration")
-        .def("register_base_volume",
+        .def("_register_base_volume",
              &Wrapper::register_base_volume,
              (bpy::args("node_id"),
               bpy::args("object_id"),
@@ -244,7 +244,7 @@ ObjectRegistryClient::registerize()
              "@param object_id, string, ObjectId of the volume\n"
              "@param nspace, string, backend namespace associated with the volume\n"
              "@return ObjectRegistration")
-        .def("register_file",
+        .def("_register_file",
              &Wrapper::register_file,
              (bpy::args("node_id"),
               bpy::args("object_id")),
@@ -252,7 +252,7 @@ ObjectRegistryClient::registerize()
              "@param node_id, string, NodeId of the owning node\n"
              "@param object_id, string, ObjectId of the file\n"
              "@return ObjectRegistration")
-        .def("register_clone",
+        .def("_register_clone",
              &Wrapper::register_clone,
              (bpy::args("node_id"),
               bpy::args("clone_id"),
@@ -266,12 +266,12 @@ ObjectRegistryClient::registerize()
              "@param parent_id, string, ObjectId of the parent\n"
              "@param maybe_parent_snap, string or None, snapshot name of the parent\n"
              "@return ObjectRegistration")
-        .def("unregister",
+        .def("_unregister",
              &Wrapper::unregister,
              bpy::args("object_registration"),
              "Remove a registration\n"
              "@param object_registration, ObjectRegistration, registration to remove\n")
-        .def("migrate",
+        .def("_migrate",
              &Wrapper::migrate,
              (bpy::args("object_id"),
               bpy::args("from_node"),
@@ -281,7 +281,7 @@ ObjectRegistryClient::registerize()
              "@param from_node, string, NodeId of the current owner\n"
              "@param to_node, string, NodeId of the new owner\n"
              "@param return ObjectRegistration\n")
-        .def("set_volume_as_template",
+        .def("_set_volume_as_template",
              &Wrapper::set_volume_as_template,
              (bpy::args("node_id"),
               bpy::args("object_id")),
