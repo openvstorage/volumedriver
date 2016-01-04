@@ -13,7 +13,37 @@
 #include <errno.h>
 #include <fcntl.h>
 
+#include <youtils/System.h>
+
 using namespace XmlRpc;
+
+namespace yt = youtils;
+
+namespace
+{
+
+void
+enable_keepalive(int fd)
+{
+    static const int keep_cnt =
+        yt::System::get_env_with_default("XMLRPC_KEEPCNT",
+                                         5);
+
+    static const int keep_idle =
+        yt::System::get_env_with_default("XMLRPC_KEEPIDLE",
+                                         60);
+
+    static const int keep_intvl =
+        yt::System::get_env_with_default("XMLRPC_KEEPINTVL",
+                                         60);
+
+    yt::System::setup_tcp_keepalive(fd,
+                                    keep_cnt,
+                                    keep_idle,
+                                    keep_intvl);
+}
+
+}
 
 // These errors are not considered fatal for an IO operation; the operation will be re-tried.
 static inline bool
@@ -87,10 +117,11 @@ XmlRpcSocket::listen(int fd, int backlog)
   return (::listen(fd, backlog) == 0);
 }
 
-
 int
 XmlRpcSocket::accept(int fd)
 {
+  enable_keepalive(fd);
+
   struct sockaddr_in addr;
 #if defined(_WINDOWS)
   int
@@ -102,12 +133,12 @@ XmlRpcSocket::accept(int fd)
   return (int) ::accept(fd, (struct sockaddr*)&addr, &addrlen);
 }
 
-
-
 // Connect a socket to a server (from a client)
 bool
 XmlRpcSocket::connect(int fd, std::string& host, int port)
 {
+  enable_keepalive(fd);
+
   struct sockaddr_in saddr;
   memset(&saddr, 0, sizeof(saddr));
   saddr.sin_family = AF_INET;
