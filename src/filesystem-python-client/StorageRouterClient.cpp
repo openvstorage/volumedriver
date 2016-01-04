@@ -388,15 +388,16 @@ BOOST_PYTHON_MODULE(storagerouterclient)
         .def_pickle(ClusterCacheHandlePickleSuite())
         ;
 
-    bpy::class_<vfs::PythonClient>("StorageRouterClient",
-                                   "client for management and monitoring of a volumedriverfs cluster",
-                                   bpy::init<const std::string&,
-                                             const std::vector< vfs::ClusterContact >>
-                                   (bpy::args("vrouter_cluster_id",
-                                              "cluster_contacts"),
-                                    "Create a client interface to a volumedriverfs cluster\n"
-                                    "@param vrouter_cluster_id: string, cluster_id \n"
-                                    "@param cluster_contacts: [ClusterContact] contact points to the cluster\n"))
+    bpy::class_<vfs::PythonClient,
+                boost::noncopyable>("StorageRouterClient",
+                                    "client for management and monitoring of a volumedriverfs cluster",
+                                    bpy::init<const std::string&,
+                                              const std::vector< vfs::ClusterContact >>
+                                    (bpy::args("vrouter_cluster_id",
+                                               "cluster_contacts"),
+                                     "Create a client interface to a volumedriverfs cluster\n"
+                                     "@param vrouter_cluster_id: string, cluster_id \n"
+                                     "@param cluster_contacts: [ClusterContact] contact points to the cluster\n"))
         .def("create_volume",
              &vfs::PythonClient::create_volume,
              (bpy::args("target_path"),

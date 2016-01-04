@@ -85,8 +85,8 @@ struct ClusterContact
         , port(port)
     {}
 
-    const std::string host;
-    const uint16_t port;
+    std::string host;
+    uint16_t port;
 };
 
 class PythonClient
@@ -330,6 +330,7 @@ protected:
                       unsigned& redirect_count);
 
     std::string cluster_id_;
+    std::mutex lock_;
     //this list does not necessarily contain all nodes in the cluster
     std::vector<ClusterContact> cluster_contacts_;
 

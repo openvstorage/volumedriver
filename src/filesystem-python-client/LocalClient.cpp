@@ -94,6 +94,7 @@ LocalClient::registerize()
 #undef DEF_READONLY_PROP_
 
     bpy::class_<vfs::LocalPythonClient,
+                boost::noncopyable,
                 bpy::bases<vfs::PythonClient>>("LocalStorageRouterClient",
                                                "maintenance client for management and monitoring of a specific volumedriverfs cluster node",
                     bpy::init<const std::string&>
