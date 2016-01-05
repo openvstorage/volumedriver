@@ -571,6 +571,8 @@ Volume::backend_restart(const CloneTLogs& restartTLogs,
     foc_config_wrapper_ =
         *VolManager::get()->get_config_from_backend<FailOverCacheConfigWrapper>(cfg.getNS());
 
+    VolumeFailOverState foc_state = VolumeFailOverState::OK_STANDALONE;
+
     if (foc_config_wrapper_.config())
     {
         FailOverCacheConfig foc_cfg = foc_config_wrapper_.config().get();
@@ -585,9 +587,10 @@ Volume::backend_restart(const CloneTLogs& restartTLogs,
                                                      failover_->getDefaultRequestTimeout());
         }
         CATCH_STD_ALL_EWHAT({
-                if (T(ignoreFOCIfUnreachable))
+                if (ignoreFOCIfUnreachable == IgnoreFOCIfUnreachable::T)
                 {
                     LOG_VWARN("we had a FailoverCache configured but it is currently unreachable: " << EWHAT << " - Continuing without as requested.");
+                    foc_state = VolumeFailOverState::DEGRADED;
                 }
                 else
                 {
@@ -601,9 +604,13 @@ Volume::backend_restart(const CloneTLogs& restartTLogs,
         {
             SCO oldest, youngest;
             cache->getSCORange(oldest,youngest);
-            SCONumber old = oldest.number();
-            SCONumber young = youngest.number();
-            LOG_VINFO("Oldest SCO on FOC " << old << " youngest SCO on FOC " << young);
+            const SCONumber old = oldest.number();
+            const SCONumber young = youngest.number();
+
+            LOG_VINFO("Oldest SCO on FOC " << old << " youngest SCO on FOC " <<
+                      young);
+
+            foc_state = VolumeFailOverState::OK_SYNC;
 
             if(not oldest.asBool())
             {
@@ -625,22 +632,30 @@ Volume::backend_restart(const CloneTLogs& restartTLogs,
             {
                 LOG_VINFO("FailoverCache contains no useable data, since lastSCOInBackend: " <<
                           lastSCOInBackend);
-                cache->clear();
+                try
+                {
+                    cache->clear();
+                }
+                CATCH_STD_ALL_EWHAT({
+                        LOG_VERROR("failed to clear FailOverCache: " << EWHAT);
+                        if (ignoreFOCIfUnreachable == IgnoreFOCIfUnreachable::T)
+                        {
+                            foc_state = VolumeFailOverState::DEGRADED;
+                        }
+                        else
+                        {
+                            throw;
+                        }
+                    });
             }
-
-            setVolumeFailOverState(VolumeFailOverState::OK_SYNC);
         }
+
         setFailOverCacheMode_(foc_cfg.mode);
         failover_->newCache(std::move(cache));
-
-    }
-    else
-    {
-        setVolumeFailOverState(VolumeFailOverState::OK_STANDALONE);
     }
 
+    setVolumeFailOverState(foc_state);
     snapshotManagement_->scheduleWriteSnapshotToBackend();
-
     register_with_cluster_cache_(getOwnerTag());
 
     return this;
