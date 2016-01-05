@@ -46,7 +46,8 @@ public:
     {
         ovs_buffer_t *buffer;
         int retries = 15;
-        boost::posix_time::time_duration delay = boost::posix_time::nanoseconds(10);
+        boost::posix_time::time_duration delay =
+            boost::posix_time::nanoseconds(10);
         while ((buffer = _try_allocate(size)) == NULL)
         {
             boost::this_thread::sleep(delay);

@@ -22,6 +22,7 @@
 
 #include <limits.h>
 #include <map>
+
 #include <youtils/SpinLock.h>
 #include <youtils/System.h>
 #include <youtils/IOException.h>
@@ -205,7 +206,7 @@ struct ovs_context_t
             iot->stop();
         }
 
-        /* nonexcept */
+        /* noexcept */
         if (ctl_client_->is_connected())
         {
             shm_client_->stop_reply_queues(io_threads_pool_size_);
@@ -227,7 +228,7 @@ static bool
 _is_volume_name_valid(const char *volume_name)
 {
     if (volume_name == NULL || strlen(volume_name) == 0 ||
-            strlen(volume_name) >= NAME_MAX)
+        strlen(volume_name) >= NAME_MAX)
     {
         return false;
     }
@@ -461,8 +462,8 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
     }
 
     if ((ovs_aiocbp->aio_nbytes <= 0 ||
-            ovs_aiocbp->aio_offset < 0) &&
-            op != RequestOp::Flush && op != RequestOp::AsyncFlush)
+         ovs_aiocbp->aio_offset < 0) &&
+         op != RequestOp::Flush && op != RequestOp::AsyncFlush)
     {
         errno = EINVAL;
         return -1;

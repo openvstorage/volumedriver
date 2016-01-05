@@ -34,7 +34,6 @@ struct ovs_completion
 {
     ovs_callback_t complete_cb;
     void *cb_arg;
-    /* Internal members */
     bool _on_wait;
     bool _calling;
     bool _signaled;
