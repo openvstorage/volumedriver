@@ -375,16 +375,16 @@ XMLRPCTimingWrapper<T>::execute(::XmlRpc::XmlRpcValue& params,
                     e.what());
         return;
     }
+    catch(fungi::IOException& e)
+    {
+        LOG_XMLRPCERROR(T::_name << " Caught fungi::IOException: " << e.what());
+        throw ::XmlRpc::XmlRpcException(T::_name + " Caught fungi::IOException: " + e.what(),
+                                        1);
+    }
     catch(boost::exception& e)
     {
         LOG_XMLRPCERROR(T::_name << " " << boost::diagnostic_information(e));
         throw ::XmlRpc::XmlRpcException(T::_name + " Caught boost::exception: " + boost::diagnostic_information(e),
-                                        1);
-    }
-    catch(fungi::IOException& e)
-    {
-        LOG_XMLRPCERROR(T::_name << " Caught fungi::IOexception: " << e.what());
-        throw ::XmlRpc::XmlRpcException(T::_name + " Caught fungi::IOException: " + e.what(),
                                         1);
     }
     catch(std::exception& e)
@@ -537,6 +537,31 @@ VolumesList::execute_internal(::XmlRpc::XmlRpcValue& /* params */,
             reg->object().type == ObjectType::Template)
         {
             result[k++] = ::XmlRpc::XmlRpcValue(o);
+        }
+    }
+}
+
+void
+VolumesListByPath::execute_internal(::XmlRpc::XmlRpcValue& /* params */,
+                                    ::XmlRpc::XmlRpcValue& result)
+{
+    auto registry(fs_.object_router().object_registry());
+    const auto objs(registry->list());
+
+    result.clear();
+    result.setSize(0);
+
+    int k = 0;
+
+    for (const auto& o: objs)
+    {
+        const auto reg(registry->find(o,
+                                      IgnoreCache::F));
+        if (reg->object().type == ObjectType::Volume or
+            reg->object().type == ObjectType::Template)
+        {
+            const FrontendPath volume_path(fs_.find_path(reg->volume_id));
+            result[k++] = ::XmlRpc::XmlRpcValue(volume_path.string());
         }
     }
 }
@@ -930,13 +955,27 @@ VolumeCreate::execute_internal(::XmlRpc::XmlRpcValue& params,
     const uint64_t vsize(getVOLSIZE(params[0]));
 
     vd::VolumeConfig::MetaDataBackendConfigPtr mdb_config;
-    mdb_config = XMLRPCStructs::deserialize_from_xmlrpc_value<decltype(mdb_config)>(params[0][XMLRPCKeys::metadata_backend_config]);
+
+    if (params[0].hasMember(XMLRPCKeys::metadata_backend_config))
+    {
+        mdb_config =
+            XMLRPCStructs::deserialize_from_xmlrpc_value<decltype(mdb_config)>(params[0][XMLRPCKeys::metadata_backend_config]);
+    }
 
     const ObjectId id(fs_.create_volume(path,
                                         std::move(mdb_config),
                                         vsize));
 
     result[XMLRPCKeys::volume_id] = ::XmlRpc::XmlRpcValue(id);
+}
+
+void
+Unlink::execute_internal(::XmlRpc::XmlRpcValue& params,
+                         ::XmlRpc::XmlRpcValue& /*result*/)
+{
+    XMLRPCUtils::ensure_arg(params[0], XMLRPCKeys::target_path);
+    const FrontendPath path(static_cast<const std::string&>(params[0][XMLRPCKeys::target_path]));
+    fs_.unlink(path);
 }
 
 void
@@ -1825,7 +1864,7 @@ GetMetaDataCacheCapacity::execute_internal(::XmlRpc::XmlRpcValue& params,
 
 void
 SetMetaDataCacheCapacity::execute_internal(::XmlRpc::XmlRpcValue& params,
-                                           ::XmlRpc::XmlRpcValue& result)
+                                           ::XmlRpc::XmlRpcValue& /*result*/)
 {
     with_api_exception_conversion([&]
     {

@@ -291,6 +291,40 @@ TEST_F(PythonClientTest, list_volumes)
     }
 }
 
+TEST_F(PythonClientTest, list_volumes_by_path)
+{
+    const vfs::ObjectId fid(create_file(vfs::FrontendPath("/some-file"s),
+                                        4096));
+
+    {
+        const bpy::list l(client_.list_volumes());
+        EXPECT_EQ(0, bpy::len(l));
+    }
+
+    std::set<std::string> volumes;
+    const uint32_t num_volumes = 2;
+
+    for (uint32_t i = 0; i < num_volumes; ++i)
+    {
+        const vfs::FrontendPath
+            vpath(make_volume_name("/vol-"s +
+                                   boost::lexical_cast<std::string>(i)));
+        const vfs::ObjectId vname(create_file(vpath, 10 << 20));
+        const auto res(volumes.insert(vpath.string()));
+        EXPECT_TRUE(res.second);
+    }
+
+    const bpy::list l(client_.list_volumes_by_path());
+    EXPECT_EQ(num_volumes, bpy::len(l));
+
+    for (uint32_t i = 0; i < num_volumes; ++i)
+    {
+        const auto& obj(l[i]);
+        const std::string v = bpy::extract<std::string>(obj);
+        EXPECT_TRUE(volumes.find(v) != volumes.end());
+    }
+}
+
 TEST_F(PythonClientTest, snapshot_excessive_metadata)
 {
     const vfs::FrontendPath vpath(make_volume_name("/some-volume"));
@@ -741,6 +775,36 @@ TEST_F(PythonClientTest, volume_creation)
     const vfs::XMLRPCVolumeInfo info(client_.info_volume(cname.str()));
     EXPECT_EQ(vfs::ObjectType::Volume, info.object_type);
     EXPECT_EQ(local_node_id(), vfs::NodeId(info.vrouter_id));
+}
+
+TEST_F(PythonClientTest, volume_creation_again)
+{
+    const vfs::FrontendPath vpath("/volume");
+    const yt::DimensionedValue size("0B");
+    const vfs::ObjectId vname(client_.create_volume(vpath.str(),
+                                                    nullptr,
+                                                    size.toString()));
+
+    const vfs::XMLRPCVolumeInfo info(client_.info_volume(vname.str()));
+    EXPECT_EQ(vfs::ObjectType::Volume, info.object_type);
+    EXPECT_EQ(local_node_id(), vfs::NodeId(info.vrouter_id));
+}
+
+TEST_F(PythonClientTest, volume_creation_and_removal)
+{
+    const vfs::FrontendPath vpath("/volume");
+    const yt::DimensionedValue size("0B");
+    const vfs::ObjectId vname(client_.create_volume(vpath.str(),
+                                                    nullptr,
+                                                    size.toString()));
+
+    const vfs::XMLRPCVolumeInfo info(client_.info_volume(vname.str()));
+    EXPECT_EQ(vfs::ObjectType::Volume, info.object_type);
+    EXPECT_EQ(local_node_id(), vfs::NodeId(info.vrouter_id));
+
+    EXPECT_NO_THROW(client_.unlink(vpath.str()));
+    EXPECT_THROW(client_.unlink(vpath.str()),
+                 std::exception);
 }
 
 TEST_F(PythonClientTest, clone_from_template)

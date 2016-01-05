@@ -258,6 +258,16 @@ REGISTER_XMLRPC(XMLRPCCallTiming,
                 "volumesList",
                 "Get a list of volumes");
 
+REGISTER_XMLRPC(XMLRPCCallTiming,
+                VolumesListByPath,
+                "volumesListByPath",
+                "Get a list of volumes by path");
+
+REGISTER_XMLRPC(XMLRPCCallTimingRedirect,
+                Unlink,
+                "unlink",
+                "Unlink a file");
+
 REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
                 UpdateMetaDataBackendConfig,
                 "updateMetaDataBackendConfig",
@@ -671,11 +681,13 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
                 "getMetaDataCacheCapacity",
                 "get capacity of the metadata cache (in pages)");
 
-typedef LOKI_TYPELIST_81(
+typedef LOKI_TYPELIST_83(
 // ================== EXPOSED IN XMLRPC CLIENT ===================
                          VolumeCreate,
                          VolumesList,
+                         VolumesListByPath,
                          VolumeInfo,
+                         Unlink,
                          SnapshotCreate,
                          SnapshotsList,
                          SnapshotInfo,

@@ -38,6 +38,9 @@ namespace fs = boost::filesystem;
 namespace vd = volumedriver;
 namespace yt = youtils;
 
+#define LOCK()                                                  \
+    std::lock_guard<decltype(lock_)> lg__(lock_)
+
 PythonClient::PythonClient(const std::string& cluster_id,
                            const std::vector< ClusterContact >& cluster_contacts,
                            const unsigned max_redirects)
@@ -172,7 +175,14 @@ PythonClient::call(const char* method,
 {
     unsigned redirect_counter = 0;
 
-    for (const auto& contact : cluster_contacts_)
+    std::vector<ClusterContact> cluster_contacts;
+
+    {
+        LOCK();
+        cluster_contacts = cluster_contacts_;
+    }
+
+    for (const auto& contact : cluster_contacts)
     {
         try
         {
@@ -189,6 +199,13 @@ PythonClient::call(const char* method,
                 //we were able to contact at least one node in the cluster
                 //so we don't throw a ClusterNotReachableException here
                 throw;
+            }
+            else
+            {
+                LOCK();
+                std::rotate(cluster_contacts_.begin(),
+                            cluster_contacts_.begin() + 1,
+                            cluster_contacts_.end());
             }
         }
     }
@@ -384,6 +401,24 @@ PythonClient::list_volumes()
 }
 
 bpy::list
+PythonClient::list_volumes_by_path()
+{
+    XmlRpc::XmlRpcValue req;
+    auto rsp(call(VolumesListByPath::method_name(), req));
+
+    bpy::list l;
+
+    for (auto i = 0; i < rsp.size(); ++i)
+    {
+        const std::string v(rsp[i]);
+        LOG_TRACE("found volume " << v);
+        l.append(v);
+    }
+
+    return l;
+}
+
+bpy::list
 PythonClient::get_scrubbing_work(const std::string& volume_id)
 {
     XmlRpc::XmlRpcValue req;
@@ -541,8 +576,11 @@ PythonClient::create_volume(const std::string& target_path,
 
     req[XMLRPCKeys::target_path] = target_path;
     req[XMLRPCKeys::volume_size] = volume_size;
-    req[XMLRPCKeys::metadata_backend_config] =
-        XMLRPCStructs::serialize_to_xmlrpc_value(mdb_config->clone());
+    if (mdb_config)
+    {
+        req[XMLRPCKeys::metadata_backend_config] =
+            XMLRPCStructs::serialize_to_xmlrpc_value(mdb_config->clone());
+    }
 
     if (not node_id.empty())
     {
@@ -588,6 +626,15 @@ PythonClient::create_clone_from_template(const std::string& target_path,
                         parent_volume_id,
                         "",
                         node_id);
+}
+
+void
+PythonClient::unlink(const std::string& target_path)
+{
+    XmlRpc::XmlRpcValue req;
+    req[XMLRPCKeys::target_path] = target_path;
+
+    call(Unlink::method_name(), req);
 }
 
 void
@@ -884,6 +931,8 @@ PythonClient::make_locked_client(const std::string& volume_id,
                                  const unsigned update_interval_secs,
                                  const unsigned grace_period_secs)
 {
+    LOCK();
+
     return LockedPythonClient::create(cluster_id_,
                                       cluster_contacts_,
                                       volume_id,

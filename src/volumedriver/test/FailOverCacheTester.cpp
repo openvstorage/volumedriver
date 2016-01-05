@@ -746,6 +746,36 @@ TEST_P(FailOverCacheTester, adding_and_flushing)
     EXPECT_EQ(max, count);
 }
 
+// OVS-3850: FailOverCacheProxy::clear threw an exception - let's see if this is
+// inherent behaviour or something else contributed.
+TEST_P(FailOverCacheTester, clear)
+{
+    auto wrns(make_random_namespace());
+    auto foc_ctx(start_one_foc());
+
+    const size_t csize = VolumeConfig::default_cluster_size();
+    FailOverCacheProxy proxy(foc_ctx->config(GetParam().foc_mode()),
+                             wrns->ns(),
+                             csize,
+                             60);
+
+    EXPECT_NO_THROW(proxy.clear());
+
+    const std::vector<uint8_t> buf(csize);
+    std::vector<FailOverCacheEntry> entries { FailOverCacheEntry(ClusterLocation(1),
+                                                                 0,
+                                                                 buf.data(),
+                                                                 buf.size()) };
+    proxy.addEntries(std::move(entries));
+
+    EXPECT_NO_THROW(proxy.clear());
+
+    foc_ctx.reset();
+
+    EXPECT_THROW(proxy.clear(),
+                 std::exception);
+}
+
 // needs to be run as root, and messes with the iptables, so use with _extreme_
 // caution
 /*

@@ -213,8 +213,6 @@ export_debug_module()
     scope.attr("__doc__") = "debugging helpers - this ain't no stable public API!";
 
     vfspy::FileSystemMetaDataClient::registerize();
-
-    vfspy::ObjectRegistryClient::registerize();
     vfspy::ScrubManagerClient::registerize();
 }
 
@@ -390,15 +388,16 @@ BOOST_PYTHON_MODULE(storagerouterclient)
         .def_pickle(ClusterCacheHandlePickleSuite())
         ;
 
-    bpy::class_<vfs::PythonClient>("StorageRouterClient",
-                                   "client for management and monitoring of a volumedriverfs cluster",
-                                   bpy::init<const std::string&,
-                                             const std::vector< vfs::ClusterContact >>
-                                   (bpy::args("vrouter_cluster_id",
-                                              "cluster_contacts"),
-                                    "Create a client interface to a volumedriverfs cluster\n"
-                                    "@param vrouter_cluster_id: string, cluster_id \n"
-                                    "@param cluster_contacts: [ClusterContact] contact points to the cluster\n"))
+    bpy::class_<vfs::PythonClient,
+                boost::noncopyable>("StorageRouterClient",
+                                    "client for management and monitoring of a volumedriverfs cluster",
+                                    bpy::init<const std::string&,
+                                              const std::vector< vfs::ClusterContact >>
+                                    (bpy::args("vrouter_cluster_id",
+                                               "cluster_contacts"),
+                                     "Create a client interface to a volumedriverfs cluster\n"
+                                     "@param vrouter_cluster_id: string, cluster_id \n"
+                                     "@param cluster_contacts: [ClusterContact] contact points to the cluster\n"))
         .def("create_volume",
              &vfs::PythonClient::create_volume,
              (bpy::args("target_path"),
@@ -413,6 +412,13 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "@raises \n"
              "      InsufficientResourcesException\n"
              "      FileExistsException\n")
+        .def("unlink",
+             &vfs::PythonClient::unlink,
+             (bpy::args("target_path")),
+             "Unlink directory entry.\n",
+             "@param target_path: string, volume location\n"
+             "@raises \n"
+             "      RuntimeError\n")
         .def("update_metadata_backend_config",
              &vfs::PythonClient::update_metadata_backend_config,
              (bpy::args("volume_id"),
@@ -426,6 +432,9 @@ BOOST_PYTHON_MODULE(storagerouterclient)
         .def("list_volumes",
              &vfs::PythonClient::list_volumes,
              "List the running volumes.")
+        .def("list_volumes_by_path",
+             &vfs::PythonClient::list_volumes_by_path,
+             "List the running volumes by path.")
         .def("rollback_volume",
              &vfs::PythonClient::rollback_volume,
              (bpy::args("volume_id"),
@@ -1115,6 +1124,8 @@ BOOST_PYTHON_MODULE(storagerouterclient)
     vfspy::MDSClient::registerize();
     youtils::python::BuildInfo::registerize();
     scrubbing::python::Scrubber::registerize();
+
+    vfspy::ObjectRegistryClient::registerize();
 
     export_debug_module();
 }

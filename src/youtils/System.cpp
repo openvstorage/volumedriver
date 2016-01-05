@@ -14,13 +14,18 @@
 
 #include "Assert.h"
 #include "System.h"
-#include <pstreams/pstream.h>
 
 #include <malloc.h>
-#include <sys/param.h>
 #include <unistd.h>
 
+#include <sys/param.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/tcp.h>
+
 #include <memory>
+
+#include <pstreams/pstream.h>
 
 namespace youtils
 {
@@ -145,6 +150,55 @@ System::exec(const std::string& command)
     }
 
     return std::make_pair(buffer, rc);
+}
+
+void
+System::setup_tcp_keepalive(int fd,
+                            int keep_cnt,
+                            int keep_idle,
+                            int keep_intvl)
+{
+    VERIFY(fd >= 0);
+
+    auto set([&](const char* desc,
+                 int level,
+                 int optname,
+                 int val)
+             {
+                 int ret = ::setsockopt(fd,
+                                        level,
+                                        optname,
+                                        &val,
+                                        sizeof(val));
+                 if (ret < 0)
+                 {
+                     ret = errno;
+                     LOG_ERROR("Failed to set " << desc << " on socket " <<
+                               fd << ": " << strerror(errno));
+                     throw fungi::IOException("Failed to set socket option",
+                                              desc);
+                 }
+             });
+
+        set("KeepAlive",
+            SOL_SOCKET,
+            SO_KEEPALIVE,
+            1);
+
+        set("keepalive probes",
+            SOL_TCP,
+            TCP_KEEPCNT,
+            keep_cnt);
+
+        set("keepalive time",
+            SOL_TCP,
+            TCP_KEEPIDLE,
+            keep_idle);
+
+        set("keepalive interval",
+            SOL_TCP,
+            TCP_KEEPINTVL,
+            keep_intvl);
 }
 
 }

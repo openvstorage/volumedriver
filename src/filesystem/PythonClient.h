@@ -85,8 +85,8 @@ struct ClusterContact
         , port(port)
     {}
 
-    const std::string host;
-    const uint16_t port;
+    std::string host;
+    uint16_t port;
 };
 
 class PythonClient
@@ -106,6 +106,9 @@ public:
 
     boost::python::list
     list_volumes();
+
+    boost::python::list
+    list_volumes_by_path();
 
     boost::python::list
     list_snapshots(const std::string& volume_id);
@@ -128,8 +131,8 @@ public:
 
     std::string
     create_volume(const std::string& target_path,
-                  boost::shared_ptr<volumedriver::MetaDataBackendConfig> mdb_config,
-                  const std::string& volume_size,
+                  boost::shared_ptr<volumedriver::MetaDataBackendConfig> mdb_config = nullptr,
+                  const std::string& volume_size = "",
                   const std::string& node_id = "");
 
     std::string
@@ -138,6 +141,9 @@ public:
                  const std::string& parent_volume_id,
                  const std::string& parent_snap_id,
                  const std::string& node_id = "");
+
+    void
+    unlink(const std::string& target_path);
 
     void
     update_metadata_backend_config(const std::string& volume_id,
@@ -324,6 +330,7 @@ protected:
                       unsigned& redirect_count);
 
     std::string cluster_id_;
+    std::mutex lock_;
     //this list does not necessarily contain all nodes in the cluster
     std::vector<ClusterContact> cluster_contacts_;
 
