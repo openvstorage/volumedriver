@@ -504,6 +504,11 @@ FileSystem::create_clone(const FrontendPath& clone_path,
     LOG_INFO("Trying to create clone from parent " << parent_id << ", snapshot " <<
              maybe_parent_snap << " @ " << clone_path);
 
+    if (not mdb_config)
+    {
+        mdb_config = make_metadata_backend_config();
+    }
+
     return create_volume_or_clone_(clone_path,
                                    [&](const FrontendPath& path,
                                        DirectoryEntryPtr dentry)
