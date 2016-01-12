@@ -57,6 +57,7 @@ libyoutils_la_SOURCES = \
 	cpu_timer.cpp \
 	DimensionedValue.cpp \
 	EtcdUrl.cpp \
+	EtcdReply.cpp \
 	FileDescriptor.cpp \
 	FileRange.cpp \
 	FileUtils.cpp \
