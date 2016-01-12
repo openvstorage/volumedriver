@@ -56,6 +56,7 @@ libyoutils_la_SOURCES = \
 	CorbaTestSetup.cpp \
 	cpu_timer.cpp \
 	DimensionedValue.cpp \
+	EtcdUrl.cpp \
 	FileDescriptor.cpp \
 	FileRange.cpp \
 	FileUtils.cpp \

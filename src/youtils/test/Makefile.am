@@ -35,6 +35,7 @@ youtils_test_SOURCES = \
 	ChooserTest.cpp \
 	DenyLockService.cpp \
 	DimensionedValueTest.cpp \
+	EtcdUrlTest.cpp \
 	FileRangeTest.cpp \
 	FileUtilsTest.cpp \
 	GeneratorTest.cpp \
