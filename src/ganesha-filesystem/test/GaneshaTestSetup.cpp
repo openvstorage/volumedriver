@@ -108,7 +108,7 @@ Setup::configure_ganesha() const
         "\tPath = " << nfs_export() << ";\n"
         "\tFSAL {\n"
         "\t\tname = OVS;\n"
-        "\t\tovs_config_file = " << volumedriverfs_config_file(topdir_) << ";\n"
+        "\t\tovs_config = " << volumedriverfs_config_file(topdir_) << ";\n"
         "\t\t}\n"
         "\tAccess_Type = RW;\n"
         "\tPseudo = \"/ganesha-vfs\";\n"
