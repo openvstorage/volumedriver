@@ -15,6 +15,7 @@
 #ifndef VFS_LOCAL_PYTHON_CLIENT_H_
 #define VFS_LOCAL_PYTHON_CLIENT_H_
 
+#include "ConfigFetcher.h"
 #include "PythonClient.h"
 
 #include <boost/filesystem.hpp>
@@ -33,7 +34,7 @@ class LocalPythonClient final
     : public PythonClient
 {
 public:
-    LocalPythonClient(const std::string& config_file);
+    explicit LocalPythonClient(const std::string& config);
 
     ~LocalPythonClient() = default;
 
@@ -85,7 +86,7 @@ public:
 private:
     DECLARE_LOGGER("LocalPythonClient");
 
-    const boost::filesystem::path config_file_;
+    ConfigFetcher config_fetcher_;
 };
 
 }

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "ConfigFetcher.h"
 #include "FileSystem.h"
 #include "ObjectRouter.h"
 
@@ -1364,11 +1365,11 @@ UpdateConfiguration::execute_internal(XmlRpc::XmlRpcValue& params,
                                       XmlRpc::XmlRpcValue& result)
 {
     XMLRPCUtils::ensure_arg(params[0], XMLRPCKeys::configuration_path);
-    const fs::path configuration_path(params[0][XMLRPCKeys::configuration_path]);
+    const std::string config(params[0][XMLRPCKeys::configuration_path]);
 
     const boost::variant<yt::UpdateReport,
                          yt::ConfigurationReport>
-        rep(api::updateConfiguration(configuration_path));
+        rep(api::updateConfiguration(ConfigFetcher(config)()));
 
     result = XMLRPCStructs::serialize_to_xmlrpc_value(rep);
 }
