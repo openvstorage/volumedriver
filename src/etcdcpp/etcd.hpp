@@ -161,23 +161,7 @@ enum class Action {
     UNKNOWN
 };
 
-struct ResponseActionMap : public std::map<std::string, Action> {
-    ResponseActionMap() {
-        this->operator[]("set") = Action::SET;
-        this->operator[]("get") = Action::GET;
-        this->operator[]("delete") = Action::DELETE;
-        this->operator[]("update") = Action::UPDATE;
-        this->operator[]("create") = Action::CREATE;
-        this->operator[]("compareAndSwap") = Action::COMPARE_AND_SWAP;
-        this->operator[]("compareAndDelete") = Action::COMPARE_AND_DELETE;
-        this->operator[]("expire") = Action::EXPIRE;
-    }
-
-    ~ResponseActionMap(){}
-};
-
-
-typedef uint16_t Port; 
+typedef uint16_t Port;
 typedef uint64_t Index;
 typedef uint64_t TtlValue;
 
