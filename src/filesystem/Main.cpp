@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "ConfigFetcher.h"
 #include "FuseInterface.h"
 
 #include <exception>
@@ -28,6 +29,7 @@
 
 #include <youtils/BuildInfo.h>
 #include <youtils/Catchers.h>
+#include <youtils/EtcdUrl.h>
 #include <youtils/Logger.h>
 #include <youtils/Logging.h>
 #include <youtils/Main.h>
@@ -39,6 +41,7 @@
 #include <youtils/VolumeDriverComponent.h>
 
 namespace be = backend;
+namespace bpt = boost::property_tree;
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 namespace vfs = volumedriverfs;
@@ -86,7 +89,7 @@ public:
         opts_.add_options()
             ("config-file,C",
              po::value<std::string>(&config_file_)->required(),
-             "volumedriver (json) config file")
+             "volumedriver (json) config file / etcd URL")
             ("lock-file,L",
              po::value<std::string>(&lock_file_),
              "a lock file used for advisory locking to prevent concurrently starting the same instance - the config-file is used if this is not specified")
@@ -117,6 +120,12 @@ public:
         umask(0);
 
         const bool lock_config_file = lock_file_.empty();
+        if (lock_config_file and yt::EtcdUrl::is_one(config_file_))
+        {
+            std::cerr << "No lock file specified / config file will not be used as etcd was requested" << std::endl;
+            return 1;
+        }
+
         const fs::path lock_path(lock_config_file ?
                                  config_file_ :
                                  lock_file_);
@@ -136,6 +145,9 @@ public:
             return 1;
         }
 
+        vfs::ConfigFetcher config_fetcher(config_file_);
+        const bpt::ptree pt(config_fetcher());
+
         // These are unblocked again and "handled" by FileSystem::operator(). We do
         // however want them to be blocked while the constructor / destructor is running.
         // This of course points to making the blocker a member of FileSystem but that
@@ -147,7 +159,7 @@ public:
 
         const yt::SignalBlocker blocker(block);
 
-        vfs::FuseInterface(yt::VolumeDriverComponent::read_config_file(config_file_),
+        vfs::FuseInterface(pt,
                            RegisterComponent::T)(mountpoint_,
                                                  unparsed_);
 
