@@ -32,6 +32,20 @@ const std::string proto("etcd");
 
 const uint16_t EtcdUrl::default_port = 2379;
 
+bool
+EtcdUrl::is_one(const std::string& str)
+{
+    try
+    {
+        boost::lexical_cast<EtcdUrl>(str);
+        return true;
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
 std::ostream&
 operator<<(std::ostream& os,
            const EtcdUrl& url)

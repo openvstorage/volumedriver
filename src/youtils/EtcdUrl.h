@@ -66,6 +66,9 @@ struct EtcdUrl
     {
         return not operator==(other);
     }
+
+    static bool
+    is_one(const std::string&);
 };
 
 std::ostream&

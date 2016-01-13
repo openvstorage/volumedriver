@@ -95,4 +95,10 @@ TEST_F(EtcdUrlTest, inequality)
     EXPECT_NE(u, v);
 }
 
+TEST_F(EtcdUrlTest, is_one_or_not)
+{
+    EXPECT_TRUE(EtcdUrl::is_one("etcd://host:234/key"s));
+    EXPECT_FALSE(EtcdUrl::is_one("etc://host:234/key"s));
+}
+
 }
