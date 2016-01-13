@@ -53,23 +53,34 @@ VolumeDriverComponent::verify_property_tree(const bpt::ptree& ptree)
 }
 
 bpt::ptree
+VolumeDriverComponent::read_config(std::stringstream& ss)
+{
+    LOG_INFO("Configuration passed:\n" << ss.str());
+
+    bpt::ptree pt;
+    bpt::json_parser::read_json(ss,
+                                pt);
+
+    VolumeDriverComponent::verify_property_tree(pt);
+
+    return pt;
+}
+
+bpt::ptree
 VolumeDriverComponent::read_config_file(const boost::filesystem::path& file)
 {
     fs::ifstream ifs(file);
-    if (ifs)
+    if (not ifs)
     {
-        std::stringstream ss;
-        ss << ifs.rdbuf();
-        LOG_INFO("Configuration passed:\n" << ss.str());
+        int err = errno;
+        LOG_ERROR("Failed to open " << file << ": " << strerror(err));
+        throw fungi::IOException("Failed to open config file",
+                                 file.string().c_str());
     }
 
-    bpt::ptree pt;
-    bpt::json_parser::read_json(file.string(),
-                                pt);
-
-    verify_property_tree(pt);
-
-    return pt;
+    std::stringstream ss;
+    ss << ifs.rdbuf();
+    return read_config(ss);
 }
 
 }

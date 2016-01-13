@@ -64,10 +64,13 @@ public:
                 ConfigurationReport&) const = 0;
 
     static void
-    verify_property_tree(const boost::property_tree::ptree& pt);
+    verify_property_tree(const boost::property_tree::ptree&);
 
     static boost::property_tree::ptree
-    read_config_file(const boost::filesystem::path& path);
+    read_config(std::stringstream&);
+
+    static boost::property_tree::ptree
+    read_config_file(const boost::filesystem::path&);
 
 private:
     DECLARE_LOGGER("VolumeDriverComponent");
