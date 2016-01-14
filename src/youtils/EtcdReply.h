@@ -28,8 +28,10 @@ namespace youtils
 class EtcdReply
 {
 public:
-    explicit EtcdReply(const std::string& json,
-                       const std::string& header = std::string());
+    EtcdReply(const std::string& header,
+              const std::string& json);
+
+    explicit EtcdReply(const std::string& json);
 
     ~EtcdReply() = default;
 

@@ -59,9 +59,13 @@ const std::string value_key("value");
 
 }
 
-EtcdReply::EtcdReply(const std::string& json,
-                     const std::string& /* header */)
+EtcdReply::EtcdReply(const std::string& json)
     : ptree_(read_ptree(json))
+{}
+
+EtcdReply::EtcdReply(const std::string& /* header */,
+                     const std::string& json)
+    : EtcdReply(json)
 {}
 
 boost::optional<EtcdReply::Error>
