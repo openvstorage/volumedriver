@@ -410,7 +410,7 @@ class Client {
     const char *kSortedSuffix = "?recursive=true&sorted=true";
 
     // DATA
-    bool enable_header_;
+    bool enable_header_ = false;
     std::string url_;
     std::string url_prefix_;
     std::unique_ptr<internal::Curl> handle_;
