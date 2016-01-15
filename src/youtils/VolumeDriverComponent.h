@@ -47,6 +47,7 @@
 #include <boost/property_tree/ptree_fwd.hpp>
 
 BOOLEAN_ENUM(RegisterComponent);
+BOOLEAN_ENUM(VerifyConfig);
 
 namespace youtils
 {
@@ -87,10 +88,12 @@ public:
     verify_property_tree(const boost::property_tree::ptree&);
 
     static boost::property_tree::ptree
-    read_config(std::stringstream&);
+    read_config(std::stringstream&,
+                VerifyConfig);
 
     static boost::property_tree::ptree
-    read_config_file(const boost::filesystem::path&);
+    read_config_file(const boost::filesystem::path&,
+                     VerifyConfig);
 
 private:
     DECLARE_LOGGER("VolumeDriverComponent");

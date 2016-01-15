@@ -1369,7 +1369,7 @@ UpdateConfiguration::execute_internal(XmlRpc::XmlRpcValue& params,
 
     const boost::variant<yt::UpdateReport,
                          yt::ConfigurationReport>
-        rep(api::updateConfiguration(ConfigFetcher(config)()));
+        rep(api::updateConfiguration(ConfigFetcher(config)(VerifyConfig::T)));
 
     result = XMLRPCStructs::serialize_to_xmlrpc_value(rep);
 }

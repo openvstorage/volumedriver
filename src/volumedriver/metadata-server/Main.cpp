@@ -76,7 +76,8 @@ public:
                            });
 
         const bpt::ptree
-            pt(yt::VolumeDriverComponent::read_config_file(config_file_));
+            pt(yt::VolumeDriverComponent::read_config_file(config_file_,
+                                                           VerifyConfig::T));
 
         be::BackendConnectionManagerPtr
             cm(be::BackendConnectionManager::create(pt,

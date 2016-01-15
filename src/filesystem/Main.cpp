@@ -155,7 +155,7 @@ public:
         }
 
         vfs::ConfigFetcher config_fetcher(config_location_);
-        const bpt::ptree pt(config_fetcher());
+        const bpt::ptree pt(config_fetcher(VerifyConfig::T));
 
         // These are unblocked again and "handled" by FileSystem::operator(). We do
         // however want them to be blocked while the constructor / destructor is running.

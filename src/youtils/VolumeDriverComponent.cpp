@@ -73,7 +73,8 @@ VolumeDriverComponent::verify_property_tree(const bpt::ptree& ptree)
 }
 
 bpt::ptree
-VolumeDriverComponent::read_config(std::stringstream& ss)
+VolumeDriverComponent::read_config(std::stringstream& ss,
+                                   VerifyConfig verify_config)
 {
     LOG_INFO("Configuration passed:\n" << ss.str());
 
@@ -81,13 +82,17 @@ VolumeDriverComponent::read_config(std::stringstream& ss)
     bpt::json_parser::read_json(ss,
                                 pt);
 
-    VolumeDriverComponent::verify_property_tree(pt);
+    if (verify_config == VerifyConfig::T)
+    {
+        VolumeDriverComponent::verify_property_tree(pt);
+    }
 
     return pt;
 }
 
 bpt::ptree
-VolumeDriverComponent::read_config_file(const boost::filesystem::path& file)
+VolumeDriverComponent::read_config_file(const boost::filesystem::path& file,
+                                        VerifyConfig verify_config)
 {
     fs::ifstream ifs(file);
     if (not ifs)
@@ -100,7 +105,8 @@ VolumeDriverComponent::read_config_file(const boost::filesystem::path& file)
 
     std::stringstream ss;
     ss << ifs.rdbuf();
-    return read_config(ss);
+    return read_config(ss,
+                       verify_config);
 }
 
 }

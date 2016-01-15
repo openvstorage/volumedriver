@@ -153,7 +153,7 @@ FileSystemWrapper::FileSystemWrapper(const std::string& export_path,
 {
     boost::property_tree::ptree configuration_ptree;
     vfs::ConfigFetcher config_fetcher(config);
-    fs_.reset(new FileSystem(config_fetcher()));
+    fs_.reset(new FileSystem(config_fetcher(VerifyConfig::T)));
 }
 
 FileSystemWrapper::~FileSystemWrapper()

@@ -30,7 +30,7 @@ namespace bpt = boost::property_tree;
 namespace yt = youtils;
 
 bpt::ptree
-ConfigFetcher::operator()()
+ConfigFetcher::operator()(VerifyConfig verify_config)
 {
     LOG_INFO("Fetching config from " << config_);
 
@@ -73,11 +73,13 @@ ConfigFetcher::operator()()
         }
 
         std::stringstream ss(*node->value);
-        return yt::VolumeDriverComponent::read_config(ss);
+        return yt::VolumeDriverComponent::read_config(ss,
+                                                      verify_config);
     }
     else
     {
-        return yt::VolumeDriverComponent::read_config_file(config_);
+        return yt::VolumeDriverComponent::read_config_file(config_,
+                                                           verify_config);
     }
 }
 
