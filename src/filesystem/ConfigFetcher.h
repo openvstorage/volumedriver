@@ -18,6 +18,7 @@
 #include <youtils/EtcdUrl.h>
 #include <youtils/IOException.h>
 #include <youtils/Logging.h>
+#include <youtils/EtcdReply.h>
 #include <youtils/VolumeDriverComponent.h>
 
 #include <boost/property_tree/ptree_fwd.hpp>
@@ -38,6 +39,9 @@ public:
 
     boost::property_tree::ptree
     operator()(VerifyConfig);
+
+    std::string
+    parse_config(const youtils::EtcdReply::Records& recs);
 
 private:
     DECLARE_LOGGER("VFSConfigFetcher");

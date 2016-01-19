@@ -16,6 +16,7 @@
 
 #include <boost/lexical_cast.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
 
 #include <etcdcpp/etcd.hpp>
 
@@ -28,6 +29,32 @@ namespace volumedriverfs
 
 namespace bpt = boost::property_tree;
 namespace yt = youtils;
+
+std::string
+ConfigFetcher::parse_config(const yt::EtcdReply::Records& recs)
+{
+    bpt::ptree pt;
+    std::stringstream ss;
+
+    for (const auto& rec: recs)
+    {
+        if (not rec.second.dir)
+        {
+            bpt::ptree child;
+            if (rec.second.value)
+            {
+                std::stringstream st;
+                st << *rec.second.value;
+                bpt::read_json(st, child);
+            }
+            std::string tmp_key = rec.second.key;
+            pt.add_child(tmp_key.substr(tmp_key.find_last_of("/") + 1),
+                         child);
+        }
+    }
+    bpt::write_json(ss, pt);
+    return ss.str();
+}
 
 bpt::ptree
 ConfigFetcher::operator()(VerifyConfig verify_config)
@@ -66,13 +93,13 @@ ConfigFetcher::operator()(VerifyConfig verify_config)
             throw Exception("Failed to find node in etcd");
         }
 
-        if (not node->value)
+        const yt::EtcdReply::Records recs(reply.records());
+        if (recs.size() < 2)
         {
-            LOG_ERROR("Failed to find desired value of " << *etcd_url);
-            throw Exception("Failed to find value of etcd key");
+            LOG_ERROR("Failed to find config subsections under " << *etcd_url);
+            throw Exception("Failed to find config subsections");
         }
-
-        std::stringstream ss(*node->value);
+        std::stringstream ss(parse_config(recs));
         return yt::VolumeDriverComponent::read_config(ss,
                                                       verify_config);
     }
