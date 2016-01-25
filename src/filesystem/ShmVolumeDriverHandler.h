@@ -22,6 +22,7 @@
 #include <ObjectRouter.h>
 #include <FileSystem.h>
 #include <volumedriver/Api.h>
+#include <volumedriver/SnapshotName.h>
 #include <boost/interprocess/managed_shared_memory.hpp>
 
 namespace volumedriverfs
@@ -189,6 +190,139 @@ public:
                      << ": " << e.what());
             throw;
         }
+    }
+
+    void
+    create_snapshot(const std::string& volume_name,
+                    const std::string& snap_name,
+                    const int64_t& timeout)
+    {
+        LOG_INFO("Create snapshot with name: " << snap_name <<
+                 " for volume with name: " << volume_name);
+
+        const FrontendPath volume_path(make_volume_path(volume_name));
+        boost::optional<ObjectId> volume_id(get_objectid(volume_path));
+
+        const volumedriver::SnapshotName snap(snap_name);
+        try
+        {
+            fs_.object_router().create_snapshot(*volume_id,
+                                                snap,
+                                                timeout);
+        }
+        catch (SyncTimeoutException& e)
+        {
+            LOG_INFO("Sync timeout exception for volume: " << volume_name);
+            throw ShmIdlInterface::SyncTimeoutException(snap_name.c_str());
+        }
+        catch (volumedriver::SnapshotPersistor::SnapshotNameAlreadyExists& e)
+        {
+            LOG_INFO("Volume still has children: " << volume_name);
+            throw ShmIdlInterface::SnapshotAlreadyExists(snap_name.c_str());
+        }
+        catch (volumedriver::PreviousSnapshotNotOnBackendException& e)
+        {
+            LOG_INFO("Previous snapshot not on backend yet for volume: " << volume_name);
+            throw ShmIdlInterface::PreviousSnapshotNotOnBackendException(snap_name.c_str());
+        }
+        catch (std::exception& e)
+        {
+            LOG_INFO("Problem creating snapshot: " << snap_name <<
+                     " for volume: "<<  volume_name << ",err: " << e.what());
+            throw;
+        }
+    }
+
+    void
+    rollback_snapshot(const std::string& volume_name,
+                      const std::string& snap_name)
+    {
+        LOG_INFO("Rollback snapshot with name: " << snap_name <<
+                 " for volume with name: " << volume_name);
+
+        const FrontendPath volume_path(make_volume_path(volume_name));
+        boost::optional<ObjectId> volume_id(get_objectid(volume_path));
+
+        const volumedriver::SnapshotName snap(snap_name);
+        try
+        {
+            fs_.object_router().rollback_volume(*volume_id,
+                                                snap);
+        }
+        catch (ObjectStillHasChildrenException& e)
+        {
+            LOG_INFO("Volume still has children: " << volume_name);
+            throw ShmIdlInterface::VolumeHasChildren(volume_name.c_str());
+        }
+        catch (std::exception& e)
+        {
+            LOG_INFO("Problem rolling back snapshot: " << snap_name <<
+                     " for volume: "<<  volume_name << ",err: " << e.what());
+            throw;
+        }
+    }
+
+    void
+    delete_snapshot(const std::string& volume_name,
+                    const std::string& snap_name)
+    {
+        LOG_INFO("Removing snapshot with name: " << snap_name <<
+                 "from volume with name: " << volume_name);
+
+        const FrontendPath volume_path(make_volume_path(volume_name));
+        boost::optional<ObjectId> volume_id(get_objectid(volume_path));
+
+        const volumedriver::SnapshotName snap(snap_name);
+        try
+        {
+            fs_.object_router().delete_snapshot(*volume_id,
+                                                snap);
+        }
+        catch (volumedriver::SnapshotNotFoundException& e)
+        {
+            LOG_INFO("Snapshot not found: " << snap_name);
+            throw ShmIdlInterface::SnapshotNotFound(volume_name.c_str());
+        }
+        catch (ObjectStillHasChildrenException& e)
+        {
+            LOG_INFO("Volume still has children: " << volume_name);
+            throw ShmIdlInterface::VolumeHasChildren(volume_name.c_str());
+        }
+        catch (std::exception& e)
+        {
+            LOG_INFO("Problem removing snapshot: " << snap_name <<
+                     " for volume: "<<  volume_name << ",err: " << e.what());
+            throw;
+        }
+    }
+
+    std::vector<std::string>
+    list_snapshots(const std::string& volume_name,
+                   uint64_t *size)
+    {
+        LOG_INFO("Listing snapshots for volume: " << volume_name);
+
+        const FrontendPath volume_path(make_volume_path(volume_name));
+        boost::optional<ObjectId> volume_id(get_objectid(volume_path));
+        std::list<volumedriver::SnapshotName> snaps;
+        try
+        {
+            snaps = fs_.object_router().list_snapshots(*volume_id);
+        }
+        catch (std::exception& e)
+        {
+            LOG_INFO("Problem listing snapshots for volume " << volume_name <<
+                     ",err: " << e.what());
+            throw;
+        }
+
+        std::vector<std::string> s_snaps;
+        for (const auto& s: snaps)
+        {
+            s_snaps.push_back(s);
+        }
+        *size = get_volume_size(*volume_id);
+        return s_snaps;
     }
 
 private:

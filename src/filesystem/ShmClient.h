@@ -125,6 +125,23 @@ public:
     static void
     remove_volume(const std::string& volume_name);
 
+    static void
+    create_snapshot(const std::string& volume_name,
+                    const std::string& snapshot_name,
+                    const int64_t& timeout);
+
+    static void
+    rollback_snapshot(const std::string& volume_name,
+                      const std::string& snapshot_name);
+
+    static void
+    delete_snapshot(const std::string& volume_name,
+                    const std::string& snapshot_name);
+
+    static std::vector<std::string>
+    list_snapshots(const std::string& volume_name,
+                   uint64_t *size);
+
     void*
     get_address_from_handle(ipc::managed_shared_memory::handle_t handle);
 
