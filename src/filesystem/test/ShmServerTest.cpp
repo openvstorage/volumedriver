@@ -402,6 +402,61 @@ TEST_F(ShmServerTest, ovs_stat)
               ovs_ctx_destroy(ctx));
 }
 
+TEST_F(ShmServerTest, ovs_create_rollback_list_remove_snapshot)
+{
+    uint64_t volume_size = 1 << 30;
+    int64_t timeout = 10;
+    EXPECT_EQ(ovs_create_volume("volume",
+                                volume_size),
+              0);
+
+    EXPECT_EQ(-1,
+              ovs_snapshot_create("fvolume",
+                                  "snap1",
+                                  timeout));
+    EXPECT_EQ(ENOENT,
+              errno);
+
+    EXPECT_EQ(0,
+              ovs_snapshot_create("volume",
+                                  "snap1",
+                                  timeout));
+
+    EXPECT_EQ(0,
+              ovs_snapshot_create("volume",
+                                  "snap2",
+                                  0));
+
+    int max_snaps = 5;
+    ovs_snapshot_info_t *snaps = new ovs_snapshot_info_t [max_snaps];
+    EXPECT_EQ(2U,
+              ovs_snapshot_list("volume", snaps, &max_snaps));
+
+    ovs_snapshot_list_free(snaps);
+
+    EXPECT_EQ(-1,
+              ovs_snapshot_list("fvolume", snaps, &max_snaps));
+    EXPECT_EQ(ENOENT,
+              errno);
+
+    delete []snaps;
+
+    EXPECT_EQ(0,
+              ovs_snapshot_rollback("volume",
+                                    "snap1"));
+
+    EXPECT_EQ(-1,
+              ovs_snapshot_remove("volume",
+                                  "snap2"));
+    EXPECT_EQ(ENOENT,
+              errno);
+
+    EXPECT_EQ(0,
+              ovs_snapshot_remove("volume",
+                                  "snap1"));
+
+}
+
 TEST_F(ShmServerTest, ovs_completion_two_ctxs)
 {
     struct completion_function
