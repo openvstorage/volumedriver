@@ -1326,6 +1326,18 @@ ObjectRouter::set_volume_as_template(const vd::VolumeId& id)
 }
 
 void
+ObjectRouter::create_snapshot(const ObjectId& volume_id,
+                              const vd::SnapshotName& snap_id,
+                              const int64_t& timeout)
+{
+    LOG_INFO("Snapshotting volume '" << volume_id << "' with snapshot name '"
+             << snap_id << "'");
+    local_node_()->create_snapshot(volume_id,
+                                   snap_id,
+                                   timeout);
+}
+
+void
 ObjectRouter::rollback_volume(const ObjectId& volume_id,
                               const vd::SnapshotName& snap_id)
 {
@@ -1342,6 +1354,13 @@ ObjectRouter::delete_snapshot(const ObjectId& oid,
     LOG_INFO("Deleting snapshot " << snap << " from " << oid);
     local_node_()->delete_snapshot(oid,
                                    snap);
+}
+
+std::list<vd::SnapshotName>
+ObjectRouter::list_snapshots(const ObjectId& oid)
+{
+    LOG_INFO("Listing snapshots for volume '" << oid << "'");
+    return local_node_()->list_snapshots(oid);
 }
 
 std::vector<scrubbing::ScrubWork>
