@@ -39,6 +39,7 @@
 #include <volumedriver/TransientException.h>
 #include <volumedriver/VolManager.h>
 #include <volumedriver/VolumeConfig.h>
+#include <volumedriver/Snapshot.h>
 
 namespace volumedriverfs
 {
@@ -1216,6 +1217,70 @@ LocalNode::set_volume_as_template(const ObjectId& id)
 }
 
 void
+LocalNode::create_snapshot(const ObjectId& id,
+                           const vd::SnapshotName& snap_id,
+                           const int64_t& timeout)
+{
+    vd::SnapshotName snapname;
+    const vd::VolumeId volid(id);
+    {
+        fungi::ScopedLock l(api::getManagementMutex());
+        snapname = api::createSnapshot(volid,
+                                       vd::SnapshotMetaData(),
+                                       &snap_id);
+    }
+
+    namespace pt = boost::posix_time;
+    pt::ptime end = pt::second_clock::local_time() + pt::seconds(timeout);
+
+    bool synced = false;
+    if (timeout > 0)
+    {
+        while (pt::second_clock::local_time() < end)
+        {
+            {
+                fungi::ScopedLock l(api::getManagementMutex());
+                synced = api::isVolumeSyncedUpTo(volid,
+                                                 snapname);
+            }
+            if (synced)
+            {
+                break;
+            }
+            else
+            {
+                boost::this_thread::sleep(boost::posix_time::milliseconds(250));
+            }
+        }
+    }
+    else if (timeout == 0)
+    {
+        while (not synced)
+        {
+            {
+                fungi::ScopedLock l(api::getManagementMutex());
+                synced = api::isVolumeSyncedUpTo(volid,
+                                                 snapname);
+            }
+            if (synced)
+            {
+                break;
+            }
+        }
+    }
+    else
+    {
+        return;
+    }
+
+    if (not synced)
+    {
+        vrouter_.delete_snapshot(id, snapname);
+        throw SyncTimeoutException("timeout syncing snapshot to backend\n");
+    }
+}
+
+void
 LocalNode::rollback_volume(const ObjectId& id,
                            const vd::SnapshotName& snap_id)
 {
@@ -1306,6 +1371,19 @@ LocalNode::delete_snapshot(const ObjectId& id,
         api::destroySnapshot(static_cast<const vd::VolumeId>(id),
                              snap_id);
     });
+}
+
+std::list<vd::SnapshotName>
+LocalNode::list_snapshots(const ObjectId& id)
+{
+    std::list<vd::SnapshotName> snaps;
+    with_api_exception_conversion([&]
+    {
+        const vd::VolumeId vid(static_cast<const vd::VolumeId>(id));
+        api::showSnapshots(vid,
+                           snaps);
+    });
+    return snaps;
 }
 
 std::vector<scrubbing::ScrubWork>
