@@ -468,6 +468,192 @@ ovs_remove_volume(const char* volume_name)
     return 0;
 }
 
+int
+ovs_snapshot_create(const char* volume_name,
+                    const char* snapshot_name,
+                    const int64_t timeout)
+{
+    if (not _is_volume_name_valid(volume_name))
+    {
+        errno = EINVAL;
+        return -1;
+    }
+
+    try
+    {
+        volumedriverfs::ShmClient::create_snapshot(volume_name,
+                                                   snapshot_name,
+                                                   timeout);
+    }
+    catch (ShmIdlInterface::PreviousSnapshotNotOnBackendException)
+    {
+        errno = EBUSY;
+        return -1;
+    }
+    catch (ShmIdlInterface::VolumeDoesNotExist)
+    {
+        errno = ENOENT;
+        return -1;
+    }
+    catch (ShmIdlInterface::SyncTimeoutException)
+    {
+        errno = ETIMEDOUT;
+        return -1;
+    }
+    catch (ShmIdlInterface::SnapshotAlreadyExists)
+    {
+        errno = EEXIST;
+        return -1;
+    }
+    catch (...)
+    {
+        errno = EIO;
+        return -1;
+    }
+    return 0;
+}
+
+int
+ovs_snapshot_rollback(const char* volume_name,
+                      const char* snapshot_name)
+{
+    if (not _is_volume_name_valid(volume_name))
+    {
+        errno = EINVAL;
+        return -1;
+    }
+
+    try
+    {
+        volumedriverfs::ShmClient::rollback_snapshot(volume_name,
+                                                     snapshot_name);
+    }
+    catch (ShmIdlInterface::VolumeDoesNotExist)
+    {
+        errno = ENOENT;
+        return -1;
+    }
+    catch (ShmIdlInterface::VolumeHasChildren)
+    {
+        errno = ENOTEMPTY;
+        //errno = ECHILD;
+        return -1;
+    }
+    catch (...)
+    {
+        errno = EIO;
+        return -1;
+    }
+    return 0;
+}
+
+int
+ovs_snapshot_remove(const char* volume_name,
+                    const char* snapshot_name)
+{
+    if (not _is_volume_name_valid(volume_name))
+    {
+        errno = EINVAL;
+        return -1;
+    }
+
+    try
+    {
+        volumedriverfs::ShmClient::delete_snapshot(volume_name,
+                                                   snapshot_name);
+    }
+    catch (ShmIdlInterface::VolumeDoesNotExist)
+    {
+        errno = ENOENT;
+        return -1;
+    }
+    catch (ShmIdlInterface::VolumeHasChildren)
+    {
+        errno = ENOTEMPTY;
+        //errno = ECHILD;
+        return -1;
+    }
+    catch (ShmIdlInterface::SnapshotNotFound)
+    {
+        errno = ENOENT;
+        return -1;
+    }
+    catch (...)
+    {
+        errno = EIO;
+        return -1;
+    }
+    return 0;
+}
+
+int
+ovs_snapshot_list(const char* volume_name,
+                  ovs_snapshot_info_t *snap_list,
+                  int *max_snaps)
+{
+    int i, len;
+    uint64_t size = 0;
+
+    if (not _is_volume_name_valid(volume_name))
+    {
+        errno = EINVAL;
+        return -1;
+    }
+
+    std::vector<std::string> snaps;
+    try
+    {
+        snaps = volumedriverfs::ShmClient::list_snapshots(volume_name,
+                                                          &size);
+    }
+    catch (ShmIdlInterface::VolumeDoesNotExist)
+    {
+        errno = ENOENT;
+        return -1;
+    }
+    catch (...)
+    {
+        errno = EIO;
+        return -1;
+    }
+
+    len = snaps.size();
+    if (*max_snaps < len + 1)
+    {
+        *max_snaps = len + 1;
+        errno = ERANGE;
+        return -1;
+    }
+
+    for (i = 0; i < len; i++)
+    {
+        snap_list[i].name = strdup(snaps[i].c_str());
+        snap_list[i].size = size;
+        if (!snap_list[i].name)
+        {
+            for (int j = 0; j < i; j++)
+            {
+                free((void*)snap_list[i].name);
+            }
+            errno = ENOMEM;
+            return -1;
+        }
+    }
+
+    snap_list[i].name = NULL;
+    return len;
+}
+
+void
+ovs_snapshot_list_free(ovs_snapshot_info_t *snap_list)
+{
+     while (snap_list->name)
+     {
+        free((void*)snap_list->name);
+        snap_list++;
+     }
+}
+
 static int
 _ovs_submit_aio_request(ovs_ctx_t *ctx,
                         struct ovs_aiocb *ovs_aiocbp,
