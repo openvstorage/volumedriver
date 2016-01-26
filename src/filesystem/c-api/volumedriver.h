@@ -156,6 +156,16 @@ ovs_snapshot_remove(const char *volume_name,
                     const char *snap_name);
 
 /*
+ * Check if snapshot is synced on the backend
+ * param volume_name: Volume name
+ * param snap_name: Snapshot name
+ * return: 1 if synced, 0 if not synced and -1 on fail
+ */
+int
+ovs_snapshot_is_synced(const char *volume_name,
+                       const char *snap_name);
+
+/*
  * Allocate buffer from the shared memory segment
  * param ctx: Open vStorage context
  * param size: Buffer size in bytes

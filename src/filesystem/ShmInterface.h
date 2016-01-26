@@ -213,6 +213,14 @@ public:
         size = c_size;
     }
 
+    int
+    is_snapshot_synced(const char* volume_name,
+                       const char* snapshot_name)
+    {
+        std::unique_ptr<Handler> h(new Handler(handler_args_));
+        return int(h->is_snapshot_synced(volume_name, snapshot_name));
+    }
+
 private:
     DECLARE_LOGGER("ShmInterface");
 

@@ -1384,6 +1384,15 @@ LocalNode::list_snapshots(const ObjectId& id)
     return snaps;
 }
 
+bool
+LocalNode::is_snapshot_syncedUpTo(const ObjectId& id,
+                                  const vd::SnapshotName& snapname)
+{
+    const vd::VolumeId vid(static_cast<const vd::VolumeId>(id));
+    return api::isVolumeSyncedUpTo(vid,
+                                   snapname);
+}
+
 std::vector<scrubbing::ScrubWork>
 LocalNode::get_scrub_work(const ObjectId& id,
                           const boost::optional<vd::SnapshotName>& start_snap,

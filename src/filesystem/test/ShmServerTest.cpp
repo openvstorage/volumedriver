@@ -427,6 +427,14 @@ TEST_F(ShmServerTest, ovs_create_rollback_list_remove_snapshot)
                                   "snap2",
                                   0));
 
+    EXPECT_EQ(1,
+              ovs_snapshot_is_synced("volume",
+                                     "snap2"));
+
+    EXPECT_EQ(-1,
+              ovs_snapshot_is_synced("volume",
+                                     "fsnap"));
+
     int max_snaps = 5;
     ovs_snapshot_info_t *snaps = new ovs_snapshot_info_t [max_snaps];
     EXPECT_EQ(2U,

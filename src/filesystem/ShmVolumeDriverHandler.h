@@ -325,6 +325,32 @@ public:
         return s_snaps;
     }
 
+    bool
+    is_snapshot_synced(const std::string& volume_name,
+                       const std::string& snap_name)
+    {
+        const FrontendPath volume_path(make_volume_path(volume_name));
+        boost::optional<ObjectId> volume_id(get_objectid(volume_path));
+        const volumedriver::SnapshotName snap(snap_name);
+        try
+        {
+            return fs_.object_router().is_snapshot_syncedUpTo(*volume_id,
+                                                              snap);
+        }
+        catch (volumedriver::SnapshotNotFoundException& e)
+        {
+            LOG_INFO("Snapshot not found: " << snap_name);
+            throw ShmIdlInterface::SnapshotNotFound(volume_name.c_str());
+        }
+        catch (std::exception& e)
+        {
+            LOG_INFO("Problem checking if snapshot " << snap_name <<
+                    " is synced for volume " << volume_name << ",err: " <<
+                    e.what());
+            throw;
+        }
+    }
+
 private:
     DECLARE_LOGGER("ShmVolumeDriverHandler");
 

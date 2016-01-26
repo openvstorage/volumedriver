@@ -250,6 +250,10 @@ public:
     std::list<volumedriver::SnapshotName>
     list_snapshots(const ObjectId& oid);
 
+    bool
+    is_snapshot_syncedUpTo(const ObjectId& id,
+                           const volumedriver::SnapshotName& snap_id);
+
     std::vector<scrubbing::ScrubWork>
     get_scrub_work(const ObjectId& oid,
                    const boost::optional<volumedriver::SnapshotName>& start_snap,

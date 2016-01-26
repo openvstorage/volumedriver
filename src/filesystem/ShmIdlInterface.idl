@@ -120,6 +120,11 @@ module ShmIdlInterface {
                    out unsigned long long size)
     raises(VolumeDoesNotExist);
 
+    long
+    is_snapshot_synced(in string volume_name,
+                       in string snapshot_name)
+    raises(VolumeDoesNotExist, SnapshotNotFound);
+
     };
 
 };

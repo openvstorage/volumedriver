@@ -382,12 +382,12 @@ ovs_ctx_init(const char* volume_name,
                                        oflag);
         return ctx;
     }
-    catch (ShmIdlInterface::VolumeDoesNotExist)
+    catch (const ShmIdlInterface::VolumeDoesNotExist&)
     {
         errno = EACCES;
         return NULL;
     }
-    catch (ShmIdlInterface::VolumeNameAlreadyRegistered)
+    catch (const ShmIdlInterface::VolumeNameAlreadyRegistered&)
     {
         errno = EBUSY;
         return NULL;
@@ -429,7 +429,7 @@ ovs_create_volume(const char* volume_name, uint64_t size)
     {
         volumedriverfs::ShmClient::create_volume(volume_name, size);
     }
-    catch (ShmIdlInterface::VolumeExists)
+    catch (const ShmIdlInterface::VolumeExists&)
     {
         errno = EEXIST;
         return -1;
@@ -455,7 +455,7 @@ ovs_remove_volume(const char* volume_name)
     {
         volumedriverfs::ShmClient::remove_volume(volume_name);
     }
-    catch (ShmIdlInterface::VolumeDoesNotExist)
+    catch (const ShmIdlInterface::VolumeDoesNotExist&)
     {
         errno = ENOENT;
         return -1;
@@ -528,12 +528,12 @@ ovs_snapshot_rollback(const char* volume_name,
         volumedriverfs::ShmClient::rollback_snapshot(volume_name,
                                                      snapshot_name);
     }
-    catch (ShmIdlInterface::VolumeDoesNotExist)
+    catch (const ShmIdlInterface::VolumeDoesNotExist&)
     {
         errno = ENOENT;
         return -1;
     }
-    catch (ShmIdlInterface::VolumeHasChildren)
+    catch (const ShmIdlInterface::VolumeHasChildren&)
     {
         errno = ENOTEMPTY;
         //errno = ECHILD;
@@ -562,18 +562,18 @@ ovs_snapshot_remove(const char* volume_name,
         volumedriverfs::ShmClient::delete_snapshot(volume_name,
                                                    snapshot_name);
     }
-    catch (ShmIdlInterface::VolumeDoesNotExist)
+    catch (const ShmIdlInterface::VolumeDoesNotExist&)
     {
         errno = ENOENT;
         return -1;
     }
-    catch (ShmIdlInterface::VolumeHasChildren)
+    catch (const ShmIdlInterface::VolumeHasChildren&)
     {
         errno = ENOTEMPTY;
         //errno = ECHILD;
         return -1;
     }
-    catch (ShmIdlInterface::SnapshotNotFound)
+    catch (const ShmIdlInterface::SnapshotNotFound&)
     {
         errno = ENOENT;
         return -1;
@@ -606,7 +606,7 @@ ovs_snapshot_list(const char* volume_name,
         snaps = volumedriverfs::ShmClient::list_snapshots(volume_name,
                                                           &size);
     }
-    catch (ShmIdlInterface::VolumeDoesNotExist)
+    catch (const ShmIdlInterface::VolumeDoesNotExist&)
     {
         errno = ENOENT;
         return -1;
@@ -652,6 +652,38 @@ ovs_snapshot_list_free(ovs_snapshot_info_t *snap_list)
         free((void*)snap_list->name);
         snap_list++;
      }
+}
+
+int
+ovs_snapshot_is_synced(const char* volume_name,
+                       const char* snapshot_name)
+{
+    if (not _is_volume_name_valid(volume_name))
+    {
+        errno = EINVAL;
+        return -1;
+    }
+
+    try
+    {
+        return volumedriverfs::ShmClient::is_snapshot_synced(volume_name,
+                                                             snapshot_name);
+    }
+    catch (const ShmIdlInterface::VolumeDoesNotExist&)
+    {
+        errno = ENOENT;
+        return -1;
+    }
+    catch (const ShmIdlInterface::SnapshotNotFound&)
+    {
+        errno = ENOENT;
+        return -1;
+    }
+    catch (...)
+    {
+        errno = EIO;
+        return -1;
+    }
 }
 
 static int

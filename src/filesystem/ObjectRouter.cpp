@@ -1363,6 +1363,13 @@ ObjectRouter::list_snapshots(const ObjectId& oid)
     return local_node_()->list_snapshots(oid);
 }
 
+bool
+ObjectRouter::is_snapshot_syncedUpTo(const ObjectId& id,
+                                     const vd::SnapshotName& snap_id)
+{
+    return local_node_()->is_snapshot_syncedUpTo(id, snap_id);
+}
+
 std::vector<scrubbing::ScrubWork>
 ObjectRouter::get_scrub_work(const ObjectId& oid,
                              const boost::optional<vd::SnapshotName>& start_snap,
