@@ -128,7 +128,7 @@ public:
     static void
     create_snapshot(const std::string& volume_name,
                     const std::string& snapshot_name,
-                    const int64_t& timeout);
+                    const int64_t timeout);
 
     static void
     rollback_snapshot(const std::string& volume_name,

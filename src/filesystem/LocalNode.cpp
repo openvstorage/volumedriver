@@ -23,6 +23,7 @@
 
 #include <mutex>
 #include <set>
+#include <chrono>
 
 #include <boost/property_tree/ptree.hpp>
 
@@ -1219,7 +1220,7 @@ LocalNode::set_volume_as_template(const ObjectId& id)
 void
 LocalNode::create_snapshot(const ObjectId& id,
                            const vd::SnapshotName& snap_id,
-                           const int64_t& timeout)
+                           const int64_t timeout)
 {
     vd::SnapshotName snapname;
     const vd::VolumeId volid(id);
@@ -1230,13 +1231,11 @@ LocalNode::create_snapshot(const ObjectId& id,
                                        &snap_id);
     }
 
-    namespace pt = boost::posix_time;
-    pt::ptime end = pt::second_clock::local_time() + pt::seconds(timeout);
-
     bool synced = false;
     if (timeout > 0)
     {
-        while (pt::second_clock::local_time() < end)
+        auto end = std::chrono::steady_clock::now() + std::chrono::seconds(timeout);
+        while (std::chrono::steady_clock::now() < end)
         {
             {
                 fungi::ScopedLock l(api::getManagementMutex());

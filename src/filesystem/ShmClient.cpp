@@ -501,7 +501,7 @@ ShmClient::remove_volume(const std::string& volume_name)
 void
 ShmClient::create_snapshot(const std::string& volume_name,
                            const std::string& snapshot_name,
-                           const int64_t& timeout)
+                           const int64_t timeout)
 {
     CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
                                                             vd_context_kind,

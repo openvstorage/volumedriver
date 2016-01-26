@@ -162,7 +162,7 @@ public:
     void
     create_snapshot(const ObjectId& id,
                     const volumedriver::SnapshotName& snap_id,
-                    const int64_t& timeout);
+                    const int64_t timeout);
 
     void
     rollback_volume(const ObjectId& volume_id,

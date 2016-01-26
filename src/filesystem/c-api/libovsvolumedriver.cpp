@@ -485,22 +485,22 @@ ovs_snapshot_create(const char* volume_name,
                                                    snapshot_name,
                                                    timeout);
     }
-    catch (ShmIdlInterface::PreviousSnapshotNotOnBackendException)
+    catch (const ShmIdlInterface::PreviousSnapshotNotOnBackendException&)
     {
         errno = EBUSY;
         return -1;
     }
-    catch (ShmIdlInterface::VolumeDoesNotExist)
+    catch (const ShmIdlInterface::VolumeDoesNotExist&)
     {
         errno = ENOENT;
         return -1;
     }
-    catch (ShmIdlInterface::SyncTimeoutException)
+    catch (const ShmIdlInterface::SyncTimeoutException&)
     {
         errno = ETIMEDOUT;
         return -1;
     }
-    catch (ShmIdlInterface::SnapshotAlreadyExists)
+    catch (const ShmIdlInterface::SnapshotAlreadyExists&)
     {
         errno = EEXIST;
         return -1;

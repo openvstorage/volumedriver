@@ -195,7 +195,7 @@ public:
     void
     create_snapshot(const std::string& volume_name,
                     const std::string& snap_name,
-                    const int64_t& timeout)
+                    const int64_t timeout)
     {
         LOG_INFO("Create snapshot with name: " << snap_name <<
                  " for volume with name: " << volume_name);

@@ -1328,7 +1328,7 @@ ObjectRouter::set_volume_as_template(const vd::VolumeId& id)
 void
 ObjectRouter::create_snapshot(const ObjectId& volume_id,
                               const vd::SnapshotName& snap_id,
-                              const int64_t& timeout)
+                              const int64_t timeout)
 {
     LOG_INFO("Snapshotting volume '" << volume_id << "' with snapshot name '"
              << snap_id << "'");
