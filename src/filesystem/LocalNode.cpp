@@ -1098,11 +1098,10 @@ LocalNode::vaai_copy(const ObjectId& src_id,
         snapname = api::createSnapshot(src_volid);
     }
 
-    namespace pt = boost::posix_time;
-    pt::ptime end = pt::second_clock::local_time() + pt::seconds(timeout);
+    auto end = std::chrono::steady_clock::now() + std::chrono::seconds(timeout);
 
     bool synced = false;
-    while (pt::second_clock::local_time() < end)
+    while (std::chrono::steady_clock::now() < end)
     {
         {
             fungi::ScopedLock l(api::getManagementMutex());
