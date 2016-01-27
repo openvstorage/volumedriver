@@ -356,8 +356,8 @@ FileSystemTestSetup::make_config_(bpt::ptree& pt,
 
     //failovercache
     {
-        ip::PARAMETER_TYPE(failovercache_path)(failovercache_dir(topdir).string()).persist(pt);
-        ip::PARAMETER_TYPE(failovercache_transport)(failovercache_transport()).persist(pt);
+        ip::PARAMETER_TYPE(dtl_path)(failovercache_dir(topdir).string()).persist(pt);
+        ip::PARAMETER_TYPE(dtl_transport)(failovercache_transport()).persist(pt);
     }
 
     // volume_registry

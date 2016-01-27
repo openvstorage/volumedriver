@@ -164,8 +164,8 @@ DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(events_amqp_routing_key,
 //Failovercache
 extern const char failovercache_component_name[];
 
-DECLARE_INITIALIZED_PARAM(failovercache_path, std::string);
-DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(failovercache_transport,
+DECLARE_INITIALIZED_PARAM(dtl_path, std::string);
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(dtl_transport,
                                        volumedriver::FailOverCacheTransport);
 
 // VolumeRegistry:
