@@ -19,6 +19,8 @@
 
 #include <youtils/VolumeDriverComponent.h>
 
+#include <filesystem/ConfigFetcher.h>
+
 namespace ganesha
 {
 
@@ -146,14 +148,12 @@ FSData::objectFileType() const
 }
 
 FileSystemWrapper::FileSystemWrapper(const std::string& export_path,
-                                     const std::string& configuration_file)
+                                     const std::string& config)
     : export_path_(export_path)
 {
     boost::property_tree::ptree configuration_ptree;
-    boost::property_tree::json_parser::read_json(configuration_file, configuration_ptree);
-    youtils::VolumeDriverComponent::verify_property_tree(configuration_ptree);
-
-    fs_.reset(new FileSystem(configuration_ptree));
+    vfs::ConfigFetcher config_fetcher(config);
+    fs_.reset(new FileSystem(config_fetcher(VerifyConfig::T)));
 }
 
 FileSystemWrapper::~FileSystemWrapper()

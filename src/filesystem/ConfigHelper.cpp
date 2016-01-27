@@ -30,9 +30,9 @@ namespace bpt = boost::property_tree;
 namespace yt = youtils;
 
 ConfigHelper::ConfigHelper(const bpt::ptree& pt)
-    : failover_cache_path_(PARAMETER_VALUE_FROM_PROPERTY_TREE(failovercache_path,
+    : failover_cache_path_(PARAMETER_VALUE_FROM_PROPERTY_TREE(dtl_path,
                                                               pt))
-    , failover_cache_transport_(PARAMETER_VALUE_FROM_PROPERTY_TREE(failovercache_transport,
+    , failover_cache_transport_(PARAMETER_VALUE_FROM_PROPERTY_TREE(dtl_transport,
                                                                    pt))
 {
     const NodeId vrouter_id(PARAMETER_VALUE_FROM_PROPERTY_TREE(vrouter_id,

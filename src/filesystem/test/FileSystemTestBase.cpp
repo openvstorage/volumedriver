@@ -824,7 +824,7 @@ FileSystemTestBase::mount_remote()
     CARG("-o");
     CARG("default_permissions");
     // VolumeDriverFS args
-    CARG("--config-file");
+    CARG("--config");
     PARG(cfg_file);
     CARG("--mountpoint");
     PARG(mount_dir(pfx));

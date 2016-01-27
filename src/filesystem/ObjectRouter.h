@@ -235,12 +235,24 @@ public:
     set_volume_as_template(const volumedriver::VolumeId& id);
 
     void
+    create_snapshot(const ObjectId& volume_id,
+                    const volumedriver::SnapshotName& snap_id,
+                    const int64_t timeout);
+
+    void
     rollback_volume(const ObjectId& volume_id,
                     const volumedriver::SnapshotName& snap_id);
 
     void
     delete_snapshot(const ObjectId& oid,
                     const volumedriver::SnapshotName& snap);
+
+    std::list<volumedriver::SnapshotName>
+    list_snapshots(const ObjectId& oid);
+
+    bool
+    is_snapshot_syncedUpTo(const ObjectId& id,
+                           const volumedriver::SnapshotName& snap_id);
 
     std::vector<scrubbing::ScrubWork>
     get_scrub_work(const ObjectId& oid,

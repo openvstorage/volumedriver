@@ -53,6 +53,28 @@ module ShmIdlInterface {
     string reason;
     };
 
+    exception VolumeHasChildren {
+    string volume_name;
+    };
+
+    exception SnapshotAlreadyExists {
+    string volume_name;
+    };
+
+    exception SnapshotNotFound {
+    string volume_name;
+    };
+
+    exception SyncTimeoutException {
+    string snapshot_name;
+    };
+
+    exception PreviousSnapshotNotOnBackendException {
+    string volume_name;
+    };
+
+    typedef sequence<string> StringSequence;
+
     interface VolumeFactory {
     void
     create_volume(in string volume_name,
@@ -74,5 +96,35 @@ module ShmIdlInterface {
 
     void
     stop_all_and_exit();
+
+    void
+    create_snapshot(in string volume_name,
+                    in string snapshot_name,
+                    in long long timeout)
+    raises(VolumeDoesNotExist, SnapshotAlreadyExists, SyncTimeoutException,
+    PreviousSnapshotNotOnBackendException);
+
+    void
+    rollback_snapshot(in string volume_name,
+                      in string snapshot_name)
+    raises(VolumeDoesNotExist, VolumeHasChildren);
+
+    void
+    delete_snapshot(in string volume_name,
+                    in string snapshot_name)
+    raises(VolumeDoesNotExist, VolumeHasChildren, SnapshotNotFound);
+
+    void
+    list_snapshots(in string volume_name,
+                   out StringSequence res,
+                   out unsigned long long size)
+    raises(VolumeDoesNotExist);
+
+    long
+    is_snapshot_synced(in string volume_name,
+                       in string snapshot_name)
+    raises(VolumeDoesNotExist, SnapshotNotFound);
+
     };
+
 };

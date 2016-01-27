@@ -82,6 +82,7 @@ libvolumedriverfs_la_SOURCES = \
 		ClusterNodeConfig.cpp \
 		ClusterNodeStatus.cpp \
 		ClusterRegistry.cpp \
+		ConfigFetcher.cpp \
 		ConfigHelper.cpp \
 		DirectoryEntry.cpp \
 		EventPublisher.cpp \

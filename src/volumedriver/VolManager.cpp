@@ -132,7 +132,7 @@ try
           , tlog_path(pt)
           , open_scos_per_volume(pt)
           , freespace_check_interval(pt)
-          , failovercache_check_interval_in_seconds(pt)
+          , dtl_check_interval_in_seconds(pt)
           , read_cache_default_behaviour(pt)
           , read_cache_default_mode(pt)
           , clean_interval(pt)
@@ -177,7 +177,7 @@ try
                                                       {
                                                           checkVolumeFailoverCaches();
                                                       },
-                                                      failovercache_check_interval_in_seconds.value()));
+                                                      dtl_check_interval_in_seconds.value()));
 }
 CATCH_STD_ALL_LOG_RETHROW("Exception during VolManager construction");
 

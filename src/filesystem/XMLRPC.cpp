@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "ConfigFetcher.h"
 #include "FileSystem.h"
 #include "ObjectRouter.h"
 
@@ -991,7 +992,12 @@ VolumeClone::execute_internal(::XmlRpc::XmlRpcValue& params,
     const vd::SnapshotName snap(params[0][XMLRPCKeys::parent_snapshot_id]);
 
     vd::VolumeConfig::MetaDataBackendConfigPtr mdb_config;
-    mdb_config = XMLRPCStructs::deserialize_from_xmlrpc_value<decltype(mdb_config)>(params[0][XMLRPCKeys::metadata_backend_config]);
+
+    if (params[0].hasMember(XMLRPCKeys::metadata_backend_config))
+    {
+        mdb_config =
+            XMLRPCStructs::deserialize_from_xmlrpc_value<decltype(mdb_config)>(params[0][XMLRPCKeys::metadata_backend_config]);
+    }
 
     const ObjectId id(fs_.create_clone(path,
                                        std::move(mdb_config),
@@ -1359,11 +1365,11 @@ UpdateConfiguration::execute_internal(XmlRpc::XmlRpcValue& params,
                                       XmlRpc::XmlRpcValue& result)
 {
     XMLRPCUtils::ensure_arg(params[0], XMLRPCKeys::configuration_path);
-    const fs::path configuration_path(params[0][XMLRPCKeys::configuration_path]);
+    const std::string config(params[0][XMLRPCKeys::configuration_path]);
 
     const boost::variant<yt::UpdateReport,
                          yt::ConfigurationReport>
-        rep(api::updateConfiguration(configuration_path));
+        rep(api::updateConfiguration(ConfigFetcher(config)(VerifyConfig::T)));
 
     result = XMLRPCStructs::serialize_to_xmlrpc_value(rep);
 }

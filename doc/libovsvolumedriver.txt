@@ -87,7 +87,7 @@ Create a new volume::
         - ENOSPC The backend that would contain the new volume cannot be
           expanded
 
-Remove a new volume::
+Remove a volume::
     int ovs_remove_volume(const char *volname);
 
     Description
@@ -106,6 +106,121 @@ Remove a new volume::
         - ENOENT The named volume doesn't exist
         - EINVAL Invalid arguments supplied
         - EIO An error occured during ovs_remove_volume()
+
+Snapshot a volume
+    int ovs_snapshot_create(const char *volname, const char *snapname,
+                            const int64_t timeout);
+
+    Description
+    -----------
+    The ovs_snapshot_create() shall create a snapshot of name 'snapname' of
+    a volume of name 'volname'.
+    If timeout is a positive number the function shall wait for the snapshot
+    to be synced on backend, until the timeout expires. If timeout value is
+    zero the function shall wait until the snapshot is synced on the backend.
+    For negative timeout values the function shall return immediately.
+
+    Return Value
+    ------------
+    Upon successful completion the function shall create a new snapshot and
+    shall return 0 if successful otherwise -1 is returned, no snapshot shall
+    be created.
+
+    Errors
+    ------
+    The function shall fail if:
+        - ENOENT The named volume doesn't exist
+        - EINVAL Invalid arguments supplied
+        - EEXIST The snapshot with name 'snapname' already exists
+        - ETIMEDOUT Timeout exceeded, snapshot failed
+        - EBUSY Previous snapshot not on backend yet, cannot take a snapshot
+        - EIO An error occured during ovs_snapshot_create()
+
+Rollback volume to a specific snapshot
+    int ovs_snapshot_rollback(const char *volname, const char *snapname);
+
+    Description
+    -----------
+    The ovs_snapshot_rollback() shall rollback the volume of name 'volname' to
+    the snapshot of name 'snapname'.
+
+    Return Value
+    ------------
+    Upon successful completion the function shall rollback volume to the
+    specified snapshot and shall return 0 if successful otherwise -1 is
+    returned.
+
+    Errors
+    ------
+    The function shall fail if:
+        - ENOENT The named volume or snapshot doesn't exist
+        - EINVAL Invalid arguments supplied
+        - ENOTEMPTY The snapshot has children
+        - EIO An error occured during ovs_snapshot_rollback()
+
+Remove snapshot
+    int ovs_snapshot_remove(const char *volname, const char *snapname);
+
+    Description
+    -----------
+    The ovs_snapshot_remove() shall remove the snapshot of name 'snapname'
+    from volume of name 'volname'.
+
+    Return Value
+    ------------
+    Upon successful completion the function shall rollback volume to the
+    specified snapshot and shall return 0 if successful otherwise -1 is
+    returned.
+
+    Errors
+    ------
+    The function shall fail if:
+        - ENOENT The named volume or snapshot doesn't exist
+        - EINVAL Invalid arguments supplied
+        - ENOTEMPTY The volume has children
+        - EIO An error occured during ovs_snapshot_remove()
+
+List snapshots of a volume
+    int ovs_snapshot_list(const char *volname, ovs_snapshot_info_t *snap_list,
+                          int *max_snaps);
+
+    Description
+    -----------
+    The ovs_snapshot_list() shall return the snapshots for the volume of
+    name 'volname'. The value of 'max_snaps' denotes the size of 'snap_list'.
+    If the number of snapshots is larger than 'max_snaps' then the
+    aforementioned variable will be populated with the number of snapshots.
+
+    Return Value
+    ------------
+    Upon successful completion the function shall return the number of
+    snapshots for the specific volume otherwise -1 is returned.
+
+    Errors
+    ------
+    The function shall fail if:
+        - ENOENT The named volume or snapshot doesn't exist
+        - EINVAL Invalid arguments supplied
+        - ENOMEM Out of memory
+        - ERANGE The size of 'snap_list' is smaller than the number of
+          snapshots. The 'max_snaps' variable is populated with the number of
+          snapshots
+        - EIO An error occured during ovs_snapshot_remove()
+
+Free snapshots list
+    void ovs_snapshot_list_free(ovs_snapshot_info_t *snap_list)
+
+    Description
+    -----------
+    The ovs_snapshot_list_free() shall free the snapshot list.
+
+    Return Value
+    ------------
+    No return value.
+
+    Errors
+    ------
+    No errors.
 
 Get volume status::
     int ovs_stat(ovs_ctx_t *ctx, struct stat *buf);

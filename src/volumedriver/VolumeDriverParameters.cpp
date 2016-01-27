@@ -57,14 +57,14 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(open_scos_per_volume,
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(foc_throttle_usecs,
                                       volmanager_component_name ,
                                       "foc_retry_usecs",
-                                      "Timeout when throttling the Failover Cache",
+                                      "Timeout for retrying writes to the DTL",
                                       ShowDocumentation::T,
                                       1000);
 
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(foc_queue_depth,
                                       volmanager_component_name,
                                       "foc_queue_depth",
-                                      "Size of the queue of entries in the Failover Cache",
+                                      "Size of the queue of entries to be sent to the DTL",
                                       ShowDocumentation::T,
                                       1024);
 
@@ -90,10 +90,10 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(sap_persist_interval,
                                       ShowDocumentation::T,
                                       300);
 
-DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(failovercache_check_interval_in_seconds,
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(dtl_check_interval_in_seconds,
                                       volmanager_component_name,
-                                      "failover_cahe_check_interval_in_seconds",
-                                      "Interval between checks of the failovercache state on the volumes",
+                                      "dtl_check_interval_in_seconds",
+                                      "Interval between checks of the DTL state of volumes",
                                       ShowDocumentation::T,
                                       5 * 60);
 

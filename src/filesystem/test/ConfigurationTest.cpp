@@ -108,7 +108,7 @@ TEST_F(ConfigurationTest, print_framework_parameter_dict)
         "content_addressed_cache",
         "event_publisher",
         "distributed_lock_store",
-        "failovercache",
+        "distributed_transaction_log",
         "file_driver",
         "filesystem",
         "metadata_server",

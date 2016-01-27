@@ -23,6 +23,7 @@
 
 #include <mutex>
 #include <set>
+#include <chrono>
 
 #include <boost/property_tree/ptree.hpp>
 
@@ -39,6 +40,7 @@
 #include <volumedriver/TransientException.h>
 #include <volumedriver/VolManager.h>
 #include <volumedriver/VolumeConfig.h>
+#include <volumedriver/Snapshot.h>
 
 namespace volumedriverfs
 {
@@ -1096,11 +1098,10 @@ LocalNode::vaai_copy(const ObjectId& src_id,
         snapname = api::createSnapshot(src_volid);
     }
 
-    namespace pt = boost::posix_time;
-    pt::ptime end = pt::second_clock::local_time() + pt::seconds(timeout);
+    auto end = std::chrono::steady_clock::now() + std::chrono::seconds(timeout);
 
     bool synced = false;
-    while (pt::second_clock::local_time() < end)
+    while (std::chrono::steady_clock::now() < end)
     {
         {
             fungi::ScopedLock l(api::getManagementMutex());
@@ -1216,6 +1217,68 @@ LocalNode::set_volume_as_template(const ObjectId& id)
 }
 
 void
+LocalNode::create_snapshot(const ObjectId& id,
+                           const vd::SnapshotName& snap_id,
+                           const int64_t timeout)
+{
+    vd::SnapshotName snapname;
+    const vd::VolumeId volid(id);
+    {
+        fungi::ScopedLock l(api::getManagementMutex());
+        snapname = api::createSnapshot(volid,
+                                       vd::SnapshotMetaData(),
+                                       &snap_id);
+    }
+
+    bool synced = false;
+    if (timeout > 0)
+    {
+        auto end = std::chrono::steady_clock::now() + std::chrono::seconds(timeout);
+        while (std::chrono::steady_clock::now() < end)
+        {
+            {
+                fungi::ScopedLock l(api::getManagementMutex());
+                synced = api::isVolumeSyncedUpTo(volid,
+                                                 snapname);
+            }
+            if (synced)
+            {
+                break;
+            }
+            else
+            {
+                boost::this_thread::sleep(boost::posix_time::milliseconds(250));
+            }
+        }
+    }
+    else if (timeout == 0)
+    {
+        while (not synced)
+        {
+            {
+                fungi::ScopedLock l(api::getManagementMutex());
+                synced = api::isVolumeSyncedUpTo(volid,
+                                                 snapname);
+            }
+            if (synced)
+            {
+                break;
+            }
+        }
+    }
+    else
+    {
+        return;
+    }
+
+    if (not synced)
+    {
+        vrouter_.delete_snapshot(id, snapname);
+        throw SyncTimeoutException("timeout syncing snapshot to backend\n");
+    }
+}
+
+void
 LocalNode::rollback_volume(const ObjectId& id,
                            const vd::SnapshotName& snap_id)
 {
@@ -1306,6 +1369,28 @@ LocalNode::delete_snapshot(const ObjectId& id,
         api::destroySnapshot(static_cast<const vd::VolumeId>(id),
                              snap_id);
     });
+}
+
+std::list<vd::SnapshotName>
+LocalNode::list_snapshots(const ObjectId& id)
+{
+    std::list<vd::SnapshotName> snaps;
+    with_api_exception_conversion([&]
+    {
+        const vd::VolumeId vid(static_cast<const vd::VolumeId>(id));
+        api::showSnapshots(vid,
+                           snaps);
+    });
+    return snaps;
+}
+
+bool
+LocalNode::is_snapshot_syncedUpTo(const ObjectId& id,
+                                  const vd::SnapshotName& snapname)
+{
+    const vd::VolumeId vid(static_cast<const vd::VolumeId>(id));
+    return api::isVolumeSyncedUpTo(vid,
+                                   snapname);
 }
 
 std::vector<scrubbing::ScrubWork>

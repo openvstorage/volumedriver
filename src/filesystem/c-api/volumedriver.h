@@ -1,10 +1,30 @@
-// Copyright 2015 iNuron NV
+// This file is dual licensed GPLv2 and Apache 2.0.
+// Active license depends on how it is used.
 //
+// Copyright 2016 iNuron NV
+//
+// // GPL //
+// This file is part of OpenvStorage.
+//
+// OpenvStorage is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with OpenvStorage. If not, see <http://www.gnu.org/licenses/>.
+//
+// // Apache 2.0 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,6 +47,7 @@ extern "C"
 
 typedef struct ovs_buffer ovs_buffer_t;
 typedef struct ovs_context_t ovs_ctx_t;
+typedef struct ovs_snapshot_info ovs_snapshot_info_t;
 typedef struct ovs_aio_request ovs_aio_request;
 typedef struct ovs_completion ovs_completion_t;
 typedef void (*ovs_callback_t)(ovs_completion_t *cb, void *arg);
@@ -37,6 +58,12 @@ struct ovs_aiocb
     off_t aio_offset;
     size_t aio_nbytes;
     ovs_aio_request *request_;
+};
+
+struct ovs_snapshot_info
+{
+    const char *name;
+    uint64_t size;
 };
 
 /*
@@ -61,6 +88,7 @@ ovs_ctx_destroy(ovs_ctx_t *ctx);
  * Create an Open vStorage volume
  * param volume_name: Volume name
  * param size: Size of volume in bytes
+ * return: 0 on success, -1 on fail
  */
 int
 ovs_create_volume(const char *volume_name,
@@ -69,9 +97,73 @@ ovs_create_volume(const char *volume_name,
 /*
  * Remove an Open vStorage volume
  * param volume_name: Volume name
+ * return: 0 on success, -1 on fail
  */
 int
 ovs_remove_volume(const char *volume_name);
+
+/*
+ * Create a snapshot of an Open vStorage volume
+ * param volume_name: Volume name
+ * param snap_name: Snapshot name
+ * param timeout: Timeout value in seconds
+ * return: 0 on success, -1 on fail
+ */
+int
+ovs_snapshot_create(const char *volume_name,
+                    const char *snap_name,
+                    const int64_t timeout);
+
+/*
+ * Rollback a Open vStorage volume to a specific snapshot
+ * param volume_name: Volume name
+ * param snap_name: Snapshot name
+ * return: 0 on success, -1 on fail
+ */
+int
+ovs_snapshot_rollback(const char *volume_name,
+                      const char *snap_name);
+
+/*
+ * List snapshots of an Open vStorage volume
+ * param volume_name: Volume name
+ * param snap_list: Snapshot info list
+ * param max_snaps: The size of the snap_list
+ * On error the number of snapshots is returned
+ * and errno is set to ERANGE.
+ * return: The number of snapshots on success, -1 on fail
+ */
+int
+ovs_snapshot_list(const char *volume_name,
+                  ovs_snapshot_info_t *snap_list,
+                  int *max_snaps);
+
+/*
+ * Free snapshot info list
+ * param snap_list: Snapshot info list
+ */
+void
+ovs_snapshot_list_free(ovs_snapshot_info_t *snap_list);
+
+/*
+ * Remove Open vStorage volume snapshot
+ * param volume_name: Volume name
+ * param snap_name: Snapshot name
+ * return: 0 on success, -1 on fail
+ */
+int
+ovs_snapshot_remove(const char *volume_name,
+                    const char *snap_name);
+
+/*
+ * Check if snapshot is synced on the backend
+ * param volume_name: Volume name
+ * param snap_name: Snapshot name
+ * return: 1 if synced, 0 if not synced and -1 on fail
+ */
+int
+ovs_snapshot_is_synced(const char *volume_name,
+                       const char *snap_name);
 
 /*
  * Allocate buffer from the shared memory segment

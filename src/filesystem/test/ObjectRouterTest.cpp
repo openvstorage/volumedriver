@@ -554,4 +554,57 @@ TEST_F(ObjectRouterTest, no_modification_of_existing_node_config)
     }
 }
 
+TEST_F(ObjectRouterTest, volume_snapshot_create_rollback_delete)
+{
+    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const uint64_t vsize = 10 << 20;
+    const vfs::ObjectId vname(create_file(fname, vsize));
+
+    const std::string pattern("locally written");
+    const uint64_t off = api::GetClusterSize() - 1;
+
+    write_to_file(fname, pattern, pattern.size(), off);
+
+    const vd::SnapshotName snap("some-volume-snap1");
+    EXPECT_NO_THROW(fs_->object_router().create_snapshot(vname,
+                                                         snap,
+                                                         0));
+    wait_for_snapshot(vname, "some-volume-snap1", 30);
+
+    std::list<vd::SnapshotName> snaps;
+    snaps = fs_->object_router().list_snapshots(vname);
+
+    EXPECT_EQ(1U,
+              snaps.size());
+
+    EXPECT_THROW(fs_->object_router().create_snapshot(vname,
+                                                      snap,
+                                                      0),
+                 vd::SnapshotPersistor::SnapshotNameAlreadyExists);
+    EXPECT_NO_THROW(fs_->object_router().delete_snapshot(vname,
+                                                         snap));
+
+    snaps = fs_->object_router().list_snapshots(vname);
+
+    EXPECT_EQ(0U,
+              snaps.size());
+
+    EXPECT_THROW(fs_->object_router().delete_snapshot(vname,
+                                                      snap),
+                 vd::SnapshotNotFoundException);
+    EXPECT_THROW(fs_->object_router().rollback_volume(vname,
+                                                      snap),
+                 vd::SnapshotNotFoundException);
+
+    const vfs::ObjectId fvname("/f-volume");
+    EXPECT_THROW(fs_->object_router().create_snapshot(fvname,
+                                                      snap,
+                                                      0),
+                 vd::VolManager::VolumeDoesNotExistException);
+
+    EXPECT_THROW(snaps = fs_->object_router().list_snapshots(fvname),
+                 fungi::IOException);
+
+}
+
 }

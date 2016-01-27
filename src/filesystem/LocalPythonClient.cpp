@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "ConfigFetcher.h"
 #include "ConfigHelper.h"
 #include "FileSystem.h"
 #include "LocalPythonClient.h"
@@ -29,14 +30,14 @@
 namespace volumedriverfs
 {
 
+namespace bpt = boost::property_tree;
 namespace vd = volumedriver;
 namespace yt = youtils;
 
-LocalPythonClient::LocalPythonClient(const std::string& config_file)
-    : config_file_(config_file)
+LocalPythonClient::LocalPythonClient(const std::string& config)
+    : config_fetcher_(config)
 {
-    boost::property_tree::ptree pt;
-    boost::property_tree::json_parser::read_json(config_file, pt);
+    const bpt::ptree pt(config_fetcher_(VerifyConfig::F));
     const ConfigHelper argument_helper(pt);
     cluster_id_ = argument_helper.cluster_id();
     cluster_contacts_.emplace_back(argument_helper.localnode_config().host,
@@ -46,9 +47,7 @@ LocalPythonClient::LocalPythonClient(const std::string& config_file)
 void
 LocalPythonClient::destroy()
 {
-    boost::property_tree::ptree pt;
-    boost::property_tree::json_parser::read_json(config_file_.string(), pt);
-    FileSystem::destroy(pt);
+    FileSystem::destroy(config_fetcher_(VerifyConfig::F));
 }
 
 std::string

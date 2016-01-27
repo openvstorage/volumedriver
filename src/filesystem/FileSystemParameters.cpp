@@ -347,18 +347,18 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(events_amqp_routing_key,
                                       vfs::AmqpRoutingKey(""));
 
 //Failovercache
-const char failovercache_component_name[] = "failovercache";
+const char failovercache_component_name[] = "distributed_transaction_log";
 
-DEFINE_INITIALIZED_PARAM(failovercache_path,
+DEFINE_INITIALIZED_PARAM(dtl_path,
                          failovercache_component_name,
-                         "failovercache_path",
-                         "path to the directory the failovercache writes its data in ",
+                         "dtl_path",
+                         "path to the directory the DTL writes its data in",
                          ShowDocumentation::T);
 
-DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(failovercache_transport,
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(dtl_transport,
                                       failovercache_component_name,
-                                      "failovercache_transport",
-                                      "transport to use for the failovercache server",
+                                      "dtl_transport",
+                                      "transport to use for the DTL (RDMA|TCP)",
                                       ShowDocumentation::T,
                                       vd::FailOverCacheTransport::TCP);
 

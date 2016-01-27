@@ -127,10 +127,11 @@ static struct fsal_staticfsinfo_t default_ovs_info =  {
 };
 
 struct this_export_params {
-    char *ovs_config_file;
+    char *ovs_config_location;
+    char *ovs_config_file; // deprecated, will go away after a transition period
 };
 
-static struct config_item export_params[3];
+static struct config_item export_params[4];
 static struct config_block export_param;
 
 /* @brief Initialize the configuration
@@ -183,22 +184,31 @@ static fsal_status_t create_export(struct fsal_module *fsal_hdl,
     this_fsal_export *filesystem_export = NULL;
     /* OVS FSAL argument object */
     struct this_export_params params = {
-        .ovs_config_file = NULL
+        .ovs_config_location = NULL
     };
 
     export_params[0].name = const_cast<char*>("name");
     export_params[0].type = CONFIG_NULL;
 
-    export_params[1].name = const_cast<char*>("ovs_config_file");
-    export_params[1].type = CONFIG_PATH;
-    export_params[1].u.str.minsize = 1;
+    export_params[1].name = const_cast<char*>("ovs_config");
+    export_params[1].type = CONFIG_STRING;
+    export_params[1].u.str.minsize = 0;
     export_params[1].u.str.maxsize = MAXPATHLEN;
     /* Do we have a predefined path for the volumedriver config file? */
-    export_params[1].u.str.def = " ";
-    export_params[1].off = offsetof(struct this_export_params, ovs_config_file);
+    export_params[1].u.str.def = nullptr;
+    export_params[1].off = offsetof(struct this_export_params, ovs_config_location);
 
-    export_params[2].name = NULL;
-    export_params[2].type = CONFIG_NULL;
+    // deprecated, will go away after a transition period
+    export_params[2].name = const_cast<char*>("ovs_config_file");
+    export_params[2].type = CONFIG_PATH;
+    export_params[2].u.str.minsize = 0;
+    export_params[2].u.str.maxsize = MAXPATHLEN;
+    /* Do we have a predefined path for the volumedriver config file? */
+    export_params[2].u.str.def = nullptr;
+    export_params[2].off = offsetof(struct this_export_params, ovs_config_file);
+
+    export_params[3].name = NULL;
+    export_params[3].type = CONFIG_NULL;
 
     export_param.dbus_interface_name =
         const_cast<char*>("org.ganesha.nfsd.config.fsal.ovs-export%d");
@@ -257,13 +267,15 @@ static fsal_status_t create_export(struct fsal_module *fsal_hdl,
 
     LogDebug(COMPONENT_FSAL,
              const_cast<char*>("OVS volumedriverfs configuration file: %s"),
-             params.ovs_config_file);
+             params.ovs_config_location);
 
-    std::string ovs_config_file(params.ovs_config_file);
+    const std::string config_location(params.ovs_config_location ?
+                                      params.ovs_config_location :
+                                      params.ovs_config_file);
+
     /* Instantiate new FileSystemWrapper */
-    filesystem_export->wrapper_ = new FileSystemWrapper(
-            op_ctx->export_->fullpath,
-            ovs_config_file);
+    filesystem_export->wrapper_ = new FileSystemWrapper(op_ctx->export_->fullpath,
+                                                        config_location);
 
     /* Start OVS discovery server
      * We provide one export per ganesha instance so there is no

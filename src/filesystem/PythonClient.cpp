@@ -603,8 +603,11 @@ PythonClient::create_clone(const std::string& target_path,
     req[XMLRPCKeys::target_path] = target_path;
     req[XMLRPCKeys::parent_volume_id] = parent_volume_id;
     req[XMLRPCKeys::parent_snapshot_id] = parent_snap_id;
-    req[XMLRPCKeys::metadata_backend_config] =
-        XMLRPCStructs::serialize_to_xmlrpc_value(mdb_config->clone());
+    if (mdb_config)
+    {
+        req[XMLRPCKeys::metadata_backend_config] =
+            XMLRPCStructs::serialize_to_xmlrpc_value(mdb_config->clone());
+    }
 
     if (not node_id.empty())
     {

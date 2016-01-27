@@ -114,9 +114,9 @@ LocalClient::registerize()
              "@returns: string, configuration data (JSON)\n")
         .def("update_configuration",
              &vfs::LocalPythonClient::update_configuration,
-             (bpy::args("config_file_path")),
+             (bpy::args("config")),
              "Request volumedriverfs to update its configuration from the given file\n"
-             "@param: config_file_path: string, path to the config file (JSON)\n"
+             "@param: config: string, path to the config file (JSON) / etcd URL\n"
              "@returns: a list of successfully applied updates - throws in case of error\n")
         .def("get_general_logging_level",
              &vfs::LocalPythonClient::get_general_logging_level,

@@ -1,10 +1,30 @@
-// Copyright 2015 iNuron NV
+// This file is dual licensed GPLv2 and Apache 2.0.
+// Active license depends on how it is used.
 //
+// Copyright 2016 iNuron NV
+//
+// // GPL //
+// This file is part of OpenvStorage.
+//
+// OpenvStorage is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with OpenvStorage. If not, see <http://www.gnu.org/licenses/>.
+//
+// // Apache 2.0 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,6 +42,7 @@
 
 #include <limits.h>
 #include <map>
+
 #include <youtils/SpinLock.h>
 #include <youtils/System.h>
 #include <youtils/IOException.h>
@@ -205,7 +226,7 @@ struct ovs_context_t
             iot->stop();
         }
 
-        /* nonexcept */
+        /* noexcept */
         if (ctl_client_->is_connected())
         {
             shm_client_->stop_reply_queues(io_threads_pool_size_);
@@ -227,7 +248,7 @@ static bool
 _is_volume_name_valid(const char *volume_name)
 {
     if (volume_name == NULL || strlen(volume_name) == 0 ||
-            strlen(volume_name) >= NAME_MAX)
+        strlen(volume_name) >= NAME_MAX)
     {
         return false;
     }
@@ -361,12 +382,12 @@ ovs_ctx_init(const char* volume_name,
                                        oflag);
         return ctx;
     }
-    catch (ShmIdlInterface::VolumeDoesNotExist)
+    catch (const ShmIdlInterface::VolumeDoesNotExist&)
     {
         errno = EACCES;
         return NULL;
     }
-    catch (ShmIdlInterface::VolumeNameAlreadyRegistered)
+    catch (const ShmIdlInterface::VolumeNameAlreadyRegistered&)
     {
         errno = EBUSY;
         return NULL;
@@ -408,7 +429,7 @@ ovs_create_volume(const char* volume_name, uint64_t size)
     {
         volumedriverfs::ShmClient::create_volume(volume_name, size);
     }
-    catch (ShmIdlInterface::VolumeExists)
+    catch (const ShmIdlInterface::VolumeExists&)
     {
         errno = EEXIST;
         return -1;
@@ -434,7 +455,7 @@ ovs_remove_volume(const char* volume_name)
     {
         volumedriverfs::ShmClient::remove_volume(volume_name);
     }
-    catch (ShmIdlInterface::VolumeDoesNotExist)
+    catch (const ShmIdlInterface::VolumeDoesNotExist&)
     {
         errno = ENOENT;
         return -1;
@@ -445,6 +466,224 @@ ovs_remove_volume(const char* volume_name)
         return -1;
     }
     return 0;
+}
+
+int
+ovs_snapshot_create(const char* volume_name,
+                    const char* snapshot_name,
+                    const int64_t timeout)
+{
+    if (not _is_volume_name_valid(volume_name))
+    {
+        errno = EINVAL;
+        return -1;
+    }
+
+    try
+    {
+        volumedriverfs::ShmClient::create_snapshot(volume_name,
+                                                   snapshot_name,
+                                                   timeout);
+    }
+    catch (const ShmIdlInterface::PreviousSnapshotNotOnBackendException&)
+    {
+        errno = EBUSY;
+        return -1;
+    }
+    catch (const ShmIdlInterface::VolumeDoesNotExist&)
+    {
+        errno = ENOENT;
+        return -1;
+    }
+    catch (const ShmIdlInterface::SyncTimeoutException&)
+    {
+        errno = ETIMEDOUT;
+        return -1;
+    }
+    catch (const ShmIdlInterface::SnapshotAlreadyExists&)
+    {
+        errno = EEXIST;
+        return -1;
+    }
+    catch (...)
+    {
+        errno = EIO;
+        return -1;
+    }
+    return 0;
+}
+
+int
+ovs_snapshot_rollback(const char* volume_name,
+                      const char* snapshot_name)
+{
+    if (not _is_volume_name_valid(volume_name))
+    {
+        errno = EINVAL;
+        return -1;
+    }
+
+    try
+    {
+        volumedriverfs::ShmClient::rollback_snapshot(volume_name,
+                                                     snapshot_name);
+    }
+    catch (const ShmIdlInterface::VolumeDoesNotExist&)
+    {
+        errno = ENOENT;
+        return -1;
+    }
+    catch (const ShmIdlInterface::VolumeHasChildren&)
+    {
+        errno = ENOTEMPTY;
+        //errno = ECHILD;
+        return -1;
+    }
+    catch (...)
+    {
+        errno = EIO;
+        return -1;
+    }
+    return 0;
+}
+
+int
+ovs_snapshot_remove(const char* volume_name,
+                    const char* snapshot_name)
+{
+    if (not _is_volume_name_valid(volume_name))
+    {
+        errno = EINVAL;
+        return -1;
+    }
+
+    try
+    {
+        volumedriverfs::ShmClient::delete_snapshot(volume_name,
+                                                   snapshot_name);
+    }
+    catch (const ShmIdlInterface::VolumeDoesNotExist&)
+    {
+        errno = ENOENT;
+        return -1;
+    }
+    catch (const ShmIdlInterface::VolumeHasChildren&)
+    {
+        errno = ENOTEMPTY;
+        //errno = ECHILD;
+        return -1;
+    }
+    catch (const ShmIdlInterface::SnapshotNotFound&)
+    {
+        errno = ENOENT;
+        return -1;
+    }
+    catch (...)
+    {
+        errno = EIO;
+        return -1;
+    }
+    return 0;
+}
+
+int
+ovs_snapshot_list(const char* volume_name,
+                  ovs_snapshot_info_t *snap_list,
+                  int *max_snaps)
+{
+    int i, len;
+    uint64_t size = 0;
+
+    if (not _is_volume_name_valid(volume_name))
+    {
+        errno = EINVAL;
+        return -1;
+    }
+
+    std::vector<std::string> snaps;
+    try
+    {
+        snaps = volumedriverfs::ShmClient::list_snapshots(volume_name,
+                                                          &size);
+    }
+    catch (const ShmIdlInterface::VolumeDoesNotExist&)
+    {
+        errno = ENOENT;
+        return -1;
+    }
+    catch (...)
+    {
+        errno = EIO;
+        return -1;
+    }
+
+    len = snaps.size();
+    if (*max_snaps < len + 1)
+    {
+        *max_snaps = len + 1;
+        errno = ERANGE;
+        return -1;
+    }
+
+    for (i = 0; i < len; i++)
+    {
+        snap_list[i].name = strdup(snaps[i].c_str());
+        snap_list[i].size = size;
+        if (!snap_list[i].name)
+        {
+            for (int j = 0; j < i; j++)
+            {
+                free((void*)snap_list[i].name);
+            }
+            errno = ENOMEM;
+            return -1;
+        }
+    }
+
+    snap_list[i].name = NULL;
+    return len;
+}
+
+void
+ovs_snapshot_list_free(ovs_snapshot_info_t *snap_list)
+{
+     while (snap_list->name)
+     {
+        free((void*)snap_list->name);
+        snap_list++;
+     }
+}
+
+int
+ovs_snapshot_is_synced(const char* volume_name,
+                       const char* snapshot_name)
+{
+    if (not _is_volume_name_valid(volume_name))
+    {
+        errno = EINVAL;
+        return -1;
+    }
+
+    try
+    {
+        return volumedriverfs::ShmClient::is_snapshot_synced(volume_name,
+                                                             snapshot_name);
+    }
+    catch (const ShmIdlInterface::VolumeDoesNotExist&)
+    {
+        errno = ENOENT;
+        return -1;
+    }
+    catch (const ShmIdlInterface::SnapshotNotFound&)
+    {
+        errno = ENOENT;
+        return -1;
+    }
+    catch (...)
+    {
+        errno = EIO;
+        return -1;
+    }
 }
 
 static int
@@ -461,8 +700,8 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
     }
 
     if ((ovs_aiocbp->aio_nbytes <= 0 ||
-            ovs_aiocbp->aio_offset < 0) &&
-            op != RequestOp::Flush && op != RequestOp::AsyncFlush)
+         ovs_aiocbp->aio_offset < 0) &&
+         op != RequestOp::Flush && op != RequestOp::AsyncFlush)
     {
         errno = EINVAL;
         return -1;

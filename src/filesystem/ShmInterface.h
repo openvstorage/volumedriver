@@ -170,6 +170,57 @@ public:
         h->remove_volume(volume_name);
     }
 
+    void
+    create_snapshot(const char* volume_name,
+                    const char* snapshot_name,
+                    CORBA::LongLong timeout)
+    {
+        std::unique_ptr<Handler> h(new Handler(handler_args_));
+        h->create_snapshot(volume_name, snapshot_name, timeout);
+    }
+
+    void
+    rollback_snapshot(const char* volume_name,
+                      const char* snapshot_name)
+    {
+        std::unique_ptr<Handler> h(new Handler(handler_args_));
+        h->rollback_snapshot(volume_name, snapshot_name);
+    }
+
+    void
+    delete_snapshot(const char* volume_name,
+                    const char* snapshot_name)
+    {
+        std::unique_ptr<Handler> h(new Handler(handler_args_));
+        h->delete_snapshot(volume_name, snapshot_name);
+    }
+
+    void
+    list_snapshots(const char* volume_name,
+                   ShmIdlInterface::StringSequence_out results,
+                   CORBA::ULongLong_out size)
+    {
+        std::unique_ptr<Handler> h(new Handler(handler_args_));
+        uint64_t c_size;
+        std::vector<std::string> snaps = h->list_snapshots(volume_name,
+                                                           &c_size);
+        results = new ShmIdlInterface::StringSequence(snaps.size());
+        results->length(snaps.size());
+        for (unsigned int i = 0; i < snaps.size(); i++)
+        {
+            results[i] = CORBA::string_dup(snaps[i].c_str());
+        }
+        size = c_size;
+    }
+
+    int
+    is_snapshot_synced(const char* volume_name,
+                       const char* snapshot_name)
+    {
+        std::unique_ptr<Handler> h(new Handler(handler_args_));
+        return int(h->is_snapshot_synced(volume_name, snapshot_name));
+    }
+
 private:
     DECLARE_LOGGER("ShmInterface");
 

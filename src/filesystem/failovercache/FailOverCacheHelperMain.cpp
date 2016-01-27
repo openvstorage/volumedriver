@@ -22,9 +22,9 @@
 #include <youtils/Assert.h>
 #include <youtils/Logging.h>
 
+#include <../ConfigFetcher.h>
 #include <../ConfigHelper.h>
 
-namespace bpt = boost::property_tree;
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 namespace vfs = volumedriverfs;
@@ -34,7 +34,7 @@ int
 main(int argc,
      char** argv)
 {
-    fs::path config_file;
+    std::string config_location;
     fs::path failovercache_executable;
     std::vector<std::string> unparsed_options;
     po::options_description desc;
@@ -48,9 +48,12 @@ main(int argc,
         ("failovercache-executable",
          po::value<fs::path>(&failovercache_executable)->default_value("failovercache"),
          "path to the failovercache executable")
+        ("config",
+         po::value<std::string>(&config_location),
+         "volumedriverfs (json) config file / etcd URL")
         ("config-file,C",
-         po::value<fs::path>(&config_file)->required(),
-         "volumedriverfs (json) config file");
+         po::value<std::string>(&config_location),
+         "volumedriverfs (json) config file (deprecated, use --config instead!)");
 
     {
         po::options_description help_options;
@@ -84,7 +87,7 @@ main(int argc,
                                                     po::include_positional);
     }
 
-    // if(config_file.empty())
+    // if(config_location.empty())
     // {
     //     std::cerr << desc;
 
@@ -92,12 +95,16 @@ main(int argc,
 
     // }
     //
-    // LOG_INFO("Parsing the property tree in " << config_file_);
+    // LOG_INFO("Parsing the property tree in " << config_location_);
 
-    bpt::ptree pt;
-    bpt::json_parser::read_json(config_file.string(), pt);
+    if (config_location.empty())
+    {
+        std::cerr << "No config location specified" << std::endl;
+        return 1;
+    }
 
-    const vfs::ConfigHelper argument_helper(pt);
+    vfs::ConfigFetcher config_fetcher(config_location);
+    const vfs::ConfigHelper argument_helper(config_fetcher(VerifyConfig::F));
 
     // LOG_INFO("Finished parsing property tree");
 
