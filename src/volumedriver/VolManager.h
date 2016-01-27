@@ -506,7 +506,7 @@ private:
     DECLARE_PARAMETER(tlog_path);
     DECLARE_PARAMETER(open_scos_per_volume);
     DECLARE_PARAMETER(freespace_check_interval);
-    DECLARE_PARAMETER(failovercache_check_interval_in_seconds);
+    DECLARE_PARAMETER(dtl_check_interval_in_seconds);
 
 private:
     DECLARE_PARAMETER(read_cache_default_behaviour);

@@ -297,7 +297,7 @@ SetupHelper::setup_volmanager_parameters(const boost::property_tree::ptree& ptre
                                          ReportDefault::T);
     }
     {
-        PARAMETER_TYPE(failovercache_check_interval_in_seconds)
+        PARAMETER_TYPE(dtl_check_interval_in_seconds)
             the_failover_check_interval_in_seconds(ptree);
         the_failover_check_interval_in_seconds.persist(config_ptree_,
                                                        ReportDefault::T);

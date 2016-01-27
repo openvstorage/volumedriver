@@ -941,7 +941,7 @@ VolManagerTestSetup::startVolManager()
         PARAMETER_TYPE(num_threads)(num_threads_).persist(pt);
         PARAMETER_TYPE(number_of_scos_in_tlog)(num_scos_in_tlog_).persist(pt);
         PARAMETER_TYPE(debug_metadata_path)((directory_ / fs::path("dump_on_halt_dir")).string()).persist(pt);
-        PARAMETER_TYPE(failovercache_check_interval_in_seconds)(failovercache_check_interval_in_seconds_).persist(pt);
+        PARAMETER_TYPE(dtl_check_interval_in_seconds)(failovercache_check_interval_in_seconds_).persist(pt);
 
         const mds::ServerConfigs scfgs{ *mds_server_config_ };
         mds_test_setup_->make_manager_config(pt,

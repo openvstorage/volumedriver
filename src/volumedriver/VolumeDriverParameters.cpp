@@ -90,10 +90,10 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(sap_persist_interval,
                                       ShowDocumentation::T,
                                       300);
 
-DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(failovercache_check_interval_in_seconds,
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(dtl_check_interval_in_seconds,
                                       volmanager_component_name,
-                                      "failover_cahe_check_interval_in_seconds",
-                                      "Interval between checks of the failovercache state on the volumes",
+                                      "dtl_check_interval_in_seconds",
+                                      "Interval between checks of the DTL state of volumes",
                                       ShowDocumentation::T,
                                       5 * 60);
 

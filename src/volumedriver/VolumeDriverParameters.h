@@ -45,7 +45,7 @@ DECLARE_RESETTABLE_INITIALIZED_PARAM(clean_interval,
                                       std::atomic<uint64_t>);
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(sap_persist_interval,
                                                   std::atomic<uint64_t>);
-DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(failovercache_check_interval_in_seconds,
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(dtl_check_interval_in_seconds,
                                                   std::atomic<uint64_t>);
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(read_cache_default_behaviour,
                                                   volumedriver::ClusterCacheBehaviour);
