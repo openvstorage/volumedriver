@@ -222,6 +222,28 @@ Free snapshots list
     ------
     No errors.
 
+Check if snapshot is synced on the backend
+    int ovs_snapshot_is_synced(const char *volname,
+                               const char *snapshot_name);
+
+    Description
+    -----------
+    The ovs_snapshot_is_synced() shall check if the snapshot has been synced
+    on the backend.
+
+    Return Value
+    ------------
+    If the snapshot is synced on the backend the function shall return 1,
+    if this is not the case (not synced) it shall return 0 otherwise -1 is
+    returned and errno is set accordingly.
+
+    Errors
+    ------
+    The function shall fail if:
+        - ENOENT The named volume or snapshot doesn't exist
+        - EINVAL Invalid arguments supplied
+        - EIO An error occured during ovs_snapshot_remove()
+
 Get volume status::
     int ovs_stat(ovs_ctx_t *ctx, struct stat *buf);
 
