@@ -254,34 +254,35 @@ struct Collector
     }
 };
 
-boost::shared_ptr<bl::sinks::sink> log_sink;
+using LogSinkPtr = boost::shared_ptr<bl::sinks::sink>;
+LogSinkPtr log_sink;
 
-void
-setup_console_logging()
+LogSinkPtr
+make_console_sink()
 {
-    typedef bl::sinks::synchronous_sink<bl::sinks::text_ostream_backend> text_sink;
+    using ConsoleSink = bl::sinks::synchronous_sink<bl::sinks::text_ostream_backend>;
 
-    auto sink(boost::make_shared<text_sink>());
+    auto sink(boost::make_shared<ConsoleSink>());
     boost::shared_ptr<std::ostream> stream(&std::clog,
                                            boost::null_deleter());
     sink->locked_backend()->add_stream(stream);
     sink->set_formatter(&log_formatter);
 
-    log_sink = sink;
+    return sink;
 }
 
-void
-setup_file_logging(const fs::path& fname,
-                   const LogRotation log_rotation)
+LogSinkPtr
+make_file_sink(const fs::path& fname,
+               const LogRotation log_rotation)
 {
-    typedef bl::sinks::text_file_backend file_backend;
-    boost::shared_ptr<file_backend>
-        backend(new file_backend(bl::keywords::file_name = fname,
-                                 bl::keywords::open_mode = std::ios::out bitor std::ios::app,
-                                 bl::keywords::auto_flush = true),
-                SinkDeleter());
+    using FileBackend = bl::sinks::text_file_backend;
 
-    //            boost::make_shared< sinks::text_file_backend > ;
+    boost::shared_ptr<FileBackend>
+        backend(new FileBackend(bl::keywords::file_name = fname,
+                                bl::keywords::open_mode = std::ios::out bitor
+                                std::ios::app,
+                                bl::keywords::auto_flush = true),
+                SinkDeleter());
 
     if (T(log_rotation))
     {
@@ -297,11 +298,11 @@ setup_file_logging(const fs::path& fname,
         backend->set_file_collector(collector);
     }
 
-    typedef bl::sinks::synchronous_sink<bl::sinks::text_file_backend> sink_t;
-    auto sink(boost::make_shared<sink_t>(backend));
-
+    using FileSink = bl::sinks::synchronous_sink<bl::sinks::text_file_backend>;
+    auto sink(boost::make_shared<FileSink>(backend));
     sink->set_formatter(&log_formatter);
-    log_sink = sink;
+
+    return sink;
 }
 
 }
@@ -338,12 +339,12 @@ Logger::setupLogging(const fs::path& log_file_name,
 
         if (log_file_name.empty())
         {
-            setup_console_logging();
+            log_sink = make_console_sink();
         }
         else
         {
-            setup_file_logging(log_file_name,
-                               log_rotation);
+            log_sink = make_file_sink(log_file_name,
+                                      log_rotation);
         }
 
         bl::core::get()->add_sink(log_sink);
