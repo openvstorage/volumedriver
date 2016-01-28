@@ -32,11 +32,11 @@ extern const char volmanager_component_name[];
 DECLARE_INITIALIZED_PARAM(tlog_path, std::string);
 DECLARE_INITIALIZED_PARAM(metadata_path, std::string);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(open_scos_per_volume, unsigned);
-DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(foc_throttle_usecs,
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(dtl_throttle_usecs,
                                                   std::atomic<unsigned>);
-DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(foc_queue_depth,
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(dtl_queue_depth,
                                                   std::atomic<unsigned>);
-DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(foc_write_trigger,
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(dtl_write_trigger,
                                                   std::atomic<unsigned>);
 
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(freespace_check_interval,

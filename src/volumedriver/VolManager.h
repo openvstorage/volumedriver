@@ -520,9 +520,9 @@ private:
     DECLARE_PARAMETER(max_volume_size);
 
 public:
-    DECLARE_PARAMETER(foc_throttle_usecs);
-    DECLARE_PARAMETER(foc_queue_depth);
-    DECLARE_PARAMETER(foc_write_trigger);
+    DECLARE_PARAMETER(dtl_throttle_usecs);
+    DECLARE_PARAMETER(dtl_queue_depth);
+    DECLARE_PARAMETER(dtl_write_trigger);
 
     DECLARE_PARAMETER(number_of_scos_in_tlog);
     DECLARE_PARAMETER(non_disposable_scos_factor);

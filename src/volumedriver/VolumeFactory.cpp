@@ -210,7 +210,7 @@ create_volume_stage_1(const VolumeConfig& config,
                     std::move(ds),
                     std::move(md),
                     std::move(nsid),
-                    VolManager::get()->foc_throttle_usecs.value(),
+                    VolManager::get()->dtl_throttle_usecs.value(),
                     VolManager::get()->readOnlyMode()));
 }
 

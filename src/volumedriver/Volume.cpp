@@ -120,8 +120,8 @@ Volume::Volume(const VolumeConfig& vCfg,
     , halted_(false)
     , dataStore_(datastore.release())
     , failover_(FailOverCacheBridgeFactory::create(FailOverCacheMode::Asynchronous,
-                                                   VolManager::get()->foc_queue_depth.value(),
-                                                   VolManager::get()->foc_write_trigger.value()))
+                                                   VolManager::get()->dtl_queue_depth.value(),
+                                                   VolManager::get()->dtl_write_trigger.value()))
     , metaDataStore_(metadatastore.release())
     , clusterSize_(vCfg.getClusterSize())
     , config_(vCfg)
@@ -2177,8 +2177,8 @@ Volume::setFailOverCacheMode_(const FailOverCacheMode mode)
     {
         failover_->destroy(SyncFailOverToBackend::T);
         std::unique_ptr<FailOverCacheClientInterface> newBridge(FailOverCacheBridgeFactory::create(mode,
-                                                                                                   VolManager::get()->foc_queue_depth.value(),
-                                                                                                   VolManager::get()->foc_write_trigger.value()));
+                                                                                                   VolManager::get()->dtl_queue_depth.value(),
+                                                                                                   VolManager::get()->dtl_write_trigger.value()));
         failover_ = std::move(newBridge);
         failover_->initialize(this);
     }

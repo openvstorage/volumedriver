@@ -261,18 +261,18 @@ SetupHelper::setup_volmanager_parameters(const boost::property_tree::ptree& ptre
                                          ReportDefault::T);
     }
     {
-        PARAMETER_TYPE(foc_throttle_usecs) the_foc_throttle_usecs(ptree);
-        the_foc_throttle_usecs.persist(config_ptree_,
+        PARAMETER_TYPE(dtl_throttle_usecs) the_dtl_throttle_usecs(ptree);
+        the_dtl_throttle_usecs.persist(config_ptree_,
                                        ReportDefault::T);
     }
     {
-        PARAMETER_TYPE(foc_queue_depth) the_foc_queue_depth(ptree);
-        the_foc_queue_depth.persist(config_ptree_,
+        PARAMETER_TYPE(dtl_queue_depth) the_dtl_queue_depth(ptree);
+        the_dtl_queue_depth.persist(config_ptree_,
                                     ReportDefault::T);
     }
     {
-        PARAMETER_TYPE(foc_write_trigger) the_foc_write_trigger(ptree);
-        the_foc_write_trigger.persist(config_ptree_,
+        PARAMETER_TYPE(dtl_write_trigger) the_dtl_write_trigger(ptree);
+        the_dtl_write_trigger.persist(config_ptree_,
                                       ReportDefault::T);
     }
 

@@ -54,23 +54,23 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(open_scos_per_volume,
                                       ShowDocumentation::T,
                                       32);
 
-DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(foc_throttle_usecs,
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(dtl_throttle_usecs,
                                       volmanager_component_name ,
-                                      "foc_retry_usecs",
+                                      "dtl_retry_usecs",
                                       "Timeout for retrying writes to the DTL",
                                       ShowDocumentation::T,
                                       1000);
 
-DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(foc_queue_depth,
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(dtl_queue_depth,
                                       volmanager_component_name,
-                                      "foc_queue_depth",
+                                      "dtl_queue_depth",
                                       "Size of the queue of entries to be sent to the DTL",
                                       ShowDocumentation::T,
                                       1024);
 
-DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(foc_write_trigger,
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(dtl_write_trigger,
                                       volmanager_component_name,
-                                      "foc_write_trigger",
+                                      "dtl_write_trigger",
                                       "Trigger to start writing entries in the foc queue to the backend",
                                       ShowDocumentation::T,
                                       8);

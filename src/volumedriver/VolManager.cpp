@@ -140,9 +140,9 @@ try
           , required_tlog_freespace(pt)
           , required_meta_freespace(pt)
           , max_volume_size(pt)
-          , foc_throttle_usecs(pt)
-          , foc_queue_depth(pt)
-          , foc_write_trigger(pt)
+          , dtl_throttle_usecs(pt)
+          , dtl_queue_depth(pt)
+          , dtl_write_trigger(pt)
           , number_of_scos_in_tlog(pt)
           , non_disposable_scos_factor(pt)
           , metadata_cache_capacity(pt)
@@ -1742,9 +1742,9 @@ VolManager::update(const boost::property_tree::ptree& pt,
     tlog_path.update(pt, report);
     metadata_path.update(pt, report);
     open_scos_per_volume.update(pt, report);
-    foc_throttle_usecs.update(pt, report);
-    foc_queue_depth.update(pt, report);
-    foc_write_trigger.update(pt, report);
+    dtl_throttle_usecs.update(pt, report);
+    dtl_queue_depth.update(pt, report);
+    dtl_write_trigger.update(pt, report);
 
     freespace_check_interval.update(pt, report);
     read_cache_default_behaviour.update(pt, report);
@@ -1777,9 +1777,9 @@ VolManager::persist(boost::property_tree::ptree& pt,
     required_tlog_freespace.persist(pt, reportDefault);
     required_meta_freespace.persist(pt, reportDefault);
     max_volume_size.persist(pt, reportDefault);
-    foc_throttle_usecs.persist(pt, reportDefault);
-    foc_queue_depth.persist(pt, reportDefault);
-    foc_write_trigger.persist(pt, reportDefault);
+    dtl_throttle_usecs.persist(pt, reportDefault);
+    dtl_queue_depth.persist(pt, reportDefault);
+    dtl_write_trigger.persist(pt, reportDefault);
 
     number_of_scos_in_tlog.persist(pt, reportDefault);
     non_disposable_scos_factor.persist(pt, reportDefault);
