@@ -227,7 +227,7 @@ protected:
                            AllowUnregisteredOptions allow_unregistered,
                            boost::program_options::variables_map& vm);
 
-    std::string logfile_;
+    std::vector<std::string> logsinks_;
     Severity loglevel_;
     LogRotation log_rotation_;
 

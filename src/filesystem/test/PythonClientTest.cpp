@@ -1818,7 +1818,7 @@ TEST_F(PythonClientTest, locked_scrub)
                                          scrubbing::ScrubberAdapter::verbose_scrubbing_default,
                                          "ovs_scrubber",
                                          yt::Severity::info,
-                                         boost::none));
+                                         std::vector<std::string>()));
 
     lclient->apply_scrubbing_result(res);
 }

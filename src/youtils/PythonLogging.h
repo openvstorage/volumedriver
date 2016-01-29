@@ -81,12 +81,12 @@ public:
     {
         if(loggin_is_setup_)
         {
-            throw LoggingAlreadyConfiguredException("Loggin already set up");
+            throw LoggingAlreadyConfiguredException("Logging already set up");
         }
         else
         {
-
-            Logger::setupLogging("",
+            const std::vector<std::string> sinks = { Logger::console_sink_name() };
+            Logger::setupLogging(sinks,
                                  severity,
                                  youtils::LogRotation::F);
             loggin_is_setup_ = true;
@@ -100,19 +100,18 @@ public:
     {
         if(loggin_is_setup_)
         {
-            throw LoggingAlreadyConfiguredException("Loggin already set up");
+            throw LoggingAlreadyConfiguredException("Logging already set up");
         }
         else
         {
+            const std::vector<std::string> sinks = { path };
 
-            Logger::setupLogging(path,
+            Logger::setupLogging(sinks,
                                  severity,
                                  youtils::LogRotation::F);
             loggin_is_setup_ = true;
         }
     }
-
-
 
     std::string
     str() const

@@ -140,9 +140,10 @@ TEST_F(TestLogging, test_setup_teardown)
     {
         youtils::Logger::teardownLogging();
         usleep(2000);
-        youtils::Logger::setupLogging("",
-                             youtils::Severity::trace,
-                             youtils::LogRotation::F);
+        const std::vector<std::string> sinks = { yt::Logger::console_sink_name() };
+        yt::Logger::setupLogging(sinks,
+                                 yt::Severity::trace,
+                                 yt::LogRotation::F);
         usleep(2000);
     }
 

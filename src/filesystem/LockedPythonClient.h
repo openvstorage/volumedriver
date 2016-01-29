@@ -80,7 +80,7 @@ public:
           const bool verbose,
           const std::string& scrubber_name,
           const youtils::Severity,
-          const boost::optional<std::string>& logfile);
+          const std::vector<std::string>& log_sinks);
 
     // Make the following ones private, with access granted only to the
     // global locking code?

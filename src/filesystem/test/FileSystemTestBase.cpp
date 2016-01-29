@@ -830,7 +830,7 @@ FileSystemTestBase::mount_remote()
     PARG(mount_dir(pfx));
     CARG("--loglevel");
     CARG("info");
-    CARG("--logfile");
+    CARG("--logsink");
     PARG(pfx / "volumedriverfs-remote.log");
 
 #undef CARG

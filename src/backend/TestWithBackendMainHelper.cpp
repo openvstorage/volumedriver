@@ -204,7 +204,7 @@ TestWithBackendMainHelper::check_and_setup_ALBA()
     argv.push_back("prudence");
     argv.push_back("--start-script=alba-start-script.sh");
     argv.push_back("--cleanup-script="s + cleanup_script.string());
-    argv.push_back("--logfile="s + prudence_alba_log.string());
+    argv.push_back("--logsink="s + prudence_alba_log.string());
     argv.push_back("--loglevel=info");
 
     backend_config_data_ = std::make_unique<AlbaConfigurationData>(argv);

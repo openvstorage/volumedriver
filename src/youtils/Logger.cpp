@@ -255,7 +255,9 @@ struct Collector
 };
 
 using LogSinkPtr = boost::shared_ptr<bl::sinks::sink>;
-LogSinkPtr log_sink;
+
+// XXX: why was it necessary to cling to the sinks?
+std::unordered_map<std::string, LogSinkPtr> log_sinks;
 
 LogSinkPtr
 make_console_sink()
@@ -318,7 +320,7 @@ SeverityLoggerWithName::SeverityLoggerWithName(const std::string& n,
 }
 
 void
-Logger::setupLogging(const fs::path& log_file_name,
+Logger::setupLogging(const std::vector<std::string>& sinks,
                      const Severity severity,
                      const LogRotation log_rotation)
 {
@@ -326,7 +328,7 @@ Logger::setupLogging(const fs::path& log_file_name,
 
     global_severity = severity;
 
-    if (log_sink != nullptr)
+    if (not log_sinks.empty())
     {
         // logging was initialized before
     }
@@ -337,17 +339,25 @@ Logger::setupLogging(const fs::path& log_file_name,
         bl::core::get()->add_global_attribute(timestamp_key,
                                               bl::attributes::function<time_t>(&our_time));
 
-        if (log_file_name.empty())
+        for (const auto& s : sinks)
         {
-            log_sink = make_console_sink();
+            if (s == console_sink_name())
+            {
+                log_sinks.emplace(std::make_pair(s,
+                                                 make_console_sink()));
+            }
+            else
+            {
+                log_sinks.emplace(std::make_pair(s,
+                                                 make_file_sink(s,
+                                                                log_rotation)));
+            }
         }
-        else
-        {
-            log_sink = make_file_sink(log_file_name,
-                                      log_rotation);
-        }
+    }
 
-        bl::core::get()->add_sink(log_sink);
+    for (const auto& p : log_sinks)
+    {
+        bl::core::get()->add_sink(p.second);
     }
 
     bl::core::get()->set_exception_handler(bl::make_exception_suppressor());
@@ -362,7 +372,7 @@ Logger::teardownLogging()
                             disableLogging();
                             bl::core::get()->remove_all_sinks();
                             table.clear();
-                            log_sink = nullptr;
+                            log_sinks.clear();
                         });
 }
 
@@ -489,7 +499,7 @@ Logger::disableLogging()
 void
 Logger::enableLogging()
 {
-    if (log_sink == nullptr)
+    if (log_sinks.empty())
     {
         throw LoggerNotConfiguredException("Logging is not configured");
     }

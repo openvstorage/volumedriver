@@ -71,7 +71,8 @@ initialize_logging()
         const bool rotate = yt::System::get_bool_from_env(logrotation_key,
                                                           false);
 
-        yt::Logger::setupLogging(logfile,
+        const std::vector<std::string> sinks = { logfile };
+        yt::Logger::setupLogging(sinks,
                                  sev,
                                  rotate ? yt::LogRotation::T : yt::LogRotation::F);
     }

@@ -295,7 +295,7 @@ def runInEnvironment(workingDir, params, jobID):
     envir = os.environ.copy()
     args = params
     args += ["--configuration-file", os.path.join(workingDir, CONFIG_NAME)]
-    args += ["--logfile", os.path.join(env.logDir, jobID + ".log")]
+    args += ["--logsink", os.path.join(env.logDir, jobID + ".log")]
 
     with tempfile.SpooledTemporaryFile(max_size=1024) as errorout:
         try:

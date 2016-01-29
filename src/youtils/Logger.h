@@ -117,6 +117,13 @@ public:
 
     ~Logger() = default;
 
+    static const std::string&
+    console_sink_name()
+    {
+        static const std::string n("console:");
+        return n;
+    }
+
     static void
     disableLogging();
 
@@ -127,7 +134,7 @@ public:
     loggingEnabled();
 
     static void
-    setupLogging(const boost::filesystem::path& log_file_name,
+    setupLogging(const std::vector<std::string>& sinks,
                  Severity severity,
                  const LogRotation);
 

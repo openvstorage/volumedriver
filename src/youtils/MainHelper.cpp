@@ -61,22 +61,22 @@ MainHelper::MainHelper(const constructor_type& args)
     , main_logger_(executable_name_)
 {
     logging_options_.add_options()
-        ("logfile",
-         po::value<std::string>(&logfile_)->default_value(""),
-         "Where to write the logging statements, if empty log to console")
+        ("logsink",
+         po::value<decltype(logsinks_)>(&logsinks_)->composing(),
+         "Where to write the log messages, can be 'console:' or '/path/to/logfile'")
         ("loglevel",
          po::value<Severity>(&loglevel_)->default_value(Severity::info),
-         "Logging level, one of trace, debug, info, warning, error, fatal")
+         "Log level: [trace|debug|periodic|info|warning|error|fatal|notify]")
         ("disable-logging",
          "Whether to disable the logging")
         ("logrotation",
-         "whether to rotate the file at midnight")
+         "whether to rotate log files at midnight")
         ("logfilter",
          po::value<std::vector<std::string>>(&filters)->composing(),
          "a log filter, each filter is of the form 'logger_name loggerlevel', multiple filters can be added");
 
     general_options_.add_options()
-        ("help,h", "produce help message on cout and exit")
+        ("help,h", "produce help message on stdout and exit")
         ("version,v", "print version and exit");
 
     backend_options_.add_options()
@@ -155,7 +155,12 @@ MainHelper::setup_logging()
     }
     else
     {
-        Logger::setupLogging(logfile_,
+        if (logsinks_.empty())
+        {
+            logsinks_.push_back(Logger::console_sink_name());
+        }
+
+        Logger::setupLogging(logsinks_,
                              loglevel_,
                              log_rotation_);
 

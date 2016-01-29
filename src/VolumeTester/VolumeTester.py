@@ -46,7 +46,7 @@ class VolumeTester(object):
                "--device", deviceFile,
                "--reference-file", referenceFile,
                "--strategy", strategy,
-               "--logfile", os.path.join(env.logDir, "volumewriter.log")]
+               "--logsink", os.path.join(env.logDir, "volumewriter.log")]
 
         if strategy == "pattern":
             cmd += ["--pattern", pattern]
@@ -80,7 +80,7 @@ class VolumeTester(object):
                "--reference-file", targetFile,
                "--strategy", strategy,
                "--rand", str(prob),
-               "--logfile",
+               "--logsink",
                os.path.join(env.logDir, "volumewriter_random.log")]
 
         if strategy == "pattern":
@@ -101,7 +101,7 @@ class VolumeTester(object):
         cmd = ["volumereader", "--full-sweep",
                "--device-file", deviceFile,
                "--reference-file", referenceFile,
-               "--logfile", os.path.join(env.logDir, "volumewriter_reader.log")]
+               "--logsink", os.path.join(env.logDir, "volumewriter_reader.log")]
         logger.info("Running command " + str(cmd))
 
         return self._retToBool(subprocess.call(cmd))

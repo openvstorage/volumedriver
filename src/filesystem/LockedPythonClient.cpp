@@ -209,7 +209,7 @@ LockedPythonClient::scrub(const std::string& scrub_work,
                           const bool verbose,
                           const std::string& scrubber_name,
                           const yt::Severity severity,
-                          const boost::optional<std::string>& logfile)
+                          const std::vector<std::string>& log_sinks)
 {
     LOG_INFO(volume_id_ << ": scrubbing " << scrub_work);
 
@@ -217,7 +217,7 @@ LockedPythonClient::scrub(const std::string& scrub_work,
     THROW_UNLESS(locked_section_);
 
     std::vector<std::string> args;
-    args.reserve(logfile ? 15 : 13);
+    args.reserve(13 + 2 * log_sinks.size());
 
     args.emplace_back(scrubber_name);
     args.emplace_back("--scrub-work");
@@ -233,10 +233,10 @@ LockedPythonClient::scrub(const std::string& scrub_work,
     args.emplace_back("--loglevel");
     args.emplace_back(boost::lexical_cast<std::string>(severity));
 
-    if (logfile)
+    for (const auto& s : log_sinks)
     {
-        args.emplace_back("--logfile");
-        args.emplace_back(*logfile);
+        args.emplace_back("--logsink");
+        args.emplace_back(s);
     }
 
     LOG_INFO(volume_id_ << ": launching scrubber, args: ");

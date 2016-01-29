@@ -76,7 +76,8 @@ LoggerToolCut::setupLogging(const std::string& file,
                             const Severity severity,
                             const LogRotation log_rotation)
 {
-    Logger::setupLogging(file,
+    const std::vector<std::string> vec{ file };
+    Logger::setupLogging(vec,
                          severity,
                          log_rotation);
 }
