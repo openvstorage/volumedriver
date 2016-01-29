@@ -1388,6 +1388,7 @@ bool
 LocalNode::is_snapshot_syncedUpTo(const ObjectId& id,
                                   const vd::SnapshotName& snapname)
 {
+    LOCKVD();
     const vd::VolumeId vid(static_cast<const vd::VolumeId>(id));
     return api::isVolumeSyncedUpTo(vid,
                                    snapname);
