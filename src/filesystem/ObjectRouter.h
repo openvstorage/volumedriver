@@ -251,7 +251,7 @@ public:
     list_snapshots(const ObjectId& oid);
 
     bool
-    is_snapshot_syncedUpTo(const ObjectId& id,
+    is_volume_synced_up_to(const ObjectId& id,
                            const volumedriver::SnapshotName& snap_id);
 
     std::vector<scrubbing::ScrubWork>

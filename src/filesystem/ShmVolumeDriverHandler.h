@@ -334,7 +334,7 @@ public:
         const volumedriver::SnapshotName snap(snap_name);
         try
         {
-            return fs_.object_router().is_snapshot_syncedUpTo(*volume_id,
+            return fs_.object_router().is_volume_synced_up_to(*volume_id,
                                                               snap);
         }
         catch (volumedriver::SnapshotNotFoundException& e)

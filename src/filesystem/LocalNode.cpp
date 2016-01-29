@@ -1385,7 +1385,7 @@ LocalNode::list_snapshots(const ObjectId& id)
 }
 
 bool
-LocalNode::is_snapshot_syncedUpTo(const ObjectId& id,
+LocalNode::is_volume_synced_up_to(const ObjectId& id,
                                   const vd::SnapshotName& snapname)
 {
     LOCKVD();

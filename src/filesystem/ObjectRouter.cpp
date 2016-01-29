@@ -1364,10 +1364,10 @@ ObjectRouter::list_snapshots(const ObjectId& oid)
 }
 
 bool
-ObjectRouter::is_snapshot_syncedUpTo(const ObjectId& id,
+ObjectRouter::is_volume_synced_up_to(const ObjectId& id,
                                      const vd::SnapshotName& snap_id)
 {
-    return local_node_()->is_snapshot_syncedUpTo(id, snap_id);
+    return local_node_()->is_volume_synced_up_to(id, snap_id);
 }
 
 std::vector<scrubbing::ScrubWork>
