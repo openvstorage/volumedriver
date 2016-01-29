@@ -90,6 +90,8 @@ libyoutils_la_SOURCES = \
 	PeriodicActionPool.cpp \
 	PythonLogging.cpp \
 	PythonBuildInfo.cpp \
+	RedisQueue.cpp \
+	RedisUrl.cpp \
 	RocksLogger.cpp \
 	RWLock.cpp \
 	ScriptFile.cpp \
