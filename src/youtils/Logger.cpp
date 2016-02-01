@@ -36,6 +36,8 @@
 #include "FileUtils.h"
 #include "Logger.h"
 #include "LoggerPrivate.h"
+#include "RedisUrl.h"
+#include "RedisQueue.h"
 
 #include <stdlib.h>
 #include <sys/time.h>
@@ -67,6 +69,11 @@
 #include <boost/log/utility/setup/common_attributes.hpp>
 #include <boost/log/utility/setup/file.hpp>
 #include <boost/log/utility/string_literal.hpp>
+
+#include <boost/log/sinks/basic_sink_backend.hpp>
+#include <boost/log/sinks/frontend_requirements.hpp>
+
+#include <boost/lexical_cast.hpp>
 
 #include <boost/thread.hpp>
 
@@ -306,6 +313,47 @@ struct Collector
     }
 };
 
+class RedisBackend :
+    public bl::sinks::basic_formatted_sink_backend<
+            char,
+            bl::sinks::synchronized_feeding>
+{
+public:
+    explicit RedisBackend(const RedisUrl& url)
+    : url_(url)
+    {
+        rq_.reset(new RedisQueue(url_, 120));
+    }
+
+    void
+    consume(bl::record_view const& /*rec*/,
+            std::string const& formatted_log)
+    {
+        if (not rq_)
+        {
+            try
+            {
+                rq_.reset(new RedisQueue(url_, 120));
+            }
+            catch (const RedisQueueConnectionException&)
+            {
+                return;
+            }
+        }
+        try
+        {
+            rq_->push(formatted_log);
+        }
+        catch (const RedisQueuePushException&)
+        {
+            rq_.reset();
+        }
+    }
+private:
+    RedisUrl url_;
+    RedisQueuePtr rq_;
+};
+
 using LogSinkPtr = boost::shared_ptr<bl::sinks::sink>;
 
 // XXX: why was it necessary to cling to the sinks?
@@ -359,6 +407,19 @@ make_file_sink(const fs::path& fname,
     return sink;
 }
 
+LogSinkPtr
+make_redis_sink(const RedisUrl& url)
+{
+    boost::shared_ptr<RedisBackend>
+        backend(new RedisBackend(url));
+
+    using RedisSink = bl::sinks::asynchronous_sink<RedisBackend,
+          bl::sinks::bounded_fifo_queue<100, bl::sinks::drop_on_overflow>>;
+    auto sink(boost::make_shared<RedisSink>(backend));
+    sink->set_formatter(&redis_log_formatter);
+    return sink;
+}
+
 }
 
 SeverityLoggerWithName::SeverityLoggerWithName(const std::string& n,
@@ -393,7 +454,12 @@ Logger::setupLogging(const std::vector<std::string>& sinks,
 
         for (const auto& s : sinks)
         {
-            if (s == console_sink_name())
+            if (RedisUrl::is_one(s))
+            {
+                log_sinks.emplace(std::make_pair(s,
+                                                 make_redis_sink(boost::lexical_cast<RedisUrl>(s))));
+            }
+            else if (s == console_sink_name())
             {
                 log_sinks.emplace(std::make_pair(s,
                                                  make_console_sink()));

@@ -77,36 +77,20 @@ struct RedisValueTraits<std::string>
     }
 };
 
-class RedisReply
+struct RedisReplyDeleter
 {
-public:
-    explicit RedisReply(void* r)
-    : reply_(reinterpret_cast<redisReply*>(r))
-    {};
 
-    ~RedisReply()
+    void
+    operator()(redisReply* r)
     {
-        if (reply_)
+        if (r)
         {
-            freeReplyObject(reply_);
+            freeReplyObject(r);
         }
     }
-
-    int
-    type()
-    {
-        return reply_->type;
-    }
-
-    const char*
-    str()
-    {
-        return reply_->str;
-    }
-
-private:
-    redisReply* reply_;
 };
+
+using RedisReplyPtr = std::unique_ptr<redisReply, RedisReplyDeleter>;
 
 class RedisQueue
 {
@@ -134,14 +118,22 @@ public:
     void
     push(const T& t)
     {
-        RedisReply reply(::redisCommand(_context,
-                                        "LPUSH %s %s",
-                                        key(),
-                                        Traits::to_bytes(t)));
-        if (reply.type() == REDIS_REPLY_ERROR)
+        const RedisReplyPtr reply(
+                static_cast<redisReply*>(::redisCommand(_context,
+                                                        "LPUSH %s %s",
+                                                        key(),
+                                                        Traits::to_bytes(t))));
+        if (reply)
         {
-            throw RedisQueuePushException("cannot push value, err: ",
-                                          reply.str());
+            if (reply->type == REDIS_REPLY_ERROR)
+            {
+                throw RedisQueuePushException("cannot push value, err: ",
+                                              reply->str);
+            }
+        }
+        else
+        {
+            throw RedisQueuePushException("cannot push value, reply is empty");
         }
     }
 
@@ -149,18 +141,29 @@ public:
     T
     pop()
     {
-        RedisReply reply(::redisCommand(_context,
-                                        "LPOP %s",
-                                        key()));
-        switch (reply.type())
+        const RedisReplyPtr reply(
+            static_cast<redisReply*>(::redisCommand(_context,
+                                                    "LPOP %s",
+                                                    key())));
+        if (reply)
         {
-        case REDIS_REPLY_ERROR:
-            throw RedisQueuePopException("cannot pop value, err: ",
-                                         reply.str());
-        case REDIS_REPLY_STRING:
-            return Traits::from_bytes(reply.str());
-        default:
-            return T();
+            switch (reply->type)
+            {
+            case REDIS_REPLY_ERROR:
+                throw RedisQueuePopException("cannot pop value, err: ",
+                                             reply->str);
+            case REDIS_REPLY_STRING:
+                return Traits::from_bytes(reply->str);
+            case REDIS_REPLY_NIL:
+                return T();
+            default:
+                throw RedisQueuePopException("unsupported type: ",
+                                             std::to_string(reply->type).c_str());
+            }
+        }
+        else
+        {
+            throw RedisQueuePopException("cannot pop value, reply is empty");
         }
     }
 
@@ -213,6 +216,8 @@ private:
     std::string _key;
     int _timeout;
 };
+
+using RedisQueuePtr = std::unique_ptr<RedisQueue>;
 
 } //namespace youtils
 

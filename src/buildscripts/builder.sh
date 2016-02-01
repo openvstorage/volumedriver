@@ -112,7 +112,7 @@ LIBS=${LIBS:-""}
 
 # while we're transitioning away from buildtools there's no point in adding -lrdmacm to
 # buildtools only to drop it again
-LIBS="-lrdmacm ${LIBS}"
+LIBS="-lrdmacm -lhiredis ${LIBS}"
 
 # here for ganesha modules but that reminds me that we don't really support c in the source tree.
 CFLAGS=${CFLAGS:-"-ggdb3 -gdwarf-3 -O0 -Wall"}

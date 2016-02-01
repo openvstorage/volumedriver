@@ -11,7 +11,7 @@ youtils_test_CPPFLAGS = \
 
 youtils_test_CXXFLAGS = $(BUILDTOOLS_CFLAGS) -Winvalid-pch
 youtils_test_LDFLAGS = -Wl,--as-needed
-youtils_test_LDADD = ../libyoutils.la $(BUILDTOOLS_LIBS) -lhiredis
+youtils_test_LDADD = ../libyoutils.la $(BUILDTOOLS_LIBS)
 
 if CLANGPP
 PCH_SUFFIX = pch
