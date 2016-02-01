@@ -33,6 +33,8 @@ namespace
 {
 
 using namespace ganesha;
+using namespace std::literals::string_literals;
+
 namespace yt = youtils;
 namespace vfs = volumedriverfs;
 
@@ -46,6 +48,7 @@ group(const struct attrlist* attrlist)
 #endif
 
 const std::string logfile_key("VFS_FSAL_LOGFILE");
+const std::string logsink_key("VFS_FSAL_LOGSINK");
 const std::string loglevel_key("VFS_FSAL_LOGLEVEL");
 const std::string logrotation_key("VFS_FSAL_LOGROTATION");
 const std::string logdisable_key("VFS_FSAL_LOGDISABLE");
@@ -61,9 +64,12 @@ initialize_logging()
     {
         logging_initialized = true;
 
-        const std::string logfile_default("./VolumeDriverGanesha.log");
         const std::string logfile(yt::System::get_env_with_default(logfile_key,
-                                                                   logfile_default));
+                                                                   ""s));
+
+        const std::string logsink_default("./VolumeDriverGanesha.log");
+        const std::string logsink(yt::System::get_env_with_default(logsink_key,
+                                                                   logsink_default));
 
         const yt::Severity sev(yt::System::get_env_with_default(loglevel_key,
                                                                 yt::Severity::info));
@@ -71,7 +77,12 @@ initialize_logging()
         const bool rotate = yt::System::get_bool_from_env(logrotation_key,
                                                           false);
 
-        const std::vector<std::string> sinks = { logfile };
+        std::vector<std::string> sinks = { logsink };
+        if (not logfile.empty())
+        {
+            sinks.push_back(logfile);
+        }
+
         yt::Logger::setupLogging(sinks,
                                  sev,
                                  rotate ? yt::LogRotation::T : yt::LogRotation::F);
