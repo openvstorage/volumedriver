@@ -50,7 +50,7 @@ namespace
 const std::string proto("etcd");
 }
 
-const uint16_t EtcdUrl::default_port = 2379;
+template<> uint16_t Url<EtcdUrl>::default_port = 2379;
 
 bool
 EtcdUrl::is_one(const std::string& str)

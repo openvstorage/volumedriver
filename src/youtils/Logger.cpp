@@ -335,7 +335,7 @@ public:
             {
                 rq_.reset(new RedisQueue(url_, 120));
             }
-            catch (const RedisQueueConnectionException&)
+            catch (...)
             {
                 return;
             }
@@ -344,7 +344,7 @@ public:
         {
             rq_->push(formatted_log);
         }
-        catch (const RedisQueuePushException&)
+        catch (...)
         {
             rq_.reset();
         }

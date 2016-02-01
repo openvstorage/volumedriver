@@ -35,6 +35,8 @@
 #ifndef YT_ETCD_URL_H_
 #define YT_ETCD_URL_H_
 
+#include "Url.h"
+
 #include <iosfwd>
 #include <string>
 
@@ -42,50 +44,9 @@ namespace youtils
 {
 
 struct EtcdUrl
+    : public Url<EtcdUrl>
 {
-    static const uint16_t default_port;
-
-    std::string host;
-    uint16_t port = default_port;
-    std::string key;
-
-
-    explicit EtcdUrl(std::string h,
-                     uint16_t p = default_port,
-                     std::string k = std::string("/"))
-        : host(std::move(h))
-        , port(p)
-        , key(std::move(k))
-    {}
-
-    EtcdUrl() = default;
-
-    ~EtcdUrl() = default;
-
-    EtcdUrl(const EtcdUrl&) = default;
-
-    EtcdUrl&
-    operator=(const EtcdUrl&) = default;
-
-    EtcdUrl(EtcdUrl&&) = default;
-
-    EtcdUrl&
-    operator=(EtcdUrl&&) = default;
-
-    bool
-    operator==(const EtcdUrl& other) const
-    {
-        return
-            host == other.host and
-            port == other.port and
-            key == other.key;
-    }
-
-    bool
-    operator!=(const EtcdUrl& other) const
-    {
-        return not operator==(other);
-    }
+    using Url<EtcdUrl>::Url;
 
     static bool
     is_one(const std::string&);

@@ -32,10 +32,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef YT_REDIS_URL_H_
-#define YT_REDIS_URL_H_
-
-#include "Url.h"
+#ifndef YT_URL_H_
+#define YT_URL_H_
 
 #include <iosfwd>
 #include <string>
@@ -43,24 +41,59 @@
 namespace youtils
 {
 
-struct RedisUrl
-    : public Url<RedisUrl>
+template<typename T>
+struct Url
 {
-    using Url<RedisUrl>::Url;
+    static uint16_t default_port;
+
+    std::string host;
+    uint16_t port = default_port;
+    std::string key;
+
+
+    explicit Url(std::string h,
+                     uint16_t p = default_port,
+                     std::string k = std::string("/"))
+        : host(std::move(h))
+        , port(p)
+        , key(std::move(k))
+    {}
+
+    Url() = default;
+
+    ~Url() = default;
+
+    Url(const Url&) = default;
+
+    Url&
+    operator=(const Url&) = default;
+
+    Url(Url&&) = default;
+
+    Url&
+    operator=(Url&&) = default;
+
+    bool
+    operator==(const Url& other) const
+    {
+        return
+            host == other.host and
+            port == other.port and
+            key == other.key;
+    }
+
+    bool
+    operator!=(const Url& other) const
+    {
+        return not operator==(other);
+    }
 
     static bool
     is_one(const std::string&);
 };
 
-std::ostream&
-operator<<(std::ostream&,
-           const RedisUrl&);
+//template<typename T> uint16_t Url<T>::default_port(0);
 
-std::istream&
-operator>>(std::istream&,
-           RedisUrl&);
+}
 
-} //namespace youtils
-
-
-#endif //YT_REDIS_URL_H_
+#endif // YT_URL_H_

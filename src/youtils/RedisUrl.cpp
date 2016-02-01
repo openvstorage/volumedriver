@@ -50,7 +50,7 @@ namespace
     const std::string proto("redis");
 }
 
-const uint16_t RedisUrl::default_port = 6379;
+template<> uint16_t Url<RedisUrl>::default_port = 6379;
 
 bool
 RedisUrl::is_one(const std::string& str)
