@@ -623,7 +623,7 @@ VolManagerTestSetup::setup_corba_()
         fs::path ior_file = FileUtils::create_temp_file_in_temp_dir("ior_output");
         ALWAYS_CLEANUP_FILE(ior_file);
 
-        std::string command("corba_server --logfile=/tmp/corba_log --use-naming-service=false --ior-file=" + ior_file.string());
+        std::string command("corba_server --logsink=/tmp/corba_log --use-naming-service=false --ior-file=" + ior_file.string());
 
         //        ::system("corba_server > corba_server_log.txt 2>&1 &");
         pstream_.open(command, redi::pstreambuf::pstdout | redi::pstreambuf::pstderr);
