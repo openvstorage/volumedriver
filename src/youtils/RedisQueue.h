@@ -120,7 +120,7 @@ public:
     {
         const RedisReplyPtr reply(
                 static_cast<redisReply*>(::redisCommand(_context,
-                                                        "LPUSH %s %s",
+                                                        "RPUSH %s %s",
                                                         key(),
                                                         Traits::to_bytes(t))));
         if (reply)
@@ -143,7 +143,7 @@ public:
     {
         const RedisReplyPtr reply(
             static_cast<redisReply*>(::redisCommand(_context,
-                                                    "LPOP %s",
+                                                    "RPOP %s",
                                                     key())));
         if (reply)
         {
