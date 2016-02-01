@@ -44,7 +44,7 @@ namespace youtils
 template<typename T>
 struct Url
 {
-    static uint16_t default_port;
+    static const uint16_t default_port;
 
     std::string host;
     uint16_t port = default_port;
