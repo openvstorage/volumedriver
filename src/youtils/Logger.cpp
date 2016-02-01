@@ -484,11 +484,14 @@ Logger::setupLogging(const std::vector<std::string>& sinks,
 void
 Logger::teardownLogging()
 {
-    // flushing & closing here??
     update_filter_table([&](FilterTable& table)
                         {
-                            disableLogging();
                             bl::core::get()->remove_all_sinks();
+                            for (const auto& p : log_sinks)
+                            {
+                                p.second->flush();
+                            }
+                            disableLogging();
                             table.clear();
                             log_sinks.clear();
                         });
