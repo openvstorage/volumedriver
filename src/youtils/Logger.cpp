@@ -48,6 +48,7 @@
 
 #include <boost/atomic.hpp>
 
+#include <boost/asio/ip/host_name.hpp>
 #include <boost/core/null_deleter.hpp>
 
 #include <boost/date_time/gregorian/gregorian_types.hpp>
@@ -133,10 +134,10 @@ update_filter_table(F&& fun)
 typedef struct timeval time_type;
 
 void
-log_formatter(const bl::record_view& rec,
-              bl::formatting_ostream& strm)
+default_log_formatter(const bl::record_view& rec,
+                      bl::formatting_ostream& strm)
 {
-    const char* separator  = " -- ";
+    static const char* separator  = " -- ";
     {
         const time_type& the_time =
             bl::extract_or_throw<time_type>(timestamp_key, rec);
@@ -167,7 +168,58 @@ log_formatter(const bl::record_view& rec,
     strm << rec[bl::expressions::smessage] << separator ;
 
     strm << "["
-         <<  bl::extract_or_throw< bl::attributes::current_thread_id::value_type>(thread_id_key, rec) << "]";
+         <<  bl::extract_or_throw<bl::attributes::current_thread_id::value_type>(thread_id_key, rec) << "]";
+}
+
+void
+redis_log_formatter(const bl::record_view& rec,
+                    bl::formatting_ostream& os)
+{
+    static const char* sep = " - ";
+
+    const time_type& the_time =
+        bl::extract_or_throw<time_type>(timestamp_key, rec);
+    static const char* time_format_tpl =
+        "%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d %6.6d %+02.2d%02.2d %s";
+    char tsbuf[128];
+    struct tm bt;
+    localtime_r(&the_time.tv_sec, &bt);
+    snprintf(tsbuf,
+             sizeof(tsbuf),
+             time_format_tpl,
+             1900 + bt.tm_year,
+             1 + bt.tm_mon,
+             bt.tm_mday,
+             bt.tm_hour,
+             bt.tm_min,
+                 bt.tm_sec,
+             the_time.tv_usec,
+             // #warning "check this time zone conversion for negative numbers"
+             bt.tm_gmtoff / 3600,
+             (bt.tm_gmtoff % 3600) / 60,
+             bt.tm_zone);
+
+    static const pid_t pid(::getpid());
+    static const std::string hostname(boost::asio::ip::host_name());
+    static uint64_t seqnum = 0;
+
+    os <<
+        tsbuf <<
+        sep <<
+        hostname <<
+        sep <<
+        pid <<
+        "/" <<
+        bl::extract_or_throw<bl::attributes::current_thread_id::value_type>(thread_id_key, rec) <<
+        sep <<
+        bl::extract_or_throw<LOGGER_ATTRIBUTE_ID_TYPE>(LOGGER_ATTRIBUTE_ID,
+                                                       rec) <<
+        sep <<
+        seqnum++ <<
+        sep <<
+        bl::extract_or_throw<Severity>("Severity", rec) <<
+        sep <<
+        rec[bl::expressions::smessage];
 }
 
 inline time_type
@@ -268,7 +320,7 @@ make_console_sink()
     boost::shared_ptr<std::ostream> stream(&std::clog,
                                            boost::null_deleter());
     sink->locked_backend()->add_stream(stream);
-    sink->set_formatter(&log_formatter);
+    sink->set_formatter(&default_log_formatter);
 
     return sink;
 }
@@ -302,7 +354,7 @@ make_file_sink(const fs::path& fname,
 
     using FileSink = bl::sinks::synchronous_sink<bl::sinks::text_file_backend>;
     auto sink(boost::make_shared<FileSink>(backend));
-    sink->set_formatter(&log_formatter);
+    sink->set_formatter(&default_log_formatter);
 
     return sink;
 }
