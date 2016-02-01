@@ -143,7 +143,7 @@ public:
     {
         const RedisReplyPtr reply(
             static_cast<redisReply*>(::redisCommand(_context,
-                                                    "RPOP %s",
+                                                    "LPOP %s",
                                                     key())));
         if (reply)
         {
