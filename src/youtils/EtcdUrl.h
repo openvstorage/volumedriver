@@ -37,9 +37,6 @@
 
 #include "Url.h"
 
-#include <iosfwd>
-#include <string>
-
 namespace youtils
 {
 
@@ -47,18 +44,7 @@ struct EtcdUrl
     : public Url<EtcdUrl>
 {
     using Url<EtcdUrl>::Url;
-
-    static bool
-    is_one(const std::string&);
 };
-
-std::ostream&
-operator<<(std::ostream&,
-           const EtcdUrl&);
-
-std::istream&
-operator>>(std::istream&,
-           EtcdUrl&);
 
 }
 

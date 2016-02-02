@@ -32,91 +32,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "Assert.h"
 #include "RedisUrl.h"
-
-#include <iostream>
-
-#include <boost/lexical_cast.hpp>
-#include <boost/regex.hpp>
 
 namespace youtils
 {
 
-using namespace std::literals::string_literals;
-
-namespace
-{
-    const std::string proto("redis");
-}
-
 template<> const uint16_t Url<RedisUrl>::default_port = 6379;
-
-bool
-RedisUrl::is_one(const std::string& str)
-{
-    try
-    {
-        boost::lexical_cast<RedisUrl>(str);
-        return true;
-    }
-    catch (...)
-    {
-        return false;
-    }
-}
-
-std::ostream&
-operator<<(std::ostream& os,
-           const RedisUrl& url)
-{
-    os << proto <<
-        "://" << url.port <<
-        ":" << url.port;
-    if (not url.key.empty())
-    {
-        os << url.key;
-    }
-    return os;
-}
-
-std::istream&
-operator>>(std::istream& is,
-           RedisUrl& url)
-{
-    std::string str;
-    is >> str;
-    boost::regex rex("("s + proto + ")://([^/ :]+):?([^/ ]*)(/?[^ #?]*)"s);
-
-    boost::smatch match;
-    if (boost::regex_match(str,
-                           match,
-                           rex))
-    {
-        ASSERT(proto == match[1]);
-
-        url.host = match[2];
-
-        if (not match[3].str().empty())
-        {
-            url.port = boost::lexical_cast<uint16_t>(match[3]);
-        }
-
-        if (not match[4].str().empty())
-        {
-            url.key = match[4];
-        }
-        else
-        {
-            url.key = "/"s;
-        }
-    }
-    else
-    {
-        is.setstate(std::ios::failbit);
-    }
-
-    return is;
-}
+template<> const std::string Url<RedisUrl>::proto("redis");
 
 } //namespace youtils

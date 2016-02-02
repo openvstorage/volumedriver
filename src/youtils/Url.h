@@ -35,16 +35,25 @@
 #ifndef YT_URL_H_
 #define YT_URL_H_
 
+#include "Assert.h"
+
 #include <iosfwd>
 #include <string>
+#include <iostream>
+
+#include <boost/lexical_cast.hpp>
+#include <boost/regex.hpp>
 
 namespace youtils
 {
+
+using namespace std::literals::string_literals;
 
 template<typename T>
 struct Url
 {
     static const uint16_t default_port;
+    static const std::string proto;
 
     std::string host;
     uint16_t port = default_port;
@@ -52,8 +61,8 @@ struct Url
 
 
     explicit Url(std::string h,
-                     uint16_t p = default_port,
-                     std::string k = std::string("/"))
+                 uint16_t p = default_port,
+                 std::string k = std::string("/"))
         : host(std::move(h))
         , port(p)
         , key(std::move(k))
@@ -88,11 +97,72 @@ struct Url
         return not operator==(other);
     }
 
-    static bool
-    is_one(const std::string&);
-};
+    friend std::ostream&
+    operator<<(std::ostream& os,
+               const Url& url)
+    {
+        os << proto <<
+            "://" << url.host <<
+            ":" << url.port;
+        if (not url.key.empty())
+        {
+            os << url.key;
+        }
+        return os;
+    }
 
-//template<typename T> uint16_t Url<T>::default_port(0);
+    friend std::istream&
+    operator>>(std::istream& is,
+               Url& url)
+    {
+        std::string str;
+        is >> str;
+        boost::regex rex("("s + proto + ")://([^/ :]+):?([^/ ]*)(/?[^ #?]*)"s);
+
+        boost::smatch match;
+        if (boost::regex_match(str,
+                               match,
+                               rex))
+        {
+            ASSERT(proto == match[1]);
+
+            url.host = match[2];
+
+            if (not match[3].str().empty())
+            {
+                url.port = boost::lexical_cast<uint16_t>(match[3]);
+            }
+
+            if (not match[4].str().empty())
+            {
+                url.key = match[4];
+            }
+            else
+            {
+                url.key = "/"s;
+            }
+        }
+        else
+        {
+            is.setstate(std::ios::failbit);
+        }
+        return is;
+    }
+
+    static bool
+    is_one(const std::string& str)
+    {
+        try
+        {
+            boost::lexical_cast<Url>(str);
+            return true;
+        }
+        catch (...)
+        {
+            return false;
+        }
+    }
+};
 
 }
 

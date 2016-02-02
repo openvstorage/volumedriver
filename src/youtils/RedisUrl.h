@@ -37,9 +37,6 @@
 
 #include "Url.h"
 
-#include <iosfwd>
-#include <string>
-
 namespace youtils
 {
 
@@ -47,18 +44,7 @@ struct RedisUrl
     : public Url<RedisUrl>
 {
     using Url<RedisUrl>::Url;
-
-    static bool
-    is_one(const std::string&);
 };
-
-std::ostream&
-operator<<(std::ostream&,
-           const RedisUrl&);
-
-std::istream&
-operator>>(std::istream&,
-           RedisUrl&);
 
 } //namespace youtils
 
