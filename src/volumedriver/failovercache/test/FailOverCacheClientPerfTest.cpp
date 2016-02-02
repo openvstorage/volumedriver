@@ -207,7 +207,7 @@ public:
     void
     setup_logging()
     {
-        MainHelper::setup_logging();
+        MainHelper::setup_logging("dtl_client_perf_test");
     }
 
     bool addEntry(FailOverCacheClientInterface& focItf, ClusterHolder& ch)

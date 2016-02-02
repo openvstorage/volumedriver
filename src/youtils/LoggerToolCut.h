@@ -59,7 +59,8 @@ public:
     static void
     setupLogging(const std::string&,
                  const youtils::Severity,
-                 const youtils::LogRotation);
+                 const youtils::LogRotation,
+                 const std::string& = "LoggerToolCut");
 
     static void
     teardownLogging();

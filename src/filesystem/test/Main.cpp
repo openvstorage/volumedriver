@@ -125,7 +125,7 @@ public:
     virtual void
     setup_logging()
     {
-        MainHelper::setup_logging();
+        MainHelper::setup_logging("volumedriverfs_test");
     }
 
     virtual void

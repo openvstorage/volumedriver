@@ -62,7 +62,7 @@ public:
     virtual void
     setup_logging()
     {
-        MainHelper::setup_logging();
+        MainHelper::setup_logging("filedriver_test");
         yt::ProtobufLogger::setup();
     }
 

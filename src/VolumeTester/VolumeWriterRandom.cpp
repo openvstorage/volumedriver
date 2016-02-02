@@ -81,7 +81,7 @@ public:
     virtual void
     setup_logging()
     {
-        MainHelper::setup_logging();
+        MainHelper::setup_logging("volume_writer_random");
     }
 
     virtual void

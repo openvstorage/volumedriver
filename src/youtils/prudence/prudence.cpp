@@ -143,8 +143,9 @@ struct prudence : public MainHelper
     void
     setup_logging() override final
     {
-        MainHelper::setup_logging();
+        MainHelper::setup_logging("prudence");
     }
+
     DECLARE_LOGGER("PRUDENCE")
 
     enum class SleepStatus

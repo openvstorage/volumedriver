@@ -28,7 +28,7 @@ struct FawltyFSTest : public youtils::TestMainHelper
     virtual void
     setup_logging()
     {
-        MainHelper::setup_logging();
+        MainHelper::setup_logging("fawlty_fs_test");
     }
 
     virtual void
@@ -48,6 +48,5 @@ struct FawltyFSTest : public youtils::TestMainHelper
 MAIN(FawltyFSTest)
 
 // Local Variables: **
-// compile-command: "scons -D -j 4" **
 // mode: c++ **
 // End: **

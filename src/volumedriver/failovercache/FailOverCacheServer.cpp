@@ -73,7 +73,7 @@ FailOverCacheServer::parse_command_line_arguments()
 void
 FailOverCacheServer::setup_logging()
 {
-    MainHelper::setup_logging();
+    MainHelper::setup_logging("dtl_server");
 }
 
 int

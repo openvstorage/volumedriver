@@ -50,7 +50,7 @@ struct BackendTest : public backend::TestWithBackendMainHelper
     virtual void
     setup_logging()
     {
-        MainHelper::setup_logging();
+        MainHelper::setup_logging("backend_test");
     }
 
     virtual void

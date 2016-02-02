@@ -115,6 +115,8 @@ boost::mutex update_lock;
 const std::string thread_id_key("ThreadID");
 const std::string timestamp_key("TimeStamp");
 
+std::string program_name;
+
 // slow path, we prefer convenience (call sites not having to check for nullptrs)
 // over efficiency.
 template<typename F>
@@ -219,6 +221,8 @@ redis_log_formatter(const bl::record_view& rec,
         "/" <<
         bl::extract_or_throw<bl::attributes::current_thread_id::value_type>(thread_id_key, rec) <<
         sep <<
+        program_name <<
+        "/" <<
         bl::extract_or_throw<LOGGER_ATTRIBUTE_ID_TYPE>(LOGGER_ATTRIBUTE_ID,
                                                        rec) <<
         sep <<
@@ -433,7 +437,8 @@ SeverityLoggerWithName::SeverityLoggerWithName(const std::string& n,
 }
 
 void
-Logger::setupLogging(const std::vector<std::string>& sinks,
+Logger::setupLogging(const std::string& progname,
+                     const std::vector<std::string>& sinks,
                      const Severity severity,
                      const LogRotation log_rotation)
 {
@@ -447,6 +452,8 @@ Logger::setupLogging(const std::vector<std::string>& sinks,
     }
     else
     {
+        program_name = progname;
+
         bl::core::get()->add_global_attribute(thread_id_key,
                                               bl::attributes::current_thread_id());
         bl::core::get()->add_global_attribute(timestamp_key,

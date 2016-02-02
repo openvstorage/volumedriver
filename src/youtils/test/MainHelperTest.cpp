@@ -32,7 +32,7 @@ struct MainHelperTestExecutable
     virtual void
     setup_logging()
     {
-        MainHelper::setup_logging();
+        MainHelper::setup_logging("main_helper_test_executable");
     }
 
     void
@@ -72,7 +72,7 @@ struct TestMainHelperTestExecutable
     virtual void
     setup_logging()
     {
-        youtils::MainHelper::setup_logging();
+        youtils::MainHelper::setup_logging("main_helper_test");
     }
 
     virtual void

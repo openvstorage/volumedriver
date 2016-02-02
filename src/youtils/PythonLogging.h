@@ -77,7 +77,8 @@ public:
     }
 
     static void
-    setupConsoleLogging(Severity severity = Severity::trace)
+    setupConsoleLogging(Severity severity = Severity::trace,
+                        const std::string& progname = "PythonLogger")
     {
         if(loggin_is_setup_)
         {
@@ -86,7 +87,8 @@ public:
         else
         {
             const std::vector<std::string> sinks = { Logger::console_sink_name() };
-            Logger::setupLogging(sinks,
+            Logger::setupLogging(progname,
+                                 sinks,
                                  severity,
                                  youtils::LogRotation::F);
             loggin_is_setup_ = true;
@@ -96,7 +98,8 @@ public:
 
     static void
     setupFileLogging(const std::string& path,
-                     const Severity severity = Severity::trace)
+                     const Severity severity = Severity::trace,
+                     const std::string& progname = "PythonLogger")
     {
         if(loggin_is_setup_)
         {
@@ -106,7 +109,8 @@ public:
         {
             const std::vector<std::string> sinks = { path };
 
-            Logger::setupLogging(sinks,
+            Logger::setupLogging(progname,
+                                 sinks,
                                  severity,
                                  youtils::LogRotation::F);
             loggin_is_setup_ = true;

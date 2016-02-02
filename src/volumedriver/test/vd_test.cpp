@@ -105,7 +105,7 @@ public:
     virtual void
     setup_logging()
     {
-        MainHelper::setup_logging();
+        MainHelper::setup_logging("volumedriver_test");
     }
 
     virtual void

@@ -34,7 +34,7 @@ struct CompilerLabMain
     virtual void
     setup_logging()
     {
-        MainHelper::setup_logging();
+        MainHelper::setup_logging("compiler_lab");
     }
 
     virtual void

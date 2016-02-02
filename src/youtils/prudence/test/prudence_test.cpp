@@ -311,7 +311,7 @@ public:
     void
     setup_logging() override final
     {
-        MainHelper::setup_logging();
+        MainHelper::setup_logging("prudence_test");
     }
 
 private:

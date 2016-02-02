@@ -38,6 +38,8 @@
     .value("F", name::F)                        \
     .value("T", name::T);
 
+namespace yt = youtils;
+
 BOOST_PYTHON_MODULE(Backend)
 {
     using namespace boost::python;
@@ -104,14 +106,21 @@ BOOST_PYTHON_MODULE(Backend)
         .staticmethod("loggingEnabled")
         .def("setupConsoleLogging",
              &Logging::setupConsoleLogging,
+             (args("severity") = yt::Severity::info,
+              args("progname") = std::string("PythonLogger")),
              "Setup logging to the console\n"
-             "@param severity, a Severity,  what to log")
+             "@param severity, a Severity,  what to log\n"
+             "param progname, String, program name to use for logging\n")
         .staticmethod("setupConsoleLogging")
         .def("setupFileLogging",
              &Logging::setupFileLogging,
+             (args("path"),
+              args("severity") = yt::Severity::info,
+              args("progname") = std::string("PythonLogger")),
              "Setup logging to a file\n",
-             "@param path, a string, path to the output file\n"
-             "@param severity, a Severity, what to log")
+             "@param path, String, path to the output file\n"
+             "@param severity, a Severity, what to log\n"
+             "param progname, String, program name to use for logging\n")
         .staticmethod("setupFileLogging");
 
     MAKE_PYTHON_BOOLEAN_ENUM(OverwriteObject,

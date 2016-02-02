@@ -74,7 +74,7 @@ public:
     virtual void
     setup_logging() override final
     {
-        yt::MainHelper::setup_logging();
+        yt::MainHelper::setup_logging("scrubber");
     }
 
     virtual int

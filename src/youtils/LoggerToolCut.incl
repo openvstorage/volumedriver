@@ -21,55 +21,68 @@ boost::python::class_<toolcut::LoggerToolCut,
                       boost::noncopyable>("Logger",
                                           "Allows logger configuration",
                                           boost::python::no_init)
-.def("getGeneralLoggingLevel", &toolcut::LoggerToolCut::getGeneralLoggingLevel,
+.def("getGeneralLoggingLevel",
+     &toolcut::LoggerToolCut::getGeneralLoggingLevel,
      "Get the general logging level",
      "@result an SeverityType enum or an None if logging is disabled")
 .staticmethod("getGeneralLoggingLevel")
-.def("setGeneralLoggingLevel", &toolcut::LoggerToolCut::setGeneralLoggingLevel,
+.def("setGeneralLoggingLevel",
+     &toolcut::LoggerToolCut::setGeneralLoggingLevel,
      "set the general logging level"
      "@param A SeverityType enum")
 .staticmethod("setGeneralLoggingLevel")
-.def("setupLogging",  &toolcut::LoggerToolCut::setupLogging,
-     (boost::python::args("LogFile")=std::string(""),
-      boost::python::args("SeverityLevel")=youtils::Severity::info,
-      boost::python::args("LogRotation")=youtils::LogRotation::F),
+.def("setupLogging",
+     &toolcut::LoggerToolCut::setupLogging,
+     (boost::python::args("LogFile") = std::string(""),
+      boost::python::args("SeverityLevel") = youtils::Severity::info,
+      boost::python::args("LogRotation") = youtils::LogRotation::F,
+      boost::python::args("ProgName") = std::string("LoggerToolCut")),
      "setup the logging\n"
      "@param filename to log to, a string\n"
      "@param severity to log at, a SeverityType\n"
      "@param rotate the log, a LogRotationType")
 .staticmethod("setupLogging")
-.def("teardownLogging", &toolcut::LoggerToolCut::teardownLogging,
+.def("teardownLogging",
+     &toolcut::LoggerToolCut::teardownLogging,
      "teardown the logging")
 .staticmethod("teardownLogging")
-.def("listFilters", &toolcut::LoggerToolCut::listFilters,
+.def("listFilters",
+     &toolcut::LoggerToolCut::listFilters,
      "returns a list of all the filters")
 .staticmethod("listFilters")
-.def("addFilter", &toolcut::LoggerToolCut::addFilter,
+.def("addFilter",
+     &toolcut::LoggerToolCut::addFilter,
      "add a filter to the Logging\n"
      "@param the logger to configure, a string\n"
      "@param severity to log at, a SeverityType\n")
 .staticmethod("addFilter")
-.def("removeFilter", &toolcut::LoggerToolCut::removeFilter,
+.def("removeFilter",
+     &toolcut::LoggerToolCut::removeFilter,
      "remove a filter from the logging\n"
      "@param logger to remove, a string\n")
 .staticmethod("removeFilter")
-.def("removeAllFilters", &toolcut::LoggerToolCut::removeAllFilters,
+.def("removeAllFilters",
+     &toolcut::LoggerToolCut::removeAllFilters,
      "remove all filters from the logging\n")
 .staticmethod("removeAllFilters")
-.def("loggingEnabled", &toolcut::LoggerToolCut::isLoggingEnabled,
+.def("loggingEnabled",
+     &toolcut::LoggerToolCut::isLoggingEnabled,
      "@returns a boolean indicating whether logging is enabled.")
 .staticmethod("loggingEnabled")
-.def("enableLogging", &toolcut::LoggerToolCut::enableLogging,
+.def("enableLogging",
+     &toolcut::LoggerToolCut::enableLogging,
      "enable the logging")
 .staticmethod("enableLogging")
-.def("disableLogging", &toolcut::LoggerToolCut::disableLogging,
+.def("disableLogging",
+     &toolcut::LoggerToolCut::disableLogging,
      "disable the logging")
 .staticmethod("disableLogging");
 
 boost::python::class_<toolcut::LoggingToolCut>("Logging",
                                       "A Logger class",
                                       boost::python::init<const std::string>("Creates a logger with the specified name"))
-.def("__call__", &toolcut::LoggingToolCut::operator(),
+.def("__call__",
+     &toolcut::LoggingToolCut::operator(),
      (boost::python::args("Severity")=youtils::Severity::info,
       boost::python::args("Message")=""),
      "Log a message with the given severity\n"

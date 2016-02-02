@@ -141,7 +141,8 @@ TEST_F(TestLogging, test_setup_teardown)
         Logger::teardownLogging();
         usleep(2000);
         const std::vector<std::string> sinks = { Logger::console_sink_name() };
-        Logger::setupLogging(sinks,
+        Logger::setupLogging("LoggingSetupTearDownTest",
+                             sinks,
                              Severity::trace,
                              LogRotation::F);
         usleep(2000);

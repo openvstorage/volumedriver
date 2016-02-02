@@ -52,7 +52,7 @@ FailOverCacheTestMain::FailOverCacheTestMain(int argc,
 void
 FailOverCacheTestMain::setup_logging()
 {
-    MainHelper::setup_logging();
+    MainHelper::setup_logging("dtl_test");
 }
 
 void

@@ -75,7 +75,7 @@ public:
     virtual void
     setup_logging() override final
     {
-        MainHelper::setup_logging();
+        MainHelper::setup_logging("backup");
     }
 
     virtual int

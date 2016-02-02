@@ -250,7 +250,7 @@ public:
     virtual void
     setup_logging()
     {
-        MainHelper::setup_logging();
+        MainHelper::setup_logging("locked_executable");
     }
 
     virtual int

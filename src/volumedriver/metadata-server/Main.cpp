@@ -104,7 +104,7 @@ public:
     virtual void
     setup_logging()
     {
-        MainHelper::setup_logging();
+        MainHelper::setup_logging("metadata_server");
     }
 
 private:

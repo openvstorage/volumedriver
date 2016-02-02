@@ -43,7 +43,7 @@ struct YoutilsTest
     virtual void
     setup_logging()
     {
-        MainHelper::setup_logging();
+        MainHelper::setup_logging("youtils_test");
     }
 
     virtual void

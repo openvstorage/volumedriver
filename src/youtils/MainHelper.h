@@ -205,6 +205,9 @@ protected:
     virtual void
     setup_logging() = 0;
 
+    void
+    setup_logging(const std::string&);
+
     inline SeverityLoggerWithName&
     getLogger__()
     {

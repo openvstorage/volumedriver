@@ -84,7 +84,7 @@ public:
     virtual void
     setup_logging()
     {
-        MainHelper::setup_logging();
+        MainHelper::setup_logging("corba_server");
     }
 
     int

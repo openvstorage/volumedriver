@@ -144,7 +144,7 @@ MainHelper::MainHelper(int argc,
 }
 
 void
-MainHelper::setup_logging()
+MainHelper::setup_logging(const std::string& progname)
 {
     // We should try to have *no* logging before this is called!!!
     log_rotation_ = vm_.count("logrotation") ? LogRotation::T : LogRotation::F;
@@ -160,7 +160,8 @@ MainHelper::setup_logging()
             logsinks_.push_back(Logger::console_sink_name());
         }
 
-        Logger::setupLogging(logsinks_,
+        Logger::setupLogging(progname,
+                             logsinks_,
                              loglevel_,
                              log_rotation_);
 

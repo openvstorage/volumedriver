@@ -83,7 +83,8 @@ initialize_logging()
             sinks.push_back(logfile);
         }
 
-        yt::Logger::setupLogging(sinks,
+        yt::Logger::setupLogging("ganesha_fsal",
+                                 sinks,
                                  sev,
                                  rotate ? yt::LogRotation::T : yt::LogRotation::F);
     }

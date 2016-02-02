@@ -102,7 +102,7 @@ public:
     virtual void
     setup_logging()
     {
-        MainHelper::setup_logging();
+        MainHelper::setup_logging("ganesha_fsal_test");
     }
 
     virtual void

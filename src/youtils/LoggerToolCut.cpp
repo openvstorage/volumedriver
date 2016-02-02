@@ -74,10 +74,22 @@ LoggerToolCut::setGeneralLoggingLevel(youtils::Severity sev)
 void
 LoggerToolCut::setupLogging(const std::string& file,
                             const Severity severity,
-                            const LogRotation log_rotation)
+                            const LogRotation log_rotation,
+                            const std::string& progname)
 {
-    const std::vector<std::string> vec{ file };
-    Logger::setupLogging(vec,
+    std::vector<std::string> vec;
+
+    if (not file.empty())
+    {
+        vec.push_back(file);
+    }
+    else
+    {
+        vec.push_back(youtils::Logger::console_sink_name());
+    }
+
+    Logger::setupLogging(progname,
+                         vec,
                          severity,
                          log_rotation);
 }

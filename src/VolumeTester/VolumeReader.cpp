@@ -153,7 +153,7 @@ public:
     virtual void
     setup_logging()
     {
-        MainHelper::setup_logging();
+        MainHelper::setup_logging("volume_reader");
     }
 
     virtual int

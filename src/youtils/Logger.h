@@ -134,7 +134,8 @@ public:
     loggingEnabled();
 
     static void
-    setupLogging(const std::vector<std::string>& sinks,
+    setupLogging(const std::string& progname,
+                 const std::vector<std::string>& sinks,
                  Severity severity,
                  const LogRotation);
 
