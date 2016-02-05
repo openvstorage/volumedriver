@@ -268,7 +268,8 @@ private:
     }
 
 public:
-    typedef std::map<fs::path, typename T::Info> Info;
+    using DeviceInfo = typename T::Info;
+    typedef std::map<fs::path, DeviceInfo> Info;
 
     explicit ClusterCacheDeviceManagerT(const std::vector<MountPointConfig>& paths)
         : devices_iterator(devices.begin())
