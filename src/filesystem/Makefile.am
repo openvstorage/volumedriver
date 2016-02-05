@@ -84,6 +84,7 @@ libvolumedriverfs_la_SOURCES = \
 		ClusterRegistry.cpp \
 		ConfigFetcher.cpp \
 		ConfigHelper.cpp \
+		DataPoints.cpp \
 		DirectoryEntry.cpp \
 		EventPublisher.cpp \
 		FailOverCacheConfigMode.cpp \
