@@ -170,6 +170,8 @@ FileSystem::FileSystem(const bpt::ptree& pt,
                fs_cache_dentries.value() ?
                UseCache::T :
                UseCache::F)
+    , stats_collector_(pt,
+                    registerizle)
     , xmlrpc_svc_(router_.node_config().host,
                   router_.node_config().xmlrpc_port)
 {

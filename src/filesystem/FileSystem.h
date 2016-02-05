@@ -15,6 +15,7 @@
 #ifndef FILESYSTEM_H_
 #define FILESYSTEM_H_
 
+#include "CloneFileFlags.h"
 #include "DirectoryEntry.h"
 #include "FileEventRule.h"
 #include "FileSystemCall.h"
@@ -24,9 +25,9 @@
 #include "HierarchicalArakoon.h"
 #include "MetaDataStore.h"
 #include "Object.h"
-#include "VirtualDiskFormat.h"
 #include "ObjectRouter.h"
-#include "CloneFileFlags.h"
+#include "StatsCollectorComponent.h"
+#include "VirtualDiskFormat.h"
 
 #include <functional>
 #include <system_error>
@@ -531,6 +532,7 @@ private:
     std::shared_ptr<Registry> registry_;
     ObjectRouter router_;
     MetaDataStore mdstore_;
+    StatsCollectorComponent stats_collector_;
     xmlrpc::Server xmlrpc_svc_;
 
     typedef boost::archive::text_iarchive iarchive_type;
