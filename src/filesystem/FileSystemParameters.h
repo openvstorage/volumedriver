@@ -178,13 +178,20 @@ DECLARE_INITIALIZED_PARAM(vregistry_arakoon_cluster_id, std::string);
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(vregistry_arakoon_timeout_ms, uint32_t);
 
 // ScrubManager
-extern const char scrub_manager_name[];
+extern const char scrub_manager_component_name[];
 
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(scrub_manager_interval,
                                                   std::atomic<uint64_t>);
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(scrub_manager_sync_wait_secs,
                                                   std::atomic<uint64_t>);
 
+// StatsCollector
+extern const char stats_collector_component_name[];
+
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(stats_collector_interval_secs,
+                                                  std::atomic<uint64_t>);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(stats_collector_destination,
+                                                  std::string);
 }
 
 #endif // !VFS_PARAMETERS_H_

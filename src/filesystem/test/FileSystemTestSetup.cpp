@@ -365,6 +365,10 @@ FileSystemTestSetup::make_config_(bpt::ptree& pt,
 
     // event_publisher is not configured for now as it's entirely optional.
 
+    // stats_collector
+    {
+        ip::PARAMETER_TYPE(stats_collector_interval_secs)(30).persist(pt);
+    }
     return pt;
 }
 

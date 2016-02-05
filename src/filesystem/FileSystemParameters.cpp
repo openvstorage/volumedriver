@@ -400,6 +400,23 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(scrub_manager_sync_wait_secs,
                                       "number of seconds to wait for a scrub result application to be on the backend before giving up",
                                       ShowDocumentation::T,
                                       600);
+
+// StatsCollector
+const char stats_collector_component_name[] = "stats_collector";
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(stats_collector_interval_secs,
+                                      stats_collector_component_name,
+                                      "stats_collector_interval_secs",
+                                      "interval with which stats and counters are pushed",
+                                      ShowDocumentation::T,
+                                      6000);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(stats_collector_destination,
+                                      stats_collector_component_name,
+                                      "stats_collector_destination",
+                                      "destination of stats and counters",
+                                      ShowDocumentation::T,
+                                      std::string());
 }
 
 // Local Variables: **

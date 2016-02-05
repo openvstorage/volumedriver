@@ -115,6 +115,7 @@ TEST_F(ConfigurationTest, print_framework_parameter_dict)
         "scocache",
         "scrub_manager",
         "shm_server",
+        "stats_collector",
         "threadpool_component",
         "volume_manager",
         "volume_registry",

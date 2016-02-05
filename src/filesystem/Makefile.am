@@ -116,6 +116,7 @@ libvolumedriverfs_la_SOURCES = \
 		ShmInterface.cpp \
 		ShmOrbInterface.cpp \
 		ShmServer.cpp \
+		StatsCollectorComponent.cpp \
 		TracePoints_tp.c \
 		VirtualDiskFormat.cpp \
 		VirtualDiskFormatVmdk.cpp \

@@ -80,6 +80,7 @@ volumedriver_fs_test_SOURCES = \
 	ScrubManagerTest.cpp \
 	ScrubTreeBuilderTest.cpp \
 	ShmServerTest.cpp \
+	StatsCollectorTest.cpp \
 	VolumeTest.cpp \
 	ZMQTest.cpp \
 	ZWorkerPoolTest.cpp
