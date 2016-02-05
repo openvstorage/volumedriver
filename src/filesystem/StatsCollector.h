@@ -40,15 +40,13 @@ public:
     using PullFun = std::function<void(StatsCollector&)>;
 
     StatsCollector(const std::atomic<uint64_t>& pull_interval_secs,
-                std::vector<PullFun> pull_funs,
-                PushFun push_fun)
+                   std::vector<PullFun> pull_funs,
+                   PushFun push_fun)
         : pull_funs_(std::move(pull_funs))
         , push_fun_(std::move(push_fun))
         , action_("StatsCollector",
-                  [this]
-                  {
-                      work_();
-                  },
+                  boost::bind(&StatsCollector::work_,
+                              this),
                   pull_interval_secs)
     {
         LOG_INFO("up and running");

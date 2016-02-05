@@ -31,11 +31,11 @@ class StatsCollectorComponent
 {
 public:
     StatsCollectorComponent(const boost::property_tree::ptree&,
-                         const RegisterComponent);
+                            const RegisterComponent);
 
     ~StatsCollectorComponent() = default;
 
-        virtual const char*
+    virtual const char*
     componentName() const override final
     {
         return initialized_params::stats_collector_component_name;
