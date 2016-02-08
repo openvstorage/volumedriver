@@ -870,13 +870,16 @@ BOOST_PYTHON_MODULE(storagerouterclient)
                                     "volumedriverfs cluster registry access",
                                     bpy::init<const vfs::ClusterId&,
                                     const ara::ClusterID&,
-                                    const std::vector<ara::ArakoonNodeConfig>&>((bpy::args("vfs_cluster_id"),
-                                                                                 bpy::args("ara_cluster_id"),
-                                                                                 bpy::args("ara_node_configs")),
-                                                                                "Create a ClusterRegistry instance\n"
-                                                                                "@param vfs_cluster_id: string, volumedriverfs cluster ID\n"
-                                                                                "@param ara_cluster_id: string, arakoon cluster ID\n"
-                                                                                "@param ara_node_configs: list of ArakoonNodeConfigs\n"))
+                                    const std::vector<ara::ArakoonNodeConfig>&,
+                                    const unsigned>((bpy::args("vfs_cluster_id"),
+                                                     bpy::args("ara_cluster_id"),
+                                                     bpy::args("ara_node_configs"),
+                                                     bpy::args("ara_timeout_secs") = 7),
+                                                    "Create a ClusterRegistry instance\n"
+                                                    "@param vfs_cluster_id: string, volumedriverfs cluster ID\n"
+                                                    "@param ara_cluster_id: string, Arakoon cluster ID\n"
+                                                    "@param ara_node_configs: list of ArakoonNodeConfigs\n"
+                                                    "@param ara_timeout_secs: unsigned, timeout (in seconds) for Arakoon requests\n"))
         .def("set_node_configs",
              &vfs::ClusterRegistry::set_node_configs,
              (bpy::args("cluster_node_configs")),
