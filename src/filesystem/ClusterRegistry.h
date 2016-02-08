@@ -48,11 +48,12 @@ public:
     template<typename T>
     ClusterRegistry(const ClusterId& cluster_id,
                     const arakoon::ClusterID& ara_cluster_id,
-                    const T& arakoon_configs)
+                    const T& arakoon_configs,
+                    const unsigned timeout_secs = 5)
         : ClusterRegistry(cluster_id,
                           std::make_shared<youtils::LockedArakoon>(ara_cluster_id,
                                                                    arakoon_configs,
-                                                                   arakoon::Cluster::MilliSeconds(2000)))
+                                                                   arakoon::Cluster::MilliSeconds(timeout_secs * 1000)))
     {}
 
     ~ClusterRegistry() = default;
