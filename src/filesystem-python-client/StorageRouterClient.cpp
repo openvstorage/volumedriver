@@ -874,7 +874,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
                                     const unsigned>((bpy::args("vfs_cluster_id"),
                                                      bpy::args("ara_cluster_id"),
                                                      bpy::args("ara_node_configs"),
-                                                     bpy::args("ara_timeout_secs") = 7),
+                                                     bpy::args("ara_timeout_secs") = 60),
                                                     "Create a ClusterRegistry instance\n"
                                                     "@param vfs_cluster_id: string, volumedriverfs cluster ID\n"
                                                     "@param ara_cluster_id: string, Arakoon cluster ID\n"
