@@ -36,7 +36,7 @@ volumedriverfs_pytest_PYTHON = \
 volumedriver_fs_test_LDADD = \
 	./libvolumedriverfstest.la \
 	../../filesystem/libvolumedriverfs.la \
-	../../filesystem/libovsvolumedriver.la \
+	../../filesystem/c-api/libovsvolumedriver.la \
 	../../filedriver/libfiledriver.la \
 	../../volumedriver/test/libvolumedrivertest.la \
 	../../volumedriver/libvolumedriver.la \

@@ -37,15 +37,18 @@
 #include "VolumeCacheHandler.h"
 #include "ShmControlChannelClient.h"
 #include "AioCompletion.h"
+#include "tracing.h"
 #include "../ShmControlChannelProtocol.h"
 #include "../ShmClient.h"
 
+#include <cerrno>
 #include <limits.h>
 #include <map>
 
 #include <youtils/SpinLock.h>
 #include <youtils/System.h>
 #include <youtils/IOException.h>
+#include <youtils/ScopeExit.h>
 
 #ifdef __GNUC__
 #define likely(x)       __builtin_expect(!!(x), 1)
@@ -362,6 +365,21 @@ ovs_ctx_t*
 ovs_ctx_init(const char* volume_name,
              int oflag)
 {
+    ovs_ctx_t *ctx = NULL;
+
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_ctx_init_enter,
+               volume_name,
+               oflag);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_ctx_init_exit,
+                                          ctx,
+                                          errno);
+                }));
+
     if (not _is_volume_name_valid(volume_name))
     {
         errno = EINVAL;
@@ -378,51 +396,74 @@ ovs_ctx_init(const char* volume_name,
     /* On Error: EACCESS or EIO */
     try
     {
-        ovs_ctx_t *ctx = new ovs_ctx_t(volume_name,
-                                       oflag);
+        ctx = new ovs_ctx_t(volume_name,
+                            oflag);
         return ctx;
     }
     catch (const ShmIdlInterface::VolumeDoesNotExist&)
     {
         errno = EACCES;
-        return NULL;
     }
     catch (const ShmIdlInterface::VolumeNameAlreadyRegistered&)
     {
         errno = EBUSY;
-        return NULL;
     }
-    catch (std::bad_alloc&)
+    catch (const std::bad_alloc&)
     {
         errno = ENOMEM;
-        return NULL;
     }
     catch (...)
     {
         errno = EIO;
-        return NULL;
     }
+    return NULL;
 }
 
 int
 ovs_ctx_destroy(ovs_ctx_t *ctx)
 {
+    int r = 0;
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_ctx_destroy,
+                                          ctx,
+                                          r);
+                }));
+
     if (ctx == NULL)
     {
         errno = EINVAL;
-        return -1;
+        return (r = -1);
     }
     delete ctx;
-    return 0;
+    return r;
 }
 
 int
 ovs_create_volume(const char* volume_name, uint64_t size)
 {
+    int r = 0;
+
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_create_volume_enter,
+               volume_name,
+               size);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_create_volume_exit,
+                                          volume_name,
+                                          r,
+                                          errno);
+                }));
+
     if (not _is_volume_name_valid(volume_name))
     {
-        errno = EINVAL;
-        return -1;
+        errno = EINVAL; r = -1;
+        return r;
     }
 
     try
@@ -431,24 +472,37 @@ ovs_create_volume(const char* volume_name, uint64_t size)
     }
     catch (const ShmIdlInterface::VolumeExists&)
     {
-        errno = EEXIST;
-        return -1;
+        errno = EEXIST; r = -1;
     }
     catch (...)
     {
-        errno = EIO;
-        return -1;
+        errno = EIO; r = -1;
     }
-    return 0;
+    return r;
 }
 
 int
 ovs_remove_volume(const char* volume_name)
 {
+    int r = 0;
+
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_remove_volume_enter,
+               volume_name);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_remove_volume_exit,
+                                          volume_name,
+                                          r,
+                                          errno);
+                }));
+
     if (not _is_volume_name_valid(volume_name))
     {
-        errno = EINVAL;
-        return -1;
+        errno = EINVAL; r = -1;
+        return r;
     }
 
     try
@@ -457,15 +511,13 @@ ovs_remove_volume(const char* volume_name)
     }
     catch (const ShmIdlInterface::VolumeDoesNotExist&)
     {
-        errno = ENOENT;
-        return -1;
+        errno = ENOENT; r = -1;
     }
     catch (...)
     {
-        errno = EIO;
-        return -1;
+        errno = EIO; r = -1;
     }
-    return 0;
+    return r;
 }
 
 int
@@ -473,10 +525,28 @@ ovs_snapshot_create(const char* volume_name,
                     const char* snapshot_name,
                     const int64_t timeout)
 {
+    int r = 0;
+
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_snapshot_create_enter,
+               volume_name,
+               snapshot_name,
+               timeout);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_snapshot_create_exit,
+                                          volume_name,
+                                          snapshot_name,
+                                          r,
+                                          errno);
+                }));
+
     if (not _is_volume_name_valid(volume_name))
     {
-        errno = EINVAL;
-        return -1;
+        errno = EINVAL; r = -1;
+        return r;
     }
 
     try
@@ -487,40 +557,52 @@ ovs_snapshot_create(const char* volume_name,
     }
     catch (const ShmIdlInterface::PreviousSnapshotNotOnBackendException&)
     {
-        errno = EBUSY;
-        return -1;
+        errno = EBUSY; r = -1;
     }
     catch (const ShmIdlInterface::VolumeDoesNotExist&)
     {
-        errno = ENOENT;
-        return -1;
+        errno = ENOENT; r = -1;
     }
     catch (const ShmIdlInterface::SyncTimeoutException&)
     {
-        errno = ETIMEDOUT;
-        return -1;
+        errno = ETIMEDOUT; r = -1;
     }
     catch (const ShmIdlInterface::SnapshotAlreadyExists&)
     {
-        errno = EEXIST;
-        return -1;
+        errno = EEXIST; r = -1;
     }
     catch (...)
     {
-        errno = EIO;
-        return -1;
+        errno = EIO; r = -1;
     }
-    return 0;
+    return r;
 }
 
 int
 ovs_snapshot_rollback(const char* volume_name,
                       const char* snapshot_name)
 {
+    int r = 0;
+
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_snapshot_rollback_enter,
+               volume_name,
+               snapshot_name);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_snapshot_rollback_exit,
+                                          volume_name,
+                                          snapshot_name,
+                                          r,
+                                          errno);
+                }));
+
     if (not _is_volume_name_valid(volume_name))
     {
-        errno = EINVAL;
-        return -1;
+        errno = EINVAL; r= -1;
+        return r;
     }
 
     try
@@ -530,31 +612,45 @@ ovs_snapshot_rollback(const char* volume_name,
     }
     catch (const ShmIdlInterface::VolumeDoesNotExist&)
     {
-        errno = ENOENT;
-        return -1;
+        errno = ENOENT; r = -1;
     }
     catch (const ShmIdlInterface::VolumeHasChildren&)
     {
-        errno = ENOTEMPTY;
-        //errno = ECHILD;
-        return -1;
+        errno = ENOTEMPTY; r = -1;
+        //errno = ECHILD; r= -1;
     }
     catch (...)
     {
-        errno = EIO;
-        return -1;
+        errno = EIO; r = -1;
     }
-    return 0;
+    return r;
 }
 
 int
 ovs_snapshot_remove(const char* volume_name,
                     const char* snapshot_name)
 {
+    int r = 0;
+
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_snapshot_remove_enter,
+               volume_name,
+               snapshot_name);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_snapshot_remove_exit,
+                                          volume_name,
+                                          snapshot_name,
+                                          r,
+                                          errno);
+                }));
+
     if (not _is_volume_name_valid(volume_name))
     {
         errno = EINVAL;
-        return -1;
+        return (r = -1);
     }
 
     try
@@ -564,26 +660,22 @@ ovs_snapshot_remove(const char* volume_name,
     }
     catch (const ShmIdlInterface::VolumeDoesNotExist&)
     {
-        errno = ENOENT;
-        return -1;
+        errno = ENOENT; r = -1;
     }
     catch (const ShmIdlInterface::VolumeHasChildren&)
     {
-        errno = ENOTEMPTY;
-        //errno = ECHILD;
-        return -1;
+        errno = ENOTEMPTY; r = -1;
+        //errno = ECHILD; r = -1;
     }
     catch (const ShmIdlInterface::SnapshotNotFound&)
     {
-        errno = ENOENT;
-        return -1;
+        errno = ENOENT; r = -1;
     }
     catch (...)
     {
-        errno = EIO;
-        return -1;
+        errno = EIO; r = -1;
     }
-    return 0;
+    return r;
 }
 
 int
@@ -594,12 +686,26 @@ ovs_snapshot_list(const char* volume_name,
     int i, len;
     uint64_t size = 0;
 
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_snapshot_list_enter,
+               volume_name,
+               snap_list,
+               *max_snaps);
+
     if (not _is_volume_name_valid(volume_name))
     {
+        tracepoint(openvstorage_libovsvolumedriver,
+                   ovs_snapshot_list_exit,
+                   volume_name,
+                   snap_list,
+                   -1,
+                   *max_snaps,
+                   EINVAL);
         errno = EINVAL;
         return -1;
     }
 
+    int saved_errno = 0;
     std::vector<std::string> snaps;
     try
     {
@@ -608,12 +714,23 @@ ovs_snapshot_list(const char* volume_name,
     }
     catch (const ShmIdlInterface::VolumeDoesNotExist&)
     {
-        errno = ENOENT;
-        return -1;
+        saved_errno = ENOENT;
     }
     catch (...)
     {
-        errno = EIO;
+        saved_errno = EIO;
+    }
+
+    if (saved_errno)
+    {
+        tracepoint(openvstorage_libovsvolumedriver,
+                   ovs_snapshot_list_exit,
+                   volume_name,
+                   snap_list,
+                   -1,
+                   *max_snaps,
+                   saved_errno);
+        errno = saved_errno;
         return -1;
     }
 
@@ -621,6 +738,13 @@ ovs_snapshot_list(const char* volume_name,
     if (*max_snaps < len + 1)
     {
         *max_snaps = len + 1;
+        tracepoint(openvstorage_libovsvolumedriver,
+                   ovs_snapshot_list_exit,
+                   volume_name,
+                   snap_list,
+                   -1,
+                   *max_snaps,
+                   ERANGE);
         errno = ERANGE;
         return -1;
     }
@@ -635,11 +759,25 @@ ovs_snapshot_list(const char* volume_name,
             {
                 free((void*)snap_list[i].name);
             }
+            tracepoint(openvstorage_libovsvolumedriver,
+                       ovs_snapshot_list_exit,
+                       volume_name,
+                       snap_list,
+                       -1,
+                       *max_snaps,
+                       ENOMEM);
             errno = ENOMEM;
             return -1;
         }
     }
 
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_snapshot_list_exit,
+               volume_name,
+               snap_list,
+               len,
+               *max_snaps,
+               0);
     snap_list[i].name = NULL;
     return len;
 }
@@ -647,43 +785,62 @@ ovs_snapshot_list(const char* volume_name,
 void
 ovs_snapshot_list_free(ovs_snapshot_info_t *snap_list)
 {
-     while (snap_list->name)
-     {
-        free((void*)snap_list->name);
-        snap_list++;
-     }
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_snapshot_list_free,
+               snap_list);
+
+    while (snap_list->name)
+    {
+       free((void*)snap_list->name);
+       snap_list++;
+    }
 }
 
 int
 ovs_snapshot_is_synced(const char* volume_name,
                        const char* snapshot_name)
 {
+    int r = 0;
+
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_snapshot_is_synced_enter,
+               volume_name,
+               snapshot_name);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_snapshot_is_synced_exit,
+                                          volume_name,
+                                          snapshot_name,
+                                          r,
+                                          errno);
+                }));
+
     if (not _is_volume_name_valid(volume_name))
     {
-        errno = EINVAL;
-        return -1;
+        errno = EINVAL; r = -1;
+        return r;
     }
 
     try
     {
-        return volumedriverfs::ShmClient::is_snapshot_synced(volume_name,
-                                                             snapshot_name);
+        r = volumedriverfs::ShmClient::is_snapshot_synced(volume_name,
+                                                          snapshot_name);
     }
     catch (const ShmIdlInterface::VolumeDoesNotExist&)
     {
-        errno = ENOENT;
-        return -1;
+        errno = ENOENT; r = -1;
     }
     catch (const ShmIdlInterface::SnapshotNotFound&)
     {
-        errno = ENOENT;
-        return -1;
+        errno = ENOENT; r = -1;
     }
     catch (...)
     {
-        errno = EIO;
-        return -1;
+        errno = EIO; r = -1;
     }
+    return r;
 }
 
 static int
@@ -692,9 +849,21 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
                         ovs_completion_t *completion,
                         const RequestOp& op)
 {
-    int ret, accmode;
+    int r, accmode;
+
+    ovs_submit_aio_request_tracepoint_enter(op,
+                                            ctx,
+                                            ovs_aiocbp,
+                                            completion);
+
     if (ctx == NULL || ovs_aiocbp == NULL)
     {
+        ovs_submit_aio_request_tracepoint_exit(op,
+                                               ctx,
+                                               ovs_aiocbp,
+                                               completion,
+                                               -1,
+                                               EINVAL);
         errno = EINVAL;
         return -1;
     }
@@ -703,6 +872,12 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
          ovs_aiocbp->aio_offset < 0) &&
          op != RequestOp::Flush && op != RequestOp::AsyncFlush)
     {
+        ovs_submit_aio_request_tracepoint_exit(op,
+                                               ctx,
+                                               ovs_aiocbp,
+                                               completion,
+                                               -1,
+                                               EINVAL);
         errno = EINVAL;
         return -1;
     }
@@ -713,6 +888,12 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
     case RequestOp::Read:
         if (accmode == O_WRONLY)
         {
+            ovs_submit_aio_request_tracepoint_exit(op,
+                                                   ctx,
+                                                   ovs_aiocbp,
+                                                   completion,
+                                                   -1,
+                                                   EBADF);
             errno = EBADF;
             return -1;
         }
@@ -722,6 +903,12 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
     case RequestOp::AsyncFlush:
         if (accmode == O_RDONLY)
         {
+            ovs_submit_aio_request_tracepoint_exit(op,
+                                                   ctx,
+                                                   ovs_aiocbp,
+                                                   completion,
+                                                   -1,
+                                                   EBADF);
             errno = EBADF;
             return -1;
         }
@@ -741,6 +928,12 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
     }
     catch (std::bad_alloc&)
     {
+        ovs_submit_aio_request_tracepoint_exit(op,
+                                               ctx,
+                                               ovs_aiocbp,
+                                               completion,
+                                               -1,
+                                               ENOMEM);
         errno = ENOMEM;
         return -1;
     }
@@ -757,29 +950,37 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
     {
     case RequestOp::Read:
         /* on error returns -1 */
-        ret = ctx->shm_client_->send_read_request(ovs_aiocbp->aio_buf,
-                                                  ovs_aiocbp->aio_nbytes,
-                                                  ovs_aiocbp->aio_offset,
-                                                  reinterpret_cast<void*>(request));
+        r = ctx->shm_client_->send_read_request(ovs_aiocbp->aio_buf,
+                                                ovs_aiocbp->aio_nbytes,
+                                                ovs_aiocbp->aio_offset,
+                                                reinterpret_cast<void*>(request));
         break;
     case RequestOp::Write:
     case RequestOp::Flush:
     case RequestOp::AsyncFlush:
         /* on error returns -1 */
-        ret = ctx->shm_client_->send_write_request(ovs_aiocbp->aio_buf,
-                                                   ovs_aiocbp->aio_nbytes,
-                                                   ovs_aiocbp->aio_offset,
-                                                   reinterpret_cast<void*>(request));
+        r = ctx->shm_client_->send_write_request(ovs_aiocbp->aio_buf,
+                                                 ovs_aiocbp->aio_nbytes,
+                                                 ovs_aiocbp->aio_offset,
+                                                 reinterpret_cast<void*>(request));
         break;
     default:
-        ret = -1;
+        r = -1;
     }
-    if (ret < 0)
+    if (r < 0)
     {
         delete request;
         errno = EIO;
     }
-    return ret;
+    int saved_errno = errno;
+    ovs_submit_aio_request_tracepoint_exit(op,
+                                           ctx,
+                                           ovs_aiocbp,
+                                           completion,
+                                           r,
+                                           saved_errno);
+    errno = saved_errno;
+    return r;
 }
 
 int
@@ -806,29 +1007,46 @@ int
 ovs_aio_error(ovs_ctx_t *ctx,
               const struct ovs_aiocb *ovs_aiocbp)
 {
+    int r = 0;
+
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_aio_error_enter,
+               ctx,
+               ovs_aiocbp);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_aio_error_exit,
+                                          ctx,
+                                          ovs_aiocbp,
+                                          r,
+                                          errno);
+                }));
+
     if (ctx == NULL || ovs_aiocbp == NULL)
     {
         errno = EINVAL;
-        return -1;
+        return (r = -1);
     }
 
     if (ovs_aiocbp->request_->_canceled)
     {
-        return ECANCELED;
+        return (r = ECANCELED);
     }
 
     if (not ovs_aiocbp->request_->_completed)
     {
-        return EINPROGRESS;
+        return (r = EINPROGRESS);
     }
 
     if (ovs_aiocbp->request_->_failed)
     {
-        return ovs_aiocbp->request_->_errno;
+        return (r = ovs_aiocbp->request_->_errno);
     }
     else
     {
-        return 0;
+        return r;
     }
 }
 
@@ -836,30 +1054,51 @@ ssize_t
 ovs_aio_return(ovs_ctx_t *ctx,
                struct ovs_aiocb *ovs_aiocbp)
 {
-    int ret;
+    int r;
+
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_aio_return_enter,
+               ctx,
+               ovs_aiocbp);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_aio_return_exit,
+                                          ctx,
+                                          ovs_aiocbp,
+                                          r,
+                                          errno);
+                }));
+
     if (ctx == NULL || ovs_aiocbp == NULL)
     {
         errno = EINVAL;
-        return -1;
+        return (r = -1);
     }
 
     errno = ovs_aiocbp->request_->_errno;
     if (not ovs_aiocbp->request_->_failed)
     {
-        ret = ovs_aiocbp->request_->_rv;
+        r = ovs_aiocbp->request_->_rv;
     }
     else
     {
-        errno = ovs_aiocbp->request_->_errno;
-        ret = -1;
+        //errno = ovs_aiocbp->request_->_errno;
+        r = -1;
     }
-    return ret;
+    return r;
 }
 
 int
 ovs_aio_finish(ovs_ctx_t *ctx,
                struct ovs_aiocb *ovs_aiocbp)
 {
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_aio_finish,
+               ctx,
+               ovs_aiocbp);
+
     if (ctx == NULL || ovs_aiocbp == NULL)
     {
         errno = EINVAL;
@@ -872,47 +1111,58 @@ ovs_aio_finish(ovs_ctx_t *ctx,
     return 0;
 }
 
-static int
-ovs_aio_suspend_on_aiocb(struct ovs_aiocb *aiocbp,
-                      const struct timespec *timeout)
-{
-    int ret = 0;
-    if (__sync_bool_compare_and_swap(&aiocbp->request_->_on_suspend,
-                                     false,
-                                     true,
-                                     __ATOMIC_RELAXED))
-    {
-        pthread_mutex_lock(&aiocbp->request_->_mutex);
-        while (not aiocbp->request_->_signaled)
-        {
-            if (timeout)
-            {
-                ret = pthread_cond_timedwait(&aiocbp->request_->_cond,
-                                             &aiocbp->request_->_mutex,
-                                             timeout);
-            }
-            else
-            {
-                ret = pthread_cond_wait(&aiocbp->request_->_cond,
-                                        &aiocbp->request_->_mutex);
-            }
-        }
-        pthread_mutex_unlock(&aiocbp->request_->_mutex);
-    }
-    return ret;
-}
-
 int
 ovs_aio_suspend(ovs_ctx_t *ctx,
                 ovs_aiocb *ovs_aiocbp,
                 const struct timespec *timeout)
 {
+    int r = 0;
+
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_aio_suspend_enter,
+               ctx,
+               ovs_aiocbp,
+               timeout);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_aio_suspend_exit,
+                                          ctx,
+                                          ovs_aiocbp,
+                                          timeout,
+                                          r,
+                                          errno);
+                }));
+
     if (ctx == NULL || ovs_aiocbp == NULL)
     {
         errno = EINVAL;
-        return -1;
+        return (r = -1);
     }
-    return ovs_aio_suspend_on_aiocb(ovs_aiocbp, timeout);
+    if (__sync_bool_compare_and_swap(&ovs_aiocbp->request_->_on_suspend,
+                                     false,
+                                     true,
+                                     __ATOMIC_RELAXED))
+    {
+        pthread_mutex_lock(&ovs_aiocbp->request_->_mutex);
+        while (not ovs_aiocbp->request_->_signaled)
+        {
+            if (timeout)
+            {
+                r = pthread_cond_timedwait(&ovs_aiocbp->request_->_cond,
+                                           &ovs_aiocbp->request_->_mutex,
+                                           timeout);
+            }
+            else
+            {
+                r = pthread_cond_wait(&ovs_aiocbp->request_->_cond,
+                                      &ovs_aiocbp->request_->_mutex);
+            }
+        }
+        pthread_mutex_unlock(&ovs_aiocbp->request_->_mutex);
+    }
+    return r;
 }
 
 int
@@ -932,12 +1182,21 @@ ovs_allocate(ovs_ctx_t *ctx,
     {
         errno = ENOMEM;
     }
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_allocate,
+               ctx,
+               buf,
+               size);
     return buf;
 }
 
 void*
 ovs_buffer_data(ovs_buffer_t *ptr)
 {
+   tracepoint(openvstorage_libovsvolumedriver,
+              ovs_buffer_data,
+              ptr);
+
     if (likely(ptr != NULL))
     {
         return ptr->buf;
@@ -952,6 +1211,10 @@ ovs_buffer_data(ovs_buffer_t *ptr)
 size_t
 ovs_buffer_size(ovs_buffer_t *ptr)
 {
+   tracepoint(openvstorage_libovsvolumedriver,
+              ovs_buffer_size,
+              ptr);
+
     if (likely(ptr != NULL))
     {
         return ptr->size;
@@ -967,18 +1230,34 @@ int
 ovs_deallocate(ovs_ctx_t *ctx,
                ovs_buffer_t *ptr)
 {
-    int ret = ctx->cache_->deallocate(ptr);
-    if (ret < 0)
+    int r = ctx->cache_->deallocate(ptr);
+    if (r < 0)
     {
         errno = EFAULT;
     }
-    return ret;
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_deallocate,
+               ctx,
+               ptr,
+               r);
+    return r;
 }
 
 ovs_completion_t*
 ovs_aio_create_completion(ovs_callback_t complete_cb,
                           void *arg)
 {
+    ovs_completion_t *completion = NULL;
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    tracepoint(openvstorage_libovsvolumedriver,
+                               ovs_aio_create_completion,
+                               complete_cb,
+                               arg,
+                               completion);
+                }));
+
     if (complete_cb == NULL)
     {
         errno = EINVAL;
@@ -986,7 +1265,7 @@ ovs_aio_create_completion(ovs_callback_t complete_cb,
     }
     try
     {
-        ovs_completion_t *completion = new ovs_completion_t;
+        completion = new ovs_completion_t;
         completion->complete_cb = complete_cb;
         completion->cb_arg = arg;
         completion->_calling = false;
@@ -1007,6 +1286,10 @@ ovs_aio_create_completion(ovs_callback_t complete_cb,
 ssize_t
 ovs_aio_return_completion(ovs_completion_t *completion)
 {
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_aio_return_completion,
+               completion);
+
     if (completion == NULL)
     {
         errno = EINVAL;
@@ -1035,11 +1318,27 @@ int
 ovs_aio_wait_completion(ovs_completion_t *completion,
                         const struct timespec *timeout)
 {
-    int ret = 0;
+    int r = 0;
+
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_aio_wait_completion_enter,
+               completion,
+               timeout);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_aio_wait_completion_exit,
+                                          completion,
+                                          timeout,
+                                          r,
+                                          errno);
+                }));
+
     if (completion == NULL)
     {
         errno = EINVAL;
-        return -1;
+        return (r = -1);
     }
 
     if (__sync_bool_compare_and_swap(&completion->_on_wait,
@@ -1052,24 +1351,28 @@ ovs_aio_wait_completion(ovs_completion_t *completion,
         {
             if (timeout)
             {
-                ret = pthread_cond_timedwait(&completion->_cond,
-                                             &completion->_mutex,
-                                             timeout);
+                r = pthread_cond_timedwait(&completion->_cond,
+                                           &completion->_mutex,
+                                           timeout);
             }
             else
             {
-                ret = pthread_cond_wait(&completion->_cond,
-                                        &completion->_mutex);
+                r = pthread_cond_wait(&completion->_cond,
+                                      &completion->_mutex);
             }
         }
         pthread_mutex_unlock(&completion->_mutex);
     }
-    return ret;
+    return r;
 }
 
 int
 ovs_aio_signal_completion(ovs_completion_t *completion)
 {
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_aio_signal_completion,
+               completion);
+
     if (completion == NULL)
     {
         errno = EINVAL;
@@ -1091,6 +1394,10 @@ ovs_aio_signal_completion(ovs_completion_t *completion)
 int
 ovs_aio_release_completion(ovs_completion_t *completion)
 {
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_aio_release_completion,
+               completion);
+
     if (completion == NULL)
     {
         errno = EINVAL;
@@ -1106,7 +1413,6 @@ int
 ovs_aio_readcb(ovs_ctx_t *ctx,
                struct ovs_aiocb *ovs_aiocbp,
                ovs_completion_t *completion)
-
 {
     return _ovs_submit_aio_request(ctx,
                                    ovs_aiocbp,
@@ -1118,7 +1424,6 @@ int
 ovs_aio_writecb(ovs_ctx_t *ctx,
                 struct ovs_aiocb *ovs_aiocbp,
                 ovs_completion_t *completion)
-
 {
     return _ovs_submit_aio_request(ctx,
                                    ovs_aiocbp,
@@ -1130,8 +1435,17 @@ int
 ovs_aio_flushcb(ovs_ctx_t *ctx,
                 ovs_completion_t *completion)
 {
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_aio_flushcb_enter,
+               ctx);
+
     if (ctx == NULL)
     {
+        tracepoint(openvstorage_libovsvolumedriver,
+                   ovs_aio_flushcb_exit,
+                   ctx,
+                   -1,
+                   EINVAL);
         errno = EINVAL;
         return -1;
     }
@@ -1139,6 +1453,11 @@ ovs_aio_flushcb(ovs_ctx_t *ctx,
     ovs_aiocb *aio = new ovs_aiocb;
     if (aio == NULL)
     {
+        tracepoint(openvstorage_libovsvolumedriver,
+                   ovs_aio_flushcb_exit,
+                   ctx,
+                   -1,
+                   ENOMEM);
         errno = ENOMEM;
         return -1;
     }
@@ -1158,29 +1477,51 @@ ovs_read(ovs_ctx_t *ctx,
          size_t nbytes,
          off_t offset)
 {
-    ssize_t ret;
+    ssize_t r;
     struct ovs_aiocb aio;
     aio.aio_buf = buf;
     aio.aio_nbytes = nbytes;
     aio.aio_offset = offset;
 
-    if ((ret = ovs_aio_read(ctx, &aio)) < 0)
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_read_enter,
+               ctx,
+               buf,
+               nbytes,
+               offset);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_read_exit,
+                                          ctx,
+                                          buf,
+                                          r,
+                                          errno);
+                }));
+
+    if (ctx == NULL)
     {
-        return ret;
+        errno = EINVAL;
+        return (r = -1);
     }
 
-    if ((ret = ovs_aio_suspend(ctx, &aio, NULL)) < 0)
+    if ((r = ovs_aio_read(ctx, &aio)) < 0)
     {
-        return ret;
+        return r;
     }
 
-    ret = ovs_aio_return(ctx, &aio);
+    if ((r = ovs_aio_suspend(ctx, &aio, NULL)) < 0)
+    {
+        return r;
+    }
+
+    r = ovs_aio_return(ctx, &aio);
     if (ovs_aio_finish(ctx, &aio) < 0)
     {
-        return -1;
+        r = -1;
     }
-
-    return ret;
+    return r;
 }
 
 ssize_t
@@ -1189,49 +1530,99 @@ ovs_write(ovs_ctx_t *ctx,
           size_t nbytes,
           off_t offset)
 {
-    ssize_t ret;
+    ssize_t r;
     struct ovs_aiocb aio;
     aio.aio_buf = const_cast<void*>(buf);
     aio.aio_nbytes = nbytes;
     aio.aio_offset = offset;
 
-    if ((ret = ovs_aio_write(ctx, &aio)) < 0)
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_write_enter,
+               ctx,
+               buf,
+               nbytes,
+               offset);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_write_exit,
+                                          ctx,
+                                          buf,
+                                          r,
+                                          errno);
+                }));
+
+    if (ctx == NULL)
     {
-        return ret;
+        errno = EINVAL;
+        return (r = -1);
     }
 
-    if ((ret = ovs_aio_suspend(ctx, &aio, NULL)) < 0)
+    if ((r = ovs_aio_write(ctx, &aio)) < 0)
     {
-        return ret;
+        return r;
     }
 
-    ret = ovs_aio_return(ctx, &aio);
+    if ((r = ovs_aio_suspend(ctx, &aio, NULL)) < 0)
+    {
+        return r;
+    }
+
+    r = ovs_aio_return(ctx, &aio);
     if (ovs_aio_finish(ctx, &aio) < 0)
     {
-        return -1;
+        r = -1;
     }
-    return ret;
+    return r;
 }
 
 int
 ovs_stat(ovs_ctx_t *ctx, struct stat *st)
 {
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_stat_enter,
+               ctx,
+               st);
+
     if (ctx == NULL || st == NULL)
     {
         errno = EINVAL;
         return -1;
     }
-    return ctx->shm_client_->stat(st);
+    int r = ctx->shm_client_->stat(st);
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_stat_exit,
+               ctx,
+               st,
+               r,
+               st->st_blksize,
+               st->st_size);
+    return r;
 }
 
 int
 ovs_flush(ovs_ctx_t *ctx)
 {
-    int ret = 0;
+    int r = 0;
+
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_flush_enter,
+               ctx);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_flush_exit,
+                                          ctx,
+                                          r,
+                                          errno);
+                }));
+
     if (ctx == NULL)
     {
         errno = EINVAL;
-        return -1;
+        return (r = -1);
     }
 
     struct ovs_aiocb aio;
@@ -1239,23 +1630,23 @@ ovs_flush(ovs_ctx_t *ctx)
     aio.aio_offset = 0;
     aio.aio_buf = NULL;
 
-    if ((ret = _ovs_submit_aio_request(ctx,
+    if ((r = _ovs_submit_aio_request(ctx,
                                        &aio,
                                        NULL,
                                        RequestOp::Flush)) < 0)
     {
-        return ret;
+        return r;
     }
 
-    if ((ret = ovs_aio_suspend(ctx, &aio, NULL)) < 0)
+    if ((r = ovs_aio_suspend(ctx, &aio, NULL)) < 0)
     {
-        return ret;
+        return r;
     }
 
-    ret = ovs_aio_return(ctx, &aio);
+    r = ovs_aio_return(ctx, &aio);
     if (ovs_aio_finish(ctx, &aio) < 0)
     {
-        return -1;
+        r = -1;
     }
-    return ret;
+    return r;
 }
