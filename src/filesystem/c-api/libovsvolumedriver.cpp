@@ -426,10 +426,10 @@ ovs_ctx_destroy(ovs_ctx_t *ctx)
 
     auto on_exit(youtils::make_scope_exit([&]
                 {
-                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
-                                          ovs_ctx_destroy,
-                                          ctx,
-                                          r);
+                    tracepoint(openvstorage_libovsvolumedriver,
+                               ovs_ctx_destroy,
+                               ctx,
+                               r);
                 }));
 
     if (ctx == NULL)
