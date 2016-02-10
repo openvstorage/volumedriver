@@ -45,6 +45,11 @@ extern "C"
 
 struct BuildInfo
 {
+
+    static const char* version;
+
+    static const char* version_revision;
+
     static const char* revision;
 
     static const char* branch;

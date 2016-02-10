@@ -1,19 +1,18 @@
 #! /bin/bash
 set -eux
 
-if [ -d @abs_top_srcdir@/../../.git ]
-then
-  REVISION=$(cd @abs_top_srcdir@/../..; git rev-parse HEAD)
-  BRANCH=$(cd @abs_top_srcdir@/../..; git branch | awk '/^\*/ { print $2 }')
-else
-  REVISION=$(hg identify --id @abs_top_srcdir@/../..)
-  BRANCH=(hg identify --branch @abs_top_srcdir@/../..)
-fi
-
+VERSION=$(cd @abs_top_srcdir@/../../; git describe --abbrev=0 --tags)
+VERSION_REVISION=$(cd @abs_top_srcdir@../../; git rev-parse --verify ${VERSION})
+REVISION=$(cd @abs_top_srcdir@/../..; git rev-parse HEAD)
+BRANCH=$(cd @abs_top_srcdir@/../..; git branch | awk '/^\*/ { print $2 }')
 BUILD_TIME=`LANG=C date -u`
 
 cat <<EOF > @abs_top_builddir@/BuildInfo.cpp
 #include "BuildInfo.h"
+
+const char* BuildInfo::version = "$VERSION";
+
+const char* BuildInfo::version_revision = "$VERSION_REVISION";
 
 const char* BuildInfo::revision = "$REVISION";
 

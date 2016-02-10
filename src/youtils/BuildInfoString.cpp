@@ -44,7 +44,9 @@ buildInfoString()
 {
     std::stringstream ss;
 
-    ss << "branch: " << BuildInfo::branch << std::endl
+    ss << "version: " << BuildInfo::version << std::endl
+       << "version revision: " << BuildInfo::version_revision << std::endl
+       << "branch: " << BuildInfo::branch << std::endl
        << "revision: " << BuildInfo::revision << std::endl
        << "build time: " << BuildInfo::buildTime << std::endl;
 
