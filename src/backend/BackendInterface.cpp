@@ -18,6 +18,9 @@
 #include "BackendInterface.h"
 #include "BackendTracePoints_tp.h"
 
+#include <boost/chrono.hpp>
+#include <boost/thread.hpp>
+
 #include <youtils/ScopeExit.h>
 
 namespace backend
@@ -29,11 +32,13 @@ namespace yt = youtils;
 BackendInterface::BackendInterface(const Namespace& nspace,
                                    BackendConnectionManagerPtr conn_manager,
                                    boost::posix_time::time_duration timeout,
-                                   unsigned retries)
+                                   const std::atomic<uint32_t>& retries,
+                                   const std::atomic<uint32_t>& retry_interval_secs)
     : nspace_(nspace)
     , conn_manager_(conn_manager)
     , timeout_(timeout)
     , retries_(retries)
+    , retry_interval_secs_(retry_interval_secs)
 {
 }
 
@@ -56,7 +61,8 @@ BackendInterface::do_wrap_(ReturnType
         if (retries != 0)
         {
             LOG_WARN("Retrying with new connection (retry: " <<
-                     retries << ")");
+                     retries << ", sleep before retry: " << retry_interval_secs_ << " secs)");
+            boost::this_thread::sleep_for(boost::chrono::seconds(retry_interval_secs_));
         }
 
         LOG_TRACE("Got connection handle " << conn.get());
@@ -349,7 +355,8 @@ BackendInterface::cloneWithNewNamespace(const Namespace& new_nspace) const
     return BackendInterfacePtr(new BackendInterface(new_nspace,
                                                     conn_manager_,
                                                     timeout_,
-                                                    retries_));
+                                                    retries_,
+                                                    retry_interval_secs_));
 }
 
 uint64_t

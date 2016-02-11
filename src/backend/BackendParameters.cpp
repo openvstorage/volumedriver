@@ -152,6 +152,20 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_connection_pool_capacity,
                                       ShowDocumentation::T,
                                       64);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_retries_on_error,
+                                      backend_connection_manager_name,
+                                      "backend_interface_retries_on_error",
+                                      "How many times to retry a failed backend operation",
+                                      ShowDocumentation::T,
+                                      1U);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_retry_interval_secs,
+                                      backend_connection_manager_name,
+                                      "backend_interface_retry_interval_secs",
+                                      "delay before retrying a failed backend operation in seconds",
+                                      ShowDocumentation::T,
+                                      0U);
+
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_type,
                                       backend_connection_manager_name,
                                       "backend_type",

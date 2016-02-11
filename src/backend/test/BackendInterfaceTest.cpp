@@ -14,6 +14,10 @@
 
 #include "BackendTestBase.h"
 
+#include <boost/property_tree/ptree.hpp>
+
+#include <youtils/Timer.h>
+
 namespace backendtest
 {
 
@@ -51,12 +55,32 @@ TEST_F(BackendInterfaceTest, retry_on_error)
     std::unique_ptr<be::BackendTestSetup::WithRandomNamespace>
         nspace(make_random_namespace());
 
-    const size_t retries = 7;
+    const uint32_t retries = 5;
+
     ASSERT_LE(retries,
               cm_->capacity());
 
-    be::BackendInterfacePtr bi(cm_->newBackendInterface(nspace->ns(),
-                                                        retries));
+    be::BackendInterfacePtr bi(cm_->newBackendInterface(nspace->ns()));
+
+    const uint32_t secs = 1;
+
+    {
+        bpt::ptree pt;
+        cm_->persist(pt);
+
+        ip::PARAMETER_TYPE(backend_interface_retries_on_error)(retries).persist(pt);
+        ip::PARAMETER_TYPE(backend_interface_retry_interval_secs)(secs).persist(pt);
+
+        yt::ConfigurationReport crep;
+        ASSERT_TRUE(cm_->checkConfig(pt,
+                                     crep));
+
+        yt::UpdateReport urep;
+        cm_->update(pt,
+                    urep);
+    }
+
+    yt::SteadyTimer t;
 
     ASSERT_THROW(bi->write(opath,
                            oname,
@@ -64,8 +88,11 @@ TEST_F(BackendInterfaceTest, retry_on_error)
                            &wrong_cs),
                  be::BackendInputException);
 
-    ASSERT_EQ(retries + 1,
+    EXPECT_EQ(retries + 1,
               cm_->size());
+
+    EXPECT_LE(boost::chrono::seconds(retries * secs),
+              t.elapsed());
 }
 
 }

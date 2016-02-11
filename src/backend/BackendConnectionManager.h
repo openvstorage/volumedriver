@@ -135,8 +135,7 @@ public:
     }
 
     BackendInterfacePtr
-    newBackendInterface(const Namespace& nspace,
-                        const unsigned retries = 1);
+    newBackendInterface(const Namespace&);
 
     const BackendConfig&
     config() const
@@ -189,6 +188,9 @@ private:
     DECLARE_LOGGER("BackendConnectionManager");
 
     DECLARE_PARAMETER(backend_connection_pool_capacity);
+    DECLARE_PARAMETER(backend_interface_retries_on_error);
+    DECLARE_PARAMETER(backend_interface_retry_interval_secs);
+
     std::unique_ptr<BackendConfig> config_;
 
     typedef boost::mutex lock_type;

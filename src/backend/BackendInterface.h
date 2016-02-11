@@ -240,14 +240,16 @@ private:
     const Namespace nspace_;
     BackendConnectionManagerPtr conn_manager_;
     const boost::posix_time::time_duration timeout_;
-    const unsigned retries_;
+    const std::atomic<uint32_t>& retries_;
+    const std::atomic<uint32_t>& retry_interval_secs_;
 
     // only the BackendConnectionManager is allowed to create it - everyone else needs to
     // use BackendInterfacePtrs obtained from the BackendConnectionManager.
     BackendInterface(const Namespace& nspace,
                      BackendConnectionManagerPtr cm,
                      boost::posix_time::time_duration timeout,
-                     unsigned retries = 1);
+                     const std::atomic<uint32_t>& retries,
+                     const std::atomic<uint32_t>& retry_interval_secs);
 
     template<typename ReturnType,
              typename... Args>

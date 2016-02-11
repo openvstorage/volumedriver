@@ -53,6 +53,8 @@ BackendConnectionManager::BackendConnectionManager(const boost::property_tree::p
     : VolumeDriverComponent(registerize,
                             pt)
     , backend_connection_pool_capacity(pt)
+    , backend_interface_retries_on_error(pt)
+    , backend_interface_retry_interval_secs(pt)
     , config_(BackendConfig::makeBackendConfig(pt))
 {
     switch (config_->backend_type.value())
@@ -170,13 +172,13 @@ BackendConnectionManager::size() const
 }
 
 BackendInterfacePtr
-BackendConnectionManager::newBackendInterface(const Namespace& nspace,
-                                              const unsigned retries)
+BackendConnectionManager::newBackendInterface(const Namespace& nspace)
 {
     return BackendInterfacePtr(new BackendInterface(nspace,
                                                     shared_from_this(),
                                                     default_timeout,
-                                                    retries));
+                                                    backend_interface_retries_on_error.value(),
+                                                    backend_interface_retry_interval_secs.value()));
 }
 
 std::unique_ptr<BackendSinkInterface>
@@ -282,8 +284,16 @@ BackendConnectionManager::persist(boost::property_tree::ptree& pt,
     config_->persist_internal(pt,
                               report_default);
     LOCK_CONNS();
-    backend_connection_pool_capacity.persist(pt,
-                                             report_default);
+
+#define P(x)                                            \
+    x.persist(pt,                                       \
+              report_default)
+
+    P(backend_connection_pool_capacity);
+    P(backend_interface_retries_on_error);
+    P(backend_interface_retry_interval_secs);
+
+#undef P
 }
 
 void
@@ -306,8 +316,15 @@ BackendConnectionManager::update(const boost::property_tree::ptree& pt,
         }
     }
 
-    backend_connection_pool_capacity.update(pt,
-                                            report);
+#define U(x)                                            \
+    x.update(pt,                                        \
+             report)
+
+    U(backend_connection_pool_capacity);
+    U(backend_interface_retries_on_error);
+    U(backend_interface_retry_interval_secs);
+
+#undef U
 }
 
 bool
