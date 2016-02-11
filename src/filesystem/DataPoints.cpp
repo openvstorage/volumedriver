@@ -214,4 +214,83 @@ operator<<(std::ostream& os,
         ",cache_misses=" << vsc.cache_misses;
 };
 
+namespace
+{
+
+vd::PerformanceCounters
+get_perf_counters(const vd::VolumeId& id)
+{
+    LOCKVD();
+
+    vd::PerformanceCounters pc;
+    std::swap(pc, api::performance_counters(id));
+    return pc;
+}
+
+std::ostream&
+stream_perf_counter(std::ostream& os,
+                    const vd::PerformanceCounter<uint64_t>& pc,
+                    const char* pfx)
+{
+    return os <<
+        "," << pfx << "_sum=" << pc.sum() <<
+        "," << pfx << "_sqsum=" << pc.sum_of_squares() <<
+        "," << pfx << "_min=" << pc.min() <<
+        "," << pfx << "_max=" << pc.max();
+
+    return os;
+}
+
+}
+
+VolumePerformanceCountersDataPoint::VolumePerformanceCountersDataPoint(const vd::VolumeId& vid)
+    : id(vid)
+    , perf_counters(get_perf_counters(vid))
+{}
+
+constexpr const char* VolumePerformanceCountersDataPoint::name;
+
+std::ostream&
+operator<<(std::ostream& os,
+           const VolumePerformanceCountersDataPoint& dp)
+{
+        name_and_id(os, dp);
+
+        stream_perf_counter(os,
+                            dp.perf_counters.write_request_size,
+                            "write_request_size");
+        stream_perf_counter(os
+                            , dp.perf_counters.write_request_usecs,
+                            "write_request_usecs");
+        stream_perf_counter(os,
+                            dp.perf_counters.unaligned_write_request_size,
+                            "unaligned_write_request_size");
+        stream_perf_counter(os,
+                            dp.perf_counters.backend_write_request_size,
+                            "backend_write_request_size");
+        stream_perf_counter(os,
+                            dp.perf_counters.backend_write_request_usecs,
+                            "backend_write_request_usecs");
+        stream_perf_counter(os,
+                            dp.perf_counters.read_request_size,
+                            "read_request_size");
+        stream_perf_counter(os,
+                            dp.perf_counters.read_request_usecs,
+                            "read_request_usecs");
+        stream_perf_counter(os,
+                            dp.perf_counters.unaligned_read_request_size,
+                            "unaligned_read_request_size");
+        stream_perf_counter(os,
+                            dp.perf_counters.backend_read_request_size,
+                            "backend_read_request_size");
+        stream_perf_counter(os,
+                            dp.perf_counters.backend_read_request_usecs,
+                            "backend_read_request_usecs");
+        stream_perf_counter(os,
+                            dp.perf_counters.sync_request_usecs,
+                            "sync_request_usecs");
+
+        return os;
+}
+
 }

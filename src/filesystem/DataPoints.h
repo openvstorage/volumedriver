@@ -18,6 +18,7 @@
 #include <iostream>
 
 #include <volumedriver/Api.h>
+#include <volumedriver/PerformanceCounters.h>
 
 namespace volumedriverfs
 {
@@ -147,6 +148,20 @@ struct VolumeSCOCacheDataPoint
 std::ostream&
 operator<<(std::ostream&,
            const VolumeSCOCacheDataPoint&);
+
+struct VolumePerformanceCountersDataPoint
+{
+    static constexpr const char* name = "volume_performance_counters";
+
+    std::string id;
+    volumedriver::PerformanceCounters perf_counters;
+
+    explicit VolumePerformanceCountersDataPoint(const volumedriver::VolumeId&);
+};
+
+std::ostream&
+operator<<(std::ostream&,
+           const VolumePerformanceCountersDataPoint&);
 
 }
 

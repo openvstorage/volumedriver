@@ -162,6 +162,7 @@ make_pull_funs()
                 for_each_volume<VolumeMetaDataStoreDataPoint>,
                 for_each_volume<VolumeClusterCacheDataPoint>,
                 for_each_volume<VolumeSCOCacheDataPoint>,
+                for_each_volume<VolumePerformanceCountersDataPoint>
             });
 }
 
