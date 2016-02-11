@@ -36,7 +36,10 @@
 namespace backend
 {
 
+namespace bpt = boost::property_tree;
+namespace bio = boost::iostreams;
 namespace ip = initialized_params;
+namespace yt = youtils;
 
 void
 BackendConnectionDeleter::operator()(BackendConnectionInterface* conn)
@@ -48,7 +51,7 @@ BackendConnectionDeleter::operator()(BackendConnectionInterface* conn)
 }
 
 // This thing makes it effectively singleton per backend!!
-BackendConnectionManager::BackendConnectionManager(const boost::property_tree::ptree& pt,
+BackendConnectionManager::BackendConnectionManager(const bpt::ptree& pt,
                                                    const RegisterComponent registerize)
     : VolumeDriverComponent(registerize,
                             pt)
@@ -220,7 +223,6 @@ BackendConnectionManager::newBackendSink(const Namespace& nspace,
     UNREACHABLE
 }
 
-
 std::unique_ptr<BackendSourceInterface>
 BackendConnectionManager::newBackendSource(const Namespace& nspace,
                                            const std::string& name)
@@ -263,7 +265,7 @@ BackendConnectionManager::getOutputStream(const Namespace& nspace,
                                           size_t bufsize)
 {
     ManagedBackendSink sink(shared_from_this(), nspace, name);
-    return std::unique_ptr<std::ostream>(new boost::iostreams::stream<ManagedBackendSink>(sink,
+    return std::unique_ptr<std::ostream>(new bio::stream<ManagedBackendSink>(sink,
                                                                              bufsize));
 }
 
@@ -273,20 +275,20 @@ BackendConnectionManager::getInputStream(const Namespace& nspace,
                                          size_t bufsize)
 {
     ManagedBackendSource source(shared_from_this(), nspace, name);
-    return std::unique_ptr<std::istream>(new boost::iostreams::stream<ManagedBackendSource>(source,
+    return std::unique_ptr<std::istream>(new bio::stream<ManagedBackendSource>(source,
                                                                                bufsize));
 }
 
 void
-BackendConnectionManager::persist(boost::property_tree::ptree& pt,
+BackendConnectionManager::persist(bpt::ptree& pt,
                                   const ReportDefault report_default) const
 {
     config_->persist_internal(pt,
                               report_default);
     LOCK_CONNS();
 
-#define P(x)                                            \
-    x.persist(pt,                                       \
+#define P(x)                                    \
+    x.persist(pt,                               \
               report_default)
 
     P(backend_connection_pool_capacity);
@@ -297,8 +299,8 @@ BackendConnectionManager::persist(boost::property_tree::ptree& pt,
 }
 
 void
-BackendConnectionManager::update(const boost::property_tree::ptree& pt,
-                                 youtils::UpdateReport& report)
+BackendConnectionManager::update(const bpt::ptree& pt,
+                                 yt::UpdateReport& report)
 {
     config_->update_internal(pt, report);
 
@@ -316,8 +318,8 @@ BackendConnectionManager::update(const boost::property_tree::ptree& pt,
         }
     }
 
-#define U(x)                                            \
-    x.update(pt,                                        \
+#define U(x)                                    \
+    x.update(pt,                                \
              report)
 
     U(backend_connection_pool_capacity);
@@ -328,8 +330,8 @@ BackendConnectionManager::update(const boost::property_tree::ptree& pt,
 }
 
 bool
-BackendConnectionManager::checkConfig(const boost::property_tree::ptree& pt,
-                                      youtils::ConfigurationReport& rep) const
+BackendConnectionManager::checkConfig(const bpt::ptree& pt,
+                                      yt::ConfigurationReport& rep) const
 {
     return config_->checkConfig_internal(pt,
                                          rep);
