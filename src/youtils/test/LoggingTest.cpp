@@ -208,9 +208,9 @@ TEST_F(TestLogging, trace_performance)
 namespace
 {
 
-struct FuckWithLogger
+struct PlayWithLogger
 {
-    FuckWithLogger()
+    PlayWithLogger()
         : stop_(false)
     {}
     typedef std::pair<std::string, Severity> filter_t;
@@ -291,7 +291,7 @@ TEST_F(TestLogging, DISABLED_torture)
 {
     const unsigned num_loggers = 32;
 
-    FuckWithLogger fucker;
+    PlayWithLogger pwl;
 
 
 
@@ -309,7 +309,7 @@ TEST_F(TestLogging, DISABLED_torture)
         threads.push_back(new boost::thread(boost::ref(logger)));
     }
 
-    boost::thread t(boost::ref(fucker));
+    boost::thread t(boost::ref(pwl));
 
     sleep(60);
 
@@ -325,7 +325,7 @@ TEST_F(TestLogging, DISABLED_torture)
     }
 
 
-    fucker.stop_ = true;
+    pwl.stop_ = true;
     t.join();
 }
 
