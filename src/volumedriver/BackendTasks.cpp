@@ -24,6 +24,7 @@
 #include <youtils/Timer.h>
 
 #include <backend/BackendException.h>
+#include <backend/BackendRequestParameters.h>
 
 namespace volumedriver
 {
@@ -31,11 +32,22 @@ namespace volumedriver
 namespace backend_task
 {
 
+namespace be = backend;
 namespace bc = boost::chrono;
 namespace yt = youtils;
 
 using ::youtils::FileUtils;
 using ::youtils::BarrierTask;
+
+namespace
+{
+
+const be::BackendRequestParameters fail_fast_request_params =
+    be::BackendRequestParameters()
+    .retries_on_error(1)
+    .retry_interval(bc::milliseconds(0))
+    .retry_backoff_multiplier(1);
+}
 
 WriteSCO::WriteSCO(VolumeInterface *vol,
                    DataStoreCallBack* cb,
@@ -76,7 +88,8 @@ WriteSCO::run(int threadid)
         volume_->getBackendInterface()->write(source,
                                               sco_.str(),
                                               overwrite_,
-                                              &cs_);
+                                              &cs_,
+                                              fail_fast_request_params);
 
         const auto duration_us(bc::duration_cast<bc::microseconds>(t.elapsed()));
         const uint64_t file_size = fs::file_size(source);
@@ -144,7 +157,8 @@ WriteTLog::run(int /*threadid*/)
         volume_->getBackendInterface()->write(tlogpath_.string(),
                                               boost::lexical_cast<std::string>(tlogid_),
                                               OverwriteObject::T,
-                                              &checksum_);
+                                              &checksum_,
+                                              fail_fast_request_params);
         volume_->tlogWrittenToBackendCallback(tlogid_,
                                               sconame_);
     }
@@ -198,7 +212,8 @@ WriteSnapshot::run(int /*threadID*/)
         volume_->getBackendInterface()->write(tmpfile,
                                               snapshotFilename(),
                                               OverwriteObject::T,
-                                              &chk);
+                                              &chk,
+                                              fail_fast_request_params);
     }
     CATCH_STD_ALL_EWHAT({
             LOG_WARN("Couldn't write snapshot to backend, will be retried: " << EWHAT);
@@ -228,7 +243,8 @@ DeleteTLog::run(int /*threadID*/)
     try
     {
         volume_->getBackendInterface()->remove(tlog_,
-                                               ObjectMayNotExist::T);
+                                               ObjectMayNotExist::T,
+                                               fail_fast_request_params);
         LOG_INFO("Deleted TLog " << tlog_);
     }
     CATCH_STD_ALL_LOGLEVEL_IGNORE("Exception deleting TLog " << tlog_,
@@ -259,7 +275,8 @@ BlockDeleteTLogs::run(int /*threadID*/)
         try
         {
             volume_->getBackendInterface()->remove(*it,
-                                                   ObjectMayNotExist::T);
+                                                   ObjectMayNotExist::T,
+                                                   fail_fast_request_params);
             LOG_INFO("Deleted TLog " << *it);
 
         }
@@ -301,7 +318,8 @@ BlockDeleteSCOS::run(int /*threadID*/)
         try
         {
             volume_->getBackendInterface()->remove(it->str(),
-                                                   ObjectMayNotExist::T);
+                                                   ObjectMayNotExist::T,
+                                                   fail_fast_request_params);
             LOG_INFO("Deleted SCO " << *it);
 
         }
@@ -338,7 +356,8 @@ DeleteSCO::run(int /*threadID*/)
     try
     {
         volume_->getBackendInterface()->remove(sco_.str(),
-                                               ObjectMayNotExist::T);
+                                               ObjectMayNotExist::T,
+                                               fail_fast_request_params);
         LOG_INFO("Deleted SCO " << sco_);
 
     }
