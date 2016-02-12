@@ -166,6 +166,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_retry_interval_secs,
                                       ShowDocumentation::T,
                                       0U);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_retry_backoff_multiplier,
+                                      backend_connection_manager_name,
+                                      "backend_interface_retry_backoff_multiplier",
+                                      "multiplier for the retry interval on each subsequent retry",
+                                      ShowDocumentation::T,
+                                      1.0);
+
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_type,
                                       backend_connection_manager_name,
                                       "backend_type",

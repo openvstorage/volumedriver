@@ -16,6 +16,7 @@
 #include "BackendConnectionManager.h"
 #include "BackendException.h"
 #include "BackendInterface.h"
+#include "BackendRequestParameters.h"
 #include "BackendTracePoints_tp.h"
 
 #include <boost/chrono.hpp>
@@ -30,39 +31,42 @@ namespace fs = boost::filesystem;
 namespace yt = youtils;
 
 BackendInterface::BackendInterface(const Namespace& nspace,
-                                   BackendConnectionManagerPtr conn_manager,
-                                   boost::posix_time::time_duration timeout,
-                                   const std::atomic<uint32_t>& retries,
-                                   const std::atomic<uint32_t>& retry_interval_secs)
+                                   BackendConnectionManagerPtr conn_manager)
     : nspace_(nspace)
     , conn_manager_(conn_manager)
-    , timeout_(timeout)
-    , retries_(retries)
-    , retry_interval_secs_(retry_interval_secs)
-{
-}
+{}
 
 template<typename ReturnType,
          typename... Args>
 ReturnType
-BackendInterface::do_wrap_(ReturnType
+BackendInterface::do_wrap_(const BackendRequestParameters& params,
+                           ReturnType
                            (BackendConnectionInterface::*mem_fun)(Args...),
                            Args... args)
 {
     unsigned retries = 0;
+    boost::chrono::milliseconds msecs = params.retry_interval_ ?
+        *params.retry_interval_ :
+        conn_manager_->retry_interval();
+
     while (true)
     {
         BackendConnectionInterfacePtr
             conn(conn_manager_->getConnection(retries ?
                                               ForceNewConnection::T :
                                               ForceNewConnection::F));
-        conn->timeout(timeout_);
+        conn->timeout(params.timeout_ ?
+                      *params.timeout_ :
+                      conn_manager_->default_timeout());
 
         if (retries != 0)
         {
             LOG_WARN("Retrying with new connection (retry: " <<
-                     retries << ", sleep before retry: " << retry_interval_secs_ << " secs)");
-            boost::this_thread::sleep_for(boost::chrono::seconds(retry_interval_secs_));
+                     retries << ", sleep before retry: " << msecs << ")");
+            boost::this_thread::sleep_for(msecs);
+            msecs *= params.retry_backoff_multiplier_ ?
+                *params.retry_backoff_multiplier_ :
+                conn_manager_->retry_backoff_multiplier();
         }
 
         LOG_TRACE("Got connection handle " << conn.get());
@@ -87,7 +91,11 @@ BackendInterface::do_wrap_(ReturnType
         {
             LOG_ERROR("Problem with connection " << conn.get() <<
                       ": " << e.what());
-            if (retries++ >= retries_)
+            const uint32_t r = params.retries_on_error_ ?
+                *params.retries_on_error_ :
+                conn_manager_->retries_on_error();
+
+            if (retries++ >= r)
             {
                 LOG_ERROR("Giving up connection " << conn.get());
                 throw;
@@ -105,14 +113,16 @@ BackendInterface::do_wrap_(ReturnType
 template<typename ReturnType,
          typename... Args>
 ReturnType
-BackendInterface::wrap_(ReturnType
+BackendInterface::wrap_(const BackendRequestParameters& params,
+                        ReturnType
                         (BackendConnectionInterface::*mem_fun)(const Namespace&,
                                                                Args...),
                         Args... args)
 {
     return do_wrap_<ReturnType,
                     const Namespace&,
-                    Args...>(mem_fun,
+                    Args...>(params,
+                             mem_fun,
                              nspace_,
                              args...);
 }
@@ -159,7 +169,8 @@ BackendInterface::handle_eventual_consistency_(InsistOnLatestVersion insist_on_l
 void
 BackendInterface::read(const fs::path& dst,
                        const std::string& name,
-                       InsistOnLatestVersion insist_on_latest)
+                       InsistOnLatestVersion insist_on_latest,
+                       const BackendRequestParameters& params)
 {
     tracepoint(openvstorage_backend,
                backend_interface_get_object_start,
@@ -182,20 +193,23 @@ BackendInterface::read(const fs::path& dst,
                  wrap_<void,
                        decltype(dst),
                        decltype(name),
-                       decltype(insist_on_latest)>(&BackendConnectionInterface::read,
+                       decltype(insist_on_latest)>(params,
+                                                   &BackendConnectionInterface::read,
                                                    dst,
                                                    name,
                                                    insist);
              });
 
-    handle_eventual_consistency_<void>(insist_on_latest, std::move(fun));
+    handle_eventual_consistency_<void>(insist_on_latest,
+                                       std::move(fun));
 }
 
 void
 BackendInterface::write(const fs::path& src,
                         const std::string& name,
                         const OverwriteObject overwrite,
-                        const yt::CheckSum* chksum)
+                        const yt::CheckSum* chksum,
+                        const BackendRequestParameters& params)
 {
     tracepoint(openvstorage_backend,
                backend_interface_put_object_start,
@@ -217,7 +231,8 @@ BackendInterface::write(const fs::path& src,
           decltype(src),
           decltype(name),
           OverwriteObject,
-          decltype(chksum)>(&BackendConnectionInterface::write,
+          decltype(chksum)>(params,
+                            &BackendConnectionInterface::write,
                             src,
                             name,
                             overwrite,
@@ -225,26 +240,31 @@ BackendInterface::write(const fs::path& src,
 }
 
 yt::CheckSum
-BackendInterface::getCheckSum(const std::string& name)
+BackendInterface::getCheckSum(const std::string& name,
+                              const BackendRequestParameters& params)
 {
     return wrap_<yt::CheckSum,
-                 decltype(name)>(&BackendConnectionInterface::getCheckSum,
+                 decltype(name)>(params,
+                                 &BackendConnectionInterface::getCheckSum,
                                  name);
 }
 
 bool
-BackendInterface::namespaceExists()
+BackendInterface::namespaceExists(const BackendRequestParameters& params)
 {
-    return wrap_<bool>(&BackendConnectionInterface::namespaceExists);
+    return wrap_<bool>(params,
+                       &BackendConnectionInterface::namespaceExists);
 }
 
 void
-BackendInterface::createNamespace(const NamespaceMustNotExist must_not_exist)
+BackendInterface::createNamespace(const NamespaceMustNotExist must_not_exist,
+                                  const BackendRequestParameters& params)
 {
     try
     {
         wrap_<void,
-              NamespaceMustNotExist>(&BackendConnectionInterface::createNamespace,
+              NamespaceMustNotExist>(params,
+                                     &BackendConnectionInterface::createNamespace,
                                      must_not_exist);
     }
     catch (BackendNamespaceAlreadyExistsException&)
@@ -257,41 +277,48 @@ BackendInterface::createNamespace(const NamespaceMustNotExist must_not_exist)
 }
 
 void
-BackendInterface::deleteNamespace()
+BackendInterface::deleteNamespace(const BackendRequestParameters& params)
 {
-    wrap_<void>(&BackendConnectionInterface::deleteNamespace);
+    wrap_<void>(params,
+                &BackendConnectionInterface::deleteNamespace);
 }
 
 void
-BackendInterface::clearNamespace()
+BackendInterface::clearNamespace(const BackendRequestParameters& params)
 {
-    wrap_<void>(&BackendConnectionInterface::clearNamespace);
+    wrap_<void>(params,
+                &BackendConnectionInterface::clearNamespace);
 }
 
 void
-BackendInterface::invalidate_cache()
+BackendInterface::invalidate_cache(const BackendRequestParameters& params)
 {
     do_wrap_<void,
-             const boost::optional<Namespace>&>(&BackendConnectionInterface::invalidate_cache,
+             const boost::optional<Namespace>&>(params,
+                                                &BackendConnectionInterface::invalidate_cache,
                                                 nspace_);
 }
 
 bool
-BackendInterface::objectExists(const std::string& name)
+BackendInterface::objectExists(const std::string& name,
+                               const BackendRequestParameters& params)
 {
     return wrap_<bool,
-                 decltype(name)>(&BackendConnectionInterface::objectExists,
+                 decltype(name)>(params,
+                                 &BackendConnectionInterface::objectExists,
                                  name);
 
 }
 
 void
 BackendInterface::remove(const std::string& name,
-                         const ObjectMayNotExist may_not_exist)
+                         const ObjectMayNotExist may_not_exist,
+                         const BackendRequestParameters& params)
 {
     wrap_<void,
           decltype(name),
-          ObjectMayNotExist>(&BackendConnectionInterface::remove,
+          ObjectMayNotExist>(params,
+                             &BackendConnectionInterface::remove,
                              name,
                              may_not_exist);
 }
@@ -299,7 +326,8 @@ BackendInterface::remove(const std::string& name,
 void
 BackendInterface::partial_read(const BackendConnectionInterface::PartialReads& partial_reads,
                                BackendConnectionInterface::PartialReadFallbackFun& fallback_fun,
-                               InsistOnLatestVersion insist_on_latest)
+                               InsistOnLatestVersion insist_on_latest,
+                               const BackendRequestParameters& params)
 {
     size_t bytes = 0;
 
@@ -333,10 +361,11 @@ BackendInterface::partial_read(const BackendConnectionInterface::PartialReads& p
                  wrap_<void,
                        decltype(partial_reads),
                        decltype(insist),
-                       decltype(fallback_fun)>(&BackendConnectionInterface::partial_read,
-                                         partial_reads,
-                                         insist,
-                                         fallback_fun);
+                       decltype(fallback_fun)>(params,
+                                               &BackendConnectionInterface::partial_read,
+                                               partial_reads,
+                                               insist,
+                                               fallback_fun);
              });
 
     handle_eventual_consistency_<void>(insist_on_latest,
@@ -353,25 +382,26 @@ BackendInterfacePtr
 BackendInterface::cloneWithNewNamespace(const Namespace& new_nspace) const
 {
     return BackendInterfacePtr(new BackendInterface(new_nspace,
-                                                    conn_manager_,
-                                                    timeout_,
-                                                    retries_,
-                                                    retry_interval_secs_));
+                                                    conn_manager_));
 }
 
 uint64_t
-BackendInterface::getSize(const std::string& name)
+BackendInterface::getSize(const std::string& name,
+                          const BackendRequestParameters& params)
 {
     return wrap_<uint64_t,
-                 decltype(name)>(&BackendConnectionInterface::getSize,
+                 decltype(name)>(params,
+                                 &BackendConnectionInterface::getSize,
                                  name);
 }
 
 void
-BackendInterface::listObjects(std::list<std::string>& out)
+BackendInterface::listObjects(std::list<std::string>& out,
+                              const BackendRequestParameters& params)
 {
     return wrap_<void,
-                 decltype(out)>(&BackendConnectionInterface::listObjects,
+                 decltype(out)>(params,
+                                &BackendConnectionInterface::listObjects,
                                 out);
 }
 
@@ -392,7 +422,8 @@ BackendInterface::hasExtendedApi()
 ObjectInfo
 BackendInterface::x_read(std::stringstream& dst,
                          const std::string& name,
-                         InsistOnLatestVersion insist_on_latest)
+                         InsistOnLatestVersion insist_on_latest,
+                         const BackendRequestParameters& params)
 {
     typedef ObjectInfo
         (BackendConnectionInterface::*fn_type)(const Namespace&,
@@ -405,7 +436,8 @@ BackendInterface::x_read(std::stringstream& dst,
                  return wrap_<ObjectInfo,
                               decltype(dst),
                               decltype(name),
-                              decltype(insist)>(static_cast<fn_type>(&BackendConnectionInterface::x_read),
+                              decltype(insist)>(params,
+                                                static_cast<fn_type>(&BackendConnectionInterface::x_read),
                                                 dst,
                                                 name,
                                                 insist);
@@ -417,7 +449,8 @@ BackendInterface::x_read(std::stringstream& dst,
 ObjectInfo
 BackendInterface::x_read(std::string& dst,
                          const std::string& name,
-                         InsistOnLatestVersion insist_on_latest)
+                         InsistOnLatestVersion insist_on_latest,
+                         const BackendRequestParameters& params)
 {
     typedef ObjectInfo
         (BackendConnectionInterface::*fn_type)(const Namespace&,
@@ -430,7 +463,8 @@ BackendInterface::x_read(std::string& dst,
                  return wrap_<ObjectInfo,
                               decltype(dst),
                               decltype(name),
-                              decltype(insist)>(static_cast<fn_type>(&BackendConnectionInterface::x_read),
+                              decltype(insist)>(params,
+                                                static_cast<fn_type>(&BackendConnectionInterface::x_read),
                                                 dst,
                                                 name,
                                                 insist);
@@ -445,7 +479,8 @@ BackendInterface::x_write(const std::string& src,
                           const std::string& name,
                           const OverwriteObject overwrite,
                           const backend::ETag* etag,
-                          const yt::CheckSum* chksum)
+                          const yt::CheckSum* chksum,
+                          const BackendRequestParameters& params)
 {
     typedef ObjectInfo
         (BackendConnectionInterface::*fn_type)(const Namespace&,
@@ -460,7 +495,8 @@ BackendInterface::x_write(const std::string& src,
                  decltype(name),
                  OverwriteObject,
                  decltype(etag),
-                 decltype(chksum)>(static_cast<fn_type>(&BackendConnectionInterface::x_write),
+                 decltype(chksum)>(params,
+                                   static_cast<fn_type>(&BackendConnectionInterface::x_write),
                                    src,
                                    name,
                                    overwrite,

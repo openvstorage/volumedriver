@@ -16,6 +16,7 @@
 #define BACKEND_INTERFACE_H_
 
 #include "BackendConnectionManager.h"
+#include "BackendRequestParameters.h"
 #include "BackendPolicyConfig.h"
 
 #include <functional>
@@ -49,58 +50,67 @@ public:
     void
     read(const boost::filesystem::path& dst,
          const std::string& name,
-         InsistOnLatestVersion insist_on_latest);
+         InsistOnLatestVersion insist_on_latest,
+         const BackendRequestParameters& = BackendRequestParameters());
 
     void
     write(const boost::filesystem::path& src,
           const std::string& name,
           const OverwriteObject = OverwriteObject::F,
-          const youtils::CheckSum* chksum = 0);
+          const youtils::CheckSum* chksum = 0,
+          const BackendRequestParameters& = BackendRequestParameters());
 
     youtils::CheckSum
-    getCheckSum(const std::string& name);
+    getCheckSum(const std::string& name,
+                const BackendRequestParameters& = BackendRequestParameters());
 
     bool
-    namespaceExists();
+    namespaceExists(const BackendRequestParameters& = BackendRequestParameters());
 
     void
-    createNamespace(const NamespaceMustNotExist = NamespaceMustNotExist::T);
+    createNamespace(const NamespaceMustNotExist = NamespaceMustNotExist::T,
+                    const BackendRequestParameters& = BackendRequestParameters());
 
     void
     partial_read(const BackendConnectionInterface::PartialReads& partial_reads,
                  BackendConnectionInterface::PartialReadFallbackFun& fallback_fun,
-                 InsistOnLatestVersion);
+                 InsistOnLatestVersion,
+                 const BackendRequestParameters& = BackendRequestParameters());
 
     void
-    deleteNamespace();
+    deleteNamespace(const BackendRequestParameters& = BackendRequestParameters());
 
     void
-    clearNamespace();
+    clearNamespace(const BackendRequestParameters& = BackendRequestParameters());
 
     void
-    invalidate_cache();
+    invalidate_cache(const BackendRequestParameters& = BackendRequestParameters());
 
     void
-    invalidate_cache_for_all_namespaces();
+    invalidate_cache_for_all_namespaces(const BackendRequestParameters& = BackendRequestParameters());
 
     bool
-    objectExists(const std::string& name);
+    objectExists(const std::string& name,
+                 const BackendRequestParameters& = BackendRequestParameters());
 
     void
     remove(const std::string& name,
-           const ObjectMayNotExist = ObjectMayNotExist::F);
+           const ObjectMayNotExist = ObjectMayNotExist::F,
+           const BackendRequestParameters& = BackendRequestParameters());
 
     BackendInterfacePtr
     clone() const;
 
     BackendInterfacePtr
-    cloneWithNewNamespace(const Namespace& new_nspace) const;
+    cloneWithNewNamespace(const Namespace&) const;
 
     uint64_t
-    getSize(const std::string& name);
+    getSize(const std::string& name,
+            const BackendRequestParameters& = BackendRequestParameters());
 
     void
-    listObjects(std::list<std::string>& out);
+    listObjects(std::list<std::string>& out,
+                const BackendRequestParameters& = BackendRequestParameters());
 
     const Namespace&
     getNS() const;
@@ -110,7 +120,8 @@ public:
     void
     fillObject(ObjectType& obj,
                const std::string& nameOnBackend,
-               InsistOnLatestVersion insist_on_latest)
+               InsistOnLatestVersion insist_on_latest,
+               const BackendRequestParameters& params = BackendRequestParameters())
     {
         try
         {
@@ -119,7 +130,10 @@ public:
                                                                    "-" +
                                                                    nameOnBackend));
             ALWAYS_CLEANUP_FILE_TPL(p);
-            read(p, nameOnBackend, insist_on_latest);
+            read(p,
+                 nameOnBackend,
+                 insist_on_latest,
+                 params);
             boost::filesystem::ifstream ifs(p);
             iarchive_type ia(ifs);
             ia & obj;
@@ -135,7 +149,8 @@ public:
     fillObject(ObjectType& obj,
                const std::string& nameOnBackend,
                const char* nvp_name,
-               InsistOnLatestVersion insist_on_latest)
+               InsistOnLatestVersion insist_on_latest,
+               const BackendRequestParameters& params = BackendRequestParameters())
     {
         try
         {
@@ -144,7 +159,10 @@ public:
                                                                    "-" +
                                                                    nameOnBackend));
             ALWAYS_CLEANUP_FILE_TPL(p);
-            read(p, nameOnBackend, insist_on_latest);
+            read(p,
+                 nameOnBackend,
+                 insist_on_latest,
+                 params);
             boost::filesystem::ifstream ifs(p);
             iarchive_type ia(ifs);
             ia & boost::serialization::make_nvp(nvp_name, obj);
@@ -162,26 +180,33 @@ public:
     ObjectInfo
     x_read(std::string& destination,
            const std::string& name,
-           InsistOnLatestVersion insist_on_latest);
+           InsistOnLatestVersion insist_on_latest,
+           const BackendRequestParameters& = BackendRequestParameters());
 
     ObjectInfo
     x_read(std::stringstream& dst,
            const std::string& name,
-           InsistOnLatestVersion insist_on_latest);
+           InsistOnLatestVersion insist_on_latest,
+           const BackendRequestParameters& = BackendRequestParameters());
 
     ObjectInfo
     x_write(const std::string& istr,
             const std::string& name,
             const OverwriteObject overwrite = OverwriteObject::F,
             const backend::ETag* etag = 0,
-            const youtils::CheckSum* chksum = 0);
+            const youtils::CheckSum* chksum = 0,
+            const BackendRequestParameters& = BackendRequestParameters());
 
     template<typename ObjectType>
     void
     fillObject(ObjectType& obj,
-               InsistOnLatestVersion insist_on_latest)
+               InsistOnLatestVersion insist_on_latest,
+               const BackendRequestParameters& params = BackendRequestParameters())
     {
-        fillObject(obj, ObjectType::config_backend_name, insist_on_latest);
+        fillObject(obj,
+                   ObjectType::config_backend_name,
+                   insist_on_latest,
+                   params);
     }
 
     template<typename ObjectType,
@@ -189,7 +214,8 @@ public:
     void
     writeObject(const ObjectType& obj,
                 const std::string& nameOnBackend,
-                const OverwriteObject overwrite = OverwriteObject::F)
+                const OverwriteObject overwrite = OverwriteObject::F,
+                const BackendRequestParameters& params = BackendRequestParameters())
     {
         try
         {
@@ -198,7 +224,11 @@ public:
                                                                    nameOnBackend));
             ALWAYS_CLEANUP_FILE_TPL(p);
             youtils::Serialization::serializeAndFlush<oarchive_t, ObjectType>(p, obj);
-            write(p, nameOnBackend, overwrite);
+            write(p,
+                  nameOnBackend,
+                  overwrite,
+                  nullptr,
+                  params);
         }
         CATCH_STD_ALL_LOG_RETHROW("Problem writing " << nameOnBackend << " to " <<
                                   getNS());
@@ -208,17 +238,20 @@ public:
              typename oarchive_t = typename ObjectType::oarchive_type>
     void
     writeObject(const ObjectType& obj,
-                const OverwriteObject overwrite = OverwriteObject::F)
+                const OverwriteObject overwrite = OverwriteObject::F,
+                const BackendRequestParameters& params = BackendRequestParameters())
     {
         return writeObject(obj,
                            ObjectType::config_backend_name,
-                           overwrite);
+                           overwrite,
+                           params);
     }
 
     template<typename ObjectType>
     std::unique_ptr<ObjectType>
     getIstreamableObject(const std::string& nameOnBackend,
-                         InsistOnLatestVersion insist_on_latest)
+                         InsistOnLatestVersion insist_on_latest,
+                         const BackendRequestParameters& params = BackendRequestParameters())
     {
         try
         {
@@ -226,42 +259,41 @@ public:
                 p(youtils::FileUtils::create_temp_file_in_temp_dir(getNS().str() + "-" +
                                                                    nameOnBackend));
             ALWAYS_CLEANUP_FILE_TPL(p);
-            read(p, nameOnBackend, insist_on_latest);
+            read(p,
+                 nameOnBackend,
+                 insist_on_latest,
+                 params);
             boost::filesystem::ifstream ifs(p);
             return std::unique_ptr<ObjectType>(new ObjectType(ifs));
         }
         CATCH_STD_ALL_LOG_RETHROW("Problem getting " << nameOnBackend << " from " <<
-                                  getNS())
-            }
+                                  getNS());
+    }
 
 private:
     DECLARE_LOGGER("BackendInterface");
 
     const Namespace nspace_;
     BackendConnectionManagerPtr conn_manager_;
-    const boost::posix_time::time_duration timeout_;
-    const std::atomic<uint32_t>& retries_;
-    const std::atomic<uint32_t>& retry_interval_secs_;
 
     // only the BackendConnectionManager is allowed to create it - everyone else needs to
     // use BackendInterfacePtrs obtained from the BackendConnectionManager.
-    BackendInterface(const Namespace& nspace,
-                     BackendConnectionManagerPtr cm,
-                     boost::posix_time::time_duration timeout,
-                     const std::atomic<uint32_t>& retries,
-                     const std::atomic<uint32_t>& retry_interval_secs);
+    BackendInterface(const Namespace&,
+                     BackendConnectionManagerPtr);
 
     template<typename ReturnType,
              typename... Args>
     ReturnType
-    wrap_(ReturnType(BackendConnectionInterface::*mem_fun)(const Namespace&,
+    wrap_(const BackendRequestParameters&,
+          ReturnType(BackendConnectionInterface::*mem_fun)(const Namespace&,
                                                            Args...),
           Args... args);
 
     template<typename ReturnType,
              typename... Args>
     ReturnType
-    do_wrap_(ReturnType(BackendConnectionInterface::*mem_fun)(Args...),
+    do_wrap_(const BackendRequestParameters&,
+             ReturnType(BackendConnectionInterface::*mem_fun)(Args...),
              Args... args);
 
     template<typename R>

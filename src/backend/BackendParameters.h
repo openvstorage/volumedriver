@@ -65,6 +65,8 @@ DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_retries_on_e
                                                   std::atomic<uint32_t>);
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_retry_interval_secs,
                                                   std::atomic<uint32_t>);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_retry_backoff_multiplier,
+                                                  std::atomic<double>);
 
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(backend_type, backend::BackendType);
 DECLARE_INITIALIZED_PARAM(local_connection_path, std::string);

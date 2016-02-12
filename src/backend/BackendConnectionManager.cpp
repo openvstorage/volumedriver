@@ -58,6 +58,7 @@ BackendConnectionManager::BackendConnectionManager(const bpt::ptree& pt,
     , backend_connection_pool_capacity(pt)
     , backend_interface_retries_on_error(pt)
     , backend_interface_retry_interval_secs(pt)
+    , backend_interface_retry_backoff_multiplier(pt)
     , config_(BackendConfig::makeBackendConfig(pt))
 {
     switch (config_->backend_type.value())
@@ -66,7 +67,7 @@ BackendConnectionManager::BackendConnectionManager(const bpt::ptree& pt,
         {
             const LocalConfig* config(dynamic_cast<const LocalConfig*>(config_.get()));
             VERIFY(config);
-            default_timeout = boost::posix_time::seconds(1);
+            default_timeout_ = boost::posix_time::seconds(1);
             return;
         }
     case BackendType::S3:
@@ -178,10 +179,7 @@ BackendInterfacePtr
 BackendConnectionManager::newBackendInterface(const Namespace& nspace)
 {
     return BackendInterfacePtr(new BackendInterface(nspace,
-                                                    shared_from_this(),
-                                                    default_timeout,
-                                                    backend_interface_retries_on_error.value(),
-                                                    backend_interface_retry_interval_secs.value()));
+                                                    shared_from_this()));
 }
 
 std::unique_ptr<BackendSinkInterface>
@@ -294,6 +292,7 @@ BackendConnectionManager::persist(bpt::ptree& pt,
     P(backend_connection_pool_capacity);
     P(backend_interface_retries_on_error);
     P(backend_interface_retry_interval_secs);
+    P(backend_interface_retry_backoff_multiplier);
 
 #undef P
 }
@@ -325,6 +324,7 @@ BackendConnectionManager::update(const bpt::ptree& pt,
     U(backend_connection_pool_capacity);
     U(backend_interface_retries_on_error);
     U(backend_interface_retry_interval_secs);
+    U(backend_interface_retry_backoff_multiplier);
 
 #undef U
 }

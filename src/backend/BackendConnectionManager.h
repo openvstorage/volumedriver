@@ -15,10 +15,11 @@
 #ifndef BACKEND_CONNECTION_MANAGER_H_
 #define BACKEND_CONNECTION_MANAGER_H_
 
-#include "BackendParameters.h"
 #include "BackendConnectionInterface.h"
+#include "BackendParameters.h"
 #include "Namespace.h"
 
+#include <boost/chrono.hpp>
 #include <boost/ptr_container/ptr_list.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/lock_guard.hpp>
@@ -128,7 +129,7 @@ public:
         {
             BackendConnectionInterfacePtr conn(connections_.pop_front().release(),
                                 std::move(d));
-            conn->timeout(default_timeout);
+            conn->timeout(default_timeout_);
             LOG_TRACE("handing out existing connection handle " << conn.get());
             return conn;
         }
@@ -184,12 +185,38 @@ public:
                 youtils::ConfigurationReport& rep) const override final;
     // end VolumeDriverComponent Interface
 
+    uint32_t
+    retries_on_error() const
+    {
+        return backend_interface_retries_on_error.value();
+    }
+
+    boost::chrono::milliseconds
+    retry_interval() const
+    {
+        return
+            boost::chrono::milliseconds(backend_interface_retry_interval_secs.value() * 1000);
+    }
+
+    double
+    retry_backoff_multiplier() const
+    {
+        return backend_interface_retry_backoff_multiplier.value();
+    }
+
+    boost::posix_time::time_duration
+    default_timeout() const
+    {
+        return default_timeout_;
+    }
+
 private:
     DECLARE_LOGGER("BackendConnectionManager");
 
     DECLARE_PARAMETER(backend_connection_pool_capacity);
     DECLARE_PARAMETER(backend_interface_retries_on_error);
     DECLARE_PARAMETER(backend_interface_retry_interval_secs);
+    DECLARE_PARAMETER(backend_interface_retry_backoff_multiplier);
 
     std::unique_ptr<BackendConfig> config_;
 
@@ -208,7 +235,7 @@ private:
     BackendConnectionInterface*
     newConnection_();
 
-    boost::posix_time::time_duration default_timeout;
+    boost::posix_time::time_duration default_timeout_;
 
     void
     releaseConnection(BackendConnectionInterface* conn);
