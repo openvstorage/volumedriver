@@ -146,7 +146,7 @@ public:
 
     // For Testing
     void
-    fuckup_fd_forread()
+    fail_fd_forread()
     {
         if(device_fd_ >= 0)
         {
@@ -161,7 +161,7 @@ public:
     }
 
     void
-    fuckup_fd_forwrite()
+    fail_fd_forwrite()
     {
         if(device_fd_ >= 0)
         {

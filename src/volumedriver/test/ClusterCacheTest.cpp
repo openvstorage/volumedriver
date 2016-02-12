@@ -123,7 +123,7 @@ public:
                     Misses(test_size),
                     Entries(0));
 
-        VolManager::get()->getClusterCache().fuckup_fd_forread();
+        VolManager::get()->getClusterCache().fail_fd_forread();
 
         checkClusters(v, test_size, "_", mod);
 
@@ -188,7 +188,7 @@ public:
                     Misses(test_size),
                     Entries(test_size));
 
-        VolManager::get()->getClusterCache().fuckup_fd_forread();
+        VolManager::get()->getClusterCache().fail_fd_forread();
 
         checkClusters(v, test_size, "_", mod);
 
@@ -251,7 +251,7 @@ public:
                     Misses(mod),
                     Entries(mod));
 
-        VolManager::get()->getClusterCache().fuckup_fd_forread();
+        VolManager::get()->getClusterCache().fail_fd_forread();
 
         checkClusters(v, test_size, "_", mod);
 
@@ -302,7 +302,7 @@ public:
                     Misses(0),
                     Entries(test_size));
 
-        VolManager::get()->getClusterCache().fuckup_fd_forread();
+        VolManager::get()->getClusterCache().fail_fd_forread();
 
         checkClusters(v, test_size, "_", mod);
 
@@ -366,7 +366,7 @@ public:
                     Misses(0),
                     Entries(mod));
 
-        VolManager::get()->getClusterCache().fuckup_fd_forread();
+        VolManager::get()->getClusterCache().fail_fd_forread();
 
         checkClusters(v, test_size, "_", mod);
 
@@ -973,7 +973,7 @@ TEST_P(ClusterCacheTest, offline1_nocache)
                 Misses(test_size),
                 Entries(0));
 
-    VolManager::get()->getClusterCache().fuckup_fd_forread();
+    VolManager::get()->getClusterCache().fail_fd_forread();
 
     checkClusters(v1, test_size, "_", mod);
 
@@ -1014,7 +1014,7 @@ TEST_P(ClusterCacheTest, offline2)
 
     writeClusters(v1, test_size, "_", mod);
 
-    VolManager::get()->getClusterCache().fuckup_fd_forwrite();
+    VolManager::get()->getClusterCache().fail_fd_forwrite();
 
     CHECK_STATS(Devices(2),
                 Hits(0),

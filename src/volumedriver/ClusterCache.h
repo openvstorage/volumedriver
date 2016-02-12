@@ -1377,15 +1377,15 @@ public:
     }
 
     void
-    fuckup_fd_forread()
+    fail_fd_forread()
     {
-        manager_.fuckup_fd_forread();
+        manager_.fail_fd_forread();
     }
 
     void
-    fuckup_fd_forwrite()
+    fail_fd_forwrite()
     {
-        manager_.fuckup_fd_forwrite();
+        manager_.fail_fd_forwrite();
     }
 
 private:

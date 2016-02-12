@@ -181,15 +181,15 @@ public:
 
     // For Testing
     void
-    fuckup_fd_forread()
+    fail_fd_forread()
     {
-        store_.fuckup_fd_forread();
+        store_.fail_fd_forread();
     }
 
     void
-    fuckup_fd_forwrite()
+    fail_fd_forwrite()
     {
-        store_.fuckup_fd_forwrite();
+        store_.fail_fd_forwrite();
     }
 
     static const uint64_t cluster_size_;

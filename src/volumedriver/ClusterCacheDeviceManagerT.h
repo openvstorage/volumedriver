@@ -149,20 +149,20 @@ public:
     };
 
     void
-    fuckup_fd_forread()
+    fail_fd_forread()
     {
         for (auto& d : devices)
         {
-            d->fuckup_fd_forread();
+            d->fail_fd_forread();
         }
     }
 
     void
-    fuckup_fd_forwrite()
+    fail_fd_forwrite()
     {
         for (auto& d : devices)
         {
-            d->fuckup_fd_forwrite();
+            d->fail_fd_forwrite();
         }
     }
 

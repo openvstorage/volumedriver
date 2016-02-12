@@ -96,7 +96,7 @@ public:
         // mdstore_options_->options_description(desc_);
         strm << desc_;
         youtils::print_doc<volumedrivertest::metadata_options_t>::go(strm);
-        // should log to the stream but logs to std::cout... I don't give a flying fuck.
+        // should log to the stream but logs to std::cout...
         log_backend_setup_help(strm);
 
         log_google_test_help(strm);

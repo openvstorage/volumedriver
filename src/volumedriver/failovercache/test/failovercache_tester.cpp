@@ -536,7 +536,8 @@ public:
                 {
                     LOG_INFO("Test 3");
                     double a = drand48();
-                    // If last sco not on failover has offset 32 we are fucked
+                    // If last sco not on failover has offset 32 we have a
+                    // problem
                     SCONumber num1 = latestSCONotOnFailOver.number();
                     SCONumber num2 = latestSCOOnFailOver.number();
                     SCONumber num3 = std::max((int)(num1 + a * (num2 - num1)), 1);
@@ -572,7 +573,7 @@ public:
                 cache_.flush();
                 break;
             default:
-            LOG_FATAL("How the fuck did you get here");
+            LOG_FATAL("How did you get here");
             }
         }
         LOG_INFO("Exiting test for " << content_);

@@ -1674,7 +1674,7 @@ TEST_P(VolumeBackupTest, impotence_test)
     removeVolumeCompletely(v1);
 }
 
-TEST_P(VolumeBackupTest, unfuck_fucked_up_backend)
+TEST_P(VolumeBackupTest, fix_backend)
 {
     auto ns1_ptr = make_random_namespace();
     const Namespace& ns1 = ns1_ptr->ns();
