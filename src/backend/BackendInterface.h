@@ -16,7 +16,6 @@
 #define BACKEND_INTERFACE_H_
 
 #include "BackendConnectionManager.h"
-#include "BackendRequestParameters.h"
 #include "BackendPolicyConfig.h"
 
 #include <functional>
@@ -35,6 +34,7 @@ namespace backend
 {
 
 class BackendConnectionInterface;
+class BackendRequestParameters;
 
 // not a interface in terms of polymorphism anymore - rename?
 class BackendInterface
@@ -47,56 +47,59 @@ public:
     BackendInterface&
     operator=(BackendInterface&) = delete;
 
+    static const BackendRequestParameters&
+    default_request_parameters();
+
     void
     read(const boost::filesystem::path& dst,
          const std::string& name,
          InsistOnLatestVersion insist_on_latest,
-         const BackendRequestParameters& = BackendRequestParameters());
+         const BackendRequestParameters& = default_request_parameters());
 
     void
     write(const boost::filesystem::path& src,
           const std::string& name,
           const OverwriteObject = OverwriteObject::F,
           const youtils::CheckSum* chksum = 0,
-          const BackendRequestParameters& = BackendRequestParameters());
+          const BackendRequestParameters& = default_request_parameters());
 
     youtils::CheckSum
     getCheckSum(const std::string& name,
-                const BackendRequestParameters& = BackendRequestParameters());
+                const BackendRequestParameters& = default_request_parameters());
 
     bool
-    namespaceExists(const BackendRequestParameters& = BackendRequestParameters());
+    namespaceExists(const BackendRequestParameters& = default_request_parameters());
 
     void
     createNamespace(const NamespaceMustNotExist = NamespaceMustNotExist::T,
-                    const BackendRequestParameters& = BackendRequestParameters());
+                    const BackendRequestParameters& = default_request_parameters());
 
     void
     partial_read(const BackendConnectionInterface::PartialReads& partial_reads,
                  BackendConnectionInterface::PartialReadFallbackFun& fallback_fun,
                  InsistOnLatestVersion,
-                 const BackendRequestParameters& = BackendRequestParameters());
+                 const BackendRequestParameters& = default_request_parameters());
 
     void
-    deleteNamespace(const BackendRequestParameters& = BackendRequestParameters());
+    deleteNamespace(const BackendRequestParameters& = default_request_parameters());
 
     void
-    clearNamespace(const BackendRequestParameters& = BackendRequestParameters());
+    clearNamespace(const BackendRequestParameters& = default_request_parameters());
 
     void
-    invalidate_cache(const BackendRequestParameters& = BackendRequestParameters());
+    invalidate_cache(const BackendRequestParameters& = default_request_parameters());
 
     void
-    invalidate_cache_for_all_namespaces(const BackendRequestParameters& = BackendRequestParameters());
+    invalidate_cache_for_all_namespaces(const BackendRequestParameters& = default_request_parameters());
 
     bool
     objectExists(const std::string& name,
-                 const BackendRequestParameters& = BackendRequestParameters());
+                 const BackendRequestParameters& = default_request_parameters());
 
     void
     remove(const std::string& name,
            const ObjectMayNotExist = ObjectMayNotExist::F,
-           const BackendRequestParameters& = BackendRequestParameters());
+           const BackendRequestParameters& = default_request_parameters());
 
     BackendInterfacePtr
     clone() const;
@@ -106,11 +109,11 @@ public:
 
     uint64_t
     getSize(const std::string& name,
-            const BackendRequestParameters& = BackendRequestParameters());
+            const BackendRequestParameters& = default_request_parameters());
 
     void
     listObjects(std::list<std::string>& out,
-                const BackendRequestParameters& = BackendRequestParameters());
+                const BackendRequestParameters& = default_request_parameters());
 
     const Namespace&
     getNS() const;
@@ -121,7 +124,7 @@ public:
     fillObject(ObjectType& obj,
                const std::string& nameOnBackend,
                InsistOnLatestVersion insist_on_latest,
-               const BackendRequestParameters& params = BackendRequestParameters())
+               const BackendRequestParameters& params = default_request_parameters())
     {
         try
         {
@@ -150,7 +153,7 @@ public:
                const std::string& nameOnBackend,
                const char* nvp_name,
                InsistOnLatestVersion insist_on_latest,
-               const BackendRequestParameters& params = BackendRequestParameters())
+               const BackendRequestParameters& params = default_request_parameters())
     {
         try
         {
@@ -181,13 +184,13 @@ public:
     x_read(std::string& destination,
            const std::string& name,
            InsistOnLatestVersion insist_on_latest,
-           const BackendRequestParameters& = BackendRequestParameters());
+           const BackendRequestParameters& = default_request_parameters());
 
     ObjectInfo
     x_read(std::stringstream& dst,
            const std::string& name,
            InsistOnLatestVersion insist_on_latest,
-           const BackendRequestParameters& = BackendRequestParameters());
+           const BackendRequestParameters& = default_request_parameters());
 
     ObjectInfo
     x_write(const std::string& istr,
@@ -195,13 +198,13 @@ public:
             const OverwriteObject overwrite = OverwriteObject::F,
             const backend::ETag* etag = 0,
             const youtils::CheckSum* chksum = 0,
-            const BackendRequestParameters& = BackendRequestParameters());
+            const BackendRequestParameters& = default_request_parameters());
 
     template<typename ObjectType>
     void
     fillObject(ObjectType& obj,
                InsistOnLatestVersion insist_on_latest,
-               const BackendRequestParameters& params = BackendRequestParameters())
+               const BackendRequestParameters& params = default_request_parameters())
     {
         fillObject(obj,
                    ObjectType::config_backend_name,
@@ -215,7 +218,7 @@ public:
     writeObject(const ObjectType& obj,
                 const std::string& nameOnBackend,
                 const OverwriteObject overwrite = OverwriteObject::F,
-                const BackendRequestParameters& params = BackendRequestParameters())
+                const BackendRequestParameters& params = default_request_parameters())
     {
         try
         {
@@ -239,7 +242,7 @@ public:
     void
     writeObject(const ObjectType& obj,
                 const OverwriteObject overwrite = OverwriteObject::F,
-                const BackendRequestParameters& params = BackendRequestParameters())
+                const BackendRequestParameters& params = default_request_parameters())
     {
         return writeObject(obj,
                            ObjectType::config_backend_name,
@@ -251,7 +254,7 @@ public:
     std::unique_ptr<ObjectType>
     getIstreamableObject(const std::string& nameOnBackend,
                          InsistOnLatestVersion insist_on_latest,
-                         const BackendRequestParameters& params = BackendRequestParameters())
+                         const BackendRequestParameters& params = default_request_parameters())
     {
         try
         {

@@ -36,6 +36,13 @@ BackendInterface::BackendInterface(const Namespace& nspace,
     , conn_manager_(conn_manager)
 {}
 
+const BackendRequestParameters&
+BackendInterface::default_request_parameters()
+{
+    static const BackendRequestParameters params;
+    return params;
+}
+
 template<typename ReturnType,
          typename... Args>
 ReturnType
