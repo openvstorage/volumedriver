@@ -14,9 +14,11 @@
 
 #include "RocksConfig.h"
 
+#include <boost/bimap.hpp>
 #include <boost/optional/optional_io.hpp>
 
 #include <youtils/RocksLogger.h>
+#include <youtils/StreamUtils.h>
 
 namespace metadata_server
 {
@@ -24,14 +26,30 @@ namespace metadata_server
 namespace rdb = rocksdb;
 namespace yt = youtils;
 
+
 bool
 RocksConfig::operator==(const RocksConfig& other) const
 {
-    return db_threads == other.db_threads and
-        write_cache_size == other.write_cache_size and
-        read_cache_size == other.read_cache_size and
-        enable_wal == other.enable_wal and
-        data_sync == other.data_sync;
+#define C(x)                                    \
+    x == other.x
+
+    return
+        C(db_threads) and
+        C(write_cache_size) and
+        C(read_cache_size) and
+        C(enable_wal) and
+        C(data_sync) and
+        C(max_write_buffer_number) and
+        C(min_write_buffer_number_to_merge) and
+        C(num_levels) and
+        C(level0_file_num_compaction_trigger) and
+        C(level0_slowdown_writes_trigger) and
+        C(level0_stop_writes_trigger) and
+        C(target_file_size_base) and
+        C(max_bytes_for_level_base) and
+        C(compaction_style);
+
+#undef C
 }
 
 // pretty much arbitrarily chosen values for now (also applies to
@@ -58,8 +76,6 @@ RocksConfig::column_family_options() const
 {
     rdb::ColumnFamilyOptions opts;
 
-    opts.OptimizeLevelStyleCompaction();
-
     // we don't need no iterators, no!
     opts.OptimizeForPointLookup(read_cache_size ?
                                 read_cache_size->t >> 20 :
@@ -68,6 +84,39 @@ RocksConfig::column_family_options() const
     if (write_cache_size)
     {
         opts.write_buffer_size = write_cache_size->t >> 20; // default: 4 MiB
+    }
+
+#define S(OPT)                                  \
+    if (OPT)                                    \
+    {                                           \
+        opts.OPT = *OPT;                        \
+    }
+
+    S(max_write_buffer_number);
+    S(min_write_buffer_number_to_merge);
+    S(num_levels);
+    S(level0_file_num_compaction_trigger);
+    S(level0_slowdown_writes_trigger);
+    S(level0_stop_writes_trigger);
+    S(target_file_size_base);
+    S(max_bytes_for_level_base);
+
+#undef S
+
+    if (compaction_style)
+    {
+        switch (*compaction_style)
+        {
+        case RocksConfig::CompactionStyle::Level:
+            opts.compaction_style = rdb::CompactionStyle::kCompactionStyleLevel;
+            break;
+        case RocksConfig::CompactionStyle::Universal:
+            opts.compaction_style = rdb::CompactionStyle::kCompactionStyleUniversal;
+            break;
+        case RocksConfig::CompactionStyle::Fifo:
+            opts.compaction_style = rdb::CompactionStyle::kCompactionStyleFIFO;
+            break;
+        }
     }
 
     // moved to BlockBasedTableOptions
@@ -96,6 +145,64 @@ RocksConfig::write_options() const
     return opts;
 }
 
+namespace
+{
+
+void
+reminder(RocksConfig::CompactionStyle) __attribute__((unused));
+
+void
+reminder(RocksConfig::CompactionStyle m)
+{
+    switch (m)
+    {
+    case RocksConfig::CompactionStyle::Level:
+    case RocksConfig::CompactionStyle::Universal:
+    case RocksConfig::CompactionStyle::Fifo:
+        // If the compiler yells at you that you've forgotten dealing with an enum
+        // value here chances are that it's also missing from the translations map
+        // below. If so add it NOW.
+        break;
+    }
+}
+
+using TranslationsMap = boost::bimap<RocksConfig::CompactionStyle, std::string>;
+
+TranslationsMap
+init_translations()
+{
+    const std::vector<TranslationsMap::value_type> initv{
+        { RocksConfig::CompactionStyle::Level, "Level" },
+        { RocksConfig::CompactionStyle::Universal, "Universal" },
+        { RocksConfig::CompactionStyle::Fifo, "Fifo" },
+    };
+
+    return TranslationsMap(initv.begin(),
+                           initv.end());
+}
+
+}
+
+std::ostream&
+operator<<(std::ostream& os,
+           const RocksConfig::CompactionStyle s)
+{
+    static const TranslationsMap translations(init_translations());
+    return yt::StreamUtils::stream_out(translations.left,
+                                       os,
+                                       s);
+}
+
+std::istream&
+operator>>(std::istream& is,
+           RocksConfig::CompactionStyle& s)
+{
+    static const TranslationsMap translations(init_translations());
+    return yt::StreamUtils::stream_in(translations.right,
+                                      is,
+                                      s);
+}
+
 std::ostream&
 operator<<(std::ostream& os,
            const RocksConfig& cfg)
@@ -106,6 +213,15 @@ operator<<(std::ostream& os,
         ",read_cache_size=" << cfg.read_cache_size <<
         ",enable_wal=" << cfg.enable_wal <<
         ",data_sync=" << cfg.data_sync <<
+        ",max_write_buffer_number=" << cfg.max_write_buffer_number <<
+        ",min_write_buffer_number_to_merge=" << cfg.min_write_buffer_number_to_merge <<
+        ",num_levels=" << cfg.num_levels <<
+        ",level0_file_num_compaction_trigger=" << cfg.level0_file_num_compaction_trigger <<
+        ",level0_slowdown_writes_trigger=" << cfg.level0_slowdown_writes_trigger <<
+        ",level0_stop_writes_trigger=" << cfg.level0_stop_writes_trigger <<
+        ",target_file_size_base=" << cfg.target_file_size_base <<
+        ",max_bytes_for_level_base=" << cfg.max_bytes_for_level_base <<
+        ",compaction_style=" << cfg.compaction_style <<
         "}";
 }
 

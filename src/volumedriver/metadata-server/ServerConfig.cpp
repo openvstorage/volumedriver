@@ -82,25 +82,26 @@ namespace initialized_params
 
 namespace mds = metadata_server;
 
-const std::string
-PropertyTreeVectorAccessor<mds::ServerConfig>::db_path_key("db_directory");
+#define KEY(key, str)                           \
+    const std::string                           \
+    PropertyTreeVectorAccessor<mds::ServerConfig>::key(str)
 
-const std::string
-PropertyTreeVectorAccessor<mds::ServerConfig>::scratch_path_key("scratch_directory");
+KEY(db_path_key, "db_directory");
+KEY(scratch_path_key, "scratch_directory");
+KEY(db_threads_key, "rocksdb_threads");
+KEY(write_cache_size_key, "rocksdb_write_cache_size");
+KEY(read_cache_size_key, "rocksdb_read_cache_size");
+KEY(enable_wal_key, "rocksdb_enable_wal");
+KEY(data_sync_key, "rocksdb_data_sync");
+KEY(max_write_buffer_number_key, "rocksdb_max_write_buffer_number");
+KEY(min_write_buffer_number_to_merge_key, "rocksdb_min_write_buffer_number_to_merge");
+KEY(num_levels_key, "rocksdb_num_levels");
+KEY(level0_file_num_compaction_trigger_key, "rocksdb_level0_file_num_compaction_trigger");
+KEY(level0_slowdown_writes_trigger_key, "rocksdb_level0_slowdown_writes_trigger");
+KEY(level0_stop_writes_trigger_key, "rocksdb_level0_stop_writes_trigger");
+KEY(target_file_size_base_key, "rocksdb_target_file_size_base");
+KEY(max_bytes_for_level_base_key, "rocksdb_max_bytes_for_level_base");
+KEY(compaction_style_key, "rocksdb_compaction_style");
 
-const std::string
-PropertyTreeVectorAccessor<mds::ServerConfig>::db_threads_key("rocksdb_threads");
-
-const std::string
-PropertyTreeVectorAccessor<mds::ServerConfig>::write_cache_size_key("rocksdb_write_cache_size");
-
-const std::string
-PropertyTreeVectorAccessor<mds::ServerConfig>::read_cache_size_key("rocksdb_read_cache_size");
-
-const std::string
-PropertyTreeVectorAccessor<mds::ServerConfig>::enable_wal_key("rocksdb_enable_wal");
-
-const std::string
-PropertyTreeVectorAccessor<mds::ServerConfig>::data_sync_key("rocksdb_data_sync");
-
+#undef KEY
 }

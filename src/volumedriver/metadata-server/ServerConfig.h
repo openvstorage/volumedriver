@@ -80,6 +80,15 @@ struct PropertyTreeVectorAccessor<metadata_server::ServerConfig>
     static const std::string read_cache_size_key;
     static const std::string enable_wal_key;
     static const std::string data_sync_key;
+    static const std::string max_write_buffer_number_key;
+    static const std::string min_write_buffer_number_to_merge_key;
+    static const std::string num_levels_key;
+    static const std::string level0_file_num_compaction_trigger_key;
+    static const std::string level0_slowdown_writes_trigger_key;
+    static const std::string level0_stop_writes_trigger_key;
+    static const std::string target_file_size_base_key;
+    static const std::string max_bytes_for_level_base_key;
+    static const std::string compaction_style_key;
 
     static Type
     get(const boost::property_tree::ptree& pt)
@@ -91,11 +100,30 @@ struct PropertyTreeVectorAccessor<metadata_server::ServerConfig>
 
         RocksConfig rcfg;
 
+        // Obvious candidate for a preprocessor macro, but how can one get at the
+        // boost::optional<T>'s T ?
         rcfg.db_threads = pt.get_optional<DbThreads>(db_threads_key);
         rcfg.write_cache_size = pt.get_optional<WriteCacheSize>(write_cache_size_key);
         rcfg.read_cache_size = pt.get_optional<ReadCacheSize>(read_cache_size_key);
         rcfg.enable_wal = pt.get_optional<EnableWal>(enable_wal_key);
         rcfg.data_sync = pt.get_optional<DataSync>(data_sync_key);
+        rcfg.max_write_buffer_number =
+            pt.get_optional<int>(max_write_buffer_number_key);
+        rcfg.min_write_buffer_number_to_merge =
+            pt.get_optional<int>(min_write_buffer_number_to_merge_key);
+        rcfg.num_levels = pt.get_optional<int>(num_levels_key);
+        rcfg.level0_file_num_compaction_trigger =
+            pt.get_optional<int>(level0_file_num_compaction_trigger_key);
+        rcfg.level0_slowdown_writes_trigger =
+            pt.get_optional<int>(level0_slowdown_writes_trigger_key);
+        rcfg.level0_stop_writes_trigger =
+            pt.get_optional<int>(level0_stop_writes_trigger_key);
+        rcfg.target_file_size_base =
+            pt.get_optional<uint64_t>(target_file_size_base_key);
+        rcfg.max_bytes_for_level_base =
+            pt.get_optional<uint64_t>(max_bytes_for_level_base_key);
+        rcfg.compaction_style =
+            pt.get_optional<RocksConfig::CompactionStyle>(compaction_style_key);
 
         return Type(ncfg,
                     pt.get<boost::filesystem::path>(db_path_key),
@@ -116,35 +144,29 @@ struct PropertyTreeVectorAccessor<metadata_server::ServerConfig>
         pt.put(scratch_path_key,
                cfg.scratch_path);
 
-        if (cfg.rocks_config.db_threads)
-        {
-            pt.put(db_threads_key,
-                   *cfg.rocks_config.db_threads);
+#define P(OPT)                                               \
+        if (cfg.rocks_config.OPT)                            \
+        {                                                    \
+            pt.put(OPT ## _key,                              \
+                   *cfg.rocks_config.OPT);                   \
         }
 
-        if (cfg.rocks_config.write_cache_size)
-        {
-            pt.put(write_cache_size_key,
-                   *cfg.rocks_config.write_cache_size);
-        }
+        P(db_threads);
+        P(write_cache_size);
+        P(read_cache_size);
+        P(enable_wal);
+        P(data_sync);
+        P(max_write_buffer_number);
+        P(min_write_buffer_number_to_merge);
+        P(num_levels);
+        P(level0_file_num_compaction_trigger);
+        P(level0_slowdown_writes_trigger);
+        P(level0_stop_writes_trigger);
+        P(target_file_size_base);
+        P(max_bytes_for_level_base);
+        P(compaction_style);
 
-        if (cfg.rocks_config.read_cache_size)
-        {
-            pt.put(read_cache_size_key,
-                   *cfg.rocks_config.read_cache_size);
-        }
-
-        if (cfg.rocks_config.enable_wal)
-        {
-            pt.put(enable_wal_key,
-                   *cfg.rocks_config.enable_wal);
-        }
-
-        if (cfg.rocks_config.data_sync)
-        {
-            pt.put(data_sync_key,
-                   *cfg.rocks_config.data_sync);
-        }
+#undef P
     }
 };
 
