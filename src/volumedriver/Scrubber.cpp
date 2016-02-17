@@ -131,7 +131,7 @@ Scrubber::operator()()
     }
     catch(...)
     {
-        throw ScrubberException("Uknown Exception",
+        throw ScrubberException("Unknown Exception",
                                 ScrubberException::NoCleanup);
     }
 
@@ -283,7 +283,7 @@ Scrubber::operator()()
 
     VERIFY(not result_.tlogs_out.empty());
 
-    LOG_INFO("Finished cutting up the tlog in digestible chuncks");
+    LOG_INFO("Finished cutting up the tlog in digestible chunks");
 
     if(fs::file_size(scopool.relocations_tlog_path()) > 0)
     {
