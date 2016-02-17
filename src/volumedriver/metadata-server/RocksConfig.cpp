@@ -76,6 +76,8 @@ RocksConfig::column_family_options() const
 {
     rdb::ColumnFamilyOptions opts;
 
+    opts.OptimizeLevelStyleCompaction();
+
     // we don't need no iterators, no!
     opts.OptimizeForPointLookup(read_cache_size ?
                                 read_cache_size->t >> 20 :
