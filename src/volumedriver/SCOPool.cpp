@@ -65,7 +65,6 @@ SCOPool::SCOPool(ScrubbingSCODataVector& scos,
         }
         VERIFY(it->sconame_.number() <= lastSCOName.number());
     }
-
 }
 
 void
@@ -93,9 +92,9 @@ SCOPool::doEntry(const Entry& e)
     }
     VERIFY(scodata_iterator_ != scodata_.end());
     VERIFY(scodata_iterator_->usageCount != 0);
+
     if(scodata_iterator_->state == ScrubbingSCOData::State::Unknown)
     {
-
         scodata_iterator_->state =
             scodata_iterator_->usageCount < minimum_used_entries_ ?
             ScrubbingSCOData::State::Scrubbed : ScrubbingSCOData::State::NotScrubbed;

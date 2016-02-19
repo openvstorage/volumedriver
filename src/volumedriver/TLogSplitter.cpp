@@ -64,7 +64,7 @@ TLogSplitter::doEntry(const Entry* e)
     }
 
     tlog_writer->add(e->clusterAddress(),
-                                 e->clusterLocationAndHash());
+                     e->clusterLocationAndHash());
 
     SCO sco_name = e->clusterLocation().sco();
     if(sco_data_.empty() or
@@ -78,7 +78,6 @@ TLogSplitter::doEntry(const Entry* e)
     {
         ++(sco_data_.back().size);
     }
-
 }
 
 void
