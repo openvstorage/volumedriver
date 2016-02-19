@@ -51,21 +51,18 @@ enum class ShmMsgOpcode
 class ShmControlChannelMsg
 {
 public:
-    ShmControlChannelMsg(ShmMsgOpcode opcode,
-                         const boost::interprocess::managed_shared_memory::handle_t& hdl =
-                            boost::interprocess::managed_shared_memory::handle_t(0),
-                         const std::string& volname = "",
-                         const std::string& key = "",
-                         const long& opaque = 0)
+    explicit ShmControlChannelMsg(ShmMsgOpcode opcode,
+                                  const boost::interprocess::managed_shared_memory::handle_t& hdl =
+                                  boost::interprocess::managed_shared_memory::handle_t(0),
+                                  const std::string& volname = "",
+                                  const std::string& key = "",
+                                  const long opaque = 0)
     : opcode_(opcode)
     , volname_(volname)
     , key_(key)
     , opaque_(opaque)
     , hdl_(hdl)
     , size_(0)
-    {}
-
-    ShmControlChannelMsg()
     {}
 
 public:

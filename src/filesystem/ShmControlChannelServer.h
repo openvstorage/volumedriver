@@ -91,7 +91,7 @@ public:
     ShmControlChannelMsg
     handle_allocate(const ShmControlChannelMsg& msg)
     {
-        ShmControlChannelMsg o_msg;
+        ShmControlChannelMsg o_msg(ShmMsgOpcode::Failed);
         if (state_ == ShmConnectionState::Registered)
         {
             try
@@ -171,7 +171,7 @@ public:
     handle_state(const char *data,
                  const size_t size)
     {
-        ShmControlChannelMsg i_msg;
+        ShmControlChannelMsg i_msg(ShmMsgOpcode::Failed);
         i_msg.unpack_msg(data, size);
         switch (i_msg.opcode())
         {
