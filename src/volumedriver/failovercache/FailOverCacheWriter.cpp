@@ -21,13 +21,15 @@
 
 namespace failovercache
 {
+
 using namespace volumedriver;
 using namespace fungi;
 
+namespace fs = boost::filesystem;
 
 FailOverCacheWriter::FailOverCacheWriter(const fs::path& root,
                                          const std::string& ns,
-                                         const volumedriver::ClusterSize& cluster_size)
+                                         const ClusterSize& cluster_size)
     : registered_(false)
     , first_command_must_be_getEntries(false)
     , root_(root)
@@ -131,14 +133,14 @@ FailOverCacheWriter::removeUpTo(const SCO sconame)
 
 
 fs::path
-FailOverCacheWriter::makePath(const volumedriver::SCO sconame) const
+FailOverCacheWriter::makePath(const SCO sconame) const
 {
 
     return root_ / ns_ / sconame.str();
 }
 
 void
-FailOverCacheWriter::addEntry(volumedriver::ClusterLocation cl,
+FailOverCacheWriter::addEntry(ClusterLocation cl,
                               const uint64_t lba,
                               byte* buffer,
                               uint32_t size)
