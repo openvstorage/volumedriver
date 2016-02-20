@@ -34,7 +34,7 @@ class FailOverCacheProtocol
     friend class FailOverCacheWriter;
 
 public:
-    FailOverCacheProtocol(fungi::Socket *sock,
+    FailOverCacheProtocol(std::unique_ptr<fungi::Socket> sock,
                           fungi::SocketServer& /*parentServer*/,
                           FailOverCacheAcceptor& fact);
 
@@ -59,9 +59,9 @@ private:
     DECLARE_LOGGER("FailOverCacheProtocol");
 
     std::shared_ptr<FailOverCacheWriter> cache_;
-    std::auto_ptr<fungi :: Socket> sock_;
-    fungi::IOBaseStream *stream_;
-    fungi::Thread *thread_;
+    std::unique_ptr<fungi::Socket> sock_;
+    fungi::IOBaseStream stream_;
+    fungi::Thread* thread_;
 
     FailOverCacheAcceptor& fact_;
     bool use_rs_;

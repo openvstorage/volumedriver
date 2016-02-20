@@ -39,7 +39,7 @@ public:
     int capacity();
     byte *begin();
     byte *end();
-    void store(Streamable *s, int n);
+    void store(Streamable& s, int n);
     int read(byte *buf, int n);
 };
 

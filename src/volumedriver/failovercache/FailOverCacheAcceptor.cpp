@@ -107,11 +107,13 @@ FailOverCacheAcceptor::~FailOverCacheAcceptor()
 }
 
 Protocol*
-FailOverCacheAcceptor::createProtocol(fungi::Socket *s,
+FailOverCacheAcceptor::createProtocol(std::unique_ptr<fungi::Socket> s,
                                       fungi::SocketServer& parentServer)
 {
     LOCK();
-    protocols.push_back(new FailOverCacheProtocol(s, parentServer,*this));
+    protocols.push_back(new FailOverCacheProtocol(std::move(s),
+                                                  parentServer,
+                                                  *this));
     return protocols.back();
 }
 

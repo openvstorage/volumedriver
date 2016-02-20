@@ -75,7 +75,7 @@ byte * Buffer::end()
     return buf_ + size_;
 }
 
-void Buffer::store(Streamable *s, int size) {
+void Buffer::store(Streamable& s, int size) {
 //    printf("buffer[%d] store %d\n", size_ - read_, size);
     if (size > capacity_)
     {
@@ -84,7 +84,7 @@ void Buffer::store(Streamable *s, int size) {
         buf_ = vec_.data();
     }
 
-    size_ = s->read(buf_, (int32_t) size);
+    size_ = s.read(buf_, (int32_t) size);
     read_ = 0;
 }
 

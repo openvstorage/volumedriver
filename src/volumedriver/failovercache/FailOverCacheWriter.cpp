@@ -182,7 +182,7 @@ FailOverCacheWriter::addEntry(ClusterLocation cl,
             VERIFY(scooffset == ++check_offset);
         }
 
-        fungi::IOBaseStream fstream(f_);
+        fungi::IOBaseStream fstream(*f_);
         fstream << cl << lba << fungi::WrapByteArray(buffer, size);
 
     }
@@ -212,7 +212,6 @@ FailOverCacheWriter::getEntries(FailOverCacheProtocol* prot) const
          it != scosdeque_.end();
          ++it)
     {
-
         LOG_DEBUG("Sending SCO " << *it);
         const fs::path filename = makePath(*it);
 
@@ -220,12 +219,11 @@ FailOverCacheWriter::getEntries(FailOverCacheProtocol* prot) const
 
         File f(filename.string(), fungi::File::Read);
         f.open();
-        IOBaseStream fstream(&f);
+        IOBaseStream fstream(f);
         while (!f.eof())
         {
             ClusterLocation cl;
             fstream >> cl;
-
 
             uint64_t lba;
             fstream >> lba;
@@ -290,7 +288,7 @@ FailOverCacheWriter::getSCO(SCO sconame,
 
         File f(filename.string(), fungi::File::Read);
         f.open();
-        IOBaseStream fstream(&f);
+        IOBaseStream fstream(f);
         while (!f.eof())
         {
             ClusterLocation cl;
@@ -323,6 +321,5 @@ FailOverCacheWriter::Flush()
 
 }
 // Local Variables: **
-// compile-command: "scons -D --kernel_version=system --ignore-buildinfo -j 5" **
 // mode: c++ **
 // End: **

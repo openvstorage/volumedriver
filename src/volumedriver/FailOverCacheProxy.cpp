@@ -28,67 +28,56 @@ FailOverCacheProxy::FailOverCacheProxy(const FailOverCacheConfig& cfg,
                                        const LBASize lba_size,
                                        const ClusterMultiplier cluster_mult,
                                        unsigned timeout)
-    : socket_(nullptr)
-    , stream_(nullptr)
+    : socket_(fungi::Socket::createClientSocket(cfg.host,
+                                                cfg.port))
+    , stream_(*socket_)
     , ns_(ns)
     , lba_size_(lba_size)
     , cluster_mult_(cluster_mult)
     , delete_failover_dir_(false)
 {
+    //        stream_ << fungi::IOBaseStream::cork; --AT-- removed because this command is never sent over the wire
+    stream_ << fungi::IOBaseStream::RequestTimeout(timeout);
+    //        stream_ << fungi::IOBaseStream::uncork;
+    register_();
+}
+
+FailOverCacheProxy::~FailOverCacheProxy()
+{
     try
     {
-        socket_ = fungi :: Socket::createClientSocket(cfg.host,
-                                                      cfg.port);
-        stream_ = new fungi :: IOBaseStream(socket_);
-//        *stream_ << fungi::IOBaseStream::cork; --AT-- removed because this command is never sent over the wire
-        *stream_ << fungi::IOBaseStream::RequestTimeout(timeout);
-//        *stream_ << fungi::IOBaseStream::uncork;
-        Register_();
-
+        unregister_();
     }
-    catch(...)
-    {
-        if(stream_ != 0)
-        {
-            delete stream_;
-        }
-
-        if(socket_ != 0)
-        {
-            delete socket_;
-        }
-
-        throw;
-    }
+    CATCH_STD_ALL_LOG_IGNORE("Could not cleanly close connection to the failover cache, will not be useable any more");
 }
 
 void
 FailOverCacheProxy::getSCORange(SCO& oldest,
                                 SCO& youngest)
 {
-    *stream_ << fungi::IOBaseStream::cork;
-    OUT_ENUM(*stream_, GetSCORange);
-    *stream_ << fungi::IOBaseStream::uncork;
-    *stream_ >> fungi::IOBaseStream::cork;
-    *stream_ >> oldest;
-    *stream_ >> youngest;
+    stream_ << fungi::IOBaseStream::cork;
+    OUT_ENUM(stream_, GetSCORange);
+    stream_ << fungi::IOBaseStream::uncork;
+    stream_ >> fungi::IOBaseStream::cork;
+    stream_ >> oldest;
+    stream_ >> youngest;
 }
 
 void
-FailOverCacheProxy::Register_()
+FailOverCacheProxy::register_()
 {
     const ClusterSize csize(static_cast<size_t>(cluster_mult_) *
                             static_cast<size_t>(lba_size_));
-    *stream_ << volumedriver::CommandData<Register>(ns_.str(),
+    stream_ << volumedriver::CommandData<Register>(ns_.str(),
                                                     csize);
 }
 
 void
 FailOverCacheProxy::checkStreamOK(const std::string& ex)
 {
-    *stream_ >> fungi::IOBaseStream::cork;
+    stream_ >> fungi::IOBaseStream::cork;
     uint32_t res;
-    *stream_ >> res;
+    stream_ >> res;
     if(res != volumedriver::Ok)
     {
         LOG_ERROR("FailOverCache Protocol Error, no Ok Returned in" << ex);
@@ -97,14 +86,14 @@ FailOverCacheProxy::checkStreamOK(const std::string& ex)
 }
 
 void
-FailOverCacheProxy::Unregister_()
+FailOverCacheProxy::unregister_()
 {
     if(delete_failover_dir_)
     {
         LOG_INFO("Deleting failover dir for " << ns_);
-        *stream_ << fungi::IOBaseStream::cork;
-        OUT_ENUM(*stream_, Unregister);
-        *stream_ << fungi::IOBaseStream::uncork;
+        stream_ << fungi::IOBaseStream::cork;
+        OUT_ENUM(stream_, Unregister);
+        stream_ << fungi::IOBaseStream::uncork;
         return checkStreamOK(__FUNCTION__);
     }
     else
@@ -113,35 +102,15 @@ FailOverCacheProxy::Unregister_()
     }
 }
 
-FailOverCacheProxy::~FailOverCacheProxy()
-{
-    try
-    {
-        Unregister_();
-    }
-    catch(std::exception& e)
-    {
-        LOG_ERROR("Could not cleanly close connection to the failover cache, will not be useable any more " << e.what());
-    }
-
-    catch(...)
-    {
-         LOG_ERROR("Could not cleanly close connection to the failover cache, will not be useable any more");
-    }
-
-    delete socket_;
-    delete stream_;
-}
-
 void
 FailOverCacheProxy::removeUpTo(const SCO sconame) throw ()
 {
     try
     {
-        *stream_ << fungi::IOBaseStream::cork;
-        OUT_ENUM(*stream_,RemoveUpTo);
-        *stream_ << sconame;
-        *stream_ << fungi::IOBaseStream::uncork;
+        stream_ << fungi::IOBaseStream::cork;
+        OUT_ENUM(stream_,RemoveUpTo);
+        stream_ << sconame;
+        stream_ << fungi::IOBaseStream::uncork;
         return checkStreamOK(__FUNCTION__);
     }
     catch(std::exception& e)
@@ -157,22 +126,22 @@ FailOverCacheProxy::removeUpTo(const SCO sconame) throw ()
 void
 FailOverCacheProxy::setRequestTimeout(const uint32_t seconds)
 {
-    *stream_ << fungi::IOBaseStream::cork;
-    *stream_ << fungi::IOBaseStream::RequestTimeout(seconds);
-    *stream_ << fungi::IOBaseStream::uncork;
+    stream_ << fungi::IOBaseStream::cork;
+    stream_ << fungi::IOBaseStream::RequestTimeout(seconds);
+    stream_ << fungi::IOBaseStream::uncork;
 }
 
 void
 FailOverCacheProxy::addEntries(std::vector<FailOverCacheEntry> entries)
 {
     const CommandData<AddEntries> comd(std::move(entries));
-    *stream_ << comd;
+    stream_ << comd;
 }
 
 void
 FailOverCacheProxy::flush()
 {
-    *stream_ << CommandData<Flush>();
+    stream_ << CommandData<Flush>();
 }
 
 void
@@ -180,9 +149,9 @@ FailOverCacheProxy::clear()
 {
     LOG_TRACE("Clearing failover cache");
 
-    *stream_ << fungi::IOBaseStream::cork;
-    OUT_ENUM(*stream_, Clear);
-    *stream_ << fungi::IOBaseStream::uncork;
+    stream_ << fungi::IOBaseStream::cork;
+    OUT_ENUM(stream_, Clear);
+    stream_ << fungi::IOBaseStream::uncork;
     checkStreamOK(__FUNCTION__);
 }
 
@@ -190,9 +159,9 @@ void
 FailOverCacheProxy::getEntries(SCOProcessorFun processor)
 {
     // Y42 review later
-    *stream_ << fungi::IOBaseStream::cork;
-    OUT_ENUM(*stream_, GetEntries);
-    *stream_ << fungi::IOBaseStream::uncork;
+    stream_ << fungi::IOBaseStream::cork;
+    OUT_ENUM(stream_, GetEntries);
+    stream_ << fungi::IOBaseStream::uncork;
 
     getObject_(processor);
 }
@@ -201,10 +170,10 @@ uint64_t
 FailOverCacheProxy::getSCOFromFailOver(SCO a,
                                        SCOProcessorFun processor)
 {
-    *stream_ << fungi::IOBaseStream::cork;
-    OUT_ENUM(*stream_, GetSCO);
-    *stream_ << a;
-    *stream_ << fungi::IOBaseStream::uncork;
+    stream_ << fungi::IOBaseStream::cork;
+    OUT_ENUM(stream_, GetSCO);
+    stream_ << a;
+    stream_ << fungi::IOBaseStream::uncork;
     return getObject_(processor);
 }
 
@@ -212,12 +181,12 @@ uint64_t
 FailOverCacheProxy::getObject_(SCOProcessorFun processor)
 {
     fungi::Buffer buf;
-    *stream_ >> fungi::IOBaseStream::cork;
+    stream_ >> fungi::IOBaseStream::cork;
     uint64_t ret = 0;
     while (true)
     {
         ClusterLocation cli;
-        *stream_ >> cli;
+        stream_ >> cli;
         if(cli.isNull())
         {
             return ret;
@@ -225,13 +194,13 @@ FailOverCacheProxy::getObject_(SCOProcessorFun processor)
         else
         {
             uint64_t lba = 0;
-            *stream_ >> lba;
+            stream_ >> lba;
 
             int64_t bal; // byte array length
-            *stream_ >> bal;
+            stream_ >> bal;
 
             int32_t size = (int32_t) bal;
-            buf.store(stream_->getSink(), size);
+            buf.store(stream_.getSink(), size);
             processor(cli, lba, buf.data(), size);
             ret += size;
         }

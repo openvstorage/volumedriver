@@ -153,8 +153,8 @@ void SocketServer::run()
             }
             else
             {
-                Socket *asock = server_socket_->accept();
-                Protocol* protocol = factory_.createProtocol(asock,
+                std::unique_ptr<Socket> sock(server_socket_->accept());
+                Protocol* protocol = factory_.createProtocol(std::move(sock),
                                                              *this);
                 protocol->start();
             }

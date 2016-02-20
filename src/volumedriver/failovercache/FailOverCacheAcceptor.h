@@ -37,14 +37,14 @@ class FailOverCacheAcceptor
 public:
     explicit FailOverCacheAcceptor(const boost::filesystem::path& root);
 
-    ~FailOverCacheAcceptor();
+    virtual ~FailOverCacheAcceptor();
 
     virtual fungi::Protocol*
-    createProtocol(fungi::Socket *s,
-                   fungi::SocketServer& parentServer);
+    createProtocol(std::unique_ptr<fungi::Socket>,
+                   fungi::SocketServer& parentServer) override final;
 
     virtual const char *
-    getName() const
+    getName() const override final
     {
         return "FailOverCacheAcceptor";
     }

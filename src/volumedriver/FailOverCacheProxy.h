@@ -98,10 +98,10 @@ public:
 
 private:
     void
-    Register_();
+    register_();
 
     void
-    Unregister_();
+    unregister_();
 
     void
     checkStreamOK(const std::string& ex);
@@ -109,8 +109,8 @@ private:
     uint64_t
     getObject_(SCOProcessorFun processor);
 
-    fungi::Socket* socket_;
-    fungi :: IOBaseStream *stream_;
+    std::unique_ptr<fungi::Socket> socket_;
+    fungi::IOBaseStream stream_;
     const Namespace ns_;
     const LBASize lba_size_;
     const ClusterMultiplier cluster_mult_;

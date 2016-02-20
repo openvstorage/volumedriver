@@ -162,7 +162,7 @@ IOBaseStream &IOBaseStream::operator>>(const Cork &) {
 }
 
 IOBaseStream &IOBaseStream::operator<<(const RequestTimeout& r){
-    mySink_->setRequestTimeout(r.getRequestTimeout());
+    mySink_.setRequestTimeout(r.getRequestTimeout());
     return *this;
 }
 
@@ -347,20 +347,20 @@ byte *IOBaseStream::readByteArray_(int64_t &size) {
 }
 
 void IOBaseStream::setCork_() {
-	mySink_->setCork();
+	mySink_.setCork();
 }
 
 void IOBaseStream::clearCork_() {
-	mySink_->clearCork();
+	mySink_.clearCork();
 }
 
 void IOBaseStream::getCork_() {
-    mySink_->getCork();
+    mySink_.getCork();
 }
 
 void IOBaseStream::readByteArray_(ByteArray &array) {
-	byte *buf = array;
-	read(buf, array.size());
+    byte *buf = array;
+    read(buf, array.size());
 }
 
 }
