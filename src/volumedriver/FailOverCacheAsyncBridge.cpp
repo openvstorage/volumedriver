@@ -21,20 +21,23 @@
 namespace volumedriver
 {
 
+#define LOCK()                                                          \
+    boost::lock_guard<decltype(mutex_)> lg__(mutex_)
+
+#define LOCK_NEW_ONES()                                                 \
+    boost::lock_guard<decltype(new_ones_mutex_)> nolg__(new_ones_mutex_)
+
 FailOverCacheAsyncBridge::FailOverCacheAsyncBridge(const std::atomic<unsigned>& max_entries,
                                                    const std::atomic<unsigned>& write_trigger)
-    : mutex_("FailOverCacheAsyncBridge", fungi::Mutex::ErrorCheckingMutex)
-    , cluster_size_(VolumeConfig::default_cluster_size())
+    : cluster_size_(VolumeConfig::default_cluster_size())
     , cluster_multiplier_(VolumeConfig::default_cluster_multiplier())
     , newData(cluster_size_ * max_entries)
     , oldData(cluster_size_ * max_entries)
     , initial_max_entries_(max_entries)
-    , condvar_(mutex_)
     , max_entries_(max_entries)
     , write_trigger_(write_trigger)
     , thread_(nullptr)
     , stop_(true)
-    , newOnesMutex_("NewOnes")
     , throttling(false)
 {
 }
@@ -81,9 +84,9 @@ FailOverCacheAsyncBridge::newCache(std::unique_ptr<FailOverCacheProxy> cache)
     LOG_INFO("newCache");
 
     {
-        fungi::ScopedLock l(mutex_);
+        LOCK();
         stop_ = true;
-        condvar_.signal_no_lock();
+        condvar_.notify_one();
     }
     if(cache_)
     {
@@ -94,8 +97,8 @@ FailOverCacheAsyncBridge::newCache(std::unique_ptr<FailOverCacheProxy> cache)
         thread_ = nullptr;
 
         {
-            fungi::ScopedLock l1(mutex_);
-            fungi::ScopedLock l(newOnesMutex_);
+            LOCK();
+            LOCK_NEW_ONES();
             newOnes.clear();
             oldOnes.clear();
         }
@@ -112,9 +115,9 @@ FailOverCacheAsyncBridge::destroy(SyncFailOverToBackend sync)
 {
 
     {
-        fungi::ScopedLock l(mutex_);
+        LOCK();
         stop_ = true;
-        condvar_.signal_no_lock();
+        condvar_.notify_one();
     }
     if (cache_)
     {
@@ -126,7 +129,7 @@ FailOverCacheAsyncBridge::destroy(SyncFailOverToBackend sync)
         //  VERIFY(oldOnes.empty() and
         // newOnes.empty());
         {
-            fungi::ScopedLock l(newOnesMutex_);
+            LOCK_NEW_ONES();
             if (not oldOnes.empty())
             {
                 if(T(sync))
@@ -147,7 +150,7 @@ FailOverCacheAsyncBridge::destroy(SyncFailOverToBackend sync)
         }
 
         {
-            fungi::ScopedLock l(newOnesMutex_);
+            LOCK_NEW_ONES();
 
             if(not newOnes.empty())
             {
@@ -169,8 +172,7 @@ FailOverCacheAsyncBridge::destroy(SyncFailOverToBackend sync)
             }
         }
         {
-
-            fungi::ScopedLock l(mutex_);
+            LOCK();
             cache_ = nullptr;
         }
 
@@ -180,7 +182,8 @@ FailOverCacheAsyncBridge::destroy(SyncFailOverToBackend sync)
 void
 FailOverCacheAsyncBridge::setRequestTimeout(const uint32_t seconds)
 {
-    fungi::ScopedLock l(mutex_);
+    LOCK();
+
     if(cache_)
     {
         cache_->setRequestTimeout(seconds);
@@ -190,7 +193,8 @@ FailOverCacheAsyncBridge::setRequestTimeout(const uint32_t seconds)
 void
 FailOverCacheAsyncBridge::run()
 {
-    fungi::ScopedLock l(mutex_);
+    boost::unique_lock<decltype(mutex_)> unique_lock(mutex_);
+
     while (not stop_)
     {
         try
@@ -207,13 +211,16 @@ FailOverCacheAsyncBridge::run()
                 // Y42 The machine that goes ping
                 cache_->flush();
             }
-            condvar_.wait_sec_no_lock(timeout_);
+
+            condvar_.wait_for(unique_lock,
+                              boost::chrono::seconds(timeout_));
 
             if (oldOnes.empty())
             {
                 //we get here by a timeout -> time to swap
                 //no risk for deadlock as addEntry only does a tryLock on mutex_
-                fungi::ScopedLock foo(newOnesMutex_);
+                LOCK_NEW_ONES();
+
                 std::swap(newOnes, oldOnes);
                 std::swap(newData, oldData);
             }
@@ -226,7 +233,7 @@ FailOverCacheAsyncBridge::run()
                 vol_->setVolumeFailOverState(VolumeFailOverState::DEGRADED);
             }
 
-            fungi::ScopedLock l(newOnesMutex_);
+            LOCK_NEW_ONES();
 
             stop_ = true;
             newOnes.clear();
@@ -276,7 +283,7 @@ FailOverCacheAsyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
     VERIFY(initial_max_entries_ == max_entries_);
     VERIFY(num_locs <= max_entries_);
 
-    fungi::ScopedLock l(newOnesMutex_);
+    LOCK_NEW_ONES();
 
     // Needs improvement!!!
     if (stop_)
@@ -309,23 +316,24 @@ FailOverCacheAsyncBridge::maybe_swap_()
 {
     if (newOnes.size() >= write_trigger_)
     {
-        //must be trylock otherwize risk for deadlock
-        if(mutex_.try_lock())
+        //must be trylock otherwise risk for deadlock
+        boost::unique_lock<decltype(mutex_)> u(mutex_,
+                                               boost::try_to_lock);
+        if (u)
         {
             if (oldOnes.empty())
             {
                 std::swap(newOnes, oldOnes);
                 std::swap(newData, oldData);
-                condvar_.signal_no_lock();
+                condvar_.notify_one();
             }
-            mutex_.unlock();
         }
     }
 }
 
 void FailOverCacheAsyncBridge::Flush()
 {
-    fungi::ScopedLock l(mutex_);
+    LOCK();
     Flush_();
 }
 
@@ -334,7 +342,7 @@ FailOverCacheAsyncBridge::Flush_()
 {
     if(cache_)
     {
-        fungi::ScopedLock l(newOnesMutex_);
+        LOCK_NEW_ONES();
 
         LOG_DEBUG("oldOnes: " << oldOnes.size() << " ,newOnes: " << newOnes.size());
 
@@ -362,7 +370,8 @@ FailOverCacheAsyncBridge::Flush_()
 void
 FailOverCacheAsyncBridge::removeUpTo(const SCO& sconame)
 {
-    fungi::ScopedLock l(mutex_);
+    LOCK();
+
     if(cache_)
     {
         cache_->removeUpTo(sconame);
@@ -372,7 +381,8 @@ FailOverCacheAsyncBridge::removeUpTo(const SCO& sconame)
 void
 FailOverCacheAsyncBridge::Clear()
 {
-    fungi::ScopedLock l(mutex_);
+    LOCK();
+
     if(cache_)
     {
         cache_->clear();
@@ -383,7 +393,8 @@ uint64_t
 FailOverCacheAsyncBridge::getSCOFromFailOver(SCO sconame,
                                              SCOProcessorFun processor)
 {
-    fungi::ScopedLock l(mutex_);
+    LOCK();
+
     Flush_(); // Z42: too much overhead?
 
     if (cache_)

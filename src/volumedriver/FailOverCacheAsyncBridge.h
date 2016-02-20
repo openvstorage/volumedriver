@@ -21,9 +21,11 @@
 #include "FailOverCacheClientInterface.h"
 #include "SCO.h"
 
-#include "failovercache/fungilib/CondVar.h"
 #include "failovercache/fungilib/Runnable.h"
 #include "failovercache/fungilib/Thread.h"
+
+#include <boost/thread/condition_variable.hpp>
+#include <boost/thread/mutex.hpp>
 
 #include <youtils/FileDescriptor.h>
 #include <youtils/IOException.h>
@@ -115,7 +117,13 @@ private:
     Flush_();
 
     std::unique_ptr<FailOverCacheProxy> cache_;
-    fungi::Mutex mutex_;
+
+    // mutex_: protects stop_ and cache_
+    // new_ones_mutex_: protects newOnes / oldOnes + buffers
+    // lock order: mutex_ before new_ones_mutex_
+    boost::mutex mutex_;
+    boost::mutex new_ones_mutex_;
+    boost::condition_variable condvar_;
 
     std::vector<FailOverCacheEntry> newOnes;
     std::vector<FailOverCacheEntry> oldOnes;
@@ -125,8 +133,6 @@ private:
     std::vector<uint8_t> oldData;
     unsigned initial_max_entries_;
 
-    fungi::CondVar condvar_;
-
     const std::atomic<unsigned>& max_entries_;
     const std::atomic<unsigned>& write_trigger_;
 
@@ -135,7 +141,6 @@ private:
     // number of entries before scheduling a write
     fungi::Thread* thread_;
     bool stop_;
-    fungi::Mutex newOnesMutex_;
     bool throttling;
 
     Volume* vol_ = { nullptr };
