@@ -21,12 +21,13 @@
 namespace volumedriver
 {
 
+#define LOCK()                                          \
+    boost::lock_guard<decltype(lock_)> lg__(lock_)
+
 FailOverCacheSyncBridge::FailOverCacheSyncBridge()
-    : mutex_("FailOverCacheSyncBridge", fungi::Mutex::ErrorCheckingMutex)
-    , cluster_size_(VolumeConfig::default_cluster_size())
+    : cluster_size_(VolumeConfig::default_cluster_size())
     , cluster_multiplier_(VolumeConfig::default_cluster_multiplier())
-{
-}
+{}
 
 void
 FailOverCacheSyncBridge::initialize(Volume* vol)
@@ -50,7 +51,8 @@ FailOverCacheSyncBridge::backup()
 void
 FailOverCacheSyncBridge::newCache(std::unique_ptr<FailOverCacheProxy> cache)
 {
-    fungi::ScopedLock l(mutex_);
+    LOCK();
+
     if(cache_)
     {
         cache_->delete_failover_dir();
@@ -62,14 +64,15 @@ FailOverCacheSyncBridge::newCache(std::unique_ptr<FailOverCacheProxy> cache)
 void
 FailOverCacheSyncBridge::destroy(SyncFailOverToBackend /*sync*/)
 {
-    fungi::ScopedLock l(mutex_);
+    LOCK();
     cache_ = nullptr;
 }
 
 void
 FailOverCacheSyncBridge::setRequestTimeout(const uint32_t seconds)
 {
-    fungi::ScopedLock l(mutex_);
+    LOCK();
+
     if(cache_)
     {
         try
@@ -89,7 +92,8 @@ FailOverCacheSyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
                                     uint64_t start_address,
                                     const uint8_t* data)
 {
-    fungi::ScopedLock l(mutex_);
+    LOCK();
+
     if(cache_)
     {
         std::vector<FailOverCacheEntry> entries;
@@ -112,9 +116,11 @@ FailOverCacheSyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
     return true;
 }
 
-void FailOverCacheSyncBridge::Flush()
+void
+FailOverCacheSyncBridge::Flush()
 {
-    fungi::ScopedLock l(mutex_);
+    LOCK();
+
     if(cache_)
     {
         try
@@ -131,7 +137,8 @@ void FailOverCacheSyncBridge::Flush()
 void
 FailOverCacheSyncBridge::removeUpTo(const SCO& sconame)
 {
-    fungi::ScopedLock l(mutex_);
+    LOCK();
+
     if(cache_)
     {
         try
@@ -148,7 +155,8 @@ FailOverCacheSyncBridge::removeUpTo(const SCO& sconame)
 void
 FailOverCacheSyncBridge::Clear()
 {
-    fungi::ScopedLock l(mutex_);
+    LOCK();
+
     if(cache_)
     {
         try
@@ -166,26 +174,26 @@ uint64_t
 FailOverCacheSyncBridge::getSCOFromFailOver(SCO sconame,
                                             SCOProcessorFun processor)
 {
-    uint64_t ret;
-    fungi::ScopedLock l(mutex_);
+    LOCK();
+
     if (cache_)
     {
         try
         {
             cache_->flush(); // Z42: too much overhead?
-            ret = cache_->getSCOFromFailOver(sconame,
-                                             processor);
+            return cache_->getSCOFromFailOver(sconame,
+                                              processor);
         }
         catch (std::exception& e)
         {
             handleException(e, "getSCOFromFailOver");
+            UNREACHABLE;
         }
     }
     else
     {
         throw FailOverCacheNotConfiguredException();
     }
-    return ret;
 }
 
 FailOverCacheMode

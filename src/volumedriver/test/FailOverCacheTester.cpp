@@ -39,7 +39,7 @@ public:
     get_num_entries(B& bridge)
     {
         // Otherwise we might clash with the FailOverCacheBridge's ping mechanism!
-        fungi::ScopedLock g(bridge.mutex_);
+        boost::lock_guard<decltype(bridge.mutex_)> g(bridge.mutex_);
         size_t num_clusters = 0;
         bridge.cache_->getEntries([&](ClusterLocation,
                                       uint64_t /* lba */,
@@ -753,14 +753,15 @@ TEST_P(FailOverCacheTester, clear)
     auto wrns(make_random_namespace());
     auto foc_ctx(start_one_foc());
 
-    const size_t csize = VolumeConfig::default_cluster_size();
     FailOverCacheProxy proxy(foc_ctx->config(GetParam().foc_mode()),
                              wrns->ns(),
-                             csize,
+                             VolumeConfig::default_lba_size(),
+                             VolumeConfig::default_cluster_multiplier(),
                              60);
 
     EXPECT_NO_THROW(proxy.clear());
 
+    const size_t csize = VolumeConfig::default_cluster_size();
     const std::vector<uint8_t> buf(csize);
     std::vector<FailOverCacheEntry> entries { FailOverCacheEntry(ClusterLocation(1),
                                                                  0,

@@ -21,10 +21,6 @@
 #include "FailOverCacheClientInterface.h"
 #include "SCO.h"
 
-#include "failovercache/fungilib/CondVar.h"
-#include "failovercache/fungilib/Runnable.h"
-#include "failovercache/fungilib/Thread.h"
-
 #include <youtils/FileDescriptor.h>
 #include <youtils/IOException.h>
 
@@ -95,9 +91,8 @@ public:
 private:
     DECLARE_LOGGER("FailOverCacheSyncBridge");
 
+    boost::mutex lock_;
     std::unique_ptr<FailOverCacheProxy> cache_;
-    fungi::Mutex mutex_;
-
     ClusterSize cluster_size_;
     ClusterMultiplier cluster_multiplier_;
     Volume* vol_ = { nullptr };
