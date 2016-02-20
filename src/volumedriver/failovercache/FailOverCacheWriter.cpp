@@ -12,12 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "FailOverCacheProtocol.h"
 #include "FailOverCacheWriter.h"
-#include <youtils/Assert.h>
+#include "failovercache/fungilib/WrapByteArray.h"
+
 #include <boost/scope_exit.hpp>
 #include <boost/scoped_array.hpp>
-#include "FailOverCacheProtocol.h"
-#include "failovercache/fungilib/WrapByteArray.h"
+
+#include <youtils/Assert.h>
 
 namespace failovercache
 {
@@ -58,8 +60,6 @@ FailOverCacheWriter::~FailOverCacheWriter()
         LOG_WARN("Removing directory " << (root_ / ns_ ) << " failed, unknown exception");
 
     }
-
-
 
     delete f_;
 }
@@ -135,7 +135,6 @@ FailOverCacheWriter::removeUpTo(const SCO sconame)
 fs::path
 FailOverCacheWriter::makePath(const SCO sconame) const
 {
-
     return root_ / ns_ / sconame.str();
 }
 

@@ -251,9 +251,8 @@ FailOverCacheProtocol::unregister_()
     try
     {
         // cache_->unregister_();
-        fact_.remove(cache_);
-        delete cache_;
-        cache_ = 0;
+        fact_.remove(*cache_);
+        cache_ = nullptr;
         *stream_ << fungi::IOBaseStream::cork;
         OUT_ENUM(*stream_,volumedriver::Ok);
         *stream_ << fungi::IOBaseStream::uncork;
@@ -464,8 +463,8 @@ FailOverCacheProtocol::processFailOverCacheSCO(volumedriver::ClusterLocation cli
     *stream_ << a;
 }
 
-
 }
+
 // Local Variables: **
-// compile-command: "scons -D --kernel_version=system --ignore-buildinfo -j 5" **
+// mode: c++ **
 // End: **

@@ -44,8 +44,7 @@ maybe_make_dir(const fs::path& p)
 }
 
 FailOverCacheAcceptor::FailOverCacheAcceptor(const fs::path& path)
-    : volCacheMap_(path)
-    , root_(maybe_make_dir(path))
+    : root_(maybe_make_dir(path))
 {
     const fs::path f(root_ / safetyfile);
 
@@ -90,11 +89,9 @@ FailOverCacheAcceptor::~FailOverCacheAcceptor()
     {
         LOCK();
 
-        for(iter i = protocols.begin();
-            i != protocols.end();
-            ++i)
+        for (auto& p : protocols)
         {
-            (*i)->stop();
+            p->stop();
         }
         count = protocols.size();
     }
@@ -116,6 +113,60 @@ FailOverCacheAcceptor::createProtocol(fungi::Socket *s,
     LOCK();
     protocols.push_back(new FailOverCacheProtocol(s, parentServer,*this));
     return protocols.back();
+}
+
+void
+FailOverCacheAcceptor::remove(FailOverCacheWriter& w)
+{
+    LOCK();
+
+    const auto res(map_.erase(w.getNamespace()));
+    if (res != 1)
+    {
+        LOG_WARN("Request to remove namespace " << w.getNamespace() <<
+                 " which is not registered here");
+    }
+}
+
+std::shared_ptr<FailOverCacheWriter>
+FailOverCacheAcceptor::lookup(const CommandData<Register>& reg)
+{
+    LOCK();
+
+    std::shared_ptr<FailOverCacheWriter> w;
+
+    auto it = map_.find(reg.ns_);
+    if (it != map_.end())
+    {
+        if (it->second->cluster_size() == reg.clustersize_)
+        {
+            w = it->second;
+            w->setFirstCommandMustBeGetEntries();
+        }
+        else
+        {
+            LOG_ERROR(reg.ns_ << ": refusing registration with cluster size " <<
+                      reg.clustersize_ << " - we're already using " <<
+                      it->second->cluster_size());
+        }
+    }
+    else
+    {
+        w = std::make_shared<FailOverCacheWriter>(root_,
+                                                  reg.ns_,
+                                                  reg.clustersize_);
+
+        auto res(map_.emplace(std::make_pair(reg.ns_,
+                                             w)));
+        VERIFY(res.second);
+    }
+
+    if (w)
+    {
+        w->register_();
+    }
+
+    return w;
 }
 }
 

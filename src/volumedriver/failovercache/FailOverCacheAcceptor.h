@@ -17,9 +17,10 @@
 
 #include "FailOverCacheProtocol.h"
 #include "FailOverCacheWriter.h"
-#include "VolumeFailOverCacheWriterMap.h"
 
 #include "../FailOverCacheStreamers.h"
+
+#include <unordered_map>
 
 #include <boost/thread/mutex.hpp>
 
@@ -49,19 +50,10 @@ public:
     }
 
     void
-    remove(FailOverCacheWriter* writer)
-    {
-        boost::lock_guard<decltype(mutex_)> g(mutex_);
-        return volCacheMap_.remove(writer);
-    }
+    remove(FailOverCacheWriter&);
 
-    FailOverCacheWriter*
-    lookup(const volumedriver::CommandData<volumedriver::Register>& data)
-    {
-        boost::lock_guard<decltype(mutex_)> g(mutex_);
-        return volCacheMap_.lookup(data.ns_,
-                                   data.clustersize_);
-    }
+    std::shared_ptr<FailOverCacheWriter>
+    lookup(const volumedriver::CommandData<volumedriver::Register>&);
 
     void
     removeProtocol(FailOverCacheProtocol* prot)
@@ -82,15 +74,17 @@ public:
         return lock_fd_->path();
     }
 
-private:
-    VolumeFailOverCacheWriterMap volCacheMap_;
-    boost::mutex mutex_;
-
-public:
     const boost::filesystem::path root_;
 
 private:
-    typedef std::list<FailOverCacheProtocol*>::iterator iter;
+    DECLARE_LOGGER("FailOverCacheAcceptor");
+
+    // protects the map / protocols.
+    boost::mutex mutex_;
+
+    using Map = std::unordered_map<std::string, std::shared_ptr<FailOverCacheWriter>>;
+    Map map_;
+
     std::list<FailOverCacheProtocol*> protocols;
 
     std::unique_ptr<youtils::FileDescriptor> lock_fd_;
