@@ -171,16 +171,17 @@ class FailOverCacheTest
     std::unique_ptr<FailOverCacheEnvironment> v;
 };
 
-TEST_F(FailOverCacheTest, PutRetrieve)
+TEST_F(FailOverCacheTest, put_and_retrieve)
 {
     const ClusterSize cluster_size(4096);
     const uint32_t num_clusters_per_sco = 32;
     const uint32_t num_scos_to_produce = 20;
 
-    volumedriver::FailOverCacheProxy
+    FailOverCacheProxy
         cache(FailOverCacheTestMain::failovercache_config(),
               FailOverCacheTestMain::ns(),
-              4096,
+              LBASize(512),
+              ClusterMultiplier(8),
               8);
 
     FailOverCacheEntryFactory factory(cluster_size,
@@ -227,10 +228,11 @@ TEST_F(FailOverCacheTest, GetSCORange)
     const uint32_t num_clusters_per_vector = 5;
     const uint32_t num_scos_to_produce = 13;
 
-    volumedriver::FailOverCacheProxy
+    FailOverCacheProxy
         cache(FailOverCacheTestMain::failovercache_config(),
               FailOverCacheTestMain::ns(),
-              4096,
+              LBASize(512),
+              ClusterMultiplier(8),
               8);
 
     FailOverCacheEntryFactory factory(cluster_size,
@@ -299,10 +301,11 @@ TEST_F(FailOverCacheTest, GetOneSCO)
     const uint32_t num_clusters_per_vector = 5;
     const uint32_t num_scos_to_produce = 13;
 
-    volumedriver::FailOverCacheProxy
+    FailOverCacheProxy
         cache(FailOverCacheTestMain::failovercache_config(),
               FailOverCacheTestMain::ns(),
-              4096,
+              LBASize(512),
+              ClusterMultiplier(8),
               8);
 
     FailOverCacheEntryFactory factory(cluster_size,
@@ -373,10 +376,11 @@ TEST_F(FailOverCacheTest, GetOneSCO)
 TEST_F(FailOverCacheTest, DISABLED_DoubleRegister)
 {
     // Y42 apparantly not a or my problem
-    volumedriver::FailOverCacheProxy
+    FailOverCacheProxy
         cache1(FailOverCacheTestMain::failovercache_config(),
                FailOverCacheTestMain::ns(),
-               4096,
+               LBASize(512),
+               ClusterMultiplier(8),
                8);
 }
 
@@ -439,7 +443,8 @@ public:
         : content_(content)
         , cache_(FailOverCacheTestMain::failovercache_config(),
                  backend::Namespace(content),
-                 4096,
+                 LBASize(512),
+                 ClusterMultiplier(8),
                  30)
         , factory_(cluster_size_,
                    num_clusters_per_sco_)
@@ -581,7 +586,7 @@ public:
 
     const std::string content_;
 
-    volumedriver::FailOverCacheProxy cache_;
+    FailOverCacheProxy cache_;
     FailOverCacheEntryFactory factory_;
 
     static const ClusterSize cluster_size_;

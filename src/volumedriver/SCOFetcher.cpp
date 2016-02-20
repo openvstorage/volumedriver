@@ -206,22 +206,21 @@ FailOverCacheSCOFetcher::disposable() const
 RawFailOverCacheSCOFetcher::RawFailOverCacheSCOFetcher(SCO sconame,
                                                        const FailOverCacheConfig& cfg,
                                                        const Namespace& ns,
-                                                       const int32_t clustersize,
-                                                       unsigned timeout )
+                                                       const LBASize lba_size,
+                                                       const ClusterMultiplier cmult,
+                                                       unsigned timeout)
     : sconame_(sconame)
-
 {
     VERIFY(sconame.cloneID() == 0);
     try
     {
         foc = std::make_unique<FailOverCacheProxy>(cfg,
                                                    ns,
-                                                   clustersize,
+                                                   lba_size,
+                                                   cmult,
                                                    timeout);
     }
-    catch(...)
-    {
-    }
+    CATCH_STD_ALL_LOG_IGNORE("Failed to instantiate FailOverCacheProxy");
 }
 
 void
@@ -229,7 +228,6 @@ RawFailOverCacheSCOFetcher::operator()(const fs::path& dst)
 {
     if(foc)
     {
-
         fs::path tmp(FileUtils::create_temp_file(dst));
         sio_.reset(new FileDescriptor(tmp,
                                       FDMode::Write));

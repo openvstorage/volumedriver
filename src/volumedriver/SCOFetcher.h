@@ -108,10 +108,11 @@ class RawFailOverCacheSCOFetcher
     : public SCOFetcher
 {
 public:
-    RawFailOverCacheSCOFetcher(SCO sconame,
-                               const FailOverCacheConfig& cfg,
-                               const Namespace& ns,
-                               const int32_t clustersize,
+    RawFailOverCacheSCOFetcher(SCO,
+                               const FailOverCacheConfig&,
+                               const Namespace&,
+                               const LBASize,
+                               const ClusterMultiplier,
                                unsigned timeout = 30);
 
     RawFailOverCacheSCOFetcher(const RawFailOverCacheSCOFetcher&) = delete;

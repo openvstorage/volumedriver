@@ -231,7 +231,8 @@ public:
                                                                                           port_,
                                                                                           mode_),
                                                                       *ns_,
-                                                                      4096,
+                                                                      LBASize(512),
+                                                                      ClusterMultiplier(8),
                                                                       failover_bridge.getDefaultRequestTimeout()));
         failover_bridge.Clear();
 

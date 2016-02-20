@@ -25,12 +25,14 @@ using namespace fungi;
 
 FailOverCacheProxy::FailOverCacheProxy(const FailOverCacheConfig& cfg,
                                        const Namespace& ns,
-                                       const int32_t clustersize,
+                                       const LBASize lba_size,
+                                       const ClusterMultiplier cluster_mult,
                                        unsigned timeout)
     : socket_(nullptr)
     , stream_(nullptr)
     , ns_(ns)
-    , clustersize_(clustersize)
+    , lba_size_(lba_size)
+    , cluster_mult_(cluster_mult)
     , delete_failover_dir_(false)
 {
     try
@@ -67,8 +69,6 @@ FailOverCacheProxy::getSCORange(SCO& oldest,
     *stream_ << fungi::IOBaseStream::cork;
     OUT_ENUM(*stream_, GetSCORange);
     *stream_ << fungi::IOBaseStream::uncork;
-
-
     *stream_ >> fungi::IOBaseStream::cork;
     *stream_ >> oldest;
     *stream_ >> youngest;
@@ -77,8 +77,10 @@ FailOverCacheProxy::getSCORange(SCO& oldest,
 void
 FailOverCacheProxy::Register_()
 {
+    const ClusterSize csize(static_cast<size_t>(cluster_mult_) *
+                            static_cast<size_t>(lba_size_));
     *stream_ << volumedriver::CommandData<Register>(ns_.str(),
-                                                   clustersize_);
+                                                    csize);
 }
 
 void
@@ -109,8 +111,6 @@ FailOverCacheProxy::Unregister_()
     {
         LOG_INFO("Not deleting failover dir for " << ns_);
     }
-
-
 }
 
 FailOverCacheProxy::~FailOverCacheProxy()
@@ -152,7 +152,6 @@ FailOverCacheProxy::removeUpTo(const SCO sconame) throw ()
     {
         LOG_ERROR("Unknown exception caught");
     }
-
 }
 
 void

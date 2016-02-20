@@ -34,13 +34,16 @@ class Volume;
 class FailOverCacheProxy
 {
 public:
-    FailOverCacheProxy(const FailOverCacheConfig& cfg,
-                       const Namespace& nameSpace,
-                       const int32_t clustersize,
+    FailOverCacheProxy(const FailOverCacheConfig&,
+                       const Namespace&Space,
+                       const LBASize,
+                       const ClusterMultiplier,
                        unsigned timeout);
 
     FailOverCacheProxy(const FailOverCacheProxy&) = delete;
-    FailOverCacheProxy& operator=(const FailOverCacheProxy&) = delete;
+
+    FailOverCacheProxy&
+    operator=(const FailOverCacheProxy&) = delete;
 
     ~FailOverCacheProxy();
 
@@ -81,6 +84,18 @@ public:
         delete_failover_dir_ = true;
     }
 
+    LBASize
+    lba_size() const
+    {
+        return lba_size_;
+    }
+
+    ClusterMultiplier
+    cluster_multiplier() const
+    {
+        return cluster_mult_;
+    }
+
 private:
     void
     Register_();
@@ -97,7 +112,8 @@ private:
     fungi::Socket* socket_;
     fungi :: IOBaseStream *stream_;
     const Namespace ns_;
-    const ClusterSize clustersize_;
+    const LBASize lba_size_;
+    const ClusterMultiplier cluster_mult_;
     bool delete_failover_dir_;
 };
 

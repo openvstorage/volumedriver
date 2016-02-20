@@ -2623,7 +2623,8 @@ TEST_P(SimpleVolumeTest, synchronous_foc)
 
     FailOverCacheProxy proxy(foc_config,
                              wrns->ns(),
-                             csize,
+                             LBASize(v->getLBASize()),
+                             v->getClusterMultiplier(),
                              10);
 
     size_t count = 0;

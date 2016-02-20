@@ -463,7 +463,9 @@ Volume::localRestart()
             cache =
                 std::make_unique<FailOverCacheProxy>(foc_cfg,
                                                      cfg.getNS(),
-                                                     getClusterSize(),
+                                                     TODO("AR: fix getLBASize instead")
+                                                     LBASize(getLBASize()),
+                                                     getClusterMultiplier(),
                                                      failover_->getDefaultRequestTimeout());
         }
         CATCH_STD_ALL_EWHAT({
@@ -583,7 +585,8 @@ Volume::backend_restart(const CloneTLogs& restartTLogs,
             cache =
                 std::make_unique<FailOverCacheProxy>(foc_cfg,
                                                      cfg.getNS(),
-                                                     getClusterSize(),
+                                                     LBASize(getLBASize()),
+                                                     getClusterMultiplier(),
                                                      failover_->getDefaultRequestTimeout());
         }
         CATCH_STD_ALL_EWHAT({
@@ -2202,7 +2205,8 @@ Volume::setFailOverCacheConfig_(const FailOverCacheConfig& config)
     setFailOverCacheMode_(config.mode);
     failover_->newCache(std::make_unique<FailOverCacheProxy>(config,
                                                              getNamespace(),
-                                                             getClusterSize(),
+                                                             LBASize(getLBASize()),
+                                                             getClusterMultiplier(),
                                                              failover_->getDefaultRequestTimeout()));
     failover_->Clear();
 
