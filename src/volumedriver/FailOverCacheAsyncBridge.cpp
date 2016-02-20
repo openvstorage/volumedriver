@@ -207,7 +207,7 @@ FailOverCacheAsyncBridge::run()
                 LOG_DEBUG("Writing " << oldOnes.size() << " entries to the failover cache");
                 cache_->addEntries(oldOnes);
                 oldOnes.clear();
-                LOG_DEBUG("Written ");
+                LOG_DEBUG("Written");
             }
             else
             {
@@ -270,7 +270,7 @@ void
 FailOverCacheAsyncBridge::addEntry(ClusterLocation loc,
                                    uint64_t lba,
                                    const uint8_t* buf,
-                                   size_t bufsize)
+                                   size_t /* bufsize */)
 {
     uint8_t* ptr = newData.data() + (newOnes.size() * cluster_size_);
     memcpy(ptr, buf, cluster_size_);
@@ -337,11 +337,11 @@ FailOverCacheAsyncBridge::maybe_swap_()
 void FailOverCacheAsyncBridge::Flush()
 {
     LOCK();
-    Flush_();
+    flush_();
 }
 
 void
-FailOverCacheAsyncBridge::Flush_()
+FailOverCacheAsyncBridge::flush_()
 {
     if(cache_)
     {
@@ -398,7 +398,7 @@ FailOverCacheAsyncBridge::getSCOFromFailOver(SCO sconame,
 {
     LOCK();
 
-    Flush_(); // Z42: too much overhead?
+    flush_(); // Z42: too much overhead?
 
     if (cache_)
     {

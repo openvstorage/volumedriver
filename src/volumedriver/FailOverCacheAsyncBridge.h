@@ -114,7 +114,7 @@ private:
     initCache();
 
     void
-    Flush_();
+    flush_();
 
     std::unique_ptr<FailOverCacheProxy> cache_;
 
