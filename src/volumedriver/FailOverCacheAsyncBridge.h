@@ -136,8 +136,8 @@ private:
     const std::atomic<unsigned>& max_entries_;
     const std::atomic<unsigned>& write_trigger_;
 
-    // try to write every second
-    static const int timeout_ = 1;
+    // make configurable?
+    static const boost::chrono::seconds timeout_;
     // number of entries before scheduling a write
     fungi::Thread* thread_;
     bool stop_;

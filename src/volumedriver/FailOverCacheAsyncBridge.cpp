@@ -27,6 +27,9 @@ namespace volumedriver
 #define LOCK_NEW_ONES()                                                 \
     boost::lock_guard<decltype(new_ones_mutex_)> nolg__(new_ones_mutex_)
 
+const boost::chrono::seconds
+FailOverCacheAsyncBridge::timeout_(1);
+
 FailOverCacheAsyncBridge::FailOverCacheAsyncBridge(const std::atomic<unsigned>& max_entries,
                                                    const std::atomic<unsigned>& write_trigger)
     : cluster_size_(VolumeConfig::default_cluster_size())
@@ -213,7 +216,7 @@ FailOverCacheAsyncBridge::run()
             }
 
             condvar_.wait_for(unique_lock,
-                              boost::chrono::seconds(timeout_));
+                              timeout_);
 
             if (oldOnes.empty())
             {
