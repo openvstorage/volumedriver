@@ -21,9 +21,8 @@
 
 #include "../FailOverCacheStreamers.h"
 
-#include <mutex>
+#include <boost/thread/mutex.hpp>
 
-#include "fungilib/Mutex.h"
 #include "fungilib/ProtocolFactory.h"
 
 #include <youtils/FileDescriptor.h>
@@ -31,11 +30,9 @@
 namespace failovercache
 {
 
-
 class FailOverCacheAcceptor
     : public fungi::ProtocolFactory
 {
-
 public:
     explicit FailOverCacheAcceptor(const boost::filesystem::path& root);
 
@@ -54,14 +51,14 @@ public:
     void
     remove(FailOverCacheWriter* writer)
     {
-        fungi::ScopedLock l(m);
+        boost::lock_guard<decltype(mutex_)> g(mutex_);
         return volCacheMap_.remove(writer);
     }
 
     FailOverCacheWriter*
     lookup(const volumedriver::CommandData<volumedriver::Register>& data)
     {
-        fungi::ScopedLock l(m);
+        boost::lock_guard<decltype(mutex_)> g(mutex_);
         return volCacheMap_.lookup(data.ns_,
                                    data.clustersize_);
     }
@@ -69,7 +66,7 @@ public:
     void
     removeProtocol(FailOverCacheProtocol* prot)
     {
-        fungi::ScopedLock l(m);
+        boost::lock_guard<decltype(mutex_)> g(mutex_);
         protocols.remove(prot);
     }
 
@@ -87,7 +84,7 @@ public:
 
 private:
     VolumeFailOverCacheWriterMap volCacheMap_;
-    fungi::Mutex m;
+    boost::mutex mutex_;
 
 public:
     const boost::filesystem::path root_;
@@ -97,7 +94,7 @@ private:
     std::list<FailOverCacheProtocol*> protocols;
 
     std::unique_ptr<youtils::FileDescriptor> lock_fd_;
-    std::unique_lock<youtils::FileDescriptor> file_lock_;
+    boost::unique_lock<youtils::FileDescriptor> file_lock_;
 };
 
 }

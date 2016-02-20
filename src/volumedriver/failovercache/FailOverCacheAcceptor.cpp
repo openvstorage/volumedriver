@@ -28,6 +28,9 @@ using namespace fungi;
 
 static const std::string safetyfile("/.failovercache");
 
+#define LOCK()                                  \
+    boost::lock_guard<decltype(mutex_)> lg_(mutex_)
+
 namespace
 {
 
@@ -42,7 +45,6 @@ maybe_make_dir(const fs::path& p)
 
 FailOverCacheAcceptor::FailOverCacheAcceptor(const fs::path& path)
     : volCacheMap_(path)
-    , m("FailOverCacheAcceptor")
     , root_(maybe_make_dir(path))
 {
     const fs::path f(root_ / safetyfile);
@@ -59,8 +61,8 @@ FailOverCacheAcceptor::FailOverCacheAcceptor(const fs::path& path)
                                                     yt::FDMode::Write,
                                                     CreateIfNecessary::T);
 
-    file_lock_ = std::unique_lock<yt::FileDescriptor>(*lock_fd_,
-                                                      std::try_to_lock);
+    file_lock_ = boost::unique_lock<yt::FileDescriptor>(*lock_fd_,
+                                                        boost::try_to_lock);
 
     if (not file_lock_)
     {
@@ -86,7 +88,7 @@ FailOverCacheAcceptor::~FailOverCacheAcceptor()
 {
     int count = 0;
     {
-        ScopedLock l(m);
+        LOCK();
 
         for(iter i = protocols.begin();
             i != protocols.end();
@@ -101,7 +103,7 @@ FailOverCacheAcceptor::~FailOverCacheAcceptor()
         // Wait for the threads to clean up the protocols
         sleep(1);
         {
-            ScopedLock l(m);
+            LOCK();
             count = protocols.size();
         }
     }
@@ -111,7 +113,7 @@ Protocol*
 FailOverCacheAcceptor::createProtocol(fungi::Socket *s,
                                       fungi::SocketServer& parentServer)
 {
-    ScopedLock l(m);
+    LOCK();
     protocols.push_back(new FailOverCacheProtocol(s, parentServer,*this));
     return protocols.back();
 }
