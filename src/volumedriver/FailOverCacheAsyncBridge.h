@@ -42,7 +42,9 @@ class FailOverCacheAsyncBridge
     friend class FailOverCacheTester;
 
 public:
-    FailOverCacheAsyncBridge(const std::atomic<unsigned>& max_entries,
+    FailOverCacheAsyncBridge(const LBASize,
+                             const ClusterMultiplier,
+                             const std::atomic<unsigned>& max_entries,
                              const std::atomic<unsigned>& write_trigger);
 
     FailOverCacheAsyncBridge(const FailOverCacheAsyncBridge&) = delete;
@@ -116,6 +118,12 @@ private:
     void
     flush_();
 
+    ClusterSize
+    cluster_size_() const
+    {
+        return ClusterSize(cluster_multiplier_ * lba_size_);
+    }
+
     std::unique_ptr<FailOverCacheProxy> cache_;
 
     // mutex_: protects stop_ and cache_
@@ -127,8 +135,8 @@ private:
 
     std::vector<FailOverCacheEntry> newOnes;
     std::vector<FailOverCacheEntry> oldOnes;
-    ClusterSize cluster_size_;
-    ClusterMultiplier cluster_multiplier_;
+    const LBASize lba_size_;
+    const ClusterMultiplier cluster_multiplier_;
     std::vector<uint8_t> newData;
     std::vector<uint8_t> oldData;
     unsigned initial_max_entries_;

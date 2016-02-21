@@ -30,12 +30,19 @@ namespace volumedriver
 const boost::chrono::seconds
 FailOverCacheAsyncBridge::timeout_(1);
 
-FailOverCacheAsyncBridge::FailOverCacheAsyncBridge(const std::atomic<unsigned>& max_entries,
+// Passing LBASize and ClusterMultiplier here is ugly as sin as the underlying
+// FailOverCacheProxy also tracks that information. However, the locking of this
+// thing is rather convoluted and needs adaptations if we want to get these settings
+// out of the cache_ member.
+TODO("AR: get rid of LBASize and ClusterMultiplier");
+FailOverCacheAsyncBridge::FailOverCacheAsyncBridge(const LBASize lba_size,
+                                                   const ClusterMultiplier cluster_multiplier,
+                                                   const std::atomic<unsigned>& max_entries,
                                                    const std::atomic<unsigned>& write_trigger)
-    : cluster_size_(VolumeConfig::default_cluster_size())
-    , cluster_multiplier_(VolumeConfig::default_cluster_multiplier())
-    , newData(cluster_size_ * max_entries)
-    , oldData(cluster_size_ * max_entries)
+    : lba_size_(lba_size)
+    , cluster_multiplier_(cluster_multiplier)
+    , newData(cluster_size_() * max_entries)
+    , oldData(cluster_size_() * max_entries)
     , initial_max_entries_(max_entries)
     , max_entries_(max_entries)
     , write_trigger_(write_trigger)
@@ -78,13 +85,19 @@ FailOverCacheAsyncBridge::getName() const
 bool
 FailOverCacheAsyncBridge::backup()
 {
-    return cache_ != 0;
+    return cache_ != nullptr;
 }
 
 void
 FailOverCacheAsyncBridge::newCache(std::unique_ptr<FailOverCacheProxy> cache)
 {
     LOG_INFO("newCache");
+
+    if (cache)
+    {
+        VERIFY(cache->lba_size() == lba_size_);
+        VERIFY(cache->cluster_multiplier() == cluster_multiplier_);
+    }
 
     {
         LOCK();
@@ -272,9 +285,9 @@ FailOverCacheAsyncBridge::addEntry(ClusterLocation loc,
                                    const uint8_t* buf,
                                    size_t /* bufsize */)
 {
-    uint8_t* ptr = newData.data() + (newOnes.size() * cluster_size_);
-    memcpy(ptr, buf, cluster_size_);
-    newOnes.emplace_back(loc, lba, ptr, cluster_size_);
+    uint8_t* ptr = newData.data() + (newOnes.size() * cluster_size_());
+    memcpy(ptr, buf, cluster_size_());
+    newOnes.emplace_back(loc, lba, ptr, cluster_size_());
 }
 
 bool
@@ -303,8 +316,8 @@ FailOverCacheAsyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
         {
             addEntry(locs[i],
                      start_address + i * cluster_multiplier_,
-                     data + i * cluster_size_,
-                     cluster_size_);
+                     data + i * cluster_size_(),
+                     cluster_size_());
         }
 
     }

@@ -120,6 +120,8 @@ Volume::Volume(const VolumeConfig& vCfg,
     , halted_(false)
     , dataStore_(datastore.release())
     , failover_(FailOverCacheBridgeFactory::create(FailOverCacheMode::Asynchronous,
+                                                   LBASize(vCfg.lba_size_),
+                                                   vCfg.cluster_mult_,
                                                    VolManager::get()->dtl_queue_depth.value(),
                                                    VolManager::get()->dtl_write_trigger.value()))
     , metaDataStore_(metadatastore.release())
@@ -1578,7 +1580,7 @@ Volume::destroy(DeleteLocalData delete_local_data,
         {
             LOG_VINFO("Unregistering volume from ClusterCache");
             deregister_from_cluster_cache_(getOwnerTag());
-            CATCH_AND_CHECK_FORCE(failover_->newCache(0),
+            CATCH_AND_CHECK_FORCE(failover_->newCache(nullptr),
                                   "Exception trying to unset the failover cache");
         }
         else
@@ -2179,14 +2181,14 @@ Volume::setFailOverCacheMode_(const FailOverCacheMode mode)
     if (mode != failover_->mode())
     {
         failover_->destroy(SyncFailOverToBackend::T);
-        std::unique_ptr<FailOverCacheClientInterface> newBridge(FailOverCacheBridgeFactory::create(mode,
-                                                                                                   VolManager::get()->dtl_queue_depth.value(),
-                                                                                                   VolManager::get()->dtl_write_trigger.value()));
-        failover_ = std::move(newBridge);
+        failover_ = FailOverCacheBridgeFactory::create(mode,
+                                                       LBASize(getLBASize()),
+                                                       getClusterMultiplier(),
+                                                       VolManager::get()->dtl_queue_depth.value(),
+                                                       VolManager::get()->dtl_write_trigger.value());
         failover_->initialize(this);
     }
 }
-
 
 void
 Volume::setFailOverCacheConfig_(const FailOverCacheConfig& config)
@@ -2197,7 +2199,7 @@ Volume::setFailOverCacheConfig_(const FailOverCacheConfig& config)
     foc_config_wrapper_.set(config);
 
     last_tlog_not_on_failover_ = boost::none;
-    failover_->newCache(0);
+    failover_->newCache(nullptr);
 
     writeFailOverCacheConfigToBackend_();
 
