@@ -182,7 +182,7 @@ TEST_F(FailOverCacheTest, put_and_retrieve)
               FailOverCacheTestMain::ns(),
               LBASize(512),
               ClusterMultiplier(8),
-              8);
+              boost::chrono::seconds(8));
 
     FailOverCacheEntryFactory factory(cluster_size,
                                       num_clusters_per_sco);
@@ -233,7 +233,7 @@ TEST_F(FailOverCacheTest, GetSCORange)
               FailOverCacheTestMain::ns(),
               LBASize(512),
               ClusterMultiplier(8),
-              8);
+              boost::chrono::seconds(8));
 
     FailOverCacheEntryFactory factory(cluster_size,
                                       num_clusters_per_sco);
@@ -306,7 +306,7 @@ TEST_F(FailOverCacheTest, GetOneSCO)
               FailOverCacheTestMain::ns(),
               LBASize(512),
               ClusterMultiplier(8),
-              8);
+              boost::chrono::seconds(8));
 
     FailOverCacheEntryFactory factory(cluster_size,
                                       num_clusters_per_sco);
@@ -381,7 +381,7 @@ TEST_F(FailOverCacheTest, DISABLED_DoubleRegister)
                FailOverCacheTestMain::ns(),
                LBASize(512),
                ClusterMultiplier(8),
-               8);
+               boost::chrono::seconds(8));
 }
 
 struct FailOverCacheOneProcessor
@@ -445,7 +445,7 @@ public:
                  backend::Namespace(content),
                  LBASize(512),
                  ClusterMultiplier(8),
-                 30)
+                 boost::chrono::seconds(30))
         , factory_(cluster_size_,
                    num_clusters_per_sco_)
         , next_location_(1)

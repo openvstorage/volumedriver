@@ -92,8 +92,6 @@ class Volume
     friend class VolManagerTestSetup;
     friend class ErrorHandlingTest;
     friend class ::volumedrivertest::MetaDataStoreTest;
-    friend class FailOverCacheAsyncBridge;
-    friend class FailOverCacheSyncBridge;
     friend void backend_task::WriteTLog::run(int);
 
 public:
@@ -406,7 +404,7 @@ public:
     isSyncedToBackendUpTo(const TLogId&) const;
 
     void
-    setFOCTimeout(uint32_t timeout);
+    setFOCTimeout(const boost::chrono::seconds);
 
     bool
     checkConsistency();
@@ -721,6 +719,9 @@ private:
 
     TLogId
     scheduleBackendSync_();
+
+    void
+    init_failover_cache_();
 };
 
 } // namespace volumedriver

@@ -53,7 +53,7 @@ FailOverCacheAsyncBridge::FailOverCacheAsyncBridge(const LBASize lba_size,
 }
 
 void
-FailOverCacheAsyncBridge::initCache()
+FailOverCacheAsyncBridge::init_cache_()
 {
     //PRECONDITION: thread_ = 0, oldOnes = 0, newones = 0
     // Y42 why not assert for these preconditions??
@@ -67,13 +67,15 @@ FailOverCacheAsyncBridge::initCache()
 }
 
 void
-FailOverCacheAsyncBridge::initialize(Volume* vol)
+FailOverCacheAsyncBridge::initialize(DegradedFun fun)
 {
+    LOCK();
+
     //SHOULD NEVER BE CALLED TWICE as it breaks initcache's preconditions
-    ASSERT(not vol_);
-    // ASSERT(vol);
-    vol_ = vol;
-    initCache();
+    ASSERT(not degraded_fun_);
+    degraded_fun_ = std::move(fun);
+
+    init_cache_();
 }
 
 const char*
@@ -122,7 +124,7 @@ FailOverCacheAsyncBridge::newCache(std::unique_ptr<FailOverCacheProxy> cache)
 
     cache_ = std::move(cache);
 
-    initCache();
+    init_cache_();
 }
 
 // Called from Volume::destroy
@@ -196,7 +198,7 @@ FailOverCacheAsyncBridge::destroy(SyncFailOverToBackend sync)
 }
 
 void
-FailOverCacheAsyncBridge::setRequestTimeout(const uint32_t seconds)
+FailOverCacheAsyncBridge::setRequestTimeout(const boost::chrono::seconds seconds)
 {
     LOCK();
 
@@ -244,9 +246,9 @@ FailOverCacheAsyncBridge::run()
         catch (std::exception& e)
         {
             LOG_ERROR("Exception in failover thread: " << e.what());
-            if(vol_)
+            if(degraded_fun_)
             {
-                vol_->setVolumeFailOverState(VolumeFailOverState::DEGRADED);
+                degraded_fun_();
             }
 
             LOCK_NEW_ONES();
@@ -377,8 +379,11 @@ FailOverCacheAsyncBridge::flush_()
             cache_->flush();
         }
         CATCH_STD_ALL_EWHAT({
-                LOG_ERROR(vol_->getName() << ": failed to flush: " << EWHAT);
-                vol_->setVolumeFailOverState(VolumeFailOverState::DEGRADED);
+                LOG_ERROR("Failed to flush: " << EWHAT);
+                if (degraded_fun_)
+                {
+                    degraded_fun_();
+                }
             });
     }
 }

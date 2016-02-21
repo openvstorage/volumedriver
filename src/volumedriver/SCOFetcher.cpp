@@ -208,7 +208,7 @@ RawFailOverCacheSCOFetcher::RawFailOverCacheSCOFetcher(SCO sconame,
                                                        const Namespace& ns,
                                                        const LBASize lba_size,
                                                        const ClusterMultiplier cmult,
-                                                       unsigned timeout)
+                                                       const boost::chrono::seconds timeout)
     : sconame_(sconame)
 {
     VERIFY(sconame.cloneID() == 0);

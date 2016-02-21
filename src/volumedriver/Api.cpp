@@ -669,7 +669,7 @@ api::getSnapshotSCOCount(const vd::VolumeId& volName,
 
 void
 api::setFOCTimeout(const vd::VolumeId& volName,
-                   uint32_t timeout)
+                   const boost::chrono::seconds timeout)
 {
     Volume* v = VolManager::get()->findVolume_(volName);
     v->setFOCTimeout(timeout);

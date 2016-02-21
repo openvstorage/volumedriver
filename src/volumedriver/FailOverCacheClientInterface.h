@@ -29,8 +29,10 @@ class FailOverCacheClientInterface
 public:
     virtual ~FailOverCacheClientInterface() = default;
 
+    using DegradedFun = std::function<void() noexcept>;
+
     virtual void
-    initialize(Volume*) = 0;
+    initialize(DegradedFun) = 0;
 
     virtual const char*
     getName() const = 0;
@@ -50,14 +52,14 @@ public:
     virtual void
     newCache(std::unique_ptr<FailOverCacheProxy>) = 0;
 
-    virtual uint32_t
-    getDefaultRequestTimeout()
+    virtual boost::chrono::seconds
+    getDefaultRequestTimeout() const
     {
-        return 60; // seconds
+        return boost::chrono::seconds(60);
     }
 
     virtual void
-    setRequestTimeout(const uint32_t seconds) = 0;
+    setRequestTimeout(const boost::chrono::seconds) = 0;
 
     virtual void
     removeUpTo(const SCO& sconame) = 0;

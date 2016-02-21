@@ -45,7 +45,7 @@ public:
     ~FailOverCacheSyncBridge() = default;
 
     virtual void
-    initialize(Volume* vol) override;
+    initialize(DegradedFun) override;
 
     virtual const char*
     getName() const override;
@@ -63,10 +63,10 @@ public:
     backup() override;
 
     virtual void
-    newCache(std::unique_ptr<FailOverCacheProxy> cache) override;
+    newCache(std::unique_ptr<FailOverCacheProxy>) override;
 
     virtual void
-    setRequestTimeout(const uint32_t seconds) override;
+    setRequestTimeout(const boost::chrono::seconds) override;
 
     virtual void
     removeUpTo(const SCO& sconame) override;
@@ -89,7 +89,7 @@ private:
 
     boost::mutex mutex_;
     std::unique_ptr<FailOverCacheProxy> cache_;
-    Volume* vol_ = { nullptr };
+    DegradedFun degraded_fun_;
 
     void
     handleException(std::exception& e,

@@ -113,7 +113,8 @@ public:
                                const Namespace&,
                                const LBASize,
                                const ClusterMultiplier,
-                               unsigned timeout = 30);
+                               const boost::chrono::seconds timeout =
+                               boost::chrono::seconds(30));
 
     RawFailOverCacheSCOFetcher(const RawFailOverCacheSCOFetcher&) = delete;
 

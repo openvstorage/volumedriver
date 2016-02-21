@@ -103,7 +103,7 @@ TEST_P(FailOverCacheTester, focTimeout)
     {
         fungi::ScopedLock l(api::getManagementMutex());
         api::setFOCTimeout(vid,
-                           100);
+                           boost::chrono::seconds(100));
     }
 
      destroyVolume(v,
@@ -757,7 +757,7 @@ TEST_P(FailOverCacheTester, clear)
                              wrns->ns(),
                              VolumeConfig::default_lba_size(),
                              VolumeConfig::default_cluster_multiplier(),
-                             60);
+                             boost::chrono::seconds(60));
 
     EXPECT_NO_THROW(proxy.clear());
 

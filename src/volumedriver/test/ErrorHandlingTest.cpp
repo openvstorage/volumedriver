@@ -575,7 +575,7 @@ public:
         std::list<SnapshotName> snaps;
         vol_->listSnapshots(snaps);
 
-        ASSERT_THROW(vol_->setFOCTimeout(42),
+        ASSERT_THROW(vol_->setFOCTimeout(boost::chrono::seconds(42)),
                      std::exception);
 
         ASSERT_THROW(vol_->setFailOverCacheConfig(boost::none),

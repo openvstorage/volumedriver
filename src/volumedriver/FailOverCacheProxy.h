@@ -17,13 +17,14 @@
 
 #include "FailOverCacheStreamers.h"
 #include "SCOProcessorInterface.h"
+#include "SCO.h"
 
 #include "failovercache/fungilib/Socket.h"
 #include "failovercache/fungilib/IOBaseStream.h"
 #include "failovercache/fungilib/Buffer.h"
+
 #include <boost/ptr_container/ptr_vector.hpp>
 #include <boost/scoped_array.hpp>
-#include "SCO.h"
 
 namespace volumedriver
 {
@@ -35,10 +36,10 @@ class FailOverCacheProxy
 {
 public:
     FailOverCacheProxy(const FailOverCacheConfig&,
-                       const Namespace&Space,
+                       const Namespace&,
                        const LBASize,
                        const ClusterMultiplier,
-                       unsigned timeout);
+                       const boost::chrono::seconds);
 
     FailOverCacheProxy(const FailOverCacheProxy&) = delete;
 
@@ -69,10 +70,8 @@ public:
     void
     removeUpTo(const SCO sconame) throw ();
 
-    DECLARE_LOGGER("FailOverCacheProxy");
-
     void
-    setRequestTimeout(const uint32_t seconds);
+    setRequestTimeout(const boost::chrono::seconds);
 
     void
     getEntries(SCOProcessorFun processor);
@@ -97,6 +96,8 @@ public:
     }
 
 private:
+    DECLARE_LOGGER("FailOverCacheProxy");
+
     void
     register_();
 

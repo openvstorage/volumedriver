@@ -55,7 +55,7 @@ public:
     operator=(const FailOverCacheAsyncBridge&) = delete;
 
     virtual void
-    initialize(Volume* vol) override;
+    initialize(DegradedFun) override;
 
     virtual void
     run() override;
@@ -79,7 +79,7 @@ public:
     newCache(std::unique_ptr<FailOverCacheProxy> cache) override;
 
     virtual void
-    setRequestTimeout(const uint32_t seconds) override;
+    setRequestTimeout(const boost::chrono::seconds) override;
 
     virtual void
     removeUpTo(const SCO& sconame) override;
@@ -113,7 +113,7 @@ private:
     maybe_swap_();
 
     void
-    initCache();
+    init_cache_();
 
     void
     flush_();
@@ -151,7 +151,7 @@ private:
     bool stop_;
     bool throttling;
 
-    Volume* vol_ = { nullptr };
+    DegradedFun degraded_fun_;
 };
 
 }

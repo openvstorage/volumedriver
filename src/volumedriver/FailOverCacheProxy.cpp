@@ -27,7 +27,7 @@ FailOverCacheProxy::FailOverCacheProxy(const FailOverCacheConfig& cfg,
                                        const Namespace& ns,
                                        const LBASize lba_size,
                                        const ClusterMultiplier cluster_mult,
-                                       unsigned timeout)
+                                       const boost::chrono::seconds timeout)
     : socket_(fungi::Socket::createClientSocket(cfg.host,
                                                 cfg.port))
     , stream_(*socket_)
@@ -37,7 +37,7 @@ FailOverCacheProxy::FailOverCacheProxy(const FailOverCacheConfig& cfg,
     , delete_failover_dir_(false)
 {
     //        stream_ << fungi::IOBaseStream::cork; --AT-- removed because this command is never sent over the wire
-    stream_ << fungi::IOBaseStream::RequestTimeout(timeout);
+    stream_ << fungi::IOBaseStream::RequestTimeout(timeout.count());
     //        stream_ << fungi::IOBaseStream::uncork;
     register_();
 }
@@ -124,10 +124,10 @@ FailOverCacheProxy::removeUpTo(const SCO sconame) throw ()
 }
 
 void
-FailOverCacheProxy::setRequestTimeout(const uint32_t seconds)
+FailOverCacheProxy::setRequestTimeout(const boost::chrono::seconds seconds)
 {
     stream_ << fungi::IOBaseStream::cork;
-    stream_ << fungi::IOBaseStream::RequestTimeout(seconds);
+    stream_ << fungi::IOBaseStream::RequestTimeout(seconds.count());
     stream_ << fungi::IOBaseStream::uncork;
 }
 

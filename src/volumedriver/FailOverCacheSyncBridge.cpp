@@ -25,10 +25,12 @@ namespace volumedriver
     boost::lock_guard<decltype(mutex_)> lg__(mutex_)
 
 void
-FailOverCacheSyncBridge::initialize(Volume* vol)
+FailOverCacheSyncBridge::initialize(DegradedFun fun)
 {
-    ASSERT(not vol_);
-    vol_ = vol;
+    LOCK();
+
+    ASSERT(not degraded_fun_);
+    degraded_fun_ = std::move(fun);
 }
 
 const char*
@@ -40,7 +42,7 @@ FailOverCacheSyncBridge::getName() const
 bool
 FailOverCacheSyncBridge::backup()
 {
-    return cache_ != 0;
+    return cache_ != nullptr;
 }
 
 void
@@ -52,6 +54,7 @@ FailOverCacheSyncBridge::newCache(std::unique_ptr<FailOverCacheProxy> cache)
     {
         cache_->delete_failover_dir();
     }
+
     cache_ = std::move(cache);
 }
 
@@ -64,7 +67,7 @@ FailOverCacheSyncBridge::destroy(SyncFailOverToBackend /*sync*/)
 }
 
 void
-FailOverCacheSyncBridge::setRequestTimeout(const uint32_t seconds)
+FailOverCacheSyncBridge::setRequestTimeout(const boost::chrono::seconds seconds)
 {
     LOCK();
 
@@ -209,9 +212,9 @@ FailOverCacheSyncBridge::handleException(std::exception& e,
                                          const char* where)
 {
     LOG_ERROR("Exception in FailOverCacheSyncBridge::" << where << " : " << e.what());
-    if(vol_)
+    if(degraded_fun_)
     {
-        vol_->setVolumeFailOverState(VolumeFailOverState::DEGRADED);
+        degraded_fun_();
     }
     cache_ = nullptr;
 }

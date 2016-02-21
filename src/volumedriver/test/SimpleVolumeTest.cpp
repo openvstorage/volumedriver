@@ -2625,7 +2625,7 @@ TEST_P(SimpleVolumeTest, synchronous_foc)
                              wrns->ns(),
                              LBASize(v->getLBASize()),
                              v->getClusterMultiplier(),
-                             10);
+                             boost::chrono::seconds(10));
 
     size_t count = 0;
 

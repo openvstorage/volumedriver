@@ -155,7 +155,7 @@ Volume::Volume(const VolumeConfig& vCfg,
     caMask_ = ~(getClusterSize() / getLBASize() - 1);
     dataStore_->initialize(this);
     snapshotManagement_->initialize(this);
-    failover_->initialize(this);
+    init_failover_cache_();
 
     VERIFY(metaDataStore_->scrub_id() != boost::none);
     VERIFY(*metaDataStore_->scrub_id() == snapshotManagement_->scrub_id());
@@ -2176,6 +2176,16 @@ getFailOverCacheConfig()
 }
 
 void
+Volume::init_failover_cache_()
+{
+    failover_->initialize([&]() noexcept
+                          {
+                              LOG_VINFO("setting DTL degraded");
+                              setVolumeFailOverState(VolumeFailOverState::DEGRADED);
+                          });
+}
+
+void
 Volume::setFailOverCacheMode_(const FailOverCacheMode mode)
 {
     if (mode != failover_->mode())
@@ -2186,7 +2196,7 @@ Volume::setFailOverCacheMode_(const FailOverCacheMode mode)
                                                        getClusterMultiplier(),
                                                        VolManager::get()->dtl_queue_depth.value(),
                                                        VolManager::get()->dtl_write_trigger.value());
-        failover_->initialize(this);
+        init_failover_cache_();
     }
 }
 
@@ -2356,7 +2366,7 @@ Volume::getClusterCacheMisses() const
 }
 
 void
-Volume::setFOCTimeout(uint32_t timeout)
+Volume::setFOCTimeout(const boost::chrono::seconds timeout)
 {
     checkNotHalted_();
     failover_->setRequestTimeout(timeout);

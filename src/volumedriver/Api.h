@@ -355,8 +355,8 @@ public:
                         const volumedriver::SnapshotName&);
 
     static void
-    setFOCTimeout(const volumedriver::VolumeId& volName,
-                  uint32_t timeout);
+    setFOCTimeout(const volumedriver::VolumeId&,
+                  const boost::chrono::seconds);
 
     static bool
     checkVolumeConsistency(const volumedriver::VolumeId&);

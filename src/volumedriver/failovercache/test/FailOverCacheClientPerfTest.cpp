@@ -232,8 +232,11 @@ public:
                                                                cmult,
                                                                max_entries_,
                                                                write_trigger_));
-        Volume * fake_vol = 0;
-        failover_bridge->initialize(fake_vol);
+
+        failover_bridge->initialize([&]() noexcept
+                                    {
+                                        LOG_WARN("Got a DEGRADED event");
+                                    });
 
         failover_bridge->newCache(std::make_unique<FailOverCacheProxy>(FailOverCacheConfig(host_,
                                                                                            port_,
