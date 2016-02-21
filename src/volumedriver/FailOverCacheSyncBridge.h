@@ -35,7 +35,7 @@ class FailOverCacheSyncBridge
     friend class FailOverCacheTester;
 
 public:
-    FailOverCacheSyncBridge();
+    FailOverCacheSyncBridge() = default;
 
     FailOverCacheSyncBridge(const FailOverCacheSyncBridge&) = delete;
 
@@ -84,18 +84,16 @@ public:
     virtual FailOverCacheMode
     mode() const override;
 
-    void
-    handleException(std::exception& e,
-                    const char* where);
-
 private:
     DECLARE_LOGGER("FailOverCacheSyncBridge");
 
-    boost::mutex lock_;
+    boost::mutex mutex_;
     std::unique_ptr<FailOverCacheProxy> cache_;
-    ClusterSize cluster_size_;
-    ClusterMultiplier cluster_multiplier_;
     Volume* vol_ = { nullptr };
+
+    void
+    handleException(std::exception& e,
+                    const char* where);
 };
 
 }

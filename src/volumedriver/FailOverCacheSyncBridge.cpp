@@ -22,12 +22,7 @@ namespace volumedriver
 {
 
 #define LOCK()                                          \
-    boost::lock_guard<decltype(lock_)> lg__(lock_)
-
-FailOverCacheSyncBridge::FailOverCacheSyncBridge()
-    : cluster_size_(VolumeConfig::default_cluster_size())
-    , cluster_multiplier_(VolumeConfig::default_cluster_multiplier())
-{}
+    boost::lock_guard<decltype(mutex_)> lg__(mutex_)
 
 void
 FailOverCacheSyncBridge::initialize(Volume* vol)
@@ -96,13 +91,20 @@ FailOverCacheSyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
 
     if(cache_)
     {
+        const size_t cluster_size =
+            static_cast<size_t>(cache_->lba_size()) *
+            static_cast<size_t>(cache_->cluster_multiplier());
+
         std::vector<FailOverCacheEntry> entries;
         entries.reserve(num_locs);
         uint64_t lba = start_address;
         for (size_t i = 0; i < num_locs; i++)
         {
-            entries.emplace_back(locs[i], lba, data + i * cluster_size_, cluster_size_);
-            lba += cluster_multiplier_;
+            entries.emplace_back(locs[i],
+                                 lba, data + i * cluster_size,
+                                 cluster_size);
+
+            lba += cache_->cluster_multiplier();
         }
         try
         {
