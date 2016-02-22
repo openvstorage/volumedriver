@@ -777,6 +777,75 @@ TEST_P(FailOverCacheTester, clear)
                  std::exception);
 }
 
+TEST_P(FailOverCacheTester, non_standard_cluster_size)
+{
+    auto foc_ctx(start_one_foc());
+    auto wrns(make_random_namespace());
+    const VolumeSize vsize(10ULL << 20);
+    const ClusterMultiplier cmult(default_cluster_mult() * 2);
+    const ClusterSize csize(default_lba_size() *
+                            cmult);
+
+    Volume* v = newVolume(*wrns,
+                          vsize,
+                          default_sco_mult(),
+                          default_lba_size(),
+                          cmult);
+
+    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+
+    SCOPED_BLOCK_BACKEND(v);
+
+    auto make_pattern([](size_t i) -> std::string
+                      {
+                          return std::string("cluster-" +
+                                             boost::lexical_cast<std::string>(i));
+                      });
+
+    const size_t num_clusters = default_sco_mult() + 3;
+
+    for (size_t i = 0; i < num_clusters; ++i)
+    {
+        writeToVolume(v,
+                      i * cmult,
+                      csize,
+                      make_pattern(i));
+    }
+
+    v->getFailOver()->Flush();
+
+    FailOverCacheProxy proxy(foc_ctx->config(GetParam().foc_mode()),
+                             wrns->ns(),
+                             VolumeConfig::default_lba_size(),
+                             cmult,
+                             boost::chrono::seconds(60));
+
+    size_t count = 0;
+
+    proxy.getEntries([&](ClusterLocation /* loc */,
+                         uint64_t lba,
+                         const uint8_t* buf,
+                         size_t bufsize)
+                     {
+                         ASSERT_EQ(csize,
+                                   bufsize);
+                         ASSERT_EQ(count * cmult,
+                                   lba);
+                         const std::string p(make_pattern(count));
+
+                         for (size_t i = 0; i < bufsize; ++i)
+                         {
+                             ASSERT_EQ(p[i % p.size()],
+                                       buf[i]);
+                         }
+
+                         ++count;
+                     });
+
+    EXPECT_EQ(num_clusters,
+              count);
+}
+
 // needs to be run as root, and messes with the iptables, so use with _extreme_
 // caution
 /*
