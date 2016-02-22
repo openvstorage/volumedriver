@@ -71,6 +71,7 @@ operator<<(fungi::IOBaseStream& stream, const CommandData<AddEntries>& data)
     OUT_ENUM(stream, AddEntries);
     const size_t wsize = data.entries_.size();
     stream << wsize;
+
     if (isRDMA) // make small but finished packets with RDMA
     {
         stream << fungi::IOBaseStream::uncork;
@@ -100,27 +101,43 @@ operator<<(fungi::IOBaseStream& stream, const CommandData<AddEntries>& data)
 fungi::IOBaseStream&
 operator>>(fungi::IOBaseStream& stream, CommandData<AddEntries>& data)
 {
-    uint32_t cluster_size = static_cast<uint32_t>(VolumeConfig::default_cluster_size());
+    size_t count = 0;
+    stream >> count;
 
-    size_t size;
-    stream >> size;
-    data.entries_.reserve(size);
+    data.entries_.reserve(count);
 
-    size_t capacity = cluster_size * size;
-    data.buf_.reserve(capacity);
-    uint8_t* ptr = data.buf_.data();
+    uint64_t cluster_size = 0;
+    uint8_t* ptr = nullptr;
 
-    for(size_t i = 0; i < size; ++i)
+    for(size_t i = 0; i < count; ++i)
     {
         ClusterLocation cli;
         stream >> cli;
+
         uint64_t lba;
         stream >> lba;
-        int64_t bal; // byte array length
-        stream >> bal;
-        VERIFY(static_cast<uint32_t>(bal) == cluster_size);
-        stream.readIntoByteArray(ptr, cluster_size);
-        data.entries_.emplace_back(cli, lba, ptr, cluster_size);
+
+        int64_t sz;
+        stream >> sz;
+        VERIFY(sz != 0);
+
+        if (ptr == nullptr)
+        {
+            cluster_size = sz;
+            data.buf_.reserve(cluster_size * count);
+            ptr = data.buf_.data();
+        }
+        else
+        {
+            VERIFY(static_cast<int64_t>(cluster_size) == sz);
+        }
+
+        stream.readIntoByteArray(ptr,
+                                 cluster_size);
+        data.entries_.emplace_back(cli,
+                                   lba,
+                                   ptr,
+                                   cluster_size);
         ptr += cluster_size;
     }
 
