@@ -783,8 +783,7 @@ TEST_P(FailOverCacheTester, non_standard_cluster_size)
     auto wrns(make_random_namespace());
     const VolumeSize vsize(10ULL << 20);
     const ClusterMultiplier cmult(default_cluster_mult() * 2);
-    const ClusterSize csize(default_lba_size() *
-                            cmult);
+    const ClusterSize csize(default_lba_size() * cmult);
 
     Volume* v = newVolume(*wrns,
                           vsize,
@@ -844,6 +843,40 @@ TEST_P(FailOverCacheTester, non_standard_cluster_size)
 
     EXPECT_EQ(num_clusters,
               count);
+}
+
+TEST_P(FailOverCacheTester, wrong_cluster_size)
+{
+    auto foc_ctx(start_one_foc());
+    auto wrns(make_random_namespace());
+    const VolumeSize vsize(10ULL << 20);
+    const ClusterMultiplier cmult(default_cluster_mult() * 2);
+    const ClusterSize csize(default_lba_size() * cmult);
+
+    Volume* v = newVolume(*wrns,
+                          vsize,
+                          default_sco_mult(),
+                          default_lba_size(),
+                          cmult);
+
+    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+
+    SCOPED_BLOCK_BACKEND(v);
+
+    const std::string pattern("cluster");
+    writeToVolume(v,
+                  0,
+                  csize,
+                  pattern);
+
+    v->getFailOver()->Flush();
+
+    EXPECT_THROW(FailOverCacheProxy(foc_ctx->config(GetParam().foc_mode()),
+                                    wrns->ns(),
+                                    LBASize(default_lba_size()),
+                                    ClusterMultiplier(default_cluster_mult()),
+                                    boost::chrono::seconds(60)),
+                 std::exception);
 }
 
 // needs to be run as root, and messes with the iptables, so use with _extreme_
