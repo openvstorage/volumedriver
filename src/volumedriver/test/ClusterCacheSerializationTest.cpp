@@ -37,16 +37,22 @@ using namespace initialized_params;
 class ClusterCacheFakeStore // Throws away your data, oh yeah!
 {
 public:
-    static const uint64_t cluster_size_ = 4096;
+    static size_t
+    default_cluster_size()
+    {
+        return 4096;
+    }
 
     ClusterCacheFakeStore()
         : total_size_(0)
     {}
 
     ClusterCacheFakeStore(const fs::path& path,
-               const uint64_t size)
-        : path_(path),
-          total_size_(size - (size%cluster_size_))
+                          const uint64_t size,
+                          const size_t csize)
+        : path_(path)
+        , cluster_size_(csize)
+        , total_size_(size - (size % cluster_size_))
      {}
 
     ClusterCacheFakeStore(const ClusterCacheFakeStore&) = delete;
@@ -105,8 +111,13 @@ public:
     sync()
     {}
 
-private:
+    size_t
+    cluster_size() const
+    {
+        return cluster_size_;
+    }
 
+private:
     friend class boost::serialization::access;
 
     BOOST_SERIALIZATION_SPLIT_MEMBER();
@@ -115,39 +126,43 @@ private:
     void
     load(Archive& ar, const unsigned int version)
     {
-        if(version != 0)
-        {
-            THROW_SERIALIZATION_ERROR(version, 0, 0);
-
-        }
         std::string str;
 
         ar & str;
         ar & total_size_;
         ar & uuid_;
 
+        ASSERT_LT(0, version);
+
+        ar & cluster_size_;
+
+        ASSERT_LT(0,
+                  cluster_size_);
+
         const_cast<fs::path&>(path_) = str;
     }
 
     template<class Archive>
-    void save(Archive& ar, const unsigned int version) const
+    void
+    save(Archive& ar, const unsigned /* version */) const
     {
-        if(version != 0)
-        {
-            THROW_SERIALIZATION_ERROR(version, 0, 0);
-        }
+        ASSERT_LT(0,
+                  cluster_size_);
 
         std::string str = path_.string();
         ar & str;
         ar & total_size_;
         ar & uuid_;
+        ar & cluster_size_;
     }
 
     const fs::path path_;
     // what is called total_size is in fact clustersize smaller than available.
+    size_t cluster_size_;
     uint64_t total_size_;
     UUID uuid_;
 };
+
 
 typedef ClusterCacheDeviceT<ClusterCacheFakeStore> FakeDevice;
 
@@ -1397,9 +1412,10 @@ INSTANTIATE_TEST(ClusterCacheSerializationTest);
 
 }
 
+BOOST_CLASS_VERSION(volumedrivertest::ClusterCacheFakeStore, 1);
 BOOST_CLASS_VERSION(volumedrivertest::FakeDevice, 0);
 BOOST_CLASS_VERSION(volumedriver::ClusterCacheT<volumedrivertest::FakeDevice>, 2);
-BOOST_CLASS_VERSION(volumedriver::ClusterCacheDeviceManagerT<volumedrivertest::FakeDevice>, 1);
+BOOST_CLASS_VERSION(volumedriver::ClusterCacheDeviceManagerT<volumedrivertest::FakeDevice>, 2);
 
 // Local Variables: **
 // mode: c++ **

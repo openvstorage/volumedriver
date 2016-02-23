@@ -1633,7 +1633,8 @@ TEST_P(ClusterCacheTest, error_during_deserialization)
     for (const auto& i : info)
     {
         ClusterCacheDiskStore ds(i.first,
-                                 i.second.total_size);
+                                 i.second.total_size,
+                                 VolumeConfig::default_cluster_size());
 
         for (size_t i = 0; i < ds.total_size() / buf.size(); ++i)
         {

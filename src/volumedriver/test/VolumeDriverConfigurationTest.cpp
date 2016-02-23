@@ -205,8 +205,8 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
         UpdateReport u_rep;
 
         ASSERT_NO_THROW(VolManager::get()->getClusterCache().update(pt,
-                                                               u_rep));
-        EXPECT_EQ(3U, u_rep.getNoUpdates().size());
+                                                                    u_rep));
+        EXPECT_EQ(4U, u_rep.getNoUpdates().size());
         EXPECT_EQ(0U, u_rep.getUpdates().size());
     }
 
@@ -445,7 +445,7 @@ TEST_P(VolumeDriverConfigurationTest, num_threads)
             LOG_INFO("updated: " << u.parameter_name);
         }
 
-        EXPECT_EQ(39U,
+        EXPECT_EQ(40U,
                   u_rep.no_update_size());
     }
 
@@ -466,7 +466,7 @@ TEST_P(VolumeDriverConfigurationTest, num_threads)
             std::cerr << u.parameter_name << std::endl;
         }
 
-        EXPECT_EQ(40U,
+        EXPECT_EQ(41U,
                   u_rep.no_update_size());
     }
 }

@@ -29,7 +29,7 @@ typedef ClusterCacheDeviceManagerT<ClusterCacheDevice> ClusterCacheDeviceManager
 BOOST_CLASS_VERSION(volumedriver::ClusterCacheDeviceManager::ClusterCacheDeviceInMapper, 0);
 BOOST_CLASS_VERSION(volumedriver::ClusterCacheDeviceManager::ClusterCacheDeviceOutMapper, 0)
 BOOST_CLASS_VERSION(volumedriver::ClusterCacheDevice, 0);
-BOOST_CLASS_VERSION(volumedriver::ClusterCacheDeviceManager, 1);
+BOOST_CLASS_VERSION(volumedriver::ClusterCacheDeviceManager, 2);
 
 #endif  // READ_CACHE_DEVICE_MANAGER_H
 

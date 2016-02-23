@@ -230,6 +230,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(average_entries_per_bin,
                                       ShowDocumentation::F,
                                       2);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(read_cache_cluster_size,
+                                      kak_component_name,
+                                      "read_cache_cluster_size",
+                                      "Cluster size used by the Read Cache",
+                                      ShowDocumentation::T,
+                                      4096U);
+
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(serialize_read_cache,
                                       kak_component_name,
                                       "serialize_readcache",

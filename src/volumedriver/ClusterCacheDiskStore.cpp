@@ -18,7 +18,8 @@
 namespace volumedriver
 {
 
-const uint64_t ClusterCacheDiskStore::cluster_size_ = VolumeConfig::default_cluster_size();
+const size_t
+ClusterCacheDiskStore::default_cluster_size_ = VolumeConfig::default_cluster_size();
 
 }
 

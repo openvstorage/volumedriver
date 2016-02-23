@@ -90,6 +90,8 @@ extern const char kak_component_name[];
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(serialize_read_cache, bool);
 DECLARE_INITIALIZED_PARAM(read_cache_serialization_path, std::string);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(average_entries_per_bin, uint32_t);
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(read_cache_cluster_size, uint32_t);
+
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(clustercache_mount_points,
                                        volumedriver::MountPointConfigs);
 
