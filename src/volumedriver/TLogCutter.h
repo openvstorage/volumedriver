@@ -37,9 +37,10 @@ class TLog;
 class TLogCutter
 {
 public:
-    TLogCutter(BackendInterface* bi,
+    TLogCutter(BackendInterface&,
                const boost::filesystem::path& file,
-               FilePool& filepool,
+               FilePool&,
+               const ClusterSize,
                uint64_t max_entries = 4194304);
 
     ~TLogCutter() = default;
@@ -61,10 +62,11 @@ private:
     void
     writeTLogToBackend();
 
-    BackendInterface* bi_;
+    BackendInterface& bi_;
     const boost::filesystem::path file_;
     FilePool& filepool_;
     const uint64_t max_entries_;
+    const ClusterSize cluster_size_;
 
     std::unique_ptr<TLogWriter> tlog_writer;
     boost::filesystem::path current_tlog_path;

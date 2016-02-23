@@ -273,9 +273,10 @@ Scrubber::operator()()
 
     // Now we cut up the tlog into pieces again
 
-    TLogCutter t(backend_interface_.get(),
+    TLogCutter t(*backend_interface_,
                  result_tlog,
-                 filepool);
+                 filepool,
+                 ClusterSize(1U << args_.cluster_size_exponent));
 
     boost::this_thread::interruption_point();
     result_.tlogs_out = t();
