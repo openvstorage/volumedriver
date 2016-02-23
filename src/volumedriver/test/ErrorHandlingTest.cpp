@@ -79,8 +79,8 @@ class ErrorHandlingTest
 {
 protected:
     static const SCOMultiplier sco_mult_;
-    static constexpr size_t lba_size_ = 512;
-    static constexpr size_t cluster_mult_ = 8;
+    static const LBASize lba_size_;
+    static const ClusterMultiplier cluster_mult_;
     static const size_t sco_size_;
 
     static const size_t mp_size_;
@@ -640,6 +640,9 @@ const size_t ErrorHandlingTest::sco_size_ =
     ErrorHandlingTest::lba_size_ *
     ErrorHandlingTest::cluster_mult_ *
     ErrorHandlingTest::sco_mult_;
+
+const LBASize ErrorHandlingTest::lba_size_(512);
+const ClusterMultiplier ErrorHandlingTest::cluster_mult_(8);
 
 const size_t ErrorHandlingTest::mp_size_ = ErrorHandlingTest::sco_size_ * 10;
 const size_t ErrorHandlingTest::trigger_gap_ = ErrorHandlingTest::sco_size_ * 2;

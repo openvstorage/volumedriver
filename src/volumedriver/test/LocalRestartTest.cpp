@@ -2782,7 +2782,7 @@ TEST_P(LocalRestartTest, DISABLED_ReliabilityOfTheBigOneIfTheMDStoreLRUWouldWork
                        VolumeSize(2 * page_entries * mdstore_cache_pages * cluster_size),
                        sco_mult,
                        default_lba_size(),
-                       default_cluster_mult(),
+                       default_cluster_multiplier(),
                        mdstore_cache_pages);
 
     EXPECT_EQ(max_tlog_entries, v->getSnapshotManagement().maxTLogEntries());

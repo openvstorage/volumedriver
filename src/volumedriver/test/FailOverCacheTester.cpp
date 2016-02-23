@@ -755,13 +755,13 @@ TEST_P(FailOverCacheTester, clear)
 
     FailOverCacheProxy proxy(foc_ctx->config(GetParam().foc_mode()),
                              wrns->ns(),
-                             VolumeConfig::default_lba_size(),
-                             VolumeConfig::default_cluster_multiplier(),
+                             default_lba_size(),
+                             default_cluster_multiplier(),
                              boost::chrono::seconds(60));
 
     EXPECT_NO_THROW(proxy.clear());
 
-    const size_t csize = VolumeConfig::default_cluster_size();
+    const size_t csize = default_cluster_size();
     const std::vector<uint8_t> buf(csize);
     std::vector<FailOverCacheEntry> entries { FailOverCacheEntry(ClusterLocation(1),
                                                                  0,
@@ -782,12 +782,12 @@ TEST_P(FailOverCacheTester, non_standard_cluster_size)
     auto foc_ctx(start_one_foc());
     auto wrns(make_random_namespace());
     const VolumeSize vsize(10ULL << 20);
-    const ClusterMultiplier cmult(default_cluster_mult() * 2);
+    const ClusterMultiplier cmult(default_cluster_multiplier() * 2);
     const ClusterSize csize(default_lba_size() * cmult);
 
     Volume* v = newVolume(*wrns,
                           vsize,
-                          default_sco_mult(),
+                          default_sco_multiplier(),
                           default_lba_size(),
                           cmult);
 
@@ -801,7 +801,7 @@ TEST_P(FailOverCacheTester, non_standard_cluster_size)
                                              boost::lexical_cast<std::string>(i));
                       });
 
-    const size_t num_clusters = default_sco_mult() + 3;
+    const size_t num_clusters = default_sco_multiplier() + 3;
 
     for (size_t i = 0; i < num_clusters; ++i)
     {
@@ -815,7 +815,7 @@ TEST_P(FailOverCacheTester, non_standard_cluster_size)
 
     FailOverCacheProxy proxy(foc_ctx->config(GetParam().foc_mode()),
                              wrns->ns(),
-                             VolumeConfig::default_lba_size(),
+                             default_lba_size(),
                              cmult,
                              boost::chrono::seconds(60));
 
@@ -850,12 +850,12 @@ TEST_P(FailOverCacheTester, wrong_cluster_size)
     auto foc_ctx(start_one_foc());
     auto wrns(make_random_namespace());
     const VolumeSize vsize(10ULL << 20);
-    const ClusterMultiplier cmult(default_cluster_mult() * 2);
+    const ClusterMultiplier cmult(default_cluster_multiplier() * 2);
     const ClusterSize csize(default_lba_size() * cmult);
 
     Volume* v = newVolume(*wrns,
                           vsize,
-                          default_sco_mult(),
+                          default_sco_multiplier(),
                           default_lba_size(),
                           cmult);
 
@@ -874,7 +874,7 @@ TEST_P(FailOverCacheTester, wrong_cluster_size)
     EXPECT_THROW(FailOverCacheProxy(foc_ctx->config(GetParam().foc_mode()),
                                     wrns->ns(),
                                     LBASize(default_lba_size()),
-                                    ClusterMultiplier(default_cluster_mult()),
+                                    ClusterMultiplier(default_cluster_multiplier()),
                                     boost::chrono::seconds(60)),
                  std::exception);
 }
@@ -938,7 +938,6 @@ TEST_P(FailOverCacheTester, DISABLED_tarpit)
     ::system(del_cmdline.c_str());
 }
 */
-
 
 namespace
 {

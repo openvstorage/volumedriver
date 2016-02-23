@@ -326,28 +326,34 @@ public:
         }
     }
 
-    static VolumeSize
-    default_volume_size()
+    VolumeSize
+    default_volume_size() const
     {
         return VolumeSize((1 << 18) * 512);
     }
 
-    static SCOMultiplier
-    default_sco_mult()
+    SCOMultiplier
+    default_sco_multiplier() const
     {
         return SCOMultiplier(32);
     }
 
-    static uint32_t
-    default_lba_size()
+    LBASize
+    default_lba_size() const
     {
-        return 512;
+        return LBASize(VolumeConfig::default_lba_size_);
     }
 
-    static uint32_t
-    default_cluster_mult()
+    ClusterMultiplier
+    default_cluster_multiplier() const
     {
-        return 8;
+        return GetParam().cluster_multiplier();
+    }
+
+    ClusterSize
+    default_cluster_size() const
+    {
+        return ClusterSize(default_lba_size() * default_cluster_multiplier());
     }
 
     Volume*
@@ -356,29 +362,29 @@ public:
 public:
     Volume*
     newVolume(const backend::BackendTestSetup::WithRandomNamespace& wrns,
-              const VolumeSize& volume_size = default_volume_size(),
-              const SCOMultiplier sco_mult = default_sco_mult(),
-              const uint32_t lba_size = default_lba_size(),
-              const uint32_t cluster_mult = default_cluster_mult(),
-              const boost::optional<size_t> num_cached_pages = boost::none);
+              const boost::optional<VolumeSize>& volume_size = boost::none,
+              const boost::optional<SCOMultiplier>& sco_multiplier = boost::none,
+              const boost::optional<LBASize>& lba_size = boost::none,
+              const boost::optional<ClusterMultiplier>& cluster_mult = boost::none,
+              const boost::optional<size_t>& num_cached_pages = boost::none);
 
     Volume*
     newVolume(const std::string& volumeName,
               const backend::Namespace& namespc,
-              const VolumeSize& volume_size = default_volume_size(),
-              const SCOMultiplier sco_mult = default_sco_mult(),
-              const uint32_t lba_size = default_lba_size(),
-              const uint32_t cluster_mult = default_cluster_mult(),
-              const boost::optional<size_t> num_cached_pages = boost::none);
+              const boost::optional<VolumeSize>& volume_size = boost::none,
+              const boost::optional<SCOMultiplier>& sco_multiplier = boost::none,
+              const boost::optional<LBASize>& lba_size = boost::none,
+              const boost::optional<ClusterMultiplier>& cluster_mult = boost::none,
+              const boost::optional<size_t>& num_cached_pages = boost::none);
 
     WriteOnlyVolume*
     newWriteOnlyVolume(const std::string& volumeName,
                        const backend::Namespace& namespc,
                        const VolumeConfig::WanBackupVolumeRole role,
-                       const VolumeSize& volume_size = VolumeSize((1 << 18) * 512),
-                       const SCOMultiplier sco_mult = default_sco_mult(),
-                       const uint32_t lba_size = 512,
-                       const uint32_t cluster_mult = 8);
+                       const boost::optional<VolumeSize>& volume_size = boost::none,
+                       const boost::optional<SCOMultiplier>& sco_multiplier = boost::none,
+                       const boost::optional<LBASize>& lba_size = boost::none,
+                       const boost::optional<ClusterMultiplier>& cluster_mult = boost::none);
 
     void
     set_cluster_cache_default_behaviour(const ClusterCacheBehaviour);
@@ -554,7 +560,8 @@ public:
 
     DECLARE_LOGGER("VolManagerTestSetup");
 
-    static const VolumeDriverTestConfig defConfig;
+    static VolumeDriverTestConfig
+    default_test_config();
 
     void
     waitForPrefetching(Volume* v) const;
@@ -822,10 +829,10 @@ private:
 #define SCOPED_DESTROY_WRITE_ONLY_VOLUME_UNBLOCK_BACKEND_FOR_BACKEND_RESTART(v, tm) \
     FutureUnblockerWriteOnlyVolume __f(this, v, tm, RemoveVolumeCompletely::F)
 
-#define INSTANTIATE_TEST(name) \
+#define INSTANTIATE_TEST(name)                                          \
     INSTANTIATE_TEST_CASE_P(name##s,                                    \
                             name,                                       \
-                            ::testing::Values(::volumedriver::VolManagerTestSetup::defConfig))
+                            ::testing::Values(::volumedriver::VolManagerTestSetup::default_test_config()))
 }
 
 #endif // VOLMANAGER_TEST_SETUP_H

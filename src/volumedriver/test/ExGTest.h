@@ -16,6 +16,8 @@
 #define EXGTEST_H_
 
 #include "../FailOverCacheMode.h"
+#include "../Types.h"
+#include "../VolumeConfig.h"
 
 #include <stdexcept>
 
@@ -28,9 +30,6 @@
 
 namespace volumedriver
 {
-
-// TODO: this is not the best approach; please remake sometime by overriding the calling of the testbody
-// directly, which will require some more subtle changes to google test
 
 struct VolumeDriverTestConfig
 {
@@ -53,9 +52,16 @@ struct VolumeDriverTestConfig
 
     PARAM(bool, use_cluster_cache) = false;
     PARAM(FailOverCacheMode, foc_mode) = FailOverCacheMode::Asynchronous;
+    PARAM(ClusterMultiplier, cluster_cache_cluster_multiplier) =
+        VolumeConfig::default_cluster_multiplier();
+    PARAM(ClusterMultiplier, cluster_multiplier) =
+        VolumeConfig::default_cluster_multiplier();
 
 #undef PARAM
 };
+
+// TODO: this is not the best approach; please remake sometime by overriding the calling of the testbody
+// directly, which will require some more subtle changes to google test
 
 // Z42: rename ExGTest to VolumeDriverTest
 class ExGTest :

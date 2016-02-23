@@ -772,8 +772,8 @@ TEST_P(MetaDataStoreTest, stats1)
 {
     const uint32_t page_size = CachePage::capacity();
     const uint32_t max_pages = 3;
-    const uint32_t cmult = 8;
-    const uint32_t sectorsize = 512;
+    const ClusterMultiplier cmult = default_cluster_multiplier();
+    const LBASize sectorsize = default_lba_size();
 
     const uint64_t locs = (max_pages + 1) * page_size;
     const uint64_t volsize = locs * cmult * sectorsize;
@@ -783,7 +783,7 @@ TEST_P(MetaDataStoreTest, stats1)
     Volume* v = newVolume("volume",
                           ns->ns(),
                           VolumeSize(volsize),
-                          default_sco_mult(),
+                          default_sco_multiplier(),
                           sectorsize,
                           cmult,
                           max_pages);
@@ -843,8 +843,8 @@ TEST_P(MetaDataStoreTest, stats2)
 {
     const uint32_t page_size = CachePage::capacity();
     const uint32_t max_pages = 3;
-    const uint32_t cmult = 8;
-    const uint32_t sectorsize = 512;
+    const ClusterMultiplier cmult = default_cluster_multiplier();
+    const LBASize sectorsize = default_lba_size();
 
     const uint64_t locs = (max_pages + 1) * page_size;
     const uint64_t volsize = locs * cmult * sectorsize;
@@ -854,7 +854,7 @@ TEST_P(MetaDataStoreTest, stats2)
     Volume* v = newVolume("volume",
                           ns->ns(),
                           VolumeSize(volsize),
-                          default_sco_mult(),
+                          default_sco_multiplier(),
                           sectorsize,
                           cmult,
                           max_pages);
@@ -1025,9 +1025,9 @@ TEST_P(MetaDataStoreTest, LRU)
     auto v = newVolume(vname,
                        ns1,
                        VolumeSize(vsize),
-                       default_sco_mult(),
+                       default_sco_multiplier(),
                        default_lba_size(),
-                       default_cluster_mult(),
+                       default_cluster_multiplier(),
                        npages);
 
     MetaDataStoreInterface* md = v->getMetaDataStore();
