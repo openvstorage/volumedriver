@@ -121,8 +121,9 @@ public:
 
             try
             {
-                const CheckSum& s = incremental_checksum.second->checksum((cluster_location.offset()+1) *
-                                                                          VolumeConfig::default_cluster_size());
+                const CheckSum& s =
+                    incremental_checksum.second->checksum((cluster_location.offset() + 1) *
+                                                          lba_size_ * cluster_mult_);
 
                 if(s.getValue() == cs)
                 {
