@@ -41,9 +41,11 @@ namespace volumedriver
 struct ClusterLocationAndHash
 {
     ClusterLocationAndHash(const ClusterLocation& cloc,
-                           const uint8_t* data)
+                           const uint8_t* data,
+                           const size_t size)
         : clusterLocation(cloc)
-        , weed(data, VolumeConfig::default_cluster_size())
+        , weed(data,
+               size)
     {}
 
     ClusterLocationAndHash(const ClusterLocation& cloc,

@@ -2039,7 +2039,8 @@ Volume::replayClusterFromFailOverCache_(ClusterAddress ca,
     }
 
     ClusterLocationAndHash loc_and_hash(loc,
-                                        buf);
+                                        buf,
+                                        getClusterSize());
     writeClusterMetaData_(ca,
                           loc_and_hash);
 

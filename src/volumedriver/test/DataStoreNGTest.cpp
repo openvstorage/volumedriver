@@ -149,7 +149,8 @@ protected:
     {
         std::vector<ClusterReadDescriptor> descs;
         ClusterLocationAndHash loc_and_hash(loc,
-                                            buf);
+                                            buf,
+                                            dStore_->getClusterSize());
         descs.push_back(ClusterReadDescriptor(loc_and_hash,
                                               0,
                                               buf,
@@ -178,13 +179,15 @@ protected:
 
         for (int i = 0; i < n; ++i)
         {
+            const ClusterSize csize(dStore_->getClusterSize());
             ClusterLocationAndHash loc_and_hash(loc[i],
-                                                &buf[0] + (i * dStore_->getClusterSize()));
+                                                &buf[0] + (i * csize),
+                                                csize);
             BackendInterfacePtr bi = vol_->getBackendInterface(loc[i].cloneID())->clone();
             VERIFY(bi);
             descs.push_back(ClusterReadDescriptor(loc_and_hash,
-                                                  i * dStore_->getClusterSize(),
-                                                  &buf[i * dStore_->getClusterSize()],
+                                                  i * csize,
+                                                  &buf[i * csize],
                                                   std::move(bi)));
 
             const ClusterLocation& loc = loc_and_hash.clusterLocation;
@@ -209,7 +212,8 @@ protected:
             break;
         }
 
-        if (verify) {
+        if (verify)
+        {
             for (uint32_t* p = (uint32_t *) buf.data(), off = 0; off < bufsz;
                  off += sizeof(*p), ++p)
             {

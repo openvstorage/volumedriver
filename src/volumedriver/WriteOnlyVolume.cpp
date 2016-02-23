@@ -336,7 +336,8 @@ WriteOnlyVolume::writeClusters_(uint64_t addr,
             uint64_t clusteraddr = addr + i * getClusterSize();
             ClusterAddress ca = addr2CA(clusteraddr);
             ClusterLocationAndHash loc_and_hash(cluster_locations_[i],
-                                                data);
+                                                data,
+                                                getClusterSize());
 
             writeClusterMetaData_(ca,
                                   loc_and_hash);
