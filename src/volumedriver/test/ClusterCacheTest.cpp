@@ -22,9 +22,10 @@
 #include <boost/filesystem/fstream.hpp>
 
 #include <youtils/DimensionedValue.h>
-#include <youtils/Logging.h>
-#include <youtils/wall_timer.h>
 #include <youtils/IOException.h>
+#include <youtils/Logging.h>
+#include <youtils/ScopeExit.h>
+#include <youtils/wall_timer.h>
 
 #include "../Api.h"
 #include "../VolManager.h"
@@ -41,6 +42,7 @@ namespace be = backend;
 namespace bpt = boost::property_tree;
 namespace fs = boost::filesystem;
 namespace ip = initialized_params;
+namespace yt = youtils;
 
 using namespace volumedriver;
 
@@ -596,12 +598,12 @@ TEST_P(ClusterCacheTest, zimultanious)
 
     VolumeClusterCacheBehaviourSwitcher p(v1);
     boost::thread t(boost::ref(p));
-    BOOST_SCOPE_EXIT((&p) (&t))
-    {
-        p.stop();
-        t.join();
-    } BOOST_SCOPE_EXIT_END;
 
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         p.stop();
+                                         t.join();
+                                     }));
 
     int32_t test_size = 100;
     int32_t mod = 30;
@@ -1706,7 +1708,21 @@ TEST_P(ClusterCacheTest, invalidation_when_default_behaviour_is_no_cache)
                 Entries(count));
 }
 
-INSTANTIATE_TEST(ClusterCacheTest);
+namespace
+{
+
+const ClusterMultiplier
+big_cluster_multiplier(VolManagerTestSetup::default_test_config().cluster_multiplier() * 4);
+const auto big_clusters_config = VolManagerTestSetup::default_test_config()
+    .cluster_cache_cluster_multiplier(big_cluster_multiplier)
+    .cluster_multiplier(big_cluster_multiplier);
+
+}
+
+INSTANTIATE_TEST_CASE_P(ClusterCacheTests,
+                        ClusterCacheTest,
+                        ::testing::Values(volumedriver::VolManagerTestSetup::default_test_config(),
+                                          big_clusters_config));
 
 }
 
