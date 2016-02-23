@@ -123,13 +123,16 @@ operator>>(fungi::IOBaseStream& stream, CommandData<AddEntries>& data)
 
         if (ptr == nullptr)
         {
+            VERIFY(data.buf_ == nullptr);
+
             cluster_size = sz;
-            data.buf_.reserve(cluster_size * count);
-            ptr = data.buf_.data();
+            data.buf_ = std::make_unique<uint8_t[]>(cluster_size * count);
+            ptr = data.buf_.get();
         }
         else
         {
             VERIFY(static_cast<int64_t>(cluster_size) == sz);
+            VERIFY(data.buf_ != nullptr);
         }
 
         stream.readIntoByteArray(ptr,
