@@ -47,6 +47,11 @@ buildInfoString()
     ss << "version: " << BuildInfo::version << std::endl
        << "version revision: " << BuildInfo::version_revision << std::endl
        << "branch: " << BuildInfo::branch << std::endl
+#ifdef ENABLE_MD5_HASH
+       << "md5 support: yes" <<  std::endl
+#else
+       << "md5 support: no" <<  std::endl
+#endif
        << "revision: " << BuildInfo::revision << std::endl
        << "build time: " << BuildInfo::buildTime << std::endl;
 
