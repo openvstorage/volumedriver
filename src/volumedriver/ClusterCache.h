@@ -711,9 +711,6 @@ public:
         , num_hits(0)
         , num_misses(0)
     {
-        // while add/read are not aware of other cluster sizes yet:
-        VERIFY(cluster_size() == T::default_cluster_size());
-
         fs::path serialization_path(getClusterCacheSerializationPath());
         if (serialize_read_cache.value())
         {
@@ -1074,28 +1071,34 @@ public:
     add(const ClusterCacheHandle handle,
         const ClusterAddress ca,
         const youtils::Weed& weed,
-        const uint8_t* buf)
+        const uint8_t* buf,
+        const size_t bufsize)
     {
         if (handle != content_based_handle)
         {
             add(handle,
                 ClusterCacheKey(handle,
                                 ca),
-                buf);
+                buf,
+                bufsize);
         }
         else if (weed != youtils::Weed::null())
         {
             add(handle,
                 ClusterCacheKey(weed),
-                buf);
+                buf,
+                bufsize);
         }
     }
 
     void
     add(const ClusterCacheHandle handle,
         const ClusterCacheKey& key,
-        const uint8_t* buf)
+        const uint8_t* buf,
+        const size_t bufsize)
     {
+        VERIFY(bufsize == cluster_size());
+
         fungi::ScopedWriteLock l(rwlock);
 
         // Really only serves as documentation - the rwlock should rule
@@ -1218,20 +1221,23 @@ public:
     read(const ClusterCacheHandle handle,
          const ClusterAddress ca,
          const youtils::Weed& weed,
-         uint8_t* buf)
+         uint8_t* buf,
+         const size_t bufsize)
     {
         if (handle != content_based_handle)
         {
             return read(handle,
                         ClusterCacheKey(handle,
                                         ca),
-                        buf);
+                        buf,
+                        bufsize);
         }
         else if (weed != youtils::Weed::null())
         {
             return read(handle,
                         ClusterCacheKey(weed),
-                        buf);
+                        buf,
+                        bufsize);
         }
         else
         {
@@ -1243,8 +1249,11 @@ public:
     bool
     read(const ClusterCacheHandle handle,
          const ClusterCacheKey& key,
-         uint8_t* buf)
+         uint8_t* buf,
+         const size_t bufsize)
     {
+        VERIFY(bufsize == cluster_size());
+
         T* read_cache = 0;
         {
             fungi::ScopedReadLock l(rwlock);

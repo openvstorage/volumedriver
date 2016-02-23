@@ -939,7 +939,8 @@ Volume::writeClusters_(uint64_t addr,
                 cache.add(getClusterCacheHandle(),
                           ca,
                           loc_and_hash.weed,
-                          data);
+                          data,
+                          static_cast<size_t>(getClusterSize()));
             }
             else if (ccmode == ClusterCacheMode::LocationBased)
             {
@@ -1117,7 +1118,8 @@ Volume::readClusters_(uint64_t addr,
             bool in_cache = cache.read(getClusterCacheHandle(),
                                        ca,
                                        loc_and_hash.weed,
-                                       buf + off);
+                                       buf + off,
+                                       static_cast<size_t>(getClusterSize()));
             if (in_cache)
             {
                 ++readCacheHits_;
@@ -1143,7 +1145,8 @@ Volume::readClusters_(uint64_t addr,
             cache.add(getClusterCacheHandle(),
                       clrd.getClusterAddress(),
                       clrd.weed(),
-                      clrd.getBuffer());
+                      clrd.getBuffer(),
+                      static_cast<size_t>(getClusterSize()));
         }
     }
 }

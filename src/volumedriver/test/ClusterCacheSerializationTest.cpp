@@ -317,7 +317,8 @@ protected:
 
             readCache.add(handle,
                           *k,
-                          buf.data());
+                          buf.data(),
+                          buf.size());
 
             keys[i] = std::move(k);
         }
@@ -332,14 +333,16 @@ protected:
 
             ASSERT_TRUE(readCache.read(handle,
                                        *keys[i],
-                                       buf.data()));
+                                       buf.data(),
+                                       buf.size()));
         }
 
         for(unsigned i = 0; i < size; ++i)
         {
             readCache.add(handle,
                           random_key(handle),
-                          buf.data());
+                          buf.data(),
+                          buf.size());
         }
 
         for (unsigned i = 0; i < size; ++i)
@@ -352,7 +355,8 @@ protected:
 
             ASSERT_FALSE(readCache.read(handle,
                                         *keys[i],
-                                        buf.data()));
+                                        buf.data(),
+                                        buf.size()));
         }
     }
 
@@ -400,11 +404,13 @@ protected:
         const ClusterCacheKey k(random_key(handle));
         cache->add(handle,
                    k,
-                   buf.data());
+                   buf.data(),
+                   buf.size());
 
         EXPECT_TRUE(cache->read(handle,
                                 k,
-                                buf.data()));
+                                buf.data(),
+                                buf.size()));
 
         const ClusterCacheKey l(random_key(handle));
 
@@ -412,15 +418,18 @@ protected:
 
         cache->add(handle,
                    l,
-                   buf.data());
+                   buf.data(),
+                   buf.size());
 
         EXPECT_FALSE(cache->read(handle,
                                  k,
-                                 buf.data()));
+                                 buf.data(),
+                                 buf.size()));
 
         EXPECT_TRUE(cache->read(handle,
                                 l,
-                                buf.data()));
+                                buf.data(),
+                                buf.size()));
     }
 
     void
@@ -492,7 +501,8 @@ protected:
 
             readCache.add(handle,
                           *k,
-                          buf.data());
+                          buf.data(),
+                          buf.size());
             keys[i%size_in_entries] = std::move(k);
 
             if(i%size_in_entries == size_in_entries - 1)
@@ -509,7 +519,8 @@ protected:
 
                     ASSERT_TRUE(readCache.read(handle,
                                                *keys[j],
-                                               buf.data()));
+                                               buf.data(),
+                                               buf.size()));
                     keys[j] = nullptr;
                 }
             }
@@ -527,7 +538,8 @@ protected:
 
                 ASSERT_TRUE(readCache.read(handle,
                                            *keys[j],
-                                           buf.data()));
+                                           buf.data(),
+                                           buf.size()));
                 keys[j] = nullptr;
             }
         }
@@ -565,7 +577,8 @@ protected:
         {
             readCache.add(handle,
                           random_key(handle),
-                          buf.data());
+                          buf.data(),
+                          buf.size());
         }
 
         Serialization::serializeAndFlush<ClusterCacheType::oarchive_type>(output, readCache);
@@ -644,7 +657,8 @@ protected:
                     auto k(std::make_unique<ClusterCacheKey>(random_key(handle)));
                     readCache.add(handle,
                                   *k,
-                                  buf.data());
+                                  buf.data(),
+                                  buf.size());
 
                     if(vec.size() < vec_size and
                        sou(1023) == 0)
@@ -663,7 +677,8 @@ protected:
                 {
                     ASSERT_TRUE(readCache.read(handle,
                                                *vec[i],
-                                               buf.data()));
+                                               buf.data(),
+                                               buf.size()));
                 }
 
                 wt.restart();
@@ -711,7 +726,8 @@ protected:
                 {
                     ASSERT_TRUE(readCache.read(handle,
                                                *vec[i],
-                                               buf.data()));
+                                               buf.data(),
+                                               buf.size()));
                 }
             }
         }
@@ -791,7 +807,8 @@ protected:
                        {
                            read_cache.add(handle,
                                           random_key(handle),
-                                          buf.data());
+                                          buf.data(),
+                                          buf.size());
                        }
                    });
 
@@ -940,7 +957,8 @@ TEST_P(ClusterCacheSerializationTest, device_serialization_0_mixed)
         auto k(std::make_unique<ClusterCacheKey>(random_key(handle)));
         readCache.add(handle,
                       *k,
-                      buf.data());
+                      buf.data(),
+                      buf.size());
 
         keys[i] = std::move(k);
     }
@@ -951,7 +969,8 @@ TEST_P(ClusterCacheSerializationTest, device_serialization_0_mixed)
                                    lhandle :
                                    chandle,
                                    *keys[i],
-                                   buf.data()));
+                                   buf.data(),
+                                   buf.size()));
     }
 
     for(unsigned i = 0; i < size; ++i)
@@ -959,7 +978,8 @@ TEST_P(ClusterCacheSerializationTest, device_serialization_0_mixed)
         const auto& handle = i % 2 ? lhandle : chandle;
         readCache.add(handle,
                       random_key(handle),
-                      buf.data());
+                      buf.data(),
+                      buf.size());
     }
 
     for (unsigned i = 0; i < size; ++i)
@@ -968,7 +988,8 @@ TEST_P(ClusterCacheSerializationTest, device_serialization_0_mixed)
                                     lhandle :
                                     chandle,
                                     *keys[i],
-                                    buf.data()));
+                                    buf.data(),
+                                    buf.size()));
     }
 }
 
@@ -1089,7 +1110,8 @@ TEST_P(ClusterCacheSerializationTest, make_ze_big_one_mixed)
         auto& handle = i % 2 ? chandle : lhandle;
         readCache.add(handle,
                       random_key(handle),
-                      buf.data());
+                      buf.data(),
+                      buf.size());
     }
 
     Serialization::serializeAndFlush<ClusterCacheType::oarchive_type>(output, readCache);
@@ -1187,7 +1209,8 @@ TEST_P(ClusterCacheSerializationTest, ze_big_one_mixed)
                 auto k(std::make_unique<ClusterCacheKey>(random_key(handle)));
                 readCache.add(handle,
                               *k,
-                              buf.data());
+                              buf.data(),
+                              buf.size());
 
                 auto& vec = i % 2 ? cvec : lvec;
 
@@ -1208,7 +1231,8 @@ TEST_P(ClusterCacheSerializationTest, ze_big_one_mixed)
             {
                 ASSERT_TRUE(readCache.read(lhandle,
                                            *lvec[i],
-                                           buf.data()));
+                                           buf.data(),
+                                           buf.size()));
             }
 
             std::cout << "Checking " << cvec.size() << " content-based keys" << std::endl;
@@ -1217,7 +1241,8 @@ TEST_P(ClusterCacheSerializationTest, ze_big_one_mixed)
             {
                 ASSERT_TRUE(readCache.read(chandle,
                                            *cvec[i],
-                                           buf.data()));
+                                           buf.data(),
+                                           buf.size()));
             }
             wt.restart();
             ct.restart();
@@ -1269,13 +1294,15 @@ TEST_P(ClusterCacheSerializationTest, ze_big_one_mixed)
             {
                 ASSERT_TRUE(readCache.read(chandle,
                                            *cvec[i],
-                                           buf.data()));
+                                           buf.data(),
+                                           buf.size()));
             }
             for(uint64_t i = 0; i < lvec.size(); ++i)
             {
                 ASSERT_TRUE(readCache.read(lhandle,
                                            *lvec[i],
-                                           buf.data()));
+                                           buf.data(),
+                                           buf.size()));
             }
         }
     }
@@ -1335,8 +1362,9 @@ TEST_P(ClusterCacheSerializationTest, limited_entries_serialization)
         {
             ClusterCacheKey ckey(random_key(chandle));
             cache->add(chandle,
-                      ckey,
-                      buf.data());
+                       ckey,
+                       buf.data(),
+                       buf.size());
 
             ckeys[i % csize] = ckey;
         }
@@ -1345,7 +1373,8 @@ TEST_P(ClusterCacheSerializationTest, limited_entries_serialization)
             ClusterCacheKey lkey(random_key(lhandle));
             cache->add(lhandle,
                        lkey,
-                       buf.data());
+                       buf.data(),
+                       buf.size());
 
             lkeys[i % lsize] = lkey;
         }
@@ -1397,14 +1426,16 @@ TEST_P(ClusterCacheSerializationTest, limited_entries_serialization)
     {
         EXPECT_TRUE(cache->read(chandle,
                                 c,
-                                buf.data()));
+                                buf.data(),
+                                buf.size()));
     }
 
     for (const auto& l : lkeys)
     {
         EXPECT_TRUE(cache->read(lhandle,
                                 l,
-                                buf.data()));
+                                buf.data(),
+                                buf.size()));
     }
 }
 
