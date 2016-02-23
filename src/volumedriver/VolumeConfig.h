@@ -424,8 +424,6 @@ private:
 
         // cf. comment in constructor.
 
-        THROW_UNLESS(cluster_mult_ == default_cluster_multiplier());
-        THROW_UNLESS(cluster_mult_ * lba_size_ == default_cluster_size());
         Namespace tmp = backend::Namespace(ns_);
     }
 
