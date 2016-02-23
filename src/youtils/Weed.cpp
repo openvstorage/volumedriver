@@ -100,7 +100,6 @@ Weed::Weed(const byte* input, const uint64_t input_size)
     MD5(input,
         input_size,
         weed_);
-
 }
 
 Weed::Weed(const std::vector<uint8_t>& input)
@@ -122,7 +121,6 @@ Weed::Weed(const std::string& str)
     {
         weed_[i] = (getHexNum(str[2 * i]) << 4) + getHexNum(str[2 * i + 1]);
     }
-
 }
 
 bool

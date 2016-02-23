@@ -118,7 +118,7 @@ LIBS="-lrdmacm -lhiredis ${LIBS}"
 CFLAGS=${CFLAGS:-"-ggdb3 -gdwarf-3 -O0 -Wall"}
 CFLAGS="${CFLAGS} -fPIC"
 
-CPPFLAGS=${CPPFLAGS:-""}
+CPPFLAGS=${CPPFLAGS:-"-DENABLE_MD5_HASH"}
 CPPFLAGS="${CPPFLAGS} -isystem ${BUILDTOOLS}/include"
 
 CXX_INCLUDES=${CXX_INCLUDES:-""}

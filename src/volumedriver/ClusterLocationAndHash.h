@@ -41,16 +41,34 @@ namespace volumedriver
 struct ClusterLocationAndHash
 {
     ClusterLocationAndHash(const ClusterLocation& cloc,
-                           const uint8_t* data)
+                           const uint8_t* data
+#ifndef ENABLE_MD5_HASH
+                           __attribute__((unused))
+#endif
+                           )
         : clusterLocation(cloc)
-        , weed(data, VolumeConfig::default_cluster_size())
+#ifdef ENABLE_MD5_HASH
+        , weed_(data, VolumeConfig::default_cluster_size())
+#endif
     {}
 
     ClusterLocationAndHash(const ClusterLocation& cloc,
-                           const youtils::Weed& wd)
+                           const youtils::Weed& wd
+#ifndef ENABLE_MD5_HASH
+                           __attribute__((unused))
+#endif
+                           )
         : clusterLocation(cloc)
-        , weed(wd)
+#ifdef ENABLE_MD5_HASH
+        , weed_(wd)
+#endif
     {}
+
+#ifndef ENABLE_MD5_HASH
+    ClusterLocationAndHash(const ClusterLocation& cloc)
+        : clusterLocation(cloc)
+    {}
+#endif
 
     operator const ClusterLocation& () const
     {
@@ -67,8 +85,12 @@ struct ClusterLocationAndHash
     bool
     operator==(const ClusterLocationAndHash& other) const
     {
-        return clusterLocation == other.clusterLocation and
-            weed == other.weed;
+#ifdef ENABLE_MD5_HASH
+        return clusterLocation == other.clusterLocation
+            and weed_ == other.weed_;
+#else
+        return clusterLocation == other.clusterLocation;
+#endif
     }
 
     bool
@@ -83,6 +105,16 @@ struct ClusterLocationAndHash
         clusterLocation.cloneID(scid);
     }
 
+    static bool
+    use_hash()
+    {
+#ifdef ENABLE_MD5_HASH
+        return true;
+#else
+        return false;
+#endif
+    }
+
     static const ClusterLocationAndHash&
     discarded_location_and_hash()
     {
@@ -92,16 +124,34 @@ struct ClusterLocationAndHash
         return zloc;
     }
 
+    const youtils::Weed&
+    weed() const
+    {
+#ifdef ENABLE_MD5_HASH
+        return weed_;
+#else
+       static const youtils::Weed w(nullptr, 0);
+       return w;
+#endif
+    }
+
     // TODO: constify
     ClusterLocation clusterLocation;
-    youtils::Weed weed;
+#ifdef ENABLE_MD5_HASH
+    youtils::Weed weed_;
+#endif
 
 private:
     friend class CachedTCBTTest;
 };
 
+#ifdef ENABLE_MD5_HASH
 static_assert(sizeof(ClusterLocationAndHash) == sizeof(ClusterLocation) + sizeof(youtils::Weed),
               "ClusterLocation size assumption does not hold");
+#else
+static_assert(sizeof(ClusterLocationAndHash) == sizeof(ClusterLocation),
+              "ClusterLocation size assumption does not hold");
+#endif
 
 }
 

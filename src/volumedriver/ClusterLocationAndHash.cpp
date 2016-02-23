@@ -18,13 +18,21 @@ std::ostream&
 operator<<(std::ostream& ostr,
            const volumedriver::ClusterLocationAndHash& loc)
 {
+#ifdef ENABLE_MD5_HASH
     return ostr << loc.clusterLocation
-                << loc.weed;
+                << loc.weed_;
+#else
+    return ostr << loc.clusterLocation;
+#endif
 }
 
 namespace volumedriver
 {
+#ifdef ENABLE_MD5_HASH
 static_assert(sizeof(ClusterLocationAndHash) == 24, "Wrong size for ClusterLocationAndHash");
+#else
+static_assert(sizeof(ClusterLocationAndHash) == 8, "Wrong size for ClusterLocationAndHash");
+#endif
 }
 
 // Local Variables: **

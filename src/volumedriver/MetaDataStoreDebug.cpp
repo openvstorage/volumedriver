@@ -36,7 +36,10 @@ struct DumpMD : public MetaDataStoreFunctor
 
         if(dump_weed_)
         {
-            ostr_ << ", " << clh.weed;
+            //cnanakos: handle better?
+#ifdef ENABLE_MD5_HASH
+            ostr_ << ", " << clh.weed();
+#endif
         }
         ostr_ << std::endl;
     }

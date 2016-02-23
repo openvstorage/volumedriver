@@ -246,33 +246,61 @@ public:
 
         checkClusters(v, test_size, "_", mod);
 
+#ifdef ENABLE_MD5_HASH
         CHECK_STATS(Devices(2),
                     Hits(test_size - mod),
                     Misses(mod),
                     Entries(mod));
+#else
+        CHECK_STATS(Devices(2),
+                    Hits(0),
+                    Misses(test_size),
+                    Entries(0));
+#endif
 
         VolManager::get()->getClusterCache().fail_fd_forread();
 
         checkClusters(v, test_size, "_", mod);
 
+#ifdef ENABLE_MD5_HASH
         CHECK_STATS(Devices(0),
                     Hits(test_size - mod),
                     Misses(mod + test_size),
                     Entries(0));
+#else
+        CHECK_STATS(Devices(2),
+                    Hits(0),
+                    Misses(2 * test_size),
+                    Entries(0));
+#endif
 
         triggerDeviceOnlining();
 
+#ifdef ENABLE_MD5_HASH
         CHECK_STATS(Devices(2),
                     Hits(test_size - mod),
                     Misses(mod + test_size),
                     Entries(0));
+#else
+        CHECK_STATS(Devices(2),
+                    Hits(0),
+                    Misses(2 * test_size),
+                    Entries(0));
+#endif
 
         checkClusters(v, test_size, "_", mod);
 
+#ifdef ENABLE_MD5_HASH
         CHECK_STATS(Devices(2),
                     Hits(2 * (test_size - mod)),
                     Misses(2 * mod + test_size),
                 Entries(mod));
+#else
+        CHECK_STATS(Devices(2),
+                    Hits(0),
+                    Misses(3 * test_size),
+                    Entries(0));
+#endif
     }
 
     void
@@ -354,40 +382,75 @@ public:
 
         writeClusters(v, test_size, "_", mod);
 
+#ifdef ENABLE_MD5_HASH
         CHECK_STATS(Devices(2),
                     Hits(0),
                     Misses(0),
                     Entries(mod));
+#else
+        CHECK_STATS(Devices(2),
+                    Hits(0),
+                    Misses(0),
+                    Entries(0));
+#endif
 
         checkClusters(v, test_size, "_", mod);
 
+#ifdef ENABLE_MD5_HASH
         CHECK_STATS(Devices(2),
                     Hits(test_size),
                     Misses(0),
                     Entries(mod));
+#else
+        CHECK_STATS(Devices(2),
+                    Hits(0),
+                    Misses(test_size),
+                    Entries(0));
+#endif
 
         VolManager::get()->getClusterCache().fail_fd_forread();
 
         checkClusters(v, test_size, "_", mod);
 
+#ifdef ENABLE_MD5_HASH
         CHECK_STATS(Devices(0),
                     Hits(test_size),
                     Misses(test_size),
                     Entries(0));
+#else
+        CHECK_STATS(Devices(2),
+                    Hits(0),
+                    Misses(2*test_size),
+                    Entries(0));
+#endif
 
         triggerDeviceOnlining();
 
+#ifdef ENABLE_MD5_HASH
         CHECK_STATS(Devices(2),
                     Hits(test_size),
                     Misses(test_size),
                     Entries(0));
+#else
+        CHECK_STATS(Devices(2),
+                    Hits(0),
+                    Misses(2*test_size),
+                    Entries(0));
+#endif
 
         checkClusters(v, test_size, "_", mod);
 
+#ifdef ENABLE_MD5_HASH
         CHECK_STATS(Devices(2),
                     Hits(2* (test_size ) - mod),
                     Misses(mod + test_size),
                     Entries(mod));
+#else
+        CHECK_STATS(Devices(2),
+                    Hits(0),
+                    Misses(3*test_size),
+                    Entries(0));
+#endif
     }
 
     decltype(ClusterCache::ManagerType::devices)&
@@ -678,38 +741,73 @@ TEST_P(ClusterCacheTest, checkCacheBehaviour)
 
     writeClusters(v1, test_size, "___", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(0),
                 Misses(0),
                 Entries(mod));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(0),
+                Entries(0));
+#endif
 
     writeClusters(v2, test_size, "***", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(0),
                 Misses(0),
                 Entries(mod));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(0),
+                Entries(0));
+#endif
 
     checkClusters(v2, test_size, "***", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(test_size - mod),
                 Misses(mod),
                 Entries(2 * mod));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(test_size),
+                Entries(0));
+#endif
 
     writeClusters(v2, test_size, "___", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(test_size - mod),
                 Misses(mod),
                 Entries(2 * mod));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(test_size),
+                Entries(0));
+#endif
 
     checkClusters(v2, test_size, "___", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(2 * test_size - mod),
                 Misses(mod),
                 Entries(2 * mod));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(2 * test_size),
+                Entries(0));
+#endif
 
     {
         boost::optional<ClusterCacheBehaviour> behaviour = ClusterCacheBehaviour::CacheOnRead;
@@ -724,24 +822,45 @@ TEST_P(ClusterCacheTest, checkCacheBehaviour)
 
     writeClusters(v2, test_size, "$$$", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(2 * test_size - mod),
                 Misses(mod),
                 Entries(3 * mod));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(2 * test_size),
+                Entries(0));
+#endif
 
     writeClusters(v1, test_size, "$$$", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(2 * test_size - mod),
                 Misses(mod),
                 Entries(3 * mod));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(2 * test_size),
+                Entries(0));
+#endif
 
     checkClusters(v2, test_size, "$$$", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(3 * test_size - mod),
                 Misses(mod),
                 Entries(3 * mod));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(3 * test_size),
+                Entries(0));
+#endif
 }
 
 TEST_P(ClusterCacheTest, LocationBased_checkCacheBehaviour)
@@ -1023,17 +1142,31 @@ TEST_P(ClusterCacheTest, offline2)
 
     checkClusters(v1, test_size, "_", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(0),
                 Hits(0),
                 Misses(test_size),
                 Entries(0));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(test_size),
+                Entries(0));
+#endif
 
     checkClusters(v1, test_size, "_", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(0),
                 Hits(0),
                 Misses(2*test_size),
                 Entries(0));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(2*test_size),
+                Entries(0));
+#endif
 
     triggerDeviceOnlining();
 
@@ -1044,10 +1177,17 @@ TEST_P(ClusterCacheTest, offline2)
 
     checkClusters(v1, test_size, "_", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(test_size-mod),
                 Misses(2*test_size + mod),
                 Entries(mod));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(3*test_size),
+                Entries(0));
+#endif
 }
 
 TEST_P(ClusterCacheTest, offline_online)
@@ -1611,10 +1751,17 @@ TEST_P(ClusterCacheTest, error_during_deserialization)
                   count,
                   s);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(count),
                 Misses(0),
                 Entries(count));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(count),
+                Entries(0));
+#endif
 
     ClusterCache::ManagerType::Info info;
     VolManager::get()->getClusterCache().deviceInfo(info);
@@ -1652,10 +1799,17 @@ TEST_P(ClusterCacheTest, error_during_deserialization)
                   count,
                   s);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(0),
                 Misses(count),
                 Entries(count));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(count),
+                Entries(0));
+#endif
 }
 
 TEST_P(ClusterCacheTest, invalidation_when_default_behaviour_is_no_cache)

@@ -22,6 +22,7 @@
 #include "SnapshotName.h"
 #include "TLog.h"
 #include "Types.h"
+#include "ClusterLocationAndHash.h"
 
 #include <memory>
 
@@ -375,9 +376,9 @@ private:
     void
     load(Archive& ar, const unsigned int version)
     {
-        if (version < 3)
+        if (version < 4)
         {
-            THROW_SERIALIZATION_ERROR(version, 3, 3);
+            THROW_SERIALIZATION_ERROR(version, 4, 4);
         }
 
         ar & boost::serialization::make_nvp("parent",
@@ -389,6 +390,14 @@ private:
         ar & boost::serialization::make_nvp("scrub_id",
                                             scrub_id_);
 
+        bool use_hash = true;
+        if (version >= 4)
+        {
+            ar & boost::serialization::make_nvp("use_hash",
+                                                use_hash);
+        }
+        VERIFY(ClusterLocationAndHash::use_hash() == use_hash);
+
         verifySanity_();
     }
 
@@ -396,7 +405,7 @@ private:
     void
     save(Archive& ar, const unsigned int version) const
     {
-        if(version == 3)
+        if(version == 4)
         {
             ar & boost::serialization::make_nvp("parent",
                                                 parent_);
@@ -406,10 +415,14 @@ private:
 
             ar & boost::serialization::make_nvp("scrub_id",
                                                 scrub_id_);
+
+            bool use_hash = ClusterLocationAndHash::use_hash();
+            ar & boost::serialization::make_nvp("use_hash",
+                                                use_hash);
         }
         else
         {
-            THROW_SERIALIZATION_ERROR(version, 3, 3);
+            THROW_SERIALIZATION_ERROR(version, 4, 4);
         }
     }
 
@@ -419,7 +432,7 @@ private:
 
 }
 
-BOOST_CLASS_VERSION(volumedriver::SnapshotPersistor, 3);
+BOOST_CLASS_VERSION(volumedriver::SnapshotPersistor, 4);
 
 #endif // SNAPSHOT_PERSITOR_H
 

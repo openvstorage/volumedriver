@@ -918,13 +918,25 @@ Volume::writeClusters_(uint64_t addr,
             const uint8_t* data = buf + i * getClusterSize();
             uint64_t clusteraddr = addr + i * getClusterSize();
             ClusterAddress ca = addr2CA(clusteraddr);
-            const ClusterLocationAndHash
+#ifdef ENABLE_MD5_HASH
+            ClusterLocationAndHash
                 loc_and_hash(cluster_locations_[i],
                              ccmode == ClusterCacheMode::LocationBased ?
                              yt::Weed::null() :
                              yt::Weed(data,
                                       getClusterSize()));
-
+#else
+            ClusterLocationAndHash loc_and_hash;
+            if (ccmode == ClusterCacheMode::LocationBased)
+            {
+                loc_and_hash = ClusterLocationAndHash(cluster_locations_[i],
+                                                      yt::Weed::null());
+            }
+            else
+            {
+                loc_and_hash = ClusterLocationAndHash(cluster_locations_[i]);
+            }
+#endif
 
             writeClusterMetaData_(ca,
                                   loc_and_hash);
@@ -933,7 +945,7 @@ Volume::writeClusters_(uint64_t addr,
             {
                 cache.add(getClusterCacheHandle(),
                           ca,
-                          loc_and_hash.weed,
+                          loc_and_hash.weed(),
                           data);
             }
             else if (ccmode == ClusterCacheMode::LocationBased)
@@ -944,7 +956,7 @@ Volume::writeClusters_(uint64_t addr,
                 // to outdated data being returned from the cache.
                 cache.invalidate(getClusterCacheHandle(),
                                  ca,
-                                 loc_and_hash.weed);
+                                 loc_and_hash.weed());
             }
 
         }
@@ -1111,7 +1123,7 @@ Volume::readClusters_(uint64_t addr,
         {
             bool in_cache = cache.read(getClusterCacheHandle(),
                                        ca,
-                                       loc_and_hash.weed,
+                                       loc_and_hash.weed(),
                                        buf + off);
             if (in_cache)
             {

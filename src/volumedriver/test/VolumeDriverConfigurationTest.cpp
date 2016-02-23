@@ -342,9 +342,15 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
         }
 
         VolManager::get()->getClusterCache().get_stats(hits, misses, entries);
+#ifdef ENABLE_MD5_HASH
         EXPECT_EQ(1U, entries);
         EXPECT_EQ(test_times - 1, hits);
         EXPECT_EQ(1U, misses);
+#else
+        EXPECT_EQ(0U, entries);
+        EXPECT_EQ(0U, hits);
+        EXPECT_EQ(5U, misses);
+#endif
 
         ip::PARAMETER_TYPE(clustercache_mount_points) mps(pt);
 
@@ -358,9 +364,15 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
         EXPECT_TRUE(device_info.size() == 0);
 
         VolManager::get()->getClusterCache().get_stats(hits, misses, entries);
+#ifdef ENABLE_MD5_HASH
         EXPECT_EQ(0U, entries);
         EXPECT_EQ(test_times - 1, hits);
         EXPECT_EQ(1U, misses);
+#else
+        EXPECT_EQ(0U, entries);
+        EXPECT_EQ(0U, hits);
+        EXPECT_EQ(test_times, misses);
+#endif
 
         ConfigurationReport c_rep;
         ASSERT_TRUE(VolManager::get()->getClusterCache().checkConfig(pt,
@@ -374,9 +386,15 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
         }
 
         VolManager::get()->getClusterCache().get_stats(hits, misses, entries);
+#ifdef ENABLE_MD5_HASH
         EXPECT_EQ(0U, entries);
         EXPECT_EQ(test_times - 1, hits);
         EXPECT_EQ(test_times + 1, misses);
+#else
+        EXPECT_EQ(0U, entries);
+        EXPECT_EQ(0U, hits);
+        EXPECT_EQ(2 * test_times, misses);
+#endif
 
         ASSERT_NO_THROW(VolManager::get()->getClusterCache().update(pt,
                                                                u_rep));
@@ -393,9 +411,15 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
         }
 
         VolManager::get()->getClusterCache().get_stats(hits, misses, entries);
+#ifdef ENABLE_MD5_HASH
         EXPECT_EQ(1U, entries);
         EXPECT_EQ(hits, 2*test_times - 2);
         EXPECT_EQ(misses, test_times + 2);
+#else
+        EXPECT_EQ(0U, entries);
+        EXPECT_EQ(hits, 0);
+        EXPECT_EQ(misses, 3 * test_times);
+#endif
     }
 }
 

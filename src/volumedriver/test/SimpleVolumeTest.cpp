@@ -1668,20 +1668,35 @@ TEST_P(SimpleVolumeTest,  readCacheHits)
     checkVolume(v1,0, v1->getClusterSize(), "kristafke");
     hits =  api::getClusterCacheHits(VolumeId("volume1"));
     misses =  api::getClusterCacheMisses(VolumeId("volume1"));
+#ifdef ENABLE_MD5_HASH
     EXPECT_EQ(1U, hits);
     EXPECT_EQ(1U, misses);
+#else
+    EXPECT_EQ(0U, hits);
+    EXPECT_EQ(2U, misses);
+#endif
 
     checkVolume(v1,0, v1->getClusterSize(), "kristafke");
     hits =  api::getClusterCacheHits(VolumeId("volume1"));
     misses =  api::getClusterCacheMisses(VolumeId("volume1"));
+#ifdef ENABLE_MD5_HASH
     EXPECT_EQ(2U, hits);
     EXPECT_EQ(1U, misses);
+#else
+    EXPECT_EQ(0U, hits);
+    EXPECT_EQ(3U, misses);
+#endif
 
     checkVolume(v1,0, v1->getClusterSize(), "kristafke");
     hits =  api::getClusterCacheHits(VolumeId("volume1"));
     misses =  api::getClusterCacheMisses(VolumeId("volume1"));
+#ifdef ENABLE_MD5_HASH
     EXPECT_EQ(3U, hits);
     EXPECT_EQ(1U, misses);
+#else
+    EXPECT_EQ(0U, hits);
+    EXPECT_EQ(4U, misses);
+#endif
 }
 
 

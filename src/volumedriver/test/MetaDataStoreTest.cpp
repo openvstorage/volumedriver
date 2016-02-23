@@ -1071,7 +1071,9 @@ TEST_P(MetaDataStoreTest, LRU)
     {
         ClusterLocationAndHash clh;
         md->readCluster(i * page_entries, clh);
-        EXPECT_EQ(w, clh.weed);
+#ifdef ENABLE_MD5_HASH
+        EXPECT_EQ(w, clh.weed());
+#endif
         const ClusterLocation loc(i + 1);
         EXPECT_EQ(loc, clh.clusterLocation);
     }
@@ -1095,7 +1097,9 @@ TEST_P(MetaDataStoreTest, LRU)
     {
         ClusterLocationAndHash clh;
         md->readCluster((npages - 1) * page_entries, clh);
-        EXPECT_EQ(w, clh.weed);
+#ifdef ENABLE_MD5_HASH
+        EXPECT_EQ(w, clh.weed());
+#endif
         const ClusterLocation loc(npages);
         EXPECT_EQ(loc, clh.clusterLocation);
 

@@ -105,7 +105,7 @@ public:
     const youtils::Weed&
     weed() const
     {
-        return loc_and_hash_.weed;
+        return loc_and_hash_.weed();
     }
 
 private:

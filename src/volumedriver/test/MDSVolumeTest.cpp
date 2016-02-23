@@ -321,7 +321,7 @@ protected:
             mdi.readCluster(ca, slave);
 
             ASSERT_EQ(master.clusterLocation, slave.clusterLocation);
-            ASSERT_EQ(master.weed, slave.weed);
+            ASSERT_EQ(master.weed(), slave.weed());
         }
     }
 

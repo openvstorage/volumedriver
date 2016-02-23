@@ -411,7 +411,13 @@ TEST_F(TLogTest, syncchecksums)
     const Entry* e = 0;
     TLogReader t(p1);
 
-#define ASSERT_LOC                                      \
+#ifdef ENABLE_MD5_HASH
+#define ASSERT_LOC_MD5 ASSERT_EQ(l.weed(), weed)
+#else
+#define ASSERT_LOC_MD5
+#endif
+
+#define ASSERT_LOC_NO_MD5                               \
     e = t.nextAny();                                    \
     ASSERT_TRUE(e);                                     \
     ASSERT_TRUE(e->isLocation());                       \
@@ -419,8 +425,9 @@ TEST_F(TLogTest, syncchecksums)
     ASSERT_FALSE(e->isSCOCRC());                        \
     ASSERT_FALSE(e->isSync());                          \
     ASSERT_EQ(0U, e->clusterAddress());                  \
-    ASSERT_EQ(l.clusterLocation, e->clusterLocation()); \
-    ASSERT_EQ(l.weed, weed)
+    ASSERT_EQ(l.clusterLocation, e->clusterLocation());
+
+#define ASSERT_LOC ASSERT_LOC_NO_MD5 ASSERT_LOC_MD5
 
 #define ASSERT_CLOSE(value)                              \
     e = t.nextAny();                                     \
@@ -470,7 +477,7 @@ TEST_F(TLogTest, forth_and_back)
 
     EXPECT_EQ(0U, e->clusterAddress());
     EXPECT_EQ(clh.clusterLocation, e->clusterLocation());
-    EXPECT_EQ(clh.weed, e->clusterLocationAndHash().weed);
+    EXPECT_EQ(clh.weed(), e->clusterLocationAndHash().weed());
 
     e = r.nextAny();
     ASSERT(e != nullptr);

@@ -166,7 +166,7 @@ SCOPool::doEntry(const Entry& e)
         ClusterLocation loc(current_sco_name_,
                             current_offset_);
         ClusterLocationAndHash loc_and_hash(loc,
-                                            e.clusterLocationAndHash().weed);
+                                            e.clusterLocationAndHash().weed());
 
         rewritten_tlog_writer->add(e.clusterAddress(),
                                    loc_and_hash);
