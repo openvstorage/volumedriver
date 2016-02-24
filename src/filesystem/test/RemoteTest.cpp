@@ -282,11 +282,11 @@ public:
         wait_for_file(rpath);
 
         auto maybe_id(find_object(fname));
-        ASSERT_TRUE(static_cast<bool>(maybe_id));
+        ASSERT_TRUE(maybe_id != boost::none);
 
         verify_registration(*maybe_id, remote_node_id());
 
-        const uint64_t off = api::GetClusterSize() - 1;
+        const uint64_t off = 4095;
         const std::string pattern("written on the remote instance");
 
         write_to_remote_file(rpath, pattern, off);
@@ -564,7 +564,7 @@ public:
         const auto rpath(make_remote_file(fname, size));
 
         const std::string pattern1("written remotely by a node not owning the volume");
-        const uint64_t off = api::GetClusterSize() - 1;
+        const uint64_t off = 4095;
         write_to_file(fname, pattern1, pattern1.size(), off);
 
         check_remote_file(rpath, pattern1, off);

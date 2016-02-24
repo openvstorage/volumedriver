@@ -621,7 +621,7 @@ LocalNode::resize_(vd::Volume* vol,
 {
     LOCKVD();
 
-    const uint64_t csize = api::GetClusterSize();
+    const uint64_t csize = api::GetClusterSize(vol);
     uint64_t clusters = newsize / csize;
     if (newsize % csize)
     {
@@ -630,7 +630,8 @@ LocalNode::resize_(vd::Volume* vol,
         ++clusters;
     }
 
-    api::Resize(vol, clusters);
+    api::Resize(vol,
+                clusters);
 }
 
 void

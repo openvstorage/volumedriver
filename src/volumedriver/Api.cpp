@@ -137,9 +137,9 @@ api::GetLbaSize(vd::Volume* vol)
 }
 
 uint64_t
-api::GetClusterSize()
+api::GetClusterSize(volumedriver::Volume* vol)
 {
-    return vd::VolumeConfig::default_cluster_size();
+    return vol->getClusterSize();
 }
 
 void

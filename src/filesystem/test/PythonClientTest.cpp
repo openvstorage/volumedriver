@@ -429,7 +429,7 @@ TEST_F(PythonClientTest, performance_counters)
     const vfs::FrontendPath vpath(make_volume_name("/testing_info"));
     const std::string vname(create_file(vpath, 10 << 20));
 
-    const size_t csize = api::GetClusterSize();
+    const size_t csize = get_cluster_size(vfs::ObjectId(vname));
 
     auto expect_nothing([&](const vd::PerformanceCounter<uint64_t>& ctr)
     {
@@ -696,8 +696,8 @@ TEST_F(PythonClientTest, scrubbing)
 {
     const vfs::FrontendPath vpath(make_volume_name("/testing_the_scrubber"));
     const vfs::ObjectId vol_id(create_file(vpath, 10 << 20));
-    const off_t off = 10 * api::GetClusterSize();
-    const uint64_t size = 30 * api::GetClusterSize();
+    const off_t off = 10 * get_cluster_size(vol_id);
+    const uint64_t size = 30 * get_cluster_size(vol_id);
 
 
     const std::string pattern("some_write");
@@ -927,8 +927,8 @@ TEST_F(PythonClientTest, prevent_rollback_beyond_clone)
     std::vector<vd::SnapshotName> snaps;
     snaps.reserve(4);
 
-    const off_t off = api::GetClusterSize();
-    const uint64_t size = api::GetClusterSize();
+    const off_t off = get_cluster_size(pname);
+    const uint64_t size = get_cluster_size(pname);
 
     for (size_t i = 0; i < snaps.capacity(); ++i)
     {
@@ -1005,10 +1005,11 @@ TEST_F(PythonClientTest, family_scrubbing)
 {
     const vfs::FrontendPath ppath(make_volume_name("/parent"));
     const size_t vsize = 10 << 20;
-    const size_t csize = api::GetClusterSize();
 
     const vfs::ObjectId pname(create_file(ppath,
                                           vsize));
+
+    const size_t csize = get_cluster_size(pname);
 
     const std::string pattern("Blackstar");
     for (size_t i = 0; i < 64; ++i)
@@ -1060,10 +1061,11 @@ TEST_F(PythonClientTest, templates_and_scrubbing)
 {
     const vfs::FrontendPath ppath(make_volume_name("/parent"));
     const size_t vsize = 10 << 20;
-    const size_t csize = api::GetClusterSize();
 
     const vfs::ObjectId pname(create_file(ppath,
                                           vsize));
+
+    const size_t csize = get_cluster_size(pname);
 
     const std::string pattern("White Chalk");
     for (size_t i = 0; i < 64; ++i)
@@ -1774,7 +1776,7 @@ TEST_F(PythonClientTest, locked_scrub)
     const vfs::FrontendPath vpath(make_volume_name("/some-volume"));
     const std::string vname(create_file(vpath, 10 << 20));
 
-    const uint64_t csize = api::GetClusterSize();
+    const uint64_t csize = get_cluster_size(vfs::ObjectId(vname));
     const std::string fst("first");
 
     write_to_file(vpath,

@@ -1174,6 +1174,16 @@ FileSystemTestBase::set_lock_reaper_interval(uint64_t seconds)
     EXPECT_EQ(1U, urep.update_size()) << "fix yer test";
 }
 
+size_t
+FileSystemTestBase::get_cluster_size(const vfs::ObjectId& oid) const
+{
+    LOCKVD();
+    vd::Volume* v = api::getVolumePointer(vd::VolumeId(oid.str()));
+    EXPECT_TRUE(v);
+    VERIFY(v);
+    return api::GetClusterSize(v);
+}
+
 }
 
 // Local Variables: **
