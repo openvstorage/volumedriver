@@ -657,8 +657,8 @@ VolManager::checkSCOAndTLogMultipliers(const SCOMultiplier sco_mult_old,
 
     if (diff > 0)
     {
-        const uint64_t sco_cache_capacity = getSCOCacheCapacityWithoutThrottling();
-        const uint64_t sco_cache_usage = getCurrentVolumesTLogRequirements();
+        const int64_t sco_cache_capacity = getSCOCacheCapacityWithoutThrottling();
+        const int64_t sco_cache_usage = getCurrentVolumesTLogRequirements();
 
         if (sco_cache_capacity - sco_cache_usage < diff)
         {
