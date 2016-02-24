@@ -634,15 +634,14 @@ private:
     }
 };
 
+const LBASize ErrorHandlingTest::lba_size_(512);
+const ClusterMultiplier ErrorHandlingTest::cluster_mult_(8);
 const SCOMultiplier ErrorHandlingTest::sco_mult_(32);
 
 const size_t ErrorHandlingTest::sco_size_ =
     ErrorHandlingTest::lba_size_ *
     ErrorHandlingTest::cluster_mult_ *
     ErrorHandlingTest::sco_mult_;
-
-const LBASize ErrorHandlingTest::lba_size_(512);
-const ClusterMultiplier ErrorHandlingTest::cluster_mult_(8);
 
 const size_t ErrorHandlingTest::mp_size_ = ErrorHandlingTest::sco_size_ * 10;
 const size_t ErrorHandlingTest::trigger_gap_ = ErrorHandlingTest::sco_size_ * 2;
