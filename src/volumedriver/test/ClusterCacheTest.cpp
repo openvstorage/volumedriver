@@ -1636,7 +1636,7 @@ TEST_P(ClusterCacheTest, error_during_deserialization)
     {
         ClusterCacheDiskStore ds(i.first,
                                  i.second.total_size,
-                                 VolumeConfig::default_cluster_size());
+                                 GetParam().cluster_cache_cluster_multiplier() * VolumeConfig::default_lba_size());
 
         for (size_t i = 0; i < ds.total_size() / buf.size(); ++i)
         {

@@ -122,7 +122,7 @@ protected:
     {
         const VolumeSize vsize(CachePage::capacity() *
                                10 *
-                               VolumeConfig::default_cluster_size());
+                               default_cluster_size());
 
         return VanillaVolumeConfigParameters(VolumeId(wrns.ns().str()),
                                              wrns.ns(),

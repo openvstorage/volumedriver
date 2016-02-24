@@ -299,7 +299,7 @@ protected:
         auto& md = *(v->getMetaDataStore());
 
         const uint64_t total_size =
-            num_tlogs * entries_per_tlog * (uint64_t)VolumeConfig::default_cluster_size();
+            num_tlogs * entries_per_tlog * default_cluster_size();
 
         LBAGenerator lg(randomness,
                         total_size,
@@ -1013,7 +1013,7 @@ TEST_P(MetaDataStoreTest, LRU)
     const uint32_t npages(youtils::System::get_env_with_default<uint32_t>("MD_PAGES",
                                                                           32));
     const uint64_t page_entries = CachePage::capacity();
-    const uint64_t vsize = (npages + 1) * page_entries * VolumeConfig::default_cluster_size();
+    const uint64_t vsize = (npages + 1) * page_entries * default_cluster_size();
 
     const std::string vname("vol");
     auto ns_ptr = make_random_namespace();

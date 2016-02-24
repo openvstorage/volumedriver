@@ -2764,8 +2764,8 @@ TEST_P(LocalRestartTest, DISABLED_ReliabilityOfTheBigOneIfTheMDStoreLRUWouldWork
 
     ASSERT_LT(1U, page_entries);
 
-    const auto cluster_mult = VolumeConfig::default_cluster_multiplier();
-    const auto cluster_size = VolumeConfig::default_lba_size() * cluster_mult;
+    const auto cluster_mult = default_cluster_multiplier();
+    const auto cluster_size = default_lba_size() * cluster_mult;
 
     ASSERT_LT(3U, max_tlog_entries);
 
