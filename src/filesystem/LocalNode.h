@@ -188,7 +188,8 @@ public:
     set_volume_as_template(const ObjectId& id);
 
     uint64_t
-    volume_potential(const boost::optional<volumedriver::SCOMultiplier>&,
+    volume_potential(const boost::optional<volumedriver::ClusterMultiplier>&,
+                     const boost::optional<volumedriver::SCOMultiplier>&,
                      const boost::optional<volumedriver::TLogMultiplier>&);
 
     uint64_t
@@ -229,6 +230,7 @@ private:
     DECLARE_PARAMETER(vrouter_local_io_sleep_before_retry_usecs);
     DECLARE_PARAMETER(vrouter_local_io_retries);
     DECLARE_PARAMETER(vrouter_sco_multiplier);
+    DECLARE_PARAMETER(vrouter_cluster_multiplier);
     DECLARE_PARAMETER(vrouter_lock_reaper_interval);
     DECLARE_PARAMETER(scrub_manager_interval);
     DECLARE_PARAMETER(scrub_manager_sync_wait_secs);

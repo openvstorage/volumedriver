@@ -657,7 +657,8 @@ protected:
     metadata_backend_type() const;
 
     uint64_t
-    volume_potential_sco_cache(const SCOMultiplier,
+    volume_potential_sco_cache(const ClusterMultiplier,
+                               const SCOMultiplier,
                                const boost::optional<TLogMultiplier>&);
 
     static OwnerTag

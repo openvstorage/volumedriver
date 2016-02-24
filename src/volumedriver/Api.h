@@ -471,7 +471,8 @@ public:
                        const volumedriver::ScrubbingCleanup = volumedriver::ScrubbingCleanup::OnSuccess);
 
     static uint64_t
-    volumePotential(const volumedriver::SCOMultiplier,
+    volumePotential(const volumedriver::ClusterMultiplier,
+                    const volumedriver::SCOMultiplier,
                     const boost::optional<volumedriver::TLogMultiplier>&);
 
     static uint64_t

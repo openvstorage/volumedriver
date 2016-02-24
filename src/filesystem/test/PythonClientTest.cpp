@@ -341,6 +341,7 @@ TEST_F(PythonClientTest, snapshot_excessive_metadata)
     const bpy::list l(client_.list_snapshots(vname));
     EXPECT_EQ(0, bpy::len(l));
 }
+
 TEST_F(PythonClientTest, volume_potential)
 {
     uint64_t res = 0;
@@ -348,9 +349,9 @@ TEST_F(PythonClientTest, volume_potential)
     EXPECT_LT(0U, res);
     EXPECT_EQ(res,
               fs_->object_router().local_volume_potential(boost::none,
+                                                          boost::none,
                                                           boost::none));
 }
-
 
 TEST_F(PythonClientTest, snapshot_metadata)
 {

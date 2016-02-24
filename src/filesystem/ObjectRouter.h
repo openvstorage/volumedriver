@@ -345,8 +345,10 @@ public:
     }
 
     uint64_t
-    local_volume_potential(const boost::optional<volumedriver::SCOMultiplier>&,
+    local_volume_potential(const boost::optional<volumedriver::ClusterMultiplier>&,
+                           const boost::optional<volumedriver::SCOMultiplier>&,
                            const boost::optional<volumedriver::TLogMultiplier>&);
+
     FailOverCacheConfigMode
     get_foc_config_mode(const ObjectId& id);
 

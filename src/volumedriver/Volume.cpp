@@ -233,7 +233,8 @@ Volume::setSCOMultiplier(SCOMultiplier sco_mult)
 
     const boost::optional<TLogMultiplier> tlog_mult(getTLogMultiplier());
 
-    VolManager::get()->checkSCOAndTLogMultipliers(getSCOMultiplier(),
+    VolManager::get()->checkSCOAndTLogMultipliers(getClusterMultiplier(),
+                                                  getSCOMultiplier(),
                                                   sco_mult,
                                                   tlog_mult,
                                                   tlog_mult);
@@ -269,7 +270,8 @@ Volume::setTLogMultiplier(const boost::optional<TLogMultiplier>& tlog_mult)
 
     const SCOMultiplier sco_mult(getSCOMultiplier());
 
-    VolManager::get()->checkSCOAndTLogMultipliers(sco_mult,
+    VolManager::get()->checkSCOAndTLogMultipliers(getClusterMultiplier(),
+                                                  sco_mult,
                                                   sco_mult,
                                                   getTLogMultiplier(),
                                                   tlog_mult);

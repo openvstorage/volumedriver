@@ -574,13 +574,21 @@ VolumePotential::execute_internal(::XmlRpc::XmlRpcValue& params,
     with_api_exception_conversion([&]
     {
         auto param = params[0];
+
+        boost::optional<vd::ClusterMultiplier> cluster_mult;
+
+        if (param.hasMember(XMLRPCKeys::cluster_multiplier))
+        {
+            const std::string s(param[XMLRPCKeys::cluster_multiplier]);
+            cluster_mult = boost::lexical_cast<vd::ClusterMultiplier>(s);
+        }
+
         boost::optional<vd::SCOMultiplier> sco_mult;
 
         if (param.hasMember(XMLRPCKeys::sco_multiplier))
         {
             const std::string s(param[XMLRPCKeys::sco_multiplier]);
-            const uint32_t n = boost::lexical_cast<uint32_t>(s);
-            sco_mult = vd::SCOMultiplier(n);
+            sco_mult = boost::lexical_cast<vd::SCOMultiplier>(s);
         }
 
         boost::optional<vd::TLogMultiplier> tlog_mult;
@@ -592,7 +600,8 @@ VolumePotential::execute_internal(::XmlRpc::XmlRpcValue& params,
             tlog_mult = vd::TLogMultiplier(n);
         }
 
-        const uint64_t pot = fs_.object_router().local_volume_potential(sco_mult,
+        const uint64_t pot = fs_.object_router().local_volume_potential(cluster_mult,
+                                                                        sco_mult,
                                                                         tlog_mult);
         result[XMLRPCKeys::volume_potential] = XMLVAL(pot);
     });

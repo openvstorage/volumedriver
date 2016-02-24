@@ -400,14 +400,16 @@ public:
     }
 
     uint64_t
-    volumePotential(const SCOMultiplier,
+    volumePotential(const ClusterMultiplier,
+                    const SCOMultiplier,
                     const boost::optional<TLogMultiplier>&);
 
     uint64_t
     volumePotential(const backend::Namespace& ns);
 
     void
-    checkSCOAndTLogMultipliers(const SCOMultiplier smult_old,
+    checkSCOAndTLogMultipliers(const ClusterMultiplier,
+                               const SCOMultiplier smult_old,
                                const SCOMultiplier smult_new,
                                const boost::optional<TLogMultiplier>& tmult_old,
                                const boost::optional<TLogMultiplier>& tmult_new);
@@ -636,7 +638,8 @@ private:
     getSCOCacheCapacityWithoutThrottling();
 
     uint64_t
-    volumePotentialSCOCache(const SCOMultiplier,
+    volumePotentialSCOCache(const ClusterMultiplier,
+                            const SCOMultiplier,
                             const boost::optional<TLogMultiplier>&);
 
     uint64_t

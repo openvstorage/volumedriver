@@ -918,10 +918,12 @@ api::applyScrubbingWork(const vd::VolumeId& volName,
 }
 
 uint64_t
-api::volumePotential(const vd::SCOMultiplier s,
+api::volumePotential(const vd::ClusterMultiplier c,
+                     const vd::SCOMultiplier s,
                      const boost::optional<vd::TLogMultiplier>& t)
 {
-    return VolManager::get()->volumePotential(s,
+    return VolManager::get()->volumePotential(c,
+                                              s,
                                               t);
 }
 
