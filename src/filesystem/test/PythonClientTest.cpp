@@ -1364,7 +1364,7 @@ TEST_F(PythonClientTest, tlog_multiplier)
     EXPECT_EQ(boost::none,
               client_.get_tlog_multiplier(vname));
 
-    const uint32_t tlog_multiplier_c = 1024;
+    const uint32_t tlog_multiplier_c = 50;
     client_.set_tlog_multiplier(vname, tlog_multiplier_c);
     const boost::optional<uint32_t>
         tlog_multiplier(client_.get_tlog_multiplier(vname));
@@ -1372,7 +1372,7 @@ TEST_F(PythonClientTest, tlog_multiplier)
     ASSERT_NE(boost::none,
               tlog_multiplier);
 
-    EXPECT_EQ(1024U,
+    EXPECT_EQ(tlog_multiplier_c,
               *tlog_multiplier);
 
     client_.set_tlog_multiplier(vname,

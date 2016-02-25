@@ -96,7 +96,6 @@ LocalNode::LocalNode(ObjectRouter& router,
     , vrouter_local_io_sleep_before_retry_usecs(pt)
     , vrouter_local_io_retries(pt)
     , vrouter_sco_multiplier(pt)
-    , vrouter_cluster_multiplier(pt)
     , vrouter_lock_reaper_interval(pt)
     , scrub_manager_interval(pt)
     , scrub_manager_sync_wait_secs(pt)
@@ -105,8 +104,6 @@ LocalNode::LocalNode(ObjectRouter& router,
 
     THROW_WHEN(vrouter_sco_multiplier.value() == 0);
     THROW_WHEN(vrouter_sco_multiplier.value() >= (1U << (8 * sizeof(vd::SCOOffset))));
-
-    THROW_WHEN(vrouter_cluster_multiplier.value() == 0);
 
     api::Init(pt,
               router.event_publisher());
@@ -187,7 +184,6 @@ LocalNode::update_config(const bpt::ptree& pt,
     U(vrouter_local_io_sleep_before_retry_usecs);
     U(vrouter_local_io_retries);
     U(vrouter_sco_multiplier);
-    U(vrouter_cluster_multiplier);
 
     const uint32_t old_reaper_interval = vrouter_lock_reaper_interval.value();
     U(vrouter_lock_reaper_interval);
@@ -213,7 +209,6 @@ LocalNode::persist_config(bpt::ptree& pt,
     P(vrouter_local_io_sleep_before_retry_usecs);
     P(vrouter_local_io_retries);
     P(vrouter_sco_multiplier);
-    P(vrouter_cluster_multiplier);
     P(scrub_manager_interval);
     P(scrub_manager_sync_wait_secs);
 
@@ -946,14 +941,21 @@ LocalNode::create_volume_(const ObjectId& id,
 
         try
         {
-            const auto
-                params(vd::VanillaVolumeConfigParameters(static_cast<const vd::VolumeId>(id),
-                                                         nspace,
-                                                         vd::VolumeSize(0),
-                                                         reg->owner_tag)
-                       .sco_multiplier(vd::SCOMultiplier(vrouter_sco_multiplier.value()))
-                       .cluster_multiplier(vd::ClusterMultiplier(vrouter_cluster_multiplier.value()))
-                       .metadata_backend_config(std::move(mdb_config)));
+            auto params(vd::VanillaVolumeConfigParameters(static_cast<const vd::VolumeId>(id),
+                                                          nspace,
+                                                          vd::VolumeSize(0),
+                                                          reg->owner_tag)
+                        .sco_multiplier(vd::SCOMultiplier(vrouter_sco_multiplier.value()))
+                        .metadata_backend_config(std::move(mdb_config)));
+
+            const size_t lba_size(vd::VolumeConfig::default_lba_size());
+            const size_t cluster_size(api::getClusterCacheClusterSize());
+
+            THROW_UNLESS(cluster_size >= lba_size);
+            THROW_UNLESS((cluster_size % lba_size) == 0);
+
+            vd::ClusterMultiplier cmult(cluster_size / lba_size);
+            params.cluster_multiplier(cmult);
 
             api::createNewVolume(params,
                                  vd::CreateNamespace::T);
@@ -1691,13 +1693,13 @@ LocalNode::stop(const Object& obj,
 }
 
 uint64_t
-LocalNode::volume_potential(const boost::optional<volumedriver::ClusterMultiplier>& c,
+LocalNode::volume_potential(const boost::optional<volumedriver::ClusterSize>& c,
                             const boost::optional<volumedriver::SCOMultiplier>& s,
                             const boost::optional<volumedriver::TLogMultiplier>& t)
 {
     return api::volumePotential(c ?
                                 *c :
-                                vd::ClusterMultiplier(vrouter_cluster_multiplier.value()),
+                                api::getClusterCacheClusterSize(),
                                 s ?
                                 *s :
                                 vd::SCOMultiplier(vrouter_sco_multiplier.value()),

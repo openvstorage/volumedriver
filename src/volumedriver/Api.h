@@ -327,6 +327,9 @@ public:
     static volumedriver::SCOCacheNamespaceInfo
     getVolumeSCOCacheInfo(const backend::Namespace);
 
+    static volumedriver::ClusterSize
+    getClusterCacheClusterSize();
+
     static void
     getClusterCacheDeviceInfo(volumedriver::ClusterCache::ManagerType::Info& info);
 
@@ -471,7 +474,7 @@ public:
                        const volumedriver::ScrubbingCleanup = volumedriver::ScrubbingCleanup::OnSuccess);
 
     static uint64_t
-    volumePotential(const volumedriver::ClusterMultiplier,
+    volumePotential(const volumedriver::ClusterSize,
                     const volumedriver::SCOMultiplier,
                     const boost::optional<volumedriver::TLogMultiplier>&);
 

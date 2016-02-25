@@ -345,7 +345,7 @@ public:
     }
 
     uint64_t
-    local_volume_potential(const boost::optional<volumedriver::ClusterMultiplier>&,
+    local_volume_potential(const boost::optional<volumedriver::ClusterSize>&,
                            const boost::optional<volumedriver::SCOMultiplier>&,
                            const boost::optional<volumedriver::TLogMultiplier>&);
 

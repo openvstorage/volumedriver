@@ -116,13 +116,6 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_sco_multiplier,
                                       ShowDocumentation::T,
                                       1024);
 
-DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_cluster_multiplier,
-                                      volumerouter_component_name,
-                                      "cluster_multiplier",
-                                      "number of sectors in a cluster",
-                                      ShowDocumentation::T,
-                                      8);
-
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_routing_retries,
                                       volumerouter_component_name,
                                       "vrouter_routing_retries",

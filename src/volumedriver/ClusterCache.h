@@ -707,7 +707,7 @@ public:
         , read_cache_cluster_size(pt)
         , average_entries_per_bin(pt)
         , clustercache_mount_points(pt)
-        , manager_(cluster_size())
+        , manager_(read_cache_cluster_size.value())
         , num_hits(0)
         , num_misses(0)
     {
@@ -1097,7 +1097,7 @@ public:
         const uint8_t* buf,
         const size_t bufsize)
     {
-        VERIFY(bufsize == cluster_size());
+        VERIFY(bufsize == static_cast<size_t>(cluster_size()));
 
         fungi::ScopedWriteLock l(rwlock);
 
@@ -1210,7 +1210,7 @@ public:
 
         ssize_t res = read_cache->write(buf,
                                         entry);
-        if (res != (ssize_t)cluster_size())
+        if (res != static_cast<ssize_t>(cluster_size()))
         {
             LOG_ERROR("Couldn't write to " << read_cache << " - offlining it");
             offlineDevice(read_cache);
@@ -1252,7 +1252,7 @@ public:
          uint8_t* buf,
          const size_t bufsize)
     {
-        VERIFY(bufsize == cluster_size());
+        VERIFY(bufsize == static_cast<size_t>(cluster_size()));
 
         T* read_cache = 0;
         {
@@ -1274,7 +1274,7 @@ public:
                 ssize_t res = read_cache->read(buf,
                                                entry);
 
-                if ((ssize_t)cluster_size() == res)
+                if (static_cast<ssize_t>(cluster_size()) == res)
                 {
                     num_hits++;
 
@@ -1412,10 +1412,10 @@ public:
         return manager_.totalSizeInEntries();
     }
 
-    size_t
+    ClusterSize
     cluster_size() const
     {
-        return read_cache_cluster_size.value();
+        return ClusterSize(read_cache_cluster_size.value());
     }
 
     void

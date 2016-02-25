@@ -108,7 +108,7 @@ TEST_P(SimpleVolumeTest, test0)
 TEST_P(SimpleVolumeTest, testVolumePotential)
 {
     uint64_t number_of_volumes =
-        VolManager::get()->volumePotential(default_cluster_multiplier(),
+        VolManager::get()->volumePotential(default_cluster_size(),
                                            default_sco_multiplier(),
                                            boost::none);
 
@@ -125,7 +125,7 @@ TEST_P(SimpleVolumeTest, testVolumePotential)
                                   nss.back()->ns()));
 
         uint64_t new_number_of_volumes =
-            VolManager::get()->volumePotential(default_cluster_multiplier(),
+            VolManager::get()->volumePotential(default_cluster_size(),
                                                default_sco_multiplier(),
                                                boost::none);
         ASSERT_EQ(new_number_of_volumes,
@@ -149,7 +149,7 @@ TEST_P(SimpleVolumeTest, update_tlog_multiplier)
 
     fungi::ScopedLock l(api::getManagementMutex());
 
-    const uint64_t pot = volume_potential_sco_cache(v->getClusterMultiplier(),
+    const uint64_t pot = volume_potential_sco_cache(v->getClusterSize(),
                                                     v->getSCOMultiplier(),
                                                     tm_eff);
 

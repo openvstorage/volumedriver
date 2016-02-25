@@ -233,7 +233,7 @@ Volume::setSCOMultiplier(SCOMultiplier sco_mult)
 
     const boost::optional<TLogMultiplier> tlog_mult(getTLogMultiplier());
 
-    VolManager::get()->checkSCOAndTLogMultipliers(getClusterMultiplier(),
+    VolManager::get()->checkSCOAndTLogMultipliers(getClusterSize(),
                                                   getSCOMultiplier(),
                                                   sco_mult,
                                                   tlog_mult,
@@ -270,7 +270,7 @@ Volume::setTLogMultiplier(const boost::optional<TLogMultiplier>& tlog_mult)
 
     const SCOMultiplier sco_mult(getSCOMultiplier());
 
-    VolManager::get()->checkSCOAndTLogMultipliers(getClusterMultiplier(),
+    VolManager::get()->checkSCOAndTLogMultipliers(getClusterSize(),
                                                   sco_mult,
                                                   sco_mult,
                                                   getTLogMultiplier(),
@@ -936,25 +936,29 @@ Volume::writeClusters_(uint64_t addr,
             writeClusterMetaData_(ca,
                                   loc_and_hash);
 
-            if (isCacheOnWrite())
+            // For now we only use the cache if it has the same cluster size. We could
+            // try harder and split volume clusters into smaller cache clusters.
+            if (cache.cluster_size() == getClusterSize())
             {
-                cache.add(getClusterCacheHandle(),
-                          ca,
-                          loc_and_hash.weed,
-                          data,
-                          static_cast<size_t>(getClusterSize()));
+                if (isCacheOnWrite())
+                {
+                    cache.add(getClusterCacheHandle(),
+                              ca,
+                              loc_and_hash.weed,
+                              data,
+                              static_cast<size_t>(getClusterSize()));
+                }
+                else if (ccmode == ClusterCacheMode::LocationBased)
+                {
+                    // We need to invalidate even in case of ClusterCacheBehaviour::NoCache,
+                    // otherwise an unfortunate reconfiguration of the default behaviour
+                    // (CacheOnXXX -> NoCache (and overwrites) -> CacheOnXXX) could lead
+                    // to outdated data being returned from the cache.
+                    cache.invalidate(getClusterCacheHandle(),
+                                     ca,
+                                     loc_and_hash.weed);
+                }
             }
-            else if (ccmode == ClusterCacheMode::LocationBased)
-            {
-                // We need to invalidate even in case of ClusterCacheBehaviour::NoCache,
-                // otherwise an unfortunate reconfiguration of the default behaviour
-                // (CacheOnXXX -> NoCache (and overwrites) -> CacheOnXXX) could lead
-                // to outdated data being returned from the cache.
-                cache.invalidate(getClusterCacheHandle(),
-                                 ca,
-                                 loc_and_hash.weed);
-            }
-
         }
 
         yt::SteadyTimer t;
@@ -1117,11 +1121,15 @@ Volume::readClusters_(uint64_t addr,
         }
         else
         {
-            bool in_cache = cache.read(getClusterCacheHandle(),
-                                       ca,
-                                       loc_and_hash.weed,
-                                       buf + off,
-                                       static_cast<size_t>(getClusterSize()));
+            // For now we only use the cache if it has the same cluster size. We could
+            // try harder and split volume clusters into smaller cache clusters.
+            const bool in_cache =
+                cache.cluster_size() == getClusterSize() and
+                cache.read(getClusterCacheHandle(),
+                           ca,
+                           loc_and_hash.weed,
+                           buf + off,
+                           static_cast<size_t>(getClusterSize()));
             if (in_cache)
             {
                 ++readCacheHits_;
@@ -1140,7 +1148,9 @@ Volume::readClusters_(uint64_t addr,
     }
 
     dataStore_->readClusters(read_descriptors);
-    if (effective_cluster_cache_behaviour() != ClusterCacheBehaviour::NoCache)
+
+    if (cache.cluster_size() == getClusterSize() and
+        effective_cluster_cache_behaviour() != ClusterCacheBehaviour::NoCache)
     {
         for (const ClusterReadDescriptor& clrd : read_descriptors)
         {

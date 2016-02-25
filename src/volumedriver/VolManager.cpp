@@ -150,6 +150,8 @@ try
           , arakoon_metadata_sequence_size(pt)
           , allow_inconsistent_partial_reads(pt)
 {
+    THROW_UNLESS((ClusterCache_.cluster_size() % VolumeConfig::default_lba_size()) == 0);
+
     periodicActions_.push_back(new yt::PeriodicAction("SCOCacheCleaner",
                                                       [this]
                                                       {
@@ -503,13 +505,12 @@ VolManager::getSCOCacheCapacityWithoutThrottling()
 }
 
 uint64_t
-VolManager::volumePotentialSCOCache(const ClusterMultiplier cluster_mult,
+VolManager::volumePotentialSCOCache(const ClusterSize cluster_size,
                                     const SCOMultiplier sco_mult,
                                     const boost::optional<TLogMultiplier>& tlog_mult)
 {
     const uint64_t current_volume_usage = getCurrentVolumesTLogRequirements();
     const uint64_t current_scocache_capacity = getSCOCacheCapacityWithoutThrottling();
-    const uint64_t cluster_size = VolumeConfig::default_lba_size() * cluster_mult;
     const uint64_t sco_size = cluster_size * sco_mult;
     const uint64_t tlog_multiplier =
         tlog_mult ? *tlog_mult : number_of_scos_in_tlog.value();
@@ -521,9 +522,8 @@ VolManager::volumePotentialSCOCache(const ClusterMultiplier cluster_mult,
     // LOG_INFO("current volume usage: " <<   requiredCacheSize
     //          << ", current_scocache_capacity: " << current_scocache_capacity);
     LOG_INFO("We have enough room for an additional " << volume_potential <<
-             " volumes with Cluster multiplier " << cluster_mult <<
-             " (= Cluster size " << cluster_size <<
-             "), SCO multiplier " << sco_mult <<
+             " volumes with cluster size " << cluster_size <<
+             ", SCO multiplier " << sco_mult <<
              " (= SCO size " << sco_size <<
              "), TLog multiplier " << tlog_multiplier);
 
@@ -621,7 +621,7 @@ VolManager::volumePotentialOpenFileDescriptors()
 }
 
 uint64_t
-VolManager::volumePotential(const ClusterMultiplier c,
+VolManager::volumePotential(const ClusterSize c,
                             const SCOMultiplier s,
                             const boost::optional<TLogMultiplier>& t)
 {
@@ -639,27 +639,25 @@ uint64_t
 VolManager::volumePotential(const be::Namespace& nspace)
 {
     auto cfg(get_config_from_backend<VolumeConfig>(nspace));
-    return volumePotential(cfg->cluster_mult_,
+    return volumePotential(ClusterSize(cfg->getClusterSize()),
                            cfg->sco_mult_,
                            cfg->tlog_mult_);
 }
 
 void
-VolManager::checkSCOAndTLogMultipliers(const ClusterMultiplier cmult,
+VolManager::checkSCOAndTLogMultipliers(const ClusterSize csize,
                                        const SCOMultiplier sco_mult_old,
                                        const SCOMultiplier sco_mult_new,
                                        const boost::optional<TLogMultiplier>& tlog_mult_old,
                                        const boost::optional<TLogMultiplier>& tlog_mult_new)
 {
-    auto fun([&](const SCOMultiplier s,
+    auto fun([&](const SCOMultiplier sm,
                  const boost::optional<TLogMultiplier>& t) -> uint64_t
              {
-                 return
-                     s *
-                     (t ? *t : number_of_scos_in_tlog.value()) *
-                     cmult *
-                     VolumeConfig::default_lba_size();
+                 const uint64_t tm = t ? *t : number_of_scos_in_tlog.value();
+                 return sm * tm * csize;
              });
+
     const uint64_t sco_cache_size_old = fun(sco_mult_old,
                                             tlog_mult_old);
     const uint64_t sco_cache_size_new = fun(sco_mult_new,
@@ -676,7 +674,11 @@ VolManager::checkSCOAndTLogMultipliers(const ClusterMultiplier cmult,
             LOG_ERROR("Cannot change params " <<
                       sco_mult_old << " -> " << sco_mult_new << ", " <<
                       tlog_mult_old << " -> " << tlog_mult_new <<
-                      " - insufficient SCOCache space");
+                      " - insufficient SCO cache space: capacity " <<
+                      sco_cache_capacity <<
+                      ", current limit " << sco_cache_size_old <<
+                      ", want " << sco_cache_size_new <<
+                      ", diff " << diff);
             throw InsufficientResourcesException("SCOCache would be overcommitted");
         }
     }
@@ -710,7 +712,7 @@ VolManager::ensureResourceLimits(const VolumeConfig& config)
     // uint64_t availableCacheSize = getSCOCacheCapacityWithoutThrottling();
 
 
-    if(volumePotentialSCOCache(config.cluster_mult_,
+    if(volumePotentialSCOCache(ClusterSize(config.getClusterSize()),
                                config.sco_mult_,
                                config.tlog_mult_) == 0)
     {

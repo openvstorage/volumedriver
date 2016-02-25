@@ -657,7 +657,7 @@ protected:
     metadata_backend_type() const;
 
     uint64_t
-    volume_potential_sco_cache(const ClusterMultiplier,
+    volume_potential_sco_cache(const ClusterSize,
                                const SCOMultiplier,
                                const boost::optional<TLogMultiplier>&);
 

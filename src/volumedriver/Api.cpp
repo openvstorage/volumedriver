@@ -762,6 +762,12 @@ api::getClusterCacheVolumeInfo(const vd::VolumeId& volName)
     return VolManager::get()->findVolume_(volName)->getClusterCacheVolumeInfo();
 }
 
+vd::ClusterSize
+api::getClusterCacheClusterSize()
+{
+    return VolManager::get()->getClusterCache().cluster_size();
+}
+
 // void
 // api::changeThrottling(unsigned throttle_usecs)
 // {
@@ -918,7 +924,7 @@ api::applyScrubbingWork(const vd::VolumeId& volName,
 }
 
 uint64_t
-api::volumePotential(const vd::ClusterMultiplier c,
+api::volumePotential(const vd::ClusterSize c,
                      const vd::SCOMultiplier s,
                      const boost::optional<vd::TLogMultiplier>& t)
 {

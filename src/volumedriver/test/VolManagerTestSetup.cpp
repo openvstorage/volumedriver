@@ -1986,7 +1986,7 @@ VolManagerTestSetup::new_owner_tag()
 }
 
 uint64_t
-VolManagerTestSetup::volume_potential_sco_cache(const ClusterMultiplier c,
+VolManagerTestSetup::volume_potential_sco_cache(const ClusterSize c,
                                                 const SCOMultiplier s,
                                                 const boost::optional<TLogMultiplier>& t)
 {

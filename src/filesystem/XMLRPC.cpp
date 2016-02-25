@@ -575,12 +575,12 @@ VolumePotential::execute_internal(::XmlRpc::XmlRpcValue& params,
     {
         auto param = params[0];
 
-        boost::optional<vd::ClusterMultiplier> cluster_mult;
+        boost::optional<vd::ClusterSize> cluster_size;
 
-        if (param.hasMember(XMLRPCKeys::cluster_multiplier))
+        if (param.hasMember(XMLRPCKeys::cluster_size))
         {
-            const std::string s(param[XMLRPCKeys::cluster_multiplier]);
-            cluster_mult = boost::lexical_cast<vd::ClusterMultiplier>(s);
+            const std::string s(param[XMLRPCKeys::cluster_size]);
+            cluster_size = boost::lexical_cast<vd::ClusterSize>(s);
         }
 
         boost::optional<vd::SCOMultiplier> sco_mult;
@@ -600,7 +600,7 @@ VolumePotential::execute_internal(::XmlRpc::XmlRpcValue& params,
             tlog_mult = vd::TLogMultiplier(n);
         }
 
-        const uint64_t pot = fs_.object_router().local_volume_potential(cluster_mult,
+        const uint64_t pot = fs_.object_router().local_volume_potential(cluster_size,
                                                                         sco_mult,
                                                                         tlog_mult);
         result[XMLRPCKeys::volume_potential] = XMLVAL(pot);
