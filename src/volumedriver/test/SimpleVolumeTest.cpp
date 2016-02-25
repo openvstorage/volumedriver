@@ -177,9 +177,9 @@ TEST_P(SimpleVolumeTest, update_sco_multiplier)
     fungi::ScopedLock l(api::getManagementMutex());
 
     // current min: 1 MiB
-    const SCOMultiplier min(256);
+    const SCOMultiplier min((1ULL << 20) / default_cluster_size());
 
-    EXPECT_THROW(v->setSCOMultiplier(SCOMultiplier(min.t - 1)),
+    EXPECT_THROW(v->setSCOMultiplier(SCOMultiplier(min - 1)),
                  fungi::IOException);
 
     v->setSCOMultiplier(min);
@@ -187,11 +187,11 @@ TEST_P(SimpleVolumeTest, update_sco_multiplier)
               v->getSCOMultiplier());
 
     // current max: 128 MiB
-    const SCOMultiplier max(32768);
-    EXPECT_THROW(v->setSCOMultiplier(SCOMultiplier(max.t + 1)),
+    const SCOMultiplier max((128ULL << 20) / default_cluster_size());
+    EXPECT_THROW(v->setSCOMultiplier(SCOMultiplier(max + 1)),
                  fungi::IOException);
 
-    const SCOMultiplier sm(SCOMultiplier(v->getSCOMultiplier().t + 1));
+    const SCOMultiplier sm(SCOMultiplier(v->getSCOMultiplier() + 1));
     v->setSCOMultiplier(sm);
     EXPECT_EQ(sm,
               v->getSCOMultiplier());
@@ -347,11 +347,11 @@ TEST_P(SimpleVolumeTest, sizeTest)
                            VolumeSize(VolManager::get()->real_max_volume_size() + 1)),
                  fungi::IOException);
 
-
-
+    const size_t size =
+        (VolManager::get()->real_max_volume_size() / default_cluster_size()) * default_cluster_size();
     ASSERT_NO_THROW(newVolume(VolumeId("volume1"),
                               ns,
-                              VolManager::get()->real_max_volume_size()));
+                              VolumeSize(size)));
 }
 
 struct VolumeWriter
@@ -1884,42 +1884,44 @@ TEST_P(SimpleVolumeTest, readActivity)
 
     Volume* v2 = newVolume("v2",
 			   ns2);
-    ASSERT_EQ(v1->readActivity(),0);
-    ASSERT_EQ(v2->readActivity(),0);
-    ASSERT_EQ(VolManager::get()->readActivity(),0);
+    ASSERT_EQ(0, v1->readActivity());
+    ASSERT_EQ(0, v2->readActivity());
+    ASSERT_EQ(0, VolManager::get()->readActivity());
 
+    boost::this_thread::sleep_for(boost::chrono::seconds(1));
 
-    sleep(1);
     {
         fungi::ScopedLock l(VolManager::get()->getLock_());
         VolManager::get()->updateReadActivity();
     }
 
-    ASSERT_EQ(v1->readActivity(),0);
-    ASSERT_EQ(v2->readActivity(),0);
-    ASSERT_EQ(VolManager::get()->readActivity(),0);
+    ASSERT_EQ(0, v1->readActivity());
+    ASSERT_EQ(0, v2->readActivity());
+    ASSERT_EQ(0, VolManager::get()->readActivity());
 
-    uint8_t buf[8192];
+    std::vector<uint8_t> buf(2 * default_cluster_size());
+
     for(int i = 0; i < 128; ++i)
     {
-        v1->read(0,buf,4092);
-        v2->read(0,buf, 8192);
+        v1->read(0, buf.data(), buf.size() / 2);
+        v2->read(0, buf.data(), buf.size());
     }
-    sleep(1);
+
+    boost::this_thread::sleep_for(boost::chrono::seconds(1));
 
     {
         fungi::ScopedLock l(VolManager::get()->getLock_());
         VolManager::get()->updateReadActivity();
     }
+
     double ra1 = v1->readActivity();
     double ra2 = v2->readActivity();
     double rac = VolManager::get()->readActivity();
 
-    ASSERT_TRUE(ra1 > 0);
-    ASSERT_TRUE(ra2 > 0);
-    ASSERT_EQ(2* ra1, ra2);
-    ASSERT_EQ(rac, ra1+ra2);
-
+    ASSERT_GT(ra1, 0);
+    ASSERT_GT(ra2, 0);
+    ASSERT_EQ(ra2, 2 * ra1);
+    ASSERT_EQ(rac, ra1 + ra2);
 }
 
 TEST_P(SimpleVolumeTest, prefetch)
@@ -2732,7 +2734,21 @@ TEST_P(SimpleVolumeTest, metadata_cache_capacity)
     check(boost::none);
 }
 
-INSTANTIATE_TEST(SimpleVolumeTest);
+namespace
+{
+
+const ClusterMultiplier
+big_cluster_multiplier(VolManagerTestSetup::default_test_config().cluster_multiplier() * 2);
+const auto big_clusters_config = VolManagerTestSetup::default_test_config()
+    .cluster_cache_cluster_multiplier(big_cluster_multiplier)
+    .cluster_multiplier(big_cluster_multiplier);
+
+}
+
+INSTANTIATE_TEST_CASE_P(SimpleVolumeTests,
+                        SimpleVolumeTest,
+                        ::testing::Values(volumedriver::VolManagerTestSetup::default_test_config(),
+                                          big_clusters_config));
 
 }
 

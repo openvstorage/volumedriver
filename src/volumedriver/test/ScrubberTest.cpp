@@ -1034,7 +1034,6 @@ INSTANTIATE_TEST_CASE_P(ScrubberTests,
 
 }
 
-
 // Local Variables: **
 // mode: c++ **
 // End: **
