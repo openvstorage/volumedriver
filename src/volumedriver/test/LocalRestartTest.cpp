@@ -3120,12 +3120,20 @@ const VolumeDriverTestConfig sync_foc_config =
     .use_cluster_cache(true)
     .foc_mode(FailOverCacheMode::Synchronous);
 
+const ClusterMultiplier
+big_cluster_multiplier(VolManagerTestSetup::default_test_config().cluster_multiplier() * 2);
+
+const auto big_clusters_config = VolManagerTestSetup::default_test_config()
+    .cluster_cache_cluster_multiplier(big_cluster_multiplier)
+    .cluster_multiplier(big_cluster_multiplier);
+
 }
 
 INSTANTIATE_TEST_CASE_P(LocalRestartTests,
                         LocalRestartTest,
                         ::testing::Values(cluster_cache_config,
-                                          sync_foc_config));
+                                          sync_foc_config,
+                                          big_clusters_config));
 
 }
 
