@@ -1402,6 +1402,20 @@ TEST_P(MDSVolumeTest, local_restart_of_pristine_clone_with_empty_mds)
                 pattern);
 }
 
-INSTANTIATE_TEST(MDSVolumeTest);
+namespace
+{
+
+const ClusterMultiplier
+big_cluster_multiplier(VolManagerTestSetup::default_test_config().cluster_multiplier() * 2);
+const auto big_clusters_config = VolManagerTestSetup::default_test_config()
+    .cluster_cache_cluster_multiplier(big_cluster_multiplier)
+    .cluster_multiplier(big_cluster_multiplier);
+
+}
+
+INSTANTIATE_TEST_CASE_P(MDSVolumeTests,
+                        MDSVolumeTest,
+                        ::testing::Values(volumedriver::VolManagerTestSetup::default_test_config(),
+                                          big_clusters_config));
 
 }
