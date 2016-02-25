@@ -2741,9 +2741,7 @@ const ClusterMultiplier
 big_cluster_multiplier(VolManagerTestSetup::default_test_config().cluster_multiplier() * 2);
 
 const auto big_clusters_config = VolManagerTestSetup::default_test_config()
-    .cluster_cache_cluster_multiplier(big_cluster_multiplier)
     .cluster_multiplier(big_cluster_multiplier);
-
 }
 
 INSTANTIATE_TEST_CASE_P(SimpleVolumeTests,

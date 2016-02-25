@@ -949,7 +949,7 @@ LocalNode::create_volume_(const ObjectId& id,
                         .metadata_backend_config(std::move(mdb_config)));
 
             const size_t lba_size(vd::VolumeConfig::default_lba_size());
-            const size_t cluster_size(api::getClusterCacheClusterSize());
+            const size_t cluster_size(api::getDefaultClusterSize());
 
             THROW_UNLESS(cluster_size >= lba_size);
             THROW_UNLESS((cluster_size % lba_size) == 0);
@@ -1699,7 +1699,7 @@ LocalNode::volume_potential(const boost::optional<volumedriver::ClusterSize>& c,
 {
     return api::volumePotential(c ?
                                 *c :
-                                api::getClusterCacheClusterSize(),
+                                api::getDefaultClusterSize(),
                                 s ?
                                 *s :
                                 vd::SCOMultiplier(vrouter_sco_multiplier.value()),

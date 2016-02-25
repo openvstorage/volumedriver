@@ -123,7 +123,9 @@ try
           , lock_store_factory_(std::make_unique<LockStoreFactory>(pt,
                                                                    RegisterComponent::T,
                                                                    backend_conn_manager_))
-          , ClusterCache_(pt)
+          , ClusterCache_(pt,
+                          ClusterSize(decltype(default_cluster_size)(pt).value()),
+                          RegisterComponent::T)
           , mds_manager_(std::make_shared<metadata_server::Manager>(pt,
                                                                     RegisterComponent::T,
                                                                     backend_conn_manager_))
@@ -145,12 +147,13 @@ try
           , dtl_write_trigger(pt)
           , number_of_scos_in_tlog(pt)
           , non_disposable_scos_factor(pt)
+          , default_cluster_size(pt)
           , metadata_cache_capacity(pt)
           , debug_metadata_path(pt)
           , arakoon_metadata_sequence_size(pt)
           , allow_inconsistent_partial_reads(pt)
 {
-    THROW_UNLESS((ClusterCache_.cluster_size() % VolumeConfig::default_lba_size()) == 0);
+    THROW_UNLESS((default_cluster_size.value() % VolumeConfig::default_lba_size()) == 0);
 
     periodicActions_.push_back(new yt::PeriodicAction("SCOCacheCleaner",
                                                       [this]
@@ -1770,6 +1773,7 @@ VolManager::update(const boost::property_tree::ptree& pt,
     max_volume_size.update(pt, report);
     number_of_scos_in_tlog.update(pt, report);
     non_disposable_scos_factor.update(pt, report);
+    default_cluster_size.update(pt, report);
     metadata_cache_capacity.update(pt, report);
     debug_metadata_path.update(pt, report);
     arakoon_metadata_sequence_size.update(pt, report);
@@ -1797,6 +1801,7 @@ VolManager::persist(boost::property_tree::ptree& pt,
 
     number_of_scos_in_tlog.persist(pt, reportDefault);
     non_disposable_scos_factor.persist(pt, reportDefault);
+    default_cluster_size.persist(pt, reportDefault);
     metadata_cache_capacity.persist(pt, reportDefault);
     debug_metadata_path.persist(pt, reportDefault);
     arakoon_metadata_sequence_size.persist(pt, reportDefault);

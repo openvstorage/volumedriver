@@ -1636,7 +1636,7 @@ TEST_P(ClusterCacheTest, error_during_deserialization)
     {
         ClusterCacheDiskStore ds(i.first,
                                  i.second.total_size,
-                                 GetParam().cluster_cache_cluster_multiplier() * VolumeConfig::default_lba_size());
+                                 GetParam().cluster_multiplier() * VolumeConfig::default_lba_size());
 
         for (size_t i = 0; i < ds.total_size() / buf.size(); ++i)
         {
@@ -1713,8 +1713,8 @@ namespace
 
 const ClusterMultiplier
 big_cluster_multiplier(VolManagerTestSetup::default_test_config().cluster_multiplier() * 4);
+
 const auto big_clusters_config = VolManagerTestSetup::default_test_config()
-    .cluster_cache_cluster_multiplier(big_cluster_multiplier)
     .cluster_multiplier(big_cluster_multiplier);
 
 }

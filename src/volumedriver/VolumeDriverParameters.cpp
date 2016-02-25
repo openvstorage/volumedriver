@@ -160,6 +160,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(non_disposable_scos_factor,
                                       ShowDocumentation::T,
                                       1.5);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(default_cluster_size,
+                                      volmanager_component_name,
+                                      "default_cluster_size",
+                                      "size of a cluster in bytes",
+                                      ShowDocumentation::T,
+                                      4096U);
+
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(metadata_cache_capacity,
                                       volmanager_component_name,
                                       "metadata_cache_capacity",
@@ -229,13 +236,6 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(average_entries_per_bin,
                                       "Average size of the buckets in the Read Cache Hash, just keep the default",
                                       ShowDocumentation::F,
                                       2);
-
-DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(read_cache_cluster_size,
-                                      kak_component_name,
-                                      "read_cache_cluster_size",
-                                      "Cluster size used by the Read Cache",
-                                      ShowDocumentation::T,
-                                      4096U);
 
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(serialize_read_cache,
                                       kak_component_name,

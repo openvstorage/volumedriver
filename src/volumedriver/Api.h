@@ -328,7 +328,7 @@ public:
     getVolumeSCOCacheInfo(const backend::Namespace);
 
     static volumedriver::ClusterSize
-    getClusterCacheClusterSize();
+    getDefaultClusterSize();
 
     static void
     getClusterCacheDeviceInfo(volumedriver::ClusterCache::ManagerType::Info& info);

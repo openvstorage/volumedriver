@@ -932,15 +932,6 @@ VolManagerTestSetup::startVolManager()
 
         PARAMETER_TYPE(clustercache_mount_points)(vec).persist(pt);
 
-        {
-            const ClusterMultiplier
-                cmult(GetParam().cluster_cache_cluster_multiplier());
-            const ClusterSize
-                csize(cmult * VolumeConfig::default_lba_size());
-
-            PARAMETER_TYPE(read_cache_cluster_size)(static_cast<uint32_t>(csize)).persist(pt);
-        }
-
         PARAMETER_TYPE(read_cache_serialization_path)((directory_ / "metadatastores").string()).persist(pt);
         PARAMETER_TYPE(tlog_path)((directory_ / "tlogs").string()).persist(pt);
         PARAMETER_TYPE(metadata_path)((directory_ / "metadatastores").string()).persist(pt);
@@ -949,6 +940,16 @@ VolManagerTestSetup::startVolManager()
         PARAMETER_TYPE(clean_interval)(sc_clean_interval_).persist(pt);
         PARAMETER_TYPE(num_threads)(num_threads_).persist(pt);
         PARAMETER_TYPE(number_of_scos_in_tlog)(num_scos_in_tlog_).persist(pt);
+
+        {
+            const ClusterMultiplier
+                cmult(GetParam().cluster_multiplier());
+            const ClusterSize
+                csize(cmult * VolumeConfig::default_lba_size());
+
+            PARAMETER_TYPE(default_cluster_size)(static_cast<uint32_t>(csize)).persist(pt);
+        }
+
         PARAMETER_TYPE(debug_metadata_path)((directory_ / fs::path("dump_on_halt_dir")).string()).persist(pt);
         PARAMETER_TYPE(dtl_check_interval_in_seconds)(failovercache_check_interval_in_seconds_).persist(pt);
 

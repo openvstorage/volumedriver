@@ -528,6 +528,7 @@ public:
 
     DECLARE_PARAMETER(number_of_scos_in_tlog);
     DECLARE_PARAMETER(non_disposable_scos_factor);
+    DECLARE_PARAMETER(default_cluster_size);
     DECLARE_PARAMETER(metadata_cache_capacity);
     DECLARE_PARAMETER(debug_metadata_path);
     DECLARE_PARAMETER(arakoon_metadata_sequence_size);

@@ -65,6 +65,8 @@ DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(number_of_scos_in_tlog,
                                        uint32_t);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(non_disposable_scos_factor,
                                        float);
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(default_cluster_size,
+                                       uint32_t);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(metadata_cache_capacity,
                                        uint32_t);
 
@@ -90,7 +92,6 @@ extern const char kak_component_name[];
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(serialize_read_cache, bool);
 DECLARE_INITIALIZED_PARAM(read_cache_serialization_path, std::string);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(average_entries_per_bin, uint32_t);
-DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(read_cache_cluster_size, uint32_t);
 
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(clustercache_mount_points,
                                        volumedriver::MountPointConfigs);

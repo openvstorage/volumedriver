@@ -254,8 +254,6 @@ public:
     typedef boost::archive::binary_oarchive oarchive_type;
 
 private:
-    DECLARE_LOGGER("ClusterClusterCache");
-
     typedef DListNodeValueTraits<ClusterCacheEntry> DListClusterCacheEntryValueTraits;
 
     typedef SListNodeValueTraits<ClusterCacheEntry> SListClusterCacheEntryValueTraits;
@@ -351,8 +349,33 @@ public:
     };
 
 private:
+    DECLARE_LOGGER("ClusterClusterCache");
+
     friend class volumedrivertest::ClusterCacheTest;
     friend class boost::serialization::access;
+
+    typedef boost::mutex register_lock_type;
+    register_lock_type register_lock_;
+
+    mutable fungi::RWLock rwlock;
+    mutable boost::mutex listlock;
+
+    DECLARE_PARAMETER(serialize_read_cache);
+    DECLARE_PARAMETER(read_cache_serialization_path);
+    DECLARE_PARAMETER(average_entries_per_bin);
+    DECLARE_PARAMETER(clustercache_mount_points);
+
+    const ClusterSize cluster_size_;
+
+    ManagerType manager_;
+
+    using NamespaceMap = std::map<ClusterCacheHandle, std::unique_ptr<Namespace>>;
+    NamespaceMap namespaces_;
+
+    dlist_t invalidated_entries_;
+    dlist_t lru_;
+    std::atomic<uint64_t> num_hits;
+    std::atomic<uint64_t> num_misses;
 
     BOOST_SERIALIZATION_SPLIT_MEMBER();
 
@@ -368,7 +391,7 @@ private:
         }
 
         ar & manager_;
-        if (manager_.cluster_size() != read_cache_cluster_size.value())
+        if (ClusterSize(manager_.cluster_size()) != cluster_size())
         {
             LOG_ERROR("Cluster cache cluster size has changed? Was: " <<
                       manager_.cluster_size() <<
@@ -584,29 +607,6 @@ private:
                      invalidated_entries_);
     }
 
-    typedef boost::mutex register_lock_type;
-    register_lock_type register_lock_;
-
-    mutable fungi::RWLock rwlock;
-    mutable boost::mutex listlock;
-
-    DECLARE_PARAMETER(serialize_read_cache);
-    DECLARE_PARAMETER(read_cache_serialization_path);
-    DECLARE_PARAMETER(read_cache_cluster_size);
-    DECLARE_PARAMETER(average_entries_per_bin);
-    DECLARE_PARAMETER(clustercache_mount_points);
-
-    ManagerType manager_;
-
-private:
-    using NamespaceMap = std::map<ClusterCacheHandle, std::unique_ptr<Namespace>>;
-    NamespaceMap namespaces_;
-
-    dlist_t invalidated_entries_;
-    dlist_t lru_;
-    std::atomic<uint64_t> num_hits;
-    std::atomic<uint64_t> num_misses;
-
 private:
     Namespace*
     find_namespace_(const ClusterCacheHandle handle) const
@@ -697,17 +697,19 @@ private:
     }
 
 public:
-    ClusterCacheT(const boost::property_tree::ptree& pt)
-        : VolumeDriverComponent(RegisterComponent::T,
+    ClusterCacheT(const boost::property_tree::ptree& pt,
+                  const ClusterSize csize,
+                  const RegisterComponent registerizle = RegisterComponent::T)
+        : VolumeDriverComponent(registerizle,
                                 pt)
         , register_lock_()
         , rwlock("rwlock")
         , serialize_read_cache(pt)
         , read_cache_serialization_path(pt)
-        , read_cache_cluster_size(pt)
         , average_entries_per_bin(pt)
         , clustercache_mount_points(pt)
-        , manager_(read_cache_cluster_size.value())
+        , cluster_size_(csize)
+        , manager_(cluster_size_)
         , num_hits(0)
         , num_misses(0)
     {
@@ -777,8 +779,6 @@ public:
 
         read_cache_serialization_path.update(pt,
                                              u_rep);
-        read_cache_cluster_size.update(pt,
-                                       u_rep);
 
         average_entries_per_bin.update(pt,
                                        u_rep);
@@ -801,9 +801,6 @@ public:
 
         read_cache_serialization_path.persist(pt,
                                               reportDefault);
-
-        read_cache_cluster_size.persist(pt,
-                                        reportDefault);
 
         average_entries_per_bin.persist(pt,
                                         reportDefault);
@@ -1415,7 +1412,7 @@ public:
     ClusterSize
     cluster_size() const
     {
-        return ClusterSize(read_cache_cluster_size.value());
+        return cluster_size_;
     }
 
     void

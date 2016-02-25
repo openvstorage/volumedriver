@@ -763,9 +763,9 @@ api::getClusterCacheVolumeInfo(const vd::VolumeId& volName)
 }
 
 vd::ClusterSize
-api::getClusterCacheClusterSize()
+api::getDefaultClusterSize()
 {
-    return VolManager::get()->getClusterCache().cluster_size();
+    return vd::ClusterSize(VolManager::get()->default_cluster_size.value());
 }
 
 // void

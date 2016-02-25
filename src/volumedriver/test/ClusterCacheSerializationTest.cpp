@@ -295,7 +295,9 @@ protected:
                                       2,
                                       sizes);
 
-        ClusterCacheType readCache(pt);
+        ClusterCacheType readCache(pt,
+                                   default_cluster_size());
+
         ASSERT_TRUE(readCache.totalSizeInEntries() == size);
 
         const OwnerTag otag(1);
@@ -372,7 +374,8 @@ protected:
                                       2,
                                       mps);
 
-        auto cache(std::make_unique<ClusterCacheType>(pt));
+        auto cache(std::make_unique<ClusterCacheType>(pt,
+                                                      default_cluster_size()));
         EXPECT_EQ(nentries,
                   cache->totalSizeInEntries());
 
@@ -460,7 +463,8 @@ protected:
                                       read_cache_average_entries,
                                       sizes);
 
-        ClusterCacheType readCache(pt);
+        ClusterCacheType readCache(pt,
+                                   default_cluster_size());
 
         std::vector<uint8_t> buf(4096);
         uint64_t num_hits = 0;
@@ -566,7 +570,8 @@ protected:
                                       2,
                                       sizes,
                                       false);
-        ClusterCacheType readCache(pt);
+        ClusterCacheType readCache(pt,
+                                   default_cluster_size());
 
         const OwnerTag otag(1);
         const ClusterCacheHandle
@@ -592,7 +597,8 @@ protected:
                                           2,
                                           sizes,
                                           false);
-            ClusterCacheType readCache(pt);
+            ClusterCacheType readCache(pt,
+                                       default_cluster_size());
 
             fs::ifstream ifs(output);
             ClusterCacheType::iarchive_type ia(ifs);
@@ -643,7 +649,8 @@ protected:
                                               2,
                                               sizes,
                                               false);
-                ClusterCacheType readCache(pt);
+                ClusterCacheType readCache(pt,
+                                           default_cluster_size());
 
                 const ClusterCacheHandle handle(readCache.registerVolume(otag,
                                                                          mode));
@@ -704,7 +711,8 @@ protected:
                                               1,
                                               sizes,
                                               false);
-                ClusterCacheType readCache(pt);
+                ClusterCacheType readCache(pt,
+                                           default_cluster_size());
 
                 fs::ifstream ifs(output);
                 wt.restart();
@@ -752,7 +760,8 @@ protected:
         fillConfigurationPropertyTree(pt,
                                       2,
                                       sizes);
-        ClusterCacheType read_cache(pt);
+        ClusterCacheType read_cache(pt,
+                                    default_cluster_size());
 
         auto check([&](size_t exp_used_clusters_1,
                        size_t exp_used_clusters_2,
@@ -854,7 +863,8 @@ TEST_P(ClusterCacheSerializationTest, DoubleMountPoints)
                                   2,
                                   vec);
     {
-        ClusterCache read_cache(pt);
+        ClusterCache read_cache(pt,
+                                default_cluster_size());
         ClusterCache::ManagerType::Info info;
         read_cache.deviceInfo(info);
         EXPECT_EQ(2U, info.size());
@@ -863,7 +873,8 @@ TEST_P(ClusterCacheSerializationTest, DoubleMountPoints)
     {
         fs::remove(p2);
         fs::create_symlink(p1,p2);
-        ClusterCache read_cache(pt);
+        ClusterCache read_cache(pt,
+                                default_cluster_size());
         ClusterCache::ManagerType::Info info;
         read_cache.deviceInfo(info);
         EXPECT_EQ(1U, info.size());
@@ -936,7 +947,8 @@ TEST_P(ClusterCacheSerializationTest, device_serialization_0_mixed)
                                   2,
                                   sizes);
 
-    ClusterCacheType readCache(pt);
+    ClusterCacheType readCache(pt,
+                               default_cluster_size());
     ASSERT_TRUE(readCache.totalSizeInEntries() == size);
 
     const OwnerTag ltag(1);
@@ -1017,7 +1029,8 @@ TEST_P(ClusterCacheSerializationTest, multiple_registrations_with_same_owner_tag
     fillConfigurationPropertyTree(pt,
                                   2,
                                   sizes);
-    ClusterCacheType readCache(pt);
+    ClusterCacheType readCache(pt,
+                               default_cluster_size());
 
     const OwnerTag otag(1);
     const ClusterCacheHandle
@@ -1046,7 +1059,8 @@ TEST_P(ClusterCacheSerializationTest, multiple_deregistrations_with_same_owner_t
     fillConfigurationPropertyTree(pt,
                                   2,
                                   sizes);
-    ClusterCacheType readCache(pt);
+    ClusterCacheType readCache(pt,
+                               default_cluster_size());
 
     const OwnerTag otag(1);
     readCache.deregisterVolume(otag);
@@ -1092,7 +1106,8 @@ TEST_P(ClusterCacheSerializationTest, make_ze_big_one_mixed)
                                   2,
                                   sizes,
                                   false);
-    ClusterCacheType readCache(pt);
+    ClusterCacheType readCache(pt,
+                               default_cluster_size());
 
 
     const OwnerTag ltag(1);
@@ -1125,7 +1140,8 @@ TEST_P(ClusterCacheSerializationTest, make_ze_big_one_mixed)
                                       2,
                                       sizes,
                                       false);
-        ClusterCacheType readCache(pt);
+        ClusterCacheType readCache(pt,
+                                   default_cluster_size());
 
         fs::ifstream ifs(output);
         ClusterCacheType::iarchive_type ia(ifs);
@@ -1188,7 +1204,8 @@ TEST_P(ClusterCacheSerializationTest, ze_big_one_mixed)
                                           2,
                                           sizes,
                                           false);
-            ClusterCacheType readCache(pt);
+            ClusterCacheType readCache(pt,
+                                       default_cluster_size());
 
             const ClusterCacheHandle
                 lhandle(readCache.registerVolume(ltag,
@@ -1267,7 +1284,8 @@ TEST_P(ClusterCacheSerializationTest, ze_big_one_mixed)
                                           1,
                                           sizes,
                                           false);
-            ClusterCacheType readCache(pt);
+            ClusterCacheType readCache(pt,
+                                       default_cluster_size());
 
             fs::ifstream ifs(output);
             wt.restart();
@@ -1407,7 +1425,8 @@ TEST_P(ClusterCacheSerializationTest, limited_entries_serialization)
 
     cache.reset();
 
-    cache = std::make_unique<ClusterCacheType>(pt);
+    cache = std::make_unique<ClusterCacheType>(pt,
+                                               default_cluster_size());
 
     check_nspaces();
     check_limits();

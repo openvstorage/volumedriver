@@ -206,7 +206,7 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
 
         ASSERT_NO_THROW(VolManager::get()->getClusterCache().update(pt,
                                                                     u_rep));
-        EXPECT_EQ(4U, u_rep.getNoUpdates().size());
+        EXPECT_EQ(3U, u_rep.getNoUpdates().size());
         EXPECT_EQ(0U, u_rep.getUpdates().size());
     }
 
