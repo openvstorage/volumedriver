@@ -118,17 +118,20 @@ public:
          const uint64_t buflen);
 
     static void
-    Sync(volumedriver::Volume* vol);
+    Sync(volumedriver::Volume*);
 
     static void
-    Resize(volumedriver::Volume* vol,
+    Resize(volumedriver::Volume*,
            uint64_t num_clusters);
 
     static uint64_t
-    GetSize(volumedriver::Volume* vol);
+    GetSize(volumedriver::Volume*);
 
     static uint64_t
-    GetLbaSize(volumedriver::Volume* vol);
+    GetLbaSize(volumedriver::Volume*);
+
+    static uint64_t
+    GetClusterSize(volumedriver::Volume*);
 
     static void
     Init(const boost::filesystem::path& cfg,
@@ -138,10 +141,6 @@ public:
     Init(const boost::property_tree::ptree& pt,
          events::PublisherPtr event_publisher = nullptr);
 
-    // this one is the volumedriver's "cosmological constant", i.e. it's not configurable
-    // per volume anymore as things like the cluster cache also rely on it.
-    static uint64_t
-    GetClusterSize();
 
     static void
     Exit(void);
@@ -328,6 +327,9 @@ public:
     static volumedriver::SCOCacheNamespaceInfo
     getVolumeSCOCacheInfo(const backend::Namespace);
 
+    static volumedriver::ClusterSize
+    getDefaultClusterSize();
+
     static void
     getClusterCacheDeviceInfo(volumedriver::ClusterCache::ManagerType::Info& info);
 
@@ -355,8 +357,8 @@ public:
                         const volumedriver::SnapshotName&);
 
     static void
-    setFOCTimeout(const volumedriver::VolumeId& volName,
-                  uint32_t timeout);
+    setFOCTimeout(const volumedriver::VolumeId&,
+                  const boost::chrono::seconds);
 
     static bool
     checkVolumeConsistency(const volumedriver::VolumeId&);
@@ -472,7 +474,8 @@ public:
                        const volumedriver::ScrubbingCleanup = volumedriver::ScrubbingCleanup::OnSuccess);
 
     static uint64_t
-    volumePotential(const volumedriver::SCOMultiplier,
+    volumePotential(const volumedriver::ClusterSize,
+                    const volumedriver::SCOMultiplier,
                     const boost::optional<volumedriver::TLogMultiplier>&);
 
     static uint64_t

@@ -23,16 +23,15 @@
 #include <boost/filesystem.hpp>
 #include "../Types.h"
 #include "../ClusterLocation.h"
+
 namespace failovercache
 {
 class FailOverCacheProtocol;
 
-namespace fs = boost::filesystem;
-
 class FailOverCacheWriter
 {
 public:
-    FailOverCacheWriter(const fs::path& root,
+    FailOverCacheWriter(const boost::filesystem::path& root,
                         const std::string& ns,
                         const volumedriver::ClusterSize& cluster_size);
 
@@ -92,7 +91,6 @@ public:
         first_command_must_be_getEntries = true;
     }
 
-
     void
     removeUpTo(const volumedriver::SCO);
 
@@ -100,20 +98,26 @@ public:
     getSCORange(volumedriver::SCO& oldest,
                 volumedriver::SCO& youngest) const;
 
+    volumedriver::ClusterSize
+    cluster_size() const
+    {
+        return cluster_size_;
+    }
+
 private:
 
-    fs::path
+    boost::filesystem::path
     makePath(const volumedriver::SCO) const;
 
     bool registered_;
 
     mutable bool first_command_must_be_getEntries;
 
-    const fs::path root_;
+    const boost::filesystem::path root_;
 
     const std::string ns_;
 
-    fs::path relFilePath_;
+    boost::filesystem::path relFilePath_;
 
     std::deque<volumedriver::SCO> scosdeque_;
     typedef std::deque<volumedriver::SCO>::iterator sco_iterator;

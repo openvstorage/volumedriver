@@ -79,8 +79,8 @@ class ErrorHandlingTest
 {
 protected:
     static const SCOMultiplier sco_mult_;
-    static constexpr size_t lba_size_ = 512;
-    static constexpr size_t cluster_mult_ = 8;
+    static const LBASize lba_size_;
+    static const ClusterMultiplier cluster_mult_;
     static const size_t sco_size_;
 
     static const size_t mp_size_;
@@ -575,7 +575,7 @@ public:
         std::list<SnapshotName> snaps;
         vol_->listSnapshots(snaps);
 
-        ASSERT_THROW(vol_->setFOCTimeout(42),
+        ASSERT_THROW(vol_->setFOCTimeout(boost::chrono::seconds(42)),
                      std::exception);
 
         ASSERT_THROW(vol_->setFailOverCacheConfig(boost::none),
@@ -634,6 +634,8 @@ private:
     }
 };
 
+const LBASize ErrorHandlingTest::lba_size_(512);
+const ClusterMultiplier ErrorHandlingTest::cluster_mult_(8);
 const SCOMultiplier ErrorHandlingTest::sco_mult_(32);
 
 const size_t ErrorHandlingTest::sco_size_ =

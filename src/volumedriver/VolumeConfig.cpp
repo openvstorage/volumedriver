@@ -122,13 +122,6 @@ VolumeConfig::verify_()
                                  id_.str().c_str());
     }
 
-    // Not correct: the actual invariant is cluster_size == 4k (as that's what
-    // the clustercache + friends are hardwired to atm) which could be violated
-    // by an lba_size != 512 ...
-    VERIFY(cluster_mult_ == default_cluster_multiplier());
-    // ... so let's check that too:
-    VERIFY(ClusterSize(getClusterSize()) == default_cluster_size());
-
     // cf. OwnerTag.h: OwnerTag(0) is only allowed for internal use / backward compat
     // purposes. Callers must not pass it in.
     VERIFY(owner_tag_ != OwnerTag(0));

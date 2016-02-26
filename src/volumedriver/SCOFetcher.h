@@ -108,11 +108,13 @@ class RawFailOverCacheSCOFetcher
     : public SCOFetcher
 {
 public:
-    RawFailOverCacheSCOFetcher(SCO sconame,
-                               const FailOverCacheConfig& cfg,
-                               const Namespace& ns,
-                               const int32_t clustersize,
-                               unsigned timeout = 30);
+    RawFailOverCacheSCOFetcher(SCO,
+                               const FailOverCacheConfig&,
+                               const Namespace&,
+                               const LBASize,
+                               const ClusterMultiplier,
+                               const boost::chrono::seconds timeout =
+                               boost::chrono::seconds(30));
 
     RawFailOverCacheSCOFetcher(const RawFailOverCacheSCOFetcher&) = delete;
 

@@ -17,13 +17,13 @@
 
 #include "FailOverCacheProtocol.h"
 #include "FailOverCacheWriter.h"
-#include "VolumeFailOverCacheWriterMap.h"
 
 #include "../FailOverCacheStreamers.h"
 
-#include <mutex>
+#include <unordered_map>
 
-#include "fungilib/Mutex.h"
+#include <boost/thread/mutex.hpp>
+
 #include "fungilib/ProtocolFactory.h"
 
 #include <youtils/FileDescriptor.h>
@@ -31,45 +31,34 @@
 namespace failovercache
 {
 
-
 class FailOverCacheAcceptor
     : public fungi::ProtocolFactory
 {
-
 public:
     explicit FailOverCacheAcceptor(const boost::filesystem::path& root);
 
-    ~FailOverCacheAcceptor();
+    virtual ~FailOverCacheAcceptor();
 
     virtual fungi::Protocol*
-    createProtocol(fungi::Socket *s,
-                   fungi::SocketServer& parentServer);
+    createProtocol(std::unique_ptr<fungi::Socket>,
+                   fungi::SocketServer& parentServer) override final;
 
     virtual const char *
-    getName() const
+    getName() const override final
     {
         return "FailOverCacheAcceptor";
     }
 
     void
-    remove(FailOverCacheWriter* writer)
-    {
-        fungi::ScopedLock l(m);
-        return volCacheMap_.remove(writer);
-    }
+    remove(FailOverCacheWriter&);
 
-    FailOverCacheWriter*
-    lookup(const volumedriver::CommandData<volumedriver::Register>& data)
-    {
-        fungi::ScopedLock l(m);
-        return volCacheMap_.lookup(data.ns_,
-                                   data.clustersize_);
-    }
+    std::shared_ptr<FailOverCacheWriter>
+    lookup(const volumedriver::CommandData<volumedriver::Register>&);
 
     void
     removeProtocol(FailOverCacheProtocol* prot)
     {
-        fungi::ScopedLock l(m);
+        boost::lock_guard<decltype(mutex_)> g(mutex_);
         protocols.remove(prot);
     }
 
@@ -85,19 +74,21 @@ public:
         return lock_fd_->path();
     }
 
-private:
-    VolumeFailOverCacheWriterMap volCacheMap_;
-    fungi::Mutex m;
-
-public:
     const boost::filesystem::path root_;
 
 private:
-    typedef std::list<FailOverCacheProtocol*>::iterator iter;
+    DECLARE_LOGGER("FailOverCacheAcceptor");
+
+    // protects the map / protocols.
+    boost::mutex mutex_;
+
+    using Map = std::unordered_map<std::string, std::shared_ptr<FailOverCacheWriter>>;
+    Map map_;
+
     std::list<FailOverCacheProtocol*> protocols;
 
     std::unique_ptr<youtils::FileDescriptor> lock_fd_;
-    std::unique_lock<youtils::FileDescriptor> file_lock_;
+    boost::unique_lock<youtils::FileDescriptor> file_lock_;
 };
 
 }

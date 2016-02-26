@@ -37,6 +37,7 @@ struct XMLRPCKeys
     static const std::string cluster_cache_mode;
     static const std::string cluster_exponent;
     static const std::string cluster_multiplier;
+    static const std::string cluster_size;
     static const std::string code;
     static const std::string component_name;
     static const std::string configuration;

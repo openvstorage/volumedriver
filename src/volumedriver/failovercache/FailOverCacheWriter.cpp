@@ -12,22 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "FailOverCacheProtocol.h"
 #include "FailOverCacheWriter.h"
-#include <youtils/Assert.h>
+#include "failovercache/fungilib/WrapByteArray.h"
+
 #include <boost/scope_exit.hpp>
 #include <boost/scoped_array.hpp>
-#include "FailOverCacheProtocol.h"
-#include "failovercache/fungilib/WrapByteArray.h"
+
+#include <youtils/Assert.h>
 
 namespace failovercache
 {
+
 using namespace volumedriver;
 using namespace fungi;
 
+namespace fs = boost::filesystem;
 
 FailOverCacheWriter::FailOverCacheWriter(const fs::path& root,
                                          const std::string& ns,
-                                         const volumedriver::ClusterSize& cluster_size)
+                                         const ClusterSize& cluster_size)
     : registered_(false)
     , first_command_must_be_getEntries(false)
     , root_(root)
@@ -56,8 +60,6 @@ FailOverCacheWriter::~FailOverCacheWriter()
         LOG_WARN("Removing directory " << (root_ / ns_ ) << " failed, unknown exception");
 
     }
-
-
 
     delete f_;
 }
@@ -131,14 +133,13 @@ FailOverCacheWriter::removeUpTo(const SCO sconame)
 
 
 fs::path
-FailOverCacheWriter::makePath(const volumedriver::SCO sconame) const
+FailOverCacheWriter::makePath(const SCO sconame) const
 {
-
     return root_ / ns_ / sconame.str();
 }
 
 void
-FailOverCacheWriter::addEntry(volumedriver::ClusterLocation cl,
+FailOverCacheWriter::addEntry(ClusterLocation cl,
                               const uint64_t lba,
                               byte* buffer,
                               uint32_t size)
@@ -181,7 +182,7 @@ FailOverCacheWriter::addEntry(volumedriver::ClusterLocation cl,
             VERIFY(scooffset == ++check_offset);
         }
 
-        fungi::IOBaseStream fstream(f_);
+        fungi::IOBaseStream fstream(*f_);
         fstream << cl << lba << fungi::WrapByteArray(buffer, size);
 
     }
@@ -211,7 +212,6 @@ FailOverCacheWriter::getEntries(FailOverCacheProtocol* prot) const
          it != scosdeque_.end();
          ++it)
     {
-
         LOG_DEBUG("Sending SCO " << *it);
         const fs::path filename = makePath(*it);
 
@@ -219,12 +219,11 @@ FailOverCacheWriter::getEntries(FailOverCacheProtocol* prot) const
 
         File f(filename.string(), fungi::File::Read);
         f.open();
-        IOBaseStream fstream(&f);
+        IOBaseStream fstream(f);
         while (!f.eof())
         {
             ClusterLocation cl;
             fstream >> cl;
-
 
             uint64_t lba;
             fstream >> lba;
@@ -289,7 +288,7 @@ FailOverCacheWriter::getSCO(SCO sconame,
 
         File f(filename.string(), fungi::File::Read);
         f.open();
-        IOBaseStream fstream(&f);
+        IOBaseStream fstream(f);
         while (!f.eof())
         {
             ClusterLocation cl;
@@ -322,6 +321,5 @@ FailOverCacheWriter::Flush()
 
 }
 // Local Variables: **
-// compile-command: "scons -D --kernel_version=system --ignore-buildinfo -j 5" **
 // mode: c++ **
 // End: **

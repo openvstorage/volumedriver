@@ -21,10 +21,6 @@
 #include "FailOverCacheClientInterface.h"
 #include "SCO.h"
 
-#include "failovercache/fungilib/CondVar.h"
-#include "failovercache/fungilib/Runnable.h"
-#include "failovercache/fungilib/Thread.h"
-
 #include <youtils/FileDescriptor.h>
 #include <youtils/IOException.h>
 
@@ -39,7 +35,7 @@ class FailOverCacheSyncBridge
     friend class FailOverCacheTester;
 
 public:
-    FailOverCacheSyncBridge();
+    FailOverCacheSyncBridge() = default;
 
     FailOverCacheSyncBridge(const FailOverCacheSyncBridge&) = delete;
 
@@ -49,7 +45,7 @@ public:
     ~FailOverCacheSyncBridge() = default;
 
     virtual void
-    initialize(Volume* vol) override;
+    initialize(DegradedFun) override;
 
     virtual const char*
     getName() const override;
@@ -67,10 +63,10 @@ public:
     backup() override;
 
     virtual void
-    newCache(std::unique_ptr<FailOverCacheProxy> cache) override;
+    newCache(std::unique_ptr<FailOverCacheProxy>) override;
 
     virtual void
-    setRequestTimeout(const uint32_t seconds) override;
+    setRequestTimeout(const boost::chrono::seconds) override;
 
     virtual void
     removeUpTo(const SCO& sconame) override;
@@ -88,19 +84,16 @@ public:
     virtual FailOverCacheMode
     mode() const override;
 
-    void
-    handleException(std::exception& e,
-                    const char* where);
-
 private:
     DECLARE_LOGGER("FailOverCacheSyncBridge");
 
+    boost::mutex mutex_;
     std::unique_ptr<FailOverCacheProxy> cache_;
-    fungi::Mutex mutex_;
+    DegradedFun degraded_fun_;
 
-    ClusterSize cluster_size_;
-    ClusterMultiplier cluster_multiplier_;
-    Volume* vol_ = { nullptr };
+    void
+    handleException(std::exception& e,
+                    const char* where);
 };
 
 }

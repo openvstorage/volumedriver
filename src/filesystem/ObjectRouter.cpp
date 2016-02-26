@@ -1586,10 +1586,12 @@ ObjectRouter::get_node_status_map()
 }
 
 uint64_t
-ObjectRouter::local_volume_potential(const boost::optional<vd::SCOMultiplier>& s,
+ObjectRouter::local_volume_potential(const boost::optional<vd::ClusterSize>& c,
+                                     const boost::optional<vd::SCOMultiplier>& s,
                                      const boost::optional<vd::TLogMultiplier>& t)
 {
-    return local_node_()->volume_potential(s,
+    return local_node_()->volume_potential(c,
+                                           s,
                                            t);
 }
 

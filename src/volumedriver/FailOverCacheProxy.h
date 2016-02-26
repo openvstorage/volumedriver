@@ -17,13 +17,14 @@
 
 #include "FailOverCacheStreamers.h"
 #include "SCOProcessorInterface.h"
+#include "SCO.h"
 
 #include "failovercache/fungilib/Socket.h"
 #include "failovercache/fungilib/IOBaseStream.h"
 #include "failovercache/fungilib/Buffer.h"
+
 #include <boost/ptr_container/ptr_vector.hpp>
 #include <boost/scoped_array.hpp>
-#include "SCO.h"
 
 namespace volumedriver
 {
@@ -34,13 +35,16 @@ class Volume;
 class FailOverCacheProxy
 {
 public:
-    FailOverCacheProxy(const FailOverCacheConfig& cfg,
-                       const Namespace& nameSpace,
-                       const int32_t clustersize,
-                       unsigned timeout);
+    FailOverCacheProxy(const FailOverCacheConfig&,
+                       const Namespace&,
+                       const LBASize,
+                       const ClusterMultiplier,
+                       const boost::chrono::seconds);
 
     FailOverCacheProxy(const FailOverCacheProxy&) = delete;
-    FailOverCacheProxy& operator=(const FailOverCacheProxy&) = delete;
+
+    FailOverCacheProxy&
+    operator=(const FailOverCacheProxy&) = delete;
 
     ~FailOverCacheProxy();
 
@@ -66,10 +70,8 @@ public:
     void
     removeUpTo(const SCO sconame) throw ();
 
-    DECLARE_LOGGER("FailOverCacheProxy");
-
     void
-    setRequestTimeout(const uint32_t seconds);
+    setRequestTimeout(const boost::chrono::seconds);
 
     void
     getEntries(SCOProcessorFun processor);
@@ -81,12 +83,26 @@ public:
         delete_failover_dir_ = true;
     }
 
+    LBASize
+    lba_size() const
+    {
+        return lba_size_;
+    }
+
+    ClusterMultiplier
+    cluster_multiplier() const
+    {
+        return cluster_mult_;
+    }
+
 private:
-    void
-    Register_();
+    DECLARE_LOGGER("FailOverCacheProxy");
 
     void
-    Unregister_();
+    register_();
+
+    void
+    unregister_();
 
     void
     checkStreamOK(const std::string& ex);
@@ -94,10 +110,11 @@ private:
     uint64_t
     getObject_(SCOProcessorFun processor);
 
-    fungi::Socket* socket_;
-    fungi :: IOBaseStream *stream_;
+    std::unique_ptr<fungi::Socket> socket_;
+    fungi::IOBaseStream stream_;
     const Namespace ns_;
-    const ClusterSize clustersize_;
+    const LBASize lba_size_;
+    const ClusterMultiplier cluster_mult_;
     bool delete_failover_dir_;
 };
 

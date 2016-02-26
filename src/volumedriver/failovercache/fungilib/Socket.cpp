@@ -121,9 +121,12 @@ double Interval::secondsDouble() const {
 static const int SOCKET_MAX_STRING_SIZE = 1024;
 static const int SOCKET_MAX_BYTEARRAY_SIZE = 64 * 1024;
 
-Socket *Socket::createClientSocket(const std::string &host, uint16_t port, int sock_type) {
-    Socket *sock = nullptr;
+std::unique_ptr<Socket>
+Socket::createClientSocket(const std::string &host, uint16_t port, int sock_type)
+{
+    std::unique_ptr<Socket> sock;
     bool created = false;
+
     try {
         sock = createSocket(true, sock_type);
         created = true;
@@ -131,8 +134,7 @@ Socket *Socket::createClientSocket(const std::string &host, uint16_t port, int s
     }
     catch (IOException& e1) {
         LOG_DEBUG((created ? "Connect" : "Create") << " RDMA socket [" << host << ":" << port << "] failed (" << getErrorNumber() << ") - retry with TCP");
-        delete sock;
-        sock = nullptr;
+
         created = false;
         try {
             sock = createSocket(false, sock_type);
@@ -141,31 +143,31 @@ Socket *Socket::createClientSocket(const std::string &host, uint16_t port, int s
         }
         catch (IOException& e2) {
             LOG_DEBUG((created ? "Connect" : "Create") << " TCP socket [" << host << ":" << port << "] failed (" << getErrorNumber() << ") - give up");
-            delete sock;
-            sock = nullptr;
             throw e2;
         }
     }
     return sock;
 }
 
-Socket *Socket::createSocket(bool rdma, int sock_type) {
-    Socket *sock;
-    if (rdma) { // rsocket cannot handle IPv6
-        return new IPv4Socket(true, sock_type);
+std::unique_ptr<Socket>
+Socket::createSocket(bool rdma, int sock_type) {
+
+    if (rdma)
+    { // rsocket cannot handle IPv6
+        return std::unique_ptr<Socket>(new IPv4Socket(true, sock_type));
     }
     // always use IPv4 in windows for now TODO
 #ifndef _WIN32
     try {
-        sock = new IPv6Socket(sock_type);
+        return std::unique_ptr<Socket>(new IPv6Socket(sock_type));
     } catch (IOException & /* e */) {
           LOG_DEBUG("Fall back on IPv4");
 #endif
-        sock = new IPv4Socket(false, sock_type);
+          return std::unique_ptr<Socket>(new IPv4Socket(false,
+                                                        sock_type));
 #ifndef _WIN32
     }
 #endif
-    return sock;
 }
 
 Socket::Socket(int domain, int sock_type, bool rdma) :
@@ -295,7 +297,7 @@ void Socket::getCork()
         int32_t corked = readInt_();
 //    LOG_INFO("read ahead " << corked << " bytes");
         // Buffer this many bytes
-        rbuf_.store(this, (int) corked);
+        rbuf_.store(*this, (int) corked);
     }
 }
 

@@ -21,14 +21,16 @@ namespace volumedriver
 
 {
 
-TLogCutter::TLogCutter(BackendInterface* bi,
+TLogCutter::TLogCutter(BackendInterface& bi,
                        const fs::path& file,
                        FilePool& filepool,
+                       const ClusterSize cluster_size,
                        uint64_t max_entries)
-    : bi_(bi),
-      file_(file),
-      filepool_(filepool),
-      max_entries_(max_entries)
+    : bi_(bi)
+    , file_(file)
+    , filepool_(filepool)
+    , max_entries_(max_entries)
+    , cluster_size_(cluster_size)
 {}
 
 void
@@ -58,12 +60,12 @@ TLogCutter::writeTLogToBackend()
     // work around ALBA uploads timing out but eventually succeeding in the
     // background, leading to overwrite on retry.
     TODO("AR: use OverwriteObject::F instead");
-    VERIFY(not bi_->objectExists(tlogs_.back().getName()));
+    VERIFY(not bi_.objectExists(tlogs_.back().getName()));
 
-    bi_->write(current_tlog_path,
-               tlogs_.back().getName(),
-               OverwriteObject::F,
-               &check);
+    bi_.write(current_tlog_path,
+              tlogs_.back().getName(),
+              OverwriteObject::F,
+              &check);
     tlogs_.back().writtenToBackend(true);
 }
 
@@ -90,7 +92,7 @@ TLogCutter::operator()()
         }
         tlog_writer->add(e->clusterAddress(),
                          e->clusterLocationAndHash());
-        tlogs_.back().add_to_backend_size(VolumeConfig::default_cluster_size());
+        tlogs_.back().add_to_backend_size(cluster_size_);
         entries_written++;
         prev_sco_num = current_sco_num;
     }

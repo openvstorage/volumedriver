@@ -160,6 +160,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(non_disposable_scos_factor,
                                       ShowDocumentation::T,
                                       1.5);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(default_cluster_size,
+                                      volmanager_component_name,
+                                      "default_cluster_size",
+                                      "size of a cluster in bytes",
+                                      ShowDocumentation::T,
+                                      4096U);
+
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(metadata_cache_capacity,
                                       volmanager_component_name,
                                       "metadata_cache_capacity",

@@ -19,24 +19,33 @@
 
 #ifndef PROTOCOLFACTORY_H_
 #define PROTOCOLFACTORY_H_
+
 #include <youtils/Logging.h>
 
-namespace fungi{
+namespace fungi
+{
+
 class Protocol;
 class Socket;
 class SocketServer;
 
-class ProtocolFactory {
+class ProtocolFactory
+{
 public:
-	DECLARE_LOGGER("ProtocolFactory");
-    ProtocolFactory(){}
-	// protocol has to take ownership of the socket
-    virtual Protocol* createProtocol(Socket* s, SocketServer& parentServer) = 0;
-    virtual const char *getName() const = 0;
-    virtual ~ProtocolFactory() {}
+    DECLARE_LOGGER("ProtocolFactory");
+
+    virtual ~ProtocolFactory() = default;
+
+    virtual Protocol*
+    createProtocol(std::unique_ptr<Socket>,
+                   SocketServer& parentServer) = 0;
+
+    virtual const char*
+    getName() const = 0;
 };
 
 }
+
 #endif /* PROTOCOLFACTORY_H_ */
 
 // Local Variables: **

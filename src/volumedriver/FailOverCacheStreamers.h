@@ -102,7 +102,7 @@ struct CommandData<AddEntries>
     {}
 
     // Only used when streaming in
-    std::vector<uint8_t> buf_;
+    std::unique_ptr<uint8_t[]> buf_;
 
     // Only used when streaming out
     CommandData() = default;

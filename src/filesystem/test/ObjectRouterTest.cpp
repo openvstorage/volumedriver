@@ -215,7 +215,7 @@ TEST_F(ObjectRouterTest, remote_read)
     const auto vname(create_file(fname, vsize));
 
     const std::string pattern("locally written");
-    const uint64_t off = api::GetClusterSize() - 1;
+    const uint64_t off = get_cluster_size(vname) - 1;
 
     write_to_file(fname, pattern, pattern.size(), off);
     EXPECT_EQ(pattern, remote_read(vname, pattern.size(), off));
@@ -228,7 +228,7 @@ TEST_F(ObjectRouterTest, remote_write)
     const auto vname(create_file(fname, vsize));
 
     const std::string pattern("remotely written");
-    const uint64_t off = api::GetClusterSize() - 1;
+    const uint64_t off = get_cluster_size(vname) - 1;
 
     remote_write(vname, pattern, off);
     check_file(fname, pattern, pattern.size(), off);
@@ -241,7 +241,7 @@ TEST_F(ObjectRouterTest, invalid_request_type)
     const auto vname(create_file(fname, vsize));
 
     const std::string pattern("locally written");
-    const uint64_t off = api::GetClusterSize() - 1;
+    const uint64_t off = get_cluster_size(vname) - 1;
 
     write_to_file(fname, pattern, pattern.size(), off);
 
@@ -293,7 +293,7 @@ TEST_F(ObjectRouterTest, wrong_request_type)
     const auto vname(create_file(fname, vsize));
 
     const std::string pattern("locally written");
-    const uint64_t off = api::GetClusterSize() - 1;
+    const uint64_t off = get_cluster_size(vname) - 1;
 
     write_to_file(fname, pattern, pattern.size(), off);
 
@@ -341,7 +341,7 @@ TEST_F(ObjectRouterTest, missing_tag)
     const auto vname(create_file(fname, vsize));
 
     const std::string pattern("locally written");
-    const uint64_t off = api::GetClusterSize() - 1;
+    const uint64_t off = get_cluster_size(vname) - 1;
 
     write_to_file(fname, pattern, pattern.size(), off);
 
@@ -561,7 +561,7 @@ TEST_F(ObjectRouterTest, volume_snapshot_create_rollback_delete)
     const vfs::ObjectId vname(create_file(fname, vsize));
 
     const std::string pattern("locally written");
-    const uint64_t off = api::GetClusterSize() - 1;
+    const uint64_t off = get_cluster_size(vname) - 1;
 
     write_to_file(fname, pattern, pattern.size(), off);
 

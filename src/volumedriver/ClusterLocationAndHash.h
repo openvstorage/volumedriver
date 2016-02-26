@@ -45,11 +45,15 @@ struct ClusterLocationAndHash
 #ifndef ENABLE_MD5_HASH
                            __attribute__((unused))
 #endif
+                           ,
+                           const size_t size
+#ifndef ENABLE_MD5_HASH
+                           __attribute__((unused))
+#endif
                            )
         : clusterLocation(cloc)
-#ifdef ENABLE_MD5_HASH
-        , weed_(data, VolumeConfig::default_cluster_size())
-#endif
+        , weed(data,
+               size)
     {}
 
     ClusterLocationAndHash(const ClusterLocation& cloc,

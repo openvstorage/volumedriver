@@ -112,19 +112,18 @@ TEST_P(ResourceLimitTest, scrutinize_metadata_freespace_when_cloning_or_restarti
     const backend::Namespace& fakens = ns1_ptr->ns();
 
     VolumeSize fakesize(fri *
-                        VolumeConfig::default_cluster_multiplier() *
-                        VolumeConfig::default_lba_size() /
+                        default_cluster_size() *
                         24);
-    if ((fakesize % VolumeConfig::default_cluster_size()) != 0)
+    if ((fakesize % default_cluster_size()) != 0)
     {
-        fakesize = (fakesize / VolumeConfig::default_cluster_size() + 1) *
-            VolumeConfig::default_cluster_size();
+        fakesize = (fakesize / default_cluster_size() + 1) * default_cluster_size();
     }
 
     const VolumeConfig fakecfg(VanillaVolumeConfigParameters(fake,
                                                              fakens,
                                                              fakesize,
-                                                             OwnerTag(1)));
+                                                             OwnerTag(1))
+                               .cluster_multiplier(default_cluster_multiplier()));
 
     setNamespaceRestarting(fakens, fakecfg);
 

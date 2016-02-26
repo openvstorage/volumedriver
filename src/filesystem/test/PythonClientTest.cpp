@@ -341,6 +341,7 @@ TEST_F(PythonClientTest, snapshot_excessive_metadata)
     const bpy::list l(client_.list_snapshots(vname));
     EXPECT_EQ(0, bpy::len(l));
 }
+
 TEST_F(PythonClientTest, volume_potential)
 {
     uint64_t res = 0;
@@ -348,9 +349,9 @@ TEST_F(PythonClientTest, volume_potential)
     EXPECT_LT(0U, res);
     EXPECT_EQ(res,
               fs_->object_router().local_volume_potential(boost::none,
+                                                          boost::none,
                                                           boost::none));
 }
-
 
 TEST_F(PythonClientTest, snapshot_metadata)
 {
@@ -429,7 +430,7 @@ TEST_F(PythonClientTest, performance_counters)
     const vfs::FrontendPath vpath(make_volume_name("/testing_info"));
     const std::string vname(create_file(vpath, 10 << 20));
 
-    const size_t csize = api::GetClusterSize();
+    const size_t csize = get_cluster_size(vfs::ObjectId(vname));
 
     auto expect_nothing([&](const vd::PerformanceCounter<uint64_t>& ctr)
     {
@@ -696,8 +697,8 @@ TEST_F(PythonClientTest, scrubbing)
 {
     const vfs::FrontendPath vpath(make_volume_name("/testing_the_scrubber"));
     const vfs::ObjectId vol_id(create_file(vpath, 10 << 20));
-    const off_t off = 10 * api::GetClusterSize();
-    const uint64_t size = 30 * api::GetClusterSize();
+    const off_t off = 10 * get_cluster_size(vol_id);
+    const uint64_t size = 30 * get_cluster_size(vol_id);
 
 
     const std::string pattern("some_write");
@@ -927,8 +928,8 @@ TEST_F(PythonClientTest, prevent_rollback_beyond_clone)
     std::vector<vd::SnapshotName> snaps;
     snaps.reserve(4);
 
-    const off_t off = api::GetClusterSize();
-    const uint64_t size = api::GetClusterSize();
+    const off_t off = get_cluster_size(pname);
+    const uint64_t size = get_cluster_size(pname);
 
     for (size_t i = 0; i < snaps.capacity(); ++i)
     {
@@ -1005,10 +1006,11 @@ TEST_F(PythonClientTest, family_scrubbing)
 {
     const vfs::FrontendPath ppath(make_volume_name("/parent"));
     const size_t vsize = 10 << 20;
-    const size_t csize = api::GetClusterSize();
 
     const vfs::ObjectId pname(create_file(ppath,
                                           vsize));
+
+    const size_t csize = get_cluster_size(pname);
 
     const std::string pattern("Blackstar");
     for (size_t i = 0; i < 64; ++i)
@@ -1060,10 +1062,11 @@ TEST_F(PythonClientTest, templates_and_scrubbing)
 {
     const vfs::FrontendPath ppath(make_volume_name("/parent"));
     const size_t vsize = 10 << 20;
-    const size_t csize = api::GetClusterSize();
 
     const vfs::ObjectId pname(create_file(ppath,
                                           vsize));
+
+    const size_t csize = get_cluster_size(pname);
 
     const std::string pattern("White Chalk");
     for (size_t i = 0; i < 64; ++i)
@@ -1361,7 +1364,7 @@ TEST_F(PythonClientTest, tlog_multiplier)
     EXPECT_EQ(boost::none,
               client_.get_tlog_multiplier(vname));
 
-    const uint32_t tlog_multiplier_c = 1024;
+    const uint32_t tlog_multiplier_c = 50;
     client_.set_tlog_multiplier(vname, tlog_multiplier_c);
     const boost::optional<uint32_t>
         tlog_multiplier(client_.get_tlog_multiplier(vname));
@@ -1369,7 +1372,7 @@ TEST_F(PythonClientTest, tlog_multiplier)
     ASSERT_NE(boost::none,
               tlog_multiplier);
 
-    EXPECT_EQ(1024U,
+    EXPECT_EQ(tlog_multiplier_c,
               *tlog_multiplier);
 
     client_.set_tlog_multiplier(vname,
@@ -1774,7 +1777,7 @@ TEST_F(PythonClientTest, locked_scrub)
     const vfs::FrontendPath vpath(make_volume_name("/some-volume"));
     const std::string vname(create_file(vpath, 10 << 20));
 
-    const uint64_t csize = api::GetClusterSize();
+    const uint64_t csize = get_cluster_size(vfs::ObjectId(vname));
     const std::string fst("first");
 
     write_to_file(vpath,

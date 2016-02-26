@@ -27,8 +27,10 @@ class FailOverCacheBridgeFactory
 
 public:
 
-    static FailOverCacheClientInterface*
-    create(FailOverCacheMode mode,
+    static std::unique_ptr<FailOverCacheClientInterface>
+    create(const FailOverCacheMode,
+           const LBASize,
+           const ClusterMultiplier,
            const std::atomic<unsigned>& max_entries,
            const std::atomic<unsigned>& write_trigger);
 };

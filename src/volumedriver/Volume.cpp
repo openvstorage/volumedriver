@@ -120,6 +120,8 @@ Volume::Volume(const VolumeConfig& vCfg,
     , halted_(false)
     , dataStore_(datastore.release())
     , failover_(FailOverCacheBridgeFactory::create(FailOverCacheMode::Asynchronous,
+                                                   LBASize(vCfg.lba_size_),
+                                                   vCfg.cluster_mult_,
                                                    VolManager::get()->dtl_queue_depth.value(),
                                                    VolManager::get()->dtl_write_trigger.value()))
     , metaDataStore_(metadatastore.release())
@@ -153,7 +155,7 @@ Volume::Volume(const VolumeConfig& vCfg,
     caMask_ = ~(getClusterSize() / getLBASize() - 1);
     dataStore_->initialize(this);
     snapshotManagement_->initialize(this);
-    failover_->initialize(this);
+    init_failover_cache_();
 
     VERIFY(metaDataStore_->scrub_id() != boost::none);
     VERIFY(*metaDataStore_->scrub_id() == snapshotManagement_->scrub_id());
@@ -231,7 +233,8 @@ Volume::setSCOMultiplier(SCOMultiplier sco_mult)
 
     const boost::optional<TLogMultiplier> tlog_mult(getTLogMultiplier());
 
-    VolManager::get()->checkSCOAndTLogMultipliers(getSCOMultiplier(),
+    VolManager::get()->checkSCOAndTLogMultipliers(getClusterSize(),
+                                                  getSCOMultiplier(),
                                                   sco_mult,
                                                   tlog_mult,
                                                   tlog_mult);
@@ -267,7 +270,8 @@ Volume::setTLogMultiplier(const boost::optional<TLogMultiplier>& tlog_mult)
 
     const SCOMultiplier sco_mult(getSCOMultiplier());
 
-    VolManager::get()->checkSCOAndTLogMultipliers(sco_mult,
+    VolManager::get()->checkSCOAndTLogMultipliers(getClusterSize(),
+                                                  sco_mult,
                                                   sco_mult,
                                                   getTLogMultiplier(),
                                                   tlog_mult);
@@ -463,7 +467,9 @@ Volume::localRestart()
             cache =
                 std::make_unique<FailOverCacheProxy>(foc_cfg,
                                                      cfg.getNS(),
-                                                     getClusterSize(),
+                                                     TODO("AR: fix getLBASize instead")
+                                                     LBASize(getLBASize()),
+                                                     getClusterMultiplier(),
                                                      failover_->getDefaultRequestTimeout());
         }
         CATCH_STD_ALL_EWHAT({
@@ -583,7 +589,8 @@ Volume::backend_restart(const CloneTLogs& restartTLogs,
             cache =
                 std::make_unique<FailOverCacheProxy>(foc_cfg,
                                                      cfg.getNS(),
-                                                     getClusterSize(),
+                                                     LBASize(getLBASize()),
+                                                     getClusterMultiplier(),
                                                      failover_->getDefaultRequestTimeout());
         }
         CATCH_STD_ALL_EWHAT({
@@ -941,24 +948,29 @@ Volume::writeClusters_(uint64_t addr,
             writeClusterMetaData_(ca,
                                   loc_and_hash);
 
-            if (isCacheOnWrite())
+            // For now we only use the cache if it has the same cluster size. We could
+            // try harder and split volume clusters into smaller cache clusters.
+            if (cache.cluster_size() == getClusterSize())
             {
-                cache.add(getClusterCacheHandle(),
-                          ca,
-                          loc_and_hash.weed(),
-                          data);
+                if (isCacheOnWrite())
+                {
+                    cache.add(getClusterCacheHandle(),
+                              ca,
+                              loc_and_hash.weed(),
+                              data,
+                              static_cast<size_t>(getClusterSize()));
+                }
+                else if (ccmode == ClusterCacheMode::LocationBased)
+                {
+                    // We need to invalidate even in case of ClusterCacheBehaviour::NoCache,
+                    // otherwise an unfortunate reconfiguration of the default behaviour
+                    // (CacheOnXXX -> NoCache (and overwrites) -> CacheOnXXX) could lead
+                    // to outdated data being returned from the cache.
+                    cache.invalidate(getClusterCacheHandle(),
+                                     ca,
+                                     loc_and_hash.weed());
+                }
             }
-            else if (ccmode == ClusterCacheMode::LocationBased)
-            {
-                // We need to invalidate even in case of ClusterCacheBehaviour::NoCache,
-                // otherwise an unfortunate reconfiguration of the default behaviour
-                // (CacheOnXXX -> NoCache (and overwrites) -> CacheOnXXX) could lead
-                // to outdated data being returned from the cache.
-                cache.invalidate(getClusterCacheHandle(),
-                                 ca,
-                                 loc_and_hash.weed());
-            }
-
         }
 
         yt::SteadyTimer t;
@@ -1121,10 +1133,15 @@ Volume::readClusters_(uint64_t addr,
         }
         else
         {
-            bool in_cache = cache.read(getClusterCacheHandle(),
-                                       ca,
-                                       loc_and_hash.weed(),
-                                       buf + off);
+            // For now we only use the cache if it has the same cluster size. We could
+            // try harder and split volume clusters into smaller cache clusters.
+            const bool in_cache =
+                cache.cluster_size() == getClusterSize() and
+                cache.read(getClusterCacheHandle(),
+                           ca,
+                           loc_and_hash.weed(),
+                           buf + off,
+                           static_cast<size_t>(getClusterSize()));
             if (in_cache)
             {
                 ++readCacheHits_;
@@ -1143,14 +1160,17 @@ Volume::readClusters_(uint64_t addr,
     }
 
     dataStore_->readClusters(read_descriptors);
-    if (effective_cluster_cache_behaviour() != ClusterCacheBehaviour::NoCache)
+
+    if (cache.cluster_size() == getClusterSize() and
+        effective_cluster_cache_behaviour() != ClusterCacheBehaviour::NoCache)
     {
         for (const ClusterReadDescriptor& clrd : read_descriptors)
         {
             cache.add(getClusterCacheHandle(),
                       clrd.getClusterAddress(),
                       clrd.weed(),
-                      clrd.getBuffer());
+                      clrd.getBuffer(),
+                      static_cast<size_t>(getClusterSize()));
         }
     }
 }
@@ -1587,7 +1607,7 @@ Volume::destroy(DeleteLocalData delete_local_data,
         {
             LOG_VINFO("Unregistering volume from ClusterCache");
             deregister_from_cluster_cache_(getOwnerTag());
-            CATCH_AND_CHECK_FORCE(failover_->newCache(0),
+            CATCH_AND_CHECK_FORCE(failover_->newCache(nullptr),
                                   "Exception trying to unset the failover cache");
         }
         else
@@ -2043,7 +2063,8 @@ Volume::replayClusterFromFailOverCache_(ClusterAddress ca,
     }
 
     ClusterLocationAndHash loc_and_hash(loc,
-                                        buf);
+                                        buf,
+                                        getClusterSize());
     writeClusterMetaData_(ca,
                           loc_and_hash);
 
@@ -2183,19 +2204,29 @@ getFailOverCacheConfig()
 }
 
 void
+Volume::init_failover_cache_()
+{
+    failover_->initialize([&]() noexcept
+                          {
+                              LOG_VINFO("setting DTL degraded");
+                              setVolumeFailOverState(VolumeFailOverState::DEGRADED);
+                          });
+}
+
+void
 Volume::setFailOverCacheMode_(const FailOverCacheMode mode)
 {
     if (mode != failover_->mode())
     {
         failover_->destroy(SyncFailOverToBackend::T);
-        std::unique_ptr<FailOverCacheClientInterface> newBridge(FailOverCacheBridgeFactory::create(mode,
-                                                                                                   VolManager::get()->dtl_queue_depth.value(),
-                                                                                                   VolManager::get()->dtl_write_trigger.value()));
-        failover_ = std::move(newBridge);
-        failover_->initialize(this);
+        failover_ = FailOverCacheBridgeFactory::create(mode,
+                                                       LBASize(getLBASize()),
+                                                       getClusterMultiplier(),
+                                                       VolManager::get()->dtl_queue_depth.value(),
+                                                       VolManager::get()->dtl_write_trigger.value());
+        init_failover_cache_();
     }
 }
-
 
 void
 Volume::setFailOverCacheConfig_(const FailOverCacheConfig& config)
@@ -2206,7 +2237,7 @@ Volume::setFailOverCacheConfig_(const FailOverCacheConfig& config)
     foc_config_wrapper_.set(config);
 
     last_tlog_not_on_failover_ = boost::none;
-    failover_->newCache(0);
+    failover_->newCache(nullptr);
 
     writeFailOverCacheConfigToBackend_();
 
@@ -2214,7 +2245,8 @@ Volume::setFailOverCacheConfig_(const FailOverCacheConfig& config)
     setFailOverCacheMode_(config.mode);
     failover_->newCache(std::make_unique<FailOverCacheProxy>(config,
                                                              getNamespace(),
-                                                             getClusterSize(),
+                                                             LBASize(getLBASize()),
+                                                             getClusterMultiplier(),
                                                              failover_->getDefaultRequestTimeout()));
     failover_->Clear();
 
@@ -2362,7 +2394,7 @@ Volume::getClusterCacheMisses() const
 }
 
 void
-Volume::setFOCTimeout(uint32_t timeout)
+Volume::setFOCTimeout(const boost::chrono::seconds timeout)
 {
     checkNotHalted_();
     failover_->setRequestTimeout(timeout);

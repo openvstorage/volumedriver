@@ -95,15 +95,19 @@ public:
         , owner_tag_(t.get_owner_tag())
     {
         VERIFY(sco_mult_ > 0);
+
         if (tlog_mult_)
         {
             VERIFY(tlog_mult_ > 0);
         }
-		if (max_non_disposable_factor_)
-		{
-			VERIFY(max_non_disposable_factor_ > 0);
-		}
+
+        if (max_non_disposable_factor_)
+        {
+            VERIFY(max_non_disposable_factor_ > 0);
+        }
+
         VERIFY(lba_size_ > 0);
+
         VERIFY(cluster_mult_ > 0);
 
         const uint64_t csize = getClusterSize();
@@ -424,8 +428,6 @@ private:
 
         // cf. comment in constructor.
 
-        THROW_UNLESS(cluster_mult_ == default_cluster_multiplier());
-        THROW_UNLESS(cluster_mult_ * lba_size_ == default_cluster_size());
         Namespace tmp = backend::Namespace(ns_);
     }
 

@@ -39,7 +39,7 @@ public:
     get_num_entries(B& bridge)
     {
         // Otherwise we might clash with the FailOverCacheBridge's ping mechanism!
-        fungi::ScopedLock g(bridge.mutex_);
+        boost::lock_guard<decltype(bridge.mutex_)> g(bridge.mutex_);
         size_t num_clusters = 0;
         bridge.cache_->getEntries([&](ClusterLocation,
                                       uint64_t /* lba */,
@@ -103,7 +103,7 @@ TEST_P(FailOverCacheTester, focTimeout)
     {
         fungi::ScopedLock l(api::getManagementMutex());
         api::setFOCTimeout(vid,
-                           100);
+                           boost::chrono::seconds(100));
     }
 
      destroyVolume(v,
@@ -753,14 +753,15 @@ TEST_P(FailOverCacheTester, clear)
     auto wrns(make_random_namespace());
     auto foc_ctx(start_one_foc());
 
-    const size_t csize = VolumeConfig::default_cluster_size();
     FailOverCacheProxy proxy(foc_ctx->config(GetParam().foc_mode()),
                              wrns->ns(),
-                             csize,
-                             60);
+                             default_lba_size(),
+                             default_cluster_multiplier(),
+                             boost::chrono::seconds(60));
 
     EXPECT_NO_THROW(proxy.clear());
 
+    const size_t csize = default_cluster_size();
     const std::vector<uint8_t> buf(csize);
     std::vector<FailOverCacheEntry> entries { FailOverCacheEntry(ClusterLocation(1),
                                                                  0,
@@ -773,6 +774,108 @@ TEST_P(FailOverCacheTester, clear)
     foc_ctx.reset();
 
     EXPECT_THROW(proxy.clear(),
+                 std::exception);
+}
+
+TEST_P(FailOverCacheTester, non_standard_cluster_size)
+{
+    auto foc_ctx(start_one_foc());
+    auto wrns(make_random_namespace());
+    const VolumeSize vsize(10ULL << 20);
+    const ClusterMultiplier cmult(default_cluster_multiplier() * 2);
+    const ClusterSize csize(default_lba_size() * cmult);
+
+    Volume* v = newVolume(*wrns,
+                          vsize,
+                          default_sco_multiplier(),
+                          default_lba_size(),
+                          cmult);
+
+    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+
+    SCOPED_BLOCK_BACKEND(v);
+
+    auto make_pattern([](size_t i) -> std::string
+                      {
+                          return std::string("cluster-" +
+                                             boost::lexical_cast<std::string>(i));
+                      });
+
+    const size_t num_clusters = default_sco_multiplier() + 3;
+
+    for (size_t i = 0; i < num_clusters; ++i)
+    {
+        writeToVolume(v,
+                      i * cmult,
+                      csize,
+                      make_pattern(i));
+    }
+
+    v->getFailOver()->Flush();
+
+    FailOverCacheProxy proxy(foc_ctx->config(GetParam().foc_mode()),
+                             wrns->ns(),
+                             default_lba_size(),
+                             cmult,
+                             boost::chrono::seconds(60));
+
+    size_t count = 0;
+
+    proxy.getEntries([&](ClusterLocation /* loc */,
+                         uint64_t lba,
+                         const uint8_t* buf,
+                         size_t bufsize)
+                     {
+                         ASSERT_EQ(csize,
+                                   bufsize);
+                         ASSERT_EQ(count * cmult,
+                                   lba);
+                         const std::string p(make_pattern(count));
+
+                         for (size_t i = 0; i < bufsize; ++i)
+                         {
+                             ASSERT_EQ(p[i % p.size()],
+                                       buf[i]);
+                         }
+
+                         ++count;
+                     });
+
+    EXPECT_EQ(num_clusters,
+              count);
+}
+
+TEST_P(FailOverCacheTester, wrong_cluster_size)
+{
+    auto foc_ctx(start_one_foc());
+    auto wrns(make_random_namespace());
+    const VolumeSize vsize(10ULL << 20);
+    const ClusterMultiplier cmult(default_cluster_multiplier() * 2);
+    const ClusterSize csize(default_lba_size() * cmult);
+
+    Volume* v = newVolume(*wrns,
+                          vsize,
+                          default_sco_multiplier(),
+                          default_lba_size(),
+                          cmult);
+
+    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+
+    SCOPED_BLOCK_BACKEND(v);
+
+    const std::string pattern("cluster");
+    writeToVolume(v,
+                  0,
+                  csize,
+                  pattern);
+
+    v->getFailOver()->Flush();
+
+    EXPECT_THROW(FailOverCacheProxy(foc_ctx->config(GetParam().foc_mode()),
+                                    wrns->ns(),
+                                    LBASize(default_lba_size()),
+                                    ClusterMultiplier(default_cluster_multiplier()),
+                                    boost::chrono::seconds(60)),
                  std::exception);
 }
 
@@ -835,7 +938,6 @@ TEST_P(FailOverCacheTester, DISABLED_tarpit)
     ::system(del_cmdline.c_str());
 }
 */
-
 
 namespace
 {

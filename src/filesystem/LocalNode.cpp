@@ -621,7 +621,7 @@ LocalNode::resize_(vd::Volume* vol,
 {
     LOCKVD();
 
-    const uint64_t csize = api::GetClusterSize();
+    const uint64_t csize = api::GetClusterSize(vol);
     uint64_t clusters = newsize / csize;
     if (newsize % csize)
     {
@@ -630,7 +630,8 @@ LocalNode::resize_(vd::Volume* vol,
         ++clusters;
     }
 
-    api::Resize(vol, clusters);
+    api::Resize(vol,
+                clusters);
 }
 
 void
@@ -940,13 +941,21 @@ LocalNode::create_volume_(const ObjectId& id,
 
         try
         {
-            const auto
-                params(vd::VanillaVolumeConfigParameters(static_cast<const vd::VolumeId>(id),
-                                                         nspace,
-                                                         vd::VolumeSize(0),
-                                                         reg->owner_tag)
-                       .sco_multiplier(vd::SCOMultiplier(vrouter_sco_multiplier.value()))
-                       .metadata_backend_config(std::move(mdb_config)));
+            auto params(vd::VanillaVolumeConfigParameters(static_cast<const vd::VolumeId>(id),
+                                                          nspace,
+                                                          vd::VolumeSize(0),
+                                                          reg->owner_tag)
+                        .sco_multiplier(vd::SCOMultiplier(vrouter_sco_multiplier.value()))
+                        .metadata_backend_config(std::move(mdb_config)));
+
+            const size_t lba_size(vd::VolumeConfig::default_lba_size());
+            const size_t cluster_size(api::getDefaultClusterSize());
+
+            THROW_UNLESS(cluster_size >= lba_size);
+            THROW_UNLESS((cluster_size % lba_size) == 0);
+
+            vd::ClusterMultiplier cmult(cluster_size / lba_size);
+            params.cluster_multiplier(cmult);
 
             api::createNewVolume(params,
                                  vd::CreateNamespace::T);
@@ -1684,10 +1693,14 @@ LocalNode::stop(const Object& obj,
 }
 
 uint64_t
-LocalNode::volume_potential(const boost::optional<volumedriver::SCOMultiplier>& s,
+LocalNode::volume_potential(const boost::optional<volumedriver::ClusterSize>& c,
+                            const boost::optional<volumedriver::SCOMultiplier>& s,
                             const boost::optional<volumedriver::TLogMultiplier>& t)
 {
-    return api::volumePotential(s ?
+    return api::volumePotential(c ?
+                                *c :
+                                api::getDefaultClusterSize(),
+                                s ?
                                 *s :
                                 vd::SCOMultiplier(vrouter_sco_multiplier.value()),
                                 t);

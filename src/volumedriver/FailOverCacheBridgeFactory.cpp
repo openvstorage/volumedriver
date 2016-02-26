@@ -19,19 +19,25 @@
 namespace volumedriver
 {
 
-FailOverCacheClientInterface*
-FailOverCacheBridgeFactory::create(FailOverCacheMode mode,
+using Ptr = std::unique_ptr<FailOverCacheClientInterface>;
+
+Ptr
+FailOverCacheBridgeFactory::create(const FailOverCacheMode mode,
+                                   const LBASize lba_size,
+                                   const ClusterMultiplier cluster_multiplier,
                                    const std::atomic<unsigned>& max_entries,
                                    const std::atomic<unsigned>& write_trigger)
 {
     switch (mode)
     {
     case FailOverCacheMode::Asynchronous:
-        return new FailOverCacheAsyncBridge(max_entries, write_trigger);
+        return Ptr(new FailOverCacheAsyncBridge(lba_size,
+                                                cluster_multiplier,
+                                                max_entries,
+                                                write_trigger));
     case FailOverCacheMode::Synchronous:
-        return new FailOverCacheSyncBridge();
+        return Ptr(new FailOverCacheSyncBridge());
     }
-    return nullptr;
 }
 
 } // namespace volumedriver

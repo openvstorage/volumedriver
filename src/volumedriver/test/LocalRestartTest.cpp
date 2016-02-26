@@ -2764,8 +2764,8 @@ TEST_P(LocalRestartTest, DISABLED_ReliabilityOfTheBigOneIfTheMDStoreLRUWouldWork
 
     ASSERT_LT(1U, page_entries);
 
-    const auto cluster_mult = VolumeConfig::default_cluster_multiplier();
-    const auto cluster_size = VolumeConfig::default_lba_size() * cluster_mult;
+    const auto cluster_mult = default_cluster_multiplier();
+    const auto cluster_size = default_lba_size() * cluster_mult;
 
     ASSERT_LT(3U, max_tlog_entries);
 
@@ -2782,7 +2782,7 @@ TEST_P(LocalRestartTest, DISABLED_ReliabilityOfTheBigOneIfTheMDStoreLRUWouldWork
                        VolumeSize(2 * page_entries * mdstore_cache_pages * cluster_size),
                        sco_mult,
                        default_lba_size(),
-                       default_cluster_mult(),
+                       default_cluster_multiplier(),
                        mdstore_cache_pages);
 
     EXPECT_EQ(max_tlog_entries, v->getSnapshotManagement().maxTLogEntries());
@@ -3120,12 +3120,19 @@ const VolumeDriverTestConfig sync_foc_config =
     .use_cluster_cache(true)
     .foc_mode(FailOverCacheMode::Synchronous);
 
+const ClusterMultiplier
+big_cluster_multiplier(VolManagerTestSetup::default_test_config().cluster_multiplier() * 2);
+
+const auto big_clusters_config = VolManagerTestSetup::default_test_config()
+    .cluster_multiplier(big_cluster_multiplier);
+
 }
 
 INSTANTIATE_TEST_CASE_P(LocalRestartTests,
                         LocalRestartTest,
                         ::testing::Values(cluster_cache_config,
-                                          sync_foc_config));
+                                          sync_foc_config,
+                                          big_clusters_config));
 
 }
 

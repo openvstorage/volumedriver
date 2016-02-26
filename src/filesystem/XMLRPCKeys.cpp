@@ -36,6 +36,7 @@ DEFINE_XMLRPC_KEY(cluster_cache_misses);
 DEFINE_XMLRPC_KEY(cluster_cache_mode);
 DEFINE_XMLRPC_KEY(cluster_exponent);
 DEFINE_XMLRPC_KEY(cluster_multiplier);
+DEFINE_XMLRPC_KEY(cluster_size);
 DEFINE_XMLRPC_KEY(code);
 DEFINE_XMLRPC_KEY(component_name);
 DEFINE_XMLRPC_KEY(configuration);

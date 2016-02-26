@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef SON_OF_KAK_H_
-#define SON_OF_KAK_H_
+#ifndef VD_CLUSTER_CACHE_H_
+#define VD_CLUSTER_CACHE_H_
 
 #include "ClusterCacheDevice.h"
 #include "ClusterCacheDeviceManagerT.h"
@@ -59,10 +59,11 @@ class ClusterCacheTest;
 namespace volumedriver
 {
 
-MAKE_EXCEPTION(MountPointNotConfigured, fungi::IOException);
-MAKE_EXCEPTION(InvalidClusterCacheConfig, fungi::IOException);
-MAKE_EXCEPTION(InvalidClusterCacheHandle, fungi::IOException);
-MAKE_EXCEPTION(InvalidClusterCacheOperation, fungi::IOException);
+MAKE_EXCEPTION(ClusterCacheException, fungi::IOException);
+MAKE_EXCEPTION(MountPointNotConfigured, ClusterCacheException);
+MAKE_EXCEPTION(InvalidClusterCacheConfig, ClusterCacheException);
+MAKE_EXCEPTION(InvalidClusterCacheHandle, ClusterCacheException);
+MAKE_EXCEPTION(InvalidClusterCacheOperation, ClusterCacheException);
 
 struct SearchOldInNews
 {
@@ -253,8 +254,6 @@ public:
     typedef boost::archive::binary_oarchive oarchive_type;
 
 private:
-    DECLARE_LOGGER("ClusterClusterCache");
-
     typedef DListNodeValueTraits<ClusterCacheEntry> DListClusterCacheEntryValueTraits;
 
     typedef SListNodeValueTraits<ClusterCacheEntry> SListClusterCacheEntryValueTraits;
@@ -305,17 +304,10 @@ private:
         template<typename Archive>
         void
         load(Archive& ar,
-             const unsigned int version)
+             const unsigned /* version */)
         {
             VERIFY(map.empty());
             VERIFY(lru.empty());
-
-            if (version != 0)
-            {
-                THROW_SERIALIZATION_ERROR(version,
-                                          0,
-                                          0);
-            }
 
             ar & max_entries;
             uint64_t size_exp;
@@ -328,7 +320,6 @@ private:
         save(Archive& ar,
              const unsigned int /* version */) const
         {
-
             ar & max_entries;
             const uint64_t size_exp = map.spine_size_exp();
             ar & size_exp;
@@ -358,8 +349,33 @@ public:
     };
 
 private:
+    DECLARE_LOGGER("ClusterClusterCache");
+
     friend class volumedrivertest::ClusterCacheTest;
     friend class boost::serialization::access;
+
+    typedef boost::mutex register_lock_type;
+    register_lock_type register_lock_;
+
+    mutable fungi::RWLock rwlock;
+    mutable boost::mutex listlock;
+
+    DECLARE_PARAMETER(serialize_read_cache);
+    DECLARE_PARAMETER(read_cache_serialization_path);
+    DECLARE_PARAMETER(average_entries_per_bin);
+    DECLARE_PARAMETER(clustercache_mount_points);
+
+    const ClusterSize cluster_size_;
+
+    ManagerType manager_;
+
+    using NamespaceMap = std::map<ClusterCacheHandle, std::unique_ptr<Namespace>>;
+    NamespaceMap namespaces_;
+
+    dlist_t invalidated_entries_;
+    dlist_t lru_;
+    std::atomic<uint64_t> num_hits;
+    std::atomic<uint64_t> num_misses;
 
     BOOST_SERIALIZATION_SPLIT_MEMBER();
 
@@ -375,6 +391,14 @@ private:
         }
 
         ar & manager_;
+        if (ClusterSize(manager_.cluster_size()) != cluster_size())
+        {
+            LOG_ERROR("Cluster cache cluster size has changed? Was: " <<
+                      manager_.cluster_size() <<
+                      ", is: " << cluster_size());
+
+            throw InvalidClusterCacheConfig("cluster cache cluster size has changed");
+        }
 
         typename ManagerType::ClusterCacheDeviceInMapper in_mapper(manager_);
         ar & in_mapper;
@@ -511,7 +535,8 @@ private:
     }
 
     template<class Archive>
-    void save(Archive& ar, const unsigned int version) const
+    void
+    save(Archive& ar, const unsigned int version) const
     {
         if (version != 2)
         {
@@ -581,23 +606,6 @@ private:
         save_entries("invalidated entries",
                      invalidated_entries_);
     }
-
-    typedef boost::mutex register_lock_type;
-    register_lock_type register_lock_;
-
-    mutable fungi::RWLock rwlock;
-    mutable boost::mutex listlock;
-
-    ManagerType manager_;
-
-private:
-    using NamespaceMap = std::map<ClusterCacheHandle, std::unique_ptr<Namespace>>;
-    NamespaceMap namespaces_;
-
-    dlist_t invalidated_entries_;
-    dlist_t lru_;
-    std::atomic<uint64_t> num_hits;
-    std::atomic<uint64_t> num_misses;
 
 private:
     Namespace*
@@ -689,17 +697,21 @@ private:
     }
 
 public:
-    ClusterCacheT(const boost::property_tree::ptree& pt)
-        : VolumeDriverComponent(RegisterComponent::T,
+    ClusterCacheT(const boost::property_tree::ptree& pt,
+                  const ClusterSize csize,
+                  const RegisterComponent registerizle = RegisterComponent::T)
+        : VolumeDriverComponent(registerizle,
                                 pt)
         , register_lock_()
         , rwlock("rwlock")
-        , num_hits(0)
-        , num_misses(0)
         , serialize_read_cache(pt)
         , read_cache_serialization_path(pt)
         , average_entries_per_bin(pt)
         , clustercache_mount_points(pt)
+        , cluster_size_(csize)
+        , manager_(cluster_size_)
+        , num_hits(0)
+        , num_misses(0)
     {
         fs::path serialization_path(getClusterCacheSerializationPath());
         if (serialize_read_cache.value())
@@ -762,9 +774,15 @@ public:
     update(const boost::property_tree::ptree& pt,
            UpdateReport& u_rep) override final
     {
-        serialize_read_cache.update(pt,u_rep);
-        read_cache_serialization_path.update(pt,u_rep);
-        average_entries_per_bin.update(pt,u_rep);
+        serialize_read_cache.update(pt,
+                                    u_rep);
+
+        read_cache_serialization_path.update(pt,
+                                             u_rep);
+
+        average_entries_per_bin.update(pt,
+                                       u_rep);
+
         initialized_params::PARAMETER_TYPE(clustercache_mount_points) new_mount_points(pt);
 
         for (const auto& mp : new_mount_points.value())
@@ -780,10 +798,13 @@ public:
     {
         serialize_read_cache.persist(pt,
                                      reportDefault);
+
         read_cache_serialization_path.persist(pt,
                                               reportDefault);
+
         average_entries_per_bin.persist(pt,
                                         reportDefault);
+
         clustercache_mount_points.persist(pt,
                                           reportDefault);
     }
@@ -1047,30 +1068,35 @@ public:
     add(const ClusterCacheHandle handle,
         const ClusterAddress ca,
         const youtils::Weed& weed,
-        const uint8_t* buf)
+        const uint8_t* buf,
+        const size_t bufsize)
     {
         if (handle != content_based_handle)
         {
             add(handle,
                 ClusterCacheKey(handle,
                                 ca),
-                buf);
+                buf,
+                bufsize);
         }
         else if (weed != youtils::Weed::null())
         {
 #ifdef ENABLE_MD5_HASH
             add(handle,
                 ClusterCacheKey(weed),
-                buf);
-#endif
+                buf,
+                bufsize);
         }
     }
 
     void
     add(const ClusterCacheHandle handle,
         const ClusterCacheKey& key,
-        const uint8_t* buf)
+        const uint8_t* buf,
+        const size_t bufsize)
     {
+        VERIFY(bufsize == static_cast<size_t>(cluster_size()));
+
         fungi::ScopedWriteLock l(rwlock);
 
         // Really only serves as documentation - the rwlock should rule
@@ -1182,7 +1208,7 @@ public:
 
         ssize_t res = read_cache->write(buf,
                                         entry);
-        if (res != (ssize_t)T::cluster_size_)
+        if (res != static_cast<ssize_t>(cluster_size()))
         {
             LOG_ERROR("Couldn't write to " << read_cache << " - offlining it");
             offlineDevice(read_cache);
@@ -1193,25 +1219,27 @@ public:
     read(const ClusterCacheHandle handle,
          const ClusterAddress ca,
          const youtils::Weed& weed,
-         uint8_t* buf)
+         uint8_t* buf,
+         const size_t bufsize)
     {
         if (handle != content_based_handle)
         {
             return read(handle,
                         ClusterCacheKey(handle,
                                         ca),
-                        buf);
+                        buf,
+                        bufsize);
         }
         else if (weed != youtils::Weed::null())
         {
 #ifdef ENABLE_MD5_HASH
             return read(handle,
                         ClusterCacheKey(weed),
-                        buf);
+                        buf,
+                        bufsize);
 #else
             ++num_misses;
             return false;
-#endif
         }
         else
         {
@@ -1223,8 +1251,11 @@ public:
     bool
     read(const ClusterCacheHandle handle,
          const ClusterCacheKey& key,
-         uint8_t* buf)
+         uint8_t* buf,
+         const size_t bufsize)
     {
+        VERIFY(bufsize == static_cast<size_t>(cluster_size()));
+
         T* read_cache = 0;
         {
             fungi::ScopedReadLock l(rwlock);
@@ -1245,7 +1276,7 @@ public:
                 ssize_t res = read_cache->read(buf,
                                                entry);
 
-                if ((ssize_t)T::cluster_size_ == res)
+                if (static_cast<ssize_t>(cluster_size()) == res)
                 {
                     num_hits++;
 
@@ -1383,6 +1414,12 @@ public:
         return manager_.totalSizeInEntries();
     }
 
+    ClusterSize
+    cluster_size() const
+    {
+        return cluster_size_;
+    }
+
     void
     fail_fd_forread()
     {
@@ -1396,10 +1433,6 @@ public:
     }
 
 private:
-    DECLARE_PARAMETER(serialize_read_cache);
-    DECLARE_PARAMETER(read_cache_serialization_path);
-    DECLARE_PARAMETER(average_entries_per_bin);
-    DECLARE_PARAMETER(clustercache_mount_points);
 
     static constexpr uint64_t test_frequency_ = 8192;
     static const ClusterCacheHandle content_based_handle;
@@ -1483,7 +1516,7 @@ typedef ClusterCacheT<ClusterCacheDevice> ClusterCache;
 BOOST_CLASS_VERSION(volumedriver::ClusterCache, 2);
 BOOST_CLASS_VERSION(volumedriver::ClusterCache::Namespace, 0);
 
-#endif // SON_OF_KAK_H_
+#endif // VD_CLUSTER_CACHE_H_
 
 // Local Variables: **
 // mode: c++ **

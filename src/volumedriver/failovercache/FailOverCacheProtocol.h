@@ -28,31 +28,47 @@ namespace failovercache
 class FailOverCacheAcceptor;
 class FailOverCacheWriter;
 
-class FailOverCacheProtocol : public fungi::Protocol
+class FailOverCacheProtocol
+    : public fungi::Protocol
 {
     friend class FailOverCacheWriter;
 
 public:
-    FailOverCacheProtocol(fungi::Socket *sock,
+    FailOverCacheProtocol(std::unique_ptr<fungi::Socket> sock,
                           fungi::SocketServer& /*parentServer*/,
                           FailOverCacheAcceptor& fact);
 
-    virtual void start();
-    virtual void run();
-    virtual void stop();
-
-    virtual const char *getName() const { return "FailOverCacheProtocol";};
-
-    DECLARE_LOGGER("FailOverCacheProtocol");
-
     ~FailOverCacheProtocol();
 
+    virtual void
+    start() override final;
+
+    virtual void
+    run() override final;
+
+    void
+    stop();
+
+    virtual const char*
+    getName() const override final
+    {
+        return "FailOverCacheProtocol";
+    };
 
 private:
-    FailOverCacheWriter* cache_;
-    std::auto_ptr<fungi :: Socket> sock_;
-    fungi :: IOBaseStream *stream_;
-    fungi :: Thread *thread_;
+    DECLARE_LOGGER("FailOverCacheProtocol");
+
+    std::shared_ptr<FailOverCacheWriter> cache_;
+    std::unique_ptr<fungi::Socket> sock_;
+    fungi::IOBaseStream stream_;
+    fungi::Thread* thread_;
+
+    FailOverCacheAcceptor& fact_;
+    bool use_rs_;
+
+    int pipes_[2];
+    fd_set rfds_;
+    int nfds_;
 
     void
     addEntries_();
@@ -88,13 +104,6 @@ private:
     void
     removeUpTo_();
 
-    FailOverCacheAcceptor& fact_;
-    bool use_rs_;
-
-    int pipes_[2];
-    fd_set rfds_;
-    int nfds_;
-
     void
     processFailOverCacheEntry(volumedriver::ClusterLocation cli,
                               int64_t lba,
@@ -106,8 +115,6 @@ private:
                             int64_t lba,
                             const byte* buf,
                             int64_t size);
-
-
 };
 }
 
@@ -115,5 +122,5 @@ private:
 #endif // FAILOVERCACHEPROTOCOL_H
 
 // Local Variables: **
-// compile-command: "scons -D --kernel_version=system --ignore-buildinfo -j 5" **
+// mode: c++ **
 // End: **

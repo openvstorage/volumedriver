@@ -137,9 +137,9 @@ api::GetLbaSize(vd::Volume* vol)
 }
 
 uint64_t
-api::GetClusterSize()
+api::GetClusterSize(volumedriver::Volume* vol)
 {
-    return vd::VolumeConfig::default_cluster_size();
+    return vol->getClusterSize();
 }
 
 void
@@ -669,7 +669,7 @@ api::getSnapshotSCOCount(const vd::VolumeId& volName,
 
 void
 api::setFOCTimeout(const vd::VolumeId& volName,
-                   uint32_t timeout)
+                   const boost::chrono::seconds timeout)
 {
     Volume* v = VolManager::get()->findVolume_(volName);
     v->setFOCTimeout(timeout);
@@ -760,6 +760,12 @@ vd::ClusterCacheVolumeInfo
 api::getClusterCacheVolumeInfo(const vd::VolumeId& volName)
 {
     return VolManager::get()->findVolume_(volName)->getClusterCacheVolumeInfo();
+}
+
+vd::ClusterSize
+api::getDefaultClusterSize()
+{
+    return vd::ClusterSize(VolManager::get()->default_cluster_size.value());
 }
 
 // void
@@ -918,10 +924,12 @@ api::applyScrubbingWork(const vd::VolumeId& volName,
 }
 
 uint64_t
-api::volumePotential(const vd::SCOMultiplier s,
+api::volumePotential(const vd::ClusterSize c,
+                     const vd::SCOMultiplier s,
                      const boost::optional<vd::TLogMultiplier>& t)
 {
-    return VolManager::get()->volumePotential(s,
+    return VolManager::get()->volumePotential(c,
+                                              s,
                                               t);
 }
 

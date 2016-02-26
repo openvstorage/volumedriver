@@ -553,6 +553,9 @@ protected:
         EXPECT_EQ(ts[1].tv_sec, st.st_mtime);
     }
 
+    size_t
+    get_cluster_size(const volumedriverfs::ObjectId&) const;
+
     static boost::filesystem::path binary_path_;
 
     std::unique_ptr<volumedriverfs::FileSystem> fs_;

@@ -42,12 +42,14 @@ class Socket
     : public Streamable
 {
 public:
-    static Socket *createClientSocket(const std::string &host,
-                                      uint16_t port,
-                                      int sock_type = SOCK_STREAM);
+    static std::unique_ptr<Socket>
+    createClientSocket(const std::string &host,
+                       uint16_t port,
+                       int sock_type = SOCK_STREAM);
 
-    static Socket *createSocket(bool rdma,
-                                int sock_type = SOCK_STREAM);
+    static std::unique_ptr<Socket>
+    createSocket(bool rdma,
+                 int sock_type = SOCK_STREAM);
 
     virtual ~Socket();
     // these are specific for IPv4 or IPv6

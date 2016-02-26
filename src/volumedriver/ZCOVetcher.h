@@ -35,7 +35,8 @@ public:
         : ns_(volume_config.getNS())
         , sco_cache_(*VolManager::get()->getSCOCache())
         , scosize_(volume_config.getSCOSize())
-        , clustersize_(volume_config.getClusterSize())
+        , lba_size_(volume_config.lba_size_)
+        , cluster_mult_(volume_config.cluster_mult_)
     {
         if(not sco_cache_.hasDisabledNamespace(ns_))
         {
@@ -77,15 +78,16 @@ public:
         {
             LOG_INFO("With FailOverCache, trying to get SCO " << sco <<
                      " from the FOC or the backend");
-            std::unique_ptr<SCOFetcher>
-                fetcher_(new RawFailOverCacheSCOFetcher(sco,
-                                                        *foc_config_wrapper_->config(),                                                        ns_,
-                                                        clustersize_));
+            RawFailOverCacheSCOFetcher fetcher(sco,
+                                               *foc_config_wrapper_->config(),
+                                               ns_,
+                                               lba_size_,
+                                               cluster_mult_);
 
             return sco_cache_.getSCO(ns_,
                                      sco,
                                      scosize_,
-                                     *fetcher_);
+                                     fetcher);
         }
         else
         {
@@ -119,8 +121,9 @@ public:
 
             try
             {
-                const CheckSum& s = incremental_checksum.second->checksum((cluster_location.offset()+1) *
-                                                                          VolumeConfig::default_cluster_size());
+                const CheckSum& s =
+                    incremental_checksum.second->checksum((cluster_location.offset() + 1) *
+                                                          lba_size_ * cluster_mult_);
 
                 if(s.getValue() == cs)
                 {
@@ -171,8 +174,9 @@ private:
 
     const Namespace ns_;
     SCOCache& sco_cache_;
-    uint64_t scosize_;
-    uint64_t clustersize_;
+    const uint64_t scosize_;
+    const LBASize lba_size_;
+    const ClusterMultiplier cluster_mult_;
     std::pair<fs::path, std::unique_ptr<youtils::IncrementalChecksum> > incremental_checksum;
     std::unique_ptr<FailOverCacheConfigWrapper> foc_config_wrapper_;
 };

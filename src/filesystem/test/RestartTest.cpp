@@ -38,10 +38,10 @@ public:
 TEST_F(RestartTest, happy_path)
 {
     const size_t vsize = 1 << 20;
-    const size_t csize = api::GetClusterSize();
 
     const vfs::FrontendPath fname1(make_volume_name("/volume1"));
     const vd::VolumeId vname1(create_file(fname1, vsize));
+    const size_t csize = get_cluster_size(vfs::ObjectId(vname1.str()));
 
     const vfs::FrontendPath fname2(make_volume_name("/volume2"));
     const vd::VolumeId vname2(create_file(fname2, vsize));

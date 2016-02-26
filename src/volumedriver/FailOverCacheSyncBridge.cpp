@@ -21,18 +21,16 @@
 namespace volumedriver
 {
 
-FailOverCacheSyncBridge::FailOverCacheSyncBridge()
-    : mutex_("FailOverCacheSyncBridge", fungi::Mutex::ErrorCheckingMutex)
-    , cluster_size_(VolumeConfig::default_cluster_size())
-    , cluster_multiplier_(VolumeConfig::default_cluster_multiplier())
-{
-}
+#define LOCK()                                          \
+    boost::lock_guard<decltype(mutex_)> lg__(mutex_)
 
 void
-FailOverCacheSyncBridge::initialize(Volume* vol)
+FailOverCacheSyncBridge::initialize(DegradedFun fun)
 {
-    ASSERT(not vol_);
-    vol_ = vol;
+    LOCK();
+
+    ASSERT(not degraded_fun_);
+    degraded_fun_ = std::move(fun);
 }
 
 const char*
@@ -44,17 +42,19 @@ FailOverCacheSyncBridge::getName() const
 bool
 FailOverCacheSyncBridge::backup()
 {
-    return cache_ != 0;
+    return cache_ != nullptr;
 }
 
 void
 FailOverCacheSyncBridge::newCache(std::unique_ptr<FailOverCacheProxy> cache)
 {
-    fungi::ScopedLock l(mutex_);
+    LOCK();
+
     if(cache_)
     {
         cache_->delete_failover_dir();
     }
+
     cache_ = std::move(cache);
 }
 
@@ -62,14 +62,15 @@ FailOverCacheSyncBridge::newCache(std::unique_ptr<FailOverCacheProxy> cache)
 void
 FailOverCacheSyncBridge::destroy(SyncFailOverToBackend /*sync*/)
 {
-    fungi::ScopedLock l(mutex_);
+    LOCK();
     cache_ = nullptr;
 }
 
 void
-FailOverCacheSyncBridge::setRequestTimeout(const uint32_t seconds)
+FailOverCacheSyncBridge::setRequestTimeout(const boost::chrono::seconds seconds)
 {
-    fungi::ScopedLock l(mutex_);
+    LOCK();
+
     if(cache_)
     {
         try
@@ -89,16 +90,24 @@ FailOverCacheSyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
                                     uint64_t start_address,
                                     const uint8_t* data)
 {
-    fungi::ScopedLock l(mutex_);
+    LOCK();
+
     if(cache_)
     {
+        const size_t cluster_size =
+            static_cast<size_t>(cache_->lba_size()) *
+            static_cast<size_t>(cache_->cluster_multiplier());
+
         std::vector<FailOverCacheEntry> entries;
         entries.reserve(num_locs);
         uint64_t lba = start_address;
         for (size_t i = 0; i < num_locs; i++)
         {
-            entries.emplace_back(locs[i], lba, data + i * cluster_size_, cluster_size_);
-            lba += cluster_multiplier_;
+            entries.emplace_back(locs[i],
+                                 lba, data + i * cluster_size,
+                                 cluster_size);
+
+            lba += cache_->cluster_multiplier();
         }
         try
         {
@@ -112,9 +121,11 @@ FailOverCacheSyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
     return true;
 }
 
-void FailOverCacheSyncBridge::Flush()
+void
+FailOverCacheSyncBridge::Flush()
 {
-    fungi::ScopedLock l(mutex_);
+    LOCK();
+
     if(cache_)
     {
         try
@@ -131,7 +142,8 @@ void FailOverCacheSyncBridge::Flush()
 void
 FailOverCacheSyncBridge::removeUpTo(const SCO& sconame)
 {
-    fungi::ScopedLock l(mutex_);
+    LOCK();
+
     if(cache_)
     {
         try
@@ -148,7 +160,8 @@ FailOverCacheSyncBridge::removeUpTo(const SCO& sconame)
 void
 FailOverCacheSyncBridge::Clear()
 {
-    fungi::ScopedLock l(mutex_);
+    LOCK();
+
     if(cache_)
     {
         try
@@ -166,26 +179,26 @@ uint64_t
 FailOverCacheSyncBridge::getSCOFromFailOver(SCO sconame,
                                             SCOProcessorFun processor)
 {
-    uint64_t ret;
-    fungi::ScopedLock l(mutex_);
+    LOCK();
+
     if (cache_)
     {
         try
         {
             cache_->flush(); // Z42: too much overhead?
-            ret = cache_->getSCOFromFailOver(sconame,
-                                             processor);
+            return cache_->getSCOFromFailOver(sconame,
+                                              processor);
         }
         catch (std::exception& e)
         {
             handleException(e, "getSCOFromFailOver");
+            UNREACHABLE;
         }
     }
     else
     {
         throw FailOverCacheNotConfiguredException();
     }
-    return ret;
 }
 
 FailOverCacheMode
@@ -199,9 +212,9 @@ FailOverCacheSyncBridge::handleException(std::exception& e,
                                          const char* where)
 {
     LOG_ERROR("Exception in FailOverCacheSyncBridge::" << where << " : " << e.what());
-    if(vol_)
+    if(degraded_fun_)
     {
-        vol_->setVolumeFailOverState(VolumeFailOverState::DEGRADED);
+        degraded_fun_();
     }
     cache_ = nullptr;
 }

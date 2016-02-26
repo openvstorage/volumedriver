@@ -28,6 +28,9 @@ using namespace fungi;
 
 static const std::string safetyfile("/.failovercache");
 
+#define LOCK()                                  \
+    boost::lock_guard<decltype(mutex_)> lg_(mutex_)
+
 namespace
 {
 
@@ -41,9 +44,7 @@ maybe_make_dir(const fs::path& p)
 }
 
 FailOverCacheAcceptor::FailOverCacheAcceptor(const fs::path& path)
-    : volCacheMap_(path)
-    , m("FailOverCacheAcceptor")
-    , root_(maybe_make_dir(path))
+    : root_(maybe_make_dir(path))
 {
     const fs::path f(root_ / safetyfile);
 
@@ -59,8 +60,8 @@ FailOverCacheAcceptor::FailOverCacheAcceptor(const fs::path& path)
                                                     yt::FDMode::Write,
                                                     CreateIfNecessary::T);
 
-    file_lock_ = std::unique_lock<yt::FileDescriptor>(*lock_fd_,
-                                                      std::try_to_lock);
+    file_lock_ = boost::unique_lock<yt::FileDescriptor>(*lock_fd_,
+                                                        boost::try_to_lock);
 
     if (not file_lock_)
     {
@@ -86,13 +87,11 @@ FailOverCacheAcceptor::~FailOverCacheAcceptor()
 {
     int count = 0;
     {
-        ScopedLock l(m);
+        LOCK();
 
-        for(iter i = protocols.begin();
-            i != protocols.end();
-            ++i)
+        for (auto& p : protocols)
         {
-            (*i)->stop();
+            p->stop();
         }
         count = protocols.size();
     }
@@ -101,19 +100,75 @@ FailOverCacheAcceptor::~FailOverCacheAcceptor()
         // Wait for the threads to clean up the protocols
         sleep(1);
         {
-            ScopedLock l(m);
+            LOCK();
             count = protocols.size();
         }
     }
 }
 
 Protocol*
-FailOverCacheAcceptor::createProtocol(fungi::Socket *s,
+FailOverCacheAcceptor::createProtocol(std::unique_ptr<fungi::Socket> s,
                                       fungi::SocketServer& parentServer)
 {
-    ScopedLock l(m);
-    protocols.push_back(new FailOverCacheProtocol(s, parentServer,*this));
+    LOCK();
+    protocols.push_back(new FailOverCacheProtocol(std::move(s),
+                                                  parentServer,
+                                                  *this));
     return protocols.back();
+}
+
+void
+FailOverCacheAcceptor::remove(FailOverCacheWriter& w)
+{
+    LOCK();
+
+    const auto res(map_.erase(w.getNamespace()));
+    if (res != 1)
+    {
+        LOG_WARN("Request to remove namespace " << w.getNamespace() <<
+                 " which is not registered here");
+    }
+}
+
+std::shared_ptr<FailOverCacheWriter>
+FailOverCacheAcceptor::lookup(const CommandData<Register>& reg)
+{
+    LOCK();
+
+    std::shared_ptr<FailOverCacheWriter> w;
+
+    auto it = map_.find(reg.ns_);
+    if (it != map_.end())
+    {
+        if (it->second->cluster_size() == reg.clustersize_)
+        {
+            w = it->second;
+            w->setFirstCommandMustBeGetEntries();
+        }
+        else
+        {
+            LOG_ERROR(reg.ns_ << ": refusing registration with cluster size " <<
+                      reg.clustersize_ << " - we're already using " <<
+                      it->second->cluster_size());
+        }
+    }
+    else
+    {
+        w = std::make_shared<FailOverCacheWriter>(root_,
+                                                  reg.ns_,
+                                                  reg.clustersize_);
+
+        auto res(map_.emplace(std::make_pair(reg.ns_,
+                                             w)));
+        VERIFY(res.second);
+    }
+
+    if (w)
+    {
+        w->register_();
+    }
+
+    return w;
 }
 }
 

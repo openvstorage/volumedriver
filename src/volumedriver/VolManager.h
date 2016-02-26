@@ -400,14 +400,16 @@ public:
     }
 
     uint64_t
-    volumePotential(const SCOMultiplier,
+    volumePotential(const ClusterSize,
+                    const SCOMultiplier,
                     const boost::optional<TLogMultiplier>&);
 
     uint64_t
     volumePotential(const backend::Namespace& ns);
 
     void
-    checkSCOAndTLogMultipliers(const SCOMultiplier smult_old,
+    checkSCOAndTLogMultipliers(const ClusterSize,
+                               const SCOMultiplier smult_old,
                                const SCOMultiplier smult_new,
                                const boost::optional<TLogMultiplier>& tmult_old,
                                const boost::optional<TLogMultiplier>& tmult_new);
@@ -526,6 +528,7 @@ public:
 
     DECLARE_PARAMETER(number_of_scos_in_tlog);
     DECLARE_PARAMETER(non_disposable_scos_factor);
+    DECLARE_PARAMETER(default_cluster_size);
     DECLARE_PARAMETER(metadata_cache_capacity);
     DECLARE_PARAMETER(debug_metadata_path);
     DECLARE_PARAMETER(arakoon_metadata_sequence_size);
@@ -636,7 +639,8 @@ private:
     getSCOCacheCapacityWithoutThrottling();
 
     uint64_t
-    volumePotentialSCOCache(const SCOMultiplier,
+    volumePotentialSCOCache(const ClusterSize,
+                            const SCOMultiplier,
                             const boost::optional<TLogMultiplier>&);
 
     uint64_t

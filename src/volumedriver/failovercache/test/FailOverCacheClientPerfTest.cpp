@@ -223,19 +223,32 @@ public:
         LOG_INFO("Run with host " << host_ << " port " << port_ << " mode " << mode_ << " namespace " << *ns_ << " sleep micro " << sleep_micro_);
         max_entries_ = 1024;
         write_trigger_ = 8;
-        FailOverCacheClientInterface& failover_bridge = *FailOverCacheBridgeFactory::create(mode_, max_entries_, write_trigger_);
-        Volume * fake_vol = 0;
-        failover_bridge.initialize(fake_vol);
+        const LBASize lba_size(512);
+        const ClusterMultiplier cmult(8);
 
-        failover_bridge.newCache(std::make_unique<FailOverCacheProxy>(FailOverCacheConfig(host_,
-                                                                                          port_,
-                                                                                          mode_),
-                                                                      *ns_,
-                                                                      4096,
-                                                                      failover_bridge.getDefaultRequestTimeout()));
-        failover_bridge.Clear();
+        std::unique_ptr<FailOverCacheClientInterface>
+            failover_bridge(FailOverCacheBridgeFactory::create(mode_,
+                                                               lba_size,
+                                                               cmult,
+                                                               max_entries_,
+                                                               write_trigger_));
 
-        ClusterFactory source(ClusterSize(4096), 1024);
+        failover_bridge->initialize([&]() noexcept
+                                    {
+                                        LOG_WARN("Got a DEGRADED event");
+                                    });
+
+        failover_bridge->newCache(std::make_unique<FailOverCacheProxy>(FailOverCacheConfig(host_,
+                                                                                           port_,
+                                                                                           mode_),
+                                                                       *ns_,
+                                                                       lba_size,
+                                                                       cmult,
+                                                                       failover_bridge->getDefaultRequestTimeout()));
+        failover_bridge->Clear();
+
+        ClusterFactory source(ClusterSize(lba_size * cmult),
+                              1024);
         ClusterLocation next_location;
 
         uint64_t count = 1000000;
@@ -249,7 +262,7 @@ public:
         }
         LOG_INFO("Finished");
 
-        LOG_INFO("Test FOC throughtput ");
+        LOG_INFO("Test FOC throughtput");
 
         yt::wall_timer perf_timer;
         double prev_time = perf_timer.elapsed();
@@ -263,7 +276,7 @@ public:
             ClusterHolder ch = source(next_location);
             uint64_t cycles = 0;
 
-            while(not addEntry(failover_bridge, ch))
+            while(not addEntry(*failover_bridge, ch))
             {
                 if (cycles++ == 0)
                 {

@@ -940,6 +940,16 @@ VolManagerTestSetup::startVolManager()
         PARAMETER_TYPE(clean_interval)(sc_clean_interval_).persist(pt);
         PARAMETER_TYPE(num_threads)(num_threads_).persist(pt);
         PARAMETER_TYPE(number_of_scos_in_tlog)(num_scos_in_tlog_).persist(pt);
+
+        {
+            const ClusterMultiplier
+                cmult(GetParam().cluster_multiplier());
+            const ClusterSize
+                csize(cmult * VolumeConfig::default_lba_size());
+
+            PARAMETER_TYPE(default_cluster_size)(static_cast<uint32_t>(csize)).persist(pt);
+        }
+
         PARAMETER_TYPE(debug_metadata_path)((directory_ / fs::path("dump_on_halt_dir")).string()).persist(pt);
         PARAMETER_TYPE(dtl_check_interval_in_seconds)(failovercache_check_interval_in_seconds_).persist(pt);
 
@@ -1114,11 +1124,11 @@ VolManagerTestSetup::findVolume(const VolumeId& ns)
 
 Volume*
 VolManagerTestSetup::newVolume(const be::BackendTestSetup::WithRandomNamespace& wrns,
-                               const VolumeSize& volume_size,
-                               const SCOMultiplier sco_mult,
-                               const uint32_t lba_size,
-                               const uint32_t cluster_mult,
-                               const boost::optional<size_t> num_cached_pages)
+                               const boost::optional<VolumeSize>& volume_size,
+                               const boost::optional<SCOMultiplier>& sco_mult,
+                               const boost::optional<LBASize>& lba_size,
+                               const boost::optional<ClusterMultiplier>& cluster_mult,
+                               const boost::optional<size_t>& num_cached_pages)
 {
     return newVolume(wrns.ns().str(),
                      wrns.ns(),
@@ -1132,20 +1142,28 @@ VolManagerTestSetup::newVolume(const be::BackendTestSetup::WithRandomNamespace& 
 Volume*
 VolManagerTestSetup::newVolume(const std::string& id,
                                const be::Namespace& ns,
-                               const VolumeSize& volume_size,
-                               const SCOMultiplier sco_mult,
-                               const uint32_t lba_size,
-                               const uint32_t cluster_mult,
-                               const boost::optional<size_t> num_cached_pages)
+                               const boost::optional<VolumeSize>& volume_size,
+                               const boost::optional<SCOMultiplier>& sco_mult,
+                               const boost::optional<LBASize>& lba_size,
+                               const boost::optional<ClusterMultiplier>& cluster_mult,
+                               const boost::optional<size_t>& num_cached_pages)
 {
     // Push VolumeID out!
     auto params(VanillaVolumeConfigParameters(VolumeId(id),
                                               ns,
-                                              volume_size,
+                                              volume_size ?
+                                              *volume_size :
+                                              default_volume_size(),
                                               new_owner_tag())
-                .sco_multiplier(sco_mult)
-                .lba_size(LBASize(lba_size))
-                .cluster_multiplier(ClusterMultiplier(cluster_mult))
+                .sco_multiplier(sco_mult ?
+                                *sco_mult :
+                                default_sco_multiplier())
+                .lba_size(lba_size ?
+                          *lba_size :
+                          default_lba_size())
+                .cluster_multiplier(cluster_mult ?
+                                    *cluster_mult :
+                                    default_cluster_multiplier())
                 .metadata_cache_capacity(num_cached_pages)
                 .metadata_backend_config(mdstore_test_setup_->make_config()));
 
@@ -1210,10 +1228,10 @@ WriteOnlyVolume*
 VolManagerTestSetup::newWriteOnlyVolume(const std::string& id,
                                         const be::Namespace& ns,
                                         const VolumeConfig::WanBackupVolumeRole role,
-                                        const VolumeSize& volume_size,
-                                        const SCOMultiplier sco_mult,
-                                        const uint32_t lba_size,
-                                        const uint32_t cluster_mult)
+                                        const boost::optional<VolumeSize>& volume_size,
+                                        const boost::optional<SCOMultiplier>& sco_mult,
+                                        const boost::optional<LBASize>& lba_size,
+                                        const boost::optional<ClusterMultiplier>& cluster_mult)
 {
     VolManager *vm = VolManager::get();
 
@@ -1250,12 +1268,20 @@ VolManagerTestSetup::newWriteOnlyVolume(const std::string& id,
 
         const auto params = WriteOnlyVolumeConfigParameters(VolumeId(id),
                                                             ns,
-                                                            volume_size,
+                                                            volume_size ?
+                                                            *volume_size :
+                                                            default_volume_size(),
                                                             role,
                                                             new_owner_tag())
-            .sco_multiplier(sco_mult)
-            .lba_size(LBASize(lba_size))
-            .cluster_multiplier(ClusterMultiplier(cluster_mult));
+            .sco_multiplier(sco_mult ?
+                            *sco_mult :
+                            default_sco_multiplier())
+            .lba_size(lba_size ?
+                      *lba_size :
+                      default_lba_size())
+            .cluster_multiplier(cluster_mult ?
+                                *cluster_mult :
+                                default_cluster_multiplier());
 
         // Push VolumeID out!
         WriteOnlyVolume* v = vm->createNewWriteOnlyVolume(params);
@@ -1828,8 +1854,13 @@ VolManagerTestSetup::metadata_backend_type() const
     return mdstore_test_setup_->backend_type_;
 }
 
-const VolumeDriverTestConfig
-VolManagerTestSetup::defConfig = VolumeDriverTestConfig().use_cluster_cache(true);
+VolumeDriverTestConfig
+VolManagerTestSetup::default_test_config()
+{
+    static const VolumeDriverTestConfig cfg =
+        VolumeDriverTestConfig().use_cluster_cache(true);
+    return cfg;
+}
 
 void
 VolManagerTestSetup::fill_backend_cache(const backend::Namespace& ns)
@@ -1956,10 +1987,12 @@ VolManagerTestSetup::new_owner_tag()
 }
 
 uint64_t
-VolManagerTestSetup::volume_potential_sco_cache(const SCOMultiplier s,
+VolManagerTestSetup::volume_potential_sco_cache(const ClusterSize c,
+                                                const SCOMultiplier s,
                                                 const boost::optional<TLogMultiplier>& t)
 {
-    return VolManager::get()->volumePotentialSCOCache(s,
+    return VolManager::get()->volumePotentialSCOCache(c,
+                                                      s,
                                                       t);
 }
 

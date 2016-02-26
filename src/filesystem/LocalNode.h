@@ -188,7 +188,8 @@ public:
     set_volume_as_template(const ObjectId& id);
 
     uint64_t
-    volume_potential(const boost::optional<volumedriver::SCOMultiplier>&,
+    volume_potential(const boost::optional<volumedriver::ClusterSize>&,
+                     const boost::optional<volumedriver::SCOMultiplier>&,
                      const boost::optional<volumedriver::TLogMultiplier>&);
 
     uint64_t

@@ -299,7 +299,7 @@ protected:
         auto& md = *(v->getMetaDataStore());
 
         const uint64_t total_size =
-            num_tlogs * entries_per_tlog * (uint64_t)VolumeConfig::default_cluster_size();
+            num_tlogs * entries_per_tlog * default_cluster_size();
 
         LBAGenerator lg(randomness,
                         total_size,
@@ -772,8 +772,8 @@ TEST_P(MetaDataStoreTest, stats1)
 {
     const uint32_t page_size = CachePage::capacity();
     const uint32_t max_pages = 3;
-    const uint32_t cmult = 8;
-    const uint32_t sectorsize = 512;
+    const ClusterMultiplier cmult = default_cluster_multiplier();
+    const LBASize sectorsize = default_lba_size();
 
     const uint64_t locs = (max_pages + 1) * page_size;
     const uint64_t volsize = locs * cmult * sectorsize;
@@ -783,7 +783,7 @@ TEST_P(MetaDataStoreTest, stats1)
     Volume* v = newVolume("volume",
                           ns->ns(),
                           VolumeSize(volsize),
-                          default_sco_mult(),
+                          default_sco_multiplier(),
                           sectorsize,
                           cmult,
                           max_pages);
@@ -843,8 +843,8 @@ TEST_P(MetaDataStoreTest, stats2)
 {
     const uint32_t page_size = CachePage::capacity();
     const uint32_t max_pages = 3;
-    const uint32_t cmult = 8;
-    const uint32_t sectorsize = 512;
+    const ClusterMultiplier cmult = default_cluster_multiplier();
+    const LBASize sectorsize = default_lba_size();
 
     const uint64_t locs = (max_pages + 1) * page_size;
     const uint64_t volsize = locs * cmult * sectorsize;
@@ -854,7 +854,7 @@ TEST_P(MetaDataStoreTest, stats2)
     Volume* v = newVolume("volume",
                           ns->ns(),
                           VolumeSize(volsize),
-                          default_sco_mult(),
+                          default_sco_multiplier(),
                           sectorsize,
                           cmult,
                           max_pages);
@@ -1013,7 +1013,7 @@ TEST_P(MetaDataStoreTest, LRU)
     const uint32_t npages(youtils::System::get_env_with_default<uint32_t>("MD_PAGES",
                                                                           32));
     const uint64_t page_entries = CachePage::capacity();
-    const uint64_t vsize = (npages + 1) * page_entries * VolumeConfig::default_cluster_size();
+    const uint64_t vsize = (npages + 1) * page_entries * default_cluster_size();
 
     const std::string vname("vol");
     auto ns_ptr = make_random_namespace();
@@ -1025,9 +1025,9 @@ TEST_P(MetaDataStoreTest, LRU)
     auto v = newVolume(vname,
                        ns1,
                        VolumeSize(vsize),
-                       default_sco_mult(),
+                       default_sco_multiplier(),
                        default_lba_size(),
-                       default_cluster_mult(),
+                       default_cluster_multiplier(),
                        npages);
 
     MetaDataStoreInterface* md = v->getMetaDataStore();

@@ -289,7 +289,7 @@ TEST_F(VolumeTest, resize)
     EXPECT_EQ(0U, api::GetSize(v));
     check_stat(fname, 0);
 
-    const uint64_t csize = api::GetClusterSize();
+    const uint64_t csize = get_cluster_size(vname);
     EXPECT_EQ(0, truncate(fname, csize));
     EXPECT_EQ(csize, api::GetSize(v));
     check_stat(fname, csize);
@@ -321,7 +321,7 @@ TEST_F(VolumeTest, uuid_resize)
     EXPECT_EQ(0U, api::GetSize(v));
     check_stat(volume_id, 0);
 
-    const uint64_t csize = api::GetClusterSize();
+    const uint64_t csize = get_cluster_size(volume_id);
     EXPECT_EQ(0, truncate(volume_id, csize));
     EXPECT_EQ(csize, api::GetSize(v));
     check_stat(volume_id, csize);
@@ -335,10 +335,10 @@ TEST_F(VolumeTest, uuid_resize)
 TEST_F(VolumeTest, read_empty_aligned)
 {
     const uint64_t vsize = 1 << 20;
-    const uint64_t csize = api::GetClusterSize();
 
     const vfs::FrontendPath fname(make_volume_name("/volume"));
     const vfs::ObjectId vname(create_file(fname, vsize));
+    const uint64_t csize = get_cluster_size(vname);
 
     const std::vector<char> ref(csize, 0);
 
@@ -370,12 +370,12 @@ TEST_F(VolumeTest, read_empty_aligned)
 TEST_F(VolumeTest, uuid_read_empty_aligned)
 {
     const uint64_t vsize = 1 << 20;
-    const uint64_t csize = api::GetClusterSize();
 
     const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
     const auto volume_id(create_file(root_id,
                                      make_volume_name("volume").string(),
                                      vsize));
+    const uint64_t csize = get_cluster_size(volume_id);
 
     const std::vector<char> ref(csize, 0);
 
@@ -407,10 +407,10 @@ TEST_F(VolumeTest, uuid_read_empty_aligned)
 TEST_F(VolumeTest, read_write_aligned)
 {
     const uint64_t vsize = 10 << 20;
-    const uint64_t csize = api::GetClusterSize();
 
     const vfs::FrontendPath fname(make_volume_name("/volume"));
     const vfs::ObjectId vname(create_file(fname, vsize));
+    const uint64_t csize = get_cluster_size(vname);
 
     const std::string pattern("Herr Bar");
     for (uint64_t i = 0; i < vsize; i += csize)
@@ -437,12 +437,13 @@ TEST_F(VolumeTest, read_write_aligned)
 TEST_F(VolumeTest, uuid_read_write_aligned)
 {
     const uint64_t vsize = 10 << 20;
-    const uint64_t csize = api::GetClusterSize();
 
     const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
     const auto volume_id(create_file(root_id,
                                      make_volume_name("volume").string(),
                                      vsize));
+
+    const uint64_t csize = get_cluster_size(volume_id);
 
     const std::string pattern("Herr Bar");
     for (uint64_t i = 0; i < vsize; i += csize)
@@ -499,10 +500,10 @@ TEST_F(VolumeTest, uuid_read_write_subcluster)
 TEST_F(VolumeTest, read_write_unaligned)
 {
     const uint64_t vsize = 1 << 20;
-    const uint64_t csize = api::GetClusterSize();
 
     const vfs::FrontendPath fname(make_volume_name("/volume"));
     const vfs::ObjectId vname(create_file(fname, vsize));
+    const uint64_t csize = get_cluster_size(vname);
 
     const std::string pattern("Ted");
     const off_t off = 3;
@@ -530,12 +531,12 @@ TEST_F(VolumeTest, read_write_unaligned)
 TEST_F(VolumeTest, uuid_read_write_unaligned)
 {
     const uint64_t vsize = 10 << 20;
-    const uint64_t csize = api::GetClusterSize();
 
     const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
     const auto volume_id(create_file(root_id,
                                      make_volume_name("volume").string(),
                                      vsize));
+    const uint64_t csize = get_cluster_size(volume_id);
 
     const std::string pattern("Ted");
     const off_t off = 3;
@@ -603,8 +604,8 @@ TEST_F(VolumeTest, clone)
     const vfs::ObjectId parent_id(create_file(parent_path, vsize));
 
     const std::string pattern("Konstantin");
-    const off_t off = 10 * api::GetClusterSize();
-    const uint64_t size = 30 * api::GetClusterSize();
+    const off_t off = 10 * get_cluster_size(parent_id);
+    const uint64_t size = 30 * get_cluster_size(parent_id);
 
     write_to_file(parent_path, pattern, size, off);
     check_file(parent_path, pattern, size, off);
@@ -646,8 +647,8 @@ TEST_F(VolumeTest, uuid_clone)
                                      vsize));
 
     const std::string pattern("Konstantin");
-    const off_t off = 10 * api::GetClusterSize();
-    const uint64_t size = 30 * api::GetClusterSize();
+    const off_t off = 10 * get_cluster_size(volume_id);
+    const uint64_t size = 30 * get_cluster_size(volume_id);
 
     write_to_file(volume_id, pattern, size, off);
     check_file(volume_id, pattern, size, off);
@@ -1027,8 +1028,8 @@ TEST_F(VolumeTest, rollback_volume)
     const vfs::FrontendPath volume_path(make_volume_name("/volume"));
     const uint64_t vsize = 1 << 20;
     const vfs::ObjectId vol_id(create_file(volume_path, vsize));
-    const off_t off = 10 * api::GetClusterSize();
-    const uint64_t size = 30 * api::GetClusterSize();
+    const off_t off = 10 * get_cluster_size(vol_id);
+    const uint64_t size = 30 * get_cluster_size(vol_id);
 
     const std::string patternA("Konstantin");
     write_to_file(volume_path, patternA, size, off);
@@ -1070,8 +1071,8 @@ TEST_F(VolumeTest, uuid_rollback_volume)
     const vfs::ObjectId vol_id(create_file(root_id,
                                            make_volume_name("volume").string(),
                                            vsize));
-    const off_t off = 10 * api::GetClusterSize();
-    const uint64_t size = 30 * api::GetClusterSize();
+    const off_t off = 10 * get_cluster_size(vol_id);
+    const uint64_t size = 30 * get_cluster_size(vol_id);
 
     const std::string patternA("Konstantin");
     write_to_file(vol_id, patternA, size, off);

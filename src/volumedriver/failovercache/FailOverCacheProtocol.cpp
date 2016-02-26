@@ -12,48 +12,47 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cstring>
-#include "FailOverCacheProtocol.h"
 #include "FailOverCacheAcceptor.h"
-#include "fungilib/WrapByteArray.h"
-#include "signal.h"
-#include "unistd.h"
-#include "errno.h"
-#include "poll.h"
-#include <youtils/Assert.h>
-#include <boost/scope_exit.hpp>
-#include <boost/scoped_array.hpp>
+#include "FailOverCacheProtocol.h"
 #include "FailOverCacheStreamers.h"
-#include <boost/scope_exit.hpp>
+#include "fungilib/WrapByteArray.h"
+#include "fungilib/use_rs.h"
+
+#include <signal.h>
+#include <unistd.h>
+#include <poll.h>
+
+#include <cerrno>
+#include <cstring>
 
 #include <rdma/rdma_cma.h>
 #include <rdma/rsocket.h>
 
-#include "fungilib/use_rs.h"
+#include <youtils/Assert.h>
+#include <youtils/ScopeExit.h>
 
 namespace failovercache
 {
+
+namespace yt = youtils;
 using namespace volumedriver;
 
-FailOverCacheProtocol::FailOverCacheProtocol(fungi::Socket *sock,
+FailOverCacheProtocol::FailOverCacheProtocol(std::unique_ptr<fungi::Socket> sock,
                                              fungi::SocketServer& /*parentServer*/,
                                              FailOverCacheAcceptor& fact)
-    : cache_(0),
-      sock_(sock),
-      stream_(new fungi :: IOBaseStream(sock)),
-      thread_(0),
-      fact_(fact),
-      use_rs_(sock_->isRdma())
+    : sock_(std::move(sock))
+    , stream_(*sock_)
+    , fact_(fact)
+    , use_rs_(sock_->isRdma())
 {
     if(pipe(pipes_) != 0)
     {
-        stream_->close();
-        delete stream_;
+        stream_.close();
         throw fungi::IOException("could not not open pipe");
     }
     nfds_ = std::max(sock_->fileno(), pipes_[0]) + 1;
-    thread_ = new fungi :: Thread(*this, true);
-
+    thread_ = new fungi::Thread(*this,
+                                true);
 };
 
 FailOverCacheProtocol::~FailOverCacheProtocol()
@@ -69,17 +68,10 @@ FailOverCacheProtocol::~FailOverCacheProtocol()
 
     try
     {
-        stream_->close();
-        delete stream_;
-        stream_ = 0;
-        thread_->destroy();
-
+        stream_.close();
+        thread_->destroy(); // Yuck: this call does a "delete this" ...
     }
-    catch(...)
-    {
-        LOG_ERROR("Problem shutting down the FailOverCacheProtocol");
-    }
-
+    CATCH_STD_ALL_LOG_IGNORE("Problem shutting down the FailOverCacheProtocol");
 }
 
 void FailOverCacheProtocol::start()
@@ -137,8 +129,8 @@ FailOverCacheProtocol::run()
                 }
                 else
                 {
-                    *stream_ >> fungi::IOBaseStream::cork;
-                    *stream_ >> com;
+                    stream_ >> fungi::IOBaseStream::cork;
+                    stream_ >> com;
                 }
 
             }
@@ -228,7 +220,7 @@ void
 FailOverCacheProtocol::register_()
 {
     volumedriver::CommandData<volumedriver::Register> data;
-    *stream_ >> data;
+    stream_ >> data;
 
     LOG_INFO("Registering namespace " << data.ns_);
     cache_ = fact_.lookup(data);
@@ -251,18 +243,17 @@ FailOverCacheProtocol::unregister_()
     try
     {
         // cache_->unregister_();
-        fact_.remove(cache_);
-        delete cache_;
-        cache_ = 0;
-        *stream_ << fungi::IOBaseStream::cork;
-        OUT_ENUM(*stream_,volumedriver::Ok);
-        *stream_ << fungi::IOBaseStream::uncork;
+        fact_.remove(*cache_);
+        cache_ = nullptr;
+        stream_ << fungi::IOBaseStream::cork;
+        OUT_ENUM(stream_,volumedriver::Ok);
+        stream_ << fungi::IOBaseStream::uncork;
     }
     catch(...)
     {
-        *stream_ << fungi::IOBaseStream::cork;
-        OUT_ENUM(*stream_, volumedriver::NotOk);
-        *stream_ << fungi::IOBaseStream::uncork;
+        stream_ << fungi::IOBaseStream::cork;
+        OUT_ENUM(stream_, volumedriver::NotOk);
+        stream_ << fungi::IOBaseStream::uncork;
     }
 
 }
@@ -273,7 +264,7 @@ FailOverCacheProtocol::addEntries_()
     VERIFY(cache_);
 
     volumedriver::CommandData<volumedriver::AddEntries> data; // default constructor, as we are streaming in
-    *stream_ >> data;
+    stream_ >> data;
     for(std::vector<volumedriver::FailOverCacheEntry>::const_iterator it = data.entries_.begin();
         it != data.entries_.end();
         ++it)
@@ -289,17 +280,17 @@ FailOverCacheProtocol::addEntries_()
 void
 FailOverCacheProtocol::returnOk()
 {
-    *stream_ << fungi::IOBaseStream::cork;
-    OUT_ENUM(*stream_, volumedriver::Ok);
-    *stream_ << fungi::IOBaseStream::uncork;
+    stream_ << fungi::IOBaseStream::cork;
+    OUT_ENUM(stream_, volumedriver::Ok);
+    stream_ << fungi::IOBaseStream::uncork;
 }
 
 void
 FailOverCacheProtocol::returnNotOk()
 {
-    *stream_ << fungi::IOBaseStream::cork;
-    OUT_ENUM(*stream_, volumedriver::NotOk);
-    *stream_ << fungi::IOBaseStream::uncork;
+    stream_ << fungi::IOBaseStream::cork;
+    OUT_ENUM(stream_, volumedriver::NotOk);
+    stream_ << fungi::IOBaseStream::uncork;
 }
 
 void
@@ -330,15 +321,15 @@ FailOverCacheProtocol::processFailOverCacheEntry(volumedriver::ClusterLocation c
     LOG_TRACE("Sending Entry for lba " << lba );
     if (use_rs_) // make small but finished packets with RDMA
     {
-        *stream_ << fungi::IOBaseStream::cork;
+        stream_ << fungi::IOBaseStream::cork;
     }
-    *stream_ << cli;
-    *stream_ << lba;
+    stream_ << cli;
+    stream_ << lba;
     const fungi::WrapByteArray a((byte*)buf, (int32_t)size);
-    *stream_ << a;
+    stream_ << a;
     if (use_rs_) // make small but finished packets with RDMA
     {
-        *stream_ << fungi::IOBaseStream::uncork;
+        stream_ << fungi::IOBaseStream::uncork;
     }
 }
 
@@ -351,7 +342,7 @@ FailOverCacheProtocol::removeUpTo_()
 
     volumedriver::SCO sconame;
 
-    *stream_ >> sconame;
+    stream_ >> sconame;
     try
     {
         cache_->removeUpTo(sconame);
@@ -376,26 +367,19 @@ FailOverCacheProtocol::getEntries_()
     VERIFY(cache_);
     LOG_INFO("Namespace " <<  cache_->getNamespace());
 
-    BOOST_SCOPE_EXIT((stream_))
+    auto on_exit(yt::make_scope_exit([&]
     {
         try
         {
             volumedriver::ClusterLocation end_cli;
-            *stream_ << end_cli;
-            *stream_ << fungi::IOBaseStream::uncork;
+            stream_ << end_cli;
+            stream_ << fungi::IOBaseStream::uncork;
         }
-        catch(std::exception& e)
-        {
-            LOG_WARN("Could not send eof data to FOC at the other end: " << e.what() << " -- ignoring");
-        }
+        CATCH_STD_ALL_LOGLEVEL_IGNORE("Could not send eof data to FOC at the other end",
+                                      WARN);
+    }));
 
-        catch(...)
-        {
-            LOG_WARN("Could not send eof data to FOC at the other end, probably died. -- ignoring");
-        }
-
-    } BOOST_SCOPE_EXIT_END;
-    *stream_ << fungi::IOBaseStream::cork;
+    stream_ << fungi::IOBaseStream::cork;
     cache_->getEntries(this);
 }
 
@@ -406,30 +390,21 @@ FailOverCacheProtocol::getSCO_()
     LOG_INFO("Namespace" << cache_->getNamespace());
     SCO scoName;
 
-    *stream_ >> scoName;
+    stream_ >> scoName;
 
-    BOOST_SCOPE_EXIT((stream_))
+    auto on_exit(yt::make_scope_exit([&]
     {
         try
         {
-
             volumedriver::ClusterLocation end_cli;
-            *stream_ << end_cli;
-            *stream_ << fungi::IOBaseStream::uncork;
+            stream_ << end_cli;
+            stream_ << fungi::IOBaseStream::uncork;
         }
-        catch(std::exception& e)
-        {
-            LOG_WARN("Could not send eof data to FOC at the other end: " << e.what() << " -- ignoring");
-        }
+        CATCH_STD_ALL_LOGLEVEL_IGNORE("Could not send eof data to FOC at the other end",
+                                      WARN);
+    }));
 
-        catch(...)
-        {
-            LOG_WARN("Could not send eof data to FOC at the other end, probably died. -- ignoring");
-        }
-
-    } BOOST_SCOPE_EXIT_END;
-
-    *stream_ << fungi::IOBaseStream::cork;
+    stream_ << fungi::IOBaseStream::cork;
     cache_->getSCO(scoName,
                     this);
 }
@@ -444,11 +419,11 @@ FailOverCacheProtocol::getSCORange_()
     cache_->getSCORange(oldest,
                         youngest);
 
-    *stream_ << fungi::IOBaseStream::cork;
-    *stream_ << oldest;
-    *stream_ << youngest;
+    stream_ << fungi::IOBaseStream::cork;
+    stream_ << oldest;
+    stream_ << youngest;
 
-    *stream_ << fungi::IOBaseStream::uncork;
+    stream_ << fungi::IOBaseStream::uncork;
 }
 
 void
@@ -458,14 +433,14 @@ FailOverCacheProtocol::processFailOverCacheSCO(volumedriver::ClusterLocation cli
                                                int64_t size)
 {
     // Y42 do we want to use the same process function as above.
-    *stream_ << cli;
-    *stream_ << lba;
+    stream_ << cli;
+    stream_ << lba;
     const fungi::WrapByteArray a((byte*)buf, (int32_t)size);
-    *stream_ << a;
+    stream_ << a;
 }
 
-
 }
+
 // Local Variables: **
-// compile-command: "scons -D --kernel_version=system --ignore-buildinfo -j 5" **
+// mode: c++ **
 // End: **
