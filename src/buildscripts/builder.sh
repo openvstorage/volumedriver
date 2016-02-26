@@ -118,6 +118,7 @@ LIBS="-lrdmacm -lhiredis ${LIBS}"
 CFLAGS=${CFLAGS:-"-ggdb3 -gdwarf-3 -O0 -Wall"}
 CFLAGS="${CFLAGS} -fPIC"
 
+USE_MD5_HASH=${USE_MD5_HASH:-"yes"}
 if [ "x${USE_MD5_HASH}" == "xyes" ]
 then
 CPPFLAGS=${CPPFLAGS:-"-DENABLE_MD5_HASH"}
