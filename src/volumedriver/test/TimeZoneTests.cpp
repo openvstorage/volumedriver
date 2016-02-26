@@ -63,7 +63,7 @@ TEST_F(TimeZoneTests, test1)
     ptime t1 = second_clock::local_time();
     ptime t12 = second_clock::universal_time();
 
-    set_time_zone("ZEST+3");
+    set_time_zone("CEST+3");
     ptime t2 = second_clock::local_time();
     ptime t22 = second_clock::universal_time();
     time_duration duration = t2 - t1;
