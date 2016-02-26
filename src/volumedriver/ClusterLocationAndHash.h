@@ -52,8 +52,10 @@ struct ClusterLocationAndHash
 #endif
                            )
         : clusterLocation(cloc)
-        , weed(data,
-               size)
+#ifdef ENABLE_MD5_HASH
+        , weed_(data,
+                size)
+#endif
     {}
 
     ClusterLocationAndHash(const ClusterLocation& cloc,

@@ -1086,6 +1086,7 @@ public:
                 ClusterCacheKey(weed),
                 buf,
                 bufsize);
+#endif
         }
     }
 
@@ -1240,6 +1241,7 @@ public:
 #else
             ++num_misses;
             return false;
+#endif
         }
         else
         {
