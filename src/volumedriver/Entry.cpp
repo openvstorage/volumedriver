@@ -104,11 +104,8 @@ bool operator==(const Entry& x, const Entry& y)
 }
 
 static_assert(sizeof(ClusterAddress)== 8, "Unexpected size for ClusterAddress");
-#ifdef ENABLE_MD5_HASH
-static_assert(sizeof(Entry) == 32, "Unexpected size for Entry");
-#else
-static_assert(sizeof(Entry) == 16, "Unexpected size for Entry");
-#endif
+static_assert(sizeof(Entry) == sizeof(ClusterAddress) + sizeof(ClusterLocationAndHash),
+              "Unexpected size for Entry");
 
 }
 
