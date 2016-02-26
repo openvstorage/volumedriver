@@ -1,6 +1,11 @@
 #! /bin/bash
 
 . ../add-installdir.sh
+if [ "x${USE_MD5_HASH}" == "xyes" ]
+then
 TARGET_FILE=debian/volumedriver-dev.install
+else
+TARGET_FILE=debian/volumedriver-no-dedup-dev.install
+fi
 add_directory volumedriver/scrubber
 add_directory volumedriver/storagerouter

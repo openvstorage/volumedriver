@@ -1,0 +1,51 @@
+Summary: Volumedriver Server
+Name: volumedriver-no-dedup-server
+Version: @VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@.@VD_EXTRA_VERSION@
+Release: 1
+License: Copyright (C) 2013 iNuron NV, Licensed under the Apache License Version 2.0
+Requires: volumedriver-no-dedup-base = @VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@.@VD_EXTRA_VERSION@-1, omniORB-servers
+Conflicts: volumedriver-server
+URL: http://www.openvstorage.com
+
+%description
+VolumeDriver daemon and helpers. This package contains the binaries and the Python extensions necessary to run the VolumeDriver daemon as well as the FailOverCache and the Scrubber.
+
+%changelog
+* Fri Nov 13 2014 Chrysostomos Nanakos <cnanakos@openvstorage.com> - @VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@.@VD_EXTRA_VERSION@-1
+- Install openvstorage config file under /etc/ld.so.conf.g directory
+* Thu Oct 03 2014 Kenneth Henderick <kenneth.henderick@openvstorage.com> - @VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@.@VD_EXTRA_VERSION@-1
+- Create RPM packages
+
+%global __spec_install_pre %{___build_pre}
+%define _unpackaged_files_terminate_build 0
+%debug_package
+
+%post
+echo "/usr/lib/openvstorage" > /etc/ld.so.conf.d/openvstorage-x86_64.conf
+/sbin/ldconfig
+
+%postun
+rm /etc/ld.so.conf.d/openvstorage-x86_64.conf
+/sbin/ldconfig
+
+%install
+# nothing to do, but needed for debug package info
+
+%files
+/usr/bin/metadata_server
+/usr/bin/metadata_server.sh
+/usr/bin/volumedriver_fs
+/usr/bin/ovs_scrubber
+/usr/bin/volumedriver_fs.sh
+/usr/bin/failovercache
+/usr/bin/failovercachehelper
+/usr/bin/ganesha-cf
+/usr/bin/ganesha.nfsd
+/usr/lib/ganesha/libfsalovs.la
+/usr/lib/ganesha/libfsalovs.so
+/usr/lib/ganesha/libfsalovs.so.0
+/usr/lib/ganesha/libfsalovs.so.0.0.0
+/usr/lib/openvstorage/libovsvolumedriver.so
+/usr/lib/openvstorage/libovsvolumedriver.so.0
+/usr/lib/openvstorage/libovsvolumedriver.so.0.0.0
+/opt/OpenvStorage/config/templates/ganesha-cf.conf

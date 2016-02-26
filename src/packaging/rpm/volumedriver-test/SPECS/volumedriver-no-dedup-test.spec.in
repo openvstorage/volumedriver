@@ -1,0 +1,34 @@
+Summary: Volumedriver Test
+Name: volumedriver-no-dedup-test
+Version: @VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@.@VD_EXTRA_VERSION@
+Release: 1
+License: Copyright (C) 2013 iNuron NV, Licensed under the Apache License Version 2.0
+Requires: volumedriver-no-dedup-base = @VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@.@VD_EXTRA_VERSION@-1, volumedriver-no-dedup-server = @VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@.@VD_EXTRA_VERSION@-1, volumedriver-no-dedup-pitreplication = @VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@.@VD_EXTRA_VERSION@-1, omniORB-servers
+Conflicts: volumedriver-test
+URL: http://www.openvstorage.com
+
+%description
+Testing code for volumedriver. Test programs for VolumeDriver components.
+
+%changelog
+* Thu Oct 03 2014 Kenneth Henderick <kenneth.henderick@openvstorage.com> - @VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@.@VD_EXTRA_VERSION@-1
+- Create RPM packages
+
+%global __spec_install_pre %{___build_pre}
+%define _unpackaged_files_terminate_build 0
+%debug_package
+
+%install
+# nothing to do, but needed for debug package info
+
+%files
+/usr/bin/backend_test
+/usr/bin/failovercache_test
+/usr/bin/locked_executable
+/usr/bin/volumedriver_test
+/usr/bin/volumereader
+/usr/bin/volumewriter
+/usr/bin/volumewriter_random
+/usr/bin/volumewriter_skipoffset
+/usr/bin/youtils_test
+/usr/bin/volumedriver_fs_test

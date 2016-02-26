@@ -2,5 +2,10 @@
 
 . ../add-installdir.sh
 
+if [ "x${USE_MD5_HASH}" == "xyes" ]
+then
 TARGET_FILE=debian/volumedriver-pitreplication.install
+else
+TARGET_FILE=debian/volumedriver-no-dedup-pitreplication.install
+fi
 add_directory volumedriver/pitreplication

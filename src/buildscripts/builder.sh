@@ -118,7 +118,12 @@ LIBS="-lrdmacm -lhiredis ${LIBS}"
 CFLAGS=${CFLAGS:-"-ggdb3 -gdwarf-3 -O0 -Wall"}
 CFLAGS="${CFLAGS} -fPIC"
 
+if [ "x${USE_MD5_HASH}" == "xyes" ]
+then
 CPPFLAGS=${CPPFLAGS:-"-DENABLE_MD5_HASH"}
+else
+CPPFLAGS=${CPPFLAGS:-""}
+fi
 CPPFLAGS="${CPPFLAGS} -isystem ${BUILDTOOLS}/include"
 
 CXX_INCLUDES=${CXX_INCLUDES:-""}
@@ -240,7 +245,7 @@ function configure_build {
 	${SCAN_BUILD_CMDLINE} \
 	${SOURCE_DIR}/configure \
 	--with-buildtoolsdir=${BUILDTOOLS?} \
-  --with-omniidl=/usr/bin/omniidl \
+    --with-omniidl=/usr/bin/omniidl \
 	--with-capnpc=${BUILDTOOLS?}/bin/capnpc \
 	--with-protoc=/usr/bin/protoc \
 	--with-fio=${BUILDTOOLS?}/bin/fio \

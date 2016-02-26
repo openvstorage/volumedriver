@@ -8,9 +8,19 @@ AM_INIT_AUTOMAKE(m4_esyscmd([case `automake --version | head -n 1` in
                              esac]))
 dnl AM_INIT_AUTOMAKE([foreign])
 AM_PATH_PYTHON([2.6])
+AM_CONDITIONAL([USE_MD5_HASH], [test "x$USE_MD5_HASH" != xno])
 AC_SUBST([VD_MAJOR_VERSION])
 AC_SUBST([VD_MINOR_VERSION])
 AC_SUBST([VD_PATCH_VERSION])
 AC_SUBST([VD_EXTRA_VERSION])
-AC_CONFIG_FILES([add-python-dirs.sh Makefile debian/control-template debian/source/format debian/copyright debian/changelog debian/rules debian/compat debian/volumedriver-base-head.install ], [chmod +x add-python-dirs.sh])
+AC_CONFIG_FILES([add-python-dirs.sh Makefile
+                 debian/control-template
+                 debian/control-template-no-dedup
+                 debian/source/format
+                 debian/copyright
+                 debian/changelog
+                 debian/rules
+                 debian/compat
+                 debian/volumedriver-no-dedup-base-head.install
+                 debian/volumedriver-base-head.install ], [chmod +x add-python-dirs.sh])
 AC_OUTPUT

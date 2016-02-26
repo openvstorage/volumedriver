@@ -28,6 +28,7 @@ VOLUMEDRIVER_DIR=$1
 
 BUILD_DIR=${VOLUMEDRIVER_DIR}/build
 export RUN_TESTS=yes
+export USE_MD5_HASH=yes
 export CLEAN_BUILD=yes
 export RECONFIGURE_BUILD=yes
 export TEMP=${TEMP:-${VOLUMEDRIVER_DIR}/tmp}

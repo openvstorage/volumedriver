@@ -1,6 +1,11 @@
 #! /bin/bash
 
+if [ "x${USE_MD5_HASH}" == "xyes" ]
+then
 TARGET_FILE=SPECS/volumedriver-test.spec
+else
+TARGET_FILE=SPECS/volumedriver-no-dedup-test.spec
+fi
 
 . ../add-installdir.sh
 
