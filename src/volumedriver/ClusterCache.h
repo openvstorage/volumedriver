@@ -1081,12 +1081,10 @@ public:
         }
         else if (weed != youtils::Weed::null())
         {
-#ifdef ENABLE_MD5_HASH
             add(handle,
                 ClusterCacheKey(weed),
                 buf,
                 bufsize);
-#endif
         }
     }
 
@@ -1233,15 +1231,10 @@ public:
         }
         else if (weed != youtils::Weed::null())
         {
-#ifdef ENABLE_MD5_HASH
             return read(handle,
                         ClusterCacheKey(weed),
                         buf,
                         bufsize);
-#else
-            ++num_misses;
-            return false;
-#endif
         }
         else
         {

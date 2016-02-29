@@ -892,6 +892,29 @@ Volume::write(uint64_t lba,
     VERIFY(off == len);
 }
 
+namespace
+{
+ClusterLocationAndHash
+make_cluster_location_and_hash(const ClusterLocation& loc,
+                               const ClusterCacheMode ccmode,
+                               const uint8_t* buf,
+                               const size_t bufsize)
+{
+    if (ccmode == ClusterCacheMode::ContentBased)
+    {
+        return ClusterLocationAndHash(loc,
+                                      buf,
+                                      bufsize);
+    }
+    else
+    {
+        return ClusterLocationAndHash(loc,
+                                      yt::Weed::null());
+    }
+}
+
+}
+
 void
 Volume::writeClusters_(uint64_t addr,
                        const uint8_t* buf,
@@ -904,7 +927,6 @@ Volume::writeClusters_(uint64_t addr,
     size_t num_locs = bufsize / getClusterSize();
     unsigned throttle_usecs = 0;
     uint32_t ds_throttle = 0;
-    ClusterCache& cache = VolManager::get()->getClusterCache();
 
     {
         // prevent concurrent writes and tlog rollover interfering with snapshotting
@@ -925,51 +947,26 @@ Volume::writeClusters_(uint64_t addr,
             const uint8_t* data = buf + i * getClusterSize();
             uint64_t clusteraddr = addr + i * getClusterSize();
             ClusterAddress ca = addr2CA(clusteraddr);
-#ifdef ENABLE_MD5_HASH
             ClusterLocationAndHash
-                loc_and_hash(cluster_locations_[i],
-                             ccmode == ClusterCacheMode::LocationBased ?
-                             yt::Weed::null() :
-                             yt::Weed(data,
-                                      getClusterSize()));
-#else
-            ClusterLocationAndHash loc_and_hash;
-            if (ccmode == ClusterCacheMode::LocationBased)
-            {
-                loc_and_hash = ClusterLocationAndHash(cluster_locations_[i],
-                                                      yt::Weed::null());
-            }
-            else
-            {
-                loc_and_hash = ClusterLocationAndHash(cluster_locations_[i]);
-            }
-#endif
+                loc_and_hash(make_cluster_location_and_hash(cluster_locations_[i],
+                                                            ccmode,
+                                                            data,
+                                                            getClusterSize()));
 
             writeClusterMetaData_(ca,
                                   loc_and_hash);
 
-            // For now we only use the cache if it has the same cluster size. We could
-            // try harder and split volume clusters into smaller cache clusters.
-            if (cache.cluster_size() == getClusterSize())
+            if (isCacheOnWrite())
             {
-                if (isCacheOnWrite())
-                {
-                    cache.add(getClusterCacheHandle(),
-                              ca,
-                              loc_and_hash.weed(),
-                              data,
-                              static_cast<size_t>(getClusterSize()));
-                }
-                else if (ccmode == ClusterCacheMode::LocationBased)
-                {
-                    // We need to invalidate even in case of ClusterCacheBehaviour::NoCache,
-                    // otherwise an unfortunate reconfiguration of the default behaviour
-                    // (CacheOnXXX -> NoCache (and overwrites) -> CacheOnXXX) could lead
-                    // to outdated data being returned from the cache.
-                    cache.invalidate(getClusterCacheHandle(),
-                                     ca,
-                                     loc_and_hash.weed());
-                }
+                add_to_cluster_cache_(ccmode,
+                                      ca,
+                                      loc_and_hash.weed(),
+                                      data);
+            }
+            else if (ccmode == ClusterCacheMode::LocationBased)
+            {
+                purge_from_cluster_cache_(ca,
+                                          loc_and_hash.weed());
             }
         }
 
@@ -1096,7 +1093,7 @@ Volume::readClusters_(uint64_t addr,
     // avoid allocations
     std::vector<ClusterReadDescriptor> read_descriptors;
     read_descriptors.reserve(bufsize / getClusterSize());
-    ClusterCache& cache = VolManager::get()->getClusterCache();
+    const ClusterCacheMode ccmode = effective_cluster_cache_mode();
 
     for (uint64_t off = 0; off < bufsize; off += getClusterSize())
     {
@@ -1133,15 +1130,11 @@ Volume::readClusters_(uint64_t addr,
         }
         else
         {
-            // For now we only use the cache if it has the same cluster size. We could
-            // try harder and split volume clusters into smaller cache clusters.
-            const bool in_cache =
-                cache.cluster_size() == getClusterSize() and
-                cache.read(getClusterCacheHandle(),
-                           ca,
-                           loc_and_hash.weed(),
-                           buf + off,
-                           static_cast<size_t>(getClusterSize()));
+            const bool in_cache = find_in_cluster_cache_(ccmode,
+                                                         ca,
+                                                         loc_and_hash.weed(),
+                                                         buf + off);
+
             if (in_cache)
             {
                 ++readCacheHits_;
@@ -1161,16 +1154,14 @@ Volume::readClusters_(uint64_t addr,
 
     dataStore_->readClusters(read_descriptors);
 
-    if (cache.cluster_size() == getClusterSize() and
-        effective_cluster_cache_behaviour() != ClusterCacheBehaviour::NoCache)
+    if (effective_cluster_cache_behaviour() != ClusterCacheBehaviour::NoCache)
     {
         for (const ClusterReadDescriptor& clrd : read_descriptors)
         {
-            cache.add(getClusterCacheHandle(),
-                      clrd.getClusterAddress(),
-                      clrd.weed(),
-                      clrd.getBuffer(),
-                      static_cast<size_t>(getClusterSize()));
+            add_to_cluster_cache_(ccmode,
+                                  clrd.getClusterAddress(),
+                                  clrd.weed(),
+                                  clrd.getBuffer());
         }
     }
 }
@@ -3289,6 +3280,70 @@ size_t
 Volume::effective_metadata_cache_capacity() const
 {
     return VolManager::get()->effective_metadata_cache_capacity(get_config());
+}
+
+void
+Volume::add_to_cluster_cache_(const ClusterCacheMode ccmode,
+                              const ClusterAddress ca,
+                              const youtils::Weed& weed,
+                              const uint8_t* buf)
+{
+    // For now we only use the cache if it has the same cluster size. We could
+    // try harder and split volume clusters into smaller cache clusters.
+    ClusterCache& cache = VolManager::get()->getClusterCache();
+
+    if ((ClusterLocationAndHash::use_hash() or
+         ccmode != ClusterCacheMode::ContentBased) and
+        cache.cluster_size() == getClusterSize())
+    {
+        cache.add(getClusterCacheHandle(),
+                  ca,
+                  weed,
+                  buf,
+                  static_cast<size_t>(getClusterSize()));
+    }
+}
+
+void
+Volume::purge_from_cluster_cache_(const ClusterAddress ca,
+                                  const youtils::Weed& weed)
+{
+    // For now we only use the cache if it has the same cluster size. We could
+    // try harder and split volume clusters into smaller cache clusters.
+    ClusterCache& cache = VolManager::get()->getClusterCache();
+
+    if (cache.cluster_size() == getClusterSize())
+    {
+        cache.invalidate(getClusterCacheHandle(),
+                         ca,
+                         weed);
+    }
+}
+
+bool
+Volume::find_in_cluster_cache_(const ClusterCacheMode ccmode,
+                               const ClusterAddress ca,
+                               const youtils::Weed& weed,
+                               uint8_t* buf)
+{
+    // For now we only use the cache if it has the same cluster size. We could
+    // try harder and split volume clusters into smaller cache clusters.
+    ClusterCache& cache = VolManager::get()->getClusterCache();
+
+    if ((ClusterLocationAndHash::use_hash() or
+         ccmode != ClusterCacheMode::ContentBased) and
+        cache.cluster_size() == getClusterSize())
+    {
+        return cache.read(getClusterCacheHandle(),
+                          ca,
+                          weed,
+                          buf,
+                          static_cast<size_t>(getClusterSize()));
+    }
+    else
+    {
+        return false;
+    }
 }
 
 }

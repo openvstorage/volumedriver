@@ -722,6 +722,22 @@ private:
 
     void
     init_failover_cache_();
+
+    void
+    add_to_cluster_cache_(const ClusterCacheMode,
+                          const ClusterAddress,
+                          const youtils::Weed&,
+                          const uint8_t*);
+
+    void
+    purge_from_cluster_cache_(const ClusterAddress,
+                              const youtils::Weed&);
+
+    bool
+    find_in_cluster_cache_(const ClusterCacheMode,
+                           const ClusterAddress,
+                           const youtils::Weed&,
+                           uint8_t*);
 };
 
 } // namespace volumedriver
