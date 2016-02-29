@@ -54,7 +54,7 @@ protected:
 
 };
 
-TEST_F(TimeZoneTests, test1)
+TEST_F(TimeZoneTests, DISABLED_test1)
 {
     auto val = getenv("TZ");
     (void) val;
