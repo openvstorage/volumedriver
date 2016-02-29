@@ -349,7 +349,7 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
 #else
         EXPECT_EQ(0U, entries);
         EXPECT_EQ(0U, hits);
-        EXPECT_EQ(5U, misses);
+        EXPECT_EQ(0U, misses);
 #endif
 
         ip::PARAMETER_TYPE(clustercache_mount_points) mps(pt);
@@ -371,7 +371,7 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
 #else
         EXPECT_EQ(0U, entries);
         EXPECT_EQ(0U, hits);
-        EXPECT_EQ(test_times, misses);
+        EXPECT_EQ(0U, misses);
 #endif
 
         ConfigurationReport c_rep;
@@ -393,7 +393,7 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
 #else
         EXPECT_EQ(0U, entries);
         EXPECT_EQ(0U, hits);
-        EXPECT_EQ(2 * test_times, misses);
+        EXPECT_EQ(0U, misses);
 #endif
 
         ASSERT_NO_THROW(VolManager::get()->getClusterCache().update(pt,
@@ -418,7 +418,7 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
 #else
         EXPECT_EQ(0U, entries);
         EXPECT_EQ(hits, 0);
-        EXPECT_EQ(misses, 3 * test_times);
+        EXPECT_EQ(misses, 0U);
 #endif
     }
 }

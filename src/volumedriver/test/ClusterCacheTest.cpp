@@ -256,7 +256,7 @@ public:
 #else
         CHECK_STATS(Devices(2),
                     Hits(0),
-                    Misses(test_size),
+                    Misses(0),
                     Entries(0));
 #endif
 
@@ -272,7 +272,7 @@ public:
 #else
         CHECK_STATS(Devices(2),
                     Hits(0),
-                    Misses(2 * test_size),
+                    Misses(0),
                     Entries(0));
 #endif
 
@@ -286,7 +286,7 @@ public:
 #else
         CHECK_STATS(Devices(2),
                     Hits(0),
-                    Misses(2 * test_size),
+                    Misses(0),
                     Entries(0));
 #endif
 
@@ -300,7 +300,7 @@ public:
 #else
         CHECK_STATS(Devices(2),
                     Hits(0),
-                    Misses(3 * test_size),
+                    Misses(0),
                     Entries(0));
 #endif
     }
@@ -406,7 +406,7 @@ public:
 #else
         CHECK_STATS(Devices(2),
                     Hits(0),
-                    Misses(test_size),
+                    Misses(0),
                     Entries(0));
 #endif
 
@@ -422,7 +422,7 @@ public:
 #else
         CHECK_STATS(Devices(2),
                     Hits(0),
-                    Misses(2*test_size),
+                    Misses(0),
                     Entries(0));
 #endif
 
@@ -436,7 +436,7 @@ public:
 #else
         CHECK_STATS(Devices(2),
                     Hits(0),
-                    Misses(2*test_size),
+                    Misses(0),
                     Entries(0));
 #endif
 
@@ -450,7 +450,7 @@ public:
 #else
         CHECK_STATS(Devices(2),
                     Hits(0),
-                    Misses(3*test_size),
+                    Misses(0),
                     Entries(0));
 #endif
     }
@@ -779,7 +779,7 @@ TEST_P(ClusterCacheTest, checkCacheBehaviour)
 #else
     CHECK_STATS(Devices(2),
                 Hits(0),
-                Misses(test_size),
+                Misses(0),
                 Entries(0));
 #endif
 
@@ -793,7 +793,7 @@ TEST_P(ClusterCacheTest, checkCacheBehaviour)
 #else
     CHECK_STATS(Devices(2),
                 Hits(0),
-                Misses(test_size),
+                Misses(0),
                 Entries(0));
 #endif
 
@@ -807,7 +807,7 @@ TEST_P(ClusterCacheTest, checkCacheBehaviour)
 #else
     CHECK_STATS(Devices(2),
                 Hits(0),
-                Misses(2 * test_size),
+                Misses(0),
                 Entries(0));
 #endif
 
@@ -832,7 +832,7 @@ TEST_P(ClusterCacheTest, checkCacheBehaviour)
 #else
     CHECK_STATS(Devices(2),
                 Hits(0),
-                Misses(2 * test_size),
+                Misses(0),
                 Entries(0));
 #endif
 
@@ -846,7 +846,7 @@ TEST_P(ClusterCacheTest, checkCacheBehaviour)
 #else
     CHECK_STATS(Devices(2),
                 Hits(0),
-                Misses(2 * test_size),
+                Misses(0),
                 Entries(0));
 #endif
 
@@ -860,7 +860,7 @@ TEST_P(ClusterCacheTest, checkCacheBehaviour)
 #else
     CHECK_STATS(Devices(2),
                 Hits(0),
-                Misses(3 * test_size),
+                Misses(0),
                 Entries(0));
 #endif
 }
@@ -1089,33 +1089,61 @@ TEST_P(ClusterCacheTest, offline1_nocache)
 
     checkClusters(v1, test_size, "_", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(0),
                 Misses(test_size),
                 Entries(0));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(0),
+                Entries(0));
+#endif
 
     VolManager::get()->getClusterCache().fail_fd_forread();
 
     checkClusters(v1, test_size, "_", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(0),
                 Misses(2 * test_size),
                 Entries(0));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(0),
+                Entries(0));
+#endif
 
     triggerDeviceOnlining();
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(0),
                 Misses(2 * test_size),
                 Entries(0));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(0),
+                Entries(0));
+#endif
 
     checkClusters(v1, test_size, "_", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(0),
                 Misses(3 * test_size),
                 Entries(0));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(0),
+                Entries(0));
+#endif
 }
 
 TEST_P(ClusterCacheTest, offline2)
@@ -1152,7 +1180,7 @@ TEST_P(ClusterCacheTest, offline2)
 #else
     CHECK_STATS(Devices(2),
                 Hits(0),
-                Misses(test_size),
+                Misses(0),
                 Entries(0));
 #endif
 
@@ -1166,16 +1194,23 @@ TEST_P(ClusterCacheTest, offline2)
 #else
     CHECK_STATS(Devices(2),
                 Hits(0),
-                Misses(2*test_size),
+                Misses(0),
                 Entries(0));
 #endif
 
     triggerDeviceOnlining();
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(0),
                 Misses(2*test_size),
                 Entries(0));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(0),
+                Entries(0));
+#endif
 
     checkClusters(v1, test_size, "_", mod);
 
@@ -1187,7 +1222,7 @@ TEST_P(ClusterCacheTest, offline2)
 #else
     CHECK_STATS(Devices(2),
                 Hits(0),
-                Misses(3*test_size),
+                Misses(0),
                 Entries(0));
 #endif
 }
@@ -1761,7 +1796,7 @@ TEST_P(ClusterCacheTest, error_during_deserialization)
 #else
     CHECK_STATS(Devices(2),
                 Hits(0),
-                Misses(count),
+                Misses(0),
                 Entries(0));
 #endif
 
@@ -1810,7 +1845,7 @@ TEST_P(ClusterCacheTest, error_during_deserialization)
 #else
     CHECK_STATS(Devices(2),
                 Hits(0),
-                Misses(count),
+                Misses(0),
                 Entries(0));
 #endif
 }
