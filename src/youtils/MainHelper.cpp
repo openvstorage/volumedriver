@@ -64,6 +64,9 @@ MainHelper::MainHelper(const constructor_type& args)
         ("logsink",
          po::value<decltype(logsinks_)>(&logsinks_)->composing(),
          "Where to write the log messages, can be 'console:' or '/path/to/logfile'")
+        ("logfile",
+         po::value<decltype(logfile_)>(&logfile_),
+         "Path to logfile (deprecated, use logsink instead!)")
         ("loglevel",
          po::value<Severity>(&loglevel_)->default_value(Severity::info),
          "Log level: [trace|debug|periodic|info|warning|error|fatal|notify]")
@@ -155,6 +158,11 @@ MainHelper::setup_logging(const std::string& progname)
     }
     else
     {
+        if (not logfile_.empty())
+        {
+            logsinks_.push_back(logfile_);
+        }
+
         if (logsinks_.empty())
         {
             logsinks_.push_back(Logger::console_sink_name());

@@ -231,6 +231,7 @@ protected:
                            boost::program_options::variables_map& vm);
 
     std::vector<std::string> logsinks_;
+    std::string logfile_;
     Severity loglevel_;
     LogRotation log_rotation_;
 
