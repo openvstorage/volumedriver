@@ -38,6 +38,14 @@ struct BackendRequestParameters
     MAKE_PARAM(timeout, boost::posix_time::time_duration) = boost::none;
 
 #undef MAKE_PARAM
+
+    // clang wants this one:
+    // backend/BackendInterface.cpp:42:43: error: default initialization of an object of const type 'const backend::BackendRequestParameters' without a user-provided default constructor
+    // static const BackendRequestParameters params;
+    BackendRequestParameters()
+    {}
+
+    ~BackendRequestParameters() = default;
 };
 
 }
