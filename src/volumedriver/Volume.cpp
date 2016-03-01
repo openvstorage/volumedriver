@@ -67,10 +67,10 @@
 static_assert(FLT_RADIX == 2, "Need to check code for non conforming FLT_RADIX");
 
 #define WLOCK()                                 \
-    fungi::ScopedWriteLock swl__(rwlock_)
+    boost::unique_lock<decltype(rwlock_)> urwlg__(rwlock_)
 
 #define RLOCK()                                 \
-    fungi::ScopedReadLock srl__(rwlock_)
+    boost::shared_lock<decltype(rwlock_)> srwlg__(rwlock_)
 
 #define SERIALIZE_WRITES()                              \
     boost::lock_guard<lock_type> gwl__(write_lock_)
@@ -81,10 +81,10 @@ static_assert(FLT_RADIX == 2, "Need to check code for non conforming FLT_RADIX")
 #ifndef NDEBUG
 
 #define ASSERT_WLOCKED()                        \
-    VERIFY(not rwlock_.tryReadLock())
+    VERIFY(not rwlock_.try_lock_shared())
 
 #define ASSERT_RLOCKED()                        \
-    VERIFY(not rwlock_.tryWriteLock())
+    VERIFY(not rwlock_.try_lock())
 
 #define ASSERT_WRITES_SERIALIZED()              \
     VERIFY(not write_lock_.try_lock())
@@ -116,7 +116,6 @@ Volume::Volume(const VolumeConfig& vCfg,
     : mdstore_was_rebuilt_(false)
     , config_lock_()
     , write_lock_()
-    , rwlock_(vCfg.id_ + "-volume-rwlock")
     , halted_(false)
     , dataStore_(datastore.release())
     , failover_(FailOverCacheBridgeFactory::create(FailOverCacheMode::Asynchronous,
@@ -714,7 +713,7 @@ Volume::writeClusterMetaData_(ClusterAddress ca,
                               const ClusterLocationAndHash& loc_and_hash)
 {
     ASSERT_WRITES_SERIALIZED();
-    ASSERT_WLOCKED();
+    ASSERT_RLOCKED();
 
     snapshotManagement_->addClusterEntry(ca,
                                          loc_and_hash);
@@ -765,7 +764,7 @@ Volume::writeClustersToFailOverCache_(const std::vector<ClusterLocation>& locs,
                                       const uint8_t* buf)
 {
     ASSERT_WRITES_SERIALIZED();
-    ASSERT_WLOCKED();
+    ASSERT_RLOCKED();
 
     if (failover_->backup())
     {
@@ -929,9 +928,8 @@ Volume::writeClusters_(uint64_t addr,
     uint32_t ds_throttle = 0;
 
     {
-        // prevent concurrent writes and tlog rollover interfering with snapshotting
-        // and friends
-        WLOCK();
+        // prevent tlog rollover interfering with snapshotting and friends
+        RLOCK();
 
         TODO("ArneT: reserve/clear vector \"cluster_locations\" so the nr of clusters can be derived in the failover_->addEntries call");
 

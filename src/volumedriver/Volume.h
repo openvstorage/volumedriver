@@ -41,10 +41,10 @@
 #include <set>
 
 #include <boost/circular_buffer.hpp>
+#include <boost/thread/mutex.hpp>
 #include <boost/utility.hpp>
 
 #include <youtils/Logging.h>
-#include <youtils/RWLock.h>
 
 #include <backend/Garbage.h>
 
@@ -526,8 +526,10 @@ private:
     setVolumeFailOverState(VolumeFailOverState);
 
     // LOCKING:
-    // - rwlock allows concurrent reads / one write
+    // - rwlock allows concurrent reads / writes (R) vs. snapshotting etc (W)
     // - write_lock_ is required to prevent write throttling from delaying reads,
+    //   which together with the write_lock_ boils down to a single write / multiple reads
+    //   for the moment.
     // -> lock order: write_lock_ before rwlock
     typedef boost::mutex lock_type;
     mutable lock_type write_lock_;
@@ -537,7 +539,7 @@ private:
         return x % y ?  (x / y + 1) * y : x;
     }
 
-    mutable fungi::RWLock rwlock_;
+    mutable boost::shared_mutex rwlock_;
 
     bool halted_;
 
