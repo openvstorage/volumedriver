@@ -148,6 +148,53 @@ protected:
             r.join();
         }
     }
+
+    template<typename LockType,
+             typename LockTraits = RWLockTraits<LockType>>
+    void
+    test_read_contention(LockType& rwlock)
+    {
+        unsigned num_readers = ::sysconf(_SC_NPROCESSORS_ONLN);
+        num_readers = (num_readers > 1) ? (num_readers - 1) : 1;
+        num_readers = std::min(num_readers, (unsigned)4);
+
+        num_readers = youtils::System::get_env_with_default("LOCK_THREADS",
+                                                            num_readers);
+        std::vector<boost::thread> readers;
+        readers.reserve(num_readers);
+
+        const uint64_t max =
+            youtils::System::get_env_with_default("LOCK_ITERATIONS",
+                                                  1000000ULL);
+        std::atomic<uint64_t> count(0);
+
+        youtils::wall_timer w;
+
+        for (unsigned i = 0; i < num_readers; ++i)
+        {
+            readers.emplace_back([&]{
+                    while (true)
+                    {
+                        typename LockTraits::ReadGuardType
+                            r(rwlock);
+                        if (count++ >= max)
+                        {
+                            break;
+                        }
+                    }
+                });
+        }
+
+        for (auto& r : readers)
+        {
+            r.join();
+        }
+
+        double t = w.elapsed();
+        LOG_INFO("1 writer, " << num_readers << " readers: " <<
+                 count << " iterations took " << t <<
+                 " -> " << (count / t) << " locks per second");
+    }
 };
 
 TEST_F(RWLockTest, basics)
@@ -212,6 +259,17 @@ TEST_F(RWLockTest, boost_contention)
 {
     boost::shared_mutex m;
     test_contention(m);
+}
+
+TEST_F(RWLockTest, fungi_read_contention)
+{
+    test_read_contention(rwLock_);
+}
+
+TEST_F(RWLockTest, boost_read_contention)
+{
+    boost::shared_mutex m;
+    test_read_contention(m);
 }
 
 }
