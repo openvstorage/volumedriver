@@ -155,7 +155,6 @@ protected:
     test_read_contention(LockType& rwlock)
     {
         unsigned num_readers = ::sysconf(_SC_NPROCESSORS_ONLN);
-        num_readers = (num_readers > 1) ? (num_readers - 1) : 1;
         num_readers = std::min(num_readers, (unsigned)4);
 
         num_readers = youtils::System::get_env_with_default("LOCK_THREADS",
@@ -191,7 +190,7 @@ protected:
         }
 
         double t = w.elapsed();
-        LOG_INFO("1 writer, " << num_readers << " readers: " <<
+        LOG_INFO(num_readers  << " readers: " <<
                  count << " iterations took " << t <<
                  " -> " << (count / t) << " locks per second");
     }
