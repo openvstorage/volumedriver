@@ -45,6 +45,7 @@
 #include <boost/utility.hpp>
 
 #include <youtils/Logging.h>
+#include <youtils/RWLock.h>
 
 #include <backend/Garbage.h>
 
@@ -539,7 +540,12 @@ private:
         return x % y ?  (x / y + 1) * y : x;
     }
 
-    mutable boost::shared_mutex rwlock_;
+    // youtils_test, RWLockTest shows that the fungi::RWLock prefers readers and
+    // offers performance benefits in the absence of writers. Since the rwlock is
+    // now only taken in exclusive mode by management actions, this behaviour is
+    // desirable (vs. boost's shared mutex which is fair towards writers but
+    // does not perform as well in the absence of writers).
+    mutable fungi::RWLock rwlock_;
 
     bool halted_;
 

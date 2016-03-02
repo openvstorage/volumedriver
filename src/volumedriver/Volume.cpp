@@ -116,6 +116,7 @@ Volume::Volume(const VolumeConfig& vCfg,
     : mdstore_was_rebuilt_(false)
     , config_lock_()
     , write_lock_()
+    , rwlock_("rwlock-" + vCfg.id_.str())
     , halted_(false)
     , dataStore_(datastore.release())
     , failover_(FailOverCacheBridgeFactory::create(FailOverCacheMode::Asynchronous,
