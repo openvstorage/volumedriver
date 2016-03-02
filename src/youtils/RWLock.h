@@ -56,22 +56,56 @@ public:
 
     ~RWLock();
 
-    void writeLock();
+    void
+    writeLock();
 
-    bool tryWriteLock();
+    void
+    lock()
+    {
+        return writeLock();
+    }
 
-    void readLock();
+    bool
+    tryWriteLock();
 
-    bool tryReadLock();
+    bool
+    try_lock()
+    {
+        return tryWriteLock();
+    }
 
-    void unlock();
+    void
+    readLock();
+
+    void
+    lock_shared()
+    {
+        return readLock();
+    }
+
+    bool
+    tryReadLock();
+
+    bool
+    try_lock_shared()
+    {
+        return tryReadLock();
+    }
+
+    void
+    unlock();
+
+    void
+    unlock_shared()
+    {
+        return unlock();
+    }
 
     inline void
     assertWriteLocked() const
     {
         assert(pthread_rwlock_tryrdlock(&rwLock_) == EBUSY);
     }
-
 
     inline void
     assertReadLocked() const
@@ -91,7 +125,6 @@ private:
     pthread_rwlock_t rwLock_;
     const std::string name_;
 };
-
 
 class ScopedReadLock
 {
