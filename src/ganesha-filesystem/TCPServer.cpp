@@ -39,6 +39,7 @@ ovs_discovery_server::ovs_discovery_server(const int& port,
         //try continue running with only one thread of execution
         thread_pool_size_ = 1;
     }
+    acceptor_.set_option(tcp::acceptor::reuse_address(true));
     grp_ = new boost::thread_group();
     start_accept();
 }

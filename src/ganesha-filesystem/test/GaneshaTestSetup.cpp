@@ -109,6 +109,7 @@ Setup::configure_ganesha() const
         "\tFSAL {\n"
         "\t\tname = OVS;\n"
         "\t\tovs_config = " << volumedriverfs_config_file(topdir_) << ";\n"
+        "\t\tovs_discovery_port = 21212;\n"
         "\t\t}\n"
         "\tAccess_Type = RW;\n"
         "\tPseudo = \"/ganesha-vfs\";\n"

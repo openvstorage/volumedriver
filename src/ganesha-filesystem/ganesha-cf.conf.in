@@ -361,6 +361,7 @@ EXPORT
       name = OVS;
       # for a null filesystem this specifies the underlying module
       ovs_config_file = "/usr/share/ganesha-filesystem/ganeshafs.json";
+      ovs_discovery_port = 14747;
   }
 
   # Export Id (mandatory)
