@@ -1056,7 +1056,7 @@ TEST_P(LocalRestartTest, RestartWithFOCAndRemovedSCO)
     MetaDataStoreStats mds2;
     v->getMetaDataStore()->getStats(mds2);
 
-    auto count_clusters([](const MetaDataStoreStats mdss) -> size_t
+    auto count_clusters([](const MetaDataStoreStats& mdss) -> size_t
                         {
                             size_t count = mdss.used_clusters;
                             for (const auto& c : mdss.corked_clusters)
