@@ -37,13 +37,12 @@ FailOverCacheAsyncBridge::timeout_(1);
 TODO("AR: get rid of LBASize and ClusterMultiplier");
 FailOverCacheAsyncBridge::FailOverCacheAsyncBridge(const LBASize lba_size,
                                                    const ClusterMultiplier cluster_multiplier,
-                                                   const std::atomic<unsigned>& max_entries,
+                                                   const size_t max_entries,
                                                    const std::atomic<unsigned>& write_trigger)
     : lba_size_(lba_size)
     , cluster_multiplier_(cluster_multiplier)
     , newData(cluster_size_() * max_entries)
     , oldData(cluster_size_() * max_entries)
-    , initial_max_entries_(max_entries)
     , max_entries_(max_entries)
     , write_trigger_(write_trigger)
     , thread_(nullptr)
@@ -298,7 +297,6 @@ FailOverCacheAsyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
                                      uint64_t start_address,
                                      const uint8_t* data)
 {
-    VERIFY(initial_max_entries_ == max_entries_);
     VERIFY(num_locs <= max_entries_);
 
     LOCK_NEW_ONES();

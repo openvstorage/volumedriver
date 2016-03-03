@@ -44,7 +44,7 @@ class FailOverCacheAsyncBridge
 public:
     FailOverCacheAsyncBridge(const LBASize,
                              const ClusterMultiplier,
-                             const std::atomic<unsigned>& max_entries,
+                             const size_t max_entries,
                              const std::atomic<unsigned>& write_trigger);
 
     FailOverCacheAsyncBridge(const FailOverCacheAsyncBridge&) = delete;
@@ -139,9 +139,8 @@ private:
     const ClusterMultiplier cluster_multiplier_;
     std::vector<uint8_t> newData;
     std::vector<uint8_t> oldData;
-    unsigned initial_max_entries_;
 
-    const std::atomic<unsigned>& max_entries_;
+    const size_t max_entries_;
     const std::atomic<unsigned>& write_trigger_;
 
     // make configurable?
