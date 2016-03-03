@@ -17,7 +17,6 @@
 
 #include "BackendTasks.h"
 #include "ClusterCacheHandle.h"
-#include "FailOverCacheBridgeFactory.h"
 #include "FailOverCacheConfigWrapper.h"
 #include "FailOverCacheProxy.h"
 #include "NSIDMap.h"

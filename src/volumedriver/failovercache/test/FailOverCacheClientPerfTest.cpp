@@ -20,7 +20,8 @@
 #include <youtils/BuildInfoString.h>
 #include <youtils/Main.h>
 
-#include "volumedriver/Volume.h"
+#include "volumedriver/FailOverCacheConfig.h"
+#include "volumedriver/FailOverCacheClientInterface.h"
 #include "volumedriver/Types.h"
 
 namespace
@@ -227,11 +228,11 @@ public:
         const ClusterMultiplier cmult(8);
 
         std::unique_ptr<FailOverCacheClientInterface>
-            failover_bridge(FailOverCacheBridgeFactory::create(mode_,
-                                                               lba_size,
-                                                               cmult,
-                                                               max_entries_,
-                                                               write_trigger_));
+            failover_bridge(FailOverCacheClientInterface::create(mode_,
+                                                                 lba_size,
+                                                                 cmult,
+                                                                 max_entries_,
+                                                                 write_trigger_));
 
         failover_bridge->initialize([&]() noexcept
                                     {

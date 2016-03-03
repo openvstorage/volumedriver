@@ -27,6 +27,13 @@ namespace volumedriver
 class FailOverCacheClientInterface
 {
 public:
+    static std::unique_ptr<FailOverCacheClientInterface>
+    create(const FailOverCacheMode mode,
+           const LBASize lba_size,
+           const ClusterMultiplier cluster_multiplier,
+           const size_t max_entries,
+           const std::atomic<unsigned>& write_trigger);
+
     virtual ~FailOverCacheClientInterface() = default;
 
     using DegradedFun = std::function<void() noexcept>;

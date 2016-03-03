@@ -20,6 +20,7 @@
 #include "../ArakoonMetaDataBackend.h"
 #include "../CachedMetaDataStore.h"
 #include "../DataStoreNG.h"
+#include "../FailOverCacheClientInterface.h"
 #include "../SCOCache.h"
 #include "../TLogReaderUtils.h"
 #include "../TokyoCabinetMetaDataBackend.h"

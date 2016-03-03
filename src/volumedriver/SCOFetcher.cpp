@@ -14,6 +14,7 @@
 
 #include "ClusterLocation.h"
 #include "DataStoreNG.h"
+#include "FailOverCacheClientInterface.h"
 #include "FailOverCacheConfig.h"
 #include "SCOFetcher.h"
 #include "Volume.h"

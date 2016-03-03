@@ -17,9 +17,10 @@
 #define GETVOLUME() (this)
 
 #include "BackendRestartAccumulator.h"
+#include "BackendTasks.h"
 #include "CombinedTLogReader.h"
 #include "DataStoreNG.h"
-#include "BackendTasks.h"
+#include "FailOverCacheClientInterface.h"
 #include "MDSMetaDataStore.h"
 #include "MetaDataStoreInterface.h"
 #include "SCOAccessData.h"
@@ -119,11 +120,11 @@ Volume::Volume(const VolumeConfig& vCfg,
     , rwlock_("rwlock-" + vCfg.id_.str())
     , halted_(false)
     , dataStore_(datastore.release())
-    , failover_(FailOverCacheBridgeFactory::create(FailOverCacheMode::Asynchronous,
-                                                   LBASize(vCfg.lba_size_),
-                                                   vCfg.cluster_mult_,
-                                                   VolManager::get()->dtl_queue_depth.value(),
-                                                   VolManager::get()->dtl_write_trigger.value()))
+    , failover_(FailOverCacheClientInterface::create(FailOverCacheMode::Asynchronous,
+                                                     LBASize(vCfg.lba_size_),
+                                                     vCfg.cluster_mult_,
+                                                     VolManager::get()->dtl_queue_depth.value(),
+                                                     VolManager::get()->dtl_write_trigger.value()))
     , metaDataStore_(metadatastore.release())
     , clusterSize_(vCfg.getClusterSize())
     , config_(vCfg)
@@ -2223,11 +2224,11 @@ Volume::setFailOverCacheMode_(const FailOverCacheMode mode)
     if (mode != failover_->mode())
     {
         failover_->destroy(SyncFailOverToBackend::T);
-        failover_ = FailOverCacheBridgeFactory::create(mode,
-                                                       LBASize(getLBASize()),
-                                                       getClusterMultiplier(),
-                                                       VolManager::get()->dtl_queue_depth.value(),
-                                                       VolManager::get()->dtl_write_trigger.value());
+        failover_ = FailOverCacheClientInterface::create(mode,
+                                                         LBASize(getLBASize()),
+                                                         getClusterMultiplier(),
+                                                         VolManager::get()->dtl_queue_depth.value(),
+                                                         VolManager::get()->dtl_write_trigger.value());
         init_failover_cache_();
     }
 }
