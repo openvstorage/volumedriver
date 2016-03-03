@@ -873,13 +873,20 @@ Volume::write(uint64_t lba,
     while (off < len)
     {
         SERIALIZE_WRITES();
-        const ssize_t sco_cap = dataStore_->getRemainingSCOCapacity();
-
+        const ssize_t sco_cap =
+            dataStore_->getRemainingSCOCapacity() * getClusterSize();
         // we need to guarantee that ourselves by forcing a SCO rollover
         // when updating the SCOMultiplier
         VERIFY(sco_cap >= 0); // can we really deal with sco_cap == 0?
-        const size_t chunksize = std::min(wsize,
-                                          static_cast<size_t>(sco_cap) * getClusterSize());
+
+        const size_t dtl_cap =
+            VolManager::get()->dtl_queue_depth.value() * getClusterSize();
+        VERIFY(dtl_cap > 0);
+
+        const size_t chunksize =
+            std::min({wsize,
+                      dtl_cap,
+                      static_cast<size_t>(sco_cap)});
 
         writeClusters_(addr + off, p + off, chunksize);
         off += chunksize;

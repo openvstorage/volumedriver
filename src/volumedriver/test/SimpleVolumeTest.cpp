@@ -37,6 +37,7 @@ namespace volumedrivertest
 
 using namespace initialized_params;
 using namespace volumedriver;
+namespace bpt = boost::property_tree;
 namespace yt = youtils;
 
 class SimpleVolumeTest
@@ -2747,6 +2748,49 @@ TEST_P(SimpleVolumeTest, metadata_cache_capacity)
     check(128);
     check(256);
     check(boost::none);
+}
+
+// cf. OVS-4033: the DTL queue depth was not taken into account
+// when splitting write requests, so if a request > DTL queue
+// depth was handled it would lead to infinite attempts sending
+// the request's chunks over to the DTL.
+TEST_P(SimpleVolumeTest, dtl_queue_depth_and_large_requests)
+{
+    const size_t qdepth = 1;
+    {
+        const PARAMETER_TYPE(dtl_queue_depth) qd(qdepth);
+        bpt::ptree pt;
+        api::persistConfiguration(pt, false);
+        qd.persist(pt);
+        api::updateConfiguration(pt);
+    }
+
+    {
+        bpt::ptree pt;
+        api::persistConfiguration(pt, false);
+        const PARAMETER_TYPE(dtl_queue_depth) qd(pt);
+        ASSERT_EQ(qdepth, qd.value());
+    }
+
+    auto wrns(make_random_namespace());
+    Volume* v = newVolume(*wrns);
+
+    auto foc_ctx(start_one_foc());
+    v->setFailOverCacheConfig(foc_ctx->config(FailOverCacheMode::Asynchronous));
+
+    const size_t size = 10 * v->getClusterSize();
+
+    const std::string pattern("not that interesting, really");
+
+    writeToVolume(v,
+                  0,
+                  size,
+                  pattern);
+
+    checkVolume(v,
+                0,
+                size,
+                pattern);
 }
 
 namespace

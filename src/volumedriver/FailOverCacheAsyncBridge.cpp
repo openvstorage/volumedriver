@@ -310,7 +310,7 @@ FailOverCacheAsyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
     }
 
     // Just see if there is enough space for the whole batch
-    setThrottling(newOnes.size() + num_locs >= max_entries_);
+    setThrottling(newOnes.size() + num_locs > max_entries_);
     if (not throttling)
     {
         // Otherwise work the batch
