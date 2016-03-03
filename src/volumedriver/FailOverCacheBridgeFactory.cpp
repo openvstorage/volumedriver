@@ -25,7 +25,7 @@ Ptr
 FailOverCacheBridgeFactory::create(const FailOverCacheMode mode,
                                    const LBASize lba_size,
                                    const ClusterMultiplier cluster_multiplier,
-                                   const std::atomic<unsigned>& max_entries,
+                                   const size_t max_entries,
                                    const std::atomic<unsigned>& write_trigger)
 {
     switch (mode)
@@ -36,7 +36,7 @@ FailOverCacheBridgeFactory::create(const FailOverCacheMode mode,
                                                 max_entries,
                                                 write_trigger));
     case FailOverCacheMode::Synchronous:
-        return Ptr(new FailOverCacheSyncBridge());
+        return Ptr(new FailOverCacheSyncBridge(max_entries));
     }
 }
 

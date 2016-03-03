@@ -31,7 +31,7 @@ public:
     create(const FailOverCacheMode,
            const LBASize,
            const ClusterMultiplier,
-           const std::atomic<unsigned>& max_entries,
+           const size_t max_entries,
            const std::atomic<unsigned>& write_trigger);
 };
 

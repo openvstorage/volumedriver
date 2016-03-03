@@ -879,8 +879,15 @@ Volume::write(uint64_t lba,
         // when updating the SCOMultiplier
         VERIFY(sco_cap >= 0); // can we really deal with sco_cap == 0?
 
-        const size_t dtl_cap =
-            VolManager::get()->dtl_queue_depth.value() * getClusterSize();
+        size_t dtl_cap = std::numeric_limits<size_t>::max();
+        {
+            RLOCK();
+            if (failover_)
+            {
+                dtl_cap = failover_->max_entries() * getClusterSize();
+            }
+        }
+
         VERIFY(dtl_cap > 0);
 
         const size_t chunksize =

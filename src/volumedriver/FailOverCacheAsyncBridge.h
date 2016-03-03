@@ -139,8 +139,6 @@ private:
     const ClusterMultiplier cluster_multiplier_;
     std::vector<uint8_t> newData;
     std::vector<uint8_t> oldData;
-
-    const size_t max_entries_;
     const std::atomic<unsigned>& write_trigger_;
 
     // make configurable?

@@ -39,11 +39,11 @@ FailOverCacheAsyncBridge::FailOverCacheAsyncBridge(const LBASize lba_size,
                                                    const ClusterMultiplier cluster_multiplier,
                                                    const size_t max_entries,
                                                    const std::atomic<unsigned>& write_trigger)
-    : lba_size_(lba_size)
+    : FailOverCacheClientInterface(max_entries)
+    , lba_size_(lba_size)
     , cluster_multiplier_(cluster_multiplier)
     , newData(cluster_size_() * max_entries)
     , oldData(cluster_size_() * max_entries)
-    , max_entries_(max_entries)
     , write_trigger_(write_trigger)
     , thread_(nullptr)
     , stop_(true)
@@ -297,7 +297,7 @@ FailOverCacheAsyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
                                      uint64_t start_address,
                                      const uint8_t* data)
 {
-    VERIFY(num_locs <= max_entries_);
+    VERIFY(num_locs <= max_entries());
 
     LOCK_NEW_ONES();
 
@@ -308,7 +308,7 @@ FailOverCacheAsyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
     }
 
     // Just see if there is enough space for the whole batch
-    setThrottling(newOnes.size() + num_locs > max_entries_);
+    setThrottling(newOnes.size() + num_locs > max_entries());
     if (not throttling)
     {
         // Otherwise work the batch

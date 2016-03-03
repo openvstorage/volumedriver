@@ -76,6 +76,20 @@ public:
 
     virtual FailOverCacheMode
     mode() const = 0;
+
+    size_t
+    max_entries() const
+    {
+        return max_entries_;
+    }
+
+protected:
+    explicit FailOverCacheClientInterface(const size_t max_entries)
+        : max_entries_(max_entries)
+    {}
+
+private:
+    const size_t max_entries_;
 };
 
 } // namespace volumedriver

@@ -35,7 +35,7 @@ class FailOverCacheSyncBridge
     friend class FailOverCacheTester;
 
 public:
-    FailOverCacheSyncBridge() = default;
+    explicit FailOverCacheSyncBridge(const size_t max_entries);
 
     FailOverCacheSyncBridge(const FailOverCacheSyncBridge&) = delete;
 
