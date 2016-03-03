@@ -1019,7 +1019,8 @@ TEST_P(LocalRestartTest, RestartWithFOCAndRemovedSCO)
     MetaDataStoreStats mds1;
 
     {
-        SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v, 2,
+        SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v,
+                                              2,
                                               DeleteLocalData::F,
                                               RemoveVolumeCompletely::F);
         for(int i = 0; i < (1 << 12); ++i)
@@ -1055,7 +1056,19 @@ TEST_P(LocalRestartTest, RestartWithFOCAndRemovedSCO)
     MetaDataStoreStats mds2;
     v->getMetaDataStore()->getStats(mds2);
 
-    EXPECT_EQ(mds1.used_clusters, mds2.used_clusters);
+    auto count_clusters([](const MetaDataStoreStats mdss) -> size_t
+                        {
+                            size_t count = mdss.used_clusters;
+                            for (const auto& c : mdss.corked_clusters)
+                            {
+                                count += c.second;
+                            }
+
+                            return count;
+                        });
+
+    EXPECT_EQ(count_clusters(mds1),
+              count_clusters(mds2));
 
     for(int i = 0; i < 1 << 12; ++i)
     {
