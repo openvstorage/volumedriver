@@ -32,90 +32,20 @@ namespace yt = youtils;
 namespace be = backend;
 namespace po = boost::program_options;
 
-struct ClusterHolder // This is the old FailOverCacheEntry... (as it must hold the memory of the cluster)
-{
-    ClusterHolder(ClusterLocation cli,
-                  uint64_t lba,
-                  const uint8_t* buffer,
-                  uint32_t size)
-        : cli_(cli)
-        , lba_(lba)
-        , size_(size)
-        , buffer_(new byte[size])
-    {
-        memcpy(&buffer_[0], buffer, size_);
-    }
-
-    ClusterHolder(ClusterLocation cli,
-                  uint64_t lba,
-                  byte* buffer,
-                  uint32_t size)
-        : cli_(cli)
-        , lba_(lba)
-        , size_(size)
-        , buffer_(buffer)
-    {
-    }
-
-    ClusterHolder()
-        : lba_(0)
-        , size_(0)
-        , buffer_(0)
-    {
-    }
-
-    ClusterHolder(const ClusterHolder& other)
-        : cli_(other.cli_)
-        , lba_(other.lba_)
-        , size_(other.size_)
-        , buffer_(new byte[size_])
-    {
-        memcpy(&buffer_[0], &other.buffer_[0], size_);
-    }
-
-    ClusterHolder(ClusterHolder&& other)
-        : cli_(std::move(other.cli_))
-        , lba_(other.lba_)
-        , size_(other.size_)
-        , buffer_(0)
-    {
-        other.size_ = 0;
-        buffer_.swap(other.buffer_);
-    }
-
-    ClusterHolder& operator=(ClusterHolder&& other)
-    {
-        if (this != &other)
-        {
-            std::swap(cli_, other.cli_);
-            std::swap(lba_, other.lba_);
-            std::swap(size_, other.size_);
-            buffer_.swap(other.buffer_);
-        }
-        return *this;
-    }
-
-
-    //ClusterHolder& operator=(const ClusterHolder&)
-    //{
-    //
-    //}
-
-    ClusterLocation cli_;
-    uint64_t lba_;
-    uint32_t size_;
-    boost::scoped_array<byte> buffer_;
-};
+// FailOverCacheEntry does not take ownership of the actual data buffer, so
+// cling to it as long as the FailOverCacheEntry is used.
+using ClusterHolder = std::pair<FailOverCacheEntry,
+                                std::unique_ptr<uint8_t[]>>;
 
 class ClusterFactory
 {
 public:
     ClusterFactory(ClusterSize cluster_size,
-                              uint32_t num_clusters,
-                              ClusterLocation startLocation =  ClusterLocation(1))
-        : cluster_size_(cluster_size),
-          num_clusters_(num_clusters),
-          cluster_loc(startLocation)
+                   uint32_t num_clusters,
+                   ClusterLocation startLocation = ClusterLocation(1))
+        : cluster_size_(cluster_size)
+        , num_clusters_(num_clusters)
+        , cluster_loc(startLocation)
     {}
 
     ClusterHolder
@@ -123,33 +53,38 @@ public:
                const std::string& content = "")
     {
         size_t size = cluster_size_;
-        byte* b = new byte[size];
+        auto buf(std::make_unique<uint8_t[]>(size));
         size_t content_size = content.size();
 
         if(content_size > 0)
         {
             for(unsigned int i = 0; i < cluster_size_; ++i)
             {
-                b[i] = content[i % content_size];
+                buf[i] = content[i % content_size];
             }
         }
 
-        ClusterHolder ret(cluster_loc,
-                               0,
-                               b,
-                               cluster_size_);
+        FailOverCacheEntry entry(cluster_loc,
+                                 0,
+                                 buf.get(),
+                                 cluster_size_);
+
+        ClusterHolder
+            ret(std::make_pair(entry,
+                               std::move(buf)));
+
         SCOOffset a = cluster_loc.offset();
 
         if(a  >= num_clusters_ -1)
         {
             cluster_loc.incrementNumber();
             cluster_loc.offset(0);
-
         }
         else
         {
             cluster_loc.incrementOffset();
         }
+
         next_location = cluster_loc;
         return ret;
     }
@@ -160,9 +95,8 @@ private:
     ClusterLocation cluster_loc;
 };
 
-
-
-class FailoverCacheClientPerfTestMain : public youtils::MainHelper
+class FailoverCacheClientPerfTestMain
+    : public youtils::MainHelper
 {
 public:
     FailoverCacheClientPerfTestMain(int argc,
@@ -211,11 +145,16 @@ public:
         MainHelper::setup_logging("dtl_client_perf_test");
     }
 
-    bool addEntry(FailOverCacheClientInterface& focItf, ClusterHolder& ch)
+    bool
+    addEntry(FailOverCacheClientInterface& foc,
+             const FailOverCacheEntry& e)
     {
         std::vector<ClusterLocation> locs;
-        locs.emplace_back(ch.cli_);
-        return focItf.addEntries(locs, 1, ch.lba_, ch.buffer_.get());
+        locs.emplace_back(e.cli_);
+        return foc.addEntries(locs,
+                              1,
+                              e.lba_,
+                              e.buffer_);
     }
 
     virtual int
@@ -256,7 +195,7 @@ public:
         LOG_INFO("Test entry generation: creating " << count << " entries");
         for(uint64_t i =0; i < count; i++)
         {
-            ClusterHolder e = source(next_location);
+            const ClusterHolder e = source(next_location);
             if (i % 100000 == 0)
             {
             }
@@ -271,13 +210,13 @@ public:
 
         uint64_t entry_counter = 0;
 
-
         while (true)
         {
-            ClusterHolder ch = source(next_location);
+            const ClusterHolder ch = source(next_location);
             uint64_t cycles = 0;
 
-            while(not addEntry(*failover_bridge, ch))
+            while(not addEntry(*failover_bridge,
+                               ch.first))
             {
                 if (cycles++ == 0)
                 {
