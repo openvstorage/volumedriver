@@ -23,8 +23,8 @@
 
 #include <volumedriver/DataStoreNG.h>
 #include <volumedriver/CachedMetaDataPage.h>
+#include <volumedriver/CombinedTLogReader.h>
 #include <volumedriver/MetaDataStoreInterface.h>
-#include <volumedriver/TLogReaderUtils.h>
 #include <volumedriver/TLogWriter.h>
 #include <volumedriver/VolManager.h>
 #include <volumedriver/LocalTLogScanner.h>
@@ -1697,9 +1697,9 @@ TEST_P(LocalRestartTest, CreateSnapshotPutsSCOCRCInTLog)
 
     ASSERT_TRUE(tlogs.size() > 0);
     std::shared_ptr<TLogReaderInterface>
-        tlog_reader(makeCombinedTLogReader(tlogs_path,
-                                           tlogs,
-                                           v->getBackendInterface()->clone()));
+        tlog_reader(CombinedTLogReader::create(tlogs_path,
+                                               tlogs,
+                                               v->getBackendInterface()->clone()));
     FailOverRestartPutsSCOCRCInTLogProcessor callback;
     ASSERT_NO_THROW(tlog_reader->for_each(callback));
     checkCurrentBackendSize(v);
@@ -1730,9 +1730,9 @@ TEST_P(LocalRestartTest, BigWritesPutSCOCRCInTLog)
     const OrderedTLogIds tlogs(v->getSnapshotManagement().getAllTLogs());
 
     std::shared_ptr<TLogReaderInterface>
-        tlog_reader(makeCombinedTLogReader(tlogs_path,
-                                           tlogs,
-                                           v->getBackendInterface()->clone()));
+        tlog_reader(CombinedTLogReader::create(tlogs_path,
+                                               tlogs,
+                                               v->getBackendInterface()->clone()));
 
     FailOverRestartPutsSCOCRCInTLogProcessor callback;
     ASSERT_NO_THROW(tlog_reader->for_each(callback));
@@ -1768,9 +1768,9 @@ TEST_P(LocalRestartTest, SetFailOVerPutsSCOCRCInTLog)
     ASSERT_TRUE(tlogs.size() > 0);
     FailOverRestartPutsSCOCRCInTLogProcessor callback;
     std::shared_ptr<TLogReaderInterface>
-        tlog_reader(makeCombinedTLogReader(tlogs_path,
-                                           tlogs,
-                                           v->getBackendInterface()->clone()));
+        tlog_reader(CombinedTLogReader::create(tlogs_path,
+                                               tlogs,
+                                               v->getBackendInterface()->clone()));
 
     ASSERT_NO_THROW(tlog_reader->for_each(callback));
     checkCurrentBackendSize(v);

@@ -29,6 +29,7 @@
 #include "../Api.h"
 #include "../CachedMetaDataPage.h"
 #include "../CachedMetaDataStore.h"
+#include "../CombinedTLogReader.h"
 #include "../MDSMetaDataBackend.h"
 #include "../MetaDataBackendConfig.h"
 #include "../metadata-server/ClientNG.h"
@@ -37,7 +38,6 @@
 #include "../ScrubberAdapter.h"
 #include "../ScrubReply.h"
 #include "../ScrubWork.h"
-#include "../TLogReaderUtils.h"
 
 namespace volumedrivertest
 {
@@ -547,9 +547,9 @@ protected:
 
         std::map<ClusterAddress, ClusterLocation> relocmap;
 
-        auto treader(makeCombinedTLogReader(getTempPath(testName_).string(),
-                                            scrub_res.relocs,
-                                            v.getBackendInterface()->clone()));
+        auto treader(CombinedTLogReader::create(getTempPath(testName_).string(),
+                                                scrub_res.relocs,
+                                                v.getBackendInterface()->clone()));
 
         const Entry* e = nullptr;
         while ((e = treader->nextLocation()))

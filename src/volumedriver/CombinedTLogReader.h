@@ -15,6 +15,7 @@
 #ifndef COMBINEDTLOGBACKENDREADER_H_
 #define COMBINEDTLOGBACKENDREADER_H_
 
+#include "BackwardTLogReader.h"
 #include "TLogReader.h"
 #include "TLogReaderInterface.h"
 
@@ -26,6 +27,8 @@
 
 #include <youtils/Generator.h>
 #include <youtils/Logging.h>
+
+#include <backend/BackendInterface.h>
 
 namespace volumedriver
 {
@@ -110,7 +113,7 @@ public:
         VERIFY(generator.get());
     }
 
-    ~CombinedTLogReader() {}
+    ~CombinedTLogReader() = default;
 
     const Entry*
     nextAny()
@@ -133,6 +136,52 @@ public:
         {
             return 0;
         }
+    }
+
+    // Why templates you ask: The OrderedTLogIds are sufficient for everything except scrubbing
+    // where we treat the relocation as TLog. You can't type that as OrderedTLogIds.
+    template <typename T>
+    static std::shared_ptr<TLogReaderInterface>
+    create(const fs::path& tlog_path,
+           const T& items,
+           BackendInterfacePtr bi,
+           bool prefetch = true)
+    {
+        std::unique_ptr<TLogGen> generator;
+        std::unique_ptr<TLogGen>
+            baseGenerator(new TLogReaderGen<TLogReader, T>(tlog_path,
+                                                           items,
+                                                           std::move(bi)));
+
+        if(prefetch)
+        {
+            generator.reset(new youtils::ThreadedGenerator<TLogGenItem>(std::move(baseGenerator),
+                                                                        uint32_t(10)));
+        }
+        else
+        {
+            generator = std::move(baseGenerator);
+        }
+
+        auto reader(std::make_shared<CombinedTLogReader>(std::move(generator)));
+        return std::static_pointer_cast<TLogReaderInterface>(reader);
+    }
+
+    template <typename T>
+    static std::shared_ptr<TLogReaderInterface>
+    create_backward_reader(const fs::path& tlog_path,
+                           const T& items,
+                           BackendInterfacePtr bi)
+    {
+        std::vector<typename T::value_type> rev_items(items.rbegin(),
+                                                      items.rend());
+        std::unique_ptr<TLogGen>
+            generator(new TLogReaderGen<BackwardTLogReader, T>(tlog_path,
+                                                               rev_items,
+                                                               std::move(bi)));
+
+        auto reader(std::make_shared<CombinedTLogReader>(std::move(generator)));
+        return std::static_pointer_cast<TLogReaderInterface>(reader);
     }
 
 private:

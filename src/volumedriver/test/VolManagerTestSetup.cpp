@@ -19,10 +19,10 @@
 #include "../Api.h"
 #include "../ArakoonMetaDataBackend.h"
 #include "../CachedMetaDataStore.h"
+#include "../CombinedTLogReader.h"
 #include "../DataStoreNG.h"
 #include "../FailOverCacheClientInterface.h"
 #include "../SCOCache.h"
-#include "../TLogReaderUtils.h"
 #include "../TokyoCabinetMetaDataBackend.h"
 #include "../VolManager.h"
 #include "../failovercache/FailOverCacheAcceptor.h"
@@ -986,9 +986,9 @@ VolManagerTestSetup::checkCurrentBackendSize(Volume* vol)
         current_tlogs(vol->getSnapshotManagement().getCurrentTLogs());
 
     std::shared_ptr<TLogReaderInterface>
-        t(makeCombinedBackwardTLogReader(VolManager::get()->getTLogPath(vol),
-                                         current_tlogs,
-                                         vol->getBackendInterface()->clone()));
+        t(CombinedTLogReader::create_backward_reader(VolManager::get()->getTLogPath(vol),
+                                                     current_tlogs,
+                                                     vol->getBackendInterface()->clone()));
     uint64_t current_size_calculated = 0;
     while(t->nextLocation())
     {

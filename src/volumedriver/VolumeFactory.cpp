@@ -27,7 +27,6 @@
 #include "SCOCache.h"
 #include "SnapshotManagement.h"
 #include "TLogReader.h"
-#include "TLogReaderUtils.h"
 #include "TokyoCabinetMetaDataBackend.h"
 #include "Types.h"
 #include "VolManager.h"
@@ -707,9 +706,9 @@ VolumeFactory::backend_restart(const VolumeConfig& config,
         FileUtils::with_temp_dir(vm->getTLogPath(config) / "tmp",
                                  [&](const fs::path& tmp)
                                  {
-                                     auto t(makeCombinedBackwardTLogReader(tmp,
-                                                                           latest_tlogs,
-                                                                           bi->clone()));
+                                     auto t(CombinedTLogReader::create_backward_reader(tmp,
+                                                                                       latest_tlogs,
+                                                                                       bi->clone()));
                                      restart_sco_num = t->nextClusterLocation().number();
 
                                  });
@@ -809,9 +808,9 @@ VolumeFactory::backend_restart_write_only_volume(const VolumeConfig& config,
     FileUtils::with_temp_dir(vm->getTLogPath(config) / "tmp",
                              [&](const fs::path& tmp)
                              {
-                                 auto t(makeCombinedBackwardTLogReader(tmp,
-                                                                       recentTLogs,
-                                                                       bi->clone()));
+                                 auto t(CombinedTLogReader::create_backward_reader(tmp,
+                                                                                   recentTLogs,
+                                                                                   bi->clone()));
                                  restart_sco_num = t->nextClusterLocation().number();
                              });
 

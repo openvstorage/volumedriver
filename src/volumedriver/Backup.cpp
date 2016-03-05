@@ -27,7 +27,6 @@
 #include <volumedriver/BackendNamesFilter.h>
 #include <volumedriver/BackendTasks.h>
 #include <volumedriver/SnapshotManagement.h>
-#include <volumedriver/TLogReaderUtils.h>
 #include <volumedriver/TransientException.h>
 #include <volumedriver/Types.h>
 #include <volumedriver/VolManager.h>

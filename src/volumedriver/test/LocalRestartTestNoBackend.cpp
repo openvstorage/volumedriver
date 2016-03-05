@@ -20,7 +20,6 @@
 #include "../DataStoreNG.h"
 #include "../TLogWriter.h"
 #include "../MetaDataStoreInterface.h"
-#include "../TLogReaderUtils.h"
 
 namespace volumedriver
 {

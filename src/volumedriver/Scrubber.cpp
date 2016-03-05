@@ -23,7 +23,6 @@
 #include "TLogCutter.h"
 #include "TLogMerger.h"
 #include "TLogSplitter.h"
-#include "TLogReaderUtils.h"
 
 #include <youtils/Assert.h>
 #include <youtils/wall_timer.h>
@@ -142,9 +141,9 @@ Scrubber::operator()()
     VERIFY(not result_.tlog_names_in.empty());
 
     std::shared_ptr<TLogReaderInterface>
-        combined_tlog_reader(makeCombinedTLogReader(filepool.directory(),
-                                                    result_.tlog_names_in,
-                                                    backend_interface_->clone()));
+        combined_tlog_reader(CombinedTLogReader::create(filepool.directory(),
+                                                        result_.tlog_names_in,
+                                                        backend_interface_->clone()));
     // Split the TLogs in parts and go through them
     LOG_INFO("Starting the TLog Splitter");
     scrubbing::ScrubbingSCODataVector scrubbing_data_vector;

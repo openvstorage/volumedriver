@@ -34,7 +34,6 @@
 #include "../TLogReader.h"
 #include "../BackwardTLogReader.h"
 #include "../TLog.h"
-#include "../TLogReaderUtils.h"
 #include "../Types.h"
 
 namespace volumedrivertest
@@ -162,13 +161,13 @@ TEST_F(TLogTest, combined)
             fs::path empty;
 
             {
-                std::shared_ptr<TLogReaderInterface> reader1 = makeCombinedTLogReader(empty, paths, 0);
+                std::shared_ptr<TLogReaderInterface> reader1 = CombinedTLogReader::create(empty, paths, 0);
                 TLogReader reader2(p123);
                 assertTLogReadersEqual(reader1.get(), &reader2);
             }
 
             {
-                std::shared_ptr<TLogReaderInterface> reader1 = makeCombinedBackwardTLogReader(empty, paths, 0);
+                std::shared_ptr<TLogReaderInterface> reader1 = CombinedTLogReader::create_backward_reader(empty, paths, 0);
                 BackwardTLogReader reader2(p123);
                 assertTLogReadersEqual(reader1.get(), &reader2);
             }

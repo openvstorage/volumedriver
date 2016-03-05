@@ -21,7 +21,6 @@
 #include "ScrubWork.h"
 #include "SnapshotManagement.h"
 #include "TLogReader.h"
-#include "TLogReaderUtils.h"
 #include "TransientException.h"
 #include "VolManager.h"
 #include "WriteOnlyVolume.h"
@@ -548,9 +547,9 @@ void WriteOnlyVolume::restoreSnapshot(const SnapshotName& name)
             LOG_INFO("Deleting " << doomedTLogs.size() << " TLogs");
 
             const fs::path path(VolManager::get()->getTLogPath(this));
-            std::shared_ptr<TLogReaderInterface> r = makeCombinedTLogReader(path,
-                                                                            doomedTLogs,
-                                                                            getBackendInterface()->clone());
+            std::shared_ptr<TLogReaderInterface> r = CombinedTLogReader::create(path,
+                                                                                doomedTLogs,
+                                                                                getBackendInterface()->clone());
 
             r->SCONames(doomedSCOs);
             LOG_INFO("Deleting " << doomedSCOs.size() << " SCOs");
@@ -571,9 +570,9 @@ void WriteOnlyVolume::restoreSnapshot(const SnapshotName& name)
 
         const OrderedTLogIds tlog_ids(snapshotManagement_->getAllTLogs());
         std::shared_ptr<TLogReaderInterface> itf =
-            makeCombinedBackwardTLogReader(snapshotManagement_->getTLogsPath(),
-                                           tlog_ids,
-                                           getBackendInterface()->clone());
+            CombinedTLogReader::create_backward_reader(snapshotManagement_->getTLogsPath(),
+                                                       tlog_ids,
+                                                       getBackendInterface()->clone());
 
         ClusterLocation last_in_backend = itf->nextClusterLocation();
         LOG_INFO("Resetting datastore to " << last_in_backend <<
@@ -777,9 +776,9 @@ WriteOnlyVolume::getSnapshotSCOCount(const SnapshotName& snapshotName)
     }
 
     std::shared_ptr<TLogReaderInterface>
-        treader(makeCombinedTLogReader(snapshotManagement_->getTLogsPath(),
-                                       tlog_ids,
-                                       getBackendInterface()->clone()));
+        treader(CombinedTLogReader::create(snapshotManagement_->getTLogsPath(),
+                                           tlog_ids,
+                                           getBackendInterface()->clone()));
 
     std::vector<SCO> lst;
     treader->SCONames(lst);

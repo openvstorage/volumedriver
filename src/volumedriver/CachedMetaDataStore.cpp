@@ -14,9 +14,9 @@
 
 #include "CachedMetaDataStore.h"
 #include "ClusterLocationAndHash.h"
+#include "CombinedTLogReader.h"
 #include "PageSortingGenerator.h"
 #include "TLog.h"
-#include "TLogReaderUtils.h"
 #include "TracePoints_tp.h"
 #include "VolManager.h"
 #include "VolumeConfig.h"
@@ -400,9 +400,9 @@ CachedMetaDataStore::processCloneTLogs(const CloneTLogs& ctl,
         const OrderedTLogIds& tlogs = ctl[i].second;
 
         std::shared_ptr<TLogReaderInterface>
-            r(makeCombinedTLogReader(tlog_path,
-                                     tlogs,
-                                     nsidmap.get(cloneid)->clone()));
+            r(CombinedTLogReader::create(tlog_path,
+                                         tlogs,
+                                         nsidmap.get(cloneid)->clone()));
         processTLogReaderInterface(r, cloneid);
     }
 
@@ -554,9 +554,9 @@ CachedMetaDataStore::applyRelocs(const std::vector<std::string>& relocs,
                                  const ScrubId& scrub_id)
 {
     // Feels a bit wrong since the relocs are not a tlog...
-    auto treader(makeCombinedTLogReader(tlog_location,
-                                        relocs,
-                                        nsid_map.get(cid)->clone()));
+    auto treader(CombinedTLogReader::create(tlog_location,
+                                            relocs,
+                                            nsid_map.get(cid)->clone()));
 
     return apply_relocs_(*treader,
                          cid,

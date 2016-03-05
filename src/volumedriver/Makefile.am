@@ -185,7 +185,6 @@ libvolumedriver_la_SOURCES = \
 	TLogMerger.cpp \
 	TLogReader.cpp \
 	TLogReaderInterface.cpp \
-	TLogReaderUtils.cpp \
 	TLogSplitter.cpp \
 	TLogWriter.cpp \
 	TokyoCabinetMetaDataBackend.cpp \

@@ -29,7 +29,6 @@
 #include "TracePoints_tp.h"
 #include "TransientException.h"
 #include "TLogReader.h"
-#include "TLogReaderUtils.h"
 #include "VolManager.h"
 #include "Volume.h"
 #include "ScrubReply.h"
@@ -402,9 +401,9 @@ Volume::localRestartDataStore_(SCONumber last_sco_num_in_backend,
         // explicitly say no fetch from backend should be done by not passing in a
         // backend pointer
         std::shared_ptr<TLogReaderInterface>
-            reader(makeCombinedTLogReader(snapshotManagement_->getTLogsPath(),
-                                          tlogs,
-                                          nullptr));
+            reader(CombinedTLogReader::create(snapshotManagement_->getTLogsPath(),
+                                              tlogs,
+                                              nullptr));
 
         std::map<SCO, CheckSum> checksums;
         reader->SCONamesAndChecksums(checksums);
@@ -1413,9 +1412,9 @@ Volume::restoreSnapshot(const SnapshotName& name)
             LOG_VINFO("Deleting " << doomedTLogs.size() << " TLogs");
 
             const fs::path path(VolManager::get()->getTLogPath(this));
-            std::shared_ptr<TLogReaderInterface> r = makeCombinedTLogReader(path,
-                                                                            doomedTLogs,
-                                                                            getBackendInterface()->clone());
+            std::shared_ptr<TLogReaderInterface> r = CombinedTLogReader::create(path,
+                                                                                doomedTLogs,
+                                                                                getBackendInterface()->clone());
 
             r->SCONames(doomedSCOs);
             LOG_VINFO("Deleting " << doomedSCOs.size() << " SCOs");
@@ -1440,9 +1439,9 @@ Volume::restoreSnapshot(const SnapshotName& name)
         const OrderedTLogIds out(snapshotManagement_->getAllTLogs());
 
         std::shared_ptr<TLogReaderInterface> itf =
-            makeCombinedBackwardTLogReader(snapshotManagement_->getTLogsPath(),
-                                           out,
-                                           getBackendInterface()->clone());
+            CombinedTLogReader::create_backward_reader(snapshotManagement_->getTLogsPath(),
+                                                       out,
+                                                       getBackendInterface()->clone());
 
         ClusterLocation last_in_backend = itf->nextClusterLocation();
         LOG_VINFO("Resetting datastore to " << last_in_backend);
@@ -2358,9 +2357,9 @@ Volume::getSnapshotSCOCount(const SnapshotName& snapshotName)
     }
 
     std::shared_ptr<TLogReaderInterface>
-        treader(makeCombinedTLogReader(snapshotManagement_->getTLogsPath(),
-                                       tlog_ids,
-                                       getBackendInterface()->clone()));
+        treader(CombinedTLogReader::create(snapshotManagement_->getTLogsPath(),
+                                           tlog_ids,
+                                           getBackendInterface()->clone()));
 
     std::vector<SCO> lst;
     treader->SCONames(lst);

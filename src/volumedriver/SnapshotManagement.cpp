@@ -13,14 +13,14 @@
 // limitations under the License.
 
 #include "BackwardTLogReader.h"
-#include "DataStoreNG.h"
 #include "BackendTasks.h"
+#include "CombinedTLogReader.h"
+#include "DataStoreNG.h"
 #include "Entry.h"
 #include "MetaDataStoreInterface.h"
 #include "SnapshotManagement.h"
 #include "TracePoints_tp.h"
 #include "TLogReader.h"
-#include "TLogReaderUtils.h"
 #include "TLogWriter.h"
 #include "VolManager.h"
 #include "WriteOnlyVolume.h"
@@ -1079,9 +1079,9 @@ SnapshotManagement::getLastSCOInBackend()
 {
     OrderedTLogIds tlogs_on_backend;
     sp->getTLogsWrittenToBackend(tlogs_on_backend);
-    return makeCombinedBackwardTLogReader(tlogPath_,
-                                          tlogs_on_backend,
-                                          getVolume()->getBackendInterface()->clone())->nextClusterLocation();
+    return CombinedTLogReader::create_backward_reader(tlogPath_,
+                                                      tlogs_on_backend,
+                                                      getVolume()->getBackendInterface()->clone())->nextClusterLocation();
 }
 
 ClusterLocation
@@ -1089,9 +1089,9 @@ SnapshotManagement::getLastSCO()
 {
     OrderedTLogIds tlogs;
     sp->getAllTLogs(tlogs, WithCurrent::T);
-    return makeCombinedBackwardTLogReader(getTLogsPath(),
-                                          tlogs,
-                                          getVolume()->getBackendInterface()->clone())->nextClusterLocation();
+    return CombinedTLogReader::create_backward_reader(getTLogsPath(),
+                                                      tlogs,
+                                                      getVolume()->getBackendInterface()->clone())->nextClusterLocation();
 }
 
 std::unique_ptr<SnapshotPersistor>
