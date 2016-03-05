@@ -44,8 +44,7 @@ public:
     explicit TLogReader(const fs::path& path,
                         uint32_t cache_size = max_num_cached);
 
-
-    virtual ~TLogReader();
+    virtual ~TLogReader() = default;
 
     const Entry*
     nextAny();

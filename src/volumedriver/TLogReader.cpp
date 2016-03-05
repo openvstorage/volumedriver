@@ -47,10 +47,6 @@ TLogReader::TLogReader(const fs::path& path,
     , buf_size(cache_size * Entry::getDataSize())
 {}
 
-TLogReader::~TLogReader()
-{}
-
-
 bool
 TLogReader::maybe_refresh_buffer()
 {
