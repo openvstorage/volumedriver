@@ -125,6 +125,8 @@ module ShmIdlInterface {
                        in string snapshot_name)
     raises(VolumeDoesNotExist, SnapshotNotFound);
 
+    void
+    list_volumes(out StringSequence res);
     };
 
 };

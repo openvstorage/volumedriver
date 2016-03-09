@@ -402,6 +402,48 @@ TEST_F(ShmServerTest, ovs_stat)
               ovs_ctx_destroy(ctx));
 }
 
+TEST_F(ShmServerTest, ovs_list_volumes)
+{
+    uint64_t volume_size = 1 << 30;
+    size_t max_size = 1;
+    int len = -1;
+    char *names = NULL;
+    std::string vol1("volume1");
+    std::string vol2("volume2");
+
+    {
+        names = (char *) malloc(max_size);
+        EXPECT_EQ(ovs_list_volumes(names, &max_size),
+                  0);
+        free(names);
+    }
+
+    EXPECT_EQ(ovs_create_volume(vol1.c_str(),
+                                volume_size),
+              0);
+
+    EXPECT_EQ(ovs_create_volume(vol2.c_str(),
+                                volume_size),
+              0);
+
+    while (true)
+    {
+        names = (char *)malloc(max_size);
+        len = ovs_list_volumes(names, &max_size);
+        if (len >= 0)
+        {
+            break;
+        }
+        if (len == -1 && errno != ERANGE)
+        {
+            break;
+        }
+        free(names);
+    }
+    EXPECT_EQ(len, vol1.length() + 1 + vol2.length() + 1);
+    free(names);
+}
+
 TEST_F(ShmServerTest, ovs_create_rollback_list_remove_snapshot)
 {
     uint64_t volume_size = 1 << 30;

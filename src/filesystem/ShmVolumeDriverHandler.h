@@ -351,6 +351,36 @@ public:
         }
     }
 
+    std::vector<std::string>
+    list_volumes()
+    {
+        auto registry(fs_.object_router().object_registry());
+        const auto objs(registry->list());
+
+        try
+        {
+            std::vector<std::string> volumes;
+            for (const auto& o: objs)
+            {
+                const auto reg(registry->find(o, IgnoreCache::F));
+                if (reg->object().type == ObjectType::Volume or
+                    reg->object().type == ObjectType::Template)
+                {
+                    std::string volume(fs_.find_path(reg->volume_id).string());
+                    volume.erase(volume.rfind(fs_.vdisk_format().volume_suffix()));
+                    volume.erase(0, 1);
+                    volumes.push_back(volume);
+                }
+            }
+            return volumes;
+        }
+        catch (std::exception& e)
+        {
+            LOG_INFO("Problem listing volumes, err: " << e.what());
+            throw;
+        }
+    }
+
 private:
     DECLARE_LOGGER("ShmVolumeDriverHandler");
 

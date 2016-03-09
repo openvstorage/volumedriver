@@ -146,6 +146,9 @@ public:
     is_snapshot_synced(const std::string& volume_name,
                        const std::string& snapshot_name);
 
+    static std::vector<std::string>
+    list_volumes();
+
     void*
     get_address_from_handle(ipc::managed_shared_memory::handle_t handle);
 

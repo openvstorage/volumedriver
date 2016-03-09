@@ -168,6 +168,17 @@ ovs_snapshot_is_synced(const char *volume_name,
                        const char *snap_name);
 
 /*
+ * List volumes
+ * param names: Volumes string
+ * param size: The size of the volumes string
+ * On error the expected string size is returned and errno
+ * is set to ERANGE.
+ * return: The expected string size on success, -1 on fail.
+ */
+int
+ovs_list_volumes(char *names, size_t *size);
+
+/*
  * Allocate buffer from the shared memory segment
  * param ctx: Open vStorage context
  * param size: Buffer size in bytes

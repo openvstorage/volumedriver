@@ -843,6 +843,65 @@ ovs_snapshot_is_synced(const char* volume_name,
     return r;
 }
 
+int
+ovs_list_volumes(char *names, size_t *size)
+{
+    std::vector<std::string> volumes;
+    size_t expected_size = 0;
+    int r = 0;
+
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_list_volumes_enter,
+               names,
+               *size);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_list_volumes_exit,
+                                          names,
+                                          *size,
+                                          r,
+                                          errno);
+                }));
+    try
+    {
+        volumes = volumedriverfs::ShmClient::list_volumes();
+    }
+    catch (...)
+    {
+        errno = EIO;
+        return (r = -1);
+    }
+
+    for (size_t t = 0; t < volumes.size(); t++)
+    {
+        expected_size += volumes[t].size() + 1;
+    }
+
+    if (*size < expected_size)
+    {
+        *size = expected_size;
+        errno = ERANGE;
+        return (r = -1);
+    }
+
+    if (!names)
+    {
+        errno = EINVAL;
+        return (r = -1);
+    }
+
+    for (int i = 0; i < (int)volumes.size(); i++)
+    {
+        const char* name = volumes[i].c_str();
+        strcpy(names, name);
+        names += strlen(name) + 1;
+    }
+    r = (int)expected_size;
+    return r;
+}
+
 static int
 _ovs_submit_aio_request(ovs_ctx_t *ctx,
                         struct ovs_aiocb *ovs_aiocbp,

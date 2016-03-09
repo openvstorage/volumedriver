@@ -202,8 +202,8 @@ public:
     {
         std::unique_ptr<Handler> h(new Handler(handler_args_));
         uint64_t c_size;
-        std::vector<std::string> snaps = h->list_snapshots(volume_name,
-                                                           &c_size);
+        std::vector<std::string> snaps(std::move(h->list_snapshots(volume_name,
+                                                                   &c_size)));
         results = new ShmIdlInterface::StringSequence(snaps.size());
         results->length(snaps.size());
         for (unsigned int i = 0; i < snaps.size(); i++)
@@ -219,6 +219,19 @@ public:
     {
         std::unique_ptr<Handler> h(new Handler(handler_args_));
         return int(h->is_snapshot_synced(volume_name, snapshot_name));
+    }
+
+    void
+    list_volumes(ShmIdlInterface::StringSequence_out results)
+    {
+        std::unique_ptr<Handler> h(new Handler(handler_args_));
+        std::vector<std::string> volumes(std::move(h->list_volumes()));
+        results = new ShmIdlInterface::StringSequence(volumes.size());
+        results->length(volumes.size());
+        for (unsigned int i = 0; i < volumes.size(); i++)
+        {
+            results[i] = CORBA::string_dup(volumes[i].c_str());
+        }
     }
 
 private:

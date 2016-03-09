@@ -591,6 +591,28 @@ ShmClient::is_snapshot_synced(const std::string& volume_name,
                                                  snapshot_name.c_str());
 }
 
+std::vector<std::string>
+ShmClient::list_volumes()
+{
+    CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
+                                                            vd_context_kind,
+                                                            vd_object_name,
+                                                            vd_object_kind);
+    assert(not CORBA::is_nil(obj));
+    ShmIdlInterface::VolumeFactory_var volumefactory_ref =
+        ShmIdlInterface::VolumeFactory::_narrow(obj);
+    assert(not CORBA::is_nil(volumefactory_ref));
+
+    ShmIdlInterface::StringSequence_var results;
+    std::vector<std::string> volumes;
+    volumefactory_ref->list_volumes(results.out());
+    for (unsigned int i = 0; i < results->length(); i++)
+    {
+        volumes.push_back(results[i].in());
+    }
+    return volumes;
+}
+
 int
 ShmClient::stat(struct stat *st)
 {
