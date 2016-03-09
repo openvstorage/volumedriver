@@ -244,6 +244,30 @@ Check if snapshot is synced on the backend
         - EINVAL Invalid arguments supplied
         - EIO An error occured during ovs_snapshot_remove()
 
+List volumes
+    int ovs_list_volumes(char *names, size_t *size);
+
+    Description
+    -----------
+    The ovs_list_volumes() shall return a list of the volumes. The value
+    'size' denotes the size of the 'names' buffer.
+    If the expected size of the list is larger than 'size' then the
+    aforementioned variable will be populated with the size of the volume
+    list.
+
+    Returne Value
+    -------------
+    Upon successful completion the function shall return the size of the
+    list buffer otherwise -1 is returned.
+
+    Errors
+    ------
+    The function shall fail if:
+        - EINVAL Invalid arguments supplied
+        - ERANGE The size of 'names' buffer is smaller than the expected size.
+          The 'size' variable is populated with the expected size.
+        - EIO An error occured during ovs_list_volumes()
+
 Get volume status::
     int ovs_stat(ovs_ctx_t *ctx, struct stat *buf);
 
