@@ -1411,7 +1411,7 @@ Volume::restoreSnapshot(const SnapshotName& name)
 
             LOG_VINFO("Deleting " << doomedTLogs.size() << " TLogs");
 
-            const fs::path path(VolManager::get()->getTLogPath(this));
+            const fs::path path(VolManager::get()->getTLogPath(*this));
             std::shared_ptr<TLogReaderInterface> r = CombinedTLogReader::create(path,
                                                                                 doomedTLogs,
                                                                                 getBackendInterface()->clone());
@@ -1656,7 +1656,7 @@ Volume::destroy(DeleteLocalData delete_local_data,
 
     if (T(delete_local_data))
     {
-        CATCH_AND_CHECK_FORCE(fs::remove_all(VolManager::get()->getMetaDataPath(this)),
+        CATCH_AND_CHECK_FORCE(fs::remove_all(VolManager::get()->getMetaDataPath(*this)),
                               "Exception trying to delete the metadata directory");
         LOG_VINFO("Unregistering volume from ClusterCache");
         deregister_from_cluster_cache_(getOwnerTag());
@@ -2491,7 +2491,7 @@ Volume::checkSCONamesConsistency_(const std::vector<SCO>& names)
 bool
 Volume::checkTLogsConsistency_(CloneTLogs& ctl) const
 {
-    const fs::path tlog_temp_location(VolManager::get()->getTLogPath(this) / "tmp");
+    const fs::path tlog_temp_location(VolManager::get()->getTLogPath(*this) / "tmp");
     fs::create_directories(tlog_temp_location);
 
     for(unsigned i = 0; i < ctl.size(); ++i)

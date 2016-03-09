@@ -36,19 +36,19 @@ TEST_P(CloneManagementTest, noclonesfromsnapshotsnotinbackend)
 
     const backend::Namespace& ns1 = ns1_ptr->ns();
 
-    Volume* v = newVolume("volume1",
+    SharedVolumePtr v = newVolume("volume1",
 			  ns1);
 
-    Volume* c = 0;
+    SharedVolumePtr c = 0;
     auto ns2_ptr = make_random_namespace();
 
     const backend::Namespace& ns2 = ns2_ptr->ns();
 
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
     {
-        SCOPED_BLOCK_BACKEND(v);
+        SCOPED_BLOCK_BACKEND(*v);
 
-        writeToVolume(v,
+        writeToVolume(*v,
                       0,
                       4096,
                       "xyz");
@@ -64,7 +64,7 @@ TEST_P(CloneManagementTest, noclonesfromsnapshotsnotinbackend)
         ASSERT_FALSE(c);
     }
 
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
 
     ASSERT_NO_THROW(c = createClone("clone1",
@@ -72,8 +72,8 @@ TEST_P(CloneManagementTest, noclonesfromsnapshotsnotinbackend)
                                     ns1,
                                     "snap1"));
 
-    ASSERT_TRUE(c);
-    checkVolume(c,
+    ASSERT_TRUE(c != nullptr);
+    checkVolume(*c,
                 0,
                 4096,
                 "xyz");
@@ -89,20 +89,20 @@ TEST_P(CloneManagementTest, sad_clone)
 
     //    backend::Namespace ns1;
 
-    Volume* v = newVolume("volume1",
+    SharedVolumePtr v = newVolume("volume1",
                           ns1);
 
 
-    ASSERT_TRUE(v);
-    writeToVolume(v,
+    ASSERT_TRUE(v != nullptr);
+    writeToVolume(*v,
                   0,
                   4096,
                   "xyz");
     v->createSnapshot(SnapshotName("snap1"));
     persistXVals(VolumeId("volume1"));
 
-    waitForThisBackendWrite(v);
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
+    waitForThisBackendWrite(*v);
     const VolumeConfig cfg(v->get_config());
 
     destroyVolume(v,
@@ -110,7 +110,7 @@ TEST_P(CloneManagementTest, sad_clone)
                   RemoveVolumeCompletely::F);
 
     v = 0;
-    Volume* c = 0;
+    SharedVolumePtr c = 0;
 
     auto ns2_ptr = make_random_namespace();
 
@@ -122,7 +122,7 @@ TEST_P(CloneManagementTest, sad_clone)
                                     "snap1"));
 
 
-    ASSERT_TRUE(c);
+    ASSERT_TRUE(c != nullptr);
 
     restartVolume(cfg);
     sleep(5);
@@ -136,20 +136,20 @@ TEST_P(CloneManagementTest, recursiveclonelookup)
     const backend::Namespace& ns1 = ns1_ptr->ns();
 
 
-    Volume* v = newVolume("volume1",
+    SharedVolumePtr v = newVolume("volume1",
                           ns1);
 
 
-    ASSERT_TRUE(v);
-    writeToVolume(v,
+    ASSERT_TRUE(v != nullptr);
+    writeToVolume(*v,
                   0,
                   4096,
                   "xyz");
     v->createSnapshot(SnapshotName("snap1"));
-    waitForThisBackendWrite(v);
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
+    waitForThisBackendWrite(*v);
 
-    Volume* c = 0;
+    SharedVolumePtr c = 0;
 
     auto ns2_ptr = make_random_namespace();
     const backend::Namespace& clone1ns = ns2_ptr->ns();
@@ -161,23 +161,23 @@ TEST_P(CloneManagementTest, recursiveclonelookup)
                                     "snap1"));
 
 
-    ASSERT_TRUE(c);
-    checkVolume(v,
+    ASSERT_TRUE(c != nullptr);
+    checkVolume(*v,
                 0,
                 4096,
                 "xyz");
 
-    writeToVolume(c,
+    writeToVolume(*c,
                   8,
                   4096,
                   "abc");
 
 
     c->createSnapshot(SnapshotName("snap1"));
-    waitForThisBackendWrite(c);
-    waitForThisBackendWrite(c);
+    waitForThisBackendWrite(*c);
+    waitForThisBackendWrite(*c);
 
-    Volume* d = 0;
+    SharedVolumePtr d = 0;
 
     auto ns3_ptr = make_random_namespace();
     const backend::Namespace& ns3 = ns3_ptr->ns();
@@ -187,13 +187,13 @@ TEST_P(CloneManagementTest, recursiveclonelookup)
                                     clone1ns,
                                    "snap1"));
 
-    ASSERT_TRUE(d);
-    checkVolume(d,
+    ASSERT_TRUE(d != nullptr);
+    checkVolume(*d,
                 0,
                 4096,
                 "xyz");
 
-    checkVolume(d,
+    checkVolume(*d,
                 8,
                 4096,
                 "abc");

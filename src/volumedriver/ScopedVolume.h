@@ -63,70 +63,14 @@ struct WriteOnlyVolumeDeleter
 
         }
     }
-    DECLARE_LOGGER("VolumeDeleter");
+    DECLARE_LOGGER("WriteOnlyVolumeDeleter");
 
 };
-
-template<DeleteLocalData delete_local_data,
-         RemoveVolumeCompletely remove_volume_completely = RemoveVolumeCompletely::F,
-         DeleteVolumeNamespace delete_volume_namespace = DeleteVolumeNamespace::F,
-         ForceVolumeDeletion force_volume_deletion = ForceVolumeDeletion::F>
-struct VolumeDeleter
-{
-    void
-    operator()(Volume* vol)
-    {
-        if (vol == nullptr)
-        {
-            LOG_TRACE("Deleter called on nullptr.");
-        }
-        else
-        {
-            bool uncaught_exception = std::uncaught_exception();
-            try
-            {
-                fungi::ScopedLock lock_(api::getManagementMutex());
-                api::destroyVolume(vol,
-                                   delete_local_data,
-                                   remove_volume_completely,
-                                   delete_volume_namespace,
-                                   force_volume_deletion);
-            }
-            catch(std::exception& e)
-            {
-                LOG_INFO("Caught an exception cleaning up the volume: " << e.what());
-                if(not uncaught_exception)
-                {
-                    throw;
-                }
-
-            }
-            catch(...)
-            {
-                LOG_INFO("Caught an unkown exception cleaning up the volume: ");
-                if(not uncaught_exception)
-                {
-                    throw;
-                }
-            }
-
-        }
-    }
-    DECLARE_LOGGER("VolumeDeleter");
-
-};
-
 
 typedef std::unique_ptr<WriteOnlyVolume,
                         WriteOnlyVolumeDeleter<RemoveVolumeCompletely::F> >
 ScopedWriteOnlyVolumeWithLocalDeletion;
 
-// typedef std::unique_ptr<WriteOnlyVolume,
-//                          VolumeDeleter<WriteOnlyVolume, DeleteLocalData::T, 7200> >
-// ScopedWriteOnlyVolumeWithoutLocalDeletion;
-
-typedef std::unique_ptr<Volume, VolumeDeleter<DeleteLocalData::T> > ScopedVolumeWithLocalDeletion;
-typedef std::unique_ptr<Volume, VolumeDeleter<DeleteLocalData::F> > ScopedVolumeWithoutLocalDeletion;
 }
 #endif
 

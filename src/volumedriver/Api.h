@@ -81,27 +81,27 @@ public:
                 const volumedriver::CreateNamespace = volumedriver::CreateNamespace::F);
 
     static void
-    updateMetaDataBackendConfig(volumedriver::Volume*,
+    updateMetaDataBackendConfig(volumedriver::WeakVolumePtr,
                                 const volumedriver::MetaDataBackendConfig&);
 
     static void
     updateMetaDataBackendConfig(const volumedriver::VolumeId&,
                                 const volumedriver::MetaDataBackendConfig&);
 
-    static volumedriver::Volume*
+    static volumedriver::WeakVolumePtr
     getVolumePointer(const volumedriver::VolumeId&);
 
-    static volumedriver::Volume*
+    static boost::optional<volumedriver::WeakVolumePtr>
     get_volume_pointer_no_throw(const volumedriver::VolumeId&);
 
-    static volumedriver::Volume*
+    static volumedriver::WeakVolumePtr
     getVolumePointer(const volumedriver::Namespace&);
 
     static const volumedriver::VolumeId
-    getVolumeId(volumedriver::Volume*);
+    getVolumeId(volumedriver::WeakVolumePtr);
 
     static void
-    Write(volumedriver::Volume* vol,
+    Write(volumedriver::WeakVolumePtr vol,
           uint64_t lba,
           const uint8_t *buf,
           uint64_t buflen);
@@ -113,26 +113,26 @@ public:
           const uint64_t buflen);
 
     static void
-    Read(volumedriver::Volume* vol,
+    Read(volumedriver::WeakVolumePtr vol,
          const uint64_t lba,
          uint8_t *buf,
          const uint64_t buflen);
 
     static void
-    Sync(volumedriver::Volume*);
+    Sync(volumedriver::WeakVolumePtr);
 
     static void
-    Resize(volumedriver::Volume*,
+    Resize(volumedriver::WeakVolumePtr,
            uint64_t num_clusters);
 
     static uint64_t
-    GetSize(volumedriver::Volume*);
+    GetSize(volumedriver::WeakVolumePtr);
 
     static uint64_t
-    GetLbaSize(volumedriver::Volume*);
+    GetLbaSize(volumedriver::WeakVolumePtr);
 
     static uint64_t
-    GetClusterSize(volumedriver::Volume*);
+    GetClusterSize(volumedriver::WeakVolumePtr);
 
     static void
     Init(const boost::filesystem::path& cfg,
@@ -182,7 +182,7 @@ public:
                   const volumedriver::ForceVolumeDeletion force_volume_deletion);
 
     static void
-    destroyVolume(volumedriver::Volume* volName,
+    destroyVolume(volumedriver::WeakVolumePtr volName,
                   const volumedriver::DeleteLocalData delete_local_data,
                   const volumedriver::RemoveVolumeCompletely remove_volume_completely,
                   const volumedriver::DeleteVolumeNamespace delete_volume_namespace,
@@ -199,7 +199,7 @@ public:
     removeLocalVolumeData(const backend::Namespace& nspace);
 
     static volumedriver::SnapshotName
-    createSnapshot(volumedriver::Volume*,
+    createSnapshot(volumedriver::WeakVolumePtr,
                    const volumedriver::SnapshotMetaData& = volumedriver::SnapshotMetaData(),
                    const volumedriver::SnapshotName* const snapname = 0,
                    const volumedriver::UUID& uuid = volumedriver::UUID());
@@ -237,7 +237,7 @@ public:
                 const volumedriver::SnapshotName&);
 
     static volumedriver::Snapshot
-    getSnapshot(const volumedriver::Volume*,
+    getSnapshot(const volumedriver::WeakVolumePtr,
                 const volumedriver::SnapshotName&);
 
     static volumedriver::Snapshot

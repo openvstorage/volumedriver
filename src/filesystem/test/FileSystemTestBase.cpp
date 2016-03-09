@@ -1178,9 +1178,7 @@ size_t
 FileSystemTestBase::get_cluster_size(const vfs::ObjectId& oid) const
 {
     LOCKVD();
-    vd::Volume* v = api::getVolumePointer(vd::VolumeId(oid.str()));
-    EXPECT_TRUE(v);
-    VERIFY(v);
+    vd::WeakVolumePtr v = api::getVolumePointer(vd::VolumeId(oid.str()));
     return api::GetClusterSize(v);
 }
 

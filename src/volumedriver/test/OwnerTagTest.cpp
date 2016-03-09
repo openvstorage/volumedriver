@@ -32,7 +32,7 @@ public:
 TEST_P(OwnerTagTest, constant_tag)
 {
     auto ns(make_random_namespace());
-    Volume* v = newVolume(*ns);
+    SharedVolumePtr v = newVolume(*ns);
 
     const VolumeConfig cfg = v->get_config();
     destroyVolume(v,
@@ -58,7 +58,7 @@ TEST_P(OwnerTagTest, constant_tag)
 TEST_P(OwnerTagTest, changing_tag)
 {
     auto ns(make_random_namespace());
-    Volume* v = newVolume(*ns);
+    SharedVolumePtr v = newVolume(*ns);
 
     const VolumeConfig cfg = v->get_config();
     destroyVolume(v,

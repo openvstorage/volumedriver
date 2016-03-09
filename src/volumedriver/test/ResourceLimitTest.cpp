@@ -89,14 +89,14 @@ TEST_P(ResourceLimitTest, scrutinize_metadata_freespace_when_cloning_or_restarti
 
     //    const backend::Namespace ns1;
 
-    Volume* v = newVolume(VolumeId(vname),
+    SharedVolumePtr v = newVolume(VolumeId(vname),
                           ns1);
     ASSERT_TRUE(v != nullptr);
 
-    writeToVolume(v, 0, 65536, vname);
+    writeToVolume(*v, 0, 65536, vname);
     const SnapshotName snap("snap");
     v->createSnapshot(snap);
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     const uint64_t fri =
         FileUtils::filesystem_free_size(VolManager::get()->getMetaDataPath());
@@ -138,7 +138,7 @@ TEST_P(ResourceLimitTest, scrutinize_metadata_freespace_when_cloning_or_restarti
 
     clearNamespaceRestarting(fakens);
 
-    Volume* c = createClone(cname, cns, ns1, snap);
+    SharedVolumePtr c = createClone(cname, cns, ns1, snap);
     ASSERT_TRUE(c != nullptr);
 
     const VolumeConfig clonecfg(c->get_config());

@@ -40,10 +40,10 @@ TEST_P(VolManagerRestartTest, checkEmptyDirectoryRestart1)
     auto ns_ptr = make_random_namespace();
     const Namespace& ns = ns_ptr->ns();
 
-    Volume* v = 0;
+    SharedVolumePtr v = 0;
     v = newVolume("volume1",
                   ns);
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
     VolumeConfig cfg  = v->get_config();
     destroyVolume(v,
                   DeleteLocalData::F,
@@ -64,10 +64,10 @@ TEST_P(VolManagerRestartTest, checkEmptyDirectoryRestart2)
     const Namespace& ns = ns_ptr->ns();
 
 
-    Volume* v = 0;
+    SharedVolumePtr v = 0;
     v = newVolume("volume1",
 		  ns);
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
     VolumeConfig cfg  = v->get_config();
     v->scheduleBackendSync();
     while(not v->isSyncedToBackend())
@@ -89,7 +89,7 @@ TEST_P(VolManagerRestartTest, checkEmptyDirectoryRestart2)
 
 TEST_P(VolManagerRestartTest, localrestart1)
 {
-    Volume* v = 0;
+    SharedVolumePtr v = 0;
     auto ns_ptr = make_random_namespace();
     const Namespace& ns = ns_ptr->ns();
 
@@ -103,7 +103,7 @@ TEST_P(VolManagerRestartTest, localrestart1)
 
 TEST_P(VolManagerRestartTest, localrestart2)
 {
-    Volume* v = 0;
+    SharedVolumePtr v = 0;
     auto ns_ptr = make_random_namespace();
     const Namespace& ns = ns_ptr->ns();
 
@@ -112,7 +112,7 @@ TEST_P(VolManagerRestartTest, localrestart2)
 
     v = newVolume("volume1",
                   ns);
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
 
     destroyVolume(v,
                   DeleteLocalData::F,
@@ -120,13 +120,13 @@ TEST_P(VolManagerRestartTest, localrestart2)
     v = 0;
     ASSERT_NO_THROW(v = localRestart(ns));
 
-    ASSERT_TRUE(v);
-    checkCurrentBackendSize(v);
+    ASSERT_TRUE(v != nullptr);
+    checkCurrentBackendSize(*v);
 }
 
 TEST_P(VolManagerRestartTest, localrestart_check_readcachesetting1)
 {
-    Volume* v = 0;
+    SharedVolumePtr v = 0;
     auto ns_ptr = make_random_namespace();
     const Namespace& ns = ns_ptr->ns();
 
@@ -138,7 +138,7 @@ TEST_P(VolManagerRestartTest, localrestart_check_readcachesetting1)
     boost::optional<ClusterCacheBehaviour> behaviour(ClusterCacheBehaviour::NoCache);
     v->set_cluster_cache_behaviour(behaviour);
 
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
 
     destroyVolume(v,
                   DeleteLocalData::F,
@@ -146,14 +146,14 @@ TEST_P(VolManagerRestartTest, localrestart_check_readcachesetting1)
     v = 0;
     ASSERT_NO_THROW(v = localRestart(ns));
 
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
     ASSERT_TRUE(*v->get_cluster_cache_behaviour() == behaviour);
-    checkCurrentBackendSize(v);
+    checkCurrentBackendSize(*v);
 }
 
 TEST_P(VolManagerRestartTest, localrestart_check_readcachesetting2)
 {
-    Volume* v = 0;
+    SharedVolumePtr v = 0;
     auto ns_ptr = make_random_namespace();
     const Namespace& ns = ns_ptr->ns();
 
@@ -164,7 +164,7 @@ TEST_P(VolManagerRestartTest, localrestart_check_readcachesetting2)
     boost::optional<ClusterCacheBehaviour> behaviour(ClusterCacheBehaviour::CacheOnWrite);
     v->set_cluster_cache_behaviour(behaviour);
 
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
 
     destroyVolume(v,
                   DeleteLocalData::F,
@@ -172,14 +172,14 @@ TEST_P(VolManagerRestartTest, localrestart_check_readcachesetting2)
     v = 0;
     ASSERT_NO_THROW(v = localRestart(ns));
 
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
     ASSERT_TRUE(*v->get_cluster_cache_behaviour() == behaviour);
-    checkCurrentBackendSize(v);
+    checkCurrentBackendSize(*v);
 }
 
 TEST_P(VolManagerRestartTest, localrestart_check_readcachesetting3)
 {
-    Volume* v = 0;
+    SharedVolumePtr v = 0;
     auto ns_ptr = make_random_namespace();
     const Namespace& ns = ns_ptr->ns();
 
@@ -190,7 +190,7 @@ TEST_P(VolManagerRestartTest, localrestart_check_readcachesetting3)
     boost::optional<ClusterCacheBehaviour> behaviour(ClusterCacheBehaviour::CacheOnRead);
     v->set_cluster_cache_behaviour(behaviour);
 
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
 
     destroyVolume(v,
                   DeleteLocalData::F,
@@ -198,14 +198,14 @@ TEST_P(VolManagerRestartTest, localrestart_check_readcachesetting3)
     v = 0;
     ASSERT_NO_THROW(v = localRestart(ns));
 
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
     ASSERT_TRUE(*v->get_cluster_cache_behaviour() == behaviour);
-    checkCurrentBackendSize(v);
+    checkCurrentBackendSize(*v);
 }
 
 TEST_P(VolManagerRestartTest, localrestart3)
 {
-    Volume* v = 0;
+    SharedVolumePtr v = 0;
     auto ns_ptr = make_random_namespace();
     const Namespace& ns = ns_ptr->ns();
 
@@ -213,8 +213,8 @@ TEST_P(VolManagerRestartTest, localrestart3)
     //    backend::Namespace ns;
     v = newVolume("volume1",
                   ns);
-    ASSERT_TRUE(v);
-    writeToVolume(v,0,4096,"bartd");
+    ASSERT_TRUE(v != nullptr);
+    writeToVolume(*v,0,4096,"bartd");
 
     // Put some bogus data in the metadatastore...
     ClusterLocationAndHash loc_and_hash(ClusterLocation(5,
@@ -231,8 +231,8 @@ TEST_P(VolManagerRestartTest, localrestart3)
                   RemoveVolumeCompletely::F);
 
     ASSERT_NO_THROW(v = localRestart(ns));
-    checkVolume(v,0,4096,"bartd");
-    checkCurrentBackendSize(v);
+    checkVolume(*v,0,4096,"bartd");
+    checkCurrentBackendSize(*v);
 }
 
 TEST_P(VolManagerRestartTest, test1)
@@ -240,7 +240,7 @@ TEST_P(VolManagerRestartTest, test1)
     auto ns_ptr = make_random_namespace();
     const Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume("volume1",
+    SharedVolumePtr v = newVolume("volume1",
                           ns);
     destroyVolume(v,
                   DeleteLocalData::T,
@@ -253,13 +253,13 @@ TEST_P(VolManagerRestartTest, test2)
     const Namespace& ns = ns_ptr->ns();
 
     // backend::Namespace ns;
-    Volume* v = newVolume("volume1",
+    SharedVolumePtr v = newVolume("volume1",
                           ns);
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   4096,
                   "xyz");
-    checkVolume(v,
+    checkVolume(*v,
                 0,
                 4096,
                 "xyz");
@@ -270,11 +270,11 @@ TEST_P(VolManagerRestartTest, test2)
     v = 0;
 
     ASSERT_NO_THROW(v = localRestart(ns));
-    checkVolume(v,
+    checkVolume(*v,
                 0,
                 4096,
                 "xyz");
-    checkCurrentBackendSize(v);
+    checkCurrentBackendSize(*v);
 
     destroyVolume(v,
                   DeleteLocalData::T,
@@ -288,10 +288,10 @@ TEST_P(VolManagerRestartTest, testRescheduledSCOS)
     const Namespace& ns = ns_ptr->ns();
 
     // backend::Namespace ns;
-    Volume* v = newVolume(v1,
+    SharedVolumePtr v = newVolume(v1,
                           ns);
     VolumeConfig cfg = v->get_config();
-    writeToVolume(v, 0, 4096, "doh");
+    writeToVolume(*v, 0, 4096, "doh");
     ClusterLocation l(1);
 
     std::string scoptr_name =
@@ -299,7 +299,7 @@ TEST_P(VolManagerRestartTest, testRescheduledSCOS)
 
     v->createSnapshot(SnapshotName("first"));
 
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     destroyVolume(v,
                   DeleteLocalData::F,
@@ -319,9 +319,9 @@ TEST_P(VolManagerRestartTest, testRescheduledSCOS)
      restartVolume(cfg);
      v = getVolume(v1);
 
-     ASSERT_TRUE(v);
-     checkCurrentBackendSize(v);
-     waitForThisBackendWrite(v);
+     ASSERT_TRUE(v != nullptr);
+     checkCurrentBackendSize(*v);
+     waitForThisBackendWrite(*v);
 }
 
 TEST_P(VolManagerRestartTest, test3)
@@ -330,35 +330,35 @@ TEST_P(VolManagerRestartTest, test3)
     const Namespace& ns = ns_ptr->ns();
 
     // backend::Namespace ns;
-    Volume* v = newVolume("volume1",
+    SharedVolumePtr v = newVolume("volume1",
                           ns);
 
-    writeToVolume(v, 0, 4096, "xyz");
-    checkVolume(v, 0, 4096, "xyz");
+    writeToVolume(*v, 0, 4096, "xyz");
+    checkVolume(*v, 0, 4096, "xyz");
 
     v->createSnapshot(SnapshotName("first"));
 
-    writeToVolume(v, 0, 4096, "abc");
-    checkVolume(v, 0, 4096, "abc");
+    writeToVolume(*v, 0, 4096, "abc");
+    checkVolume(*v, 0, 4096, "abc");
 
     VolumeConfig cfg = v->get_config();
 
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
     destroyVolume(v,
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::F);
 
-    Volume* vNew = 0;
+    SharedVolumePtr vNew = 0;
     vNew = getVolume(VolumeId("volume1"));
     ASSERT_FALSE(vNew);
 
     restartVolume(cfg);
 
     vNew = getVolume(VolumeId("volume1"));
-    ASSERT_TRUE(vNew);
+    ASSERT_TRUE(vNew != nullptr);
 
-    checkVolume(vNew, 0, 4096, "xyz");
-    checkCurrentBackendSize(vNew);
+    checkVolume(*vNew, 0, 4096, "xyz");
+    checkCurrentBackendSize(*vNew);
 
     destroyVolume(vNew,
                   DeleteLocalData::T,
@@ -375,30 +375,30 @@ TEST_P(VolManagerRestartTest, RestoreSnapWith)
 
     // backend::Namespace ns;
 
-    Volume* v = newVolume(vid,
+    SharedVolumePtr v = newVolume(vid,
                           ns);
     VolumeConfig cfg = v->get_config();
 
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
-    writeToVolume(v, 0, 4096, "Immanuel");
-    createSnapshot(v,"snap1");
-    writeToVolume(v,0, 4096, "Bart");
+    writeToVolume(*v, 0, 4096, "Immanuel");
+    createSnapshot(*v,"snap1");
+    writeToVolume(*v,0, 4096, "Bart");
 
     v->setFailOverCacheConfig(boost::none);
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     v->restoreSnapshot(SnapshotName("snap1"));
 
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
     v->scheduleBackendSync();
 
-    while(not isVolumeSyncedToBackend(v))
+    while(not isVolumeSyncedToBackend(*v))
     {
         sleep(1);
     }
 
-    flushFailOverCache(v);
+    flushFailOverCache(*v);
 
     destroyVolume(v,
                   DeleteLocalData::T,
@@ -406,10 +406,10 @@ TEST_P(VolManagerRestartTest, RestoreSnapWith)
     v = 0;
     restartVolume(cfg);
     v = getVolume(vid);
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
 
-    checkVolume(v,0, 4096,"Immanuel");
-    checkCurrentBackendSize(v);
+    checkVolume(*v,0, 4096,"Immanuel");
+    checkCurrentBackendSize(*v);
 
     destroyVolume(v,
                   DeleteLocalData::T,
@@ -422,17 +422,17 @@ TEST_P(VolManagerRestartTest, DoubleRestartSmallTLogs)
     const Namespace& ns = ns_ptr->ns();
 
     //backend::Namespace ns;
-    Volume* v = newVolume("volume1",
+    SharedVolumePtr v = newVolume("volume1",
                           ns);
 
     for(int i = 0; i < 128; ++i)
     {
-        writeToVolume(v,i*1024,1024,"xyz");
+        writeToVolume(*v,i*1024,1024,"xyz");
     }
 
-    scheduleBackendSync(v);
+    scheduleBackendSync(*v);
 
-    while(not isVolumeSyncedToBackend(v))
+    while(not isVolumeSyncedToBackend(*v))
     {
         sleep(1);
     }
@@ -448,22 +448,22 @@ TEST_P(VolManagerRestartTest, DoubleRestartSmallTLogs)
 
     restartVolume(cfg);
     v = getVolume(VolumeId("volume1"));
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
     for(int i = 0; i < 128; ++i)
     {
-         checkVolume(v,i*1024,1024,"xyz");
+         checkVolume(*v,i*1024,1024,"xyz");
     }
 
 
     for(int i =0; i < 128; ++i)
     {
 
-        writeToVolume(v, i*1024, 1024,"abc");
+        writeToVolume(*v, i*1024, 1024,"abc");
     }
 
-    scheduleBackendSync(v);
+    scheduleBackendSync(*v);
 
-    while(not isVolumeSyncedToBackend(v))
+    while(not isVolumeSyncedToBackend(*v))
     {
         sleep(1);
     }
@@ -478,13 +478,13 @@ TEST_P(VolManagerRestartTest, DoubleRestartSmallTLogs)
 
     restartVolume(cfg);
     v = getVolume(VolumeId("volume1"));
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
 
     for(int i = 0; i < 128; ++i)
     {
-        checkVolume(v,i*1024,1024,"abc");
+        checkVolume(*v,i*1024,1024,"abc");
     }
-    checkCurrentBackendSize(v);
+    checkCurrentBackendSize(*v);
 }
 
 TEST_P(VolManagerRestartTest, DoubleRestart)
@@ -493,18 +493,18 @@ TEST_P(VolManagerRestartTest, DoubleRestart)
     const Namespace& ns = ns_ptr->ns();
 
     // backend::Namespace ns;
-    Volume* v = newVolume("volume1",
+    SharedVolumePtr v = newVolume("volume1",
                           ns);
 
     VolumeConfig cfg = v->get_config();
 
     size_t size = 20 << 10;
 
-    writeToVolume(v,0,size,"xyz");
+    writeToVolume(*v,0,size,"xyz");
 
-    scheduleBackendSync(v);
+    scheduleBackendSync(*v);
 
-    while(not isVolumeSyncedToBackend(v))
+    while(not isVolumeSyncedToBackend(*v))
     {
         sleep(1);
     }
@@ -519,14 +519,14 @@ TEST_P(VolManagerRestartTest, DoubleRestart)
 
     restartVolume(cfg);
     v = getVolume(VolumeId("volume1"));
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
 
-    checkVolume(v,0,size,"xyz");
-    writeToVolume(v, 0, size,"abc");
+    checkVolume(*v,0,size,"xyz");
+    writeToVolume(*v, 0, size,"abc");
 
-    scheduleBackendSync(v);
+    scheduleBackendSync(*v);
 
-    while(not isVolumeSyncedToBackend(v))
+    while(not isVolumeSyncedToBackend(*v))
     {
         sleep(1);
     }
@@ -541,9 +541,9 @@ TEST_P(VolManagerRestartTest, DoubleRestart)
 
     restartVolume(cfg);
     v = getVolume(VolumeId("volume1"));
-    ASSERT_TRUE(v);
-    checkVolume(v,0,size,"abc");
-    checkCurrentBackendSize(v);
+    ASSERT_TRUE(v != nullptr);
+    checkVolume(*v,0,size,"abc");
+    checkCurrentBackendSize(*v);
 }
 
 TEST_P(VolManagerRestartTest, test4)
@@ -552,45 +552,45 @@ TEST_P(VolManagerRestartTest, test4)
     const Namespace& ns = ns_ptr->ns();
 
     // backend::Namespace ns;
-    Volume* v = newVolume("volume1",
+    SharedVolumePtr v = newVolume("volume1",
 			  ns);
 
     size_t size = 20 << 10;
-    writeToVolume(v, 0, size, "xyz");
-    checkVolume(v, 0, size, "xyz");
+    writeToVolume(*v, 0, size, "xyz");
+    checkVolume(*v, 0, size, "xyz");
 
     v->createSnapshot(SnapshotName("first"));
 
-    writeToVolume(v, 0, size, "abc");
-    checkVolume(v, 0, size, "abc");
-    waitForThisBackendWrite(v);
+    writeToVolume(*v, 0, size, "abc");
+    checkVolume(*v, 0, size, "abc");
+    waitForThisBackendWrite(*v);
 
     v->createSnapshot(SnapshotName("second"));
 
-    writeToVolume(v, 0, size, "def");
-    checkVolume(v, 0, size, "def");
+    writeToVolume(*v, 0, size, "def");
+    checkVolume(*v, 0, size, "def");
 
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
     VolumeConfig cfg = v->get_config();
     destroyVolume(v,
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::F);
 
-    Volume* vNew = 0;
+    SharedVolumePtr vNew = 0;
     vNew = getVolume(VolumeId("volume1"));
     ASSERT_FALSE(vNew);
 
     restartVolume(cfg);
 
     vNew = getVolume(VolumeId("volume1"));
-    ASSERT_TRUE(vNew);
+    ASSERT_TRUE(vNew != nullptr);
 
-    checkVolume(vNew, 0, size, "abc");
-    restoreSnapshot(vNew, "first");
-    checkVolume(vNew, 0, size,"xyz");
-    writeToVolume(vNew, 0, 2048, "bdwz");
+    checkVolume(*vNew, 0, size, "abc");
+    restoreSnapshot(*vNew, "first");
+    checkVolume(*vNew, 0, size,"xyz");
+    writeToVolume(*vNew, 0, 2048, "bdwz");
 
-    checkCurrentBackendSize(vNew);
+    checkCurrentBackendSize(*vNew);
 
     destroyVolume(vNew,
                   DeleteLocalData::T,
@@ -603,30 +603,30 @@ TEST_P(VolManagerRestartTest, clone1)
     const Namespace& ns = ns_ptr->ns();
 
     //    backend::Namespace ns;
-    Volume* v = newVolume("volume1",
+    SharedVolumePtr v = newVolume("volume1",
                           ns);
 
     size_t size = 20 << 10;
 
-    writeToVolume(v, 0, size, "xyz");
-    checkVolume(v, 0, size, "xyz");
+    writeToVolume(*v, 0, size, "xyz");
+    checkVolume(*v, 0, size, "xyz");
 
     v->createSnapshot(SnapshotName("first"));
-    waitForThisBackendWrite(v);
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
+    waitForThisBackendWrite(*v);
     auto ns1_ptr = make_random_namespace();
     const Namespace& ns1 = ns1_ptr->ns();
 
-    Volume* clone = createClone("clone1",
+    SharedVolumePtr clone = createClone("clone1",
                                 ns1,
                                 ns,
                                 "first");
     clone->createSnapshot(SnapshotName("snap1"));
 
-    checkVolume(v, 0, size, "xyz");
+    checkVolume(*v, 0, size, "xyz");
 
-    waitForThisBackendWrite(clone);
-    waitForThisBackendWrite(clone);
+    waitForThisBackendWrite(*clone);
+    waitForThisBackendWrite(*clone);
 
     VolumeConfig vCfg = v->get_config();
     VolumeConfig cCfg = clone->get_config();
@@ -638,7 +638,7 @@ TEST_P(VolManagerRestartTest, clone1)
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::F);
 
-    Volume* vClone = 0;
+    SharedVolumePtr vClone = 0;
 
     vClone = getVolume(VolumeId("clone1"));
     ASSERT_FALSE(vClone);
@@ -646,14 +646,14 @@ TEST_P(VolManagerRestartTest, clone1)
     restartVolume(cCfg);
 
     vClone = getVolume(VolumeId("clone1"));
-    ASSERT_TRUE(vClone);
+    ASSERT_TRUE(vClone != nullptr);
 
-    checkVolume(vClone,
+    checkVolume(*vClone,
                 0,
                  size,
                  "xyz");
-     writeToVolume(vClone, 0, size, "abdr");
-     checkCurrentBackendSize(vClone);
+     writeToVolume(*vClone, 0, size, "abdr");
+     checkCurrentBackendSize(*vClone);
 
      destroyVolume(vClone,
                    DeleteLocalData::T,
@@ -666,20 +666,20 @@ TEST_P(VolManagerRestartTest, test5)
     const Namespace& ns = ns_ptr->ns();
 
     // backend::Namespace ns;
-    Volume* v = newVolume("volume1",
+    SharedVolumePtr v = newVolume("volume1",
 			  ns);
 
     size_t size = 20 << 10;
-    writeToVolume(v, 0, size, "xyz");
-    checkVolume(v, 0, size, "xyz");
+    writeToVolume(*v, 0, size, "xyz");
+    checkVolume(*v, 0, size, "xyz");
 
     v->createSnapshot(SnapshotName("first"));
 
-    writeToVolume(v, 0, size, "abc");
-    checkVolume(v, 0, size, "abc");
-    waitForThisBackendWrite(v);
+    writeToVolume(*v, 0, size, "abc");
+    checkVolume(*v, 0, size, "abc");
+    waitForThisBackendWrite(*v);
     v->createSnapshot(SnapshotName("second"));\
-    while(not isVolumeSyncedToBackend(v))
+    while(not isVolumeSyncedToBackend(*v))
     {
         sleep(1);
     }
@@ -687,13 +687,13 @@ TEST_P(VolManagerRestartTest, test5)
     auto ns2_ptr = make_random_namespace();
     const Namespace& ns2 = ns2_ptr->ns();
 
-    Volume* clone = createClone("clone1",
+    SharedVolumePtr clone = createClone("clone1",
                                 ns2,
                                 ns,
                                 "second");
 
-    writeToVolume(clone, 0, size, "def");
-    checkVolume(clone,
+    writeToVolume(*clone, 0, size, "def");
+    checkVolume(*clone,
                 0,
                 size,
                 "def");
@@ -702,15 +702,15 @@ TEST_P(VolManagerRestartTest, test5)
     VolumeConfig vCfg = v->get_config();
     VolumeConfig cCfg = clone->get_config();
 
-    scheduleBackendSync(v);
+    scheduleBackendSync(*v);
 
-    while(not isVolumeSyncedToBackend(v))
+    while(not isVolumeSyncedToBackend(*v))
     {
         sleep(1);
     }
-    scheduleBackendSync(clone);
+    scheduleBackendSync(*clone);
 
-    while(not isVolumeSyncedToBackend(clone))
+    while(not isVolumeSyncedToBackend(*clone))
     {
         sleep(1);
     }
@@ -723,8 +723,8 @@ TEST_P(VolManagerRestartTest, test5)
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::F);
 
-    Volume* vNew = 0;
-    Volume* vClone = 0;
+    SharedVolumePtr vNew = 0;
+    SharedVolumePtr vClone = 0;
 
     vNew = getVolume(VolumeId("volume1"));
     ASSERT_FALSE(vNew);
@@ -735,28 +735,28 @@ TEST_P(VolManagerRestartTest, test5)
     restartVolume(cCfg);
 
     vNew = getVolume(VolumeId("volume1"));
-    ASSERT_TRUE(vNew);
+    ASSERT_TRUE(vNew != nullptr);
     vClone = getVolume(VolumeId("clone1"));
-    ASSERT_TRUE(vClone);
+    ASSERT_TRUE(vClone != nullptr);
 
-    checkVolume(vNew,
+    checkVolume(*vNew,
                 0,
                 size,
                 "abc");
-    checkCurrentBackendSize(vNew);
+    checkCurrentBackendSize(*vNew);
 
-    checkVolume(vClone,
+    checkVolume(*vClone,
                 0,
                 size,
                 "def");
-    checkCurrentBackendSize(vClone);
+    checkCurrentBackendSize(*vClone);
 
-    ASSERT_NO_THROW(restoreSnapshot(vNew, "first"));
+    ASSERT_NO_THROW(restoreSnapshot(*vNew, "first"));
     //vNew->put();
     //vClone->put();
 
-    writeToVolume(vClone, 0, size, "abdr");
-    writeToVolume(vNew, 0, size, "abdr");
+    writeToVolume(*vClone, 0, size, "abdr");
+    writeToVolume(*vNew, 0, size, "abdr");
     destroyVolume(vClone,
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::T);
@@ -772,22 +772,22 @@ TEST_P(VolManagerRestartTest, test6)
     const Namespace& ns = ns_ptr->ns();
 
     // backend::Namespace ns;
-    Volume* v = newVolume("volume1",
+    SharedVolumePtr v = newVolume("volume1",
                         ns);
 
-    writeToVolume(v, 0, 16384, "xyz");
+    writeToVolume(*v, 0, 16384, "xyz");
 
-    checkVolume(v, 0, 16384, "xyz");
+    checkVolume(*v, 0, 16384, "xyz");
 
     v->createSnapshot(SnapshotName("first"));
 
-    writeToVolume(v, 0, 16384, "abc");
-    checkVolume(v, 0, 16384, "abc");
-    waitForThisBackendWrite(v);
+    writeToVolume(*v, 0, 16384, "abc");
+    checkVolume(*v, 0, 16384, "abc");
+    waitForThisBackendWrite(*v);
     auto ns1_ptr = make_random_namespace();
     const Namespace& ns1 = ns1_ptr->ns();
 
-    Volume* clone = createClone("clone1",
+    SharedVolumePtr clone = createClone("clone1",
                                 ns1,
                                 ns,
                                 "first");
@@ -796,31 +796,31 @@ TEST_P(VolManagerRestartTest, test6)
 
     v->createSnapshot(SnapshotName("second"));
 
-    writeToVolume(clone,
+    writeToVolume(*clone,
                   0,
                   8192,
                   "def");
-    checkVolume(clone,
+    checkVolume(*clone,
                 0,
                 8192,
                 "def");
 
-    checkVolume(clone,
+    checkVolume(*clone,
                 16,
                 8192,
                 "zxy");
-    checkCurrentBackendSize(clone);
+    checkCurrentBackendSize(*clone);
 
     clone->createSnapshot(SnapshotName("firstclonesnap"));
 
     VolumeConfig vCfg = v->get_config();
     VolumeConfig cCfg = clone->get_config();
 
-    waitForThisBackendWrite(v);
-    waitForThisBackendWrite(v);
-    waitForThisBackendWrite(v);
-    waitForThisBackendWrite(clone);
-    waitForThisBackendWrite(clone);
+    waitForThisBackendWrite(*v);
+    waitForThisBackendWrite(*v);
+    waitForThisBackendWrite(*v);
+    waitForThisBackendWrite(*clone);
+    waitForThisBackendWrite(*clone);
     destroyVolume(clone,
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::F);
@@ -829,8 +829,8 @@ TEST_P(VolManagerRestartTest, test6)
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::F);
 
-    Volume* vNew = 0;
-    Volume* vClone = 0;
+    SharedVolumePtr vNew = 0;
+    SharedVolumePtr vClone = 0;
 
     vNew = getVolume(VolumeId("volume1"));
     ASSERT_FALSE(vNew);
@@ -841,25 +841,25 @@ TEST_P(VolManagerRestartTest, test6)
     restartVolume(vCfg);
 
     vNew = getVolume(VolumeId("volume1"));
-    ASSERT_TRUE(vNew);
+    ASSERT_TRUE(vNew != nullptr);
     vClone = getVolume(VolumeId("clone1"));
-    ASSERT_TRUE(vClone);
+    ASSERT_TRUE(vClone != nullptr);
 
 
-     checkVolume(vNew,
+     checkVolume(*vNew,
                  0,
                  16384,
                  "abc");
-     checkCurrentBackendSize(vNew);
-     checkVolume(vClone,
+     checkCurrentBackendSize(*vNew);
+     checkVolume(*vClone,
                  0,
                  8192,
                  "def");
-     checkVolume(vClone,
+     checkVolume(*vClone,
                  16,
                  8192,
                  "zxy");
-     checkCurrentBackendSize(vClone);
+     checkCurrentBackendSize(*vClone);
 
      //vNew->put();
      //vClone->put();
@@ -879,24 +879,24 @@ TEST_P(VolManagerRestartTest,test7)
     const Namespace& ns = ns_ptr->ns();
 
     // backend::Namespace ns;
-    Volume* v = newVolume(volume,
+    SharedVolumePtr v = newVolume(volume,
                           ns);
     //    setTLogMaxEntries(v, 3);
 
     for(int i = 0; i < 50; ++i)
     {
-        writeToVolume(v, 0, 8192, "g");
+        writeToVolume(*v, 0, 8192, "g");
     }
 
-    checkVolume(v, 0, 8192, "g");
-    checkCurrentBackendSize(v);
+    checkVolume(*v, 0, 8192, "g");
+    checkCurrentBackendSize(*v);
 
     v->createSnapshot(SnapshotName("first"));
 
-    waitForThisBackendWrite(v);
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
+    waitForThisBackendWrite(*v);
 
-    std::vector<Volume*> clones;
+    std::vector<SharedVolumePtr> clones;
     std::vector<std::unique_ptr<WithRandomNamespace> > nss;
 
     const uint32_t num_clones = 0xF;
@@ -908,7 +908,7 @@ TEST_P(VolManagerRestartTest,test7)
         nss.push_back(make_random_namespace());
         std::string is = boost::lexical_cast<std::string>(i);
 
-        Volume* clone = createClone(volume + boost::lexical_cast<std::string>(i),
+        SharedVolumePtr clone = createClone(volume + boost::lexical_cast<std::string>(i),
                                     nss.back()->ns(),
                                     prev_namespace,
                                     "first");
@@ -918,14 +918,14 @@ TEST_P(VolManagerRestartTest,test7)
         //setTLogMaxEntries(clone, 3);
         for(int j = 0; j < 50; ++j)
         {
-            writeToVolume(clone, (i+1) * 16, 8192, is);
+            writeToVolume(*clone, (i+1) * 16, 8192, is);
         }
-        checkVolume(clone, (i+1)*16, 8192, is);
-        checkCurrentBackendSize(clone);
+        checkVolume(*clone, (i+1)*16, 8192, is);
+        checkCurrentBackendSize(*clone);
 
         clone->createSnapshot(SnapshotName("first"));
-        waitForThisBackendWrite(clone);
-        waitForThisBackendWrite(clone);
+        waitForThisBackendWrite(*clone);
+        waitForThisBackendWrite(*clone);
     }
 
     VolumeConfig lastCloneConfig = clones[num_clones]->get_config();
@@ -950,17 +950,17 @@ TEST_P(VolManagerRestartTest,test7)
 
     restartVolume(lastCloneConfig);
 
-    Volume* lastClone = getVolume(VolumeId(volume + boost::lexical_cast<std::string>(num_clones)));
+    SharedVolumePtr lastClone = getVolume(VolumeId(volume + boost::lexical_cast<std::string>(num_clones)));
 
     for(unsigned i = 0; i <= num_clones; ++i)
     {
         std::string is = boost::lexical_cast<std::string>(i);
 
-        checkVolume(lastClone,
+        checkVolume(*lastClone,
                     (i+1) * 16,
                     8192,
                     is);
-        checkCurrentBackendSize(lastClone);
+        checkCurrentBackendSize(*lastClone);
     }
 
     //lastClone->put();
@@ -977,11 +977,11 @@ TEST_P(VolManagerRestartTest, same_volume_name_different_namespaces)
 
     //    backend::Namespace nid1;
 
-    Volume* v = newVolume(vid1, nid1);
-    writeToVolume(v, 0, 4096, "xyz");
+    SharedVolumePtr v = newVolume(vid1, nid1);
+    writeToVolume(*v, 0, 4096, "xyz");
     v->createSnapshot(SnapshotName("first"));
     VolumeConfig cfg1 = v->get_config();
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     auto ns2_ptr = make_random_namespace();
     const Namespace& nid2 = ns2_ptr->ns();
@@ -999,10 +999,10 @@ TEST_P(VolManagerRestartTest, same_volume_name_different_namespaces)
 
     v = newVolume(vid1,
                   nid2);
-    writeToVolume(v, 0, 4096, "abc");
+    writeToVolume(*v, 0, 4096, "abc");
     v->createSnapshot(SnapshotName("first"));
     VolumeConfig cfg2 = v->get_config();
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     destroyVolume(v,
                   DeleteLocalData::T,
@@ -1011,8 +1011,8 @@ TEST_P(VolManagerRestartTest, same_volume_name_different_namespaces)
     restartVolume(cfg1);
 
     v = getVolume(vid1);
-    checkVolume(v,0, 4096,"xyz");
-    checkCurrentBackendSize(v);
+    checkVolume(*v,0, 4096,"xyz");
+    checkCurrentBackendSize(*v);
 
     ASSERT_THROW(restartVolume(cfg2), VolManager::VolumeNameAlreadyPresent);
     destroyVolume(v,
@@ -1022,7 +1022,7 @@ TEST_P(VolManagerRestartTest, same_volume_name_different_namespaces)
     restartVolume(cfg2);
 
     v = getVolume(vid1);
-    checkVolume(v,0, 4096,"abc");
+    checkVolume(*v,0, 4096,"abc");
 
     ASSERT_THROW(restartVolume(cfg1), VolManager::VolumeNameAlreadyPresent);
     destroyVolume(v,
@@ -1036,17 +1036,17 @@ TEST_P(VolManagerRestartTest, DISABLED_differenttlogpath)
     auto ns_ptr = make_random_namespace();
     const Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns);
 
-    ASSERT_TRUE(v);
-    writeToVolume(v, 0, 4096, "xyz");
-    checkVolume(v, 0, 4096, "xyz");
+    ASSERT_TRUE(v != nullptr);
+    writeToVolume(*v, 0, 4096, "xyz");
+    checkVolume(*v, 0, 4096, "xyz");
 
     v->createSnapshot(SnapshotName("first"));
 
-    writeToVolume(v, 0, 4096, "abc");
-    checkVolume(v, 0, 4096, "abc");
+    writeToVolume(*v, 0, 4096, "abc");
+    checkVolume(*v, 0, 4096, "abc");
 
     VolumeConfig cfg = v->get_config();
     const fs::path newTlogPath = getVolDir(VolumeId("volume1")) / "newTlogsPath";
@@ -1055,25 +1055,25 @@ TEST_P(VolManagerRestartTest, DISABLED_differenttlogpath)
     // snprintf(cfg.tlog_path,PATH_MAX,"%s",
     //          newTlogPath.file_string().c_str());
 
-    waitForThisBackendWrite(v);
-    waitForThisBackendWrite(v);
-    checkCurrentBackendSize(v);
+    waitForThisBackendWrite(*v);
+    waitForThisBackendWrite(*v);
+    checkCurrentBackendSize(*v);
 
     destroyVolume(v,
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::F);
 
-    Volume* vNew = 0;
+    SharedVolumePtr vNew = 0;
     vNew = getVolume(VolumeId("volume1"));
     ASSERT_FALSE(vNew);
 
     restartVolume(cfg);
 
     vNew = getVolume(VolumeId("volume1"));
-    ASSERT_TRUE(vNew);
+    ASSERT_TRUE(vNew != nullptr);
 
-    checkVolume(vNew, 0, 4096, "xyz");
-    checkCurrentBackendSize(vNew);
+    checkVolume(*vNew, 0, 4096, "xyz");
+    checkCurrentBackendSize(*vNew);
 
     destroyVolume(vNew,
                   DeleteLocalData::T,
@@ -1085,20 +1085,20 @@ TEST_P(VolManagerRestartTest, restartNothing)
     auto ns_ptr = make_random_namespace();
     const Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
 			  ns);
-    ASSERT_TRUE(v);
-    writeToVolume(v, 0, 4096, "xyz");
+    ASSERT_TRUE(v != nullptr);
+    writeToVolume(*v, 0, 4096, "xyz");
     VolumeConfig cfg = v->get_config();
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
     destroyVolume(v,
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::F);
-    Volume* vNew = 0;
+    SharedVolumePtr vNew = 0;
     restartVolume(cfg);
     vNew = getVolume(VolumeId("volume1"));
-    ASSERT_TRUE(vNew);
-    checkVolume(vNew, 0, 4096, "\0");
+    ASSERT_TRUE(vNew != nullptr);
+    checkVolume(*vNew, 0, 4096, "\0");
     destroyVolume(vNew,
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::T);
@@ -1110,14 +1110,14 @@ TEST_P(VolManagerRestartTest, failovercache0)
     auto ns_ptr = make_random_namespace();
     const Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns);
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
 
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     VolumeConfig cfg = v->get_config();
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   4096,
                   "abc");
@@ -1133,42 +1133,42 @@ TEST_P(VolManagerRestartTest, failovercache1)
     auto ns_ptr = make_random_namespace();
     const Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
 			  ns);
 
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
     ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
 
     VolumeConfig cfg = v->get_config();
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   4096,
                   "abc");
 
     v->createSnapshot(SnapshotName("snap1"));
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
     {
         SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v,3,
                                               DeleteLocalData::T,
                                               RemoveVolumeCompletely::F);
 
 
-        writeToVolume(v,
+        writeToVolume(*v,
                       0,
                       4096,
                       "def");
-        flushFailOverCache(v);
+        flushFailOverCache(*v);
     }
 
-    Volume* v1 = 0;
+    SharedVolumePtr v1 = 0;
     v1 = getVolume(VolumeId("volume1"));
     ASSERT_FALSE(v1);
 
     restartVolume(cfg);
     v1 = getVolume(VolumeId("volume1"));
-    ASSERT_TRUE(v1);
-    checkVolume(v1,0,4096,"def");
-    checkCurrentBackendSize(v1);
+    ASSERT_TRUE(v1 != nullptr);
+    checkVolume(*v1,0,4096,"def");
+    checkCurrentBackendSize(*v1);
 
     destroyVolume(v1,
                   DeleteLocalData::T,
@@ -1182,21 +1182,21 @@ TEST_P(VolManagerRestartTest, failovercache2)
     auto ns_ptr = make_random_namespace();
     const Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
 			  ns);
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
 
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     VolumeConfig cfg = v->get_config();
-    writeToVolume(v,
+    writeToVolume(*v,
                   4096,
                   4096,
                   "abc");
 
     v->createSnapshot(SnapshotName("snap1"));
-    waitForThisBackendWrite(v);
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
+    waitForThisBackendWrite(*v);
     {
         SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v,3,
                                               DeleteLocalData::T,
@@ -1207,28 +1207,28 @@ TEST_P(VolManagerRestartTest, failovercache2)
             std::stringstream ss;
             ss << i;
 
-            writeToVolume(v,
+            writeToVolume(*v,
                           i*512,
                           4096,
                           ss.str());
         }
     }
 
-    Volume* v1 = 0;
+    SharedVolumePtr v1 = 0;
     v1 = getVolume(VolumeId("volume1"));
     ASSERT_FALSE(v1);
 
     restartVolume(cfg);
     v1 = getVolume(VolumeId("volume1"));
-    ASSERT_TRUE(v1);
+    ASSERT_TRUE(v1 != nullptr);
     for(int i = 0; i < 32; ++i)
     {
         std::stringstream ss;
         ss << i;
 
-        checkVolume(v1,i*512,4096,ss.str());
+        checkVolume(*v1,i*512,4096,ss.str());
     }
-    checkCurrentBackendSize(v1);
+    checkCurrentBackendSize(*v1);
 
     destroyVolume(v1,
                   DeleteLocalData::T,
@@ -1241,44 +1241,44 @@ TEST_P(VolManagerRestartTest, failovercache3)
     auto ns_ptr = make_random_namespace();
     const Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
 			  ns);
 
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     VolumeConfig cfg = v->get_config();
-        writeToVolume(v,
+        writeToVolume(*v,
                       0,
                       4096,
                       "abc");
 
     v->createSnapshot(SnapshotName("snap1"));
-    waitForThisBackendWrite(v);
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
+    waitForThisBackendWrite(*v);
     {
         SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v,3,
                                               DeleteLocalData::T,
                                               RemoveVolumeCompletely::F);
 
 
-        writeToVolume(v,
+        writeToVolume(*v,
                       0,
                       32768,
                       "def");
 
-        checkVolume(v,0,32768,"def");
+        checkVolume(*v,0,32768,"def");
     }
 
-    Volume* v1 = 0;
+    SharedVolumePtr v1 = 0;
     v1 = getVolume(VolumeId("volume1"));
     ASSERT_FALSE(v1);
 
     restartVolume(cfg);
     v1 = getVolume(VolumeId("volume1"));
-    ASSERT_TRUE(v1);
-    checkVolume(v1,0,32768,"def");
-    checkCurrentBackendSize(v1);
+    ASSERT_TRUE(v1 != nullptr);
+    checkVolume(*v1,0,32768,"def");
+    checkCurrentBackendSize(*v1);
 
     destroyVolume(v1,
                   DeleteLocalData::T,
@@ -1291,21 +1291,21 @@ TEST_P(VolManagerRestartTest, failovercache4)
     auto ns_ptr = make_random_namespace();
     const Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
 			  ns);
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
 
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     VolumeConfig cfg = v->get_config();
-        writeToVolume(v,
+        writeToVolume(*v,
                       0,
                       4096,
                       "abc");
 
     v->createSnapshot(SnapshotName("snap1"));
-    waitForThisBackendWrite(v);
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
+    waitForThisBackendWrite(*v);
     const uint32_t sz = 6;
 
     {
@@ -1320,18 +1320,18 @@ TEST_P(VolManagerRestartTest, failovercache4)
             unsigned s = 1 << (9 + i);
             std::stringstream ss;
             ss << i;
-            writeToVolume(v, o, s, ss.str());
+            writeToVolume(*v, o, s, ss.str());
             o += s;
         }
     }
 
-    Volume* v1 = 0;
+    SharedVolumePtr v1 = 0;
     v1 = getVolume(VolumeId("volume1"));
     ASSERT_FALSE(v1);
 
     restartVolume(cfg);
     v1 = getVolume(VolumeId("volume1"));
-    ASSERT_TRUE(v1);
+    ASSERT_TRUE(v1 != nullptr);
     uint64_t o = 0;
 
     for(unsigned i = 0; i < sz; i++)
@@ -1339,10 +1339,10 @@ TEST_P(VolManagerRestartTest, failovercache4)
         unsigned s = 1 << (9 + i);
         std::stringstream ss;
         ss << i;
-        checkVolume(v1,o,s,ss.str());
+        checkVolume(*v1,o,s,ss.str());
         o += s;
     }
-    checkCurrentBackendSize(v1);
+    checkCurrentBackendSize(*v1);
 
     destroyVolume(v1,
                   DeleteLocalData::T,
@@ -1355,20 +1355,20 @@ TEST_P(VolManagerRestartTest, failovercache5)
     auto ns_ptr = make_random_namespace();
     const Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
 			  ns);
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
 
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     VolumeConfig cfg = v->get_config();
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   4096,
                   "abc");
 
     v->createSnapshot(SnapshotName("snap1"));
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
     {
         SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v,
                                               3,
@@ -1376,18 +1376,18 @@ TEST_P(VolManagerRestartTest, failovercache5)
                                               RemoveVolumeCompletely::F);
     }
 
-    Volume* v1 = 0;
+    SharedVolumePtr v1 = 0;
     v1 = getVolume(VolumeId("volume1"));
     ASSERT_FALSE(v1);
 
     restartVolume(cfg);
     v1 = getVolume(VolumeId("volume1"));
     v1->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
-    waitForThisBackendWrite(v1);
+    waitForThisBackendWrite(*v1);
 
-    ASSERT_TRUE(v1);
-    checkVolume(v1,0,4096,"abc");
-    checkCurrentBackendSize(v1);
+    ASSERT_TRUE(v1 != nullptr);
+    checkVolume(*v1,0,4096,"abc");
+    checkCurrentBackendSize(*v1);
 
     destroyVolume(v1,
                   DeleteLocalData::T,
@@ -1412,14 +1412,14 @@ TEST_P(VolManagerRestartTest, focReplayAcrossTLogs)
     auto ns_ptr = make_random_namespace();
     const Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
 			  ns);
 
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
     ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
 
     VolumeConfig cfg = v->get_config();
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   4096,
                   "abc");
@@ -1428,7 +1428,7 @@ TEST_P(VolManagerRestartTest, focReplayAcrossTLogs)
 
     uint64_t wsize = v->getClusterSize() * (v->getSCOMultiplier() - 1);
 
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
     {
         SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v,
                                               3,
@@ -1441,14 +1441,14 @@ TEST_P(VolManagerRestartTest, focReplayAcrossTLogs)
 
         do
         {
-            writeToVolume(v,
+            writeToVolume(*v,
                           0,
                           wsize,
                           "def");
 
-            scheduleBackendSync(v);
+            scheduleBackendSync(*v);
 
-            writeToVolume(v,
+            writeToVolume(*v,
                           wsize / v->getLBASize(),
                           wsize,
                           "ghi");
@@ -1456,22 +1456,22 @@ TEST_P(VolManagerRestartTest, focReplayAcrossTLogs)
         }
         while (t1 - t0 <= duration);
 
-        flushFailOverCache(v);
+        flushFailOverCache(*v);
 
-        checkVolume(v, 0, wsize, "def");
-        checkVolume(v, wsize / v->getLBASize(), wsize, "ghi");
+        checkVolume(*v, 0, wsize, "def");
+        checkVolume(*v, wsize / v->getLBASize(), wsize, "ghi");
     }
 
-    Volume* v1 = 0;
+    SharedVolumePtr v1 = 0;
     v1 = getVolume(VolumeId("volume1"));
     ASSERT_FALSE(v1);
 
     restartVolume(cfg);
     v1 = getVolume(VolumeId("volume1"));
-    ASSERT_TRUE(v1);
-    checkVolume(v1, 0, wsize, "def");
-    checkVolume(v1, wsize / v1->getLBASize(), wsize, "ghi");
-    checkCurrentBackendSize(v1);
+    ASSERT_TRUE(v1 != nullptr);
+    checkVolume(*v1, 0, wsize, "def");
+    checkVolume(*v1, wsize / v1->getLBASize(), wsize, "ghi");
+    checkCurrentBackendSize(*v1);
 
     destroyVolume(v1,
                   DeleteLocalData::T,
@@ -1484,34 +1484,34 @@ TEST_P(VolManagerRestartTest, partialsnapshots)
     auto ns_ptr = make_random_namespace();
     const Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
 			  ns);
 
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
 
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     VolumeConfig cfg = v->get_config();
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   4096,
                   "a");
 
     v->createSnapshot(SnapshotName("snap1"));
-    writeToVolume(v,
+    writeToVolume(*v,
                   8,
                   4096,
                   "d");
 
     for(int i=0;i<2;i++)
     {
-        writeToVolume(v,
+        writeToVolume(*v,
                       0,
                       4096,
                       "c");
     }
 
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     {
         SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v,
@@ -1521,38 +1521,38 @@ TEST_P(VolManagerRestartTest, partialsnapshots)
 
         for(int i=0;i<2;++i)
         {
-            writeToVolume(v,
+            writeToVolume(*v,
                           0,
                           4096,
                           "c");
         }
-        createSnapshot(v,"snap2");
-        flushFailOverCache(v);
-        writeSnapshotFileToBackend(v);
+        createSnapshot(*v,"snap2");
+        flushFailOverCache(*v);
+        writeSnapshotFileToBackend(*v);
     }
 
-    Volume* v1 = 0;
+    SharedVolumePtr v1 = 0;
     v1 = getVolume(VolumeId("volume1"));
     ASSERT_FALSE(v1);
     restartVolume(cfg);
     v1 = getVolume(VolumeId("volume1"));
-    ASSERT_TRUE(v1);
-    // checkVolume(v1,0,4096,"c");
-    // checkVolume(v1,8,4096,"d");
+    ASSERT_TRUE(v != nullptr);
+    // checkVolume(*v1,0,4096,"c");
+    // checkVolume(*v1,8,4096,"d");
 
     destroyVolume(v1,
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::F);
 
-     Volume* v2 = 0;
+     SharedVolumePtr v2 = 0;
      v2 = getVolume(VolumeId("volume1"));
      ASSERT_FALSE(v2);
      restartVolume(cfg);
      v2 = getVolume(VolumeId("volume1"));
-     ASSERT_TRUE(v2);
-     checkVolume(v2,0,4096,"c");
-     checkVolume(v2,8,4096,"d");
-     checkCurrentBackendSize(v2);
+     ASSERT_TRUE(v2 != nullptr);
+     checkVolume(*v2,0,4096,"c");
+     checkVolume(*v2,8,4096,"d");
+     checkCurrentBackendSize(*v2);
 }
 
 TEST_P(VolManagerRestartTest, datastoreOverwrite)
@@ -1562,16 +1562,16 @@ TEST_P(VolManagerRestartTest, datastoreOverwrite)
     const Namespace& ns = ns_ptr->ns();
 
 
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
 			  ns);
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
 
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     VolumeConfig cfg = v->get_config();
     for(int i=0;i<64;i++)
     {
-        writeToVolume(v,
+        writeToVolume(*v,
                       0,
                       4096,
                       "abc");
@@ -1581,13 +1581,13 @@ TEST_P(VolManagerRestartTest, datastoreOverwrite)
 
     for(int i=0;i<32;i++)
     {
-        writeToVolume(v,
+        writeToVolume(*v,
                       0,
                       4096,
                       "abc");
     }
 
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     {
         SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v,
@@ -1597,23 +1597,23 @@ TEST_P(VolManagerRestartTest, datastoreOverwrite)
 
         for(int i=0;i<64;++i)
         {
-            writeToVolume(v,
+            writeToVolume(*v,
                           0,
                           4096,
                           "def");
         }
 
-        flushFailOverCache(v);
+        flushFailOverCache(*v);
     }
 
-    Volume* v1 = 0;
+    SharedVolumePtr v1 = 0;
     v1 = getVolume(VolumeId("volume1"));
     ASSERT_FALSE(v1);
     restartVolume(cfg);
     v1 = getVolume(VolumeId("volume1"));
-    ASSERT_TRUE(v1);
-    checkVolume(v1,0,4096,"def");
-    checkCurrentBackendSize(v1);
+    ASSERT_TRUE(v != nullptr);
+    checkVolume(*v1,0,4096,"def");
+    checkCurrentBackendSize(*v1);
 
     destroyVolume(v1,
                   DeleteLocalData::T,
@@ -1628,20 +1628,20 @@ TEST_P(VolManagerRestartTest, backend_restart_non_empty_datastore)
     //const backend::Namespace nspace;
     const std::string volname("volume");
 
-    Volume* v = newVolume(volname,
+    SharedVolumePtr v = newVolume(volname,
 			  nspace);
 
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
     VolumeConfig cfg = v->get_config();
 
     const std::string pattern1("before");
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   4096,
                   pattern1);
 
     v->createSnapshot(SnapshotName("snap"));
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     {
         SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v,
@@ -1650,12 +1650,12 @@ TEST_P(VolManagerRestartTest, backend_restart_non_empty_datastore)
                                               RemoveVolumeCompletely::F);
 
         const std::string pattern2("after");
-        writeToVolume(v,
+        writeToVolume(*v,
                       0,
                       4096,
                       pattern2);
 
-        checkVolume(v,
+        checkVolume(*v,
                     0,
                     4096,
                     pattern2);
@@ -1671,13 +1671,13 @@ TEST_P(VolManagerRestartTest, backend_restart_non_empty_datastore)
 
     v = getVolume(VolumeId(volname));
 
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
 
-    checkVolume(v,
+    checkVolume(*v,
                 0,
                 4096,
                 pattern1);
-    checkCurrentBackendSize(v);
+    checkCurrentBackendSize(*v);
 }
 
 TEST_P(VolManagerRestartTest, testAllTlogEntriesAreReplayed)
@@ -1704,33 +1704,33 @@ TEST_P(VolManagerRestartTest, testAllTlogEntriesAreReplayed)
     auto ns_ptr = make_random_namespace();
     const Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume("volume1",
+    SharedVolumePtr v = newVolume("volume1",
                           ns,
                           VolumeSize(volSize));
 
-    writeToVolume(v, "xyz", 4096);
-    checkVolume(v, "xyz", 4096);
+    writeToVolume(*v, "xyz", 4096);
+    checkVolume(*v, "xyz", 4096);
 
     v->createSnapshot(SnapshotName("first"));
 
     VolumeConfig cfg = v->get_config();
 
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
     destroyVolume(v,
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::F);
 
-    Volume* vNew = 0;
+    SharedVolumePtr vNew = 0;
     vNew = getVolume(VolumeId("volume1"));
     ASSERT_FALSE(vNew);
 
     restartVolume(cfg);
 
     vNew = getVolume(VolumeId("volume1"));
-    ASSERT_TRUE(vNew);
+    ASSERT_TRUE(vNew != nullptr);
 
-    checkVolume(vNew, "xyz", 4096);
-    checkCurrentBackendSize(vNew);
+    checkVolume(*vNew, "xyz", 4096);
+    checkCurrentBackendSize(*vNew);
 
     destroyVolume(vNew,
                   DeleteLocalData::T,
@@ -1746,15 +1746,15 @@ TEST_P(VolManagerRestartTest, plain_backend_restart)
 
     // const backend::Namespace ns;
 
-    Volume* v = newVolume(name, ns, VolumeSize(1 << 20));
+    SharedVolumePtr v = newVolume(name, ns, VolumeSize(1 << 20));
 
     const std::string pattern("pattern");
-    writeToVolume(v, pattern, 4096);
+    writeToVolume(*v, pattern, 4096);
 
     VolumeConfig cfg = v->get_config();
 
     v->scheduleBackendSync();
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     destroyVolume(v,
                   DeleteLocalData::T,
@@ -1762,7 +1762,7 @@ TEST_P(VolManagerRestartTest, plain_backend_restart)
 
     restartVolume(cfg);
     v = getVolume(VolumeId(name));
-    checkVolume(v, pattern, 4096);
+    checkVolume(*v, pattern, 4096);
 }
 
 namespace

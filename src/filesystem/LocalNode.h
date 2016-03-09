@@ -272,7 +272,7 @@ private:
 
     template<typename R, typename... A>
     R
-    with_volume_pointer_(R(LocalNode::*fn)(volumedriver::Volume*,
+    with_volume_pointer_(R(LocalNode::*fn)(volumedriver::WeakVolumePtr,
                                            A... args),
                          const ObjectId& id,
                          A... args);
@@ -283,29 +283,29 @@ private:
                  A... args);
 
     void
-    read_(volumedriver::Volume* vol,
+    read_(volumedriver::WeakVolumePtr vol,
           uint8_t* buf,
           size_t* size,
           off_t off);
 
     void
-    write_(volumedriver::Volume* vol,
+    write_(volumedriver::WeakVolumePtr vol,
            const uint8_t* buf,
            size_t size,
            off_t off);
 
     void
-    sync_(volumedriver::Volume* vol);
+    sync_(volumedriver::WeakVolumePtr vol);
 
     uint64_t
-    get_size_(volumedriver::Volume* vol);
+    get_size_(volumedriver::WeakVolumePtr vol);
 
     void
-    resize_(volumedriver::Volume* vol,
+    resize_(volumedriver::WeakVolumePtr vol,
             uint64_t newsize);
 
     void
-    destroy_(volumedriver::Volume*,
+    destroy_(volumedriver::WeakVolumePtr,
              volumedriver::DeleteLocalData,
              volumedriver::RemoveVolumeCompletely,
              MaybeSyncTimeoutMilliSeconds);

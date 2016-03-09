@@ -42,7 +42,7 @@ public:
 
 TEST_P(CloneVolumeTest, requireParentSnapshotOnNormalClone)
 {
-    Volume* v = 0;
+    SharedVolumePtr v = 0;
     auto ns1_ptr = make_random_namespace();
 
     const backend::Namespace& ns1 = ns1_ptr->ns();
@@ -50,10 +50,10 @@ TEST_P(CloneVolumeTest, requireParentSnapshotOnNormalClone)
 
     v = newVolume(VolumeId("volume1"),
                   ns1);
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
 
     v->createSnapshot(SnapshotName("snap1"));
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
     VolumeId c1ID("clone1");
     auto ns2_ptr = make_random_namespace();
 
@@ -68,7 +68,7 @@ TEST_P(CloneVolumeTest, requireParentSnapshotOnNormalClone)
 
 TEST_P(CloneVolumeTest, test1)
 {
-    Volume* v = 0;
+    SharedVolumePtr v = 0;
     auto ns1_ptr = make_random_namespace();
 
     const backend::Namespace& ns1 = ns1_ptr->ns();
@@ -77,58 +77,53 @@ TEST_P(CloneVolumeTest, test1)
 
     v = newVolume(VolumeId("volume1"),
                   ns1);
-    ASSERT_TRUE(v);
-    writeToVolume(v,
+    ASSERT_TRUE(v != nullptr);
+    writeToVolume(*v,
                   0,
                   4096,
                   "a");
 
     v->createSnapshot(SnapshotName("snap1"));
-    checkCurrentBackendSize(v);
-    waitForThisBackendWrite(v);
+    checkCurrentBackendSize(*v);
+    waitForThisBackendWrite(*v);
 
-    Volume* c1 = 0;
+    SharedVolumePtr c1 = 0;
     VolumeId c1ID("clone1");
     auto ns2_ptr = make_random_namespace();
 
     const backend::Namespace& ns2 = ns2_ptr->ns();
 
-
     c1 = createClone(c1ID,
                      ns2,
                      ns1,
                      "snap1");
-    checkCurrentBackendSize(c1);
-    writeToVolume(c1,
+    checkCurrentBackendSize(*c1);
+    writeToVolume(*c1,
                   4096,
                   4096,
                   "x");
 
     c1->createSnapshot(SnapshotName("snap2"));
 
-    waitForThisBackendWrite(c1);
-    writeToVolume(c1,
+    waitForThisBackendWrite(*c1);
+    writeToVolume(*c1,
                   4096,
                   4096,
                   "b");
 
-    writeToVolume(c1,
+    writeToVolume(*c1,
                   0,
                   4096,
                   "c");
-    checkCurrentBackendSize(c1);
+    checkCurrentBackendSize(*c1);
 
-    waitForThisBackendWrite(c1);
-
+    waitForThisBackendWrite(*c1);
 
     c1->restoreSnapshot(SnapshotName("snap2"));
 
-    checkVolume(c1, 0, 4096, "a");
-    checkVolume(c1, 4096, 4096, "x");
-    checkCurrentBackendSize(c1);
-
-
-
+    checkVolume(*c1, 0, 4096, "a");
+    checkVolume(*c1, 4096, 4096, "x");
+    checkCurrentBackendSize(*c1);
 }
 
 INSTANTIATE_TEST(CloneVolumeTest);

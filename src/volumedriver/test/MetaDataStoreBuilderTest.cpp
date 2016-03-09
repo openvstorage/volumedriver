@@ -98,7 +98,7 @@ protected:
 TEST_P(MetaDataStoreBuilderTest, basics)
 {
     auto ns(make_random_namespace());
-    vd::Volume* v = newVolume(*ns,
+    vd::SharedVolumePtr v = newVolume(*ns,
                               vd::VolumeSize(4ULL << 20));
 
     const fs::path db_dir(directory_ / "db_copy");
@@ -116,14 +116,14 @@ TEST_P(MetaDataStoreBuilderTest, basics)
           copy);
 
     const std::string pattern1("before-first-snapshot");
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   v->getSize() / 2,
                   pattern1);
 
     const SnapshotName snap1("snap1");
     v->createSnapshot(snap1);
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     check(*v,
           copy);
@@ -132,19 +132,19 @@ TEST_P(MetaDataStoreBuilderTest, basics)
           copy);
 
     const std::string pattern2("before-second-snapshot");
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   v->getSize() / 4,
                   pattern2);
 
     const SnapshotName snap2("snap2");
     v->createSnapshot(snap2);
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     check(*v,
           copy);
 
-    restoreSnapshot(v, snap1);
+    restoreSnapshot(*v, snap1);
 
     check(*v,
           copy);
@@ -153,34 +153,34 @@ TEST_P(MetaDataStoreBuilderTest, basics)
 TEST_P(MetaDataStoreBuilderTest, clone)
 {
     auto ns(make_random_namespace());
-    vd::Volume* v = newVolume(*ns,
+    vd::SharedVolumePtr v = newVolume(*ns,
                               vd::VolumeSize(4ULL << 20));
 
     const std::string pattern1("parent");
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   v->getSize() / 2,
                   pattern1);
 
     const SnapshotName psnap("psnap");
     v->createSnapshot(psnap);
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     auto clone_ns(make_random_namespace());
-    vd::Volume* c = createClone(*clone_ns,
+    vd::SharedVolumePtr c = createClone(*clone_ns,
                                 ns->ns(),
                                 psnap);
 
     const std::string pattern2("clone");
 
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   v->getSize() / 4,
                   pattern2);
 
     const SnapshotName csnap("csnap");
     c->createSnapshot(csnap);
-    waitForThisBackendWrite(c);
+    waitForThisBackendWrite(*c);
 
     be::BackendInterfacePtr bi(c->getBackendInterface()->clone());
 

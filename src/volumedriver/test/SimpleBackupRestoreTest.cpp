@@ -127,9 +127,9 @@ public:
 
         const std::string pattern("back up?");
         const size_t size = 1024 * 1024;
-        writeToVolume(wov, 0, size, pattern);
+        writeToVolume(*wov, 0, size, pattern);
         wov->createSnapshot(SnapshotName("snap"));
-        waitForThisBackendWrite(wov);
+        waitForThisBackendWrite(*wov);
         destroyVolume(wov,
                       RemoveVolumeCompletely::F);
 
@@ -154,8 +154,8 @@ public:
                                          PrefetchVolumeData::T,
                                          IgnoreFOCIfUnreachable::T);
                 }
-                Volume* v = getVolume(vid);
-                checkVolume(v, 0, size, pattern);
+                SharedVolumePtr v = getVolume(vid);
+                checkVolume(*v, 0, size, pattern);
             }
         }
         else
@@ -190,9 +190,9 @@ TEST_P(SimpleBackupRestoreTest, no_promotion_without_snapshot)
 
     const std::string pattern("back up?");
     const size_t size = 1024 * 1024;
-    writeToVolume(wov, 0, size, pattern);
+    writeToVolume(*wov, 0, size, pattern);
     wov->scheduleBackendSync();
-    waitForThisBackendWrite(wov);
+    waitForThisBackendWrite(*wov);
     destroyVolume(wov,
                   RemoveVolumeCompletely::F);
 
@@ -212,7 +212,7 @@ TEST_P(SimpleBackupRestoreTest, no_promotion_without_snapshot)
     {
         wov = restartWriteOnlyVolume(cfg);
         wov->createSnapshot(SnapshotName("snap"));
-        waitForThisBackendWrite(wov);
+        waitForThisBackendWrite(*wov);
         destroyVolume(wov,
                       RemoveVolumeCompletely::F);
     }
@@ -228,8 +228,8 @@ TEST_P(SimpleBackupRestoreTest, no_promotion_without_snapshot)
                              IgnoreFOCIfUnreachable::T);
     }
 
-    Volume* v = getVolume(vid);
-    checkVolume(v, 0, size, pattern);
+    SharedVolumePtr v = getVolume(vid);
+    checkVolume(*v, 0, size, pattern);
 }
 
 TEST_P(SimpleBackupRestoreTest, discard_trailing_tlogs_on_promotion)
@@ -250,13 +250,13 @@ TEST_P(SimpleBackupRestoreTest, discard_trailing_tlogs_on_promotion)
 
     const std::string pattern("back up?");
     const size_t size = 1024 * 1024;
-    writeToVolume(wov, 0, size, pattern);
+    writeToVolume(*wov, 0, size, pattern);
     wov->createSnapshot(SnapshotName("snap"));
 
     const std::string pattern2("This is invisible. Or is it?");
-    writeToVolume(wov, 0, size, pattern2);
+    writeToVolume(*wov, 0, size, pattern2);
     wov->scheduleBackendSync();
-    waitForThisBackendWrite(wov);
+    waitForThisBackendWrite(*wov);
     destroyVolume(wov,
                   RemoveVolumeCompletely::F);
 
@@ -277,8 +277,8 @@ TEST_P(SimpleBackupRestoreTest, discard_trailing_tlogs_on_promotion)
                              IgnoreFOCIfUnreachable::T);
     }
 
-    Volume* v = getVolume(vid);
-    checkVolume(v, 0, size, pattern);
+    SharedVolumePtr v = getVolume(vid);
+    checkVolume(*v, 0, size, pattern);
 }
 
 TEST_P(SimpleBackupRestoreTest, rollback_to_previous_snap_if_snapshot_didnt_make_it)
@@ -300,14 +300,14 @@ TEST_P(SimpleBackupRestoreTest, rollback_to_previous_snap_if_snapshot_didnt_make
 
     const std::string pattern("a mysteriously returning message");
     const size_t size = 1024 * 1024;
-    writeToVolume(wov, 0, size, pattern);
+    writeToVolume(*wov, 0, size, pattern);
     const SnapshotName snap("snap");
     wov->createSnapshot(snap);
-    waitForThisBackendWrite(wov);
+    waitForThisBackendWrite(*wov);
     const std::string pattern2("a mysteriously disappearing message");
-    writeToVolume(wov, 0, size, pattern2);
+    writeToVolume(*wov, 0, size, pattern2);
     wov->scheduleBackendSync();
-    waitForThisBackendWrite(wov);
+    waitForThisBackendWrite(*wov);
     {
         SCOPED_DESTROY_WRITE_ONLY_VOLUME_UNBLOCK_BACKEND_FOR_BACKEND_RESTART(wov, 3);
         wov->createSnapshot(SnapshotName("snap2"));
@@ -335,8 +335,8 @@ TEST_P(SimpleBackupRestoreTest, rollback_to_previous_snap_if_snapshot_didnt_make
                              IgnoreFOCIfUnreachable::T);
     }
 
-    Volume* v = getVolume(vid);
-    checkVolume(v, 0, size, pattern);
+    SharedVolumePtr v = getVolume(vid);
+    checkVolume(*v, 0, size, pattern);
     std::list<SnapshotName> snaps;
     v->listSnapshots(snaps);
     EXPECT_EQ(1U, snaps.size());
@@ -362,20 +362,20 @@ TEST_P(SimpleBackupRestoreTest,
 
     const std::string pattern("blah");
     const size_t size = 1024 * 1024;
-    writeToVolume(wov, 0, size, pattern);
+    writeToVolume(*wov, 0, size, pattern);
     const SnapshotName snap("snap");
     wov->createSnapshot(snap);
-    waitForThisBackendWrite(wov);
+    waitForThisBackendWrite(*wov);
     const std::string pattern2("meh");
-    writeToVolume(wov, 0, size, pattern2);
+    writeToVolume(*wov, 0, size, pattern2);
     wov->scheduleBackendSync();
-    waitForThisBackendWrite(wov);
+    waitForThisBackendWrite(*wov);
 
     {
         SCOPED_DESTROY_WRITE_ONLY_VOLUME_UNBLOCK_BACKEND_FOR_BACKEND_RESTART(wov, 3);
         wov->createSnapshot(SnapshotName("snap2"));
         const std::string pattern3("blub");
-        writeToVolume(wov, 0, size, pattern3);
+        writeToVolume(*wov, 0, size, pattern3);
         wov->scheduleBackendSync();
 
         const SnapshotPersistor& sp =

@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "VolManagerTestSetup.h"
-#include "../StatusWriter.h"
 #include "../ScopedVolume.h"
+#include "../StatusWriter.h"
 
 namespace volumedrivertest
 {
@@ -27,8 +27,6 @@ public:
     StatusWriterTest()
         : VolManagerTestSetup("StatusWriterTest")
     {}
-
-
 };
 
 TEST_P(StatusWriterTest, write_a_bunch_of_crap)
@@ -57,7 +55,7 @@ TEST_P(StatusWriterTest, write_a_bunch_of_crap)
         t.add_seen(cluster_size);
         t.add_kept(cluster_size);
 
-        writeToVolume(v.get(),
+        writeToVolume(*v,
                       0,
                       cluster_size,
                       "immanuel");

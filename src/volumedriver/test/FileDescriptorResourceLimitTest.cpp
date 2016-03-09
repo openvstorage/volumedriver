@@ -91,22 +91,22 @@ TEST_P(Test1, DISABLED_filedescriptors)
 
     const backend::Namespace& ns1 = ns_ptr->ns();
 
-    Volume* v1 = newVolume(name1,
+    SharedVolumePtr v1 = newVolume(name1,
                            ns1);
 
-    ASSERT_TRUE(v1);
+    ASSERT_TRUE(v1 != nullptr);
 
     auto ns2_ptr = make_random_namespace();
 
     const backend::Namespace& ns2 = ns2_ptr->ns();
 
     const std::string name2("vol2");
-    Volume* v2 = newVolume(name2,
+    SharedVolumePtr v2 = newVolume(name2,
                            ns2);
 
-    ASSERT_TRUE(v2);
+    ASSERT_TRUE(v2 != nullptr);
 
-    writeToVolume(v2,
+    writeToVolume(*v2,
                   0,
                   4096,
                   "foo");
@@ -114,18 +114,20 @@ TEST_P(Test1, DISABLED_filedescriptors)
     const SnapshotName snapname("snap");
     v2->createSnapshot(snapname);
 
-    writeToVolume(v2,
+    writeToVolume(*v2,
                   0,
                   4096,
                   "bar");
 
-    waitForThisBackendWrite(v2);
+    waitForThisBackendWrite(*v2);
 
     VolumeConfig cfg2 = v2->get_config();
 
     ASSERT_NO_THROW(destroyVolume(v2,
                                   DeleteLocalData::F,
                                   RemoveVolumeCompletely::F));
+
+    v2 = nullptr;
 
     //    auto vm = VolManager::get();
 

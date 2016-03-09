@@ -38,20 +38,20 @@ TEST_P(VolManagerVolumeDestroy, one)
     const Namespace& ns1 = ns1_ptr->ns();
 
 
-    Volume* v = newVolume(volume,
+    SharedVolumePtr v = newVolume(volume,
 			  ns1);
     //setTLogMaxEntries(v, 3);
 
-    writeToVolume(v, 0, 4096, "g");
-    writeToVolume(v, 0, 4096, "g");
-    writeToVolume(v, 0, 4096, "g");
+    writeToVolume(*v, 0, 4096, "g");
+    writeToVolume(*v, 0, 4096, "g");
+    writeToVolume(*v, 0, 4096, "g");
 
     v->sync();
     ::sync();
 
     const std::string ssx = snapshotFilename();;
     const OrderedTLogIds tlog_ids(v->getSnapshotManagement().getCurrentTLogs());
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
     // /tmp/VolManagerVolumeDestroy/localbackend/namespace1/tlog_00_0000000000000001
     // /tmp/VolManagerVolumeDestroy/localbackend/namespace1/snapshots.xml_00
     const std::string localBackendDir = "/tmp/VolManagerVolumeDestroy/localbackend/";

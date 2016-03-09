@@ -110,7 +110,7 @@ BOOLEAN_ENUM(CheckReadResult)
 class VolumeRandomIOThread
 {
 public:
-    VolumeRandomIOThread(Volume *v,
+    VolumeRandomIOThread(Volume& v,
                          const std::string &writePattern,
                          const CheckReadResult = CheckReadResult::F);
 
@@ -122,7 +122,7 @@ public:
     void stop();
 
  private:
-    Volume *vol_;
+    Volume& vol_;
     std::unique_ptr<boost::thread> thread_;
     const std::string writePattern_;
     bool stop_;
@@ -136,7 +136,7 @@ public:
 class VolumeWriteThread
 {
 public:
-    VolumeWriteThread(Volume* v,
+    VolumeWriteThread(Volume& v,
                       const std::string& pattern,
                       double throughput,
                       uint64_t max_writes = 0);
@@ -159,7 +159,7 @@ private:
     std::unique_ptr<boost::thread> thread_;
     bool stop_;
     const std::string pattern_;
-    Volume* vol_;
+    Volume& vol_;
     uint64_t max_writes_;
     uint64_t written_;
 
@@ -213,23 +213,23 @@ public:
 
     template<typename T>
     static void
-    writeClusters(T* vol,
-                    uint64_t number_of_clusters,
-                    const std::string& basepattern = "X",
-                    uint64_t pattern_period = 0)
+    writeClusters(T& vol,
+                  uint64_t number_of_clusters,
+                  const std::string& basepattern = "X",
+                  uint64_t pattern_period = 0)
     {
         for (uint64_t i = 0; i < number_of_clusters; i++)
         {
-            uint64_t lba = (i * vol->getClusterMultiplier()) % vol->getLBACount();
+            uint64_t lba = (i * vol.getClusterMultiplier()) % vol.getLBACount();
             std::stringstream ss;
             ss << basepattern << ( pattern_period ? i % pattern_period : i);
-            writeToVolume(vol, lba, vol->getClusterSize(), ss.str());
+            writeToVolume(vol, lba, vol.getClusterSize(), ss.str());
         }
     }
 
     template<typename T>
     static void
-    checkClusters(T* vol,
+    checkClusters(T& vol,
                   uint64_t number_of_clusters,
                   const std::string& basepattern = "X",
                   uint64_t pattern_period = 0)
@@ -243,7 +243,7 @@ public:
 
     template<typename T>
     static void
-    checkClusters(T* vol,
+    checkClusters(T& vol,
                   uint64_t offset,
                   uint64_t number_of_clusters,
                   const std::string& basepattern = "X",
@@ -251,29 +251,29 @@ public:
     {
         for (uint64_t i = offset; i < number_of_clusters + offset; i++)
         {
-            uint64_t lba = (i * vol->getClusterMultiplier()) % vol->getLBACount();
+            uint64_t lba = (i * vol.getClusterMultiplier()) % vol.getLBACount();
             std::stringstream ss;
             ss << basepattern << ( pattern_period ? i % pattern_period : i);
-            checkVolume(vol, lba, vol->getClusterSize(), ss.str());
+            checkVolume(vol, lba, vol.getClusterSize(), ss.str());
         }
     }
 
     template<typename T>
     static void
-    writeToVolume(T* vol,
+    writeToVolume(T& vol,
                   const std::string& pattern,
                   uint64_t blocksize = 4096,
                   unsigned retries = 5)
     {
-        for (size_t i = 0; i < vol->getSize(); i += blocksize)
+        for (size_t i = 0; i < vol.getSize(); i += blocksize)
         {
-            writeToVolume(vol, i / vol->getLBASize(), blocksize, pattern, retries);
+            writeToVolume(vol, i / vol.getLBASize(), blocksize, pattern, retries);
         }
     }
 
     template<typename T>
     static void
-    writeToVolume(T* volume,
+    writeToVolume(T& volume,
                   uint64_t lba,
                   uint64_t size,
                   const std::string& pattern,
@@ -297,7 +297,7 @@ public:
 
     template<typename T>
     static void
-    writeToVolume(T *volume,
+    writeToVolume(T& volume,
                   uint64_t lba,
                   uint64_t size,
                   const uint8_t *buf,
@@ -307,7 +307,7 @@ public:
         {
             try
             {
-                volume->write(lba, buf, size);
+                volume.write(lba, buf, size);
                 break;
             }
             catch (TransientException &)
@@ -356,11 +356,11 @@ public:
         return ClusterSize(default_lba_size() * default_cluster_multiplier());
     }
 
-    Volume*
+    SharedVolumePtr
     newVolume(const VanillaVolumeConfigParameters& params);
 
 public:
-    Volume*
+    SharedVolumePtr
     newVolume(const backend::BackendTestSetup::WithRandomNamespace& wrns,
               const boost::optional<VolumeSize>& volume_size = boost::none,
               const boost::optional<SCOMultiplier>& sco_multiplier = boost::none,
@@ -368,7 +368,7 @@ public:
               const boost::optional<ClusterMultiplier>& cluster_mult = boost::none,
               const boost::optional<size_t>& num_cached_pages = boost::none);
 
-    Volume*
+    SharedVolumePtr
     newVolume(const std::string& volumeName,
               const backend::Namespace& namespc,
               const boost::optional<VolumeSize>& volume_size = boost::none,
@@ -392,7 +392,7 @@ public:
     void
     set_cluster_cache_default_mode(const ClusterCacheMode);
 
-    Volume*
+    SharedVolumePtr
     localRestart(const backend::Namespace& namespc,
                  const FallBackToBackendRestart = FallBackToBackendRestart::F);
 
@@ -413,21 +413,21 @@ public:
     setupClusterCacheDevice(const std::string& name,
                          int size);
 
-    Volume*
+    SharedVolumePtr
     getVolume(const VolumeId & name);
 
-    Volume*
+    SharedVolumePtr
     createClone(const backend::BackendTestSetup::WithRandomNamespace& wrns,
                 const backend::Namespace& parentVolNamespace,
                 const boost::optional<std::string>& snapshot);
 
-    Volume*
+    SharedVolumePtr
     createClone(const std::string& cloneName,
                 const backend::Namespace& newNamespace,
                 const backend::Namespace& parentVolNamespace,
                 const boost::optional<std::string>& snapshot);
 
-    Volume*
+    SharedVolumePtr
     createClone(const std::string& cloneName,
                 const backend::Namespace& newNamespace,
                 const backend::Namespace& parentVolNamespace,
@@ -442,7 +442,7 @@ public:
                   const RemoveVolumeCompletely /*cleanup_backend*/);
 
     void
-    destroyVolume(Volume* v,
+    destroyVolume(SharedVolumePtr& v,
                   const DeleteLocalData delete_local_data,
                   const RemoveVolumeCompletely remove_volume_completely);
 
@@ -450,65 +450,65 @@ public:
     putVolume(Volume * v);
 
     void
-    writeSnapshotFileToBackend(Volume* v);
+    writeSnapshotFileToBackend(Volume& v);
 
     static void
-    checkVolume(Volume* volume,
+    checkVolume(Volume& volume,
                 uint64_t lba,
                 uint64_t block_size,
                 const std::string& pattern = "",
                 unsigned retries = 10);
 
     static void
-    checkVolume(Volume* v,
+    checkVolume(Volume& v,
                 const std::string& pattern,
                 uint64_t block_size = 4096,
                 unsigned retries = 10);
 
     static void
-    checkVolume_aux(Volume* v,
+    checkVolume_aux(Volume& v,
                     const std::string& pattern,
                     uint64_t size,
                     uint64_t block_size = 4096,
                     unsigned retries = 10);
 
     void
-    readVolume(Volume* vol,
+    readVolume(Volume& vol,
                uint64_t block_size,
                unsigned retries = 10);
 
     void
-    checkCurrentBackendSize(Volume* vol);
+    checkCurrentBackendSize(Volume& vol);
 
     void
-    waitForThisBackendWrite(VolumeInterface*);
+    waitForThisBackendWrite(VolumeInterface&);
 
     bool
-    isVolumeSyncedToBackend(Volume* v);
+    isVolumeSyncedToBackend(Volume& v);
 
     void
-    scheduleBackendSync(Volume* v);
+    scheduleBackendSync(Volume& v);
 
     void
-    syncToBackend(Volume* v);
+    syncToBackend(Volume& v);
 
     void
-    syncMetaDataStoreBackend(Volume* v);
+    syncMetaDataStoreBackend(Volume& v);
 
     void
-    scheduleBarrierTask(VolumeInterface*);
+    scheduleBarrierTask(VolumeInterface&);
 
     void
-    scheduleThrowingTask(Volume*);
+    scheduleThrowingTask(Volume&);
 
     void
-    removeNonDisposableSCOS(Volume* v);
+    removeNonDisposableSCOS(Volume& v);
 
     void
-    createSnapshot(Volume *v, const std::string &name);
+    createSnapshot(Volume&, const std::string &name);
 
     void
-    restoreSnapshot(Volume *v, const std::string &name);
+    restoreSnapshot(Volume&, const std::string &name);
 
     fs::path
     getVolDir(const std::string &volName) const;
@@ -524,7 +524,7 @@ public:
     getDCDir(const std::string& volName) const;
 
     SnapshotManagement*
-    getSnapshotManagement(Volume* vol);
+    getSnapshotManagement(Volume& vol);
 
     void
     temporarilyStopVolManager();
@@ -540,17 +540,17 @@ public:
                            const boost::optional<FailOverCacheConfig>&);
 
     void
-    flushFailOverCache(Volume* v);
+    flushFailOverCache(Volume&);
 
     FailOverCacheClientInterface*
-    getFailOverWriter(Volume* vol);
+    getFailOverWriter(Volume& vol);
 
     bool
-    checkVolumesIdentical(Volume* v1,
-                          Volume* v2) const;
+    checkVolumesIdentical(Volume& v1,
+                          Volume& v2) const;
 
     const CachedSCOPtr
-    getCurrentSCO(Volume* v);
+    getCurrentSCO(Volume&);
 
     void
     persistXVals(const VolumeId& volname) const;
@@ -564,9 +564,9 @@ public:
     default_test_config();
 
     void
-    waitForPrefetching(Volume* v) const;
+    waitForPrefetching(Volume&) const;
 
-    Volume*
+    SharedVolumePtr
     findVolume(const VolumeId& ns);
 
     void
@@ -651,7 +651,7 @@ protected:
     getVolumeFDEstimate() const;
 
     void
-    writeVolumeConfigToBackend(Volume* vol) const;
+    writeVolumeConfigToBackend(Volume&) const;
 
     volumedriver::MetaDataBackendType
     metadata_backend_type() const;
@@ -690,7 +690,7 @@ private:
     redi::ipstream pstream_;
 
     static void
-    readVolume_(Volume* vol,
+    readVolume_(Volume& vol,
                 uint64_t lba,
                 uint64_t block_size,
                 const std::string* const pattern,
@@ -736,20 +736,21 @@ class ScopedBackendBlocker
 {
 public:
     ScopedBackendBlocker(VolManagerTestSetup* t,
-                        VolumeInterface* v)
-        :t_(t),
-         v_(v)
+                         VolumeInterface& v)
+        : t_(t)
+        , v_(v)
     {
-        t_->blockBackendWrites_(v_);
+        t_->blockBackendWrites_(&v_);
     }
 
     ~ScopedBackendBlocker()
     {
-        t_->unblockBackendWrites_(v_);
+        t_->unblockBackendWrites_(&v_);
     }
+
 private:
     VolManagerTestSetup* t_;
-    VolumeInterface* v_;
+    VolumeInterface& v_;
 };
 
 #define SCOPED_BLOCK_BACKEND(v) ScopedBackendBlocker __b(this, v)
@@ -759,7 +760,7 @@ class FutureUnblocker
 {
 public:
     FutureUnblocker(VolManagerTestSetup* t,
-                    V* v,
+                    SharedVolumePtr v,
                     unsigned tm,
                     const DeleteLocalData cleanupLocal,
                     const RemoveVolumeCompletely cleanupBackend)
@@ -770,12 +771,13 @@ public:
           cleanupBackend_(cleanupBackend)
 
     {
-        t_->blockBackendWrites_(v_);
+        t_->blockBackendWrites_(v_.get());
     }
 
     ~FutureUnblocker()
     {
-        fungi::Thread* tr = t_->futureUnblockBackendWrites(v_,tm_);
+        fungi::Thread* tr = t_->futureUnblockBackendWrites(v_.get(),
+                                                           tm_);
         t_->destroyVolume(v_,
                           cleanupLocal_,
                           cleanupBackend_);
@@ -785,7 +787,7 @@ public:
 
 private:
     VolManagerTestSetup* t_;
-    V* v_;
+    SharedVolumePtr v_;
     unsigned tm_;
     const DeleteLocalData cleanupLocal_;
     const RemoveVolumeCompletely cleanupBackend_;

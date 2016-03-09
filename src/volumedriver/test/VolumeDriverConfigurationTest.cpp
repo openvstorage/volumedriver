@@ -322,7 +322,7 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
         const Namespace& ns1 = ns1_ptr->ns();
 
         //        Namespace ns1;
-        Volume* v = newVolume(vid1,
+        SharedVolumePtr v = newVolume(vid1,
                               ns1);
         const std::string pattern("bart");
 
@@ -333,12 +333,12 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
         EXPECT_EQ(0U, hits);
         EXPECT_EQ(0U, misses);
 
-        writeToVolume(v, 0, 4096, pattern);
+        writeToVolume(*v, 0, 4096, pattern);
         const uint64_t test_times = 5;
 
         for(unsigned i = 0; i < test_times; ++i)
         {
-            checkVolume(v, 0, 4096, pattern);
+            checkVolume(*v, 0, 4096, pattern);
         }
 
         VolManager::get()->getClusterCache().get_stats(hits, misses, entries);
@@ -382,7 +382,7 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
 
         for(unsigned i = 0; i < test_times; ++i)
         {
-            checkVolume(v, 0, 4096, pattern);
+            checkVolume(*v, 0, 4096, pattern);
         }
 
         VolManager::get()->getClusterCache().get_stats(hits, misses, entries);
@@ -407,7 +407,7 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
         }
         for(unsigned i = 0; i < test_times; ++i)
         {
-            checkVolume(v, 0, 4096, pattern);
+            checkVolume(*v, 0, 4096, pattern);
         }
 
         VolManager::get()->getClusterCache().get_stats(hits, misses, entries);

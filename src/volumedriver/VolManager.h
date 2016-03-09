@@ -84,7 +84,7 @@ class VolManager
     : public VolumeDriverComponent
 {
 public:
-    typedef std::map<VolumeId, Volume* > VolumeMap;
+    typedef std::map<VolumeId, SharedVolumePtr> VolumeMap;
 
     VolManager(const VolManager&) = delete;
 
@@ -130,7 +130,7 @@ public:
     restoreSnapshot(const VolumeId& volid,
                     const SnapshotName& snapid);
 
-    Volume*
+    SharedVolumePtr
     backend_restart(const Namespace& ns,
                     const OwnerTag,
                     const PrefetchVolumeData,
@@ -146,14 +146,14 @@ public:
     void
     scheduleTask(VolPoolTask* t);
 
-    Volume*
+    SharedVolumePtr
     createNewVolume(const VanillaVolumeConfigParameters& params,
                     const CreateNamespace = CreateNamespace::F);
 
     WriteOnlyVolume*
     createNewWriteOnlyVolume(const WriteOnlyVolumeConfigParameters& params);
 
-    Volume*
+    SharedVolumePtr
     createClone(const CloneVolumeConfigParameters& params,
                 const PrefetchVolumeData prefetch,
                 const CreateNamespace = CreateNamespace::F);
@@ -166,7 +166,7 @@ public:
                   const ForceVolumeDeletion = ForceVolumeDeletion::F);
 
     void
-    destroyVolume(Volume*,
+    destroyVolume(SharedVolumePtr,
                   const DeleteLocalData = DeleteLocalData::F,
                   const RemoveVolumeCompletely = RemoveVolumeCompletely::F,
                   const DeleteVolumeNamespace = DeleteVolumeNamespace::F,
@@ -267,9 +267,9 @@ public:
     }
 
     fs::path
-    getMetaDataPath(const Volume* v) const
+    getMetaDataPath(const Volume& v) const
     {
-        return fs::path(metadata_path.value()) / v->getNamespace().str();
+        return fs::path(metadata_path.value()) / v.getNamespace().str();
     }
 
     fs::path
@@ -279,15 +279,15 @@ public:
     }
 
     fs::path
-    getMetaDataDBFilePath(const Volume* v) const
+    getMetaDataDBFilePath(const Volume& v) const
     {
         return getMetaDataPath(v) / metaDataDBName();
     }
 
     fs::path
-    getMetaDataPath(const WriteOnlyVolume* v) const
+    getMetaDataPath(const WriteOnlyVolume& v) const
     {
-        return fs::path(metadata_path.value()) / v->getNamespace().str();
+        return fs::path(metadata_path.value()) / v.getNamespace().str();
     }
 
     fs::path
@@ -315,15 +315,15 @@ public:
     }
 
     fs::path
-    getTLogPath(const Volume* v) const
+    getTLogPath(const Volume& v) const
     {
-        return fs::path(tlog_path.value()) / v->getNamespace().str();
+        return fs::path(tlog_path.value()) / v.getNamespace().str();
     }
 
     fs::path
-    getTLogPath(const WriteOnlyVolume* v) const
+    getTLogPath(const WriteOnlyVolume& v) const
     {
-        return fs::path(tlog_path.value()) / v->getNamespace().str();
+        return fs::path(tlog_path.value()) / v.getNamespace().str();
     }
 
     fs::path
@@ -339,7 +339,7 @@ public:
     }
 
     fs::path
-    getSnapshotsPath(const Volume* vol) const
+    getSnapshotsPath(const Volume& vol) const
     {
         return getMetaDataPath(vol)  / snapshotFilename();
     }
@@ -422,11 +422,11 @@ public:
     setTLogMultiplier(const VolumeId&,
                       const boost::optional<TLogMultiplier>&);
 
-    const Volume*
+    SharedVolumePtr
     findVolumeConst_(const VolumeId& volname,
                      const std::string& message = "Pity: ") const;
 
-    const Volume*
+    SharedVolumePtr
     findVolumeConst_(const Namespace& ns) const;
 
     uint64_t
@@ -536,7 +536,7 @@ public:
 
 private:
         /** @locking mgmtMutex_ must be locked */
-    Volume*
+    SharedVolumePtr
     findVolume_noThrow_(const VolumeId&) const;
 
     void
@@ -557,7 +557,7 @@ private:
     void
     ensureNamespaceNotRestarting(const Namespace&) const;
 
-    Volume*
+    SharedVolumePtr
     local_restart(const Namespace& ns,
                   const OwnerTag,
                   const FallBackToBackendRestart,
@@ -591,14 +591,14 @@ private:
     setNamespaceRestarting_(const Namespace& ns, const VolumeConfig& config);
 
     template<typename V>
-    V*
-    with_restart_map_and_unlocked_mgmt_(const std::function<V*(const Namespace& ns,
-                                                               const VolumeConfig& cfg)>&,
+    V
+    with_restart_map_and_unlocked_mgmt_(const std::function<V(const Namespace& ns,
+                                                              const VolumeConfig& cfg)>&,
                                         const Namespace& ns,
                                         const VolumeConfig& cfg);
 
-    Volume*
-    with_restart_map_and_unlocked_mgmt_vol_(const std::function<Volume*(const Namespace& ns,
+    SharedVolumePtr
+    with_restart_map_and_unlocked_mgmt_vol_(const std::function<SharedVolumePtr(const Namespace& ns,
                                                                   const VolumeConfig& cfg)>&,
                                             const Namespace& ns,
                                             const VolumeConfig& cfg);
@@ -622,14 +622,14 @@ private:
     checkConfig(const boost::property_tree::ptree&,
                 ConfigurationReport&) const override;
 
-    Volume*
+    SharedVolumePtr
     findVolume_(const VolumeId& volname,
                 const std::string& message = "Pity: ");
 
-    Volume*
+    SharedVolumePtr
     findVolume_(const Namespace& ns);
 
-    Volume*
+    SharedVolumePtr
     findVolumeFromNamespace(const Namespace& i_namespace) const;
 
     uint64_t

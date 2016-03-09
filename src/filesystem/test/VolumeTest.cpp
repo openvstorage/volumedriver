@@ -98,7 +98,7 @@ TEST_F(VolumeTest, create_and_destroy)
         api::getVolumeList(l);
         ASSERT_EQ(1U, l.size());
         ASSERT_TRUE(vname.str() == l.front().str());
-        ASSERT_TRUE(api::getVolumePointer(l.front()) != nullptr);
+        ASSERT_NO_THROW(api::getVolumePointer(l.front()));
     }
 
     check_stat(fname, 0);
@@ -136,7 +136,7 @@ TEST_F(VolumeTest, uuid_create_and_destroy)
         api::getVolumeList(l);
         ASSERT_EQ(1U, l.size());
         ASSERT_TRUE(volume_id.str() == l.front().str());
-        ASSERT_TRUE(api::getVolumePointer(l.front()) != nullptr);
+        ASSERT_NO_THROW(api::getVolumePointer(l.front()));
     }
 
     check_stat(volume_id, 0);
@@ -275,7 +275,7 @@ TEST_F(VolumeTest, resize)
     const vfs::FrontendPath fname(make_volume_name("/volume"));
     const vfs::ObjectId vname(create_file(fname));
 
-    vd::Volume* v;
+    vd::WeakVolumePtr v;
 
     {
         LOCKVD();
@@ -307,7 +307,7 @@ TEST_F(VolumeTest, uuid_resize)
     const auto volume_id(create_file(root_id,
                                      make_volume_name("volume").string()));
 
-    vd::Volume* v;
+    vd::WeakVolumePtr v;
 
     {
         LOCKVD();

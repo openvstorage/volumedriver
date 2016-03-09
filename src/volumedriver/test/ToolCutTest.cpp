@@ -29,7 +29,7 @@ TEST_P(ToolCutTest, DISABLED_test1)
 {
     VolumeId vid("volume");
     backend::Namespace ns;
-    Volume* v = newVolume(vid,
+    SharedVolumePtr v = newVolume(vid,
                           ns);
 
     const std::string pattern("immanuel");
@@ -43,13 +43,13 @@ TEST_P(ToolCutTest, DISABLED_test2)
 {
     VolumeId vid("volume");
     backend::Namespace ns;
-    Volume* v = newVolume(vid,
+    SharedVolumePtr v = newVolume(vid,
                           ns);
 
-    createSnapshot(v,"snapshot");
-    waitForThisBackendWrite(v);
+    createSnapshot(*v,"snapshot");
+    waitForThisBackendWrite(*v);
 
-    Volume* c = createClone("clone",
+    SharedVolumePtr c = createClone("clone",
                             backend::Namespace(),
                             ns,
                             "snapshot");
@@ -70,16 +70,16 @@ TEST_P(ToolCutTest, DISABLED_toolcut_create_volume)
 {
     backend::Namespace ns1;
 
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns1);
 
-    writeToVolume(v, 0, 4096,"immanuel");
+    writeToVolume(*v, 0, 4096,"immanuel");
 
     const SnapshotName snap1("snap1");
 
     v->createSnapshot(snap1);
 
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
     sleep(100000);
 
 }

@@ -52,7 +52,7 @@ public:
 
         const backend::Namespace& ns = ns_ptr->ns();
 
-        Volume* v = newVolume("volume",
+        SharedVolumePtr v = newVolume("volume",
                               ns,
                               VolumeSize(size));
 
@@ -62,22 +62,22 @@ public:
 
 
         const std::string pattern("12345678");
-        writeToVolume(v, 0, size, pattern);
+        writeToVolume(*v, 0, size, pattern);
 
         boost::thread c1(boost::bind(&VolManagerTestSetup::checkVolume,
-                                     v,
+                                     boost::ref(*v),
                                      pattern,
                                      v->getLBASize(),
                                      10));
 
         boost::thread c2(boost::bind(&VolManagerTestSetup::checkVolume,
-                                     v,
+                                     boost::ref(*v),
                                      pattern,
                                      v->getClusterSize(),
                                      10));
 
         boost::thread c3(boost::bind(&VolManagerTestSetup::checkVolume,
-                                     v,
+                                     boost::ref(*v),
                                      pattern,
                                      v->getClusterSize() * v->getSCOMultiplier(),
                                      10));
@@ -94,22 +94,22 @@ TEST_P(MTVolumeTester, test0)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v1 = newVolume("volume1",
+    SharedVolumePtr v1 = newVolume("volume1",
                            ns);
 
     auto ns2_ptr = make_random_namespace();
 
     const backend::Namespace& ns2 = ns2_ptr->ns();
 
-    Volume* v2 = newVolume("volume2",
+    SharedVolumePtr v2 = newVolume("volume2",
                            ns2);
 
-    VolumeWriteThread t1(v1,
+    VolumeWriteThread t1(*v1,
                          "first",
                          100,
                          v1->getSize());
 
-    VolumeWriteThread t2(v2,
+    VolumeWriteThread t2(*v2,
                          "second",
                          100,
                          v2->getSize());
@@ -117,8 +117,8 @@ TEST_P(MTVolumeTester, test0)
     t1.waitForFinish();
     t2.waitForFinish();
     // Write a VolumeChecker -> also parallel!
-    checkVolume(v1,"first");
-    checkVolume(v2,"second");
+    checkVolume(*v1,"first");
+    checkVolume(*v2,"second");
     destroyVolume(v1,
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::T);
@@ -135,22 +135,22 @@ TEST_P(MTVolumeTester, DISABLED_random)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v1 = newVolume("volume1",
+    SharedVolumePtr v1 = newVolume("volume1",
                            ns);
 
     auto ns2_ptr = make_random_namespace();
 
     const backend::Namespace& ns2 = ns2_ptr->ns();
 
-    Volume* v2 = newVolume("volume2",
+    SharedVolumePtr v2 = newVolume("volume2",
 			   ns2);
 
-    VolumeWriteThread w1(v1,
+    VolumeWriteThread w1(*v1,
                          "first",
                          100,
                          v1->getSize());
 
-    VolumeWriteThread w2(v2,
+    VolumeWriteThread w2(*v2,
                          "second",
                          100,
                          v2->getSize());
@@ -158,10 +158,10 @@ TEST_P(MTVolumeTester, DISABLED_random)
     w1.waitForFinish();
     w2.waitForFinish();
 
-    VolumeRandomIOThread t1(v1,
+    VolumeRandomIOThread t1(*v1,
                             "volume1");
 
-    VolumeRandomIOThread t2(v2,
+    VolumeRandomIOThread t2(*v2,
                             "volume2");
 
     sleep(300);
@@ -188,33 +188,33 @@ TEST_P(MTVolumeTester, mtReadWrite)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume("volume",
+    SharedVolumePtr v = newVolume("volume",
                           ns,
                           VolumeSize(size));
 
-    writeToVolume(v, "a");
+    writeToVolume(*v, "a");
 
     boost::thread w1(boost::bind(&VolManagerTestSetup::writeToVolume<Volume>,
-                                 v,
+                                 boost::ref(*v),
                                  "w1",
                                  4096,
                                  5));
 
     boost::thread w2(boost::bind(&VolManagerTestSetup::writeToVolume<Volume>,
-                                 v,
+                                 boost::ref(*v),
                                  "w2",
                                  4096,
                                  5));
 
     boost::thread r1(boost::bind(&VolManagerTestSetup::readVolume,
                                  this,
-                                 v,
+                                 boost::ref(*v),
                                  v->getClusterSize(),
                                  10));
 
     boost::thread r2(boost::bind(&VolManagerTestSetup::readVolume,
                                  this,
-                                 v,
+                                 boost::ref(*v),
                                  2 * v->getClusterSize(),
                                  10));
 
@@ -223,7 +223,7 @@ TEST_P(MTVolumeTester, mtReadWrite)
     r1.join();
     r2.join();
 
-    syncToBackend(v);
+    syncToBackend(*v);
 
     v->checkConsistency();
 }
@@ -235,12 +235,12 @@ TEST_P(MTVolumeTester, snapshotting)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume("volume",
+    SharedVolumePtr v = newVolume("volume",
                           ns,
                           VolumeSize(size));
 
     boost::thread w(boost::bind(&VolManagerTestSetup::writeToVolume<Volume>,
-                                 v,
+                                boost::ref(*v),
                                  "w1",
                                  4096,
                                  5));
@@ -249,13 +249,13 @@ TEST_P(MTVolumeTester, snapshotting)
     {
         std::stringstream ss;
         ss << "snap-" << i;
-        createSnapshot(v, ss.str());
+        createSnapshot(*v, ss.str());
         boost::this_thread::sleep(boost::posix_time::microseconds(1000));
-        syncToBackend(v);
+        syncToBackend(*v);
     }
 
     w.join();
-    syncToBackend(v);
+    syncToBackend(*v);
 
     v->checkConsistency();
 }

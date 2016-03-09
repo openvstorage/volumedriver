@@ -546,7 +546,7 @@ void WriteOnlyVolume::restoreSnapshot(const SnapshotName& name)
 
             LOG_INFO("Deleting " << doomedTLogs.size() << " TLogs");
 
-            const fs::path path(VolManager::get()->getTLogPath(this));
+            const fs::path path(VolManager::get()->getTLogPath(*this));
             std::shared_ptr<TLogReaderInterface> r = CombinedTLogReader::create(path,
                                                                                 doomedTLogs,
                                                                                 getBackendInterface()->clone());
@@ -657,13 +657,12 @@ WriteOnlyVolume::destroy(const RemoveVolumeCompletely,
                    ". Manual cleanup required");
      }
 
-    CATCH_AND_IGNORE(fs::remove_all(VolManager::get()->getMetaDataPath(this)),
+    CATCH_AND_IGNORE(fs::remove_all(VolManager::get()->getMetaDataPath(*this)),
                           "Exception trying to delete the medata directory");
 
-    CATCH_AND_IGNORE(fs::remove_all(VolManager::get()->getTLogPath(this)),
+    CATCH_AND_IGNORE(fs::remove_all(VolManager::get()->getTLogPath(*this)),
                               "Exception tyring to delete the tlog directory");
 }
-
 
 bool
 WriteOnlyVolume::isSyncedToBackend() const
@@ -858,7 +857,7 @@ WriteOnlyVolume::checkSCONamesConsistency_(const std::vector<SCO>& names)
 bool
 WriteOnlyVolume::checkTLogsConsistency_(CloneTLogs& ctl) const
 {
-    const fs::path tlog_temp_location(VolManager::get()->getTLogPath(this) / "tmp");
+    const fs::path tlog_temp_location(VolManager::get()->getTLogPath(*this) / "tmp");
     fs::create_directories(tlog_temp_location);
 
     for(unsigned i = 0; i < ctl.size(); ++i)
@@ -963,7 +962,7 @@ WriteOnlyVolume::normalizeSAPs_(SCOAccessData::VectorType& sadv)
 void
 WriteOnlyVolume::writeConfigToBackend_()
 {
-    fs::path tmp = VolManager::get()->getMetaDataPath(this) / VolumeConfig::config_backend_name;
+    fs::path tmp = VolManager::get()->getMetaDataPath(*this) / VolumeConfig::config_backend_name;
     FileUtils::removeFileNoThrow(tmp);
     VERIFY(not fs::exists(tmp));
 

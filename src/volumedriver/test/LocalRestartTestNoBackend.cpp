@@ -45,24 +45,23 @@ TEST_P(LocalRestartTestNoBackend, restartWithSnapshot1)
 
     const backend::Namespace& ns1 = ns_ptr->ns();
 
-    Volume* v1 = newVolume(vid1,
+    SharedVolumePtr v1 = newVolume(vid1,
                            ns1);
-    writeToVolume(v1,
+    writeToVolume(*v1,
                   0,
                   v1->getClusterSize(),
                   "kristafke");
-    createSnapshot(v1, SnapshotName("snapshot1"));
-
+    createSnapshot(*v1, SnapshotName("snapshot1"));
 
     destroyVolume(v1,
                   DeleteLocalData::F,
                   RemoveVolumeCompletely::F);
 
-    v1 = 0;
+    v1 = nullptr;
     ASSERT_FALSE(v1 = getVolume(vid1));
     ASSERT_NO_THROW(v1 = localRestart(ns1));
-    ASSERT_TRUE(getVolume(vid1));
-    checkVolume(v1, 0, v1->getClusterSize(), "kristafke");
+    ASSERT_TRUE(getVolume(vid1) != nullptr);
+    checkVolume(*v1, 0, v1->getClusterSize(), "kristafke");
     EXPECT_FALSE(v1->isSyncedToBackendUpTo(SnapshotName("snapshot1")));
 }
 

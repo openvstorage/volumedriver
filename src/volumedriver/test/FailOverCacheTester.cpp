@@ -56,7 +56,7 @@ public:
     check_num_entries(Volume& v,
                       uint64_t expected)
     {
-        FailOverCacheClientInterface* bridge = getFailOverWriter(&v);
+        FailOverCacheClientInterface* bridge = getFailOverWriter(v);
         uint64_t entries = 0;
 
         switch (bridge->mode())
@@ -82,7 +82,7 @@ TEST_P(FailOverCacheTester, empty_flush)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume(vid,
+    SharedVolumePtr v = newVolume(vid,
                           ns);
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
     v->sync();
@@ -96,7 +96,7 @@ TEST_P(FailOverCacheTester, focTimeout)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume(vid,
+    SharedVolumePtr v = newVolume(vid,
                           ns);
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
@@ -120,19 +120,19 @@ TEST_P(FailOverCacheTester, VolumeWithFOC)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume("vol1",
+    SharedVolumePtr v = newVolume("vol1",
                           ns);
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     for(int i =0; i < 128; ++i)
     {
-        writeToVolume(v,
+        writeToVolume(*v,
                       0,
                       4096,
                       "xyz");
     }
 
-    checkVolume(v,
+    checkVolume(*v,
                 0,
                 4096,
                 "xyz");
@@ -148,7 +148,7 @@ TEST_P(FailOverCacheTester, VolumeWithoutFOC)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume("vol1",
+    SharedVolumePtr v = newVolume("vol1",
                           ns);
 
     ASSERT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
@@ -159,12 +159,12 @@ TEST_P(FailOverCacheTester, VolumeWithoutFOC)
 
     for(int i =0; i < 128; ++i)
     {
-        writeToVolume(v,
+        writeToVolume(*v,
                       0,
                       4096,
                       "xyz");
     }
-    checkVolume(v,
+    checkVolume(*v,
                 0,
                 4096,
                 "xyz");
@@ -180,21 +180,21 @@ TEST_P(FailOverCacheTester, StopRace)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = 0;
+    SharedVolumePtr v = 0;
 
     {
         auto foc_ctx(start_one_foc());
         ASSERT_FALSE(v);
         v = newVolume("vol1",
                       ns);
-        ASSERT_TRUE(v);
+        ASSERT_TRUE(v != nullptr);
 
         v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
         for(int i =0; i < 128; ++i)
         {
 
-            writeToVolume(v,
+            writeToVolume(*v,
                           0,
                           4096,
                           "xyz");
@@ -203,7 +203,7 @@ TEST_P(FailOverCacheTester, StopRace)
 
     for(int i =0; i < 4; ++i)
     {
-        writeToVolume(v,
+        writeToVolume(*v,
                       0,
                       4096,
                       "xyz");
@@ -220,7 +220,7 @@ TEST_P(FailOverCacheTester, StopCacheServer)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = 0;
+    SharedVolumePtr v = 0;
 
     {
         auto foc_ctx(start_one_foc());
@@ -230,13 +230,13 @@ TEST_P(FailOverCacheTester, StopCacheServer)
         v = newVolume("vol1",
                       ns);
 
-        ASSERT_TRUE(v);
+        ASSERT_TRUE(v != nullptr);
 
         v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
         for(int i = 0; i < 128; ++i)
         {
-            writeToVolume(v,
+            writeToVolume(*v,
                           0,
                           4096,
                           "xyz");
@@ -245,7 +245,7 @@ TEST_P(FailOverCacheTester, StopCacheServer)
 
     for(int i =0; i < 128; ++i)
     {
-        writeToVolume(v,
+        writeToVolume(*v,
                       0,
                       4096,
                       "xyz");
@@ -262,7 +262,7 @@ TEST_P(FailOverCacheTester, CacheServerHasNoMemory)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = 0;
+    SharedVolumePtr v = 0;
     int numClusters = 128;
 
     {
@@ -271,7 +271,7 @@ TEST_P(FailOverCacheTester, CacheServerHasNoMemory)
 
         v = newVolume("vol1",
                        ns);
-        ASSERT_TRUE(v);
+        ASSERT_TRUE(v != nullptr);
 
         v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
@@ -280,17 +280,17 @@ TEST_P(FailOverCacheTester, CacheServerHasNoMemory)
 
         for (int i = 0; i < numClusters; ++i)
         {
-            writeToVolume(v,
+            writeToVolume(*v,
                           0,
                           4096,
                           "xyz");
         }
 
-        flushFailOverCache(v);
+        flushFailOverCache(*v);
         check_num_entries(*v, numClusters);
     }
 
-    flushFailOverCache(v); // It is only detected for sure that the FOC is gone when something happens over the wire
+    flushFailOverCache(*v); // It is only detected for sure that the FOC is gone when something happens over the wire
 
     ASSERT_EQ(VolumeFailOverState::DEGRADED,
               v->getVolumeFailOverState());
@@ -313,7 +313,7 @@ TEST_P(FailOverCacheTester, ResetCacheServer)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume("vol1",
+    SharedVolumePtr v = newVolume("vol1",
                           ns);
     uint16_t port = 2999;
     ASSERT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
@@ -330,7 +330,7 @@ TEST_P(FailOverCacheTester, ResetCacheServer)
             v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
         }
 
-        writeToVolume(v,
+        writeToVolume(*v,
                       0,
                       4096,
                       "xyz");
@@ -347,7 +347,7 @@ TEST_P(FailOverCacheTester, ClearCacheServer)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume("vol1",
+    SharedVolumePtr v = newVolume("vol1",
 			  ns);
 
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
@@ -356,17 +356,17 @@ TEST_P(FailOverCacheTester, ClearCacheServer)
 
     for(unsigned i = 0; i < numwrites; ++i)
     {
-        writeToVolume(v,
+        writeToVolume(*v,
                       0,
                       4096,
                       "xyz");
     }
 
-    getFailOverWriter(v)->Flush();
+    getFailOverWriter(*v)->Flush();
 
     check_num_entries(*v, numwrites);
 
-    getFailOverWriter(v)->Clear();
+    getFailOverWriter(*v)->Clear();
 
     check_num_entries(*v, 0);
 
@@ -382,17 +382,17 @@ TEST_P(FailOverCacheTester, test2)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume("vol1",
+    SharedVolumePtr v = newVolume("vol1",
                           ns);
 
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   4096,
                   "xyz");
 
-    checkVolume(v,
+    checkVolume(*v,
                 0,
                 4096,
                 "xyz");
@@ -400,10 +400,10 @@ TEST_P(FailOverCacheTester, test2)
     destroyVolume(v,
                   DeleteLocalData::F,
                   RemoveVolumeCompletely::F);
-    Volume* v2 = 0;
+    SharedVolumePtr v2 = 0;
     ASSERT_NO_THROW(v2 = localRestart(ns));
 
-    checkVolume(v2,
+    checkVolume(*v2,
                 0,
                 4096,
                 "xyz");
@@ -421,20 +421,20 @@ TEST_P(FailOverCacheTester, test3)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume("vol1",
+    SharedVolumePtr v = newVolume("vol1",
                           ns);
 
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     for(int i =0; i < 50; ++i)
     {
-        writeToVolume(v,
+        writeToVolume(*v,
                       0,
                       4096,
                       "xyz");
     }
 
-    checkVolume(v,
+    checkVolume(*v,
                 0,
                 4096,
                 "xyz");
@@ -451,7 +451,7 @@ TEST_P(FailOverCacheTester, resetToSelf)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume("vol1",
+    SharedVolumePtr v = newVolume("vol1",
                           ns);
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
@@ -460,7 +460,7 @@ TEST_P(FailOverCacheTester, resetToSelf)
 
     for(unsigned i = 0; i < entries; i++)
     {
-        writeToVolume(v, i * 4096, 4096, "bdv");
+        writeToVolume(*v, i * 4096, 4096, "bdv");
     }
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
@@ -470,10 +470,10 @@ TEST_P(FailOverCacheTester, resetToSelf)
 
     for(unsigned i = 0; i < entries; i++)
     {
-        writeToVolume(v, i * 4096, 4096, "bdv");
+        writeToVolume(*v, i * 4096, 4096, "bdv");
     }
 
-    flushFailOverCache(v);
+    flushFailOverCache(*v);
 
     check_num_entries(*v,
                       entries);
@@ -492,14 +492,14 @@ TEST_P(FailOverCacheTester, resetToOther)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume("vol1",
+    SharedVolumePtr v = newVolume("vol1",
                           ns);
 
     const unsigned entries = 32;
 
     for(unsigned i = 0; i < entries; i++)
     {
-        writeToVolume(v, i * 4096, 4096, "bdv");
+        writeToVolume(*v, i * 4096, 4096, "bdv");
     }
     EXPECT_EQ(VolumeFailOverState::OK_STANDALONE,
               v->getVolumeFailOverState());
@@ -525,7 +525,7 @@ TEST_P(FailOverCacheTester, resetToOther)
 
     for(unsigned i = 0; i < entries; i++)
     {
-        writeToVolume(v, i * 4096, 4096, "bdv");
+        writeToVolume(*v, i * 4096, 4096, "bdv");
     }
 }
 
@@ -535,7 +535,7 @@ TEST_P(FailOverCacheTester, AutoRecoveries)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume("vol1",
+    SharedVolumePtr v = newVolume("vol1",
                           ns);
 
     const auto port = get_next_foc_port();
@@ -563,7 +563,7 @@ TEST_P(FailOverCacheTester, TLogsAreRemoved)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume("vol1",
+    SharedVolumePtr v = newVolume("vol1",
                           ns);
 
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
@@ -574,21 +574,21 @@ TEST_P(FailOverCacheTester, TLogsAreRemoved)
         ss << i;
         for(int j = 0; j < 32; ++j)
         {
-            writeToVolume(v, j*4096,4096, "bdv");
+            writeToVolume(*v, j*4096,4096, "bdv");
         }
-        waitForThisBackendWrite(v);
-        createSnapshot(v,ss.str());
+        waitForThisBackendWrite(*v);
+        createSnapshot(*v,ss.str());
     }
 
     for(int j = 0; j < 32; ++j)
     {
-        writeToVolume(v, j*4096,4096, "bdv");
+        writeToVolume(*v, j*4096,4096, "bdv");
     }
 
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     std::list<std::string> files;
-    getFailOverWriter(v)->Flush();
+    getFailOverWriter(*v)->Flush();
 
     fs::directory_iterator it(foc_ctx->path());
     fs::directory_iterator end;
@@ -621,10 +621,10 @@ TEST_P(FailOverCacheTester, TLogsAreRemoved)
     const fs::path nspace_dir(fun());
     EXPECT_FALSE(fs::is_empty(nspace_dir));
 
-    createSnapshot(v,"boomboom");
-    waitForThisBackendWrite(v);
+    createSnapshot(*v,"boomboom");
+    waitForThisBackendWrite(*v);
 
-    getFailOverWriter(v)->Flush();
+    getFailOverWriter(*v)->Flush();
 
     EXPECT_EQ(nspace_dir,
               fun());
@@ -648,7 +648,7 @@ TEST_P(FailOverCacheTester, DirectoryRemovedOnUnRegister)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume("vol1",
+    SharedVolumePtr v = newVolume("vol1",
                           ns);
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
@@ -658,7 +658,7 @@ TEST_P(FailOverCacheTester, DirectoryRemovedOnUnRegister)
     ASSERT_TRUE(fs::is_directory(foc_ns_path));
     ASSERT_TRUE(fs::is_empty(foc_ns_path));
 
-    writeToVolume(v, 0, 4096, "bdv");
+    writeToVolume(*v, 0, 4096, "bdv");
     v->sync();
 
     ASSERT_FALSE(fs::is_empty(foc_ns_path));
@@ -678,7 +678,7 @@ TEST_P(FailOverCacheTester, adding_and_flushing)
     auto foc_ctx(start_one_foc());
     auto wrns(make_random_namespace());
 
-    Volume* v = newVolume(*wrns);
+    SharedVolumePtr v = newVolume(*wrns);
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     FailOverCacheClientInterface& foc = *v->getFailOver();
@@ -785,7 +785,7 @@ TEST_P(FailOverCacheTester, non_standard_cluster_size)
     const ClusterMultiplier cmult(default_cluster_multiplier() * 2);
     const ClusterSize csize(default_lba_size() * cmult);
 
-    Volume* v = newVolume(*wrns,
+    SharedVolumePtr v = newVolume(*wrns,
                           vsize,
                           default_sco_multiplier(),
                           default_lba_size(),
@@ -793,7 +793,7 @@ TEST_P(FailOverCacheTester, non_standard_cluster_size)
 
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
-    SCOPED_BLOCK_BACKEND(v);
+    SCOPED_BLOCK_BACKEND(*v);
 
     auto make_pattern([](size_t i) -> std::string
                       {
@@ -805,7 +805,7 @@ TEST_P(FailOverCacheTester, non_standard_cluster_size)
 
     for (size_t i = 0; i < num_clusters; ++i)
     {
-        writeToVolume(v,
+        writeToVolume(*v,
                       i * cmult,
                       csize,
                       make_pattern(i));
@@ -853,7 +853,7 @@ TEST_P(FailOverCacheTester, wrong_cluster_size)
     const ClusterMultiplier cmult(default_cluster_multiplier() * 2);
     const ClusterSize csize(default_lba_size() * cmult);
 
-    Volume* v = newVolume(*wrns,
+    SharedVolumePtr v = newVolume(*wrns,
                           vsize,
                           default_sco_multiplier(),
                           default_lba_size(),
@@ -861,10 +861,10 @@ TEST_P(FailOverCacheTester, wrong_cluster_size)
 
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
-    SCOPED_BLOCK_BACKEND(v);
+    SCOPED_BLOCK_BACKEND(*v);
 
     const std::string pattern("cluster");
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   csize,
                   pattern);
@@ -890,7 +890,7 @@ TEST_P(FailOverCacheTester, DISABLED_tarpit)
     auto foc_ctx(start_one_foc());
 
 
-    Volume* v = newVolume("volume",
+    SharedVolumePtr v = newVolume("volume",
 			  "volumeNamespace");
 
     v->setFailOverCache(foc_ctx->config(GetParam().foc_mode()));
@@ -913,24 +913,24 @@ TEST_P(FailOverCacheTester, DISABLED_tarpit)
     const std::string pattern = "notInFOC";
 
     for (size_t i = 0; i < 128; ++i) {
-        writeToVolume(v,
+        writeToVolume(*v,
                       0,
                       v->getClusterSize(),
                       pattern);
     }
 
     createSnapshot(v, "snap");
-    waitForThisBackendWrite(v);
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
+    waitForThisBackendWrite(*v);
 
     EXPECT_EQ(VolumeInterface::VolumeState::DEGRADED, v->getVolumeFailOverState());
 
-    Volume* c = createClone("clone",
+    SharedVolumePtr c = createClone("clone",
                             "cloneNamespace",
                             "volumeNamespace",
                             "snap");
 
-    checkVolume(c,
+    checkVolume(*c,
                 0,
                 c->getClusterSize(),
                 pattern);

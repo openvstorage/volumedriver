@@ -45,16 +45,16 @@ TEST_P(BackendNamespaceFilterVolumeTest, ditto)
 
     v->setFailOverCacheConfig(foc_ctx->config(FailOverCacheMode::Asynchronous));
 
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   v->getClusterSize(),
                   "Not of any importance");
 
     const std::string snap("snap");
-    createSnapshot(v,
+    createSnapshot(*v,
                    snap);
 
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     auto bi = v->getBackendInterface()->clone();
     std::list<std::string> objects;

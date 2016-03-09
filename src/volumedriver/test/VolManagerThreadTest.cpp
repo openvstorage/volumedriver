@@ -39,14 +39,14 @@ TEST_P(VolManagerThreadTest, test1)
 
     // backend::Namespace ns;
 
-    Volume* v1 = newVolume("volume1",
+    SharedVolumePtr v1 = newVolume("volume1",
 			   ns);
     sleep(1);
 
 
     for(int i = 0; i < 1024; ++i)
     {
-        writeToVolume(v1,
+        writeToVolume(*v1,
                       0,
                       4096,
                       "test");

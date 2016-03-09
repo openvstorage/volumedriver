@@ -49,7 +49,7 @@ protected:
 
         vol_ = newVolume("volume1",
 			 ns_ptr_->ns());
-        ASSERT_TRUE(vol_);
+        ASSERT_TRUE(vol_ != nullptr);
 
         config_ = vol_->get_config();
     }
@@ -57,6 +57,7 @@ protected:
     void
     TearDown()
     {
+        vol_ = nullptr;
         ns_ptr_.reset();
         VolManagerTestSetup::TearDown();
     }
@@ -65,7 +66,7 @@ protected:
     writeLBAs(uint64_t lba,
               uint64_t count,
               uint32_t pattern,
-              Volume *vol = 0,
+              SharedVolumePtr vol = nullptr,
               int retries = 7)
     {
         bool fail = true;
@@ -102,7 +103,7 @@ protected:
     }
 
     void readLBAs(uint64_t lba, uint64_t count, uint32_t pattern,
-                  bool verify=true, Volume *vol = 0, int retries = 7)
+                  bool verify=true, SharedVolumePtr vol = nullptr, int retries = 7)
     {
         bool fail = true;
         if (vol == 0) {
@@ -190,7 +191,7 @@ protected:
 
     DECLARE_LOGGER("TestVolume");
 
-    Volume* vol_;
+    SharedVolumePtr vol_;
     std::unique_ptr<WithRandomNamespace> ns_ptr_;
     boost::optional<VolumeConfig> config_;
 };

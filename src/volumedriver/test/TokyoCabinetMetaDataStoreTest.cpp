@@ -59,7 +59,7 @@ TEST_P(TokyoCabinetMetaDataStoreTest, DISABLED_growth_of_tc_file)
         return;
     }
 
-    Volume* vol_ = newVolume("volume1",
+    SharedVolumePtr vol_ = newVolume("volume1",
                              "openvstorage-volumedrivertest-namespace1");
 
     MetaDataStoreInterface* mdi = vol_->getMetaDataStore();
@@ -142,7 +142,7 @@ TEST_P(TokyoCabinetMetaDataStoreTest, DISABLED_on_disk_size_estimate)
             ss << ", ";
         }
 
-        Volume* v = nullptr;
+        SharedVolumePtr v = nullptr;
 
         ASSERT_NO_THROW(v = newVolume("volume",
                                       backend::Namespace(),
@@ -162,7 +162,7 @@ TEST_P(TokyoCabinetMetaDataStoreTest, DISABLED_on_disk_size_estimate)
         }
 
         md->unCork(boost::none);
-        syncMetaDataStoreBackend(v);
+        syncMetaDataStoreBackend(*v);
 
         const uint64_t real = TokyoCabinetMetaDataBackend::locally_used_bytes(v->get_config());
         const uint64_t expected = tc_db_size_estimate(*v);

@@ -56,7 +56,7 @@ protected:
     {}
 
     std::unique_ptr<MetaDataStoreInterface>&
-    getMDStore(Volume* v)
+    getMDStore(SharedVolumePtr v)
     {
         return v->metaDataStore_;
     }
@@ -88,7 +88,7 @@ protected:
             .cluster_multiplier(ClusterMultiplier(8))
             .metadata_cache_capacity(cache_pages);
 
-        Volume* v = newVolume(params);
+        SharedVolumePtr v = newVolume(params);
 
         //    interval.start();
         MetaDataStoreInterface& md = *(v->metaDataStore_);
@@ -167,7 +167,7 @@ protected:
         const backend::Namespace& nspace = ns_ptr->ns();
         // const backend::Namespace nspace;
 
-        Volume* v = newVolume(vname, nspace);
+        SharedVolumePtr v = newVolume(vname, nspace);
         auto md = dynamic_cast<CachedMetaDataStore*>(v->getMetaDataStore());
 
         ASSERT_TRUE(md != nullptr) << "use a CachedMetaDataStore";
@@ -227,7 +227,7 @@ protected:
 
         const backend::Namespace& nspace = ns_ptr->ns();
 
-        Volume* v = newVolume(vname, nspace);
+        SharedVolumePtr v = newVolume(vname, nspace);
         auto& md = *(v->getMetaDataStore());
 
         LBAGenGen lgg(entries_per_tlog,
@@ -295,7 +295,7 @@ protected:
 
         const backend::Namespace& nspace = ns_ptr->ns();
 
-        Volume* v = newVolume(vname, nspace);
+        SharedVolumePtr v = newVolume(vname, nspace);
         auto& md = *(v->getMetaDataStore());
 
         const uint64_t total_size =
@@ -357,7 +357,7 @@ TEST_P(MetaDataStoreTest, syncStore)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* vol_ = newVolume("volume1",
+    SharedVolumePtr vol_ = newVolume("volume1",
                              ns);
 
     ASSERT_NO_THROW(vol_->getMetaDataStore()->sync());
@@ -369,7 +369,7 @@ TEST_P(MetaDataStoreTest, readUnwrittenCluster)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* vol_ = newVolume("volume1",
+    SharedVolumePtr vol_ = newVolume("volume1",
                              ns);
 
     ClusterLocationAndHash a;
@@ -383,7 +383,7 @@ TEST_P(MetaDataStoreTest, writeOnePage)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* vol_ = newVolume("volume1",
+    SharedVolumePtr vol_ = newVolume("volume1",
                              ns);
 
     ClusterLocation a(10,10,SCOCloneID(100),SCOVersion(100));
@@ -399,7 +399,7 @@ TEST_P(MetaDataStoreTest, writeAndReadOnePage)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* vol_ = newVolume("volume1",
+    SharedVolumePtr vol_ = newVolume("volume1",
                              ns);
 
     ClusterLocation a(10,10,SCOCloneID(100),SCOVersion(100));
@@ -426,7 +426,7 @@ TEST_P(MetaDataStoreTest, single_cache_page)
                                       new_owner_tag())
         .metadata_cache_capacity(1);
 
-    Volume* v = newVolume(params);
+    SharedVolumePtr v = newVolume(params);
 
     auto md = v->getMetaDataStore();
 
@@ -454,7 +454,7 @@ TEST_P(MetaDataStoreTest, writeAndReadSeveralPages)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* vol_ = newVolume("volume1",
+    SharedVolumePtr vol_ = newVolume("volume1",
                              ns);
 
     const uint32_t offset = 1 << 14;
@@ -481,7 +481,7 @@ TEST_P(MetaDataStoreTest, writeAndReadOnePage1)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* vol_ = newVolume("volume1",
+    SharedVolumePtr vol_ = newVolume("volume1",
                              ns);
 
     const uint32_t offset = 1 << 14;
@@ -511,7 +511,7 @@ TEST_P(MetaDataStoreTest, writeAndReadOnePage2)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* vol_ = newVolume("volume1",
+    SharedVolumePtr vol_ = newVolume("volume1",
 			     ns);
 
     ClusterLocation a(10,10,SCOCloneID(100),SCOVersion(100));
@@ -531,7 +531,7 @@ TEST_P(MetaDataStoreTest, writeAndReadSeveralPages2)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* vol_ = newVolume("volume1",
+    SharedVolumePtr vol_ = newVolume("volume1",
 			     ns);
 
     const uint32_t offset = 1 << 14;
@@ -564,7 +564,7 @@ TEST_P(MetaDataStoreTest, writeAndReadSeveralPages3)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* vol_ = newVolume("volume1",
+    SharedVolumePtr vol_ = newVolume("volume1",
 			     ns);
 
     const uint32_t offset = 1 << 8;
@@ -645,37 +645,37 @@ TEST_P(MetaDataStoreTest, DataStoreMap)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* vol_ = newVolume("volume1",
+    SharedVolumePtr vol_ = newVolume("volume1",
 			     ns);
 
     // This depends on clustersize, sectorsize and such!!
-    writeToVolume(vol_, 0, 8192, "pattern");
+    writeToVolume(*vol_, 0, 8192, "pattern");
     Counter c;
     vol_->scheduleBackendSync();
-    waitForThisBackendWrite(vol_);
+    waitForThisBackendWrite(*vol_);
 
     ASSERT_NO_THROW(vol_->getMetaDataStore()->for_each(c,
                                                        1000000));
 
     ASSERT_EQ(2U, c.map.size());
 
-    writeToVolume(vol_,0, 4096, "pattern");
+    writeToVolume(*vol_,0, 4096, "pattern");
 
-    writeToVolume(vol_, 13,4096,"pattern");
+    writeToVolume(*vol_, 13,4096,"pattern");
 
     c.map.clear();
     vol_->scheduleBackendSync();
-    waitForThisBackendWrite(vol_);
+    waitForThisBackendWrite(*vol_);
 
     ASSERT_NO_THROW(vol_->getMetaDataStore()->for_each(c,
                                                        100000));
     ASSERT_EQ(3U, c.map.size());
 
-    writeToVolume(vol_, 25,4096,"pattern");
+    writeToVolume(*vol_, 25,4096,"pattern");
 
     c.map.clear();
     vol_->scheduleBackendSync();
-    waitForThisBackendWrite(vol_);
+    waitForThisBackendWrite(*vol_);
 
     ASSERT_NO_THROW(vol_->getMetaDataStore()->for_each(c,
                                                        100000));
@@ -780,7 +780,7 @@ TEST_P(MetaDataStoreTest, stats1)
 
     const auto ns(make_random_namespace());
 
-    Volume* v = newVolume("volume",
+    SharedVolumePtr v = newVolume("volume",
                           ns->ns(),
                           VolumeSize(volsize),
                           default_sco_multiplier(),
@@ -851,7 +851,7 @@ TEST_P(MetaDataStoreTest, stats2)
 
     const auto ns(make_random_namespace());
 
-    Volume* v = newVolume("volume",
+    SharedVolumePtr v = newVolume("volume",
                           ns->ns(),
                           VolumeSize(volsize),
                           default_sco_multiplier(),

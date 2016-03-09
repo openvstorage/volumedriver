@@ -26,8 +26,8 @@
 
 #include <backend/BackendInterface.h>
 
+#include <volumedriver/Api.h>
 #include <volumedriver/DataStoreNG.h>
-#include <volumedriver/ScopedVolume.h>
 #include <volumedriver/VolManager.h>
 #include <volumedriver/VolumeConfig.h>
 #include <volumedriver/VolumeThreadPool.h>
@@ -55,19 +55,19 @@ public:
                                                     const std::string& snap)> fun)
     {
         auto ns(make_random_namespace());
-        Volume* v = newVolume(*ns);
+        SharedVolumePtr v = newVolume(*ns);
 
         const std::string pattern("some data");
-        writeToVolume(v,
+        writeToVolume(*v,
                       0,
                       v->getClusterSize(),
                       pattern);
 
         const std::string snap("snap");
 
-        SCOPED_BLOCK_BACKEND(v);
+        SCOPED_BLOCK_BACKEND(*v);
 
-        createSnapshot(v,
+        createSnapshot(*v,
                        snap);
 
         auto& sm = v->getSnapshotManagement();
@@ -143,7 +143,7 @@ TEST_P(SimpleVolumeTest, testVolumePotential)
 TEST_P(SimpleVolumeTest, update_tlog_multiplier)
 {
     auto wrns(make_random_namespace());
-    Volume* v = newVolume(*wrns);
+    SharedVolumePtr v = newVolume(*wrns);
 
     const boost::optional<TLogMultiplier> tm(v->getTLogMultiplier());
     const TLogMultiplier tm_eff(v->getEffectiveTLogMultiplier());
@@ -173,7 +173,7 @@ TEST_P(SimpleVolumeTest, update_tlog_multiplier)
 TEST_P(SimpleVolumeTest, update_sco_multiplier)
 {
     auto wrns(make_random_namespace());
-    Volume* v = newVolume(*wrns);
+    SharedVolumePtr v = newVolume(*wrns);
 
     fungi::ScopedLock l(api::getManagementMutex());
 
@@ -204,138 +204,10 @@ TEST_P(SimpleVolumeTest, alignment)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns);
 
     ASSERT_TRUE(__alignof__(*v) >= 4);
-}
-
-TEST_P(SimpleVolumeTest, scoped_volume_with_local_deletion)
-{
-    VolumeId vid1("volume1");
-    auto ns_ptr = make_random_namespace();
-
-    const backend::Namespace& ns1 = ns_ptr->ns();
-
-    //    Namespace ns1;
-    std::unique_ptr<VolumeConfig> cfg;
-    {
-
-         ScopedVolumeWithLocalDeletion vol (newVolume(vid1,
-                                                      ns1));
-         writeToVolume(vol.get(),
-                       0,
-                       4096,
-                       "blah");
-         cfg.reset(new VolumeConfig(vol->get_config()));
-         WAIT_FOR_THIS_VOLUME_WRITE(vol.get());
-         ASSERT_THROW(localRestart(ns1),
-                      fungi::IOException);
-         ASSERT_THROW(restartVolume(*cfg),
-                      fungi::IOException);
-    }
-    ASSERT_THROW(localRestart(ns1),
-                 fungi::IOException);
-    ASSERT_NO_THROW(restartVolume(*cfg));
-}
-
-TEST_P(SimpleVolumeTest, scoped_volume_with_local_deletion2)
-{
-    VolumeId vid1("volume1");
-    auto ns_ptr = make_random_namespace();
-
-    const backend::Namespace& ns1 = ns_ptr->ns();
-    //Namespace ns1;
-    std::unique_ptr<VolumeConfig> cfg;
-     {
-         ScopedVolumeWithoutLocalDeletion vol (newVolume(vid1,
-                                                         ns1));
-         writeToVolume(vol.get(),
-                       0,
-                       4096,
-                       "blah");
-         cfg.reset(new VolumeConfig(vol->get_config()));
-
-         WAIT_FOR_THIS_VOLUME_WRITE(vol.get());
-         ASSERT_THROW(localRestart(ns1),
-                          fungi::IOException);
-
-         ASSERT_THROW(restartVolume(*cfg),
-                      fungi::IOException);
-     }
-    ASSERT_THROW(restartVolume(*cfg),
-                 fungi::IOException);
-    ASSERT_NO_THROW(localRestart(ns1));
-}
-
-TEST_P(SimpleVolumeTest, scoped_volume_with_local_deletion3)
-{
-    VolumeId vid1("volume1");
-    auto ns_ptr = make_random_namespace();
-
-    const backend::Namespace& ns1 = ns_ptr->ns();
-    //Namespace ns1;
-    std::unique_ptr<VolumeConfig> cfg;
-     {
-         ScopedVolumeWithoutLocalDeletion vol (newVolume(vid1,
-                                                         ns1));
-         writeToVolume(vol.get(),
-                       0,
-                       4096,
-                       "blah");
-         cfg.reset(new VolumeConfig(vol->get_config()));
-
-         WAIT_FOR_THIS_VOLUME_WRITE(vol.get());
-         ASSERT_THROW(localRestart(ns1),
-                          fungi::IOException);
-
-         ASSERT_THROW(restartVolume(*cfg),
-                      fungi::IOException);
-
-         checkVolume(vol.get(),
-                     0,
-                     4096,
-                     "blah");
-
-         vol->set_cluster_cache_mode(ClusterCacheMode::LocationBased);
-         vol->set_cluster_cache_behaviour(ClusterCacheBehaviour::CacheOnRead);
-
-         checkVolume(vol.get(),
-                     0,
-                     4096,
-                     "blah");
-
-         ASSERT_THROW(vol->set_cluster_cache_mode(ClusterCacheMode::ContentBased),
-                      fungi::IOException);
-
-         vol->set_cluster_cache_behaviour(ClusterCacheBehaviour::NoCache);
-         vol->set_cluster_cache_behaviour(ClusterCacheBehaviour::CacheOnWrite);
-
-         writeToVolume(vol.get(),
-                       0,
-                       4096,
-                       "blahblah");
-
-         checkVolume(vol.get(),
-                     0,
-                     4096,
-                     "blahblah");
-
-         vol->set_cluster_cache_behaviour(ClusterCacheBehaviour::NoCache);
-
-         writeToVolume(vol.get(),
-                       0,
-                       4096,
-                       "blahblah");
-
-         checkVolume(vol.get(),
-                     0,
-                     4096,
-                     "blahblah");
-     }
-    ASSERT_THROW(restartVolume(*cfg),
-                 fungi::IOException);
-    ASSERT_NO_THROW(localRestart(ns1));
 }
 
 TEST_P(SimpleVolumeTest, sizeTest)
@@ -357,7 +229,7 @@ TEST_P(SimpleVolumeTest, sizeTest)
 
 struct VolumeWriter
 {
-    VolumeWriter(Volume* v)
+    VolumeWriter(SharedVolumePtr v)
         :vol_(v)
         , stop_(false)
     {}
@@ -367,7 +239,7 @@ struct VolumeWriter
     {
         while(not stop_)
         {
-            VolManagerTestSetup::writeToVolume(vol_,0, 4096,"blah");
+            VolManagerTestSetup::writeToVolume(*vol_,0, 4096,"blah");
             usleep(100);
         }
     }
@@ -379,7 +251,7 @@ struct VolumeWriter
     }
 
 
-    Volume* vol_;
+    SharedVolumePtr vol_;
     bool stop_;
 };
 
@@ -389,7 +261,7 @@ TEST_P(SimpleVolumeTest, DISABLED_dumpMDStore)
 {
     VolumeId vid("volume1");
 
-    Volume* v = newVolume(vid,
+    SharedVolumePtr v = newVolume(vid,
 			  backend::Namespace());
     VolumeWriter writer(v);
 
@@ -415,31 +287,31 @@ TEST_P(SimpleVolumeTest, halted)
     auto ns_ptr = make_random_namespace();
 
     const backend::Namespace& ns = ns_ptr->ns();
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
 			  ns);
 
     const std::string pattern("blah");
 
-    ASSERT_TRUE(v);
-    writeToVolume(v,
+    ASSERT_TRUE(v != nullptr);
+    writeToVolume(*v,
                   0,
                   4096,
                   pattern);
 
-    checkVolume(v,
+    checkVolume(*v,
                 0,
                 4096,
                 pattern);
 
     v->halt();
 
-    EXPECT_THROW(writeToVolume(v,
+    EXPECT_THROW(writeToVolume(*v,
                                0,
                                4096,
                                "fubar"),
                  std::exception);
 
-    EXPECT_THROW(checkVolume(v,
+    EXPECT_THROW(checkVolume(*v,
                              0,
                              4096,
                              pattern),
@@ -452,32 +324,32 @@ TEST_P(SimpleVolumeTest, test1)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
 			  ns);
-    ASSERT_TRUE(v);
-    writeToVolume(v,
+    ASSERT_TRUE(v != nullptr);
+    writeToVolume(*v,
                   0,
                   4096,
                   "immanuel");
-    writeToVolume(v,
+    writeToVolume(*v,
                   4096,
                   4096,
                   "joost");
 
-    writeToVolume(v,
+    writeToVolume(*v,
                   2*4096,
                   4096,
                   "arne");
 
-    checkVolume(v,
+    checkVolume(*v,
                 0,
                 4096,
                 "immanuel");
-    checkVolume(v,
+    checkVolume(*v,
                 4096,
                 4096,
                 "joost");
-    checkVolume(v,
+    checkVolume(*v,
                 2*4096,
                 4096,
                 "arne");
@@ -489,24 +361,24 @@ TEST_P(SimpleVolumeTest, test2)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
 			  ns);
-    ASSERT_TRUE(v);
-    writeToVolume(v,
+    ASSERT_TRUE(v != nullptr);
+    writeToVolume(*v,
                   0,
                   4096,
                   "immanuel");
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   4096,
                   "joost");
 
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   4096,
                   "arne");
 
-    checkVolume(v,
+    checkVolume(*v,
                 0,
                 4096,
                 "arne");
@@ -521,31 +393,31 @@ TEST_P(SimpleVolumeTest, test3)
     const backend::Namespace& ns = ns_ptr->ns();
 
 
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns);
 
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
 
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   4096,
                   "immanuel");
     v->createSnapshot(SnapshotName("snap1"));
-    waitForThisBackendWrite(v);
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
+    waitForThisBackendWrite(*v);
     auto ns1_ptr = make_random_namespace();
 
     const backend::Namespace& ns_clone = ns1_ptr->ns();
 
     // backend::Namespace ns_clone;
 
-    Volume* c = 0;
+    SharedVolumePtr c = 0;
     c = createClone("clone1",
                     ns_clone,
                     ns,
                     "snap1");
 
-    checkVolume(c,
+    checkVolume(*c,
                 0,
                 4096,
                 "immanuel");
@@ -553,7 +425,7 @@ TEST_P(SimpleVolumeTest, test3)
 
 TEST_P(SimpleVolumeTest, test4)
 {
-    Volume* v = 0;
+    SharedVolumePtr v = 0;
     auto ns_ptr = make_random_namespace();
 
     const backend::Namespace& ns1 = ns_ptr->ns();
@@ -561,80 +433,80 @@ TEST_P(SimpleVolumeTest, test4)
     //backend::Namespace ns1;
     v = newVolume(VolumeId("volume1"),
                   ns1);
-    ASSERT_TRUE(v);
-    writeToVolume(v,
+    ASSERT_TRUE(v != nullptr);
+    writeToVolume(*v,
                   0,
                   4096,
                   "a");
 
     v->createSnapshot(SnapshotName("snap1"));
 
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
     auto ns1_ptr = make_random_namespace();
 
     const backend::Namespace& ns_clone1 = ns1_ptr->ns();
 
     // backend::Namespace ns_clone1;
 
-    Volume* c1 = 0;
+    SharedVolumePtr c1 = 0;
     c1 = createClone("clone1",
                      ns_clone1,
                      ns1,
                     "snap1");
-    writeToVolume(c1,
+    writeToVolume(*c1,
                   4096,
                   4096,
                   "b");
 
-    checkVolume(c1,
+    checkVolume(*c1,
                 0,
                 4096,
                 "a");
 
 
-    checkVolume(c1,
+    checkVolume(*c1,
                 4096,
                 4096,
                 "b");
 
     c1->createSnapshot(SnapshotName("snap2"));
 
-    waitForThisBackendWrite(c1);
+    waitForThisBackendWrite(*c1);
     auto ns2_ptr = make_random_namespace();
 
     const backend::Namespace& ns_clone2 = ns2_ptr->ns();
 
     // backend::Namespace ns_clone2;
-    Volume* c2 = 0;
+    SharedVolumePtr c2 = 0;
     c2 = createClone("clone2",
                      ns_clone2,
                      ns_clone1,
                      "snap2");
-    ASSERT_TRUE(c2);
+    ASSERT_TRUE(c2 != nullptr);
 
-     checkVolume(c2,
+     checkVolume(*c2,
                 4096,
                  4096,
                  "b");
-    checkVolume(c2,
+    checkVolume(*c2,
                 0,
                 4096,
                 "a");
 
 
-    writeToVolume(c2,
+    writeToVolume(*c2,
                   2*4096,
                   4096,
                   "c");
-    checkVolume(c2,
+    checkVolume(*c2,
                 2*4096,
                 4096,
                 "c");
     c2->createSnapshot(SnapshotName("snap3"));
-    waitForThisBackendWrite(c2);
+    waitForThisBackendWrite(*c2);
 
 
-    Volume* c3 = 0;
+    SharedVolumePtr c3 = 0;
     auto ns3_ptr = make_random_namespace();
 
     const backend::Namespace& ns_clone3 = ns3_ptr->ns();
@@ -645,35 +517,35 @@ TEST_P(SimpleVolumeTest, test4)
                      ns_clone2,
                      "snap3");
 
-    ASSERT_TRUE(c3);
+    ASSERT_TRUE(c3 != nullptr);
 
-    checkVolume(c3,
+    checkVolume(*c3,
                 0,
                 4096,
                 "a");
 
-    checkVolume(c3,
+    checkVolume(*c3,
                 4096,
                 4096,
                 "b");
-    checkVolume(c3,
+    checkVolume(*c3,
                 2*4096,
                 4096,
                 "c");
-    writeToVolume(c3,
+    writeToVolume(*c3,
                   3*4096,
                   4096,
                   "d");
 
-    checkVolume(c3,
+    checkVolume(*c3,
                 3*4096,
                 4096,
                 "d");
 
     c3->createSnapshot(SnapshotName("snap4"));
-    waitForThisBackendWrite(c3);
+    waitForThisBackendWrite(*c3);
 
-    Volume* c4 = 0;
+    SharedVolumePtr c4 = 0;
     auto ns4_ptr = make_random_namespace();
 
     const backend::Namespace& ns_clone4 = ns4_ptr->ns();
@@ -683,7 +555,7 @@ TEST_P(SimpleVolumeTest, test4)
                      ns_clone4,
                      ns_clone3,
                      "snap4");
-    ASSERT_TRUE(c4);
+    ASSERT_TRUE(c4 != nullptr);
 }
 
 TEST_P(SimpleVolumeTest, switchTLog)
@@ -693,7 +565,7 @@ TEST_P(SimpleVolumeTest, switchTLog)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns);
 
     const TLogId init_tlog(v->getSnapshotManagement().getCurrentTLogId());
@@ -702,13 +574,13 @@ TEST_P(SimpleVolumeTest, switchTLog)
     uint64_t clusters = VolManager::get()->number_of_scos_in_tlog.value() *  v->getSCOMultiplier();
 
     for(unsigned i = 0; i < clusters - 1; ++i) {
-        writeToVolume(v, 0, 4096, &v1[0]);
+        writeToVolume(*v, 0, 4096, &v1[0]);
     }
 
     ASSERT_EQ(init_tlog,
               v->getSnapshotManagement().getCurrentTLogId());
 
-    writeToVolume(v, 0, 4096, &v1[0]);
+    writeToVolume(*v, 0, 4096, &v1[0]);
 
     ASSERT_NE(init_tlog,
               v->getSnapshotManagement().getCurrentTLogId());
@@ -721,7 +593,7 @@ TEST_P(SimpleVolumeTest, restoreSnapshot)
     const backend::Namespace& nspace = ns_ptr->ns();
 
     //const backend::Namespace nspace;
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           nspace);
 
     const int count = v->getClusterSize();
@@ -730,45 +602,45 @@ TEST_P(SimpleVolumeTest, restoreSnapshot)
     const std::string snapshotName2("canon");
 
 
-    writeToVolume(v, 0, count, snapshotName1);
-    writeToVolume(v, 0, count, snapshotName2);
+    writeToVolume(*v, 0, count, snapshotName1);
+    writeToVolume(*v, 0, count, snapshotName2);
 
-    checkVolume(v, 0, count, snapshotName2);
+    checkVolume(*v, 0, count, snapshotName2);
 
     {
-        SCOPED_BLOCK_BACKEND(v);
-        ASSERT_NO_THROW(createSnapshot(v, snapshotName1));
-        writeToVolume(v, 0, count, snapshotName1);
+        SCOPED_BLOCK_BACKEND(*v);
+        ASSERT_NO_THROW(createSnapshot(*v, snapshotName1));
+        writeToVolume(*v, 0, count, snapshotName1);
 
-        EXPECT_THROW(createSnapshot(v, snapshotName2), PreviousSnapshotNotOnBackendException);
-        writeToVolume(v,0, count,"bbbbb");
+        EXPECT_THROW(createSnapshot(*v, snapshotName2), PreviousSnapshotNotOnBackendException);
+        writeToVolume(*v,0, count,"bbbbb");
 
-        EXPECT_THROW(restoreSnapshot(v, snapshotName1), fungi::IOException);
+        EXPECT_THROW(restoreSnapshot(*v, snapshotName1), fungi::IOException);
 
 
     }
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     {
-        SCOPED_BLOCK_BACKEND(v);
-        ASSERT_NO_THROW(createSnapshot(v, snapshotName2));
-        writeToVolume(v,0, count,"ccccc");
+        SCOPED_BLOCK_BACKEND(*v);
+        ASSERT_NO_THROW(createSnapshot(*v, snapshotName2));
+        writeToVolume(*v,0, count,"ccccc");
     }
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
 
-    EXPECT_NO_THROW(restoreSnapshot(v, snapshotName1));
+    EXPECT_NO_THROW(restoreSnapshot(*v, snapshotName1));
 
 
-    checkVolume(v,0,count,snapshotName2);
+    checkVolume(*v,0,count,snapshotName2);
 
     // we should be able to rewrite now:
-    writeToVolume(v,0, count,"aaaaa");
+    writeToVolume(*v,0, count,"aaaaa");
 
-    checkVolume(v,0,count,"aaaaa");
+    checkVolume(*v,0,count,"aaaaa");
 
     // make sure tlogs are not leaked
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     std::list<std::string> tlogsInBackend;
     backendRegex(nspace,
@@ -801,7 +673,7 @@ TEST_P(SimpleVolumeTest, restoreSnapshot2)
 
     const backend::Namespace& nspace = ns_ptr->ns();
 
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           nspace);
 
     const int count = v->getClusterSize();
@@ -815,14 +687,14 @@ TEST_P(SimpleVolumeTest, restoreSnapshot2)
     EXPECT_TRUE(v->isCacheOnRead());
     EXPECT_FALSE(v->isCacheOnWrite());
 
-    writeToVolume(v, 0, count, snapshotName1);
-    writeToVolume(v, 0, count, snapshotName2);
+    writeToVolume(*v, 0, count, snapshotName1);
+    writeToVolume(*v, 0, count, snapshotName2);
 
-    checkVolume(v, 0, count, snapshotName2);
+    checkVolume(*v, 0, count, snapshotName2);
 
     {
-        SCOPED_BLOCK_BACKEND(v);
-        ASSERT_NO_THROW(createSnapshot(v, snapshotName1));
+        SCOPED_BLOCK_BACKEND(*v);
+        ASSERT_NO_THROW(createSnapshot(*v, snapshotName1));
 
         v->set_cluster_cache_behaviour(ClusterCacheBehaviour::NoCache);
         EXPECT_TRUE(v->effective_cluster_cache_behaviour() == ClusterCacheBehaviour::NoCache);
@@ -830,19 +702,19 @@ TEST_P(SimpleVolumeTest, restoreSnapshot2)
         EXPECT_TRUE(v->isCacheOnRead());
         EXPECT_FALSE(v->isCacheOnWrite());
 
-        writeToVolume(v, 0, count, snapshotName1);
+        writeToVolume(*v, 0, count, snapshotName1);
 
-        EXPECT_THROW(createSnapshot(v, snapshotName2), PreviousSnapshotNotOnBackendException);
-        writeToVolume(v,0, count,"cnanakos1");
+        EXPECT_THROW(createSnapshot(*v, snapshotName2), PreviousSnapshotNotOnBackendException);
+        writeToVolume(*v,0, count,"cnanakos1");
 
-        EXPECT_THROW(restoreSnapshot(v, snapshotName1), fungi::IOException);
+        EXPECT_THROW(restoreSnapshot(*v, snapshotName1), fungi::IOException);
     }
 
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     {
-        SCOPED_BLOCK_BACKEND(v);
-        ASSERT_NO_THROW(createSnapshot(v, snapshotName2));
+        SCOPED_BLOCK_BACKEND(*v);
+        ASSERT_NO_THROW(createSnapshot(*v, snapshotName2));
 
         v->set_cluster_cache_behaviour(ClusterCacheBehaviour::NoCache);
         EXPECT_TRUE(v->effective_cluster_cache_behaviour() == ClusterCacheBehaviour::NoCache);
@@ -853,12 +725,12 @@ TEST_P(SimpleVolumeTest, restoreSnapshot2)
         EXPECT_TRUE(v->isCacheOnRead());
         EXPECT_FALSE(v->isCacheOnWrite());
 
-        writeToVolume(v,0, count,"cnanakos2");
+        writeToVolume(*v,0, count,"cnanakos2");
     }
 
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
-    EXPECT_NO_THROW(restoreSnapshot(v, snapshotName1));
+    EXPECT_NO_THROW(restoreSnapshot(*v, snapshotName1));
 
     v->set_cluster_cache_behaviour(ClusterCacheBehaviour::NoCache);
     EXPECT_TRUE(v->effective_cluster_cache_behaviour() == ClusterCacheBehaviour::NoCache);
@@ -868,13 +740,13 @@ TEST_P(SimpleVolumeTest, restoreSnapshot2)
     EXPECT_TRUE(v->isCacheOnRead());
     EXPECT_FALSE(v->isCacheOnWrite());
 
-    checkVolume(v,0,count,snapshotName2);
+    checkVolume(*v,0,count,snapshotName2);
 
-    writeToVolume(v,0, count,"cnanakos4");
+    writeToVolume(*v,0, count,"cnanakos4");
 
-    checkVolume(v,0,count,"cnanakos4");
+    checkVolume(*v,0,count,"cnanakos4");
 
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     std::list<std::string> tlogsInBackend;
     backendRegex(nspace,
@@ -911,7 +783,7 @@ TEST_P(SimpleVolumeTest, restoreSnapshotWithFuckedUpTLogs)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns,
                           VolumeSize((1 << 18) * 512),
                           clustersInSco);
@@ -920,15 +792,15 @@ TEST_P(SimpleVolumeTest, restoreSnapshotWithFuckedUpTLogs)
 
     const std::string snapshotName1("nikon1");
 
-    writeToVolume(v, 0, count, snapshotName1);
+    writeToVolume(*v, 0, count, snapshotName1);
 
-    createSnapshot(v, snapshotName1);
-    waitForThisBackendWrite(v);
+    createSnapshot(*v, snapshotName1);
+    waitForThisBackendWrite(*v);
 
     //make sure we delete some tlog in the middle, not just the first one
     for (uint32_t i = 0 ; i < 5 * clustersInSco * scosInTlog; i++)
     {
-        writeToVolume(v,
+        writeToVolume(*v,
                       0,
                       count,
                       "there are no rules without exceptions, so there are rules without exceptions");
@@ -938,7 +810,7 @@ TEST_P(SimpleVolumeTest, restoreSnapshotWithFuckedUpTLogs)
 
     for (uint32_t i = 0 ; i < 5 * clustersInSco * scosInTlog; i++)
     {
-        writeToVolume(v,
+        writeToVolume(*v,
                       0,
                       count,
                       "there are no rules without exceptions, so there are rules without exceptions");
@@ -946,13 +818,13 @@ TEST_P(SimpleVolumeTest, restoreSnapshotWithFuckedUpTLogs)
 
     const std::string snapshotName2("nikon2");
 
-    createSnapshot(v, snapshotName2);
-    waitForThisBackendWrite(v);
+    createSnapshot(*v, snapshotName2);
+    waitForThisBackendWrite(*v);
 
     v->getBackendInterface()->remove(boost::lexical_cast<std::string>(tlog_id));
 
-    ASSERT_NO_THROW(restoreSnapshot(v, snapshotName1));
-    checkVolume(v,0,count,snapshotName1);
+    ASSERT_NO_THROW(restoreSnapshot(*v, snapshotName1));
+    checkVolume(*v,0,count,snapshotName1);
 }
 
 TEST_P(SimpleVolumeTest, restoreSnapshotWithFuckedUpNeededTLogs)
@@ -965,7 +837,7 @@ TEST_P(SimpleVolumeTest, restoreSnapshotWithFuckedUpNeededTLogs)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns,
                           VolumeSize((1 << 18) * 512),
                           clustersInSco);
@@ -976,34 +848,34 @@ TEST_P(SimpleVolumeTest, restoreSnapshotWithFuckedUpNeededTLogs)
 
     //make sure we delete some tlog in the middle, not just the first one
     for (uint32_t i = 0 ; i < 5 * clustersInSco * scosInTlog; i++) {
-        writeToVolume(v, 0, count, "should be overwritten");
+        writeToVolume(*v, 0, count, "should be overwritten");
     }
 
     const TLogId tlog_id = v->getSnapshotManagement().getCurrentTLogId();
 
     for (uint32_t i = 0 ; i < 5 * clustersInSco * scosInTlog; i++)
     {
-        writeToVolume(v, 0, count, "should be overwritten");
+        writeToVolume(*v, 0, count, "should be overwritten");
     }
 
-    writeToVolume(v, 0, count, snapshotName1);
+    writeToVolume(*v, 0, count, snapshotName1);
 
     for (uint32_t i = 0 ; i < 5 * clustersInSco * scosInTlog; i++)
     {
-        writeToVolume(v, 0, count, "there are no rules without exceptions, so there are rules without exceptions");
+        writeToVolume(*v, 0, count, "there are no rules without exceptions, so there are rules without exceptions");
     }
 
-    createSnapshot(v, snapshotName1);
-    waitForThisBackendWrite(v);
+    createSnapshot(*v, snapshotName1);
+    waitForThisBackendWrite(*v);
 
     const std::string snapshotName2("nikon2");
 
-    createSnapshot(v, snapshotName2);
-    waitForThisBackendWrite(v);
+    createSnapshot(*v, snapshotName2);
+    waitForThisBackendWrite(*v);
 
     v->getBackendInterface()->remove(boost::lexical_cast<std::string>(tlog_id));
 
-    ASSERT_THROW(restoreSnapshot(v, snapshotName1), std::exception);
+    ASSERT_THROW(restoreSnapshot(*v, snapshotName1), std::exception);
 }
 
 
@@ -1014,22 +886,22 @@ TEST_P(SimpleVolumeTest, dontLeakStorageOnSnapshotRollback)
     const backend::Namespace& nspace = ns_ptr->ns();
 
     //const Namespace nspace;
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           nspace);
 
     const int size = v->getClusterSize();
 
     const std::string pattern1 = "sco1";
-    writeToVolume(v, 0, size, pattern1);
-    createSnapshot(v, "snap1");
+    writeToVolume(*v, 0, size, pattern1);
+    createSnapshot(*v, "snap1");
 
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     const std::string pattern2 = "sco2";
-    writeToVolume(v, 0, size, pattern2);
-    createSnapshot(v, "snap2");
+    writeToVolume(*v, 0, size, pattern2);
+    createSnapshot(*v, "snap2");
 
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     const std::string scoGlob("00_.*");
     const std::string tlogGlob("tlog_.*");
@@ -1048,12 +920,11 @@ TEST_P(SimpleVolumeTest, dontLeakStorageOnSnapshotRollback)
     EXPECT_EQ(2U, scos.size());
     EXPECT_EQ(2U, tlogs.size());
 
-
-    ASSERT_NO_THROW(restoreSnapshot(v, "snap1"));
+    ASSERT_NO_THROW(restoreSnapshot(*v, "snap1"));
 
     scos.clear();
     tlogs.clear();
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     backendRegex(nspace,
                  scoGlob,
@@ -1069,7 +940,7 @@ TEST_P(SimpleVolumeTest, dontLeakStorageOnSnapshotRollback)
 
 TEST_P(SimpleVolumeTest, cleanupAfterInvalidVolume)
 {
-    Volume* v = 0;
+    SharedVolumePtr v = 0;
     auto ns_ptr = make_random_namespace();
 
     const backend::Namespace& ns = ns_ptr->ns();
@@ -1084,7 +955,7 @@ TEST_P(SimpleVolumeTest, cleanupAfterInvalidVolume)
     ASSERT_NO_THROW(v = newVolume(VolumeId("volume1"),
 				  ns));
 
-    EXPECT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
 
     ASSERT_NO_THROW(destroyVolume(v,
                                   DeleteLocalData::T,
@@ -1094,14 +965,14 @@ TEST_P(SimpleVolumeTest, cleanupAfterInvalidVolume)
 
 TEST_P(SimpleVolumeTest, reCreateVol)
 {
-    Volume* v1 = nullptr;
+    SharedVolumePtr v1 = nullptr;
     auto ns_ptr = make_random_namespace();
 
     const backend::Namespace& ns = ns_ptr->ns();
 
     ASSERT_NO_THROW(v1 = newVolume(VolumeId("volume1"),
 				   ns));
-    ASSERT_TRUE(v1);
+    ASSERT_TRUE(v1 != nullptr);
 
     ASSERT_THROW(newVolume(VolumeId("volume1"),
                            ns),
@@ -1116,19 +987,19 @@ TEST_P(SimpleVolumeTest, createUseAndDestroyVolume)
 {
     const VolumeId volname("volname");
 
-    Volume* v = 0;
+    SharedVolumePtr v = 0;
     auto ns_ptr = make_random_namespace();
 
     const backend::Namespace& ns = ns_ptr->ns();
 
     ASSERT_NO_THROW(v = newVolume(volname,
 				  ns));
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
 
     const SnapshotName snap("snap1");
     ASSERT_NO_THROW(v->createSnapshot(snap));
 
-    while(not isVolumeSyncedToBackend(v))
+    while(not isVolumeSyncedToBackend(*v))
     {
         sleep(1);
     }
@@ -1150,10 +1021,10 @@ TEST_P(SimpleVolumeTest, RollBack)
     const backend::Namespace& ns = ns_ptr->ns();
 
     const SnapshotName snap("snap1");
-    Volume* v1 = newVolume("1volume",
+    SharedVolumePtr v1 = newVolume("1volume",
                            ns);
     {
-        SCOPED_BLOCK_BACKEND(v1);
+        SCOPED_BLOCK_BACKEND(*v1);
         v1->createSnapshot(snap);
 
         EXPECT_THROW(v1->restoreSnapshot(snap),
@@ -1162,8 +1033,8 @@ TEST_P(SimpleVolumeTest, RollBack)
 
 
     }
-    waitForThisBackendWrite(v1);
-    waitForThisBackendWrite(v1);
+    waitForThisBackendWrite(*v1);
+    waitForThisBackendWrite(*v1);
 
     EXPECT_NO_THROW(v1->restoreSnapshot(snap));
 
@@ -1178,21 +1049,21 @@ TEST_P(SimpleVolumeTest, RollBack2)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v1 = newVolume("1volume",
+    SharedVolumePtr v1 = newVolume("1volume",
 			   ns);
 
     const SnapshotName snap("snap1");
     v1->createSnapshot(snap);
-    waitForThisBackendWrite(v1);
+    waitForThisBackendWrite(*v1);
 
     {
-        SCOPED_BLOCK_BACKEND(v1);
+        SCOPED_BLOCK_BACKEND(*v1);
         v1->createSnapshot(SnapshotName("snap2"));
     }
 
     v1->restoreSnapshot(snap);
 
-    waitForThisBackendWrite(v1);
+    waitForThisBackendWrite(*v1);
     destroyVolume(v1,
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::T);
@@ -1206,19 +1077,19 @@ TEST_P(SimpleVolumeTest, LocalRestartClone)
 
     //    backend::Namespace ns1;
 
-    Volume* v1 = newVolume("1volume",
+    SharedVolumePtr v1 = newVolume("1volume",
 			   ns1);
     for(int i = 0; i < 10; i++)
     {
-        writeToVolume(v1,
+        writeToVolume(*v1,
                       0,
                       4096,
                       "immanuel");
     }
 
     v1->createSnapshot(SnapshotName("snap1"));
-    waitForThisBackendWrite(v1);
-    waitForThisBackendWrite(v1);
+    waitForThisBackendWrite(*v1);
+    waitForThisBackendWrite(*v1);
 
     auto ns1_ptr = make_random_namespace();
 
@@ -1226,7 +1097,7 @@ TEST_P(SimpleVolumeTest, LocalRestartClone)
 
     // backend::Namespace clone_ns;
 
-    Volume* c = createClone("clone1",
+    SharedVolumePtr c = createClone("clone1",
                             clone_ns,
                             ns1,
                             "snap1");
@@ -1237,9 +1108,9 @@ TEST_P(SimpleVolumeTest, LocalRestartClone)
 
     c = 0;
     c = getVolume(VolumeId("clone1"));
-    ASSERT_TRUE(c);
+    ASSERT_TRUE(c != nullptr);
 
-    checkVolume(c,
+    checkVolume(*c,
                 0,
                 4096,
                 "immanuel");
@@ -1253,13 +1124,13 @@ TEST_P(SimpleVolumeTest, RollBackClone)
 
     // const backend::Namespace ns1;
 
-    Volume* v1 = newVolume("1volume",
+    SharedVolumePtr v1 = newVolume("1volume",
 			   ns1);
     const int mult = v1->getClusterSize()/ v1->getLBASize();
     for(int i = 0; i < 50; i++)
     {
 
-        writeToVolume(v1,
+        writeToVolume(*v1,
                       i*mult,
                       v1->getClusterSize(),
                       "immanuel");
@@ -1268,8 +1139,8 @@ TEST_P(SimpleVolumeTest, RollBackClone)
     const SnapshotName snap1("snap1");
 
     v1->createSnapshot(snap1);
-    waitForThisBackendWrite(v1);
-    waitForThisBackendWrite(v1);
+    waitForThisBackendWrite(*v1);
+    waitForThisBackendWrite(*v1);
 
     auto ns2_ptr = make_random_namespace();
 
@@ -1277,7 +1148,7 @@ TEST_P(SimpleVolumeTest, RollBackClone)
 
     // const backend::Namespace ns2;
 
-    Volume* v2 = createClone("2volume",
+    SharedVolumePtr v2 = createClone("2volume",
                              ns2,
                              ns1,
                              snap1);
@@ -1287,46 +1158,52 @@ TEST_P(SimpleVolumeTest, RollBackClone)
     const backend::Namespace& ns3 = ns3_ptr->ns();
 
     // const backend::Namespace ns3;
-    Volume* v3 = newVolume("3volume",
+    SharedVolumePtr v3 = newVolume("3volume",
                            ns3);
 
     for(int i = 50; i < 100; i++)
     {
-        writeToVolume(v2,
+        writeToVolume(*v2,
                       i*mult,
                       v1->getClusterSize(),
                       "arne");
-        writeToVolume(v3,
+        writeToVolume(*v3,
                       i*mult,
                       v1->getClusterSize(),
                       "arne");
-        writeToVolume(v1,
+        writeToVolume(*v1,
                       i*mult,
                       v1->getClusterSize(),
                       "arne");
     }
 
-    EXPECT_FALSE(checkVolumesIdentical(v2,v3));
-    EXPECT_TRUE(checkVolumesIdentical(v1,v2));
+    EXPECT_FALSE(checkVolumesIdentical(*v2,
+                                       *v3));
+    EXPECT_TRUE(checkVolumesIdentical(*v1,
+                                      *v2));
     v2->createSnapshot(snap1);
 
     for(int i = 50; i < 100; i++)
     {
-        writeToVolume(v2,
+        writeToVolume(*v2,
                       i*mult,
                       v1->getClusterSize(),
                       "kristaf");
     }
 
-    EXPECT_FALSE(checkVolumesIdentical(v3,v2));
-    EXPECT_FALSE(checkVolumesIdentical(v1,v2));
-    waitForThisBackendWrite(v2);
-    waitForThisBackendWrite(v2);
+    EXPECT_FALSE(checkVolumesIdentical(*v3,
+                                       *v2));
+    EXPECT_FALSE(checkVolumesIdentical(*v1,
+                                       *v2));
+    waitForThisBackendWrite(*v2);
+    waitForThisBackendWrite(*v2);
 
     v2->restoreSnapshot(snap1);
 
-    EXPECT_FALSE(checkVolumesIdentical(v2,v3));
-    EXPECT_TRUE(checkVolumesIdentical(v2,v1));
+    EXPECT_FALSE(checkVolumesIdentical(*v2,
+                                       *v3));
+    EXPECT_TRUE(checkVolumesIdentical(*v2,
+                                      *v1));
 }
 
 namespace
@@ -1425,14 +1302,14 @@ TEST_P(SimpleVolumeTest, DISABLED_SnapPerformance)
 
     snapshottimes.reserve(100);
 
-    Volume* vol = newVolume("vol1",
+    SharedVolumePtr vol = newVolume("vol1",
 			    backend::Namespace());
     VolumeConfig cfg = vol->get_config();
     //struct rusage rus;
     for(int i = 0; i < 20; ++i)
     {
-        Volume* v = getVolume(VolumeId("vol1"));
-        ASSERT_TRUE(v);
+        SharedVolumePtr v = getVolume(VolumeId("vol1"));
+        ASSERT_TRUE(v != nullptr);
         LOG_INFO("Run " << i);
         size_t upto = 50;
 
@@ -1440,7 +1317,7 @@ TEST_P(SimpleVolumeTest, DISABLED_SnapPerformance)
         {
             std::stringstream ss;
             ss << (i*upto) + j;
-            createSnapshot(v,ss.str());
+            createSnapshot(*v,ss.str());
         }
         LOG_INFO("Creating ze bigsnap");
 
@@ -1448,13 +1325,12 @@ TEST_P(SimpleVolumeTest, DISABLED_SnapPerformance)
         ss << "BigSnap_" << i;
 
         gettimeofday(&start, 0);
-        createSnapshot(v,ss.str());
+        createSnapshot(*v,ss.str());
         gettimeofday(&end,0);
 
         numbers.push_back(i*upto);
 
         snapshottimes.push_back(timeval_subtract(end,start));
-
 
         max_resident.push_back(get_vmpeak());
 
@@ -1498,7 +1374,7 @@ TEST_P(SimpleVolumeTest, backend_sync_up_to_snapshot)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v1 = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v1 = newVolume(VolumeId("volume1"),
 			   ns);
 
     const SnapshotName snap("snap1");
@@ -1507,20 +1383,20 @@ TEST_P(SimpleVolumeTest, backend_sync_up_to_snapshot)
                  fungi::IOException);
 
     {
-        SCOPED_BLOCK_BACKEND(v1);
+        SCOPED_BLOCK_BACKEND(*v1);
 
             v1->createSnapshot(snap);
             EXPECT_FALSE(v1->isSyncedToBackendUpTo(snap));
     }
 
-    waitForThisBackendWrite(v1);
+    waitForThisBackendWrite(*v1);
     EXPECT_TRUE(v1->isSyncedToBackendUpTo(snap));
 }
 
 TEST_P(SimpleVolumeTest, backend_sync_up_to_tlog)
 {
     auto ns(make_random_namespace());
-    Volume* v = newVolume(*ns);
+    SharedVolumePtr v = newVolume(*ns);
 
     const SnapshotManagement& sm = v->getSnapshotManagement();
     const auto old_tlog_id(sm.getCurrentTLogId());
@@ -1530,7 +1406,7 @@ TEST_P(SimpleVolumeTest, backend_sync_up_to_tlog)
     TLogId new_tlog_id;
 
     {
-        SCOPED_BLOCK_BACKEND(v);
+        SCOPED_BLOCK_BACKEND(*v);
 
         EXPECT_EQ(old_tlog_id,
                   v->scheduleBackendSync());
@@ -1544,7 +1420,7 @@ TEST_P(SimpleVolumeTest, backend_sync_up_to_tlog)
         EXPECT_FALSE(v->isSyncedToBackendUpTo(new_tlog_id));
     }
 
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     EXPECT_TRUE(v->isSyncedToBackendUpTo(old_tlog_id));
     EXPECT_FALSE(v->isSyncedToBackendUpTo(new_tlog_id));
@@ -1556,13 +1432,13 @@ TEST_P(SimpleVolumeTest, consistency)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v1 = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v1 = newVolume(VolumeId("volume1"),
 			   ns);
     const int mult = v1->getClusterSize()/ v1->getLBASize();
     for(int i = 0; i < 1024; i++)
     {
 
-        writeToVolume(v1,
+        writeToVolume(*v1,
                       i*mult,
                       v1->getClusterSize(),
                       "kristaf");
@@ -1587,38 +1463,38 @@ TEST_P(SimpleVolumeTest, consistencyClone)
 
     const backend::Namespace& ns1 = ns_ptr->ns();
 
-    Volume* v1 = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v1 = newVolume(VolumeId("volume1"),
 			   ns1);
     const int mult = v1->getClusterSize()/ v1->getLBASize();
     for(int i = 0; i < (1024 ); i++)
     {
 
-        writeToVolume(v1,
+        writeToVolume(*v1,
                       i*mult,
                       v1->getClusterSize(),
                       "kristaf");
     }
 
     v1->createSnapshot(SnapshotName("snap1"));
-    waitForThisBackendWrite(v1);
+    waitForThisBackendWrite(*v1);
 
     // backend::Namespace ns2;
     auto ns2_ptr = make_random_namespace();
 
     const backend::Namespace& ns2 = ns2_ptr->ns();
 
-    Volume* v2 = createClone("volume2",
+    SharedVolumePtr v2 = createClone("volume2",
                              ns2,
                              ns1,
                              "snap1");
     for(int i = 0; i < (1024 ); i++)
     {
-        writeToVolume(v1,
+        writeToVolume(*v1,
                       i*mult,
                       v1->getClusterSize(),
                       "kristaf");
 
-        writeToVolume(v2,
+        writeToVolume(*v2,
                       i*mult + 20,
                       v2->getClusterSize(),
                       "kristaf");
@@ -1651,9 +1527,9 @@ TEST_P(SimpleVolumeTest,  readCacheHits)
 
     const backend::Namespace& ns1 = ns_ptr->ns();
 
-    Volume* v1 = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v1 = newVolume(VolumeId("volume1"),
                            ns1);
-    writeToVolume(v1,
+    writeToVolume(*v1,
                   0,
                   v1->getClusterSize(),
                   "kristafke");
@@ -1663,13 +1539,13 @@ TEST_P(SimpleVolumeTest,  readCacheHits)
     uint64_t  misses =  api::getClusterCacheMisses(VolumeId("volume1"));
     EXPECT_EQ(0U, hits);
     EXPECT_EQ(0U, misses);
-    checkVolume(v1,0, v1->getClusterSize(), "kristafke");
+    checkVolume(*v1,0, v1->getClusterSize(), "kristafke");
     hits =  api::getClusterCacheHits(VolumeId("volume1"));
     misses =  api::getClusterCacheMisses(VolumeId("volume1"));
     EXPECT_EQ(0U, hits);
     EXPECT_EQ(1U, misses);
 
-    checkVolume(v1,0, v1->getClusterSize(), "kristafke");
+    checkVolume(*v1,0, v1->getClusterSize(), "kristafke");
     hits =  api::getClusterCacheHits(VolumeId("volume1"));
     misses =  api::getClusterCacheMisses(VolumeId("volume1"));
 #ifdef ENABLE_MD5_HASH
@@ -1680,7 +1556,7 @@ TEST_P(SimpleVolumeTest,  readCacheHits)
     EXPECT_EQ(2U, misses);
 #endif
 
-    checkVolume(v1,0, v1->getClusterSize(), "kristafke");
+    checkVolume(*v1,0, v1->getClusterSize(), "kristafke");
     hits =  api::getClusterCacheHits(VolumeId("volume1"));
     misses =  api::getClusterCacheMisses(VolumeId("volume1"));
 #ifdef ENABLE_MD5_HASH
@@ -1691,7 +1567,7 @@ TEST_P(SimpleVolumeTest,  readCacheHits)
     EXPECT_EQ(3U, misses);
 #endif
 
-    checkVolume(v1,0, v1->getClusterSize(), "kristafke");
+    checkVolume(*v1,0, v1->getClusterSize(), "kristafke");
     hits =  api::getClusterCacheHits(VolumeId("volume1"));
     misses =  api::getClusterCacheMisses(VolumeId("volume1"));
 #ifdef ENABLE_MD5_HASH
@@ -1710,18 +1586,18 @@ TEST_P(SimpleVolumeTest, backendSize)
 
     const backend::Namespace& ns1 = ns_ptr->ns();
 
-    Volume* v1 = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v1 = newVolume(VolumeId("volume1"),
 			   ns1);
     const unsigned int mult = v1->getClusterSize()/ v1->getLBASize();
     for(int i = 0; i < 1024 ; i++)
     {
 
-        writeToVolume(v1,
+        writeToVolume(*v1,
                       i*mult,
                       v1->getClusterSize(),
                       "kristaf");
     }
-    waitForThisBackendWrite(v1);
+    waitForThisBackendWrite(*v1);
 
     uint64_t size = 0;
     ASSERT_NO_THROW(size = v1->getCurrentBackendSize());
@@ -1730,7 +1606,7 @@ TEST_P(SimpleVolumeTest, backendSize)
     const SnapshotName snap("testsnap");
 
     {
-        SCOPED_BLOCK_BACKEND(v1);
+        SCOPED_BLOCK_BACKEND(*v1);
         v1->createSnapshot(snap);
         size = 0;
         ASSERT_NO_THROW(size = v1->getCurrentBackendSize());
@@ -1740,19 +1616,19 @@ TEST_P(SimpleVolumeTest, backendSize)
         EXPECT_TRUE(size == 1024 * v1->getClusterSize());
 
     }
-    waitForThisBackendWrite(v1);
+    waitForThisBackendWrite(*v1);
 
     ASSERT_NO_THROW(size = v1->getSnapshotBackendSize(snap));
 
     EXPECT_TRUE(size == 1024 * v1->getClusterSize());
     for(int i = 0; i < 1024 ; i++)
     {
-        writeToVolume(v1,
+        writeToVolume(*v1,
                       i*mult,
                       v1->getClusterSize(),
                       "kristaf");
     }
-    waitForThisBackendWrite(v1);
+    waitForThisBackendWrite(*v1);
     size =  0;
     ASSERT_NO_THROW(size = v1->getCurrentBackendSize());
     EXPECT_TRUE(size == 1024 * v1->getClusterSize());
@@ -1764,7 +1640,7 @@ TEST_P(SimpleVolumeTest, backendSize2)
 
     const backend::Namespace& ns1 = ns_ptr->ns();
 
-    Volume* v1 = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v1 = newVolume(VolumeId("volume1"),
                            ns1);
     uint64_t size =  0;
     ASSERT_NO_THROW(size = v1->getCurrentBackendSize());
@@ -1772,7 +1648,7 @@ TEST_P(SimpleVolumeTest, backendSize2)
 
     const SnapshotName snap("testsnap");
     {
-        SCOPED_BLOCK_BACKEND(v1);
+        SCOPED_BLOCK_BACKEND(*v1);
 
         v1->createSnapshot(snap);
         size = 0;
@@ -1781,19 +1657,19 @@ TEST_P(SimpleVolumeTest, backendSize2)
     }
 
 
-    waitForThisBackendWrite(v1);
+    waitForThisBackendWrite(*v1);
     size = 0;
     ASSERT_NO_THROW(size = v1->getSnapshotBackendSize(snap));
     EXPECT_TRUE(size == 0);
     const unsigned int mult = v1->getClusterSize()/ v1->getLBASize();
     for(int i = 0; i < 1024 ; i++)
     {
-        writeToVolume(v1,
+        writeToVolume(*v1,
                       i*mult,
                       v1->getClusterSize(),
                       "kristaf");
     }
-    waitForThisBackendWrite(v1);
+    waitForThisBackendWrite(*v1);
 
     size =  0;
     ASSERT_NO_THROW(size = v1->getCurrentBackendSize());
@@ -1806,13 +1682,13 @@ TEST_P(SimpleVolumeTest, backendSize3)
 
     const backend::Namespace& ns1 = ns_ptr->ns();
 
-    Volume* v1 = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v1 = newVolume(VolumeId("volume1"),
 			   ns1);
     const unsigned int mult = v1->getClusterSize()/ v1->getLBASize();
     for(int i = 0; i < 1024 ; i++)
     {
 
-        writeToVolume(v1,
+        writeToVolume(*v1,
                       i*mult,
                       v1->getClusterSize(),
                       "kristaf");
@@ -1821,7 +1697,7 @@ TEST_P(SimpleVolumeTest, backendSize3)
     const SnapshotName snap("testsnap");
 
     v1->createSnapshot(snap);
-    waitForThisBackendWrite(v1);
+    waitForThisBackendWrite(*v1);
     uint64_t size = 0;
     ASSERT_NO_THROW(size = v1->getCurrentBackendSize());
     EXPECT_TRUE(size == 0);
@@ -1837,16 +1713,16 @@ TEST_P(SimpleVolumeTest, backendSize3)
     for(int i = 0; i < 1024 ; i++)
     {
 
-        writeToVolume(v1,
+        writeToVolume(*v1,
                       i*mult,
                       v1->getClusterSize(),
                       "joost");
     }
-    waitForThisBackendWrite(v1);
+    waitForThisBackendWrite(*v1);
 
     const SnapshotName snap2("testsnap2");
     v1->createSnapshot(snap2);
-    waitForThisBackendWrite(v1);
+    waitForThisBackendWrite(*v1);
 
     ASSERT_NO_THROW(size = v1->getCurrentBackendSize());
     EXPECT_TRUE(size == 0);
@@ -1868,12 +1744,12 @@ TEST_P(SimpleVolumeTest, writeConfigToBackend)
 
     const backend::Namespace& ns1 = ns_ptr->ns();
 
-    Volume* v1 = newVolume("v1",
+    SharedVolumePtr v1 = newVolume("v1",
 			   ns1);
 
     std::unique_ptr<VolumeConfig> f;
     ASSERT_NO_THROW(f = VolManager::get()->get_config_from_backend<VolumeConfig>(ns1));
-    ASSERT_NO_THROW(writeVolumeConfigToBackend(v1));
+    ASSERT_NO_THROW(writeVolumeConfigToBackend(*v1));
     ASSERT_NO_THROW(f = VolManager::get()->get_config_from_backend<VolumeConfig>(ns1));
     const VolumeConfig cf1 = v1->get_config();
     EXPECT_TRUE(cf1.id_ == f->id_);
@@ -1892,13 +1768,13 @@ TEST_P(SimpleVolumeTest, readActivity)
 
     const backend::Namespace& ns1 = ns_ptr->ns();
 
-    Volume* v1 = newVolume("v1",
+    SharedVolumePtr v1 = newVolume("v1",
 			   ns1);
     auto ns2_ptr = make_random_namespace();
 
     const backend::Namespace& ns2 = ns2_ptr->ns();
 
-    Volume* v2 = newVolume("v2",
+    SharedVolumePtr v2 = newVolume("v2",
 			   ns2);
     ASSERT_EQ(0, v1->readActivity());
     ASSERT_EQ(0, v2->readActivity());
@@ -1949,10 +1825,10 @@ TEST_P(SimpleVolumeTest, prefetch)
     // const backend::Namespace nspace;
     const VolumeId volname("volume");
 
-    Volume* v = newVolume(volname,
+    SharedVolumePtr v = newVolume(volname,
 			  nspace);
 
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
 
     VolManager* vm = VolManager::get();
 
@@ -1964,7 +1840,7 @@ TEST_P(SimpleVolumeTest, prefetch)
     const unsigned num_scos = 7;
     const uint64_t size = cfg.lba_size_ * cfg.cluster_mult_ * cfg.sco_mult_ * num_scos;
     const std::string pattern("prefetchin'");
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   size,
                   pattern);
@@ -2012,10 +1888,10 @@ TEST_P(SimpleVolumeTest, prefetch)
                   PrefetchVolumeData::T);
 
     v = getVolume(volname);
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
     sleep(1);
 
-    waitForPrefetching(v);
+    waitForPrefetching(*v);
 
     EXPECT_TRUE(c->hasNamespace(nspace));
 
@@ -2027,7 +1903,7 @@ TEST_P(SimpleVolumeTest, prefetch)
     EXPECT_EQ(num_scos, l.size());
     EXPECT_LT(0U, vm->readActivity());
 
-    checkVolume(v,
+    checkVolume(*v,
                 0,
                 size,
                 pattern);
@@ -2045,7 +1921,7 @@ TEST_P(SimpleVolumeTest, startPrefetch)
 
     const backend::Namespace& ns1 = ns_ptr->ns();
 
-    Volume* v = newVolume(vid,
+    SharedVolumePtr v = newVolume(vid,
                           ns1);
     const std::string pattern("prefetchin'");
     EXPECT_NO_THROW(v->startPrefetch());
@@ -2054,14 +1930,14 @@ TEST_P(SimpleVolumeTest, startPrefetch)
     const int num_scos = 7;
     const uint64_t size = cfg.lba_size_ * cfg.cluster_mult_ * cfg.sco_mult_ * num_scos;
 
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   size,
                   pattern);
 
     ASSERT_NO_THROW(updateReadActivity());
     persistXVals(vid);
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     ASSERT_NO_THROW(v->startPrefetch());
     sleep(1);
@@ -2090,11 +1966,11 @@ TEST_P(SimpleVolumeTest, clusteredWriteTLogConsistency)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume(name, ns);
+    SharedVolumePtr v = newVolume(name, ns);
 
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
 
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   v->getClusterSize(),
                   "abcd");
@@ -2102,14 +1978,14 @@ TEST_P(SimpleVolumeTest, clusteredWriteTLogConsistency)
     // required to make the TLog roll over
     sleep(1);
 
-    writeToVolume(v,
+    writeToVolume(*v,
                   v->getClusterSize() / v->getLBASize(),
                   v->getClusterSize() * v->getSCOMultiplier(),
                   "defg");
 
 
     v->scheduleBackendSync();
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     EXPECT_TRUE(v->checkConsistency());
 }
@@ -2118,7 +1994,7 @@ TEST_P(SimpleVolumeTest, replicationID)
 {
     newVolume(VolumeId("a"),
               backend::Namespace());
-    Volume* b = newVolume(VolumeId("b"),
+    SharedVolumePtr b = newVolume(VolumeId("b"),
                           backend::Namespace());
     newVolume(VolumeId("c"),
               backend::Namespace());
@@ -2145,7 +2021,7 @@ TEST_P(SimpleVolumeTest, zero_sized_volume)
 
     //    const backend::Namespace ns;
 
-    Volume* v = newVolume(vname, ns, VolumeSize(0));
+    SharedVolumePtr v = newVolume(vname, ns, VolumeSize(0));
     EXPECT_TRUE(v != nullptr);
 
     EXPECT_EQ(0U, v->getLBACount());
@@ -2175,7 +2051,7 @@ TEST_P(SimpleVolumeTest, shrink)
     const backend::Namespace& ns = ns_ptr->ns();
 
     // const backend::Namespace ns;
-    Volume* v = newVolume(vname,
+    SharedVolumePtr v = newVolume(vname,
                           ns);
 
     EXPECT_TRUE(v != nullptr);
@@ -2198,7 +2074,7 @@ TEST_P(SimpleVolumeTest, grow)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume(vname,
+    SharedVolumePtr v = newVolume(vname,
                           ns);
 
     EXPECT_TRUE(v != nullptr);
@@ -2215,8 +2091,8 @@ TEST_P(SimpleVolumeTest, grow)
     const std::string pattern("extended play");
     uint64_t lba((nclusters - 1) * csize / v->getLBASize());
 
-    writeToVolume(v, lba, csize, pattern);
-    checkVolume(v, lba, csize, pattern);
+    writeToVolume(*v, lba, csize, pattern);
+    checkVolume(*v, lba, csize, pattern);
 }
 
 TEST_P(SimpleVolumeTest, grow_beyond_end)
@@ -2227,7 +2103,7 @@ TEST_P(SimpleVolumeTest, grow_beyond_end)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume(vname,
+    SharedVolumePtr v = newVolume(vname,
                           ns);
 
     EXPECT_TRUE(v != nullptr);
@@ -2249,7 +2125,7 @@ TEST_P(SimpleVolumeTest, tlog_entries)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume(vname,
+    SharedVolumePtr v = newVolume(vname,
                           ns);
 
     const uint64_t csize = v->getClusterSize();
@@ -2269,7 +2145,7 @@ TEST_P(SimpleVolumeTest, tlog_entries)
 
     for (unsigned i = 0; i < sco_mult; ++i)
     {
-        writeToVolume(v, 0, csize, "not of any importance");
+        writeToVolume(*v, 0, csize, "not of any importance");
     }
 
     // should not have any impact.
@@ -2280,7 +2156,7 @@ TEST_P(SimpleVolumeTest, tlog_entries)
     for (unsigned i = sco_mult; i < tlog_entries; ++i)
     {
         EXPECT_EQ(tlog1, sm.getCurrentTLogPath());
-        writeToVolume(v, 0, csize, "neither of importance");
+        writeToVolume(*v, 0, csize, "neither of importance");
     }
 
     // tlog should've rolled over by now:
@@ -2316,7 +2192,7 @@ TEST_P(SimpleVolumeTest, sco_cache_limits)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns);
 
     auto vm = VolManager::get();
@@ -2345,13 +2221,13 @@ TEST_P(SimpleVolumeTest, simple_backend_restart)
     const backend::Namespace& ns = ns_ptr->ns();
     // const be::Namespace ns(id);
 
-    Volume* v = newVolume(id,
+    SharedVolumePtr v = newVolume(id,
                           ns);
 
     const VolumeConfig cfg = v->get_config();
 
     const std::string pattern("Hullo?");
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   4096,
                   pattern);
@@ -2370,7 +2246,7 @@ TEST_P(SimpleVolumeTest, simple_backend_restart)
 
     v = getVolume(id);
 
-    checkVolume(v,
+    checkVolume(*v,
                 0,
                 4096,
                 pattern);
@@ -2382,7 +2258,7 @@ TEST_P(SimpleVolumeTest, no_snapshot_if_previous_snapshot_is_not_yet_in_the_back
     with_snapshot_not_in_backend([this](Volume& v,
                                         const std::string& /* snap */)
                                  {
-                                     ASSERT_THROW(createSnapshot(&v,
+                                     ASSERT_THROW(createSnapshot(v,
                                                                  "no_snapshot"),
                                                   std::exception);
                                  });
@@ -2412,7 +2288,7 @@ TEST_P(SimpleVolumeTest, clones_and_location_based_caching)
     set_cluster_cache_default_behaviour(ccbehaviour);
 
     const auto parent_ns(make_random_namespace());
-    Volume* parent = newVolume(*parent_ns);
+    SharedVolumePtr parent = newVolume(*parent_ns);
 
     ASSERT_EQ(ccmode,
               parent->effective_cluster_cache_mode());
@@ -2421,20 +2297,20 @@ TEST_P(SimpleVolumeTest, clones_and_location_based_caching)
               parent->effective_cluster_cache_behaviour());
 
     const std::string pattern("written-to-parent");
-    writeToVolume(parent,
+    writeToVolume(*parent,
                   0,
                   4096,
                   pattern);
 
     const std::string snap("snap");
-    createSnapshot(parent,
+    createSnapshot(*parent,
                    snap);
 
-    waitForThisBackendWrite(parent);
+    waitForThisBackendWrite(*parent);
     ASSERT_TRUE(parent->getSnapshotManagement().lastSnapshotOnBackend());
 
     const auto clone_ns(make_random_namespace());
-    Volume* clone = createClone(*clone_ns,
+    SharedVolumePtr clone = createClone(*clone_ns,
                                 parent_ns->ns(),
                                 snap);
 
@@ -2444,7 +2320,7 @@ TEST_P(SimpleVolumeTest, clones_and_location_based_caching)
     ASSERT_EQ(ccbehaviour,
               clone->effective_cluster_cache_behaviour());
 
-    checkVolume(clone,
+    checkVolume(*clone,
                 0,
                 4096,
                 pattern);
@@ -2453,7 +2329,7 @@ TEST_P(SimpleVolumeTest, clones_and_location_based_caching)
 TEST_P(SimpleVolumeTest, cluster_cache_limit)
 {
     auto ns(make_random_namespace());
-    Volume* v = newVolume(*ns);
+    SharedVolumePtr v = newVolume(*ns);
 
     EXPECT_EQ(boost::none,
               v->get_cluster_cache_limit());
@@ -2519,7 +2395,7 @@ TEST_P(SimpleVolumeTest, cluster_cache_limit)
 TEST_P(SimpleVolumeTest, cluster_cache_handle)
 {
     auto ns(make_random_namespace());
-    Volume* v = newVolume(*ns);
+    SharedVolumePtr v = newVolume(*ns);
 
     // TODO: hmm, this is a ClusterCache internal convention that probably
     // shouldn't be used here.
@@ -2577,7 +2453,7 @@ TEST_P(SimpleVolumeTest, cluster_cache_handle)
 TEST_P(SimpleVolumeTest, sco_multiplier_updates)
 {
     auto wrns(make_random_namespace());
-    Volume* v = newVolume(*wrns);
+    SharedVolumePtr v = newVolume(*wrns);
 
     auto fun([&](const SCOMultiplier sm,
                  const std::string& pattern) -> SCONumber
@@ -2594,7 +2470,7 @@ TEST_P(SimpleVolumeTest, sco_multiplier_updates)
                  EXPECT_EQ(sm.t,
                            ds.getRemainingSCOCapacity());
 
-                 writeToVolume(v,
+                 writeToVolume(*v,
                                0,
                                v->getClusterSize() * (sm.t - 1),
                                pattern);
@@ -2612,7 +2488,7 @@ TEST_P(SimpleVolumeTest, sco_multiplier_updates)
     EXPECT_LT(sco_num1, sco_num2);
     EXPECT_LT(sco_num2, sco_num3);
 
-    checkVolume(v,
+    checkVolume(*v,
                 0,
                 v->getClusterSize() * 2047,
                 "three");
@@ -2622,7 +2498,7 @@ TEST_P(SimpleVolumeTest, synchronous_foc)
 {
     auto wrns(make_random_namespace());
 
-    Volume* v = newVolume(*wrns);
+    SharedVolumePtr v = newVolume(*wrns);
 
     auto foc_ctx(start_one_foc());
     FailOverCacheConfig foc_config(foc_ctx->config(FailOverCacheMode::Synchronous));
@@ -2634,7 +2510,7 @@ TEST_P(SimpleVolumeTest, synchronous_foc)
 
     const std::string s("a single cluster");
     const size_t csize = v->getClusterSize();
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   csize,
                   s);
@@ -2678,7 +2554,7 @@ TEST_P(SimpleVolumeTest, metadata_cache_capacity)
 {
     auto wrns(make_random_namespace());
 
-    Volume* v = newVolume(*wrns);
+    SharedVolumePtr v = newVolume(*wrns);
 
     auto check_cap([&](const boost::optional<size_t>& cap)
                    {
@@ -2706,15 +2582,15 @@ TEST_P(SimpleVolumeTest, metadata_cache_capacity)
     const std::string fst("first");
     const size_t csize = v->getClusterSize();
 
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   csize,
                   fst);
 
-    syncToBackend(v);
+    syncToBackend(*v);
 
     const std::string snd("second");
-    writeToVolume(v,
+    writeToVolume(*v,
                   csize,
                   csize,
                   snd);
@@ -2726,12 +2602,12 @@ TEST_P(SimpleVolumeTest, metadata_cache_capacity)
                {
                    check_cap(cap);
 
-                   checkVolume(v,
+                   checkVolume(*v,
                                0,
                                csize,
                                fst);
 
-                   checkVolume(v,
+                   checkVolume(*v,
                                csize,
                                csize,
                                snd);
@@ -2773,7 +2649,7 @@ TEST_P(SimpleVolumeTest, dtl_queue_depth_and_large_requests)
     }
 
     auto wrns(make_random_namespace());
-    Volume* v = newVolume(*wrns);
+    SharedVolumePtr v = newVolume(*wrns);
 
     auto foc_ctx(start_one_foc());
     v->setFailOverCacheConfig(foc_ctx->config(FailOverCacheMode::Asynchronous));
@@ -2782,12 +2658,12 @@ TEST_P(SimpleVolumeTest, dtl_queue_depth_and_large_requests)
 
     const std::string pattern("not that interesting, really");
 
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   size,
                   pattern);
 
-    checkVolume(v,
+    checkVolume(*v,
                 0,
                 size,
                 pattern);

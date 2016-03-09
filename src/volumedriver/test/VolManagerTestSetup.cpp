@@ -63,7 +63,7 @@ namespace yt = youtils;
 
 using namespace initialized_params;
 
-VolumeRandomIOThread::VolumeRandomIOThread(Volume *vol,
+VolumeRandomIOThread::VolumeRandomIOThread(Volume& vol,
                                            const std::string &writePattern,
                                            const CheckReadResult check)
     : vol_(vol)
@@ -98,11 +98,11 @@ void VolumeRandomIOThread::stop()
 void VolumeRandomIOThread::run()
 {
     unsigned int seed = time(0);
-    uint64_t lbaMax = vol_->getLBACount() - bufsize_;
+    uint64_t lbaMax = vol_.getLBACount() - bufsize_;
 
     while (!stop_)
     {
-        uint64_t lba = rand_r(&seed) % (vol_->getSize() / vol_->getLBASize());
+        uint64_t lba = rand_r(&seed) % (vol_.getSize() / vol_.getLBASize());
         bool read = (lba % 2 == 0);
 
         if (lba > lbaMax)
@@ -121,7 +121,7 @@ void VolumeRandomIOThread::run()
         {
             if (read)
             {
-                vol_->read(lba, &bufv_[0], bufsize_);
+                vol_.read(lba, &bufv_[0], bufsize_);
                 if(T(check_))
                 {
                     if(bufv_[0])
@@ -145,7 +145,7 @@ void VolumeRandomIOThread::run()
             }
             else
             {
-                vol_->write(lba, &bufv_[0], bufsize_);
+                vol_.write(lba, &bufv_[0], bufsize_);
             }
         }
         catch (TransientException &)
@@ -159,7 +159,7 @@ void VolumeRandomIOThread::run()
 const uint32_t
 VolumeWriteThread::bufsize = 4096;
 
-VolumeWriteThread::VolumeWriteThread(Volume* vol,
+VolumeWriteThread::VolumeWriteThread(Volume& vol,
                                      const std::string& pattern,
                                      double throughput /* Megs per sec */,
                                      uint64_t max_writes)
@@ -171,7 +171,7 @@ VolumeWriteThread::VolumeWriteThread(Volume* vol,
     , written_(0)
 {
     // safety check
-    VERIFY(bufsize == vol_->getClusterSize());
+    VERIFY(bufsize == vol_.getClusterSize());
     VERIFY(throughput >= 1);
 
     if(pattern.empty())
@@ -218,9 +218,9 @@ void
 VolumeWriteThread::run()
 {
     uint64_t lba = 0;
-    const uint64_t volSize = vol_->getSize();
-    const uint64_t lbaSize = vol_->getLBASize();
-    const uint64_t increment = bufsize / vol_->getLBASize();
+    const uint64_t volSize = vol_.getSize();
+    const uint64_t lbaSize = vol_.getLBASize();
+    const uint64_t increment = bufsize / vol_.getLBASize();
     assert(increment == 8);
 
     uint8_t buf[bufsize];
@@ -237,7 +237,7 @@ VolumeWriteThread::run()
             lba = 0;
         }
         try {
-            vol_->write(lba,buf, bufsize);
+            vol_.write(lba,buf, bufsize);
         } catch (TransientException &e) {
             LOG_DEBUG("" << e.what() << ", retrying");
             sleep(1);
@@ -978,21 +978,21 @@ VolManagerTestSetup::restartVolManager(const bpt::ptree& pt)
 }
 
 void
-VolManagerTestSetup::checkCurrentBackendSize(Volume* vol)
+VolManagerTestSetup::checkCurrentBackendSize(Volume& vol)
 {
-    vol->sync();
-    uint64_t size_in_snapshot = vol->getSnapshotManagement().getCurrentBackendSize();
+    vol.sync();
+    uint64_t size_in_snapshot = vol.getSnapshotManagement().getCurrentBackendSize();
     const OrderedTLogIds
-        current_tlogs(vol->getSnapshotManagement().getCurrentTLogs());
+        current_tlogs(vol.getSnapshotManagement().getCurrentTLogs());
 
     std::shared_ptr<TLogReaderInterface>
         t(CombinedTLogReader::create_backward_reader(VolManager::get()->getTLogPath(vol),
                                                      current_tlogs,
-                                                     vol->getBackendInterface()->clone()));
+                                                     vol.getBackendInterface()->clone()));
     uint64_t current_size_calculated = 0;
     while(t->nextLocation())
     {
-        current_size_calculated += vol->getClusterSize();
+        current_size_calculated += vol.getClusterSize();
     }
     EXPECT_EQ(size_in_snapshot, current_size_calculated) <<
         "Current size in snapshot " <<
@@ -1013,7 +1013,7 @@ VolManagerTestSetup::set_cluster_cache_default_mode(const ClusterCacheMode m)
 }
 
 void
-VolManagerTestSetup::waitForThisBackendWrite(VolumeInterface* vol)
+VolManagerTestSetup::waitForThisBackendWrite(VolumeInterface& vol)
 {
     // Has changed since there is only 1 thread servicing a queue now.
     // which probably means this whole thing can be simplified now.
@@ -1023,14 +1023,14 @@ VolManagerTestSetup::waitForThisBackendWrite(VolumeInterface* vol)
 
     sem_init(&sem, 0, 0);
 
-    VolManager::get()->scheduleTask(new WaitForThisTask(&sem, vol));
+    VolManager::get()->scheduleTask(new WaitForThisTask(&sem, &vol));
 
     sem_wait(&sem);
     sem_destroy(&sem);
 }
 
 void
-VolManagerTestSetup::syncToBackend(Volume* vol)
+VolManagerTestSetup::syncToBackend(Volume& vol)
 {
     scheduleBackendSync(vol);
     waitForThisBackendWrite(vol);
@@ -1052,7 +1052,7 @@ fs::path
 VolManagerTestSetup::getCurrentTLog(const VolumeId& volid) const
 {
     VolManager *vm = VolManager::get();
-    Volume *v = 0;
+    SharedVolumePtr v;
     fungi::ScopedLock m(vm->getLock_());
     v = vm->findVolume_(volid);
     return v->getSnapshotManagement().getCurrentTLogPath();
@@ -1063,7 +1063,7 @@ VolManagerTestSetup::getTLogsNotInBackend(const VolumeId& volid,
                                       OrderedTLogIds& tlogs) const
 {
     VolManager *vm = VolManager::get();
-    Volume *v = 0;
+    SharedVolumePtr v;
     fungi::ScopedLock m(vm->getLock_());
     v = vm->findVolume_(volid);
     return v->getSnapshotManagement().getTLogsNotWrittenToBackend(tlogs);
@@ -1103,7 +1103,7 @@ VolManagerTestSetup::restartVolume(const VolumeConfig& cfg,
                                        ignore_foc_if_unreachable);
     if(T(check_name))
     {
-        __attribute__ ((__unused__)) Volume* v =
+        __attribute__ ((__unused__)) SharedVolumePtr v =
             VolManager::get()->findVolume_noThrow_(cfg.id_);
     }
 }
@@ -1116,14 +1116,14 @@ VolManagerTestSetup::restartWriteOnlyVolume(const VolumeConfig& cfg)
                                                      cfg.owner_tag_);
 }
 
-Volume*
+SharedVolumePtr
 VolManagerTestSetup::findVolume(const VolumeId& ns)
 {
     fungi::ScopedLock l(VolManager::get()->mgmtMutex_);
     return VolManager::get()->findVolume_noThrow_(ns);
 }
 
-Volume*
+SharedVolumePtr
 VolManagerTestSetup::newVolume(const be::BackendTestSetup::WithRandomNamespace& wrns,
                                const boost::optional<VolumeSize>& volume_size,
                                const boost::optional<SCOMultiplier>& sco_mult,
@@ -1140,7 +1140,7 @@ VolManagerTestSetup::newVolume(const be::BackendTestSetup::WithRandomNamespace& 
                      num_cached_pages);
 }
 
-Volume*
+SharedVolumePtr
 VolManagerTestSetup::newVolume(const std::string& id,
                                const be::Namespace& ns,
                                const boost::optional<VolumeSize>& volume_size,
@@ -1171,7 +1171,7 @@ VolManagerTestSetup::newVolume(const std::string& id,
     return newVolume(params);
 }
 
-Volume*
+SharedVolumePtr
 VolManagerTestSetup::newVolume(const VanillaVolumeConfigParameters& params)
 {
     VolManager *vm = VolManager::get();
@@ -1205,7 +1205,7 @@ VolManagerTestSetup::newVolume(const VanillaVolumeConfigParameters& params)
     {
         (Namespace(params.get_nspace()));
         fungi::ScopedLock m(vm->getLock_());
-        Volume* v = vm->createNewVolume(params);
+        SharedVolumePtr v = vm->createNewVolume(params);
         // hello clang analyzer
         VERIFY(v != nullptr);
 
@@ -1303,7 +1303,7 @@ VolManagerTestSetup::newWriteOnlyVolume(const std::string& id,
     }
 }
 
-Volume*
+SharedVolumePtr
 VolManagerTestSetup::localRestart(const be::Namespace& ns,
                                   const FallBackToBackendRestart fallback)
 {
@@ -1317,7 +1317,7 @@ VolManagerTestSetup::localRestart(const be::Namespace& ns,
                                                               InsistOnLatestVersion::T);
 
     fungi::ScopedLock m(vm->getLock_());
-    Volume* v = vm->local_restart(ns,
+    SharedVolumePtr v = vm->local_restart(ns,
                                   cfg.owner_tag_,
                                   fallback,
                                   IgnoreFOCIfUnreachable::F);
@@ -1327,17 +1327,17 @@ VolManagerTestSetup::localRestart(const be::Namespace& ns,
     return v;
 }
 
-Volume*
+SharedVolumePtr
 VolManagerTestSetup::getVolume(const VolumeId &name)
 {
     VolManager *vm = VolManager::get();
-    Volume *v = 0;
+    SharedVolumePtr v = 0;
     fungi::ScopedLock m(vm->getLock_());
     v= vm->findVolume_noThrow_(name);
     return v;
 }
 
-Volume*
+SharedVolumePtr
 VolManagerTestSetup::createClone(const std::string& cloneName,
                                  const be::Namespace& newNamespace,
                                  const be::Namespace& parentVolNamespace,
@@ -1350,7 +1350,7 @@ VolManagerTestSetup::createClone(const std::string& cloneName,
 
 }
 
-Volume*
+SharedVolumePtr
 VolManagerTestSetup::createClone(const be::BackendTestSetup::WithRandomNamespace& wrns,
                                  const be::Namespace& parentns,
                                  const boost::optional<std::string>& snapshot)
@@ -1361,7 +1361,7 @@ VolManagerTestSetup::createClone(const be::BackendTestSetup::WithRandomNamespace
                        snapshot);
 }
 
-Volume*
+SharedVolumePtr
 VolManagerTestSetup::createClone(const std::string& cloneName,
                                  const be::Namespace& newNamespace,
                                  const be::Namespace& parentns,
@@ -1371,7 +1371,7 @@ VolManagerTestSetup::createClone(const std::string& cloneName,
     fs::create_directories(vm->getMetaDataPath() / newNamespace.str());
     fs::create_directories(vm->getTLogPath() / newNamespace.str());
 
-    Volume *clone = 0;
+    SharedVolumePtr clone = 0;
 
     try
     {
@@ -1406,14 +1406,14 @@ VolManagerTestSetup::createClone(const std::string& cloneName,
 
 // grrr naming...
 void
-VolManagerTestSetup::readVolume_(Volume* volume,
+VolManagerTestSetup::readVolume_(Volume& volume,
                                  uint64_t lba,
                                  uint64_t block_size,
                                  const std::string* const pattern,
                                  unsigned retries)
 {
-    EXPECT_EQ(0U, block_size % volume->getLBASize()) << "Fix your test";
-    EXPECT_GE(volume->getSize(), lba * volume->getLBASize() + block_size)
+    EXPECT_EQ(0U, block_size % volume.getLBASize()) << "Fix your test";
+    EXPECT_GE(volume.getSize(), lba * volume.getLBASize() + block_size)
         << "Fix your test";
 
     std::vector<uint8_t> buf(block_size);
@@ -1422,7 +1422,7 @@ VolManagerTestSetup::readVolume_(Volume* volume,
     {
         try
         {
-            volume->read(lba, &buf[0], buf.size());
+            volume.read(lba, &buf[0], buf.size());
             break;
         }
         catch(TransientException& e)
@@ -1452,13 +1452,13 @@ VolManagerTestSetup::readVolume_(Volume* volume,
 }
 
 void
-VolManagerTestSetup::readVolume(Volume* vol,
+VolManagerTestSetup::readVolume(Volume& vol,
                                 uint64_t block_size,
                                 unsigned retries)
 {
-    for (size_t i = 0; i < vol->getSize(); i += block_size)
+    for (size_t i = 0; i < vol.getSize(); i += block_size)
     {
-        readVolume_(vol, i / vol->getLBASize(), block_size, 0, retries);
+        readVolume_(vol, i / vol.getLBASize(), block_size, 0, retries);
     }
 }
 
@@ -1466,14 +1466,14 @@ void
 VolManagerTestSetup::setFailOverCacheConfig(const VolumeId& volid,
                                             const boost::optional<FailOverCacheConfig>& maybe_config)
 {
-    Volume* v = 0;
+    SharedVolumePtr v;
     ASSERT_NO_THROW(v = VolManager::get()->findVolume_(volid));
     v->setFailOverCacheConfig(maybe_config);
 }
 
 
 void
-VolManagerTestSetup::checkVolume(Volume* volume,
+VolManagerTestSetup::checkVolume(Volume& volume,
                                  uint64_t lba,
                                  uint64_t block_size,
                                  const std::string& pattern,
@@ -1483,7 +1483,7 @@ VolManagerTestSetup::checkVolume(Volume* volume,
 }
 
 void
-VolManagerTestSetup::checkVolume_aux(Volume* v,
+VolManagerTestSetup::checkVolume_aux(Volume& v,
                                  const std::string& pattern,
                                  uint64_t size,
                                  uint64_t block_size,
@@ -1491,35 +1491,35 @@ VolManagerTestSetup::checkVolume_aux(Volume* v,
 {
     for (size_t i = 0; i < size; i += block_size)
     {
-        checkVolume(v, i / v->getLBASize(), block_size, pattern, retries);
+        checkVolume(v, i / v.getLBASize(), block_size, pattern, retries);
     }
 }
 
 void
-VolManagerTestSetup::checkVolume(Volume* v,
+VolManagerTestSetup::checkVolume(Volume& v,
                                  const std::string& pattern,
                                  uint64_t block_size,
                                  unsigned retries)
 {
-    checkVolume_aux(v, pattern, v->getSize(), block_size, retries);
+    checkVolume_aux(v, pattern, v.getSize(), block_size, retries);
 }
 
 bool
-VolManagerTestSetup::checkVolumesIdentical(Volume* v1,
-                                           Volume* v2) const
+VolManagerTestSetup::checkVolumesIdentical(Volume& v1,
+                                           Volume& v2) const
 {
-    const int clustersz = v1->getClusterSize();
-    const uint64_t volsz = v1->getSize();
-    const int mult = clustersz / v1->getLBASize();
+    const int clustersz = v1.getClusterSize();
+    const uint64_t volsz = v1.getSize();
+    const int mult = clustersz / v1.getLBASize();
 
-    ASSERT(v1->getSize() == v2->getSize());
+    ASSERT(v1.getSize() == v2.getSize());
 
     std::vector<uint8_t> buf1(clustersz);
     std::vector<uint8_t> buf2(clustersz);
     for(uint64_t i = 0; i < volsz/clustersz ; ++i)
     {
-        v1->read(i*mult, &buf1[0], clustersz);
-        v2->read(i*mult, &buf2[0], clustersz);
+        v1.read(i*mult, &buf1[0], clustersz);
+        v2.read(i*mult, &buf2[0], clustersz);
         if(buf1 != buf2)
         {
             return false;
@@ -1529,42 +1529,42 @@ VolManagerTestSetup::checkVolumesIdentical(Volume* v1,
 }
 
 void
-VolManagerTestSetup::createSnapshot(Volume *v, const std::string &name)
+VolManagerTestSetup::createSnapshot(Volume& v, const std::string &name)
 {
     VolManager *vm = VolManager::get();
     fungi::ScopedLock m(vm->getLock_());
-    v->createSnapshot(SnapshotName(name));
+    v.createSnapshot(SnapshotName(name));
 }
 
 void
-VolManagerTestSetup::restoreSnapshot(Volume *v, const std::string &name)
+VolManagerTestSetup::restoreSnapshot(Volume& v, const std::string &name)
 {
     VolManager *vm = VolManager::get();
     fungi::ScopedLock m(vm->getLock_());
-    v->restoreSnapshot(SnapshotName(name));
+    v.restoreSnapshot(SnapshotName(name));
 }
 
 void
-VolManagerTestSetup::flushFailOverCache(Volume* v)
+VolManagerTestSetup::flushFailOverCache(Volume& v)
 {
-    if(v->failover_.get())
+    if (v.failover_.get())
     {
-        v->failover_->Flush();
+        v.failover_->Flush();
     }
 }
 
 FailOverCacheClientInterface*
-VolManagerTestSetup::getFailOverWriter(Volume* v)
+VolManagerTestSetup::getFailOverWriter(Volume& v)
 {
-    auto b = v->failover_.get();
+    auto b = v.failover_.get();
     EXPECT_TRUE(b != nullptr);
     return b;
 }
 
 SnapshotManagement*
-VolManagerTestSetup::getSnapshotManagement(Volume* v)
+VolManagerTestSetup::getSnapshotManagement(Volume& v)
 {
-    return v->snapshotManagement_.get();
+    return v.snapshotManagement_.get();
 }
 
 void
@@ -1580,7 +1580,7 @@ VolManagerTestSetup::blockBackendWrites_(VolumeInterface* v)
         BSemTask* b = new BSemTask(v);
 
         VolManager::get()->scheduleTask(b);
-        scheduleBarrierTask(v);
+        scheduleBarrierTask(*v);
         blockers_[v] = b;
         // Not completely ok!!
         b->waitForRun();
@@ -1650,41 +1650,40 @@ VolManagerTestSetup::futureUnblockBackendWrites(VolumeInterface* v, unsigned sec
 }
 
 const CachedSCOPtr
-VolManagerTestSetup::getCurrentSCO(Volume* v)
+VolManagerTestSetup::getCurrentSCO(Volume& v)
 {
-    return v->dataStore_->currentSCO_()->sco_ptr();
+    return v.dataStore_->currentSCO_()->sco_ptr();
 }
 
 bool
-VolManagerTestSetup::isVolumeSyncedToBackend(Volume* v)
+VolManagerTestSetup::isVolumeSyncedToBackend(Volume& v)
 {
-    return v->isSyncedToBackend();
+    return v.isSyncedToBackend();
 }
 
 void
-VolManagerTestSetup::scheduleBackendSync(Volume* v)
+VolManagerTestSetup::scheduleBackendSync(Volume& v)
 {
-    v->scheduleBackendSync();
+    v.scheduleBackendSync();
 }
 
 void
-VolManagerTestSetup::writeSnapshotFileToBackend(Volume* v)
+VolManagerTestSetup::writeSnapshotFileToBackend(Volume& v)
 {
-    v->snapshotManagement_->scheduleWriteSnapshotToBackend();
+    v.snapshotManagement_->scheduleWriteSnapshotToBackend();
 }
 
 void
-VolManagerTestSetup::scheduleBarrierTask(VolumeInterface* v)
+VolManagerTestSetup::scheduleBarrierTask(VolumeInterface& v)
 {
-    VolManager::get()->scheduleTask(new backend_task::Barrier(v));
+    VolManager::get()->scheduleTask(new backend_task::Barrier(&v));
 }
 
 void
-VolManagerTestSetup::scheduleThrowingTask(Volume* v)
+VolManagerTestSetup::scheduleThrowingTask(Volume& v)
 {
-    VolManager::get()->scheduleTask(new ThrowingTask(v));
+    VolManager::get()->scheduleTask(new ThrowingTask(&v));
 }
-
 
 class SortSCO
 {
@@ -1696,13 +1695,11 @@ public:
     }
 };
 
-
-
 void
-VolManagerTestSetup::removeNonDisposableSCOS(Volume* v)
+VolManagerTestSetup::removeNonDisposableSCOS(Volume& v)
 {
     SCONameList lst;
-    VolManager::get()->getSCOCache()->getSCONameList(v->getNamespace(),
+    VolManager::get()->getSCOCache()->getSCONameList(v.getNamespace(),
                                                      lst,
                                                      false);
     SortSCO s;
@@ -1719,7 +1716,7 @@ VolManagerTestSetup::removeNonDisposableSCOS(Volume* v)
         it != lst.end();
         ++it)
     {
-        VolManager::get()->getSCOCache()->removeSCO(v->getNamespace(),
+        VolManager::get()->getSCOCache()->removeSCO(v.getNamespace(),
                                                     *it,
                                                     true);
     }
@@ -1729,8 +1726,8 @@ void
 VolManagerTestSetup::persistXVals(const VolumeId& volname) const
 {
     fungi::ScopedLock l(VolManager::get()->getLock_());
-    Volume* v = VolManager::get()->findVolume_(volname);
-    if(v)
+    SharedVolumePtr v = VolManager::get()->findVolume_(volname);
+    if (v != nullptr)
     {
         SCOAccessData sad(v->getNamespace(),
                           v->readActivity());
@@ -1748,9 +1745,9 @@ VolManagerTestSetup::persistXVals(const VolumeId& volname) const
 }
 
 void
-VolManagerTestSetup::waitForPrefetching(Volume* v) const
+VolManagerTestSetup::waitForPrefetching(Volume& v) const
 {
-    PrefetchData& pd = v->getPrefetchData();
+    PrefetchData& pd = v.getPrefetchData();
     while (!pd.scos.empty())
     {
         sleep(1);
@@ -1797,9 +1794,9 @@ VolManagerTestSetup::clearNamespaceRestarting(const Namespace& ns)
 }
 
 void
-VolManagerTestSetup::writeVolumeConfigToBackend(Volume* vol) const
+VolManagerTestSetup::writeVolumeConfigToBackend(Volume& vol) const
 {
-    return vol->writeConfigToBackend_(vol->get_config());
+    return vol.writeConfigToBackend_(vol.get_config());
 }
 
 SCOCache::SCOCacheMountPointList&
@@ -1835,9 +1832,9 @@ VolManagerTestSetup::growWeed()
 }
 
 void
-VolManagerTestSetup::syncMetaDataStoreBackend(Volume* v)
+VolManagerTestSetup::syncMetaDataStoreBackend(Volume& v)
 {
-    auto md = dynamic_cast<CachedMetaDataStore*>(v->metaDataStore_.get());
+    auto md = dynamic_cast<CachedMetaDataStore*>(v.metaDataStore_.get());
     if (md != nullptr)
     {
         md->backend_->sync();
@@ -1954,7 +1951,7 @@ VolManagerTestSetup::destroyVolume(WriteOnlyVolume* v,
 }
 
 void
-VolManagerTestSetup::destroyVolume(Volume* v,
+VolManagerTestSetup::destroyVolume(SharedVolumePtr& v,
                                    const DeleteLocalData delete_local_data,
                                    const RemoveVolumeCompletely remove_volume_completely)
 {
@@ -1970,6 +1967,8 @@ VolManagerTestSetup::destroyVolume(Volume* v,
                           delete_local_data,
                           remove_volume_completely);
     }
+
+    v = nullptr;
 
     if(T(delete_local_data))
     {

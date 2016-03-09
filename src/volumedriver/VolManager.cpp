@@ -395,13 +395,15 @@ VolManager::~VolManager()
          it != volMap_.end(); ++it)
     {
         LOG_INFO("removing volume " << it->first);
-        Volume* vol = it->second;
+        SharedVolumePtr vol = it->second;
 
         vol->destroy(DeleteLocalData::F,
                      RemoveVolumeCompletely::F,
                      ForceVolumeDeletion::F);
-        delete vol;
     }
+
+    volMap_.clear();
+
     LOG_INFO("Exiting volumedriver destructor");
 
 }
@@ -774,9 +776,9 @@ VolManager::setNamespaceRestarting_(const Namespace& ns, const VolumeConfig& con
 }
 
 template<typename V>
-V*
-VolManager::with_restart_map_and_unlocked_mgmt_(const std::function<V* (const Namespace& ns,
-                                                                        const VolumeConfig& cfg)>& fun,
+V
+VolManager::with_restart_map_and_unlocked_mgmt_(const std::function<V(const Namespace& ns,
+                                                                      const VolumeConfig& cfg)>& fun,
                                                 const Namespace& ns,
                                                 const VolumeConfig& cfg)
 {
@@ -795,13 +797,13 @@ VolManager::with_restart_map_and_unlocked_mgmt_(const std::function<V* (const Na
     return fun(ns, cfg);
 }
 
-Volume*
-VolManager::with_restart_map_and_unlocked_mgmt_vol_(const std::function<Volume*(const Namespace& ns,
-                                                                                const VolumeConfig& cfg)>& fun,
+SharedVolumePtr
+VolManager::with_restart_map_and_unlocked_mgmt_vol_(const std::function<SharedVolumePtr(const Namespace& ns,
+                                                                                        const VolumeConfig& cfg)>& fun,
                                                     const Namespace& ns,
                                                     const VolumeConfig& cfg)
 {
-    Volume* vol = with_restart_map_and_unlocked_mgmt_<Volume>(fun, ns, cfg);
+    SharedVolumePtr vol = with_restart_map_and_unlocked_mgmt_<SharedVolumePtr>(fun, ns, cfg);
 
     mgmtMutex_.assertLocked();
 
@@ -812,7 +814,7 @@ VolManager::with_restart_map_and_unlocked_mgmt_vol_(const std::function<Volume*(
     return vol;
 }
 
-Volume*
+SharedVolumePtr
 VolManager::createClone(const CloneVolumeConfigParameters& clone_params,
                         const PrefetchVolumeData prefetch,
                         const CreateNamespace create_namespace)
@@ -915,11 +917,11 @@ VolManager::createClone(const CloneVolumeConfigParameters& clone_params,
     auto fun([&params,
               &prefetch,
               &parent_snap_uuid](const Namespace& /* ns */,
-                                 const VolumeConfig& cfg) -> Volume*
+                                 const VolumeConfig& cfg) -> SharedVolumePtr
              {
                  return VolumeFactory::createClone(cfg,
                                                    prefetch,
-                                                   parent_snap_uuid).release();
+                                                   parent_snap_uuid);
 
                  LOG_NOTIFY("Volume Clone complete, VolumeId: " << params.get_volume_id());
              });
@@ -992,7 +994,7 @@ VolManager::createNewWriteOnlyVolume(const WriteOnlyVolumeConfigParameters& para
     return vol;
 }
 
-Volume*
+SharedVolumePtr
 VolManager::createNewVolume(const VanillaVolumeConfigParameters& params,
                             const CreateNamespace create_namespace)
 {
@@ -1017,7 +1019,7 @@ VolManager::createNewVolume(const VanillaVolumeConfigParameters& params,
     const VolumeConfig cfg(params);
     ensureResourceLimits(cfg);
 
-    Volume* vol = VolumeFactory::createNewVolume(cfg).release();
+    SharedVolumePtr vol = VolumeFactory::createNewVolume(cfg);
     ASSERT(vol);
 
     volMap_[vol->getName()] = vol;
@@ -1056,14 +1058,14 @@ VolManager::restoreSnapshot(const VolumeId& volid,
 
     MAIN_EVENT("Restoring Snapshot, VolumeID: " << volid << ", SnapshotName: " << snapid);
 
-    Volume* vol = findVolume_(volid);
+    SharedVolumePtr vol = findVolume_(volid);
     const VolumeConfig cfg(vol->get_config());
     const be::Namespace nspace(vol->getNamespace());
 
     volMap_.erase(volid);
 
     auto fun([&](const be::Namespace&,
-                 const VolumeConfig&) -> Volume*
+                 const VolumeConfig&) -> SharedVolumePtr
              {
                  vol->restoreSnapshot(snapid);
                  return vol;
@@ -1077,10 +1079,10 @@ VolManager::restoreSnapshot(const VolumeId& volid,
     }
     BOOST_SCOPE_EXIT_END;
 
-    with_restart_map_and_unlocked_mgmt_<Volume>(fun, nspace, cfg);
+    with_restart_map_and_unlocked_mgmt_<SharedVolumePtr>(fun, nspace, cfg);
 }
 
-Volume*
+SharedVolumePtr
 VolManager::local_restart(const Namespace& ns,
                           const OwnerTag owner_tag,
                           const FallBackToBackendRestart fallback,
@@ -1103,12 +1105,12 @@ VolManager::local_restart(const Namespace& ns,
     auto fun([fallback,
               ignoreFOCIfUnreachable,
               owner_tag](const Namespace&,
-                         const VolumeConfig& cfg) -> Volume*
+                         const VolumeConfig& cfg) -> SharedVolumePtr
              {
                  return VolumeFactory::local_restart(cfg,
                                                      owner_tag,
                                                      fallback,
-                                                     ignoreFOCIfUnreachable).release();
+                                                     ignoreFOCIfUnreachable);
              });
 
     return with_restart_map_and_unlocked_mgmt_vol_(fun,
@@ -1121,14 +1123,14 @@ VolManager::setAsTemplate(const VolumeId volid)
 {
     mgmtMutex_.assertLocked();
     MAIN_EVENT("Set Volume As Template, volume ID " << volid);
-    Volume* vol = findVolume_(volid);
+    SharedVolumePtr vol = findVolume_(volid);
     {
         UNLOCK_MANAGER();
         vol->setAsTemplate();
     }
 }
 
-Volume*
+SharedVolumePtr
 VolManager::backend_restart(const Namespace& ns,
                             const OwnerTag owner_tag,
                             const PrefetchVolumeData prefetch,
@@ -1164,12 +1166,12 @@ VolManager::backend_restart(const Namespace& ns,
 
     auto fun([prefetch,
               ignore_foc,
-              owner_tag](const Namespace&, const VolumeConfig& cfg) -> Volume*
+              owner_tag](const Namespace&, const VolumeConfig& cfg) -> SharedVolumePtr
              {
                  return VolumeFactory::backend_restart(cfg,
                                                        owner_tag,
                                                        prefetch,
-                                                       ignore_foc).release();
+                                                       ignore_foc);
              });
 
     return with_restart_map_and_unlocked_mgmt_vol_(fun, ns, *config);
@@ -1206,7 +1208,7 @@ VolManager::restartWriteOnlyVolume(const Namespace& ns,
                                                                          owner_tag).release();
              });
 
-    return with_restart_map_and_unlocked_mgmt_<WriteOnlyVolume>(fun, ns, *volume_config);
+    return with_restart_map_and_unlocked_mgmt_<WriteOnlyVolume*>(fun, ns, *volume_config);
 }
 
 void
@@ -1218,7 +1220,7 @@ VolManager::destroyVolume(const VolumeId& name,
 {
     mgmtMutex_.assertLocked();
 
-    Volume* v = findVolume_(name);
+    SharedVolumePtr v = findVolume_(name);
     destroyVolume(v,
                   delete_local_data,
                   remove_volume_completely,
@@ -1227,7 +1229,7 @@ VolManager::destroyVolume(const VolumeId& name,
 }
 
 void
-VolManager::destroyVolume(Volume *v,
+VolManager::destroyVolume(SharedVolumePtr v,
                           const DeleteLocalData delete_local_data,
                           const RemoveVolumeCompletely remove_volume_completely,
                           const DeleteVolumeNamespace delete_volume_namespace,
@@ -1251,8 +1253,19 @@ VolManager::destroyVolume(Volume *v,
 
     volMap_.erase(v->getName());
 
+    // We only trigger deletion here when the previous stuff did not throw.
+    // http://jira.openvstorage.com/browse/OVS-827
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         if (std::uncaught_exception())
+                                         {
+                                             volMap_.insert(std::make_pair(v->getName(),
+                                                                           v));
+                                         }
+                                     }));
+
     auto fun([&](const be::Namespace&,
-                 const VolumeConfig&) -> Volume*
+                 const VolumeConfig&) -> SharedVolumePtr
              {
                  v->destroy(delete_local_data,
                             remove_volume_completely,
@@ -1260,9 +1273,9 @@ VolManager::destroyVolume(Volume *v,
                  return v;
              });
 
-    with_restart_map_and_unlocked_mgmt_<Volume>(fun,
-                                                v->getNamespace(),
-                                                v->get_config());
+    with_restart_map_and_unlocked_mgmt_<SharedVolumePtr>(fun,
+                                                         v->getNamespace(),
+                                                         v->get_config());
     if(T(delete_volume_namespace))
     {
         try
@@ -1273,11 +1286,7 @@ VolManager::destroyVolume(Volume *v,
         {
             LOG_ERROR("Could not delete namespace: " << v->getNamespace());
         }
-
     }
-    // We only trigger deletion here when the previous stuff did not throw.
-    // http://jira.openvstorage.com/browse/OVS-827
-    delete v;
 }
 
 void
@@ -1296,7 +1305,7 @@ VolManager::removeLocalVolumeData(const be::Namespace& nspace)
 {
     ASSERT_LOCKABLE_LOCKED(mgmtMutex_);
 
-    Volume* vol = findVolumeFromNamespace(nspace);
+    SharedVolumePtr vol = findVolumeFromNamespace(nspace);
     if (vol != nullptr)
     {
         LOG_ERROR("Volume " << vol->getName() << " backed by namespace " <<
@@ -1353,7 +1362,7 @@ VolManager::getVolumeList(std::list<VolumeId> &vlist) const
     }
 }
 
-Volume*
+SharedVolumePtr
 VolManager::findVolume_noThrow_(const VolumeId& id)  const
 {
     mgmtMutex_.assertLocked();
@@ -1366,7 +1375,7 @@ VolManager::findVolume_noThrow_(const VolumeId& id)  const
     return it->second;
 }
 
-Volume*
+SharedVolumePtr
 VolManager::findVolumeFromNamespace(const Namespace& ns) const
 {
     for(VolumeMap::const_iterator it = volMap_.begin(); it != volMap_.end(); ++it)
@@ -1376,16 +1385,16 @@ VolManager::findVolumeFromNamespace(const Namespace& ns) const
             return it->second;
         }
     }
-    return 0;
+    return nullptr;
 }
 
-const Volume*
+SharedVolumePtr
 VolManager::findVolumeConst_(const VolumeId& id,
                              const std::string& message) const
 {
     mgmtMutex_.assertLocked();
 
-    const Volume *vol = findVolume_noThrow_(id);
+    SharedVolumePtr vol = findVolume_noThrow_(id);
     if (vol == nullptr)
     {
         throw VolumeDoesNotExistException((message + " volume does not exist").c_str(),
@@ -1396,14 +1405,13 @@ VolManager::findVolumeConst_(const VolumeId& id,
     return vol;
 }
 
-
-Volume*
+SharedVolumePtr
 VolManager::findVolume_(const VolumeId& id,
                         const std::string& message)
 {
     mgmtMutex_.assertLocked();
 
-    Volume *vol = findVolume_noThrow_(id);
+    SharedVolumePtr vol = findVolume_noThrow_(id);
     if (vol == nullptr)
     {
         throw VolumeDoesNotExistException((message + " volume does not exist").c_str(),
@@ -1414,11 +1422,11 @@ VolManager::findVolume_(const VolumeId& id,
     return vol;
 }
 
-const Volume*
+SharedVolumePtr
 VolManager::findVolumeConst_(const Namespace& ns) const
 {
     mgmtMutex_.assertLocked();
-    Volume* vol =  findVolumeFromNamespace(ns);
+    SharedVolumePtr vol = findVolumeFromNamespace(ns);
     if(vol)
     {
         return vol;
@@ -1428,11 +1436,11 @@ VolManager::findVolumeConst_(const Namespace& ns) const
                                       ENOENT);
 }
 
-Volume*
+SharedVolumePtr
 VolManager::findVolume_(const Namespace& ns)
 {
     mgmtMutex_.assertLocked();
-    Volume* vol =  findVolumeFromNamespace(ns);
+    SharedVolumePtr vol = findVolumeFromNamespace(ns);
     if(vol)
     {
         return vol;
@@ -1448,7 +1456,7 @@ VolManager::backend_thread_pool()
     return &backend_thread_pool_;
 }
 
-fungi::Mutex &
+fungi::Mutex&
 VolManager::getLock_()
 {
     return mgmtMutex_;
@@ -1483,12 +1491,12 @@ private:
 uint64_t
 VolManager::getQueueCount(const VolumeId& volName)
 {
-    Volume* v = findVolume_(volName);
+    SharedVolumePtr v = findVolume_(volName);
 
     try
     {
         ThreadPoolCounter<backend_task::WriteSCO> counter;
-        backend_thread_pool_.mapper(v,
+        backend_thread_pool_.mapper(v.get(),
                                     counter);
         return counter.getResult();
     }
@@ -1503,7 +1511,7 @@ uint64_t
 VolManager::getQueueSize(const VolumeId& volName)
 {
     //returns an estimate of data
-    Volume* v = findVolume_(volName);
+    SharedVolumePtr v = findVolume_(volName);
     return v->getSCOSize() * getQueueCount(volName);
 }
 

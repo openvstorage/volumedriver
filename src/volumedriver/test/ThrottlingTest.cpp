@@ -46,14 +46,14 @@ public:
     }
 
     uint64_t
-    timedWrite(Volume* v,
+    timedWrite(SharedVolumePtr v,
                uint64_t lba,
                size_t size,
                const std::string& pattern)
     {
         youtils::wall_timer i;
         //        i.start();
-        writeToVolume(v,
+        writeToVolume(*v,
                       lba,
                       size,
                       pattern);
@@ -64,7 +64,7 @@ public:
     template<typename T>
     void
     runTest(T throttle,
-            Volume* v,
+            SharedVolumePtr v,
             unsigned num_clusters,
             unsigned expected_delay)
     {
@@ -116,7 +116,7 @@ TEST_P(ThrottlingTest, mountPointChoking)
     auto ns_ptr = make_random_namespace();
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume(name,
+    SharedVolumePtr v = newVolume(name,
                           ns);
 
     for (unsigned i = 1; i < 10; ++i)
@@ -135,7 +135,7 @@ TEST_P(ThrottlingTest, namespaceChoking)
     const std::string name("volume");
     auto ns_ptr = make_random_namespace();
     const backend::Namespace& ns = ns_ptr->ns();
-    Volume* v = newVolume(name,
+    SharedVolumePtr v = newVolume(name,
                           ns);
 
     for (unsigned i = 1; i < 10; ++i)

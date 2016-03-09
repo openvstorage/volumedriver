@@ -862,7 +862,7 @@ VolumeInfo::execute_internal(::XmlRpc::XmlRpcValue& params,
             std::string("");
         volume_info.vrouter_id = reg->node_id;
 
-        vd::Volume* v = api::getVolumePointer(vol_id);
+        vd::SharedVolumePtr v(api::getVolumePointer(vol_id));
         volume_info.owner_tag =
             static_cast<uint64_t>(v->getOwnerTag());
         volume_info.cluster_cache_handle =

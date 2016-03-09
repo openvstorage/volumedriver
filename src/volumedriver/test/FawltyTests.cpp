@@ -42,17 +42,17 @@ TEST_P(FawltyTest, faulty_mdstore_test1)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v1 = VolManagerTestSetup::newVolume(id1,
+    SharedVolumePtr v1 = VolManagerTestSetup::newVolume(id1,
                                                 ns);
 
     // const std::string id2("id2");
 
 
-    // Volume* v2 = VolManagerTestSetup::newVolume(id2,
+    // SharedVolumePtr v2 = VolManagerTestSetup::newVolume(id2,
     //                                             id2);
 
 
-    VolumeRandomIOThread t1(v1,
+    VolumeRandomIOThread t1(*v1,
                             "v1volume");
 
     // VolumeRandomIOThread t2(v2,

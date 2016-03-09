@@ -62,8 +62,8 @@ TEST_F(RestartTest, happy_path)
 
     {
         LOCKVD();
-        EXPECT_TRUE(api::getVolumePointer(vname1) != nullptr);
-        EXPECT_TRUE(api::getVolumePointer(vname2) != nullptr);
+        EXPECT_NO_THROW(api::getVolumePointer(vname1));
+        EXPECT_NO_THROW(api::getVolumePointer(vname2));
     }
 
     stop_fs();
@@ -71,8 +71,8 @@ TEST_F(RestartTest, happy_path)
 
     {
         LOCKVD();
-        EXPECT_TRUE(api::getVolumePointer(vname1) != nullptr);
-        EXPECT_TRUE(api::getVolumePointer(vname2) != nullptr);
+        EXPECT_NO_THROW(api::getVolumePointer(vname1));
+        EXPECT_NO_THROW(api::getVolumePointer(vname2));
     }
 
     check_file(fname1, pattern1, wsize, off);

@@ -228,7 +228,7 @@ public:
             startFOC();
         }
 
-        writeToVolume(vol_,
+        writeToVolume(*vol_,
                       0,
                       size,
                       pattern);
@@ -240,12 +240,12 @@ public:
 
         if (with_foc)
         {
-            writeToVolume(vol_,
+            writeToVolume(*vol_,
                           off,
                           size,
                           pattern);
 
-            checkVolume(vol_,
+            checkVolume(*vol_,
                         0,
                         2 * size,
                         pattern);
@@ -257,13 +257,13 @@ public:
             ++cnt;
         }
 
-        EXPECT_THROW(writeToVolume(vol_,
+        EXPECT_THROW(writeToVolume(*vol_,
                                    (size * cnt) / vol_->getLBASize(),
                                    size,
                                    pattern),
                      std::exception);
 
-        EXPECT_THROW(checkVolume(vol_,
+        EXPECT_THROW(checkVolume(*vol_,
                                  0,
                                  size * cnt,
                                  pattern),
@@ -293,7 +293,7 @@ public:
         std::unique_ptr<ScopedBackendBlocker> blocker;
         if (block)
         {
-            blocker.reset(new ScopedBackendBlocker(this, vol_));
+            blocker.reset(new ScopedBackendBlocker(this, *vol_));
         }
 
         if (with_foc)
@@ -303,14 +303,14 @@ public:
 
         const std::string pattern("abc");
 
-        writeToVolume(vol_,
+        writeToVolume(*vol_,
                       0,
                       size,
                       pattern);
 
         if (!block)
         {
-            syncToBackend(vol_);
+            syncToBackend(*vol_);
         }
 
         // we need to sync() here, otherwise our / the OS'es caching mechanisms
@@ -332,7 +332,7 @@ public:
 
         if (with_foc || disposable)
         {
-            checkVolume(vol_,
+            checkVolume(*vol_,
                         0,
                         size,
                         pattern);
@@ -341,7 +341,7 @@ public:
 
             scocorrupter(sco_to_break);
 
-            EXPECT_THROW(checkVolume(vol_,
+            EXPECT_THROW(checkVolume(*vol_,
                                      0,
                                      vol_->getClusterSize(),
                                      pattern),
@@ -349,7 +349,7 @@ public:
 
             EXPECT_EQ(0U, getMountPointList().size());
 
-            EXPECT_THROW(writeToVolume(vol_,
+            EXPECT_THROW(writeToVolume(*vol_,
                                        0,
                                        vol_->getClusterSize(),
                                        pattern),
@@ -358,7 +358,7 @@ public:
         }
         else
         {
-            EXPECT_THROW(checkVolume(vol_,
+            EXPECT_THROW(checkVolume(*vol_,
                                      0,
                                      size,
                                      pattern),
@@ -378,7 +378,7 @@ public:
         const size_t size = sco_size_ * 2 - lba_size_ * cluster_mult_;
 
         std::unique_ptr<ScopedBackendBlocker>
-            blocker(new ScopedBackendBlocker(this, vol_));
+            blocker(new ScopedBackendBlocker(this, *vol_));
 
         if (with_foc)
         {
@@ -387,7 +387,7 @@ public:
 
         std::string pattern("abcd");
 
-        writeToVolume(vol_,
+        writeToVolume(*vol_,
                       0,
                       size,
                       pattern);
@@ -414,27 +414,27 @@ public:
         {
             blocker.reset(0);
 
-            waitForThisBackendWrite(vol_);
+            waitForThisBackendWrite(*vol_);
 
             EXPECT_EQ(1U, getMountPointList().size());
 
-            syncToBackend(vol_);
+            syncToBackend(*vol_);
 
             cache->getSCONameList(volns_, scos, true);
             EXPECT_EQ(2U, scos.size());
             EXPECT_TRUE(loc.sco() == scos.front() ||
                         loc.sco() == scos.back());
 
-            blocker.reset(new ScopedBackendBlocker(this, vol_));
+            blocker.reset(new ScopedBackendBlocker(this, *vol_));
 
-            checkVolume(vol_,
+            checkVolume(*vol_,
                         0,
                         size,
                         pattern);
 
             pattern = "efgh";
 
-            writeToVolume(vol_,
+            writeToVolume(*vol_,
                           0,
                           size,
                           pattern);
@@ -453,7 +453,7 @@ public:
         // wait for the backend writer to run into the error
         sleep(10);
 
-        EXPECT_THROW(checkVolume(vol_,
+        EXPECT_THROW(checkVolume(*vol_,
                                  0,
                                  size,
                                  pattern),
@@ -485,10 +485,10 @@ public:
         if (with_foc)
         {
             startFOC();
-            blocker.reset(new ScopedBackendBlocker(this, vol_));
+            blocker.reset(new ScopedBackendBlocker(this, *vol_));
         }
 
-        writeToVolume(vol_,
+        writeToVolume(*vol_,
                       0,
                       size,
                       pattern);
@@ -496,11 +496,11 @@ public:
         if (with_foc)
         {
             // create a new sco - the snap will not make it to the backend
-            createSnapshot(vol_, "snap");
+            createSnapshot(*vol_, "snap");
         }
         else
         {
-            syncToBackend(vol_);
+            syncToBackend(*vol_);
         }
 
         // remove it from the SCOCache, break the mountpoint it will be fetched to
@@ -512,25 +512,25 @@ public:
         ClusterLocation loc(2);
         removeSCOAndBreakMountPoint_(loc.sco());
 
-        EXPECT_NO_THROW(checkVolume(vol_,
+        EXPECT_NO_THROW(checkVolume(*vol_,
                                     0,
                                     size,
                                     pattern));
 
         EXPECT_EQ(1U, getMountPointList().size());
-        ASSERT_NO_THROW(writeToVolume(vol_,
+        ASSERT_NO_THROW(writeToVolume(*vol_,
                                       size / vol_->getLBASize(),
                                       size,
                                       pattern));
 
         if (!with_foc)
         {
-            syncToBackend(vol_);
+            syncToBackend(*vol_);
         }
 
         removeSCOAndBreakMountPoint_(loc.sco());
 
-        EXPECT_THROW(checkVolume(vol_,
+        EXPECT_THROW(checkVolume(*vol_,
                                  0,
                                  size,
                                  pattern),
@@ -538,7 +538,7 @@ public:
 
         EXPECT_EQ(0U, getMountPointList().size());
 
-        EXPECT_THROW(writeToVolume(vol_,
+        EXPECT_THROW(writeToVolume(*vol_,
                                    0,
                                    size,
                                    pattern),
@@ -601,7 +601,7 @@ protected:
     std::unique_ptr<WithRandomNamespace> volns_ptr_;
 
     const backend::Namespace volns_;
-    Volume* vol_;
+    SharedVolumePtr vol_;
     volumedrivertest::foctest_context_ptr foc_ctx_;
 
 private:
@@ -753,12 +753,12 @@ TEST_P(ErrorHandlingTest, cleanupError)
     const std::string pattern("wxyz");
     size_t size = 2 * mp_size_ - (2 * sco_size_);
 
-    writeToVolume(vol_,
+    writeToVolume(*vol_,
                   0,
                   size,
                   pattern);
 
-    syncToBackend(vol_);
+    syncToBackend(*vol_);
 
     SCONameList disposables;
     SCOCache* cache = VolManager::get()->getSCOCache();
@@ -798,7 +798,7 @@ TEST_P(ErrorHandlingTest, cleanupError)
 
     for (size_t i = 0; i < size; i += sco_size_)
     {
-        checkVolume(vol_,
+        checkVolume(*vol_,
                     i % lba_size_,
                     sco_size_,
                     pattern);
@@ -809,12 +809,12 @@ TEST_P(ErrorHandlingTest, cleanupError)
     size = mp_size_ - mp->getUsedSize() - sco_size_;
     size = (size / sco_size_) * sco_size_;
 
-    writeToVolume(vol_,
+    writeToVolume(*vol_,
                   0,
                   size,
                   pattern);
 
-    syncToBackend(vol_);
+    syncToBackend(*vol_);
 
     SCONameList scos;
 
@@ -842,13 +842,13 @@ TEST_P(ErrorHandlingTest, cleanupError)
     EXPECT_EQ(0U, getMountPointList().size());
 
     //    TODO("No joy here anymore with the partial_reads")
-    // EXPECT_THROW(checkVolume(vol_,
+    // EXPECT_THROW(checkVolume(*vol_,
     //                          0,
     //                          lba_size_ * cluster_mult_,
     //                          pattern),
     //              std::exception);
 
-    EXPECT_THROW(writeToVolume(vol_,
+    EXPECT_THROW(writeToVolume(*vol_,
                                0,
                                lba_size_ * cluster_mult_,
                                pattern),
@@ -872,7 +872,7 @@ TEST_P(ErrorHandlingTest, haltedVolume)
     startFOC();
 
     const size_t size = sco_size_ / 2;
-    writeToVolume(vol_,
+    writeToVolume(*vol_,
                   0,
                   size,
                   "blah");
@@ -880,7 +880,7 @@ TEST_P(ErrorHandlingTest, haltedVolume)
     const SnapshotName snap1("snap1");
     vol_->createSnapshot(snap1);
 
-    waitForThisBackendWrite(vol_);
+    waitForThisBackendWrite(*vol_);
 
     EXPECT_FALSE(vol_->is_halted());
 

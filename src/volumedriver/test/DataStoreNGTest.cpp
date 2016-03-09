@@ -46,7 +46,7 @@ protected:
                               "10MiB",
                               "4MiB",
                               "5MiB")
-        , vol_(0)
+        , vol_(nullptr)
         , dStore_(0)
     {
     }
@@ -297,7 +297,7 @@ protected:
 
     DECLARE_LOGGER("DataStoreNGTest");
 
-    Volume* vol_;
+    SharedVolumePtr vol_;
     std::unique_ptr<WithRandomNamespace> ns_ptr_;
 
     DataStoreNG *dStore_;
@@ -342,10 +342,10 @@ TEST_P(DataStoreNGTest, overflowCache)
     EXPECT_NO_THROW(dStore_->sync());
     EXPECT_NO_THROW(readClusters(n, 0x90ABCDEF, &loc[0]));
 
-    waitForThisBackendWrite(vol_);
+    waitForThisBackendWrite(*vol_);
     {
 
-        SCOPED_BLOCK_BACKEND(vol_);
+        SCOPED_BLOCK_BACKEND(*vol_);
         EXPECT_THROW(writeClusters(n, 0x1234567, &loc[0]), TransientException);
     }
 
@@ -357,7 +357,7 @@ TEST_P(DataStoreNGTest, overflowCache2)
     // cf. VOLDRV-128:
     // force SCO rollover before doing actual I/O. this used to trigger an ASSERT,
     // but should just throw a TransientException
-    SCOPED_BLOCK_BACKEND(vol_);
+    SCOPED_BLOCK_BACKEND(*vol_);
 
     const size_t scosize = vol_->getClusterMultiplier() * vol_->getClusterSize();
     const size_t num_scos = (sc_mp1_size_ + sc_mp2_size_) / scosize;
@@ -412,7 +412,7 @@ TEST_P(DataStoreNGTest, destroyCache)
     // these tests!!!
 
     EXPECT_NO_THROW(writeClusters(n, 0x90ABCDEF, &loc[0]));
-    waitForThisBackendWrite(vol_);
+    waitForThisBackendWrite(*vol_);
 
     EXPECT_NO_THROW(dStore_->destroy(DeleteLocalData::T));
 
@@ -441,7 +441,7 @@ TEST_P(DataStoreNGTest, corruptedReadSCO)
                                   pattern,
                                   &locs[0]));
 
-    waitForThisBackendWrite(vol_);
+    waitForThisBackendWrite(*vol_);
 
     truncate_sco_in_cache(locs[0].sco(),
                           clustSize);
@@ -468,7 +468,7 @@ TEST_P(DataStoreNGTest, corruptedReadSCO)
 
 TEST_P(DataStoreNGTest, corruptedReadSCO2)
 {
-    SCOPED_BLOCK_BACKEND(vol_);
+    SCOPED_BLOCK_BACKEND(*vol_);
 
     event_collector_->clear();
 
@@ -559,9 +559,9 @@ TEST_P(DataStoreNGTest, checksum)
 
     ClusterLocation loc(1);
     {
-        SCOPED_BLOCK_BACKEND(vol_);
+        SCOPED_BLOCK_BACKEND(*vol_);
 
-        writeToVolume(vol_,
+        writeToVolume(*vol_,
                       0,
                       size,
                       pattern);
@@ -569,7 +569,7 @@ TEST_P(DataStoreNGTest, checksum)
         //EXPECT_EQ(expected, dStore_->getCheckSum(loc.sco()));
     }
 
-    syncToBackend(vol_);
+    syncToBackend(*vol_);
 
     // EXPECT_THROW(dStore_->getCheckSum(loc.sco()),
     //              CheckSumStoreException);
@@ -606,7 +606,7 @@ TEST_P(DataStoreNGTest, removeSCO)
 
     //checksums.find(loc.sco());
 
-    syncToBackend(vol_);
+    syncToBackend(*vol_);
     dStore_->writtenToBackendUpTo(loc.sco());
     //EXPECT_THROW(checksums.find(loc.sco()),
     //          CheckSumStoreException) <<
@@ -769,7 +769,7 @@ TEST_P(DataStoreNGTest, writtenToBackendUpTo)
     size_t numclusters = (numscos - 1) * vol_->getSCOMultiplier() + 1;
     std::vector<ClusterLocation> locs(numclusters);
 
-    SCOPED_BLOCK_BACKEND(vol_);
+    SCOPED_BLOCK_BACKEND(*vol_);
 
     writeClusters(numclusters,
                   0xdeadbeef,
@@ -813,7 +813,7 @@ TEST_P(DataStoreNGTest, writtenToBackendUpTo)
 
     // clear the write sco tasks from the queue, the bsemtask will lead to it
     // throwing
-    EXPECT_THROW(VolManager::get()->backend_thread_pool()->stop(vol_, 1),
+    EXPECT_THROW(VolManager::get()->backend_thread_pool()->stop(vol_.get(), 1),
                  std::exception);
 }
 
@@ -871,7 +871,7 @@ TEST_P(DataStoreNGTest, errorOnFinalizeSCO)
     // to create a new one on another mountpoint, must not fail and must return a
     // valid checksum
     {
-        CachedSCOPtr sco_ptr = getCurrentSCO(vol_);
+        CachedSCOPtr sco_ptr = getCurrentSCO(*vol_);
         SCOCache::SCOCacheMountPointList& l = getSCOCacheMountPointList();
         BOOST_FOREACH(SCOCacheMountPointPtr mp, l)
         {

@@ -31,7 +31,7 @@ TEST_P(BigReadWriteTest, bigReadsOnEmpty)
 {
     auto ns_ptr = make_random_namespace();
 
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns_ptr->ns());
 
     size_t csz = v->getClusterSize();
@@ -40,17 +40,17 @@ TEST_P(BigReadWriteTest, bigReadsOnEmpty)
 
     for(size_t i = 0; i < scoMul; ++i)
     {
-        checkVolume(v,0, csz*scoMul, pattern);
+        checkVolume(*v,0, csz*scoMul, pattern);
     }
 }
 
 TEST_P(BigReadWriteTest, bigReadsOnFull)
 {
     auto ns_ptr = make_random_namespace();
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns_ptr->ns());
 
-    SCOPED_BLOCK_BACKEND(v);
+    SCOPED_BLOCK_BACKEND(*v);
 
     size_t csz = v->getClusterSize();
     size_t lba_size = v->getLBASize();
@@ -59,13 +59,13 @@ TEST_P(BigReadWriteTest, bigReadsOnFull)
     size_t scoMul = v->getSCOMultiplier();
     for(size_t i = 0;i < 50*scoMul; ++i)
     {
-        writeToVolume(v, i* csz / lba_size, csz, pattern);
+        writeToVolume(*v, i* csz / lba_size, csz, pattern);
     }
 
     // Stop here to manually delete sco's to check error handling
     for(size_t i = 0; i < scoMul; ++i)
     {
-        checkVolume(v,0, csz*scoMul, pattern);
+        checkVolume(*v,0, csz*scoMul, pattern);
     }
 
 }
@@ -73,10 +73,10 @@ TEST_P(BigReadWriteTest, bigReadsOnFull)
 TEST_P(BigReadWriteTest, bigWritesBigReads)
 {
     auto ns_ptr = make_random_namespace();
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns_ptr->ns());
 
-    SCOPED_BLOCK_BACKEND(v);
+    SCOPED_BLOCK_BACKEND(*v);
 
     size_t csz = v->getClusterSize();
 
@@ -84,13 +84,13 @@ TEST_P(BigReadWriteTest, bigWritesBigReads)
     size_t scoMul = v->getSCOMultiplier();
     for (size_t i = 0; i < scoMul; ++i)
     {
-        writeToVolume(v, 0, csz * (i + 1), pattern);
+        writeToVolume(*v, 0, csz * (i + 1), pattern);
     }
 
     // Stop here to manually delete sco's to check error handling
     for (size_t i = 0; i < scoMul; ++i)
     {
-        checkVolume(v, 0, csz * (i + 1), pattern);
+        checkVolume(*v, 0, csz * (i + 1), pattern);
     }
 
 }
@@ -99,19 +99,19 @@ TEST_P(BigReadWriteTest, OneBigWriteOneBigRead)
 {
     auto ns_ptr = make_random_namespace();
 
-    Volume* v = newVolume(VolumeId("volume1"),
-			  ns_ptr->ns());
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
+                                  ns_ptr->ns());
 
-    SCOPED_BLOCK_BACKEND(v);
+    SCOPED_BLOCK_BACKEND(*v);
 
     size_t csz = v->getClusterSize();
 
     const std::string pattern(csz,'a');
     size_t scoMul = v->getSCOMultiplier();
-    writeToVolume(v, 0, csz * scoMul, pattern);
+    writeToVolume(*v, 0, csz * scoMul, pattern);
 
     // Stop here to manually delete sco's to check error handling
-    checkVolume(v,0, csz*scoMul, pattern);
+    checkVolume(*v,0, csz*scoMul, pattern);
 
 }
 

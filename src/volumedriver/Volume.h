@@ -747,6 +747,9 @@ private:
                            uint8_t*);
 };
 
+using SharedVolumePtr = std::shared_ptr<Volume>;
+using WeakVolumePtr = std::weak_ptr<Volume>;
+
 } // namespace volumedriver
 
 #endif // !VOLUME_H_

@@ -29,7 +29,7 @@ unsigned init = 0;
 
 struct VolumeReader
 {
-    VolumeReader(Volume* v,
+    VolumeReader(SharedVolumePtr v,
                  uint64_t read_times,
                  uint64_t max_lba)
         : v_(v)
@@ -65,7 +65,7 @@ struct VolumeReader
 
     }
 
-    Volume* v_;
+    SharedVolumePtr v_;
     const uint64_t len_;
     std::vector<uint8_t> buf_;
     const uint64_t read_times_;
@@ -130,7 +130,7 @@ public:
     }
 
     uint64_t
-    fill_with_scos(Volume* v,
+    fill_with_scos(SharedVolumePtr v,
                    uint64_t times_sco_cache)
     {
         // This size is related to the scocache sizes defined above!!!!
@@ -144,7 +144,7 @@ public:
         for(unsigned i = 0; i < num_scos; ++i)
         {
             VERIFY(4096*sco_multiplier == sco_size);
-            writeToVolume(v,
+            writeToVolume(*v,
                           i*8,
                           4096*sco_multiplier,
                           "kutmetperen");
@@ -165,15 +165,15 @@ TEST_P(ReadParallelismTest, DISABLED_single_read)
     const std::string id1("id1");
     const backend::Namespace ns1;
 
-    Volume* v = VolManagerTestSetup::newVolume(id1,
-                                               ns1);
+    SharedVolumePtr v = VolManagerTestSetup::newVolume(id1,
+                                                       ns1);
 
     uint64_t max_lba = fill_with_scos(v,
                                       100);
 
 
     ASSERT_NO_THROW(v->createSnapshot(SnapshotName("snap1")));
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
     youtils::wall_timer wt;
 
     for(int i = 1; i <= 8; i*=2)
@@ -205,7 +205,6 @@ TEST_P(ReadParallelismTest, DISABLED_single_read)
         std::cout << "Elapsed time for " << i
                   << " threads doing " << test_size << " reads " << wt.elapsed() << std::endl;
     }
-
 }
 
 namespace

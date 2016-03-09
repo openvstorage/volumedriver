@@ -74,7 +74,7 @@ public:
     }
 
     void
-    writeAndCheckFirstCluster(Volume* vol,
+    writeAndCheckFirstCluster(WeakVolumePtr vol,
                               byte pattern)
     {
         {
@@ -92,7 +92,7 @@ public:
     }
 
     void
-    checkFirstCluster(Volume* vol,
+    checkFirstCluster(WeakVolumePtr vol,
                       byte pattern)
     {
         const std::vector<byte> ref(4096, pattern);
@@ -131,7 +131,7 @@ public:
                                                                                parent_owner_tag)));
         }
 
-        Volume* vol = 0;
+        WeakVolumePtr vol;
 
         {
             LOCK_MGMT();
@@ -148,6 +148,7 @@ public:
         }
 
         bool sync(false);
+
         do
         {
             sleep (1);
@@ -189,7 +190,6 @@ public:
                                                RemoveVolumeCompletely::F,
                                                DeleteVolumeNamespace::F,
                                                ForceVolumeDeletion::F));
-            vol = 0;
         }
 
         const VolumeId clone_id(clone_ns.str());
@@ -208,7 +208,7 @@ public:
                                              PrefetchVolumeData::T));
         }
 
-        Volume* clone = 0;
+        WeakVolumePtr clone;
 
         {
             LOCK_MGMT();
@@ -264,7 +264,6 @@ public:
                                                RemoveVolumeCompletely::F,
                                                DeleteVolumeNamespace::F,
                                                ForceVolumeDeletion::F));
-            clone = 0;
         }
 
         {
@@ -296,7 +295,6 @@ public:
                                                RemoveVolumeCompletely::F,
                                                DeleteVolumeNamespace::F,
                                                ForceVolumeDeletion::F));
-            clone = 0;
         }
 
         {
@@ -333,14 +331,14 @@ TEST_P(ApiTest, QueueCount)
     auto nspaceptr = make_random_namespace();
     const Namespace& nspace = nspaceptr->ns();
 
-    Volume* v = newVolume("volume1",
-                          nspace);
+    SharedVolumePtr v = newVolume("volume1",
+                                  nspace);
 
     {
-        SCOPED_BLOCK_BACKEND(v);
+        SCOPED_BLOCK_BACKEND(*v);
         for(int i = 0; i < 5; i++)
         {
-            writeToVolume(v,
+            writeToVolume(*v,
                           0,
                           4096,
                           "xyz");
@@ -501,9 +499,9 @@ TEST_P(ApiTest, failOverCacheConfig)
     // createTestNamespace(ns);
     const VolumeId vol_id(volname);
 
-    Volume* v = newVolume(volname,
-                          ns);
-    ASSERT_TRUE(v);
+    SharedVolumePtr v = newVolume(volname,
+                                  ns);
+    ASSERT_TRUE(v != nullptr);
 
     {
         fungi::ScopedLock l(api::getManagementMutex());
@@ -822,13 +820,13 @@ TEST_P(ApiTest, snapshot_metadata)
                                                        volsize,
                                                        otag));
 
-    Volume* vol = api::getVolumePointer(volid);
+    WeakVolumePtr vol = api::getVolumePointer(volid);
 
     const SnapshotName sname1("snapshot");
     const SnapshotMetaData meta1;
     api::createSnapshot(volid, meta1, &sname1);
 
-    waitForThisBackendWrite(vol);
+    waitForThisBackendWrite(*SharedVolumePtr(vol));
 
     {
         const Snapshot snap(api::getSnapshot(volid, sname1));
@@ -841,7 +839,7 @@ TEST_P(ApiTest, snapshot_metadata)
     const SnapshotMetaData meta2(sname2.begin(), sname2.end());
     api::createSnapshot(volid, meta2, &sname2);
 
-    waitForThisBackendWrite(vol);
+    waitForThisBackendWrite(*SharedVolumePtr(vol));
 
     {
         const Snapshot snap(api::getSnapshot(volid, sname2));
@@ -928,7 +926,7 @@ TEST_P(ApiTest, volume_destruction_vs_monitoring)
     const VolumeId vname("volume");
 
     const VolumeSize vsize(1 << 20);
-    Volume* v;
+    WeakVolumePtr v;
 
     auto nspace_ptr = make_random_namespace();
     const backend::Namespace nspace = nspace_ptr->ns();
@@ -954,7 +952,7 @@ TEST_P(ApiTest, volume_destruction_vs_monitoring)
     // same time the volume should not be visible to monitoring anymore though to
     // prevent concurrent accesses like the one in OVS-848.
     {
-        SCOPED_BLOCK_BACKEND(v);
+        SCOPED_BLOCK_BACKEND(*SharedVolumePtr(v));
 
         t = std::thread([&vname]
                         {
@@ -1008,10 +1006,10 @@ TEST_P(ApiTest, snapshot_restoration)
     const VolumeId volid("volume");
 
     const VolumeSize vsize(1 << 20);
-    Volume* vol;
 
     auto nspace_ptr = make_random_namespace();
     const backend::Namespace nspace = nspace_ptr->ns();
+    WeakVolumePtr vol;
 
     {
         LOCK_MGMT();
@@ -1033,7 +1031,7 @@ TEST_P(ApiTest, snapshot_restoration)
 
     const SnapshotName before("before snapshot");
 
-    writeToVolume(vol, before);
+    writeToVolume(*SharedVolumePtr(vol), before);
 
     {
         LOCK_MGMT();
@@ -1044,11 +1042,11 @@ TEST_P(ApiTest, snapshot_restoration)
 
     const SnapshotName after("after snapshot");
 
-    writeToVolume(vol, after);
+    writeToVolume(*SharedVolumePtr(vol), after);
 
-    waitForThisBackendWrite(vol);
+    waitForThisBackendWrite(*SharedVolumePtr(vol));
 
-    checkVolume(vol, after);
+    checkVolume(*SharedVolumePtr(vol), after);
 
     {
         LOCK_MGMT();
@@ -1057,14 +1055,14 @@ TEST_P(ApiTest, snapshot_restoration)
                      std::exception);
     }
 
-    checkVolume(vol, after);
+    checkVolume(*SharedVolumePtr(vol), after);
 
     {
         LOCK_MGMT();
         api::restoreSnapshot(volid, snapid);
     }
 
-    checkVolume(vol, before);
+    checkVolume(*SharedVolumePtr(vol), before);
 }
 
 INSTANTIATE_TEST(ApiTest);

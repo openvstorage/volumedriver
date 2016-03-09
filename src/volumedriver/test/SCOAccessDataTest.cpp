@@ -52,7 +52,7 @@ public:
 
         // const backend::Namespace nspace;
 
-        Volume* v = newVolume(volname,
+        SharedVolumePtr v = newVolume(volname,
                               nspace);
 
         std::unique_ptr<SCOAccessData> sad(makeSCOAccessData(*v));
@@ -80,7 +80,7 @@ public:
 
         const backend::Namespace& nspace = ns_ptr->ns();
 
-        Volume* v = newVolume(volname,
+        SharedVolumePtr v = newVolume(volname,
                               nspace);
 
         BackendInterfacePtr bi(v->getBackendInterface()->cloneWithNewNamespace(nspace));
@@ -110,7 +110,7 @@ public:
 
         // const backend::Namespace nspace;
 
-        Volume* v = newVolume(volname,
+        SharedVolumePtr v = newVolume(volname,
                               nspace);
 
         BackendInterfacePtr bi(v->getBackendInterface()->cloneWithNewNamespace(nspace));
@@ -140,7 +140,7 @@ TEST_P(SCOAccessDataTest, test1)
 
     const backend::Namespace& nspace = ns_ptr->ns();
 
-    Volume* v1 = newVolume(volname,
+    SharedVolumePtr v1 = newVolume(volname,
                            nspace);
 
     SCOAccessDataPersistor sadp(v1->getBackendInterface()->cloneWithNewNamespace(nspace));
@@ -189,7 +189,7 @@ TEST_P(SCOAccessDataTest, DISABLED_CreateOne)
 
     // const backend::Namespace nspace;
 
-    Volume* v1 = newVolume(volname,
+    SharedVolumePtr v1 = newVolume(volname,
                            nspace);
 
 
@@ -239,7 +239,7 @@ TEST_P(SCOAccessDataTest, InAndOut)
 
     const backend::Namespace& nspace = ns_ptr->ns();
 
-    Volume* v = newVolume(volname,
+    SharedVolumePtr v = newVolume(volname,
                           nspace);
 
     const size_t size = 1024;
@@ -335,7 +335,7 @@ TEST_P(SCOAccessDataTest, CruelAndUnusualPunishment)
 
     const backend::Namespace& nspace = ns_ptr->ns();
 
-    Volume* v1 = newVolume(volname,
+    SharedVolumePtr v1 = newVolume(volname,
                            nspace);
 
     std::unique_ptr<SCOAccessData> test(makeSCOAccessData(*v1));

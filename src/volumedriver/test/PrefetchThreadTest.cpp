@@ -37,19 +37,19 @@ TEST_P(PrefetchThreadTest, test_one)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume("v1",
+    SharedVolumePtr v = newVolume("v1",
 			  ns);
 
     const size_t numwrites = 20;
     for(size_t i = 0; i < numwrites; ++i)
     {
-        writeToVolume(v,
+        writeToVolume(*v,
                       0,
                       4096,
                       "Superflous");
     }
 
-    syncToBackend(v);
+    syncToBackend(*v);
 
     destroyVolume(v,
                   DeleteLocalData::T,
@@ -63,7 +63,7 @@ TEST_P(PrefetchThreadTest, test_two)
 
     const backend::Namespace& n1 = ns_ptr->ns();
 
-    Volume* v = newVolume("v1",
+    SharedVolumePtr v = newVolume("v1",
                           n1);
     // Y42 put in VolManagerTestSetup
     const VolumeConfig cfg = v->get_config();
@@ -73,13 +73,13 @@ TEST_P(PrefetchThreadTest, test_two)
     const size_t numwrites = 20;
     for(size_t i = 0; i < numwrites; ++i)
     {
-        writeToVolume(v,
+        writeToVolume(*v,
                       0,
                       scoSize,
                       "Superflous");
     }
 
-    syncToBackend(v);
+    syncToBackend(*v);
 
     SCONameList list;
 
