@@ -363,13 +363,20 @@ public:
             for (const auto& o: objs)
             {
                 const auto reg(registry->find(o, IgnoreCache::F));
-                if (reg->object().type == ObjectType::Volume or
-                    reg->object().type == ObjectType::Template)
+                if (reg and (reg->object().type == ObjectType::Volume or
+                    reg->object().type == ObjectType::Template))
                 {
-                    std::string volume(fs_.find_path(reg->volume_id).string());
-                    volume.erase(volume.rfind(fs_.vdisk_format().volume_suffix()));
-                    volume.erase(0, 1);
-                    volumes.push_back(volume);
+                    try
+                    {
+                        std::string volume(fs_.find_path(reg->volume_id).string());
+                        volume.erase(volume.rfind(fs_.vdisk_format().volume_suffix()));
+                        volume.erase(0, 1);
+                        volumes.push_back(volume);
+                    }
+                    catch (HierarchicalArakoon::DoesNotExistException&)
+                    {
+                        continue;
+                    }
                 }
             }
             return volumes;
