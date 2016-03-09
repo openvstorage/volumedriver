@@ -435,10 +435,12 @@ ObjectRouter::maybe_steal_(R (ClusterNode::*fn)(const Object&,
                            IsRemoteNode& remote,
                            AttemptTheft attempt_theft,
                            const ObjectRegistration& reg,
+                           FastPathCookie& cookie,
                            A... args)
 {
     const NodeId& owner_id = reg.node_id;
     const ObjectId& id = reg.volume_id;
+    const Object obj(reg.object());
 
     LOG_TRACE(id << ", owner " << owner_id);
 
@@ -447,14 +449,19 @@ ObjectRouter::maybe_steal_(R (ClusterNode::*fn)(const Object&,
     while (true)
     {
         std::shared_ptr<ClusterNode> node(find_node_or_throw_(owner_id));
-        remote = std::dynamic_pointer_cast<RemoteNode>(node) != nullptr ?
+        std::shared_ptr<LocalNode> lnode = std::dynamic_pointer_cast<LocalNode>(node);
+        remote = lnode == nullptr ?
             IsRemoteNode::T :
             IsRemoteNode::F;
 
         try
         {
+            cookie = lnode == nullptr ?
+            nullptr :
+            lnode->fast_path_cookie(obj);
+
             ClusterNode& cn = *node;
-            return (cn.*fn)(reg.object(), std::forward<A>(args)...);
+            return (cn.*fn)(obj, std::forward<A>(args)...);
         }
         catch (RequestTimeoutException&)
         {
@@ -636,6 +643,7 @@ ObjectRouter::do_route_(R (ClusterNode::*fn)(const Object&,
                         IsRemoteNode& remote,
                         AttemptTheft attempt_theft,
                         const ObjectId& id,
+                        FastPathCookie& cookie,
                         A... args)
 {
     LOG_TRACE(id);
@@ -647,16 +655,19 @@ ObjectRouter::do_route_(R (ClusterNode::*fn)(const Object&,
                      remote,
                      attempt_theft,
                      reg,
+                     cookie,
                      std::forward<A>(args)...);
 }
 
-template<typename R, typename... A>
+template<typename R,
+         typename... A>
 R
 ObjectRouter::do_route_(R (ClusterNode::*fn)(const Object&,
                                              A... args),
                         IsRemoteNode& remote,
                         AttemptTheft attempt_theft,
                         ObjectRegistrationPtr reg,
+                        FastPathCookie& cookie,
                         A... args)
 {
     const ObjectId& id = reg->volume_id;
@@ -681,6 +692,7 @@ ObjectRouter::do_route_(R (ClusterNode::*fn)(const Object&,
                                 remote,
                                 attempt_theft,
                                 *reg,
+                                cookie,
                                 std::forward<A>(args)...);
         }
         catch (vd::VolManager::VolumeDoesNotExistException&)
@@ -713,16 +725,22 @@ ObjectRouter::route_(R (ClusterNode::*fn)(const Object&,
                                           A... args),
                      AttemptTheft attempt_theft,
                      const ObjectId& id,
+                     FastPathCookie& cookie,
                      A... args)
 {
     IsRemoteNode remote = IsRemoteNode::F;
-    return do_route_(fn, remote, attempt_theft, id, args...);
+    return do_route_(fn,
+                     remote,
+                     attempt_theft,
+                     id,
+                     cookie,
+                     args...);
 }
 
 // TODO: It'd be nice to make this work with arbitrary return types.
 template<typename P,
          typename... A>
-void
+FastPathCookie
 ObjectRouter::maybe_migrate_(P&& migrate_pred,
                              void (ClusterNode::*fn)(const Object&,
                                                      A... args),
@@ -733,10 +751,13 @@ ObjectRouter::maybe_migrate_(P&& migrate_pred,
                                                            IgnoreCache::F));
 
     IsRemoteNode remote = IsRemoteNode::F;
+    FastPathCookie cookie;
+
     do_route_(fn,
               remote,
               AttemptTheft::T,
               reg,
+              cookie,
               std::forward<A>(args)...);
 
     if (remote == IsRemoteNode::T and migrate_pred(reg->volume_id,
@@ -794,6 +815,8 @@ ObjectRouter::maybe_migrate_(P&& migrate_pred,
                 });
         }
     }
+
+    return cookie;
 }
 
 zmq::message_t
@@ -876,13 +899,55 @@ ObjectRouter::migrate_pred_helper_(const char* desc,
     }
 }
 
-void
-ObjectRouter::write(const ObjectId& id,
+template<typename... Args>
+FastPathCookie
+ObjectRouter::select_path_(const FastPathCookie& cookie,
+                           FastPathCookie (ObjectRouter::*slow_fun)(Args...),
+                           FastPathCookie (LocalNode::*fast_fun)(const FastPathCookie&,
+                                                                 Args...),
+                           Args... args)
+{
+    if (cookie)
+    {
+        try
+        {
+            LocalNode& node = *local_node_();
+            return (node.*fast_fun)(cookie,
+                                    std::forward<Args>(args)...);
+        }
+        catch (ObjectNotRunningHereException&)
+        {}
+    }
+
+    return (*this.*slow_fun)(std::forward<Args>(args)...);
+}
+
+FastPathCookie
+ObjectRouter::write(const FastPathCookie& cookie,
+                    const ObjectId& id,
                     const uint8_t* buf,
                     size_t size,
                     off_t off)
 {
-    LOG_TRACE(id << ": size " << size << ", off " << off);
+    return select_path_<decltype(id),
+                        const uint8_t*,
+                        size_t*,
+                        decltype(off)>(cookie,
+                                       &ObjectRouter::write_,
+                                       &LocalNode::write,
+                                       id,
+                                       buf,
+                                       &size,
+                                       off);
+}
+
+FastPathCookie
+ObjectRouter::write_(const ObjectId& id,
+                     const uint8_t* buf,
+                     size_t* size,
+                     off_t off)
+{
+    LOG_TRACE(id << ": size " << *size << ", off " << off);
 
     auto pred([this](const ObjectId& id,
                      const ObjectType tp)
@@ -898,12 +963,13 @@ ObjectRouter::write(const ObjectId& id,
                                               redirects_[id].writes);
               });
 
-    maybe_migrate_(std::move(pred),
-                   &ClusterNode::write,
-                   id,
-                   buf,
-                   &size,
-                   off);
+    return maybe_migrate_(std::move(pred),
+                          &ClusterNode::write,
+                          id,
+                          buf,
+                          size,
+                          off);
+
 }
 
 namespace
@@ -938,11 +1004,30 @@ ObjectRouter::handle_write_(const vfsprotocol::WriteRequest& req,
     return ZUtils::serialize_to_message(rsp);
 }
 
-void
-ObjectRouter::read(const ObjectId& id,
+FastPathCookie
+ObjectRouter::read(const FastPathCookie& cookie,
+                   const ObjectId& id,
                    uint8_t* buf,
                    size_t& size,
                    off_t off)
+{
+    return select_path_<decltype(id),
+                        decltype(buf),
+                        size_t*,
+                        decltype(off)>(cookie,
+                                       &ObjectRouter::read_,
+                                       &LocalNode::read,
+                                       id,
+                                       buf,
+                                       &size,
+                                       off);
+}
+
+FastPathCookie
+ObjectRouter::read_(const ObjectId& id,
+                    uint8_t* buf,
+                    size_t* size,
+                    off_t off)
 {
     LOG_TRACE(id << ": size " << size << ", off " << off);
 
@@ -960,12 +1045,12 @@ ObjectRouter::read(const ObjectId& id,
                                               redirects_[id].reads);
               });
 
-    maybe_migrate_(std::move(pred),
-                   &ClusterNode::read,
-                   id,
-                   buf,
-                   &size,
-                   off);
+    return maybe_migrate_(std::move(pred),
+                          &ClusterNode::read,
+                          id,
+                          buf,
+                          size,
+                          off);
 }
 
 namespace
@@ -1003,14 +1088,29 @@ ObjectRouter::handle_read_(const vfsprotocol::ReadRequest& req)
     return data;
 }
 
-void
-ObjectRouter::sync(const ObjectId& id)
+FastPathCookie
+ObjectRouter::sync(const FastPathCookie& cookie,
+                   const ObjectId& id)
+{
+    return select_path_<decltype(id)>(cookie,
+                                      &ObjectRouter::sync_,
+                                      &LocalNode::sync,
+                                      id);
+}
+
+FastPathCookie
+ObjectRouter::sync_(const ObjectId& id)
 {
     LOG_TRACE(id);
 
+    FastPathCookie cookie;
+
     route_(&ClusterNode::sync,
            AttemptTheft::T,
-           id);
+           id,
+           cookie);
+
+    return cookie;
 }
 
 void
@@ -1026,9 +1126,12 @@ ObjectRouter::get_size(const ObjectId& id)
 {
     LOG_TRACE(id);
 
+    FastPathCookie cookie;
+
     return route_(&ClusterNode::get_size,
                   AttemptTheft::T,
-                  id);
+                  id,
+                  cookie);
 }
 
 zmq::message_t
@@ -1047,9 +1150,12 @@ ObjectRouter::resize(const ObjectId& id, uint64_t newsize)
 {
     LOG_TRACE(id << ", newsize " << newsize);
 
+    FastPathCookie cookie;
+
     route_(&ClusterNode::resize,
            AttemptTheft::T,
            id,
+           cookie,
            newsize);
 }
 
@@ -1072,11 +1178,14 @@ ObjectRouter::unlink(const ObjectId& id)
     // otherwise a concurrent call to create a clone from a
     // template currently being deleted could succeed and lead to dataloss.
 
+    FastPathCookie cookie;
+
     try
     {
         route_(&ClusterNode::unlink,
                AttemptTheft::F,
-               id);
+               id,
+               cookie);
     }
     catch (ObjectNotRegisteredException&)
     {

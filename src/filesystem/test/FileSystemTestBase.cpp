@@ -586,9 +586,9 @@ FileSystemTestBase::write(const vfs::FrontendPath& path,
                           const char* buf,
                           uint64_t size,
                           off_t off,
-                          const vfs::Handle& h)
+                          vfs::Handle& h)
 {
-    int ret = vfs::FuseInterface::convert_exceptions<const vfs::Handle&,
+    int ret = vfs::FuseInterface::convert_exceptions<vfs::Handle&,
                                                      size_t&,
                                                      decltype(buf),
                                                      decltype(off)>(&vfs::FileSystem::write,
@@ -602,13 +602,13 @@ FileSystemTestBase::write(const vfs::FrontendPath& path,
 }
 
 int
-FileSystemTestBase::write(const vfs::Handle& h,
+FileSystemTestBase::write(vfs::Handle& h,
                           const char* buf,
                           uint64_t size,
                           off_t off)
 {
     bool sync = false;
-    int ret = fs_convert_exceptions<const vfs::Handle&,
+    int ret = fs_convert_exceptions<vfs::Handle&,
                                     size_t&,
                                     decltype(buf),
                                     decltype(off),
@@ -623,10 +623,10 @@ FileSystemTestBase::write(const vfs::Handle& h,
 }
 
 int
-FileSystemTestBase::fsync(const volumedriverfs::Handle& h,
+FileSystemTestBase::fsync(volumedriverfs::Handle& h,
                           bool datasync)
 {
-    return fs_convert_exceptions<const vfs::Handle&,
+    return fs_convert_exceptions<vfs::Handle&,
                                  bool>(*fs_,
                                        &vfs::FileSystem::fsync,
                                        h,
@@ -638,9 +638,9 @@ FileSystemTestBase::read(const vfs::FrontendPath& path,
                          char* buf,
                          uint64_t size,
                          off_t off,
-                         const vfs::Handle& h)
+                         vfs::Handle& h)
 {
-    int ret = vfs::FuseInterface::convert_exceptions<const vfs::Handle&,
+    int ret = vfs::FuseInterface::convert_exceptions<vfs::Handle&,
                                                      size_t&,
                                                      decltype(buf),
                                                      decltype(off)>(&vfs::FileSystem::read,
@@ -655,13 +655,13 @@ FileSystemTestBase::read(const vfs::FrontendPath& path,
 }
 
 int
-FileSystemTestBase::read(const vfs::Handle& h,
+FileSystemTestBase::read(vfs::Handle& h,
                          char *buf,
                          uint64_t size,
                          off_t off)
 {
     bool eof;
-    int ret = fs_convert_exceptions<const vfs::Handle&,
+    int ret = fs_convert_exceptions<vfs::Handle&,
                                     size_t&,
                                     decltype(buf),
                                     decltype(off),

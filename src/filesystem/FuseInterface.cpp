@@ -489,8 +489,8 @@ FuseInterface::read(const char* path,
                     off_t off,
                     fuse_file_info* fi)
 {
-    const Handle* h = get_handle(*fi);
-    int ret = route_to_fs_instance_<const Handle&,
+    Handle* h = get_handle(*fi);
+    int ret = route_to_fs_instance_<Handle&,
                                     size_t&,
                                     decltype(buf),
                                     decltype(off)>(&FileSystem::read,
@@ -509,8 +509,8 @@ FuseInterface::write(const char* path,
                      off_t off,
                      fuse_file_info* fi)
 {
-    const Handle* h = get_handle(*fi);
-    int ret = route_to_fs_instance_<const Handle&,
+    Handle* h = get_handle(*fi);
+    int ret = route_to_fs_instance_<Handle&,
                                     size_t&,
                                     decltype(buf),
                                     decltype(off)>(&FileSystem::write,
@@ -527,8 +527,8 @@ FuseInterface::fsync(const char* path,
                      int datasync,
                      fuse_file_info* fi)
 {
-    const Handle* h = get_handle(*fi);
-    return route_to_fs_instance_<const Handle&,
+    Handle* h = get_handle(*fi);
+    return route_to_fs_instance_<Handle&,
                                  bool>(&FileSystem::fsync,
                                        path,
                                        *h,

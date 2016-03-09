@@ -47,26 +47,26 @@ public:
     read(const Object& obj,
          uint8_t* buf,
          size_t* size,
-         off_t off) override;
+         off_t off) override final;
 
     virtual void
     write(const Object& obj,
           const uint8_t* buf,
           size_t* size,
-          off_t off) override;
+          off_t off) override final;
 
     virtual void
-    sync(const Object& obj) override;
+    sync(const Object& obj) override final;
 
     virtual uint64_t
-    get_size(const Object& obj) override;
+    get_size(const Object& obj) override final;
 
     virtual void
     resize(const Object& obj,
-           uint64_t newsize) override;
+           uint64_t newsize) override final;
 
     virtual void
-    unlink(const Object& id) override;
+    unlink(const Object& id) override final;
 
     void
     transfer(const Object& obj);

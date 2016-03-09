@@ -18,6 +18,7 @@
 #include "CloneFileFlags.h"
 #include "ClusterNode.h"
 #include "ClusterNodeConfig.h"
+#include "FastPathCookie.h"
 #include "FileSystemParameters.h"
 #include "ForceRestart.h"
 #include "NodeId.h"
@@ -85,26 +86,26 @@ public:
     read(const Object& id,
          uint8_t* buf,
          size_t* size,
-         const off_t off) override;
+         const off_t off) override final;
 
     virtual void
     write(const Object& obj,
           const uint8_t* buf,
           size_t* size,
-          const off_t off) override;
+          const off_t off) override final;
 
     virtual void
-    sync(const Object& obj) override;
+    sync(const Object& obj) override final;
 
     virtual uint64_t
-    get_size(const Object& obj) override;
+    get_size(const Object& obj) override final;
 
     virtual void
     resize(const Object& obj,
-           uint64_t newsize) override;
+           uint64_t newsize) override final;
 
     virtual void
-    unlink(const Object& obj) override;
+    unlink(const Object& obj) override final;
 
     void
     stop(const Object& obj,
@@ -214,6 +215,27 @@ public:
 
     ScrubManager&
     scrub_manager();
+
+    FastPathCookie
+    read(const FastPathCookie&,
+         const ObjectId&,
+         uint8_t* buf,
+         size_t* size,
+         off_t off);
+
+    FastPathCookie
+    write(const FastPathCookie&,
+          const ObjectId&,
+          const uint8_t* buf,
+          size_t* size,
+          off_t off);
+
+    FastPathCookie
+    sync(const FastPathCookie&,
+         const ObjectId&);
+
+    FastPathCookie
+    fast_path_cookie(const Object&);
 
     // This isn't a VolumeDriverComponent, only part of one.
     void

@@ -162,20 +162,23 @@ public:
     void
     ping(const NodeId& id);
 
-    void
-    write(const ObjectId& id,
+    FastPathCookie
+    write(const FastPathCookie&,
+          const ObjectId&,
           const uint8_t* buf,
           size_t size,
           off_t off);
 
-    void
-    read(const ObjectId& id,
+    FastPathCookie
+    read(const FastPathCookie&,
+         const ObjectId&,
          uint8_t* buf,
          size_t& size,
          off_t off);
 
-    void
-    sync(const ObjectId& id);
+    FastPathCookie
+    sync(const FastPathCookie&,
+         const ObjectId&);
 
     uint64_t
     get_size(const ObjectId& id);
@@ -428,40 +431,48 @@ private:
     std::shared_ptr<LocalNode>
     local_node_() const;
 
-    template<typename R, typename... A>
-    R
-    maybe_steal_(R (ClusterNode::*fn)(const Object&,
-                                      A... args),
-                 IsRemoteNode& remote,
-                 AttemptTheft attempt_theft,
-                 const ObjectRegistration& reg,
-                 A... args);
+    template<typename Ret,
+             typename... Args>
+    Ret
+    maybe_steal_(Ret (ClusterNode::*fn)(const Object&,
+                                        Args...),
+                 IsRemoteNode&,
+                 AttemptTheft,
+                 const ObjectRegistration&,
+                 FastPathCookie&,
+                 Args...);
 
-    template<typename R, typename... A>
-    R
-    do_route_(R (ClusterNode::*fn)(const Object&,
-                                   A... args),
-              IsRemoteNode& remote,
-              AttemptTheft attempt_theft,
-              const ObjectId& id,
-              A... args);
+    template<typename Ret,
+             typename... Args>
+    Ret
+    do_route_(Ret (ClusterNode::*fn)(const Object&,
+                                     Args...),
+              IsRemoteNode&,
+              AttemptTheft,
+              const ObjectId&,
+              FastPathCookie&,
+              Args...);
 
-    template<typename R, typename... A>
-    R
-    do_route_(R (ClusterNode::*fn)(const Object&,
-                                   A... args),
-              IsRemoteNode& remote,
-              AttemptTheft attempt_theft,
-              ObjectRegistrationPtr id,
-              A... args);
+    template<typename Ret,
+             typename... Args>
+    Ret
+    do_route_(Ret (ClusterNode::*fn)(const Object&,
+                                     Args...),
+              IsRemoteNode&,
+              AttemptTheft,
+              ObjectRegistrationPtr,
+              FastPathCookie&,
+              Args...);
 
-    template<typename R, typename... A>
-    R
-    route_(R (ClusterNode::*fn)(const Object&,
-                                A... args),
-           AttemptTheft attempt_theft,
-           const ObjectId& id,
-           A... args);
+    template<typename Ret,
+             typename... Args>
+    Ret
+    route_(Ret (ClusterNode::*fn)(const Object&,
+                                  Args...),
+           AttemptTheft,
+           const ObjectId&,
+           FastPathCookie&,
+           Args...);
 
     bool
     migrate_pred_helper_(const char* desc,
@@ -475,14 +486,14 @@ private:
     // We're not using a std::function here as that ends up allocating memory
     // which we want to avoid. We could pass function pointers / references but that
     // limits its flexibility.
-    template<typename P,
-             typename... A>
-    void
-    maybe_migrate_(P&& migrate_pred,
+    template<typename MigratePred,
+             typename... Args>
+    FastPathCookie
+    maybe_migrate_(MigratePred&& ,
                    void (ClusterNode::*fn)(const Object&,
-                                           A... args),
-                   const ObjectId& id,
-                   A... args);
+                                           Args...),
+                   const ObjectId&,
+                   Args...);
 
     void
     handle_message_(zmq::socket_t& router_sock);
@@ -534,6 +545,29 @@ private:
     backend_restart_(const Object& obj,
                      ForceRestart force,
                      PrepareRestartFun prep_restart_fun);
+
+    FastPathCookie
+    write_(const ObjectId&,
+           const uint8_t* buf,
+           size_t* size,
+           off_t off);
+
+    FastPathCookie
+    read_(const ObjectId&,
+          uint8_t* buf,
+          size_t* size,
+          off_t off);
+
+    FastPathCookie
+    sync_(const ObjectId&);
+
+    template<typename... Args>
+    FastPathCookie
+    select_path_(const FastPathCookie&,
+                 FastPathCookie (ObjectRouter::*slow_fun)(Args...),
+                 FastPathCookie (LocalNode::*fast_fun)(const FastPathCookie&,
+                                                       Args...),
+                 Args...);
 };
 
 }

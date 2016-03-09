@@ -76,7 +76,8 @@ public:
 
         try
         {
-            fs_.object_router().write(objectid_,
+            fs_.object_router().write(nullptr,
+                                      objectid_,
                                       data,
                                       reply->size_in_bytes,
                                       request->offset_in_bytes);
@@ -94,7 +95,8 @@ public:
         LOG_TRACE("Flushing");
         try
         {
-            fs_.object_router().sync(objectid_);
+            fs_.object_router().sync(nullptr,
+                                     objectid_);
         }
         CATCH_STD_ALL_EWHAT({
             LOG_ERROR("flush I/O error: " << EWHAT);
@@ -117,7 +119,8 @@ public:
 
         try
         {
-            fs_.object_router().read(objectid_,
+            fs_.object_router().read(nullptr,
+                                     objectid_,
                                      data,
                                      reply->size_in_bytes,
                                      request->offset_in_bytes);

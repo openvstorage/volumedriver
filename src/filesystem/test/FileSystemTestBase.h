@@ -224,16 +224,16 @@ protected:
           const char* buf,
           uint64_t size,
           off_t off,
-          const volumedriverfs::Handle&);
+          volumedriverfs::Handle&);
 
     int
-    write(const volumedriverfs::Handle& h,
+    write(volumedriverfs::Handle& h,
           const char *buf,
           uint64_t size,
           off_t off);
 
     int
-    fsync(const volumedriverfs::Handle&,
+    fsync(volumedriverfs::Handle&,
           bool datasync);
 
     int
@@ -241,10 +241,10 @@ protected:
          char* buf,
          uint64_t size,
          off_t off,
-         const volumedriverfs::Handle&);
+         volumedriverfs::Handle&);
 
     int
-    read(const volumedriverfs::Handle& h,
+    read(volumedriverfs::Handle& h,
          char *buf,
          uint64_t size,
          off_t off);

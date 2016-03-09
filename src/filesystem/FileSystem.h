@@ -134,7 +134,7 @@ public:
                 youtils::ConfigurationReport&) const override final;
 
     void
-    read(const Handle& h,
+    read(Handle& h,
          size_t& size,
          char* buf,
          off_t off,
@@ -142,13 +142,13 @@ public:
 
     void
     read(const FrontendPath& path,
-         const Handle& h,
+         Handle& h,
          size_t& size,
          char* buf,
          off_t off);
 
     void
-    write(const Handle& h,
+    write(Handle& h,
           size_t& size,
           const char* buf,
           off_t off,
@@ -156,18 +156,18 @@ public:
 
     void
     write(const FrontendPath& path,
-          const Handle& h,
+          Handle& h,
           size_t& size,
           const char* buf,
           off_t off);
 
     void
     fsync(const FrontendPath& path,
-          const Handle& h,
+          Handle& h,
           bool datasync);
 
     void
-    fsync(const Handle& h,
+    fsync(Handle& h,
           bool datasync);
 
     template<typename T>
