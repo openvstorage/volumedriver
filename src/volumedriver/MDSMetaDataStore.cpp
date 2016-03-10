@@ -46,6 +46,7 @@ MDSMetaDataStore::MDSMetaDataStore(const MDSMetaDataBackendConfig& cfg,
                                    const fs::path& home,
                                    uint64_t num_pages_cached)
     : VolumeBackPointer(getLogger__())
+    , rwlock_("mdsmdstore-" + bi->getNS().str())
     , bi_(std::move(bi))
     , node_configs_(cfg.node_configs())
     , apply_relocations_to_slaves_(cfg.apply_relocations_to_slaves())

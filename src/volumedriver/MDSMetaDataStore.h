@@ -21,10 +21,10 @@
 #include "VolumeBackPointer.h"
 
 #include <boost/filesystem.hpp>
-#include <boost/thread/shared_mutex.hpp>
 
 #include <youtils/IOException.h>
 #include <youtils/Logging.h>
+#include <youtils/RWLock.h>
 
 #include <backend/BackendInterface.h>
 
@@ -143,7 +143,7 @@ private:
     // locking:
     // * shared during I/O
     // * exclusive during error handling
-    mutable boost::shared_mutex rwlock_;
+    mutable fungi::RWLock rwlock_;
     std::shared_ptr<CachedMetaDataStore> mdstore_;
     const backend::BackendInterfacePtr bi_;
 
