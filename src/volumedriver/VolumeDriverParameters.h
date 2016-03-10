@@ -73,6 +73,9 @@ DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(metadata_cache_capacity,
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(debug_metadata_path, std::string);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(arakoon_metadata_sequence_size, uint32_t);
 
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(volume_nullio,
+                                       bool);
+
 extern const char threadpool_component_name[];
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(num_threads, uint32_t);
 

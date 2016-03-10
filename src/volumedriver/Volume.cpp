@@ -821,6 +821,11 @@ Volume::write(uint64_t lba,
 
     performance_counters().write_request_size.count(buflen);
 
+    if (VolManager::get()->volume_nullio.value())
+    {
+        return;
+    }
+
     yt::SteadyTimer t;
 
     if (T(isVolumeTemplate()))
@@ -1039,6 +1044,11 @@ Volume::read(uint64_t lba,
                                      }));
 
     performance_counters().read_request_size.count(buflen);
+
+    if (VolManager::get()->volume_nullio.value())
+    {
+        return;
+    }
 
     yt::SteadyTimer t;
 
@@ -2418,6 +2428,11 @@ Volume::sync()
                                                     config_.id_.str().c_str(),
                                                     std::uncaught_exception());
                                      }));
+
+    if (VolManager::get()->volume_nullio.value())
+    {
+        return;
+    }
 
     yt::SteadyTimer t;
 

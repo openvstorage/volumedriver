@@ -533,6 +533,7 @@ public:
     DECLARE_PARAMETER(debug_metadata_path);
     DECLARE_PARAMETER(arakoon_metadata_sequence_size);
     DECLARE_PARAMETER(allow_inconsistent_partial_reads);
+    DECLARE_PARAMETER(volume_nullio);
 
 private:
         /** @locking mgmtMutex_ must be locked */

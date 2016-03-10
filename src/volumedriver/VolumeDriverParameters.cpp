@@ -188,6 +188,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(arakoon_metadata_sequence_size,
                                       ShowDocumentation::T,
                                       10);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(volume_nullio,
+                                      volmanager_component_name,
+                                      "volume_nullio",
+                                      "discard any read/write/sync requests - for performance testing",
+                                      ShowDocumentation::F,
+                                      false);
+
 const char scocache_component_name[] = "scocache";
 
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(datastore_throttle_usecs,

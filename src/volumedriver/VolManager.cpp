@@ -152,6 +152,7 @@ try
           , debug_metadata_path(pt)
           , arakoon_metadata_sequence_size(pt)
           , allow_inconsistent_partial_reads(pt)
+          , volume_nullio(pt)
 {
     THROW_UNLESS((default_cluster_size.value() % VolumeConfig::default_lba_size()) == 0);
 
@@ -1786,6 +1787,7 @@ VolManager::update(const boost::property_tree::ptree& pt,
     debug_metadata_path.update(pt, report);
     arakoon_metadata_sequence_size.update(pt, report);
     allow_inconsistent_partial_reads.update(pt, report);
+    volume_nullio.update(pt, report);
 }
 
 void
@@ -1814,6 +1816,7 @@ VolManager::persist(boost::property_tree::ptree& pt,
     debug_metadata_path.persist(pt, reportDefault);
     arakoon_metadata_sequence_size.persist(pt, reportDefault);
     allow_inconsistent_partial_reads.persist(pt, reportDefault);
+    volume_nullio.persist(pt, reportDefault);
 }
 
 std::shared_ptr<metadata_server::Manager>
