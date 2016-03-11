@@ -4,7 +4,7 @@ libovsvolumedriver(7)
 NAME
 ----
 
-libovsvolumedriver - Open vStorage VolumeDriver Shared Memory Access C library
+libovsvolumedriver - Open vStorage VolumeDriver Access C library
 
 SYNOPSIS
 --------
@@ -15,13 +15,104 @@ DESCRIPTION
 
 The following functions are exported by libovsvolumedriver library:
 
-Initialize Open vStorage context::
-    ovs_ctx_t *ovs_ctx_init(const char *volname, int oflag);
+Initialize and destroy context attributes object::
+    ovs_ctx_attr_t* ovs_ctx_attr_new();
+    int ovs_ctx_attr_destroy(ovs_ctx_attr_t *attr);
 
     Description
     -----------
-    The ovs_ctx_init() shall create an Open vStorage context and
-    will establish the connection between a volume and a context.
+    The ovs_ctx_attr_new() function creates a context attributes object
+    with default attribute values. After this call, individual attributes of
+    the object can be set using various related functions, and then the
+    object can be used in one or more ovs_ctx_new() calls.
+
+    When a context attribute is no longer required, it should be destroyed
+    using the ovs_ctx_attr_destroy() function. Destroying a context attributes
+    object has no effect on contexes that were created using that object.
+
+    Once a context attributes object has been destroyed, it can be
+    reinitialized using ovs_ctx_attr_new(). Any other use of a destroyed
+    context attributes object has undefined results.
+
+    Return Value
+    ------------
+    On success, these functions return a context attributes object
+    respectively or 0; on error, they return NULL or a nonzero error number.
+
+    Errors
+    ------
+    The function shall fail if:
+        - EINVAL Invalid arguments supplied
+        - ENOMEM Out of memory
+
+Set transport layer::
+    int ovs_ctx_attr_set_transport(ovs_ctx_attr_t *attr,
+                                   const char *transport,
+                                   const char *host,
+                                   int port);
+
+    Description
+    -----------
+    The ovs_ctx_attr_set_transport() function sets the underlying transport
+    layer. After this call, individual attributes of the object are set that
+    can be used in one or more ovs_ctx_new() calls.
+
+    The 'transport' string specifies the transport used to connect to the
+    volumedriver daemon. Specifying NULL will result in the usage of the
+    default shared memory server. Permitted values are those what you specify
+    as transport-type in a volume specification e.g, "tcp", "rdma" and "shm".
+
+    The 'host' string specifies the address where to find the volumedriver
+    daemon. This would either be
+        - FQDN (e.g : "storage01.openvstorage.com") or
+        - ASCII (e.g : "192.168.1.2")
+
+    The 'port' value specifies the TCP/RDMA port number where volumedriver
+    daemon is listening. Specifying 0 uses the default port number
+    OVS_DEFAULT_BASE_PORT. This parameter is unused if you are using shared
+    memory.
+
+    Return Value
+    ------------
+    On success 0 is returned, otherwise it shall return -1 and errno will be
+    set with the type of failure.
+
+    Errors
+    ------
+    The function shall fail if:
+        - EINVAL Invalid arguments supplied
+
+Create Open vStorage context::
+    ovs_ctx_t *ovs_ctx_new(const ovs_ctx_attr_t *attr);
+
+    Description
+    -----------
+    The ovs_ctx_new() function creates a new Open vStorage context. This is
+    the most likely the very first function that should be used. The ovs_ctx_t
+    object should be initialized with ovs_ctx_init() before it can be used in
+    volume I/O operations.
+
+    The 'attr' context attributes object will properly initialize the context
+    object.
+
+    Return Value
+    ------------
+    Upon successful completion the function shall return an Open vStorage
+    context. Otherwise it shall return NULL and errno will indicate the error.
+
+    Errors
+    ------
+    The function shall fail if:
+        - EINVAL Invalid arguments supplied
+        - ENOMEM Out of memory
+
+Initialize Open vStorage context::
+    int ovs_ctx_init(ovs_ctx_t* ctx, const char *volname, int oflag);
+
+    Description
+    -----------
+    The ovs_ctx_init() shall establish the connection between a volume and
+    a context.
 
     Values for 'oflag' are constructed by a bitwise-inclusive OR of flags.
     Applications shall specify exactly one of the first three values
@@ -33,8 +124,8 @@ Initialize Open vStorage context::
 
     Return Value
     ------------
-    Upon successful completion the function shall return an Open vStorage
-    context. Otherwise it shall return NULL and errno will indicate the error.
+    Upon successful completion the function shall return 0. Otherwise it shall
+    return -1 and errno will indicate the error.
 
     Errors
     ------
@@ -64,7 +155,7 @@ Terminate Open vStorage context::
         - EINVAL Invalid argument supplied
 
 Create a new volume::
-    int ovs_create_volume(const char *volname,
+    int ovs_create_volume(ovs_ctx_t *ctx, const char *volname,
                           uint64_t size);
 
     Description
@@ -88,7 +179,7 @@ Create a new volume::
           expanded
 
 Remove a volume::
-    int ovs_remove_volume(const char *volname);
+    int ovs_remove_volume(ovs_ctx_t *ctx, const char *volname);
 
     Description
     -----------
@@ -108,8 +199,8 @@ Remove a volume::
         - EIO An error occured during ovs_remove_volume()
 
 Snapshot a volume
-    int ovs_snapshot_create(const char *volname, const char *snapname,
-                            const int64_t timeout);
+    int ovs_snapshot_create(ovs_ctx_t *ctx, const char *volname,
+                            const char *snapname, const int64_t timeout);
 
     Description
     -----------
@@ -137,7 +228,8 @@ Snapshot a volume
         - EIO An error occured during ovs_snapshot_create()
 
 Rollback volume to a specific snapshot
-    int ovs_snapshot_rollback(const char *volname, const char *snapname);
+    int ovs_snapshot_rollback(ovs_ctx_t *ctx, const char *volname,
+                              const char *snapname);
 
     Description
     -----------
@@ -159,7 +251,8 @@ Rollback volume to a specific snapshot
         - EIO An error occured during ovs_snapshot_rollback()
 
 Remove snapshot
-    int ovs_snapshot_remove(const char *volname, const char *snapname);
+    int ovs_snapshot_remove(ovs_ctx_t *ctx, const char *volname,
+                            const char *snapname);
 
     Description
     -----------
@@ -181,8 +274,8 @@ Remove snapshot
         - EIO An error occured during ovs_snapshot_remove()
 
 List snapshots of a volume
-    int ovs_snapshot_list(const char *volname, ovs_snapshot_info_t *snap_list,
-                          int *max_snaps);
+    int ovs_snapshot_list(ovs_ctx_t *ctx, const char *volname,
+                          ovs_snapshot_info_t *snap_list, int *max_snaps);
 
     Description
     -----------
@@ -223,7 +316,8 @@ Free snapshots list
     No errors.
 
 Check if snapshot is synced on the backend
-    int ovs_snapshot_is_synced(const char *volname,
+    int ovs_snapshot_is_synced(ovs_ctx_t *ctx,
+                               const char *volname,
                                const char *snapshot_name);
 
     Description
@@ -245,7 +339,7 @@ Check if snapshot is synced on the backend
         - EIO An error occured during ovs_snapshot_remove()
 
 List volumes
-    int ovs_list_volumes(char *names, size_t *size);
+    int ovs_list_volumes(ovs_ctx_t *ctx, char *names, size_t *size);
 
     Description
     -----------
@@ -561,7 +655,7 @@ Finish an async I/O operation:
         - EINVAL The context or the request is not valid
 
 Suspend until asynchronous I/O operation or timeout complete::
-int ovs_aio_suspend(ovs_cts_t *ctx,
+int ovs_aio_suspend(ovs_ctx_t *ctx,
                     struct ovs_aiocb *ovs_aiocbp,
                     const struct timespec *timeout);
 
