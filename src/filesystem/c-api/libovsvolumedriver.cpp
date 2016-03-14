@@ -15,9 +15,7 @@
 
 #include "volumedriver.h"
 #include "common.h"
-#include "VolumeCacheHandler.h"
-#include "ShmControlChannelClient.h"
-#include "AioCompletion.h"
+#include "ShmHandler.h"
 #include "tracing.h"
 #include "../ShmControlChannelProtocol.h"
 #include "../ShmClient.h"
@@ -39,193 +37,12 @@
 #define unlikely(x)     (x)
 #endif
 
-struct IOThread
-{
-    ovs_ctx_t* ctx;
-    std::thread iothread_;
-    std::mutex mutex_;
-    std::condition_variable cv_;
-    bool stopped = false;
-    bool stopping = false;
-
-    void
-    reset_iothread()
-    {
-        stopping = true;
-        {
-            std::unique_lock<std::mutex> lock_(mutex_);
-            cv_.wait(lock_, [&]{ return stopped == true; });
-        }
-        iothread_.join();
-    }
-
-    void
-    stop()
-    {
-        stopping = true;
-    }
-};
-
-typedef std::unique_ptr<IOThread> IOThreadPtr;
-
-static void _aio_readreply_handler(void*);
-static void _aio_writereply_handler(void*);
-
 struct ovs_context_t
 {
-    ovs_context_t(const std::string& volume_name, int flag)
-    : oflag(flag)
-    {
-        const std::string io_env_var("LIBOVSVOLUMEDRIVER_IO_THREADS_POOL_SIZE");
-        io_threads_pool_size_ =
-        youtils::System::get_env_with_default<int>(io_env_var, 1);
-        shm_client_ = std::make_shared<volumedriverfs::ShmClient>(volume_name);
-        try
-        {
-            ctl_client_ = std::make_shared<ShmControlChannelClient>();
-        }
-        catch (...)
-        {
-            shm_client_.reset();
-            throw;
-        }
-
-        if (not ctl_client_->connect_and_register(volume_name,
-                                                  shm_client_->get_key()))
-        {
-            shm_client_.reset();
-            ctl_client_.reset();
-            throw fungi::IOException("cannot connect and register to server");
-        }
-
-        try
-        {
-            ovs_aio_init();
-        }
-        catch (...)
-        {
-            shm_client_.reset();
-            ctl_client_.reset();
-            throw;
-        }
-
-        try
-        {
-            cache_ = std::make_unique<VolumeCacheHandler>(shm_client_,
-                                                          ctl_client_);
-        }
-        catch (...)
-        {
-            ovs_aio_destroy();
-            shm_client_.reset();
-            ctl_client_->deregister();
-            ctl_client_.reset();
-            throw;
-        }
-        int ret = cache_->preallocate();
-        if (ret < 0)
-        {
-            cache_->drop_caches();
-        }
-    }
-
-    ~ovs_context_t()
-    {
-        ovs_aio_destroy();
-        cache_.reset();
-        shm_client_.reset();
-        ctl_client_->deregister();
-        ctl_client_.reset();
-    }
-
-    void
-    close_rr_iothreads()
-    {
-        for (auto& x: rr_iothreads)
-        {
-            x->reset_iothread();
-        }
-        rr_iothreads.clear();
-    }
-    void
-    close_wr_iothreads()
-    {
-        for (auto& x: wr_iothreads)
-        {
-            x->reset_iothread();
-        }
-        wr_iothreads.clear();
-    }
-
-    void
-    ovs_aio_init()
-    {
-        for (int i = 0; i < io_threads_pool_size_; i++)
-        {
-            IOThreadPtr iot;
-            try
-            {
-                iot = std::make_unique<IOThread>();
-                iot->ctx = this;
-                iot->iothread_ = std::thread(_aio_readreply_handler,
-                                             (void*)iot.get());
-                rr_iothreads.push_back(std::move(iot));
-            }
-            catch (...)
-            {
-                close_rr_iothreads();
-                throw;
-            }
-        }
-
-        for (int i = 0; i < io_threads_pool_size_; i++)
-        {
-            IOThreadPtr iot;
-            try
-            {
-                iot = std::make_unique<IOThread>();
-                iot->ctx = this;
-                iot->iothread_ = std::thread(_aio_writereply_handler,
-                                             (void*)iot.get());
-                wr_iothreads.push_back(std::move(iot));
-            }
-            catch (...)
-            {
-                close_wr_iothreads();
-                close_rr_iothreads();
-                throw;
-            }
-        }
-    }
-
-    void
-    ovs_aio_destroy()
-    {
-        for (auto& iot: rr_iothreads)
-        {
-            iot->stop();
-        }
-        for (auto& iot: wr_iothreads)
-        {
-            iot->stop();
-        }
-
-        /* noexcept */
-        if (ctl_client_->is_connected())
-        {
-            shm_client_->stop_reply_queues(io_threads_pool_size_);
-        }
-        close_wr_iothreads();
-        close_rr_iothreads();
-    }
-
-    int oflag;
-    int io_threads_pool_size_;
-    volumedriverfs::ShmClientPtr shm_client_;
-    std::vector<IOThreadPtr> rr_iothreads;
-    std::vector<IOThreadPtr> wr_iothreads;
-    VolumeCacheHandlerPtr cache_;
-    ShmControlChannelClientPtr ctl_client_;
+    TransportType transport;
+    std::string host;
+    int port;
+    ovs_shm_context *shm_ctx_;
 };
 
 static bool
@@ -242,112 +59,106 @@ _is_volume_name_valid(const char *volume_name)
     }
 }
 
-static void
-_aio_wake_up_suspended_aiocb(ovs_aio_request *request)
+ovs_ctx_attr_t*
+ovs_ctx_attr_new()
 {
-    if (not __sync_bool_compare_and_swap(&request->_on_suspend,
-                                         false,
-                                         true,
-                                         __ATOMIC_RELAXED))
+    try
     {
-        pthread_mutex_lock(&request->_mutex);
-        request->_signaled = true;
-        pthread_cond_signal(&request->_cond);
-        pthread_mutex_unlock(&request->_mutex);
+        ovs_ctx_attr_t *attr = new ovs_ctx_attr_t;
+        attr->transport = TransportType::SharedMemory;
+        attr->host = NULL;
+        attr->port = 0;
+        return attr;
     }
+    catch (const std::bad_alloc&)
+    {
+        errno = ENOMEM;
+    }
+    return NULL;
 }
 
-static void
-_aio_request_handler(ovs_aio_request *request,
-                     size_t ret,
-                     bool failed)
+int
+ovs_ctx_attr_destroy(ovs_ctx_attr_t *attr)
 {
-    /* errno already set by shm_receive_*_reply function */
-    ovs_completion_t *completion = request->completion;
-    RequestOp op = request->_op;
-    request->_errno = errno;
-    request->_rv = ret;
-    request->_completed = true;
-    request->_failed = failed;
-    if (op != RequestOp::AsyncFlush)
+    if (attr)
     {
-        _aio_wake_up_suspended_aiocb(request);
-    }
-    if (completion)
-    {
-        completion->_rv = ret;
-        completion->_failed = failed;
-        if (RequestOp::AsyncFlush == op)
+        if (attr->host)
         {
-            pthread_mutex_destroy(&request->_mutex);
-            pthread_cond_destroy(&request->_cond);
-            delete request->ovs_aiocbp;
-            delete request;
+            free(attr->host);
         }
-        AioCompletion::get_aio_context().schedule(completion);
+        free(attr);
     }
+    return 0;
 }
 
-static void
-_aio_readreply_handler(void *arg)
+int
+ovs_ctx_attr_set_transport(ovs_ctx_attr_t *attr,
+                           const char *transport,
+                           const char *host,
+                           int port)
 {
-    IOThread *iothread = (IOThread*) arg;
-    ovs_ctx_t *ctx = iothread->ctx;
-    const struct timespec timeout = {2, 0};
-    size_t size_in_bytes;
-    bool failed;
-    //cnanakos: stop thread by sending a stop request?
-    while (not iothread->stopping)
+    if (attr == NULL)
     {
-        ovs_aio_request *request;
-        failed = ctx->shm_client_->timed_receive_read_reply(size_in_bytes,
-                                                            reinterpret_cast<void**>(&request),
-                                                            &timeout);
-        if (request)
-        {
-            _aio_request_handler(request,
-                                 size_in_bytes,
-                                 failed);
-        }
+        errno = EINVAL;
+        return -1;
     }
-    std::lock_guard<std::mutex> lock_(iothread->mutex_);
-    iothread->stopped = true;
-    iothread->cv_.notify_all();
-}
 
-static void
-_aio_writereply_handler(void *arg)
-{
-    IOThread *iothread = (IOThread*) arg;
-    ovs_ctx_t *ctx = iothread->ctx;
-    const struct timespec timeout = {2, 0};
-    size_t size_in_bytes;
-    bool failed;
-    //cnanakos: stop thread by sending a stop request?
-    while (not iothread->stopping)
+    if (transport == NULL or (transport and (not strcmp(transport, "shm"))))
     {
-        ovs_aio_request *request;
-        failed = ctx->shm_client_->timed_receive_write_reply(size_in_bytes,
-                                                             reinterpret_cast<void**>(&request),
-                                                             &timeout);
-        if (request)
-        {
-            _aio_request_handler(request,
-                                 size_in_bytes,
-                                 failed);
-        }
+        attr->transport = TransportType::SharedMemory;
+        return 0;
     }
-    std::lock_guard<std::mutex> lock_(iothread->mutex_);
-    iothread->stopped = true;
-    iothread->cv_.notify_all();
+
+    if ((not strcmp(transport, "tcp")) and host)
+    {
+        attr->transport = TransportType::TCP;
+        attr->host = strdup(host);
+        attr->port = port;
+        return 0;
+    }
+
+    if ((not strcmp(transport, "rdma")) and host)
+    {
+        attr->transport = TransportType::RDMA;
+        attr->host = strdup(host);
+        attr->port = port;
+        return 0;
+    }
+    errno = EINVAL;
+    return -1;
 }
 
 ovs_ctx_t*
-ovs_ctx_init(const char* volume_name,
-             int oflag)
+ovs_ctx_new(const ovs_ctx_attr_t *attr)
 {
     ovs_ctx_t *ctx = NULL;
 
+    if(not attr)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+    try
+    {
+        ctx = new ovs_ctx_t;
+        ctx->transport = attr->transport;
+        ctx->host = std::string(attr->host ? attr->host : "");
+        ctx->port = attr->port;
+        ctx->shm_ctx_ = nullptr;
+        return ctx;
+    }
+    catch (const std::bad_alloc&)
+    {
+        errno = ENOMEM;
+    }
+    return NULL;
+}
+
+int
+ovs_ctx_init(ovs_ctx_t *ctx,
+             const char* volume_name,
+             int oflag)
+{
     tracepoint(openvstorage_libovsvolumedriver,
                ovs_ctx_init_enter,
                volume_name,
@@ -364,22 +175,22 @@ ovs_ctx_init(const char* volume_name,
     if (not _is_volume_name_valid(volume_name))
     {
         errno = EINVAL;
-        return NULL;
+        return -1;
     }
     if (oflag != O_RDONLY &&
         oflag != O_WRONLY &&
         oflag != O_RDWR)
     {
         errno = EINVAL;
-        return NULL;
+        return -1;
     }
 
     /* On Error: EACCESS or EIO */
     try
     {
-        ctx = new ovs_ctx_t(volume_name,
-                            oflag);
-        return ctx;
+        ctx->shm_ctx_ = new ovs_shm_context(volume_name,
+                                                          oflag);
+        return 0;
     }
     catch (const ShmIdlInterface::VolumeDoesNotExist&)
     {
@@ -397,7 +208,7 @@ ovs_ctx_init(const char* volume_name,
     {
         errno = EIO;
     }
-    return NULL;
+    return -1;
 }
 
 int
@@ -418,12 +229,18 @@ ovs_ctx_destroy(ovs_ctx_t *ctx)
         errno = EINVAL;
         return (r = -1);
     }
+    if (ctx->shm_ctx_)
+    {
+        delete ctx->shm_ctx_;
+    }
     delete ctx;
     return r;
 }
 
 int
-ovs_create_volume(const char* volume_name, uint64_t size)
+ovs_create_volume(ovs_ctx_t *ctx ATTRIBUTE_UNUSED,
+                  const char* volume_name,
+                  uint64_t size)
 {
     int r = 0;
 
@@ -463,7 +280,8 @@ ovs_create_volume(const char* volume_name, uint64_t size)
 }
 
 int
-ovs_remove_volume(const char* volume_name)
+ovs_remove_volume(ovs_ctx_t *ctx ATTRIBUTE_UNUSED,
+                  const char* volume_name)
 {
     int r = 0;
 
@@ -502,7 +320,8 @@ ovs_remove_volume(const char* volume_name)
 }
 
 int
-ovs_snapshot_create(const char* volume_name,
+ovs_snapshot_create(ovs_ctx_t *ctx ATTRIBUTE_UNUSED,
+                    const char* volume_name,
                     const char* snapshot_name,
                     const int64_t timeout)
 {
@@ -560,7 +379,8 @@ ovs_snapshot_create(const char* volume_name,
 }
 
 int
-ovs_snapshot_rollback(const char* volume_name,
+ovs_snapshot_rollback(ovs_ctx_t *ctx ATTRIBUTE_UNUSED,
+                      const char* volume_name,
                       const char* snapshot_name)
 {
     int r = 0;
@@ -608,7 +428,8 @@ ovs_snapshot_rollback(const char* volume_name,
 }
 
 int
-ovs_snapshot_remove(const char* volume_name,
+ovs_snapshot_remove(ovs_ctx_t *ctx ATTRIBUTE_UNUSED,
+                    const char* volume_name,
                     const char* snapshot_name)
 {
     int r = 0;
@@ -660,7 +481,8 @@ ovs_snapshot_remove(const char* volume_name,
 }
 
 int
-ovs_snapshot_list(const char* volume_name,
+ovs_snapshot_list(ovs_ctx_t *ctx ATTRIBUTE_UNUSED,
+                  const char* volume_name,
                   ovs_snapshot_info_t *snap_list,
                   int *max_snaps)
 {
@@ -796,7 +618,8 @@ ovs_snapshot_list_free(ovs_snapshot_info_t *snap_list)
 }
 
 int
-ovs_snapshot_is_synced(const char* volume_name,
+ovs_snapshot_is_synced(ovs_ctx_t *ctx ATTRIBUTE_UNUSED,
+                       const char* volume_name,
                        const char* snapshot_name)
 {
     int r = 0;
@@ -843,7 +666,9 @@ ovs_snapshot_is_synced(const char* volume_name,
 }
 
 int
-ovs_list_volumes(char *names, size_t *size)
+ovs_list_volumes(ovs_ctx_t *ctx ATTRIBUTE_UNUSED,
+                 char *names,
+                 size_t *size)
 {
     std::vector<std::string> volumes;
     size_t expected_size = 0;
@@ -908,6 +733,7 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
                         const RequestOp& op)
 {
     int r, accmode;
+    ovs_shm_context *shm_ctx_ = ctx->shm_ctx_;
 
     ovs_submit_aio_request_tracepoint_enter(op,
                                             ctx,
@@ -940,7 +766,7 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
         return -1;
     }
 
-    accmode = ctx->oflag & O_ACCMODE;
+    accmode = shm_ctx_->oflag & O_ACCMODE;
     switch (op)
     {
     case RequestOp::Read:
@@ -1008,19 +834,19 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
     {
     case RequestOp::Read:
         /* on error returns -1 */
-        r = ctx->shm_client_->send_read_request(ovs_aiocbp->aio_buf,
-                                                ovs_aiocbp->aio_nbytes,
-                                                ovs_aiocbp->aio_offset,
-                                                reinterpret_cast<void*>(request));
+        r = shm_ctx_->shm_client_->send_read_request(ovs_aiocbp->aio_buf,
+                                                     ovs_aiocbp->aio_nbytes,
+                                                     ovs_aiocbp->aio_offset,
+                                                     reinterpret_cast<void*>(request));
         break;
     case RequestOp::Write:
     case RequestOp::Flush:
     case RequestOp::AsyncFlush:
         /* on error returns -1 */
-        r = ctx->shm_client_->send_write_request(ovs_aiocbp->aio_buf,
-                                                 ovs_aiocbp->aio_nbytes,
-                                                 ovs_aiocbp->aio_offset,
-                                                 reinterpret_cast<void*>(request));
+        r = shm_ctx_->shm_client_->send_write_request(ovs_aiocbp->aio_buf,
+                                                      ovs_aiocbp->aio_nbytes,
+                                                      ovs_aiocbp->aio_offset,
+                                                      reinterpret_cast<void*>(request));
         break;
     default:
         r = -1;
@@ -1235,7 +1061,7 @@ ovs_buffer_t*
 ovs_allocate(ovs_ctx_t *ctx,
              size_t size)
 {
-    ovs_buffer_t *buf = ctx->cache_->allocate(size);
+    ovs_buffer_t *buf = ctx->shm_ctx_->cache_->allocate(size);
     if (!buf)
     {
         errno = ENOMEM;
@@ -1288,7 +1114,7 @@ int
 ovs_deallocate(ovs_ctx_t *ctx,
                ovs_buffer_t *ptr)
 {
-    int r = ctx->cache_->deallocate(ptr);
+    int r = ctx->shm_ctx_->cache_->deallocate(ptr);
     if (r < 0)
     {
         errno = EFAULT;
@@ -1648,7 +1474,7 @@ ovs_stat(ovs_ctx_t *ctx, struct stat *st)
         errno = EINVAL;
         return -1;
     }
-    int r = ctx->shm_client_->stat(st);
+    int r = ctx->shm_ctx_->shm_client_->stat(st);
     tracepoint(openvstorage_libovsvolumedriver,
                ovs_stat_exit,
                ctx,
@@ -1689,9 +1515,9 @@ ovs_flush(ovs_ctx_t *ctx)
     aio.aio_buf = NULL;
 
     if ((r = _ovs_submit_aio_request(ctx,
-                                       &aio,
-                                       NULL,
-                                       RequestOp::Flush)) < 0)
+                                     &aio,
+                                     NULL,
+                                     RequestOp::Flush)) < 0)
     {
         return r;
     }

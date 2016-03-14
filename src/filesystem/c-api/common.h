@@ -16,12 +16,28 @@
 #ifndef __LIB_OVS_COMMON_H
 #define __LIB_OVS_COMMON_H
 
+#define ATTRIBUTE_UNUSED __attribute__((unused))
+
 enum class RequestOp
 {
     Read,
     Write,
     Flush,
     AsyncFlush,
+};
+
+enum class TransportType
+{
+    SharedMemory,
+    TCP,
+    RDMA,
+};
+
+struct ovs_context_attr_t
+{
+    TransportType transport;
+    char *host;
+    int port;
 };
 
 struct ovs_buffer
