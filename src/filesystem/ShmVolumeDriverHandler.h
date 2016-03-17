@@ -15,15 +15,16 @@
 #ifndef __SHM_VOLUME_DRIVER_HANDLER_H_
 #define __SHM_VOLUME_DRIVER_HANDLER_H_
 
+#include "FileSystem.h"
 #include "ShmCommon.h"
+
+#include <boost/interprocess/managed_shared_memory.hpp>
 
 #include <youtils/Assert.h>
 #include <youtils/Catchers.h>
 #include <ObjectRouter.h>
-#include <FileSystem.h>
-#include <volumedriver/Api.h>
+
 #include <volumedriver/SnapshotName.h>
-#include <boost/interprocess/managed_shared_memory.hpp>
 
 namespace volumedriverfs
 {
@@ -31,12 +32,10 @@ namespace volumedriverfs
 class ShmVolumeDriverHandler
 {
 public:
-    struct shmvolumedriver_construction_args
+    struct construction_args
     {
         FileSystem& fs;
     };
-
-    typedef struct shmvolumedriver_construction_args construction_args;
 
     ShmVolumeDriverHandler(const ::ShmIdlInterface::CreateShmArguments& args,
                            construction_args& handler_args)
@@ -50,17 +49,14 @@ public:
                 args.volume_name << "'");
     }
 
-    ShmVolumeDriverHandler(construction_args& handler_args)
+    explicit ShmVolumeDriverHandler(construction_args& handler_args)
         : fs_(handler_args.fs)
         , volume_size_in_bytes_(0)
     {
         LOG_INFO("created a new volume handler");
     }
 
-    ~ShmVolumeDriverHandler()
-    {
-        shm_segment_.reset();
-    }
+    ~ShmVolumeDriverHandler() = default;
 
     void
     write(const ShmWriteRequest* request,
@@ -418,7 +414,7 @@ private:
     }
 
     FrontendPath
-    make_volume_path(const std::string& volume_name)
+    make_volume_path(const std::string& volume_name) const
     {
         const std::string root_("/");
         return FrontendPath(root_ + volume_name +
@@ -427,4 +423,5 @@ private:
 };
 
 }
-#endif
+
+#endif // !__SHM_VOLUME_DRIVER_HANDLER_H_
