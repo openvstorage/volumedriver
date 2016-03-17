@@ -22,6 +22,8 @@
 #include <future>
 
 #include <youtils/SourceOfUncertainty.h>
+#include <youtils/SpinLock.h>
+#include <youtils/System.h>
 
 #include <backend/Garbage.h>
 
@@ -748,6 +750,185 @@ TEST_F(ScrubManagerTest, random_stress_single_job)
               clone_scrubs_ok);
         EXPECT_EQ(errors,
               clone_scrubs_nok);
+}
+
+// Cf. OVS-4390: the above test creates a single, deep clone tree spread
+// over multiple nodes, whereas this one runs concurrent scrub result
+// applications on a number of independent volumes (again, spread out over
+// different nodes). In this latter scenario a storage leak was observed.
+// Let's see if we can reproduce it.
+TEST_F(ScrubManagerTest, random_stress_multiple_jobs)
+{
+    yt::SourceOfUncertainty sou;
+    const size_t num_nodes =
+        yt::System::get_env_with_default("SCRUB_MANAGER_TEST_NODES",
+                                         sou(2, 17));
+    const size_t num_volumes =
+        yt::System::get_env_with_default("SCRUB_MANAGER_TEST_VOLUMES",
+                                         sou(2, 11) * num_nodes);
+
+    std::cout << "cluster nodes: " << num_nodes <<
+        ", volumes " << num_volumes <<  std::endl;
+
+    std::vector<std::shared_ptr<ObjectRegistry>>
+        registries(make_object_registries(num_nodes));
+
+    struct Job
+    {
+        ScrubManager::Clone parent;
+        fungi::SpinLock lock;
+        bool applied;
+        bool collected;
+
+        explicit Job(ScrubManager::Clone p)
+            : parent(std::move(p))
+            , applied(false)
+            , collected(false)
+        {}
+    };
+
+    std::map<ObjectId, std::unique_ptr<Job>> jobs;
+
+    for (size_t i = 0; i < num_volumes; ++i)
+    {
+        ScrubManager::Clone
+            clone(make_clone_tree(0,
+                                  0,
+                                  [&]() -> ObjectRegistry&
+                                  {
+                                      return *registries[sou(num_nodes - 1)];
+                                  }));
+        auto j(std::make_unique<Job>(std::move(clone)));
+        const auto ret(jobs.emplace(std::make_pair(ObjectId(clone.id),
+                                                   std::move(j))));
+        ASSERT_TRUE(ret.second);
+    }
+
+    std::atomic<unsigned> garbage_collections(0);
+
+    auto apply_scrub_reply([&](const ObjectId& oid,
+                               const scrubbing::ScrubReply& reply,
+                               const volumedriver::ScrubbingCleanup& cleanup)
+                           -> ScrubManager::MaybeGarbage
+                           {
+                               EXPECT_EQ(vd::ScrubbingCleanup::OnError,
+                                         cleanup);
+                               EXPECT_EQ(oid.str(),
+                                         reply.ns_.str());
+
+                               auto it = jobs.find(oid);
+                               EXPECT_TRUE(it != jobs.end());
+
+                               Job& j = *it->second;
+
+                               {
+                                   boost::lock_guard<decltype(j.lock)> g(j.lock);
+                                   EXPECT_FALSE(j.collected);
+                                   EXPECT_FALSE(j.applied);
+                                   j.applied = true;
+                               }
+
+                               return be::Garbage(reply.ns_,
+                                                  { oid.str() });
+                           });
+
+    auto build_scrub_tree([&](const ObjectId& oid,
+                              const vd::SnapshotName&)
+                          -> ScrubManager::ClonePtrList
+                          {
+                              auto it = jobs.find(oid);
+                              EXPECT_TRUE(it != jobs.end());
+                              ScrubManager::ClonePtrList l(it->second->parent.clones);
+                              EXPECT_TRUE(l.empty());
+                              return l;
+                          });
+
+    auto collect_garbage([&](be::Garbage garbage)
+                         {
+                             const ObjectId oid(garbage.nspace.str());
+                             auto it = jobs.find(oid);
+                             EXPECT_TRUE(it != jobs.end());
+
+                             Job& j = *it->second;
+                             {
+                                   boost::lock_guard<decltype(j.lock)> g(j.lock);
+                                   EXPECT_TRUE(j.applied);
+                                   EXPECT_FALSE(j.collected);
+                                   j.collected = true;
+                             }
+                             ++garbage_collections;
+                         });
+
+    std::vector<std::unique_ptr<ScrubManager>> managers;
+    managers.reserve(num_nodes);
+
+    std::atomic<uint64_t> period_secs(std::numeric_limits<uint64_t>::max());
+
+    for (size_t i = 0; i < num_nodes; ++i)
+    {
+        auto m(std::make_unique<ScrubManager>(*registries[i],
+                                              registries[i]->locked_arakoon(),
+                                              period_secs,
+                                              apply_scrub_reply,
+                                              build_scrub_tree,
+                                              collect_garbage));
+            managers.emplace_back(std::move(m));
+    }
+
+    std::vector<std::future<void>> futures;
+    futures.reserve(num_nodes);
+
+    for (size_t i = 0; i < managers.size(); ++i)
+    {
+        futures.emplace_back(std::async(std::launch::async,
+                                        [&, i]
+                                        {
+                                            while (garbage_collections < num_volumes)
+                                            {
+                                                run_scrub_manager(*managers[i]);
+                                            }
+                                        }));
+    }
+
+    for (const auto& p : jobs)
+    {
+        const ObjectId& oid = p.first;
+
+        managers[sou(managers.size() - 1)]->queue_scrub_reply(oid,
+                                                              scrubbing::ScrubReply(be::Namespace(oid.str()),
+                                                                                    vd::SnapshotName(oid.str()),
+                                                                                    oid.str()));
+    }
+
+    for (auto& f : futures)
+    {
+        f.wait();
+    }
+
+    for (const auto& p : jobs)
+    {
+        const Job& j = *p.second;
+        EXPECT_TRUE(j.applied);
+        EXPECT_TRUE(j.collected);
+    }
+
+    size_t parent_scrubs_ok = 0;
+
+    for (const auto& m : managers)
+    {
+        ScrubManager::Counters c(m->get_counters());
+
+        parent_scrubs_ok += c.parent_scrubs_ok;
+        EXPECT_EQ(0,
+                  c.parent_scrubs_nok);
+        EXPECT_EQ(0,
+                  c.clone_scrubs_ok);
+        EXPECT_EQ(0,
+                  c.clone_scrubs_nok);
+    }
+
+    EXPECT_EQ(num_volumes,
+              parent_scrubs_ok);
 }
 
 }
