@@ -480,8 +480,8 @@ public:
         return router_;
     }
 
-    VirtualDiskFormat&
-    vdisk_format()
+    const VirtualDiskFormat&
+    vdisk_format() const
     {
         return *vdisk_format_;
     }

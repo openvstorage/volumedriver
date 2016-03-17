@@ -47,7 +47,7 @@ public:
     }
 
     bool
-    is_volume_path(const FrontendPath& p)
+    is_volume_path(const FrontendPath& p) const
     {
         return boost::regex_match(p.str(), volume_regex_);
     }
