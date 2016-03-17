@@ -478,18 +478,19 @@ TEST_F(ShmServerTest, ovs_create_rollback_list_remove_snapshot)
                                      "fsnap"));
 
     int max_snaps = 5;
-    ovs_snapshot_info_t *snaps = new ovs_snapshot_info_t [max_snaps];
-    EXPECT_EQ(2U,
-              ovs_snapshot_list("volume", snaps, &max_snaps));
 
-    ovs_snapshot_list_free(snaps);
+    auto snaps(std::make_unique<ovs_snapshot_info_t[]>(max_snaps));
+
+    EXPECT_EQ(2U,
+              ovs_snapshot_list("volume", snaps.get(), &max_snaps));
+
+    ovs_snapshot_list_free(snaps.get());
 
     EXPECT_EQ(-1,
-              ovs_snapshot_list("fvolume", snaps, &max_snaps));
+              ovs_snapshot_list("fvolume", snaps.get(), &max_snaps));
+
     EXPECT_EQ(ENOENT,
               errno);
-
-    delete []snaps;
 
     EXPECT_EQ(0,
               ovs_snapshot_rollback("volume",
@@ -504,7 +505,6 @@ TEST_F(ShmServerTest, ovs_create_rollback_list_remove_snapshot)
     EXPECT_EQ(0,
               ovs_snapshot_remove("volume",
                                   "snap1"));
-
 }
 
 TEST_F(ShmServerTest, ovs_completion_two_ctxs)
