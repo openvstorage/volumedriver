@@ -150,6 +150,29 @@ protected:
         return parent;
     }
 
+    std::vector<std::shared_ptr<ObjectRegistry>>
+    make_object_registries(const size_t count)
+    {
+        std::vector<std::shared_ptr<ObjectRegistry>> registries;
+        registries.reserve(count);
+
+        for (size_t i = 0; i < count; ++i)
+        {
+            auto l(std::make_shared<yt::LockedArakoon>(ara::ArakoonTestSetup::clusterID(),
+                                                       ara::ArakoonTestSetup::node_configs()));
+
+            const NodeId n("node-"s + boost::lexical_cast<std::string>(i));
+
+            auto o(std::make_shared<ObjectRegistry>(cluster_id_,
+                                                    n,
+                                                    l));
+
+            registries.emplace_back(o);
+        }
+
+        return registries;
+    }
+
     ClusterId cluster_id_;
     NodeId node_id_;
     std::unique_ptr<ObjectRegistry> object_registry_;
@@ -554,7 +577,7 @@ TEST_F(ScrubManagerTest, failure_to_apply_to_parent)
               mgr.get_counters().clone_scrubs_nok);
 }
 
-TEST_F(ScrubManagerTest, random_stress)
+TEST_F(ScrubManagerTest, random_stress_single_job)
 {
     yt::SourceOfUncertainty sou;
 
@@ -567,17 +590,8 @@ TEST_F(ScrubManagerTest, random_stress)
         ", clones per level: " << clones_per_level <<
         std::endl;
 
-    std::vector<std::unique_ptr<ObjectRegistry>> registries;
-    registries.reserve(num_nodes);
-
-    for (size_t i = 0; i < num_nodes; ++i)
-    {
-        const NodeId n("node-"s + boost::lexical_cast<std::string>(i));
-        auto o(std::make_unique<ObjectRegistry>(cluster_id_,
-                                                n,
-                                                std::static_pointer_cast<yt::LockedArakoon>(registry_)));
-        registries.emplace_back(std::move(o));
-    }
+    std::vector<std::shared_ptr<ObjectRegistry>>
+        registries(make_object_registries(num_nodes));
 
     ASSERT_FALSE(registries.empty());
 
@@ -681,7 +695,7 @@ TEST_F(ScrubManagerTest, random_stress)
     for (size_t i = 0; i < num_nodes; ++i)
     {
         auto m(std::make_unique<ScrubManager>(*registries[i],
-                                              std::static_pointer_cast<yt::LockedArakoon>(registry_),
+                                              registries[i]->locked_arakoon(),
                                               period_secs,
                                               apply_scrub_reply,
                                               build_scrub_tree,
