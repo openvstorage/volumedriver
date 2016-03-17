@@ -692,6 +692,8 @@ ovs_snapshot_list(const char* volume_name,
                snap_list,
                *max_snaps);
 
+    memset(snap_list, 0x0, *max_snaps * sizeof(*snap_list));
+
     if (not _is_volume_name_valid(volume_name))
     {
         tracepoint(openvstorage_libovsvolumedriver,
@@ -757,7 +759,9 @@ ovs_snapshot_list(const char* volume_name,
         {
             for (int j = 0; j < i; j++)
             {
-                free((void*)snap_list[i].name);
+                free(const_cast<char*>(snap_list[j].name));
+                snap_list[j].name = nullptr;
+                snap_list[j].size = 0;
             }
             tracepoint(openvstorage_libovsvolumedriver,
                        ovs_snapshot_list_exit,
@@ -779,6 +783,7 @@ ovs_snapshot_list(const char* volume_name,
                *max_snaps,
                0);
     snap_list[i].name = NULL;
+
     return len;
 }
 
@@ -791,8 +796,10 @@ ovs_snapshot_list_free(ovs_snapshot_info_t *snap_list)
 
     while (snap_list->name)
     {
-       free((void*)snap_list->name);
-       snap_list++;
+        free(const_cast<char*>(snap_list->name));
+        snap_list->name = nullptr;
+        snap_list->size = 0;
+        snap_list++;
     }
 }
 
