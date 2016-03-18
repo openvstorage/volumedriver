@@ -1847,13 +1847,27 @@ Volume::applyScrubbingWork(const scrubbing::ScrubReply& scrub_reply,
             throw;
         });
 
-    // Prefetch the relocation logs to prevent a backend glitch from sending the volume into the
-    // 'halted' limbo - cf. OVS-3764.
-    RelocationReaderFactory reloc_reader_factory(scrub_result.relocs,
-                                                 FileUtils::temp_path(),
-                                                 nsidmap_.get(scid)->clone(),
-                                                 CombinedTLogReader::FetchStrategy::Prefetch);
-    reloc_reader_factory.prepare_one();
+    std::unique_ptr<RelocationReaderFactory> reloc_reader_factory;
+
+    try
+    {
+        // Prefetch the relocation logs to prevent a backend glitch from sending the volume into the
+        // 'halted' limbo - cf. OVS-3764.
+        reloc_reader_factory =
+            std::make_unique<RelocationReaderFactory>(scrub_result.relocs,
+                                                      FileUtils::temp_path(),
+                                                      nsidmap_.get(scid)->clone(),
+                                                      CombinedTLogReader::FetchStrategy::Prefetch);
+        reloc_reader_factory->prepare_one();
+    }
+    CATCH_STD_ALL_EWHAT({
+            LOG_VERROR("Could not get relocation logs from the backend " << res_name << ": " <<
+                       EWHAT);
+            VolumeDriverError::report(events::VolumeDriverErrorCode::GetScrubbingResultsFromBackend,
+                                      EWHAT,
+                                      getName());
+            throw;
+        });
 
     MaybeScrubId scrub_id;
 
@@ -1918,7 +1932,7 @@ Volume::applyScrubbingWork(const scrubbing::ScrubReply& scrub_reply,
     try
     {
         LOG_VINFO("applying " << scrub_result.relocs.size() << " relocation tlogs");
-        const uint64_t relocNum = metaDataStore_->applyRelocs(reloc_reader_factory,
+        const uint64_t relocNum = metaDataStore_->applyRelocs(*reloc_reader_factory,
                                                               scid,
                                                               *scrub_id);
 
