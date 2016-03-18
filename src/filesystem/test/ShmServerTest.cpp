@@ -479,18 +479,21 @@ TEST_F(ShmServerTest, ovs_create_rollback_list_remove_snapshot)
 
     int max_snaps = 5;
 
-    auto snaps(std::make_unique<ovs_snapshot_info_t[]>(max_snaps));
+    ovs_snapshot_info_t *snaps =
+        (ovs_snapshot_info_t*)malloc(sizeof(*snaps) * max_snaps);
 
     EXPECT_EQ(2U,
-              ovs_snapshot_list("volume", snaps.get(), &max_snaps));
+              ovs_snapshot_list("volume", snaps, &max_snaps));
 
-    ovs_snapshot_list_free(snaps.get());
+    ovs_snapshot_list_free(snaps);
 
     EXPECT_EQ(-1,
-              ovs_snapshot_list("fvolume", snaps.get(), &max_snaps));
+              ovs_snapshot_list("fvolume", snaps, &max_snaps));
 
     EXPECT_EQ(ENOENT,
               errno);
+
+    free(snaps);
 
     EXPECT_EQ(0,
               ovs_snapshot_rollback("volume",
