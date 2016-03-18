@@ -27,12 +27,16 @@ BOOLEAN_ENUM(CheckSCOCRC);
 class TLogReaderInterface
 {
 public:
-    virtual const Entry* nextAny() = 0;
-    ClusterLocation nextClusterLocation();
-    const Entry* nextLocation();
+    virtual ~TLogReaderInterface() = default;
 
-    virtual ~TLogReaderInterface()
-    {}
+    virtual const Entry*
+    nextAny() = 0;
+
+    ClusterLocation
+    nextClusterLocation();
+
+    const Entry*
+    nextLocation();
 
     void
     SCONames(std::vector<SCO>& out);
@@ -52,6 +56,8 @@ public:
             t.processEntry(e);
         }
     }
+
+    using Ptr = std::unique_ptr<TLogReaderInterface>;
 };
 
 }

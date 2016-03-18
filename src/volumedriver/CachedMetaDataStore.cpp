@@ -16,6 +16,7 @@
 #include "ClusterLocationAndHash.h"
 #include "CombinedTLogReader.h"
 #include "PageSortingGenerator.h"
+#include "RelocationReaderFactory.h"
 #include "TLog.h"
 #include "TracePoints_tp.h"
 #include "VolManager.h"
@@ -547,26 +548,9 @@ struct PageCmp
 }
 
 uint64_t
-CachedMetaDataStore::applyRelocs(const std::vector<std::string>& relocs,
-                                 const NSIDMap& nsid_map,
-                                 const fs::path& tlog_location,
-                                 SCOCloneID cid,
+CachedMetaDataStore::applyRelocs(RelocationReaderFactory& factory,
+                                 SCOCloneID scid,
                                  const ScrubId& scrub_id)
-{
-    // Feels a bit wrong since the relocs are not a tlog...
-    auto treader(CombinedTLogReader::create(tlog_location,
-                                            relocs,
-                                            nsid_map.get(cid)->clone()));
-
-    return apply_relocs_(std::move(treader),
-                         cid,
-                         scrub_id);
-}
-
-uint64_t
-CachedMetaDataStore::apply_relocs_(std::unique_ptr<TLogReaderInterface> treader,
-                                   SCOCloneID scid,
-                                   const ScrubId& scrub_id)
 {
     uint64_t relocNum = 0;
     const Entry* e_old = 0;
@@ -574,6 +558,8 @@ CachedMetaDataStore::apply_relocs_(std::unique_ptr<TLogReaderInterface> treader,
     // set a temporary scrub id - in case of a crash while applying the relocs this
     // will lead to the restart code throwing away the mdstore and starting from scratch.
     set_scrub_id(ScrubId());
+
+    std::unique_ptr<TLogReaderInterface> treader(factory.get_one());
 
     while ((e_old = treader->nextLocation()))
     {

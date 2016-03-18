@@ -27,6 +27,7 @@ namespace volumedriver
 class ClusterLocationAndHash;
 class MetaDataBackendConfig;
 class NSIDMap;
+class RelocationReaderFactory;
 class TLogReaderInterface;
 class VolumeInterface;
 
@@ -89,9 +90,7 @@ public:
                       const boost::optional<youtils::UUID>& uuid) = 0;
 
     virtual uint64_t
-    applyRelocs(const std::vector<std::string>& reloc_logs,
-                const NSIDMap& nsid_map,
-                const boost::filesystem::path& tlog_location,
+    applyRelocs(RelocationReaderFactory&,
                 SCOCloneID,
                 const ScrubId&) = 0;
 

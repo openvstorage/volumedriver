@@ -19,6 +19,7 @@
 #include <youtils/Assert.h>
 
 #include <volumedriver/MetaDataStoreBuilder.h>
+#include <volumedriver/RelocationReaderFactory.h>
 
 namespace metadata_server
 {
@@ -208,9 +209,11 @@ Table::apply_relocations(const vd::ScrubId& scrub_id,
         {
             try
             {
-                mdstore->applyRelocs(relocs,
-                                     nsid_map_,
-                                     scratch_dir_,
+                vd::RelocationReaderFactory factory(relocs,
+                                                    scratch_dir_,
+                                                    nsid_map_.get(cid)->clone(),
+                                                    vd::CombinedTLogReader::FetchStrategy::Concurrent);
+                mdstore->applyRelocs(factory,
                                      cid,
                                      scrub_id);
             }

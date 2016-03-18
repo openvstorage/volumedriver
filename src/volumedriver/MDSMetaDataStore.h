@@ -88,9 +88,7 @@ public:
                       const boost::optional<youtils::UUID>& uuid) override;
 
     virtual uint64_t
-    applyRelocs(const std::vector<std::string>& relocs,
-                const NSIDMap& nsid_map,
-                const boost::filesystem::path& tlog_location,
+    applyRelocs(RelocationReaderFactory&,
                 SCOCloneID,
                 const ScrubId&) override final;
 

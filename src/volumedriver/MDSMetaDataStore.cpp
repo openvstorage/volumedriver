@@ -17,6 +17,7 @@
 #include "MDSMetaDataBackend.h"
 #include "MDSMetaDataStore.h"
 #include "MetaDataStoreBuilder.h"
+#include "RelocationReaderFactory.h"
 #include "VolManager.h"
 #include "VolumeInterface.h"
 
@@ -397,9 +398,7 @@ MDSMetaDataStore::for_each(MetaDataStoreFunctor& functor,
 }
 
 uint64_t
-MDSMetaDataStore::applyRelocs(const std::vector<std::string>& relocs,
-                              const NSIDMap& nsid_map,
-                              const boost::filesystem::path& tlog_location,
+MDSMetaDataStore::applyRelocs(RelocationReaderFactory& factory,
                               SCOCloneID cid,
                               const ScrubId& scrub_id)
 {
@@ -412,9 +411,7 @@ MDSMetaDataStore::applyRelocs(const std::vector<std::string>& relocs,
     return do_handle_<uint64_t>(__FUNCTION__,
                                 [&](const MetaDataStorePtr& md) -> uint64_t
         {
-            const uint64_t ret = md->applyRelocs(relocs,
-                                                 nsid_map,
-                                                 tlog_location,
+            const uint64_t ret = md->applyRelocs(factory,
                                                  cid,
                                                  scrub_id);
 
@@ -428,7 +425,7 @@ MDSMetaDataStore::applyRelocs(const std::vector<std::string>& relocs,
                     try
                     {
                         apply_relocs_on_slave_(node_configs_[i],
-                                               relocs,
+                                               factory.relocation_logs(),
                                                cid,
                                                scrub_id);
                     }

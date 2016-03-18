@@ -23,6 +23,7 @@
 #include "FailOverCacheClientInterface.h"
 #include "MDSMetaDataStore.h"
 #include "MetaDataStoreInterface.h"
+#include "RelocationReaderFactory.h"
 #include "SCOAccessData.h"
 #include "Scrubber.h"
 #include "SnapshotManagement.h"
@@ -1846,6 +1847,14 @@ Volume::applyScrubbingWork(const scrubbing::ScrubReply& scrub_reply,
             throw;
         });
 
+    // Prefetch the relocation logs to prevent a backend glitch from sending the volume into the
+    // 'halted' limbo - cf. OVS-3764.
+    RelocationReaderFactory reloc_reader_factory(scrub_result.relocs,
+                                                 FileUtils::temp_path(),
+                                                 nsidmap_.get(scid)->clone(),
+                                                 CombinedTLogReader::FetchStrategy::Prefetch);
+    reloc_reader_factory.prepare_one();
+
     MaybeScrubId scrub_id;
 
     try
@@ -1909,9 +1918,7 @@ Volume::applyScrubbingWork(const scrubbing::ScrubReply& scrub_reply,
     try
     {
         LOG_VINFO("applying " << scrub_result.relocs.size() << " relocation tlogs");
-        const uint64_t relocNum = metaDataStore_->applyRelocs(scrub_result.relocs,
-                                                              nsidmap_,
-                                                              FileUtils::temp_path(),
+        const uint64_t relocNum = metaDataStore_->applyRelocs(reloc_reader_factory,
                                                               scid,
                                                               *scrub_id);
 

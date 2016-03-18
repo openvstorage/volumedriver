@@ -126,9 +126,7 @@ public:
                       const boost::optional<youtils::UUID>& uuid) override final;
 
     virtual uint64_t
-    applyRelocs(const std::vector<std::string>& relocs,
-                const NSIDMap& nsid_map,
-                const boost::filesystem::path& tlog_location,
+    applyRelocs(RelocationReaderFactory&,
                 SCOCloneID,
                 const ScrubId&) override final;
 
@@ -300,11 +298,6 @@ private:
     uint64_t
     processTLogReaderInterface(std::shared_ptr<TLogReaderInterface> r,
                                SCOCloneID cloneid);
-
-    uint64_t
-    apply_relocs_(std::unique_ptr<TLogReaderInterface> treader,
-                  SCOCloneID scid,
-                  const ScrubId& scrub_id);
 
 #ifndef NDEBUG
     virtual void

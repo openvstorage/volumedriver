@@ -156,6 +156,7 @@ libvolumedriver_la_SOURCES = \
 	PerformanceCounters.cpp \
 	PrefetchData.cpp \
 	PythonScrubber.cpp \
+	RelocationReaderFactory.cpp \
 	RocksDBMetaDataBackend.cpp \
 	RestartContext.cpp \
 	Restore.cpp \
