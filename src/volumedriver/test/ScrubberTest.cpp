@@ -1017,6 +1017,62 @@ TEST_P(ScrubberTest, consistency)
                   RemoveVolumeCompletely::T);
 }
 
+// cf. OVS-3765
+TEST_P(ScrubberTest, backend_error_while_fetching_relocations)
+{
+    auto wrns(make_random_namespace());
+    SharedVolumePtr v = newVolume(*wrns);
+
+    writeToVolume(*v,
+                  0,
+                  default_cluster_size(),
+                  "0");
+
+    const size_t overwrites = 2 * v->getSCOMultiplier();
+
+    for (size_t i = 0; i < overwrites; ++i)
+    {
+        writeToVolume(*v,
+                      v->getClusterMultiplier(),
+                      default_cluster_size(),
+                      boost::lexical_cast<std::string>(i + 1));
+    }
+
+    const SnapshotName snap("snap");
+    v->createSnapshot(snap);
+    waitForThisBackendWrite(*v);
+
+    std::vector<scrubbing::ScrubWork> work(getScrubbingWork(v->getName()));
+    ASSERT_EQ(1, work.size());
+
+    const scrubbing::ScrubReply reply(do_scrub(work[0]));
+    scrubbing::ScrubberResult res;
+
+    be::BackendInterfacePtr bi(v->getBackendInterface()->clone());
+    bi->fillObject<decltype(res),
+                   boost::archive::text_iarchive>(res,
+                                                  reply.scrub_result_name_,
+                                                  InsistOnLatestVersion::T);
+
+    ASSERT_FALSE(res.relocs.empty());
+    bi->remove(res.relocs.back());
+
+    EXPECT_THROW(v->applyScrubbingWork(reply),
+                 std::exception);
+
+    EXPECT_FALSE(v->is_halted());
+
+    checkVolume(*v,
+                0,
+                default_cluster_size(),
+                "0");
+
+    checkVolume(*v,
+                v->getClusterMultiplier(),
+                default_cluster_size(),
+                boost::lexical_cast<std::string>(overwrites));
+}
+
 namespace
 {
 
