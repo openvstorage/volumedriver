@@ -148,7 +148,7 @@ public:
     // Why templates you ask: The OrderedTLogIds are sufficient for everything except scrubbing
     // where we treat the relocation as TLog. You can't type that as OrderedTLogIds.
     template <typename T>
-    static std::shared_ptr<TLogReaderInterface>
+    static std::unique_ptr<TLogReaderInterface>
     create(const fs::path& tlog_path,
            const T& items,
            BackendInterfacePtr bi,
@@ -177,12 +177,11 @@ public:
 
         VERIFY(generator);
 
-        auto reader(std::make_shared<CombinedTLogReader>(std::move(generator)));
-        return std::static_pointer_cast<TLogReaderInterface>(reader);
+        return std::make_unique<CombinedTLogReader>(std::move(generator));
     }
 
     template <typename T>
-    static std::shared_ptr<TLogReaderInterface>
+    static std::unique_ptr<TLogReaderInterface>
     create_backward_reader(const fs::path& tlog_path,
                            const T& items,
                            BackendInterfacePtr bi)
@@ -194,8 +193,7 @@ public:
                                                                rev_items,
                                                                std::move(bi)));
 
-        auto reader(std::make_shared<CombinedTLogReader>(std::move(generator)));
-        return std::static_pointer_cast<TLogReaderInterface>(reader);
+        return std::make_unique<CombinedTLogReader>(std::move(generator));
     }
 
 private:

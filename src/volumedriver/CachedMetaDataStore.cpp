@@ -558,13 +558,13 @@ CachedMetaDataStore::applyRelocs(const std::vector<std::string>& relocs,
                                             relocs,
                                             nsid_map.get(cid)->clone()));
 
-    return apply_relocs_(*treader,
+    return apply_relocs_(std::move(treader),
                          cid,
                          scrub_id);
 }
 
 uint64_t
-CachedMetaDataStore::apply_relocs_(TLogReaderInterface& treader,
+CachedMetaDataStore::apply_relocs_(std::unique_ptr<TLogReaderInterface> treader,
                                    SCOCloneID scid,
                                    const ScrubId& scrub_id)
 {
@@ -575,11 +575,11 @@ CachedMetaDataStore::apply_relocs_(TLogReaderInterface& treader,
     // will lead to the restart code throwing away the mdstore and starting from scratch.
     set_scrub_id(ScrubId());
 
-    while ((e_old = treader.nextLocation()))
+    while ((e_old = treader->nextLocation()))
     {
         //  No problem to keep the lock in the loop
 
-        const Entry* e_new = treader.nextLocation();
+        const Entry* e_new = treader->nextLocation();
         if(not e_new)
         {
             LOG_ERROR(id_ << ": wrong Relocation TLog, uneven number of entries");

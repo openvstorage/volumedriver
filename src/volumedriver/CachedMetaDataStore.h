@@ -302,7 +302,7 @@ private:
                                SCOCloneID cloneid);
 
     uint64_t
-    apply_relocs_(TLogReaderInterface& treader,
+    apply_relocs_(std::unique_ptr<TLogReaderInterface> treader,
                   SCOCloneID scid,
                   const ScrubId& scrub_id);
 
