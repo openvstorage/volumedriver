@@ -477,13 +477,21 @@ TEST_F(ShmServerTest, ovs_create_rollback_list_remove_snapshot)
               ovs_snapshot_is_synced("volume",
                                      "fsnap"));
 
-    int max_snaps = 5;
+    int max_snaps = 1;
+    ovs_snapshot_info_t *snaps;
+    int snap_count;
 
-    ovs_snapshot_info_t *snaps =
-        (ovs_snapshot_info_t*)malloc(sizeof(*snaps) * max_snaps);
+    do {
+        snaps = (ovs_snapshot_info_t *) malloc(sizeof(*snaps) * max_snaps);
+        snap_count = ovs_snapshot_list("volume", snaps, &max_snaps);
+        if (snap_count <= 0)
+        {
+            free(snaps);
+        }
+    } while (snap_count == -1 && errno == ERANGE);
 
-    EXPECT_EQ(2U,
-              ovs_snapshot_list("volume", snaps, &max_snaps));
+    EXPECT_EQ(2U, snap_count);
+    EXPECT_EQ(3U, max_snaps);
 
     ovs_snapshot_list_free(snaps);
 
