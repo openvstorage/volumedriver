@@ -140,6 +140,39 @@ TEST_F(ThreadedGeneratorTest, testThrowingProducer)
         std::exception);
 }
 
+struct PrefetchGeneratorTest
+    : public TestBase
+{};
+
+TEST_F(PrefetchGeneratorTest, empty)
+{
+    PrefetchGenerator<int> g(std::make_unique<IntGen>(0));
+    EXPECT_TRUE(g.finished());
+    EXPECT_EQ(0, g.size());
+}
+
+TEST_F(PrefetchGeneratorTest, not_empty)
+{
+    const int count = 2048;
+    PrefetchGenerator<int> g(std::make_unique<IntGen>(count));
+
+    EXPECT_FALSE(g.finished());
+    EXPECT_EQ(static_cast<size_t>(count),
+              g.size());
+
+    int exp = 0;
+    while (not g.finished())
+    {
+        EXPECT_EQ(exp,
+                  g.current());
+        g.next();
+        exp += 1;
+    }
+
+    EXPECT_EQ(exp,
+              count);
+}
+
 }
 
 // Local Variables: **

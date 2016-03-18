@@ -35,6 +35,7 @@
 #ifndef GENERATOR_H_
 #define GENERATOR_H_
 
+#include "Assert.h"
 #include "Catchers.h"
 #include "Logging.h"
 
@@ -244,6 +245,54 @@ private:
         channel.mayStop();
         thread_.join();
     }
+};
+
+template<typename T>
+class PrefetchGenerator
+    : public Generator<T>
+{
+public:
+    explicit PrefetchGenerator(std::unique_ptr<Generator<T>> generator)
+    {
+        while (not generator->finished())
+        {
+            queue_.emplace_back(generator->current());
+            generator->next();
+        }
+    }
+
+    ~PrefetchGenerator() = default;
+
+    bool
+    finished() override final
+    {
+        return queue_.empty();
+    }
+
+    T&
+    current() override final
+    {
+        VERIFY(not queue_.empty());
+        return queue_.front();
+    }
+
+    void
+    next() override final
+    {
+        VERIFY(not queue_.empty());
+        queue_.pop_front();
+    }
+
+    size_t
+    size() const
+    {
+        return queue_.size();
+    }
+
+private:
+    DECLARE_LOGGER("PrefetchGenerator");
+
+    std::deque<T> queue_;
 };
 
 //auxiliary stuff for testing etc.
