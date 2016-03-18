@@ -49,27 +49,38 @@ class Generator
 public:
     Generator() = default;
 
+    virtual ~Generator() = default;
+
     Generator(const Generator&) = delete;
 
-    Generator& operator=(const Generator&) = delete;
+    Generator&
+    operator=(const Generator&) = delete;
 
-    virtual void next() = 0;
-    virtual bool finished() = 0;
-    virtual T&   current() = 0;
+    virtual void
+    next() = 0;
 
-    std::unique_ptr<std::vector<T> > toList() {
+    virtual bool
+    finished() = 0;
+
+    virtual T&
+    current() = 0;
+
+    std::unique_ptr<std::vector<T>>
+    toList()
+    {
         std::unique_ptr<std::vector<T> > lst(new std::vector<T>);
-        while (not finished()) {
+        while (not finished())
+        {
             lst->push_back(current());
             next();
         }
         return lst;
     }
-
-    virtual ~Generator() {}
 };
 
-class UnknownGeneratorException : public std::exception {
+class UnknownGeneratorException
+    : public std::exception
+{
 public:
     virtual const char*
     what() const throw ()
@@ -79,26 +90,30 @@ public:
 };
 
 template <typename T>
-class ProducerFromGenerator : public yin::Producer<T>
+class ProducerFromGenerator
+    : public yin::Producer<T>
 {
 public:
-    //takes ownership of generator
-    ProducerFromGenerator(yin::Channel<T>& ch, yin::Latch& l, Generator<T>* generator) :
-        yin::Producer<T>(ch, l),
-        generator_(generator)
+    ProducerFromGenerator(yin::Channel<T>& ch,
+                          yin::Latch& l,
+                          std::unique_ptr<Generator<T>> generator)
+        : yin::Producer<T>(ch, l)
+        , generator_(std::move(generator))
     {}
 
-    void maybeRethrow() {
-        if (error_.get()) {
+    void
+    maybeRethrow()
+    {
+        if (error_.get())
+        {
             throw *error_;
         }
     }
 
-    DECLARE_LOGGER("ProducerFromGenerator");
-
 protected:
     //TODO make use of general exception rethrow mechanism across threads
-    T produce()
+    T
+    produce() override final
     {
         try
         {
@@ -106,41 +121,50 @@ protected:
             generator_->next();
             return tmp;
         }
-        catch(std::exception& e) {
+        catch(std::exception& e)
+        {
             LOG_ERROR("Caught " << e.what());
             error_.reset(new std::exception(e));
             throw; //throwing makes sure production thread is stopped and done() will be called
         }
-        catch(...) {
+        catch(...)
+        {
             LOG_ERROR("Caught unkown exception");
             error_.reset(new UnknownGeneratorException());
             throw; //throwing makes sure production thread is stopped and done() will be called
         }
     }
 
-    virtual bool cancel()
+    virtual bool
+    cancel() override final
     {
         try
         {
             return generator_->finished();
         }
-        catch(std::exception& e) {
+        catch(std::exception& e)
+        {
             LOG_ERROR("Caught " << e.what());
             error_.reset(new std::exception(e));
             return true;
         }
-        catch(...) {
+        catch(...)
+        {
             LOG_ERROR("Caught unkown exception");
             error_.reset(new UnknownGeneratorException());
             return true;
         }
     }
 
-    virtual void done() {
+    virtual void
+    done() override final
+    {
         yin::Producer<T>::mayStop();
     }
 
 private:
+    DECLARE_LOGGER("ProducerFromGenerator");
+
     std::unique_ptr<Generator<T> > generator_;
     std::unique_ptr<std::exception> error_;
 };
@@ -155,7 +179,9 @@ public:
                       uint32_t bufferSize)
         : channel(bufferSize)
         , noLatch(true)
-        , producer_(channel, noLatch, generator.release())
+        , producer_(channel,
+                    noLatch,
+                    std::move(generator))
         , thread_(boost::ref(producer_))
         , finished_(false)
     {
@@ -175,7 +201,8 @@ public:
         stop_();
     }
 
-    void next()
+    void
+    next() override final
     {
         try
         {
@@ -191,13 +218,13 @@ public:
     }
 
     T&
-    current()
+    current() override final
     {
         return current_;
     }
 
     bool
-    finished()
+    finished() override final
     {
         return finished_;
     }
@@ -233,20 +260,20 @@ public:
     {}
 
     void
-    next()
+    next() override final
     {
         usleep(usecs_);
         generator_->next();
     }
 
     bool
-    finished()
+    finished() override final
     {
         return generator_->finished();
     }
 
     T&
-    current()
+    current() override final
     {
         return generator_->current();
     }
@@ -279,20 +306,20 @@ public:
     }
 
     void
-    next()
+    next() override final
     {
         current_ = call();
         i++;
     }
 
     bool
-    finished()
+    finished() override final
     {
         return not unlimited() and i >= maxCount_;
     }
 
     T&
-    current()
+    current() override final
     {
         return current_;
     }
