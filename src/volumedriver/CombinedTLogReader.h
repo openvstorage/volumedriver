@@ -55,19 +55,19 @@ public:
     }
 
     void
-    next()
+    next() override final
     {
         update();
     }
 
     TLogGenItem&
-    current()
+    current() override final
     {
         return current_;
     }
 
     bool
-    finished()
+    finished() override final
     {
         return not current_.get();
     }
@@ -138,6 +138,13 @@ public:
         }
     }
 
+    enum class FetchStrategy
+    {
+        Prefetch,
+        OnDemand,
+        Concurrent,
+    };
+
     // Why templates you ask: The OrderedTLogIds are sufficient for everything except scrubbing
     // where we treat the relocation as TLog. You can't type that as OrderedTLogIds.
     template <typename T>
@@ -145,23 +152,30 @@ public:
     create(const fs::path& tlog_path,
            const T& items,
            BackendInterfacePtr bi,
-           bool prefetch = true)
+           const FetchStrategy strategy = FetchStrategy::Concurrent)
     {
         std::unique_ptr<TLogGen> generator;
+
         std::unique_ptr<TLogGen>
-            baseGenerator(new TLogReaderGen<TLogReader, T>(tlog_path,
+            base_generator(new TLogReaderGen<TLogReader, T>(tlog_path,
                                                            items,
                                                            std::move(bi)));
 
-        if(prefetch)
+        switch (strategy)
         {
-            generator.reset(new youtils::ThreadedGenerator<TLogGenItem>(std::move(baseGenerator),
+        case FetchStrategy::Prefetch:
+            generator.reset(new youtils::PrefetchGenerator<TLogGenItem>(std::move(base_generator)));
+            break;
+        case FetchStrategy::Concurrent:
+            generator.reset(new youtils::ThreadedGenerator<TLogGenItem>(std::move(base_generator),
                                                                         uint32_t(10)));
+            break;
+        case FetchStrategy::OnDemand:
+            generator = std::move(base_generator);
+            break;
         }
-        else
-        {
-            generator = std::move(baseGenerator);
-        }
+
+        VERIFY(generator);
 
         auto reader(std::make_shared<CombinedTLogReader>(std::move(generator)));
         return std::static_pointer_cast<TLogReaderInterface>(reader);
