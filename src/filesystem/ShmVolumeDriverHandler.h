@@ -188,6 +188,7 @@ public:
         CATCH_STD_ALL_EWHAT({
                 LOG_ERROR("Failed to open " << volume_name << ": " << EWHAT);
                 remove_volume(volume_name);
+                throw;
             });
     }
 
