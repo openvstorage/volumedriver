@@ -794,12 +794,15 @@ ovs_snapshot_list_free(ovs_snapshot_info_t *snap_list)
                ovs_snapshot_list_free,
                snap_list);
 
-    while (snap_list->name)
+    if (snap_list)
     {
-        free(const_cast<char*>(snap_list->name));
-        snap_list->name = nullptr;
-        snap_list->size = 0;
-        snap_list++;
+        while (snap_list->name)
+        {
+            free(const_cast<char*>(snap_list->name));
+            snap_list->name = nullptr;
+            snap_list->size = 0;
+            snap_list++;
+        }
     }
 }
 
