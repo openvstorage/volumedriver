@@ -205,7 +205,7 @@ List snapshots of a volume
         - ERANGE The size of 'snap_list' is smaller than the number of
           snapshots. The 'max_snaps' variable is populated with the number of
           snapshots
-        - EIO An error occured during ovs_snapshot_remove()
+        - EIO An error occured during ovs_snapshot_list()
 
 Free snapshots list
     void ovs_snapshot_list_free(ovs_snapshot_info_t *snap_list)
