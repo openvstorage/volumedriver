@@ -493,7 +493,15 @@ TEST_F(ShmServerTest, ovs_create_rollback_list_remove_snapshot)
     EXPECT_EQ(2U, snap_count);
     EXPECT_EQ(3U, max_snaps);
 
-    ovs_snapshot_list_free(snaps);
+    if (snap_count > 0)
+    {
+        ovs_snapshot_list_free(snaps);
+    }
+
+    free(snaps);
+
+    snaps = (ovs_snapshot_info_t *) malloc(sizeof(*snaps));
+    max_snaps = 1;
 
     EXPECT_EQ(-1,
               ovs_snapshot_list("fvolume", snaps, &max_snaps));
