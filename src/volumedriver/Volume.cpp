@@ -1808,38 +1808,25 @@ Volume::applyScrubbingWork(const scrubbing::ScrubReply& scrub_reply,
         throw fungi::IOException("No result name passed");
     }
 
-    const fs::path result_path(FileUtils::temp_path() / res_name);
+    scrubbing::ScrubberResult scrub_result;
     const SCOCloneID scid = nsidmap_.getCloneID(ns);
 
     try
     {
-        nsidmap_.get(scid)->read(result_path,
-                                 res_name,
-                                 InsistOnLatestVersion::T);
+        nsidmap_.get(scid)->fillObject<decltype(scrub_result),
+                                       boost::archive::text_iarchive>(scrub_result,
+                                                                      res_name,
+                                                                      InsistOnLatestVersion::T);
+    }
+    catch (const be::BackendException& e)
+    {
+        LOG_VERROR("Backend exception retrieving scrub result " << res_name << ": " << e.what());
+        throw TransientException("Backend exception retrieving scrub result",
+                                 res_name.c_str());
     }
     CATCH_STD_ALL_EWHAT({
         // Manual cleanup required?
             LOG_VERROR("Could not retrieve scrubbing result " << res_name << ": " <<
-                       EWHAT);
-            VolumeDriverError::report(events::VolumeDriverErrorCode::GetScrubbingResultsFromBackend,
-                                      EWHAT,
-                                      getName());
-            throw;
-        });
-
-    ALWAYS_CLEANUP_FILE(result_path);
-
-    scrubbing::ScrubberResult scrub_result;
-
-    try
-    {
-        fs::ifstream ifs(result_path);
-        boost::archive::text_iarchive ia(ifs);
-        ia >> scrub_result;
-        LOG_VINFO("Finished preliminary work");
-    }
-    CATCH_STD_ALL_EWHAT({
-            LOG_VERROR("Could not deserialize scrubbing result " << res_name << ": " <<
                        EWHAT);
             VolumeDriverError::report(events::VolumeDriverErrorCode::GetScrubbingResultsFromBackend,
                                       EWHAT,
@@ -1859,6 +1846,12 @@ Volume::applyScrubbingWork(const scrubbing::ScrubReply& scrub_reply,
                                                       nsidmap_.get(scid)->clone(),
                                                       CombinedTLogReader::FetchStrategy::Prefetch);
         reloc_reader_factory->prepare_one();
+    }
+    catch (const be::BackendException& e)
+    {
+        LOG_VERROR("Backend exception retrieving relocations " << res_name << ": " << e.what());
+        throw TransientException("Backend exception retrieving relocations",
+                                 res_name.c_str());
     }
     CATCH_STD_ALL_EWHAT({
             LOG_VERROR("Could not get relocation logs from the backend " << res_name << ": " <<

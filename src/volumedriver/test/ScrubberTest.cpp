@@ -1058,7 +1058,7 @@ TEST_P(ScrubberTest, backend_error_while_fetching_relocations)
     bi->remove(res.relocs.back());
 
     EXPECT_THROW(v->applyScrubbingWork(reply),
-                 std::exception);
+                 TransientException);
 
     EXPECT_FALSE(v->is_halted());
 

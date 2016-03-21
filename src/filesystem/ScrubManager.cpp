@@ -28,6 +28,7 @@
 #include <backend/Garbage.h>
 
 #include <volumedriver/ScrubReply.h>
+#include <volumedriver/TransientException.h>
 
 namespace volumedriverfs
 {
@@ -422,6 +423,11 @@ ScrubManager::apply_to_parent_(const ObjectId& oid,
                      reply,
                      vd::ScrubbingCleanup::OnError,
                      maybe_garbage);
+    }
+    catch (const vd::TransientException&)
+    {
+        LOG_ERROR(oid << ": transient exception while applying scrub result to parent - bubbling it up");
+        throw;
     }
     CATCH_STD_ALL_EWHAT({
             LOG_ERROR(oid << ": failed to apply " << reply << ": " << EWHAT <<
