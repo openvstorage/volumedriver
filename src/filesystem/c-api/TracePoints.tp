@@ -139,11 +139,9 @@ TRACEPOINT_EVENT(
 	openvstorage_libovsvolumedriver,
 	ovs_snapshot_list_enter,
 	TP_ARGS(const char*, volume_name_arg,
-            void*, snap_list_arg,
-            int, max_snaps_arg),
+            void*, snap_list_arg),
 	TP_FIELDS(ctf_string(volume_name, volume_name_arg)
-              ctf_integer_hex(void*, snap_list, snap_list_arg)
-              ctf_integer(int, max_snaps, max_snaps_arg))
+              ctf_integer_hex(void*, snap_list, snap_list_arg))
 )
 
 TRACEPOINT_EVENT(
@@ -163,9 +161,16 @@ TRACEPOINT_EVENT(
 
 TRACEPOINT_EVENT(
 	openvstorage_libovsvolumedriver,
-	ovs_snapshot_list_free,
+	ovs_snapshot_list_free_enter,
 	TP_ARGS(void*, snap_list_arg),
 	TP_FIELDS(ctf_integer_hex(void*, snap_list, snap_list_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_snapshot_list_free_exit,
+    TP_ARGS(),
+    TP_FIELDS()
 )
 
 TRACEPOINT_EVENT(
