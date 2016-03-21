@@ -879,6 +879,38 @@ TEST_P(FailOverCacheTester, wrong_cluster_size)
                  std::exception);
 }
 
+TEST_P(FailOverCacheTester, a_whole_lotta_clients)
+{
+    auto foc_ctx(start_one_foc());
+
+    const size_t count = 1024;
+    std::vector<std::unique_ptr<be::BackendTestSetup::WithRandomNamespace>> wrns;
+    wrns.reserve(count);
+
+    std::vector<std::unique_ptr<FailOverCacheProxy>> proxies;
+    proxies.reserve(count);
+
+    try
+    {
+        for (size_t i = 0; i < 512; ++i)
+        {
+            wrns.emplace_back(make_random_namespace());
+            proxies.emplace_back(std::make_unique<FailOverCacheProxy>(foc_ctx->config(GetParam().foc_mode()),
+                                                                      wrns.back()->ns(),
+                                                                      default_lba_size(),
+                                                                      default_cluster_multiplier(),
+                                                                      boost::chrono::seconds(1)));
+        }
+
+        FAIL() << "eventually the DTL should've run out of FDs";
+    }
+    catch (const fungi::IOException& e)
+    {
+        EXPECT_EQ(EMFILE,
+                  e.getErrorCode());
+    }
+}
+
 // needs to be run as root, and messes with the iptables, so use with _extreme_
 // caution
 /*
