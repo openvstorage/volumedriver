@@ -71,7 +71,6 @@ public:
         {
             setrlimit(RLIMIT_NOFILE, &rl_);
         }
-
     }
 
 private:
