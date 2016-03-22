@@ -150,7 +150,7 @@ Socket *IPv6Socket::accept(bool nonblocking) {
 			//fudeb("Blocking accept");
 		}
 		asock = ::accept(sock_, 0, 0);
-		if (asock > 0)
+		if (asock >= 0)
 			break;
 		if (asock < 0 && errno != EAGAIN && errno != EINTR
 #ifndef _WIN32
