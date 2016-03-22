@@ -1256,9 +1256,10 @@ VolManager::destroyVolume(SharedVolumePtr v,
 
     // We only trigger deletion here when the previous stuff did not throw.
     // http://jira.openvstorage.com/browse/OVS-827
+    bool proceed = false;
     auto on_exit(yt::make_scope_exit([&]
                                      {
-                                         if (std::uncaught_exception())
+                                         if (not proceed)
                                          {
                                              volMap_.insert(std::make_pair(v->getName(),
                                                                            v));
@@ -1277,16 +1278,16 @@ VolManager::destroyVolume(SharedVolumePtr v,
     with_restart_map_and_unlocked_mgmt_<SharedVolumePtr>(fun,
                                                          v->getNamespace(),
                                                          v->get_config());
+
+    proceed = true;
+
     if(T(delete_volume_namespace))
     {
         try
         {
             createBackendInterface(v->getNamespace())->deleteNamespace();
         }
-        catch(std::exception& e)
-        {
-            LOG_ERROR("Could not delete namespace: " << v->getNamespace());
-        }
+        CATCH_STD_ALL_LOG_IGNORE("Could not delete namespace: " << v->getNamespace());
     }
 }
 
