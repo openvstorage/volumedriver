@@ -153,13 +153,17 @@ void SocketServer::run()
             }
             else
             {
-                std::unique_ptr<Socket> sock(server_socket_->accept());
-                Protocol* protocol = factory_.createProtocol(std::move(sock),
-                                                             *this);
-                protocol->start();
+                try
+                {
+                    std::unique_ptr<Socket> sock(server_socket_->accept());
+                    Protocol* protocol = factory_.createProtocol(std::move(sock),
+                                                                 *this);
+                    protocol->start();
+                }
+                CATCH_STD_ALL_LOG_IGNORE("Failed to accept new connection");
             }
         }
-        CATCH_STD_ALL_LOGLEVEL_RETHROW("accept interupted", DEBUG);
+        CATCH_STD_ALL_LOG_RETHROW("Error in event loop");
     }
 }
 
