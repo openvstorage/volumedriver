@@ -879,7 +879,7 @@ TEST_P(FailOverCacheTester, wrong_cluster_size)
                  std::exception);
 }
 
-TEST_P(FailOverCacheTester, a_whole_lotta_clients)
+TEST_P(FailOverCacheTester, DISABLED_a_whole_lotta_clients)
 {
     auto foc_ctx(start_one_foc());
 
