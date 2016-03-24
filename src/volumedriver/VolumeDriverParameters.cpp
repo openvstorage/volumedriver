@@ -179,7 +179,7 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(debug_metadata_path,
                                       "no_python_name",
                                       "place to store evidence when a volume is halted.",
                                       ShowDocumentation::T,
-                                      "/opt/qbase3/var/lib/volumedriver/evidence"s);
+                                      "/opt/OpenvStorage/var/lib/volumedriver/evidence"s);
 
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(arakoon_metadata_sequence_size,
                                       volmanager_component_name,
