@@ -262,7 +262,7 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(s3_connection_use_ssl,
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(s3_connection_ssl_verify_host,
                                       backend_connection_manager_name,
                                       "s3_connection_ssl_verify_host",
-                                      "When backend_type is S3: whether to verify the SSL certificate's ssubject against the host",
+                                      "When backend_type is S3: whether to verify the SSL certificate's subject against the host",
                                       ShowDocumentation::T,
                                       true);
 
@@ -304,7 +304,7 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_port,
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_timeout,
                                       backend_connection_manager_name,
                                       "alba_connection_timeout",
-                                      "The timout for the ALBA proxy, in seconds",
+                                      "The timeout for the ALBA proxy, in seconds",
                                       ShowDocumentation::T,
                                       5);
 
