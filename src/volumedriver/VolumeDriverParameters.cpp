@@ -29,7 +29,7 @@ const char threadpool_component_name[] = "threadpool_component";
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(num_threads,
                                       threadpool_component_name,
                                       "backend_threads",
-                                      "Number of threads writting SCOs to the backend",
+                                      "Number of threads writing SCOs to the backend",
                                       ShowDocumentation::T,
                                       4);
 
