@@ -133,7 +133,7 @@ volumedriver_fs_LDADD = \
 	../xmlrpc++0.7/libxmlrpc.la \
 	../backend/libbackend.la \
 	../youtils/libyoutils.la \
-	-lfuse \
+	-lfuse3 \
 	$(BUILDTOOLS_LIBS)
 
 volumedriver_fs_CPPFLAGS = \

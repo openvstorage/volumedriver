@@ -43,7 +43,7 @@ volumedriver_fs_test_LDADD = \
 	../../xmlrpc++0.7/libxmlrpc.la \
 	../../backend/libbackend.la \
 	../../youtils/libyoutils.la \
-	-lfuse \
+	-lfuse3 \
 	$(BUILDTOOLS_LIBS) \
 	-lpython2.7 \
 	-lomniORB4 \
