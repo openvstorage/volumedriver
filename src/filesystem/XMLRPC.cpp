@@ -819,14 +819,12 @@ VolumeInfo::execute_internal(::XmlRpc::XmlRpcValue& params,
                              ::XmlRpc::XmlRpcValue& result)
 {
     const vd::VolumeId vol_id(getID(params[0]));
-    const ObjectId oid(vol_id.str());
-    ObjectRegistrationPtr reg(fs_.object_router().object_registry()->find_throw(oid,
-                                                                                IgnoreCache::T));
+
+    XMLRPCVolumeInfo volume_info;
 
     with_api_exception_conversion([&]()
     {
         fungi::ScopedLock l(api::getManagementMutex());
-        XMLRPCVolumeInfo volume_info;
 
         const vd::VolumeConfig& cfg = api::getVolumeConfig(vol_id);
         const boost::optional<vd::FailOverCacheConfig>&
@@ -856,11 +854,6 @@ VolumeInfo::execute_internal(::XmlRpc::XmlRpcValue& params,
         volume_info.halted = api::getHalted(vol_id);
         volume_info.footprint = stats.used_clusters * cfg.cluster_mult_ * cfg.lba_size_;
         volume_info.stored = api::getStored(vol_id);
-        volume_info.object_type = reg->treeconfig.object_type;
-        volume_info.parent_volume_id = reg->treeconfig.parent_volume ?
-            reg->treeconfig.parent_volume->str() :
-            std::string("");
-        volume_info.vrouter_id = reg->node_id;
 
         vd::SharedVolumePtr v(api::getVolumePointer(vol_id));
         volume_info.owner_tag =
@@ -868,9 +861,19 @@ VolumeInfo::execute_internal(::XmlRpc::XmlRpcValue& params,
         volume_info.cluster_cache_handle =
             static_cast<uint64_t>(v->getClusterCacheHandle());
         volume_info.cluster_cache_limit = v->get_cluster_cache_limit();
-
-        result = XMLRPCStructs::serialize_to_xmlrpc_value(volume_info);
     });
+
+    const ObjectId oid(vol_id.str());
+    ObjectRegistrationPtr reg(fs_.object_router().object_registry()->find_throw(oid,
+                                                                                IgnoreCache::F));
+
+    volume_info.object_type = reg->treeconfig.object_type;
+    volume_info.parent_volume_id = reg->treeconfig.parent_volume ?
+        reg->treeconfig.parent_volume->str() :
+        std::string("");
+    volume_info.vrouter_id = reg->node_id;
+
+    result = XMLRPCStructs::serialize_to_xmlrpc_value(volume_info);
 }
 
 void
