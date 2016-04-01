@@ -66,6 +66,40 @@ public:
         return *this;
     }
 
+    PerformanceCounter&
+    operator+=(const PerformanceCounter& other)
+    {
+        std::lock_guard<decltype(lock_)> g(lock_);
+        if (this == &other)
+        {
+            events_ *= 2;
+            sum_ *= 2;
+            sqsum_ *= 2;
+            return *this;
+        }
+        else
+        {
+            std::lock_guard<decltype(lock_)> h(other.lock_);
+            events_ += other.events_;
+            sum_ += other.sum_;
+            sqsum_ += other.sqsum_;
+            min_ = std::min<T>(min_,
+                               other.min_);
+            max_ = std::max<T>(max_,
+                               other.max_);
+
+            return *this;
+        }
+    }
+
+    friend PerformanceCounter
+    operator+(PerformanceCounter lhs,
+              const PerformanceCounter& rhs)
+    {
+        lhs += rhs;
+        return lhs;
+    }
+
     void
     count(const T t)
     {
@@ -248,6 +282,36 @@ struct PerformanceCounters
             EQ(sync_request_usecs);
 
 #undef EQ
+    }
+
+    PerformanceCounters&
+    operator+=(const PerformanceCounters& other)
+    {
+#define ADD(x)                                  \
+        x += other.x
+
+        ADD(write_request_size);
+        ADD(write_request_usecs);
+        ADD(unaligned_write_request_size);
+        ADD(backend_write_request_usecs);
+        ADD(backend_write_request_size);
+        ADD(read_request_size);
+        ADD(read_request_usecs);
+        ADD(unaligned_read_request_size);
+        ADD(backend_read_request_size);
+        ADD(backend_read_request_usecs);
+        ADD(sync_request_usecs);
+
+        return *this;
+#undef ADD
+    }
+
+    friend PerformanceCounters
+    operator+(PerformanceCounters lhs,
+              const PerformanceCounters& rhs)
+    {
+        lhs += rhs;
+        return lhs;
     }
 
     void
