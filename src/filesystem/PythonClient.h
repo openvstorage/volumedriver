@@ -105,7 +105,7 @@ public:
     virtual ~PythonClient() = default;
 
     boost::python::list
-    list_volumes();
+    list_volumes(const boost::optional<std::string>& node_id = boost::none);
 
     boost::python::list
     list_volumes_by_path();

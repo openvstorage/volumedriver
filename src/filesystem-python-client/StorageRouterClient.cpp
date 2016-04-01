@@ -431,7 +431,10 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "      PythonClientException\n")
         .def("list_volumes",
              &vfs::PythonClient::list_volumes,
-             "List the running volumes.")
+             (bpy::arg("node_id") = bpy::object()),
+             "List the running volumes.\n"
+             "@param node_id: optional string, list volumes on a particular node)\n"
+             "@returns: a list of volume IDs\n")
         .def("list_volumes_by_path",
              &vfs::PythonClient::list_volumes_by_path,
              "List the running volumes by path.")

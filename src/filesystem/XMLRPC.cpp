@@ -519,25 +519,40 @@ void with_api_exception_conversion(std::function<void()>&& fn)
 }
 
 void
-VolumesList::execute_internal(::XmlRpc::XmlRpcValue& /* params */,
+VolumesList::execute_internal(::XmlRpc::XmlRpcValue& params,
                               ::XmlRpc::XmlRpcValue& result)
 {
-    auto registry(fs_.object_router().object_registry());
-    const auto objs(registry->list());
-
     result.clear();
     result.setSize(0);
 
-    int k = 0;
-
-    for(const auto& o : objs)
+    if (params[0].hasMember(XMLRPCKeys::vrouter_id))
     {
-        const auto reg(registry->find(o,
-                                      IgnoreCache::F));
-        if (reg->object().type == ObjectType::Volume or
-            reg->object().type == ObjectType::Template)
+        fungi::ScopedLock g(api::getManagementMutex());
+        std::list<vd::VolumeId> l;
+        api::getVolumeList(l);
+
+        int k = 0;
+        for (const auto& v : l)
         {
-            result[k++] = ::XmlRpc::XmlRpcValue(o);
+            result[k++] = ::XmlRpc::XmlRpcValue(v.str());
+        }
+    }
+    else
+    {
+        auto registry(fs_.object_router().object_registry());
+        const auto objs(registry->list());
+
+        int k = 0;
+
+        for(const auto& o : objs)
+        {
+            const auto reg(registry->find(o,
+                                          IgnoreCache::F));
+            if (reg->object().type == ObjectType::Volume or
+                reg->object().type == ObjectType::Template)
+            {
+                result[k++] = ::XmlRpc::XmlRpcValue(o);
+            }
         }
     }
 }

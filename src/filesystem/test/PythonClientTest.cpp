@@ -324,6 +324,32 @@ TEST_F(PythonClientTest, list_volumes_by_path)
     }
 }
 
+TEST_F(PythonClientTest, list_volumes_by_node)
+{
+    mount_remote();
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         umount_remote();
+                                     }));
+
+    const uint64_t vsize = 1ULL << 20;
+    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const vfs::ObjectId id(create_file(fname, vsize));
+
+    {
+        const bpy::list l(client_.list_volumes(remote_node_id().str()));
+        EXPECT_EQ(0, bpy::len(l));
+    }
+
+    {
+        const bpy::list l(client_.list_volumes(local_node_id().str()));
+        ASSERT_EQ(1, bpy::len(l));
+        const std::string s = bpy::extract<std::string>(l[0]);
+        EXPECT_EQ(id.str(),
+                  s);
+    }
+}
+
 TEST_F(PythonClientTest, snapshot_excessive_metadata)
 {
     const vfs::FrontendPath vpath(make_volume_name("/some-volume"));

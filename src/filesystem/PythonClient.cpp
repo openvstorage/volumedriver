@@ -383,9 +383,14 @@ PythonClient::set_automatic_failover_cache_config(const std::string& volume_id)
 }
 
 bpy::list
-PythonClient::list_volumes()
+PythonClient::list_volumes(const boost::optional<std::string>& node_id)
 {
     XmlRpc::XmlRpcValue req;
+    if (node_id)
+    {
+        req[XMLRPCKeys::vrouter_id] = *node_id;
+    }
+
     auto rsp(call(VolumesList::method_name(), req));
 
     bpy::list l;

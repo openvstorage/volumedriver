@@ -253,7 +253,7 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirect,
                 "volumeCreate",
                 "Create a volume");
 
-REGISTER_XMLRPC(XMLRPCCallTiming,
+REGISTER_XMLRPC(XMLRPCCallTimingRedirect,
                 VolumesList,
                 "volumesList",
                 "Get a list of volumes");
