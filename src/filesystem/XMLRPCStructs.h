@@ -192,12 +192,12 @@ struct XMLRPCStatistics
     typedef boost::archive::xml_oarchive oarchive_type;
     typedef boost::archive::xml_iarchive iarchive_type;
 
-    uint64_t sco_cache_hits;
-    uint64_t sco_cache_misses;
-    uint64_t cluster_cache_hits;
-    uint64_t cluster_cache_misses;
-    uint64_t metadata_store_hits;
-    uint64_t metadata_store_misses;
+    uint64_t sco_cache_hits = 0;
+    uint64_t sco_cache_misses = 0;
+    uint64_t cluster_cache_hits = 0;
+    uint64_t cluster_cache_misses = 0;
+    uint64_t metadata_store_hits = 0;
+    uint64_t metadata_store_misses = 0;
 
     volumedriver::PerformanceCounters performance_counters;
 

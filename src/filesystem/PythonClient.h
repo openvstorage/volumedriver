@@ -124,6 +124,10 @@ public:
     statistics_volume(const std::string& volume_id,
                       bool reset = false);
 
+    XMLRPCStatistics
+    statistics_node(const std::string& node_id,
+                    bool reset = false);
+
     std::string
     create_snapshot(const std::string& volume_id,
                     const std::string& snapshot_id = "",

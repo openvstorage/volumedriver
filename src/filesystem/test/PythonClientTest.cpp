@@ -452,12 +452,19 @@ TEST_F(PythonClientTest, volume_queries)
 
 TEST_F(PythonClientTest, performance_counters)
 {
+    mount_remote();
+
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         umount_remote();
+                                     }));
+
     const vfs::FrontendPath vpath(make_volume_name("/testing_info"));
     const std::string vname(create_file(vpath, 10 << 20));
 
     const size_t csize = get_cluster_size(vfs::ObjectId(vname));
 
-    auto expect_nothing([&](const vd::PerformanceCounter<uint64_t>& ctr)
+    auto expect_nothing_([&](const vd::PerformanceCounter<uint64_t>& ctr)
     {
         EXPECT_EQ(0U,
                   ctr.events());
@@ -471,14 +478,21 @@ TEST_F(PythonClientTest, performance_counters)
                   ctr.max());
     });
 
-    {
-        const vfs::XMLRPCStatistics stats(client_.statistics_volume(vname,
-                                                                    false));
+    auto expect_nothing([&](const vfs::XMLRPCStatistics& stats)
+                        {
+                            expect_nothing_(stats.performance_counters.write_request_size);
+                            expect_nothing_(stats.performance_counters.read_request_size);
+                            expect_nothing_(stats.performance_counters.sync_request_usecs);
+                        });
 
-        expect_nothing(stats.performance_counters.write_request_size);
-        expect_nothing(stats.performance_counters.read_request_size);
-        expect_nothing(stats.performance_counters.sync_request_usecs);
-    }
+    expect_nothing(client_.statistics_volume(vname,
+                                             false));
+
+    expect_nothing(client_.statistics_node(local_node_id().str(),
+                                           false));
+
+    expect_nothing(client_.statistics_node(remote_node_id().str(),
+                                           false));
 
     const std::string pattern("The Good Son");
 
@@ -487,36 +501,41 @@ TEST_F(PythonClientTest, performance_counters)
                   csize,
                   0);
 
-    {
-        const vfs::XMLRPCStatistics stats(client_.statistics_volume(vname,
-                                                                    true));
-        EXPECT_EQ(1U,
-                  stats.performance_counters.write_request_size.events());
-        EXPECT_EQ(csize,
-                  stats.performance_counters.write_request_size.sum());
-        EXPECT_EQ(csize * csize,
-                  stats.performance_counters.write_request_size.sum_of_squares());
-        EXPECT_GT(std::numeric_limits<uint64_t>::max(),
-                  stats.performance_counters.write_request_size.min());
-        EXPECT_EQ(4096U,
-                  stats.performance_counters.write_request_size.min());
-        EXPECT_LT(std::numeric_limits<uint64_t>::min(),
-                  stats.performance_counters.write_request_size.max());
-        EXPECT_EQ(csize,
-                  stats.performance_counters.write_request_size.max());
+    auto expect_something([&](const vfs::XMLRPCStatistics& stats)
+                          {
+                              EXPECT_EQ(1U,
+                                        stats.performance_counters.write_request_size.events());
+                              EXPECT_EQ(csize,
+                                        stats.performance_counters.write_request_size.sum());
+                              EXPECT_EQ(csize * csize,
+                                        stats.performance_counters.write_request_size.sum_of_squares());
+                              EXPECT_GT(std::numeric_limits<uint64_t>::max(),
+                                        stats.performance_counters.write_request_size.min());
+                              EXPECT_EQ(4096U,
+                                        stats.performance_counters.write_request_size.min());
+                              EXPECT_LT(std::numeric_limits<uint64_t>::min(),
+                                        stats.performance_counters.write_request_size.max());
+                              EXPECT_EQ(csize,
+                                        stats.performance_counters.write_request_size.max());
 
-        expect_nothing(stats.performance_counters.read_request_size);
-        expect_nothing(stats.performance_counters.sync_request_usecs);
-    }
+                              expect_nothing_(stats.performance_counters.read_request_size);
+                              expect_nothing_(stats.performance_counters.sync_request_usecs);
+                          });
 
-    {
-        const vfs::XMLRPCStatistics stats(client_.statistics_volume(vname,
-                                                                    false));
+    expect_something(client_.statistics_volume(vname,
+                                               false));
 
-        expect_nothing(stats.performance_counters.write_request_size);
-        expect_nothing(stats.performance_counters.read_request_size);
-        expect_nothing(stats.performance_counters.sync_request_usecs);
-    }
+    expect_nothing(client_.statistics_node(remote_node_id().str(),
+                                           false));
+
+    expect_something(client_.statistics_node(local_node_id().str(),
+                                             true));
+
+    expect_nothing(client_.statistics_volume(vname,
+                                             false));
+
+    expect_nothing(client_.statistics_node(local_node_id().str(),
+                                           false));
 }
 
 TEST_F(PythonClientTest, redirect)

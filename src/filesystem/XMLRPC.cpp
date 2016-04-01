@@ -1092,6 +1092,51 @@ VolumePerformanceCounters::execute_internal(XmlRpc::XmlRpcValue& params,
 }
 
 void
+VolumeDriverPerformanceCounters::execute_internal(XmlRpc::XmlRpcValue& params,
+                                                  XmlRpc::XmlRpcValue& result)
+{
+    bool reset = false;
+
+    if (params[0].hasMember(XMLRPCKeys::reset))
+    {
+        reset = getboolWithDefault(params[0],
+                                   XMLRPCKeys::reset,
+                                   false);
+    }
+
+    XMLRPCStatistics stats;
+    vd::PerformanceCounters perf_counters;
+
+    std::list<vd::VolumeId> l;
+    api::getVolumeList(l);
+
+
+    for (const auto& v : l)
+    {
+        const vd::MetaDataStoreStats mds(api::getMetaDataStoreStats(v));
+        stats.sco_cache_hits += api::getCacheHits(v);
+        stats.sco_cache_misses += api::getCacheMisses(v);
+        stats.cluster_cache_hits += api::getClusterCacheHits(v);
+        stats.cluster_cache_misses += api::getClusterCacheMisses(v);
+        stats.metadata_store_hits += mds.cache_hits;
+        stats.metadata_store_misses += mds.cache_misses;
+
+        vd::PerformanceCounters& pc = api::performance_counters(v);
+
+        perf_counters += pc;
+
+        if (reset)
+        {
+            pc.reset_all_counters();
+        }
+    }
+
+    stats.performance_counters = perf_counters;
+
+    result = XMLRPCStructs::serialize_to_xmlrpc_value(stats);
+}
+
+void
 SetVolumeAsTemplate::execute_internal(XmlRpc::XmlRpcValue& params,
                                       XmlRpc::XmlRpcValue& /*result*/)
 {

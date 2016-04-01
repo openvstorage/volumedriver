@@ -520,6 +520,21 @@ PythonClient::statistics_volume(const std::string& volume_id,
     return XMLRPCStructs::deserialize_from_xmlrpc_value<XMLRPCStatistics>(rsp);
 }
 
+XMLRPCStatistics
+PythonClient::statistics_node(const std::string& node_id,
+                                bool reset)
+{
+    XmlRpc::XmlRpcValue req;
+
+    req[XMLRPCKeys::vrouter_id] = node_id;
+    XMLRPCUtils::put(req,
+                     XMLRPCKeys::reset,
+                     reset);
+
+    auto rsp(call(VolumeDriverPerformanceCounters::method_name(), req));
+    return XMLRPCStructs::deserialize_from_xmlrpc_value<XMLRPCStatistics>(rsp);
+}
+
 boost::optional<vd::VolumeId>
 PythonClient::get_volume_id(const std::string& path)
 {

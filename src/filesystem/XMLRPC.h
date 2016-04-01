@@ -313,6 +313,11 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
                 "volumePerformanceCounters",
                 "Performance data");
 
+REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
+                VolumeDriverPerformanceCounters,
+                "volumeDriverPerformanceCounters",
+                "Performance data");
+
 REGISTER_XMLRPC(XMLRPCCallTimingRedirect,
                 SetVolumeAsTemplate,
                 "setVolumeAsTemplate",
@@ -681,7 +686,7 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
                 "getMetaDataCacheCapacity",
                 "get capacity of the metadata cache (in pages)");
 
-typedef LOKI_TYPELIST_83(
+typedef LOKI_TYPELIST_84(
 // ================== EXPOSED IN XMLRPC CLIENT ===================
                          VolumeCreate,
                          VolumesList,
@@ -697,6 +702,7 @@ typedef LOKI_TYPELIST_83(
                          SnapshotDestroy,
                          IsVolumeSyncedUpToSnapshot,
                          VolumePerformanceCounters,
+                         VolumeDriverPerformanceCounters,
                          SetVolumeAsTemplate,
                          GetScrubbingWork,
                          ApplyScrubbingResult,

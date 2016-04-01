@@ -521,6 +521,14 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "@returns: Statistics object\n"
              "@raises \n"
              "      ObjectNotFoundException\n")
+        .def("statistics_node",
+             &vfs::PythonClient::statistics_node,
+             (bpy::args("node_id"),
+              bpy::args("reset") = false),
+             "Show volume performance statistics aggregated per node.\n"
+             "@param node_id: string, Node ID\n"
+             "@param reset: boolean, whether to reset the performance_counters\n"
+             "@returns: Statistics object\n")
         .def("create_snapshot",
              &vfs::PythonClient::create_snapshot,
              (bpy::args("volume_id"),
