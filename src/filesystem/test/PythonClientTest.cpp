@@ -152,12 +152,11 @@ protected:
         srv.addMethod(std::move(method));
         srv.start();
 
-        BOOST_SCOPE_EXIT((&srv))
-        {
-            srv.stop();
-            srv.join();
-        }
-        BOOST_SCOPE_EXIT_END;
+        auto on_exit(yt::make_scope_exit([&]
+                                         {
+                                             srv.stop();
+                                             srv.join();
+                                         }));
 
         vfs::PythonClient remoteclient(vrouter_cluster_id(),
                                        {{address(), port}});
@@ -498,13 +497,10 @@ TEST_F(PythonClientTest, redirect)
 {
     mount_remote();
 
-    auto self = this;
-
-    BOOST_SCOPE_EXIT((self))
-    {
-        self->umount_remote();
-    }
-    BOOST_SCOPE_EXIT_END;
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         umount_remote();
+                                     }));
 
     const uint64_t vsize = 1ULL << 20;
     const vfs::FrontendPath fname(make_volume_name("/some-volume"));
