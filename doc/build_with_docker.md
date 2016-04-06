@@ -7,6 +7,7 @@ As our automated builds are also using the same procedure, this is by far the cl
 ## Prerequisites
 - obviously you need to install __docker__. See [Install Docker Engine](https://docs.docker.com/engine/installation/) for instructions.
 - __git__ to clone our repo 
+- we assume you're building on a linux system
 
 ## Building
 
@@ -35,7 +36,7 @@ As our automated builds are also using the same procedure, this is by far the cl
      Notes: 
      - privileged is needed to allow mounting inside docker; required if you want to run the included code tests
      - inside the container *supervisor* is used to run extra services (eg. rpcbind) required for the included code tests
-    - the current working directory is mapped into the container under */home/jenkins/workspace*; allowing access to the build artifacts from outside the container
+     - the current working directory is mapped into the container under */home/jenkins/workspace*; allowing access to the build artifacts from outside the container
 
 4.  get a shell inside the container 
 
