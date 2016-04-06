@@ -1,0 +1,81 @@
+## Why docker?
+
+The Open vStorage Volumedriver depends on a number of prerequisites (tools and libraries) to be installed on your system. Automatically installing these inside a docker container via the included Dockerfile makes it very easy to create a clean, correct and up to date environment for your builds.
+
+As our automated builds are also using the same procedure, this is by far the closest you can get to how we build.
+
+## Prerequisites
+- obviously you need to install __docker__. See [Install Docker Engine](https://docs.docker.com/engine/installation/) for instructions.
+- __git__ to clone our repo 
+
+## Building
+
+1. fetch the code
+
+    In a directory of choice:
+
+	    git clone https://github.com/openvstorage/volumedriver-buildtools
+	    git clone https://github.com/openvstorage/volumedriver
+   
+2. create the build environment image
+
+    - for Ubuntu 14.04 based builds:
+
+			docker build -t bldenv volumedriver-buildtools/docker/ubuntu/
+
+    - for CentOS 7 based builds:
+
+			docker build -t bldenv volumedriver-buildtools/docker/centos/
+
+3. start a build container
+
+	    docker run -d -v ${PWD}:/home/jenkins/workspace \
+	              -e UID=${UID} --privileged --name builder -h builder bldenv 
+
+     Notes: 
+     - privileged is needed to allow mounting inside docker; required if you want to run the included code tests
+     - inside the container *supervisor* is used to run extra services (eg. rpcbind) required for the included code tests
+    - the current working directory is mapped into the container under */home/jenkins/workspace*; allowing access to the build artifacts from outside the container
+
+4.  get a shell inside the container 
+
+		docker exec -u jenkins -i -t builder /bin/bash -l
+
+     Note: the username inside the container is *jenkins* which is mapped onto your uid on your host
+
+5. compiling
+
+    - standard (release) binaries:
+
+			export WORKSPACE=~/workspace
+			export RUN_TESTS=no
+			 
+			cd ${WORKSPACE}/volumedriver-buildtools/src/release/
+			./build-jenkins.sh
+			 
+			cd ${WORKSPACE}
+			./volumedriver/src/buildscripts/jenkins-release-dev.sh ${WORKSPACE}/volumedriver
+
+    - rtchecked (debug) binaries:
+
+			export WORKSPACE=~/workspace
+			export RUN_TESTS=no
+				 
+			cd ${WORKSPACE}/volumedriver-buildtools/src/rtchecked/
+			./build-jenkins.sh
+				 
+			cd ${WORKSPACE}
+			./volumedriver/src/buildscripts/jenkins-rtchecked-dev.sh ${WORKSPACE}/volumedriver
+
+    Notes:
+    - change "*RUN_TESTS=no*" to "*RUN_TESTS=yes*" to run the included test suite.
+
+6. stop & cleanup docker build container
+
+    Thanks to the mapping of our directory inside the docker container, we can stop and remove the build container while all artifacts will still be available.
+
+		docker stop builder && docker rm builder
+
+    To also remove the docker image itself:
+
+		docker rmi bldenv
