@@ -5,7 +5,7 @@
 High level description of the control flow for both the data and the control plane. Again, many details are left out (e.g. the asynchronous writing of SCOs and TLogs to the backend via a ThreadPool, most of the Backend code, ....). diagram was created with Dia, the source file is under [docs/volumedriver-90k-ft-view.dia](https://github.com/openvstorage/volumedriver).
 
 
-![](/Images/volumedriver-90k-ft-view.png)
+![](./Images/volumedriver-90k-ft-view.png)
 
 ## Major Components and Concepts
 
