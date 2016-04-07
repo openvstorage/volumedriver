@@ -6,3 +6,4 @@ The VolumeDriver Documentation is divided into following sections:
 * [Volume Driver Python API](docs/pythonapi.md)
 * [Volume Driver Configuration](docs/config.md)
 * [VolumeDriver Events](docs/events.md)
+* [VolumeDriver CLI](docs/volumedriver_fs_cli.md)
