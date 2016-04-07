@@ -22,8 +22,9 @@
 
 #include <boost/filesystem.hpp>
 
-#include "../Types.h"
 #include "../ClusterLocation.h"
+#include "../FailOverCacheStreamers.h"
+#include "../Types.h"
 
 namespace failovercache
 {
@@ -38,12 +39,17 @@ public:
 
     ~FailOverCacheWriter();
 
-    void addEntry(volumedriver::ClusterLocation clusterLocation,
-                  const uint64_t lba,
-                  // const would be nice but the funky::WrapByteArray
-                  // used internally prevents it for now :(
-                  byte* buf,
-                  uint32_t size);
+    void
+    addEntries(std::vector<volumedriver::FailOverCacheEntry>,
+               std::unique_ptr<uint8_t[]>);
+
+    void
+    addEntry(volumedriver::ClusterLocation clusterLocation,
+             const uint64_t lba,
+             // const would be nice but the funky::WrapByteArray
+             // used internally prevents it for now :(
+             byte* buf,
+             uint32_t size);
 
     void removeUpTo(volumedriver::SCONumber& sco);
 

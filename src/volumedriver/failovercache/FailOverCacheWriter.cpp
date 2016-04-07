@@ -39,7 +39,7 @@ FailOverCacheWriter::FailOverCacheWriter(const fs::path& root,
     , cluster_size_(cluster_size)
     , check_offset(0)
 {
-    fs::create_directories(root / ns)
+    fs::create_directories(root / ns);
 }
 
 FailOverCacheWriter::~FailOverCacheWriter()
@@ -123,6 +123,20 @@ fs::path
 FailOverCacheWriter::makePath(const SCO sconame) const
 {
     return root_ / ns_ / sconame.str();
+}
+
+void
+FailOverCacheWriter::addEntries(std::vector<FailOverCacheEntry> entries,
+                                std::unique_ptr<uint8_t[]> buf)
+{
+    for (auto& e : entries)
+    {
+        addEntry(e.cli_,
+                 e.lba_,
+                 // AR: the WrapByteArray stuff in the call chain needs this. Fix it!
+                 const_cast<uint8_t*>(e.buffer_),
+                 e.size_);
+    }
 }
 
 void

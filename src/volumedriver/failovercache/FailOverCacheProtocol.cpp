@@ -265,18 +265,11 @@ FailOverCacheProtocol::addEntries_()
 
     volumedriver::CommandData<volumedriver::AddEntries> data; // default constructor, as we are streaming in
     stream_ >> data;
-    for(std::vector<volumedriver::FailOverCacheEntry>::const_iterator it = data.entries_.begin();
-        it != data.entries_.end();
-        ++it)
-    {
-        TODO("ArneT: funky cast...");
-        cache_->addEntry(it->cli_,
-                         it->lba_,
-                         (byte*) it->buffer_,
-                         it->size_);
-    }
+    cache_->addEntries(std::move(data.entries_),
+                       std::move(data.buf_));
     returnOk();
 }
+
 void
 FailOverCacheProtocol::returnOk()
 {
