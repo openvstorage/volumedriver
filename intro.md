@@ -6,8 +6,8 @@ The VolumeDriver implements functionality such as zero-copy snapshots, thin-clon
 
 
 The VolumeDriver Documentation is divided into following sections:
-* [Volume Driver Concepts](docs/pythonapi.md)
-* [Volume Driver Components](docs/modules.md)
+* [Volume Driver Concepts](docs/concepts.md)
+* [Volume Driver Components](docs/components.md)
 * [Volume Driver Python API](docs/pythonapi.md)
 * [Volume Driver Configuration](docs/config.md)
 * [VolumeDriver Events](docs/events.md)

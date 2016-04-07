@@ -1,6 +1,7 @@
 # Summary
 
-* [VolumeDriver Concepts](docs/pythonapi.md)
+* [VolumeDriver Architecture](docs/architecture.md)
+* [VolumeDriver Concepts](docs/concepts.md)
 * [VolumeDriver Components](docs/components.md)
     * [The Virtual File System Router](docs/vfs_router.md)
     * [The Volume Router](docs/volume_router.md)
