@@ -17,7 +17,9 @@ As our automated builds are also using the same procedure, this is by far the cl
 
 	    git clone https://github.com/openvstorage/volumedriver-buildtools
 	    git clone https://github.com/openvstorage/volumedriver
-   
+
+    The _volumedriver-buildtools_ repo contains external libraries and tools that are either newer or not present on a standard installation; the _volumedriver_ repo is the codebase of the volumedriver itself.
+    
 2. create the build environment image
 
     - for Ubuntu 14.04 based builds:
@@ -46,6 +48,8 @@ As our automated builds are also using the same procedure, this is by far the cl
 
 5. compiling
 
+    First the _volumedriver-buildtools_ needs to be compiled as the _volumedriver_ code needs the resulting libs and tools. This first step is done via the _build-jenkins.sh_ script. It's then followed by the _jenkins-release-dev.sh_ script to create the volumedriver binaries.
+    
     - standard (release) binaries:
 
 			export WORKSPACE=~/workspace
