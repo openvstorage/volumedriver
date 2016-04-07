@@ -31,8 +31,6 @@ class FailOverCacheWriter;
 class FailOverCacheProtocol
     : public fungi::Protocol
 {
-    friend class FailOverCacheWriter;
-
 public:
     FailOverCacheProtocol(std::unique_ptr<fungi::Socket> sock,
                           fungi::SocketServer& /*parentServer*/,
@@ -105,17 +103,12 @@ private:
     removeUpTo_();
 
     void
-    processFailOverCacheEntry(volumedriver::ClusterLocation cli,
-                              int64_t lba,
-                              const byte* buf,
-                              int64_t size);
-
-    void
-    processFailOverCacheSCO(volumedriver::ClusterLocation cli,
-                            int64_t lba,
-                            const byte* buf,
-                            int64_t size);
+    processFailOverCacheEntry_(volumedriver::ClusterLocation cli,
+                               int64_t lba,
+                               const byte* buf,
+                               int64_t size);
 };
+
 }
 
 

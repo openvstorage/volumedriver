@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "FailOverCacheProtocol.h"
 #include "FailOverCacheWriter.h"
 #include "failovercache/fungilib/WrapByteArray.h"
 
@@ -202,7 +201,7 @@ FailOverCacheWriter::Clear()
 }
 
 void
-FailOverCacheWriter::getEntries(FailOverCacheProtocol* prot)
+FailOverCacheWriter::getEntries(EntryProcessorFun fun)
 {
     LOG_DEBUG("Getting entries for namespace " << ns_);
     boost::scoped_array<byte> buf(new byte[cluster_size_]);
@@ -236,7 +235,10 @@ FailOverCacheWriter::getEntries(FailOverCacheProtocol* prot)
                       << ", lba " << lba
                       << " for namespace " << ns_);
 
-            prot->processFailOverCacheEntry(cl,lba,buf.get(), len);
+            fun(cl,
+                lba,
+                buf.get(),
+                len);
         }
         fstream.close();
     }
@@ -262,7 +264,7 @@ FailOverCacheWriter::getSCORange(SCO& oldest,
 
 void
 FailOverCacheWriter::getSCO(SCO sconame,
-                            FailOverCacheProtocol* prot)
+                            EntryProcessorFun fun)
 {
     LOG_DEBUG("Getting SCO " << std::hex << sconame << std::dec <<
               " for namespace " << ns_);
@@ -302,8 +304,13 @@ FailOverCacheWriter::getSCO(SCO sconame,
             fstream.read(buf.get(), len);
 
             LOG_DEBUG("Sending entry " << cl << ", lba " << lba << " for namespace " << ns_);
-            prot->processFailOverCacheSCO(cl,lba,buf.get(), len);
+
+            fun(cl,
+                lba,
+                buf.get(),
+                len);
         }
+
         fstream.close();
     }
 }

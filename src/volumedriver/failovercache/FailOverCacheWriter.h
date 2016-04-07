@@ -28,7 +28,6 @@
 
 namespace failovercache
 {
-class FailOverCacheProtocol;
 
 class FailOverCacheWriter
 {
@@ -51,13 +50,20 @@ public:
              byte* buf,
              uint32_t size);
 
-    void removeUpTo(volumedriver::SCONumber& sco);
+    void
+    removeUpTo(const volumedriver::SCO);
 
-    void getEntries(FailOverCacheProtocol* failover_prot);
+    using EntryProcessorFun = std::function<void(volumedriver::ClusterLocation,
+                                                 int64_t /* addr */,
+                                                 const uint8_t* /* buf */,
+                                                 int64_t /* size */)>;
 
     void
-    getSCO(volumedriver::SCO a,
-           FailOverCacheProtocol* failover_prot);
+    getEntries(EntryProcessorFun);
+
+    void
+    getSCO(volumedriver::SCO,
+           EntryProcessorFun);
 
     void
     Clear();
@@ -89,9 +95,6 @@ public:
     {
         first_command_must_be_getEntries = true;
     }
-
-    void
-    removeUpTo(const volumedriver::SCO);
 
     void
     getSCORange(volumedriver::SCO& oldest,

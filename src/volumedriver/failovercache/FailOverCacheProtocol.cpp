@@ -305,10 +305,10 @@ FailOverCacheProtocol::Clear_()
 }
 
 void
-FailOverCacheProtocol::processFailOverCacheEntry(volumedriver::ClusterLocation cli,
-                                         int64_t lba,
-                                         const byte* buf,
-                                         int64_t size)
+FailOverCacheProtocol::processFailOverCacheEntry_(volumedriver::ClusterLocation cli,
+                                                  int64_t lba,
+                                                  const byte* buf,
+                                                  int64_t size)
 {
     // Y42 better logging here
     LOG_TRACE("Sending Entry for lba " << lba );
@@ -373,7 +373,12 @@ FailOverCacheProtocol::getEntries_()
     }));
 
     stream_ << fungi::IOBaseStream::cork;
-    cache_->getEntries(this);
+    cache_->getEntries(boost::bind(&FailOverCacheProtocol::processFailOverCacheEntry_,
+                                   this,
+                                   _1,
+                                   _2,
+                                   _3,
+                                   _4));
 }
 
 void
@@ -399,7 +404,12 @@ FailOverCacheProtocol::getSCO_()
 
     stream_ << fungi::IOBaseStream::cork;
     cache_->getSCO(scoName,
-                    this);
+                   boost::bind(&FailOverCacheProtocol::processFailOverCacheEntry_,
+                               this,
+                               _1,
+                               _2,
+                               _3,
+                               _4));
 }
 
 void
@@ -417,19 +427,6 @@ FailOverCacheProtocol::getSCORange_()
     stream_ << youngest;
 
     stream_ << fungi::IOBaseStream::uncork;
-}
-
-void
-FailOverCacheProtocol::processFailOverCacheSCO(volumedriver::ClusterLocation cli,
-                                               int64_t lba,
-                                               const byte* buf,
-                                               int64_t size)
-{
-    // Y42 do we want to use the same process function as above.
-    stream_ << cli;
-    stream_ << lba;
-    const fungi::WrapByteArray a((byte*)buf, (int32_t)size);
-    stream_ << a;
 }
 
 }
