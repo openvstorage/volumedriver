@@ -130,6 +130,10 @@ private:
     ClearCache();
 
     int64_t check_offset;
+
+    void
+    process_sco_(const volumedriver::SCO,
+                 EntryProcessorFun&);
 };
 
 }

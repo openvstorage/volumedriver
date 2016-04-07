@@ -201,46 +201,59 @@ FailOverCacheWriter::Clear()
 }
 
 void
+FailOverCacheWriter::process_sco_(const SCO sco,
+                                  EntryProcessorFun& fun)
+{
+
+    LOG_INFO(ns_ << ": processing SCO " << sco);
+
+    const fs::path filename = makePath(sco);
+
+    VERIFY(fs::exists(filename));
+
+    File f(filename.string(), fungi::File::Read);
+    f.open();
+    IOBaseStream fstream(f);
+
+    boost::scoped_array<byte> buf(new byte[cluster_size_]);
+
+    while (!f.eof())
+    {
+        ClusterLocation cl;
+        fstream >> cl;
+
+        uint64_t lba;
+        fstream >> lba;
+
+        int64_t bal; // byte array length
+        fstream >> bal;
+        int32_t len = (int32_t) bal;
+        VERIFY(len == static_cast<int32_t>(cluster_size_));
+        fstream.read(buf.get(), len);
+
+        LOG_DEBUG("Sending entry " << cl
+                  << ", lba " << lba
+                  << " for namespace " << ns_);
+
+        fun(cl,
+            lba,
+            buf.get(),
+            len);
+    }
+
+    fstream.close();
+}
+
+void
 FailOverCacheWriter::getEntries(EntryProcessorFun fun)
 {
     LOG_DEBUG("Getting entries for namespace " << ns_);
-    boost::scoped_array<byte> buf(new byte[cluster_size_]);
     fflush(0);
 
     for (const auto& sco : scosdeque_)
     {
-        LOG_DEBUG("Sending SCO " << sco);
-        const fs::path filename = makePath(sco);
-
-        VERIFY(fs::exists(filename));
-
-        File f(filename.string(), fungi::File::Read);
-        f.open();
-        IOBaseStream fstream(f);
-        while (!f.eof())
-        {
-            ClusterLocation cl;
-            fstream >> cl;
-
-            uint64_t lba;
-            fstream >> lba;
-
-            int64_t bal; // byte array length
-            fstream >> bal;
-            int32_t len = (int32_t) bal;
-            VERIFY(len == static_cast<int32_t>(cluster_size_));
-            fstream.read(buf.get(), len);
-
-            LOG_DEBUG("Sending entry " << cl
-                      << ", lba " << lba
-                      << " for namespace " << ns_);
-
-            fun(cl,
-                lba,
-                buf.get(),
-                len);
-        }
-        fstream.close();
+        process_sco_(sco,
+                     fun);
     }
     first_command_must_be_getEntries = false;
 }
@@ -276,42 +289,10 @@ FailOverCacheWriter::getSCO(SCO sconame,
     }
     else
     {
-        boost::scoped_array<byte> buf(new byte[cluster_size_]);
-        if (f_)
-        {
-            f_->flush();
-        }
-        LOG_INFO("Sending SCO " << *it);
-        const fs::path filename = makePath(*it);
+        Flush();
 
-        VERIFY(fs::exists(filename));
-
-        File f(filename.string(), fungi::File::Read);
-        f.open();
-        IOBaseStream fstream(f);
-        while (!f.eof())
-        {
-            ClusterLocation cl;
-            fstream >> cl;
-
-            uint64_t lba;
-            fstream >> lba;
-
-            int64_t bal; // byte array length
-            fstream >> bal;
-            int32_t len = (int32_t) bal;
-            VERIFY(len == static_cast<int32_t>(cluster_size_));
-            fstream.read(buf.get(), len);
-
-            LOG_DEBUG("Sending entry " << cl << ", lba " << lba << " for namespace " << ns_);
-
-            fun(cl,
-                lba,
-                buf.get(),
-                len);
-        }
-
-        fstream.close();
+        process_sco_(*it,
+                     fun);
     }
 }
 
