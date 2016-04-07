@@ -4,4 +4,5 @@ This book documents the Open vStorage VolumeDriver. The Framework is the comfort
 The VolumeDriver Documentation is divided into following sections:
 * [Volume Driver concepts](docs/pythonapi.md)
 * [Volume Driver Python API](docs/pythonapi.md)
+* [Volume Driver Configuration](docs/config.md)
 * [VolumeDriver Events](docs/events.md)
