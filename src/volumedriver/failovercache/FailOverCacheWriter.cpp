@@ -16,7 +16,6 @@
 #include "FailOverCacheWriter.h"
 #include "failovercache/fungilib/WrapByteArray.h"
 
-#include <boost/scope_exit.hpp>
 #include <boost/scoped_array.hpp>
 
 #include <youtils/Assert.h>
@@ -36,12 +35,11 @@ FailOverCacheWriter::FailOverCacheWriter(const fs::path& root,
     , first_command_must_be_getEntries(false)
     , root_(root)
     , ns_(ns)
-    , relFilePath_(root / ns )
     , f_(0)
     , cluster_size_(cluster_size)
     , check_offset(0)
 {
-    fs::create_directories(relFilePath_);
+    fs::create_directories(root / ns)
 }
 
 FailOverCacheWriter::~FailOverCacheWriter()
@@ -68,12 +66,10 @@ void
 FailOverCacheWriter::ClearCache()
 {
     LOG_DEBUG("Namespace: " << ns_);
-    for(sco_iterator it = scosdeque_.begin();
-        it != scosdeque_.end();
-        ++it)
+    for (auto sco : scosdeque_)
     {
-        fs::path path = makePath(*it);
-        LOG_DEBUG("removing failover cache data for " << *it << " at " << path << " for namespace " << ns_);
+        fs::path path = makePath(sco);
+        LOG_DEBUG("removing failover cache data for " << sco << " at " << path << " for namespace " << ns_);
         fs::remove(path);
     }
     if(f_)
@@ -84,14 +80,6 @@ FailOverCacheWriter::ClearCache()
     }
     scosdeque_.clear();
 }
-
-// void
-// FailOverCacheWriter::unregister_()
-// {
-//     LOG_DEBUG("Unregistering for namespace " << ns_);
-
-//     registered_ = false;
-// }
 
 void
 FailOverCacheWriter::removeUpTo(const SCO sconame)
@@ -130,7 +118,6 @@ FailOverCacheWriter::removeUpTo(const SCO sconame)
         }
     }
 }
-
 
 fs::path
 FailOverCacheWriter::makePath(const SCO sconame) const
@@ -200,20 +187,17 @@ FailOverCacheWriter::Clear()
     first_command_must_be_getEntries = false;
 }
 
-
 void
-FailOverCacheWriter::getEntries(FailOverCacheProtocol* prot) const
+FailOverCacheWriter::getEntries(FailOverCacheProtocol* prot)
 {
     LOG_DEBUG("Getting entries for namespace " << ns_);
     boost::scoped_array<byte> buf(new byte[cluster_size_]);
     fflush(0);
 
-    for (sco_const_iterator it = scosdeque_.begin();
-         it != scosdeque_.end();
-         ++it)
+    for (const auto& sco : scosdeque_)
     {
-        LOG_DEBUG("Sending SCO " << *it);
-        const fs::path filename = makePath(*it);
+        LOG_DEBUG("Sending SCO " << sco);
+        const fs::path filename = makePath(sco);
 
         VERIFY(fs::exists(filename));
 
@@ -264,12 +248,12 @@ FailOverCacheWriter::getSCORange(SCO& oldest,
 
 void
 FailOverCacheWriter::getSCO(SCO sconame,
-                            FailOverCacheProtocol* prot) const
+                            FailOverCacheProtocol* prot)
 {
     LOG_DEBUG("Getting SCO " << std::hex << sconame << std::dec <<
               " for namespace " << ns_);
 
-    sco_const_iterator it = std::find(scosdeque_.begin(), scosdeque_.end(),sconame);
+    const auto it = std::find(scosdeque_.begin(), scosdeque_.end(),sconame);
     if(it == scosdeque_.end())
     {
         return;

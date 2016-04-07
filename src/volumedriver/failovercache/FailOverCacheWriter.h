@@ -14,13 +14,14 @@
 
 #ifndef FAILOVERCACHEWRITER_H_
 #define FAILOVERCACHEWRITER_H_
-#include "fungilib/ByteArray.h"
-#include "fungilib/Mutex.h"
-#include <string>
-#include <map>
-#include <deque>
+
 #include "fungilib/File.h"
+
+#include <string>
+#include <deque>
+
 #include <boost/filesystem.hpp>
+
 #include "../Types.h"
 #include "../ClusterLocation.h"
 
@@ -46,25 +47,17 @@ public:
 
     void removeUpTo(volumedriver::SCONumber& sco);
 
-    typedef void (*FailOverProcessor)(volumedriver::ClusterLocation cl,
-                                      const uint64_t lba,
-                                      byte* buf);
-
-
-    void getEntries(FailOverCacheProtocol* failover_prot) const;
+    void getEntries(FailOverCacheProtocol* failover_prot);
 
     void
     getSCO(volumedriver::SCO a,
-           FailOverCacheProtocol* failover_prot) const;
-
+           FailOverCacheProtocol* failover_prot);
 
     void
     Clear();
 
     void
     Flush();
-
-    DECLARE_LOGGER("FailOverCacheWriter");
 
     void
     register_()
@@ -105,23 +98,20 @@ public:
     }
 
 private:
+    DECLARE_LOGGER("FailOverCacheWriter");
 
     boost::filesystem::path
     makePath(const volumedriver::SCO) const;
 
     bool registered_;
 
-    mutable bool first_command_must_be_getEntries;
+    bool first_command_must_be_getEntries;
 
     const boost::filesystem::path root_;
 
     const std::string ns_;
 
-    boost::filesystem::path relFilePath_;
-
     std::deque<volumedriver::SCO> scosdeque_;
-    typedef std::deque<volumedriver::SCO>::iterator sco_iterator;
-    typedef std::deque<volumedriver::SCO>::const_iterator sco_const_iterator;
 
     fungi::File* f_;
 
@@ -137,6 +127,5 @@ private:
 #endif /* DISKVOLUMEDRIVERCACHE_H_ */
 
 // Local Variables: **
-// compile-command: "scons -D --kernel_version=system --ignore-buildinfo -j 5" **
 // mode: c++ **
 // End: **
