@@ -83,11 +83,13 @@ Note: If you want a simpler, more automated way of building, do have a look at t
       
     For example, create _my-release-build.cfg_:
     
-        echo 'WORKSPACE="${PWD}"
-        INSTALL_DIR="${WORKSPACE}/BUILDS/volumedriver-buildtools"
-        SOURCES_DIR="${WORKSPACE}/BUILDS/volumedriver-buildtools/sources"
-        PREFIX="${INSTALL_DIR}/release"
-        BUILD_NUM_PROCESSES=4' >my-release-build.cfg
+        cat >my-release-build.cfg <<_EOF_
+        WORKSPACE="${PWD}"
+        INSTALL_DIR="\${WORKSPACE}/BUILDS/volumedriver-buildtools"
+        SOURCES_DIR="\${WORKSPACE}/BUILDS/volumedriver-buildtools/sources"
+        PREFIX="\${INSTALL_DIR}/release"
+        BUILD_NUM_PROCESSES=4
+        _EOF_
 
     Note: use _PREFIX="${INSTALL_DIR}/rtchecked"_ and _my-rtchecked-build.cfg_ for debug builds
     
