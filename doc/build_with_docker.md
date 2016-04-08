@@ -15,6 +15,8 @@ As our automated builds are also using the same procedure, this is by far the cl
 
 ## Building
 
+To build the default (_dev_) branch with latest greatest development version of the code:
+
 1. fetch the code
 
     In a directory of choice:
