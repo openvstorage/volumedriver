@@ -9,6 +9,10 @@ As our automated builds are also using the same procedure, this is by far the cl
 - __git__ to clone our repo 
 - we assume you're building on a linux system
 
+## Disk space required
+- the docker image is about 1.5GB
+- a release build needs about 16GB
+
 ## Building
 
 1. fetch the code
@@ -84,3 +88,5 @@ As our automated builds are also using the same procedure, this is by far the cl
     To also remove the docker image itself:
 
 		docker rmi bldenv
+
+The resulting volumedriver packages will be in the __volumedriver/build/debian__ or __volumedriver/build/rpm__ subdir.
