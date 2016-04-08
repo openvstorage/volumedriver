@@ -134,12 +134,10 @@ FailOverCacheProtocol::run()
                 }
 
             }
-            catch (fungi::IOException &e)
-            {
-
-                LOG_INFO("Reading command from socked failed, will exit this thread: " << e.what());
-                break;
-            }
+            CATCH_STD_ALL_EWHAT({
+                    LOG_INFO("Reading command from socked failed, will exit this thread: " << EWHAT);
+                    break;
+                });
 
             switch (com)
             {
@@ -201,11 +199,11 @@ FailOverCacheProtocol::run()
             }
         }
     }
-    catch (fungi::IOException &e)
-    {
-        returnNotOk();
-        LOG_ERROR("Exception in thread: " << e.what());
-    }
+    CATCH_STD_ALL_EWHAT({
+            LOG_ERROR("Exception in thread: " << EWHAT);
+            returnNotOk();
+        });
+
     if(cache_)
     {
         LOG_INFO("Exiting cache server for namespace: " << cache_->getNamespace());
@@ -341,17 +339,10 @@ FailOverCacheProtocol::removeUpTo_()
         cache_->removeUpTo(sconame);
         returnOk();
     }
-    catch(std::exception& e)
-    {
-        LOG_ERROR("Exception caught, ignoring" << e.what());
-        returnNotOk();
-    }
-
-    catch(...)
-    {
-        LOG_ERROR("Unknown exception caught, ignoring");
-        returnNotOk();
-    }
+    CATCH_STD_ALL_LOG_IGNORE(cache_->getNamespace() <<
+                             ": caught exception removing SCOs up to " <<
+                             sconame);
+    returnNotOk();
 }
 
 void
