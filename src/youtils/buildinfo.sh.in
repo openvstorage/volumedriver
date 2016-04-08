@@ -2,7 +2,7 @@
 set -eux
 
 VERSION=$(cd @abs_top_srcdir@/../../; git describe --abbrev=0 --tags)
-VERSION_REVISION=$(cd @abs_top_srcdir@../../; git rev-parse --verify ${VERSION})
+VERSION_REVISION=$(cd @abs_top_srcdir@/../../; git rev-parse --verify ${VERSION})
 REVISION=$(cd @abs_top_srcdir@/../..; git rev-parse HEAD)
 BRANCH=$(cd @abs_top_srcdir@/../..; git branch | awk '/^\*/ { print $2 }')
 BUILD_TIME=`LANG=C date -u`
