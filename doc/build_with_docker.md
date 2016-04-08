@@ -13,6 +13,10 @@ As our automated builds are also using the same procedure, this is by far the cl
 - the docker image is about 1.5GB
 - a release build needs about 16GB
 
+## Build time
+
+Building the code and running the included testsuite takes around 4 hours on our buildslaves. 
+
 ## Building
 
 To build the default (_dev_) branch with latest greatest development version of the code:
