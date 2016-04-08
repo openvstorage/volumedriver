@@ -15,7 +15,7 @@ As our automated builds are also using the same procedure, this is by far the cl
 
 ## Build time
 
-Building the code and running the included testsuite takes around 4 hours on our buildslaves. 
+Building the code and running the included testsuite (1,783 tests) takes around 4 hours on our buildslaves. 
 
 ## Building
 
