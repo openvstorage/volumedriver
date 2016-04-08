@@ -315,6 +315,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_preset,
                                       ShowDocumentation::T,
                                       ""s);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_transport,
+                                      backend_connection_manager_name,
+                                      "alba_connection_transport",
+                                      "When backend_type is ALBA: the ALBA connection to use: TCP (default) or RDMA",
+                                      ShowDocumentation::T,
+                                      alba::proxy_client::Transport::tcp);
+
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(bgc_threads,
                                       backend::GarbageCollector::name(),
                                       "bgc_threads",

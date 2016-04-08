@@ -86,13 +86,15 @@ Connection::Connection(const config_type& cfg)
                  cfg.alba_connection_timeout.value(),
                  cfg.alba_connection_preset.value().empty() ?
                  boost::none :
-                 boost::optional<std::string>(cfg.alba_connection_preset.value()))
+                 boost::optional<std::string>(cfg.alba_connection_preset.value()),
+                 boost::lexical_cast<apc::Transport>(cfg.alba_connection_transport.value()))
 {}
 
 Connection::Connection(const string& host,
                        const uint16_t port,
                        const uint16_t timeout,
-                       const boost::optional<std::string>& preset)
+                       const boost::optional<std::string>& preset,
+                       const apc::Transport transport)
     : preset_(preset)
     , healthy_(true)
 {
@@ -124,9 +126,10 @@ Connection::Connection(const string& host,
         }
     }
 
-    client_ = make_unique<apc::Proxy_client>(host,
-                                             boost::lexical_cast<string>(port),
-                                             boost::posix_time::seconds(timeout));
+    client_ = apc::make_proxy_client(host,
+                                     boost::lexical_cast<string>(port),
+                                     boost::posix_time::seconds(timeout),
+                                     transport);
 }
 
 TODO("Y42: Better would be to specify the exceptions for each call")
