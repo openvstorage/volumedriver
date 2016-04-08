@@ -34,7 +34,7 @@ libfsalovs_la_LIBADD = \
 	../xmlrpc++0.7/libxmlrpc.la \
 	../backend/libbackend.la \
 	../youtils/libyoutils.la \
-	-lfuse \
+	-lfuse3 \
 	$(BUILDTOOLS_LIBS) \
 	-lpthread -lrt -lm
 
