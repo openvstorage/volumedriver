@@ -22,5 +22,5 @@ xmlrpc++).
 Building
 --------
 
-The simplest way to build the volumedriver is using our [dockerised build process](doc/build_with_docker.md). Should you want to do a manual build, details are in the [manual building](doc/manual_building.md) document.
+The simplest way to build the volumedriver is using our [dockerised build process](doc/build_with_docker.md) that uses a clean container to hold build prerequisites, preventing conflicts with already installed software on your development machine. Should you do want to do a manual build, details are in the [manual building](doc/manual_building.md) document.
 
