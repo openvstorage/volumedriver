@@ -1,12 +1,20 @@
 ## Preface
 
-The _volumedriver_ code builds upon quite a number of (external) tools and libraries of which some are either not available, too old or require fixes on the current linux distro of choice (our default platform is Ubuntu 14.04 LTS). For these, we have a separate _volumedriver-buildtools_ repo that includes those items. Building the _volumedriver_ thus first requires building the _volumedriver-buildtools_ after installing its prerequisites.
+The _volumedriver_ code builds upon quite a number of (external) tools and libraries of which some are either not available, too old or require fixes on the current linux distro of choice (our default platform is Ubuntu 14.04 LTS). For these, we have a separate _volumedriver-buildtools_ repo that includes all requirements. 
+
+To build the the _volumedriver_ you'll need to:
+
+1. install all prerequisites
+2. build the _volumedriver-buildtools_
+3. build the _volumedriver_ itself
+
+The code can either be built for debugging purposes (_rtchecked_ build) or as code to be run in production (_release_ build). In this document we mainly concentrate on the _release_ build process, but we'll hint at the changes needed for debug (_rtchecked_) builds.
 
 Note: If you want a simpler, more automated way of building, do have a look at the [Building with docker](doc/build_with_docker.md) document.
 
-## Installing all prerequisites
+## 1. Installing all prerequisites
 
-  - on Ubuntu 14.04 
+  - on __Ubuntu 14.04__ 
 
           apt-get install -y software-properties-common
           add-apt-repository -y ppa:ubuntu-toolchain-r/test
@@ -38,9 +46,9 @@ Note: If you want a simpler, more automated way of building, do have a look at t
                              python-protobuf \
                              rpcbind
                              
-  - on CentOS 7
+  - on __CentOS 7__
   
-    Note: some of the required tools/libs are available on our own repository, so we'll add this to allow installing from there.
+    Note: some of the required tools/libs are available from our own [repository](http://yum.openvstorage.org/CentOS/7/x86_64/dists/unstable/upstream/), so we'll add this to allow installing from there.
     
           yum -y install epel-release
           echo -e '[ovs]\nname=ovs\nbaseurl=http://yum.openvstorage.org/CentOS/7/x86_64/dists/unstable\nenabled=1\ngpgcheck=0' > /etc/yum.repos.d/ovs.repo
@@ -59,4 +67,39 @@ Note: If you want a simpler, more automated way of building, do have a look at t
                          rpm rpm-build fuse protobuf-python fakeroot \
                          rpcbind
 
-## Building _volumedriver-buildtools_
+## 2. Building _volumedriver-buildtools_
+
+  - check out the source
+  
+        git clone https://github.com/openvstorage/volumedriver-buildtools
+
+  - create a configuration file that points to the desired install location and a path where downloaded sources will be stored
+    This file needs to define:
+
+      - INSTALL_DIR = location where build artifacts will be stored
+      - SOURCES_DIR = location where downloaded external sources will be stored (if not already present)
+      - PREFIX = normally subdir under INSTALL_DIR to keep _rtchecked_ and _release_ builds apart
+      - BUILD_NUM_PROCESSES = the number of concurrent build processes (make -j)
+      
+    For example, create _my-release-build.cfg_:
+    
+        echo 'WORKSPACE="${PWD}"
+        INSTALL_DIR="${WORKSPACE}/BUILDS/volumedriver-buildtools"
+        SOURCES_DIR="${WORKSPACE}/BUILDS/volumedriver-buildtools/sources"
+        PREFIX="${INSTALL_DIR}/release"
+        BUILD_NUM_PROCESSES=4' >my-release-build.cfg
+
+    Note: use _PREFIX="${INSTALL_DIR}/rtchecked"_ and _my-rtchecked-build.cfg_ for debug builds
+    
+  - set the VOLUMEDRIVER_BUILD_CONFIGURATION environment variable to this config file and run __build.sh__ to compile and install the artifacts:
+  
+        export VOLUMEDRIVER_BUILD_CONFIGURATION="${PWD}/my-release-build.cfg"
+        cd volumedriver-buildtools/src/release
+        ./build.sh
+
+    Note: use _my-rtchecked-build.cfg_ and _cd volumedriver-buildtools/src/rtchecked_ for debug builds
+    
+## 3. Build the _volumedriver_ itself
+
+
+  
