@@ -96,9 +96,7 @@ Note: If you want a simpler, more automated way of building, do have a look at t
   - set the VOLUMEDRIVER_BUILD_CONFIGURATION environment variable to this config file and run __build.sh__ to compile and install the artifacts:
   
         export VOLUMEDRIVER_BUILD_CONFIGURATION="${PWD}/my-release-build.cfg"
-        cd volumedriver-buildtools/src/release
-        ./build.sh
-        cd -
+        (cd volumedriver-buildtools/src/release; ./build.sh)
 
     Note: use _my-rtchecked-build.cfg_ and _cd volumedriver-buildtools/src/rtchecked_ for debug builds
     
