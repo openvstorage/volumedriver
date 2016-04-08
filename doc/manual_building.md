@@ -2,7 +2,7 @@
 
 The _volumedriver_ code builds upon quite a number of (external) tools and libraries some of which are either not available, too old or require fixes on the current linux distro of choice (our default platform is Ubuntu 14.04 LTS). For these, we have a separate _volumedriver-buildtools_ repo that includes all requirements. 
 
-To build the the _volumedriver_ you'll need to:
+To build the _volumedriver_ you'll need to:
 
 1. install all prerequisites
 2. build the _volumedriver-buildtools_
