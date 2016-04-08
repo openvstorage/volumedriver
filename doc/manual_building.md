@@ -98,10 +98,57 @@ Note: If you want a simpler, more automated way of building, do have a look at t
         export VOLUMEDRIVER_BUILD_CONFIGURATION="${PWD}/my-release-build.cfg"
         cd volumedriver-buildtools/src/release
         ./build.sh
+        cd -
 
     Note: use _my-rtchecked-build.cfg_ and _cd volumedriver-buildtools/src/rtchecked_ for debug builds
     
 ## 3. Build the _volumedriver_ itself
 
+  - check out the source
+  
+        git clone https://github.com/openvstorage/volumedriver 
+
+  - create a custom build script that contains the location of the volumedriver-buildtools built in the previous step plus a bunch of other settings, for example:
+  
+        cat >bld-voldrvr-release.sh <<_EOF_
+        #!/bin/bash 
+        
+        set -eux 
+        
+        BUILDTOOLS_TO_USE="${PWD}/BUILDS/volumedriver-buildtools/release"
+        
+        VOLUMEDRIVER_DIR="${PWD}/volumedriver"
+        BUILDER="\${VOLUMEDRIVER_DIR}/src/buildscripts/builder.sh"
+        BUILD_DIR="${PWD}/BUILDS/volumedriver/release"
+        
+        export RUN_TESTS=no                   # set to "yes" to run included test suite (needs running rpcbind, redis & omniNames!)
+        export BUILD_DEBIAN_PACKAGES=yes      # both for deb & rpm; change to "no" to skip creating packages
+        export CLEAN_BUILD=no                 # set to "yes" to clean build env (force complete rebuild)
+        export BUILD_NUM_PROCESSES=2          # number of concurrent build processes (make -j)
+        
+        export CXX_WARNINGS="-Wall -Wextra -Wno-unknown-pragmas -Wsign-promo -Woverloaded-virtual -Wnon-virtual-dtor"
+        export SUPPRESS_WARNINGS=no
+        export COVERAGE=no
+        
+        mkdir -p \${BUILD_DIR}
+        ln -sf \${BUILDER} \${BUILD_DIR}
+        
+        pushd \${BUILD_DIR}
+        
+        set +e
+        \${BUILDER} \${BUILDTOOLS_TO_USE} \${VOLUMEDRIVER_DIR}
+        ret=$?
+        set -e
+        
+        popd
+        
+        exit \${ret}
+        _EOF_
+        
+        chmod +x bld-voldrvr-release.sh
+        
+  - build the volumedriver
+  
+        ./bld-voldrvr-release.sh
 
   
