@@ -16,7 +16,7 @@
 #define FAILOVERCACHEACCEPTOR_H
 
 #include "FailOverCacheProtocol.h"
-#include "Backend.h"
+#include "BackendFactory.h"
 
 #include "../FailOverCacheStreamers.h"
 
@@ -26,7 +26,12 @@
 
 #include "fungilib/ProtocolFactory.h"
 
-#include <youtils/FileDescriptor.h>
+namespace volumedrivertest
+{
+
+class FailOverCacheTestContext;
+
+}
 
 namespace failovercache
 {
@@ -34,8 +39,10 @@ namespace failovercache
 class FailOverCacheAcceptor
     : public fungi::ProtocolFactory
 {
+    friend class volumedrivertest::FailOverCacheTestContext;
+
 public:
-    explicit FailOverCacheAcceptor(const boost::filesystem::path& root);
+    explicit FailOverCacheAcceptor(const boost::optional<boost::filesystem::path>& root);
 
     virtual ~FailOverCacheAcceptor();
 
@@ -52,7 +59,9 @@ public:
     void
     remove(Backend&);
 
-    std::shared_ptr<Backend>
+    using BackendPtr = std::shared_ptr<Backend>;
+
+    BackendPtr
     lookup(const volumedriver::CommandData<volumedriver::Register>&);
 
     void
@@ -62,33 +71,21 @@ public:
         protocols.remove(prot);
     }
 
-    boost::filesystem::path
-    path() const
-    {
-        return root_;
-    }
-
-    boost::filesystem::path
-    lock_file() const
-    {
-        return lock_fd_->path();
-    }
-
-    const boost::filesystem::path root_;
-
 private:
     DECLARE_LOGGER("FailOverCacheAcceptor");
 
     // protects the map / protocols.
     boost::mutex mutex_;
 
-    using Map = std::unordered_map<std::string, std::shared_ptr<Backend>>;
+    using Map = std::unordered_map<std::string, BackendPtr>;
     Map map_;
 
     std::list<FailOverCacheProtocol*> protocols;
+    BackendFactory factory_;
 
-    std::unique_ptr<youtils::FileDescriptor> lock_fd_;
-    boost::unique_lock<youtils::FileDescriptor> file_lock_;
+    // for use by testers
+    BackendPtr
+    find_backend_(const std::string&);
 };
 
 }

@@ -60,6 +60,12 @@ public:
     get_entries(const volumedriver::SCO,
                 Backend::EntryProcessorFun&) override final;
 
+    const boost::filesystem::path&
+    root() const
+    {
+        return root_;
+    }
+
 private:
     DECLARE_LOGGER("DtlFileBackend");
 

@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "Backend.h"
-#include "FileBackend.h"
 
 #include <youtils/Assert.h>
 
@@ -189,16 +188,6 @@ Backend::getSCO(SCO sconame,
         get_entries(*it,
                     fun);
     }
-}
-
-std::unique_ptr<Backend>
-Backend::create(const fs::path& root,
-                const std::string& nspace,
-                const ClusterSize csize)
-{
-    return std::make_unique<FileBackend>(root,
-                                         nspace,
-                                         csize);
 }
 
 }

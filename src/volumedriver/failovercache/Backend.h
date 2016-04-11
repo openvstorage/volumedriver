@@ -22,19 +22,12 @@
 #include "../FailOverCacheStreamers.h"
 #include "../Types.h"
 
-#include <boost/filesystem.hpp>
-
 namespace failovercache
 {
 
 class Backend
 {
 public:
-    static std::unique_ptr<Backend>
-    create(const boost::filesystem::path&,
-           const std::string&,
-           const volumedriver::ClusterSize);
-
     using EntryProcessorFun = std::function<void(volumedriver::ClusterLocation,
                                                  int64_t /* addr */,
                                                  const uint8_t* /* buf */,

@@ -27,62 +27,12 @@ namespace yt = youtils;
 using namespace volumedriver;
 using namespace fungi;
 
-static const std::string safetyfile("/.failovercache");
-
 #define LOCK()                                  \
     boost::lock_guard<decltype(mutex_)> lg_(mutex_)
 
-namespace
-{
-
-const fs::path&
-maybe_make_dir(const fs::path& p)
-{
-    fs::create_directories(p);
-    return p;
-}
-
-}
-
-FailOverCacheAcceptor::FailOverCacheAcceptor(const fs::path& path)
-    : root_(maybe_make_dir(path))
-{
-    const fs::path f(root_ / safetyfile);
-
-    if (not fs::exists(f) and
-        not fs::is_empty(root_))
-    {
-        LOG_ERROR("Cowardly refusing to use " << root_ <<
-                  " for failovercache because it is not empty");
-        throw fungi::IOException("Not starting failover in nonempty dir");
-    }
-
-    lock_fd_ = std::make_unique<yt::FileDescriptor>(f,
-                                                    yt::FDMode::Write,
-                                                    CreateIfNecessary::T);
-
-    file_lock_ = boost::unique_lock<yt::FileDescriptor>(*lock_fd_,
-                                                        boost::try_to_lock);
-
-    if (not file_lock_)
-    {
-        LOG_ERROR("Failed to lock " << lock_fd_->path());
-        throw fungi::IOException("Not starting failovercache without lock");
-    }
-
-    for (fs::directory_iterator it(root_); it != fs::directory_iterator(); ++it)
-    {
-        if (it->path() != lock_fd_->path())
-        {
-            LOG_INFO("Removing " << it->path());
-            fs::remove_all(it->path());
-        }
-        else
-        {
-            LOG_INFO("Not removing " << it->path());
-        }
-    }
-}
+FailOverCacheAcceptor::FailOverCacheAcceptor(const boost::optional<fs::path>& path)
+    : factory_(path)
+{}
 
 FailOverCacheAcceptor::~FailOverCacheAcceptor()
 {
@@ -131,12 +81,12 @@ FailOverCacheAcceptor::remove(Backend& w)
     }
 }
 
-std::shared_ptr<Backend>
+FailOverCacheAcceptor::BackendPtr
 FailOverCacheAcceptor::lookup(const CommandData<Register>& reg)
 {
     LOCK();
 
-    std::shared_ptr<Backend> w;
+    BackendPtr w;
 
     auto it = map_.find(reg.ns_);
     if (it != map_.end())
@@ -155,9 +105,8 @@ FailOverCacheAcceptor::lookup(const CommandData<Register>& reg)
     }
     else
     {
-        w = Backend::create(root_,
-                            reg.ns_,
-                            reg.clustersize_);
+        w = factory_.make_backend(reg.ns_,
+                                 reg.clustersize_);
 
         auto res(map_.emplace(std::make_pair(reg.ns_,
                                              w)));
@@ -171,6 +120,23 @@ FailOverCacheAcceptor::lookup(const CommandData<Register>& reg)
 
     return w;
 }
+
+FailOverCacheAcceptor::BackendPtr
+FailOverCacheAcceptor::find_backend_(const std::string& ns)
+{
+    LOCK();
+
+    auto it = map_.find(ns);
+    if (it != map_.end())
+    {
+        return it->second;
+    }
+    else
+    {
+        return nullptr;
+    }
+}
+
 }
 
 // Local Variables: **
