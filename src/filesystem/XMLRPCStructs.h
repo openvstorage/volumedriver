@@ -198,6 +198,7 @@ struct XMLRPCStatistics
     uint64_t cluster_cache_misses = 0;
     uint64_t metadata_store_hits = 0;
     uint64_t metadata_store_misses = 0;
+    uint64_t stored = 0;
 
     volumedriver::PerformanceCounters performance_counters;
 
@@ -213,6 +214,7 @@ struct XMLRPCStatistics
             EQ(cluster_cache_misses) and
             EQ(metadata_store_hits) and
             EQ(metadata_store_misses) and
+            EQ(stored) and
             EQ(performance_counters);
 
 #undef EQ
@@ -222,8 +224,6 @@ struct XMLRPCStatistics
     void
     serialize(Archive& ar, const unsigned int version)
     {
-        CHECK_VERSION(version, 1);
-
         ar & BOOST_SERIALIZATION_NVP(sco_cache_hits);
         ar & BOOST_SERIALIZATION_NVP(sco_cache_misses);
         ar & BOOST_SERIALIZATION_NVP(cluster_cache_hits);
@@ -231,6 +231,11 @@ struct XMLRPCStatistics
         ar & BOOST_SERIALIZATION_NVP(metadata_store_hits);
         ar & BOOST_SERIALIZATION_NVP(metadata_store_misses);
         ar & BOOST_SERIALIZATION_NVP(performance_counters);
+
+        if (version > 1)
+        {
+            ar & BOOST_SERIALIZATION_NVP(stored);
+        }
     }
 
     static constexpr const char* serialization_name =  "XMLRPCStatistics";
@@ -392,7 +397,7 @@ struct XMLRPCClusterCacheHandleInfo
 }
 
 BOOST_CLASS_VERSION(volumedriverfs::XMLRPCVolumeInfo, 2);
-BOOST_CLASS_VERSION(volumedriverfs::XMLRPCStatistics, 1);
+BOOST_CLASS_VERSION(volumedriverfs::XMLRPCStatistics, 2);
 BOOST_CLASS_VERSION(volumedriverfs::XMLRPCSnapshotInfo, 2);
 BOOST_CLASS_VERSION(volumedriverfs::XMLRPCClusterCacheHandleInfo, 1);
 

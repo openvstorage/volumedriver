@@ -1072,6 +1072,7 @@ VolumePerformanceCounters::execute_internal(XmlRpc::XmlRpcValue& params,
         results_stats.cluster_cache_misses = api::getClusterCacheMisses(volName);
         results_stats.metadata_store_hits = mdStats.cache_hits;
         results_stats.metadata_store_misses = mdStats.cache_misses;
+        results_stats.stored = api::getStored(volName);
 
         vd::PerformanceCounters& perf_counters = api::performance_counters(volName);
         results_stats.performance_counters = perf_counters;
@@ -1120,6 +1121,7 @@ VolumeDriverPerformanceCounters::execute_internal(XmlRpc::XmlRpcValue& params,
         stats.cluster_cache_misses += api::getClusterCacheMisses(v);
         stats.metadata_store_hits += mds.cache_hits;
         stats.metadata_store_misses += mds.cache_misses;
+        stats.stored = api::getStored(v);
 
         vd::PerformanceCounters& pc = api::performance_counters(v);
 
