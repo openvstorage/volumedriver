@@ -453,7 +453,9 @@ VolManagerTestSetup::VolManagerTestSetup(const std::string& testName,
                                          unsigned foc_throttle_usecs,
                                          uint32_t num_scos_in_tlog)
     : be::BackendTestSetup()
-    , FailOverCacheTestSetup(getTempPath(testName) / "foc")
+    , FailOverCacheTestSetup(GetParam().foc_in_memory() ?
+                             boost::none :
+                             boost::optional<fs::path>(getTempPath(testName) / "foc"))
     , testName_(testName)
     , directory_(getTempPath(testName_))
     , configuration_(directory_ / "configuration")

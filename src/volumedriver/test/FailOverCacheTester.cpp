@@ -994,12 +994,18 @@ const VolumeDriverTestConfig sync_foc_config =
     .use_cluster_cache(true)
     .foc_mode(FailOverCacheMode::Synchronous);
 
+const VolumeDriverTestConfig sync_foc_in_memory_config =
+    VolumeDriverTestConfig()
+    .use_cluster_cache(true)
+    .foc_mode(FailOverCacheMode::Synchronous)
+    .foc_in_memory(true);
 }
 
 INSTANTIATE_TEST_CASE_P(FailOverCacheTesters,
                         FailOverCacheTester,
                         ::testing::Values(cluster_cache_config,
-                                          sync_foc_config));
+                                          sync_foc_config,
+                                          sync_foc_in_memory_config));
 
 }
 
