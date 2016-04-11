@@ -119,7 +119,7 @@ FailOverCacheAcceptor::createProtocol(std::unique_ptr<fungi::Socket> s,
 }
 
 void
-FailOverCacheAcceptor::remove(FailOverCacheWriter& w)
+FailOverCacheAcceptor::remove(Backend& w)
 {
     LOCK();
 
@@ -131,12 +131,12 @@ FailOverCacheAcceptor::remove(FailOverCacheWriter& w)
     }
 }
 
-std::shared_ptr<FailOverCacheWriter>
+std::shared_ptr<Backend>
 FailOverCacheAcceptor::lookup(const CommandData<Register>& reg)
 {
     LOCK();
 
-    std::shared_ptr<FailOverCacheWriter> w;
+    std::shared_ptr<Backend> w;
 
     auto it = map_.find(reg.ns_);
     if (it != map_.end())
@@ -155,9 +155,9 @@ FailOverCacheAcceptor::lookup(const CommandData<Register>& reg)
     }
     else
     {
-        w = FailOverCacheWriter::create(root_,
-                                        reg.ns_,
-                                        reg.clustersize_);
+        w = Backend::create(root_,
+                            reg.ns_,
+                            reg.clustersize_);
 
         auto res(map_.emplace(std::make_pair(reg.ns_,
                                              w)));

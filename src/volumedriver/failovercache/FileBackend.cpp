@@ -30,7 +30,7 @@ namespace yt = youtils;
 FileBackend::FileBackend(const fs::path& root,
                          const std::string& nspace,
                          const vd::ClusterSize cluster_size)
-    : FailOverCacheWriter(nspace,
+    : Backend(nspace,
                           cluster_size)
     , root_(root / nspace)
 {
@@ -111,7 +111,7 @@ FileBackend::add_entries(std::vector<vd::FailOverCacheEntry> entries,
 
 void
 FileBackend::get_entries(const vd::SCO sco,
-                         FailOverCacheWriter::EntryProcessorFun& fun)
+                         Backend::EntryProcessorFun& fun)
 {
     LOG_INFO(getNamespace() << ": processing SCO " << sco);
 

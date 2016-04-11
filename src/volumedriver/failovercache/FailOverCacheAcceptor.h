@@ -16,7 +16,7 @@
 #define FAILOVERCACHEACCEPTOR_H
 
 #include "FailOverCacheProtocol.h"
-#include "FailOverCacheWriter.h"
+#include "Backend.h"
 
 #include "../FailOverCacheStreamers.h"
 
@@ -50,9 +50,9 @@ public:
     }
 
     void
-    remove(FailOverCacheWriter&);
+    remove(Backend&);
 
-    std::shared_ptr<FailOverCacheWriter>
+    std::shared_ptr<Backend>
     lookup(const volumedriver::CommandData<volumedriver::Register>&);
 
     void
@@ -82,7 +82,7 @@ private:
     // protects the map / protocols.
     boost::mutex mutex_;
 
-    using Map = std::unordered_map<std::string, std::shared_ptr<FailOverCacheWriter>>;
+    using Map = std::unordered_map<std::string, std::shared_ptr<Backend>>;
     Map map_;
 
     std::list<FailOverCacheProtocol*> protocols;

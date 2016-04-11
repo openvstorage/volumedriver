@@ -15,7 +15,7 @@
 #ifndef DTL_FILE_BACKEND_H_
 #define DTL_FILE_BACKEND_H_
 
-#include "FailOverCacheWriter.h"
+#include "Backend.h"
 #include "fungilib/File.h"
 
 #include <memory>
@@ -26,7 +26,7 @@ namespace failovercache
 {
 
 class FileBackend
-    : public FailOverCacheWriter
+    : public Backend
 {
 public:
     FileBackend(const boost::filesystem::path&,
@@ -58,7 +58,7 @@ public:
 
     virtual void
     get_entries(const volumedriver::SCO,
-                FailOverCacheWriter::EntryProcessorFun&) override final;
+                Backend::EntryProcessorFun&) override final;
 
 private:
     DECLARE_LOGGER("DtlFileBackend");

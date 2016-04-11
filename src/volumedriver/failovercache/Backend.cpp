@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "FailOverCacheWriter.h"
+#include "Backend.h"
 #include "FileBackend.h"
 
 #include <youtils/Assert.h>
@@ -26,8 +26,8 @@ using namespace fungi;
 namespace be = backend;
 namespace fs = boost::filesystem;
 
-FailOverCacheWriter::FailOverCacheWriter(const std::string& nspace,
-                                         const ClusterSize cluster_size)
+Backend::Backend(const std::string& nspace,
+                 const ClusterSize cluster_size)
     : registered_(false)
     , first_command_must_be_getEntries(false)
     , ns_(nspace)
@@ -37,7 +37,7 @@ FailOverCacheWriter::FailOverCacheWriter(const std::string& nspace,
 }
 
 void
-FailOverCacheWriter::clear_cache_()
+Backend::clear_cache_()
 {
     LOG_INFO(ns_ << ": clearing");
 
@@ -51,7 +51,7 @@ FailOverCacheWriter::clear_cache_()
 }
 
 void
-FailOverCacheWriter::removeUpTo(const SCO sconame)
+Backend::removeUpTo(const SCO sconame)
 {
     LOG_INFO(ns_ << ": removing up to " << sconame);
 
@@ -89,8 +89,8 @@ FailOverCacheWriter::removeUpTo(const SCO sconame)
 }
 
 void
-FailOverCacheWriter::addEntries(std::vector<FailOverCacheEntry> entries,
-                                std::unique_ptr<uint8_t[]> buf)
+Backend::addEntries(std::vector<FailOverCacheEntry> entries,
+                    std::unique_ptr<uint8_t[]> buf)
 {
     VERIFY(not entries.empty());
 
@@ -130,7 +130,7 @@ FailOverCacheWriter::addEntries(std::vector<FailOverCacheEntry> entries,
 }
 
 void
-FailOverCacheWriter::clear()
+Backend::clear()
 {
     LOG_INFO(ns_ << ": clearing");
 
@@ -139,7 +139,7 @@ FailOverCacheWriter::clear()
 }
 
 void
-FailOverCacheWriter::getEntries(EntryProcessorFun fun)
+Backend::getEntries(EntryProcessorFun fun)
 {
     LOG_INFO(ns_ << ": getting all entries");
 
@@ -155,8 +155,8 @@ FailOverCacheWriter::getEntries(EntryProcessorFun fun)
 }
 
 void
-FailOverCacheWriter::getSCORange(SCO& oldest,
-                                 SCO& youngest) const
+Backend::getSCORange(SCO& oldest,
+                     SCO& youngest) const
 {
     LOG_DEBUG(ns_);
 
@@ -173,8 +173,8 @@ FailOverCacheWriter::getSCORange(SCO& oldest,
 }
 
 void
-FailOverCacheWriter::getSCO(SCO sconame,
-                            EntryProcessorFun fun)
+Backend::getSCO(SCO sconame,
+                EntryProcessorFun fun)
 {
     LOG_INFO(ns_ << ": getting SCO " << std::hex << sconame);
 
@@ -191,10 +191,10 @@ FailOverCacheWriter::getSCO(SCO sconame,
     }
 }
 
-std::unique_ptr<FailOverCacheWriter>
-FailOverCacheWriter::create(const fs::path& root,
-                            const std::string& nspace,
-                            const ClusterSize csize)
+std::unique_ptr<Backend>
+Backend::create(const fs::path& root,
+                const std::string& nspace,
+                const ClusterSize csize)
 {
     return std::make_unique<FileBackend>(root,
                                          nspace,

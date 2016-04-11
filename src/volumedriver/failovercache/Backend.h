@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef FAILOVERCACHEWRITER_H_
-#define FAILOVERCACHEWRITER_H_
+#ifndef DTL_BACKEND_H_
+#define DTL_BACKEND_H_
 
 #include <string>
 #include <deque>
@@ -27,10 +27,10 @@
 namespace failovercache
 {
 
-class FailOverCacheWriter
+class Backend
 {
 public:
-    static std::unique_ptr<FailOverCacheWriter>
+    static std::unique_ptr<Backend>
     create(const boost::filesystem::path&,
            const std::string&,
            const volumedriver::ClusterSize);
@@ -40,12 +40,12 @@ public:
                                                  const uint8_t* /* buf */,
                                                  int64_t /* size */)>;
 
-    virtual ~FailOverCacheWriter() = default;
+    virtual ~Backend() = default;
 
-    FailOverCacheWriter(const FailOverCacheWriter&) = delete;
+    Backend(const Backend&) = delete;
 
-    FailOverCacheWriter&
-    operator=(const FailOverCacheWriter&) = delete;
+    Backend&
+    operator=(const Backend&) = delete;
 
     void
     addEntries(std::vector<volumedriver::FailOverCacheEntry>,
@@ -103,8 +103,8 @@ public:
     flush() = 0;
 
 protected:
-    FailOverCacheWriter(const std::string&,
-                        const volumedriver::ClusterSize);
+    Backend(const std::string&,
+            const volumedriver::ClusterSize);
 
     virtual void
     open(const volumedriver::SCO) = 0;
@@ -124,7 +124,7 @@ protected:
     remove(const volumedriver::SCO) = 0;
 
 private:
-    DECLARE_LOGGER("FailOverCacheWriter");
+    DECLARE_LOGGER("Backend");
 
     bool registered_;
     bool first_command_must_be_getEntries;
@@ -139,7 +139,7 @@ private:
 };
 
 }
-#endif /* DISKVOLUMEDRIVERCACHE_H_ */
+#endif // !DTL_BACKEND_H_
 
 // Local Variables: **
 // mode: c++ **

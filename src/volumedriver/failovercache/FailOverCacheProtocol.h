@@ -14,6 +14,7 @@
 
 #ifndef FAILOVERCACHEPROTOCOL_H
 #define FAILOVERCACHEPROTOCOL_H
+
 #include "fungilib/Protocol.h"
 #include "fungilib/Socket.h"
 #include "fungilib/SocketServer.h"
@@ -26,7 +27,7 @@
 namespace failovercache
 {
 class FailOverCacheAcceptor;
-class FailOverCacheWriter;
+class Backend;
 
 class FailOverCacheProtocol
     : public fungi::Protocol
@@ -56,7 +57,7 @@ public:
 private:
     DECLARE_LOGGER("FailOverCacheProtocol");
 
-    std::shared_ptr<FailOverCacheWriter> cache_;
+    std::shared_ptr<Backend> cache_;
     std::unique_ptr<fungi::Socket> sock_;
     fungi::IOBaseStream stream_;
     fungi::Thread* thread_;
@@ -87,7 +88,6 @@ private:
 
     void
     getSCORange_();
-
 
     void
     Clear_();

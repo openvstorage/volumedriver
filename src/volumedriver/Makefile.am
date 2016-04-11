@@ -104,9 +104,9 @@ libvolumedriver_la_SOURCES = \
 	FailOverCacheSyncBridge.cpp \
 	FailOverCacheTransport.cpp \
 	FilePool.cpp \
+	failovercache/Backend.cpp \
 	failovercache/FailOverCacheAcceptor.cpp \
 	failovercache/FailOverCacheProtocol.cpp \
-	failovercache/FailOverCacheWriter.cpp \
 	failovercache/FileBackend.cpp \
 	failovercache/fungilib/Buffer.cpp \
 	failovercache/fungilib/ByteArray.cpp \
