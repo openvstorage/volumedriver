@@ -117,7 +117,8 @@ Note: If you want a simpler, more automated way of building, do have a look at t
         
         BUILDTOOLS_TO_USE="${PWD}/BUILDS/volumedriver-buildtools/release"
         
-        VOLUMEDRIVER_DIR="${PWD}/volumedriver"
+        VOLUMEDRIVER_DIR="${PWD}/volumedriver"  # must be a full path, not a relative one!
+        
         BUILDER="\${VOLUMEDRIVER_DIR}/src/buildscripts/builder.sh"
         BUILD_DIR="${PWD}/volumedriver/BUILDS/release"
         
