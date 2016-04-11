@@ -20,7 +20,9 @@
 
 namespace
 {
-DECLARE_LOGGER("FailOverCacheProtocol");
+
+DECLARE_LOGGER("FailOverCacheStreamers");
+
 }
 
 namespace volumedriver
@@ -35,7 +37,7 @@ checkStreamOK(fungi::IOBaseStream& stream,
     stream >> res;
     if(res != volumedriver::Ok)
     {
-        LOG_ERROR("FailOverCache Protocol Error: *Not* Ok returned in " << ex);
+        LOG_ERROR("Protocol Error: *Not* Ok returned in " << ex);
         throw fungi::IOException(ex.c_str());
     }
     return stream;
