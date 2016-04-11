@@ -65,7 +65,6 @@ private:
     bool use_rs_;
 
     int pipes_[2];
-    fd_set rfds_;
     int nfds_;
 
     void
