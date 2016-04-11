@@ -119,12 +119,13 @@ Note: If you want a simpler, more automated way of building, do have a look at t
         
         VOLUMEDRIVER_DIR="${PWD}/volumedriver"
         BUILDER="\${VOLUMEDRIVER_DIR}/src/buildscripts/builder.sh"
-        BUILD_DIR="${PWD}/BUILDS/volumedriver/release"
+        BUILD_DIR="${PWD}/volumedriver/BUILDS/release"
         
         export RUN_TESTS=no                   # set to "yes" to run included test suite (needs running rpcbind, redis & omniNames!)
         export BUILD_DEBIAN_PACKAGES=yes      # both for deb & rpm; change to "no" to skip creating packages
         export CLEAN_BUILD=no                 # set to "yes" to clean build env (force complete rebuild)
         export RECONFIGURE_BUILD=yes          # do reconfigure the code
+        export USE_MD5_HASH=yes               # set to "no" to disable deduping
         export BUILD_NUM_PROCESSES=2          # number of concurrent build processes (make -j)
         
         export CXX_WARNINGS="-Wall -Wextra -Wno-unknown-pragmas -Wsign-promo -Woverloaded-virtual -Wnon-virtual-dtor"
