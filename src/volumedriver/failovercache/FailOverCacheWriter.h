@@ -15,16 +15,14 @@
 #ifndef FAILOVERCACHEWRITER_H_
 #define FAILOVERCACHEWRITER_H_
 
-#include "fungilib/File.h"
-
 #include <string>
 #include <deque>
-
-#include <boost/filesystem.hpp>
 
 #include "../ClusterLocation.h"
 #include "../FailOverCacheStreamers.h"
 #include "../Types.h"
+
+#include <boost/filesystem.hpp>
 
 namespace failovercache
 {
@@ -32,31 +30,29 @@ namespace failovercache
 class FailOverCacheWriter
 {
 public:
-    FailOverCacheWriter(const boost::filesystem::path& root,
-                        const std::string& ns,
-                        const volumedriver::ClusterSize& cluster_size);
+    static std::unique_ptr<FailOverCacheWriter>
+    create(const boost::filesystem::path&,
+           const std::string&,
+           const volumedriver::ClusterSize);
 
-    ~FailOverCacheWriter();
+    using EntryProcessorFun = std::function<void(volumedriver::ClusterLocation,
+                                                 int64_t /* addr */,
+                                                 const uint8_t* /* buf */,
+                                                 int64_t /* size */)>;
+
+    virtual ~FailOverCacheWriter() = default;
+
+    FailOverCacheWriter(const FailOverCacheWriter&) = delete;
+
+    FailOverCacheWriter&
+    operator=(const FailOverCacheWriter&) = delete;
 
     void
     addEntries(std::vector<volumedriver::FailOverCacheEntry>,
                std::unique_ptr<uint8_t[]>);
 
     void
-    addEntry(volumedriver::ClusterLocation clusterLocation,
-             const uint64_t lba,
-             // const would be nice but the funky::WrapByteArray
-             // used internally prevents it for now :(
-             byte* buf,
-             uint32_t size);
-
-    void
     removeUpTo(const volumedriver::SCO);
-
-    using EntryProcessorFun = std::function<void(volumedriver::ClusterLocation,
-                                                 int64_t /* addr */,
-                                                 const uint8_t* /* buf */,
-                                                 int64_t /* size */)>;
 
     void
     getEntries(EntryProcessorFun);
@@ -66,10 +62,7 @@ public:
            EntryProcessorFun);
 
     void
-    Clear();
-
-    void
-    Flush();
+    clear();
 
     void
     register_()
@@ -106,34 +99,43 @@ public:
         return cluster_size_;
     }
 
+    virtual void
+    flush() = 0;
+
+protected:
+    FailOverCacheWriter(const std::string&,
+                        const volumedriver::ClusterSize);
+
+    virtual void
+    open(const volumedriver::SCO) = 0;
+
+    virtual void
+    close() = 0;
+
+    virtual void
+    add_entries(std::vector<volumedriver::FailOverCacheEntry>,
+                std::unique_ptr<uint8_t[]>) = 0;
+
+    virtual void
+    get_entries(const volumedriver::SCO,
+                EntryProcessorFun&) = 0;
+
+    virtual void
+    remove(const volumedriver::SCO) = 0;
+
 private:
     DECLARE_LOGGER("FailOverCacheWriter");
 
-    boost::filesystem::path
-    makePath(const volumedriver::SCO) const;
-
     bool registered_;
-
     bool first_command_must_be_getEntries;
-
-    const boost::filesystem::path root_;
-
     const std::string ns_;
-
     std::deque<volumedriver::SCO> scosdeque_;
-
-    fungi::File* f_;
-
     const volumedriver::ClusterSize cluster_size_;
 
     void
-    ClearCache();
+    clear_cache_();
 
-    int64_t check_offset;
-
-    void
-    process_sco_(const volumedriver::SCO,
-                 EntryProcessorFun&);
+    size_t check_offset_;
 };
 
 }

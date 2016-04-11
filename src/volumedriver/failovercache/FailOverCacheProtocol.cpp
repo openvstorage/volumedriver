@@ -261,10 +261,21 @@ FailOverCacheProtocol::addEntries_()
 {
     VERIFY(cache_);
 
-    volumedriver::CommandData<volumedriver::AddEntries> data; // default constructor, as we are streaming in
+    volumedriver::CommandData<volumedriver::AddEntries> data;
     stream_ >> data;
-    cache_->addEntries(std::move(data.entries_),
-                       std::move(data.buf_));
+
+    // TODO: consider preventing empty AddEntries requests
+    if (data.entries_.empty())
+    {
+        VERIFY(data.buf_ == nullptr);
+    }
+    else
+    {
+        VERIFY(data.buf_ != nullptr);
+        cache_->addEntries(std::move(data.entries_),
+                           std::move(data.buf_));
+    }
+
     returnOk();
 }
 
@@ -289,7 +300,7 @@ FailOverCacheProtocol::Flush_()
 {
     VERIFY(cache_);
     LOG_TRACE("Flushing for namespace " <<  cache_->getNamespace());
-    cache_->Flush();
+    cache_->flush();
     returnOk();
 }
 
@@ -298,7 +309,7 @@ FailOverCacheProtocol::Clear_()
 {
     VERIFY(cache_);
     LOG_INFO("Clearing for namespace " << cache_->getNamespace());
-    cache_->Clear();
+    cache_->clear();
     returnOk();
 }
 
@@ -339,10 +350,12 @@ FailOverCacheProtocol::removeUpTo_()
         cache_->removeUpTo(sconame);
         returnOk();
     }
-    CATCH_STD_ALL_LOG_IGNORE(cache_->getNamespace() <<
-                             ": caught exception removing SCOs up to " <<
-                             sconame);
-    returnNotOk();
+    CATCH_STD_ALL_EWHAT({
+            LOG_ERROR(cache_->getNamespace() <<
+                      ": caught exception removing SCOs up to " <<
+                      sconame << ": " << EWHAT);
+            returnNotOk();
+        });
 }
 
 void

@@ -13,9 +13,7 @@
 // limitations under the License.
 
 #include "FailOverCacheWriter.h"
-#include "failovercache/fungilib/WrapByteArray.h"
-
-#include <boost/scoped_array.hpp>
+#include "FileBackend.h"
 
 #include <youtils/Assert.h>
 
@@ -25,66 +23,38 @@ namespace failovercache
 using namespace volumedriver;
 using namespace fungi;
 
+namespace be = backend;
 namespace fs = boost::filesystem;
 
-FailOverCacheWriter::FailOverCacheWriter(const fs::path& root,
-                                         const std::string& ns,
-                                         const ClusterSize& cluster_size)
+FailOverCacheWriter::FailOverCacheWriter(const std::string& nspace,
+                                         const ClusterSize cluster_size)
     : registered_(false)
     , first_command_must_be_getEntries(false)
-    , root_(root)
-    , ns_(ns)
-    , f_(0)
+    , ns_(nspace)
     , cluster_size_(cluster_size)
-    , check_offset(0)
+    , check_offset_(0)
 {
-    fs::create_directories(root / ns);
-}
-
-FailOverCacheWriter::~FailOverCacheWriter()
-{
-    try
-    {
-        scosdeque_.clear();
-        fs::remove_all(root_ / ns_);
-    }
-    catch(std::exception& e)
-    {
-        LOG_WARN("Removing directory " << (root_ / ns_ ) << " failed, " << e.what());
-    }
-    catch(...)
-    {
-        LOG_WARN("Removing directory " << (root_ / ns_ ) << " failed, unknown exception");
-
-    }
-
-    delete f_;
 }
 
 void
-FailOverCacheWriter::ClearCache()
+FailOverCacheWriter::clear_cache_()
 {
-    LOG_DEBUG("Namespace: " << ns_);
+    LOG_INFO(ns_ << ": clearing");
+
     for (auto sco : scosdeque_)
     {
-        fs::path path = makePath(sco);
-        LOG_DEBUG("removing failover cache data for " << sco << " at " << path << " for namespace " << ns_);
-        fs::remove(path);
+        remove(sco);
     }
-    if(f_)
-    {
-        f_->close();
-        delete f_;
-        f_ = 0;
-    }
+
+    close();
     scosdeque_.clear();
 }
 
 void
 FailOverCacheWriter::removeUpTo(const SCO sconame)
 {
+    LOG_INFO(ns_ << ": removing up to " << sconame);
 
-    LOG_INFO("Up to SCO " << sconame << " Namespace: " << ns_);
     VERIFY(sconame.version() == 0);
     VERIFY(sconame.cloneID() == 0);
 
@@ -93,168 +63,94 @@ FailOverCacheWriter::removeUpTo(const SCO sconame)
         SCONumber sconum = sconame.number();
         SCONumber oldest = scosdeque_.front().number();
 
-        LOG_DEBUG("Oldest SCONUmber in cache " << oldest << " sconumber passed: " << sconum << ", namespace: " << ns_);
-        if( sconum < oldest)
+        LOG_DEBUG("Oldest SCONUmber in cache " << oldest <<
+                  " sconumber passed: " << sconum <<
+                  ", namespace: " << ns_);
+
+        if (sconum < oldest)
         {
             LOG_DEBUG("not removing anything for namespace: " << ns_);
             return;
         }
 
-        if(f_ and sconame == scosdeque_.back())
+        if (sconame == scosdeque_.back())
         {
-            LOG_DEBUG("Closing filedescriptor" << ns_);
-            f_->close();
-            delete f_;
-            f_ = 0;
+            LOG_DEBUG("Closing sco" << sconame);
+            close();
         }
+
         while(not scosdeque_.empty() and
               sconum >= scosdeque_.front().number())
         {
-            fs::path path = makePath(scosdeque_.front());
-            LOG_INFO("Removing SCO " << path);
-            fs::remove(path);
+            remove(scosdeque_.front());
             scosdeque_.pop_front();
         }
     }
-}
-
-fs::path
-FailOverCacheWriter::makePath(const SCO sconame) const
-{
-    return root_ / ns_ / sconame.str();
 }
 
 void
 FailOverCacheWriter::addEntries(std::vector<FailOverCacheEntry> entries,
                                 std::unique_ptr<uint8_t[]> buf)
 {
-    for (auto& e : entries)
+    VERIFY(not entries.empty());
+
+    const ClusterLocation& loc = entries.front().cli_;
+    const SCO sco = loc.sco();
+    const SCOOffset offset = loc.offset();
+    const size_t count = entries.size();
+
+    VERIFY(sco == entries.back().cli_.sco());
+
+    if (first_command_must_be_getEntries)
     {
-        addEntry(e.cli_,
-                 e.lba_,
-                 // AR: the WrapByteArray stuff in the call chain needs this. Fix it!
-                 const_cast<uint8_t*>(e.buffer_),
-                 e.size_);
-    }
-}
-
-void
-FailOverCacheWriter::addEntry(ClusterLocation cl,
-                              const uint64_t lba,
-                              byte* buffer,
-                              uint32_t size)
-{
-    SCO sconame = cl.sco();
-    VERIFY(cl.version() == 0);
-    VERIFY(cl.cloneID() == 0);
-
-    SCOOffset scooffset = cl.offset();
-
-    LOG_DEBUG("Adding entry clusterlocation " << cl << ", lba "  << lba  << " for namespace " << ns_);
-    if(first_command_must_be_getEntries)
-    {
-        ClearCache();
+        clear_cache_();
         first_command_must_be_getEntries = false;
     }
-    try
+
+    if (scosdeque_.empty() or
+        scosdeque_.back() != sco)
     {
-        if(scosdeque_.empty() or
-           scosdeque_.back() != sconame)
-        {
-            if (f_)
-            {
-                f_->close();
-            }
+        close();
 
-            delete f_;
-            fs::path scopath = makePath(sconame);
+        LOG_INFO(getNamespace() << ": opening new sco: " << sco);
+        open(sco);
 
-            LOG_INFO("opening new sco: " << scopath);
-
-            f_ = new fungi::File(scopath.string(),
-                                 fungi::File::Append);
-            f_->open();
-            scosdeque_.push_back(sconame);
-            check_offset = scooffset;
-        }
-        else
-        {
-            VERIFY(scooffset == ++check_offset);
-        }
-
-        fungi::IOBaseStream fstream(*f_);
-        fstream << cl << lba << fungi::WrapByteArray(buffer, size);
-
+        scosdeque_.push_back(sco);
+        check_offset_ = offset;
     }
-    catch(...)
+    else
     {
-        LOG_ERROR("add Entry error");
-        throw;
+        VERIFY(offset == check_offset_);
     }
+
+    add_entries(std::move(entries),
+                std::move(buf));
+
+    check_offset_ += count;
 }
 
 void
-FailOverCacheWriter::Clear()
+FailOverCacheWriter::clear()
 {
-    ClearCache();
+    LOG_INFO(ns_ << ": clearing");
+
+    clear_cache_();
     first_command_must_be_getEntries = false;
-}
-
-void
-FailOverCacheWriter::process_sco_(const SCO sco,
-                                  EntryProcessorFun& fun)
-{
-
-    LOG_INFO(ns_ << ": processing SCO " << sco);
-
-    const fs::path filename = makePath(sco);
-
-    VERIFY(fs::exists(filename));
-
-    File f(filename.string(), fungi::File::Read);
-    f.open();
-    IOBaseStream fstream(f);
-
-    boost::scoped_array<byte> buf(new byte[cluster_size_]);
-
-    while (!f.eof())
-    {
-        ClusterLocation cl;
-        fstream >> cl;
-
-        uint64_t lba;
-        fstream >> lba;
-
-        int64_t bal; // byte array length
-        fstream >> bal;
-        int32_t len = (int32_t) bal;
-        VERIFY(len == static_cast<int32_t>(cluster_size_));
-        fstream.read(buf.get(), len);
-
-        LOG_DEBUG("Sending entry " << cl
-                  << ", lba " << lba
-                  << " for namespace " << ns_);
-
-        fun(cl,
-            lba,
-            buf.get(),
-            len);
-    }
-
-    fstream.close();
 }
 
 void
 FailOverCacheWriter::getEntries(EntryProcessorFun fun)
 {
-    LOG_DEBUG("Getting entries for namespace " << ns_);
-    fflush(0);
+    LOG_INFO(ns_ << ": getting all entries");
+
+    flush();
 
     for (const auto& sco : scosdeque_)
     {
-        process_sco_(sco,
-                     fun);
+        get_entries(sco,
+                    fun);
     }
+
     first_command_must_be_getEntries = false;
 }
 
@@ -262,7 +158,8 @@ void
 FailOverCacheWriter::getSCORange(SCO& oldest,
                                  SCO& youngest) const
 {
-    LOG_DEBUG("Getting SCORange for for namespace " << ns_);
+    LOG_DEBUG(ns_);
+
     if(not scosdeque_.empty())
     {
         oldest= scosdeque_.front();
@@ -279,8 +176,7 @@ void
 FailOverCacheWriter::getSCO(SCO sconame,
                             EntryProcessorFun fun)
 {
-    LOG_DEBUG("Getting SCO " << std::hex << sconame << std::dec <<
-              " for namespace " << ns_);
+    LOG_INFO(ns_ << ": getting SCO " << std::hex << sconame);
 
     const auto it = std::find(scosdeque_.begin(), scosdeque_.end(),sconame);
     if(it == scosdeque_.end())
@@ -289,23 +185,24 @@ FailOverCacheWriter::getSCO(SCO sconame,
     }
     else
     {
-        Flush();
-
-        process_sco_(*it,
-                     fun);
+        flush();
+        get_entries(*it,
+                    fun);
     }
 }
 
-void
-FailOverCacheWriter::Flush()
+std::unique_ptr<FailOverCacheWriter>
+FailOverCacheWriter::create(const fs::path& root,
+                            const std::string& nspace,
+                            const ClusterSize csize)
 {
-    if (f_)
-    {
-        f_->flush();
-    }
+    return std::make_unique<FileBackend>(root,
+                                         nspace,
+                                         csize);
 }
 
 }
+
 // Local Variables: **
 // mode: c++ **
 // End: **

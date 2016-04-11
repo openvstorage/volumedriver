@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "FileBackend.h"
 #include "FailOverCacheAcceptor.h"
 #include "FailOverCacheProtocol.h"
 
@@ -154,9 +155,9 @@ FailOverCacheAcceptor::lookup(const CommandData<Register>& reg)
     }
     else
     {
-        w = std::make_shared<FailOverCacheWriter>(root_,
-                                                  reg.ns_,
-                                                  reg.clustersize_);
+        w = FailOverCacheWriter::create(root_,
+                                        reg.ns_,
+                                        reg.clustersize_);
 
         auto res(map_.emplace(std::make_pair(reg.ns_,
                                              w)));
