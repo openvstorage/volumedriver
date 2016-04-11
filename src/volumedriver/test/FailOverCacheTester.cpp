@@ -702,11 +702,15 @@ TEST_P(FailOverCacheTester, adding_and_flushing)
     std::vector<ClusterLocation> locs(1);
 
     const size_t max = (1ULL << 27) / buf.size();
+    const SCOOffset entries_per_sco = 1024;
 
-    for (size_t i = 1; i <= max; ++i)
+    ASSERT_EQ(0, max % entries_per_sco);
+
+    for (size_t i = 0; i < max; ++i)
     {
         *reinterpret_cast<size_t*>(buf.data()) = i;
-        locs[0] = ClusterLocation(i);
+        locs[0] = ClusterLocation(i / entries_per_sco + 1,
+                                  i % entries_per_sco);
 
         while (not foc.addEntries(locs,
                                   locs.size(),
@@ -727,7 +731,7 @@ TEST_P(FailOverCacheTester, adding_and_flushing)
 
     size_t count = 0;
 
-    for (size_t i = 1; i <= max; ++i)
+    for (size_t i = 1; i <= max / entries_per_sco; ++i)
     {
         foc.getSCOFromFailOver(SCO(i),
                                [&](ClusterLocation loc,
@@ -735,11 +739,12 @@ TEST_P(FailOverCacheTester, adding_and_flushing)
                                    const uint8_t* buf,
                                    size_t bufsize)
                                {
-                                   ++count;
-                                   ASSERT_EQ(i, loc.sco().number());
-                                   ASSERT_EQ(i, lba);
-                                   ASSERT_EQ(i, *reinterpret_cast<const size_t*>(buf));
+                                   ASSERT_EQ(count / entries_per_sco + 1, loc.sco().number());
+                                   ASSERT_EQ(count % entries_per_sco, loc.offset());
+                                   ASSERT_EQ(count, lba);
+                                   ASSERT_EQ(count, *reinterpret_cast<const size_t*>(buf));
                                    ASSERT_EQ(csize, bufsize);
+                                   ++count;
                                });
     }
 
