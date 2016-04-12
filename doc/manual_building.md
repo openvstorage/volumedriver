@@ -100,7 +100,6 @@ Note: If you want a simpler, more automated way of building, do have a look at t
 
     Note: use _my-rtchecked-build.cfg_ and _cd volumedriver-buildtools/src/rtchecked_ for debug builds
     
-    \[TODO: change code of build.sh to get rid of the required cd\]
     
 ## 3. Build the _volumedriver_ itself
 
