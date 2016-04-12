@@ -73,6 +73,12 @@ Note: If you want a simpler, more automated way of building, do have a look at t
   
         git clone https://github.com/openvstorage/volumedriver-buildtools
 
+  - switch to correct tag/release if you don't want latest, greatest "dev" code
+  
+        cd volumedriver-buildtools
+        git checkout master ## or tags/<tagid>
+        cd ..
+  
   - create a configuration file that points to the desired install location and a path where downloaded sources will be stored
     This file needs to define:
 
@@ -107,6 +113,12 @@ Note: If you want a simpler, more automated way of building, do have a look at t
   - check out the source
   
         git clone https://github.com/openvstorage/volumedriver 
+
+  - switch to correct tag/release if you don't want latest, greatest "dev" code
+  
+        cd volumedriver
+        git checkout master ## or tags/<tagid>
+        cd ..
 
   - create a custom build script that contains the location of the volumedriver-buildtools built in the previous step plus a bunch of other settings, for example:
   
