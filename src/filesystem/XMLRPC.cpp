@@ -1121,7 +1121,7 @@ VolumeDriverPerformanceCounters::execute_internal(XmlRpc::XmlRpcValue& params,
         stats.cluster_cache_misses += api::getClusterCacheMisses(v);
         stats.metadata_store_hits += mds.cache_hits;
         stats.metadata_store_misses += mds.cache_misses;
-        stats.stored = api::getStored(v);
+        stats.stored += api::getStored(v);
 
         vd::PerformanceCounters& pc = api::performance_counters(v);
 
