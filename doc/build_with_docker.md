@@ -19,8 +19,6 @@ Building the code and running the included testsuite (1,783 tests) takes around 
 
 ## Building
 
-To build the default (_dev_) branch with latest greatest development version of the code:
-
 1. fetch the code
 
     In a directory of choice:
@@ -30,6 +28,18 @@ To build the default (_dev_) branch with latest greatest development version of 
 
     The _volumedriver-buildtools_ repo contains external libraries and tools that are either newer or not present on a standard installation; the _volumedriver_ repo is the codebase of the volumedriver itself.
     
+    Per default you'll get the _dev_ (developement) branch of the code with the latest, greatest changes that may or may not be in a working state. If you want to build a specific version, you need to switch to that codebase first. We're using the ["gitflow workflow"](https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow) scheme where development happens on "_dev_" and releases are tagged and merged into "_master_". 
+    
+    To list the available tags (releases), use the
+    
+    		git tag 
+    		
+    command. To switch the codebase to a specific release, for example 5.7.0, do:
+    
+    		cd volumedriver
+    		git checkout tags/5.7.0
+    		cd ..
+    	
 2. create the build environment image
 
     - for Ubuntu 14.04 based builds:
