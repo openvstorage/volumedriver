@@ -95,4 +95,4 @@ To build the default (_dev_) branch with latest greatest development version of 
 
 		docker rmi bldenv
 
-The resulting volumedriver packages will be in the __volumedriver/build/debian__ or __volumedriver/build/rpm__ subdir.
+The resulting volumedriver packages will be in the __${BUILD_DIR}/debian__ or __${BUILD_DIR}/rpm__ subdir.
