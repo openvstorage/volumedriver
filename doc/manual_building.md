@@ -104,6 +104,7 @@ Note: If you want a simpler, more automated way of building, do have a look at t
     
 ## 3. Build the _volumedriver_ itself
 
+  - if you want to run the included testsuite, first read [running the included testsuite](running_included_testsuite.md) for extra requirements!
   - check out the source
   
         git clone https://github.com/openvstorage/volumedriver 
@@ -118,23 +119,31 @@ Note: If you want a simpler, more automated way of building, do have a look at t
         BUILDTOOLS_TO_USE="${PWD}/BUILDS/volumedriver-buildtools/release"
         
         VOLUMEDRIVER_DIR="${PWD}/volumedriver"  # must be a full path, not a relative one!
-        
-        BUILDER="\${VOLUMEDRIVER_DIR}/src/buildscripts/builder.sh"
         BUILD_DIR="${PWD}/BUILDS/volumedriver/release"
         
-        export RUN_TESTS=no                   # set to "yes" to run included test suite (needs running rpcbind, redis & omniNames + installed arakoon & alba!)
+        BUILDER="\${VOLUMEDRIVER_DIR}/src/buildscripts/builder.sh"
+        
+        export RUN_TESTS=no                   # set to "yes" to run included test suite (needs running rpcbind, redis & omniNames + installed arakoon & alba; see docs!)
         export BUILD_DEBIAN_PACKAGES=yes      # both for deb & rpm; change to "no" to skip creating packages
         export CLEAN_BUILD=no                 # set to "yes" to clean build env (force complete rebuild)
         export RECONFIGURE_BUILD=yes          # do reconfigure the code
         export USE_MD5_HASH=yes               # set to "no" to disable deduping
         export BUILD_NUM_PROCESSES=2          # number of concurrent build processes (make -j)
+        export SUPPRESS_WARNINGS=no
+        export COVERAGE=no
         
         export CXX_WARNINGS="-Wall -Wextra -Wno-unknown-pragmas -Wsign-promo -Woverloaded-virtual -Wnon-virtual-dtor"
         export CXX_OPTIMIZE_FLAGS="-ggdb3 -O2"
         export CXX_DEFINES="-DNDEBUG -DBOOST_FILESYSTEM_VERSION=3"
-        export SUPPRESS_WARNINGS=no
-        export COVERAGE=no
         
+        ## settings for the included testsuite
+        export ARAKOON_BINARY=/usr/bin/arakoon
+        export FOC_PORT_BASE=19100
+        export FAILOVERCACHE_TEST_PORT=\${FOC_PORT_BASE}
+        export ARAKOON_PORT_BASE=\$((FOC_PORT_BASE + 10))
+        export VFS_PORT_BASE=\$((FOC_PORT_BASE + 20))
+        export MDS_PORT_BASE=\$((VFS_PORT_BASE + 20))
+
         mkdir -p \${BUILD_DIR}
         ln -sf \${BUILDER} \${BUILD_DIR}
         
