@@ -1,10 +1,12 @@
 ## Preface
 
-The **volumedriver** sources include a testsuite to make sure the code works as expected. When building the code, you can also use this suite to check the resulting binaries are ok. Note that this does take quite some time.
+The **volumedriver** sources include a testsuite (1,783 tests) to make sure the code works as expected. When building the code, you can also use this suite to check the resulting binaries are ok. 
+
+Note that this does take quite some time, 2hr 30min is not exceptional.
 
 ## Prerequisites
 
-If you're building using our dockerised environment (cfr. [Building with docker](volumedriver/doc/build_with_docker.md)) all prerequisites are installed and taken care off for you. 
+If you're building using our dockerised environment (cfr. [Building with docker](volumedriver/doc/build_with_docker.md)) all prerequisites are installed and taken care of for you. 
 
 If you are doing a [manual](volumedriver/doc/manual_building.md) build, make sure:
 
@@ -28,3 +30,14 @@ If you are doing a [manual](volumedriver/doc/manual_building.md) build, make sur
         
 - you have access to **/dev/fuse**
 
+## Running the suite
+
+In your buildscript, set
+
+        RUN_TESTS=yes
+
+and the testsuite will be run during the build process.
+
+## Results
+
+While building, feedback about the tests run and their status will appear on the console. The same information is available afterwards in _${BUILD_DIR}/build/test.log_.
