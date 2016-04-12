@@ -83,7 +83,7 @@ To build the default (_dev_) branch with latest greatest development version of 
 			./volumedriver/src/buildscripts/jenkins-rtchecked-dev.sh ${WORKSPACE}/volumedriver
 
     Notes:
-    - change "*RUN_TESTS=no*" to "*RUN_TESTS=yes*" to run the included test suite.
+    - change "*RUN_TESTS=no*" to "*RUN_TESTS=yes*" to run the included test suite. See [running the testsuite](running_included_testsuite.md) for more info.
 
 6. stop & cleanup docker build container
 
