@@ -130,6 +130,8 @@ Note: If you want a simpler, more automated way of building, do have a look at t
         export BUILD_NUM_PROCESSES=2          # number of concurrent build processes (make -j)
         
         export CXX_WARNINGS="-Wall -Wextra -Wno-unknown-pragmas -Wsign-promo -Woverloaded-virtual -Wnon-virtual-dtor"
+        export CXX_OPTIMIZE_FLAGS="-ggdb3 -O2"
+        export CXX_DEFINES="-DNDEBUG -DBOOST_FILESYSTEM_VERSION=3"
         export SUPPRESS_WARNINGS=no
         export COVERAGE=no
         
