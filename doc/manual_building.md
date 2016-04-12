@@ -165,5 +165,5 @@ Note: If you want a simpler, more automated way of building, do have a look at t
   
         ./bld-voldrvr-release.sh
 
-The resulting packages will be either under **./BUILDS/volumedriver/release/debian** or **./BUILDS/volumedriver/release/rpm**.
-If you ran the including testsuite, take a look at ./BUILDS/volumedriver/release/build/test.log for the results.
+The resulting packages will be either under **${BUILD_DIR}/debian** or **${BUILD_DIR}/rpm**.
+If you ran the including testsuite, take a look at ${BUILD_DIR}/build/test.log for the results.
