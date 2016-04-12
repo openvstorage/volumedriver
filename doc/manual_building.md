@@ -122,7 +122,7 @@ Note: If you want a simpler, more automated way of building, do have a look at t
         BUILDER="\${VOLUMEDRIVER_DIR}/src/buildscripts/builder.sh"
         BUILD_DIR="${PWD}/BUILDS/volumedriver/release"
         
-        export RUN_TESTS=no                   # set to "yes" to run included test suite (needs running rpcbind, redis & omniNames + installed arakoon!)
+        export RUN_TESTS=no                   # set to "yes" to run included test suite (needs running rpcbind, redis & omniNames + installed arakoon & alba!)
         export BUILD_DEBIAN_PACKAGES=yes      # both for deb & rpm; change to "no" to skip creating packages
         export CLEAN_BUILD=no                 # set to "yes" to clean build env (force complete rebuild)
         export RECONFIGURE_BUILD=yes          # do reconfigure the code
