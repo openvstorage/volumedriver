@@ -47,6 +47,7 @@ There are some scripts available under src/buildscripts to help setting up the b
 correctly. By way of example:
 
 (1) Create a custom build configuration, e.g.:
+
     #! /bin/bash
     set -eux
     # test .. this file should be in `pwd`!!!
@@ -78,5 +79,8 @@ correctly. By way of example:
 
     exit ${ret}
 
+
 (2) Run the build script:
+
     src/buildscripts/rtchecked.sh .
+
