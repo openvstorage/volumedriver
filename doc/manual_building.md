@@ -10,7 +10,7 @@ To build the _volumedriver_ you'll need to:
 
 The code can either be built for debugging purposes (_rtchecked_ build) or as code to be run in production (_release_ build). In this document we mainly concentrate on the _release_ build process, but we'll hint at the changes needed for debug (_rtchecked_) builds.
 
-Note: If you want a simpler, more automated way of building, do have a look at the [Building with docker](doc/build_with_docker.md) document.
+Note: If you want a simpler, more automated way of building, do have a look at the [Building with docker](doc/build_with_docker.md) document. This document assumes you're familiar with building complex projects and using tools as, for example, git.
 
 ## 1. Installing all prerequisites
 
@@ -73,7 +73,7 @@ Note: If you want a simpler, more automated way of building, do have a look at t
   
         git clone https://github.com/openvstorage/volumedriver-buildtools
 
-  - switch to correct tag/release if you don't want latest, greatest "dev" code
+  - switch to correct tag/release if you don't want latest, greatest "dev" code. (Note: we're using the ["gitflow workflow"](https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow) scheme where development happens on "_dev_" and releases are tagged and merged into "_master_".)
   
         cd volumedriver-buildtools
         git checkout master ## or tags/<tagid>
