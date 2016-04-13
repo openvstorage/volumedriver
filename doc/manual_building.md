@@ -114,7 +114,7 @@ Note: If you want a simpler, more automated way of building, do have a look at t
   
         git clone https://github.com/openvstorage/volumedriver 
 
-  - switch to correct tag/release if you don't want latest, greatest "dev" code
+  - switch to correct tag/release if you don't want latest, greatest "dev" code. (Note: we're using the ["gitflow workflow"](https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow) scheme where development happens on "_dev_" and releases are tagged and merged into "_master_".)
   
         cd volumedriver
         git checkout master ## or tags/<tagid>
