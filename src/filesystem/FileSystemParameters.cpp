@@ -188,6 +188,15 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(shm_region_size,
                                       ShowDocumentation::T,
                                       268435456); // 256 MB
 
+const char network_interface_component_name[] = "network_interface";
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(network_uri,
+                                      network_interface_component_name,
+                                      "network_uri",
+                                      "URI to bind network interface",
+                                      ShowDocumentation::T,
+                                      "tcp://127.0.0.1:21321"s);
+
 // FileSystem:
 const char filesystem_component_name[] = "filesystem";
 
@@ -320,6 +329,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(fs_enable_shm_interface,
                                       filesystem_component_name,
                                       "fs_enable_shm_interface",
                                       "Whether to enable the SHM interface",
+                                      ShowDocumentation::T,
+                                      false);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(fs_enable_network_interface,
+                                      filesystem_component_name,
+                                      "fs_enable_network_interface",
+                                      "Whether to enable the network interface",
                                       ShowDocumentation::T,
                                       false);
 

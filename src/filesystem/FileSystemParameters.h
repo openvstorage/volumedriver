@@ -138,6 +138,9 @@ DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(fs_dtl_mode,
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(fs_enable_shm_interface,
                                        bool);
 
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(fs_enable_network_interface,
+                                       bool);
+
 // FUSE:
 extern const char fuse_component_name[];
 
@@ -151,6 +154,12 @@ extern const char shm_interface_component_name[];
 
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(shm_region_size,
                                        size_t);
+
+// NETWORK:
+extern const char network_interface_component_name[];
+
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(network_uri,
+                                       std::string);
 
 // EventPublisher:
 extern const char events_component_name[];
