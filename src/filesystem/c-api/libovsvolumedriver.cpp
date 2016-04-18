@@ -13,13 +13,6 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "volumedriver.h"
-#include "common.h"
-#include "ShmHandler.h"
-#include "tracing.h"
-#include "../ShmControlChannelProtocol.h"
-#include "../ShmClient.h"
-
 #include <cerrno>
 #include <limits.h>
 #include <map>
@@ -29,6 +22,13 @@
 #include <youtils/IOException.h>
 #include <youtils/ScopeExit.h>
 
+#include "volumedriver.h"
+#include "common.h"
+#include "ShmHandler.h"
+#include "NetworkXioHandler.h"
+#include "tracing.h"
+#include "context.h"
+
 #ifdef __GNUC__
 #define likely(x)       __builtin_expect(!!(x), 1)
 #define unlikely(x)     __builtin_expect(!!(x), 0)
@@ -37,35 +37,13 @@
 #define unlikely(x)     (x)
 #endif
 
-struct ovs_context_t
-{
-    TransportType transport;
-    std::string host;
-    int port;
-    ovs_shm_context *shm_ctx_;
-};
-
-static bool
-_is_volume_name_valid(const char *volume_name)
-{
-    if (volume_name == NULL || strlen(volume_name) == 0 ||
-        strlen(volume_name) >= NAME_MAX)
-    {
-        return false;
-    }
-    else
-    {
-        return true;
-    }
-}
-
 ovs_ctx_attr_t*
 ovs_ctx_attr_new()
 {
     try
     {
         ovs_ctx_attr_t *attr = new ovs_ctx_attr_t;
-        attr->transport = TransportType::SharedMemory;
+        attr->transport = TransportType::Error;
         attr->host = NULL;
         attr->port = 0;
         return attr;
@@ -86,7 +64,7 @@ ovs_ctx_attr_destroy(ovs_ctx_attr_t *attr)
         {
             free(attr->host);
         }
-        free(attr);
+        delete attr;
     }
     return 0;
 }
@@ -138,6 +116,15 @@ ovs_ctx_new(const ovs_ctx_attr_t *attr)
         errno = EINVAL;
         return NULL;
     }
+
+    if (attr->transport != TransportType::SharedMemory &&
+        attr->transport != TransportType::TCP &&
+        attr->transport != TransportType::RDMA)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
     try
     {
         ctx = new ovs_ctx_t;
@@ -145,13 +132,29 @@ ovs_ctx_new(const ovs_ctx_attr_t *attr)
         ctx->host = std::string(attr->host ? attr->host : "");
         ctx->port = attr->port;
         ctx->shm_ctx_ = nullptr;
-        return ctx;
+        ctx->net_client_ = nullptr;
     }
     catch (const std::bad_alloc&)
     {
         errno = ENOMEM;
+        return NULL;
     }
-    return NULL;
+
+    switch (ctx->transport)
+    {
+    case TransportType::TCP:
+        ctx->uri = "tcp://" + ctx->host + ":" + std::to_string(ctx->port);
+        break;
+    case TransportType::RDMA:
+        ctx->uri = "rdma://" + ctx->host + ":" + std::to_string(ctx->port);
+        break;
+    case TransportType::SharedMemory:
+        return ctx;
+    case TransportType::Error: /* already catched */
+        errno = EINVAL;
+        return NULL;
+    }
+    return ctx;
 }
 
 int
@@ -185,28 +188,48 @@ ovs_ctx_init(ovs_ctx_t *ctx,
         return -1;
     }
 
-    /* On Error: EACCESS or EIO */
-    try
+    ctx->oflag = oflag;
+    if (ctx->transport == TransportType::SharedMemory)
     {
-        ctx->shm_ctx_ = new ovs_shm_context(volume_name,
-                                                          oflag);
-        return 0;
+        try
+        {
+            ctx->shm_ctx_ = new ovs_shm_context(volume_name,
+                                                oflag);
+            return 0;
+        }
+        catch (const ShmIdlInterface::VolumeDoesNotExist&)
+        {
+            errno = EACCES;
+        }
+        catch (const ShmIdlInterface::VolumeNameAlreadyRegistered&)
+        {
+            errno = EBUSY;
+        }
+        catch (const std::bad_alloc&)
+        {
+            errno = ENOMEM;
+        }
+        catch (...)
+        {
+            errno = EIO;
+        }
     }
-    catch (const ShmIdlInterface::VolumeDoesNotExist&)
+    else if (ctx->transport == TransportType::RDMA ||
+             ctx->transport == TransportType::TCP)
     {
-        errno = EACCES;
-    }
-    catch (const ShmIdlInterface::VolumeNameAlreadyRegistered&)
-    {
-        errno = EBUSY;
-    }
-    catch (const std::bad_alloc&)
-    {
-        errno = ENOMEM;
-    }
-    catch (...)
-    {
-        errno = EIO;
+        try
+        {
+            /* cnanakos: do we need to make queue depth configurable? */
+            ctx->net_client_ =
+                std::make_shared<volumedriverfs::NetworkXioClient>(ctx->uri,
+                                                                   512);
+        }
+        catch (...)
+        {
+            errno = EIO;
+            return -1;
+        }
+        return ovs_xio_open_volume(ctx, volume_name);
     }
     return -1;
 }
@@ -232,6 +255,10 @@ ovs_ctx_destroy(ovs_ctx_t *ctx)
     if (ctx->shm_ctx_)
     {
         delete ctx->shm_ctx_;
+    }
+    else if (ctx->net_client_)
+    {
+        ctx->net_client_.reset();
     }
     delete ctx;
     return r;
@@ -734,6 +761,7 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
 {
     int r, accmode;
     ovs_shm_context *shm_ctx_ = ctx->shm_ctx_;
+    volumedriverfs::NetworkXioClientPtr net_client = ctx->net_client_;
 
     ovs_submit_aio_request_tracepoint_enter(op,
                                             ctx,
@@ -766,7 +794,7 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
         return -1;
     }
 
-    accmode = shm_ctx_->oflag & O_ACCMODE;
+    accmode = ctx->oflag & O_ACCMODE;
     switch (op)
     {
     case RequestOp::Read:
@@ -802,15 +830,8 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
         return -1;
     }
 
-    ovs_aio_request *request;
-    try
-    {
-        request = new ovs_aio_request;
-        request->ovs_aiocbp = ovs_aiocbp;
-        request->completion = completion;
-        request->_op = op;
-    }
-    catch (std::bad_alloc&)
+    ovs_aio_request *request = create_new_request(op, ovs_aiocbp, completion);
+    if (request == NULL)
     {
         ovs_submit_aio_request_tracepoint_exit(op,
                                                ctx,
@@ -822,31 +843,50 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
         return -1;
     }
 
-    pthread_cond_init(&request->_cond, NULL);
-    pthread_mutex_init(&request->_mutex, NULL);
-    request->_on_suspend = false;
-    request->_canceled = false;
-    request->_completed = false;
-    request->_signaled = false;
-    request->_rv = 0;
-    ovs_aiocbp->request_ = request;
     switch (op)
     {
     case RequestOp::Read:
-        /* on error returns -1 */
-        r = shm_ctx_->shm_client_->send_read_request(ovs_aiocbp->aio_buf,
-                                                     ovs_aiocbp->aio_nbytes,
-                                                     ovs_aiocbp->aio_offset,
-                                                     reinterpret_cast<void*>(request));
+        if (ctx->transport == TransportType::SharedMemory)
+        {
+            /* on error returns -1 */
+            r = shm_ctx_->shm_client_->send_read_request(ovs_aiocbp->aio_buf,
+                                                         ovs_aiocbp->aio_nbytes,
+                                                         ovs_aiocbp->aio_offset,
+                                                         reinterpret_cast<void*>(request));
+        }
+        else
+        {
+            r = net_client->xio_send_read_request(ovs_aiocbp->aio_buf,
+                                                  ovs_aiocbp->aio_nbytes,
+                                                  ovs_aiocbp->aio_offset,
+                                                  reinterpret_cast<void*>(request));
+        }
         break;
     case RequestOp::Write:
     case RequestOp::Flush:
     case RequestOp::AsyncFlush:
-        /* on error returns -1 */
-        r = shm_ctx_->shm_client_->send_write_request(ovs_aiocbp->aio_buf,
-                                                      ovs_aiocbp->aio_nbytes,
-                                                      ovs_aiocbp->aio_offset,
-                                                      reinterpret_cast<void*>(request));
+        if (ctx->transport == TransportType::SharedMemory)
+        {
+            /* on error returns -1 */
+            r = shm_ctx_->shm_client_->send_write_request(ovs_aiocbp->aio_buf,
+                                                          ovs_aiocbp->aio_nbytes,
+                                                          ovs_aiocbp->aio_offset,
+                                                          reinterpret_cast<void*>(request));
+        }
+        else
+        {
+            if (RequestOp::Write == op)
+            {
+                r = net_client->xio_send_write_request(ovs_aiocbp->aio_buf,
+                                                       ovs_aiocbp->aio_nbytes,
+                                                       ovs_aiocbp->aio_offset,
+                                                       reinterpret_cast<void*>(request));
+            }
+            else
+            {
+                r = net_client->xio_send_flush_request(reinterpret_cast<void*>(request));
+            }
+        }
         break;
     default:
         r = -1;
@@ -889,7 +929,7 @@ ovs_aio_write(ovs_ctx_t *ctx,
 
 int
 ovs_aio_error(ovs_ctx_t *ctx,
-              const struct ovs_aiocb *ovs_aiocbp)
+              struct ovs_aiocb *ovs_aiocbp)
 {
     int r = 0;
 
@@ -1030,7 +1070,7 @@ ovs_aio_suspend(ovs_ctx_t *ctx,
                                      __ATOMIC_RELAXED))
     {
         pthread_mutex_lock(&ovs_aiocbp->request_->_mutex);
-        while (not ovs_aiocbp->request_->_signaled)
+        while (not ovs_aiocbp->request_->_signaled && r == 0)
         {
             if (timeout)
             {
@@ -1045,6 +1085,11 @@ ovs_aio_suspend(ovs_ctx_t *ctx,
             }
         }
         pthread_mutex_unlock(&ovs_aiocbp->request_->_mutex);
+    }
+    if (r == ETIMEDOUT)
+    {
+        r = -1;
+        errno = EAGAIN;
     }
     return r;
 }
@@ -1231,7 +1276,7 @@ ovs_aio_wait_completion(ovs_completion_t *completion,
                                      __ATOMIC_RELAXED))
     {
         pthread_mutex_lock(&completion->_mutex);
-        while (not completion->_signaled)
+        while (not completion->_signaled && r == 0)
         {
             if (timeout)
             {
@@ -1246,6 +1291,11 @@ ovs_aio_wait_completion(ovs_completion_t *completion,
             }
         }
         pthread_mutex_unlock(&completion->_mutex);
+    }
+    if (r == ETIMEDOUT)
+    {
+        r = -1;
+        errno = EAGAIN;
     }
     return r;
 }
