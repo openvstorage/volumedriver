@@ -84,6 +84,9 @@ libvolumedriverfs_la_SOURCES = \
 		Messages.pb.cc \
 		MessageUtils.cpp \
 		MetaDataStore.cpp \
+		NetworkXioIOHandler.cpp \
+		NetworkXioServer.cpp \
+		NetworkXioInterface.cpp \
 		Object.cpp \
 		ObjectRegistry.cpp \
 		ObjectRouter.cpp \
@@ -133,7 +136,7 @@ volumedriver_fs_LDADD = \
 	../xmlrpc++0.7/libxmlrpc.la \
 	../backend/libbackend.la \
 	../youtils/libyoutils.la \
-	-lfuse3 \
+	-lfuse3 -lxio \
 	$(BUILDTOOLS_LIBS)
 
 volumedriver_fs_CPPFLAGS = \
