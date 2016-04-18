@@ -33,6 +33,7 @@
 // limitations under the License.
 
 #ifndef __SHM_HANDLER_H
+#define __SHM_HANDLER_H
 
 #include "VolumeCacheHandler.h"
 #include "ShmControlChannelClient.h"
@@ -253,8 +254,8 @@ _aio_request_handler(ovs_aio_request *request,
     RequestOp op = request->_op;
     request->_errno = errno;
     request->_rv = ret;
-    request->_completed = true;
     request->_failed = failed;
+    request->_completed = true;
     if (op != RequestOp::AsyncFlush)
     {
         _aio_wake_up_suspended_aiocb(request);
