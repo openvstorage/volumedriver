@@ -406,6 +406,23 @@ NetworkXioServer::allocate_request(NetworkXioClientData *cd,
 }
 
 void
+NetworkXioServer::deallocate_request(NetworkXioRequest *req)
+{
+    if (req->op == NetworkXioMsgOpcode::ReadRsp && req->data)
+    {
+        if (req->from_pool)
+        {
+            xio_mempool_free(&req->reg_mem);
+        }
+        else
+        {
+            xio_mem_free(&req->reg_mem);
+        }
+    }
+    free_request(req);
+}
+
+void
 NetworkXioServer::free_request(NetworkXioRequest *req)
 {
    NetworkXioClientData *cd = req->cd;
@@ -428,19 +445,7 @@ NetworkXioServer::on_msg_send_complete(xio_session *session __attribute__((unuse
     NetworkXioClientData *cd = static_cast<NetworkXioClientData*>(cb_user_ctx);
     NetworkXioRequest *req = cd->done_reqs.front();
     cd->done_reqs.pop_front();
-
-    if (req->op == NetworkXioMsgOpcode::ReadRsp && req->data)
-    {
-        if (req->from_pool)
-        {
-            xio_mempool_free(&req->reg_mem);
-        }
-        else
-        {
-            xio_mem_free(&req->reg_mem);
-        }
-    }
-    free_request(req);
+    deallocate_request(req);
     return 0;
 }
 
@@ -475,8 +480,12 @@ NetworkXioServer::xio_send_reply(Work *work)
     if (ret != 0)
     {
         LOG_ERROR("failed to send reply: " << xio_strerror(xio_errno()));
+        deallocate_request(req);
     }
-    req->cd->done_reqs.push_back(req);
+    else
+    {
+        req->cd->done_reqs.push_back(req);
+    }
 }
 
 int

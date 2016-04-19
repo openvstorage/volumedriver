@@ -106,6 +106,9 @@ private:
     allocate_request(NetworkXioClientData *cd, xio_msg *xio_req);
 
     void
+    deallocate_request(NetworkXioRequest *req);
+
+    void
     free_request(NetworkXioRequest *req);
 
     NetworkXioClientData*
