@@ -275,7 +275,7 @@ NetworkXioClient::on_msg_error(xio_session *session __attribute__((unused)),
                                      EIO);
         delete xio_msg;
     }
-    else /* XIO_MSG_DIRECTION_ON */
+    else /* XIO_MSG_DIRECTION_IN */
     {
         xio_release_response(msg);
     }
