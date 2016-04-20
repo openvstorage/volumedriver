@@ -25,6 +25,8 @@
 namespace volumedriverfs
 {
 
+MAKE_EXCEPTION(FailedCreateXioClient, fungi::IOException);
+
 template<class T>
 static int
 static_on_session_event(xio_session *session,
@@ -166,7 +168,7 @@ err_exit1:
     xio_context_destroy(ctx);
 err_exit2:
     xio_shutdown();
-    throw;
+    throw FailedCreateXioClient("failed to create XIO client");
 }
 
 NetworkXioClient::~NetworkXioClient()

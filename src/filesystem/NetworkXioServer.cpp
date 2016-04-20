@@ -24,6 +24,10 @@
 namespace volumedriverfs
 {
 
+MAKE_EXCEPTION(FailedBindXioServer, fungi::IOException);
+MAKE_EXCEPTION(FailedCreateXioContext, fungi::IOException);
+MAKE_EXCEPTION(FailedCreateXioMempool, fungi::IOException);
+
 template<class T>
 static int
 static_on_request(xio_session *session,
@@ -148,7 +152,7 @@ NetworkXioServer::NetworkXioServer(FileSystem& fs,
     if (ctx == NULL)
     {
         LOG_FATAL("failed to create XIO context");
-        throw;
+        throw FailedCreateXioContext("failed to create XIO context");
     }
 
     xio_session_ops xio_s_ops;
@@ -164,7 +168,7 @@ NetworkXioServer::NetworkXioServer(FileSystem& fs,
     if (server == NULL)
     {
         LOG_FATAL("failed to bind XIO server to '" << uri << "'");
-        throw;
+        throw FailedBindXioServer("failed to bind XIO server");
     }
 
     try
@@ -192,7 +196,7 @@ NetworkXioServer::NetworkXioServer(FileSystem& fs,
         xio_unbind(server);
         xio_context_destroy(ctx);
         LOG_FATAL("failed to create XIO memory pool");
-        throw;
+        throw FailedCreateXioMempool("failed to create XIO memory pool");
     }
 
     int ret = xio_mempool_add_slab(xio_mpool,
@@ -527,6 +531,5 @@ NetworkXioServer::shutdown()
         xio_shutdown();
     }
 }
-
 
 } //namespace
