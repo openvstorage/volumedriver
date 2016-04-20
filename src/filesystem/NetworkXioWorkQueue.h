@@ -21,7 +21,7 @@
 #include <condition_variable>
 #include <functional>
 #include <atomic>
-#include <map>
+#include <thread>
 #include <chrono>
 
 #include <boost/thread/lock_guard.hpp>
@@ -101,18 +101,6 @@ public:
         wq_open_sessions_--;
     }
 
-    static void*
-    wq_routine(void *arg)
-    {
-        NetworkXioWorkQueue *obj = reinterpret_cast<NetworkXioWorkQueue*>(arg);
-        if (obj == NULL)
-        {
-            assert(obj != NULL);
-            return NULL;
-        }
-        return obj->worker_routine(arg);
-    }
-
     Work*
     get_finished()
     {
@@ -144,8 +132,6 @@ private:
 
     std::atomic<size_t> nr_queued_work;
 
-    std::map<std::thread::id, std::thread> wq_threads_;
-    std::mutex wq_threads_lock_;
     std::chrono::steady_clock::time_point thread_life_period_;
     uint64_t protection_period_;
     std::atomic<uint64_t> wq_open_sessions_;
@@ -197,24 +183,28 @@ private:
     {
         while (nr_threads_ < nr_threads)
         {
-            int ret;
-            pthread_t thread;
-            ret = pthread_create(&thread,
-                                 NULL,
-                                 &NetworkXioWorkQueue::wq_routine,
-                                 this);
-            if (ret != 0)
+            try
+            {
+                std::thread thr([&](){
+                    auto fp = std::bind(&NetworkXioWorkQueue::worker_routine,
+                                        this,
+                                        std::placeholders::_1);
+                    pthread_setname_np(pthread_self(), name_.c_str());
+                    fp(this);
+                });
+                thr.detach();
+                nr_threads_++;
+            }
+            catch (const std::system_error&)
             {
                 LOG_ERROR("cannot create worker thread");
                 return -1;
             }
-            pthread_setname_np(thread, name_.c_str());
-            nr_threads_++;
         }
         return 0;
     }
 
-    void*
+    void
     worker_routine(void *arg)
     {
         NetworkXioWorkQueue *wq = reinterpret_cast<NetworkXioWorkQueue*>(arg);
@@ -227,7 +217,6 @@ private:
             {
                 wq->nr_threads_--;
                 lock_.unlock();
-                pthread_detach(pthread_self());
                 break;
             }
 retry:
@@ -237,7 +226,6 @@ retry:
                 if (wq->stopping)
                 {
                     wq->nr_threads_--;
-                    pthread_detach(pthread_self());
                     break;
                 }
                 goto retry;
@@ -255,7 +243,6 @@ retry:
             wq->nr_queued_work--;
             xio_context_stop_loop(wq->ctx);
         }
-        pthread_exit(NULL);
     }
 };
 
