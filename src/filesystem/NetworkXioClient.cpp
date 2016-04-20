@@ -14,6 +14,7 @@
 
 #include <thread>
 #include <functional>
+#include <atomic>
 #include <system_error>
 
 #include <youtils/Assert.h>
@@ -21,6 +22,8 @@
 #include "NetworkXioClient.h"
 
 #define POLLING_TIME_USEC   20
+
+std::atomic<int> xio_init_refcnt =  ATOMIC_VAR_INIT(0);
 
 namespace volumedriverfs
 {
@@ -111,7 +114,10 @@ NetworkXioClient::NetworkXioClient(const std::string& uri,
     params.user_context = this;
     params.uri = uri_.c_str();
 
-    xio_init();
+    if (xio_init_refcnt.fetch_add(1, std::memory_order_relaxed) == 0)
+    {
+        xio_init();
+    }
 
     int xopt = 0;
     int queue_depth = 2048;
@@ -167,7 +173,6 @@ err_exit1:
     xio_session_destroy(session);
     xio_context_destroy(ctx);
 err_exit2:
-    xio_shutdown();
     throw FailedCreateXioClient("failed to create XIO client");
 }
 
@@ -181,6 +186,10 @@ NetworkXioClient::~NetworkXioClient()
         xio_msg_s *req;
         queue_.pop(req);
         delete req;
+    }
+    if (xio_init_refcnt.fetch_sub(1, std::memory_order_relaxed) == 1)
+    {
+        xio_shutdown();
     }
 }
 
@@ -230,7 +239,6 @@ NetworkXioClient::xio_run_loop_worker(void *arg)
         xio_session_destroy(cli->session);
     }
     xio_context_destroy(cli->ctx);
-    xio_shutdown();
     return;
 }
 
@@ -285,7 +293,7 @@ NetworkXioClient::on_msg_error(xio_session *session __attribute__((unused)),
 }
 
 int
-NetworkXioClient::on_session_event(xio_session *session,
+NetworkXioClient::on_session_event(xio_session *session __attribute__((unused)),
                                    xio_session_event_data *event_data)
 {
 
