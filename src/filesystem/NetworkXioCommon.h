@@ -19,6 +19,8 @@
 #define get_container_of(ptr, type, member) ((type *)((char *)(ptr) - \
                         get_offset(type, member)))
 
+#define ATTR_UNUSED     __attribute__((unused))
+
 enum class NetworkXioMsgOpcode
 {
     Noop,

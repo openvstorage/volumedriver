@@ -325,7 +325,7 @@ NetworkXioServer::create_session_connection(xio_session *session,
 }
 
 void
-NetworkXioServer::destroy_session_connection(xio_session *session __attribute__((unused)),
+NetworkXioServer::destroy_session_connection(xio_session *session ATTR_UNUSED,
                                              xio_session_event_data *evdata)
 {
     auto cd = static_cast<NetworkXioClientData*>(evdata->conn_user_context);
@@ -442,8 +442,8 @@ NetworkXioServer::free_request(NetworkXioRequest *req)
 }
 
 int
-NetworkXioServer::on_msg_send_complete(xio_session *session __attribute__((unused)),
-                                       xio_msg *msg __attribute__((unused)),
+NetworkXioServer::on_msg_send_complete(xio_session *session ATTR_UNUSED,
+                                       xio_msg *msg ATTR_UNUSED,
                                        void *cb_user_ctx)
 {
     NetworkXioClientData *cd = static_cast<NetworkXioClientData*>(cb_user_ctx);
@@ -493,9 +493,9 @@ NetworkXioServer::xio_send_reply(Work *work)
 }
 
 int
-NetworkXioServer::on_request(xio_session *session __attribute__((unused)),
+NetworkXioServer::on_request(xio_session *session ATTR_UNUSED,
                              xio_msg *xio_req,
-                             int last_in_rxq __attribute__((unused)),
+                             int last_in_rxq ATTR_UNUSED,
                              void *cb_user_ctx)
 {
     auto cd = static_cast<NetworkXioClientData*>(cb_user_ctx);
