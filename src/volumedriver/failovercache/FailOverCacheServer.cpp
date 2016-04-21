@@ -35,8 +35,8 @@ FailOverCacheServer::FailOverCacheServer(const constructor_type& c)
 
     desc_.add_options()
         ("path",
-         po::value<fs::path>(&path_)->required(),
-         "path of the failovercache server")
+         po::value<fs::path>(&path_),
+         "directory for the disk cache, omitting it selects memory caching")
         ("address",
          po::value<std::string>(&addr_),
          "address to bind the server to")
@@ -79,16 +79,25 @@ FailOverCacheServer::setup_logging()
 int
 FailOverCacheServer::run()
 {
-    if(not fs::exists(path_))
+    boost::optional<fs::path> path;
+    if (not path_.empty())
     {
-        throw fungi::IOException("failovercache directory does not exist",
-                                 path_.string().c_str());
+        path = path_;
     }
 
-    if(not fs::is_directory(path_))
+    if (path)
     {
-        throw fungi::IOException("failovercache path is not a directory",
-                                 path_.string().c_str());
+        if(not fs::exists(*path))
+        {
+            throw fungi::IOException("failovercache directory does not exist",
+                                     path->string().c_str());
+        }
+
+        if(not fs::is_directory(*path))
+        {
+            throw fungi::IOException("failovercache path is not a directory",
+                                     path->string().c_str());
+        }
     }
 
     if (vm_.count("daemonize"))
@@ -106,12 +115,12 @@ FailOverCacheServer::run()
         addr = addr_;
     }
 
-    LOG_INFO( "starting, server path: " << path_ <<
+    LOG_INFO( "starting, server path: " << path <<
               ", address to bind to: " << addr <<
               ", port: " << port_ <<
               ", transport type: " << transport_);
 
-    acceptor.reset(new failovercache::FailOverCacheAcceptor(path_));
+    acceptor = std::make_unique<failovercache::FailOverCacheAcceptor>(path);
 
     LOG_INFO("Running the SocketServer");
 
@@ -151,23 +160,7 @@ FailOverCacheServer::stop_()
         LOG_INFO("No socket server");
     }
 
-    if(acceptor)
-    {
-        const fs::path cleanup_path(acceptor->root_);
-        acceptor.reset();
-        sleep(3);
-
-        fs::directory_iterator end;
-        for(fs::directory_iterator it(cleanup_path); it != end; ++it)
-        {
-            LOG_INFO("Cleaning up " << it->path());
-            fs::remove_all(it->path());
-        }
-    }
-    else
-    {
-        LOG_INFO("No acceptor, stopping without cleanup");
-    }
+    acceptor = nullptr;
 }
 
 youtils::Logger::logger_type*

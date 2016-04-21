@@ -134,6 +134,17 @@ FailOverCacheProxy::setRequestTimeout(const boost::chrono::seconds seconds)
 void
 FailOverCacheProxy::addEntries(std::vector<FailOverCacheEntry> entries)
 {
+#ifndef NDEBUG
+    if (not entries.empty())
+    {
+        const SCO sco = entries.front().cli_.sco();
+        for (const auto& e : entries)
+        {
+            ASSERT(e.cli_.sco() == sco);
+        }
+    }
+#endif
+
     const CommandData<AddEntries> comd(std::move(entries));
     stream_ << comd;
 }
