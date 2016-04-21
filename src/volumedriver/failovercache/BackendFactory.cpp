@@ -88,12 +88,16 @@ BackendFactory::~BackendFactory()
 {
     if (root_)
     {
-        fs::directory_iterator end;
-        for (fs::directory_iterator it(*root_); it != end; ++it)
+        try
         {
-            LOG_INFO("Cleaning up " << it->path());
-            fs::remove_all(it->path());
+            fs::directory_iterator end;
+            for (fs::directory_iterator it(*root_); it != end; ++it)
+            {
+                LOG_INFO("Cleaning up " << it->path());
+                fs::remove_all(it->path());
+            }
         }
+        CATCH_STD_ALL_LOG_IGNORE("Failed to clean up " << root_);
     }
 }
 
