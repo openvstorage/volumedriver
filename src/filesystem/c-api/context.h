@@ -83,7 +83,10 @@ ovs_aio_request* create_new_request(RequestOp op,
         request->_completed = false;
         request->_signaled = false;
         request->_rv = 0;
-        aio->request_ = request;
+        if (aio and op != RequestOp::Noop)
+        {
+            aio->request_ = request;
+        }
         return request;
     }
     catch (const std::bad_alloc&)

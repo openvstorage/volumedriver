@@ -265,7 +265,7 @@ ovs_ctx_destroy(ovs_ctx_t *ctx)
 }
 
 int
-ovs_create_volume(ovs_ctx_t *ctx ATTRIBUTE_UNUSED,
+ovs_create_volume(ovs_ctx_t *ctx,
                   const char* volume_name,
                   uint64_t size)
 {
@@ -291,23 +291,63 @@ ovs_create_volume(ovs_ctx_t *ctx ATTRIBUTE_UNUSED,
         return r;
     }
 
-    try
+    switch (ctx->transport)
     {
-        volumedriverfs::ShmClient::create_volume(volume_name, size);
+    case TransportType::SharedMemory:
+    {
+        try
+        {
+            volumedriverfs::ShmClient::create_volume(volume_name, size);
+        }
+        catch (const ShmIdlInterface::VolumeExists&)
+        {
+            errno = EEXIST; r = -1;
+        }
+        catch (...)
+        {
+            errno = EIO; r = -1;
+        }
+        break;
     }
-    catch (const ShmIdlInterface::VolumeExists&)
+    case TransportType::TCP:
+    case TransportType::RDMA:
     {
-        errno = EEXIST; r = -1;
+        ovs_aio_request *request = create_new_request(RequestOp::Noop,
+                                                      NULL,
+                                                      NULL);
+        if (request == NULL)
+        {
+            errno = ENOMEM; r = -1;
+            break;
+        }
+        try
+        {
+            volumedriverfs::NetworkXioClient::xio_create_volume(ctx->uri,
+                                                                volume_name,
+                                                                size,
+                                                                static_cast<void*>(request));
+            errno = request->_errno; r = request->_rv;
+        }
+        catch (const std::bad_alloc&)
+        {
+            errno = ENOMEM; r = -1;
+        }
+        catch (...)
+        {
+            errno = EIO; r = -1;
+        }
+        delete request;
+        break;
     }
-    catch (...)
-    {
-        errno = EIO; r = -1;
+    default:
+        errno = EINVAL; r = -1;
+        break;
     }
     return r;
 }
 
 int
-ovs_remove_volume(ovs_ctx_t *ctx ATTRIBUTE_UNUSED,
+ovs_remove_volume(ovs_ctx_t *ctx,
                   const char* volume_name)
 {
     int r = 0;
@@ -331,17 +371,56 @@ ovs_remove_volume(ovs_ctx_t *ctx ATTRIBUTE_UNUSED,
         return r;
     }
 
-    try
+    switch (ctx->transport)
     {
-        volumedriverfs::ShmClient::remove_volume(volume_name);
+    case TransportType::SharedMemory:
+    {
+        try
+        {
+            volumedriverfs::ShmClient::remove_volume(volume_name);
+        }
+        catch (const ShmIdlInterface::VolumeDoesNotExist&)
+        {
+            errno = ENOENT; r = -1;
+        }
+        catch (...)
+        {
+            errno = EIO; r = -1;
+        }
+        break;
     }
-    catch (const ShmIdlInterface::VolumeDoesNotExist&)
+    case TransportType::TCP:
+    case TransportType::RDMA:
     {
-        errno = ENOENT; r = -1;
+        ovs_aio_request *request = create_new_request(RequestOp::Noop,
+                                                      NULL,
+                                                      NULL);
+        if (request == NULL)
+        {
+            errno = ENOMEM; r = -1;
+            break;
+        }
+        try
+        {
+            volumedriverfs::NetworkXioClient::xio_remove_volume(ctx->uri,
+                                                                volume_name,
+                                                                static_cast<void*>(request));
+            errno = request->_errno; r = request->_rv;
+        }
+        catch (const std::bad_alloc&)
+        {
+            errno = ENOMEM; r = -1;
+        }
+        catch (...)
+        {
+            errno = EIO; r = -1;
+        }
+        delete request;
+        break;
     }
-    catch (...)
-    {
-        errno = EIO; r = -1;
+    default:
+        errno = EINVAL; r = -1;
+        break;
     }
     return r;
 }
@@ -890,6 +969,7 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
         break;
     default:
         r = -1;
+        break;
     }
     if (r < 0)
     {

@@ -85,5 +85,13 @@ ovs_xio_aio_complete_request(void* opaque, ssize_t retval, int errval)
     }
 }
 
+void
+ovs_xio_complete_request_control(void *opaque, ssize_t retval, int errval)
+{
+    ovs_aio_request *request = reinterpret_cast<ovs_aio_request*>(opaque);
+    request->_errno = errval;
+    request->_rv = retval;
+}
+
 }
 #endif //__NETWORK_XIO_HANDLER_H

@@ -20,6 +20,7 @@
 
 enum class RequestOp
 {
+    Noop,
     Read,
     Write,
     Flush,
