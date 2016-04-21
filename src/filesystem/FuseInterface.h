@@ -27,9 +27,9 @@
 
 #include <youtils/VolumeDriverComponent.h>
 
-#define FUSE_USE_VERSION 26
+#define FUSE_USE_VERSION 30
 
-#include <fuse.h>
+#include <fuse3/fuse.h>
 
 struct fuse_operations;
 
@@ -76,7 +76,8 @@ public:
             void* buf,
             fuse_fill_dir_t filler,
             off_t offset,
-            fuse_file_info* fi);
+            fuse_file_info* fi,
+            fuse_readdir_flags);
 
     static int
     mknod(const char* path,
@@ -95,7 +96,8 @@ public:
 
     static int
     rename(const char* from,
-           const char* to);
+           const char* to,
+           unsigned flags);
 
     static int
     truncate(const char* path,

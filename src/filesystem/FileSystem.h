@@ -308,15 +308,28 @@ public:
     void
     rmdir(const ObjectId& id);
 
+    // FUSE models its rename(from, to, flags) version after the renameat2
+    // syscall on linux which is not wrapped by glibc, and these flags are
+    // also not necessarily available from a header just yet.
+    enum RenameFlags
+    {
+        None = 0,
+        NoReplace = 1 << 0,
+        Exchange = 1 << 1,
+        WhiteOut = 1 << 2,
+    };
+
     void
     rename(const FrontendPath& from,
-           const FrontendPath& to);
+           const FrontendPath& to,
+           RenameFlags = RenameFlags::None);
 
     void
     rename(const ObjectId& from_parent_id,
            const std::string& from,
            const ObjectId& to_parent_id,
-           const std::string& to);
+           const std::string& to,
+           RenameFlags = RenameFlags::None);
 
     void
     truncate(const FrontendPath& path,

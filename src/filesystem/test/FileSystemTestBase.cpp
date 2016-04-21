@@ -511,29 +511,35 @@ FileSystemTestBase::getattr(const vfs::ObjectId& id,
 
 int
 FileSystemTestBase::rename(const vfs::FrontendPath& from,
-                           const vfs::FrontendPath& to)
+                           const vfs::FrontendPath& to,
+                           vfs::FileSystem::RenameFlags flags)
 {
-    return vfs::FuseInterface::convert_exceptions<decltype(to)>(&vfs::FileSystem::rename,
-                                                                *fs_,
-                                                                from,
-                                                                to);
+    return vfs::FuseInterface::convert_exceptions<decltype(to),
+                                                  decltype(flags)>(&vfs::FileSystem::rename,
+                                                                   *fs_,
+                                                                   from,
+                                                                   to,
+                                                                   flags);
 }
 
 int
 FileSystemTestBase::rename(const vfs::ObjectId& from_parent_id,
                            const std::string& from_name,
                            const vfs::ObjectId& to_parent_id,
-                           const std::string& to_name)
+                           const std::string& to_name,
+                           vfs::FileSystem::RenameFlags flags)
 {
     return fs_convert_exceptions<const vfs::ObjectId&,
                                  const std::string&,
                                  const vfs::ObjectId&,
-                                 const std::string&>(*fs_,
-                                                     &vfs::FileSystem::rename,
-                                                     from_parent_id,
-                                                     from_name,
-                                                     to_parent_id,
-                                                     to_name);
+                                 const std::string&,
+                                 decltype(flags)>(*fs_,
+                                                  &vfs::FileSystem::rename,
+                                                  from_parent_id,
+                                                  from_name,
+                                                  to_parent_id,
+                                                  to_name,
+                                                  flags);
 }
 
 int
