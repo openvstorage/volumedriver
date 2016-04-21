@@ -16,6 +16,8 @@
 #include <youtils/Assert.h>
 #include <youtils/Catchers.h>
 
+#include <ObjectRouter.h>
+
 #include "NetworkXioIOHandler.h"
 #include "NetworkXioProtocol.h"
 
@@ -63,7 +65,7 @@ NetworkXioIOHandler::handle_open(NetworkXioRequest *req,
     {
         LOG_ERROR("volume '" << volume_name << "' doesn't exist");
         req->retval = -1;
-        req->errval = ENOENT;
+        req->errval = EACCES;
     }
     catch (...)
     {
@@ -218,6 +220,73 @@ NetworkXioIOHandler::handle_flush(NetworkXioRequest *req)
 }
 
 void
+NetworkXioIOHandler::handle_create_volume(NetworkXioRequest *req,
+                                          const std::string& volume_name,
+                                          size_t size)
+{
+    VERIFY(not handle_);
+    req->op = NetworkXioMsgOpcode::CreateVolumeRsp;
+
+    const std::string root_("/");
+    const std::string dot_(".");
+    const FrontendPath volume_path(root_ + volume_name + dot_ +
+                                   fs_.vdisk_format().name());
+    try
+    {
+        volumedriver::VolumeConfig::MetaDataBackendConfigPtr
+                              mdb_config(fs_.make_metadata_backend_config());
+        fs_.create_volume(volume_path,
+                          std::move(mdb_config),
+                          static_cast<uint64_t>(size));
+        req->retval = 0;
+        req->errval = 0;
+    }
+    catch (const FileExistsException& e)
+    {
+        req->retval = -1;
+        req->errval = EEXIST;
+    }
+    catch (const std::exception& e)
+    {
+        LOG_INFO("Problem creating volume: " << volume_name <<
+                 ":" << e.what());
+        req->retval = -1;
+        req->errval = EIO;
+    }
+    pack_msg(req);
+}
+
+void
+NetworkXioIOHandler::handle_remove_volume(NetworkXioRequest *req,
+                                          const std::string& volume_name)
+{
+    VERIFY(not handle_);
+    req->op = NetworkXioMsgOpcode::RemoveVolumeRsp;
+
+    const std::string root_("/");
+    const std::string dot_(".");
+    const FrontendPath volume_path(root_ + volume_name + dot_ +
+                                   fs_.vdisk_format().name());
+    try
+    {
+        fs_.unlink(volume_path);
+    }
+    catch (const HierarchicalArakoon::DoesNotExistException&)
+    {
+        req->retval = -1;
+        req->errval = ENOENT;
+    }
+    catch (const std::exception& e)
+    {
+        LOG_INFO("Problem removing volume: " << volume_name
+                 << ": " << e.what());
+        req->retval = -1;
+        req->errval = EIO;
+    }
+    pack_msg(req);
+}
+
+void
 NetworkXioIOHandler::handle_error(NetworkXioRequest *req, int errval)
 {
     req->op = NetworkXioMsgOpcode::ErrorRsp;
@@ -289,6 +358,19 @@ NetworkXioIOHandler::process_request(Work * work)
     case NetworkXioMsgOpcode::FlushReq:
     {
         handle_flush(req);
+        break;
+    }
+    case NetworkXioMsgOpcode::CreateVolumeReq:
+    {
+        handle_create_volume(req,
+                             i_msg.volume_name(),
+                             i_msg.size());
+        break;
+    }
+    case NetworkXioMsgOpcode::RemoveVolumeReq:
+    {
+        handle_remove_volume(req,
+                             i_msg.volume_name());
         break;
     }
     default:

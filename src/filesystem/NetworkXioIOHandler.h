@@ -66,6 +66,13 @@ private:
 
     void handle_flush(NetworkXioRequest *req);
 
+    void handle_create_volume(NetworkXioRequest *req,
+                              const std::string& volume_name,
+                              size_t size);
+
+    void handle_remove_volume(NetworkXioRequest *req,
+                              const std::string& volume_name);
+
     void handle_error(NetworkXioRequest *req,
                       int errval);
 
