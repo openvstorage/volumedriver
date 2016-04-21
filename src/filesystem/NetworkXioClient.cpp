@@ -441,8 +441,16 @@ NetworkXioClient::on_response(xio_session *session __attribute__((unused)),
                               int last_in_rxq __attribute__((unused)))
 {
     NetworkXioMsg i_msg;
-    i_msg.unpack_msg(static_cast<const char*>(reply->in.header.iov_base),
-                     reply->in.header.iov_len);
+    try
+    {
+        i_msg.unpack_msg(static_cast<const char*>(reply->in.header.iov_base),
+                         reply->in.header.iov_len);
+    }
+    catch (...)
+    {
+        //cnanakos: logging
+        return 0;
+    }
     xio_msg_s *xio_msg = reinterpret_cast<xio_msg_s*>(i_msg.opaque());
 
     ovs_xio_aio_complete_request(const_cast<void*>(xio_msg->opaque),
@@ -455,6 +463,243 @@ NetworkXioClient::on_response(xio_session *session __attribute__((unused)),
     xio_release_response(reply);
     delete xio_msg;
     return 0;
+}
+
+int
+NetworkXioClient::on_msg_error_control(xio_session *session ATTR_UNUSED,
+                                       xio_status error ATTR_UNUSED,
+                                       xio_msg_direction direction,
+                                       xio_msg *msg,
+                                       void *cb_user_context ATTR_UNUSED)
+{
+    if (direction == XIO_MSG_DIRECTION_IN)
+    {
+        xio_release_response(msg);
+    }
+    else
+    {
+        NetworkXioMsg i_msg;
+        try
+        {
+            i_msg.unpack_msg(static_cast<const char*>(msg->out.header.iov_base),
+                             msg->out.header.iov_len);
+        }
+        catch (...)
+        {
+            //cnanakos: client logging?
+            return 0;
+        }
+        xio_msg_s *xio_msg = reinterpret_cast<xio_msg_s*>(i_msg.opaque());
+        ovs_xio_complete_request_control(const_cast<void*>(xio_msg->opaque),
+                                         -1,
+                                         EIO);
+        delete xio_msg;
+    }
+    return 0;
+}
+
+int
+NetworkXioClient::on_msg_control(xio_session *session ATTR_UNUSED,
+                                 xio_msg *reply,
+                                 int last_in_rxq ATTR_UNUSED,
+                                 void *cb_user_context)
+{
+    xio_context *ctx = static_cast<xio_context*>(cb_user_context);
+    NetworkXioMsg i_msg;
+    try
+    {
+        i_msg.unpack_msg(static_cast<const char*>(reply->in.header.iov_base),
+                         reply->in.header.iov_len);
+    }
+    catch (...)
+    {
+        //cnanakos: logging
+        return 0;
+    }
+    xio_msg_s *xio_msg = reinterpret_cast<xio_msg_s*>(i_msg.opaque());
+
+    ovs_xio_complete_request_control(const_cast<void*>(xio_msg->opaque),
+                                     i_msg.retval(),
+                                     i_msg.errval());
+
+    reply->in.header.iov_base = NULL;
+    reply->in.header.iov_len = 0;
+    vmsg_sglist_set_nents(&reply->in, 0);
+    xio_release_response(reply);
+    delete xio_msg;
+    xio_context_stop_loop(ctx);
+    return 0;
+}
+
+int
+NetworkXioClient::on_session_event_control(xio_session *session,
+                                           xio_session_event_data *event_data,
+                                           void *cb_user_context)
+{
+    xio_context *ctx = static_cast<xio_context*>(cb_user_context);
+    switch (event_data->event)
+    {
+    case XIO_SESSION_CONNECTION_TEARDOWN_EVENT:
+        xio_connection_destroy(event_data->conn);
+        xio_context_stop_loop(ctx);
+        break;
+    case XIO_SESSION_TEARDOWN_EVENT:
+        xio_session_destroy(session);
+        xio_context_stop_loop(ctx);
+        break;
+    default:
+        break;
+    }
+    return 0;
+}
+
+int
+NetworkXioClient::assign_data_in_buf_control(xio_msg *msg,
+                                             void *cb_user_context ATTR_UNUSED)
+{
+    xio_iovec_ex *sglist = vmsg_sglist(&msg->in);
+    xio_reg_mem xbuf;
+
+    if (!sglist[0].iov_len)
+    {
+        return 0;
+    }
+    xio_mem_alloc(sglist[0].iov_len, &xbuf);
+    sglist[0].iov_base = xbuf.addr;
+    sglist[0].mr = xbuf.mr;
+    return 0;
+}
+
+xio_connection*
+NetworkXioClient::create_connection_control(xio_context *ctx,
+                                            const std::string& uri)
+{
+    xio_connection *conn;
+    xio_session *session;
+    xio_session_params params;
+    xio_connection_params cparams;
+
+    xio_session_ops s_ops;
+    s_ops.on_session_event = on_session_event_control;
+    s_ops.on_session_established = NULL;
+    s_ops.on_msg = on_msg_control;
+    s_ops.on_msg_error = on_msg_error_control;
+    s_ops.assign_data_in_buf = assign_data_in_buf_control;
+
+    memset(&params, 0, sizeof(params));
+    params.type = XIO_SESSION_CLIENT;
+    params.ses_ops = &s_ops;
+    params.uri = uri.c_str();
+    params.user_context = ctx;
+
+    session = xio_session_create(&params);
+    if (session == NULL)
+    {
+        return NULL;
+    }
+    memset(&cparams, 0, sizeof(cparams));
+    cparams.session = session;
+    cparams.ctx = ctx;
+    cparams.conn_user_context = ctx;
+
+    conn = xio_connect(&cparams);
+    return conn;
+}
+
+void
+NetworkXioClient::xio_create_volume(const std::string& uri,
+                                    const std::string& volume_name,
+                                    size_t size,
+                                    void *opaque)
+{
+    xio_msg_s *xmsg = new xio_msg_s;
+    xmsg->opaque = opaque;
+    xmsg->msg.opcode(NetworkXioMsgOpcode::CreateVolumeReq);
+    xmsg->msg.opaque((uintptr_t)xmsg);
+    xmsg->msg.volume_name(volume_name);
+    xmsg->msg.size(size);
+
+    xmsg->s_msg = xmsg->msg.pack_msg();
+
+    memset(static_cast<void*>(&xmsg->xreq), 0, sizeof(xio_msg));
+
+    vmsg_sglist_set_nents(&xmsg->xreq.out, 0);
+    xmsg->xreq.out.header.iov_base = (void*)xmsg->s_msg.c_str();
+    xmsg->xreq.out.header.iov_len = xmsg->s_msg.length();
+
+    xio_context *ctx = xio_context_create(NULL, 0, -1);
+    xio_connection *conn = create_connection_control(ctx, uri);
+
+    if (conn == NULL)
+    {
+        ovs_xio_complete_request_control(opaque,
+                                         -1,
+                                         EIO);
+        delete xmsg;
+        return;
+    }
+
+    int ret = xio_send_request(conn, &xmsg->xreq);
+    if (ret < 0)
+    {
+        ovs_xio_complete_request_control(opaque,
+                                         -1,
+                                         EIO);
+        delete xmsg;
+        goto exit;
+    }
+    xio_context_run_loop(ctx, XIO_INFINITE);
+exit:
+    xio_disconnect(conn);
+    xio_context_run_loop(ctx, 100);
+    xio_context_destroy(ctx);
+}
+
+void
+NetworkXioClient::xio_remove_volume(const std::string& uri,
+                                    const std::string& volume_name,
+                                    void *opaque)
+{
+    xio_msg_s *xmsg = new xio_msg_s;
+    xmsg->opaque = opaque;
+    xmsg->msg.opcode(NetworkXioMsgOpcode::RemoveVolumeReq);
+    xmsg->msg.opaque((uintptr_t)xmsg);
+    xmsg->msg.volume_name(volume_name);
+
+    xmsg->s_msg = xmsg->msg.pack_msg();
+
+    memset(static_cast<void*>(&xmsg->xreq), 0, sizeof(xio_msg));
+
+    vmsg_sglist_set_nents(&xmsg->xreq.out, 0);
+    xmsg->xreq.out.header.iov_base = (void*)xmsg->s_msg.c_str();
+    xmsg->xreq.out.header.iov_len = xmsg->s_msg.length();
+
+    xio_context *ctx = xio_context_create(NULL, 0, -1);
+    xio_connection *conn = create_connection_control(ctx, uri);
+
+    if (conn == NULL)
+    {
+        ovs_xio_complete_request_control(opaque,
+                                         -1,
+                                         EIO);
+        delete xmsg;
+        return;
+    }
+
+    int ret = xio_send_request(conn, &xmsg->xreq);
+    if (ret < 0)
+    {
+        ovs_xio_complete_request_control(opaque,
+                                         -1,
+                                         EIO);
+        delete xmsg;
+        goto exit;
+    }
+    xio_context_run_loop(ctx, XIO_INFINITE);
+exit:
+    xio_disconnect(conn);
+    xio_context_run_loop(ctx, 100);
+    xio_context_destroy(ctx);
 }
 
 } //namespace volumedriverfs

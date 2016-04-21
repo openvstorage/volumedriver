@@ -29,6 +29,10 @@ extern void ovs_xio_aio_complete_request(void *request,
                                          ssize_t retval,
                                          int errval);
 
+extern void ovs_xio_complete_request_control(void *request,
+                                             ssize_t retval,
+                                             int errval);
+
 class NetworkXioClient
 {
 public:
@@ -84,6 +88,16 @@ public:
                  xio_msg_direction direction,
                  xio_msg *msg);
 
+    static void
+    xio_create_volume(const std::string& uri,
+                      const std::string& volume_name,
+                      size_t size,
+                      void *opaque);
+
+    static void
+    xio_remove_volume(const std::string& uri,
+                      const std::string& volume_name,
+                      void* opaque);
 private:
     xio_context *ctx;
     xio_session *session;
@@ -101,6 +115,32 @@ private:
 
     void
     xio_run_loop_worker(void *arg);
+
+    static xio_connection*
+    create_connection_control(xio_context *ctx,
+                              const std::string& uri);
+
+    static int
+    on_msg_control(xio_session *session,
+                   xio_msg *reply,
+                   int last_in_rqx,
+                   void *cb_user_context);
+
+    static int
+    on_msg_error_control(xio_session *session,
+                         xio_status error,
+                         xio_msg_direction direction,
+                         xio_msg *msg,
+                         void *cb_user_context);
+
+    static int
+    on_session_event_control(xio_session *session,
+                             xio_session_event_data *event_data,
+                             void *cb_user_context);
+
+    static int
+    assign_data_in_buf_control(xio_msg *msg,
+                               void *cb_user_context);
 };
 
 typedef std::shared_ptr<NetworkXioClient> NetworkXioClientPtr;

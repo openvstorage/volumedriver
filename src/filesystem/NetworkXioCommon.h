@@ -36,6 +36,14 @@ enum class NetworkXioMsgOpcode
     FlushRsp,
     ErrorRsp,
     ShutdownRsp,
+    CreateVolumeReq,
+    CreateVolumeRsp,
+    RemoveVolumeReq,
+    RemoveVolumeRsp,
+    ListVolumesReq,
+    ListVolumesRsp,
+    StatVolumeReq,
+    StatVolumeRsp,
 };
 
 #endif //__NETWORK_XIO_COMMON_H_
