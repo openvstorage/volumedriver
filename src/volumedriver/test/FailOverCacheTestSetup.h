@@ -25,6 +25,7 @@
 #include "../FailOverCacheConfig.h"
 #include "../FailOverCacheProxy.h"
 #include "../FailOverCacheTransport.h"
+#include "../failovercache/Backend.h"
 #include "../failovercache/FailOverCacheAcceptor.h"
 #include "../failovercache/FailOverCacheProtocol.h"
 
@@ -58,18 +59,6 @@ private:
 public:
     ~FailOverCacheTestContext();
 
-    boost::filesystem::path
-    path() const
-    {
-        return acceptor_.path();
-    }
-
-    boost::filesystem::path
-    lock_file() const
-    {
-        return acceptor_.lock_file();
-    }
-
     uint16_t
     port() const
     {
@@ -78,6 +67,9 @@ public:
 
     volumedriver::FailOverCacheConfig
     config(const volumedriver::FailOverCacheMode) const;
+
+    std::shared_ptr<failovercache::Backend>
+    backend(const backend::Namespace&);
 };
 
 typedef std::shared_ptr<FailOverCacheTestContext> foctest_context_ptr;
@@ -88,7 +80,7 @@ class FailOverCacheTestSetup
     friend class ::VolumeDriverTest;
 
 public:
-    explicit FailOverCacheTestSetup(const boost::filesystem::path& p);
+    explicit FailOverCacheTestSetup(const boost::optional<boost::filesystem::path>&);
 
     ~FailOverCacheTestSetup();
 
@@ -121,7 +113,7 @@ public:
         return transport_;
     }
 
-    const boost::filesystem::path path;
+    const boost::optional<boost::filesystem::path> path;
 
 private:
     DECLARE_LOGGER("FailOverCacheTestSetup");

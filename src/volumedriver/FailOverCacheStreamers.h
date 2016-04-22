@@ -21,6 +21,7 @@
 #include <boost/ptr_container/ptr_vector.hpp>
 #include <boost/scoped_array.hpp>
 #include "ClusterLocation.h"
+
 namespace volumedriver
 {
 

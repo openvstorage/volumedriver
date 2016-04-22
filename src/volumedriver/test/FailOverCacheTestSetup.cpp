@@ -22,6 +22,7 @@
 namespace volumedrivertest
 {
 
+namespace be = backend;
 namespace fs = boost::filesystem;
 namespace vd = volumedriver;
 
@@ -30,13 +31,20 @@ using namespace std::literals::string_literals;
 namespace
 {
 
-fs::path
-make_directory(const fs::path& path, uint16_t port)
+boost::optional<fs::path>
+make_directory(const boost::optional<fs::path>& path,
+               uint16_t port)
 {
-    const fs::path p(path.string() + "-"s + boost::lexical_cast<std::string>(port));
-    fs::create_directories(p);
-
-    return p;
+    if (path)
+    {
+        const fs::path p(path->string() + "-"s + boost::lexical_cast<std::string>(port));
+        fs::create_directories(p);
+        return p;
+    }
+    else
+    {
+        return path;
+    }
 }
 
 }
@@ -71,6 +79,12 @@ FailOverCacheTestContext::config(const vd::FailOverCacheMode mode) const
                                    mode);
 }
 
+std::shared_ptr<failovercache::Backend>
+FailOverCacheTestContext::backend(const be::Namespace& nspace)
+{
+    return acceptor_.find_backend_(nspace.str());
+}
+
 std::string
 FailOverCacheTestSetup::addr_("127.0.0.1");
 
@@ -81,17 +95,23 @@ FailOverCacheTestSetup::port_base_ =
 vd::FailOverCacheTransport
 FailOverCacheTestSetup::transport_(vd::FailOverCacheTransport::TCP);
 
-FailOverCacheTestSetup::FailOverCacheTestSetup(const fs::path& p)
+FailOverCacheTestSetup::FailOverCacheTestSetup(const boost::optional<fs::path>& p)
         : path(p)
 {
-    fs::create_directories(path);
+    if (path)
+    {
+        fs::create_directories(*path);
+    }
     LOG_INFO("path " << path << ", port base " << port_base_);
 }
 
 FailOverCacheTestSetup::~FailOverCacheTestSetup()
 {
     EXPECT_TRUE(ports_.empty()) << "there are still ports in use - prepare to crash";
-    EXPECT_NO_THROW(fs::remove_all(path));
+    if (path)
+    {
+        EXPECT_NO_THROW(fs::remove_all(*path));
+    }
 }
 
 uint16_t

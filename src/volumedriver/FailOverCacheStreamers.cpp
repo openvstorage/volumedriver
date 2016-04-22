@@ -20,7 +20,9 @@
 
 namespace
 {
-DECLARE_LOGGER("FailOverCacheProtocol");
+
+DECLARE_LOGGER("FailOverCacheStreamers");
+
 }
 
 namespace volumedriver
@@ -35,7 +37,7 @@ checkStreamOK(fungi::IOBaseStream& stream,
     stream >> res;
     if(res != volumedriver::Ok)
     {
-        LOG_ERROR("FailOverCache Protocol Error: *Not* Ok returned in " << ex);
+        LOG_ERROR("Protocol Error: *Not* Ok returned in " << ex);
         throw fungi::IOException(ex.c_str());
     }
     return stream;
@@ -44,7 +46,6 @@ checkStreamOK(fungi::IOBaseStream& stream,
 fungi::IOBaseStream&
 operator<<(fungi::IOBaseStream& stream, const CommandData<Register>& data)
 {
-
     stream << fungi::IOBaseStream::cork;
     OUT_ENUM(stream, Register);
     stream << data.ns_;
@@ -53,8 +54,7 @@ operator<<(fungi::IOBaseStream& stream, const CommandData<Register>& data)
     return checkStreamOK(stream, "Register");
 }
 
-
- fungi::IOBaseStream&
+fungi::IOBaseStream&
 operator>>(fungi::IOBaseStream& stream, CommandData<Register>& data)
 {
     stream >> data.ns_;
@@ -62,10 +62,14 @@ operator>>(fungi::IOBaseStream& stream, CommandData<Register>& data)
     return stream;
 }
 
-
 fungi::IOBaseStream&
 operator<<(fungi::IOBaseStream& stream, const CommandData<AddEntries>& data)
 {
+    if (not data.entries_.empty())
+    {
+        VERIFY(data.entries_.front().cli_.sco() == data.entries_.back().cli_.sco());
+    }
+
     bool isRDMA = stream.isRdma();
     stream << fungi::IOBaseStream::cork;
     OUT_ENUM(stream, AddEntries);
@@ -144,6 +148,11 @@ operator>>(fungi::IOBaseStream& stream, CommandData<AddEntries>& data)
         ptr += cluster_size;
     }
 
+    if (not data.entries_.empty())
+    {
+        VERIFY(data.entries_.front().cli_.sco() == data.entries_.back().cli_.sco());
+    }
+
     return stream;
 }
 
@@ -155,7 +164,6 @@ operator<<(fungi::IOBaseStream& stream, const CommandData<Flush>& /*data*/)
     stream << fungi::IOBaseStream::uncork;
     return checkStreamOK(stream,"Flush");
 }
-
 
 fungi::IOBaseStream&
 operator>>(fungi::IOBaseStream& stream, CommandData<Flush>& /*data*/)

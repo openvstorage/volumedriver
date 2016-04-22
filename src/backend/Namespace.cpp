@@ -54,7 +54,7 @@ Namespace::Namespace(std::string&& str)
         LOG_ERROR(str_ << ": bucket name too short (min: 3)");
         throw TooShortException("BucketNameTooShort");
     }
-    if(len >= maxlen)
+    if(len > maxlen)
     {
         LOG_ERROR(str_ << ": bucket name too long (max: " << maxlen << ")");
         throw TooLongException("BucketNameTooLong");

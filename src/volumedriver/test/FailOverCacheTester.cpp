@@ -18,6 +18,7 @@
 #include "../Api.h"
 #include "../FailOverCacheAsyncBridge.h"
 #include "../FailOverCacheSyncBridge.h"
+#include "../failovercache/FileBackend.h"
 
 #include <stdlib.h>
 
@@ -587,89 +588,95 @@ TEST_P(FailOverCacheTester, TLogsAreRemoved)
 
     waitForThisBackendWrite(*v);
 
-    std::list<std::string> files;
     getFailOverWriter(*v)->Flush();
 
-    fs::directory_iterator it(foc_ctx->path());
-    fs::directory_iterator end;
+    auto empty([&]() -> bool
+               {
+                   size_t count = 0;
+                   std::shared_ptr<failovercache::Backend> backend(foc_ctx->backend(ns_ptr->ns()));
+                   backend->getEntries([&](ClusterLocation,
+                                           int64_t /* addr */,
+                                           const uint8_t* /* data */,
+                                           int64_t /* size */)
+                                       {
+                                           ++count;
+                                       });
 
-    auto fun([&]() -> fs::path
-             {
-                 // we have the lockfile and the actual data.
-                 boost::optional<fs::path> nspace_dir;
-                 unsigned count = 0;
-                 for (fs::directory_iterator it(foc_ctx->path()); it != end; ++it)
-                 {
-                     ++count;
-                     if (it->path() != foc_ctx->lock_file())
-                     {
-                         EXPECT_EQ(boost::none,
-                                   nspace_dir);
+                   return count == 0;
+               });
 
-                         nspace_dir = it->path();
-                     }
-                 }
-
-                 EXPECT_NE(boost::none,
-                           nspace_dir);
-                 EXPECT_EQ(2U,
-                           count);
-
-                 return *nspace_dir;
-             });
-
-    const fs::path nspace_dir(fun());
-    EXPECT_FALSE(fs::is_empty(nspace_dir));
+    EXPECT_FALSE(empty());
 
     createSnapshot(*v,"boomboom");
     waitForThisBackendWrite(*v);
 
     getFailOverWriter(*v)->Flush();
 
-    EXPECT_EQ(nspace_dir,
-              fun());
-
-    EXPECT_TRUE(fs::is_empty(nspace_dir));
+    EXPECT_TRUE(empty());
 
     destroyVolume(v,
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::T);
 }
 
-TEST_P(FailOverCacheTester, DirectoryRemovedOnUnRegister)
+TEST_P(FailOverCacheTester, unregister_removes_dtl_backend)
 {
     auto foc_ctx(start_one_foc());
-
-    ASSERT_TRUE(fs::exists(foc_ctx->path()));
-    ASSERT_TRUE(fs::is_directory(foc_ctx->path()));
-    ASSERT_FALSE(fs::is_empty(foc_ctx->path()));
-
     auto ns_ptr = make_random_namespace();
 
     const backend::Namespace& ns = ns_ptr->ns();
 
     SharedVolumePtr v = newVolume("vol1",
-                          ns);
+                                  ns);
+
+    EXPECT_TRUE(foc_ctx->backend(ns_ptr->ns()) == nullptr);
+
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
-    const fs::path foc_ns_path(foc_ctx->path() / ns.str());
-
-    ASSERT_TRUE(exists(foc_ns_path));
-    ASSERT_TRUE(fs::is_directory(foc_ns_path));
-    ASSERT_TRUE(fs::is_empty(foc_ns_path));
-
-    writeToVolume(*v, 0, 4096, "bdv");
-    v->sync();
-
-    ASSERT_FALSE(fs::is_empty(foc_ns_path));
+    EXPECT_TRUE(foc_ctx->backend(ns_ptr->ns()) != nullptr);
 
     v->setFailOverCacheConfig(boost::none);
 
-    ASSERT_TRUE(fs::exists(foc_ctx->path()));
-    ASSERT_TRUE(fs::is_directory(foc_ctx->path()));
+    EXPECT_TRUE(foc_ctx->backend(ns_ptr->ns()) == nullptr);
+}
 
-    ASSERT_FALSE(fs::exists(foc_ns_path));
-    ASSERT_FALSE(fs::is_directory(foc_ns_path));
+TEST_P(FailOverCacheTester, DirectoryRemovedOnUnRegister)
+{
+    auto foc_ctx(start_one_foc());
+    auto ns_ptr = make_random_namespace();
+
+    const backend::Namespace& ns = ns_ptr->ns();
+
+    SharedVolumePtr v = newVolume("vol1",
+                                  ns);
+
+    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+
+    boost::optional<fs::path> foc_ns_path;
+
+    {
+        auto backend = std::dynamic_pointer_cast<failovercache::FileBackend>(foc_ctx->backend(ns_ptr->ns()));
+        if (backend)
+        {
+            foc_ns_path = backend->root();
+        }
+    }
+
+    if (foc_ns_path)
+    {
+        ASSERT_TRUE(fs::exists(*foc_ns_path));
+        ASSERT_TRUE(fs::is_directory(*foc_ns_path));
+        EXPECT_TRUE(fs::is_empty(*foc_ns_path));
+
+        writeToVolume(*v, 0, 4096, "bdv");
+        v->sync();
+
+        ASSERT_FALSE(fs::is_empty(*foc_ns_path));
+
+        v->setFailOverCacheConfig(boost::none);
+
+        EXPECT_FALSE(fs::exists(*foc_ns_path));
+    }
 }
 
 // OVS-3430: a nasty race between flush and addEntries for the newData buffer
@@ -702,11 +709,15 @@ TEST_P(FailOverCacheTester, adding_and_flushing)
     std::vector<ClusterLocation> locs(1);
 
     const size_t max = (1ULL << 27) / buf.size();
+    const SCOOffset entries_per_sco = 1024;
 
-    for (size_t i = 1; i <= max; ++i)
+    ASSERT_EQ(0, max % entries_per_sco);
+
+    for (size_t i = 0; i < max; ++i)
     {
         *reinterpret_cast<size_t*>(buf.data()) = i;
-        locs[0] = ClusterLocation(i);
+        locs[0] = ClusterLocation(i / entries_per_sco + 1,
+                                  i % entries_per_sco);
 
         while (not foc.addEntries(locs,
                                   locs.size(),
@@ -727,7 +738,7 @@ TEST_P(FailOverCacheTester, adding_and_flushing)
 
     size_t count = 0;
 
-    for (size_t i = 1; i <= max; ++i)
+    for (size_t i = 1; i <= max / entries_per_sco; ++i)
     {
         foc.getSCOFromFailOver(SCO(i),
                                [&](ClusterLocation loc,
@@ -735,11 +746,12 @@ TEST_P(FailOverCacheTester, adding_and_flushing)
                                    const uint8_t* buf,
                                    size_t bufsize)
                                {
-                                   ++count;
-                                   ASSERT_EQ(i, loc.sco().number());
-                                   ASSERT_EQ(i, lba);
-                                   ASSERT_EQ(i, *reinterpret_cast<const size_t*>(buf));
+                                   ASSERT_EQ(count / entries_per_sco + 1, loc.sco().number());
+                                   ASSERT_EQ(count % entries_per_sco, loc.offset());
+                                   ASSERT_EQ(count, lba);
+                                   ASSERT_EQ(count, *reinterpret_cast<const size_t*>(buf));
                                    ASSERT_EQ(csize, bufsize);
+                                   ++count;
                                });
     }
 
@@ -982,12 +994,18 @@ const VolumeDriverTestConfig sync_foc_config =
     .use_cluster_cache(true)
     .foc_mode(FailOverCacheMode::Synchronous);
 
+const VolumeDriverTestConfig sync_foc_in_memory_config =
+    VolumeDriverTestConfig()
+    .use_cluster_cache(true)
+    .foc_mode(FailOverCacheMode::Synchronous)
+    .foc_in_memory(true);
 }
 
 INSTANTIATE_TEST_CASE_P(FailOverCacheTesters,
                         FailOverCacheTester,
                         ::testing::Values(cluster_cache_config,
-                                          sync_foc_config));
+                                          sync_foc_config,
+                                          sync_foc_in_memory_config));
 
 }
 

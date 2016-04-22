@@ -51,6 +51,7 @@ struct VolumeDriverTestConfig
     type name ## _
 
     PARAM(bool, use_cluster_cache) = false;
+    PARAM(bool, foc_in_memory) = false;
     PARAM(FailOverCacheMode, foc_mode) = FailOverCacheMode::Asynchronous;
     PARAM(ClusterMultiplier, cluster_multiplier) =
         VolumeConfig::default_cluster_multiplier();

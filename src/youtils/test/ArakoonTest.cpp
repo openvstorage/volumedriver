@@ -97,15 +97,30 @@ TEST_F(ArakoonTest, add_nodes_multiple_times)
     test_hello(cluster);
 }
 
-TEST_F(ArakoonTest, add_nodes_only_one_node)
+TEST_F(ArakoonTest, add_nodes_incomplete_config)
 {
     auto configs(test_setup.node_configs());
     configs.pop_front();
 
-    EXPECT_THROW(ara::Cluster(test_setup.clusterID(),
-                              configs),
-                 error_client_unknown_node);
-
+    try
+    {
+        ara::Cluster(test_setup.clusterID(),
+                     configs);
+        FAIL() << "this should've thrown an exception";
+    }
+    catch (error_client_unknown_node&)
+    {
+        // the expected one.
+    }
+    catch (error_client_network_error&)
+    {
+        // unfortunately this one can also be raised as
+        // arakoons from time to time don't return a master:
+        // Apr 18 13:49:12 6735: (main|debug): who_master: returning None because young cluster
+    }
+    CATCH_STD_ALL_EWHAT({
+            FAIL() << "unexpected exception: " << EWHAT;
+        });
 }
 
 TEST_F(ArakoonTest, add_master_only)
