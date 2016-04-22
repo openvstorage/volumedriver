@@ -63,24 +63,12 @@ class LocalRestartTest
     : public VolManagerTestSetup
 {
 protected:
-    static const unsigned scos_per_tlog = 2;
+    static const size_t scos_per_tlog;
 
 public:
     LocalRestartTest()
-        : VolManagerTestSetup("LocalRestartTest",
-                              UseFawltyMDStores::F,
-                              UseFawltyTLogStores::F,
-                              UseFawltyDataStores::F,
-                              4, // num_threads - default
-                              "1GiB", // scocache mp #1 - default
-                              "1GiB", // scocache mp #2 - default
-                              "250MiB", // scocache trigger gap - default
-                              "500MiB", // scocache trigger gap - default
-                              60, // scocache cleanup interval - default
-                              32, // datastore open sco's per volume - default
-                              4000, // datastore throttle usecs - default
-                              1000, // foc throttle usecs - default
-                              scos_per_tlog) // *not* default
+        : VolManagerTestSetup(VolManagerTestSetupParameters("LocalRestartTest")
+                              .scos_per_tlog(scos_per_tlog))
     {}
 
     // write two tlogs worth of data - the first one goes to the backend while the
@@ -311,6 +299,9 @@ public:
         checkCurrentBackendSize(*v);
     }
 };
+
+const size_t
+LocalRestartTest::scos_per_tlog = 2;
 
 TEST_P(LocalRestartTest, normalRestart)
 {

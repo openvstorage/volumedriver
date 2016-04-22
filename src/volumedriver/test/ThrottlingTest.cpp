@@ -25,16 +25,10 @@ class ThrottlingTest
 {
 public:
     ThrottlingTest()
-        : VolManagerTestSetup("ThrottlingTest",
-                              UseFawltyMDStores::F,
-                              UseFawltyTLogStores::F,
-                              UseFawltyDataStores::F,
-                              4, // num threads
-                              "1GiB", // scocache mp1 size
-                              "1GiB", // sccache mp2 size
-                              "100MiB", // scocache trigger gap
-                              "150MiB", // scocache backoff gap
-                              3600) // scocache cleanup interval (seconds)
+        : VolManagerTestSetup(VolManagerTestSetupParameters("ThrottlingTest")
+                              .sco_cache_trigger_gap("100MiB")
+                              .sco_cache_backoff_gap("150MiB")
+                              .sco_cache_cleanup_interval(3600))
     {}
 
     virtual void

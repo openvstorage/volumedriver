@@ -23,11 +23,8 @@ class VolManagerThreadTest
 {
 public:
     VolManagerThreadTest()
-        : VolManagerTestSetup("VolManagerThreadTest",
-                              UseFawltyMDStores::F,
-                              UseFawltyTLogStores::F,
-                              UseFawltyDataStores::F,
-                              0) // num backend threads
+        : VolManagerTestSetup(VolManagerTestSetupParameters("VolManagerThreadTest")
+                              .backend_threads(0))
     {}
 };
 
