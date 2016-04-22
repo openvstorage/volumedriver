@@ -189,6 +189,7 @@ ovs_ctx_init(ovs_ctx_t *ctx,
     }
 
     ctx->oflag = oflag;
+    ctx->volume_name = std::string(volume_name);
     if (ctx->transport == TransportType::SharedMemory)
     {
         try
@@ -1604,7 +1605,55 @@ ovs_stat(ovs_ctx_t *ctx, struct stat *st)
         errno = EINVAL;
         return -1;
     }
-    int r = ctx->shm_ctx_->shm_client_->stat(st);
+
+    int r;
+    switch (ctx->transport)
+    {
+    case TransportType::SharedMemory:
+    {
+        r = ctx->shm_ctx_->shm_client_->stat(st);
+        break;
+    }
+    case TransportType::TCP:
+    case TransportType::RDMA:
+    {
+        ovs_aio_request *request = create_new_request(RequestOp::Noop,
+                                                      NULL,
+                                                      NULL);
+        if (request == NULL)
+        {
+            errno = ENOMEM; r = -1;
+            break;
+        }
+        try
+        {
+            volumedriverfs::NetworkXioClient::xio_stat_volume(ctx->uri,
+                                                              ctx->volume_name,
+                                                              static_cast<void*>(request));
+            errno = request->_errno;
+            r = request->_errno ? -1 : 0;
+            if (not request->_errno)
+            {
+                /* 512 for now */
+                st->st_blksize = 512;
+                st->st_size = request->_rv;
+            }
+        }
+        catch (const std::bad_alloc&)
+        {
+            errno = ENOMEM; r = -1;
+        }
+        catch (...)
+        {
+            errno = EIO; r = -1;
+        }
+        delete request;
+        break;
+    }
+    default:
+        errno = EINVAL; r = -1;
+        break;
+    }
     tracepoint(openvstorage_libovsvolumedriver,
                ovs_stat_exit,
                ctx,

@@ -45,6 +45,7 @@ struct ovs_context_t
     std::string host;
     int port;
     std::string uri;
+    std::string volume_name;
     int oflag;
     ovs_shm_context *shm_ctx_;
     volumedriverfs::NetworkXioClientPtr net_client_;
