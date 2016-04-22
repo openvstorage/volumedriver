@@ -450,4 +450,35 @@ TEST_F(NetworkServerTest, completion)
               ovs_ctx_attr_destroy(ctx_attr));
 }
 
+TEST_F(NetworkServerTest, stat)
+{
+    uint64_t volume_size = 1 << 30;
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
+    EXPECT_EQ(0,
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         "tcp",
+                                         "127.0.0.1",
+                                         21321));
+    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
+    ASSERT_TRUE(ctx != nullptr);
+    EXPECT_EQ(ovs_create_volume(ctx,
+                                "volume",
+                                volume_size),
+              0);
+    EXPECT_EQ(0,
+              ovs_ctx_init(ctx, "volume", O_RDWR));
+
+    struct stat st;
+    EXPECT_EQ(0,
+              ovs_stat(ctx, &st));
+    EXPECT_EQ(st.st_size,
+              volume_size);
+
+    EXPECT_EQ(0,
+              ovs_ctx_destroy(ctx));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
+}
+
 } //namespace
