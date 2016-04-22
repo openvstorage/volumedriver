@@ -457,6 +457,7 @@ VolManagerTestSetup::VolManagerTestSetup(const VolManagerTestSetupParameters& pa
     , useFawltyMDStores_(params.use_fawlty_md_stores())
     , useFawltyTLogStores_(params.use_fawlty_tlog_stores())
     , useFawltyDataStores_(params.use_fawlty_data_stores())
+    , dtl_check_interval_(params.dtl_check_interval())
     , event_collector_(std::make_shared<vdt::EventCollector>())
     , volManagerRunning_(false)
     , num_threads_(params.backend_threads())
@@ -941,7 +942,7 @@ VolManagerTestSetup::startVolManager()
         }
 
         PARAMETER_TYPE(debug_metadata_path)((directory_ / fs::path("dump_on_halt_dir")).string()).persist(pt);
-        PARAMETER_TYPE(dtl_check_interval_in_seconds)(failovercache_check_interval_in_seconds_).persist(pt);
+        PARAMETER_TYPE(dtl_check_interval_in_seconds)(dtl_check_interval_.count()).persist(pt);
 
         const mds::ServerConfigs scfgs{ *mds_server_config_ };
         mds_test_setup_->make_manager_config(pt,

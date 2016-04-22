@@ -206,7 +206,7 @@ struct VolManagerTestSetupParameters
     PARAM(size_t, data_store_throttle_usecs) = 4000;
     PARAM(size_t, dtl_throttle_usecs) = 10000;
     PARAM(uint32_t, scos_per_tlog) = 20;
-
+    PARAM(boost::chrono::seconds, dtl_check_interval) = boost::chrono::seconds(5);
 #undef PARAM
 
     const std::string name_;
@@ -717,7 +717,7 @@ protected:
     const UseFawltyTLogStores useFawltyTLogStores_;
     const UseFawltyDataStores useFawltyDataStores_;
 
-    const unsigned failovercache_check_interval_in_seconds_ = { 5 };
+    const boost::chrono::seconds dtl_check_interval_;
 
     std::shared_ptr<arakoon::ArakoonTestSetup> arakoon_test_setup_;
     std::shared_ptr<volumedrivertest::MDSTestSetup> mds_test_setup_;

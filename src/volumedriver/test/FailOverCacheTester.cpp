@@ -32,7 +32,8 @@ class FailOverCacheTester
 {
 public:
     FailOverCacheTester()
-        : VolManagerTestSetup("FailOverCacheTester")
+        : VolManagerTestSetup(VolManagerTestSetupParameters("FailOverCacheTester")
+                              .dtl_check_interval(boost::chrono::seconds(3600)))
     {}
 
     template<typename B>
@@ -264,7 +265,7 @@ TEST_P(FailOverCacheTester, CacheServerHasNoMemory)
     const backend::Namespace& ns = ns_ptr->ns();
 
     SharedVolumePtr v = 0;
-    int numClusters = 128;
+    size_t num_clusters = 0;
 
     {
         auto foc_ctx(start_one_foc());
@@ -274,12 +275,16 @@ TEST_P(FailOverCacheTester, CacheServerHasNoMemory)
                        ns);
         ASSERT_TRUE(v != nullptr);
 
+        num_clusters = v->getSCOMultiplier() * v->getEffectiveTLogMultiplier() - 1;
+
+        ASSERT_LT(0, num_clusters);
+
         v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
         ASSERT_EQ(VolumeFailOverState::OK_SYNC,
                   v->getVolumeFailOverState());
 
-        for (int i = 0; i < numClusters; ++i)
+        for (size_t i = 0; i < num_clusters; ++i)
         {
             writeToVolume(*v,
                           0,
@@ -287,8 +292,11 @@ TEST_P(FailOverCacheTester, CacheServerHasNoMemory)
                           "xyz");
         }
 
+         // only for the side effect of checking that there actually is one:
+        getFailOverWriter(*v);
+
         flushFailOverCache(*v);
-        check_num_entries(*v, numClusters);
+        check_num_entries(*v, num_clusters);
     }
 
     flushFailOverCache(*v); // It is only detected for sure that the FOC is gone when something happens over the wire
@@ -528,33 +536,6 @@ TEST_P(FailOverCacheTester, resetToOther)
     {
         writeToVolume(*v, i * 4096, 4096, "bdv");
     }
-}
-
-TEST_P(FailOverCacheTester, AutoRecoveries)
-{
-    auto ns_ptr = make_random_namespace();
-
-    const backend::Namespace& ns = ns_ptr->ns();
-
-    SharedVolumePtr v = newVolume("vol1",
-                          ns);
-
-    const auto port = get_next_foc_port();
-    ASSERT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
-                                                               port,
-                                                               GetParam().foc_mode())),
-                 fungi::IOException);
-
-    ASSERT_EQ(VolumeFailOverState::DEGRADED,
-              v->getVolumeFailOverState());
-
-    auto foc_ctx(start_one_foc());
-    ASSERT_EQ(port,
-              foc_ctx->port());
-
-    sleep(2 * failovercache_check_interval_in_seconds_);
-    ASSERT_EQ(VolumeFailOverState::OK_SYNC,
-              v->getVolumeFailOverState());
 }
 
 TEST_P(FailOverCacheTester, TLogsAreRemoved)
@@ -983,6 +964,43 @@ TEST_P(FailOverCacheTester, DISABLED_tarpit)
 }
 */
 
+class FailOverCacheRecoveryTest
+    : public VolManagerTestSetup
+{
+public:
+    FailOverCacheRecoveryTest()
+        : VolManagerTestSetup("FailOverCacheRecoveryTest")
+    {}
+};
+
+TEST_P(FailOverCacheRecoveryTest, auto_recovery)
+{
+    auto ns_ptr = make_random_namespace();
+
+    const backend::Namespace& ns = ns_ptr->ns();
+
+    SharedVolumePtr v = newVolume("vol1",
+                          ns);
+
+    const auto port = get_next_foc_port();
+    ASSERT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
+                                                               port,
+                                                               GetParam().foc_mode())),
+                 fungi::IOException);
+
+    ASSERT_EQ(VolumeFailOverState::DEGRADED,
+              v->getVolumeFailOverState());
+
+    auto foc_ctx(start_one_foc());
+    ASSERT_EQ(port,
+              foc_ctx->port());
+
+    boost::this_thread::sleep_for(2 * dtl_check_interval_);
+
+    ASSERT_EQ(VolumeFailOverState::OK_SYNC,
+              v->getVolumeFailOverState());
+}
+
 namespace
 {
 
@@ -1007,6 +1025,9 @@ INSTANTIATE_TEST_CASE_P(FailOverCacheTesters,
                                           sync_foc_config,
                                           sync_foc_in_memory_config));
 
+INSTANTIATE_TEST_CASE_P(FailOverCacheRecoveryTests,
+                        FailOverCacheRecoveryTest,
+                        ::testing::Values(cluster_cache_config));
 }
 
 // Local Variables: **
