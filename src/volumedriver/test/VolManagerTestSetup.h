@@ -206,7 +206,7 @@ struct VolManagerTestSetupParameters
     PARAM(size_t, data_store_throttle_usecs) = 4000;
     PARAM(size_t, dtl_throttle_usecs) = 10000;
     PARAM(uint32_t, scos_per_tlog) = 20;
-    PARAM(boost::chrono::seconds, dtl_check_interval) = boost::chrono::seconds(5);
+    PARAM(boost::chrono::seconds, dtl_check_interval) = boost::chrono::seconds(3600);
 #undef PARAM
 
     const std::string name_;
