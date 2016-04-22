@@ -607,29 +607,17 @@ NetworkXioClient::create_connection_control(xio_context *ctx,
 }
 
 void
-NetworkXioClient::xio_create_volume(const std::string& uri,
-                                    const std::string& volume_name,
-                                    size_t size,
-                                    void *opaque)
+NetworkXioClient::xio_submit_request(const std::string& uri,
+                                     xio_msg_s *xmsg,
+                                     void *opaque)
 {
-    xio_msg_s *xmsg = new xio_msg_s;
-    xmsg->opaque = opaque;
-    xmsg->msg.opcode(NetworkXioMsgOpcode::CreateVolumeReq);
-    xmsg->msg.opaque((uintptr_t)xmsg);
-    xmsg->msg.volume_name(volume_name);
-    xmsg->msg.size(size);
-
-    xmsg->s_msg = xmsg->msg.pack_msg();
-
-    memset(static_cast<void*>(&xmsg->xreq), 0, sizeof(xio_msg));
-
-    vmsg_sglist_set_nents(&xmsg->xreq.out, 0);
-    xmsg->xreq.out.header.iov_base = (void*)xmsg->s_msg.c_str();
-    xmsg->xreq.out.header.iov_len = xmsg->s_msg.length();
+    if (xio_init_refcnt.fetch_add(1, std::memory_order_relaxed) == 0)
+    {
+        xio_init();
+    }
 
     xio_context *ctx = xio_context_create(NULL, 0, -1);
     xio_connection *conn = create_connection_control(ctx, uri);
-
     if (conn == NULL)
     {
         ovs_xio_complete_request_control(opaque,
@@ -653,6 +641,33 @@ exit:
     xio_disconnect(conn);
     xio_context_run_loop(ctx, 100);
     xio_context_destroy(ctx);
+    if (xio_init_refcnt.fetch_sub(1, std::memory_order_relaxed) == 1)
+    {
+        xio_shutdown();
+    }
+}
+
+void
+NetworkXioClient::xio_create_volume(const std::string& uri,
+                                    const std::string& volume_name,
+                                    size_t size,
+                                    void *opaque)
+{
+    xio_msg_s *xmsg = new xio_msg_s;
+    xmsg->opaque = opaque;
+    xmsg->msg.opcode(NetworkXioMsgOpcode::CreateVolumeReq);
+    xmsg->msg.opaque((uintptr_t)xmsg);
+    xmsg->msg.volume_name(volume_name);
+    xmsg->msg.size(size);
+
+    xmsg->s_msg = xmsg->msg.pack_msg();
+
+    memset(static_cast<void*>(&xmsg->xreq), 0, sizeof(xio_msg));
+
+    vmsg_sglist_set_nents(&xmsg->xreq.out, 0);
+    xmsg->xreq.out.header.iov_base = (void*)xmsg->s_msg.c_str();
+    xmsg->xreq.out.header.iov_len = xmsg->s_msg.length();
+    xio_submit_request(uri, xmsg, opaque);
 }
 
 void
@@ -673,33 +688,28 @@ NetworkXioClient::xio_remove_volume(const std::string& uri,
     vmsg_sglist_set_nents(&xmsg->xreq.out, 0);
     xmsg->xreq.out.header.iov_base = (void*)xmsg->s_msg.c_str();
     xmsg->xreq.out.header.iov_len = xmsg->s_msg.length();
+    xio_submit_request(uri, xmsg, opaque);
+}
 
-    xio_context *ctx = xio_context_create(NULL, 0, -1);
-    xio_connection *conn = create_connection_control(ctx, uri);
+void
+NetworkXioClient::xio_stat_volume(const std::string& uri,
+                                  const std::string& volume_name,
+                                  void *opaque)
+{
+    xio_msg_s *xmsg = new xio_msg_s;
+    xmsg->opaque = opaque;
+    xmsg->msg.opcode(NetworkXioMsgOpcode::StatVolumeReq);
+    xmsg->msg.opaque((uintptr_t)xmsg);
+    xmsg->msg.volume_name(volume_name);
 
-    if (conn == NULL)
-    {
-        ovs_xio_complete_request_control(opaque,
-                                         -1,
-                                         EIO);
-        delete xmsg;
-        return;
-    }
+    xmsg->s_msg = xmsg->msg.pack_msg();
 
-    int ret = xio_send_request(conn, &xmsg->xreq);
-    if (ret < 0)
-    {
-        ovs_xio_complete_request_control(opaque,
-                                         -1,
-                                         EIO);
-        delete xmsg;
-        goto exit;
-    }
-    xio_context_run_loop(ctx, XIO_INFINITE);
-exit:
-    xio_disconnect(conn);
-    xio_context_run_loop(ctx, 100);
-    xio_context_destroy(ctx);
+    memset(static_cast<void*>(&xmsg->xreq), 0, sizeof(xio_msg));
+
+    vmsg_sglist_set_nents(&xmsg->xreq.out, 0);
+    xmsg->xreq.out.header.iov_base = (void*)xmsg->s_msg.c_str();
+    xmsg->xreq.out.header.iov_len = xmsg->s_msg.length();
+    xio_submit_request(uri, xmsg, opaque);
 }
 
 } //namespace volumedriverfs

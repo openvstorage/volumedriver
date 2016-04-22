@@ -98,6 +98,11 @@ public:
     xio_remove_volume(const std::string& uri,
                       const std::string& volume_name,
                       void* opaque);
+
+    static void
+    xio_stat_volume(const std::string& uri,
+                    const std::string& volume_name,
+                    void *opaque);
 private:
     xio_context *ctx;
     xio_session *session;
@@ -141,6 +146,11 @@ private:
     static int
     assign_data_in_buf_control(xio_msg *msg,
                                void *cb_user_context);
+
+    static void
+    xio_submit_request(const std::string& uri,
+                       xio_msg_s *xmsg,
+                       void *opaque);
 };
 
 typedef std::shared_ptr<NetworkXioClient> NetworkXioClientPtr;
