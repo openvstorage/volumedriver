@@ -73,6 +73,9 @@ private:
     void handle_remove_volume(NetworkXioRequest *req,
                               const std::string& volume_name);
 
+    void handle_stat_volume(NetworkXioRequest *req,
+                            const std::string& volume_name);
+
     void handle_error(NetworkXioRequest *req,
                       int errval);
 

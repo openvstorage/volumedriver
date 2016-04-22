@@ -287,6 +287,31 @@ NetworkXioIOHandler::handle_remove_volume(NetworkXioRequest *req,
 }
 
 void
+NetworkXioIOHandler::handle_stat_volume(NetworkXioRequest *req,
+                                        const std::string& volume_name)
+{
+    VERIFY(not handle_);
+    req->op = NetworkXioMsgOpcode::StatVolumeRsp;
+
+    const std::string root_("/");
+    const std::string dot_(".");
+    const FrontendPath volume_path(root_ + volume_name +
+                                   fs_.vdisk_format().volume_suffix());
+    boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
+    if (not volume_id)
+    {
+        req->retval = -1;
+        req->errval = ENOENT;
+    }
+    else
+    {
+        req->retval = fs_.object_router().get_size(*volume_id);
+        req->errval = 0;
+    }
+    pack_msg(req);
+}
+
+void
 NetworkXioIOHandler::handle_error(NetworkXioRequest *req, int errval)
 {
     req->op = NetworkXioMsgOpcode::ErrorRsp;
@@ -371,6 +396,12 @@ NetworkXioIOHandler::process_request(Work * work)
     {
         handle_remove_volume(req,
                              i_msg.volume_name());
+        break;
+    }
+    case NetworkXioMsgOpcode::StatVolumeReq:
+    {
+        handle_stat_volume(req,
+                           i_msg.volume_name());
         break;
     }
     default:
