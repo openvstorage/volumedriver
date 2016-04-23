@@ -412,7 +412,8 @@ NetworkXioServer::allocate_request(NetworkXioClientData *cd,
 void
 NetworkXioServer::deallocate_request(NetworkXioRequest *req)
 {
-    if (req->op == NetworkXioMsgOpcode::ReadRsp && req->data)
+    if ((req->op == NetworkXioMsgOpcode::ReadRsp ||
+         req->op == NetworkXioMsgOpcode::ListVolumesRsp) && req->data)
     {
         if (req->from_pool)
         {
@@ -469,7 +470,8 @@ NetworkXioServer::xio_send_reply(Work *work)
     req->xio_reply.out.header.iov_base =
         const_cast<void*>(reinterpret_cast<const void*>(req->s_msg.c_str()));
     req->xio_reply.out.header.iov_len = req->s_msg.length();
-    if (req->op == NetworkXioMsgOpcode::ReadRsp && req->data)
+    if ((req->op == NetworkXioMsgOpcode::ReadRsp ||
+         req->op == NetworkXioMsgOpcode::ListVolumesRsp) && req->data)
     {
         vmsg_sglist_set_nents(&req->xio_reply.out, 1);
         req->xio_reply.out.sgl_type = XIO_SGL_TYPE_IOV;

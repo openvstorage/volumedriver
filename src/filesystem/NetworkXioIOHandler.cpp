@@ -312,6 +312,72 @@ NetworkXioIOHandler::handle_stat_volume(NetworkXioRequest *req,
 }
 
 void
+NetworkXioIOHandler::handle_list_volumes(NetworkXioRequest *req)
+{
+    VERIFY(not handle_);
+    req->op = NetworkXioMsgOpcode::ListVolumesRsp;
+
+    auto registry(fs_.object_router().object_registry());
+    const auto objs(registry->list());
+
+    uint64_t total_size = 0;
+    std::vector<std::string> volumes;
+    try
+    {
+        for (const auto& o: objs)
+        {
+            const auto reg(registry->find(o, IgnoreCache::F));
+            if (reg and (reg->object().type == ObjectType::Volume or
+                reg->object().type == ObjectType::Template))
+            {
+                try
+                {
+                    std::string volume(fs_.find_path(reg->volume_id).string());
+                    volume.erase(volume.rfind(fs_.vdisk_format().volume_suffix()));
+                    volume.erase(0, 1);
+                    total_size += volume.length() + 1;
+                    volumes.push_back(volume);
+                }
+                catch (HierarchicalArakoon::DoesNotExistException&)
+                {
+                    continue;
+                }
+            }
+        }
+    }
+    catch (std::exception& e)
+    {
+        LOG_INFO("Problem listing volumes, err: " << e.what());
+        req->retval = -1;
+        req->errval = EIO;
+        pack_msg(req);
+        return;
+    }
+    int ret = xio_mem_alloc(total_size, &req->reg_mem);
+    if (ret < 0)
+    {
+        LOG_ERROR("cannot allocate requested buffer, size: " << total_size);
+        req->retval = -1;
+        req->errval = ENOMEM;
+        pack_msg(req);
+        return;
+    }
+    req->from_pool = false;
+    req->data = req->reg_mem.addr;
+    req->data_len = total_size;
+    uint64_t idx = 0;
+    for(auto& vol: volumes)
+    {
+        const char *name = vol.c_str();
+        strcpy(static_cast<char*>(req->data) + idx, name);
+        idx += strlen(name) + 1;
+    }
+    req->errval = 0;
+    req->retval = volumes.size();
+    pack_msg(req);
+}
+
+void
 NetworkXioIOHandler::handle_error(NetworkXioRequest *req, int errval)
 {
     req->op = NetworkXioMsgOpcode::ErrorRsp;
@@ -402,6 +468,11 @@ NetworkXioIOHandler::process_request(Work * work)
     {
         handle_stat_volume(req,
                            i_msg.volume_name());
+        break;
+    }
+    case NetworkXioMsgOpcode::ListVolumesReq:
+    {
+        handle_list_volumes(req);
         break;
     }
     default:
