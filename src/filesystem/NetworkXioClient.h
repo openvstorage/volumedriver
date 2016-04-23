@@ -48,6 +48,12 @@ public:
         std::string s_msg;
     };
 
+    struct xio_ctl_s
+    {
+        xio_msg_s xmsg;
+        std::vector<std::string> *vec;
+    };
+
     int
     xio_send_open_request(const std::string& volname,
                           const void *opaque);
@@ -103,6 +109,10 @@ public:
     xio_stat_volume(const std::string& uri,
                     const std::string& volume_name,
                     void *opaque);
+
+    static void
+    xio_list_volumes(const std::string& uri,
+                     std::vector<std::string>& volumes);
 private:
     xio_context *ctx;
     xio_session *session;
@@ -149,8 +159,16 @@ private:
 
     static void
     xio_submit_request(const std::string& uri,
-                       xio_msg_s *xmsg,
+                       xio_ctl_s *xctl,
                        void *opaque);
+
+    static void
+    xio_msg_prepare(xio_msg_s *xmsg);
+
+    static void
+    handle_list_volumes(xio_ctl_s *xctl,
+                        xio_iovec_ex *sglist,
+                        int size);
 };
 
 typedef std::shared_ptr<NetworkXioClient> NetworkXioClientPtr;
