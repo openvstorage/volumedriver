@@ -481,4 +481,64 @@ TEST_F(NetworkServerTest, stat)
               ovs_ctx_attr_destroy(ctx_attr));
 }
 
+TEST_F(NetworkServerTest, list_volumes)
+{
+    uint64_t volume_size = 1 << 30;
+    size_t max_size = 1;
+    int len = -1;
+    char *names = NULL;
+    std::string vol1("volume1");
+    std::string vol2("volume2");
+
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
+    EXPECT_EQ(0,
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         "tcp",
+                                         "127.0.0.1",
+                                         21321));
+    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
+    ASSERT_TRUE(ctx != nullptr);
+
+    {
+        names = (char *) malloc(max_size);
+        EXPECT_EQ(ovs_list_volumes(ctx, names, &max_size),
+                  0);
+        free(names);
+    }
+
+    EXPECT_EQ(ovs_create_volume(ctx,
+                                vol1.c_str(),
+                                volume_size),
+              0);
+
+    EXPECT_EQ(ovs_create_volume(ctx,
+                                vol2.c_str(),
+                                volume_size),
+              0);
+
+    while (true)
+    {
+        names = (char *)malloc(max_size);
+        len = ovs_list_volumes(ctx, names, &max_size);
+        if (len >= 0)
+        {
+            break;
+        }
+        if (len == -1 && errno != ERANGE)
+        {
+            break;
+        }
+        free(names);
+    }
+
+    EXPECT_EQ(len, vol1.length() + 1 + vol2.length() + 1);
+    free(names);
+
+    EXPECT_EQ(0,
+              ovs_ctx_destroy(ctx));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
+}
+
 } //namespace
