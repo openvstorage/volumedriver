@@ -89,8 +89,11 @@ void
 ovs_xio_complete_request_control(void *opaque, ssize_t retval, int errval)
 {
     ovs_aio_request *request = reinterpret_cast<ovs_aio_request*>(opaque);
-    request->_errno = errval;
-    request->_rv = retval;
+    if (request)
+    {
+        request->_errno = errval;
+        request->_rv = retval;
+    }
 }
 
 }

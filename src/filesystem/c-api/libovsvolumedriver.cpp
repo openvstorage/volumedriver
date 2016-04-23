@@ -773,7 +773,7 @@ ovs_snapshot_is_synced(ovs_ctx_t *ctx ATTRIBUTE_UNUSED,
 }
 
 int
-ovs_list_volumes(ovs_ctx_t *ctx ATTRIBUTE_UNUSED,
+ovs_list_volumes(ovs_ctx_t *ctx,
                  char *names,
                  size_t *size)
 {
@@ -795,14 +795,43 @@ ovs_list_volumes(ovs_ctx_t *ctx ATTRIBUTE_UNUSED,
                                           r,
                                           errno);
                 }));
-    try
+
+    switch (ctx->transport)
     {
-        volumes = volumedriverfs::ShmClient::list_volumes();
+    case TransportType::SharedMemory:
+    {
+        try
+        {
+            volumes = volumedriverfs::ShmClient::list_volumes();
+        }
+        catch (...)
+        {
+            errno = EIO;
+            return (r = -1);
+        }
+        break;
     }
-    catch (...)
+    case TransportType::TCP:
+    case TransportType::RDMA:
     {
-        errno = EIO;
-        return (r = -1);
+        try
+        {
+            volumedriverfs::NetworkXioClient::xio_list_volumes(ctx->uri,
+                                                               volumes);
+        }
+        catch (const std::bad_alloc&)
+        {
+            errno = ENOMEM; r = -1;
+        }
+        catch (...)
+        {
+            errno = EIO; r = -1;
+        }
+        break;
+    }
+    default:
+        errno = EINVAL; r = -1;
+        break;
     }
 
     for (size_t t = 0; t < volumes.size(); t++)
