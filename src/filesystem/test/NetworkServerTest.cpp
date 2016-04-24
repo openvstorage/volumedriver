@@ -541,4 +541,243 @@ TEST_F(NetworkServerTest, list_volumes)
               ovs_ctx_attr_destroy(ctx_attr));
 }
 
+TEST_F(NetworkServerTest, completion_two_ctxs)
+{
+    struct completion_function
+    {
+        static void finish_write(ovs_completion_t *comp, void *arg)
+        {
+            ssize_t *len = (ssize_t*)arg;
+            EXPECT_EQ(*len,
+                      ovs_aio_return_completion(comp));
+            EXPECT_EQ(0,
+                      ovs_aio_signal_completion(comp));
+        }
+        static void finish_read(ovs_completion_t *comp, void *arg)
+        {
+            ssize_t *len = (ssize_t*)arg;
+            EXPECT_EQ(*len,
+                      ovs_aio_return_completion(comp));
+            EXPECT_EQ(0,
+                      ovs_aio_signal_completion(comp));
+        }
+    };
+
+    uint64_t volume_size = 1 << 30;
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
+    EXPECT_EQ(0,
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         "tcp",
+                                         "127.0.0.1",
+                                         21321));
+    ovs_ctx_t *ctx1 = ovs_ctx_new(ctx_attr);
+    ASSERT_TRUE(ctx1 != nullptr);
+    ovs_ctx_t *ctx2 = ovs_ctx_new(ctx_attr);
+    ASSERT_TRUE(ctx2 != nullptr);
+    EXPECT_EQ(0,
+              ovs_create_volume(ctx1,
+                                "volume1",
+                                volume_size));
+
+    EXPECT_EQ(0,
+              ovs_create_volume(ctx2,
+                                "volume2",
+                                volume_size));
+
+    EXPECT_EQ(0,
+              ovs_ctx_init(ctx1, "volume1", O_RDWR));
+
+    EXPECT_EQ(0,
+              ovs_ctx_init(ctx2, "volume2", O_RDWR));
+
+    std::string pattern("openvstorage1");
+    ssize_t pattern_len = pattern.length();
+
+    auto w1_buf = std::make_unique<uint8_t[]>(pattern_len);
+    ASSERT_TRUE(w1_buf != nullptr);
+
+    auto w2_buf = std::make_unique<uint8_t[]>(pattern_len);
+    ASSERT_TRUE(w2_buf != nullptr);
+
+    ovs_completion_t *w1_completion =
+        ovs_aio_create_completion(completion_function::finish_write,
+                                  &pattern_len);
+
+    ovs_completion_t *w2_completion =
+        ovs_aio_create_completion(completion_function::finish_write,
+                                  &pattern_len);
+
+    memcpy(w1_buf.get(),
+           pattern.c_str(),
+           pattern_len);
+
+    memcpy(w2_buf.get(),
+           pattern.c_str(),
+           pattern_len);
+
+    struct ovs_aiocb w1_aio;
+    w1_aio.aio_nbytes = pattern_len;
+    w1_aio.aio_offset = 0;
+    w1_aio.aio_buf = w1_buf.get();
+
+    struct ovs_aiocb w2_aio;
+    w2_aio.aio_nbytes = pattern_len;
+    w2_aio.aio_offset = 0;
+    w2_aio.aio_buf = w2_buf.get();
+
+    EXPECT_EQ(0,
+              ovs_aio_writecb(ctx1,
+                              &w1_aio,
+                              w1_completion));
+
+    EXPECT_EQ(0,
+              ovs_aio_writecb(ctx2,
+                              &w2_aio,
+                              w2_completion));
+
+    EXPECT_EQ(0,
+              ovs_aio_suspend(ctx1,
+                              &w1_aio,
+                              NULL));
+
+    EXPECT_EQ(pattern_len,
+              ovs_aio_return(ctx1,
+                             &w1_aio));
+    EXPECT_EQ(0,
+              ovs_aio_wait_completion(w1_completion, NULL));
+    EXPECT_EQ(0,
+              ovs_aio_release_completion(w1_completion));
+
+    EXPECT_EQ(0,
+              ovs_aio_finish(ctx1, &w1_aio));
+
+    EXPECT_EQ(0,
+              ovs_aio_suspend(ctx2,
+                              &w2_aio,
+                              NULL));
+
+    EXPECT_EQ(pattern_len,
+              ovs_aio_return(ctx2,
+                             &w2_aio));
+
+    EXPECT_EQ(0,
+              ovs_aio_wait_completion(w2_completion, NULL));
+    EXPECT_EQ(0,
+              ovs_aio_release_completion(w2_completion));
+
+    EXPECT_EQ(0,
+              ovs_aio_finish(ctx2, &w2_aio));
+
+    w1_buf.reset();
+    w2_buf.reset();
+
+    auto rbuf = std::make_unique<uint8_t[]>(pattern_len);
+    ASSERT_TRUE(rbuf != nullptr);
+
+    struct ovs_aiocb r_aio;
+    r_aio.aio_nbytes = pattern_len;
+    r_aio.aio_offset = 0;
+    r_aio.aio_buf = rbuf.get();
+
+    ovs_completion_t *r_completion =
+        ovs_aio_create_completion(completion_function::finish_read,
+                                  &pattern_len);
+
+    EXPECT_EQ(0,
+              ovs_aio_readcb(ctx2,
+                             &r_aio,
+                             r_completion));
+
+    EXPECT_EQ(0,
+              ovs_aio_suspend(ctx2,
+                              &r_aio,
+                              NULL));
+
+    EXPECT_EQ(pattern_len,
+              ovs_aio_return(ctx2,
+                             &r_aio));
+
+    EXPECT_TRUE(memcmp(rbuf.get(),
+                       pattern.c_str(),
+                       pattern_len) == 0);
+
+    EXPECT_EQ(0,
+              ovs_aio_wait_completion(r_completion, NULL));
+    EXPECT_EQ(0,
+              ovs_aio_release_completion(r_completion));
+
+    EXPECT_EQ(0,
+              ovs_aio_finish(ctx2, &r_aio));
+
+    rbuf.reset();
+
+    EXPECT_EQ(0,
+              ovs_ctx_destroy(ctx1));
+    EXPECT_EQ(0,
+              ovs_ctx_destroy(ctx2));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
+}
+
+TEST_F(NetworkServerTest, write_flush_read)
+{
+    uint64_t volume_size = 1 << 30;
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
+    EXPECT_EQ(0,
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         "tcp",
+                                         "127.0.0.1",
+                                         21321));
+    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
+    ASSERT_TRUE(ctx != nullptr);
+    EXPECT_EQ(0,
+              ovs_create_volume(ctx,
+                                "volume",
+                                volume_size));
+    EXPECT_EQ(0,
+              ovs_ctx_init(ctx,
+                           "volume",
+                           O_RDWR));
+
+    std::string pattern("openvstorage1");
+    auto wbuf = std::make_unique<uint8_t[]>(pattern.length());
+    ASSERT_TRUE(wbuf != nullptr);
+
+    memcpy(wbuf.get(),
+           pattern.c_str(),
+           pattern.length());
+
+    EXPECT_EQ(pattern.length(),
+              ovs_write(ctx,
+                        wbuf.get(),
+                        pattern.length(),
+                        1024));
+
+    EXPECT_EQ(0, ovs_flush(ctx));
+
+    wbuf.reset();
+
+    auto rbuf = std::make_unique<uint8_t[]>(pattern.length());
+    ASSERT_TRUE(rbuf != nullptr);
+
+    EXPECT_EQ(pattern.length(),
+              ovs_read(ctx,
+                       rbuf.get(),
+                       pattern.length(),
+                       1024));
+
+    EXPECT_TRUE(memcmp(rbuf.get(),
+                       pattern.c_str(),
+                       pattern.length()) == 0);
+
+    rbuf.reset();
+
+    EXPECT_EQ(0,
+              ovs_ctx_destroy(ctx));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
+}
+
 } //namespace
