@@ -78,6 +78,9 @@ private:
 
     void handle_list_volumes(NetworkXioRequest *req);
 
+    void handle_list_snapshots(NetworkXioRequest *req,
+                               const std::string& volume_name);
+
     void handle_error(NetworkXioRequest *req,
                       int errval);
 

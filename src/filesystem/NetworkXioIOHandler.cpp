@@ -378,6 +378,72 @@ NetworkXioIOHandler::handle_list_volumes(NetworkXioRequest *req)
 }
 
 void
+NetworkXioIOHandler::handle_list_snapshots(NetworkXioRequest *req,
+                                           const std::string& volume_name)
+{
+    VERIFY(not handle_);
+    req->op = NetworkXioMsgOpcode::ListSnapshotsRsp;
+
+    const std::string root_("/");
+    const std::string dot_(".");
+    const FrontendPath volume_path(root_ + volume_name +
+                                   fs_.vdisk_format().volume_suffix());
+    boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
+    if (not volume_id)
+    {
+        req->retval = -1;
+        req->errval = ENOENT;
+        pack_msg(req);
+        return;
+    }
+
+    std::list<volumedriver::SnapshotName> snaps;
+    try
+    {
+        snaps = fs_.object_router().list_snapshots(*volume_id);
+    }
+    catch (std::exception& e)
+    {
+        LOG_INFO("Problem listing snapshots for volume " << volume_name <<
+                 ",err: " << e.what());
+        req->retval = -1;
+        req->errval = EIO;
+        pack_msg(req);
+        return;
+    }
+
+    uint64_t total_size = 0;
+    for (const auto& s: snaps)
+    {
+        total_size += s.length() + 1;
+    }
+
+    int ret = xio_mem_alloc(total_size, &req->reg_mem);
+    if (ret < 0)
+    {
+        LOG_ERROR("cannot allocate requested buffer, size: " << total_size);
+        req->retval = -1;
+        req->errval = ENOMEM;
+        pack_msg(req);
+        return;
+    }
+    req->from_pool = false;
+    req->data = req->reg_mem.addr;
+    req->data_len = total_size;
+    uint64_t idx = 0;
+    for(auto& s: snaps)
+    {
+        const char *name = s.c_str();
+        strcpy(static_cast<char*>(req->data) + idx, name);
+        idx += strlen(name) + 1;
+    }
+    req->errval = 0;
+    req->retval = snaps.size();
+    req->size = fs_.object_router().get_size(*volume_id);
+    pack_msg(req);
+}
+
+void
 NetworkXioIOHandler::handle_error(NetworkXioRequest *req, int errval)
 {
     req->op = NetworkXioMsgOpcode::ErrorRsp;
@@ -473,6 +539,12 @@ NetworkXioIOHandler::process_request(Work * work)
     case NetworkXioMsgOpcode::ListVolumesReq:
     {
         handle_list_volumes(req);
+        break;
+    }
+    case NetworkXioMsgOpcode::ListSnapshotsReq:
+    {
+        handle_list_snapshots(req,
+                              i_msg.volume_name());
         break;
     }
     default:

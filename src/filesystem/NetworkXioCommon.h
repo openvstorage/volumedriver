@@ -44,6 +44,8 @@ enum class NetworkXioMsgOpcode
     ListVolumesRsp,
     StatVolumeReq,
     StatVolumeRsp,
+    ListSnapshotsReq,
+    ListSnapshotsRsp,
 };
 
 #endif //__NETWORK_XIO_COMMON_H_
