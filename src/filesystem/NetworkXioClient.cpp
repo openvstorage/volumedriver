@@ -528,6 +528,12 @@ NetworkXioClient::on_msg_control(xio_session *session ATTR_UNUSED,
                             vmsg_sglist(&reply->in),
                             i_msg.retval());
         break;
+    case NetworkXioMsgOpcode::ListSnapshotsRsp:
+        handle_list_snapshots(xctl,
+                              vmsg_sglist(&reply->in),
+                              i_msg.retval(),
+                              i_msg.size());
+        break;
     default:
         break;
     }
@@ -656,14 +662,29 @@ exit:
 void
 NetworkXioClient::handle_list_volumes(xio_ctl_s *xctl,
                                       xio_iovec_ex *sglist,
-                                      int size)
+                                      int vec_size)
 {
     uint64_t idx = 0;
-    for (int i = 0; i < size; i++)
+    for (int i = 0; i < vec_size; i++)
     {
        xctl->vec->push_back(static_cast<char*>(sglist[0].iov_base) + idx);
        idx += strlen(static_cast<char*>(sglist[0].iov_base)) + 1;
     }
+}
+
+void
+NetworkXioClient::handle_list_snapshots(xio_ctl_s *xctl,
+                                        xio_iovec_ex *sglist,
+                                        int vec_size,
+                                        int size)
+{
+    uint64_t idx = 0;
+    for (int i = 0; i < vec_size; i++)
+    {
+       xctl->vec->push_back(static_cast<char*>(sglist[0].iov_base) + idx);
+       idx += strlen(static_cast<char*>(sglist[0].iov_base)) + 1;
+    }
+    xctl->size = size;
 }
 
 void
@@ -736,6 +757,23 @@ NetworkXioClient::xio_list_volumes(const std::string& uri,
 
     xio_msg_prepare(&xctl->xmsg);
     xio_submit_request(uri, xctl.get(), NULL);
+}
+
+void
+NetworkXioClient::xio_list_snapshots(const std::string& uri,
+                                     const std::string& volume_name,
+                                     std::vector<std::string>& snapshots,
+                                     uint64_t *size)
+{
+    auto xctl = std::make_unique<xio_ctl_s>();
+    xctl->vec = &snapshots;
+    xctl->xmsg.msg.opcode(NetworkXioMsgOpcode::ListSnapshotsReq);
+    xctl->xmsg.msg.opaque((uintptr_t)xctl.get());
+    xctl->xmsg.msg.volume_name(volume_name);
+
+    xio_msg_prepare(&xctl->xmsg);
+    xio_submit_request(uri, xctl.get(), NULL);
+    *size = xctl->size;
 }
 
 } //namespace volumedriverfs

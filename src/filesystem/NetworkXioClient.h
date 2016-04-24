@@ -52,6 +52,7 @@ public:
     {
         xio_msg_s xmsg;
         std::vector<std::string> *vec;
+        uint64_t size;
     };
 
     int
@@ -113,6 +114,12 @@ public:
     static void
     xio_list_volumes(const std::string& uri,
                      std::vector<std::string>& volumes);
+
+    static void
+    xio_list_snapshots(const std::string& uri,
+                       const std::string& volume_name,
+                       std::vector<std::string>& snapshots,
+                       uint64_t *size);
 private:
     xio_context *ctx;
     xio_session *session;
@@ -168,7 +175,13 @@ private:
     static void
     handle_list_volumes(xio_ctl_s *xctl,
                         xio_iovec_ex *sglist,
-                        int size);
+                        int vec_size);
+
+    static void
+    handle_list_snapshots(xio_ctl_s *xctl,
+                          xio_iovec_ex *sglist,
+                          int vec_size,
+                          int size);
 };
 
 typedef std::shared_ptr<NetworkXioClient> NetworkXioClientPtr;
