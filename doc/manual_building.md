@@ -120,61 +120,9 @@ Note: If you want a simpler, more automated way of building, do have a look at t
         git checkout master ## or tags/<tagid>
         cd ..
 
-  - create a custom build script that contains the location of the volumedriver-buildtools built in the previous step plus a bunch of other settings, for example:
+  - use the manual-build.sh script in the src/buildscripts directory to build the volumedriver. This script expects the volumedriver-buildtools built as documented above. If you want to create an rtchecked (debug) build, you have to edit the script and change the BUILD_TYPE setting as per the documentation in the script.
   
-        cat >bld-voldrvr-release.sh <<_EOF_
-        #!/bin/bash 
-        
-        set -eux 
-        
-        BUILDTOOLS_TO_USE="${PWD}/BUILDS/volumedriver-buildtools/release"
-        
-        VOLUMEDRIVER_DIR="${PWD}/volumedriver"  # must be a full path, not a relative one!
-        BUILD_DIR="${PWD}/BUILDS/volumedriver/release"
-        
-        BUILDER="\${VOLUMEDRIVER_DIR}/src/buildscripts/builder.sh"
-        
-        export RUN_TESTS=no                   # set to "yes" to run included test suite (needs running rpcbind, redis & omniNames + installed arakoon & alba; see docs!)
-        export BUILD_DEBIAN_PACKAGES=yes      # both for deb & rpm; change to "no" to skip creating packages
-        export CLEAN_BUILD=no                 # set to "yes" to clean build env (force complete rebuild)
-        export RECONFIGURE_BUILD=yes          # do reconfigure the code
-        export USE_MD5_HASH=yes               # set to "no" to disable deduping
-        export BUILD_NUM_PROCESSES=2          # number of concurrent build processes (make -j)
-        export SUPPRESS_WARNINGS=no
-        export COVERAGE=no
-        
-        export CXX_WARNINGS="-Wall -Wextra -Wno-unknown-pragmas -Wsign-promo -Woverloaded-virtual -Wnon-virtual-dtor"
-        export CXX_OPTIMIZE_FLAGS="-ggdb3 -O2"
-        export CXX_DEFINES="-DNDEBUG -DBOOST_FILESYSTEM_VERSION=3"
-        
-        ## settings for the included testsuite
-        export ARAKOON_BINARY=/usr/bin/arakoon
-        export FOC_PORT_BASE=19100
-        export FAILOVERCACHE_TEST_PORT=\${FOC_PORT_BASE}
-        export ARAKOON_PORT_BASE=\$((FOC_PORT_BASE + 10))
-        export VFS_PORT_BASE=\$((FOC_PORT_BASE + 20))
-        export MDS_PORT_BASE=\$((VFS_PORT_BASE + 20))
+        ./volumedriver/src/buildscripts/manual-build.sh
 
-        mkdir -p \${BUILD_DIR}
-        ln -sf \${BUILDER} \${BUILD_DIR}
-        
-        pushd \${BUILD_DIR}
-        
-        set +e
-        \${BUILDER} \${BUILDTOOLS_TO_USE} \${VOLUMEDRIVER_DIR}
-        ret=\$?
-        set -e
-        
-        popd
-        
-        exit \${ret}
-        _EOF_
-        
-        chmod +x bld-voldrvr-release.sh
-        
-  - build the volumedriver
-  
-        ./bld-voldrvr-release.sh
-
-The resulting packages will be either under **${BUILD_DIR}/debian** or **${BUILD_DIR}/rpm**.
-If you ran the including testsuite, take a look at ${BUILD_DIR}/build/test.log for the results.
+The resulting packages will be either under **BUILDS/volumedriver/release/debian** or **BUILDS/volumedriver/release/rpm**.
+If you ran the including testsuite, take a look at BUILDS/volumedriver/release/build/test.log for the results (note: rtchecked subdir instead of release for debug builds).
