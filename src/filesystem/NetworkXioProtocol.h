@@ -25,28 +25,34 @@ public:
     explicit NetworkXioMsg(NetworkXioMsgOpcode opcode =
                                 NetworkXioMsgOpcode::Noop,
                            const std::string& volname = "",
+                           const std::string& snapname = "",
                            const size_t size = 0,
                            const uint64_t offset = 0,
                            const ssize_t retval = 0,
                            const int errval = 0,
-                           const uintptr_t opaque = 0)
+                           const uintptr_t opaque = 0,
+                           const int64_t timeout = 0)
     : opcode_(opcode)
     , volname_(volname)
+    , snapname_(snapname)
     , size_(size)
     , offset_(offset)
     , retval_(retval)
     , errval_(errval)
     , opaque_(opaque)
+    , timeout_(timeout)
     {}
 
 public:
     NetworkXioMsgOpcode opcode_;
     std::string volname_;
+    std::string snapname_;
     size_t size_;
     uint64_t offset_;
     ssize_t retval_;
     int errval_;
     uintptr_t opaque_;
+    int64_t timeout_;
 
 public:
     const NetworkXioMsgOpcode&
@@ -71,6 +77,18 @@ public:
     volume_name(const std::string& volume)
     {
         volname_ = volume;
+    }
+
+    const std::string&
+    snap_name() const
+    {
+        return snapname_;
+    }
+
+    void
+    snap_name(const std::string& snap)
+    {
+        snapname_ = snap;
     }
 
     const uintptr_t&
@@ -133,6 +151,18 @@ public:
         offset_ = offset;
     }
 
+    const int64_t&
+    timeout() const
+    {
+        return timeout_;
+    }
+
+    void
+    timeout(const int64_t& timeout)
+    {
+        timeout_ = timeout;
+    }
+
     const std::string
     pack_msg() const
     {
@@ -165,20 +195,24 @@ public:
     {
         opcode_ = NetworkXioMsgOpcode::Noop;
         volname_.clear();
+        snapname_.clear();
         size_ = 0;
         offset_ = 0;
         retval_ = 0;
         errval_ = 0;
         opaque_ = 0;
+        timeout_ = 0;
     }
 public:
     MSGPACK_DEFINE(opcode_,
                    volname_,
+                   snapname_,
                    size_,
                    offset_,
                    retval_,
                    errval_,
-                   opaque_);
+                   opaque_,
+                   timeout_);
 };
 
 MSGPACK_ADD_ENUM(NetworkXioMsgOpcode);

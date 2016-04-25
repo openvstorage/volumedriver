@@ -444,6 +444,65 @@ NetworkXioIOHandler::handle_list_snapshots(NetworkXioRequest *req,
 }
 
 void
+NetworkXioIOHandler::handle_create_snapshot(NetworkXioRequest *req,
+                                            const std::string& volume_name,
+                                            const std::string& snap_name,
+                                            const int64_t timeout)
+{
+    VERIFY(not handle_);
+    req->op = NetworkXioMsgOpcode::CreateSnapshotRsp;
+
+    const std::string root_("/");
+    const std::string dot_(".");
+    const FrontendPath volume_path(root_ + volume_name +
+                                   fs_.vdisk_format().volume_suffix());
+    boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
+    if (not volume_id)
+    {
+        req->retval = -1;
+        req->errval = ENOENT;
+        pack_msg(req);
+        return;
+    }
+
+    const volumedriver::SnapshotName snap(snap_name);
+    try
+    {
+        fs_.object_router().create_snapshot(*volume_id,
+                                            snap,
+                                            timeout);
+    }
+    catch (SyncTimeoutException& e)
+    {
+        LOG_INFO("Sync timeout exception for snapshotting volume: " <<
+                  volume_name);
+        req->retval = -1;
+        req->errval = ETIMEDOUT;
+    }
+    catch (volumedriver::SnapshotPersistor::SnapshotNameAlreadyExists& e)
+    {
+        LOG_INFO("Volume still has children: " << volume_name);
+        req->retval = -1;
+        req->errval = EEXIST;
+    }
+    catch (volumedriver::PreviousSnapshotNotOnBackendException& e)
+    {
+        LOG_INFO("Previous snapshot not on backend yet for volume: " <<
+                 volume_name);
+        req->retval = -1;
+        req->errval = EBUSY;
+    }
+    catch (std::exception& e)
+    {
+        LOG_INFO("Problem creating snapshot: " << snap_name <<
+                 " for volume: "<<  volume_name << ",err: " << e.what());
+        req->retval = -1;
+        req->errval = EIO;
+    }
+    pack_msg(req);
+}
+
+void
 NetworkXioIOHandler::handle_error(NetworkXioRequest *req, int errval)
 {
     req->op = NetworkXioMsgOpcode::ErrorRsp;
@@ -545,6 +604,14 @@ NetworkXioIOHandler::process_request(Work * work)
     {
         handle_list_snapshots(req,
                               i_msg.volume_name());
+        break;
+    }
+    case NetworkXioMsgOpcode::CreateSnapshotReq:
+    {
+        handle_create_snapshot(req,
+                               i_msg.volume_name(),
+                               i_msg.snap_name(),
+                               i_msg.timeout());
         break;
     }
     default:

@@ -81,6 +81,11 @@ private:
     void handle_list_snapshots(NetworkXioRequest *req,
                                const std::string& volume_name);
 
+    void handle_create_snapshot(NetworkXioRequest *req,
+                                const std::string& volume_name,
+                                const std::string& snap_name,
+                                const int64_t timeout);
+
     void handle_error(NetworkXioRequest *req,
                       int errval);
 
