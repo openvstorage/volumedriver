@@ -774,8 +774,27 @@ NetworkXioClient::xio_list_snapshots(const std::string& uri,
     xctl->xmsg.msg.volume_name(volume_name);
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), NULL);
+    xio_submit_request(uri, xctl.get(), opaque);
     *size = xctl->size;
+}
+
+void
+NetworkXioClient::xio_create_snapshot(const std::string& uri,
+                                      const std::string& volume_name,
+                                      const std::string& snap_name,
+                                      int64_t timeout,
+                                      void *opaque)
+{
+    auto xctl = std::make_unique<xio_ctl_s>();
+    xctl->xmsg.opaque = opaque;
+    xctl->xmsg.msg.opcode(NetworkXioMsgOpcode::CreateSnapshotReq);
+    xctl->xmsg.msg.opaque((uintptr_t)xctl.get());
+    xctl->xmsg.msg.volume_name(volume_name);
+    xctl->xmsg.msg.snap_name(snap_name);
+    xctl->xmsg.msg.timeout(timeout);
+
+    xio_msg_prepare(&xctl->xmsg);
+    xio_submit_request(uri, xctl.get(), opaque);
 }
 
 } //namespace volumedriverfs

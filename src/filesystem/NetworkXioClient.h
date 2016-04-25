@@ -121,6 +121,13 @@ public:
                        std::vector<std::string>& snapshots,
                        uint64_t *size,
                        void *opaque);
+
+    static void
+    xio_create_snapshot(const std::string& uri,
+                        const std::string& volume_name,
+                        const std::string& snap_name,
+                        int64_t timeout,
+                        void *opaque);
 private:
     xio_context *ctx;
     xio_session *session;
