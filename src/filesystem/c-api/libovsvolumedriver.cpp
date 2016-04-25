@@ -527,7 +527,7 @@ ovs_snapshot_create(ovs_ctx_t *ctx,
 }
 
 int
-ovs_snapshot_rollback(ovs_ctx_t *ctx ATTRIBUTE_UNUSED,
+ovs_snapshot_rollback(ovs_ctx_t *ctx,
                       const char* volume_name,
                       const char* snapshot_name)
 {
@@ -554,29 +554,69 @@ ovs_snapshot_rollback(ovs_ctx_t *ctx ATTRIBUTE_UNUSED,
         return r;
     }
 
-    try
+    switch (ctx->transport)
     {
-        volumedriverfs::ShmClient::rollback_snapshot(volume_name,
-                                                     snapshot_name);
+    case TransportType::SharedMemory:
+    {
+        try
+        {
+            volumedriverfs::ShmClient::rollback_snapshot(volume_name,
+                                                         snapshot_name);
+        }
+        catch (const ShmIdlInterface::VolumeDoesNotExist&)
+        {
+            errno = ENOENT; r = -1;
+        }
+        catch (const ShmIdlInterface::VolumeHasChildren&)
+        {
+            errno = ENOTEMPTY; r = -1;
+            //errno = ECHILD; r= -1;
+        }
+        catch (...)
+        {
+            errno = EIO; r = -1;
+        }
+        break;
     }
-    catch (const ShmIdlInterface::VolumeDoesNotExist&)
+    case TransportType::TCP:
+    case TransportType::RDMA:
     {
-        errno = ENOENT; r = -1;
+        ovs_aio_request *request = create_new_request(RequestOp::Noop,
+                                                      NULL,
+                                                      NULL);
+        if (request == NULL)
+        {
+            errno = ENOMEM; r = -1;
+            break;
+        }
+        try
+        {
+            volumedriverfs::NetworkXioClient::xio_rollback_snapshot(ctx->uri,
+                                                                    volume_name,
+                                                                    snapshot_name,
+                                                                    static_cast<void*>(request));
+            errno = request->_errno; r = request->_rv;
+        }
+        catch (const std::bad_alloc&)
+        {
+            errno = ENOMEM; r = -1;
+        }
+        catch (...)
+        {
+            errno = EIO; r = -1;
+        }
+        delete request;
+        break;
     }
-    catch (const ShmIdlInterface::VolumeHasChildren&)
-    {
-        errno = ENOTEMPTY; r = -1;
-        //errno = ECHILD; r= -1;
-    }
-    catch (...)
-    {
-        errno = EIO; r = -1;
+    default:
+        errno = EINVAL; r = -1;
+        break;
     }
     return r;
 }
 
 int
-ovs_snapshot_remove(ovs_ctx_t *ctx ATTRIBUTE_UNUSED,
+ovs_snapshot_remove(ovs_ctx_t *ctx,
                     const char* volume_name,
                     const char* snapshot_name)
 {
@@ -603,27 +643,68 @@ ovs_snapshot_remove(ovs_ctx_t *ctx ATTRIBUTE_UNUSED,
         return (r = -1);
     }
 
-    try
+    switch (ctx->transport)
     {
-        volumedriverfs::ShmClient::delete_snapshot(volume_name,
-                                                   snapshot_name);
+    case TransportType::SharedMemory:
+    {
+        try
+        {
+            volumedriverfs::ShmClient::delete_snapshot(volume_name,
+                                                       snapshot_name);
+        }
+        catch (const ShmIdlInterface::VolumeDoesNotExist&)
+        {
+            errno = ENOENT; r = -1;
+        }
+        catch (const ShmIdlInterface::VolumeHasChildren&)
+        {
+            errno = ENOTEMPTY; r = -1;
+            //errno = ECHILD; r = -1;
+        }
+        catch (const ShmIdlInterface::SnapshotNotFound&)
+        {
+            errno = ENOENT; r = -1;
+        }
+        catch (...)
+        {
+            errno = EIO; r = -1;
+        }
+        break;
+
     }
-    catch (const ShmIdlInterface::VolumeDoesNotExist&)
+    case TransportType::TCP:
+    case TransportType::RDMA:
     {
-        errno = ENOENT; r = -1;
+        ovs_aio_request *request = create_new_request(RequestOp::Noop,
+                                                      NULL,
+                                                      NULL);
+        if (request == NULL)
+        {
+            errno = ENOMEM; r = -1;
+            break;
+        }
+        try
+        {
+            volumedriverfs::NetworkXioClient::xio_delete_snapshot(ctx->uri,
+                                                                  volume_name,
+                                                                  snapshot_name,
+                                                                  static_cast<void*>(request));
+            errno = request->_errno; r = request->_rv;
+        }
+        catch (const std::bad_alloc&)
+        {
+            errno = ENOMEM; r = -1;
+        }
+        catch (...)
+        {
+            errno = EIO; r = -1;
+        }
+        delete request;
+        break;
     }
-    catch (const ShmIdlInterface::VolumeHasChildren&)
-    {
-        errno = ENOTEMPTY; r = -1;
-        //errno = ECHILD; r = -1;
-    }
-    catch (const ShmIdlInterface::SnapshotNotFound&)
-    {
-        errno = ENOENT; r = -1;
-    }
-    catch (...)
-    {
-        errno = EIO; r = -1;
+    default:
+        errno = EINVAL; r = -1;
+        break;
     }
     return r;
 }
@@ -807,7 +888,7 @@ ovs_snapshot_list_free(ovs_snapshot_info_t *snap_list)
 }
 
 int
-ovs_snapshot_is_synced(ovs_ctx_t *ctx ATTRIBUTE_UNUSED,
+ovs_snapshot_is_synced(ovs_ctx_t *ctx,
                        const char* volume_name,
                        const char* snapshot_name)
 {
@@ -834,22 +915,62 @@ ovs_snapshot_is_synced(ovs_ctx_t *ctx ATTRIBUTE_UNUSED,
         return r;
     }
 
-    try
+    switch (ctx->transport)
     {
-        r = volumedriverfs::ShmClient::is_snapshot_synced(volume_name,
-                                                          snapshot_name);
+    case TransportType::SharedMemory:
+    {
+        try
+        {
+            r = volumedriverfs::ShmClient::is_snapshot_synced(volume_name,
+                                                              snapshot_name);
+        }
+        catch (const ShmIdlInterface::VolumeDoesNotExist&)
+        {
+            errno = ENOENT; r = -1;
+        }
+        catch (const ShmIdlInterface::SnapshotNotFound&)
+        {
+            errno = ENOENT; r = -1;
+        }
+        catch (...)
+        {
+            errno = EIO; r = -1;
+        }
+        break;
     }
-    catch (const ShmIdlInterface::VolumeDoesNotExist&)
+    case TransportType::TCP:
+    case TransportType::RDMA:
     {
-        errno = ENOENT; r = -1;
+        ovs_aio_request *request = create_new_request(RequestOp::Noop,
+                                                      NULL,
+                                                      NULL);
+        if (request == NULL)
+        {
+            errno = ENOMEM; r = -1;
+            break;
+        }
+        try
+        {
+            volumedriverfs::NetworkXioClient::xio_is_snapshot_synced(ctx->uri,
+                                                                     volume_name,
+                                                                     snapshot_name,
+                                                                     static_cast<void*>(request));
+            errno = request->_errno; r = request->_rv;
+        }
+        catch (const std::bad_alloc&)
+        {
+            errno = ENOMEM; r = -1;
+        }
+        catch (...)
+        {
+            errno = EIO; r = -1;
+        }
+        delete request;
+        break;
     }
-    catch (const ShmIdlInterface::SnapshotNotFound&)
-    {
-        errno = ENOENT; r = -1;
-    }
-    catch (...)
-    {
-        errno = EIO; r = -1;
+    default:
+        errno = EINVAL; r = -1;
+        break;
     }
     return r;
 }
