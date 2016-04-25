@@ -30,6 +30,7 @@
 #include "Alba_Connection.h"
 
 #include <boost/iostreams/stream.hpp>
+#include <boost/thread/thread.hpp>
 
 #include <youtils/Assert.h>
 
@@ -50,17 +51,31 @@ BackendConnectionDeleter::operator()(BackendConnectionInterface* conn)
     }
 }
 
+namespace
+{
+size_t
+num_connection_pools()
+{
+    size_t n = boost::thread::hardware_concurrency();
+    return n ? n : 1;
+}
+
+}
+
 // This thing makes it effectively singleton per backend!!
 BackendConnectionManager::BackendConnectionManager(const bpt::ptree& pt,
                                                    const RegisterComponent registerize)
     : VolumeDriverComponent(registerize,
                             pt)
+    , connection_pools_(num_connection_pools())
     , backend_connection_pool_capacity(pt)
     , backend_interface_retries_on_error(pt)
     , backend_interface_retry_interval_secs(pt)
     , backend_interface_retry_backoff_multiplier(pt)
     , config_(BackendConfig::makeBackendConfig(pt))
 {
+    VERIFY(connection_pools_.size() > 0);
+
     switch (config_->backend_type.value())
     {
     case BackendType::LOCAL:
@@ -96,6 +111,15 @@ BackendConnectionManager::BackendConnectionManager(const bpt::ptree& pt,
 
 BackendConnectionManager::~BackendConnectionManager()
 {
+    for (auto& p : connection_pools_)
+    {
+        while (not p.connections_.empty())
+        {
+            std::unique_ptr<BackendConnectionInterface> conn(&p.connections_.front());
+            p.connections_.pop_front();
+        }
+    }
+
     switch (config_->backend_type.value())
     {
     case BackendType::LOCAL:
@@ -139,40 +163,23 @@ BackendConnectionManager::newConnection_()
     UNREACHABLE
 }
 
-void
-BackendConnectionManager::releaseConnection(BackendConnectionInterface* conn)
-{
-#define LOCK_CONNS()                            \
-    ::boost::lock_guard<lock_type> g__(lock_);
-
-    LOG_TRACE("Returning connection handle " << conn);
-    ASSERT(conn != nullptr);
-
-    LOCK_CONNS();
-
-    if (conn->healthy() and
-        connections_.size() < backend_connection_pool_capacity.value())
-    {
-        connections_.push_front(conn);
-    }
-    else
-    {
-        delete conn;
-    }
-}
-
 size_t
 BackendConnectionManager::capacity() const
 {
-    LOCK_CONNS();
     return backend_connection_pool_capacity.value();
 }
 
 size_t
 BackendConnectionManager::size() const
 {
-    LOCK_CONNS();
-    return connections_.size();
+    size_t n = 0;
+    for (const auto& p : connection_pools_)
+    {
+        boost::lock_guard<decltype(p.lock_)> g(p.lock_);
+        n += p.connections_.size();
+    }
+
+    return n;
 }
 
 BackendInterfacePtr
@@ -283,7 +290,6 @@ BackendConnectionManager::persist(bpt::ptree& pt,
 {
     config_->persist_internal(pt,
                               report_default);
-    LOCK_CONNS();
 
 #define P(x)                                    \
     x.persist(pt,                               \
@@ -303,17 +309,15 @@ BackendConnectionManager::update(const bpt::ptree& pt,
 {
     config_->update_internal(pt, report);
 
-    LOCK_CONNS();
     const decltype(backend_connection_pool_capacity) new_cap(pt);
-    if (new_cap.value() < connections_.size())
-    {
-        int64_t diff = connections_.size() - new_cap.value();
-        VERIFY(diff > 0);
 
-        while (diff)
+    for (auto& p : connection_pools_)
+    {
+        boost::lock_guard<decltype(p.lock_)> g(p.lock_);
+        while (p.connections_.size() > new_cap.value() / connection_pools_.size())
         {
-            connections_.pop_back();
-            --diff;
+            std::unique_ptr<BackendConnectionInterface> conn(&p.connections_.front());
+            p.connections_.pop_front();
         }
     }
 
