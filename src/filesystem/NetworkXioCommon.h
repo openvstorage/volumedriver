@@ -48,6 +48,12 @@ enum class NetworkXioMsgOpcode
     ListSnapshotsRsp,
     CreateSnapshotReq,
     CreateSnapshotRsp,
+    DeleteSnapshotReq,
+    DeleteSnapshotRsp,
+    RollbackSnapshotReq,
+    RollbackSnapshotRsp,
+    IsSnapshotSyncedReq,
+    IsSnapshotSyncedRsp,
 };
 
 #endif //__NETWORK_XIO_COMMON_H_

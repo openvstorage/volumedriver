@@ -86,6 +86,18 @@ private:
                                 const std::string& snap_name,
                                 const int64_t timeout);
 
+    void handle_delete_snapshot(NetworkXioRequest *req,
+                                const std::string& volume_name,
+                                const std::string& snap_name);
+
+    void handle_rollback_snapshot(NetworkXioRequest *req,
+                                  const std::string& volume_name,
+                                  const std::string& snap_name);
+
+    void handle_is_snapshot_synced(NetworkXioRequest *req,
+                                   const std::string& volume_name,
+                                   const std::string& snap_name);
+
     void handle_error(NetworkXioRequest *req,
                       int errval);
 

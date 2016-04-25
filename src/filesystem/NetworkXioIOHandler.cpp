@@ -401,6 +401,8 @@ NetworkXioIOHandler::handle_list_snapshots(NetworkXioRequest *req,
     try
     {
         snaps = fs_.object_router().list_snapshots(*volume_id);
+        req->retval = 0;
+        req->errval = 0;
     }
     catch (std::exception& e)
     {
@@ -471,6 +473,8 @@ NetworkXioIOHandler::handle_create_snapshot(NetworkXioRequest *req,
         fs_.object_router().create_snapshot(*volume_id,
                                             snap,
                                             timeout);
+        req->retval = 0;
+        req->errval = 0;
     }
     catch (SyncTimeoutException& e)
     {
@@ -496,6 +500,148 @@ NetworkXioIOHandler::handle_create_snapshot(NetworkXioRequest *req,
     {
         LOG_INFO("Problem creating snapshot: " << snap_name <<
                  " for volume: "<<  volume_name << ",err: " << e.what());
+        req->retval = -1;
+        req->errval = EIO;
+    }
+    pack_msg(req);
+}
+
+void
+NetworkXioIOHandler::handle_delete_snapshot(NetworkXioRequest *req,
+                                            const std::string& volume_name,
+                                            const std::string& snap_name)
+{
+    VERIFY(not handle_);
+    req->op = NetworkXioMsgOpcode::DeleteSnapshotRsp;
+
+    const std::string root_("/");
+    const std::string dot_(".");
+    const FrontendPath volume_path(root_ + volume_name +
+                                   fs_.vdisk_format().volume_suffix());
+    boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
+    if (not volume_id)
+    {
+        req->retval = -1;
+        req->errval = ENOENT;
+        pack_msg(req);
+        return;
+    }
+
+    const volumedriver::SnapshotName snap(snap_name);
+    try
+    {
+        fs_.object_router().delete_snapshot(*volume_id,
+                                            snap);
+        req->retval = 0;
+        req->errval = 0;
+    }
+    catch (volumedriver::SnapshotNotFoundException& e)
+    {
+        LOG_INFO("Snapshot not found: " << snap_name);
+        req->retval = -1;
+        req->errval = ENOENT;
+    }
+    catch (ObjectStillHasChildrenException& e)
+    {
+        LOG_INFO("Volume still has children: " << volume_name);
+        req->retval = -1;
+        req->errval = ENOTEMPTY;
+    }
+    catch (std::exception& e)
+    {
+        LOG_INFO("Problem removing snapshot: " << snap_name <<
+                 " for volume: "<<  volume_name << ",err: " << e.what());
+        req->retval = -1;
+        req->errval = EIO;
+    }
+    pack_msg(req);
+}
+
+void
+NetworkXioIOHandler::handle_rollback_snapshot(NetworkXioRequest *req,
+                                              const std::string& volume_name,
+                                              const std::string& snap_name)
+{
+    VERIFY(not handle_);
+    req->op = NetworkXioMsgOpcode::RollbackSnapshotRsp;
+
+    const std::string root_("/");
+    const std::string dot_(".");
+    const FrontendPath volume_path(root_ + volume_name +
+                                   fs_.vdisk_format().volume_suffix());
+    boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
+    if (not volume_id)
+    {
+        req->retval = -1;
+        req->errval = ENOENT;
+        pack_msg(req);
+        return;
+    }
+
+    const volumedriver::SnapshotName snap(snap_name);
+    try
+    {
+        fs_.object_router().rollback_volume(*volume_id,
+                                            snap);
+        req->retval = 0;
+        req->errval = 0;
+    }
+    catch (ObjectStillHasChildrenException& e)
+    {
+        LOG_INFO("Volume still has children: " << volume_name);
+        req->retval = -1;
+        req->errval = ENOTEMPTY;
+    }
+    catch (std::exception& e)
+    {
+        LOG_INFO("Problem rolling back snapshot: " << snap_name <<
+                 " for volume: "<<  volume_name << ",err: " << e.what());
+        req->retval = -1;
+        req->errval = EIO;
+    }
+    pack_msg(req);
+}
+
+void
+NetworkXioIOHandler::handle_is_snapshot_synced(NetworkXioRequest *req,
+                                               const std::string& volume_name,
+                                               const std::string& snap_name)
+{
+    VERIFY(not handle_);
+    req->op = NetworkXioMsgOpcode::IsSnapshotSyncedRsp;
+
+    const std::string root_("/");
+    const std::string dot_(".");
+    const FrontendPath volume_path(root_ + volume_name +
+                                   fs_.vdisk_format().volume_suffix());
+    boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
+    if (not volume_id)
+    {
+        req->retval = -1;
+        req->errval = ENOENT;
+        pack_msg(req);
+        return;
+    }
+
+    const volumedriver::SnapshotName snap(snap_name);
+    try
+    {
+        bool is_synced = fs_.object_router().is_volume_synced_up_to(*volume_id,
+                                                                    snap);
+        req->retval = is_synced;
+        req->errval = 0;
+    }
+    catch (volumedriver::SnapshotNotFoundException& e)
+    {
+        LOG_INFO("Snapshot not found: " << snap_name);
+        req->retval = -1;
+        req->errval = ENOENT;
+    }
+    catch (std::exception& e)
+    {
+        LOG_INFO("Problem checking if snapshot " << snap_name <<
+                " is synced for volume " << volume_name << ",err: " <<
+                e.what());
         req->retval = -1;
         req->errval = EIO;
     }
@@ -612,6 +758,27 @@ NetworkXioIOHandler::process_request(Work * work)
                                i_msg.volume_name(),
                                i_msg.snap_name(),
                                i_msg.timeout());
+        break;
+    }
+    case NetworkXioMsgOpcode::DeleteSnapshotReq:
+    {
+        handle_delete_snapshot(req,
+                               i_msg.volume_name(),
+                               i_msg.snap_name());
+        break;
+    }
+    case NetworkXioMsgOpcode::RollbackSnapshotReq:
+    {
+        handle_rollback_snapshot(req,
+                                 i_msg.volume_name(),
+                                 i_msg.snap_name());
+        break;
+    }
+    case NetworkXioMsgOpcode::IsSnapshotSyncedReq:
+    {
+        handle_is_snapshot_synced(req,
+                                  i_msg.volume_name(),
+                                  i_msg.snap_name());
         break;
     }
     default:
