@@ -780,4 +780,108 @@ TEST_F(NetworkServerTest, write_flush_read)
               ovs_ctx_attr_destroy(ctx_attr));
 }
 
+TEST_F(NetworkServerTest, create_rollback_list_remove_snapshot)
+{
+    uint64_t volume_size = 1 << 30;
+    int64_t timeout = 10;
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
+    EXPECT_EQ(0,
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         "tcp",
+                                         "127.0.0.1",
+                                         21321));
+    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
+    ASSERT_TRUE(ctx != nullptr);
+    EXPECT_EQ(ovs_create_volume(ctx,
+                                "volume",
+                                volume_size),
+              0);
+
+    EXPECT_EQ(-1,
+              ovs_snapshot_create(ctx,
+                                  "fvolume",
+                                  "snap1",
+                                  timeout));
+    EXPECT_EQ(ENOENT,
+              errno);
+
+    EXPECT_EQ(0,
+              ovs_snapshot_create(ctx,
+                                  "volume",
+                                  "snap1",
+                                  timeout));
+
+    EXPECT_EQ(0,
+              ovs_snapshot_create(ctx,
+                                  "volume",
+                                  "snap2",
+                                  0));
+
+    EXPECT_EQ(1,
+              ovs_snapshot_is_synced(ctx,
+                                     "volume",
+                                     "snap2"));
+
+    EXPECT_EQ(-1,
+              ovs_snapshot_is_synced(ctx,
+                                     "volume",
+                                     "fsnap"));
+
+    int max_snaps = 1;
+    ovs_snapshot_info_t *snaps;
+    int snap_count;
+
+    do {
+        snaps = (ovs_snapshot_info_t *) malloc(sizeof(*snaps) * max_snaps);
+        snap_count = ovs_snapshot_list(ctx, "volume", snaps, &max_snaps);
+        if (snap_count <= 0)
+        {
+            free(snaps);
+        }
+    } while (snap_count == -1 && errno == ERANGE);
+
+    EXPECT_EQ(2U, snap_count);
+    EXPECT_EQ(3U, max_snaps);
+
+    if (snap_count > 0)
+    {
+        ovs_snapshot_list_free(snaps);
+    }
+
+    free(snaps);
+
+    snaps = (ovs_snapshot_info_t *) malloc(sizeof(*snaps));
+    max_snaps = 1;
+
+    EXPECT_EQ(-1,
+              ovs_snapshot_list(ctx, "fvolume", snaps, &max_snaps));
+    EXPECT_EQ(ENOENT,
+              errno);
+
+    free(snaps);
+
+    EXPECT_EQ(0,
+              ovs_snapshot_rollback(ctx,
+                                    "volume",
+                                    "snap1"));
+
+    EXPECT_EQ(-1,
+              ovs_snapshot_remove(ctx,
+                                  "volume",
+                                  "snap2"));
+    EXPECT_EQ(ENOENT,
+              errno);
+
+    EXPECT_EQ(0,
+              ovs_snapshot_remove(ctx,
+                                  "volume",
+                                  "snap1"));
+
+    EXPECT_EQ(0,
+              ovs_ctx_destroy(ctx));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
+}
+
 } //namespace
