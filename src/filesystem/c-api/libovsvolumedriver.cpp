@@ -629,18 +629,59 @@ ovs_snapshot_list(ovs_ctx_t *ctx ATTRIBUTE_UNUSED,
 
     int saved_errno = 0;
     std::vector<std::string> snaps;
-    try
+    switch (ctx->transport)
     {
-        snaps = volumedriverfs::ShmClient::list_snapshots(volume_name,
-                                                          &size);
+    case TransportType::SharedMemory:
+    {
+        try
+        {
+            snaps = volumedriverfs::ShmClient::list_snapshots(volume_name,
+                                                              &size);
+        }
+        catch (const ShmIdlInterface::VolumeDoesNotExist&)
+        {
+            saved_errno = ENOENT;
+        }
+        catch (...)
+        {
+            saved_errno = EIO;
+        }
+        break;
     }
-    catch (const ShmIdlInterface::VolumeDoesNotExist&)
+    case TransportType::TCP:
+    case TransportType::RDMA:
     {
-        saved_errno = ENOENT;
+        ovs_aio_request *request = create_new_request(RequestOp::Noop,
+                                                      NULL,
+                                                      NULL);
+        if (request == NULL)
+        {
+            saved_errno = ENOMEM;
+            break;
+        }
+        try
+        {
+            volumedriverfs::NetworkXioClient::xio_list_snapshots(ctx->uri,
+                                                                 volume_name,
+                                                                 snaps,
+                                                                 &size,
+                                                                 static_cast<void*>(request));
+            saved_errno = request->_errno;
+        }
+        catch (const std::bad_alloc&)
+        {
+            saved_errno = ENOMEM;
+        }
+        catch (...)
+        {
+            saved_errno = EIO;
+        }
+        delete request;
+        break;
     }
-    catch (...)
-    {
-        saved_errno = EIO;
+    default:
+        saved_errno = EINVAL;
+        break;
     }
 
     if (saved_errno)

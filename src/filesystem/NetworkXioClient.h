@@ -119,7 +119,8 @@ public:
     xio_list_snapshots(const std::string& uri,
                        const std::string& volume_name,
                        std::vector<std::string>& snapshots,
-                       uint64_t *size);
+                       uint64_t *size,
+                       void *opaque);
 private:
     xio_context *ctx;
     xio_session *session;

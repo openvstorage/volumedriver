@@ -763,9 +763,11 @@ void
 NetworkXioClient::xio_list_snapshots(const std::string& uri,
                                      const std::string& volume_name,
                                      std::vector<std::string>& snapshots,
-                                     uint64_t *size)
+                                     uint64_t *size,
+                                     void *opaque)
 {
     auto xctl = std::make_unique<xio_ctl_s>();
+    xctl->xmsg.opaque = opaque;
     xctl->vec = &snapshots;
     xctl->xmsg.msg.opcode(NetworkXioMsgOpcode::ListSnapshotsReq);
     xctl->xmsg.msg.opaque((uintptr_t)xctl.get());
