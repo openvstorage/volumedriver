@@ -427,7 +427,7 @@ ovs_remove_volume(ovs_ctx_t *ctx,
 }
 
 int
-ovs_snapshot_create(ovs_ctx_t *ctx ATTRIBUTE_UNUSED,
+ovs_snapshot_create(ovs_ctx_t *ctx,
                     const char* volume_name,
                     const char* snapshot_name,
                     const int64_t timeout)
@@ -456,31 +456,72 @@ ovs_snapshot_create(ovs_ctx_t *ctx ATTRIBUTE_UNUSED,
         return r;
     }
 
-    try
+    switch (ctx->transport)
     {
-        volumedriverfs::ShmClient::create_snapshot(volume_name,
-                                                   snapshot_name,
-                                                   timeout);
+    case TransportType::SharedMemory:
+    {
+        try
+        {
+            volumedriverfs::ShmClient::create_snapshot(volume_name,
+                                                       snapshot_name,
+                                                       timeout);
+        }
+        catch (const ShmIdlInterface::PreviousSnapshotNotOnBackendException&)
+        {
+            errno = EBUSY; r = -1;
+        }
+        catch (const ShmIdlInterface::VolumeDoesNotExist&)
+        {
+            errno = ENOENT; r = -1;
+        }
+        catch (const ShmIdlInterface::SyncTimeoutException&)
+        {
+            errno = ETIMEDOUT; r = -1;
+        }
+        catch (const ShmIdlInterface::SnapshotAlreadyExists&)
+        {
+            errno = EEXIST; r = -1;
+        }
+        catch (...)
+        {
+            errno = EIO; r = -1;
+        }
+        break;
     }
-    catch (const ShmIdlInterface::PreviousSnapshotNotOnBackendException&)
+    case TransportType::TCP:
+    case TransportType::RDMA:
     {
-        errno = EBUSY; r = -1;
+        ovs_aio_request *request = create_new_request(RequestOp::Noop,
+                                                      NULL,
+                                                      NULL);
+        if (request == NULL)
+        {
+            errno = ENOMEM; r = -1;
+            break;
+        }
+        try
+        {
+            volumedriverfs::NetworkXioClient::xio_create_snapshot(ctx->uri,
+                                                                  volume_name,
+                                                                  snapshot_name,
+                                                                  timeout,
+                                                                  static_cast<void*>(request));
+            errno = request->_errno; r = request->_rv;
+        }
+        catch (const std::bad_alloc&)
+        {
+            errno = ENOMEM; r = -1;
+        }
+        catch (...)
+        {
+            errno = EIO; r = -1;
+        }
+        delete request;
+        break;
     }
-    catch (const ShmIdlInterface::VolumeDoesNotExist&)
-    {
-        errno = ENOENT; r = -1;
-    }
-    catch (const ShmIdlInterface::SyncTimeoutException&)
-    {
-        errno = ETIMEDOUT; r = -1;
-    }
-    catch (const ShmIdlInterface::SnapshotAlreadyExists&)
-    {
-        errno = EEXIST; r = -1;
-    }
-    catch (...)
-    {
-        errno = EIO; r = -1;
+    default:
+        errno = EINVAL; r = -1;
+        break;
     }
     return r;
 }
@@ -588,7 +629,7 @@ ovs_snapshot_remove(ovs_ctx_t *ctx ATTRIBUTE_UNUSED,
 }
 
 int
-ovs_snapshot_list(ovs_ctx_t *ctx ATTRIBUTE_UNUSED,
+ovs_snapshot_list(ovs_ctx_t *ctx,
                   const char* volume_name,
                   ovs_snapshot_info_t *snap_list,
                   int *max_snaps)
