@@ -797,4 +797,55 @@ NetworkXioClient::xio_create_snapshot(const std::string& uri,
     xio_submit_request(uri, xctl.get(), opaque);
 }
 
+void
+NetworkXioClient::xio_delete_snapshot(const std::string& uri,
+                                      const std::string& volume_name,
+                                      const std::string& snap_name,
+                                      void *opaque)
+{
+    auto xctl = std::make_unique<xio_ctl_s>();
+    xctl->xmsg.opaque = opaque;
+    xctl->xmsg.msg.opcode(NetworkXioMsgOpcode::DeleteSnapshotReq);
+    xctl->xmsg.msg.opaque((uintptr_t)xctl.get());
+    xctl->xmsg.msg.volume_name(volume_name);
+    xctl->xmsg.msg.snap_name(snap_name);
+
+    xio_msg_prepare(&xctl->xmsg);
+    xio_submit_request(uri, xctl.get(), opaque);
+}
+
+void
+NetworkXioClient::xio_rollback_snapshot(const std::string& uri,
+                                        const std::string& volume_name,
+                                        const std::string& snap_name,
+                                        void *opaque)
+{
+    auto xctl = std::make_unique<xio_ctl_s>();
+    xctl->xmsg.opaque = opaque;
+    xctl->xmsg.msg.opcode(NetworkXioMsgOpcode::RollbackSnapshotReq);
+    xctl->xmsg.msg.opaque((uintptr_t)xctl.get());
+    xctl->xmsg.msg.volume_name(volume_name);
+    xctl->xmsg.msg.snap_name(snap_name);
+
+    xio_msg_prepare(&xctl->xmsg);
+    xio_submit_request(uri, xctl.get(), opaque);
+}
+
+void
+NetworkXioClient::xio_is_snapshot_synced(const std::string& uri,
+                                         const std::string& volume_name,
+                                         const std::string& snap_name,
+                                         void *opaque)
+{
+    auto xctl = std::make_unique<xio_ctl_s>();
+    xctl->xmsg.opaque = opaque;
+    xctl->xmsg.msg.opcode(NetworkXioMsgOpcode::IsSnapshotSyncedReq);
+    xctl->xmsg.msg.opaque((uintptr_t)xctl.get());
+    xctl->xmsg.msg.volume_name(volume_name);
+    xctl->xmsg.msg.snap_name(snap_name);
+
+    xio_msg_prepare(&xctl->xmsg);
+    xio_submit_request(uri, xctl.get(), opaque);
+}
+
 } //namespace volumedriverfs

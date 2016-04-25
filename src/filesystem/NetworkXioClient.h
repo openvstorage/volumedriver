@@ -128,6 +128,24 @@ public:
                         const std::string& snap_name,
                         int64_t timeout,
                         void *opaque);
+
+    static void
+    xio_delete_snapshot(const std::string& uri,
+                        const std::string& volume_name,
+                        const std::string& snap_name,
+                        void *opaque);
+
+    static void
+    xio_rollback_snapshot(const std::string& uri,
+                          const std::string& volume_name,
+                          const std::string& snap_name,
+                          void *opaque);
+
+    static void
+    xio_is_snapshot_synced(const std::string& uri,
+                           const std::string& volume_name,
+                           const std::string& snap_name,
+                           void *opaque);
 private:
     xio_context *ctx;
     xio_session *session;
