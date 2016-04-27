@@ -15,10 +15,6 @@
 #ifndef __NETWORK_XIO_COMMON_H_
 #define __NETWORK_XIO_COMMON_H_
 
-#define get_offset(type, member) ((size_t)(&((type*)(1))->member)-1)
-#define get_container_of(ptr, type, member) ((type *)((char *)(ptr) - \
-                        get_offset(type, member)))
-
 #define ATTR_UNUSED     __attribute__((unused))
 
 enum class NetworkXioMsgOpcode

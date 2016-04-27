@@ -46,7 +46,8 @@ public:
     operator=(const NetworkXioIOHandler&) = delete;
 
     void
-    process_request(Work *work);
+    process_request(NetworkXioRequest *req);
+
     void
     handle_request(NetworkXioRequest* req);
 

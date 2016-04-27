@@ -456,9 +456,8 @@ NetworkXioServer::on_msg_send_complete(xio_session *session ATTR_UNUSED,
 }
 
 void
-NetworkXioServer::xio_send_reply(Work *work)
+NetworkXioServer::xio_send_reply(NetworkXioRequest *req)
 {
-    NetworkXioRequest *req = get_container_of(work, NetworkXioRequest, work);
     xio_msg *xio_req = req->xio_req;
 
     memset(&req->xio_reply, 0, sizeof(xio_msg));

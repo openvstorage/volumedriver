@@ -76,7 +76,7 @@ public:
     shutdown();
 
     void
-    xio_send_reply(Work *work);
+    xio_send_reply(NetworkXioRequest *req);
 private:
     DECLARE_LOGGER("NetworkXioServer");
 

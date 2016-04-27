@@ -76,7 +76,7 @@ public:
     }
 
     void
-    work_schedule(Work *work)
+    work_schedule(NetworkXioRequest *req)
     {
         nr_queued_work++;
         inflight_lock.lock();
@@ -84,7 +84,7 @@ public:
         {
             create_workqueue_threads(nr_threads_ * 2);
         }
-        inflight_list.push_back(work);
+        inflight_list.push_back(req);
         inflight_lock.unlock();
         inflight_cond.notify_one();
     }
@@ -101,7 +101,7 @@ public:
         wq_open_sessions_--;
     }
 
-    Work*
+    NetworkXioRequest*
     get_finished()
     {
         finished_lock.lock();
@@ -125,7 +125,7 @@ private:
 
     std::condition_variable inflight_cond;
     std::mutex inflight_lock;
-    std::list<Work*> inflight_list;
+    std::list<NetworkXioRequest*> inflight_list;
 
     std::mutex finished_lock;
     std::list<NetworkXioRequest*> finished;
@@ -209,7 +209,7 @@ private:
     {
         NetworkXioWorkQueue *wq = reinterpret_cast<NetworkXioWorkQueue*>(arg);
 
-        Work *work;
+        NetworkXioRequest *req;
         while (true)
         {
             std::unique_lock<std::mutex> lock_(wq->inflight_lock);
@@ -230,12 +230,12 @@ retry:
                 }
                 goto retry;
             }
-            work = wq->inflight_list.front();
+            req = wq->inflight_list.front();
             wq->inflight_list.pop_front();
             lock_.unlock();
-            if (work->func)
+            if (req->work.func)
             {
-                work->func(work);
+                req->work.func(&req->work);
             }
             wq->finished_lock.lock();
             wq->finished.push_back(req);

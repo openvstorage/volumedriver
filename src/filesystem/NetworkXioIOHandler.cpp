@@ -246,13 +246,11 @@ NetworkXioIOHandler::handle_create_volume(NetworkXioRequest *req,
         req->retval = -1;
         req->errval = EEXIST;
     }
-    catch (const std::exception& e)
-    {
-        LOG_INFO("Problem creating volume: " << volume_name <<
-                 ":" << e.what());
+    CATCH_STD_ALL_EWHAT({
+        LOG_ERROR("Problem creating volume: " << EWHAT);
         req->retval = -1;
         req->errval = EIO;
-    }
+    });
     pack_msg(req);
 }
 
@@ -276,13 +274,11 @@ NetworkXioIOHandler::handle_remove_volume(NetworkXioRequest *req,
         req->retval = -1;
         req->errval = ENOENT;
     }
-    catch (const std::exception& e)
-    {
-        LOG_INFO("Problem removing volume: " << volume_name
-                 << ": " << e.what());
+    CATCH_STD_ALL_EWHAT({
+        LOG_ERROR("Problem removing volume: " << EWHAT);
         req->retval = -1;
         req->errval = EIO;
-    }
+    });
     pack_msg(req);
 }
 
@@ -345,14 +341,13 @@ NetworkXioIOHandler::handle_list_volumes(NetworkXioRequest *req)
             }
         }
     }
-    catch (std::exception& e)
-    {
-        LOG_INFO("Problem listing volumes, err: " << e.what());
+    CATCH_STD_ALL_EWHAT({
+        LOG_ERROR("Problem listing volumes: " << EWHAT);
         req->retval = -1;
         req->errval = EIO;
         pack_msg(req);
         return;
-    }
+    });
     int ret = xio_mem_alloc(total_size, &req->reg_mem);
     if (ret < 0)
     {
@@ -404,15 +399,14 @@ NetworkXioIOHandler::handle_list_snapshots(NetworkXioRequest *req,
         req->retval = 0;
         req->errval = 0;
     }
-    catch (std::exception& e)
-    {
-        LOG_INFO("Problem listing snapshots for volume " << volume_name <<
-                 ",err: " << e.what());
+    CATCH_STD_ALL_EWHAT({
+        LOG_ERROR("Problem listing snapshots for volume " << volume_name
+                  << " ,err:" << EWHAT);
         req->retval = -1;
         req->errval = EIO;
         pack_msg(req);
         return;
-    }
+    });
 
     uint64_t total_size = 0;
     for (const auto& s: snaps)
@@ -496,13 +490,12 @@ NetworkXioIOHandler::handle_create_snapshot(NetworkXioRequest *req,
         req->retval = -1;
         req->errval = EBUSY;
     }
-    catch (std::exception& e)
-    {
-        LOG_INFO("Problem creating snapshot: " << snap_name <<
-                 " for volume: "<<  volume_name << ",err: " << e.what());
+    CATCH_STD_ALL_EWHAT({
+        LOG_ERROR("Problem creating snapshot for volume " << volume_name
+                  << " ,err:" << EWHAT);
         req->retval = -1;
         req->errval = EIO;
-    }
+    });
     pack_msg(req);
 }
 
@@ -547,13 +540,12 @@ NetworkXioIOHandler::handle_delete_snapshot(NetworkXioRequest *req,
         req->retval = -1;
         req->errval = ENOTEMPTY;
     }
-    catch (std::exception& e)
-    {
-        LOG_INFO("Problem removing snapshot: " << snap_name <<
-                 " for volume: "<<  volume_name << ",err: " << e.what());
+    CATCH_STD_ALL_EWHAT({
+        LOG_ERROR("Problem removing snapshot '" << snap_name <<
+                  "' for volume " << volume_name << " ,err:" << EWHAT);
         req->retval = -1;
         req->errval = EIO;
-    }
+    });
     pack_msg(req);
 }
 
@@ -592,13 +584,12 @@ NetworkXioIOHandler::handle_rollback_snapshot(NetworkXioRequest *req,
         req->retval = -1;
         req->errval = ENOTEMPTY;
     }
-    catch (std::exception& e)
-    {
-        LOG_INFO("Problem rolling back snapshot: " << snap_name <<
-                 " for volume: "<<  volume_name << ",err: " << e.what());
+    CATCH_STD_ALL_EWHAT({
+        LOG_ERROR("Problem rolling back snapshot '" << snap_name <<
+                  "' for volume " << volume_name << " ,err:" << EWHAT);
         req->retval = -1;
         req->errval = EIO;
-    }
+    });
     pack_msg(req);
 }
 
@@ -637,14 +628,12 @@ NetworkXioIOHandler::handle_is_snapshot_synced(NetworkXioRequest *req,
         req->retval = -1;
         req->errval = ENOENT;
     }
-    catch (std::exception& e)
-    {
-        LOG_INFO("Problem checking if snapshot " << snap_name <<
-                " is synced for volume " << volume_name << ",err: " <<
-                e.what());
+    CATCH_STD_ALL_EWHAT({
+        LOG_ERROR("Problem checking if snapshot '" << snap_name <<
+                  "' is synced for volume " << volume_name << " ,err:" << EWHAT);
         req->retval = -1;
         req->errval = EIO;
-    }
+    });
     pack_msg(req);
 }
 
@@ -658,9 +647,8 @@ NetworkXioIOHandler::handle_error(NetworkXioRequest *req, int errval)
 }
 
 void
-NetworkXioIOHandler::process_request(Work * work)
+NetworkXioIOHandler::process_request(NetworkXioRequest *req)
 {
-    NetworkXioRequest *req = get_container_of(work, NetworkXioRequest, work);
     xio_msg *xio_req = req->xio_req;
     xio_iovec_ex *isglist = vmsg_sglist(&xio_req->in);
     int inents = vmsg_sglist_nents(&xio_req->in);
@@ -793,8 +781,8 @@ NetworkXioIOHandler::handle_request(NetworkXioRequest *req)
 {
     req->work.func = std::bind(&NetworkXioIOHandler::process_request,
                                this,
-                               &req->work);
-    wq_->work_schedule(&req->work);
+                               req);
+    wq_->work_schedule(req);
 }
 
 } //namespace volumedriverfs
