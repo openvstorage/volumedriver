@@ -29,6 +29,7 @@ namespace volumedriverfs
 {
 
 MAKE_EXCEPTION(FailedCreateXioClient, fungi::IOException);
+MAKE_EXCEPTION(QueuePushException, fungi::IOException);
 
 template<class T>
 static int
@@ -312,12 +313,11 @@ NetworkXioClient::on_session_event(xio_session *session __attribute__((unused)),
     return 0;
 }
 
-int
+void
 NetworkXioClient::xio_send_open_request(const std::string& volname,
                                         const void *opaque)
 {
-    xio_msg_s *xmsg;
-    try{ xmsg = new xio_msg_s; }catch(const std::bad_alloc&) { return -1; };
+    xio_msg_s *xmsg = new xio_msg_s;
     xmsg->opaque = opaque;
     xmsg->msg.opcode(NetworkXioMsgOpcode::OpenReq);
     xmsg->msg.opaque((uintptr_t)xmsg);
@@ -330,19 +330,20 @@ NetworkXioClient::xio_send_open_request(const std::string& volname,
     vmsg_sglist_set_nents(&xmsg->xreq.out, 0);
     xmsg->xreq.out.header.iov_base = (void*)xmsg->s_msg.c_str();
     xmsg->xreq.out.header.iov_len = xmsg->s_msg.length();
-    queue_.push(xmsg);
+    if (not queue_.push(xmsg))
+    {
+        throw QueuePushException("cannot push xmsg to queue");
+    }
     xio_context_stop_loop(ctx);
-    return 0;
 }
 
-int
+void
 NetworkXioClient::xio_send_read_request(void *buf,
                                         const uint64_t size_in_bytes,
                                         const uint64_t offset_in_bytes,
                                         const void *opaque)
 {
-    xio_msg_s *xmsg;
-    try{ xmsg = new xio_msg_s; }catch(const std::bad_alloc&) { return -1; };
+    xio_msg_s *xmsg = new xio_msg_s;
     xmsg->opaque = opaque;
     xmsg->msg.opcode(NetworkXioMsgOpcode::ReadReq);
     xmsg->msg.opaque((uintptr_t)xmsg);
@@ -360,19 +361,20 @@ NetworkXioClient::xio_send_read_request(void *buf,
     vmsg_sglist_set_nents(&xmsg->xreq.in, 1);
     xmsg->xreq.in.data_iov.sglist[0].iov_base = buf;
     xmsg->xreq.in.data_iov.sglist[0].iov_len = size_in_bytes;
-    queue_.push(xmsg);
+    if (not queue_.push(xmsg))
+    {
+        throw QueuePushException("cannot push xmsg to queue");
+    }
     xio_context_stop_loop(ctx);
-    return 0;
 }
 
-int
+void
 NetworkXioClient::xio_send_write_request(const void *buf,
                                          const uint64_t size_in_bytes,
                                          const uint64_t offset_in_bytes,
                                          const void *opaque)
 {
-    xio_msg_s *xmsg;
-    try{ xmsg = new xio_msg_s; }catch(const std::bad_alloc&) { return -1; };
+    xio_msg_s *xmsg = new xio_msg_s;
     xmsg->opaque = opaque;
     xmsg->msg.opcode(NetworkXioMsgOpcode::WriteReq);
     xmsg->msg.opaque((uintptr_t)xmsg);
@@ -388,16 +390,17 @@ NetworkXioClient::xio_send_write_request(const void *buf,
     xmsg->xreq.out.header.iov_len = xmsg->s_msg.length();
     xmsg->xreq.out.data_iov.sglist[0].iov_base = const_cast<void*>(buf);
     xmsg->xreq.out.data_iov.sglist[0].iov_len = size_in_bytes;
-    queue_.push(xmsg);
+    if (not queue_.push(xmsg))
+    {
+        throw QueuePushException("cannot push xmsg to queue");
+    }
     xio_context_stop_loop(ctx);
-    return 0;
 }
 
-int
+void
 NetworkXioClient::xio_send_close_request(const void *opaque)
 {
-    xio_msg_s *xmsg;
-    try{ xmsg = new xio_msg_s; }catch(const std::bad_alloc&) { return -1; };
+    xio_msg_s *xmsg = new xio_msg_s;
     xmsg->opaque = opaque;
     xmsg->msg.opcode(NetworkXioMsgOpcode::CloseReq);
     xmsg->msg.opaque((uintptr_t)xmsg);
@@ -409,16 +412,17 @@ NetworkXioClient::xio_send_close_request(const void *opaque)
     vmsg_sglist_set_nents(&xmsg->xreq.out, 0);
     xmsg->xreq.out.header.iov_base = (void*)xmsg->s_msg.c_str();
     xmsg->xreq.out.header.iov_len = xmsg->s_msg.length();
-    queue_.push(xmsg);
+    if (not queue_.push(xmsg))
+    {
+        throw QueuePushException("cannot push xmsg to queue");
+    }
     xio_context_stop_loop(ctx);
-    return 0;
 }
 
-int
+void
 NetworkXioClient::xio_send_flush_request(const void *opaque)
 {
-    xio_msg_s *xmsg;
-    try{ xmsg = new xio_msg_s; }catch(const std::bad_alloc&) { return -1; };
+    xio_msg_s *xmsg = new xio_msg_s;
     xmsg->opaque = opaque;
     xmsg->msg.opcode(NetworkXioMsgOpcode::FlushReq);
     xmsg->msg.opaque((uintptr_t)xmsg);
@@ -430,9 +434,11 @@ NetworkXioClient::xio_send_flush_request(const void *opaque)
     vmsg_sglist_set_nents(&xmsg->xreq.out, 0);
     xmsg->xreq.out.header.iov_base = (void*)xmsg->s_msg.c_str();
     xmsg->xreq.out.header.iov_len = xmsg->s_msg.length();
-    queue_.push(xmsg);
+    if (not queue_.push(xmsg))
+    {
+        throw QueuePushException("cannot push xmsg to queue");
+    }
     xio_context_stop_loop(ctx);
-    return 0;
 }
 
 int

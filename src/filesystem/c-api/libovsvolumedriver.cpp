@@ -1071,7 +1071,7 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
                         ovs_completion_t *completion,
                         const RequestOp& op)
 {
-    int r, accmode;
+    int r = 0, accmode;
     ovs_shm_context *shm_ctx_ = ctx->shm_ctx_;
     volumedriverfs::NetworkXioClientPtr net_client = ctx->net_client_;
 
@@ -1160,7 +1160,7 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
     case RequestOp::Read:
         if (ctx->transport == TransportType::SharedMemory)
         {
-            /* on error returns -1 */
+            /* on error returns -1, errno is already set */
             r = shm_ctx_->shm_client_->send_read_request(ovs_aiocbp->aio_buf,
                                                          ovs_aiocbp->aio_nbytes,
                                                          ovs_aiocbp->aio_offset,
@@ -1168,10 +1168,21 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
         }
         else
         {
-            r = net_client->xio_send_read_request(ovs_aiocbp->aio_buf,
+            try
+            {
+                net_client->xio_send_read_request(ovs_aiocbp->aio_buf,
                                                   ovs_aiocbp->aio_nbytes,
                                                   ovs_aiocbp->aio_offset,
                                                   reinterpret_cast<void*>(request));
+            }
+            catch (const std::bad_alloc&)
+            {
+                errno = ENOMEM; r = -1;
+            }
+            catch (...)
+            {
+                errno = EIO; r = -1;
+            }
         }
         break;
     case RequestOp::Write:
@@ -1179,7 +1190,7 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
     case RequestOp::AsyncFlush:
         if (ctx->transport == TransportType::SharedMemory)
         {
-            /* on error returns -1 */
+            /* on error returns -1, errno is already set */
             r = shm_ctx_->shm_client_->send_write_request(ovs_aiocbp->aio_buf,
                                                           ovs_aiocbp->aio_nbytes,
                                                           ovs_aiocbp->aio_offset,
@@ -1189,25 +1200,46 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
         {
             if (RequestOp::Write == op)
             {
-                r = net_client->xio_send_write_request(ovs_aiocbp->aio_buf,
+                try
+                {
+                    net_client->xio_send_write_request(ovs_aiocbp->aio_buf,
                                                        ovs_aiocbp->aio_nbytes,
                                                        ovs_aiocbp->aio_offset,
                                                        reinterpret_cast<void*>(request));
+                }
+                catch (const std::bad_alloc&)
+                {
+                    errno = ENOMEM; r = -1;
+                }
+                catch (...)
+                {
+                    errno = EIO; r = -1;
+                }
             }
             else
             {
-                r = net_client->xio_send_flush_request(reinterpret_cast<void*>(request));
+                try
+                {
+                    net_client->xio_send_flush_request(reinterpret_cast<void*>(request));
+                }
+                catch (const std::bad_alloc&)
+                {
+                    errno = ENOMEM; r = -1;
+                }
+                catch (...)
+                {
+                    errno = EIO; r = -1;
+                }
             }
         }
         break;
     default:
-        r = -1;
+        errno = EINVAL; r = -1;
         break;
     }
     if (r < 0)
     {
         delete request;
-        errno = EIO;
     }
     int saved_errno = errno;
     ovs_submit_aio_request_tracepoint_exit(op,

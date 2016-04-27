@@ -107,14 +107,24 @@ ovs_xio_open_volume(ovs_ctx_t *ctx, const char *volume_name)
                                                   NULL);
     if (request == NULL)
     {
+        errno = ENOMEM;
         return -1;
     }
 
-    r = ctx->net_client_->xio_send_open_request(volume_name,
-                                                reinterpret_cast<void*>(request));
-    if (r < 0)
+    try
     {
-        return r;
+        ctx->net_client_->xio_send_open_request(volume_name,
+                                                reinterpret_cast<void*>(request));
+    }
+    catch (const std::bad_alloc&)
+    {
+        errno = ENOMEM;
+        return -1;
+    }
+    catch (...)
+    {
+        errno = EIO;
+        return -1;
     }
 
     if ((r = ovs_aio_suspend(ctx, &aio, NULL)) < 0)

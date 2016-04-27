@@ -55,26 +55,26 @@ public:
         uint64_t size;
     };
 
-    int
+    void
     xio_send_open_request(const std::string& volname,
                           const void *opaque);
 
-    int
+    void
     xio_send_close_request(const void *opaque);
 
-    int
+    void
     xio_send_read_request(void *buf,
                           const uint64_t size_in_bytes,
                           const uint64_t offset_in_bytes,
                           const void *opaque);
 
-    int
+    void
     xio_send_write_request(const void *buf,
                            const uint64_t size_in_bytes,
                            const uint64_t offset_in_bytes,
                            const void *opaque);
 
-    int
+    void
     xio_send_flush_request(const void *opaque);
 
     int
