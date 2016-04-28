@@ -29,7 +29,6 @@ namespace volumedriverfs
 {
 
 MAKE_EXCEPTION(FailedCreateXioClient, fungi::IOException);
-MAKE_EXCEPTION(QueuePushException, fungi::IOException);
 
 template<class T>
 static int
@@ -93,10 +92,8 @@ static_assign_data_in_buf(xio_msg *msg,
     return obj->assign_data_in_buf(msg);
 }
 
-NetworkXioClient::NetworkXioClient(const std::string& uri,
-                                   const size_t msg_q_depth)
+NetworkXioClient::NetworkXioClient(const std::string& uri)
     : uri_(uri)
-    , queue_(msg_q_depth)
     , stopping(false)
     , disconnected(false)
 {
@@ -182,16 +179,38 @@ NetworkXioClient::~NetworkXioClient()
     stopping = true;
     xio_context_stop_loop(ctx);
     xio_thread_.join();
-    while (not queue_.empty())
+    while (not is_queue_empty())
     {
-        xio_msg_s *req;
-        queue_.pop(req);
+        xio_msg_s *req = pop_request();
         delete req;
     }
     if (xio_init_refcnt.fetch_sub(1, std::memory_order_relaxed) == 1)
     {
         xio_shutdown();
     }
+}
+
+bool
+NetworkXioClient::is_queue_empty()
+{
+    boost::lock_guard<decltype(inflight_lock)> lock_(inflight_lock);
+    return inflight_reqs.empty();
+}
+
+NetworkXioClient::xio_msg_s*
+NetworkXioClient::pop_request()
+{
+    boost::lock_guard<decltype(inflight_lock)> lock_(inflight_lock);
+    xio_msg_s *req = inflight_reqs.front();
+    inflight_reqs.pop();
+    return req;
+}
+
+void
+NetworkXioClient::push_request(xio_msg_s *req)
+{
+    boost::lock_guard<decltype(inflight_lock)> lock_(inflight_lock);
+    inflight_reqs.push(req);
 }
 
 void
@@ -202,10 +221,9 @@ NetworkXioClient::xio_run_loop_worker(void *arg)
     {
         int ret = xio_context_run_loop(cli->ctx, XIO_INFINITE);
         ASSERT(ret == 0);
-        while (not cli->queue_.empty())
+        while (not cli->is_queue_empty())
         {
-            xio_msg_s *req;
-            cli->queue_.pop(req);
+            xio_msg_s *req = cli->pop_request();
             int r = xio_send_request(cli->conn, &req->xreq);
             if (r < 0)
             {
@@ -330,10 +348,7 @@ NetworkXioClient::xio_send_open_request(const std::string& volname,
     vmsg_sglist_set_nents(&xmsg->xreq.out, 0);
     xmsg->xreq.out.header.iov_base = (void*)xmsg->s_msg.c_str();
     xmsg->xreq.out.header.iov_len = xmsg->s_msg.length();
-    if (not queue_.push(xmsg))
-    {
-        throw QueuePushException("cannot push xmsg to queue");
-    }
+    push_request(xmsg);
     xio_context_stop_loop(ctx);
 }
 
@@ -361,10 +376,7 @@ NetworkXioClient::xio_send_read_request(void *buf,
     vmsg_sglist_set_nents(&xmsg->xreq.in, 1);
     xmsg->xreq.in.data_iov.sglist[0].iov_base = buf;
     xmsg->xreq.in.data_iov.sglist[0].iov_len = size_in_bytes;
-    if (not queue_.push(xmsg))
-    {
-        throw QueuePushException("cannot push xmsg to queue");
-    }
+    push_request(xmsg);
     xio_context_stop_loop(ctx);
 }
 
@@ -390,10 +402,7 @@ NetworkXioClient::xio_send_write_request(const void *buf,
     xmsg->xreq.out.header.iov_len = xmsg->s_msg.length();
     xmsg->xreq.out.data_iov.sglist[0].iov_base = const_cast<void*>(buf);
     xmsg->xreq.out.data_iov.sglist[0].iov_len = size_in_bytes;
-    if (not queue_.push(xmsg))
-    {
-        throw QueuePushException("cannot push xmsg to queue");
-    }
+    push_request(xmsg);
     xio_context_stop_loop(ctx);
 }
 
@@ -412,10 +421,7 @@ NetworkXioClient::xio_send_close_request(const void *opaque)
     vmsg_sglist_set_nents(&xmsg->xreq.out, 0);
     xmsg->xreq.out.header.iov_base = (void*)xmsg->s_msg.c_str();
     xmsg->xreq.out.header.iov_len = xmsg->s_msg.length();
-    if (not queue_.push(xmsg))
-    {
-        throw QueuePushException("cannot push xmsg to queue");
-    }
+    push_request(xmsg);
     xio_context_stop_loop(ctx);
 }
 
@@ -434,10 +440,7 @@ NetworkXioClient::xio_send_flush_request(const void *opaque)
     vmsg_sglist_set_nents(&xmsg->xreq.out, 0);
     xmsg->xreq.out.header.iov_base = (void*)xmsg->s_msg.c_str();
     xmsg->xreq.out.header.iov_len = xmsg->s_msg.length();
-    if (not queue_.push(xmsg))
-    {
-        throw QueuePushException("cannot push xmsg to queue");
-    }
+    push_request(xmsg);
     xio_context_stop_loop(ctx);
 }
 

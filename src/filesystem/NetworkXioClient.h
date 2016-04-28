@@ -17,7 +17,10 @@
 
 #include <libxio.h>
 
-#include <boost/lockfree/queue.hpp>
+#include <queue>
+#include <boost/thread/lock_guard.hpp>
+#include <youtils/SpinLock.h>
+
 #include <youtils/Logger.h>
 
 #include "NetworkXioProtocol.h"
@@ -36,7 +39,7 @@ extern void ovs_xio_complete_request_control(void *request,
 class NetworkXioClient
 {
 public:
-    NetworkXioClient(const std::string& uri, const size_t msg_q_depth);
+    NetworkXioClient(const std::string& uri);
 
     ~NetworkXioClient();
 
@@ -94,6 +97,15 @@ public:
                  xio_status error,
                  xio_msg_direction direction,
                  xio_msg *msg);
+
+    bool
+    is_queue_empty();
+
+    xio_msg_s*
+    pop_request();
+
+    void
+    push_request(xio_msg_s *req);
 
     static void
     xio_create_volume(const std::string& uri,
@@ -154,9 +166,11 @@ private:
     xio_connection_params cparams;
 
     std::string uri_;
-    boost::lockfree::queue<xio_msg_s*> queue_;
     bool stopping;
     std::thread xio_thread_;
+
+    mutable fungi::SpinLock inflight_lock;
+    std::queue<xio_msg_s*> inflight_reqs;
 
     xio_session_ops ses_ops;
     bool disconnected;
