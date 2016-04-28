@@ -16,6 +16,7 @@
 #include "../TestBase.h"
 
 #include <boost/lexical_cast.hpp>
+#include <boost/optional/optional_io.hpp>
 
 namespace youtilstest
 {
