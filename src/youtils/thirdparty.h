@@ -70,7 +70,7 @@
 #include <boost/serialization/string.hpp>
 #include <boost/serialization/utility.hpp>
 #include <boost/shared_ptr.hpp>
-#include <boost/strong_typedef.hpp>
+#include <boost/serialization/strong_typedef.hpp>
 #include <boost/thread/condition.hpp>
 #include <boost/thread/thread.hpp>
 #include <boost/thread/thread.hpp>
