@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cmath>
+
 #include <boost/filesystem/fstream.hpp>
 #include <boost/scope_exit.hpp>
 
@@ -46,7 +48,7 @@ void
 SCOAccessData::addData(SCO name,
                        float data)
 {
-    VERIFY(not isinf(data) and not isnan(data));
+    VERIFY(not std::isinf(data) and not std::isnan(data));
     VERIFY(data >= 0);
 
     scos_.push_back(std::make_pair(name, data));
