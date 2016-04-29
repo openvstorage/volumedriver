@@ -98,6 +98,9 @@ public:
                  xio_msg_direction direction,
                  xio_msg *msg);
 
+    void
+    evfd_stop_loop(int fd, int events, void *data);
+
     bool
     is_queue_empty();
 
@@ -106,6 +109,9 @@ public:
 
     void
     push_request(xio_msg_s *req);
+
+    void
+    xstop_loop();
 
     static void
     xio_create_volume(const std::string& uri,
@@ -174,6 +180,8 @@ private:
 
     xio_session_ops ses_ops;
     bool disconnected;
+
+    int evfd;
 
     void
     xio_run_loop_worker(void *arg);

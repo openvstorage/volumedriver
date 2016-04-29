@@ -37,7 +37,7 @@ MAKE_EXCEPTION(WorkQueueThreadsException, Exception);
 class NetworkXioWorkQueue
 {
 public:
-    NetworkXioWorkQueue(const std::string& name, xio_context *ctx_)
+    NetworkXioWorkQueue(const std::string& name, int evfd_)
     : name_(name)
     , nr_threads_(0)
     , nr_queued_work(0)
@@ -45,7 +45,7 @@ public:
     , wq_open_sessions_(0)
     , stopping(false)
     , stopped(false)
-    , ctx(ctx_)
+    , evfd(evfd_)
     {
         using namespace std;
         int ret = create_workqueue_threads(thread::hardware_concurrency());
@@ -138,8 +138,12 @@ private:
 
     bool stopping;
     bool stopped;
-    xio_context *ctx;
-    mutable fungi::SpinLock ctx_lock;
+    int evfd;
+
+    void stop_loop(NetworkXioWorkQueue *wq)
+    {
+        xeventfd_write(wq->evfd);
+    }
 
     std::chrono::steady_clock::time_point
     get_time_point()
@@ -241,7 +245,7 @@ retry:
             wq->finished.push_back(req);
             wq->finished_lock.unlock();
             wq->nr_queued_work--;
-            xio_context_stop_loop(wq->ctx);
+            stop_loop(wq);
         }
     }
 };

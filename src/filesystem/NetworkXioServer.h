@@ -77,6 +77,9 @@ public:
 
     void
     xio_send_reply(NetworkXioRequest *req);
+
+    void
+    evfd_stop_loop(int fd, int events, void *data);
 private:
     DECLARE_LOGGER("NetworkXioServer");
 
@@ -93,6 +96,7 @@ private:
     xio_context *ctx;
     xio_server *server;
     xio_mempool *xio_mpool;
+    int evfd;
 
     int
     create_session_connection(xio_session *session,

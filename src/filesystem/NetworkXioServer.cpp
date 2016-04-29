@@ -27,6 +27,8 @@ namespace volumedriverfs
 MAKE_EXCEPTION(FailedBindXioServer, fungi::IOException);
 MAKE_EXCEPTION(FailedCreateXioContext, fungi::IOException);
 MAKE_EXCEPTION(FailedCreateXioMempool, fungi::IOException);
+MAKE_EXCEPTION(FailedCreateEventfd, fungi::IOException);
+MAKE_EXCEPTION(FailedRegisterEventHandler, fungi::IOException);
 
 template<class T>
 static int
@@ -110,6 +112,19 @@ static_assign_data_in_buf(xio_msg *msg,
     return obj->server->assign_data_in_buf(msg);
 }
 
+template<class T>
+static void
+static_evfd_stop_loop(int fd, int events, void *data)
+{
+    T *obj = reinterpret_cast<T*>(data);
+    if (obj == NULL)
+    {
+        assert(obj != NULL);
+        return;
+    }
+    obj->evfd_stop_loop(fd, events, data);
+}
+
 NetworkXioServer::NetworkXioServer(FileSystem& fs,
                                    const std::string& uri)
     : fs_(fs)
@@ -171,13 +186,36 @@ NetworkXioServer::NetworkXioServer(FileSystem& fs,
         throw FailedBindXioServer("failed to bind XIO server");
     }
 
+    evfd = eventfd(0, EFD_NONBLOCK);
+    if (evfd < 0)
+    {
+        LOG_FATAL("failed to create eventfd");
+        xio_unbind(server);
+        xio_context_destroy(ctx);
+        throw FailedCreateEventfd("failed to create eventfd");
+    }
+
+    if(xio_context_add_ev_handler(ctx,
+                                  evfd,
+                                  XIO_POLLIN,
+                                  static_evfd_stop_loop<NetworkXioServer>,
+                                  this))
+    {
+        LOG_FATAL("failed to register event handler");
+        close(evfd);
+        xio_unbind(server);
+        xio_context_destroy(ctx);
+        throw FailedRegisterEventHandler("failed to register event handler");
+    }
+
     try
     {
-        wq_ = std::make_shared<NetworkXioWorkQueue>("ovs_xio_wq", ctx);
+        wq_ = std::make_shared<NetworkXioWorkQueue>("ovs_xio_wq", evfd);
     }
     catch (const WorkQueueThreadsException&)
     {
         LOG_FATAL("failed to create workqueue thread pool");
+        close(evfd);
         xio_unbind(server);
         xio_context_destroy(ctx);
         throw;
@@ -185,6 +223,7 @@ NetworkXioServer::NetworkXioServer(FileSystem& fs,
     catch (const std::bad_alloc&)
     {
         LOG_FATAL("failed to allocate requested storage space for workqueue");
+        close(evfd);
         xio_unbind(server);
         xio_context_destroy(ctx);
         throw;
@@ -193,6 +232,7 @@ NetworkXioServer::NetworkXioServer(FileSystem& fs,
     xio_mpool = xio_mempool_create(-1, XIO_MEMPOOL_FLAG_REG_MR);
     if (!xio_mpool)
     {
+        close(evfd);
         xio_unbind(server);
         xio_context_destroy(ctx);
         LOG_FATAL("failed to create XIO memory pool");
@@ -254,6 +294,13 @@ NetworkXioServer::NetworkXioServer(FileSystem& fs,
 NetworkXioServer::~NetworkXioServer()
 {
     shutdown();
+}
+
+void
+NetworkXioServer::evfd_stop_loop(int fd, int /*events*/, void * /*data*/)
+{
+    xeventfd_read(fd);
+    xio_context_stop_loop(ctx);
 }
 
 void
@@ -524,6 +571,8 @@ NetworkXioServer::shutdown()
         xio_unbind(server);
         wq_->shutdown();
         stopping = true;
+        xio_context_del_ev_handler(ctx, evfd);
+        close(evfd);
         xio_context_stop_loop(ctx);
         {
             std::unique_lock<std::mutex> lock_(mutex_);
