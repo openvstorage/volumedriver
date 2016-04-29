@@ -20,7 +20,7 @@ Backend_la_LIBADD = \
 	../backend/libbackend.la \
 	../youtils/libyoutils.la \
 	$(BUILDTOOLS_LIBS) \
-	-lpthread -lrt -lm
+	-lpthread -lrt -lm -lgcc
 
 Backend_la_CPPFLAGS = -I@abs_top_srcdir@/..
 Backend_la_CXXFLAGS = $(BUILDTOOLS_CFLAGS)
