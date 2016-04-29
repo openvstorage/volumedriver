@@ -50,6 +50,16 @@ public:
     {
         return val_;
     }
+
+    bool is_pos_infinity() const
+    {
+        return val_.is_pos_infinity();
+    }
+
+    bool is_special() const
+    {
+        return val_.is_special();
+    }
 private:
     const boost::posix_time::time_duration val_;
 };
