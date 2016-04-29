@@ -40,7 +40,9 @@
 #include <list>
 #include <string>
 
+#include <boost/predef/version_number.h>
 #include <boost/serialization/list.hpp>
+#include <boost/version.hpp>
 
 namespace youtils
 {
@@ -63,6 +65,16 @@ public:
         , component_name_(param.section())
         , problem_(problem)
     {}
+
+    // work around load_construct_data being broken in boost 1.58
+    // https://svn.boost.org/trac/boost/ticket/11343
+#if BOOST_VERSION == 105800
+    ConfigurationProblem()
+        : param_name_("uninitialized")
+        , component_name_("uninitialized")
+        , problem_("uninitialized")
+    {}
+#endif
 
     ~ConfigurationProblem() = default;
 
