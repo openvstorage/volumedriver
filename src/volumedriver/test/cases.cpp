@@ -97,7 +97,7 @@ TEST_P(cases, DISABLED_cacheserver1)
     SharedVolumePtr v2 =  createClone("volume2",
                                       backend::Namespace(),
                                       backend::Namespace(),
-                                      "snap1");
+                                      SnapshotName("snap1"));
     ASSERT_TRUE(v2 != nullptr);
 
     v2->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),

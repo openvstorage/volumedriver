@@ -45,6 +45,9 @@ TEST_P(CloneManagementTest, noclonesfromsnapshotsnotinbackend)
     const backend::Namespace& ns2 = ns2_ptr->ns();
 
     ASSERT_TRUE(v != nullptr);
+
+    const SnapshotName snap("snap1");
+
     {
         SCOPED_BLOCK_BACKEND(*v);
 
@@ -52,13 +55,13 @@ TEST_P(CloneManagementTest, noclonesfromsnapshotsnotinbackend)
                       0,
                       4096,
                       "xyz");
-        v->createSnapshot(SnapshotName("snap1"));
+        v->createSnapshot(snap);
 
 
         ASSERT_THROW(c = createClone("clone1",
                                      ns2,
                                      ns1,
-                                     "snap1"),
+                                     snap),
                      fungi::IOException);
 
         ASSERT_FALSE(c);
@@ -66,18 +69,16 @@ TEST_P(CloneManagementTest, noclonesfromsnapshotsnotinbackend)
 
     waitForThisBackendWrite(*v);
 
-
     ASSERT_NO_THROW(c = createClone("clone1",
                                     ns2,
                                     ns1,
-                                    "snap1"));
+                                    snap));
 
     ASSERT_TRUE(c != nullptr);
     checkVolume(*c,
                 0,
                 4096,
                 "xyz");
-
 }
 
 TEST_P(CloneManagementTest, sad_clone)
@@ -92,13 +93,15 @@ TEST_P(CloneManagementTest, sad_clone)
     SharedVolumePtr v = newVolume("volume1",
                           ns1);
 
-
     ASSERT_TRUE(v != nullptr);
     writeToVolume(*v,
                   0,
                   4096,
                   "xyz");
-    v->createSnapshot(SnapshotName("snap1"));
+
+    const SnapshotName snap("snap1");
+
+    v->createSnapshot(snap);
     persistXVals(VolumeId("volume1"));
 
     waitForThisBackendWrite(*v);
@@ -119,14 +122,12 @@ TEST_P(CloneManagementTest, sad_clone)
     ASSERT_NO_THROW(c = createClone("clone1",
                                     ns2,
                                     ns1,
-                                    "snap1"));
-
+                                    snap));
 
     ASSERT_TRUE(c != nullptr);
 
     restartVolume(cfg);
-    sleep(5);
-
+   sleep(5);
 }
 
 TEST_P(CloneManagementTest, recursiveclonelookup)
@@ -145,7 +146,9 @@ TEST_P(CloneManagementTest, recursiveclonelookup)
                   0,
                   4096,
                   "xyz");
-    v->createSnapshot(SnapshotName("snap1"));
+
+    const SnapshotName snap("snap1");
+    v->createSnapshot(snap);
     waitForThisBackendWrite(*v);
     waitForThisBackendWrite(*v);
 
@@ -158,7 +161,7 @@ TEST_P(CloneManagementTest, recursiveclonelookup)
     ASSERT_NO_THROW(c = createClone("clone1",
                                     clone1ns,
                                     ns1,
-                                    "snap1"));
+                                    snap));
 
 
     ASSERT_TRUE(c != nullptr);
@@ -173,7 +176,7 @@ TEST_P(CloneManagementTest, recursiveclonelookup)
                   "abc");
 
 
-    c->createSnapshot(SnapshotName("snap1"));
+    c->createSnapshot(snap);
     waitForThisBackendWrite(*c);
     waitForThisBackendWrite(*c);
 
@@ -185,7 +188,7 @@ TEST_P(CloneManagementTest, recursiveclonelookup)
     ASSERT_NO_THROW(d = createClone("clone2",
                                     ns3,
                                     clone1ns,
-                                   "snap1"));
+                                    snap));
 
     ASSERT_TRUE(d != nullptr);
     checkVolume(*d,

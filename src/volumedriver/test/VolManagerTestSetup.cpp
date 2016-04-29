@@ -1328,22 +1328,9 @@ VolManagerTestSetup::getVolume(const VolumeId &name)
 }
 
 SharedVolumePtr
-VolManagerTestSetup::createClone(const std::string& cloneName,
-                                 const be::Namespace& newNamespace,
-                                 const be::Namespace& parentVolNamespace,
-                                 const std::string& snapshot)
-{
-    return createClone(cloneName,
-                       newNamespace,
-                       parentVolNamespace,
-                       boost::optional<std::string>(snapshot));
-
-}
-
-SharedVolumePtr
 VolManagerTestSetup::createClone(const be::BackendTestSetup::WithRandomNamespace& wrns,
                                  const be::Namespace& parentns,
-                                 const boost::optional<std::string>& snapshot)
+                                 const boost::optional<SnapshotName>& snapshot)
 {
     return createClone(wrns.ns().str(),
                        wrns.ns(),
@@ -1355,7 +1342,7 @@ SharedVolumePtr
 VolManagerTestSetup::createClone(const std::string& cloneName,
                                  const be::Namespace& newNamespace,
                                  const be::Namespace& parentns,
-                                 const boost::optional<std::string>& snapshot)
+                                 const boost::optional<SnapshotName>& parent_snap)
 {
     VolManager *vm = VolManager::get();
     fs::create_directories(vm->getMetaDataPath() / newNamespace.str());
@@ -1371,7 +1358,7 @@ VolManagerTestSetup::createClone(const std::string& cloneName,
                                                       newNamespace,
                                                       parentns,
                                                       new_owner_tag())
-                          .parent_snapshot(snapshot)
+                          .parent_snapshot(parent_snap)
                           .metadata_backend_config(mdstore_test_setup_->make_config()));
 
         clone = vm->createClone(params,

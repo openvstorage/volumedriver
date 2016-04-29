@@ -182,7 +182,7 @@ public:
         const auto max_tlog_entries = out_parent->getSnapshotManagement().maxTLogEntries();
 
         writeClusters(*out_parent, num_tlogs_on_backend  * max_tlog_entries - 1);
-        std::string thesnap("X");
+        const SnapshotName thesnap("X");
         createSnapshot(*out_parent, thesnap);
         writeClusters(*out_parent, (num_tlogs_on_backend + 1) * max_tlog_entries - 1);
         waitForThisBackendWrite(*out_parent);
@@ -2503,7 +2503,11 @@ TEST_P(LocalRestartTest, restartClone)
                       v1->getClusterSize(),
                       "kristafke");
     }
-    createSnapshot(*v1,"snap1");
+    const SnapshotName snap1("snap1");
+
+    createSnapshot(*v1,
+                   snap1);
+
     waitForThisBackendWrite(*v1);
     // const backend::Namespace ns2;
     auto ns2_ptr = make_random_namespace();
@@ -2513,7 +2517,7 @@ TEST_P(LocalRestartTest, restartClone)
     SharedVolumePtr v2 = createClone("volume2",
                              ns2,
                              ns1,
-                             "snap1");
+                             snap1);
     ASSERT_TRUE(v2 != nullptr);
 
     for(int i = 0; i < 1; i++)
