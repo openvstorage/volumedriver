@@ -194,13 +194,17 @@ protected:
 
     int
     rename(const volumedriverfs::FrontendPath& from,
-           const volumedriverfs::FrontendPath& to);
+           const volumedriverfs::FrontendPath& to,
+           volumedriverfs::FileSystem::RenameFlags =
+           volumedriverfs::FileSystem::RenameFlags::None);
 
     int
     rename(const volumedriverfs::ObjectId& from_parent_id,
            const std::string& from_name,
            const volumedriverfs::ObjectId& to_parent_id,
-           const std::string& to_name);
+           const std::string& to_name,
+           volumedriverfs::FileSystem::RenameFlags =
+           volumedriverfs::FileSystem::RenameFlags::None);
 
     int
     open(const volumedriverfs::FrontendPath& path,

@@ -31,8 +31,9 @@
 #include <boost/thread.hpp>
 
 #include <youtils/Logger.h>
-#include <youtils/TestBase.h>
+#include <youtils/ScopeExit.h>
 #include <youtils/System.h>
+#include <youtils/TestBase.h>
 
 namespace failovercachetest
 {
@@ -224,8 +225,12 @@ TEST_F(FailOverCacheTest, put_and_retrieve)
 TEST_F(FailOverCacheTest, GetSCORange)
 {
     const ClusterSize cluster_size(4096);
+
     const uint32_t num_clusters_per_sco = 32;
-    const uint32_t num_clusters_per_vector = 5;
+    const uint32_t num_clusters_per_vector = 8;
+
+    ASSERT_EQ(0, num_clusters_per_sco % num_clusters_per_vector) << "batches must not cross SCO boundaries";
+
     const uint32_t num_scos_to_produce = 13;
 
     FailOverCacheProxy
@@ -298,7 +303,10 @@ TEST_F(FailOverCacheTest, GetOneSCO)
 {
     const ClusterSize cluster_size(4096);
     const uint32_t num_clusters_per_sco = 32;
-    const uint32_t num_clusters_per_vector = 5;
+    const uint32_t num_clusters_per_vector = 8;
+
+    ASSERT_EQ(0, num_clusters_per_sco % num_clusters_per_vector) << "batches must not cross SCO boundaries";
+
     const uint32_t num_scos_to_produce = 13;
 
     FailOverCacheProxy
@@ -438,8 +446,8 @@ struct FailOverCacheOneProcessor
 class FailOverCacheTestThread
 {
 public:
-    FailOverCacheTestThread(const std::string& content,
-                            const unsigned test_size = 100000)
+    explicit FailOverCacheTestThread(const std::string& content,
+                                     const unsigned test_size = 100000)
         : content_(content)
         , cache_(FailOverCacheTestMain::failovercache_config(),
                  backend::Namespace(content),
@@ -451,7 +459,9 @@ public:
         , next_location_(1)
         , cluster_count_(0)
         , test_size_(test_size)
-    {}
+    {
+        EXPECT_EQ(0, num_clusters_per_sco_ % num_clusters_per_vector_);
+    }
 
     DECLARE_LOGGER("FailOverCacheTestThread");
 
@@ -591,7 +601,7 @@ public:
 
     static const ClusterSize cluster_size_;
     static const uint32_t num_clusters_per_sco_ = 32;
-    static const uint32_t num_clusters_per_vector_ = 5;
+    static const uint32_t num_clusters_per_vector_ = 8;
 
     ClusterLocation latestSCONotOnFailOver;
     ClusterLocation latestSCOOnFailOver;
@@ -609,26 +619,31 @@ FailOverCacheTestThread::cluster_size_(4096);
 
 TEST_F(FailOverCacheTest, Stress)
 {
-    std::vector<FailOverCacheTestThread*> test_threads;
+    std::vector<std::unique_ptr<FailOverCacheTestThread>> test_threads;
+    std::vector<boost::thread> threads;
 
-    std::vector<boost::thread*> threads;
-    const unsigned test_size = youtils::System::get_env_with_default("FAILOVERCACHE_STRESS_TEST_NUM_CLIENTS", 16ULL);
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         for (auto& t : threads)
+                                         {
+                                             t.join();
+                                         }
+                                     }));
 
-    for(unsigned i = 0; i < test_size; ++i)
+    const size_t num_clients =
+        yt::System::get_env_with_default("FAILOVERCACHE_STRESS_TEST_NUM_CLIENTS",
+                                         16ULL);
+    const size_t test_size =
+        yt::System::get_env_with_default("FAILOVERCACHE_STRESS_TEST_SIZE",
+                                         1ULL << 12);
+
+    for(unsigned i = 0; i < num_clients; ++i)
     {
-        std::string content = "namespace-" + boost::lexical_cast<std::string>(i);
-        test_threads.push_back(
-                               new FailOverCacheTestThread(content,
-                                                           youtils::System::get_env_with_default("FAILOVERCACHE_STRESS_TEST_SIZE", (1ULL << 12))));
-
-        threads.push_back(new boost::thread(boost::ref(*test_threads[i])));
-    }
-
-    for(unsigned i = 0; i < test_size; ++i)
-    {
-        threads[i]->join();
-        delete threads[i];
-        delete test_threads[i];
+        const std::string content("namespace-" + boost::lexical_cast<std::string>(i));
+        auto t(std::make_unique<FailOverCacheTestThread>(content,
+                                                         test_size));
+        test_threads.emplace_back(std::move(t));
+        threads.emplace_back(boost::thread(boost::ref(*test_threads[i])));
     }
 }
 

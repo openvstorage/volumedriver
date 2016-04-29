@@ -30,16 +30,12 @@ public:
     // the following must be respected:
     // s * T << triggergap
     // N * scosize << triggergap
-        : VolManagerTestSetup("MTVolumeTester",
-                              UseFawltyMDStores::F,
-                              UseFawltyTLogStores::F,
-                              UseFawltyDataStores::F,
-                              4, // num threads
-                              "UNLIMITED", // scocache mp1 size
-                              "UNLIMITED", // scocache mp2 size
-                              "80MiB", // scocache trigger gap
-                              "90MiB", // scocache backoff gap
-                              1) // scocache cleanup interval (seconds)
+        : VolManagerTestSetup(VolManagerTestSetupParameters("MTVolumeTester")
+                              .sco_cache_mp1_size("UNLIMITED")
+                              .sco_cache_mp2_size("UNLIMITED")
+                              .sco_cache_trigger_gap("80MiB")
+                              .sco_cache_backoff_gap("90MiB")
+                              .sco_cache_cleanup_interval(1))
     {}
 
     void

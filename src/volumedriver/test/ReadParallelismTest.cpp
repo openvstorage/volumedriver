@@ -96,17 +96,12 @@ class ReadParallelismTest
 {
 public:
     ReadParallelismTest()
-        : VolManagerTestSetup("ReadParallelismTest",
-                              UseFawltyMDStores::F,
-                              UseFawltyTLogStores::F,
-                              UseFawltyDataStores::F,
-                              /* unsigned num_threads = */ 4,
-                              // If you change this also change the sco_cache_size below
-                              /* const std::string& sc_mp1_size = */ "10MiB",
-                              /* const std::string& sc_mp2_size = */ "10MiB",
-                              /* const std::string& sc_trigger_gap =*/ "8MiB",
-                              /* const std::string& sc_backoff_gap =*/ "9MiB",
-                              /* uint32_t clean_interval=*/1)
+        : VolManagerTestSetup(VolManagerTestSetupParameters("ReadParallelismTest")
+                              .sco_cache_mp1_size("10MiB")
+                              .sco_cache_mp2_size("10MiB")
+                              .sco_cache_trigger_gap("8MiB")
+                              .sco_cache_backoff_gap("9MiB")
+                              .sco_cache_cleanup_interval(1))
     {}
 
     void

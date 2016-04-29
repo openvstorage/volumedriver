@@ -779,15 +779,11 @@ TEST_P(ApiTest, destroyVolumeVariants)
         setFailOverCacheConfig(volid,
                                foc_ctx->config(GetParam().foc_mode()));
 
-        const fs::path foc_ns_path = foc_ctx->path() / nsid.str();
-
         ASSERT_NO_THROW(api::destroyVolume(volid,
                                            DeleteLocalData::T,
                                            RemoveVolumeCompletely::T,
                                            DeleteVolumeNamespace::F,
                                            ForceVolumeDeletion::F));
-
-        ASSERT_FALSE(exists(foc_ns_path));
     }
 
     ASSERT_THROW(api::local_restart(nsid,

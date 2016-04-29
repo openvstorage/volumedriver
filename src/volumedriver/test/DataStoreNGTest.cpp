@@ -37,15 +37,11 @@ class DataStoreNGTest
 {
 protected:
     DataStoreNGTest()
-        : VolManagerTestSetup("DataStoreNGTest",
-                              UseFawltyMDStores::F,
-                              UseFawltyTLogStores::F,
-                              UseFawltyDataStores::F,
-                              4,
-                              "10MiB",
-                              "10MiB",
-                              "4MiB",
-                              "5MiB")
+        : VolManagerTestSetup(VolManagerTestSetupParameters("DataStoreNGTest")
+                              .sco_cache_mp1_size("10MiB")
+                              .sco_cache_mp2_size("10MiB")
+                              .sco_cache_trigger_gap("4MiB")
+                              .sco_cache_backoff_gap("5MiB"))
         , vol_(nullptr)
         , dStore_(0)
     {

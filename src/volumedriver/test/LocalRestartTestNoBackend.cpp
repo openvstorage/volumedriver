@@ -29,11 +29,8 @@ class LocalRestartTestNoBackend
 {
 public:
     LocalRestartTestNoBackend()
-        : VolManagerTestSetup("LocalRestartTest",
-                              UseFawltyMDStores::F,
-                              UseFawltyTLogStores::F,
-                              UseFawltyDataStores::F,
-                              0)
+        : VolManagerTestSetup(VolManagerTestSetupParameters("LocalRestartTest")
+                              .backend_threads(0))
     {}
 };
 

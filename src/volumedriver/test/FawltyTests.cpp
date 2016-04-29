@@ -28,10 +28,10 @@ class FawltyTest
 {
 public:
     FawltyTest()
-        : VolManagerTestSetup("FawltyTest",
-                              UseFawltyMDStores::T,
-                              UseFawltyTLogStores::T,
-                              UseFawltyDataStores::T)
+        : VolManagerTestSetup(VolManagerTestSetupParameters("FawltyTest")
+                              .use_fawlty_md_stores(UseFawltyMDStores::T)
+                              .use_fawlty_tlog_stores(UseFawltyTLogStores::T)
+                              .use_fawlty_data_stores(UseFawltyDataStores::T))
     {}
 };
 

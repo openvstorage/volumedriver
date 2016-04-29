@@ -97,20 +97,13 @@ protected:
 
 public:
     ErrorHandlingTest()
-        : VolManagerTestSetup("ErrorHandlingTest",
-                              UseFawltyMDStores::F,
-                              UseFawltyTLogStores::F,
-                              UseFawltyDataStores::F,
-                              4, // num backend threads
-                              bytesToString(mp_size_), // scocache mp1 size
-                              bytesToString(mp_size_), // scocache mp2 size
-                              bytesToString(trigger_gap_),
-                              bytesToString(backoff_gap_),
-                              3600, // clean interval
-                              32, // open scos per volume
-                              4000, // datastore throttle usecs
-                              10000, // foc throttle usecs
-                              6) // num scos / tlog
+        : VolManagerTestSetup(VolManagerTestSetupParameters("ErrorHandlingTest")
+                              .sco_cache_mp1_size(bytesToString(mp_size_))
+                              .sco_cache_mp2_size(bytesToString(mp_size_))
+                              .sco_cache_trigger_gap(bytesToString(trigger_gap_))
+                              .sco_cache_backoff_gap(bytesToString(backoff_gap_))
+                              .sco_cache_cleanup_interval(3600)
+                              .scos_per_tlog(6))
         , volname_("volume")
         , vol_(0)
     {}

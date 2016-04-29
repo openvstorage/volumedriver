@@ -34,9 +34,9 @@ class DestroyVolumeTest
 {
 public:
     DestroyVolumeTest()
-        : VolManagerTestSetup("DestroyVolumeTest",
-                              UseFawltyMDStores::T,
-                              UseFawltyTLogStores::T)
+        : VolManagerTestSetup(VolManagerTestSetupParameters("DestroyVolumeTest")
+                              .use_fawlty_md_stores(UseFawltyMDStores::T)
+                              .use_fawlty_tlog_stores(UseFawltyTLogStores::T))
     {}
 
     void

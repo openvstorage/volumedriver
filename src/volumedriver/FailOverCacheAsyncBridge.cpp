@@ -307,8 +307,17 @@ FailOverCacheAsyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
         return true;
     }
 
-    // Just see if there is enough space for the whole batch
-    setThrottling(newOnes.size() + num_locs > max_entries());
+    TODO("AR: revisit the batching of entries");
+    // TODO: Batches must not cross SCO boundaries.
+    // We could be way smarter by allowing multiple outstanding batches.
+    const bool new_sco =
+        (not newOnes.empty()) and
+        (not locs.empty()) and
+        (newOnes.back().cli_.sco() != locs.front().sco());
+
+    setThrottling((newOnes.size() + num_locs > max_entries()) or
+                  new_sco);
+
     if (not throttling)
     {
         // Otherwise work the batch
@@ -319,18 +328,18 @@ FailOverCacheAsyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
                      data + i * cluster_size_(),
                      cluster_size_());
         }
-
     }
 
-    maybe_swap_();
+    maybe_swap_(new_sco);
 
     return not throttling;
 }
 
 void
-FailOverCacheAsyncBridge::maybe_swap_()
+FailOverCacheAsyncBridge::maybe_swap_(bool new_sco)
 {
-    if (newOnes.size() >= write_trigger_)
+    if (new_sco or
+        (newOnes.size() >= write_trigger_))
     {
         //must be trylock otherwise risk for deadlock
         boost::unique_lock<decltype(mutex_)> u(mutex_,

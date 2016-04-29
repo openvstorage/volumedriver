@@ -175,6 +175,66 @@ private:
     run();
 };
 
+struct VolManagerTestSetupParameters
+{
+#define PARAM(type, name)                       \
+    const type&                                 \
+    name() const                                \
+    {                                           \
+        return name ## _;                       \
+    }                                           \
+                                                \
+    VolManagerTestSetupParameters&              \
+    name(const type& val)                       \
+    {                                           \
+        name ## _ = val;                        \
+        return *this;                           \
+    }                                           \
+                                                \
+    type name ## _
+
+    PARAM(UseFawltyMDStores, use_fawlty_md_stores) = UseFawltyMDStores::F;
+    PARAM(UseFawltyTLogStores, use_fawlty_tlog_stores) = UseFawltyTLogStores::F;
+    PARAM(UseFawltyDataStores, use_fawlty_data_stores) = UseFawltyDataStores::F;
+    PARAM(size_t, backend_threads) = 4;
+    PARAM(std::string, sco_cache_mp1_size) = "1GiB";
+    PARAM(std::string, sco_cache_mp2_size) = "1GiB";
+    PARAM(std::string, sco_cache_trigger_gap) = "250MiB";
+    PARAM(std::string, sco_cache_backoff_gap) = "500MiB";
+    PARAM(uint32_t, sco_cache_cleanup_interval) = 60;
+    PARAM(size_t, open_scos_per_volume) = 32;
+    PARAM(size_t, data_store_throttle_usecs) = 4000;
+    PARAM(size_t, dtl_throttle_usecs) = 10000;
+    PARAM(uint32_t, scos_per_tlog) = 20;
+    PARAM(boost::chrono::seconds, dtl_check_interval) = boost::chrono::seconds(3600);
+#undef PARAM
+
+    const std::string name_;
+
+    const std::string&
+    name() const
+    {
+        return name_;
+    }
+
+    // purposefully not 'explicit' so tests that use the defaults
+    // still compile with VolManagerTestSetup("SomeName")
+    VolManagerTestSetupParameters(const char* c)
+        : name_(c)
+    {}
+
+    VolManagerTestSetupParameters(const std::string& n)
+        : name_(n)
+    {}
+
+    ~VolManagerTestSetupParameters() = default;
+
+    VolManagerTestSetupParameters(const VolManagerTestSetupParameters&) = default;
+
+    VolManagerTestSetupParameters&
+    operator=(const VolManagerTestSetupParameters&) = default;
+};
+
 class VolManagerTestSetup
     : public ExGTest
     , public be::BackendTestSetup
@@ -188,20 +248,9 @@ class VolManagerTestSetup
     friend int main(int, char**);
 
 public:
-    VolManagerTestSetup(const std::string& testName,
-                        const UseFawltyMDStores useFawltyMDStores = UseFawltyMDStores::F,
-                        const UseFawltyTLogStores useFawltyTLogStores = UseFawltyTLogStores::F,
-                        const UseFawltyDataStores useFawltyDataStores = UseFawltyDataStores::F,
-                        unsigned num_threads = 4,
-                        const std::string& sc_mp1_size = "1GiB",
-                        const std::string& sc_mp2_size = "1GiB",
-                        const std::string& sc_trigger_gap = "250MiB",
-                        const std::string& sc_backoff_gap = "500MiB",
-                        uint32_t clean_interval = 60,
-                        unsigned open_scos_per_volume = 32,
-                        unsigned dstore_throttle_usecs = 4000,
-                        unsigned foc_throttle_usecs = 10000,
-                        uint32_t num_scos_in_tlog = 20);
+    // purposefully not 'explicit' so tests that use the defaults
+    // still compile with VolManagerTestSetup("SomeName")
+    VolManagerTestSetup(const VolManagerTestSetupParameters&);
 
     virtual ~VolManagerTestSetup();
 
@@ -668,7 +717,7 @@ protected:
     const UseFawltyTLogStores useFawltyTLogStores_;
     const UseFawltyDataStores useFawltyDataStores_;
 
-    const unsigned failovercache_check_interval_in_seconds_ = { 5 };
+    const boost::chrono::seconds dtl_check_interval_;
 
     std::shared_ptr<arakoon::ArakoonTestSetup> arakoon_test_setup_;
     std::shared_ptr<volumedrivertest::MDSTestSetup> mds_test_setup_;

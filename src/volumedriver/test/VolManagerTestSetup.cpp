@@ -438,40 +438,30 @@ private:
     sem_t sem2_;
 };
 
-VolManagerTestSetup::VolManagerTestSetup(const std::string& testName,
-                                         const UseFawltyMDStores useFawltyMDStores,
-                                         const UseFawltyTLogStores useFawltyTLogStores,
-                                         const UseFawltyDataStores useFawltyDataStores,
-                                         unsigned num_threads,
-                                         const std::string& sc_mp1_size,
-                                         const std::string& sc_mp2_size,
-                                         const std::string& sc_trigger_gap,
-                                         const std::string& sc_backoff_gap,
-                                         uint32_t sc_clean_interval,
-                                         unsigned open_scos_per_volume,
-                                         unsigned dstore_throttle_usecs,
-                                         unsigned foc_throttle_usecs,
-                                         uint32_t num_scos_in_tlog)
+VolManagerTestSetup::VolManagerTestSetup(const VolManagerTestSetupParameters& params)
     : be::BackendTestSetup()
-    , FailOverCacheTestSetup(getTempPath(testName) / "foc")
-    , testName_(testName)
+    , FailOverCacheTestSetup(GetParam().foc_in_memory() ?
+                             boost::none :
+                             boost::optional<fs::path>(getTempPath(params.name()) / "foc"))
+    , testName_(params.name())
     , directory_(getTempPath(testName_))
     , configuration_(directory_ / "configuration")
-    , sc_mp1_size_(yt::DimensionedValue(sc_mp1_size).getBytes())
-    , sc_mp2_size_(yt::DimensionedValue(sc_mp2_size).getBytes())
-    , sc_trigger_gap_(yt::DimensionedValue(sc_trigger_gap).getBytes())
-    , sc_backoff_gap_(yt::DimensionedValue(sc_backoff_gap).getBytes())
-    , sc_clean_interval_(sc_clean_interval)
-    , open_scos_per_volume_(open_scos_per_volume)
-    , dstore_throttle_usecs_(dstore_throttle_usecs)
-    , foc_throttle_usecs_(foc_throttle_usecs)
-    , useFawltyMDStores_(useFawltyMDStores)
-    , useFawltyTLogStores_(useFawltyTLogStores)
-    , useFawltyDataStores_(useFawltyDataStores)
+    , sc_mp1_size_(yt::DimensionedValue(params.sco_cache_mp1_size()).getBytes())
+    , sc_mp2_size_(yt::DimensionedValue(params.sco_cache_mp2_size()).getBytes())
+    , sc_trigger_gap_(yt::DimensionedValue(params.sco_cache_trigger_gap()).getBytes())
+    , sc_backoff_gap_(yt::DimensionedValue(params.sco_cache_backoff_gap()).getBytes())
+    , sc_clean_interval_(params.sco_cache_cleanup_interval())
+    , open_scos_per_volume_(params.open_scos_per_volume())
+    , dstore_throttle_usecs_(params.data_store_throttle_usecs())
+    , foc_throttle_usecs_(params.dtl_throttle_usecs())
+    , useFawltyMDStores_(params.use_fawlty_md_stores())
+    , useFawltyTLogStores_(params.use_fawlty_tlog_stores())
+    , useFawltyDataStores_(params.use_fawlty_data_stores())
+    , dtl_check_interval_(params.dtl_check_interval())
     , event_collector_(std::make_shared<vdt::EventCollector>())
     , volManagerRunning_(false)
-    , num_threads_(num_threads)
-    , num_scos_in_tlog_(num_scos_in_tlog)
+    , num_threads_(params.backend_threads())
+    , num_scos_in_tlog_(params.scos_per_tlog())
 {
     EXPECT_LE(sc_trigger_gap_, sc_backoff_gap_) <<
         "invalid trigger gap + backoff gap for the SCO cache specified, fix your test!";
@@ -952,7 +942,7 @@ VolManagerTestSetup::startVolManager()
         }
 
         PARAMETER_TYPE(debug_metadata_path)((directory_ / fs::path("dump_on_halt_dir")).string()).persist(pt);
-        PARAMETER_TYPE(dtl_check_interval_in_seconds)(failovercache_check_interval_in_seconds_).persist(pt);
+        PARAMETER_TYPE(dtl_check_interval_in_seconds)(dtl_check_interval_.count()).persist(pt);
 
         const mds::ServerConfigs scfgs{ *mds_server_config_ };
         mds_test_setup_->make_manager_config(pt,

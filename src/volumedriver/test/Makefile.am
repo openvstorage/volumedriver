@@ -50,6 +50,7 @@ volumedriver_test_SOURCES = \
 	ClusterLocationTest.cpp \
 	DataStoreNGTest.cpp \
 	DestroyVolumeTest.cpp \
+	DtlCheckerTest.cpp \
 	EntryTest.cpp \
 	ErrorHandlingTest.cpp \
 	EventCollector.cpp \

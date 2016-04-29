@@ -17,6 +17,8 @@
 #include "FuseInterface.h"
 #include "ShmOrbInterface.h"
 
+#include <fuse3/fuse_lowlevel.h>
+
 #include <boost/property_tree/ptree.hpp>
 
 #include <youtils/Assert.h>
@@ -68,6 +70,70 @@ keep_worker(unsigned /* available */,
 {
     const auto fi = static_cast<FuseInterface*>(priv);
     return total <= fi->min_workers();
+}
+
+// Copied verbatim from FUSE's helper.c since fuse_{setup,teardown} were unexported
+// as of FUSE version 3.
+TODO("AR: reconsider what's actually needed from this");
+struct fuse*
+fuse_setup(int argc,
+           char *argv[],
+           const struct fuse_operations *op,
+           size_t op_size,
+           char **mountpoint,
+           int *multithreaded,
+           void *user_data)
+{
+    struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
+    struct fuse_chan *ch;
+    struct fuse *fuse;
+    int foreground;
+    int res;
+
+    res = fuse_parse_cmdline(&args, mountpoint, multithreaded, &foreground);
+    if (res == -1)
+        return NULL;
+
+    ch = fuse_mount(*mountpoint, &args);
+    if (!ch) {
+        fuse_opt_free_args(&args);
+        goto err_free;
+    }
+
+    fuse = fuse_new(ch, &args, op, op_size, user_data);
+    fuse_opt_free_args(&args);
+    if (fuse == NULL)
+        goto err_unmount;
+
+    res = fuse_daemonize(foreground);
+    if (res == -1)
+        goto err_unmount;
+
+    res = fuse_set_signal_handlers(fuse_get_session(fuse));
+    if (res == -1)
+        goto err_unmount;
+
+    return fuse;
+
+    err_unmount:
+    fuse_unmount(*mountpoint, ch);
+    if (fuse)
+        fuse_destroy(fuse);
+    err_free:
+    free(*mountpoint);
+    return NULL;
+}
+
+void
+fuse_teardown(struct fuse *fuse,
+              char *mountpoint)
+{
+    struct fuse_session *se = fuse_get_session(fuse);
+    struct fuse_chan *ch = fuse_session_chan(se);
+    fuse_remove_signal_handlers(se);
+    fuse_unmount(mountpoint, ch);
+    fuse_destroy(fuse);
+    free(mountpoint);
 }
 
 }
@@ -354,7 +420,11 @@ FuseInterface::readdir(const char* path,
                        void* buf,
                        fuse_fill_dir_t filler,
                        off_t /* offset */,
-                       fuse_file_info* /* fi */)
+                       fuse_file_info* /* fi */,
+                       // fuse3/fuse.h says that it's ok to ignore
+                       // the sole supported flag - FUSE_READDIR_PLUS -
+                       // for now
+                       fuse_readdir_flags /* readdir_flags */)
 {
     LOG_TRACE(path);
 
@@ -366,19 +436,32 @@ FuseInterface::readdir(const char* path,
                                             0);
     if (ret == 0)
     {
-        if (filler(buf, ".", 0, 0))
+        TODO("AR: consider using FUSE_FILL_DIR_PLUS");
+        if (filler(buf,
+                   ".",
+                   0,
+                   0,
+                   static_cast<fuse_fill_dir_flags>(0)))
         {
             return ret;
         }
 
-        if (filler(buf, "..", 0, 0))
+        if (filler(buf,
+                   "..",
+                   0,
+                   0,
+                   static_cast<fuse_fill_dir_flags>(0)))
         {
             return ret;
         }
 
         for (const auto& e : l)
         {
-            if (filler(buf, e.c_str(), 0, 0))
+            if (filler(buf,
+                       e.c_str(),
+                       0,
+                       0,
+                       static_cast<fuse_fill_dir_flags>(0)))
             {
                 break;
             }
@@ -437,12 +520,15 @@ FuseInterface::rmdir(const char* path)
 
 int
 FuseInterface::rename(const char* from,
-                      const char* to)
+                      const char* to,
+                      unsigned flags)
 {
     const FrontendPath t(to);
-    return route_to_fs_instance_<const FrontendPath&>(&FileSystem::rename,
-                                                      from,
-                                                      t);
+    return route_to_fs_instance_<const FrontendPath&,
+                                 FileSystem::RenameFlags>(&FileSystem::rename,
+                                                          from,
+                                                          t,
+                                                          static_cast<FileSystem::RenameFlags>(flags));
 }
 
 int

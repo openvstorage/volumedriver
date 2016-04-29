@@ -110,7 +110,7 @@ private:
     setThrottling(bool v);
 
     void
-    maybe_swap_();
+    maybe_swap_(bool new_sco);
 
     void
     init_cache_();

@@ -17,7 +17,7 @@ volumedriverfs_ganesha_test_LDADD = \
 	../../simple-nfs/libsimplenfs.la \
 	../../youtils/libyoutils.la \
 	-lnfs \
-	-lfuse \
+	-lfuse3 \
 	-lpython2.7 \
 	$(BUILDTOOLS_LIBS)
 

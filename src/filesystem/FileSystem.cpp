@@ -970,9 +970,18 @@ FileSystem::rmdir(const ObjectId& id)
 
 void
 FileSystem::rename(const FrontendPath& from,
-                   const FrontendPath& to)
+                   const FrontendPath& to,
+                   RenameFlags flags)
 {
-    LOG_TRACE(from << " -> " << to);
+    LOG_TRACE(from << " -> " << to << ", flags " << std::hex << flags);
+
+    if (flags != RenameFlags::None)
+    {
+        TODO("AR: support rename flags");
+
+        LOG_N_THROW(EPERM,
+                    "We don't support rename flags " << std::hex << flags << " (yet?)");
+    }
 
     DirectoryEntryPtr f(mdstore_.find_throw(from));
 
@@ -996,9 +1005,18 @@ void
 FileSystem::rename(const ObjectId& from_parent_id,
                    const std::string& from,
                    const ObjectId& to_parent_id,
-                   const std::string& to)
+                   const std::string& to,
+                   RenameFlags flags)
 {
-    LOG_TRACE(from << " -> " << to);
+    LOG_TRACE(from << " -> " << to << ", flags " << std::hex << flags);
+
+    if (flags != RenameFlags::None)
+    {
+        TODO("AR: support rename flags");
+
+        LOG_N_THROW(EPERM,
+                    "We don't support rename flags " << std::hex << flags << " (yet?)");
+    }
 
     FrontendPath from_path(mdstore_.find_path(from_parent_id));
     from_path /= from;

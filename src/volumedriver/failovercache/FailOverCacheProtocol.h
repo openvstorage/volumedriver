@@ -14,6 +14,7 @@
 
 #ifndef FAILOVERCACHEPROTOCOL_H
 #define FAILOVERCACHEPROTOCOL_H
+
 #include "fungilib/Protocol.h"
 #include "fungilib/Socket.h"
 #include "fungilib/SocketServer.h"
@@ -26,13 +27,11 @@
 namespace failovercache
 {
 class FailOverCacheAcceptor;
-class FailOverCacheWriter;
+class Backend;
 
 class FailOverCacheProtocol
     : public fungi::Protocol
 {
-    friend class FailOverCacheWriter;
-
 public:
     FailOverCacheProtocol(std::unique_ptr<fungi::Socket> sock,
                           fungi::SocketServer& /*parentServer*/,
@@ -58,7 +57,7 @@ public:
 private:
     DECLARE_LOGGER("FailOverCacheProtocol");
 
-    std::shared_ptr<FailOverCacheWriter> cache_;
+    std::shared_ptr<Backend> cache_;
     std::unique_ptr<fungi::Socket> sock_;
     fungi::IOBaseStream stream_;
     fungi::Thread* thread_;
@@ -67,7 +66,6 @@ private:
     bool use_rs_;
 
     int pipes_[2];
-    fd_set rfds_;
     int nfds_;
 
     void
@@ -91,7 +89,6 @@ private:
     void
     getSCORange_();
 
-
     void
     Clear_();
 
@@ -105,17 +102,12 @@ private:
     removeUpTo_();
 
     void
-    processFailOverCacheEntry(volumedriver::ClusterLocation cli,
-                              int64_t lba,
-                              const byte* buf,
-                              int64_t size);
-
-    void
-    processFailOverCacheSCO(volumedriver::ClusterLocation cli,
-                            int64_t lba,
-                            const byte* buf,
-                            int64_t size);
+    processFailOverCacheEntry_(volumedriver::ClusterLocation cli,
+                               int64_t lba,
+                               const byte* buf,
+                               int64_t size);
 };
+
 }
 
 
