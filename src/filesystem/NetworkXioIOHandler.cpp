@@ -53,7 +53,6 @@ NetworkXioIOHandler::handle_open(NetworkXioRequest *req,
 
     const FrontendPath p("/" + volume_name +
                          fs_.vdisk_format().volume_suffix());
-
     try
     {
         fs_.open(p, O_RDWR, handle_);
@@ -289,10 +288,7 @@ NetworkXioIOHandler::handle_stat_volume(NetworkXioRequest *req,
     VERIFY(not handle_);
     req->op = NetworkXioMsgOpcode::StatVolumeRsp;
 
-    const std::string root_("/");
-    const std::string dot_(".");
-    const FrontendPath volume_path(root_ + volume_name +
-                                   fs_.vdisk_format().volume_suffix());
+    const FrontendPath volume_path(make_volume_path(volume_name));
     boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
     if (not volume_id)
     {
@@ -379,10 +375,7 @@ NetworkXioIOHandler::handle_list_snapshots(NetworkXioRequest *req,
     VERIFY(not handle_);
     req->op = NetworkXioMsgOpcode::ListSnapshotsRsp;
 
-    const std::string root_("/");
-    const std::string dot_(".");
-    const FrontendPath volume_path(root_ + volume_name +
-                                   fs_.vdisk_format().volume_suffix());
+    const FrontendPath volume_path(make_volume_path(volume_name));
     boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
     if (not volume_id)
     {
@@ -448,10 +441,7 @@ NetworkXioIOHandler::handle_create_snapshot(NetworkXioRequest *req,
     VERIFY(not handle_);
     req->op = NetworkXioMsgOpcode::CreateSnapshotRsp;
 
-    const std::string root_("/");
-    const std::string dot_(".");
-    const FrontendPath volume_path(root_ + volume_name +
-                                   fs_.vdisk_format().volume_suffix());
+    const FrontendPath volume_path(make_volume_path(volume_name));
     boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
     if (not volume_id)
     {
@@ -507,10 +497,7 @@ NetworkXioIOHandler::handle_delete_snapshot(NetworkXioRequest *req,
     VERIFY(not handle_);
     req->op = NetworkXioMsgOpcode::DeleteSnapshotRsp;
 
-    const std::string root_("/");
-    const std::string dot_(".");
-    const FrontendPath volume_path(root_ + volume_name +
-                                   fs_.vdisk_format().volume_suffix());
+    const FrontendPath volume_path(make_volume_path(volume_name));
     boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
     if (not volume_id)
     {
@@ -557,10 +544,7 @@ NetworkXioIOHandler::handle_rollback_snapshot(NetworkXioRequest *req,
     VERIFY(not handle_);
     req->op = NetworkXioMsgOpcode::RollbackSnapshotRsp;
 
-    const std::string root_("/");
-    const std::string dot_(".");
-    const FrontendPath volume_path(root_ + volume_name +
-                                   fs_.vdisk_format().volume_suffix());
+    const FrontendPath volume_path(make_volume_path(volume_name));
     boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
     if (not volume_id)
     {
@@ -601,10 +585,7 @@ NetworkXioIOHandler::handle_is_snapshot_synced(NetworkXioRequest *req,
     VERIFY(not handle_);
     req->op = NetworkXioMsgOpcode::IsSnapshotSyncedRsp;
 
-    const std::string root_("/");
-    const std::string dot_(".");
-    const FrontendPath volume_path(root_ + volume_name +
-                                   fs_.vdisk_format().volume_suffix());
+    const FrontendPath volume_path(make_volume_path(volume_name));
     boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
     if (not volume_id)
     {

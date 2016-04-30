@@ -110,6 +110,13 @@ private:
 
     std::string volume_name_;
     Handle::Ptr handle_;
+
+    std::string
+    make_volume_path(const std::string& volume_name)
+    {
+        const std::string root_("/");
+        return (root_ + volume_name + fs_.vdisk_format().volume_suffix());
+    }
 };
 
 typedef std::unique_ptr<NetworkXioIOHandler> NetworkXioIOHandlerPtr;

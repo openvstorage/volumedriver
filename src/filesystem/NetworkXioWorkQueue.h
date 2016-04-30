@@ -140,7 +140,7 @@ private:
     bool stopped;
     int evfd;
 
-    void stop_loop(NetworkXioWorkQueue *wq)
+    void xstop_loop(NetworkXioWorkQueue *wq)
     {
         xeventfd_write(wq->evfd);
     }
@@ -245,7 +245,7 @@ retry:
             wq->finished.push_back(req);
             wq->finished_lock.unlock();
             wq->nr_queued_work--;
-            stop_loop(wq);
+            xstop_loop(wq);
         }
     }
 };
