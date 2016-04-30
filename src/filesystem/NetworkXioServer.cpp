@@ -313,6 +313,7 @@ NetworkXioServer::run()
         while (not wq_->is_finished_empty())
         {
             xio_send_reply(wq_->get_finished());
+            wq_->queued_work_dec();
         }
     }
     std::lock_guard<std::mutex> lock_(mutex_);

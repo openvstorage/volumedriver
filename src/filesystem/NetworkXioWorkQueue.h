@@ -78,13 +78,13 @@ public:
     void
     work_schedule(NetworkXioRequest *req)
     {
-        nr_queued_work++;
+        queued_work_inc();
         inflight_lock.lock();
         if (need_to_grow())
         {
             create_workqueue_threads(nr_threads_ * 2);
         }
-        inflight_list.push_back(req);
+        inflight_queue.push(req);
         inflight_lock.unlock();
         inflight_cond.notify_one();
     }
@@ -101,20 +101,31 @@ public:
         wq_open_sessions_--;
     }
 
+    void
+    queued_work_inc()
+    {
+        nr_queued_work++;
+    }
+
+    void
+    queued_work_dec()
+    {
+        nr_queued_work--;
+    }
+
     NetworkXioRequest*
     get_finished()
     {
-        finished_lock.lock();
+        boost::lock_guard<decltype(finished_lock)> lock_(finished_lock);
         NetworkXioRequest *req = finished.front();
-        finished.pop_front();
-        finished_lock.unlock();
+        finished.pop();
         return req;
     }
 
     bool
     is_finished_empty()
     {
-        std::lock_guard<std::mutex> lock_(finished_lock);
+        boost::lock_guard<decltype(finished_lock)> lock_(finished_lock);
         return finished.empty();
     }
 private:
@@ -125,10 +136,10 @@ private:
 
     std::condition_variable inflight_cond;
     std::mutex inflight_lock;
-    std::list<NetworkXioRequest*> inflight_list;
+    std::queue<NetworkXioRequest*> inflight_queue;
 
-    std::mutex finished_lock;
-    std::list<NetworkXioRequest*> finished;
+    mutable fungi::SpinLock finished_lock;
+    std::queue<NetworkXioRequest*> finished;
 
     std::atomic<size_t> nr_queued_work;
 
@@ -224,7 +235,7 @@ private:
                 break;
             }
 retry:
-            if (wq->inflight_list.empty())
+            if (wq->inflight_queue.empty())
             {
                 wq->inflight_cond.wait(lock_);
                 if (wq->stopping)
@@ -234,17 +245,16 @@ retry:
                 }
                 goto retry;
             }
-            req = wq->inflight_list.front();
-            wq->inflight_list.pop_front();
+            req = wq->inflight_queue.front();
+            wq->inflight_queue.pop();
             lock_.unlock();
             if (req->work.func)
             {
                 req->work.func(&req->work);
             }
             wq->finished_lock.lock();
-            wq->finished.push_back(req);
+            wq->finished.push(req);
             wq->finished_lock.unlock();
-            wq->nr_queued_work--;
             xstop_loop(wq);
         }
     }
