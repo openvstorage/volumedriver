@@ -6,10 +6,10 @@ import shutil
 import unittest
 import timeit
 import time
-import volumedriver.fawltyfs.PyFawltyFS as PyFawltyFS
 from threading import Thread
 from nose.tools import ok_, eq_
 
+import volumedriver.fawltyfs.PyFawltyFS as PyFawltyFS
 
 log_ = PyFawltyFS.Logging("TestBasicTests")
 
