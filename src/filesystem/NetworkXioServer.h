@@ -66,9 +66,6 @@ public:
                  xio_msg_direction direction,
                  xio_msg *msg);
 
-    int
-    assign_data_in_buf(xio_msg *msg);
-
     void
     run();
 

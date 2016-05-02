@@ -28,7 +28,6 @@ typedef std::function<void(Work*)> workitem_func_t;
 struct Work
 {
     workitem_func_t func;
-    void *obj;
 };
 
 } //namespace

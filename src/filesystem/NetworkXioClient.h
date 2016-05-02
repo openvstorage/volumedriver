@@ -90,9 +90,6 @@ public:
                 int last_in_rxq);
 
     int
-    assign_data_in_buf(xio_msg *msg);
-
-    int
     on_msg_error(xio_session *session,
                  xio_status error,
                  xio_msg_direction direction,
@@ -207,10 +204,6 @@ private:
     on_session_event_control(xio_session *session,
                              xio_session_event_data *event_data,
                              void *cb_user_context);
-
-    static int
-    assign_data_in_buf_control(xio_msg *msg,
-                               void *cb_user_context);
 
     static void
     xio_submit_request(const std::string& uri,

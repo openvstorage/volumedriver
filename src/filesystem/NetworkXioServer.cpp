@@ -99,20 +99,6 @@ static_on_msg_send_complete(xio_session *session,
 }
 
 template<class T>
-static int
-static_assign_data_in_buf(xio_msg *msg,
-                          void *cb_user_context)
-{
-    T *obj = reinterpret_cast<T*>(cb_user_context);
-    if (obj == NULL)
-    {
-        assert(obj != NULL);
-        return -1;
-    }
-    return obj->server->assign_data_in_buf(msg);
-}
-
-template<class T>
 static void
 static_evfd_stop_loop(int fd, int events, void *data)
 {
@@ -175,7 +161,7 @@ NetworkXioServer::NetworkXioServer(FileSystem& fs,
     xio_s_ops.on_new_session = static_on_new_session<NetworkXioServer>;
     xio_s_ops.on_msg_send_complete = static_on_msg_send_complete<NetworkXioClientData>;
     xio_s_ops.on_msg = static_on_request<NetworkXioClientData>;
-    xio_s_ops.assign_data_in_buf = static_assign_data_in_buf<NetworkXioClientData>;
+    xio_s_ops.assign_data_in_buf = NULL;
     xio_s_ops.on_msg_error = NULL;
 
     LOG_INFO("bind XIO server to '" << uri << "'");
@@ -420,20 +406,6 @@ NetworkXioServer::on_session_event(xio_session *session,
     return 0;
 }
 
-int
-NetworkXioServer::assign_data_in_buf(struct xio_msg *msg)
-{
-    xio_iovec_ex *isglist = vmsg_sglist(&msg->in);
-
-    LOG_DEBUG("assign buffer, len: " << isglist[0].iov_len);
-
-    xio_reg_mem in_xbuf;
-    xio_mem_alloc(isglist[0].iov_len, &in_xbuf);
-    isglist[0].iov_base = in_xbuf.addr;
-    isglist[0].mr = in_xbuf.mr;
-    return 0;
-}
-
 NetworkXioRequest*
 NetworkXioServer::allocate_request(NetworkXioClientData *cd,
                                    xio_msg *xio_req)
@@ -443,7 +415,6 @@ NetworkXioServer::allocate_request(NetworkXioClientData *cd,
         NetworkXioRequest *req = new NetworkXioRequest;
         req->xio_req = xio_req;
         req->cd = cd;
-        req->work.obj = this;
         req->data = NULL;
         req->data_len = 0;
         req->retval = 0;

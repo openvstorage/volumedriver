@@ -99,20 +99,6 @@ static_on_msg_error(xio_session *session,
 }
 
 template<class T>
-static int
-static_assign_data_in_buf(xio_msg *msg,
-                          void *cb_user_context)
-{
-    T *obj = reinterpret_cast<T*>(cb_user_context);
-    if (obj == NULL)
-    {
-        assert(obj != NULL);
-        return -1;
-    }
-    return obj->assign_data_in_buf(msg);
-}
-
-template<class T>
 static void
 static_evfd_stop_loop(int fd, int events, void *data)
 {
@@ -135,7 +121,7 @@ NetworkXioClient::NetworkXioClient(const std::string& uri)
     ses_ops.on_msg = static_on_response<NetworkXioClient>;
     ses_ops.on_msg_error = static_on_msg_error<NetworkXioClient>;
     ses_ops.on_cancel_request = NULL;
-    ses_ops.assign_data_in_buf = static_assign_data_in_buf<NetworkXioClient>;
+    ses_ops.assign_data_in_buf = NULL;
 
     memset(&params, 0, sizeof(params));
     memset(&cparams, 0, sizeof(cparams));
@@ -324,24 +310,6 @@ NetworkXioClient::evfd_stop_loop(int fd, int /*events*/, void * /*data*/)
 {
     xeventfd_read(fd);
     xio_context_stop_loop(ctx);
-}
-
-int
-NetworkXioClient::assign_data_in_buf(xio_msg *msg)
-{
-    xio_iovec_ex *sglist = vmsg_sglist(&msg->in);
-    xio_reg_mem xbuf;
-
-    if (!sglist[0].iov_len)
-    {
-        return 0;
-    }
-
-    xio_mem_alloc(sglist[0].iov_len, &xbuf);
-
-    sglist[0].iov_base = xbuf.addr;
-    sglist[0].mr = xbuf.mr;
-    return 0;
 }
 
 int
@@ -641,23 +609,6 @@ NetworkXioClient::on_session_event_control(xio_session *session,
     return 0;
 }
 
-int
-NetworkXioClient::assign_data_in_buf_control(xio_msg *msg,
-                                             void *cb_user_context ATTR_UNUSED)
-{
-    xio_iovec_ex *sglist = vmsg_sglist(&msg->in);
-    xio_reg_mem xbuf;
-
-    if (!sglist[0].iov_len)
-    {
-        return 0;
-    }
-    xio_mem_alloc(sglist[0].iov_len, &xbuf);
-    sglist[0].iov_base = xbuf.addr;
-    sglist[0].mr = xbuf.mr;
-    return 0;
-}
-
 xio_connection*
 NetworkXioClient::create_connection_control(xio_context *ctx,
                                             const std::string& uri)
@@ -672,7 +623,7 @@ NetworkXioClient::create_connection_control(xio_context *ctx,
     s_ops.on_session_established = NULL;
     s_ops.on_msg = on_msg_control;
     s_ops.on_msg_error = on_msg_error_control;
-    s_ops.assign_data_in_buf = assign_data_in_buf_control;
+    s_ops.assign_data_in_buf = NULL;
 
     memset(&params, 0, sizeof(params));
     params.type = XIO_SESSION_CLIENT;
