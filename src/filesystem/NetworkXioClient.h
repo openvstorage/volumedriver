@@ -28,6 +28,10 @@
 namespace volumedriverfs
 {
 
+MAKE_EXCEPTION(FailedCreateXioClient, fungi::IOException);
+MAKE_EXCEPTION(FailedCreateEventfd, fungi::IOException);
+MAKE_EXCEPTION(FailedRegisterEventHandler, fungi::IOException);
+
 extern void ovs_xio_aio_complete_request(void *request,
                                          ssize_t retval,
                                          int errval);

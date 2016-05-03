@@ -46,10 +46,6 @@ xrefcnt_shutdown()
 namespace volumedriverfs
 {
 
-MAKE_EXCEPTION(FailedCreateXioClient, fungi::IOException);
-MAKE_EXCEPTION(FailedCreateEventfd, fungi::IOException);
-MAKE_EXCEPTION(FailedRegisterEventHandler, fungi::IOException);
-
 template<class T>
 static int
 static_on_session_event(xio_session *session,

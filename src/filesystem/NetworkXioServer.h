@@ -28,6 +28,12 @@
 namespace volumedriverfs
 {
 
+MAKE_EXCEPTION(FailedBindXioServer, fungi::IOException);
+MAKE_EXCEPTION(FailedCreateXioContext, fungi::IOException);
+MAKE_EXCEPTION(FailedCreateXioMempool, fungi::IOException);
+MAKE_EXCEPTION(FailedCreateEventfd, fungi::IOException);
+MAKE_EXCEPTION(FailedRegisterEventHandler, fungi::IOException);
+
 class NetworkXioServer
 {
 public:
