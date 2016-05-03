@@ -82,6 +82,27 @@ Set transport layer::
     The function shall fail if:
         - EINVAL Invalid arguments supplied
 
+Set network queue depth::
+    int ovs_ctx_attr_set_network_qdepth(ovs_ctx_attr_t *attr,
+                                        const uint64_t qdepth);
+
+    Description
+    -----------
+    The ovs_ctx_attr_set_network_qdepth() function sets the underlying network
+    queue depth. After this call, individual attributes of the object are set
+    that can be used in one or more ovs_ctx_new() calls. The default value that
+    is used when the attributes object is created is 256.
+
+    Return Value
+    ------------
+    On success 0 is returned, otherwise it shall return -1 and errno will be
+    set with the type of failure.
+
+    Errors
+    ------
+    The function shall fail if:
+        - EINVAL Invalid arguments supplied
+
 Create Open vStorage context::
     ovs_ctx_t *ovs_ctx_new(const ovs_ctx_attr_t *attr);
 
