@@ -46,6 +46,7 @@ ovs_ctx_attr_new()
         attr->transport = TransportType::Error;
         attr->host = NULL;
         attr->port = 0;
+        attr->network_qdepth = 256;
         return attr;
     }
     catch (const std::bad_alloc&)
@@ -106,6 +107,19 @@ ovs_ctx_attr_set_transport(ovs_ctx_attr_t *attr,
     return -1;
 }
 
+int
+ovs_ctx_attr_set_network_qdepth(ovs_ctx_attr_t *attr,
+                                const uint64_t qdepth)
+{
+    if (attr == NULL)
+    {
+        errno = EINVAL;
+        return -1;
+    }
+    attr->network_qdepth = qdepth;
+    return 0;
+}
+
 ovs_ctx_t*
 ovs_ctx_new(const ovs_ctx_attr_t *attr)
 {
@@ -133,6 +147,7 @@ ovs_ctx_new(const ovs_ctx_attr_t *attr)
         ctx->port = attr->port;
         ctx->shm_ctx_ = nullptr;
         ctx->net_client_ = nullptr;
+        ctx->net_client_qdepth = attr->network_qdepth;
     }
     catch (const std::bad_alloc&)
     {
@@ -221,7 +236,8 @@ ovs_ctx_init(ovs_ctx_t *ctx,
         try
         {
             ctx->net_client_ =
-                std::make_shared<volumedriverfs::NetworkXioClient>(ctx->uri);
+                std::make_shared<volumedriverfs::NetworkXioClient>(ctx->uri,
+                        ctx->net_client_qdepth);
         }
         catch (...)
         {
@@ -1173,6 +1189,10 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
                                                   ovs_aiocbp->aio_offset,
                                                   reinterpret_cast<void*>(request));
             }
+            catch (const volumedriverfs::XioClientQueueIsBusyException&)
+            {
+                errno = EBUSY;  r = -1;
+            }
             catch (const std::bad_alloc&)
             {
                 errno = ENOMEM; r = -1;
@@ -1205,6 +1225,10 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
                                                        ovs_aiocbp->aio_offset,
                                                        reinterpret_cast<void*>(request));
                 }
+                catch (const volumedriverfs::XioClientQueueIsBusyException&)
+                {
+                    errno = EBUSY;  r = -1;
+                }
                 catch (const std::bad_alloc&)
                 {
                     errno = ENOMEM; r = -1;
@@ -1219,6 +1243,10 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
                 try
                 {
                     net_client->xio_send_flush_request(reinterpret_cast<void*>(request));
+                }
+                catch (const volumedriverfs::XioClientQueueIsBusyException&)
+                {
+                    errno = EBUSY;  r = -1;
                 }
                 catch (const std::bad_alloc&)
                 {

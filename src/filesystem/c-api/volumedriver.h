@@ -82,6 +82,16 @@ ovs_ctx_attr_set_transport(ovs_ctx_attr_t *attr,
                            int port);
 
 /*
+ * Set network queue depth
+ * param attr: Context attributes object
+ * param qdepth: Queue depth
+ * return: 0 on success, -1 on fail
+ */
+int
+ovs_ctx_attr_set_network_qdepth(ovs_ctx_attr_t *attr,
+                                const uint64_t qdepth);
+
+/*
  * Create Open vStorage context
  * param attr: Context attributes object
  * return: Open vStorage context on success, or NULL on fail

@@ -42,6 +42,7 @@ struct ovs_context_attr_t
     TransportType transport;
     char *host;
     int port;
+    uint64_t network_qdepth;
 };
 
 struct ovs_buffer

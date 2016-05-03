@@ -49,6 +49,7 @@ struct ovs_context_t
     int oflag;
     ovs_shm_context *shm_ctx_;
     volumedriverfs::NetworkXioClientPtr net_client_;
+    uint64_t net_client_qdepth;
 };
 
 static bool
@@ -115,6 +116,10 @@ ovs_xio_open_volume(ovs_ctx_t *ctx, const char *volume_name)
     {
         ctx->net_client_->xio_send_open_request(volume_name,
                                                 reinterpret_cast<void*>(request));
+    }
+    catch (const volumedriverfs::XioClientQueueIsBusyException&)
+    {
+        errno = EBUSY;  r = -1;
     }
     catch (const std::bad_alloc&)
     {
