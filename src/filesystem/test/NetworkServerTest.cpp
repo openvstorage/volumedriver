@@ -25,6 +25,7 @@
 #include <youtils/Catchers.h>
 #include <youtils/FileUtils.h>
 #include <youtils/FileDescriptor.h>
+#include <youtils/System.h>
 #include <youtils/wall_timer.h>
 
 #include <volumedriver/Api.h>
@@ -40,6 +41,7 @@ namespace volumedriverfstest
 namespace bpt = boost::property_tree;
 namespace fs = boost::filesystem;
 namespace vfs = volumedriverfs;
+namespace yt = youtils;
 
 using namespace volumedriverfs;
 
@@ -232,65 +234,74 @@ TEST_F(NetworkServerTest, create_write_read_destroy)
                              "volume",
                              O_RDWR));
 
-    std::string pattern("openvstorage1");
-    auto wbuf = std::make_unique<uint8_t[]>(pattern.length());
-    ASSERT_TRUE(wbuf != nullptr);
+    const size_t bufsize(yt::System::get_env_with_default("EDGE_TEST_BUF_SIZE",
+							  4ULL << 10));
 
-    memcpy(wbuf.get(),
-           pattern.c_str(),
-           pattern.length());
+    std::vector<char> vec(bufsize);
+    {
+        const std::string p("openvstorage1");
+	for (size_t i = 0; i < vec.size(); i += p.size())
+        {
+	    snprintf(vec.data() + i,
+		     std::min(p.size(),
+			      vec.size() - i),
+		     "%s",
+		     p.c_str());
+	}
+    }
 
-    struct ovs_aiocb w_aio;
-    w_aio.aio_nbytes = pattern.length();
-    w_aio.aio_offset = 0;
-    w_aio.aio_buf = wbuf.get();
+    for (size_t i = 0; i < 100; ++i)
+    {
+	struct ovs_aiocb w_aio;
+	w_aio.aio_nbytes = vec.size();
+	w_aio.aio_offset = 0;
+	w_aio.aio_buf = reinterpret_cast<uint8_t*>(vec.data());
 
-    EXPECT_EQ(0,
-              ovs_aio_write(ctx,
-                            &w_aio));
+	EXPECT_EQ(0,
+		  ovs_aio_write(ctx,
+				&w_aio));
 
-    EXPECT_EQ(0,
-              ovs_aio_suspend(ctx,
-                              &w_aio,
-                              NULL));
+	EXPECT_EQ(0,
+		  ovs_aio_suspend(ctx,
+				  &w_aio,
+				  NULL));
 
-    EXPECT_EQ(pattern.length(),
-              ovs_aio_return(ctx,
-                             &w_aio));
+	EXPECT_EQ(vec.size(),
+		  ovs_aio_return(ctx,
+				 &w_aio));
 
-    EXPECT_EQ(0,
-              ovs_aio_finish(ctx, &w_aio));
+	EXPECT_EQ(0,
+		  ovs_aio_finish(ctx, &w_aio));
 
-    wbuf.reset();
+	auto rbuf = std::make_unique<uint8_t[]>(vec.size());
+	ASSERT_TRUE(rbuf != nullptr);
 
-    auto rbuf = std::make_unique<uint8_t[]>(pattern.length());
-    ASSERT_TRUE(rbuf != nullptr);
+	struct ovs_aiocb r_aio;
+	r_aio.aio_nbytes = vec.size();
+	r_aio.aio_offset = 0;
+	r_aio.aio_buf = rbuf.get();
 
-    struct ovs_aiocb r_aio;
-    r_aio.aio_nbytes = pattern.length();
-    r_aio.aio_offset = 0;
-    r_aio.aio_buf = rbuf.get();
+	EXPECT_EQ(0,
+		  ovs_aio_read(ctx,
+			       &r_aio));
 
-    EXPECT_EQ(0,
-              ovs_aio_read(ctx,
-                           &r_aio));
+	EXPECT_EQ(0,
+		  ovs_aio_suspend(ctx,
+				  &r_aio,
+				  NULL));
 
-    EXPECT_EQ(0,
-              ovs_aio_suspend(ctx,
-                              &r_aio,
-                              NULL));
+	EXPECT_EQ(vec.size(),
+		  ovs_aio_return(ctx,
+				 &r_aio));
 
-    EXPECT_EQ(pattern.length(),
-              ovs_aio_return(ctx,
-                             &r_aio));
+	EXPECT_EQ(0,
+		  ovs_aio_finish(ctx, &r_aio));
 
-    EXPECT_EQ(0,
-              ovs_aio_finish(ctx, &r_aio));
-
-    EXPECT_TRUE(memcmp(rbuf.get(),
-                       pattern.c_str(),
-                       pattern.length()) == 0);
-    rbuf.reset();
+	EXPECT_EQ(0,
+		  memcmp(rbuf.get(),
+			 vec.data(),
+			 vec.size()));
+    }
 
     EXPECT_EQ(0,
               ovs_ctx_destroy(ctx));
