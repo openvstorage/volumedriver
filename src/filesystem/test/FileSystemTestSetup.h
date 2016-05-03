@@ -116,8 +116,15 @@ public:
         return failovercache_transport_;
     }
 
+    static const std::string
+    edge_transport()
+    {
+        return edge_transport_;
+    }
+
     static std::string address_;
     static volumedriver::FailOverCacheTransport failovercache_transport_;
+    static std::string edge_transport_;
 
 protected:
     FileSystemTestSetup(const FileSystemTestSetupParameters&);
@@ -161,6 +168,10 @@ protected:
 
     boost::property_tree::ptree&
     make_registry_config_(boost::property_tree::ptree&) const;
+
+    static boost::property_tree::ptree&
+    make_edge_config_(boost::property_tree::ptree& pt,
+                      const volumedriverfs::NodeId& vrouter_id);
 
     void
     make_dirs_(const boost::filesystem::path& topdir) const;
@@ -274,6 +285,18 @@ protected:
                                                  volumedriverfs::MessagePort(port_base() + 2),
                                                  volumedriverfs::XmlRpcPort(port_base() + 4),
                                                  volumedriverfs::FailoverCachePort(port_base() + 6));
+    }
+
+    static uint16_t
+    local_edge_port()
+    {
+        return port_base() + 7;
+    }
+
+    static uint16_t
+    remote_edge_port()
+    {
+        return port_base() + 8;
     }
 
     static volumedriverfs::ClusterNodeConfigs

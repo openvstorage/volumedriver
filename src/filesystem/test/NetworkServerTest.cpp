@@ -61,13 +61,14 @@ public:
         FileSystemTestBase::SetUp();
         bpt::ptree pt;
 
-        net_xio_server_ = std::make_unique<NetworkXioInterface>(pt,
+        net_xio_server_ = std::make_unique<NetworkXioInterface>(make_edge_config_(pt,
+										  local_node_id()),
                                                                 RegisterComponent::F,
                                                                 *fs_);
 
         net_xio_thread_ = boost::thread([&]{
-                    ASSERT_NO_THROW(net_xio_server_->run());
-                });
+                ASSERT_NO_THROW(net_xio_server_->run());
+            });
     }
 
     virtual void
@@ -90,9 +91,9 @@ TEST_F(NetworkServerTest, create_destroy_context)
     ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
               ovs_ctx_attr_set_transport(ctx_attr,
-                                         "tcp",
-                                         "127.0.0.1",
-                                         21321));
+                                         FileSystemTestSetup::edge_transport().c_str(),
+                                         FileSystemTestSetup::address().c_str(),
+                                         FileSystemTestSetup::local_edge_port()));
     ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx != nullptr);
     EXPECT_EQ(0,
@@ -113,9 +114,9 @@ TEST_F(NetworkServerTest, non_existent_volume)
     ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
               ovs_ctx_attr_set_transport(ctx_attr,
-                                         "tcp",
-                                         "127.0.0.1",
-                                         21321));
+                                         FileSystemTestSetup::edge_transport().c_str(),
+                                         FileSystemTestSetup::address().c_str(),
+                                         FileSystemTestSetup::local_edge_port()));
 
     ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx != nullptr);
@@ -133,9 +134,9 @@ TEST_F(NetworkServerTest, remove_non_existent_volume)
     ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
               ovs_ctx_attr_set_transport(ctx_attr,
-                                         "tcp",
-                                         "127.0.0.1",
-                                         21321));
+                                         FileSystemTestSetup::edge_transport().c_str(),
+                                         FileSystemTestSetup::address().c_str(),
+                                         FileSystemTestSetup::local_edge_port()));
 
     ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx != nullptr);
@@ -154,9 +155,9 @@ TEST_F(NetworkServerTest, already_created_volume)
     ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
               ovs_ctx_attr_set_transport(ctx_attr,
-                                         "tcp",
-                                         "127.0.0.1",
-                                         21321));
+                                         FileSystemTestSetup::edge_transport().c_str(),
+                                         FileSystemTestSetup::address().c_str(),
+                                         FileSystemTestSetup::local_edge_port()));
     ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx != nullptr);
     EXPECT_EQ(0,
@@ -184,9 +185,9 @@ TEST_F(NetworkServerTest, open_same_volume_twice)
     ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
               ovs_ctx_attr_set_transport(ctx_attr,
-                                         "tcp",
-                                         "127.0.0.1",
-                                         21321));
+                                         FileSystemTestSetup::edge_transport().c_str(),
+                                         FileSystemTestSetup::address().c_str(),
+                                         FileSystemTestSetup::local_edge_port()));
     ovs_ctx_t *ctx1 = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx1 != nullptr);
     ovs_ctx_t *ctx2 = ovs_ctx_new(ctx_attr);
@@ -218,9 +219,9 @@ TEST_F(NetworkServerTest, create_write_read_destroy)
     ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
               ovs_ctx_attr_set_transport(ctx_attr,
-                                         "tcp",
-                                         "127.0.0.1",
-                                         21321));
+                                         FileSystemTestSetup::edge_transport().c_str(),
+                                         FileSystemTestSetup::address().c_str(),
+                                         FileSystemTestSetup::local_edge_port()));
     ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx != nullptr);
     EXPECT_EQ(0,
@@ -331,9 +332,9 @@ TEST_F(NetworkServerTest, completion)
     ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
               ovs_ctx_attr_set_transport(ctx_attr,
-                                         "tcp",
-                                         "127.0.0.1",
-                                         21321));
+                                         FileSystemTestSetup::edge_transport().c_str(),
+                                         FileSystemTestSetup::address().c_str(),
+                                         FileSystemTestSetup::local_edge_port()));
     ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx != nullptr);
     EXPECT_EQ(0,
@@ -457,9 +458,9 @@ TEST_F(NetworkServerTest, stat)
     ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
               ovs_ctx_attr_set_transport(ctx_attr,
-                                         "tcp",
-                                         "127.0.0.1",
-                                         21321));
+                                         FileSystemTestSetup::edge_transport().c_str(),
+                                         FileSystemTestSetup::address().c_str(),
+                                         FileSystemTestSetup::local_edge_port()));
     ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx != nullptr);
     EXPECT_EQ(ovs_create_volume(ctx,
@@ -494,9 +495,9 @@ TEST_F(NetworkServerTest, list_volumes)
     ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
               ovs_ctx_attr_set_transport(ctx_attr,
-                                         "tcp",
-                                         "127.0.0.1",
-                                         21321));
+                                         FileSystemTestSetup::edge_transport().c_str(),
+                                         FileSystemTestSetup::address().c_str(),
+                                         FileSystemTestSetup::local_edge_port()));
     ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx != nullptr);
 
@@ -568,9 +569,9 @@ TEST_F(NetworkServerTest, completion_two_ctxs)
     ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
               ovs_ctx_attr_set_transport(ctx_attr,
-                                         "tcp",
-                                         "127.0.0.1",
-                                         21321));
+                                         FileSystemTestSetup::edge_transport().c_str(),
+                                         FileSystemTestSetup::address().c_str(),
+                                         FileSystemTestSetup::local_edge_port()));
     ovs_ctx_t *ctx1 = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx1 != nullptr);
     ovs_ctx_t *ctx2 = ovs_ctx_new(ctx_attr);
@@ -727,9 +728,9 @@ TEST_F(NetworkServerTest, write_flush_read)
     ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
               ovs_ctx_attr_set_transport(ctx_attr,
-                                         "tcp",
-                                         "127.0.0.1",
-                                         21321));
+                                         FileSystemTestSetup::edge_transport().c_str(),
+                                         FileSystemTestSetup::address().c_str(),
+                                         FileSystemTestSetup::local_edge_port()));
     ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx != nullptr);
     EXPECT_EQ(0,
@@ -788,9 +789,9 @@ TEST_F(NetworkServerTest, create_rollback_list_remove_snapshot)
     ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
               ovs_ctx_attr_set_transport(ctx_attr,
-                                         "tcp",
-                                         "127.0.0.1",
-                                         21321));
+                                         FileSystemTestSetup::edge_transport().c_str(),
+                                         FileSystemTestSetup::address().c_str(),
+                                         FileSystemTestSetup::local_edge_port()));
     ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx != nullptr);
     EXPECT_EQ(ovs_create_volume(ctx,
