@@ -18,6 +18,9 @@
 #include <libxio.h>
 
 #include <queue>
+#include <mutex>
+#include <condition_variable>
+#include <chrono>
 #include <boost/thread/lock_guard.hpp>
 #include <youtils/SpinLock.h>
 
@@ -28,9 +31,10 @@
 namespace volumedriverfs
 {
 
-MAKE_EXCEPTION(FailedCreateXioClient, fungi::IOException);
-MAKE_EXCEPTION(FailedCreateEventfd, fungi::IOException);
-MAKE_EXCEPTION(FailedRegisterEventHandler, fungi::IOException);
+MAKE_EXCEPTION(XioClientCreateException, fungi::IOException);
+MAKE_EXCEPTION(XioClientCreateEventfdException, fungi::IOException);
+MAKE_EXCEPTION(XioClientRegHandlerException, fungi::IOException);
+MAKE_EXCEPTION(XioClientQueueIsBusyException, fungi::IOException);
 
 extern void ovs_xio_aio_complete_request(void *request,
                                          ssize_t retval,
@@ -43,7 +47,7 @@ extern void ovs_xio_complete_request_control(void *request,
 class NetworkXioClient
 {
 public:
-    NetworkXioClient(const std::string& uri);
+    NetworkXioClient(const std::string& uri, const uint64_t qd);
 
     ~NetworkXioClient();
 
@@ -182,10 +186,20 @@ private:
     xio_session_ops ses_ops;
     bool disconnected;
 
+    uint64_t nr_req_queue;
+    std::mutex req_queue_lock;
+    std::condition_variable req_queue_cond;
+
     int evfd;
 
     void
     xio_run_loop_worker(void *arg);
+
+    void
+    req_queue_wait_until(xio_msg_s *xmsg);
+
+    void
+    req_queue_release();
 
     static xio_connection*
     create_connection_control(xio_context *ctx,
