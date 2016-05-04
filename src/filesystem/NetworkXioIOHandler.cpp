@@ -324,11 +324,11 @@ NetworkXioIOHandler::handle_list_volumes(NetworkXioRequest *req)
             {
                 try
                 {
-                    std::string volume(fs_.find_path(reg->volume_id).string());
-                    volume.erase(volume.rfind(fs_.vdisk_format().volume_suffix()));
-                    volume.erase(0, 1);
-                    total_size += volume.length() + 1;
-                    volumes.push_back(volume);
+                    std::string vol(fs_.find_path(reg->volume_id).string());
+                    vol.erase(vol.rfind(fs_.vdisk_format().volume_suffix()));
+                    vol.erase(0, 1);
+                    total_size += vol.length() + 1;
+                    volumes.push_back(vol);
                 }
                 catch (HierarchicalArakoon::DoesNotExistException&)
                 {
@@ -611,7 +611,8 @@ NetworkXioIOHandler::handle_is_snapshot_synced(NetworkXioRequest *req,
     }
     CATCH_STD_ALL_EWHAT({
         LOG_ERROR("Problem checking if snapshot '" << snap_name <<
-                  "' is synced for volume " << volume_name << " ,err:" << EWHAT);
+                  "' is synced for volume " << volume_name << " ,err:"
+                  << EWHAT);
         req->retval = -1;
         req->errval = EIO;
     });

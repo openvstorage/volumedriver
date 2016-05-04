@@ -220,11 +220,11 @@ NetworkXioServer::NetworkXioServer(FileSystem& fs,
     }
 
     int ret = xio_mempool_add_slab(xio_mpool,
-                               4096,
-                               0,
-                               queue_depth,
-                               32,
-                               0);
+                                   4096,
+                                   0,
+                                   queue_depth,
+                                   32,
+                                   0);
     if (ret < 0)
     {
         LOG_ERROR("cannot allocate 4KB slab");
