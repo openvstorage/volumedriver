@@ -47,6 +47,30 @@ public:
     NetworkXioServer&
     operator=(const NetworkXioServer&) = delete;
 
+    struct EventFD
+    {
+        EventFD()
+        {
+            evfd_ = eventfd(0, EFD_NONBLOCK);
+            if (evfd_ < 0)
+            {
+                LOG_FATAL("failed to create eventfd");
+                throw FailedCreateEventfd("failed to create eventfd");
+            }
+        }
+
+        ~EventFD()
+        {
+            if (evfd_ != -1)
+            {
+                close(evfd_);
+            }
+        }
+        operator int() const { return evfd_; }
+    private:
+        int evfd_;
+    };
+
     int
     on_request(xio_session *session,
                xio_msg *req,
@@ -83,6 +107,9 @@ public:
 
     void
     evfd_stop_loop(int fd, int events, void *data);
+
+    static void
+    xio_destroy_ctx_shutdown(xio_context *ctx);
 private:
     DECLARE_LOGGER("NetworkXioServer");
 
@@ -93,13 +120,13 @@ private:
     std::mutex mutex_;
     std::condition_variable cv_;
     bool stopped;
+    EventFD evfd;
 
     NetworkXioWorkQueuePtr wq_;
 
-    xio_context *ctx;
-    xio_server *server;
-    xio_mempool *xio_mpool;
-    int evfd;
+    std::shared_ptr<xio_context> ctx;
+    std::shared_ptr<xio_server> server;
+    std::shared_ptr<xio_mempool> xio_mpool;
 
     int
     create_session_connection(xio_session *session,
