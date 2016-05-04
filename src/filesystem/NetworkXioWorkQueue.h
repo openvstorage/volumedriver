@@ -47,11 +47,10 @@ public:
     , stopped(false)
     , evfd(evfd_)
     {
-        using namespace std;
-        int ret = create_workqueue_threads(thread::hardware_concurrency());
+        int ret = create_workqueue_threads(1);
         if (ret < 0)
         {
-            throw WorkQueueThreadsException("cannot create worker threads");
+            throw WorkQueueThreadsException("cannot create worker thread");
         }
     }
 
