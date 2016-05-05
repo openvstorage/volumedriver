@@ -402,13 +402,7 @@ NetworkXioClient::xio_send_open_request(const std::string& volname,
     xmsg->msg.opaque((uintptr_t)xmsg);
     xmsg->msg.volume_name(volname);
 
-    xmsg->s_msg = xmsg->msg.pack_msg();
-
-    memset(static_cast<void*>(&xmsg->xreq), 0, sizeof(xio_msg));
-
-    vmsg_sglist_set_nents(&xmsg->xreq.out, 0);
-    xmsg->xreq.out.header.iov_base = (void*)xmsg->s_msg.c_str();
-    xmsg->xreq.out.header.iov_len = xmsg->s_msg.length();
+    xio_msg_prepare(xmsg);
     req_queue_wait_until(xmsg);
     push_request(xmsg);
     xstop_loop();
@@ -427,13 +421,7 @@ NetworkXioClient::xio_send_read_request(void *buf,
     xmsg->msg.size(size_in_bytes);
     xmsg->msg.offset(offset_in_bytes);
 
-    xmsg->s_msg = xmsg->msg.pack_msg();
-
-    memset(static_cast<void*>(&xmsg->xreq), 0, sizeof(xio_msg));
-
-    vmsg_sglist_set_nents(&xmsg->xreq.out, 0);
-    xmsg->xreq.out.header.iov_base = (void*)xmsg->s_msg.c_str();
-    xmsg->xreq.out.header.iov_len = xmsg->s_msg.length();
+    xio_msg_prepare(xmsg);
 
     vmsg_sglist_set_nents(&xmsg->xreq.in, 1);
     xmsg->xreq.in.data_iov.sglist[0].iov_base = buf;
@@ -456,13 +444,9 @@ NetworkXioClient::xio_send_write_request(const void *buf,
     xmsg->msg.size(size_in_bytes);
     xmsg->msg.offset(offset_in_bytes);
 
-    xmsg->s_msg = xmsg->msg.pack_msg();
-
-    memset(static_cast<void*>(&xmsg->xreq), 0, sizeof(xio_msg));
+    xio_msg_prepare(xmsg);
 
     vmsg_sglist_set_nents(&xmsg->xreq.out, 1);
-    xmsg->xreq.out.header.iov_base = (void*)xmsg->s_msg.c_str();
-    xmsg->xreq.out.header.iov_len = xmsg->s_msg.length();
     xmsg->xreq.out.data_iov.sglist[0].iov_base = const_cast<void*>(buf);
     xmsg->xreq.out.data_iov.sglist[0].iov_len = size_in_bytes;
     req_queue_wait_until(xmsg);
@@ -478,13 +462,7 @@ NetworkXioClient::xio_send_flush_request(const void *opaque)
     xmsg->msg.opcode(NetworkXioMsgOpcode::FlushReq);
     xmsg->msg.opaque((uintptr_t)xmsg);
 
-    xmsg->s_msg = xmsg->msg.pack_msg();
-
-    memset(static_cast<void*>(&xmsg->xreq), 0, sizeof(xio_msg));
-
-    vmsg_sglist_set_nents(&xmsg->xreq.out, 0);
-    xmsg->xreq.out.header.iov_base = (void*)xmsg->s_msg.c_str();
-    xmsg->xreq.out.header.iov_len = xmsg->s_msg.length();
+    xio_msg_prepare(xmsg);
     req_queue_wait_until(xmsg);
     push_request(xmsg);
     xstop_loop();
@@ -498,13 +476,7 @@ NetworkXioClient::xio_send_close_request(const void *opaque)
     xmsg->msg.opcode(NetworkXioMsgOpcode::CloseReq);
     xmsg->msg.opaque((uintptr_t)xmsg);
 
-    xmsg->s_msg = xmsg->msg.pack_msg();
-
-    memset(static_cast<void*>(&xmsg->xreq), 0, sizeof(xio_msg));
-
-    vmsg_sglist_set_nents(&xmsg->xreq.out, 0);
-    xmsg->xreq.out.header.iov_base = (void*)xmsg->s_msg.c_str();
-    xmsg->xreq.out.header.iov_len = xmsg->s_msg.length();
+    xio_msg_prepare(xmsg);
     req_queue_wait_until(xmsg);
     push_request(xmsg);
     xstop_loop();
