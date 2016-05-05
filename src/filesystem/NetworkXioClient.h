@@ -32,7 +32,6 @@ namespace volumedriverfs
 {
 
 MAKE_EXCEPTION(XioClientCreateException, fungi::IOException);
-MAKE_EXCEPTION(XioClientCreateEventfdException, fungi::IOException);
 MAKE_EXCEPTION(XioClientRegHandlerException, fungi::IOException);
 MAKE_EXCEPTION(XioClientQueueIsBusyException, fungi::IOException);
 
@@ -169,9 +168,12 @@ public:
                            const std::string& volume_name,
                            const std::string& snap_name,
                            void *opaque);
+
+    static void
+    xio_destroy_ctx_shutdown(xio_context *ctx);
 private:
-    xio_context *ctx;
-    xio_session *session;
+    std::shared_ptr<xio_context> ctx;
+    std::shared_ptr<xio_session> session;
     xio_connection *conn;
     xio_session_params params;
     xio_connection_params cparams;
@@ -190,7 +192,7 @@ private:
     std::mutex req_queue_lock;
     std::condition_variable req_queue_cond;
 
-    int evfd;
+    EventFD evfd;
 
     void
     xio_run_loop_worker(void *arg);

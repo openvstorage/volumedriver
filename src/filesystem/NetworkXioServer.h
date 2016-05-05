@@ -47,30 +47,6 @@ public:
     NetworkXioServer&
     operator=(const NetworkXioServer&) = delete;
 
-    struct EventFD
-    {
-        EventFD()
-        {
-            evfd_ = eventfd(0, EFD_NONBLOCK);
-            if (evfd_ < 0)
-            {
-                LOG_FATAL("failed to create eventfd");
-                throw FailedCreateEventfd("failed to create eventfd");
-            }
-        }
-
-        ~EventFD()
-        {
-            if (evfd_ != -1)
-            {
-                close(evfd_);
-            }
-        }
-        operator int() const { return evfd_; }
-    private:
-        int evfd_;
-    };
-
     int
     on_request(xio_session *session,
                xio_msg *req,

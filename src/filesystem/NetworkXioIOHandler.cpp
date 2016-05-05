@@ -111,6 +111,8 @@ NetworkXioIOHandler::handle_read(NetworkXioRequest *req,
     int ret = xio_mempool_alloc(req->cd->mpool, size, &req->reg_mem);
     if (ret < 0)
     {
+        LOG_ERROR("cannot allocate requested buffer from mempool, size: "
+                  << size);
         ret = xio_mem_alloc(size, &req->reg_mem);
         if (ret < 0)
         {

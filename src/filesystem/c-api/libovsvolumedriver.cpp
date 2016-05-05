@@ -239,6 +239,11 @@ ovs_ctx_init(ovs_ctx_t *ctx,
                 std::make_shared<volumedriverfs::NetworkXioClient>(ctx->uri,
                         ctx->net_client_qdepth);
         }
+        catch (const std::bad_alloc&)
+        {
+            errno = ENOMEM;
+            return -1;
+        }
         catch (...)
         {
             errno = EIO;

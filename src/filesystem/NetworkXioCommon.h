@@ -22,6 +22,29 @@
 namespace volumedriverfs
 {
 
+struct EventFD
+{
+    EventFD()
+    {
+        evfd_ = eventfd(0, EFD_NONBLOCK);
+        if (evfd_ < 0)
+        {
+            throw std::runtime_error("failed to create eventfd");
+        }
+    }
+
+    ~EventFD()
+    {
+        if (evfd_ != -1)
+        {
+            close(evfd_);
+        }
+    }
+    operator int() const { return evfd_; }
+private:
+    int evfd_;
+};
+
 static inline int
 xeventfd_read(int fd)
 {

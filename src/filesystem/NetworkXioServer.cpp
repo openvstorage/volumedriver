@@ -148,7 +148,7 @@ NetworkXioServer::NetworkXioServer(FileSystem& fs,
                                                           -1),
                                        xio_destroy_ctx_shutdown);
 
-    if (ctx == NULL)
+    if (ctx == nullptr)
     {
         LOG_FATAL("failed to create XIO context");
         throw FailedCreateXioContext("failed to create XIO context");
@@ -170,7 +170,7 @@ NetworkXioServer::NetworkXioServer(FileSystem& fs,
                                                   0,
                                                   this),
                                          xio_unbind);
-    if (server == NULL)
+    if (server == nullptr)
     {
         LOG_FATAL("failed to bind XIO server to '" << uri << "'");
         throw FailedBindXioServer("failed to bind XIO server");
@@ -206,63 +206,42 @@ NetworkXioServer::NetworkXioServer(FileSystem& fs,
     xio_mpool = std::shared_ptr<xio_mempool>(
             xio_mempool_create(-1, XIO_MEMPOOL_FLAG_REG_MR),
             xio_mempool_destroy);
-    if (!xio_mpool)
+    if (xio_mpool == nullptr)
     {
         LOG_FATAL("failed to create XIO memory pool");
         xio_context_del_ev_handler(ctx.get(), evfd);
         throw FailedCreateXioMempool("failed to create XIO memory pool");
     }
-
-    int ret = xio_mempool_add_slab(xio_mpool.get(),
-                                   4096,
-                                   0,
-                                   queue_depth,
-                                   32,
-                                   0);
-    if (ret < 0)
-    {
-        LOG_ERROR("cannot allocate 4KB slab");
-    }
-    ret = xio_mempool_add_slab(xio_mpool.get(),
-                               32768,
-                               0,
-                               queue_depth,
-                               32,
-                               0);
-    if (ret < 0)
-    {
-        LOG_ERROR("cannot allocate 32KB slab");
-    }
-    ret = xio_mempool_add_slab(xio_mpool.get(),
-                               65536,
-                               0,
-                               queue_depth,
-                               32,
-                               0);
-    if (ret < 0)
-    {
-        LOG_ERROR("cannot allocate 64KB slab");
-    }
-    ret = xio_mempool_add_slab(xio_mpool.get(),
-                               131072,
-                               0,
-                               256,
-                               32,
-                               0);
-    if (ret < 0)
-    {
-        LOG_ERROR("cannot allocate 128KB slab");
-    }
-    ret = xio_mempool_add_slab(xio_mpool.get(),
-                               1048576,
-                               0,
-                               32,
-                               4,
-                               0);
-    if (ret < 0)
-    {
-        LOG_ERROR("cannot allocate 1MB slab");
-    }
+    (void) xio_mempool_add_slab(xio_mpool.get(),
+                                4096,
+                                0,
+                                queue_depth,
+                                32,
+                                0);
+    (void) xio_mempool_add_slab(xio_mpool.get(),
+                                32768,
+                                0,
+                                queue_depth,
+                                32,
+                                0);
+    (void) xio_mempool_add_slab(xio_mpool.get(),
+                                65536,
+                                0,
+                                queue_depth,
+                                32,
+                                0);
+    (void) xio_mempool_add_slab(xio_mpool.get(),
+                                131072,
+                                0,
+                                256,
+                                32,
+                                0);
+    (void) xio_mempool_add_slab(xio_mpool.get(),
+                                1048576,
+                                0,
+                                32,
+                                4,
+                                0);
 }
 
 void
