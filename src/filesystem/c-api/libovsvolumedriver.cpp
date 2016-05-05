@@ -116,6 +116,11 @@ ovs_ctx_attr_set_network_qdepth(ovs_ctx_attr_t *attr,
         errno = EINVAL;
         return -1;
     }
+    if (qdepth <= 0)
+    {
+        errno = EINVAL;
+        return -1;
+    }
     attr->network_qdepth = qdepth;
     return 0;
 }
@@ -238,18 +243,16 @@ ovs_ctx_init(ovs_ctx_t *ctx,
             ctx->net_client_ =
                 std::make_shared<volumedriverfs::NetworkXioClient>(ctx->uri,
                         ctx->net_client_qdepth);
+            return ovs_xio_open_volume(ctx, volume_name);
         }
         catch (const std::bad_alloc&)
         {
             errno = ENOMEM;
-            return -1;
         }
         catch (...)
         {
             errno = EIO;
-            return -1;
         }
-        return ovs_xio_open_volume(ctx, volume_name);
     }
     return -1;
 }
