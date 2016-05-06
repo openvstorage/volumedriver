@@ -346,6 +346,15 @@ NetworkXioIOHandler::handle_list_volumes(NetworkXioRequest *req)
         pack_msg(req);
         return;
     });
+
+    if (volumes.empty())
+    {
+        req->errval = 0;
+        req->retval = 0;
+        pack_msg(req);
+        return;
+    }
+
     int ret = xio_mem_alloc(total_size, &req->reg_mem);
     if (ret < 0)
     {
@@ -402,6 +411,15 @@ NetworkXioIOHandler::handle_list_snapshots(NetworkXioRequest *req,
         pack_msg(req);
         return;
     });
+
+    if (snaps.empty())
+    {
+        req->errval = 0;
+        req->retval = 0;
+        req->size = fs_.object_router().get_size(*volume_id);
+        pack_msg(req);
+        return;
+    }
 
     uint64_t total_size = 0;
     for (const auto& s: snaps)

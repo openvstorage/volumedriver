@@ -828,6 +828,7 @@ ovs_snapshot_list(ovs_ctx_t *ctx,
         break;
     }
 
+    errno = saved_errno;
     if (saved_errno)
     {
         tracepoint(openvstorage_libovsvolumedriver,
@@ -837,7 +838,6 @@ ovs_snapshot_list(ovs_ctx_t *ctx,
                    -1,
                    *max_snaps,
                    saved_errno);
-        errno = saved_errno;
         return -1;
     }
 
