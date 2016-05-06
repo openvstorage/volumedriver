@@ -111,6 +111,7 @@ NetworkXioClient::NetworkXioClient(const std::string& uri, const uint64_t qd)
     : uri_(uri)
     , stopping(false)
     , disconnected(false)
+    , disconnecting(false)
     , nr_req_queue(qd)
     , evfd(EventFD())
 {
@@ -285,7 +286,12 @@ NetworkXioClient::xio_run_loop_worker(void *arg)
     xio_disconnect(cli->conn);
     if (not disconnected)
     {
+        disconnecting = true;
         xio_context_run_loop(cli->ctx.get(), XIO_INFINITE);
+    }
+    else
+    {
+        xio_connection_destroy(cli->conn);
     }
     return;
 }
@@ -353,7 +359,10 @@ NetworkXioClient::on_session_event(xio_session *session __attribute__((unused)),
     switch (event_data->event)
     {
     case XIO_SESSION_CONNECTION_TEARDOWN_EVENT:
-        xio_connection_destroy(event_data->conn);
+        if (disconnecting)
+        {
+            xio_connection_destroy(event_data->conn);
+        }
         disconnected = true;
         break;
     case XIO_SESSION_TEARDOWN_EVENT:
