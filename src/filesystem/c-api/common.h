@@ -40,7 +40,7 @@ enum class TransportType
 struct ovs_context_attr_t
 {
     TransportType transport;
-    char *host;
+    std::string host;
     int port;
     uint64_t network_qdepth;
 };
@@ -49,6 +49,8 @@ struct ovs_buffer
 {
     void *buf;
     size_t size;
+    xio_reg_mem *mem;
+    bool from_mpool;
 };
 
 struct ovs_completion

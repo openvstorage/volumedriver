@@ -35,6 +35,8 @@
 #ifndef __CONTEXT_H
 #define __CONTEXT_H
 
+#include <boost/asio.hpp>
+
 #include "../ShmControlChannelProtocol.h"
 #include "../ShmClient.h"
 #include "../NetworkXioClient.h"
@@ -64,6 +66,35 @@ _is_volume_name_valid(const char *volume_name)
     {
         return true;
     }
+}
+
+static inline int
+_hostname_to_ip(const char *hostname, std::string& ip)
+{
+
+    try
+    {
+        boost::asio::io_service io_service;
+        boost::asio::ip::tcp::resolver resolver(io_service);
+        boost::asio::ip::tcp::resolver::query query(std::string(hostname), "");
+        for (boost::asio::ip::tcp::resolver::iterator i = resolver.resolve(query);
+                i != boost::asio::ip::tcp::resolver::iterator(); i++)
+        {
+            boost::asio::ip::tcp::endpoint ep = *i;
+            ip = ep.address().to_string();
+            return 0;
+        }
+        errno = EINVAL;
+    }
+    catch (const std::bad_alloc&)
+    {
+        errno = ENOMEM;
+    }
+    catch (...)
+    {
+        errno = EIO;
+    }
+    return -1;
 }
 
 static inline
