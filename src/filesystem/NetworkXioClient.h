@@ -87,6 +87,12 @@ public:
     void
     xio_send_flush_request(const void *opaque);
 
+    xio_reg_mem*
+    allocate(const uint64_t size);
+
+    void
+    deallocate(xio_reg_mem *reg_mem);
+
     int
     on_session_event(xio_session *session,
                      xio_session_event_data *event_data);
@@ -119,13 +125,13 @@ public:
 
     static void
     xio_create_volume(const std::string& uri,
-                      const std::string& volume_name,
+                      const char* volume_name,
                       size_t size,
                       void *opaque);
 
     static void
     xio_remove_volume(const std::string& uri,
-                      const std::string& volume_name,
+                      const char* volume_name,
                       void* opaque);
 
     static void
@@ -139,34 +145,34 @@ public:
 
     static void
     xio_list_snapshots(const std::string& uri,
-                       const std::string& volume_name,
+                       const char* volume_name,
                        std::vector<std::string>& snapshots,
                        uint64_t *size,
                        void *opaque);
 
     static void
     xio_create_snapshot(const std::string& uri,
-                        const std::string& volume_name,
-                        const std::string& snap_name,
+                        const char* volume_name,
+                        const char* snap_name,
                         int64_t timeout,
                         void *opaque);
 
     static void
     xio_delete_snapshot(const std::string& uri,
-                        const std::string& volume_name,
-                        const std::string& snap_name,
+                        const char* volume_name,
+                        const char* snap_name,
                         void *opaque);
 
     static void
     xio_rollback_snapshot(const std::string& uri,
-                          const std::string& volume_name,
-                          const std::string& snap_name,
+                          const char* volume_name,
+                          const char* snap_name,
                           void *opaque);
 
     static void
     xio_is_snapshot_synced(const std::string& uri,
-                           const std::string& volume_name,
-                           const std::string& snap_name,
+                           const char* volume_name,
+                           const char* snap_name,
                            void *opaque);
 
     static void
@@ -194,6 +200,8 @@ private:
     std::condition_variable req_queue_cond;
 
     EventFD evfd;
+
+    std::shared_ptr<xio_mempool> mpool;
 
     void
     xio_run_loop_worker(void *arg);

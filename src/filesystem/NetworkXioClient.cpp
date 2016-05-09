@@ -209,6 +209,32 @@ NetworkXioClient::NetworkXioClient(const std::string& uri, const uint64_t qd)
         xio_context_del_ev_handler(ctx.get(), evfd);
         throw XioClientCreateException("failed to create XIO worker thread");
     }
+    mpool = std::shared_ptr<xio_mempool>(
+            xio_mempool_create(-1, XIO_MEMPOOL_FLAG_REGULAR_PAGES_ALLOC),
+            xio_mempool_destroy);
+    if (mpool == nullptr)
+    {
+        xio_context_del_ev_handler(ctx.get(), evfd);
+        throw XioClientCreateException("failed to create XIO memory pool");
+    }
+    (void) xio_mempool_add_slab(mpool.get(),
+                                4096,
+                                0,
+                                queue_depth,
+                                32,
+                                0);
+    (void) xio_mempool_add_slab(mpool.get(),
+                                32768,
+                                0,
+                                32,
+                                32,
+                                0);
+    (void) xio_mempool_add_slab(mpool.get(),
+                                131072,
+                                0,
+                                8,
+                                32,
+                                0);
 }
 
 NetworkXioClient::~NetworkXioClient()
@@ -222,6 +248,26 @@ NetworkXioClient::~NetworkXioClient()
         xio_msg_s *req = pop_request();
         delete req;
     }
+}
+
+xio_reg_mem*
+NetworkXioClient::allocate(const uint64_t size)
+{
+    xio_reg_mem *mem = static_cast<xio_reg_mem*>(calloc(1,
+                                                        sizeof(xio_reg_mem)));
+    if (xio_mempool_alloc(mpool.get(), size, mem) < 0)
+    {
+        free(mem);
+        return NULL;
+    }
+    return mem;
+}
+
+void
+NetworkXioClient::deallocate(xio_reg_mem *mem)
+{
+    xio_mempool_free(mem);
+    free(mem);
 }
 
 void
@@ -566,7 +612,6 @@ NetworkXioClient::on_msg_error_control(xio_session *session ATTR_UNUSED,
     ovs_xio_complete_request_control(const_cast<void*>(xio_msg->opaque),
                                      -1,
                                      EIO);
-    delete xio_msg;
     return 0;
 }
 
@@ -751,7 +796,7 @@ NetworkXioClient::xio_msg_prepare(xio_msg_s *xmsg)
 
 void
 NetworkXioClient::xio_create_volume(const std::string& uri,
-                                    const std::string& volume_name,
+                                    const char* volume_name,
                                     size_t size,
                                     void *opaque)
 {
@@ -768,7 +813,7 @@ NetworkXioClient::xio_create_volume(const std::string& uri,
 
 void
 NetworkXioClient::xio_remove_volume(const std::string& uri,
-                                    const std::string& volume_name,
+                                    const char* volume_name,
                                     void *opaque)
 {
     auto xctl = std::make_unique<xio_ctl_s>();
@@ -811,7 +856,7 @@ NetworkXioClient::xio_list_volumes(const std::string& uri,
 
 void
 NetworkXioClient::xio_list_snapshots(const std::string& uri,
-                                     const std::string& volume_name,
+                                     const char* volume_name,
                                      std::vector<std::string>& snapshots,
                                      uint64_t *size,
                                      void *opaque)
@@ -830,8 +875,8 @@ NetworkXioClient::xio_list_snapshots(const std::string& uri,
 
 void
 NetworkXioClient::xio_create_snapshot(const std::string& uri,
-                                      const std::string& volume_name,
-                                      const std::string& snap_name,
+                                      const char* volume_name,
+                                      const char* snap_name,
                                       int64_t timeout,
                                       void *opaque)
 {
@@ -849,8 +894,8 @@ NetworkXioClient::xio_create_snapshot(const std::string& uri,
 
 void
 NetworkXioClient::xio_delete_snapshot(const std::string& uri,
-                                      const std::string& volume_name,
-                                      const std::string& snap_name,
+                                      const char* volume_name,
+                                      const char* snap_name,
                                       void *opaque)
 {
     auto xctl = std::make_unique<xio_ctl_s>();
@@ -866,8 +911,8 @@ NetworkXioClient::xio_delete_snapshot(const std::string& uri,
 
 void
 NetworkXioClient::xio_rollback_snapshot(const std::string& uri,
-                                        const std::string& volume_name,
-                                        const std::string& snap_name,
+                                        const char* volume_name,
+                                        const char* snap_name,
                                         void *opaque)
 {
     auto xctl = std::make_unique<xio_ctl_s>();
@@ -883,8 +928,8 @@ NetworkXioClient::xio_rollback_snapshot(const std::string& uri,
 
 void
 NetworkXioClient::xio_is_snapshot_synced(const std::string& uri,
-                                         const std::string& volume_name,
-                                         const std::string& snap_name,
+                                         const char* volume_name,
+                                         const char* snap_name,
                                          void *opaque)
 {
     auto xctl = std::make_unique<xio_ctl_s>();
