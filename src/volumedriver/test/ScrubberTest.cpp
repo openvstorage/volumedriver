@@ -199,19 +199,38 @@ TEST_P(ScrubberTest, DeletedSnap2)
     persistXVals(v1->getName());
     waitForThisBackendWrite(*v1);
 
+    auto list_objs([&]
+                   {
+                       std::list<std::string> l;
+                       v1->getBackendInterface()->listObjects(l);
+                       return l;
+                   });
+
+    const std::list<std::string> objs_before(list_objs());
 
     scrubbing::ScrubReply result;
 
     ASSERT_NO_THROW(result = do_scrub(scrub_work_units.front()));
 
+    std::list<std::string> objs_scrubbed;
+    EXPECT_LT(objs_before.size(),
+              list_objs().size());
+
     v1->deleteSnapshot(snap1);
     {
-        fungi::ScopedLock l(api::getManagementMutex());
         EXPECT_THROW(apply_scrubbing(vid,
                                      result),
                      fungi::IOException);
     }
     waitForThisBackendWrite(*v1);
+
+    EXPECT_TRUE(api::backend_garbage_collector()->barrier(v1->getNamespace()).get());
+
+    const std::list<std::string> objs_after(list_objs());
+    EXPECT_EQ(objs_before.size(),
+              objs_after.size());
+
+    EXPECT_TRUE(objs_before == objs_after);
 }
 
 TEST_P(ScrubberTest, GetWork)
