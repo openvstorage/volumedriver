@@ -115,8 +115,16 @@ public:
 
                    if (ec)
                    {
-                       LOG_ERROR(this << ": async read returned error " <<
-                                 ec.message());
+                       if (ec == boost::asio::error::eof)
+                       {
+                           LOG_INFO(this << ": " << ec.message() <<
+                                    " - other end of connection was closed?");
+                       }
+                       else
+                       {
+                           LOG_ERROR(this << ": async read returned error " <<
+                                     ec.message());
+                       }
                        throw boost::system::system_error(ec);
                    }
 
