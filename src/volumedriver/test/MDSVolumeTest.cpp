@@ -1402,6 +1402,47 @@ TEST_P(MDSVolumeTest, local_restart_of_pristine_clone_with_empty_mds)
                 pattern);
 }
 
+// cf. OVS-4475:
+// there used to be a bug when a snapshot was created between two catch up attempts
+// of a slave, leading to a full rebuild instead of a cheaper incremental update.
+TEST_P(MDSVolumeTest, incremental_update_and_snapshots)
+{
+    const auto wrns(make_random_namespace());
+    SharedVolumePtr v = make_volume(*wrns);
+
+    ASSERT_LE(2,
+              node_configs().size());
+
+    const MDSNodeConfig cfg(node_configs()[1]);
+    const std::string ns(wrns->ns().str());
+    mds::ClientNG::Ptr client(mds::ClientNG::create(cfg));
+    mds::TableInterfacePtr table(client->open(ns));
+    EXPECT_TRUE(mds::Role::Slave == table->get_role());
+
+    writeToVolume(*v,
+                  v->getClusterMultiplier() * 2,
+                  v->getClusterSize(),
+                  "one");
+
+    v->scheduleBackendSync();
+    waitForThisBackendWrite(*v);
+
+    EXPECT_EQ(1,
+              table->catch_up(DryRun::F));
+
+    writeToVolume(*v,
+                  v->getClusterMultiplier() * 2,
+                  v->getClusterSize(),
+                  "two");
+
+    const SnapshotName snap("snap");
+    v->createSnapshot(snap);
+    waitForThisBackendWrite(*v);
+
+    EXPECT_EQ(1,
+              table->catch_up(DryRun::F));
+}
+
 namespace
 {
 
