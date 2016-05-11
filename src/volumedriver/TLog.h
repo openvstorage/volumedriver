@@ -175,7 +175,7 @@ public:
     writtenToBackend() const;
 
     TLogs
-    tlogsOnDss();
+    tlogsOnBackend();
 
     boost::optional<TLogId>
     checkAndGetAllTLogsWrittenToBackendAndRemoveLaterOnes(OrderedTLogIds&);

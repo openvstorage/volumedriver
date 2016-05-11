@@ -58,7 +58,7 @@ TLog::writtenToBackend() const
 }
 
 TLogs
-TLogs::tlogsOnDss()
+TLogs::tlogsOnBackend()
 {
     TLogs ret;
 

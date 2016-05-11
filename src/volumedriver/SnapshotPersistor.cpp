@@ -656,7 +656,7 @@ SnapshotPersistor::trimToBackend()
         LOG_TRACE(i->getName() << ": in backend: " << i->inBackend());
         if (not i->inBackend())
         {
-            current = i->tlogsOnDss();
+            current = i->tlogsOnBackend();
             snapshots.erase(i, snapshots.end());
             ready = true;
             break;
@@ -665,7 +665,7 @@ SnapshotPersistor::trimToBackend()
 
     if (not ready)
     {
-        current = current.tlogsOnDss();
+        current = current.tlogsOnBackend();
         ready = true;
     }
 
