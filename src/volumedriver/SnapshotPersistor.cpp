@@ -353,7 +353,7 @@ SnapshotPersistor::getTLogsInSnapshot(const SnapshotNum num,
 void
 SnapshotPersistor::getCurrentTLogs(OrderedTLogIds& outTLogs) const
 {
-    current.getTLogIds(outTLogs);
+    current.getOrderedTLogIds(outTLogs);
 }
 
 TLogId
@@ -458,7 +458,7 @@ SnapshotPersistor::getTLogsAfterSnapshot(SnapshotNum num,
 {
     snapshots.getTLogsAfterSnapshot(num,
                                     out);
-    current.getTLogIds(out);
+    current.getOrderedTLogIds(out);
 }
 
 void
