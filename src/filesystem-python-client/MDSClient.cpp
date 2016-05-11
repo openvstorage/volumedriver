@@ -35,12 +35,43 @@ namespace volumedriverfs
 namespace python
 {
 
+namespace
+{
+
+template<typename T>
+std::string
+repr(T* t)
+{
+    return boost::lexical_cast<std::string>(*t);
+}
+
+}
+
 void
 MDSClient::registerize()
 {
     bpy::enum_<mds::Role>("Role")
         .value("Master", mds::Role::Master)
         .value("Slave", mds::Role::Slave)
+        ;
+
+    bpy::class_<mds::TableCounters>("MDSTableCounters",
+                                    "MDS TableCounters",
+                                    bpy::no_init)
+        .def("__eq__",
+             &mds::TableCounters::operator==)
+        .def("__repr__",
+             &repr<mds::TableCounters>)
+        .def("__str__",
+             &repr<mds::TableCounters>)
+#define DEF_READONLY(name)                              \
+        .def_readonly(#name, &mds::TableCounters::name)
+
+        DEF_READONLY(total_tlogs_read)
+        DEF_READONLY(incremental_updates)
+        DEF_READONLY(full_rebuilds)
+
+#undef DEF_READONLY
         ;
 
     bpy::class_<mds::PythonClient>("MDSClient",
@@ -100,6 +131,14 @@ MDSClient::registerize()
              "@param: nspace: string, namespace name\n"
              "@param: dry_run: boolean, whether to actually apply the necessary changes\n"
              "@returns: uint, the number of TLogs that had/have to be applied\n")
+        .def("get_table_counters",
+             &mds::PythonClient::get_table_counters,
+             (bpy::args("nspace"),
+              bpy::args("reset")),
+             "Retrieve MDSTableCounters for the given namespace.\n"
+             "@param: nspace: string, namespace name\n"
+             "@param: reset: boolean, whether to reset the counters after retrieval\n"
+             "@returns: MDSTableCounters\n")
         ;
 }
 
