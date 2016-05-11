@@ -20,6 +20,7 @@
 #include <memory>
 
 #include <boost/chrono.hpp>
+#include <boost/thread/mutex.hpp>
 #include <boost/thread/shared_mutex.hpp>
 
 #include <youtils/IOException.h>
@@ -58,6 +59,8 @@ namespace metadata_server
 //   * when being forced to catch up
 //   .
 //   All other calls use it in shared mode.
+//
+//   The counters are protected by a plain mutex which needs to be grabbed *after* the shared one.
 class Table
     : public TableInterface
 {
@@ -88,10 +91,10 @@ public:
 
     virtual void
     multiset(const TableInterface::Records& records,
-             Barrier barrier) override final;
+             Barrier) override final;
 
     virtual TableInterface::MaybeStrings
-    multiget(const TableInterface::Keys& keys) override final;
+    multiget(const TableInterface::Keys&) override final;
 
     virtual Role
     get_role() const override final;
@@ -109,7 +112,10 @@ public:
     clear() override final;
 
     virtual size_t
-    catch_up(volumedriver::DryRun dry_run) override final;
+    catch_up(volumedriver::DryRun) override final;
+
+    virtual TableCounters
+    get_counters(volumedriver::Reset) override final;
 
     void
     stop();
@@ -132,6 +138,9 @@ private:
 
     volumedriver::NSIDMap nsid_map_;
 
+    boost::mutex counters_lock_;
+    TableCounters counters_;
+
     void
     start_(const std::chrono::milliseconds& ramp_up);
 
@@ -149,6 +158,9 @@ private:
 
     void
     prevent_updates_on_slaves_(const char* desc);
+
+    void
+    update_counters_(const volumedriver::MetaDataStoreBuilder::Result&);
 };
 
 typedef std::shared_ptr<Table> TablePtr;

@@ -583,6 +583,20 @@ protected:
         }
     }
 
+    void
+    check_counters(mds::TableInterface& table,
+                   uint64_t tlogs,
+                   uint64_t incr,
+                   uint64_t full,
+                   Reset reset)
+    {
+        const mds::TableCounters c(table.get_counters(reset));
+
+        EXPECT_EQ(tlogs, c.total_tlogs_read);
+        EXPECT_EQ(incr, c.incremental_updates);
+        EXPECT_EQ(full, c.full_rebuilds);
+    }
+
     std::unique_ptr<mds::Manager> mds_manager_;
 };
 
@@ -1419,6 +1433,12 @@ TEST_P(MDSVolumeTest, incremental_update_and_snapshots)
     mds::TableInterfacePtr table(client->open(ns));
     EXPECT_TRUE(mds::Role::Slave == table->get_role());
 
+    check_counters(*table,
+                   0,
+                   0,
+                   0,
+                   Reset::F);
+
     writeToVolume(*v,
                   v->getClusterMultiplier() * 2,
                   v->getClusterSize(),
@@ -1429,6 +1449,12 @@ TEST_P(MDSVolumeTest, incremental_update_and_snapshots)
 
     EXPECT_EQ(1,
               table->catch_up(DryRun::F));
+
+    check_counters(*table,
+                   1,
+                   1,
+                   0,
+                   Reset::F);
 
     writeToVolume(*v,
                   v->getClusterMultiplier() * 2,
@@ -1441,6 +1467,101 @@ TEST_P(MDSVolumeTest, incremental_update_and_snapshots)
 
     EXPECT_EQ(1,
               table->catch_up(DryRun::F));
+
+    check_counters(*table,
+                   2,
+                   2,
+                   0,
+                   Reset::F);
+}
+
+TEST_P(MDSVolumeTest, table_counters)
+{
+    const auto wrns(make_random_namespace());
+    SharedVolumePtr v = make_volume(*wrns);
+
+    ASSERT_LE(2,
+              node_configs().size());
+
+    mds::ClientNG::Ptr mclient(mds::ClientNG::create(node_configs()[0]));
+    mds::TableInterfacePtr mtable(mclient->open(wrns->ns().str()));
+    EXPECT_TRUE(mds::Role::Master == mtable->get_role());
+
+    check_counters(*mtable,
+                   0,
+                   0,
+                   0,
+                   Reset::F);
+
+    mds::ClientNG::Ptr sclient(mds::ClientNG::create(node_configs()[1]));
+    mds::TableInterfacePtr stable(sclient->open(wrns->ns().str()));
+    EXPECT_TRUE(mds::Role::Slave == stable->get_role());
+
+    check_counters(*stable,
+                   0,
+                   0,
+                   0,
+                   Reset::F);
+
+    writeToVolume(*v,
+                  v->getClusterMultiplier() * 2,
+                  v->getClusterSize(),
+                  "one");
+
+    const SnapshotName snap("snap");
+    v->createSnapshot(snap);
+
+    waitForThisBackendWrite(*v);
+
+    check_counters(*stable,
+                   0,
+                   0,
+                   0,
+                   Reset::F);
+
+    EXPECT_EQ(1,
+              stable->catch_up(DryRun::F));
+
+    check_counters(*stable,
+                   1,
+                   1,
+                   0,
+                   Reset::F);
+
+    writeToVolume(*v,
+                  v->getClusterMultiplier() * 2,
+                  v->getClusterSize(),
+                  "two");
+
+    v->scheduleBackendSync();
+    waitForThisBackendWrite(*v);
+
+    EXPECT_EQ(1,
+              stable->catch_up(DryRun::F));
+
+    check_counters(*stable,
+                   2,
+                   2,
+                   0,
+                   Reset::T);
+
+    v->restoreSnapshot(snap);
+    waitForThisBackendWrite(*v);
+
+    EXPECT_EQ(1,
+              stable->catch_up(DryRun::F));
+
+    check_counters(*stable,
+                   1,
+                   0,
+                   1,
+                   Reset::F);
+
+    check_counters(*mtable,
+                   0,
+                   0,
+                   0,
+                   Reset::F);
 }
 
 namespace

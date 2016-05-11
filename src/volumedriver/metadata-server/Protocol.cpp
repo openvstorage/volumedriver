@@ -50,6 +50,7 @@ req_hdr_reminder(RequestHeader::Type t)
         C(Ping);
         C(ApplyRelocationLogs);
         C(CatchUp);
+        C(GetTableCounters);
         // If the compiler yells at you that you've forgotten dealing with an enum
         // value chances are that it's also missing from the translations map below.
         // If so add it RIGHT NOW.
@@ -104,6 +105,7 @@ operator<<(std::ostream& os,
         P(Ping),
         P(ApplyRelocationLogs),
         P(CatchUp),
+        P(GetTableCounters),
     };
 
 #undef P

@@ -195,10 +195,18 @@ RocksTable::clear()
     column_family_.reset(h);
 }
 
+
+// XXX: these two could suggest that RocksTable implementing TableInterface might not be a good idea after all?
 size_t
 RocksTable::catch_up(vd::DryRun)
 {
     VERIFY(0 == "RocksTable::catch_up shouldn't be invoked");
+}
+
+TableCounters
+RocksTable::get_counters(vd::Reset)
+{
+    VERIFY(0 == "RocksTable::get_table_counters shouldn't be invoked");
 }
 
 }

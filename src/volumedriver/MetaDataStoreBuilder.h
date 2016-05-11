@@ -47,6 +47,7 @@ public:
     {
         NSIDMap nsid_map;
         size_t num_tlogs = 0;
+        bool full_rebuild = false;
     };
 
     // DryRun: don't apply to mdstore
@@ -66,7 +67,8 @@ private:
     update_metadata_store_(const boost::optional<youtils::UUID>& from,
                            const boost::optional<youtils::UUID>& to,
                            CheckScrubId check_scrub_id,
-                           DryRun dry_run);
+                           DryRun dry_run,
+                           bool full_rebuild);
 };
 
 }

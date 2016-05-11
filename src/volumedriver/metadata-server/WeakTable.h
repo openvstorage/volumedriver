@@ -89,6 +89,12 @@ public:
         return lock_()->catch_up(dry_run);
     }
 
+    virtual TableCounters
+    get_counters(volumedriver::Reset reset) override final
+    {
+        return lock_()->get_counters(reset);
+    }
+
     MAKE_EXCEPTION(Exception,
                    fungi::IOException);
 

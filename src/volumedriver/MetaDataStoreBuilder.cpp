@@ -56,7 +56,8 @@ MetaDataStoreBuilder::operator()(const boost::optional<yt::UUID>& end_cork,
         return update_metadata_store_(start_cork,
                                       end_cork,
                                       check_scrub_id,
-                                      dry_run);
+                                      dry_run,
+                                      false);
     }
     catch (CorkNotFoundException& e)
     {
@@ -69,19 +70,21 @@ MetaDataStoreBuilder::operator()(const boost::optional<yt::UUID>& end_cork,
     return update_metadata_store_(boost::none,
                                   end_cork,
                                   check_scrub_id,
-                                  dry_run);
+                                  dry_run,
+                                  true);
 }
 
 MetaDataStoreBuilder::Result
 MetaDataStoreBuilder::update_metadata_store_(const boost::optional<yt::UUID>& from,
                                              const boost::optional<yt::UUID>& to,
                                              CheckScrubId check_scrub_id,
-                                             DryRun dry_run)
+                                             DryRun dry_run,
+                                             bool full_rebuild)
 {
     LOG_INFO(bi_->getNS() <<
              ": bringing MetaDataStore in sync with backend, requested interval (" <<
              from << ", " << to << "], check scrub ID: " << check_scrub_id <<
-             ", dry run:" << dry_run);
+             ", dry run:" << dry_run << ", full rebuild: " << full_rebuild);
 
     // This has a lot in common with the mdstore rebuilding code in
     // volumedriver::VolumeFactory - see if this can be unified.
@@ -95,6 +98,8 @@ MetaDataStoreBuilder::update_metadata_store_(const boost::optional<yt::UUID>& fr
     const MaybeScrubId md_scrub_id(mdstore_.scrub_id());
 
     Result res;
+    res.full_rebuild = full_rebuild;
+
     boost::optional<yt::UUID> start_cork(from);
 
     if (check_scrub_id == CheckScrubId::T)
