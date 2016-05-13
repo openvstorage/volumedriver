@@ -197,6 +197,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(network_uri,
                                       ShowDocumentation::T,
                                       "tcp://127.0.0.1:21321"s);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(network_snd_rcv_queue_depth,
+                                      network_interface_component_name,
+                                      "network_snd_rcv_queue_depth",
+                                      "Maximum tx/rx queued messages",
+                                      ShowDocumentation::T,
+                                      2048);
+
 // FileSystem:
 const char filesystem_component_name[] = "filesystem";
 

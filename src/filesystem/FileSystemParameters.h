@@ -161,6 +161,9 @@ extern const char network_interface_component_name[];
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(network_uri,
                                        std::string);
 
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(network_snd_rcv_queue_depth,
+                                       size_t);
+
 // EventPublisher:
 extern const char events_component_name[];
 
