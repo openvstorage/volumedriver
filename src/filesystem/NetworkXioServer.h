@@ -38,7 +38,8 @@ class NetworkXioServer
 {
 public:
     NetworkXioServer(FileSystem& fs,
-                     const std::string& uri);
+                     const std::string& uri,
+                     size_t snd_rcv_queue_depth);
 
     ~NetworkXioServer();
 

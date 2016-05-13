@@ -106,7 +106,8 @@ static_evfd_stop_loop(int fd, int events, void *data)
 }
 
 NetworkXioServer::NetworkXioServer(FileSystem& fs,
-                                   const std::string& uri)
+                                   const std::string& uri,
+                                   size_t snd_rcv_queue_depth)
     : fs_(fs)
     , uri_(uri)
     , stopping(false)
@@ -114,7 +115,7 @@ NetworkXioServer::NetworkXioServer(FileSystem& fs,
     , evfd(EventFD())
 {
     int xopt = 2;
-    int queue_depth = 2048;
+    int queue_depth = snd_rcv_queue_depth;
 
     xio_init();
 

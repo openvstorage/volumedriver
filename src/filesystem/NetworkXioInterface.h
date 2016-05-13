@@ -36,9 +36,11 @@ public:
     : youtils::VolumeDriverComponent(registerizle,
                                      pt)
     , network_uri(pt)
+    , network_snd_rcv_queue_depth(pt)
     , fs_(fs)
     , xio_server_(fs_,
-                  uri())
+                  uri(),
+                  snd_rcv_queue_depth())
     {}
 
     ~NetworkXioInterface()
@@ -77,10 +79,17 @@ public:
     {
         return network_uri.value();
     }
+
+    size_t
+    snd_rcv_queue_depth() const
+    {
+        return network_snd_rcv_queue_depth.value();
+    }
 private:
     DECLARE_LOGGER("NetworkXioInterface");
 
     DECLARE_PARAMETER(network_uri);
+    DECLARE_PARAMETER(network_snd_rcv_queue_depth);
 
     FileSystem& fs_;
     NetworkXioServer xio_server_;
