@@ -878,7 +878,7 @@ TEST_F(VolumeTest, uuid_clone_intermediate_dirs)
     verify_presence(clone_id);
 
     const vfs::FrontendPath vpath(clone_path_to_volume_path(clone_path));
-    const vfs::ObjectId& vpath_id(*find_object(vpath));
+    const vfs::ObjectId vpath_id(*find_object(vpath));
     check_stat(vpath_id, vsize);
 }
 
