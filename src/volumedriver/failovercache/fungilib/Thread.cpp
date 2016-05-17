@@ -100,7 +100,7 @@ void ManagedRunnable::setFailure_(void) {
 }
 
 void *thread_start_util_(void *a) {
-    std::auto_ptr<fungi::Runnable> r(static_cast<fungi::Runnable *>(a));
+    std::unique_ptr<fungi::Runnable> r(static_cast<fungi::Runnable *>(a));
 #ifdef PR_SET_NAME
     prctl(PR_SET_NAME, r->getName(), 0, 0, 0);
 #endif
@@ -234,8 +234,8 @@ void Thread::start() {
 	// TODO: make sure Thread::start() never throws
     ManagedRunnable* wrapper = new ManagedRunnable(*runnable_, detached_);
 
-    // how does the auto_ptr help here in any way ????
-    std::auto_ptr<ManagedRunnable> autoWrapper(wrapper);
+    // how does the unique_ptr help here in any way ????
+    std::unique_ptr<ManagedRunnable> autoWrapper(wrapper);
 
     wrapper = NULL;/// Drop the explicit reference to the runnable wrapper.
 

@@ -45,8 +45,6 @@ namespace fungi {
 
         bool compare(const ByteArray &) const;
     };
-
-    typedef std::auto_ptr<ByteArray> ByteArray_aptr;
 }
 
 #endif	/* _BYTEARRAY_H */
