@@ -15,9 +15,8 @@ The Open vStorage Volumedriver is written in C++.
 
 License
 -------
-Apache 2.0 (see LICENSE) unless noted otherwise in the upstream components that
-are part of this source tree (cppzmq, etcdcpp, msgpack-c, procon, pstreams,
-xmlrpc++).
+GNU AGPLv3 (see LICENSE.txt) unless noted otherwise in the upstream components that
+are part of this source tree (cppzmq, etcdcpp, msgpack-c, procon, pstreams, xmlrpc++).
 
 Building
 --------

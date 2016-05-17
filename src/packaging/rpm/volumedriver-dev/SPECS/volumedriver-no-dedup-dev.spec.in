@@ -2,7 +2,7 @@ Summary: Volumedriver Development Files
 Name: volumedriver-no-dedup-dev
 Version: @VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@.@VD_EXTRA_VERSION@
 Release: 1
-License: Copyright (C) 2013 iNuron NV, Licensed under the Apache License Version 2.0
+License: Copyright (C) 2013 iNuron NV, Licensed under the GNU AGPLv3
 Requires: volumedriver-no-dedup-server = @VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@.@VD_EXTRA_VERSION@-1
 Conflicts: volumedriver-dev
 URL: http://www.openvstorage.com
