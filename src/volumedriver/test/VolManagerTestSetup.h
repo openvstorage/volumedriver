@@ -469,19 +469,13 @@ public:
     SharedVolumePtr
     createClone(const backend::BackendTestSetup::WithRandomNamespace& wrns,
                 const backend::Namespace& parentVolNamespace,
-                const boost::optional<std::string>& snapshot);
+                const boost::optional<SnapshotName>& snapshot);
 
     SharedVolumePtr
     createClone(const std::string& cloneName,
                 const backend::Namespace& newNamespace,
                 const backend::Namespace& parentVolNamespace,
-                const boost::optional<std::string>& snapshot);
-
-    SharedVolumePtr
-    createClone(const std::string& cloneName,
-                const backend::Namespace& newNamespace,
-                const backend::Namespace& parentVolNamespace,
-                const std::string& snapshot);
+                const boost::optional<SnapshotName>& snapshot);
 
     void
     fill_backend_cache(const backend::Namespace& ns);

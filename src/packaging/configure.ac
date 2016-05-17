@@ -11,6 +11,8 @@ AM_PATH_PYTHON([2.6])
 is_ubuntu=$(grep -qi ubuntu /etc/os-release; echo $?)
 AM_CONDITIONAL([UBUNTU], [test $is_ubuntu -eq 0])
 
+AM_CONDITIONAL([REDHAT], [test -x /usr/bin/rpmbuild])
+
 AC_CONFIG_SUBDIRS([debian rpm])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

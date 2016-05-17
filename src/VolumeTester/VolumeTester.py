@@ -15,8 +15,8 @@
 
 import os
 import subprocess
-from volumedriver.base import env
 import shutil
+from volumedriver.base import env
 
 logger = env.getSublogger(__name__)
 

@@ -22,6 +22,7 @@
 #include <boost/serialization/export.hpp>
 #include <boost/serialization/utility.hpp>
 #include <boost/serialization/nvp.hpp>
+#include <boost/version.hpp>
 
 #include <youtils/InitializedParam.h>
 #include <youtils/Serialization.h>
@@ -86,10 +87,18 @@ private:
 
     friend class boost::serialization::access;
 
+
+#if BOOST_VERSION == 105800
+public:
+#endif
     // only used for deserialization
     MDSNodeConfig()
         : port_(0)
     {}
+
+#if BOOST_VERSION == 105800
+private:
+#endif
 
     template<typename A>
     void

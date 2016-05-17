@@ -26,7 +26,7 @@ ToolCut_la_LIBADD = \
 	../../backend/libbackend.la \
 	../../youtils/libyoutils.la \
 	$(BUILDTOOLS_LIBS) \
-	-lpthread -lrt -lm
+	-lpthread -lrt -lm -lgcc
 
 ToolCut_la_CPPFLAGS = -I@abs_top_srcdir@/..
 

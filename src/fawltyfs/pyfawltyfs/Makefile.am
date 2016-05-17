@@ -17,7 +17,7 @@ PyFawltyFS_la_LIBADD = \
 	../../youtils/libyoutils.la \
 	-lfuse \
 	$(BUILDTOOLS_LIBS) \
-	-lpthread -lrt -lm
+	-lpthread -lrt -lm -lgcc
 
 PyFawltyFS_la_CPPFLAGS = -I@abs_top_srcdir@/..
 

@@ -146,7 +146,7 @@ struct this_export_params {
     uint16_t ovs_discovery_port;
 };
 
-static struct config_item export_params[4];
+static struct config_item export_params[5];
 static struct config_block export_param;
 
 /* @brief Initialize the configuration

@@ -1030,7 +1030,7 @@ FileSystem::open_(const std::string& path,
     ::close(res);
 
     fi->direct_io = useDirectIO_(path);
-    LOG_TRACE(path << ": fuse direct I/O: " << fi->direct_io);
+    LOG_TRACE(path << ": fuse direct I/O: " << static_cast<unsigned int>(fi->direct_io));
 
     return 0;
 }

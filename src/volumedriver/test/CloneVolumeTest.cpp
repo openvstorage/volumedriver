@@ -84,7 +84,8 @@ TEST_P(CloneVolumeTest, test1)
                   4096,
                   "a");
 
-    v->createSnapshot(SnapshotName("snap1"));
+    const SnapshotName snap1("snap1");
+    v->createSnapshot(snap1);
     checkCurrentBackendSize(*v);
     waitForThisBackendWrite(*v);
 
@@ -97,14 +98,15 @@ TEST_P(CloneVolumeTest, test1)
     c1 = createClone(c1ID,
                      ns2,
                      ns1,
-                     "snap1");
+                     snap1);
     checkCurrentBackendSize(*c1);
     writeToVolume(*c1,
                   4096,
                   4096,
                   "x");
 
-    c1->createSnapshot(SnapshotName("snap2"));
+    const SnapshotName snap2("snap2");
+    c1->createSnapshot(snap2);
 
     waitForThisBackendWrite(*c1);
     writeToVolume(*c1,
@@ -120,7 +122,7 @@ TEST_P(CloneVolumeTest, test1)
 
     waitForThisBackendWrite(*c1);
 
-    c1->restoreSnapshot(SnapshotName("snap2"));
+    c1->restoreSnapshot(snap2);
 
     checkVolume(*c1, 0, 4096, "a");
     checkVolume(*c1, 4096, 4096, "x");

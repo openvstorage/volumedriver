@@ -612,7 +612,8 @@ TEST_P(VolManagerRestartTest, clone1)
     writeToVolume(*v, 0, size, "xyz");
     checkVolume(*v, 0, size, "xyz");
 
-    v->createSnapshot(SnapshotName("first"));
+    const SnapshotName first("first");
+    v->createSnapshot(first);
     waitForThisBackendWrite(*v);
     waitForThisBackendWrite(*v);
     auto ns1_ptr = make_random_namespace();
@@ -621,8 +622,10 @@ TEST_P(VolManagerRestartTest, clone1)
     SharedVolumePtr clone = createClone("clone1",
                                 ns1,
                                 ns,
-                                "first");
-    clone->createSnapshot(SnapshotName("snap1"));
+                                first);
+
+    const SnapshotName snap1("snap1");
+    clone->createSnapshot(snap1);
 
     checkVolume(*v, 0, size, "xyz");
 
@@ -674,12 +677,16 @@ TEST_P(VolManagerRestartTest, test5)
     writeToVolume(*v, 0, size, "xyz");
     checkVolume(*v, 0, size, "xyz");
 
-    v->createSnapshot(SnapshotName("first"));
+    const SnapshotName first("first");
+    v->createSnapshot(first);
 
     writeToVolume(*v, 0, size, "abc");
     checkVolume(*v, 0, size, "abc");
     waitForThisBackendWrite(*v);
-    v->createSnapshot(SnapshotName("second"));\
+
+    const SnapshotName second("second");
+    v->createSnapshot(second);
+
     while(not isVolumeSyncedToBackend(*v))
     {
         sleep(1);
@@ -691,7 +698,7 @@ TEST_P(VolManagerRestartTest, test5)
     SharedVolumePtr clone = createClone("clone1",
                                 ns2,
                                 ns,
-                                "second");
+                                second);
 
     writeToVolume(*clone, 0, size, "def");
     checkVolume(*clone,
@@ -699,7 +706,9 @@ TEST_P(VolManagerRestartTest, test5)
                 size,
                 "def");
 
-    clone->createSnapshot(SnapshotName("firstclonesnap"));
+    const SnapshotName firstclonesnap("firstclonesnap");
+    clone->createSnapshot(firstclonesnap);
+
     VolumeConfig vCfg = v->get_config();
     VolumeConfig cCfg = clone->get_config();
 
@@ -752,7 +761,7 @@ TEST_P(VolManagerRestartTest, test5)
                 "def");
     checkCurrentBackendSize(*vClone);
 
-    ASSERT_NO_THROW(restoreSnapshot(*vNew, "first"));
+    ASSERT_NO_THROW(restoreSnapshot(*vNew, first));
     //vNew->put();
     //vClone->put();
 
@@ -780,7 +789,8 @@ TEST_P(VolManagerRestartTest, test6)
 
     checkVolume(*v, 0, 16384, "xyz");
 
-    v->createSnapshot(SnapshotName("first"));
+    const SnapshotName first("first");
+    v->createSnapshot(first);
 
     writeToVolume(*v, 0, 16384, "abc");
     checkVolume(*v, 0, 16384, "abc");
@@ -789,13 +799,14 @@ TEST_P(VolManagerRestartTest, test6)
     const Namespace& ns1 = ns1_ptr->ns();
 
     SharedVolumePtr clone = createClone("clone1",
-                                ns1,
-                                ns,
-                                "first");
+                                        ns1,
+                                        ns,
+                                        first);
 
     //    setTLogMaxEntries(clone, 3);
 
-    v->createSnapshot(SnapshotName("second"));
+    const SnapshotName second("second");
+    v->createSnapshot(second);
 
     writeToVolume(*clone,
                   0,
@@ -812,7 +823,8 @@ TEST_P(VolManagerRestartTest, test6)
                 "zxy");
     checkCurrentBackendSize(*clone);
 
-    clone->createSnapshot(SnapshotName("firstclonesnap"));
+    const SnapshotName firstclonesnap("firstclonesnap");
+    clone->createSnapshot(firstclonesnap);
 
     VolumeConfig vCfg = v->get_config();
     VolumeConfig cCfg = clone->get_config();
@@ -846,31 +858,30 @@ TEST_P(VolManagerRestartTest, test6)
     vClone = getVolume(VolumeId("clone1"));
     ASSERT_TRUE(vClone != nullptr);
 
+    checkVolume(*vNew,
+                0,
+                16384,
+                "abc");
+    checkCurrentBackendSize(*vNew);
+    checkVolume(*vClone,
+                0,
+                8192,
+                "def");
+    checkVolume(*vClone,
+                16,
+                8192,
+                "zxy");
+    checkCurrentBackendSize(*vClone);
 
-     checkVolume(*vNew,
-                 0,
-                 16384,
-                 "abc");
-     checkCurrentBackendSize(*vNew);
-     checkVolume(*vClone,
-                 0,
-                 8192,
-                 "def");
-     checkVolume(*vClone,
-                 16,
-                 8192,
-                 "zxy");
-     checkCurrentBackendSize(*vClone);
+    //vNew->put();
+    //vClone->put();
+    destroyVolume(vClone,
+                  DeleteLocalData::T,
+                  RemoveVolumeCompletely::T);
 
-     //vNew->put();
-     //vClone->put();
-     destroyVolume(vClone,
-                   DeleteLocalData::T,
-                   RemoveVolumeCompletely::T);
-
-     destroyVolume(vNew,
-                   DeleteLocalData::T,
-                   RemoveVolumeCompletely::T);
+    destroyVolume(vNew,
+                  DeleteLocalData::T,
+                  RemoveVolumeCompletely::T);
 }
 
 TEST_P(VolManagerRestartTest,test7)
@@ -892,7 +903,8 @@ TEST_P(VolManagerRestartTest,test7)
     checkVolume(*v, 0, 8192, "g");
     checkCurrentBackendSize(*v);
 
-    v->createSnapshot(SnapshotName("first"));
+    const SnapshotName first("first");
+    v->createSnapshot(first);
 
     waitForThisBackendWrite(*v);
     waitForThisBackendWrite(*v);
@@ -912,7 +924,7 @@ TEST_P(VolManagerRestartTest,test7)
         SharedVolumePtr clone = createClone(volume + boost::lexical_cast<std::string>(i),
                                     nss.back()->ns(),
                                     prev_namespace,
-                                    "first");
+                                    first);
         clones.push_back(clone);
         prev_namespace = nss.back()->ns();
 
@@ -924,7 +936,7 @@ TEST_P(VolManagerRestartTest,test7)
         checkVolume(*clone, (i+1)*16, 8192, is);
         checkCurrentBackendSize(*clone);
 
-        clone->createSnapshot(SnapshotName("first"));
+        clone->createSnapshot(first);
         waitForThisBackendWrite(*clone);
         waitForThisBackendWrite(*clone);
     }

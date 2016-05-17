@@ -16,7 +16,7 @@ scrubber_la_LIBADD = \
 	../../backend/libbackend.la \
 	../../youtils/libyoutils.la \
 	$(BUILDTOOLS_LIBS) \
-	-lpthread -lrt -lm
+	-lpthread -lrt -lm -lgcc
 
 scrubber_la_CPPFLAGS = -I@abs_top_srcdir@/..
 
@@ -26,5 +26,3 @@ scrubber_PYTHON = \
 	__init__.py
 
 SUBDIRS = . test
-
-

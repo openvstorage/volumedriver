@@ -26,6 +26,9 @@ fi
 
 PREFIX=$(pwd)
 
+# python version to use
+export PYTHON=${PYTHON:-/usr/bin/python2}
+
 #number of parallel makes to run
 PALLALLELLIZATION=${BUILD_NUM_PROCESSES:-6}
 

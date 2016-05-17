@@ -23,6 +23,7 @@
 #include <vector>
 
 #include <boost/serialization/vector.hpp>
+#include <boost/version.hpp>
 
 #include <youtils/IOException.h>
 
@@ -133,11 +134,18 @@ private:
     const bool hasUUIDSpecified_;
     const UUID cork_uuid_;
 
+#if BOOST_VERSION == 105800
+public:
+#endif
+    // only to be used for deserialization
     Snapshot()
         : num(0)
         , scrubbed(false)
         , hasUUIDSpecified_(true)
     {};
+#if BOOST_VERSION == 105800
+private:
+#endif
 
     BOOST_SERIALIZATION_SPLIT_MEMBER();
 
