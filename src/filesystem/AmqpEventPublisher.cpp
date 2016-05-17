@@ -74,10 +74,10 @@ check_uri(const AmqpUri& uri)
 }
 
 void
-check_uris(const AmqpUris& uris)
+check_uris(const ip::PARAMETER_TYPE(events_amqp_uris)& uris)
 {
-    std::for_each(uris.begin(),
-                  uris.end(),
+    std::for_each(uris.value().begin(),
+                  uris.value().end(),
                   check_uri);
 }
 
@@ -104,13 +104,6 @@ enable_keepalive(AmqpClient::Channel& channel)
                                     keep_intvl);
 }
 
-template<typename T>
-boost::shared_ptr<typename T::ValueType>
-extract_param(const bpt::ptree& pt)
-{
-    return boost::make_shared<typename T::ValueType>(T(pt).value());
-}
-
 }
 
 AmqpEventPublisher::AmqpEventPublisher(const ClusterId& cluster_id,
@@ -119,9 +112,9 @@ AmqpEventPublisher::AmqpEventPublisher(const ClusterId& cluster_id,
                                        const RegisterComponent registrate)
     : VolumeDriverComponent(registrate, pt)
     , index_(0)
-    , uris_(extract_param<ip::PARAMETER_TYPE(events_amqp_uris)>(pt))
-    , exchange_(extract_param<ip::PARAMETER_TYPE(events_amqp_exchange)>(pt))
-    , routing_key_(extract_param<ip::PARAMETER_TYPE(events_amqp_routing_key)>(pt))
+    , uris_(boost::make_shared<ip::PARAMETER_TYPE(events_amqp_uris)>(pt))
+    , exchange_(boost::make_shared<ip::PARAMETER_TYPE(events_amqp_exchange)>(pt))
+    , routing_key_(boost::make_shared<ip::PARAMETER_TYPE(events_amqp_routing_key)>(pt))
     , cluster_id_(cluster_id)
     , node_id_(node_id)
 {
@@ -144,7 +137,7 @@ bool
 AmqpEventPublisher::enabled_() const
 {
     VERIFY(uris_ != nullptr);
-    return not uris_->empty();
+    return not uris_->value().empty();
 }
 
 const char*
@@ -158,24 +151,23 @@ namespace
 
 template<typename T>
 void
-do_update(boost::shared_ptr<typename T::ValueType>& ptr,
+do_update(boost::shared_ptr<T>& ptr,
           const bpt::ptree& pt,
           yt::UpdateReport& urep,
           bool& updated)
 {
     VERIFY(ptr != nullptr);
 
-    T t(*ptr);
     const T u(pt);
 
-    if (u.value() != t.value())
+    if (u.value() != ptr->value())
     {
         updated = true;
-        ptr = boost::make_shared<typename T::ValueType>(u.value());
+        ptr = boost::make_shared<T>(pt);
     }
 
-    t.update(pt,
-             urep);
+    ptr->update(pt,
+                urep);
 }
 
 }
@@ -188,20 +180,20 @@ AmqpEventPublisher::update(const bpt::ptree& pt,
 
     bool updated = false;
 
-    do_update<ip::PARAMETER_TYPE(events_amqp_uris)>(uris_,
-                                                    pt,
-                                                    urep,
-                                                    updated);
+    do_update(uris_,
+              pt,
+              urep,
+              updated);
 
-    do_update<ip::PARAMETER_TYPE(events_amqp_exchange)>(exchange_,
-                                                        pt,
-                                                        urep,
-                                                        updated);
+    do_update(exchange_,
+              pt,
+              urep,
+              updated);
 
-    do_update<ip::PARAMETER_TYPE(events_amqp_routing_key)>(routing_key_,
-                                                           pt,
-                                                           urep,
-                                                           updated);
+    do_update(routing_key_,
+              pt,
+              urep,
+              updated);
 
     if (updated)
     {
@@ -215,14 +207,13 @@ namespace
 
 template<typename T>
 void
-do_persist(const boost::shared_ptr<typename T::ValueType>& ptr,
+do_persist(const boost::shared_ptr<T>& ptr,
            bpt::ptree& pt,
            const ReportDefault report_default)
 {
     VERIFY(ptr != nullptr);
-    T t(*ptr);
-    t.persist(pt,
-              report_default);
+    ptr->persist(pt,
+                 report_default);
 }
 
 }
@@ -233,16 +224,16 @@ AmqpEventPublisher::persist(bpt::ptree& pt,
 {
     LOCK_MGMT();
 
-    do_persist<ip::PARAMETER_TYPE(events_amqp_uris)>(uris_,
-                                                     pt,
-                                                     report_default);
-    do_persist<ip::PARAMETER_TYPE(events_amqp_exchange)>(exchange_,
-                                                         pt,
-                                                         report_default);
+    do_persist(uris_,
+               pt,
+               report_default);
+    do_persist(exchange_,
+               pt,
+               report_default);
 
-    do_persist<ip::PARAMETER_TYPE(events_amqp_routing_key)>(routing_key_,
-                                                            pt,
-                                                            report_default);
+    do_persist(routing_key_,
+               pt,
+               report_default);
 }
 
 bool
@@ -252,7 +243,7 @@ AmqpEventPublisher::checkConfig(const bpt::ptree& pt,
     const ip::PARAMETER_TYPE(events_amqp_uris) uris(pt);
     try
     {
-        check_uris(uris.value());
+        check_uris(uris);
         return true;
     }
     CATCH_STD_ALL_EWHAT({
@@ -277,15 +268,15 @@ AmqpEventPublisher::publish(const events::Event& ev) noexcept
         {
             // create copies so any config changes during the unlocked
             // section below do not interfere.
-            boost::shared_ptr<AmqpUris> uris(uris_);
-            boost::shared_ptr<AmqpExchange> exchange(exchange_);
-            boost::shared_ptr<AmqpRoutingKey> routing_key(routing_key_);
+            decltype(uris_) uris(uris_);
+            decltype(exchange_) exchange(exchange_);
+            decltype(routing_key_) routing_key(routing_key_);
             unsigned idx = index_;
 
             VERIFY(uris != nullptr);
             VERIFY(exchange != nullptr);
             VERIFY(routing_key != nullptr);
-            VERIFY(idx < uris->size());
+            VERIFY(idx < uris->value().size());
 
             AmqpClient::Channel::ptr_t chan = channel_;
 
@@ -307,7 +298,7 @@ AmqpEventPublisher::publish(const events::Event& ev) noexcept
                 exchange == exchange_ and
                 routing_key == routing_key_)
             {
-                VERIFY(idx < uris_->size());
+                VERIFY(idx < uris_->value().size());
                 index_ = idx;
                 channel_ = chan;
             }
@@ -320,13 +311,13 @@ AmqpEventPublisher::publish(const events::Event& ev) noexcept
 
 void
 AmqpEventPublisher::publish_(const events::Event& ev,
-                             const boost::shared_ptr<AmqpUris>& uris,
-                             const boost::shared_ptr<AmqpExchange>& exchange,
-                             const boost::shared_ptr<AmqpRoutingKey>& routing_key,
+                             const boost::shared_ptr<ip::PARAMETER_TYPE(events_amqp_uris)>& uris,
+                             const boost::shared_ptr<ip::PARAMETER_TYPE(events_amqp_exchange)>& exchange,
+                             const boost::shared_ptr<ip::PARAMETER_TYPE(events_amqp_routing_key)>& routing_key,
                              AmqpClient::Channel::ptr_t& chan,
                              unsigned& idx) const
 {
-    VERIFY(idx < uris->size());
+    VERIFY(idx < uris->value().size());
 
     // a lot of copying but we don't care for now.
     events::EventMessage evmsg;
@@ -341,11 +332,11 @@ AmqpEventPublisher::publish_(const events::Event& ev,
 
     AmqpClient::BasicMessage::ptr_t msg(AmqpClient::BasicMessage::Create(s));
 
-    const unsigned attempts = uris->size();
+    const unsigned attempts = uris->value().size();
 
     for (unsigned i = 0; i < attempts; ++i)
     {
-        const AmqpUri& uri(uris->at(idx));
+        const AmqpUri& uri(uris->value().at(idx));
 
         try
         {
@@ -358,10 +349,9 @@ AmqpEventPublisher::publish_(const events::Event& ev,
                 enable_keepalive(*chan);
             }
 
-            chan->BasicPublish(*exchange,
-                               *routing_key,
+            chan->BasicPublish(exchange->value(),
+                               routing_key->value(),
                                msg);
-
             return;
         }
         CATCH_STD_ALL_EWHAT({
