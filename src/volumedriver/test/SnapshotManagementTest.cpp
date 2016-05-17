@@ -46,7 +46,7 @@ class SnapshotManagementTest
                    const SnapshotName& name)
     {
         c->createSnapshot(name,
-                          0);
+                          boost::none);
     }
     const Namespace&
     ns()

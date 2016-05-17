@@ -47,13 +47,16 @@ TEST_P(ToolCutTest, DISABLED_test2)
     SharedVolumePtr v = newVolume(vid,
                           ns);
 
-    createSnapshot(*v,"snapshot");
+    const SnapshotName snapshot("snapshot");
+    createSnapshot(*v,
+                   snapshot);
+
     waitForThisBackendWrite(*v);
 
     SharedVolumePtr c = createClone("clone",
                             backend::Namespace(),
                             ns,
-                            "snapshot");
+                            snapshot);
 
     const std::string pattern("immanuel");
     sleep(1000);

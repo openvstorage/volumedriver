@@ -53,7 +53,7 @@ public:
 
     void
     with_snapshot_not_in_backend(std::function<void(Volume&,
-                                                    const std::string& snap)> fun)
+                                                    const SnapshotName& snap)> fun)
     {
         auto ns(make_random_namespace());
         SharedVolumePtr v = newVolume(*ns);
@@ -64,7 +64,7 @@ public:
                       v->getClusterSize(),
                       pattern);
 
-        const std::string snap("snap");
+        const SnapshotName snap("snap");
 
         SCOPED_BLOCK_BACKEND(*v);
 
@@ -403,7 +403,10 @@ TEST_P(SimpleVolumeTest, test3)
                   0,
                   4096,
                   "immanuel");
-    v->createSnapshot(SnapshotName("snap1"));
+
+    const SnapshotName snap1("snap1");
+
+    v->createSnapshot(snap1);
     waitForThisBackendWrite(*v);
     waitForThisBackendWrite(*v);
     auto ns1_ptr = make_random_namespace();
@@ -416,7 +419,7 @@ TEST_P(SimpleVolumeTest, test3)
     c = createClone("clone1",
                     ns_clone,
                     ns,
-                    "snap1");
+                    snap1);
 
     checkVolume(*c,
                 0,
@@ -440,7 +443,8 @@ TEST_P(SimpleVolumeTest, test4)
                   4096,
                   "a");
 
-    v->createSnapshot(SnapshotName("snap1"));
+    const SnapshotName snap1("snap1");
+    v->createSnapshot(snap1);
 
     waitForThisBackendWrite(*v);
     auto ns1_ptr = make_random_namespace();
@@ -453,7 +457,7 @@ TEST_P(SimpleVolumeTest, test4)
     c1 = createClone("clone1",
                      ns_clone1,
                      ns1,
-                    "snap1");
+                     snap1);
     writeToVolume(*c1,
                   4096,
                   4096,
@@ -470,7 +474,8 @@ TEST_P(SimpleVolumeTest, test4)
                 4096,
                 "b");
 
-    c1->createSnapshot(SnapshotName("snap2"));
+    const SnapshotName snap2("snap2");
+    c1->createSnapshot(snap2);
 
     waitForThisBackendWrite(*c1);
     auto ns2_ptr = make_random_namespace();
@@ -482,7 +487,7 @@ TEST_P(SimpleVolumeTest, test4)
     c2 = createClone("clone2",
                      ns_clone2,
                      ns_clone1,
-                     "snap2");
+                     snap2);
     ASSERT_TRUE(c2 != nullptr);
 
      checkVolume(*c2,
@@ -503,9 +508,10 @@ TEST_P(SimpleVolumeTest, test4)
                 2*4096,
                 4096,
                 "c");
-    c2->createSnapshot(SnapshotName("snap3"));
-    waitForThisBackendWrite(*c2);
 
+    const SnapshotName snap3("snap3");
+    c2->createSnapshot(snap3);
+    waitForThisBackendWrite(*c2);
 
     SharedVolumePtr c3 = 0;
     auto ns3_ptr = make_random_namespace();
@@ -516,7 +522,7 @@ TEST_P(SimpleVolumeTest, test4)
     c3 = createClone("clone3",
                      ns_clone3,
                      ns_clone2,
-                     "snap3");
+                     snap3);
 
     ASSERT_TRUE(c3 != nullptr);
 
@@ -543,7 +549,8 @@ TEST_P(SimpleVolumeTest, test4)
                 4096,
                 "d");
 
-    c3->createSnapshot(SnapshotName("snap4"));
+    const SnapshotName snap4("snap4");
+    c3->createSnapshot(snap4);
     waitForThisBackendWrite(*c3);
 
     SharedVolumePtr c4 = 0;
@@ -555,7 +562,7 @@ TEST_P(SimpleVolumeTest, test4)
     c4 = createClone("clone4",
                      ns_clone4,
                      ns_clone3,
-                     "snap4");
+                     snap4);
     ASSERT_TRUE(c4 != nullptr);
 }
 
@@ -1088,7 +1095,8 @@ TEST_P(SimpleVolumeTest, LocalRestartClone)
                       "immanuel");
     }
 
-    v1->createSnapshot(SnapshotName("snap1"));
+    const SnapshotName snap1("snap1");
+    v1->createSnapshot(snap1);
     waitForThisBackendWrite(*v1);
     waitForThisBackendWrite(*v1);
 
@@ -1101,7 +1109,7 @@ TEST_P(SimpleVolumeTest, LocalRestartClone)
     SharedVolumePtr c = createClone("clone1",
                             clone_ns,
                             ns1,
-                            "snap1");
+                            snap1);
     destroyVolume(c,
                   DeleteLocalData::F,
                   RemoveVolumeCompletely::F);
@@ -1476,7 +1484,8 @@ TEST_P(SimpleVolumeTest, consistencyClone)
                       "kristaf");
     }
 
-    v1->createSnapshot(SnapshotName("snap1"));
+    const SnapshotName snap1("snap1");
+    v1->createSnapshot(snap1);
     waitForThisBackendWrite(*v1);
 
     // backend::Namespace ns2;
@@ -1487,7 +1496,7 @@ TEST_P(SimpleVolumeTest, consistencyClone)
     SharedVolumePtr v2 = createClone("volume2",
                              ns2,
                              ns1,
-                             "snap1");
+                             snap1);
     for(int i = 0; i < (1024 ); i++)
     {
         writeToVolume(*v1,
@@ -2257,7 +2266,7 @@ TEST_P(SimpleVolumeTest, simple_backend_restart)
 TEST_P(SimpleVolumeTest, no_snapshot_if_previous_snapshot_is_not_yet_in_the_backend)
 {
     with_snapshot_not_in_backend([this](Volume& v,
-                                        const std::string& /* snap */)
+                                        const SnapshotName& /* snap */)
                                  {
                                      ASSERT_THROW(createSnapshot(v,
                                                                  "no_snapshot"),
@@ -2268,7 +2277,7 @@ TEST_P(SimpleVolumeTest, no_snapshot_if_previous_snapshot_is_not_yet_in_the_back
 TEST_P(SimpleVolumeTest, no_clone_if_snapshot_is_not_yet_in_the_backend)
 {
     with_snapshot_not_in_backend([this](Volume& v,
-                                        const std::string& snap)
+                                        const SnapshotName& snap)
                                  {
                                      auto ns(make_random_namespace());
                                      ASSERT_THROW(createClone(*ns,
@@ -2303,7 +2312,7 @@ TEST_P(SimpleVolumeTest, clones_and_location_based_caching)
                   4096,
                   pattern);
 
-    const std::string snap("snap");
+    const SnapshotName snap("snap");
     createSnapshot(*parent,
                    snap);
 
@@ -2312,8 +2321,8 @@ TEST_P(SimpleVolumeTest, clones_and_location_based_caching)
 
     const auto clone_ns(make_random_namespace());
     SharedVolumePtr clone = createClone(*clone_ns,
-                                parent_ns->ns(),
-                                snap);
+                                        parent_ns->ns(),
+                                        snap);
 
     ASSERT_EQ(ccmode,
               clone->effective_cluster_cache_mode());

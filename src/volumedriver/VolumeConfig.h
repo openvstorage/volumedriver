@@ -99,12 +99,12 @@ public:
 
         if (tlog_mult_)
         {
-            VERIFY(tlog_mult_ > 0);
+            VERIFY(*tlog_mult_ > 0);
         }
 
         if (max_non_disposable_factor_)
         {
-            VERIFY(max_non_disposable_factor_ > 0);
+            VERIFY(*max_non_disposable_factor_ > 0);
         }
 
         VERIFY(lba_size_ > 0);

@@ -676,11 +676,14 @@ TEST_P(MetaDataServerTest, exceeding_the_shmem_size)
     {
         const std::string key(boost::lexical_cast<std::string>(size));
         vec.push_back(key);
-
-        keys.emplace_back(mds::Key(vec.back()));
-        recs.emplace_back(mds::Record(mds::Key(vec.back()),
-                                      mds::Value(vec.back())));
         size += key.size();
+    }
+
+    for (const auto& k : vec)
+    {
+        keys.emplace_back(mds::Key(k));
+        recs.emplace_back(mds::Record(mds::Key(k),
+                                      mds::Value(k)));
     }
 
     be::BackendTestSetup::WithRandomNamespace wrns("",

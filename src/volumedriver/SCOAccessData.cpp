@@ -13,6 +13,8 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include <cmath>
+
 #include <boost/filesystem/fstream.hpp>
 #include <boost/scope_exit.hpp>
 
@@ -47,7 +49,7 @@ void
 SCOAccessData::addData(SCO name,
                        float data)
 {
-    VERIFY(not isinf(data) and not isnan(data));
+    VERIFY(not std::isinf(data) and not std::isnan(data));
     VERIFY(data >= 0);
 
     scos_.push_back(std::make_pair(name, data));

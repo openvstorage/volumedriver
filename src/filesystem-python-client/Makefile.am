@@ -28,7 +28,7 @@ storagerouterclient_la_LIBADD = \
 	../youtils/libyoutils.la \
 	-lfuse3 \
 	$(BUILDTOOLS_LIBS) \
-	-lpthread -lrt -lm
+	-lpthread -lrt -lm -lgcc
 
 storagerouterclient_la_CPPFLAGS = \
 	-I@abs_top_srcdir@/.. \

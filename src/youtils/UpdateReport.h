@@ -21,7 +21,9 @@
 #include "Serialization.h"
 
 #include <boost/lexical_cast.hpp>
+#include <boost/predef/version_number.h>
 #include <boost/serialization/list.hpp>
+#include <boost/version.hpp>
 
 #include <list>
 #include <string>
@@ -40,6 +42,16 @@ struct ParameterUpdate
         , old_value(boost::lexical_cast<std::string>(old))
         , new_value(boost::lexical_cast<std::string>(new_))
     {}
+
+    // work around load_construct_data being broken in boost 1.58
+    // https://svn.boost.org/trac/boost/ticket/11343
+#if BOOST_VERSION == 105800
+    ParameterUpdate()
+        : parameter_name("uninitialized")
+        , old_value("uninitialized")
+        , new_value("uninitialized")
+    {}
+#endif
 
     ~ParameterUpdate() = default;
 

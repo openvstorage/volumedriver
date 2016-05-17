@@ -36,7 +36,7 @@ libfsalovs_la_LIBADD = \
 	../youtils/libyoutils.la \
 	-lfuse3 \
 	$(BUILDTOOLS_LIBS) \
-	-lpthread -lrt -lm
+	-lpthread -lrt -lm -lgcc
 
 bin_SCRIPTS = ganesha-cf
 

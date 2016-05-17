@@ -403,7 +403,7 @@ bool
 SCOCacheMountPoint::isChoking() const
 {
     VERIFY(initialised_);
-    return (choking_ != 0);
+    return (choking_ != boost::none);
 }
 
 uint64_t

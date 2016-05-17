@@ -5,6 +5,8 @@ SUBDIRS = .
 if UBUNTU
 SUBDIRS += debian 
 else
+if REDHAT
 SUBDIRS += rpm
+endif
 endif
 
