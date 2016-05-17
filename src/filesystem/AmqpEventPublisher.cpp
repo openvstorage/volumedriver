@@ -21,18 +21,23 @@
 #include <sys/socket.h>
 
 #include <boost/property_tree/ptree.hpp>
+#include <boost/thread/lock_guard.hpp>
 
 #include <amqp.h>
 
 #include <youtils/Assert.h>
 #include <youtils/Catchers.h>
+#include <youtils/ScopeExit.h>
 #include <youtils/System.h>
 
 namespace volumedriverfs
 {
 
-#define LOCK()                                  \
-    std::lock_guard<lock_type> gl__(lock_)
+#define LOCK_MGMT()                                             \
+    boost::lock_guard<decltype(mgmt_lock_)> gml__(mgmt_lock_)
+
+#define LOCK_CHANNEL()                                                  \
+    boost::lock_guard<decltype(channel_lock_)> gcl__(channel_lock_)
 
 namespace bpt = boost::property_tree;
 namespace ip = initialized_params;
@@ -69,10 +74,10 @@ check_uri(const AmqpUri& uri)
 }
 
 void
-check_uris(const ip::PARAMETER_TYPE(events_amqp_uris)& uris)
+check_uris(const AmqpUris& uris)
 {
-    std::for_each(uris.value().begin(),
-                  uris.value().end(),
+    std::for_each(uris.begin(),
+                  uris.end(),
                   check_uri);
 }
 
@@ -99,6 +104,13 @@ enable_keepalive(AmqpClient::Channel& channel)
                                     keep_intvl);
 }
 
+template<typename T>
+boost::shared_ptr<typename T::ValueType>
+extract_param(const bpt::ptree& pt)
+{
+    return boost::make_shared<typename T::ValueType>(T(pt).value());
+}
+
 }
 
 AmqpEventPublisher::AmqpEventPublisher(const ClusterId& cluster_id,
@@ -107,13 +119,13 @@ AmqpEventPublisher::AmqpEventPublisher(const ClusterId& cluster_id,
                                        const RegisterComponent registrate)
     : VolumeDriverComponent(registrate, pt)
     , index_(0)
-    , events_amqp_uris(pt)
-    , events_amqp_exchange(pt)
-    , events_amqp_routing_key(pt)
+    , uris_(extract_param<ip::PARAMETER_TYPE(events_amqp_uris)>(pt))
+    , exchange_(extract_param<ip::PARAMETER_TYPE(events_amqp_exchange)>(pt))
+    , routing_key_(extract_param<ip::PARAMETER_TYPE(events_amqp_routing_key)>(pt))
     , cluster_id_(cluster_id)
     , node_id_(node_id)
 {
-    check_uris(events_amqp_uris);
+    check_uris(*uris_);
 
     if (not enabled_())
     {
@@ -124,14 +136,15 @@ AmqpEventPublisher::AmqpEventPublisher(const ClusterId& cluster_id,
 bool
 AmqpEventPublisher::enabled() const
 {
-    LOCK();
+    LOCK_MGMT();
     return enabled_();
 }
 
 bool
 AmqpEventPublisher::enabled_() const
 {
-    return not events_amqp_uris.value().empty();
+    VERIFY(uris_ != nullptr);
+    return not uris_->empty();
 }
 
 const char*
@@ -145,16 +158,20 @@ namespace
 
 template<typename T>
 void
-do_update(T& t,
+do_update(boost::shared_ptr<typename T::ValueType>& ptr,
           const bpt::ptree& pt,
           yt::UpdateReport& urep,
           bool& updated)
 {
+    VERIFY(ptr != nullptr);
+
+    T t(*ptr);
     const T u(pt);
 
     if (u.value() != t.value())
     {
         updated = true;
+        ptr = boost::make_shared<typename T::ValueType>(u.value());
     }
 
     t.update(pt,
@@ -164,59 +181,78 @@ do_update(T& t,
 }
 
 void
-AmqpEventPublisher::update(const boost::property_tree::ptree& pt,
+AmqpEventPublisher::update(const bpt::ptree& pt,
                            yt::UpdateReport& urep)
 {
-    LOCK();
+    LOCK_MGMT();
 
     bool updated = false;
 
-    do_update(events_amqp_uris,
-              pt,
-              urep,
-              updated);
+    do_update<ip::PARAMETER_TYPE(events_amqp_uris)>(uris_,
+                                                    pt,
+                                                    urep,
+                                                    updated);
 
-    do_update(events_amqp_exchange,
-              pt,
-              urep,
-              updated);
+    do_update<ip::PARAMETER_TYPE(events_amqp_exchange)>(exchange_,
+                                                        pt,
+                                                        urep,
+                                                        updated);
 
-    do_update(events_amqp_routing_key,
-              pt,
-              urep,
-              updated);
+    do_update<ip::PARAMETER_TYPE(events_amqp_routing_key)>(routing_key_,
+                                                           pt,
+                                                           urep,
+                                                           updated);
 
     if (updated)
     {
         index_ = 0;
-        channel_.reset();
+        channel_ = nullptr;
     }
 }
 
+namespace
+{
+
+template<typename T>
 void
-AmqpEventPublisher::persist(boost::property_tree::ptree& pt,
+do_persist(const boost::shared_ptr<typename T::ValueType>& ptr,
+           bpt::ptree& pt,
+           const ReportDefault report_default)
+{
+    VERIFY(ptr != nullptr);
+    T t(*ptr);
+    t.persist(pt,
+              report_default);
+}
+
+}
+
+void
+AmqpEventPublisher::persist(bpt::ptree& pt,
                             const ReportDefault report_default) const
 {
-    LOCK();
+    LOCK_MGMT();
 
-#define P(var)                                  \
-    (var).persist(pt, report_default)
+    do_persist<ip::PARAMETER_TYPE(events_amqp_uris)>(uris_,
+                                                     pt,
+                                                     report_default);
+    do_persist<ip::PARAMETER_TYPE(events_amqp_exchange)>(exchange_,
+                                                         pt,
+                                                         report_default);
 
-    P(events_amqp_uris);
-    P(events_amqp_exchange);
-    P(events_amqp_routing_key);
-
-#undef P
+    do_persist<ip::PARAMETER_TYPE(events_amqp_routing_key)>(routing_key_,
+                                                            pt,
+                                                            report_default);
 }
 
 bool
-AmqpEventPublisher::checkConfig(const boost::property_tree::ptree& pt,
+AmqpEventPublisher::checkConfig(const bpt::ptree& pt,
                                 yt::ConfigurationReport& crep) const
 {
-    const decltype(events_amqp_uris) uris(pt);
+    const ip::PARAMETER_TYPE(events_amqp_uris) uris(pt);
     try
     {
-        check_uris(uris);
+        check_uris(uris.value());
         return true;
     }
     CATCH_STD_ALL_EWHAT({
@@ -234,59 +270,111 @@ AmqpEventPublisher::publish(const events::Event& ev) noexcept
     try
     {
         ASSERT(ev.IsInitialized());
-        LOCK();
+
+        boost::unique_lock<decltype(mgmt_lock_)> u(mgmt_lock_);
 
         if (enabled_())
         {
-            // a lot of copying but we don't care for now.
-            events::EventMessage evmsg;
-            evmsg.set_cluster_id(cluster_id_.str());
-            evmsg.set_node_id(node_id_.str());
+            // create copies so any config changes during the unlocked
+            // section below do not interfere.
+            boost::shared_ptr<AmqpUris> uris(uris_);
+            boost::shared_ptr<AmqpExchange> exchange(exchange_);
+            boost::shared_ptr<AmqpRoutingKey> routing_key(routing_key_);
+            unsigned idx = index_;
 
-            *evmsg.mutable_event() = ev;
-            std::string s;
-            evmsg.SerializeToString(&s);
-            auto msg(AmqpClient::BasicMessage::Create(s));
+            VERIFY(uris != nullptr);
+            VERIFY(exchange != nullptr);
+            VERIFY(routing_key != nullptr);
+            VERIFY(idx < uris->size());
 
-            const unsigned attempts = events_amqp_uris.value().size();
-            for (unsigned i = 0; i < attempts; ++i)
+            AmqpClient::Channel::ptr_t chan = channel_;
+
             {
-                const AmqpUri uri = events_amqp_uris.value()[index_];
-
-                try
-                {
-                    if (channel_ == nullptr)
-                    {
-                        LOG_INFO("Trying to establish channel with " << uri);
-                        channel_ = AmqpClient::Channel::CreateFromUri(uri.str(),
-                                                                      max_frame_size);
-                        VERIFY(channel_);
-                        enable_keepalive(*channel_);
-                    }
-
-                    channel_->BasicPublish(events_amqp_exchange.value(),
-                                           events_amqp_routing_key.value(),
-                                           msg);
-
-                    LOG_TRACE("Published event " << ev.GetDescriptor()->full_name() <<
-                              " to " << uri);
-                    return;
-                }
-                CATCH_STD_ALL_EWHAT({
-                        LOG_WARN("Failed to publish event " <<
-                                 ev.GetDescriptor()->full_name() <<
-                                 " to " << uri << ": " << EWHAT);
-                        channel_ = nullptr;
-                        index_ = (index_ + 1) % attempts;
-                    });
+                u.unlock();
+                auto on_exit(yt::make_scope_exit([&]
+                                                 {
+                                                     u.lock();
+                                                 }));
+                publish_(ev,
+                         uris,
+                         exchange,
+                         routing_key,
+                         chan,
+                         idx);
             }
 
-            LOG_ERROR("Failed to publish event " << ev.GetDescriptor()->full_name() <<
-                      " - dropping it");
+            if (uris == uris_ and
+                exchange == exchange_ and
+                routing_key == routing_key_)
+            {
+                VERIFY(idx < uris_->size());
+                index_ = idx;
+                channel_ = chan;
+            }
         }
     }
     CATCH_STD_ALL_LOG_IGNORE("Failed to publish event");
     TODO("AR: the logging could emit an exception, violating noexcept?");
+}
+
+
+void
+AmqpEventPublisher::publish_(const events::Event& ev,
+                             const boost::shared_ptr<AmqpUris>& uris,
+                             const boost::shared_ptr<AmqpExchange>& exchange,
+                             const boost::shared_ptr<AmqpRoutingKey>& routing_key,
+                             AmqpClient::Channel::ptr_t& chan,
+                             unsigned& idx) const
+{
+    VERIFY(idx < uris->size());
+
+    // a lot of copying but we don't care for now.
+    events::EventMessage evmsg;
+    evmsg.set_cluster_id(cluster_id_.str());
+    evmsg.set_node_id(node_id_.str());
+    *evmsg.mutable_event() = ev;
+
+    std::string s;
+    evmsg.SerializeToString(&s);
+
+    LOCK_CHANNEL();
+
+    AmqpClient::BasicMessage::ptr_t msg(AmqpClient::BasicMessage::Create(s));
+
+    const unsigned attempts = uris->size();
+
+    for (unsigned i = 0; i < attempts; ++i)
+    {
+        const AmqpUri& uri(uris->at(idx));
+
+        try
+        {
+            if (chan == nullptr)
+            {
+                LOG_INFO("Trying to establish channel with " << uri);
+                chan = AmqpClient::Channel::CreateFromUri(uri.str(),
+                                                          max_frame_size);
+                VERIFY(chan);
+                enable_keepalive(*chan);
+            }
+
+            chan->BasicPublish(*exchange,
+                               *routing_key,
+                               msg);
+
+            return;
+        }
+        CATCH_STD_ALL_EWHAT({
+                LOG_WARN("Failed to publish event " <<
+                         ev.GetDescriptor()->full_name() <<
+                         " to " << uri << ": " << EWHAT);
+                chan = nullptr;
+                idx = (idx + 1) % attempts;
+            });
+    }
+
+    LOG_ERROR("Failed to publish event " << ev.GetDescriptor()->full_name() <<
+              " - dropping it");
 }
 
 }
