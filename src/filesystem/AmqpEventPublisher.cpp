@@ -158,16 +158,17 @@ do_update(boost::shared_ptr<T>& ptr,
 {
     VERIFY(ptr != nullptr);
 
-    const T u(pt);
+    auto u(boost::make_shared<T>(pt));
 
-    if (u.value() != ptr->value())
-    {
-        updated = true;
-        ptr = boost::make_shared<T>(pt);
-    }
-
+    const bool need_update = u->value() != ptr->value();
     ptr->update(pt,
                 urep);
+
+    if (need_update)
+    {
+        std::swap(ptr, u);
+        updated = true;
+    }
 }
 
 }
