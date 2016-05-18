@@ -121,9 +121,9 @@ private:
     unsigned index_;
     AmqpClient::Channel::ptr_t channel_;
 
-    boost::shared_ptr<AmqpUris> uris_;
-    boost::shared_ptr<AmqpExchange> exchange_;
-    boost::shared_ptr<AmqpRoutingKey> routing_key_;
+    boost::shared_ptr<initialized_params::PARAMETER_TYPE(events_amqp_uris)> uris_;
+    boost::shared_ptr<initialized_params::PARAMETER_TYPE(events_amqp_exchange)> exchange_;
+    boost::shared_ptr<initialized_params::PARAMETER_TYPE(events_amqp_routing_key)> routing_key_;
 
     const ClusterId cluster_id_;
     const NodeId node_id_;
@@ -133,9 +133,9 @@ private:
 
     void
     publish_(const events::Event&,
-             const boost::shared_ptr<AmqpUris>&,
-             const boost::shared_ptr<AmqpExchange>&,
-             const boost::shared_ptr<AmqpRoutingKey>&,
+             const boost::shared_ptr<initialized_params::PARAMETER_TYPE(events_amqp_uris)>&,
+             const boost::shared_ptr<initialized_params::PARAMETER_TYPE(events_amqp_exchange)>&,
+             const boost::shared_ptr<initialized_params::PARAMETER_TYPE(events_amqp_routing_key)>&,
              AmqpClient::Channel::ptr_t&,
              unsigned& uris_index) const;
 };
