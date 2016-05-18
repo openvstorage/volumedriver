@@ -18,6 +18,8 @@
 
 #include "BackendConfig.h"
 
+#include <alba/proxy_client.h>
+
 #include <youtils/Logging.h>
 
 namespace backend
@@ -30,12 +32,14 @@ public:
     AlbaConfig(const std::string& host,
                const uint16_t port,
                const uint16_t timeout,
+               const alba::proxy_client::Transport transport = alba::proxy_client::Transport::tcp,
                const std::string& preset = "")
         : BackendConfig(BackendType::ALBA)
         , alba_connection_host(host)
         , alba_connection_port(port)
         , alba_connection_timeout(timeout)
         , alba_connection_preset(preset)
+        , alba_connection_transport(transport)
     {}
 
     AlbaConfig(const boost::property_tree::ptree& pt)
@@ -44,6 +48,7 @@ public:
         , alba_connection_port(pt)
         , alba_connection_timeout(pt)
         , alba_connection_preset(pt)
+        , alba_connection_transport(pt)
     {}
 
     AlbaConfig() = delete;
@@ -73,7 +78,9 @@ public:
         std::unique_ptr<BackendConfig>
             bc(new AlbaConfig(alba_connection_host.value(),
                               alba_connection_port.value(),
-                              alba_connection_timeout.value()));
+                              alba_connection_timeout.value(),
+                              alba_connection_transport.value(),
+                              alba_connection_preset.value()));
         return bc;
     }
 
@@ -91,6 +98,8 @@ public:
                                         report_default);
         alba_connection_preset.persist(pt,
                                        report_default);
+        alba_connection_transport.persist(pt,
+                                          report_default);
     }
 
     virtual void
@@ -109,7 +118,8 @@ public:
             CMP(alba_connection_host) and
             CMP(alba_connection_port) and
             CMP(alba_connection_timeout) and
-            CMP(alba_connection_preset);
+            CMP(alba_connection_preset) and
+            CMP(alba_connection_transport);
 #undef CMP
     }
 
@@ -124,6 +134,7 @@ public:
     DECLARE_PARAMETER(alba_connection_port);
     DECLARE_PARAMETER(alba_connection_timeout);
     DECLARE_PARAMETER(alba_connection_preset);
+    DECLARE_PARAMETER(alba_connection_transport);
 };
 
 }

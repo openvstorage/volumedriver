@@ -38,7 +38,8 @@ public:
     Connection(const std::string& host,
                const uint16_t port,
                const uint16_t timeout,
-               const boost::optional<std::string>& preset = boost::none);
+               const boost::optional<std::string>& preset = boost::none,
+               const alba::proxy_client::Transport = alba::proxy_client::Transport::tcp);
 
     virtual ~Connection() noexcept (true)
     {}

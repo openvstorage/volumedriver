@@ -204,9 +204,8 @@ BackendConnectionInterface::partial_read(const Namespace& ns,
                                          const PartialReads& partial_reads,
                                          InsistOnLatestVersion insist_on_latest,
                                          PartialReadFallbackFun& fallback_fun)
+try
 {
-    Logger l(__FUNCTION__, ns);
-
     const bool ok = partial_read_(ns,
                                   partial_reads,
                                   insist_on_latest);
@@ -237,6 +236,10 @@ BackendConnectionInterface::partial_read(const Namespace& ns,
         }
     }
 }
+CATCH_STD_ALL_EWHAT({
+        LOG_ERROR(ns << ": partial read failed: " << EWHAT);
+        throw; // redundant
+    })
 
 void
 BackendConnectionInterface::write(const Namespace& nspace,

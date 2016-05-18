@@ -16,6 +16,8 @@
 #ifndef BACKENDPARAMETERS_H_
 #define BACKENDPARAMETERS_H_
 
+#include <alba/proxy_client.h>
+
 #include <youtils/InitializedParam.h>
 
 namespace backend
@@ -91,6 +93,7 @@ DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_host, std::string);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_port, uint16_t);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_timeout, uint16_t);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_preset, std::string);
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_transport, alba::proxy_client::Transport);
 
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(bgc_threads, uint32_t);
 
