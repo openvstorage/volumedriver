@@ -12,6 +12,7 @@
 // the LICENSE.txt file of the Open vStorage OSE distribution.
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
+
 #ifndef __SHM_CONTROL_CHANNEL_CLIENT_H
 #define __SHM_CONTROL_CHANNEL_CLIENT_H
 
