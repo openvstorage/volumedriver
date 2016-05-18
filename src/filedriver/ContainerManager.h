@@ -28,6 +28,7 @@
 #include <boost/thread/mutex.hpp>
 
 #include <youtils/ConfigurationReport.h>
+#include <youtils/IOException.h>
 #include <youtils/Logging.h>
 #include <youtils/UpdateReport.h>
 #include <youtils/VolumeDriverComponent.h>
@@ -43,6 +44,10 @@ class ContainerManager
     : public youtils::VolumeDriverComponent
 {
 public:
+    MAKE_EXCEPTION(Exception, fungi::IOException);
+    MAKE_EXCEPTION(ContainerDoesNotExistException, Exception);
+    MAKE_EXCEPTION(ContainerExistsAlreadyException, Exception);
+
     ContainerManager(backend::BackendConnectionManagerPtr cm,
                      const boost::property_tree::ptree& pt,
                      const RegisterComponent registerize = RegisterComponent::T);
