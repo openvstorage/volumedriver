@@ -17,6 +17,8 @@
 #include "FailOverCacheAsyncBridge.h"
 #include "FailOverCacheSyncBridge.h"
 
+#include <youtils/Assert.h>
+
 namespace volumedriver
 {
 
@@ -39,6 +41,8 @@ FailOverCacheClientInterface::create(const FailOverCacheMode mode,
     case FailOverCacheMode::Synchronous:
         return Ptr(new FailOverCacheSyncBridge(max_entries));
     }
+
+    VERIFY(0 == "Someone added a new FailOverCacheMode and forgot to update this function?");
 }
 
 } // namespace volumedriver
