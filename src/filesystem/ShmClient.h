@@ -91,16 +91,6 @@ public:
     void
     stop_reply_queues(int n);
 
-    ssize_t
-    send_write(const void* buf,
-               const uint64_t size_in_bytes,
-               const uint64_t offset_in_bytes);
-
-    ssize_t
-    send_read(void *buf,
-              const uint64_t size_in_bytes,
-              const uint64_t offset_in_bytes);
-
     int
     stat(struct stat *st);
 

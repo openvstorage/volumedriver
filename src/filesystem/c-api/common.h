@@ -16,18 +16,41 @@
 #ifndef __LIB_OVS_COMMON_H
 #define __LIB_OVS_COMMON_H
 
+#define ATTRIBUTE_UNUSED __attribute__((unused))
+
 enum class RequestOp
 {
+    Noop,
     Read,
     Write,
     Flush,
     AsyncFlush,
+    Open,
+    Close,
+};
+
+enum class TransportType
+{
+    Error,
+    SharedMemory,
+    TCP,
+    RDMA,
+};
+
+struct ovs_context_attr_t
+{
+    TransportType transport;
+    std::string host;
+    int port;
+    uint64_t network_qdepth;
 };
 
 struct ovs_buffer
 {
     void *buf;
     size_t size;
+    xio_reg_mem *mem;
+    bool from_mpool;
 };
 
 struct ovs_completion
@@ -38,7 +61,7 @@ struct ovs_completion
     bool _calling;
     bool _signaled;
     bool _failed;
-    size_t _rv;
+    ssize_t _rv;
     pthread_cond_t _cond;
     pthread_mutex_t _mutex;
 };
@@ -54,7 +77,7 @@ struct ovs_aio_request
     bool _signaled;
     bool _failed;
     int _errno;
-    size_t _rv;
+    ssize_t _rv;
     pthread_cond_t _cond;
     pthread_mutex_t _mutex;
 };

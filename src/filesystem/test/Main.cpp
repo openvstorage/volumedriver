@@ -106,6 +106,9 @@ public:
             ("foc-transport",
              po::value<decltype(vfst::FileSystemTestSetup::failovercache_transport_)>(&vfst::FileSystemTestSetup::failovercache_transport_)->default_value(vfst::FileSystemTestSetup::failovercache_transport_),
              "FailOverCacheTransport to use (TCP|RSocket)")
+            ("edge-transport",
+             po::value<decltype(vfst::FileSystemTestSetup::edge_transport_)>(&vfst::FileSystemTestSetup::edge_transport_)->default_value(vfst::FileSystemTestSetup::edge_transport_),
+             "Transport to use for the Edge (tcp|rdma)")
             // ("vdisk-format,V",
             //  po::value<decltype(vdisk_format_)>(&vdisk_format_)->default_value(vdisk_format_vmdk_name),
             //  "vdisk format: VMDK")

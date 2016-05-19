@@ -153,6 +153,11 @@ FuseInterface::FuseInterface(const bpt::ptree& pt,
                                                         registerizle,
                                                         fs_) :
                       nullptr)
+    , network_server_(fs_.enable_network_interface() ?
+                      std::make_unique<NetworkXioInterface>(pt,
+                                                            registerizle,
+                                                            fs_) :
+                      nullptr)
 {}
 
 void
@@ -299,6 +304,7 @@ FuseInterface::operator()(const fs::path& mntpoint,
                                });
 
     boost::optional<boost::thread> shm_thread;
+    boost::optional<boost::thread> network_thread;
 
     if (shm_orb_server_)
     {
@@ -334,6 +340,35 @@ FuseInterface::operator()(const fs::path& mntpoint,
                                 shm_thread->join();
                             }
                         }));
+
+    if (network_server_)
+    {
+        network_thread = boost::thread([&]
+                    {
+                          try
+                          {
+                            network_server_->run();
+                          }
+                          CATCH_STD_ALL_LOG_IGNORE("exception running network (xio) server");
+                      });
+    }
+
+    auto network_thread_exit(yt::make_scope_exit([&]
+                {
+                    if (network_thread)
+                    {
+                        VERIFY(network_server_);
+                        LOG_INFO("stopping network (xio) server");
+                        try
+                        {
+                            network_server_->shutdown();
+                        }
+                        CATCH_STD_ALL_LOG_IGNORE("failed to stop network server");
+                        LOG_INFO("waiting for network (xio) thread to finish");
+                        network_thread->join();
+                    }
+                }));
+
 
     boost::thread fs_thread([&]
                            {

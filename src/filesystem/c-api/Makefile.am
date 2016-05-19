@@ -15,6 +15,7 @@ libovsvolumedriver_LTLIBRARIES = libovsvolumedriver.la
 libovsvolumedriver_la_SOURCES = \
 	../ShmIdlInterface.cpp \
 	../ShmClient.cpp \
+	../NetworkXioClient.cpp \
 	TracePoints_tp.c \
 	libovsvolumedriver.cpp
 
@@ -22,10 +23,9 @@ libovsvolumedriver_la_CXXFLAGS = ${BUILDTOOLS_CFLAGS} \
 	-DBOOST_DATE_TIME_POSIX_TIME_STD_CONFIG \
 	-I@abs_top_srcdir@/../msgpack-c/include
 
-libovsvolumedriver_la_LIBADD = \
-	../../youtils/libyoutils.la \
+libovsvolumedriver_la_LIBADD = ../../youtils/libyoutils.la \
 	${BUILDTOOLS_LIBS} \
-	-lgcc
+	-lxio -lgcc
 
 libovsvolumedriver_la_CPPFLAGS = \
 	-I@abs_top_srcdir@/ \

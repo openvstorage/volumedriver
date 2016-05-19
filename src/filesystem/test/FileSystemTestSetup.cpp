@@ -58,6 +58,9 @@ FileSystemTestSetup::address_("127.0.0.1");
 vd::FailOverCacheTransport
 FileSystemTestSetup::failovercache_transport_(vd::FailOverCacheTransport::TCP);
 
+std::string
+FileSystemTestSetup::edge_transport_("tcp");
+
 FileSystemTestSetup::FileSystemTestSetup(const FileSystemTestSetupParameters& params)
     : ytt::TestBase()
     , be::BackendTestSetup()
@@ -336,6 +339,7 @@ FileSystemTestSetup::make_config_(bpt::ptree& pt,
 
         ip::PARAMETER_TYPE(fs_cache_dentries)(true).persist(pt);
         ip::PARAMETER_TYPE(fs_enable_shm_interface)(true).persist(pt);
+        ip::PARAMETER_TYPE(fs_enable_network_interface)(true).persist(pt);
 
         make_mdstore_config_(pt);
     }
@@ -349,6 +353,10 @@ FileSystemTestSetup::make_config_(bpt::ptree& pt,
         ip::PARAMETER_TYPE(vrouter_id)(vrouter_id).persist(pt);
         ip::PARAMETER_TYPE(scrub_manager_interval)(scrub_manager_interval_secs_).persist(pt);
     }
+
+    // network server
+    make_edge_config_(pt,
+		      vrouter_id);
 
     // volume_router_cluster
     {
@@ -370,6 +378,19 @@ FileSystemTestSetup::make_config_(bpt::ptree& pt,
     {
         ip::PARAMETER_TYPE(stats_collector_interval_secs)(30).persist(pt);
     }
+
+    return pt;
+}
+
+bpt::ptree&
+FileSystemTestSetup::make_edge_config_(bpt::ptree& pt,
+				       const vfs::NodeId& node_id)
+{
+    const std::string uri(edge_transport() + "://"s + address() + ":"s +
+			  boost::lexical_cast<std::string>(node_id == local_node_id() ?
+							   local_edge_port() :
+							   remote_edge_port()));
+    ip::PARAMETER_TYPE(network_uri)(uri).persist(pt);
     return pt;
 }
 

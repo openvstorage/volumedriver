@@ -47,7 +47,8 @@ volumedriver_fs_test_LDADD = \
 	$(BUILDTOOLS_LIBS) \
 	-lpython2.7 \
 	-lomniORB4 \
-	-lomnithread
+	-lomnithread \
+	-lxio
 
 volumedriver_fs_test_SOURCES = \
 	CachedObjectRegistryTest.cpp \
@@ -69,6 +70,7 @@ volumedriver_fs_test_SOURCES = \
 	Main.cpp \
 	MessageTest.cpp \
 	MetaDataStoreTest.cpp \
+	NetworkServerTest.cpp \
 	ObjectRegistryTest.cpp \
 	ObjectRouterTest.cpp \
 	ProtobufTest.cpp \
