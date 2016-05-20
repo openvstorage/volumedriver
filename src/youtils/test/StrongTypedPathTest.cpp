@@ -26,6 +26,8 @@ STRONG_TYPED_PATH(youtilstest, TestPathType);
 namespace youtilstest
 {
 
+namespace fs = boost::filesystem;
+
 class StrongTypedPathTest
     : public TestBase
 {};

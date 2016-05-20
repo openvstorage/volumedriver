@@ -17,14 +17,10 @@
 #define TESTBASE_H_
 
 #include <gtest/gtest.h>
-#include "IOException.h"
 #include <boost/filesystem.hpp>
-#include <boost/optional.hpp>
 
 namespace youtilstest
 {
-
-namespace fs = boost::filesystem;
 
 class TestBase
     : public testing::Test

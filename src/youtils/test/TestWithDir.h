@@ -15,29 +15,31 @@
 
 #ifndef TEST_WITH_DIR_H_
 #define TEST_WITH_DIR_H_
+
 #include "../TestBase.h"
 
 namespace youtilstest
 {
 
-class TestWithDir : public TestBase
+class TestWithDir
+    : public TestBase
 {
 public:
     TestWithDir(const std::string& dirName);
     TestWithDir();
-    const fs::path& getDir();
+
+    const boost::filesystem::path&
+    getDir();
 
 protected:
-    virtual void SetUp();
-    virtual void TearDown();
+    virtual void
+    SetUp();
+
+    virtual void
+    TearDown();
 
 private:
-  fs::path directory_;
+    boost::filesystem::path directory_;
 };
 }
 #endif // TEST_WITH_DIR_H_
-// Local Variables: **
-// bvirtual-targets: ("target/bin/youtils_test") **
-// compile-command: "scons -D --kernel_version=system --ignore-buildinfo -j 5" **
-// mode: c++ **
-// End: **

@@ -36,6 +36,7 @@
 namespace youtilstest
 {
 
+namespace fs = boost::filesystem;
 using namespace youtils;
 using namespace std::literals::string_literals;
 
