@@ -15,6 +15,12 @@
 
 #include "BackendTestBase.h"
 
+#include <future>
+
+#include <boost/thread/thread.hpp>
+
+#include <youtils/UpdateReport.h>
+
 namespace backendtest
 {
 
@@ -31,63 +37,87 @@ public:
     ConnectionManagerTest()
         : be::BackendTestBase("ConnectionManagerTest")
     {}
+
+    void
+    pin_to_cpu_0()
+    {
+        cpu_set_t cpu_set;
+
+        CPU_ZERO(&cpu_set);
+        CPU_SET(0, &cpu_set);
+
+        ASSERT_EQ(0, pthread_setaffinity_np(pthread_self(),
+                                            sizeof(cpu_set),
+                                            &cpu_set));
+    }
 };
 
 TEST_F(ConnectionManagerTest, limited_pool)
 {
-    const size_t cap = cm_->capacity();
-    ASSERT_LT(0U, cap);
+    std::async(std::launch::async,
+               [&]
+               {
+                   pin_to_cpu_0();
 
-    ASSERT_EQ(0U,
-              cm_->size());
+                   const size_t cap = cm_->capacity();
+                   ASSERT_LT(0U, cap);
 
-    for (size_t i = 0; i < cap; ++i)
-    {
-        cm_->getConnection(ForceNewConnection::T);
-    }
+                   ASSERT_EQ(0U,
+                             cm_->size());
 
-    ASSERT_EQ(cap,
-              cm_->size());
+                   for (size_t i = 0; i < cap; ++i)
+                   {
+                                   cm_->getConnection(ForceNewConnection::T);
+                   }
 
-    cm_->getConnection(ForceNewConnection::T);
+                   ASSERT_EQ(cap / boost::thread::hardware_concurrency(),
+                             cm_->size());
 
-    ASSERT_EQ(cap,
-              cm_->size());
+                   cm_->getConnection(ForceNewConnection::T);
+
+                   ASSERT_EQ(cap / boost::thread::hardware_concurrency(),
+                             cm_->size());
+               }).wait();
 }
 
 // OVS-2204: for some reason the count of open fds goes up after an error, but
 //  valgrind does not report a leak. Try to figure our what's going on here.
 TEST_F(ConnectionManagerTest, limited_pool_on_errors)
 {
-    const std::string oname("some-object");
-    const fs::path opath(path_ / oname);
+    std::async(std::launch::async,
+               [&]
+               {
+                   pin_to_cpu_0();
+                   const std::string oname("some-object");
+                   const fs::path opath(path_ / oname);
 
-    const yt::CheckSum cs(createTestFile(opath,
-                                         4096,
-                                         "some pattern"));
+                   const yt::CheckSum cs(createTestFile(opath,
+                                                        4096,
+                                                        "some pattern"));
 
-    yt::CheckSum wrong_cs(1);
+                   yt::CheckSum wrong_cs(1);
 
-    ASSERT_NE(wrong_cs,
-              cs);
+                   ASSERT_NE(wrong_cs,
+                             cs);
 
-    std::unique_ptr<be::BackendTestSetup::WithRandomNamespace>
-        nspace(make_random_namespace());
+                   std::unique_ptr<be::BackendTestSetup::WithRandomNamespace>
+                       nspace(make_random_namespace());
 
-    be::BackendInterfacePtr bi(bi_(nspace->ns()));
-    const size_t count = 2 * cm_->capacity();
+                   be::BackendInterfacePtr bi(bi_(nspace->ns()));
+                   const size_t count = 2 * cm_->capacity();
 
-    for (size_t i = 0; i < count; ++i)
-    {
-        ASSERT_THROW(bi->write(opath,
-                               oname,
-                               OverwriteObject::F,
-                               &wrong_cs),
-                     be::BackendInputException);
-    }
+                   for (size_t i = 0; i < count; ++i)
+                   {
+                       ASSERT_THROW(bi->write(opath,
+                                              oname,
+                                              OverwriteObject::F,
+                                              &wrong_cs),
+                                    be::BackendInputException);
+                   }
 
-    ASSERT_EQ(cm_->capacity(),
-              cm_->size());
+                   ASSERT_EQ(cm_->capacity() / boost::thread::hardware_concurrency(),
+                             cm_->size());
+               }).wait();
 }
 
 TEST_F(ConnectionManagerTest, no_pool)
@@ -128,7 +158,6 @@ TEST_F(ConnectionManagerTest, no_pool)
 
     ASSERT_EQ(0U,
               cm_->size());
-
 }
 
 }

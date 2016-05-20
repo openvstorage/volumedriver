@@ -21,8 +21,9 @@
 #include "Namespace.h"
 #include "ObjectInfo.h"
 
-#include <boost/filesystem.hpp>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/intrusive/slist.hpp>
 #include <boost/optional.hpp>
 
 #include <youtils/Assert.h>
@@ -43,6 +44,7 @@ using byte = unsigned char;
 using buffer = byte*;
 
 class BackendConnectionInterface
+    : public boost::intrusive::slist_base_hook<>
 {
 protected:
     boost::posix_time::time_duration timeout_;
