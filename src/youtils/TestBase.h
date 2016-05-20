@@ -21,27 +21,9 @@
 #include <boost/filesystem.hpp>
 #include <boost/optional.hpp>
 
-// Streaming out optionals
-
-template <typename T>
-std::ostream&
-operator<<(std::ostream& os,
-           const boost::optional<T>& val)
-{
-    if(val)
-    {
-        return os << val;
-    }
-    else
-    {
-
-        return os << "None";
-    }
-
-}
-
 namespace youtilstest
 {
+
 namespace fs = boost::filesystem;
 
 class TestBase
@@ -55,7 +37,6 @@ public:
     static boost::filesystem::path
     getTempPath(const std::string& ipath);
 };
-
 
 }
 
