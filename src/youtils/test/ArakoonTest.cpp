@@ -329,7 +329,7 @@ TEST_F(ArakoonTest, gets_and_sets)
     auto cluster(test_setup.make_client());
 
     std::map<std::string, std::string> keyvals;
-    const uint64_t test_size = 1024*16;
+    const uint64_t test_size = 123;
 
     for(unsigned i = 0; i < test_size; ++i)
     {
