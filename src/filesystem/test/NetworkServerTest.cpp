@@ -198,11 +198,11 @@ TEST_F(NetworkServerTest, open_same_volume_twice)
               ovs_create_volume(ctx1,
                                 "volume",
                                 volume_size));
-    EXPECT_EQ(0,
+    ASSERT_EQ(0,
               ovs_ctx_init(ctx1,
                            "volume",
                            O_RDWR));
-    EXPECT_EQ(0,
+    ASSERT_EQ(0,
               ovs_ctx_init(ctx2,
                            "volume",
                            O_RDWR));
@@ -230,7 +230,7 @@ TEST_F(NetworkServerTest, create_write_read_destroy)
               ovs_create_volume(ctx,
                                 "volume",
                                 volume_size));
-    EXPECT_EQ(0,ovs_ctx_init(ctx,
+    ASSERT_EQ(0,ovs_ctx_init(ctx,
                              "volume",
                              O_RDWR));
 
@@ -352,14 +352,14 @@ TEST_F(NetworkServerTest, completion)
               ovs_create_volume(ctx,
                                 "volume",
                                 volume_size));
-    EXPECT_EQ(0,
+    ASSERT_EQ(0,
               ovs_ctx_init(ctx, "volume", O_RDWR));
     EXPECT_EQ(0,
               ovs_ctx_destroy(ctx));
 
     ctx = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx != nullptr);
-    EXPECT_EQ(0,
+    ASSERT_EQ(0,
               ovs_ctx_init(ctx, "volume", O_RDWR));
 
     std::string pattern("openvstorage1");
@@ -478,7 +478,7 @@ TEST_F(NetworkServerTest, stat)
                                 "volume",
                                 volume_size),
               0);
-    EXPECT_EQ(0,
+    ASSERT_EQ(0,
               ovs_ctx_init(ctx, "volume", O_RDWR));
 
     struct stat st;
@@ -597,10 +597,10 @@ TEST_F(NetworkServerTest, completion_two_ctxs)
                                 "volume2",
                                 volume_size));
 
-    EXPECT_EQ(0,
+    ASSERT_EQ(0,
               ovs_ctx_init(ctx1, "volume1", O_RDWR));
 
-    EXPECT_EQ(0,
+    ASSERT_EQ(0,
               ovs_ctx_init(ctx2, "volume2", O_RDWR));
 
     std::string pattern("openvstorage1");
@@ -748,7 +748,7 @@ TEST_F(NetworkServerTest, write_flush_read)
               ovs_create_volume(ctx,
                                 "volume",
                                 volume_size));
-    EXPECT_EQ(0,
+    ASSERT_EQ(0,
               ovs_ctx_init(ctx,
                            "volume",
                            O_RDWR));
