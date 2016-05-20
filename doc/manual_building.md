@@ -50,7 +50,7 @@ NOTE: while we try to keep this page up to date, it might get out of sync from t
 
  You also need [Accelio](http://www.accelio.org/) installed, which we provide via our package repo:
 
-         echo "deb http://apt.openvstorage.org unstable main" > /etc/apt/sources.list.d/ovsaptrepo.list
+        echo "deb http://apt.openvstorage.org unstable main" > /etc/apt/sources.list.d/ovsaptrepo.list
         apt-get update -qq
         apt-get install -y --allow-unauthenticated libxio0 libxio-dev
 
