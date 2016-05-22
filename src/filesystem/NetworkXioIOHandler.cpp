@@ -64,7 +64,7 @@ NetworkXioIOHandler::handle_open(NetworkXioRequest *req,
     {
         LOG_ERROR("volume '" << volume_name << "' doesn't exist");
         req->retval = -1;
-        req->errval = EACCES;
+        req->errval = ENOENT;
     }
     catch (...)
     {
