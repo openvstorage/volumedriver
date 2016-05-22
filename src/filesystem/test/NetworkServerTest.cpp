@@ -124,7 +124,7 @@ TEST_F(NetworkServerTest, non_existent_volume)
     ASSERT_TRUE(ctx != nullptr);
     EXPECT_EQ(-1,
               ovs_ctx_init(ctx, "volume", O_RDWR));
-    EXPECT_EQ(EACCES, errno);
+    EXPECT_EQ(ENOENT, errno);
     EXPECT_EQ(0, ovs_ctx_destroy(ctx));
     EXPECT_EQ(0,
               ovs_ctx_attr_destroy(ctx_attr));
