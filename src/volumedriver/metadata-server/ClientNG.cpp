@@ -253,6 +253,31 @@ struct TableHandle
         return nspace_;
     }
 
+    virtual TableCounters
+    get_counters(vd::Reset reset) override final
+    {
+        auto b([&](mdsproto::Methods::GetTableCountersParams::Builder& builder)
+               {
+                   // LOG_TRACE(nspace_ << ": building CatchUp request");
+                   builder.setNspace(nspace_);
+                   builder.setReset(reset == vd::Reset::T);
+               });
+
+        TableCounters counters;
+
+        auto r([&](mdsproto::Methods::GetTableCountersResults::Reader& reader)
+               {
+                   const auto c = reader.getCounters();
+                   counters.total_tlogs_read = c.getTotalTLogsRead();
+                   counters.incremental_updates = c.getIncrementalUpdates();
+                   counters.full_rebuilds = c.getFullRebuilds();
+               });
+
+        client_->interact_<mdsproto::RequestHeader::Type::GetTableCounters>(std::move(b),
+                                                                            std::move(r));
+        return counters;
+    }
+
     const std::string nspace_;
     ClientNG::Ptr client_;
 };

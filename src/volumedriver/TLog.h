@@ -151,6 +151,14 @@ public:
     void
     getOrderedTLogIds(OrderedTLogIds& out) const;
 
+    OrderedTLogIds
+    getOrderedTLogIds() const
+    {
+        OrderedTLogIds tlog_ids;
+        getOrderedTLogIds(tlog_ids);
+        return tlog_ids;
+    }
+
     void
     getReverseOrderedTLogIds(OrderedTLogIds& out) const;
 
@@ -167,10 +175,8 @@ public:
     bool
     writtenToBackend() const;
 
-    TLogs tlogsOnDss();
-
-    void
-    getTLogIds(OrderedTLogIds& outTLogs) const;
+    TLogs
+    tlogsOnBackend();
 
     boost::optional<TLogId>
     checkAndGetAllTLogsWrittenToBackendAndRemoveLaterOnes(OrderedTLogIds&);

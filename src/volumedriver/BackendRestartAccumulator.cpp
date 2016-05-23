@@ -53,26 +53,55 @@ BackendRestartAccumulator::operator()(const SnapshotPersistor& sp,
 
     OrderedTLogIds tlogs;
 
+    auto walk_tlogs([&](const OrderedTLogIds& tlog_ids)
+                    {
+                        VERIFY(not end_seen_);
+
+                        for (const auto& tlog_id : tlog_ids)
+                        {
+                            if (start_cork_ != boost::none and
+                                TLogId(*start_cork_) == tlog_id)
+                            {
+                                VERIFY(not start_seen_);
+                                start_seen_ = true;
+                            }
+                            else if (start_seen_)
+                            {
+                                tlogs.push_back(tlog_id);
+                            }
+
+                            if (end_cork_ != boost::none and
+                                TLogId(*end_cork_) == tlog_id)
+                            {
+                                end_seen_ = true;
+                                break;
+                            }
+                        }
+                    });
+
     if (not end_seen_)
     {
         for (const auto& snap : sp.getSnapshots())
         {
-            if (start_cork_ != boost::none and
-                snap.getCork() == *start_cork_)
+            walk_tlogs(snap.getOrderedTLogIds());
+
+            // check the cork IDs of empty snapshots:
+            if (not start_seen_ and
+                start_cork_ != boost::none and
+                *start_cork_ == snap.getCork())
             {
-                VERIFY(not start_seen_);
                 start_seen_ = true;
             }
 
-            if (start_seen_)
-            {
-                snap.getOrderedTLogIds(tlogs);
-            }
-
-            if (end_cork_ != boost::none and
-                snap.getCork() == *end_cork_)
+            if (not end_seen_ and
+                end_cork_ != boost::none and
+                *end_cork_ == snap.getCork())
             {
                 end_seen_ = true;
+            }
+
+            if (end_seen_)
+            {
                 break;
             }
         }
@@ -82,27 +111,7 @@ BackendRestartAccumulator::operator()(const SnapshotPersistor& sp,
     {
         if (not end_seen_)
         {
-            for (const auto& tlog : sp.getCurrentTLogsWrittenToBackend())
-            {
-                if (start_cork_ != boost::none and
-                    tlog == TLogId(*start_cork_))
-                {
-                    VERIFY(not start_seen_);
-                    start_seen_ = true;
-                }
-
-                if (start_seen_)
-                {
-                    tlogs.push_back(tlog);
-                }
-
-                if (end_cork_ != boost::none and
-                    tlog == TLogId(*end_cork_))
-                {
-                    end_seen_ = true;
-                    break;
-                }
-            }
+            walk_tlogs(sp.getCurrentTLogsWrittenToBackend());
         }
     }
     else

@@ -59,7 +59,7 @@ TLog::writtenToBackend() const
 }
 
 TLogs
-TLogs::tlogsOnDss()
+TLogs::tlogsOnBackend()
 {
     TLogs ret;
 
@@ -226,15 +226,6 @@ TLogs::writtenToBackend() const
         }
     }
     return true;
-}
-
-void
-TLogs::getTLogIds(OrderedTLogIds& out) const
-{
-    for(const_iterator it = begin(); it != end(); ++it)
-    {
-        out.push_back(it->id());
-    }
 }
 
 boost::optional<TLogId>

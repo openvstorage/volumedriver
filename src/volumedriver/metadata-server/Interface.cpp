@@ -14,3 +14,21 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "Interface.h"
+
+#include <iostream>
+
+namespace metadata_server
+{
+
+std::ostream&
+operator<<(std::ostream& os,
+           const TableCounters& c)
+{
+    return os <<
+        "TableCounters{total_tlogs_read=" << c.total_tlogs_read <<
+        ",incremental_updates=" << c.incremental_updates <<
+        ",full_rebuilds=" << c.full_rebuilds <<
+        "}";
+}
+
+}

@@ -215,6 +215,7 @@ ServerNG::dispatch_(C& conn,
         CASE(Ping, ping_);
         CASE(ApplyRelocationLogs, apply_relocation_logs_);
         CASE(CatchUp, catch_up_);
+        CASE(GetTableCounters, get_table_counters_);
     }
 
 #undef CASE
@@ -715,6 +716,24 @@ ServerNG::catch_up_(mdsproto::Methods::CatchUpParams::Reader& reader,
     const size_t num_tlogs = db_->open(nspace)->catch_up(dry_run);
 
     builder.setNumTLogs(num_tlogs);
+}
+
+void
+ServerNG::get_table_counters_(mdsproto::Methods::GetTableCountersParams::Reader& reader,
+                              mdsproto::Methods::GetTableCountersResults::Builder& builder)
+{
+    const std::string nspace(reader.getNspace().begin(),
+                             reader.getNspace().size());
+    const vd::Reset reset(reader.getReset() ?
+                          vd::Reset::T :
+                          vd::Reset::F);
+
+    const TableCounters table_counters = db_->open(nspace)->get_counters(reset);
+
+    mdsproto::TableCounters::Builder cbuilder = builder.initCounters();
+    cbuilder.setTotalTLogsRead(table_counters.total_tlogs_read);
+    cbuilder.setIncrementalUpdates(table_counters.incremental_updates);
+    cbuilder.setFullRebuilds(table_counters.full_rebuilds);
 }
 
 }

@@ -38,9 +38,9 @@ class RocksTable
 {
 public:
     RocksTable(const std::string& nspace,
-               std::shared_ptr<rocksdb::DB>& db,
-               std::unique_ptr<rocksdb::ColumnFamilyHandle> column_family,
-               const RocksConfig& rocks_config);
+               std::shared_ptr<rocksdb::DB>&,
+               std::unique_ptr<rocksdb::ColumnFamilyHandle>,
+               const RocksConfig&);
 
     virtual ~RocksTable() = default;
 
@@ -54,10 +54,10 @@ public:
 
     virtual void
     multiset(const TableInterface::Records& sets,
-             Barrier barrier) override final;
+             Barrier) override final;
 
     virtual TableInterface::MaybeStrings
-    multiget(const TableInterface::Keys& keys) override final;
+    multiget(const TableInterface::Keys&) override final;
 
     virtual const std::string&
     nspace() const override final
@@ -66,16 +66,18 @@ public:
     }
 
     virtual void
-    apply_relocations(const volumedriver::ScrubId& scrub_id,
-                      const volumedriver::SCOCloneID cid,
-                      const TableInterface::RelocationLogs& relocs) override final;
+    apply_relocations(const volumedriver::ScrubId&,
+                      const volumedriver::SCOCloneID,
+                      const TableInterface::RelocationLogs&) override final;
 
     virtual void
     clear() override final;
 
     virtual size_t
-    catch_up(volumedriver::DryRun dry_run) override final;
+    catch_up(volumedriver::DryRun) override final;
 
+    virtual TableCounters
+    get_counters(volumedriver::Reset) override final;
 private:
     DECLARE_LOGGER("MetaDataServerRocksTable");
 

@@ -69,6 +69,7 @@ struct RequestHeader
         Ping = 8,
         ApplyRelocationLogs = 9,
         CatchUp = 10,
+        GetTableCounters = 11,
     };
 
     RequestHeader() = default;
@@ -188,6 +189,7 @@ MAKE_REQUEST(Open);
 MAKE_REQUEST(Ping);
 MAKE_REQUEST(ApplyRelocationLogs);
 MAKE_REQUEST(CatchUp);
+MAKE_REQUEST(GetTableCounters);
 
 #undef MAKE_REQUEST
 

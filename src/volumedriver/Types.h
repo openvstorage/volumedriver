@@ -96,6 +96,7 @@ BOOLEAN_ENUM(IgnoreFOCIfUnreachable);
 BOOLEAN_ENUM(FallBackToBackendRestart);
 BOOLEAN_ENUM(CreateNamespace);
 BOOLEAN_ENUM(DryRun);
+BOOLEAN_ENUM(Reset);
 
 // AR: these have to go
 #if 1

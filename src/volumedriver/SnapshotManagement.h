@@ -260,7 +260,8 @@ public:
     void
     scheduleWriteSnapshotToBackend();
 
-    void trimToDss();
+    void
+    trimToBackend();
 
     ClusterLocation
     getLastSCOInBackend();

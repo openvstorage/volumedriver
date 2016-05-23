@@ -354,7 +354,7 @@ SnapshotPersistor::getTLogsInSnapshot(const SnapshotNum num,
 void
 SnapshotPersistor::getCurrentTLogs(OrderedTLogIds& outTLogs) const
 {
-    current.getTLogIds(outTLogs);
+    current.getOrderedTLogIds(outTLogs);
 }
 
 TLogId
@@ -459,7 +459,7 @@ SnapshotPersistor::getTLogsAfterSnapshot(SnapshotNum num,
 {
     snapshots.getTLogsAfterSnapshot(num,
                                     out);
-    current.getTLogIds(out);
+    current.getOrderedTLogIds(out);
 }
 
 void
@@ -657,7 +657,7 @@ SnapshotPersistor::trimToBackend()
         LOG_TRACE(i->getName() << ": in backend: " << i->inBackend());
         if (not i->inBackend())
         {
-            current = i->tlogsOnDss();
+            current = i->tlogsOnBackend();
             snapshots.erase(i, snapshots.end());
             ready = true;
             break;
@@ -666,7 +666,7 @@ SnapshotPersistor::trimToBackend()
 
     if (not ready)
     {
-        current = current.tlogsOnDss();
+        current = current.tlogsOnBackend();
         ready = true;
     }
 

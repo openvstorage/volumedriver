@@ -165,4 +165,13 @@ PythonClient::catch_up(const std::string& nspace,
                                         vd::DryRun::F);
 }
 
+TableCounters
+PythonClient::get_table_counters(const std::string& nspace,
+                                 bool reset) const
+{
+    return get_table_(nspace)->get_counters(reset ?
+                                            vd::Reset::T :
+                                            vd::Reset::F);
+}
+
 }

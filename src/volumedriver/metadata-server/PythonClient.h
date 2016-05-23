@@ -70,6 +70,10 @@ public:
     catch_up(const std::string& nspace,
              bool dry_run) const;
 
+    TableCounters
+    get_table_counters(const std::string& nspace,
+                       bool reset) const;
+
 private:
     DECLARE_LOGGER("MDSPythonClient");
 

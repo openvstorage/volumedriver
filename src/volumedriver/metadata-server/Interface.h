@@ -151,6 +151,32 @@ struct Record
     const Value val;
 };
 
+struct TableCounters
+{
+    uint64_t total_tlogs_read = 0;
+    uint64_t incremental_updates = 0;
+    uint64_t full_rebuilds = 0;
+
+    bool
+    operator==(const TableCounters& other) const
+    {
+        return
+            total_tlogs_read == other.total_tlogs_read and
+            incremental_updates == other.incremental_updates and
+            full_rebuilds == other.full_rebuilds;
+    }
+
+    bool
+    operator!=(const TableCounters& other) const
+    {
+        return not operator==(other);
+    }
+};
+
+std::ostream&
+operator<<(std::ostream&,
+           const TableCounters&);
+
 enum class Role
 {
     Master,
@@ -214,7 +240,10 @@ public:
     // XXX: return an actual list of TLogs (actually pairs of clone ID or namespace and
     // tlog names)?
     virtual size_t
-    catch_up(volumedriver::DryRun dry_run) = 0;
+    catch_up(volumedriver::DryRun) = 0;
+
+    virtual TableCounters
+    get_counters(volumedriver::Reset) = 0;
 
 private:
     Role role_ = Role::Slave;

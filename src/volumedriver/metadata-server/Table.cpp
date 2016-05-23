@@ -39,6 +39,9 @@ namespace yt = youtils;
 #define LOCKW()                                                 \
     boost::unique_lock<decltype(rwlock_)> wlg__(rwlock_)
 
+#define LOCK_COUNTERS()                                         \
+    boost::lock_guard<decltype(counters_lock_)> clg__(counters_lock_)
+
 Table::Table(DataBaseInterfacePtr db,
              be::BackendInterfacePtr bi,
              yt::PeriodicActionPool::Ptr act_pool,
@@ -200,6 +203,7 @@ Table::apply_relocations(const vd::ScrubId& scrub_id,
                                                            vd::CheckScrubId::T));
 
         update_nsid_map_(res.nsid_map);
+        update_counters_(res);
 
         if (mdstore->scrub_id() == scrub_id)
         {
@@ -294,6 +298,7 @@ Table::work_()
             boost::upgrade_to_unique_lock<decltype(rwlock_)> u(ulg);
 
             update_nsid_map_(res.nsid_map);
+            update_counters_(res);
         }
         catch (be::BackendNamespaceDoesNotExistException& e)
         {
@@ -350,9 +355,47 @@ Table::catch_up(vd::DryRun dry_run)
         if (dry_run == vd::DryRun::F)
         {
             update_nsid_map_(res.nsid_map);
+            update_counters_(res);
         }
 
         return res.num_tlogs;
+    }
+}
+
+TableCounters
+Table::get_counters(vd::Reset reset)
+{
+    LOCKR();
+    LOCK_COUNTERS();
+
+    if (reset == vd::Reset::T)
+    {
+        TableCounters c;
+        std::swap(c, counters_);
+        return c;
+    }
+    else
+    {
+        return counters_;
+    }
+}
+
+void
+Table::update_counters_(const vd::MetaDataStoreBuilder::Result& res)
+{
+    LOCK_COUNTERS();
+
+    if (res.num_tlogs)
+    {
+        counters_.total_tlogs_read += res.num_tlogs;
+        if (res.full_rebuild)
+        {
+            counters_.full_rebuilds += 1;
+        }
+        else
+        {
+            counters_.incremental_updates += 1;
+        }
     }
 }
 
