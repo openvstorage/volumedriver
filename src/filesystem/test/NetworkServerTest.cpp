@@ -177,6 +177,7 @@ TEST_F(NetworkServerTest, already_created_volume)
     EXPECT_EQ(-1,
               ovs_remove_volume(ctx, "volume"));
     EXPECT_EQ(ENOENT, errno);
+    EXPECT_EQ(0, ovs_ctx_destroy(ctx));
     EXPECT_EQ(0,
               ovs_ctx_attr_destroy(ctx_attr));
 }
