@@ -47,6 +47,7 @@ public:
     , state_(ShmConnectionState::Connected)
     , try_stop_volume_(try_stop_volume)
     , is_volume_valid_(is_volume_valid)
+    , deregistered(false)
     {
         data_.resize(1024);
     }
@@ -68,8 +69,11 @@ public:
     void
     remove_session()
     {
-        try_stop_volume_(volume_name_);
-        cache_.reset();
+        if (not deregistered)
+        {
+            try_stop_volume_(volume_name_);
+            cache_.reset();
+        }
     }
 
     ShmControlChannelMsg
@@ -133,6 +137,7 @@ public:
             cache_.reset();
             state_ = ShmConnectionState::Connected;
             o_msg.opcode(ShmMsgOpcode::Success);
+            deregistered = true;
         }
         return o_msg;
     }
@@ -263,6 +268,7 @@ private:
     ShmConnectionState state_;
     TryStopVolume try_stop_volume_;
     IsVolumeValid is_volume_valid_;
+    bool deregistered;
 };
 
 typedef boost::shared_ptr<ControlSession> ctl_session_ptr;
