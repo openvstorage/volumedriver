@@ -28,9 +28,6 @@ namespace youtilstest
 {
 using namespace youtils;
 
-// the same as SimpleIO
-using TestFile = FileDescriptor;
-
 class LowLevelFileTest
     : public TestBase
 {
@@ -53,7 +50,7 @@ public:
     }
 
     static int
-    get_fd(TestFile& f)
+    get_fd(FileDescriptor& f)
     {
         return f.fd_;
     }
@@ -65,7 +62,7 @@ protected:
 TEST_F(LowLevelFileTest, mixedBag)
 {
     fs::path p(directory_ / "testfile");
-    EXPECT_THROW(TestFile f(p, FDMode::Write),
+    EXPECT_THROW(FileDescriptor f(p, FDMode::Write),
                  FileDescriptorException);
 
     std::vector<uint8_t> buf1(2048);
@@ -77,7 +74,7 @@ TEST_F(LowLevelFileTest, mixedBag)
     std::vector<uint8_t> out(4096);
 
     {
-        TestFile f(p, FDMode::Write, CreateIfNecessary::T);
+        FileDescriptor f(p, FDMode::Write, CreateIfNecessary::T);
 
         EXPECT_EQ(buf1.size(), f.write(&buf1[0], buf1.size()));
         EXPECT_THROW(f.read(&out[0], out.size()),
@@ -85,7 +82,7 @@ TEST_F(LowLevelFileTest, mixedBag)
     }
 
     {
-        TestFile g(p, FDMode::ReadWrite, CreateIfNecessary::F);
+        FileDescriptor g(p, FDMode::ReadWrite, CreateIfNecessary::F);
 
         g.seek(0, Whence::SeekEnd);
         EXPECT_EQ(buf2.size(), g.write(&buf2[0], buf2.size()));
@@ -93,7 +90,7 @@ TEST_F(LowLevelFileTest, mixedBag)
     }
 
     {
-        TestFile h(p, FDMode::Read, CreateIfNecessary::F);
+        FileDescriptor h(p, FDMode::Read, CreateIfNecessary::F);
         EXPECT_THROW(h.pwrite(&buf2[0], buf2.size(), 0),
                      FileDescriptorException);
 
@@ -125,10 +122,10 @@ TEST_F(LowLevelFileTest, mixedBag)
 TEST_F(LowLevelFileTest, seek1)
 {
     fs::path p = directory_ / "testfile";
-    EXPECT_THROW(TestFile f(p, FDMode::Read),
+    EXPECT_THROW(FileDescriptor f(p, FDMode::Read),
                  FileDescriptorException);
     FileUtils::touch(p);
-    TestFile f(p, FDMode::Read);
+    FileDescriptor f(p, FDMode::Read);
     EXPECT_THROW(f.seek(-25, Whence::SeekCur),
                  FileDescriptorException);
     EXPECT_EQ(f.tell(),0);
@@ -146,15 +143,15 @@ TEST_F(LowLevelFileTest, seek1)
 TEST_F(LowLevelFileTest, locking)
 {
     const fs::path p(directory_ / "lockfile");
-    TestFile f(p,
-               FDMode::Write,
-               CreateIfNecessary::T);
+    FileDescriptor f(p,
+                     FDMode::Write,
+                     CreateIfNecessary::T);
 
     std::unique_lock<decltype(f)> u(f);
     ASSERT_TRUE(static_cast<bool>(u));
 
-    TestFile g(p,
-               FDMode::Write);
+    FileDescriptor g(p,
+                     FDMode::Write);
 
     std::unique_lock<decltype(g)> v(g,
                                     std::try_to_lock);
@@ -164,9 +161,9 @@ TEST_F(LowLevelFileTest, locking)
 TEST_F(LowLevelFileTest, purge_from_page_cache)
 {
     const fs::path p(directory_ / "some_file");
-    TestFile f(p,
-               FDMode::ReadWrite,
-               CreateIfNecessary::T);
+    FileDescriptor f(p,
+                     FDMode::ReadWrite,
+                     CreateIfNecessary::T);
 
     const size_t page_size = ::sysconf(_SC_PAGESIZE);
     ASSERT_LT(0,
