@@ -469,6 +469,9 @@ public:
     ClusterCacheMode
     get_cluster_cache_default_mode() const;
 
+    SCOWrittenToBackendAction
+    get_sco_written_to_backend_action() const;
+
     size_t
     effective_metadata_cache_capacity(const VolumeConfig&) const;
 
@@ -514,6 +517,7 @@ private:
 private:
     DECLARE_PARAMETER(read_cache_default_behaviour);
     DECLARE_PARAMETER(read_cache_default_mode);
+    DECLARE_PARAMETER(sco_written_to_backend_action);
 
 private:
     DECLARE_PARAMETER(clean_interval);

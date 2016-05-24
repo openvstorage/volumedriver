@@ -112,6 +112,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(read_cache_default_mode,
                                       ShowDocumentation::T,
                                       volumedriver::ClusterCacheMode::ContentBased);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(sco_written_to_backend_action,
+                                      volmanager_component_name,
+                                      "sco_written_to_backend_action",
+                                      "Default SCO cache behaviour (SetDisposable, SetDisposableAndPurgeFromPageCache, PurgeFromSCOCache)",
+                                      ShowDocumentation::T,
+                                      volumedriver::SCOWrittenToBackendAction::SetDisposable);
+
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(required_tlog_freespace,
                                       volmanager_component_name,
                                       "required_tlog_freespace",

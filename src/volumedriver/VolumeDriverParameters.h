@@ -20,6 +20,7 @@
 #include "ClusterCacheMode.h"
 #include "LockStoreType.h"
 #include "MountPointConfig.h"
+#include "SCOWrittenToBackendAction.h"
 #include "Types.h"
 
 #include <youtils/ArakoonNodeConfig.h>
@@ -52,6 +53,8 @@ DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(read_cache_default_behaviour,
                                                   volumedriver::ClusterCacheBehaviour);
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(read_cache_default_mode,
                                                   volumedriver::ClusterCacheMode);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(sco_written_to_backend_action,
+                                                  volumedriver::SCOWrittenToBackendAction);
 // TODO these should have a dimensioned value constructor.
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(required_meta_freespace,
                                                   std::atomic<uint64_t>);
