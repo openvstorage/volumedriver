@@ -28,12 +28,12 @@ namespace youtilstest
 {
 using namespace youtils;
 
-class LowLevelFileTest
+class FileDescriptorTest
     : public TestBase
 {
 public:
-    LowLevelFileTest()
-        :directory_(getTempPath("LowLevelFileTest"))
+    FileDescriptorTest()
+        :directory_(getTempPath("FileDescriptorTest"))
     {}
 
     void
@@ -59,7 +59,7 @@ protected:
     fs::path directory_;
 };
 
-TEST_F(LowLevelFileTest, mixedBag)
+TEST_F(FileDescriptorTest, mixedBag)
 {
     fs::path p(directory_ / "testfile");
     EXPECT_THROW(FileDescriptor f(p, FDMode::Write),
@@ -119,7 +119,7 @@ TEST_F(LowLevelFileTest, mixedBag)
     EXPECT_EQ(2 * buf1.size() + buf2.size(), fs::file_size(p));
 }
 
-TEST_F(LowLevelFileTest, seek1)
+TEST_F(FileDescriptorTest, seek1)
 {
     fs::path p = directory_ / "testfile";
     EXPECT_THROW(FileDescriptor f(p, FDMode::Read),
@@ -140,7 +140,7 @@ TEST_F(LowLevelFileTest, seek1)
     EXPECT_EQ(f.tell(), 6);
 }
 
-TEST_F(LowLevelFileTest, locking)
+TEST_F(FileDescriptorTest, locking)
 {
     const fs::path p(directory_ / "lockfile");
     FileDescriptor f(p,
@@ -158,7 +158,7 @@ TEST_F(LowLevelFileTest, locking)
     ASSERT_FALSE(static_cast<bool>(v));
 }
 
-TEST_F(LowLevelFileTest, purge_from_page_cache)
+TEST_F(FileDescriptorTest, purge_from_page_cache)
 {
     const fs::path p(directory_ / "some_file");
     FileDescriptor f(p,

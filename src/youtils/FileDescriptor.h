@@ -27,7 +27,7 @@ struct stat;
 
 namespace youtilstest
 {
-class LowLevelFileTest;
+class FileDescriptorTest;
 }
 
 namespace youtils
@@ -89,7 +89,7 @@ enum class FAdvise
 
 class FileDescriptor
 {
-    friend class youtilstest::LowLevelFileTest;
+    friend class youtilstest::FileDescriptorTest;
 
 public:
     FileDescriptor(const fs::path& path,
