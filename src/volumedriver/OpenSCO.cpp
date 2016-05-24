@@ -24,6 +24,7 @@ namespace volumedriver
 {
 
 namespace bid = boost::interprocess::ipcdetail;
+namespace yt = youtils;
 
 void
 intrusive_ptr_add_ref(OpenSCO* sco)
@@ -156,6 +157,12 @@ SCO
 OpenSCO::sco_name() const
 {
     return sco_->getSCO();
+}
+
+void
+OpenSCO::purge_from_page_cache()
+{
+    fd_.fadvise(yt::FAdvise::DontNeed);
 }
 
 }

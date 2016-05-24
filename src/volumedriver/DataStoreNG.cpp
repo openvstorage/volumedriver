@@ -1032,7 +1032,30 @@ DataStoreNG::scoWrittenToBackend_(SCO sconame)
 
         if (sco)
         {
-            scoCache_->setSCODisposable(sco);
+            switch (VolManager::get()->get_sco_written_to_backend_action())
+            {
+            case SCOWrittenToBackendAction::SetDisposableAndPurgeFromPageCache:
+                {
+                    try
+                    {
+                        if (osco == nullptr)
+                        {
+                            osco = sco->open(FDMode::Read);
+                        }
+                        osco->purge_from_page_cache();
+                    }
+                    CATCH_STD_ALL_LOG_IGNORE(nspace_ << ": failed to purge " << sconame << " from page cache");
+                }
+                // fall through
+            case SCOWrittenToBackendAction::SetDisposable:
+                scoCache_->setSCODisposable(sco);
+                break;
+            case SCOWrittenToBackendAction::PurgeFromSCOCache:
+                scoCache_->removeSCO(nspace_,
+                                      sconame,
+                                      false);
+                break;
+            }
         }
     }
     CATCH_STD_ALL_EWHAT({
