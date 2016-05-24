@@ -16,6 +16,9 @@
 #include "../TestBase.h"
 #include "../FileUtils.h"
 #include "../FileDescriptor.h"
+#include "../ScopeExit.h"
+
+#include <sys/mman.h>
 
 #include <mutex>
 
@@ -25,7 +28,11 @@ namespace youtilstest
 {
 using namespace youtils;
 
-class LowLevelFileTest : public TestBase
+// the same as SimpleIO
+using TestFile = FileDescriptor;
+
+class LowLevelFileTest
+    : public TestBase
 {
 public:
     LowLevelFileTest()
@@ -45,13 +52,15 @@ public:
         fs::remove_all(directory_);
     }
 
+    static int
+    get_fd(TestFile& f)
+    {
+        return f.fd_;
+    }
+
 protected:
     fs::path directory_;
 };
-
-// the same as SimpleIO
-using TestFile = FileDescriptor;
-
 
 TEST_F(LowLevelFileTest, mixedBag)
 {
@@ -150,6 +159,56 @@ TEST_F(LowLevelFileTest, locking)
     std::unique_lock<decltype(g)> v(g,
                                     std::try_to_lock);
     ASSERT_FALSE(static_cast<bool>(v));
+}
+
+TEST_F(LowLevelFileTest, purge_from_page_cache)
+{
+    const fs::path p(directory_ / "some_file");
+    TestFile f(p,
+               FDMode::ReadWrite,
+               CreateIfNecessary::T);
+
+    const size_t page_size = ::sysconf(_SC_PAGESIZE);
+    ASSERT_LT(0,
+              page_size);
+
+    const std::vector<uint8_t> buf(page_size,
+                                   'Q');
+
+    ASSERT_EQ(page_size,
+              f.write(buf.data(),
+                      buf.size()));
+
+    void* m = ::mmap(0,
+                     page_size,
+                     PROT_READ,
+                     MAP_PRIVATE,
+                     get_fd(f),
+                     0);
+    ASSERT_TRUE(m != MAP_FAILED);
+
+    auto on_exit(make_scope_exit([&]
+                                 {
+                                     ::munmap(m,
+                                              page_size);
+                                 }));
+
+    auto check([&]() -> bool
+               {
+                   uint8_t chk = 0;
+                   EXPECT_EQ(0,
+                             ::mincore(m,
+                                       page_size,
+                                       &chk));
+                   return chk != 0;
+               });
+
+    EXPECT_TRUE(check());
+
+    f.sync();
+    f.fadvise(FAdvise::DontNeed);
+
+    EXPECT_FALSE(check());
 }
 
 }
