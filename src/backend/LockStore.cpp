@@ -76,7 +76,7 @@ LockStore::write(const yt::HeartBeatLock& lock,
                                  lock_tag ?
                                  &reinterpret_cast<const ETag&>(*lock_tag) :
                                  nullptr).etag_);
-    return reinterpret_cast<const yt::GlobalLockTag&>(etag);
+    return static_cast<const yt::GlobalLockTag>(etag);
 }
 
 const std::string&

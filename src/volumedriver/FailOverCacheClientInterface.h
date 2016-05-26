@@ -22,6 +22,8 @@
 
 #include "SCOProcessorInterface.h"
 
+#include <youtils/Logging.h>
+
 namespace volumedriver
 {
 
@@ -97,6 +99,8 @@ protected:
     {}
 
 private:
+    DECLARE_LOGGER("FailOverCacheClientInterface");
+
     const size_t max_entries_;
 };
 
