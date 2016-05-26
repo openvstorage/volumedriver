@@ -401,13 +401,16 @@ class Client {
     const char *kPostRequest = "POST";
     const char *kDeleteRequest = "DELETE";
 
-    const char *kValue = "value";
-    const char *kTttl = "ttl";
     const char *kDir = "dir";
+    const char *kFalse = "false";
     const char *kPrevExist = "prevExist";
     const char *kPrevIndex = "prevIndex";
     const char *kPrevValue = "prevValue";
-    const char *kSortedSuffix = "?recursive=true&sorted=true";
+    const char *kRecursive = "recursive";
+    const char *kSorted = "sorted";
+    const char *kTrue = "true";
+    const char *kTttl = "ttl";
+    const char *kValue = "value";
 
     // DATA
     bool enable_header_ = false;
@@ -417,6 +420,9 @@ class Client {
 
     // OPERATIONS
     Reply _GetReply(const std::string& json);
+
+    Reply _Get(const std::string& key,
+               std::map<std::string, std::string>);
 };
 
 /**
@@ -741,6 +747,37 @@ struct Server {
 
 namespace internal {
 
+template<typename Map>
+std::string
+MakeUrl(const std::string& pfx,
+        const std::string& key,
+        const Map& map)
+{
+    std::stringstream ss;
+    ss << pfx << key;
+
+    if (not map.empty())
+    {
+        bool first = true;
+        for (const auto& p : map)
+        {
+            if (first)
+            {
+                ss << "?";
+                first = false;
+            }
+            else
+            {
+                ss << "&";
+            }
+
+            ss << p.first << "=" << p.second;
+        }
+    }
+
+    return ss.str();
+}
+
 }
 
 //------------------------------- LIFECYCLE ----------------------------------
@@ -827,35 +864,24 @@ SetOrdered(const std::string& dir, const std::string& value) {
 
 template <typename Reply> Reply Client<Reply>::
 Get(const std::string& key) {
-    std::string ret;
-    try {
-        ret = handle_->Get(url_prefix_ + key);
-    } catch (const std::exception& e) {
-        throw ClientException(e.what());
-    }
-    return _GetReply(ret);
+    return _Get(key, {});
 }
 
 template <typename Reply> Reply Client<Reply>::
 GetAll(const std::string& key) {
-    std::string ret;
-    try {
-        ret = handle_->Get(url_prefix_ + key + "?recursive=true");;
-    } catch (const std::exception& e) {
-        throw ClientException(e.what());
-    }
-    return _GetReply(ret);
+    return _Get(key,
+                {
+                    { kRecursive, kTrue }
+                });
 }
 
 template <typename Reply> Reply Client<Reply>::
 GetOrdered(const std::string& dir) {
-    std::string ret;
-    try {
-        ret = handle_->Get(url_prefix_ + dir + std::string(kSortedSuffix));
-    } catch (const std::exception& e) {
-        throw ClientException(e.what());
-    }
-    return _GetReply(ret);
+    return _Get(dir,
+                {
+                    { kRecursive, kTrue },
+                    { kSorted, kTrue }
+                });
 }
 
 template <typename Reply> Reply Client<Reply>::
@@ -1017,6 +1043,22 @@ _GetReply(const std::string& json) {
     if (enable_header_)
         return Reply (handle_->GetHeader(), json);
     return Reply(json);
+}
+
+template<typename Reply>
+Reply Client<Reply>::_Get(const std::string& key,
+                          std::map<std::string, std::string> map)
+{
+    try
+    {
+        return _GetReply(handle_->Get(internal::MakeUrl(url_prefix_,
+                                                        key,
+                                                        map)));
+    }
+    catch (const std::exception& e)
+    {
+        throw ClientException(e.what());
+    }
 }
 
 //------------------------------- LIFECYCLE ----------------------------------
