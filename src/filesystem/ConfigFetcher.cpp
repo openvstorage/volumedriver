@@ -76,7 +76,8 @@ ConfigFetcher::operator()(VerifyConfig verify_config)
         etcd::Client<yt::EtcdReply> client(etcd_url->host,
                                            etcd_url->port);
 
-        const yt::EtcdReply reply(client.Get(etcd_url->key));
+        const yt::EtcdReply reply(client.Get(etcd_url->key,
+                                             true));
         const boost::optional<yt::EtcdReply::Error> err(reply.error());
         if (err)
         {
