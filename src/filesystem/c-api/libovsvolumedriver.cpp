@@ -30,6 +30,7 @@
 #include "NetworkXioHandler.h"
 #include "tracing.h"
 #include "context.h"
+#include "ShmHelpers.h"
 
 #ifdef __GNUC__
 #define likely(x)       __builtin_expect(!!(x), 1)
@@ -207,28 +208,7 @@ ovs_ctx_init(ovs_ctx_t *ctx,
     ctx->volume_name = std::string(volume_name);
     if (ctx->transport == TransportType::SharedMemory)
     {
-        try
-        {
-            ctx->shm_ctx_ = new ovs_shm_context(volume_name,
-                                                oflag);
-            return 0;
-        }
-        catch (const ShmIdlInterface::VolumeDoesNotExist&)
-        {
-            errno = EACCES;
-        }
-        catch (const ShmIdlInterface::VolumeNameAlreadyRegistered&)
-        {
-            errno = EBUSY;
-        }
-        catch (const std::bad_alloc&)
-        {
-            errno = ENOMEM;
-        }
-        catch (...)
-        {
-            errno = EIO;
-        }
+        return shm_create_context(ctx, volume_name, oflag);
     }
     else if (ctx->transport == TransportType::RDMA ||
              ctx->transport == TransportType::TCP)
@@ -313,18 +293,7 @@ ovs_create_volume(ovs_ctx_t *ctx,
     {
     case TransportType::SharedMemory:
     {
-        try
-        {
-            volumedriverfs::ShmClient::create_volume(volume_name, size);
-        }
-        catch (const ShmIdlInterface::VolumeExists&)
-        {
-            errno = EEXIST; r = -1;
-        }
-        catch (...)
-        {
-            errno = EIO; r = -1;
-        }
+        r = shm_create_volume(volume_name, size);
         break;
     }
     case TransportType::TCP:
@@ -393,18 +362,7 @@ ovs_remove_volume(ovs_ctx_t *ctx,
     {
     case TransportType::SharedMemory:
     {
-        try
-        {
-            volumedriverfs::ShmClient::remove_volume(volume_name);
-        }
-        catch (const ShmIdlInterface::VolumeDoesNotExist&)
-        {
-            errno = ENOENT; r = -1;
-        }
-        catch (...)
-        {
-            errno = EIO; r = -1;
-        }
+        r = shm_remove_volume(volume_name);
         break;
     }
     case TransportType::TCP:
@@ -477,32 +435,7 @@ ovs_snapshot_create(ovs_ctx_t *ctx,
     {
     case TransportType::SharedMemory:
     {
-        try
-        {
-            volumedriverfs::ShmClient::create_snapshot(volume_name,
-                                                       snapshot_name,
-                                                       timeout);
-        }
-        catch (const ShmIdlInterface::PreviousSnapshotNotOnBackendException&)
-        {
-            errno = EBUSY; r = -1;
-        }
-        catch (const ShmIdlInterface::VolumeDoesNotExist&)
-        {
-            errno = ENOENT; r = -1;
-        }
-        catch (const ShmIdlInterface::SyncTimeoutException&)
-        {
-            errno = ETIMEDOUT; r = -1;
-        }
-        catch (const ShmIdlInterface::SnapshotAlreadyExists&)
-        {
-            errno = EEXIST; r = -1;
-        }
-        catch (...)
-        {
-            errno = EIO; r = -1;
-        }
+        r = shm_snapshot_create(volume_name, snapshot_name, timeout);
         break;
     }
     case TransportType::TCP:
@@ -575,24 +508,7 @@ ovs_snapshot_rollback(ovs_ctx_t *ctx,
     {
     case TransportType::SharedMemory:
     {
-        try
-        {
-            volumedriverfs::ShmClient::rollback_snapshot(volume_name,
-                                                         snapshot_name);
-        }
-        catch (const ShmIdlInterface::VolumeDoesNotExist&)
-        {
-            errno = ENOENT; r = -1;
-        }
-        catch (const ShmIdlInterface::VolumeHasChildren&)
-        {
-            errno = ENOTEMPTY; r = -1;
-            //errno = ECHILD; r= -1;
-        }
-        catch (...)
-        {
-            errno = EIO; r = -1;
-        }
+        r = shm_snapshot_rollback(volume_name, snapshot_name);
         break;
     }
     case TransportType::TCP:
@@ -664,28 +580,7 @@ ovs_snapshot_remove(ovs_ctx_t *ctx,
     {
     case TransportType::SharedMemory:
     {
-        try
-        {
-            volumedriverfs::ShmClient::delete_snapshot(volume_name,
-                                                       snapshot_name);
-        }
-        catch (const ShmIdlInterface::VolumeDoesNotExist&)
-        {
-            errno = ENOENT; r = -1;
-        }
-        catch (const ShmIdlInterface::VolumeHasChildren&)
-        {
-            errno = ENOTEMPTY; r = -1;
-            //errno = ECHILD; r = -1;
-        }
-        catch (const ShmIdlInterface::SnapshotNotFound&)
-        {
-            errno = ENOENT; r = -1;
-        }
-        catch (...)
-        {
-            errno = EIO; r = -1;
-        }
+        r = shm_snapshot_remove(volume_name, snapshot_name);
         break;
 
     }
@@ -772,19 +667,7 @@ ovs_snapshot_list(ovs_ctx_t *ctx,
     {
     case TransportType::SharedMemory:
     {
-        try
-        {
-            snaps = volumedriverfs::ShmClient::list_snapshots(volume_name,
-                                                              &size);
-        }
-        catch (const ShmIdlInterface::VolumeDoesNotExist&)
-        {
-            saved_errno = ENOENT;
-        }
-        catch (...)
-        {
-            saved_errno = EIO;
-        }
+        shm_list_snapshots(snaps, volume_name, &size, &saved_errno);
         break;
     }
     case TransportType::TCP:
@@ -936,23 +819,7 @@ ovs_snapshot_is_synced(ovs_ctx_t *ctx,
     {
     case TransportType::SharedMemory:
     {
-        try
-        {
-            r = volumedriverfs::ShmClient::is_snapshot_synced(volume_name,
-                                                              snapshot_name);
-        }
-        catch (const ShmIdlInterface::VolumeDoesNotExist&)
-        {
-            errno = ENOENT; r = -1;
-        }
-        catch (const ShmIdlInterface::SnapshotNotFound&)
-        {
-            errno = ENOENT; r = -1;
-        }
-        catch (...)
-        {
-            errno = EIO; r = -1;
-        }
+        r = shm_is_snapshot_synced(volume_name, snapshot_name);
         break;
     }
     case TransportType::TCP:
@@ -1020,15 +887,7 @@ ovs_list_volumes(ovs_ctx_t *ctx,
     {
     case TransportType::SharedMemory:
     {
-        try
-        {
-            volumes = volumedriverfs::ShmClient::list_volumes();
-        }
-        catch (...)
-        {
-            errno = EIO;
-            return (r = -1);
-        }
+        r = shm_list_volumes(volumes);
         break;
     }
     case TransportType::TCP:
@@ -1052,6 +911,11 @@ ovs_list_volumes(ovs_ctx_t *ctx,
     default:
         errno = EINVAL; r = -1;
         break;
+    }
+
+    if (r < 0)
+    {
+        return r;
     }
 
     for (size_t t = 0; t < volumes.size(); t++)
@@ -1178,10 +1042,7 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
         if (ctx->transport == TransportType::SharedMemory)
         {
             /* on error returns -1, errno is already set */
-            r = shm_ctx_->shm_client_->send_read_request(ovs_aiocbp->aio_buf,
-                                                         ovs_aiocbp->aio_nbytes,
-                                                         ovs_aiocbp->aio_offset,
-                                                         reinterpret_cast<void*>(request));
+            r = shm_send_read_request(shm_ctx_, ovs_aiocbp, request);
         }
         else
         {
@@ -1212,10 +1073,7 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
         if (ctx->transport == TransportType::SharedMemory)
         {
             /* on error returns -1, errno is already set */
-            r = shm_ctx_->shm_client_->send_write_request(ovs_aiocbp->aio_buf,
-                                                          ovs_aiocbp->aio_nbytes,
-                                                          ovs_aiocbp->aio_offset,
-                                                          reinterpret_cast<void*>(request));
+            r = shm_send_write_request(shm_ctx_, ovs_aiocbp, request);
         }
         else
         {
