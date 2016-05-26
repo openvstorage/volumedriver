@@ -101,9 +101,9 @@ ContainerManager::find_throw_(const ContainerId& cid)
     if (c == nullptr)
     {
         LOG_ERROR("Container " << cid << " does not exist");
-        throw fungi::IOException("Container does not exist",
-                                 cid.c_str(),
-                                 ENOENT);
+        throw ContainerDoesNotExistException("Container does not exist",
+                                             cid.c_str(),
+                                             ENOENT);
     }
 
     return c;
@@ -119,9 +119,9 @@ ContainerManager::create(const ContainerId& cid)
     if (find_locked_(cid))
     {
         LOG_ERROR("Cannot create " << cid << " as it exists already");
-        throw fungi::IOException("Cannot create container as it exists already",
-                                 cid.str().c_str(),
-                                 EEXIST);
+        throw ContainerExistsAlreadyException("Cannot create container as it exists already",
+                                              cid.str().c_str(),
+                                              EEXIST);
     }
     else
     {
@@ -200,9 +200,9 @@ ContainerManager::unlink(const ContainerId& cid)
     if (c == nullptr)
     {
         LOG_ERROR("Container " << cid << " does not exist");
-        throw fungi::IOException("Container does not exist",
-                                 cid.c_str(),
-                                 ENOENT);
+        throw ContainerDoesNotExistException("Container does not exist",
+                                             cid.c_str(),
+                                             ENOENT);
     }
 
     c->unlink();

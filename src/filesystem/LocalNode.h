@@ -370,6 +370,14 @@ private:
 
     void
     collect_scrub_garbage_(backend::Garbage);
+
+    template<typename ReturnType,
+             typename... Args>
+    ReturnType
+    convert_fdriver_exceptions_(ReturnType (filedriver::ContainerManager::*mem_fun)(const filedriver::ContainerId&,
+                                                                                    Args...),
+                                const Object&,
+                                Args...);
 };
 
 }

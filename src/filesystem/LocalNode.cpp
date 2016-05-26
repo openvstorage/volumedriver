@@ -61,9 +61,6 @@ namespace yt = youtils;
 #define LOCK_LOCKS()                                                    \
     std::lock_guard<decltype(object_lock_map_lock_)> vlmlg_(object_lock_map_lock_)
 
-#define CONTAINER_ID(obj)                       \
-    static_cast<fd::ContainerId>(obj.id)
-
 namespace
 {
 
@@ -154,7 +151,7 @@ LocalNode::destroy(ObjectRegistry& registry,
     {
         const ObjectRegistrationPtr reg(registry.find(o));
 
-        // non-volume objects were already nuked by ContainerManager::destroy
+        // non-volume objects were already nuked by fd::ContainerManager::destroy
         if (reg->treeconfig.object_type != ObjectType::File)
         {
             // XXX: this needs to be pushed down to volumedriver
@@ -323,6 +320,25 @@ LocalNode::maybe_retry_(void (*fn)(A... args),
     }
 }
 
+template<typename ReturnType,
+         typename... Args>
+ReturnType
+LocalNode::convert_fdriver_exceptions_(ReturnType (fd::ContainerManager::*mem_fun)(const fd::ContainerId&,
+                                                                                   Args...),
+                                       const Object& obj,
+                                       Args... args)
+{
+    try
+    {
+        return (fdriver_.get()->*mem_fun)(static_cast<fd::ContainerId>(obj.id),
+                                          std::forward<Args>(args)...);
+    }
+    catch (const fd::ContainerManager::ContainerDoesNotExistException& e)
+    {
+        throw ObjectNotRunningHereException(e.what());
+    }
+}
+
 void
 LocalNode::read(const Object& obj,
                 uint8_t* buf,
@@ -352,10 +368,14 @@ LocalNode::read(const Object& obj,
 
     if (is_file(obj))
     {
-        *size = fdriver_->read(CONTAINER_ID(obj),
-                               off,
-                               buf,
-                               *size);
+        *size = convert_fdriver_exceptions_<size_t,
+                                            off_t,
+                                            void*,
+                                            size_t>(&fd::ContainerManager::read,
+                                                    obj,
+                                                    off,
+                                                    buf,
+                                                    *size);
     }
     else
     {
@@ -503,10 +523,14 @@ LocalNode::write(const Object& obj,
 
     if (is_file(obj))
     {
-        *size = fdriver_->write(CONTAINER_ID(obj),
-                                off,
-                                buf,
-                                *size);
+        *size = convert_fdriver_exceptions_<size_t,
+                                            off_t,
+                                            const void*,
+                                            size_t>(&fd::ContainerManager::write,
+                                                    obj,
+                                                    off,
+                                                    buf,
+                                                    *size);
     }
     else
     {
@@ -645,7 +669,8 @@ LocalNode::sync(const Object& obj)
 
     if (is_file(obj))
     {
-        fdriver_->sync(CONTAINER_ID(obj));
+        convert_fdriver_exceptions_<void>(&fd::ContainerManager::sync,
+                                          obj);
     }
     else
     {
@@ -702,7 +727,8 @@ LocalNode::get_size(const Object& obj)
 
     if (is_file(obj))
     {
-        return fdriver_->size(CONTAINER_ID(obj));
+        return convert_fdriver_exceptions_<uint64_t>(&fd::ContainerManager::size,
+                                                     obj);
     }
     else
     {
@@ -726,8 +752,10 @@ LocalNode::resize(const Object& obj,
 
     if (is_file(obj))
     {
-        fdriver_->resize(CONTAINER_ID(obj),
-                         newsize);
+        convert_fdriver_exceptions_<void,
+                                    uint64_t>(&fd::ContainerManager::resize,
+                                              obj,
+                                              newsize);
     }
     else
     {
@@ -784,7 +812,8 @@ LocalNode::unlink(const Object& obj)
 
     if (is_file(obj))
     {
-        fdriver_->unlink(CONTAINER_ID(obj));
+        convert_fdriver_exceptions_<void>(&fd::ContainerManager::unlink,
+                                          obj);
     }
     else
     {
@@ -878,7 +907,8 @@ LocalNode::remove_local_data(const Object& obj)
 
     if (is_file(obj))
     {
-        fdriver_->drop_from_cache(CONTAINER_ID(obj));
+        convert_fdriver_exceptions_<void>(&fd::ContainerManager::drop_from_cache,
+                                          obj);
     }
     else
     {
@@ -933,7 +963,8 @@ LocalNode::local_restart(const ObjectRegistration& reg,
 
     if (is_file(reg.object()))
     {
-        fdriver_->restart(static_cast<fd::ContainerId>(id));
+        convert_fdriver_exceptions_<void>(&fd::ContainerManager::restart,
+                                          reg.object());
     }
     else
     {
@@ -1001,7 +1032,8 @@ LocalNode::backend_restart(const Object& obj,
 
     if (is_file(obj))
     {
-        fdriver_->restart(CONTAINER_ID(obj));
+        convert_fdriver_exceptions_<void>(&fd::ContainerManager::restart,
+                                          obj);
     }
     else
     {
@@ -1037,7 +1069,8 @@ LocalNode::create_file_(const Object& obj)
 
     try
     {
-        fdriver_->create(CONTAINER_ID(obj));
+        convert_fdriver_exceptions_<void>(&fd::ContainerManager::create,
+                                          obj);
     }
     CATCH_STD_ALL_EWHAT({
             LOG_ERROR("Failed to create " << obj << ": " << EWHAT);
@@ -1697,7 +1730,8 @@ LocalNode::transfer(const Object& obj,
 
     if (is_file(obj))
     {
-        fdriver_->drop_from_cache(CONTAINER_ID(obj));
+        convert_fdriver_exceptions_<void>(&fd::ContainerManager::drop_from_cache,
+                                          obj);
     }
     else
     {
@@ -1804,7 +1838,8 @@ LocalNode::stop(const Object& obj,
 
     if (is_file(obj))
     {
-        fdriver_->drop_from_cache(CONTAINER_ID(obj));
+        convert_fdriver_exceptions_<void>(&fd::ContainerManager::drop_from_cache,
+                                          obj);
     }
     else
     {

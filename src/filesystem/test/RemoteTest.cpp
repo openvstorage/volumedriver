@@ -180,11 +180,28 @@ public:
             new_reg(new vfs::ObjectRegistration(reg->getNS(),
                                                 id,
                                                 remote_node_id(),
-                                                vfs::ObjectTreeConfig::makeBase(),
+                                                reg->treeconfig.object_type == vfs::ObjectType::Volume ?
+                                                vfs::ObjectTreeConfig::makeBase() :
+                                                vfs::ObjectTreeConfig::makeFile(),
                                                 owner_tag_allocator(),
                                                 vfs::FailOverCacheConfigMode::Automatic));
 
         registry->TESTONLY_add_to_cache_(new_reg);
+    }
+
+    void
+    test_stale_registration(const vfs::FrontendPath& fname)
+    {
+        const auto rpath(remote_root_ / fname);
+
+        const uint64_t vsize = 10 << 20;
+        const vfs::ObjectId oid(create_file(fname, vsize));
+
+        fake_remote_registration(oid);
+
+        const std::string pattern("locally written");
+        write_to_file(fname, pattern, pattern.size(), 0);
+        check_file(fname, pattern, pattern.size(), 0);
     }
 
     void
@@ -654,19 +671,21 @@ TEST_F(RemoteTest, file_read_write)
     test_read_write(false);
 }
 
-TEST_F(RemoteTest, stale_registration)
+TEST_F(RemoteTest, stale_volume_registration)
 {
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
-    const auto rpath(remote_root_ / fname);
+    test_stale_registration(vfs::FrontendPath(make_volume_name("/some-volume")));
+}
 
-    const uint64_t vsize = 10 << 20;
-    const vfs::ObjectId vname(create_file(fname, vsize));
-
-    fake_remote_registration(vname);
-
-    const std::string pattern("locally written");
-    write_to_file(fname, pattern, pattern.size(), 0);
-    check_file(fname, pattern, pattern.size(), 0);
+// Cf. OVS-4498:
+// (0) filedriver file F is owned by node N
+// (1) F is moved to node M
+// (2) node P still has a registration for F that points to N in its cache
+// (3) if P sends a request for F to N, N returns an I/O error to P instead of
+//     an "ObjectNotRunningHere" (which would result in P dropping the stale entry
+//     and retrying after fetching the registration again from arakoon)
+TEST_F(RemoteTest, stale_file_registration)
+{
+    test_stale_registration(vfs::FrontendPath("/some-file"));
 }
 
 // This was a fun one: the DirectoryEntry was cached to speed up lookups, which of course
