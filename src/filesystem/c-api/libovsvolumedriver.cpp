@@ -31,6 +31,7 @@
 #include "tracing.h"
 #include "context.h"
 #include "ShmHelpers.h"
+#include "NetworkXioHelpers.h"
 
 #ifdef __GNUC__
 #define likely(x)       __builtin_expect(!!(x), 1)
@@ -206,28 +207,22 @@ ovs_ctx_init(ovs_ctx_t *ctx,
 
     ctx->oflag = oflag;
     ctx->volume_name = std::string(volume_name);
-    if (ctx->transport == TransportType::SharedMemory)
+    switch (ctx->transport)
     {
-        return shm_create_context(ctx, volume_name, oflag);
+    case TransportType::SharedMemory:
+    {
+        return shm_create_context(ctx,
+                                  volume_name,
+                                  oflag);
     }
-    else if (ctx->transport == TransportType::RDMA ||
-             ctx->transport == TransportType::TCP)
+    case TransportType::TCP:
+    case TransportType::RDMA:
     {
-        try
-        {
-            ctx->net_client_ =
-                std::make_shared<volumedriverfs::NetworkXioClient>(ctx->uri,
-                        ctx->net_client_qdepth);
-            return ovs_xio_open_volume(ctx, volume_name);
-        }
-        catch (const std::bad_alloc&)
-        {
-            errno = ENOMEM;
-        }
-        catch (...)
-        {
-            errno = EIO;
-        }
+        return network_xio_create_context(ctx,
+                                          volume_name);
+    }
+    default:
+        errno = EINVAL;
     }
     return -1;
 }
@@ -293,37 +288,16 @@ ovs_create_volume(ovs_ctx_t *ctx,
     {
     case TransportType::SharedMemory:
     {
-        r = shm_create_volume(volume_name, size);
+        r = shm_create_volume(volume_name,
+                              size);
         break;
     }
     case TransportType::TCP:
     case TransportType::RDMA:
     {
-        ovs_aio_request *request = create_new_request(RequestOp::Noop,
-                                                      NULL,
-                                                      NULL);
-        if (request == NULL)
-        {
-            errno = ENOMEM; r = -1;
-            break;
-        }
-        try
-        {
-            volumedriverfs::NetworkXioClient::xio_create_volume(ctx->uri,
-                                                                volume_name,
-                                                                size,
-                                                                static_cast<void*>(request));
-            errno = request->_errno; r = request->_rv;
-        }
-        catch (const std::bad_alloc&)
-        {
-            errno = ENOMEM; r = -1;
-        }
-        catch (...)
-        {
-            errno = EIO; r = -1;
-        }
-        delete request;
+        r = network_xio_create_volume(ctx,
+                                      volume_name,
+                                      size);
         break;
     }
     default:
@@ -368,30 +342,8 @@ ovs_remove_volume(ovs_ctx_t *ctx,
     case TransportType::TCP:
     case TransportType::RDMA:
     {
-        ovs_aio_request *request = create_new_request(RequestOp::Noop,
-                                                      NULL,
-                                                      NULL);
-        if (request == NULL)
-        {
-            errno = ENOMEM; r = -1;
-            break;
-        }
-        try
-        {
-            volumedriverfs::NetworkXioClient::xio_remove_volume(ctx->uri,
-                                                                volume_name,
-                                                                static_cast<void*>(request));
-            errno = request->_errno; r = request->_rv;
-        }
-        catch (const std::bad_alloc&)
-        {
-            errno = ENOMEM; r = -1;
-        }
-        catch (...)
-        {
-            errno = EIO; r = -1;
-        }
-        delete request;
+        r = network_xio_remove_volume(ctx,
+                                      volume_name);
         break;
     }
     default:
@@ -435,38 +387,18 @@ ovs_snapshot_create(ovs_ctx_t *ctx,
     {
     case TransportType::SharedMemory:
     {
-        r = shm_snapshot_create(volume_name, snapshot_name, timeout);
+        r = shm_snapshot_create(volume_name,
+                                snapshot_name,
+                                timeout);
         break;
     }
     case TransportType::TCP:
     case TransportType::RDMA:
     {
-        ovs_aio_request *request = create_new_request(RequestOp::Noop,
-                                                      NULL,
-                                                      NULL);
-        if (request == NULL)
-        {
-            errno = ENOMEM; r = -1;
-            break;
-        }
-        try
-        {
-            volumedriverfs::NetworkXioClient::xio_create_snapshot(ctx->uri,
-                                                                  volume_name,
-                                                                  snapshot_name,
-                                                                  timeout,
-                                                                  static_cast<void*>(request));
-            errno = request->_errno; r = request->_rv;
-        }
-        catch (const std::bad_alloc&)
-        {
-            errno = ENOMEM; r = -1;
-        }
-        catch (...)
-        {
-            errno = EIO; r = -1;
-        }
-        delete request;
+        r = network_xio_snapshot_create(ctx,
+                                        volume_name,
+                                        snapshot_name,
+                                        timeout);
         break;
     }
     default:
@@ -508,37 +440,16 @@ ovs_snapshot_rollback(ovs_ctx_t *ctx,
     {
     case TransportType::SharedMemory:
     {
-        r = shm_snapshot_rollback(volume_name, snapshot_name);
+        r = shm_snapshot_rollback(volume_name,
+                                  snapshot_name);
         break;
     }
     case TransportType::TCP:
     case TransportType::RDMA:
     {
-        ovs_aio_request *request = create_new_request(RequestOp::Noop,
-                                                      NULL,
-                                                      NULL);
-        if (request == NULL)
-        {
-            errno = ENOMEM; r = -1;
-            break;
-        }
-        try
-        {
-            volumedriverfs::NetworkXioClient::xio_rollback_snapshot(ctx->uri,
-                                                                    volume_name,
-                                                                    snapshot_name,
-                                                                    static_cast<void*>(request));
-            errno = request->_errno; r = request->_rv;
-        }
-        catch (const std::bad_alloc&)
-        {
-            errno = ENOMEM; r = -1;
-        }
-        catch (...)
-        {
-            errno = EIO; r = -1;
-        }
-        delete request;
+        r = network_xio_snapshot_rollback(ctx,
+                                          volume_name,
+                                          snapshot_name);
         break;
     }
     default:
@@ -580,38 +491,17 @@ ovs_snapshot_remove(ovs_ctx_t *ctx,
     {
     case TransportType::SharedMemory:
     {
-        r = shm_snapshot_remove(volume_name, snapshot_name);
+        r = shm_snapshot_remove(volume_name,
+                                snapshot_name);
         break;
 
     }
     case TransportType::TCP:
     case TransportType::RDMA:
     {
-        ovs_aio_request *request = create_new_request(RequestOp::Noop,
-                                                      NULL,
-                                                      NULL);
-        if (request == NULL)
-        {
-            errno = ENOMEM; r = -1;
-            break;
-        }
-        try
-        {
-            volumedriverfs::NetworkXioClient::xio_delete_snapshot(ctx->uri,
-                                                                  volume_name,
-                                                                  snapshot_name,
-                                                                  static_cast<void*>(request));
-            errno = request->_errno; r = request->_rv;
-        }
-        catch (const std::bad_alloc&)
-        {
-            errno = ENOMEM; r = -1;
-        }
-        catch (...)
-        {
-            errno = EIO; r = -1;
-        }
-        delete request;
+        r = network_xio_snapshot_remove(ctx,
+                                        volume_name,
+                                        snapshot_name);
         break;
     }
     default:
@@ -667,38 +557,20 @@ ovs_snapshot_list(ovs_ctx_t *ctx,
     {
     case TransportType::SharedMemory:
     {
-        shm_list_snapshots(snaps, volume_name, &size, &saved_errno);
+        shm_list_snapshots(snaps,
+                           volume_name,
+                           &size,
+                           &saved_errno);
         break;
     }
     case TransportType::TCP:
     case TransportType::RDMA:
     {
-        ovs_aio_request *request = create_new_request(RequestOp::Noop,
-                                                      NULL,
-                                                      NULL);
-        if (request == NULL)
-        {
-            saved_errno = ENOMEM;
-            break;
-        }
-        try
-        {
-            volumedriverfs::NetworkXioClient::xio_list_snapshots(ctx->uri,
-                                                                 volume_name,
-                                                                 snaps,
-                                                                 &size,
-                                                                 static_cast<void*>(request));
-            saved_errno = request->_errno;
-        }
-        catch (const std::bad_alloc&)
-        {
-            saved_errno = ENOMEM;
-        }
-        catch (...)
-        {
-            saved_errno = EIO;
-        }
-        delete request;
+        network_xio_list_snapshots(ctx,
+                                   snaps,
+                                   volume_name,
+                                   &size,
+                                   &saved_errno);
         break;
     }
     default:
@@ -819,37 +691,16 @@ ovs_snapshot_is_synced(ovs_ctx_t *ctx,
     {
     case TransportType::SharedMemory:
     {
-        r = shm_is_snapshot_synced(volume_name, snapshot_name);
+        r = shm_is_snapshot_synced(volume_name,
+                                   snapshot_name);
         break;
     }
     case TransportType::TCP:
     case TransportType::RDMA:
     {
-        ovs_aio_request *request = create_new_request(RequestOp::Noop,
-                                                      NULL,
-                                                      NULL);
-        if (request == NULL)
-        {
-            errno = ENOMEM; r = -1;
-            break;
-        }
-        try
-        {
-            volumedriverfs::NetworkXioClient::xio_is_snapshot_synced(ctx->uri,
-                                                                     volume_name,
-                                                                     snapshot_name,
-                                                                     static_cast<void*>(request));
-            errno = request->_errno; r = request->_rv;
-        }
-        catch (const std::bad_alloc&)
-        {
-            errno = ENOMEM; r = -1;
-        }
-        catch (...)
-        {
-            errno = EIO; r = -1;
-        }
-        delete request;
+        r = network_xio_is_snapshot_synced(ctx,
+                                           volume_name,
+                                           snapshot_name);
         break;
     }
     default:
@@ -893,19 +744,8 @@ ovs_list_volumes(ovs_ctx_t *ctx,
     case TransportType::TCP:
     case TransportType::RDMA:
     {
-        try
-        {
-            volumedriverfs::NetworkXioClient::xio_list_volumes(ctx->uri,
-                                                               volumes);
-        }
-        catch (const std::bad_alloc&)
-        {
-            errno = ENOMEM; r = -1;
-        }
-        catch (...)
-        {
-            errno = EIO; r = -1;
-        }
+        r = network_xio_list_volumes(ctx,
+                                     volumes);
         break;
     }
     default:
@@ -954,7 +794,6 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
 {
     int r = 0, accmode;
     ovs_shm_context *shm_ctx_ = ctx->shm_ctx_;
-    volumedriverfs::NetworkXioClientPtr net_client = ctx->net_client_;
 
     ovs_submit_aio_request_tracepoint_enter(op,
                                             ctx,
@@ -1006,6 +845,7 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
     case RequestOp::Write:
     case RequestOp::Flush:
     case RequestOp::AsyncFlush:
+    {
         if (accmode == O_RDONLY)
         {
             ovs_submit_aio_request_tracepoint_exit(op,
@@ -1017,6 +857,7 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
             errno = EBADF;
             return -1;
         }
+    }
         break;
     default:
         errno = EBADF;
@@ -1039,86 +880,48 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
     switch (op)
     {
     case RequestOp::Read:
+    {
         if (ctx->transport == TransportType::SharedMemory)
         {
             /* on error returns -1, errno is already set */
-            r = shm_send_read_request(shm_ctx_, ovs_aiocbp, request);
+            r = shm_send_read_request(shm_ctx_,
+                                      ovs_aiocbp,
+                                      request);
         }
         else
         {
-            try
-            {
-                net_client->xio_send_read_request(ovs_aiocbp->aio_buf,
-                                                  ovs_aiocbp->aio_nbytes,
-                                                  ovs_aiocbp->aio_offset,
-                                                  reinterpret_cast<void*>(request));
-            }
-            catch (const volumedriverfs::XioClientQueueIsBusyException&)
-            {
-                errno = EBUSY;  r = -1;
-            }
-            catch (const std::bad_alloc&)
-            {
-                errno = ENOMEM; r = -1;
-            }
-            catch (...)
-            {
-                errno = EIO; r = -1;
-            }
+            r = network_xio_send_read_request(ctx,
+                                              ovs_aiocbp,
+                                              request);
         }
+    }
         break;
     case RequestOp::Write:
     case RequestOp::Flush:
     case RequestOp::AsyncFlush:
+    {
         if (ctx->transport == TransportType::SharedMemory)
         {
             /* on error returns -1, errno is already set */
-            r = shm_send_write_request(shm_ctx_, ovs_aiocbp, request);
+            r = shm_send_write_request(shm_ctx_,
+                                       ovs_aiocbp,
+                                       request);
         }
         else
         {
             if (RequestOp::Write == op)
             {
-                try
-                {
-                    net_client->xio_send_write_request(ovs_aiocbp->aio_buf,
-                                                       ovs_aiocbp->aio_nbytes,
-                                                       ovs_aiocbp->aio_offset,
-                                                       reinterpret_cast<void*>(request));
-                }
-                catch (const volumedriverfs::XioClientQueueIsBusyException&)
-                {
-                    errno = EBUSY;  r = -1;
-                }
-                catch (const std::bad_alloc&)
-                {
-                    errno = ENOMEM; r = -1;
-                }
-                catch (...)
-                {
-                    errno = EIO; r = -1;
-                }
+                r = network_xio_send_write_request(ctx,
+                                                   ovs_aiocbp,
+                                                   request);
             }
             else
             {
-                try
-                {
-                    net_client->xio_send_flush_request(reinterpret_cast<void*>(request));
-                }
-                catch (const volumedriverfs::XioClientQueueIsBusyException&)
-                {
-                    errno = EBUSY;  r = -1;
-                }
-                catch (const std::bad_alloc&)
-                {
-                    errno = ENOMEM; r = -1;
-                }
-                catch (...)
-                {
-                    errno = EIO; r = -1;
-                }
+                r = network_xio_send_flush_request(ctx,
+                                                   request);
             }
         }
+    }
         break;
     default:
         errno = EINVAL; r = -1;
@@ -1837,37 +1640,7 @@ ovs_stat(ovs_ctx_t *ctx, struct stat *st)
     case TransportType::TCP:
     case TransportType::RDMA:
     {
-        ovs_aio_request *request = create_new_request(RequestOp::Noop,
-                                                      NULL,
-                                                      NULL);
-        if (request == NULL)
-        {
-            errno = ENOMEM; r = -1;
-            break;
-        }
-        try
-        {
-            volumedriverfs::NetworkXioClient::xio_stat_volume(ctx->uri,
-                                                              ctx->volume_name,
-                                                              static_cast<void*>(request));
-            errno = request->_errno;
-            r = request->_errno ? -1 : 0;
-            if (not request->_errno)
-            {
-                /* 512 for now */
-                st->st_blksize = 512;
-                st->st_size = request->_rv;
-            }
-        }
-        catch (const std::bad_alloc&)
-        {
-            errno = ENOMEM; r = -1;
-        }
-        catch (...)
-        {
-            errno = EIO; r = -1;
-        }
-        delete request;
+        r = network_xio_stat_volume(ctx, st);
         break;
     }
     default:
