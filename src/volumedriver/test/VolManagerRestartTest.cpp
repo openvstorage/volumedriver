@@ -315,6 +315,7 @@ TEST_P(VolManagerRestartTest, testRescheduledSCOS)
     ASSERT_EQ(0, ret);
     ASSERT_TRUE(st.st_mode bitand S_ISVTX);
     ret = ::chmod(scoptr_name.c_str(), st.st_mode ^ S_ISVTX);
+    ASSERT_EQ(0, ret);
     v = 0;
     // This will assert since it reschedules the sole sco to backend
      restartVolume(cfg);
