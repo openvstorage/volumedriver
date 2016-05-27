@@ -125,6 +125,18 @@
 #define TODO(t)                                 \
     PRAGMA_WARNING(t)
 
+#ifdef __clang_analyzer__
+#define CLANG_ANALYZER_HINT_NON_NULL(ptr)       \
+    ASSERT(ptr != nullptr)
+
+#define CLANG_ANALYZER_HINT_NO_DEAD_STORE(var)  \
+    (void)(var)
+
+#else
+#define CLANG_ANALYZER_HINT_NON_NULL(ptr)
+#define CLANG_ANALYZER_HINT_NO_DEAD_STORE(var)
+#endif
+
 #endif // !YT_ASSERT_H_
 
 // Local Variables: **
