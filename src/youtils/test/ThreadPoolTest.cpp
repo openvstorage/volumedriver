@@ -1143,6 +1143,7 @@ TEST_F(TestThreadPool, barriertest2)
     ASSERT_TRUE(Test1Task::endorder.size() == 0);
     ASSERT_TRUE(s1.try_wait() == false);
     ba2 = true;
+    CLANG_ANALYZER_HINT_NO_DEAD_STORE(ba2);
     s1.wait();
 
     ASSERT_TRUE(Test1Task::startorder.size() == 2);
@@ -1151,6 +1152,7 @@ TEST_F(TestThreadPool, barriertest2)
     EXPECT_TRUE(Test1Task::endorder[0] == 1);
     ASSERT_TRUE(s1.try_wait() == false);
     ba3 = true;
+    CLANG_ANALYZER_HINT_NO_DEAD_STORE(ba3);
     s1.wait();
 
     ASSERT_TRUE(Test1Task::startorder.size() == 3);
@@ -1159,6 +1161,7 @@ TEST_F(TestThreadPool, barriertest2)
     EXPECT_TRUE(Test1Task::endorder[1] == 2);
 
     ba4 = true;
+    CLANG_ANALYZER_HINT_NO_DEAD_STORE(ba4);
 }
 
 TEST_F(TestThreadPool, barriertest3)
