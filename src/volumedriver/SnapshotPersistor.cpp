@@ -667,7 +667,6 @@ SnapshotPersistor::trimToBackend()
     if (not ready)
     {
         current = current.tlogsOnBackend();
-        ready = true;
     }
 
     newTLog();

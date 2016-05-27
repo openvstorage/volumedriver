@@ -80,6 +80,8 @@ ArakoonLockStoreBuilder::update(const bpt::ptree& pt,
     }
 
     updated = false;
+    // for some reason clang analyzer thinks `updated' is never read
+    CLANG_ANALYZER_HINT_NO_DEAD_STORE(updated);
 
     try
     {
@@ -92,7 +94,8 @@ ArakoonLockStoreBuilder::update(const bpt::ptree& pt,
         }
 
         updated = true;
-
+        // for some reason clang analyzer thinks `updated' is never read
+        CLANG_ANALYZER_HINT_NO_DEAD_STORE(updated);
     }
     CATCH_STD_ALL_LOG_IGNORE("Failed to update arakoon config");
 
