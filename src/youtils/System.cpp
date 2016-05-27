@@ -36,7 +36,20 @@ System::getHostName()
 {
     std::unique_ptr<char[]> buf(new char[MAXHOSTNAMELEN]);
     int res = gethostname(buf.get(), MAXHOSTNAMELEN);
-    VERIFY(res == 0);
+    if (res != 0)
+    {
+        // Dear
+#ifdef __clang_analyzer__
+        // , trust me, the unique_ptr makes sure that this isn't leaked.
+        buf = nullptr;
+#endif
+        res = errno;
+        LOG_ERROR("Failed to get hostname: " << strerror(res));
+        throw fungi::IOException("failed to get host name",
+                                 "",
+                                 res);
+    }
+
     std::string str(buf.get());
     return str;
 }
