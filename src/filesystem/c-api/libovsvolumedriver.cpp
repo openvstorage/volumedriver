@@ -26,12 +26,10 @@
 
 #include "volumedriver.h"
 #include "common.h"
-#include "ShmHandler.h"
-#include "NetworkXioHandler.h"
 #include "tracing.h"
 #include "context.h"
-#include "ShmHelpers.h"
-#include "NetworkXioHelpers.h"
+#include "ShmContext.h"
+#include "NetworkXioContext.h"
 
 #ifdef __GNUC__
 #define likely(x)       __builtin_expect(!!(x), 1)
@@ -125,6 +123,7 @@ ovs_ctx_attr_set_network_qdepth(ovs_ctx_attr_t *attr,
 ovs_ctx_t*
 ovs_ctx_new(const ovs_ctx_attr_t *attr)
 {
+    std::string uri;
     ovs_ctx_t *ctx = NULL;
 
     if(not attr)
@@ -141,34 +140,42 @@ ovs_ctx_new(const ovs_ctx_attr_t *attr)
         return NULL;
     }
 
+    switch (attr->transport)
+    {
+    case TransportType::TCP:
+        uri = "tcp://" + attr->host + ":" + std::to_string(attr->port);
+        break;
+    case TransportType::RDMA:
+        uri = "rdma://" + attr->host + ":" + std::to_string(attr->port);
+        break;
+    case TransportType::SharedMemory:
+        break;
+    case TransportType::Error: /* already catched */
+        errno = EINVAL;
+        return NULL;
+    }
+
     try
     {
-        ctx = new ovs_ctx_t;
+        switch (attr->transport)
+        {
+        case TransportType::TCP:
+        case TransportType::RDMA:
+            ctx = new NetworkXioContext(uri,
+                                        attr->network_qdepth);
+            break;
+        case TransportType::SharedMemory:
+            ctx = new ShmContext;
+            break;
+        default:
+            errno = EINVAL;
+            return NULL;
+        }
         ctx->transport = attr->transport;
-        ctx->host = attr->host;
-        ctx->port = attr->port;
-        ctx->shm_ctx_ = nullptr;
-        ctx->net_client_ = nullptr;
-        ctx->net_client_qdepth = attr->network_qdepth;
     }
     catch (const std::bad_alloc&)
     {
         errno = ENOMEM;
-        return NULL;
-    }
-
-    switch (ctx->transport)
-    {
-    case TransportType::TCP:
-        ctx->uri = "tcp://" + ctx->host + ":" + std::to_string(ctx->port);
-        break;
-    case TransportType::RDMA:
-        ctx->uri = "rdma://" + ctx->host + ":" + std::to_string(ctx->port);
-        break;
-    case TransportType::SharedMemory:
-        return ctx;
-    case TransportType::Error: /* already catched */
-        errno = EINVAL;
         return NULL;
     }
     return ctx;
@@ -204,27 +211,8 @@ ovs_ctx_init(ovs_ctx_t *ctx,
         errno = EINVAL;
         return -1;
     }
-
     ctx->oflag = oflag;
-    ctx->volume_name = std::string(volume_name);
-    switch (ctx->transport)
-    {
-    case TransportType::SharedMemory:
-    {
-        return shm_create_context(ctx,
-                                  volume_name,
-                                  oflag);
-    }
-    case TransportType::TCP:
-    case TransportType::RDMA:
-    {
-        return network_xio_create_context(ctx,
-                                          volume_name);
-    }
-    default:
-        errno = EINVAL;
-    }
-    return -1;
+    return ctx->open_volume(volume_name, oflag);
 }
 
 int
@@ -245,14 +233,7 @@ ovs_ctx_destroy(ovs_ctx_t *ctx)
         errno = EINVAL;
         return (r = -1);
     }
-    if (ctx->shm_ctx_)
-    {
-        delete ctx->shm_ctx_;
-    }
-    else if (ctx->net_client_)
-    {
-        ctx->net_client_.reset();
-    }
+    ctx->close_volume();
     delete ctx;
     return r;
 }
@@ -283,28 +264,7 @@ ovs_create_volume(ovs_ctx_t *ctx,
         errno = EINVAL; r = -1;
         return r;
     }
-
-    switch (ctx->transport)
-    {
-    case TransportType::SharedMemory:
-    {
-        r = shm_create_volume(volume_name,
-                              size);
-        break;
-    }
-    case TransportType::TCP:
-    case TransportType::RDMA:
-    {
-        r = network_xio_create_volume(ctx,
-                                      volume_name,
-                                      size);
-        break;
-    }
-    default:
-        errno = EINVAL; r = -1;
-        break;
-    }
-    return r;
+    return (r = ctx->create_volume(volume_name, size));
 }
 
 int
@@ -328,29 +288,10 @@ ovs_remove_volume(ovs_ctx_t *ctx,
 
     if (not _is_volume_name_valid(volume_name))
     {
-        errno = EINVAL; r = -1;
-        return r;
+        errno = EINVAL;
+        return (r = -1);
     }
-
-    switch (ctx->transport)
-    {
-    case TransportType::SharedMemory:
-    {
-        r = shm_remove_volume(volume_name);
-        break;
-    }
-    case TransportType::TCP:
-    case TransportType::RDMA:
-    {
-        r = network_xio_remove_volume(ctx,
-                                      volume_name);
-        break;
-    }
-    default:
-        errno = EINVAL; r = -1;
-        break;
-    }
-    return r;
+    return (r = ctx->remove_volume(volume_name));
 }
 
 int
@@ -379,33 +320,12 @@ ovs_snapshot_create(ovs_ctx_t *ctx,
 
     if (not _is_volume_name_valid(volume_name))
     {
-        errno = EINVAL; r = -1;
-        return r;
+        errno = EINVAL;
+        return (r = -1);
     }
-
-    switch (ctx->transport)
-    {
-    case TransportType::SharedMemory:
-    {
-        r = shm_snapshot_create(volume_name,
-                                snapshot_name,
-                                timeout);
-        break;
-    }
-    case TransportType::TCP:
-    case TransportType::RDMA:
-    {
-        r = network_xio_snapshot_create(ctx,
-                                        volume_name,
-                                        snapshot_name,
-                                        timeout);
-        break;
-    }
-    default:
-        errno = EINVAL; r = -1;
-        break;
-    }
-    return r;
+    return (r = ctx->snapshot_create(volume_name,
+                                     snapshot_name,
+                                     timeout));
 }
 
 int
@@ -432,31 +352,10 @@ ovs_snapshot_rollback(ovs_ctx_t *ctx,
 
     if (not _is_volume_name_valid(volume_name))
     {
-        errno = EINVAL; r= -1;
-        return r;
+        errno = EINVAL;
+        return (r = -1);
     }
-
-    switch (ctx->transport)
-    {
-    case TransportType::SharedMemory:
-    {
-        r = shm_snapshot_rollback(volume_name,
-                                  snapshot_name);
-        break;
-    }
-    case TransportType::TCP:
-    case TransportType::RDMA:
-    {
-        r = network_xio_snapshot_rollback(ctx,
-                                          volume_name,
-                                          snapshot_name);
-        break;
-    }
-    default:
-        errno = EINVAL; r = -1;
-        break;
-    }
-    return r;
+    return (r = ctx->snapshot_rollback(volume_name, snapshot_name));
 }
 
 int
@@ -487,28 +386,8 @@ ovs_snapshot_remove(ovs_ctx_t *ctx,
         return (r = -1);
     }
 
-    switch (ctx->transport)
-    {
-    case TransportType::SharedMemory:
-    {
-        r = shm_snapshot_remove(volume_name,
-                                snapshot_name);
-        break;
-
-    }
-    case TransportType::TCP:
-    case TransportType::RDMA:
-    {
-        r = network_xio_snapshot_remove(ctx,
-                                        volume_name,
-                                        snapshot_name);
-        break;
-    }
-    default:
-        errno = EINVAL; r = -1;
-        break;
-    }
-    return r;
+    return (r = ctx->snapshot_remove(volume_name,
+                                     snapshot_name));
 }
 
 int
@@ -553,30 +432,10 @@ ovs_snapshot_list(ovs_ctx_t *ctx,
 
     int saved_errno = 0;
     std::vector<std::string> snaps;
-    switch (ctx->transport)
-    {
-    case TransportType::SharedMemory:
-    {
-        shm_list_snapshots(snaps,
-                           volume_name,
-                           &size,
-                           &saved_errno);
-        break;
-    }
-    case TransportType::TCP:
-    case TransportType::RDMA:
-    {
-        network_xio_list_snapshots(ctx,
-                                   snaps,
-                                   volume_name,
-                                   &size,
-                                   &saved_errno);
-        break;
-    }
-    default:
-        saved_errno = EINVAL;
-        break;
-    }
+    ctx->list_snapshots(snaps,
+                        volume_name,
+                        &size,
+                        &saved_errno);
 
     errno = saved_errno;
     if (saved_errno)
@@ -683,31 +542,11 @@ ovs_snapshot_is_synced(ovs_ctx_t *ctx,
 
     if (not _is_volume_name_valid(volume_name))
     {
-        errno = EINVAL; r = -1;
-        return r;
+        errno = EINVAL;
+        return (r = -1);
     }
-
-    switch (ctx->transport)
-    {
-    case TransportType::SharedMemory:
-    {
-        r = shm_is_snapshot_synced(volume_name,
-                                   snapshot_name);
-        break;
-    }
-    case TransportType::TCP:
-    case TransportType::RDMA:
-    {
-        r = network_xio_is_snapshot_synced(ctx,
-                                           volume_name,
-                                           snapshot_name);
-        break;
-    }
-    default:
-        errno = EINVAL; r = -1;
-        break;
-    }
-    return r;
+    return (r = ctx->is_snapshot_synced(volume_name,
+                                        snapshot_name));
 }
 
 int
@@ -734,25 +573,7 @@ ovs_list_volumes(ovs_ctx_t *ctx,
                                           errno);
                 }));
 
-    switch (ctx->transport)
-    {
-    case TransportType::SharedMemory:
-    {
-        r = shm_list_volumes(volumes);
-        break;
-    }
-    case TransportType::TCP:
-    case TransportType::RDMA:
-    {
-        r = network_xio_list_volumes(ctx,
-                                     volumes);
-        break;
-    }
-    default:
-        errno = EINVAL; r = -1;
-        break;
-    }
-
+    r = ctx->list_volumes(volumes);
     if (r < 0)
     {
         return r;
@@ -793,7 +614,6 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
                         const RequestOp& op)
 {
     int r = 0, accmode;
-    ovs_shm_context *shm_ctx_ = ctx->shm_ctx_;
 
     ovs_submit_aio_request_tracepoint_enter(op,
                                             ctx,
@@ -864,7 +684,9 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
         return -1;
     }
 
-    ovs_aio_request *request = create_new_request(op, ovs_aiocbp, completion);
+    ovs_aio_request *request = create_new_request(op,
+                                                  ovs_aiocbp,
+                                                  completion);
     if (request == NULL)
     {
         ovs_submit_aio_request_tracepoint_exit(op,
@@ -881,46 +703,22 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
     {
     case RequestOp::Read:
     {
-        if (ctx->transport == TransportType::SharedMemory)
-        {
-            /* on error returns -1, errno is already set */
-            r = shm_send_read_request(shm_ctx_,
-                                      ovs_aiocbp,
-                                      request);
-        }
-        else
-        {
-            r = network_xio_send_read_request(ctx,
-                                              ovs_aiocbp,
-                                              request);
-        }
+        /* on error returns -1, errno is already set */
+        r = ctx->send_read_request(ovs_aiocbp,
+                                   request);
     }
         break;
     case RequestOp::Write:
+    {
+        /* on error returns -1, errno is already set */
+        r = ctx->send_write_request(ovs_aiocbp,
+                                    request);
+    }
+        break;
     case RequestOp::Flush:
     case RequestOp::AsyncFlush:
     {
-        if (ctx->transport == TransportType::SharedMemory)
-        {
-            /* on error returns -1, errno is already set */
-            r = shm_send_write_request(shm_ctx_,
-                                       ovs_aiocbp,
-                                       request);
-        }
-        else
-        {
-            if (RequestOp::Write == op)
-            {
-                r = network_xio_send_write_request(ctx,
-                                                   ovs_aiocbp,
-                                                   request);
-            }
-            else
-            {
-                r = network_xio_send_flush_request(ctx,
-                                                   request);
-            }
-        }
+        r = ctx->send_flush_request(request);
     }
         break;
     default:
@@ -929,6 +727,8 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
     }
     if (r < 0)
     {
+        pthread_cond_destroy(&request->_cond);
+        pthread_mutex_destroy(&request->_mutex);
         delete request;
     }
     int saved_errno = errno;
@@ -1141,55 +941,7 @@ ovs_buffer_t*
 ovs_allocate(ovs_ctx_t *ctx,
              size_t size)
 {
-    ovs_buffer_t *buf;
-    switch (ctx->transport)
-    {
-    case TransportType::SharedMemory:
-    {
-        buf = ctx->shm_ctx_->cache_->allocate(size);
-        if (!buf)
-        {
-            errno = ENOMEM;
-        }
-        break;
-    }
-    case TransportType::TCP:
-    case TransportType::RDMA:
-    {
-        xio_reg_mem *mem = ctx->net_client_->allocate(size);
-        if (mem)
-        {
-            buf = new ovs_buffer_t;
-            buf->buf = mem->addr;
-            buf->size = mem->length;
-            buf->mem = mem;
-            buf->from_mpool = true;
-        }
-        else
-        {
-            void *ptr;
-            /* try to be on the safe side with 4k alignment */
-            int ret = posix_memalign(&ptr, 4096, size);
-            if (ret != 0)
-            {
-                errno = ret;
-                buf = NULL;
-            }
-            else
-            {
-                buf = new ovs_buffer_t;
-                buf->buf = ptr;
-                buf->size = size;
-                buf->from_mpool = false;
-            }
-        }
-        break;
-    }
-    default:
-        errno = EINVAL;
-        buf = NULL;
-        break;
-    }
+    ovs_buffer_t *buf = ctx->allocate(size);
     tracepoint(openvstorage_libovsvolumedriver,
                ovs_allocate,
                ctx,
@@ -1238,36 +990,7 @@ int
 ovs_deallocate(ovs_ctx_t *ctx,
                ovs_buffer_t *ptr)
 {
-    int r = 0;
-    switch (ctx->transport)
-    {
-    case TransportType::SharedMemory:
-    {
-        r = ctx->shm_ctx_->cache_->deallocate(ptr);
-        if (r < 0)
-        {
-            errno = EFAULT;
-        }
-        break;
-    }
-    case TransportType::TCP:
-    case TransportType::RDMA:
-    {
-        if (ptr->from_mpool)
-        {
-            ctx->net_client_->deallocate(ptr->mem);
-        }
-        else
-        {
-            free (ptr->buf);
-        }
-        delete ptr;
-        break;
-    }
-    default:
-        errno = EINVAL; r = -1;
-        break;
-    }
+    int r = ctx->deallocate(ptr);
     tracepoint(openvstorage_libovsvolumedriver,
                ovs_deallocate,
                ctx,
@@ -1503,10 +1226,15 @@ ovs_aio_flushcb(ovs_ctx_t *ctx,
     aio->aio_offset = 0;
     aio->aio_buf = NULL;
 
-    return _ovs_submit_aio_request(ctx,
-                                   aio,
-                                   completion,
-                                   RequestOp::AsyncFlush);
+    int r = _ovs_submit_aio_request(ctx,
+                                    aio,
+                                    completion,
+                                    RequestOp::AsyncFlush);
+    if (r < 0)
+    {
+        delete aio;
+    }
+    return r;
 }
 
 ssize_t
@@ -1551,6 +1279,7 @@ ovs_read(ovs_ctx_t *ctx,
 
     if ((r = ovs_aio_suspend(ctx, &aio, NULL)) < 0)
     {
+        (void) ovs_aio_finish(ctx, &aio);
         return r;
     }
 
@@ -1604,6 +1333,7 @@ ovs_write(ovs_ctx_t *ctx,
 
     if ((r = ovs_aio_suspend(ctx, &aio, NULL)) < 0)
     {
+        (void) ovs_aio_finish(ctx, &aio);
         return r;
     }
 
@@ -1629,24 +1359,7 @@ ovs_stat(ovs_ctx_t *ctx, struct stat *st)
         return -1;
     }
 
-    int r;
-    switch (ctx->transport)
-    {
-    case TransportType::SharedMemory:
-    {
-        r = ctx->shm_ctx_->shm_client_->stat(st);
-        break;
-    }
-    case TransportType::TCP:
-    case TransportType::RDMA:
-    {
-        r = network_xio_stat_volume(ctx, st);
-        break;
-    }
-    default:
-        errno = EINVAL; r = -1;
-        break;
-    }
+    int r = ctx->stat_volume(st);
     tracepoint(openvstorage_libovsvolumedriver,
                ovs_stat_exit,
                ctx,
@@ -1696,6 +1409,7 @@ ovs_flush(ovs_ctx_t *ctx)
 
     if ((r = ovs_aio_suspend(ctx, &aio, NULL)) < 0)
     {
+        (void) ovs_aio_finish(ctx, &aio);
         return r;
     }
 

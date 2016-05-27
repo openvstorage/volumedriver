@@ -25,14 +25,53 @@
 struct ovs_context_t
 {
     TransportType transport;
-    std::string host;
-    int port;
-    std::string uri;
-    std::string volume_name;
     int oflag;
-    ovs_shm_context *shm_ctx_;
-    volumedriverfs::NetworkXioClientPtr net_client_;
-    uint64_t net_client_qdepth;
+
+    virtual ~ovs_context_t() {};
+
+    virtual int open_volume(const char *volume_name,
+                            int oflag) = 0;
+
+    virtual void close_volume() = 0;
+
+    virtual int create_volume(const char *volume_name,
+                              uint64_t size) = 0;
+
+    virtual int remove_volume(const char *volume_name) = 0;
+
+    virtual int snapshot_create(const char *volume_name,
+                                const char *snapshot_name,
+                                const uint64_t timeout) = 0;
+
+    virtual int snapshot_rollback(const char *volume_name,
+                                  const char *snapshot_name) = 0;
+
+    virtual int snapshot_remove(const char *volume_name,
+                                const char *snapshot_name) = 0;
+
+    virtual void list_snapshots(std::vector<std::string>& snaps,
+                                const char *volume_name,
+                                uint64_t *size,
+                                int *saved_errno) = 0;
+
+    virtual int is_snapshot_synced(const char *volume_name,
+                                   const char *snapshot_name) = 0;
+
+    virtual int list_volumes(std::vector<std::string>& volumes) = 0;
+
+    virtual int send_read_request(struct ovs_aiocb *ovs_aiocbp,
+                                  ovs_aio_request *request) = 0;
+
+    virtual int send_write_request(struct ovs_aiocb *ovs_aiocbp,
+                                   ovs_aio_request *request) = 0;
+
+    virtual int send_flush_request(ovs_aio_request *request) = 0;
+
+    virtual int stat_volume(struct stat *st) = 0;
+
+    virtual ovs_buffer_t* allocate(size_t size) = 0;
+
+    virtual int deallocate(ovs_buffer_t *ptr) = 0;
 };
 
 static bool
@@ -107,52 +146,5 @@ ovs_aio_request* create_new_request(RequestOp op,
     {
         return NULL;
     }
-}
-
-static int
-ovs_xio_open_volume(ovs_ctx_t *ctx, const char *volume_name)
-{
-    ssize_t r;
-    struct ovs_aiocb aio;
-
-    ovs_aio_request *request = create_new_request(RequestOp::Open,
-                                                  &aio,
-                                                  NULL);
-    if (request == NULL)
-    {
-        errno = ENOMEM;
-        return -1;
-    }
-
-    try
-    {
-        ctx->net_client_->xio_send_open_request(volume_name,
-                                                reinterpret_cast<void*>(request));
-    }
-    catch (const volumedriverfs::XioClientQueueIsBusyException&)
-    {
-        errno = EBUSY;  r = -1;
-    }
-    catch (const std::bad_alloc&)
-    {
-        errno = ENOMEM;
-        return -1;
-    }
-    catch (...)
-    {
-        errno = EIO;
-        return -1;
-    }
-
-    if ((r = ovs_aio_suspend(ctx, &aio, NULL)) < 0)
-    {
-        return r;
-    }
-    r = ovs_aio_return(ctx, &aio);
-    if (ovs_aio_finish(ctx, &aio) < 0)
-    {
-        r = -1;
-    }
-    return r;
 }
 #endif // __CONTEXT_H

@@ -258,7 +258,7 @@ TEST_F(ShmServerTest, ovs_create_write_read_destroy)
     w_aio.aio_offset = 0;
     w_aio.aio_buf = ovs_buffer_data(wbuf);
 
-    EXPECT_EQ(0,
+    ASSERT_EQ(0,
               ovs_aio_write(ctx,
                             &w_aio));
 
@@ -288,7 +288,7 @@ TEST_F(ShmServerTest, ovs_create_write_read_destroy)
     r_aio.aio_offset = 0;
     r_aio.aio_buf = ovs_buffer_data(rbuf);
 
-    EXPECT_EQ(0,
+    ASSERT_EQ(0,
               ovs_aio_read(ctx,
                            &r_aio));
 
@@ -395,7 +395,7 @@ TEST_F(ShmServerTest, ovs_completion)
     w_aio.aio_offset = 0;
     w_aio.aio_buf = ovs_buffer_data(wbuf);
 
-    EXPECT_EQ(0,
+    ASSERT_EQ(0,
               ovs_aio_writecb(ctx,
                               &w_aio,
                               w_completion));
@@ -445,7 +445,7 @@ TEST_F(ShmServerTest, ovs_completion)
         ovs_aio_create_completion(completion_function::finish_read,
                                   &pattern_len);
 
-    EXPECT_EQ(0,
+    ASSERT_EQ(0,
               ovs_aio_readcb(ctx,
                              &r_aio,
                              r_completion));
@@ -764,12 +764,12 @@ TEST_F(ShmServerTest, ovs_completion_two_ctxs)
     w2_aio.aio_offset = 0;
     w2_aio.aio_buf = ovs_buffer_data(w2_buf);
 
-    EXPECT_EQ(0,
+    ASSERT_EQ(0,
               ovs_aio_writecb(ctx1,
                               &w1_aio,
                               w1_completion));
 
-    EXPECT_EQ(0,
+    ASSERT_EQ(0,
               ovs_aio_writecb(ctx2,
                               &w2_aio,
                               w2_completion));
@@ -826,7 +826,7 @@ TEST_F(ShmServerTest, ovs_completion_two_ctxs)
         ovs_aio_create_completion(completion_function::finish_read,
                                   &pattern_len);
 
-    EXPECT_EQ(0,
+    ASSERT_EQ(0,
               ovs_aio_readcb(ctx2,
                              &r_aio,
                              r_completion));

@@ -259,9 +259,9 @@ TEST_F(NetworkServerTest, create_write_read_destroy)
 	w_aio.aio_offset = 0;
 	w_aio.aio_buf = reinterpret_cast<uint8_t*>(vec.data());
 
-	EXPECT_EQ(0,
-		  ovs_aio_write(ctx,
-				&w_aio));
+	ASSERT_EQ(0,
+              ovs_aio_write(ctx,
+                            &w_aio));
 
 	EXPECT_EQ(0,
 		  ovs_aio_suspend(ctx,
@@ -269,8 +269,8 @@ TEST_F(NetworkServerTest, create_write_read_destroy)
 				  NULL));
 
 	EXPECT_EQ(vec.size(),
-		  ovs_aio_return(ctx,
-				 &w_aio));
+              ovs_aio_return(ctx,
+                             &w_aio));
 
 	EXPECT_EQ(0,
 		  ovs_aio_finish(ctx, &w_aio));
@@ -283,26 +283,26 @@ TEST_F(NetworkServerTest, create_write_read_destroy)
 	r_aio.aio_offset = 0;
 	r_aio.aio_buf = rbuf.get();
 
-	EXPECT_EQ(0,
-		  ovs_aio_read(ctx,
-			       &r_aio));
+	ASSERT_EQ(0,
+              ovs_aio_read(ctx,
+                           &r_aio));
 
 	EXPECT_EQ(0,
-		  ovs_aio_suspend(ctx,
-				  &r_aio,
-				  NULL));
+              ovs_aio_suspend(ctx,
+                              &r_aio,
+                              NULL));
 
 	EXPECT_EQ(vec.size(),
-		  ovs_aio_return(ctx,
-				 &r_aio));
+              ovs_aio_return(ctx,
+                             &r_aio));
 
 	EXPECT_EQ(0,
 		  ovs_aio_finish(ctx, &r_aio));
 
 	EXPECT_EQ(0,
-		  memcmp(rbuf.get(),
-			 vec.data(),
-			 vec.size()));
+              memcmp(rbuf.get(),
+                     vec.data(),
+                     vec.size()));
     }
 
     EXPECT_EQ(0,
@@ -386,7 +386,7 @@ TEST_F(NetworkServerTest, completion)
     w_aio.aio_offset = 0;
     w_aio.aio_buf = wbuf.get();
 
-    EXPECT_EQ(0,
+    ASSERT_EQ(0,
               ovs_aio_writecb(ctx,
                               &w_aio,
                               w_completion));
@@ -431,7 +431,7 @@ TEST_F(NetworkServerTest, completion)
         ovs_aio_create_completion(completion_function::finish_read,
                                   &pattern_len);
 
-    EXPECT_EQ(0,
+    ASSERT_EQ(0,
               ovs_aio_readcb(ctx,
                              &r_aio,
                              r_completion));
@@ -640,12 +640,12 @@ TEST_F(NetworkServerTest, completion_two_ctxs)
     w2_aio.aio_offset = 0;
     w2_aio.aio_buf = w2_buf.get();
 
-    EXPECT_EQ(0,
+    ASSERT_EQ(0,
               ovs_aio_writecb(ctx1,
                               &w1_aio,
                               w1_completion));
 
-    EXPECT_EQ(0,
+    ASSERT_EQ(0,
               ovs_aio_writecb(ctx2,
                               &w2_aio,
                               w2_completion));
@@ -698,7 +698,7 @@ TEST_F(NetworkServerTest, completion_two_ctxs)
         ovs_aio_create_completion(completion_function::finish_read,
                                   &pattern_len);
 
-    EXPECT_EQ(0,
+    ASSERT_EQ(0,
               ovs_aio_readcb(ctx2,
                              &r_aio,
                              r_completion));
