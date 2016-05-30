@@ -1532,7 +1532,7 @@ ovs_allocate(ovs_ctx_t *ctx,
     tracepoint(openvstorage_libovsvolumedriver,
                ovs_allocate,
                ctx,
-               buf,
+               reinterpret_cast<uintptr_t>(buf),
                size);
     return buf;
 }
@@ -1542,7 +1542,7 @@ ovs_buffer_data(ovs_buffer_t *ptr)
 {
     tracepoint(openvstorage_libovsvolumedriver,
                ovs_buffer_data,
-               ptr);
+               reinterpret_cast<uintptr_t>(ptr));
 
     if (likely(ptr != NULL))
     {
@@ -1560,7 +1560,7 @@ ovs_buffer_size(ovs_buffer_t *ptr)
 {
    tracepoint(openvstorage_libovsvolumedriver,
               ovs_buffer_size,
-              ptr);
+              reinterpret_cast<uintptr_t>(ptr));
 
     if (likely(ptr != NULL))
     {
@@ -1610,7 +1610,7 @@ ovs_deallocate(ovs_ctx_t *ctx,
     tracepoint(openvstorage_libovsvolumedriver,
                ovs_deallocate,
                ctx,
-               ptr,
+               reinterpret_cast<uintptr_t>(ptr),
                r);
     return r;
 }
