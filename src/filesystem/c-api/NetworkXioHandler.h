@@ -22,21 +22,6 @@
 namespace volumedriverfs
 {
 
-static void
-_xio_aio_wake_up_suspended_aiocb(ovs_aio_request *request)
-{
-    if (not __sync_bool_compare_and_swap(&request->_on_suspend,
-                                         false,
-                                         true,
-                                         __ATOMIC_RELAXED))
-    {
-        pthread_mutex_lock(&request->_mutex);
-        request->_signaled = true;
-        pthread_cond_signal(&request->_cond);
-        pthread_mutex_unlock(&request->_mutex);
-    }
-}
-
 void
 ovs_xio_aio_complete_request(void* opaque, ssize_t retval, int errval)
 {
@@ -49,7 +34,7 @@ ovs_xio_aio_complete_request(void* opaque, ssize_t retval, int errval)
     request->_completed = true;
     if (op != RequestOp::AsyncFlush)
     {
-        _xio_aio_wake_up_suspended_aiocb(request);
+        _aio_wake_up_suspended_aiocb(request);
     }
     if (completion)
     {

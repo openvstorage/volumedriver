@@ -19,6 +19,7 @@
 #include "VolumeCacheHandler.h"
 #include "ShmControlChannelClient.h"
 #include "AioCompletion.h"
+#include "common.h"
 struct ovs_shm_context;
 
 struct IOThread
@@ -209,21 +210,6 @@ struct ovs_shm_context
     VolumeCacheHandlerPtr cache_;
     ShmControlChannelClientPtr ctl_client_;
 };
-
-static void
-_aio_wake_up_suspended_aiocb(ovs_aio_request *request)
-{
-    if (not __sync_bool_compare_and_swap(&request->_on_suspend,
-                                         false,
-                                         true,
-                                         __ATOMIC_RELAXED))
-    {
-        pthread_mutex_lock(&request->_mutex);
-        request->_signaled = true;
-        pthread_cond_signal(&request->_cond);
-        pthread_mutex_unlock(&request->_mutex);
-    }
-}
 
 static void
 _aio_request_handler(ovs_aio_request *request,
