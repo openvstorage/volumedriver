@@ -322,24 +322,20 @@ FailOverCacheProtocol::Clear_()
 
 void
 FailOverCacheProtocol::processFailOverCacheEntry(volumedriver::ClusterLocation cli,
-                                         int64_t lba,
-                                         const byte* buf,
-                                         int64_t size)
+                                                 int64_t lba,
+                                                 const byte* buf,
+                                                 int64_t size)
 {
     // Y42 better logging here
     LOG_TRACE("Sending Entry for lba " << lba );
-    if (use_rs_) // make small but finished packets with RDMA
-    {
-        *stream_ << fungi::IOBaseStream::cork;
-    }
+    *stream_ << fungi::IOBaseStream::cork;
+
     *stream_ << cli;
     *stream_ << lba;
     const fungi::WrapByteArray a((byte*)buf, (int32_t)size);
     *stream_ << a;
-    if (use_rs_) // make small but finished packets with RDMA
-    {
-        *stream_ << fungi::IOBaseStream::uncork;
-    }
+
+    *stream_ << fungi::IOBaseStream::uncork;
 }
 
 void
@@ -380,6 +376,7 @@ FailOverCacheProtocol::getEntries_()
     {
         try
         {
+            *stream_ << fungi::IOBaseStream::cork;
             volumedriver::ClusterLocation end_cli;
             *stream_ << end_cli;
             *stream_ << fungi::IOBaseStream::uncork;
@@ -395,7 +392,6 @@ FailOverCacheProtocol::getEntries_()
         }
 
     } BOOST_SCOPE_EXIT_END;
-    *stream_ << fungi::IOBaseStream::cork;
     cache_->getEntries(this);
 }
 
@@ -412,7 +408,6 @@ FailOverCacheProtocol::getSCO_()
     {
         try
         {
-
             volumedriver::ClusterLocation end_cli;
             *stream_ << end_cli;
             *stream_ << fungi::IOBaseStream::uncork;
