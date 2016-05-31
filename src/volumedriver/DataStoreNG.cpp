@@ -683,6 +683,10 @@ DataStoreNG::read_adjacent_clusters_(const ClusterReadDescriptor& desc,
         {
             cacheHitCounter_ += num_clusters;
             cached = true;
+            // technically clang-analyzer is right but we don't care
+            // and rather keep `cached' up to date for the sake of
+            // maintainability.
+            CLANG_ANALYZER_HINT_NO_DEAD_STORE(cached);
         }
         else if (cached)
         {

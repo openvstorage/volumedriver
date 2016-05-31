@@ -2180,16 +2180,19 @@ TEST_P(SimpleVolumeTest, tlog_entries)
         {
             auto e = tr.nextAny();
             ASSERT_TRUE(e != nullptr);
+            CLANG_ANALYZER_HINT_NON_NULL(e);
             EXPECT_TRUE(e->isLocation());
         }
 
         auto e = tr.nextAny();
         ASSERT_TRUE(e != nullptr);
+        CLANG_ANALYZER_HINT_NON_NULL(e);
         EXPECT_TRUE(e->isSCOCRC());
     }
 
     auto e = tr.nextAny();
     ASSERT_TRUE(e != nullptr);
+    CLANG_ANALYZER_HINT_NON_NULL(e);
     EXPECT_TRUE(e->isTLogCRC());
 
     EXPECT_EQ(nullptr, tr.nextAny());

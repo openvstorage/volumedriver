@@ -2474,7 +2474,9 @@ TEST_P(LocalRestartTest, testRescheduledSCOS)
     ASSERT_EQ(0, ret);
     ASSERT_TRUE(st.st_mode bitand S_ISVTX);
     ret = ::chmod(scoptr_name.c_str(), st.st_mode ^ S_ISVTX);
-    v = 0;
+    ASSERT_EQ(0, ret);
+
+    v = nullptr;
     // This will assert since it reschedules the sole sco to backend
     ASSERT_NO_THROW(v = localRestart(ns1));
     ASSERT_TRUE(v != nullptr);

@@ -477,37 +477,37 @@ TRACEPOINT_EVENT(
 	openvstorage_libovsvolumedriver,
 	ovs_allocate,
     TP_ARGS(void*, ctx_arg,
-            void*, buf_arg,
+            uintptr_t, buf_arg,
             size_t, size_arg),
     TP_FIELDS(
               ctf_integer_hex(void*, ctx, ctx_arg)
-              ctf_integer_hex(void*, buf, buf_arg)
+              ctf_integer_hex(uintptr_t, buf, buf_arg)
               ctf_integer(size_t, size, size_arg))
 )
 
 TRACEPOINT_EVENT(
 	openvstorage_libovsvolumedriver,
 	ovs_buffer_data,
-	TP_ARGS(void*, buf_arg),
-	TP_FIELDS(ctf_integer_hex(void*, buf, buf_arg))
+	TP_ARGS(uintptr_t, buf_arg),
+	TP_FIELDS(ctf_integer_hex(uintptr_t, buf, buf_arg))
 )
 
 TRACEPOINT_EVENT(
 	openvstorage_libovsvolumedriver,
 	ovs_buffer_size,
-	TP_ARGS(void*, buf_arg),
-	TP_FIELDS(ctf_integer_hex(void*, buf, buf_arg))
+	TP_ARGS(uintptr_t, buf_arg),
+	TP_FIELDS(ctf_integer_hex(uintptr_t, buf, buf_arg))
 )
 
 TRACEPOINT_EVENT(
 	openvstorage_libovsvolumedriver,
 	ovs_deallocate,
     TP_ARGS(void*, ctx_arg,
-            void*, buf_arg,
+            uintptr_t, buf_arg,
             int, retval_arg),
     TP_FIELDS(
               ctf_integer_hex(void*, ctx, ctx_arg)
-              ctf_integer_hex(void*, buf, buf_arg)
+              ctf_integer_hex(uintptr_t, buf, buf_arg)
               ctf_integer(int, retval, retval_arg))
 )
 

@@ -131,6 +131,7 @@ TEST_P(WriteOnlyVolumeTest, no_clone_from_incremental)
                            ns,
                            VolumeConfig::WanBackupVolumeRole::WanBackupIncremental);
     ASSERT_TRUE(wov != nullptr);
+    CLANG_ANALYZER_HINT_NON_NULL(wov);
 
     const VolumeConfig cfg(wov->get_config());
 
@@ -168,6 +169,8 @@ TEST_P(WriteOnlyVolumeTest, no_restart_from_base_volume)
                                             ns,
                                             VolumeConfig::WanBackupVolumeRole::WanBackupBase);
     ASSERT_TRUE(v);
+    CLANG_ANALYZER_HINT_NON_NULL(v);
+
     const VolumeConfig vCfg = v->get_config();
 
     const std::string pattern("blah");
@@ -195,6 +198,8 @@ TEST_P(WriteOnlyVolumeTest, test2)
                                             ns,
                                             VolumeConfig::WanBackupVolumeRole::WanBackupNormal);
     ASSERT_TRUE(v);
+    CLANG_ANALYZER_HINT_NON_NULL(v);
+
     const VolumeConfig vCfg = v->get_config();
 
     const uint32_t num_snapshots = 32;

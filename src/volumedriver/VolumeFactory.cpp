@@ -193,14 +193,34 @@ create_volume_stage_1(const VolumeConfig& config,
     const MaybeScrubId md_scrub_id(md->scrub_id());
     if (md_scrub_id != boost::none)
     {
+    // Hey
+#ifdef __clang_analyzer__
+    //, trust me, the unique_ptr makes sure that this isn't leaked.
+        if (md_scrub_id != sm->scrub_id())
+        {
+            ds = nullptr;
+            ASSERT(false);
+        }
+#else
         VERIFY(md_scrub_id == sm->scrub_id());
+#endif
     }
     else
     {
         md->set_scrub_id(sm->scrub_id());
     }
 
+    // Hey
+#ifdef __clang_analyzer__
+    //, trust me, the unique_ptr makes sure that this isn't leaked.
+    if (not nsid.get(0))
+    {
+        ds = nullptr;
+        ASSERT(false);
+    }
+#else
     VERIFY(nsid.get(0));
+#endif
 
     return std::unique_ptr<Volume, FreshVolumeDestroyer<delete_local_data,
                                                         remove_volume_completely> >
