@@ -253,6 +253,11 @@ private:
                           xio_iovec_ex *sglist,
                           int vec_size,
                           int size);
+
+    static void
+    create_vec_from_buf(xio_ctl_s *xctl,
+                        xio_iovec_ex *sglist,
+                        int vec_size);
 };
 
 typedef std::shared_ptr<NetworkXioClient> NetworkXioClientPtr;

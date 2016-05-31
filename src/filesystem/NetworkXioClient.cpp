@@ -756,7 +756,7 @@ exit:
 }
 
 void
-NetworkXioClient::handle_list_volumes(xio_ctl_s *xctl,
+NetworkXioClient::create_vec_from_buf(xio_ctl_s *xctl,
                                       xio_iovec_ex *sglist,
                                       int vec_size)
 {
@@ -770,18 +770,20 @@ NetworkXioClient::handle_list_volumes(xio_ctl_s *xctl,
 }
 
 void
+NetworkXioClient::handle_list_volumes(xio_ctl_s *xctl,
+                                      xio_iovec_ex *sglist,
+                                      int vec_size)
+{
+    create_vec_from_buf(xctl, sglist, vec_size);
+}
+
+void
 NetworkXioClient::handle_list_snapshots(xio_ctl_s *xctl,
                                         xio_iovec_ex *sglist,
                                         int vec_size,
                                         int size)
 {
-    uint64_t idx = 0;
-    for (int i = 0; i < vec_size; i++)
-    {
-       assert(sglist);
-       xctl->vec->push_back(static_cast<char*>(sglist[0].iov_base) + idx);
-       idx += strlen(static_cast<char*>(sglist[0].iov_base)) + 1;
-    }
+    create_vec_from_buf(xctl, sglist, vec_size);
     xctl->size = size;
 }
 
