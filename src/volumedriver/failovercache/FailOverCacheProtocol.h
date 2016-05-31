@@ -106,7 +106,8 @@ private:
     processFailOverCacheEntry_(volumedriver::ClusterLocation cli,
                                int64_t lba,
                                const byte* buf,
-                               int64_t size);
+                               int64_t size,
+                               bool cork);
 };
 
 }

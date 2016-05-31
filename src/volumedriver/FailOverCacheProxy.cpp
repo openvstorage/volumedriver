@@ -175,7 +175,7 @@ FailOverCacheProxy::getEntries(SCOProcessorFun processor)
     OUT_ENUM(stream_, GetEntries);
     stream_ << fungi::IOBaseStream::uncork;
 
-    getObject_(processor);
+    getObject_(processor, true);
 }
 
 uint64_t
@@ -186,17 +186,28 @@ FailOverCacheProxy::getSCOFromFailOver(SCO a,
     OUT_ENUM(stream_, GetSCO);
     stream_ << a;
     stream_ << fungi::IOBaseStream::uncork;
-    return getObject_(processor);
+    return getObject_(processor, false);
 }
 
 uint64_t
-FailOverCacheProxy::getObject_(SCOProcessorFun processor)
+FailOverCacheProxy::getObject_(SCOProcessorFun processor,
+                               bool cork_per_cluster)
 {
     fungi::Buffer buf;
-    stream_ >> fungi::IOBaseStream::cork;
     uint64_t ret = 0;
+
+    if (not cork_per_cluster)
+    {
+        stream_ >> fungi::IOBaseStream::cork;
+    }
+
     while (true)
     {
+        if (cork_per_cluster)
+        {
+            stream_ >> fungi::IOBaseStream::cork;
+        }
+
         ClusterLocation cli;
         stream_ >> cli;
         if(cli.isNull())

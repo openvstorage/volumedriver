@@ -648,4 +648,49 @@ TEST_F(FailOverCacheTest, Stress)
     }
 }
 
+// https://github.com/openvstorage/volumedriver/issues/19 :
+// The corking mechanism lead to too many clusters being queued up on the sender
+// (server side), which eventually complained with std::bad_alloc when trying to
+// send yet another one.
+TEST_F(FailOverCacheTest, get_entries_xxl)
+{
+    const LBASize lba_size(512);
+    const ClusterMultiplier cmult(8);
+    const ClusterSize csize(lba_size * cmult);
+
+    FailOverCacheProxy
+        cache(FailOverCacheTestMain::failovercache_config(),
+              FailOverCacheTestMain::ns(),
+              lba_size,
+              cmult,
+              boost::chrono::seconds(8));
+
+    const SCOMultiplier smult(4096);
+
+    FailOverCacheEntryFactory factory(csize,
+                                      smult);
+
+    const size_t test_size = 2ULL << 30;
+    const size_t count = test_size / csize;
+
+    for (size_t i = 0; i < count; ++i)
+    {
+        ClusterLocation loc;
+        std::vector<FailOverCacheEntry> vec = { factory(loc), };
+        cache.addEntries(std::move(vec));
+    }
+
+    size_t seen = 0;
+    cache.getEntries([&](ClusterLocation,
+                         uint64_t,
+                         const uint8_t*,
+                         size_t)
+                     {
+                         ++seen;
+                     });
+
+    EXPECT_EQ(count,
+              seen);
+}
+
 }

@@ -318,11 +318,11 @@ void
 FailOverCacheProtocol::processFailOverCacheEntry_(volumedriver::ClusterLocation cli,
                                                   int64_t lba,
                                                   const byte* buf,
-                                                  int64_t size)
+                                                  int64_t size,
+                                                  bool cork)
 {
-    // Y42 better logging here
-    LOG_TRACE("Sending Entry for lba " << lba );
-    if (use_rs_) // make small but finished packets with RDMA
+    LOG_TRACE("Sending Entry for lba " << lba);
+    if (cork)
     {
         stream_ << fungi::IOBaseStream::cork;
     }
@@ -330,7 +330,7 @@ FailOverCacheProtocol::processFailOverCacheEntry_(volumedriver::ClusterLocation 
     stream_ << lba;
     const fungi::WrapByteArray a((byte*)buf, (int32_t)size);
     stream_ << a;
-    if (use_rs_) // make small but finished packets with RDMA
+    if (cork)
     {
         stream_ << fungi::IOBaseStream::uncork;
     }
@@ -369,6 +369,7 @@ FailOverCacheProtocol::getEntries_()
     {
         try
         {
+            stream_ << fungi::IOBaseStream::cork;
             volumedriver::ClusterLocation end_cli;
             stream_ << end_cli;
             stream_ << fungi::IOBaseStream::uncork;
@@ -377,13 +378,13 @@ FailOverCacheProtocol::getEntries_()
                                       WARN);
     }));
 
-    stream_ << fungi::IOBaseStream::cork;
     cache_->getEntries(boost::bind(&FailOverCacheProtocol::processFailOverCacheEntry_,
                                    this,
                                    _1,
                                    _2,
                                    _3,
-                                   _4));
+                                   _4,
+                                   true));
 }
 
 void
@@ -414,7 +415,8 @@ FailOverCacheProtocol::getSCO_()
                                _1,
                                _2,
                                _3,
-                               _4));
+                               _4,
+                               false));
 }
 
 void

@@ -109,7 +109,8 @@ private:
     checkStreamOK(const std::string& ex);
 
     uint64_t
-    getObject_(SCOProcessorFun processor);
+    getObject_(SCOProcessorFun,
+               bool cork_per_cluster);
 
     std::unique_ptr<fungi::Socket> socket_;
     fungi::IOBaseStream stream_;
