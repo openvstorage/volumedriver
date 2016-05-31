@@ -251,28 +251,34 @@ class Client {
      * @brief Get the value of a key
      *
      * @param key full prefix of the key
+     * @param quorum whether to insist on quorum
      *
      * @return see etcd::Client @tparam
      */
-    Reply Get(const std::string& key);
+    Reply Get(const std::string& key,
+              bool quorum = false);
 
     /**
      * @brief Recursively get all the keys and directory rooted @ key
      *
      * @param key the key or directory to fetch
+     * @param quorum whether to insist on quorum
      *
      * @return see etcd::Client @tparam
      */
-    Reply GetAll(const std::string& key);
+    Reply GetAll(const std::string& key,
+                 bool quorum = false);
 
     /**
      * @brief enumerate the in-order keys as a sorted list
      *
      * @param dir the directory which holds the in-order key
+     * @param quorum whether to insist on quorum
      *
      * @return see etcd::Client @tparam
      */
-    Reply GetOrdered(const std::string& dir);
+    Reply GetOrdered(const std::string& dir,
+                     bool quorum = false);
 
     /**
      * @brief Delete a key-value pair
@@ -401,13 +407,17 @@ class Client {
     const char *kPostRequest = "POST";
     const char *kDeleteRequest = "DELETE";
 
-    const char *kValue = "value";
-    const char *kTttl = "ttl";
     const char *kDir = "dir";
+    const char *kFalse = "false";
     const char *kPrevExist = "prevExist";
     const char *kPrevIndex = "prevIndex";
     const char *kPrevValue = "prevValue";
-    const char *kSortedSuffix = "?recursive=true&sorted=true";
+    const char *kQuorum = "quorum";
+    const char *kRecursive = "recursive";
+    const char *kSorted = "sorted";
+    const char *kTrue = "true";
+    const char *kTttl = "ttl";
+    const char *kValue = "value";
 
     // DATA
     bool enable_header_ = false;
@@ -417,6 +427,10 @@ class Client {
 
     // OPERATIONS
     Reply _GetReply(const std::string& json);
+
+    Reply _Get(const std::string& key,
+               bool quorum,
+               std::map<std::string, std::string>);
 };
 
 /**
@@ -741,6 +755,37 @@ struct Server {
 
 namespace internal {
 
+template<typename Map>
+std::string
+MakeUrl(const std::string& pfx,
+        const std::string& key,
+        const Map& map)
+{
+    std::stringstream ss;
+    ss << pfx << key;
+
+    if (not map.empty())
+    {
+        bool first = true;
+        for (const auto& p : map)
+        {
+            if (first)
+            {
+                ss << "?";
+                first = false;
+            }
+            else
+            {
+                ss << "&";
+            }
+
+            ss << p.first << "=" << p.second;
+        }
+    }
+
+    return ss.str();
+}
+
 }
 
 //------------------------------- LIFECYCLE ----------------------------------
@@ -826,36 +871,32 @@ SetOrdered(const std::string& dir, const std::string& value) {
 }
 
 template <typename Reply> Reply Client<Reply>::
-Get(const std::string& key) {
-    std::string ret;
-    try {
-        ret = handle_->Get(url_prefix_ + key);
-    } catch (const std::exception& e) {
-        throw ClientException(e.what());
-    }
-    return _GetReply(ret);
+Get(const std::string& key,
+    bool quorum) {
+    return _Get(key,
+                quorum,
+                {});
 }
 
 template <typename Reply> Reply Client<Reply>::
-GetAll(const std::string& key) {
-    std::string ret;
-    try {
-        ret = handle_->Get(url_prefix_ + key + "?recursive=true");;
-    } catch (const std::exception& e) {
-        throw ClientException(e.what());
-    }
-    return _GetReply(ret);
+GetAll(const std::string& key,
+       bool quorum) {
+    return _Get(key,
+                quorum,
+                {
+                    { kRecursive, kTrue }
+                });
 }
 
 template <typename Reply> Reply Client<Reply>::
-GetOrdered(const std::string& dir) {
-    std::string ret;
-    try {
-        ret = handle_->Get(url_prefix_ + dir + std::string(kSortedSuffix));
-    } catch (const std::exception& e) {
-        throw ClientException(e.what());
-    }
-    return _GetReply(ret);
+GetOrdered(const std::string& dir,
+           bool quorum) {
+    return _Get(dir,
+                quorum,
+                {
+                    { kRecursive, kTrue },
+                    { kSorted, kTrue }
+                });
 }
 
 template <typename Reply> Reply Client<Reply>::
@@ -1017,6 +1058,26 @@ _GetReply(const std::string& json) {
     if (enable_header_)
         return Reply (handle_->GetHeader(), json);
     return Reply(json);
+}
+
+template<typename Reply>
+Reply Client<Reply>::_Get(const std::string& key,
+                          bool quorum,
+                          std::map<std::string, std::string> map)
+{
+    map.emplace(std::make_pair(kQuorum,
+                               quorum ? kTrue : kFalse));
+
+    try
+    {
+        return _GetReply(handle_->Get(internal::MakeUrl(url_prefix_,
+                                                        key,
+                                                        map)));
+    }
+    catch (const std::exception& e)
+    {
+        throw ClientException(e.what());
+    }
 }
 
 //------------------------------- LIFECYCLE ----------------------------------
