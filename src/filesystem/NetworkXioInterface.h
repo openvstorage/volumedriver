@@ -70,7 +70,7 @@ public:
                 youtils::ConfigurationReport&) const override final;
 
     void
-    run();
+    run(std::promise<void> promise);
 
     void
     shutdown();

@@ -68,10 +68,14 @@ public:
 										  local_node_id()),
                                                                 RegisterComponent::F,
                                                                 *fs_);
+        std::promise<void> promise;
+        std::future<void> future(promise.get_future());
 
         net_xio_thread_ = boost::thread([&]{
-                ASSERT_NO_THROW(net_xio_server_->run());
+                ASSERT_NO_THROW(net_xio_server_->run(std::move(promise)));
             });
+
+        ASSERT_NO_THROW(future.get());
     }
 
     virtual void

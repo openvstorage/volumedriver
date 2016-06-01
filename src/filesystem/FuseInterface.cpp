@@ -343,14 +343,19 @@ FuseInterface::operator()(const fs::path& mntpoint,
 
     if (network_server_)
     {
+        std::promise<void> promise;
+        std::future<void> future(promise.get_future());
+
         network_thread = boost::thread([&]
                     {
                           try
                           {
-                            network_server_->run();
+                            network_server_->run(std::move(promise));
                           }
                           CATCH_STD_ALL_LOG_IGNORE("exception running network (xio) server");
                       });
+
+        future.get();
     }
 
     auto network_thread_exit(yt::make_scope_exit([&]

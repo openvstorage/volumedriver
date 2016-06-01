@@ -75,7 +75,7 @@ public:
                  xio_msg *msg);
 
     void
-    run();
+    run(std::promise<void> promise);
 
     void
     shutdown();
@@ -99,6 +99,7 @@ private:
     std::condition_variable cv_;
     bool stopped;
     EventFD evfd;
+    int queue_depth;
 
     NetworkXioWorkQueuePtr wq_;
 

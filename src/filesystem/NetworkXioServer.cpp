@@ -114,9 +114,32 @@ NetworkXioServer::NetworkXioServer(FileSystem& fs,
     , stopping(false)
     , stopped(false)
     , evfd(EventFD())
+    , queue_depth(snd_rcv_queue_depth)
+{}
+
+void
+NetworkXioServer::xio_destroy_ctx_shutdown(xio_context *ctx)
+{
+    xio_context_destroy(ctx);
+    xio_shutdown();
+}
+
+NetworkXioServer::~NetworkXioServer()
+{
+    shutdown();
+}
+
+void
+NetworkXioServer::evfd_stop_loop(int fd, int /*events*/, void * /*data*/)
+{
+    xeventfd_read(fd);
+    xio_context_stop_loop(ctx.get());
+}
+
+void
+NetworkXioServer::run(std::promise<void> promise)
 {
     int xopt = 2;
-    int queue_depth = snd_rcv_queue_depth;
 
     xio_init();
 
@@ -164,17 +187,17 @@ NetworkXioServer::NetworkXioServer(FileSystem& fs,
     xio_s_ops.assign_data_in_buf = NULL;
     xio_s_ops.on_msg_error = NULL;
 
-    LOG_INFO("bind XIO server to '" << uri << "'");
+    LOG_INFO("bind XIO server to '" << uri_ << "'");
     server = std::shared_ptr<xio_server>(xio_bind(ctx.get(),
                                                   &xio_s_ops,
-                                                  uri.c_str(),
+                                                  uri_.c_str(),
                                                   NULL,
                                                   0,
                                                   this),
                                          xio_unbind);
     if (server == nullptr)
     {
-        LOG_FATAL("failed to bind XIO server to '" << uri << "'");
+        LOG_FATAL("failed to bind XIO server to '" << uri_ << "'");
         throw FailedBindXioServer("failed to bind XIO server");
     }
 
@@ -244,30 +267,8 @@ NetworkXioServer::NetworkXioServer(FileSystem& fs,
                                 32,
                                 4,
                                 0);
-}
 
-void
-NetworkXioServer::xio_destroy_ctx_shutdown(xio_context *ctx)
-{
-    xio_context_destroy(ctx);
-    xio_shutdown();
-}
-
-NetworkXioServer::~NetworkXioServer()
-{
-    shutdown();
-}
-
-void
-NetworkXioServer::evfd_stop_loop(int fd, int /*events*/, void * /*data*/)
-{
-    xeventfd_read(fd);
-    xio_context_stop_loop(ctx.get());
-}
-
-void
-NetworkXioServer::run()
-{
+    promise.set_value();
     while (not stopping)
     {
         int ret = xio_context_run_loop(ctx.get(), XIO_INFINITE);
@@ -516,7 +517,6 @@ NetworkXioServer::shutdown()
 {
     if (not stopped)
     {
-        server.reset();
         wq_->shutdown();
         stopping = true;
         xio_context_del_ev_handler(ctx.get(), evfd);
@@ -525,6 +525,7 @@ NetworkXioServer::shutdown()
             std::unique_lock<std::mutex> lock_(mutex_);
             cv_.wait(lock_, [&]{return stopped == true;});
         }
+        server.reset();
     }
 }
 

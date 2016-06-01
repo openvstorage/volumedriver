@@ -33,9 +33,9 @@ namespace yt = youtils;
 namespace ip = initialized_params;
 
 void
-NetworkXioInterface::run()
+NetworkXioInterface::run(std::promise<void> promise)
 {
-    xio_server_.run();
+    xio_server_.run(std::move(promise));
 }
 
 void
