@@ -193,7 +193,7 @@ ovs_log_formatter(const bl::record_view& rec,
     static uint64_t seqnum = 0;
 
     std::stringstream sseq;
-    sseq << std::hex << std::setw(8) << std::setfill('0') << seqnum++;
+    sseq << std::hex << std::setw(16) << std::setfill('0') << seqnum++;
 
     os <<
         tsbuf <<
