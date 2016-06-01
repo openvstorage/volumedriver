@@ -187,6 +187,7 @@ private:
 
     std::string uri_;
     bool stopping;
+    bool stopped;
     std::thread xio_thread_;
 
     mutable fungi::SpinLock inflight_lock;
@@ -202,6 +203,7 @@ private:
 
     EventFD evfd;
 
+    std::exception_ptr excptr;
     std::shared_ptr<xio_mempool> mpool;
 
     void
@@ -212,6 +214,12 @@ private:
 
     void
     req_queue_release();
+
+    void
+    shutdown();
+
+    template<class E>
+    void set_exception_ptr(E e);
 
     static xio_connection*
     create_connection_control(xio_context *ctx,
