@@ -673,11 +673,19 @@ TEST_F(FailOverCacheTest, get_entries_xxl)
     const size_t test_size = 2ULL << 30;
     const size_t count = test_size / csize;
 
+    const std::vector<uint8_t> buf(csize);
+
     for (size_t i = 0; i < count; ++i)
     {
         ClusterLocation loc;
-        std::vector<FailOverCacheEntry> vec = { factory(loc), };
-        cache.addEntries(std::move(vec));
+        FailOverCacheEntry e(factory(loc));
+        ASSERT_EQ(e.size_,
+                  buf.size());
+
+        delete[] e.buffer_;
+        e.buffer_ = buf.data();
+
+        cache.addEntries({std::move(e)});
     }
 
     size_t seen = 0;
