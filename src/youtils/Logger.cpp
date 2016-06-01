@@ -162,15 +162,15 @@ default_log_formatter(const bl::record_view& rec,
 }
 
 void
-redis_log_formatter(const bl::record_view& rec,
-                    bl::formatting_ostream& os)
+ovs_log_formatter(const bl::record_view& rec,
+                  bl::formatting_ostream& os)
 {
     static const char* sep = " - ";
 
     const time_type& the_time =
         bl::extract_or_throw<time_type>(timestamp_key, rec);
     static const char* time_format_tpl =
-        "%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d %6.6d %+02.2d%02.2d %s";
+        "%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d %6.6d %+02.2d%02.2d";
     char tsbuf[128];
     struct tm bt;
     localtime_r(&the_time.tv_sec, &bt);
@@ -186,12 +186,14 @@ redis_log_formatter(const bl::record_view& rec,
              the_time.tv_usec,
              // #warning "check this time zone conversion for negative numbers"
              bt.tm_gmtoff / 3600,
-             (bt.tm_gmtoff % 3600) / 60,
-             bt.tm_zone);
+             (bt.tm_gmtoff % 3600) / 60);
 
     static const pid_t pid(::getpid());
     static const std::string hostname(boost::asio::ip::host_name());
     static uint64_t seqnum = 0;
+
+    std::stringstream sseq;
+    sseq << std::hex << std::setw(8) << std::setfill('0') << seqnum++;
 
     os <<
         tsbuf <<
@@ -207,7 +209,7 @@ redis_log_formatter(const bl::record_view& rec,
         bl::extract_or_throw<LOGGER_ATTRIBUTE_ID_TYPE>(LOGGER_ATTRIBUTE_ID,
                                                        rec) <<
         sep <<
-        seqnum++ <<
+        sseq.str() <<
         sep <<
         bl::extract_or_throw<Severity>("Severity", rec) <<
         sep <<
@@ -353,7 +355,7 @@ make_console_sink()
     boost::shared_ptr<std::ostream> stream(&std::clog,
                                            boost::null_deleter());
     sink->locked_backend()->add_stream(stream);
-    sink->set_formatter(&default_log_formatter);
+    sink->set_formatter(&ovs_log_formatter);
 
     return sink;
 }
@@ -387,7 +389,7 @@ make_file_sink(const fs::path& fname,
 
     using FileSink = bl::sinks::synchronous_sink<bl::sinks::text_file_backend>;
     auto sink(boost::make_shared<FileSink>(backend));
-    sink->set_formatter(&default_log_formatter);
+    sink->set_formatter(&ovs_log_formatter);
 
     return sink;
 }
@@ -401,7 +403,7 @@ make_redis_sink(const RedisUrl& url)
     using RedisSink = bl::sinks::asynchronous_sink<RedisBackend,
           bl::sinks::bounded_fifo_queue<100, bl::sinks::drop_on_overflow>>;
     auto sink(boost::make_shared<RedisSink>(backend));
-    sink->set_formatter(&redis_log_formatter);
+    sink->set_formatter(&ovs_log_formatter);
     return sink;
 }
 
