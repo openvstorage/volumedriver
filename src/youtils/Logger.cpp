@@ -162,8 +162,8 @@ default_log_formatter(const bl::record_view& rec,
 }
 
 void
-redis_log_formatter(const bl::record_view& rec,
-                    bl::formatting_ostream& os)
+ovs_log_formatter(const bl::record_view& rec,
+                  bl::formatting_ostream& os)
 {
     static const char* sep = " - ";
 
@@ -355,7 +355,7 @@ make_console_sink()
     boost::shared_ptr<std::ostream> stream(&std::clog,
                                            boost::null_deleter());
     sink->locked_backend()->add_stream(stream);
-    sink->set_formatter(&default_log_formatter);
+    sink->set_formatter(&ovs_log_formatter);
 
     return sink;
 }
@@ -389,7 +389,7 @@ make_file_sink(const fs::path& fname,
 
     using FileSink = bl::sinks::synchronous_sink<bl::sinks::text_file_backend>;
     auto sink(boost::make_shared<FileSink>(backend));
-    sink->set_formatter(&default_log_formatter);
+    sink->set_formatter(&ovs_log_formatter);
 
     return sink;
 }
@@ -403,7 +403,7 @@ make_redis_sink(const RedisUrl& url)
     using RedisSink = bl::sinks::asynchronous_sink<RedisBackend,
           bl::sinks::bounded_fifo_queue<100, bl::sinks::drop_on_overflow>>;
     auto sink(boost::make_shared<RedisSink>(backend));
-    sink->set_formatter(&redis_log_formatter);
+    sink->set_formatter(&ovs_log_formatter);
     return sink;
 }
 
