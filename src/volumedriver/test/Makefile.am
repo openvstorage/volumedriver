@@ -78,7 +78,6 @@ volumedriver_test_SOURCES = \
 	MTVolumeTester.cpp \
 	OwnerTagTest.cpp \
 	PageSortingGeneratorTest.cpp \
-	Panacea.cpp \
 	PrefetchThreadTest.cpp \
 	ProducerConsumerTest.cpp \
 	ReadParallelismTest.cpp \
