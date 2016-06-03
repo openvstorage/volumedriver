@@ -41,44 +41,50 @@ struct EventFD
             close(evfd_);
         }
     }
+
+    EventFD(const EventFD&) = delete;
+
+    EventFD&
+    operator=(const EventFD&) = delete;
+
     operator int() const { return evfd_; }
+
+    int
+    readfd()
+    {
+        int ret;
+        eventfd_t value = 0;
+        do {
+            ret = eventfd_read(evfd_, &value);
+        } while (ret < 0 && errno == EINTR);
+        if (ret == 0)
+        {
+            ret = value;
+        }
+        else if (errno != EAGAIN)
+        {
+            abort();
+        }
+        return ret;
+    }
+
+    int
+    writefd()
+    {
+        uint64_t u = 1;
+        int ret;
+        do {
+            ret = eventfd_write(evfd_, static_cast<eventfd_t>(u));
+        } while (ret < 0 && (errno == EINTR || errno == EAGAIN));
+        if (ret < 0)
+        {
+            abort();
+        }
+        return ret;
+    }
 private:
     int evfd_;
 };
-
-static inline int
-xeventfd_read(int fd)
-{
-    int ret;
-    eventfd_t value = 0;
-    do {
-        ret = eventfd_read(fd, &value);
-    } while (ret < 0 && errno == EINTR);
-    if (ret == 0)
-    {
-        ret = value;
-    }
-    else if (errno != EAGAIN)
-    {
-        abort();
-    }
-    return ret;
-}
-
-static inline int
-xeventfd_write(int fd)
-{
-    uint64_t u = 1;
-    int ret;
-    do {
-        ret = eventfd_write(fd, static_cast<eventfd_t>(u));
-    } while (ret < 0 && (errno == EINTR || errno == EAGAIN));
-    if (ret < 0)
-    {
-        abort();
-    }
-    return ret;
-}
 
 } //namespace
 

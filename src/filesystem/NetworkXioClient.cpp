@@ -116,7 +116,7 @@ NetworkXioClient::NetworkXioClient(const std::string& uri, const uint64_t qd)
     , disconnected(false)
     , disconnecting(false)
     , nr_req_queue(qd)
-    , evfd(EventFD())
+    , evfd()
     , excptr(nullptr)
 {
     ses_ops.on_session_event = static_on_session_event<NetworkXioClient>;
@@ -346,7 +346,7 @@ NetworkXioClient::push_request(xio_msg_s *req)
 void
 NetworkXioClient::xstop_loop()
 {
-    xeventfd_write(evfd);
+    evfd.writefd();
 }
 
 void
@@ -386,9 +386,9 @@ NetworkXioClient::xio_run_loop_worker(void *arg)
 }
 
 void
-NetworkXioClient::evfd_stop_loop(int fd, int /*events*/, void * /*data*/)
+NetworkXioClient::evfd_stop_loop(int /*fd*/, int /*events*/, void * /*data*/)
 {
-    xeventfd_read(fd);
+    evfd.readfd();
     xio_context_stop_loop(ctx.get());
 }
 

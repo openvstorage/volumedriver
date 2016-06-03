@@ -38,7 +38,7 @@ MAKE_EXCEPTION(WorkQueueThreadsException, Exception);
 class NetworkXioWorkQueue
 {
 public:
-    NetworkXioWorkQueue(const std::string& name, int evfd_)
+    NetworkXioWorkQueue(const std::string& name, EventFD& evfd_)
     : name_(name)
     , nr_threads_(0)
     , nr_queued_work(0)
@@ -149,11 +149,11 @@ private:
 
     bool stopping;
     bool stopped;
-    int evfd;
+    EventFD& evfd;
 
     void xstop_loop(NetworkXioWorkQueue *wq)
     {
-        xeventfd_write(wq->evfd);
+        wq->evfd.writefd();
     }
 
     std::chrono::steady_clock::time_point
