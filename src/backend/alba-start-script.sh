@@ -13,7 +13,6 @@ ARAKOON_CONFIG_TEMPLATE=${ARAKOON_CONFIG_TEMPLATE:-${SCRIPTDIR}/arakoon_cfg_temp
 ALBA_BASE_DIR=${ALBA_BASE_DIR:-${TEMP}/alba}
 ALBA_PLUGIN_HOME=${ALBA_PLUGIN_HOME:-/usr/lib/alba}
 ALBA_BIN=${ALBA_BIN:-/usr/bin/alba}
-ALBA_PRIVATE_KEY=${ALBA_PRIVATE_KEY:-./cfg/key_private}
 
 [ -d ${TEMP} ] || mkdir -p ${TEMP}
 [ -d ${ARAKOON_BASE_DIR} ] || mkdir -p ${ARAKOON_BASE_DIR}
@@ -60,22 +59,6 @@ if [ "$running" -eq 0 ]; then
     echo "arakoon cluster setup should not take so long."
     exit 2
 fi
-
-# Apply license
-ALBA_LICENSE_FILE=${TEMP}/alba_license
-cat <<EOF > ${ALBA_LICENSE_FILE}
-{
-     "osds" : null,
-     "namespaces" : null,
-     "token" : "test"
-}
-
-EOF
-
-license_json=$(${ALBA_BIN} sign-license ${ALBA_PRIVATE_KEY} ${ALBA_LICENSE_FILE} --to-json)
-signature=$(echo ${license_json} | python -c 'import sys,json; print json.loads(sys.stdin.read())["result"]')
-
-${ALBA_BIN} apply-license ${ALBA_LICENSE_FILE} ${signature} --config ${ARAKOON_CONFIG_FILE}
 
 # Start ALBA proxy
 ALBA_PROXY_HOME=${ALBA_BASE_DIR}/proxy
