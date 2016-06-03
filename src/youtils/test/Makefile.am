@@ -29,7 +29,6 @@ youtils_test_SOURCES = \
 	AlternativeOptionsAgainTest.cpp \
 	ArakoonTest.cpp \
 	ArakoonLockStoreTest.cpp \
-	Bartest.cpp \
 	BooleanEnumTest.cpp \
 	CheckSumTest.cpp \
 	ChooserTest.cpp \
