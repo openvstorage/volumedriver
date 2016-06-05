@@ -51,6 +51,13 @@ public:
 
     ~NetworkXioClient();
 
+    struct session_data
+    {
+        xio_context *ctx;
+        bool disconnected;
+        bool disconnecting;
+    };
+
     struct xio_msg_s
     {
         xio_msg xreq;
@@ -62,6 +69,7 @@ public:
     struct xio_ctl_s
     {
         xio_msg_s xmsg;
+        session_data sdata;
         std::vector<std::string> *vec;
         uint64_t size;
     };
@@ -197,7 +205,7 @@ private:
     bool disconnected;
     bool disconnecting;
 
-    uint64_t nr_req_queue;
+    int64_t nr_req_queue;
     std::mutex req_queue_lock;
     std::condition_variable req_queue_cond;
 
@@ -222,7 +230,7 @@ private:
     void set_exception_ptr(E e);
 
     static xio_connection*
-    create_connection_control(xio_context *ctx,
+    create_connection_control(session_data *sdata,
                               const std::string& uri);
 
     static int

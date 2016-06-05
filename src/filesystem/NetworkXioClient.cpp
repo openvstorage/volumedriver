@@ -468,13 +468,13 @@ NetworkXioClient::req_queue_wait_until(xio_msg_s *xmsg)
 {
     using namespace std::chrono_literals;
     std::unique_lock<std::mutex> l_(req_queue_lock);
-    if (--nr_req_queue == 0)
+    if (--nr_req_queue <= 0)
     {
         TODO("cnanakos: export cv timeout")
         if (not req_queue_cond.wait_until(l_,
-                                           std::chrono::steady_clock::now() +
-                                           60s,
-                                           [&]{return nr_req_queue != 0;}))
+                                          std::chrono::steady_clock::now() +
+                                          60s,
+                                          [&]{return nr_req_queue >= 0;}))
         {
             delete xmsg;
             throw XioClientQueueIsBusyException("request queue is busy");
@@ -616,11 +616,13 @@ NetworkXioClient::on_msg_error_control(xio_session *session ATTR_UNUSED,
                                        xio_status error ATTR_UNUSED,
                                        xio_msg_direction direction,
                                        xio_msg *msg,
-                                       void *cb_user_context ATTR_UNUSED)
+                                       void *cb_user_context)
 {
     NetworkXioMsg imsg;
     xio_msg_s *xio_msg;
 
+    session_data *sdata = static_cast<session_data*>(cb_user_context);
+    xio_context *ctx = sdata->ctx;
     if (direction == XIO_MSG_DIRECTION_IN)
     {
         try
@@ -655,6 +657,7 @@ NetworkXioClient::on_msg_error_control(xio_session *session ATTR_UNUSED,
     ovs_xio_complete_request_control(const_cast<void*>(xio_msg->opaque),
                                      -1,
                                      EIO);
+    xio_context_stop_loop(ctx);
     return 0;
 }
 
@@ -664,7 +667,8 @@ NetworkXioClient::on_msg_control(xio_session *session ATTR_UNUSED,
                                  int last_in_rxq ATTR_UNUSED,
                                  void *cb_user_context)
 {
-    xio_context *ctx = static_cast<xio_context*>(cb_user_context);
+    session_data *sdata = static_cast<session_data*>(cb_user_context);
+    xio_context *ctx = sdata->ctx;
     NetworkXioMsg imsg;
     try
     {
@@ -710,11 +714,16 @@ NetworkXioClient::on_session_event_control(xio_session *session,
                                            xio_session_event_data *event_data,
                                            void *cb_user_context)
 {
-    xio_context *ctx = static_cast<xio_context*>(cb_user_context);
+    session_data *sdata = static_cast<session_data*>(cb_user_context);
+    xio_context *ctx = sdata->ctx;
     switch (event_data->event)
     {
     case XIO_SESSION_CONNECTION_TEARDOWN_EVENT:
-        xio_connection_destroy(event_data->conn);
+        if (sdata->disconnecting)
+        {
+            xio_connection_destroy(event_data->conn);
+        }
+        sdata->disconnected = true;
         xio_context_stop_loop(ctx);
         break;
     case XIO_SESSION_TEARDOWN_EVENT:
@@ -728,7 +737,7 @@ NetworkXioClient::on_session_event_control(xio_session *session,
 }
 
 xio_connection*
-NetworkXioClient::create_connection_control(xio_context *ctx,
+NetworkXioClient::create_connection_control(session_data *sdata,
                                             const std::string& uri)
 {
     xio_connection *conn;
@@ -747,7 +756,7 @@ NetworkXioClient::create_connection_control(xio_context *ctx,
     params.type = XIO_SESSION_CLIENT;
     params.ses_ops = &s_ops;
     params.uri = uri.c_str();
-    params.user_context = ctx;
+    params.user_context = sdata;
 
     session = xio_session_create(&params);
     if (not session)
@@ -756,8 +765,8 @@ NetworkXioClient::create_connection_control(xio_context *ctx,
     }
     memset(&cparams, 0, sizeof(cparams));
     cparams.session = session;
-    cparams.ctx = ctx;
-    cparams.conn_user_context = ctx;
+    cparams.ctx = sdata->ctx;
+    cparams.conn_user_context = sdata;
 
     conn = xio_connect(&cparams);
     return conn;
@@ -774,7 +783,10 @@ NetworkXioClient::xio_submit_request(const std::string& uri,
                                                                0,
                                                                -1),
                                             xio_destroy_ctx_shutdown);
-    xio_connection *conn = create_connection_control(ctx.get(), uri);
+    xctl->sdata.ctx = ctx.get();
+    xctl->sdata.disconnecting = false;
+    xctl->sdata.disconnected = false;
+    xio_connection *conn = create_connection_control(&xctl->sdata, uri);
     if (conn == nullptr)
     {
         ovs_xio_complete_request_control(opaque,
@@ -794,7 +806,15 @@ NetworkXioClient::xio_submit_request(const std::string& uri,
     xio_context_run_loop(ctx.get(), XIO_INFINITE);
 exit:
     xio_disconnect(conn);
-    xio_context_run_loop(ctx.get(), 100);
+    if (not xctl->sdata.disconnected)
+    {
+        xctl->sdata.disconnecting = true;
+        xio_context_run_loop(ctx.get(), XIO_INFINITE);
+    }
+    else
+    {
+        xio_connection_destroy(conn);
+    }
 }
 
 void
