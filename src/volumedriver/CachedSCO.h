@@ -27,8 +27,6 @@
 namespace volumedriver
 {
 
-using youtils::FDMode;
-
 class SCOCacheMountPoint;
 class SCOCacheNamespace;
 
@@ -70,7 +68,7 @@ public:
     setXVal(float);
 
     OpenSCOPtr
-    open(FDMode mode);
+    open(youtils::FDMode mode);
 
     void
     incRefCount(uint32_t num);

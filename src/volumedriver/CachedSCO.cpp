@@ -13,6 +13,12 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "CachedSCO.h"
+#include "OpenSCO.h"
+#include "SCOCache.h"
+#include "SCOCacheMountPoint.h"
+#include "SCOCacheNamespace.h"
+
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -21,14 +27,10 @@
 
 #include <youtils/IOException.h>
 
-#include "CachedSCO.h"
-#include "SCOCacheMountPoint.h"
-#include "SCOCacheNamespace.h"
-#include "SCOCache.h"
-#include "OpenSCO.h"
-
 namespace volumedriver
 {
+
+namespace yt = youtils;
 
 void
 intrusive_ptr_add_ref(CachedSCO* sco)
@@ -247,9 +249,10 @@ CachedSCO::getMountPoint()
 }
 
 OpenSCOPtr
-CachedSCO::open(FDMode mode)
+CachedSCO::open(yt::FDMode mode)
 {
-    return OpenSCOPtr(new OpenSCO(this, mode));
+    return OpenSCOPtr(new OpenSCO(this,
+                                  mode));
 }
 
 void
