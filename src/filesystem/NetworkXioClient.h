@@ -120,6 +120,9 @@ public:
     void
     evfd_stop_loop(int fd, int events, void *data);
 
+    void
+    run(std::promise<bool>& promise);
+
     bool
     is_queue_empty();
 
@@ -211,7 +214,6 @@ private:
 
     EventFD evfd;
 
-    std::exception_ptr excptr;
     std::shared_ptr<xio_mempool> mpool;
 
     void

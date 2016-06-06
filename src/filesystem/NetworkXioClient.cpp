@@ -117,7 +117,6 @@ NetworkXioClient::NetworkXioClient(const std::string& uri, const uint64_t qd)
     , disconnecting(false)
     , nr_req_queue(qd)
     , evfd()
-    , excptr(nullptr)
 {
     ses_ops.on_session_event = static_on_session_event<NetworkXioClient>;
     ses_ops.on_session_established = NULL;
@@ -144,83 +143,17 @@ NetworkXioClient::NetworkXioClient(const std::string& uri, const uint64_t qd)
     try
     {
         xio_thread_ = std::thread([&](){
-            int xopt = 0;
-            xio_set_opt(NULL,
-                        XIO_OPTLEVEL_ACCELIO,
-                        XIO_OPTNAME_ENABLE_FLOW_CONTROL,
-                        &xopt, sizeof(int));
-
-            xopt = queue_depth;
-            xio_set_opt(NULL,
-                        XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_SND_QUEUE_DEPTH_MSGS,
-                        &xopt, sizeof(int));
-
-            xio_set_opt(NULL,
-                        XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_RCV_QUEUE_DEPTH_MSGS,
-                        &xopt, sizeof(int));
-
-            try
-            {
-                ctx = std::shared_ptr<xio_context>(xio_context_create(NULL,
-                                                                      POLLING_TIME_USEC,
-                                                                      -1),
-                                                   xio_destroy_ctx_shutdown);
-            }
-            catch (const std::bad_alloc&)
-            {
-                xrefcnt_shutdown();
-                excptr = std::current_exception();
-                promise.set_value(false);
-                return;
-            }
-
-            if (ctx == nullptr)
-            {
-                set_exception_ptr(XioClientCreateException("failed to create XIO context"));
-                promise.set_value(false);
-                return;
-            }
-
-            if(xio_context_add_ev_handler(ctx.get(),
-                                          evfd,
-                                          XIO_POLLIN,
-                                          static_evfd_stop_loop<NetworkXioClient>,
-                                          this))
-            {
-                set_exception_ptr(XioClientRegHandlerException("failed to register event handler"));
-                promise.set_value(false);
-                return;
-            }
-
-            session = std::shared_ptr<xio_session>(xio_session_create(&params),
-                                                   xio_session_destroy);
-            if(session == nullptr)
-            {
-                xio_context_del_ev_handler(ctx.get(), evfd);
-                set_exception_ptr(XioClientCreateException("failed to create XIO client"));
-                promise.set_value(false);
-                return;
-            }
-
-            cparams.session = session.get();
-            cparams.ctx = ctx.get();
-            cparams.conn_user_context = this;
-
-            conn = xio_connect(&cparams);
-            if (conn == nullptr)
-            {
-                xio_context_del_ev_handler(ctx.get(), evfd);
-                set_exception_ptr(XioClientCreateException("failed to connect"));
-                promise.set_value(false);
-                return;
-            }
-
-            auto fp = std::bind(&NetworkXioClient::xio_run_loop_worker,
-                                this,
-                                std::placeholders::_1);
-            pthread_setname_np(pthread_self(), "xio_run_loop_worker");
-            promise.set_value(true);
-            fp(this);
+                try
+                {
+                    run(promise);
+                }
+                catch (...)
+                {
+                    try
+                    {
+                        promise.set_exception(std::current_exception());
+                    } catch(...){}
+                }
         });
     }
     catch (const std::system_error&)
@@ -228,16 +161,20 @@ NetworkXioClient::NetworkXioClient(const std::string& uri, const uint64_t qd)
         throw XioClientCreateException("failed to create XIO worker thread");
     }
 
-    future.get();
-
-    if (excptr)
+    try
     {
-        std::rethrow_exception(excptr);
+        future.get();
+    }
+    catch (const std::exception&)
+    {
+        xio_thread_.join();
+        throw XioClientCreateException("failed to create XIO worker thread");
     }
 
     mpool = std::shared_ptr<xio_mempool>(
-            xio_mempool_create(-1, XIO_MEMPOOL_FLAG_REGULAR_PAGES_ALLOC),
-            xio_mempool_destroy);
+                    xio_mempool_create(-1,
+                                       XIO_MEMPOOL_FLAG_REGULAR_PAGES_ALLOC),
+                    xio_mempool_destroy);
     if (mpool == nullptr)
     {
         shutdown();
@@ -263,11 +200,75 @@ NetworkXioClient::NetworkXioClient(const std::string& uri, const uint64_t qd)
                                 0);
 }
 
-template<class E>
 void
-NetworkXioClient::set_exception_ptr(E e)
+NetworkXioClient::run(std::promise<bool>& promise)
 {
-    excptr = std::make_exception_ptr(e);
+    int xopt = 0;
+    xio_set_opt(NULL,
+                XIO_OPTLEVEL_ACCELIO,
+                XIO_OPTNAME_ENABLE_FLOW_CONTROL,
+                &xopt, sizeof(int));
+
+    xopt = 2 * nr_req_queue;
+    xio_set_opt(NULL,
+                XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_SND_QUEUE_DEPTH_MSGS,
+                &xopt, sizeof(int));
+
+    xio_set_opt(NULL,
+                XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_RCV_QUEUE_DEPTH_MSGS,
+                &xopt, sizeof(int));
+
+    try
+    {
+        ctx = std::shared_ptr<xio_context>(
+                            xio_context_create(NULL, POLLING_TIME_USEC, -1),
+                            xio_destroy_ctx_shutdown);
+    }
+    catch (const std::bad_alloc&)
+    {
+        xrefcnt_shutdown();
+        throw;
+    }
+
+    if (ctx == nullptr)
+    {
+        throw XioClientCreateException("failed to create XIO context");
+    }
+
+    if(xio_context_add_ev_handler(ctx.get(),
+                                  evfd,
+                                  XIO_POLLIN,
+                                  static_evfd_stop_loop<NetworkXioClient>,
+                                  this))
+    {
+        throw XioClientRegHandlerException("failed to register event handler");
+    }
+
+    session = std::shared_ptr<xio_session>(xio_session_create(&params),
+                                           xio_session_destroy);
+    if(session == nullptr)
+    {
+        xio_context_del_ev_handler(ctx.get(), evfd);
+        throw XioClientCreateException("failed to create XIO client");
+    }
+
+    cparams.session = session.get();
+    cparams.ctx = ctx.get();
+    cparams.conn_user_context = this;
+
+    conn = xio_connect(&cparams);
+    if (conn == nullptr)
+    {
+        xio_context_del_ev_handler(ctx.get(), evfd);
+        throw XioClientCreateException("failed to connect");
+    }
+
+    auto fp = std::bind(&NetworkXioClient::xio_run_loop_worker,
+                        this,
+                        std::placeholders::_1);
+    pthread_setname_np(pthread_self(), "xio_run_loop_worker");
+    promise.set_value(true);
+    fp(this);
 }
 
 void
