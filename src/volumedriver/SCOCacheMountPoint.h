@@ -21,7 +21,6 @@
 #include <list>
 
 #include <boost/filesystem.hpp>
-#include <boost/interprocess/detail/atomic.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <boost/serialization/utility.hpp>
 
@@ -131,7 +130,7 @@ private:
     const fs::path path_;
     uint64_t capacity_;
     uint64_t used_;
-    volatile boost::uint32_t refcnt_;
+    std::atomic<uint32_t> refcnt_;
     boost::optional<uint32_t> choking_;
     bool offline_;
     bu::uuid uuid_;

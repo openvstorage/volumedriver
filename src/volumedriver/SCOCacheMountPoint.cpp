@@ -36,19 +36,17 @@ namespace volumedriver
 #define USED_LOCK()                             \
     fungi::ScopedSpinLock __l(usedLock_)
 
-namespace bid = boost::interprocess::ipcdetail;
-
 void
 intrusive_ptr_add_ref(SCOCacheMountPoint* mp)
 {
-    bid::atomic_inc32(&mp->refcnt_);
+    ASSERT(mp);
+    ++mp->refcnt_;
 }
 
 void
 intrusive_ptr_release(SCOCacheMountPoint* mp)
 {
-    // ...::atomic_dec32() (and ..::atomic_inc32() too) returns the old value!
-    if (bid::atomic_dec32(&mp->refcnt_) == 1)
+    if (mp and --mp->refcnt_ == 0)
     {
         delete mp;
     }
