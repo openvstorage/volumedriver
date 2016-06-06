@@ -28,7 +28,6 @@
 namespace volumedriver
 {
 
-namespace bi = boost::intrusive;
 using youtils::FDMode;
 
 class SCOCacheMountPoint;
@@ -38,7 +37,7 @@ class SCOCacheNamespace;
 typedef boost::intrusive_ptr<SCOCacheMountPoint> SCOCacheMountPointPtr;
 
 class CachedSCO
-    : public bi::set_base_hook<bi::link_mode<bi::auto_unlink> >
+    : public boost::intrusive::set_base_hook<boost::intrusive::link_mode<boost::intrusive::auto_unlink> >
 {
     friend class SCOCacheMountPoint;
     friend class CachedSCOTest;
