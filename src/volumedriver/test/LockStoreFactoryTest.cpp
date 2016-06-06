@@ -21,6 +21,7 @@
 #include <youtils/TestBase.h>
 
 #include <backend/BackendTestSetup.h>
+#include <backend/LocalConfig.h>
 #include <backend/LockStore.h>
 
 namespace volumedrivertest
@@ -58,14 +59,24 @@ public:
 
 TEST_F(LockStoreFactoryTest, defaults)
 {
-    bpt::ptree pt;
-    LockStoreFactory lsf(pt,
-                         RegisterComponent::F,
-                         cm_);
+    try
+    {
+        bpt::ptree pt;
+        LockStoreFactory lsf(pt,
+                             RegisterComponent::F,
+                             cm_);
 
-    auto wrns(make_random_namespace());
-    yt::GlobalLockStorePtr ls(lsf.build_one(wrns->ns()));
-    EXPECT_TRUE(dynamic_cast<be::LockStore*>(ls.get()) != nullptr);
+        auto wrns(make_random_namespace());
+        yt::GlobalLockStorePtr ls(lsf.build_one(wrns->ns()));
+        EXPECT_TRUE(dynamic_cast<be::LockStore*>(ls.get()) != nullptr);
+    }
+    catch (be::BackendNotImplementedException&)
+    {
+        if (dynamic_cast<const be::LocalConfig*>(&cm_->config()) != nullptr)
+        {
+            FAIL() << "this test should work with a local backend";
+        }
+    }
 }
 
 TEST_F(LockStoreFactoryTest, arakoon)
