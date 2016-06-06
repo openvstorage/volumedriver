@@ -33,9 +33,6 @@
 namespace volumedriver
 {
 
-namespace fs = boost::filesystem;
-namespace bu = boost::uuids;
-
 class SCOCache;
 class SCOCacheNamespace;
 
@@ -55,7 +52,7 @@ public:
     void
     newMountPointStage2(uint64_t errcount);
 
-    const bu::uuid&
+    const boost::uuids::uuid&
     uuid() const;
 
     void
@@ -64,7 +61,7 @@ public:
     uint64_t
     getErrorCount() const;
 
-    const fs::path&
+    const boost::filesystem::path&
     getPath() const;
 
     uint64_t
@@ -131,14 +128,14 @@ private:
 
     mutable fungi::SpinLock usedLock_;
     SCOCache& scoCache_;
-    const fs::path path_;
-    const fs::path garbage_path_;
+    const boost::filesystem::path path_;
+    const boost::filesystem::path garbage_path_;
     uint64_t capacity_;
     uint64_t used_;
     std::atomic<uint32_t> refcnt_;
     boost::optional<uint32_t> choking_;
     bool offline_;
-    bu::uuid uuid_;
+    boost::uuids::uuid uuid_;
     uint64_t errcount_;
     bool initialised_;
     std::unique_ptr<youtils::DeferredFileRemover> deferred_file_remover_;
@@ -175,7 +172,7 @@ private:
     friend void
     intrusive_ptr_release(SCOCacheMountPoint*);
 
-    fs::path
+    boost::filesystem::path
     lockFilePath_() const;
 
     void

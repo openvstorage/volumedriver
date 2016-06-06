@@ -34,6 +34,8 @@
 namespace volumedriver
 {
 
+namespace bu = boost::uuids;
+namespace fs = boost::filesystem;
 namespace yt = youtils;
 
 #define USED_LOCK()                             \
