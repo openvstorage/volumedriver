@@ -26,29 +26,28 @@
 #include "SCOCacheNamespace.h"
 #include "SCOCache.h"
 #include "OpenSCO.h"
-#include <boost/interprocess/detail/atomic.hpp>
+
 namespace volumedriver
 {
-
-namespace bid = boost::interprocess::ipcdetail;
 
 void
 intrusive_ptr_add_ref(CachedSCO* sco)
 {
-    bid::atomic_inc32(&sco->refcnt_);
+    sco->refcnt_++;
 }
 
 void
 intrusive_ptr_release(CachedSCO* sco)
 {
-    // ...::atomic_dec32() (and ..::atomic_inc32() too) returns the old value!
-    if (bid::atomic_dec32(&sco->refcnt_) == 1)
+    if (sco and --sco->refcnt_ == 0)
     {
         delete sco;
     }
 }
 
-namespace {
+namespace
+{
+
 const std::string
 makeFileName(const Namespace& nsName,
              SCO scoName,
@@ -58,6 +57,7 @@ makeFileName(const Namespace& nsName,
     p /= scoName.str();
     return p.string();
 }
+
 }
 
 CachedSCO::CachedSCO(SCOCacheNamespace* nspace,
@@ -261,7 +261,7 @@ CachedSCO::incRefCount(uint32_t num)
 uint32_t
 CachedSCO::use_count()
 {
-    return bid::atomic_read32(&refcnt_);
+    return refcnt_;
 }
 
 void

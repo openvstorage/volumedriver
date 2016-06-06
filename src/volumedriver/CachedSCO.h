@@ -20,7 +20,6 @@
 #include "Types.h"
 
 #include <boost/filesystem.hpp>
-#include <boost/interprocess/detail/atomic.hpp>
 #include <boost/intrusive/set.hpp>
 #include <youtils/FileDescriptor.h>
 #include <youtils/SpinLock.h>
@@ -96,7 +95,7 @@ private:
     float xVal_;
     bool disposable_;
     bool unlink_on_destruction_;
-    volatile boost::uint32_t refcnt_;
+    std::atomic<uint32_t> refcnt_;
 
     // protect the following four from being called arbitrarily in the code:
     //
