@@ -81,13 +81,13 @@ public:
     void
     remove();
 
-    const fs::path&
+    const boost::filesystem::path&
     path() const;
 
 private:
     DECLARE_LOGGER("CachedSCO");
 
-    const fs::path path_;
+    const boost::filesystem::path path_;
     SCOCacheNamespace* const nspace_;
     SCO scoName_;
     SCOCacheMountPointPtr mntPoint_;
@@ -103,7 +103,7 @@ private:
     CachedSCO(SCOCacheNamespace* nspace,
               SCO scoName,
               SCOCacheMountPointPtr mntPoint,
-              const fs::path& path);
+              const boost::filesystem::path& path);
 
     // - create a new SCO, only allowed from SCOCacheMountPoint
     CachedSCO(SCOCacheNamespace* nspace,
