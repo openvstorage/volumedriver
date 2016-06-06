@@ -21,8 +21,8 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/intrusive/set.hpp>
+
 #include <youtils/FileDescriptor.h>
-#include <youtils/SpinLock.h>
 
 namespace volumedriver
 {
