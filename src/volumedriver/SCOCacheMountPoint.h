@@ -16,7 +16,9 @@
 #ifndef SCO_CACHE_MOUNT_POINT_H_
 #define SCO_CACHE_MOUNT_POINT_H_
 
+#include "SCOCacheInfo.h"
 #include "MountPointConfig.h"
+#include "Types.h"
 
 #include <list>
 
@@ -24,14 +26,13 @@
 #include <boost/uuid/uuid.hpp>
 #include <boost/serialization/utility.hpp>
 
+#include <youtils/DeferredFileRemover.h>
 #include <youtils/Logging.h>
-
-#include "SCOCacheInfo.h"
 #include <youtils/SpinLock.h>
-#include "Types.h"
 
 namespace volumedriver
 {
+
 namespace fs = boost::filesystem;
 namespace bu = boost::uuids;
 
@@ -42,7 +43,6 @@ class SCOCacheMountPoint
 
 {
 public:
-
     SCOCacheMountPoint(SCOCache& scoCache,
                        const MountPointConfig& cfg,
                        bool restart);
@@ -115,9 +115,13 @@ public:
     exists(const MountPointConfig& cfg);
 
     boost::optional<uint32_t> const
-    getThrottleUsecs() {
+    getThrottleUsecs()
+    {
         return choking_;
     }
+
+    void
+    addToGarbage(const boost::filesystem::path&);
 
 private:
     friend class ErrorHandlingTest;
@@ -128,6 +132,7 @@ private:
     mutable fungi::SpinLock usedLock_;
     SCOCache& scoCache_;
     const fs::path path_;
+    const fs::path garbage_path_;
     uint64_t capacity_;
     uint64_t used_;
     std::atomic<uint32_t> refcnt_;
@@ -136,6 +141,7 @@ private:
     bu::uuid uuid_;
     uint64_t errcount_;
     bool initialised_;
+    std::unique_ptr<youtils::DeferredFileRemover> deferred_file_remover_;
 
     static const std::string lockfile_;
 

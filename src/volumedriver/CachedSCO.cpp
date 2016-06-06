@@ -128,17 +128,10 @@ CachedSCO::~CachedSCO()
     {
         try
         {
-            fs::remove(path_);
+            mntPoint_->addToGarbage(path_);
             mntPoint_->updateUsedSize(-size_);
         }
-        catch (std::exception& e)
-        {
-            LOG_ERROR("Failed to unlink " << path_ << ": " << e.what());
-        }
-        catch (...)
-        {
-            LOG_ERROR("Failed to unlink " << path_ << ": unknown exception");
-        }
+        CATCH_STD_ALL_LOG_IGNORE("Failed to add " << path_ << " to garbage");
     }
 }
 
