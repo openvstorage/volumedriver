@@ -55,6 +55,7 @@ libyoutils_la_SOURCES = \
 	ConfigurationReport.cpp \
 	CorbaTestSetup.cpp \
 	cpu_timer.cpp \
+	DeferredFileRemover.cpp \
 	DimensionedValue.cpp \
 	EtcdUrl.cpp \
 	EtcdReply.cpp \
