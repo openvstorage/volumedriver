@@ -32,19 +32,6 @@ public:
     {}
 
 protected:
-    virtual void
-    SetUp()
-    {
-        SCOCacheTestSetup::SetUp();
-    }
-
-    virtual void
-    TearDown()
-    {
-        SCOCacheTestSetup::TearDown();
-    }
-    // temporary helper code
-
     std::atomic<uint32_t> throttling;
 };
 

@@ -40,7 +40,7 @@ protected:
     {}
 
     virtual void
-    SetUp()
+    SetUp() override
     {
         const std::string s(testing::UnitTest::GetInstance()->current_test_info()->test_case_name());
         pathPfx_ = getTempPath(s);
@@ -51,7 +51,7 @@ protected:
     }
 
     virtual void
-    TearDown()
+    TearDown() override
     {
         uninitialize_connection_manager();
         fs::remove_all(pathPfx_);
