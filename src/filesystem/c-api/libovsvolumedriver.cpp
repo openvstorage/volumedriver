@@ -684,10 +684,14 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
         return -1;
     }
 
-    ovs_aio_request *request = create_new_request(op,
-                                                  ovs_aiocbp,
-                                                  completion);
-    if (request == NULL)
+    ovs_aio_request *request;
+    try
+    {
+        request = new ovs_aio_request(op,
+                                      ovs_aiocbp,
+                                      completion);
+    }
+    catch (const std::bad_alloc&)
     {
         ovs_submit_aio_request_tracepoint_exit(op,
                                                ctx,
@@ -727,8 +731,6 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
     }
     if (r < 0)
     {
-        pthread_cond_destroy(&request->_cond);
-        pthread_mutex_destroy(&request->_mutex);
         delete request;
     }
     int saved_errno = errno;
@@ -863,9 +865,6 @@ ovs_aio_finish(ovs_ctx_t *ctx,
         errno = EINVAL;
         return -1;
     }
-
-    pthread_cond_destroy(&ovs_aiocbp->request_->_cond);
-    pthread_mutex_destroy(&ovs_aiocbp->request_->_mutex);
     delete ovs_aiocbp->request_;
     return 0;
 }

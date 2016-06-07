@@ -16,8 +16,7 @@
 #ifndef __NETWORK_XIO_HANDLER_H
 #define __NETWORK_XIO_HANDLER_H
 
-#include "common.h"
-#include "AioCompletion.h"
+#include "internal.h"
 
 namespace volumedriverfs
 {
@@ -26,28 +25,13 @@ void
 ovs_xio_aio_complete_request(void* opaque, ssize_t retval, int errval)
 {
     ovs_aio_request *request = reinterpret_cast<ovs_aio_request*>(opaque);
-    ovs_completion_t *completion = request->completion;
-    RequestOp op = request->_op;
-    request->_errno = errval;
-    request->_rv = retval;
-    request->_failed = (retval == -1 ? true : false);
-    request->_completed = true;
-    if (op != RequestOp::AsyncFlush)
+    struct ovs_aiocb *aiocbp = request->get_aio();
+    request->xio_complete(retval,
+                          errval);
+    if (request->is_async_and_has_completion())
     {
-        _aio_wake_up_suspended_aiocb(request);
-    }
-    if (completion)
-    {
-        completion->_rv = retval;
-        completion->_failed = (retval == -1 ? true : false);
-        if (RequestOp::AsyncFlush == op)
-        {
-            pthread_mutex_destroy(&request->_mutex);
-            pthread_cond_destroy(&request->_cond);
-            delete request->ovs_aiocbp;
-            delete request;
-        }
-        AioCompletion::get_aio_context().schedule(completion);
+        delete aiocbp;
+        delete request;
     }
 }
 
