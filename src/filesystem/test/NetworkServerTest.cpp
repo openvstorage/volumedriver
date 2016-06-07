@@ -902,4 +902,25 @@ TEST_F(NetworkServerTest, create_rollback_list_remove_snapshot)
               ovs_ctx_attr_destroy(ctx_attr));
 }
 
+TEST_F(NetworkServerTest, connect_to_nonexistent_port)
+{
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
+    EXPECT_EQ(0,
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         FileSystemTestSetup::edge_transport().c_str(),
+                                         FileSystemTestSetup::address().c_str(),
+                                         8));
+    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
+    ASSERT_TRUE(ctx != nullptr);
+    EXPECT_EQ(-1,
+              ovs_ctx_init(ctx, "volume", O_RDWR));
+    EXPECT_EQ(EIO, errno);
+
+    EXPECT_EQ(0, ovs_ctx_destroy(ctx));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
+}
+
+
 } //namespace
