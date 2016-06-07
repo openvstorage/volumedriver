@@ -88,6 +88,7 @@ volumedriver_test_SOURCES = \
 	SCOCacheMapTest.cpp \
 	SCOCacheNamespaceTest.cpp \
 	SCOCacheTest.cpp \
+	SCOWrittenToBackendActionTest.cpp \
 	ScrubberTest.cpp \
 	ScrubWorkTest.cpp \
 	SimpleBackupRestoreTest.cpp \

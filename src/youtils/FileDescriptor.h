@@ -25,6 +25,11 @@ BOOLEAN_ENUM(SyncOnCloseAndDestructor);
 struct statvfs;
 struct stat;
 
+namespace youtilstest
+{
+class FileDescriptorTest;
+}
+
 namespace youtils
 {
 
@@ -46,6 +51,7 @@ public:
         TruncateException,
         LockException,
         UnlockException,
+        FAdviseException,
     };
 
     FileDescriptorException(int errnum,
@@ -76,11 +82,16 @@ enum class Whence
     SeekEnd
 };
 
+enum class FAdvise
+{
+    DontNeed,
+};
 
 class FileDescriptor
 {
-public:
+    friend class youtilstest::FileDescriptorTest;
 
+public:
     FileDescriptor(const fs::path& path,
                    FDMode mode,
                    CreateIfNecessary create_if_necessary = CreateIfNecessary::F,
@@ -157,9 +168,12 @@ public:
     const fs::path&
     path() const;
 
+    void
+    fadvise(FAdvise);
 
 private:
     DECLARE_LOGGER("FileDescriptor");
+
     const fs::path path_;
     int fd_;
     const FDMode mode_;

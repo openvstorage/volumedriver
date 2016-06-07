@@ -37,6 +37,7 @@ youtils_test_SOURCES = \
 	EtcdReplyTest.cpp \
 	EtcdUrlTest.cpp \
 	FileRangeTest.cpp \
+	FileDescriptorTest.cpp \
 	FileUtilsTest.cpp \
 	GeneratorTest.cpp \
 	GlobalLockTest.cpp \
@@ -46,7 +47,6 @@ youtils_test_SOURCES = \
 	InitializedParamTest.cpp \
 	LocORemTest.cpp \
 	LoggingTest.cpp \
-	LowLevelFileTest.cpp \
 	LRUCacheTest.cpp \
 	LRUCacheTooTest.cpp \
 	main.cpp \

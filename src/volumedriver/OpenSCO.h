@@ -46,6 +46,9 @@ public:
     void
     sync();
 
+    void
+    purge_from_page_cache();
+
     // Z42: find a better name
     SCO
     sco_name() const;

@@ -138,6 +138,7 @@ try
           , dtl_check_interval_in_seconds(pt)
           , read_cache_default_behaviour(pt)
           , read_cache_default_mode(pt)
+          , sco_written_to_backend_action(pt)
           , clean_interval(pt)
           , sap_persist_interval(pt)
           , required_tlog_freespace(pt)
@@ -1777,6 +1778,7 @@ VolManager::update(const boost::property_tree::ptree& pt,
     freespace_check_interval.update(pt, report);
     read_cache_default_behaviour.update(pt, report);
     read_cache_default_mode.update(pt, report);
+    sco_written_to_backend_action.update(pt, report);
     clean_interval.update(pt, report);
     sap_persist_interval.update(pt, report);
     required_meta_freespace.update(pt, report);
@@ -1802,6 +1804,7 @@ VolManager::persist(boost::property_tree::ptree& pt,
     freespace_check_interval.persist(pt, reportDefault);
     read_cache_default_behaviour.persist(pt, reportDefault);
     read_cache_default_mode.persist(pt, reportDefault);
+    sco_written_to_backend_action.persist(pt, reportDefault);
     clean_interval.persist(pt, reportDefault);
     sap_persist_interval.persist(pt, reportDefault);
     required_tlog_freespace.persist(pt, reportDefault);
@@ -1845,6 +1848,12 @@ VolManager::effective_metadata_cache_capacity(const VolumeConfig& cfg) const
     return cfg.metadata_cache_capacity_ ?
         *cfg.metadata_cache_capacity_ :
         metadata_cache_capacity.value();
+}
+
+SCOWrittenToBackendAction
+VolManager::get_sco_written_to_backend_action() const
+{
+    return sco_written_to_backend_action.value();
 }
 
 }

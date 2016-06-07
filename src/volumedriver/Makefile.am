@@ -170,6 +170,7 @@ libvolumedriver_la_SOURCES = \
 	SCOCacheNamespace.cpp \
 	SCO.cpp \
 	SCOFetcher.cpp \
+	SCOWrittenToBackendAction.cpp \
 	SCOPool.cpp \
 	Scrubber.cpp \
 	ScrubberAdapter.cpp \

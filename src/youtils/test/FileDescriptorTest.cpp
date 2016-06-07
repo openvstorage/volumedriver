@@ -16,6 +16,9 @@
 #include "../TestBase.h"
 #include "../FileUtils.h"
 #include "../FileDescriptor.h"
+#include "../ScopeExit.h"
+
+#include <sys/mman.h>
 
 #include <mutex>
 
@@ -25,11 +28,12 @@ namespace youtilstest
 {
 using namespace youtils;
 
-class LowLevelFileTest : public TestBase
+class FileDescriptorTest
+    : public TestBase
 {
 public:
-    LowLevelFileTest()
-        :directory_(getTempPath("LowLevelFileTest"))
+    FileDescriptorTest()
+        :directory_(getTempPath("FileDescriptorTest"))
     {}
 
     void
@@ -45,18 +49,20 @@ public:
         fs::remove_all(directory_);
     }
 
+    static int
+    get_fd(FileDescriptor& f)
+    {
+        return f.fd_;
+    }
+
 protected:
     fs::path directory_;
 };
 
-// the same as SimpleIO
-using TestFile = FileDescriptor;
-
-
-TEST_F(LowLevelFileTest, mixedBag)
+TEST_F(FileDescriptorTest, mixedBag)
 {
     fs::path p(directory_ / "testfile");
-    EXPECT_THROW(TestFile f(p, FDMode::Write),
+    EXPECT_THROW(FileDescriptor f(p, FDMode::Write),
                  FileDescriptorException);
 
     std::vector<uint8_t> buf1(2048);
@@ -68,7 +74,7 @@ TEST_F(LowLevelFileTest, mixedBag)
     std::vector<uint8_t> out(4096);
 
     {
-        TestFile f(p, FDMode::Write, CreateIfNecessary::T);
+        FileDescriptor f(p, FDMode::Write, CreateIfNecessary::T);
 
         EXPECT_EQ(buf1.size(), f.write(&buf1[0], buf1.size()));
         EXPECT_THROW(f.read(&out[0], out.size()),
@@ -76,7 +82,7 @@ TEST_F(LowLevelFileTest, mixedBag)
     }
 
     {
-        TestFile g(p, FDMode::ReadWrite, CreateIfNecessary::F);
+        FileDescriptor g(p, FDMode::ReadWrite, CreateIfNecessary::F);
 
         g.seek(0, Whence::SeekEnd);
         EXPECT_EQ(buf2.size(), g.write(&buf2[0], buf2.size()));
@@ -84,7 +90,7 @@ TEST_F(LowLevelFileTest, mixedBag)
     }
 
     {
-        TestFile h(p, FDMode::Read, CreateIfNecessary::F);
+        FileDescriptor h(p, FDMode::Read, CreateIfNecessary::F);
         EXPECT_THROW(h.pwrite(&buf2[0], buf2.size(), 0),
                      FileDescriptorException);
 
@@ -113,13 +119,13 @@ TEST_F(LowLevelFileTest, mixedBag)
     EXPECT_EQ(2 * buf1.size() + buf2.size(), fs::file_size(p));
 }
 
-TEST_F(LowLevelFileTest, seek1)
+TEST_F(FileDescriptorTest, seek1)
 {
     fs::path p = directory_ / "testfile";
-    EXPECT_THROW(TestFile f(p, FDMode::Read),
+    EXPECT_THROW(FileDescriptor f(p, FDMode::Read),
                  FileDescriptorException);
     FileUtils::touch(p);
-    TestFile f(p, FDMode::Read);
+    FileDescriptor f(p, FDMode::Read);
     EXPECT_THROW(f.seek(-25, Whence::SeekCur),
                  FileDescriptorException);
     EXPECT_EQ(f.tell(),0);
@@ -134,22 +140,72 @@ TEST_F(LowLevelFileTest, seek1)
     EXPECT_EQ(f.tell(), 6);
 }
 
-TEST_F(LowLevelFileTest, locking)
+TEST_F(FileDescriptorTest, locking)
 {
     const fs::path p(directory_ / "lockfile");
-    TestFile f(p,
-               FDMode::Write,
-               CreateIfNecessary::T);
+    FileDescriptor f(p,
+                     FDMode::Write,
+                     CreateIfNecessary::T);
 
     std::unique_lock<decltype(f)> u(f);
     ASSERT_TRUE(static_cast<bool>(u));
 
-    TestFile g(p,
-               FDMode::Write);
+    FileDescriptor g(p,
+                     FDMode::Write);
 
     std::unique_lock<decltype(g)> v(g,
                                     std::try_to_lock);
     ASSERT_FALSE(static_cast<bool>(v));
+}
+
+TEST_F(FileDescriptorTest, purge_from_page_cache)
+{
+    const fs::path p(directory_ / "some_file");
+    FileDescriptor f(p,
+                     FDMode::ReadWrite,
+                     CreateIfNecessary::T);
+
+    const size_t page_size = ::sysconf(_SC_PAGESIZE);
+    ASSERT_LT(0,
+              page_size);
+
+    const std::vector<uint8_t> buf(page_size,
+                                   'Q');
+
+    ASSERT_EQ(page_size,
+              f.write(buf.data(),
+                      buf.size()));
+
+    void* m = ::mmap(0,
+                     page_size,
+                     PROT_READ,
+                     MAP_PRIVATE,
+                     get_fd(f),
+                     0);
+    ASSERT_TRUE(m != MAP_FAILED);
+
+    auto on_exit(make_scope_exit([&]
+                                 {
+                                     ::munmap(m,
+                                              page_size);
+                                 }));
+
+    auto check([&]() -> bool
+               {
+                   uint8_t chk = 0;
+                   EXPECT_EQ(0,
+                             ::mincore(m,
+                                       page_size,
+                                       &chk));
+                   return chk != 0;
+               });
+
+    EXPECT_TRUE(check());
+
+    f.sync();
+    f.fadvise(FAdvise::DontNeed);
+
+    EXPECT_FALSE(check());
 }
 
 }

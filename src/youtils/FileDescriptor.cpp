@@ -385,4 +385,29 @@ FileDescriptor::truncate(uint64_t length)
                                     FileDescriptorException::Exception::TruncateException);
     }
 }
+
+void
+FileDescriptor::fadvise(FAdvise adv)
+{
+    int fadv = POSIX_FADV_NORMAL;
+
+    switch (adv)
+    {
+    case FAdvise::DontNeed:
+        fadv = POSIX_FADV_DONTNEED;
+        break;
+    }
+
+    ASSERT(fd_ >= 0);
+    int ret = ::posix_fadvise(fd_,
+                              0,
+                              0,
+                              fadv);
+    if (ret < 0)
+    {
+        throw FileDescriptorException(errno,
+                                      FileDescriptorException::Exception::FAdviseException);
+    }
+}
+
 }
