@@ -18,8 +18,7 @@
 
 #include "VolumeCacheHandler.h"
 #include "ShmControlChannelClient.h"
-#include "AioCompletion.h"
-#include "common.h"
+#include "internal.h"
 struct ovs_shm_context;
 
 struct IOThread
@@ -217,28 +216,14 @@ _aio_request_handler(ovs_aio_request *request,
                      bool failed)
 {
     /* errno already set by shm_receive_*_reply function */
-    ovs_completion_t *completion = request->completion;
-    RequestOp op = request->_op;
-    request->_errno = errno;
-    request->_rv = ret;
-    request->_failed = failed;
-    request->_completed = true;
-    if (op != RequestOp::AsyncFlush)
+    struct ovs_aiocb *aiocbp = request->get_aio();
+    request->shm_complete(errno,
+                          ret,
+                          failed);
+    if (request->is_async_and_has_completion())
     {
-        _aio_wake_up_suspended_aiocb(request);
-    }
-    if (completion)
-    {
-        completion->_rv = ret;
-        completion->_failed = failed;
-        if (RequestOp::AsyncFlush == op)
-        {
-            pthread_mutex_destroy(&request->_mutex);
-            pthread_cond_destroy(&request->_cond);
-            delete request->ovs_aiocbp;
-            delete request;
-        }
-        AioCompletion::get_aio_context().schedule(completion);
+        delete aiocbp;
+        delete request;
     }
 }
 
