@@ -17,7 +17,6 @@
 #define __LIB_OVS_INTERNAL_H
 
 #include "common.h"
-#include "AioCompletion.h"
 
 struct ovs_aio_request
 {
@@ -93,7 +92,6 @@ struct ovs_aio_request
         {
             _completion->_rv = ret;
             _completion->_failed = _failed;
-            AioCompletion::get_aio_context().schedule(_completion);
         }
     }
 
@@ -113,14 +111,13 @@ struct ovs_aio_request
         {
             _completion->_rv = retval;
             _completion->_failed = _failed;
-            AioCompletion::get_aio_context().schedule(_completion);
         }
     }
 
     bool
-    is_async_and_has_completion()
+    is_async()
     {
-        if (_completion && _op == RequestOp::AsyncFlush)
+        if (_op == RequestOp::AsyncFlush)
         {
             return true;
         }
@@ -128,6 +125,12 @@ struct ovs_aio_request
         {
             return false;
         }
+    }
+
+    ovs_completion_t*
+    get_completion()
+    {
+        return _completion;
     }
 
     struct ovs_aiocb*
