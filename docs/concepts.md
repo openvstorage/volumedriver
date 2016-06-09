@@ -10,3 +10,5 @@ The Volume Driver is the core of the Open vStorage solution. It provides the [Re
 {% include "albaproxy.md" %}
 
 {% include "shm.md" %}
+
+{% include "scrubber.md" %}
