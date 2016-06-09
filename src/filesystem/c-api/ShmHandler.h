@@ -224,7 +224,8 @@ _aio_request_handler(ovs_aio_request *request,
                           failed);
     if (completion)
     {
-        if (request->is_async())
+        request->set_completion();
+        if (request->is_async_flush())
         {
             delete aiocbp;
             delete request;

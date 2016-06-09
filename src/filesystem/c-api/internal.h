@@ -88,11 +88,6 @@ struct ovs_aio_request
         {
             try_wake_up_suspended_aiocb();
         }
-        if (_completion)
-        {
-            _completion->_rv = ret;
-            _completion->_failed = _failed;
-        }
     }
 
     void
@@ -107,15 +102,17 @@ struct ovs_aio_request
         {
             try_wake_up_suspended_aiocb();
         }
-        if (_completion)
-        {
-            _completion->_rv = retval;
-            _completion->_failed = _failed;
-        }
+    }
+
+    void
+    set_completion()
+    {
+        _completion->_rv = _rv;
+        _completion->_failed = _failed;
     }
 
     bool
-    is_async()
+    is_async_flush()
     {
         if (_op == RequestOp::AsyncFlush)
         {

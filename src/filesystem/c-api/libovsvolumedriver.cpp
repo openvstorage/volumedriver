@@ -750,7 +750,7 @@ ovs_aio_read(ovs_ctx_t *ctx,
 {
     return _ovs_submit_aio_request(ctx,
                                    ovs_aiocbp,
-                                   NULL,
+                                   nullptr,
                                    RequestOp::Read);
 }
 
@@ -760,7 +760,7 @@ ovs_aio_write(ovs_ctx_t *ctx,
 {
     return _ovs_submit_aio_request(ctx,
                                    ovs_aiocbp,
-                                   NULL,
+                                   nullptr,
                                    RequestOp::Write);
 }
 
@@ -1400,7 +1400,7 @@ ovs_flush(ovs_ctx_t *ctx)
 
     if ((r = _ovs_submit_aio_request(ctx,
                                      &aio,
-                                     NULL,
+                                     nullptr,
                                      RequestOp::Flush)) < 0)
     {
         return r;

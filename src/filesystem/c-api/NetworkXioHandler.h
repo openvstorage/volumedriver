@@ -32,7 +32,8 @@ ovs_xio_aio_complete_request(void* opaque, ssize_t retval, int errval)
                           errval);
     if (completion)
     {
-        if (request->is_async())
+        request->set_completion();
+        if (request->is_async_flush())
         {
             delete aiocbp;
             delete request;
