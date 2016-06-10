@@ -96,8 +96,9 @@ public:
     void
     xio_send_flush_request(const void *opaque);
 
-    xio_reg_mem*
-    allocate(const uint64_t size);
+    int
+    allocate(xio_reg_mem *mem,
+             const uint64_t size);
 
     void
     deallocate(xio_reg_mem *reg_mem);

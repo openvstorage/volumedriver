@@ -525,17 +525,10 @@ struct NetworkXioContext : public ovs_context_t
     ovs_buffer_t*
     allocate(size_t size)
     {
-        ovs_buffer_t *buf;
-        xio_reg_mem *mem = net_client_->allocate(size);
-        if (mem)
-        {
-            buf = new ovs_buffer_t;
-            buf->buf = mem->addr;
-            buf->size = mem->length;
-            buf->mem = mem;
-            buf->from_mpool = true;
-        }
-        else
+        ovs_buffer_t *buf = new ovs_buffer_t;
+        int r  = net_client_->allocate(&buf->mem,
+                                       size);
+        if (r < 0)
         {
             void *ptr;
             /* try to be on the safe side with 4k alignment */
@@ -543,15 +536,21 @@ struct NetworkXioContext : public ovs_context_t
             if (ret != 0)
             {
                 errno = ret;
-                buf = NULL;
+                delete buf;
+                return NULL;
             }
             else
             {
-                buf = new ovs_buffer_t;
                 buf->buf = ptr;
                 buf->size = size;
                 buf->from_mpool = false;
             }
+        }
+        else
+        {
+            buf->buf = buf->mem.addr;
+            buf->size = buf->mem.length;
+            buf->from_mpool = true;
         }
         return buf;
     }
@@ -561,11 +560,11 @@ struct NetworkXioContext : public ovs_context_t
     {
         if (ptr->from_mpool)
         {
-            net_client_->deallocate(ptr->mem);
+            net_client_->deallocate(&ptr->mem);
         }
         else
         {
-            free (ptr->buf);
+            free(ptr->buf);
         }
         delete ptr;
         return 0;

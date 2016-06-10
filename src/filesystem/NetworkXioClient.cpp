@@ -294,24 +294,17 @@ NetworkXioClient::~NetworkXioClient()
     shutdown();
 }
 
-xio_reg_mem*
-NetworkXioClient::allocate(const uint64_t size)
+int
+NetworkXioClient::allocate(xio_reg_mem* mem,
+                           const uint64_t size)
 {
-    xio_reg_mem *mem = static_cast<xio_reg_mem*>(calloc(1,
-                                                        sizeof(xio_reg_mem)));
-    if (xio_mempool_alloc(mpool.get(), size, mem) < 0)
-    {
-        free(mem);
-        return NULL;
-    }
-    return mem;
+    return xio_mempool_alloc(mpool.get(), size, mem);
 }
 
 void
 NetworkXioClient::deallocate(xio_reg_mem *mem)
 {
     xio_mempool_free(mem);
-    free(mem);
 }
 
 void

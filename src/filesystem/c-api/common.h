@@ -49,7 +49,7 @@ struct ovs_buffer
 {
     void *buf;
     size_t size;
-    xio_reg_mem *mem;
+    xio_reg_mem mem;
     bool from_mpool;
 };
 
