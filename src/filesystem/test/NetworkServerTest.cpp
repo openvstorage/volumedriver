@@ -113,6 +113,25 @@ public:
         FileSystemTestBase::TearDown();
     }
 
+    CtxAttrPtr
+    make_ctx_attr(const size_t qdepth)
+    {
+        CtxAttrPtr attr(ovs_ctx_attr_new());
+        EXPECT_TRUE(attr != nullptr);
+
+        EXPECT_EQ(0,
+                  ovs_ctx_attr_set_transport(attr.get(),
+                                             FileSystemTestSetup::edge_transport().c_str(),
+                                             FileSystemTestSetup::address().c_str(),
+                                             FileSystemTestSetup::local_edge_port()));
+
+        EXPECT_EQ(0,
+                  ovs_ctx_attr_set_network_qdepth(attr.get(),
+                                                  qdepth));
+
+        return attr;
+    }
+
     std::unique_ptr<NetworkXioInterface> net_xio_server_;
     boost::thread net_xio_thread_;
 };
@@ -950,24 +969,6 @@ TEST_F(NetworkServerTest, connect_to_nonexistent_port)
 
 TEST_F(NetworkServerTest, stress)
 {
-    auto make_ctx_attr([&](const size_t qdepth) -> CtxAttrPtr
-                         {
-                             CtxAttrPtr attr(ovs_ctx_attr_new());
-                             EXPECT_TRUE(attr != nullptr);
-
-                             EXPECT_EQ(0,
-                                       ovs_ctx_attr_set_transport(attr.get(),
-                                                                  FileSystemTestSetup::edge_transport().c_str(),
-                                                                  FileSystemTestSetup::address().c_str(),
-                                                                  FileSystemTestSetup::local_edge_port()));
-
-                             EXPECT_EQ(0,
-                                       ovs_ctx_attr_set_network_qdepth(attr.get(),
-                                                                       qdepth));
-
-                             return attr;
-                         });
-
     CtxAttrPtr ctx_attr(make_ctx_attr(1));
     CtxPtr ctx(ovs_ctx_new(ctx_attr.get()));
     ASSERT_TRUE(ctx != nullptr);
