@@ -46,6 +46,32 @@ namespace yt = youtils;
 
 using namespace volumedriverfs;
 
+namespace
+{
+struct CtxAttrDeleter
+{
+    void
+    operator()(ovs_ctx_attr_t* a)
+    {
+        ovs_ctx_attr_destroy(a);
+    }
+};
+
+using CtxAttrPtr = std::unique_ptr<ovs_ctx_attr_t, CtxAttrDeleter>;
+
+struct CtxDeleter
+{
+    void
+    operator()(ovs_ctx_t* c)
+    {
+        ovs_ctx_destroy(c);
+    }
+};
+
+using CtxPtr = std::unique_ptr<ovs_ctx_t, CtxDeleter>;
+
+}
+
 class NetworkServerTest
     : public FileSystemTestBase
 {
@@ -240,7 +266,7 @@ TEST_F(NetworkServerTest, create_write_read_destroy)
                              "volume",
                              O_RDWR));
 
-    const size_t bufsize(yt::System::get_env_with_default("EDGE_TEST_BUF_SIZE",
+    const size_t bufsize(yt::System::get_env_with_default("EDGE_TEST_BUFSIZE",
 							  4ULL << 10));
 
     std::vector<char> vec(bufsize);
@@ -922,5 +948,156 @@ TEST_F(NetworkServerTest, connect_to_nonexistent_port)
               ovs_ctx_attr_destroy(ctx_attr));
 }
 
+TEST_F(NetworkServerTest, stress)
+{
+    auto make_ctx_attr([&](const size_t qdepth) -> CtxAttrPtr
+                         {
+                             CtxAttrPtr attr(ovs_ctx_attr_new());
+                             EXPECT_TRUE(attr != nullptr);
+
+                             EXPECT_EQ(0,
+                                       ovs_ctx_attr_set_transport(attr.get(),
+                                                                  FileSystemTestSetup::edge_transport().c_str(),
+                                                                  FileSystemTestSetup::address().c_str(),
+                                                                  FileSystemTestSetup::local_edge_port()));
+
+                             EXPECT_EQ(0,
+                                       ovs_ctx_attr_set_network_qdepth(attr.get(),
+                                                                       qdepth));
+
+                             return attr;
+                         });
+
+    CtxAttrPtr ctx_attr(make_ctx_attr(1));
+    CtxPtr ctx(ovs_ctx_new(ctx_attr.get()));
+    ASSERT_TRUE(ctx != nullptr);
+
+    const size_t vsize = 1ULL << 20;
+    const std::string vname("volume");
+    ASSERT_EQ(0,
+              ovs_create_volume(ctx.get(),
+                                vname.c_str(),
+                                vsize));
+
+    const size_t nreaders = yt::System::get_env_with_default("EDGE_STRESS_READERS",
+                                                             2ULL);
+    const size_t qdepth = yt::System::get_env_with_default("EDGE_STRESS_QDEPTH",
+                                                           1024ULL);
+    const size_t duration_secs = yt::System::get_env_with_default("EDGE_STRESS_DURATION_SECS",
+                                                                  30ULL);
+    const size_t bufsize = yt::System::get_env_with_default("EDGE_STRESS_BUF_SIZE",
+                                                            4096ULL);
+
+    std::atomic<bool> stop(false);
+
+    auto reader([&]() -> size_t
+                {
+                    CtxAttrPtr attr(make_ctx_attr(qdepth));
+                    CtxPtr ctx(ovs_ctx_new(attr.get()));
+
+                    EXPECT_EQ(0,
+                              ovs_ctx_init(ctx.get(),
+                                           vname.c_str(),
+                                           O_RDWR));
+
+                    std::vector<uint8_t> buf(bufsize);
+
+                    using AiocbPtr = std::unique_ptr<ovs_aiocb>;
+                    using AiocbQueue = std::deque<AiocbPtr>;
+
+                    AiocbQueue free_queue;
+
+                    for (size_t i = 0; i < qdepth; ++i)
+                    {
+                        AiocbPtr aiocb(std::make_unique<ovs_aiocb>());
+                        aiocb->aio_buf = buf.data();
+                        aiocb->aio_nbytes = buf.size();
+                        aiocb->aio_offset = 0;
+
+                        free_queue.emplace_back(std::move(aiocb));
+                    }
+
+                    AiocbQueue pending_queue;
+                    size_t ops = 0;
+
+                    while (true)
+                    {
+                        if (stop or pending_queue.size() == qdepth)
+                        {
+                            AiocbPtr aiocb = std::move(pending_queue.front());
+                            pending_queue.pop_front();
+
+                            EXPECT_EQ(0,
+                                      ovs_aio_suspend(ctx.get(),
+                                                      aiocb.get(),
+                                                      nullptr));
+                            EXPECT_EQ(aiocb->aio_nbytes,
+                                      ovs_aio_return(ctx.get(),
+                                                     aiocb.get()));
+                            EXPECT_EQ(0,
+                                      ovs_aio_finish(ctx.get(),
+                                                     aiocb.get()));
+
+                            ops++;
+
+                            if (stop)
+                            {
+                                if (pending_queue.empty())
+                                {
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                free_queue.emplace_back(std::move(aiocb));
+                            }
+                        }
+                        else
+                        {
+                            EXPECT_FALSE(free_queue.empty());
+                            AiocbPtr aiocb = std::move(free_queue.front());
+                            free_queue.pop_front();
+
+                            EXPECT_EQ(0,
+                                      ovs_aio_read(ctx.get(),
+                                                   aiocb.get()));
+                            pending_queue.emplace_back(std::move(aiocb));
+                        }
+                    }
+
+                    return ops;
+                });
+
+    std::vector<std::future<size_t>> futures;
+    futures.reserve(nreaders);
+
+    yt::wall_timer t;
+
+    for (size_t i = 0; i < nreaders; ++i)
+    {
+        futures.emplace_back(std::async(std::launch::async,
+                                        reader));
+    }
+
+    boost::this_thread::sleep_for(boost::chrono::seconds(duration_secs));
+
+    stop = true;
+    size_t total = 0;
+
+    for (auto& f : futures)
+    {
+        size_t ops = f.get();
+        EXPECT_LT(0, ops);
+        total += ops;
+
+    }
+
+    const double elapsed = t.elapsed();
+
+    std::cout << nreaders << " workers doing " << bufsize <<
+        " bytes sized reads @ qdepth " << qdepth << ": " <<
+        total << " ops in " << elapsed << " seconds -> " <<
+        total / elapsed << " IOPS" << std::endl;
+}
 
 } //namespace
