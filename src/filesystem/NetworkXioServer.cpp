@@ -276,7 +276,6 @@ NetworkXioServer::run(std::promise<void> promise)
         while (not wq_->is_finished_empty())
         {
             xio_send_reply(wq_->get_finished());
-            wq_->queued_work_dec();
         }
     }
     server.reset();
@@ -331,7 +330,6 @@ NetworkXioServer::create_session_connection(xio_session *session,
         (void) xio_modify_connection(evdata->conn,
                                      &xconattr,
                                      XIO_CONNECTION_ATTR_USER_CTX);
-        wq_->open_sessions_inc();
         return 0;
     }
     LOG_ERROR("cannot allocate client data");
@@ -347,7 +345,6 @@ NetworkXioServer::destroy_session_connection(xio_session *session ATTR_UNUSED,
     if (!cd->refcnt)
     {
         xio_connection_destroy(cd->conn);
-        wq_->open_sessions_dec();
         delete cd->ioh;
         delete cd;
     }
@@ -435,7 +432,6 @@ NetworkXioServer::free_request(NetworkXioRequest *req)
    if (cd->disconnected && !cd->refcnt)
    {
        xio_connection_destroy(cd->conn);
-       wq_->open_sessions_dec();
        delete cd->ioh;
        delete cd;
    }

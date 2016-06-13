@@ -43,7 +43,6 @@ public:
     , nr_threads_(0)
     , nr_queued_work(0)
     , protection_period_(5000)
-    , wq_open_sessions_(0)
     , stopping(false)
     , stopped(false)
     , evfd(evfd_)
@@ -90,18 +89,6 @@ public:
     }
 
     void
-    open_sessions_inc()
-    {
-        wq_open_sessions_++;
-    }
-
-    void
-    open_sessions_dec()
-    {
-        wq_open_sessions_--;
-    }
-
-    void
     queued_work_inc()
     {
         nr_queued_work++;
@@ -145,7 +132,6 @@ private:
 
     std::chrono::steady_clock::time_point thread_life_period_;
     uint64_t protection_period_;
-    std::atomic<uint64_t> wq_open_sessions_;
 
     bool stopping;
     bool stopped;
@@ -165,7 +151,7 @@ private:
     size_t
     get_max_wq_depth()
     {
-        return std::thread::hardware_concurrency() + 2 * wq_open_sessions_;
+        return std::thread::hardware_concurrency();
     }
 
     bool
