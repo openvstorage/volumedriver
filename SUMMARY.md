@@ -10,3 +10,5 @@
 * [VolumeDriver Configuration](docs/config.md)
 * [VolumeDriver Events](docs/events.md)
 * [VolumeDriver CLI](docs/volumedriver_fs_cli.md)
+* [VolumeDriver Troubleshooting]
+    * [Restart volume](docs/restartVolume.md)
