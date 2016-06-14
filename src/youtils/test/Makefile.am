@@ -32,6 +32,7 @@ youtils_test_SOURCES = \
 	BooleanEnumTest.cpp \
 	CheckSumTest.cpp \
 	ChooserTest.cpp \
+	DeferredFileRemoverTest.cpp \
 	DenyLockService.cpp \
 	DimensionedValueTest.cpp \
 	EtcdReplyTest.cpp \

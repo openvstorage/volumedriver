@@ -56,8 +56,8 @@ public:
 
 
 protected:
-    virtual void
-    SetUp()
+    void
+    SetUp() override final
     {
         throttle_usecs = 1000;
         SCOCacheTestSetup::SetUp();
@@ -81,7 +81,7 @@ protected:
         PARAMETER_TYPE(trigger_gap)(yt::DimensionedValue(1)).persist(pt);
         PARAMETER_TYPE(backoff_gap)(yt::DimensionedValue(1)).persist(pt);
 
-        scoCache_.reset(new SCOCache(pt));
+        scoCache_ = std::make_unique<SCOCache>(pt);
 
         scoCache_->addNamespace(nspace_,
                                 0,
@@ -90,9 +90,16 @@ protected:
     }
 
     void
+    TearDown() override final
+    {
+        stopSCOCache();
+        SCOCacheTestSetup::TearDown();
+    }
+
+    void
     stopSCOCache()
     {
-        scoCache_.reset(0);
+        scoCache_ = nullptr;
     }
 
     CachedSCOPtr

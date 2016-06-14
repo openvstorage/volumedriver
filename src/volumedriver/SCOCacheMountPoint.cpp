@@ -29,26 +29,29 @@
 #include <youtils/FileUtils.h>
 #include <youtils/FileDescriptor.h>
 #include <youtils/Serialization.h>
+#include <youtils/UUID.h>
 
 namespace volumedriver
 {
 
+namespace bu = boost::uuids;
+namespace fs = boost::filesystem;
+namespace yt = youtils;
+
 #define USED_LOCK()                             \
     fungi::ScopedSpinLock __l(usedLock_)
-
-namespace bid = boost::interprocess::ipcdetail;
 
 void
 intrusive_ptr_add_ref(SCOCacheMountPoint* mp)
 {
-    bid::atomic_inc32(&mp->refcnt_);
+    ASSERT(mp);
+    ++mp->refcnt_;
 }
 
 void
 intrusive_ptr_release(SCOCacheMountPoint* mp)
 {
-    // ...::atomic_dec32() (and ..::atomic_inc32() too) returns the old value!
-    if (bid::atomic_dec32(&mp->refcnt_) == 1)
+    if (mp and --mp->refcnt_ == 0)
     {
         delete mp;
     }
@@ -68,6 +71,7 @@ SCOCacheMountPoint::SCOCacheMountPoint(SCOCache& scoCache,
     : usedLock_()
     , scoCache_(scoCache)
     , path_(cfg.path)
+    , garbage_path_(path_ / ".garbage")
     , capacity_(cfg.size)
     , used_(0)
     , refcnt_(0)
@@ -83,6 +87,8 @@ SCOCacheMountPoint::SCOCacheMountPoint(SCOCache& scoCache,
     {
         newMountPointStage1_();
     }
+
+    deferred_file_remover_ = std::make_unique<yt::DeferredFileRemover>(garbage_path_);
 }
 
 SCOCacheMountPoint::~SCOCacheMountPoint()
@@ -196,8 +202,6 @@ SCOCacheMountPoint::newMountPointStage1_()
 
     LOG_DEBUG(path_ << ": creation stage 1 succeeded");
 }
-
-
 
 void
 SCOCacheMountPoint::newMountPointStage2(uint64_t errcount)
@@ -470,7 +474,11 @@ SCOCacheMountPoint::empty_()
 
     for (fs::directory_iterator it(path_); it != end; ++it)
     {
-        if (validateNamespace_(Namespace(it->path().filename().string())))
+        if (it->path() == garbage_path_)
+        {
+            continue;
+        }
+        else if (validateNamespace_(Namespace(it->path().filename().string())))
         {
             return false;
         }
@@ -501,7 +509,12 @@ SCOCacheMountPoint::uuid() const
     return uuid_;
 }
 
-
+void
+SCOCacheMountPoint::addToGarbage(const fs::path& p)
+{
+    VERIFY(deferred_file_remover_ != nullptr);
+    deferred_file_remover_->schedule_removal(p);
+}
 
 }
 

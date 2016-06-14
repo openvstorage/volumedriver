@@ -13,6 +13,12 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "CachedSCO.h"
+#include "OpenSCO.h"
+#include "SCOCache.h"
+#include "SCOCacheMountPoint.h"
+#include "SCOCacheNamespace.h"
+
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -21,34 +27,29 @@
 
 #include <youtils/IOException.h>
 
-#include "CachedSCO.h"
-#include "SCOCacheMountPoint.h"
-#include "SCOCacheNamespace.h"
-#include "SCOCache.h"
-#include "OpenSCO.h"
-#include <boost/interprocess/detail/atomic.hpp>
 namespace volumedriver
 {
 
-namespace bid = boost::interprocess::ipcdetail;
+namespace yt = youtils;
 
 void
 intrusive_ptr_add_ref(CachedSCO* sco)
 {
-    bid::atomic_inc32(&sco->refcnt_);
+    sco->refcnt_++;
 }
 
 void
 intrusive_ptr_release(CachedSCO* sco)
 {
-    // ...::atomic_dec32() (and ..::atomic_inc32() too) returns the old value!
-    if (bid::atomic_dec32(&sco->refcnt_) == 1)
+    if (sco and --sco->refcnt_ == 0)
     {
         delete sco;
     }
 }
 
-namespace {
+namespace
+{
+
 const std::string
 makeFileName(const Namespace& nsName,
              SCO scoName,
@@ -58,6 +59,7 @@ makeFileName(const Namespace& nsName,
     p /= scoName.str();
     return p.string();
 }
+
 }
 
 CachedSCO::CachedSCO(SCOCacheNamespace* nspace,
@@ -126,17 +128,10 @@ CachedSCO::~CachedSCO()
     {
         try
         {
-            fs::remove(path_);
+            mntPoint_->addToGarbage(path_);
             mntPoint_->updateUsedSize(-size_);
         }
-        catch (std::exception& e)
-        {
-            LOG_ERROR("Failed to unlink " << path_ << ": " << e.what());
-        }
-        catch (...)
-        {
-            LOG_ERROR("Failed to unlink " << path_ << ": unknown exception");
-        }
+        CATCH_STD_ALL_LOG_IGNORE("Failed to add " << path_ << " to garbage");
     }
 }
 
@@ -247,9 +242,10 @@ CachedSCO::getMountPoint()
 }
 
 OpenSCOPtr
-CachedSCO::open(FDMode mode)
+CachedSCO::open(yt::FDMode mode)
 {
-    return OpenSCOPtr(new OpenSCO(this, mode));
+    return OpenSCOPtr(new OpenSCO(this,
+                                  mode));
 }
 
 void
@@ -261,7 +257,7 @@ CachedSCO::incRefCount(uint32_t num)
 uint32_t
 CachedSCO::use_count()
 {
-    return bid::atomic_read32(&refcnt_);
+    return refcnt_;
 }
 
 void

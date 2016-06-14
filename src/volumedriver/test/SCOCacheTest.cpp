@@ -58,8 +58,8 @@ public:
 protected:
     DECLARE_LOGGER("SCOCacheTest");
 
-    virtual void
-    SetUp()
+    void
+    SetUp() override final
     {
         SCOCacheTestSetup::SetUp();
 
@@ -85,9 +85,10 @@ protected:
         scoCache_ = std::make_unique<SCOCache>(pt);
     }
 
-    virtual void
-    TearDown()
+    void
+    TearDown() override final
     {
+        scoCache_ = nullptr;
         SCOCacheTestSetup::TearDown();
     }
 

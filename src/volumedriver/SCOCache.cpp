@@ -140,8 +140,7 @@ SCOCache::~SCOCache()
 
 }
 
-
-namespace arne
+namespace
 {
 
 class MountPointOfflinedChecker
@@ -289,7 +288,7 @@ SCOCache::initMountPoints_()
 
     // init new mountpoints:
     {
-        arne::NewMountPointInitialiser init(mpErrorCount_);
+        NewMountPointInitialiser init(mpErrorCount_);
         newOnes.remove_if(init);
     }
 
@@ -297,16 +296,16 @@ SCOCache::initMountPoints_()
 
     // drop duplicates:
     {
-        arne::MountPointCompare cmp;
+        MountPointCompare cmp;
         mountPoints_.sort(cmp);
 
-        arne::MountPointDupChecker chk;
+        MountPointDupChecker chk;
         mountPoints_.unique(chk);
     }
 
     // drop previously offlined mountpoints:
     {
-        arne::MountPointOfflinedChecker chk(mpErrorCount_);
+        MountPointOfflinedChecker chk(mpErrorCount_);
         mountPoints_.remove_if(chk);
     }
 
@@ -323,7 +322,6 @@ SCOCache::initMountPoints_()
         throw fungi::IOException("no sco cache mountpoints available");
     }
 }
-
 
 void
 SCOCache::destroy_()
