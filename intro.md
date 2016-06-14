@@ -13,6 +13,7 @@ The VolumeDriver Documentation is divided into following sections:
 * [Volume Driver Configuration](docs/config.md)
 * [VolumeDriver Events](docs/events.md)
 * [VolumeDriver CLI](docs/volumedriver_fs_cli.md)
+* [VolumeDriver Troubleshooting](docs/troubleshooting.md)
 
 The Edge Documentation:
 * [Edge Architecture](docs/edge.md)
