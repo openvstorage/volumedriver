@@ -1,0 +1,26 @@
+Summary: Volumedriver client library - development files
+Name: libovsvolumedriver-devel
+Version: @VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@.@VD_EXTRA_VERSION@
+Release: 1
+License: Copyright (C) 2013 iNuron NV, Licensed under the GNU AGPLv3
+Requires: lobovsvolumedriver = @VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@.@VD_EXTRA_VERSION@-1
+URL: http://www.openvstorage.com
+
+%description
+VolumeDriver client library, development files. This package contains the development files necessary to use the libovsvolumedriver library.
+
+%changelog
+* Wed Jun 15 2016 Arne Redlich <arne.redlich@openvstorage.com> - @VD_MAJOR_VERSION@.@VD_MINOR_VERSIO@.@VD_PATCH_VERSION@.@VD_EXTRA_VERSION@-1
+- rename from volumedriver-dev to libovsvolumedriver-devel
+* Thu Oct 05 2015 Chrysostomos Nanakos <chrysostomos.nanakos@openvstorage.com> - @VD_MAJOR_VERSION@.@VD_MINOR_VERSIO@.@VD_PATCH_VERSION@.@VD_EXTRA_VERSION@-1
+- Create RPM packages
+
+%global __spec_install_pre %{___build_pre}
+%define _unpackaged_files_terminate_build 0
+%debug_package
+
+%install
+# nothing to do, but needed for debug package info
+
+%files
+/usr/include/openvstorage/volumedriver.h
