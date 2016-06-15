@@ -1,0 +1,3 @@
+lib/openvstorage/libovsvolumedriver.so /usr/lib/openvstorage
+lib/openvstorage/libovsvolumedriver.so.0 /usr/lib/openvstorage
+lib/openvstorage/libovsvolumedriver.so.0.0.0 /usr/lib/openvstorage

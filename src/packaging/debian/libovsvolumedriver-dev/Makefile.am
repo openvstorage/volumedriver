@@ -1,10 +1,6 @@
 AC_LOCAL_AMFLAGS = -I ../../../m4
 
-if USE_MD5_HASH
-BASE_NAME=volumedriver-dev
-else
-BASE_NAME=volumedriver-no-dedup-dev
-endif
+BASE_NAME=libovsvolumedriver-dev
 
 DEBIAN_LOCATION = $(prefix)/debian
 ARTEFACT = ../$(BASE_NAME)_@VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@-@VD_EXTRA_VERSION@_amd64.deb
@@ -21,11 +17,7 @@ noinst_DATA = debian/control-template \
 .PHONY : debian/control debian/$(BASE_NAME).install $(ARTEFACT)
 
 debian/control : debian/control-template
-if USE_MD5_HASH
 	cp debian/control-template debian/control
-else
-	cp debian/control-template-no-dedup debian/control
-endif
 	../update-buildinfo.sh
 
 debian/$(BASE_NAME).install: debian/$(BASE_NAME)-head.install

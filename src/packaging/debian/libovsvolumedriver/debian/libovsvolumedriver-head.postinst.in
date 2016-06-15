@@ -1,0 +1,2 @@
+echo "/usr/lib/openvstorage" | sudo tee /etc/ld.so.conf.d/openvstorage.conf 2>&1 > /dev/null
+sudo ldconfig

@@ -1,0 +1,33 @@
+Summary: Volumedriver client library
+Name: libovsvolumedriver
+Version: @VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@.@VD_EXTRA_VERSION@
+Release: 1
+License: Copyright (C) 2013 iNuron NV, Licensed under the GNU AGPLv3
+URL: http://www.openvstorage.com
+
+%description
+VolumeDriver client library.
+
+%changelog
+* Wed Jun 15 2016 Arne Redlich <arne.redlich@openvstorage.com> - @VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@.@VD_EXTRA_VERSION@-1
+- Create RPM package - the library was previously part of the volumedriver-server packages
+
+%global __spec_install_pre %{___build_pre}
+%define _unpackaged_files_terminate_build 0
+%debug_package
+
+%post
+echo "/usr/lib/openvstorage" > /etc/ld.so.conf.d/openvstorage-x86_64.conf
+/sbin/ldconfig
+
+%postun
+rm /etc/ld.so.conf.d/openvstorage-x86_64.conf
+/sbin/ldconfig
+
+%install
+# nothing to do, but needed for debug package info
+
+%files
+/usr/lib/openvstorage/libovsvolumedriver.so
+/usr/lib/openvstorage/libovsvolumedriver.so.0
+/usr/lib/openvstorage/libovsvolumedriver.so.0.0.0
