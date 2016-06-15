@@ -1,4 +1,4 @@
-AC_INIT([volumedriver-dev], [3.6.0])
+AC_INIT([libovsvolumedriver-dev], [3.6.0])
 AC_CONFIG_SRCDIR([./debian/rules.in])
 AC_CONFIG_MACRO_DIR([../../../m4])
 AC_CONFIG_AUX_DIR([../../..])
@@ -17,15 +17,12 @@ AC_SUBST([VD_EXTRA_VERSION])
 BUILDTOOLS_DIR()
 AC_CONFIG_FILES([Makefile
 		 debian/control-template
-		 debian/control-template-no-dedup
 		 debian/copyright
 	  	 debian/source/format
 		 debian/changelog
 		 debian/rules
 		 debian/compat
-		 debian/volumedriver-dev.docs
-		 debian/volumedriver-no-dedup-dev.docs
-         debian/volumedriver-no-dedup-dev-head.install
-		 debian/volumedriver-dev-head.install])
+		 debian/libovsvolumedriver-dev.docs
+		 debian/libovsvolumedriver-dev-head.install])
 AC_OUTPUT
 
