@@ -1,0 +1,16 @@
+Source: libovsvolumedriver-dev
+Section: unknown
+Priority: extra
+Maintainer: volumedriverteam@openvstorage.com
+Build-Depends: debhelper (>= 7.0.0)
+Standards-Version: 3.9.2
+Homepage: www.openvstorage.com
+
+Package: libovsvolumedriver-dev
+Architecture: any
+Depends: ${shlibs:Depends}, libovsvolumedriver (>= 3.6.0)
+Suggests: lttng-tools
+Replaces: volumedriver-dev
+Description: VolumeDriver development files
+ This package contains the development files necessary to use the
+ libovsvolumedriver library.

@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "CombinedTLogReader.h"
 #include "DataStoreNG.h"
@@ -21,7 +22,6 @@
 #include "ScrubWork.h"
 #include "SnapshotManagement.h"
 #include "TLogReader.h"
-#include "TLogReaderUtils.h"
 #include "TransientException.h"
 #include "VolManager.h"
 #include "WriteOnlyVolume.h"
@@ -336,7 +336,8 @@ WriteOnlyVolume::writeClusters_(uint64_t addr,
             uint64_t clusteraddr = addr + i * getClusterSize();
             ClusterAddress ca = addr2CA(clusteraddr);
             ClusterLocationAndHash loc_and_hash(cluster_locations_[i],
-                                                data);
+                                                data,
+                                                getClusterSize());
 
             writeClusterMetaData_(ca,
                                   loc_and_hash);
@@ -546,10 +547,10 @@ void WriteOnlyVolume::restoreSnapshot(const SnapshotName& name)
 
             LOG_INFO("Deleting " << doomedTLogs.size() << " TLogs");
 
-            const fs::path path(VolManager::get()->getTLogPath(this));
-            std::shared_ptr<TLogReaderInterface> r = makeCombinedTLogReader(path,
-                                                                            doomedTLogs,
-                                                                            getBackendInterface()->clone());
+            const fs::path path(VolManager::get()->getTLogPath(*this));
+            std::shared_ptr<TLogReaderInterface> r = CombinedTLogReader::create(path,
+                                                                                doomedTLogs,
+                                                                                getBackendInterface()->clone());
 
             r->SCONames(doomedSCOs);
             LOG_INFO("Deleting " << doomedSCOs.size() << " SCOs");
@@ -570,9 +571,9 @@ void WriteOnlyVolume::restoreSnapshot(const SnapshotName& name)
 
         const OrderedTLogIds tlog_ids(snapshotManagement_->getAllTLogs());
         std::shared_ptr<TLogReaderInterface> itf =
-            makeCombinedBackwardTLogReader(snapshotManagement_->getTLogsPath(),
-                                           tlog_ids,
-                                           getBackendInterface()->clone());
+            CombinedTLogReader::create_backward_reader(snapshotManagement_->getTLogsPath(),
+                                                       tlog_ids,
+                                                       getBackendInterface()->clone());
 
         ClusterLocation last_in_backend = itf->nextClusterLocation();
         LOG_INFO("Resetting datastore to " << last_in_backend <<
@@ -657,13 +658,12 @@ WriteOnlyVolume::destroy(const RemoveVolumeCompletely,
                    ". Manual cleanup required");
      }
 
-    CATCH_AND_IGNORE(fs::remove_all(VolManager::get()->getMetaDataPath(this)),
+    CATCH_AND_IGNORE(fs::remove_all(VolManager::get()->getMetaDataPath(*this)),
                           "Exception trying to delete the medata directory");
 
-    CATCH_AND_IGNORE(fs::remove_all(VolManager::get()->getTLogPath(this)),
+    CATCH_AND_IGNORE(fs::remove_all(VolManager::get()->getTLogPath(*this)),
                               "Exception tyring to delete the tlog directory");
 }
-
 
 bool
 WriteOnlyVolume::isSyncedToBackend() const
@@ -776,9 +776,9 @@ WriteOnlyVolume::getSnapshotSCOCount(const SnapshotName& snapshotName)
     }
 
     std::shared_ptr<TLogReaderInterface>
-        treader(makeCombinedTLogReader(snapshotManagement_->getTLogsPath(),
-                                       tlog_ids,
-                                       getBackendInterface()->clone()));
+        treader(CombinedTLogReader::create(snapshotManagement_->getTLogsPath(),
+                                           tlog_ids,
+                                           getBackendInterface()->clone()));
 
     std::vector<SCO> lst;
     treader->SCONames(lst);
@@ -858,7 +858,7 @@ WriteOnlyVolume::checkSCONamesConsistency_(const std::vector<SCO>& names)
 bool
 WriteOnlyVolume::checkTLogsConsistency_(CloneTLogs& ctl) const
 {
-    const fs::path tlog_temp_location(VolManager::get()->getTLogPath(this) / "tmp");
+    const fs::path tlog_temp_location(VolManager::get()->getTLogPath(*this) / "tmp");
     fs::create_directories(tlog_temp_location);
 
     for(unsigned i = 0; i < ctl.size(); ++i)
@@ -963,7 +963,7 @@ WriteOnlyVolume::normalizeSAPs_(SCOAccessData::VectorType& sadv)
 void
 WriteOnlyVolume::writeConfigToBackend_()
 {
-    fs::path tmp = VolManager::get()->getMetaDataPath(this) / VolumeConfig::config_backend_name;
+    fs::path tmp = VolManager::get()->getMetaDataPath(*this) / VolumeConfig::config_backend_name;
     FileUtils::removeFileNoThrow(tmp);
     VERIFY(not fs::exists(tmp));
 

@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "CloneFileFlags.h"
 #include "FileSystemEvents.h"
@@ -59,9 +60,6 @@ namespace yt = youtils;
 
 #define LOCK_LOCKS()                                                    \
     std::lock_guard<decltype(object_lock_map_lock_)> vlmlg_(object_lock_map_lock_)
-
-#define CONTAINER_ID(obj)                       \
-    static_cast<fd::ContainerId>(obj.id)
 
 namespace
 {
@@ -153,7 +151,7 @@ LocalNode::destroy(ObjectRegistry& registry,
     {
         const ObjectRegistrationPtr reg(registry.find(o));
 
-        // non-volume objects were already nuked by ContainerManager::destroy
+        // non-volume objects were already nuked by fd::ContainerManager::destroy
         if (reg->treeconfig.object_type != ObjectType::File)
         {
             // XXX: this needs to be pushed down to volumedriver
@@ -267,18 +265,17 @@ LocalNode::get_lock_(const ObjectId& id)
 template<typename R,
          typename... A>
 R
-LocalNode::with_volume_pointer_(R (LocalNode::*fn)(vd::Volume*,
+LocalNode::with_volume_pointer_(R (LocalNode::*fn)(vd::WeakVolumePtr,
                                                    A... args),
                                 const ObjectId& id,
                                 A... args)
 {
-    vd::Volume* vol;
+    vd::WeakVolumePtr vol;
     {
         LOCKVD();
         vol = api::getVolumePointer(static_cast<vd::VolumeId>(id));
     }
 
-    VERIFY(vol);
     return (this->*fn)(vol,
                        std::forward<A>(args)...);
 }
@@ -323,6 +320,25 @@ LocalNode::maybe_retry_(void (*fn)(A... args),
     }
 }
 
+template<typename ReturnType,
+         typename... Args>
+ReturnType
+LocalNode::convert_fdriver_exceptions_(ReturnType (fd::ContainerManager::*mem_fun)(const fd::ContainerId&,
+                                                                                   Args...),
+                                       const Object& obj,
+                                       Args... args)
+{
+    try
+    {
+        return (fdriver_.get()->*mem_fun)(static_cast<fd::ContainerId>(obj.id),
+                                          std::forward<Args>(args)...);
+    }
+    catch (const fd::ContainerManager::ContainerDoesNotExistException& e)
+    {
+        throw ObjectNotRunningHereException(e.what());
+    }
+}
+
 void
 LocalNode::read(const Object& obj,
                 uint8_t* buf,
@@ -352,10 +368,14 @@ LocalNode::read(const Object& obj,
 
     if (is_file(obj))
     {
-        *size = fdriver_->read(CONTAINER_ID(obj),
-                               off,
-                               buf,
-                               *size);
+        *size = convert_fdriver_exceptions_<size_t,
+                                            off_t,
+                                            void*,
+                                            size_t>(&fd::ContainerManager::read,
+                                                    obj,
+                                                    off,
+                                                    buf,
+                                                    *size);
     }
     else
     {
@@ -367,16 +387,60 @@ LocalNode::read(const Object& obj,
     }
 }
 
+FastPathCookie
+LocalNode::read(const FastPathCookie& cookie,
+                const ObjectId& id,
+                uint8_t* buf,
+                size_t* size,
+                off_t off)
+{
+    ASSERT(size);
+
+    tracepoint(openvstorage_filesystem,
+	       local_object_read_start,
+	       id.str().c_str(),
+	       off,
+	       *size);
+
+    auto on_exit(yt::make_scope_exit([&]
+				     {
+				       tracepoint(openvstorage_filesystem,
+						  local_object_read_end,
+						  id.str().c_str(),
+						  off,
+						  *size,
+						  std::uncaught_exception());
+				     }));
+
+    RWLockPtr l(get_lock_(id));
+    fungi::ScopedReadLock rg(*l);
+
+    vd::SharedVolumePtr vol(cookie->volume.lock());
+
+    if (vol != nullptr)
+    {
+        read_(vol,
+              buf,
+              size,
+              off);
+
+        return cookie;
+    }
+    else
+    {
+        throw ObjectNotRunningHereException("Outdated cookie, object not running here anymore",
+                                            id.str().c_str());
+    }
+}
+
 // TODO: align I/O to cluster instead of LBA size to avoid the volumedriver lib
 // having to do it internally.
 void
-LocalNode::read_(vd::Volume* vol,
+LocalNode::read_(vd::WeakVolumePtr vol,
                  uint8_t* buf,
                  size_t* size,
                  const off_t off)
 {
-    ASSERT(vol != nullptr);
-
     const uint64_t volume_size = api::GetSize(vol);
     if (off >= static_cast<decltype(off)>(volume_size))
     {
@@ -459,10 +523,14 @@ LocalNode::write(const Object& obj,
 
     if (is_file(obj))
     {
-        *size = fdriver_->write(CONTAINER_ID(obj),
-                                off,
-                                buf,
-                                *size);
+        *size = convert_fdriver_exceptions_<size_t,
+                                            off_t,
+                                            const void*,
+                                            size_t>(&fd::ContainerManager::write,
+                                                    obj,
+                                                    off,
+                                                    buf,
+                                                    *size);
     }
     else
     {
@@ -474,16 +542,60 @@ LocalNode::write(const Object& obj,
     }
 }
 
+FastPathCookie
+LocalNode::write(const FastPathCookie& cookie,
+                 const ObjectId& id,
+                 const uint8_t* buf,
+                 size_t* size,
+                 off_t off)
+{
+    ASSERT(size);
+
+    tracepoint(openvstorage_filesystem,
+	       local_object_write_start,
+	       id.str().c_str(),
+	       off,
+	       *size);
+
+    auto on_exit(yt::make_scope_exit([&]
+				     {
+				       tracepoint(openvstorage_filesystem,
+						  local_object_write_end,
+						  id.str().c_str(),
+						  off,
+						  *size,
+						  std::uncaught_exception());
+				     }));
+
+    RWLockPtr l(get_lock_(id));
+    fungi::ScopedReadLock rg(*l);
+
+    vd::SharedVolumePtr vol(cookie->volume.lock());
+
+    if (vol != nullptr)
+    {
+        write_(vol,
+               buf,
+               *size,
+               off);
+
+        return cookie;
+    }
+    else
+    {
+        throw ObjectNotRunningHereException("Outdated cookie, object not running here anymore",
+                                            id.str().c_str());
+    }
+}
+
 // TODO: align I/O to cluster instead of LBA size to avoid the volumedriver lib
 // having to do it internally.
 void
-LocalNode::write_(vd::Volume* vol,
+LocalNode::write_(vd::WeakVolumePtr vol,
                   const uint8_t* buf,
                   const size_t size,
                   const off_t off)
 {
-    ASSERT(vol != nullptr);
-
     const uint64_t lbasize = api::GetLbaSize(vol);
     const uint64_t lba = off / lbasize;
     const uint64_t lbaoff = off % lbasize;
@@ -504,7 +616,7 @@ LocalNode::write_(vd::Volume* vol,
     LOG_TRACE("writing, off " << (lba * lbasize) << " (LBA " << lba <<
               "), size " << wsize << ", unaligned " << unaligned);
 
-    typedef void (Writer)(vd::Volume*,
+    typedef void (Writer)(vd::WeakVolumePtr,
                           uint64_t,
                           const uint8_t*,
                           uint64_t);
@@ -557,7 +669,8 @@ LocalNode::sync(const Object& obj)
 
     if (is_file(obj))
     {
-        fdriver_->sync(CONTAINER_ID(obj));
+        convert_fdriver_exceptions_<void>(&fd::ContainerManager::sync,
+                                          obj);
     }
     else
     {
@@ -566,8 +679,42 @@ LocalNode::sync(const Object& obj)
     }
 }
 
+FastPathCookie
+LocalNode::sync(const FastPathCookie& cookie,
+                const ObjectId& id)
+{
+    tracepoint(openvstorage_filesystem,
+	       local_object_sync_start,
+	       id.str().c_str());
+
+    auto on_exit(yt::make_scope_exit([&]
+				     {
+				       tracepoint(openvstorage_filesystem,
+						  local_object_sync_end,
+						  id.str().c_str(),
+						  std::uncaught_exception());
+				     }));
+
+    RWLockPtr l(get_lock_(id));
+    fungi::ScopedReadLock rg(*l);
+
+    vd::SharedVolumePtr vol(cookie->volume.lock());
+
+    if (vol != nullptr)
+    {
+        sync_(vol);
+
+        return cookie;
+    }
+    else
+    {
+        throw ObjectNotRunningHereException("Outdated cookie, object not running here anymore",
+                                            id.str().c_str());
+    }
+}
+
 void
-LocalNode::sync_(vd::Volume* vol)
+LocalNode::sync_(vd::WeakVolumePtr vol)
 {
     api::Sync(vol);
 }
@@ -580,7 +727,8 @@ LocalNode::get_size(const Object& obj)
 
     if (is_file(obj))
     {
-        return fdriver_->size(CONTAINER_ID(obj));
+        return convert_fdriver_exceptions_<uint64_t>(&fd::ContainerManager::size,
+                                                     obj);
     }
     else
     {
@@ -590,7 +738,7 @@ LocalNode::get_size(const Object& obj)
 }
 
 uint64_t
-LocalNode::get_size_(vd::Volume* vol)
+LocalNode::get_size_(vd::WeakVolumePtr vol)
 {
     return api::GetSize(vol);
 }
@@ -604,8 +752,10 @@ LocalNode::resize(const Object& obj,
 
     if (is_file(obj))
     {
-        fdriver_->resize(CONTAINER_ID(obj),
-                         newsize);
+        convert_fdriver_exceptions_<void,
+                                    uint64_t>(&fd::ContainerManager::resize,
+                                              obj,
+                                              newsize);
     }
     else
     {
@@ -616,12 +766,12 @@ LocalNode::resize(const Object& obj,
 }
 
 void
-LocalNode::resize_(vd::Volume* vol,
+LocalNode::resize_(vd::WeakVolumePtr vol,
                    uint64_t newsize)
 {
     LOCKVD();
 
-    const uint64_t csize = api::GetClusterSize();
+    const uint64_t csize = api::GetClusterSize(vol);
     uint64_t clusters = newsize / csize;
     if (newsize % csize)
     {
@@ -630,7 +780,8 @@ LocalNode::resize_(vd::Volume* vol,
         ++clusters;
     }
 
-    api::Resize(vol, clusters);
+    api::Resize(vol,
+                clusters);
 }
 
 void
@@ -661,7 +812,8 @@ LocalNode::unlink(const Object& obj)
 
     if (is_file(obj))
     {
-        fdriver_->unlink(CONTAINER_ID(obj));
+        convert_fdriver_exceptions_<void>(&fd::ContainerManager::unlink,
+                                          obj);
     }
     else
     {
@@ -674,7 +826,7 @@ LocalNode::unlink(const Object& obj)
 }
 
 void
-LocalNode::destroy_(vd::Volume* vol,
+LocalNode::destroy_(vd::WeakVolumePtr vol,
                     vd::DeleteLocalData delete_local,
                     vd::RemoveVolumeCompletely remove_completely,
                     MaybeSyncTimeoutMilliSeconds maybe_sync_timeout_ms)
@@ -684,7 +836,6 @@ LocalNode::destroy_(vd::Volume* vol,
     LOG_TRACE(id << ": delete_local " << delete_local <<
               ", remove_completely: " << remove_completely);
 
-    ASSERT(vol != nullptr);
     get_lock_(static_cast<const ObjectId>(id))->assertWriteLocked();
 
     yt::SteadyTimer timer;
@@ -697,7 +848,7 @@ LocalNode::destroy_(vd::Volume* vol,
     {
         {
             LOCKVD();
-            LOG_INFO(vol->getName() << ": trying to sync to the backend");
+            LOG_INFO(vd::SharedVolumePtr(vol)->getName() << ": trying to sync to the backend");
             api::scheduleBackendSync(id);
         }
 
@@ -706,11 +857,11 @@ LocalNode::destroy_(vd::Volume* vol,
             if (maybe_sync_timeout_ms and
                 timer.elapsed() > *maybe_sync_timeout_ms)
             {
-                LOG_ERROR(vol->getName() <<
+                LOG_ERROR(id <<
                           ": timeout syncing to the backend: " <<
                           timer.elapsed() << " > " << *maybe_sync_timeout_ms);
                 throw SyncTimeoutException("Timeout syncing volume to backend",
-                                           vol->getName().c_str());
+                                           id.str().c_str());
             }
 
             bool synced = false;
@@ -718,7 +869,7 @@ LocalNode::destroy_(vd::Volume* vol,
             synced = api::isVolumeSynced(id);
             if (synced)
             {
-                LOG_INFO(vol->getName() << ": synced to the backend");
+                LOG_INFO(id << ": synced to the backend");
                 break;
             }
             else
@@ -756,7 +907,8 @@ LocalNode::remove_local_data(const Object& obj)
 
     if (is_file(obj))
     {
-        fdriver_->drop_from_cache(CONTAINER_ID(obj));
+        convert_fdriver_exceptions_<void>(&fd::ContainerManager::drop_from_cache,
+                                          obj);
     }
     else
     {
@@ -811,7 +963,8 @@ LocalNode::local_restart(const ObjectRegistration& reg,
 
     if (is_file(reg.object()))
     {
-        fdriver_->restart(static_cast<fd::ContainerId>(id));
+        convert_fdriver_exceptions_<void>(&fd::ContainerManager::restart,
+                                          reg.object());
     }
     else
     {
@@ -879,7 +1032,8 @@ LocalNode::backend_restart(const Object& obj,
 
     if (is_file(obj))
     {
-        fdriver_->restart(CONTAINER_ID(obj));
+        convert_fdriver_exceptions_<void>(&fd::ContainerManager::restart,
+                                          obj);
     }
     else
     {
@@ -915,7 +1069,8 @@ LocalNode::create_file_(const Object& obj)
 
     try
     {
-        fdriver_->create(CONTAINER_ID(obj));
+        convert_fdriver_exceptions_<void>(&fd::ContainerManager::create,
+                                          obj);
     }
     CATCH_STD_ALL_EWHAT({
             LOG_ERROR("Failed to create " << obj << ": " << EWHAT);
@@ -940,13 +1095,21 @@ LocalNode::create_volume_(const ObjectId& id,
 
         try
         {
-            const auto
-                params(vd::VanillaVolumeConfigParameters(static_cast<const vd::VolumeId>(id),
-                                                         nspace,
-                                                         vd::VolumeSize(0),
-                                                         reg->owner_tag)
-                       .sco_multiplier(vd::SCOMultiplier(vrouter_sco_multiplier.value()))
-                       .metadata_backend_config(std::move(mdb_config)));
+            auto params(vd::VanillaVolumeConfigParameters(static_cast<const vd::VolumeId>(id),
+                                                          nspace,
+                                                          vd::VolumeSize(0),
+                                                          reg->owner_tag)
+                        .sco_multiplier(vd::SCOMultiplier(vrouter_sco_multiplier.value()))
+                        .metadata_backend_config(std::move(mdb_config)));
+
+            const size_t lba_size(vd::VolumeConfig::default_lba_size());
+            const size_t cluster_size(api::getDefaultClusterSize());
+
+            THROW_UNLESS(cluster_size >= lba_size);
+            THROW_UNLESS((cluster_size % lba_size) == 0);
+
+            vd::ClusterMultiplier cmult(cluster_size / lba_size);
+            params.cluster_multiplier(cmult);
 
             api::createNewVolume(params,
                                  vd::CreateNamespace::T);
@@ -1385,9 +1548,10 @@ LocalNode::list_snapshots(const ObjectId& id)
 }
 
 bool
-LocalNode::is_snapshot_syncedUpTo(const ObjectId& id,
+LocalNode::is_volume_synced_up_to(const ObjectId& id,
                                   const vd::SnapshotName& snapname)
 {
+    LOCKVD();
     const vd::VolumeId vid(static_cast<const vd::VolumeId>(id));
     return api::isVolumeSyncedUpTo(vid,
                                    snapname);
@@ -1566,7 +1730,8 @@ LocalNode::transfer(const Object& obj,
 
     if (is_file(obj))
     {
-        fdriver_->drop_from_cache(CONTAINER_ID(obj));
+        convert_fdriver_exceptions_<void>(&fd::ContainerManager::drop_from_cache,
+                                          obj);
     }
     else
     {
@@ -1673,7 +1838,8 @@ LocalNode::stop(const Object& obj,
 
     if (is_file(obj))
     {
-        fdriver_->drop_from_cache(CONTAINER_ID(obj));
+        convert_fdriver_exceptions_<void>(&fd::ContainerManager::drop_from_cache,
+                                          obj);
     }
     else
     {
@@ -1683,10 +1849,14 @@ LocalNode::stop(const Object& obj,
 }
 
 uint64_t
-LocalNode::volume_potential(const boost::optional<volumedriver::SCOMultiplier>& s,
+LocalNode::volume_potential(const boost::optional<volumedriver::ClusterSize>& c,
+                            const boost::optional<volumedriver::SCOMultiplier>& s,
                             const boost::optional<volumedriver::TLogMultiplier>& t)
 {
-    return api::volumePotential(s ?
+    return api::volumePotential(c ?
+                                *c :
+                                api::getDefaultClusterSize(),
+                                s ?
                                 *s :
                                 vd::SCOMultiplier(vrouter_sco_multiplier.value()),
                                 t);
@@ -1735,6 +1905,29 @@ ScrubManager&
 LocalNode::scrub_manager()
 {
     return *scrub_manager_;
+}
+
+FastPathCookie
+LocalNode::fast_path_cookie(const Object& obj)
+{
+    if (is_file(obj))
+    {
+        return nullptr;
+    }
+    else
+    {
+        LOCKVD();
+        boost::optional<vd::WeakVolumePtr>
+            maybe_vol(api::get_volume_pointer_no_throw(static_cast<vd::VolumeId>(obj.id)));
+        if (maybe_vol)
+        {
+            return std::make_shared<LocalVolumeCookie>(*maybe_vol);
+        }
+        else
+        {
+            return nullptr;
+        }
+    }
 }
 
 }

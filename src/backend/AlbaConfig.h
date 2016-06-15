@@ -1,21 +1,24 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef BACKEND_ALBA_CONFIG_H_
 #define BACKEND_ALBA_CONFIG_H_
 
 #include "BackendConfig.h"
+
+#include <alba/proxy_client.h>
 
 #include <youtils/Logging.h>
 
@@ -29,12 +32,14 @@ public:
     AlbaConfig(const std::string& host,
                const uint16_t port,
                const uint16_t timeout,
+               const alba::proxy_client::Transport transport = alba::proxy_client::Transport::tcp,
                const std::string& preset = "")
         : BackendConfig(BackendType::ALBA)
         , alba_connection_host(host)
         , alba_connection_port(port)
         , alba_connection_timeout(timeout)
         , alba_connection_preset(preset)
+        , alba_connection_transport(transport)
     {}
 
     AlbaConfig(const boost::property_tree::ptree& pt)
@@ -43,6 +48,7 @@ public:
         , alba_connection_port(pt)
         , alba_connection_timeout(pt)
         , alba_connection_preset(pt)
+        , alba_connection_transport(pt)
     {}
 
     AlbaConfig() = delete;
@@ -72,7 +78,9 @@ public:
         std::unique_ptr<BackendConfig>
             bc(new AlbaConfig(alba_connection_host.value(),
                               alba_connection_port.value(),
-                              alba_connection_timeout.value()));
+                              alba_connection_timeout.value(),
+                              alba_connection_transport.value(),
+                              alba_connection_preset.value()));
         return bc;
     }
 
@@ -90,6 +98,8 @@ public:
                                         report_default);
         alba_connection_preset.persist(pt,
                                        report_default);
+        alba_connection_transport.persist(pt,
+                                          report_default);
     }
 
     virtual void
@@ -108,7 +118,8 @@ public:
             CMP(alba_connection_host) and
             CMP(alba_connection_port) and
             CMP(alba_connection_timeout) and
-            CMP(alba_connection_preset);
+            CMP(alba_connection_preset) and
+            CMP(alba_connection_transport);
 #undef CMP
     }
 
@@ -123,6 +134,7 @@ public:
     DECLARE_PARAMETER(alba_connection_port);
     DECLARE_PARAMETER(alba_connection_timeout);
     DECLARE_PARAMETER(alba_connection_preset);
+    DECLARE_PARAMETER(alba_connection_transport);
 };
 
 }

@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include <youtils/wall_timer.h>
 #include <boost/program_options.hpp>
@@ -20,7 +21,8 @@
 #include <youtils/BuildInfoString.h>
 #include <youtils/Main.h>
 
-#include "volumedriver/Volume.h"
+#include "volumedriver/FailOverCacheConfig.h"
+#include "volumedriver/FailOverCacheClientInterface.h"
 #include "volumedriver/Types.h"
 
 namespace
@@ -31,90 +33,20 @@ namespace yt = youtils;
 namespace be = backend;
 namespace po = boost::program_options;
 
-struct ClusterHolder // This is the old FailOverCacheEntry... (as it must hold the memory of the cluster)
-{
-    ClusterHolder(ClusterLocation cli,
-                  uint64_t lba,
-                  const uint8_t* buffer,
-                  uint32_t size)
-        : cli_(cli)
-        , lba_(lba)
-        , size_(size)
-        , buffer_(new byte[size])
-    {
-        memcpy(&buffer_[0], buffer, size_);
-    }
-
-    ClusterHolder(ClusterLocation cli,
-                  uint64_t lba,
-                  byte* buffer,
-                  uint32_t size)
-        : cli_(cli)
-        , lba_(lba)
-        , size_(size)
-        , buffer_(buffer)
-    {
-    }
-
-    ClusterHolder()
-        : lba_(0)
-        , size_(0)
-        , buffer_(0)
-    {
-    }
-
-    ClusterHolder(const ClusterHolder& other)
-        : cli_(other.cli_)
-        , lba_(other.lba_)
-        , size_(other.size_)
-        , buffer_(new byte[size_])
-    {
-        memcpy(&buffer_[0], &other.buffer_[0], size_);
-    }
-
-    ClusterHolder(ClusterHolder&& other)
-        : cli_(std::move(other.cli_))
-        , lba_(other.lba_)
-        , size_(other.size_)
-        , buffer_(0)
-    {
-        other.size_ = 0;
-        buffer_.swap(other.buffer_);
-    }
-
-    ClusterHolder& operator=(ClusterHolder&& other)
-    {
-        if (this != &other)
-        {
-            std::swap(cli_, other.cli_);
-            std::swap(lba_, other.lba_);
-            std::swap(size_, other.size_);
-            buffer_.swap(other.buffer_);
-        }
-        return *this;
-    }
-
-
-    //ClusterHolder& operator=(const ClusterHolder&)
-    //{
-    //
-    //}
-
-    ClusterLocation cli_;
-    uint64_t lba_;
-    uint32_t size_;
-    boost::scoped_array<byte> buffer_;
-};
+// FailOverCacheEntry does not take ownership of the actual data buffer, so
+// cling to it as long as the FailOverCacheEntry is used.
+using ClusterHolder = std::pair<FailOverCacheEntry,
+                                std::unique_ptr<uint8_t[]>>;
 
 class ClusterFactory
 {
 public:
     ClusterFactory(ClusterSize cluster_size,
-                              uint32_t num_clusters,
-                              ClusterLocation startLocation =  ClusterLocation(1))
-        : cluster_size_(cluster_size),
-          num_clusters_(num_clusters),
-          cluster_loc(startLocation)
+                   uint32_t num_clusters,
+                   ClusterLocation startLocation = ClusterLocation(1))
+        : cluster_size_(cluster_size)
+        , num_clusters_(num_clusters)
+        , cluster_loc(startLocation)
     {}
 
     ClusterHolder
@@ -122,33 +54,38 @@ public:
                const std::string& content = "")
     {
         size_t size = cluster_size_;
-        byte* b = new byte[size];
+        auto buf(std::make_unique<uint8_t[]>(size));
         size_t content_size = content.size();
 
         if(content_size > 0)
         {
             for(unsigned int i = 0; i < cluster_size_; ++i)
             {
-                b[i] = content[i % content_size];
+                buf[i] = content[i % content_size];
             }
         }
 
-        ClusterHolder ret(cluster_loc,
-                               0,
-                               b,
-                               cluster_size_);
+        FailOverCacheEntry entry(cluster_loc,
+                                 0,
+                                 buf.get(),
+                                 cluster_size_);
+
+        ClusterHolder
+            ret(std::make_pair(entry,
+                               std::move(buf)));
+
         SCOOffset a = cluster_loc.offset();
 
         if(a  >= num_clusters_ -1)
         {
             cluster_loc.incrementNumber();
             cluster_loc.offset(0);
-
         }
         else
         {
             cluster_loc.incrementOffset();
         }
+
         next_location = cluster_loc;
         return ret;
     }
@@ -159,9 +96,8 @@ private:
     ClusterLocation cluster_loc;
 };
 
-
-
-class FailoverCacheClientPerfTestMain : public youtils::MainHelper
+class FailoverCacheClientPerfTestMain
+    : public youtils::MainHelper
 {
 public:
     FailoverCacheClientPerfTestMain(int argc,
@@ -207,14 +143,19 @@ public:
     void
     setup_logging()
     {
-        MainHelper::setup_logging();
+        MainHelper::setup_logging("dtl_client_perf_test");
     }
 
-    bool addEntry(FailOverCacheClientInterface& focItf, ClusterHolder& ch)
+    bool
+    addEntry(FailOverCacheClientInterface& foc,
+             const FailOverCacheEntry& e)
     {
         std::vector<ClusterLocation> locs;
-        locs.emplace_back(ch.cli_);
-        return focItf.addEntries(locs, 1, ch.lba_, ch.buffer_.get());
+        locs.emplace_back(e.cli_);
+        return foc.addEntries(locs,
+                              1,
+                              e.lba_,
+                              e.buffer_);
     }
 
     virtual int
@@ -223,33 +164,46 @@ public:
         LOG_INFO("Run with host " << host_ << " port " << port_ << " mode " << mode_ << " namespace " << *ns_ << " sleep micro " << sleep_micro_);
         max_entries_ = 1024;
         write_trigger_ = 8;
-        FailOverCacheClientInterface& failover_bridge = *FailOverCacheBridgeFactory::create(mode_, max_entries_, write_trigger_);
-        Volume * fake_vol = 0;
-        failover_bridge.initialize(fake_vol);
+        const LBASize lba_size(512);
+        const ClusterMultiplier cmult(8);
 
-        failover_bridge.newCache(std::make_unique<FailOverCacheProxy>(FailOverCacheConfig(host_,
-                                                                                          port_,
-                                                                                          mode_),
-                                                                      *ns_,
-                                                                      4096,
-                                                                      failover_bridge.getDefaultRequestTimeout()));
-        failover_bridge.Clear();
+        std::unique_ptr<FailOverCacheClientInterface>
+            failover_bridge(FailOverCacheClientInterface::create(mode_,
+                                                                 lba_size,
+                                                                 cmult,
+                                                                 max_entries_,
+                                                                 write_trigger_));
 
-        ClusterFactory source(ClusterSize(4096), 1024);
+        failover_bridge->initialize([&]() noexcept
+                                    {
+                                        LOG_WARN("Got a DEGRADED event");
+                                    });
+
+        failover_bridge->newCache(std::make_unique<FailOverCacheProxy>(FailOverCacheConfig(host_,
+                                                                                           port_,
+                                                                                           mode_),
+                                                                       *ns_,
+                                                                       lba_size,
+                                                                       cmult,
+                                                                       failover_bridge->getDefaultRequestTimeout()));
+        failover_bridge->Clear();
+
+        ClusterFactory source(ClusterSize(lba_size * cmult),
+                              1024);
         ClusterLocation next_location;
 
         uint64_t count = 1000000;
         LOG_INFO("Test entry generation: creating " << count << " entries");
         for(uint64_t i =0; i < count; i++)
         {
-            ClusterHolder e = source(next_location);
+            const ClusterHolder e = source(next_location);
             if (i % 100000 == 0)
             {
             }
         }
         LOG_INFO("Finished");
 
-        LOG_INFO("Test FOC throughtput ");
+        LOG_INFO("Test FOC throughtput");
 
         yt::wall_timer perf_timer;
         double prev_time = perf_timer.elapsed();
@@ -257,13 +211,13 @@ public:
 
         uint64_t entry_counter = 0;
 
-
         while (true)
         {
-            ClusterHolder ch = source(next_location);
+            const ClusterHolder ch = source(next_location);
             uint64_t cycles = 0;
 
-            while(not addEntry(failover_bridge, ch))
+            while(not addEntry(*failover_bridge,
+                               ch.first))
             {
                 if (cycles++ == 0)
                 {

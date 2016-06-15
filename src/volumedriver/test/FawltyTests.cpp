@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "VolManagerTestSetup.h"
 
@@ -28,10 +29,10 @@ class FawltyTest
 {
 public:
     FawltyTest()
-        : VolManagerTestSetup("FawltyTest",
-                              UseFawltyMDStores::T,
-                              UseFawltyTLogStores::T,
-                              UseFawltyDataStores::T)
+        : VolManagerTestSetup(VolManagerTestSetupParameters("FawltyTest")
+                              .use_fawlty_md_stores(UseFawltyMDStores::T)
+                              .use_fawlty_tlog_stores(UseFawltyTLogStores::T)
+                              .use_fawlty_data_stores(UseFawltyDataStores::T))
     {}
 };
 
@@ -42,17 +43,17 @@ TEST_P(FawltyTest, faulty_mdstore_test1)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v1 = VolManagerTestSetup::newVolume(id1,
+    SharedVolumePtr v1 = VolManagerTestSetup::newVolume(id1,
                                                 ns);
 
     // const std::string id2("id2");
 
 
-    // Volume* v2 = VolManagerTestSetup::newVolume(id2,
+    // SharedVolumePtr v2 = VolManagerTestSetup::newVolume(id2,
     //                                             id2);
 
 
-    VolumeRandomIOThread t1(v1,
+    VolumeRandomIOThread t1(*v1,
                             "v1volume");
 
     // VolumeRandomIOThread t2(v2,

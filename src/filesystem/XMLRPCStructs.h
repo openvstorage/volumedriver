@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef VFS_XMLRPC_STRUCTS_H_
 #define VFS_XMLRPC_STRUCTS_H_
@@ -192,12 +193,13 @@ struct XMLRPCStatistics
     typedef boost::archive::xml_oarchive oarchive_type;
     typedef boost::archive::xml_iarchive iarchive_type;
 
-    uint64_t sco_cache_hits;
-    uint64_t sco_cache_misses;
-    uint64_t cluster_cache_hits;
-    uint64_t cluster_cache_misses;
-    uint64_t metadata_store_hits;
-    uint64_t metadata_store_misses;
+    uint64_t sco_cache_hits = 0;
+    uint64_t sco_cache_misses = 0;
+    uint64_t cluster_cache_hits = 0;
+    uint64_t cluster_cache_misses = 0;
+    uint64_t metadata_store_hits = 0;
+    uint64_t metadata_store_misses = 0;
+    uint64_t stored = 0;
 
     volumedriver::PerformanceCounters performance_counters;
 
@@ -213,6 +215,7 @@ struct XMLRPCStatistics
             EQ(cluster_cache_misses) and
             EQ(metadata_store_hits) and
             EQ(metadata_store_misses) and
+            EQ(stored) and
             EQ(performance_counters);
 
 #undef EQ
@@ -222,8 +225,6 @@ struct XMLRPCStatistics
     void
     serialize(Archive& ar, const unsigned int version)
     {
-        CHECK_VERSION(version, 1);
-
         ar & BOOST_SERIALIZATION_NVP(sco_cache_hits);
         ar & BOOST_SERIALIZATION_NVP(sco_cache_misses);
         ar & BOOST_SERIALIZATION_NVP(cluster_cache_hits);
@@ -231,6 +232,11 @@ struct XMLRPCStatistics
         ar & BOOST_SERIALIZATION_NVP(metadata_store_hits);
         ar & BOOST_SERIALIZATION_NVP(metadata_store_misses);
         ar & BOOST_SERIALIZATION_NVP(performance_counters);
+
+        if (version > 1)
+        {
+            ar & BOOST_SERIALIZATION_NVP(stored);
+        }
     }
 
     static constexpr const char* serialization_name =  "XMLRPCStatistics";
@@ -392,7 +398,7 @@ struct XMLRPCClusterCacheHandleInfo
 }
 
 BOOST_CLASS_VERSION(volumedriverfs::XMLRPCVolumeInfo, 2);
-BOOST_CLASS_VERSION(volumedriverfs::XMLRPCStatistics, 1);
+BOOST_CLASS_VERSION(volumedriverfs::XMLRPCStatistics, 2);
 BOOST_CLASS_VERSION(volumedriverfs::XMLRPCSnapshotInfo, 2);
 BOOST_CLASS_VERSION(volumedriverfs::XMLRPCClusterCacheHandleInfo, 1);
 

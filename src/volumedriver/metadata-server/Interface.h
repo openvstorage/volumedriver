@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef META_DATA_SERVER_INTERFACE_H_
 #define META_DATA_SERVER_INTERFACE_H_
@@ -150,6 +151,32 @@ struct Record
     const Value val;
 };
 
+struct TableCounters
+{
+    uint64_t total_tlogs_read = 0;
+    uint64_t incremental_updates = 0;
+    uint64_t full_rebuilds = 0;
+
+    bool
+    operator==(const TableCounters& other) const
+    {
+        return
+            total_tlogs_read == other.total_tlogs_read and
+            incremental_updates == other.incremental_updates and
+            full_rebuilds == other.full_rebuilds;
+    }
+
+    bool
+    operator!=(const TableCounters& other) const
+    {
+        return not operator==(other);
+    }
+};
+
+std::ostream&
+operator<<(std::ostream&,
+           const TableCounters&);
+
 enum class Role
 {
     Master,
@@ -213,7 +240,10 @@ public:
     // XXX: return an actual list of TLogs (actually pairs of clone ID or namespace and
     // tlog names)?
     virtual size_t
-    catch_up(volumedriver::DryRun dry_run) = 0;
+    catch_up(volumedriver::DryRun) = 0;
+
+    virtual TableCounters
+    get_counters(volumedriver::Reset) = 0;
 
 private:
     Role role_ = Role::Slave;

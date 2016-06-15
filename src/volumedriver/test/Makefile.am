@@ -50,6 +50,7 @@ volumedriver_test_SOURCES = \
 	ClusterLocationTest.cpp \
 	DataStoreNGTest.cpp \
 	DestroyVolumeTest.cpp \
+	DtlCheckerTest.cpp \
 	EntryTest.cpp \
 	ErrorHandlingTest.cpp \
 	EventCollector.cpp \
@@ -77,7 +78,6 @@ volumedriver_test_SOURCES = \
 	MTVolumeTester.cpp \
 	OwnerTagTest.cpp \
 	PageSortingGeneratorTest.cpp \
-	Panacea.cpp \
 	PrefetchThreadTest.cpp \
 	ProducerConsumerTest.cpp \
 	ReadParallelismTest.cpp \
@@ -88,6 +88,7 @@ volumedriver_test_SOURCES = \
 	SCOCacheMapTest.cpp \
 	SCOCacheNamespaceTest.cpp \
 	SCOCacheTest.cpp \
+	SCOWrittenToBackendActionTest.cpp \
 	ScrubberTest.cpp \
 	ScrubWorkTest.cpp \
 	SimpleBackupRestoreTest.cpp \

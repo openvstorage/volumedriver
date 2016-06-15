@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "FailOverCacheConfigMode.h"
 #include "LockedPythonClient.h"
@@ -383,9 +384,14 @@ PythonClient::set_automatic_failover_cache_config(const std::string& volume_id)
 }
 
 bpy::list
-PythonClient::list_volumes()
+PythonClient::list_volumes(const boost::optional<std::string>& node_id)
 {
     XmlRpc::XmlRpcValue req;
+    if (node_id)
+    {
+        req[XMLRPCKeys::vrouter_id] = *node_id;
+    }
+
     auto rsp(call(VolumesList::method_name(), req));
 
     bpy::list l;
@@ -512,6 +518,21 @@ PythonClient::statistics_volume(const std::string& volume_id,
                      reset);
 
     auto rsp(call(VolumePerformanceCounters::method_name(), req));
+    return XMLRPCStructs::deserialize_from_xmlrpc_value<XMLRPCStatistics>(rsp);
+}
+
+XMLRPCStatistics
+PythonClient::statistics_node(const std::string& node_id,
+                                bool reset)
+{
+    XmlRpc::XmlRpcValue req;
+
+    req[XMLRPCKeys::vrouter_id] = node_id;
+    XMLRPCUtils::put(req,
+                     XMLRPCKeys::reset,
+                     reset);
+
+    auto rsp(call(VolumeDriverPerformanceCounters::method_name(), req));
     return XMLRPCStructs::deserialize_from_xmlrpc_value<XMLRPCStatistics>(rsp);
 }
 

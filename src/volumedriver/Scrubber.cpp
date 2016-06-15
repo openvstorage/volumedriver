@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "CombinedTLogReader.h"
 #include "FilePool.h"
@@ -23,7 +24,6 @@
 #include "TLogCutter.h"
 #include "TLogMerger.h"
 #include "TLogSplitter.h"
-#include "TLogReaderUtils.h"
 
 #include <youtils/Assert.h>
 #include <youtils/wall_timer.h>
@@ -131,7 +131,7 @@ Scrubber::operator()()
     }
     catch(...)
     {
-        throw ScrubberException("Uknown Exception",
+        throw ScrubberException("Unknown Exception",
                                 ScrubberException::NoCleanup);
     }
 
@@ -142,9 +142,9 @@ Scrubber::operator()()
     VERIFY(not result_.tlog_names_in.empty());
 
     std::shared_ptr<TLogReaderInterface>
-        combined_tlog_reader(makeCombinedTLogReader(filepool.directory(),
-                                                    result_.tlog_names_in,
-                                                    backend_interface_->clone()));
+        combined_tlog_reader(CombinedTLogReader::create(filepool.directory(),
+                                                        result_.tlog_names_in,
+                                                        backend_interface_->clone()));
     // Split the TLogs in parts and go through them
     LOG_INFO("Starting the TLog Splitter");
     scrubbing::ScrubbingSCODataVector scrubbing_data_vector;
@@ -273,9 +273,10 @@ Scrubber::operator()()
 
     // Now we cut up the tlog into pieces again
 
-    TLogCutter t(backend_interface_.get(),
+    TLogCutter t(*backend_interface_,
                  result_tlog,
-                 filepool);
+                 filepool,
+                 ClusterSize(1U << args_.cluster_size_exponent));
 
     boost::this_thread::interruption_point();
     result_.tlogs_out = t();
@@ -283,7 +284,7 @@ Scrubber::operator()()
 
     VERIFY(not result_.tlogs_out.empty());
 
-    LOG_INFO("Finished cutting up the tlog in digestible chuncks");
+    LOG_INFO("Finished cutting up the tlog in digestible chunks");
 
     if(fs::file_size(scopool.relocations_tlog_path()) > 0)
     {

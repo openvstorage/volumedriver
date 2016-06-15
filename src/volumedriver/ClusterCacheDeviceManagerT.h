@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef CLUSTER_CACHE_DEVICE_MANAGER_T_H_
 #define CLUSTER_CACHE_DEVICE_MANAGER_T_H_
@@ -149,32 +150,32 @@ public:
     };
 
     void
-    fuckup_fd_forread()
+    fail_fd_forread()
     {
         for (auto& d : devices)
         {
-            d->fuckup_fd_forread();
+            d->fail_fd_forread();
         }
     }
 
     void
-    fuckup_fd_forwrite()
+    fail_fd_forwrite()
     {
         for (auto& d : devices)
         {
-            d->fuckup_fd_forwrite();
+            d->fail_fd_forwrite();
         }
     }
 
-    DECLARE_LOGGER("ClusterCacheDeviceManagerT");
-
 private:
+    DECLARE_LOGGER("ClusterCacheDeviceManagerT");
 
     std::list<std::unique_ptr<T>> devices;
     typename decltype(devices)::iterator devices_iterator;
 
     bool full;
     mutable fungi::RWLock rwlock;
+    size_t cluster_size_;
     UUID uuid_;
 
     friend class volumedrivertest::ClusterCacheTest;
@@ -186,40 +187,54 @@ private:
     void
     load(Archive& ar, const unsigned int version)
     {
-        if(version != 0 and
-           version != 1)
-        {
-            THROW_SERIALIZATION_ERROR(version, 0, 0);
-        }
         ar & full;
         size_t size = 0;
         ar & size;
+
         youtils::UUID old_uuid;
-        if(version == 1)
+        if(version >= 1)
         {
             ar & old_uuid;
         }
+
+        if (version >= 2)
+        {
+            ar & cluster_size_;
+        }
+        else
+        {
+            cluster_size_ = ManagedType::default_cluster_size();
+        }
+
         uuid_ = UUID();
 
         for(unsigned i = 0; i < size; ++i)
         {
-            std::unique_ptr<ManagedType> rd(new ManagedType());
+            auto rd(std::make_unique<ManagedType>());
             ar & *rd;
 
             try
             {
-                rd->reinstate();
-
-                if (rd->check_guid(old_uuid))
+                if (rd->cluster_size() != cluster_size_)
                 {
-                    rd->write_guid(uuid_);
-                    devices.emplace_back(std::move(rd));
-                    devices_iterator = devices.begin();
+                    LOG_ERROR(rd->info().path << ": cluster size changed? Was: " <<
+                              rd->cluster_size() << ", now: " << cluster_size_);
                 }
                 else
                 {
-                    LOG_ERROR("Not adding device " << rd->info().path <<
-                              " beause the guids don't match");
+                    rd->reinstate();
+
+                    if (rd->check_guid(old_uuid))
+                    {
+                        rd->write_guid(uuid_);
+                        devices.emplace_back(std::move(rd));
+                        devices_iterator = devices.begin();
+                    }
+                    else
+                    {
+                        LOG_ERROR("Not adding device " << rd->info().path <<
+                                  " beause the guids don't match");
+                    }
                 }
             }
             CATCH_STD_ALL_EWHAT({
@@ -234,25 +249,18 @@ private:
         {
             dev->write_guid(uuid_);
         }
-
     }
 
     template<class Archive>
     void
-    save(Archive& ar, const unsigned int version) const
+    save(Archive& ar,
+         const unsigned /* version */) const
     {
-        if(version != 0 and
-           version != 1)
-        {
-            THROW_SERIALIZATION_ERROR(version, 0, 0);
-        }
         ar & full;
         size_t size = devices.size();
         ar & size;
-        if(version == 1)
-        {
-            ar & uuid_;
-        }
+        ar & uuid_;
+        ar & cluster_size_;
 
         for (auto& dev : devices)
         {
@@ -262,18 +270,21 @@ private:
             }
             else
             {
-                LOG_ERROR("Device " <<dev->info().path << " does not have a correct guid, not serializing it");
+                LOG_ERROR("Device " << dev->info().path << " does not have a correct guid, not serializing it");
             }
         }
     }
 
 public:
-    typedef std::map<fs::path, typename T::Info> Info;
+    using DeviceInfo = typename T::Info;
+    typedef std::map<fs::path, DeviceInfo> Info;
 
-    explicit ClusterCacheDeviceManagerT(const std::vector<MountPointConfig>& paths)
+    ClusterCacheDeviceManagerT(const std::vector<MountPointConfig>& paths,
+                               size_t cluster_size)
         : devices_iterator(devices.begin())
         , full(true)
         , rwlock("ClusterCacheDeviceManager")
+        , cluster_size_(cluster_size)
     {
         for (auto it = paths.begin();
              it != paths.end();
@@ -284,13 +295,20 @@ public:
         }
     }
 
-    ClusterCacheDeviceManagerT()
+    explicit ClusterCacheDeviceManagerT(const size_t cluster_size)
         : devices_iterator(devices.begin())
         , full(true)
         , rwlock("ClusterCacheDeviceManager")
+        , cluster_size_(cluster_size)
     {}
 
     ~ClusterCacheDeviceManagerT() = default;
+
+    size_t
+    cluster_size() const
+    {
+        return cluster_size_;
+    }
 
     void
     info(Info& result)
@@ -324,8 +342,9 @@ public:
     {
         fungi::ScopedWriteLock l(rwlock);
 
-        std::unique_ptr<T> dev(new T(p,
-                                     size));
+        auto dev(std::make_unique<ManagedType>(p,
+                                               size,
+                                               cluster_size_));
 
         uuid_ = UUID();
         for (auto& dev : devices)
@@ -454,7 +473,7 @@ public:
             res += dev->info().total_size;
         }
 
-        return res / VolumeConfig::default_cluster_size();
+        return res / cluster_size_;
     }
 
     ClusterCacheEntry*

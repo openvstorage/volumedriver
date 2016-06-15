@@ -1,40 +1,22 @@
-// This file is dual licensed GPLv2 and Apache 2.0.
-// Active license depends on how it is used.
+// Copyright (C) 2016 iNuron NV
 //
-// Copyright 2016 iNuron NV
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-// // GPL //
-// This file is part of OpenvStorage.
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// OpenvStorage is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 2 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with OpenvStorage. If not, see <http://www.gnu.org/licenses/>.
-//
-// // Apache 2.0 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef GENERATOR_H_
 #define GENERATOR_H_
 
+#include "Assert.h"
 #include "Catchers.h"
 #include "Logging.h"
 
@@ -49,27 +31,38 @@ class Generator
 public:
     Generator() = default;
 
+    virtual ~Generator() = default;
+
     Generator(const Generator&) = delete;
 
-    Generator& operator=(const Generator&) = delete;
+    Generator&
+    operator=(const Generator&) = delete;
 
-    virtual void next() = 0;
-    virtual bool finished() = 0;
-    virtual T&   current() = 0;
+    virtual void
+    next() = 0;
 
-    std::unique_ptr<std::vector<T> > toList() {
+    virtual bool
+    finished() = 0;
+
+    virtual T&
+    current() = 0;
+
+    std::unique_ptr<std::vector<T>>
+    toList()
+    {
         std::unique_ptr<std::vector<T> > lst(new std::vector<T>);
-        while (not finished()) {
+        while (not finished())
+        {
             lst->push_back(current());
             next();
         }
         return lst;
     }
-
-    virtual ~Generator() {}
 };
 
-class UnknownGeneratorException : public std::exception {
+class UnknownGeneratorException
+    : public std::exception
+{
 public:
     virtual const char*
     what() const throw ()
@@ -79,26 +72,30 @@ public:
 };
 
 template <typename T>
-class ProducerFromGenerator : public yin::Producer<T>
+class ProducerFromGenerator
+    : public yin::Producer<T>
 {
 public:
-    //takes ownership of generator
-    ProducerFromGenerator(yin::Channel<T>& ch, yin::Latch& l, Generator<T>* generator) :
-        yin::Producer<T>(ch, l),
-        generator_(generator)
+    ProducerFromGenerator(yin::Channel<T>& ch,
+                          yin::Latch& l,
+                          std::unique_ptr<Generator<T>> generator)
+        : yin::Producer<T>(ch, l)
+        , generator_(std::move(generator))
     {}
 
-    void maybeRethrow() {
-        if (error_.get()) {
+    void
+    maybeRethrow()
+    {
+        if (error_.get())
+        {
             throw *error_;
         }
     }
 
-    DECLARE_LOGGER("ProducerFromGenerator");
-
 protected:
     //TODO make use of general exception rethrow mechanism across threads
-    T produce()
+    T
+    produce() override final
     {
         try
         {
@@ -106,41 +103,50 @@ protected:
             generator_->next();
             return tmp;
         }
-        catch(std::exception& e) {
+        catch(std::exception& e)
+        {
             LOG_ERROR("Caught " << e.what());
             error_.reset(new std::exception(e));
             throw; //throwing makes sure production thread is stopped and done() will be called
         }
-        catch(...) {
+        catch(...)
+        {
             LOG_ERROR("Caught unkown exception");
             error_.reset(new UnknownGeneratorException());
             throw; //throwing makes sure production thread is stopped and done() will be called
         }
     }
 
-    virtual bool cancel()
+    virtual bool
+    cancel() override final
     {
         try
         {
             return generator_->finished();
         }
-        catch(std::exception& e) {
+        catch(std::exception& e)
+        {
             LOG_ERROR("Caught " << e.what());
             error_.reset(new std::exception(e));
             return true;
         }
-        catch(...) {
+        catch(...)
+        {
             LOG_ERROR("Caught unkown exception");
             error_.reset(new UnknownGeneratorException());
             return true;
         }
     }
 
-    virtual void done() {
+    virtual void
+    done() override final
+    {
         yin::Producer<T>::mayStop();
     }
 
 private:
+    DECLARE_LOGGER("ProducerFromGenerator");
+
     std::unique_ptr<Generator<T> > generator_;
     std::unique_ptr<std::exception> error_;
 };
@@ -155,7 +161,9 @@ public:
                       uint32_t bufferSize)
         : channel(bufferSize)
         , noLatch(true)
-        , producer_(channel, noLatch, generator.release())
+        , producer_(channel,
+                    noLatch,
+                    std::move(generator))
         , thread_(boost::ref(producer_))
         , finished_(false)
     {
@@ -175,7 +183,8 @@ public:
         stop_();
     }
 
-    void next()
+    void
+    next() override final
     {
         try
         {
@@ -191,13 +200,13 @@ public:
     }
 
     T&
-    current()
+    current() override final
     {
         return current_;
     }
 
     bool
-    finished()
+    finished() override final
     {
         return finished_;
     }
@@ -219,6 +228,54 @@ private:
     }
 };
 
+template<typename T>
+class PrefetchGenerator
+    : public Generator<T>
+{
+public:
+    explicit PrefetchGenerator(std::unique_ptr<Generator<T>> generator)
+    {
+        while (not generator->finished())
+        {
+            queue_.emplace_back(generator->current());
+            generator->next();
+        }
+    }
+
+    ~PrefetchGenerator() = default;
+
+    bool
+    finished() override final
+    {
+        return queue_.empty();
+    }
+
+    T&
+    current() override final
+    {
+        VERIFY(not queue_.empty());
+        return queue_.front();
+    }
+
+    void
+    next() override final
+    {
+        VERIFY(not queue_.empty());
+        queue_.pop_front();
+    }
+
+    size_t
+    size() const
+    {
+        return queue_.size();
+    }
+
+private:
+    DECLARE_LOGGER("PrefetchGenerator");
+
+    std::deque<T> queue_;
+};
+
 //auxiliary stuff for testing etc.
 
 template <typename T>
@@ -233,20 +290,20 @@ public:
     {}
 
     void
-    next()
+    next() override final
     {
         usleep(usecs_);
         generator_->next();
     }
 
     bool
-    finished()
+    finished() override final
     {
         return generator_->finished();
     }
 
     T&
-    current()
+    current() override final
     {
         return generator_->current();
     }
@@ -279,20 +336,20 @@ public:
     }
 
     void
-    next()
+    next() override final
     {
         current_ = call();
         i++;
     }
 
     bool
-    finished()
+    finished() override final
     {
         return not unlimited() and i >= maxCount_;
     }
 
     T&
-    current()
+    current() override final
     {
         return current_;
     }

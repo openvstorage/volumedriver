@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "VolManagerTestSetup.h"
 
@@ -23,9 +24,9 @@ class TestMetadataErrors
 {
 public:
     TestMetadataErrors()
-        : VolManagerTestSetup("TestMetadataErrors",
-                              UseFawltyMDStores::T,
-                              UseFawltyTLogStores::T)
+        : VolManagerTestSetup(VolManagerTestSetupParameters("TestMetadataErrors")
+                              .use_fawlty_md_stores(UseFawltyMDStores::T)
+                              .use_fawlty_tlog_stores(UseFawltyTLogStores::T))
     {}
 };
 
@@ -35,17 +36,17 @@ TEST_P(TestMetadataErrors, testHaltingVolumeWhenWritingToSnapshotsFailsInMgmtPat
     auto ns_ptr = make_random_namespace();
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v1 = VolManagerTestSetup::newVolume(id1,
+    SharedVolumePtr v1 = VolManagerTestSetup::newVolume(id1,
                                                 ns);
 
-    writeToVolume(v1,
+    writeToVolume(*v1,
                   0,
                   4096,
                   "kutmetperen");
 
     ASSERT_NO_THROW(v1->createSnapshot(SnapshotName("snap1")));
-    waitForThisBackendWrite(v1);
-    writeToVolume(v1,
+    waitForThisBackendWrite(*v1);
+    writeToVolume(*v1,
                   0,
                   4096,
                   "kutmetperen");
@@ -70,16 +71,16 @@ TEST_P(TestMetadataErrors, testHaltingVolumeWhenWritingToSnapshotsFailsInIOPath)
     auto ns_ptr = make_random_namespace();
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v1 = VolManagerTestSetup::newVolume(id1,
+    SharedVolumePtr v1 = VolManagerTestSetup::newVolume(id1,
                                                 ns);
 
-    writeToVolume(v1,
+    writeToVolume(*v1,
                   0,
                   4096,
                   "kutmetperen");
 
     ASSERT_NO_THROW(v1->createSnapshot(SnapshotName("snap1")));
-    waitForThisBackendWrite(v1);
+    waitForThisBackendWrite(*v1);
 
     const std::string path_regex = "/" + ns.str() + "/snapshot.*";
     add_failure_rule(mdstores_,
@@ -95,10 +96,10 @@ TEST_P(TestMetadataErrors, testHaltingVolumeWhenWritingToSnapshotsFailsInIOPath)
 
     for(unsigned i = 0; i < (tlog_rollover_size - 1); ++i)
     {
-        writeToVolume(v1, 0, 4096, "kutmetperen");
+        writeToVolume(*v1, 0, 4096, "kutmetperen");
     }
 
-    ASSERT_THROW(writeToVolume(v1,0, 4096, "kutmetperen"),
+    ASSERT_THROW(writeToVolume(*v1,0, 4096, "kutmetperen"),
                  youtils::SerializationFlushException);
     ASSERT_TRUE(v1->is_halted());
 }
@@ -109,21 +110,21 @@ TEST_P(TestMetadataErrors, testHaltingVolumeWhenWritingToTlogFailsInMgmtPath)
     auto ns_ptr = make_random_namespace();
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v1 = VolManagerTestSetup::newVolume(id1,
+    SharedVolumePtr v1 = VolManagerTestSetup::newVolume(id1,
                                                 ns);
 
-    writeToVolume(v1,
+    writeToVolume(*v1,
                   0,
                   4096,
                   "kutmetperen");
 
     ASSERT_NO_THROW(v1->createSnapshot(SnapshotName("snap1")));
 
-    writeToVolume(v1,
+    writeToVolume(*v1,
                   0,
                   4096,
                   "kutmetperen");
-    waitForThisBackendWrite(v1);
+    waitForThisBackendWrite(*v1);
 
     const std::string path_regex = "/" + ns.str() + "/tlog_.*";
 
@@ -151,22 +152,21 @@ TEST_P(TestMetadataErrors, testHaltingVolumeWhenWritingToTlogFailsInIOPath)
     auto ns_ptr = make_random_namespace();
     const backend::Namespace& ns = ns_ptr->ns();
 
-
-    Volume* v1 = VolManagerTestSetup::newVolume(id1,
+    SharedVolumePtr v1 = VolManagerTestSetup::newVolume(id1,
                                                 ns);
 
-    writeToVolume(v1,
+    writeToVolume(*v1,
                   0,
                   4096,
                   "kutmetperen");
 
     ASSERT_NO_THROW(v1->createSnapshot(SnapshotName("snap1")));
 
-    writeToVolume(v1,
+    writeToVolume(*v1,
                   0,
                   4096,
                   "kutmetperen");
-    waitForThisBackendWrite(v1);
+    waitForThisBackendWrite(*v1);
 
     const std::string path_regex = "/" + ns.str() + "/tlog_.*";
 
@@ -186,7 +186,7 @@ TEST_P(TestMetadataErrors, testHaltingVolumeWhenWritingToTlogFailsInIOPath)
 
        for(unsigned i = 0; i < tlog_rollover_size; ++i)
        {
-            writeToVolume(v1, 0, 4096, "kutmetperen");
+            writeToVolume(*v1, 0, 4096, "kutmetperen");
         }
     }
     catch(youtils::FileDescriptorException& e)

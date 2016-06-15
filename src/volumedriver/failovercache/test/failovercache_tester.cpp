@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "FailOverCacheEnvironment.h"
 #include "FailOverCacheTestMain.h"
@@ -31,8 +32,9 @@
 #include <boost/thread.hpp>
 
 #include <youtils/Logger.h>
-#include <youtils/TestBase.h>
+#include <youtils/ScopeExit.h>
 #include <youtils/System.h>
+#include <youtils/TestBase.h>
 
 namespace failovercachetest
 {
@@ -171,17 +173,18 @@ class FailOverCacheTest
     std::unique_ptr<FailOverCacheEnvironment> v;
 };
 
-TEST_F(FailOverCacheTest, PutRetrieve)
+TEST_F(FailOverCacheTest, put_and_retrieve)
 {
     const ClusterSize cluster_size(4096);
     const uint32_t num_clusters_per_sco = 32;
     const uint32_t num_scos_to_produce = 20;
 
-    volumedriver::FailOverCacheProxy
+    FailOverCacheProxy
         cache(FailOverCacheTestMain::failovercache_config(),
               FailOverCacheTestMain::ns(),
-              4096,
-              8);
+              LBASize(512),
+              ClusterMultiplier(8),
+              boost::chrono::seconds(8));
 
     FailOverCacheEntryFactory factory(cluster_size,
                                       num_clusters_per_sco);
@@ -223,15 +226,20 @@ TEST_F(FailOverCacheTest, PutRetrieve)
 TEST_F(FailOverCacheTest, GetSCORange)
 {
     const ClusterSize cluster_size(4096);
+
     const uint32_t num_clusters_per_sco = 32;
-    const uint32_t num_clusters_per_vector = 5;
+    const uint32_t num_clusters_per_vector = 8;
+
+    ASSERT_EQ(0, num_clusters_per_sco % num_clusters_per_vector) << "batches must not cross SCO boundaries";
+
     const uint32_t num_scos_to_produce = 13;
 
-    volumedriver::FailOverCacheProxy
+    FailOverCacheProxy
         cache(FailOverCacheTestMain::failovercache_config(),
               FailOverCacheTestMain::ns(),
-              4096,
-              8);
+              LBASize(512),
+              ClusterMultiplier(8),
+              boost::chrono::seconds(8));
 
     FailOverCacheEntryFactory factory(cluster_size,
                                       num_clusters_per_sco);
@@ -296,14 +304,18 @@ TEST_F(FailOverCacheTest, GetOneSCO)
 {
     const ClusterSize cluster_size(4096);
     const uint32_t num_clusters_per_sco = 32;
-    const uint32_t num_clusters_per_vector = 5;
+    const uint32_t num_clusters_per_vector = 8;
+
+    ASSERT_EQ(0, num_clusters_per_sco % num_clusters_per_vector) << "batches must not cross SCO boundaries";
+
     const uint32_t num_scos_to_produce = 13;
 
-    volumedriver::FailOverCacheProxy
+    FailOverCacheProxy
         cache(FailOverCacheTestMain::failovercache_config(),
               FailOverCacheTestMain::ns(),
-              4096,
-              8);
+              LBASize(512),
+              ClusterMultiplier(8),
+              boost::chrono::seconds(8));
 
     FailOverCacheEntryFactory factory(cluster_size,
                                       num_clusters_per_sco);
@@ -373,11 +385,12 @@ TEST_F(FailOverCacheTest, GetOneSCO)
 TEST_F(FailOverCacheTest, DISABLED_DoubleRegister)
 {
     // Y42 apparantly not a or my problem
-    volumedriver::FailOverCacheProxy
+    FailOverCacheProxy
         cache1(FailOverCacheTestMain::failovercache_config(),
                FailOverCacheTestMain::ns(),
-               4096,
-               8);
+               LBASize(512),
+               ClusterMultiplier(8),
+               boost::chrono::seconds(8));
 }
 
 struct FailOverCacheOneProcessor
@@ -434,19 +447,22 @@ struct FailOverCacheOneProcessor
 class FailOverCacheTestThread
 {
 public:
-    FailOverCacheTestThread(const std::string& content,
-                            const unsigned test_size = 100000)
+    explicit FailOverCacheTestThread(const std::string& content,
+                                     const unsigned test_size = 100000)
         : content_(content)
         , cache_(FailOverCacheTestMain::failovercache_config(),
                  backend::Namespace(content),
-                 4096,
-                 30)
+                 LBASize(512),
+                 ClusterMultiplier(8),
+                 boost::chrono::seconds(30))
         , factory_(cluster_size_,
                    num_clusters_per_sco_)
         , next_location_(1)
         , cluster_count_(0)
         , test_size_(test_size)
-    {}
+    {
+        EXPECT_EQ(0, num_clusters_per_sco_ % num_clusters_per_vector_);
+    }
 
     DECLARE_LOGGER("FailOverCacheTestThread");
 
@@ -536,7 +552,8 @@ public:
                 {
                     LOG_INFO("Test 3");
                     double a = drand48();
-                    // If last sco not on failover has offset 32 we are fucked
+                    // If last sco not on failover has offset 32 we have a
+                    // problem
                     SCONumber num1 = latestSCONotOnFailOver.number();
                     SCONumber num2 = latestSCOOnFailOver.number();
                     SCONumber num3 = std::max((int)(num1 + a * (num2 - num1)), 1);
@@ -572,7 +589,7 @@ public:
                 cache_.flush();
                 break;
             default:
-            LOG_FATAL("How the fuck did you get here");
+            LOG_FATAL("How did you get here");
             }
         }
         LOG_INFO("Exiting test for " << content_);
@@ -580,12 +597,12 @@ public:
 
     const std::string content_;
 
-    volumedriver::FailOverCacheProxy cache_;
+    FailOverCacheProxy cache_;
     FailOverCacheEntryFactory factory_;
 
     static const ClusterSize cluster_size_;
     static const uint32_t num_clusters_per_sco_ = 32;
-    static const uint32_t num_clusters_per_vector_ = 5;
+    static const uint32_t num_clusters_per_vector_ = 8;
 
     ClusterLocation latestSCONotOnFailOver;
     ClusterLocation latestSCOOnFailOver;
@@ -603,27 +620,85 @@ FailOverCacheTestThread::cluster_size_(4096);
 
 TEST_F(FailOverCacheTest, Stress)
 {
-    std::vector<FailOverCacheTestThread*> test_threads;
+    std::vector<std::unique_ptr<FailOverCacheTestThread>> test_threads;
+    std::vector<boost::thread> threads;
 
-    std::vector<boost::thread*> threads;
-    const unsigned test_size = youtils::System::get_env_with_default("FAILOVERCACHE_STRESS_TEST_NUM_CLIENTS", 16ULL);
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         for (auto& t : threads)
+                                         {
+                                             t.join();
+                                         }
+                                     }));
 
-    for(unsigned i = 0; i < test_size; ++i)
+    const size_t num_clients =
+        yt::System::get_env_with_default("FAILOVERCACHE_STRESS_TEST_NUM_CLIENTS",
+                                         16ULL);
+    const size_t test_size =
+        yt::System::get_env_with_default("FAILOVERCACHE_STRESS_TEST_SIZE",
+                                         1ULL << 12);
+
+    for(unsigned i = 0; i < num_clients; ++i)
     {
-        std::string content = "namespace-" + boost::lexical_cast<std::string>(i);
-        test_threads.push_back(
-                               new FailOverCacheTestThread(content,
-                                                           youtils::System::get_env_with_default("FAILOVERCACHE_STRESS_TEST_SIZE", (1ULL << 12))));
+        const std::string content("namespace-" + boost::lexical_cast<std::string>(i));
+        auto t(std::make_unique<FailOverCacheTestThread>(content,
+                                                         test_size));
+        test_threads.emplace_back(std::move(t));
+        threads.emplace_back(boost::thread(boost::ref(*test_threads[i])));
+    }
+}
 
-        threads.push_back(new boost::thread(boost::ref(*test_threads[i])));
+// https://github.com/openvstorage/volumedriver/issues/19 :
+// The corking mechanism lead to too many clusters being queued up on the sender
+// (server side), which eventually complained with std::bad_alloc when trying to
+// send yet another one.
+TEST_F(FailOverCacheTest, get_entries_xxl)
+{
+    const LBASize lba_size(512);
+    const ClusterMultiplier cmult(8);
+    const ClusterSize csize(lba_size * cmult);
+
+    FailOverCacheProxy
+        cache(FailOverCacheTestMain::failovercache_config(),
+              FailOverCacheTestMain::ns(),
+              lba_size,
+              cmult,
+              boost::chrono::seconds(8));
+
+    const SCOMultiplier smult(4096);
+
+    FailOverCacheEntryFactory factory(csize,
+                                      smult);
+
+    const size_t test_size = 2ULL << 30;
+    const size_t count = test_size / csize;
+
+    const std::vector<uint8_t> buf(csize);
+
+    for (size_t i = 0; i < count; ++i)
+    {
+        ClusterLocation loc;
+        FailOverCacheEntry e(factory(loc));
+        ASSERT_EQ(e.size_,
+                  buf.size());
+
+        delete[] e.buffer_;
+        e.buffer_ = buf.data();
+
+        cache.addEntries({std::move(e)});
     }
 
-    for(unsigned i = 0; i < test_size; ++i)
-    {
-        threads[i]->join();
-        delete threads[i];
-        delete test_threads[i];
-    }
+    size_t seen = 0;
+    cache.getEntries([&](ClusterLocation,
+                         uint64_t,
+                         const uint8_t*,
+                         size_t)
+                     {
+                         ++seen;
+                     });
+
+    EXPECT_EQ(count,
+              seen);
 }
 
 }

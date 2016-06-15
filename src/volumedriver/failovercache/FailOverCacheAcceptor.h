@@ -1,103 +1,92 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef FAILOVERCACHEACCEPTOR_H
 #define FAILOVERCACHEACCEPTOR_H
 
 #include "FailOverCacheProtocol.h"
-#include "FailOverCacheWriter.h"
-#include "VolumeFailOverCacheWriterMap.h"
+#include "BackendFactory.h"
 
 #include "../FailOverCacheStreamers.h"
 
-#include <mutex>
+#include <unordered_map>
 
-#include "fungilib/Mutex.h"
+#include <boost/thread/mutex.hpp>
+
 #include "fungilib/ProtocolFactory.h"
 
-#include <youtils/FileDescriptor.h>
+namespace volumedrivertest
+{
+
+class FailOverCacheTestContext;
+
+}
 
 namespace failovercache
 {
 
-
 class FailOverCacheAcceptor
     : public fungi::ProtocolFactory
 {
+    friend class volumedrivertest::FailOverCacheTestContext;
 
 public:
-    explicit FailOverCacheAcceptor(const boost::filesystem::path& root);
+    explicit FailOverCacheAcceptor(const boost::optional<boost::filesystem::path>& root);
 
-    ~FailOverCacheAcceptor();
+    virtual ~FailOverCacheAcceptor();
 
     virtual fungi::Protocol*
-    createProtocol(fungi::Socket *s,
-                   fungi::SocketServer& parentServer);
+    createProtocol(std::unique_ptr<fungi::Socket>,
+                   fungi::SocketServer& parentServer) override final;
 
     virtual const char *
-    getName() const
+    getName() const override final
     {
         return "FailOverCacheAcceptor";
     }
 
     void
-    remove(FailOverCacheWriter* writer)
-    {
-        fungi::ScopedLock l(m);
-        return volCacheMap_.remove(writer);
-    }
+    remove(Backend&);
 
-    FailOverCacheWriter*
-    lookup(const volumedriver::CommandData<volumedriver::Register>& data)
-    {
-        fungi::ScopedLock l(m);
-        return volCacheMap_.lookup(data.ns_,
-                                   data.clustersize_);
-    }
+    using BackendPtr = std::shared_ptr<Backend>;
+
+    BackendPtr
+    lookup(const volumedriver::CommandData<volumedriver::Register>&);
 
     void
     removeProtocol(FailOverCacheProtocol* prot)
     {
-        fungi::ScopedLock l(m);
+        boost::lock_guard<decltype(mutex_)> g(mutex_);
         protocols.remove(prot);
     }
 
-    boost::filesystem::path
-    path() const
-    {
-        return root_;
-    }
-
-    boost::filesystem::path
-    lock_file() const
-    {
-        return lock_fd_->path();
-    }
-
 private:
-    VolumeFailOverCacheWriterMap volCacheMap_;
-    fungi::Mutex m;
+    DECLARE_LOGGER("FailOverCacheAcceptor");
 
-public:
-    const boost::filesystem::path root_;
+    // protects the map / protocols.
+    boost::mutex mutex_;
 
-private:
-    typedef std::list<FailOverCacheProtocol*>::iterator iter;
+    using Map = std::unordered_map<std::string, BackendPtr>;
+    Map map_;
+
     std::list<FailOverCacheProtocol*> protocols;
+    BackendFactory factory_;
 
-    std::unique_ptr<youtils::FileDescriptor> lock_fd_;
-    std::unique_lock<youtils::FileDescriptor> file_lock_;
+    // for use by testers
+    BackendPtr
+    find_backend_(const std::string&);
 };
 
 }

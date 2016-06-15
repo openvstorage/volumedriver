@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "ArakoonClient.h"
 #include "FileSystemMetaDataClient.h"
@@ -431,7 +432,10 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "      PythonClientException\n")
         .def("list_volumes",
              &vfs::PythonClient::list_volumes,
-             "List the running volumes.")
+             (bpy::arg("node_id") = bpy::object()),
+             "List the running volumes.\n"
+             "@param node_id: optional string, list volumes on a particular node)\n"
+             "@returns: a list of volume IDs\n")
         .def("list_volumes_by_path",
              &vfs::PythonClient::list_volumes_by_path,
              "List the running volumes by path.")
@@ -518,6 +522,14 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "@returns: Statistics object\n"
              "@raises \n"
              "      ObjectNotFoundException\n")
+        .def("statistics_node",
+             &vfs::PythonClient::statistics_node,
+             (bpy::args("node_id"),
+              bpy::args("reset") = false),
+             "Show volume performance statistics aggregated per node.\n"
+             "@param node_id: string, Node ID\n"
+             "@param reset: boolean, whether to reset the performance_counters\n"
+             "@returns: Statistics object\n")
         .def("create_snapshot",
              &vfs::PythonClient::create_snapshot,
              (bpy::args("volume_id"),
@@ -992,6 +1004,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
         DEF_READONLY_PROP_(cluster_cache_misses)
         DEF_READONLY_PROP_(metadata_store_hits)
         DEF_READONLY_PROP_(metadata_store_misses)
+        DEF_READONLY_PROP_(stored)
         DEF_READONLY_PROP_(performance_counters)
         .def_pickle(XMLRPCStatisticsPickleSuite())
         ;

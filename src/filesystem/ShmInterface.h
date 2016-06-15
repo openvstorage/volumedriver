@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef __SHM_INTERFACE_H
 #define __SHM_INTERFACE_H
@@ -202,8 +203,8 @@ public:
     {
         std::unique_ptr<Handler> h(new Handler(handler_args_));
         uint64_t c_size;
-        std::vector<std::string> snaps = h->list_snapshots(volume_name,
-                                                           &c_size);
+        std::vector<std::string> snaps(std::move(h->list_snapshots(volume_name,
+                                                                   &c_size)));
         results = new ShmIdlInterface::StringSequence(snaps.size());
         results->length(snaps.size());
         for (unsigned int i = 0; i < snaps.size(); i++)
@@ -219,6 +220,19 @@ public:
     {
         std::unique_ptr<Handler> h(new Handler(handler_args_));
         return int(h->is_snapshot_synced(volume_name, snapshot_name));
+    }
+
+    void
+    list_volumes(ShmIdlInterface::StringSequence_out results)
+    {
+        std::unique_ptr<Handler> h(new Handler(handler_args_));
+        std::vector<std::string> volumes(std::move(h->list_volumes()));
+        results = new ShmIdlInterface::StringSequence(volumes.size());
+        results->length(volumes.size());
+        for (unsigned int i = 0; i < volumes.size(); i++)
+        {
+            results[i] = CORBA::string_dup(volumes[i].c_str());
+        }
     }
 
 private:

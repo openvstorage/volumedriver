@@ -1,42 +1,25 @@
-// This file is dual licensed GPLv2 and Apache 2.0.
-// Active license depends on how it is used.
+// Copyright (C) 2016 iNuron NV
 //
-// Copyright 2016 iNuron NV
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-// // GPL //
-// This file is part of OpenvStorage.
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// OpenvStorage is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 2 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with OpenvStorage. If not, see <http://www.gnu.org/licenses/>.
-//
-// // Apache 2.0 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef __LIB_OVS_VOLUMEDRIVER_H_
 #define __LIB_OVS_VOLUMEDRIVER_H_
 
 #include <pthread.h>
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -47,6 +30,7 @@ extern "C"
 
 typedef struct ovs_buffer ovs_buffer_t;
 typedef struct ovs_context_t ovs_ctx_t;
+typedef struct ovs_context_attr_t ovs_ctx_attr_t;
 typedef struct ovs_snapshot_info ovs_snapshot_info_t;
 typedef struct ovs_aio_request ovs_aio_request;
 typedef struct ovs_completion ovs_completion_t;
@@ -67,13 +51,64 @@ struct ovs_snapshot_info
 };
 
 /*
+ * Create context attributes object
+ * param attr: Context attributes object
+ * return: This function always succeeds returning 0
+ * return: Context attributes object on success, or NULL on fail
+ */
+ovs_ctx_attr_t*
+ovs_ctx_attr_new();
+
+/*
+ * Destroy context attributes object
+ * param attr: Context attributes object
+ * return: This function always succeeds returning 0
+ */
+int
+ovs_ctx_attr_destroy(ovs_ctx_attr_t *attr);
+
+/*
+ * Set transport type
+ * param attr: Context attributes object
+ * param transport: Transport string ("shm", "tcp", "rdma)
+ * param host: Host string (FQDN or ASCII)
+ * param port: TCP/RDMA port number
+ * return: 0 on success, -1 on fail
+ */
+int
+ovs_ctx_attr_set_transport(ovs_ctx_attr_t *attr,
+                           const char *transport,
+                           const char *host,
+                           int port);
+
+/*
+ * Set network queue depth
+ * param attr: Context attributes object
+ * param qdepth: Queue depth
+ * return: 0 on success, -1 on fail
+ */
+int
+ovs_ctx_attr_set_network_qdepth(ovs_ctx_attr_t *attr,
+                                const uint64_t qdepth);
+
+/*
+ * Create Open vStorage context
+ * param attr: Context attributes object
+ * return: Open vStorage context on success, or NULL on fail
+ */
+ovs_ctx_t*
+ovs_ctx_new(const ovs_ctx_attr_t *attr);
+
+/*
  * Initialize Open vStorage context
+ * param ctx: Open vStorage context
  * param volume_name: Volume name
  * param oflag: Open flags
  * return: Open vStorage context on success, or NULL on fail
  */
-ovs_ctx_t*
-ovs_ctx_init(const char *volume_name,
+int
+ovs_ctx_init(ovs_ctx_t *ctx,
+             const char *volume_name,
              int oflag);
 
 /*
@@ -86,46 +121,55 @@ ovs_ctx_destroy(ovs_ctx_t *ctx);
 
 /*
  * Create an Open vStorage volume
+ * param ctx: Open vStorage context
  * param volume_name: Volume name
  * param size: Size of volume in bytes
  * return: 0 on success, -1 on fail
  */
 int
-ovs_create_volume(const char *volume_name,
+ovs_create_volume(ovs_ctx_t *ctx,
+                  const char *volume_name,
                   uint64_t size);
 
 /*
  * Remove an Open vStorage volume
+ * param ctx: Open vStorage context
  * param volume_name: Volume name
  * return: 0 on success, -1 on fail
  */
 int
-ovs_remove_volume(const char *volume_name);
+ovs_remove_volume(ovs_ctx_t *ctx,
+                  const char *volume_name);
 
 /*
  * Create a snapshot of an Open vStorage volume
+ * param ctx: Open vStorage context
  * param volume_name: Volume name
  * param snap_name: Snapshot name
  * param timeout: Timeout value in seconds
  * return: 0 on success, -1 on fail
  */
 int
-ovs_snapshot_create(const char *volume_name,
+ovs_snapshot_create(ovs_ctx_t *ctx,
+                    const char *volume_name,
                     const char *snap_name,
                     const int64_t timeout);
 
 /*
  * Rollback a Open vStorage volume to a specific snapshot
+ * param ctx: Open vStorage context
  * param volume_name: Volume name
  * param snap_name: Snapshot name
  * return: 0 on success, -1 on fail
  */
 int
-ovs_snapshot_rollback(const char *volume_name,
+ovs_snapshot_rollback(ovs_ctx_t *ctx,
+                      const char *volume_name,
                       const char *snap_name);
 
 /*
  * List snapshots of an Open vStorage volume
+ * param ctx: Open vStorage context
  * param volume_name: Volume name
  * param snap_list: Snapshot info list
  * param max_snaps: The size of the snap_list
@@ -134,7 +178,8 @@ ovs_snapshot_rollback(const char *volume_name,
  * return: The number of snapshots on success, -1 on fail
  */
 int
-ovs_snapshot_list(const char *volume_name,
+ovs_snapshot_list(ovs_ctx_t *ctx,
+                  const char *volume_name,
                   ovs_snapshot_info_t *snap_list,
                   int *max_snaps);
 
@@ -147,23 +192,40 @@ ovs_snapshot_list_free(ovs_snapshot_info_t *snap_list);
 
 /*
  * Remove Open vStorage volume snapshot
+ * param ctx: Open vStorage context
  * param volume_name: Volume name
  * param snap_name: Snapshot name
  * return: 0 on success, -1 on fail
  */
 int
-ovs_snapshot_remove(const char *volume_name,
+ovs_snapshot_remove(ovs_ctx_t *ctx,
+                    const char *volume_name,
                     const char *snap_name);
 
 /*
  * Check if snapshot is synced on the backend
+ * param ctx: Open vStorage context
  * param volume_name: Volume name
  * param snap_name: Snapshot name
  * return: 1 if synced, 0 if not synced and -1 on fail
  */
 int
-ovs_snapshot_is_synced(const char *volume_name,
+ovs_snapshot_is_synced(ovs_ctx_t *ctx,
+                       const char *volume_name,
                        const char *snap_name);
+
+/*
+ * List volumes
+ * param ctx: Open vStorage context
+ * param names: Volumes string
+ * param size: The size of the volumes string
+ * On error the expected string size is returned and errno
+ * is set to ERANGE.
+ * return: The expected string size on success, -1 on fail.
+ */
+int
+ovs_list_volumes(ovs_ctx_t *ctx,
+                 char *names, size_t *size);
 
 /*
  * Allocate buffer from the shared memory segment

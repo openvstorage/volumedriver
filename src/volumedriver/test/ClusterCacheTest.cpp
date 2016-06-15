@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "VolManagerTestSetup.h"
 
@@ -22,9 +23,10 @@
 #include <boost/filesystem/fstream.hpp>
 
 #include <youtils/DimensionedValue.h>
-#include <youtils/Logging.h>
-#include <youtils/wall_timer.h>
 #include <youtils/IOException.h>
+#include <youtils/Logging.h>
+#include <youtils/ScopeExit.h>
+#include <youtils/wall_timer.h>
 
 #include "../Api.h"
 #include "../VolManager.h"
@@ -41,6 +43,7 @@ namespace be = backend;
 namespace bpt = boost::property_tree;
 namespace fs = boost::filesystem;
 namespace ip = initialized_params;
+namespace yt = youtils;
 
 using namespace volumedriver;
 
@@ -98,7 +101,7 @@ public:
     }
 
     void
-    testLocationBasedNoCache(Volume* v)
+    testLocationBasedNoCache(SharedVolumePtr v)
     {
         const uint32_t test_size = 100;
         const uint32_t mod = 30;
@@ -110,22 +113,22 @@ public:
                     Misses(0),
                     Entries(0));
 
-        writeClusters(v, test_size, "_", mod);
+        writeClusters(*v, test_size, "_", mod);
         CHECK_STATS(Devices(2),
                     Hits(0),
                     Misses(0),
                     Entries(0));
 
-        checkClusters(v, test_size, "_", mod);
+        checkClusters(*v, test_size, "_", mod);
 
         CHECK_STATS(Devices(2),
                     Hits(0),
                     Misses(test_size),
                     Entries(0));
 
-        VolManager::get()->getClusterCache().fuckup_fd_forread();
+        VolManager::get()->getClusterCache().fail_fd_forread();
 
-        checkClusters(v, test_size, "_", mod);
+        checkClusters(*v, test_size, "_", mod);
 
         CHECK_STATS(Devices(2),
                     Hits(0),
@@ -139,21 +142,21 @@ public:
                     Misses(2 * test_size),
                     Entries(0));
 
-        checkClusters(v, test_size, "_", mod);
+        checkClusters(*v, test_size, "_", mod);
 
         CHECK_STATS(Devices(2),
                     Hits(0),
                     Misses(3 * test_size),
                     Entries(0));
 
-        checkClusters(v, test_size, "_", mod);
+        checkClusters(*v, test_size, "_", mod);
 
         CHECK_STATS(Devices(2),
                     Hits(0),
                     Misses(4 * test_size),
                     Entries(0));
 
-        checkClusters(v, test_size, "_", mod);
+        checkClusters(*v, test_size, "_", mod);
 
         CHECK_STATS(Devices(2),
                     Hits(0),
@@ -163,7 +166,7 @@ public:
 
     TODO("AR: look into unifying all these test*CacheOn* helpers");
     void
-    testLocationBasedCacheOnReadBehavior(Volume* v,
+    testLocationBasedCacheOnReadBehavior(SharedVolumePtr v,
                                          size_t test_size = 100)
     {
         const uint32_t mod = 30;
@@ -175,22 +178,22 @@ public:
                     Misses(0),
                     Entries(0));
 
-        writeClusters(v, test_size, "_", mod);
+        writeClusters(*v, test_size, "_", mod);
         CHECK_STATS(Devices(2),
                     Hits(0),
                     Misses(0),
                     Entries(0));
 
-        checkClusters(v, test_size, "_", mod);
+        checkClusters(*v, test_size, "_", mod);
 
         CHECK_STATS(Devices(2),
                     Hits(0),
                     Misses(test_size),
                     Entries(test_size));
 
-        VolManager::get()->getClusterCache().fuckup_fd_forread();
+        VolManager::get()->getClusterCache().fail_fd_forread();
 
-        checkClusters(v, test_size, "_", mod);
+        checkClusters(*v, test_size, "_", mod);
 
         CHECK_STATS(Devices(0),
                     Hits(0),
@@ -204,21 +207,21 @@ public:
                     Misses(2 * test_size),
                     Entries(0));
 
-        checkClusters(v, test_size, "_", mod);
+        checkClusters(*v, test_size, "_", mod);
 
         CHECK_STATS(Devices(2),
                     Hits(0),
                     Misses(3 * test_size),
                     Entries(test_size));
 
-        checkClusters(v, test_size, "_", mod);
+        checkClusters(*v, test_size, "_", mod);
 
         CHECK_STATS(Devices(2),
                     Hits(test_size),
                     Misses(3 * test_size),
                     Entries(test_size));
 
-        checkClusters(v, test_size, "_", mod);
+        checkClusters(*v, test_size, "_", mod);
 
         CHECK_STATS(Devices(2),
                     Hits(2 * test_size),
@@ -227,7 +230,7 @@ public:
     }
 
     void
-    testCacheOnReadBehavior(Volume* v,
+    testCacheOnReadBehavior(SharedVolumePtr v,
                             size_t test_size = 100,
                             size_t mod = 30)
     {
@@ -238,45 +241,73 @@ public:
                     Misses(0),
                     Entries(0));
 
-        writeClusters(v, test_size, "_", mod);
+        writeClusters(*v, test_size, "_", mod);
         CHECK_STATS(Devices(2),
                     Hits(0),
                     Misses(0),
                     Entries(0));
 
-        checkClusters(v, test_size, "_", mod);
+        checkClusters(*v, test_size, "_", mod);
 
+#ifdef ENABLE_MD5_HASH
         CHECK_STATS(Devices(2),
                     Hits(test_size - mod),
                     Misses(mod),
                     Entries(mod));
+#else
+        CHECK_STATS(Devices(2),
+                    Hits(0),
+                    Misses(0),
+                    Entries(0));
+#endif
 
-        VolManager::get()->getClusterCache().fuckup_fd_forread();
+        VolManager::get()->getClusterCache().fail_fd_forread();
 
-        checkClusters(v, test_size, "_", mod);
+        checkClusters(*v, test_size, "_", mod);
 
+#ifdef ENABLE_MD5_HASH
         CHECK_STATS(Devices(0),
                     Hits(test_size - mod),
                     Misses(mod + test_size),
                     Entries(0));
+#else
+        CHECK_STATS(Devices(2),
+                    Hits(0),
+                    Misses(0),
+                    Entries(0));
+#endif
 
         triggerDeviceOnlining();
 
+#ifdef ENABLE_MD5_HASH
         CHECK_STATS(Devices(2),
                     Hits(test_size - mod),
                     Misses(mod + test_size),
                     Entries(0));
+#else
+        CHECK_STATS(Devices(2),
+                    Hits(0),
+                    Misses(0),
+                    Entries(0));
+#endif
 
-        checkClusters(v, test_size, "_", mod);
+        checkClusters(*v, test_size, "_", mod);
 
+#ifdef ENABLE_MD5_HASH
         CHECK_STATS(Devices(2),
                     Hits(2 * (test_size - mod)),
                     Misses(2 * mod + test_size),
                 Entries(mod));
+#else
+        CHECK_STATS(Devices(2),
+                    Hits(0),
+                    Misses(0),
+                    Entries(0));
+#endif
     }
 
     void
-    testLocationBasedCacheOnWriteBehavior(Volume* v,
+    testLocationBasedCacheOnWriteBehavior(SharedVolumePtr v,
                                           size_t test_size = 100)
     {
         const uint32_t mod = 30;
@@ -288,23 +319,23 @@ public:
                     Misses(0),
                     Entries(0));
 
-        writeClusters(v, test_size, "_", mod);
+        writeClusters(*v, test_size, "_", mod);
 
         CHECK_STATS(Devices(2),
                     Hits(0),
                     Misses(0),
                     Entries(test_size));
 
-        checkClusters(v, test_size, "_", mod);
+        checkClusters(*v, test_size, "_", mod);
 
         CHECK_STATS(Devices(2),
                     Hits(test_size),
                     Misses(0),
                     Entries(test_size));
 
-        VolManager::get()->getClusterCache().fuckup_fd_forread();
+        VolManager::get()->getClusterCache().fail_fd_forread();
 
-        checkClusters(v, test_size, "_", mod);
+        checkClusters(*v, test_size, "_", mod);
 
         CHECK_STATS(Devices(0),
                     Hits(test_size),
@@ -318,21 +349,21 @@ public:
                     Misses(test_size),
                     Entries(0));
 
-        checkClusters(v, test_size, "_", mod);
+        checkClusters(*v, test_size, "_", mod);
 
         CHECK_STATS(Devices(2),
                     Hits(test_size),
                     Misses(2 * test_size),
                     Entries(test_size));
 
-        checkClusters(v, test_size, "_", mod);
+        checkClusters(*v, test_size, "_", mod);
 
         CHECK_STATS(Devices(2),
                     Hits(2 * test_size),
                     Misses(2 * test_size),
                     Entries(test_size));
 
-        checkClusters(v, test_size, "_", mod);
+        checkClusters(*v, test_size, "_", mod);
 
         CHECK_STATS(Devices(2),
                     Hits(3 * test_size),
@@ -341,7 +372,7 @@ public:
     }
 
     void
-    testCacheOnWriteBehavior(Volume* v,
+    testCacheOnWriteBehavior(SharedVolumePtr v,
                              size_t test_size = 100)
     {
         const uint32_t mod = 30;
@@ -352,42 +383,77 @@ public:
                     Misses(0),
                     Entries(0));
 
-        writeClusters(v, test_size, "_", mod);
+        writeClusters(*v, test_size, "_", mod);
 
+#ifdef ENABLE_MD5_HASH
         CHECK_STATS(Devices(2),
                     Hits(0),
                     Misses(0),
                     Entries(mod));
+#else
+        CHECK_STATS(Devices(2),
+                    Hits(0),
+                    Misses(0),
+                    Entries(0));
+#endif
 
-        checkClusters(v, test_size, "_", mod);
+        checkClusters(*v, test_size, "_", mod);
 
+#ifdef ENABLE_MD5_HASH
         CHECK_STATS(Devices(2),
                     Hits(test_size),
                     Misses(0),
                     Entries(mod));
+#else
+        CHECK_STATS(Devices(2),
+                    Hits(0),
+                    Misses(0),
+                    Entries(0));
+#endif
 
-        VolManager::get()->getClusterCache().fuckup_fd_forread();
+        VolManager::get()->getClusterCache().fail_fd_forread();
 
-        checkClusters(v, test_size, "_", mod);
+        checkClusters(*v, test_size, "_", mod);
 
+#ifdef ENABLE_MD5_HASH
         CHECK_STATS(Devices(0),
                     Hits(test_size),
                     Misses(test_size),
                     Entries(0));
+#else
+        CHECK_STATS(Devices(2),
+                    Hits(0),
+                    Misses(0),
+                    Entries(0));
+#endif
 
         triggerDeviceOnlining();
 
+#ifdef ENABLE_MD5_HASH
         CHECK_STATS(Devices(2),
                     Hits(test_size),
                     Misses(test_size),
                     Entries(0));
+#else
+        CHECK_STATS(Devices(2),
+                    Hits(0),
+                    Misses(0),
+                    Entries(0));
+#endif
 
-        checkClusters(v, test_size, "_", mod);
+        checkClusters(*v, test_size, "_", mod);
 
+#ifdef ENABLE_MD5_HASH
         CHECK_STATS(Devices(2),
                     Hits(2* (test_size ) - mod),
                     Misses(mod + test_size),
                     Entries(mod));
+#else
+        CHECK_STATS(Devices(2),
+                    Hits(0),
+                    Misses(0),
+                    Entries(0));
+#endif
     }
 
     decltype(ClusterCache::ManagerType::devices)&
@@ -408,7 +474,7 @@ TEST_P(ClusterCacheTest, cache_settings)
     auto ns1_ptr = make_random_namespace();
     const Namespace& ns1 = ns1_ptr->ns();
 
-    Volume* v1 = newVolume("volume1",
+    SharedVolumePtr v1 = newVolume("volume1",
                            ns1);
     EXPECT_FALSE(v1->isCacheOnWrite());
     EXPECT_TRUE(v1->isCacheOnRead());
@@ -534,7 +600,7 @@ TEST_P(ClusterCacheTest, cache_settings)
 
 struct VolumeClusterCacheBehaviourSwitcher
 {
-    VolumeClusterCacheBehaviourSwitcher(Volume* v)
+    VolumeClusterCacheBehaviourSwitcher(SharedVolumePtr v)
         : v_(v)
         , stop_(false)
     {}
@@ -581,7 +647,7 @@ struct VolumeClusterCacheBehaviourSwitcher
         }
     }
 
-    Volume* v_;
+    SharedVolumePtr v_;
     bool stop_;
 };
 
@@ -590,18 +656,18 @@ TEST_P(ClusterCacheTest, zimultanious)
     auto ns1_ptr = make_random_namespace();
     const Namespace& ns1 = ns1_ptr->ns();
 
-    Volume* v1 = newVolume("volume1",
+    SharedVolumePtr v1 = newVolume("volume1",
                            ns1);
     ASSERT_FALSE(v1->get_cluster_cache_behaviour());
 
     VolumeClusterCacheBehaviourSwitcher p(v1);
     boost::thread t(boost::ref(p));
-    BOOST_SCOPE_EXIT((&p) (&t))
-    {
-        p.stop();
-        t.join();
-    } BOOST_SCOPE_EXIT_END;
 
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         p.stop();
+                                         t.join();
+                                     }));
 
     int32_t test_size = 100;
     int32_t mod = 30;
@@ -612,8 +678,8 @@ TEST_P(ClusterCacheTest, zimultanious)
 
     while(timer.elapsed() < test_duration_in_seconds)
     {
-        writeClusters(v1, test_size, "_", mod);
-        checkClusters(v1, test_size, "_", mod);
+        writeClusters(*v1, test_size, "_", mod);
+        checkClusters(*v1, test_size, "_", mod);
     }
 }
 
@@ -622,7 +688,7 @@ TEST_P(ClusterCacheTest, offline1_defaultRead)
     auto ns1_ptr = make_random_namespace();
     const Namespace& ns1 = ns1_ptr->ns();
 
-    Volume* v1 = newVolume("volume1",
+    SharedVolumePtr v1 = newVolume("volume1",
                            ns1);
     ASSERT_FALSE(v1->get_cluster_cache_behaviour());
     ASSERT_TRUE(VolManager::get()->get_cluster_cache_default_behaviour() == ClusterCacheBehaviour::CacheOnRead);
@@ -636,7 +702,7 @@ TEST_P(ClusterCacheTest, offline1_cacheOnRead)
     auto ns1_ptr = make_random_namespace();
     const Namespace& ns1 = ns1_ptr->ns();
 
-    Volume* v1 = newVolume("volume1",
+    SharedVolumePtr v1 = newVolume("volume1",
                            ns1);
     boost::optional<ClusterCacheBehaviour> behaviour = ClusterCacheBehaviour::CacheOnRead;
     v1->set_cluster_cache_behaviour(behaviour);
@@ -647,7 +713,7 @@ TEST_P(ClusterCacheTest, checkCacheBehaviour)
 {
     auto ns1_ptr = make_random_namespace();
     const Namespace& ns1 = ns1_ptr->ns();
-    Volume* v1 = newVolume("volume1",
+    SharedVolumePtr v1 = newVolume("volume1",
                            ns1);
     {
 
@@ -659,7 +725,7 @@ TEST_P(ClusterCacheTest, checkCacheBehaviour)
     auto ns2_ptr = make_random_namespace();
     const Namespace& ns2 = ns2_ptr->ns();
 
-    Volume* v2 = newVolume("volume2",
+    SharedVolumePtr v2 = newVolume("volume2",
                            ns2);
     {
         boost::optional<ClusterCacheBehaviour> behaviour = ClusterCacheBehaviour::CacheOnRead;
@@ -676,40 +742,75 @@ TEST_P(ClusterCacheTest, checkCacheBehaviour)
                 Misses(0),
                 Entries(0));
 
-    writeClusters(v1, test_size, "___", mod);
+    writeClusters(*v1, test_size, "___", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(0),
                 Misses(0),
                 Entries(mod));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(0),
+                Entries(0));
+#endif
 
-    writeClusters(v2, test_size, "***", mod);
+    writeClusters(*v2, test_size, "***", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(0),
                 Misses(0),
                 Entries(mod));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(0),
+                Entries(0));
+#endif
 
-    checkClusters(v2, test_size, "***", mod);
+    checkClusters(*v2, test_size, "***", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(test_size - mod),
                 Misses(mod),
                 Entries(2 * mod));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(0),
+                Entries(0));
+#endif
 
-    writeClusters(v2, test_size, "___", mod);
+    writeClusters(*v2, test_size, "___", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(test_size - mod),
                 Misses(mod),
                 Entries(2 * mod));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(0),
+                Entries(0));
+#endif
 
-    checkClusters(v2, test_size, "___", mod);
+    checkClusters(*v2, test_size, "___", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(2 * test_size - mod),
                 Misses(mod),
                 Entries(2 * mod));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(0),
+                Entries(0));
+#endif
 
     {
         boost::optional<ClusterCacheBehaviour> behaviour = ClusterCacheBehaviour::CacheOnRead;
@@ -722,26 +823,47 @@ TEST_P(ClusterCacheTest, checkCacheBehaviour)
         ASSERT_TRUE(v2->get_cluster_cache_behaviour() == behaviour);
     }
 
-    writeClusters(v2, test_size, "$$$", mod);
+    writeClusters(*v2, test_size, "$$$", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(2 * test_size - mod),
                 Misses(mod),
                 Entries(3 * mod));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(0),
+                Entries(0));
+#endif
 
-    writeClusters(v1, test_size, "$$$", mod);
+    writeClusters(*v1, test_size, "$$$", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(2 * test_size - mod),
                 Misses(mod),
                 Entries(3 * mod));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(0),
+                Entries(0));
+#endif
 
-    checkClusters(v2, test_size, "$$$", mod);
+    checkClusters(*v2, test_size, "$$$", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(3 * test_size - mod),
                 Misses(mod),
                 Entries(3 * mod));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(0),
+                Entries(0));
+#endif
 }
 
 TEST_P(ClusterCacheTest, LocationBased_checkCacheBehaviour)
@@ -749,7 +871,7 @@ TEST_P(ClusterCacheTest, LocationBased_checkCacheBehaviour)
     boost::optional<ClusterCacheMode> mode = ClusterCacheMode::LocationBased;
     auto ns1_ptr = make_random_namespace();
     const Namespace& ns1 = ns1_ptr->ns();
-    Volume* v1 = newVolume("volume1",
+    SharedVolumePtr v1 = newVolume("volume1",
                            ns1);
     {
 
@@ -763,7 +885,7 @@ TEST_P(ClusterCacheTest, LocationBased_checkCacheBehaviour)
     auto ns2_ptr = make_random_namespace();
     const Namespace& ns2 = ns2_ptr->ns();
 
-    Volume* v2 = newVolume("volume2",
+    SharedVolumePtr v2 = newVolume("volume2",
                            ns2);
     {
         boost::optional<ClusterCacheBehaviour> behaviour = ClusterCacheBehaviour::CacheOnRead;
@@ -782,35 +904,35 @@ TEST_P(ClusterCacheTest, LocationBased_checkCacheBehaviour)
                 Misses(0),
                 Entries(0));
 
-    writeClusters(v1, test_size, "___", mod);
+    writeClusters(*v1, test_size, "___", mod);
 
     CHECK_STATS(Devices(2),
                 Hits(0),
                 Misses(0),
                 Entries(test_size));
 
-    writeClusters(v2, test_size, "***", mod);
+    writeClusters(*v2, test_size, "***", mod);
 
     CHECK_STATS(Devices(2),
                 Hits(0),
                 Misses(0),
                 Entries(test_size));
 
-    checkClusters(v2, test_size, "***", mod);
+    checkClusters(*v2, test_size, "***", mod);
 
     CHECK_STATS(Devices(2),
                 Hits(0),
                 Misses(test_size),
                 Entries(2 * test_size));
 
-    writeClusters(v2, test_size, "___", mod);
+    writeClusters(*v2, test_size, "___", mod);
 
     CHECK_STATS(Devices(2),
                 Hits(0),
                 Misses(test_size),
                 Entries(test_size));
 
-    checkClusters(v2, test_size, "___", mod);
+    checkClusters(*v2, test_size, "___", mod);
 
     CHECK_STATS(Devices(2),
                 Hits(0),
@@ -829,7 +951,7 @@ TEST_P(ClusterCacheTest, LocationBased_checkCacheBehaviour)
     }
 
     /* cache entries are muttable for location based hashing */
-    writeClusters(v2, test_size, "$$$", mod);
+    writeClusters(*v2, test_size, "$$$", mod);
 
     CHECK_STATS(Devices(2),
                 Hits(0),
@@ -837,14 +959,14 @@ TEST_P(ClusterCacheTest, LocationBased_checkCacheBehaviour)
                 Entries(2 * test_size));
 
     /* invalidate entries for CacheOnRead */
-    writeClusters(v1, test_size, "$$$", mod);
+    writeClusters(*v1, test_size, "$$$", mod);
 
     CHECK_STATS(Devices(2),
                 Hits(0),
                 Misses(2 * test_size),
                 Entries(test_size));
 
-    checkClusters(v2, test_size, "$$$", mod);
+    checkClusters(*v2, test_size, "$$$", mod);
 
     CHECK_STATS(Devices(2),
                 Hits(test_size),
@@ -860,7 +982,7 @@ TEST_P(ClusterCacheTest, LocationBased_cacheOnWrite)
     boost::optional<ClusterCacheBehaviour> behaviour = ClusterCacheBehaviour::CacheOnWrite;
     boost::optional<ClusterCacheMode> mode = ClusterCacheMode::LocationBased;
 
-    Volume* v1 = newVolume("volume1",
+    SharedVolumePtr v1 = newVolume("volume1",
                            ns1);
 
     v1->set_cluster_cache_behaviour(behaviour);
@@ -880,7 +1002,7 @@ TEST_P(ClusterCacheTest, LocationBased_cacheOnRead)
     boost::optional<ClusterCacheBehaviour> behaviour = ClusterCacheBehaviour::CacheOnRead;
     boost::optional<ClusterCacheMode> mode = ClusterCacheMode::LocationBased;
 
-    Volume* v1 = newVolume("volume1",
+    SharedVolumePtr v1 = newVolume("volume1",
                            ns1);
 
     v1->set_cluster_cache_behaviour(behaviour);
@@ -900,7 +1022,7 @@ TEST_P(ClusterCacheTest, LocationBased_noCache)
     boost::optional<ClusterCacheBehaviour> behaviour = ClusterCacheBehaviour::NoCache;
     boost::optional<ClusterCacheMode> mode = ClusterCacheMode::LocationBased;
 
-    Volume* v1 = newVolume("volume1",
+    SharedVolumePtr v1 = newVolume("volume1",
                            ns1);
 
     v1->set_cluster_cache_behaviour(behaviour);
@@ -917,7 +1039,7 @@ TEST_P(ClusterCacheTest, offline1_cacheOnWrite)
     auto ns1_ptr = make_random_namespace();
     const Namespace& ns1 = ns1_ptr->ns();
 
-    Volume* v1 = newVolume("volume1",
+    SharedVolumePtr v1 = newVolume("volume1",
                            ns1);
     boost::optional<ClusterCacheBehaviour> behaviour = ClusterCacheBehaviour::CacheOnWrite;
     v1->set_cluster_cache_behaviour(behaviour);
@@ -931,7 +1053,7 @@ TEST_P(ClusterCacheTest, offline1_defaultOnWrite)
     auto ns1_ptr = make_random_namespace();
     const Namespace& ns1 = ns1_ptr->ns();
 
-    Volume* v1 = newVolume("volume1",
+    SharedVolumePtr v1 = newVolume("volume1",
                            ns1);
     set_cluster_cache_default_behaviour(ClusterCacheBehaviour::CacheOnWrite);
     ASSERT_FALSE(v1->get_cluster_cache_behaviour());
@@ -945,7 +1067,7 @@ TEST_P(ClusterCacheTest, offline1_nocache)
     auto ns1_ptr = make_random_namespace();
     const Namespace& ns1 = ns1_ptr->ns();
 
-    Volume* v1 = newVolume("volume1",
+    SharedVolumePtr v1 = newVolume("volume1",
                            ns1);
     boost::optional<ClusterCacheBehaviour> behaviour = ClusterCacheBehaviour::NoCache;
     v1->set_cluster_cache_behaviour(behaviour);
@@ -959,42 +1081,70 @@ TEST_P(ClusterCacheTest, offline1_nocache)
                 Misses(0),
                 Entries(0));
 
-    writeClusters(v1, test_size, "_", mod);
+    writeClusters(*v1, test_size, "_", mod);
 
     CHECK_STATS(Devices(2),
                 Hits(0),
                 Misses(0),
                 Entries(0));
 
-    checkClusters(v1, test_size, "_", mod);
+    checkClusters(*v1, test_size, "_", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(0),
                 Misses(test_size),
                 Entries(0));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(0),
+                Entries(0));
+#endif
 
-    VolManager::get()->getClusterCache().fuckup_fd_forread();
+    VolManager::get()->getClusterCache().fail_fd_forread();
 
-    checkClusters(v1, test_size, "_", mod);
+    checkClusters(*v1, test_size, "_", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(0),
                 Misses(2 * test_size),
                 Entries(0));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(0),
+                Entries(0));
+#endif
 
     triggerDeviceOnlining();
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(0),
                 Misses(2 * test_size),
                 Entries(0));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(0),
+                Entries(0));
+#endif
 
-    checkClusters(v1, test_size, "_", mod);
+    checkClusters(*v1, test_size, "_", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(0),
                 Misses(3 * test_size),
                 Entries(0));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(0),
+                Entries(0));
+#endif
 }
 
 TEST_P(ClusterCacheTest, offline2)
@@ -1002,7 +1152,7 @@ TEST_P(ClusterCacheTest, offline2)
     auto ns1_ptr = make_random_namespace();
     const Namespace& ns1 = ns1_ptr->ns();
 
-    Volume* v1 = newVolume("volume1",
+    SharedVolumePtr v1 = newVolume("volume1",
                            ns1);
     int32_t test_size = 100;
     int32_t mod = 30;
@@ -1012,42 +1162,70 @@ TEST_P(ClusterCacheTest, offline2)
                 Misses(0),
                 Entries(0));
 
-    writeClusters(v1, test_size, "_", mod);
+    writeClusters(*v1, test_size, "_", mod);
 
-    VolManager::get()->getClusterCache().fuckup_fd_forwrite();
+    VolManager::get()->getClusterCache().fail_fd_forwrite();
 
     CHECK_STATS(Devices(2),
                 Hits(0),
                 Misses(0),
                 Entries(0));
 
-    checkClusters(v1, test_size, "_", mod);
+    checkClusters(*v1, test_size, "_", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(0),
                 Hits(0),
                 Misses(test_size),
                 Entries(0));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(0),
+                Entries(0));
+#endif
 
-    checkClusters(v1, test_size, "_", mod);
+    checkClusters(*v1, test_size, "_", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(0),
                 Hits(0),
                 Misses(2*test_size),
                 Entries(0));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(0),
+                Entries(0));
+#endif
 
     triggerDeviceOnlining();
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(0),
                 Misses(2*test_size),
                 Entries(0));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(0),
+                Entries(0));
+#endif
 
-    checkClusters(v1, test_size, "_", mod);
+    checkClusters(*v1, test_size, "_", mod);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(test_size-mod),
                 Misses(2*test_size + mod),
                 Entries(mod));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(0),
+                Entries(0));
+#endif
 }
 
 TEST_P(ClusterCacheTest, offline_online)
@@ -1291,7 +1469,7 @@ TEST_P(ClusterCacheTest, limits)
 TEST_P(ClusterCacheTest, impose_limit_on_unlimited_namespace)
 {
     const auto wrns(make_random_namespace());
-    Volume* v = newVolume(*wrns);
+    SharedVolumePtr v = newVolume(*wrns);
 
     v->set_cluster_cache_behaviour(ClusterCacheBehaviour::CacheOnWrite);
     v->set_cluster_cache_mode(ClusterCacheMode::LocationBased);
@@ -1300,7 +1478,7 @@ TEST_P(ClusterCacheTest, impose_limit_on_unlimited_namespace)
     const size_t old_count = 16;
 
     const std::string s("Orpheus sat gloomy in his garden shed, wondering what to do");
-    writeClusters(v,
+    writeClusters(*v,
                   old_count,
                   s);
 
@@ -1328,7 +1506,7 @@ TEST_P(ClusterCacheTest, impose_limit_on_unlimited_namespace)
                   *ninfo.max_entries);
     }
 
-    checkClusters(v,
+    checkClusters(*v,
                   old_count - new_count,
                   new_count,
                   s);
@@ -1338,7 +1516,7 @@ TEST_P(ClusterCacheTest, impose_limit_on_unlimited_namespace)
                 Misses(0),
                 Entries(new_count));
 
-    checkClusters(v,
+    checkClusters(*v,
                   0,
                   old_count - new_count,
                   s);
@@ -1352,7 +1530,7 @@ TEST_P(ClusterCacheTest, impose_limit_on_unlimited_namespace)
 TEST_P(ClusterCacheTest, shrink_limited_namespace)
 {
     const auto wrns(make_random_namespace());
-    Volume* v = newVolume(*wrns);
+    SharedVolumePtr v = newVolume(*wrns);
 
     v->set_cluster_cache_behaviour(ClusterCacheBehaviour::CacheOnWrite);
     v->set_cluster_cache_mode(ClusterCacheMode::LocationBased);
@@ -1365,7 +1543,7 @@ TEST_P(ClusterCacheTest, shrink_limited_namespace)
                        old_count);
 
     const std::string s("with a lump of wood and a piece of wire and a little pot of glue");
-    writeClusters(v,
+    writeClusters(*v,
                   old_count,
                   s);
 
@@ -1392,7 +1570,7 @@ TEST_P(ClusterCacheTest, shrink_limited_namespace)
                   *ninfo.max_entries);
     }
 
-    checkClusters(v,
+    checkClusters(*v,
                   old_count - new_count,
                   new_count,
                   s);
@@ -1402,7 +1580,7 @@ TEST_P(ClusterCacheTest, shrink_limited_namespace)
                 Misses(0),
                 Entries(new_count));
 
-    checkClusters(v,
+    checkClusters(*v,
                   0,
                   old_count - new_count,
                   s);
@@ -1416,7 +1594,7 @@ TEST_P(ClusterCacheTest, shrink_limited_namespace)
 TEST_P(ClusterCacheTest, expand_limited_namespace)
 {
     const auto wrns(make_random_namespace());
-    Volume* v = newVolume(*wrns);
+    SharedVolumePtr v = newVolume(*wrns);
 
     v->set_cluster_cache_behaviour(ClusterCacheBehaviour::CacheOnWrite);
     v->set_cluster_cache_mode(ClusterCacheMode::LocationBased);
@@ -1432,7 +1610,7 @@ TEST_P(ClusterCacheTest, expand_limited_namespace)
 
     const std::string
         s("He sawed at the wood with half a heart and glued it to the bottom");
-    writeClusters(v,
+    writeClusters(*v,
                   new_count,
                   s);
 
@@ -1444,7 +1622,7 @@ TEST_P(ClusterCacheTest, expand_limited_namespace)
                   *ninfo.max_entries);
     }
 
-    checkClusters(v,
+    checkClusters(*v,
                   new_count - old_count,
                   old_count,
                   s);
@@ -1457,7 +1635,7 @@ TEST_P(ClusterCacheTest, expand_limited_namespace)
     cc.set_max_entries(handle,
                        new_count);
 
-    checkClusters(v,
+    checkClusters(*v,
                   0,
                   new_count - old_count,
                   s);
@@ -1468,7 +1646,7 @@ TEST_P(ClusterCacheTest, expand_limited_namespace)
                 Entries(new_count));
 
     const std::string t("He strung a wire in between, he was feeling something rotten");
-    writeClusters(v,
+    writeClusters(*v,
                   new_count,
                   t);
 
@@ -1480,7 +1658,7 @@ TEST_P(ClusterCacheTest, expand_limited_namespace)
                   *ninfo.max_entries);
     }
 
-    checkClusters(v,
+    checkClusters(*v,
                   new_count,
                   t);
 
@@ -1493,7 +1671,7 @@ TEST_P(ClusterCacheTest, expand_limited_namespace)
 TEST_P(ClusterCacheTest, make_limited_namespace_unlimited)
 {
     const auto wrns(make_random_namespace());
-    Volume* v = newVolume(*wrns);
+    SharedVolumePtr v = newVolume(*wrns);
 
     v->set_cluster_cache_behaviour(ClusterCacheBehaviour::CacheOnWrite);
     v->set_cluster_cache_mode(ClusterCacheMode::LocationBased);
@@ -1507,7 +1685,7 @@ TEST_P(ClusterCacheTest, make_limited_namespace_unlimited)
 
     const std::string
         s("Orpheus looked at his instrument and he gave the wire a pluck");
-    writeClusters(v,
+    writeClusters(*v,
                   old_count,
                   s);
 
@@ -1522,7 +1700,7 @@ TEST_P(ClusterCacheTest, make_limited_namespace_unlimited)
     cc.set_max_entries(handle,
                        boost::none);
 
-    checkClusters(v,
+    checkClusters(*v,
                   old_count,
                   s);
 
@@ -1535,7 +1713,7 @@ TEST_P(ClusterCacheTest, make_limited_namespace_unlimited)
 
     const uint64_t new_count = 2 * old_count;
 
-    writeClusters(v,
+    writeClusters(*v,
                   new_count,
                   t);
 
@@ -1547,7 +1725,7 @@ TEST_P(ClusterCacheTest, make_limited_namespace_unlimited)
                   ninfo.max_entries);
     }
 
-    checkClusters(v,
+    checkClusters(*v,
                   new_count,
                   t);
 
@@ -1560,7 +1738,7 @@ TEST_P(ClusterCacheTest, make_limited_namespace_unlimited)
 TEST_P(ClusterCacheTest, tiny_location_based)
 {
     const auto wrns(make_random_namespace());
-    Volume* v = newVolume(*wrns);
+    SharedVolumePtr v = newVolume(*wrns);
 
     v->set_cluster_cache_behaviour(ClusterCacheBehaviour::CacheOnWrite);
     v->set_cluster_cache_mode(ClusterCacheMode::LocationBased);
@@ -1573,7 +1751,7 @@ TEST_P(ClusterCacheTest, tiny_location_based)
 
     const std::string s("He rushed inside to tell his wife, he went racing down the halls");
 
-    writeClusters(v,
+    writeClusters(*v,
                   count,
                   s);
 
@@ -1582,7 +1760,7 @@ TEST_P(ClusterCacheTest, tiny_location_based)
                 Misses(0),
                 Entries(count));
 
-    checkClusters(v,
+    checkClusters(*v,
                   count,
                   s);
 
@@ -1596,7 +1774,7 @@ TEST_P(ClusterCacheTest, tiny_location_based)
 TEST_P(ClusterCacheTest, error_during_deserialization)
 {
     const auto wrns(make_random_namespace());
-    Volume* v = newVolume(*wrns);
+    SharedVolumePtr v = newVolume(*wrns);
     const size_t csize = v->getClusterSize();
 
     v->set_cluster_cache_behaviour(ClusterCacheBehaviour::CacheOnWrite);
@@ -1604,17 +1782,24 @@ TEST_P(ClusterCacheTest, error_during_deserialization)
     const std::string s("Eurydice was still asleep in bed, like a sack of cannonballs");
 
     const size_t count = 1;
-    writeClusters(v,
+    writeClusters(*v,
                   count,
                   s);
-    checkClusters(v,
+    checkClusters(*v,
                   count,
                   s);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(count),
                 Misses(0),
                 Entries(count));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(0),
+                Entries(0));
+#endif
 
     ClusterCache::ManagerType::Info info;
     VolManager::get()->getClusterCache().deviceInfo(info);
@@ -1633,7 +1818,8 @@ TEST_P(ClusterCacheTest, error_during_deserialization)
     for (const auto& i : info)
     {
         ClusterCacheDiskStore ds(i.first,
-                                 i.second.total_size);
+                                 i.second.total_size,
+                                 GetParam().cluster_multiplier() * VolumeConfig::default_lba_size());
 
         for (size_t i = 0; i < ds.total_size() / buf.size(); ++i)
         {
@@ -1648,14 +1834,21 @@ TEST_P(ClusterCacheTest, error_during_deserialization)
 
     v = getVolume(VolumeId(wrns->ns().str()));
 
-    checkClusters(v,
+    checkClusters(*v,
                   count,
                   s);
 
+#ifdef ENABLE_MD5_HASH
     CHECK_STATS(Devices(2),
                 Hits(0),
                 Misses(count),
                 Entries(count));
+#else
+    CHECK_STATS(Devices(2),
+                Hits(0),
+                Misses(0),
+                Entries(0));
+#endif
 }
 
 TEST_P(ClusterCacheTest, invalidation_when_default_behaviour_is_no_cache)
@@ -1664,18 +1857,18 @@ TEST_P(ClusterCacheTest, invalidation_when_default_behaviour_is_no_cache)
     set_cluster_cache_default_mode(ClusterCacheMode::LocationBased);
 
     const auto wrns(make_random_namespace());
-    Volume* v = newVolume(*wrns);
+    SharedVolumePtr v = newVolume(*wrns);
 
     const std::string
         s("'Look what I've made' cried Orpheus and he plucked a gentle note");
 
     const size_t count = 13;
 
-    writeClusters(v,
+    writeClusters(*v,
                   count,
                   s);
 
-    checkClusters(v,
+    checkClusters(*v,
                   count,
                   s);
 
@@ -1689,13 +1882,13 @@ TEST_P(ClusterCacheTest, invalidation_when_default_behaviour_is_no_cache)
     const std::string
         t("Eurydice's eyes popped from their sockets and her tongue burst through her throat");
 
-    writeClusters(v,
+    writeClusters(*v,
                   count,
                   t);
 
     set_cluster_cache_default_behaviour(ClusterCacheBehaviour::CacheOnRead);
 
-    checkClusters(v,
+    checkClusters(*v,
                   count,
                   t);
 
@@ -1705,7 +1898,21 @@ TEST_P(ClusterCacheTest, invalidation_when_default_behaviour_is_no_cache)
                 Entries(count));
 }
 
-INSTANTIATE_TEST(ClusterCacheTest);
+namespace
+{
+
+const ClusterMultiplier
+big_cluster_multiplier(VolManagerTestSetup::default_test_config().cluster_multiplier() * 4);
+
+const auto big_clusters_config = VolManagerTestSetup::default_test_config()
+    .cluster_multiplier(big_cluster_multiplier);
+
+}
+
+INSTANTIATE_TEST_CASE_P(ClusterCacheTests,
+                        ClusterCacheTest,
+                        ::testing::Values(volumedriver::VolManagerTestSetup::default_test_config(),
+                                          big_clusters_config));
 
 }
 

@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef VFS_PARAMETERS_H_
 #define VFS_PARAMETERS_H_
@@ -137,6 +138,9 @@ DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(fs_dtl_mode,
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(fs_enable_shm_interface,
                                        bool);
 
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(fs_enable_network_interface,
+                                       bool);
+
 // FUSE:
 extern const char fuse_component_name[];
 
@@ -149,6 +153,15 @@ DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(fuse_max_workers,
 extern const char shm_interface_component_name[];
 
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(shm_region_size,
+                                       size_t);
+
+// NETWORK:
+extern const char network_interface_component_name[];
+
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(network_uri,
+                                       std::string);
+
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(network_snd_rcv_queue_depth,
                                        size_t);
 
 // EventPublisher:
@@ -178,13 +191,20 @@ DECLARE_INITIALIZED_PARAM(vregistry_arakoon_cluster_id, std::string);
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(vregistry_arakoon_timeout_ms, uint32_t);
 
 // ScrubManager
-extern const char scrub_manager_name[];
+extern const char scrub_manager_component_name[];
 
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(scrub_manager_interval,
                                                   std::atomic<uint64_t>);
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(scrub_manager_sync_wait_secs,
                                                   std::atomic<uint64_t>);
 
+// StatsCollector
+extern const char stats_collector_component_name[];
+
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(stats_collector_interval_secs,
+                                                  std::atomic<uint64_t>);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(stats_collector_destination,
+                                                  std::string);
 }
 
 #endif // !VFS_PARAMETERS_H_

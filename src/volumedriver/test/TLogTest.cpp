@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "LBAGenerator.h"
 #include "ExGTest.h"
@@ -34,7 +35,6 @@
 #include "../TLogReader.h"
 #include "../BackwardTLogReader.h"
 #include "../TLog.h"
-#include "../TLogReaderUtils.h"
 #include "../Types.h"
 
 namespace volumedrivertest
@@ -162,13 +162,13 @@ TEST_F(TLogTest, combined)
             fs::path empty;
 
             {
-                std::shared_ptr<TLogReaderInterface> reader1 = makeCombinedTLogReader(empty, paths, 0);
+                std::shared_ptr<TLogReaderInterface> reader1 = CombinedTLogReader::create(empty, paths, 0);
                 TLogReader reader2(p123);
                 assertTLogReadersEqual(reader1.get(), &reader2);
             }
 
             {
-                std::shared_ptr<TLogReaderInterface> reader1 = makeCombinedBackwardTLogReader(empty, paths, 0);
+                std::shared_ptr<TLogReaderInterface> reader1 = CombinedTLogReader::create_backward_reader(empty, paths, 0);
                 BackwardTLogReader reader2(p123);
                 assertTLogReadersEqual(reader1.get(), &reader2);
             }
@@ -411,7 +411,13 @@ TEST_F(TLogTest, syncchecksums)
     const Entry* e = 0;
     TLogReader t(p1);
 
-#define ASSERT_LOC                                      \
+#ifdef ENABLE_MD5_HASH
+#define ASSERT_LOC_MD5 ASSERT_EQ(l.weed(), weed)
+#else
+#define ASSERT_LOC_MD5
+#endif
+
+#define ASSERT_LOC_NO_MD5                               \
     e = t.nextAny();                                    \
     ASSERT_TRUE(e);                                     \
     ASSERT_TRUE(e->isLocation());                       \
@@ -419,8 +425,9 @@ TEST_F(TLogTest, syncchecksums)
     ASSERT_FALSE(e->isSCOCRC());                        \
     ASSERT_FALSE(e->isSync());                          \
     ASSERT_EQ(0U, e->clusterAddress());                  \
-    ASSERT_EQ(l.clusterLocation, e->clusterLocation()); \
-    ASSERT_EQ(l.weed, weed)
+    ASSERT_EQ(l.clusterLocation, e->clusterLocation());
+
+#define ASSERT_LOC ASSERT_LOC_NO_MD5 ASSERT_LOC_MD5
 
 #define ASSERT_CLOSE(value)                              \
     e = t.nextAny();                                     \
@@ -470,7 +477,7 @@ TEST_F(TLogTest, forth_and_back)
 
     EXPECT_EQ(0U, e->clusterAddress());
     EXPECT_EQ(clh.clusterLocation, e->clusterLocation());
-    EXPECT_EQ(clh.weed, e->clusterLocationAndHash().weed);
+    EXPECT_EQ(clh.weed(), e->clusterLocationAndHash().weed());
 
     e = r.nextAny();
     ASSERT(e != nullptr);

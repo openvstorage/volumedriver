@@ -1,51 +1,35 @@
-// This file is dual licensed GPLv2 and Apache 2.0.
-// Active license depends on how it is used.
+// Copyright (C) 2016 iNuron NV
 //
-// Copyright 2016 iNuron NV
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-// // GPL //
-// This file is part of OpenvStorage.
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// OpenvStorage is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 2 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with OpenvStorage. If not, see <http://www.gnu.org/licenses/>.
-//
-// // Apache 2.0 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
-#include "volumedriver.h"
-#include "common.h"
-#include "VolumeCacheHandler.h"
-#include "ShmControlChannelClient.h"
-#include "AioCompletion.h"
-#include "../ShmControlChannelProtocol.h"
-#include "../ShmClient.h"
+#include <cerrno>
+#include <map>
 
 #include <limits.h>
-#include <map>
+#include <libxio.h>
 
 #include <youtils/SpinLock.h>
 #include <youtils/System.h>
 #include <youtils/IOException.h>
+#include <youtils/ScopeExit.h>
+
+#include "volumedriver.h"
+#include "common.h"
+#include "tracing.h"
+#include "context.h"
+#include "ShmContext.h"
+#include "NetworkXioContext.h"
 
 #ifdef __GNUC__
 #define likely(x)       __builtin_expect(!!(x), 1)
@@ -55,565 +39,414 @@
 #define unlikely(x)     (x)
 #endif
 
-struct IOThread
+ovs_ctx_attr_t*
+ovs_ctx_attr_new()
 {
-    ovs_ctx_t* ctx;
-    std::thread iothread_;
-    std::mutex mutex_;
-    std::condition_variable cv_;
-    bool stopped = false;
-    bool stopping = false;
-
-    void
-    reset_iothread()
+    try
     {
-        stopping = true;
-        {
-            std::unique_lock<std::mutex> lock_(mutex_);
-            cv_.wait(lock_, [&]{ return stopped == true; });
-        }
-        iothread_.join();
+        ovs_ctx_attr_t *attr = new ovs_ctx_attr_t;
+        attr->transport = TransportType::Error;
+        attr->port = 0;
+        attr->network_qdepth = 256;
+        return attr;
     }
-
-    void
-    stop()
+    catch (const std::bad_alloc&)
     {
-        stopping = true;
+        errno = ENOMEM;
     }
-};
-
-typedef std::unique_ptr<IOThread> IOThreadPtr;
-
-static void _aio_readreply_handler(void*);
-static void _aio_writereply_handler(void*);
-
-struct ovs_context_t
-{
-    ovs_context_t(const std::string& volume_name, int flag)
-    : oflag(flag)
-    {
-        const std::string io_env_var("LIBOVSVOLUMEDRIVER_IO_THREADS_POOL_SIZE");
-        io_threads_pool_size_ =
-        youtils::System::get_env_with_default<int>(io_env_var, 1);
-        shm_client_ = std::make_shared<volumedriverfs::ShmClient>(volume_name);
-        try
-        {
-            ctl_client_ = std::make_shared<ShmControlChannelClient>();
-        }
-        catch (...)
-        {
-            shm_client_.reset();
-            throw;
-        }
-
-        if (not ctl_client_->connect_and_register(volume_name,
-                                                  shm_client_->get_key()))
-        {
-            shm_client_.reset();
-            ctl_client_.reset();
-            throw fungi::IOException("cannot connect and register to server");
-        }
-
-        try
-        {
-            ovs_aio_init();
-        }
-        catch (...)
-        {
-            shm_client_.reset();
-            ctl_client_.reset();
-            throw;
-        }
-
-        try
-        {
-            cache_ = std::make_unique<VolumeCacheHandler>(shm_client_,
-                                                          ctl_client_);
-        }
-        catch (...)
-        {
-            ovs_aio_destroy();
-            shm_client_.reset();
-            ctl_client_->deregister();
-            ctl_client_.reset();
-            throw;
-        }
-        int ret = cache_->preallocate();
-        if (ret < 0)
-        {
-            cache_->drop_caches();
-        }
-    }
-
-    ~ovs_context_t()
-    {
-        ovs_aio_destroy();
-        cache_.reset();
-        shm_client_.reset();
-        ctl_client_->deregister();
-        ctl_client_.reset();
-    }
-
-    void
-    close_rr_iothreads()
-    {
-        for (auto& x: rr_iothreads)
-        {
-            x->reset_iothread();
-        }
-        rr_iothreads.clear();
-    }
-    void
-    close_wr_iothreads()
-    {
-        for (auto& x: wr_iothreads)
-        {
-            x->reset_iothread();
-        }
-        wr_iothreads.clear();
-    }
-
-    void
-    ovs_aio_init()
-    {
-        for (int i = 0; i < io_threads_pool_size_; i++)
-        {
-            IOThreadPtr iot;
-            try
-            {
-                iot = std::make_unique<IOThread>();
-                iot->ctx = this;
-                iot->iothread_ = std::thread(_aio_readreply_handler,
-                                             (void*)iot.get());
-                rr_iothreads.push_back(std::move(iot));
-            }
-            catch (...)
-            {
-                close_rr_iothreads();
-                throw;
-            }
-        }
-
-        for (int i = 0; i < io_threads_pool_size_; i++)
-        {
-            IOThreadPtr iot;
-            try
-            {
-                iot = std::make_unique<IOThread>();
-                iot->ctx = this;
-                iot->iothread_ = std::thread(_aio_writereply_handler,
-                                             (void*)iot.get());
-                wr_iothreads.push_back(std::move(iot));
-            }
-            catch (...)
-            {
-                close_wr_iothreads();
-                close_rr_iothreads();
-                throw;
-            }
-        }
-    }
-
-    void
-    ovs_aio_destroy()
-    {
-        for (auto& iot: rr_iothreads)
-        {
-            iot->stop();
-        }
-        for (auto& iot: wr_iothreads)
-        {
-            iot->stop();
-        }
-
-        /* noexcept */
-        if (ctl_client_->is_connected())
-        {
-            shm_client_->stop_reply_queues(io_threads_pool_size_);
-        }
-        close_wr_iothreads();
-        close_rr_iothreads();
-    }
-
-    int oflag;
-    int io_threads_pool_size_;
-    volumedriverfs::ShmClientPtr shm_client_;
-    std::vector<IOThreadPtr> rr_iothreads;
-    std::vector<IOThreadPtr> wr_iothreads;
-    VolumeCacheHandlerPtr cache_;
-    ShmControlChannelClientPtr ctl_client_;
-};
-
-static bool
-_is_volume_name_valid(const char *volume_name)
-{
-    if (volume_name == NULL || strlen(volume_name) == 0 ||
-        strlen(volume_name) >= NAME_MAX)
-    {
-        return false;
-    }
-    else
-    {
-        return true;
-    }
+    return NULL;
 }
 
-static void
-_aio_wake_up_suspended_aiocb(ovs_aio_request *request)
+int
+ovs_ctx_attr_destroy(ovs_ctx_attr_t *attr)
 {
-    if (not __sync_bool_compare_and_swap(&request->_on_suspend,
-                                         false,
-                                         true,
-                                         __ATOMIC_RELAXED))
+    if (attr)
     {
-        pthread_mutex_lock(&request->_mutex);
-        request->_signaled = true;
-        pthread_cond_signal(&request->_cond);
-        pthread_mutex_unlock(&request->_mutex);
+        delete attr;
     }
+    return 0;
 }
 
-static void
-_aio_request_handler(ovs_aio_request *request,
-                     size_t ret,
-                     bool failed)
+int
+ovs_ctx_attr_set_transport(ovs_ctx_attr_t *attr,
+                           const char *transport,
+                           const char *host,
+                           int port)
 {
-    /* errno already set by shm_receive_*_reply function */
-    ovs_completion_t *completion = request->completion;
-    RequestOp op = request->_op;
-    request->_errno = errno;
-    request->_rv = ret;
-    request->_completed = true;
-    request->_failed = failed;
-    if (op != RequestOp::AsyncFlush)
+    if (attr == NULL)
     {
-        _aio_wake_up_suspended_aiocb(request);
+        errno = EINVAL;
+        return -1;
     }
-    if (completion)
+
+    if (transport == NULL or (transport and (not strcmp(transport, "shm"))))
     {
-        completion->_rv = ret;
-        completion->_failed = failed;
-        if (RequestOp::AsyncFlush == op)
-        {
-            pthread_mutex_destroy(&request->_mutex);
-            pthread_cond_destroy(&request->_cond);
-            delete request->ovs_aiocbp;
-            delete request;
-        }
-        AioCompletion::get_aio_context().schedule(completion);
+        attr->transport = TransportType::SharedMemory;
+        return 0;
     }
+
+    if ((not strcmp(transport, "tcp")) and host)
+    {
+        attr->transport = TransportType::TCP;
+        attr->port = port;
+        return _hostname_to_ip(host, attr->host);
+    }
+
+    if ((not strcmp(transport, "rdma")) and host)
+    {
+        attr->transport = TransportType::RDMA;
+        attr->port = port;
+        return _hostname_to_ip(host, attr->host);
+    }
+    errno = EINVAL;
+    return -1;
 }
 
-static void
-_aio_readreply_handler(void *arg)
+int
+ovs_ctx_attr_set_network_qdepth(ovs_ctx_attr_t *attr,
+                                const uint64_t qdepth)
 {
-    IOThread *iothread = (IOThread*) arg;
-    ovs_ctx_t *ctx = iothread->ctx;
-    const struct timespec timeout = {2, 0};
-    size_t size_in_bytes;
-    bool failed;
-    //cnanakos: stop thread by sending a stop request?
-    while (not iothread->stopping)
+    if (attr == NULL)
     {
-        ovs_aio_request *request;
-        failed = ctx->shm_client_->timed_receive_read_reply(size_in_bytes,
-                                                            reinterpret_cast<void**>(&request),
-                                                            &timeout);
-        if (request)
-        {
-            _aio_request_handler(request,
-                                 size_in_bytes,
-                                 failed);
-        }
+        errno = EINVAL;
+        return -1;
     }
-    std::lock_guard<std::mutex> lock_(iothread->mutex_);
-    iothread->stopped = true;
-    iothread->cv_.notify_all();
-}
-
-static void
-_aio_writereply_handler(void *arg)
-{
-    IOThread *iothread = (IOThread*) arg;
-    ovs_ctx_t *ctx = iothread->ctx;
-    const struct timespec timeout = {2, 0};
-    size_t size_in_bytes;
-    bool failed;
-    //cnanakos: stop thread by sending a stop request?
-    while (not iothread->stopping)
+    if (qdepth <= 0)
     {
-        ovs_aio_request *request;
-        failed = ctx->shm_client_->timed_receive_write_reply(size_in_bytes,
-                                                             reinterpret_cast<void**>(&request),
-                                                             &timeout);
-        if (request)
-        {
-            _aio_request_handler(request,
-                                 size_in_bytes,
-                                 failed);
-        }
+        errno = EINVAL;
+        return -1;
     }
-    std::lock_guard<std::mutex> lock_(iothread->mutex_);
-    iothread->stopped = true;
-    iothread->cv_.notify_all();
+    attr->network_qdepth = qdepth;
+    return 0;
 }
 
 ovs_ctx_t*
-ovs_ctx_init(const char* volume_name,
-             int oflag)
+ovs_ctx_new(const ovs_ctx_attr_t *attr)
 {
-    if (not _is_volume_name_valid(volume_name))
+    std::string uri;
+    ovs_ctx_t *ctx = NULL;
+
+    if(not attr)
     {
         errno = EINVAL;
         return NULL;
+    }
+
+    if (attr->transport != TransportType::SharedMemory &&
+        attr->transport != TransportType::TCP &&
+        attr->transport != TransportType::RDMA)
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    switch (attr->transport)
+    {
+    case TransportType::TCP:
+        uri = "tcp://" + attr->host + ":" + std::to_string(attr->port);
+        break;
+    case TransportType::RDMA:
+        uri = "rdma://" + attr->host + ":" + std::to_string(attr->port);
+        break;
+    case TransportType::SharedMemory:
+        break;
+    case TransportType::Error: /* already catched */
+        errno = EINVAL;
+        return NULL;
+    }
+
+    try
+    {
+        switch (attr->transport)
+        {
+        case TransportType::TCP:
+        case TransportType::RDMA:
+            ctx = new NetworkXioContext(uri,
+                                        attr->network_qdepth);
+            break;
+        case TransportType::SharedMemory:
+            ctx = new ShmContext;
+            break;
+        default:
+            errno = EINVAL;
+            return NULL;
+        }
+        ctx->transport = attr->transport;
+    }
+    catch (const std::bad_alloc&)
+    {
+        errno = ENOMEM;
+        return NULL;
+    }
+    return ctx;
+}
+
+int
+ovs_ctx_init(ovs_ctx_t *ctx,
+             const char* volume_name,
+             int oflag)
+{
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_ctx_init_enter,
+               volume_name,
+               oflag);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_ctx_init_exit,
+                                          ctx,
+                                          errno);
+                }));
+
+    if (not _is_volume_name_valid(volume_name))
+    {
+        errno = EINVAL;
+        return -1;
     }
     if (oflag != O_RDONLY &&
         oflag != O_WRONLY &&
         oflag != O_RDWR)
     {
         errno = EINVAL;
-        return NULL;
+        return -1;
     }
-
-    /* On Error: EACCESS or EIO */
-    try
-    {
-        ovs_ctx_t *ctx = new ovs_ctx_t(volume_name,
-                                       oflag);
-        return ctx;
-    }
-    catch (const ShmIdlInterface::VolumeDoesNotExist&)
-    {
-        errno = EACCES;
-        return NULL;
-    }
-    catch (const ShmIdlInterface::VolumeNameAlreadyRegistered&)
-    {
-        errno = EBUSY;
-        return NULL;
-    }
-    catch (std::bad_alloc&)
-    {
-        errno = ENOMEM;
-        return NULL;
-    }
-    catch (...)
-    {
-        errno = EIO;
-        return NULL;
-    }
+    ctx->oflag = oflag;
+    return ctx->open_volume(volume_name, oflag);
 }
 
 int
 ovs_ctx_destroy(ovs_ctx_t *ctx)
 {
+    int r = 0;
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    tracepoint(openvstorage_libovsvolumedriver,
+                               ovs_ctx_destroy,
+                               ctx,
+                               r);
+                }));
+
     if (ctx == NULL)
     {
         errno = EINVAL;
-        return -1;
+        return (r = -1);
     }
+    ctx->close_volume();
     delete ctx;
-    return 0;
+    return r;
 }
 
 int
-ovs_create_volume(const char* volume_name, uint64_t size)
+ovs_create_volume(ovs_ctx_t *ctx,
+                  const char* volume_name,
+                  uint64_t size)
 {
+    int r = 0;
+
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_create_volume_enter,
+               volume_name,
+               size);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_create_volume_exit,
+                                          volume_name,
+                                          r,
+                                          errno);
+                }));
+
+    if (not _is_volume_name_valid(volume_name))
+    {
+        errno = EINVAL; r = -1;
+        return r;
+    }
+    return (r = ctx->create_volume(volume_name, size));
+}
+
+int
+ovs_remove_volume(ovs_ctx_t *ctx,
+                  const char* volume_name)
+{
+    int r = 0;
+
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_remove_volume_enter,
+               volume_name);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_remove_volume_exit,
+                                          volume_name,
+                                          r,
+                                          errno);
+                }));
+
     if (not _is_volume_name_valid(volume_name))
     {
         errno = EINVAL;
-        return -1;
+        return (r = -1);
     }
-
-    try
-    {
-        volumedriverfs::ShmClient::create_volume(volume_name, size);
-    }
-    catch (const ShmIdlInterface::VolumeExists&)
-    {
-        errno = EEXIST;
-        return -1;
-    }
-    catch (...)
-    {
-        errno = EIO;
-        return -1;
-    }
-    return 0;
+    return (r = ctx->remove_volume(volume_name));
 }
 
 int
-ovs_remove_volume(const char* volume_name)
-{
-    if (not _is_volume_name_valid(volume_name))
-    {
-        errno = EINVAL;
-        return -1;
-    }
-
-    try
-    {
-        volumedriverfs::ShmClient::remove_volume(volume_name);
-    }
-    catch (const ShmIdlInterface::VolumeDoesNotExist&)
-    {
-        errno = ENOENT;
-        return -1;
-    }
-    catch (...)
-    {
-        errno = EIO;
-        return -1;
-    }
-    return 0;
-}
-
-int
-ovs_snapshot_create(const char* volume_name,
+ovs_snapshot_create(ovs_ctx_t *ctx,
+                    const char* volume_name,
                     const char* snapshot_name,
                     const int64_t timeout)
 {
+    int r = 0;
+
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_snapshot_create_enter,
+               volume_name,
+               snapshot_name,
+               timeout);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_snapshot_create_exit,
+                                          volume_name,
+                                          snapshot_name,
+                                          r,
+                                          errno);
+                }));
+
     if (not _is_volume_name_valid(volume_name))
     {
         errno = EINVAL;
-        return -1;
+        return (r = -1);
     }
-
-    try
-    {
-        volumedriverfs::ShmClient::create_snapshot(volume_name,
-                                                   snapshot_name,
-                                                   timeout);
-    }
-    catch (const ShmIdlInterface::PreviousSnapshotNotOnBackendException&)
-    {
-        errno = EBUSY;
-        return -1;
-    }
-    catch (const ShmIdlInterface::VolumeDoesNotExist&)
-    {
-        errno = ENOENT;
-        return -1;
-    }
-    catch (const ShmIdlInterface::SyncTimeoutException&)
-    {
-        errno = ETIMEDOUT;
-        return -1;
-    }
-    catch (const ShmIdlInterface::SnapshotAlreadyExists&)
-    {
-        errno = EEXIST;
-        return -1;
-    }
-    catch (...)
-    {
-        errno = EIO;
-        return -1;
-    }
-    return 0;
+    return (r = ctx->snapshot_create(volume_name,
+                                     snapshot_name,
+                                     timeout));
 }
 
 int
-ovs_snapshot_rollback(const char* volume_name,
+ovs_snapshot_rollback(ovs_ctx_t *ctx,
+                      const char* volume_name,
                       const char* snapshot_name)
 {
+    int r = 0;
+
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_snapshot_rollback_enter,
+               volume_name,
+               snapshot_name);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_snapshot_rollback_exit,
+                                          volume_name,
+                                          snapshot_name,
+                                          r,
+                                          errno);
+                }));
+
     if (not _is_volume_name_valid(volume_name))
     {
         errno = EINVAL;
-        return -1;
+        return (r = -1);
     }
-
-    try
-    {
-        volumedriverfs::ShmClient::rollback_snapshot(volume_name,
-                                                     snapshot_name);
-    }
-    catch (const ShmIdlInterface::VolumeDoesNotExist&)
-    {
-        errno = ENOENT;
-        return -1;
-    }
-    catch (const ShmIdlInterface::VolumeHasChildren&)
-    {
-        errno = ENOTEMPTY;
-        //errno = ECHILD;
-        return -1;
-    }
-    catch (...)
-    {
-        errno = EIO;
-        return -1;
-    }
-    return 0;
+    return (r = ctx->snapshot_rollback(volume_name, snapshot_name));
 }
 
 int
-ovs_snapshot_remove(const char* volume_name,
+ovs_snapshot_remove(ovs_ctx_t *ctx,
+                    const char* volume_name,
                     const char* snapshot_name)
 {
+    int r = 0;
+
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_snapshot_remove_enter,
+               volume_name,
+               snapshot_name);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_snapshot_remove_exit,
+                                          volume_name,
+                                          snapshot_name,
+                                          r,
+                                          errno);
+                }));
+
     if (not _is_volume_name_valid(volume_name))
     {
         errno = EINVAL;
-        return -1;
+        return (r = -1);
     }
 
-    try
-    {
-        volumedriverfs::ShmClient::delete_snapshot(volume_name,
-                                                   snapshot_name);
-    }
-    catch (const ShmIdlInterface::VolumeDoesNotExist&)
-    {
-        errno = ENOENT;
-        return -1;
-    }
-    catch (const ShmIdlInterface::VolumeHasChildren&)
-    {
-        errno = ENOTEMPTY;
-        //errno = ECHILD;
-        return -1;
-    }
-    catch (const ShmIdlInterface::SnapshotNotFound&)
-    {
-        errno = ENOENT;
-        return -1;
-    }
-    catch (...)
-    {
-        errno = EIO;
-        return -1;
-    }
-    return 0;
+    return (r = ctx->snapshot_remove(volume_name,
+                                     snapshot_name));
 }
 
 int
-ovs_snapshot_list(const char* volume_name,
+ovs_snapshot_list(ovs_ctx_t *ctx,
+                  const char* volume_name,
                   ovs_snapshot_info_t *snap_list,
                   int *max_snaps)
 {
     int i, len;
     uint64_t size = 0;
 
-    if (not _is_volume_name_valid(volume_name))
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_snapshot_list_enter,
+               volume_name,
+               snap_list);
+
+    if (!max_snaps)
     {
+        tracepoint(openvstorage_libovsvolumedriver,
+                   ovs_snapshot_list_exit,
+                   volume_name,
+                   snap_list,
+                   -1,
+                   0,
+                   EINVAL);
         errno = EINVAL;
         return -1;
     }
 
-    std::vector<std::string> snaps;
-    try
+    if (not _is_volume_name_valid(volume_name))
     {
-        snaps = volumedriverfs::ShmClient::list_snapshots(volume_name,
-                                                          &size);
-    }
-    catch (const ShmIdlInterface::VolumeDoesNotExist&)
-    {
-        errno = ENOENT;
+        tracepoint(openvstorage_libovsvolumedriver,
+                   ovs_snapshot_list_exit,
+                   volume_name,
+                   snap_list,
+                   -1,
+                   *max_snaps,
+                   EINVAL);
+        errno = EINVAL;
         return -1;
     }
-    catch (...)
+
+    int saved_errno = 0;
+    std::vector<std::string> snaps;
+    ctx->list_snapshots(snaps,
+                        volume_name,
+                        &size,
+                        &saved_errno);
+
+    errno = saved_errno;
+    if (saved_errno)
     {
-        errno = EIO;
+        tracepoint(openvstorage_libovsvolumedriver,
+                   ovs_snapshot_list_exit,
+                   volume_name,
+                   snap_list,
+                   -1,
+                   *max_snaps,
+                   saved_errno);
         return -1;
     }
 
@@ -621,6 +454,13 @@ ovs_snapshot_list(const char* volume_name,
     if (*max_snaps < len + 1)
     {
         *max_snaps = len + 1;
+        tracepoint(openvstorage_libovsvolumedriver,
+                   ovs_snapshot_list_exit,
+                   volume_name,
+                   snap_list,
+                   -1,
+                   *max_snaps,
+                   ERANGE);
         errno = ERANGE;
         return -1;
     }
@@ -633,57 +473,138 @@ ovs_snapshot_list(const char* volume_name,
         {
             for (int j = 0; j < i; j++)
             {
-                free((void*)snap_list[i].name);
+                free(const_cast<char*>(snap_list[j].name));
             }
+            tracepoint(openvstorage_libovsvolumedriver,
+                       ovs_snapshot_list_exit,
+                       volume_name,
+                       snap_list,
+                       -1,
+                       *max_snaps,
+                       ENOMEM);
             errno = ENOMEM;
             return -1;
         }
     }
 
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_snapshot_list_exit,
+               volume_name,
+               snap_list,
+               len,
+               *max_snaps,
+               0);
     snap_list[i].name = NULL;
+    snap_list[i].size = 0;
     return len;
 }
 
 void
 ovs_snapshot_list_free(ovs_snapshot_info_t *snap_list)
 {
-     while (snap_list->name)
-     {
-        free((void*)snap_list->name);
-        snap_list++;
-     }
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_snapshot_list_free_enter,
+               snap_list);
+
+    if (snap_list)
+    {
+        while (snap_list->name)
+        {
+            free(const_cast<char*>(snap_list->name));
+            snap_list++;
+        }
+    }
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_snapshot_list_free_exit);
 }
 
 int
-ovs_snapshot_is_synced(const char* volume_name,
+ovs_snapshot_is_synced(ovs_ctx_t *ctx,
+                       const char* volume_name,
                        const char* snapshot_name)
 {
+    int r = 0;
+
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_snapshot_is_synced_enter,
+               volume_name,
+               snapshot_name);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_snapshot_is_synced_exit,
+                                          volume_name,
+                                          snapshot_name,
+                                          r,
+                                          errno);
+                }));
+
     if (not _is_volume_name_valid(volume_name))
     {
         errno = EINVAL;
-        return -1;
+        return (r = -1);
+    }
+    return (r = ctx->is_snapshot_synced(volume_name,
+                                        snapshot_name));
+}
+
+int
+ovs_list_volumes(ovs_ctx_t *ctx,
+                 char *names,
+                 size_t *size)
+{
+    std::vector<std::string> volumes;
+    size_t expected_size = 0;
+    int r = 0;
+
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_list_volumes_enter,
+               names,
+               *size);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_list_volumes_exit,
+                                          names,
+                                          *size,
+                                          r,
+                                          errno);
+                }));
+
+    r = ctx->list_volumes(volumes);
+    if (r < 0)
+    {
+        return r;
     }
 
-    try
+    for (size_t t = 0; t < volumes.size(); t++)
     {
-        return volumedriverfs::ShmClient::is_snapshot_synced(volume_name,
-                                                             snapshot_name);
+        expected_size += volumes[t].size() + 1;
     }
-    catch (const ShmIdlInterface::VolumeDoesNotExist&)
+
+    if (*size < expected_size)
     {
-        errno = ENOENT;
-        return -1;
+        *size = expected_size;
+        errno = ERANGE;
+        return (r = -1);
     }
-    catch (const ShmIdlInterface::SnapshotNotFound&)
+
+    if (!names)
     {
-        errno = ENOENT;
-        return -1;
+        errno = EINVAL;
+        return (r = -1);
     }
-    catch (...)
+
+    for (int i = 0; i < (int)volumes.size(); i++)
     {
-        errno = EIO;
-        return -1;
+        const char* name = volumes[i].c_str();
+        strcpy(names, name);
+        names += strlen(name) + 1;
     }
+    r = (int)expected_size;
+    return r;
 }
 
 static int
@@ -692,9 +613,21 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
                         ovs_completion_t *completion,
                         const RequestOp& op)
 {
-    int ret, accmode;
+    int r = 0, accmode;
+
+    ovs_submit_aio_request_tracepoint_enter(op,
+                                            ctx,
+                                            ovs_aiocbp,
+                                            completion);
+
     if (ctx == NULL || ovs_aiocbp == NULL)
     {
+        ovs_submit_aio_request_tracepoint_exit(op,
+                                               ctx,
+                                               ovs_aiocbp,
+                                               completion,
+                                               -1,
+                                               EINVAL);
         errno = EINVAL;
         return -1;
     }
@@ -703,6 +636,12 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
          ovs_aiocbp->aio_offset < 0) &&
          op != RequestOp::Flush && op != RequestOp::AsyncFlush)
     {
+        ovs_submit_aio_request_tracepoint_exit(op,
+                                               ctx,
+                                               ovs_aiocbp,
+                                               completion,
+                                               -1,
+                                               EINVAL);
         errno = EINVAL;
         return -1;
     }
@@ -713,6 +652,12 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
     case RequestOp::Read:
         if (accmode == O_WRONLY)
         {
+            ovs_submit_aio_request_tracepoint_exit(op,
+                                                   ctx,
+                                                   ovs_aiocbp,
+                                                   completion,
+                                                   -1,
+                                                   EBADF);
             errno = EBADF;
             return -1;
         }
@@ -720,11 +665,19 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
     case RequestOp::Write:
     case RequestOp::Flush:
     case RequestOp::AsyncFlush:
+    {
         if (accmode == O_RDONLY)
         {
+            ovs_submit_aio_request_tracepoint_exit(op,
+                                                   ctx,
+                                                   ovs_aiocbp,
+                                                   completion,
+                                                   -1,
+                                                   EBADF);
             errno = EBADF;
             return -1;
         }
+    }
         break;
     default:
         errno = EBADF;
@@ -734,52 +687,61 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
     ovs_aio_request *request;
     try
     {
-        request = new ovs_aio_request;
-        request->ovs_aiocbp = ovs_aiocbp;
-        request->completion = completion;
-        request->_op = op;
+        request = new ovs_aio_request(op,
+                                      ovs_aiocbp,
+                                      completion);
     }
-    catch (std::bad_alloc&)
+    catch (const std::bad_alloc&)
     {
+        ovs_submit_aio_request_tracepoint_exit(op,
+                                               ctx,
+                                               ovs_aiocbp,
+                                               completion,
+                                               -1,
+                                               ENOMEM);
         errno = ENOMEM;
         return -1;
     }
 
-    pthread_cond_init(&request->_cond, NULL);
-    pthread_mutex_init(&request->_mutex, NULL);
-    request->_on_suspend = false;
-    request->_canceled = false;
-    request->_completed = false;
-    request->_signaled = false;
-    request->_rv = 0;
-    ovs_aiocbp->request_ = request;
     switch (op)
     {
     case RequestOp::Read:
-        /* on error returns -1 */
-        ret = ctx->shm_client_->send_read_request(ovs_aiocbp->aio_buf,
-                                                  ovs_aiocbp->aio_nbytes,
-                                                  ovs_aiocbp->aio_offset,
-                                                  reinterpret_cast<void*>(request));
+    {
+        /* on error returns -1, errno is already set */
+        r = ctx->send_read_request(ovs_aiocbp,
+                                   request);
+    }
         break;
     case RequestOp::Write:
+    {
+        /* on error returns -1, errno is already set */
+        r = ctx->send_write_request(ovs_aiocbp,
+                                    request);
+    }
+        break;
     case RequestOp::Flush:
     case RequestOp::AsyncFlush:
-        /* on error returns -1 */
-        ret = ctx->shm_client_->send_write_request(ovs_aiocbp->aio_buf,
-                                                   ovs_aiocbp->aio_nbytes,
-                                                   ovs_aiocbp->aio_offset,
-                                                   reinterpret_cast<void*>(request));
+    {
+        r = ctx->send_flush_request(request);
+    }
         break;
     default:
-        ret = -1;
+        errno = EINVAL; r = -1;
+        break;
     }
-    if (ret < 0)
+    if (r < 0)
     {
         delete request;
-        errno = EIO;
     }
-    return ret;
+    int saved_errno = errno;
+    ovs_submit_aio_request_tracepoint_exit(op,
+                                           ctx,
+                                           ovs_aiocbp,
+                                           completion,
+                                           r,
+                                           saved_errno);
+    errno = saved_errno;
+    return r;
 }
 
 int
@@ -788,7 +750,7 @@ ovs_aio_read(ovs_ctx_t *ctx,
 {
     return _ovs_submit_aio_request(ctx,
                                    ovs_aiocbp,
-                                   NULL,
+                                   nullptr,
                                    RequestOp::Read);
 }
 
@@ -798,37 +760,54 @@ ovs_aio_write(ovs_ctx_t *ctx,
 {
     return _ovs_submit_aio_request(ctx,
                                    ovs_aiocbp,
-                                   NULL,
+                                   nullptr,
                                    RequestOp::Write);
 }
 
 int
 ovs_aio_error(ovs_ctx_t *ctx,
-              const struct ovs_aiocb *ovs_aiocbp)
+              struct ovs_aiocb *ovs_aiocbp)
 {
+    int r = 0;
+
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_aio_error_enter,
+               ctx,
+               ovs_aiocbp);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_aio_error_exit,
+                                          ctx,
+                                          ovs_aiocbp,
+                                          r,
+                                          errno);
+                }));
+
     if (ctx == NULL || ovs_aiocbp == NULL)
     {
         errno = EINVAL;
-        return -1;
+        return (r = -1);
     }
 
     if (ovs_aiocbp->request_->_canceled)
     {
-        return ECANCELED;
+        return (r = ECANCELED);
     }
 
     if (not ovs_aiocbp->request_->_completed)
     {
-        return EINPROGRESS;
+        return (r = EINPROGRESS);
     }
 
     if (ovs_aiocbp->request_->_failed)
     {
-        return ovs_aiocbp->request_->_errno;
+        return (r = ovs_aiocbp->request_->_errno);
     }
     else
     {
-        return 0;
+        return r;
     }
 }
 
@@ -836,70 +815,58 @@ ssize_t
 ovs_aio_return(ovs_ctx_t *ctx,
                struct ovs_aiocb *ovs_aiocbp)
 {
-    int ret;
+    int r;
+
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_aio_return_enter,
+               ctx,
+               ovs_aiocbp);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_aio_return_exit,
+                                          ctx,
+                                          ovs_aiocbp,
+                                          r,
+                                          errno);
+                }));
+
     if (ctx == NULL || ovs_aiocbp == NULL)
     {
         errno = EINVAL;
-        return -1;
+        return (r = -1);
     }
 
     errno = ovs_aiocbp->request_->_errno;
     if (not ovs_aiocbp->request_->_failed)
     {
-        ret = ovs_aiocbp->request_->_rv;
+        r = ovs_aiocbp->request_->_rv;
     }
     else
     {
-        errno = ovs_aiocbp->request_->_errno;
-        ret = -1;
+        //errno = ovs_aiocbp->request_->_errno;
+        r = -1;
     }
-    return ret;
+    return r;
 }
 
 int
 ovs_aio_finish(ovs_ctx_t *ctx,
                struct ovs_aiocb *ovs_aiocbp)
 {
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_aio_finish,
+               ctx,
+               ovs_aiocbp);
+
     if (ctx == NULL || ovs_aiocbp == NULL)
     {
         errno = EINVAL;
         return -1;
     }
-
-    pthread_cond_destroy(&ovs_aiocbp->request_->_cond);
-    pthread_mutex_destroy(&ovs_aiocbp->request_->_mutex);
     delete ovs_aiocbp->request_;
     return 0;
-}
-
-static int
-ovs_aio_suspend_on_aiocb(struct ovs_aiocb *aiocbp,
-                      const struct timespec *timeout)
-{
-    int ret = 0;
-    if (__sync_bool_compare_and_swap(&aiocbp->request_->_on_suspend,
-                                     false,
-                                     true,
-                                     __ATOMIC_RELAXED))
-    {
-        pthread_mutex_lock(&aiocbp->request_->_mutex);
-        while (not aiocbp->request_->_signaled)
-        {
-            if (timeout)
-            {
-                ret = pthread_cond_timedwait(&aiocbp->request_->_cond,
-                                             &aiocbp->request_->_mutex,
-                                             timeout);
-            }
-            else
-            {
-                ret = pthread_cond_wait(&aiocbp->request_->_cond,
-                                        &aiocbp->request_->_mutex);
-            }
-        }
-        pthread_mutex_unlock(&aiocbp->request_->_mutex);
-    }
-    return ret;
 }
 
 int
@@ -907,12 +874,58 @@ ovs_aio_suspend(ovs_ctx_t *ctx,
                 ovs_aiocb *ovs_aiocbp,
                 const struct timespec *timeout)
 {
+    int r = 0;
+
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_aio_suspend_enter,
+               ctx,
+               ovs_aiocbp,
+               timeout);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_aio_suspend_exit,
+                                          ctx,
+                                          ovs_aiocbp,
+                                          timeout,
+                                          r,
+                                          errno);
+                }));
+
     if (ctx == NULL || ovs_aiocbp == NULL)
     {
         errno = EINVAL;
-        return -1;
+        return (r = -1);
     }
-    return ovs_aio_suspend_on_aiocb(ovs_aiocbp, timeout);
+    if (__sync_bool_compare_and_swap(&ovs_aiocbp->request_->_on_suspend,
+                                     false,
+                                     true,
+                                     __ATOMIC_RELAXED))
+    {
+        pthread_mutex_lock(&ovs_aiocbp->request_->_mutex);
+        while (not ovs_aiocbp->request_->_signaled && r == 0)
+        {
+            if (timeout)
+            {
+                r = pthread_cond_timedwait(&ovs_aiocbp->request_->_cond,
+                                           &ovs_aiocbp->request_->_mutex,
+                                           timeout);
+            }
+            else
+            {
+                r = pthread_cond_wait(&ovs_aiocbp->request_->_cond,
+                                      &ovs_aiocbp->request_->_mutex);
+            }
+        }
+        pthread_mutex_unlock(&ovs_aiocbp->request_->_mutex);
+    }
+    if (r == ETIMEDOUT)
+    {
+        r = -1;
+        errno = EAGAIN;
+    }
+    return r;
 }
 
 int
@@ -927,17 +940,22 @@ ovs_buffer_t*
 ovs_allocate(ovs_ctx_t *ctx,
              size_t size)
 {
-    ovs_buffer_t *buf = ctx->cache_->allocate(size);
-    if (!buf)
-    {
-        errno = ENOMEM;
-    }
+    ovs_buffer_t *buf = ctx->allocate(size);
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_allocate,
+               ctx,
+               reinterpret_cast<uintptr_t>(buf),
+               size);
     return buf;
 }
 
 void*
 ovs_buffer_data(ovs_buffer_t *ptr)
 {
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_buffer_data,
+               reinterpret_cast<uintptr_t>(ptr));
+
     if (likely(ptr != NULL))
     {
         return ptr->buf;
@@ -952,6 +970,10 @@ ovs_buffer_data(ovs_buffer_t *ptr)
 size_t
 ovs_buffer_size(ovs_buffer_t *ptr)
 {
+   tracepoint(openvstorage_libovsvolumedriver,
+              ovs_buffer_size,
+              reinterpret_cast<uintptr_t>(ptr));
+
     if (likely(ptr != NULL))
     {
         return ptr->size;
@@ -967,18 +989,30 @@ int
 ovs_deallocate(ovs_ctx_t *ctx,
                ovs_buffer_t *ptr)
 {
-    int ret = ctx->cache_->deallocate(ptr);
-    if (ret < 0)
-    {
-        errno = EFAULT;
-    }
-    return ret;
+    int r = ctx->deallocate(ptr);
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_deallocate,
+               ctx,
+               reinterpret_cast<uintptr_t>(ptr),
+               r);
+    return r;
 }
 
 ovs_completion_t*
 ovs_aio_create_completion(ovs_callback_t complete_cb,
                           void *arg)
 {
+    ovs_completion_t *completion = NULL;
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    tracepoint(openvstorage_libovsvolumedriver,
+                               ovs_aio_create_completion,
+                               complete_cb,
+                               arg,
+                               completion);
+                }));
+
     if (complete_cb == NULL)
     {
         errno = EINVAL;
@@ -986,7 +1020,7 @@ ovs_aio_create_completion(ovs_callback_t complete_cb,
     }
     try
     {
-        ovs_completion_t *completion = new ovs_completion_t;
+        completion = new ovs_completion_t;
         completion->complete_cb = complete_cb;
         completion->cb_arg = arg;
         completion->_calling = false;
@@ -1007,6 +1041,10 @@ ovs_aio_create_completion(ovs_callback_t complete_cb,
 ssize_t
 ovs_aio_return_completion(ovs_completion_t *completion)
 {
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_aio_return_completion,
+               completion);
+
     if (completion == NULL)
     {
         errno = EINVAL;
@@ -1035,11 +1073,27 @@ int
 ovs_aio_wait_completion(ovs_completion_t *completion,
                         const struct timespec *timeout)
 {
-    int ret = 0;
+    int r = 0;
+
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_aio_wait_completion_enter,
+               completion,
+               timeout);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_aio_wait_completion_exit,
+                                          completion,
+                                          timeout,
+                                          r,
+                                          errno);
+                }));
+
     if (completion == NULL)
     {
         errno = EINVAL;
-        return -1;
+        return (r = -1);
     }
 
     if (__sync_bool_compare_and_swap(&completion->_on_wait,
@@ -1048,28 +1102,37 @@ ovs_aio_wait_completion(ovs_completion_t *completion,
                                      __ATOMIC_RELAXED))
     {
         pthread_mutex_lock(&completion->_mutex);
-        while (not completion->_signaled)
+        while (not completion->_signaled && r == 0)
         {
             if (timeout)
             {
-                ret = pthread_cond_timedwait(&completion->_cond,
-                                             &completion->_mutex,
-                                             timeout);
+                r = pthread_cond_timedwait(&completion->_cond,
+                                           &completion->_mutex,
+                                           timeout);
             }
             else
             {
-                ret = pthread_cond_wait(&completion->_cond,
-                                        &completion->_mutex);
+                r = pthread_cond_wait(&completion->_cond,
+                                      &completion->_mutex);
             }
         }
         pthread_mutex_unlock(&completion->_mutex);
     }
-    return ret;
+    if (r == ETIMEDOUT)
+    {
+        r = -1;
+        errno = EAGAIN;
+    }
+    return r;
 }
 
 int
 ovs_aio_signal_completion(ovs_completion_t *completion)
 {
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_aio_signal_completion,
+               completion);
+
     if (completion == NULL)
     {
         errno = EINVAL;
@@ -1091,6 +1154,10 @@ ovs_aio_signal_completion(ovs_completion_t *completion)
 int
 ovs_aio_release_completion(ovs_completion_t *completion)
 {
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_aio_release_completion,
+               completion);
+
     if (completion == NULL)
     {
         errno = EINVAL;
@@ -1106,7 +1173,6 @@ int
 ovs_aio_readcb(ovs_ctx_t *ctx,
                struct ovs_aiocb *ovs_aiocbp,
                ovs_completion_t *completion)
-
 {
     return _ovs_submit_aio_request(ctx,
                                    ovs_aiocbp,
@@ -1118,7 +1184,6 @@ int
 ovs_aio_writecb(ovs_ctx_t *ctx,
                 struct ovs_aiocb *ovs_aiocbp,
                 ovs_completion_t *completion)
-
 {
     return _ovs_submit_aio_request(ctx,
                                    ovs_aiocbp,
@@ -1130,8 +1195,17 @@ int
 ovs_aio_flushcb(ovs_ctx_t *ctx,
                 ovs_completion_t *completion)
 {
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_aio_flushcb_enter,
+               ctx);
+
     if (ctx == NULL)
     {
+        tracepoint(openvstorage_libovsvolumedriver,
+                   ovs_aio_flushcb_exit,
+                   ctx,
+                   -1,
+                   EINVAL);
         errno = EINVAL;
         return -1;
     }
@@ -1139,6 +1213,11 @@ ovs_aio_flushcb(ovs_ctx_t *ctx,
     ovs_aiocb *aio = new ovs_aiocb;
     if (aio == NULL)
     {
+        tracepoint(openvstorage_libovsvolumedriver,
+                   ovs_aio_flushcb_exit,
+                   ctx,
+                   -1,
+                   ENOMEM);
         errno = ENOMEM;
         return -1;
     }
@@ -1146,10 +1225,15 @@ ovs_aio_flushcb(ovs_ctx_t *ctx,
     aio->aio_offset = 0;
     aio->aio_buf = NULL;
 
-    return _ovs_submit_aio_request(ctx,
-                                   aio,
-                                   completion,
-                                   RequestOp::AsyncFlush);
+    int r = _ovs_submit_aio_request(ctx,
+                                    aio,
+                                    completion,
+                                    RequestOp::AsyncFlush);
+    if (r < 0)
+    {
+        delete aio;
+    }
+    return r;
 }
 
 ssize_t
@@ -1158,29 +1242,52 @@ ovs_read(ovs_ctx_t *ctx,
          size_t nbytes,
          off_t offset)
 {
-    ssize_t ret;
+    ssize_t r;
     struct ovs_aiocb aio;
     aio.aio_buf = buf;
     aio.aio_nbytes = nbytes;
     aio.aio_offset = offset;
 
-    if ((ret = ovs_aio_read(ctx, &aio)) < 0)
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_read_enter,
+               ctx,
+               buf,
+               nbytes,
+               offset);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_read_exit,
+                                          ctx,
+                                          buf,
+                                          r,
+                                          errno);
+                }));
+
+    if (ctx == NULL)
     {
-        return ret;
+        errno = EINVAL;
+        return (r = -1);
     }
 
-    if ((ret = ovs_aio_suspend(ctx, &aio, NULL)) < 0)
+    if ((r = ovs_aio_read(ctx, &aio)) < 0)
     {
-        return ret;
+        return r;
     }
 
-    ret = ovs_aio_return(ctx, &aio);
+    if ((r = ovs_aio_suspend(ctx, &aio, NULL)) < 0)
+    {
+        (void) ovs_aio_finish(ctx, &aio);
+        return r;
+    }
+
+    r = ovs_aio_return(ctx, &aio);
     if (ovs_aio_finish(ctx, &aio) < 0)
     {
-        return -1;
+        r = -1;
     }
-
-    return ret;
+    return r;
 }
 
 ssize_t
@@ -1189,49 +1296,101 @@ ovs_write(ovs_ctx_t *ctx,
           size_t nbytes,
           off_t offset)
 {
-    ssize_t ret;
+    ssize_t r;
     struct ovs_aiocb aio;
     aio.aio_buf = const_cast<void*>(buf);
     aio.aio_nbytes = nbytes;
     aio.aio_offset = offset;
 
-    if ((ret = ovs_aio_write(ctx, &aio)) < 0)
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_write_enter,
+               ctx,
+               buf,
+               nbytes,
+               offset);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_write_exit,
+                                          ctx,
+                                          buf,
+                                          r,
+                                          errno);
+                }));
+
+    if (ctx == NULL)
     {
-        return ret;
+        errno = EINVAL;
+        return (r = -1);
     }
 
-    if ((ret = ovs_aio_suspend(ctx, &aio, NULL)) < 0)
+    if ((r = ovs_aio_write(ctx, &aio)) < 0)
     {
-        return ret;
+        return r;
     }
 
-    ret = ovs_aio_return(ctx, &aio);
+    if ((r = ovs_aio_suspend(ctx, &aio, NULL)) < 0)
+    {
+        (void) ovs_aio_finish(ctx, &aio);
+        return r;
+    }
+
+    r = ovs_aio_return(ctx, &aio);
     if (ovs_aio_finish(ctx, &aio) < 0)
     {
-        return -1;
+        r = -1;
     }
-    return ret;
+    return r;
 }
 
 int
 ovs_stat(ovs_ctx_t *ctx, struct stat *st)
 {
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_stat_enter,
+               ctx,
+               st);
+
     if (ctx == NULL || st == NULL)
     {
         errno = EINVAL;
         return -1;
     }
-    return ctx->shm_client_->stat(st);
+
+    int r = ctx->stat_volume(st);
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_stat_exit,
+               ctx,
+               st,
+               r,
+               st->st_blksize,
+               st->st_size);
+    return r;
 }
 
 int
 ovs_flush(ovs_ctx_t *ctx)
 {
-    int ret = 0;
+    int r = 0;
+
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_flush_enter,
+               ctx);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_flush_exit,
+                                          ctx,
+                                          r,
+                                          errno);
+                }));
+
     if (ctx == NULL)
     {
         errno = EINVAL;
-        return -1;
+        return (r = -1);
     }
 
     struct ovs_aiocb aio;
@@ -1239,23 +1398,24 @@ ovs_flush(ovs_ctx_t *ctx)
     aio.aio_offset = 0;
     aio.aio_buf = NULL;
 
-    if ((ret = _ovs_submit_aio_request(ctx,
-                                       &aio,
-                                       NULL,
-                                       RequestOp::Flush)) < 0)
+    if ((r = _ovs_submit_aio_request(ctx,
+                                     &aio,
+                                     nullptr,
+                                     RequestOp::Flush)) < 0)
     {
-        return ret;
+        return r;
     }
 
-    if ((ret = ovs_aio_suspend(ctx, &aio, NULL)) < 0)
+    if ((r = ovs_aio_suspend(ctx, &aio, NULL)) < 0)
     {
-        return ret;
+        (void) ovs_aio_finish(ctx, &aio);
+        return r;
     }
 
-    ret = ovs_aio_return(ctx, &aio);
+    r = ovs_aio_return(ctx, &aio);
     if (ovs_aio_finish(ctx, &aio) < 0)
     {
-        return -1;
+        r = -1;
     }
-    return ret;
+    return r;
 }

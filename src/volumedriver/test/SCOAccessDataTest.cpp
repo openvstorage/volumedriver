@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include <sstream>
 
@@ -52,7 +53,7 @@ public:
 
         // const backend::Namespace nspace;
 
-        Volume* v = newVolume(volname,
+        SharedVolumePtr v = newVolume(volname,
                               nspace);
 
         std::unique_ptr<SCOAccessData> sad(makeSCOAccessData(*v));
@@ -80,7 +81,7 @@ public:
 
         const backend::Namespace& nspace = ns_ptr->ns();
 
-        Volume* v = newVolume(volname,
+        SharedVolumePtr v = newVolume(volname,
                               nspace);
 
         BackendInterfacePtr bi(v->getBackendInterface()->cloneWithNewNamespace(nspace));
@@ -110,7 +111,7 @@ public:
 
         // const backend::Namespace nspace;
 
-        Volume* v = newVolume(volname,
+        SharedVolumePtr v = newVolume(volname,
                               nspace);
 
         BackendInterfacePtr bi(v->getBackendInterface()->cloneWithNewNamespace(nspace));
@@ -140,7 +141,7 @@ TEST_P(SCOAccessDataTest, test1)
 
     const backend::Namespace& nspace = ns_ptr->ns();
 
-    Volume* v1 = newVolume(volname,
+    SharedVolumePtr v1 = newVolume(volname,
                            nspace);
 
     SCOAccessDataPersistor sadp(v1->getBackendInterface()->cloneWithNewNamespace(nspace));
@@ -189,7 +190,7 @@ TEST_P(SCOAccessDataTest, DISABLED_CreateOne)
 
     // const backend::Namespace nspace;
 
-    Volume* v1 = newVolume(volname,
+    SharedVolumePtr v1 = newVolume(volname,
                            nspace);
 
 
@@ -239,7 +240,7 @@ TEST_P(SCOAccessDataTest, InAndOut)
 
     const backend::Namespace& nspace = ns_ptr->ns();
 
-    Volume* v = newVolume(volname,
+    SharedVolumePtr v = newVolume(volname,
                           nspace);
 
     const size_t size = 1024;
@@ -335,7 +336,7 @@ TEST_P(SCOAccessDataTest, CruelAndUnusualPunishment)
 
     const backend::Namespace& nspace = ns_ptr->ns();
 
-    Volume* v1 = newVolume(volname,
+    SharedVolumePtr v1 = newVolume(volname,
                            nspace);
 
     std::unique_ptr<SCOAccessData> test(makeSCOAccessData(*v1));

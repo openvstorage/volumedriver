@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "FailOverCacheTestSetup.h"
 
@@ -22,6 +23,7 @@
 namespace volumedrivertest
 {
 
+namespace be = backend;
 namespace fs = boost::filesystem;
 namespace vd = volumedriver;
 
@@ -30,13 +32,20 @@ using namespace std::literals::string_literals;
 namespace
 {
 
-fs::path
-make_directory(const fs::path& path, uint16_t port)
+boost::optional<fs::path>
+make_directory(const boost::optional<fs::path>& path,
+               uint16_t port)
 {
-    const fs::path p(path.string() + "-"s + boost::lexical_cast<std::string>(port));
-    fs::create_directories(p);
-
-    return p;
+    if (path)
+    {
+        const fs::path p(path->string() + "-"s + boost::lexical_cast<std::string>(port));
+        fs::create_directories(p);
+        return p;
+    }
+    else
+    {
+        return path;
+    }
 }
 
 }
@@ -71,6 +80,12 @@ FailOverCacheTestContext::config(const vd::FailOverCacheMode mode) const
                                    mode);
 }
 
+std::shared_ptr<failovercache::Backend>
+FailOverCacheTestContext::backend(const be::Namespace& nspace)
+{
+    return acceptor_.find_backend_(nspace.str());
+}
+
 std::string
 FailOverCacheTestSetup::addr_("127.0.0.1");
 
@@ -81,17 +96,23 @@ FailOverCacheTestSetup::port_base_ =
 vd::FailOverCacheTransport
 FailOverCacheTestSetup::transport_(vd::FailOverCacheTransport::TCP);
 
-FailOverCacheTestSetup::FailOverCacheTestSetup(const fs::path& p)
+FailOverCacheTestSetup::FailOverCacheTestSetup(const boost::optional<fs::path>& p)
         : path(p)
 {
-    fs::create_directories(path);
+    if (path)
+    {
+        fs::create_directories(*path);
+    }
     LOG_INFO("path " << path << ", port base " << port_base_);
 }
 
 FailOverCacheTestSetup::~FailOverCacheTestSetup()
 {
     EXPECT_TRUE(ports_.empty()) << "there are still ports in use - prepare to crash";
-    EXPECT_NO_THROW(fs::remove_all(path));
+    if (path)
+    {
+        EXPECT_NO_THROW(fs::remove_all(*path));
+    }
 }
 
 uint16_t

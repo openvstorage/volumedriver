@@ -1,0 +1,17 @@
+Source: volumedriver-pitreplication
+Section: unknown
+Priority: extra
+Maintainer: volumedriverteam@openvstorage.com
+Build-Depends: debhelper (>= 7.0.0)
+Standards-Version: 3.9.2
+Homepage: www.openvstorage.com
+
+Package: volumedriver-no-dedup-pitreplication
+Architecture: any
+Depends: ${shlibs:Depends}
+Pre-Depends: volumedriver-no-dedup-base (>= 3.5.0)
+Conflicts: volumedriver-no-dedup-pitreplication (<< 3.5.0), volumedriver-pitreplication
+Replaces: volumedriver-pitreplication
+Description: binaries for PIT replication
+ This package contains binaries for Point In Time (PIT)
+ replication of VolumeDriver volumes.

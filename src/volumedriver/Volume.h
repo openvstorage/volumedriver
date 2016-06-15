@@ -1,23 +1,23 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef VOLUME_H_
 #define VOLUME_H_
 
 #include "BackendTasks.h"
 #include "ClusterCacheHandle.h"
-#include "FailOverCacheBridgeFactory.h"
 #include "FailOverCacheConfigWrapper.h"
 #include "FailOverCacheProxy.h"
 #include "NSIDMap.h"
@@ -41,6 +41,7 @@
 #include <set>
 
 #include <boost/circular_buffer.hpp>
+#include <boost/thread/mutex.hpp>
 #include <boost/utility.hpp>
 
 #include <youtils/Logging.h>
@@ -92,8 +93,6 @@ class Volume
     friend class VolManagerTestSetup;
     friend class ErrorHandlingTest;
     friend class ::volumedrivertest::MetaDataStoreTest;
-    friend class FailOverCacheAsyncBridge;
-    friend class FailOverCacheSyncBridge;
     friend void backend_task::WriteTLog::run(int);
 
 public:
@@ -406,7 +405,7 @@ public:
     isSyncedToBackendUpTo(const TLogId&) const;
 
     void
-    setFOCTimeout(uint32_t timeout);
+    setFOCTimeout(const boost::chrono::seconds);
 
     bool
     checkConsistency();
@@ -528,8 +527,10 @@ private:
     setVolumeFailOverState(VolumeFailOverState);
 
     // LOCKING:
-    // - rwlock allows concurrent reads / one write
+    // - rwlock allows concurrent reads / writes (R) vs. snapshotting etc (W)
     // - write_lock_ is required to prevent write throttling from delaying reads,
+    //   which together with the write_lock_ boils down to a single write / multiple reads
+    //   for the moment.
     // -> lock order: write_lock_ before rwlock
     typedef boost::mutex lock_type;
     mutable lock_type write_lock_;
@@ -539,6 +540,11 @@ private:
         return x % y ?  (x / y + 1) * y : x;
     }
 
+    // youtils_test, RWLockTest shows that the fungi::RWLock prefers readers and
+    // offers performance benefits in the absence of writers. Since the rwlock is
+    // now only taken in exclusive mode by management actions, this behaviour is
+    // desirable (vs. boost's shared mutex which is fair towards writers but
+    // does not perform as well in the absence of writers).
     mutable fungi::RWLock rwlock_;
 
     bool halted_;
@@ -721,7 +727,29 @@ private:
 
     TLogId
     scheduleBackendSync_();
+
+    void
+    init_failover_cache_();
+
+    void
+    add_to_cluster_cache_(const ClusterCacheMode,
+                          const ClusterAddress,
+                          const youtils::Weed&,
+                          const uint8_t*);
+
+    void
+    purge_from_cluster_cache_(const ClusterAddress,
+                              const youtils::Weed&);
+
+    bool
+    find_in_cluster_cache_(const ClusterCacheMode,
+                           const ClusterAddress,
+                           const youtils::Weed&,
+                           uint8_t*);
 };
+
+using SharedVolumePtr = std::shared_ptr<Volume>;
+using WeakVolumePtr = std::weak_ptr<Volume>;
 
 } // namespace volumedriver
 

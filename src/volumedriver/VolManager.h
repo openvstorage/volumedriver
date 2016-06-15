@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef VOLMANAGER_H_
 #define VOLMANAGER_H_
@@ -84,7 +85,7 @@ class VolManager
     : public VolumeDriverComponent
 {
 public:
-    typedef std::map<VolumeId, Volume* > VolumeMap;
+    typedef std::map<VolumeId, SharedVolumePtr> VolumeMap;
 
     VolManager(const VolManager&) = delete;
 
@@ -130,7 +131,7 @@ public:
     restoreSnapshot(const VolumeId& volid,
                     const SnapshotName& snapid);
 
-    Volume*
+    SharedVolumePtr
     backend_restart(const Namespace& ns,
                     const OwnerTag,
                     const PrefetchVolumeData,
@@ -146,14 +147,14 @@ public:
     void
     scheduleTask(VolPoolTask* t);
 
-    Volume*
+    SharedVolumePtr
     createNewVolume(const VanillaVolumeConfigParameters& params,
                     const CreateNamespace = CreateNamespace::F);
 
     WriteOnlyVolume*
     createNewWriteOnlyVolume(const WriteOnlyVolumeConfigParameters& params);
 
-    Volume*
+    SharedVolumePtr
     createClone(const CloneVolumeConfigParameters& params,
                 const PrefetchVolumeData prefetch,
                 const CreateNamespace = CreateNamespace::F);
@@ -166,7 +167,7 @@ public:
                   const ForceVolumeDeletion = ForceVolumeDeletion::F);
 
     void
-    destroyVolume(Volume*,
+    destroyVolume(SharedVolumePtr,
                   const DeleteLocalData = DeleteLocalData::F,
                   const RemoveVolumeCompletely = RemoveVolumeCompletely::F,
                   const DeleteVolumeNamespace = DeleteVolumeNamespace::F,
@@ -267,9 +268,9 @@ public:
     }
 
     fs::path
-    getMetaDataPath(const Volume* v) const
+    getMetaDataPath(const Volume& v) const
     {
-        return fs::path(metadata_path.value()) / v->getNamespace().str();
+        return fs::path(metadata_path.value()) / v.getNamespace().str();
     }
 
     fs::path
@@ -279,15 +280,15 @@ public:
     }
 
     fs::path
-    getMetaDataDBFilePath(const Volume* v) const
+    getMetaDataDBFilePath(const Volume& v) const
     {
         return getMetaDataPath(v) / metaDataDBName();
     }
 
     fs::path
-    getMetaDataPath(const WriteOnlyVolume* v) const
+    getMetaDataPath(const WriteOnlyVolume& v) const
     {
-        return fs::path(metadata_path.value()) / v->getNamespace().str();
+        return fs::path(metadata_path.value()) / v.getNamespace().str();
     }
 
     fs::path
@@ -315,15 +316,15 @@ public:
     }
 
     fs::path
-    getTLogPath(const Volume* v) const
+    getTLogPath(const Volume& v) const
     {
-        return fs::path(tlog_path.value()) / v->getNamespace().str();
+        return fs::path(tlog_path.value()) / v.getNamespace().str();
     }
 
     fs::path
-    getTLogPath(const WriteOnlyVolume* v) const
+    getTLogPath(const WriteOnlyVolume& v) const
     {
-        return fs::path(tlog_path.value()) / v->getNamespace().str();
+        return fs::path(tlog_path.value()) / v.getNamespace().str();
     }
 
     fs::path
@@ -339,7 +340,7 @@ public:
     }
 
     fs::path
-    getSnapshotsPath(const Volume* vol) const
+    getSnapshotsPath(const Volume& vol) const
     {
         return getMetaDataPath(vol)  / snapshotFilename();
     }
@@ -400,14 +401,16 @@ public:
     }
 
     uint64_t
-    volumePotential(const SCOMultiplier,
+    volumePotential(const ClusterSize,
+                    const SCOMultiplier,
                     const boost::optional<TLogMultiplier>&);
 
     uint64_t
     volumePotential(const backend::Namespace& ns);
 
     void
-    checkSCOAndTLogMultipliers(const SCOMultiplier smult_old,
+    checkSCOAndTLogMultipliers(const ClusterSize,
+                               const SCOMultiplier smult_old,
                                const SCOMultiplier smult_new,
                                const boost::optional<TLogMultiplier>& tmult_old,
                                const boost::optional<TLogMultiplier>& tmult_new);
@@ -420,11 +423,11 @@ public:
     setTLogMultiplier(const VolumeId&,
                       const boost::optional<TLogMultiplier>&);
 
-    const Volume*
+    SharedVolumePtr
     findVolumeConst_(const VolumeId& volname,
                      const std::string& message = "Pity: ") const;
 
-    const Volume*
+    SharedVolumePtr
     findVolumeConst_(const Namespace& ns) const;
 
     uint64_t
@@ -465,6 +468,9 @@ public:
 
     ClusterCacheMode
     get_cluster_cache_default_mode() const;
+
+    SCOWrittenToBackendAction
+    get_sco_written_to_backend_action() const;
 
     size_t
     effective_metadata_cache_capacity(const VolumeConfig&) const;
@@ -511,6 +517,7 @@ private:
 private:
     DECLARE_PARAMETER(read_cache_default_behaviour);
     DECLARE_PARAMETER(read_cache_default_mode);
+    DECLARE_PARAMETER(sco_written_to_backend_action);
 
 private:
     DECLARE_PARAMETER(clean_interval);
@@ -520,20 +527,22 @@ private:
     DECLARE_PARAMETER(max_volume_size);
 
 public:
-    DECLARE_PARAMETER(foc_throttle_usecs);
-    DECLARE_PARAMETER(foc_queue_depth);
-    DECLARE_PARAMETER(foc_write_trigger);
+    DECLARE_PARAMETER(dtl_throttle_usecs);
+    DECLARE_PARAMETER(dtl_queue_depth);
+    DECLARE_PARAMETER(dtl_write_trigger);
 
     DECLARE_PARAMETER(number_of_scos_in_tlog);
     DECLARE_PARAMETER(non_disposable_scos_factor);
+    DECLARE_PARAMETER(default_cluster_size);
     DECLARE_PARAMETER(metadata_cache_capacity);
     DECLARE_PARAMETER(debug_metadata_path);
     DECLARE_PARAMETER(arakoon_metadata_sequence_size);
     DECLARE_PARAMETER(allow_inconsistent_partial_reads);
+    DECLARE_PARAMETER(volume_nullio);
 
 private:
         /** @locking mgmtMutex_ must be locked */
-    Volume*
+    SharedVolumePtr
     findVolume_noThrow_(const VolumeId&) const;
 
     void
@@ -554,7 +563,7 @@ private:
     void
     ensureNamespaceNotRestarting(const Namespace&) const;
 
-    Volume*
+    SharedVolumePtr
     local_restart(const Namespace& ns,
                   const OwnerTag,
                   const FallBackToBackendRestart,
@@ -588,14 +597,14 @@ private:
     setNamespaceRestarting_(const Namespace& ns, const VolumeConfig& config);
 
     template<typename V>
-    V*
-    with_restart_map_and_unlocked_mgmt_(const std::function<V*(const Namespace& ns,
-                                                               const VolumeConfig& cfg)>&,
+    V
+    with_restart_map_and_unlocked_mgmt_(const std::function<V(const Namespace& ns,
+                                                              const VolumeConfig& cfg)>&,
                                         const Namespace& ns,
                                         const VolumeConfig& cfg);
 
-    Volume*
-    with_restart_map_and_unlocked_mgmt_vol_(const std::function<Volume*(const Namespace& ns,
+    SharedVolumePtr
+    with_restart_map_and_unlocked_mgmt_vol_(const std::function<SharedVolumePtr(const Namespace& ns,
                                                                   const VolumeConfig& cfg)>&,
                                             const Namespace& ns,
                                             const VolumeConfig& cfg);
@@ -619,14 +628,14 @@ private:
     checkConfig(const boost::property_tree::ptree&,
                 ConfigurationReport&) const override;
 
-    Volume*
+    SharedVolumePtr
     findVolume_(const VolumeId& volname,
                 const std::string& message = "Pity: ");
 
-    Volume*
+    SharedVolumePtr
     findVolume_(const Namespace& ns);
 
-    Volume*
+    SharedVolumePtr
     findVolumeFromNamespace(const Namespace& i_namespace) const;
 
     uint64_t
@@ -636,7 +645,8 @@ private:
     getSCOCacheCapacityWithoutThrottling();
 
     uint64_t
-    volumePotentialSCOCache(const SCOMultiplier,
+    volumePotentialSCOCache(const ClusterSize,
+                            const SCOMultiplier,
                             const boost::optional<TLogMultiplier>&);
 
     uint64_t

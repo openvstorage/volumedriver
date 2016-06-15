@@ -1,0 +1,27 @@
+Summary: Volumedriver PIT replication
+Name: volumedriver-no-dedup-pitreplication
+Version: @VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@.@VD_EXTRA_VERSION@
+Release: 1
+License: Copyright (C) 2013 iNuron NV, Licensed under the GNU AGPLv3
+Requires: volumedriver-no-dedup-base = @VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@.@VD_EXTRA_VERSION@-1
+Conflicts: volumedriver-pitreplication
+URL: http://www.openvstorage.com
+
+%description
+Binaries for PIT replication. This package contains binaries for Point In Time (PIT) replication of VolumeDriver volumes.
+
+%changelog
+* Thu Oct 03 2014 Kenneth Henderick <kenneth.henderick@openvstorage.com> - @VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@.@VD_EXTRA_VERSION@-1
+- Create RPM packages
+
+%global __spec_install_pre %{___build_pre}
+%define _unpackaged_files_terminate_build 0
+%debug_package
+
+%install
+# nothing to do, but needed for debug package info
+
+%files
+/usr/bin/backup_volumedriver
+/usr/bin/restore_volumedriver
+/etc/volumedriver/backupConfigTemplate.json

@@ -1,19 +1,21 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef FAILOVERCACHEPROTOCOL_H
 #define FAILOVERCACHEPROTOCOL_H
+
 #include "fungilib/Protocol.h"
 #include "fungilib/Socket.h"
 #include "fungilib/SocketServer.h"
@@ -26,33 +28,46 @@
 namespace failovercache
 {
 class FailOverCacheAcceptor;
-class FailOverCacheWriter;
+class Backend;
 
-class FailOverCacheProtocol : public fungi::Protocol
+class FailOverCacheProtocol
+    : public fungi::Protocol
 {
-    friend class FailOverCacheWriter;
-
 public:
-    FailOverCacheProtocol(fungi::Socket *sock,
+    FailOverCacheProtocol(std::unique_ptr<fungi::Socket> sock,
                           fungi::SocketServer& /*parentServer*/,
                           FailOverCacheAcceptor& fact);
 
-    virtual void start();
-    virtual void run();
-    virtual void stop();
-
-    virtual const char *getName() const { return "FailOverCacheProtocol";};
-
-    DECLARE_LOGGER("FailOverCacheProtocol");
-
     ~FailOverCacheProtocol();
 
+    virtual void
+    start() override final;
+
+    virtual void
+    run() override final;
+
+    void
+    stop();
+
+    virtual const char*
+    getName() const override final
+    {
+        return "FailOverCacheProtocol";
+    };
 
 private:
-    FailOverCacheWriter* cache_;
-    std::auto_ptr<fungi :: Socket> sock_;
-    fungi :: IOBaseStream *stream_;
-    fungi :: Thread *thread_;
+    DECLARE_LOGGER("FailOverCacheProtocol");
+
+    std::shared_ptr<Backend> cache_;
+    std::unique_ptr<fungi::Socket> sock_;
+    fungi::IOBaseStream stream_;
+    fungi::Thread* thread_;
+
+    FailOverCacheAcceptor& fact_;
+    bool use_rs_;
+
+    int pipes_[2];
+    int nfds_;
 
     void
     addEntries_();
@@ -75,7 +90,6 @@ private:
     void
     getSCORange_();
 
-
     void
     Clear_();
 
@@ -88,32 +102,19 @@ private:
     void
     removeUpTo_();
 
-    FailOverCacheAcceptor& fact_;
-    bool use_rs_;
-
-    int pipes_[2];
-    fd_set rfds_;
-    int nfds_;
-
     void
-    processFailOverCacheEntry(volumedriver::ClusterLocation cli,
-                              int64_t lba,
-                              const byte* buf,
-                              int64_t size);
-
-    void
-    processFailOverCacheSCO(volumedriver::ClusterLocation cli,
-                            int64_t lba,
-                            const byte* buf,
-                            int64_t size);
-
-
+    processFailOverCacheEntry_(volumedriver::ClusterLocation cli,
+                               int64_t lba,
+                               const byte* buf,
+                               int64_t size,
+                               bool cork);
 };
+
 }
 
 
 #endif // FAILOVERCACHEPROTOCOL_H
 
 // Local Variables: **
-// compile-command: "scons -D --kernel_version=system --ignore-buildinfo -j 5" **
+// mode: c++ **
 // End: **

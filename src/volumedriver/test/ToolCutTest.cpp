@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "VolManagerTestSetup.h"
 
@@ -29,7 +30,7 @@ TEST_P(ToolCutTest, DISABLED_test1)
 {
     VolumeId vid("volume");
     backend::Namespace ns;
-    Volume* v = newVolume(vid,
+    SharedVolumePtr v = newVolume(vid,
                           ns);
 
     const std::string pattern("immanuel");
@@ -43,16 +44,19 @@ TEST_P(ToolCutTest, DISABLED_test2)
 {
     VolumeId vid("volume");
     backend::Namespace ns;
-    Volume* v = newVolume(vid,
+    SharedVolumePtr v = newVolume(vid,
                           ns);
 
-    createSnapshot(v,"snapshot");
-    waitForThisBackendWrite(v);
+    const SnapshotName snapshot("snapshot");
+    createSnapshot(*v,
+                   snapshot);
 
-    Volume* c = createClone("clone",
+    waitForThisBackendWrite(*v);
+
+    SharedVolumePtr c = createClone("clone",
                             backend::Namespace(),
                             ns,
-                            "snapshot");
+                            snapshot);
 
     const std::string pattern("immanuel");
     sleep(1000);
@@ -70,16 +74,16 @@ TEST_P(ToolCutTest, DISABLED_toolcut_create_volume)
 {
     backend::Namespace ns1;
 
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns1);
 
-    writeToVolume(v, 0, 4096,"immanuel");
+    writeToVolume(*v, 0, 4096,"immanuel");
 
     const SnapshotName snap1("snap1");
 
     v->createSnapshot(snap1);
 
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
     sleep(100000);
 
 }

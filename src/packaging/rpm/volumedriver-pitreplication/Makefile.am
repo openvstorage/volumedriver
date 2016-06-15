@@ -1,6 +1,10 @@
 AC_LOCAL_AMFLAGS = -I ../../../m4
 
+if USE_MD5_HASH
 BASE_NAME=volumedriver-pitreplication
+else
+BASE_NAME=volumedriver-no-dedup-pitreplication
+endif
 
 RPM_LOCATION = $(prefix)/rpm
 ARTEFACT = ../$(BASE_NAME)_@VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@.@VD_EXTRA_VERSION@-1.rpm

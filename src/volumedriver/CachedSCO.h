@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef CACHED_SCO_H_
 #define CACHED_SCO_H_
@@ -19,16 +20,12 @@
 #include "Types.h"
 
 #include <boost/filesystem.hpp>
-#include <boost/interprocess/detail/atomic.hpp>
 #include <boost/intrusive/set.hpp>
+
 #include <youtils/FileDescriptor.h>
-#include <youtils/SpinLock.h>
 
 namespace volumedriver
 {
-
-namespace bi = boost::intrusive;
-using youtils::FDMode;
 
 class SCOCacheMountPoint;
 class SCOCacheNamespace;
@@ -37,7 +34,7 @@ class SCOCacheNamespace;
 typedef boost::intrusive_ptr<SCOCacheMountPoint> SCOCacheMountPointPtr;
 
 class CachedSCO
-    : public bi::set_base_hook<bi::link_mode<bi::auto_unlink> >
+    : public boost::intrusive::set_base_hook<boost::intrusive::link_mode<boost::intrusive::auto_unlink> >
 {
     friend class SCOCacheMountPoint;
     friend class CachedSCOTest;
@@ -71,7 +68,7 @@ public:
     setXVal(float);
 
     OpenSCOPtr
-    open(FDMode mode);
+    open(youtils::FDMode mode);
 
     void
     incRefCount(uint32_t num);
@@ -82,13 +79,13 @@ public:
     void
     remove();
 
-    const fs::path&
+    const boost::filesystem::path&
     path() const;
 
 private:
     DECLARE_LOGGER("CachedSCO");
 
-    const fs::path path_;
+    const boost::filesystem::path path_;
     SCOCacheNamespace* const nspace_;
     SCO scoName_;
     SCOCacheMountPointPtr mntPoint_;
@@ -96,7 +93,7 @@ private:
     float xVal_;
     bool disposable_;
     bool unlink_on_destruction_;
-    volatile boost::uint32_t refcnt_;
+    std::atomic<uint32_t> refcnt_;
 
     // protect the following four from being called arbitrarily in the code:
     //
@@ -104,7 +101,7 @@ private:
     CachedSCO(SCOCacheNamespace* nspace,
               SCO scoName,
               SCOCacheMountPointPtr mntPoint,
-              const fs::path& path);
+              const boost::filesystem::path& path);
 
     // - create a new SCO, only allowed from SCOCacheMountPoint
     CachedSCO(SCOCacheNamespace* nspace,

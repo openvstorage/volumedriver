@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "MDSTestSetup.h"
 #include "VolManagerTestSetup.h"
@@ -29,6 +30,7 @@
 #include "../Api.h"
 #include "../CachedMetaDataPage.h"
 #include "../CachedMetaDataStore.h"
+#include "../CombinedTLogReader.h"
 #include "../MDSMetaDataBackend.h"
 #include "../MetaDataBackendConfig.h"
 #include "../metadata-server/ClientNG.h"
@@ -37,7 +39,6 @@
 #include "../ScrubberAdapter.h"
 #include "../ScrubReply.h"
 #include "../ScrubWork.h"
-#include "../TLogReaderUtils.h"
 
 namespace volumedrivertest
 {
@@ -122,7 +123,7 @@ protected:
     {
         const VolumeSize vsize(CachePage::capacity() *
                                10 *
-                               VolumeConfig::default_cluster_size());
+                               default_cluster_size());
 
         return VanillaVolumeConfigParameters(VolumeId(wrns.ns().str()),
                                              wrns.ns(),
@@ -132,7 +133,7 @@ protected:
             .metadata_cache_capacity(1);
     }
 
-    Volume*
+    SharedVolumePtr
     make_volume(const be::BackendTestSetup::WithRandomNamespace& wrns)
     {
         return newVolume(make_volume_params(wrns));
@@ -167,15 +168,15 @@ protected:
     {
         const auto wrns(make_random_namespace());
 
-        Volume* v = make_volume(*wrns);
+        SharedVolumePtr v = make_volume(*wrns);
 
         const auto ncfgs(node_configs());
         const std::string pattern("King Leer");
 
         {
-            SCOPED_BLOCK_BACKEND(v);
+            SCOPED_BLOCK_BACKEND(*v);
 
-            writeToVolume(v,
+            writeToVolume(*v,
                           v->getClusterMultiplier() * CachePage::capacity(),
                           v->getClusterSize(),
                           pattern);
@@ -184,7 +185,7 @@ protected:
             {
                 mds_manager_->stop_one(ncfgs[0]);
 
-                checkVolume(v,
+                checkVolume(*v,
                             0,
                             v->getClusterSize(),
                             "");
@@ -202,7 +203,7 @@ protected:
                          ncfgs,
                          true);
 
-            checkVolume(v,
+            checkVolume(*v,
                         v->getClusterMultiplier() * CachePage::capacity(),
                         v->getClusterSize(),
                         pattern);
@@ -218,7 +219,7 @@ protected:
                      ncfgs,
                      true);
 
-        checkVolume(v,
+        checkVolume(*v,
                     v->getClusterMultiplier() * CachePage::capacity(),
                     v->getClusterSize(),
                     pattern);
@@ -229,25 +230,25 @@ protected:
     {
         const auto wrns(make_random_namespace());
 
-        Volume* v = make_volume(*wrns);
+        SharedVolumePtr v = make_volume(*wrns);
 
         const std::string pattern1("Hairdresser On Fire");
 
         {
-            SCOPED_BLOCK_BACKEND(v);
+            SCOPED_BLOCK_BACKEND(*v);
 
-            writeToVolume(v,
+            writeToVolume(*v,
                           v->getClusterMultiplier() * CachePage::capacity(),
                           v->getClusterSize(),
                           pattern1);
         }
 
         v->scheduleBackendSync();
-        waitForThisBackendWrite(v);
+        waitForThisBackendWrite(*v);
 
         const std::string pattern2("Such A Little Thing Makes Such A Big Difference");
 
-        writeToVolume(v,
+        writeToVolume(*v,
                       2 * v->getClusterMultiplier() * CachePage::capacity(),
                       v->getClusterSize(),
                       pattern2);
@@ -258,7 +259,7 @@ protected:
         {
             mds_manager_->stop_one(ncfgs[0]);
 
-            checkVolume(v,
+            checkVolume(*v,
                         0,
                         v->getClusterSize(),
                         "");
@@ -276,12 +277,12 @@ protected:
                      ncfgs,
                      true);
 
-        checkVolume(v,
+        checkVolume(*v,
                     v->getClusterMultiplier() * CachePage::capacity(),
                     v->getClusterSize(),
                     pattern1);
 
-        checkVolume(v,
+        checkVolume(*v,
                     2 * v->getClusterMultiplier() * CachePage::capacity(),
                     v->getClusterSize(),
                     pattern2);
@@ -296,12 +297,12 @@ protected:
                      ncfgs,
                      true);
 
-        checkVolume(v,
+        checkVolume(*v,
                     v->getClusterMultiplier() * CachePage::capacity(),
                     v->getClusterSize(),
                     pattern1);
 
-        checkVolume(v,
+        checkVolume(*v,
                     2 * v->getClusterMultiplier() * CachePage::capacity(),
                     v->getClusterSize(),
                     pattern2);
@@ -321,7 +322,7 @@ protected:
             mdi.readCluster(ca, slave);
 
             ASSERT_EQ(master.clusterLocation, slave.clusterLocation);
-            ASSERT_EQ(master.weed, slave.weed);
+            ASSERT_EQ(master.weed(), slave.weed());
         }
     }
 
@@ -380,7 +381,7 @@ protected:
         {
             for (size_t i = 0; i < clusters; ++i)
             {
-                writeToVolume(&v,
+                writeToVolume(*&v,
                               i * v.getClusterMultiplier(),
                               csize,
                               make_pattern(worker_iterations,
@@ -391,7 +392,7 @@ protected:
 
             for (size_t i = 0; i < clusters; ++i)
             {
-                checkVolume(&v,
+                checkVolume(*&v,
                             i * v.getClusterMultiplier(),
                             csize,
                             make_pattern(worker_iterations,
@@ -411,7 +412,7 @@ protected:
                     MonkeyFun monkey)
     {
         const auto wrns(make_random_namespace());
-        Volume* v = make_volume(*wrns);
+        SharedVolumePtr v = make_volume(*wrns);
         std::atomic<bool> stop(false);
 
         auto wfuture(std::async(std::launch::async,
@@ -477,7 +478,7 @@ protected:
     {
         const size_t wsize(v.getClusterSize());
 
-        writeToVolume(&v,
+        writeToVolume(*&v,
                       0,
                       wsize,
                       fst_cluster_pattern);
@@ -488,7 +489,7 @@ protected:
 
         for (size_t i = 0; i < nclusters; ++i)
         {
-            writeToVolume(&v,
+            writeToVolume(v,
                           v.getClusterMultiplier(),
                           wsize,
                           tmp_pattern);
@@ -496,19 +497,19 @@ protected:
 
         const SnapshotName snap1("snap1-"s + yt::UUID().str());
         v.createSnapshot(snap1);
-        waitForThisBackendWrite(&v);
+        waitForThisBackendWrite(v);
 
-        writeToVolume(&v,
+        writeToVolume(v,
                       v.getClusterMultiplier(),
                       wsize,
                       snd_cluster_pattern);
 
         const SnapshotName snap2("snap2-"s + yt::UUID().str());
         v.createSnapshot(snap2);
-        waitForThisBackendWrite(&v);
+        waitForThisBackendWrite(v);
 
         v.deleteSnapshot(snap1);
-        waitForThisBackendWrite(&v);
+        waitForThisBackendWrite(v);
 
         const std::vector<scrubbing::ScrubWork>
             scrub_work(v.getScrubbingWork(boost::none,
@@ -547,9 +548,9 @@ protected:
 
         std::map<ClusterAddress, ClusterLocation> relocmap;
 
-        auto treader(makeCombinedTLogReader(getTempPath(testName_).string(),
-                                            scrub_res.relocs,
-                                            v.getBackendInterface()->clone()));
+        auto treader(CombinedTLogReader::create(getTempPath(testName_).string(),
+                                                scrub_res.relocs,
+                                                v.getBackendInterface()->clone()));
 
         const Entry* e = nullptr;
         while ((e = treader->nextLocation()))
@@ -583,6 +584,20 @@ protected:
         }
     }
 
+    void
+    check_counters(mds::TableInterface& table,
+                   uint64_t tlogs,
+                   uint64_t incr,
+                   uint64_t full,
+                   Reset reset)
+    {
+        const mds::TableCounters c(table.get_counters(reset));
+
+        EXPECT_EQ(tlogs, c.total_tlogs_read);
+        EXPECT_EQ(incr, c.incremental_updates);
+        EXPECT_EQ(full, c.full_rebuilds);
+    }
+
     std::unique_ptr<mds::Manager> mds_manager_;
 };
 
@@ -590,7 +605,7 @@ TEST_P(MDSVolumeTest, construction)
 {
     const auto wrns(make_random_namespace());
 
-    Volume* v = make_volume(*wrns);
+    SharedVolumePtr v = make_volume(*wrns);
 
     check_config(*v,
                  node_configs(),
@@ -605,7 +620,7 @@ TEST_P(MDSVolumeTest, failover_on_construction)
 
     mds_manager_->stop_one(ncfgs[0]);
 
-    Volume* v = newVolume(params);
+    SharedVolumePtr v = newVolume(params);
 
     check_config(*v,
                  ncfgs,
@@ -639,7 +654,7 @@ TEST_P(MDSVolumeTest, failed_construction)
 TEST_P(MDSVolumeTest, broken_config_update)
 {
     const auto wrns(make_random_namespace());
-    Volume* v = make_volume(*wrns);
+    SharedVolumePtr v = make_volume(*wrns);
 
     // MDSMetaDataBackend mdb(mds2_->node_configs()[0],
     //                        wrns->ns());
@@ -647,7 +662,7 @@ TEST_P(MDSVolumeTest, broken_config_update)
     const std::string pattern("test");
     const size_t wsize(v->getClusterSize() * CachePage::capacity() * 3);
 
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   wsize,
                   pattern);
@@ -667,7 +682,7 @@ TEST_P(MDSVolumeTest, broken_config_update)
     ASSERT_EQ(ncfgs1,
               ncfgs2);
 
-    checkVolume(v,
+    checkVolume(*v,
                 0,
                 wsize,
                 pattern);
@@ -676,7 +691,7 @@ TEST_P(MDSVolumeTest, broken_config_update)
 TEST_P(MDSVolumeTest, sole_mds_temporarily_gone)
 {
     const auto wrns(make_random_namespace());
-    Volume* v = make_volume(*wrns);
+    SharedVolumePtr v = make_volume(*wrns);
 
     const mds::ServerConfigs scfgs(mds_manager_->server_configs());
     mds_manager_->stop_one(scfgs[1].node_config);
@@ -688,23 +703,23 @@ TEST_P(MDSVolumeTest, sole_mds_temporarily_gone)
     const std::string pattern("test");
     const size_t wsize(v->getClusterSize());
 
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   wsize,
                   pattern);
 
     const SnapshotName snap("snap");
     v->createSnapshot(snap);
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     const std::string pattern2("test2");
 
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   wsize,
                   pattern2);
 
-    checkVolume(v,
+    checkVolume(*v,
                 0,
                 wsize,
                 pattern2);
@@ -712,10 +727,10 @@ TEST_P(MDSVolumeTest, sole_mds_temporarily_gone)
     mds_manager_->stop_one(scfgs[0].node_config);
     mds_manager_->start_one(scfgs[0]);
 
-    restoreSnapshot(v,
+    restoreSnapshot(*v,
                     snap);
 
-    checkVolume(v,
+    checkVolume(*v,
                 0,
                 wsize,
                 pattern);
@@ -724,7 +739,7 @@ TEST_P(MDSVolumeTest, sole_mds_temporarily_gone)
 TEST_P(MDSVolumeTest, slave_catchup)
 {
     const auto wrns(make_random_namespace());
-    Volume* v = make_volume(*wrns);
+    SharedVolumePtr v = make_volume(*wrns);
 
     const MDSNodeConfigs ncfgs(node_configs());
     MDSMetaDataBackend mdb(ncfgs[1],
@@ -735,28 +750,28 @@ TEST_P(MDSVolumeTest, slave_catchup)
               mdb.lastCorkUUID());
 
     const std::string pattern1("first");
-    writeToVolume(v,
+    writeToVolume(*v,
                   v->getClusterMultiplier(),
                   v->getClusterSize(),
                   pattern1);
 
     const SnapshotName snap1("first-snap");
     v->createSnapshot(snap1);
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     check_slave_sync(*v,
                      *wrns,
                      ncfgs[1]);
 
     const std::string pattern2("second");
-    writeToVolume(v,
+    writeToVolume(*v,
                   2 * v->getClusterMultiplier(),
                   v->getClusterSize(),
                   pattern2);
 
     const SnapshotName snap2("second-snap");
     v->createSnapshot(snap2);
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     check_slave_sync(*v,
                      *wrns,
@@ -794,7 +809,7 @@ TEST_P(MDSVolumeTest, catch_up)
     const size_t num_tlogs = 7;
 
     const auto wrns(make_random_namespace());
-    Volume* v = make_volume(*wrns);
+    SharedVolumePtr v = make_volume(*wrns);
 
     std::unique_ptr<mds::Manager>
         mds_manager(mds_test_setup_->make_manager(cm_,
@@ -816,14 +831,14 @@ TEST_P(MDSVolumeTest, catch_up)
     for (size_t i = 0; i < num_tlogs; ++i)
     {
         const auto pattern(boost::lexical_cast<std::string>(i));
-        writeToVolume(v,
+        writeToVolume(*v,
                       i * v->getClusterMultiplier() * CachePage::capacity(),
                       csize,
                       pattern);
-        scheduleBackendSync(v);
+        scheduleBackendSync(*v);
     }
 
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     EXPECT_EQ(num_tlogs,
               v->getSnapshotManagement().getTLogsWrittenToBackend().size());
@@ -856,7 +871,7 @@ TEST_P(MDSVolumeTest, catch_up)
     for (size_t i = 0; i < num_tlogs; ++i)
     {
         const auto pattern(boost::lexical_cast<std::string>(i));
-        checkVolume(v,
+        checkVolume(*v,
                     i * v->getClusterMultiplier() * CachePage::capacity(),
                     csize,
                     pattern);
@@ -990,7 +1005,7 @@ TEST_P(MDSVolumeTest, master_gone_and_no_slaves)
     for (size_t i = 0; i < iterations; ++i)
     {
         const auto wrns(make_random_namespace());
-        Volume* v = make_volume(*wrns);
+        SharedVolumePtr v = make_volume(*wrns);
 
         auto on_exit(yt::make_scope_exit([&]
                                          {
@@ -1031,7 +1046,7 @@ TEST_P(MDSVolumeTest, master_gone_and_no_slaves)
 TEST_P(MDSVolumeTest, futile_scrub)
 {
     const auto wrns(make_random_namespace());
-    Volume* v = make_volume(*wrns);
+    SharedVolumePtr v = make_volume(*wrns);
 
     const MDSNodeConfigs ncfgs(node_configs());
     MDSMetaDataBackend mdb(ncfgs[1],
@@ -1045,28 +1060,28 @@ TEST_P(MDSVolumeTest, futile_scrub)
 
     const std::string pattern1("one");
 
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   wsize,
                   pattern1);
 
     const SnapshotName snap1("snap1");
     v->createSnapshot(snap1);
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     const std::string pattern2("two");
 
-    writeToVolume(v,
+    writeToVolume(*v,
                   wsize / v->getLBASize(),
                   wsize,
                   pattern2);
 
     const SnapshotName snap2("snap2");
     v->createSnapshot(snap2);
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     v->deleteSnapshot(snap1);
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     const std::vector<scrubbing::ScrubWork>
         scrub_work(v->getScrubbingWork(boost::none,
@@ -1102,7 +1117,7 @@ TEST_P(MDSVolumeTest, futile_scrub)
 TEST_P(MDSVolumeTest, happy_scrub)
 {
     const auto wrns(make_random_namespace());
-    Volume* v = make_volume(*wrns);
+    SharedVolumePtr v = make_volume(*wrns);
 
     const auto old_scrub_id(v->getMetaDataStore()->scrub_id());
 
@@ -1133,7 +1148,7 @@ TEST_P(MDSVolumeTest, happy_scrub)
 TEST_P(MDSVolumeTest, scrub_with_master_out_to_lunch)
 {
     const auto wrns(make_random_namespace());
-    Volume* v = make_volume(*wrns);
+    SharedVolumePtr v = make_volume(*wrns);
 
     const auto old_scrub_id(v->getMetaDataStore()->scrub_id());
 
@@ -1163,7 +1178,7 @@ TEST_P(MDSVolumeTest, scrub_with_master_out_to_lunch)
 TEST_P(MDSVolumeTest, scrub_with_slave_out_to_lunch)
 {
     const auto wrns(make_random_namespace());
-    Volume* v = make_volume(*wrns);
+    SharedVolumePtr v = make_volume(*wrns);
 
     const auto old_scrub_id(v->getMetaDataStore()->scrub_id());
 
@@ -1203,12 +1218,12 @@ TEST_P(MDSVolumeTest, scrub_with_slave_out_to_lunch)
     check_reloc_map(*v,
                     relocmap);
 
-    checkVolume(v,
+    checkVolume(*v,
                 0,
                 v->getClusterSize(),
                 pattern1);
 
-    checkVolume(v,
+    checkVolume(*v,
                 v->getClusterMultiplier(),
                 v->getClusterSize(),
                 pattern2);
@@ -1244,18 +1259,18 @@ TEST_P(MDSVolumeTest, failover_performance)
               ncfgs.size());
 
     const auto wrns(make_random_namespace());
-    Volume* v = make_volume(*wrns);
+    SharedVolumePtr v = make_volume(*wrns);
 
     const uint32_t clusters = v->getSnapshotManagement().maxTLogEntries();
 
     for (uint32_t i = 0; i < tlogs_total; ++i)
     {
-        writeClusters(v,
+        writeClusters(*v,
                       clusters,
                       "some really important data");
         if (i == tlogs_sync - 1)
         {
-            waitForThisBackendWrite(v);
+            waitForThisBackendWrite(*v);
 
             catch_up(ncfgs.back(),
                      wrns->ns().str(),
@@ -1263,7 +1278,7 @@ TEST_P(MDSVolumeTest, failover_performance)
         }
     }
 
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
     const std::vector<MDSNodeConfig> new_ncfgs{ ncfgs.back() };
 
     yt::wall_timer w;
@@ -1284,7 +1299,7 @@ TEST_P(MDSVolumeTest, failover_performance)
 TEST_P(MDSVolumeTest, no_relocations_on_slaves)
 {
     const auto wrns(make_random_namespace());
-    Volume* v = make_volume(*wrns);
+    SharedVolumePtr v = make_volume(*wrns);
 
     std::unique_ptr<mds::Manager>
         mgr(mds_test_setup_->make_manager(cm_,
@@ -1342,15 +1357,15 @@ TEST_P(MDSVolumeTest, no_relocations_on_slaves)
 TEST_P(MDSVolumeTest, local_restart_of_pristine_clone_with_empty_mds)
 {
     const auto pns(make_random_namespace());
-    Volume* p = make_volume(*pns);
+    SharedVolumePtr p = make_volume(*pns);
 
     const std::string pattern("template content");
-    writeToVolume(p,
+    writeToVolume(*p,
                   0,
                   p->getClusterSize(),
                   pattern);
 
-    waitForThisBackendWrite(p);
+    waitForThisBackendWrite(*p);
 
     p->setAsTemplate();
 
@@ -1369,7 +1384,7 @@ TEST_P(MDSVolumeTest, local_restart_of_pristine_clone_with_empty_mds)
 
     cparams.metadata_backend_config(metadata_backend_config());
 
-    Volume* c = nullptr;
+    SharedVolumePtr c = nullptr;
 
     {
         fungi::ScopedLock g(api::getManagementMutex());
@@ -1379,7 +1394,7 @@ TEST_P(MDSVolumeTest, local_restart_of_pristine_clone_with_empty_mds)
     }
 
     c->scheduleBackendSync();
-    waitForThisBackendWrite(c);
+    waitForThisBackendWrite(*c);
 
     destroyVolume(c,
                   DeleteLocalData::F,
@@ -1396,12 +1411,174 @@ TEST_P(MDSVolumeTest, local_restart_of_pristine_clone_with_empty_mds)
 
     c = getVolume(VolumeId(cns->ns().str()));
 
-    checkVolume(c,
+    checkVolume(*c,
                 0,
                 c->getClusterSize(),
                 pattern);
 }
 
-INSTANTIATE_TEST(MDSVolumeTest);
+// cf. OVS-4475:
+// there used to be a bug when a snapshot was created between two catch up attempts
+// of a slave, leading to a full rebuild instead of a cheaper incremental update.
+TEST_P(MDSVolumeTest, incremental_update_and_snapshots)
+{
+    const auto wrns(make_random_namespace());
+    SharedVolumePtr v = make_volume(*wrns);
+
+    ASSERT_LE(2,
+              node_configs().size());
+
+    const MDSNodeConfig cfg(node_configs()[1]);
+    const std::string ns(wrns->ns().str());
+    mds::ClientNG::Ptr client(mds::ClientNG::create(cfg));
+    mds::TableInterfacePtr table(client->open(ns));
+    EXPECT_TRUE(mds::Role::Slave == table->get_role());
+
+    check_counters(*table,
+                   0,
+                   0,
+                   0,
+                   Reset::F);
+
+    writeToVolume(*v,
+                  v->getClusterMultiplier() * 2,
+                  v->getClusterSize(),
+                  "one");
+
+    v->scheduleBackendSync();
+    waitForThisBackendWrite(*v);
+
+    EXPECT_EQ(1,
+              table->catch_up(DryRun::F));
+
+    check_counters(*table,
+                   1,
+                   1,
+                   0,
+                   Reset::F);
+
+    writeToVolume(*v,
+                  v->getClusterMultiplier() * 2,
+                  v->getClusterSize(),
+                  "two");
+
+    const SnapshotName snap("snap");
+    v->createSnapshot(snap);
+    waitForThisBackendWrite(*v);
+
+    EXPECT_EQ(1,
+              table->catch_up(DryRun::F));
+
+    check_counters(*table,
+                   2,
+                   2,
+                   0,
+                   Reset::F);
+}
+
+TEST_P(MDSVolumeTest, table_counters)
+{
+    const auto wrns(make_random_namespace());
+    SharedVolumePtr v = make_volume(*wrns);
+
+    ASSERT_LE(2,
+              node_configs().size());
+
+    mds::ClientNG::Ptr mclient(mds::ClientNG::create(node_configs()[0]));
+    mds::TableInterfacePtr mtable(mclient->open(wrns->ns().str()));
+    EXPECT_TRUE(mds::Role::Master == mtable->get_role());
+
+    check_counters(*mtable,
+                   0,
+                   0,
+                   0,
+                   Reset::F);
+
+    mds::ClientNG::Ptr sclient(mds::ClientNG::create(node_configs()[1]));
+    mds::TableInterfacePtr stable(sclient->open(wrns->ns().str()));
+    EXPECT_TRUE(mds::Role::Slave == stable->get_role());
+
+    check_counters(*stable,
+                   0,
+                   0,
+                   0,
+                   Reset::F);
+
+    writeToVolume(*v,
+                  v->getClusterMultiplier() * 2,
+                  v->getClusterSize(),
+                  "one");
+
+    const SnapshotName snap("snap");
+    v->createSnapshot(snap);
+
+    waitForThisBackendWrite(*v);
+
+    check_counters(*stable,
+                   0,
+                   0,
+                   0,
+                   Reset::F);
+
+    EXPECT_EQ(1,
+              stable->catch_up(DryRun::F));
+
+    check_counters(*stable,
+                   1,
+                   1,
+                   0,
+                   Reset::F);
+
+    writeToVolume(*v,
+                  v->getClusterMultiplier() * 2,
+                  v->getClusterSize(),
+                  "two");
+
+    v->scheduleBackendSync();
+    waitForThisBackendWrite(*v);
+
+    EXPECT_EQ(1,
+              stable->catch_up(DryRun::F));
+
+    check_counters(*stable,
+                   2,
+                   2,
+                   0,
+                   Reset::T);
+
+    v->restoreSnapshot(snap);
+    waitForThisBackendWrite(*v);
+
+    EXPECT_EQ(1,
+              stable->catch_up(DryRun::F));
+
+    check_counters(*stable,
+                   1,
+                   0,
+                   1,
+                   Reset::F);
+
+    check_counters(*mtable,
+                   0,
+                   0,
+                   0,
+                   Reset::F);
+}
+
+namespace
+{
+
+const ClusterMultiplier
+big_cluster_multiplier(VolManagerTestSetup::default_test_config().cluster_multiplier() * 2);
+
+const auto big_clusters_config = VolManagerTestSetup::default_test_config()
+    .cluster_multiplier(big_cluster_multiplier);
+
+}
+
+INSTANTIATE_TEST_CASE_P(MDSVolumeTests,
+                        MDSVolumeTest,
+                        ::testing::Values(volumedriver::VolManagerTestSetup::default_test_config(),
+                                          big_clusters_config));
 
 }

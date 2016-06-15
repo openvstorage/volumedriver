@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "FileSystemTestBase.h"
 
@@ -95,75 +96,156 @@ public:
 TEST_F(ShmServerTest, ovs_create_destroy_context)
 {
     uint64_t volume_size = 1 << 30;
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
-              ovs_create_volume("volume",
-                                volume_size));
-    ovs_ctx_t *ctx = ovs_ctx_init("volume", O_RDWR);
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         "shm",
+                                         NULL,
+                                         0));
+
+    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx != nullptr);
+    EXPECT_EQ(0,
+              ovs_create_volume(ctx,
+                                "volume",
+                                volume_size));
+    ASSERT_EQ(0,
+              ovs_ctx_init(ctx, "volume", O_RDWR));
     EXPECT_EQ(0, ovs_ctx_destroy(ctx));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
 }
 
 TEST_F(ShmServerTest, ovs_non_existent_volume)
 {
-    ovs_ctx_t *ctx = ovs_ctx_init("volume", O_RDWR);
-    EXPECT_TRUE(ctx == nullptr);
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
+    EXPECT_EQ(0,
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         "shm",
+                                         NULL,
+                                         0));
+
+    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
+    ASSERT_TRUE(ctx != nullptr);
+    EXPECT_EQ(-1,
+              ovs_ctx_init(ctx, "volume", O_RDWR));
     EXPECT_EQ(EACCES, errno);
+    EXPECT_EQ(0, ovs_ctx_destroy(ctx));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
 }
 
 TEST_F(ShmServerTest, ovs_remove_non_existent_volume)
 {
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
+    EXPECT_EQ(0,
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         "shm",
+                                         NULL,
+                                         0));
+
+    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
+    ASSERT_TRUE(ctx != nullptr);
     EXPECT_EQ(-1,
-              ovs_remove_volume("volume"));
+              ovs_remove_volume(ctx, "volume"));
     EXPECT_EQ(ENOENT, errno);
+    EXPECT_EQ(0, ovs_ctx_destroy(ctx));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
 }
 
 TEST_F(ShmServerTest, ovs_already_created_volume)
 {
     uint64_t volume_size = 1 << 30;
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
-              ovs_create_volume("volume",
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         "shm",
+                                         NULL,
+                                         0));
+    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
+    ASSERT_TRUE(ctx != nullptr);
+    EXPECT_EQ(0,
+              ovs_create_volume(ctx,
+                                "volume",
                                 volume_size));
     EXPECT_EQ(-1,
-              ovs_create_volume("volume",
+              ovs_create_volume(ctx,
+                                "volume",
                                 volume_size));
     EXPECT_EQ(EEXIST, errno);
     EXPECT_EQ(0,
-              ovs_remove_volume("volume"));
+              ovs_remove_volume(ctx, "volume"));
     EXPECT_EQ(-1,
-              ovs_remove_volume("volume"));
+              ovs_remove_volume(ctx, "volume"));
     EXPECT_EQ(ENOENT, errno);
+    EXPECT_EQ(0, ovs_ctx_destroy(ctx));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
 }
 
 TEST_F(ShmServerTest, ovs_open_same_volume_twice)
 {
     uint64_t volume_size = 1 << 30;
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
-              ovs_create_volume("volume",
-                                volume_size));
-    ovs_ctx_t *ctx1 = ovs_ctx_init("volume",
-                                   O_RDWR);
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         "shm",
+                                         NULL,
+                                         0));
+    ovs_ctx_t *ctx1 = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx1 != nullptr);
-    ovs_ctx_t *ctx2 = ovs_ctx_init("volume",
-                                   O_RDWR);
-    ASSERT_TRUE(ctx2 == nullptr);
+    ovs_ctx_t *ctx2 = ovs_ctx_new(ctx_attr);
+    ASSERT_TRUE(ctx2 != nullptr);
+    EXPECT_EQ(0,
+              ovs_create_volume(ctx1,
+                                "volume",
+                                volume_size));
+    EXPECT_EQ(0,
+              ovs_ctx_init(ctx1,
+                           "volume",
+                           O_RDWR));
+    EXPECT_EQ(-1,
+              ovs_ctx_init(ctx2,
+                           "volume",
+                           O_RDWR));
     EXPECT_EQ(EBUSY, errno);
     EXPECT_EQ(0,
               ovs_ctx_destroy(ctx1));
+    EXPECT_EQ(0,
+              ovs_ctx_destroy(ctx2));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
 }
 
 TEST_F(ShmServerTest, ovs_create_write_read_destroy)
 {
     uint64_t volume_size = 1 << 30;
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
-              ovs_create_volume("volume",
-                                volume_size));
-    ovs_ctx_t *ctx = ovs_ctx_init("volume",
-                                  O_RDWR);
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         "shm",
+                                         NULL,
+                                         0));
+    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx != nullptr);
+    EXPECT_EQ(0,
+              ovs_create_volume(ctx,
+                                "volume",
+                                volume_size));
+    ASSERT_EQ(0,ovs_ctx_init(ctx,
+                             "volume",
+                             O_RDWR));
 
     std::string pattern("openvstorage1");
     ovs_buffer_t *wbuf = ovs_allocate(ctx,
-                              pattern.length());
+                                      pattern.length());
 
     ASSERT_TRUE(wbuf != nullptr);
 
@@ -176,7 +258,7 @@ TEST_F(ShmServerTest, ovs_create_write_read_destroy)
     w_aio.aio_offset = 0;
     w_aio.aio_buf = ovs_buffer_data(wbuf);
 
-    EXPECT_EQ(0,
+    ASSERT_EQ(0,
               ovs_aio_write(ctx,
                             &w_aio));
 
@@ -206,7 +288,7 @@ TEST_F(ShmServerTest, ovs_create_write_read_destroy)
     r_aio.aio_offset = 0;
     r_aio.aio_buf = ovs_buffer_data(rbuf);
 
-    EXPECT_EQ(0,
+    ASSERT_EQ(0,
               ovs_aio_read(ctx,
                            &r_aio));
 
@@ -232,6 +314,8 @@ TEST_F(ShmServerTest, ovs_create_write_read_destroy)
 
     EXPECT_EQ(0,
               ovs_ctx_destroy(ctx));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
 }
 
 TEST_F(ShmServerTest, ovs_completion)
@@ -264,21 +348,33 @@ TEST_F(ShmServerTest, ovs_completion)
     };
 
     uint64_t volume_size = 1 << 30;
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
-              ovs_create_volume("volume",
-                                volume_size));
-    ovs_ctx_t *ctx = ovs_ctx_init("volume", O_RDWR);
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         "shm",
+                                         NULL,
+                                         0));
+    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx != nullptr);
     EXPECT_EQ(0,
+              ovs_create_volume(ctx,
+                                "volume",
+                                volume_size));
+    ASSERT_EQ(0,
+              ovs_ctx_init(ctx, "volume", O_RDWR));
+    ASSERT_EQ(0,
               ovs_ctx_destroy(ctx));
 
-    ctx = ovs_ctx_init("volume", O_RDWR);
+    ctx = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx != nullptr);
+    ASSERT_EQ(0,
+              ovs_ctx_init(ctx, "volume", O_RDWR));
 
     std::string pattern("openvstorage1");
     ssize_t pattern_len = pattern.length();
     ovs_buffer_t *wbuf = ovs_allocate(ctx,
-                              pattern_len);
+                                      pattern_len);
 
     ASSERT_TRUE(wbuf != nullptr);
 
@@ -299,7 +395,7 @@ TEST_F(ShmServerTest, ovs_completion)
     w_aio.aio_offset = 0;
     w_aio.aio_buf = ovs_buffer_data(wbuf);
 
-    EXPECT_EQ(0,
+    ASSERT_EQ(0,
               ovs_aio_writecb(ctx,
                               &w_aio,
                               w_completion));
@@ -336,7 +432,7 @@ TEST_F(ShmServerTest, ovs_completion)
 
 
     ovs_buffer_t *rbuf = ovs_allocate(ctx,
-                              pattern_len);
+                                      pattern_len);
 
     ASSERT_TRUE(rbuf != nullptr);
 
@@ -349,7 +445,7 @@ TEST_F(ShmServerTest, ovs_completion)
         ovs_aio_create_completion(completion_function::finish_read,
                                   &pattern_len);
 
-    EXPECT_EQ(0,
+    ASSERT_EQ(0,
               ovs_aio_readcb(ctx,
                              &r_aio,
                              r_completion));
@@ -381,16 +477,28 @@ TEST_F(ShmServerTest, ovs_completion)
 
     EXPECT_EQ(0,
               ovs_ctx_destroy(ctx));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
 }
 
 TEST_F(ShmServerTest, ovs_stat)
 {
     uint64_t volume_size = 1 << 30;
-    EXPECT_EQ(ovs_create_volume("volume",
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
+    EXPECT_EQ(0,
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         "shm",
+                                         NULL,
+                                         0));
+    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
+    ASSERT_TRUE(ctx != nullptr);
+    EXPECT_EQ(ovs_create_volume(ctx,
+                                "volume",
                                 volume_size),
               0);
-    ovs_ctx_t *ctx = ovs_ctx_init("volume", O_RDWR);
-    ASSERT_TRUE(ctx != nullptr);
+    ASSERT_EQ(0,
+              ovs_ctx_init(ctx, "volume", O_RDWR));
 
     struct stat st;
     EXPECT_EQ(0,
@@ -400,69 +508,171 @@ TEST_F(ShmServerTest, ovs_stat)
 
     EXPECT_EQ(0,
               ovs_ctx_destroy(ctx));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
+}
+
+TEST_F(ShmServerTest, ovs_list_volumes)
+{
+    uint64_t volume_size = 1 << 30;
+    size_t max_size = 1;
+    int len = -1;
+    char *names = NULL;
+    std::string vol1("volume1");
+    std::string vol2("volume2");
+
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
+    EXPECT_EQ(0,
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         "shm",
+                                         NULL,
+                                         0));
+    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
+    ASSERT_TRUE(ctx != nullptr);
+
+    {
+        names = (char *) malloc(max_size);
+        EXPECT_EQ(ovs_list_volumes(ctx, names, &max_size),
+                  0);
+        free(names);
+    }
+
+    EXPECT_EQ(ovs_create_volume(ctx,
+                                vol1.c_str(),
+                                volume_size),
+              0);
+
+    EXPECT_EQ(ovs_create_volume(ctx,
+                                vol2.c_str(),
+                                volume_size),
+              0);
+
+    while (true)
+    {
+        names = (char *)malloc(max_size);
+        len = ovs_list_volumes(ctx, names, &max_size);
+        if (len >= 0)
+        {
+            break;
+        }
+        if (len == -1 && errno != ERANGE)
+        {
+            break;
+        }
+        free(names);
+    }
+    EXPECT_EQ(len, vol1.length() + 1 + vol2.length() + 1);
+    free(names);
+
+    EXPECT_EQ(0,
+              ovs_ctx_destroy(ctx));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
 }
 
 TEST_F(ShmServerTest, ovs_create_rollback_list_remove_snapshot)
 {
     uint64_t volume_size = 1 << 30;
     int64_t timeout = 10;
-    EXPECT_EQ(ovs_create_volume("volume",
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
+    EXPECT_EQ(0,
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         "shm",
+                                         NULL,
+                                         0));
+    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
+    ASSERT_TRUE(ctx != nullptr);
+    EXPECT_EQ(ovs_create_volume(ctx,
+                                "volume",
                                 volume_size),
               0);
 
     EXPECT_EQ(-1,
-              ovs_snapshot_create("fvolume",
+              ovs_snapshot_create(ctx,
+                                  "fvolume",
                                   "snap1",
                                   timeout));
     EXPECT_EQ(ENOENT,
               errno);
 
     EXPECT_EQ(0,
-              ovs_snapshot_create("volume",
+              ovs_snapshot_create(ctx,
+                                  "volume",
                                   "snap1",
                                   timeout));
 
     EXPECT_EQ(0,
-              ovs_snapshot_create("volume",
+              ovs_snapshot_create(ctx,
+                                  "volume",
                                   "snap2",
                                   0));
 
     EXPECT_EQ(1,
-              ovs_snapshot_is_synced("volume",
+              ovs_snapshot_is_synced(ctx,
+                                     "volume",
                                      "snap2"));
 
     EXPECT_EQ(-1,
-              ovs_snapshot_is_synced("volume",
+              ovs_snapshot_is_synced(ctx,
+                                     "volume",
                                      "fsnap"));
 
-    int max_snaps = 5;
-    ovs_snapshot_info_t *snaps = new ovs_snapshot_info_t [max_snaps];
-    EXPECT_EQ(2U,
-              ovs_snapshot_list("volume", snaps, &max_snaps));
+    int max_snaps = 1;
+    ovs_snapshot_info_t *snaps;
+    int snap_count;
 
-    ovs_snapshot_list_free(snaps);
+    do {
+        snaps = (ovs_snapshot_info_t *) malloc(sizeof(*snaps) * max_snaps);
+        snap_count = ovs_snapshot_list(ctx, "volume", snaps, &max_snaps);
+        if (snap_count <= 0)
+        {
+            free(snaps);
+        }
+    } while (snap_count == -1 && errno == ERANGE);
+
+    EXPECT_EQ(2U, snap_count);
+    EXPECT_EQ(3U, max_snaps);
+
+    if (snap_count > 0)
+    {
+        ovs_snapshot_list_free(snaps);
+    }
+
+    free(snaps);
+
+    snaps = (ovs_snapshot_info_t *) malloc(sizeof(*snaps));
+    max_snaps = 1;
 
     EXPECT_EQ(-1,
-              ovs_snapshot_list("fvolume", snaps, &max_snaps));
+              ovs_snapshot_list(ctx, "fvolume", snaps, &max_snaps));
     EXPECT_EQ(ENOENT,
               errno);
 
-    delete []snaps;
+    free(snaps);
 
     EXPECT_EQ(0,
-              ovs_snapshot_rollback("volume",
+              ovs_snapshot_rollback(ctx,
+                                    "volume",
                                     "snap1"));
 
     EXPECT_EQ(-1,
-              ovs_snapshot_remove("volume",
+              ovs_snapshot_remove(ctx,
+                                  "volume",
                                   "snap2"));
     EXPECT_EQ(ENOENT,
               errno);
 
     EXPECT_EQ(0,
-              ovs_snapshot_remove("volume",
+              ovs_snapshot_remove(ctx,
+                                  "volume",
                                   "snap1"));
 
+    EXPECT_EQ(0,
+              ovs_ctx_destroy(ctx));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
 }
 
 TEST_F(ShmServerTest, ovs_completion_two_ctxs)
@@ -488,30 +698,43 @@ TEST_F(ShmServerTest, ovs_completion_two_ctxs)
     };
 
     uint64_t volume_size = 1 << 30;
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
-              ovs_create_volume("volume1",
-                                volume_size));
-
-    EXPECT_EQ(0,
-              ovs_create_volume("volume2",
-                                volume_size));
-
-    ovs_ctx_t *ctx1 = ovs_ctx_init("volume1", O_RDWR);
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         "shm",
+                                         NULL,
+                                         0));
+    ovs_ctx_t *ctx1 = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx1 != nullptr);
-
-    ovs_ctx_t *ctx2 = ovs_ctx_init("volume2", O_RDWR);
+    ovs_ctx_t *ctx2 = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx2 != nullptr);
+    EXPECT_EQ(0,
+              ovs_create_volume(ctx1,
+                                "volume1",
+                                volume_size));
+
+    EXPECT_EQ(0,
+              ovs_create_volume(ctx2,
+                                "volume2",
+                                volume_size));
+
+    ASSERT_EQ(0,
+              ovs_ctx_init(ctx1, "volume1", O_RDWR));
+
+    ASSERT_EQ(0,
+              ovs_ctx_init(ctx2, "volume2", O_RDWR));
 
     std::string pattern("openvstorage1");
     ssize_t pattern_len = pattern.length();
 
     ovs_buffer_t *w1_buf = ovs_allocate(ctx1,
-                                pattern_len);
+                                        pattern_len);
 
     ASSERT_TRUE(w1_buf != nullptr);
 
     ovs_buffer_t *w2_buf = ovs_allocate(ctx2,
-                                pattern_len);
+                                        pattern_len);
 
     ASSERT_TRUE(w2_buf != nullptr);
 
@@ -541,12 +764,12 @@ TEST_F(ShmServerTest, ovs_completion_two_ctxs)
     w2_aio.aio_offset = 0;
     w2_aio.aio_buf = ovs_buffer_data(w2_buf);
 
-    EXPECT_EQ(0,
+    ASSERT_EQ(0,
               ovs_aio_writecb(ctx1,
                               &w1_aio,
                               w1_completion));
 
-    EXPECT_EQ(0,
+    ASSERT_EQ(0,
               ovs_aio_writecb(ctx2,
                               &w2_aio,
                               w2_completion));
@@ -603,7 +826,7 @@ TEST_F(ShmServerTest, ovs_completion_two_ctxs)
         ovs_aio_create_completion(completion_function::finish_read,
                                   &pattern_len);
 
-    EXPECT_EQ(0,
+    ASSERT_EQ(0,
               ovs_aio_readcb(ctx2,
                              &r_aio,
                              r_completion));
@@ -637,17 +860,30 @@ TEST_F(ShmServerTest, ovs_completion_two_ctxs)
               ovs_ctx_destroy(ctx1));
     EXPECT_EQ(0,
               ovs_ctx_destroy(ctx2));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
 }
 
 TEST_F(ShmServerTest, ovs_write_flush_read)
 {
     uint64_t volume_size = 1 << 30;
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
-              ovs_create_volume("volume",
-                                volume_size));
-    ovs_ctx_t *ctx = ovs_ctx_init("volume",
-                                  O_RDWR);
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         "shm",
+                                         NULL,
+                                         0));
+    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx != nullptr);
+    EXPECT_EQ(0,
+              ovs_create_volume(ctx,
+                                "volume",
+                                volume_size));
+    ASSERT_EQ(0,
+              ovs_ctx_init(ctx,
+                           "volume",
+                           O_RDWR));
 
     std::string pattern("openvstorage1");
     ovs_buffer_t *wbuf = ovs_allocate(ctx,
@@ -692,6 +928,8 @@ TEST_F(ShmServerTest, ovs_write_flush_read)
 
     EXPECT_EQ(0,
               ovs_ctx_destroy(ctx));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
 }
 
 } //namespace volumedriverfstest

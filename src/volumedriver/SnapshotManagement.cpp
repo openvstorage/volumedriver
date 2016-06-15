@@ -1,26 +1,27 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "BackwardTLogReader.h"
-#include "DataStoreNG.h"
 #include "BackendTasks.h"
+#include "CombinedTLogReader.h"
+#include "DataStoreNG.h"
 #include "Entry.h"
 #include "MetaDataStoreInterface.h"
 #include "SnapshotManagement.h"
 #include "TracePoints_tp.h"
 #include "TLogReader.h"
-#include "TLogReaderUtils.h"
 #include "TLogWriter.h"
 #include "VolManager.h"
 #include "WriteOnlyVolume.h"
@@ -1079,9 +1080,9 @@ SnapshotManagement::getLastSCOInBackend()
 {
     OrderedTLogIds tlogs_on_backend;
     sp->getTLogsWrittenToBackend(tlogs_on_backend);
-    return makeCombinedBackwardTLogReader(tlogPath_,
-                                          tlogs_on_backend,
-                                          getVolume()->getBackendInterface()->clone())->nextClusterLocation();
+    return CombinedTLogReader::create_backward_reader(tlogPath_,
+                                                      tlogs_on_backend,
+                                                      getVolume()->getBackendInterface()->clone())->nextClusterLocation();
 }
 
 ClusterLocation
@@ -1089,9 +1090,9 @@ SnapshotManagement::getLastSCO()
 {
     OrderedTLogIds tlogs;
     sp->getAllTLogs(tlogs, WithCurrent::T);
-    return makeCombinedBackwardTLogReader(getTLogsPath(),
-                                          tlogs,
-                                          getVolume()->getBackendInterface()->clone())->nextClusterLocation();
+    return CombinedTLogReader::create_backward_reader(getTLogsPath(),
+                                                      tlogs,
+                                                      getVolume()->getBackendInterface()->clone())->nextClusterLocation();
 }
 
 std::unique_ptr<SnapshotPersistor>

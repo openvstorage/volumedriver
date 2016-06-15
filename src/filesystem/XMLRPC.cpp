@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "ConfigFetcher.h"
 #include "FileSystem.h"
@@ -519,25 +520,40 @@ void with_api_exception_conversion(std::function<void()>&& fn)
 }
 
 void
-VolumesList::execute_internal(::XmlRpc::XmlRpcValue& /* params */,
+VolumesList::execute_internal(::XmlRpc::XmlRpcValue& params,
                               ::XmlRpc::XmlRpcValue& result)
 {
-    auto registry(fs_.object_router().object_registry());
-    const auto objs(registry->list());
-
     result.clear();
     result.setSize(0);
 
-    int k = 0;
-
-    for(const auto& o : objs)
+    if (params[0].hasMember(XMLRPCKeys::vrouter_id))
     {
-        const auto reg(registry->find(o,
-                                      IgnoreCache::F));
-        if (reg->object().type == ObjectType::Volume or
-            reg->object().type == ObjectType::Template)
+        fungi::ScopedLock g(api::getManagementMutex());
+        std::list<vd::VolumeId> l;
+        api::getVolumeList(l);
+
+        int k = 0;
+        for (const auto& v : l)
         {
-            result[k++] = ::XmlRpc::XmlRpcValue(o);
+            result[k++] = ::XmlRpc::XmlRpcValue(v.str());
+        }
+    }
+    else
+    {
+        auto registry(fs_.object_router().object_registry());
+        const auto objs(registry->list());
+
+        int k = 0;
+
+        for(const auto& o : objs)
+        {
+            const auto reg(registry->find(o,
+                                          IgnoreCache::F));
+            if (reg->object().type == ObjectType::Volume or
+                reg->object().type == ObjectType::Template)
+            {
+                result[k++] = ::XmlRpc::XmlRpcValue(o);
+            }
         }
     }
 }
@@ -574,13 +590,21 @@ VolumePotential::execute_internal(::XmlRpc::XmlRpcValue& params,
     with_api_exception_conversion([&]
     {
         auto param = params[0];
+
+        boost::optional<vd::ClusterSize> cluster_size;
+
+        if (param.hasMember(XMLRPCKeys::cluster_size))
+        {
+            const std::string s(param[XMLRPCKeys::cluster_size]);
+            cluster_size = boost::lexical_cast<vd::ClusterSize>(s);
+        }
+
         boost::optional<vd::SCOMultiplier> sco_mult;
 
         if (param.hasMember(XMLRPCKeys::sco_multiplier))
         {
             const std::string s(param[XMLRPCKeys::sco_multiplier]);
-            const uint32_t n = boost::lexical_cast<uint32_t>(s);
-            sco_mult = vd::SCOMultiplier(n);
+            sco_mult = boost::lexical_cast<vd::SCOMultiplier>(s);
         }
 
         boost::optional<vd::TLogMultiplier> tlog_mult;
@@ -592,7 +616,8 @@ VolumePotential::execute_internal(::XmlRpc::XmlRpcValue& params,
             tlog_mult = vd::TLogMultiplier(n);
         }
 
-        const uint64_t pot = fs_.object_router().local_volume_potential(sco_mult,
+        const uint64_t pot = fs_.object_router().local_volume_potential(cluster_size,
+                                                                        sco_mult,
                                                                         tlog_mult);
         result[XMLRPCKeys::volume_potential] = XMLVAL(pot);
     });
@@ -810,14 +835,12 @@ VolumeInfo::execute_internal(::XmlRpc::XmlRpcValue& params,
                              ::XmlRpc::XmlRpcValue& result)
 {
     const vd::VolumeId vol_id(getID(params[0]));
-    const ObjectId oid(vol_id.str());
-    ObjectRegistrationPtr reg(fs_.object_router().object_registry()->find_throw(oid,
-                                                                                IgnoreCache::T));
+
+    XMLRPCVolumeInfo volume_info;
 
     with_api_exception_conversion([&]()
     {
         fungi::ScopedLock l(api::getManagementMutex());
-        XMLRPCVolumeInfo volume_info;
 
         const vd::VolumeConfig& cfg = api::getVolumeConfig(vol_id);
         const boost::optional<vd::FailOverCacheConfig>&
@@ -847,21 +870,26 @@ VolumeInfo::execute_internal(::XmlRpc::XmlRpcValue& params,
         volume_info.halted = api::getHalted(vol_id);
         volume_info.footprint = stats.used_clusters * cfg.cluster_mult_ * cfg.lba_size_;
         volume_info.stored = api::getStored(vol_id);
-        volume_info.object_type = reg->treeconfig.object_type;
-        volume_info.parent_volume_id = reg->treeconfig.parent_volume ?
-            reg->treeconfig.parent_volume->str() :
-            std::string("");
-        volume_info.vrouter_id = reg->node_id;
 
-        vd::Volume* v = api::getVolumePointer(vol_id);
+        vd::SharedVolumePtr v(api::getVolumePointer(vol_id));
         volume_info.owner_tag =
             static_cast<uint64_t>(v->getOwnerTag());
         volume_info.cluster_cache_handle =
             static_cast<uint64_t>(v->getClusterCacheHandle());
         volume_info.cluster_cache_limit = v->get_cluster_cache_limit();
-
-        result = XMLRPCStructs::serialize_to_xmlrpc_value(volume_info);
     });
+
+    const ObjectId oid(vol_id.str());
+    ObjectRegistrationPtr reg(fs_.object_router().object_registry()->find_throw(oid,
+                                                                                IgnoreCache::F));
+
+    volume_info.object_type = reg->treeconfig.object_type;
+    volume_info.parent_volume_id = reg->treeconfig.parent_volume ?
+        reg->treeconfig.parent_volume->str() :
+        std::string("");
+    volume_info.vrouter_id = reg->node_id;
+
+    result = XMLRPCStructs::serialize_to_xmlrpc_value(volume_info);
 }
 
 void
@@ -1045,6 +1073,7 @@ VolumePerformanceCounters::execute_internal(XmlRpc::XmlRpcValue& params,
         results_stats.cluster_cache_misses = api::getClusterCacheMisses(volName);
         results_stats.metadata_store_hits = mdStats.cache_hits;
         results_stats.metadata_store_misses = mdStats.cache_misses;
+        results_stats.stored = api::getStored(volName);
 
         vd::PerformanceCounters& perf_counters = api::performance_counters(volName);
         results_stats.performance_counters = perf_counters;
@@ -1062,6 +1091,52 @@ VolumePerformanceCounters::execute_internal(XmlRpc::XmlRpcValue& params,
 
         result = XMLRPCStructs::serialize_to_xmlrpc_value(results_stats);
     });
+}
+
+void
+VolumeDriverPerformanceCounters::execute_internal(XmlRpc::XmlRpcValue& params,
+                                                  XmlRpc::XmlRpcValue& result)
+{
+    bool reset = false;
+
+    if (params[0].hasMember(XMLRPCKeys::reset))
+    {
+        reset = getboolWithDefault(params[0],
+                                   XMLRPCKeys::reset,
+                                   false);
+    }
+
+    XMLRPCStatistics stats;
+    vd::PerformanceCounters perf_counters;
+
+    std::list<vd::VolumeId> l;
+    api::getVolumeList(l);
+
+
+    for (const auto& v : l)
+    {
+        const vd::MetaDataStoreStats mds(api::getMetaDataStoreStats(v));
+        stats.sco_cache_hits += api::getCacheHits(v);
+        stats.sco_cache_misses += api::getCacheMisses(v);
+        stats.cluster_cache_hits += api::getClusterCacheHits(v);
+        stats.cluster_cache_misses += api::getClusterCacheMisses(v);
+        stats.metadata_store_hits += mds.cache_hits;
+        stats.metadata_store_misses += mds.cache_misses;
+        stats.stored += api::getStored(v);
+
+        vd::PerformanceCounters& pc = api::performance_counters(v);
+
+        perf_counters += pc;
+
+        if (reset)
+        {
+            pc.reset_all_counters();
+        }
+    }
+
+    stats.performance_counters = perf_counters;
+
+    result = XMLRPCStructs::serialize_to_xmlrpc_value(stats);
 }
 
 void

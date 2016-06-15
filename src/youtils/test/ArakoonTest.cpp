@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/optional/optional_io.hpp>
@@ -97,15 +98,30 @@ TEST_F(ArakoonTest, add_nodes_multiple_times)
     test_hello(cluster);
 }
 
-TEST_F(ArakoonTest, add_nodes_only_one_node)
+TEST_F(ArakoonTest, add_nodes_incomplete_config)
 {
     auto configs(test_setup.node_configs());
     configs.pop_front();
 
-    EXPECT_THROW(ara::Cluster(test_setup.clusterID(),
-                              configs),
-                 error_client_unknown_node);
-
+    try
+    {
+        ara::Cluster(test_setup.clusterID(),
+                     configs);
+        FAIL() << "this should've thrown an exception";
+    }
+    catch (error_client_unknown_node&)
+    {
+        // the expected one.
+    }
+    catch (error_client_network_error&)
+    {
+        // unfortunately this one can also be raised as
+        // arakoons from time to time don't return a master:
+        // Apr 18 13:49:12 6735: (main|debug): who_master: returning None because young cluster
+    }
+    CATCH_STD_ALL_EWHAT({
+            FAIL() << "unexpected exception: " << EWHAT;
+        });
 }
 
 TEST_F(ArakoonTest, add_master_only)
@@ -313,7 +329,7 @@ TEST_F(ArakoonTest, gets_and_sets)
     auto cluster(test_setup.make_client());
 
     std::map<std::string, std::string> keyvals;
-    const uint64_t test_size = 1024*16;
+    const uint64_t test_size = 123;
 
     for(unsigned i = 0; i < test_size; ++i)
     {

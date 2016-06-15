@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "VolManagerTestSetup.h"
 #include <boost/thread.hpp>
@@ -29,7 +30,7 @@ unsigned init = 0;
 
 struct VolumeReader
 {
-    VolumeReader(Volume* v,
+    VolumeReader(SharedVolumePtr v,
                  uint64_t read_times,
                  uint64_t max_lba)
         : v_(v)
@@ -65,7 +66,7 @@ struct VolumeReader
 
     }
 
-    Volume* v_;
+    SharedVolumePtr v_;
     const uint64_t len_;
     std::vector<uint8_t> buf_;
     const uint64_t read_times_;
@@ -96,17 +97,12 @@ class ReadParallelismTest
 {
 public:
     ReadParallelismTest()
-        : VolManagerTestSetup("ReadParallelismTest",
-                              UseFawltyMDStores::F,
-                              UseFawltyTLogStores::F,
-                              UseFawltyDataStores::F,
-                              /* unsigned num_threads = */ 4,
-                              // If you change this also change the sco_cache_size below
-                              /* const std::string& sc_mp1_size = */ "10MiB",
-                              /* const std::string& sc_mp2_size = */ "10MiB",
-                              /* const std::string& sc_trigger_gap =*/ "8MiB",
-                              /* const std::string& sc_backoff_gap =*/ "9MiB",
-                              /* uint32_t clean_interval=*/1)
+        : VolManagerTestSetup(VolManagerTestSetupParameters("ReadParallelismTest")
+                              .sco_cache_mp1_size("10MiB")
+                              .sco_cache_mp2_size("10MiB")
+                              .sco_cache_trigger_gap("8MiB")
+                              .sco_cache_backoff_gap("9MiB")
+                              .sco_cache_cleanup_interval(1))
     {}
 
     void
@@ -130,7 +126,7 @@ public:
     }
 
     uint64_t
-    fill_with_scos(Volume* v,
+    fill_with_scos(SharedVolumePtr v,
                    uint64_t times_sco_cache)
     {
         // This size is related to the scocache sizes defined above!!!!
@@ -144,7 +140,7 @@ public:
         for(unsigned i = 0; i < num_scos; ++i)
         {
             VERIFY(4096*sco_multiplier == sco_size);
-            writeToVolume(v,
+            writeToVolume(*v,
                           i*8,
                           4096*sco_multiplier,
                           "kutmetperen");
@@ -165,15 +161,15 @@ TEST_P(ReadParallelismTest, DISABLED_single_read)
     const std::string id1("id1");
     const backend::Namespace ns1;
 
-    Volume* v = VolManagerTestSetup::newVolume(id1,
-                                               ns1);
+    SharedVolumePtr v = VolManagerTestSetup::newVolume(id1,
+                                                       ns1);
 
     uint64_t max_lba = fill_with_scos(v,
                                       100);
 
 
     ASSERT_NO_THROW(v->createSnapshot(SnapshotName("snap1")));
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
     youtils::wall_timer wt;
 
     for(int i = 1; i <= 8; i*=2)
@@ -205,7 +201,6 @@ TEST_P(ReadParallelismTest, DISABLED_single_read)
         std::cout << "Elapsed time for " << i
                   << " threads doing " << test_size << " reads " << wt.elapsed() << std::endl;
     }
-
 }
 
 namespace

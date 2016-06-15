@@ -26,6 +26,9 @@ fi
 
 PREFIX=$(pwd)
 
+# python version to use
+export PYTHON=${PYTHON:-/usr/bin/python2}
+
 #number of parallel makes to run
 PALLALLELLIZATION=${BUILD_NUM_PROCESSES:-6}
 
@@ -112,14 +115,19 @@ LIBS=${LIBS:-""}
 
 # while we're transitioning away from buildtools there's no point in adding -lrdmacm to
 # buildtools only to drop it again
-LIBS="-lrdmacm ${LIBS}"
+LIBS="-lrdmacm -lhiredis ${LIBS}"
 
 # here for ganesha modules but that reminds me that we don't really support c in the source tree.
 CFLAGS=${CFLAGS:-"-ggdb3 -gdwarf-3 -O0 -Wall"}
 CFLAGS="${CFLAGS} -fPIC"
 
-CPPFLAGS=${CPPFLAGS:-""}
 CPPFLAGS="${CPPFLAGS} -isystem ${BUILDTOOLS}/include"
+
+USE_MD5_HASH=${USE_MD5_HASH:-"yes"}
+if [ "x${USE_MD5_HASH}" == "xyes" ]
+then
+    CPPFLAGS="${CPPFLAGS} -DENABLE_MD5_HASH"
+fi
 
 CXX_INCLUDES=${CXX_INCLUDES:-""}
 CXX_WARNINGS=${CXX_WARNINGS:-"-Wall -Wextra -Wno-unknown-pragmas -Wctor-dtor-privacy -Wsign-promo -Woverloaded-virtual -Wnon-virtual-dtor"}
@@ -240,7 +248,7 @@ function configure_build {
 	${SCAN_BUILD_CMDLINE} \
 	${SOURCE_DIR}/configure \
 	--with-buildtoolsdir=${BUILDTOOLS?} \
-  --with-omniidl=/usr/bin/omniidl \
+    --with-omniidl=/usr/bin/omniidl \
 	--with-capnpc=${BUILDTOOLS?}/bin/capnpc \
 	--with-protoc=/usr/bin/protoc \
 	--with-fio=${BUILDTOOLS?}/bin/fio \

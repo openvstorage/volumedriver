@@ -1,20 +1,22 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef FILESYSTEM_H_
 #define FILESYSTEM_H_
 
+#include "CloneFileFlags.h"
 #include "DirectoryEntry.h"
 #include "FileEventRule.h"
 #include "FileSystemCall.h"
@@ -24,9 +26,9 @@
 #include "HierarchicalArakoon.h"
 #include "MetaDataStore.h"
 #include "Object.h"
-#include "VirtualDiskFormat.h"
 #include "ObjectRouter.h"
-#include "CloneFileFlags.h"
+#include "StatsCollectorComponent.h"
+#include "VirtualDiskFormat.h"
 
 #include <functional>
 #include <system_error>
@@ -133,7 +135,7 @@ public:
                 youtils::ConfigurationReport&) const override final;
 
     void
-    read(const Handle& h,
+    read(Handle& h,
          size_t& size,
          char* buf,
          off_t off,
@@ -141,13 +143,13 @@ public:
 
     void
     read(const FrontendPath& path,
-         const Handle& h,
+         Handle& h,
          size_t& size,
          char* buf,
          off_t off);
 
     void
-    write(const Handle& h,
+    write(Handle& h,
           size_t& size,
           const char* buf,
           off_t off,
@@ -155,18 +157,18 @@ public:
 
     void
     write(const FrontendPath& path,
-          const Handle& h,
+          Handle& h,
           size_t& size,
           const char* buf,
           off_t off);
 
     void
     fsync(const FrontendPath& path,
-          const Handle& h,
+          Handle& h,
           bool datasync);
 
     void
-    fsync(const Handle& h,
+    fsync(Handle& h,
           bool datasync);
 
     template<typename T>
@@ -307,15 +309,28 @@ public:
     void
     rmdir(const ObjectId& id);
 
+    // FUSE models its rename(from, to, flags) version after the renameat2
+    // syscall on linux which is not wrapped by glibc, and these flags are
+    // also not necessarily available from a header just yet.
+    enum RenameFlags
+    {
+        None = 0,
+        NoReplace = 1 << 0,
+        Exchange = 1 << 1,
+        WhiteOut = 1 << 2,
+    };
+
     void
     rename(const FrontendPath& from,
-           const FrontendPath& to);
+           const FrontendPath& to,
+           RenameFlags = RenameFlags::None);
 
     void
     rename(const ObjectId& from_parent_id,
            const std::string& from,
            const ObjectId& to_parent_id,
-           const std::string& to);
+           const std::string& to,
+           RenameFlags = RenameFlags::None);
 
     void
     truncate(const FrontendPath& path,
@@ -479,8 +494,8 @@ public:
         return router_;
     }
 
-    VirtualDiskFormat&
-    vdisk_format()
+    const VirtualDiskFormat&
+    vdisk_format() const
     {
         return *vdisk_format_;
     }
@@ -501,6 +516,12 @@ public:
     enable_shm_interface() const
     {
         return fs_enable_shm_interface.value();
+    }
+
+    bool
+    enable_network_interface() const
+    {
+        return fs_enable_network_interface.value();
     }
 
 private:
@@ -527,10 +548,12 @@ private:
     DECLARE_PARAMETER(fs_dtl_port);
     DECLARE_PARAMETER(fs_dtl_mode);
     DECLARE_PARAMETER(fs_enable_shm_interface);
+    DECLARE_PARAMETER(fs_enable_network_interface);
 
     std::shared_ptr<Registry> registry_;
     ObjectRouter router_;
     MetaDataStore mdstore_;
+    StatsCollectorComponent stats_collector_;
     xmlrpc::Server xmlrpc_svc_;
 
     typedef boost::archive::text_iarchive iarchive_type;

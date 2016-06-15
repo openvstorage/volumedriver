@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "Manager.h"
 #include "Table.h"
@@ -19,6 +20,7 @@
 #include <youtils/Assert.h>
 
 #include <volumedriver/MetaDataStoreBuilder.h>
+#include <volumedriver/RelocationReaderFactory.h>
 
 namespace metadata_server
 {
@@ -36,6 +38,9 @@ namespace yt = youtils;
 
 #define LOCKW()                                                 \
     boost::unique_lock<decltype(rwlock_)> wlg__(rwlock_)
+
+#define LOCK_COUNTERS()                                         \
+    boost::lock_guard<decltype(counters_lock_)> clg__(counters_lock_)
 
 Table::Table(DataBaseInterfacePtr db,
              be::BackendInterfacePtr bi,
@@ -198,6 +203,7 @@ Table::apply_relocations(const vd::ScrubId& scrub_id,
                                                            vd::CheckScrubId::T));
 
         update_nsid_map_(res.nsid_map);
+        update_counters_(res);
 
         if (mdstore->scrub_id() == scrub_id)
         {
@@ -208,9 +214,11 @@ Table::apply_relocations(const vd::ScrubId& scrub_id,
         {
             try
             {
-                mdstore->applyRelocs(relocs,
-                                     nsid_map_,
-                                     scratch_dir_,
+                vd::RelocationReaderFactory factory(relocs,
+                                                    scratch_dir_,
+                                                    nsid_map_.get(cid)->clone(),
+                                                    vd::CombinedTLogReader::FetchStrategy::Concurrent);
+                mdstore->applyRelocs(factory,
                                      cid,
                                      scrub_id);
             }
@@ -290,6 +298,7 @@ Table::work_()
             boost::upgrade_to_unique_lock<decltype(rwlock_)> u(ulg);
 
             update_nsid_map_(res.nsid_map);
+            update_counters_(res);
         }
         catch (be::BackendNamespaceDoesNotExistException& e)
         {
@@ -346,9 +355,47 @@ Table::catch_up(vd::DryRun dry_run)
         if (dry_run == vd::DryRun::F)
         {
             update_nsid_map_(res.nsid_map);
+            update_counters_(res);
         }
 
         return res.num_tlogs;
+    }
+}
+
+TableCounters
+Table::get_counters(vd::Reset reset)
+{
+    LOCKR();
+    LOCK_COUNTERS();
+
+    if (reset == vd::Reset::T)
+    {
+        TableCounters c;
+        std::swap(c, counters_);
+        return c;
+    }
+    else
+    {
+        return counters_;
+    }
+}
+
+void
+Table::update_counters_(const vd::MetaDataStoreBuilder::Result& res)
+{
+    LOCK_COUNTERS();
+
+    if (res.num_tlogs)
+    {
+        counters_.total_tlogs_read += res.num_tlogs;
+        if (res.full_rebuild)
+        {
+            counters_.full_rebuilds += 1;
+        }
+        else
+        {
+            counters_.incremental_updates += 1;
+        }
     }
 }
 

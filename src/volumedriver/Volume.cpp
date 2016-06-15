@@ -1,34 +1,36 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 // This one needs to go first so it's defined in case any header drags
 // in <youtils/Catchers> before we do it explicitly. Ugly? Hell yeah!
 #define GETVOLUME() (this)
 
 #include "BackendRestartAccumulator.h"
+#include "BackendTasks.h"
 #include "CombinedTLogReader.h"
 #include "DataStoreNG.h"
-#include "BackendTasks.h"
+#include "FailOverCacheClientInterface.h"
 #include "MDSMetaDataStore.h"
 #include "MetaDataStoreInterface.h"
+#include "RelocationReaderFactory.h"
 #include "SCOAccessData.h"
 #include "Scrubber.h"
 #include "SnapshotManagement.h"
 #include "TracePoints_tp.h"
 #include "TransientException.h"
 #include "TLogReader.h"
-#include "TLogReaderUtils.h"
 #include "VolManager.h"
 #include "Volume.h"
 #include "ScrubReply.h"
@@ -67,10 +69,10 @@
 static_assert(FLT_RADIX == 2, "Need to check code for non conforming FLT_RADIX");
 
 #define WLOCK()                                 \
-    fungi::ScopedWriteLock swl__(rwlock_)
+    boost::unique_lock<decltype(rwlock_)> urwlg__(rwlock_)
 
 #define RLOCK()                                 \
-    fungi::ScopedReadLock srl__(rwlock_)
+    boost::shared_lock<decltype(rwlock_)> srwlg__(rwlock_)
 
 #define SERIALIZE_WRITES()                              \
     boost::lock_guard<lock_type> gwl__(write_lock_)
@@ -81,10 +83,10 @@ static_assert(FLT_RADIX == 2, "Need to check code for non conforming FLT_RADIX")
 #ifndef NDEBUG
 
 #define ASSERT_WLOCKED()                        \
-    VERIFY(not rwlock_.tryReadLock())
+    VERIFY(not rwlock_.try_lock_shared())
 
 #define ASSERT_RLOCKED()                        \
-    VERIFY(not rwlock_.tryWriteLock())
+    VERIFY(not rwlock_.try_lock())
 
 #define ASSERT_WRITES_SERIALIZED()              \
     VERIFY(not write_lock_.try_lock())
@@ -116,12 +118,14 @@ Volume::Volume(const VolumeConfig& vCfg,
     : mdstore_was_rebuilt_(false)
     , config_lock_()
     , write_lock_()
-    , rwlock_(vCfg.id_ + "-volume-rwlock")
+    , rwlock_("rwlock-" + vCfg.id_.str())
     , halted_(false)
     , dataStore_(datastore.release())
-    , failover_(FailOverCacheBridgeFactory::create(FailOverCacheMode::Asynchronous,
-                                                   VolManager::get()->foc_queue_depth.value(),
-                                                   VolManager::get()->foc_write_trigger.value()))
+    , failover_(FailOverCacheClientInterface::create(FailOverCacheMode::Asynchronous,
+                                                     LBASize(vCfg.lba_size_),
+                                                     vCfg.cluster_mult_,
+                                                     VolManager::get()->dtl_queue_depth.value(),
+                                                     VolManager::get()->dtl_write_trigger.value()))
     , metaDataStore_(metadatastore.release())
     , clusterSize_(vCfg.getClusterSize())
     , config_(vCfg)
@@ -153,7 +157,7 @@ Volume::Volume(const VolumeConfig& vCfg,
     caMask_ = ~(getClusterSize() / getLBASize() - 1);
     dataStore_->initialize(this);
     snapshotManagement_->initialize(this);
-    failover_->initialize(this);
+    init_failover_cache_();
 
     VERIFY(metaDataStore_->scrub_id() != boost::none);
     VERIFY(*metaDataStore_->scrub_id() == snapshotManagement_->scrub_id());
@@ -231,7 +235,8 @@ Volume::setSCOMultiplier(SCOMultiplier sco_mult)
 
     const boost::optional<TLogMultiplier> tlog_mult(getTLogMultiplier());
 
-    VolManager::get()->checkSCOAndTLogMultipliers(getSCOMultiplier(),
+    VolManager::get()->checkSCOAndTLogMultipliers(getClusterSize(),
+                                                  getSCOMultiplier(),
                                                   sco_mult,
                                                   tlog_mult,
                                                   tlog_mult);
@@ -267,7 +272,8 @@ Volume::setTLogMultiplier(const boost::optional<TLogMultiplier>& tlog_mult)
 
     const SCOMultiplier sco_mult(getSCOMultiplier());
 
-    VolManager::get()->checkSCOAndTLogMultipliers(sco_mult,
+    VolManager::get()->checkSCOAndTLogMultipliers(getClusterSize(),
+                                                  sco_mult,
                                                   sco_mult,
                                                   getTLogMultiplier(),
                                                   tlog_mult);
@@ -397,9 +403,9 @@ Volume::localRestartDataStore_(SCONumber last_sco_num_in_backend,
         // explicitly say no fetch from backend should be done by not passing in a
         // backend pointer
         std::shared_ptr<TLogReaderInterface>
-            reader(makeCombinedTLogReader(snapshotManagement_->getTLogsPath(),
-                                          tlogs,
-                                          nullptr));
+            reader(CombinedTLogReader::create(snapshotManagement_->getTLogsPath(),
+                                              tlogs,
+                                              nullptr));
 
         std::map<SCO, CheckSum> checksums;
         reader->SCONamesAndChecksums(checksums);
@@ -463,7 +469,9 @@ Volume::localRestart()
             cache =
                 std::make_unique<FailOverCacheProxy>(foc_cfg,
                                                      cfg.getNS(),
-                                                     getClusterSize(),
+                                                     TODO("AR: fix getLBASize instead")
+                                                     LBASize(getLBASize()),
+                                                     getClusterMultiplier(),
                                                      failover_->getDefaultRequestTimeout());
         }
         CATCH_STD_ALL_EWHAT({
@@ -583,7 +591,8 @@ Volume::backend_restart(const CloneTLogs& restartTLogs,
             cache =
                 std::make_unique<FailOverCacheProxy>(foc_cfg,
                                                      cfg.getNS(),
-                                                     getClusterSize(),
+                                                     LBASize(getLBASize()),
+                                                     getClusterMultiplier(),
                                                      failover_->getDefaultRequestTimeout());
         }
         CATCH_STD_ALL_EWHAT({
@@ -707,7 +716,7 @@ Volume::writeClusterMetaData_(ClusterAddress ca,
                               const ClusterLocationAndHash& loc_and_hash)
 {
     ASSERT_WRITES_SERIALIZED();
-    ASSERT_WLOCKED();
+    ASSERT_RLOCKED();
 
     snapshotManagement_->addClusterEntry(ca,
                                          loc_and_hash);
@@ -758,7 +767,7 @@ Volume::writeClustersToFailOverCache_(const std::vector<ClusterLocation>& locs,
                                       const uint8_t* buf)
 {
     ASSERT_WRITES_SERIALIZED();
-    ASSERT_WLOCKED();
+    ASSERT_RLOCKED();
 
     if (failover_->backup())
     {
@@ -814,6 +823,11 @@ Volume::write(uint64_t lba,
 
     performance_counters().write_request_size.count(buflen);
 
+    if (VolManager::get()->volume_nullio.value())
+    {
+        return;
+    }
+
     yt::SteadyTimer t;
 
     if (T(isVolumeTemplate()))
@@ -866,13 +880,27 @@ Volume::write(uint64_t lba,
     while (off < len)
     {
         SERIALIZE_WRITES();
-        const ssize_t sco_cap = dataStore_->getRemainingSCOCapacity();
-
+        const ssize_t sco_cap =
+            dataStore_->getRemainingSCOCapacity() * getClusterSize();
         // we need to guarantee that ourselves by forcing a SCO rollover
         // when updating the SCOMultiplier
         VERIFY(sco_cap >= 0); // can we really deal with sco_cap == 0?
-        const size_t chunksize = std::min(wsize,
-                                          static_cast<size_t>(sco_cap) * getClusterSize());
+
+        size_t dtl_cap = std::numeric_limits<size_t>::max();
+        {
+            RLOCK();
+            if (failover_)
+            {
+                dtl_cap = failover_->max_entries() * getClusterSize();
+            }
+        }
+
+        VERIFY(dtl_cap > 0);
+
+        const size_t chunksize =
+            std::min({wsize,
+                      dtl_cap,
+                      static_cast<size_t>(sco_cap)});
 
         writeClusters_(addr + off, p + off, chunksize);
         off += chunksize;
@@ -883,6 +911,29 @@ Volume::write(uint64_t lba,
     performance_counters().write_request_usecs.count(duration_us.count());
 
     VERIFY(off == len);
+}
+
+namespace
+{
+ClusterLocationAndHash
+make_cluster_location_and_hash(const ClusterLocation& loc,
+                               const ClusterCacheMode ccmode,
+                               const uint8_t* buf,
+                               const size_t bufsize)
+{
+    if (ccmode == ClusterCacheMode::ContentBased)
+    {
+        return ClusterLocationAndHash(loc,
+                                      buf,
+                                      bufsize);
+    }
+    else
+    {
+        return ClusterLocationAndHash(loc,
+                                      yt::Weed::null());
+    }
+}
+
 }
 
 void
@@ -897,12 +948,10 @@ Volume::writeClusters_(uint64_t addr,
     size_t num_locs = bufsize / getClusterSize();
     unsigned throttle_usecs = 0;
     uint32_t ds_throttle = 0;
-    ClusterCache& cache = VolManager::get()->getClusterCache();
 
     {
-        // prevent concurrent writes and tlog rollover interfering with snapshotting
-        // and friends
-        WLOCK();
+        // prevent tlog rollover interfering with snapshotting and friends
+        RLOCK();
 
         TODO("ArneT: reserve/clear vector \"cluster_locations\" so the nr of clusters can be derived in the failover_->addEntries call");
 
@@ -918,35 +967,27 @@ Volume::writeClusters_(uint64_t addr,
             const uint8_t* data = buf + i * getClusterSize();
             uint64_t clusteraddr = addr + i * getClusterSize();
             ClusterAddress ca = addr2CA(clusteraddr);
-            const ClusterLocationAndHash
-                loc_and_hash(cluster_locations_[i],
-                             ccmode == ClusterCacheMode::LocationBased ?
-                             yt::Weed::null() :
-                             yt::Weed(data,
-                                      getClusterSize()));
-
+            ClusterLocationAndHash
+                loc_and_hash(make_cluster_location_and_hash(cluster_locations_[i],
+                                                            ccmode,
+                                                            data,
+                                                            getClusterSize()));
 
             writeClusterMetaData_(ca,
                                   loc_and_hash);
 
             if (isCacheOnWrite())
             {
-                cache.add(getClusterCacheHandle(),
-                          ca,
-                          loc_and_hash.weed,
-                          data);
+                add_to_cluster_cache_(ccmode,
+                                      ca,
+                                      loc_and_hash.weed(),
+                                      data);
             }
             else if (ccmode == ClusterCacheMode::LocationBased)
             {
-                // We need to invalidate even in case of ClusterCacheBehaviour::NoCache,
-                // otherwise an unfortunate reconfiguration of the default behaviour
-                // (CacheOnXXX -> NoCache (and overwrites) -> CacheOnXXX) could lead
-                // to outdated data being returned from the cache.
-                cache.invalidate(getClusterCacheHandle(),
-                                 ca,
-                                 loc_and_hash.weed);
+                purge_from_cluster_cache_(ca,
+                                          loc_and_hash.weed());
             }
-
         }
 
         yt::SteadyTimer t;
@@ -1005,6 +1046,11 @@ Volume::read(uint64_t lba,
                                      }));
 
     performance_counters().read_request_size.count(buflen);
+
+    if (VolManager::get()->volume_nullio.value())
+    {
+        return;
+    }
 
     yt::SteadyTimer t;
 
@@ -1072,7 +1118,7 @@ Volume::readClusters_(uint64_t addr,
     // avoid allocations
     std::vector<ClusterReadDescriptor> read_descriptors;
     read_descriptors.reserve(bufsize / getClusterSize());
-    ClusterCache& cache = VolManager::get()->getClusterCache();
+    const ClusterCacheMode ccmode = effective_cluster_cache_mode();
 
     for (uint64_t off = 0; off < bufsize; off += getClusterSize())
     {
@@ -1109,10 +1155,11 @@ Volume::readClusters_(uint64_t addr,
         }
         else
         {
-            bool in_cache = cache.read(getClusterCacheHandle(),
-                                       ca,
-                                       loc_and_hash.weed,
-                                       buf + off);
+            const bool in_cache = find_in_cluster_cache_(ccmode,
+                                                         ca,
+                                                         loc_and_hash.weed(),
+                                                         buf + off);
+
             if (in_cache)
             {
                 ++readCacheHits_;
@@ -1131,14 +1178,15 @@ Volume::readClusters_(uint64_t addr,
     }
 
     dataStore_->readClusters(read_descriptors);
+
     if (effective_cluster_cache_behaviour() != ClusterCacheBehaviour::NoCache)
     {
         for (const ClusterReadDescriptor& clrd : read_descriptors)
         {
-            cache.add(getClusterCacheHandle(),
-                      clrd.getClusterAddress(),
-                      clrd.weed(),
-                      clrd.getBuffer());
+            add_to_cluster_cache_(ccmode,
+                                  clrd.getClusterAddress(),
+                                  clrd.weed(),
+                                  clrd.getBuffer());
         }
     }
 }
@@ -1375,10 +1423,10 @@ Volume::restoreSnapshot(const SnapshotName& name)
 
             LOG_VINFO("Deleting " << doomedTLogs.size() << " TLogs");
 
-            const fs::path path(VolManager::get()->getTLogPath(this));
-            std::shared_ptr<TLogReaderInterface> r = makeCombinedTLogReader(path,
-                                                                            doomedTLogs,
-                                                                            getBackendInterface()->clone());
+            const fs::path path(VolManager::get()->getTLogPath(*this));
+            std::shared_ptr<TLogReaderInterface> r = CombinedTLogReader::create(path,
+                                                                                doomedTLogs,
+                                                                                getBackendInterface()->clone());
 
             r->SCONames(doomedSCOs);
             LOG_VINFO("Deleting " << doomedSCOs.size() << " SCOs");
@@ -1403,9 +1451,9 @@ Volume::restoreSnapshot(const SnapshotName& name)
         const OrderedTLogIds out(snapshotManagement_->getAllTLogs());
 
         std::shared_ptr<TLogReaderInterface> itf =
-            makeCombinedBackwardTLogReader(snapshotManagement_->getTLogsPath(),
-                                           out,
-                                           getBackendInterface()->clone());
+            CombinedTLogReader::create_backward_reader(snapshotManagement_->getTLogsPath(),
+                                                       out,
+                                                       getBackendInterface()->clone());
 
         ClusterLocation last_in_backend = itf->nextClusterLocation();
         LOG_VINFO("Resetting datastore to " << last_in_backend);
@@ -1575,7 +1623,7 @@ Volume::destroy(DeleteLocalData delete_local_data,
         {
             LOG_VINFO("Unregistering volume from ClusterCache");
             deregister_from_cluster_cache_(getOwnerTag());
-            CATCH_AND_CHECK_FORCE(failover_->newCache(0),
+            CATCH_AND_CHECK_FORCE(failover_->newCache(nullptr),
                                   "Exception trying to unset the failover cache");
         }
         else
@@ -1620,7 +1668,7 @@ Volume::destroy(DeleteLocalData delete_local_data,
 
     if (T(delete_local_data))
     {
-        CATCH_AND_CHECK_FORCE(fs::remove_all(VolManager::get()->getMetaDataPath(this)),
+        CATCH_AND_CHECK_FORCE(fs::remove_all(VolManager::get()->getMetaDataPath(*this)),
                               "Exception trying to delete the metadata directory");
         LOG_VINFO("Unregistering volume from ClusterCache");
         deregister_from_cluster_cache_(getOwnerTag());
@@ -1761,14 +1809,21 @@ Volume::applyScrubbingWork(const scrubbing::ScrubReply& scrub_reply,
         throw fungi::IOException("No result name passed");
     }
 
-    const fs::path result_path(FileUtils::temp_path() / res_name);
+    scrubbing::ScrubberResult scrub_result;
     const SCOCloneID scid = nsidmap_.getCloneID(ns);
 
     try
     {
-        nsidmap_.get(scid)->read(result_path,
-                                 res_name,
-                                 InsistOnLatestVersion::T);
+        nsidmap_.get(scid)->fillObject<decltype(scrub_result),
+                                       boost::archive::text_iarchive>(scrub_result,
+                                                                      res_name,
+                                                                      InsistOnLatestVersion::T);
+    }
+    catch (const be::BackendException& e)
+    {
+        LOG_VERROR("Backend exception retrieving scrub result " << res_name << ": " << e.what());
+        throw TransientException("Backend exception retrieving scrub result",
+                                 res_name.c_str());
     }
     CATCH_STD_ALL_EWHAT({
         // Manual cleanup required?
@@ -1780,19 +1835,27 @@ Volume::applyScrubbingWork(const scrubbing::ScrubReply& scrub_reply,
             throw;
         });
 
-    ALWAYS_CLEANUP_FILE(result_path);
-
-    scrubbing::ScrubberResult scrub_result;
+    std::unique_ptr<RelocationReaderFactory> reloc_reader_factory;
 
     try
     {
-        fs::ifstream ifs(result_path);
-        boost::archive::text_iarchive ia(ifs);
-        ia >> scrub_result;
-        LOG_VINFO("Finished preliminary work");
+        // Prefetch the relocation logs to prevent a backend glitch from sending the volume into the
+        // 'halted' limbo - cf. OVS-3764.
+        reloc_reader_factory =
+            std::make_unique<RelocationReaderFactory>(scrub_result.relocs,
+                                                      FileUtils::temp_path(),
+                                                      nsidmap_.get(scid)->clone(),
+                                                      CombinedTLogReader::FetchStrategy::Prefetch);
+        reloc_reader_factory->prepare_one();
+    }
+    catch (const be::BackendException& e)
+    {
+        LOG_VERROR("Backend exception retrieving relocations " << res_name << ": " << e.what());
+        throw TransientException("Backend exception retrieving relocations",
+                                 res_name.c_str());
     }
     CATCH_STD_ALL_EWHAT({
-            LOG_VERROR("Could not deserialize scrubbing result " << res_name << ": " <<
+            LOG_VERROR("Could not get relocation logs from the backend " << res_name << ": " <<
                        EWHAT);
             VolumeDriverError::report(events::VolumeDriverErrorCode::GetScrubbingResultsFromBackend,
                                       EWHAT,
@@ -1863,9 +1926,7 @@ Volume::applyScrubbingWork(const scrubbing::ScrubReply& scrub_reply,
     try
     {
         LOG_VINFO("applying " << scrub_result.relocs.size() << " relocation tlogs");
-        const uint64_t relocNum = metaDataStore_->applyRelocs(scrub_result.relocs,
-                                                              nsidmap_,
-                                                              FileUtils::temp_path(),
+        const uint64_t relocNum = metaDataStore_->applyRelocs(*reloc_reader_factory,
                                                               scid,
                                                               *scrub_id);
 
@@ -2031,7 +2092,8 @@ Volume::replayClusterFromFailOverCache_(ClusterAddress ca,
     }
 
     ClusterLocationAndHash loc_and_hash(loc,
-                                        buf);
+                                        buf,
+                                        getClusterSize());
     writeClusterMetaData_(ca,
                           loc_and_hash);
 
@@ -2171,19 +2233,29 @@ getFailOverCacheConfig()
 }
 
 void
+Volume::init_failover_cache_()
+{
+    failover_->initialize([&]() noexcept
+                          {
+                              LOG_VINFO("setting DTL degraded");
+                              setVolumeFailOverState(VolumeFailOverState::DEGRADED);
+                          });
+}
+
+void
 Volume::setFailOverCacheMode_(const FailOverCacheMode mode)
 {
     if (mode != failover_->mode())
     {
         failover_->destroy(SyncFailOverToBackend::T);
-        std::unique_ptr<FailOverCacheClientInterface> newBridge(FailOverCacheBridgeFactory::create(mode,
-                                                                                                   VolManager::get()->foc_queue_depth.value(),
-                                                                                                   VolManager::get()->foc_write_trigger.value()));
-        failover_ = std::move(newBridge);
-        failover_->initialize(this);
+        failover_ = FailOverCacheClientInterface::create(mode,
+                                                         LBASize(getLBASize()),
+                                                         getClusterMultiplier(),
+                                                         VolManager::get()->dtl_queue_depth.value(),
+                                                         VolManager::get()->dtl_write_trigger.value());
+        init_failover_cache_();
     }
 }
-
 
 void
 Volume::setFailOverCacheConfig_(const FailOverCacheConfig& config)
@@ -2194,7 +2266,7 @@ Volume::setFailOverCacheConfig_(const FailOverCacheConfig& config)
     foc_config_wrapper_.set(config);
 
     last_tlog_not_on_failover_ = boost::none;
-    failover_->newCache(0);
+    failover_->newCache(nullptr);
 
     writeFailOverCacheConfigToBackend_();
 
@@ -2202,7 +2274,8 @@ Volume::setFailOverCacheConfig_(const FailOverCacheConfig& config)
     setFailOverCacheMode_(config.mode);
     failover_->newCache(std::make_unique<FailOverCacheProxy>(config,
                                                              getNamespace(),
-                                                             getClusterSize(),
+                                                             LBASize(getLBASize()),
+                                                             getClusterMultiplier(),
                                                              failover_->getDefaultRequestTimeout()));
     failover_->Clear();
 
@@ -2309,9 +2382,9 @@ Volume::getSnapshotSCOCount(const SnapshotName& snapshotName)
     }
 
     std::shared_ptr<TLogReaderInterface>
-        treader(makeCombinedTLogReader(snapshotManagement_->getTLogsPath(),
-                                       tlog_ids,
-                                       getBackendInterface()->clone()));
+        treader(CombinedTLogReader::create(snapshotManagement_->getTLogsPath(),
+                                           tlog_ids,
+                                           getBackendInterface()->clone()));
 
     std::vector<SCO> lst;
     treader->SCONames(lst);
@@ -2350,7 +2423,7 @@ Volume::getClusterCacheMisses() const
 }
 
 void
-Volume::setFOCTimeout(uint32_t timeout)
+Volume::setFOCTimeout(const boost::chrono::seconds timeout)
 {
     checkNotHalted_();
     failover_->setRequestTimeout(timeout);
@@ -2370,6 +2443,11 @@ Volume::sync()
                                                     config_.id_.str().c_str(),
                                                     std::uncaught_exception());
                                      }));
+
+    if (VolManager::get()->volume_nullio.value())
+    {
+        return;
+    }
 
     yt::SteadyTimer t;
 
@@ -2443,7 +2521,7 @@ Volume::checkSCONamesConsistency_(const std::vector<SCO>& names)
 bool
 Volume::checkTLogsConsistency_(CloneTLogs& ctl) const
 {
-    const fs::path tlog_temp_location(VolManager::get()->getTLogPath(this) / "tmp");
+    const fs::path tlog_temp_location(VolManager::get()->getTLogPath(*this) / "tmp");
     fs::create_directories(tlog_temp_location);
 
     for(unsigned i = 0; i < ctl.size(); ++i)
@@ -3245,6 +3323,70 @@ size_t
 Volume::effective_metadata_cache_capacity() const
 {
     return VolManager::get()->effective_metadata_cache_capacity(get_config());
+}
+
+void
+Volume::add_to_cluster_cache_(const ClusterCacheMode ccmode,
+                              const ClusterAddress ca,
+                              const youtils::Weed& weed,
+                              const uint8_t* buf)
+{
+    // For now we only use the cache if it has the same cluster size. We could
+    // try harder and split volume clusters into smaller cache clusters.
+    ClusterCache& cache = VolManager::get()->getClusterCache();
+
+    if ((ClusterLocationAndHash::use_hash() or
+         ccmode != ClusterCacheMode::ContentBased) and
+        cache.cluster_size() == getClusterSize())
+    {
+        cache.add(getClusterCacheHandle(),
+                  ca,
+                  weed,
+                  buf,
+                  static_cast<size_t>(getClusterSize()));
+    }
+}
+
+void
+Volume::purge_from_cluster_cache_(const ClusterAddress ca,
+                                  const youtils::Weed& weed)
+{
+    // For now we only use the cache if it has the same cluster size. We could
+    // try harder and split volume clusters into smaller cache clusters.
+    ClusterCache& cache = VolManager::get()->getClusterCache();
+
+    if (cache.cluster_size() == getClusterSize())
+    {
+        cache.invalidate(getClusterCacheHandle(),
+                         ca,
+                         weed);
+    }
+}
+
+bool
+Volume::find_in_cluster_cache_(const ClusterCacheMode ccmode,
+                               const ClusterAddress ca,
+                               const youtils::Weed& weed,
+                               uint8_t* buf)
+{
+    // For now we only use the cache if it has the same cluster size. We could
+    // try harder and split volume clusters into smaller cache clusters.
+    ClusterCache& cache = VolManager::get()->getClusterCache();
+
+    if ((ClusterLocationAndHash::use_hash() or
+         ccmode != ClusterCacheMode::ContentBased) and
+        cache.cluster_size() == getClusterSize())
+    {
+        return cache.read(getClusterCacheHandle(),
+                          ca,
+                          weed,
+                          buf,
+                          static_cast<size_t>(getClusterSize()));
+    }
+    else
+    {
+        return false;
+    }
 }
 
 }

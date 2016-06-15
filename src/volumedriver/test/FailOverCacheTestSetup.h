@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef FAILOVER_CACHE_TEST_SETUP_H_
 #define FAILOVER_CACHE_TEST_SETUP_H_
@@ -25,6 +26,7 @@
 #include "../FailOverCacheConfig.h"
 #include "../FailOverCacheProxy.h"
 #include "../FailOverCacheTransport.h"
+#include "../failovercache/Backend.h"
 #include "../failovercache/FailOverCacheAcceptor.h"
 #include "../failovercache/FailOverCacheProtocol.h"
 
@@ -58,18 +60,6 @@ private:
 public:
     ~FailOverCacheTestContext();
 
-    boost::filesystem::path
-    path() const
-    {
-        return acceptor_.path();
-    }
-
-    boost::filesystem::path
-    lock_file() const
-    {
-        return acceptor_.lock_file();
-    }
-
     uint16_t
     port() const
     {
@@ -78,6 +68,9 @@ public:
 
     volumedriver::FailOverCacheConfig
     config(const volumedriver::FailOverCacheMode) const;
+
+    std::shared_ptr<failovercache::Backend>
+    backend(const backend::Namespace&);
 };
 
 typedef std::shared_ptr<FailOverCacheTestContext> foctest_context_ptr;
@@ -88,7 +81,7 @@ class FailOverCacheTestSetup
     friend class ::VolumeDriverTest;
 
 public:
-    explicit FailOverCacheTestSetup(const boost::filesystem::path& p);
+    explicit FailOverCacheTestSetup(const boost::optional<boost::filesystem::path>&);
 
     ~FailOverCacheTestSetup();
 
@@ -121,7 +114,7 @@ public:
         return transport_;
     }
 
-    const boost::filesystem::path path;
+    const boost::optional<boost::filesystem::path> path;
 
 private:
     DECLARE_LOGGER("FailOverCacheTestSetup");

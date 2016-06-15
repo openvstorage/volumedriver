@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef API_H_
 #define API_H_
@@ -34,6 +35,7 @@
 #include "VolumeConfig.h"
 #include "VolumeConfigParameters.h"
 #include "VolumeOverview.h"
+#include "failovercache/fungilib/Mutex.h" // <-- kill it!
 
 #include <string>
 #include <limits>
@@ -80,27 +82,27 @@ public:
                 const volumedriver::CreateNamespace = volumedriver::CreateNamespace::F);
 
     static void
-    updateMetaDataBackendConfig(volumedriver::Volume*,
+    updateMetaDataBackendConfig(volumedriver::WeakVolumePtr,
                                 const volumedriver::MetaDataBackendConfig&);
 
     static void
     updateMetaDataBackendConfig(const volumedriver::VolumeId&,
                                 const volumedriver::MetaDataBackendConfig&);
 
-    static volumedriver::Volume*
+    static volumedriver::WeakVolumePtr
     getVolumePointer(const volumedriver::VolumeId&);
 
-    static volumedriver::Volume*
+    static boost::optional<volumedriver::WeakVolumePtr>
     get_volume_pointer_no_throw(const volumedriver::VolumeId&);
 
-    static volumedriver::Volume*
+    static volumedriver::WeakVolumePtr
     getVolumePointer(const volumedriver::Namespace&);
 
     static const volumedriver::VolumeId
-    getVolumeId(volumedriver::Volume*);
+    getVolumeId(volumedriver::WeakVolumePtr);
 
     static void
-    Write(volumedriver::Volume* vol,
+    Write(volumedriver::WeakVolumePtr vol,
           uint64_t lba,
           const uint8_t *buf,
           uint64_t buflen);
@@ -112,23 +114,26 @@ public:
           const uint64_t buflen);
 
     static void
-    Read(volumedriver::Volume* vol,
+    Read(volumedriver::WeakVolumePtr vol,
          const uint64_t lba,
          uint8_t *buf,
          const uint64_t buflen);
 
     static void
-    Sync(volumedriver::Volume* vol);
+    Sync(volumedriver::WeakVolumePtr);
 
     static void
-    Resize(volumedriver::Volume* vol,
+    Resize(volumedriver::WeakVolumePtr,
            uint64_t num_clusters);
 
     static uint64_t
-    GetSize(volumedriver::Volume* vol);
+    GetSize(volumedriver::WeakVolumePtr);
 
     static uint64_t
-    GetLbaSize(volumedriver::Volume* vol);
+    GetLbaSize(volumedriver::WeakVolumePtr);
+
+    static uint64_t
+    GetClusterSize(volumedriver::WeakVolumePtr);
 
     static void
     Init(const boost::filesystem::path& cfg,
@@ -138,10 +143,6 @@ public:
     Init(const boost::property_tree::ptree& pt,
          events::PublisherPtr event_publisher = nullptr);
 
-    // this one is the volumedriver's "cosmological constant", i.e. it's not configurable
-    // per volume anymore as things like the cluster cache also rely on it.
-    static uint64_t
-    GetClusterSize();
 
     static void
     Exit(void);
@@ -182,7 +183,7 @@ public:
                   const volumedriver::ForceVolumeDeletion force_volume_deletion);
 
     static void
-    destroyVolume(volumedriver::Volume* volName,
+    destroyVolume(volumedriver::WeakVolumePtr volName,
                   const volumedriver::DeleteLocalData delete_local_data,
                   const volumedriver::RemoveVolumeCompletely remove_volume_completely,
                   const volumedriver::DeleteVolumeNamespace delete_volume_namespace,
@@ -199,7 +200,7 @@ public:
     removeLocalVolumeData(const backend::Namespace& nspace);
 
     static volumedriver::SnapshotName
-    createSnapshot(volumedriver::Volume*,
+    createSnapshot(volumedriver::WeakVolumePtr,
                    const volumedriver::SnapshotMetaData& = volumedriver::SnapshotMetaData(),
                    const volumedriver::SnapshotName* const snapname = 0,
                    const volumedriver::UUID& uuid = volumedriver::UUID());
@@ -237,7 +238,7 @@ public:
                 const volumedriver::SnapshotName&);
 
     static volumedriver::Snapshot
-    getSnapshot(const volumedriver::Volume*,
+    getSnapshot(const volumedriver::WeakVolumePtr,
                 const volumedriver::SnapshotName&);
 
     static volumedriver::Snapshot
@@ -328,6 +329,9 @@ public:
     static volumedriver::SCOCacheNamespaceInfo
     getVolumeSCOCacheInfo(const backend::Namespace);
 
+    static volumedriver::ClusterSize
+    getDefaultClusterSize();
+
     static void
     getClusterCacheDeviceInfo(volumedriver::ClusterCache::ManagerType::Info& info);
 
@@ -355,8 +359,8 @@ public:
                         const volumedriver::SnapshotName&);
 
     static void
-    setFOCTimeout(const volumedriver::VolumeId& volName,
-                  uint32_t timeout);
+    setFOCTimeout(const volumedriver::VolumeId&,
+                  const boost::chrono::seconds);
 
     static bool
     checkVolumeConsistency(const volumedriver::VolumeId&);
@@ -472,7 +476,8 @@ public:
                        const volumedriver::ScrubbingCleanup = volumedriver::ScrubbingCleanup::OnSuccess);
 
     static uint64_t
-    volumePotential(const volumedriver::SCOMultiplier,
+    volumePotential(const volumedriver::ClusterSize,
+                    const volumedriver::SCOMultiplier,
                     const boost::optional<volumedriver::TLogMultiplier>&);
 
     static uint64_t

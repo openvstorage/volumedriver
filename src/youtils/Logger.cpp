@@ -1,41 +1,24 @@
-// This file is dual licensed GPLv2 and Apache 2.0.
-// Active license depends on how it is used.
+// Copyright (C) 2016 iNuron NV
 //
-// Copyright 2016 iNuron NV
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-// // GPL //
-// This file is part of OpenvStorage.
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// OpenvStorage is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 2 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with OpenvStorage. If not, see <http://www.gnu.org/licenses/>.
-//
-// // Apache 2.0 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "Assert.h"
 #include "FileUtils.h"
 #include "Logger.h"
 #include "LoggerPrivate.h"
+#include "RedisUrl.h"
+#include "RedisQueue.h"
 
 #include <stdlib.h>
 #include <sys/time.h>
@@ -48,6 +31,7 @@
 
 #include <boost/atomic.hpp>
 
+#include <boost/asio/ip/host_name.hpp>
 #include <boost/core/null_deleter.hpp>
 
 #include <boost/date_time/gregorian/gregorian_types.hpp>
@@ -66,6 +50,11 @@
 #include <boost/log/utility/setup/common_attributes.hpp>
 #include <boost/log/utility/setup/file.hpp>
 #include <boost/log/utility/string_literal.hpp>
+
+#include <boost/log/sinks/basic_sink_backend.hpp>
+#include <boost/log/sinks/frontend_requirements.hpp>
+
+#include <boost/lexical_cast.hpp>
 
 #include <boost/thread.hpp>
 
@@ -107,6 +96,8 @@ boost::mutex update_lock;
 const std::string thread_id_key("ThreadID");
 const std::string timestamp_key("TimeStamp");
 
+std::string program_name;
+
 // slow path, we prefer convenience (call sites not having to check for nullptrs)
 // over efficiency.
 template<typename F>
@@ -133,10 +124,10 @@ update_filter_table(F&& fun)
 typedef struct timeval time_type;
 
 void
-log_formatter(const bl::record_view& rec,
-              bl::formatting_ostream& strm)
+default_log_formatter(const bl::record_view& rec,
+                      bl::formatting_ostream& strm)
 {
-    const char* separator  = " -- ";
+    static const char* separator  = " -- ";
     {
         const time_type& the_time =
             bl::extract_or_throw<time_type>(timestamp_key, rec);
@@ -167,7 +158,62 @@ log_formatter(const bl::record_view& rec,
     strm << rec[bl::expressions::smessage] << separator ;
 
     strm << "["
-         <<  bl::extract_or_throw< bl::attributes::current_thread_id::value_type>(thread_id_key, rec) << "]";
+         <<  bl::extract_or_throw<bl::attributes::current_thread_id::value_type>(thread_id_key, rec) << "]";
+}
+
+void
+ovs_log_formatter(const bl::record_view& rec,
+                  bl::formatting_ostream& os)
+{
+    static const char* sep = " - ";
+
+    const time_type& the_time =
+        bl::extract_or_throw<time_type>(timestamp_key, rec);
+    static const char* time_format_tpl =
+        "%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d %6.6d %+02.2d%02.2d";
+    char tsbuf[128];
+    struct tm bt;
+    localtime_r(&the_time.tv_sec, &bt);
+    snprintf(tsbuf,
+             sizeof(tsbuf),
+             time_format_tpl,
+             1900 + bt.tm_year,
+             1 + bt.tm_mon,
+             bt.tm_mday,
+             bt.tm_hour,
+             bt.tm_min,
+                 bt.tm_sec,
+             the_time.tv_usec,
+             // #warning "check this time zone conversion for negative numbers"
+             bt.tm_gmtoff / 3600,
+             (bt.tm_gmtoff % 3600) / 60);
+
+    static const pid_t pid(::getpid());
+    static const std::string hostname(boost::asio::ip::host_name());
+    static uint64_t seqnum = 0;
+
+    std::stringstream sseq;
+    sseq << std::hex << std::setw(16) << std::setfill('0') << seqnum++;
+
+    os <<
+        tsbuf <<
+        sep <<
+        hostname <<
+        sep <<
+        pid <<
+        "/" <<
+        bl::extract_or_throw<bl::attributes::current_thread_id::value_type>(thread_id_key, rec) <<
+        sep <<
+        program_name <<
+        "/" <<
+        bl::extract_or_throw<LOGGER_ATTRIBUTE_ID_TYPE>(LOGGER_ATTRIBUTE_ID,
+                                                       rec) <<
+        sep <<
+        sseq.str() <<
+        sep <<
+        bl::extract_or_throw<Severity>("Severity", rec) <<
+        sep <<
+        rec[bl::expressions::smessage];
 }
 
 inline time_type
@@ -254,34 +300,78 @@ struct Collector
     }
 };
 
-boost::shared_ptr<bl::sinks::sink> log_sink;
-
-void
-setup_console_logging()
+class RedisBackend :
+    public bl::sinks::basic_formatted_sink_backend<
+            char,
+            bl::sinks::synchronized_feeding>
 {
-    typedef bl::sinks::synchronous_sink<bl::sinks::text_ostream_backend> text_sink;
+public:
+    explicit RedisBackend(const RedisUrl& url)
+    : url_(url)
+    {
+        rq_.reset(new RedisQueue(url_, 120));
+    }
 
-    auto sink(boost::make_shared<text_sink>());
+    void
+    consume(bl::record_view const& /*rec*/,
+            std::string const& formatted_log)
+    {
+        if (not rq_)
+        {
+            try
+            {
+                rq_.reset(new RedisQueue(url_, 120));
+            }
+            catch (...)
+            {
+                return;
+            }
+        }
+        try
+        {
+            rq_->push(formatted_log);
+        }
+        catch (...)
+        {
+            rq_.reset();
+        }
+    }
+private:
+    RedisUrl url_;
+    RedisQueuePtr rq_;
+};
+
+using LogSinkPtr = boost::shared_ptr<bl::sinks::sink>;
+
+// XXX: why was it necessary to cling to the sinks?
+std::unordered_map<std::string, LogSinkPtr> log_sinks;
+
+LogSinkPtr
+make_console_sink()
+{
+    using ConsoleSink = bl::sinks::synchronous_sink<bl::sinks::text_ostream_backend>;
+
+    auto sink(boost::make_shared<ConsoleSink>());
     boost::shared_ptr<std::ostream> stream(&std::clog,
                                            boost::null_deleter());
     sink->locked_backend()->add_stream(stream);
-    sink->set_formatter(&log_formatter);
+    sink->set_formatter(&ovs_log_formatter);
 
-    log_sink = sink;
+    return sink;
 }
 
-void
-setup_file_logging(const fs::path& fname,
-                   const LogRotation log_rotation)
+LogSinkPtr
+make_file_sink(const fs::path& fname,
+               const LogRotation log_rotation)
 {
-    typedef bl::sinks::text_file_backend file_backend;
-    boost::shared_ptr<file_backend>
-        backend(new file_backend(bl::keywords::file_name = fname,
-                                 bl::keywords::open_mode = std::ios::out bitor std::ios::app,
-                                 bl::keywords::auto_flush = true),
-                SinkDeleter());
+    using FileBackend = bl::sinks::text_file_backend;
 
-    //            boost::make_shared< sinks::text_file_backend > ;
+    boost::shared_ptr<FileBackend>
+        backend(new FileBackend(bl::keywords::file_name = fname,
+                                bl::keywords::open_mode = std::ios::out bitor
+                                std::ios::app,
+                                bl::keywords::auto_flush = true),
+                SinkDeleter());
 
     if (T(log_rotation))
     {
@@ -297,11 +387,24 @@ setup_file_logging(const fs::path& fname,
         backend->set_file_collector(collector);
     }
 
-    typedef bl::sinks::synchronous_sink<bl::sinks::text_file_backend> sink_t;
-    auto sink(boost::make_shared<sink_t>(backend));
+    using FileSink = bl::sinks::synchronous_sink<bl::sinks::text_file_backend>;
+    auto sink(boost::make_shared<FileSink>(backend));
+    sink->set_formatter(&ovs_log_formatter);
 
-    sink->set_formatter(&log_formatter);
-    log_sink = sink;
+    return sink;
+}
+
+LogSinkPtr
+make_redis_sink(const RedisUrl& url)
+{
+    boost::shared_ptr<RedisBackend>
+        backend(new RedisBackend(url));
+
+    using RedisSink = bl::sinks::asynchronous_sink<RedisBackend,
+          bl::sinks::bounded_fifo_queue<100, bl::sinks::drop_on_overflow>>;
+    auto sink(boost::make_shared<RedisSink>(backend));
+    sink->set_formatter(&ovs_log_formatter);
+    return sink;
 }
 
 }
@@ -317,7 +420,8 @@ SeverityLoggerWithName::SeverityLoggerWithName(const std::string& n,
 }
 
 void
-Logger::setupLogging(const fs::path& log_file_name,
+Logger::setupLogging(const std::string& progname,
+                     const std::vector<std::string>& sinks,
                      const Severity severity,
                      const LogRotation log_rotation)
 {
@@ -325,28 +429,43 @@ Logger::setupLogging(const fs::path& log_file_name,
 
     global_severity = severity;
 
-    if (log_sink != nullptr)
+    if (not log_sinks.empty())
     {
         // logging was initialized before
     }
     else
     {
+        program_name = progname;
+
         bl::core::get()->add_global_attribute(thread_id_key,
                                               bl::attributes::current_thread_id());
         bl::core::get()->add_global_attribute(timestamp_key,
                                               bl::attributes::function<time_t>(&our_time));
 
-        if (log_file_name.empty())
+        for (const auto& s : sinks)
         {
-            setup_console_logging();
+            if (RedisUrl::is_one(s))
+            {
+                log_sinks.emplace(std::make_pair(s,
+                                                 make_redis_sink(boost::lexical_cast<RedisUrl>(s))));
+            }
+            else if (s == console_sink_name())
+            {
+                log_sinks.emplace(std::make_pair(s,
+                                                 make_console_sink()));
+            }
+            else
+            {
+                log_sinks.emplace(std::make_pair(s,
+                                                 make_file_sink(s,
+                                                                log_rotation)));
+            }
         }
-        else
-        {
-            setup_file_logging(log_file_name,
-                               log_rotation);
-        }
+    }
 
-        bl::core::get()->add_sink(log_sink);
+    for (const auto& p : log_sinks)
+    {
+        bl::core::get()->add_sink(p.second);
     }
 
     bl::core::get()->set_exception_handler(bl::make_exception_suppressor());
@@ -355,13 +474,16 @@ Logger::setupLogging(const fs::path& log_file_name,
 void
 Logger::teardownLogging()
 {
-    // flushing & closing here??
     update_filter_table([&](FilterTable& table)
                         {
-                            disableLogging();
                             bl::core::get()->remove_all_sinks();
+                            for (const auto& p : log_sinks)
+                            {
+                                p.second->flush();
+                            }
+                            disableLogging();
                             table.clear();
-                            log_sink = nullptr;
+                            log_sinks.clear();
                         });
 }
 
@@ -488,7 +610,7 @@ Logger::disableLogging()
 void
 Logger::enableLogging()
 {
-    if (log_sink == nullptr)
+    if (log_sinks.empty())
     {
         throw LoggerNotConfiguredException("Logging is not configured");
     }

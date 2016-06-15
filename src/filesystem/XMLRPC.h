@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef _VOLUMEDRIVERFS_XMLRPC_H_
 #define _VOLUMEDRIVERFS_XMLRPC_H_
@@ -253,7 +254,7 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirect,
                 "volumeCreate",
                 "Create a volume");
 
-REGISTER_XMLRPC(XMLRPCCallTiming,
+REGISTER_XMLRPC(XMLRPCCallTimingRedirect,
                 VolumesList,
                 "volumesList",
                 "Get a list of volumes");
@@ -311,6 +312,11 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirect,
 REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
                 VolumePerformanceCounters,
                 "volumePerformanceCounters",
+                "Performance data");
+
+REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
+                VolumeDriverPerformanceCounters,
+                "volumeDriverPerformanceCounters",
                 "Performance data");
 
 REGISTER_XMLRPC(XMLRPCCallTimingRedirect,
@@ -681,7 +687,7 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
                 "getMetaDataCacheCapacity",
                 "get capacity of the metadata cache (in pages)");
 
-typedef LOKI_TYPELIST_83(
+typedef LOKI_TYPELIST_84(
 // ================== EXPOSED IN XMLRPC CLIENT ===================
                          VolumeCreate,
                          VolumesList,
@@ -697,6 +703,7 @@ typedef LOKI_TYPELIST_83(
                          SnapshotDestroy,
                          IsVolumeSyncedUpToSnapshot,
                          VolumePerformanceCounters,
+                         VolumeDriverPerformanceCounters,
                          SetVolumeAsTemplate,
                          GetScrubbingWork,
                          ApplyScrubbingResult,

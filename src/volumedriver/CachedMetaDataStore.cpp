@@ -1,22 +1,24 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "CachedMetaDataStore.h"
 #include "ClusterLocationAndHash.h"
+#include "CombinedTLogReader.h"
 #include "PageSortingGenerator.h"
+#include "RelocationReaderFactory.h"
 #include "TLog.h"
-#include "TLogReaderUtils.h"
 #include "TracePoints_tp.h"
 #include "VolManager.h"
 #include "VolumeConfig.h"
@@ -400,9 +402,9 @@ CachedMetaDataStore::processCloneTLogs(const CloneTLogs& ctl,
         const OrderedTLogIds& tlogs = ctl[i].second;
 
         std::shared_ptr<TLogReaderInterface>
-            r(makeCombinedTLogReader(tlog_path,
-                                     tlogs,
-                                     nsidmap.get(cloneid)->clone()));
+            r(CombinedTLogReader::create(tlog_path,
+                                         tlogs,
+                                         nsidmap.get(cloneid)->clone()));
         processTLogReaderInterface(r, cloneid);
     }
 
@@ -547,26 +549,9 @@ struct PageCmp
 }
 
 uint64_t
-CachedMetaDataStore::applyRelocs(const std::vector<std::string>& relocs,
-                                 const NSIDMap& nsid_map,
-                                 const fs::path& tlog_location,
-                                 SCOCloneID cid,
+CachedMetaDataStore::applyRelocs(RelocationReaderFactory& factory,
+                                 SCOCloneID scid,
                                  const ScrubId& scrub_id)
-{
-    // Feels a bit wrong since the relocs are not a tlog...
-    auto treader(makeCombinedTLogReader(tlog_location,
-                                        relocs,
-                                        nsid_map.get(cid)->clone()));
-
-    return apply_relocs_(*treader,
-                         cid,
-                         scrub_id);
-}
-
-uint64_t
-CachedMetaDataStore::apply_relocs_(TLogReaderInterface& treader,
-                                   SCOCloneID scid,
-                                   const ScrubId& scrub_id)
 {
     uint64_t relocNum = 0;
     const Entry* e_old = 0;
@@ -575,11 +560,13 @@ CachedMetaDataStore::apply_relocs_(TLogReaderInterface& treader,
     // will lead to the restart code throwing away the mdstore and starting from scratch.
     set_scrub_id(ScrubId());
 
-    while ((e_old = treader.nextLocation()))
+    std::unique_ptr<TLogReaderInterface> treader(factory.get_one());
+
+    while ((e_old = treader->nextLocation()))
     {
         //  No problem to keep the lock in the loop
 
-        const Entry* e_new = treader.nextLocation();
+        const Entry* e_new = treader->nextLocation();
         if(not e_new)
         {
             LOG_ERROR(id_ << ": wrong Relocation TLog, uneven number of entries");

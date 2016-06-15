@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "CachedSCO.h"
 #include "SCOCache.h"
@@ -28,26 +29,29 @@
 #include <youtils/FileUtils.h>
 #include <youtils/FileDescriptor.h>
 #include <youtils/Serialization.h>
+#include <youtils/UUID.h>
 
 namespace volumedriver
 {
 
+namespace bu = boost::uuids;
+namespace fs = boost::filesystem;
+namespace yt = youtils;
+
 #define USED_LOCK()                             \
     fungi::ScopedSpinLock __l(usedLock_)
-
-namespace bid = boost::interprocess::ipcdetail;
 
 void
 intrusive_ptr_add_ref(SCOCacheMountPoint* mp)
 {
-    bid::atomic_inc32(&mp->refcnt_);
+    ASSERT(mp);
+    ++mp->refcnt_;
 }
 
 void
 intrusive_ptr_release(SCOCacheMountPoint* mp)
 {
-    // ...::atomic_dec32() (and ..::atomic_inc32() too) returns the old value!
-    if (bid::atomic_dec32(&mp->refcnt_) == 1)
+    if (mp and --mp->refcnt_ == 0)
     {
         delete mp;
     }
@@ -67,6 +71,7 @@ SCOCacheMountPoint::SCOCacheMountPoint(SCOCache& scoCache,
     : usedLock_()
     , scoCache_(scoCache)
     , path_(cfg.path)
+    , garbage_path_(path_ / ".garbage")
     , capacity_(cfg.size)
     , used_(0)
     , refcnt_(0)
@@ -82,6 +87,8 @@ SCOCacheMountPoint::SCOCacheMountPoint(SCOCache& scoCache,
     {
         newMountPointStage1_();
     }
+
+    deferred_file_remover_ = std::make_unique<yt::DeferredFileRemover>(garbage_path_);
 }
 
 SCOCacheMountPoint::~SCOCacheMountPoint()
@@ -195,8 +202,6 @@ SCOCacheMountPoint::newMountPointStage1_()
 
     LOG_DEBUG(path_ << ": creation stage 1 succeeded");
 }
-
-
 
 void
 SCOCacheMountPoint::newMountPointStage2(uint64_t errcount)
@@ -402,7 +407,7 @@ bool
 SCOCacheMountPoint::isChoking() const
 {
     VERIFY(initialised_);
-    return (choking_ != 0);
+    return (choking_ != boost::none);
 }
 
 uint64_t
@@ -469,7 +474,11 @@ SCOCacheMountPoint::empty_()
 
     for (fs::directory_iterator it(path_); it != end; ++it)
     {
-        if (validateNamespace_(Namespace(it->path().filename().string())))
+        if (it->path() == garbage_path_)
+        {
+            continue;
+        }
+        else if (validateNamespace_(Namespace(it->path().filename().string())))
         {
             return false;
         }
@@ -500,7 +509,12 @@ SCOCacheMountPoint::uuid() const
     return uuid_;
 }
 
-
+void
+SCOCacheMountPoint::addToGarbage(const fs::path& p)
+{
+    VERIFY(deferred_file_remover_ != nullptr);
+    deferred_file_remover_->schedule_removal(p);
+}
 
 }
 

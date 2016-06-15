@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "VolManagerTestSetup.h"
 
@@ -74,31 +75,31 @@ static const uint32_t distance = 16; // at least sizew over 512
 
 TEST_P(cases, DISABLED_cacheserver1)
 {
-    Volume* v1 = newVolume("volume1",
+    SharedVolumePtr v1 = newVolume("volume1",
                            backend::Namespace());
 
     v1->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
                                                    FailOverCacheTestSetup::port_base(),
                                                    GetParam().foc_mode()));
 
-    ASSERT_TRUE(v1);
+    ASSERT_TRUE(v1 != nullptr);
     LOG_INFO("Volume v1 Size: " << v1->getSize() / ((1024.0) * (1024.0)) << "MiB");
 
 
     for(unsigned i = 0; i < num_writes; i++)
     {
-            writeToVolume(v1, i*distance, sizew, "X");
+            writeToVolume(*v1, i*distance, sizew, "X");
     }
-    createSnapshot(v1,"snap1");
+    createSnapshot(*v1, "snap1");
     while(not v1->isSyncedToBackend())
     {
         sleep(1);
     }
-    Volume* v2 =  createClone("volume2",
-                              backend::Namespace(),
-                              backend::Namespace(),
-                              "snap1");
-    ASSERT_TRUE(v2);
+    SharedVolumePtr v2 =  createClone("volume2",
+                                      backend::Namespace(),
+                                      backend::Namespace(),
+                                      SnapshotName("snap1"));
+    ASSERT_TRUE(v2 != nullptr);
 
     v2->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
                                                    45017,
@@ -109,10 +110,10 @@ TEST_P(cases, DISABLED_cacheserver1)
     {
         if(i%3 == 1)
         {
-            writeToVolume(v2, i*distance, sizew, "Y");
+            writeToVolume(*v2, i*distance, sizew, "Y");
         }
     }
-    createSnapshot(v2,"snap1");
+    createSnapshot(*v2, "snap1");
     while(not v2->isSyncedToBackend())
     {
         sleep(1);
@@ -127,28 +128,28 @@ TEST_P(cases, DISABLED_cacheserver1)
         {
             if(i%3 == 2)
             {
-                writeToVolume(v2, i*distance, sizew, "Z");
+                writeToVolume(*v2, i*distance, sizew, "Z");
             }
 
         }
     }
-    v2 = 0;
+    v2 = nullptr;
     restartVolume(cfg);
     v2 = getVolume(VolumeId("volume2"));
-    ASSERT_TRUE(v2);
+    ASSERT_TRUE(v2 != nullptr);
 
     for(unsigned i = 0; i < num_writes; ++i)
     {
         switch(i %3 )
         {
         case 0:
-            checkVolume(v2,i*distance, sizew, "X");
+            checkVolume(*v2,i*distance, sizew, "X");
             break;
         case 1:
-            checkVolume(v2,i*distance, sizew, "Y");
+            checkVolume(*v2,i*distance, sizew, "Y");
             break;
         case 2:
-            checkVolume(v2,i*distance, sizew, "Z");
+            checkVolume(*v2,i*distance, sizew, "Z");
             break;
         default:
             assert(0=="remarkable");
@@ -167,7 +168,7 @@ TEST_P(cases, DISABLED_cacheserver1)
 TEST_P(cases, DISABLED_fawltySnapshots)
 {
     const std::string name("testvol");
-    Volume* v = newVolume(name,
+    SharedVolumePtr v = newVolume(name,
                           backend::Namespace());
 
     ::XmlRpc::XmlRpcValue args;
@@ -199,7 +200,7 @@ TEST_P(cases, DISABLED_fawltySnapshots)
         for (; i < 128; ++i)
         {
             createSnapshot(v, boost::lexical_cast<std::string>(i));
-            waitForThisBackendWrite(v);
+            waitForThisBackendWrite(*v);
         }
     }
     catch (std::exception& e)
@@ -333,14 +334,14 @@ TEST_P(cases, DISABLED_restartALittle) // Ev'ry time you go away, I ...
 {
     std::string t("bart");
 
-    Volume* v1 = newVolume("vol1",
+    SharedVolumePtr v1 = newVolume("vol1",
                            backend::Namespace());
 
     auto foc_ctx(start_one_foc());
 
     v1->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
-    writeToVolume(v1,0,4096*2048, t);
+    writeToVolume(*v1,0,4096*2048, t);
     const VolumeConfig vCfg(v1->get_config());
 
     destroyVolume(v1,
@@ -349,20 +350,20 @@ TEST_P(cases, DISABLED_restartALittle) // Ev'ry time you go away, I ...
 
     for( unsigned i = 0; i < num_tests; ++i)
     {
-        v1 = 0;
+        v1 = nullptr;
 
         v1 = newVolume("vol1",
                        backend::Namespace());
 
-        ASSERT_TRUE(v1);
+        ASSERT_TRUE(v1 != nullptr);
         v1->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
-        checkVolume(v1,0,4096*2048,t);
+        checkVolume(*v1,0,4096*2048,t);
 
         std::stringstream ss;
         ss << "bart_" << i;
         t = ss.str();
-        writeToVolume(v1,0,4096*2048, t);
+        writeToVolume(*v1,0,4096*2048, t);
         destroyVolume(v1,
                       DeleteLocalData::F,
                       RemoveVolumeCompletely::F);
@@ -371,7 +372,7 @@ TEST_P(cases, DISABLED_restartALittle) // Ev'ry time you go away, I ...
 
 TEST_P(cases, DISABLED_multisnapshot)
 {
-  Volume* v1 = newVolume("vol1",
+  SharedVolumePtr v1 = newVolume("vol1",
                          backend::Namespace());
     for(int i = 0; i < 512; ++i)
     {
@@ -383,12 +384,12 @@ TEST_P(cases, DISABLED_multisnapshot)
         std::stringstream ss;
         ss << i;
 
-        //        writeToVolume(v1,0,4096,"arne");
-        createSnapshot(v1,ss.str());
+        //        writeToVolume(*v1,0,4096,"arne");
+        createSnapshot(*v1,ss.str());
     }
 
-    //    waitForThisBackendWrite(v1);
-    //    waitForThisBackendWrite(v1);
+    //    waitForThisBackendWrite(*v1);
+    //    waitForThisBackendWrite(*v1);
     //    int previous = -1;
 
     for(int i = 0; i < 64; ++i)
@@ -447,7 +448,7 @@ TEST_P(cases, DISABLED_multisnapshot)
 //     XmlRpcClient c("localhost", 28000);
 //     c.execute("volumeCreate",Args, Res);
 //     ASSERT_FALSE(c.isFault());
-//     Volume* v;
+//     SharedVolumePtr v;
 
 //     v = getVolume(VolumeId("test"));
 //     ASSERT_TRUE(v);
@@ -455,7 +456,7 @@ TEST_P(cases, DISABLED_multisnapshot)
 
 //     while(true)
 //     {
-//         writeToVolume(v,0, 4096,"bart");
+//         writeToVolume(*v,0, 4096,"bart");
 //     }
 // }
 
@@ -469,7 +470,7 @@ TEST_P(cases, DISABLED_cacheserver)
 {
     auto foc_ctx(start_one_foc());
 
-    Volume* v1 = newVolume("vol",
+    SharedVolumePtr v1 = newVolume("vol",
                            backend::Namespace());
 
     sleep(15);
@@ -482,13 +483,13 @@ TEST_P(cases, DISABLED_cacheserver)
 TEST_P(cases, test2)
 {
     auto ns_ptr = make_random_namespace();
-    Volume* v = newVolume("1volume",
+    SharedVolumePtr v = newVolume("1volume",
                           ns_ptr->ns());
     const int numwrites = 128;
 
     for(int i = 0; i < 1; ++i)
     {
-        writeToVolume(v,
+        writeToVolume(*v,
                       0,
                       16384,
                       "abc");
@@ -496,7 +497,7 @@ TEST_P(cases, test2)
 
     for(int i = 0; i < numwrites; ++i)
     {
-        checkVolume(v,
+        checkVolume(*v,
                 0,
                 4096,
                 "abc");
@@ -510,23 +511,23 @@ TEST_P(cases, test2)
 TEST_P(cases, DISABLED_test3)
 {
     auto ns_ptr = make_random_namespace();
-    Volume* v = newVolume("1volume",
+    SharedVolumePtr v = newVolume("1volume",
                           ns_ptr->ns());
 
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   16384,
                   "abc");
-    checkVolume(v,
+    checkVolume(*v,
                 0,
                 16384,
                 "abc");
     temporarilyStopVolManager();
     startVolManager();
 
-    Volume *v1 = getVolume(VolumeId("1volume"));
-    ASSERT_TRUE(v1);
-    checkVolume(v1,
+    SharedVolumePtr v1 = getVolume(VolumeId("1volume"));
+    ASSERT_TRUE(v1 != nullptr);
+    checkVolume(*v1,
                 0,
                 16384,
                 "abc");
@@ -546,24 +547,24 @@ TEST_P(cases, DISABLED_bartNonLocalRestart)
 {
     //    startcacheserver();
     auto ns_ptr = make_random_namespace();
-    Volume* v1 = newVolume("vol1",
+    SharedVolumePtr v1 = newVolume("vol1",
                            ns_ptr->ns());
 
 
     const VolumeConfig v1cfg(v1->get_config());
 
     auto ns2_ptr = make_random_namespace();
-    Volume* v2 = newVolume("vol2",
+    SharedVolumePtr v2 = newVolume("vol2",
                            ns2_ptr->ns());
 
     const int mult = v1->getClusterSize()/ v1->getLBASize();
     for(int i = 0; i < 1000; i++)
     {
-        writeToVolume(v1,
+        writeToVolume(*v1,
                       i*mult,
                       v1->getClusterSize(),
                       "immanuel");
-        writeToVolume(v2,
+        writeToVolume(*v2,
                       i*mult,
                       v1->getClusterSize(),
                       "immanuel");
@@ -574,23 +575,24 @@ TEST_P(cases, DISABLED_bartNonLocalRestart)
 
     for(int i = 0; i < 100; i++)
     {
-        writeToVolume(v1,
+        writeToVolume(*v1,
                       i*mult,
                       v1->getClusterSize(),
                       "bart");
-        writeToVolume(v2,
+        writeToVolume(*v2,
                       i*mult,
                       v2->getClusterSize(),
                       "bart");
 
     }
-    EXPECT_TRUE(checkVolumesIdentical(v1, v2));
+    EXPECT_TRUE(checkVolumesIdentical(*v1,
+                                      *v2));
 
 
-    scheduleBackendSync(v1);
+    scheduleBackendSync(*v1);
 
 
-    while(not isVolumeSyncedToBackend(v1))
+    while(not isVolumeSyncedToBackend(*v1))
     {
     }
 
@@ -601,12 +603,13 @@ TEST_P(cases, DISABLED_bartNonLocalRestart)
                   RemoveVolumeCompletely::F);
 
     restartVolume(v1cfg);
-    v1 = 0;
+    v1 = nullptr;
 
     v1 = getVolume(VolumeId("vol1"));
-    ASSERT_TRUE(v1);
+    ASSERT_TRUE(v1 != nullptr);
 
-    EXPECT_TRUE(checkVolumesIdentical(v1,v2));
+    EXPECT_TRUE(checkVolumesIdentical(*v1,
+                                      *v2));
 
     destroyVolume(v1,
                   DeleteLocalData::T,
@@ -622,7 +625,7 @@ TEST_P(cases, DISABLED_bartNonLocalRestart)
 /*
 TEST_P(cases, DISABLED_kristafClones3)
 {
-    Volume* v1 = newVolume("1volume",
+    SharedVolumePtr v1 = newVolume("1volume",
                            backend::Namespace("openvstorage-volumedrivertest-namespace1"));
 
     const int mult = v1->getClusterSize()/ v1->getLBASize();
@@ -630,17 +633,17 @@ TEST_P(cases, DISABLED_kristafClones3)
     for(int i = 0; i < 100; i++)
     {
 
-        writeToVolume(v1,
+        writeToVolume(*v1,
                       i*mult,
                       v1->getClusterSize(),
                       "immanuel");
     }
 
     v1->createSnapshot("snap1");
-    waitForThisBackendWrite(v1);
-    waitForThisBackendWrite(v1);
+    waitForThisBackendWrite(*v1);
+    waitForThisBackendWrite(*v1);
 
-    Volume* v2 = createClone("2volume",
+    SharedVolumePtr v2 = createClone("2volume",
                              backend::Namespace("namespace2"),
                              backend::Namespace("namespace1"),
                              "snap1");
@@ -648,14 +651,14 @@ TEST_P(cases, DISABLED_kristafClones3)
     ASSERT_TRUE(checkVolumesIdentical(v1,
                                       v2));
 
-    waitForThisBackendWrite(v1);
-    waitForThisBackendWrite(v1);
+    waitForThisBackendWrite(*v1);
+    waitForThisBackendWrite(*v1);
     //    destroyVolume(v1,true,false);
 
 
     for(int i = 0 ; i < 100; i++)
     {
-        writeToVolume(v2,
+        writeToVolume(*v2,
                       i*mult,
                       v1->getClusterSize(),
                       "bart");
@@ -663,14 +666,14 @@ TEST_P(cases, DISABLED_kristafClones3)
 
     v2->createSnapshot("snap2");
 
-    Volume* v3 = createClone("3volume",
+    SharedVolumePtr v3 = createClone("3volume",
                              backend::Namespace("namespace3"),
                              backend::Namespace("namespace2"),
                              "snap1");
 
     for(int i = 0 ; i < 100; i++)
     {
-        writeToVolume(v3,
+        writeToVolume(*v3,
                       i*mult,
                       v1->getClusterSize(),
                       "bart");
@@ -699,7 +702,7 @@ TEST_P(cases, DISABLED_DataStorePerformanceClustered)
                             backend::Namespace("openvstorage-volumedrivertest-namespace1"));
 
 
-    SCOPED_BLOCK_BACKEND(vol);
+    SCOPED_BLOCK_BACKEND(*vol);
 
     size_t num_clusters = 8;
 
@@ -816,7 +819,7 @@ TEST_P(cases, DISABLED_DataStorePerformance)
     Volume *vol = newVolume("1volume",
                             backend::Namespace("openvstorage-volumedrivertest-namespace1"));
 
-    SCOPED_BLOCK_BACKEND(vol);
+    SCOPED_BLOCK_BACKEND(*vol);
 
     size_t num_clusters = 8;
     size_t bufSize = num_clusters * vol->getClusterSize();
@@ -916,22 +919,22 @@ TEST_P(cases, DISABLED_weirdSnapshotsFile)
     auto ns_ptr = make_random_namespace();
     const std::string volName = "volume";
 
-    Volume* v = newVolume(volName,
+    SharedVolumePtr v = newVolume(volName,
                           ns_ptr->ns());
 
     const std::string pattern1 = "11111111";
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   v->getClusterSize(),
                   pattern1);
 
     v->createSnapshot(SnapshotName("snap1"));
 
-    waitForThisBackendWrite(v);
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
+    waitForThisBackendWrite(*v);
 
     const std::string pattern2 = "22222222";
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   v->getClusterSize(),
                   pattern2);
@@ -939,31 +942,31 @@ TEST_P(cases, DISABLED_weirdSnapshotsFile)
     v->createSnapshot(SnapshotName("snap2"));
 
     const std::string pattern3 = "33333333";
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   v->getClusterSize(),
                   pattern3);
 
-    waitForThisBackendWrite(v);
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
+    waitForThisBackendWrite(*v);
 
     // break here ...
     v->restoreSnapshot(SnapshotName("snap1"));
 
-    checkVolume(v,
+    checkVolume(*v,
                 0,
                 v->getClusterSize(),
                 pattern1);
 
-    // writeToVolume(v,
+    // writeToVolume(*v,
     //               0,
     //               v->getClusterSize(),
     //               pattern3);
 
     // v->createSnapshot("snap3");
 
-    // waitForThisBackendWrite(v);
-    // waitForThisBackendWrite(v);
+    // waitForThisBackendWrite(*v);
+    // waitForThisBackendWrite(*v);
 
     const VolumeConfig cfg(v->get_config());
 
@@ -1424,7 +1427,7 @@ TEST_P(cases, DISABLED_threadpool_barrier)
                                                               100ULL);
 
     auto wrns(make_random_namespace());
-    Volume* v = newVolume("volume",
+    SharedVolumePtr v = newVolume("volume",
                           wrns->ns());
 
     for (size_t i = 0; i < iterations; ++i)
@@ -1450,7 +1453,7 @@ TEST_P(cases, DISABLED_threadpool_barrier)
         VolManager::get()->scheduleTask(t);
     }
 
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 }
 
 TEST_P(cases, DISABLED_float_lexical_cast)
@@ -1492,22 +1495,6 @@ TEST_P(cases, DISABLED_future_interruption)
     boost::this_thread::sleep_for(boost::chrono::seconds(5));
     t.interrupt();
     t.join();
-}
-
-TEST_P(cases, DISABLED_gtest_and_scrub_ids)
-{
-    // observed on jenkins: a failed comparison of an optional<ScrubId> (with the
-    // specific bytes below) and boost::none
-    // ends up looping - if not infinitely - for a very long time.
-    // Not reproducible locally (debug build whereas so far it was only observed once
-    // in a release build on jenkins).
-    const uint8_t raw_bytes[] = {0x72, 0xb3, 0x36, 0xe8, 0xc5, 0xc0, 0x4e, 0x4f,
-                                 0xb3, 0x3, 0x42, 0x91, 0x97, 0xc7, 0x95, 0x78};
-
-    const auto scrub_id = *reinterpret_cast<const ScrubId*>(raw_bytes);
-    const boost::optional<ScrubId> maybe_scrub_id(scrub_id);
-    EXPECT_EQ(boost::none,
-              maybe_scrub_id);
 }
 
 INSTANTIATE_TEST(cases);

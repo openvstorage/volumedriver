@@ -1,31 +1,32 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef BACKEND_CONNECTION_MANAGER_H_
 #define BACKEND_CONNECTION_MANAGER_H_
 
-#include "BackendParameters.h"
 #include "BackendConnectionInterface.h"
+#include "BackendParameters.h"
 #include "Namespace.h"
 
-#include <boost/ptr_container/ptr_list.hpp>
-#include <boost/thread/mutex.hpp>
+#include <boost/chrono.hpp>
 #include <boost/thread/lock_guard.hpp>
 
 #include <youtils/BooleanEnum.h>
 #include <youtils/ConfigurationReport.h>
 #include <youtils/IOException.h>
+#include <youtils/SpinLock.h>
 #include <youtils/StrongTypedString.h>
 #include <youtils/VolumeDriverComponent.h>
 
@@ -87,6 +88,15 @@ class BackendConnectionManager
     : public youtils::VolumeDriverComponent
     , public std::enable_shared_from_this<BackendConnectionManager>
 {
+private:
+    // Uses boost::intrusive to avoid (de)allocations when modifying the container.
+    // (which has to happen under the spinlock).
+    struct ConnectionPool
+    {
+        mutable fungi::SpinLock lock_;
+        boost::intrusive::slist<BackendConnectionInterface> connections_;
+    };
+
 public:
     // enfore usage via BackendConnectionManagerPtr
     // rationale: BackendConnPtrs hold a reference (via BackendConnectionManagerPtr),
@@ -107,36 +117,35 @@ public:
     BackendConnectionManager&
     operator=(const BackendConnectionManager&) = delete;
 
-#define LOCK_CONNS()                            \
-    ::boost::lock_guard<lock_type> g__(lock_);
-
     inline BackendConnectionInterfacePtr
     getConnection(ForceNewConnection force_new = ForceNewConnection::F)
     {
-        LOCK_CONNS();
-
+        ConnectionPool& pool = get_connection_pool_();
         BackendConnectionDeleter d(shared_from_this());
+        BackendConnectionInterfacePtr conn(nullptr, d);
 
-        if (force_new == ForceNewConnection::T or connections_.empty())
         {
-            BackendConnectionInterfacePtr conn(newConnection_(),
-                                std::move(d));
-            LOG_TRACE("handing out newly created connection handle " << conn.get());
-            return conn;
+            boost::lock_guard<decltype(pool.lock_)> g(pool.lock_);
+            if (force_new != ForceNewConnection::T and not pool.connections_.empty())
+            {
+                conn = BackendConnectionInterfacePtr(&pool.connections_.front(),
+                                                     d);
+                pool.connections_.pop_front();
+            }
         }
-        else
+
+        if (not conn)
         {
-            BackendConnectionInterfacePtr conn(connections_.pop_front().release(),
-                                std::move(d));
-            conn->timeout(default_timeout);
-            LOG_TRACE("handing out existing connection handle " << conn.get());
-            return conn;
+            conn = BackendConnectionInterfacePtr(newConnection_(),
+                                                 d);
         }
+
+        conn->timeout(default_timeout_);
+        return conn;
     }
 
     BackendInterfacePtr
-    newBackendInterface(const Namespace& nspace,
-                        const unsigned retries = 1);
+    newBackendInterface(const Namespace&);
 
     const BackendConfig&
     config() const
@@ -185,16 +194,43 @@ public:
                 youtils::ConfigurationReport& rep) const override final;
     // end VolumeDriverComponent Interface
 
+    uint32_t
+    retries_on_error() const
+    {
+        return backend_interface_retries_on_error.value();
+    }
+
+    boost::chrono::milliseconds
+    retry_interval() const
+    {
+        return
+            boost::chrono::milliseconds(backend_interface_retry_interval_secs.value() * 1000);
+    }
+
+    double
+    retry_backoff_multiplier() const
+    {
+        return backend_interface_retry_backoff_multiplier.value();
+    }
+
+    boost::posix_time::time_duration
+    default_timeout() const
+    {
+        return default_timeout_;
+    }
+
 private:
     DECLARE_LOGGER("BackendConnectionManager");
 
+    // one per (logical) CPU.
+    std::vector<ConnectionPool> connection_pools_;
+
     DECLARE_PARAMETER(backend_connection_pool_capacity);
+    DECLARE_PARAMETER(backend_interface_retries_on_error);
+    DECLARE_PARAMETER(backend_interface_retry_interval_secs);
+    DECLARE_PARAMETER(backend_interface_retry_backoff_multiplier);
+
     std::unique_ptr<BackendConfig> config_;
-
-    typedef boost::mutex lock_type;
-    mutable lock_type lock_;
-
-    boost::ptr_list<BackendConnectionInterface> connections_;
 
     // Create through
     // static BackendConnectionManagerPtr
@@ -206,12 +242,41 @@ private:
     BackendConnectionInterface*
     newConnection_();
 
-    boost::posix_time::time_duration default_timeout;
+    boost::posix_time::time_duration default_timeout_;
 
     void
-    releaseConnection(BackendConnectionInterface* conn);
+    releaseConnection(BackendConnectionInterface* conn)
+    {
+        ASSERT(conn != nullptr);
+        if (conn->healthy())
+        {
+            ConnectionPool& pool = get_connection_pool_();
+            boost::lock_guard<decltype(pool.lock_)> g(pool.lock_);
+            if (pool.connections_.size() < backend_connection_pool_capacity.value() / connection_pools_.size())
+            {
+                pool.connections_.push_front(*conn);
+                return;
+            }
+        }
 
-#undef LOCK_CONNS
+        delete conn;
+    }
+
+    ConnectionPool&
+    get_connection_pool_()
+    {
+        int cpu = sched_getcpu();
+        if (cpu < 0)
+        {
+            cpu = 0;
+        }
+
+        ASSERT(not connection_pools_.empty());
+        const auto n = static_cast<unsigned>(cpu);
+        ASSERT(n < connection_pools_.size());
+
+        return connection_pools_[n % connection_pools_.size()];
+    }
 
     friend class BackendConnectionDeleter;
     friend class toolcut::BackendToolCut;

@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "VolManagerTestSetup.h"
 
@@ -205,7 +206,7 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
         UpdateReport u_rep;
 
         ASSERT_NO_THROW(VolManager::get()->getClusterCache().update(pt,
-                                                               u_rep));
+                                                                    u_rep));
         EXPECT_EQ(3U, u_rep.getNoUpdates().size());
         EXPECT_EQ(0U, u_rep.getUpdates().size());
     }
@@ -322,7 +323,7 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
         const Namespace& ns1 = ns1_ptr->ns();
 
         //        Namespace ns1;
-        Volume* v = newVolume(vid1,
+        SharedVolumePtr v = newVolume(vid1,
                               ns1);
         const std::string pattern("bart");
 
@@ -333,18 +334,24 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
         EXPECT_EQ(0U, hits);
         EXPECT_EQ(0U, misses);
 
-        writeToVolume(v, 0, 4096, pattern);
+        writeToVolume(*v, 0, 4096, pattern);
         const uint64_t test_times = 5;
 
         for(unsigned i = 0; i < test_times; ++i)
         {
-            checkVolume(v, 0, 4096, pattern);
+            checkVolume(*v, 0, 4096, pattern);
         }
 
         VolManager::get()->getClusterCache().get_stats(hits, misses, entries);
+#ifdef ENABLE_MD5_HASH
         EXPECT_EQ(1U, entries);
         EXPECT_EQ(test_times - 1, hits);
         EXPECT_EQ(1U, misses);
+#else
+        EXPECT_EQ(0U, entries);
+        EXPECT_EQ(0U, hits);
+        EXPECT_EQ(0U, misses);
+#endif
 
         ip::PARAMETER_TYPE(clustercache_mount_points) mps(pt);
 
@@ -358,9 +365,15 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
         EXPECT_TRUE(device_info.size() == 0);
 
         VolManager::get()->getClusterCache().get_stats(hits, misses, entries);
+#ifdef ENABLE_MD5_HASH
         EXPECT_EQ(0U, entries);
         EXPECT_EQ(test_times - 1, hits);
         EXPECT_EQ(1U, misses);
+#else
+        EXPECT_EQ(0U, entries);
+        EXPECT_EQ(0U, hits);
+        EXPECT_EQ(0U, misses);
+#endif
 
         ConfigurationReport c_rep;
         ASSERT_TRUE(VolManager::get()->getClusterCache().checkConfig(pt,
@@ -370,13 +383,19 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
 
         for(unsigned i = 0; i < test_times; ++i)
         {
-            checkVolume(v, 0, 4096, pattern);
+            checkVolume(*v, 0, 4096, pattern);
         }
 
         VolManager::get()->getClusterCache().get_stats(hits, misses, entries);
+#ifdef ENABLE_MD5_HASH
         EXPECT_EQ(0U, entries);
         EXPECT_EQ(test_times - 1, hits);
         EXPECT_EQ(test_times + 1, misses);
+#else
+        EXPECT_EQ(0U, entries);
+        EXPECT_EQ(0U, hits);
+        EXPECT_EQ(0U, misses);
+#endif
 
         ASSERT_NO_THROW(VolManager::get()->getClusterCache().update(pt,
                                                                u_rep));
@@ -389,13 +408,19 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
         }
         for(unsigned i = 0; i < test_times; ++i)
         {
-            checkVolume(v, 0, 4096, pattern);
+            checkVolume(*v, 0, 4096, pattern);
         }
 
         VolManager::get()->getClusterCache().get_stats(hits, misses, entries);
+#ifdef ENABLE_MD5_HASH
         EXPECT_EQ(1U, entries);
         EXPECT_EQ(hits, 2*test_times - 2);
         EXPECT_EQ(misses, test_times + 2);
+#else
+        EXPECT_EQ(0U, entries);
+        EXPECT_EQ(hits, 0);
+        EXPECT_EQ(misses, 0U);
+#endif
     }
 }
 
@@ -445,7 +470,7 @@ TEST_P(VolumeDriverConfigurationTest, num_threads)
             LOG_INFO("updated: " << u.parameter_name);
         }
 
-        EXPECT_EQ(36U,
+        EXPECT_EQ(42U,
                   u_rep.no_update_size());
     }
 
@@ -466,7 +491,7 @@ TEST_P(VolumeDriverConfigurationTest, num_threads)
             std::cerr << u.parameter_name << std::endl;
         }
 
-        EXPECT_EQ(37U,
+        EXPECT_EQ(43U,
                   u_rep.no_update_size());
     }
 }

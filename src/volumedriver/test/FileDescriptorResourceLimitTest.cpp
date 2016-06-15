@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "VolManagerTestSetup.h"
 
@@ -71,7 +72,6 @@ public:
         {
             setrlimit(RLIMIT_NOFILE, &rl_);
         }
-
     }
 
 private:
@@ -91,22 +91,22 @@ TEST_P(Test1, DISABLED_filedescriptors)
 
     const backend::Namespace& ns1 = ns_ptr->ns();
 
-    Volume* v1 = newVolume(name1,
+    SharedVolumePtr v1 = newVolume(name1,
                            ns1);
 
-    ASSERT_TRUE(v1);
+    ASSERT_TRUE(v1 != nullptr);
 
     auto ns2_ptr = make_random_namespace();
 
     const backend::Namespace& ns2 = ns2_ptr->ns();
 
     const std::string name2("vol2");
-    Volume* v2 = newVolume(name2,
+    SharedVolumePtr v2 = newVolume(name2,
                            ns2);
 
-    ASSERT_TRUE(v2);
+    ASSERT_TRUE(v2 != nullptr);
 
-    writeToVolume(v2,
+    writeToVolume(*v2,
                   0,
                   4096,
                   "foo");
@@ -114,18 +114,20 @@ TEST_P(Test1, DISABLED_filedescriptors)
     const SnapshotName snapname("snap");
     v2->createSnapshot(snapname);
 
-    writeToVolume(v2,
+    writeToVolume(*v2,
                   0,
                   4096,
                   "bar");
 
-    waitForThisBackendWrite(v2);
+    waitForThisBackendWrite(*v2);
 
     VolumeConfig cfg2 = v2->get_config();
 
     ASSERT_NO_THROW(destroyVolume(v2,
                                   DeleteLocalData::F,
                                   RemoveVolumeCompletely::F));
+
+    v2 = nullptr;
 
     //    auto vm = VolManager::get();
 

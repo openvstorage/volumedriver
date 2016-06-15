@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// licensed under the Apache license, Version 2.0 (the "license");
-// you may not use this file except in compliance with the license.
-// You may obtain a copy of the license at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the license is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the license for the specific language governing permissions and
-// limitations under the license.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "LockedPythonClient.h"
 #include "XMLRPCKeys.h"
@@ -209,7 +210,7 @@ LockedPythonClient::scrub(const std::string& scrub_work,
                           const bool verbose,
                           const std::string& scrubber_name,
                           const yt::Severity severity,
-                          const boost::optional<std::string>& logfile)
+                          const std::vector<std::string>& log_sinks)
 {
     LOG_INFO(volume_id_ << ": scrubbing " << scrub_work);
 
@@ -217,7 +218,7 @@ LockedPythonClient::scrub(const std::string& scrub_work,
     THROW_UNLESS(locked_section_);
 
     std::vector<std::string> args;
-    args.reserve(logfile ? 15 : 13);
+    args.reserve(13 + 2 * log_sinks.size());
 
     args.emplace_back(scrubber_name);
     args.emplace_back("--scrub-work");
@@ -233,10 +234,10 @@ LockedPythonClient::scrub(const std::string& scrub_work,
     args.emplace_back("--loglevel");
     args.emplace_back(boost::lexical_cast<std::string>(severity));
 
-    if (logfile)
+    for (const auto& s : log_sinks)
     {
-        args.emplace_back("--logfile");
-        args.emplace_back(*logfile);
+        args.emplace_back("--logsink");
+        args.emplace_back(s);
     }
 
     LOG_INFO(volume_id_ << ": launching scrubber, args: ");

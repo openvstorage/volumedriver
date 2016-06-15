@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "ArakoonMetaDataBackend.h"
 #include "BackendRestartAccumulator.h"
@@ -27,7 +28,6 @@
 #include "SCOCache.h"
 #include "SnapshotManagement.h"
 #include "TLogReader.h"
-#include "TLogReaderUtils.h"
 #include "TokyoCabinetMetaDataBackend.h"
 #include "Types.h"
 #include "VolManager.h"
@@ -193,14 +193,34 @@ create_volume_stage_1(const VolumeConfig& config,
     const MaybeScrubId md_scrub_id(md->scrub_id());
     if (md_scrub_id != boost::none)
     {
+    // Hey
+#ifdef __clang_analyzer__
+    //, trust me, the unique_ptr makes sure that this isn't leaked.
+        if (md_scrub_id != sm->scrub_id())
+        {
+            ds = nullptr;
+            ASSERT(false);
+        }
+#else
         VERIFY(md_scrub_id == sm->scrub_id());
+#endif
     }
     else
     {
         md->set_scrub_id(sm->scrub_id());
     }
 
+    // Hey
+#ifdef __clang_analyzer__
+    //, trust me, the unique_ptr makes sure that this isn't leaked.
+    if (not nsid.get(0))
+    {
+        ds = nullptr;
+        ASSERT(false);
+    }
+#else
     VERIFY(nsid.get(0));
+#endif
 
     return std::unique_ptr<Volume, FreshVolumeDestroyer<delete_local_data,
                                                         remove_volume_completely> >
@@ -210,7 +230,7 @@ create_volume_stage_1(const VolumeConfig& config,
                     std::move(ds),
                     std::move(md),
                     std::move(nsid),
-                    VolManager::get()->foc_throttle_usecs.value(),
+                    VolManager::get()->dtl_throttle_usecs.value(),
                     VolManager::get()->readOnlyMode()));
 }
 
@@ -707,9 +727,9 @@ VolumeFactory::backend_restart(const VolumeConfig& config,
         FileUtils::with_temp_dir(vm->getTLogPath(config) / "tmp",
                                  [&](const fs::path& tmp)
                                  {
-                                     auto t(makeCombinedBackwardTLogReader(tmp,
-                                                                           latest_tlogs,
-                                                                           bi->clone()));
+                                     auto t(CombinedTLogReader::create_backward_reader(tmp,
+                                                                                       latest_tlogs,
+                                                                                       bi->clone()));
                                      restart_sco_num = t->nextClusterLocation().number();
 
                                  });
@@ -809,9 +829,9 @@ VolumeFactory::backend_restart_write_only_volume(const VolumeConfig& config,
     FileUtils::with_temp_dir(vm->getTLogPath(config) / "tmp",
                              [&](const fs::path& tmp)
                              {
-                                 auto t(makeCombinedBackwardTLogReader(tmp,
-                                                                       recentTLogs,
-                                                                       bi->clone()));
+                                 auto t(CombinedTLogReader::create_backward_reader(tmp,
+                                                                                   recentTLogs,
+                                                                                   bi->clone()));
                                  restart_sco_num = t->nextClusterLocation().number();
                              });
 

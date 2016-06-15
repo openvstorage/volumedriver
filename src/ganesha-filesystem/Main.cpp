@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include <string.h>
 #include <sys/types.h>
@@ -33,6 +34,8 @@ namespace
 {
 
 using namespace ganesha;
+using namespace std::literals::string_literals;
+
 namespace yt = youtils;
 namespace vfs = volumedriverfs;
 
@@ -46,6 +49,7 @@ group(const struct attrlist* attrlist)
 #endif
 
 const std::string logfile_key("VFS_FSAL_LOGFILE");
+const std::string logsink_key("VFS_FSAL_LOGSINK");
 const std::string loglevel_key("VFS_FSAL_LOGLEVEL");
 const std::string logrotation_key("VFS_FSAL_LOGROTATION");
 const std::string logdisable_key("VFS_FSAL_LOGDISABLE");
@@ -61,9 +65,12 @@ initialize_logging()
     {
         logging_initialized = true;
 
-        const std::string logfile_default("./VolumeDriverGanesha.log");
         const std::string logfile(yt::System::get_env_with_default(logfile_key,
-                                                                   logfile_default));
+                                                                   ""s));
+
+        const std::string logsink_default("./VolumeDriverGanesha.log");
+        const std::string logsink(yt::System::get_env_with_default(logsink_key,
+                                                                   logsink_default));
 
         const yt::Severity sev(yt::System::get_env_with_default(loglevel_key,
                                                                 yt::Severity::info));
@@ -71,7 +78,14 @@ initialize_logging()
         const bool rotate = yt::System::get_bool_from_env(logrotation_key,
                                                           false);
 
-        yt::Logger::setupLogging(logfile,
+        std::vector<std::string> sinks = { logsink };
+        if (not logfile.empty())
+        {
+            sinks.push_back(logfile);
+        }
+
+        yt::Logger::setupLogging("ganesha_fsal",
+                                 sinks,
                                  sev,
                                  rotate ? yt::LogRotation::T : yt::LogRotation::F);
     }
@@ -129,9 +143,10 @@ static struct fsal_staticfsinfo_t default_ovs_info =  {
 struct this_export_params {
     char *ovs_config_location;
     char *ovs_config_file; // deprecated, will go away after a transition period
+    uint16_t ovs_discovery_port;
 };
 
-static struct config_item export_params[4];
+static struct config_item export_params[5];
 static struct config_block export_param;
 
 /* @brief Initialize the configuration
@@ -184,7 +199,9 @@ static fsal_status_t create_export(struct fsal_module *fsal_hdl,
     this_fsal_export *filesystem_export = NULL;
     /* OVS FSAL argument object */
     struct this_export_params params = {
-        .ovs_config_location = NULL
+        .ovs_config_location = NULL,
+        .ovs_config_file = NULL,
+        .ovs_discovery_port = 0,
     };
 
     export_params[0].name = const_cast<char*>("name");
@@ -207,8 +224,16 @@ static fsal_status_t create_export(struct fsal_module *fsal_hdl,
     export_params[2].u.str.def = nullptr;
     export_params[2].off = offsetof(struct this_export_params, ovs_config_file);
 
-    export_params[3].name = NULL;
-    export_params[3].type = CONFIG_NULL;
+    export_params[3].name = const_cast<char*>("ovs_discovery_port");
+    export_params[3].type = CONFIG_UINT16;
+    export_params[3].u.ui16.minval = 1024;
+    export_params[3].u.ui16.maxval = UINT16_MAX;
+    /* default discovery port */
+    export_params[3].u.ui16.def = 14147;
+    export_params[3].off = offsetof(struct this_export_params, ovs_discovery_port);
+
+    export_params[4].name = NULL;
+    export_params[4].type = CONFIG_NULL;
 
     export_param.dbus_interface_name =
         const_cast<char*>("org.ganesha.nfsd.config.fsal.ovs-export%d");
@@ -283,8 +308,11 @@ static fsal_status_t create_export(struct fsal_module *fsal_hdl,
      */
     try
     {
-        TODO("Is that port used OK?")
-        int server_port = 40000;
+        LogDebug(COMPONENT_FSAL,
+                 const_cast<char*>("OVS discovery port: %d"),
+                 params.ovs_discovery_port);
+
+        const uint16_t server_port(params.ovs_discovery_port);
         int thread_pool_size = std::thread::hardware_concurrency();
         filesystem_export->server_ = new ovs_discovery_server(server_port,
                                                               thread_pool_size,

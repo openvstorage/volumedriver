@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "FileSystemParameters.h"
 
@@ -187,6 +188,22 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(shm_region_size,
                                       ShowDocumentation::T,
                                       268435456); // 256 MB
 
+const char network_interface_component_name[] = "network_interface";
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(network_uri,
+                                      network_interface_component_name,
+                                      "network_uri",
+                                      "URI to bind network interface",
+                                      ShowDocumentation::T,
+                                      "tcp://127.0.0.1:21321"s);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(network_snd_rcv_queue_depth,
+                                      network_interface_component_name,
+                                      "network_snd_rcv_queue_depth",
+                                      "Maximum tx/rx queued messages",
+                                      ShowDocumentation::T,
+                                      2048);
+
 // FileSystem:
 const char filesystem_component_name[] = "filesystem";
 
@@ -322,6 +339,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(fs_enable_shm_interface,
                                       ShowDocumentation::T,
                                       false);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(fs_enable_network_interface,
+                                      filesystem_component_name,
+                                      "fs_enable_network_interface",
+                                      "Whether to enable the network interface",
+                                      ShowDocumentation::T,
+                                      false);
+
 // EventPublisher
 const char events_component_name[] = "event_publisher";
 
@@ -400,6 +424,23 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(scrub_manager_sync_wait_secs,
                                       "number of seconds to wait for a scrub result application to be on the backend before giving up",
                                       ShowDocumentation::T,
                                       600);
+
+// StatsCollector
+const char stats_collector_component_name[] = "stats_collector";
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(stats_collector_interval_secs,
+                                      stats_collector_component_name,
+                                      "stats_collector_interval_secs",
+                                      "interval with which stats and counters are pushed",
+                                      ShowDocumentation::T,
+                                      6000);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(stats_collector_destination,
+                                      stats_collector_component_name,
+                                      "stats_collector_destination",
+                                      "destination of stats and counters",
+                                      ShowDocumentation::T,
+                                      std::string());
 }
 
 // Local Variables: **

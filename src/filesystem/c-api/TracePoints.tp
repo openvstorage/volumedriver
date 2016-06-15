@@ -1,0 +1,614 @@
+#include "volumedriver.h"
+
+#include <inttypes.h>
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_ctx_init_enter,
+	TP_ARGS(const char*, volume_name_arg,
+            int, oflag_arg),
+	TP_FIELDS(ctf_string(volume_name, volume_name_arg)
+              ctf_integer(int, oflag, oflag_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_ctx_init_exit,
+	TP_ARGS(void*, ctx_arg,
+            int, errval_arg),
+	TP_FIELDS(ctf_integer_hex(void*, ctx, ctx_arg)
+              ctf_integer(int, errval, errval_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_ctx_destroy,
+	TP_ARGS(void*, ctx_arg,
+            int, retval_arg),
+	TP_FIELDS(ctf_integer_hex(void*, ctx, ctx_arg)
+              ctf_integer(int, retval, retval_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_create_volume_enter,
+	TP_ARGS(const char*, volume_name_arg,
+            uint64_t, size_arg),
+	TP_FIELDS(ctf_string(volume_name, volume_name_arg)
+              ctf_integer(int, size, size_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_create_volume_exit,
+	TP_ARGS(const char*, volume_name_arg,
+            int, result_arg,
+            int, errval_arg),
+	TP_FIELDS(ctf_string(volume_name, volume_name_arg)
+              ctf_integer(int, retval, result_arg)
+              ctf_integer(int, errval, errval_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_remove_volume_enter,
+	TP_ARGS(const char*, volume_name_arg),
+	TP_FIELDS(ctf_string(volume_name, volume_name_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_remove_volume_exit,
+	TP_ARGS(const char*, volume_name_arg,
+            int, result_arg,
+            int, errval_arg),
+	TP_FIELDS(ctf_string(volume_name, volume_name_arg)
+              ctf_integer(int, retval, result_arg)
+              ctf_integer(int, errval, errval_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_snapshot_create_enter,
+	TP_ARGS(const char*, volume_name_arg,
+            const char*, snapshot_name_arg,
+            const int64_t, timeout_arg),
+	TP_FIELDS(ctf_string(volume_name, volume_name_arg)
+              ctf_string(snapshot_name, snapshot_name_arg)
+              ctf_integer(int, timeout, timeout_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_snapshot_create_exit,
+	TP_ARGS(const char*, volume_name_arg,
+            const char*, snapshot_name_arg,
+            int, result_arg,
+            int, errval_arg),
+	TP_FIELDS(ctf_string(volume_name, volume_name_arg)
+              ctf_string(snapshot_name, snapshot_name_arg)
+              ctf_integer(int, retval, result_arg)
+              ctf_integer(int, errval, errval_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_snapshot_rollback_enter,
+	TP_ARGS(const char*, volume_name_arg,
+            const char*, snapshot_name_arg),
+	TP_FIELDS(ctf_string(volume_name, volume_name_arg)
+              ctf_string(snapshot_name, snapshot_name_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_snapshot_rollback_exit,
+	TP_ARGS(const char*, volume_name_arg,
+            const char*, snapshot_name_arg,
+            int, result_arg,
+            int, errval_arg),
+	TP_FIELDS(ctf_string(volume_name, volume_name_arg)
+              ctf_string(snapshot_name, snapshot_name_arg)
+              ctf_integer(int, retval, result_arg)
+              ctf_integer(int, errval, errval_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_snapshot_remove_enter,
+	TP_ARGS(const char*, volume_name_arg,
+            const char*, snapshot_name_arg),
+	TP_FIELDS(ctf_string(volume_name, volume_name_arg)
+              ctf_string(snapshot_name, snapshot_name_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_snapshot_remove_exit,
+	TP_ARGS(const char*, volume_name_arg,
+            const char*, snapshot_name_arg,
+            int, result_arg,
+            int, errval_arg),
+	TP_FIELDS(ctf_string(volume_name, volume_name_arg)
+              ctf_string(snapshot_name, snapshot_name_arg)
+              ctf_integer(int, retval, result_arg)
+              ctf_integer(int, errval, errval_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_snapshot_list_enter,
+	TP_ARGS(const char*, volume_name_arg,
+            void*, snap_list_arg),
+	TP_FIELDS(ctf_string(volume_name, volume_name_arg)
+              ctf_integer_hex(void*, snap_list, snap_list_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_snapshot_list_exit,
+	TP_ARGS(const char*, volume_name_arg,
+            void*, snap_list_arg,
+            int, result_arg,
+            int, max_snaps_arg,
+            int, errval_arg),
+	TP_FIELDS(ctf_string(volume_name, volume_name_arg)
+              ctf_integer_hex(void*, snap_list, snap_list_arg)
+              ctf_integer(int, retval, result_arg)
+              ctf_integer(int, max_snaps, max_snaps_arg)
+              ctf_integer(int, errval, errval_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_snapshot_list_free_enter,
+	TP_ARGS(void*, snap_list_arg),
+	TP_FIELDS(ctf_integer_hex(void*, snap_list, snap_list_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_snapshot_list_free_exit,
+    TP_ARGS(),
+    TP_FIELDS()
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_snapshot_is_synced_enter,
+	TP_ARGS(const char*, volume_name_arg,
+            const char*, snapshot_name_arg),
+	TP_FIELDS(ctf_string(volume_name, volume_name_arg)
+              ctf_string(snapshot_name, snapshot_name_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_snapshot_is_synced_exit,
+	TP_ARGS(const char*, volume_name_arg,
+            const char*, snapshot_name_arg,
+            int, result_arg,
+            int, errval_arg),
+	TP_FIELDS(ctf_string(volume_name, volume_name_arg)
+              ctf_string(snapshot_name, snapshot_name_arg)
+              ctf_integer(int, retval, result_arg)
+              ctf_integer(int, errval, errval_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_aio_read_enter,
+	TP_ARGS(const void*, ctx_arg,
+            const void*, aiocbp_arg,
+            uint64_t, aio_nbytes_arg,
+            uint64_t, aio_offset_arg),
+	TP_FIELDS(ctf_integer_hex(const void*, ctx, ctx_arg)
+              ctf_integer_hex(const void*, aiocbp, aiocbp_arg)
+              ctf_integer(int, aio_nbytes, aio_nbytes_arg)
+              ctf_integer(int, aio_offset, aio_offset_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_aio_read_exit,
+	TP_ARGS(const void*, ctx_arg,
+            const void*, aiocbp_arg,
+            int, result_arg,
+            int, errval_arg),
+	TP_FIELDS(ctf_integer_hex(const void*, ctx, ctx_arg)
+              ctf_integer_hex(const void*, aiocbp, aiocbp_arg)
+              ctf_integer(int, retval, result_arg)
+              ctf_integer(int, errval, errval_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_aio_write_enter,
+	TP_ARGS(const void*, ctx_arg,
+            const void*, aiocbp_arg,
+            uint64_t, aio_nbytes_arg,
+            uint64_t, aio_offset_arg),
+	TP_FIELDS(ctf_integer_hex(const void*, ctx, ctx_arg)
+              ctf_integer_hex(const void*, aiocbp, aiocbp_arg)
+              ctf_integer(int, aio_nbytes, aio_nbytes_arg)
+              ctf_integer(int, aio_offset, aio_offset_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_aio_write_exit,
+	TP_ARGS(const void*, ctx_arg,
+            const void*, aiocbp_arg,
+            int, result_arg,
+            int, errval_arg),
+	TP_FIELDS(ctf_integer_hex(const void*, ctx, ctx_arg)
+              ctf_integer_hex(const void*, aiocbp, aiocbp_arg)
+              ctf_integer(int, retval, result_arg)
+              ctf_integer(int, errval, errval_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_aio_flushcb_enter,
+	TP_ARGS(void*, ctx_arg),
+	TP_FIELDS(ctf_integer_hex(void*, ctx, ctx_arg))
+    )
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_aio_flushcb_exit,
+	TP_ARGS(const void*, ctx_arg,
+            int, result_arg,
+            int, errval_arg),
+	TP_FIELDS(ctf_integer_hex(const void*, ctx, ctx_arg)
+              ctf_integer(int, retval, result_arg)
+              ctf_integer(int, errval, errval_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_flush_enter,
+	TP_ARGS(void*, ctx_arg),
+	TP_FIELDS(ctf_integer_hex(void*, ctx, ctx_arg))
+    )
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_flush_exit,
+	TP_ARGS(void*, ctx_arg,
+            int, result_arg,
+            int, errval_arg),
+	TP_FIELDS(ctf_integer_hex(void*, ctx, ctx_arg)
+              ctf_integer(int, retval, result_arg)
+              ctf_integer(int, errval, errval_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_read_enter,
+	TP_ARGS(void*, ctx_arg,
+            void*, buf_arg,
+            uint64_t, nbytes_arg,
+            uint64_t, offset_arg),
+	TP_FIELDS(ctf_integer_hex(void*, ctx, ctx_arg)
+              ctf_integer_hex(void*, buf, buf_arg)
+              ctf_integer(int, nbytes, nbytes_arg)
+              ctf_integer(int, offset, offset_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_read_exit,
+	TP_ARGS(void*, ctx_arg,
+            void*, buf_arg,
+            ssize_t, result_arg,
+            int, errval_arg),
+	TP_FIELDS(ctf_integer_hex(void*, ctx, ctx_arg)
+              ctf_integer_hex(void*, buf, buf_arg)
+              ctf_integer(ssize_t, retval, result_arg)
+              ctf_integer(int, errval, errval_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_write_enter,
+	TP_ARGS(void*, ctx_arg,
+            const void*, buf_arg,
+            uint64_t, nbytes_arg,
+            uint64_t, offset_arg),
+	TP_FIELDS(ctf_integer_hex(void*, ctx, ctx_arg)
+              ctf_integer_hex(const void*, buf, buf_arg)
+              ctf_integer(int, nbytes, nbytes_arg)
+              ctf_integer(int, offset, offset_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_write_exit,
+	TP_ARGS(void*, ctx_arg,
+            const void*, buf_arg,
+            ssize_t, result_arg,
+            int, errval_arg),
+	TP_FIELDS(ctf_integer_hex(void*, ctx, ctx_arg)
+              ctf_integer_hex(const void*, buf, buf_arg)
+              ctf_integer(ssize_t, retval, result_arg)
+              ctf_integer(int, errval, errval_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_aio_readcb_enter,
+	TP_ARGS(const void*, ctx_arg,
+            const void*, aiocbp_arg,
+            const void*, completion_arg,
+            uint64_t, nbytes_arg,
+            uint64_t, offset_arg),
+	TP_FIELDS(ctf_integer_hex(const void*, ctx, ctx_arg)
+          ctf_integer_hex(const void*, aiocbp, aiocbp_arg)
+          ctf_integer_hex(const void*, completion, completion_arg)
+          ctf_integer(int, aio_nbytes, nbytes_arg)
+          ctf_integer(int, aio_offset, offset_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_aio_readcb_exit,
+	TP_ARGS(const void*, ctx_arg,
+            const void*, aiocbp_arg,
+            const void*, completion_arg,
+            int, result_arg,
+            int, errval_arg),
+	TP_FIELDS(ctf_integer_hex(const void*, ctx, ctx_arg)
+              ctf_integer_hex(const void*, aiocbp, aiocbp_arg)
+              ctf_integer_hex(const void*, completion, completion_arg)
+              ctf_integer(int, retval, result_arg)
+     		  ctf_integer(int, errval, errval_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_aio_writecb_enter,
+	TP_ARGS(const void*, ctx_arg,
+            const void*, aiocbp_arg,
+            const void*, completion_arg,
+            uint64_t, nbytes_arg,
+            uint64_t, offset_arg),
+	TP_FIELDS(ctf_integer_hex(const void*, ctx, ctx_arg)
+              ctf_integer_hex(const void*, aiocbp, aiocbp_arg)
+              ctf_integer_hex(const void*, completion, completion_arg)
+              ctf_integer(int, aio_nbytes, nbytes_arg)
+              ctf_integer(int, aio_offset, offset_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_aio_writecb_exit,
+	TP_ARGS(const void*, ctx_arg,
+            const void*, aiocbp_arg,
+            const void*, completion_arg,
+            int, result_arg,
+            int, errval_arg),
+	TP_FIELDS(ctf_integer_hex(const void*, ctx, ctx_arg)
+	          ctf_integer_hex(const void*, aiocbp, aiocbp_arg)
+	          ctf_integer_hex(const void*, completion, completion_arg)
+              ctf_integer(int, retval, result_arg)
+     		  ctf_integer(int, errval, errval_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_aio_return_enter,
+	TP_ARGS(void*, ctx_arg,
+            void*, aiocbp_arg),
+	TP_FIELDS(ctf_integer_hex(void*, ctx, ctx_arg)
+              ctf_integer_hex(void*, aiocbp, aiocbp_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_aio_return_exit,
+	TP_ARGS(void*, ctx_arg,
+            void*, aiocbp_arg,
+            ssize_t, result_arg,
+            int, errval_arg),
+	TP_FIELDS(ctf_integer_hex(void*, ctx, ctx_arg)
+              ctf_integer_hex(void*, aiocbp, aiocbp_arg)
+              ctf_integer(ssize_t, retval, result_arg)
+     		  ctf_integer(int, errval, errval_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_aio_finish,
+	TP_ARGS(void*, ctx_arg,
+            void*, aiocbp_arg),
+	TP_FIELDS(ctf_integer_hex(void*, ctx, ctx_arg)
+              ctf_integer_hex(void*, aiocbp, aiocbp_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_aio_error_enter,
+	TP_ARGS(void*, ctx_arg,
+            const void*, aiocbp_arg),
+	TP_FIELDS(ctf_integer_hex(void*, ctx, ctx_arg)
+              ctf_integer_hex(const void*, aiocbp, aiocbp_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_aio_error_exit,
+	TP_ARGS(void*, ctx_arg,
+            const void*, aiocbp_arg,
+            int, result_arg,
+            int, errval_arg),
+	TP_FIELDS(ctf_integer_hex(void*, ctx, ctx_arg)
+              ctf_integer_hex(const void*, aiocbp, aiocbp_arg)
+              ctf_integer(int, retval, result_arg)
+     		  ctf_integer(int, errval, errval_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_stat_enter,
+	TP_ARGS(void*, ctx_arg,
+            void*, st_arg),
+	TP_FIELDS(ctf_integer_hex(void*, ctx, ctx_arg)
+              ctf_integer_hex(void*, st, st_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_stat_exit,
+    TP_ARGS(void*, ctx_arg,
+            void*, st_arg,
+            int, retval,
+            uint64_t, blksize,
+            uint64_t, size),
+    TP_FIELDS(
+              ctf_integer_hex(void*, ctx, ctx_arg)
+              ctf_integer_hex(void*, st, st_arg)
+              ctf_integer(int, retval, retval)
+              ctf_integer(uint64_t, blksize, blksize)
+              ctf_integer(uint64_t, size, size))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_allocate,
+    TP_ARGS(void*, ctx_arg,
+            uintptr_t, buf_arg,
+            size_t, size_arg),
+    TP_FIELDS(
+              ctf_integer_hex(void*, ctx, ctx_arg)
+              ctf_integer_hex(uintptr_t, buf, buf_arg)
+              ctf_integer(size_t, size, size_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_buffer_data,
+	TP_ARGS(uintptr_t, buf_arg),
+	TP_FIELDS(ctf_integer_hex(uintptr_t, buf, buf_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_buffer_size,
+	TP_ARGS(uintptr_t, buf_arg),
+	TP_FIELDS(ctf_integer_hex(uintptr_t, buf, buf_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_deallocate,
+    TP_ARGS(void*, ctx_arg,
+            uintptr_t, buf_arg,
+            int, retval_arg),
+    TP_FIELDS(
+              ctf_integer_hex(void*, ctx, ctx_arg)
+              ctf_integer_hex(uintptr_t, buf, buf_arg)
+              ctf_integer(int, retval, retval_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_aio_suspend_enter,
+	TP_ARGS(void*, ctx_arg,
+            void*, aiocbp_arg,
+            const void*, timeout_arg),
+	TP_FIELDS(ctf_integer_hex(void*, ctx, ctx_arg)
+              ctf_integer_hex(void*, aiocbp, aiocbp_arg)
+              ctf_integer_hex(const void*, timeout, timeout_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_aio_suspend_exit,
+	TP_ARGS(void*, ctx_arg,
+            void*, aiocbp_arg,
+            const void*, timeout_arg,
+            int, result_arg,
+            int, errval_arg),
+	TP_FIELDS(ctf_integer_hex(void*, ctx, ctx_arg)
+              ctf_integer_hex(void*, aiocbp, aiocbp_arg)
+              ctf_integer_hex(const void*, timeout, timeout_arg)
+              ctf_integer(int, retval, result_arg)
+     		  ctf_integer(int, errval, errval_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_aio_create_completion,
+	TP_ARGS(ovs_callback_t, complete_cb_arg,
+            void*, complete_arg,
+            void*, completion_arg),
+	TP_FIELDS(ctf_integer_hex(ovs_callback_t, complete_cb, complete_cb_arg)
+              ctf_integer_hex(void*, arg, complete_arg)
+              ctf_integer_hex(void*, completion, completion_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_aio_return_completion,
+	TP_ARGS(void*, completion_arg),
+	TP_FIELDS(ctf_integer_hex(void*, completion, completion_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_aio_wait_completion_enter,
+	TP_ARGS(void*, completion_arg,
+            const void*, timeout_arg),
+	TP_FIELDS(ctf_integer_hex(void*, completion, completion_arg)
+              ctf_integer_hex(const void*, timeout, timeout_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_aio_wait_completion_exit,
+	TP_ARGS(void*, completion_arg,
+            const void*, timeout_arg,
+            int, result_arg,
+            int, errval_arg),
+	TP_FIELDS(ctf_integer_hex(void*, completion, completion_arg)
+              ctf_integer_hex(const void*, timeout, timeout_arg)
+              ctf_integer(int, retval, result_arg)
+     		  ctf_integer(int, errval, errval_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_aio_signal_completion,
+	TP_ARGS(void*, completion_arg),
+	TP_FIELDS(ctf_integer_hex(void*, completion, completion_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_aio_release_completion,
+	TP_ARGS(void*, completion_arg),
+	TP_FIELDS(ctf_integer_hex(void*, completion, completion_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_list_volumes_enter,
+	TP_ARGS(void*, names_arg,
+            size_t, size_arg),
+	TP_FIELDS(ctf_integer_hex(void*, names, names_arg)
+              ctf_integer(size_t, size, size_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_list_volumes_exit,
+	TP_ARGS(void*, names_arg,
+            size_t, size_arg,
+            int, result_arg,
+            int, errval_arg),
+	TP_FIELDS(ctf_integer_hex(void*, names, names_arg)
+              ctf_integer(size_t, size, size_arg)
+              ctf_integer(int, retval, result_arg)
+     		  ctf_integer(int, errval, errval_arg))
+)

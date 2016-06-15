@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "FileSystemTestBase.h"
 
@@ -152,12 +153,11 @@ protected:
         srv.addMethod(std::move(method));
         srv.start();
 
-        BOOST_SCOPE_EXIT((&srv))
-        {
-            srv.stop();
-            srv.join();
-        }
-        BOOST_SCOPE_EXIT_END;
+        auto on_exit(yt::make_scope_exit([&]
+                                         {
+                                             srv.stop();
+                                             srv.join();
+                                         }));
 
         vfs::PythonClient remoteclient(vrouter_cluster_id(),
                                        {{address(), port}});
@@ -325,6 +325,32 @@ TEST_F(PythonClientTest, list_volumes_by_path)
     }
 }
 
+TEST_F(PythonClientTest, list_volumes_by_node)
+{
+    mount_remote();
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         umount_remote();
+                                     }));
+
+    const uint64_t vsize = 1ULL << 20;
+    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const vfs::ObjectId id(create_file(fname, vsize));
+
+    {
+        const bpy::list l(client_.list_volumes(remote_node_id().str()));
+        EXPECT_EQ(0, bpy::len(l));
+    }
+
+    {
+        const bpy::list l(client_.list_volumes(local_node_id().str()));
+        ASSERT_EQ(1, bpy::len(l));
+        const std::string s = bpy::extract<std::string>(l[0]);
+        EXPECT_EQ(id.str(),
+                  s);
+    }
+}
+
 TEST_F(PythonClientTest, snapshot_excessive_metadata)
 {
     const vfs::FrontendPath vpath(make_volume_name("/some-volume"));
@@ -341,6 +367,7 @@ TEST_F(PythonClientTest, snapshot_excessive_metadata)
     const bpy::list l(client_.list_snapshots(vname));
     EXPECT_EQ(0, bpy::len(l));
 }
+
 TEST_F(PythonClientTest, volume_potential)
 {
     uint64_t res = 0;
@@ -348,9 +375,9 @@ TEST_F(PythonClientTest, volume_potential)
     EXPECT_LT(0U, res);
     EXPECT_EQ(res,
               fs_->object_router().local_volume_potential(boost::none,
+                                                          boost::none,
                                                           boost::none));
 }
-
 
 TEST_F(PythonClientTest, snapshot_metadata)
 {
@@ -426,12 +453,19 @@ TEST_F(PythonClientTest, volume_queries)
 
 TEST_F(PythonClientTest, performance_counters)
 {
+    mount_remote();
+
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         umount_remote();
+                                     }));
+
     const vfs::FrontendPath vpath(make_volume_name("/testing_info"));
     const std::string vname(create_file(vpath, 10 << 20));
 
-    const size_t csize = api::GetClusterSize();
+    const size_t csize = get_cluster_size(vfs::ObjectId(vname));
 
-    auto expect_nothing([&](const vd::PerformanceCounter<uint64_t>& ctr)
+    auto expect_nothing_([&](const vd::PerformanceCounter<uint64_t>& ctr)
     {
         EXPECT_EQ(0U,
                   ctr.events());
@@ -445,14 +479,21 @@ TEST_F(PythonClientTest, performance_counters)
                   ctr.max());
     });
 
-    {
-        const vfs::XMLRPCStatistics stats(client_.statistics_volume(vname,
-                                                                    false));
+    auto expect_nothing([&](const vfs::XMLRPCStatistics& stats)
+                        {
+                            expect_nothing_(stats.performance_counters.write_request_size);
+                            expect_nothing_(stats.performance_counters.read_request_size);
+                            expect_nothing_(stats.performance_counters.sync_request_usecs);
+                        });
 
-        expect_nothing(stats.performance_counters.write_request_size);
-        expect_nothing(stats.performance_counters.read_request_size);
-        expect_nothing(stats.performance_counters.sync_request_usecs);
-    }
+    expect_nothing(client_.statistics_volume(vname,
+                                             false));
+
+    expect_nothing(client_.statistics_node(local_node_id().str(),
+                                           false));
+
+    expect_nothing(client_.statistics_node(remote_node_id().str(),
+                                           false));
 
     const std::string pattern("The Good Son");
 
@@ -461,49 +502,51 @@ TEST_F(PythonClientTest, performance_counters)
                   csize,
                   0);
 
-    {
-        const vfs::XMLRPCStatistics stats(client_.statistics_volume(vname,
-                                                                    true));
-        EXPECT_EQ(1U,
-                  stats.performance_counters.write_request_size.events());
-        EXPECT_EQ(csize,
-                  stats.performance_counters.write_request_size.sum());
-        EXPECT_EQ(csize * csize,
-                  stats.performance_counters.write_request_size.sum_of_squares());
-        EXPECT_GT(std::numeric_limits<uint64_t>::max(),
-                  stats.performance_counters.write_request_size.min());
-        EXPECT_EQ(4096U,
-                  stats.performance_counters.write_request_size.min());
-        EXPECT_LT(std::numeric_limits<uint64_t>::min(),
-                  stats.performance_counters.write_request_size.max());
-        EXPECT_EQ(csize,
-                  stats.performance_counters.write_request_size.max());
+    auto expect_something([&](const vfs::XMLRPCStatistics& stats)
+                          {
+                              EXPECT_EQ(1U,
+                                        stats.performance_counters.write_request_size.events());
+                              EXPECT_EQ(csize,
+                                        stats.performance_counters.write_request_size.sum());
+                              EXPECT_EQ(csize * csize,
+                                        stats.performance_counters.write_request_size.sum_of_squares());
+                              EXPECT_GT(std::numeric_limits<uint64_t>::max(),
+                                        stats.performance_counters.write_request_size.min());
+                              EXPECT_EQ(4096U,
+                                        stats.performance_counters.write_request_size.min());
+                              EXPECT_LT(std::numeric_limits<uint64_t>::min(),
+                                        stats.performance_counters.write_request_size.max());
+                              EXPECT_EQ(csize,
+                                        stats.performance_counters.write_request_size.max());
 
-        expect_nothing(stats.performance_counters.read_request_size);
-        expect_nothing(stats.performance_counters.sync_request_usecs);
-    }
+                              expect_nothing_(stats.performance_counters.read_request_size);
+                              expect_nothing_(stats.performance_counters.sync_request_usecs);
+                          });
 
-    {
-        const vfs::XMLRPCStatistics stats(client_.statistics_volume(vname,
-                                                                    false));
+    expect_something(client_.statistics_volume(vname,
+                                               false));
 
-        expect_nothing(stats.performance_counters.write_request_size);
-        expect_nothing(stats.performance_counters.read_request_size);
-        expect_nothing(stats.performance_counters.sync_request_usecs);
-    }
+    expect_nothing(client_.statistics_node(remote_node_id().str(),
+                                           false));
+
+    expect_something(client_.statistics_node(local_node_id().str(),
+                                             true));
+
+    expect_nothing(client_.statistics_volume(vname,
+                                             false));
+
+    expect_nothing(client_.statistics_node(local_node_id().str(),
+                                           false));
 }
 
 TEST_F(PythonClientTest, redirect)
 {
     mount_remote();
 
-    auto self = this;
-
-    BOOST_SCOPE_EXIT((self))
-    {
-        self->umount_remote();
-    }
-    BOOST_SCOPE_EXIT_END;
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         umount_remote();
+                                     }));
 
     const uint64_t vsize = 1ULL << 20;
     const vfs::FrontendPath fname(make_volume_name("/some-volume"));
@@ -696,8 +739,8 @@ TEST_F(PythonClientTest, scrubbing)
 {
     const vfs::FrontendPath vpath(make_volume_name("/testing_the_scrubber"));
     const vfs::ObjectId vol_id(create_file(vpath, 10 << 20));
-    const off_t off = 10 * api::GetClusterSize();
-    const uint64_t size = 30 * api::GetClusterSize();
+    const off_t off = 10 * get_cluster_size(vol_id);
+    const uint64_t size = 30 * get_cluster_size(vol_id);
 
 
     const std::string pattern("some_write");
@@ -927,8 +970,8 @@ TEST_F(PythonClientTest, prevent_rollback_beyond_clone)
     std::vector<vd::SnapshotName> snaps;
     snaps.reserve(4);
 
-    const off_t off = api::GetClusterSize();
-    const uint64_t size = api::GetClusterSize();
+    const off_t off = get_cluster_size(pname);
+    const uint64_t size = get_cluster_size(pname);
 
     for (size_t i = 0; i < snaps.capacity(); ++i)
     {
@@ -1005,10 +1048,11 @@ TEST_F(PythonClientTest, family_scrubbing)
 {
     const vfs::FrontendPath ppath(make_volume_name("/parent"));
     const size_t vsize = 10 << 20;
-    const size_t csize = api::GetClusterSize();
 
     const vfs::ObjectId pname(create_file(ppath,
                                           vsize));
+
+    const size_t csize = get_cluster_size(pname);
 
     const std::string pattern("Blackstar");
     for (size_t i = 0; i < 64; ++i)
@@ -1060,10 +1104,11 @@ TEST_F(PythonClientTest, templates_and_scrubbing)
 {
     const vfs::FrontendPath ppath(make_volume_name("/parent"));
     const size_t vsize = 10 << 20;
-    const size_t csize = api::GetClusterSize();
 
     const vfs::ObjectId pname(create_file(ppath,
                                           vsize));
+
+    const size_t csize = get_cluster_size(pname);
 
     const std::string pattern("White Chalk");
     for (size_t i = 0; i < 64; ++i)
@@ -1361,7 +1406,7 @@ TEST_F(PythonClientTest, tlog_multiplier)
     EXPECT_EQ(boost::none,
               client_.get_tlog_multiplier(vname));
 
-    const uint32_t tlog_multiplier_c = 1024;
+    const uint32_t tlog_multiplier_c = 50;
     client_.set_tlog_multiplier(vname, tlog_multiplier_c);
     const boost::optional<uint32_t>
         tlog_multiplier(client_.get_tlog_multiplier(vname));
@@ -1369,7 +1414,7 @@ TEST_F(PythonClientTest, tlog_multiplier)
     ASSERT_NE(boost::none,
               tlog_multiplier);
 
-    EXPECT_EQ(1024U,
+    EXPECT_EQ(tlog_multiplier_c,
               *tlog_multiplier);
 
     client_.set_tlog_multiplier(vname,
@@ -1774,7 +1819,7 @@ TEST_F(PythonClientTest, locked_scrub)
     const vfs::FrontendPath vpath(make_volume_name("/some-volume"));
     const std::string vname(create_file(vpath, 10 << 20));
 
-    const uint64_t csize = api::GetClusterSize();
+    const uint64_t csize = get_cluster_size(vfs::ObjectId(vname));
     const std::string fst("first");
 
     write_to_file(vpath,
@@ -1818,7 +1863,7 @@ TEST_F(PythonClientTest, locked_scrub)
                                          scrubbing::ScrubberAdapter::verbose_scrubbing_default,
                                          "ovs_scrubber",
                                          yt::Severity::info,
-                                         boost::none));
+                                         std::vector<std::string>()));
 
     lclient->apply_scrubbing_result(res);
 }

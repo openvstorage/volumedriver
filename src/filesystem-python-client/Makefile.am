@@ -26,9 +26,9 @@ storagerouterclient_la_LIBADD = \
 	../volumedriver/libvolumedriver.la \
 	../backend/libbackend.la \
 	../youtils/libyoutils.la \
-	-lfuse \
+	-lfuse3 \
 	$(BUILDTOOLS_LIBS) \
-	-lpthread -lrt -lm
+	-lpthread -lrt -lm -lgcc
 
 storagerouterclient_la_CPPFLAGS = \
 	-I@abs_top_srcdir@/.. \

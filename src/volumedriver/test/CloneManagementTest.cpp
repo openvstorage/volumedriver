@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "../VolManager.h"
 #include "VolManagerTestSetup.h"
@@ -36,48 +37,49 @@ TEST_P(CloneManagementTest, noclonesfromsnapshotsnotinbackend)
 
     const backend::Namespace& ns1 = ns1_ptr->ns();
 
-    Volume* v = newVolume("volume1",
+    SharedVolumePtr v = newVolume("volume1",
 			  ns1);
 
-    Volume* c = 0;
+    SharedVolumePtr c = 0;
     auto ns2_ptr = make_random_namespace();
 
     const backend::Namespace& ns2 = ns2_ptr->ns();
 
-    ASSERT_TRUE(v);
-    {
-        SCOPED_BLOCK_BACKEND(v);
+    ASSERT_TRUE(v != nullptr);
 
-        writeToVolume(v,
+    const SnapshotName snap("snap1");
+
+    {
+        SCOPED_BLOCK_BACKEND(*v);
+
+        writeToVolume(*v,
                       0,
                       4096,
                       "xyz");
-        v->createSnapshot(SnapshotName("snap1"));
+        v->createSnapshot(snap);
 
 
         ASSERT_THROW(c = createClone("clone1",
                                      ns2,
                                      ns1,
-                                     "snap1"),
+                                     snap),
                      fungi::IOException);
 
         ASSERT_FALSE(c);
     }
 
-    waitForThisBackendWrite(v);
-
+    waitForThisBackendWrite(*v);
 
     ASSERT_NO_THROW(c = createClone("clone1",
                                     ns2,
                                     ns1,
-                                    "snap1"));
+                                    snap));
 
-    ASSERT_TRUE(c);
-    checkVolume(c,
+    ASSERT_TRUE(c != nullptr);
+    checkVolume(*c,
                 0,
                 4096,
                 "xyz");
-
 }
 
 TEST_P(CloneManagementTest, sad_clone)
@@ -89,20 +91,22 @@ TEST_P(CloneManagementTest, sad_clone)
 
     //    backend::Namespace ns1;
 
-    Volume* v = newVolume("volume1",
+    SharedVolumePtr v = newVolume("volume1",
                           ns1);
 
-
-    ASSERT_TRUE(v);
-    writeToVolume(v,
+    ASSERT_TRUE(v != nullptr);
+    writeToVolume(*v,
                   0,
                   4096,
                   "xyz");
-    v->createSnapshot(SnapshotName("snap1"));
+
+    const SnapshotName snap("snap1");
+
+    v->createSnapshot(snap);
     persistXVals(VolumeId("volume1"));
 
-    waitForThisBackendWrite(v);
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
+    waitForThisBackendWrite(*v);
     const VolumeConfig cfg(v->get_config());
 
     destroyVolume(v,
@@ -110,7 +114,7 @@ TEST_P(CloneManagementTest, sad_clone)
                   RemoveVolumeCompletely::F);
 
     v = 0;
-    Volume* c = 0;
+    SharedVolumePtr c = 0;
 
     auto ns2_ptr = make_random_namespace();
 
@@ -119,14 +123,12 @@ TEST_P(CloneManagementTest, sad_clone)
     ASSERT_NO_THROW(c = createClone("clone1",
                                     ns2,
                                     ns1,
-                                    "snap1"));
+                                    snap));
 
-
-    ASSERT_TRUE(c);
+    ASSERT_TRUE(c != nullptr);
 
     restartVolume(cfg);
-    sleep(5);
-
+   sleep(5);
 }
 
 TEST_P(CloneManagementTest, recursiveclonelookup)
@@ -136,20 +138,22 @@ TEST_P(CloneManagementTest, recursiveclonelookup)
     const backend::Namespace& ns1 = ns1_ptr->ns();
 
 
-    Volume* v = newVolume("volume1",
+    SharedVolumePtr v = newVolume("volume1",
                           ns1);
 
 
-    ASSERT_TRUE(v);
-    writeToVolume(v,
+    ASSERT_TRUE(v != nullptr);
+    writeToVolume(*v,
                   0,
                   4096,
                   "xyz");
-    v->createSnapshot(SnapshotName("snap1"));
-    waitForThisBackendWrite(v);
-    waitForThisBackendWrite(v);
 
-    Volume* c = 0;
+    const SnapshotName snap("snap1");
+    v->createSnapshot(snap);
+    waitForThisBackendWrite(*v);
+    waitForThisBackendWrite(*v);
+
+    SharedVolumePtr c = 0;
 
     auto ns2_ptr = make_random_namespace();
     const backend::Namespace& clone1ns = ns2_ptr->ns();
@@ -158,26 +162,26 @@ TEST_P(CloneManagementTest, recursiveclonelookup)
     ASSERT_NO_THROW(c = createClone("clone1",
                                     clone1ns,
                                     ns1,
-                                    "snap1"));
+                                    snap));
 
 
-    ASSERT_TRUE(c);
-    checkVolume(v,
+    ASSERT_TRUE(c != nullptr);
+    checkVolume(*v,
                 0,
                 4096,
                 "xyz");
 
-    writeToVolume(c,
+    writeToVolume(*c,
                   8,
                   4096,
                   "abc");
 
 
-    c->createSnapshot(SnapshotName("snap1"));
-    waitForThisBackendWrite(c);
-    waitForThisBackendWrite(c);
+    c->createSnapshot(snap);
+    waitForThisBackendWrite(*c);
+    waitForThisBackendWrite(*c);
 
-    Volume* d = 0;
+    SharedVolumePtr d = 0;
 
     auto ns3_ptr = make_random_namespace();
     const backend::Namespace& ns3 = ns3_ptr->ns();
@@ -185,15 +189,15 @@ TEST_P(CloneManagementTest, recursiveclonelookup)
     ASSERT_NO_THROW(d = createClone("clone2",
                                     ns3,
                                     clone1ns,
-                                   "snap1"));
+                                    snap));
 
-    ASSERT_TRUE(d);
-    checkVolume(d,
+    ASSERT_TRUE(d != nullptr);
+    checkVolume(*d,
                 0,
                 4096,
                 "xyz");
 
-    checkVolume(d,
+    checkVolume(*d,
                 8,
                 4096,
                 "abc");

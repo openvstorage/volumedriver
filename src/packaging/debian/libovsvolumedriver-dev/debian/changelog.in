@@ -1,0 +1,5 @@
+libovsvolumedriver-dev (@VD_MAJOR_VERSION@.@VD_MINOR_VERSION@.@VD_PATCH_VERSION@-@VD_EXTRA_VERSION@) unstable; urgency=low
+
+  * Initial Release.
+
+ -- volumedriver team <volumedriverteam@openvstorage.com>  Thu, 05 Nov 2015 13:11:17 +0200

@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "Socket.h"
 #include "Conversions.h"
@@ -121,9 +122,12 @@ double Interval::secondsDouble() const {
 static const int SOCKET_MAX_STRING_SIZE = 1024;
 static const int SOCKET_MAX_BYTEARRAY_SIZE = 64 * 1024;
 
-Socket *Socket::createClientSocket(const std::string &host, uint16_t port, int sock_type) {
-    Socket *sock = nullptr;
+std::unique_ptr<Socket>
+Socket::createClientSocket(const std::string &host, uint16_t port, int sock_type)
+{
+    std::unique_ptr<Socket> sock;
     bool created = false;
+
     try {
         sock = createSocket(true, sock_type);
         created = true;
@@ -131,8 +135,7 @@ Socket *Socket::createClientSocket(const std::string &host, uint16_t port, int s
     }
     catch (IOException& e1) {
         LOG_DEBUG((created ? "Connect" : "Create") << " RDMA socket [" << host << ":" << port << "] failed (" << getErrorNumber() << ") - retry with TCP");
-        delete sock;
-        sock = nullptr;
+
         created = false;
         try {
             sock = createSocket(false, sock_type);
@@ -141,31 +144,31 @@ Socket *Socket::createClientSocket(const std::string &host, uint16_t port, int s
         }
         catch (IOException& e2) {
             LOG_DEBUG((created ? "Connect" : "Create") << " TCP socket [" << host << ":" << port << "] failed (" << getErrorNumber() << ") - give up");
-            delete sock;
-            sock = nullptr;
             throw e2;
         }
     }
     return sock;
 }
 
-Socket *Socket::createSocket(bool rdma, int sock_type) {
-    Socket *sock;
-    if (rdma) { // rsocket cannot handle IPv6
-        return new IPv4Socket(true, sock_type);
+std::unique_ptr<Socket>
+Socket::createSocket(bool rdma, int sock_type) {
+
+    if (rdma)
+    { // rsocket cannot handle IPv6
+        return std::unique_ptr<Socket>(new IPv4Socket(true, sock_type));
     }
     // always use IPv4 in windows for now TODO
 #ifndef _WIN32
     try {
-        sock = new IPv6Socket(sock_type);
+        return std::unique_ptr<Socket>(new IPv6Socket(sock_type));
     } catch (IOException & /* e */) {
           LOG_DEBUG("Fall back on IPv4");
 #endif
-        sock = new IPv4Socket(false, sock_type);
+          return std::unique_ptr<Socket>(new IPv4Socket(false,
+                                                        sock_type));
 #ifndef _WIN32
     }
 #endif
-    return sock;
 }
 
 Socket::Socket(int domain, int sock_type, bool rdma) :
@@ -295,7 +298,7 @@ void Socket::getCork()
         int32_t corked = readInt_();
 //    LOG_INFO("read ahead " << corked << " bytes");
         // Buffer this many bytes
-        rbuf_.store(this, (int) corked);
+        rbuf_.store(*this, (int) corked);
     }
 }
 

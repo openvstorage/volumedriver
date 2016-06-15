@@ -1,22 +1,24 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "CachedMetaDataStore.h"
 #include "BackendTasks.h"
 #include "MDSMetaDataBackend.h"
 #include "MDSMetaDataStore.h"
 #include "MetaDataStoreBuilder.h"
+#include "RelocationReaderFactory.h"
 #include "VolManager.h"
 #include "VolumeInterface.h"
 
@@ -46,6 +48,7 @@ MDSMetaDataStore::MDSMetaDataStore(const MDSMetaDataBackendConfig& cfg,
                                    const fs::path& home,
                                    uint64_t num_pages_cached)
     : VolumeBackPointer(getLogger__())
+    , rwlock_("mdsmdstore-" + bi->getNS().str())
     , bi_(std::move(bi))
     , node_configs_(cfg.node_configs())
     , apply_relocations_to_slaves_(cfg.apply_relocations_to_slaves())
@@ -396,9 +399,7 @@ MDSMetaDataStore::for_each(MetaDataStoreFunctor& functor,
 }
 
 uint64_t
-MDSMetaDataStore::applyRelocs(const std::vector<std::string>& relocs,
-                              const NSIDMap& nsid_map,
-                              const boost::filesystem::path& tlog_location,
+MDSMetaDataStore::applyRelocs(RelocationReaderFactory& factory,
                               SCOCloneID cid,
                               const ScrubId& scrub_id)
 {
@@ -411,9 +412,7 @@ MDSMetaDataStore::applyRelocs(const std::vector<std::string>& relocs,
     return do_handle_<uint64_t>(__FUNCTION__,
                                 [&](const MetaDataStorePtr& md) -> uint64_t
         {
-            const uint64_t ret = md->applyRelocs(relocs,
-                                                 nsid_map,
-                                                 tlog_location,
+            const uint64_t ret = md->applyRelocs(factory,
                                                  cid,
                                                  scrub_id);
 
@@ -427,7 +426,7 @@ MDSMetaDataStore::applyRelocs(const std::vector<std::string>& relocs,
                     try
                     {
                         apply_relocs_on_slave_(node_configs_[i],
-                                               relocs,
+                                               factory.relocation_logs(),
                                                cid,
                                                scrub_id);
                     }

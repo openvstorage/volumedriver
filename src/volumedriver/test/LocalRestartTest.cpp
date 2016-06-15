@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "VolManagerTestSetup.h"
 
@@ -23,8 +24,8 @@
 
 #include <volumedriver/DataStoreNG.h>
 #include <volumedriver/CachedMetaDataPage.h>
+#include <volumedriver/CombinedTLogReader.h>
 #include <volumedriver/MetaDataStoreInterface.h>
-#include <volumedriver/TLogReaderUtils.h>
 #include <volumedriver/TLogWriter.h>
 #include <volumedriver/VolManager.h>
 #include <volumedriver/LocalTLogScanner.h>
@@ -63,30 +64,18 @@ class LocalRestartTest
     : public VolManagerTestSetup
 {
 protected:
-    static const unsigned scos_per_tlog = 2;
+    static const size_t scos_per_tlog;
 
 public:
     LocalRestartTest()
-        : VolManagerTestSetup("LocalRestartTest",
-                              UseFawltyMDStores::F,
-                              UseFawltyTLogStores::F,
-                              UseFawltyDataStores::F,
-                              4, // num_threads - default
-                              "1GiB", // scocache mp #1 - default
-                              "1GiB", // scocache mp #2 - default
-                              "250MiB", // scocache trigger gap - default
-                              "500MiB", // scocache trigger gap - default
-                              60, // scocache cleanup interval - default
-                              32, // datastore open sco's per volume - default
-                              4000, // datastore throttle usecs - default
-                              1000, // foc throttle usecs - default
-                              scos_per_tlog) // *not* default
+        : VolManagerTestSetup(VolManagerTestSetupParameters("LocalRestartTest")
+                              .scos_per_tlog(scos_per_tlog))
     {}
 
     // write two tlogs worth of data - the first one goes to the backend while the
     // second one will remain local (path to it is returned)
     fs::path
-    seq_write_and_drop_mdstore_cache_and_destroy(Volume *v,
+    seq_write_and_drop_mdstore_cache_and_destroy(SharedVolumePtr v,
                                                  const std::string& tlog_1_pattern,
                                                  const std::string& tlog_2_pattern)
     {
@@ -103,12 +92,12 @@ public:
             tlog1 = tlogs.front();
         }
 
-        writeToVolume(v,
+        writeToVolume(*v,
                       0,
                       max_tlog_entries * cluster_size,
                       tlog_1_pattern);
 
-        waitForThisBackendWrite(v);
+        waitForThisBackendWrite(*v);
 
         {
             OrderedTLogIds tlogs;
@@ -128,14 +117,15 @@ public:
 
         EXPECT_NE(tlog1, tlog2);
 
-        const fs::path tlog_path(VolManager::get()->getTLogPath(v) /
+        const fs::path tlog_path(VolManager::get()->getTLogPath(*v) /
                                  boost::lexical_cast<std::string>(tlog2));
 
         {
-            SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v, 2,
+            SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v,
+                                                  2,
                                                   DeleteLocalData::F,
                                                   RemoveVolumeCompletely::F);
-            writeToVolume(v,
+            writeToVolume(*v,
                           max_tlog_entries * cluster_mult,
                           (max_tlog_entries - 1) * cluster_size,
                           tlog_2_pattern);
@@ -149,10 +139,10 @@ public:
     }
 
     void
-    check_backend_tlogs(Volume* v, uint32_t expected)
+    check_backend_tlogs(Volume& v, uint32_t expected)
     {
         OrderedTLogIds out;
-        v->getSnapshotManagement().getTLogsWrittenToBackend(out);
+        v.getSnapshotManagement().getTLogsWrittenToBackend(out);
         std::list<std::string> tlognames;
 
         for (const auto& tlog_id : out)
@@ -162,7 +152,7 @@ public:
 
         tlognames.sort();
 
-        auto bi = v->getBackendInterface()->clone();
+        auto bi = v.getBackendInterface()->clone();
         std::list<std::string> tlogs_on_backend;
         bi->listObjects(tlogs_on_backend);
         tlogs_on_backend.remove_if(boost::not1(TLog::isTLogString));
@@ -177,8 +167,8 @@ public:
     //make a clone from X, write num_tlogs_on_backend + some data to the current tlog
     void
     prepare_sanity_check_tests(const uint32_t num_tlogs_on_backend,
-                               Volume*& out_parent,
-                               Volume*& out_clone,
+                               SharedVolumePtr& out_parent,
+                               SharedVolumePtr& out_clone,
                                std::unique_ptr<WithRandomNamespace>& parent_ns,
                                std::unique_ptr<WithRandomNamespace>& clone_ns)
     {
@@ -192,22 +182,22 @@ public:
 
         const auto max_tlog_entries = out_parent->getSnapshotManagement().maxTLogEntries();
 
-        writeClusters(out_parent, num_tlogs_on_backend  * max_tlog_entries - 1);
-        std::string thesnap("X");
-        createSnapshot(out_parent, thesnap);
-        writeClusters(out_parent, (num_tlogs_on_backend + 1) * max_tlog_entries - 1);
-        waitForThisBackendWrite(out_parent);
+        writeClusters(*out_parent, num_tlogs_on_backend  * max_tlog_entries - 1);
+        const SnapshotName thesnap("X");
+        createSnapshot(*out_parent, thesnap);
+        writeClusters(*out_parent, (num_tlogs_on_backend + 1) * max_tlog_entries - 1);
+        waitForThisBackendWrite(*out_parent);
 
-        check_backend_tlogs(out_parent, 2 * num_tlogs_on_backend);
+        check_backend_tlogs(*out_parent, 2 * num_tlogs_on_backend);
 
         const std::string volname("sanityCheckOfBackendClone");
         const backend::Namespace ns;
         clone_ns = make_random_namespace(ns);
         out_clone = createClone(volname, ns, parent_namespace, thesnap);
-        writeClusters(out_clone, (num_tlogs_on_backend + 1) * max_tlog_entries - 1);
-        waitForThisBackendWrite(out_clone);
+        writeClusters(*out_clone, (num_tlogs_on_backend + 1) * max_tlog_entries - 1);
+        waitForThisBackendWrite(*out_clone);
 
-        check_backend_tlogs(out_clone, num_tlogs_on_backend);
+        check_backend_tlogs(*out_clone, num_tlogs_on_backend);
     }
 
     enum class FOCMode
@@ -225,7 +215,7 @@ public:
 
         const backend::Namespace& ns = ns_ptr->ns();
 
-        Volume* v = newVolume("vol1",
+        SharedVolumePtr v = newVolume("vol1",
                               ns);
 
         auto foc_ctx(focmode != FOCMode::None ?
@@ -254,14 +244,14 @@ public:
                                                   RemoveVolumeCompletely::F);
             for(unsigned i = 0; i <  sco_mult; ++i)
             {
-                writeToVolume(v, 0, cluster_size, pattern1);
+                writeToVolume(*v, 0, cluster_size, pattern1);
             }
 
             // SCO rollover adds a CRC
 
             for(unsigned i = 0; i < 2 * sco_mult - 1; ++i)
             {
-                writeToVolume(v, 0, cluster_size, pattern2);
+                writeToVolume(*v, 0, cluster_size, pattern2);
             }
             v->getMetaDataStore()->getStats(mds1);
             // EXPECT_LT(0, mds1.used_clusters);
@@ -293,10 +283,10 @@ public:
         sc->disableNamespace(ns);
 
         ASSERT_NO_THROW(v = localRestart(ns));
-        ASSERT_TRUE(v);
+        ASSERT_TRUE(v != nullptr);
         //    EXPECT_TRUE(v->mdstore_was_rebuilt_);
 
-        checkVolume(v,
+        checkVolume(*v,
                     0,
                     cluster_size,
                     focmode == FOCMode::Healthy ?
@@ -307,9 +297,12 @@ public:
         v->getMetaDataStore()->getStats(mds2);
         // EXPECT_EQ(mds1.used_clusters, mds2.used_clusters);
 
-        checkCurrentBackendSize(v);
+        checkCurrentBackendSize(*v);
     }
 };
+
+const size_t
+LocalRestartTest::scos_per_tlog = 2;
 
 TEST_P(LocalRestartTest, normalRestart)
 {
@@ -319,7 +312,7 @@ TEST_P(LocalRestartTest, normalRestart)
 
     // const backend::Namespace ns;
 
-    Volume* v1 = newVolume("volume1",
+    SharedVolumePtr v1 = newVolume("volume1",
                            ns);
 
     v1->set_cluster_cache_behaviour(ClusterCacheBehaviour::NoCache);
@@ -328,7 +321,7 @@ TEST_P(LocalRestartTest, normalRestart)
 
     for(size_t i = 0; i < count; i++)
     {
-        writeToVolume(v1,
+        writeToVolume(*v1,
                       0,
                       v1->getClusterSize(),
                       boost::lexical_cast<std::string>(i));
@@ -340,15 +333,15 @@ TEST_P(LocalRestartTest, normalRestart)
     v1 = 0;
 
     ASSERT_NO_THROW(v1 = localRestart(ns));
-    ASSERT_TRUE(v1);
+    ASSERT_TRUE(v1 != nullptr);
     // EXPECT_FALSE(v1->mdstore_was_rebuilt_);
 
-    checkVolume(v1,
+    checkVolume(*v1,
                 0,
                 v1->getClusterSize(),
                 boost::lexical_cast<std::string>(count - 1));
 
-    checkCurrentBackendSize(v1);
+    checkCurrentBackendSize(*v1);
 
     boost::optional<ClusterCacheBehaviour> b(v1->get_cluster_cache_behaviour());
     ASSERT_NE(boost::none,
@@ -366,14 +359,14 @@ TEST_P(LocalRestartTest, readCacheRestart1)
     const backend::Namespace& ns = ns_ptr->ns();
 
 
-    Volume* v1 = newVolume("volume1",
+    SharedVolumePtr v1 = newVolume("volume1",
                            ns);
     boost::optional<ClusterCacheBehaviour> behaviour(ClusterCacheBehaviour::CacheOnWrite);
     v1->set_cluster_cache_behaviour(behaviour);
 
     for(int i = 0; i < 1024; i++)
     {
-        writeToVolume(v1,
+        writeToVolume(*v1,
                       0,
                       v1->getClusterSize(),
                       "kristafke");
@@ -385,11 +378,11 @@ TEST_P(LocalRestartTest, readCacheRestart1)
     v1 = 0;
 
     ASSERT_NO_THROW(v1 = localRestart(ns));
-    ASSERT_TRUE(v1);
+    ASSERT_TRUE(v1 != nullptr);
     // EXPECT_FALSE(v1->mdstore_was_rebuilt_);
 
-    checkVolume(v1, 0, v1->getClusterSize(), "kristafke");
-    checkCurrentBackendSize(v1);
+    checkVolume(*v1, 0, v1->getClusterSize(), "kristafke");
+    checkCurrentBackendSize(*v1);
 
     ASSERT_TRUE(*v1->get_cluster_cache_behaviour() == behaviour);
 }
@@ -401,14 +394,14 @@ TEST_P(LocalRestartTest, normalRestart2)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v1 = newVolume("volume1",
+    SharedVolumePtr v1 = newVolume("volume1",
                            ns);
     boost::optional<ClusterCacheBehaviour> behaviour(ClusterCacheBehaviour::NoCache);
     v1->set_cluster_cache_behaviour(behaviour);
 
     for(int i = 0; i < 1024; i++)
     {
-        writeToVolume(v1,
+        writeToVolume(*v1,
                       0,
                       v1->getClusterSize(),
                       "kristafke");
@@ -420,12 +413,12 @@ TEST_P(LocalRestartTest, normalRestart2)
     v1 = 0;
 
     ASSERT_NO_THROW(v1 = localRestart(ns));
-    ASSERT_TRUE(v1);
+    ASSERT_TRUE(v1 != nullptr);
 
     // EXPECT_FALSE(v1->mdstore_was_rebuilt_);
 
-    checkVolume(v1, 0, v1->getClusterSize(), "kristafke");
-    checkCurrentBackendSize(v1);
+    checkVolume(*v1, 0, v1->getClusterSize(), "kristafke");
+    checkCurrentBackendSize(*v1);
 
     ASSERT_TRUE(*v1->get_cluster_cache_behaviour() == behaviour);
 }
@@ -440,11 +433,11 @@ TEST_P(LocalRestartTest, normalRestartwithPrefetch)
 
 
     VolumeId vid("volume1");
-    Volume* v1 = newVolume(vid,
+    SharedVolumePtr v1 = newVolume(vid,
                            ns);
     for(int i = 0; i < 1024; i++)
     {
-        writeToVolume(v1,
+        writeToVolume(*v1,
                       0,
                       v1->getClusterSize(),
                       "kristafke");
@@ -452,21 +445,21 @@ TEST_P(LocalRestartTest, normalRestartwithPrefetch)
 
     ASSERT_NO_THROW(updateReadActivity());
     persistXVals(vid);
-    waitForThisBackendWrite(v1);
+    waitForThisBackendWrite(*v1);
     destroyVolume(v1,
                   DeleteLocalData::F,
                   RemoveVolumeCompletely::F);
     v1 = 0;
 
     ASSERT_NO_THROW(v1 = localRestart(ns));
-    ASSERT_TRUE(v1);
+    ASSERT_TRUE(v1 != nullptr);
 
     //  EXPECT_FALSE(v1->mdstore_was_rebuilt_);
 
     v1->startPrefetch();
     sleep(1);
-    checkVolume(v1, 0, v1->getClusterSize(), "kristafke");
-    checkCurrentBackendSize(v1);
+    checkVolume(*v1, 0, v1->getClusterSize(), "kristafke");
+    checkCurrentBackendSize(*v1);
 
 }
 
@@ -478,7 +471,7 @@ TEST_P(LocalRestartTest, restartNothing)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v1 = newVolume("volume1",
+    SharedVolumePtr v1 = newVolume("volume1",
                            ns);
 
     destroyVolume(v1,
@@ -490,8 +483,8 @@ TEST_P(LocalRestartTest, restartNothing)
 
     //    EXPECT_FALSE(v1->mdstore_was_rebuilt_);
 
-    checkVolume(v1, 0, v1->getClusterSize(), "\0");
-    checkCurrentBackendSize(v1);
+    checkVolume(*v1, 0, v1->getClusterSize(), "\0");
+    checkCurrentBackendSize(*v1);
 
 }
 
@@ -504,11 +497,11 @@ TEST_P(LocalRestartTest, restartNothingWithBackendSync)
     const backend::Namespace& ns = ns_ptr->ns();
 
 
-    Volume* v1 = newVolume("volume1",
+    SharedVolumePtr v1 = newVolume("volume1",
                            ns);
     for(int i = 0; i < 1024; i++)
     {
-        writeToVolume(v1,
+        writeToVolume(*v1,
                       0,
                       v1->getClusterSize(),
                       "kristafke");
@@ -523,8 +516,8 @@ TEST_P(LocalRestartTest, restartNothingWithBackendSync)
 
     //    EXPECT_FALSE(v1->mdstore_was_rebuilt_);
 
-    checkVolume(v1, 0, v1->getClusterSize(), "kristafke");
-    checkCurrentBackendSize(v1);
+    checkVolume(*v1, 0, v1->getClusterSize(), "kristafke");
+    checkCurrentBackendSize(*v1);
 
 }
 
@@ -538,17 +531,17 @@ TEST_P(LocalRestartTest, restartWithSnapshot)
     const backend::Namespace& ns = ns_ptr->ns();
 
 
-    Volume* v1 = newVolume(vid1,
+    SharedVolumePtr v1 = newVolume(vid1,
                            ns);
     {
         SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v1, 2,
                                               DeleteLocalData::F,
                                               RemoveVolumeCompletely::F);
-        writeToVolume(v1,
+        writeToVolume(*v1,
                       0,
                       v1->getClusterSize(),
                       "kristafke");
-        createSnapshot(v1, "Snapshot1");
+        createSnapshot(*v1, "Snapshot1");
     }
 
     ASSERT_FALSE(v1 = getVolume(vid1));
@@ -556,8 +549,8 @@ TEST_P(LocalRestartTest, restartWithSnapshot)
 
     //     EXPECT_FALSE(v1->mdstore_was_rebuilt_);
 
-    checkVolume(v1, 0, v1->getClusterSize(), "kristafke");
-    checkCurrentBackendSize(v1);
+    checkVolume(*v1, 0, v1->getClusterSize(), "kristafke");
+    checkCurrentBackendSize(*v1);
 
 }
 
@@ -571,20 +564,20 @@ TEST_P(LocalRestartTest, restartWithSnapshotButNoSCO)
     const backend::Namespace& ns1 = ns_ptr->ns();
 
 
-    Volume* v1 = newVolume(vid1,
+    SharedVolumePtr v1 = newVolume(vid1,
                            ns1);
 
-    writeToVolume(v1,
+    writeToVolume(*v1,
                   0,
                   v1->getClusterSize(),
                   "kristafke");
-    createSnapshot(v1, "snapshot1");
-    waitForThisBackendWrite(v1);
+    createSnapshot(*v1, "snapshot1");
+    waitForThisBackendWrite(*v1);
     {
         SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v1, 2,
                                               DeleteLocalData::F,
                                               RemoveVolumeCompletely::F);
-        createSnapshot(v1, "snapshot2");
+        createSnapshot(*v1, "snapshot2");
     }
 
     v1 = 0;
@@ -593,12 +586,12 @@ TEST_P(LocalRestartTest, restartWithSnapshotButNoSCO)
 
     //     EXPECT_FALSE(v1->mdstore_was_rebuilt_);
 
-    checkVolume(v1, 0, v1->getClusterSize(), "kristafke");
+    checkVolume(*v1, 0, v1->getClusterSize(), "kristafke");
 
-    waitForThisBackendWrite(v1);
+    waitForThisBackendWrite(*v1);
 
     ASSERT_TRUE(v1->isSyncedToBackendUpTo(SnapshotName("snapshot2")));
-    checkCurrentBackendSize(v1);
+    checkCurrentBackendSize(*v1);
 }
 
 TEST_P(LocalRestartTest, RestartWithFOC)
@@ -611,11 +604,11 @@ TEST_P(LocalRestartTest, RestartWithFOC)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume("vol1",
+    SharedVolumePtr v = newVolume("vol1",
                           ns);
     ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
 
-    writeToVolume(v,0,v->getClusterSize(), "bart");
+    writeToVolume(*v,0,v->getClusterSize(), "bart");
     destroyVolume(v,
                   DeleteLocalData::F,
                   RemoveVolumeCompletely::F);
@@ -816,23 +809,23 @@ TEST_P(LocalRestartTest, funnyTLogCRC)
     const backend::Namespace& ns = ns_ptr->ns();
 
 
-    Volume* v1 = newVolume(vid1,
+    SharedVolumePtr v1 = newVolume(vid1,
                            ns);
-    ASSERT_TRUE(v1);
+    ASSERT_TRUE(v1 != nullptr);
 
-    writeToVolume(v1,
+    writeToVolume(*v1,
                   0,
                   v1->getClusterSize(),
                   "bdv");
-    waitForThisBackendWrite(v1);
-    const fs::path tlog_dir = VolManager::get()->getTLogPath(v1);
+    waitForThisBackendWrite(*v1);
+    const fs::path tlog_dir = VolManager::get()->getTLogPath(*v1);
     OrderedTLogIds tlogs;
 
     {
         SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v1, 2,
                                               DeleteLocalData::F,
                                               RemoveVolumeCompletely::F);
-        writeToVolume(v1, 0, v1->getClusterSize(),"ar");
+        writeToVolume(*v1, 0, v1->getClusterSize(),"ar");
         getTLogsNotInBackend(vid1,
                          tlogs);
     }
@@ -895,16 +888,16 @@ TEST_P(LocalRestartTest, DISABLED_NoSyncToTC)
 
     // const backend::Namespace ns1;
 
-    Volume* v1 = newVolume(vid1,
+    SharedVolumePtr v1 = newVolume(vid1,
                            ns);
-    ASSERT_TRUE(v1);
+    ASSERT_TRUE(v1 != nullptr);
 
-    writeToVolume(v1,
+    writeToVolume(*v1,
                   0,
                   v1->getClusterSize(),
                   "bdv");
-    waitForThisBackendWrite(v1);
-    const fs::path tlog_dir = VolManager::get()->getTLogPath(v1);
+    waitForThisBackendWrite(*v1);
+    const fs::path tlog_dir = VolManager::get()->getTLogPath(*v1);
     OrderedTLogIds tlogs;
 
     MetaDataStoreStats mds1;
@@ -912,7 +905,7 @@ TEST_P(LocalRestartTest, DISABLED_NoSyncToTC)
         SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v1, 2,
                                               DeleteLocalData::F,
                                               RemoveVolumeCompletely::F);
-        writeToVolume(v1, 0, v1->getClusterSize(), "ar");
+        writeToVolume(*v1, 0, v1->getClusterSize(), "ar");
         getTLogsNotInBackend(vid1,
                          tlogs);
 
@@ -932,7 +925,7 @@ TEST_P(LocalRestartTest, DISABLED_NoSyncToTC)
 
     ASSERT_NO_THROW(v1 = localRestart(ns));
 
-    ASSERT_TRUE(v1);
+    ASSERT_TRUE(v1 != nullptr);
 
     //    EXPECT_TRUE(v1->mdstore_was_rebuilt_);
 
@@ -941,8 +934,8 @@ TEST_P(LocalRestartTest, DISABLED_NoSyncToTC)
 
     EXPECT_EQ(mds1.used_clusters, mds2.used_clusters);
 
-    checkVolume(v1, 0, v1->getClusterSize(), "ar");
-    checkCurrentBackendSize(v1);
+    checkVolume(*v1, 0, v1->getClusterSize(), "ar");
+    checkCurrentBackendSize(*v1);
 }
 
 TEST_P(LocalRestartTest, MetaDataStoreRunsAhead)
@@ -953,22 +946,22 @@ TEST_P(LocalRestartTest, MetaDataStoreRunsAhead)
     const backend::Namespace& ns = ns_ptr->ns();
 
     // const backend::Namespace ns1;
-    Volume* v1 = newVolume(vid1,
+    SharedVolumePtr v1 = newVolume(vid1,
                            ns);
-    ASSERT_TRUE(v1);
+    ASSERT_TRUE(v1 != nullptr);
 
-    writeToVolume(v1,
+    writeToVolume(*v1,
                   0,
                   v1->getClusterSize(),
                   "bdv");
 
-    ASSERT_NO_THROW(createSnapshot(v1,"asnapshot"));
+    ASSERT_NO_THROW(createSnapshot(*v1,"asnapshot"));
 
-    writeToVolume(v1,
+    writeToVolume(*v1,
                   0,
                   v1->getClusterSize(),
                   "il");
-    waitForThisBackendWrite(v1);
+    waitForThisBackendWrite(*v1);
 
     MetaDataStoreStats mds1;
 
@@ -977,7 +970,7 @@ TEST_P(LocalRestartTest, MetaDataStoreRunsAhead)
                                               2,
                                               DeleteLocalData::F,
                                               RemoveVolumeCompletely::F);
-        writeToVolume(v1, 0, v1->getClusterSize(),"ar");
+        writeToVolume(*v1, 0, v1->getClusterSize(),"ar");
 
         v1->getMetaDataStore()->getStats(mds1);
         EXPECT_LT(0U, mds1.used_clusters);
@@ -992,15 +985,15 @@ TEST_P(LocalRestartTest, MetaDataStoreRunsAhead)
 
     ASSERT_NO_THROW(v1 = localRestart(ns));
 
-    ASSERT_TRUE(v1);
+    ASSERT_TRUE(v1 != nullptr);
     // EXPECT_TRUE(v1->mdstore_was_rebuilt_);
 
     MetaDataStoreStats mds2;
     v1->getMetaDataStore()->getStats(mds2);
     EXPECT_EQ(mds1.used_clusters, mds2.used_clusters);
     ASSERT_TRUE(v1->isSyncedToBackendUpTo(SnapshotName("asnapshot")));
-    checkVolume(v1, 0, v1->getClusterSize(), "ar");
-    checkCurrentBackendSize(v1);
+    checkVolume(*v1, 0, v1->getClusterSize(), "ar");
+    checkCurrentBackendSize(*v1);
 }
 
 TEST_P(LocalRestartTest, RestartWithFOCAndRemovedSCO)
@@ -1011,7 +1004,7 @@ TEST_P(LocalRestartTest, RestartWithFOCAndRemovedSCO)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume("vol1",
+    SharedVolumePtr v = newVolume("vol1",
                           ns);
     ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
 
@@ -1019,12 +1012,13 @@ TEST_P(LocalRestartTest, RestartWithFOCAndRemovedSCO)
     MetaDataStoreStats mds1;
 
     {
-        SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v, 2,
+        SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v,
+                                              2,
                                               DeleteLocalData::F,
                                               RemoveVolumeCompletely::F);
         for(int i = 0; i < (1 << 12); ++i)
         {
-            writeToVolume(v,
+            writeToVolume(*v,
                           i * (cluster_size / 512),
                           cluster_size,
                           "bart");
@@ -1050,18 +1044,30 @@ TEST_P(LocalRestartTest, RestartWithFOCAndRemovedSCO)
 
     ASSERT_NO_THROW(v = localRestart(ns));
 
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
     //    EXPECT_FALSE(v->mdstore_was_rebuilt_);
     MetaDataStoreStats mds2;
     v->getMetaDataStore()->getStats(mds2);
 
-    EXPECT_EQ(mds1.used_clusters, mds2.used_clusters);
+    auto count_clusters([](const MetaDataStoreStats& mdss) -> size_t
+                        {
+                            size_t count = mdss.used_clusters;
+                            for (const auto& c : mdss.corked_clusters)
+                            {
+                                count += c.second;
+                            }
+
+                            return count;
+                        });
+
+    EXPECT_EQ(count_clusters(mds1),
+              count_clusters(mds2));
 
     for(int i = 0; i < 1 << 12; ++i)
     {
-        checkVolume(v,i*(cluster_size/512), cluster_size, "bart");
+        checkVolume(*v,i*(cluster_size/512), cluster_size, "bart");
     }
-    checkCurrentBackendSize(v);
+    checkCurrentBackendSize(*v);
 }
 
 TEST_P(LocalRestartTest, RestartWithoutFOCAndRemovedSCO)
@@ -1073,7 +1079,7 @@ TEST_P(LocalRestartTest, RestartWithoutFOCAndRemovedSCO)
     const backend::Namespace& ns = ns_ptr->ns();
 
 
-    Volume* v = newVolume("vol1",
+    SharedVolumePtr v = newVolume("vol1",
                           ns);
 
     const uint64_t cluster_size = v->getClusterSize();
@@ -1084,7 +1090,7 @@ TEST_P(LocalRestartTest, RestartWithoutFOCAndRemovedSCO)
                                               RemoveVolumeCompletely::F);
         for(int i = 0; i < 32; ++i)
         {
-            writeToVolume(v,i* (cluster_size/512), cluster_size, "bart");
+            writeToVolume(*v,i* (cluster_size/512), cluster_size, "bart");
 
         }
     }
@@ -1106,14 +1112,14 @@ TEST_P(LocalRestartTest, RestartWithoutFOCAndRemovedSCO)
     sc->disableNamespace(ns);
 
     ASSERT_NO_THROW(v = localRestart(ns));
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
 
     //    EXPECT_TRUE(v->mdstore_was_rebuilt_);
 
     MetaDataStoreStats mds;
     v->getMetaDataStore()->getStats(mds);
     // EXPECT_EQ(0, mds.used_clusters);
-    checkCurrentBackendSize(v);
+    checkCurrentBackendSize(*v);
 }
 
 TEST_P(LocalRestartTest, RestartWithFuckedUpFOCAndTruncatedSCO)
@@ -1123,7 +1129,7 @@ TEST_P(LocalRestartTest, RestartWithFuckedUpFOCAndTruncatedSCO)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume("vol1",
+    SharedVolumePtr v = newVolume("vol1",
                           ns);
 
     const uint64_t cluster_size = v->getClusterSize();
@@ -1140,11 +1146,11 @@ TEST_P(LocalRestartTest, RestartWithFuckedUpFOCAndTruncatedSCO)
                                                   RemoveVolumeCompletely::F);
             for(int i = 0; i <  32; ++i)
             {
-                writeToVolume(v, 0, cluster_size, "bart");
+                writeToVolume(*v, 0, cluster_size, "bart");
             }
             for(int i = 0; i < 32; ++i)
             {
-                writeToVolume(v, 0, cluster_size, "immanuel");
+                writeToVolume(*v, 0, cluster_size, "immanuel");
             }
             v->getMetaDataStore()->getStats(mds1);
             // also disabled on default
@@ -1171,7 +1177,7 @@ TEST_P(LocalRestartTest, RestartWithFuckedUpFOCAndTruncatedSCO)
     sc->disableNamespace(ns);
 
     ASSERT_NO_THROW(v = localRestart(ns));
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
 
     //    EXPECT_TRUE(v->mdstore_was_rebuilt_);
 
@@ -1180,8 +1186,8 @@ TEST_P(LocalRestartTest, RestartWithFuckedUpFOCAndTruncatedSCO)
 
     // EXPECT_EQ(mds1.used_clusters, mds2.used_clusters);
 
-    checkVolume(v,0, cluster_size, "bart");
-    checkCurrentBackendSize(v);
+    checkVolume(*v,0, cluster_size, "bart");
+    checkCurrentBackendSize(*v);
 }
 
 namespace
@@ -1255,13 +1261,13 @@ TEST_P(LocalRestartTest, RestartWithMetaDataReplay)
 
             VolumeId vid("vol1");
 
-            Volume* v = newVolume(vid,
+            SharedVolumePtr v = newVolume(vid,
                                   ns);
             const uint64_t cluster_size = v->getClusterSize();
             fs::path mdstore = VolManager::get()->getMetaDataDBFilePath(v->get_config());
 
             fs::path tmp_mdstore = FileUtils::create_temp_file(mdstore);
-            const fs::path tlog_dir = VolManager::get()->getTLogPath(v);
+            const fs::path tlog_dir = VolManager::get()->getTLogPath(*v);
             OrderedTLogIds tlogs;
 
             MetaDataStoreStats mds1;
@@ -1273,11 +1279,11 @@ TEST_P(LocalRestartTest, RestartWithMetaDataReplay)
                                                       RemoveVolumeCompletely::F);
                 for(int i = 0; i <  8; ++i)
                 {
-                    writeToVolume(v,0, cluster_size, "bart");
+                    writeToVolume(*v,0, cluster_size, "bart");
                 }
                 for(int i = 0; i <  8; ++i)
                 {
-                    writeToVolume(v,8, cluster_size, "bart");
+                    writeToVolume(*v,8, cluster_size, "bart");
                 }
 
                 v->sync();
@@ -1285,12 +1291,12 @@ TEST_P(LocalRestartTest, RestartWithMetaDataReplay)
 
                 for(int i = 0; i < 16; ++i)
                 {
-                    writeToVolume(v,8, cluster_size, "immanuel");
+                    writeToVolume(*v,8, cluster_size, "immanuel");
                 }
 
                 for(int i = 0; i < 16; ++i)
                 {
-                    writeToVolume(v,0, cluster_size, "immanuel");
+                    writeToVolume(*v,0, cluster_size, "immanuel");
                 }
                 v->getMetaDataStore()->getStats(mds1);
                 // EXPECT_LT(0, mds1.used_clusters);
@@ -1309,17 +1315,17 @@ TEST_P(LocalRestartTest, RestartWithMetaDataReplay)
             fs::rename(tmp_mdstore, mdstore);
 
             ASSERT_NO_THROW(v = localRestart(ns));
-            ASSERT_TRUE(v);
+            ASSERT_TRUE(v != nullptr);
             //         EXPECT_TRUE(v->mdstore_was_rebuilt_);
 
-            checkVolume(v,0, cluster_size, "immanuel");
-            checkVolume(v,8, cluster_size, "immanuel");
+            checkVolume(*v,0, cluster_size, "immanuel");
+            checkVolume(*v,8, cluster_size, "immanuel");
 
             MetaDataStoreStats mds2;
             v->getMetaDataStore()->getStats(mds2);
             // EXPECT_EQ(mds1.used_clusters, mds2.used_clusters);
 
-            checkCurrentBackendSize(v);
+            checkCurrentBackendSize(*v);
         }
         break;
     }
@@ -1349,7 +1355,7 @@ TEST_P(LocalRestartTest, WithFOCAndTruncatedSCO)
 
     //    const backend::Namespace ns;
 
-    Volume* v = newVolume("vol1",
+    SharedVolumePtr v = newVolume("vol1",
                           ns);
     ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
 
@@ -1362,11 +1368,11 @@ TEST_P(LocalRestartTest, WithFOCAndTruncatedSCO)
                                               RemoveVolumeCompletely::F);
         for(int i = 0; i <  32; ++i)
         {
-            writeToVolume(v,0, cluster_size, "bart");
+            writeToVolume(*v,0, cluster_size, "bart");
         }
         for(int i = 0; i < 32; ++i)
         {
-            writeToVolume(v,0, cluster_size, "immanuel");
+            writeToVolume(*v,0, cluster_size, "immanuel");
         }
 
         v->getMetaDataStore()->getStats(mds1);
@@ -1391,15 +1397,15 @@ TEST_P(LocalRestartTest, WithFOCAndTruncatedSCO)
     sc->disableNamespace(ns);
 
     ASSERT_NO_THROW(v = localRestart(ns));
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
     //    EXPECT_FALSE(v->mdstore_was_rebuilt_);
 
     MetaDataStoreStats mds2;
     v->getMetaDataStore()->getStats(mds2);
     // EXPECT_EQ(mds1.used_clusters, mds2.used_clusters);
 
-    checkVolume(v,0, cluster_size, "immanuel");
-    checkCurrentBackendSize(v);
+    checkVolume(*v,0, cluster_size, "immanuel");
+    checkCurrentBackendSize(*v);
 }
 
 TEST_P(LocalRestartTest, RestartWithoutFOCAndTruncatedSCO)
@@ -1410,7 +1416,7 @@ TEST_P(LocalRestartTest, RestartWithoutFOCAndTruncatedSCO)
 
     // const backend::Namespace ns;
 
-    Volume* v = newVolume("vol1",
+    SharedVolumePtr v = newVolume("vol1",
                           ns);
     const uint64_t cluster_size = v->getClusterSize();
 
@@ -1422,11 +1428,11 @@ TEST_P(LocalRestartTest, RestartWithoutFOCAndTruncatedSCO)
                                               RemoveVolumeCompletely::F);
         for(int i = 0; i <  32; ++i)
         {
-            writeToVolume(v,0, cluster_size, "bart");
+            writeToVolume(*v,0, cluster_size, "bart");
         }
         for(int i = 0; i < 32; ++i)
         {
-            writeToVolume(v,0, cluster_size, "immanuel");
+            writeToVolume(*v,0, cluster_size, "immanuel");
         }
         v->getMetaDataStore()->getStats(mds1);
         // EXPECT_LT(0, mds1.used_clusters);
@@ -1450,15 +1456,15 @@ TEST_P(LocalRestartTest, RestartWithoutFOCAndTruncatedSCO)
     sc->disableNamespace(ns);
 
     ASSERT_NO_THROW(v = localRestart(ns));
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
     //    EXPECT_TRUE(v->mdstore_was_rebuilt_);
 
     MetaDataStoreStats mds2;
     v->getMetaDataStore()->getStats(mds2);
     // EXPECT_EQ(mds1.used_clusters, mds2.used_clusters);
 
-    checkVolume(v,0, cluster_size, "bart");
-    checkCurrentBackendSize(v);
+    checkVolume(*v,0, cluster_size, "bart");
+    checkCurrentBackendSize(*v);
 }
 
 TEST_P(LocalRestartTest, RestartWithFOCAndRemovedSCO2)
@@ -1471,7 +1477,7 @@ TEST_P(LocalRestartTest, RestartWithFOCAndRemovedSCO2)
 
     // const backend::Namespace ns;
 
-    Volume* v = newVolume("vol1",
+    SharedVolumePtr v = newVolume("vol1",
                           ns);
     ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
 
@@ -1485,11 +1491,11 @@ TEST_P(LocalRestartTest, RestartWithFOCAndRemovedSCO2)
                                               RemoveVolumeCompletely::F);
         for(int i = 0; i <  32; ++i)
         {
-            writeToVolume(v,0, cluster_size, "bart");
+            writeToVolume(*v,0, cluster_size, "bart");
         }
         for(int i = 0; i < 32; ++i)
         {
-            writeToVolume(v,0, cluster_size, "immanuel");
+            writeToVolume(*v,0, cluster_size, "immanuel");
         }
         v->getMetaDataStore()->getStats(mds1);
         // EXPECT_LT(0, mds1.used_clusters);
@@ -1513,15 +1519,15 @@ TEST_P(LocalRestartTest, RestartWithFOCAndRemovedSCO2)
     sc->disableNamespace(ns);
 
     ASSERT_NO_THROW(v = localRestart(ns));
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
     //    EXPECT_FALSE(v->mdstore_was_rebuilt_);
 
     MetaDataStoreStats mds2;
     v->getMetaDataStore()->getStats(mds2);
     // EXPECT_EQ(mds1.used_clusters, mds2.used_clusters);
 
-    checkVolume(v,0, cluster_size, "immanuel");
-    checkCurrentBackendSize(v);
+    checkVolume(*v,0, cluster_size, "immanuel");
+    checkCurrentBackendSize(*v);
 }
 
 TEST_P(LocalRestartTest, RestartWithFOCAndFuckedUpSCO)
@@ -1534,7 +1540,7 @@ TEST_P(LocalRestartTest, RestartWithFOCAndFuckedUpSCO)
 
     // const backend::Namespace ns;
 
-    Volume* v = newVolume("vol1",
+    SharedVolumePtr v = newVolume("vol1",
                           ns);
     ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
 
@@ -1548,11 +1554,11 @@ TEST_P(LocalRestartTest, RestartWithFOCAndFuckedUpSCO)
                                               RemoveVolumeCompletely::F);
         for(int i = 0; i <  32; ++i)
         {
-            writeToVolume(v,0, cluster_size, "bart");
+            writeToVolume(*v,0, cluster_size, "bart");
         }
         for(int i = 0; i < 32; ++i)
         {
-            writeToVolume(v,0, cluster_size, "immanuel");
+            writeToVolume(*v,0, cluster_size, "immanuel");
         }
 
         v->getMetaDataStore()->getStats(mds1);
@@ -1579,15 +1585,15 @@ TEST_P(LocalRestartTest, RestartWithFOCAndFuckedUpSCO)
     sc->disableNamespace(ns);
 
     ASSERT_NO_THROW(v = localRestart(ns));
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
     //     EXPECT_FALSE(v->mdstore_was_rebuilt_);
 
     MetaDataStoreStats mds2;
     v->getMetaDataStore()->getStats(mds2);
     // EXPECT_EQ(mds1.used_clusters, mds2.used_clusters);
 
-    checkVolume(v,0, cluster_size, "immanuel");
-    checkCurrentBackendSize(v);
+    checkVolume(*v,0, cluster_size, "immanuel");
+    checkCurrentBackendSize(*v);
 }
 
 TEST_P(LocalRestartTest, RestartWithoutFOCAndFuckedUpSCO)
@@ -1599,7 +1605,7 @@ TEST_P(LocalRestartTest, RestartWithoutFOCAndFuckedUpSCO)
     const backend::Namespace& ns = ns_ptr->ns();
 
 
-    Volume* v = newVolume("vol1",
+    SharedVolumePtr v = newVolume("vol1",
                           ns);
     const uint64_t cluster_size = v->getClusterSize();
 
@@ -1611,11 +1617,11 @@ TEST_P(LocalRestartTest, RestartWithoutFOCAndFuckedUpSCO)
                                               RemoveVolumeCompletely::F);
         for(int i = 0; i <  32; ++i)
         {
-            writeToVolume(v,0, cluster_size, "bart");
+            writeToVolume(*v,0, cluster_size, "bart");
         }
         for(int i = 0; i < 32; ++i)
         {
-            writeToVolume(v,0, cluster_size, "immanuel");
+            writeToVolume(*v,0, cluster_size, "immanuel");
         }
         v->getMetaDataStore()->getStats(mds1);
         // EXPECT_LT(0, mds1.used_clusters);
@@ -1641,15 +1647,15 @@ TEST_P(LocalRestartTest, RestartWithoutFOCAndFuckedUpSCO)
     sc->disableNamespace(ns);
 
     ASSERT_NO_THROW(v = localRestart(ns));
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
     //    EXPECT_TRUE(v->mdstore_was_rebuilt_);
 
     MetaDataStoreStats mds2;
     v->getMetaDataStore()->getStats(mds2);
     // EXPECT_EQ(mds1.used_clusters, mds2.used_clusters);
 
-    checkVolume(v,0, cluster_size, "bart");
-    checkCurrentBackendSize(v);
+    checkVolume(*v,0, cluster_size, "bart");
+    checkCurrentBackendSize(*v);
 }
 
 namespace
@@ -1670,26 +1676,26 @@ TEST_P(LocalRestartTest, CreateSnapshotPutsSCOCRCInTLog)
 
     VolumeId vid("vol1");
 
-    Volume* v = newVolume(vid,
+    SharedVolumePtr v = newVolume(vid,
                           ns);
 
     VolumeConfig cfg = v->get_config();
 
     const uint64_t cluster_size = v->getClusterSize();
-    writeToVolume(v,0, cluster_size, "immanuel");
+    writeToVolume(*v,0, cluster_size, "immanuel");
     v->createSnapshot(SnapshotName("snap1"));
-    writeToVolume(v,0, cluster_size, "bart");
+    writeToVolume(*v,0, cluster_size, "bart");
     const fs::path tlogs_path = VolManager::get()->getTLogPath(cfg);
     OrderedTLogIds tlogs(v->getSnapshotManagement().getAllTLogs());
 
     ASSERT_TRUE(tlogs.size() > 0);
     std::shared_ptr<TLogReaderInterface>
-        tlog_reader(makeCombinedTLogReader(tlogs_path,
-                                           tlogs,
-                                           v->getBackendInterface()->clone()));
+        tlog_reader(CombinedTLogReader::create(tlogs_path,
+                                               tlogs,
+                                               v->getBackendInterface()->clone()));
     FailOverRestartPutsSCOCRCInTLogProcessor callback;
     ASSERT_NO_THROW(tlog_reader->for_each(callback));
-    checkCurrentBackendSize(v);
+    checkCurrentBackendSize(*v);
 }
 
 TEST_P(LocalRestartTest, BigWritesPutSCOCRCInTLog)
@@ -1701,29 +1707,29 @@ TEST_P(LocalRestartTest, BigWritesPutSCOCRCInTLog)
 
     VolumeId vid("vol1");
 
-    Volume* v = newVolume(vid,
+    SharedVolumePtr v = newVolume(vid,
                           ns);
 
     const uint64_t cluster_size = v->getClusterSize();
-    writeToVolume(v,0, cluster_size, "immanuel");
+    writeToVolume(*v,0, cluster_size, "immanuel");
 
     const uint64_t sco_size = v->getSCOMultiplier() * cluster_size;
 
-    writeToVolume(v,0, sco_size, "bart");
-    writeToVolume(v,0, sco_size, "arne");
-    writeToVolume(v,0, sco_size, "wouter");
+    writeToVolume(*v,0, sco_size, "bart");
+    writeToVolume(*v,0, sco_size, "arne");
+    writeToVolume(*v,0, sco_size, "wouter");
     VolumeConfig cfg = v->get_config();
     const fs::path tlogs_path = VolManager::get()->getTLogPath(cfg);
     const OrderedTLogIds tlogs(v->getSnapshotManagement().getAllTLogs());
 
     std::shared_ptr<TLogReaderInterface>
-        tlog_reader(makeCombinedTLogReader(tlogs_path,
-                                           tlogs,
-                                           v->getBackendInterface()->clone()));
+        tlog_reader(CombinedTLogReader::create(tlogs_path,
+                                               tlogs,
+                                               v->getBackendInterface()->clone()));
 
     FailOverRestartPutsSCOCRCInTLogProcessor callback;
     ASSERT_NO_THROW(tlog_reader->for_each(callback));
-    checkCurrentBackendSize(v);
+    checkCurrentBackendSize(*v);
 }
 
 TEST_P(LocalRestartTest, SetFailOVerPutsSCOCRCInTLog)
@@ -1737,30 +1743,30 @@ TEST_P(LocalRestartTest, SetFailOVerPutsSCOCRCInTLog)
 
     VolumeId vid("vol1");
 
-    Volume* v = newVolume(vid,
+    SharedVolumePtr v = newVolume(vid,
                           ns);
 
     VolumeConfig cfg = v->get_config();
 
     const uint64_t cluster_size = v->getClusterSize();
-    writeToVolume(v,0, cluster_size, "immanuel");
+    writeToVolume(*v,0, cluster_size, "immanuel");
     ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
 
-    writeToVolume(v,0, cluster_size, "bart");
+    writeToVolume(*v,0, cluster_size, "bart");
     v->createSnapshot(SnapshotName("snap1"));
-    writeToVolume(v,0, cluster_size, "arne");
+    writeToVolume(*v,0, cluster_size, "arne");
 
     const fs::path tlogs_path = VolManager::get()->getTLogPath(cfg);
     const OrderedTLogIds tlogs(v->getSnapshotManagement().getAllTLogs());
     ASSERT_TRUE(tlogs.size() > 0);
     FailOverRestartPutsSCOCRCInTLogProcessor callback;
     std::shared_ptr<TLogReaderInterface>
-        tlog_reader(makeCombinedTLogReader(tlogs_path,
-                                           tlogs,
-                                           v->getBackendInterface()->clone()));
+        tlog_reader(CombinedTLogReader::create(tlogs_path,
+                                               tlogs,
+                                               v->getBackendInterface()->clone()));
 
     ASSERT_NO_THROW(tlog_reader->for_each(callback));
-    checkCurrentBackendSize(v);
+    checkCurrentBackendSize(*v);
 }
 
 TEST_P(LocalRestartTest, FailOverRestartPutsSCOCRCInTLog)
@@ -1774,7 +1780,7 @@ TEST_P(LocalRestartTest, FailOverRestartPutsSCOCRCInTLog)
 
     VolumeId vid("vol1");
 
-    Volume* v = newVolume(vid,
+    SharedVolumePtr v = newVolume(vid,
                           ns);
 
     VolumeConfig cfg = v->get_config();
@@ -1785,9 +1791,9 @@ TEST_P(LocalRestartTest, FailOverRestartPutsSCOCRCInTLog)
 
     for(unsigned i = 0; i <  clusters; ++i)
     {
-        writeToVolume(v,0, cluster_size, "immanuel");
+        writeToVolume(*v,0, cluster_size, "immanuel");
     }
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
     OrderedTLogIds tlogs;
     ASSERT_TRUE(tlogs.empty());
 
@@ -1805,7 +1811,7 @@ TEST_P(LocalRestartTest, FailOverRestartPutsSCOCRCInTLog)
         uint64_t rand  = drand48() * v->getSCOMultiplier();
         for(unsigned i = 0; i <  clusters; ++i)
         {
-            writeToVolume(v,0, cluster_size, "bart");
+            writeToVolume(*v,0, cluster_size, "bart");
             if(clusters % v->getSCOMultiplier() == rand)
             {
                 rand = drand48() * v->getSCOMultiplier();
@@ -1820,14 +1826,14 @@ TEST_P(LocalRestartTest, FailOverRestartPutsSCOCRCInTLog)
                                   PrefetchVolumeData::T));
 
     ASSERT_NO_THROW(v = findVolume(vid));
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
     //    EXPECT_TRUE(v->mdstore_was_rebuilt_);
 
     MetaDataStoreStats mds2;
     v->getMetaDataStore()->getStats(mds2);
     // EXPECT_EQ(mds1.used_clusters, mds2.used_clusters);
 
-    checkVolume(v,0, cluster_size,"bart");
+    checkVolume(*v,0, cluster_size,"bart");
 
     const OrderedTLogIds tlogs2(v->getSnapshotManagement().getAllTLogs());
 
@@ -1848,7 +1854,7 @@ TEST_P(LocalRestartTest, FailOverRestartPutsSCOCRCInTLog)
 
         ASSERT_NO_THROW(tlog_reader.for_each(callback));
     }
-    checkCurrentBackendSize(v);
+    checkCurrentBackendSize(*v);
 }
 
 //Disabled: see VOLDRV-1042
@@ -1859,9 +1865,9 @@ TEST_P(LocalRestartTest, DISABLED_NoLocalTLogs)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume("vol1",
+    SharedVolumePtr v = newVolume("vol1",
                           ns);
-    const fs::path tlog_path(VolManager::get()->getTLogPath(v));
+    const fs::path tlog_path(VolManager::get()->getTLogPath(*v));
     const uint64_t clusters_in_tlog =
         VolManager::get()->number_of_scos_in_tlog.value() *  v->getSCOMultiplier();
     const uint64_t clusters_to_write = clusters_in_tlog - 1;
@@ -1874,7 +1880,7 @@ TEST_P(LocalRestartTest, DISABLED_NoLocalTLogs)
                                               DeleteLocalData::F,
                                               RemoveVolumeCompletely::F);
 
-        writeClusters(v, clusters_to_write);
+        writeClusters(*v, clusters_to_write);
         ASSERT_EQ(init_tlog,
                   v->getSnapshotManagement().getCurrentTLogId());
     }
@@ -1892,9 +1898,9 @@ TEST_P(LocalRestartTest, NonNeededTLogsMissing)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume("vol1",
+    SharedVolumePtr v = newVolume("vol1",
                           ns);
-    const fs::path tlog_path = VolManager::get()->getTLogPath(v);
+    const fs::path tlog_path = VolManager::get()->getTLogPath(*v);
     uint64_t clusters_in_tlog   = VolManager::get()->number_of_scos_in_tlog.value() *  v->getSCOMultiplier();
     uint64_t clusters_to_write = (clusters_in_tlog / 2) + 2;
 
@@ -1907,9 +1913,9 @@ TEST_P(LocalRestartTest, NonNeededTLogsMissing)
                                               DeleteLocalData::F,
                                               RemoveVolumeCompletely::F);
 
-        writeClusters(v, clusters_to_write);
+        writeClusters(*v, clusters_to_write);
         v->sync();
-        writeClusters(v, clusters_to_write);
+        writeClusters(*v, clusters_to_write);
         next_tlog = v->getSnapshotManagement().getCurrentTLogId();
         ASSERT_NE(init_tlog,
                   next_tlog);
@@ -1944,7 +1950,7 @@ TEST_P(LocalRestartTest,  TLogRolloverRestartTest)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume("vol1",
+    SharedVolumePtr v = newVolume("vol1",
                           ns);
 
     uint64_t clusters_in_tlog   = VolManager::get()->number_of_scos_in_tlog.value() *  v->getSCOMultiplier();
@@ -1957,7 +1963,7 @@ TEST_P(LocalRestartTest,  TLogRolloverRestartTest)
                                               RemoveVolumeCompletely::F);
         const TLogId init_tlog(v->getSnapshotManagement().getCurrentTLogId());
 
-        writeClusters(v, clusters_to_write);
+        writeClusters(*v, clusters_to_write);
 
         ASSERT_NE(init_tlog,
                   v->getSnapshotManagement().getCurrentTLogId());
@@ -1967,15 +1973,15 @@ TEST_P(LocalRestartTest,  TLogRolloverRestartTest)
     v = 0;
 
     ASSERT_NO_THROW(v = localRestart(ns));
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
     //    EXPECT_FALSE(v->mdstore_was_rebuilt_);
 
     MetaDataStoreStats mds2;
     v->getMetaDataStore()->getStats(mds2);
     // EXPECT_EQ(mds1.used_clusters, mds2.used_clusters);
 
-    checkClusters(v, clusters_to_write);
-    checkCurrentBackendSize(v);
+    checkClusters(*v, clusters_to_write);
+    checkCurrentBackendSize(*v);
 }
 
 TEST_P(LocalRestartTest,  NoTlogCRCFound)
@@ -1985,10 +1991,10 @@ TEST_P(LocalRestartTest,  NoTlogCRCFound)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume("vol1",
+    SharedVolumePtr v = newVolume("vol1",
                           ns);
 
-    const fs::path tlog_dir = VolManager::get()->getTLogPath(v);
+    const fs::path tlog_dir = VolManager::get()->getTLogPath(*v);
 
     uint64_t clusters_in_tlog   = VolManager::get()->number_of_scos_in_tlog.value() *  v->getSCOMultiplier();
     uint64_t clusters_to_write  = clusters_in_tlog + 3;
@@ -2004,7 +2010,7 @@ TEST_P(LocalRestartTest,  NoTlogCRCFound)
 
         init_tlog = v->getSnapshotManagement().getCurrentTLogId();
 
-        writeClusters(v, clusters_to_write);
+        writeClusters(*v, clusters_to_write);
 
         ASSERT_NE(init_tlog,
                   v->getSnapshotManagement().getCurrentTLogId());
@@ -2061,19 +2067,17 @@ TEST_P(LocalRestartTest, RestartWithMissingSCOCRC)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v1 = newVolume(vid1,
+    SharedVolumePtr v1 = newVolume(vid1,
                            ns);
-    ASSERT_TRUE(v1);
+    ASSERT_TRUE(v1 != nullptr);
 
-
-
-    writeToVolume(v1,
+    writeToVolume(*v1,
                   0,
                   v1->getClusterSize(),
                   "bdv");
 
-    waitForThisBackendWrite(v1);
-    const fs::path tlog_dir = VolManager::get()->getTLogPath(v1);
+    waitForThisBackendWrite(*v1);
+    const fs::path tlog_dir = VolManager::get()->getTLogPath(*v1);
     OrderedTLogIds tlogs;
 
     {
@@ -2083,7 +2087,7 @@ TEST_P(LocalRestartTest, RestartWithMissingSCOCRC)
                                               RemoveVolumeCompletely::F);
         for(int i = 0; i < 63; ++i)
         {
-            writeToVolume(v1, 0, v1->getClusterSize(),"ar");
+            writeToVolume(*v1, 0, v1->getClusterSize(),"ar");
         }
 
         getTLogsNotInBackend(vid1,
@@ -2112,7 +2116,7 @@ TEST_P(LocalRestartTest, RestartWithFOCAndFuckedUpSCO2)
     const backend::Namespace& ns = ns_ptr->ns();
 
 
-    Volume* v = newVolume("vol1",
+    SharedVolumePtr v = newVolume("vol1",
                           ns);
     ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
 
@@ -2125,15 +2129,15 @@ TEST_P(LocalRestartTest, RestartWithFOCAndFuckedUpSCO2)
                                               RemoveVolumeCompletely::F);
         for(int i = 0; i <  32; ++i)
         {
-            writeToVolume(v,0, cluster_size, "bart");
+            writeToVolume(*v,0, cluster_size, "bart");
         }
         for(int i = 0; i < 32; ++i)
         {
-            writeToVolume(v,0, cluster_size, "immanuel");
+            writeToVolume(*v,0, cluster_size, "immanuel");
         }
         for(int i = 0; i < 32; ++i)
         {
-            writeToVolume(v,0, cluster_size, "immanuel");
+            writeToVolume(*v,0, cluster_size, "immanuel");
         }
 
         v->getMetaDataStore()->getStats(mds1);
@@ -2159,15 +2163,15 @@ TEST_P(LocalRestartTest, RestartWithFOCAndFuckedUpSCO2)
     sc->disableNamespace(ns);
 
     ASSERT_NO_THROW(v = localRestart(ns));
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
     //    EXPECT_FALSE(v->mdstore_was_rebuilt_);
 
     MetaDataStoreStats mds2;
     v->getMetaDataStore()->getStats(mds2);
     // EXPECT_EQ(mds1.used_clusters, mds2.used_clusters);
 
-    checkVolume(v,0, cluster_size, "immanuel");
-    checkCurrentBackendSize(v);
+    checkVolume(*v,0, cluster_size, "immanuel");
+    checkCurrentBackendSize(*v);
 }
 
 TEST_P(LocalRestartTest, RestartWithoutFOCAndFuckedUpSCO2)
@@ -2177,7 +2181,7 @@ TEST_P(LocalRestartTest, RestartWithoutFOCAndFuckedUpSCO2)
 
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume("vol1",
+    SharedVolumePtr v = newVolume("vol1",
                           ns);
     const uint64_t cluster_size = v->getClusterSize();
 
@@ -2189,15 +2193,15 @@ TEST_P(LocalRestartTest, RestartWithoutFOCAndFuckedUpSCO2)
                                               RemoveVolumeCompletely::F);
         for(int i = 0; i <  32; ++i)
         {
-            writeToVolume(v,0, cluster_size, "bart");
+            writeToVolume(*v,0, cluster_size, "bart");
         }
         for(int i = 0; i < 32; ++i)
         {
-            writeToVolume(v,0, cluster_size, "immanuel");
+            writeToVolume(*v,0, cluster_size, "immanuel");
         }
         for(int i = 0; i < 32; ++i)
         {
-            writeToVolume(v,0, cluster_size, "immanuel");
+            writeToVolume(*v,0, cluster_size, "immanuel");
         }
         v->getMetaDataStore()->getStats(mds1);
         // EXPECT_LT(0, mds1.used_clusters);
@@ -2223,7 +2227,7 @@ TEST_P(LocalRestartTest, RestartWithoutFOCAndFuckedUpSCO2)
     sc->disableNamespace(ns);
 
     ASSERT_NO_THROW(v = localRestart(ns));
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
     //    EXPECT_TRUE(v->mdstore_was_rebuilt_);
 
     MetaDataStoreStats mds2;
@@ -2241,7 +2245,7 @@ TEST_P(LocalRestartTest, RestartWithFOCAndOfflinedMountPoint)
     const backend::Namespace& ns = ns_ptr->ns();
 
 
-    Volume* v = newVolume("vol1",
+    SharedVolumePtr v = newVolume("vol1",
                           ns);
     ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
 
@@ -2255,7 +2259,7 @@ TEST_P(LocalRestartTest, RestartWithFOCAndOfflinedMountPoint)
                                               RemoveVolumeCompletely::F);
         for(int i = 0; i < (1 << 12); ++i)
         {
-            writeToVolume(v,i* (cluster_size/512), cluster_size, "bart");
+            writeToVolume(*v,i* (cluster_size/512), cluster_size, "bart");
         }
         v->getMetaDataStore()->getStats(mds1);
         // EXPECT_LT(0, mds1.used_clusters);
@@ -2272,7 +2276,7 @@ TEST_P(LocalRestartTest, RestartWithFOCAndOfflinedMountPoint)
 
 
     ASSERT_NO_THROW(v = localRestart(ns));
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
     //    EXPECT_FALSE(v->mdstore_was_rebuilt_);
 
     MetaDataStoreStats mds2;
@@ -2281,9 +2285,9 @@ TEST_P(LocalRestartTest, RestartWithFOCAndOfflinedMountPoint)
 
     for(int i = 0; i < 1 << 12; ++i)
     {
-        checkVolume(v,i*(cluster_size/512), cluster_size, "bart");
+        checkVolume(*v,i*(cluster_size/512), cluster_size, "bart");
     }
-    checkCurrentBackendSize(v);
+    checkCurrentBackendSize(*v);
 }
 
 TEST_P(LocalRestartTest, NothingToRestartLocallyFrom)
@@ -2295,13 +2299,13 @@ TEST_P(LocalRestartTest, NothingToRestartLocallyFrom)
 
     const backend::Namespace& ns1 = ns_ptr->ns();
 
-    Volume* v1 = newVolume(vid1,
+    SharedVolumePtr v1 = newVolume(vid1,
                            ns1);
-    writeToVolume(v1,
+    writeToVolume(*v1,
                   0,
                   v1->getClusterSize(),
                   "bdv");
-    waitForThisBackendWrite(v1);
+    waitForThisBackendWrite(*v1);
     v1->sync();
 
     MetaDataStoreStats mds1;
@@ -2310,7 +2314,7 @@ TEST_P(LocalRestartTest, NothingToRestartLocallyFrom)
                                               2,
                                               DeleteLocalData::F,
                                               RemoveVolumeCompletely::F);
-        writeToVolume(v1, 0, v1->getClusterSize(),"ar");
+        writeToVolume(*v1, 0, v1->getClusterSize(),"ar");
         v1->getMetaDataStore()->getStats(mds1);
         // EXPECT_LT(0, mds1.used_clusters);
     }
@@ -2318,15 +2322,15 @@ TEST_P(LocalRestartTest, NothingToRestartLocallyFrom)
 
     ASSERT_FALSE(v1 = getVolume(vid1));
     ASSERT_NO_THROW(v1 = localRestart(ns1));
-    ASSERT_TRUE(v1);
+    ASSERT_TRUE(v1 != nullptr);
     //    EXPECT_FALSE(v1->mdstore_was_rebuilt_);
 
     MetaDataStoreStats mds2;
     v1->getMetaDataStore()->getStats(mds2);
     // EXPECT_EQ(mds1.used_clusters, mds2.used_clusters);
 
-    checkVolume(v1, 0, v1->getClusterSize(), "ar");
-    checkCurrentBackendSize(v1);
+    checkVolume(*v1, 0, v1->getClusterSize(), "ar");
+    checkCurrentBackendSize(*v1);
 }
 
 TEST_P(LocalRestartTest, MDStoreOutToLunch)
@@ -2350,13 +2354,13 @@ TEST_P(LocalRestartTest, MDStoreOutToLunch)
 
             const backend::Namespace& ns1 = ns_ptr->ns();
 
-            Volume* v1 = newVolume(vid1,
+            SharedVolumePtr v1 = newVolume(vid1,
                                    ns1);
-            writeToVolume(v1,
+            writeToVolume(*v1,
                           0,
                           v1->getClusterSize(),
                           "bdv");
-            waitForThisBackendWrite(v1);
+            waitForThisBackendWrite(*v1);
             v1->sync();
 
             const fs::path mdstore_path = VolManager::get()->getMetaDataDBFilePath(v1->get_config());
@@ -2367,7 +2371,7 @@ TEST_P(LocalRestartTest, MDStoreOutToLunch)
                                                       2,
                                                       DeleteLocalData::F,
                                                       RemoveVolumeCompletely::F);
-                writeToVolume(v1, 0, v1->getClusterSize(),"ar");
+                writeToVolume(*v1, 0, v1->getClusterSize(),"ar");
                 v1->getMetaDataStore()->getStats(mds1);
                 // EXPECT_LT(0, mds1.used_clusters);
             }
@@ -2380,15 +2384,15 @@ TEST_P(LocalRestartTest, MDStoreOutToLunch)
 
             ASSERT_FALSE(v1 = getVolume(vid1));
             ASSERT_NO_THROW(v1 = localRestart(ns1));
-            ASSERT_TRUE(v1);
+            ASSERT_TRUE(v1 != nullptr);
             //    EXPECT_TRUE(v1->mdstore_was_rebuilt_);
 
             MetaDataStoreStats mds2;
             v1->getMetaDataStore()->getStats(mds2);
             // EXPECT_EQ(mds1.used_clusters, mds2.used_clusters);
 
-            checkVolume(v1, 0, v1->getClusterSize(), "ar");
-            checkCurrentBackendSize(v1);
+            checkVolume(*v1, 0, v1->getClusterSize(), "ar");
+            checkCurrentBackendSize(*v1);
         }
         break;
     }
@@ -2402,13 +2406,13 @@ TEST_P(LocalRestartTest, MDStoreOutToLunchWithSnapshotsFile)
 
     const backend::Namespace& ns1 = ns_ptr->ns();
 
-    Volume* v1 = newVolume(vid1,
+    SharedVolumePtr v1 = newVolume(vid1,
                            ns1);
-    writeToVolume(v1,
+    writeToVolume(*v1,
                   0,
                   v1->getClusterSize(),
                   "bdv");
-    waitForThisBackendWrite(v1);
+    waitForThisBackendWrite(*v1);
     v1->sync();
 
     const fs::path mdstore_path = VolManager::get()->getMetaDataDBFilePath(v1->get_config());
@@ -2419,7 +2423,7 @@ TEST_P(LocalRestartTest, MDStoreOutToLunchWithSnapshotsFile)
                                               2,
                                               DeleteLocalData::T,
                                               RemoveVolumeCompletely::F);
-        writeToVolume(v1, 0, v1->getClusterSize(),"ar");
+        writeToVolume(*v1, 0, v1->getClusterSize(),"ar");
         v1->getMetaDataStore()->getStats(mds1);
         // EXPECT_LT(0, mds1.used_clusters);
     }
@@ -2440,10 +2444,10 @@ TEST_P(LocalRestartTest, testRescheduledSCOS)
 
     const backend::Namespace& ns1 = ns_ptr->ns();
 
-    Volume* v = newVolume(v1,
+    SharedVolumePtr v = newVolume(v1,
                           ns1);
     VolumeConfig cfg = v->get_config();
-    writeToVolume(v, 0, 4096, "doh");
+    writeToVolume(*v, 0, 4096, "doh");
     ClusterLocation l(1);
 
     std::string scoptr_name =
@@ -2451,7 +2455,7 @@ TEST_P(LocalRestartTest, testRescheduledSCOS)
 
     v->createSnapshot(SnapshotName("first"));
 
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     MetaDataStoreStats mds1;
     v->getMetaDataStore()->getStats(mds1);
@@ -2462,7 +2466,7 @@ TEST_P(LocalRestartTest, testRescheduledSCOS)
                   RemoveVolumeCompletely::F);
     // // make ze cleanslate ze inlined
     // VolManager* man = VolManager::get();
-    // fs::remove_all(man->getTLogPath(cfg));
+    // fs::remove_all(man->getTLogPath(*cfg));
     // fs::remove_all(man->getMetaDataPath(cfg));
     // Fuck with the SCOCache in a mean and unbecoming way.
     struct stat st;
@@ -2470,18 +2474,20 @@ TEST_P(LocalRestartTest, testRescheduledSCOS)
     ASSERT_EQ(0, ret);
     ASSERT_TRUE(st.st_mode bitand S_ISVTX);
     ret = ::chmod(scoptr_name.c_str(), st.st_mode ^ S_ISVTX);
-    v = 0;
+    ASSERT_EQ(0, ret);
+
+    v = nullptr;
     // This will assert since it reschedules the sole sco to backend
     ASSERT_NO_THROW(v = localRestart(ns1));
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
     //    EXPECT_FALSE(v->mdstore_was_rebuilt_);
 
     MetaDataStoreStats mds2;
     v->getMetaDataStore()->getStats(mds2);
     // EXPECT_EQ(mds1.used_clusters, mds2.used_clusters);
 
-    waitForThisBackendWrite(v);
-    checkCurrentBackendSize(v);
+    waitForThisBackendWrite(*v);
+    checkCurrentBackendSize(*v);
 }
 
 TEST_P(LocalRestartTest, restartClone)
@@ -2491,31 +2497,35 @@ TEST_P(LocalRestartTest, restartClone)
 
     const backend::Namespace& ns1 = ns_ptr->ns();
 
-    Volume* v1 = newVolume("volume1",
+    SharedVolumePtr v1 = newVolume("volume1",
                            ns1);
     for(int i = 0; i < 1024; i++)
     {
-        writeToVolume(v1,
+        writeToVolume(*v1,
                       0,
                       v1->getClusterSize(),
                       "kristafke");
     }
-    createSnapshot(v1,"snap1");
-    waitForThisBackendWrite(v1);
+    const SnapshotName snap1("snap1");
+
+    createSnapshot(*v1,
+                   snap1);
+
+    waitForThisBackendWrite(*v1);
     // const backend::Namespace ns2;
     auto ns2_ptr = make_random_namespace();
 
     const backend::Namespace& ns2 = ns2_ptr->ns();
 
-    Volume* v2 = createClone("volume2",
+    SharedVolumePtr v2 = createClone("volume2",
                              ns2,
                              ns1,
-                             "snap1");
-    ASSERT_TRUE(v2);
+                             snap1);
+    ASSERT_TRUE(v2 != nullptr);
 
     for(int i = 0; i < 1; i++)
     {
-        writeToVolume(v2,
+        writeToVolume(*v2,
                       v2->getClusterSize(),
                       v2->getClusterSize(),
                       "kristafke");
@@ -2543,8 +2553,8 @@ TEST_P(LocalRestartTest, restartClone)
     v2->getMetaDataStore()->getStats(mds2);
     // EXPECT_EQ(mds1.used_clusters, mds2.used_clusters);
 
-    checkVolume(v2, v2->getClusterSize(), v2->getClusterSize(), "kristafke");
-    checkCurrentBackendSize(v2);
+    checkVolume(*v2, v2->getClusterSize(), v2->getClusterSize(), "kristafke");
+    checkCurrentBackendSize(*v2);
 }
 
 
@@ -2659,19 +2669,19 @@ TEST_P(LocalRestartTest, LostMDStoreCacheAndNoUsableLocalData)
     EXPECT_EQ(0U, fupper.sco_crcs_seen());
 
     ASSERT_NO_THROW(v = localRestart(ns1));
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
     //     EXPECT_TRUE(v->mdstore_was_rebuilt_);
 
-    checkVolume(v,
+    checkVolume(*v,
                 0,
                 max_tlog_entries * cluster_size,
                 pattern1);
 
-    checkVolume(v,
+    checkVolume(*v,
                 max_tlog_entries * cluster_mult,
                 max_tlog_entries * cluster_size,
                 "\0");
-    checkCurrentBackendSize(v);
+    checkCurrentBackendSize(*v);
 }
 
 // Cf. VOLDRV-867 and VOLDRV-870.
@@ -2712,21 +2722,21 @@ TEST_P(LocalRestartTest, LostMDStoreCacheAndUsableLocalData)
     ASSERT(v);
     //    EXPECT_TRUE(v->mdstore_was_rebuilt_);
 
-    checkVolume(v,
+    checkVolume(*v,
                 0,
                 max_tlog_entries * cluster_size,
                 pattern1);
 
-    checkVolume(v,
+    checkVolume(*v,
                 max_tlog_entries * cluster_mult,
                 sco_mult * cluster_size,
                 pattern2);
 
-    checkVolume(v,
+    checkVolume(*v,
                 (max_tlog_entries + sco_mult) * cluster_mult,
                 sco_mult * cluster_size,
                 "\0");
-    checkCurrentBackendSize(v);
+    checkCurrentBackendSize(*v);
 }
 
 // Disabled as of VOLDRV-1015 - we now have the corking mechanism, so this can probably
@@ -2764,8 +2774,8 @@ TEST_P(LocalRestartTest, DISABLED_ReliabilityOfTheBigOneIfTheMDStoreLRUWouldWork
 
     ASSERT_LT(1U, page_entries);
 
-    const auto cluster_mult = VolumeConfig::default_cluster_multiplier();
-    const auto cluster_size = VolumeConfig::default_lba_size() * cluster_mult;
+    const auto cluster_mult = default_cluster_multiplier();
+    const auto cluster_size = default_lba_size() * cluster_mult;
 
     ASSERT_LT(3U, max_tlog_entries);
 
@@ -2782,7 +2792,7 @@ TEST_P(LocalRestartTest, DISABLED_ReliabilityOfTheBigOneIfTheMDStoreLRUWouldWork
                        VolumeSize(2 * page_entries * mdstore_cache_pages * cluster_size),
                        sco_mult,
                        default_lba_size(),
-                       default_cluster_mult(),
+                       default_cluster_multiplier(),
                        mdstore_cache_pages);
 
     EXPECT_EQ(max_tlog_entries, v->getSnapshotManagement().maxTLogEntries());
@@ -2800,26 +2810,26 @@ TEST_P(LocalRestartTest, DISABLED_ReliabilityOfTheBigOneIfTheMDStoreLRUWouldWork
     const std::string pattern1("first page entry, warming up");
     for (uint32_t i = 0; i < mdstore_cache_pages; ++i)
     {
-        writeToVolume(v,
+        writeToVolume(*v,
                       i * cluster_mult * page_entries,
                       cluster_size,
                       pattern1);
     }
 
     const std::string pattern2("first page entry, before the big one");
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   cluster_size,
                   pattern2);
 
     const std::string pattern3("first page entry on second page aka The Big One");
-    writeToVolume(v,
+    writeToVolume(*v,
                   cluster_mult * page_entries,
                   cluster_size,
                   pattern3);
 
     // this should've triggered a tlog rollover
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     {
         OrderedTLogIds tlogs;
@@ -2845,7 +2855,7 @@ TEST_P(LocalRestartTest, DISABLED_ReliabilityOfTheBigOneIfTheMDStoreLRUWouldWork
 
         const std::string pattern4("second entry of the first page");
 
-        writeToVolume(v,
+        writeToVolume(*v,
                       cluster_mult,
                       cluster_size,
                       pattern4);
@@ -2855,7 +2865,7 @@ TEST_P(LocalRestartTest, DISABLED_ReliabilityOfTheBigOneIfTheMDStoreLRUWouldWork
         // write to the remaining pages *and* push out The Big One
         for (uint32_t i = 2; i <= mdstore_cache_pages; ++i)
         {
-            writeToVolume(v,
+            writeToVolume(*v,
                           i * cluster_mult * page_entries,
                           cluster_size,
                           pattern5);
@@ -2866,7 +2876,7 @@ TEST_P(LocalRestartTest, DISABLED_ReliabilityOfTheBigOneIfTheMDStoreLRUWouldWork
         // dropMetaDataStoreCache(*v);
     }
 
-    TLogFuckerUpper<RemoveAfterClusterAddress> fupper(VolManager::get()->getTLogPath(v),
+    TLogFuckerUpper<RemoveAfterClusterAddress> fupper(VolManager::get()->getTLogPath(*v),
                                                       tlog2);
 
     fupper.address(2 * page_entries);
@@ -2876,29 +2886,29 @@ TEST_P(LocalRestartTest, DISABLED_ReliabilityOfTheBigOneIfTheMDStoreLRUWouldWork
     EXPECT_EQ(0U, fupper.sco_crcs_seen());
 
     ASSERT_NO_THROW(v = localRestart(ns1));
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
     //    EXPECT_TRUE(v->mdstore_was_rebuilt_);
 
     // the big one
-    checkVolume(v,
+    checkVolume(*v,
                 cluster_mult * page_entries,
                 cluster_size,
                 pattern3);
 
     // the one before
-    checkVolume(v,
+    checkVolume(*v,
                 0,
                 cluster_size,
                 pattern2);
-    checkCurrentBackendSize(v);
+    checkCurrentBackendSize(*v);
 }
 
 //Cf. VOLDRV-887
 TEST_P(LocalRestartTest, SanityCheckOfTheBackendMissingTLog1)
 {
     const uint32_t num_tlogs_on_backend = 3;
-    Volume * the_parent = 0;
-    Volume * the_clone = 0;
+    SharedVolumePtr the_parent;
+    SharedVolumePtr the_clone = 0;
     std::unique_ptr<WithRandomNamespace> parent_ns;
     std::unique_ptr<WithRandomNamespace> clone_ns;
 
@@ -2927,8 +2937,8 @@ TEST_P(LocalRestartTest, SanityCheckOfTheBackendMissingTLog1)
 TEST_P(LocalRestartTest, SanityCheckOfTheBackendMissingTLog2)
 {
     const uint32_t num_tlogs_on_backend = 3;
-    Volume * the_parent = 0;
-    Volume * the_clone = 0;
+    SharedVolumePtr the_parent;
+    SharedVolumePtr the_clone;
     std::unique_ptr<WithRandomNamespace> parent_ns;
     std::unique_ptr<WithRandomNamespace> clone_ns;
 
@@ -2956,8 +2966,8 @@ TEST_P(LocalRestartTest, SanityCheckOfTheBackendMissingTLog2)
 TEST_P(LocalRestartTest, SanityCheckOfTheBackendMissingParentTLog)
 {
     const uint32_t num_tlogs_on_backend = 3;
-    Volume* parent = 0;
-    Volume* clone = 0;
+    SharedVolumePtr parent = 0;
+    SharedVolumePtr clone = 0;
     std::unique_ptr<WithRandomNamespace> parent_ns;
     std::unique_ptr<WithRandomNamespace> clone_ns;
 
@@ -2986,8 +2996,8 @@ TEST_P(LocalRestartTest, SanityCheckOfTheBackendMissingParentTLog)
 TEST_P(LocalRestartTest, SanityCheckOfTheBackendMissingUnusedParentTLog)
 {
     const uint32_t num_tlogs_on_backend = 3;
-    Volume* parent = 0;
-    Volume* clone = 0;
+    SharedVolumePtr parent = 0;
+    SharedVolumePtr clone = 0;
     std::unique_ptr<WithRandomNamespace> parent_ns;
     std::unique_ptr<WithRandomNamespace> clone_ns;
 
@@ -3017,8 +3027,8 @@ TEST_P(LocalRestartTest, SanityCheckOfTheBackendMissingUnusedParentTLog)
 TEST_P(LocalRestartTest, SanityCheckOfTheBackendMissingSnapshotObject)
 {
     const uint32_t num_tlogs_on_backend = 3;
-    Volume* parent = 0;
-    Volume* clone = 0;
+    SharedVolumePtr parent = 0;
+    SharedVolumePtr clone = 0;
     std::unique_ptr<WithRandomNamespace> parent_ns;
     std::unique_ptr<WithRandomNamespace> clone_ns;
 
@@ -3041,7 +3051,7 @@ TEST_P(LocalRestartTest, SanityCheckOfTheBackendMissingSnapshotObject)
     ASSERT_NO_THROW(clone = localRestart(nspace));
     //and volume should recover from it
 
-    scheduleBackendSync(clone);
+    scheduleBackendSync(*clone);
     while(not clone->isSyncedToBackend())
     {
         sleep(1);
@@ -3062,8 +3072,8 @@ TEST_P(LocalRestartTest, SanityCheckOfTheBackendMissingSnapshotObject)
 TEST_P(LocalRestartTest, SanityCheckOfTheBackendMissingParentSnapshotObject)
 {
     const uint32_t num_tlogs_on_backend = 3;
-    Volume* parent = 0;
-    Volume* clone = 0;
+    SharedVolumePtr parent = 0;
+    SharedVolumePtr clone = 0;
     std::unique_ptr<WithRandomNamespace> parent_ns;
     std::unique_ptr<WithRandomNamespace> clone_ns;
 
@@ -3089,10 +3099,10 @@ TEST_P(LocalRestartTest, SanityCheckOfTheBackendMissingParentSnapshotObject)
 TEST_P(LocalRestartTest, fall_back_to_backend_restart)
 {
     auto ns(make_random_namespace());
-    Volume* v = newVolume(*ns);
+    SharedVolumePtr v = newVolume(*ns);
 
-    const fs::path meta(VolManager::get()->getMetaDataPath(v));
-    const fs::path tlogs(VolManager::get()->getMetaDataPath(v));
+    const fs::path meta(VolManager::get()->getMetaDataPath(*v));
+    const fs::path tlogs(VolManager::get()->getMetaDataPath(*v));
 
     destroyVolume(v,
                   DeleteLocalData::T,
@@ -3120,12 +3130,19 @@ const VolumeDriverTestConfig sync_foc_config =
     .use_cluster_cache(true)
     .foc_mode(FailOverCacheMode::Synchronous);
 
+const ClusterMultiplier
+big_cluster_multiplier(VolManagerTestSetup::default_test_config().cluster_multiplier() * 2);
+
+const auto big_clusters_config = VolManagerTestSetup::default_test_config()
+    .cluster_multiplier(big_cluster_multiplier);
+
 }
 
 INSTANTIATE_TEST_CASE_P(LocalRestartTests,
                         LocalRestartTest,
                         ::testing::Values(cluster_cache_config,
-                                          sync_foc_config));
+                                          sync_foc_config,
+                                          big_clusters_config));
 
 }
 

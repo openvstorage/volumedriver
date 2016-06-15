@@ -21,9 +21,17 @@ struct Error
 }
 
 # Arrr matey, ye olde scumbag Cap'n P. insists on camelCase.
-#
+
+struct TableCounters
+{
+    totalTLogsRead @0 : UInt64;
+    incrementalUpdates @1 : UInt64;
+    fullRebuilds @2 : UInt64;
+}
+
 # We might want to avoid sending the `nspace' string but introduce another layer of
 # indirection to avoid string comparisons and lookups - profile!
+
 interface Methods
 {
     drop @0 (nspace : Text) -> ();
@@ -52,4 +60,6 @@ interface Methods
 			     logs : List(Text)) -> ();
 
     catchUp @ 10 (nspace : Text, dryRun : Bool) -> (numTLogs : UInt32);
+
+    getTableCounters @ 11 (nspace : Text, reset : Bool) -> (counters : TableCounters);
 }

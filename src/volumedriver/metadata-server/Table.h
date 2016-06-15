@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef META_DATA_SERVER_TABLE_H_
 #define META_DATA_SERVER_TABLE_H_
@@ -20,6 +21,7 @@
 #include <memory>
 
 #include <boost/chrono.hpp>
+#include <boost/thread/mutex.hpp>
 #include <boost/thread/shared_mutex.hpp>
 
 #include <youtils/IOException.h>
@@ -58,6 +60,8 @@ namespace metadata_server
 //   * when being forced to catch up
 //   .
 //   All other calls use it in shared mode.
+//
+//   The counters are protected by a plain mutex which needs to be grabbed *after* the shared one.
 class Table
     : public TableInterface
 {
@@ -88,10 +92,10 @@ public:
 
     virtual void
     multiset(const TableInterface::Records& records,
-             Barrier barrier) override final;
+             Barrier) override final;
 
     virtual TableInterface::MaybeStrings
-    multiget(const TableInterface::Keys& keys) override final;
+    multiget(const TableInterface::Keys&) override final;
 
     virtual Role
     get_role() const override final;
@@ -109,7 +113,10 @@ public:
     clear() override final;
 
     virtual size_t
-    catch_up(volumedriver::DryRun dry_run) override final;
+    catch_up(volumedriver::DryRun) override final;
+
+    virtual TableCounters
+    get_counters(volumedriver::Reset) override final;
 
     void
     stop();
@@ -132,6 +139,9 @@ private:
 
     volumedriver::NSIDMap nsid_map_;
 
+    boost::mutex counters_lock_;
+    TableCounters counters_;
+
     void
     start_(const std::chrono::milliseconds& ramp_up);
 
@@ -149,6 +159,9 @@ private:
 
     void
     prevent_updates_on_slaves_(const char* desc);
+
+    void
+    update_counters_(const volumedriver::MetaDataStoreBuilder::Result&);
 };
 
 typedef std::shared_ptr<Table> TablePtr;

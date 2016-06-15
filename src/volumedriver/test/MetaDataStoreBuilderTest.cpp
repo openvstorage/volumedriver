@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "VolManagerTestSetup.h"
 
@@ -98,7 +99,7 @@ protected:
 TEST_P(MetaDataStoreBuilderTest, basics)
 {
     auto ns(make_random_namespace());
-    vd::Volume* v = newVolume(*ns,
+    vd::SharedVolumePtr v = newVolume(*ns,
                               vd::VolumeSize(4ULL << 20));
 
     const fs::path db_dir(directory_ / "db_copy");
@@ -116,14 +117,14 @@ TEST_P(MetaDataStoreBuilderTest, basics)
           copy);
 
     const std::string pattern1("before-first-snapshot");
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   v->getSize() / 2,
                   pattern1);
 
     const SnapshotName snap1("snap1");
     v->createSnapshot(snap1);
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     check(*v,
           copy);
@@ -132,19 +133,19 @@ TEST_P(MetaDataStoreBuilderTest, basics)
           copy);
 
     const std::string pattern2("before-second-snapshot");
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   v->getSize() / 4,
                   pattern2);
 
     const SnapshotName snap2("snap2");
     v->createSnapshot(snap2);
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     check(*v,
           copy);
 
-    restoreSnapshot(v, snap1);
+    restoreSnapshot(*v, snap1);
 
     check(*v,
           copy);
@@ -153,34 +154,34 @@ TEST_P(MetaDataStoreBuilderTest, basics)
 TEST_P(MetaDataStoreBuilderTest, clone)
 {
     auto ns(make_random_namespace());
-    vd::Volume* v = newVolume(*ns,
+    vd::SharedVolumePtr v = newVolume(*ns,
                               vd::VolumeSize(4ULL << 20));
 
     const std::string pattern1("parent");
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   v->getSize() / 2,
                   pattern1);
 
     const SnapshotName psnap("psnap");
     v->createSnapshot(psnap);
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     auto clone_ns(make_random_namespace());
-    vd::Volume* c = createClone(*clone_ns,
+    vd::SharedVolumePtr c = createClone(*clone_ns,
                                 ns->ns(),
                                 psnap);
 
     const std::string pattern2("clone");
 
-    writeToVolume(v,
+    writeToVolume(*v,
                   0,
                   v->getSize() / 4,
                   pattern2);
 
     const SnapshotName csnap("csnap");
     c->createSnapshot(csnap);
-    waitForThisBackendWrite(c);
+    waitForThisBackendWrite(*c);
 
     be::BackendInterfacePtr bi(c->getBackendInterface()->clone());
 

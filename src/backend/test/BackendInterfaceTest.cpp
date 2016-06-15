@@ -1,18 +1,23 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "BackendTestBase.h"
+
+#include <boost/property_tree/ptree.hpp>
+
+#include <youtils/Timer.h>
 
 namespace backendtest
 {
@@ -51,12 +56,32 @@ TEST_F(BackendInterfaceTest, retry_on_error)
     std::unique_ptr<be::BackendTestSetup::WithRandomNamespace>
         nspace(make_random_namespace());
 
-    const size_t retries = 7;
+    const uint32_t retries = 5;
+
     ASSERT_LE(retries,
               cm_->capacity());
 
-    be::BackendInterfacePtr bi(cm_->newBackendInterface(nspace->ns(),
-                                                        retries));
+    be::BackendInterfacePtr bi(cm_->newBackendInterface(nspace->ns()));
+
+    const uint32_t secs = 1;
+
+    {
+        bpt::ptree pt;
+        cm_->persist(pt);
+
+        ip::PARAMETER_TYPE(backend_interface_retries_on_error)(retries).persist(pt);
+        ip::PARAMETER_TYPE(backend_interface_retry_interval_secs)(secs).persist(pt);
+
+        yt::ConfigurationReport crep;
+        ASSERT_TRUE(cm_->checkConfig(pt,
+                                     crep));
+
+        yt::UpdateReport urep;
+        cm_->update(pt,
+                    urep);
+    }
+
+    yt::SteadyTimer t;
 
     ASSERT_THROW(bi->write(opath,
                            oname,
@@ -64,8 +89,11 @@ TEST_F(BackendInterfaceTest, retry_on_error)
                            &wrong_cs),
                  be::BackendInputException);
 
-    ASSERT_EQ(retries + 1,
+    EXPECT_EQ(retries + 1,
               cm_->size());
+
+    EXPECT_LE(boost::chrono::seconds(retries * secs),
+              t.elapsed());
 }
 
 }

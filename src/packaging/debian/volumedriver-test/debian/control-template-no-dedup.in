@@ -1,0 +1,16 @@
+Source: volumedriver-test
+Section: unknown
+Priority: extra
+Maintainer: volumedriverteam@openvstorage.com
+Build-Depends: debhelper (>= 7.0.0)
+Standards-Version: 3.9.2
+Homepage: www.openvstorage.com
+
+Package: volumedriver-no-dedup-test
+Architecture: any
+Depends: omniorb-nameserver, ${shlibs:Depends}
+Pre-Depends: volumedriver-no-dedup-base (>= 3.6.0), volumedriver-no-dedup-pitreplication (>= 3.6.0), volumedriver-no-dedup-server (>= 3.6.0)
+Conflicts: volumedriver-no-dedup-test (<< 3.6.0), volumedriver-test
+Replaces: volumedriver-test
+Description: Testing code for volumedriver
+ Test programs for VolumeDriver components.

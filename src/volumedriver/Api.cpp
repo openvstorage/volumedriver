@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "Api.h"
 #include "MetaDataStoreInterface.h"
@@ -68,10 +69,10 @@ api::createClone(const vd::CloneVolumeConfigParameters& params,
 }
 
 void
-api::updateMetaDataBackendConfig(vd::Volume* vol,
+api::updateMetaDataBackendConfig(vd::WeakVolumePtr vol,
                                  const vd::MetaDataBackendConfig& mdb)
 {
-    vol->updateMetaDataBackendConfig(mdb);
+    SharedVolumePtr(vol)->updateMetaDataBackendConfig(mdb);
 }
 
 void
@@ -84,23 +85,25 @@ api::updateMetaDataBackendConfig(const vd::VolumeId& volume_id,
 }
 
 void
-api::Write(Volume* vol,
+api::Write(WeakVolumePtr vol,
            const uint64_t lba,
            const uint8_t *buf,
            const uint64_t buflen)
 {
-    vol->write(lba, buf, buflen);
+    SharedVolumePtr(vol)->write(lba,
+                                buf,
+                                buflen);
 }
 
 void
-api::Read(Volume* vol,
+api::Read(WeakVolumePtr vol,
           const uint64_t lba,
           uint8_t *buf,
           const uint64_t buflen)
 {
-    vol->read(lba,
-              buf,
-              buflen);
+    SharedVolumePtr(vol)->read(lba,
+                               buf,
+                               buflen);
 }
 
 void
@@ -109,37 +112,41 @@ api::Write(WriteOnlyVolume* vol,
            const uint8_t *buf,
            uint64_t buflen)
 {
-    vol->write(lba, buf, buflen);
+    VERIFY(vol);
+    vol->write(lba,
+               buf,
+               buflen);
 }
 
 void
-api::Sync(Volume* vol)
+api::Sync(vd::WeakVolumePtr vol)
 {
-    vol->sync();
+    SharedVolumePtr(vol)->sync();
 }
 
 uint64_t
-api::GetSize(Volume* vol)
+api::GetSize(vd::WeakVolumePtr vol)
 {
-    return vol->getSize();
+    return SharedVolumePtr(vol)->getSize();
 }
 
 void
-api::Resize(Volume* vol, uint64_t clusters)
+api::Resize(vd::WeakVolumePtr vol,
+            uint64_t clusters)
 {
-    vol->resize(clusters);
+    SharedVolumePtr(vol)->resize(clusters);
 }
 
 uint64_t
-api::GetLbaSize(vd::Volume* vol)
+api::GetLbaSize(vd::WeakVolumePtr vol)
 {
-    return vol->getLBASize();
+    return SharedVolumePtr(vol)->getLBASize();
 }
 
 uint64_t
-api::GetClusterSize()
+api::GetClusterSize(vd::WeakVolumePtr vol)
 {
-    return vd::VolumeConfig::default_cluster_size();
+    return SharedVolumePtr(vol)->getClusterSize();
 }
 
 void
@@ -164,28 +171,37 @@ api::Exit(void)
     vd::VolManager::stop();
 }
 
-vd::Volume*
+vd::WeakVolumePtr
 api::getVolumePointer(const VolumeId& volname)
 {
     return VolManager::get()->findVolume_(volname);
 }
 
-vd::Volume*
+boost::optional<vd::WeakVolumePtr>
 api::get_volume_pointer_no_throw(const VolumeId& volname)
 {
-    return VolManager::get()->findVolume_noThrow_(volname);
+    SharedVolumePtr v(VolManager::get()->findVolume_noThrow_(volname));
+    if (not v)
+    {
+        return boost::none;
+    }
+    else
+    {
+        WeakVolumePtr w(v);
+        return w;
+    }
 }
 
-vd::Volume*
+vd::WeakVolumePtr
 api::getVolumePointer(const Namespace& ns)
 {
     return VolManager::get()->findVolume_(ns);
 }
 
 const vd::VolumeId
-api::getVolumeId(vd::Volume* vol)
+api::getVolumeId(vd::WeakVolumePtr vol)
 {
-    return vol->getName();
+    return SharedVolumePtr(vol)->getName();
 }
 
 bool
@@ -209,7 +225,7 @@ api::getVolumesOverview(std::map<vd::VolumeId, vd::VolumeOverview>& out_map)
 VolumeConfig
 api::getVolumeConfig(const vd::VolumeId& volName)
 {
-    const Volume* v = VolManager::get()->findVolume_(volName);
+    const SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     return v->get_config();
 }
 
@@ -260,14 +276,14 @@ api::destroyVolume(const vd::VolumeId& volName,
 }
 
 void
-api::destroyVolume(vd::Volume* vol,
+api::destroyVolume(vd::WeakVolumePtr vol,
                    const vd::DeleteLocalData delete_local_data,
                    const vd::RemoveVolumeCompletely remove_volume_completely,
                    const vd::DeleteVolumeNamespace delete_volume_namespace,
                    const vd::ForceVolumeDeletion force_volume_deletion)
 
 {
-    VolManager::get()->destroyVolume(vol,
+    VolManager::get()->destroyVolume(SharedVolumePtr(vol),
                                      delete_local_data,
                                      remove_volume_completely,
                                      delete_volume_namespace,
@@ -289,12 +305,12 @@ api::removeLocalVolumeData(const be::Namespace& nspace)
 }
 
 SnapshotName
-api::createSnapshot(vd::Volume* v,
+api::createSnapshot(vd::WeakVolumePtr wv,
                     const vd::SnapshotMetaData& metadata,
                     const vd::SnapshotName* const snapid,
                     const UUID& uuid)
 {
-    VERIFY(v);
+    SharedVolumePtr v(wv);
 
     vd::SnapshotName snapname;
 
@@ -385,11 +401,10 @@ api::getSnapshot(const vd::VolumeId& id,
 }
 
 Snapshot
-api::getSnapshot(const vd::Volume* vol,
+api::getSnapshot(const vd::WeakVolumePtr vol,
                  const vd::SnapshotName& snapname)
 {
-    VERIFY(vol);
-    return vol->getSnapshot(snapname);
+    return SharedVolumePtr(vol)->getSnapshot(snapname);
 }
 
 Snapshot
@@ -439,7 +454,7 @@ void
 api::showSnapshots(const VolumeId& volName,
                    std::list<vd::SnapshotName>& l)
 {
-    Volume* v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     v->listSnapshots(l);
 }
 
@@ -455,7 +470,7 @@ void
 api::destroySnapshot(const VolumeId& volName,
                      const vd::SnapshotName& snapid)
 {
-    Volume* v = VolManager::get()->findVolume_(volName);
+    vd::SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     v->deleteSnapshot(snapid);
 }
 
@@ -487,63 +502,63 @@ api::restoreSnapshot(WriteOnlyVolume* vol,
 uint64_t
 api::VolumeDataStoreWriteUsed(const vd::VolumeId& volName)
 {
-    Volume* v = VolManager::get()->findVolume_(volName);
+    vd::SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     return v->VolumeDataStoreWriteUsed();
 }
 
 uint64_t
 api::VolumeDataStoreReadUsed(const vd::VolumeId& volName)
 {
-    Volume* v = VolManager::get()->findVolume_(volName);
+    vd::SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     return v->VolumeDataStoreReadUsed();
 }
 
 PerformanceCounters&
 api::performance_counters(const vd::VolumeId& volName)
 {
-    Volume* v = VolManager::get()->findVolume_(volName);
+    vd::SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     return v->performance_counters();
 }
 
 bool
 api::getHalted(const vd::VolumeId& volName)
 {
-    Volume* v = VolManager::get()->findVolume_(volName);
+    vd::SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     return v->is_halted();
 }
 
 uint64_t
 api::getCacheHits(const vd::VolumeId& volName)
 {
-    Volume* v =  VolManager::get()->findVolume_(volName);
+    vd::SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     return v->getCacheHits();
 }
 
 uint64_t
 api::getCacheMisses(const vd::VolumeId& volName)
 {
-    Volume* v =  VolManager::get()->findVolume_(volName);
+    vd::SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     return v->getCacheMisses();
 }
 
 uint64_t
 api::getNonSequentialReads(const vd::VolumeId& volName)
 {
-    Volume* v =  VolManager::get()->findVolume_(volName);
+    vd::SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     return v->getNonSequentialReads();
 }
 
 uint64_t
 api::getClusterCacheHits(const vd::VolumeId& volName)
 {
-    Volume* v =  VolManager::get()->findVolume_(volName);
+    vd::SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     return v->getClusterCacheHits();
 }
 
 uint64_t
 api::getClusterCacheMisses(const vd::VolumeId& volName)
 {
-    Volume* v =  VolManager::get()->findVolume_(volName);
+    vd::SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     return v->getClusterCacheMisses();
 }
 
@@ -562,14 +577,14 @@ api::getQueueSize(const VolumeId& volName)
 uint64_t
 api::getTLogUsed(const vd::VolumeId& volName)
 {
-    Volume* v =  VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     return v->getTLogUsed();
 }
 
 vd::TLogId
 api::scheduleBackendSync(const vd::VolumeId& volName)
 {
-    Volume* v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     return v->scheduleBackendSync();
 }
 
@@ -577,7 +592,7 @@ bool
 api::isVolumeSynced(const vd::VolumeId& volName)
 {
 
-    Volume* v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     return v->isSyncedToBackend();
 }
 
@@ -585,7 +600,7 @@ bool
 api::isVolumeSyncedUpTo(const vd::VolumeId& volName,
                         const vd::SnapshotName& snapshotName)
 {
-    Volume* v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     return v->isSyncedToBackendUpTo(snapshotName);
 }
 
@@ -593,7 +608,7 @@ bool
 api::isVolumeSyncedUpTo(const vd::VolumeId& vol_id,
                         const vd::TLogId& tlog_id)
 {
-    Volume* v = VolManager::get()->findVolume_(vol_id);
+    SharedVolumePtr v = VolManager::get()->findVolume_(vol_id);
     return v->isSyncedToBackendUpTo(tlog_id);
 }
 
@@ -633,14 +648,14 @@ api::getVolumeSCOCacheInfo(const backend::Namespace ns)
 vd::VolumeFailOverState
 api::getFailOverMode(const vd::VolumeId& volName)
 {
-    Volume* v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     return v->getVolumeFailOverState();
 }
 
 boost::optional<vd::FailOverCacheConfig>
 api::getFailOverCacheConfig(const vd::VolumeId& volName)
 {
-    Volume* v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     return v->getFailOverCacheConfig();
 }
 
@@ -648,14 +663,14 @@ void
 api::setFailOverCacheConfig(const vd::VolumeId& volName,
                             const boost::optional<vd::FailOverCacheConfig>& maybe_foc_config)
 {
-    Volume* v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     v->setFailOverCacheConfig(maybe_foc_config);
 }
 
 uint64_t
 api::getCurrentSCOCount(const vd::VolumeId& volName)
 {
-    Volume* v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     return  v->getSnapshotSCOCount();
 }
 
@@ -663,22 +678,22 @@ uint64_t
 api::getSnapshotSCOCount(const vd::VolumeId& volName,
                          const vd::SnapshotName& snapid)
 {
-    Volume* v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     return v->getSnapshotSCOCount(snapid);
 }
 
 void
 api::setFOCTimeout(const vd::VolumeId& volName,
-                   uint32_t timeout)
+                   const boost::chrono::seconds timeout)
 {
-    Volume* v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     v->setFOCTimeout(timeout);
 }
 
 bool
 api::checkVolumeConsistency(const vd::VolumeId& volName)
 {
-    Volume* v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     return v->checkConsistency();
 }
 
@@ -686,14 +701,14 @@ uint64_t
 api::getSnapshotBackendSize(const vd::VolumeId& volName,
                             const vd::SnapshotName& snapName)
 {
-    Volume* v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     return v->getSnapshotBackendSize(snapName);
 }
 
 uint64_t
 api::getCurrentBackendSize(const vd::VolumeId& volName)
 {
-    Volume* v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     return v->getCurrentBackendSize();
 }
 
@@ -762,6 +777,12 @@ api::getClusterCacheVolumeInfo(const vd::VolumeId& volName)
     return VolManager::get()->findVolume_(volName)->getClusterCacheVolumeInfo();
 }
 
+vd::ClusterSize
+api::getDefaultClusterSize()
+{
+    return vd::ClusterSize(VolManager::get()->default_cluster_size.value());
+}
+
 // void
 // api::changeThrottling(unsigned throttle_usecs)
 // {
@@ -771,7 +792,7 @@ api::getClusterCacheVolumeInfo(const vd::VolumeId& volName)
 void
 api::startPrefetching(const vd::VolumeId& volName)
 {
-    Volume* v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     v->startPrefetch();
 }
 
@@ -912,16 +933,18 @@ api::applyScrubbingWork(const vd::VolumeId& volName,
                         const scrubbing::ScrubReply& scrub_reply,
                         const vd::ScrubbingCleanup cleanup)
 {
-    Volume* v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     return v->applyScrubbingWork(scrub_reply,
                                  cleanup);
 }
 
 uint64_t
-api::volumePotential(const vd::SCOMultiplier s,
+api::volumePotential(const vd::ClusterSize c,
+                     const vd::SCOMultiplier s,
                      const boost::optional<vd::TLogMultiplier>& t)
 {
-    return VolManager::get()->volumePotential(s,
+    return VolManager::get()->volumePotential(c,
+                                              s,
                                               t);
 }
 

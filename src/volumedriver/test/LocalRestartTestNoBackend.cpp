@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "VolManagerTestSetup.h"
 
@@ -20,7 +21,6 @@
 #include "../DataStoreNG.h"
 #include "../TLogWriter.h"
 #include "../MetaDataStoreInterface.h"
-#include "../TLogReaderUtils.h"
 
 namespace volumedriver
 {
@@ -30,11 +30,8 @@ class LocalRestartTestNoBackend
 {
 public:
     LocalRestartTestNoBackend()
-        : VolManagerTestSetup("LocalRestartTest",
-                              UseFawltyMDStores::F,
-                              UseFawltyTLogStores::F,
-                              UseFawltyDataStores::F,
-                              0)
+        : VolManagerTestSetup(VolManagerTestSetupParameters("LocalRestartTest")
+                              .backend_threads(0))
     {}
 };
 
@@ -46,24 +43,23 @@ TEST_P(LocalRestartTestNoBackend, restartWithSnapshot1)
 
     const backend::Namespace& ns1 = ns_ptr->ns();
 
-    Volume* v1 = newVolume(vid1,
+    SharedVolumePtr v1 = newVolume(vid1,
                            ns1);
-    writeToVolume(v1,
+    writeToVolume(*v1,
                   0,
                   v1->getClusterSize(),
                   "kristafke");
-    createSnapshot(v1, SnapshotName("snapshot1"));
-
+    createSnapshot(*v1, SnapshotName("snapshot1"));
 
     destroyVolume(v1,
                   DeleteLocalData::F,
                   RemoveVolumeCompletely::F);
 
-    v1 = 0;
+    v1 = nullptr;
     ASSERT_FALSE(v1 = getVolume(vid1));
     ASSERT_NO_THROW(v1 = localRestart(ns1));
-    ASSERT_TRUE(getVolume(vid1));
-    checkVolume(v1, 0, v1->getClusterSize(), "kristafke");
+    ASSERT_TRUE(getVolume(vid1) != nullptr);
+    checkVolume(*v1, 0, v1->getClusterSize(), "kristafke");
     EXPECT_FALSE(v1->isSyncedToBackendUpTo(SnapshotName("snapshot1")));
 }
 

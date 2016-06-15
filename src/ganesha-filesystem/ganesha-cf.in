@@ -3,7 +3,7 @@ set -eux
 # this script is mean to be packaged and run against the openvstorage packaged version of
 # ganesha
 
-export VFS_FSAL_LOGFILE=${VFS_FSAL_LOGFILE:-/var/log/volumedriver/vpool.log}
+export VFS_FSAL_LOGSINK=${VFS_FSAL_LOGSINK:-/var/log/volumedriver/vpool.log}
 export VFS_FSAL_LOGLEVEL=${VFS_FSAL_LOGLEVEL:-INFO}
 export VFS_FSAL_LOGROTATION=${VFS_FSAL_LOGROTATION:-true}
 export VFS_FSAL_LOGDISABLE=${VFS_FSAL_LOGDISABLE:-false}

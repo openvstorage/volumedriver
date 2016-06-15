@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "ShmIdlInterface.h"
 #include "ShmClient.h"
@@ -589,6 +590,28 @@ ShmClient::is_snapshot_synced(const std::string& volume_name,
     assert(not CORBA::is_nil(volumefactory_ref));
     return volumefactory_ref->is_snapshot_synced(volume_name.c_str(),
                                                  snapshot_name.c_str());
+}
+
+std::vector<std::string>
+ShmClient::list_volumes()
+{
+    CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
+                                                            vd_context_kind,
+                                                            vd_object_name,
+                                                            vd_object_kind);
+    assert(not CORBA::is_nil(obj));
+    ShmIdlInterface::VolumeFactory_var volumefactory_ref =
+        ShmIdlInterface::VolumeFactory::_narrow(obj);
+    assert(not CORBA::is_nil(volumefactory_ref));
+
+    ShmIdlInterface::StringSequence_var results;
+    std::vector<std::string> volumes;
+    volumefactory_ref->list_volumes(results.out());
+    for (unsigned int i = 0; i < results->length(); i++)
+    {
+        volumes.push_back(results[i].in());
+    }
+    return volumes;
 }
 
 int

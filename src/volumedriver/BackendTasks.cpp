@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "BackendTasks.h"
 #include "CachedSCO.h"
@@ -24,6 +25,7 @@
 #include <youtils/Timer.h>
 
 #include <backend/BackendException.h>
+#include <backend/BackendRequestParameters.h>
 
 namespace volumedriver
 {
@@ -31,11 +33,22 @@ namespace volumedriver
 namespace backend_task
 {
 
+namespace be = backend;
 namespace bc = boost::chrono;
 namespace yt = youtils;
 
 using ::youtils::FileUtils;
 using ::youtils::BarrierTask;
+
+namespace
+{
+
+const be::BackendRequestParameters fail_fast_request_params =
+    be::BackendRequestParameters()
+    .retries_on_error(1)
+    .retry_interval(bc::milliseconds(0))
+    .retry_backoff_multiplier(1);
+}
 
 WriteSCO::WriteSCO(VolumeInterface *vol,
                    DataStoreCallBack* cb,
@@ -76,7 +89,8 @@ WriteSCO::run(int threadid)
         volume_->getBackendInterface()->write(source,
                                               sco_.str(),
                                               overwrite_,
-                                              &cs_);
+                                              &cs_,
+                                              fail_fast_request_params);
 
         const auto duration_us(bc::duration_cast<bc::microseconds>(t.elapsed()));
         const uint64_t file_size = fs::file_size(source);
@@ -144,7 +158,8 @@ WriteTLog::run(int /*threadid*/)
         volume_->getBackendInterface()->write(tlogpath_.string(),
                                               boost::lexical_cast<std::string>(tlogid_),
                                               OverwriteObject::T,
-                                              &checksum_);
+                                              &checksum_,
+                                              fail_fast_request_params);
         volume_->tlogWrittenToBackendCallback(tlogid_,
                                               sconame_);
     }
@@ -198,7 +213,8 @@ WriteSnapshot::run(int /*threadID*/)
         volume_->getBackendInterface()->write(tmpfile,
                                               snapshotFilename(),
                                               OverwriteObject::T,
-                                              &chk);
+                                              &chk,
+                                              fail_fast_request_params);
     }
     CATCH_STD_ALL_EWHAT({
             LOG_WARN("Couldn't write snapshot to backend, will be retried: " << EWHAT);
@@ -228,7 +244,8 @@ DeleteTLog::run(int /*threadID*/)
     try
     {
         volume_->getBackendInterface()->remove(tlog_,
-                                               ObjectMayNotExist::T);
+                                               ObjectMayNotExist::T,
+                                               fail_fast_request_params);
         LOG_INFO("Deleted TLog " << tlog_);
     }
     CATCH_STD_ALL_LOGLEVEL_IGNORE("Exception deleting TLog " << tlog_,
@@ -259,7 +276,8 @@ BlockDeleteTLogs::run(int /*threadID*/)
         try
         {
             volume_->getBackendInterface()->remove(*it,
-                                                   ObjectMayNotExist::T);
+                                                   ObjectMayNotExist::T,
+                                                   fail_fast_request_params);
             LOG_INFO("Deleted TLog " << *it);
 
         }
@@ -301,7 +319,8 @@ BlockDeleteSCOS::run(int /*threadID*/)
         try
         {
             volume_->getBackendInterface()->remove(it->str(),
-                                                   ObjectMayNotExist::T);
+                                                   ObjectMayNotExist::T,
+                                                   fail_fast_request_params);
             LOG_INFO("Deleted SCO " << *it);
 
         }
@@ -338,7 +357,8 @@ DeleteSCO::run(int /*threadID*/)
     try
     {
         volume_->getBackendInterface()->remove(sco_.str(),
-                                               ObjectMayNotExist::T);
+                                               ObjectMayNotExist::T,
+                                               fail_fast_request_params);
         LOG_INFO("Deleted SCO " << sco_);
 
     }

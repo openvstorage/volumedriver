@@ -1,19 +1,22 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef BACKENDPARAMETERS_H_
 #define BACKENDPARAMETERS_H_
+
+#include <alba/proxy_client.h>
 
 #include <youtils/InitializedParam.h>
 
@@ -61,6 +64,12 @@ const char backend_connection_manager_name[] = "backend_connection_manager";
 
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(backend_connection_pool_capacity,
                                                   uint32_t);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_retries_on_error,
+                                                  std::atomic<uint32_t>);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_retry_interval_secs,
+                                                  std::atomic<uint32_t>);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_retry_backoff_multiplier,
+                                                  std::atomic<double>);
 
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(backend_type, backend::BackendType);
 DECLARE_INITIALIZED_PARAM(local_connection_path, std::string);
@@ -84,6 +93,7 @@ DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_host, std::string);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_port, uint16_t);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_timeout, uint16_t);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_preset, std::string);
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_transport, alba::proxy_client::Transport);
 
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(bgc_threads, uint32_t);
 

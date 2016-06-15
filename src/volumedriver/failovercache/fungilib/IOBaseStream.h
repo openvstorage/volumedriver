@@ -1,35 +1,47 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef CUSTOMIOSTREAM_H_
 #define CUSTOMIOSTREAM_H_
+
 #include "ByteArray.h"
 #include "Streamable.h"
 #include "Socket.h"
+
 #include <cassert>
 
-namespace fungi {
+namespace fungi
+{
 // Will need at least
 // 1) flushing support
 // 2) check if you wanna read n bytes from a sink you actually get them
 
-class IOBaseStream {
+class IOBaseStream
+{
 public:
-    DECLARE_LOGGER("IOBaseStream");
-    IOBaseStream(Socket *sock) : mySink_(sock), rdma_(sock->isRdma()) {}
-    IOBaseStream(Streamable *stream) : mySink_(stream), rdma_(false) {}
-    ~IOBaseStream() {}
+    IOBaseStream(Socket& sock)
+        : mySink_(sock)
+        , rdma_(sock.isRdma())
+    {}
+
+    explicit IOBaseStream(Streamable& stream)
+        : mySink_(stream)
+        , rdma_(false)
+    {}
+
+    ~IOBaseStream() = default;
 
     bool isRdma() const
     {
@@ -39,27 +51,27 @@ public:
     /** @exception IOException */
     int32_t read(byte *buf, int32_t n)
     {
-        return mySink_->read(buf, n);
+        return mySink_.read(buf, n);
     }
 
     /** @exception IOException */
     int32_t write(const byte *buf, int32_t n) {
-        return mySink_->write(buf, n);
+        return mySink_.write(buf, n);
     }
 
     void close() {
-        mySink_->close();
+        mySink_.close();
     }
 
     void closeNoThrow() {
-        mySink_->closeNoThrow();
+        mySink_.closeNoThrow();
     }
-    Streamable *getSink() {
+    Streamable&
+    getSink()
+    {
         return mySink_;
     }
-    void setSink(Streamable *stream) {
-        mySink_ = stream;
-    }
+
     class Null {};
     class Cork {};
     class Uncork {};
@@ -117,14 +129,15 @@ public:
     IOBaseStream &operator>>(const Cork &);
 
 private:
-    Streamable *mySink_;
+    DECLARE_LOGGER("IOBaseStream");
+
+    Streamable& mySink_;
     bool rdma_;
 
     void writeInt_(int32_t i);
     void writeLong_(int64_t l);
     void writeboolean_(bool b);
     void writeByte_(byte b);
-
 
     void writeFloat_(float number);
     void writeDouble_(double number);

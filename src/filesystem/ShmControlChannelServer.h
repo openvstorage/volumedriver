@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 #ifndef __SHM_CONTROL_CHANNEL_SERVER_H
 #define __SHM_CONTROL_CHANNEL_SERVER_H
 
@@ -46,6 +47,7 @@ public:
     , state_(ShmConnectionState::Connected)
     , try_stop_volume_(try_stop_volume)
     , is_volume_valid_(is_volume_valid)
+    , deregistered(false)
     {
         data_.resize(1024);
     }
@@ -67,8 +69,11 @@ public:
     void
     remove_session()
     {
-        try_stop_volume_(volume_name_);
-        cache_.reset();
+        if (not deregistered)
+        {
+            try_stop_volume_(volume_name_);
+            cache_.reset();
+        }
     }
 
     ShmControlChannelMsg
@@ -91,7 +96,7 @@ public:
     ShmControlChannelMsg
     handle_allocate(const ShmControlChannelMsg& msg)
     {
-        ShmControlChannelMsg o_msg;
+        ShmControlChannelMsg o_msg(ShmMsgOpcode::Failed);
         if (state_ == ShmConnectionState::Registered)
         {
             try
@@ -132,6 +137,7 @@ public:
             cache_.reset();
             state_ = ShmConnectionState::Connected;
             o_msg.opcode(ShmMsgOpcode::Success);
+            deregistered = true;
         }
         return o_msg;
     }
@@ -171,7 +177,7 @@ public:
     handle_state(const char *data,
                  const size_t size)
     {
-        ShmControlChannelMsg i_msg;
+        ShmControlChannelMsg i_msg(ShmMsgOpcode::Failed);
         i_msg.unpack_msg(data, size);
         switch (i_msg.opcode())
         {
@@ -262,6 +268,7 @@ private:
     ShmConnectionState state_;
     TryStopVolume try_stop_volume_;
     IsVolumeValid is_volume_valid_;
+    bool deregistered;
 };
 
 typedef boost::shared_ptr<ControlSession> ctl_session_ptr;

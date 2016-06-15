@@ -1,19 +1,20 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef READ_CACHE_DEVICE_MANAGER_T_H
-#define READ_CACHE_DEVICE_MANAGER_T_H
+#ifndef CLUSTER_CACHE_DEVICE_T_
+#define CLUSTER_CACHE_DEVICE_T_
 
 #include "ClusterCacheDeviceManagerT.h"
 #include "ClusterCacheEntry.h"
@@ -43,13 +44,15 @@ class ClusterCacheDeviceT
 
 public:
     ClusterCacheDeviceT(const fs::path& path,
-                    const uint64_t size)
+                        const uint64_t size,
+                        const size_t csize)
         : store_(path,
-                 size)
+                 size,
+                 csize)
         , entries_reloaded_(std::numeric_limits<uint64_t>::max())
     {
-        ASSERT(store_.total_size() / cluster_size_ < memory_.max_size());
-        memory_.reserve(store_.total_size() / cluster_size_);
+        ASSERT(store_.total_size() / cluster_size() < memory_.max_size());
+        memory_.reserve(store_.total_size() / cluster_size());
     }
 
     ClusterCacheDeviceT()
@@ -66,14 +69,16 @@ public:
     read(uint8_t* buf,
          ClusterCacheEntry* entry)
     {
-        return store_.read(buf, getIndex(entry));
+        return store_.read(buf,
+                           getIndex(entry));
     }
 
     ssize_t
     write(const uint8_t* buf,
           ClusterCacheEntry* entry)
     {
-        return store_.write(buf, getIndex(entry));
+        return store_.write(buf,
+                            getIndex(entry));
     }
 
     void
@@ -132,7 +137,6 @@ public:
         const uint64_t used_size;
     };
 
-
     typedef ClusterCacheDeviceInfo Info;
 
     Info
@@ -140,7 +144,7 @@ public:
     {
         return Info(store_.path(),
                     store_.total_size(),
-                    memory_.size() * cluster_size_);
+                    memory_.size() * cluster_size());
     }
 
     bool
@@ -152,7 +156,7 @@ public:
     ClusterCacheEntry*
     getNextFreeCluster(const ClusterCacheKey& key)
     {
-        if(memory_.size() * cluster_size_ < store_.total_size())
+        if(memory_.size() * cluster_size() < store_.total_size())
         {
             // ret = &(memory_[used_size_/cluster_size_]);
             // used_size_ += cluster_size_;
@@ -181,18 +185,28 @@ public:
 
     // For Testing
     void
-    fuckup_fd_forread()
+    fail_fd_forread()
     {
-        store_.fuckup_fd_forread();
+        store_.fail_fd_forread();
     }
 
     void
-    fuckup_fd_forwrite()
+    fail_fd_forwrite()
     {
-        store_.fuckup_fd_forwrite();
+        store_.fail_fd_forwrite();
     }
 
-    static const uint64_t cluster_size_;
+    size_t
+    cluster_size() const
+    {
+        return store_.cluster_size();
+    }
+
+    static size_t
+    default_cluster_size()
+    {
+        return StoreType::default_cluster_size();
+    }
 
 private:
     DECLARE_LOGGER("ClusterCacheDevice");
@@ -214,14 +228,13 @@ private:
         if(version != 0)
         {
             THROW_SERIALIZATION_ERROR(version, 0, 0);
-
         }
 
         ar & store_;
         uint32_t used_size;
         ar & used_size;
 
-        memory_.reserve(store_.total_size() / cluster_size_);
+        memory_.reserve(store_.total_size() / cluster_size());
         youtils::Weed w;
         for(size_t i = 0; i < used_size; ++i)
         {
@@ -236,18 +249,16 @@ private:
         {
             THROW_SERIALIZATION_ERROR(version, 0, 0);
         }
+
         ar & store_;
         uint32_t used_size = memory_.size();
         ar & used_size;
     }
 };
 
-template<typename T>
-const uint64_t ClusterCacheDeviceT<T>::cluster_size_ = VolumeConfig::default_cluster_size();
-
 }
 
-#endif  // READ_CACHE_DEVICE_MANAGER_T_H
+#endif  // CLUSTER_CACHE_DEVICE_T_
 
 // Local Variables: **
 // mode: c++ **

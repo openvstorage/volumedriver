@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "VolManagerTestSetup.h"
 
@@ -31,7 +32,7 @@ TEST_P(BigReadWriteTest, bigReadsOnEmpty)
 {
     auto ns_ptr = make_random_namespace();
 
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns_ptr->ns());
 
     size_t csz = v->getClusterSize();
@@ -40,17 +41,17 @@ TEST_P(BigReadWriteTest, bigReadsOnEmpty)
 
     for(size_t i = 0; i < scoMul; ++i)
     {
-        checkVolume(v,0, csz*scoMul, pattern);
+        checkVolume(*v,0, csz*scoMul, pattern);
     }
 }
 
 TEST_P(BigReadWriteTest, bigReadsOnFull)
 {
     auto ns_ptr = make_random_namespace();
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns_ptr->ns());
 
-    SCOPED_BLOCK_BACKEND(v);
+    SCOPED_BLOCK_BACKEND(*v);
 
     size_t csz = v->getClusterSize();
     size_t lba_size = v->getLBASize();
@@ -59,13 +60,13 @@ TEST_P(BigReadWriteTest, bigReadsOnFull)
     size_t scoMul = v->getSCOMultiplier();
     for(size_t i = 0;i < 50*scoMul; ++i)
     {
-        writeToVolume(v, i* csz / lba_size, csz, pattern);
+        writeToVolume(*v, i* csz / lba_size, csz, pattern);
     }
 
     // Stop here to manually delete sco's to check error handling
     for(size_t i = 0; i < scoMul; ++i)
     {
-        checkVolume(v,0, csz*scoMul, pattern);
+        checkVolume(*v,0, csz*scoMul, pattern);
     }
 
 }
@@ -73,10 +74,10 @@ TEST_P(BigReadWriteTest, bigReadsOnFull)
 TEST_P(BigReadWriteTest, bigWritesBigReads)
 {
     auto ns_ptr = make_random_namespace();
-    Volume* v = newVolume(VolumeId("volume1"),
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns_ptr->ns());
 
-    SCOPED_BLOCK_BACKEND(v);
+    SCOPED_BLOCK_BACKEND(*v);
 
     size_t csz = v->getClusterSize();
 
@@ -84,13 +85,13 @@ TEST_P(BigReadWriteTest, bigWritesBigReads)
     size_t scoMul = v->getSCOMultiplier();
     for (size_t i = 0; i < scoMul; ++i)
     {
-        writeToVolume(v, 0, csz * (i + 1), pattern);
+        writeToVolume(*v, 0, csz * (i + 1), pattern);
     }
 
     // Stop here to manually delete sco's to check error handling
     for (size_t i = 0; i < scoMul; ++i)
     {
-        checkVolume(v, 0, csz * (i + 1), pattern);
+        checkVolume(*v, 0, csz * (i + 1), pattern);
     }
 
 }
@@ -99,19 +100,19 @@ TEST_P(BigReadWriteTest, OneBigWriteOneBigRead)
 {
     auto ns_ptr = make_random_namespace();
 
-    Volume* v = newVolume(VolumeId("volume1"),
-			  ns_ptr->ns());
+    SharedVolumePtr v = newVolume(VolumeId("volume1"),
+                                  ns_ptr->ns());
 
-    SCOPED_BLOCK_BACKEND(v);
+    SCOPED_BLOCK_BACKEND(*v);
 
     size_t csz = v->getClusterSize();
 
     const std::string pattern(csz,'a');
     size_t scoMul = v->getSCOMultiplier();
-    writeToVolume(v, 0, csz * scoMul, pattern);
+    writeToVolume(*v, 0, csz * scoMul, pattern);
 
     // Stop here to manually delete sco's to check error handling
-    checkVolume(v,0, csz*scoMul, pattern);
+    checkVolume(*v,0, csz*scoMul, pattern);
 
 }
 

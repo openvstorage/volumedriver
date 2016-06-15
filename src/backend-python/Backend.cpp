@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "ConnectionErrors.h"
 #include "ConnectionInterface.h"
@@ -37,6 +38,8 @@
     enum_<name>(#name, doc)                     \
     .value("F", name::F)                        \
     .value("T", name::T);
+
+namespace yt = youtils;
 
 BOOST_PYTHON_MODULE(Backend)
 {
@@ -104,14 +107,21 @@ BOOST_PYTHON_MODULE(Backend)
         .staticmethod("loggingEnabled")
         .def("setupConsoleLogging",
              &Logging::setupConsoleLogging,
+             (args("severity") = yt::Severity::info,
+              args("progname") = std::string("PythonLogger")),
              "Setup logging to the console\n"
-             "@param severity, a Severity,  what to log")
+             "@param severity, a Severity,  what to log\n"
+             "param progname, String, program name to use for logging\n")
         .staticmethod("setupConsoleLogging")
         .def("setupFileLogging",
              &Logging::setupFileLogging,
+             (args("path"),
+              args("severity") = yt::Severity::info,
+              args("progname") = std::string("PythonLogger")),
              "Setup logging to a file\n",
-             "@param path, a string, path to the output file\n"
-             "@param severity, a Severity, what to log")
+             "@param path, String, path to the output file\n"
+             "@param severity, a Severity, what to log\n"
+             "param progname, String, program name to use for logging\n")
         .staticmethod("setupFileLogging");
 
     MAKE_PYTHON_BOOLEAN_ENUM(OverwriteObject,

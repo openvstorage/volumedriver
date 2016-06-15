@@ -36,18 +36,19 @@ volumedriverfs_pytest_PYTHON = \
 volumedriver_fs_test_LDADD = \
 	./libvolumedriverfstest.la \
 	../../filesystem/libvolumedriverfs.la \
-	../../filesystem/libovsvolumedriver.la \
+	../../filesystem/c-api/libovsvolumedriver.la \
 	../../filedriver/libfiledriver.la \
 	../../volumedriver/test/libvolumedrivertest.la \
 	../../volumedriver/libvolumedriver.la \
 	../../xmlrpc++0.7/libxmlrpc.la \
 	../../backend/libbackend.la \
 	../../youtils/libyoutils.la \
-	-lfuse \
+	-lfuse3 \
 	$(BUILDTOOLS_LIBS) \
 	-lpython2.7 \
 	-lomniORB4 \
-	-lomnithread
+	-lomnithread \
+	-lxio
 
 volumedriver_fs_test_SOURCES = \
 	CachedObjectRegistryTest.cpp \
@@ -69,6 +70,7 @@ volumedriver_fs_test_SOURCES = \
 	Main.cpp \
 	MessageTest.cpp \
 	MetaDataStoreTest.cpp \
+	NetworkServerTest.cpp \
 	ObjectRegistryTest.cpp \
 	ObjectRouterTest.cpp \
 	ProtobufTest.cpp \
@@ -80,6 +82,7 @@ volumedriver_fs_test_SOURCES = \
 	ScrubManagerTest.cpp \
 	ScrubTreeBuilderTest.cpp \
 	ShmServerTest.cpp \
+	StatsCollectorTest.cpp \
 	VolumeTest.cpp \
 	ZMQTest.cpp \
 	ZWorkerPoolTest.cpp

@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "FileSystemEventTestSetup.h"
 
@@ -217,23 +218,61 @@ TEST_F(FileSystemEventTest, multithreaded)
 {
     if (use_amqp())
     {
-        std::mutex lock;
+        boost::mutex lock;
         std::set<std::string> events;
-        const unsigned nthreads = 4;
+        const unsigned nthreads = 5;
         std::vector<std::thread> threads;
         threads.reserve(nthreads);
-        const unsigned nevents = 1000;
 
-        for (unsigned i = 0; i < nthreads; ++i)
+        std::atomic<bool> stop(false);
+
+        threads.emplace_back([&]
+                             {
+                                 vfs::AmqpUris uris = { amqp_uri() };
+                                 uris.reserve(2);
+
+                                 while (not stop)
+                                 {
+                                     EXPECT_TRUE(uris.size() == 1 or
+                                                 uris.size() == 2);
+
+                                     if (uris.size() == 1)
+                                     {
+                                         uris.push_back(uris[0]);
+                                     }
+                                     else
+                                     {
+                                         uris.pop_back();
+                                     }
+
+                                     bpt::ptree pt;
+                                     make_config(pt,
+                                                 uris,
+                                                 amqp_exchange(),
+                                                 amqp_routing_key());
+
+                                     yt::UpdateReport urep;
+                                     publisher_->update(pt,
+                                                        urep);
+                                     EXPECT_EQ(1,
+                                               urep.update_size());
+
+                                     std::this_thread::sleep_for(std::chrono::milliseconds(250));
+                                 }
+                             });
+
+        for (unsigned i = 1; i < nthreads; ++i)
         {
             auto f([&, i]
                    {
-                       for (unsigned j = 0; j < nevents; ++j)
+                       size_t j = 0;
+
+                       while (not stop)
                        {
                            const std::string
                                s("ev-" +
                                  boost::lexical_cast<std::string>(i) +
-                                 vfs::AmqpUri("-") +
+                                 std::string("-") +
                                  boost::lexical_cast<std::string>(j));
 
                            const auto
@@ -243,29 +282,32 @@ TEST_F(FileSystemEventTest, multithreaded)
 
                            publish_event(ev);
 
-                           std::lock_guard<std::mutex> g(lock);
+                           boost::lock_guard<decltype(lock)> g(lock);
                            const auto res(events.insert(s));
                            EXPECT_TRUE(res.second);
+                           ++j;
                        }
                    });
 
             threads.emplace_back(std::move(f));
         }
 
-        for (unsigned i = 0; i < nthreads; ++i)
+        std::this_thread::sleep_for(std::chrono::seconds(23));
+        stop = true;
+
+        for (auto& t : threads)
         {
-            threads[i].join();
+            t.join();
         }
 
-        EXPECT_EQ(nthreads * nevents, events.size());
+        EXPECT_FALSE(events.empty());
 
-        for (unsigned i = 0; i < nthreads * nevents; ++i)
+        while (not events.empty())
         {
             auto msg(get_event(events::volume_create));
-            EXPECT_EQ(1U, events.erase(msg.name()));
+            EXPECT_EQ(1U,
+                      events.erase(msg.name()));
         }
-
-        EXPECT_TRUE(events.empty());
     }
     else
     {
@@ -324,9 +366,9 @@ TEST_F(FileSystemEventTest, cluster_of_uris)
 
         bpt::ptree pt;
         FileSystemEventTestSetup::make_config(pt,
-                                    uris,
-                                    amqp_exchange(),
-                                    amqp_routing_key());
+                                              uris,
+                                              amqp_exchange(),
+                                              amqp_routing_key());
 
         vfs::AmqpEventPublisher p(cluster_id(),
                                   node_id(),

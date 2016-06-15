@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "ServerConfig.h"
 
@@ -82,25 +83,26 @@ namespace initialized_params
 
 namespace mds = metadata_server;
 
-const std::string
-PropertyTreeVectorAccessor<mds::ServerConfig>::db_path_key("db_directory");
+#define KEY(key, str)                           \
+    const std::string                           \
+    PropertyTreeVectorAccessor<mds::ServerConfig>::key(str)
 
-const std::string
-PropertyTreeVectorAccessor<mds::ServerConfig>::scratch_path_key("scratch_directory");
+KEY(db_path_key, "db_directory");
+KEY(scratch_path_key, "scratch_directory");
+KEY(db_threads_key, "rocksdb_threads");
+KEY(write_cache_size_key, "rocksdb_write_cache_size");
+KEY(read_cache_size_key, "rocksdb_read_cache_size");
+KEY(enable_wal_key, "rocksdb_enable_wal");
+KEY(data_sync_key, "rocksdb_data_sync");
+KEY(max_write_buffer_number_key, "rocksdb_max_write_buffer_number");
+KEY(min_write_buffer_number_to_merge_key, "rocksdb_min_write_buffer_number_to_merge");
+KEY(num_levels_key, "rocksdb_num_levels");
+KEY(level0_file_num_compaction_trigger_key, "rocksdb_level0_file_num_compaction_trigger");
+KEY(level0_slowdown_writes_trigger_key, "rocksdb_level0_slowdown_writes_trigger");
+KEY(level0_stop_writes_trigger_key, "rocksdb_level0_stop_writes_trigger");
+KEY(target_file_size_base_key, "rocksdb_target_file_size_base");
+KEY(max_bytes_for_level_base_key, "rocksdb_max_bytes_for_level_base");
+KEY(compaction_style_key, "rocksdb_compaction_style");
 
-const std::string
-PropertyTreeVectorAccessor<mds::ServerConfig>::db_threads_key("rocksdb_threads");
-
-const std::string
-PropertyTreeVectorAccessor<mds::ServerConfig>::write_cache_size_key("rocksdb_write_cache_size");
-
-const std::string
-PropertyTreeVectorAccessor<mds::ServerConfig>::read_cache_size_key("rocksdb_read_cache_size");
-
-const std::string
-PropertyTreeVectorAccessor<mds::ServerConfig>::enable_wal_key("rocksdb_enable_wal");
-
-const std::string
-PropertyTreeVectorAccessor<mds::ServerConfig>::data_sync_key("rocksdb_data_sync");
-
+#undef KEY
 }

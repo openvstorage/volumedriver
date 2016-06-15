@@ -1,39 +1,37 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef SCO_CACHE_MOUNT_POINT_H_
 #define SCO_CACHE_MOUNT_POINT_H_
 
+#include "SCOCacheInfo.h"
 #include "MountPointConfig.h"
+#include "Types.h"
 
 #include <list>
 
 #include <boost/filesystem.hpp>
-#include <boost/interprocess/detail/atomic.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <boost/serialization/utility.hpp>
 
+#include <youtils/DeferredFileRemover.h>
 #include <youtils/Logging.h>
-
-#include "SCOCacheInfo.h"
 #include <youtils/SpinLock.h>
-#include "Types.h"
 
 namespace volumedriver
 {
-namespace fs = boost::filesystem;
-namespace bu = boost::uuids;
 
 class SCOCache;
 class SCOCacheNamespace;
@@ -42,7 +40,6 @@ class SCOCacheMountPoint
 
 {
 public:
-
     SCOCacheMountPoint(SCOCache& scoCache,
                        const MountPointConfig& cfg,
                        bool restart);
@@ -55,7 +52,7 @@ public:
     void
     newMountPointStage2(uint64_t errcount);
 
-    const bu::uuid&
+    const boost::uuids::uuid&
     uuid() const;
 
     void
@@ -64,7 +61,7 @@ public:
     uint64_t
     getErrorCount() const;
 
-    const fs::path&
+    const boost::filesystem::path&
     getPath() const;
 
     uint64_t
@@ -115,9 +112,13 @@ public:
     exists(const MountPointConfig& cfg);
 
     boost::optional<uint32_t> const
-    getThrottleUsecs() {
+    getThrottleUsecs()
+    {
         return choking_;
     }
+
+    void
+    addToGarbage(const boost::filesystem::path&);
 
 private:
     friend class ErrorHandlingTest;
@@ -127,15 +128,17 @@ private:
 
     mutable fungi::SpinLock usedLock_;
     SCOCache& scoCache_;
-    const fs::path path_;
+    const boost::filesystem::path path_;
+    const boost::filesystem::path garbage_path_;
     uint64_t capacity_;
     uint64_t used_;
-    volatile boost::uint32_t refcnt_;
+    std::atomic<uint32_t> refcnt_;
     boost::optional<uint32_t> choking_;
     bool offline_;
-    bu::uuid uuid_;
+    boost::uuids::uuid uuid_;
     uint64_t errcount_;
     bool initialised_;
+    std::unique_ptr<youtils::DeferredFileRemover> deferred_file_remover_;
 
     static const std::string lockfile_;
 
@@ -169,7 +172,7 @@ private:
     friend void
     intrusive_ptr_release(SCOCacheMountPoint*);
 
-    fs::path
+    boost::filesystem::path
     lockFilePath_() const;
 
     void

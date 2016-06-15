@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "VolManagerTestSetup.h"
 
@@ -45,9 +46,9 @@ TEST_P(WriteOnlyVolumeTest, test1)
 
     const std::string pattern("blah");
     const std::string pattern2("halb");
-    writeToVolume(v, 0, 4096, pattern);
+    writeToVolume(*v, 0, 4096, pattern);
     v->scheduleBackendSync();
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     destroyVolume(v,
                   RemoveVolumeCompletely::F);
@@ -55,11 +56,11 @@ TEST_P(WriteOnlyVolumeTest, test1)
 
     restartVolume(vCfg);
 
-    Volume* vol = getVolume(vid);
+    SharedVolumePtr vol = getVolume(vid);
 
-    ASSERT_TRUE(vol);
+    ASSERT_TRUE(vol != nullptr);
 
-    checkVolume(vol, 0, 4096, pattern);
+    checkVolume(*vol, 0, 4096, pattern);
 
     destroyVolume(vol,
                   DeleteLocalData::T,
@@ -68,9 +69,9 @@ TEST_P(WriteOnlyVolumeTest, test1)
 
     setVolumeRole(ns, VolumeConfig::WanBackupVolumeRole::WanBackupBase);
     v = restartWriteOnlyVolume(vCfg);
-    writeToVolume(v, 8, 4096, pattern2);
+    writeToVolume(*v, 8, 4096, pattern2);
     v->scheduleBackendSync();
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     destroyVolume(v,
                   RemoveVolumeCompletely::F);
@@ -81,10 +82,10 @@ TEST_P(WriteOnlyVolumeTest, test1)
 
     vol = getVolume(vid);
 
-    ASSERT_TRUE(vol);
+    ASSERT_TRUE(vol != nullptr);
 
-    checkVolume(vol, 0, 4096, pattern);
-    checkVolume(vol, 8, 4096, pattern2);
+    checkVolume(*vol, 0, 4096, pattern);
+    checkVolume(*vol, 8, 4096, pattern2);
     destroyVolume(vol,
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::F);
@@ -105,9 +106,9 @@ TEST_P(WriteOnlyVolumeTest, no_restart_from_incremental_volume)
 
     const std::string pattern("blah");
     const std::string pattern2("halb");
-    writeToVolume(v, 0, 4096, pattern);
+    writeToVolume(*v, 0, 4096, pattern);
     v->scheduleBackendSync();
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     destroyVolume(v,
                   RemoveVolumeCompletely::F);
@@ -130,15 +131,16 @@ TEST_P(WriteOnlyVolumeTest, no_clone_from_incremental)
                            ns,
                            VolumeConfig::WanBackupVolumeRole::WanBackupIncremental);
     ASSERT_TRUE(wov != nullptr);
+    CLANG_ANALYZER_HINT_NON_NULL(wov);
 
     const VolumeConfig cfg(wov->get_config());
 
     const std::string pattern("All work and no play makes Jack a dull boy.");
-    writeToVolume(wov, 0, 16384, pattern);
+    writeToVolume(*wov, 0, 16384, pattern);
 
     const SnapshotName snap("snap");
     wov->createSnapshot(snap);
-    waitForThisBackendWrite(wov);
+    waitForThisBackendWrite(*wov);
 
     destroyVolume(wov,
                   RemoveVolumeCompletely::F);
@@ -167,13 +169,15 @@ TEST_P(WriteOnlyVolumeTest, no_restart_from_base_volume)
                                             ns,
                                             VolumeConfig::WanBackupVolumeRole::WanBackupBase);
     ASSERT_TRUE(v);
+    CLANG_ANALYZER_HINT_NON_NULL(v);
+
     const VolumeConfig vCfg = v->get_config();
 
     const std::string pattern("blah");
     const std::string pattern2("halb");
-    writeToVolume(v, 0, 4096, pattern);
+    writeToVolume(*v, 0, 4096, pattern);
     v->scheduleBackendSync();
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
 
     destroyVolume(v,
                   RemoveVolumeCompletely::F);
@@ -194,6 +198,8 @@ TEST_P(WriteOnlyVolumeTest, test2)
                                             ns,
                                             VolumeConfig::WanBackupVolumeRole::WanBackupNormal);
     ASSERT_TRUE(v);
+    CLANG_ANALYZER_HINT_NON_NULL(v);
+
     const VolumeConfig vCfg = v->get_config();
 
     const uint32_t num_snapshots = 32;
@@ -202,11 +208,11 @@ TEST_P(WriteOnlyVolumeTest, test2)
     {
         std::stringstream ss;
         ss << std::setfill('_') << std::setw(2) << i;
-        writeToVolume(v, 0, 4096, ss.str());
+        writeToVolume(*v, 0, 4096, ss.str());
         v->createSnapshot(SnapshotName(ss.str()));
-        waitForThisBackendWrite(v);
+        waitForThisBackendWrite(*v);
     }
-    writeToVolume(v,0, 4096, "blah");
+    writeToVolume(*v,0, 4096, "blah");
 
     v->scheduleBackendSync();
     destroyVolume(v,
@@ -222,15 +228,15 @@ TEST_P(WriteOnlyVolumeTest, test2)
         v = restartWriteOnlyVolume(vCfg);
         ASSERT_TRUE(v);
         v->restoreSnapshot(SnapshotName(ss.str()));
-        waitForThisBackendWrite(v);
-        waitForThisBackendWrite(v);
+        waitForThisBackendWrite(*v);
+        waitForThisBackendWrite(*v);
         destroyVolume(v,
                       RemoveVolumeCompletely::F);
         setVolumeRole(ns, VolumeConfig::WanBackupVolumeRole::WanBackupNormal);
         restartVolume(vCfg);
-        Volume* vol = getVolume(vid);
-        ASSERT_TRUE(vol);
-        checkVolume(vol, 0, 4096, ss.str());
+        SharedVolumePtr vol = getVolume(vid);
+        ASSERT_TRUE(vol != nullptr);
+        checkVolume(*vol, 0, 4096, ss.str());
         destroyVolume(vol,
                       DeleteLocalData::T,
                       RemoveVolumeCompletely::F);

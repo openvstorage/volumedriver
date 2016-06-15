@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "FileSystemTestBase.h"
 
@@ -215,7 +216,7 @@ TEST_F(ObjectRouterTest, remote_read)
     const auto vname(create_file(fname, vsize));
 
     const std::string pattern("locally written");
-    const uint64_t off = api::GetClusterSize() - 1;
+    const uint64_t off = get_cluster_size(vname) - 1;
 
     write_to_file(fname, pattern, pattern.size(), off);
     EXPECT_EQ(pattern, remote_read(vname, pattern.size(), off));
@@ -228,7 +229,7 @@ TEST_F(ObjectRouterTest, remote_write)
     const auto vname(create_file(fname, vsize));
 
     const std::string pattern("remotely written");
-    const uint64_t off = api::GetClusterSize() - 1;
+    const uint64_t off = get_cluster_size(vname) - 1;
 
     remote_write(vname, pattern, off);
     check_file(fname, pattern, pattern.size(), off);
@@ -241,7 +242,7 @@ TEST_F(ObjectRouterTest, invalid_request_type)
     const auto vname(create_file(fname, vsize));
 
     const std::string pattern("locally written");
-    const uint64_t off = api::GetClusterSize() - 1;
+    const uint64_t off = get_cluster_size(vname) - 1;
 
     write_to_file(fname, pattern, pattern.size(), off);
 
@@ -293,7 +294,7 @@ TEST_F(ObjectRouterTest, wrong_request_type)
     const auto vname(create_file(fname, vsize));
 
     const std::string pattern("locally written");
-    const uint64_t off = api::GetClusterSize() - 1;
+    const uint64_t off = get_cluster_size(vname) - 1;
 
     write_to_file(fname, pattern, pattern.size(), off);
 
@@ -341,7 +342,7 @@ TEST_F(ObjectRouterTest, missing_tag)
     const auto vname(create_file(fname, vsize));
 
     const std::string pattern("locally written");
-    const uint64_t off = api::GetClusterSize() - 1;
+    const uint64_t off = get_cluster_size(vname) - 1;
 
     write_to_file(fname, pattern, pattern.size(), off);
 
@@ -561,7 +562,7 @@ TEST_F(ObjectRouterTest, volume_snapshot_create_rollback_delete)
     const vfs::ObjectId vname(create_file(fname, vsize));
 
     const std::string pattern("locally written");
-    const uint64_t off = api::GetClusterSize() - 1;
+    const uint64_t off = get_cluster_size(vname) - 1;
 
     write_to_file(fname, pattern, pattern.size(), off);
 

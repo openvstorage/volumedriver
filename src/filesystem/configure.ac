@@ -36,4 +36,5 @@ AC_CONFIG_FILES([test/python_test.sh], [chmod +x test/python_test.sh])
 AC_CONFIG_FILES([failovercache/Makefile])
 
 AC_CONFIG_FILES([failovercache/test/Makefile])
+AC_CONFIG_FILES([c-api/Makefile])
 AC_OUTPUT

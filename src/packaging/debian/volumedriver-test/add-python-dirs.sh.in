@@ -2,7 +2,12 @@
 
 . ../add-installdir.sh
 
+if [ "x${USE_MD5_HASH}" == "xyes" ]
+then
 TARGET_FILE=debian/volumedriver-test.install
+else
+TARGET_FILE=debian/volumedriver-no-dedup-test.install
+fi
 add_directory volumedrivertest
 # add_directory volumedrivertest/base
 # add_directory volumedrivertest/voldrv

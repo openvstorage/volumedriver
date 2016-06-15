@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "ExGTest.h"
 #include "VolManagerTestSetup.h"
@@ -37,7 +38,6 @@ class SnapshotManagementTest
   protected:
     SnapshotManagementTest()
     : VolManagerTestSetup("SnapshotManagementTestVolume")
-    , vol_(0)
     , volname_("snapshot-test-vol")
     {}
 
@@ -46,7 +46,7 @@ class SnapshotManagementTest
                    const SnapshotName& name)
     {
         c->createSnapshot(name,
-                          0);
+                          boost::none);
     }
     const Namespace&
     ns()
@@ -75,7 +75,7 @@ class SnapshotManagementTest
         VolManagerTestSetup::TearDown();
     }
 
-    Volume* vol_;
+    SharedVolumePtr vol_;
     const std::string volname_;
     std::unique_ptr<WithRandomNamespace> ns_ptr_;
 
@@ -97,7 +97,7 @@ TEST_P(SnapshotManagementTest, double_snap_results_in_non_halted_volume)
 {
     const SnapshotName first("first");
     vol_->createSnapshot(first);
-    waitForThisBackendWrite(vol_);
+    waitForThisBackendWrite(*vol_);
     ASSERT_THROW(vol_->createSnapshot(SnapshotName(first)),
                  std::exception);
     ASSERT_FALSE(vol_->is_halted());
@@ -108,20 +108,20 @@ TEST_P(SnapshotManagementTest, getTLogsBetweenSnapshots)
 {
     const SnapshotName first("first");
     vol_->createSnapshot(first);
-    waitForThisBackendWrite(vol_);
+    waitForThisBackendWrite(*vol_);
 
     const SnapshotName second("second");
     vol_->createSnapshot(second);
-    waitForThisBackendWrite(vol_);
+    waitForThisBackendWrite(*vol_);
 
     const SnapshotName third("third");
     vol_->createSnapshot(third);
-    waitForThisBackendWrite(vol_);
+    waitForThisBackendWrite(*vol_);
 
     const SnapshotName fourth("fourth");
     vol_->createSnapshot(fourth);
-    waitForThisBackendWrite(vol_);
-    SnapshotManagement* sman = getSnapshotManagement(vol_);
+    waitForThisBackendWrite(*vol_);
+    SnapshotManagement* sman = getSnapshotManagement(*vol_);
 
     SnapshotNum firstn = sman->getSnapshotNumberByName(first);
     SnapshotNum secondn = sman->getSnapshotNumberByName(second);
@@ -131,7 +131,7 @@ TEST_P(SnapshotManagementTest, getTLogsBetweenSnapshots)
     vol_->deleteSnapshot(third);
 
     OrderedTLogIds out;
-    const SnapshotPersistor& pers = getSnapshotManagement(vol_)->getSnapshotPersistor();
+    const SnapshotPersistor& pers = getSnapshotManagement(*vol_)->getSnapshotPersistor();
     ASSERT_THROW(pers.getTLogsBetweenSnapshots(thirdn,
                                                fourthn,
                                                out,
@@ -212,10 +212,10 @@ TEST_P(SnapshotManagementTest, TheRevengeOfGetScrubbingWorkTest)
     for(unsigned i = 0; i < size; ++i)
     {
         vol_->createSnapshot(snapshot_names[i]);
-        waitForThisBackendWrite(vol_);
+        waitForThisBackendWrite(*vol_);
     }
 
-    SnapshotManagement* sman = getSnapshotManagement(vol_);
+    SnapshotManagement* sman = getSnapshotManagement(*vol_);
 
     SnapshotWork out;
 
@@ -257,12 +257,12 @@ TEST_P(SnapshotManagementTest, backendSizeBetweenSnapshots)
 
     for(size_t i = 0; i < 10; ++i)
     {
-        writeToVolume(vol_, 0,  4096,"blue");
-        waitForThisBackendWrite(vol_);
+        writeToVolume(*vol_, 0,  4096,"blue");
+        waitForThisBackendWrite(*vol_);
         vol_->createSnapshot(boost::lexical_cast<SnapshotName>(i));
     }
 
-    SnapshotManagement* c = getSnapshotManagement(vol_);
+    SnapshotManagement* c = getSnapshotManagement(*vol_);
 
     ASSERT_EQ(10U *4096U,
               c->getSnapshotPersistor().getBackendSize(SnapshotName("9"),
@@ -283,7 +283,7 @@ TEST_P(SnapshotManagementTest, deleteSnaps2)
 {
     const SnapshotName snap("first");
     vol_->createSnapshot(snap);
-    waitForThisBackendWrite(vol_);
+    waitForThisBackendWrite(*vol_);
 
     std::list<std::string> names;
     backendRegex(Namespace(ns()),
@@ -302,7 +302,7 @@ TEST_P(SnapshotManagementTest, deleteSnaps2)
     names.clear();
 
     vol_->deleteSnapshot(snap);
-    waitForThisBackendWrite(vol_);
+    waitForThisBackendWrite(*vol_);
     // scrubbing disabled waitForScrubJobs();
 
     backendRegex(Namespace(ns()),
@@ -319,14 +319,14 @@ TEST_P(SnapshotManagementTest, deleteSnaps2)
 
 TEST_P(SnapshotManagementTest, test1)
 {
-    SnapshotManagement* c = getSnapshotManagement(vol_);
+    SnapshotManagement* c = getSnapshotManagement(*vol_);
     const SnapshotName snapname("snap1");
     createSnapshot(c,snapname);
     EXPECT_TRUE(c->snapshotExists(snapname));
     SnapshotNum n = c->getSnapshotNumberByName(snapname);
 
     EXPECT_EQ(n, (SnapshotNum)0);
-    waitForThisBackendWrite(vol_);
+    waitForThisBackendWrite(*vol_);
 
     std::list<std::string> tlognames;
     backendRegex(Namespace(ns()),
@@ -337,15 +337,15 @@ TEST_P(SnapshotManagementTest, test1)
 
 TEST_P(SnapshotManagementTest, test2)
 {
-    SnapshotManagement* c = getSnapshotManagement(vol_);
+    SnapshotManagement* c = getSnapshotManagement(*vol_);
     //c->setMaxTLogEntries(4);
     for(size_t i = 0; i < 10; ++i)
     {
-        writeToVolume(vol_,0,4096,"blue");
+        writeToVolume(*vol_,0,4096,"blue");
     }
     const SnapshotName snapname("snap1");
     createSnapshot(c,snapname);
-    waitForThisBackendWrite(vol_);
+    waitForThisBackendWrite(*vol_);
     std::list<std::string> tlognames;
 
     backendRegex(Namespace(ns()),
@@ -374,18 +374,18 @@ TEST_P(SnapshotManagementTest, test2)
 
 TEST_P(SnapshotManagementTest, test3)
 {
-    SnapshotManagement* c = getSnapshotManagement(vol_);
+    SnapshotManagement* c = getSnapshotManagement(*vol_);
     //c->setMaxTLogEntries(4);
     for(size_t i = 0; i < 10; ++i)
     {
-        writeToVolume(vol_, 0, 4096, "wartdebever");
+        writeToVolume(*vol_, 0, 4096, "wartdebever");
     }
 
     const SnapshotName snapname("snap1");
     createSnapshot(c,snapname);
 
     SnapshotWork out;
-    waitForThisBackendWrite(vol_);
+    waitForThisBackendWrite(*vol_);
 
     c->getSnapshotScrubbingWork(boost::none, boost::none, out);
     ASSERT_TRUE(out.size() == 1);
@@ -403,11 +403,11 @@ TEST_P(SnapshotManagementTest, test3)
 
 TEST_P(SnapshotManagementTest, test4)
 {
-    SnapshotManagement* c = getSnapshotManagement(vol_);
+    SnapshotManagement* c = getSnapshotManagement(*vol_);
     //c->setMaxTLogEntries(4);
     for(size_t i = 0; i < 10; ++i)
     {
-        writeToVolume(vol_,0,4096,"dartbewever");
+        writeToVolume(*vol_,0,4096,"dartbewever");
     }
 
     const SnapshotName snapname("snap1");
@@ -416,7 +416,7 @@ TEST_P(SnapshotManagementTest, test4)
     //    c.setSnapshotReadOnly(num, 0);
 
     SnapshotWork out;
-    waitForThisBackendWrite(vol_);
+    waitForThisBackendWrite(*vol_);
 
 //     c.getSnapshotScrubbingWork(out);
 //     ASSERT_TRUE(out.size() == 0);
@@ -426,11 +426,11 @@ TEST_P(SnapshotManagementTest, test4)
 TEST_P(SnapshotManagementTest, test5)
 {
 
-    SnapshotManagement* c = getSnapshotManagement(vol_);
+    SnapshotManagement* c = getSnapshotManagement(*vol_);
     //gc->setMaxTLogEntries(4);
     for(size_t i = 0; i < 10; ++i)
     {
-        writeToVolume(vol_,0,4096,"drtdwvraee");
+        writeToVolume(*vol_,0,4096,"drtdwvraee");
 
     }
     const SnapshotName snapname("snap1");
@@ -438,7 +438,7 @@ TEST_P(SnapshotManagementTest, test5)
     //SnapshotNum num1 = c.getSnapshotNumberByName(snapname);
     for(size_t i = 0; i < 10; ++i)
     {
-        writeToVolume(vol_,0,4096,"eearvwdtrd");
+        writeToVolume(*vol_,0,4096,"eearvwdtrd");
     }
     const SnapshotName snapname2("snap2");
     createSnapshot(c,snapname2);
@@ -446,7 +446,7 @@ TEST_P(SnapshotManagementTest, test5)
 
     for(size_t i = 0; i < 10; ++i)
     {
-        writeToVolume(vol_,0,4096,"help");
+        writeToVolume(*vol_,0,4096,"help");
     }
     const SnapshotName snapname3("snap3");
     createSnapshot(c,snapname3);
@@ -455,7 +455,7 @@ TEST_P(SnapshotManagementTest, test5)
 //     c.setSnapshotReadOnly(num2, 0);
 
 //     SnapshotWork out;
-//     waitForThisBackendWrite();
+//     waitForThisBackendWrite(*);
 
 //     c.getSnapshotScrubbingWork(out);
 //     ASSERT_TRUE(out.size() == 1);
@@ -502,12 +502,12 @@ TEST_P(SnapshotManagementTest, test6)
 
 
     SnapshotWork out;
-//    waitForThisBackendWrite();
+//    waitForThisBackendWrite(*);
 
     c.getSnapshotScrubbingWork(out);
     EXPECT_EQ(0U, out.size());
     unblockBackendWrites();
-    waitForThisBackendWrite();
+    waitForThisBackendWrite(*);
 
 //     c.setSnapshotReadOnly(num1, 0);
 
@@ -548,7 +548,7 @@ TEST_P(SnapshotManagementTest, test7)
 
     for(int i = 0; i < 128; ++i)
     {
-        writeToVolume(vol_, 20, 4096,"val");
+        writeToVolume(*vol_, 20, 4096,"val");
     }
 
     {
@@ -572,7 +572,7 @@ TEST_P(SnapshotManagementTest, test8)
         //EXPECT_FALSE(c.isSnapshotWrittenToBackend(ss.str()));
         unblockBackendWrites();
     }
-    waitForThisBackendWrite();
+    waitForThisBackendWrite(*);
     for(int i = 0; i < 25; ++i)
     {
         std::stringstream ss;
@@ -607,7 +607,7 @@ TEST_P(SnapshotManagementTest, test9)
     SnapshotManagement& c = getSnapshotManagement();
     const std::string tlogName = c.getSnapshotPersistor().getCurrentTLog();
     vol_->scheduleBackendSync();
-    waitForThisBackendWrite();
+    waitForThisBackendWrite(*);
     const std::string tlogNameNow = c.getSnapshotPersistor().getCurrentTLog();
     ASSERT_TRUE(tlogName != tlogNameNow);
     ASSERT_TRUE(c.getSnapshotPersistor().isTLogWrittenToBackend(tlogName));
@@ -620,16 +620,16 @@ TEST_P(SnapshotManagementTest, dontLeakTLogCheckSumsOnRestore)
 {
     const SnapshotName snap1("snap1");
 
-    writeToVolume(vol_, 0, vol_->getClusterSize(), snap1);
-    VolManagerTestSetup::createSnapshot(vol_, snap1);
+    writeToVolume(*vol_, 0, vol_->getClusterSize(), snap1);
+    VolManagerTestSetup::createSnapshot(*vol_, snap1);
 
-    waitForThisBackendWrite(vol_);
+    waitForThisBackendWrite(*vol_);
 
     const SnapshotName snap2("snap2");
-    writeToVolume(vol_, 0, vol_->getClusterSize(), snap2);
+    writeToVolume(*vol_, 0, vol_->getClusterSize(), snap2);
     vol_->sync();
 
-    const OrderedTLogIds tlogpaths(getSnapshotManagement(vol_)->getCurrentTLogs());
+    const OrderedTLogIds tlogpaths(getSnapshotManagement(*vol_)->getCurrentTLogs());
     EXPECT_LT(0U,
               tlogpaths.size());
 
@@ -643,7 +643,7 @@ TEST_P(SnapshotManagementTest, dontLeakTLogCheckSumsOnRestore)
     //     EXPECT_NO_THROW(chksums.find(tlogname));
     // }
 
-    restoreSnapshot(vol_, snap1);
+    restoreSnapshot(*vol_, snap1);
 
     // BOOST_FOREACH(const TLogName& n, tlogpaths)
     // {
@@ -654,7 +654,7 @@ TEST_P(SnapshotManagementTest, dontLeakTLogCheckSumsOnRestore)
     //                  CheckSumStoreException);
     // }
 
-    checkVolume(vol_, 0, vol_->getClusterSize(), snap1);
+    checkVolume(*vol_, 0, vol_->getClusterSize(), snap1);
 }
 
 INSTANTIATE_TEST(SnapshotManagementTest);

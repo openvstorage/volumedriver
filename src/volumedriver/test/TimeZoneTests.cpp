@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "ExGTest.h"
 #include <boost/date_time/posix_time/posix_time.hpp>
@@ -54,7 +55,7 @@ protected:
 
 };
 
-TEST_F(TimeZoneTests, test1)
+TEST_F(TimeZoneTests, DISABLED_test1)
 {
     auto val = getenv("TZ");
     (void) val;
@@ -63,7 +64,7 @@ TEST_F(TimeZoneTests, test1)
     ptime t1 = second_clock::local_time();
     ptime t12 = second_clock::universal_time();
 
-    set_time_zone("ZEST+3");
+    set_time_zone("CEST+3");
     ptime t2 = second_clock::local_time();
     ptime t22 = second_clock::universal_time();
     time_duration duration = t2 - t1;

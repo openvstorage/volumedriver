@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef CLUSTERLOCATION_AND_HASH_
 #define CLUSTERLOCATION_AND_HASH_
@@ -41,16 +42,40 @@ namespace volumedriver
 struct ClusterLocationAndHash
 {
     ClusterLocationAndHash(const ClusterLocation& cloc,
-                           const uint8_t* data)
+                           const uint8_t* data
+#ifndef ENABLE_MD5_HASH
+                           __attribute__((unused))
+#endif
+                           ,
+                           const size_t size
+#ifndef ENABLE_MD5_HASH
+                           __attribute__((unused))
+#endif
+                           )
         : clusterLocation(cloc)
-        , weed(data, VolumeConfig::default_cluster_size())
+#ifdef ENABLE_MD5_HASH
+        , weed_(data,
+                size)
+#endif
     {}
 
     ClusterLocationAndHash(const ClusterLocation& cloc,
-                           const youtils::Weed& wd)
+                           const youtils::Weed& wd
+#ifndef ENABLE_MD5_HASH
+                           __attribute__((unused))
+#endif
+                           )
         : clusterLocation(cloc)
-        , weed(wd)
+#ifdef ENABLE_MD5_HASH
+        , weed_(wd)
+#endif
     {}
+
+#ifndef ENABLE_MD5_HASH
+    ClusterLocationAndHash(const ClusterLocation& cloc)
+        : clusterLocation(cloc)
+    {}
+#endif
 
     operator const ClusterLocation& () const
     {
@@ -67,8 +92,12 @@ struct ClusterLocationAndHash
     bool
     operator==(const ClusterLocationAndHash& other) const
     {
-        return clusterLocation == other.clusterLocation and
-            weed == other.weed;
+#ifdef ENABLE_MD5_HASH
+        return clusterLocation == other.clusterLocation
+            and weed_ == other.weed_;
+#else
+        return clusterLocation == other.clusterLocation;
+#endif
     }
 
     bool
@@ -83,6 +112,16 @@ struct ClusterLocationAndHash
         clusterLocation.cloneID(scid);
     }
 
+    static bool
+    use_hash()
+    {
+#ifdef ENABLE_MD5_HASH
+        return true;
+#else
+        return false;
+#endif
+    }
+
     static const ClusterLocationAndHash&
     discarded_location_and_hash()
     {
@@ -92,16 +131,34 @@ struct ClusterLocationAndHash
         return zloc;
     }
 
+    const youtils::Weed&
+    weed() const
+    {
+#ifdef ENABLE_MD5_HASH
+        return weed_;
+#else
+       static const youtils::Weed w(nullptr, 0);
+       return w;
+#endif
+    }
+
     // TODO: constify
     ClusterLocation clusterLocation;
-    youtils::Weed weed;
+#ifdef ENABLE_MD5_HASH
+    youtils::Weed weed_;
+#endif
 
 private:
     friend class CachedTCBTTest;
 };
 
+#ifdef ENABLE_MD5_HASH
 static_assert(sizeof(ClusterLocationAndHash) == sizeof(ClusterLocation) + sizeof(youtils::Weed),
               "ClusterLocation size assumption does not hold");
+#else
+static_assert(sizeof(ClusterLocationAndHash) == sizeof(ClusterLocation),
+              "ClusterLocation size assumption does not hold");
+#endif
 
 }
 

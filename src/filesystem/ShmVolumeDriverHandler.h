@@ -1,29 +1,31 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef __SHM_VOLUME_DRIVER_HANDLER_H_
 #define __SHM_VOLUME_DRIVER_HANDLER_H_
 
+#include "FileSystem.h"
 #include "ShmCommon.h"
+
+#include <boost/interprocess/managed_shared_memory.hpp>
 
 #include <youtils/Assert.h>
 #include <youtils/Catchers.h>
 #include <ObjectRouter.h>
-#include <FileSystem.h>
-#include <volumedriver/Api.h>
+
 #include <volumedriver/SnapshotName.h>
-#include <boost/interprocess/managed_shared_memory.hpp>
 
 namespace volumedriverfs
 {
@@ -31,55 +33,59 @@ namespace volumedriverfs
 class ShmVolumeDriverHandler
 {
 public:
-    struct shmvolumedriver_construction_args
+    struct construction_args
     {
         FileSystem& fs;
     };
 
-    typedef struct shmvolumedriver_construction_args construction_args;
-
     ShmVolumeDriverHandler(const ::ShmIdlInterface::CreateShmArguments& args,
                            construction_args& handler_args)
         : fs_(handler_args.fs)
-        , objectid_(*get_objectid(make_volume_path(std::string(args.volume_name))))
-        , volume_size_in_bytes_(get_volume_size(objectid_))
         , shm_segment_(new boost::interprocess::managed_shared_memory(boost::interprocess::open_only,
                                                                       ShmSegmentDetails::Name()))
     {
+        open(std::string(args.volume_name));
+
         LOG_INFO("created a new volume handler for volume '" <<
                 args.volume_name << "'");
     }
 
-    ShmVolumeDriverHandler(construction_args& handler_args)
+    explicit ShmVolumeDriverHandler(construction_args& handler_args)
         : fs_(handler_args.fs)
-        , volume_size_in_bytes_(0)
     {
         LOG_INFO("created a new volume handler");
     }
 
     ~ShmVolumeDriverHandler()
     {
-        shm_segment_.reset();
+        if (handle_)
+        {
+            fs_.release(std::move(handle_));
+        }
     }
 
     void
     write(const ShmWriteRequest* request,
           ShmWriteReply* reply)
     {
+        VERIFY(handle_);
+
         LOG_TRACE("write request offset: " << request->offset_in_bytes
                   << ", size: " << request->size_in_bytes);
 
-        uint8_t *data = static_cast<uint8_t*>(shm_segment_->get_address_from_handle(request->handle));
+        auto data = static_cast<const char*>(shm_segment_->get_address_from_handle(request->handle));
 
         reply->opaque = request->opaque;
         reply->size_in_bytes = request->size_in_bytes;
 
+        bool sync = false;
         try
         {
-            fs_.object_router().write(objectid_,
-                                      data,
-                                      reply->size_in_bytes,
-                                      request->offset_in_bytes);
+            fs_.write(*handle_,
+                      reply->size_in_bytes,
+                      data,
+                      request->offset_in_bytes,
+                      sync);
             reply->failed = false;
         }
         CATCH_STD_ALL_EWHAT({
@@ -91,36 +97,44 @@ public:
     bool
     flush()
     {
+        VERIFY(handle_);
+
         LOG_TRACE("Flushing");
+
         try
         {
-            fs_.object_router().sync(objectid_);
+            fs_.fsync(*handle_,
+                      false);
+            return true;
         }
         CATCH_STD_ALL_EWHAT({
             LOG_ERROR("flush I/O error: " << EWHAT);
             return false;
         });
-        return true;
     }
 
     void
     read(const ShmReadRequest* request,
          ShmReadReply* reply)
     {
+        VERIFY(handle_);
+
         LOG_TRACE("read request offset: " << request->offset_in_bytes
                   << ", size_in_bytes: " << request->size_in_bytes);
 
         reply->opaque = request->opaque;
         reply->size_in_bytes = request->size_in_bytes;
 
-        uint8_t *data = static_cast<uint8_t*>(shm_segment_->get_address_from_handle(request->handle));
+        auto data = static_cast<char*>(shm_segment_->get_address_from_handle(request->handle));
 
         try
         {
-            fs_.object_router().read(objectid_,
-                                     data,
-                                     reply->size_in_bytes,
-                                     request->offset_in_bytes);
+            bool eof = false;
+            fs_.read(*handle_,
+                     reply->size_in_bytes,
+                     data,
+                     request->offset_in_bytes,
+                     eof);
             reply->failed = false;
         }
         CATCH_STD_ALL_EWHAT({
@@ -132,7 +146,8 @@ public:
     uint64_t
     volume_size_in_bytes() const
     {
-        return volume_size_in_bytes_;
+        VERIFY(handle_);
+        return fs_.object_router().get_size(handle_->dentry()->object_id());
     }
 
     void
@@ -141,6 +156,8 @@ public:
     {
         LOG_INFO("Create new volume with name: " << volume_name
                  << ", size: " << volume_size_in_bytes);
+
+        VERIFY(not handle_);
 
         const std::string root_("/");
         const std::string dot_(".");
@@ -164,6 +181,16 @@ public:
                      << ":" << e.what());
             throw;
         }
+
+        try
+        {
+            open(volume_name);
+        }
+        CATCH_STD_ALL_EWHAT({
+                LOG_ERROR("Failed to open " << volume_name << ": " << EWHAT);
+                remove_volume(volume_name);
+                throw;
+            });
     }
 
     void
@@ -334,7 +361,7 @@ public:
         const volumedriver::SnapshotName snap(snap_name);
         try
         {
-            return fs_.object_router().is_snapshot_syncedUpTo(*volume_id,
+            return fs_.object_router().is_volume_synced_up_to(*volume_id,
                                                               snap);
         }
         catch (volumedriver::SnapshotNotFoundException& e)
@@ -351,12 +378,48 @@ public:
         }
     }
 
+    std::vector<std::string>
+    list_volumes()
+    {
+        auto registry(fs_.object_router().object_registry());
+        const auto objs(registry->list());
+
+        try
+        {
+            std::vector<std::string> volumes;
+            for (const auto& o: objs)
+            {
+                const auto reg(registry->find(o, IgnoreCache::F));
+                if (reg and (reg->object().type == ObjectType::Volume or
+                    reg->object().type == ObjectType::Template))
+                {
+                    try
+                    {
+                        std::string volume(fs_.find_path(reg->volume_id).string());
+                        volume.erase(volume.rfind(fs_.vdisk_format().volume_suffix()));
+                        volume.erase(0, 1);
+                        volumes.push_back(volume);
+                    }
+                    catch (HierarchicalArakoon::DoesNotExistException&)
+                    {
+                        continue;
+                    }
+                }
+            }
+            return volumes;
+        }
+        catch (std::exception& e)
+        {
+            LOG_INFO("Problem listing volumes, err: " << e.what());
+            throw;
+        }
+    }
+
 private:
     DECLARE_LOGGER("ShmVolumeDriverHandler");
 
     FileSystem& fs_;
-    const ObjectId objectid_;
-    const uint64_t volume_size_in_bytes_;
+    Handle::Ptr handle_;
 
     std::unique_ptr<boost::interprocess::managed_shared_memory> shm_segment_;
 
@@ -378,13 +441,27 @@ private:
     }
 
     FrontendPath
-    make_volume_path(const std::string& volume_name)
+    make_volume_path(const std::string& volume_name) const
     {
         const std::string root_("/");
         return FrontendPath(root_ + volume_name +
                             fs_.vdisk_format().volume_suffix());
     }
+
+    void
+    open(const std::string& volname)
+    {
+        VERIFY(not handle_);
+
+        const FrontendPath p(make_volume_path(volname));
+        // called for its side effect of checking the object presence
+        get_objectid(p);
+        fs_.open(p,
+                 O_RDWR,
+                 handle_);
+    }
 };
 
 }
-#endif
+
+#endif // !__SHM_VOLUME_DRIVER_HANDLER_H_

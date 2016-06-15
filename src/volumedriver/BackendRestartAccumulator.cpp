@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "BackendRestartAccumulator.h"
 #include "NSIDMap.h"
@@ -52,26 +53,55 @@ BackendRestartAccumulator::operator()(const SnapshotPersistor& sp,
 
     OrderedTLogIds tlogs;
 
+    auto walk_tlogs([&](const OrderedTLogIds& tlog_ids)
+                    {
+                        VERIFY(not end_seen_);
+
+                        for (const auto& tlog_id : tlog_ids)
+                        {
+                            if (start_cork_ != boost::none and
+                                TLogId(*start_cork_) == tlog_id)
+                            {
+                                VERIFY(not start_seen_);
+                                start_seen_ = true;
+                            }
+                            else if (start_seen_)
+                            {
+                                tlogs.push_back(tlog_id);
+                            }
+
+                            if (end_cork_ != boost::none and
+                                TLogId(*end_cork_) == tlog_id)
+                            {
+                                end_seen_ = true;
+                                break;
+                            }
+                        }
+                    });
+
     if (not end_seen_)
     {
         for (const auto& snap : sp.getSnapshots())
         {
-            if (start_cork_ != boost::none and
-                snap.getCork() == *start_cork_)
+            walk_tlogs(snap.getOrderedTLogIds());
+
+            // check the cork IDs of empty snapshots:
+            if (not start_seen_ and
+                start_cork_ != boost::none and
+                *start_cork_ == snap.getCork())
             {
-                VERIFY(not start_seen_);
                 start_seen_ = true;
             }
 
-            if (start_seen_)
-            {
-                snap.getOrderedTLogIds(tlogs);
-            }
-
-            if (end_cork_ != boost::none and
-                snap.getCork() == *end_cork_)
+            if (not end_seen_ and
+                end_cork_ != boost::none and
+                *end_cork_ == snap.getCork())
             {
                 end_seen_ = true;
+            }
+
+            if (end_seen_)
+            {
                 break;
             }
         }
@@ -81,27 +111,7 @@ BackendRestartAccumulator::operator()(const SnapshotPersistor& sp,
     {
         if (not end_seen_)
         {
-            for (const auto& tlog : sp.getCurrentTLogsWrittenToBackend())
-            {
-                if (start_cork_ != boost::none and
-                    tlog == TLogId(*start_cork_))
-                {
-                    VERIFY(not start_seen_);
-                    start_seen_ = true;
-                }
-
-                if (start_seen_)
-                {
-                    tlogs.push_back(tlog);
-                }
-
-                if (end_cork_ != boost::none and
-                    tlog == TLogId(*end_cork_))
-                {
-                    end_seen_ = true;
-                    break;
-                }
-            }
+            walk_tlogs(sp.getCurrentTLogsWrittenToBackend());
         }
     }
     else

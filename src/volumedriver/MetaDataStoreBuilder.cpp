@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "BackendRestartAccumulator.h"
 #include "MetaDataStoreBuilder.h"
@@ -56,7 +57,8 @@ MetaDataStoreBuilder::operator()(const boost::optional<yt::UUID>& end_cork,
         return update_metadata_store_(start_cork,
                                       end_cork,
                                       check_scrub_id,
-                                      dry_run);
+                                      dry_run,
+                                      false);
     }
     catch (CorkNotFoundException& e)
     {
@@ -69,19 +71,21 @@ MetaDataStoreBuilder::operator()(const boost::optional<yt::UUID>& end_cork,
     return update_metadata_store_(boost::none,
                                   end_cork,
                                   check_scrub_id,
-                                  dry_run);
+                                  dry_run,
+                                  true);
 }
 
 MetaDataStoreBuilder::Result
 MetaDataStoreBuilder::update_metadata_store_(const boost::optional<yt::UUID>& from,
                                              const boost::optional<yt::UUID>& to,
                                              CheckScrubId check_scrub_id,
-                                             DryRun dry_run)
+                                             DryRun dry_run,
+                                             bool full_rebuild)
 {
     LOG_INFO(bi_->getNS() <<
              ": bringing MetaDataStore in sync with backend, requested interval (" <<
              from << ", " << to << "], check scrub ID: " << check_scrub_id <<
-             ", dry run:" << dry_run);
+             ", dry run:" << dry_run << ", full rebuild: " << full_rebuild);
 
     // This has a lot in common with the mdstore rebuilding code in
     // volumedriver::VolumeFactory - see if this can be unified.
@@ -95,6 +99,8 @@ MetaDataStoreBuilder::update_metadata_store_(const boost::optional<yt::UUID>& fr
     const MaybeScrubId md_scrub_id(mdstore_.scrub_id());
 
     Result res;
+    res.full_rebuild = full_rebuild;
+
     boost::optional<yt::UUID> start_cork(from);
 
     if (check_scrub_id == CheckScrubId::T)

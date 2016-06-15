@@ -95,7 +95,7 @@ libvolumedriver_la_SOURCES = \
 	Entry.cpp \
 	Events.pb.cc \
 	FailOverCacheAsyncBridge.cpp \
-	FailOverCacheBridgeFactory.cpp \
+	FailOverCacheClientInterface.cpp \
 	FailOverCacheConfig.cpp \
 	FailOverCacheConfigWrapper.cpp \
 	FailOverCacheMode.cpp \
@@ -104,10 +104,12 @@ libvolumedriver_la_SOURCES = \
 	FailOverCacheSyncBridge.cpp \
 	FailOverCacheTransport.cpp \
 	FilePool.cpp \
+	failovercache/Backend.cpp \
+	failovercache/BackendFactory.cpp \
 	failovercache/FailOverCacheAcceptor.cpp \
 	failovercache/FailOverCacheProtocol.cpp \
-	failovercache/FailOverCacheWriter.cpp \
-	failovercache/VolumeFailOverCacheWriterMap.cpp \
+	failovercache/FileBackend.cpp \
+	failovercache/MemoryBackend.cpp \
 	failovercache/fungilib/Buffer.cpp \
 	failovercache/fungilib/ByteArray.cpp \
 	failovercache/fungilib/CondVar.cpp \
@@ -157,6 +159,7 @@ libvolumedriver_la_SOURCES = \
 	PerformanceCounters.cpp \
 	PrefetchData.cpp \
 	PythonScrubber.cpp \
+	RelocationReaderFactory.cpp \
 	RocksDBMetaDataBackend.cpp \
 	RestartContext.cpp \
 	Restore.cpp \
@@ -167,6 +170,7 @@ libvolumedriver_la_SOURCES = \
 	SCOCacheNamespace.cpp \
 	SCO.cpp \
 	SCOFetcher.cpp \
+	SCOWrittenToBackendAction.cpp \
 	SCOPool.cpp \
 	Scrubber.cpp \
 	ScrubberAdapter.cpp \
@@ -186,7 +190,6 @@ libvolumedriver_la_SOURCES = \
 	TLogMerger.cpp \
 	TLogReader.cpp \
 	TLogReaderInterface.cpp \
-	TLogReaderUtils.cpp \
 	TLogSplitter.cpp \
 	TLogWriter.cpp \
 	TokyoCabinetMetaDataBackend.cpp \

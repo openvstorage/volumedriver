@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "ExGTest.h"
 #include "VolManagerTestSetup.h"
@@ -49,7 +50,7 @@ protected:
 
         vol_ = newVolume("volume1",
 			 ns_ptr_->ns());
-        ASSERT_TRUE(vol_);
+        ASSERT_TRUE(vol_ != nullptr);
 
         config_ = vol_->get_config();
     }
@@ -57,6 +58,7 @@ protected:
     void
     TearDown()
     {
+        vol_ = nullptr;
         ns_ptr_.reset();
         VolManagerTestSetup::TearDown();
     }
@@ -65,7 +67,7 @@ protected:
     writeLBAs(uint64_t lba,
               uint64_t count,
               uint32_t pattern,
-              Volume *vol = 0,
+              SharedVolumePtr vol = nullptr,
               int retries = 7)
     {
         bool fail = true;
@@ -102,7 +104,7 @@ protected:
     }
 
     void readLBAs(uint64_t lba, uint64_t count, uint32_t pattern,
-                  bool verify=true, Volume *vol = 0, int retries = 7)
+                  bool verify=true, SharedVolumePtr vol = nullptr, int retries = 7)
     {
         bool fail = true;
         if (vol == 0) {
@@ -190,7 +192,7 @@ protected:
 
     DECLARE_LOGGER("TestVolume");
 
-    Volume* vol_;
+    SharedVolumePtr vol_;
     std::unique_ptr<WithRandomNamespace> ns_ptr_;
     boost::optional<VolumeConfig> config_;
 };

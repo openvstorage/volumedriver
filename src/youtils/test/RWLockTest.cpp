@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "../Logging.h"
 #include "../RWLock.h"
@@ -148,6 +149,52 @@ protected:
             r.join();
         }
     }
+
+    template<typename LockType,
+             typename LockTraits = RWLockTraits<LockType>>
+    void
+    test_read_contention(LockType& rwlock)
+    {
+        unsigned num_readers = ::sysconf(_SC_NPROCESSORS_ONLN);
+        num_readers = std::min(num_readers, (unsigned)4);
+
+        num_readers = youtils::System::get_env_with_default("LOCK_THREADS",
+                                                            num_readers);
+        std::vector<boost::thread> readers;
+        readers.reserve(num_readers);
+
+        const uint64_t max =
+            youtils::System::get_env_with_default("LOCK_ITERATIONS",
+                                                  1000000ULL);
+        std::atomic<uint64_t> count(0);
+
+        youtils::wall_timer w;
+
+        for (unsigned i = 0; i < num_readers; ++i)
+        {
+            readers.emplace_back([&]{
+                    while (true)
+                    {
+                        typename LockTraits::ReadGuardType
+                            r(rwlock);
+                        if (count++ >= max)
+                        {
+                            break;
+                        }
+                    }
+                });
+        }
+
+        for (auto& r : readers)
+        {
+            r.join();
+        }
+
+        double t = w.elapsed();
+        LOG_INFO(num_readers  << " readers: " <<
+                 count << " iterations took " << t <<
+                 " -> " << (count / t) << " locks per second");
+    }
 };
 
 TEST_F(RWLockTest, basics)
@@ -212,6 +259,17 @@ TEST_F(RWLockTest, boost_contention)
 {
     boost::shared_mutex m;
     test_contention(m);
+}
+
+TEST_F(RWLockTest, fungi_read_contention)
+{
+    test_read_contention(rwLock_);
+}
+
+TEST_F(RWLockTest, boost_read_contention)
+{
+    boost::shared_mutex m;
+    test_read_contention(m);
 }
 
 }

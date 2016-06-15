@@ -55,6 +55,7 @@ libyoutils_la_SOURCES = \
 	ConfigurationReport.cpp \
 	CorbaTestSetup.cpp \
 	cpu_timer.cpp \
+	DeferredFileRemover.cpp \
 	DimensionedValue.cpp \
 	EtcdUrl.cpp \
 	EtcdReply.cpp \
@@ -90,6 +91,8 @@ libyoutils_la_SOURCES = \
 	PeriodicActionPool.cpp \
 	PythonLogging.cpp \
 	PythonBuildInfo.cpp \
+	RedisQueue.cpp \
+	RedisUrl.cpp \
 	RocksLogger.cpp \
 	RWLock.cpp \
 	ScriptFile.cpp \

@@ -1112,6 +1112,23 @@
 }
 
 {
+   omniorb sends uninitialized bytes #3
+   Memcheck:Param
+   socketcall.sendto(msg)
+   fun:send
+   fun:_ZN4omni13tcpConnection4SendEPvmmm
+   fun:_ZN4omni10giopStream9sendChunkEPNS_17giopStream_BufferE
+   fun:_ZN4omni10giopImpl1016outputMessageEndEPNS_10giopStreamE
+   fun:_ZN4omni6GIOP_C17InitialiseRequestEv
+   fun:_ZN18omniRemoteIdentity8dispatchER18omniCallDescriptor
+   fun:_ZN10omniObjRef7_invokeER18omniCallDescriptorb
+   fun:_ZN10omniObjRef12_remote_is_aEPKc
+   fun:_ZN10omniObjRef11_realNarrowEPKc
+   fun:_ZN9CosNaming13NamingContext7_narrowEPN5CORBA6ObjectE
+   ...
+}
+
+{
    malloc_info uses uninitialized value
    Memcheck:Cond
    fun:mi_arena.13171

@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "FileSystemTestBase.h"
 
@@ -179,11 +180,28 @@ public:
             new_reg(new vfs::ObjectRegistration(reg->getNS(),
                                                 id,
                                                 remote_node_id(),
-                                                vfs::ObjectTreeConfig::makeBase(),
+                                                reg->treeconfig.object_type == vfs::ObjectType::Volume ?
+                                                vfs::ObjectTreeConfig::makeBase() :
+                                                vfs::ObjectTreeConfig::makeFile(),
                                                 owner_tag_allocator(),
                                                 vfs::FailOverCacheConfigMode::Automatic));
 
         registry->TESTONLY_add_to_cache_(new_reg);
+    }
+
+    void
+    test_stale_registration(const vfs::FrontendPath& fname)
+    {
+        const auto rpath(remote_root_ / fname);
+
+        const uint64_t vsize = 10 << 20;
+        const vfs::ObjectId oid(create_file(fname, vsize));
+
+        fake_remote_registration(oid);
+
+        const std::string pattern("locally written");
+        write_to_file(fname, pattern, pattern.size(), 0);
+        check_file(fname, pattern, pattern.size(), 0);
     }
 
     void
@@ -282,11 +300,11 @@ public:
         wait_for_file(rpath);
 
         auto maybe_id(find_object(fname));
-        ASSERT_TRUE(static_cast<bool>(maybe_id));
+        ASSERT_TRUE(maybe_id != boost::none);
 
         verify_registration(*maybe_id, remote_node_id());
 
-        const uint64_t off = api::GetClusterSize() - 1;
+        const uint64_t off = 4095;
         const std::string pattern("written on the remote instance");
 
         write_to_remote_file(rpath, pattern, off);
@@ -564,7 +582,7 @@ public:
         const auto rpath(make_remote_file(fname, size));
 
         const std::string pattern1("written remotely by a node not owning the volume");
-        const uint64_t off = api::GetClusterSize() - 1;
+        const uint64_t off = 4095;
         write_to_file(fname, pattern1, pattern1.size(), off);
 
         check_remote_file(rpath, pattern1, off);
@@ -653,19 +671,21 @@ TEST_F(RemoteTest, file_read_write)
     test_read_write(false);
 }
 
-TEST_F(RemoteTest, stale_registration)
+TEST_F(RemoteTest, stale_volume_registration)
 {
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
-    const auto rpath(remote_root_ / fname);
+    test_stale_registration(vfs::FrontendPath(make_volume_name("/some-volume")));
+}
 
-    const uint64_t vsize = 10 << 20;
-    const vfs::ObjectId vname(create_file(fname, vsize));
-
-    fake_remote_registration(vname);
-
-    const std::string pattern("locally written");
-    write_to_file(fname, pattern, pattern.size(), 0);
-    check_file(fname, pattern, pattern.size(), 0);
+// Cf. OVS-4498:
+// (0) filedriver file F is owned by node N
+// (1) F is moved to node M
+// (2) node P still has a registration for F that points to N in its cache
+// (3) if P sends a request for F to N, N returns an I/O error to P instead of
+//     an "ObjectNotRunningHere" (which would result in P dropping the stale entry
+//     and retrying after fetching the registration again from arakoon)
+TEST_F(RemoteTest, stale_file_registration)
+{
+    test_stale_registration(vfs::FrontendPath("/some-file"));
 }
 
 // This was a fun one: the DirectoryEntry was cached to speed up lookups, which of course

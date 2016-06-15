@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "FileSystemTestBase.h"
 
@@ -98,7 +99,7 @@ TEST_F(VolumeTest, create_and_destroy)
         api::getVolumeList(l);
         ASSERT_EQ(1U, l.size());
         ASSERT_TRUE(vname.str() == l.front().str());
-        ASSERT_TRUE(api::getVolumePointer(l.front()) != nullptr);
+        ASSERT_NO_THROW(api::getVolumePointer(l.front()));
     }
 
     check_stat(fname, 0);
@@ -136,7 +137,7 @@ TEST_F(VolumeTest, uuid_create_and_destroy)
         api::getVolumeList(l);
         ASSERT_EQ(1U, l.size());
         ASSERT_TRUE(volume_id.str() == l.front().str());
-        ASSERT_TRUE(api::getVolumePointer(l.front()) != nullptr);
+        ASSERT_NO_THROW(api::getVolumePointer(l.front()));
     }
 
     check_stat(volume_id, 0);
@@ -275,7 +276,7 @@ TEST_F(VolumeTest, resize)
     const vfs::FrontendPath fname(make_volume_name("/volume"));
     const vfs::ObjectId vname(create_file(fname));
 
-    vd::Volume* v;
+    vd::WeakVolumePtr v;
 
     {
         LOCKVD();
@@ -289,7 +290,7 @@ TEST_F(VolumeTest, resize)
     EXPECT_EQ(0U, api::GetSize(v));
     check_stat(fname, 0);
 
-    const uint64_t csize = api::GetClusterSize();
+    const uint64_t csize = get_cluster_size(vname);
     EXPECT_EQ(0, truncate(fname, csize));
     EXPECT_EQ(csize, api::GetSize(v));
     check_stat(fname, csize);
@@ -307,7 +308,7 @@ TEST_F(VolumeTest, uuid_resize)
     const auto volume_id(create_file(root_id,
                                      make_volume_name("volume").string()));
 
-    vd::Volume* v;
+    vd::WeakVolumePtr v;
 
     {
         LOCKVD();
@@ -321,7 +322,7 @@ TEST_F(VolumeTest, uuid_resize)
     EXPECT_EQ(0U, api::GetSize(v));
     check_stat(volume_id, 0);
 
-    const uint64_t csize = api::GetClusterSize();
+    const uint64_t csize = get_cluster_size(volume_id);
     EXPECT_EQ(0, truncate(volume_id, csize));
     EXPECT_EQ(csize, api::GetSize(v));
     check_stat(volume_id, csize);
@@ -335,10 +336,10 @@ TEST_F(VolumeTest, uuid_resize)
 TEST_F(VolumeTest, read_empty_aligned)
 {
     const uint64_t vsize = 1 << 20;
-    const uint64_t csize = api::GetClusterSize();
 
     const vfs::FrontendPath fname(make_volume_name("/volume"));
     const vfs::ObjectId vname(create_file(fname, vsize));
+    const uint64_t csize = get_cluster_size(vname);
 
     const std::vector<char> ref(csize, 0);
 
@@ -370,12 +371,12 @@ TEST_F(VolumeTest, read_empty_aligned)
 TEST_F(VolumeTest, uuid_read_empty_aligned)
 {
     const uint64_t vsize = 1 << 20;
-    const uint64_t csize = api::GetClusterSize();
 
     const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
     const auto volume_id(create_file(root_id,
                                      make_volume_name("volume").string(),
                                      vsize));
+    const uint64_t csize = get_cluster_size(volume_id);
 
     const std::vector<char> ref(csize, 0);
 
@@ -407,10 +408,10 @@ TEST_F(VolumeTest, uuid_read_empty_aligned)
 TEST_F(VolumeTest, read_write_aligned)
 {
     const uint64_t vsize = 10 << 20;
-    const uint64_t csize = api::GetClusterSize();
 
     const vfs::FrontendPath fname(make_volume_name("/volume"));
     const vfs::ObjectId vname(create_file(fname, vsize));
+    const uint64_t csize = get_cluster_size(vname);
 
     const std::string pattern("Herr Bar");
     for (uint64_t i = 0; i < vsize; i += csize)
@@ -437,12 +438,13 @@ TEST_F(VolumeTest, read_write_aligned)
 TEST_F(VolumeTest, uuid_read_write_aligned)
 {
     const uint64_t vsize = 10 << 20;
-    const uint64_t csize = api::GetClusterSize();
 
     const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
     const auto volume_id(create_file(root_id,
                                      make_volume_name("volume").string(),
                                      vsize));
+
+    const uint64_t csize = get_cluster_size(volume_id);
 
     const std::string pattern("Herr Bar");
     for (uint64_t i = 0; i < vsize; i += csize)
@@ -499,10 +501,10 @@ TEST_F(VolumeTest, uuid_read_write_subcluster)
 TEST_F(VolumeTest, read_write_unaligned)
 {
     const uint64_t vsize = 1 << 20;
-    const uint64_t csize = api::GetClusterSize();
 
     const vfs::FrontendPath fname(make_volume_name("/volume"));
     const vfs::ObjectId vname(create_file(fname, vsize));
+    const uint64_t csize = get_cluster_size(vname);
 
     const std::string pattern("Ted");
     const off_t off = 3;
@@ -530,12 +532,12 @@ TEST_F(VolumeTest, read_write_unaligned)
 TEST_F(VolumeTest, uuid_read_write_unaligned)
 {
     const uint64_t vsize = 10 << 20;
-    const uint64_t csize = api::GetClusterSize();
 
     const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
     const auto volume_id(create_file(root_id,
                                      make_volume_name("volume").string(),
                                      vsize));
+    const uint64_t csize = get_cluster_size(volume_id);
 
     const std::string pattern("Ted");
     const off_t off = 3;
@@ -603,8 +605,8 @@ TEST_F(VolumeTest, clone)
     const vfs::ObjectId parent_id(create_file(parent_path, vsize));
 
     const std::string pattern("Konstantin");
-    const off_t off = 10 * api::GetClusterSize();
-    const uint64_t size = 30 * api::GetClusterSize();
+    const off_t off = 10 * get_cluster_size(parent_id);
+    const uint64_t size = 30 * get_cluster_size(parent_id);
 
     write_to_file(parent_path, pattern, size, off);
     check_file(parent_path, pattern, size, off);
@@ -646,8 +648,8 @@ TEST_F(VolumeTest, uuid_clone)
                                      vsize));
 
     const std::string pattern("Konstantin");
-    const off_t off = 10 * api::GetClusterSize();
-    const uint64_t size = 30 * api::GetClusterSize();
+    const off_t off = 10 * get_cluster_size(volume_id);
+    const uint64_t size = 30 * get_cluster_size(volume_id);
 
     write_to_file(volume_id, pattern, size, off);
     check_file(volume_id, pattern, size, off);
@@ -877,7 +879,7 @@ TEST_F(VolumeTest, uuid_clone_intermediate_dirs)
     verify_presence(clone_id);
 
     const vfs::FrontendPath vpath(clone_path_to_volume_path(clone_path));
-    const vfs::ObjectId& vpath_id(*find_object(vpath));
+    const vfs::ObjectId vpath_id(*find_object(vpath));
     check_stat(vpath_id, vsize);
 }
 
@@ -1027,8 +1029,8 @@ TEST_F(VolumeTest, rollback_volume)
     const vfs::FrontendPath volume_path(make_volume_name("/volume"));
     const uint64_t vsize = 1 << 20;
     const vfs::ObjectId vol_id(create_file(volume_path, vsize));
-    const off_t off = 10 * api::GetClusterSize();
-    const uint64_t size = 30 * api::GetClusterSize();
+    const off_t off = 10 * get_cluster_size(vol_id);
+    const uint64_t size = 30 * get_cluster_size(vol_id);
 
     const std::string patternA("Konstantin");
     write_to_file(volume_path, patternA, size, off);
@@ -1070,8 +1072,8 @@ TEST_F(VolumeTest, uuid_rollback_volume)
     const vfs::ObjectId vol_id(create_file(root_id,
                                            make_volume_name("volume").string(),
                                            vsize));
-    const off_t off = 10 * api::GetClusterSize();
-    const uint64_t size = 30 * api::GetClusterSize();
+    const off_t off = 10 * get_cluster_size(vol_id);
+    const uint64_t size = 30 * get_cluster_size(vol_id);
 
     const std::string patternA("Konstantin");
     write_to_file(vol_id, patternA, size, off);

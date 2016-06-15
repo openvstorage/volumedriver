@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "BackendConfig.h"
 #include "BackendConnectionManager.h"
@@ -30,13 +31,17 @@
 #include "Alba_Connection.h"
 
 #include <boost/iostreams/stream.hpp>
+#include <boost/thread/thread.hpp>
 
 #include <youtils/Assert.h>
 
 namespace backend
 {
 
+namespace bpt = boost::property_tree;
+namespace bio = boost::iostreams;
 namespace ip = initialized_params;
+namespace yt = youtils;
 
 void
 BackendConnectionDeleter::operator()(BackendConnectionInterface* conn)
@@ -47,21 +52,38 @@ BackendConnectionDeleter::operator()(BackendConnectionInterface* conn)
     }
 }
 
+namespace
+{
+size_t
+num_connection_pools()
+{
+    size_t n = boost::thread::hardware_concurrency();
+    return n ? n : 1;
+}
+
+}
+
 // This thing makes it effectively singleton per backend!!
-BackendConnectionManager::BackendConnectionManager(const boost::property_tree::ptree& pt,
+BackendConnectionManager::BackendConnectionManager(const bpt::ptree& pt,
                                                    const RegisterComponent registerize)
     : VolumeDriverComponent(registerize,
                             pt)
+    , connection_pools_(num_connection_pools())
     , backend_connection_pool_capacity(pt)
+    , backend_interface_retries_on_error(pt)
+    , backend_interface_retry_interval_secs(pt)
+    , backend_interface_retry_backoff_multiplier(pt)
     , config_(BackendConfig::makeBackendConfig(pt))
 {
+    VERIFY(connection_pools_.size() > 0);
+
     switch (config_->backend_type.value())
     {
     case BackendType::LOCAL:
         {
             const LocalConfig* config(dynamic_cast<const LocalConfig*>(config_.get()));
             VERIFY(config);
-            default_timeout = boost::posix_time::seconds(1);
+            default_timeout_ = boost::posix_time::seconds(1);
             return;
         }
     case BackendType::S3:
@@ -90,6 +112,15 @@ BackendConnectionManager::BackendConnectionManager(const boost::property_tree::p
 
 BackendConnectionManager::~BackendConnectionManager()
 {
+    for (auto& p : connection_pools_)
+    {
+        while (not p.connections_.empty())
+        {
+            std::unique_ptr<BackendConnectionInterface> conn(&p.connections_.front());
+            p.connections_.pop_front();
+        }
+    }
+
     switch (config_->backend_type.value())
     {
     case BackendType::LOCAL:
@@ -133,50 +164,30 @@ BackendConnectionManager::newConnection_()
     UNREACHABLE
 }
 
-void
-BackendConnectionManager::releaseConnection(BackendConnectionInterface* conn)
-{
-#define LOCK_CONNS()                            \
-    ::boost::lock_guard<lock_type> g__(lock_);
-
-    LOG_TRACE("Returning connection handle " << conn);
-    ASSERT(conn != nullptr);
-
-    LOCK_CONNS();
-
-    if (conn->healthy() and
-        connections_.size() < backend_connection_pool_capacity.value())
-    {
-        connections_.push_front(conn);
-    }
-    else
-    {
-        delete conn;
-    }
-}
-
 size_t
 BackendConnectionManager::capacity() const
 {
-    LOCK_CONNS();
     return backend_connection_pool_capacity.value();
 }
 
 size_t
 BackendConnectionManager::size() const
 {
-    LOCK_CONNS();
-    return connections_.size();
+    size_t n = 0;
+    for (const auto& p : connection_pools_)
+    {
+        boost::lock_guard<decltype(p.lock_)> g(p.lock_);
+        n += p.connections_.size();
+    }
+
+    return n;
 }
 
 BackendInterfacePtr
-BackendConnectionManager::newBackendInterface(const Namespace& nspace,
-                                              const unsigned retries)
+BackendConnectionManager::newBackendInterface(const Namespace& nspace)
 {
     return BackendInterfacePtr(new BackendInterface(nspace,
-                                                    shared_from_this(),
-                                                    default_timeout,
-                                                    retries));
+                                                    shared_from_this()));
 }
 
 std::unique_ptr<BackendSinkInterface>
@@ -217,7 +228,6 @@ BackendConnectionManager::newBackendSink(const Namespace& nspace,
     }
     UNREACHABLE
 }
-
 
 std::unique_ptr<BackendSourceInterface>
 BackendConnectionManager::newBackendSource(const Namespace& nspace,
@@ -261,7 +271,7 @@ BackendConnectionManager::getOutputStream(const Namespace& nspace,
                                           size_t bufsize)
 {
     ManagedBackendSink sink(shared_from_this(), nspace, name);
-    return std::unique_ptr<std::ostream>(new boost::iostreams::stream<ManagedBackendSink>(sink,
+    return std::unique_ptr<std::ostream>(new bio::stream<ManagedBackendSink>(sink,
                                                                              bufsize));
 }
 
@@ -271,48 +281,62 @@ BackendConnectionManager::getInputStream(const Namespace& nspace,
                                          size_t bufsize)
 {
     ManagedBackendSource source(shared_from_this(), nspace, name);
-    return std::unique_ptr<std::istream>(new boost::iostreams::stream<ManagedBackendSource>(source,
+    return std::unique_ptr<std::istream>(new bio::stream<ManagedBackendSource>(source,
                                                                                bufsize));
 }
 
 void
-BackendConnectionManager::persist(boost::property_tree::ptree& pt,
+BackendConnectionManager::persist(bpt::ptree& pt,
                                   const ReportDefault report_default) const
 {
     config_->persist_internal(pt,
                               report_default);
-    LOCK_CONNS();
-    backend_connection_pool_capacity.persist(pt,
-                                             report_default);
+
+#define P(x)                                    \
+    x.persist(pt,                               \
+              report_default)
+
+    P(backend_connection_pool_capacity);
+    P(backend_interface_retries_on_error);
+    P(backend_interface_retry_interval_secs);
+    P(backend_interface_retry_backoff_multiplier);
+
+#undef P
 }
 
 void
-BackendConnectionManager::update(const boost::property_tree::ptree& pt,
-                                 youtils::UpdateReport& report)
+BackendConnectionManager::update(const bpt::ptree& pt,
+                                 yt::UpdateReport& report)
 {
     config_->update_internal(pt, report);
 
-    LOCK_CONNS();
     const decltype(backend_connection_pool_capacity) new_cap(pt);
-    if (new_cap.value() < connections_.size())
-    {
-        int64_t diff = connections_.size() - new_cap.value();
-        VERIFY(diff > 0);
 
-        while (diff)
+    for (auto& p : connection_pools_)
+    {
+        boost::lock_guard<decltype(p.lock_)> g(p.lock_);
+        while (p.connections_.size() > new_cap.value() / connection_pools_.size())
         {
-            connections_.pop_back();
-            --diff;
+            std::unique_ptr<BackendConnectionInterface> conn(&p.connections_.front());
+            p.connections_.pop_front();
         }
     }
 
-    backend_connection_pool_capacity.update(pt,
-                                            report);
+#define U(x)                                    \
+    x.update(pt,                                \
+             report)
+
+    U(backend_connection_pool_capacity);
+    U(backend_interface_retries_on_error);
+    U(backend_interface_retry_interval_secs);
+    U(backend_interface_retry_backoff_multiplier);
+
+#undef U
 }
 
 bool
-BackendConnectionManager::checkConfig(const boost::property_tree::ptree& pt,
-                                      youtils::ConfigurationReport& rep) const
+BackendConnectionManager::checkConfig(const bpt::ptree& pt,
+                                      yt::ConfigurationReport& rep) const
 {
     return config_->checkConfig_internal(pt,
                                          rep);

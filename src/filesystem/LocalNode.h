@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef VFS_LOCAL_NODE_H_
 #define VFS_LOCAL_NODE_H_
@@ -18,6 +19,7 @@
 #include "CloneFileFlags.h"
 #include "ClusterNode.h"
 #include "ClusterNodeConfig.h"
+#include "FastPathCookie.h"
 #include "FileSystemParameters.h"
 #include "ForceRestart.h"
 #include "NodeId.h"
@@ -85,26 +87,26 @@ public:
     read(const Object& id,
          uint8_t* buf,
          size_t* size,
-         const off_t off) override;
+         const off_t off) override final;
 
     virtual void
     write(const Object& obj,
           const uint8_t* buf,
           size_t* size,
-          const off_t off) override;
+          const off_t off) override final;
 
     virtual void
-    sync(const Object& obj) override;
+    sync(const Object& obj) override final;
 
     virtual uint64_t
-    get_size(const Object& obj) override;
+    get_size(const Object& obj) override final;
 
     virtual void
     resize(const Object& obj,
-           uint64_t newsize) override;
+           uint64_t newsize) override final;
 
     virtual void
-    unlink(const Object& obj) override;
+    unlink(const Object& obj) override final;
 
     void
     stop(const Object& obj,
@@ -176,7 +178,7 @@ public:
     list_snapshots(const ObjectId& id);
 
     bool
-    is_snapshot_syncedUpTo(const ObjectId& id,
+    is_volume_synced_up_to(const ObjectId& id,
                            const volumedriver::SnapshotName& snap_id);
 
     std::vector<scrubbing::ScrubWork>
@@ -188,7 +190,8 @@ public:
     set_volume_as_template(const ObjectId& id);
 
     uint64_t
-    volume_potential(const boost::optional<volumedriver::SCOMultiplier>&,
+    volume_potential(const boost::optional<volumedriver::ClusterSize>&,
+                     const boost::optional<volumedriver::SCOMultiplier>&,
                      const boost::optional<volumedriver::TLogMultiplier>&);
 
     uint64_t
@@ -213,6 +216,27 @@ public:
 
     ScrubManager&
     scrub_manager();
+
+    FastPathCookie
+    read(const FastPathCookie&,
+         const ObjectId&,
+         uint8_t* buf,
+         size_t* size,
+         off_t off);
+
+    FastPathCookie
+    write(const FastPathCookie&,
+          const ObjectId&,
+          const uint8_t* buf,
+          size_t* size,
+          off_t off);
+
+    FastPathCookie
+    sync(const FastPathCookie&,
+         const ObjectId&);
+
+    FastPathCookie
+    fast_path_cookie(const Object&);
 
     // This isn't a VolumeDriverComponent, only part of one.
     void
@@ -271,7 +295,7 @@ private:
 
     template<typename R, typename... A>
     R
-    with_volume_pointer_(R(LocalNode::*fn)(volumedriver::Volume*,
+    with_volume_pointer_(R(LocalNode::*fn)(volumedriver::WeakVolumePtr,
                                            A... args),
                          const ObjectId& id,
                          A... args);
@@ -282,29 +306,29 @@ private:
                  A... args);
 
     void
-    read_(volumedriver::Volume* vol,
+    read_(volumedriver::WeakVolumePtr vol,
           uint8_t* buf,
           size_t* size,
           off_t off);
 
     void
-    write_(volumedriver::Volume* vol,
+    write_(volumedriver::WeakVolumePtr vol,
            const uint8_t* buf,
            size_t size,
            off_t off);
 
     void
-    sync_(volumedriver::Volume* vol);
+    sync_(volumedriver::WeakVolumePtr vol);
 
     uint64_t
-    get_size_(volumedriver::Volume* vol);
+    get_size_(volumedriver::WeakVolumePtr vol);
 
     void
-    resize_(volumedriver::Volume* vol,
+    resize_(volumedriver::WeakVolumePtr vol,
             uint64_t newsize);
 
     void
-    destroy_(volumedriver::Volume*,
+    destroy_(volumedriver::WeakVolumePtr,
              volumedriver::DeleteLocalData,
              volumedriver::RemoveVolumeCompletely,
              MaybeSyncTimeoutMilliSeconds);
@@ -346,6 +370,14 @@ private:
 
     void
     collect_scrub_garbage_(backend::Garbage);
+
+    template<typename ReturnType,
+             typename... Args>
+    ReturnType
+    convert_fdriver_exceptions_(ReturnType (filedriver::ContainerManager::*mem_fun)(const filedriver::ContainerId&,
+                                                                                    Args...),
+                                const Object&,
+                                Args...);
 };
 
 }

@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 
 #ifndef FILE_SYSTEM_TEST_SETUP_H_
@@ -194,13 +195,17 @@ protected:
 
     int
     rename(const volumedriverfs::FrontendPath& from,
-           const volumedriverfs::FrontendPath& to);
+           const volumedriverfs::FrontendPath& to,
+           volumedriverfs::FileSystem::RenameFlags =
+           volumedriverfs::FileSystem::RenameFlags::None);
 
     int
     rename(const volumedriverfs::ObjectId& from_parent_id,
            const std::string& from_name,
            const volumedriverfs::ObjectId& to_parent_id,
-           const std::string& to_name);
+           const std::string& to_name,
+           volumedriverfs::FileSystem::RenameFlags =
+           volumedriverfs::FileSystem::RenameFlags::None);
 
     int
     open(const volumedriverfs::FrontendPath& path,
@@ -224,16 +229,16 @@ protected:
           const char* buf,
           uint64_t size,
           off_t off,
-          const volumedriverfs::Handle&);
+          volumedriverfs::Handle&);
 
     int
-    write(const volumedriverfs::Handle& h,
+    write(volumedriverfs::Handle& h,
           const char *buf,
           uint64_t size,
           off_t off);
 
     int
-    fsync(const volumedriverfs::Handle&,
+    fsync(volumedriverfs::Handle&,
           bool datasync);
 
     int
@@ -241,10 +246,10 @@ protected:
          char* buf,
          uint64_t size,
          off_t off,
-         const volumedriverfs::Handle&);
+         volumedriverfs::Handle&);
 
     int
-    read(const volumedriverfs::Handle& h,
+    read(volumedriverfs::Handle& h,
          char *buf,
          uint64_t size,
          off_t off);
@@ -552,6 +557,9 @@ protected:
         EXPECT_EQ(ts[0].tv_sec, st.st_atime);
         EXPECT_EQ(ts[1].tv_sec, st.st_mtime);
     }
+
+    size_t
+    get_cluster_size(const volumedriverfs::ObjectId&) const;
 
     static boost::filesystem::path binary_path_;
 

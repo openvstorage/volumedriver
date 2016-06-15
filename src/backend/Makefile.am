@@ -40,7 +40,6 @@ libbackend_la_SOURCES = \
 	BackendTracePoints_tp.c \
 	BackendParameters.cpp \
 	BackendTestSetup.cpp \
-	BackendWrapper.cpp \
 	GarbageCollector.cpp \
 	LocalConfig.cpp \
 	Local_Connection.cpp \

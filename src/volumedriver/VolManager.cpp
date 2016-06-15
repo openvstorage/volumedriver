@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "BackendTasks.h"
 #include "Entry.h"
@@ -123,7 +124,9 @@ try
           , lock_store_factory_(std::make_unique<LockStoreFactory>(pt,
                                                                    RegisterComponent::T,
                                                                    backend_conn_manager_))
-          , ClusterCache_(pt)
+          , ClusterCache_(pt,
+                          ClusterSize(decltype(default_cluster_size)(pt).value()),
+                          RegisterComponent::T)
           , mds_manager_(std::make_shared<metadata_server::Manager>(pt,
                                                                     RegisterComponent::T,
                                                                     backend_conn_manager_))
@@ -135,21 +138,26 @@ try
           , dtl_check_interval_in_seconds(pt)
           , read_cache_default_behaviour(pt)
           , read_cache_default_mode(pt)
+          , sco_written_to_backend_action(pt)
           , clean_interval(pt)
           , sap_persist_interval(pt)
           , required_tlog_freespace(pt)
           , required_meta_freespace(pt)
           , max_volume_size(pt)
-          , foc_throttle_usecs(pt)
-          , foc_queue_depth(pt)
-          , foc_write_trigger(pt)
+          , dtl_throttle_usecs(pt)
+          , dtl_queue_depth(pt)
+          , dtl_write_trigger(pt)
           , number_of_scos_in_tlog(pt)
           , non_disposable_scos_factor(pt)
+          , default_cluster_size(pt)
           , metadata_cache_capacity(pt)
           , debug_metadata_path(pt)
           , arakoon_metadata_sequence_size(pt)
           , allow_inconsistent_partial_reads(pt)
+          , volume_nullio(pt)
 {
+    THROW_UNLESS((default_cluster_size.value() % VolumeConfig::default_lba_size()) == 0);
+
     periodicActions_.push_back(new yt::PeriodicAction("SCOCacheCleaner",
                                                       [this]
                                                       {
@@ -390,13 +398,15 @@ VolManager::~VolManager()
          it != volMap_.end(); ++it)
     {
         LOG_INFO("removing volume " << it->first);
-        Volume* vol = it->second;
+        SharedVolumePtr vol = it->second;
 
         vol->destroy(DeleteLocalData::F,
                      RemoveVolumeCompletely::F,
                      ForceVolumeDeletion::F);
-        delete vol;
     }
+
+    volMap_.clear();
+
     LOG_INFO("Exiting volumedriver destructor");
 
 }
@@ -503,13 +513,15 @@ VolManager::getSCOCacheCapacityWithoutThrottling()
 }
 
 uint64_t
-VolManager::volumePotentialSCOCache(const SCOMultiplier s,
-                                    const boost::optional<TLogMultiplier>& t)
+VolManager::volumePotentialSCOCache(const ClusterSize cluster_size,
+                                    const SCOMultiplier sco_mult,
+                                    const boost::optional<TLogMultiplier>& tlog_mult)
 {
     const uint64_t current_volume_usage = getCurrentVolumesTLogRequirements();
     const uint64_t current_scocache_capacity = getSCOCacheCapacityWithoutThrottling();
-    const uint64_t sco_size = VolumeConfig::default_cluster_size() * s.t;
-    const uint64_t tlog_multiplier = t ? t->t : number_of_scos_in_tlog.value();
+    const uint64_t sco_size = cluster_size * sco_mult;
+    const uint64_t tlog_multiplier =
+        tlog_mult ? *tlog_mult : number_of_scos_in_tlog.value();
     const uint64_t volume_potential =
         std::max(current_scocache_capacity - current_volume_usage,
                  (uint64_t)0) /
@@ -518,8 +530,10 @@ VolManager::volumePotentialSCOCache(const SCOMultiplier s,
     // LOG_INFO("current volume usage: " <<   requiredCacheSize
     //          << ", current_scocache_capacity: " << current_scocache_capacity);
     LOG_INFO("We have enough room for an additional " << volume_potential <<
-             " volumes with SCO multiplier " << s <<
-             " (= SCO size " << sco_size << "), TLog multiplier " << tlog_multiplier);
+             " volumes with cluster size " << cluster_size <<
+             ", SCO multiplier " << sco_mult <<
+             " (= SCO size " << sco_size <<
+             "), TLog multiplier " << tlog_multiplier);
 
     return volume_potential;
 }
@@ -615,7 +629,8 @@ VolManager::volumePotentialOpenFileDescriptors()
 }
 
 uint64_t
-VolManager::volumePotential(const SCOMultiplier s,
+VolManager::volumePotential(const ClusterSize c,
+                            const SCOMultiplier s,
                             const boost::optional<TLogMultiplier>& t)
 {
     const uint64_t fdpot = volumePotentialOpenFileDescriptors();
@@ -623,7 +638,8 @@ VolManager::volumePotential(const SCOMultiplier s,
     LOCK_MANAGER();
 
     return std::min(fdpot,
-                    volumePotentialSCOCache(s,
+                    volumePotentialSCOCache(c,
+                                            s,
                                             t));
 }
 
@@ -631,24 +647,25 @@ uint64_t
 VolManager::volumePotential(const be::Namespace& nspace)
 {
     auto cfg(get_config_from_backend<VolumeConfig>(nspace));
-    return volumePotential(cfg->sco_mult_,
+    return volumePotential(ClusterSize(cfg->getClusterSize()),
+                           cfg->sco_mult_,
                            cfg->tlog_mult_);
 }
 
 void
-VolManager::checkSCOAndTLogMultipliers(const SCOMultiplier sco_mult_old,
+VolManager::checkSCOAndTLogMultipliers(const ClusterSize csize,
+                                       const SCOMultiplier sco_mult_old,
                                        const SCOMultiplier sco_mult_new,
                                        const boost::optional<TLogMultiplier>& tlog_mult_old,
                                        const boost::optional<TLogMultiplier>& tlog_mult_new)
 {
-    auto fun([&](const SCOMultiplier s,
+    auto fun([&](const SCOMultiplier sm,
                  const boost::optional<TLogMultiplier>& t) -> uint64_t
              {
-                 return
-                     s.t *
-                     (t ? t->t : number_of_scos_in_tlog.value()) *
-                     VolumeConfig::default_cluster_size();
+                 const uint64_t tm = t ? *t : number_of_scos_in_tlog.value();
+                 return sm * tm * csize;
              });
+
     const uint64_t sco_cache_size_old = fun(sco_mult_old,
                                             tlog_mult_old);
     const uint64_t sco_cache_size_new = fun(sco_mult_new,
@@ -657,15 +674,19 @@ VolManager::checkSCOAndTLogMultipliers(const SCOMultiplier sco_mult_old,
 
     if (diff > 0)
     {
-        const uint64_t sco_cache_capacity = getSCOCacheCapacityWithoutThrottling();
-        const uint64_t sco_cache_usage = getCurrentVolumesTLogRequirements();
+        const int64_t sco_cache_capacity = getSCOCacheCapacityWithoutThrottling();
+        const int64_t sco_cache_usage = getCurrentVolumesTLogRequirements();
 
         if (sco_cache_capacity - sco_cache_usage < diff)
         {
             LOG_ERROR("Cannot change params " <<
                       sco_mult_old << " -> " << sco_mult_new << ", " <<
                       tlog_mult_old << " -> " << tlog_mult_new <<
-                      " - insufficient SCOCache space");
+                      " - insufficient SCO cache space: capacity " <<
+                      sco_cache_capacity <<
+                      ", current limit " << sco_cache_size_old <<
+                      ", want " << sco_cache_size_new <<
+                      ", diff " << diff);
             throw InsufficientResourcesException("SCOCache would be overcommitted");
         }
     }
@@ -699,7 +720,8 @@ VolManager::ensureResourceLimits(const VolumeConfig& config)
     // uint64_t availableCacheSize = getSCOCacheCapacityWithoutThrottling();
 
 
-    if(volumePotentialSCOCache(config.sco_mult_,
+    if(volumePotentialSCOCache(ClusterSize(config.getClusterSize()),
+                               config.sco_mult_,
                                config.tlog_mult_) == 0)
     {
         LOG_ERROR("SCO cache size is not large enough to create volume");
@@ -757,9 +779,9 @@ VolManager::setNamespaceRestarting_(const Namespace& ns, const VolumeConfig& con
 }
 
 template<typename V>
-V*
-VolManager::with_restart_map_and_unlocked_mgmt_(const std::function<V* (const Namespace& ns,
-                                                                        const VolumeConfig& cfg)>& fun,
+V
+VolManager::with_restart_map_and_unlocked_mgmt_(const std::function<V(const Namespace& ns,
+                                                                      const VolumeConfig& cfg)>& fun,
                                                 const Namespace& ns,
                                                 const VolumeConfig& cfg)
 {
@@ -778,13 +800,13 @@ VolManager::with_restart_map_and_unlocked_mgmt_(const std::function<V* (const Na
     return fun(ns, cfg);
 }
 
-Volume*
-VolManager::with_restart_map_and_unlocked_mgmt_vol_(const std::function<Volume*(const Namespace& ns,
-                                                                                const VolumeConfig& cfg)>& fun,
+SharedVolumePtr
+VolManager::with_restart_map_and_unlocked_mgmt_vol_(const std::function<SharedVolumePtr(const Namespace& ns,
+                                                                                        const VolumeConfig& cfg)>& fun,
                                                     const Namespace& ns,
                                                     const VolumeConfig& cfg)
 {
-    Volume* vol = with_restart_map_and_unlocked_mgmt_<Volume>(fun, ns, cfg);
+    SharedVolumePtr vol = with_restart_map_and_unlocked_mgmt_<SharedVolumePtr>(fun, ns, cfg);
 
     mgmtMutex_.assertLocked();
 
@@ -795,7 +817,7 @@ VolManager::with_restart_map_and_unlocked_mgmt_vol_(const std::function<Volume*(
     return vol;
 }
 
-Volume*
+SharedVolumePtr
 VolManager::createClone(const CloneVolumeConfigParameters& clone_params,
                         const PrefetchVolumeData prefetch,
                         const CreateNamespace create_namespace)
@@ -898,11 +920,11 @@ VolManager::createClone(const CloneVolumeConfigParameters& clone_params,
     auto fun([&params,
               &prefetch,
               &parent_snap_uuid](const Namespace& /* ns */,
-                                 const VolumeConfig& cfg) -> Volume*
+                                 const VolumeConfig& cfg) -> SharedVolumePtr
              {
                  return VolumeFactory::createClone(cfg,
                                                    prefetch,
-                                                   parent_snap_uuid).release();
+                                                   parent_snap_uuid);
 
                  LOG_NOTIFY("Volume Clone complete, VolumeId: " << params.get_volume_id());
              });
@@ -975,7 +997,7 @@ VolManager::createNewWriteOnlyVolume(const WriteOnlyVolumeConfigParameters& para
     return vol;
 }
 
-Volume*
+SharedVolumePtr
 VolManager::createNewVolume(const VanillaVolumeConfigParameters& params,
                             const CreateNamespace create_namespace)
 {
@@ -1000,7 +1022,7 @@ VolManager::createNewVolume(const VanillaVolumeConfigParameters& params,
     const VolumeConfig cfg(params);
     ensureResourceLimits(cfg);
 
-    Volume* vol = VolumeFactory::createNewVolume(cfg).release();
+    SharedVolumePtr vol = VolumeFactory::createNewVolume(cfg);
     ASSERT(vol);
 
     volMap_[vol->getName()] = vol;
@@ -1039,14 +1061,14 @@ VolManager::restoreSnapshot(const VolumeId& volid,
 
     MAIN_EVENT("Restoring Snapshot, VolumeID: " << volid << ", SnapshotName: " << snapid);
 
-    Volume* vol = findVolume_(volid);
+    SharedVolumePtr vol = findVolume_(volid);
     const VolumeConfig cfg(vol->get_config());
     const be::Namespace nspace(vol->getNamespace());
 
     volMap_.erase(volid);
 
     auto fun([&](const be::Namespace&,
-                 const VolumeConfig&) -> Volume*
+                 const VolumeConfig&) -> SharedVolumePtr
              {
                  vol->restoreSnapshot(snapid);
                  return vol;
@@ -1060,10 +1082,10 @@ VolManager::restoreSnapshot(const VolumeId& volid,
     }
     BOOST_SCOPE_EXIT_END;
 
-    with_restart_map_and_unlocked_mgmt_<Volume>(fun, nspace, cfg);
+    with_restart_map_and_unlocked_mgmt_<SharedVolumePtr>(fun, nspace, cfg);
 }
 
-Volume*
+SharedVolumePtr
 VolManager::local_restart(const Namespace& ns,
                           const OwnerTag owner_tag,
                           const FallBackToBackendRestart fallback,
@@ -1086,12 +1108,12 @@ VolManager::local_restart(const Namespace& ns,
     auto fun([fallback,
               ignoreFOCIfUnreachable,
               owner_tag](const Namespace&,
-                         const VolumeConfig& cfg) -> Volume*
+                         const VolumeConfig& cfg) -> SharedVolumePtr
              {
                  return VolumeFactory::local_restart(cfg,
                                                      owner_tag,
                                                      fallback,
-                                                     ignoreFOCIfUnreachable).release();
+                                                     ignoreFOCIfUnreachable);
              });
 
     return with_restart_map_and_unlocked_mgmt_vol_(fun,
@@ -1104,14 +1126,14 @@ VolManager::setAsTemplate(const VolumeId volid)
 {
     mgmtMutex_.assertLocked();
     MAIN_EVENT("Set Volume As Template, volume ID " << volid);
-    Volume* vol = findVolume_(volid);
+    SharedVolumePtr vol = findVolume_(volid);
     {
         UNLOCK_MANAGER();
         vol->setAsTemplate();
     }
 }
 
-Volume*
+SharedVolumePtr
 VolManager::backend_restart(const Namespace& ns,
                             const OwnerTag owner_tag,
                             const PrefetchVolumeData prefetch,
@@ -1147,12 +1169,12 @@ VolManager::backend_restart(const Namespace& ns,
 
     auto fun([prefetch,
               ignore_foc,
-              owner_tag](const Namespace&, const VolumeConfig& cfg) -> Volume*
+              owner_tag](const Namespace&, const VolumeConfig& cfg) -> SharedVolumePtr
              {
                  return VolumeFactory::backend_restart(cfg,
                                                        owner_tag,
                                                        prefetch,
-                                                       ignore_foc).release();
+                                                       ignore_foc);
              });
 
     return with_restart_map_and_unlocked_mgmt_vol_(fun, ns, *config);
@@ -1189,7 +1211,7 @@ VolManager::restartWriteOnlyVolume(const Namespace& ns,
                                                                          owner_tag).release();
              });
 
-    return with_restart_map_and_unlocked_mgmt_<WriteOnlyVolume>(fun, ns, *volume_config);
+    return with_restart_map_and_unlocked_mgmt_<WriteOnlyVolume*>(fun, ns, *volume_config);
 }
 
 void
@@ -1201,7 +1223,7 @@ VolManager::destroyVolume(const VolumeId& name,
 {
     mgmtMutex_.assertLocked();
 
-    Volume* v = findVolume_(name);
+    SharedVolumePtr v = findVolume_(name);
     destroyVolume(v,
                   delete_local_data,
                   remove_volume_completely,
@@ -1210,7 +1232,7 @@ VolManager::destroyVolume(const VolumeId& name,
 }
 
 void
-VolManager::destroyVolume(Volume *v,
+VolManager::destroyVolume(SharedVolumePtr v,
                           const DeleteLocalData delete_local_data,
                           const RemoveVolumeCompletely remove_volume_completely,
                           const DeleteVolumeNamespace delete_volume_namespace,
@@ -1234,8 +1256,20 @@ VolManager::destroyVolume(Volume *v,
 
     volMap_.erase(v->getName());
 
+    // We only trigger deletion here when the previous stuff did not throw.
+    // http://jira.openvstorage.com/browse/OVS-827
+    bool proceed = false;
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         if (not proceed)
+                                         {
+                                             volMap_.insert(std::make_pair(v->getName(),
+                                                                           v));
+                                         }
+                                     }));
+
     auto fun([&](const be::Namespace&,
-                 const VolumeConfig&) -> Volume*
+                 const VolumeConfig&) -> SharedVolumePtr
              {
                  v->destroy(delete_local_data,
                             remove_volume_completely,
@@ -1243,24 +1277,20 @@ VolManager::destroyVolume(Volume *v,
                  return v;
              });
 
-    with_restart_map_and_unlocked_mgmt_<Volume>(fun,
-                                                v->getNamespace(),
-                                                v->get_config());
+    with_restart_map_and_unlocked_mgmt_<SharedVolumePtr>(fun,
+                                                         v->getNamespace(),
+                                                         v->get_config());
+
+    proceed = true;
+
     if(T(delete_volume_namespace))
     {
         try
         {
             createBackendInterface(v->getNamespace())->deleteNamespace();
         }
-        catch(std::exception& e)
-        {
-            LOG_ERROR("Could not delete namespace: " << v->getNamespace());
-        }
-
+        CATCH_STD_ALL_LOG_IGNORE("Could not delete namespace: " << v->getNamespace());
     }
-    // We only trigger deletion here when the previous stuff did not throw.
-    // http://jira.openvstorage.com/browse/OVS-827
-    delete v;
 }
 
 void
@@ -1279,7 +1309,7 @@ VolManager::removeLocalVolumeData(const be::Namespace& nspace)
 {
     ASSERT_LOCKABLE_LOCKED(mgmtMutex_);
 
-    Volume* vol = findVolumeFromNamespace(nspace);
+    SharedVolumePtr vol = findVolumeFromNamespace(nspace);
     if (vol != nullptr)
     {
         LOG_ERROR("Volume " << vol->getName() << " backed by namespace " <<
@@ -1336,7 +1366,7 @@ VolManager::getVolumeList(std::list<VolumeId> &vlist) const
     }
 }
 
-Volume*
+SharedVolumePtr
 VolManager::findVolume_noThrow_(const VolumeId& id)  const
 {
     mgmtMutex_.assertLocked();
@@ -1349,7 +1379,7 @@ VolManager::findVolume_noThrow_(const VolumeId& id)  const
     return it->second;
 }
 
-Volume*
+SharedVolumePtr
 VolManager::findVolumeFromNamespace(const Namespace& ns) const
 {
     for(VolumeMap::const_iterator it = volMap_.begin(); it != volMap_.end(); ++it)
@@ -1359,16 +1389,16 @@ VolManager::findVolumeFromNamespace(const Namespace& ns) const
             return it->second;
         }
     }
-    return 0;
+    return nullptr;
 }
 
-const Volume*
+SharedVolumePtr
 VolManager::findVolumeConst_(const VolumeId& id,
                              const std::string& message) const
 {
     mgmtMutex_.assertLocked();
 
-    const Volume *vol = findVolume_noThrow_(id);
+    SharedVolumePtr vol = findVolume_noThrow_(id);
     if (vol == nullptr)
     {
         throw VolumeDoesNotExistException((message + " volume does not exist").c_str(),
@@ -1379,14 +1409,13 @@ VolManager::findVolumeConst_(const VolumeId& id,
     return vol;
 }
 
-
-Volume*
+SharedVolumePtr
 VolManager::findVolume_(const VolumeId& id,
                         const std::string& message)
 {
     mgmtMutex_.assertLocked();
 
-    Volume *vol = findVolume_noThrow_(id);
+    SharedVolumePtr vol = findVolume_noThrow_(id);
     if (vol == nullptr)
     {
         throw VolumeDoesNotExistException((message + " volume does not exist").c_str(),
@@ -1397,11 +1426,11 @@ VolManager::findVolume_(const VolumeId& id,
     return vol;
 }
 
-const Volume*
+SharedVolumePtr
 VolManager::findVolumeConst_(const Namespace& ns) const
 {
     mgmtMutex_.assertLocked();
-    Volume* vol =  findVolumeFromNamespace(ns);
+    SharedVolumePtr vol = findVolumeFromNamespace(ns);
     if(vol)
     {
         return vol;
@@ -1411,11 +1440,11 @@ VolManager::findVolumeConst_(const Namespace& ns) const
                                       ENOENT);
 }
 
-Volume*
+SharedVolumePtr
 VolManager::findVolume_(const Namespace& ns)
 {
     mgmtMutex_.assertLocked();
-    Volume* vol =  findVolumeFromNamespace(ns);
+    SharedVolumePtr vol = findVolumeFromNamespace(ns);
     if(vol)
     {
         return vol;
@@ -1431,7 +1460,7 @@ VolManager::backend_thread_pool()
     return &backend_thread_pool_;
 }
 
-fungi::Mutex &
+fungi::Mutex&
 VolManager::getLock_()
 {
     return mgmtMutex_;
@@ -1466,12 +1495,12 @@ private:
 uint64_t
 VolManager::getQueueCount(const VolumeId& volName)
 {
-    Volume* v = findVolume_(volName);
+    SharedVolumePtr v = findVolume_(volName);
 
     try
     {
         ThreadPoolCounter<backend_task::WriteSCO> counter;
-        backend_thread_pool_.mapper(v,
+        backend_thread_pool_.mapper(v.get(),
                                     counter);
         return counter.getResult();
     }
@@ -1486,7 +1515,7 @@ uint64_t
 VolManager::getQueueSize(const VolumeId& volName)
 {
     //returns an estimate of data
-    Volume* v = findVolume_(volName);
+    SharedVolumePtr v = findVolume_(volName);
     return v->getSCOSize() * getQueueCount(volName);
 }
 
@@ -1742,13 +1771,14 @@ VolManager::update(const boost::property_tree::ptree& pt,
     tlog_path.update(pt, report);
     metadata_path.update(pt, report);
     open_scos_per_volume.update(pt, report);
-    foc_throttle_usecs.update(pt, report);
-    foc_queue_depth.update(pt, report);
-    foc_write_trigger.update(pt, report);
+    dtl_throttle_usecs.update(pt, report);
+    dtl_queue_depth.update(pt, report);
+    dtl_write_trigger.update(pt, report);
 
     freespace_check_interval.update(pt, report);
     read_cache_default_behaviour.update(pt, report);
     read_cache_default_mode.update(pt, report);
+    sco_written_to_backend_action.update(pt, report);
     clean_interval.update(pt, report);
     sap_persist_interval.update(pt, report);
     required_meta_freespace.update(pt, report);
@@ -1756,10 +1786,12 @@ VolManager::update(const boost::property_tree::ptree& pt,
     max_volume_size.update(pt, report);
     number_of_scos_in_tlog.update(pt, report);
     non_disposable_scos_factor.update(pt, report);
+    default_cluster_size.update(pt, report);
     metadata_cache_capacity.update(pt, report);
     debug_metadata_path.update(pt, report);
     arakoon_metadata_sequence_size.update(pt, report);
     allow_inconsistent_partial_reads.update(pt, report);
+    volume_nullio.update(pt, report);
 }
 
 void
@@ -1772,21 +1804,24 @@ VolManager::persist(boost::property_tree::ptree& pt,
     freespace_check_interval.persist(pt, reportDefault);
     read_cache_default_behaviour.persist(pt, reportDefault);
     read_cache_default_mode.persist(pt, reportDefault);
+    sco_written_to_backend_action.persist(pt, reportDefault);
     clean_interval.persist(pt, reportDefault);
     sap_persist_interval.persist(pt, reportDefault);
     required_tlog_freespace.persist(pt, reportDefault);
     required_meta_freespace.persist(pt, reportDefault);
     max_volume_size.persist(pt, reportDefault);
-    foc_throttle_usecs.persist(pt, reportDefault);
-    foc_queue_depth.persist(pt, reportDefault);
-    foc_write_trigger.persist(pt, reportDefault);
+    dtl_throttle_usecs.persist(pt, reportDefault);
+    dtl_queue_depth.persist(pt, reportDefault);
+    dtl_write_trigger.persist(pt, reportDefault);
 
     number_of_scos_in_tlog.persist(pt, reportDefault);
     non_disposable_scos_factor.persist(pt, reportDefault);
+    default_cluster_size.persist(pt, reportDefault);
     metadata_cache_capacity.persist(pt, reportDefault);
     debug_metadata_path.persist(pt, reportDefault);
     arakoon_metadata_sequence_size.persist(pt, reportDefault);
     allow_inconsistent_partial_reads.persist(pt, reportDefault);
+    volume_nullio.persist(pt, reportDefault);
 }
 
 std::shared_ptr<metadata_server::Manager>
@@ -1813,6 +1848,12 @@ VolManager::effective_metadata_cache_capacity(const VolumeConfig& cfg) const
     return cfg.metadata_cache_capacity_ ?
         *cfg.metadata_cache_capacity_ :
         metadata_cache_capacity.value();
+}
+
+SCOWrittenToBackendAction
+VolManager::get_sco_written_to_backend_action() const
+{
+    return sco_written_to_backend_action.value();
 }
 
 }

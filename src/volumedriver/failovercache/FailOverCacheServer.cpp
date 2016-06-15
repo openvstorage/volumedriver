@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "FailOverCacheServer.h"
 
@@ -35,8 +36,8 @@ FailOverCacheServer::FailOverCacheServer(const constructor_type& c)
 
     desc_.add_options()
         ("path",
-         po::value<fs::path>(&path_)->required(),
-         "path of the failovercache server")
+         po::value<fs::path>(&path_),
+         "directory for the disk cache, omitting it selects memory caching")
         ("address",
          po::value<std::string>(&addr_),
          "address to bind the server to")
@@ -73,22 +74,31 @@ FailOverCacheServer::parse_command_line_arguments()
 void
 FailOverCacheServer::setup_logging()
 {
-    MainHelper::setup_logging();
+    MainHelper::setup_logging("dtl_server");
 }
 
 int
 FailOverCacheServer::run()
 {
-    if(not fs::exists(path_))
+    boost::optional<fs::path> path;
+    if (not path_.empty())
     {
-        throw fungi::IOException("failovercache directory does not exist",
-                                 path_.string().c_str());
+        path = path_;
     }
 
-    if(not fs::is_directory(path_))
+    if (path)
     {
-        throw fungi::IOException("failovercache path is not a directory",
-                                 path_.string().c_str());
+        if(not fs::exists(*path))
+        {
+            throw fungi::IOException("failovercache directory does not exist",
+                                     path->string().c_str());
+        }
+
+        if(not fs::is_directory(*path))
+        {
+            throw fungi::IOException("failovercache path is not a directory",
+                                     path->string().c_str());
+        }
     }
 
     if (vm_.count("daemonize"))
@@ -106,12 +116,12 @@ FailOverCacheServer::run()
         addr = addr_;
     }
 
-    LOG_INFO( "starting, server path: " << path_ <<
+    LOG_INFO( "starting, server path: " << path <<
               ", address to bind to: " << addr <<
               ", port: " << port_ <<
               ", transport type: " << transport_);
 
-    acceptor.reset(new failovercache::FailOverCacheAcceptor(path_));
+    acceptor = std::make_unique<failovercache::FailOverCacheAcceptor>(path);
 
     LOG_INFO("Running the SocketServer");
 
@@ -151,23 +161,7 @@ FailOverCacheServer::stop_()
         LOG_INFO("No socket server");
     }
 
-    if(acceptor)
-    {
-        const fs::path cleanup_path(acceptor->root_);
-        acceptor.reset();
-        sleep(3);
-
-        fs::directory_iterator end;
-        for(fs::directory_iterator it(cleanup_path); it != end; ++it)
-        {
-            LOG_INFO("Cleaning up " << it->path());
-            fs::remove_all(it->path());
-        }
-    }
-    else
-    {
-        LOG_INFO("No acceptor, stopping without cleanup");
-    }
+    acceptor = nullptr;
 }
 
 youtils::Logger::logger_type*

@@ -1,17 +1,19 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
+#include "FileBackend.h"
 #include "FailOverCacheAcceptor.h"
 #include "FailOverCacheProtocol.h"
 
@@ -26,73 +28,22 @@ namespace yt = youtils;
 using namespace volumedriver;
 using namespace fungi;
 
-static const std::string safetyfile("/.failovercache");
+#define LOCK()                                  \
+    boost::lock_guard<decltype(mutex_)> lg_(mutex_)
 
-namespace
-{
-
-const fs::path&
-maybe_make_dir(const fs::path& p)
-{
-    fs::create_directories(p);
-    return p;
-}
-
-}
-
-FailOverCacheAcceptor::FailOverCacheAcceptor(const fs::path& path)
-    : volCacheMap_(path)
-    , m("FailOverCacheAcceptor")
-    , root_(maybe_make_dir(path))
-{
-    const fs::path f(root_ / safetyfile);
-
-    if (not fs::exists(f) and
-        not fs::is_empty(root_))
-    {
-        LOG_ERROR("Cowardly refusing to use " << root_ <<
-                  " for failovercache because it is not empty");
-        throw fungi::IOException("Not starting failover in nonempty dir");
-    }
-
-    lock_fd_ = std::make_unique<yt::FileDescriptor>(f,
-                                                    yt::FDMode::Write,
-                                                    CreateIfNecessary::T);
-
-    file_lock_ = std::unique_lock<yt::FileDescriptor>(*lock_fd_,
-                                                      std::try_to_lock);
-
-    if (not file_lock_)
-    {
-        LOG_ERROR("Failed to lock " << lock_fd_->path());
-        throw fungi::IOException("Not starting failovercache without lock");
-    }
-
-    for (fs::directory_iterator it(root_); it != fs::directory_iterator(); ++it)
-    {
-        if (it->path() != lock_fd_->path())
-        {
-            LOG_INFO("Removing " << it->path());
-            fs::remove_all(it->path());
-        }
-        else
-        {
-            LOG_INFO("Not removing " << it->path());
-        }
-    }
-}
+FailOverCacheAcceptor::FailOverCacheAcceptor(const boost::optional<fs::path>& path)
+    : factory_(path)
+{}
 
 FailOverCacheAcceptor::~FailOverCacheAcceptor()
 {
     int count = 0;
     {
-        ScopedLock l(m);
+        LOCK();
 
-        for(iter i = protocols.begin();
-            i != protocols.end();
-            ++i)
+        for (auto& p : protocols)
         {
-            (*i)->stop();
+            p->stop();
         }
         count = protocols.size();
     }
@@ -101,20 +52,92 @@ FailOverCacheAcceptor::~FailOverCacheAcceptor()
         // Wait for the threads to clean up the protocols
         sleep(1);
         {
-            ScopedLock l(m);
+            LOCK();
             count = protocols.size();
         }
     }
 }
 
 Protocol*
-FailOverCacheAcceptor::createProtocol(fungi::Socket *s,
+FailOverCacheAcceptor::createProtocol(std::unique_ptr<fungi::Socket> s,
                                       fungi::SocketServer& parentServer)
 {
-    ScopedLock l(m);
-    protocols.push_back(new FailOverCacheProtocol(s, parentServer,*this));
+    LOCK();
+    protocols.push_back(new FailOverCacheProtocol(std::move(s),
+                                                  parentServer,
+                                                  *this));
     return protocols.back();
 }
+
+void
+FailOverCacheAcceptor::remove(Backend& w)
+{
+    LOCK();
+
+    const auto res(map_.erase(w.getNamespace()));
+    if (res != 1)
+    {
+        LOG_WARN("Request to remove namespace " << w.getNamespace() <<
+                 " which is not registered here");
+    }
+}
+
+FailOverCacheAcceptor::BackendPtr
+FailOverCacheAcceptor::lookup(const CommandData<Register>& reg)
+{
+    LOCK();
+
+    BackendPtr w;
+
+    auto it = map_.find(reg.ns_);
+    if (it != map_.end())
+    {
+        if (it->second->cluster_size() == reg.clustersize_)
+        {
+            w = it->second;
+            w->setFirstCommandMustBeGetEntries();
+        }
+        else
+        {
+            LOG_ERROR(reg.ns_ << ": refusing registration with cluster size " <<
+                      reg.clustersize_ << " - we're already using " <<
+                      it->second->cluster_size());
+        }
+    }
+    else
+    {
+        w = factory_.make_backend(reg.ns_,
+                                 reg.clustersize_);
+
+        auto res(map_.emplace(std::make_pair(reg.ns_,
+                                             w)));
+        VERIFY(res.second);
+    }
+
+    if (w)
+    {
+        w->register_();
+    }
+
+    return w;
+}
+
+FailOverCacheAcceptor::BackendPtr
+FailOverCacheAcceptor::find_backend_(const std::string& ns)
+{
+    LOCK();
+
+    auto it = map_.find(ns);
+    if (it != map_.end())
+    {
+        return it->second;
+    }
+    else
+    {
+        return nullptr;
+    }
+}
+
 }
 
 // Local Variables: **

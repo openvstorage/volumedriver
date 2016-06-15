@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include <boost/foreach.hpp>
 #include <boost/scope_exit.hpp>
@@ -25,16 +26,10 @@ class ThrottlingTest
 {
 public:
     ThrottlingTest()
-        : VolManagerTestSetup("ThrottlingTest",
-                              UseFawltyMDStores::F,
-                              UseFawltyTLogStores::F,
-                              UseFawltyDataStores::F,
-                              4, // num threads
-                              "1GiB", // scocache mp1 size
-                              "1GiB", // sccache mp2 size
-                              "100MiB", // scocache trigger gap
-                              "150MiB", // scocache backoff gap
-                              3600) // scocache cleanup interval (seconds)
+        : VolManagerTestSetup(VolManagerTestSetupParameters("ThrottlingTest")
+                              .sco_cache_trigger_gap("100MiB")
+                              .sco_cache_backoff_gap("150MiB")
+                              .sco_cache_cleanup_interval(3600))
     {}
 
     virtual void
@@ -46,14 +41,14 @@ public:
     }
 
     uint64_t
-    timedWrite(Volume* v,
+    timedWrite(SharedVolumePtr v,
                uint64_t lba,
                size_t size,
                const std::string& pattern)
     {
         youtils::wall_timer i;
         //        i.start();
-        writeToVolume(v,
+        writeToVolume(*v,
                       lba,
                       size,
                       pattern);
@@ -64,7 +59,7 @@ public:
     template<typename T>
     void
     runTest(T throttle,
-            Volume* v,
+            SharedVolumePtr v,
             unsigned num_clusters,
             unsigned expected_delay)
     {
@@ -116,7 +111,7 @@ TEST_P(ThrottlingTest, mountPointChoking)
     auto ns_ptr = make_random_namespace();
     const backend::Namespace& ns = ns_ptr->ns();
 
-    Volume* v = newVolume(name,
+    SharedVolumePtr v = newVolume(name,
                           ns);
 
     for (unsigned i = 1; i < 10; ++i)
@@ -135,7 +130,7 @@ TEST_P(ThrottlingTest, namespaceChoking)
     const std::string name("volume");
     auto ns_ptr = make_random_namespace();
     const backend::Namespace& ns = ns_ptr->ns();
-    Volume* v = newVolume(name,
+    SharedVolumePtr v = newVolume(name,
                           ns);
 
     for (unsigned i = 1; i < 10; ++i)

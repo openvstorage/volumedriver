@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef SNAPSHOT_PERSITOR_H
 #define SNAPSHOT_PERSITOR_H
@@ -22,6 +23,7 @@
 #include "SnapshotName.h"
 #include "TLog.h"
 #include "Types.h"
+#include "ClusterLocationAndHash.h"
 
 #include <memory>
 
@@ -375,9 +377,9 @@ private:
     void
     load(Archive& ar, const unsigned int version)
     {
-        if (version < 3)
+        if (version < 4)
         {
-            THROW_SERIALIZATION_ERROR(version, 3, 3);
+            THROW_SERIALIZATION_ERROR(version, 4, 4);
         }
 
         ar & boost::serialization::make_nvp("parent",
@@ -389,6 +391,14 @@ private:
         ar & boost::serialization::make_nvp("scrub_id",
                                             scrub_id_);
 
+        bool use_hash = true;
+        if (version >= 4)
+        {
+            ar & boost::serialization::make_nvp("use_hash",
+                                                use_hash);
+        }
+        VERIFY(ClusterLocationAndHash::use_hash() == use_hash);
+
         verifySanity_();
     }
 
@@ -396,7 +406,7 @@ private:
     void
     save(Archive& ar, const unsigned int version) const
     {
-        if(version == 3)
+        if(version == 4)
         {
             ar & boost::serialization::make_nvp("parent",
                                                 parent_);
@@ -406,10 +416,14 @@ private:
 
             ar & boost::serialization::make_nvp("scrub_id",
                                                 scrub_id_);
+
+            bool use_hash = ClusterLocationAndHash::use_hash();
+            ar & boost::serialization::make_nvp("use_hash",
+                                                use_hash);
         }
         else
         {
-            THROW_SERIALIZATION_ERROR(version, 3, 3);
+            THROW_SERIALIZATION_ERROR(version, 4, 4);
         }
     }
 
@@ -419,7 +433,7 @@ private:
 
 }
 
-BOOST_CLASS_VERSION(volumedriver::SnapshotPersistor, 3);
+BOOST_CLASS_VERSION(volumedriver::SnapshotPersistor, 4);
 
 #endif // SNAPSHOT_PERSITOR_H
 

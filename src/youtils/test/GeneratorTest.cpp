@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "../TestBase.h"
 #include "../Generator.h"
@@ -138,6 +139,39 @@ TEST_F(ThreadedGeneratorTest, testThrowingProducer)
             g.toList();
         },
         std::exception);
+}
+
+struct PrefetchGeneratorTest
+    : public TestBase
+{};
+
+TEST_F(PrefetchGeneratorTest, empty)
+{
+    PrefetchGenerator<int> g(std::make_unique<IntGen>(0));
+    EXPECT_TRUE(g.finished());
+    EXPECT_EQ(0, g.size());
+}
+
+TEST_F(PrefetchGeneratorTest, not_empty)
+{
+    const int count = 2048;
+    PrefetchGenerator<int> g(std::make_unique<IntGen>(count));
+
+    EXPECT_FALSE(g.finished());
+    EXPECT_EQ(static_cast<size_t>(count),
+              g.size());
+
+    int exp = 0;
+    while (not g.finished())
+    {
+        EXPECT_EQ(exp,
+                  g.current());
+        g.next();
+        exp += 1;
+    }
+
+    EXPECT_EQ(exp,
+              count);
 }
 
 }

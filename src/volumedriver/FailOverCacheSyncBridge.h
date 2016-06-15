@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef VD_FAILOVER_CACHE_SYNCBRIDGE_H
 #define VD_FAILOVER_CACHE_SYNCBRIDGE_H
@@ -20,10 +21,6 @@
 #include "FailOverCacheProxy.h"
 #include "FailOverCacheClientInterface.h"
 #include "SCO.h"
-
-#include "failovercache/fungilib/CondVar.h"
-#include "failovercache/fungilib/Runnable.h"
-#include "failovercache/fungilib/Thread.h"
 
 #include <youtils/FileDescriptor.h>
 #include <youtils/IOException.h>
@@ -39,7 +36,7 @@ class FailOverCacheSyncBridge
     friend class FailOverCacheTester;
 
 public:
-    FailOverCacheSyncBridge();
+    explicit FailOverCacheSyncBridge(const size_t max_entries);
 
     FailOverCacheSyncBridge(const FailOverCacheSyncBridge&) = delete;
 
@@ -49,7 +46,7 @@ public:
     ~FailOverCacheSyncBridge() = default;
 
     virtual void
-    initialize(Volume* vol) override;
+    initialize(DegradedFun) override;
 
     virtual const char*
     getName() const override;
@@ -67,10 +64,10 @@ public:
     backup() override;
 
     virtual void
-    newCache(std::unique_ptr<FailOverCacheProxy> cache) override;
+    newCache(std::unique_ptr<FailOverCacheProxy>) override;
 
     virtual void
-    setRequestTimeout(const uint32_t seconds) override;
+    setRequestTimeout(const boost::chrono::seconds) override;
 
     virtual void
     removeUpTo(const SCO& sconame) override;
@@ -88,19 +85,16 @@ public:
     virtual FailOverCacheMode
     mode() const override;
 
-    void
-    handleException(std::exception& e,
-                    const char* where);
-
 private:
     DECLARE_LOGGER("FailOverCacheSyncBridge");
 
+    boost::mutex mutex_;
     std::unique_ptr<FailOverCacheProxy> cache_;
-    fungi::Mutex mutex_;
+    DegradedFun degraded_fun_;
 
-    ClusterSize cluster_size_;
-    ClusterMultiplier cluster_multiplier_;
-    Volume* vol_ = { nullptr };
+    void
+    handleException(std::exception& e,
+                    const char* where);
 };
 
 }

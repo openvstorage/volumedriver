@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef PERFORMANCE_COUNTERS_H
 #define PERFORMANCE_COUNTERS_H
@@ -64,6 +65,40 @@ public:
         }
 
         return *this;
+    }
+
+    PerformanceCounter&
+    operator+=(const PerformanceCounter& other)
+    {
+        std::lock_guard<decltype(lock_)> g(lock_);
+        if (this == &other)
+        {
+            events_ *= 2;
+            sum_ *= 2;
+            sqsum_ *= 2;
+            return *this;
+        }
+        else
+        {
+            std::lock_guard<decltype(lock_)> h(other.lock_);
+            events_ += other.events_;
+            sum_ += other.sum_;
+            sqsum_ += other.sqsum_;
+            min_ = std::min<T>(min_,
+                               other.min_);
+            max_ = std::max<T>(max_,
+                               other.max_);
+
+            return *this;
+        }
+    }
+
+    friend PerformanceCounter
+    operator+(PerformanceCounter lhs,
+              const PerformanceCounter& rhs)
+    {
+        lhs += rhs;
+        return lhs;
     }
 
     void
@@ -248,6 +283,36 @@ struct PerformanceCounters
             EQ(sync_request_usecs);
 
 #undef EQ
+    }
+
+    PerformanceCounters&
+    operator+=(const PerformanceCounters& other)
+    {
+#define ADD(x)                                  \
+        x += other.x
+
+        ADD(write_request_size);
+        ADD(write_request_usecs);
+        ADD(unaligned_write_request_size);
+        ADD(backend_write_request_usecs);
+        ADD(backend_write_request_size);
+        ADD(read_request_size);
+        ADD(read_request_usecs);
+        ADD(unaligned_read_request_size);
+        ADD(backend_read_request_size);
+        ADD(backend_read_request_usecs);
+        ADD(sync_request_usecs);
+
+        return *this;
+#undef ADD
+    }
+
+    friend PerformanceCounters
+    operator+(PerformanceCounters lhs,
+              const PerformanceCounters& rhs)
+    {
+        lhs += rhs;
+        return lhs;
     }
 
     void

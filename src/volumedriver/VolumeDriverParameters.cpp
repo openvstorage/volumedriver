@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "LockStoreFactory.h"
 #include "VolumeDriverParameters.h"
@@ -29,7 +30,7 @@ const char threadpool_component_name[] = "threadpool_component";
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(num_threads,
                                       threadpool_component_name,
                                       "backend_threads",
-                                      "Number of threads writting SCOs to the backend",
+                                      "Number of threads writing SCOs to the backend",
                                       ShowDocumentation::T,
                                       4);
 
@@ -54,23 +55,23 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(open_scos_per_volume,
                                       ShowDocumentation::T,
                                       32);
 
-DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(foc_throttle_usecs,
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(dtl_throttle_usecs,
                                       volmanager_component_name ,
-                                      "foc_retry_usecs",
+                                      "dtl_retry_usecs",
                                       "Timeout for retrying writes to the DTL",
                                       ShowDocumentation::T,
                                       1000);
 
-DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(foc_queue_depth,
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(dtl_queue_depth,
                                       volmanager_component_name,
-                                      "foc_queue_depth",
+                                      "dtl_queue_depth",
                                       "Size of the queue of entries to be sent to the DTL",
                                       ShowDocumentation::T,
                                       1024);
 
-DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(foc_write_trigger,
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(dtl_write_trigger,
                                       volmanager_component_name,
-                                      "foc_write_trigger",
+                                      "dtl_write_trigger",
                                       "Trigger to start writing entries in the foc queue to the backend",
                                       ShowDocumentation::T,
                                       8);
@@ -110,6 +111,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(read_cache_default_mode,
                                       "Default read cache mode, should be ContentBased or LocationBased",
                                       ShowDocumentation::T,
                                       volumedriver::ClusterCacheMode::ContentBased);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(sco_written_to_backend_action,
+                                      volmanager_component_name,
+                                      "sco_written_to_backend_action",
+                                      "Default SCO cache behaviour (SetDisposable, SetDisposableAndPurgeFromPageCache, PurgeFromSCOCache)",
+                                      ShowDocumentation::T,
+                                      volumedriver::SCOWrittenToBackendAction::SetDisposable);
 
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(required_tlog_freespace,
                                       volmanager_component_name,
@@ -160,6 +168,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(non_disposable_scos_factor,
                                       ShowDocumentation::T,
                                       1.5);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(default_cluster_size,
+                                      volmanager_component_name,
+                                      "default_cluster_size",
+                                      "size of a cluster in bytes",
+                                      ShowDocumentation::T,
+                                      4096U);
+
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(metadata_cache_capacity,
                                       volmanager_component_name,
                                       "metadata_cache_capacity",
@@ -172,7 +187,7 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(debug_metadata_path,
                                       "no_python_name",
                                       "place to store evidence when a volume is halted.",
                                       ShowDocumentation::T,
-                                      "/opt/qbase3/var/lib/volumedriver/evidence"s);
+                                      "/opt/OpenvStorage/var/lib/volumedriver/evidence"s);
 
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(arakoon_metadata_sequence_size,
                                       volmanager_component_name,
@@ -180,6 +195,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(arakoon_metadata_sequence_size,
                                       "Size of Arakoon sequences used to send metadata pages to Arakoon",
                                       ShowDocumentation::T,
                                       10);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(volume_nullio,
+                                      volmanager_component_name,
+                                      "volume_nullio",
+                                      "discard any read/write/sync requests - for performance testing",
+                                      ShowDocumentation::F,
+                                      false);
 
 const char scocache_component_name[] = "scocache";
 

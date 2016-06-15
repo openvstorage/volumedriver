@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "FailOverCacheStreamers.h"
 #include "VolumeConfig.h"
@@ -20,7 +21,9 @@
 
 namespace
 {
-DECLARE_LOGGER("FailOverCacheProtocol");
+
+DECLARE_LOGGER("FailOverCacheStreamers");
+
 }
 
 namespace volumedriver
@@ -35,7 +38,7 @@ checkStreamOK(fungi::IOBaseStream& stream,
     stream >> res;
     if(res != volumedriver::Ok)
     {
-        LOG_ERROR("FailOverCache Protocol Error: *Not* Ok returned in " << ex);
+        LOG_ERROR("Protocol Error: *Not* Ok returned in " << ex);
         throw fungi::IOException(ex.c_str());
     }
     return stream;
@@ -44,7 +47,6 @@ checkStreamOK(fungi::IOBaseStream& stream,
 fungi::IOBaseStream&
 operator<<(fungi::IOBaseStream& stream, const CommandData<Register>& data)
 {
-
     stream << fungi::IOBaseStream::cork;
     OUT_ENUM(stream, Register);
     stream << data.ns_;
@@ -53,8 +55,7 @@ operator<<(fungi::IOBaseStream& stream, const CommandData<Register>& data)
     return checkStreamOK(stream, "Register");
 }
 
-
- fungi::IOBaseStream&
+fungi::IOBaseStream&
 operator>>(fungi::IOBaseStream& stream, CommandData<Register>& data)
 {
     stream >> data.ns_;
@@ -62,15 +63,20 @@ operator>>(fungi::IOBaseStream& stream, CommandData<Register>& data)
     return stream;
 }
 
-
 fungi::IOBaseStream&
 operator<<(fungi::IOBaseStream& stream, const CommandData<AddEntries>& data)
 {
+    if (not data.entries_.empty())
+    {
+        VERIFY(data.entries_.front().cli_.sco() == data.entries_.back().cli_.sco());
+    }
+
     bool isRDMA = stream.isRdma();
     stream << fungi::IOBaseStream::cork;
     OUT_ENUM(stream, AddEntries);
     const size_t wsize = data.entries_.size();
     stream << wsize;
+
     if (isRDMA) // make small but finished packets with RDMA
     {
         stream << fungi::IOBaseStream::uncork;
@@ -100,28 +106,52 @@ operator<<(fungi::IOBaseStream& stream, const CommandData<AddEntries>& data)
 fungi::IOBaseStream&
 operator>>(fungi::IOBaseStream& stream, CommandData<AddEntries>& data)
 {
-    uint32_t cluster_size = static_cast<uint32_t>(VolumeConfig::default_cluster_size());
+    size_t count = 0;
+    stream >> count;
 
-    size_t size;
-    stream >> size;
-    data.entries_.reserve(size);
+    data.entries_.reserve(count);
 
-    size_t capacity = cluster_size * size;
-    data.buf_.reserve(capacity);
-    uint8_t* ptr = data.buf_.data();
+    uint64_t cluster_size = 0;
+    uint8_t* ptr = nullptr;
 
-    for(size_t i = 0; i < size; ++i)
+    for(size_t i = 0; i < count; ++i)
     {
         ClusterLocation cli;
         stream >> cli;
+
         uint64_t lba;
         stream >> lba;
-        int64_t bal; // byte array length
-        stream >> bal;
-        VERIFY(static_cast<uint32_t>(bal) == cluster_size);
-        stream.readIntoByteArray(ptr, cluster_size);
-        data.entries_.emplace_back(cli, lba, ptr, cluster_size);
+
+        int64_t sz;
+        stream >> sz;
+        VERIFY(sz != 0);
+
+        if (ptr == nullptr)
+        {
+            VERIFY(data.buf_ == nullptr);
+
+            cluster_size = sz;
+            data.buf_ = std::make_unique<uint8_t[]>(cluster_size * count);
+            ptr = data.buf_.get();
+        }
+        else
+        {
+            VERIFY(static_cast<int64_t>(cluster_size) == sz);
+            VERIFY(data.buf_ != nullptr);
+        }
+
+        stream.readIntoByteArray(ptr,
+                                 cluster_size);
+        data.entries_.emplace_back(cli,
+                                   lba,
+                                   ptr,
+                                   cluster_size);
         ptr += cluster_size;
+    }
+
+    if (not data.entries_.empty())
+    {
+        VERIFY(data.entries_.front().cli_.sco() == data.entries_.back().cli_.sco());
     }
 
     return stream;
@@ -135,7 +165,6 @@ operator<<(fungi::IOBaseStream& stream, const CommandData<Flush>& /*data*/)
     stream << fungi::IOBaseStream::uncork;
     return checkStreamOK(stream,"Flush");
 }
-
 
 fungi::IOBaseStream&
 operator>>(fungi::IOBaseStream& stream, CommandData<Flush>& /*data*/)

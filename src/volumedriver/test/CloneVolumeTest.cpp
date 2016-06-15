@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include <iostream>
 #include <fstream>
@@ -42,7 +43,7 @@ public:
 
 TEST_P(CloneVolumeTest, requireParentSnapshotOnNormalClone)
 {
-    Volume* v = 0;
+    SharedVolumePtr v = 0;
     auto ns1_ptr = make_random_namespace();
 
     const backend::Namespace& ns1 = ns1_ptr->ns();
@@ -50,10 +51,10 @@ TEST_P(CloneVolumeTest, requireParentSnapshotOnNormalClone)
 
     v = newVolume(VolumeId("volume1"),
                   ns1);
-    ASSERT_TRUE(v);
+    ASSERT_TRUE(v != nullptr);
 
     v->createSnapshot(SnapshotName("snap1"));
-    waitForThisBackendWrite(v);
+    waitForThisBackendWrite(*v);
     VolumeId c1ID("clone1");
     auto ns2_ptr = make_random_namespace();
 
@@ -68,7 +69,7 @@ TEST_P(CloneVolumeTest, requireParentSnapshotOnNormalClone)
 
 TEST_P(CloneVolumeTest, test1)
 {
-    Volume* v = 0;
+    SharedVolumePtr v = 0;
     auto ns1_ptr = make_random_namespace();
 
     const backend::Namespace& ns1 = ns1_ptr->ns();
@@ -77,58 +78,55 @@ TEST_P(CloneVolumeTest, test1)
 
     v = newVolume(VolumeId("volume1"),
                   ns1);
-    ASSERT_TRUE(v);
-    writeToVolume(v,
+    ASSERT_TRUE(v != nullptr);
+    writeToVolume(*v,
                   0,
                   4096,
                   "a");
 
-    v->createSnapshot(SnapshotName("snap1"));
-    checkCurrentBackendSize(v);
-    waitForThisBackendWrite(v);
+    const SnapshotName snap1("snap1");
+    v->createSnapshot(snap1);
+    checkCurrentBackendSize(*v);
+    waitForThisBackendWrite(*v);
 
-    Volume* c1 = 0;
+    SharedVolumePtr c1 = 0;
     VolumeId c1ID("clone1");
     auto ns2_ptr = make_random_namespace();
 
     const backend::Namespace& ns2 = ns2_ptr->ns();
 
-
     c1 = createClone(c1ID,
                      ns2,
                      ns1,
-                     "snap1");
-    checkCurrentBackendSize(c1);
-    writeToVolume(c1,
+                     snap1);
+    checkCurrentBackendSize(*c1);
+    writeToVolume(*c1,
                   4096,
                   4096,
                   "x");
 
-    c1->createSnapshot(SnapshotName("snap2"));
+    const SnapshotName snap2("snap2");
+    c1->createSnapshot(snap2);
 
-    waitForThisBackendWrite(c1);
-    writeToVolume(c1,
+    waitForThisBackendWrite(*c1);
+    writeToVolume(*c1,
                   4096,
                   4096,
                   "b");
 
-    writeToVolume(c1,
+    writeToVolume(*c1,
                   0,
                   4096,
                   "c");
-    checkCurrentBackendSize(c1);
+    checkCurrentBackendSize(*c1);
 
-    waitForThisBackendWrite(c1);
+    waitForThisBackendWrite(*c1);
 
+    c1->restoreSnapshot(snap2);
 
-    c1->restoreSnapshot(SnapshotName("snap2"));
-
-    checkVolume(c1, 0, 4096, "a");
-    checkVolume(c1, 4096, 4096, "x");
-    checkCurrentBackendSize(c1);
-
-
-
+    checkVolume(*c1, 0, 4096, "a");
+    checkVolume(*c1, 4096, 4096, "x");
+    checkCurrentBackendSize(*c1);
 }
 
 INSTANTIATE_TEST(CloneVolumeTest);

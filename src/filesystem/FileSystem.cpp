@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "FileSystem.h"
 #include "FileSystemEvents.h"
@@ -157,6 +158,7 @@ FileSystem::FileSystem(const bpt::ptree& pt,
     , fs_dtl_port(pt)
     , fs_dtl_mode(pt)
     , fs_enable_shm_interface(pt)
+    , fs_enable_network_interface(pt)
     , registry_(std::make_shared<Registry>(pt))
     , router_(pt,
               std::static_pointer_cast<yt::LockedArakoon>(registry_),
@@ -170,6 +172,8 @@ FileSystem::FileSystem(const bpt::ptree& pt,
                fs_cache_dentries.value() ?
                UseCache::T :
                UseCache::F)
+    , stats_collector_(pt,
+                    registerizle)
     , xmlrpc_svc_(router_.node_config().host,
                   router_.node_config().xmlrpc_port)
 {
@@ -256,6 +260,7 @@ FileSystem::update(const bpt::ptree& pt,
     U(fs_dtl_port);
     U(fs_dtl_mode);
     U(fs_enable_shm_interface);
+    U(fs_enable_network_interface);
     U(ip::PARAMETER_TYPE(fs_virtual_disk_format)(vdisk_format_->name()));
     U(ip::PARAMETER_TYPE(fs_file_event_rules)(file_event_rules_));
 #undef U
@@ -284,6 +289,7 @@ FileSystem::persist(bpt::ptree& pt,
     P(fs_dtl_host);
     P(fs_dtl_port);
     P(fs_enable_shm_interface);
+    P(fs_enable_network_interface);
 
     P(ip::PARAMETER_TYPE(fs_virtual_disk_format)(vdisk_format_->name()));
     P(ip::PARAMETER_TYPE(fs_file_event_rules)(file_event_rules_));
@@ -968,9 +974,18 @@ FileSystem::rmdir(const ObjectId& id)
 
 void
 FileSystem::rename(const FrontendPath& from,
-                   const FrontendPath& to)
+                   const FrontendPath& to,
+                   RenameFlags flags)
 {
-    LOG_TRACE(from << " -> " << to);
+    LOG_TRACE(from << " -> " << to << ", flags " << std::hex << flags);
+
+    if (flags != RenameFlags::None)
+    {
+        TODO("AR: support rename flags");
+
+        LOG_N_THROW(EPERM,
+                    "We don't support rename flags " << std::hex << flags << " (yet?)");
+    }
 
     DirectoryEntryPtr f(mdstore_.find_throw(from));
 
@@ -994,9 +1009,18 @@ void
 FileSystem::rename(const ObjectId& from_parent_id,
                    const std::string& from,
                    const ObjectId& to_parent_id,
-                   const std::string& to)
+                   const std::string& to,
+                   RenameFlags flags)
 {
-    LOG_TRACE(from << " -> " << to);
+    LOG_TRACE(from << " -> " << to << ", flags " << std::hex << flags);
+
+    if (flags != RenameFlags::None)
+    {
+        TODO("AR: support rename flags");
+
+        LOG_N_THROW(EPERM,
+                    "We don't support rename flags " << std::hex << flags << " (yet?)");
+    }
 
     FrontendPath from_path(mdstore_.find_path(from_parent_id));
     from_path /= from;
@@ -1106,11 +1130,11 @@ void
 FileSystem::release(Handle::Ptr h)
 {
     VERIFY(h);
-    LOG_TRACE("Handle " << h.get() << ", path " << h->path);
+    LOG_TRACE("Handle " << h.get() << ", path " << h->path());
 }
 
 void
-FileSystem::read(const Handle& h,
+FileSystem::read(Handle& h,
                  size_t& size,
                  char* buf,
                  off_t off,
@@ -1118,7 +1142,7 @@ FileSystem::read(const Handle& h,
 {
     tracepoint(openvstorage_filesystem,
                object_read_start,
-               h.dentry->object_id().str().c_str(),
+               h.dentry()->object_id().str().c_str(),
                off,
                size);
 
@@ -1126,13 +1150,13 @@ FileSystem::read(const Handle& h,
                                      {
                                          tracepoint(openvstorage_filesystem,
                                                     object_read_end,
-                                                    h.dentry->object_id().str().c_str(),
+                                                    h.dentry()->object_id().str().c_str(),
                                                     off,
                                                     size,
                                                     std::uncaught_exception());
                                      }));
 
-    LOG_TRACE("size " << size << ", off " << off << ", path " << h.path);
+    LOG_TRACE("size " << size << ", off " << off << ", path " << h.path());
 
     if (fs_nullio.value())
     {
@@ -1141,10 +1165,11 @@ FileSystem::read(const Handle& h,
     else
     {
         size_t rsize = size;
-        router_.read(h.dentry->object_id(),
-                     reinterpret_cast<uint8_t*>(buf),
-                     rsize,
-                     off);
+        h.update_cookie(router_.read(h.cookie(),
+                                     h.dentry()->object_id(),
+                                     reinterpret_cast<uint8_t*>(buf),
+                                     rsize,
+                                     off));
 
         eof = rsize < size;
         size = rsize;
@@ -1153,7 +1178,7 @@ FileSystem::read(const Handle& h,
 
 void
 FileSystem::read(const FrontendPath& path,
-                 const Handle& h,
+                 Handle& h,
                  size_t& size,
                  char* buf,
                  off_t off)
@@ -1161,11 +1186,15 @@ FileSystem::read(const FrontendPath& path,
     LOG_TRACE(path << ": size " << size << ", off " << off);
 
     bool eof = false;
-    read(h, size, buf, off, eof);
+    read(h,
+         size,
+         buf,
+         off,
+         eof);
 }
 
 void
-FileSystem::write(const Handle& h,
+FileSystem::write( Handle& h,
                   size_t& size,
                   const char* buf,
                   off_t off,
@@ -1173,7 +1202,7 @@ FileSystem::write(const Handle& h,
 {
     tracepoint(openvstorage_filesystem,
                object_write_start,
-               h.dentry->object_id().str().c_str(),
+               h.dentry()->object_id().str().c_str(),
                off,
                size,
                sync);
@@ -1182,44 +1211,46 @@ FileSystem::write(const Handle& h,
                                      {
                                          tracepoint(openvstorage_filesystem,
                                                     object_write_end,
-                                                    h.dentry->object_id().str().c_str(),
+                                                    h.dentry()->object_id().str().c_str(),
                                                     off,
                                                     size,
                                                     std::uncaught_exception());
                                      }));
 
     LOG_TRACE("size " << size << ", off " << off <<
-              ", handle " << &h << ", path " << h.path << ", sync " << sync);
+              ", handle " << &h << ", path " << h.path() << ", sync " << sync);
 
     if (not fs_nullio.value())
     {
-        router_.write(h.dentry->object_id(),
-                      reinterpret_cast<const uint8_t*>(buf),
-                      size,
-                      off);
+        h.update_cookie(router_.write(h.cookie(),
+                                      h.dentry()->object_id(),
+                                      reinterpret_cast<const uint8_t*>(buf),
+                                      size,
+                                      off));
 
         if (sync and not fs_ignore_sync.value())
         {
-            router_.sync(h.dentry->object_id());
+            h.update_cookie(router_.sync(h.cookie(),
+                                         h.dentry()->object_id()));
         }
         else
         {
             sync = false;
         }
 
-        if (not is_volume(h.dentry))
+        if (not is_volume(h.dentry()))
         {
             // do that before the optional sync?
             maybe_publish_file_event_(FileSystemCall::Write,
                                       &FileSystemEvents::file_write,
-                                      h.path);
+                                      h.path());
         }
     }
 }
 
 void
 FileSystem::write(const FrontendPath& path,
-                  const Handle& h,
+                  Handle& h,
                   size_t& size,
                   const char* buf,
                   off_t off)
@@ -1235,32 +1266,34 @@ FileSystem::write(const FrontendPath& path,
 }
 
 void
-FileSystem::fsync(const Handle& h, bool datasync)
+FileSystem::fsync(Handle& h,
+                  bool datasync)
 {
     tracepoint(openvstorage_filesystem,
                object_sync_start,
-               h.dentry->object_id().str().c_str(),
+               h.dentry()->object_id().str().c_str(),
                datasync);
 
     auto on_exit(yt::make_scope_exit([&]
                                      {
                                          tracepoint(openvstorage_filesystem,
                                                     object_sync_end,
-                                                    h.dentry->object_id().str().c_str(),
+                                                    h.dentry()->object_id().str().c_str(),
                                                     std::uncaught_exception());
                                      }));
 
-    LOG_TRACE("handle " << &h << ", path " << h.path);
+    LOG_TRACE("handle " << &h << ", path " << h.path());
 
     if (not fs_nullio.value())
     {
-        router_.sync(h.dentry->object_id());
+        h.update_cookie(router_.sync(h.cookie(),
+                                     h.dentry()->object_id()));
     }
 }
 
 void
 FileSystem::fsync(const FrontendPath& path,
-                  const Handle& h,
+                  Handle& h,
                   bool datasync)
 {
     LOG_TRACE(path << ": datasync " << datasync);

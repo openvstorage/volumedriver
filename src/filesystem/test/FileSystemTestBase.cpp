@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "FileSystemTestBase.h"
 
@@ -511,29 +512,35 @@ FileSystemTestBase::getattr(const vfs::ObjectId& id,
 
 int
 FileSystemTestBase::rename(const vfs::FrontendPath& from,
-                           const vfs::FrontendPath& to)
+                           const vfs::FrontendPath& to,
+                           vfs::FileSystem::RenameFlags flags)
 {
-    return vfs::FuseInterface::convert_exceptions<decltype(to)>(&vfs::FileSystem::rename,
-                                                                *fs_,
-                                                                from,
-                                                                to);
+    return vfs::FuseInterface::convert_exceptions<decltype(to),
+                                                  decltype(flags)>(&vfs::FileSystem::rename,
+                                                                   *fs_,
+                                                                   from,
+                                                                   to,
+                                                                   flags);
 }
 
 int
 FileSystemTestBase::rename(const vfs::ObjectId& from_parent_id,
                            const std::string& from_name,
                            const vfs::ObjectId& to_parent_id,
-                           const std::string& to_name)
+                           const std::string& to_name,
+                           vfs::FileSystem::RenameFlags flags)
 {
     return fs_convert_exceptions<const vfs::ObjectId&,
                                  const std::string&,
                                  const vfs::ObjectId&,
-                                 const std::string&>(*fs_,
-                                                     &vfs::FileSystem::rename,
-                                                     from_parent_id,
-                                                     from_name,
-                                                     to_parent_id,
-                                                     to_name);
+                                 const std::string&,
+                                 decltype(flags)>(*fs_,
+                                                  &vfs::FileSystem::rename,
+                                                  from_parent_id,
+                                                  from_name,
+                                                  to_parent_id,
+                                                  to_name,
+                                                  flags);
 }
 
 int
@@ -586,9 +593,9 @@ FileSystemTestBase::write(const vfs::FrontendPath& path,
                           const char* buf,
                           uint64_t size,
                           off_t off,
-                          const vfs::Handle& h)
+                          vfs::Handle& h)
 {
-    int ret = vfs::FuseInterface::convert_exceptions<const vfs::Handle&,
+    int ret = vfs::FuseInterface::convert_exceptions<vfs::Handle&,
                                                      size_t&,
                                                      decltype(buf),
                                                      decltype(off)>(&vfs::FileSystem::write,
@@ -602,13 +609,13 @@ FileSystemTestBase::write(const vfs::FrontendPath& path,
 }
 
 int
-FileSystemTestBase::write(const vfs::Handle& h,
+FileSystemTestBase::write(vfs::Handle& h,
                           const char* buf,
                           uint64_t size,
                           off_t off)
 {
     bool sync = false;
-    int ret = fs_convert_exceptions<const vfs::Handle&,
+    int ret = fs_convert_exceptions<vfs::Handle&,
                                     size_t&,
                                     decltype(buf),
                                     decltype(off),
@@ -623,10 +630,10 @@ FileSystemTestBase::write(const vfs::Handle& h,
 }
 
 int
-FileSystemTestBase::fsync(const volumedriverfs::Handle& h,
+FileSystemTestBase::fsync(volumedriverfs::Handle& h,
                           bool datasync)
 {
-    return fs_convert_exceptions<const vfs::Handle&,
+    return fs_convert_exceptions<vfs::Handle&,
                                  bool>(*fs_,
                                        &vfs::FileSystem::fsync,
                                        h,
@@ -638,9 +645,9 @@ FileSystemTestBase::read(const vfs::FrontendPath& path,
                          char* buf,
                          uint64_t size,
                          off_t off,
-                         const vfs::Handle& h)
+                         vfs::Handle& h)
 {
-    int ret = vfs::FuseInterface::convert_exceptions<const vfs::Handle&,
+    int ret = vfs::FuseInterface::convert_exceptions<vfs::Handle&,
                                                      size_t&,
                                                      decltype(buf),
                                                      decltype(off)>(&vfs::FileSystem::read,
@@ -655,13 +662,13 @@ FileSystemTestBase::read(const vfs::FrontendPath& path,
 }
 
 int
-FileSystemTestBase::read(const vfs::Handle& h,
+FileSystemTestBase::read(vfs::Handle& h,
                          char *buf,
                          uint64_t size,
                          off_t off)
 {
     bool eof;
-    int ret = fs_convert_exceptions<const vfs::Handle&,
+    int ret = fs_convert_exceptions<vfs::Handle&,
                                     size_t&,
                                     decltype(buf),
                                     decltype(off),
@@ -830,7 +837,7 @@ FileSystemTestBase::mount_remote()
     PARG(mount_dir(pfx));
     CARG("--loglevel");
     CARG("info");
-    CARG("--logfile");
+    CARG("--logsink");
     PARG(pfx / "volumedriverfs-remote.log");
 
 #undef CARG
@@ -1172,6 +1179,14 @@ FileSystemTestBase::set_lock_reaper_interval(uint64_t seconds)
 
     fs_->object_router().update(pt, urep);
     EXPECT_EQ(1U, urep.update_size()) << "fix yer test";
+}
+
+size_t
+FileSystemTestBase::get_cluster_size(const vfs::ObjectId& oid) const
+{
+    LOCKVD();
+    vd::WeakVolumePtr v = api::getVolumePointer(vd::VolumeId(oid.str()));
+    return api::GetClusterSize(v);
 }
 
 }

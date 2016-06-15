@@ -1,16 +1,23 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
+
+#include "CachedSCO.h"
+#include "OpenSCO.h"
+#include "SCOCache.h"
+#include "SCOCacheMountPoint.h"
+#include "SCOCacheNamespace.h"
 
 #include <errno.h>
 #include <sys/types.h>
@@ -20,34 +27,29 @@
 
 #include <youtils/IOException.h>
 
-#include "CachedSCO.h"
-#include "SCOCacheMountPoint.h"
-#include "SCOCacheNamespace.h"
-#include "SCOCache.h"
-#include "OpenSCO.h"
-#include <boost/interprocess/detail/atomic.hpp>
 namespace volumedriver
 {
 
-namespace bid = boost::interprocess::ipcdetail;
+namespace yt = youtils;
 
 void
 intrusive_ptr_add_ref(CachedSCO* sco)
 {
-    bid::atomic_inc32(&sco->refcnt_);
+    sco->refcnt_++;
 }
 
 void
 intrusive_ptr_release(CachedSCO* sco)
 {
-    // ...::atomic_dec32() (and ..::atomic_inc32() too) returns the old value!
-    if (bid::atomic_dec32(&sco->refcnt_) == 1)
+    if (sco and --sco->refcnt_ == 0)
     {
         delete sco;
     }
 }
 
-namespace {
+namespace
+{
+
 const std::string
 makeFileName(const Namespace& nsName,
              SCO scoName,
@@ -57,6 +59,7 @@ makeFileName(const Namespace& nsName,
     p /= scoName.str();
     return p.string();
 }
+
 }
 
 CachedSCO::CachedSCO(SCOCacheNamespace* nspace,
@@ -125,17 +128,10 @@ CachedSCO::~CachedSCO()
     {
         try
         {
-            fs::remove(path_);
+            mntPoint_->addToGarbage(path_);
             mntPoint_->updateUsedSize(-size_);
         }
-        catch (std::exception& e)
-        {
-            LOG_ERROR("Failed to unlink " << path_ << ": " << e.what());
-        }
-        catch (...)
-        {
-            LOG_ERROR("Failed to unlink " << path_ << ": unknown exception");
-        }
+        CATCH_STD_ALL_LOG_IGNORE("Failed to add " << path_ << " to garbage");
     }
 }
 
@@ -246,9 +242,10 @@ CachedSCO::getMountPoint()
 }
 
 OpenSCOPtr
-CachedSCO::open(FDMode mode)
+CachedSCO::open(yt::FDMode mode)
 {
-    return OpenSCOPtr(new OpenSCO(this, mode));
+    return OpenSCOPtr(new OpenSCO(this,
+                                  mode));
 }
 
 void
@@ -260,7 +257,7 @@ CachedSCO::incRefCount(uint32_t num)
 uint32_t
 CachedSCO::use_count()
 {
-    return bid::atomic_read32(&refcnt_);
+    return refcnt_;
 }
 
 void

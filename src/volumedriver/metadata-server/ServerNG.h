@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef META_DATA_SERVER_SERVER_H_
 #define META_DATA_SERVER_SERVER_H_
@@ -33,7 +34,7 @@ namespace metadata_server
 class ServerNG
 {
 public:
-    ServerNG(DataBaseInterfacePtr db,
+    ServerNG(DataBaseInterfacePtr,
              const std::string& addr,
              const uint16_t port,
              const boost::optional<std::chrono::seconds>& timeout = boost::none,
@@ -62,139 +63,143 @@ private:
     DataBaseInterfacePtr db_;
     youtils::LocORemServer server_;
 
-    template<typename C>
+    template<typename Connection>
     void
-    recv_header_(C& conn,
-                 ConnectionStatePtr state);
+    recv_header_(Connection&,
+                 ConnectionStatePtr);
 
-    template<typename C>
+    template<typename Connection>
     void
-    get_data_(C& conn,
-              ConnectionStatePtr state,
-              std::shared_ptr<metadata_server_protocol::RequestHeader> hdr);
+    get_data_(Connection&,
+              ConnectionStatePtr,
+              std::shared_ptr<metadata_server_protocol::RequestHeader>);
 
-    template<typename C>
+    template<typename Connection>
     void
-    recv_data_(C& conn,
-               ConnectionStatePtr state,
-               std::shared_ptr<metadata_server_protocol::RequestHeader> hdr);
+    recv_data_(Connection&,
+               ConnectionStatePtr,
+               std::shared_ptr<metadata_server_protocol::RequestHeader>);
 
-    template<typename C>
+    template<typename Connection>
     void
-    dispatch_(C& conn,
-              ConnectionStatePtr state,
-              const metadata_server_protocol::RequestHeader& hdr,
-              capnp::MessageReader& reader);
+    dispatch_(Connection&,
+              ConnectionStatePtr,
+              const metadata_server_protocol::RequestHeader&,
+              capnp::MessageReader&);
 
-    template<typename C>
+    template<typename Connection>
     void
-    send_response_(C& conn,
-                   ConnectionStatePtr state,
-                   metadata_server_protocol::ResponseHeader::Type rsp,
-                   metadata_server_protocol::Tag tag,
-                   capnp::MessageBuilder& builder);
+    send_response_(Connection&,
+                   ConnectionStatePtr,
+                   metadata_server_protocol::ResponseHeader::Type,
+                   metadata_server_protocol::Tag,
+                   capnp::MessageBuilder&);
 
-    template<typename C>
+    template<typename Connection>
     void
-    send_response_inband_(C& conn,
-                          ConnectionStatePtr state,
-                          metadata_server_protocol::ResponseHeader::Type rsp,
-                          metadata_server_protocol::Tag tag,
-                          capnp::MessageBuilder& builder);
+    send_response_inband_(Connection&,
+                          ConnectionStatePtr,
+                          metadata_server_protocol::ResponseHeader::Type,
+                          metadata_server_protocol::Tag,
+                          capnp::MessageBuilder&);
 
-    template<typename C>
+    template<typename Connection>
     void
-    send_response_shmem_(C& conn,
-                         ConnectionStatePtr state,
-                         metadata_server_protocol::ResponseHeader::Type rsp,
-                         metadata_server_protocol::Tag tag,
-                         capnp::FlatMessageBuilder& builder);
+    send_response_shmem_(Connection&,
+                         ConnectionStatePtr,
+                         metadata_server_protocol::ResponseHeader::Type,
+                         metadata_server_protocol::Tag,
+                         capnp::FlatMessageBuilder&);
 
-    template<typename C>
+    template<typename Connection>
     void
-    error_(C& conn,
-           ConnectionStatePtr state,
-           const metadata_server_protocol::ResponseHeader::Type rsp,
-           const metadata_server_protocol::Tag tag,
-           const std::string& msg);
+    error_(Connection&,
+           ConnectionStatePtr,
+           const metadata_server_protocol::ResponseHeader::Type,
+           const metadata_server_protocol::Tag,
+           const std::string&);
 
     template<enum metadata_server_protocol::RequestHeader::Type r,
-             typename C,
+             typename Connection,
              typename Traits = metadata_server_protocol::RequestTraits<r>>
     void
-    handle_(C& conn,
-            ConnectionStatePtr state,
-            const metadata_server_protocol::RequestHeader& hdr,
-            capnp::MessageReader& reader,
+    handle_(Connection&,
+            ConnectionStatePtr,
+            const metadata_server_protocol::RequestHeader&,
+            capnp::MessageReader&,
             void (ServerNG::*mem_fn)(typename Traits::Params::Reader&,
                                      typename Traits::Results::Builder&));
 
     template<enum metadata_server_protocol::RequestHeader::Type r,
-             typename C,
+             typename Connection,
              typename Traits = metadata_server_protocol::RequestTraits<r>>
     void
-    handle_shmem_(C& conn,
-                  ConnectionStatePtr state,
-                  const metadata_server_protocol::RequestHeader& hdr,
-                  capnp::MessageReader& reader,
+    handle_shmem_(Connection&,
+                  ConnectionStatePtr,
+                  const metadata_server_protocol::RequestHeader&,
+                  capnp::MessageReader&,
                   void (ServerNG::*mem_fn)(typename Traits::Params::Reader&,
                                            typename Traits::Results::Builder&));
 
     template<enum metadata_server_protocol::RequestHeader::Type r,
-             typename C,
+             typename Connection,
              typename Traits = metadata_server_protocol::RequestTraits<r>>
     void
-    do_handle_(C& conn,
-               ConnectionStatePtr state,
-               const metadata_server_protocol::RequestHeader& hdr,
-               capnp::MessageBuilder& builder,
-               capnp::MessageReader& reader,
+    do_handle_(Connection&,
+               ConnectionStatePtr,
+               const metadata_server_protocol::RequestHeader&,
+               capnp::MessageBuilder&,
+               capnp::MessageReader&,
                void (ServerNG::*mem_fn)(typename Traits::Params::Reader&,
                                         typename Traits::Results::Builder&));
 
     void
-    open_(metadata_server_protocol::Methods::OpenParams::Reader& reader,
-          metadata_server_protocol::Methods::OpenResults::Builder& builder);
+    open_(metadata_server_protocol::Methods::OpenParams::Reader&,
+          metadata_server_protocol::Methods::OpenResults::Builder&);
 
     void
-    drop_(metadata_server_protocol::Methods::DropParams::Reader& reader,
-          metadata_server_protocol::Methods::DropResults::Builder& builder);
+    drop_(metadata_server_protocol::Methods::DropParams::Reader&,
+          metadata_server_protocol::Methods::DropResults::Builder&);
 
     void
-    clear_(metadata_server_protocol::Methods::ClearParams::Reader& reader,
-           metadata_server_protocol::Methods::ClearResults::Builder& builder);
+    clear_(metadata_server_protocol::Methods::ClearParams::Reader&,
+           metadata_server_protocol::Methods::ClearResults::Builder&);
 
     void
-    multiget_(metadata_server_protocol::Methods::MultiGetParams::Reader& reader,
-              metadata_server_protocol::Methods::MultiGetResults::Builder& builder);
+    multiget_(metadata_server_protocol::Methods::MultiGetParams::Reader&,
+              metadata_server_protocol::Methods::MultiGetResults::Builder&);
 
     void
-    multiset_(metadata_server_protocol::Methods::MultiSetParams::Reader& reader,
-              metadata_server_protocol::Methods::MultiSetResults::Builder& builder);
+    multiset_(metadata_server_protocol::Methods::MultiSetParams::Reader&,
+              metadata_server_protocol::Methods::MultiSetResults::Builder&);
 
     void
-    set_role_(metadata_server_protocol::Methods::SetRoleParams::Reader& reader,
-              metadata_server_protocol::Methods::SetRoleResults::Builder& builder);
+    set_role_(metadata_server_protocol::Methods::SetRoleParams::Reader&,
+              metadata_server_protocol::Methods::SetRoleResults::Builder&);
 
     void
-    get_role_(metadata_server_protocol::Methods::GetRoleParams::Reader& reader,
-              metadata_server_protocol::Methods::GetRoleResults::Builder& builder);
+    get_role_(metadata_server_protocol::Methods::GetRoleParams::Reader&,
+              metadata_server_protocol::Methods::GetRoleResults::Builder&);
 
     void
-    list_namespaces_(metadata_server_protocol::Methods::ListParams::Reader& reader,
-                     metadata_server_protocol::Methods::ListResults::Builder& builder);
+    list_namespaces_(metadata_server_protocol::Methods::ListParams::Reader&,
+                     metadata_server_protocol::Methods::ListResults::Builder&);
 
     void
-    ping_(metadata_server_protocol::Methods::PingParams::Reader& reader,
-          metadata_server_protocol::Methods::PingResults::Builder& builder);
+    ping_(metadata_server_protocol::Methods::PingParams::Reader&,
+          metadata_server_protocol::Methods::PingResults::Builder&);
 
     void
-    apply_relocation_logs_(metadata_server_protocol::Methods::ApplyRelocationLogsParams::Reader& reader,
-                           metadata_server_protocol::Methods::ApplyRelocationLogsResults::Builder& builder);
+    apply_relocation_logs_(metadata_server_protocol::Methods::ApplyRelocationLogsParams::Reader&,
+                           metadata_server_protocol::Methods::ApplyRelocationLogsResults::Builder&);
 
     void
-    catch_up_(metadata_server_protocol::Methods::CatchUpParams::Reader& reader,
-              metadata_server_protocol::Methods::CatchUpResults::Builder& builder);
+    catch_up_(metadata_server_protocol::Methods::CatchUpParams::Reader&,
+              metadata_server_protocol::Methods::CatchUpResults::Builder&);
+
+    void
+    get_table_counters_(metadata_server_protocol::Methods::GetTableCountersParams::Reader&,
+                        metadata_server_protocol::Methods::GetTableCountersResults::Builder&);
 
 };
 

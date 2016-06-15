@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "BackendConfig.h"
 #include "BackendParameters.h"
@@ -152,6 +153,27 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_connection_pool_capacity,
                                       ShowDocumentation::T,
                                       64);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_retries_on_error,
+                                      backend_connection_manager_name,
+                                      "backend_interface_retries_on_error",
+                                      "How many times to retry a failed backend operation",
+                                      ShowDocumentation::T,
+                                      1U);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_retry_interval_secs,
+                                      backend_connection_manager_name,
+                                      "backend_interface_retry_interval_secs",
+                                      "delay before retrying a failed backend operation in seconds",
+                                      ShowDocumentation::T,
+                                      0U);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_retry_backoff_multiplier,
+                                      backend_connection_manager_name,
+                                      "backend_interface_retry_backoff_multiplier",
+                                      "multiplier for the retry interval on each subsequent retry",
+                                      ShowDocumentation::T,
+                                      1.0);
+
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_type,
                                       backend_connection_manager_name,
                                       "backend_type",
@@ -241,7 +263,7 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(s3_connection_use_ssl,
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(s3_connection_ssl_verify_host,
                                       backend_connection_manager_name,
                                       "s3_connection_ssl_verify_host",
-                                      "When backend_type is S3: whether to verify the SSL certificate's ssubject against the host",
+                                      "When backend_type is S3: whether to verify the SSL certificate's subject against the host",
                                       ShowDocumentation::T,
                                       true);
 
@@ -283,7 +305,7 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_port,
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_timeout,
                                       backend_connection_manager_name,
                                       "alba_connection_timeout",
-                                      "The timout for the ALBA proxy, in seconds",
+                                      "The timeout for the ALBA proxy, in seconds",
                                       ShowDocumentation::T,
                                       5);
 
@@ -293,6 +315,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_preset,
                                       "When backend_type is ALBA: the ALBA preset to use for new namespaces",
                                       ShowDocumentation::T,
                                       ""s);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_transport,
+                                      backend_connection_manager_name,
+                                      "alba_connection_transport",
+                                      "When backend_type is ALBA: the ALBA connection to use: TCP (default) or RDMA",
+                                      ShowDocumentation::T,
+                                      alba::proxy_client::Transport::tcp);
 
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(bgc_threads,
                                       backend::GarbageCollector::name(),

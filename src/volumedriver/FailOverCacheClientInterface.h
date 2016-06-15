@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #ifndef VD_FAILOVER_CACHE_CLIENTINTERFACE_H
 #define VD_FAILOVER_CACHE_CLIENTINTERFACE_H
@@ -21,16 +22,27 @@
 
 #include "SCOProcessorInterface.h"
 
+#include <youtils/Logging.h>
+
 namespace volumedriver
 {
 
 class FailOverCacheClientInterface
 {
 public:
+    static std::unique_ptr<FailOverCacheClientInterface>
+    create(const FailOverCacheMode mode,
+           const LBASize lba_size,
+           const ClusterMultiplier cluster_multiplier,
+           const size_t max_entries,
+           const std::atomic<unsigned>& write_trigger);
+
     virtual ~FailOverCacheClientInterface() = default;
 
+    using DegradedFun = std::function<void() noexcept>;
+
     virtual void
-    initialize(Volume*) = 0;
+    initialize(DegradedFun) = 0;
 
     virtual const char*
     getName() const = 0;
@@ -50,14 +62,14 @@ public:
     virtual void
     newCache(std::unique_ptr<FailOverCacheProxy>) = 0;
 
-    virtual uint32_t
-    getDefaultRequestTimeout()
+    virtual boost::chrono::seconds
+    getDefaultRequestTimeout() const
     {
-        return 60; // seconds
+        return boost::chrono::seconds(60);
     }
 
     virtual void
-    setRequestTimeout(const uint32_t seconds) = 0;
+    setRequestTimeout(const boost::chrono::seconds) = 0;
 
     virtual void
     removeUpTo(const SCO& sconame) = 0;
@@ -74,6 +86,22 @@ public:
 
     virtual FailOverCacheMode
     mode() const = 0;
+
+    size_t
+    max_entries() const
+    {
+        return max_entries_;
+    }
+
+protected:
+    explicit FailOverCacheClientInterface(const size_t max_entries)
+        : max_entries_(max_entries)
+    {}
+
+private:
+    DECLARE_LOGGER("FailOverCacheClientInterface");
+
+    const size_t max_entries_;
 };
 
 } // namespace volumedriver

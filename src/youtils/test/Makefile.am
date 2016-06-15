@@ -29,15 +29,16 @@ youtils_test_SOURCES = \
 	AlternativeOptionsAgainTest.cpp \
 	ArakoonTest.cpp \
 	ArakoonLockStoreTest.cpp \
-	Bartest.cpp \
 	BooleanEnumTest.cpp \
 	CheckSumTest.cpp \
 	ChooserTest.cpp \
+	DeferredFileRemoverTest.cpp \
 	DenyLockService.cpp \
 	DimensionedValueTest.cpp \
 	EtcdReplyTest.cpp \
 	EtcdUrlTest.cpp \
 	FileRangeTest.cpp \
+	FileDescriptorTest.cpp \
 	FileUtilsTest.cpp \
 	GeneratorTest.cpp \
 	GlobalLockTest.cpp \
@@ -47,7 +48,6 @@ youtils_test_SOURCES = \
 	InitializedParamTest.cpp \
 	LocORemTest.cpp \
 	LoggingTest.cpp \
-	LowLevelFileTest.cpp \
 	LRUCacheTest.cpp \
 	LRUCacheTooTest.cpp \
 	main.cpp \
@@ -58,6 +58,7 @@ youtils_test_SOURCES = \
 	PeriodicActionTest.cpp \
 	PeriodicActionPoolTest.cpp \
 	PosixMQTest.cpp \
+	RedisQueue.cpp \
 	RWLockTest.cpp \
 	ScopedExitTest.cpp \
 	SerializableDynamicBitsetTest.cpp \

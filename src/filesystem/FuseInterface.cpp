@@ -1,21 +1,24 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "FileSystemEvents.h"
 #include "FileSystemParameters.h"
 #include "FuseInterface.h"
 #include "ShmOrbInterface.h"
+
+#include <fuse3/fuse_lowlevel.h>
 
 #include <boost/property_tree/ptree.hpp>
 
@@ -70,6 +73,70 @@ keep_worker(unsigned /* available */,
     return total <= fi->min_workers();
 }
 
+// Copied verbatim from FUSE's helper.c since fuse_{setup,teardown} were unexported
+// as of FUSE version 3.
+TODO("AR: reconsider what's actually needed from this");
+struct fuse*
+fuse_setup(int argc,
+           char *argv[],
+           const struct fuse_operations *op,
+           size_t op_size,
+           char **mountpoint,
+           int *multithreaded,
+           void *user_data)
+{
+    struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
+    struct fuse_chan *ch;
+    struct fuse *fuse;
+    int foreground;
+    int res;
+
+    res = fuse_parse_cmdline(&args, mountpoint, multithreaded, &foreground);
+    if (res == -1)
+        return NULL;
+
+    ch = fuse_mount(*mountpoint, &args);
+    if (!ch) {
+        fuse_opt_free_args(&args);
+        goto err_free;
+    }
+
+    fuse = fuse_new(ch, &args, op, op_size, user_data);
+    fuse_opt_free_args(&args);
+    if (fuse == NULL)
+        goto err_unmount;
+
+    res = fuse_daemonize(foreground);
+    if (res == -1)
+        goto err_unmount;
+
+    res = fuse_set_signal_handlers(fuse_get_session(fuse));
+    if (res == -1)
+        goto err_unmount;
+
+    return fuse;
+
+    err_unmount:
+    fuse_unmount(*mountpoint, ch);
+    if (fuse)
+        fuse_destroy(fuse);
+    err_free:
+    free(*mountpoint);
+    return NULL;
+}
+
+void
+fuse_teardown(struct fuse *fuse,
+              char *mountpoint)
+{
+    struct fuse_session *se = fuse_get_session(fuse);
+    struct fuse_chan *ch = fuse_session_chan(se);
+    fuse_remove_signal_handlers(se);
+    fuse_unmount(mountpoint, ch);
+    fuse_destroy(fuse);
+    free(mountpoint);
+}
+
 }
 
 FuseInterface::FuseInterface(const bpt::ptree& pt,
@@ -85,6 +152,11 @@ FuseInterface::FuseInterface(const bpt::ptree& pt,
                       std::make_unique<ShmOrbInterface>(pt,
                                                         registerizle,
                                                         fs_) :
+                      nullptr)
+    , network_server_(fs_.enable_network_interface() ?
+                      std::make_unique<NetworkXioInterface>(pt,
+                                                            registerizle,
+                                                            fs_) :
                       nullptr)
 {}
 
@@ -232,6 +304,7 @@ FuseInterface::operator()(const fs::path& mntpoint,
                                });
 
     boost::optional<boost::thread> shm_thread;
+    boost::optional<boost::thread> network_thread;
 
     if (shm_orb_server_)
     {
@@ -267,6 +340,40 @@ FuseInterface::operator()(const fs::path& mntpoint,
                                 shm_thread->join();
                             }
                         }));
+
+    if (network_server_)
+    {
+        std::promise<void> promise;
+        std::future<void> future(promise.get_future());
+
+        network_thread = boost::thread([&]
+                    {
+                          try
+                          {
+                            network_server_->run(std::move(promise));
+                          }
+                          CATCH_STD_ALL_LOG_IGNORE("exception running network (xio) server");
+                      });
+
+        future.get();
+    }
+
+    auto network_thread_exit(yt::make_scope_exit([&]
+                {
+                    if (network_thread)
+                    {
+                        VERIFY(network_server_);
+                        LOG_INFO("stopping network (xio) server");
+                        try
+                        {
+                            network_server_->shutdown();
+                        }
+                        CATCH_STD_ALL_LOG_IGNORE("failed to stop network server");
+                        LOG_INFO("waiting for network (xio) thread to finish");
+                        network_thread->join();
+                    }
+                }));
+
 
     boost::thread fs_thread([&]
                            {
@@ -354,7 +461,11 @@ FuseInterface::readdir(const char* path,
                        void* buf,
                        fuse_fill_dir_t filler,
                        off_t /* offset */,
-                       fuse_file_info* /* fi */)
+                       fuse_file_info* /* fi */,
+                       // fuse3/fuse.h says that it's ok to ignore
+                       // the sole supported flag - FUSE_READDIR_PLUS -
+                       // for now
+                       fuse_readdir_flags /* readdir_flags */)
 {
     LOG_TRACE(path);
 
@@ -366,19 +477,32 @@ FuseInterface::readdir(const char* path,
                                             0);
     if (ret == 0)
     {
-        if (filler(buf, ".", 0, 0))
+        TODO("AR: consider using FUSE_FILL_DIR_PLUS");
+        if (filler(buf,
+                   ".",
+                   0,
+                   0,
+                   static_cast<fuse_fill_dir_flags>(0)))
         {
             return ret;
         }
 
-        if (filler(buf, "..", 0, 0))
+        if (filler(buf,
+                   "..",
+                   0,
+                   0,
+                   static_cast<fuse_fill_dir_flags>(0)))
         {
             return ret;
         }
 
         for (const auto& e : l)
         {
-            if (filler(buf, e.c_str(), 0, 0))
+            if (filler(buf,
+                       e.c_str(),
+                       0,
+                       0,
+                       static_cast<fuse_fill_dir_flags>(0)))
             {
                 break;
             }
@@ -437,12 +561,15 @@ FuseInterface::rmdir(const char* path)
 
 int
 FuseInterface::rename(const char* from,
-                      const char* to)
+                      const char* to,
+                      unsigned flags)
 {
     const FrontendPath t(to);
-    return route_to_fs_instance_<const FrontendPath&>(&FileSystem::rename,
-                                                      from,
-                                                      t);
+    return route_to_fs_instance_<const FrontendPath&,
+                                 FileSystem::RenameFlags>(&FileSystem::rename,
+                                                          from,
+                                                          t,
+                                                          static_cast<FileSystem::RenameFlags>(flags));
 }
 
 int
@@ -489,8 +616,8 @@ FuseInterface::read(const char* path,
                     off_t off,
                     fuse_file_info* fi)
 {
-    const Handle* h = get_handle(*fi);
-    int ret = route_to_fs_instance_<const Handle&,
+    Handle* h = get_handle(*fi);
+    int ret = route_to_fs_instance_<Handle&,
                                     size_t&,
                                     decltype(buf),
                                     decltype(off)>(&FileSystem::read,
@@ -509,8 +636,8 @@ FuseInterface::write(const char* path,
                      off_t off,
                      fuse_file_info* fi)
 {
-    const Handle* h = get_handle(*fi);
-    int ret = route_to_fs_instance_<const Handle&,
+    Handle* h = get_handle(*fi);
+    int ret = route_to_fs_instance_<Handle&,
                                     size_t&,
                                     decltype(buf),
                                     decltype(off)>(&FileSystem::write,
@@ -527,8 +654,8 @@ FuseInterface::fsync(const char* path,
                      int datasync,
                      fuse_file_info* fi)
 {
-    const Handle* h = get_handle(*fi);
-    return route_to_fs_instance_<const Handle&,
+    Handle* h = get_handle(*fi);
+    return route_to_fs_instance_<Handle&,
                                  bool>(&FileSystem::fsync,
                                        path,
                                        *h,

@@ -1,16 +1,17 @@
-// Copyright 2015 iNuron NV
+// Copyright (C) 2016 iNuron NV
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of Open vStorage Open Source Edition (OSE),
+// as available from
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//      http://www.openvstorage.org and
+//      http://www.openvstorage.com.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This file is free software; you can redistribute it and/or modify it
+// under the terms of the GNU Affero General Public License v3 (GNU AGPLv3)
+// as published by the Free Software Foundation, in version 3 as it comes in
+// the LICENSE.txt file of the Open vStorage OSE distribution.
+// Open vStorage is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY of any kind.
 
 #include "../Assert.h"
 #include "../LoggerPrivate.h"
@@ -35,7 +36,8 @@
 namespace youtilstest
 {
 
-namespace yt = youtils;
+namespace fs = boost::filesystem;
+using namespace youtils;
 using namespace std::literals::string_literals;
 
 namespace
@@ -56,15 +58,15 @@ const std::vector<std::string> names {
         "LLLLLLLL"
         };
 
-const std::vector<youtils::Severity> severities {
-    youtils::Severity::trace,
-        youtils::Severity::debug,
-        youtils::Severity::info,
-        youtils::Severity::warning,
-        youtils::Severity::info,
-        youtils::Severity::fatal,
-        youtils::Severity::notification
-};
+const std::vector<Severity> severities {
+    Severity::trace,
+        Severity::debug,
+        Severity::info,
+        Severity::warning,
+        Severity::info,
+        Severity::fatal,
+        Severity::notification
+        };
 
 }
 
@@ -94,7 +96,7 @@ TEST_F(TestLogging, test1)
 
 struct LoggerThread
 {
-    LoggerThread(const youtils::Severity sev)
+    LoggerThread(const Severity sev)
         : sev_(sev)
         , stop_(false)
     {}
@@ -109,13 +111,13 @@ struct LoggerThread
         }
     }
 
-    youtils::Logger::logger_type&
+    Logger::logger_type&
     getLogger__()
     {
         return TestLogging::getLogger__();
     }
 
-    const youtils::Severity sev_;
+    const Severity sev_;
     bool stop_;
 };
 
@@ -126,7 +128,7 @@ TEST_F(TestLogging, test_setup_teardown)
 
     for(unsigned i = 0; i < num_loggers; ++i)
     {
-        loggers.emplace_back(youtils::Severity::fatal);
+        loggers.emplace_back(Severity::fatal);
     }
 
     std::vector<boost::thread*> threads;
@@ -138,11 +140,13 @@ TEST_F(TestLogging, test_setup_teardown)
 
     for(unsigned i =0 ; i < 1024; ++i)
     {
-        youtils::Logger::teardownLogging();
+        Logger::teardownLogging();
         usleep(2000);
-        youtils::Logger::setupLogging("",
-                             youtils::Severity::trace,
-                             youtils::LogRotation::F);
+        const std::vector<std::string> sinks = { Logger::console_sink_name() };
+        Logger::setupLogging("LoggingSetupTearDownTest",
+                             sinks,
+                             Severity::trace,
+                             LogRotation::F);
         usleep(2000);
     }
 
@@ -173,14 +177,14 @@ TEST_F(TestLogging, DISABLED_lazylogging)
 {
     for(int i = 0; i < 10; ++i)
     {
-    LOG_NOTIFY("Another one bites the dust");
-    sleep(5);
+        LOG_NOTIFY("Another one bites the dust");
+        sleep(5);
     }
 }
 
 TEST_F(TestLogging, performance)
 {
-    const unsigned num_tests = 1024 * youtils::System::get_env_with_default("TEST_LOGGING_PERFORMANCE_TIMES_K", 0);
+    const unsigned num_tests = 1024 * System::get_env_with_default("TEST_LOGGING_PERFORMANCE_TIMES_K", 0);
 
     for(unsigned i = 0; i < num_tests; ++i)
     {
@@ -195,7 +199,7 @@ TEST_F(TestLogging, performance)
 
 TEST_F(TestLogging, trace_performance)
 {
-    const unsigned num_tests = 1024 * youtils::System::get_env_with_default("TEST_LOGGING_PERFORMANCE_TIMES_K", 0);
+    const unsigned num_tests = 1024 * System::get_env_with_default("TEST_LOGGING_PERFORMANCE_TIMES_K", 0);
 
     for(unsigned i = 0; i < num_tests; ++i)
     {
@@ -206,12 +210,12 @@ TEST_F(TestLogging, trace_performance)
 namespace
 {
 
-struct FuckWithLogger
+struct PlayWithLogger
 {
-    FuckWithLogger()
+    PlayWithLogger()
         : stop_(false)
     {}
-    typedef std::pair<std::string, youtils::Severity> filter_t;
+    typedef std::pair<std::string, Severity> filter_t;
 
     void operator()()
     {
@@ -225,23 +229,23 @@ struct FuckWithLogger
             switch(i)
             {
             case 0:
-                youtils::Logger::add_filter(randomString(),
-                                            randomSeverity());
+                Logger::add_filter(randomString(),
+                                   randomSeverity());
                 break;
 
             case 1:
-                youtils::Logger::remove_filter(randomString());
+                Logger::remove_filter(randomString());
                 break;
 
             case 2:
                 print_filters();
-                youtils::Logger::remove_all_filters();
+                Logger::remove_all_filters();
                 print_filters();
                 break;
             case 3:
-                std::cout << "General Logging " << youtils::Logger::generalLogging() << std::endl;
-                youtils::Logger::generalLogging(randomSeverity());
-                std::cout << "General Logging " << youtils::Logger::generalLogging() << std::endl;
+                std::cout << "General Logging " << Logger::generalLogging() << std::endl;
+                Logger::generalLogging(randomSeverity());
+                std::cout << "General Logging " << Logger::generalLogging() << std::endl;
                 break;
             }
             boost::this_thread::sleep_for(sleep_period);
@@ -253,7 +257,7 @@ struct FuckWithLogger
     print_filters()
     {
         std::vector<filter_t> filters;
-        youtils::Logger::all_filters(filters);
+        Logger::all_filters(filters);
         std::cout << filters.size() << " filters: " << std::endl;
         for(const filter_t& filter : filters)
         {
@@ -270,7 +274,7 @@ struct FuckWithLogger
         return names[index];
     }
 
-    youtils::Severity
+    Severity
     randomSeverity()
     {
         static boost::random::uniform_int_distribution<unsigned>dist(0, severities.size()-1);
@@ -289,7 +293,7 @@ TEST_F(TestLogging, DISABLED_torture)
 {
     const unsigned num_loggers = 32;
 
-    FuckWithLogger fucker;
+    PlayWithLogger pwl;
 
 
 
@@ -297,7 +301,7 @@ TEST_F(TestLogging, DISABLED_torture)
 
     for(unsigned i = 0; i < num_loggers; ++i)
     {
-        loggers.emplace_back(youtils::Severity::fatal);
+        loggers.emplace_back(Severity::fatal);
     }
 
     std::vector<boost::thread*> threads;
@@ -307,7 +311,7 @@ TEST_F(TestLogging, DISABLED_torture)
         threads.push_back(new boost::thread(boost::ref(logger)));
     }
 
-    boost::thread t(boost::ref(fucker));
+    boost::thread t(boost::ref(pwl));
 
     sleep(60);
 
@@ -323,7 +327,7 @@ TEST_F(TestLogging, DISABLED_torture)
     }
 
 
-    fucker.stop_ = true;
+    pwl.stop_ = true;
     t.join();
 }
 
@@ -331,10 +335,10 @@ TEST_F(TestLogging, lexical_cast)
 {
 #define T(sev, as_str)                                                  \
     {                                                                   \
-        const yt::Severity s = yt::Severity::sev;                       \
+        const Severity s = Severity::sev;                               \
         const std::string str(boost::lexical_cast<std::string>(s));     \
         EXPECT_EQ(as_str, str);                                         \
-        const yt::Severity t(boost::lexical_cast<yt::Severity>(str));   \
+        const Severity t(boost::lexical_cast<Severity>(str));           \
         EXPECT_EQ(s, t);                                                \
     }
 
@@ -347,7 +351,7 @@ TEST_F(TestLogging, lexical_cast)
 
 #undef T
 
-    EXPECT_THROW(boost::lexical_cast<yt::Severity>("utterly important, really"),
+    EXPECT_THROW(boost::lexical_cast<Severity>("utterly important, really"),
                  std::exception);
 }
 
@@ -356,9 +360,9 @@ namespace blt = boost::log::trivial;
 TEST_F(TestLogging, DISABLED_integration_with_trivial_boost_logging)
 {
     blt::logger::get().add_attribute(LOGGER_ATTRIBUTE_ID,
-                                     boost::log::attributes::constant<yt::LOGGER_ATTRIBUTE_ID_TYPE>("trivial"));
+                                     boost::log::attributes::constant<LOGGER_ATTRIBUTE_ID_TYPE>("trivial"));
     blt::logger::get().add_attribute("Severity",
-                                     boost::log::attributes::constant<yt::Severity>(yt::Severity::info));
+                                     boost::log::attributes::constant<Severity>(Severity::info));
 
     BOOST_LOG_TRIVIAL(trace) << "A trace severity message";
     BOOST_LOG_TRIVIAL(debug) << "A debug severity message";
@@ -373,8 +377,8 @@ TEST_F(TestLogging, DISABLED_integration_with_trivial_boost_logging)
 // to run with logging enabled, of course.
 TEST_F(TestLogging, DISABLED_exceptional_rotation)
 {
-    const auto logfile(yt::System::get_env_with_default("LOG_FILE",
-                                                        "voldrv.log"s));
+    const auto logfile(System::get_env_with_default("LOG_FILE",
+                                                    "voldrv.log"s));
 
     fs::remove_all(logfile);
 
