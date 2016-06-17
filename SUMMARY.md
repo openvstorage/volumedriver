@@ -6,6 +6,7 @@
     * [The Virtual File System Router](docs/vfs_router.md)
     * [The Volume Router](docs/volume_router.md)
     * [The Storage Router](docs/storage_router.md)
+    * [The Edge](docs/edge.md)
 * [VolumeDriver Python API](docs/pythonapi.md)
 * [VolumeDriver Configuration](docs/config.md)
 * [VolumeDriver Events](docs/events.md)
