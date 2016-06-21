@@ -41,14 +41,15 @@ public:
     , shm_region_size(pt)
     , fs_(fs)
     , orb_helper_("volumedriverfs_shm_server")
+    , segment_details_(fs_.object_router().cluster_id().str(),
+                       fs_.object_router().node_id().str())
     {
         try
         {
-            boost::interprocess::shared_memory_object::remove(ShmSegmentDetails::Name());
-            shm_segment_ =
-                boost::interprocess::managed_shared_memory(boost::interprocess::create_only,
-                                                           ShmSegmentDetails::Name(),
-                                                           shm_size());
+            boost::interprocess::shared_memory_object::remove(segment_details_.id().c_str());
+            shm_segment_ = boost::interprocess::managed_shared_memory(boost::interprocess::create_only,
+                                                                      segment_details_.id().c_str(),
+                                                                      shm_size());
         }
         catch (boost::interprocess::interprocess_exception&)
         {
@@ -98,6 +99,7 @@ private:
 
     FileSystem& fs_;
     youtils::OrbHelper orb_helper_;
+    const ShmSegmentDetails segment_details_;
     boost::interprocess::managed_shared_memory shm_segment_;
 };
 

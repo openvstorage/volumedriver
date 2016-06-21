@@ -28,12 +28,12 @@ namespace ipc = boost::interprocess;
 class ShmVolumeCache
 {
 public:
-    ShmVolumeCache()
+    explicit ShmVolumeCache(const ShmSegmentDetails& segment_details)
     {
         try
         {
             shm_segment_ = ipc::managed_shared_memory(ipc::open_only,
-                                                      ShmSegmentDetails::Name());
+                                                      segment_details.id().c_str());
         }
         catch (ipc::interprocess_exception&)
         {

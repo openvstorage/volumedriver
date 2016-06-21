@@ -29,19 +29,29 @@ namespace yt = youtils;
 namespace
 {
 
-TODO("AR: get rid of static OrbHelper");
-// This is just a stopgap measure to fix the problems with the ShmServerTests (race
-// with remote server startup, static OrbHelper instance used across several tests).
-// In the long run it's cleaner to have an OrbHelper instance per ovs_context_t
-// (e.g. via the associated ShmClient) if possible?
+// Does OmniORB support multiple ORBs by now? Older messages on the mailing list
+// say it doesn't so for now we'll use a singleton.
 // Do we need locking around OrbHelper calls?
 DECLARE_LOGGER("ShmClientUtils");
 
 boost::mutex orb_helper_lock;
 std::unique_ptr<yt::OrbHelper> orb_helper_instance;
 
-#define LOCK_ORB_HELPER()                       \
+#define LOCK_ORB_HELPER()                                               \
     boost::lock_guard<decltype(orb_helper_lock)> g(orb_helper_lock)
+
+youtils::OrbHelper&
+orb_helper()
+{
+    LOCK_ORB_HELPER();
+
+    if (not orb_helper_instance)
+    {
+        orb_helper_instance = std::make_unique<yt::OrbHelper>("ShmClient");
+    }
+
+    return *orb_helper_instance;
+}
 
 }
 
@@ -58,67 +68,75 @@ void
 ShmClient::fini()
 {
     LOCK_ORB_HELPER();
-
     VERIFY(orb_helper_instance);
     orb_helper_instance = nullptr;
 }
 
-youtils::OrbHelper&
-ShmClient::orb_helper()
+CORBA::Object_var
+ShmClient::get_object_reference_()
 {
-    LOCK_ORB_HELPER();
-
-    if (not orb_helper_instance)
-    {
-        orb_helper_instance = std::make_unique<yt::OrbHelper>("ShmClient");
-    }
-    return *orb_helper_instance;
-}
-
-ShmClient::ShmClient(const std::string& volume_name,
-                     const std::string& vd_context_name,
-                     const std::string& vd_context_kind,
-                     const std::string& vd_object_name,
-                     const std::string& vd_object_kind)
-    : volume_name_(volume_name)
-    , shm_segment_(new ipc::managed_shared_memory(ipc::open_only,
-                                                  ShmSegmentDetails::Name()))
-{
-    CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
+    CORBA::Object_var obj = orb_helper().getObjectReference(segment_details_.cluster_id,
                                                             vd_context_kind,
-                                                            vd_object_name,
+                                                            segment_details_.vrouter_id,
                                                             vd_object_kind);
 
     assert(not CORBA::is_nil(obj));
-    volumefactory_ref_ = ShmIdlInterface::VolumeFactory::_narrow(obj);
-    assert(not CORBA::is_nil(volumefactory_ref_));
+    return obj;
+}
 
-    ShmIdlInterface::CreateShmArguments createArguments;
-    createArguments.volume_name = volume_name_.c_str();
+ShmIdlInterface::VolumeFactory_var
+ShmClient::get_volume_factory_reference_()
+{
+    CORBA::Object_var obj = get_object_reference_();
+    ShmIdlInterface::VolumeFactory_var vref = ShmIdlInterface::VolumeFactory::_narrow(obj);
+    assert(not CORBA::is_nil(vref));
 
-    create_result.reset(volumefactory_ref_->create_shm_interface(createArguments));
+    return vref;
+}
 
-    assert(youtils::UUID::isUUIDString(create_result->writerequest_uuid));
-    assert(youtils::UUID::isUUIDString(create_result->writereply_uuid));
-    assert(youtils::UUID::isUUIDString(create_result->readrequest_uuid));
-    assert(youtils::UUID::isUUIDString(create_result->readreply_uuid));
+ShmClient::ShmClient(const ShmSegmentDetails& segment_details)
+    : segment_details_(segment_details)
+    , volume_factory_ref_(get_volume_factory_reference_())
+{}
 
-    writerequest_mq_.reset(new ipc::message_queue(ipc::open_only,
-                                                  create_result->writerequest_uuid));
-    writereply_mq_.reset(new ipc::message_queue(ipc::open_only,
-                                                create_result->writereply_uuid));
-    readrequest_mq_.reset(new ipc::message_queue(ipc::open_only,
-                                                 create_result->readrequest_uuid));
-    readreply_mq_.reset(new ipc::message_queue(ipc::open_only,
-                                               create_result->readreply_uuid));
-    key_ = create_result->writerequest_uuid;
+void
+ShmClient::open(const std::string& volname)
+{
+    volume_name_ = volname;
+    shm_segment_ = std::make_unique<ipc::managed_shared_memory>(ipc::open_only,
+                                                                segment_details_.id().c_str());
+
+    ShmIdlInterface::CreateShmArguments args;
+    args.cluster_id = segment_details_.cluster_id.c_str();
+    args.vrouter_id = segment_details_.vrouter_id.c_str();
+    args.volume_name = volume_name_->c_str();
+
+    create_result_.reset(volume_factory_ref_->create_shm_interface(args));
+    assert(youtils::UUID::isUUIDString(create_result_->writerequest_uuid));
+    assert(youtils::UUID::isUUIDString(create_result_->writereply_uuid));
+    assert(youtils::UUID::isUUIDString(create_result_->readrequest_uuid));
+    assert(youtils::UUID::isUUIDString(create_result_->readreply_uuid));
+
+    writerequest_mq_= std::make_unique<ipc::message_queue>(ipc::open_only,
+                                                           create_result_->writerequest_uuid);
+    writereply_mq_= std::make_unique<ipc::message_queue>(ipc::open_only,
+                                                         create_result_->writereply_uuid);
+    readrequest_mq_= std::make_unique<ipc::message_queue>(ipc::open_only,
+                                                          create_result_->readrequest_uuid);
+    readreply_mq_= std::make_unique<ipc::message_queue>(ipc::open_only,
+                                                        create_result_->readreply_uuid);
+
+    key_ = std::string(create_result_->writerequest_uuid);
 }
 
 ShmClient::~ShmClient()
 {
     try
     {
-        volumefactory_ref_->stop_volume(volume_name_.c_str());
+        if (volume_name_)
+        {
+            volume_factory_ref_->stop_volume(volume_name_->c_str());
+        }
     }
     catch (CORBA::TRANSIENT& e)
     {
@@ -139,7 +157,6 @@ ShmClient::~ShmClient()
     }
     catch (...)
     {
-        return;
     }
 }
 
@@ -472,46 +489,22 @@ void
 ShmClient::create_volume(const std::string& volume_name,
                          const uint64_t volume_size)
 {
-    CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
-                                                            vd_context_kind,
-                                                            vd_object_name,
-                                                            vd_object_kind);
-    assert(not CORBA::is_nil(obj));
-    ShmIdlInterface::VolumeFactory_var volumefactory_ref =
-        ShmIdlInterface::VolumeFactory::_narrow(obj);
-    assert(not CORBA::is_nil(volumefactory_ref));
-    volumefactory_ref->create_volume(volume_name.c_str(),
-                                     volume_size);
+    volume_factory_ref_->create_volume(volume_name.c_str(),
+                                       volume_size);
 }
 
 void
 ShmClient::remove_volume(const std::string& volume_name)
 {
-    CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
-                                                            vd_context_kind,
-                                                            vd_object_name,
-                                                            vd_object_kind);
-    assert(not CORBA::is_nil(obj));
-    ShmIdlInterface::VolumeFactory_var volumefactory_ref =
-        ShmIdlInterface::VolumeFactory::_narrow(obj);
-    assert(not CORBA::is_nil(volumefactory_ref));
-    volumefactory_ref->remove_volume(volume_name.c_str());
+    volume_factory_ref_->remove_volume(volume_name.c_str());
 }
 
 void
 ShmClient::truncate_volume(const std::string& volume_name,
                            const uint64_t volume_size)
 {
-    CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
-                                                            vd_context_kind,
-                                                            vd_object_name,
-                                                            vd_object_kind);
-    assert(not CORBA::is_nil(obj));
-    ShmIdlInterface::VolumeFactory_var volumefactory_ref =
-        ShmIdlInterface::VolumeFactory::_narrow(obj);
-    assert(not CORBA::is_nil(volumefactory_ref));
-    volumefactory_ref->truncate_volume(volume_name.c_str(),
-                                       volume_size);
+    volume_factory_ref_->truncate_volume(volume_name.c_str(),
+                                         volume_size);
 }
 
 void
@@ -519,70 +512,37 @@ ShmClient::create_snapshot(const std::string& volume_name,
                            const std::string& snapshot_name,
                            const int64_t timeout)
 {
-    CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
-                                                            vd_context_kind,
-                                                            vd_object_name,
-                                                            vd_object_kind);
-    assert(not CORBA::is_nil(obj));
-    ShmIdlInterface::VolumeFactory_var volumefactory_ref =
-        ShmIdlInterface::VolumeFactory::_narrow(obj);
-    assert(not CORBA::is_nil(volumefactory_ref));
-    volumefactory_ref->create_snapshot(volume_name.c_str(),
-                                       snapshot_name.c_str(),
-                                       timeout);
+    volume_factory_ref_->create_snapshot(volume_name.c_str(),
+                                         snapshot_name.c_str(),
+                                         timeout);
 }
 
 void
 ShmClient::rollback_snapshot(const std::string& volume_name,
                              const std::string& snapshot_name)
 {
-    CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
-                                                            vd_context_kind,
-                                                            vd_object_name,
-                                                            vd_object_kind);
-    assert(not CORBA::is_nil(obj));
-    ShmIdlInterface::VolumeFactory_var volumefactory_ref =
-        ShmIdlInterface::VolumeFactory::_narrow(obj);
-    assert(not CORBA::is_nil(volumefactory_ref));
-    volumefactory_ref->rollback_snapshot(volume_name.c_str(),
-                                         snapshot_name.c_str());
+    volume_factory_ref_->rollback_snapshot(volume_name.c_str(),
+                                           snapshot_name.c_str());
 }
 
 void
 ShmClient::delete_snapshot(const std::string& volume_name,
                            const std::string& snapshot_name)
 {
-    CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
-                                                            vd_context_kind,
-                                                            vd_object_name,
-                                                            vd_object_kind);
-    assert(not CORBA::is_nil(obj));
-    ShmIdlInterface::VolumeFactory_var volumefactory_ref =
-        ShmIdlInterface::VolumeFactory::_narrow(obj);
-    assert(not CORBA::is_nil(volumefactory_ref));
-    volumefactory_ref->delete_snapshot(volume_name.c_str(),
-                                       snapshot_name.c_str());
+    volume_factory_ref_->delete_snapshot(volume_name.c_str(),
+                                         snapshot_name.c_str());
 }
 
 std::vector<std::string>
 ShmClient::list_snapshots(const std::string& volume_name,
                           uint64_t *size)
 {
-    CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
-                                                            vd_context_kind,
-                                                            vd_object_name,
-                                                            vd_object_kind);
-    assert(not CORBA::is_nil(obj));
-    ShmIdlInterface::VolumeFactory_var volumefactory_ref =
-        ShmIdlInterface::VolumeFactory::_narrow(obj);
-    assert(not CORBA::is_nil(volumefactory_ref));
-
     ShmIdlInterface::StringSequence_var results;
     CORBA::ULongLong c_size;
     std::vector<std::string> snaps;
-    volumefactory_ref->list_snapshots(volume_name.c_str(),
-                                      results.out(),
-                                      c_size);
+    volume_factory_ref_->list_snapshots(volume_name.c_str(),
+                                        results.out(),
+                                        c_size);
     for (unsigned int i = 0; i < results->length(); i++)
     {
         snaps.push_back(results[i].in());
@@ -595,33 +555,16 @@ int
 ShmClient::is_snapshot_synced(const std::string& volume_name,
                               const std::string& snapshot_name)
 {
-    CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
-                                                            vd_context_kind,
-                                                            vd_object_name,
-                                                            vd_object_kind);
-    assert(not CORBA::is_nil(obj));
-    ShmIdlInterface::VolumeFactory_var volumefactory_ref =
-        ShmIdlInterface::VolumeFactory::_narrow(obj);
-    assert(not CORBA::is_nil(volumefactory_ref));
-    return volumefactory_ref->is_snapshot_synced(volume_name.c_str(),
-                                                 snapshot_name.c_str());
+    return volume_factory_ref_->is_snapshot_synced(volume_name.c_str(),
+                                                   snapshot_name.c_str());
 }
 
 std::vector<std::string>
 ShmClient::list_volumes()
 {
-    CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
-                                                            vd_context_kind,
-                                                            vd_object_name,
-                                                            vd_object_kind);
-    assert(not CORBA::is_nil(obj));
-    ShmIdlInterface::VolumeFactory_var volumefactory_ref =
-        ShmIdlInterface::VolumeFactory::_narrow(obj);
-    assert(not CORBA::is_nil(volumefactory_ref));
-
     ShmIdlInterface::StringSequence_var results;
     std::vector<std::string> volumes;
-    volumefactory_ref->list_volumes(results.out());
+    volume_factory_ref_->list_volumes(results.out());
     for (unsigned int i = 0; i < results->length(); i++)
     {
         volumes.push_back(results[i].in());
@@ -633,16 +576,7 @@ int
 ShmClient::stat(const std::string& volume_name,
                 struct stat *st)
 {
-    CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
-                                                            vd_context_kind,
-                                                            vd_object_name,
-                                                            vd_object_kind);
-    assert(not CORBA::is_nil(obj));
-    ShmIdlInterface::VolumeFactory_var volfactory_ref =
-        ShmIdlInterface::VolumeFactory::_narrow(obj);
-    assert(not CORBA::is_nil(volfactory_ref));
-    uint64_t vol_size = volfactory_ref->stat_volume(volume_name.c_str());
-
+    uint64_t vol_size = volume_factory_ref_->stat_volume(volume_name.c_str());
     st->st_blksize = 512;
     st->st_size = vol_size;
     return 0;

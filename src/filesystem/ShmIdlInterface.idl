@@ -2,6 +2,8 @@
 module ShmIdlInterface {
 
     struct CreateShmArguments {
+    string cluster_id;
+    string vrouter_id;
     string volume_name;
     boolean for_creation;
     };

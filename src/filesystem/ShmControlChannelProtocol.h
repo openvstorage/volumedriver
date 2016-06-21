@@ -30,14 +30,6 @@ enum class ShmConnectionState
     Disconnected,
 };
 
-struct ShmConnectionDetails
-{
-    static const char* Endpoint()
-    {
-        return "/tmp/ovs-shm-ctl.socket";
-    }
-};
-
 enum class ShmMsgOpcode
 {
     Idle,

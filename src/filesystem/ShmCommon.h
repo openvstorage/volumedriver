@@ -16,13 +16,35 @@
 #ifndef __SHM_COMMON_H
 #define __SHM_COMMON_H
 
+#include <string>
+
 struct ShmSegmentDetails
 {
-    static const char* Name()
+    std::string cluster_id;
+    std::string vrouter_id;
+
+    const std::string
+    id() const
     {
-        return "openvstorage_segment";
+        using namespace std::literals::string_literals;
+        return cluster_id + "-"s + vrouter_id;
     }
 
+    const std::string
+    control_endpoint() const
+    {
+        using namespace std::literals::string_literals;
+        // TODO: make the location configurable
+        return "/tmp/ovs-shm-ctl-"s + id() + ".socket"s;
+    }
+
+    ShmSegmentDetails(const std::string& cid,
+                      const std::string& vid)
+        : cluster_id(cid)
+        , vrouter_id(vid)
+    {}
+
+    ~ShmSegmentDetails() = default;
 };
 
 #endif // __SHM_COMMON_H

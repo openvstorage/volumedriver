@@ -55,16 +55,22 @@ static void _aio_writereply_handler(void*);
 
 struct ovs_shm_context
 {
-    ovs_shm_context(const std::string& volume_name, int flag)
-    : oflag(flag)
+    ovs_shm_context(const ShmSegmentDetails& segment_details,
+                    const std::string& volume_name,
+                    int flag)
+        : oflag(flag)
     {
-        const std::string io_env_var("LIBOVSVOLUMEDRIVER_IO_THREADS_POOL_SIZE");
+        using namespace std::literals::string_literals;
+
         io_threads_pool_size_ =
-        youtils::System::get_env_with_default<int>(io_env_var, 1);
-        shm_client_ = std::make_shared<volumedriverfs::ShmClient>(volume_name);
+            youtils::System::get_env_with_default<int>("LIBOVSVOLUMEDRIVER_IO_THREADS_POOL_SIZE",
+                                                       1);
+
+        shm_client_ = std::make_shared<volumedriverfs::ShmClient>(segment_details);
+        shm_client_->open(volume_name);
         try
         {
-            ctl_client_ = std::make_shared<ShmControlChannelClient>();
+            ctl_client_ = std::make_shared<ShmControlChannelClient>(segment_details);
         }
         catch (...)
         {

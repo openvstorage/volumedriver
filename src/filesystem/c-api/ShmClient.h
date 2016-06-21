@@ -16,29 +16,34 @@
 #ifndef __SHM_CLIENT_H_
 #define __SHM_CLIENT_H_
 
+#include "../ShmCommon.h"
+#include "../ShmIdlInterface.h"
+#include "../ShmProtocol.h"
+
+#include "ShmIdlInterface.h"
+
 #include <boost/interprocess/ipc/message_queue.hpp>
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/errors.hpp>
 #include <youtils/Logging.h>
 #include <youtils/OrbHelper.h>
 
-#include "../ShmProtocol.h"
-#include "../ShmIdlInterface.h"
-
 namespace volumedriverfs
 {
+
 namespace ipc = boost::interprocess;
 
 class ShmClient
 {
 public:
-    ShmClient(const std::string& volume_name,
-              const std::string& context_name = vd_context_name,
-              const std::string& context_kind = vd_context_kind,
-              const std::string& object_name = vd_object_name,
-              const std::string& object_kind = vd_object_kind);
+    explicit ShmClient(const ShmSegmentDetails&);
 
     ~ShmClient();
+
+    // TODO: have this return some sort of handle which can then
+    // be queried for "key", "volname", etc.
+    void
+    open(const std::string& volname);
 
     void*
     allocate(const uint64_t size_in_bytes);
@@ -98,51 +103,57 @@ public:
     uint64_t
     volume_size_in_bytes() const
     {
-        return create_result->volume_size_in_bytes;
+        return create_result_->volume_size_in_bytes;
     }
 
     const std::string&
     get_key() const
     {
-        return key_;
+        return *key_;
+    }
+
+    const boost::optional<std::string>&
+    volume_name() const
+    {
+        return volume_name_;
     }
 
     void
     flush();
 
-    static void
+    void
     create_volume(const std::string& volume_name,
                   const uint64_t volume_size);
 
-    static void
+    void
     remove_volume(const std::string& volume_name);
 
-    static void
+    void
     truncate_volume(const std::string& volume_name,
                     const uint64_t volume_size);
 
-    static void
+    void
     create_snapshot(const std::string& volume_name,
                     const std::string& snapshot_name,
                     const int64_t timeout);
 
-    static void
+    void
     rollback_snapshot(const std::string& volume_name,
                       const std::string& snapshot_name);
 
-    static void
+    void
     delete_snapshot(const std::string& volume_name,
                     const std::string& snapshot_name);
 
-    static std::vector<std::string>
+    std::vector<std::string>
     list_snapshots(const std::string& volume_name,
                    uint64_t *size);
 
-    static int
+    int
     is_snapshot_synced(const std::string& volume_name,
                        const std::string& snapshot_name);
 
-    static std::vector<std::string>
+    std::vector<std::string>
     list_volumes();
 
     void*
@@ -158,22 +169,25 @@ public:
     fini();
 
 private:
-    static youtils::OrbHelper&
-    orb_helper();
+    const ShmSegmentDetails segment_details_;
 
+    std::unique_ptr<ipc::managed_shared_memory> shm_segment_;
+    ShmIdlInterface::VolumeFactory_var volume_factory_ref_;
+
+    std::unique_ptr<ShmIdlInterface::CreateResult> create_result_;
     std::unique_ptr<ipc::message_queue> writerequest_mq_;
     std::unique_ptr<ipc::message_queue> writereply_mq_;
     std::unique_ptr<ipc::message_queue> readrequest_mq_;
     std::unique_ptr<ipc::message_queue> readreply_mq_;
 
-    ShmIdlInterface::VolumeFactory_var volumefactory_ref_;
+    boost::optional<std::string> volume_name_;
+    boost::optional<std::string> key_;
 
-    const std::string volume_name_;
-    std::string key_;
+    CORBA::Object_var
+    get_object_reference_();
 
-    std::unique_ptr<ShmIdlInterface::CreateResult> create_result;
-
-    std::unique_ptr<ipc::managed_shared_memory> shm_segment_;
+    ShmIdlInterface::VolumeFactory_var
+    get_volume_factory_reference_();
 };
 
 typedef std::shared_ptr<ShmClient> ShmClientPtr;

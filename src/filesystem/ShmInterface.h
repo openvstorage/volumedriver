@@ -36,7 +36,7 @@ public:
                  handler_args_t& handler_args)
         : orb_helper_(orb_helper)
         , handler_args_(handler_args)
-        , shm_ctl_server_(ShmConnectionDetails::Endpoint())
+        , shm_ctl_server_(handler_args_.segment_details)
     {
         shm_ctl_server_.create_control_channel(boost::bind(&ShmInterface::try_stop_volume,
                                                            this,

@@ -19,6 +19,9 @@
 #include <limits.h>
 #include <libxio.h>
 
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/split.hpp>
+
 #include <youtils/SpinLock.h>
 #include <youtils/System.h>
 #include <youtils/IOException.h>
@@ -38,6 +41,8 @@
 #define likely(x)       (x)
 #define unlikely(x)     (x)
 #endif
+
+using namespace std::literals::string_literals;
 
 ovs_ctx_attr_t*
 ovs_ctx_attr_new()
@@ -73,33 +78,58 @@ ovs_ctx_attr_set_transport(ovs_ctx_attr_t *attr,
                            const char *host,
                            int port)
 {
-    if (attr == NULL)
+    if (attr == nullptr or host == nullptr)
     {
         errno = EINVAL;
         return -1;
     }
 
-    if (transport == NULL or (transport and (not strcmp(transport, "shm"))))
+    if (transport == "shm"s)
     {
-        attr->transport = TransportType::SharedMemory;
-        return 0;
+        try
+        {
+            std::vector<std::string> vec;
+            boost::split(vec,
+                         host,
+                         boost::is_any_of("/"));
+            if (vec.size() != 2)
+            {
+                errno = EINVAL;
+                return -1;
+            }
+            attr->shm_segment_details = ShmSegmentDetails(vec[0],
+                                                          vec[1]);
+            attr->transport = TransportType::SharedMemory;
+            return 0;
+        }
+        catch (std::bad_alloc&)
+        {
+            errno = ENOMEM;
+            return -1;
+        }
+        catch (...)
+        {
+            errno = EINVAL;
+            return -1;
+        }
     }
-
-    if ((not strcmp(transport, "tcp")) and host)
+    else if (transport == "tcp"s)
     {
         attr->transport = TransportType::TCP;
         attr->port = port;
         return _hostname_to_ip(host, attr->host);
     }
-
-    if ((not strcmp(transport, "rdma")) and host)
+    else if (transport == "rdma"s)
     {
         attr->transport = TransportType::RDMA;
         attr->port = port;
         return _hostname_to_ip(host, attr->host);
     }
-    errno = EINVAL;
-    return -1;
+    else
+    {
+        errno = EINVAL;
+        return -1;
+    }
 }
 
 int
@@ -165,7 +195,7 @@ ovs_ctx_new(const ovs_ctx_attr_t *attr)
                                         attr->network_qdepth);
             break;
         case TransportType::SharedMemory:
-            ctx = new ShmContext;
+            ctx = new ShmContext(*attr->shm_segment_details);
             break;
         default:
             errno = EINVAL;
@@ -177,8 +207,14 @@ ovs_ctx_new(const ovs_ctx_attr_t *attr)
     catch (const std::bad_alloc&)
     {
         errno = ENOMEM;
-        return NULL;
+        return nullptr;
     }
+    catch (...)
+    {
+        errno = EINVAL;
+        return nullptr;
+    }
+
     return ctx;
 }
 

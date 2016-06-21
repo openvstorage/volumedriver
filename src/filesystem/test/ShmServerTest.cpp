@@ -26,6 +26,7 @@
 #include <youtils/Catchers.h>
 #include <youtils/FileUtils.h>
 #include <youtils/FileDescriptor.h>
+#include <youtils/System.h>
 #include <youtils/wall_timer.h>
 
 #include <volumedriver/Api.h>
@@ -41,8 +42,57 @@ namespace volumedriverfstest
 
 namespace bpt = boost::property_tree;
 namespace fs = boost::filesystem;
+namespace yt = youtils;
 
 using namespace volumedriverfs;
+using namespace std::literals::string_literals;
+
+namespace
+{
+struct CtxAttrDeleter
+{
+    void
+    operator()(ovs_ctx_attr_t* a)
+    {
+        ovs_ctx_attr_destroy(a);
+    }
+};
+
+using CtxAttrPtr = std::unique_ptr<ovs_ctx_attr_t, CtxAttrDeleter>;
+
+struct CtxDeleter
+{
+    void
+    operator()(ovs_ctx_t* c)
+    {
+        ovs_ctx_destroy(c);
+    }
+};
+
+using CtxPtr = std::unique_ptr<ovs_ctx_t, CtxDeleter>;
+
+struct BufferDeleter
+{
+    ovs_context_t& ctx;
+
+    BufferDeleter(ovs_context_t& c)
+        : ctx(c)
+    {}
+
+    void
+    operator()(ovs_buffer_t* b)
+    {
+        if (b)
+        {
+            ovs_deallocate(&ctx,
+                           b);
+        }
+    }
+};
+
+using BufferPtr = std::unique_ptr<ovs_buffer_t, BufferDeleter>;
+
+}
 
 class ShmServerTest
     : public FileSystemTestBase
@@ -91,17 +141,32 @@ public:
 
     std::unique_ptr<ShmOrbInterface> shm_orb_server_;
     boost::thread shm_orb_thread_;
+
+    static std::string
+    shm_segment_details(const ClusterId& cid,
+                        const NodeId& nid)
+    {
+        return cid.str() + "/"s + nid.str();
+    }
+
+    std::string
+    shm_segment_details() const
+    {
+        return shm_segment_details(vrouter_cluster_id(),
+                                   local_node_id());
+    }
 };
 
 TEST_F(ShmServerTest, ovs_create_destroy_context)
 {
     uint64_t volume_size = 1 << 30;
     ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+
     ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
               ovs_ctx_attr_set_transport(ctx_attr,
                                          "shm",
-                                         NULL,
+                                         shm_segment_details().c_str(),
                                          0));
 
     ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
@@ -124,7 +189,7 @@ TEST_F(ShmServerTest, ovs_non_existent_volume)
     EXPECT_EQ(0,
               ovs_ctx_attr_set_transport(ctx_attr,
                                          "shm",
-                                         NULL,
+                                         shm_segment_details().c_str(),
                                          0));
 
     ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
@@ -144,7 +209,7 @@ TEST_F(ShmServerTest, ovs_remove_non_existent_volume)
     EXPECT_EQ(0,
               ovs_ctx_attr_set_transport(ctx_attr,
                                          "shm",
-                                         NULL,
+                                         shm_segment_details().c_str(),
                                          0));
 
     ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
@@ -165,7 +230,7 @@ TEST_F(ShmServerTest, ovs_already_created_volume)
     EXPECT_EQ(0,
               ovs_ctx_attr_set_transport(ctx_attr,
                                          "shm",
-                                         NULL,
+                                         shm_segment_details().c_str(),
                                          0));
     ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx != nullptr);
@@ -196,7 +261,7 @@ TEST_F(ShmServerTest, ovs_open_same_volume_twice)
     EXPECT_EQ(0,
               ovs_ctx_attr_set_transport(ctx_attr,
                                          "shm",
-                                         NULL,
+                                         shm_segment_details().c_str(),
                                          0));
     ovs_ctx_t *ctx1 = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx1 != nullptr);
@@ -231,7 +296,7 @@ TEST_F(ShmServerTest, ovs_create_write_read_destroy)
     EXPECT_EQ(0,
               ovs_ctx_attr_set_transport(ctx_attr,
                                          "shm",
-                                         NULL,
+                                         shm_segment_details().c_str(),
                                          0));
     ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx != nullptr);
@@ -353,7 +418,7 @@ TEST_F(ShmServerTest, ovs_completion)
     EXPECT_EQ(0,
               ovs_ctx_attr_set_transport(ctx_attr,
                                          "shm",
-                                         NULL,
+                                         shm_segment_details().c_str(),
                                          0));
     ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx != nullptr);
@@ -489,7 +554,7 @@ TEST_F(ShmServerTest, ovs_stat)
     EXPECT_EQ(0,
               ovs_ctx_attr_set_transport(ctx_attr,
                                          "shm",
-                                         NULL,
+                                         shm_segment_details().c_str(),
                                          0));
     ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx != nullptr);
@@ -526,8 +591,9 @@ TEST_F(ShmServerTest, ovs_list_volumes)
     EXPECT_EQ(0,
               ovs_ctx_attr_set_transport(ctx_attr,
                                          "shm",
-                                         NULL,
+                                         shm_segment_details().c_str(),
                                          0));
+
     ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx != nullptr);
 
@@ -580,7 +646,7 @@ TEST_F(ShmServerTest, ovs_create_rollback_list_remove_snapshot)
     EXPECT_EQ(0,
               ovs_ctx_attr_set_transport(ctx_attr,
                                          "shm",
-                                         NULL,
+                                         shm_segment_details().c_str(),
                                          0));
     ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx != nullptr);
@@ -703,7 +769,7 @@ TEST_F(ShmServerTest, ovs_completion_two_ctxs)
     EXPECT_EQ(0,
               ovs_ctx_attr_set_transport(ctx_attr,
                                          "shm",
-                                         NULL,
+                                         shm_segment_details().c_str(),
                                          0));
     ovs_ctx_t *ctx1 = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx1 != nullptr);
@@ -872,7 +938,7 @@ TEST_F(ShmServerTest, ovs_write_flush_read)
     EXPECT_EQ(0,
               ovs_ctx_attr_set_transport(ctx_attr,
                                          "shm",
-                                         NULL,
+                                         shm_segment_details().c_str(),
                                          0));
     ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx != nullptr);
@@ -940,7 +1006,7 @@ TEST_F(ShmServerTest, ovs_create_truncate_volume)
     EXPECT_EQ(0,
               ovs_ctx_attr_set_transport(ctx_attr,
                                          "shm",
-                                         NULL,
+                                         shm_segment_details().c_str(),
                                          0));
     ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx != nullptr);
@@ -988,7 +1054,7 @@ TEST_F(ShmServerTest, ovs_truncate_volume)
     EXPECT_EQ(0,
               ovs_ctx_attr_set_transport(ctx_attr,
                                          "shm",
-                                         NULL,
+                                         shm_segment_details().c_str(),
                                          0));
     ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx != nullptr);
@@ -1034,7 +1100,7 @@ TEST_F(ShmServerTest, ovs_fail_to_truncate_volume)
     EXPECT_EQ(0,
               ovs_ctx_attr_set_transport(ctx_attr,
                                          "shm",
-                                         NULL,
+                                         shm_segment_details().c_str(),
                                          0));
 
     ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
@@ -1062,6 +1128,158 @@ TEST_F(ShmServerTest, ovs_fail_to_truncate_volume)
               ovs_ctx_destroy(ctx));
     EXPECT_EQ(0,
               ovs_ctx_attr_destroy(ctx_attr));
+}
+
+TEST_F(ShmServerTest, invalid_cluster_id)
+{
+    CtxAttrPtr attr(ovs_ctx_attr_new());
+    ASSERT_TRUE(attr != nullptr);
+
+    EXPECT_EQ(0,
+              ovs_ctx_attr_set_transport(attr.get(),
+                                         "shm",
+                                         shm_segment_details(ClusterId("foo"),
+                                                             local_node_id()).c_str(),
+                                         0));
+
+    CtxPtr ctx(ovs_ctx_new(attr.get()));
+    ASSERT_TRUE(ctx != nullptr);
+
+    const std::string vname("volume");
+    const size_t vsize = 1ULL << 20;
+    EXPECT_EQ(-1,
+              ovs_create_volume(ctx.get(),
+                                vname.c_str(),
+                                vsize));
+}
+
+TEST_F(ShmServerTest, invalid_node_id)
+{
+    CtxAttrPtr attr(ovs_ctx_attr_new());
+    ASSERT_TRUE(attr != nullptr);
+
+    EXPECT_EQ(0,
+              ovs_ctx_attr_set_transport(attr.get(),
+                                         "shm",
+                                         shm_segment_details(vrouter_cluster_id(),
+                                                             NodeId("foo")).c_str(),
+                                         0));
+
+    CtxPtr ctx(ovs_ctx_new(attr.get()));
+    ASSERT_TRUE(ctx != nullptr);
+
+    const std::string vname("volume");
+    const size_t vsize = 1ULL << 20;
+    EXPECT_EQ(-1,
+              ovs_create_volume(ctx.get(),
+                                vname.c_str(),
+                                vsize));
+}
+
+TEST_F(ShmServerTest, two_instances)
+{
+    const size_t vsize = 1ULL << 20;
+    std::atomic<bool> stop(false);
+
+    auto work([&](const ClusterId& cid,
+                  const NodeId& nid,
+                  const std::string& vid,
+                  const std::string& pattern)
+              {
+                  CtxAttrPtr attr(ovs_ctx_attr_new());
+                  ASSERT_TRUE(attr != nullptr);
+
+                  EXPECT_EQ(0,
+                            ovs_ctx_attr_set_transport(attr.get(),
+                                                       "shm",
+                                                       shm_segment_details(cid,
+                                                                           nid).c_str(),
+                                                       0));
+
+                  CtxPtr ctx(ovs_ctx_new(attr.get()));
+                  ASSERT_TRUE(ctx != nullptr);
+
+                  EXPECT_EQ(0,
+                            ovs_create_volume(ctx.get(),
+                                              vid.c_str(),
+                                              vsize));
+
+                  ASSERT_EQ(0,
+                            ovs_ctx_init(ctx.get(),
+                                         vid.c_str(),
+                                         O_RDWR));
+
+                  BufferPtr wbuf(ovs_allocate(ctx.get(),
+                                              pattern.size()),
+                                 BufferDeleter(*ctx));
+
+                  memcpy(ovs_buffer_data(wbuf.get()),
+                         pattern.data(),
+                         pattern.size());
+
+                  while (not stop)
+                  {
+                      EXPECT_EQ(pattern.size(),
+                                ovs_write(ctx.get(),
+                                          ovs_buffer_data(wbuf.get()),
+                                          pattern.size(),
+                                          0));
+
+                      BufferPtr rbuf(ovs_allocate(ctx.get(),
+                                                  pattern.size()),
+                                 BufferDeleter(*ctx));
+
+                      EXPECT_EQ(pattern.size(),
+                                ovs_read(ctx.get(),
+                                         ovs_buffer_data(rbuf.get()),
+                                         pattern.size(),
+                                         0));
+
+                      EXPECT_EQ(pattern,
+                                std::string(static_cast<const char*>(ovs_buffer_data(rbuf.get())),
+                                            pattern.size()));
+                  }
+              });
+
+    mount_remote();
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         umount_remote();
+                                     }));
+
+    auto rfuture(std::async(std::launch::async,
+                            [&]
+                            {
+                                const auto cid(yt::System::get_env_with_default("SHM_TEST_REMOTE_CLUSTER_ID",
+                                                                                vrouter_cluster_id()));
+                                const auto nid(yt::System::get_env_with_default("SHM_TEST_REMOTE_NODE_ID",
+                                                                                remote_node_id()));
+                                const auto vid(yt::System::get_env_with_default("SHM_TEST_REMOTE_VOLUME_ID",
+                                                                                "remote-volume"s));
+                                work(cid,
+                                     nid,
+                                     vid,
+                                     "remote work"s);
+                            }));
+
+    auto lfuture(std::async(std::launch::async,
+                            [&]
+                            {
+                                work(vrouter_cluster_id(),
+                                     local_node_id(),
+                                     "local-volume"s,
+                                     "local work"s);
+                            }));
+
+    const auto sleep_secs = yt::System::get_env_with_default("SHM_TEST_DURATION_SECS",
+                                                             20UL);
+
+    std::this_thread::sleep_for(std::chrono::seconds(sleep_secs));
+
+    stop = true;
+
+    rfuture.wait();
+    lfuture.wait();
 }
 
 } //namespace volumedriverfstest

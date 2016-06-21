@@ -16,6 +16,10 @@
 #ifndef __LIB_OVS_COMMON_H
 #define __LIB_OVS_COMMON_H
 
+#include "../ShmCommon.h"
+
+#include <boost/optional.hpp>
+
 #define ATTRIBUTE_UNUSED __attribute__((unused))
 
 #include <string>
@@ -46,6 +50,7 @@ struct ovs_context_attr_t
     std::string host;
     int port;
     uint64_t network_qdepth;
+    boost::optional<ShmSegmentDetails> shm_segment_details;
 };
 
 struct ovs_buffer

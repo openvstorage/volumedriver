@@ -12,16 +12,18 @@
 // the LICENSE.txt file of the Open vStorage OSE distribution.
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
+
 #ifndef __SHM_CONTROL_CHANNEL_SERVER_H
 #define __SHM_CONTROL_CHANNEL_SERVER_H
 
-#include <boost/bind.hpp>
 #include <boost/array.hpp>
-#include <boost/enable_shared_from_this.hpp>
-#include <boost/shared_ptr.hpp>
 #include <boost/asio.hpp>
-#include <boost/thread.hpp>
+#include <boost/bind.hpp>
+#include <boost/enable_shared_from_this.hpp>
+#include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/thread.hpp>
 
 #include <youtils/SpinLock.h>
 #include <youtils/Assert.h>
@@ -41,9 +43,11 @@ class ControlSession
 {
 public:
     ControlSession(boost::asio::io_service& io_service,
+                   const ShmSegmentDetails& segment_details,
                    TryStopVolume try_stop_volume,
                    IsVolumeValid is_volume_valid)
     : socket_(io_service)
+    , segment_details_(segment_details)
     , state_(ShmConnectionState::Connected)
     , try_stop_volume_(try_stop_volume)
     , is_volume_valid_(is_volume_valid)
@@ -85,7 +89,7 @@ public:
             if (is_volume_valid_(msg.volume_name(), msg.key()))
             {
                 volume_name_ = msg.volume_name();
-                cache_.reset(new ShmVolumeCache());
+                cache_.reset(new ShmVolumeCache(segment_details_));
                 state_ = ShmConnectionState::Registered;
                 o_msg.opcode(ShmMsgOpcode::Success);
             }
@@ -260,10 +264,14 @@ public:
 private:
     DECLARE_LOGGER("ShmControlSession");
 
+    // TODO:
+    // * constify where possible
+    // * pointer back to the ShmControlChannelServer instead of duplicating the ShmSegmentDetails
     boost::asio::local::stream_protocol::socket socket_;
     std::vector<char> data_;
     uint64_t payload_size_;
     ShmVolumeCachePtr cache_;
+    ShmSegmentDetails segment_details_;
     std::string volume_name_;
     ShmConnectionState state_;
     TryStopVolume try_stop_volume_;
@@ -276,12 +284,12 @@ typedef boost::shared_ptr<ControlSession> ctl_session_ptr;
 class ShmControlChannelServer
 {
 public:
-    ShmControlChannelServer(const std::string& file)
+    ShmControlChannelServer(const ShmSegmentDetails& segment_details)
         : acceptor_(io_service_)
-        , file_(file)
+        , segment_details_(segment_details)
     {
-        ::unlink(file.c_str());
-        boost::asio::local::stream_protocol::endpoint ep(file);
+        boost::filesystem::remove_all(segment_details_.control_endpoint());
+        boost::asio::local::stream_protocol::endpoint ep(segment_details_.control_endpoint());
         acceptor_.open(ep.protocol());
         acceptor_.bind(ep);
         acceptor_.listen(5);
@@ -296,6 +304,7 @@ public:
             new_session->async_start();
         }
         new_session.reset(new ControlSession(io_service_,
+                                             segment_details_,
                                              try_stop_volume_,
                                              is_volume_valid_));
         acceptor_.async_accept(new_session->socket(),
@@ -305,12 +314,14 @@ public:
                                             boost::asio::placeholders::error));
     }
 
+    // TODO: move into ctor
     void
     create_control_channel(TryStopVolume try_stop_volume,
                            IsVolumeValid is_volume_valid)
     {
 
         ctl_session_ptr new_session(new ControlSession(io_service_,
+                                                       segment_details_,
                                                        try_stop_volume,
                                                        is_volume_valid));
         acceptor_.async_accept(new_session->socket(),
@@ -324,19 +335,20 @@ public:
                                        &io_service_));
     }
 
+    // TODO: move into dtor
     void
     destroy_control_channel()
     {
         io_service_.stop();
         grp_.join_all();
-        ::unlink(file_.c_str());
+        boost::filesystem::remove_all(segment_details_.control_endpoint());
     }
 
 private:
     boost::asio::io_service io_service_;
     boost::asio::local::stream_protocol::acceptor acceptor_;
     boost::thread_group grp_;
-    std::string file_;
+    ShmSegmentDetails segment_details_;
     TryStopVolume try_stop_volume_;
     IsVolumeValid is_volume_valid_;
 };

@@ -52,7 +52,8 @@ ShmOrbInterface::run(std::promise<void> promise)
         typedef ShmVolumeDriverHandler::construction_args handler_args_t;
         handler_args_t handler_args =
         {
-            fs_
+            fs_,
+            segment_details_,
         };
 
         POA_ShmIdlInterface::VolumeFactory_tie<ShmVolumeFactory>
@@ -67,9 +68,9 @@ ShmOrbInterface::run(std::promise<void> promise)
         try
         {
             orb_helper_.bindObjectToName(obj1,
-                                         vd_context_name,
+                                         fs_.object_router().cluster_id().str(),
                                          vd_context_kind,
-                                         vd_object_name,
+                                         fs_.object_router().node_id().str(),
                                          vd_object_kind);
         }
         CATCH_STD_ALL_EWHAT({
@@ -119,9 +120,9 @@ ShmOrbInterface::stop_all_and_exit()
 {
     try
     {
-        CORBA::Object_var obj = orb_helper_.getObjectReference(vd_context_name,
+        CORBA::Object_var obj = orb_helper_.getObjectReference(fs_.object_router().cluster_id().str(),
                                                                vd_context_kind,
-                                                               vd_object_name,
+                                                               fs_.object_router().node_id().str(),
                                                                vd_object_kind);
         ShmIdlInterface::VolumeFactory_var volumefactory_ref_ =
             ShmIdlInterface::VolumeFactory::_narrow(obj);
@@ -147,7 +148,7 @@ ShmOrbInterface::~ShmOrbInterface()
 {
     try
     {
-        bi::shared_memory_object::remove(ShmSegmentDetails::Name());
+        bi::shared_memory_object::remove(segment_details_.id().c_str());
     }
     catch (bi::interprocess_exception&)
     {

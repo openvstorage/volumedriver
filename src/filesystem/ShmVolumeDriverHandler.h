@@ -37,14 +37,15 @@ public:
     struct construction_args
     {
         FileSystem& fs;
+        ShmSegmentDetails segment_details;
     };
 
     ShmVolumeDriverHandler(const ::ShmIdlInterface::CreateShmArguments& args,
                            construction_args& handler_args)
         : fs_(handler_args.fs)
         , shm_segment_(new boost::interprocess::managed_shared_memory(boost::interprocess::open_only,
-                                                                      ShmSegmentDetails::Name()))
-    {
+                                                                      ShmSegmentDetails(std::string(args.cluster_id),
+                                                                                        std::string(args.vrouter_id)).id().c_str())) {
         open(std::string(args.volume_name));
 
         LOG_INFO("created a new volume handler for volume '" <<

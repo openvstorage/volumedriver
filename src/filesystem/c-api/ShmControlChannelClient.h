@@ -25,9 +25,9 @@
 class ShmControlChannelClient
 {
 public:
-    ShmControlChannelClient()
+    ShmControlChannelClient(const ShmSegmentDetails& segment_details)
     : socket_(io_service_)
-    , ep_(ShmConnectionDetails::Endpoint())
+    , ep_(segment_details.control_endpoint())
     {}
 
     ~ShmControlChannelClient()

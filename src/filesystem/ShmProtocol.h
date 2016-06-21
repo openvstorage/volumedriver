@@ -22,10 +22,9 @@
 namespace volumedriverfs
 {
 
-const std::string vd_context_name("volumedriver");
-const std::string vd_context_kind("storage");
-const std::string vd_object_name("volumedriver_shm_interface");
-const std::string vd_object_kind("storage");
+// TODO: only declare these here (extern). Convert them into static members of a struct?
+const std::string vd_context_kind("vrouter_cluster_id");
+const std::string vd_object_kind("vrouter");
 
 const uint64_t max_write_queue_size = 128;
 const uint64_t max_read_queue_size = 128;
@@ -40,6 +39,7 @@ struct ShmWriteRequest
     boost::interprocess::managed_shared_memory::handle_t handle;
 };
 
+// TODO: no static vars in a header.
 static const uint64_t writerequest_size = sizeof(ShmWriteRequest);
 
 struct ShmReadRequest
