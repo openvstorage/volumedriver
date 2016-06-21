@@ -1,0 +1,3 @@
+<a name="readcache"></a>
+## Read Cache
+The Read Cache has as only purpose to speed up read IO. The read cache can be addressed in 2 different ways: Deduped and Non-Deduped. This default vPool setting can overwritten on a per volume basis. When a volume is set to deduped, it will make use of a deduped cache (based upon an MD5-hash). This allows to improve the cache-hit ratio as more data can fit into the cache. When multiple volumes share the same content (4K block), it will be only stored once in the read cache. When the volume is set to non-deduped it will get allocated a (configurable) chunk of the read cache to improve the read performance.
