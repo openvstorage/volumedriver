@@ -19,7 +19,7 @@
 #include "FileSystem.h"
 #include "ObjectRouter.h"
 #include "PythonClient.h"
-#include "ShmCommon.h"
+#include "ShmSegmentDetails.h"
 
 #include <boost/interprocess/managed_shared_memory.hpp>
 

@@ -13,8 +13,8 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "../ShmCommon.h"
 #include "ShmClient.h"
+#include "../ShmSegmentDetails.h"
 
 #include <youtils/Assert.h>
 #include <youtils/UUID.h>

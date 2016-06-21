@@ -16,11 +16,11 @@
 #ifndef __SHM_CLIENT_H_
 #define __SHM_CLIENT_H_
 
-#include "../ShmCommon.h"
+#include "ShmIdlInterface.h"
+
 #include "../ShmIdlInterface.h"
 #include "../ShmProtocol.h"
-
-#include "ShmIdlInterface.h"
+#include "../ShmSegmentDetails.h"
 
 #include <boost/interprocess/ipc/message_queue.hpp>
 #include <boost/interprocess/managed_shared_memory.hpp>

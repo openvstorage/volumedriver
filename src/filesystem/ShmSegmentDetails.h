@@ -13,8 +13,8 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef __SHM_COMMON_H
-#define __SHM_COMMON_H
+#ifndef __SHM_SEGMENT_DETAILS_H
+#define __SHM_SEGMENT_DETAILS_H
 
 #include <string>
 
@@ -47,4 +47,4 @@ struct ShmSegmentDetails
     ~ShmSegmentDetails() = default;
 };
 
-#endif // __SHM_COMMON_H
+#endif // __SHM_SEGMENT_DETAILS_H

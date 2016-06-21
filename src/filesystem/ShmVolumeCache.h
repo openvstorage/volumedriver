@@ -15,7 +15,7 @@
 #ifndef __SHM_VOLUME_CACHE_H
 #define __SHM_VOLUME_CACHE_H
 
-#include "ShmCommon.h"
+#include "ShmSegmentDetails.h"
 
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <set>

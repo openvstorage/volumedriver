@@ -16,7 +16,7 @@
 #ifndef __LIB_OVS_COMMON_H
 #define __LIB_OVS_COMMON_H
 
-#include "../ShmCommon.h"
+#include "../ShmSegmentDetails.h"
 
 #include <boost/optional.hpp>
 

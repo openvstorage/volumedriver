@@ -16,7 +16,7 @@
 #ifndef __SHM_ORB_INTERFACE_H_
 #define __SHM_ORB_INTERFACE_H_
 
-#include "ShmCommon.h"
+#include "ShmSegmentDetails.h"
 
 #include <future>
 
