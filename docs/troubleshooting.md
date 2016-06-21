@@ -1,2 +1,2 @@
 # Troubleshooting
-* [Restart volume](docs/restartVolume.md)
+* [Restart volume](restartVolume.md)
