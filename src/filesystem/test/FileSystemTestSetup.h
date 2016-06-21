@@ -252,7 +252,10 @@ protected:
     static volumedriverfs::ClusterId
     vrouter_cluster_id()
     {
-        return volumedriverfs::ClusterId("volumedriverfs-cluster");
+        using namespace std::literals::string_literals;
+
+        static const volumedriverfs::ClusterId cid("vfs-cluster-"s + youtils::UUID().str());
+        return cid;
     }
 
     static volumedriverfs::NodeId
