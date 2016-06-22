@@ -6,15 +6,11 @@ The VolumeDriver implements functionality such as zero-copy snapshots, thin-clon
 
 
 The VolumeDriver Documentation is divided into following sections:
-* [Volume Driver Architecture](docs/architecture.md)
-* [Volume Driver Concepts](docs/concepts.md)
-* [Volume Driver Components](docs/components.md)
-* [Volume Driver Python API](docs/pythonapi.md)
-* [Volume Driver Configuration](docs/config.md)
-* [VolumeDriver Events](docs/events.md)
-* [VolumeDriver CLI](docs/volumedriver_fs_cli.md)
-* [VolumeDriver Troubleshooting](docs/troubleshooting.md)
-
-The Edge Documentation:
-* [Edge Architecture](docs/edge.md)
-* [Edge Interfaces](docs/edge_interfaces.md)
+* [Architecture](docs/architecture.md)
+* [Concepts](docs/concepts.md)
+* [Components](docs/components.md)
+* [Building the Volume Driver](docs/building.md)
+* [Using the Volume Driver](docs/using.md)
+* [Events](docs/events.md)
+* [Troubleshooting](docs/troubleshooting.md)
+    
