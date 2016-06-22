@@ -33,7 +33,7 @@
 
 #include <filesystem/ObjectRouter.h>
 #include <filesystem/Registry.h>
-#include <filesystem/ShmClient.h>
+#include <filesystem/c-api/ShmClient.h>
 #include <filesystem/c-api/volumedriver.h>
 
 namespace volumedriverfstest
