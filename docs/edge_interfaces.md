@@ -1,9 +1,9 @@
 <a name="edge interfaces"></a>
 ## Edge interfaces
 There are a couple of block interface bindings we provide for starters:
-- QEMU blockdriver
-- blktap
-- TGT iscsi
+- [QEMU blockdriver](#qemu-blockdriver)
+- [blktap](#blktap)
+- [TGT iscsi](#tgt)
 
 Following some documentation on how these can be used.
 
