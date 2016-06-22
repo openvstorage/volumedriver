@@ -28,7 +28,7 @@
 class VolumeCacheHandler
 {
 public:
-    VolumeCacheHandler(volumedriverfs::ShmClientPtr shm_client,
+    VolumeCacheHandler(volumedriverfs::ShmClient& shm_client,
                        ShmControlChannelClientPtr ctl_client)
     : shm_client_(shm_client)
     , ctl_client_(ctl_client)
@@ -172,7 +172,7 @@ public:
 
 private:
     typedef std::queue<void*> BufferQueue;
-    volumedriverfs::ShmClientPtr shm_client_;
+    volumedriverfs::ShmClient& shm_client_;
     ShmControlChannelClientPtr ctl_client_;
 
     enum BufferSize
@@ -247,7 +247,7 @@ private:
         bool ret = ctl_client_->allocate(handle, size);
         if (ret)
         {
-            void *ptr = shm_client_->get_address_from_handle(handle);
+            void *ptr = shm_client_.get_address_from_handle(handle);
             return ptr;
         }
         return NULL;
@@ -257,7 +257,7 @@ private:
     ctl_channel_deallocate(void *buf)
     {
         boost::interprocess::managed_shared_memory::handle_t handle =
-            shm_client_->get_handle_from_address(buf);
+            shm_client_.get_handle_from_address(buf);
         return (ctl_client_->deallocate(handle) ? 0 : -1);
     }
 

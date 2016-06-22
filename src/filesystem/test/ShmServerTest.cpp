@@ -34,7 +34,8 @@
 
 #include <filesystem/ObjectRouter.h>
 #include <filesystem/Registry.h>
-#include <filesystem/c-api/ShmClient.h>
+
+#include <filesystem/c-api/ShmOrbClient.h>
 #include <filesystem/c-api/volumedriver.h>
 
 namespace volumedriverfstest
@@ -126,7 +127,7 @@ public:
 
         ASSERT_NO_THROW(future.get());
 
-        ShmClient::init();
+        ShmOrbClient::init();
     }
 
     virtual void
@@ -135,7 +136,8 @@ public:
         shm_orb_server_->stop_all_and_exit();
         shm_orb_thread_.join();
         shm_orb_server_ = nullptr;
-        ShmClient::fini();
+        ShmOrbClient::fini();
+
         FileSystemTestBase::TearDown();
     }
 
@@ -1199,15 +1201,23 @@ TEST_F(ShmServerTest, two_instances)
                   CtxPtr ctx(ovs_ctx_new(attr.get()));
                   ASSERT_TRUE(ctx != nullptr);
 
-                  EXPECT_EQ(0,
+                  ASSERT_EQ(0,
                             ovs_create_volume(ctx.get(),
                                               vid.c_str(),
-                                              vsize));
+                                              vsize)) <<
+                      "failed to create volume on " <<
+                      nid <<
+                      ": " <<
+                      strerror(errno);
 
                   ASSERT_EQ(0,
                             ovs_ctx_init(ctx.get(),
                                          vid.c_str(),
-                                         O_RDWR));
+                                         O_RDWR))  <<
+                      "failed to init context for " <<
+                      nid <<
+                      ": " <<
+                      strerror(errno);
 
                   BufferPtr wbuf(ovs_allocate(ctx.get(),
                                               pattern.size()),
@@ -1242,10 +1252,20 @@ TEST_F(ShmServerTest, two_instances)
               });
 
     mount_remote();
+
     auto on_exit(yt::make_scope_exit([&]
                                      {
                                          umount_remote();
                                      }));
+
+    auto lfuture(std::async(std::launch::async,
+                            [&]
+                            {
+                                work(vrouter_cluster_id(),
+                                     local_node_id(),
+                                     "local-volume"s,
+                                     "local work"s);
+                            }));
 
     auto rfuture(std::async(std::launch::async,
                             [&]
@@ -1260,15 +1280,6 @@ TEST_F(ShmServerTest, two_instances)
                                      nid,
                                      vid,
                                      "remote work"s);
-                            }));
-
-    auto lfuture(std::async(std::launch::async,
-                            [&]
-                            {
-                                work(vrouter_cluster_id(),
-                                     local_node_id(),
-                                     "local-volume"s,
-                                     "local work"s);
                             }));
 
     const auto sleep_secs = yt::System::get_env_with_default("SHM_TEST_DURATION_SECS",

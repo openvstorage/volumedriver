@@ -17,6 +17,7 @@
 #define __SHM_CLIENT_H_
 
 #include "ShmIdlInterface.h"
+#include "ShmSegmentDetails.h"
 
 #include "../ShmIdlInterface.h"
 #include "../ShmProtocol.h"
@@ -25,25 +26,21 @@
 #include <boost/interprocess/ipc/message_queue.hpp>
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/errors.hpp>
-#include <youtils/Logging.h>
-#include <youtils/OrbHelper.h>
 
 namespace volumedriverfs
 {
 
-namespace ipc = boost::interprocess;
+class ShmOrbClient;
 
 class ShmClient
 {
 public:
-    explicit ShmClient(const ShmSegmentDetails&);
-
     ~ShmClient();
 
-    // TODO: have this return some sort of handle which can then
-    // be queried for "key", "volname", etc.
-    void
-    open(const std::string& volname);
+    ShmClient(const ShmClient&) = delete;
+
+    ShmClient&
+    operator=(const ShmClient&) = delete;
 
     void*
     allocate(const uint64_t size_in_bytes);
@@ -93,9 +90,6 @@ public:
                               void **opaque,
                               const struct timespec* timeout);
 
-    void
-    stop_reply_queues(int n);
-
     int
     stat(const std::string& volume_name,
          struct stat *st);
@@ -103,94 +97,58 @@ public:
     uint64_t
     volume_size_in_bytes() const
     {
-        return create_result_->volume_size_in_bytes;
+        return vsize_;
     }
 
     const std::string&
     get_key() const
     {
-        return *key_;
+        return key_;
     }
 
-    const boost::optional<std::string>&
+    const std::string&
     volume_name() const
     {
-        return volume_name_;
+        return vname_;
     }
 
     void
     flush();
 
     void
-    create_volume(const std::string& volume_name,
-                  const uint64_t volume_size);
+    truncate(const uint64_t volume_size);
 
     void
-    remove_volume(const std::string& volume_name);
+    stat(struct stat&);
 
     void
-    truncate_volume(const std::string& volume_name,
-                    const uint64_t volume_size);
-
-    void
-    create_snapshot(const std::string& volume_name,
-                    const std::string& snapshot_name,
-                    const int64_t timeout);
-
-    void
-    rollback_snapshot(const std::string& volume_name,
-                      const std::string& snapshot_name);
-
-    void
-    delete_snapshot(const std::string& volume_name,
-                    const std::string& snapshot_name);
-
-    std::vector<std::string>
-    list_snapshots(const std::string& volume_name,
-                   uint64_t *size);
-
-    int
-    is_snapshot_synced(const std::string& volume_name,
-                       const std::string& snapshot_name);
-
-    std::vector<std::string>
-    list_volumes();
+    stop_reply_queues(int n);
 
     void*
-    get_address_from_handle(ipc::managed_shared_memory::handle_t handle);
+    get_address_from_handle(boost::interprocess::managed_shared_memory::handle_t handle);
 
-    ipc::managed_shared_memory::handle_t
+    boost::interprocess::managed_shared_memory::handle_t
     get_handle_from_address(void *buf);
 
-    static void
-    init();
-
-    static void
-    fini();
-
 private:
+    friend class ShmOrbClient;
+
+    ShmClient(const ShmSegmentDetails&,
+              const std::string& vname,
+              const ShmIdlInterface::CreateResult&);
+
+    boost::interprocess::message_queue writerequest_mq_;
+    boost::interprocess::message_queue writereply_mq_;
+    boost::interprocess::message_queue readrequest_mq_;
+    boost::interprocess::message_queue readreply_mq_;
+    boost::interprocess::managed_shared_memory shm_segment_;
+
     const ShmSegmentDetails segment_details_;
-
-    std::unique_ptr<ipc::managed_shared_memory> shm_segment_;
-    ShmIdlInterface::VolumeFactory_var volume_factory_ref_;
-
-    std::unique_ptr<ShmIdlInterface::CreateResult> create_result_;
-    std::unique_ptr<ipc::message_queue> writerequest_mq_;
-    std::unique_ptr<ipc::message_queue> writereply_mq_;
-    std::unique_ptr<ipc::message_queue> readrequest_mq_;
-    std::unique_ptr<ipc::message_queue> readreply_mq_;
-
-    boost::optional<std::string> volume_name_;
-    boost::optional<std::string> key_;
-
-    CORBA::Object_var
-    get_object_reference_();
-
-    ShmIdlInterface::VolumeFactory_var
-    get_volume_factory_reference_();
+    const std::string vname_;
+    const size_t vsize_;
+    const std::string key_;
 };
 
-typedef std::shared_ptr<ShmClient> ShmClientPtr;
-
 } //namespace volumedriverfs
+
 #endif

@@ -75,13 +75,18 @@ struct ShmContext : public ovs_context_t
     {
         try
         {
-            volumedriverfs::ShmClient(segment_details_).create_volume(volume_name,
-                                                                      size);
+            volumedriverfs::ShmOrbClient(segment_details_).create_volume(volume_name,
+                                                                         size);
             return 0;
         }
         catch (const ShmIdlInterface::VolumeExists&)
         {
             errno = EEXIST;
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "failed to create volume: " << e.what() << std::endl;
+            errno = EIO;
         }
         catch (...)
         {
@@ -95,7 +100,7 @@ struct ShmContext : public ovs_context_t
     {
         try
         {
-            volumedriverfs::ShmClient(segment_details_).remove_volume(volume_name);
+            volumedriverfs::ShmOrbClient(segment_details_).remove_volume(volume_name);
             return 0;
         }
         catch (const ShmIdlInterface::VolumeDoesNotExist&)
@@ -115,8 +120,8 @@ struct ShmContext : public ovs_context_t
     {
         try
         {
-            volumedriverfs::ShmClient(segment_details_).truncate_volume(volume_name,
-                                                                        size);
+            volumedriverfs::ShmOrbClient(segment_details_).truncate_volume(volume_name,
+                                                                           size);
             return 0;
         }
         catch (const ShmIdlInterface::VolumeDoesNotExist&)
@@ -133,7 +138,20 @@ struct ShmContext : public ovs_context_t
     int
     truncate(uint64_t size)
     {
-        return truncate_volume(shm_ctx_->shm_client_->volume_name()->c_str(), size);
+        try
+        {
+            shm_ctx_->shm_client_->truncate(size);
+            return 0;
+        }
+        catch (const ShmIdlInterface::VolumeDoesNotExist&)
+        {
+            errno = ENOENT;
+        }
+        catch (...)
+        {
+            errno = EIO;
+        }
+        return -1;
     }
 
     int
@@ -143,9 +161,9 @@ struct ShmContext : public ovs_context_t
     {
         try
         {
-            volumedriverfs::ShmClient(segment_details_).create_snapshot(volume_name,
-                                                                        snapshot_name,
-                                                                        timeout);
+            volumedriverfs::ShmOrbClient(segment_details_).create_snapshot(volume_name,
+                                                                           snapshot_name,
+                                                                           timeout);
             return 0;
         }
         catch (const ShmIdlInterface::PreviousSnapshotNotOnBackendException&)
@@ -177,8 +195,8 @@ struct ShmContext : public ovs_context_t
     {
         try
         {
-            volumedriverfs::ShmClient(segment_details_).rollback_snapshot(volume_name,
-                                                                          snapshot_name);
+            volumedriverfs::ShmOrbClient(segment_details_).rollback_snapshot(volume_name,
+                                                                             snapshot_name);
             return 0;
         }
         catch (const ShmIdlInterface::VolumeDoesNotExist&)
@@ -203,8 +221,8 @@ struct ShmContext : public ovs_context_t
     {
         try
         {
-            volumedriverfs::ShmClient(segment_details_).delete_snapshot(volume_name,
-                                                                        snapshot_name);
+            volumedriverfs::ShmOrbClient(segment_details_).delete_snapshot(volume_name,
+                                                                           snapshot_name);
             return 0;
         }
         catch (const ShmIdlInterface::VolumeDoesNotExist&)
@@ -235,8 +253,8 @@ struct ShmContext : public ovs_context_t
     {
         try
         {
-            snaps = volumedriverfs::ShmClient(segment_details_).list_snapshots(volume_name,
-                                                                               size);
+            snaps = volumedriverfs::ShmOrbClient(segment_details_).list_snapshots(volume_name,
+                                                                                  size);
         }
         catch (const ShmIdlInterface::VolumeDoesNotExist&)
         {
@@ -254,8 +272,8 @@ struct ShmContext : public ovs_context_t
     {
         try
         {
-            return volumedriverfs::ShmClient(segment_details_).is_snapshot_synced(volume_name,
-                                                                                  snapshot_name);
+            return volumedriverfs::ShmOrbClient(segment_details_).is_snapshot_synced(volume_name,
+                                                                                     snapshot_name);
         }
         catch (const ShmIdlInterface::VolumeDoesNotExist&)
         {
@@ -277,7 +295,7 @@ struct ShmContext : public ovs_context_t
     {
         try
         {
-            volumes = volumedriverfs::ShmClient(segment_details_).list_volumes();
+            volumes = volumedriverfs::ShmOrbClient(segment_details_).list_volumes();
             return 0;
         }
         catch (...)
@@ -322,8 +340,9 @@ struct ShmContext : public ovs_context_t
     {
         try
         {
-            return shm_ctx_->shm_client_->stat(shm_ctx_->shm_client_->volume_name()->c_str(),
-                                               st);
+            assert(st);
+            shm_ctx_->shm_client_->stat(*st);
+            return 0;
         }
         catch (...)
         {

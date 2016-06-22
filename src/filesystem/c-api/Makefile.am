@@ -16,6 +16,7 @@ libovsvolumedriver_la_SOURCES = \
 	AioCompletion.cpp \
 	../ShmIdlInterface.cpp \
 	ShmClient.cpp \
+	ShmOrbClient.cpp \
 	NetworkXioClient.cpp \
 	TracePoints_tp.c \
 	libovsvolumedriver.cpp

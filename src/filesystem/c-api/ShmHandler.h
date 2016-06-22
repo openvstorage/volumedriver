@@ -18,7 +18,9 @@
 
 #include "VolumeCacheHandler.h"
 #include "ShmControlChannelClient.h"
+#include "ShmOrbClient.h"
 #include "internal.h"
+
 struct ovs_shm_context;
 
 struct IOThread
@@ -59,55 +61,28 @@ struct ovs_shm_context
                     const std::string& volume_name,
                     int flag)
         : oflag(flag)
+        , io_threads_pool_size_(youtils::System::get_env_with_default<int>("LIBOVSVOLUMEDRIVER_IO_THREADS_POOL_SIZE",
+                                                                           1))
+        , shm_client_(volumedriverfs::ShmOrbClient(segment_details).open(volume_name))
+        , ctl_client_(std::make_shared<ShmControlChannelClient>(segment_details))
     {
-        using namespace std::literals::string_literals;
-
-        io_threads_pool_size_ =
-            youtils::System::get_env_with_default<int>("LIBOVSVOLUMEDRIVER_IO_THREADS_POOL_SIZE",
-                                                       1);
-
-        shm_client_ = std::make_shared<volumedriverfs::ShmClient>(segment_details);
-        shm_client_->open(volume_name);
-        try
-        {
-            ctl_client_ = std::make_shared<ShmControlChannelClient>(segment_details);
-        }
-        catch (...)
-        {
-            shm_client_.reset();
-            throw;
-        }
-
         if (not ctl_client_->connect_and_register(volume_name,
                                                   shm_client_->get_key()))
         {
-            shm_client_.reset();
-            ctl_client_.reset();
             throw fungi::IOException("cannot connect and register to server");
         }
 
-        try
-        {
-            ovs_aio_init();
-        }
-        catch (...)
-        {
-            shm_client_.reset();
-            ctl_client_.reset();
-            throw;
-        }
+        ovs_aio_init();
 
         try
         {
-            cache_ = std::make_unique<VolumeCacheHandler>(shm_client_,
+            cache_ = std::make_unique<VolumeCacheHandler>(*shm_client_,
                                                           ctl_client_);
         }
         catch (...)
         {
             ovs_aio_destroy();
-            shm_client_.reset();
             ctl_client_->deregister();
-            ctl_client_.reset();
             throw;
         }
         int ret = cache_->preallocate();
@@ -121,9 +96,8 @@ struct ovs_shm_context
     {
         ovs_aio_destroy();
         cache_.reset();
-        shm_client_.reset();
+        shm_client_ = nullptr;
         ctl_client_->deregister();
-        ctl_client_.reset();
     }
 
     void
@@ -209,7 +183,7 @@ struct ovs_shm_context
 
     int oflag;
     int io_threads_pool_size_;
-    volumedriverfs::ShmClientPtr shm_client_;
+    std::unique_ptr<volumedriverfs::ShmClient> shm_client_;
     std::vector<IOThreadPtr> rr_iothreads;
     std::vector<IOThreadPtr> wr_iothreads;
     VolumeCacheHandlerPtr cache_;
