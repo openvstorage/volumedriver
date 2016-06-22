@@ -147,6 +147,7 @@ try
           , dtl_throttle_usecs(pt)
           , dtl_queue_depth(pt)
           , dtl_write_trigger(pt)
+          , dtl_busy_loop_usecs(pt)
           , number_of_scos_in_tlog(pt)
           , non_disposable_scos_factor(pt)
           , default_cluster_size(pt)
@@ -1774,6 +1775,7 @@ VolManager::update(const boost::property_tree::ptree& pt,
     dtl_throttle_usecs.update(pt, report);
     dtl_queue_depth.update(pt, report);
     dtl_write_trigger.update(pt, report);
+    dtl_busy_loop_usecs.update(pt, report);
 
     freespace_check_interval.update(pt, report);
     read_cache_default_behaviour.update(pt, report);
@@ -1813,6 +1815,7 @@ VolManager::persist(boost::property_tree::ptree& pt,
     dtl_throttle_usecs.persist(pt, reportDefault);
     dtl_queue_depth.persist(pt, reportDefault);
     dtl_write_trigger.persist(pt, reportDefault);
+    dtl_busy_loop_usecs.persist(pt, reportDefault);
 
     number_of_scos_in_tlog.persist(pt, reportDefault);
     non_disposable_scos_factor.persist(pt, reportDefault);

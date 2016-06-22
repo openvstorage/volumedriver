@@ -76,6 +76,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(dtl_write_trigger,
                                       ShowDocumentation::T,
                                       8);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(dtl_busy_loop_usecs,
+                                      volmanager_component_name,
+                                      "dtl_busy_loop_usecs",
+                                      "Timeout for busy retries sending/reading data before falling back to polling",
+                                      ShowDocumentation::T,
+                                      0U);
+
 DEFINE_INITIALIZED_PARAM(clean_interval,
                          volmanager_component_name,
                          "scocache_cleanup_interval",

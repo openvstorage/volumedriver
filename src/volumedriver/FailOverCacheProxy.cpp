@@ -134,6 +134,12 @@ FailOverCacheProxy::setRequestTimeout(const boost::chrono::seconds seconds)
 }
 
 void
+FailOverCacheProxy::setBusyLoopDuration(const boost::chrono::microseconds usecs)
+{
+    socket_->setBusyLoopDuration(usecs);
+}
+
+void
 FailOverCacheProxy::addEntries(std::vector<FailOverCacheEntry> entries)
 {
 #ifndef NDEBUG

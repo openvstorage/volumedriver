@@ -50,13 +50,13 @@ public:
     ~FailOverCacheProxy();
 
     void
-    addEntries(std::vector<FailOverCacheEntry> entries);
+    addEntries(std::vector<FailOverCacheEntry>);
 
     // returns the SCO size - 0 indicates a problem.
     // Z42: throw instead!
     uint64_t
-    getSCOFromFailOver(SCO a,
-                       SCOProcessorFun processor);
+    getSCOFromFailOver(SCO,
+                       SCOProcessorFun);
 
     void
     getSCORange(SCO& oldest,
@@ -69,13 +69,16 @@ public:
     flush();
 
     void
-    removeUpTo(const SCO sconame) throw ();
+    removeUpTo(const SCO) throw ();
 
     void
     setRequestTimeout(const boost::chrono::seconds);
 
     void
-    getEntries(SCOProcessorFun processor);
+    setBusyLoopDuration(const boost::chrono::microseconds);
+
+    void
+    getEntries(SCOProcessorFun);
 
     void
     delete_failover_dir()
