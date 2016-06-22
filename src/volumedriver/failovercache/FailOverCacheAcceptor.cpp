@@ -31,8 +31,10 @@ using namespace fungi;
 #define LOCK()                                  \
     boost::lock_guard<decltype(mutex_)> lg_(mutex_)
 
-FailOverCacheAcceptor::FailOverCacheAcceptor(const boost::optional<fs::path>& path)
+FailOverCacheAcceptor::FailOverCacheAcceptor(const boost::optional<fs::path>& path,
+                                             const boost::chrono::microseconds busy_loop_duration)
     : factory_(path)
+    , busy_loop_duration_(busy_loop_duration)
 {}
 
 FailOverCacheAcceptor::~FailOverCacheAcceptor()
@@ -65,7 +67,8 @@ FailOverCacheAcceptor::createProtocol(std::unique_ptr<fungi::Socket> s,
     LOCK();
     protocols.push_back(new FailOverCacheProtocol(std::move(s),
                                                   parentServer,
-                                                  *this));
+                                                  *this,
+                                                  busy_loop_duration_));
     return protocols.back();
 }
 
