@@ -373,25 +373,31 @@ int32_t Socket::read(byte *buf, const int32_t n)
 
     byte *bufp = buf;
     assert(n < std::numeric_limits<int>::max());
-    //    const int32_t n2 = (int32_t)n;
-    int32_t n3 = n;
-    while (n3 > 0)
+    int32_t n2 = n;
+    while (n2 > 0)
     {
-        if (nonblocking_ || requestTimeout_ > 0)
-        {
-            wait_for_read();
-        }
-        int32_t s = rs_recv(sock_, (char*)bufp, n3, 0);
-        assert(s <= n3);
+        int32_t s = rs_recv(sock_, (char*)bufp, n2, 0);
+        assert(s <= n2);
         int err = 0;
         if (s < 0)
         {
             err = getErrorNumber();
-            if (err== EAGAIN || err == EINTR)
+            switch (err)
             {
+            case EAGAIN:
+                if (nonblocking_ || requestTimeout_ > 0)
+                {
+                    wait_for_read();
+                }
+                // fall through
+            case EINTR:
                 continue;
+            default:
+                LOG_DEBUG("read error < 0, other error");
+                throw IOException("Socket::read/other", "", err);
             }
         }
+
         // s == 0: indicates connection closed, as the socket is
         // readable, and it has to return at least one byte!
         if (s == 0)
@@ -399,12 +405,8 @@ int32_t Socket::read(byte *buf, const int32_t n)
             LOG_DEBUG("read error 0, assuming connection closed");
             throw IOException("Socket::read/closed", "", 0);
         }
-        else if (s < 0)
-        {
-            LOG_DEBUG("read error < 0, other error");
-            throw IOException("Socket::read/other", "", err);
-        }
-        n3 -= s;
+
+        n2 -= s;
         bufp += s;
     }
 
@@ -524,49 +526,48 @@ void Socket::wait_for_write() {
     }
 }
 
-int32_t Socket::write(const byte *buf, int32_t n) {
+int32_t Socket::write(const byte *buf, int32_t n)
+{
     if (corked_)
     {
         wbuf_.append((byte *) buf, (int) n);
         return n;
     }
-	const byte *bufp = buf;
-	assert(n < std::numeric_limits<int>::max());
-	const int32_t n2 = (int32_t)n;
-	int32_t n3 = n2;
-	while (n3 > 0) {
-		if (nonblocking_ || requestTimeout_ > 0) {
-			wait_for_write();
-		}
-		int32_t s = rs_send(sock_, (const char *)bufp, n3, 0);
-		assert(s <= n3);
-		int err = 0;
-		if (s < 0)
+
+    const byte *bufp = buf;
+    assert(n < std::numeric_limits<int>::max());
+    int32_t n2 = n;
+
+    while (n2 > 0)
+    {
+        int32_t s = rs_send(sock_, (const char *)bufp, n2, 0);
+        assert(s <= n2);
+        int err = 0;
+        if (s < 0)
         {
             err = getErrorNumber();
-            if (err== EAGAIN || err == EINTR) {
+            switch (err)
+            {
+            case EAGAIN:
+                {
+                    if (nonblocking_ or requestTimeout_ > 0)
+                    {
+                        wait_for_write();
+                    }
+                }
+                // fall through
+            case EINTR:
                 continue;
+            default:
+                LOG_DEBUG("write error < 0, other error");
+                throw IOException("Socket::write", "", err);
             }
-		}
-		// in case of write, 0 has no special meaning
-		if (s == 0) {
-#ifndef _WIN32
-			LOG_DEBUG("write error 0, ignoring");
-			continue;
-#else
-			// on windows a return of 0 from send() can also indicate
-			// a normal disconnect
-			LOG_DEBUG("write error 0, win32 error");
-			throw IOException("Socket::write", "", err);
-#endif
-		} else if (s < 0) {
-			LOG_DEBUG("write error < 0, other error");
-			throw IOException("Socket::write", "", err);
-		}
-		n3 -= s;
-		bufp += s;
-	}
-	return n2;
+        }
+
+        n2 -= s;
+        bufp += s;
+    }
+    return n;
 }
 
 void Socket::shutdown()

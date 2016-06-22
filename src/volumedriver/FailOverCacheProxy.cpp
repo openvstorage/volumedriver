@@ -37,6 +37,7 @@ FailOverCacheProxy::FailOverCacheProxy(const FailOverCacheConfig& cfg,
     , cluster_mult_(cluster_mult)
     , delete_failover_dir_(false)
 {
+    socket_->setNonBlocking();
     //        stream_ << fungi::IOBaseStream::cork; --AT-- removed because this command is never sent over the wire
     stream_ << fungi::IOBaseStream::RequestTimeout(timeout.count());
     //        stream_ << fungi::IOBaseStream::uncork;

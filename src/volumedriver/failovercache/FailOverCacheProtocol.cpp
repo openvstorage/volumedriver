@@ -46,6 +46,7 @@ FailOverCacheProtocol::FailOverCacheProtocol(std::unique_ptr<fungi::Socket> sock
     , fact_(fact)
     , use_rs_(sock_->isRdma())
 {
+    sock_->setNonBlocking();
     if(pipe(pipes_) != 0)
     {
         stream_.close();
