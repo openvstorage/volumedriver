@@ -44,6 +44,7 @@
 #include <youtils/IOException.h>
 #include <youtils/Logging.h>
 #include <youtils/System.h>
+#include <youtils/Timer.h>
 
 #include <rdma/rdma_cma.h>
 #include <rdma/rsocket.h>
@@ -51,6 +52,8 @@
 #include "use_rs.h"
 
 namespace fungi {
+
+namespace yt = youtils;
 
 class Interval {
 public:
@@ -163,10 +166,23 @@ Socket::createSocket(bool rdma, int sock_type) {
     }
 }
 
-Socket::Socket(int domain, int sock_type, bool rdma) :
-	sock_(-1), domain_(domain), sock_type_(sock_type), use_rs_(rdma), nonblocking_(false),
-    port_(0), stop_(false), connectionInProgress_(false), requestTimeout_(0), remote_ip_(""), remote_port_(0),
-    parent_socket_(0), closed_(true), corked_(false) {
+Socket::Socket(int domain, int sock_type, bool rdma)
+    : sock_(-1)
+    , domain_(domain)
+    , sock_type_(sock_type)
+    , use_rs_(rdma)
+    , nonblocking_(false)
+    , port_(0)
+    , stop_(false)
+    , connectionInProgress_(false)
+    , requestTimeout_(0)
+    , busy_loop_duration_(0)
+    , remote_ip_("")
+    , remote_port_(0)
+    , parent_socket_(0)
+    , closed_(true)
+    , corked_(false)
+{
 	sock_ = rs_socket(domain_, sock_type_, 0);
 	if (sock_ == -1) {
 		throw IOException("socket", "", getErrorNumber());
@@ -176,20 +192,21 @@ Socket::Socket(int domain, int sock_type, bool rdma) :
 }
 
 Socket::Socket(const Socket *parent_socket, int sock, int domain,
-		int sock_type, const char *remote_ip, uint16_t remote_port) :
-	sock_(sock),
-        domain_(domain),
-        sock_type_(sock_type),
-        use_rs_(parent_socket->isRdma()),
-        nonblocking_(false),
-        stop_(false),
-        connectionInProgress_(false),
-	requestTimeout_(0),
-        remote_ip_(remote_ip),
-        remote_port_(remote_port),
-        parent_socket_(parent_socket),
-        closed_(false),
-        corked_(false)
+		int sock_type, const char *remote_ip, uint16_t remote_port)
+    : sock_(sock)
+    , domain_(domain)
+    , sock_type_(sock_type)
+    , use_rs_(parent_socket->isRdma())
+    , nonblocking_(false)
+    , stop_(false)
+    , connectionInProgress_(false)
+    , requestTimeout_(0)
+    , busy_loop_duration_(0)
+    , remote_ip_(remote_ip)
+    , remote_port_(remote_port)
+    , parent_socket_(parent_socket)
+    , closed_(false)
+    , corked_(false)
 {
 	LOG_DEBUG("New socket created:" << sock_ << " transport=" << (use_rs_ ? "RDMA" : "TCP"));
 }
@@ -342,6 +359,9 @@ int32_t Socket::read(byte *buf, const int32_t n)
     byte *bufp = buf;
     assert(n < std::numeric_limits<int>::max());
     int32_t n2 = n;
+
+    yt::SteadyTimer t;
+
     while (n2 > 0)
     {
         int32_t s = rs_recv(sock_, (char*)bufp, n2, 0);
@@ -353,7 +373,7 @@ int32_t Socket::read(byte *buf, const int32_t n)
             switch (err)
             {
             case EAGAIN:
-                if (nonblocking_ || requestTimeout_ > 0)
+                if ((nonblocking_ or requestTimeout_ > 0) and t.elapsed() >= busy_loop_duration_)
                 {
                     wait_for_read();
                 }
@@ -506,6 +526,8 @@ int32_t Socket::write(const byte *buf, int32_t n)
     assert(n < std::numeric_limits<int>::max());
     int32_t n2 = n;
 
+    yt::SteadyTimer t;
+
     while (n2 > 0)
     {
         int32_t s = rs_send(sock_, (const char *)bufp, n2, 0);
@@ -518,7 +540,7 @@ int32_t Socket::write(const byte *buf, int32_t n)
             {
             case EAGAIN:
                 {
-                    if (nonblocking_ or requestTimeout_ > 0)
+                    if ((nonblocking_ or requestTimeout_ > 0) and t.elapsed() >= busy_loop_duration_)
                     {
                         wait_for_write();
                     }
