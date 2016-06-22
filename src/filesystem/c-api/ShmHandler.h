@@ -19,7 +19,6 @@
 #include "VolumeCacheHandler.h"
 #include "ShmControlChannelClient.h"
 #include "internal.h"
-#include "AioCompletion.h"
 struct ovs_shm_context;
 
 struct IOThread
@@ -212,29 +211,6 @@ struct ovs_shm_context
 };
 
 static void
-_aio_request_handler(ovs_aio_request *request,
-                     size_t ret,
-                     bool failed)
-{
-    /* errno already set by shm_receive_*_reply function */
-    struct ovs_aiocb *aiocbp = request->get_aio();
-    ovs_completion_t *completion = request->get_completion();
-    request->shm_complete(errno,
-                          ret,
-                          failed);
-    if (completion)
-    {
-        request->set_completion();
-        if (request->is_async_flush())
-        {
-            delete aiocbp;
-            delete request;
-        }
-        AioCompletion::get_aio_context().schedule(completion);
-    }
-}
-
-static void
 _aio_readreply_handler(void *arg)
 {
     IOThread *iothread = (IOThread*) arg;
@@ -251,9 +227,9 @@ _aio_readreply_handler(void *arg)
                                                             &timeout);
         if (request)
         {
-            _aio_request_handler(request,
-                                 size_in_bytes,
-                                 failed);
+            ovs_aio_request::handle_shm_request(request,
+                                                size_in_bytes,
+                                                failed);
         }
     }
     std::lock_guard<std::mutex> lock_(iothread->mutex_);
@@ -278,9 +254,9 @@ _aio_writereply_handler(void *arg)
                                                              &timeout);
         if (request)
         {
-            _aio_request_handler(request,
-                                 size_in_bytes,
-                                 failed);
+            ovs_aio_request::handle_shm_request(request,
+                                                size_in_bytes,
+                                                failed);
         }
     }
     std::lock_guard<std::mutex> lock_(iothread->mutex_);

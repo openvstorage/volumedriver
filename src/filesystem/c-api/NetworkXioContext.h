@@ -16,7 +16,7 @@
 #ifndef __NETWORK_XIO_CONTEXT_H
 #define __NETWORK_XIO_CONTEXT_H
 
-#include "NetworkXioHandler.h"
+#include "NetworkXioClient.h"
 #include "context.h"
 
 struct NetworkXioContext : public ovs_context_t

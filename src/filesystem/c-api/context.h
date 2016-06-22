@@ -18,10 +18,6 @@
 
 #include <boost/asio.hpp>
 
-#include "../ShmControlChannelProtocol.h"
-#include "../ShmClient.h"
-#include "../NetworkXioClient.h"
-
 struct ovs_context_t
 {
     TransportType transport;

@@ -22,6 +22,7 @@
 #include <youtils/Assert.h>
 
 #include "NetworkXioClient.h"
+#include "internal.h"
 
 #define POLLING_TIME_USEC   20
 
@@ -358,9 +359,9 @@ NetworkXioClient::xio_run_loop_worker(void *arg)
             if (r < 0)
             {
                 req_queue_release();
-                ovs_xio_aio_complete_request(const_cast<void*>(req->opaque),
-                                             -1,
-                                             EIO);
+                ovs_aio_request::handle_xio_request(const_cast<void*>(req->opaque),
+                                                    -1,
+                                                    EIO);
                 delete req;
             }
         }
@@ -426,9 +427,9 @@ NetworkXioClient::on_msg_error(xio_session *session __attribute__((unused)),
         xio_release_response(msg);
     }
     xio_msg = reinterpret_cast<xio_msg_s*>(imsg.opaque());
-    ovs_xio_aio_complete_request(const_cast<void*>(xio_msg->opaque),
-                                 -1,
-                                 EIO);
+    ovs_aio_request::handle_xio_request(const_cast<void*>(xio_msg->opaque),
+                                        -1,
+                                        EIO);
     req_queue_release();
     delete xio_msg;
     return 0;
@@ -592,9 +593,9 @@ NetworkXioClient::on_response(xio_session *session __attribute__((unused)),
     }
     xio_msg_s *xio_msg = reinterpret_cast<xio_msg_s*>(imsg.opaque());
 
-    ovs_xio_aio_complete_request(const_cast<void*>(xio_msg->opaque),
-                                 imsg.retval(),
-                                 imsg.errval());
+    ovs_aio_request::handle_xio_request(const_cast<void*>(xio_msg->opaque),
+                                        imsg.retval(),
+                                        imsg.errval());
 
     reply->in.header.iov_base = NULL;
     reply->in.header.iov_len = 0;
@@ -648,9 +649,9 @@ NetworkXioClient::on_msg_error_control(xio_session *session ATTR_UNUSED,
         }
     }
     xio_msg = reinterpret_cast<xio_msg_s*>(imsg.opaque());
-    ovs_xio_complete_request_control(const_cast<void*>(xio_msg->opaque),
-                                     -1,
-                                     EIO);
+    ovs_aio_request::handle_xio_ctrl_request(const_cast<void*>(xio_msg->opaque),
+                                             -1,
+                                             EIO);
     xio_context_stop_loop(ctx);
     return 0;
 }
@@ -675,9 +676,9 @@ NetworkXioClient::on_msg_control(xio_session *session ATTR_UNUSED,
         return 0;
     }
     xio_ctl_s *xctl = reinterpret_cast<xio_ctl_s*>(imsg.opaque());
-    ovs_xio_complete_request_control(const_cast<void*>(xctl->xmsg.opaque),
-                                     imsg.retval(),
-                                     imsg.errval());
+    ovs_aio_request::handle_xio_ctrl_request(const_cast<void*>(xctl->xmsg.opaque),
+                                             imsg.retval(),
+                                             imsg.errval());
 
     switch (imsg.opcode())
     {
@@ -783,18 +784,18 @@ NetworkXioClient::xio_submit_request(const std::string& uri,
     xio_connection *conn = create_connection_control(&xctl->sdata, uri);
     if (conn == nullptr)
     {
-        ovs_xio_complete_request_control(opaque,
-                                         -1,
-                                         EIO);
+        ovs_aio_request::handle_xio_ctrl_request(opaque,
+                                                 -1,
+                                                 EIO);
         return;
     }
 
     int ret = xio_send_request(conn, &xctl->xmsg.xreq);
     if (ret < 0)
     {
-        ovs_xio_complete_request_control(opaque,
-                                         -1,
-                                         EIO);
+        ovs_aio_request::handle_xio_ctrl_request(const_cast<void*>(xctl->xmsg.opaque),
+                                                 -1,
+                                                 EIO);
         goto exit;
     }
     xio_context_run_loop(ctx.get(), XIO_INFINITE);

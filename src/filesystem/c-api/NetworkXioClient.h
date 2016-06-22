@@ -27,7 +27,7 @@
 
 #include <youtils/Logger.h>
 
-#include "NetworkXioProtocol.h"
+#include "../NetworkXioProtocol.h"
 
 namespace volumedriverfs
 {
@@ -35,14 +35,6 @@ namespace volumedriverfs
 MAKE_EXCEPTION(XioClientCreateException, fungi::IOException);
 MAKE_EXCEPTION(XioClientRegHandlerException, fungi::IOException);
 MAKE_EXCEPTION(XioClientQueueIsBusyException, fungi::IOException);
-
-extern void ovs_xio_aio_complete_request(void *request,
-                                         ssize_t retval,
-                                         int errval);
-
-extern void ovs_xio_complete_request_control(void *request,
-                                             ssize_t retval,
-                                             int errval);
 
 class NetworkXioClient
 {

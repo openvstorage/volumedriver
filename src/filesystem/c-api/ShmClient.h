@@ -22,8 +22,8 @@
 #include <youtils/Logging.h>
 #include <youtils/OrbHelper.h>
 
-#include "ShmProtocol.h"
-#include "ShmIdlInterface.h"
+#include "../ShmProtocol.h"
+#include "../ShmIdlInterface.h"
 
 namespace volumedriverfs
 {

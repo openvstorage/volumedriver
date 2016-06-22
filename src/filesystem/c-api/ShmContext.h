@@ -17,6 +17,8 @@
 #define __SHM_CONTEXT_H
 
 #include "ShmHandler.h"
+#include "../ShmControlChannelProtocol.h"
+#include "ShmClient.h"
 #include "context.h"
 
 struct ShmContext : public ovs_context_t
