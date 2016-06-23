@@ -161,11 +161,10 @@ struct ovs_aio_request
     }
 
     static void
-    handle_xio_request(void *opaque,
+    handle_xio_request(ovs_aio_request *request,
                        ssize_t retval,
                        int errval)
     {
-        ovs_aio_request *request = reinterpret_cast<ovs_aio_request*>(opaque);
         ovs_completion_t *completion = request->get_completion();
         struct ovs_aiocb *aiocbp = request->get_aio();
         request->xio_complete(retval,
@@ -183,11 +182,10 @@ struct ovs_aio_request
     }
 
     static void
-    handle_xio_ctrl_request(void *opaque,
+    handle_xio_ctrl_request(ovs_aio_request *request,
                             ssize_t retval,
                             int errval)
     {
-        ovs_aio_request *request = reinterpret_cast<ovs_aio_request*>(opaque);
         if (request)
         {
             request->_errno = errval;

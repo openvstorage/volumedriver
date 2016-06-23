@@ -22,7 +22,6 @@
 #include <youtils/Assert.h>
 
 #include "NetworkXioClient.h"
-#include "internal.h"
 
 #define POLLING_TIME_USEC   20
 
@@ -359,7 +358,7 @@ NetworkXioClient::xio_run_loop_worker(void *arg)
             if (r < 0)
             {
                 req_queue_release();
-                ovs_aio_request::handle_xio_request(const_cast<void*>(req->opaque),
+                ovs_aio_request::handle_xio_request(get_ovs_aio_request(req->opaque),
                                                     -1,
                                                     EIO);
                 delete req;
@@ -427,7 +426,7 @@ NetworkXioClient::on_msg_error(xio_session *session __attribute__((unused)),
         xio_release_response(msg);
     }
     xio_msg = reinterpret_cast<xio_msg_s*>(imsg.opaque());
-    ovs_aio_request::handle_xio_request(const_cast<void*>(xio_msg->opaque),
+    ovs_aio_request::handle_xio_request(get_ovs_aio_request(xio_msg->opaque),
                                         -1,
                                         EIO);
     req_queue_release();
@@ -593,7 +592,7 @@ NetworkXioClient::on_response(xio_session *session __attribute__((unused)),
     }
     xio_msg_s *xio_msg = reinterpret_cast<xio_msg_s*>(imsg.opaque());
 
-    ovs_aio_request::handle_xio_request(const_cast<void*>(xio_msg->opaque),
+    ovs_aio_request::handle_xio_request(get_ovs_aio_request(xio_msg->opaque),
                                         imsg.retval(),
                                         imsg.errval());
 
@@ -649,7 +648,7 @@ NetworkXioClient::on_msg_error_control(xio_session *session ATTR_UNUSED,
         }
     }
     xio_msg = reinterpret_cast<xio_msg_s*>(imsg.opaque());
-    ovs_aio_request::handle_xio_ctrl_request(const_cast<void*>(xio_msg->opaque),
+    ovs_aio_request::handle_xio_ctrl_request(get_ovs_aio_request(xio_msg->opaque),
                                              -1,
                                              EIO);
     xio_context_stop_loop(ctx);
@@ -676,7 +675,7 @@ NetworkXioClient::on_msg_control(xio_session *session ATTR_UNUSED,
         return 0;
     }
     xio_ctl_s *xctl = reinterpret_cast<xio_ctl_s*>(imsg.opaque());
-    ovs_aio_request::handle_xio_ctrl_request(const_cast<void*>(xctl->xmsg.opaque),
+    ovs_aio_request::handle_xio_ctrl_request(get_ovs_aio_request(xctl->xmsg.opaque),
                                              imsg.retval(),
                                              imsg.errval());
 
@@ -784,7 +783,7 @@ NetworkXioClient::xio_submit_request(const std::string& uri,
     xio_connection *conn = create_connection_control(&xctl->sdata, uri);
     if (conn == nullptr)
     {
-        ovs_aio_request::handle_xio_ctrl_request(opaque,
+        ovs_aio_request::handle_xio_ctrl_request(get_ovs_aio_request(opaque),
                                                  -1,
                                                  EIO);
         return;
@@ -793,7 +792,7 @@ NetworkXioClient::xio_submit_request(const std::string& uri,
     int ret = xio_send_request(conn, &xctl->xmsg.xreq);
     if (ret < 0)
     {
-        ovs_aio_request::handle_xio_ctrl_request(const_cast<void*>(xctl->xmsg.opaque),
+        ovs_aio_request::handle_xio_ctrl_request(get_ovs_aio_request(xctl->xmsg.opaque),
                                                  -1,
                                                  EIO);
         goto exit;

@@ -28,6 +28,7 @@
 #include <youtils/Logger.h>
 
 #include "../NetworkXioProtocol.h"
+#include "internal.h"
 
 namespace volumedriverfs
 {
@@ -182,6 +183,14 @@ public:
 
     static void
     xio_destroy_ctx_shutdown(xio_context *ctx);
+
+    static ovs_aio_request*
+    get_ovs_aio_request(const void *opaque)
+    {
+        ovs_aio_request *request = reinterpret_cast<ovs_aio_request*>(
+                const_cast<void*>(opaque));
+        return request;
+    }
 private:
     std::shared_ptr<xio_context> ctx;
     std::shared_ptr<xio_session> session;
