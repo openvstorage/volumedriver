@@ -16,6 +16,8 @@
 #ifndef __NETWORK_XIO_REQUEST_H_
 #define __NETWORK_XIO_REQUEST_H_
 
+#include <boost/intrusive/slist.hpp>
+
 #include "NetworkXioWork.h"
 #include "NetworkXioCommon.h"
 
@@ -25,6 +27,7 @@ namespace volumedriverfs
 struct NetworkXioClientData;
 
 struct NetworkXioRequest
+    : public boost::intrusive::slist_base_hook<>
 {
     NetworkXioMsgOpcode op;
 

@@ -104,8 +104,8 @@ public:
     get_finished()
     {
         boost::lock_guard<decltype(finished_lock)> lock_(finished_lock);
-        NetworkXioRequest *req = finished.front();
-        finished.pop();
+        NetworkXioRequest *req = &finished_list.front();
+        finished_list.pop_front();
         return req;
     }
 
@@ -113,7 +113,7 @@ public:
     is_finished_empty()
     {
         boost::lock_guard<decltype(finished_lock)> lock_(finished_lock);
-        return finished.empty();
+        return finished_list.empty();
     }
 private:
     DECLARE_LOGGER("NetworkXioWorkQueue");
@@ -126,7 +126,7 @@ private:
     std::queue<NetworkXioRequest*> inflight_queue;
 
     mutable fungi::SpinLock finished_lock;
-    std::queue<NetworkXioRequest*> finished;
+    boost::intrusive::slist<NetworkXioRequest> finished_list;
 
     std::atomic<size_t> nr_queued_work;
 
@@ -239,7 +239,7 @@ retry:
                 req->work.func(&req->work);
             }
             wq->finished_lock.lock();
-            wq->finished.push(req);
+            wq->finished_list.push_front(*req);
             wq->finished_lock.unlock();
             xstop_loop(wq);
         }
