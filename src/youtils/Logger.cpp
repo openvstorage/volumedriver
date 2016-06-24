@@ -43,18 +43,21 @@
 #include <boost/log/attributes.hpp>
 #include <boost/log/attributes/attribute_set.hpp>
 #include <boost/log/attributes/attribute_value_set.hpp>
+#include <boost/log/attributes/value_visitation.hpp>
 #include <boost/log/expressions.hpp>
 #include <boost/log/core.hpp>
 #include <boost/log/sinks.hpp>
+#include <boost/log/trivial.hpp>
 #include <boost/log/utility/exception_handler.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
 #include <boost/log/utility/setup/file.hpp>
 #include <boost/log/utility/string_literal.hpp>
-
 #include <boost/log/sinks/basic_sink_backend.hpp>
 #include <boost/log/sinks/frontend_requirements.hpp>
 
 #include <boost/lexical_cast.hpp>
+
+#include <boost/optional/optional_io.hpp>
 
 #include <boost/thread.hpp>
 
@@ -121,6 +124,82 @@ update_filter_table(F&& fun)
                            table);
 }
 
+struct SeverityVisitor
+{
+    using Types = boost::mpl::vector<Severity, bl::trivial::severity_level>;
+
+    Severity
+    operator()(const Severity sev) const
+    {
+        return sev;
+    }
+
+    Severity
+    operator()(const bl::trivial::severity_level lvl) const
+    {
+        using bl::trivial::severity_level;
+
+        switch (lvl)
+        {
+        case severity_level::trace:
+            return Severity::trace;
+        case severity_level::debug:
+            return Severity::debug;
+        case severity_level::info:
+            return Severity::info;
+        case severity_level::warning:
+            return Severity::warning;
+        case severity_level::error:
+            return Severity::error;
+        case severity_level::fatal:
+            return Severity::fatal;
+        }
+    }
+};
+
+// Global filtering to integrate libs that use the boost::log::trivial logging at the moment
+// (I'm looking at you, gobjfs). Eventually this should go away again as it imposes extra
+// overhead since every log statement that passes our prefiltering (cf. Logger::filter) will be
+// sent through this filter as well.
+struct GlobalFilter
+{
+    bool
+    operator()(const bl::attribute_value_set& avs) const
+    {
+        Severity sev = Severity::trace;
+        const bl::visitation_result res = bl::visit<SeverityVisitor::Types>("Severity",
+                                                                            avs,
+                                                                            bl::save_result(SeverityVisitor(),
+                                                                                            sev));
+        if (res)
+        {
+            return sev >= global_severity;
+        }
+        else
+        {
+            return false;
+        }
+    }
+};
+
+boost::optional<Severity>
+extract_severity(const bl::record_view& rec)
+{
+    Severity sev = Severity::info;
+    const bl::visitation_result res = bl::visit<SeverityVisitor::Types>("Severity",
+                                                                        rec,
+                                                                        bl::save_result(SeverityVisitor(),
+                                                                                        sev));
+    if (res)
+    {
+        return sev;
+    }
+    else
+    {
+        return boost::none;
+    }
+}
+
 typedef struct timeval time_type;
 
 void
@@ -150,15 +229,16 @@ default_log_formatter(const bl::record_view& rec,
         strm << (const char*) buf << separator;
     }
 
-    strm << bl::extract_or_throw<Severity>("Severity", rec) << separator;
+    strm << extract_severity(rec) << separator;
 
-    strm << bl::extract_or_throw<LOGGER_ATTRIBUTE_ID_TYPE>(LOGGER_ATTRIBUTE_ID,
-                                                           rec) << separator ;
+    strm << bl::extract_or_default<LOGGER_ATTRIBUTE_ID_TYPE>(LOGGER_ATTRIBUTE_ID,
+                                                             rec,
+                                                             "(UnspecifiedComponent)") << separator ;
 
     strm << rec[bl::expressions::smessage] << separator ;
 
     strm << "["
-         <<  bl::extract_or_throw<bl::attributes::current_thread_id::value_type>(thread_id_key, rec) << "]";
+         <<  bl::extract_or_default<bl::attributes::current_thread_id::value_type>(thread_id_key, rec, 0) << "]";
 }
 
 void
@@ -202,16 +282,17 @@ ovs_log_formatter(const bl::record_view& rec,
         sep <<
         pid <<
         "/" <<
-        bl::extract_or_throw<bl::attributes::current_thread_id::value_type>(thread_id_key, rec) <<
+        bl::extract_or_default<bl::attributes::current_thread_id::value_type>(thread_id_key, rec, 0) <<
         sep <<
         program_name <<
         "/" <<
-        bl::extract_or_throw<LOGGER_ATTRIBUTE_ID_TYPE>(LOGGER_ATTRIBUTE_ID,
-                                                       rec) <<
+        bl::extract_or_default<LOGGER_ATTRIBUTE_ID_TYPE>(LOGGER_ATTRIBUTE_ID,
+                                                         rec,
+                                                         "(UnspecifiedComponent)") <<
         sep <<
         sseq.str() <<
         sep <<
-        bl::extract_or_throw<Severity>("Severity", rec) <<
+        extract_severity(rec) <<
         sep <<
         rec[bl::expressions::smessage];
 }
@@ -428,7 +509,7 @@ Logger::setupLogging(const std::string& progname,
     boost::lock_guard<decltype(update_lock)> g(update_lock);
 
     global_severity = severity;
-
+    bl::core::get()->set_filter(GlobalFilter());
     if (not log_sinks.empty())
     {
         // logging was initialized before
@@ -493,6 +574,7 @@ Logger::generalLogging(Severity severity)
     if (loggingEnabled())
     {
         global_severity.store(severity);
+        bl::core::get()->set_filter(GlobalFilter());
     }
     else
     {
