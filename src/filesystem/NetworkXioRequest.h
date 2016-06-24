@@ -27,7 +27,7 @@ namespace volumedriverfs
 struct NetworkXioClientData;
 
 struct NetworkXioRequest
-    : public boost::intrusive::slist_base_hook<>
+    : public boost::intrusive::list_base_hook<>
 {
     NetworkXioMsgOpcode op;
 

@@ -126,7 +126,7 @@ private:
     std::queue<NetworkXioRequest*> inflight_queue;
 
     mutable fungi::SpinLock finished_lock;
-    boost::intrusive::slist<NetworkXioRequest> finished_list;
+    boost::intrusive::list<NetworkXioRequest> finished_list;
 
     std::atomic<size_t> nr_queued_work;
 
@@ -239,7 +239,7 @@ retry:
                 req->work.func(&req->work);
             }
             wq->finished_lock.lock();
-            wq->finished_list.push_front(*req);
+            wq->finished_list.push_back(*req);
             wq->finished_lock.unlock();
             xstop_loop(wq);
         }
