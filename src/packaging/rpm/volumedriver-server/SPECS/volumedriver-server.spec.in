@@ -36,8 +36,8 @@ rm /etc/ld.so.conf.d/openvstorage-x86_64.conf
 /usr/bin/volumedriver_fs
 /usr/bin/ovs_scrubber
 /usr/bin/volumedriver_fs.sh
-/usr/bin/failovercache
-/usr/bin/failovercachehelper
+/usr/bin/distributed_transaction_log
+/usr/bin/distributed_transaction_log_helper
 /usr/bin/ganesha-cf
 /usr/bin/ganesha.nfsd
 /usr/lib/ganesha/libfsalovs.la

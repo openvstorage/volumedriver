@@ -40,13 +40,13 @@ FailOverCacheServer::FailOverCacheServer(const constructor_type& c)
          "directory for the disk cache, omitting it selects memory caching")
         ("address",
          po::value<std::string>(&addr_),
-         "address to bind the server to")
+         "address to bind the DTL to")
         ("port",
          po::value<uint16_t>(&port_)->default_value(23096),
-         "port of the failovercache server")
+         "port to use for the DTL")
         ("transport",
          po::value<vd::FailOverCacheTransport>(&transport_)->default_value(transport_),
-         "transport type of the failovercache server (TCP|RSocket)")
+         "transport type for the DTL (TCP|RSocket)")
         ("daemonize,D",
          "run as a daemon");
 }

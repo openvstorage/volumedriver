@@ -13,8 +13,8 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef FAILOVERCACHE_TEST_MAIN_H_
-#define FAILOVERCACHE_TEST_MAIN_H_
+#ifndef DISTRIBUTED_TRANSACTION_LOG_TEST_MAIN_H_
+#define DISTRIBUTED_TRANSACTION_LOG_TEST_MAIN_H_
 
 #include <string>
 
@@ -89,4 +89,4 @@ private:
 
     static std::unique_ptr<backend::Namespace> ns_;
 };
-#endif // FAILOVERCACHE_TEST_MAIN_H_
+#endif // DISTRIBUTED_TRANSACTION_LOG_TEST_MAIN_H_

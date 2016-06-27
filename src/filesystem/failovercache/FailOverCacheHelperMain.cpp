@@ -36,7 +36,7 @@ main(int argc,
      char** argv)
 {
     std::string config_location;
-    fs::path failovercache_executable;
+    fs::path dtl_executable("distributed_transaction_log");
     std::vector<std::string> unparsed_options;
     po::options_description desc;
     po::command_line_parser p = po::command_line_parser(argc, argv);
@@ -46,9 +46,12 @@ main(int argc,
     boost::program_options::variables_map vm;
 
     desc.add_options()
+        ("dtl-executable",
+         po::value<fs::path>(&dtl_executable)->default_value(dtl_executable),
+         "path to the DTL executable")
         ("failovercache-executable",
-         po::value<fs::path>(&failovercache_executable)->default_value("failovercache"),
-         "path to the failovercache executable")
+         po::value<fs::path>(&dtl_executable),
+         "path to the DTL executable (deprecated, use dtl-executable instead!)")
         ("config",
          po::value<std::string>(&config_location),
          "volumedriverfs (json) config file / etcd URL")
@@ -67,8 +70,8 @@ main(int argc,
         po::notify(vm);
         if(vm.count("help"))
         {
-            std::clog << "Helper program to start the failover cache from a volumedriverfs config file" << std::endl;
-            std::clog << "For help with failovercache itself, run that executable with the --help flag" << std::endl;
+            std::clog << "Helper program to start the DTL from a volumedriverfs config file" << std::endl;
+            std::clog << "For help with the DTL itself, run that executable with the --help flag" << std::endl;
             std::clog << desc;
             exit(0);
         }
@@ -118,7 +121,7 @@ main(int argc,
     const auto
         transport(boost::lexical_cast<std::string>(argument_helper.failover_cache_transport()));
 
-    const std::string arg0 = failovercache_executable.filename().string();
+    const std::string arg0 = dtl_executable.filename().string();
     const std::string arg1 = "--address=" + addr;
     const std::string arg2 = "--path=" + path_for_failover_cache;
     const std::string arg3 = "--port=" + port;
@@ -138,13 +141,13 @@ main(int argc,
     }
     new_args.push_back(nullptr);
 
-    int retval = execvp(failovercache_executable.string().c_str(),
+    int retval = execvp(dtl_executable.string().c_str(),
                         (char* const*)new_args.data());
 
     if(retval == -1)
     {
-        std::cerr << "Could not start failover cache executable: " <<
-            failovercache_executable << std::endl;
+        std::cerr << "Could not DTL executable: " <<
+            dtl_executable << std::endl;
         std::cerr << "Args: " << std::endl;
 
         for(unsigned i = 0; i < (new_args.size() - 1); ++i)

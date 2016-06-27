@@ -1,16 +1,16 @@
 ACLOCAL_AMFLAGS = -I ../../m4
-bin_PROGRAMS = failovercache
+bin_PROGRAMS = distributed_transaction_log
 
-failovercache_CXXFLAGS = $(BUILDTOOLS_CFLAGS)
-failovercache_CPPFLAGS = -I@abs_top_srcdir@/..
-failovercache_LDADD = \
+distributed_transaction_log_CXXFLAGS = $(BUILDTOOLS_CFLAGS)
+distributed_transaction_log_CPPFLAGS = -I@abs_top_srcdir@/..
+distributed_transaction_log_LDADD = \
 	../libvolumedriver.la \
 	../../backend/libbackend.la \
 	../../youtils/libyoutils.la \
 	 $(BUILDTOOLS_LIBS)
 
-failovercache_LDFLAGS = -Wl,--as-needed
-failovercache_SOURCES = \
+distributed_transaction_log_LDFLAGS = -Wl,--as-needed
+distributed_transaction_log_SOURCES = \
 	server.cpp \
 	FailOverCacheServer.cpp
 

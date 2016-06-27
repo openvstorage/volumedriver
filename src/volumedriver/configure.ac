@@ -62,8 +62,8 @@ AC_CONFIG_FILES([scrubber/Makefile])
 AC_CONFIG_FILES([failovercache/Makefile])
 AC_CONFIG_FILES([failovercache/.gdbinit])
 
-AC_CONFIG_FILES([failovercache/test/failovercache_tests.sh], [chmod +x failovercache/test/failovercache_tests.sh])
-AC_CONFIG_FILES([failovercache/test/failovercache_valgrind.sh], [chmod +x failovercache/test/failovercache_valgrind.sh])
+AC_CONFIG_FILES([failovercache/test/distributed_transaction_log_tests.sh], [chmod +x failovercache/test/distributed_transaction_log_tests.sh])
+AC_CONFIG_FILES([failovercache/test/distributed_transaction_log_valgrind.sh], [chmod +x failovercache/test/distributed_transaction_log_valgrind.sh])
 AC_CONFIG_FILES([failovercache/test/Makefile])
 
 AC_CONFIG_FILES([pythontest/Makefile])

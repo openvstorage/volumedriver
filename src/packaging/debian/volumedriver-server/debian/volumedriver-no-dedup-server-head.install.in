@@ -3,8 +3,8 @@ bin/metadata_server.sh /usr/bin
 bin/ovs_scrubber /usr/bin
 bin/volumedriver_fs /usr/bin
 bin/volumedriver_fs.sh /usr/bin
-bin/failovercache /usr/bin
-bin/failovercachehelper /usr/bin
+bin/distributed_transaction_log /usr/bin
+bin/distributed_transaction_log_helper /usr/bin
 bin/ganesha-cf /usr/bin
 bin/ganesha.nfsd /usr/bin
 lib/ganesha/libfsalovs.la /usr/lib/ganesha

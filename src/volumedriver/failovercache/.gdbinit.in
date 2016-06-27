@@ -7,5 +7,4 @@ define only_test
 set args --gtest_filter=$arg0
 end
 
-file @prefix@/bin/failovercache_test
-
+file @prefix@/bin/distributed_transaction_log_test

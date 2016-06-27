@@ -1,5 +1,5 @@
 bin/backend_test /usr/bin
-bin/failovercache_test /usr/bin
+bin/distributed_transaction_log_test /usr/bin
 bin/locked_executable /usr/bin
 bin/volumedriver_test /usr/bin
 bin/volumereader /usr/bin

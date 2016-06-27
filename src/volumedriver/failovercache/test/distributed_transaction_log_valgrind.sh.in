@@ -9,4 +9,4 @@ export PATH=@prefix@/bin:$PATH
 
 export FAILOVERCACHE_STRESS_TEST_NUM_CLIENTS=1
 export FAILOVERCACHE_STRESS_TEST_SIZE=2048
-valgrind --leak-check=full @prefix@/bin/failovercache_test  --gtest_filter=*Stress* --disable-logging --port=${FAILOVERCACHE_TEST_PORT-23999}
+valgrind --leak-check=full @prefix@/bin/distributed_transaction_log_test  --gtest_filter=*Stress* --disable-logging --port=${DISTRIBUTED_TRANSACTION_LOG_TEST_PORT-23999}

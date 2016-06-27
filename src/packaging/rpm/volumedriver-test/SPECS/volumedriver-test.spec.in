@@ -22,7 +22,7 @@ Testing code for volumedriver. Test programs for VolumeDriver components.
 
 %files
 /usr/bin/backend_test
-/usr/bin/failovercache_test
+/usr/bin/distributed_transaction_log_test
 /usr/bin/locked_executable
 /usr/bin/volumedriver_test
 /usr/bin/volumereader

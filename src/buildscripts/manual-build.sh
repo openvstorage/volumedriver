@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 
 #########################################################################################################
 # various build settings; you may want to make changes
@@ -25,7 +25,7 @@ fi
 ## settings for the included testsuite; only needed if RUN_TESTS=yes
 export ARAKOON_BINARY=/usr/bin/arakoon
 export FOC_PORT_BASE=19100
-export FAILOVERCACHE_TEST_PORT=${FOC_PORT_BASE}
+export DISTRIBUTED_TRANSACTION_LOG_TEST_PORT=${FOC_PORT_BASE}
 export ARAKOON_PORT_BASE=$((FOC_PORT_BASE + 10))
 export VFS_PORT_BASE=$((FOC_PORT_BASE + 20))
 export MDS_PORT_BASE=$((VFS_PORT_BASE + 20))
@@ -50,7 +50,7 @@ then
 fi
 
 if [ ! -x "${BUILDER}" ]
-then 
+then
   echo "FATAL: buildscript ${BUILDER} not found or not executable; cannot continue..."
   exit 1
 fi
@@ -58,7 +58,7 @@ fi
 #########################################################################################################
 ## finally: building things...
 
-set -eux 
+set -eux
 
 mkdir -p ${BUILD_DIR}
 ln -sf ${BUILDER} ${BUILD_DIR}

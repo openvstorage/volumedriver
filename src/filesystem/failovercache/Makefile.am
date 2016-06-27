@@ -1,9 +1,9 @@
 ACLOCAL_AMFLAGS = -I ../../m4
-bin_PROGRAMS = failovercachehelper
+bin_PROGRAMS = distributed_transaction_log_helper
 
-failovercachehelper_CXXFLAGS = $(BUILDTOOLS_CFLAGS)
-failovercachehelper_CPPFLAGS = -I@abs_top_srcdir@/..
-failovercachehelper_LDADD = \
+distributed_transaction_log_helper_CXXFLAGS = $(BUILDTOOLS_CFLAGS)
+distributed_transaction_log_helper_CPPFLAGS = -I@abs_top_srcdir@/..
+distributed_transaction_log_helper_LDADD = \
 	../libvolumedriverfs.la \
 	../../volumedriver/libvolumedriver.la \
 	../../xmlrpc++0.7/libxmlrpc.la \
@@ -11,8 +11,8 @@ failovercachehelper_LDADD = \
 	../../youtils/libyoutils.la \
 	 $(BUILDTOOLS_LIBS)
 
-failovercachehelper_LDFLAGS = -Wl,--as-needed
-failovercachehelper_SOURCES = \
+distributed_transaction_log_helper_LDFLAGS = -Wl,--as-needed
+distributed_transaction_log_helper_SOURCES = \
 	FailOverCacheHelperMain.cpp
 
 SUBDIRS = . test

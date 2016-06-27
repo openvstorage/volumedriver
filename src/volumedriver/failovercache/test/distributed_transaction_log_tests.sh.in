@@ -8,5 +8,4 @@ export FAILOVERCACHE_STRESS_TEST_SIZE=2048
 
 . @script_directory@/cpp_test.sh
 
-cpp_test failovercache_test --port=${FAILOVERCACHE_TEST_PORT-23999} "$@"
-
+cpp_test distributed_transaction_log_test --port=${DISTRIBUTED_TRANSACTION_LOG_TEST_PORT-23999} "$@"
