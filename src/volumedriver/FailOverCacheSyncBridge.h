@@ -17,7 +17,7 @@
 #define VD_FAILOVER_CACHE_SYNCBRIDGE_H
 
 #include "DtlBridgeCommon.h"
-#include "FailOverCacheStreamers.h"
+#include "DtlStreamers.h"
 #include "DtlProxy.h"
 #include "DtlClientInterface.h"
 #include "SCO.h"

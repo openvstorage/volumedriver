@@ -20,7 +20,7 @@
 #include <deque>
 
 #include "../ClusterLocation.h"
-#include "../FailOverCacheStreamers.h"
+#include "../DtlStreamers.h"
 #include "../Types.h"
 
 namespace distributed_transaction_log

@@ -17,7 +17,7 @@
 #define VD_DTL_ASYNCBRIDGE_H_
 
 #include "DtlBridgeCommon.h"
-#include "FailOverCacheStreamers.h"
+#include "DtlStreamers.h"
 #include "DtlProxy.h"
 #include "DtlClientInterface.h"
 #include "SCO.h"

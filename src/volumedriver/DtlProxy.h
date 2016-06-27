@@ -16,7 +16,7 @@
 #ifndef DTL_PROXY_H_
 #define DTL_PROXY_H_
 
-#include "FailOverCacheStreamers.h"
+#include "DtlStreamers.h"
 #include "SCOProcessorInterface.h"
 #include "SCO.h"
 

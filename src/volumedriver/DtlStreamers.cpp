@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "FailOverCacheStreamers.h"
+#include "DtlStreamers.h"
 #include "VolumeConfig.h"
 
 #include "distributed-transaction-log/fungilib/WrapByteArray.h"
@@ -22,7 +22,7 @@
 namespace
 {
 
-DECLARE_LOGGER("FailOverCacheStreamers");
+DECLARE_LOGGER("DtlStreamers");
 
 }
 

@@ -13,8 +13,8 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef FAILOVERCACHESTREAMERS_H
-#define FAILOVERCACHESTREAMERS_H
+#ifndef DTL_STREAMERS_H_
+#define DTL_STREAMERS_H_
 
 #include "distributed-transaction-log/fungilib/IOBaseStream.h"
 #include <youtils/IOException.h>
@@ -140,7 +140,7 @@ operator<<(fungi::IOBaseStream& stream, const CommandData<Clear>& /*data*/);
 
 }
 
-#endif // FAILOVERCACHESTREAMERS_H
+#endif // DTL_STREAMERS_H_
 
 // Local Variables: **
 // mode: c++ **
