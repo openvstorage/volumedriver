@@ -16,7 +16,6 @@
 #include "Assert.h"
 #include "FileUtils.h"
 #include "Logger.h"
-#include "LoggerPrivate.h"
 #include "RedisUrl.h"
 #include "RedisQueue.h"
 
@@ -67,12 +66,20 @@ namespace youtils
 namespace bl = boost::log;
 namespace fs = boost::filesystem;
 
-BOOST_LOG_ATTRIBUTE_KEYWORD(severity, "Severity", Severity)
-BOOST_LOG_ATTRIBUTE_KEYWORD(id, LOGGER_ATTRIBUTE_ID, LOGGER_ATTRIBUTE_ID_TYPE)
-BOOST_LOG_ATTRIBUTE_KEYWORD(subsystem, LOGGER_ATTRIBUTE_SUBSYSTEM, LOGGER_ATTRIBUTE_SUBSYSTEM_TYPE)
-
 namespace
 {
+
+const std::string severity_attr_key("Severity");
+
+const std::string logger_attr_key("ID");
+using LoggerAttrType = std::string;
+
+const std::string subsystem_attr_key("SUBSYSTEM");
+using SubsystemAttrType = std::string;
+
+BOOST_LOG_ATTRIBUTE_KEYWORD(severity, severity_attr_key, Severity)
+BOOST_LOG_ATTRIBUTE_KEYWORD(id, logger_attr_key, LoggerAttrType)
+BOOST_LOG_ATTRIBUTE_KEYWORD(subsystem, subsystem_attr_key, SubsystemAttrType)
 
 // NOTE: This is currently based on the assumption that we typically don't use filters.
 // IOW filters are intended for debugging purposes at the moment. If that should change
@@ -167,7 +174,7 @@ struct GlobalFilter
     operator()(const bl::attribute_value_set& avs) const
     {
         Severity sev = Severity::trace;
-        const bl::visitation_result res = bl::visit<SeverityVisitor::Types>("Severity",
+        const bl::visitation_result res = bl::visit<SeverityVisitor::Types>(severity_attr_key,
                                                                             avs,
                                                                             bl::save_result(SeverityVisitor(),
                                                                                             sev));
@@ -186,7 +193,7 @@ boost::optional<Severity>
 extract_severity(const bl::record_view& rec)
 {
     Severity sev = Severity::info;
-    const bl::visitation_result res = bl::visit<SeverityVisitor::Types>("Severity",
+    const bl::visitation_result res = bl::visit<SeverityVisitor::Types>(severity_attr_key,
                                                                         rec,
                                                                         bl::save_result(SeverityVisitor(),
                                                                                         sev));
@@ -231,7 +238,7 @@ default_log_formatter(const bl::record_view& rec,
 
     strm << extract_severity(rec) << separator;
 
-    strm << bl::extract_or_default<LOGGER_ATTRIBUTE_ID_TYPE>(LOGGER_ATTRIBUTE_ID,
+    strm << bl::extract_or_default<LoggerAttrType>(logger_attr_key,
                                                              rec,
                                                              "(UnspecifiedComponent)") << separator ;
 
@@ -286,7 +293,7 @@ ovs_log_formatter(const bl::record_view& rec,
         sep <<
         program_name <<
         "/" <<
-        bl::extract_or_default<LOGGER_ATTRIBUTE_ID_TYPE>(LOGGER_ATTRIBUTE_ID,
+        bl::extract_or_default<LoggerAttrType>(logger_attr_key,
                                                          rec,
                                                          "(UnspecifiedComponent)") <<
         sep <<
@@ -494,10 +501,10 @@ SeverityLoggerWithName::SeverityLoggerWithName(const std::string& n,
                                                const std::string& /* subsystem */)
     : name(n)
 {
-    logger_.add_attribute(LOGGER_ATTRIBUTE_ID,
-                          boost::log::attributes::constant<LOGGER_ATTRIBUTE_ID_TYPE>(name));
-    // logger_.add_attribute(LOGGER_ATTRIBUTE_SUBSYSTEM,
-    //                       boost::log::attributes::constant<LOGGER_ATTRIBUTE_SUBSYSTEM_TYPE>(subsystem));
+    logger_.add_attribute(logger_attr_key,
+                          boost::log::attributes::constant<LoggerAttrType>(name));
+    // logger_.add_attribute(subsystem_attr_key,
+    //                       boost::log::attributes::constant<SubsystemAttrType>(subsystem));
 }
 
 void

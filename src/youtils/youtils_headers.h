@@ -43,7 +43,6 @@
 #include "LocORemConnection.h"
 #include "LocORemServer.h"
 #include "Logger.h"
-#include "LoggerPrivate.h"
 #include "Logging.h"
 #include "LoggingMacros.h"
 #include "LoggingToolCut.h"

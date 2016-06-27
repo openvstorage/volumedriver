@@ -14,7 +14,6 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "../Assert.h"
-#include "../LoggerPrivate.h"
 #include "../Logging.h"
 #include "../SourceOfUncertainty.h"
 #include "../System.h"
