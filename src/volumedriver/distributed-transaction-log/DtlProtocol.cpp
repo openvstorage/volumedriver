@@ -315,7 +315,7 @@ DtlProtocol::Clear_()
 }
 
 void
-DtlProtocol::processFailOverCacheEntry_(volumedriver::ClusterLocation cli,
+DtlProtocol::processDtlEntry_(volumedriver::ClusterLocation cli,
                                                   int64_t lba,
                                                   const byte* buf,
                                                   int64_t size,
@@ -378,7 +378,7 @@ DtlProtocol::getEntries_()
                                       WARN);
     }));
 
-    cache_->getEntries(boost::bind(&DtlProtocol::processFailOverCacheEntry_,
+    cache_->getEntries(boost::bind(&DtlProtocol::processDtlEntry_,
                                    this,
                                    _1,
                                    _2,
@@ -410,7 +410,7 @@ DtlProtocol::getSCO_()
 
     stream_ << fungi::IOBaseStream::cork;
     cache_->getSCO(scoName,
-                   boost::bind(&DtlProtocol::processFailOverCacheEntry_,
+                   boost::bind(&DtlProtocol::processDtlEntry_,
                                this,
                                _1,
                                _2,

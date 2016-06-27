@@ -758,7 +758,7 @@ TEST_P(FailOverCacheTester, clear)
 
     const size_t csize = default_cluster_size();
     const std::vector<uint8_t> buf(csize);
-    std::vector<FailOverCacheEntry> entries { FailOverCacheEntry(ClusterLocation(1),
+    std::vector<DtlEntry> entries { DtlEntry(ClusterLocation(1),
                                                                  0,
                                                                  buf.data(),
                                                                  buf.size()) };

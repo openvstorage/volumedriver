@@ -44,7 +44,7 @@ MemoryBackend::close()
 }
 
 void
-MemoryBackend::add_entries(std::vector<vd::FailOverCacheEntry> entries,
+MemoryBackend::add_entries(std::vector<vd::DtlEntry> entries,
                            std::unique_ptr<uint8_t[]> buf)
 {
     VERIFY(current_);

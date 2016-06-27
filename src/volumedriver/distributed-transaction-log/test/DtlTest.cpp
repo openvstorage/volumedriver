@@ -49,10 +49,10 @@ using namespace std::literals::string_literals;
 #define BIND_SCO_PROCESSOR(proc) \
     SCOProcessorFun(boost::bind(&decltype(proc)::operator(), &proc, _1, _2, _3, _4))
 
-class FailOverCacheEntryFactory
+class DtlEntryFactory
 {
 public:
-    FailOverCacheEntryFactory(ClusterSize cluster_size,
+    DtlEntryFactory(ClusterSize cluster_size,
                               uint32_t num_clusters,
                               ClusterLocation startLocation =  ClusterLocation(1))
         : cluster_size_(cluster_size),
@@ -60,7 +60,7 @@ public:
           cluster_loc(startLocation)
     {}
 
-    FailOverCacheEntry
+    DtlEntry
     operator()(ClusterLocation& next_location,
                const std::string& content = "")
     {
@@ -76,7 +76,7 @@ public:
             }
         }
 
-        FailOverCacheEntry ret(cluster_loc,
+        DtlEntry ret(cluster_loc,
                                0,
                                b,
                                cluster_size_);
@@ -102,10 +102,10 @@ private:
     ClusterLocation cluster_loc;
 };
 
-class FailOverCacheEntryProcessor
+class DtlEntryProcessor
 {
 public:
-    FailOverCacheEntryProcessor(const std::string& content,
+    DtlEntryProcessor(const std::string& content,
                                 const ClusterSize cluster_size)
         : sco_count(0)
         , cluster_count(0)
@@ -186,12 +186,12 @@ TEST_F(DtlTest, put_and_retrieve)
               ClusterMultiplier(8),
               boost::chrono::seconds(8));
 
-    FailOverCacheEntryFactory factory(cluster_size,
+    DtlEntryFactory factory(cluster_size,
                                       num_clusters_per_sco);
     ClusterLocation next_location(1);
     for(uint32_t i = 0; i < num_scos_to_produce; ++i)
     {
-        std::vector<FailOverCacheEntry> vec;
+        std::vector<DtlEntry> vec;
         for(uint32_t k = 0; k < num_clusters_per_sco; ++k)
         {
             vec.emplace_back(factory(next_location,
@@ -207,7 +207,7 @@ TEST_F(DtlTest, put_and_retrieve)
 
     for(int i = 0; i < 8; ++i)
     {
-        FailOverCacheEntryProcessor processor("bart",
+        DtlEntryProcessor processor("bart",
                                               cluster_size);
         cache.getEntries(BIND_SCO_PROCESSOR(processor));
 
@@ -216,7 +216,7 @@ TEST_F(DtlTest, put_and_retrieve)
     }
 
     cache.clear();
-    FailOverCacheEntryProcessor processor("bart",
+    DtlEntryProcessor processor("bart",
                                           cluster_size);
     cache.getEntries(BIND_SCO_PROCESSOR(processor));
     EXPECT_EQ(processor.sco_count, 0);
@@ -241,7 +241,7 @@ TEST_F(DtlTest, GetSCORange)
               ClusterMultiplier(8),
               boost::chrono::seconds(8));
 
-    FailOverCacheEntryFactory factory(cluster_size,
+    DtlEntryFactory factory(cluster_size,
                                       num_clusters_per_sco);
 
     ClusterLocation next_location(1);
@@ -253,7 +253,7 @@ TEST_F(DtlTest, GetSCORange)
     EXPECT_EQ(youngest,SCO(0));
     while(not stopping)
     {
-        std::vector<FailOverCacheEntry> vec;
+        std::vector<DtlEntry> vec;
         for(uint32_t l = 0; l < num_clusters_per_vector; ++l)
         {
             SCONumber next_sco_number = next_location.number();
@@ -317,14 +317,14 @@ TEST_F(DtlTest, GetOneSCO)
               ClusterMultiplier(8),
               boost::chrono::seconds(8));
 
-    FailOverCacheEntryFactory factory(cluster_size,
+    DtlEntryFactory factory(cluster_size,
                                       num_clusters_per_sco);
 
     ClusterLocation next_location(1);
     bool stopping = false;
     while(not stopping)
     {
-        std::vector<FailOverCacheEntry> vec;
+        std::vector<DtlEntry> vec;
         for(uint32_t l = 0; l < num_clusters_per_vector; ++l)
         {
             SCONumber next_sco_number = next_location.number();
@@ -355,7 +355,7 @@ TEST_F(DtlTest, GetOneSCO)
     }
 
     {
-        FailOverCacheEntryProcessor processor("arne",
+        DtlEntryProcessor processor("arne",
                                               cluster_size);
 
         cache.getSCOFromFailOver(ClusterLocation(4).sco(),
@@ -365,7 +365,7 @@ TEST_F(DtlTest, GetOneSCO)
     }
 
     {
-        FailOverCacheEntryProcessor processor("bart",
+        DtlEntryProcessor processor("bart",
                                               cluster_size);
 
         cache.getSCOFromFailOver(ClusterLocation(7).sco(),
@@ -375,7 +375,7 @@ TEST_F(DtlTest, GetOneSCO)
     }
 
     cache.clear();
-    FailOverCacheEntryProcessor processor("bart",
+    DtlEntryProcessor processor("bart",
                                           cluster_size);
     cache.getEntries(BIND_SCO_PROCESSOR(processor));
     EXPECT_EQ(processor.sco_count, 0);
@@ -482,7 +482,7 @@ public:
         {
             LOG_NOTIFY("run " << i << " of " << test_size_ << " for " << content_);
 
-            std::vector<FailOverCacheEntry> vec;
+            std::vector<DtlEntry> vec;
             latestSCOOnFailOver = next_location_;
             // Fill her up
             for(uint32_t l = 0; l < num_clusters_per_vector_; ++l)
@@ -512,7 +512,7 @@ public:
                     cluster_count_ = 0;
                     latestSCONotOnFailOver = latestSCOOnFailOver;
 
-                    FailOverCacheEntryProcessor processor(DtlTestMain::ns().str(),
+                    DtlEntryProcessor processor(DtlTestMain::ns().str(),
                                                           cluster_size_);
                     cache_.getEntries(BIND_SCO_PROCESSOR(processor));
                     EXPECT_EQ(processor.sco_count, 0);
@@ -523,7 +523,7 @@ public:
                 {
                     LOG_INFO("Test 1");
 
-                    FailOverCacheEntryProcessor processor(DtlTestMain::ns().str(),
+                    DtlEntryProcessor processor(DtlTestMain::ns().str(),
                                                           cluster_size_);
                     cache_.getEntries(BIND_SCO_PROCESSOR(processor));
                     EXPECT_EQ(processor.cluster_count, cluster_count_);
@@ -598,7 +598,7 @@ public:
     const std::string content_;
 
     DtlProxy cache_;
-    FailOverCacheEntryFactory factory_;
+    DtlEntryFactory factory_;
 
     static const ClusterSize cluster_size_;
     static const uint32_t num_clusters_per_sco_ = 32;
@@ -667,7 +667,7 @@ TEST_F(DtlTest, get_entries_xxl)
 
     const SCOMultiplier smult(4096);
 
-    FailOverCacheEntryFactory factory(csize,
+    DtlEntryFactory factory(csize,
                                       smult);
 
     const size_t test_size = 2ULL << 30;
@@ -678,7 +678,7 @@ TEST_F(DtlTest, get_entries_xxl)
     for (size_t i = 0; i < count; ++i)
     {
         ClusterLocation loc;
-        FailOverCacheEntry e(factory(loc));
+        DtlEntry e(factory(loc));
         ASSERT_EQ(e.size_,
                   buf.size());
 

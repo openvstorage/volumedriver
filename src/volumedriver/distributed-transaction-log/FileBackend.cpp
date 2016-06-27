@@ -91,7 +91,7 @@ FileBackend::open(const vd::SCO sco)
 }
 
 void
-FileBackend::add_entries(std::vector<vd::FailOverCacheEntry> entries,
+FileBackend::add_entries(std::vector<vd::DtlEntry> entries,
                          std::unique_ptr<uint8_t[]> buf)
 {
     VERIFY(file_);

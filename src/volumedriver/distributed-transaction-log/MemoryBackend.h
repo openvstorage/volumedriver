@@ -44,7 +44,7 @@ public:
     close() override final;
 
     virtual void
-    add_entries(std::vector<volumedriver::FailOverCacheEntry>,
+    add_entries(std::vector<volumedriver::DtlEntry>,
                 std::unique_ptr<uint8_t[]>) override final;
 
     virtual void
@@ -60,7 +60,7 @@ public:
 private:
     DECLARE_LOGGER("DtlMemoryBackend");
 
-    using Entry = std::pair<std::vector<volumedriver::FailOverCacheEntry>,
+    using Entry = std::pair<std::vector<volumedriver::DtlEntry>,
                             std::unique_ptr<uint8_t[]>>;
 
     using SCOEntries = std::vector<Entry>;

@@ -33,9 +33,9 @@ namespace yt = youtils;
 namespace be = backend;
 namespace po = boost::program_options;
 
-// FailOverCacheEntry does not take ownership of the actual data buffer, so
-// cling to it as long as the FailOverCacheEntry is used.
-using ClusterHolder = std::pair<FailOverCacheEntry,
+// DtlEntry does not take ownership of the actual data buffer, so
+// cling to it as long as the DtlEntry is used.
+using ClusterHolder = std::pair<DtlEntry,
                                 std::unique_ptr<uint8_t[]>>;
 
 class ClusterFactory
@@ -65,7 +65,7 @@ public:
             }
         }
 
-        FailOverCacheEntry entry(cluster_loc,
+        DtlEntry entry(cluster_loc,
                                  0,
                                  buf.get(),
                                  cluster_size_);
@@ -148,7 +148,7 @@ public:
 
     bool
     addEntry(DtlClientInterface& foc,
-             const FailOverCacheEntry& e)
+             const DtlEntry& e)
     {
         std::vector<ClusterLocation> locs;
         locs.emplace_back(e.cli_);

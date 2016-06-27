@@ -50,7 +50,7 @@ public:
     ~DtlProxy();
 
     void
-    addEntries(std::vector<FailOverCacheEntry> entries);
+    addEntries(std::vector<DtlEntry> entries);
 
     // returns the SCO size - 0 indicates a problem.
     // Z42: throw instead!

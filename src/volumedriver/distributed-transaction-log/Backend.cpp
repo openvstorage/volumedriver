@@ -89,7 +89,7 @@ Backend::removeUpTo(const SCO sconame)
 }
 
 void
-Backend::addEntries(std::vector<FailOverCacheEntry> entries,
+Backend::addEntries(std::vector<DtlEntry> entries,
                     std::unique_ptr<uint8_t[]> buf)
 {
     VERIFY(not entries.empty());

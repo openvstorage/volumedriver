@@ -48,7 +48,7 @@ public:
     close() override final;
 
     virtual void
-    add_entries(std::vector<volumedriver::FailOverCacheEntry>,
+    add_entries(std::vector<volumedriver::DtlEntry>,
                 std::unique_ptr<uint8_t[]>) override final;
 
     virtual void

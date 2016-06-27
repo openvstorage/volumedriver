@@ -77,10 +77,10 @@ operator<<(fungi::IOBaseStream& stream, const CommandData<Register>& data);
 fungi::IOBaseStream&
 operator>>(fungi::IOBaseStream& stream, CommandData<Register>& data);
 
-struct FailOverCacheEntry
+struct DtlEntry
 {
 
-    FailOverCacheEntry(ClusterLocation cli,
+    DtlEntry(ClusterLocation cli,
                        uint64_t lba,
                        const uint8_t* buffer,
                        uint32_t size);
@@ -96,7 +96,7 @@ template<>
 struct CommandData<AddEntries>
 
 {
-    using EntryVector = std::vector<FailOverCacheEntry>;
+    using EntryVector = std::vector<DtlEntry>;
 
     // Only used when streaming in
     CommandData(EntryVector entries)

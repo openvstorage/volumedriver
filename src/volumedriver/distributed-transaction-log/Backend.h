@@ -42,7 +42,7 @@ public:
     operator=(const Backend&) = delete;
 
     void
-    addEntries(std::vector<volumedriver::FailOverCacheEntry>,
+    addEntries(std::vector<volumedriver::DtlEntry>,
                std::unique_ptr<uint8_t[]>);
 
     void
@@ -107,7 +107,7 @@ protected:
     close() = 0;
 
     virtual void
-    add_entries(std::vector<volumedriver::FailOverCacheEntry>,
+    add_entries(std::vector<volumedriver::DtlEntry>,
                 std::unique_ptr<uint8_t[]>) = 0;
 
     virtual void

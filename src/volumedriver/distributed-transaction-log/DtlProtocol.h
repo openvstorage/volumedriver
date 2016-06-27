@@ -103,7 +103,7 @@ private:
     removeUpTo_();
 
     void
-    processFailOverCacheEntry_(volumedriver::ClusterLocation cli,
+    processDtlEntry_(volumedriver::ClusterLocation cli,
                                int64_t lba,
                                const byte* buf,
                                int64_t size,

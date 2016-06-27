@@ -134,8 +134,8 @@ private:
     boost::mutex new_ones_mutex_;
     boost::condition_variable condvar_;
 
-    std::vector<FailOverCacheEntry> newOnes;
-    std::vector<FailOverCacheEntry> oldOnes;
+    std::vector<DtlEntry> newOnes;
+    std::vector<DtlEntry> oldOnes;
     const LBASize lba_size_;
     const ClusterMultiplier cluster_multiplier_;
     std::vector<uint8_t> newData;

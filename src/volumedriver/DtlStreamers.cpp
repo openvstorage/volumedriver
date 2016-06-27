@@ -82,7 +82,7 @@ operator<<(fungi::IOBaseStream& stream, const CommandData<AddEntries>& data)
         stream << fungi::IOBaseStream::uncork;
     }
 
-    for (std::vector<FailOverCacheEntry>::const_iterator it = data.entries_.begin();
+    for (std::vector<DtlEntry>::const_iterator it = data.entries_.begin();
         it!= data.entries_.end();
         ++it)
     {
@@ -181,7 +181,7 @@ operator<<(fungi::IOBaseStream& stream, const CommandData<Clear>& /*data*/)
     return checkStreamOK(stream, "Clear");
 }
 
-FailOverCacheEntry::FailOverCacheEntry(ClusterLocation cli,
+DtlEntry::DtlEntry(ClusterLocation cli,
                                        uint64_t lba,
                                        const uint8_t* buffer,
                                        uint32_t size)

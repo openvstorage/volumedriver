@@ -133,7 +133,7 @@ DtlProxy::setRequestTimeout(const boost::chrono::seconds seconds)
 }
 
 void
-DtlProxy::addEntries(std::vector<FailOverCacheEntry> entries)
+DtlProxy::addEntries(std::vector<DtlEntry> entries)
 {
 #ifndef NDEBUG
     if (not entries.empty())

@@ -103,7 +103,7 @@ DtlSyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
             static_cast<size_t>(cache_->lba_size()) *
             static_cast<size_t>(cache_->cluster_multiplier());
 
-        std::vector<FailOverCacheEntry> entries;
+        std::vector<DtlEntry> entries;
         entries.reserve(num_locs);
         uint64_t lba = start_address;
         for (size_t i = 0; i < num_locs; i++)
