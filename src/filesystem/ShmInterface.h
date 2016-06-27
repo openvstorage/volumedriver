@@ -172,6 +172,22 @@ public:
     }
 
     void
+    truncate_volume(const char *volume_name,
+                    CORBA::ULongLong volume_size)
+    {
+        std::unique_ptr<Handler> h(new Handler(handler_args_));
+        h->truncate_volume(volume_name,
+                           volume_size);
+    }
+
+    uint64_t
+    stat_volume(const char *volume_name)
+    {
+        std::unique_ptr<Handler> h(new Handler(handler_args_));
+        return h->stat_volume(volume_name);
+    }
+
+    void
     create_snapshot(const char* volume_name,
                     const char* snapshot_name,
                     CORBA::LongLong timeout)

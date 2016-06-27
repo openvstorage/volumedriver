@@ -220,6 +220,46 @@ public:
     }
 
     void
+    truncate_volume(const std::string& volume_name,
+                    const uint64_t length)
+    {
+        LOG_INFO("Truncate volume with name: " << volume_name);
+
+        const FrontendPath volume_path(make_volume_path(volume_name));
+        try
+        {
+            fs_.truncate(volume_path,
+                         static_cast<off_t>(length));
+        }
+        catch (HierarchicalArakoon::DoesNotExistException&)
+        {
+            LOG_INFO("Volume '" << volume_name << "' does not exist");
+            throw ShmIdlInterface::VolumeDoesNotExist(volume_name.c_str());
+        }
+        catch (std::exception& e)
+        {
+            LOG_INFO("Problem removing volume: " << volume_name
+                     << ": " << e.what());
+            throw;
+        }
+    }
+
+    uint64_t
+    stat_volume(const std::string& volume_name)
+    {
+        const FrontendPath volume_path(make_volume_path(volume_name));
+        boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
+        if (not volume_id)
+        {
+            throw ShmIdlInterface::VolumeDoesNotExist(volume_name.c_str());
+        }
+        else
+        {
+            return fs_.object_router().get_size(*volume_id);
+        }
+    }
+
+    void
     create_snapshot(const std::string& volume_name,
                     const std::string& snap_name,
                     const int64_t timeout)
