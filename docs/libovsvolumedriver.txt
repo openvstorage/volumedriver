@@ -219,6 +219,28 @@ Remove a volume::
         - EINVAL Invalid arguments supplied
         - EIO An error occured during ovs_remove_volume()
 
+Truncate a volume to a specified length::
+    int ovs_truncate_volume(ovs_ctx_t *ctx, const char *volname,
+                            uint64_t length);
+
+    Description
+    -----------
+    The ovs_truncate_volume() shall truncate an already created volume of
+    name 'volname' to a size of precisely 'length' bytes.
+
+    Return Value
+    ------------
+    Upon successful completion the function shall truncate the volume and shall
+    return 0 if successful otherwise -1 is returned, no volume shall be
+    truncated.
+
+    Errors
+    ------
+    The function shall fail if:
+        - ENOENT The named volume doesn't exist
+        - EINVAL Invalid arguments supplied
+        - EIO An error occured during ovs_truncate_volume()
+
 Snapshot a volume
     int ovs_snapshot_create(ovs_ctx_t *ctx, const char *volname,
                             const char *snapname, const int64_t timeout);
