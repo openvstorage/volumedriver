@@ -18,7 +18,7 @@
 
 #include "FailOverCacheBridgeCommon.h"
 #include "FailOverCacheMode.h"
-#include "failovercache/fungilib/Mutex.h"
+#include "distributed-transaction-log/fungilib/Mutex.h"
 
 #include "SCOProcessorInterface.h"
 

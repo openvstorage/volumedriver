@@ -20,9 +20,9 @@
 #include "SCOProcessorInterface.h"
 #include "SCO.h"
 
-#include "failovercache/fungilib/Socket.h"
-#include "failovercache/fungilib/IOBaseStream.h"
-#include "failovercache/fungilib/Buffer.h"
+#include "distributed-transaction-log/fungilib/Socket.h"
+#include "distributed-transaction-log/fungilib/IOBaseStream.h"
+#include "distributed-transaction-log/fungilib/Buffer.h"
 
 #include <boost/ptr_container/ptr_vector.hpp>
 #include <boost/scoped_array.hpp>

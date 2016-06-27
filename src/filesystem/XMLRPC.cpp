@@ -51,7 +51,7 @@
 #include <volumedriver/VolumeOverview.h>
 #include <volumedriver/VolumeException.h>
 
-#include <volumedriver/failovercache/fungilib/Mutex.h>
+#include <volumedriver/distributed-transaction-log/fungilib/Mutex.h>
 
 namespace volumedriverfs
 {

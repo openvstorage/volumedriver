@@ -19,8 +19,8 @@
 #include <boost/filesystem/path.hpp>
 
 #include <volumedriver/FailOverCacheTransport.h>
-#include <volumedriver/failovercache/FailOverCacheAcceptor.h>
-#include <volumedriver/failovercache/FailOverCacheProtocol.h>
+#include <volumedriver/distributed-transaction-log/FailOverCacheAcceptor.h>
+#include <volumedriver/distributed-transaction-log/FailOverCacheProtocol.h>
 
 namespace volumedriverfstest
 {

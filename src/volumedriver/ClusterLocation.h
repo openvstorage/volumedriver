@@ -26,7 +26,7 @@
 #include <boost/serialization/utility.hpp>
 
 #include <youtils/Assert.h>
-#include "failovercache/fungilib/IOBaseStream.h"
+#include "distributed-transaction-log/fungilib/IOBaseStream.h"
 
 namespace volumedriver
 {

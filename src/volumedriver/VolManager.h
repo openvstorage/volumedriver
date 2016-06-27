@@ -50,7 +50,7 @@
 #include <backend/BackendPolicyConfig.h>
 #include <backend/GarbageCollectorFwd.h>
 
-#include "failovercache/fungilib/Mutex.h"
+#include "distributed-transaction-log/fungilib/Mutex.h"
 
 class api;
 

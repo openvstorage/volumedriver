@@ -26,7 +26,7 @@
 #include "../SCOCache.h"
 #include "../TokyoCabinetMetaDataBackend.h"
 #include "../VolManager.h"
-#include "../failovercache/FailOverCacheAcceptor.h"
+#include "../distributed-transaction-log/FailOverCacheAcceptor.h"
 #include "../metadata-server/Manager.h"
 #include "../metadata-server/ServerConfig.h"
 

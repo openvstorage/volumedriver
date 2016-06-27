@@ -38,7 +38,7 @@
 #include <volumedriver/TransientException.h>
 #include <volumedriver/VolManager.h>
 #include <volumedriver/VolumeConfig.h>
-#include <volumedriver/failovercache/fungilib/Mutex.h>
+#include <volumedriver/distributed-transaction-log/fungilib/Mutex.h>
 
 namespace volumedriverfs
 {

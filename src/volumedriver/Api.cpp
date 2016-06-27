@@ -22,7 +22,7 @@
 
 #include <youtils/BuildInfoString.h>
 #include <youtils/Logger.h>
-#include "failovercache/fungilib/Mutex.h"
+#include "distributed-transaction-log/fungilib/Mutex.h"
 
 using namespace volumedriver;
 

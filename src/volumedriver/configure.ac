@@ -59,12 +59,12 @@ AC_CONFIG_FILES([python_scrubber/test/python_test.sh], [chmod +x python_scrubber
 
 AC_CONFIG_FILES([scrubber/Makefile])
 
-AC_CONFIG_FILES([failovercache/Makefile])
-AC_CONFIG_FILES([failovercache/.gdbinit])
+AC_CONFIG_FILES([distributed-transaction-log/Makefile])
+AC_CONFIG_FILES([distributed-transaction-log/.gdbinit])
 
-AC_CONFIG_FILES([failovercache/test/distributed_transaction_log_tests.sh], [chmod +x failovercache/test/distributed_transaction_log_tests.sh])
-AC_CONFIG_FILES([failovercache/test/distributed_transaction_log_valgrind.sh], [chmod +x failovercache/test/distributed_transaction_log_valgrind.sh])
-AC_CONFIG_FILES([failovercache/test/Makefile])
+AC_CONFIG_FILES([distributed-transaction-log/test/distributed_transaction_log_tests.sh], [chmod +x distributed-transaction-log/test/distributed_transaction_log_tests.sh])
+AC_CONFIG_FILES([distributed-transaction-log/test/distributed_transaction_log_valgrind.sh], [chmod +x distributed-transaction-log/test/distributed_transaction_log_valgrind.sh])
+AC_CONFIG_FILES([distributed-transaction-log/test/Makefile])
 
 AC_CONFIG_FILES([pythontest/Makefile])
 AC_CONFIG_FILES([pythontest/python_test.sh], [chmod +x pythontest/python_test.sh])

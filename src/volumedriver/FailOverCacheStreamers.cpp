@@ -16,8 +16,8 @@
 #include "FailOverCacheStreamers.h"
 #include "VolumeConfig.h"
 
-#include "failovercache/fungilib/WrapByteArray.h"
-#include "failovercache/fungilib/Socket.h"
+#include "distributed-transaction-log/fungilib/WrapByteArray.h"
+#include "distributed-transaction-log/fungilib/Socket.h"
 
 namespace
 {

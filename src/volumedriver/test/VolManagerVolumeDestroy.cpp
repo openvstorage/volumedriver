@@ -16,7 +16,7 @@
 #include "VolManagerTestSetup.h"
 #include "../VolManager.h"
 #include "../TLogReader.h"
-#include "../failovercache/fungilib/File.h"
+#include "../distributed-transaction-log/fungilib/File.h"
 
 namespace volumedriver
 {

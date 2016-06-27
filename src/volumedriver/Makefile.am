@@ -104,26 +104,26 @@ libvolumedriver_la_SOURCES = \
 	FailOverCacheSyncBridge.cpp \
 	FailOverCacheTransport.cpp \
 	FilePool.cpp \
-	failovercache/Backend.cpp \
-	failovercache/BackendFactory.cpp \
-	failovercache/FailOverCacheAcceptor.cpp \
-	failovercache/FailOverCacheProtocol.cpp \
-	failovercache/FileBackend.cpp \
-	failovercache/MemoryBackend.cpp \
-	failovercache/fungilib/Buffer.cpp \
-	failovercache/fungilib/ByteArray.cpp \
-	failovercache/fungilib/CondVar.cpp \
-	failovercache/fungilib/Conversions.cpp \
-	failovercache/fungilib/File.cpp \
-	failovercache/fungilib/IOBaseStream.cpp \
-	failovercache/fungilib/IPv4Socket.cpp \
-	failovercache/fungilib/IPv6Socket.cpp \
-	failovercache/fungilib/Mutex.cpp \
-	failovercache/fungilib/Socket.cpp \
-	failovercache/fungilib/SocketServer.cpp \
-	failovercache/fungilib/Runnable.cpp \
-	failovercache/fungilib/Thread.cpp \
-	failovercache/fungilib/WrapByteArray.cpp \
+	distributed-transaction-log/Backend.cpp \
+	distributed-transaction-log/BackendFactory.cpp \
+	distributed-transaction-log/FailOverCacheAcceptor.cpp \
+	distributed-transaction-log/FailOverCacheProtocol.cpp \
+	distributed-transaction-log/FileBackend.cpp \
+	distributed-transaction-log/MemoryBackend.cpp \
+	distributed-transaction-log/fungilib/Buffer.cpp \
+	distributed-transaction-log/fungilib/ByteArray.cpp \
+	distributed-transaction-log/fungilib/CondVar.cpp \
+	distributed-transaction-log/fungilib/Conversions.cpp \
+	distributed-transaction-log/fungilib/File.cpp \
+	distributed-transaction-log/fungilib/IOBaseStream.cpp \
+	distributed-transaction-log/fungilib/IPv4Socket.cpp \
+	distributed-transaction-log/fungilib/IPv6Socket.cpp \
+	distributed-transaction-log/fungilib/Mutex.cpp \
+	distributed-transaction-log/fungilib/Socket.cpp \
+	distributed-transaction-log/fungilib/SocketServer.cpp \
+	distributed-transaction-log/fungilib/Runnable.cpp \
+	distributed-transaction-log/fungilib/Thread.cpp \
+	distributed-transaction-log/fungilib/WrapByteArray.cpp \
 	LocalTLogScanner.cpp \
 	LockStoreFactory.cpp \
 	LockStoreType.cpp \
@@ -215,7 +215,7 @@ pkgconfig_DATA = volumedriver.pc
 SUBDIRS = \
 	. \
 	test \
-	failovercache \
+	distributed-transaction-log \
 	metadata-server \
 	pitreplication \
 	python_scrubber \

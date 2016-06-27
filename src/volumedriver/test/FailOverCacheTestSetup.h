@@ -26,9 +26,9 @@
 #include "../FailOverCacheConfig.h"
 #include "../FailOverCacheProxy.h"
 #include "../FailOverCacheTransport.h"
-#include "../failovercache/Backend.h"
-#include "../failovercache/FailOverCacheAcceptor.h"
-#include "../failovercache/FailOverCacheProtocol.h"
+#include "../distributed-transaction-log/Backend.h"
+#include "../distributed-transaction-log/FailOverCacheAcceptor.h"
+#include "../distributed-transaction-log/FailOverCacheProtocol.h"
 
 class VolumeDriverTest;
 

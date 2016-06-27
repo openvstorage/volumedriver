@@ -16,7 +16,7 @@
 #ifndef FAILOVERCACHESTREAMERS_H
 #define FAILOVERCACHESTREAMERS_H
 
-#include "failovercache/fungilib/IOBaseStream.h"
+#include "distributed-transaction-log/fungilib/IOBaseStream.h"
 #include <youtils/IOException.h>
 #include "Types.h"
 #include <boost/ptr_container/ptr_vector.hpp>

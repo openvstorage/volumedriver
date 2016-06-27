@@ -19,7 +19,7 @@
 #include <string>
 #include <youtils/Logging.h>
 #include "youtils/Serialization.h"
-#include "failovercache/fungilib/IOBaseStream.h"
+#include "distributed-transaction-log/fungilib/IOBaseStream.h"
 #include "Types.h"
 
 namespace volumedriver

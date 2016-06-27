@@ -22,8 +22,8 @@
 #include "FailOverCacheClientInterface.h"
 #include "SCO.h"
 
-#include "failovercache/fungilib/Runnable.h"
-#include "failovercache/fungilib/Thread.h"
+#include "distributed-transaction-log/fungilib/Runnable.h"
+#include "distributed-transaction-log/fungilib/Thread.h"
 
 #include <boost/thread/condition_variable.hpp>
 #include <boost/thread/mutex.hpp>

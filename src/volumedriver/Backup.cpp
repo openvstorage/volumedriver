@@ -19,7 +19,7 @@
 #include <boost/property_tree/info_parser.hpp>
 #include <boost/scope_exit.hpp>
 
-#include "failovercache/fungilib/Mutex.h"
+#include "distributed-transaction-log/fungilib/Mutex.h"
 
 #include <backend/BackendConnectionManager.h>
 

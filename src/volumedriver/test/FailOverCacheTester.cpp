@@ -19,7 +19,7 @@
 #include "../Api.h"
 #include "../FailOverCacheAsyncBridge.h"
 #include "../FailOverCacheSyncBridge.h"
-#include "../failovercache/FileBackend.h"
+#include "../distributed-transaction-log/FileBackend.h"
 
 #include <stdlib.h>
 

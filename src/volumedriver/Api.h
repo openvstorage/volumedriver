@@ -35,7 +35,7 @@
 #include "VolumeConfig.h"
 #include "VolumeConfigParameters.h"
 #include "VolumeOverview.h"
-#include "failovercache/fungilib/Mutex.h" // <-- kill it!
+#include "distributed-transaction-log/fungilib/Mutex.h" // <-- kill it!
 
 #include <string>
 #include <limits>
