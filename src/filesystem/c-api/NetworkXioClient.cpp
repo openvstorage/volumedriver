@@ -873,6 +873,23 @@ NetworkXioClient::xio_create_volume(const std::string& uri,
 }
 
 void
+NetworkXioClient::xio_truncate_volume(const std::string& uri,
+                                      const char* volume_name,
+                                     uint64_t offset,
+                                     void *opaque)
+{
+    auto xctl = std::make_unique<xio_ctl_s>();
+    xctl->xmsg.opaque = opaque;
+    xctl->xmsg.msg.opcode(NetworkXioMsgOpcode::TruncateReq);
+    xctl->xmsg.msg.opaque((uintptr_t)xctl.get());
+    xctl->xmsg.msg.volume_name(volume_name);
+    xctl->xmsg.msg.offset(offset);
+
+    xio_msg_prepare(&xctl->xmsg);
+    xio_submit_request(uri, xctl.get(), opaque);
+}
+
+void
 NetworkXioClient::xio_remove_volume(const std::string& uri,
                                     const char* volume_name,
                                     void *opaque)

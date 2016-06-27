@@ -146,6 +146,12 @@ public:
                     void *opaque);
 
     static void
+    xio_truncate_volume(const std::string& uri,
+                        const char* volume_name,
+                        uint64_t offset,
+                        void *opaque);
+
+    static void
     xio_list_volumes(const std::string& uri,
                      std::vector<std::string>& volumes);
 

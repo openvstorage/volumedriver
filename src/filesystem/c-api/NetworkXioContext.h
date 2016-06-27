@@ -168,6 +168,42 @@ struct NetworkXioContext : public ovs_context_t
     }
 
     int
+    truncate_volume(const char *volume_name,
+                    uint64_t offset)
+    {
+        int r;
+        std::shared_ptr<ovs_aio_request> request;
+        try
+        {
+            request = std::make_shared<ovs_aio_request>(RequestOp::Noop,
+                                                        nullptr,
+                                                        nullptr);
+        }
+        catch (const std::bad_alloc&)
+        {
+            errno = ENOMEM;
+            return -1;
+        }
+        try
+        {
+            volumedriverfs::NetworkXioClient::xio_truncate_volume(uri_,
+                                                                 volume_name,
+                                                                 offset,
+                                                                 static_cast<void*>(request.get()));
+            errno = request->_errno; r = request->_rv;
+        }
+        catch (const std::bad_alloc&)
+        {
+            errno = ENOMEM; r = -1;
+        }
+        catch (...)
+        {
+            errno = EIO; r = -1;
+        }
+        return r;
+    }
+
+    int
     remove_volume(const char *volume_name)
     {
         int r;
