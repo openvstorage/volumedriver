@@ -17,7 +17,7 @@
 
 #include "../VolumeConfig.h"
 #include "../Api.h"
-#include "../FailOverCacheAsyncBridge.h"
+#include "../DtlAsyncBridge.h"
 #include "../FailOverCacheSyncBridge.h"
 #include "../distributed-transaction-log/FileBackend.h"
 
@@ -66,7 +66,7 @@ public:
         switch (bridge->mode())
         {
         case FailOverCacheMode::Asynchronous:
-            entries = get_num_entries(dynamic_cast<FailOverCacheAsyncBridge&>(*bridge));
+            entries = get_num_entries(dynamic_cast<DtlAsyncBridge&>(*bridge));
             break;
         case FailOverCacheMode::Synchronous:
             entries = get_num_entries(dynamic_cast<FailOverCacheSyncBridge&>(*bridge));

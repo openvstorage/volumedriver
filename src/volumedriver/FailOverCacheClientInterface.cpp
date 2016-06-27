@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "FailOverCacheClientInterface.h"
-#include "FailOverCacheAsyncBridge.h"
+#include "DtlAsyncBridge.h"
 #include "FailOverCacheSyncBridge.h"
 
 #include <youtils/Assert.h>
@@ -34,7 +34,7 @@ FailOverCacheClientInterface::create(const FailOverCacheMode mode,
     switch (mode)
     {
     case FailOverCacheMode::Asynchronous:
-        return Ptr(new FailOverCacheAsyncBridge(lba_size,
+        return Ptr(new DtlAsyncBridge(lba_size,
                                                 cluster_multiplier,
                                                 max_entries,
                                                 write_trigger));

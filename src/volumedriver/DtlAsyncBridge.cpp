@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "FailOverCacheAsyncBridge.h"
+#include "DtlAsyncBridge.h"
 #include "Volume.h"
 
 #include <algorithm>
@@ -29,14 +29,14 @@ namespace volumedriver
     boost::lock_guard<decltype(new_ones_mutex_)> nolg__(new_ones_mutex_)
 
 const boost::chrono::seconds
-FailOverCacheAsyncBridge::timeout_(1);
+DtlAsyncBridge::timeout_(1);
 
 // Passing LBASize and ClusterMultiplier here is ugly as sin as the underlying
 // DtlProxy also tracks that information. However, the locking of this
 // thing is rather convoluted and needs adaptations if we want to get these settings
 // out of the cache_ member.
 TODO("AR: get rid of LBASize and ClusterMultiplier");
-FailOverCacheAsyncBridge::FailOverCacheAsyncBridge(const LBASize lba_size,
+DtlAsyncBridge::DtlAsyncBridge(const LBASize lba_size,
                                                    const ClusterMultiplier cluster_multiplier,
                                                    const size_t max_entries,
                                                    const std::atomic<unsigned>& write_trigger)
@@ -53,7 +53,7 @@ FailOverCacheAsyncBridge::FailOverCacheAsyncBridge(const LBASize lba_size,
 }
 
 void
-FailOverCacheAsyncBridge::init_cache_()
+DtlAsyncBridge::init_cache_()
 {
     //PRECONDITION: thread_ = 0, oldOnes = 0, newones = 0
     // Y42 why not assert for these preconditions??
@@ -67,7 +67,7 @@ FailOverCacheAsyncBridge::init_cache_()
 }
 
 void
-FailOverCacheAsyncBridge::initialize(DegradedFun fun)
+DtlAsyncBridge::initialize(DegradedFun fun)
 {
     LOCK();
 
@@ -79,19 +79,19 @@ FailOverCacheAsyncBridge::initialize(DegradedFun fun)
 }
 
 const char*
-FailOverCacheAsyncBridge::getName() const
+DtlAsyncBridge::getName() const
 {
-    return "FailOverCacheAsyncBridge";
+    return "DtlAsyncBridge";
 }
 
 bool
-FailOverCacheAsyncBridge::backup()
+DtlAsyncBridge::backup()
 {
     return cache_ != nullptr;
 }
 
 void
-FailOverCacheAsyncBridge::newCache(std::unique_ptr<DtlProxy> cache)
+DtlAsyncBridge::newCache(std::unique_ptr<DtlProxy> cache)
 {
     LOG_INFO("newCache");
 
@@ -129,7 +129,7 @@ FailOverCacheAsyncBridge::newCache(std::unique_ptr<DtlProxy> cache)
 
 // Called from Volume::destroy
 void
-FailOverCacheAsyncBridge::destroy(SyncFailOverToBackend sync)
+DtlAsyncBridge::destroy(SyncFailOverToBackend sync)
 {
 
     {
@@ -198,7 +198,7 @@ FailOverCacheAsyncBridge::destroy(SyncFailOverToBackend sync)
 }
 
 void
-FailOverCacheAsyncBridge::setRequestTimeout(const boost::chrono::seconds seconds)
+DtlAsyncBridge::setRequestTimeout(const boost::chrono::seconds seconds)
 {
     LOCK();
 
@@ -209,7 +209,7 @@ FailOverCacheAsyncBridge::setRequestTimeout(const boost::chrono::seconds seconds
 }
 
 void
-FailOverCacheAsyncBridge::run()
+DtlAsyncBridge::run()
 {
     boost::unique_lock<decltype(mutex_)> unique_lock(mutex_);
 
@@ -268,7 +268,7 @@ FailOverCacheAsyncBridge::run()
 
 // Y42: This needs to be fixed!!!
 void
-FailOverCacheAsyncBridge::setThrottling(bool v)
+DtlAsyncBridge::setThrottling(bool v)
 {
     if(v and (not throttling))
     {
@@ -282,7 +282,7 @@ FailOverCacheAsyncBridge::setThrottling(bool v)
 }
 
 void
-FailOverCacheAsyncBridge::addEntry(ClusterLocation loc,
+DtlAsyncBridge::addEntry(ClusterLocation loc,
                                    uint64_t lba,
                                    const uint8_t* buf,
                                    size_t /* bufsize */)
@@ -293,7 +293,7 @@ FailOverCacheAsyncBridge::addEntry(ClusterLocation loc,
 }
 
 bool
-FailOverCacheAsyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
+DtlAsyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
                                      size_t num_locs,
                                      uint64_t start_address,
                                      const uint8_t* data)
@@ -337,7 +337,7 @@ FailOverCacheAsyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
 }
 
 void
-FailOverCacheAsyncBridge::maybe_swap_(bool new_sco)
+DtlAsyncBridge::maybe_swap_(bool new_sco)
 {
     if (new_sco or
         (newOnes.size() >= write_trigger_))
@@ -357,14 +357,14 @@ FailOverCacheAsyncBridge::maybe_swap_(bool new_sco)
     }
 }
 
-void FailOverCacheAsyncBridge::Flush()
+void DtlAsyncBridge::Flush()
 {
     LOCK();
     flush_();
 }
 
 void
-FailOverCacheAsyncBridge::flush_()
+DtlAsyncBridge::flush_()
 {
     if(cache_)
     {
@@ -397,7 +397,7 @@ FailOverCacheAsyncBridge::flush_()
 }
 
 void
-FailOverCacheAsyncBridge::removeUpTo(const SCO& sconame)
+DtlAsyncBridge::removeUpTo(const SCO& sconame)
 {
     LOCK();
 
@@ -408,7 +408,7 @@ FailOverCacheAsyncBridge::removeUpTo(const SCO& sconame)
 }
 
 void
-FailOverCacheAsyncBridge::Clear()
+DtlAsyncBridge::Clear()
 {
     LOCK();
 
@@ -419,7 +419,7 @@ FailOverCacheAsyncBridge::Clear()
 }
 
 uint64_t
-FailOverCacheAsyncBridge::getSCOFromFailOver(SCO sconame,
+DtlAsyncBridge::getSCOFromFailOver(SCO sconame,
                                              SCOProcessorFun processor)
 {
     LOCK();
@@ -438,7 +438,7 @@ FailOverCacheAsyncBridge::getSCOFromFailOver(SCO sconame,
 }
 
 FailOverCacheMode
-FailOverCacheAsyncBridge::mode() const
+DtlAsyncBridge::mode() const
 {
     return FailOverCacheMode::Asynchronous;
 }

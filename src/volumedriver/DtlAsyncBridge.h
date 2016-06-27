@@ -13,8 +13,8 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef VD_FAILOVER_CACHE_ASYNCBRIDGE_H
-#define VD_FAILOVER_CACHE_ASYNCBRIDGE_H
+#ifndef VD_DTL_ASYNCBRIDGE_H_
+#define VD_DTL_ASYNCBRIDGE_H_
 
 #include "FailOverCacheBridgeCommon.h"
 #include "FailOverCacheStreamers.h"
@@ -36,24 +36,24 @@ namespace volumedriver
 
 class FailOverCacheTester;
 
-class FailOverCacheAsyncBridge
+class DtlAsyncBridge
     : public fungi::Runnable
     , public FailOverCacheClientInterface
 {
     friend class FailOverCacheTester;
 
 public:
-    FailOverCacheAsyncBridge(const LBASize,
+    DtlAsyncBridge(const LBASize,
                              const ClusterMultiplier,
                              const size_t max_entries,
                              const std::atomic<unsigned>& write_trigger);
 
-    FailOverCacheAsyncBridge(const FailOverCacheAsyncBridge&) = delete;
+    DtlAsyncBridge(const DtlAsyncBridge&) = delete;
 
-    ~FailOverCacheAsyncBridge() = default;
+    ~DtlAsyncBridge() = default;
 
-    FailOverCacheAsyncBridge&
-    operator=(const FailOverCacheAsyncBridge&) = delete;
+    DtlAsyncBridge&
+    operator=(const DtlAsyncBridge&) = delete;
 
     virtual void
     initialize(DegradedFun) override;
@@ -99,7 +99,7 @@ public:
     mode() const override;
 
 private:
-    DECLARE_LOGGER("FailOverCacheAsyncBridge");
+    DECLARE_LOGGER("DtlAsyncBridge");
 
     void
     addEntry(ClusterLocation loc,
@@ -154,7 +154,7 @@ private:
 
 }
 
-#endif // VD_FAILOVER_CACHE_ASYNCBRIDGE
+#endif // VD_DTL_ASYNCBRIDGE_H_
 
 // Local Variables: **
 // mode: c++ **
