@@ -151,4 +151,4 @@ volumedriver_fs_SOURCES = \
 pkgconfigdir = @pkgconfigdir@
 pkgconfig_DATA = volumedriverfs.pc
 
-SUBDIRS = . c-api failovercache test
+SUBDIRS = . c-api distributed-transaction-log test

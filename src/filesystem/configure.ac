@@ -33,8 +33,8 @@ AC_CONFIG_FILES([volumedriver_fs.sh], [chmod +x volumedriver_fs.sh])
 AC_CONFIG_FILES([test/volumedriver_fs_test.sh], [chmod +x test/volumedriver_fs_test.sh])
 AC_CONFIG_FILES([test/python_test.sh], [chmod +x test/python_test.sh])
 
-AC_CONFIG_FILES([failovercache/Makefile])
+AC_CONFIG_FILES([distributed-transaction-log/Makefile])
 
-AC_CONFIG_FILES([failovercache/test/Makefile])
+AC_CONFIG_FILES([distributed-transaction-log/test/Makefile])
 AC_CONFIG_FILES([c-api/Makefile])
 AC_OUTPUT
