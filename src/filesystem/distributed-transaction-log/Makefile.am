@@ -13,6 +13,6 @@ distributed_transaction_log_helper_LDADD = \
 
 distributed_transaction_log_helper_LDFLAGS = -Wl,--as-needed
 distributed_transaction_log_helper_SOURCES = \
-	FailOverCacheHelperMain.cpp
+	DtlHelperMain.cpp
 
 SUBDIRS = . test
