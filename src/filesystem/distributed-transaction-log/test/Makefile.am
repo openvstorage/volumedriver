@@ -13,4 +13,4 @@ distributed_transaction_log_helper_test_LDADD = \
 
 distributed_transaction_log_helper_test_LDFLAGS = -Wl,--as-needed
 distributed_transaction_log_helper_test_SOURCES = \
-	failovercachehelpertest.cpp
+	DtlHelperTest.cpp
