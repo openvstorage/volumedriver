@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "FailOverCacheEnvironment.h"
+#include "DtlEnvironment.h"
 #include "FailOverCacheTestMain.h"
 
 #include "../DtlServer.h"
@@ -155,7 +155,7 @@ class FailOverCacheTest
     virtual void
     SetUp()
     {
-        v.reset(new FailOverCacheEnvironment(FailOverCacheTestMain::host(),
+        v.reset(new DtlEnvironment(FailOverCacheTestMain::host(),
                                              FailOverCacheTestMain::port(),
                                              FailOverCacheTestMain::transport()));
         v->SetUp();
@@ -170,7 +170,7 @@ class FailOverCacheTest
         v.reset();
     }
 
-    std::unique_ptr<FailOverCacheEnvironment> v;
+    std::unique_ptr<DtlEnvironment> v;
 };
 
 TEST_F(FailOverCacheTest, put_and_retrieve)

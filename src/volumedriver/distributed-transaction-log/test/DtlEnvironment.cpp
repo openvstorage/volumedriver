@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "FailOverCacheEnvironment.h"
+#include "DtlEnvironment.h"
 
 #include "../DtlServer.h"
 
@@ -27,7 +27,7 @@ namespace distributed_transaction_log_test
 
 namespace vd = volumedriver;
 
-FailOverCacheEnvironment::FailOverCacheEnvironment(const boost::optional<std::string>& host,
+DtlEnvironment::DtlEnvironment(const boost::optional<std::string>& host,
                                                    const uint16_t port,
                                                    const vd::FailOverCacheTransport transport)
     : host_(host)
@@ -39,13 +39,13 @@ FailOverCacheEnvironment::FailOverCacheEnvironment(const boost::optional<std::st
     youtils::FileUtils::checkDirectoryEmptyOrNonExistant(path_);
 }
 
-FailOverCacheEnvironment::~FailOverCacheEnvironment()
+DtlEnvironment::~DtlEnvironment()
 {
     youtils::FileUtils::removeAllNoThrow(path_);
 }
 
 void
-FailOverCacheEnvironment::SetUp()
+DtlEnvironment::SetUp()
 {
     std::vector<std::string> args;
 
@@ -76,7 +76,7 @@ FailOverCacheEnvironment::SetUp()
 }
 
 void
-FailOverCacheEnvironment::TearDown()
+DtlEnvironment::TearDown()
 {
     server_->stop_();
     thread_->join();

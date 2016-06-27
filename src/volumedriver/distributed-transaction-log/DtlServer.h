@@ -37,13 +37,13 @@
 
 namespace distributed_transaction_log_test
 {
-class FailOverCacheEnvironment;
+class DtlEnvironment;
 }
 
 class DtlServer
     : public youtils::MainHelper
 {
-    friend class distributed_transaction_log_test::FailOverCacheEnvironment;
+    friend class distributed_transaction_log_test::DtlEnvironment;
 
 public:
     DtlServer(int argc,

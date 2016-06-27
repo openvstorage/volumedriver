@@ -31,15 +31,15 @@ class thread;
 namespace distributed_transaction_log_test
 {
 
-class FailOverCacheEnvironment
+class DtlEnvironment
     : testing::Environment
 {
 public:
-    FailOverCacheEnvironment(const boost::optional<std::string>& host,
+    DtlEnvironment(const boost::optional<std::string>& host,
                              const uint16_t port,
                              const volumedriver::FailOverCacheTransport);
 
-    ~FailOverCacheEnvironment();
+    ~DtlEnvironment();
 
     virtual void
     SetUp();
