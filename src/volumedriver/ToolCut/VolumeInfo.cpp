@@ -42,14 +42,14 @@ VolumeInfo::VolumeInfo(boost::python::object& backend,
     }
 
     {
-        fs::path p(FileUtils::create_temp_file_in_temp_dir(FailOverCacheConfigWrapper::config_backend_name));
+        fs::path p(FileUtils::create_temp_file_in_temp_dir(DtlConfigWrapper::config_backend_name));
         ALWAYS_CLEANUP_FILE(p);
         backend.attr("read")(ns,
                              p.string(),
-                             FailOverCacheConfigWrapper::config_backend_name,
+                             DtlConfigWrapper::config_backend_name,
                              true);
         fs::ifstream ifs(p);
-        FailOverCacheConfigWrapper::iarchive_type ia(ifs);
+        DtlConfigWrapper::iarchive_type ia(ifs);
         ia & foc_config_wrapper_;
         ifs.close();
     }
@@ -69,7 +69,7 @@ VolumeInfo::VolumeInfo(const std::string& volume_config,
     if(not failover_config.empty())
     {
         fs::ifstream ifs(failover_config);
-        FailOverCacheConfigWrapper::iarchive_type ia(ifs);
+        DtlConfigWrapper::iarchive_type ia(ifs);
         ia & foc_config_wrapper_;
         ifs.close();
     }

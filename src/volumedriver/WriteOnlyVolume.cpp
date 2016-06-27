@@ -158,12 +158,12 @@ WriteOnlyVolume::newWriteOnlyVolume()
     fs::path tmp = FileUtils::create_temp_file_in_temp_dir("write_only_cache_config");
     ALWAYS_CLEANUP_FILE(tmp);
 
-    FailOverCacheConfigWrapper foc_config_wrapper;
-    youtils::Serialization::serializeAndFlush<FailOverCacheConfigWrapper::oarchive_type>(tmp,
+    DtlConfigWrapper foc_config_wrapper;
+    youtils::Serialization::serializeAndFlush<DtlConfigWrapper::oarchive_type>(tmp,
                                                                                          foc_config_wrapper);
 
     getBackendInterface()->write(tmp,
-                                 FailOverCacheConfigWrapper::config_backend_name,
+                                 DtlConfigWrapper::config_backend_name,
                                  OverwriteObject::T);
     return this;
 }

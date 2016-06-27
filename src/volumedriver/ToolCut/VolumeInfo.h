@@ -19,7 +19,7 @@
 #include <boost/python/dict.hpp>
 
 #include "../VolumeConfig.h"
-#include "../FailOverCacheConfigWrapper.h"
+#include "../DtlConfigWrapper.h"
 
 namespace toolcut
 {
@@ -112,7 +112,7 @@ public:
         return volume_config_.readCacheEnabled_;
     }
 
-    vd::FailOverCacheConfigWrapper::CacheType
+    vd::DtlConfigWrapper::CacheType
     failOverCacheType() const
     {
         return foc_config_wrapper_.getCacheType();
@@ -150,7 +150,7 @@ public:
 
 private:
     vd::VolumeConfig volume_config_;
-    vd::FailOverCacheConfigWrapper foc_config_wrapper_;
+    vd::DtlConfigWrapper foc_config_wrapper_;
 };
 
 }

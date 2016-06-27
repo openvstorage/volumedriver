@@ -63,11 +63,11 @@ BOOST_PYTHON_MODULE(ToolCut)
     scope().attr("__doc__") = "Access the basic building blocks of VolumeDriver\n"
         "such as SCO, ClusterLocation, TLog, TLogReader, Snapshot, VolumeInfo, ScrubbingResult...";
 
-    enum_<volumedriver::FailOverCacheConfigWrapper::CacheType>("FailOverCacheType",
+    enum_<volumedriver::DtlConfigWrapper::CacheType>("FailOverCacheType",
                                                                "Type of Failover cache.\n"
                                                                "Values are NoFailOverCache or RemoteFailOverCache")
-        .value("NoFailOverCache", volumedriver::FailOverCacheConfigWrapper::CacheType::None)
-        .value("RemoteFailOverCache", volumedriver::FailOverCacheConfigWrapper::CacheType::Remote);
+        .value("NoFailOverCache", volumedriver::DtlConfigWrapper::CacheType::None)
+        .value("RemoteFailOverCache", volumedriver::DtlConfigWrapper::CacheType::Remote);
 
 
     enum_<volumedriver::VolumeConfig::WanBackupVolumeRole>("WanBackupVolumeRole",

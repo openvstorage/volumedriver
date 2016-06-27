@@ -457,7 +457,7 @@ Volume::localRestart()
 
     LOG_VINFO("getting the failover information from the backend");
 
-    foc_config_wrapper_ = *VolManager::get()->get_config_from_backend<FailOverCacheConfigWrapper>(cfg.getNS());
+    foc_config_wrapper_ = *VolManager::get()->get_config_from_backend<DtlConfigWrapper>(cfg.getNS());
 
     if (foc_config_wrapper_.config())
     {
@@ -577,7 +577,7 @@ Volume::backend_restart(const CloneTLogs& restartTLogs,
     LOG_VINFO("getting the failover information from the backend");
 
     foc_config_wrapper_ =
-        *VolManager::get()->get_config_from_backend<FailOverCacheConfigWrapper>(cfg.getNS());
+        *VolManager::get()->get_config_from_backend<DtlConfigWrapper>(cfg.getNS());
 
     VolumeFailOverState foc_state = VolumeFailOverState::OK_STANDALONE;
 
@@ -2823,7 +2823,7 @@ Volume::writeFailOverCacheConfigToBackend_()
     checkNotHalted_();
 
     getBackendInterface()->writeObject(foc_config_wrapper_,
-                                       FailOverCacheConfigWrapper::config_backend_name,
+                                       DtlConfigWrapper::config_backend_name,
                                        OverwriteObject::T);
 }
 

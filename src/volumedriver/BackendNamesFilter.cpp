@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "BackendNamesFilter.h"
-#include "FailOverCacheConfigWrapper.h"
+#include "DtlConfigWrapper.h"
 #include "SCOAccessData.h"
 #include "SnapshotManagement.h"
 #include "VolumeConfig.h"
@@ -36,7 +36,7 @@ BackendNamesFilter::regex_()
     // [0-9a-f] below.
     static const std::string rexstr(std::string(SCOAccessDataPersistor::backend_name)
                                    + std::string("|")
-                                   + FailOverCacheConfigWrapper::config_backend_name
+                                   + DtlConfigWrapper::config_backend_name
                                    + std::string("|")
                                    + VolumeConfig::config_backend_name
                                    + std::string("|")

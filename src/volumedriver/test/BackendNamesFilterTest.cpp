@@ -19,7 +19,7 @@
 
 #include <volumedriver/BackendNamesFilter.h>
 #include <volumedriver/FailOverCacheConfig.h>
-#include <volumedriver/FailOverCacheConfigWrapper.h>
+#include <volumedriver/DtlConfigWrapper.h>
 #include <volumedriver/SCOAccessData.h>
 #include <volumedriver/SnapshotManagement.h>
 #include <volumedriver/VolumeConfig.h>
@@ -81,7 +81,7 @@ TEST_F(BackendNamesFilterTest, scos)
 TEST_F(BackendNamesFilterTest, configs_etc)
 {
     test(SCOAccessDataPersistor::backend_name);
-    test(FailOverCacheConfigWrapper::config_backend_name);
+    test(DtlConfigWrapper::config_backend_name);
     test(VolumeConfig::config_backend_name);
     test(snapshotFilename());
 }
@@ -120,7 +120,7 @@ TEST_F(BackendNamesFilterTest, random)
 
         const std::string s = ss.str();
         if (s != SCOAccessDataPersistor::backend_name and
-            s != FailOverCacheConfigWrapper::config_backend_name and
+            s != DtlConfigWrapper::config_backend_name and
             s != VolumeConfig::config_backend_name and
             s != snapshotFilename() and
             not TLog::isTLogString(s) and

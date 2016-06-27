@@ -13,8 +13,8 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef VD_FAILOVER_CACHE_CONFIG_WRAPPER_H_
-#define VD_FAILOVER_CACHE_CONFIG_WRAPPER_H_
+#ifndef VD_DTL_CONFIG_WRAPPER_H_
+#define VD_DTL_CONFIG_WRAPPER_H_
 
 #include "FailOverCacheConfig.h"
 
@@ -30,7 +30,7 @@ namespace volumedriver
 
 // This one exists purely for historical reasons - to keep the serialization backward
 // compatible. Get rid of it eventually.
-class FailOverCacheConfigWrapper
+class DtlConfigWrapper
 {
 public:
     typedef boost::archive::text_iarchive iarchive_type;
@@ -43,19 +43,19 @@ public:
         Remote
     };
 
-    FailOverCacheConfigWrapper() = default;
+    DtlConfigWrapper() = default;
 
-    ~FailOverCacheConfigWrapper() = default;
+    ~DtlConfigWrapper() = default;
 
-    FailOverCacheConfigWrapper(const FailOverCacheConfigWrapper&) = default;
+    DtlConfigWrapper(const DtlConfigWrapper&) = default;
 
-    FailOverCacheConfigWrapper&
-    operator=(const FailOverCacheConfigWrapper&) = default;
+    DtlConfigWrapper&
+    operator=(const DtlConfigWrapper&) = default;
 
-    FailOverCacheConfigWrapper(FailOverCacheConfigWrapper&&) = default;
+    DtlConfigWrapper(DtlConfigWrapper&&) = default;
 
-    FailOverCacheConfigWrapper&
-    operator=(FailOverCacheConfigWrapper&&) = default;
+    DtlConfigWrapper&
+    operator=(DtlConfigWrapper&&) = default;
 
     CacheType
     getCacheType() const
@@ -95,13 +95,13 @@ public:
     }
 
     bool
-    operator==(const FailOverCacheConfigWrapper& other) const
+    operator==(const DtlConfigWrapper& other) const
     {
         return config_ == other.config_;
     }
 
     bool
-    operator!=(const FailOverCacheConfigWrapper& other) const
+    operator!=(const DtlConfigWrapper& other) const
     {
         return not operator==(other);
     }
@@ -154,13 +154,13 @@ private:
 
 inline std::ostream&
 operator<<(std::ostream& os,
-           const FailOverCacheConfigWrapper::CacheType& type)
+           const DtlConfigWrapper::CacheType& type)
 {
     switch(type)
     {
-    case FailOverCacheConfigWrapper::CacheType::None:
+    case DtlConfigWrapper::CacheType::None:
         return os << "None";
-    case FailOverCacheConfigWrapper::CacheType::Remote:
+    case DtlConfigWrapper::CacheType::Remote:
         return os << "Remote";
     default:
         return os << "huh, you must be insane";
@@ -169,6 +169,6 @@ operator<<(std::ostream& os,
 
 }
 
-BOOST_CLASS_VERSION(volumedriver::FailOverCacheConfigWrapper, 1);
+BOOST_CLASS_VERSION(volumedriver::DtlConfigWrapper, 1);
 
-#endif // !VD_FAILOVER_CACHE_CONFIG_WRAPPER_H_
+#endif // !VD_DTL_CONFIG_WRAPPER_H_

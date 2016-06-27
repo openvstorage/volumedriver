@@ -13,12 +13,12 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "FailOverCacheConfigWrapper.h"
+#include "DtlConfigWrapper.h"
 
 namespace volumedriver
 {
 
 const std::string
-FailOverCacheConfigWrapper::config_backend_name("failovercache_configuration");
+DtlConfigWrapper::config_backend_name("failovercache_configuration");
 
 }

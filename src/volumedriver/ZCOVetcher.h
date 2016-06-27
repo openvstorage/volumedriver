@@ -16,7 +16,7 @@
 #ifndef ZCO_VETCHER_H
 #define ZCO_VETCHER_H
 
-#include "FailOverCacheConfigWrapper.h"
+#include "DtlConfigWrapper.h"
 #include "SCOAccessData.h"
 #include "SCOCache.h"
 #include "VolManager.h"
@@ -58,7 +58,7 @@ public:
         SCOAccessDataPtr sad(sadp.pull());
 
         foc_config_wrapper_ =
-            VolumeFactory::get_config_from_backend<FailOverCacheConfigWrapper>(*bi);
+            VolumeFactory::get_config_from_backend<DtlConfigWrapper>(*bi);
         const uint64_t max_non_disposable =
             VolManager::get()->get_sco_cache_max_non_disposable_bytes(volume_config);
         sco_cache_.enableNamespace(ns_,
@@ -179,7 +179,7 @@ private:
     const LBASize lba_size_;
     const ClusterMultiplier cluster_mult_;
     std::pair<fs::path, std::unique_ptr<youtils::IncrementalChecksum> > incremental_checksum;
-    std::unique_ptr<FailOverCacheConfigWrapper> foc_config_wrapper_;
+    std::unique_ptr<DtlConfigWrapper> foc_config_wrapper_;
 };
 
 }

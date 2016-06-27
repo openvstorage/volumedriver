@@ -97,7 +97,7 @@ libvolumedriver_la_SOURCES = \
 	DtlAsyncBridge.cpp \
 	DtlClientInterface.cpp \
 	FailOverCacheConfig.cpp \
-	FailOverCacheConfigWrapper.cpp \
+	DtlConfigWrapper.cpp \
 	FailOverCacheMode.cpp \
 	DtlProxy.cpp \
 	DtlStreamers.cpp \

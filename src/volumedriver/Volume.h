@@ -18,7 +18,7 @@
 
 #include "BackendTasks.h"
 #include "ClusterCacheHandle.h"
-#include "FailOverCacheConfigWrapper.h"
+#include "DtlConfigWrapper.h"
 #include "DtlProxy.h"
 #include "NSIDMap.h"
 #include "PerformanceCounters.h"
@@ -562,7 +562,7 @@ private:
 
     VolumeConfig config_;
 
-    FailOverCacheConfigWrapper foc_config_wrapper_;
+    DtlConfigWrapper foc_config_wrapper_;
 
     std::unique_ptr<SnapshotManagement> snapshotManagement_;
 
