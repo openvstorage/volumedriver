@@ -101,7 +101,7 @@ libvolumedriver_la_SOURCES = \
 	FailOverCacheMode.cpp \
 	DtlProxy.cpp \
 	DtlStreamers.cpp \
-	FailOverCacheSyncBridge.cpp \
+	DtlSyncBridge.cpp \
 	FailOverCacheTransport.cpp \
 	FilePool.cpp \
 	distributed-transaction-log/Backend.cpp \

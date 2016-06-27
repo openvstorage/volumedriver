@@ -13,8 +13,8 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef VD_FAILOVER_CACHE_SYNCBRIDGE_H
-#define VD_FAILOVER_CACHE_SYNCBRIDGE_H
+#ifndef VD_DTL_SYNC_BRIDGE_H_
+#define VD_DTL_SYNC_BRIDGE_H_
 
 #include "DtlBridgeCommon.h"
 #include "DtlStreamers.h"
@@ -30,20 +30,20 @@ namespace volumedriver
 
 class FailOverCacheTester;
 
-class FailOverCacheSyncBridge
+class DtlSyncBridge
     : public DtlClientInterface
 {
     friend class FailOverCacheTester;
 
 public:
-    explicit FailOverCacheSyncBridge(const size_t max_entries);
+    explicit DtlSyncBridge(const size_t max_entries);
 
-    FailOverCacheSyncBridge(const FailOverCacheSyncBridge&) = delete;
+    DtlSyncBridge(const DtlSyncBridge&) = delete;
 
-    FailOverCacheSyncBridge&
-    operator=(const FailOverCacheSyncBridge&) = delete;
+    DtlSyncBridge&
+    operator=(const DtlSyncBridge&) = delete;
 
-    ~FailOverCacheSyncBridge() = default;
+    ~DtlSyncBridge() = default;
 
     virtual void
     initialize(DegradedFun) override;
@@ -86,7 +86,7 @@ public:
     mode() const override;
 
 private:
-    DECLARE_LOGGER("FailOverCacheSyncBridge");
+    DECLARE_LOGGER("DtlSyncBridge");
 
     boost::mutex mutex_;
     std::unique_ptr<DtlProxy> cache_;
@@ -99,7 +99,7 @@ private:
 
 }
 
-#endif // VD_FAILOVER_CACHE_SYNCBRIDGE
+#endif // VD_DTL_SYNC_BRIDGE_H_
 
 // Local Variables: **
 // mode: c++ **

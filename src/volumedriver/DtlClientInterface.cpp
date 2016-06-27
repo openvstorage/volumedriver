@@ -15,7 +15,7 @@
 
 #include "DtlClientInterface.h"
 #include "DtlAsyncBridge.h"
-#include "FailOverCacheSyncBridge.h"
+#include "DtlSyncBridge.h"
 
 #include <youtils/Assert.h>
 
@@ -39,7 +39,7 @@ DtlClientInterface::create(const FailOverCacheMode mode,
                                                 max_entries,
                                                 write_trigger));
     case FailOverCacheMode::Synchronous:
-        return Ptr(new FailOverCacheSyncBridge(max_entries));
+        return Ptr(new DtlSyncBridge(max_entries));
     }
 
     VERIFY(0 == "Someone added a new FailOverCacheMode and forgot to update this function?");

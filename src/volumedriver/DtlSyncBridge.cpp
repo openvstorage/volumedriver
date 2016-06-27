@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "FailOverCacheSyncBridge.h"
+#include "DtlSyncBridge.h"
 #include "Volume.h"
 
 #include <algorithm>
@@ -25,12 +25,12 @@ namespace volumedriver
 #define LOCK()                                          \
     boost::lock_guard<decltype(mutex_)> lg__(mutex_)
 
-FailOverCacheSyncBridge::FailOverCacheSyncBridge(const size_t max_entries)
+DtlSyncBridge::DtlSyncBridge(const size_t max_entries)
     : DtlClientInterface(max_entries)
 {}
 
 void
-FailOverCacheSyncBridge::initialize(DegradedFun fun)
+DtlSyncBridge::initialize(DegradedFun fun)
 {
     LOCK();
 
@@ -39,19 +39,19 @@ FailOverCacheSyncBridge::initialize(DegradedFun fun)
 }
 
 const char*
-FailOverCacheSyncBridge::getName() const
+DtlSyncBridge::getName() const
 {
-    return "FailOverCacheSyncBridge";
+    return "DtlSyncBridge";
 }
 
 bool
-FailOverCacheSyncBridge::backup()
+DtlSyncBridge::backup()
 {
     return cache_ != nullptr;
 }
 
 void
-FailOverCacheSyncBridge::newCache(std::unique_ptr<DtlProxy> cache)
+DtlSyncBridge::newCache(std::unique_ptr<DtlProxy> cache)
 {
     LOCK();
 
@@ -65,14 +65,14 @@ FailOverCacheSyncBridge::newCache(std::unique_ptr<DtlProxy> cache)
 
 // Called from Volume::destroy
 void
-FailOverCacheSyncBridge::destroy(SyncFailOverToBackend /*sync*/)
+DtlSyncBridge::destroy(SyncFailOverToBackend /*sync*/)
 {
     LOCK();
     cache_ = nullptr;
 }
 
 void
-FailOverCacheSyncBridge::setRequestTimeout(const boost::chrono::seconds seconds)
+DtlSyncBridge::setRequestTimeout(const boost::chrono::seconds seconds)
 {
     LOCK();
 
@@ -90,7 +90,7 @@ FailOverCacheSyncBridge::setRequestTimeout(const boost::chrono::seconds seconds)
 }
 
 bool
-FailOverCacheSyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
+DtlSyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
                                     size_t num_locs,
                                     uint64_t start_address,
                                     const uint8_t* data)
@@ -127,7 +127,7 @@ FailOverCacheSyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
 }
 
 void
-FailOverCacheSyncBridge::Flush()
+DtlSyncBridge::Flush()
 {
     LOCK();
 
@@ -145,7 +145,7 @@ FailOverCacheSyncBridge::Flush()
 }
 
 void
-FailOverCacheSyncBridge::removeUpTo(const SCO& sconame)
+DtlSyncBridge::removeUpTo(const SCO& sconame)
 {
     LOCK();
 
@@ -163,7 +163,7 @@ FailOverCacheSyncBridge::removeUpTo(const SCO& sconame)
 }
 
 void
-FailOverCacheSyncBridge::Clear()
+DtlSyncBridge::Clear()
 {
     LOCK();
 
@@ -181,7 +181,7 @@ FailOverCacheSyncBridge::Clear()
 }
 
 uint64_t
-FailOverCacheSyncBridge::getSCOFromFailOver(SCO sconame,
+DtlSyncBridge::getSCOFromFailOver(SCO sconame,
                                             SCOProcessorFun processor)
 {
     LOCK();
@@ -207,16 +207,16 @@ FailOverCacheSyncBridge::getSCOFromFailOver(SCO sconame,
 }
 
 FailOverCacheMode
-FailOverCacheSyncBridge::mode() const
+DtlSyncBridge::mode() const
 {
     return FailOverCacheMode::Synchronous;
 }
 
 void
-FailOverCacheSyncBridge::handleException(std::exception& e,
+DtlSyncBridge::handleException(std::exception& e,
                                          const char* where)
 {
-    LOG_ERROR("Exception in FailOverCacheSyncBridge::" << where << " : " << e.what());
+    LOG_ERROR("Exception in DtlSyncBridge::" << where << " : " << e.what());
     if(degraded_fun_)
     {
         degraded_fun_();

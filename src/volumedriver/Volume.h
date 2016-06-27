@@ -67,7 +67,7 @@ BOOLEAN_ENUM(DeleteFailOverCache);
 class ClusterReadDescriptor;
 class DataStoreNG;
 class DtlAsyncBridge;
-class FailOverCacheSyncBridge;
+class DtlSyncBridge;
 class MetaDataBackendConfig;
 class MetaDataStoreInterface;
 class ScrubberResult;
