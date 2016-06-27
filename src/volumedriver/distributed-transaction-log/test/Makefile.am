@@ -10,7 +10,7 @@ distributed_transaction_log_test_LDADD=../../libvolumedriver.la  \
 distributed_transaction_log_test_LDFLAGS=-Wl,--as-needed
 distributed_transaction_log_test_CPPFLAGS=-I@abs_top_srcdir@/..
 distributed_transaction_log_test_SOURCES=\
-	failovercache_tester.cpp \
+	DtlTest.cpp \
 	DtlEnvironment.cpp \
 	../DtlServer.cpp \
 	FailOverCacheTestMain.cpp

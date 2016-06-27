@@ -148,7 +148,7 @@ public:
     const ClusterSize cluster_size_;
 };
 
-class FailOverCacheTest
+class DtlTest
     : public youtilstest::TestBase
 {
 
@@ -173,7 +173,7 @@ class FailOverCacheTest
     std::unique_ptr<DtlEnvironment> v;
 };
 
-TEST_F(FailOverCacheTest, put_and_retrieve)
+TEST_F(DtlTest, put_and_retrieve)
 {
     const ClusterSize cluster_size(4096);
     const uint32_t num_clusters_per_sco = 32;
@@ -223,7 +223,7 @@ TEST_F(FailOverCacheTest, put_and_retrieve)
     EXPECT_EQ(processor.cluster_count, 0);
 }
 
-TEST_F(FailOverCacheTest, GetSCORange)
+TEST_F(DtlTest, GetSCORange)
 {
     const ClusterSize cluster_size(4096);
 
@@ -300,7 +300,7 @@ TEST_F(FailOverCacheTest, GetSCORange)
     EXPECT_EQ(youngest,SCO());
 }
 
-TEST_F(FailOverCacheTest, GetOneSCO)
+TEST_F(DtlTest, GetOneSCO)
 {
     const ClusterSize cluster_size(4096);
     const uint32_t num_clusters_per_sco = 32;
@@ -382,7 +382,7 @@ TEST_F(FailOverCacheTest, GetOneSCO)
     EXPECT_EQ(processor.cluster_count, 0);
 }
 
-TEST_F(FailOverCacheTest, DISABLED_DoubleRegister)
+TEST_F(DtlTest, DISABLED_DoubleRegister)
 {
     // Y42 apparantly not a or my problem
     FailOverCacheProxy
@@ -618,7 +618,7 @@ public:
 const ClusterSize
 FailOverCacheTestThread::cluster_size_(4096);
 
-TEST_F(FailOverCacheTest, Stress)
+TEST_F(DtlTest, Stress)
 {
     std::vector<std::unique_ptr<FailOverCacheTestThread>> test_threads;
     std::vector<boost::thread> threads;
@@ -652,7 +652,7 @@ TEST_F(FailOverCacheTest, Stress)
 // The corking mechanism lead to too many clusters being queued up on the sender
 // (server side), which eventually complained with std::bad_alloc when trying to
 // send yet another one.
-TEST_F(FailOverCacheTest, get_entries_xxl)
+TEST_F(DtlTest, get_entries_xxl)
 {
     const LBASize lba_size(512);
     const ClusterMultiplier cmult(8);
