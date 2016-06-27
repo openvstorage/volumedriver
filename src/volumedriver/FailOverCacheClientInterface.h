@@ -60,7 +60,7 @@ public:
     backup() = 0;
 
     virtual void
-    newCache(std::unique_ptr<FailOverCacheProxy>) = 0;
+    newCache(std::unique_ptr<DtlProxy>) = 0;
 
     virtual boost::chrono::seconds
     getDefaultRequestTimeout() const

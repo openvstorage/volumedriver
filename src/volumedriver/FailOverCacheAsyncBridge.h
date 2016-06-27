@@ -18,7 +18,7 @@
 
 #include "FailOverCacheBridgeCommon.h"
 #include "FailOverCacheStreamers.h"
-#include "FailOverCacheProxy.h"
+#include "DtlProxy.h"
 #include "FailOverCacheClientInterface.h"
 #include "SCO.h"
 
@@ -77,7 +77,7 @@ public:
     backup() override;
 
     virtual void
-    newCache(std::unique_ptr<FailOverCacheProxy> cache) override;
+    newCache(std::unique_ptr<DtlProxy> cache) override;
 
     virtual void
     setRequestTimeout(const boost::chrono::seconds) override;
@@ -125,7 +125,7 @@ private:
         return ClusterSize(cluster_multiplier_ * lba_size_);
     }
 
-    std::unique_ptr<FailOverCacheProxy> cache_;
+    std::unique_ptr<DtlProxy> cache_;
 
     // mutex_: protects stop_ and cache_
     // new_ones_mutex_: protects newOnes / oldOnes + buffers

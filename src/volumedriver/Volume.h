@@ -19,7 +19,7 @@
 #include "BackendTasks.h"
 #include "ClusterCacheHandle.h"
 #include "FailOverCacheConfigWrapper.h"
-#include "FailOverCacheProxy.h"
+#include "DtlProxy.h"
 #include "NSIDMap.h"
 #include "PerformanceCounters.h"
 #include "PrefetchData.h"
@@ -624,7 +624,7 @@ private:
     checkTLogsConsistency_(CloneTLogs& ctl) const;
 
     void
-    replayFOC_(FailOverCacheProxy&);
+    replayFOC_(DtlProxy&);
 
     void
     normalizeSAPs_(SCOAccessData::VectorType& sadv);

@@ -99,7 +99,7 @@ libvolumedriver_la_SOURCES = \
 	FailOverCacheConfig.cpp \
 	FailOverCacheConfigWrapper.cpp \
 	FailOverCacheMode.cpp \
-	FailOverCacheProxy.cpp \
+	DtlProxy.cpp \
 	FailOverCacheStreamers.cpp \
 	FailOverCacheSyncBridge.cpp \
 	FailOverCacheTransport.cpp \

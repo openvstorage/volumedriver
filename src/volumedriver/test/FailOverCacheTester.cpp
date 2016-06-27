@@ -741,14 +741,14 @@ TEST_P(FailOverCacheTester, adding_and_flushing)
     EXPECT_EQ(max, count);
 }
 
-// OVS-3850: FailOverCacheProxy::clear threw an exception - let's see if this is
+// OVS-3850: DtlProxy::clear threw an exception - let's see if this is
 // inherent behaviour or something else contributed.
 TEST_P(FailOverCacheTester, clear)
 {
     auto wrns(make_random_namespace());
     auto foc_ctx(start_one_foc());
 
-    FailOverCacheProxy proxy(foc_ctx->config(GetParam().foc_mode()),
+    DtlProxy proxy(foc_ctx->config(GetParam().foc_mode()),
                              wrns->ns(),
                              default_lba_size(),
                              default_cluster_multiplier(),
@@ -808,7 +808,7 @@ TEST_P(FailOverCacheTester, non_standard_cluster_size)
 
     v->getFailOver()->Flush();
 
-    FailOverCacheProxy proxy(foc_ctx->config(GetParam().foc_mode()),
+    DtlProxy proxy(foc_ctx->config(GetParam().foc_mode()),
                              wrns->ns(),
                              default_lba_size(),
                              cmult,
@@ -866,7 +866,7 @@ TEST_P(FailOverCacheTester, wrong_cluster_size)
 
     v->getFailOver()->Flush();
 
-    EXPECT_THROW(FailOverCacheProxy(foc_ctx->config(GetParam().foc_mode()),
+    EXPECT_THROW(DtlProxy(foc_ctx->config(GetParam().foc_mode()),
                                     wrns->ns(),
                                     LBASize(default_lba_size()),
                                     ClusterMultiplier(default_cluster_multiplier()),
@@ -882,7 +882,7 @@ TEST_P(FailOverCacheTester, DISABLED_a_whole_lotta_clients)
     std::vector<std::unique_ptr<be::BackendTestSetup::WithRandomNamespace>> wrns;
     wrns.reserve(count);
 
-    std::vector<std::unique_ptr<FailOverCacheProxy>> proxies;
+    std::vector<std::unique_ptr<DtlProxy>> proxies;
     proxies.reserve(count);
 
     try
@@ -890,7 +890,7 @@ TEST_P(FailOverCacheTester, DISABLED_a_whole_lotta_clients)
         for (size_t i = 0; i < 512; ++i)
         {
             wrns.emplace_back(make_random_namespace());
-            proxies.emplace_back(std::make_unique<FailOverCacheProxy>(foc_ctx->config(GetParam().foc_mode()),
+            proxies.emplace_back(std::make_unique<DtlProxy>(foc_ctx->config(GetParam().foc_mode()),
                                                                       wrns.back()->ns(),
                                                                       default_lba_size(),
                                                                       default_cluster_multiplier(),

@@ -20,7 +20,7 @@
 
 #include "../../ClusterLocation.h"
 #include "../../FailOverCacheConfig.h"
-#include "../../FailOverCacheProxy.h"
+#include "../../DtlProxy.h"
 
 #include <stdlib.h>
 #include <memory>
@@ -179,7 +179,7 @@ TEST_F(DtlTest, put_and_retrieve)
     const uint32_t num_clusters_per_sco = 32;
     const uint32_t num_scos_to_produce = 20;
 
-    FailOverCacheProxy
+    DtlProxy
         cache(DtlTestMain::failovercache_config(),
               DtlTestMain::ns(),
               LBASize(512),
@@ -234,7 +234,7 @@ TEST_F(DtlTest, GetSCORange)
 
     const uint32_t num_scos_to_produce = 13;
 
-    FailOverCacheProxy
+    DtlProxy
         cache(DtlTestMain::failovercache_config(),
               DtlTestMain::ns(),
               LBASize(512),
@@ -310,7 +310,7 @@ TEST_F(DtlTest, GetOneSCO)
 
     const uint32_t num_scos_to_produce = 13;
 
-    FailOverCacheProxy
+    DtlProxy
         cache(DtlTestMain::failovercache_config(),
               DtlTestMain::ns(),
               LBASize(512),
@@ -385,7 +385,7 @@ TEST_F(DtlTest, GetOneSCO)
 TEST_F(DtlTest, DISABLED_DoubleRegister)
 {
     // Y42 apparantly not a or my problem
-    FailOverCacheProxy
+    DtlProxy
         cache1(DtlTestMain::failovercache_config(),
                DtlTestMain::ns(),
                LBASize(512),
@@ -597,7 +597,7 @@ public:
 
     const std::string content_;
 
-    FailOverCacheProxy cache_;
+    DtlProxy cache_;
     FailOverCacheEntryFactory factory_;
 
     static const ClusterSize cluster_size_;
@@ -658,7 +658,7 @@ TEST_F(DtlTest, get_entries_xxl)
     const ClusterMultiplier cmult(8);
     const ClusterSize csize(lba_size * cmult);
 
-    FailOverCacheProxy
+    DtlProxy
         cache(DtlTestMain::failovercache_config(),
               DtlTestMain::ns(),
               lba_size,

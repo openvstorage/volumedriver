@@ -13,8 +13,8 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef FAILOVERCACHEPROXY_H
-#define FAILOVERCACHEPROXY_H
+#ifndef DTL_PROXY_H_
+#define DTL_PROXY_H_
 
 #include "FailOverCacheStreamers.h"
 #include "SCOProcessorInterface.h"
@@ -33,21 +33,21 @@ namespace volumedriver
 class FailOverCacheConfig;
 class Volume;
 
-class FailOverCacheProxy
+class DtlProxy
 {
 public:
-    FailOverCacheProxy(const FailOverCacheConfig&,
+    DtlProxy(const FailOverCacheConfig&,
                        const Namespace&,
                        const LBASize,
                        const ClusterMultiplier,
                        const boost::chrono::seconds);
 
-    FailOverCacheProxy(const FailOverCacheProxy&) = delete;
+    DtlProxy(const DtlProxy&) = delete;
 
-    FailOverCacheProxy&
-    operator=(const FailOverCacheProxy&) = delete;
+    DtlProxy&
+    operator=(const DtlProxy&) = delete;
 
-    ~FailOverCacheProxy();
+    ~DtlProxy();
 
     void
     addEntries(std::vector<FailOverCacheEntry> entries);
@@ -97,7 +97,7 @@ public:
     }
 
 private:
-    DECLARE_LOGGER("FailOverCacheProxy");
+    DECLARE_LOGGER("DtlProxy");
 
     void
     register_();
@@ -122,7 +122,7 @@ private:
 
 }
 
-#endif // FAILOVERCACHEPROXY_H
+#endif // DTL_PROXY_H_
 
 // Local Variables: **
 // mode: c++ **

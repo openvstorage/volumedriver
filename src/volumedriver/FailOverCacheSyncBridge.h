@@ -18,7 +18,7 @@
 
 #include "FailOverCacheBridgeCommon.h"
 #include "FailOverCacheStreamers.h"
-#include "FailOverCacheProxy.h"
+#include "DtlProxy.h"
 #include "FailOverCacheClientInterface.h"
 #include "SCO.h"
 
@@ -64,7 +64,7 @@ public:
     backup() override;
 
     virtual void
-    newCache(std::unique_ptr<FailOverCacheProxy>) override;
+    newCache(std::unique_ptr<DtlProxy>) override;
 
     virtual void
     setRequestTimeout(const boost::chrono::seconds) override;
@@ -89,7 +89,7 @@ private:
     DECLARE_LOGGER("FailOverCacheSyncBridge");
 
     boost::mutex mutex_;
-    std::unique_ptr<FailOverCacheProxy> cache_;
+    std::unique_ptr<DtlProxy> cache_;
     DegradedFun degraded_fun_;
 
     void

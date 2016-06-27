@@ -462,12 +462,12 @@ Volume::localRestart()
     if (foc_config_wrapper_.config())
     {
         FailOverCacheConfig foc_cfg = foc_config_wrapper_.config().get();
-        std::unique_ptr<FailOverCacheProxy> cache;
+        std::unique_ptr<DtlProxy> cache;
 
         try
         {
             cache =
-                std::make_unique<FailOverCacheProxy>(foc_cfg,
+                std::make_unique<DtlProxy>(foc_cfg,
                                                      cfg.getNS(),
                                                      TODO("AR: fix getLBASize instead")
                                                      LBASize(getLBASize()),
@@ -584,12 +584,12 @@ Volume::backend_restart(const CloneTLogs& restartTLogs,
     if (foc_config_wrapper_.config())
     {
         FailOverCacheConfig foc_cfg = foc_config_wrapper_.config().get();
-        std::unique_ptr<FailOverCacheProxy> cache;
+        std::unique_ptr<DtlProxy> cache;
 
         try
         {
             cache =
-                std::make_unique<FailOverCacheProxy>(foc_cfg,
+                std::make_unique<DtlProxy>(foc_cfg,
                                                      cfg.getNS(),
                                                      LBASize(getLBASize()),
                                                      getClusterMultiplier(),
@@ -2272,7 +2272,7 @@ Volume::setFailOverCacheConfig_(const FailOverCacheConfig& config)
 
     LOG_VINFO("Setting the failover cache to " << config);
     setFailOverCacheMode_(config.mode);
-    failover_->newCache(std::make_unique<FailOverCacheProxy>(config,
+    failover_->newCache(std::make_unique<DtlProxy>(config,
                                                              getNamespace(),
                                                              LBASize(getLBASize()),
                                                              getClusterMultiplier(),
@@ -2649,7 +2649,7 @@ Volume::SCOWrittenToBackendCallback(uint64_t file_size,
 }
 
 void
-Volume::replayFOC_(FailOverCacheProxy& foc)
+Volume::replayFOC_(DtlProxy& foc)
 {
     ASSERT_WRITES_SERIALIZED();
     ASSERT_WLOCKED();

@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "FailOverCacheConfig.h"
-#include "FailOverCacheProxy.h"
+#include "DtlProxy.h"
 #include "Volume.h"
 
 #include <youtils/IOException.h>
@@ -24,7 +24,7 @@ namespace volumedriver
 
 using namespace fungi;
 
-FailOverCacheProxy::FailOverCacheProxy(const FailOverCacheConfig& cfg,
+DtlProxy::DtlProxy(const FailOverCacheConfig& cfg,
                                        const Namespace& ns,
                                        const LBASize lba_size,
                                        const ClusterMultiplier cluster_mult,
@@ -43,7 +43,7 @@ FailOverCacheProxy::FailOverCacheProxy(const FailOverCacheConfig& cfg,
     register_();
 }
 
-FailOverCacheProxy::~FailOverCacheProxy()
+DtlProxy::~DtlProxy()
 {
     try
     {
@@ -53,7 +53,7 @@ FailOverCacheProxy::~FailOverCacheProxy()
 }
 
 void
-FailOverCacheProxy::getSCORange(SCO& oldest,
+DtlProxy::getSCORange(SCO& oldest,
                                 SCO& youngest)
 {
     stream_ << fungi::IOBaseStream::cork;
@@ -65,7 +65,7 @@ FailOverCacheProxy::getSCORange(SCO& oldest,
 }
 
 void
-FailOverCacheProxy::register_()
+DtlProxy::register_()
 {
     const ClusterSize csize(static_cast<size_t>(cluster_mult_) *
                             static_cast<size_t>(lba_size_));
@@ -74,7 +74,7 @@ FailOverCacheProxy::register_()
 }
 
 void
-FailOverCacheProxy::checkStreamOK(const std::string& ex)
+DtlProxy::checkStreamOK(const std::string& ex)
 {
     stream_ >> fungi::IOBaseStream::cork;
     uint32_t res;
@@ -87,7 +87,7 @@ FailOverCacheProxy::checkStreamOK(const std::string& ex)
 }
 
 void
-FailOverCacheProxy::unregister_()
+DtlProxy::unregister_()
 {
     if(delete_failover_dir_)
     {
@@ -104,7 +104,7 @@ FailOverCacheProxy::unregister_()
 }
 
 void
-FailOverCacheProxy::removeUpTo(const SCO sconame) throw ()
+DtlProxy::removeUpTo(const SCO sconame) throw ()
 {
     try
     {
@@ -125,7 +125,7 @@ FailOverCacheProxy::removeUpTo(const SCO sconame) throw ()
 }
 
 void
-FailOverCacheProxy::setRequestTimeout(const boost::chrono::seconds seconds)
+DtlProxy::setRequestTimeout(const boost::chrono::seconds seconds)
 {
     stream_ << fungi::IOBaseStream::cork;
     stream_ << fungi::IOBaseStream::RequestTimeout(seconds.count());
@@ -133,7 +133,7 @@ FailOverCacheProxy::setRequestTimeout(const boost::chrono::seconds seconds)
 }
 
 void
-FailOverCacheProxy::addEntries(std::vector<FailOverCacheEntry> entries)
+DtlProxy::addEntries(std::vector<FailOverCacheEntry> entries)
 {
 #ifndef NDEBUG
     if (not entries.empty())
@@ -151,13 +151,13 @@ FailOverCacheProxy::addEntries(std::vector<FailOverCacheEntry> entries)
 }
 
 void
-FailOverCacheProxy::flush()
+DtlProxy::flush()
 {
     stream_ << CommandData<Flush>();
 }
 
 void
-FailOverCacheProxy::clear()
+DtlProxy::clear()
 {
     LOG_TRACE("Clearing failover cache");
 
@@ -168,7 +168,7 @@ FailOverCacheProxy::clear()
 }
 
 void
-FailOverCacheProxy::getEntries(SCOProcessorFun processor)
+DtlProxy::getEntries(SCOProcessorFun processor)
 {
     // Y42 review later
     stream_ << fungi::IOBaseStream::cork;
@@ -179,7 +179,7 @@ FailOverCacheProxy::getEntries(SCOProcessorFun processor)
 }
 
 uint64_t
-FailOverCacheProxy::getSCOFromFailOver(SCO a,
+DtlProxy::getSCOFromFailOver(SCO a,
                                        SCOProcessorFun processor)
 {
     stream_ << fungi::IOBaseStream::cork;
@@ -190,7 +190,7 @@ FailOverCacheProxy::getSCOFromFailOver(SCO a,
 }
 
 uint64_t
-FailOverCacheProxy::getObject_(SCOProcessorFun processor,
+DtlProxy::getObject_(SCOProcessorFun processor,
                                bool cork_per_cluster)
 {
     fungi::Buffer buf;

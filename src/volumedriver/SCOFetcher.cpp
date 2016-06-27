@@ -216,13 +216,13 @@ RawFailOverCacheSCOFetcher::RawFailOverCacheSCOFetcher(SCO sconame,
     VERIFY(sconame.cloneID() == 0);
     try
     {
-        foc = std::make_unique<FailOverCacheProxy>(cfg,
+        foc = std::make_unique<DtlProxy>(cfg,
                                                    ns,
                                                    lba_size,
                                                    cmult,
                                                    timeout);
     }
-    CATCH_STD_ALL_LOG_IGNORE("Failed to instantiate FailOverCacheProxy");
+    CATCH_STD_ALL_LOG_IGNORE("Failed to instantiate DtlProxy");
 }
 
 void

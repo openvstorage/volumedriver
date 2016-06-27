@@ -17,7 +17,7 @@
 #define VD_FAILOVER_CACHE_BRIDGE_COMMON_H
 
 #include "ClusterLocation.h"
-#include "FailOverCacheProxy.h"
+#include "DtlProxy.h"
 #include "Types.h"
 
 namespace volumedriver

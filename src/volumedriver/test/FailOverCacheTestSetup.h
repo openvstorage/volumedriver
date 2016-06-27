@@ -24,7 +24,7 @@
 #include <youtils/Logging.h>
 
 #include "../FailOverCacheConfig.h"
-#include "../FailOverCacheProxy.h"
+#include "../DtlProxy.h"
 #include "../FailOverCacheTransport.h"
 #include "../distributed-transaction-log/Backend.h"
 #include "../distributed-transaction-log/Acceptor.h"

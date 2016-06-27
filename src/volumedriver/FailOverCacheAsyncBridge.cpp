@@ -32,7 +32,7 @@ const boost::chrono::seconds
 FailOverCacheAsyncBridge::timeout_(1);
 
 // Passing LBASize and ClusterMultiplier here is ugly as sin as the underlying
-// FailOverCacheProxy also tracks that information. However, the locking of this
+// DtlProxy also tracks that information. However, the locking of this
 // thing is rather convoluted and needs adaptations if we want to get these settings
 // out of the cache_ member.
 TODO("AR: get rid of LBASize and ClusterMultiplier");
@@ -91,7 +91,7 @@ FailOverCacheAsyncBridge::backup()
 }
 
 void
-FailOverCacheAsyncBridge::newCache(std::unique_ptr<FailOverCacheProxy> cache)
+FailOverCacheAsyncBridge::newCache(std::unique_ptr<DtlProxy> cache)
 {
     LOG_INFO("newCache");
 

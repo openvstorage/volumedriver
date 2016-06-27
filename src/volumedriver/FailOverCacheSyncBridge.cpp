@@ -51,7 +51,7 @@ FailOverCacheSyncBridge::backup()
 }
 
 void
-FailOverCacheSyncBridge::newCache(std::unique_ptr<FailOverCacheProxy> cache)
+FailOverCacheSyncBridge::newCache(std::unique_ptr<DtlProxy> cache)
 {
     LOCK();
 

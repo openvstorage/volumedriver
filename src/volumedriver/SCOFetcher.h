@@ -17,7 +17,7 @@
 #define SCO_FETCHER_H_
 
 #include "ClusterLocation.h"
-#include "FailOverCacheProxy.h"
+#include "DtlProxy.h"
 #include "SCO.h"
 #include "Types.h"
 #include "VolumeInterface.h"
@@ -133,7 +133,7 @@ private:
 
     SCO sconame_;
     CheckSum calc_;
-    std::unique_ptr<FailOverCacheProxy> foc;
+    std::unique_ptr<DtlProxy> foc;
     std::unique_ptr<youtils::FileDescriptor> sio_;
 };
 

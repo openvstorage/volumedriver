@@ -2531,7 +2531,7 @@ TEST_P(SimpleVolumeTest, synchronous_foc)
     ASSERT_EQ(VolumeFailOverState::OK_SYNC,
               v->getVolumeFailOverState());
 
-    FailOverCacheProxy proxy(foc_config,
+    DtlProxy proxy(foc_config,
                              wrns->ns(),
                              LBASize(v->getLBASize()),
                              v->getClusterMultiplier(),

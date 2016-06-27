@@ -179,7 +179,7 @@ public:
                                         LOG_WARN("Got a DEGRADED event");
                                     });
 
-        failover_bridge->newCache(std::make_unique<FailOverCacheProxy>(FailOverCacheConfig(host_,
+        failover_bridge->newCache(std::make_unique<DtlProxy>(FailOverCacheConfig(host_,
                                                                                            port_,
                                                                                            mode_),
                                                                        *ns_,
