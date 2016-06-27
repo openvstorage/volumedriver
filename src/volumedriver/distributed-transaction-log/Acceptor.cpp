@@ -15,7 +15,7 @@
 
 #include "FileBackend.h"
 #include "Acceptor.h"
-#include "FailOverCacheProtocol.h"
+#include "DtlProtocol.h"
 
 #include <youtils/FileDescriptor.h>
 
@@ -63,7 +63,7 @@ Acceptor::createProtocol(std::unique_ptr<fungi::Socket> s,
                                       fungi::SocketServer& parentServer)
 {
     LOCK();
-    protocols.push_back(new FailOverCacheProtocol(std::move(s),
+    protocols.push_back(new DtlProtocol(std::move(s),
                                                   parentServer,
                                                   *this));
     return protocols.back();

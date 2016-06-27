@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "Acceptor.h"
-#include "FailOverCacheProtocol.h"
+#include "DtlProtocol.h"
 #include "FailOverCacheStreamers.h"
 #include "fungilib/WrapByteArray.h"
 #include "fungilib/use_rs.h"
@@ -38,7 +38,7 @@ namespace distributed_transaction_log
 namespace yt = youtils;
 using namespace volumedriver;
 
-FailOverCacheProtocol::FailOverCacheProtocol(std::unique_ptr<fungi::Socket> sock,
+DtlProtocol::DtlProtocol(std::unique_ptr<fungi::Socket> sock,
                                              fungi::SocketServer& /*parentServer*/,
                                              Acceptor& fact)
     : sock_(std::move(sock))
@@ -56,7 +56,7 @@ FailOverCacheProtocol::FailOverCacheProtocol(std::unique_ptr<fungi::Socket> sock
                                 true);
 };
 
-FailOverCacheProtocol::~FailOverCacheProtocol()
+DtlProtocol::~DtlProtocol()
 {
     fact_.removeProtocol(this);
     close(pipes_[0]);
@@ -72,15 +72,15 @@ FailOverCacheProtocol::~FailOverCacheProtocol()
         stream_.close();
         thread_->destroy(); // Yuck: this call does a "delete this" ...
     }
-    CATCH_STD_ALL_LOG_IGNORE("Problem shutting down the FailOverCacheProtocol");
+    CATCH_STD_ALL_LOG_IGNORE("Problem shutting down the DtlProtocol");
 }
 
-void FailOverCacheProtocol::start()
+void DtlProtocol::start()
 {
     thread_->start();
 }
 
-void FailOverCacheProtocol::stop()
+void DtlProtocol::stop()
 {
     ssize_t ret;
     ret = write(pipes_[1],"a",1);
@@ -90,7 +90,7 @@ void FailOverCacheProtocol::stop()
 }
 
 void
-FailOverCacheProtocol::run()
+DtlProtocol::run()
 {
     try {
         LOG_INFO("Connected");
@@ -216,7 +216,7 @@ FailOverCacheProtocol::run()
 }
 
 void
-FailOverCacheProtocol::register_()
+DtlProtocol::register_()
 {
     volumedriver::CommandData<volumedriver::Register> data;
     stream_ >> data;
@@ -235,7 +235,7 @@ FailOverCacheProtocol::register_()
 }
 
 void
-FailOverCacheProtocol::unregister_()
+DtlProtocol::unregister_()
 {
     VERIFY(cache_);
     LOG_INFO("Unregistering namespace " << cache_->getNamespace());
@@ -258,7 +258,7 @@ FailOverCacheProtocol::unregister_()
 }
 
 void
-FailOverCacheProtocol::addEntries_()
+DtlProtocol::addEntries_()
 {
     VERIFY(cache_);
 
@@ -281,7 +281,7 @@ FailOverCacheProtocol::addEntries_()
 }
 
 void
-FailOverCacheProtocol::returnOk()
+DtlProtocol::returnOk()
 {
     stream_ << fungi::IOBaseStream::cork;
     OUT_ENUM(stream_, volumedriver::Ok);
@@ -289,7 +289,7 @@ FailOverCacheProtocol::returnOk()
 }
 
 void
-FailOverCacheProtocol::returnNotOk()
+DtlProtocol::returnNotOk()
 {
     stream_ << fungi::IOBaseStream::cork;
     OUT_ENUM(stream_, volumedriver::NotOk);
@@ -297,7 +297,7 @@ FailOverCacheProtocol::returnNotOk()
 }
 
 void
-FailOverCacheProtocol::Flush_()
+DtlProtocol::Flush_()
 {
     VERIFY(cache_);
     LOG_TRACE("Flushing for namespace " <<  cache_->getNamespace());
@@ -306,7 +306,7 @@ FailOverCacheProtocol::Flush_()
 }
 
 void
-FailOverCacheProtocol::Clear_()
+DtlProtocol::Clear_()
 {
     VERIFY(cache_);
     LOG_INFO("Clearing for namespace " << cache_->getNamespace());
@@ -315,7 +315,7 @@ FailOverCacheProtocol::Clear_()
 }
 
 void
-FailOverCacheProtocol::processFailOverCacheEntry_(volumedriver::ClusterLocation cli,
+DtlProtocol::processFailOverCacheEntry_(volumedriver::ClusterLocation cli,
                                                   int64_t lba,
                                                   const byte* buf,
                                                   int64_t size,
@@ -337,7 +337,7 @@ FailOverCacheProtocol::processFailOverCacheEntry_(volumedriver::ClusterLocation 
 }
 
 void
-FailOverCacheProtocol::removeUpTo_()
+DtlProtocol::removeUpTo_()
 {
     VERIFY(cache_);
     LOG_INFO("Namespace " << cache_->getNamespace());
@@ -360,7 +360,7 @@ FailOverCacheProtocol::removeUpTo_()
 }
 
 void
-FailOverCacheProtocol::getEntries_()
+DtlProtocol::getEntries_()
 {
     VERIFY(cache_);
     LOG_INFO("Namespace " <<  cache_->getNamespace());
@@ -378,7 +378,7 @@ FailOverCacheProtocol::getEntries_()
                                       WARN);
     }));
 
-    cache_->getEntries(boost::bind(&FailOverCacheProtocol::processFailOverCacheEntry_,
+    cache_->getEntries(boost::bind(&DtlProtocol::processFailOverCacheEntry_,
                                    this,
                                    _1,
                                    _2,
@@ -388,7 +388,7 @@ FailOverCacheProtocol::getEntries_()
 }
 
 void
-FailOverCacheProtocol::getSCO_()
+DtlProtocol::getSCO_()
 {
     VERIFY(cache_);
     LOG_INFO("Namespace" << cache_->getNamespace());
@@ -410,7 +410,7 @@ FailOverCacheProtocol::getSCO_()
 
     stream_ << fungi::IOBaseStream::cork;
     cache_->getSCO(scoName,
-                   boost::bind(&FailOverCacheProtocol::processFailOverCacheEntry_,
+                   boost::bind(&DtlProtocol::processFailOverCacheEntry_,
                                this,
                                _1,
                                _2,
@@ -420,7 +420,7 @@ FailOverCacheProtocol::getSCO_()
 }
 
 void
-FailOverCacheProtocol::getSCORange_()
+DtlProtocol::getSCORange_()
 {
     VERIFY(cache_);
     LOG_INFO("Namespace" << cache_->getNamespace());

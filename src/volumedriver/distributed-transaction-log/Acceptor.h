@@ -16,7 +16,7 @@
 #ifndef DTL_ACCEPTOR_H_
 #define DTL_ACCEPTOR_H_
 
-#include "FailOverCacheProtocol.h"
+#include "DtlProtocol.h"
 #include "BackendFactory.h"
 
 #include "../FailOverCacheStreamers.h"
@@ -66,7 +66,7 @@ public:
     lookup(const volumedriver::CommandData<volumedriver::Register>&);
 
     void
-    removeProtocol(FailOverCacheProtocol* prot)
+    removeProtocol(DtlProtocol* prot)
     {
         boost::lock_guard<decltype(mutex_)> g(mutex_);
         protocols.remove(prot);
@@ -81,7 +81,7 @@ private:
     using Map = std::unordered_map<std::string, BackendPtr>;
     Map map_;
 
-    std::list<FailOverCacheProtocol*> protocols;
+    std::list<DtlProtocol*> protocols;
     BackendFactory factory_;
 
     // for use by testers

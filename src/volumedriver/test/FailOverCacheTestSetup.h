@@ -28,7 +28,7 @@
 #include "../FailOverCacheTransport.h"
 #include "../distributed-transaction-log/Backend.h"
 #include "../distributed-transaction-log/Acceptor.h"
-#include "../distributed-transaction-log/FailOverCacheProtocol.h"
+#include "../distributed-transaction-log/DtlProtocol.h"
 
 class VolumeDriverTest;
 

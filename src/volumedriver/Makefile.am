@@ -107,7 +107,7 @@ libvolumedriver_la_SOURCES = \
 	distributed-transaction-log/Backend.cpp \
 	distributed-transaction-log/BackendFactory.cpp \
 	distributed-transaction-log/Acceptor.cpp \
-	distributed-transaction-log/FailOverCacheProtocol.cpp \
+	distributed-transaction-log/DtlProtocol.cpp \
 	distributed-transaction-log/FileBackend.cpp \
 	distributed-transaction-log/MemoryBackend.cpp \
 	distributed-transaction-log/fungilib/Buffer.cpp \

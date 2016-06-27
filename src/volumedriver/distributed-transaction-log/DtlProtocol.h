@@ -13,8 +13,8 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef FAILOVERCACHEPROTOCOL_H
-#define FAILOVERCACHEPROTOCOL_H
+#ifndef DTL_PROTOCOL_H_
+#define DTL_PROTOCOL_H_
 
 #include "fungilib/Protocol.h"
 #include "fungilib/Socket.h"
@@ -30,15 +30,15 @@ namespace distributed_transaction_log
 class Acceptor;
 class Backend;
 
-class FailOverCacheProtocol
+class DtlProtocol
     : public fungi::Protocol
 {
 public:
-    FailOverCacheProtocol(std::unique_ptr<fungi::Socket> sock,
-                          fungi::SocketServer& /*parentServer*/,
-                          Acceptor& fact);
+    DtlProtocol(std::unique_ptr<fungi::Socket>,
+                fungi::SocketServer& /*parentServer*/,
+                Acceptor&);
 
-    ~FailOverCacheProtocol();
+    ~DtlProtocol();
 
     virtual void
     start() override final;
@@ -52,11 +52,11 @@ public:
     virtual const char*
     getName() const override final
     {
-        return "FailOverCacheProtocol";
+        return "DtlProtocol";
     };
 
 private:
-    DECLARE_LOGGER("FailOverCacheProtocol");
+    DECLARE_LOGGER("DtlProtocol");
 
     std::shared_ptr<Backend> cache_;
     std::unique_ptr<fungi::Socket> sock_;
@@ -112,8 +112,7 @@ private:
 
 }
 
-
-#endif // FAILOVERCACHEPROTOCOL_H
+#endif // DTL_PROTOCOL_H_
 
 // Local Variables: **
 // mode: c++ **

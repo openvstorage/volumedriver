@@ -20,7 +20,7 @@
 
 #include <volumedriver/FailOverCacheTransport.h>
 #include <volumedriver/distributed-transaction-log/Acceptor.h>
-#include <volumedriver/distributed-transaction-log/FailOverCacheProtocol.h>
+#include <volumedriver/distributed-transaction-log/DtlProtocol.h>
 
 namespace volumedriverfstest
 {
