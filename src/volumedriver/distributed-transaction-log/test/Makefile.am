@@ -25,7 +25,7 @@ distributed_transaction_log_client_perftest_LDADD=../../libvolumedriver.la  \
 distributed_transaction_log_client_perftest_LDFLAGS=-Wl,--as-needed
 distributed_transaction_log_client_perftest_CPPFLAGS=-I@abs_top_srcdir@/..
 distributed_transaction_log_client_perftest_SOURCES=\
-	FailOverCacheClientPerfTest.cpp
+	DtlClientPerfTest.cpp
 
 noinst_DATA = distributed_transaction_log_tests.sh
 TESTS = distributed_transaction_log_tests.sh
