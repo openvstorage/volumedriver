@@ -586,7 +586,7 @@ public:
     void
     flushFailOverCache(Volume&);
 
-    FailOverCacheClientInterface*
+    DtlClientInterface*
     getFailOverWriter(Volume& vol);
 
     bool

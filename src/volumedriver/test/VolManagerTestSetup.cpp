@@ -22,7 +22,7 @@
 #include "../CachedMetaDataStore.h"
 #include "../CombinedTLogReader.h"
 #include "../DataStoreNG.h"
-#include "../FailOverCacheClientInterface.h"
+#include "../DtlClientInterface.h"
 #include "../SCOCache.h"
 #include "../TokyoCabinetMetaDataBackend.h"
 #include "../VolManager.h"
@@ -1531,7 +1531,7 @@ VolManagerTestSetup::flushFailOverCache(Volume& v)
     }
 }
 
-FailOverCacheClientInterface*
+DtlClientInterface*
 VolManagerTestSetup::getFailOverWriter(Volume& v)
 {
     auto b = v.failover_.get();

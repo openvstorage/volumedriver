@@ -22,7 +22,7 @@
 #include <youtils/Main.h>
 
 #include "volumedriver/FailOverCacheConfig.h"
-#include "volumedriver/FailOverCacheClientInterface.h"
+#include "volumedriver/DtlClientInterface.h"
 #include "volumedriver/Types.h"
 
 namespace
@@ -147,7 +147,7 @@ public:
     }
 
     bool
-    addEntry(FailOverCacheClientInterface& foc,
+    addEntry(DtlClientInterface& foc,
              const FailOverCacheEntry& e)
     {
         std::vector<ClusterLocation> locs;
@@ -167,8 +167,8 @@ public:
         const LBASize lba_size(512);
         const ClusterMultiplier cmult(8);
 
-        std::unique_ptr<FailOverCacheClientInterface>
-            failover_bridge(FailOverCacheClientInterface::create(mode_,
+        std::unique_ptr<DtlClientInterface>
+            failover_bridge(DtlClientInterface::create(mode_,
                                                                  lba_size,
                                                                  cmult,
                                                                  max_entries_,

@@ -177,7 +177,7 @@ public:
         return clusterSize_;
     }
 
-    FailOverCacheClientInterface*
+    DtlClientInterface*
     getFailOver() override final
     {
         throw fungi::IOException("Not Implemented");

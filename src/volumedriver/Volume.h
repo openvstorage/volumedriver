@@ -220,7 +220,7 @@ public:
     getTempTLogPath() const;
 
     // VolumeInterface
-    FailOverCacheClientInterface*
+    DtlClientInterface*
     getFailOver() override final
     {
         return failover_.get();
@@ -552,7 +552,7 @@ private:
     // eventually we need accessors
     std::unique_ptr<DataStoreNG> dataStore_;
 
-    std::unique_ptr<FailOverCacheClientInterface> failover_;
+    std::unique_ptr<DtlClientInterface> failover_;
 
     std::unique_ptr<MetaDataStoreInterface> metaDataStore_;
 

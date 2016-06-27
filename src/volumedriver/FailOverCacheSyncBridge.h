@@ -19,7 +19,7 @@
 #include "DtlBridgeCommon.h"
 #include "FailOverCacheStreamers.h"
 #include "DtlProxy.h"
-#include "FailOverCacheClientInterface.h"
+#include "DtlClientInterface.h"
 #include "SCO.h"
 
 #include <youtils/FileDescriptor.h>
@@ -31,7 +31,7 @@ namespace volumedriver
 class FailOverCacheTester;
 
 class FailOverCacheSyncBridge
-    : public FailOverCacheClientInterface
+    : public DtlClientInterface
 {
     friend class FailOverCacheTester;
 

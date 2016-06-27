@@ -40,7 +40,7 @@ DtlAsyncBridge::DtlAsyncBridge(const LBASize lba_size,
                                                    const ClusterMultiplier cluster_multiplier,
                                                    const size_t max_entries,
                                                    const std::atomic<unsigned>& write_trigger)
-    : FailOverCacheClientInterface(max_entries)
+    : DtlClientInterface(max_entries)
     , lba_size_(lba_size)
     , cluster_multiplier_(cluster_multiplier)
     , newData(cluster_size_() * max_entries)

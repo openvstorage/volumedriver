@@ -19,7 +19,7 @@
 #include "DtlBridgeCommon.h"
 #include "FailOverCacheStreamers.h"
 #include "DtlProxy.h"
-#include "FailOverCacheClientInterface.h"
+#include "DtlClientInterface.h"
 #include "SCO.h"
 
 #include "distributed-transaction-log/fungilib/Runnable.h"
@@ -38,7 +38,7 @@ class FailOverCacheTester;
 
 class DtlAsyncBridge
     : public fungi::Runnable
-    , public FailOverCacheClientInterface
+    , public DtlClientInterface
 {
     friend class FailOverCacheTester;
 

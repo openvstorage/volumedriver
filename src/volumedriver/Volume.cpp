@@ -21,7 +21,7 @@
 #include "BackendTasks.h"
 #include "CombinedTLogReader.h"
 #include "DataStoreNG.h"
-#include "FailOverCacheClientInterface.h"
+#include "DtlClientInterface.h"
 #include "MDSMetaDataStore.h"
 #include "MetaDataStoreInterface.h"
 #include "RelocationReaderFactory.h"
@@ -121,7 +121,7 @@ Volume::Volume(const VolumeConfig& vCfg,
     , rwlock_("rwlock-" + vCfg.id_.str())
     , halted_(false)
     , dataStore_(datastore.release())
-    , failover_(FailOverCacheClientInterface::create(FailOverCacheMode::Asynchronous,
+    , failover_(DtlClientInterface::create(FailOverCacheMode::Asynchronous,
                                                      LBASize(vCfg.lba_size_),
                                                      vCfg.cluster_mult_,
                                                      VolManager::get()->dtl_queue_depth.value(),
@@ -2248,7 +2248,7 @@ Volume::setFailOverCacheMode_(const FailOverCacheMode mode)
     if (mode != failover_->mode())
     {
         failover_->destroy(SyncFailOverToBackend::T);
-        failover_ = FailOverCacheClientInterface::create(mode,
+        failover_ = DtlClientInterface::create(mode,
                                                          LBASize(getLBASize()),
                                                          getClusterMultiplier(),
                                                          VolManager::get()->dtl_queue_depth.value(),
