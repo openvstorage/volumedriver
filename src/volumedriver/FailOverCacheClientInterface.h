@@ -16,7 +16,7 @@
 #ifndef VD_FAILOVER_CACHE_CLIENTINTERFACE_H
 #define VD_FAILOVER_CACHE_CLIENTINTERFACE_H
 
-#include "FailOverCacheBridgeCommon.h"
+#include "DtlBridgeCommon.h"
 #include "FailOverCacheMode.h"
 #include "distributed-transaction-log/fungilib/Mutex.h"
 

@@ -13,8 +13,8 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef VD_FAILOVER_CACHE_BRIDGE_COMMON_H
-#define VD_FAILOVER_CACHE_BRIDGE_COMMON_H
+#ifndef VD_DTL_BRIDGE_COMMON_H
+#define VD_DTL_BRIDGE_COMMON_H
 
 #include "ClusterLocation.h"
 #include "DtlProxy.h"
@@ -37,4 +37,4 @@ public:
 
 } // namespace volumedriver
 
-#endif // VD_FAILOVER_CACHE_BRIDGE_COMMON_H
+#endif // VD_DTL_BRIDGE_COMMON_H
