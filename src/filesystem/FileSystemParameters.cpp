@@ -384,7 +384,7 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(dtl_transport,
                                       "dtl_transport",
                                       "transport to use for the DTL (RDMA|TCP)",
                                       ShowDocumentation::T,
-                                      vd::FailOverCacheTransport::TCP);
+                                      vd::DtlTransport::TCP);
 
 // VolumeRegistry
 const char volumeregistry_component_name[] = "volume_registry";

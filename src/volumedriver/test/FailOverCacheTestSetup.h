@@ -25,7 +25,7 @@
 
 #include "../FailOverCacheConfig.h"
 #include "../DtlProxy.h"
-#include "../FailOverCacheTransport.h"
+#include "../DtlTransport.h"
 #include "../distributed-transaction-log/Backend.h"
 #include "../distributed-transaction-log/Acceptor.h"
 #include "../distributed-transaction-log/DtlProtocol.h"
@@ -108,7 +108,7 @@ public:
         return addr_;
     }
 
-    static volumedriver::FailOverCacheTransport
+    static volumedriver::DtlTransport
     transport()
     {
         return transport_;
@@ -121,7 +121,7 @@ private:
 
     static std::string addr_;
     static uint16_t port_base_;
-    static volumedriver::FailOverCacheTransport transport_;
+    static volumedriver::DtlTransport transport_;
 
     typedef std::set<uint16_t> set_type;
     set_type ports_;

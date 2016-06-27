@@ -24,8 +24,8 @@ DtlTestMain::host_("127.0.0.1");
 uint16_t
 DtlTestMain::port_ = 23096;
 
-vd::FailOverCacheTransport
-DtlTestMain::transport_(vd::FailOverCacheTransport::TCP);
+vd::DtlTransport
+DtlTestMain::transport_(vd::DtlTransport::TCP);
 
 std::unique_ptr<backend::Namespace>
 DtlTestMain::ns_;
@@ -43,7 +43,7 @@ DtlTestMain::DtlTestMain(int argc,
          po::value<uint16_t>(&port_)->default_value(port_),
          "port of the failovercache server")
         ("transport",
-         po::value<vd::FailOverCacheTransport>(&transport_)->default_value(transport_),
+         po::value<vd::DtlTransport>(&transport_)->default_value(transport_),
          "transport type of the failovercache server (TCP|RSocket)")
         ("namespace",
          po::value<std::string>(&ns_temp_)->default_value("namespace"),

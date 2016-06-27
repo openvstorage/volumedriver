@@ -17,7 +17,7 @@
 #define FAILOVERCACHE_ENVIRONMENT_H_
 
 #include "../DtlServer.h"
-#include "../../FailOverCacheTransport.h"
+#include "../../DtlTransport.h"
 
 #include <gtest/gtest.h>
 #include <string>
@@ -37,7 +37,7 @@ class DtlEnvironment
 public:
     DtlEnvironment(const boost::optional<std::string>& host,
                              const uint16_t port,
-                             const volumedriver::FailOverCacheTransport);
+                             const volumedriver::DtlTransport);
 
     ~DtlEnvironment();
 
@@ -50,7 +50,7 @@ public:
 private:
     const boost::optional<std::string> host_;
     const uint16_t port_;
-    const volumedriver::FailOverCacheTransport transport_;
+    const volumedriver::DtlTransport transport_;
     const boost::filesystem::path path_;
     std::unique_ptr<DtlServer> server_;
     std::unique_ptr<boost::thread> thread_;

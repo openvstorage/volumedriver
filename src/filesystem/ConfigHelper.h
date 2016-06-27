@@ -28,7 +28,7 @@
 #include <youtils/Assert.h>
 #include <youtils/Logging.h>
 
-#include <volumedriver/FailOverCacheTransport.h>
+#include <volumedriver/DtlTransport.h>
 
 namespace volumedriverfs
 {
@@ -51,7 +51,7 @@ public:
         return failover_cache_path_;
     }
 
-    volumedriver::FailOverCacheTransport
+    volumedriver::DtlTransport
     failover_cache_transport() const
     {
         return failover_cache_transport_;
@@ -81,7 +81,7 @@ private:
 
     ClusterId cluster_id_;
     const boost::filesystem::path failover_cache_path_;
-    const volumedriver::FailOverCacheTransport failover_cache_transport_;
+    const volumedriver::DtlTransport failover_cache_transport_;
     boost::optional<ClusterNodeConfig> localnode_config_;
 };
 

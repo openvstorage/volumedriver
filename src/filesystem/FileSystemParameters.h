@@ -28,7 +28,7 @@
 #include <youtils/ArakoonNodeConfig.h>
 #include <youtils/InitializedParam.h>
 
-#include <volumedriver/FailOverCacheTransport.h>
+#include <volumedriver/DtlTransport.h>
 #include <volumedriver/MDSNodeConfig.h>
 #include <volumedriver/MetaDataBackendConfig.h>
 #include <volumedriver/FailOverCacheConfig.h>
@@ -179,7 +179,7 @@ extern const char failovercache_component_name[];
 
 DECLARE_INITIALIZED_PARAM(dtl_path, std::string);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(dtl_transport,
-                                       volumedriver::FailOverCacheTransport);
+                                       volumedriver::DtlTransport);
 
 // VolumeRegistry:
 extern const char volumeregistry_component_name[];

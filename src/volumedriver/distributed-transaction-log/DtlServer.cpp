@@ -30,7 +30,7 @@ DtlServer::DtlServer(int argc,
 DtlServer::DtlServer(const constructor_type& c)
     : MainHelper(c)
     , desc_("Required Options")
-    , transport_(vd::FailOverCacheTransport::TCP)
+    , transport_(vd::DtlTransport::TCP)
     , running_(false)
 {
     logger_ = &MainHelper::getLogger__();
@@ -46,7 +46,7 @@ DtlServer::DtlServer(const constructor_type& c)
          po::value<uint16_t>(&port_)->default_value(23096),
          "port to use for the DTL")
         ("transport",
-         po::value<vd::FailOverCacheTransport>(&transport_)->default_value(transport_),
+         po::value<vd::DtlTransport>(&transport_)->default_value(transport_),
          "transport type for the DTL (TCP|RSocket)")
         ("daemonize,D",
          "run as a daemon");
@@ -129,7 +129,7 @@ DtlServer::run()
     s = fungi::SocketServer::createSocketServer(*acceptor,
                                                 addr,
                                                 port_,
-                                                transport_ == vd::FailOverCacheTransport::RSocket);
+                                                transport_ == vd::DtlTransport::RSocket);
     running_ = true;
 
     LOG_INFO("Waiting for the SocketServer");

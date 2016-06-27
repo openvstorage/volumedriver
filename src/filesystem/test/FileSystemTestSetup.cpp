@@ -55,8 +55,8 @@ FileSystemTestSetup::vdisk_format_(new vfs::VirtualDiskFormatVmdk());
 std::string
 FileSystemTestSetup::address_("127.0.0.1");
 
-vd::FailOverCacheTransport
-FileSystemTestSetup::failovercache_transport_(vd::FailOverCacheTransport::TCP);
+vd::DtlTransport
+FileSystemTestSetup::failovercache_transport_(vd::DtlTransport::TCP);
 
 std::string
 FileSystemTestSetup::edge_transport_("tcp");

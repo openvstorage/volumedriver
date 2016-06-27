@@ -13,15 +13,15 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef VD_FAILOVERCACHE_TRANSPORT_H_
-#define VD_FAILOVERCACHE_TRANSPORT_H_
+#ifndef VD_DTL_TRANSPORT_H_
+#define VD_DTL_TRANSPORT_H_
 
 #include <iosfwd>
 
 namespace volumedriver
 {
 
-enum class FailOverCacheTransport
+enum class DtlTransport
 {
     TCP,
     RSocket
@@ -29,12 +29,12 @@ enum class FailOverCacheTransport
 
 std::ostream&
 operator<<(std::ostream&,
-           FailOverCacheTransport);
+           DtlTransport);
 
 std::istream&
 operator>>(std::istream&,
-           FailOverCacheTransport&);
+           DtlTransport&);
 
 }
 
-#endif // !VD_FAILOVERCACHE_TRANSPORT_H_
+#endif // !VD_DTL_TRANSPORT_H_

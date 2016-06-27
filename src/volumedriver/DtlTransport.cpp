@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "FailOverCacheTransport.h"
+#include "DtlTransport.h"
 
 #include <iostream>
 
@@ -30,15 +30,15 @@ namespace
 {
 
 void
-reminder(FailOverCacheTransport) __attribute__((unused));
+reminder(DtlTransport) __attribute__((unused));
 
 void
-reminder(FailOverCacheTransport t)
+reminder(DtlTransport t)
 {
     switch (t)
     {
-    case FailOverCacheTransport::TCP:
-    case FailOverCacheTransport::RSocket:
+    case DtlTransport::TCP:
+    case DtlTransport::RSocket:
         // If the compiler yells at you that you've forgotten dealing with an enum
         // value here chances are that it's also missing from the translations map
         // below. If so add it NOW.
@@ -46,14 +46,14 @@ reminder(FailOverCacheTransport t)
     }
 }
 
-using TranslationsMap = boost::bimap<FailOverCacheTransport, std::string>;
+using TranslationsMap = boost::bimap<DtlTransport, std::string>;
 
 TranslationsMap
 init_translations()
 {
     const std::vector<TranslationsMap::value_type> initv{
-        { FailOverCacheTransport::TCP, "TCP" },
-        { FailOverCacheTransport::RSocket, "RSocket" },
+        { DtlTransport::TCP, "TCP" },
+        { DtlTransport::RSocket, "RSocket" },
     };
 
     return TranslationsMap(initv.begin(),
@@ -64,7 +64,7 @@ init_translations()
 
 std::ostream&
 operator<<(std::ostream& os,
-           FailOverCacheTransport t)
+           DtlTransport t)
 {
     static const TranslationsMap translations(init_translations());
     return yt::StreamUtils::stream_out(translations.left,
@@ -74,7 +74,7 @@ operator<<(std::ostream& os,
 
 std::istream&
 operator>>(std::istream& is,
-           FailOverCacheTransport& t)
+           DtlTransport& t)
 {
     static const TranslationsMap translations(init_translations());
     return yt::StreamUtils::stream_in(translations.right,

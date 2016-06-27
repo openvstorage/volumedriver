@@ -29,7 +29,7 @@ namespace vd = volumedriver;
 
 DtlEnvironment::DtlEnvironment(const boost::optional<std::string>& host,
                                                    const uint16_t port,
-                                                   const vd::FailOverCacheTransport transport)
+                                                   const vd::DtlTransport transport)
     : host_(host)
     , port_(port)
     , transport_(transport)

@@ -22,7 +22,7 @@
 #include <backend/Namespace.h>
 
 #include <volumedriver/FailOverCacheConfig.h>
-#include <volumedriver/FailOverCacheTransport.h>
+#include <volumedriver/DtlTransport.h>
 
 class DtlTestMain
     : public youtils::TestMainHelper
@@ -68,7 +68,7 @@ public:
         return port_;
     }
 
-    static volumedriver::FailOverCacheTransport
+    static volumedriver::DtlTransport
     transport()
     {
         return transport_;
@@ -84,7 +84,7 @@ private:
     boost::program_options::options_description normal_options_;
     static std::string host_;
     static uint16_t port_;
-    static volumedriver::FailOverCacheTransport transport_;
+    static volumedriver::DtlTransport transport_;
     std::string ns_temp_;
 
     static std::unique_ptr<backend::Namespace> ns_;

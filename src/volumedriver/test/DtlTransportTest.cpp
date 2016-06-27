@@ -15,7 +15,7 @@
 
 #include "ExGTest.h"
 
-#include <../FailOverCacheTransport.h>
+#include <../DtlTransport.h>
 
 #include <boost/lexical_cast.hpp>
 
@@ -23,20 +23,20 @@ namespace volumedrivertest
 {
 using namespace volumedriver;
 
-class FailOverCacheTransportTest
+class DtlTransportTest
     : public ExGTest
 {};
 
-TEST_F(FailOverCacheTransportTest, lexical_cast)
+TEST_F(DtlTransportTest, lexical_cast)
 {
-    auto fun([&](FailOverCacheTransport t)
+    auto fun([&](DtlTransport t)
              {
                  EXPECT_EQ(t,
-                           boost::lexical_cast<FailOverCacheTransport>(boost::lexical_cast<std::string>(t)));
+                           boost::lexical_cast<DtlTransport>(boost::lexical_cast<std::string>(t)));
              });
 
-    fun(FailOverCacheTransport::TCP);
-    fun(FailOverCacheTransport::RSocket);
+    fun(DtlTransport::TCP);
+    fun(DtlTransport::RSocket);
 }
 
 }

@@ -18,7 +18,7 @@
 
 #include "Acceptor.h"
 
-#include "../FailOverCacheTransport.h"
+#include "../DtlTransport.h"
 
 #include <signal.h>
 
@@ -76,7 +76,7 @@ private:
     boost::filesystem::path path_;
     std::string addr_;
     uint16_t port_;
-    volumedriver::FailOverCacheTransport transport_;
+    volumedriver::DtlTransport transport_;
     bool running_;
 
     // *ONLY* for testers. Really. I mean it.

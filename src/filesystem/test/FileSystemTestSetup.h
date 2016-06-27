@@ -24,7 +24,7 @@
 
 #include <backend/BackendTestSetup.h>
 
-#include <volumedriver/FailOverCacheTransport.h>
+#include <volumedriver/DtlTransport.h>
 
 #include <filesystem/ClusterId.h>
 #include <filesystem/ClusterNodeConfig.h>
@@ -110,7 +110,7 @@ public:
         return address_;
     }
 
-    static volumedriver::FailOverCacheTransport
+    static volumedriver::DtlTransport
     failovercache_transport()
     {
         return failovercache_transport_;
@@ -123,7 +123,7 @@ public:
     }
 
     static std::string address_;
-    static volumedriver::FailOverCacheTransport failovercache_transport_;
+    static volumedriver::DtlTransport failovercache_transport_;
     static std::string edge_transport_;
 
 protected:

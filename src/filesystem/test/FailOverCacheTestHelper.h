@@ -18,7 +18,7 @@
 
 #include <boost/filesystem/path.hpp>
 
-#include <volumedriver/FailOverCacheTransport.h>
+#include <volumedriver/DtlTransport.h>
 #include <volumedriver/distributed-transaction-log/Acceptor.h>
 #include <volumedriver/distributed-transaction-log/DtlProtocol.h>
 
@@ -31,14 +31,14 @@ public:
     FailOverCacheTestHelper(const boost::filesystem::path& pth,
                             const boost::optional<std::string>& addr,
                             const uint16_t prt,
-                            const volumedriver::FailOverCacheTransport transport)
+                            const volumedriver::DtlTransport transport)
         : path(pth)
         , port(prt)
         , acceptor_(path)
         , server_(fungi::SocketServer::createSocketServer(acceptor_,
                                                           addr,
                                                           port,
-                                                          transport == volumedriver::FailOverCacheTransport::RSocket))
+                                                          transport == volumedriver::DtlTransport::RSocket))
     {}
 
     ~FailOverCacheTestHelper()

@@ -62,7 +62,7 @@ FailOverCacheTestContext::FailOverCacheTestContext(FailOverCacheTestSetup& setup
     , server_(fungi::SocketServer::createSocketServer(acceptor_,
                                                       addr_,
                                                       port_,
-                                                      setup.transport() == vd::FailOverCacheTransport::RSocket))
+                                                      setup.transport() == vd::DtlTransport::RSocket))
 {}
 
 FailOverCacheTestContext::~FailOverCacheTestContext()
@@ -94,8 +94,8 @@ uint16_t
 FailOverCacheTestSetup::port_base_ =
     youtils::System::get_env_with_default<uint16_t>("FOC_PORT_BASE", 17071);
 
-vd::FailOverCacheTransport
-FailOverCacheTestSetup::transport_(vd::FailOverCacheTransport::TCP);
+vd::DtlTransport
+FailOverCacheTestSetup::transport_(vd::DtlTransport::TCP);
 
 FailOverCacheTestSetup::FailOverCacheTestSetup(const boost::optional<fs::path>& p)
         : path(p)
