@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "FailOverCacheServer.h"
+#include "DtlServer.h"
 
 #include <boost/optional/optional_io.hpp>
 
@@ -22,12 +22,12 @@ namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 namespace vd = volumedriver;
 
-FailOverCacheServer::FailOverCacheServer(int argc,
+DtlServer::DtlServer(int argc,
                                          char** argv)
-    : FailOverCacheServer(fromArgcArgv(argc, argv))
+    : DtlServer(fromArgcArgv(argc, argv))
 {}
 
-FailOverCacheServer::FailOverCacheServer(const constructor_type& c)
+DtlServer::DtlServer(const constructor_type& c)
     : MainHelper(c)
     , desc_("Required Options")
     , transport_(vd::FailOverCacheTransport::TCP)
@@ -53,19 +53,19 @@ FailOverCacheServer::FailOverCacheServer(const constructor_type& c)
 }
 
 void
-FailOverCacheServer::log_extra_help(std::ostream& strm)
+DtlServer::log_extra_help(std::ostream& strm)
 {
     strm << desc_;
 }
 
 bool
-FailOverCacheServer::running() const
+DtlServer::running() const
 {
     return running_;
 }
 
 void
-FailOverCacheServer::parse_command_line_arguments()
+DtlServer::parse_command_line_arguments()
 {
     parse_unparsed_options(desc_,
                            youtils::AllowUnregisteredOptions::F,
@@ -73,13 +73,13 @@ FailOverCacheServer::parse_command_line_arguments()
 }
 
 void
-FailOverCacheServer::setup_logging()
+DtlServer::setup_logging()
 {
     MainHelper::setup_logging("dtl_server");
 }
 
 int
-FailOverCacheServer::run()
+DtlServer::run()
 {
     boost::optional<fs::path> path;
     if (not path_.empty())
@@ -149,7 +149,7 @@ FailOverCacheServer::run()
 // the sleep(3) and promise not to call this in signal handler context
 // (signalfd might help there).
 void
-FailOverCacheServer::stop_()
+DtlServer::stop_()
 {
     if(s)
     {
@@ -166,4 +166,4 @@ FailOverCacheServer::stop_()
 }
 
 youtils::Logger::logger_type*
-FailOverCacheServer::logger_;
+DtlServer::logger_;

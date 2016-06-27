@@ -16,7 +16,7 @@
 #include "FailOverCacheEnvironment.h"
 #include "FailOverCacheTestMain.h"
 
-#include "../FailOverCacheServer.h"
+#include "../DtlServer.h"
 
 #include "../../ClusterLocation.h"
 #include "../../FailOverCacheConfig.h"

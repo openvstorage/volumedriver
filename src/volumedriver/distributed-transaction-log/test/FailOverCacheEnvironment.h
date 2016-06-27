@@ -16,7 +16,7 @@
 #ifndef FAILOVERCACHE_ENVIRONMENT_H_
 #define FAILOVERCACHE_ENVIRONMENT_H_
 
-#include "../FailOverCacheServer.h"
+#include "../DtlServer.h"
 #include "../../FailOverCacheTransport.h"
 
 #include <gtest/gtest.h>
@@ -52,7 +52,7 @@ private:
     const uint16_t port_;
     const volumedriver::FailOverCacheTransport transport_;
     const boost::filesystem::path path_;
-    std::unique_ptr<FailOverCacheServer> server_;
+    std::unique_ptr<DtlServer> server_;
     std::unique_ptr<boost::thread> thread_;
 };
 

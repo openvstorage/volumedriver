@@ -15,7 +15,7 @@
 
 #include "FailOverCacheEnvironment.h"
 
-#include "../FailOverCacheServer.h"
+#include "../DtlServer.h"
 
 #include <boost/lexical_cast.hpp>
 #include <boost/thread.hpp>
@@ -66,7 +66,7 @@ FailOverCacheEnvironment::SetUp()
 
     const std::string executable_name("failovercacher_server_tester");
 
-    server_.reset(new FailOverCacheServer(std::make_pair(executable_name, args)));
+    server_.reset(new DtlServer(std::make_pair(executable_name, args)));
 
     thread_.reset(new boost::thread(boost::ref(*server_)));
     while(not server_->running())

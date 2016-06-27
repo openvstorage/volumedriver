@@ -12,7 +12,7 @@ distributed_transaction_log_LDADD = \
 distributed_transaction_log_LDFLAGS = -Wl,--as-needed
 distributed_transaction_log_SOURCES = \
 	server.cpp \
-	FailOverCacheServer.cpp
+	DtlServer.cpp
 
 noinst_DATA = .gdbinit
 

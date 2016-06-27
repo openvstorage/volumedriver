@@ -13,8 +13,8 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef FAILOVERCACHE_SERVER_H_
-#define FAILOVERCACHE_SERVER_H_
+#ifndef DTL_SERVER_H_
+#define DTL_SERVER_H_
 
 #include "Acceptor.h"
 
@@ -40,16 +40,16 @@ namespace distributed_transaction_log_test
 class FailOverCacheEnvironment;
 }
 
-class FailOverCacheServer
+class DtlServer
     : public youtils::MainHelper
 {
     friend class distributed_transaction_log_test::FailOverCacheEnvironment;
 
 public:
-    FailOverCacheServer(int argc,
+    DtlServer(int argc,
                         char** argv);
 
-    FailOverCacheServer(const constructor_type&);
+    DtlServer(const constructor_type&);
 
     virtual void
     log_extra_help(std::ostream& strm);
@@ -91,4 +91,4 @@ private:
     }
 };
 
-#endif // FAILOVERCACHE_SERVER_H_
+#endif // DTL_SERVER_H_

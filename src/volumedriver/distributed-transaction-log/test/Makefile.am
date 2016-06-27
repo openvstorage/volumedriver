@@ -12,7 +12,7 @@ distributed_transaction_log_test_CPPFLAGS=-I@abs_top_srcdir@/..
 distributed_transaction_log_test_SOURCES=\
 	failovercache_tester.cpp \
 	FailOverCacheEnvironment.cpp \
-	../FailOverCacheServer.cpp \
+	../DtlServer.cpp \
 	FailOverCacheTestMain.cpp
 
 
