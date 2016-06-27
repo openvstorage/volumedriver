@@ -295,6 +295,35 @@ ovs_remove_volume(ovs_ctx_t *ctx,
 }
 
 int
+ovs_truncate_volume(ovs_ctx_t *ctx,
+                    const char *volume_name,
+                    uint64_t length)
+{
+    int r = 0;
+
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_truncate_volume_enter,
+               volume_name,
+               length);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_truncate_volume_exit,
+                                          volume_name,
+                                          r,
+                                          errno);
+                }));
+
+    if (not _is_volume_name_valid(volume_name))
+    {
+        errno = EINVAL;
+        return (r = -1);
+    }
+    return (r = ctx->truncate_volume(volume_name, length));
+}
+
+int
 ovs_snapshot_create(ovs_ctx_t *ctx,
                     const char* volume_name,
                     const char* snapshot_name,
