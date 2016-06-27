@@ -22,7 +22,7 @@
 
 #include <youtils/FileUtils.h>
 
-namespace failovercachetest
+namespace distributed_transaction_log_test
 {
 
 namespace vd = volumedriver;

@@ -34,7 +34,7 @@ class FailOverCacheTestContext;
 
 }
 
-namespace failovercache
+namespace distributed_transaction_log
 {
 
 class FailOverCacheAcceptor

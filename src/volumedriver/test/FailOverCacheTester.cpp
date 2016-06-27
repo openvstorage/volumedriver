@@ -28,6 +28,8 @@
 namespace volumedriver
 {
 
+namespace dtl = distributed_transaction_log;
+
 class FailOverCacheTester
     : public VolManagerTestSetup
 {
@@ -574,7 +576,7 @@ TEST_P(FailOverCacheTester, TLogsAreRemoved)
     auto empty([&]() -> bool
                {
                    size_t count = 0;
-                   std::shared_ptr<failovercache::Backend> backend(foc_ctx->backend(ns_ptr->ns()));
+                   std::shared_ptr<dtl::Backend> backend(foc_ctx->backend(ns_ptr->ns()));
                    backend->getEntries([&](ClusterLocation,
                                            int64_t /* addr */,
                                            const uint8_t* /* data */,
@@ -636,7 +638,7 @@ TEST_P(FailOverCacheTester, DirectoryRemovedOnUnRegister)
     boost::optional<fs::path> foc_ns_path;
 
     {
-        auto backend = std::dynamic_pointer_cast<failovercache::FileBackend>(foc_ctx->backend(ns_ptr->ns()));
+        auto backend = std::dynamic_pointer_cast<dtl::FileBackend>(foc_ctx->backend(ns_ptr->ns()));
         if (backend)
         {
             foc_ns_path = backend->root();

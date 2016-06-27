@@ -24,6 +24,7 @@ namespace volumedrivertest
 {
 
 namespace be = backend;
+namespace dtl = distributed_transaction_log;
 namespace fs = boost::filesystem;
 namespace vd = volumedriver;
 
@@ -80,7 +81,7 @@ FailOverCacheTestContext::config(const vd::FailOverCacheMode mode) const
                                    mode);
 }
 
-std::shared_ptr<failovercache::Backend>
+std::shared_ptr<dtl::Backend>
 FailOverCacheTestContext::backend(const be::Namespace& nspace)
 {
     return acceptor_.find_backend_(nspace.str());

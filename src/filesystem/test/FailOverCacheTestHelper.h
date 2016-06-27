@@ -57,7 +57,7 @@ public:
     const uint16_t port;
 
 private:
-    failovercache::FailOverCacheAcceptor acceptor_;
+    distributed_transaction_log::FailOverCacheAcceptor acceptor_;
     std::unique_ptr<fungi::SocketServer> server_;
 };
 

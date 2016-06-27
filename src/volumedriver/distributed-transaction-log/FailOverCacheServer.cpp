@@ -17,6 +17,7 @@
 
 #include <boost/optional/optional_io.hpp>
 
+namespace dtl = distributed_transaction_log;
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 namespace vd = volumedriver;
@@ -121,7 +122,7 @@ FailOverCacheServer::run()
               ", port: " << port_ <<
               ", transport type: " << transport_);
 
-    acceptor = std::make_unique<failovercache::FailOverCacheAcceptor>(path);
+    acceptor = std::make_unique<dtl::FailOverCacheAcceptor>(path);
 
     LOG_INFO("Running the SocketServer");
 

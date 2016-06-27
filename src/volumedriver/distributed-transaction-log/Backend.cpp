@@ -17,7 +17,7 @@
 
 #include <youtils/Assert.h>
 
-namespace failovercache
+namespace distributed_transaction_log
 {
 
 using namespace volumedriver;

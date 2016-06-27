@@ -36,7 +36,7 @@
 #include <youtils/System.h>
 #include <youtils/TestBase.h>
 
-namespace failovercachetest
+namespace distributed_transaction_log_test
 {
 
 namespace fs = boost::filesystem;

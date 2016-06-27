@@ -25,7 +25,7 @@
 #include "../Types.h"
 #include "../ClusterLocation.h"
 
-namespace failovercache
+namespace distributed_transaction_log
 {
 class FailOverCacheAcceptor;
 class Backend;

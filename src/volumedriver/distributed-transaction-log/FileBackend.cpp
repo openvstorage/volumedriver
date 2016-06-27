@@ -21,7 +21,7 @@
 #include <youtils/Assert.h>
 #include <youtils/ScopeExit.h>
 
-namespace failovercache
+namespace distributed_transaction_log
 {
 
 namespace fs = boost::filesystem;

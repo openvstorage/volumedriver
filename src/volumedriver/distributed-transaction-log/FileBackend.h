@@ -23,7 +23,7 @@
 
 #include <boost/filesystem.hpp>
 
-namespace failovercache
+namespace distributed_transaction_log
 {
 
 class FileBackend

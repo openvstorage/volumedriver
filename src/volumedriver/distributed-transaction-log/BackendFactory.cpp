@@ -17,7 +17,7 @@
 #include "FileBackend.h"
 #include "MemoryBackend.h"
 
-namespace failovercache
+namespace distributed_transaction_log
 {
 
 namespace fs = boost::filesystem;

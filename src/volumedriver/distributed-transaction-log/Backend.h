@@ -23,7 +23,7 @@
 #include "../FailOverCacheStreamers.h"
 #include "../Types.h"
 
-namespace failovercache
+namespace distributed_transaction_log
 {
 
 class Backend

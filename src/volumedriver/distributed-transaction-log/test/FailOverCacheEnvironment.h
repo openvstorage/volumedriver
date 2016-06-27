@@ -28,7 +28,7 @@ namespace boost
 class thread;
 }
 
-namespace failovercachetest
+namespace distributed_transaction_log_test
 {
 
 class FailOverCacheEnvironment

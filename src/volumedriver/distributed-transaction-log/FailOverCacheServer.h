@@ -35,7 +35,7 @@
 #include "fungilib/SocketServer.h"
 #include <youtils/Main.h>
 
-namespace failovercachetest
+namespace distributed_transaction_log_test
 {
 class FailOverCacheEnvironment;
 }
@@ -43,7 +43,7 @@ class FailOverCacheEnvironment;
 class FailOverCacheServer
     : public youtils::MainHelper
 {
-    friend class failovercachetest::FailOverCacheEnvironment;
+    friend class distributed_transaction_log_test::FailOverCacheEnvironment;
 
 public:
     FailOverCacheServer(int argc,
@@ -69,7 +69,7 @@ private:
     static youtils::Logger::logger_type* logger_;
 
     std::unique_ptr<fungi::SocketServer> s;
-    std::unique_ptr<failovercache::FailOverCacheAcceptor> acceptor;
+    std::unique_ptr<distributed_transaction_log::FailOverCacheAcceptor> acceptor;
 
     boost::program_options::options_description desc_;
 

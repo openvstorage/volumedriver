@@ -19,7 +19,7 @@
 
 #include <youtils/FileDescriptor.h>
 
-namespace failovercache
+namespace distributed_transaction_log
 {
 
 namespace fs = boost::filesystem;

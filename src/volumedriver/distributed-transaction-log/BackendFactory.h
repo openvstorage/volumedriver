@@ -20,7 +20,7 @@
 #include <youtils/FileDescriptor.h>
 #include <youtils/Logging.h>
 
-namespace failovercache
+namespace distributed_transaction_log
 {
 
 class BackendFactory

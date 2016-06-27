@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 #include "MemoryBackend.h"
 
-namespace failovercache
+namespace distributed_transaction_log
 {
 
 namespace vd = volumedriver;

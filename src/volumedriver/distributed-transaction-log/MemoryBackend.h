@@ -20,7 +20,7 @@
 #include <memory>
 #include <unordered_map>
 
-namespace failovercache
+namespace distributed_transaction_log
 {
 
 class MemoryBackend
