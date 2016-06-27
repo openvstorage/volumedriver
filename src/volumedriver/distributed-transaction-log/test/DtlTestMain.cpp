@@ -13,24 +13,24 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "FailOverCacheTestMain.h"
+#include "DtlTestMain.h"
 
 namespace po = boost::program_options;
 namespace vd = volumedriver;
 
 std::string
-FailOverCacheTestMain::host_("127.0.0.1");
+DtlTestMain::host_("127.0.0.1");
 
 uint16_t
-FailOverCacheTestMain::port_ = 23096;
+DtlTestMain::port_ = 23096;
 
 vd::FailOverCacheTransport
-FailOverCacheTestMain::transport_(vd::FailOverCacheTransport::TCP);
+DtlTestMain::transport_(vd::FailOverCacheTransport::TCP);
 
 std::unique_ptr<backend::Namespace>
-FailOverCacheTestMain::ns_;
+DtlTestMain::ns_;
 
-FailOverCacheTestMain::FailOverCacheTestMain(int argc,
+DtlTestMain::DtlTestMain(int argc,
                                              char** argv)
     : TestMainHelper(argc,
                      argv)
@@ -51,20 +51,20 @@ FailOverCacheTestMain::FailOverCacheTestMain(int argc,
 };
 
 void
-FailOverCacheTestMain::setup_logging()
+DtlTestMain::setup_logging()
 {
     MainHelper::setup_logging("dtl_test");
 }
 
 void
-FailOverCacheTestMain::log_extra_help(std::ostream& os)
+DtlTestMain::log_extra_help(std::ostream& os)
 {
     os << normal_options_ << std::endl;
     log_google_test_help(os);
 }
 
 void
-FailOverCacheTestMain::parse_command_line_arguments()
+DtlTestMain::parse_command_line_arguments()
 {
     init_google_test();
     parse_unparsed_options(normal_options_,
@@ -73,4 +73,4 @@ FailOverCacheTestMain::parse_command_line_arguments()
     ns_.reset(new backend::Namespace(ns_temp_));
 }
 
-MAIN(FailOverCacheTestMain);
+MAIN(DtlTestMain);

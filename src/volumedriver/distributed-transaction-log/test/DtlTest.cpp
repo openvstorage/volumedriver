@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "DtlEnvironment.h"
-#include "FailOverCacheTestMain.h"
+#include "DtlTestMain.h"
 
 #include "../DtlServer.h"
 
@@ -155,9 +155,9 @@ class DtlTest
     virtual void
     SetUp()
     {
-        v.reset(new DtlEnvironment(FailOverCacheTestMain::host(),
-                                             FailOverCacheTestMain::port(),
-                                             FailOverCacheTestMain::transport()));
+        v.reset(new DtlEnvironment(DtlTestMain::host(),
+                                             DtlTestMain::port(),
+                                             DtlTestMain::transport()));
         v->SetUp();
 
     }
@@ -180,8 +180,8 @@ TEST_F(DtlTest, put_and_retrieve)
     const uint32_t num_scos_to_produce = 20;
 
     FailOverCacheProxy
-        cache(FailOverCacheTestMain::failovercache_config(),
-              FailOverCacheTestMain::ns(),
+        cache(DtlTestMain::failovercache_config(),
+              DtlTestMain::ns(),
               LBASize(512),
               ClusterMultiplier(8),
               boost::chrono::seconds(8));
@@ -235,8 +235,8 @@ TEST_F(DtlTest, GetSCORange)
     const uint32_t num_scos_to_produce = 13;
 
     FailOverCacheProxy
-        cache(FailOverCacheTestMain::failovercache_config(),
-              FailOverCacheTestMain::ns(),
+        cache(DtlTestMain::failovercache_config(),
+              DtlTestMain::ns(),
               LBASize(512),
               ClusterMultiplier(8),
               boost::chrono::seconds(8));
@@ -311,8 +311,8 @@ TEST_F(DtlTest, GetOneSCO)
     const uint32_t num_scos_to_produce = 13;
 
     FailOverCacheProxy
-        cache(FailOverCacheTestMain::failovercache_config(),
-              FailOverCacheTestMain::ns(),
+        cache(DtlTestMain::failovercache_config(),
+              DtlTestMain::ns(),
               LBASize(512),
               ClusterMultiplier(8),
               boost::chrono::seconds(8));
@@ -386,8 +386,8 @@ TEST_F(DtlTest, DISABLED_DoubleRegister)
 {
     // Y42 apparantly not a or my problem
     FailOverCacheProxy
-        cache1(FailOverCacheTestMain::failovercache_config(),
-               FailOverCacheTestMain::ns(),
+        cache1(DtlTestMain::failovercache_config(),
+               DtlTestMain::ns(),
                LBASize(512),
                ClusterMultiplier(8),
                boost::chrono::seconds(8));
@@ -450,7 +450,7 @@ public:
     explicit FailOverCacheTestThread(const std::string& content,
                                      const unsigned test_size = 100000)
         : content_(content)
-        , cache_(FailOverCacheTestMain::failovercache_config(),
+        , cache_(DtlTestMain::failovercache_config(),
                  backend::Namespace(content),
                  LBASize(512),
                  ClusterMultiplier(8),
@@ -493,7 +493,7 @@ public:
                     latestSCOOnFailOver = next_location_;
                 }
                 vec.emplace_back(factory_(next_location_,
-                                          FailOverCacheTestMain::ns().str()));
+                                          DtlTestMain::ns().str()));
             }
 
             cache_.addEntries(vec);
@@ -512,7 +512,7 @@ public:
                     cluster_count_ = 0;
                     latestSCONotOnFailOver = latestSCOOnFailOver;
 
-                    FailOverCacheEntryProcessor processor(FailOverCacheTestMain::ns().str(),
+                    FailOverCacheEntryProcessor processor(DtlTestMain::ns().str(),
                                                           cluster_size_);
                     cache_.getEntries(BIND_SCO_PROCESSOR(processor));
                     EXPECT_EQ(processor.sco_count, 0);
@@ -523,7 +523,7 @@ public:
                 {
                     LOG_INFO("Test 1");
 
-                    FailOverCacheEntryProcessor processor(FailOverCacheTestMain::ns().str(),
+                    FailOverCacheEntryProcessor processor(DtlTestMain::ns().str(),
                                                           cluster_size_);
                     cache_.getEntries(BIND_SCO_PROCESSOR(processor));
                     EXPECT_EQ(processor.cluster_count, cluster_count_);
@@ -574,7 +574,7 @@ public:
                         clusters_in_sco = latestSCOOnFailOver.offset() + 1;
                     }
 
-                    FailOverCacheOneProcessor proc(FailOverCacheTestMain::ns().str(),
+                    FailOverCacheOneProcessor proc(DtlTestMain::ns().str(),
                                                    cluster_size_,
                                                    sconame,
                                                    clusters_in_sco);
@@ -659,8 +659,8 @@ TEST_F(DtlTest, get_entries_xxl)
     const ClusterSize csize(lba_size * cmult);
 
     FailOverCacheProxy
-        cache(FailOverCacheTestMain::failovercache_config(),
-              FailOverCacheTestMain::ns(),
+        cache(DtlTestMain::failovercache_config(),
+              DtlTestMain::ns(),
               lba_size,
               cmult,
               boost::chrono::seconds(8));

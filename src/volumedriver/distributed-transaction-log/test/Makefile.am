@@ -13,7 +13,7 @@ distributed_transaction_log_test_SOURCES=\
 	DtlTest.cpp \
 	DtlEnvironment.cpp \
 	../DtlServer.cpp \
-	FailOverCacheTestMain.cpp
+	DtlTestMain.cpp
 
 
 distributed_transaction_log_client_perftest_CXXFLAGS=$(BUILDTOOLS_CFLAGS)

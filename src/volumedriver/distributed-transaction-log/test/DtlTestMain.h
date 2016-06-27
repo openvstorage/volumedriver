@@ -24,11 +24,11 @@
 #include <volumedriver/FailOverCacheConfig.h>
 #include <volumedriver/FailOverCacheTransport.h>
 
-class FailOverCacheTestMain
+class DtlTestMain
     : public youtils::TestMainHelper
 {
 public:
-    FailOverCacheTestMain(int argc,
+    DtlTestMain(int argc,
                           char** argv);
 
     virtual void
