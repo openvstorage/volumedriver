@@ -306,6 +306,37 @@ NetworkXioIOHandler::handle_stat_volume(NetworkXioRequest *req,
 }
 
 void
+NetworkXioIOHandler::handle_truncate(NetworkXioRequest *req,
+                                     const std::string& volume_name,
+                                     const uint64_t offset)
+{
+    VERIFY(not handle_);
+    req->op = NetworkXioMsgOpcode::TruncateRsp;
+
+    const std::string root_("/");
+    const FrontendPath volume_path(root_ + volume_name +
+                                   fs_.vdisk_format().volume_suffix());
+    try
+    {
+        fs_.truncate(volume_path,
+                     static_cast<off_t>(offset));
+        req->retval = 0;
+        req->errval = 0;
+    }
+    catch (const HierarchicalArakoon::DoesNotExistException&)
+    {
+        req->retval = -1;
+        req->errval = ENOENT;
+    }
+    CATCH_STD_ALL_EWHAT({
+        LOG_ERROR("Problem truncating volume: " << EWHAT);
+        req->retval = -1;
+        req->errval = EIO;
+    });
+    pack_msg(req);
+}
+
+void
 NetworkXioIOHandler::handle_list_volumes(NetworkXioRequest *req)
 {
     VERIFY(not handle_);
@@ -769,6 +800,13 @@ NetworkXioIOHandler::process_request(NetworkXioRequest *req)
         handle_is_snapshot_synced(req,
                                   i_msg.volume_name(),
                                   i_msg.snap_name());
+        break;
+    }
+    case NetworkXioMsgOpcode::TruncateReq:
+    {
+        handle_truncate(req,
+                        i_msg.volume_name(),
+                        i_msg.offset());
         break;
     }
     default:

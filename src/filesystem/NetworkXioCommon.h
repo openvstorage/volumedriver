@@ -121,6 +121,8 @@ enum class NetworkXioMsgOpcode
     RollbackSnapshotRsp,
     IsSnapshotSyncedReq,
     IsSnapshotSyncedRsp,
+    TruncateReq,
+    TruncateRsp,
 };
 
 #endif //__NETWORK_XIO_COMMON_H_
