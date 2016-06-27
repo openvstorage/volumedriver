@@ -19,7 +19,7 @@
 #include <boost/filesystem/path.hpp>
 
 #include <volumedriver/FailOverCacheTransport.h>
-#include <volumedriver/distributed-transaction-log/FailOverCacheAcceptor.h>
+#include <volumedriver/distributed-transaction-log/Acceptor.h>
 #include <volumedriver/distributed-transaction-log/FailOverCacheProtocol.h>
 
 namespace volumedriverfstest
@@ -57,7 +57,7 @@ public:
     const uint16_t port;
 
 private:
-    distributed_transaction_log::FailOverCacheAcceptor acceptor_;
+    distributed_transaction_log::Acceptor acceptor_;
     std::unique_ptr<fungi::SocketServer> server_;
 };
 

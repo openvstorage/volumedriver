@@ -13,8 +13,8 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef FAILOVERCACHEACCEPTOR_H
-#define FAILOVERCACHEACCEPTOR_H
+#ifndef DTL_ACCEPTOR_H_
+#define DTL_ACCEPTOR_H_
 
 #include "FailOverCacheProtocol.h"
 #include "BackendFactory.h"
@@ -37,15 +37,15 @@ class FailOverCacheTestContext;
 namespace distributed_transaction_log
 {
 
-class FailOverCacheAcceptor
+class Acceptor
     : public fungi::ProtocolFactory
 {
     friend class volumedrivertest::FailOverCacheTestContext;
 
 public:
-    explicit FailOverCacheAcceptor(const boost::optional<boost::filesystem::path>& root);
+    explicit Acceptor(const boost::optional<boost::filesystem::path>& root);
 
-    virtual ~FailOverCacheAcceptor();
+    virtual ~Acceptor();
 
     virtual fungi::Protocol*
     createProtocol(std::unique_ptr<fungi::Socket>,
@@ -54,7 +54,7 @@ public:
     virtual const char *
     getName() const override final
     {
-        return "FailOverCacheAcceptor";
+        return "Acceptor";
     }
 
     void
@@ -73,7 +73,7 @@ public:
     }
 
 private:
-    DECLARE_LOGGER("FailOverCacheAcceptor");
+    DECLARE_LOGGER("Acceptor");
 
     // protects the map / protocols.
     boost::mutex mutex_;
@@ -90,7 +90,7 @@ private:
 };
 
 }
-#endif // FAILOVERCACHEACCEPTOR_H
+#endif // DTL_ACCEPTOR_H_
 
 // Local Variables: **
 // mode : c++ **

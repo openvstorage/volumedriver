@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "FileBackend.h"
-#include "FailOverCacheAcceptor.h"
+#include "Acceptor.h"
 #include "FailOverCacheProtocol.h"
 
 #include <youtils/FileDescriptor.h>
@@ -31,11 +31,11 @@ using namespace fungi;
 #define LOCK()                                  \
     boost::lock_guard<decltype(mutex_)> lg_(mutex_)
 
-FailOverCacheAcceptor::FailOverCacheAcceptor(const boost::optional<fs::path>& path)
+Acceptor::Acceptor(const boost::optional<fs::path>& path)
     : factory_(path)
 {}
 
-FailOverCacheAcceptor::~FailOverCacheAcceptor()
+Acceptor::~Acceptor()
 {
     int count = 0;
     {
@@ -59,7 +59,7 @@ FailOverCacheAcceptor::~FailOverCacheAcceptor()
 }
 
 Protocol*
-FailOverCacheAcceptor::createProtocol(std::unique_ptr<fungi::Socket> s,
+Acceptor::createProtocol(std::unique_ptr<fungi::Socket> s,
                                       fungi::SocketServer& parentServer)
 {
     LOCK();
@@ -70,7 +70,7 @@ FailOverCacheAcceptor::createProtocol(std::unique_ptr<fungi::Socket> s,
 }
 
 void
-FailOverCacheAcceptor::remove(Backend& w)
+Acceptor::remove(Backend& w)
 {
     LOCK();
 
@@ -82,8 +82,8 @@ FailOverCacheAcceptor::remove(Backend& w)
     }
 }
 
-FailOverCacheAcceptor::BackendPtr
-FailOverCacheAcceptor::lookup(const CommandData<Register>& reg)
+Acceptor::BackendPtr
+Acceptor::lookup(const CommandData<Register>& reg)
 {
     LOCK();
 
@@ -122,8 +122,8 @@ FailOverCacheAcceptor::lookup(const CommandData<Register>& reg)
     return w;
 }
 
-FailOverCacheAcceptor::BackendPtr
-FailOverCacheAcceptor::find_backend_(const std::string& ns)
+Acceptor::BackendPtr
+Acceptor::find_backend_(const std::string& ns)
 {
     LOCK();
 

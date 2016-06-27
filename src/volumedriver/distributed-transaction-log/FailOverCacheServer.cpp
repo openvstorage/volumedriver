@@ -122,7 +122,7 @@ FailOverCacheServer::run()
               ", port: " << port_ <<
               ", transport type: " << transport_);
 
-    acceptor = std::make_unique<dtl::FailOverCacheAcceptor>(path);
+    acceptor = std::make_unique<dtl::Acceptor>(path);
 
     LOG_INFO("Running the SocketServer");
 

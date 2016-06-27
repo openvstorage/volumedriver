@@ -27,7 +27,7 @@
 
 namespace distributed_transaction_log
 {
-class FailOverCacheAcceptor;
+class Acceptor;
 class Backend;
 
 class FailOverCacheProtocol
@@ -36,7 +36,7 @@ class FailOverCacheProtocol
 public:
     FailOverCacheProtocol(std::unique_ptr<fungi::Socket> sock,
                           fungi::SocketServer& /*parentServer*/,
-                          FailOverCacheAcceptor& fact);
+                          Acceptor& fact);
 
     ~FailOverCacheProtocol();
 
@@ -63,7 +63,7 @@ private:
     fungi::IOBaseStream stream_;
     fungi::Thread* thread_;
 
-    FailOverCacheAcceptor& fact_;
+    Acceptor& fact_;
     bool use_rs_;
 
     int pipes_[2];

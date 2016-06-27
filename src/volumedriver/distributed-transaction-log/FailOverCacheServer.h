@@ -16,7 +16,7 @@
 #ifndef FAILOVERCACHE_SERVER_H_
 #define FAILOVERCACHE_SERVER_H_
 
-#include "FailOverCacheAcceptor.h"
+#include "Acceptor.h"
 
 #include "../FailOverCacheTransport.h"
 
@@ -69,7 +69,7 @@ private:
     static youtils::Logger::logger_type* logger_;
 
     std::unique_ptr<fungi::SocketServer> s;
-    std::unique_ptr<distributed_transaction_log::FailOverCacheAcceptor> acceptor;
+    std::unique_ptr<distributed_transaction_log::Acceptor> acceptor;
 
     boost::program_options::options_description desc_;
 

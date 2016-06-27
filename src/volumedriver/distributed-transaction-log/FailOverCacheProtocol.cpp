@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "FailOverCacheAcceptor.h"
+#include "Acceptor.h"
 #include "FailOverCacheProtocol.h"
 #include "FailOverCacheStreamers.h"
 #include "fungilib/WrapByteArray.h"
@@ -40,7 +40,7 @@ using namespace volumedriver;
 
 FailOverCacheProtocol::FailOverCacheProtocol(std::unique_ptr<fungi::Socket> sock,
                                              fungi::SocketServer& /*parentServer*/,
-                                             FailOverCacheAcceptor& fact)
+                                             Acceptor& fact)
     : sock_(std::move(sock))
     , stream_(*sock_)
     , fact_(fact)

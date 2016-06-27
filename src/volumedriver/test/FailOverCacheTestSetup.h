@@ -27,7 +27,7 @@
 #include "../FailOverCacheProxy.h"
 #include "../FailOverCacheTransport.h"
 #include "../distributed-transaction-log/Backend.h"
-#include "../distributed-transaction-log/FailOverCacheAcceptor.h"
+#include "../distributed-transaction-log/Acceptor.h"
 #include "../distributed-transaction-log/FailOverCacheProtocol.h"
 
 class VolumeDriverTest;
@@ -54,7 +54,7 @@ private:
     FailOverCacheTestSetup& setup_;
     const boost::optional<std::string> addr_;
     const uint16_t port_;
-    distributed_transaction_log::FailOverCacheAcceptor acceptor_;
+    distributed_transaction_log::Acceptor acceptor_;
     std::unique_ptr<fungi::SocketServer> server_;
 
 public:
