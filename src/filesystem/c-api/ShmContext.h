@@ -24,6 +24,7 @@
 struct ShmContext : public ovs_context_t
 {
     std::shared_ptr<ovs_shm_context> shm_ctx_;
+    std::string volname_;
 
     ShmContext()
     : shm_ctx_(nullptr) {}
@@ -37,6 +38,7 @@ struct ShmContext : public ovs_context_t
         try
         {
             shm_ctx_ = std::make_shared<ovs_shm_context>(volume_name, oflag);
+            volname_ = std::string(volume_name);
             return 0;
         }
         catch (const ShmIdlInterface::VolumeDoesNotExist&)
@@ -91,6 +93,27 @@ struct ShmContext : public ovs_context_t
         try
         {
             volumedriverfs::ShmClient::remove_volume(volume_name);
+            return 0;
+        }
+        catch (const ShmIdlInterface::VolumeDoesNotExist&)
+        {
+            errno = ENOENT;
+        }
+        catch (...)
+        {
+            errno = EIO;
+        }
+        return -1;
+    }
+
+    int
+    truncate_volume(const char *volume_name,
+                    uint64_t size)
+    {
+        try
+        {
+            volumedriverfs::ShmClient::truncate_volume(volume_name,
+                                                       size);
             return 0;
         }
         catch (const ShmIdlInterface::VolumeDoesNotExist&)
@@ -288,7 +311,16 @@ struct ShmContext : public ovs_context_t
     int
     stat_volume(struct stat *st)
     {
-        return shm_ctx_->shm_client_->stat(st);
+        try
+        {
+            return shm_ctx_->shm_client_->stat(volname_,
+                                               st);
+        }
+        catch (...)
+        {
+            errno = EIO;
+        }
+        return -1;
     }
 
     ovs_buffer_t*
