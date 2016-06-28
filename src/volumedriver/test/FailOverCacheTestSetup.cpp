@@ -74,7 +74,7 @@ FailOverCacheTestContext::~FailOverCacheTestContext()
 }
 
 vd::FailOverCacheConfig
-FailOverCacheTestContext::config(const vd::FailOverCacheMode mode) const
+FailOverCacheTestContext::config(const vd::DtlMode mode) const
 {
     return vd::FailOverCacheConfig(FailOverCacheTestSetup::host(),
                                    port(),

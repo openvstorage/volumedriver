@@ -1788,7 +1788,7 @@ const VolumeDriverTestConfig cluster_cache_config =
 const VolumeDriverTestConfig sync_foc_config =
     VolumeDriverTestConfig()
     .use_cluster_cache(true)
-    .foc_mode(FailOverCacheMode::Synchronous);
+    .foc_mode(DtlMode::Synchronous);
 
 const ClusterMultiplier
 big_cluster_multiplier(VolManagerTestSetup::default_test_config().cluster_multiplier() * 2);

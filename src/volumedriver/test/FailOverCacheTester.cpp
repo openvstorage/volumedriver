@@ -65,10 +65,10 @@ public:
 
         switch (bridge->mode())
         {
-        case FailOverCacheMode::Asynchronous:
+        case DtlMode::Asynchronous:
             entries = get_num_entries(dynamic_cast<DtlAsyncBridge&>(*bridge));
             break;
-        case FailOverCacheMode::Synchronous:
+        case DtlMode::Synchronous:
             entries = get_num_entries(dynamic_cast<DtlSyncBridge&>(*bridge));
             break;
         }
@@ -975,12 +975,12 @@ const VolumeDriverTestConfig cluster_cache_config =
 const VolumeDriverTestConfig sync_foc_config =
     VolumeDriverTestConfig()
     .use_cluster_cache(true)
-    .foc_mode(FailOverCacheMode::Synchronous);
+    .foc_mode(DtlMode::Synchronous);
 
 const VolumeDriverTestConfig sync_foc_in_memory_config =
     VolumeDriverTestConfig()
     .use_cluster_cache(true)
-    .foc_mode(FailOverCacheMode::Synchronous)
+    .foc_mode(DtlMode::Synchronous)
     .foc_in_memory(true);
 }
 

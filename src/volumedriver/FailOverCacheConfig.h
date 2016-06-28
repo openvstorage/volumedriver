@@ -18,7 +18,7 @@
 
 #include <youtils/Assert.h>
 
-#include "FailOverCacheMode.h"
+#include "DtlMode.h"
 
 #include <iosfwd>
 
@@ -33,11 +33,11 @@ struct FailOverCacheConfig
 {
     std::string host;
     uint16_t port;
-    FailOverCacheMode mode;
+    DtlMode mode;
 
     FailOverCacheConfig(const std::string& h,
                         const uint16_t p,
-                        const FailOverCacheMode m)
+                        const DtlMode m)
         : host(h)
         , port(p)
         , mode(m)
@@ -97,7 +97,7 @@ struct FailOverCacheConfig
         }
         else
         {
-            mode = FailOverCacheMode::Asynchronous;
+            mode = DtlMode::Asynchronous;
         }
     }
 
@@ -135,7 +135,7 @@ load_construct_data(Archive& /* ar */,
 {
     new(config) volumedriver::FailOverCacheConfig("",
                                                   0,
-                                                  volumedriver::FailOverCacheMode::Asynchronous);
+                                                  volumedriver::DtlMode::Asynchronous);
 }
 
 }

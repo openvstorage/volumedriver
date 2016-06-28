@@ -131,7 +131,7 @@ private:
             {
                 config_ = FailOverCacheConfig(h,
                                               p,
-                                              FailOverCacheMode::Asynchronous);
+                                              DtlMode::Asynchronous);
             }
             else
             {

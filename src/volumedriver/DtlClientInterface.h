@@ -17,7 +17,7 @@
 #define VD_DTL_CLIENTINTERFACE_H_
 
 #include "DtlBridgeCommon.h"
-#include "FailOverCacheMode.h"
+#include "DtlMode.h"
 #include "distributed-transaction-log/fungilib/Mutex.h"
 
 #include "SCOProcessorInterface.h"
@@ -31,7 +31,7 @@ class DtlClientInterface
 {
 public:
     static std::unique_ptr<DtlClientInterface>
-    create(const FailOverCacheMode mode,
+    create(const DtlMode mode,
            const LBASize lba_size,
            const ClusterMultiplier cluster_multiplier,
            const size_t max_entries,
@@ -84,7 +84,7 @@ public:
     getSCOFromFailOver(SCO sconame,
                        SCOProcessorFun processor) = 0;
 
-    virtual FailOverCacheMode
+    virtual DtlMode
     mode() const = 0;
 
     size_t

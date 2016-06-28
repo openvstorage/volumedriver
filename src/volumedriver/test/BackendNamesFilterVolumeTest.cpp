@@ -44,7 +44,7 @@ TEST_P(BackendNamespaceFilterVolumeTest, ditto)
 
     auto foc_ctx(start_one_foc());
 
-    v->setFailOverCacheConfig(foc_ctx->config(FailOverCacheMode::Asynchronous));
+    v->setFailOverCacheConfig(foc_ctx->config(DtlMode::Asynchronous));
 
     writeToVolume(*v,
                   0,

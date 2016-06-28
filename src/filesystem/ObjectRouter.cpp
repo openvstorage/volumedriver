@@ -64,7 +64,7 @@ namespace yt = youtils;
 ObjectRouter::ObjectRouter(const bpt::ptree& pt,
                            std::shared_ptr<yt::LockedArakoon>(larakoon),
                            const FailOverCacheConfigMode foc_config_mode,
-                           const vd::FailOverCacheMode foc_mode,
+                           const vd::DtlMode foc_mode,
                            const boost::optional<vd::FailOverCacheConfig>& foc_config,
                            const RegisterComponent registrate)
     : VolumeDriverComponent(registrate,

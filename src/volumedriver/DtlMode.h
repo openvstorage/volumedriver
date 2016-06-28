@@ -13,8 +13,8 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef VD_FAILOVER_CACHE_MODE_H_
-#define VD_FAILOVER_CACHE_MODE_H_
+#ifndef VD_DTL_MODE_H_
+#define VD_DTL_MODE_H_
 
 #include <iosfwd>
 #include <cstdint>
@@ -22,7 +22,7 @@
 namespace volumedriver
 {
 
-enum class FailOverCacheMode: uint8_t
+enum class DtlMode: uint8_t
 {
     // We are using 0 in serialization to
     Asynchronous = 1,
@@ -31,12 +31,12 @@ enum class FailOverCacheMode: uint8_t
 
 std::ostream&
 operator<<(std::ostream&,
-           const FailOverCacheMode a);
+           const DtlMode a);
 
 std::istream&
 operator>>(std::istream&,
-        FailOverCacheMode&);
+        DtlMode&);
 
 }
 
-#endif // !VD_FAILOVER_CACHE_MODE_H_
+#endif // !VD_DTL_MODE_H_

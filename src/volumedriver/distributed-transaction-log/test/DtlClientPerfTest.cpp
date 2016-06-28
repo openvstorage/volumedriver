@@ -114,7 +114,7 @@ public:
                  po::value<uint16_t>(&port_)->required(),
                  "port of the failovercache server")
                 ("mode",
-                 po::value<volumedriver::FailOverCacheMode>(&mode_)->default_value(FailOverCacheMode::Asynchronous),
+                 po::value<volumedriver::DtlMode>(&mode_)->default_value(DtlMode::Asynchronous),
                  "mode of the failovercache server (Asynchronous|Synchronous)")
                 ("namespace",
                  po::value<std::string>(&ns_tmp_)->required(),
@@ -246,7 +246,7 @@ public:
     std::atomic<unsigned> write_trigger_;
     std::string host_;
     uint16_t port_;
-    volumedriver::FailOverCacheMode mode_;
+    volumedriver::DtlMode mode_;
     std::unique_ptr<backend::Namespace> ns_;
     std::string ns_tmp_;
 

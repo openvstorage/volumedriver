@@ -330,7 +330,7 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(fs_dtl_mode,
                                       "fs_dtl_mode",
                                       "DTL mode : Asynchronous | Synchronous",
                                       ShowDocumentation::T,
-                                      vd::FailOverCacheMode::Asynchronous);
+                                      vd::DtlMode::Asynchronous);
 
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(fs_enable_shm_interface,
                                       filesystem_component_name,

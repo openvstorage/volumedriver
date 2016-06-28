@@ -213,7 +213,7 @@ protected:
     {
         const vd::FailOverCacheConfig cfg(remote_config().host,
                                           remote_config().failovercache_port,
-                                          vd::FailOverCacheMode::Asynchronous);
+                                          vd::DtlMode::Asynchronous);
         check_foc_config(vname,
                          vfs::FailOverCacheConfigMode::Automatic,
                          cfg);
@@ -1702,7 +1702,7 @@ TEST_F(PythonClientTest, failovercache_config)
 
     const vd::FailOverCacheConfig cfg2(local_config().host,
                                        local_config().failovercache_port,
-                                       vd::FailOverCacheMode::Asynchronous);
+                                       vd::DtlMode::Asynchronous);
 
     ASSERT_NE(cfg1,
               cfg2);
@@ -1721,7 +1721,7 @@ TEST_F(PythonClientTest, failovercache_config)
 
     const vd::FailOverCacheConfig cfg3("somewhereoutthere"s,
                                        local_config().failovercache_port,
-                                       vd::FailOverCacheMode::Asynchronous);
+                                       vd::DtlMode::Asynchronous);
 
     client_.set_manual_failover_cache_config(vname,
                                              cfg3);
@@ -1746,7 +1746,7 @@ TEST_F(PythonClientTest, failovercache_config)
 
     const vd::FailOverCacheConfig cfg4(cfg1.host,
                                        cfg1.port,
-                                       vd::FailOverCacheMode::Synchronous);
+                                       vd::DtlMode::Synchronous);
 
     client_.set_manual_failover_cache_config(vname,
                                              cfg4);

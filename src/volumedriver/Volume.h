@@ -717,7 +717,7 @@ private:
                         const backend::Namespace& nsname);
 
     void
-    setFailOverCacheMode_(const FailOverCacheMode mode);
+    setDtlMode_(const DtlMode mode);
 
     void
     setFailOverCacheConfig_(const FailOverCacheConfig&);

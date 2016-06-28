@@ -121,7 +121,7 @@ is_volume(const DirectoryEntryPtr& dentry)
 boost::optional<vd::FailOverCacheConfig>
 make_foc_config(const std::string& host,
                 const uint16_t port,
-                const vd::FailOverCacheMode mode)
+                const vd::DtlMode mode)
 {
     if (host.empty())
     {

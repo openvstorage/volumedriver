@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "FailOverCacheMode.h"
+#include "DtlMode.h"
 
 #include <iostream>
 
@@ -30,15 +30,15 @@ namespace
 {
 
 void
-reminder(FailOverCacheMode) __attribute__((unused));
+reminder(DtlMode) __attribute__((unused));
 
 void
-reminder(FailOverCacheMode m)
+reminder(DtlMode m)
 {
     switch (m)
     {
-    case FailOverCacheMode::Asynchronous:
-    case FailOverCacheMode::Synchronous:
+    case DtlMode::Asynchronous:
+    case DtlMode::Synchronous:
         // If the compiler yells at you that you've forgotten dealing with an enum
         // value here chances are that it's also missing from the translations map
         // below. If so add it NOW.
@@ -46,14 +46,14 @@ reminder(FailOverCacheMode m)
     }
 }
 
-using TranslationsMap = boost::bimap<FailOverCacheMode, std::string>;
+using TranslationsMap = boost::bimap<DtlMode, std::string>;
 
 TranslationsMap
 init_translations()
 {
     const std::vector<TranslationsMap::value_type> initv{
-        { FailOverCacheMode::Asynchronous, "Asynchronous" },
-        { FailOverCacheMode::Synchronous, "Synchronous" },
+        { DtlMode::Asynchronous, "Asynchronous" },
+        { DtlMode::Synchronous, "Synchronous" },
     };
 
     return TranslationsMap(initv.begin(),
@@ -64,7 +64,7 @@ init_translations()
 
 std::ostream&
 operator<<(std::ostream& os,
-           const FailOverCacheMode m)
+           const DtlMode m)
 {
     static const TranslationsMap translations(init_translations());
     return yt::StreamUtils::stream_out(translations.left,
@@ -74,7 +74,7 @@ operator<<(std::ostream& os,
 
 std::istream&
 operator>>(std::istream& is,
-        FailOverCacheMode& m)
+        DtlMode& m)
 {
     static const TranslationsMap translations(init_translations());
     return yt::StreamUtils::stream_in(translations.right,

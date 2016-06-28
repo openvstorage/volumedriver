@@ -121,7 +121,7 @@ Volume::Volume(const VolumeConfig& vCfg,
     , rwlock_("rwlock-" + vCfg.id_.str())
     , halted_(false)
     , dataStore_(datastore.release())
-    , failover_(DtlClientInterface::create(FailOverCacheMode::Asynchronous,
+    , failover_(DtlClientInterface::create(DtlMode::Asynchronous,
                                                      LBASize(vCfg.lba_size_),
                                                      vCfg.cluster_mult_,
                                                      VolManager::get()->dtl_queue_depth.value(),
@@ -481,7 +481,7 @@ Volume::localRestart()
 
         if(cache)
         {
-            setFailOverCacheMode_(foc_cfg.mode);
+            setDtlMode_(foc_cfg.mode);
             failover_->newCache(std::move(cache));
             setVolumeFailOverState(VolumeFailOverState::OK_SYNC);
         }
@@ -659,7 +659,7 @@ Volume::backend_restart(const CloneTLogs& restartTLogs,
             }
         }
 
-        setFailOverCacheMode_(foc_cfg.mode);
+        setDtlMode_(foc_cfg.mode);
         failover_->newCache(std::move(cache));
     }
 
@@ -2243,7 +2243,7 @@ Volume::init_failover_cache_()
 }
 
 void
-Volume::setFailOverCacheMode_(const FailOverCacheMode mode)
+Volume::setDtlMode_(const DtlMode mode)
 {
     if (mode != failover_->mode())
     {
@@ -2271,7 +2271,7 @@ Volume::setFailOverCacheConfig_(const FailOverCacheConfig& config)
     writeFailOverCacheConfigToBackend_();
 
     LOG_VINFO("Setting the failover cache to " << config);
-    setFailOverCacheMode_(config.mode);
+    setDtlMode_(config.mode);
     failover_->newCache(std::make_unique<DtlProxy>(config,
                                                              getNamespace(),
                                                              LBASize(getLBASize()),

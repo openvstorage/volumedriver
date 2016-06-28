@@ -133,7 +133,7 @@ DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(fs_dtl_port,
                                        uint16_t);
 
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(fs_dtl_mode,
-                                       volumedriver::FailOverCacheMode);
+                                       volumedriver::DtlMode);
 
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(fs_enable_shm_interface,
                                        bool);

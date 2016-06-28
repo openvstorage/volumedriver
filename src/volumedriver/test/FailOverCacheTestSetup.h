@@ -67,7 +67,7 @@ public:
     }
 
     volumedriver::FailOverCacheConfig
-    config(const volumedriver::FailOverCacheMode) const;
+    config(const volumedriver::DtlMode) const;
 
     std::shared_ptr<distributed_transaction_log::Backend>
     backend(const backend::Namespace&);

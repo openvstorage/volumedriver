@@ -352,7 +352,7 @@ PythonClient::get_failover_cache_config(const std::string& volume_id)
         boost::archive::text_iarchive ia(ss);
         vd::FailOverCacheConfig fc("",
                                    0,
-                                   vd::FailOverCacheMode::Asynchronous);
+                                   vd::DtlMode::Asynchronous);
         ia >> fc;
         foc_config = fc;
     }

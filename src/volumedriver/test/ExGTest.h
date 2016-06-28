@@ -16,7 +16,7 @@
 #ifndef EXGTEST_H_
 #define EXGTEST_H_
 
-#include "../FailOverCacheMode.h"
+#include "../DtlMode.h"
 #include "../Types.h"
 #include "../VolumeConfig.h"
 
@@ -53,7 +53,7 @@ struct VolumeDriverTestConfig
 
     PARAM(bool, use_cluster_cache) = false;
     PARAM(bool, foc_in_memory) = false;
-    PARAM(FailOverCacheMode, foc_mode) = FailOverCacheMode::Asynchronous;
+    PARAM(DtlMode, foc_mode) = DtlMode::Asynchronous;
     PARAM(ClusterMultiplier, cluster_multiplier) =
         VolumeConfig::default_cluster_multiplier();
 

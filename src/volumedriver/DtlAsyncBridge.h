@@ -95,7 +95,7 @@ public:
     virtual void
     Clear() override;
 
-    virtual FailOverCacheMode
+    virtual DtlMode
     mode() const override;
 
 private:

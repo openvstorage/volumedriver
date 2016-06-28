@@ -142,7 +142,7 @@ public:
     ObjectRouter(const boost::property_tree::ptree& pt,
                  std::shared_ptr<youtils::LockedArakoon> larakoon,
                  const FailOverCacheConfigMode,
-                 const volumedriver::FailOverCacheMode,
+                 const volumedriver::DtlMode,
                  const boost::optional<volumedriver::FailOverCacheConfig>&,
                  const RegisterComponent registerize = RegisterComponent::T);
 
@@ -396,7 +396,7 @@ private:
     std::unique_ptr<ZWorkerPool> worker_pool_;
 
     FailOverCacheConfigMode foc_config_mode_;
-    volumedriver::FailOverCacheMode foc_mode_;
+    volumedriver::DtlMode foc_mode_;
     boost::optional<volumedriver::FailOverCacheConfig> foc_config_;
 
     struct RedirectCounter

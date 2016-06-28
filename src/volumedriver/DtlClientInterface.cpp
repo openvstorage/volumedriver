@@ -25,7 +25,7 @@ namespace volumedriver
 using Ptr = std::unique_ptr<DtlClientInterface>;
 
 Ptr
-DtlClientInterface::create(const FailOverCacheMode mode,
+DtlClientInterface::create(const DtlMode mode,
                            const LBASize lba_size,
                            const ClusterMultiplier cluster_multiplier,
                            const size_t max_entries,
@@ -33,16 +33,16 @@ DtlClientInterface::create(const FailOverCacheMode mode,
 {
     switch (mode)
     {
-    case FailOverCacheMode::Asynchronous:
+    case DtlMode::Asynchronous:
         return Ptr(new DtlAsyncBridge(lba_size,
                                                 cluster_multiplier,
                                                 max_entries,
                                                 write_trigger));
-    case FailOverCacheMode::Synchronous:
+    case DtlMode::Synchronous:
         return Ptr(new DtlSyncBridge(max_entries));
     }
 
-    VERIFY(0 == "Someone added a new FailOverCacheMode and forgot to update this function?");
+    VERIFY(0 == "Someone added a new DtlMode and forgot to update this function?");
 }
 
 } // namespace volumedriver

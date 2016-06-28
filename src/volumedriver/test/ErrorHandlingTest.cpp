@@ -965,7 +965,7 @@ const VolumeDriverTestConfig no_cluster_cache_config =
 const VolumeDriverTestConfig sync_foc_config =
     VolumeDriverTestConfig()
     .use_cluster_cache(false)
-    .foc_mode(FailOverCacheMode::Synchronous);
+    .foc_mode(DtlMode::Synchronous);
 }
 
 INSTANTIATE_TEST_CASE_P(ErrorHandlingTests,

@@ -206,10 +206,10 @@ DtlSyncBridge::getSCOFromFailOver(SCO sconame,
     }
 }
 
-FailOverCacheMode
+DtlMode
 DtlSyncBridge::mode() const
 {
-    return FailOverCacheMode::Synchronous;
+    return DtlMode::Synchronous;
 }
 
 void

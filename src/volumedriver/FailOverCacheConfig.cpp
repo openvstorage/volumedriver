@@ -43,7 +43,7 @@ operator>>(std::istream& is,
         cfg.port = boost::lexical_cast<uint16_t>(port);
         std::string mode;
         std::getline(is, mode);
-        cfg.mode = boost::lexical_cast<FailOverCacheMode>(port);
+        cfg.mode = boost::lexical_cast<DtlMode>(port);
     }
     return is;
 }

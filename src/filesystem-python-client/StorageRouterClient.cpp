@@ -335,20 +335,20 @@ BOOST_PYTHON_MODULE(storagerouterclient)
     REGISTER_OPTIONAL_CONVERTER(uint64_t);
     REGISTER_OPTIONAL_CONVERTER(float);
 
-    bpy::enum_<vd::FailOverCacheMode>("DTLMode")
-        .value("ASYNCHRONOUS", vd::FailOverCacheMode::Asynchronous)
-        .value("SYNCHRONOUS", vd::FailOverCacheMode::Synchronous)
+    bpy::enum_<vd::DtlMode>("DTLMode")
+        .value("ASYNCHRONOUS", vd::DtlMode::Asynchronous)
+        .value("SYNCHRONOUS", vd::DtlMode::Synchronous)
         ;
 
-    REGISTER_OPTIONAL_CONVERTER(vd::FailOverCacheMode);
+    REGISTER_OPTIONAL_CONVERTER(vd::DtlMode);
 
     bpy::class_<vd::FailOverCacheConfig>("DTLConfig",
                                          "DTL (Distributed Transaction Log) Configuration",
                                          bpy::init<std::string,
                                          uint16_t,
-                                         vd::FailOverCacheMode>((bpy::args("host"),
+                                         vd::DtlMode>((bpy::args("host"),
                                                                  bpy::args("port"),
-                                                                 bpy::args("mode") = vd::FailOverCacheMode::Asynchronous),
+                                                                 bpy::args("mode") = vd::DtlMode::Asynchronous),
                                                                           "Instantiate a FailOverCacheConfig\n"
                                                                           "@param host, string, IP address\n"
                                                                           "@param port, uint16, port\n"

@@ -46,7 +46,7 @@ public:
         using namespace std::literals::string_literals;
         return volumedriver::FailOverCacheConfig(host() ? *host() : "127.0.0.1"s,
                                                  port(),
-                                                 volumedriver::FailOverCacheMode::Asynchronous);
+                                                 volumedriver::DtlMode::Asynchronous);
     }
 
     static const boost::optional<std::string>

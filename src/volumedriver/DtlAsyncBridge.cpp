@@ -437,10 +437,10 @@ DtlAsyncBridge::getSCOFromFailOver(SCO sconame,
     }
 }
 
-FailOverCacheMode
+DtlMode
 DtlAsyncBridge::mode() const
 {
-    return FailOverCacheMode::Asynchronous;
+    return DtlMode::Asynchronous;
 }
 
 }
