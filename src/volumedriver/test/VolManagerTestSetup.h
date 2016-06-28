@@ -18,7 +18,7 @@
 
 #include "EventCollector.h"
 #include "ExGTest.h"
-#include "FailOverCacheTestSetup.h"
+#include "DtlTestSetup.h"
 #include "MetaDataStoreTestSetup.h"
 
 #include <boost/filesystem.hpp>
@@ -239,7 +239,7 @@ struct VolManagerTestSetupParameters
 class VolManagerTestSetup
     : public ExGTest
     , public be::BackendTestSetup
-    , public volumedrivertest::FailOverCacheTestSetup
+    , public volumedrivertest::DtlTestSetup
 {
     friend class ScopedBackendBlocker;
     template<typename> friend class FutureUnblocker;

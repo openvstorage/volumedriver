@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "FailOverCacheTestSetup.h"
+#include "DtlTestSetup.h"
 
 #include <boost/lexical_cast.hpp>
 
@@ -51,7 +51,7 @@ make_directory(const boost::optional<fs::path>& path,
 
 }
 
-FailOverCacheTestContext::FailOverCacheTestContext(FailOverCacheTestSetup& setup,
+FailOverCacheTestContext::FailOverCacheTestContext(DtlTestSetup& setup,
                                                    const boost::optional<std::string>& addr,
                                                    const uint16_t port)
     : setup_(setup)
@@ -76,7 +76,7 @@ FailOverCacheTestContext::~FailOverCacheTestContext()
 vd::DtlConfig
 FailOverCacheTestContext::config(const vd::DtlMode mode) const
 {
-    return vd::DtlConfig(FailOverCacheTestSetup::host(),
+    return vd::DtlConfig(DtlTestSetup::host(),
                                    port(),
                                    mode);
 }
@@ -88,16 +88,16 @@ FailOverCacheTestContext::backend(const be::Namespace& nspace)
 }
 
 std::string
-FailOverCacheTestSetup::addr_("127.0.0.1");
+DtlTestSetup::addr_("127.0.0.1");
 
 uint16_t
-FailOverCacheTestSetup::port_base_ =
+DtlTestSetup::port_base_ =
     youtils::System::get_env_with_default<uint16_t>("FOC_PORT_BASE", 17071);
 
 vd::DtlTransport
-FailOverCacheTestSetup::transport_(vd::DtlTransport::TCP);
+DtlTestSetup::transport_(vd::DtlTransport::TCP);
 
-FailOverCacheTestSetup::FailOverCacheTestSetup(const boost::optional<fs::path>& p)
+DtlTestSetup::DtlTestSetup(const boost::optional<fs::path>& p)
         : path(p)
 {
     if (path)
@@ -107,7 +107,7 @@ FailOverCacheTestSetup::FailOverCacheTestSetup(const boost::optional<fs::path>& 
     LOG_INFO("path " << path << ", port base " << port_base_);
 }
 
-FailOverCacheTestSetup::~FailOverCacheTestSetup()
+DtlTestSetup::~DtlTestSetup()
 {
     EXPECT_TRUE(ports_.empty()) << "there are still ports in use - prepare to crash";
     if (path)
@@ -117,7 +117,7 @@ FailOverCacheTestSetup::~FailOverCacheTestSetup()
 }
 
 uint16_t
-FailOverCacheTestSetup::get_next_foc_port() const
+DtlTestSetup::get_next_foc_port() const
 {
     uint16_t port = port_base_;
 
@@ -131,7 +131,7 @@ FailOverCacheTestSetup::get_next_foc_port() const
 }
 
 foctest_context_ptr
-FailOverCacheTestSetup::start_one_foc()
+DtlTestSetup::start_one_foc()
 {
     uint16_t port = port_base_;
 

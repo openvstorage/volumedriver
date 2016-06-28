@@ -78,8 +78,8 @@ TEST_P(cases, DISABLED_cacheserver1)
     SharedVolumePtr v1 = newVolume("volume1",
                            backend::Namespace());
 
-    v1->setDtlConfig(DtlConfig(FailOverCacheTestSetup::host(),
-                                                   FailOverCacheTestSetup::port_base(),
+    v1->setDtlConfig(DtlConfig(DtlTestSetup::host(),
+                                                   DtlTestSetup::port_base(),
                                                    GetParam().foc_mode()));
 
     ASSERT_TRUE(v1 != nullptr);
@@ -101,7 +101,7 @@ TEST_P(cases, DISABLED_cacheserver1)
                                       SnapshotName("snap1"));
     ASSERT_TRUE(v2 != nullptr);
 
-    v2->setDtlConfig(DtlConfig(FailOverCacheTestSetup::host(),
+    v2->setDtlConfig(DtlConfig(DtlTestSetup::host(),
                                                    45017,
                                                    GetParam().foc_mode()));
 

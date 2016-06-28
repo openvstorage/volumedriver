@@ -31,7 +31,7 @@ class FailOverCacheHelperTest
 {
 protected:
     FailOverCacheHelperTest()
-        : FileSystemTestBase(FileSystemTestSetupParameters("FailOverCacheTestSetup"))
+        : FileSystemTestBase(FileSystemTestSetupParameters("DtlTestSetup"))
     {}
 };
 

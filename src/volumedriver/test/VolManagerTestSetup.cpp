@@ -441,7 +441,7 @@ private:
 
 VolManagerTestSetup::VolManagerTestSetup(const VolManagerTestSetupParameters& params)
     : be::BackendTestSetup()
-    , FailOverCacheTestSetup(GetParam().foc_in_memory() ?
+    , DtlTestSetup(GetParam().foc_in_memory() ?
                              boost::none :
                              boost::optional<fs::path>(getTempPath(params.name()) / "foc"))
     , testName_(params.name())

@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "ExGTest.h"
-#include "FailOverCacheTestSetup.h"
+#include "DtlTestSetup.h"
 #include "MDSTestSetup.h"
 #include "MetaDataStoreTestSetup.h"
 #include "VolManagerTestSetup.h"
@@ -72,13 +72,13 @@ public:
              po::value<uint16_t>(&arakoon_port_base_)->default_value(12345),
              "arakoon port base")
             ("foc-address",
-             po::value<std::string>(&vdt::FailOverCacheTestSetup::addr_)->default_value(vdt::FailOverCacheTestSetup::addr_),
+             po::value<std::string>(&vdt::DtlTestSetup::addr_)->default_value(vdt::DtlTestSetup::addr_),
              "address to bind the failovercache to")
             ("foc-port-base,F",
-             po::value<uint16_t>(&vdt::FailOverCacheTestSetup::port_base_)->default_value(vdt::FailOverCacheTestSetup::port_base_),
+             po::value<uint16_t>(&vdt::DtlTestSetup::port_base_)->default_value(vdt::DtlTestSetup::port_base_),
              "FailOverCache port base")
             ("foc-transport",
-             po::value<decltype(vdt::FailOverCacheTestSetup::transport_)>(&vdt::FailOverCacheTestSetup::transport_)->default_value(vdt::FailOverCacheTestSetup::transport_),
+             po::value<decltype(vdt::DtlTestSetup::transport_)>(&vdt::DtlTestSetup::transport_)->default_value(vdt::DtlTestSetup::transport_),
              "FailOverCache transport (TCP|RSocket)")
             ("mds-port-base",
              po::value<uint16_t>(&vdt::MDSTestSetup::base_port_)->default_value(vdt::MDSTestSetup::base_port_),

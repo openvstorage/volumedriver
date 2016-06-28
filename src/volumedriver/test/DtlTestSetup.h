@@ -13,8 +13,8 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef FAILOVER_CACHE_TEST_SETUP_H_
-#define FAILOVER_CACHE_TEST_SETUP_H_
+#ifndef DTL_TEST_SETUP_H_
+#define DTL_TEST_SETUP_H_
 
 #include <memory>
 #include <set>
@@ -35,14 +35,14 @@ class VolumeDriverTest;
 namespace volumedrivertest
 {
 
-class FailOverCacheTestSetup;
+class DtlTestSetup;
 
 class FailOverCacheTestContext
 {
 private:
-    friend class FailOverCacheTestSetup;
+    friend class DtlTestSetup;
 
-    FailOverCacheTestContext(FailOverCacheTestSetup& setup,
+    FailOverCacheTestContext(DtlTestSetup& setup,
                              const boost::optional<std::string>& addr,
                              const uint16_t port);
 
@@ -51,7 +51,7 @@ private:
     FailOverCacheTestContext&
     operator=(const FailOverCacheTestContext&) = delete;
 
-    FailOverCacheTestSetup& setup_;
+    DtlTestSetup& setup_;
     const boost::optional<std::string> addr_;
     const uint16_t port_;
     distributed_transaction_log::Acceptor acceptor_;
@@ -75,20 +75,20 @@ public:
 
 typedef std::shared_ptr<FailOverCacheTestContext> foctest_context_ptr;
 
-class FailOverCacheTestSetup
+class DtlTestSetup
 {
     friend class FailOverCacheTestContext;
     friend class ::VolumeDriverTest;
 
 public:
-    explicit FailOverCacheTestSetup(const boost::optional<boost::filesystem::path>&);
+    explicit DtlTestSetup(const boost::optional<boost::filesystem::path>&);
 
-    ~FailOverCacheTestSetup();
+    ~DtlTestSetup();
 
-    FailOverCacheTestSetup(const FailOverCacheTestSetup&) = delete;
+    DtlTestSetup(const DtlTestSetup&) = delete;
 
-    FailOverCacheTestSetup&
-    operator=(const FailOverCacheTestSetup&) = delete;
+    DtlTestSetup&
+    operator=(const DtlTestSetup&) = delete;
 
     foctest_context_ptr
     start_one_foc();
@@ -117,7 +117,7 @@ public:
     const boost::optional<boost::filesystem::path> path;
 
 private:
-    DECLARE_LOGGER("FailOverCacheTestSetup");
+    DECLARE_LOGGER("DtlTestSetup");
 
     static std::string addr_;
     static uint16_t port_base_;
@@ -135,7 +135,7 @@ private:
 
 }
 
-#endif //!FAILOVER_CACHE_TEST_SETUP_H_
+#endif //!DTL_TEST_SETUP_H_
 
 // Local Variables: **
 // mode: c++ **

@@ -62,8 +62,8 @@ TEST_P(VolumeStateManagementTest, NoCache)
 
     SharedVolumePtr v = newVolume("vol1",
 			  ns1);
-    ASSERT_THROW(v->setDtlConfig(DtlConfig(FailOverCacheTestSetup::host(),
-                                                               FailOverCacheTestSetup::port_base(),
+    ASSERT_THROW(v->setDtlConfig(DtlConfig(DtlTestSetup::host(),
+                                                               DtlTestSetup::port_base(),
                                                                GetParam().foc_mode())),
                  fungi::IOException);
 
@@ -145,16 +145,16 @@ TEST_P(VolumeStateManagementTest, CreateVolumeWithRemoteCache)
     SharedVolumePtr v = newVolume("vol1",
 			  ns1);
 
-    ASSERT_THROW(v->setDtlConfig(DtlConfig(FailOverCacheTestSetup::host(),
-                                                               FailOverCacheTestSetup::port_base(),
+    ASSERT_THROW(v->setDtlConfig(DtlConfig(DtlTestSetup::host(),
+                                                               DtlTestSetup::port_base(),
                                                                GetParam().foc_mode())),
                  fungi::IOException);
 
     EXPECT_EQ(VolumeFailOverState::DEGRADED,
               v->getVolumeFailOverState());
 
-    ASSERT_THROW(v->setDtlConfig(DtlConfig(FailOverCacheTestSetup::host(),
-                                                               FailOverCacheTestSetup::port_base(),
+    ASSERT_THROW(v->setDtlConfig(DtlConfig(DtlTestSetup::host(),
+                                                               DtlTestSetup::port_base(),
                                                                GetParam().foc_mode())),
                  fungi::IOException);
 
@@ -166,8 +166,8 @@ TEST_P(VolumeStateManagementTest, CreateVolumeWithRemoteCache)
     EXPECT_EQ(VolumeFailOverState::OK_STANDALONE,
               v->getVolumeFailOverState());
 
-    ASSERT_THROW(v->setDtlConfig(DtlConfig(FailOverCacheTestSetup::host(),
-                                                               FailOverCacheTestSetup::port_base(),
+    ASSERT_THROW(v->setDtlConfig(DtlConfig(DtlTestSetup::host(),
+                                                               DtlTestSetup::port_base(),
                                                                GetParam().foc_mode())),
                  fungi::IOException);
 
@@ -211,8 +211,8 @@ TEST_P(VolumeStateManagementTest, CreateVolumeStandalone)
 
     EXPECT_EQ(VolumeFailOverState::OK_STANDALONE,
               v->getVolumeFailOverState());
-    EXPECT_THROW(v->setDtlConfig(DtlConfig(FailOverCacheTestSetup::host(),
-                                                               FailOverCacheTestSetup::port_base(),
+    EXPECT_THROW(v->setDtlConfig(DtlConfig(DtlTestSetup::host(),
+                                                               DtlTestSetup::port_base(),
                                                                GetParam().foc_mode())),
                  fungi::IOException);
 
@@ -438,8 +438,8 @@ TEST_P(VolumeStateManagementTest, CreateVolumeStandaloneLocalRestartWithFailOver
                   RemoveVolumeCompletely::F);
     ASSERT_NO_THROW(v = localRestart(ns1));
 
-    ASSERT_THROW(v->setDtlConfig(DtlConfig(FailOverCacheTestSetup::host(),
-                                                               FailOverCacheTestSetup::port_base(),
+    ASSERT_THROW(v->setDtlConfig(DtlConfig(DtlTestSetup::host(),
+                                                               DtlTestSetup::port_base(),
                                                                GetParam().foc_mode())),
                  fungi::IOException);
 
@@ -460,8 +460,8 @@ TEST_P(VolumeStateManagementTest, CreateVolumeNonLocalRestart1)
     SharedVolumePtr v = newVolume("vol1",
 			  ns1);
 
-    ASSERT_THROW(v->setDtlConfig(DtlConfig(FailOverCacheTestSetup::host(),
-                                                               FailOverCacheTestSetup::port_base(),
+    ASSERT_THROW(v->setDtlConfig(DtlConfig(DtlTestSetup::host(),
+                                                               DtlTestSetup::port_base(),
                                                                GetParam().foc_mode())),
                  fungi::IOException);
 

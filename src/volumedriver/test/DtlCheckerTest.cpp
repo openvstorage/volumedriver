@@ -40,7 +40,7 @@ TEST_P(DtlCheckerTest, auto_recovery)
                           ns);
 
     const auto port = get_next_foc_port();
-    ASSERT_THROW(v->setDtlConfig(DtlConfig(FailOverCacheTestSetup::host(),
+    ASSERT_THROW(v->setDtlConfig(DtlConfig(DtlTestSetup::host(),
                                                                port,
                                                                GetParam().foc_mode())),
                  fungi::IOException);

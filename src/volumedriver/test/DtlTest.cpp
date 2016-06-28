@@ -155,7 +155,7 @@ TEST_P(DtlTest, VolumeWithoutFOC)
     SharedVolumePtr v = newVolume("vol1",
                           ns);
 
-    ASSERT_THROW(v->setDtlConfig(DtlConfig(FailOverCacheTestSetup::host(),
+    ASSERT_THROW(v->setDtlConfig(DtlConfig(DtlTestSetup::host(),
                                                                5610,
                                                                GetParam().foc_mode())),
                  fungi::IOException);
@@ -327,7 +327,7 @@ TEST_P(DtlTest, ResetCacheServer)
     SharedVolumePtr v = newVolume("vol1",
                           ns);
     uint16_t port = 2999;
-    ASSERT_THROW(v->setDtlConfig(DtlConfig(FailOverCacheTestSetup::host(),
+    ASSERT_THROW(v->setDtlConfig(DtlConfig(DtlTestSetup::host(),
                                                                port,
                                                                GetParam().foc_mode())),
                   fungi::IOException);

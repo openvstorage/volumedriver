@@ -11,7 +11,7 @@ libvolumedrivertest_la_CPPFLAGS = \
 libvolumedrivertest_la_LDFLAGS = -static
 
 libvolumedrivertest_la_SOURCES = \
-	FailOverCacheTestSetup.cpp \
+	DtlTestSetup.cpp \
 	MDSTestSetup.cpp \
 	MetaDataStoreTestSetup.cpp
 
