@@ -172,6 +172,7 @@ ovs_ctx_new(const ovs_ctx_attr_t *attr)
             return NULL;
         }
         ctx->transport = attr->transport;
+        ctx->oflag = 0;
     }
     catch (const std::bad_alloc&)
     {
@@ -259,10 +260,10 @@ ovs_create_volume(ovs_ctx_t *ctx,
                                           errno);
                 }));
 
-    if (not _is_volume_name_valid(volume_name))
+    if ((ctx == NULL) or (not _is_volume_name_valid(volume_name)))
     {
-        errno = EINVAL; r = -1;
-        return r;
+        errno = EINVAL;
+        return (r = -1);
     }
     return (r = ctx->create_volume(volume_name, size));
 }
@@ -286,7 +287,7 @@ ovs_remove_volume(ovs_ctx_t *ctx,
                                           errno);
                 }));
 
-    if (not _is_volume_name_valid(volume_name))
+    if ((ctx == NULL) or (not _is_volume_name_valid(volume_name)))
     {
         errno = EINVAL;
         return (r = -1);
@@ -315,7 +316,7 @@ ovs_truncate_volume(ovs_ctx_t *ctx,
                                           errno);
                 }));
 
-    if (not _is_volume_name_valid(volume_name))
+    if ((ctx == NULL) or (not _is_volume_name_valid(volume_name)))
     {
         errno = EINVAL;
         return (r = -1);
@@ -347,7 +348,7 @@ ovs_snapshot_create(ovs_ctx_t *ctx,
                                           errno);
                 }));
 
-    if (not _is_volume_name_valid(volume_name))
+    if ((ctx == NULL) or (not _is_volume_name_valid(volume_name)))
     {
         errno = EINVAL;
         return (r = -1);
@@ -379,7 +380,7 @@ ovs_snapshot_rollback(ovs_ctx_t *ctx,
                                           errno);
                 }));
 
-    if (not _is_volume_name_valid(volume_name))
+    if ((ctx == NULL) or (not _is_volume_name_valid(volume_name)))
     {
         errno = EINVAL;
         return (r = -1);
@@ -409,7 +410,7 @@ ovs_snapshot_remove(ovs_ctx_t *ctx,
                                           errno);
                 }));
 
-    if (not _is_volume_name_valid(volume_name))
+    if ((ctx == NULL) or (not _is_volume_name_valid(volume_name)))
     {
         errno = EINVAL;
         return (r = -1);
@@ -446,7 +447,7 @@ ovs_snapshot_list(ovs_ctx_t *ctx,
         return -1;
     }
 
-    if (not _is_volume_name_valid(volume_name))
+    if ((ctx == NULL) or (not _is_volume_name_valid(volume_name)))
     {
         tracepoint(openvstorage_libovsvolumedriver,
                    ovs_snapshot_list_exit,
@@ -569,7 +570,7 @@ ovs_snapshot_is_synced(ovs_ctx_t *ctx,
                                           errno);
                 }));
 
-    if (not _is_volume_name_valid(volume_name))
+    if ((ctx == NULL) or (not _is_volume_name_valid(volume_name)))
     {
         errno = EINVAL;
         return (r = -1);
@@ -601,6 +602,12 @@ ovs_list_volumes(ovs_ctx_t *ctx,
                                           r,
                                           errno);
                 }));
+
+    if (ctx == NULL)
+    {
+        errno = EINVAL;
+        return (r = -1);
+    }
 
     r = ctx->list_volumes(volumes);
     if (r < 0)
@@ -969,6 +976,12 @@ ovs_buffer_t*
 ovs_allocate(ovs_ctx_t *ctx,
              size_t size)
 {
+    if (ctx == NULL)
+    {
+        errno = EINVAL;
+        return nullptr;
+    }
+
     ovs_buffer_t *buf = ctx->allocate(size);
     tracepoint(openvstorage_libovsvolumedriver,
                ovs_allocate,
@@ -1018,6 +1031,12 @@ int
 ovs_deallocate(ovs_ctx_t *ctx,
                ovs_buffer_t *ptr)
 {
+    if (ctx == NULL)
+    {
+        errno = EINVAL;
+        return -1;
+    }
+
     int r = ctx->deallocate(ptr);
     tracepoint(openvstorage_libovsvolumedriver,
                ovs_deallocate,
@@ -1384,6 +1403,13 @@ ovs_stat(ovs_ctx_t *ctx, struct stat *st)
     if (ctx == NULL || st == NULL)
     {
         errno = EINVAL;
+        tracepoint(openvstorage_libovsvolumedriver,
+                   ovs_stat_exit,
+                   ctx,
+                   st,
+                   -1,
+                   0,
+                   0);
         return -1;
     }
 
@@ -1447,4 +1473,37 @@ ovs_flush(ovs_ctx_t *ctx)
         r = -1;
     }
     return r;
+}
+
+int
+ovs_truncate(ovs_ctx_t *ctx,
+             uint64_t length)
+{
+    int r = 0, accmode;
+
+    tracepoint(openvstorage_libovsvolumedriver,
+               ovs_truncate_enter,
+               length);
+
+    auto on_exit(youtils::make_scope_exit([&]
+                {
+                    safe_errno_tracepoint(openvstorage_libovsvolumedriver,
+                                          ovs_truncate_exit,
+                                          r,
+                                          errno);
+                }));
+
+    if (ctx == NULL)
+    {
+        errno = EINVAL;
+        return (r = -1);
+    }
+
+    accmode = ctx->oflag & O_ACCMODE;
+    if (accmode == O_RDONLY)
+    {
+        errno = EBADF;
+        return -1;
+    }
+    return (r = ctx->truncate(length));
 }

@@ -128,6 +128,12 @@ struct ShmContext : public ovs_context_t
     }
 
     int
+    truncate(uint64_t size)
+    {
+        return truncate_volume(volname_.c_str(), size);
+    }
+
+    int
     snapshot_create(const char *volume_name,
                     const char *snapshot_name,
                     const uint64_t timeout)

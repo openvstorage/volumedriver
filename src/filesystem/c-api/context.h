@@ -71,6 +71,8 @@ struct ovs_context_t
 
     virtual int truncate_volume(const char *volume_name,
                                 uint64_t length) = 0;
+
+    virtual int truncate(uint64_t length) = 0;
 };
 
 static bool

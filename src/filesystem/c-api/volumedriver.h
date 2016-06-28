@@ -319,6 +319,15 @@ ovs_stat(ovs_ctx_t *ctx,
          struct stat *buf);
 
 /*
+ * Extend the size of an Open vStorage volume
+ * param ctx: Open vStorage context
+ * param length: Length bytes
+ */
+int
+ovs_truncate(ovs_ctx_t *ctx,
+             uint64_t length);
+
+/*
  * Suspend until asynchronous I/O operation or timeout complete
  * param ctx: Open vStorage context
  * param ovs_aiocb: Pointer to an AIO Control Block structure

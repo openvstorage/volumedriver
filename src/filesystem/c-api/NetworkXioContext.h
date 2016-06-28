@@ -204,6 +204,12 @@ struct NetworkXioContext : public ovs_context_t
     }
 
     int
+    truncate(uint64_t offset)
+    {
+        return truncate_volume(volname_.c_str(), offset);
+    }
+
+    int
     remove_volume(const char *volume_name)
     {
         int r;
