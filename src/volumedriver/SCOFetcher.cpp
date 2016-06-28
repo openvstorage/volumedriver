@@ -16,7 +16,7 @@
 #include "ClusterLocation.h"
 #include "DataStoreNG.h"
 #include "DtlClientInterface.h"
-#include "FailOverCacheConfig.h"
+#include "DtlConfig.h"
 #include "SCOFetcher.h"
 #include "Volume.h"
 #include "VolumeDriverError.h"
@@ -206,7 +206,7 @@ FailOverCacheSCOFetcher::disposable() const
 }
 
 RawFailOverCacheSCOFetcher::RawFailOverCacheSCOFetcher(SCO sconame,
-                                                       const FailOverCacheConfig& cfg,
+                                                       const DtlConfig& cfg,
                                                        const Namespace& ns,
                                                        const LBASize lba_size,
                                                        const ClusterMultiplier cmult,

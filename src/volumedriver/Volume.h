@@ -211,10 +211,10 @@ public:
     deleteSnapshot(const SnapshotName&);
 
     void
-    setFailOverCacheConfig(const boost::optional<FailOverCacheConfig>& config);
+    setDtlConfig(const boost::optional<DtlConfig>& config);
 
-    boost::optional<FailOverCacheConfig>
-    getFailOverCacheConfig();
+    boost::optional<DtlConfig>
+    getDtlConfig();
 
     fs::path
     getTempTLogPath() const;
@@ -666,7 +666,7 @@ private:
     writeConfigToBackend_(const VolumeConfig& cfg);
 
     void
-    writeFailOverCacheConfigToBackend_();
+    writeDtlConfigToBackend_();
 
     void
     sync_(AppendCheckSum append_chksum);
@@ -720,7 +720,7 @@ private:
     setDtlMode_(const DtlMode mode);
 
     void
-    setFailOverCacheConfig_(const FailOverCacheConfig&);
+    setDtlConfig_(const DtlConfig&);
 
     void
     setNoFailOverCache_();

@@ -19,7 +19,7 @@
 #include "../DtlServer.h"
 
 #include "../../ClusterLocation.h"
-#include "../../FailOverCacheConfig.h"
+#include "../../DtlConfig.h"
 #include "../../DtlProxy.h"
 
 #include <stdlib.h>

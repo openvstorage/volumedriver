@@ -580,8 +580,8 @@ public:
     restartVolManager(const boost::property_tree::ptree&);
 
     static void
-    setFailOverCacheConfig(const VolumeId&,
-                           const boost::optional<FailOverCacheConfig>&);
+    setDtlConfig(const VolumeId&,
+                           const boost::optional<DtlConfig>&);
 
     void
     flushFailOverCache(Volume&);

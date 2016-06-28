@@ -21,7 +21,7 @@
 #include <youtils/BuildInfoString.h>
 #include <youtils/Main.h>
 
-#include "volumedriver/FailOverCacheConfig.h"
+#include "volumedriver/DtlConfig.h"
 #include "volumedriver/DtlClientInterface.h"
 #include "volumedriver/Types.h"
 
@@ -179,7 +179,7 @@ public:
                                         LOG_WARN("Got a DEGRADED event");
                                     });
 
-        failover_bridge->newCache(std::make_unique<DtlProxy>(FailOverCacheConfig(host_,
+        failover_bridge->newCache(std::make_unique<DtlProxy>(DtlConfig(host_,
                                                                                            port_,
                                                                                            mode_),
                                                                        *ns_,

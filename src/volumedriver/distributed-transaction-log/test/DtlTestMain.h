@@ -21,7 +21,7 @@
 #include <youtils/Main.h>
 #include <backend/Namespace.h>
 
-#include <volumedriver/FailOverCacheConfig.h>
+#include <volumedriver/DtlConfig.h>
 #include <volumedriver/DtlTransport.h>
 
 class DtlTestMain
@@ -40,11 +40,11 @@ public:
     virtual void
     parse_command_line_arguments();
 
-    static volumedriver::FailOverCacheConfig
+    static volumedriver::DtlConfig
     failovercache_config()
     {
         using namespace std::literals::string_literals;
-        return volumedriver::FailOverCacheConfig(host() ? *host() : "127.0.0.1"s,
+        return volumedriver::DtlConfig(host() ? *host() : "127.0.0.1"s,
                                                  port(),
                                                  volumedriver::DtlMode::Asynchronous);
     }

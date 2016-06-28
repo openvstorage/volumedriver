@@ -32,7 +32,7 @@
 
 #include <volumedriver/Api.h>
 #include <volumedriver/VolumeDriverParameters.h>
-#include <volumedriver/FailOverCacheConfig.h>
+#include <volumedriver/DtlConfig.h>
 
 #include <filedriver/ContainerManager.h>
 
@@ -199,7 +199,7 @@ public:
 
     void
     set_manual_foc_config(const ObjectId& oid,
-                          const boost::optional<volumedriver::FailOverCacheConfig>& foc_cfg);
+                          const boost::optional<volumedriver::DtlConfig>& foc_cfg);
 
     void
     set_automatic_foc_config(const ObjectId&);
@@ -207,7 +207,7 @@ public:
     FailOverCacheConfigMode
     get_foc_config_mode(const ObjectId& oid);
 
-    boost::optional<volumedriver::FailOverCacheConfig>
+    boost::optional<volumedriver::DtlConfig>
     get_foc_config(const ObjectId& oid);
 
     void
@@ -336,7 +336,7 @@ private:
     void
     adjust_failovercache_config_(const ObjectId& volume_id,
                                  const FailOverCacheConfigMode&,
-                                 const boost::optional<volumedriver::FailOverCacheConfig>&);
+                                 const boost::optional<volumedriver::DtlConfig>&);
 
     void
     try_adjust_failovercache_config_(const ObjectId& id);

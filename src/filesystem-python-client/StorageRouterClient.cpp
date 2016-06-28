@@ -241,7 +241,7 @@ owner_tag_repr(vd::OwnerTag t)
 }
 
 std::string
-failovercache_config_repr(const vd::FailOverCacheConfig* cfg)
+failovercache_config_repr(const vd::DtlConfig* cfg)
 {
     return "DTLConfig("s + cfg->host
             + ":"s + boost::lexical_cast<std::string>(cfg->port)
@@ -342,23 +342,23 @@ BOOST_PYTHON_MODULE(storagerouterclient)
 
     REGISTER_OPTIONAL_CONVERTER(vd::DtlMode);
 
-    bpy::class_<vd::FailOverCacheConfig>("DTLConfig",
+    bpy::class_<vd::DtlConfig>("DTLConfig",
                                          "DTL (Distributed Transaction Log) Configuration",
                                          bpy::init<std::string,
                                          uint16_t,
                                          vd::DtlMode>((bpy::args("host"),
                                                                  bpy::args("port"),
                                                                  bpy::args("mode") = vd::DtlMode::Asynchronous),
-                                                                          "Instantiate a FailOverCacheConfig\n"
+                                                                          "Instantiate a DtlConfig\n"
                                                                           "@param host, string, IP address\n"
                                                                           "@param port, uint16, port\n"
                                                                           "@param mode (Asynchronous|Synchronous)\n"))
         .def("__eq__",
-             &vd::FailOverCacheConfig::operator==)
+             &vd::DtlConfig::operator==)
         .def("__repr__",
              &failovercache_config_repr)
 #define DEF_READONLY_PROP_(name)                                \
-        .def_readonly(#name, &vd::FailOverCacheConfig::name)
+        .def_readonly(#name, &vd::DtlConfig::name)
 
         DEF_READONLY_PROP_(host)
         DEF_READONLY_PROP_(port)
@@ -367,7 +367,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
 #undef DEF_READONLY_PROP_
         ;
 
-    REGISTER_OPTIONAL_CONVERTER(vd::FailOverCacheConfig);
+    REGISTER_OPTIONAL_CONVERTER(vd::DtlConfig);
 
     bpy::class_<vd::OwnerTag>("OwnerTag",
                               "OwnerTag",

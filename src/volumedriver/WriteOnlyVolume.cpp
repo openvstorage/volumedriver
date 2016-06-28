@@ -16,7 +16,7 @@
 #include "CombinedTLogReader.h"
 #include "DataStoreNG.h"
 #include "BackendTasks.h"
-#include "FailOverCacheConfig.h"
+#include "DtlConfig.h"
 #include "SCOAccessData.h"
 #include "Scrubber.h"
 #include "ScrubWork.h"
@@ -154,7 +154,7 @@ WriteOnlyVolume::newWriteOnlyVolume()
     snapshotManagement_->scheduleWriteSnapshotToBackend();
     writeConfigToBackend_();
 
-    // This used to be writeFailOverCacheConfigToBackend_
+    // This used to be writeDtlConfigToBackend_
     fs::path tmp = FileUtils::create_temp_file_in_temp_dir("write_only_cache_config");
     ALWAYS_CLEANUP_FILE(tmp);
 

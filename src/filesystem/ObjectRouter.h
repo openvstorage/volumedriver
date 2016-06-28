@@ -143,7 +143,7 @@ public:
                  std::shared_ptr<youtils::LockedArakoon> larakoon,
                  const FailOverCacheConfigMode,
                  const volumedriver::DtlMode,
-                 const boost::optional<volumedriver::FailOverCacheConfig>&,
+                 const boost::optional<volumedriver::DtlConfig>&,
                  const RegisterComponent registerize = RegisterComponent::T);
 
     ~ObjectRouter();
@@ -339,7 +339,7 @@ public:
         return boost::chrono::milliseconds(vrouter_migrate_timeout_ms.value());
     }
 
-    boost::optional<volumedriver::FailOverCacheConfig>
+    boost::optional<volumedriver::DtlConfig>
     failoverconfig_as_it_should_be() const;
 
     std::shared_ptr<events::PublisherInterface>
@@ -358,7 +358,7 @@ public:
 
     void
     set_manual_foc_config(const ObjectId& id,
-                          const boost::optional<volumedriver::FailOverCacheConfig>& foc_config);
+                          const boost::optional<volumedriver::DtlConfig>& foc_config);
 
     void
     set_automatic_foc_config(const ObjectId& id);
@@ -397,7 +397,7 @@ private:
 
     FailOverCacheConfigMode foc_config_mode_;
     volumedriver::DtlMode foc_mode_;
-    boost::optional<volumedriver::FailOverCacheConfig> foc_config_;
+    boost::optional<volumedriver::DtlConfig> foc_config_;
 
     struct RedirectCounter
     {

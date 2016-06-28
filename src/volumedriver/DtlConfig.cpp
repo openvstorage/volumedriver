@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "FailOverCacheConfig.h"
+#include "DtlConfig.h"
 
 #include <iostream>
 
@@ -24,14 +24,14 @@ namespace volumedriver
 
 std::ostream&
 operator<<(std::ostream& os,
-           const FailOverCacheConfig& cfg)
+           const DtlConfig& cfg)
 {
     return os << "foc://" << cfg.host << ":" << cfg.port << "," << cfg.mode;
 }
 
 std::istream&
 operator>>(std::istream& is,
-           FailOverCacheConfig& cfg)
+           DtlConfig& cfg)
 {
     char prefix[7];
     is.get(prefix, sizeof(prefix));

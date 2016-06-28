@@ -843,8 +843,8 @@ VolumeInfo::execute_internal(::XmlRpc::XmlRpcValue& params,
         fungi::ScopedLock l(api::getManagementMutex());
 
         const vd::VolumeConfig& cfg = api::getVolumeConfig(vol_id);
-        const boost::optional<vd::FailOverCacheConfig>&
-            maybe_focconfig = api::getFailOverCacheConfig(vol_id);
+        const boost::optional<vd::DtlConfig>&
+            maybe_focconfig = api::getDtlConfig(vol_id);
         vd::MetaDataStoreStats stats = api::getMetaDataStoreStats(vol_id);
 
         volume_info.volume_id = cfg.id_;
@@ -1877,8 +1877,8 @@ GetFailOverCacheConfig::execute_internal(::XmlRpc::XmlRpcValue& params,
     with_api_exception_conversion([&]
     {
         const vd::VolumeId volName(getID(params[0]));
-        const boost::optional<vd::FailOverCacheConfig>
-            foc_config(api::getFailOverCacheConfig(volName));
+        const boost::optional<vd::DtlConfig>
+            foc_config(api::getDtlConfig(volName));
         if (foc_config)
         {
             std::stringstream ss;
@@ -1897,11 +1897,11 @@ SetManualFailOverCacheConfig::execute_internal(::XmlRpc::XmlRpcValue& params,
     {
         auto param = params[0];
         const ObjectId oid(getID(param));
-        boost::optional<vd::FailOverCacheConfig> foc_config;
+        boost::optional<vd::DtlConfig> foc_config;
         if (param.hasMember(XMLRPCKeys::foc_config))
         {
             std::stringstream ss(param[XMLRPCKeys::foc_config]);
-            vd::FailOverCacheConfig fc("",
+            vd::DtlConfig fc("",
                                        0,
                                        vd::DtlMode::Asynchronous);
             boost::archive::text_iarchive ia(ss);

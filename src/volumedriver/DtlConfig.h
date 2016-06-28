@@ -13,12 +13,12 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef FAILOVERCACHECONFIG_H_
-#define FAILOVERCACHECONFIG_H_
-
-#include <youtils/Assert.h>
+#ifndef DTL_CONFIG_H_
+#define DTL_CONFIG_H_
 
 #include "DtlMode.h"
+
+#include <youtils/Assert.h>
 
 #include <iosfwd>
 
@@ -29,35 +29,35 @@
 namespace volumedriver
 {
 
-struct FailOverCacheConfig
+struct DtlConfig
 {
     std::string host;
     uint16_t port;
     DtlMode mode;
 
-    FailOverCacheConfig(const std::string& h,
-                        const uint16_t p,
-                        const DtlMode m)
+    DtlConfig(const std::string& h,
+              const uint16_t p,
+              const DtlMode m)
         : host(h)
         , port(p)
         , mode(m)
     {}
 
-    ~FailOverCacheConfig() = default;
+    ~DtlConfig() = default;
 
-    FailOverCacheConfig(const FailOverCacheConfig&) = default;
+    DtlConfig(const DtlConfig&) = default;
 
-    FailOverCacheConfig&
-    operator=(const FailOverCacheConfig&) = default;
+    DtlConfig&
+    operator=(const DtlConfig&) = default;
 
-    FailOverCacheConfig(FailOverCacheConfig&& other)
+    DtlConfig(DtlConfig&& other)
         : host(std::move(other.host))
         , port(other.port)
         , mode(other.mode)
     {}
 
-    FailOverCacheConfig&
-    operator=(FailOverCacheConfig&& other)
+    DtlConfig&
+    operator=(DtlConfig&& other)
     {
         if (this != &other)
         {
@@ -70,15 +70,15 @@ struct FailOverCacheConfig
     }
 
     bool
-    operator==(const FailOverCacheConfig& other) const
+    operator==(const DtlConfig& other) const
     {
         return host == other.host and
-               port == other.port and
-               mode == other.mode;
+            port == other.port and
+            mode == other.mode;
     }
 
     bool
-    operator!=(const FailOverCacheConfig& other) const
+    operator!=(const DtlConfig& other) const
     {
         return not operator==(other);
     }
@@ -112,12 +112,12 @@ struct FailOverCacheConfig
 };
 
 std::ostream&
-operator<<(std::ostream& os,
-           const FailOverCacheConfig& cfg);
+operator<<(std::ostream&,
+           const DtlConfig&);
 
 std::istream&
-operator>>(std::istream& is,
-           FailOverCacheConfig& cfg);
+operator>>(std::istream&,
+           DtlConfig&);
 
 }
 
@@ -130,21 +130,21 @@ namespace serialization
 template<typename Archive>
 inline void
 load_construct_data(Archive& /* ar */,
-                    volumedriver::FailOverCacheConfig* config,
+                    volumedriver::DtlConfig* config,
                     const unsigned /* version */)
 {
-    new(config) volumedriver::FailOverCacheConfig("",
-                                                  0,
-                                                  volumedriver::DtlMode::Asynchronous);
+    new(config) volumedriver::DtlConfig("",
+                                        0,
+                                        volumedriver::DtlMode::Asynchronous);
 }
 
 }
 
 }
 
-BOOST_CLASS_VERSION(volumedriver::FailOverCacheConfig, 1);
+BOOST_CLASS_VERSION(volumedriver::DtlConfig, 1);
 
-#endif // FAILOVERCACHECONFIG_H_
+#endif // DTL_CONFIG_H_
 
 // Local Variables: **
 // mode: c++ **

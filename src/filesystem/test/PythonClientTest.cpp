@@ -191,7 +191,7 @@ protected:
     void
     check_foc_config(const std::string& vname,
                      const vfs::FailOverCacheConfigMode exp_mode,
-                     const boost::optional<vd::FailOverCacheConfig>& exp_config)
+                     const boost::optional<vd::DtlConfig>& exp_config)
     {
         EXPECT_EQ(exp_mode,
                   client_.get_failover_cache_config_mode(vname));
@@ -208,10 +208,10 @@ protected:
                   boost::lexical_cast<vd::VolumeFailOverState>(info.failover_mode));
     }
 
-    vd::FailOverCacheConfig
+    vd::DtlConfig
     check_initial_foc_config(const std::string& vname)
     {
-        const vd::FailOverCacheConfig cfg(remote_config().host,
+        const vd::DtlConfig cfg(remote_config().host,
                                           remote_config().failovercache_port,
                                           vd::DtlMode::Asynchronous);
         check_foc_config(vname,
@@ -1682,7 +1682,7 @@ TEST_F(PythonClientTest, failovercache_config)
     const vfs::FrontendPath vpath(make_volume_name("/failovercacheconfig-test"));
     const std::string vname(create_file(vpath, 10 << 20));
 
-    const vd::FailOverCacheConfig cfg1(check_initial_foc_config(vname));
+    const vd::DtlConfig cfg1(check_initial_foc_config(vname));
 
     check_foc_state(vname,
                     vd::VolumeFailOverState::OK_SYNC);
@@ -1700,7 +1700,7 @@ TEST_F(PythonClientTest, failovercache_config)
 
     //
 
-    const vd::FailOverCacheConfig cfg2(local_config().host,
+    const vd::DtlConfig cfg2(local_config().host,
                                        local_config().failovercache_port,
                                        vd::DtlMode::Asynchronous);
 
@@ -1719,7 +1719,7 @@ TEST_F(PythonClientTest, failovercache_config)
 
     //
 
-    const vd::FailOverCacheConfig cfg3("somewhereoutthere"s,
+    const vd::DtlConfig cfg3("somewhereoutthere"s,
                                        local_config().failovercache_port,
                                        vd::DtlMode::Asynchronous);
 
@@ -1744,7 +1744,7 @@ TEST_F(PythonClientTest, failovercache_config)
 
     //
 
-    const vd::FailOverCacheConfig cfg4(cfg1.host,
+    const vd::DtlConfig cfg4(cfg1.host,
                                        cfg1.port,
                                        vd::DtlMode::Synchronous);
 

@@ -31,7 +31,7 @@
 #include <volumedriver/DtlTransport.h>
 #include <volumedriver/MDSNodeConfig.h>
 #include <volumedriver/MetaDataBackendConfig.h>
-#include <volumedriver/FailOverCacheConfig.h>
+#include <volumedriver/DtlConfig.h>
 
 namespace initialized_params
 {

@@ -339,18 +339,18 @@ PythonClient::get_failover_cache_config_mode(const std::string& volume_id)
     return foc_cm;
 }
 
-boost::optional<vd::FailOverCacheConfig>
+boost::optional<vd::DtlConfig>
 PythonClient::get_failover_cache_config(const std::string& volume_id)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
     auto rsp(call(GetFailOverCacheConfig::method_name(), req));
-    boost::optional<vd::FailOverCacheConfig> foc_config;
+    boost::optional<vd::DtlConfig> foc_config;
     if (rsp.hasMember(XMLRPCKeys::foc_config))
     {
         std::stringstream ss(rsp[XMLRPCKeys::foc_config]);
         boost::archive::text_iarchive ia(ss);
-        vd::FailOverCacheConfig fc("",
+        vd::DtlConfig fc("",
                                    0,
                                    vd::DtlMode::Asynchronous);
         ia >> fc;
@@ -361,7 +361,7 @@ PythonClient::get_failover_cache_config(const std::string& volume_id)
 
 void
 PythonClient::set_manual_failover_cache_config(const std::string& volume_id,
-                                               const boost::optional<vd::FailOverCacheConfig>& foc_config)
+                                               const boost::optional<vd::DtlConfig>& foc_config)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;

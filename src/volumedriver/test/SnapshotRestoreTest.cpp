@@ -237,7 +237,7 @@ TEST_P(SnapshotRestoreTest, TestFailOver)
                           VolumeSize((1 << 18) * 512),
                           SCOMultiplier(1));
 
-    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+    v->setDtlConfig(foc_ctx->config(GetParam().foc_mode()));
 
     VolumeConfig cfg = v->get_config();
     v->createSnapshot(SnapshotName("snap0"));

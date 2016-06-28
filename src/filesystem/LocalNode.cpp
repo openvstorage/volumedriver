@@ -1760,35 +1760,35 @@ LocalNode::transfer(const Object& obj,
 void
 LocalNode::adjust_failovercache_config_(const ObjectId& id,
                                         const FailOverCacheConfigMode& mode,
-                                        const boost::optional<vd::FailOverCacheConfig>& config)
+                                        const boost::optional<vd::DtlConfig>& config)
 {
     ASSERT_LOCKABLE_LOCKED(api::getManagementMutex());
 
     LOG_INFO(id);
 
     const vd::VolumeId& vid = static_cast<const vd::VolumeId>(id);
-    const boost::optional<vd::FailOverCacheConfig>
-        old_config(api::getFailOverCacheConfig(vid));
+    const boost::optional<vd::DtlConfig>
+        old_config(api::getDtlConfig(vid));
 
     vrouter_.object_registry()->set_foc_config_mode(id,
                                                     mode);
 
     if (old_config != config)
     {
-        LOG_INFO(id << ": setting FailOverCacheConfig from " <<
+        LOG_INFO(id << ": setting DtlConfig from " <<
                  old_config << " -> " << config);
         try
         {
-            api::setFailOverCacheConfig(vid,
+            api::setDtlConfig(vid,
                                         config);
         }
         CATCH_STD_ALL_LOG_IGNORE(id <<
-                                 ": error while setting FailOverCacheConfig to " <<
+                                 ": error while setting DtlConfig to " <<
                                  config);
     }
     else
     {
-        LOG_INFO(id << ": FailOverCacheConfig is unchanged: " << old_config);
+        LOG_INFO(id << ": DtlConfig is unchanged: " << old_config);
     }
 }
 
@@ -1871,7 +1871,7 @@ LocalNode::volume_potential(const ObjectId& id)
 
 void
 LocalNode::set_manual_foc_config(const ObjectId& oid,
-                                 const boost::optional<vd::FailOverCacheConfig>& cfg)
+                                 const boost::optional<vd::DtlConfig>& cfg)
 {
     adjust_failovercache_config_(oid,
                                  FailOverCacheConfigMode::Manual,
@@ -1886,10 +1886,10 @@ LocalNode::set_automatic_foc_config(const ObjectId& oid)
                                  vrouter_.failoverconfig_as_it_should_be());
 }
 
-boost::optional<volumedriver::FailOverCacheConfig>
+boost::optional<volumedriver::DtlConfig>
 LocalNode::get_foc_config(const ObjectId& oid)
 {
-    return api::getFailOverCacheConfig(static_cast<const vd::VolumeId>(oid));
+    return api::getDtlConfig(static_cast<const vd::VolumeId>(oid));
 }
 
 FailOverCacheConfigMode

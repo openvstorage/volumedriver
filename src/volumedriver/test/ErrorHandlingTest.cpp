@@ -175,7 +175,7 @@ public:
     startFOC()
     {
         foc_ctx_ = start_one_foc();
-        vol_->setFailOverCacheConfig(foc_ctx_->config(GetParam().foc_mode()));
+        vol_->setDtlConfig(foc_ctx_->config(GetParam().foc_mode()));
     }
 
     void
@@ -183,7 +183,7 @@ public:
     {
         try
         {
-            vol_->setFailOverCacheConfig(boost::none);
+            vol_->setDtlConfig(boost::none);
         }
         catch (std::exception&)
         {
@@ -572,10 +572,10 @@ public:
         ASSERT_THROW(vol_->setFOCTimeout(boost::chrono::seconds(42)),
                      std::exception);
 
-        ASSERT_THROW(vol_->setFailOverCacheConfig(boost::none),
+        ASSERT_THROW(vol_->setDtlConfig(boost::none),
                      std::exception);
 
-        ASSERT_THROW(vol_->setFailOverCacheConfig(foc_ctx_->config(GetParam().foc_mode())),
+        ASSERT_THROW(vol_->setDtlConfig(foc_ctx_->config(GetParam().foc_mode())),
                      std::exception);
 
         // this one's fishy, since there's no proof that it throws because it's halted

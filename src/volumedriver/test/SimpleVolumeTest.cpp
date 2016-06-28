@@ -2514,9 +2514,9 @@ TEST_P(SimpleVolumeTest, synchronous_foc)
     SharedVolumePtr v = newVolume(*wrns);
 
     auto foc_ctx(start_one_foc());
-    FailOverCacheConfig foc_config(foc_ctx->config(DtlMode::Synchronous));
+    DtlConfig foc_config(foc_ctx->config(DtlMode::Synchronous));
 
-    v->setFailOverCacheConfig(foc_config);
+    v->setDtlConfig(foc_config);
 
     ASSERT_EQ(VolumeFailOverState::OK_SYNC,
               v->getVolumeFailOverState());
@@ -2665,7 +2665,7 @@ TEST_P(SimpleVolumeTest, dtl_queue_depth_and_large_requests)
     SharedVolumePtr v = newVolume(*wrns);
 
     auto foc_ctx(start_one_foc());
-    v->setFailOverCacheConfig(foc_ctx->config(DtlMode::Asynchronous));
+    v->setDtlConfig(foc_ctx->config(DtlMode::Asynchronous));
 
     const size_t size = 10 * v->getClusterSize();
 

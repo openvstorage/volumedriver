@@ -32,7 +32,7 @@
 namespace volumedriver
 {
 
-class FailOverCacheConfig;
+class DtlConfig;
 class Volume;
 
 class SCOFetcher
@@ -110,7 +110,7 @@ class RawFailOverCacheSCOFetcher
 {
 public:
     RawFailOverCacheSCOFetcher(SCO,
-                               const FailOverCacheConfig&,
+                               const DtlConfig&,
                                const Namespace&,
                                const LBASize,
                                const ClusterMultiplier,

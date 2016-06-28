@@ -22,7 +22,7 @@
 #include "ClusterCache.h"
 #include "ClusterCount.h"
 #include "Events.h"
-#include "FailOverCacheConfig.h"
+#include "DtlConfig.h"
 #include "MetaDataStoreStats.h"
 #include "OwnerTag.h"
 #include "PerformanceCounters.h"
@@ -342,11 +342,11 @@ public:
     getFailOverMode(const volumedriver::VolumeId&);
 
     static void
-    setFailOverCacheConfig(const volumedriver::VolumeId&,
-                           const boost::optional<volumedriver::FailOverCacheConfig>&);
+    setDtlConfig(const volumedriver::VolumeId&,
+                           const boost::optional<volumedriver::DtlConfig>&);
 
-    static boost::optional<volumedriver::FailOverCacheConfig>
-    getFailOverCacheConfig(const volumedriver::VolumeId& volname);
+    static boost::optional<volumedriver::DtlConfig>
+    getDtlConfig(const volumedriver::VolumeId& volname);
 
     static uint64_t
     getCurrentSCOCount(const volumedriver::VolumeId&);

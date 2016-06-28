@@ -28,7 +28,7 @@
 #include "SCOToolCut.h"
 #include "EntryToolCut.h"
 
-#include "../FailOverCacheConfig.h"
+#include "../DtlConfig.h"
 
 #include <iostream>
 #include <string>
@@ -156,7 +156,7 @@ BOOST_PYTHON_MODULE(ToolCut)
                                                    "@param a backend\n"
                                                    "@param a string, the namespace to connect to"))
         .def(init<const std::string&,
-             const std::string&>("Creation from a VolumeConfig file and a FailOverCacheConfig file (as they are stored on the backend).\n"
+             const std::string&>("Creation from a VolumeConfig file and a DtlConfig file (as they are stored on the backend).\n"
                                  "@param a string, the path to the VolumeConfig file\n"
                                  "@param a string, the path to the FailoverCacheConfig file"))
         .def("__str__", &VolumeInfo::str)
@@ -196,7 +196,7 @@ BOOST_PYTHON_MODULE(ToolCut)
              "@returns a VolumeRole enum value")
         .def("failOverCacheType", &VolumeInfo::failOverCacheType,
              "get Failover Cache type.\n"
-             "@returns a FailOverCacheConfig enum value")
+             "@returns a DtlConfig enum value")
         .def("failOverCacheHost", &VolumeInfo::failOverCacheHost,
              "Get the Failover cache host or the empty string.\n"
              "@returns a string, the failover cache host")

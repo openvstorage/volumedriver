@@ -88,7 +88,7 @@ TEST_P(FailOverCacheTester, empty_flush)
 
     SharedVolumePtr v = newVolume(vid,
                           ns);
-    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+    v->setDtlConfig(foc_ctx->config(GetParam().foc_mode()));
     v->sync();
 }
 
@@ -102,7 +102,7 @@ TEST_P(FailOverCacheTester, focTimeout)
 
     SharedVolumePtr v = newVolume(vid,
                           ns);
-    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+    v->setDtlConfig(foc_ctx->config(GetParam().foc_mode()));
 
     {
         fungi::ScopedLock l(api::getManagementMutex());
@@ -126,7 +126,7 @@ TEST_P(FailOverCacheTester, VolumeWithFOC)
 
     SharedVolumePtr v = newVolume("vol1",
                           ns);
-    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+    v->setDtlConfig(foc_ctx->config(GetParam().foc_mode()));
 
     for(int i =0; i < 128; ++i)
     {
@@ -155,7 +155,7 @@ TEST_P(FailOverCacheTester, VolumeWithoutFOC)
     SharedVolumePtr v = newVolume("vol1",
                           ns);
 
-    ASSERT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
+    ASSERT_THROW(v->setDtlConfig(DtlConfig(FailOverCacheTestSetup::host(),
                                                                5610,
                                                                GetParam().foc_mode())),
                  fungi::IOException);
@@ -193,7 +193,7 @@ TEST_P(FailOverCacheTester, StopRace)
                       ns);
         ASSERT_TRUE(v != nullptr);
 
-        v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+        v->setDtlConfig(foc_ctx->config(GetParam().foc_mode()));
 
         for(int i =0; i < 128; ++i)
         {
@@ -236,7 +236,7 @@ TEST_P(FailOverCacheTester, StopCacheServer)
 
         ASSERT_TRUE(v != nullptr);
 
-        v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+        v->setDtlConfig(foc_ctx->config(GetParam().foc_mode()));
 
         for(int i = 0; i < 128; ++i)
         {
@@ -281,7 +281,7 @@ TEST_P(FailOverCacheTester, CacheServerHasNoMemory)
 
         ASSERT_LT(0, num_clusters);
 
-        v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+        v->setDtlConfig(foc_ctx->config(GetParam().foc_mode()));
 
         ASSERT_EQ(VolumeFailOverState::OK_SYNC,
                   v->getVolumeFailOverState());
@@ -309,7 +309,7 @@ TEST_P(FailOverCacheTester, CacheServerHasNoMemory)
     {
         auto foc_ctx(start_one_foc());
 
-        v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+        v->setDtlConfig(foc_ctx->config(GetParam().foc_mode()));
 
         check_num_entries(*v, 0);
         destroyVolume(v,
@@ -327,7 +327,7 @@ TEST_P(FailOverCacheTester, ResetCacheServer)
     SharedVolumePtr v = newVolume("vol1",
                           ns);
     uint16_t port = 2999;
-    ASSERT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
+    ASSERT_THROW(v->setDtlConfig(DtlConfig(FailOverCacheTestSetup::host(),
                                                                port,
                                                                GetParam().foc_mode())),
                   fungi::IOException);
@@ -338,7 +338,7 @@ TEST_P(FailOverCacheTester, ResetCacheServer)
         if(i % 2)
         {
             auto foc_ctx(start_one_foc());
-            v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+            v->setDtlConfig(foc_ctx->config(GetParam().foc_mode()));
         }
 
         writeToVolume(*v,
@@ -361,7 +361,7 @@ TEST_P(FailOverCacheTester, ClearCacheServer)
     SharedVolumePtr v = newVolume("vol1",
 			  ns);
 
-    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+    v->setDtlConfig(foc_ctx->config(GetParam().foc_mode()));
 
     const unsigned numwrites = drand48() * 128;
 
@@ -396,7 +396,7 @@ TEST_P(FailOverCacheTester, test2)
     SharedVolumePtr v = newVolume("vol1",
                           ns);
 
-    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+    v->setDtlConfig(foc_ctx->config(GetParam().foc_mode()));
 
     writeToVolume(*v,
                   0,
@@ -435,7 +435,7 @@ TEST_P(FailOverCacheTester, test3)
     SharedVolumePtr v = newVolume("vol1",
                           ns);
 
-    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+    v->setDtlConfig(foc_ctx->config(GetParam().foc_mode()));
 
     for(int i =0; i < 50; ++i)
     {
@@ -464,7 +464,7 @@ TEST_P(FailOverCacheTester, resetToSelf)
 
     SharedVolumePtr v = newVolume("vol1",
                           ns);
-    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+    v->setDtlConfig(foc_ctx->config(GetParam().foc_mode()));
 
     const TLogId tlog_id1(v->getSnapshotManagement().getCurrentTLogId());
     const unsigned entries = 32;
@@ -473,7 +473,7 @@ TEST_P(FailOverCacheTester, resetToSelf)
     {
         writeToVolume(*v, i * 4096, 4096, "bdv");
     }
-    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+    v->setDtlConfig(foc_ctx->config(GetParam().foc_mode()));
 
     const TLogId tlog_id2(v->getSnapshotManagement().getCurrentTLogId());
     EXPECT_NE(tlog_id1,
@@ -515,11 +515,11 @@ TEST_P(FailOverCacheTester, resetToOther)
     EXPECT_EQ(VolumeFailOverState::OK_STANDALONE,
               v->getVolumeFailOverState());
 
-    EXPECT_NO_THROW(v->setFailOverCacheConfig(foc_ctx1->config(GetParam().foc_mode())));
+    EXPECT_NO_THROW(v->setDtlConfig(foc_ctx1->config(GetParam().foc_mode())));
 
-    EXPECT_NO_THROW(v->setFailOverCacheConfig(foc_ctx2->config(GetParam().foc_mode())));
+    EXPECT_NO_THROW(v->setDtlConfig(foc_ctx2->config(GetParam().foc_mode())));
 
-    EXPECT_NO_THROW(v->setFailOverCacheConfig(foc_ctx1->config(GetParam().foc_mode())));
+    EXPECT_NO_THROW(v->setDtlConfig(foc_ctx1->config(GetParam().foc_mode())));
 
     EXPECT_TRUE(v->getVolumeFailOverState() == VolumeFailOverState::KETCHUP or
                 v->getVolumeFailOverState() == VolumeFailOverState::OK_SYNC);
@@ -550,7 +550,7 @@ TEST_P(FailOverCacheTester, TLogsAreRemoved)
     SharedVolumePtr v = newVolume("vol1",
                           ns);
 
-    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+    v->setDtlConfig(foc_ctx->config(GetParam().foc_mode()));
 
     for(int i =0; i < 16; ++i)
     {
@@ -614,11 +614,11 @@ TEST_P(FailOverCacheTester, unregister_removes_dtl_backend)
 
     EXPECT_TRUE(foc_ctx->backend(ns_ptr->ns()) == nullptr);
 
-    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+    v->setDtlConfig(foc_ctx->config(GetParam().foc_mode()));
 
     EXPECT_TRUE(foc_ctx->backend(ns_ptr->ns()) != nullptr);
 
-    v->setFailOverCacheConfig(boost::none);
+    v->setDtlConfig(boost::none);
 
     EXPECT_TRUE(foc_ctx->backend(ns_ptr->ns()) == nullptr);
 }
@@ -633,7 +633,7 @@ TEST_P(FailOverCacheTester, DirectoryRemovedOnUnRegister)
     SharedVolumePtr v = newVolume("vol1",
                                   ns);
 
-    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+    v->setDtlConfig(foc_ctx->config(GetParam().foc_mode()));
 
     boost::optional<fs::path> foc_ns_path;
 
@@ -656,7 +656,7 @@ TEST_P(FailOverCacheTester, DirectoryRemovedOnUnRegister)
 
         ASSERT_FALSE(fs::is_empty(*foc_ns_path));
 
-        v->setFailOverCacheConfig(boost::none);
+        v->setDtlConfig(boost::none);
 
         EXPECT_FALSE(fs::exists(*foc_ns_path));
     }
@@ -669,7 +669,7 @@ TEST_P(FailOverCacheTester, adding_and_flushing)
     auto wrns(make_random_namespace());
 
     SharedVolumePtr v = newVolume(*wrns);
-    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+    v->setDtlConfig(foc_ctx->config(GetParam().foc_mode()));
 
     DtlClientInterface& foc = *v->getFailOver();
 
@@ -786,7 +786,7 @@ TEST_P(FailOverCacheTester, non_standard_cluster_size)
                           default_lba_size(),
                           cmult);
 
-    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+    v->setDtlConfig(foc_ctx->config(GetParam().foc_mode()));
 
     SCOPED_BLOCK_BACKEND(*v);
 
@@ -854,7 +854,7 @@ TEST_P(FailOverCacheTester, wrong_cluster_size)
                           default_lba_size(),
                           cmult);
 
-    v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+    v->setDtlConfig(foc_ctx->config(GetParam().foc_mode()));
 
     SCOPED_BLOCK_BACKEND(*v);
 

@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "FailOverCacheConfig.h"
+#include "DtlConfig.h"
 #include "DtlProxy.h"
 #include "Volume.h"
 
@@ -24,7 +24,7 @@ namespace volumedriver
 
 using namespace fungi;
 
-DtlProxy::DtlProxy(const FailOverCacheConfig& cfg,
+DtlProxy::DtlProxy(const DtlConfig& cfg,
                                        const Namespace& ns,
                                        const LBASize lba_size,
                                        const ClusterMultiplier cluster_mult,

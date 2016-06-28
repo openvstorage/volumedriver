@@ -18,7 +18,7 @@
 #include <boost/random/uniform_int_distribution.hpp>
 
 #include <volumedriver/BackendNamesFilter.h>
-#include <volumedriver/FailOverCacheConfig.h>
+#include <volumedriver/DtlConfig.h>
 #include <volumedriver/DtlConfigWrapper.h>
 #include <volumedriver/SCOAccessData.h>
 #include <volumedriver/SnapshotManagement.h>

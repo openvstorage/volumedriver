@@ -30,13 +30,13 @@
 namespace volumedriver
 {
 
-class FailOverCacheConfig;
+class DtlConfig;
 class Volume;
 
 class DtlProxy
 {
 public:
-    DtlProxy(const FailOverCacheConfig&,
+    DtlProxy(const DtlConfig&,
                        const Namespace&,
                        const LBASize,
                        const ClusterMultiplier,

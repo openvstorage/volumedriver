@@ -23,7 +23,7 @@
 
 #include <youtils/Logging.h>
 
-#include "../FailOverCacheConfig.h"
+#include "../DtlConfig.h"
 #include "../DtlProxy.h"
 #include "../DtlTransport.h"
 #include "../distributed-transaction-log/Backend.h"
@@ -66,7 +66,7 @@ public:
         return port_;
     }
 
-    volumedriver::FailOverCacheConfig
+    volumedriver::DtlConfig
     config(const volumedriver::DtlMode) const;
 
     std::shared_ptr<distributed_transaction_log::Backend>

@@ -65,7 +65,7 @@ ObjectRouter::ObjectRouter(const bpt::ptree& pt,
                            std::shared_ptr<yt::LockedArakoon>(larakoon),
                            const FailOverCacheConfigMode foc_config_mode,
                            const vd::DtlMode foc_mode,
-                           const boost::optional<vd::FailOverCacheConfig>& foc_config,
+                           const boost::optional<vd::DtlConfig>& foc_config,
                            const RegisterComponent registrate)
     : VolumeDriverComponent(registrate,
                             pt)
@@ -1628,7 +1628,7 @@ ObjectRouter::checkConfig(const bpt::ptree& pt,
     return result;
 }
 
-boost::optional<vd::FailOverCacheConfig>
+boost::optional<vd::DtlConfig>
 ObjectRouter::failoverconfig_as_it_should_be() const
 {
     switch (foc_config_mode_)
@@ -1662,7 +1662,7 @@ ObjectRouter::failoverconfig_as_it_should_be() const
                     it = node_map_.begin();
                 }
 
-                return vd::FailOverCacheConfig(it->second->config.host,
+                return vd::DtlConfig(it->second->config.host,
                                                it->second->config.failovercache_port,
                                                foc_mode_);
             }
@@ -1713,7 +1713,7 @@ ObjectRouter::get_foc_config_mode(const ObjectId& oid)
 
 void
 ObjectRouter::set_manual_foc_config(const ObjectId& oid,
-                                    const boost::optional<volumedriver::FailOverCacheConfig>& foc_config)
+                                    const boost::optional<volumedriver::DtlConfig>& foc_config)
 {
     local_node_()->set_manual_foc_config(oid, foc_config);
 }

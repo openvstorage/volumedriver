@@ -1441,12 +1441,12 @@ VolManagerTestSetup::readVolume(Volume& vol,
 }
 
 void
-VolManagerTestSetup::setFailOverCacheConfig(const VolumeId& volid,
-                                            const boost::optional<FailOverCacheConfig>& maybe_config)
+VolManagerTestSetup::setDtlConfig(const VolumeId& volid,
+                                            const boost::optional<DtlConfig>& maybe_config)
 {
     SharedVolumePtr v;
     ASSERT_NO_THROW(v = VolManager::get()->findVolume_(volid));
-    v->setFailOverCacheConfig(maybe_config);
+    v->setDtlConfig(maybe_config);
 }
 
 

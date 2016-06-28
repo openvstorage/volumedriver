@@ -16,7 +16,7 @@
 #ifndef VD_DTL_CONFIG_WRAPPER_H_
 #define VD_DTL_CONFIG_WRAPPER_H_
 
-#include "FailOverCacheConfig.h"
+#include "DtlConfig.h"
 
 #include <boost/optional.hpp>
 
@@ -82,14 +82,14 @@ public:
             0;
     }
 
-    const boost::optional<FailOverCacheConfig>&
+    const boost::optional<DtlConfig>&
     config() const
     {
         return config_;
     }
 
     void
-    set(const boost::optional<FailOverCacheConfig>& config)
+    set(const boost::optional<DtlConfig>& config)
     {
         config_ = config;
     }
@@ -107,7 +107,7 @@ public:
     }
 
 private:
-    boost::optional<FailOverCacheConfig> config_;
+    boost::optional<DtlConfig> config_;
 
     friend class boost::serialization::access;
     BOOST_SERIALIZATION_SPLIT_MEMBER();
@@ -129,7 +129,7 @@ private:
 
             if (t == CacheType::Remote)
             {
-                config_ = FailOverCacheConfig(h,
+                config_ = DtlConfig(h,
                                               p,
                                               DtlMode::Asynchronous);
             }

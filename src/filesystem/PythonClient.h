@@ -36,7 +36,7 @@
 #include <youtils/UpdateReport.h>
 
 #include <volumedriver/MetaDataBackendConfig.h>
-#include <volumedriver/FailOverCacheConfig.h>
+#include <volumedriver/DtlConfig.h>
 
 namespace volumedriverfs
 {
@@ -246,12 +246,12 @@ public:
     FailOverCacheConfigMode
     get_failover_cache_config_mode(const std::string& volume_id);
 
-    boost::optional<volumedriver::FailOverCacheConfig>
+    boost::optional<volumedriver::DtlConfig>
     get_failover_cache_config(const std::string& volume_id);
 
     void
     set_manual_failover_cache_config(const std::string& volume_id,
-                                     const boost::optional<volumedriver::FailOverCacheConfig>& foc_config);
+                                     const boost::optional<volumedriver::DtlConfig>& foc_config);
 
     void
     set_automatic_failover_cache_config(const std::string& volume_id);

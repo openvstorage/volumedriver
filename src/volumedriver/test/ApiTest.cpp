@@ -506,8 +506,8 @@ TEST_P(ApiTest, failOverCacheConfig)
 
     {
         fungi::ScopedLock l(api::getManagementMutex());
-        const boost::optional<FailOverCacheConfig>& foc_cfg =
-            api::getFailOverCacheConfig(vol_id);
+        const boost::optional<DtlConfig>& foc_cfg =
+            api::getDtlConfig(vol_id);
 
         EXPECT_EQ(boost::none,
                   foc_cfg);
@@ -517,11 +517,11 @@ TEST_P(ApiTest, failOverCacheConfig)
 
     {
         fungi::ScopedLock l(api::getManagementMutex());
-        api::setFailOverCacheConfig(vol_id,
+        api::setDtlConfig(vol_id,
                                     foc_ctx->config(GetParam().foc_mode()));
 
-        const boost::optional<FailOverCacheConfig>& foc_cfg =
-            api::getFailOverCacheConfig(vol_id);
+        const boost::optional<DtlConfig>& foc_cfg =
+            api::getDtlConfig(vol_id);
 
         ASSERT_NE(boost::none,
                   foc_cfg);
@@ -777,7 +777,7 @@ TEST_P(ApiTest, destroyVolumeVariants)
 
         auto foc_ctx(start_one_foc());
 
-        setFailOverCacheConfig(volid,
+        setDtlConfig(volid,
                                foc_ctx->config(GetParam().foc_mode()));
 
         ASSERT_NO_THROW(api::destroyVolume(volid,

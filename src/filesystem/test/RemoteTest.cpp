@@ -596,7 +596,7 @@ public:
     void
     check_foc_state(const vfs::ObjectId& id,
                     const vfs::FailOverCacheConfigMode exp_mode,
-                    const boost::optional<vd::FailOverCacheConfig>& exp_config,
+                    const boost::optional<vd::DtlConfig>& exp_config,
                     const vd::VolumeFailOverState exp_state)
     {
         EXPECT_EQ(exp_mode,
@@ -608,7 +608,7 @@ public:
     }
 
     void
-    test_migration_and_manual_foc_config(const boost::optional<vd::FailOverCacheConfig>& manual_cfg,
+    test_migration_and_manual_foc_config(const boost::optional<vd::DtlConfig>& manual_cfg,
                                          const vd::VolumeFailOverState state)
     {
         const uint64_t vsize = 1ULL << 20;

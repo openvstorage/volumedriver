@@ -118,7 +118,7 @@ is_volume(const DirectoryEntryPtr& dentry)
     return dentry->type() == DirectoryEntry::Type::Volume;
 }
 
-boost::optional<vd::FailOverCacheConfig>
+boost::optional<vd::DtlConfig>
 make_foc_config(const std::string& host,
                 const uint16_t port,
                 const vd::DtlMode mode)
@@ -129,7 +129,7 @@ make_foc_config(const std::string& host,
     }
     else
     {
-        return vd::FailOverCacheConfig(host,
+        return vd::DtlConfig(host,
                                        port,
                                        mode);
     }

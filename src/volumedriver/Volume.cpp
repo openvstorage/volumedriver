@@ -461,7 +461,7 @@ Volume::localRestart()
 
     if (foc_config_wrapper_.config())
     {
-        FailOverCacheConfig foc_cfg = foc_config_wrapper_.config().get();
+        DtlConfig foc_cfg = foc_config_wrapper_.config().get();
         std::unique_ptr<DtlProxy> cache;
 
         try
@@ -536,7 +536,7 @@ Volume::newVolume()
 
     snapshotManagement_->scheduleWriteSnapshotToBackend();
     writeConfigToBackend_(cfg);
-    writeFailOverCacheConfigToBackend_();
+    writeDtlConfigToBackend_();
     setVolumeFailOverState(VolumeFailOverState::OK_STANDALONE);
 
     register_with_cluster_cache_(getOwnerTag());
@@ -583,7 +583,7 @@ Volume::backend_restart(const CloneTLogs& restartTLogs,
 
     if (foc_config_wrapper_.config())
     {
-        FailOverCacheConfig foc_cfg = foc_config_wrapper_.config().get();
+        DtlConfig foc_cfg = foc_config_wrapper_.config().get();
         std::unique_ptr<DtlProxy> cache;
 
         try
@@ -1241,8 +1241,8 @@ Volume::get_config() const
     return config_;
 }
 
-boost::optional<FailOverCacheConfig>
-Volume::getFailOverCacheConfig()
+boost::optional<DtlConfig>
+Volume::getDtlConfig()
 {
     return foc_config_wrapper_.config();
 }
@@ -1527,7 +1527,7 @@ Volume::cloneFromParentSnapshot(const yt::UUID& parent_snap_uuid,
                           max_non_disposable);
 
     writeConfigToBackend_(cfg);
-    writeFailOverCacheConfigToBackend_();
+    writeDtlConfigToBackend_();
     setVolumeFailOverState(VolumeFailOverState::OK_STANDALONE);
 
     metaDataStore_->processCloneTLogs(clone_tlogs,
@@ -2149,7 +2149,7 @@ Volume::check_and_fix_failovercache()
             LOG_VPERIODIC("Trying to unset the failover cache");
             try
             {
-                setFailOverCacheConfig(boost::none);
+                setDtlConfig(boost::none);
             }
             catch(std::exception& e)
             {
@@ -2171,7 +2171,7 @@ Volume::check_and_fix_failovercache()
                           *foc_config_wrapper_.config());
             try
             {
-                setFailOverCacheConfig(foc_config_wrapper_.config());
+                setDtlConfig(foc_config_wrapper_.config());
             }
             catch(std::exception& e)
             {
@@ -2212,13 +2212,13 @@ Volume::scheduleBackendSync_()
 }
 
 void
-Volume::setFailOverCacheConfig(const boost::optional<FailOverCacheConfig>& config)
+Volume::setDtlConfig(const boost::optional<DtlConfig>& config)
 {
     WLOCK(); // Z42: make more fine grained?
 
     if (config)
     {
-        setFailOverCacheConfig_(*config);
+        setDtlConfig_(*config);
     }
     else
     {
@@ -2226,8 +2226,8 @@ Volume::setFailOverCacheConfig(const boost::optional<FailOverCacheConfig>& confi
     }
 }
 
-boost::optional<FailOverCacheConfig>
-getFailOverCacheConfig()
+boost::optional<DtlConfig>
+getDtlConfig()
 {
     return boost::none; // TODO AT for now
 }
@@ -2258,7 +2258,7 @@ Volume::setDtlMode_(const DtlMode mode)
 }
 
 void
-Volume::setFailOverCacheConfig_(const FailOverCacheConfig& config)
+Volume::setDtlConfig_(const DtlConfig& config)
 {
     // This seems only to be called externally.
     checkNotHalted_();
@@ -2268,7 +2268,7 @@ Volume::setFailOverCacheConfig_(const FailOverCacheConfig& config)
     last_tlog_not_on_failover_ = boost::none;
     failover_->newCache(nullptr);
 
-    writeFailOverCacheConfigToBackend_();
+    writeDtlConfigToBackend_();
 
     LOG_VINFO("Setting the failover cache to " << config);
     setDtlMode_(config.mode);
@@ -2326,7 +2326,7 @@ Volume::setNoFailOverCache_()
 
     // these can throw
     failover_->newCache(nullptr);
-    writeFailOverCacheConfigToBackend_();
+    writeDtlConfigToBackend_();
 
     setVolumeFailOverState(VolumeFailOverState::OK_STANDALONE);
 }
@@ -2818,7 +2818,7 @@ Volume::writeConfigToBackend_(const VolumeConfig& cfg)
 }
 
 void
-Volume::writeFailOverCacheConfigToBackend_()
+Volume::writeDtlConfigToBackend_()
 {
     checkNotHalted_();
 

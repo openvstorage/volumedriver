@@ -78,7 +78,7 @@ TEST_P(cases, DISABLED_cacheserver1)
     SharedVolumePtr v1 = newVolume("volume1",
                            backend::Namespace());
 
-    v1->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
+    v1->setDtlConfig(DtlConfig(FailOverCacheTestSetup::host(),
                                                    FailOverCacheTestSetup::port_base(),
                                                    GetParam().foc_mode()));
 
@@ -101,7 +101,7 @@ TEST_P(cases, DISABLED_cacheserver1)
                                       SnapshotName("snap1"));
     ASSERT_TRUE(v2 != nullptr);
 
-    v2->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
+    v2->setDtlConfig(DtlConfig(FailOverCacheTestSetup::host(),
                                                    45017,
                                                    GetParam().foc_mode()));
 
@@ -339,7 +339,7 @@ TEST_P(cases, DISABLED_restartALittle) // Ev'ry time you go away, I ...
 
     auto foc_ctx(start_one_foc());
 
-    v1->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+    v1->setDtlConfig(foc_ctx->config(GetParam().foc_mode()));
 
     writeToVolume(*v1,0,4096*2048, t);
     const VolumeConfig vCfg(v1->get_config());
@@ -356,7 +356,7 @@ TEST_P(cases, DISABLED_restartALittle) // Ev'ry time you go away, I ...
                        backend::Namespace());
 
         ASSERT_TRUE(v1 != nullptr);
-        v1->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
+        v1->setDtlConfig(foc_ctx->config(GetParam().foc_mode()));
 
         checkVolume(*v1,0,4096*2048,t);
 

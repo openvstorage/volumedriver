@@ -652,19 +652,19 @@ api::getFailOverMode(const vd::VolumeId& volName)
     return v->getVolumeFailOverState();
 }
 
-boost::optional<vd::FailOverCacheConfig>
-api::getFailOverCacheConfig(const vd::VolumeId& volName)
+boost::optional<vd::DtlConfig>
+api::getDtlConfig(const vd::VolumeId& volName)
 {
     SharedVolumePtr v = VolManager::get()->findVolume_(volName);
-    return v->getFailOverCacheConfig();
+    return v->getDtlConfig();
 }
 
 void
-api::setFailOverCacheConfig(const vd::VolumeId& volName,
-                            const boost::optional<vd::FailOverCacheConfig>& maybe_foc_config)
+api::setDtlConfig(const vd::VolumeId& volName,
+                            const boost::optional<vd::DtlConfig>& maybe_foc_config)
 {
     SharedVolumePtr v = VolManager::get()->findVolume_(volName);
-    v->setFailOverCacheConfig(maybe_foc_config);
+    v->setDtlConfig(maybe_foc_config);
 }
 
 uint64_t
