@@ -28,12 +28,12 @@
 namespace volumedriver
 {
 
-class FailOverCacheTester;
+class DtlTest;
 
 class DtlSyncBridge
     : public DtlClientInterface
 {
-    friend class FailOverCacheTester;
+    friend class DtlTest;
 
 public:
     explicit DtlSyncBridge(const size_t max_entries);

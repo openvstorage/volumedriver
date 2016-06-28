@@ -30,12 +30,12 @@ namespace volumedriver
 
 namespace dtl = distributed_transaction_log;
 
-class FailOverCacheTester
+class DtlTest
     : public VolManagerTestSetup
 {
 public:
-    FailOverCacheTester()
-        : VolManagerTestSetup("FailOverCacheTester")
+    DtlTest()
+        : VolManagerTestSetup("DtlTest")
     {}
 
     template<typename B>
@@ -78,7 +78,7 @@ public:
     }
 };
 
-TEST_P(FailOverCacheTester, empty_flush)
+TEST_P(DtlTest, empty_flush)
 {
     auto foc_ctx(start_one_foc());
     VolumeId vid("volume1");
@@ -92,7 +92,7 @@ TEST_P(FailOverCacheTester, empty_flush)
     v->sync();
 }
 
-TEST_P(FailOverCacheTester, focTimeout)
+TEST_P(DtlTest, focTimeout)
 {
     auto foc_ctx(start_one_foc());
     VolumeId vid("volume1");
@@ -116,7 +116,7 @@ TEST_P(FailOverCacheTester, focTimeout)
 
 }
 
-TEST_P(FailOverCacheTester, VolumeWithFOC)
+TEST_P(DtlTest, VolumeWithFOC)
 {
     auto foc_ctx(start_one_foc());
 
@@ -146,7 +146,7 @@ TEST_P(FailOverCacheTester, VolumeWithFOC)
                   RemoveVolumeCompletely::T);
 }
 
-TEST_P(FailOverCacheTester, VolumeWithoutFOC)
+TEST_P(DtlTest, VolumeWithoutFOC)
 {
     auto ns_ptr = make_random_namespace();
 
@@ -178,7 +178,7 @@ TEST_P(FailOverCacheTester, VolumeWithoutFOC)
                   RemoveVolumeCompletely::T);
 }
 
-TEST_P(FailOverCacheTester, StopRace)
+TEST_P(DtlTest, StopRace)
 {
     auto ns_ptr = make_random_namespace();
 
@@ -218,7 +218,7 @@ TEST_P(FailOverCacheTester, StopRace)
                   RemoveVolumeCompletely::T);
 }
 
-TEST_P(FailOverCacheTester, StopCacheServer)
+TEST_P(DtlTest, StopCacheServer)
 {
     auto ns_ptr = make_random_namespace();
 
@@ -260,7 +260,7 @@ TEST_P(FailOverCacheTester, StopCacheServer)
                   RemoveVolumeCompletely::T);
 }
 
-TEST_P(FailOverCacheTester, CacheServerHasNoMemory)
+TEST_P(DtlTest, CacheServerHasNoMemory)
 {
     auto ns_ptr = make_random_namespace();
 
@@ -318,7 +318,7 @@ TEST_P(FailOverCacheTester, CacheServerHasNoMemory)
     }
 }
 
-TEST_P(FailOverCacheTester, ResetCacheServer)
+TEST_P(DtlTest, ResetCacheServer)
 {
     auto ns_ptr = make_random_namespace();
 
@@ -351,7 +351,7 @@ TEST_P(FailOverCacheTester, ResetCacheServer)
                   RemoveVolumeCompletely::T);
 }
 
-TEST_P(FailOverCacheTester, ClearCacheServer)
+TEST_P(DtlTest, ClearCacheServer)
 {
     auto foc_ctx(start_one_foc());
     auto ns_ptr = make_random_namespace();
@@ -386,7 +386,7 @@ TEST_P(FailOverCacheTester, ClearCacheServer)
                   RemoveVolumeCompletely::T);
 }
 
-TEST_P(FailOverCacheTester, test2)
+TEST_P(DtlTest, test2)
 {
     auto foc_ctx(start_one_foc());
     auto ns_ptr = make_random_namespace();
@@ -424,7 +424,7 @@ TEST_P(FailOverCacheTester, test2)
                   RemoveVolumeCompletely::T);
 }
 
-TEST_P(FailOverCacheTester, test3)
+TEST_P(DtlTest, test3)
 {
     auto foc_ctx(start_one_foc());
 
@@ -455,7 +455,7 @@ TEST_P(FailOverCacheTester, test3)
                   RemoveVolumeCompletely::T);
 }
 
-TEST_P(FailOverCacheTester, resetToSelf)
+TEST_P(DtlTest, resetToSelf)
 {
     auto foc_ctx(start_one_foc());
     auto ns_ptr = make_random_namespace();
@@ -494,7 +494,7 @@ TEST_P(FailOverCacheTester, resetToSelf)
                   RemoveVolumeCompletely::T);
 }
 
-TEST_P(FailOverCacheTester, resetToOther)
+TEST_P(DtlTest, resetToOther)
 {
     auto foc_ctx1(start_one_foc());
     auto foc_ctx2(start_one_foc());
@@ -540,7 +540,7 @@ TEST_P(FailOverCacheTester, resetToOther)
     }
 }
 
-TEST_P(FailOverCacheTester, TLogsAreRemoved)
+TEST_P(DtlTest, TLogsAreRemoved)
 {
     auto foc_ctx(start_one_foc());
     auto ns_ptr = make_random_namespace();
@@ -602,7 +602,7 @@ TEST_P(FailOverCacheTester, TLogsAreRemoved)
                   RemoveVolumeCompletely::T);
 }
 
-TEST_P(FailOverCacheTester, unregister_removes_dtl_backend)
+TEST_P(DtlTest, unregister_removes_dtl_backend)
 {
     auto foc_ctx(start_one_foc());
     auto ns_ptr = make_random_namespace();
@@ -623,7 +623,7 @@ TEST_P(FailOverCacheTester, unregister_removes_dtl_backend)
     EXPECT_TRUE(foc_ctx->backend(ns_ptr->ns()) == nullptr);
 }
 
-TEST_P(FailOverCacheTester, DirectoryRemovedOnUnRegister)
+TEST_P(DtlTest, DirectoryRemovedOnUnRegister)
 {
     auto foc_ctx(start_one_foc());
     auto ns_ptr = make_random_namespace();
@@ -663,7 +663,7 @@ TEST_P(FailOverCacheTester, DirectoryRemovedOnUnRegister)
 }
 
 // OVS-3430: a nasty race between flush and addEntries for the newData buffer
-TEST_P(FailOverCacheTester, adding_and_flushing)
+TEST_P(DtlTest, adding_and_flushing)
 {
     auto foc_ctx(start_one_foc());
     auto wrns(make_random_namespace());
@@ -743,7 +743,7 @@ TEST_P(FailOverCacheTester, adding_and_flushing)
 
 // OVS-3850: DtlProxy::clear threw an exception - let's see if this is
 // inherent behaviour or something else contributed.
-TEST_P(FailOverCacheTester, clear)
+TEST_P(DtlTest, clear)
 {
     auto wrns(make_random_namespace());
     auto foc_ctx(start_one_foc());
@@ -772,7 +772,7 @@ TEST_P(FailOverCacheTester, clear)
                  std::exception);
 }
 
-TEST_P(FailOverCacheTester, non_standard_cluster_size)
+TEST_P(DtlTest, non_standard_cluster_size)
 {
     auto foc_ctx(start_one_foc());
     auto wrns(make_random_namespace());
@@ -840,7 +840,7 @@ TEST_P(FailOverCacheTester, non_standard_cluster_size)
               count);
 }
 
-TEST_P(FailOverCacheTester, wrong_cluster_size)
+TEST_P(DtlTest, wrong_cluster_size)
 {
     auto foc_ctx(start_one_foc());
     auto wrns(make_random_namespace());
@@ -874,7 +874,7 @@ TEST_P(FailOverCacheTester, wrong_cluster_size)
                  std::exception);
 }
 
-TEST_P(FailOverCacheTester, DISABLED_a_whole_lotta_clients)
+TEST_P(DtlTest, DISABLED_a_whole_lotta_clients)
 {
     auto foc_ctx(start_one_foc());
 
@@ -909,7 +909,7 @@ TEST_P(FailOverCacheTester, DISABLED_a_whole_lotta_clients)
 // needs to be run as root, and messes with the iptables, so use with _extreme_
 // caution
 /*
-TEST_P(FailOverCacheTester, DISABLED_tarpit)
+TEST_P(DtlTest, DISABLED_tarpit)
 {
     ASSERT_EQ(0, ::geteuid()) << "test needs to run with root privileges!";
 
@@ -984,8 +984,8 @@ const VolumeDriverTestConfig sync_foc_in_memory_config =
     .foc_in_memory(true);
 }
 
-INSTANTIATE_TEST_CASE_P(FailOverCacheTesters,
-                        FailOverCacheTester,
+INSTANTIATE_TEST_CASE_P(DtlTests,
+                        DtlTest,
                         ::testing::Values(cluster_cache_config,
                                           sync_foc_config,
                                           sync_foc_in_memory_config));

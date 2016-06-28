@@ -34,13 +34,13 @@
 namespace volumedriver
 {
 
-class FailOverCacheTester;
+class DtlTest;
 
 class DtlAsyncBridge
     : public fungi::Runnable
     , public DtlClientInterface
 {
-    friend class FailOverCacheTester;
+    friend class DtlTest;
 
 public:
     DtlAsyncBridge(const LBASize,
