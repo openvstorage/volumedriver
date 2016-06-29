@@ -21,4 +21,4 @@ are part of this source tree (cppzmq, etcdcpp, msgpack-c, procon, pstreams, xmlr
 Building
 --------
 
-The simplest and prefered way to build the volumedriver is using our [dockerised build process](doc/build_with_docker.md) that uses a clean container to hold build prerequisites, preventing conflicts with already installed software on your development machine. We advise you to start with that procedure. Afterwards, if you should want to switch to a bare metal build, details are in the [manual building](doc/manual_building.md) document.
+The simplest and prefered way to build the volumedriver is using our [dockerised build process](docs/build_with_docker.md) that uses a clean container to hold build prerequisites, preventing conflicts with already installed software on your development machine. We advise you to start with that procedure. Afterwards, if you should want to switch to a bare metal build, details are in the [manual building](docs/manual_building.md) document.

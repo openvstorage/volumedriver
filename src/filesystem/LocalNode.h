@@ -311,6 +311,13 @@ private:
           size_t* size,
           off_t off);
 
+    FastPathCookie
+    write_(const FastPathCookie&,
+           const ObjectId&,
+           const uint8_t* buf,
+           size_t* size,
+           off_t off);
+
     void
     write_(volumedriver::WeakVolumePtr vol,
            const uint8_t* buf,
