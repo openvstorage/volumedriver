@@ -2,11 +2,8 @@
 ## Shared Memory Server
 A Shared Memory Client/Server implementation is used to give Open vStorage the best performance possible. With this implementation the client (QEMU, Blktab, ...)
 can write to a dedicated memory segment on the compute host which is shared with the Shared Memory Server in the Volume Driver.
-<<<<<<< HEAD
+
 The segment is mapped as device under `/dev/shm` and has by default a size of 256 MB. The size can be set in the vPool json under `shm_region_size`.
-=======
-The segment is mapped as device under `/dev/shm` and has by default a size of 256 MB. The size can in the vPool json under `shm_region_size`.
->>>>>>> dev
 Next to this segment there are 4 shared memory message queues per volumes. These queues (read request, read reply, write request and write reply) are also shared
 between the client and the server . These queues are used to signal incoming requests and signal when the request is executed.
 
