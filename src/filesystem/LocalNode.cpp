@@ -84,6 +84,14 @@ with_api_exception_conversion(std::function<void()> fn)
     }
 }
 
+bool
+is_unaligned(const size_t size,
+             const off_t off)
+{
+    const vd::ClusterSize csize(api::getDefaultClusterSize());
+    return ((size % csize) != 0 or (off % csize) != 0);
+}
+
 }
 
 LocalNode::LocalNode(ObjectRouter& router,
@@ -519,10 +527,10 @@ LocalNode::write(const Object& obj,
 				     }));
 
     RWLockPtr l(get_lock_(obj.id));
-    fungi::ScopedReadLock rg(*l);
 
     if (is_file(obj))
     {
+        fungi::ScopedReadLock rg(*l);
         *size = convert_fdriver_exceptions_<size_t,
                                             off_t,
                                             const void*,
@@ -534,11 +542,25 @@ LocalNode::write(const Object& obj,
     }
     else
     {
-        with_volume_pointer_(&LocalNode::write_,
-                             obj.id,
-                             buf,
-                             *size,
-                             off);
+        if (is_unaligned(*size,
+                         off))
+        {
+            fungi::ScopedWriteLock wg(*l);
+            with_volume_pointer_(&LocalNode::write_,
+                                 obj.id,
+                                 buf,
+                                 *size,
+                                 off);
+        }
+        else
+        {
+            fungi::ScopedReadLock rg(*l);
+            with_volume_pointer_(&LocalNode::write_,
+                                 obj.id,
+                                 buf,
+                                 *size,
+                                 off);
+        }
     }
 }
 
@@ -568,17 +590,42 @@ LocalNode::write(const FastPathCookie& cookie,
 				     }));
 
     RWLockPtr l(get_lock_(id));
-    fungi::ScopedReadLock rg(*l);
 
+    if (is_unaligned(*size,
+                     off))
+    {
+        fungi::ScopedWriteLock wg(*l);
+        return write_(cookie,
+                      id,
+                      buf,
+                      size,
+                      off);
+    }
+    else
+    {
+        fungi::ScopedReadLock rg(*l);
+        return write_(cookie,
+                      id,
+                      buf,
+                      size,
+                      off);
+    }
+}
+
+FastPathCookie
+LocalNode::write_(const FastPathCookie& cookie,
+                  const ObjectId& id,
+                  const uint8_t* buf,
+                  size_t* size,
+                  off_t off)
+{
     vd::SharedVolumePtr vol(cookie->volume.lock());
-
     if (vol != nullptr)
     {
         write_(vol,
                buf,
                *size,
                off);
-
         return cookie;
     }
     else
