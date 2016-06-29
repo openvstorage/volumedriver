@@ -15,10 +15,10 @@ libovsvolumedriver - Open vStorage VolumeDriver Access C library
 
 The following functions are exported by libovsvolumedriver library:
 
-### Initialize and destroy context attributes object::
+### Initialize and destroy context attributes object
 ```
 ovs_ctx_attr_t* ovs_ctx_attr_new();
-	int ovs_ctx_attr_destroy(ovs_ctx_attr_t *attr);
+int ovs_ctx_attr_destroy(ovs_ctx_attr_t *attr);
 ```
 
 #### Description
@@ -47,7 +47,7 @@ The function shall fail if:
 - EINVAL Invalid arguments supplied
 - ENOMEM Out of memory
 
-### Set transport layer::
+### Set transport layer
 ```
 int ovs_ctx_attr_set_transport(ovs_ctx_attr_t *attr,
    const char *transport,
@@ -84,7 +84,7 @@ set with the type of failure.
 The function shall fail if:
 - EINVAL Invalid arguments supplied
 
-### Set network queue depth::
+### Set network queue depth
 ```
 int ovs_ctx_attr_set_network_qdepth(ovs_ctx_attr_t *attr,
 	const uint64_t qdepth);
@@ -104,7 +104,7 @@ set with the type of failure.
 The function shall fail if:
 - EINVAL Invalid arguments supplied
 
-#### Create Open vStorage context::
+### Create Open vStorage context
 ```
 ovs_ctx_t *ovs_ctx_new(const ovs_ctx_attr_t *attr);
 ```
@@ -127,7 +127,7 @@ The function shall fail if:
 - EINVAL Invalid arguments supplied
 - ENOMEM Out of memory
 
-### Initialize Open vStorage context::
+### Initialize Open vStorage context
 ```
 int ovs_ctx_init(ovs_ctx_t* ctx, const char *volname, int oflag);
 ```
@@ -158,7 +158,7 @@ The function shall fail if:
 - EBUSY The volume is already open by another process
 - EIO An error occurred during context creation
 
-### Terminate Open vStorage context::
+### Terminate Open vStorage context
 ```
 int ovs_ctx_destroy(ovs_ctx_t *ctx);
 ```
@@ -175,7 +175,7 @@ returned and errno will indicate the error.
 The function shall fail if:
 - EINVAL Invalid argument supplied
 
-### Create a new volume::
+### Create a new volume
 ```
 int ovs_create_volume(ovs_ctx_t *ctx, const char *volname,
 	uint64_t size);
@@ -198,7 +198,7 @@ The function shall fail if:
 - ENOSPC The backend that would contain the new volume cannot be
   expanded
 
-### Remove a volume::
+### Remove a volume
 ```
 int ovs_remove_volume(ovs_ctx_t *ctx, const char *volname);
 ```
@@ -217,7 +217,7 @@ The function shall fail if:
 - EINVAL Invalid arguments supplied
 - EIO An error occured during ovs_remove_volume()
 
-### Truncate a volume to a specified length::
+### Truncate a volume to a specified length
 ```
 int ovs_truncate_volume(ovs_ctx_t *ctx, const char *volname,
 	uint64_t length);
@@ -267,8 +267,10 @@ The function shall fail if:
 - EIO An error occured during ovs_snapshot_create()
 
 ### Rollback volume to a specific snapshot
+```
 int ovs_snapshot_rollback(ovs_ctx_t *ctx, const char *volname,
 	const char *snapname);
+```
 
 #### Description
 The ovs_snapshot_rollback() shall rollback the volume of name 'volname' to
@@ -394,7 +396,7 @@ The function shall fail if:
   The 'size' variable is populated with the expected size.
 - EIO An error occured during ovs_list_volumes()
 
-### Get volume status::
+### Get volume status
 ```
 int ovs_stat(ovs_ctx_t *ctx, struct stat *buf);
 ```
@@ -420,7 +422,7 @@ The ovs_stat() function shall fail if:
   to the volume cannot be represented correctly in the structure
   pointed to by 'buf'.
 
-### Read from a volume::
+### Read from a volume
 ```
 ssize_t ovs_read(ovs_ctx_t *ctx,
 	void *buf,
@@ -447,7 +449,7 @@ The function shall fail if:
 - EIO This error is implementation defined.
 - ENOBUFS Insufficient memory is available to fulfill the request.
 
-### Write to a volume::
+### Write to a volume
 ```
 ssize_t ovs_write(ovs_ctx_t *ctx,
 	const void *buf,
@@ -479,7 +481,7 @@ The ovs_write() function shall fail if:
 - ENOSPC There was no free space remaining on the device containing
   the volume.
 
-### Synchronize changes to volume::
+### Synchronize changes to volume
 ```
 int ovs_flush(ovs_ctx_t *ctx);
 ```
@@ -506,7 +508,7 @@ The ovs_flush() function shall fail if:
 In the event that any of the queued I/O operation fail, ovs_flush() shall
 return the error conditions defined for ovs_read() and ovs_write();
 
-### Truncate an open volume to a specified length::
+### Truncate an open volume to a specified length
 ```
 int ovs_truncate(ovs_ctx_t *ctx,
 	uint64_t length);
@@ -527,7 +529,7 @@ The function shall fail if:
 - EINVAL Invalid arguments supplied
 - EIO An error occured during ovs_truncate()
 
-### Asynchronous read from a volume::
+### Asynchronous read from a volume
 ```
 int ovs_aio_read(ovs_ctx_t *ctx,
 	struct ovs_aiocb *ovs_aiocbp);
@@ -558,7 +560,7 @@ The ovs_aio_read() function shall fail if:
   least one byte, but the starting position is past the maximum offset
   for this volume.
 
-### Asynchronous write to a volume::
+### Asynchronous write to a volume
 ```
 int ovs_aio_write(ovs_ctx_t *ctx,
 	struct ovs_aiocb *ovs_aiocbp);
@@ -603,7 +605,7 @@ ovs_write() function, or one of:
 - ECANCELED The request was explicitly cancelled via a call to
   ovs_aio_cancel()
 
-### Retrieve errors status for async I/O operation::
+### Retrieve errors status for async I/O operation
 ```
 int ovs_aio_error(ovs_ctx_t *ctx,
 	struct ovs_aiocb *ovs_aiocbp);
@@ -628,7 +630,7 @@ The ovs_aio_error() function will fail if:
 - EINVAL The ovs_aiocbp argument does not reference an outstanding
   asynchronous I/O request.
 
-### Cancel an async I/O request::
+### Cancel an async I/O request
 ```
 int ovs_aio_cancel(ovs_ctx_t *ctx,
 	struct ovs_aiocb *ovs_aiocbp);
@@ -660,7 +662,7 @@ An error return from ovs_aio_cancel() indicates:
 - ENOSYS The ovs_aio_cancel() function call is not supported.
 
 
-### Retrieve return status of an async I/O operation::
+### Retrieve return status of an async I/O operation
 ```
 ssize_t ovs_aio_return(ovs_ctx_t *ctx, struct ovs_aiocb *ovs_aiocbp);
 ```
@@ -703,7 +705,7 @@ The ovs_aio_finish() function shall return -1 on error and 0 on success.
 The ovs_aio_finish() will fail if:
 - EINVAL The context or the request is not valid
 
-### Suspend until asynchronous I/O operation or timeout complete::
+### Suspend until asynchronous I/O operation or timeout complete
 ```
 int ovs_aio_suspend(ovs_ctx_t *ctx,
 	struct ovs_aiocb *ovs_aiocbp,
@@ -729,7 +731,7 @@ An error return from ovs_aio_suspend indicates:
 - EINTR The suspend was interrupted by a signal.
 - EINVAL The I/O request or the context is not valid.
 
-### Construct a completion::
+### Construct a completion
 ```
 ovs_completion_t *ovs_aio_create_completion(ovs_callback_t complete_cb,
 	void *arg);
@@ -751,7 +753,7 @@ An error return from ovs_aio_create_completion indicates:
 - EINVAL Invalid arguments. The most usual error is if complete_cb is
   NULL.
 
-### Retrieve return status of a completion::
+### Retrieve return status of a completion
 ```
 int ovs_aio_return_completion(ovs_completion_t *comp);
 ```
@@ -768,7 +770,7 @@ If the completion has not yet finished -1 is returned.
 Note: The function should be called either inside the completion callback
 or after ovs_aio_wait_for_completion() has returned.
 
-### Wait for completion to finish::
+### Wait for completion to finish
 ```
 int ovs_aio_wait_completion(ovs_completion_t *comp,
 	const struct timespec *timeout);
@@ -791,7 +793,7 @@ An error return from ovs_aio_wait_completion indicates:
 - EINTR The timeout expired before completion has completed.
 - EINVAL The completion is not valid.
 
-### Unblock a thread waiting for a completion::
+### Unblock a thread waiting for a completion
 ```
 int ovs_aio_signal_completion(ovs_completion_t *comp);
 ```
@@ -808,7 +810,7 @@ will be returned to indicate the error.
 An error return from ovs_aio_signal_completion indicates:
 - EINVAL The value specified by 'comp' is invalid.
 
-### Release a completion::
+### Release a completion
 ```
 int ovs_aio_release_completion(ovs_completion_t *comp);
 ```
@@ -818,7 +820,7 @@ The ovs_aio_release_completion() function releases a completion.
 It may not be freed immediately if the operations has not yet been
 commited or has been executed.
 
-### Asynchronous read from a volume::
+### Asynchronous read from a volume
 ```
 int ovs_aio_readcb(ovs_ctx_t *ctx,
 	struct ovs_aiocb *ovs_aiocbp,
@@ -829,7 +831,7 @@ int ovs_aio_readcb(ovs_ctx_t *ctx,
 The same as ovs_aio_read() but on finish execute completion
 'comp'.
 
-### Asynchronous write to a volume::
+### Asynchronous write to a volume
 ```
 int ovs_aio_writecb(ovs_ctx_t *ctx,
 	struct ovs_aiocb *ovs_aiocbp,
@@ -841,7 +843,7 @@ int ovs_aio_writecb(ovs_ctx_t *ctx,
 The same as ovs_aio_write() but on finish execute completion
 'comp'.
 
-### Asynchronous volume synchronization::
+### Asynchronous volume synchronization
 ```
 int ovs_aio_flushcb(ovs_ctx_t *ctx, ovs_completion_t *comp);
 ```
@@ -864,7 +866,7 @@ An error return from ovs_aio_flush() indicates:
 - EINVAL Synchronized I/O is not supported for this volume
 - ENOSYS ovs_aio_flushcb() is not implemented
 
-### Shared memory allocation::
+### Shared memory allocation
 ```
 ovs_buffer_t* ovs_allocate(ovs_ctx_t *ctx,
 	size_t size)
@@ -883,7 +885,7 @@ below.
 #### Errors
 - ENOMEM Not enough memory to allocate the specified size
 
-### Retrieve pointer to buffer content::
+### Retrieve pointer to buffer content
 ```
 void *ovs_buffer_data(ovs_buffer_t *ptr)
 ```
@@ -900,7 +902,7 @@ below.
 #### Errors
 - EINVAL The value specified by 'ptr' is invalid.
 
-### Retrieve size of buffer::
+### Retrieve size of buffer
 ```
 size_t ovs_buffer_size(ovs_buffer_t *ptr)
 ```
@@ -917,7 +919,7 @@ below.
 #### Errors
 - EINVAL The value specified by 'ptr' is invalid.
 
-### Shared memory deallocation::
+### Shared memory deallocation
 ```
 int ovs_deallocate(ovs_ctx_t *ctx,
 	ovs_buffer_t *shptr)
