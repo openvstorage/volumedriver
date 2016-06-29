@@ -38,6 +38,8 @@ namespace vd = volumedriver;
 namespace vfs = volumedriverfs;
 namespace yt = youtils;
 
+using namespace std::literals::string_literals;
+
 class VolumeTest
     : public FileSystemTestBase
 {
@@ -1444,6 +1446,88 @@ TEST_F(VolumeTest, owner_tag)
     const vd::VolumeConfig cfg(api::getVolumeConfig(static_cast<vd::VolumeId>(oid)));
     EXPECT_EQ(reg->owner_tag,
               cfg.owner_tag_);
+}
+
+// https://github.com/openvstorage/volumedriver/issues/48
+TEST_F(VolumeTest, concurrent_unaligned_writes)
+{
+    const vfs::FrontendPath fname(make_volume_name("/volume"));
+    const uint64_t vsize = 10ULL << 20;
+    const vfs::ObjectId oid(create_file(fname,
+                                        vsize));
+    const uint64_t csize = get_cluster_size(oid);
+    ASSERT_EQ(0, vsize % csize);
+
+    const size_t num_workers = 4;
+    ASSERT_EQ(0,
+              csize % num_workers);
+    ASSERT_NE(0,
+              csize / num_workers);
+
+    using WorkerFun = std::function<void(const vfs::FrontendPath&,
+                                         const std::string&,
+                                         uint64_t,
+                                         off_t)>;
+
+    auto worker([&](const unsigned id,
+                    WorkerFun fun)
+                {
+                    for (size_t off = csize / num_workers * id; off < vsize; off += csize)
+                    {
+                        const std::string pattern("id-"s +
+                                                  boost::lexical_cast<std::string>(id) +
+                                                  "-off-"s +
+                                                  boost::lexical_cast<std::string>(off));
+                        fun(fname,
+                            pattern,
+                            pattern.size(),
+                            off);
+                    }
+                });
+
+
+    auto work([&](WorkerFun fun)
+              {
+                  std::vector<std::future<void>> futures;
+                  futures.reserve(num_workers);
+
+                  for (size_t i = 0; i < num_workers; ++i)
+                  {
+                      futures.emplace_back(std::async(std::launch::async,
+                                                      [&, i]
+                                                      {
+                                                          worker(i,
+                                                                 fun);
+                                                      }));
+                  }
+
+                  for (auto& f : futures)
+                  {
+                      f.wait();
+                  }
+              });
+
+    work([&](const vfs::FrontendPath& fname,
+             const std::string& pattern,
+             uint64_t size,
+             off_t off)
+         {
+             write_to_file(fname,
+                           pattern,
+                           size,
+                           off);
+         });
+
+    work([&](const vfs::FrontendPath& fname,
+             const std::string& pattern,
+             uint64_t size,
+             off_t off)
+         {
+             check_file(fname,
+                        pattern,
+                        size,
+                        off);
+         });
 }
 
 }
