@@ -18,10 +18,6 @@
 
 #include <boost/asio.hpp>
 
-#include "../ShmControlChannelProtocol.h"
-#include "../ShmClient.h"
-#include "../NetworkXioClient.h"
-
 struct ovs_context_t
 {
     TransportType transport;
@@ -72,6 +68,11 @@ struct ovs_context_t
     virtual ovs_buffer_t* allocate(size_t size) = 0;
 
     virtual int deallocate(ovs_buffer_t *ptr) = 0;
+
+    virtual int truncate_volume(const char *volume_name,
+                                uint64_t length) = 0;
+
+    virtual int truncate(uint64_t length) = 0;
 };
 
 static bool

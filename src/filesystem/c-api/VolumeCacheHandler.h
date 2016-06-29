@@ -16,7 +16,7 @@
 #ifndef _VOLUME_CACHE_HANDLER_H
 #define _VOLUME_CACHE_HANDLER_H
 
-#include "../ShmClient.h"
+#include "ShmClient.h"
 #include "ShmControlChannelClient.h"
 
 #include <boost/date_time/posix_time/posix_time_duration.hpp>

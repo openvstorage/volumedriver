@@ -27,7 +27,8 @@
 
 #include <youtils/Logger.h>
 
-#include "NetworkXioProtocol.h"
+#include "../NetworkXioProtocol.h"
+#include "internal.h"
 
 namespace volumedriverfs
 {
@@ -35,14 +36,6 @@ namespace volumedriverfs
 MAKE_EXCEPTION(XioClientCreateException, fungi::IOException);
 MAKE_EXCEPTION(XioClientRegHandlerException, fungi::IOException);
 MAKE_EXCEPTION(XioClientQueueIsBusyException, fungi::IOException);
-
-extern void ovs_xio_aio_complete_request(void *request,
-                                         ssize_t retval,
-                                         int errval);
-
-extern void ovs_xio_complete_request_control(void *request,
-                                             ssize_t retval,
-                                             int errval);
 
 class NetworkXioClient
 {
@@ -153,6 +146,12 @@ public:
                     void *opaque);
 
     static void
+    xio_truncate_volume(const std::string& uri,
+                        const char* volume_name,
+                        uint64_t offset,
+                        void *opaque);
+
+    static void
     xio_list_volumes(const std::string& uri,
                      std::vector<std::string>& volumes);
 
@@ -190,6 +189,14 @@ public:
 
     static void
     xio_destroy_ctx_shutdown(xio_context *ctx);
+
+    static ovs_aio_request*
+    get_ovs_aio_request(const void *opaque)
+    {
+        ovs_aio_request *request = reinterpret_cast<ovs_aio_request*>(
+                const_cast<void*>(opaque));
+        return request;
+    }
 private:
     std::shared_ptr<xio_context> ctx;
     std::shared_ptr<xio_session> session;

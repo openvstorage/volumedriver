@@ -18,6 +18,9 @@
 
 #define ATTRIBUTE_UNUSED __attribute__((unused))
 
+#include <string>
+#include <libxio.h>
+
 enum class RequestOp
 {
     Noop,

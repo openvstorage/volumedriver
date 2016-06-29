@@ -13,9 +13,8 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "ShmIdlInterface.h"
+#include "../ShmCommon.h"
 #include "ShmClient.h"
-#include "ShmCommon.h"
 
 #include <youtils/Assert.h>
 #include <youtils/UUID.h>
@@ -500,6 +499,22 @@ ShmClient::remove_volume(const std::string& volume_name)
 }
 
 void
+ShmClient::truncate_volume(const std::string& volume_name,
+                           const uint64_t volume_size)
+{
+    CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
+                                                            vd_context_kind,
+                                                            vd_object_name,
+                                                            vd_object_kind);
+    assert(not CORBA::is_nil(obj));
+    ShmIdlInterface::VolumeFactory_var volumefactory_ref =
+        ShmIdlInterface::VolumeFactory::_narrow(obj);
+    assert(not CORBA::is_nil(volumefactory_ref));
+    volumefactory_ref->truncate_volume(volume_name.c_str(),
+                                       volume_size);
+}
+
+void
 ShmClient::create_snapshot(const std::string& volume_name,
                            const std::string& snapshot_name,
                            const int64_t timeout)
@@ -615,11 +630,21 @@ ShmClient::list_volumes()
 }
 
 int
-ShmClient::stat(struct stat *st)
+ShmClient::stat(const std::string& volume_name,
+                struct stat *st)
 {
-    TODO("cnanakos: stat call from fs");
+    CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
+                                                            vd_context_kind,
+                                                            vd_object_name,
+                                                            vd_object_kind);
+    assert(not CORBA::is_nil(obj));
+    ShmIdlInterface::VolumeFactory_var volfactory_ref =
+        ShmIdlInterface::VolumeFactory::_narrow(obj);
+    assert(not CORBA::is_nil(volfactory_ref));
+    uint64_t vol_size = volfactory_ref->stat_volume(volume_name.c_str());
+
     st->st_blksize = 512;
-    st->st_size = volume_size_in_bytes();
+    st->st_size = vol_size;
     return 0;
 }
 

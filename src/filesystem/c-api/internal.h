@@ -16,7 +16,9 @@
 #ifndef __LIB_OVS_INTERNAL_H
 #define __LIB_OVS_INTERNAL_H
 
+#include "volumedriver.h"
 #include "common.h"
+#include "AioCompletion.h"
 
 struct ovs_aio_request
 {
@@ -134,6 +136,61 @@ struct ovs_aio_request
     get_aio()
     {
         return ovs_aiocbp;
+    }
+
+    static void
+    handle_shm_request(ovs_aio_request *request,
+                      size_t ret,
+                      bool failed)
+    {
+        struct ovs_aiocb *aiocbp = request->get_aio();
+        ovs_completion_t *completion = request->get_completion();
+        request->shm_complete(errno,
+                              ret,
+                              failed);
+        if (completion)
+        {
+            request->set_completion();
+            if (request->is_async_flush())
+            {
+                delete aiocbp;
+                delete request;
+            }
+            AioCompletion::get_aio_context().schedule(completion);
+        }
+    }
+
+    static void
+    handle_xio_request(ovs_aio_request *request,
+                       ssize_t retval,
+                       int errval)
+    {
+        ovs_completion_t *completion = request->get_completion();
+        struct ovs_aiocb *aiocbp = request->get_aio();
+        request->xio_complete(retval,
+                              errval);
+        if (completion)
+        {
+            request->set_completion();
+            if (request->is_async_flush())
+            {
+                delete aiocbp;
+                delete request;
+            }
+            AioCompletion::get_aio_context().schedule(completion);
+        }
+    }
+
+    static void
+    handle_xio_ctrl_request(ovs_aio_request *request,
+                            ssize_t retval,
+                            int errval)
+    {
+        if (request)
+        {
+            request->_errno = errval;
+            request->_rv = retval;
+        }
     }
 };
 

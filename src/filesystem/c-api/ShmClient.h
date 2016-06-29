@@ -22,8 +22,8 @@
 #include <youtils/Logging.h>
 #include <youtils/OrbHelper.h>
 
-#include "ShmProtocol.h"
-#include "ShmIdlInterface.h"
+#include "../ShmProtocol.h"
+#include "../ShmIdlInterface.h"
 
 namespace volumedriverfs
 {
@@ -92,7 +92,8 @@ public:
     stop_reply_queues(int n);
 
     int
-    stat(struct stat *st);
+    stat(const std::string& volume_name,
+         struct stat *st);
 
     uint64_t
     volume_size_in_bytes() const
@@ -115,6 +116,10 @@ public:
 
     static void
     remove_volume(const std::string& volume_name);
+
+    static void
+    truncate_volume(const std::string& volume_name,
+                    const uint64_t volume_size);
 
     static void
     create_snapshot(const std::string& volume_name,

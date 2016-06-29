@@ -78,6 +78,10 @@ private:
     void handle_stat_volume(NetworkXioRequest *req,
                             const std::string& volume_name);
 
+    void handle_truncate(NetworkXioRequest *req,
+                         const std::string& volume_name,
+                         const uint64_t offset);
+
     void handle_list_volumes(NetworkXioRequest *req);
 
     void handle_list_snapshots(NetworkXioRequest *req,
