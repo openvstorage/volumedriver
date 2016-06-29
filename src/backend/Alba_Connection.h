@@ -39,7 +39,8 @@ public:
                const uint16_t port,
                const uint16_t timeout,
                const boost::optional<std::string>& preset = boost::none,
-               const alba::proxy_client::Transport = alba::proxy_client::Transport::tcp);
+               const alba::proxy_client::Transport = alba::proxy_client::Transport::tcp,
+               const bool use_rora = false);
 
     virtual ~Connection() noexcept (true)
     {}

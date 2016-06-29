@@ -33,13 +33,16 @@ public:
                const uint16_t port,
                const uint16_t timeout,
                const alba::proxy_client::Transport transport = alba::proxy_client::Transport::tcp,
+               const bool use_rora = false,
                const std::string& preset = "")
+
         : BackendConfig(BackendType::ALBA)
         , alba_connection_host(host)
         , alba_connection_port(port)
         , alba_connection_timeout(timeout)
         , alba_connection_preset(preset)
         , alba_connection_transport(transport)
+        , alba_connection_use_rora(use_rora)
     {}
 
     AlbaConfig(const boost::property_tree::ptree& pt)
@@ -49,6 +52,7 @@ public:
         , alba_connection_timeout(pt)
         , alba_connection_preset(pt)
         , alba_connection_transport(pt)
+        , alba_connection_use_rora(pt)
     {}
 
     AlbaConfig() = delete;
@@ -80,6 +84,7 @@ public:
                               alba_connection_port.value(),
                               alba_connection_timeout.value(),
                               alba_connection_transport.value(),
+                              alba_connection_use_rora.value(),
                               alba_connection_preset.value()));
         return bc;
     }
@@ -100,6 +105,8 @@ public:
                                        report_default);
         alba_connection_transport.persist(pt,
                                           report_default);
+        alba_connection_use_rora.persist(pt,
+                                         report_default);
     }
 
     virtual void
@@ -119,7 +126,8 @@ public:
             CMP(alba_connection_port) and
             CMP(alba_connection_timeout) and
             CMP(alba_connection_preset) and
-            CMP(alba_connection_transport);
+            CMP(alba_connection_transport) and
+            CMP(alba_connection_use_rora);
 #undef CMP
     }
 
@@ -135,6 +143,7 @@ public:
     DECLARE_PARAMETER(alba_connection_timeout);
     DECLARE_PARAMETER(alba_connection_preset);
     DECLARE_PARAMETER(alba_connection_transport);
+    DECLARE_PARAMETER(alba_connection_use_rora);
 };
 
 }

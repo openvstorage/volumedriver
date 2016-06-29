@@ -88,14 +88,16 @@ Connection::Connection(const config_type& cfg)
                  cfg.alba_connection_preset.value().empty() ?
                  boost::none :
                  boost::optional<std::string>(cfg.alba_connection_preset.value()),
-                 boost::lexical_cast<apc::Transport>(cfg.alba_connection_transport.value()))
+                 boost::lexical_cast<apc::Transport>(cfg.alba_connection_transport.value()),
+                 cfg.alba_connection_use_rora.value())
 {}
 
 Connection::Connection(const string& host,
                        const uint16_t port,
                        const uint16_t timeout,
                        const boost::optional<std::string>& preset,
-                       const apc::Transport transport)
+                       const apc::Transport transport,
+                       const bool use_rora)
     : preset_(preset)
     , healthy_(true)
 {
@@ -130,7 +132,8 @@ Connection::Connection(const string& host,
     client_ = apc::make_proxy_client(host,
                                      boost::lexical_cast<string>(port),
                                      boost::posix_time::seconds(timeout),
-                                     transport);
+                                     transport,
+                                     use_rora);
 }
 
 TODO("Y42: Better would be to specify the exceptions for each call")
