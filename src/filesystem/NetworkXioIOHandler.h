@@ -105,6 +105,7 @@ private:
                                    const std::string& snap_name);
 
     void handle_error(NetworkXioRequest *req,
+                      NetworkXioMsgOpcode op,
                       int errval);
 
 private:

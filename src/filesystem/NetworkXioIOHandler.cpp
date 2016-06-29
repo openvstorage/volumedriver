@@ -671,9 +671,11 @@ NetworkXioIOHandler::handle_is_snapshot_synced(NetworkXioRequest *req,
 }
 
 void
-NetworkXioIOHandler::handle_error(NetworkXioRequest *req, int errval)
+NetworkXioIOHandler::handle_error(NetworkXioRequest *req,
+                                  NetworkXioMsgOpcode op,
+                                  int errval)
 {
-    req->op = NetworkXioMsgOpcode::ErrorRsp;
+    req->op = op;
     req->retval = -1;
     req->errval = errval;
     pack_msg(req);
@@ -696,7 +698,9 @@ NetworkXioIOHandler::process_request(NetworkXioRequest *req)
     catch (...)
     {
         LOG_ERROR("cannot unpack message");
-        handle_error(req, EBADMSG);
+        handle_error(req,
+                     NetworkXioMsgOpcode::ErrorRsp,
+                     EBADMSG);
         return;
     }
 
@@ -732,9 +736,9 @@ NetworkXioIOHandler::process_request(NetworkXioRequest *req)
         else
         {
             LOG_ERROR("inents is smaller than 1, cannot proceed with write I/O");
-            req->op = NetworkXioMsgOpcode::WriteRsp;
-            req->retval = -1;
-            req->errval = EIO;
+            handle_error(req,
+                         NetworkXioMsgOpcode::WriteRsp,
+                         EIO);
         }
         break;
     }
@@ -811,7 +815,9 @@ NetworkXioIOHandler::process_request(NetworkXioRequest *req)
     }
     default:
         LOG_ERROR("Unknown command");
-        handle_error(req, EIO);
+        handle_error(req,
+                     NetworkXioMsgOpcode::ErrorRsp,
+                     EIO);
         return;
     };
 }
