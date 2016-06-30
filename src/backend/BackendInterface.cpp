@@ -148,12 +148,12 @@ BackendInterface::handle_eventual_consistency_(InsistOnLatestVersion insist_on_l
         InsistOnLatestVersion::F :
         insist_on_latest;
 
-    LOG_INFO(nspace_ << ": caller wants latest version: " << insist_on_latest <<
-             ", backend offers strict consistency: " <<
-             (consistency == StrictConsistency::T) <<
-             " -> " <<
-             ((insist == InsistOnLatestVersion::T) ? "insisting"  : "not insisting") <<
-             " on latest version towards the backend");
+    LOG_DEBUG(nspace_ << ": caller wants latest version: " << insist_on_latest <<
+              ", backend offers strict consistency: " <<
+              (consistency == StrictConsistency::T) <<
+              " -> " <<
+              ((insist == InsistOnLatestVersion::T) ? "insisting"  : "not insisting") <<
+              " on latest version towards the backend");
     try
     {
         return fun(insist);
