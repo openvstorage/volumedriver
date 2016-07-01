@@ -78,6 +78,38 @@ logMessage(al::AlbaLogLevel albaLevel, string &message)
 
 namespace backend
 {
+
+namespace
+{
+
+boost::optional<std::string>
+extract_preset(const AlbaConfig& cfg)
+{
+    if (not cfg.alba_connection_preset.value().empty())
+    {
+        return cfg.alba_connection_preset.value();
+    }
+    else
+    {
+        return boost::none;
+    }
+}
+
+boost::optional<apc::RoraConfig>
+extract_rora_config(const AlbaConfig& cfg)
+{
+    if (cfg.alba_connection_use_rora.value())
+    {
+        return apc::RoraConfig(cfg.alba_connection_rora_manifest_cache_capacity.value());
+    }
+    else
+    {
+        return boost::none;
+    }
+}
+
+}
+
 namespace albaconn
 {
 
@@ -85,11 +117,9 @@ Connection::Connection(const config_type& cfg)
     : Connection(cfg.alba_connection_host.value(),
                  cfg.alba_connection_port.value(),
                  cfg.alba_connection_timeout.value(),
-                 cfg.alba_connection_preset.value().empty() ?
-                 boost::none :
-                 boost::optional<std::string>(cfg.alba_connection_preset.value()),
+                 extract_preset(cfg),
                  boost::lexical_cast<apc::Transport>(cfg.alba_connection_transport.value()),
-                 cfg.alba_connection_use_rora.value())
+                 extract_rora_config(cfg))
 {}
 
 Connection::Connection(const string& host,
@@ -97,7 +127,7 @@ Connection::Connection(const string& host,
                        const uint16_t timeout,
                        const boost::optional<std::string>& preset,
                        const apc::Transport transport,
-                       const bool use_rora)
+                       const boost::optional<apc::RoraConfig>& rora_config)
     : preset_(preset)
     , healthy_(true)
 {
@@ -133,7 +163,7 @@ Connection::Connection(const string& host,
                                      boost::lexical_cast<string>(port),
                                      boost::posix_time::seconds(timeout),
                                      transport,
-                                     use_rora);
+                                     rora_config);
 }
 
 TODO("Y42: Better would be to specify the exceptions for each call")
