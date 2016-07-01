@@ -49,6 +49,7 @@ public:
         xio_context *ctx;
         bool disconnected;
         bool disconnecting;
+        bool connection_error;
     };
 
     struct xio_msg_s
