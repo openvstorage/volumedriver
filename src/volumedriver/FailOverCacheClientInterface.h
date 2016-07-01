@@ -72,6 +72,9 @@ public:
     setRequestTimeout(const boost::chrono::seconds) = 0;
 
     virtual void
+    setBusyLoopDuration(const boost::chrono::microseconds) = 0;
+
+    virtual void
     removeUpTo(const SCO& sconame) = 0;
 
     virtual void
@@ -101,7 +104,7 @@ protected:
 private:
     DECLARE_LOGGER("FailOverCacheClientInterface");
 
-    const size_t max_entries_;
+    const size_t max_entries_ ;
 };
 
 } // namespace volumedriver

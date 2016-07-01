@@ -34,7 +34,8 @@ public:
                             const volumedriver::FailOverCacheTransport transport)
         : path(pth)
         , port(prt)
-        , acceptor_(path)
+        , acceptor_(path,
+                    boost::chrono::microseconds(0))
         , server_(fungi::SocketServer::createSocketServer(acceptor_,
                                                           addr,
                                                           port,

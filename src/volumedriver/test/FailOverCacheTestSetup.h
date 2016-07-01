@@ -44,7 +44,8 @@ private:
 
     FailOverCacheTestContext(FailOverCacheTestSetup& setup,
                              const boost::optional<std::string>& addr,
-                             const uint16_t port);
+                             const uint16_t port,
+                             const boost::chrono::microseconds busy_retry_duration);
 
     FailOverCacheTestContext(const FailOverCacheTestContext&) = delete;
 
@@ -122,6 +123,7 @@ private:
     static std::string addr_;
     static uint16_t port_base_;
     static volumedriver::FailOverCacheTransport transport_;
+    static boost::chrono::microseconds busy_retry_duration_;
 
     typedef std::set<uint16_t> set_type;
     set_type ports_;

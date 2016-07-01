@@ -30,6 +30,7 @@ FailOverCacheServer::FailOverCacheServer(const constructor_type& c)
     : MainHelper(c)
     , desc_("Required Options")
     , transport_(vd::FailOverCacheTransport::TCP)
+    , busy_loop_usecs_(0)
     , running_(false)
 {
     logger_ = &MainHelper::getLogger__();
@@ -47,6 +48,9 @@ FailOverCacheServer::FailOverCacheServer(const constructor_type& c)
         ("transport",
          po::value<vd::FailOverCacheTransport>(&transport_)->default_value(transport_),
          "transport type of the failovercache server (TCP|RSocket)")
+        ("busy-loop-usecs",
+         po::value<unsigned>(&busy_loop_usecs_)->default_value(busy_loop_usecs_),
+         "usecs to try a busy loop read on a socket before falling back to poll()")
         ("daemonize,D",
          "run as a daemon");
 }
@@ -119,9 +123,11 @@ FailOverCacheServer::run()
     LOG_INFO( "starting, server path: " << path <<
               ", address to bind to: " << addr <<
               ", port: " << port_ <<
-              ", transport type: " << transport_);
+              ", transport type: " << transport_ <<
+              ", busy-loop usecs: " << busy_loop_usecs_);
 
-    acceptor = std::make_unique<failovercache::FailOverCacheAcceptor>(path);
+    acceptor = std::make_unique<failovercache::FailOverCacheAcceptor>(path,
+                                                                      boost::chrono::microseconds(busy_loop_usecs_));
 
     LOG_INFO("Running the SocketServer");
 

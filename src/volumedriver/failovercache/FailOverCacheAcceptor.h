@@ -43,7 +43,8 @@ class FailOverCacheAcceptor
     friend class volumedrivertest::FailOverCacheTestContext;
 
 public:
-    explicit FailOverCacheAcceptor(const boost::optional<boost::filesystem::path>& root);
+    FailOverCacheAcceptor(const boost::optional<boost::filesystem::path>& root,
+                          const boost::chrono::microseconds busy_loop_duration);
 
     virtual ~FailOverCacheAcceptor();
 
@@ -83,6 +84,7 @@ private:
 
     std::list<FailOverCacheProtocol*> protocols;
     BackendFactory factory_;
+    const boost::chrono::microseconds busy_loop_duration_;
 
     // for use by testers
     BackendPtr

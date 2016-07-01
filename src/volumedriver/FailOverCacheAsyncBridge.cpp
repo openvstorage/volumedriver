@@ -209,6 +209,17 @@ FailOverCacheAsyncBridge::setRequestTimeout(const boost::chrono::seconds seconds
 }
 
 void
+FailOverCacheAsyncBridge::setBusyLoopDuration(const boost::chrono::microseconds usecs)
+{
+    LOCK();
+
+    if(cache_)
+    {
+        cache_->setBusyLoopDuration(usecs);
+    }
+}
+
+void
 FailOverCacheAsyncBridge::run()
 {
     boost::unique_lock<decltype(mutex_)> unique_lock(mutex_);

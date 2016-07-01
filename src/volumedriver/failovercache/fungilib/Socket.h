@@ -30,6 +30,7 @@
 #include <unistd.h>
 #include <netinet/in.h>
 
+#include <boost/chrono/duration.hpp>
 #include <boost/optional.hpp>
 
 #include <youtils/Logging.h>
@@ -141,6 +142,12 @@ public:
 
     virtual bool isClosed() const { return closed_; }
 
+    void
+    setBusyLoopDuration(boost::chrono::microseconds us)
+    {
+        busy_loop_duration_ = us;
+    }
+
     /** @exception IOException */
     void setNoDelay();
     /** @exception IOException */
@@ -178,6 +185,7 @@ protected:
     std::string name_;
     bool connectionInProgress_;
     double requestTimeout_;
+    boost::chrono::microseconds busy_loop_duration_;
 
     int get_SO_ERROR();
 

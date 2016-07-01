@@ -89,6 +89,24 @@ FailOverCacheSyncBridge::setRequestTimeout(const boost::chrono::seconds seconds)
     }
 }
 
+void
+FailOverCacheSyncBridge::setBusyLoopDuration(const boost::chrono::microseconds usecs)
+{
+    LOCK();
+
+    if(cache_)
+    {
+        try
+        {
+            cache_->setBusyLoopDuration(usecs);
+        }
+        catch (std::exception& e)
+        {
+            handleException(e, "setBusyLoopDuration");
+        }
+    }
+}
+
 bool
 FailOverCacheSyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
                                     size_t num_locs,
