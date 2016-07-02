@@ -40,7 +40,6 @@ ShmClient::ShmClient(const ShmSegmentDetails& segment_details,
                    segment_details.id().c_str())
     , segment_details_(segment_details)
     , vname_(vname)
-    , vsize_(create_result.volume_size_in_bytes)
     , key_(create_result.writerequest_uuid)
 {}
 

@@ -94,12 +94,6 @@ public:
     stat(const std::string& volume_name,
          struct stat *st);
 
-    uint64_t
-    volume_size_in_bytes() const
-    {
-        return vsize_;
-    }
-
     const std::string&
     get_key() const
     {
@@ -145,7 +139,6 @@ private:
 
     const ShmSegmentDetails segment_details_;
     const std::string vname_;
-    const size_t vsize_;
     const std::string key_;
 };
 
