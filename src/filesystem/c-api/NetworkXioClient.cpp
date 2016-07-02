@@ -648,14 +648,10 @@ NetworkXioClient::on_msg_error_control(xio_session *session ATTR_UNUSED,
         }
     }
     xio_msg = reinterpret_cast<xio_msg_s*>(imsg.opaque());
-    int req_error = EIO;
-    if (sdata->connection_error)
-    {
-        req_error = ENOTCONN;
-    }
     ovs_aio_request::handle_xio_ctrl_request(get_ovs_aio_request(xio_msg->opaque),
                                              -1,
-                                             req_error);
+                                             sdata->connection_error ?
+                                             ENOTCONN : EIO);
     xio_context_stop_loop(ctx);
     return 0;
 }
@@ -727,6 +723,7 @@ NetworkXioClient::on_session_event_control(xio_session *session,
         break;
     case XIO_SESSION_CONNECTION_ERROR_EVENT:
     case XIO_SESSION_CONNECTION_REFUSED_EVENT:
+    case XIO_SESSION_CONNECTION_DISCONNECTED_EVENT:
         sdata->connection_error = true;
         break;
     case XIO_SESSION_TEARDOWN_EVENT:
