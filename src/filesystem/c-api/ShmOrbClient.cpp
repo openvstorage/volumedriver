@@ -101,6 +101,12 @@ ShmOrbClient::ShmOrbClient(const ShmSegmentDetails& segment_details)
     , volume_factory_ref_(get_volume_factory_reference_())
 {}
 
+std::unique_ptr<ShmIdlInterface::HelloReply>
+ShmOrbClient::hello(const std::string& sender_id)
+{
+    return std::unique_ptr<ShmIdlInterface::HelloReply>(volume_factory_ref_->hello(sender_id.c_str()));
+}
+
 std::unique_ptr<ShmClient>
 ShmOrbClient::open(const std::string& volname)
 {

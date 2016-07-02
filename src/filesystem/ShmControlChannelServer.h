@@ -344,6 +344,12 @@ public:
         boost::filesystem::remove_all(segment_details_.control_endpoint());
     }
 
+    const ShmSegmentDetails&
+    shm_segment_details() const
+    {
+        return segment_details_;
+    }
+
 private:
     boost::asio::io_service io_service_;
     boost::asio::local::stream_protocol::acceptor acceptor_;

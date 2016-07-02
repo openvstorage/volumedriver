@@ -54,6 +54,19 @@ public:
 
     typedef ShmServer<Handler> ServerType;
 
+    ShmIdlInterface::HelloReply*
+    hello(const std::string& sender_id)
+    {
+        LOG_INFO(sender_id << " says 'Hi'");
+
+        ShmIdlInterface::HelloReply_var reply(new ShmIdlInterface::HelloReply());
+        const ShmSegmentDetails& segment_details = shm_ctl_server_.shm_segment_details();
+        reply->cluster_id = segment_details.cluster_id.c_str();
+        reply->vrouter_id = segment_details.vrouter_id.c_str();
+
+        return reply._retn();
+    }
+
     ShmIdlInterface::CreateResult*
     create_shm_interface(const ShmIdlInterface::CreateShmArguments& args)
     {

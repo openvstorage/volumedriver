@@ -36,6 +36,9 @@ public:
 
     ~ShmOrbClient() = default;
 
+    std::unique_ptr<ShmIdlInterface::HelloReply>
+    hello(const std::string& sender_id);
+
     std::unique_ptr<ShmClient>
     open(const std::string& volname);
 

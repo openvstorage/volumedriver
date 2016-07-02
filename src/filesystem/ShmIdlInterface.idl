@@ -16,6 +16,11 @@ module ShmIdlInterface {
     unsigned long long volume_size_in_bytes;
     };
 
+    struct HelloReply {
+    string cluster_id;
+    string vrouter_id;
+    };
+
     exception VolumeNameAlreadyRegistered {
     string volume_name;
     };
@@ -65,6 +70,10 @@ module ShmIdlInterface {
     typedef sequence<string> StringSequence;
 
     interface VolumeFactory {
+
+    ShmIdlInterface::HelloReply
+    hello(in string client_name);
+
     void
     create_volume(in string volume_name,
                   in unsigned long long volume_size_in_bytes)
