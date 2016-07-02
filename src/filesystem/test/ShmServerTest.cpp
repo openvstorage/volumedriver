@@ -26,6 +26,7 @@
 #include <youtils/Catchers.h>
 #include <youtils/FileUtils.h>
 #include <youtils/FileDescriptor.h>
+#include <youtils/Logging.h>
 #include <youtils/System.h>
 #include <youtils/wall_timer.h>
 
@@ -128,6 +129,9 @@ public:
         ASSERT_NO_THROW(future.get());
 
         ShmOrbClient::init();
+
+        wait_for_shm_server(vrouter_cluster_id(),
+                            local_node_id());
     }
 
     virtual void
@@ -157,6 +161,52 @@ public:
         return shm_segment_details(vrouter_cluster_id(),
                                    local_node_id());
     }
+
+    void
+    hello(const ClusterId& cid,
+          const NodeId& nid)
+    {
+        const std::string sender_id("ShmServerTest-"s + yt::UUID().str());
+        std::unique_ptr<ShmIdlInterface::HelloReply>
+            reply(ShmOrbClient(ShmSegmentDetails(cid,
+                                                 nid)).hello(sender_id));
+
+        ASSERT_EQ(cid,
+                  ClusterId(reply->cluster_id));
+        ASSERT_EQ(nid,
+                  NodeId(reply->vrouter_id));
+    }
+
+    void
+    wait_for_shm_server(const ClusterId& cid,
+                        const NodeId& nid,
+                        const unsigned retries = 20,
+                        const std::chrono::milliseconds sleep = std::chrono::milliseconds(100))
+    {
+        for (unsigned i = 0; i <= retries; ++i)
+        {
+            try
+            {
+                hello(cid,
+                      nid);
+                return;
+            }
+            CATCH_STD_ALL_EWHAT({
+                    if (i <= retries)
+                    {
+                        LOG_INFO("Failed to say 'hello', attempt #" << i << ": " << EWHAT << ". Retrying.");
+                        std::this_thread::sleep_for(sleep);
+                    }
+                    else
+                    {
+                        FAIL() << "Failed to say 'hello' after " << i << " attempts: " << EWHAT << ". Giving up.";
+                    }
+                });
+        }
+    }
+
+protected:
+    DECLARE_LOGGER("ShmServerTest");
 };
 
 TEST_F(ShmServerTest, ovs_create_destroy_context)
@@ -1276,6 +1326,10 @@ TEST_F(ShmServerTest, two_instances)
                                                                                 remote_node_id()));
                                 const auto vid(yt::System::get_env_with_default("SHM_TEST_REMOTE_VOLUME_ID",
                                                                                 "remote-volume"s));
+
+                                wait_for_shm_server(cid,
+                                                    nid);
+
                                 work(cid,
                                      nid,
                                      vid,
