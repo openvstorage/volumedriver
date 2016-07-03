@@ -323,6 +323,20 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_transport,
                                       ShowDocumentation::T,
                                       alba::proxy_client::Transport::tcp);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_use_rora,
+                                      backend_connection_manager_name,
+                                      "alba_connection_use_rora",
+                                      "Whether to enable Read Optimized RDMA ASD (RORA) support",
+                                      ShowDocumentation::T,
+                                      false);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_rora_manifest_cache_capacity,
+                                      backend_connection_manager_name,
+                                      "alba_connection_rora_manifest_cache_capacity",
+                                      "Capacity of the RORA fetcher's manifest cache",
+                                      ShowDocumentation::T,
+                                      10000ULL);
+
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(bgc_threads,
                                       backend::GarbageCollector::name(),
                                       "bgc_threads",

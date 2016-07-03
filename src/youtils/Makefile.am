@@ -77,7 +77,6 @@ libyoutils_la_SOURCES = \
 	LocORemConnection.cpp \
 	LocORemServer.cpp \
 	Logger.cpp \
-	LoggerPrivate.cpp \
 	LoggerToolCut.cpp \
 	LoggingToolCut.cpp \
 	LRUCache.cpp \

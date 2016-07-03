@@ -94,6 +94,8 @@ DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_port, uint16_t);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_timeout, uint16_t);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_preset, std::string);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_transport, alba::proxy_client::Transport);
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_use_rora, bool);
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_rora_manifest_cache_capacity, size_t);
 
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(bgc_threads, uint32_t);
 

@@ -14,7 +14,6 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "../Assert.h"
-#include "../LoggerPrivate.h"
 #include "../Logging.h"
 #include "../SourceOfUncertainty.h"
 #include "../System.h"
@@ -26,7 +25,6 @@
 #include <string.h>
 #include <string>
 
-#include <boost/log/attributes/constant.hpp>
 #include <boost/log/trivial.hpp>
 
 #include <boost/random/discrete_distribution.hpp>
@@ -70,11 +68,11 @@ const std::vector<Severity> severities {
 
 }
 
-class TestLogging
+class LoggingTest
     : public TestBase
 {
 protected:
-    TestLogging()
+    LoggingTest()
     {}
 
     virtual void SetUp(void)
@@ -84,10 +82,10 @@ protected:
     {}
 
 public:
-    DECLARE_LOGGER("TestLogging");
+    DECLARE_LOGGER("LoggingTest");
 };
 
-TEST_F(TestLogging, test1)
+TEST_F(LoggingTest, test1)
 {
 
     LOG_ERROR("Got My Mojo Working " << 3 << " " << std::boolalpha <<  true);
@@ -114,14 +112,14 @@ struct LoggerThread
     Logger::logger_type&
     getLogger__()
     {
-        return TestLogging::getLogger__();
+        return LoggingTest::getLogger__();
     }
 
     const Severity sev_;
     bool stop_;
 };
 
-TEST_F(TestLogging, test_setup_teardown)
+TEST_F(LoggingTest, test_setup_teardown)
 {
     const unsigned num_loggers = 32;
     std::vector<LoggerThread> loggers;
@@ -162,7 +160,7 @@ TEST_F(TestLogging, test_setup_teardown)
     }
 }
 
-TEST_F(TestLogging, test_flushing)
+TEST_F(LoggingTest, test_flushing)
 {
     unsigned num_tests=10;
 
@@ -173,7 +171,7 @@ TEST_F(TestLogging, test_flushing)
     }
 }
 
-TEST_F(TestLogging, DISABLED_lazylogging)
+TEST_F(LoggingTest, DISABLED_lazylogging)
 {
     for(int i = 0; i < 10; ++i)
     {
@@ -182,7 +180,7 @@ TEST_F(TestLogging, DISABLED_lazylogging)
     }
 }
 
-TEST_F(TestLogging, performance)
+TEST_F(LoggingTest, performance)
 {
     const unsigned num_tests = 1024 * System::get_env_with_default("TEST_LOGGING_PERFORMANCE_TIMES_K", 0);
 
@@ -197,7 +195,7 @@ TEST_F(TestLogging, performance)
     }
 }
 
-TEST_F(TestLogging, trace_performance)
+TEST_F(LoggingTest, trace_performance)
 {
     const unsigned num_tests = 1024 * System::get_env_with_default("TEST_LOGGING_PERFORMANCE_TIMES_K", 0);
 
@@ -289,7 +287,7 @@ struct PlayWithLogger
 
 }
 
-TEST_F(TestLogging, DISABLED_torture)
+TEST_F(LoggingTest, DISABLED_torture)
 {
     const unsigned num_loggers = 32;
 
@@ -331,7 +329,7 @@ TEST_F(TestLogging, DISABLED_torture)
     t.join();
 }
 
-TEST_F(TestLogging, lexical_cast)
+TEST_F(LoggingTest, lexical_cast)
 {
 #define T(sev, as_str)                                                  \
     {                                                                   \
@@ -357,12 +355,9 @@ TEST_F(TestLogging, lexical_cast)
 
 namespace blt = boost::log::trivial;
 
-TEST_F(TestLogging, DISABLED_integration_with_trivial_boost_logging)
+TEST_F(LoggingTest, integration_with_trivial_boost_logging)
 {
-    blt::logger::get().add_attribute(LOGGER_ATTRIBUTE_ID,
-                                     boost::log::attributes::constant<LOGGER_ATTRIBUTE_ID_TYPE>("trivial"));
-    blt::logger::get().add_attribute("Severity",
-                                     boost::log::attributes::constant<Severity>(Severity::info));
+    LOG_DEBUG("let's see how messages from boost::log::trivial are handled");
 
     BOOST_LOG_TRIVIAL(trace) << "A trace severity message";
     BOOST_LOG_TRIVIAL(debug) << "A debug severity message";
@@ -375,7 +370,7 @@ TEST_F(TestLogging, DISABLED_integration_with_trivial_boost_logging)
 // Semi-manual test for OVS-2680:
 // make sure to set the rotation interval to < 3 secs in Logger::setup_file_logging and
 // to run with logging enabled, of course.
-TEST_F(TestLogging, DISABLED_exceptional_rotation)
+TEST_F(LoggingTest, DISABLED_exceptional_rotation)
 {
     const auto logfile(System::get_env_with_default("LOG_FILE",
                                                     "voldrv.log"s));
