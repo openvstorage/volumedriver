@@ -46,9 +46,9 @@ struct StrongArithmeticTypedefConverter
     static void*
     convertible(PyObject* o)
     {
-        if (PyInt_Check(o))
+        if (PyLong_Check(o))
         {
-            long l = PyInt_AsLong(o);
+            long l = PyLong_AsLong(o);
             if (l == -1)
             {
                 if (PyErr_Occurred())
@@ -73,7 +73,7 @@ struct StrongArithmeticTypedefConverter
     from_python(PyObject* o,
                 boost::python::converter::rvalue_from_python_stage1_data* data)
     {
-        arithmetic_type t = PyInt_AsLong(o);
+        arithmetic_type t = PyLong_AsLong(o);
         assert(not (t == -1 and PyErr_Occurred()));
 
         typedef boost::python::converter::rvalue_from_python_storage<T> storage_type;

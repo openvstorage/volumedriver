@@ -23,13 +23,13 @@ struct IntegerConverter
     static PyObject*
     convert(const T t)
     {
-        return PyInt_FromLong(static_cast<long>(t));
+        return PyLong_FromLong(static_cast<long>(t));
     }
 
     static void*
     convertible(PyObject* o)
     {
-        return PyInt_Check(o) ? o : nullptr;
+        return PyLong_Check(o) ? o : nullptr;
     }
 
     static void
@@ -39,7 +39,7 @@ struct IntegerConverter
         using namespace boost::python;
 
         handle<> handle(borrowed(o));
-        const T t(PyInt_AsLong(handle.get()));
+        const T t(PyLong_AsLong(handle.get()));
 
         using Storage = converter::rvalue_from_python_storage<T>;
         void* storage = reinterpret_cast<Storage*>(data)->storage.bytes;
