@@ -28,8 +28,10 @@
 
 namespace youtilstest
 {
+
 using namespace youtils;
 namespace bu = boost::uuids;
+namespace fs = boost::filesystem;
 
 class UUIDTest : public testing::Test
 {

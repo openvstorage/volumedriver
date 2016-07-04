@@ -15,9 +15,12 @@
 
 #include "TestWithDir.h"
 #include "../FileUtils.h"
+
 namespace youtilstest
 {
 using namespace youtils;
+
+namespace fs = boost::filesystem;
 
 TestWithDir::TestWithDir(const std::string& dirName) :
         directory_(FileUtils::temp_path() / dirName)

@@ -29,7 +29,7 @@ struct ScriptFile
 {
     DECLARE_LOGGER("ScriptFile");
 
-    ScriptFile(const fs::path& p,
+    ScriptFile(const boost::filesystem::path& p,
                const std::vector<std::string>& lines)
     {
         boost::filesystem::ofstream os(p);
