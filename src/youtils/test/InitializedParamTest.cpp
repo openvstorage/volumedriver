@@ -15,7 +15,7 @@
 
 #include "../InitializedParam.h"
 #include "../StreamUtils.h"
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 
 #include <vector>
 
@@ -164,7 +164,7 @@ namespace youtilstest
 {
 
 class InitializedParamTest
-    : public TestBase
+    : public testing::Test
 {
 protected:
     template<typename T>

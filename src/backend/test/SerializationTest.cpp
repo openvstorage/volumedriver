@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include <youtils/StrongTypedString.h>
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 
 #include "../AlbaConfig.h"
 #include "../BackendConfig.h"
@@ -33,7 +33,7 @@ namespace backendtest
 using namespace backend;
 
 class SerializationTest
-    : public youtilstest::TestBase
+    : public testing::Test
 {
 protected:
     void

@@ -13,13 +13,13 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 #include <boost/thread.hpp>
 
 /* A */
 namespace youtilstest
 {
-class GoTest : public TestBase
+class GoTest : public testing::Test
 {
 protected:
     void

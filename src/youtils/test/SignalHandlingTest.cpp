@@ -16,7 +16,7 @@
 #include "../SignalBlocker.h"
 #include "../SignalSet.h"
 #include "../SignalThread.h"
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 
 #include <condition_variable>
 #include <mutex>
@@ -28,7 +28,7 @@ namespace youtilstest
 namespace yt = youtils;
 
 class SignalHandlingTest
-    : public TestBase
+    : public testing::Test
 {
 protected:
     DECLARE_LOGGER("SignalHandlingTest");

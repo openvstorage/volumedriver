@@ -68,7 +68,6 @@
 #include "StrongTypedPath.h"
 #include "StrongTypedString.h"
 #include "System.h"
-#include "TestBase.h"
 #include "TestMainHelper.h"
 #include "thirdparty.h"
 #include "ThreadPool.h"

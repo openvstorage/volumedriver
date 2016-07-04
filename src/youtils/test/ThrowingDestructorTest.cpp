@@ -14,7 +14,10 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "../ThrowingDestructor.h"
-#include "../TestBase.h"
+
+#include <gtest/gtest.h>
+
+#include <memory>
 
 namespace youtilstest
 {
@@ -39,7 +42,7 @@ public:
 
 };
 
-class ThrowingDestructorTest : public TestBase
+class ThrowingDestructorTest : public testing::Test
 {};
 
 TEST_F(ThrowingDestructorTest, DISABLED_test)

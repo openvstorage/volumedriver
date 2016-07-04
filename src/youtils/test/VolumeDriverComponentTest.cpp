@@ -14,8 +14,9 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "../InitializedParam.h"
-#include "../TestBase.h"
 #include "../VolumeDriverComponent.h"
+
+#include <gtest/gtest.h>
 
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
@@ -26,10 +27,9 @@ namespace youtilstest
 namespace bpt = boost::property_tree;
 namespace ip = initialized_params;
 namespace yt = youtils;
-namespace ytt = youtilstest;
 
 class VolumeDriverComponentTest
-    : public ytt::TestBase
+    : public testing::Test
 {};
 
 typedef boost::archive::binary_iarchive iarchive_type;

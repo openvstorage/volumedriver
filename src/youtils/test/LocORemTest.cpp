@@ -22,7 +22,7 @@
 #include "../System.h"
 #include "../wall_timer.h"
 
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 
 #include <sys/time.h>
 #include <sys/resource.h>

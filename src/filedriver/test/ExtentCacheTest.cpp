@@ -16,7 +16,7 @@
 #include <boost/filesystem.hpp>
 
 #include <youtils/FileUtils.h>
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 
 #include <filedriver/ExtentCache.h>
 
@@ -27,11 +27,11 @@ namespace fs = boost::filesystem;
 namespace yt = youtils;
 
 class ExtentCacheTest
-    : public youtilstest::TestBase
+    : public testing::Test
 {
 protected:
     ExtentCacheTest()
-        : youtilstest::TestBase()
+        : testing::Test()
         , path_(yt::FileUtils::temp_path () / "ExtentCacheTest")
     {}
 

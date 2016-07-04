@@ -16,12 +16,12 @@
 #include "../BackendTestSetup.h"
 #include "../BackendException.h"
 #include "../BackendConnectionInterface.h"
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 #include "../S3_Connection.h"
 namespace backendtest
 {
 class S3BackendTest
-    : public youtilstest::TestBase
+    : public testing::Test
 {};
 
 using namespace backend::s3;

@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "../StrongTypedPath.h"
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
@@ -29,7 +29,7 @@ namespace youtilstest
 namespace fs = boost::filesystem;
 
 class StrongTypedPathTest
-    : public TestBase
+    : public testing::Test
 {};
 
 TEST_F(StrongTypedPathTest, path_ops)

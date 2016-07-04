@@ -13,14 +13,14 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 #include "../Chooser.h"
 
 namespace youtilstest
 {
 using namespace youtils;
 
-class ChooserTest : public TestBase
+class ChooserTest : public testing::Test
 {};
 
 /*

@@ -16,7 +16,7 @@
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 
 #include <volumedriver/Types.h>
 
@@ -29,7 +29,7 @@ namespace vd = volumedriver;
 namespace vfs = volumedriverfs;
 
 class MessageTest
-    : public youtilstest::TestBase
+    : public testing::Test
 {
 protected:
     template<typename M>

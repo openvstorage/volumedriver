@@ -16,7 +16,7 @@
 #include "../VolumeConfigParameters.h"
 #include "../MDSMetaDataBackend.h"
 
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 
 namespace volumedrivertest
 {
@@ -25,7 +25,7 @@ namespace be = backend;
 namespace vd = volumedriver;
 
 class VolumeConfigParametersTest
-    : public youtilstest::TestBase
+    : public testing::Test
 {};
 
 TEST_F(VolumeConfigParametersTest, vanilla)

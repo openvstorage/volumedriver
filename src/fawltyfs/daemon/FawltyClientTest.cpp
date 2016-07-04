@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 #include <pstreams/pstream.h>
 #include <youtils/Logging.h>
 #include <youtils/FileUtils.h>
@@ -38,7 +38,7 @@ namespace fs = boost::filesystem;
 
 
 
-class FawltyClientTest : public youtilstest::TestBase
+class FawltyClientTest : public testing::Test
 {
     typedef redi::ipstream stream_t;
 

@@ -105,7 +105,6 @@ libyoutils_la_SOURCES = \
 	StreamUtils.cpp \
 	StrongTypedString.cpp \
 	System.cpp \
-	TestBase.cpp \
 	TestMainHelper.cpp \
 	ThreadPool.cpp \
 	ThrowingDestructor.cpp \

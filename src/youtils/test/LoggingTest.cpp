@@ -17,7 +17,7 @@
 #include "../Logging.h"
 #include "../SourceOfUncertainty.h"
 #include "../System.h"
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 
 #include <stdlib.h>
 #include <iostream>
@@ -69,7 +69,7 @@ const std::vector<Severity> severities {
 }
 
 class LoggingTest
-    : public TestBase
+    : public testing::Test
 {
 protected:
     LoggingTest()

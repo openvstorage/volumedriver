@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 #include "TestGlobalLockService.h"
 #include "UnlockingGlobalLockService.h"
 #include "DenyLockService.h"
@@ -26,7 +26,7 @@ namespace youtilstest
 {
 using namespace youtils;
 
-class GlobalLockTest : public TestBase
+class GlobalLockTest : public testing::Test
 {
 public:
     GlobalLockTest()

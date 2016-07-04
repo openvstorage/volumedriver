@@ -16,14 +16,16 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/optional/optional_io.hpp>
 #include <boost/regex.hpp>
+
+#include <gtest/gtest.h>
+
 #include "../ArakoonInterface.h"
 #include "../ArakoonTestSetup.h"
+#include "../FileUtils.h"
 #include "../System.h"
-#include "../TestBase.h"
 #include "../UUID.h"
 #include "../wall_timer.h"
 #include "../Weed.h"
-
 
 namespace arakoontest
 {
@@ -42,11 +44,11 @@ const boost::regex arakoon_hello_string_regex(std::string("Arakoon " + arakoon_v
 }
 
 class ArakoonTest
-    : public youtilstest::TestBase
+    : public testing::Test
 {
 public:
     ArakoonTest()
-        : test_setup(getTempPath("ArakoonTest") / "arakoon", 3)
+        : test_setup(yt::FileUtils::temp_path("ArakoonTest") / "arakoon", 3)
     {}
 
     void

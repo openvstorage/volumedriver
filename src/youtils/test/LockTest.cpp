@@ -13,14 +13,14 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 #include "../Mutex.h"
 
 namespace youtilstest
 {
 //using namespace youtils;
 
-class LockTest : public TestBase
+class LockTest : public testing::Test
 {
 };
 

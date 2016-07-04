@@ -18,6 +18,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/property_tree/ptree.hpp>
 
+#include <youtils/FileUtils.h>
 #include <youtils/InitializedParam.h>
 
 #include "../FileSystemParameters.h"
@@ -30,12 +31,11 @@ namespace bpt = boost::property_tree;
 namespace fs = boost::filesystem;
 namespace ip = initialized_params;
 namespace vfs = volumedriverfs;
-namespace ytt = youtilstest;
+namespace yt = youtils;
 
 RegistryTestSetup::RegistryTestSetup(const std::string& name)
-    : ytt::TestBase()
-    , ara::ArakoonTestSetup(getTempPath(name) / "arakoon")
-    , root_(getTempPath(name))
+    : ara::ArakoonTestSetup(yt::FileUtils::temp_path(name) / "arakoon")
+    , root_(yt::FileUtils::temp_path(name))
 {}
 
 void

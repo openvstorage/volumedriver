@@ -21,19 +21,22 @@
 
 #include <boost/filesystem/fstream.hpp>
 
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
+
+#include <youtils/FileUtils.h>
 
 namespace volumedriver
 {
 
 namespace fs = boost::filesystem;
+namespace yt = youtils;
 
 class SnapshotPersistorTest
-    : public youtilstest::TestBase
+    : public testing::Test
 {
 protected:
     SnapshotPersistorTest()
-        : basedir_(getTempPath("SnapshotPersistorTest"))
+        : basedir_(yt::FileUtils::temp_path("SnapshotPersistorTest"))
     {}
 
     virtual void
@@ -149,10 +152,10 @@ protected:
         }
 
         {
-            const fs::path f(FileUtils::create_temp_file(getTempPath("snapshots.xml")));
+            const fs::path f(FileUtils::create_temp_file(yt::FileUtils::temp_path("snapshots.xml")));
             ALWAYS_CLEANUP_FILE(f);
 
-            const fs::path g(getTempPath("faulty_xml_archive"));
+            const fs::path g(yt::FileUtils::temp_path("faulty_xml_archive"));
             ALWAYS_CLEANUP_FILE(g);
 
             sp_->saveToFile(f.string(), SyncAndRename::T);
@@ -168,10 +171,10 @@ protected:
             }
 
             const fs::path
-                f(FileUtils::create_temp_file(getTempPath("snapshots.xml")));
+                f(FileUtils::create_temp_file(yt::FileUtils::temp_path("snapshots.xml")));
             ALWAYS_CLEANUP_FILE(f);
 
-            const fs::path g(getTempPath("faulty_xml_archive"));
+            const fs::path g(yt::FileUtils::temp_path("faulty_xml_archive"));
 
             ALWAYS_CLEANUP_FILE(g);
             sp_->saveToFile(f.string(),

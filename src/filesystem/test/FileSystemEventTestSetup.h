@@ -21,7 +21,7 @@
 #include <SimpleAmqpClient/SimpleAmqpClient.h>
 
 #include <youtils/Logging.h>
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 
 #include "../AmqpTypes.h"
 #include "../ClusterId.h"

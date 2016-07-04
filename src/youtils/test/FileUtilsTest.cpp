@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "../FileUtils.h"
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 #include <fstream>
 #include <stdio.h>
 #include <exception>
@@ -23,7 +23,7 @@ namespace youtilstest
 {
 using namespace youtils;
 
-class FileUtilsTest : public TestBase
+class FileUtilsTest : public testing::Test
 {};
 
 TEST_F(FileUtilsTest, boost_rename)
@@ -44,7 +44,7 @@ TEST_F(FileUtilsTest, boost_rename)
 
 TEST_F(FileUtilsTest, remove)
 {
-    fs::path tmp = FileUtils::create_temp_file(getTempPath(""), "help");
+    fs::path tmp = FileUtils::create_temp_file(FileUtils::temp_path(""), "help");
     ASSERT_TRUE(fs::exists(tmp));
     fs::remove(tmp);
     ASSERT_FALSE(fs::exists(tmp));
@@ -52,7 +52,7 @@ TEST_F(FileUtilsTest, remove)
 
 TEST_F(FileUtilsTest, touch)
 {
-    fs::path tmp = getTempPath("help");
+    fs::path tmp = FileUtils::temp_path("help");
     FileUtils::touch(tmp);
     ASSERT_TRUE(fs::exists(tmp));
     fs::remove(tmp);
@@ -61,7 +61,7 @@ TEST_F(FileUtilsTest, touch)
 
 TEST_F(FileUtilsTest, renameAndSyncFile)
 {
-    const fs::path tmpDir = getTempPath("renameAndSyncFileTest");
+    const fs::path tmpDir = FileUtils::temp_path("renameAndSyncFileTest");
     FileUtils::removeAllNoThrow(tmpDir);
 
     fs::create_directories(tmpDir);
@@ -101,7 +101,7 @@ TEST_F(FileUtilsTest, renameAndSyncFile)
 
 TEST_F(FileUtilsTest, truncate)
 {
-    const fs::path tmpDir = getTempPath("someDir");
+    const fs::path tmpDir = FileUtils::temp_path("someDir");
     fs::create_directories(tmpDir);
     ALWAYS_CLEANUP_DIRECTORY(tmpDir);
 

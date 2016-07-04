@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include <algorithm>
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 #include "../UUID.h"
 #include "../FileUtils.h"
 #include <boost/mpl/assert.hpp>
@@ -31,7 +31,7 @@ namespace youtilstest
 using namespace youtils;
 namespace bu = boost::uuids;
 
-class UUIDTest : public TestBase
+class UUIDTest : public testing::Test
 {
 
 };
@@ -100,7 +100,8 @@ TEST_F(UUIDTest, test4)
 TEST_F(UUIDTest, test5)
 {
     UUID uuid;
-    const fs::path tmpfile = getTempPath("serialization.txt");
+    const fs::path tmpfile(FileUtils::create_temp_file(FileUtils::temp_path(),
+                                                       "serialization.txt"));
     ALWAYS_CLEANUP_FILE(tmpfile);
 
     {
@@ -125,7 +126,9 @@ TEST_F(UUIDTest, test6)
 {
     std::list<UUID> vec1(20);
 
-    const fs::path tmpfile = getTempPath("serialization.txt");
+    const fs::path tmpfile(FileUtils::create_temp_file(FileUtils::temp_path(),
+                                                       "serialization.txt"));
+
     ALWAYS_CLEANUP_FILE(tmpfile);
 
     {

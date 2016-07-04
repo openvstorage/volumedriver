@@ -20,7 +20,7 @@
 
 #include <boost/lexical_cast.hpp>
 
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 #include "../DimensionedValue.h"
 #include "algorithm"
 
@@ -28,7 +28,7 @@ namespace youtilstest
 {
 using namespace youtils;
 
-class DimensionedValueTest : public TestBase
+class DimensionedValueTest : public testing::Test
 {};
 
 bool

@@ -18,7 +18,7 @@
 #include <boost/lexical_cast.hpp>
 
 #include <youtils/System.h>
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 
 namespace volumedrivertest
 {

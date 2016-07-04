@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "../Logging.h"
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 
 #include <boost/filesystem.hpp>
 
@@ -24,7 +24,7 @@ namespace youtilstest
 namespace fs = boost::filesystem;
 
 class PathTest
-    : public TestBase
+    : public testing::Test
 {};
 
 TEST_F(PathTest, absolutism)

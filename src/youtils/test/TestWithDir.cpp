@@ -34,7 +34,7 @@ const fs::path& TestWithDir::getDir()
 
 void TestWithDir::SetUp()
 {
-    TestBase::SetUp();
+    testing::Test::SetUp();
     fs::remove_all(directory_);
     fs::create_directories(directory_);
 }
@@ -42,12 +42,11 @@ void TestWithDir::SetUp()
 void TestWithDir::TearDown()
 {
     //no removal of the dir on teardown for debugging purposes, only on next Setup
-    TestBase::TearDown();
+    testing::Test::TearDown();
 }
+
 }
 
 // Local Variables: **
-// bvirtual-targets: ("target/bin/youtils_test") **
-// compile-command: "scons -D --kernel_version=system --ignore-buildinfo -j 5" **
 // mode: c++ **
 // End: **

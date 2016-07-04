@@ -16,7 +16,7 @@
 #include <filedriver/ExtentId.h>
 
 #include <youtils/Assert.h>
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 
 namespace filedrivertest
 {
@@ -24,7 +24,7 @@ namespace filedrivertest
 namespace fd = filedriver;
 
 class ExtentIdTest
-    : public youtilstest::TestBase
+    : public testing::Test
 {
 protected:
     const std::string separator = fd::ExtentId::separator_;

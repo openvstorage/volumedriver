@@ -13,9 +13,11 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include <gtest/gtest.h>
+
 #include "../ArakoonLockStore.h"
 #include "../ArakoonTestSetup.h"
-#include "../TestBase.h"
+#include "../FileUtils.h"
 
 namespace youtilstest
 {
@@ -25,11 +27,11 @@ namespace ara = arakoon;
 namespace bptime = boost::posix_time;
 
 class ArakoonLockStoreTest
-    : public TestBase
+    : public testing::Test
 {
 public:
     ArakoonLockStoreTest()
-        : test_setup_(getTempPath("ArakoonLockStoreTest") / "arakoon")
+        : test_setup_(FileUtils::temp_path("ArakoonLockStoreTest") / "arakoon")
     {
         test_setup_.setUpArakoon();
         larakoon_ = std::make_shared<LockedArakoon>(test_setup_.clusterID(),

@@ -25,7 +25,7 @@
 #include "../HeartBeatLockService.h"
 #include "../HeartBeatLockService.h"
 #include "../HeartBeatLockCommunicator.h"
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 #include "../Weed.h"
 #include "../WithGlobalLock.h"
 
@@ -169,13 +169,13 @@ DECLARE_LOGGER("HeartBeatLockTest");
 }
 
 class HeartBeatLockTest
-    : public youtilstest::TestBase
+    : public testing::Test
 {
 protected:
     using LockService = HeartBeatLockService;
 
     HeartBeatLockTest()
-        : youtilstest::TestBase()
+        : testing::Test()
     {
         locks_.map = { { uuid_, std::string() } };
         lock_store_ = boost::make_shared<LockStore>(locks_,

@@ -17,7 +17,7 @@
 #include <boost/filesystem/fstream.hpp>
 
 #include <youtils/Catchers.h>
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 #include <youtils/InitializedParam.h>
 
 #include <backend/BackendTestSetup.h>
@@ -36,12 +36,12 @@ namespace ip = initialized_params;
 namespace yt = youtils;
 
 class ContainerManagerTest
-    : public youtilstest::TestBase
+    : public testing::Test
     , public be::BackendTestSetup
 {
 protected:
     ContainerManagerTest()
-        : youtilstest::TestBase()
+        : testing::Test()
         , be::BackendTestSetup()
         , topdir_(yt::FileUtils::temp_path () / "ContainerManagerTest")
         , cachedir_(topdir_ / "containercache")

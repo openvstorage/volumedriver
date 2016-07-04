@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 #include "../FileUtils.h"
 #include "../FileDescriptor.h"
 #include "../ScopeExit.h"
@@ -29,11 +29,11 @@ namespace youtilstest
 using namespace youtils;
 
 class FileDescriptorTest
-    : public TestBase
+    : public testing::Test
 {
 public:
     FileDescriptorTest()
-        :directory_(getTempPath("FileDescriptorTest"))
+        :directory_(FileUtils::temp_path("FileDescriptorTest"))
     {}
 
     void

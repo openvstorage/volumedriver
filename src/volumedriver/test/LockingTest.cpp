@@ -20,7 +20,7 @@
 
 #include <boost/filesystem/fstream.hpp>
 
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 #include <boost/thread.hpp>
 #include <boost/thread/reverse_lock.hpp>
 namespace volumedrivertest
@@ -173,7 +173,7 @@ struct UnlockingCallInThread
 
 
 class LockingTest
-    : public youtilstest::TestBase
+    : public testing::Test
 {
 
 };

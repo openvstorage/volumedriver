@@ -28,8 +28,6 @@
 
 struct statvfs;
 
-
-
 namespace youtils
 {
 namespace fs = boost::filesystem;
@@ -51,6 +49,10 @@ public:
     // Return a path that should be used as temp directory
     static fs::path
     temp_path();
+
+    // Return a path underneath $TMP with the given subdir
+    static boost::filesystem::path
+    temp_path(const boost::filesystem::path&);
 
     // Returns a path that points to an existing file file
     static fs::path

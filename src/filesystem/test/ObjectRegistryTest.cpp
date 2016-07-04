@@ -16,7 +16,7 @@
 #include "RegistryTestSetup.h"
 
 #include <youtils/InitializedParam.h>
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 #include <youtils/UUID.h>
 
 #include "../FileSystemParameters.h"
