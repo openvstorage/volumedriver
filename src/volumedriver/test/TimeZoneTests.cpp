@@ -25,7 +25,7 @@ namespace test
 using namespace volumedriver;
 
 
-class TimeZoneTests : public ExGTest
+class TimeZoneTests : public testing::TestWithParam<VolumeDriverTestConfig>
 {
 
 protected:

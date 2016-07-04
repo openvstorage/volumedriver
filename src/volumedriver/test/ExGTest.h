@@ -60,15 +60,6 @@ struct VolumeDriverTestConfig
 #undef PARAM
 };
 
-// Z42: rename ExGTest to VolumeDriverTest
-class ExGTest :
-        public testing::TestWithParam<VolumeDriverTestConfig>
-{
-public:
-    static boost::filesystem::path
-    getTempPath(const std::string& ipath);
-};
-
 }
 
 #endif /* EXGTEST_H_ */

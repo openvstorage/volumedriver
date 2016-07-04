@@ -24,7 +24,7 @@ namespace volumedrivertest
 using namespace volumedriver;
 
 class FailOverCacheTransportTest
-    : public ExGTest
+    : public testing::TestWithParam<VolumeDriverTestConfig>
 {};
 
 TEST_F(FailOverCacheTransportTest, lexical_cast)

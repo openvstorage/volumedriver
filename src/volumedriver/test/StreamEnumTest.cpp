@@ -23,7 +23,7 @@ namespace volumedrivertest
 using namespace volumedriver;
 namespace yt = youtils;
 
-class StreamEnumTest : public ExGTest
+class StreamEnumTest : public testing::TestWithParam<VolumeDriverTestConfig>
 {
 protected:
     template<typename T>

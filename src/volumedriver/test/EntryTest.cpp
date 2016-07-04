@@ -21,7 +21,7 @@
 namespace volumedriver
 {
 class EntryTest
-    : public ExGTest
+    : public testing::TestWithParam<VolumeDriverTestConfig>
 {};
 
 #define PRINT(x) std::cout << #x << ": " << Entry :: x << std::endl;

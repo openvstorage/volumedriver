@@ -28,10 +28,13 @@
 
 #include "../DataStoreNG.h"
 
+#include <youtils/FileUtils.h>
+
 namespace volumedriver
 {
 
 namespace fs = boost::filesystem;
+namespace yt = youtils;
 
 class DataStoreNGTest
     : public VolManagerTestSetup
@@ -269,7 +272,9 @@ protected:
         ASSERT_TRUE(bi != 0);
 
         fs::path tmp_file;
-        ASSERT_NO_THROW(tmp_file = getTempPath(sco.str()));
+        ASSERT_NO_THROW(tmp_file = yt::FileUtils::create_temp_file(yt::FileUtils::temp_path(),
+                                                                   sco.str()));
+
         ALWAYS_CLEANUP_FILE(tmp_file);
 
         ASSERT_NO_THROW(bi->read(tmp_file, sco.str(), InsistOnLatestVersion::T));

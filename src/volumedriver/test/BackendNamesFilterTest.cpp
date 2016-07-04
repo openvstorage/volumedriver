@@ -30,7 +30,7 @@ namespace volumedrivertest
 using namespace volumedriver;
 
 class BackendNamesFilterTest
-    : public ExGTest
+    : public testing::TestWithParam<VolumeDriverTestConfig>
 {
 protected:
     void

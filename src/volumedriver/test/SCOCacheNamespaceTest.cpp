@@ -47,7 +47,7 @@ TEST(SCOCacheNamespaceConstructorTest, constructor)
     }
 }
 
-class SCOCacheNamespaceTest : public ExGTest
+class SCOCacheNamespaceTest : public testing::TestWithParam<VolumeDriverTestConfig>
 {
 protected:
     virtual void

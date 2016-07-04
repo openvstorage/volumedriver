@@ -31,7 +31,7 @@ namespace yt = youtils;
 using namespace volumedriver;
 
 class PageSortingGeneratorTest
-    : public ExGTest
+    : public testing::TestWithParam<VolumeDriverTestConfig>
 {};
 
 TEST_F(PageSortingGeneratorTest, performance)

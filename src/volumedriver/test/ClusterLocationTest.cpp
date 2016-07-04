@@ -21,7 +21,7 @@ namespace volumedrivertest
 using namespace volumedriver;
 
 class ClusterLocationTest
-    : public ExGTest
+    : public testing::TestWithParam<VolumeDriverTestConfig>
 {
 public:
     ClusterLocation

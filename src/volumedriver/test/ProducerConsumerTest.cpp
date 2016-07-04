@@ -19,7 +19,7 @@
 namespace volumedriver
 {
 
-class ProducerConsumerTest : public ExGTest
+class ProducerConsumerTest : public testing::TestWithParam<VolumeDriverTestConfig>
 {};
 
 class SimpleIntProducer : public yin::Producer<int>

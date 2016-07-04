@@ -23,7 +23,7 @@ namespace volumedrivertest
 {
 using namespace volumedriver;
 
-class VolumeDriverInitTest : public ExGTest
+class VolumeDriverInitTest : public testing::TestWithParam<VolumeDriverTestConfig>
 {};
 
 

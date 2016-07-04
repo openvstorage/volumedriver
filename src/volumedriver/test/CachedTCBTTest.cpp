@@ -25,7 +25,7 @@ class CachedTCBTTest : public volumedriver::ExGTest
 protected:
 
     CachedTCBTTest()
-        : directory_(getTempPath("CachedTCBTTest"))
+        : directory_(yt::FileUtils::temp_path("CachedTCBTTest"))
     {
 
     }

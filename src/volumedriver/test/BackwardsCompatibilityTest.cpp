@@ -34,7 +34,7 @@ namespace volumedrivertest
 using namespace volumedriver;
 
 class BackwardsCompatibilityTest
-    : public ExGTest
+    : public testing::TestWithParam<VolumeDriverTestConfig>
 {
 protected:
     void

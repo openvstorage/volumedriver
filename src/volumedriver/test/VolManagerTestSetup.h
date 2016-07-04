@@ -237,7 +237,7 @@ struct VolManagerTestSetupParameters
 };
 
 class VolManagerTestSetup
-    : public ExGTest
+    : public testing::TestWithParam<VolumeDriverTestConfig>
     , public be::BackendTestSetup
     , public volumedrivertest::FailOverCacheTestSetup
 {

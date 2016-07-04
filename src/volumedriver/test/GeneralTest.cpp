@@ -26,7 +26,7 @@ namespace volumedrivertest
 using namespace volumedriver;
 namespace fs = boost::filesystem;
 
-class GeneralTest : public ExGTest
+class GeneralTest : public testing::TestWithParam<VolumeDriverTestConfig>
 {};
 
 #define HANDLE(x) if(not x)                                             \

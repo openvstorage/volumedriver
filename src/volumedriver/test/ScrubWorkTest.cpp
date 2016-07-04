@@ -31,7 +31,7 @@ using namespace scrubbing;
 TODO("Y42 MAKE A TEST THAT FAILS IF YOU ADD A NEW BACKEND");
 
 class ScrubWorkTest
-    : public ExGTest
+    : public testing::TestWithParam<VolumeDriverTestConfig>
 {
 public:
     ScrubWork

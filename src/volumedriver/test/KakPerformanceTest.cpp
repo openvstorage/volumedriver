@@ -31,7 +31,7 @@ using namespace RandomLib;
 
 
 
-class KaKPerformanceTest : public ExGTest
+class KaKPerformanceTest : public testing::TestWithParam<VolumeDriverTestConfig>
 {
 public:
     KaKPerformanceTest()

@@ -138,7 +138,7 @@ private:
     nsMap_t map_;
 };
 
-class Test2TCMaps : public ExGTest
+class Test2TCMaps : public testing::TestWithParam<VolumeDriverTestConfig>
 {
 public:
     DECLARE_LOGGER("Test2TCMaps");

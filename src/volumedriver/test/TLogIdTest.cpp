@@ -29,7 +29,7 @@ using namespace volumedriver;
 namespace yt = youtils;
 
 class TLogIdTest
-    : public ExGTest
+    : public testing::TestWithParam<VolumeDriverTestConfig>
 {};
 
 TEST_F(TLogIdTest, basics)
