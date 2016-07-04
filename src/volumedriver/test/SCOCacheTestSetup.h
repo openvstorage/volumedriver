@@ -16,7 +16,7 @@
 #ifndef SCO_CACHE_TEST_SETUP_H_
 #define SCO_CACHE_TEST_SETUP_H_
 
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 
 #include "../SCOCache.h"
 

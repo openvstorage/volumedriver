@@ -19,7 +19,7 @@
 #include "../ClusterCacheEntry.h"
 #include "../ClusterCacheMap.h"
 
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 
 #include <algorithm>
 

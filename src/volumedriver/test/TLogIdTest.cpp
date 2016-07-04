@@ -16,7 +16,7 @@
 #include "../TLog.h"
 #include "../TLogId.h"
 
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 
 #include <boost/lexical_cast.hpp>
 

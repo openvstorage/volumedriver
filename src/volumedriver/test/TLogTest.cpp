@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "LBAGenerator.h"
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 #include "VolManagerTestSetup.h"
 
 #include <math.h>

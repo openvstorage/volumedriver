@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "../Entry.h"
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 
 #include "VolManagerTestSetup.h"
 

@@ -15,7 +15,7 @@
 
 #include <youtils/Logging.h>
 
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 #include "../SCOCacheNamespace.h"
 
 namespace volumedriver

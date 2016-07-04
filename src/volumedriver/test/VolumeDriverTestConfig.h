@@ -13,8 +13,8 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef EXGTEST_H_
-#define EXGTEST_H_
+#ifndef VD_TEST_CONFIG_H_
+#define VD_TEST_CONFIG_H_
 
 #include "../FailOverCacheMode.h"
 #include "../Types.h"
@@ -62,7 +62,7 @@ struct VolumeDriverTestConfig
 
 }
 
-#endif /* EXGTEST_H_ */
+#endif /* VD_TEST_CONFIG_H_ */
 
 // Local Variables: **
 // mode: c++ **

@@ -18,7 +18,7 @@
 #include "boost/filesystem.hpp"
 #include "boost/foreach.hpp"
 
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 #include "backend/BackendInterface.h"
 #include "../TransientException.h"
 #include "../VolManager.h"

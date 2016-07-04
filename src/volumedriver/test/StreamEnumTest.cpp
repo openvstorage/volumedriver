@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "../VolumeConfig.h"
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 
 #include <youtils/EnumUtils.h>
 

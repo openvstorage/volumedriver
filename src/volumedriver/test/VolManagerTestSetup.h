@@ -17,7 +17,7 @@
 #define VOLMANAGER_TEST_SETUP_H
 
 #include "EventCollector.h"
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 #include "FailOverCacheTestSetup.h"
 #include "MetaDataStoreTestSetup.h"
 

@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 #include "VolManagerTestSetup.h"
 
 #include <fstream>

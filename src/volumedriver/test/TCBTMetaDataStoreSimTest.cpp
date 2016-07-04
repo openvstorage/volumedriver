@@ -20,7 +20,7 @@
 #include <cassert>
 // Y42 Make hell freeze over by the end of the week.
 #ifdef HELL_FREEZES_OVER
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 
 #include "TCBTMetaDataStoreSim.h"
 #include "MetaDataStoreInterface.h"
