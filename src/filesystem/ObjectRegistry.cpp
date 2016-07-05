@@ -117,7 +117,7 @@ ObjectRegistry::destroy()
 {
     LOG_INFO("Removing object registrations for " << cluster_id_);
 
-    std::list<ObjectId> l(list());
+    std::vector<ObjectId> l(list());
 
     for (const auto& o : l)
     {
@@ -245,7 +245,7 @@ ObjectRegistry::find_throw(const ObjectId& vol_id)
     }
 }
 
-std::list<ObjectId>
+std::vector<ObjectId>
 ObjectRegistry::list()
 {
     LOG_TRACE(ID() << ": getting list of registrations");
@@ -259,7 +259,8 @@ ObjectRegistry::list()
 
     ara::value_list l(larakoon_->prefix(prefix()));
 
-    std::list<ObjectId> vols;
+    std::vector<ObjectId> vols;
+    vols.reserve(l.size());
 
     ara::arakoon_buffer val;
     ara::value_list::iterator it(l.begin());
@@ -270,7 +271,7 @@ ObjectRegistry::list()
 
         std::string s(static_cast<const char*>(val.second) + pfx.size(),
                       val.first - pfx.size());
-        vols.push_back(ObjectId(s));
+        vols.emplace_back(ObjectId(s));
     }
 
     return vols;

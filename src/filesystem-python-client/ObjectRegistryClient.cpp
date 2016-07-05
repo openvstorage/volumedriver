@@ -93,7 +93,7 @@ public:
     Wrapper&
     operator=(const Wrapper&) = default;
 
-    std::list<ObjectId>
+    std::vector<ObjectId>
     list() const
     {
         return registry_()->list();
@@ -194,7 +194,7 @@ foc_config_mode(const ObjectRegistration* reg)
 void
 ObjectRegistryClient::registerize()
 {
-    REGISTER_ITERABLE_CONVERTER(std::list<ObjectId>);
+    REGISTER_ITERABLE_CONVERTER(std::vector<ObjectId>);
 
     bpy::class_<ObjectRegistration,
                 boost::shared_ptr<ObjectRegistration>>("ObjectRegistration",

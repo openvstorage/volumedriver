@@ -154,7 +154,7 @@ LocalNode::destroy(ObjectRegistry& registry,
     TODO("AR: push volume namespace removal down to voldrv");
     fd::ContainerManager::destroy(cm, pt);
 
-    const std::list<ObjectId> l(registry.list());
+    const std::vector<ObjectId> l(registry.list());
     for (const auto& o : l)
     {
         const ObjectRegistrationPtr reg(registry.find(o));
