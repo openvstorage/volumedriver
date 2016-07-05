@@ -99,6 +99,12 @@ public:
         return registry_()->list();
     }
 
+    std::vector<ObjectRegistrationPtr>
+    get_all_registrations() const
+    {
+        return registry_()->get_all_registrations();
+    }
+
     ObjectRegistrationPtr
     find(const ObjectId& oid) const
     {
@@ -223,6 +229,8 @@ ObjectRegistryClient::registerize()
              "@return ObjectType\n")
         ;
 
+    REGISTER_ITERABLE_CONVERTER(std::vector<ObjectRegistrationPtr>);
+
     bpy::class_<Wrapper>("ObjectRegistryClient",
                          "debugging tool for the ObjectRegistry",
                          bpy::init<const ClusterId&,
@@ -238,6 +246,9 @@ ObjectRegistryClient::registerize()
         .def("list",
              &Wrapper::list,
              "get a list of registered ObjectId's")
+        .def("get_all_registrations",
+             &Wrapper::get_all_registrations,
+             "get a list of all ObjectRegistrations")
         .def("find",
              &Wrapper::find,
              bpy::args("object_id"),
