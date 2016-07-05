@@ -189,6 +189,12 @@ foc_config_mode(const ObjectRegistration* reg)
     return reg->foc_config_mode;
 }
 
+ObjectType
+object_type(const ObjectRegistration* reg)
+{
+    return reg->object().type;
+}
+
 }
 
 void
@@ -212,6 +218,9 @@ ObjectRegistryClient::registerize()
         .def("dtl_config_mode",
              foc_config_mode,
              "@return DTLConfigMode\n")
+        .def("object_type",
+             object_type,
+             "@return ObjectType\n")
         ;
 
     bpy::class_<Wrapper>("ObjectRegistryClient",
