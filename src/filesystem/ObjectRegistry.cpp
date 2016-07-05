@@ -277,6 +277,53 @@ ObjectRegistry::list()
     return vols;
 }
 
+std::vector<ObjectRegistrationPtr>
+ObjectRegistry::get_all_registrations(size_t batch_size)
+{
+    LOG_TRACE(ID() << ": getting all registrations");
+
+    ASSERT(batch_size > 0);
+
+    // TODO: This is inefficient as list() converts the ara::value_list into a
+    // vector<string>, shaving off the prefix and below it's added back again.
+    // However, for now convenience trumps and in the long run the use of 'prefix'
+    // will also have to be reconsidered for a big number of keys.
+    const std::vector<ObjectId> ids(list());
+
+    std::vector<ObjectRegistrationPtr> vec;
+    vec.reserve(ids.size());
+
+    if (not ids.empty())
+    {
+        const std::string last(make_key_(ids.back()));
+
+        for (size_t i = 0; i < ids.size(); i += batch_size)
+        {
+            const ara::key_value_list kvl(larakoon_->range_entries(make_key_(ids[i]),
+                                                                   true,
+                                                                   last,
+                                                                   true,
+                                                                   batch_size));
+
+            ara::key_value_list::iterator it(kvl.begin());
+
+            ara::arakoon_buffer key;
+            ara::arakoon_buffer val;
+
+            while (it.next(key,
+                           val))
+            {
+                std::stringstream ss;
+                ss << std::string(static_cast<const char*>(val.second),
+                                  val.first);
+                vec.emplace_back(deserialize_volume_registration(ss));
+            }
+        }
+    }
+
+    return vec;
+}
+
 void
 ObjectRegistry::with_owned_volume_(const ObjectId& id,
                                    const NodeId& owner,
