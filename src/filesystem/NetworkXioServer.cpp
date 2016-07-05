@@ -279,6 +279,8 @@ NetworkXioServer::run(std::promise<void> promise)
         }
     }
     server.reset();
+    wq_->shutdown();
+    xio_context_del_ev_handler(ctx.get(), evfd);
     ctx.reset();
     xio_mpool.reset();
     std::lock_guard<std::mutex> lock_(mutex_);
@@ -516,9 +518,7 @@ NetworkXioServer::shutdown()
 {
     if (not stopped)
     {
-        wq_->shutdown();
         stopping = true;
-        xio_context_del_ev_handler(ctx.get(), evfd);
         xio_context_stop_loop(ctx.get());
         {
             std::unique_lock<std::mutex> lock_(mutex_);
