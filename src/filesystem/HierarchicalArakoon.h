@@ -361,7 +361,7 @@ public:
                      return Traits::deserialize(is);
                  });
 
-        return find_(path).as_istream<typename Traits::DeserializedType>(fun);
+        return find_(path).as_istream<typename Traits::DeserializedType>(std::move(fun));
     }
 
     template<typename T,
@@ -388,7 +388,7 @@ public:
                                         id.str().c_str(),
                                         ENOENT);
         }
-        return buf.as_istream<typename Traits::DeserializedType>(fun);
+        return buf.as_istream<typename Traits::DeserializedType>(std::move(fun));
     }
 
     void

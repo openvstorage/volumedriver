@@ -52,25 +52,29 @@ serialize_volume_registration(const ObjectRegistration& reg)
 }
 
 ObjectRegistrationPtr
+deserialize_volume_registration(std::istream& is)
+{
+    ObjectRegistration* reg = nullptr;
+
+    try
+    {
+        iarchive_type ia(is);
+        ia >> reg;
+        return ObjectRegistrationPtr(reg);
+    }
+    catch (...)
+    {
+        delete reg;
+        throw;
+    }
+}
+
+ObjectRegistrationPtr
 deserialize_volume_registration(const ara::buffer& buf)
 {
-    return buf.as_istream<ObjectRegistrationPtr>([](std::istream& is) ->
-                                                 ObjectRegistrationPtr
-        {
-            ObjectRegistration* reg = nullptr;
-
-            try
-            {
-                iarchive_type ia(is);
-                ia >> reg;
-                return ObjectRegistrationPtr(reg);
-            }
-            catch (...)
-            {
-                delete reg;
-                throw;
-            }
-        });
+    using FunPtr = ObjectRegistrationPtr(*)(std::istream&);
+    FunPtr fun = deserialize_volume_registration;
+    return buf.as_istream<ObjectRegistrationPtr>(fun);
 }
 
 }

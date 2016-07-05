@@ -211,8 +211,11 @@ public:
     }
 
     template<typename R>
+    using StreamFun = std::function<R(std::istream&)>;
+
+    template<typename R>
     R
-    as_istream(std::function<R(std::istream& is)>&& fun) const
+    as_istream(StreamFun<R> fun) const
     {
         boost::iostreams::array_source src(static_cast<const char*>(data_),
                                            size_);
