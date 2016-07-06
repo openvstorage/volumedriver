@@ -32,11 +32,14 @@
 #include "BackendParameters.h"
 #include <pstreams/pstream.h>
 #include <youtils/prudence/prudence.h>
+
 namespace backend
 {
 
+namespace fs = boost::filesystem;
 
-struct AlbaConfigurationData : public BackendConfigurationData
+struct AlbaConfigurationData
+    : public BackendConfigurationData
 {
     AlbaConfigurationData(const std::vector<std::string>& prudence_args)
     {
@@ -57,8 +60,6 @@ struct AlbaConfigurationData : public BackendConfigurationData
 
 };
 
-
-namespace fs = boost::filesystem;
 TestWithBackendMainHelper::TestWithBackendMainHelper(int argc,
                                                      char** argv)
     : TestMainHelper(argc,
@@ -69,8 +70,6 @@ TestWithBackendMainHelper::TestWithBackendMainHelper(int argc,
         ("skip-backend-setup",
          po::value<bool>(&skip_backend_setup_)->default_value(false),
          "whether to skip the backend setup");
-
-
 }
 
 std::unique_ptr<BackendConfig>
@@ -81,9 +80,9 @@ TestWithBackendMainHelper::setupTestBackend()
 {
     boost::property_tree::ptree pt;
 
-    if(backend_config_file_)
+    if(backend_config_)
     {
-        boost::property_tree::json_parser::read_json(youtils::MainHelper::backend_config_file_->string(),
+        boost::property_tree::json_parser::read_json(*youtils::MainHelper::backend_config_,
                                                      pt);
         auto backend_config_ = BackendConfig::makeBackendConfig(pt);
         using namespace std::string_literals;
@@ -130,7 +129,6 @@ TestWithBackendMainHelper::setupTestBackend()
 void
 TestWithBackendMainHelper::tearDownTestBackend()
 {
-
     if(backend_config_)
     {
         if(skip_backend_setup_)

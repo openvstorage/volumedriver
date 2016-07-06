@@ -104,7 +104,7 @@ protected:
     std::vector<std::string> unparsed_options_;
 
 public:
-    static ExistingFile backend_config_file_;
+    static MaybeConfigLocation backend_config_;
 
 private:
     std::vector<std::string> args_;
@@ -113,6 +113,8 @@ private:
     boost::program_options::options_description general_options_;
     boost::program_options::options_description standard_options_;
     boost::program_options::options_description backend_options_;
+
+    ExistingFile backend_config_file_;
 
 protected:
     const std::string executable_name_;
