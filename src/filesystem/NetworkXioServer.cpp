@@ -112,7 +112,7 @@ NetworkXioServer::NetworkXioServer(FileSystem& fs,
     : fs_(fs)
     , uri_(uri)
     , stopping(false)
-    , stopped(false)
+    , stopped(true)
     , evfd()
     , queue_depth(snd_rcv_queue_depth)
 {}
@@ -269,6 +269,7 @@ NetworkXioServer::run(std::promise<void> promise)
                                 0);
 
     promise.set_value();
+    stopped = false;
     while (not stopping)
     {
         int ret = xio_context_run_loop(ctx.get(), XIO_INFINITE);
@@ -279,6 +280,8 @@ NetworkXioServer::run(std::promise<void> promise)
         }
     }
     server.reset();
+    wq_->shutdown();
+    xio_context_del_ev_handler(ctx.get(), evfd);
     ctx.reset();
     xio_mpool.reset();
     std::lock_guard<std::mutex> lock_(mutex_);
@@ -516,9 +519,7 @@ NetworkXioServer::shutdown()
 {
     if (not stopped)
     {
-        wq_->shutdown();
         stopping = true;
-        xio_context_del_ev_handler(ctx.get(), evfd);
         xio_context_stop_loop(ctx.get());
         {
             std::unique_lock<std::mutex> lock_(mutex_);

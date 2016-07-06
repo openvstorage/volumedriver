@@ -549,8 +549,9 @@ VolumesList::execute_internal(::XmlRpc::XmlRpcValue& params,
         {
             const auto reg(registry->find(o,
                                           IgnoreCache::F));
-            if (reg->object().type == ObjectType::Volume or
-                reg->object().type == ObjectType::Template)
+            if (reg and
+                (reg->object().type == ObjectType::Volume or
+                 reg->object().type == ObjectType::Template))
             {
                 result[k++] = ::XmlRpc::XmlRpcValue(o);
             }
@@ -574,11 +575,16 @@ VolumesListByPath::execute_internal(::XmlRpc::XmlRpcValue& /* params */,
     {
         const auto reg(registry->find(o,
                                       IgnoreCache::F));
-        if (reg->object().type == ObjectType::Volume or
-            reg->object().type == ObjectType::Template)
+        if (reg and
+            (reg->object().type == ObjectType::Volume or
+             reg->object().type == ObjectType::Template))
         {
-            const FrontendPath volume_path(fs_.find_path(reg->volume_id));
-            result[k++] = ::XmlRpc::XmlRpcValue(volume_path.string());
+            try
+            {
+                const FrontendPath volume_path(fs_.find_path(reg->volume_id));
+                result[k++] = ::XmlRpc::XmlRpcValue(volume_path.string());
+            }
+            CATCH_STD_ALL_LOG_IGNORE("Failed to get path for " << reg->volume_id);
         }
     }
 }
