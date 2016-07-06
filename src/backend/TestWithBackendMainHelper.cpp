@@ -13,30 +13,36 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "BackendConfig.h"
+#include "BackendParameters.h"
 #include "TestWithBackendMainHelper.h"
-#include <youtils/ScriptFile.h>
-#include <youtils/System.h>
-#include <youtils/FileUtils.h>
-#include <boost/program_options.hpp>
+
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/program_options.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree_fwd.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/ptr_container/ptr_map.hpp>
 
-#include <youtils/BuildInfo.h>
-#include "youtils/TestBase.h"
-#include <youtils/Logger.h>
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ptree_fwd.hpp>
-#include "BackendConfig.h"
-#include "BackendParameters.h"
 #include <pstreams/pstream.h>
+
+#include <youtils/BuildInfo.h>
+#include <youtils/ConfigFetcher.h>
+#include <youtils/FileUtils.h>
+#include <youtils/Logger.h>
+#include <youtils/ScriptFile.h>
+#include <youtils/System.h>
+#include <youtils/TestBase.h>
+#include <youtils/VolumeDriverComponent.h>
+
 #include <youtils/prudence/prudence.h>
 
 namespace backend
 {
 
 namespace fs = boost::filesystem;
+namespace yt = youtils;
 
 struct AlbaConfigurationData
     : public BackendConfigurationData
@@ -82,8 +88,7 @@ TestWithBackendMainHelper::setupTestBackend()
 
     if(backend_config_)
     {
-        boost::property_tree::json_parser::read_json(*youtils::MainHelper::backend_config_,
-                                                     pt);
+        pt = yt::ConfigFetcher(*yt::MainHelper::backend_config_)(VerifyConfig::F);
         auto backend_config_ = BackendConfig::makeBackendConfig(pt);
         using namespace std::string_literals;
 
@@ -116,7 +121,7 @@ TestWithBackendMainHelper::setupTestBackend()
     else
     {
         initialized_params::PARAMETER_TYPE(backend_type)(BackendType::LOCAL).persist(pt);
-        fs::path local_backend_path = youtils::FileUtils::temp_path() / "localbackend";
+        fs::path local_backend_path = yt::FileUtils::temp_path() / "localbackend";
         initialized_params::PARAMETER_TYPE(local_connection_path)(local_backend_path.string()).persist(pt);
         const fs::path p(local_backend_path);
         LOG_INFO("Removing and recreating directory for localbackend " << p);
