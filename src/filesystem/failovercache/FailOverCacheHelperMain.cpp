@@ -21,14 +21,15 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include <youtils/Assert.h>
+#include <youtils/ConfigFetcher.h>
 #include <youtils/Logging.h>
 
-#include <../ConfigFetcher.h>
 #include <../ConfigHelper.h>
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 namespace vfs = volumedriverfs;
+namespace yt = youtils;
 
 // Not using MainHelper as it only has 2 args itself and routes the rest through.
 int
@@ -104,7 +105,7 @@ main(int argc,
         return 1;
     }
 
-    vfs::ConfigFetcher config_fetcher(config_location);
+    yt::ConfigFetcher config_fetcher(config_location);
     const vfs::ConfigHelper argument_helper(config_fetcher(VerifyConfig::F));
 
     // LOG_INFO("Finished parsing property tree");

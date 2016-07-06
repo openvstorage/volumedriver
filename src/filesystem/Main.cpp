@@ -13,7 +13,6 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "ConfigFetcher.h"
 #include "FuseInterface.h"
 
 #include <exception>
@@ -30,6 +29,7 @@
 
 #include <youtils/BuildInfo.h>
 #include <youtils/Catchers.h>
+#include <youtils/ConfigFetcher.h>
 #include <youtils/EtcdUrl.h>
 #include <youtils/Logger.h>
 #include <youtils/Logging.h>
@@ -155,7 +155,7 @@ public:
             return 1;
         }
 
-        vfs::ConfigFetcher config_fetcher(config_location_);
+        yt::ConfigFetcher config_fetcher(config_location_);
         const bpt::ptree pt(config_fetcher(VerifyConfig::T));
 
         // These are unblocked again and "handled" by FileSystem::operator(). We do

@@ -13,7 +13,6 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "ConfigFetcher.h"
 #include "FileSystem.h"
 #include "ObjectRouter.h"
 
@@ -34,6 +33,7 @@
 #include <boost/thread/thread.hpp>
 
 #include <youtils/ArakoonNodeConfig.h>
+#include <youtils/ConfigFetcher.h>
 #include <youtils/DimensionedValue.h>
 #include <youtils/IOException.h>
 #include <youtils/System.h>
@@ -1450,7 +1450,7 @@ UpdateConfiguration::execute_internal(XmlRpc::XmlRpcValue& params,
 
     const boost::variant<yt::UpdateReport,
                          yt::ConfigurationReport>
-        rep(api::updateConfiguration(ConfigFetcher(config)(VerifyConfig::T)));
+        rep(api::updateConfiguration(yt::ConfigFetcher(config)(VerifyConfig::T)));
 
     result = XMLRPCStructs::serialize_to_xmlrpc_value(rep);
 }

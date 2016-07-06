@@ -13,19 +13,20 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef VFS_CONFIG_FETCHER_H_
-#define VFS_CONFIG_FETCHER_H_
+#ifndef YT_CONFIG_FETCHER_H_
+#define YT_CONFIG_FETCHER_H_
 
-#include <youtils/EtcdUrl.h>
-#include <youtils/IOException.h>
-#include <youtils/Logging.h>
-#include <youtils/EtcdReply.h>
-#include <youtils/VolumeDriverComponent.h>
+#include "IOException.h"
+#include "Logging.h"
+#include "EtcdReply.h"
+#include "VolumeDriverComponent.h"
 
 #include <boost/property_tree/ptree_fwd.hpp>
 
-namespace volumedriverfs
+namespace youtils
 {
+
+class EtcdReply;
 
 class ConfigFetcher
 {
@@ -42,14 +43,14 @@ public:
     operator()(VerifyConfig);
 
     std::string
-    parse_config(const youtils::EtcdReply::Records& recs);
+    parse_config(const EtcdReply::Records&);
 
 private:
-    DECLARE_LOGGER("VFSConfigFetcher");
+    DECLARE_LOGGER("ConfigFetcher");
 
     std::string config_;
 };
 
 }
 
-#endif // !VFS_CONFIG_FETCHER_H_
+#endif // !YT_CONFIG_FETCHER_H_

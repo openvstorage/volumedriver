@@ -18,15 +18,15 @@
 #include <boost/filesystem/path.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
+#include <youtils/ConfigFetcher.h>
 #include <youtils/VolumeDriverComponent.h>
-
-#include <filesystem/ConfigFetcher.h>
 
 namespace ganesha
 {
 
 namespace fs = boost::filesystem;
 namespace vfs = volumedriverfs;
+namespace yt = youtils;
 
 namespace
 {
@@ -153,7 +153,7 @@ FileSystemWrapper::FileSystemWrapper(const std::string& export_path,
     : export_path_(export_path)
 {
     boost::property_tree::ptree configuration_ptree;
-    vfs::ConfigFetcher config_fetcher(config);
+    yt::ConfigFetcher config_fetcher(config);
     fs_.reset(new FileSystem(config_fetcher(VerifyConfig::T)));
 }
 
