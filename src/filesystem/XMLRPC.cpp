@@ -540,19 +540,18 @@ VolumesList::execute_internal(::XmlRpc::XmlRpcValue& params,
     }
     else
     {
-        auto registry(fs_.object_router().object_registry());
-        const auto objs(registry->list());
+        std::shared_ptr<CachedObjectRegistry> cached_registry(fs_.object_router().object_registry());
+        VERIFY(cached_registry);
+        const std::vector<ObjectRegistrationPtr> regs(cached_registry->registry().get_all_registrations());
 
         int k = 0;
 
-        for(const auto& o : objs)
+        for(const auto& reg : regs)
         {
-            const auto reg(registry->find(o,
-                                          IgnoreCache::F));
             if (reg->object().type == ObjectType::Volume or
                 reg->object().type == ObjectType::Template)
             {
-                result[k++] = ::XmlRpc::XmlRpcValue(o);
+                result[k++] = ::XmlRpc::XmlRpcValue(reg->volume_id);
             }
         }
     }
@@ -562,23 +561,26 @@ void
 VolumesListByPath::execute_internal(::XmlRpc::XmlRpcValue& /* params */,
                                     ::XmlRpc::XmlRpcValue& result)
 {
-    auto registry(fs_.object_router().object_registry());
-    const auto objs(registry->list());
-
     result.clear();
     result.setSize(0);
 
     int k = 0;
 
-    for (const auto& o: objs)
+    std::shared_ptr<CachedObjectRegistry> cached_registry(fs_.object_router().object_registry());
+    VERIFY(cached_registry);
+    const std::vector<ObjectRegistrationPtr> regs(cached_registry->registry().get_all_registrations());
+
+    for(const auto& reg : regs)
     {
-        const auto reg(registry->find(o,
-                                      IgnoreCache::F));
         if (reg->object().type == ObjectType::Volume or
             reg->object().type == ObjectType::Template)
         {
-            const FrontendPath volume_path(fs_.find_path(reg->volume_id));
-            result[k++] = ::XmlRpc::XmlRpcValue(volume_path.string());
+            try
+            {
+                const FrontendPath path(fs_.find_path(reg->volume_id));
+                result[k++] = ::XmlRpc::XmlRpcValue(path.string());
+            }
+            CATCH_STD_ALL_LOG_IGNORE("Failed to get path for " << reg->volume_id);
         }
     }
 }
