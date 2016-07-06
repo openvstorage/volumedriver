@@ -234,6 +234,7 @@ retry:
             req = wq->inflight_queue.front();
             wq->inflight_queue.pop();
             lock_.unlock();
+            wq->queued_work_dec();
             if (req->work.func)
             {
                 req->work.func(&req->work);
