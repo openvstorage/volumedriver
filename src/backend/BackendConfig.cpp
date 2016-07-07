@@ -29,7 +29,7 @@
 #include <youtils/Assert.h>
 #include <youtils/ConfigLocation.h>
 #include <youtils/ConfigFetcher.h>
-#include <youtils/OptionValidators.h>
+#include <youtils/JsonString.h>
 
 namespace backend
 {
@@ -38,10 +38,10 @@ namespace ip = initialized_params;
 namespace yt = youtils;
 
 std::unique_ptr<BackendConfig>
-BackendConfig::makeBackendConfig(const std::string& json_string)
+BackendConfig::makeBackendConfig(const yt::JsonString& json_string)
 {
     boost::property_tree::ptree pt;
-    std::stringstream ss(json_string);
+    std::stringstream ss(json_string.str());
 
     boost::property_tree::json_parser::read_json(ss,
                                                  pt);

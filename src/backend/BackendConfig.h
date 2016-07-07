@@ -30,6 +30,7 @@
 namespace youtils
 {
 class ConfigLocation;
+class JsonString;
 }
 
 namespace backend
@@ -48,7 +49,7 @@ public:
     makeBackendConfig(const boost::property_tree::ptree&);
 
     static std::unique_ptr<BackendConfig>
-    makeBackendConfig(const std::string& backend_config);
+    makeBackendConfig(const youtils::JsonString&);
 
     static std::unique_ptr<BackendConfig>
     makeBackendConfig(const youtils::ConfigLocation&);
