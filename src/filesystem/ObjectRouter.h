@@ -83,9 +83,10 @@ namespace volumedriverfs
 {
 
 class ClusterNode;
+class FileSystem;
 class LocalNode;
 class LockedArakoon;
-class FileSystem;
+class PythonClient;
 class RemoteNode;
 
 BOOLEAN_ENUM(OnlyStealFromOfflineNode);
@@ -362,6 +363,9 @@ public:
 
     void
     set_automatic_foc_config(const ObjectId& id);
+
+    std::unique_ptr<PythonClient>
+    xmlrpc_client();
 
 private:
     DECLARE_LOGGER("VFSObjectRouter");

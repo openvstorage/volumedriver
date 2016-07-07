@@ -21,6 +21,7 @@
 #include "MessageUtils.h"
 #include "Messages.pb.h"
 #include "Protocol.h"
+#include "PythonClient.h"
 #include "RemoteNode.h"
 #include "ObjectRouter.h"
 #include "ZUtils.h"
@@ -1722,6 +1723,36 @@ void
 ObjectRouter::set_automatic_foc_config(const ObjectId& oid)
 {
     local_node_()->set_automatic_foc_config(oid);
+}
+
+std::unique_ptr<PythonClient>
+ObjectRouter::xmlrpc_client()
+{
+    std::vector<ClusterContact> contacts;
+
+    {
+        RLOCK_NODES();
+
+        contacts.reserve(node_map_.size());
+
+        auto it = node_map_.find(node_id());
+        VERIFY(it != node_map_.end());
+
+        contacts.emplace_back(it->second->config.host,
+                              it->second->config.xmlrpc_port);
+
+        for (const auto& p : node_map_)
+        {
+            if (p.first != node_id())
+            {
+                contacts.emplace_back(p.second->config.host,
+                                      p.second->config.xmlrpc_port);
+            }
+        }
+    }
+
+    return std::make_unique<PythonClient>(cluster_id(),
+                                          contacts);
 }
 
 }
