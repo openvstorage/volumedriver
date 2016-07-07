@@ -441,7 +441,8 @@ protected:
     scrub(const scrubbing::ScrubWork& work,
           double fill_ratio = 1.0)
     {
-        return scrubbing::ScrubberAdapter::scrub(work,
+        return scrubbing::ScrubberAdapter::scrub(VolManager::get()->getBackendConfig().clone(),
+                                                 work,
                                                  getTempPath(testName_),
                                                  5, // region_size_exponent
                                                  fill_ratio, // fill ratio

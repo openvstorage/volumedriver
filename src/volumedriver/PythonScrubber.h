@@ -37,7 +37,8 @@ struct Scrubber
           const uint64_t region_size_exponent,
           const float fill_ratio,
           const bool apply_immediately,
-          const bool verbose_scrubbing);
+          const bool verbose_scrubbing,
+          const boost::optional<std::string>& backend_config);
 
     static void
     registerize();

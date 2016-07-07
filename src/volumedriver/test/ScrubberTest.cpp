@@ -68,7 +68,8 @@ public:
              bool apply_immediately = false,
              bool verbose_scrubbing = true)
     {
-        return ScrubberAdapter::scrub(scrub_work,
+        return ScrubberAdapter::scrub(VolManager::get()->getBackendConfig().clone(),
+                                      scrub_work,
                                       getTempPath(testName_),
                                       region_size_exponent,
                                       fill_ratio,

@@ -25,6 +25,7 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 
+#include <youtils/ConfigLocation.h>
 #include <youtils/Logging.h>
 
 namespace volumedriverfs
@@ -35,7 +36,7 @@ namespace vd = volumedriver;
 namespace yt = youtils;
 
 LocalPythonClient::LocalPythonClient(const std::string& config)
-    : config_fetcher_(config)
+    : config_fetcher_(yt::ConfigLocation(config))
 {
     const bpt::ptree pt(config_fetcher_(VerifyConfig::F));
     const ConfigHelper argument_helper(pt);

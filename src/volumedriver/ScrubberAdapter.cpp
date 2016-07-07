@@ -38,7 +38,8 @@ const bool
 ScrubberAdapter::verbose_scrubbing_default = true;
 
 ScrubReply
-ScrubberAdapter::scrub(const ScrubWork& scrub_work,
+ScrubberAdapter::scrub(std::unique_ptr<BackendConfig> backend_config,
+                       const ScrubWork& scrub_work,
                        const fs::path& scratch_dir,
                        const uint64_t region_size_exponent,
                        const float fill_ratio,
@@ -47,7 +48,11 @@ ScrubberAdapter::scrub(const ScrubWork& scrub_work,
 {
     ScrubberArgs scrubber_args;
 
-    scrubber_args.backend_config = scrub_work.backend_config_->clone();
+    scrubber_args.backend_config =
+        backend_config ?
+        std::move(backend_config) :
+        scrub_work.backend_config_->clone();
+
     scrubber_args.name_space = scrub_work.ns_.str();
     scrubber_args.scratch_dir = scratch_dir;
     scrubber_args.snapshot_name = scrub_work.snapshot_name_;
