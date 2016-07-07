@@ -105,13 +105,13 @@ public:
 
     virtual ~PythonClient() = default;
 
-    boost::python::list
+    std::vector<std::string>
     list_volumes(const boost::optional<std::string>& node_id = boost::none);
 
-    boost::python::list
+    std::vector<std::string>
     list_volumes_by_path();
 
-    boost::python::list
+    std::vector<std::string>
     list_snapshots(const std::string& volume_id);
 
     XMLRPCSnapshotInfo
@@ -171,7 +171,7 @@ public:
     void
     set_volume_as_template(const std::string& vname);
 
-    boost::python::list
+    std::vector<std::string>
     get_scrubbing_work(const std::string& volume_id);
 
     void

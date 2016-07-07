@@ -19,7 +19,6 @@
 #include "PythonClient.h"
 
 #include <boost/enable_shared_from_this.hpp>
-#include <boost/python/list.hpp>
 #include <boost/python/object.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread.hpp>
@@ -67,7 +66,7 @@ public:
          boost::python::object& /* exc_value */,
          boost::python::object& /* traceback */);
 
-    boost::python::list
+    std::vector<std::string>
     get_scrubbing_work();
 
     void

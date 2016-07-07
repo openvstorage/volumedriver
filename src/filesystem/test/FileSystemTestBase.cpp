@@ -21,7 +21,6 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/system/error_code.hpp>
-#include <boost/python/extract.hpp>
 
 #include <youtils/Assert.h>
 #include <youtils/DimensionedValue.h>
@@ -51,7 +50,6 @@ namespace vd = volumedriver;
 namespace vfs = volumedriverfs;
 namespace yt = youtils;
 namespace ytt = youtilstest;
-namespace bpy = boost::python;
 
 fs::path FileSystemTestBase::binary_path_;
 
@@ -1145,14 +1143,14 @@ FileSystemTestBase::check_snapshots(const vfs::ObjectId& volume_id,
                                      const std::vector<std::string>& expected_snapshots)
 {
     TODO("AR: expect a VolumeId instead of an ObjectId?");
-    const bpy::list snap_list = client_.list_snapshots(volume_id.str());
+    const std::vector<std::string> snap_list(client_.list_snapshots(volume_id.str()));
     ASSERT_EQ(static_cast<ssize_t>(expected_snapshots.size()),
-              bpy::len(snap_list));
+              snap_list.size());
 
     for (uint32_t i = 0; i < expected_snapshots.size(); i++)
     {
         ASSERT_EQ(expected_snapshots[i],
-                  std::string(bpy::extract<std::string>(snap_list[i])));
+                  snap_list[i]);
     }
 }
 

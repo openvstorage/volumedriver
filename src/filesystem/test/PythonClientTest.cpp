@@ -28,6 +28,7 @@
 #include <youtils/IOException.h>
 #include <youtils/InitializedParam.h>
 #include <youtils/FileDescriptor.h>
+#include <youtils/FileUtils.h>
 #include <youtils/ScopeExit.h>
 
 #include <volumedriver/metadata-server/Manager.h>
@@ -176,14 +177,13 @@ protected:
     }
 
     bpy::tuple
-    scrub_wrap(const bpy::object& work_item)
+    scrub_wrap(const std::string& work_str)
     {
         using namespace scrubbing;
 
-        const std::string work_str = bpy::extract<std::string>(work_item);
         const ScrubWork work(work_str);
         const ScrubReply reply(ScrubberAdapter::scrub(work,
-                                                      "/tmp"));
+                                                      yt::FileUtils::temp_path().string()));
         return bpy::make_tuple(work.id_.str(),
                                reply.str());
     }
@@ -262,10 +262,7 @@ TEST_F(PythonClientTest, list_volumes)
     const vfs::ObjectId fid(create_file(vfs::FrontendPath("/some-file"s),
                                         4096));
 
-    {
-        const bpy::list l(client_.list_volumes());
-        EXPECT_EQ(0, bpy::len(l));
-    }
+    EXPECT_TRUE(client_.list_volumes().empty());
 
     std::set<std::string> volumes;
     const uint32_t num_volumes = 2;
@@ -280,13 +277,12 @@ TEST_F(PythonClientTest, list_volumes)
         EXPECT_TRUE(res.second);
     }
 
-    const bpy::list l(client_.list_volumes());
-    EXPECT_EQ(num_volumes, bpy::len(l));
+    const std::vector<std::string> vs(client_.list_volumes());
+    EXPECT_EQ(num_volumes,
+              vs.size());
 
-    for (uint32_t i = 0; i < num_volumes; ++i)
+    for (const auto& v : vs)
     {
-        const auto& obj(l[i]);
-        const std::string v = bpy::extract<std::string>(obj);
         EXPECT_TRUE(volumes.find(v) != volumes.end());
     }
 }
@@ -296,10 +292,7 @@ TEST_F(PythonClientTest, list_volumes_by_path)
     const vfs::ObjectId fid(create_file(vfs::FrontendPath("/some-file"s),
                                         4096));
 
-    {
-        const bpy::list l(client_.list_volumes());
-        EXPECT_EQ(0, bpy::len(l));
-    }
+    EXPECT_TRUE(client_.list_volumes().empty());
 
     std::set<std::string> volumes;
     const uint32_t num_volumes = 2;
@@ -314,13 +307,12 @@ TEST_F(PythonClientTest, list_volumes_by_path)
         EXPECT_TRUE(res.second);
     }
 
-    const bpy::list l(client_.list_volumes_by_path());
-    EXPECT_EQ(num_volumes, bpy::len(l));
+    const std::vector<std::string> vs(client_.list_volumes_by_path());
+    EXPECT_EQ(num_volumes,
+              vs.size());
 
-    for (uint32_t i = 0; i < num_volumes; ++i)
+    for (const auto& v : vs)
     {
-        const auto& obj(l[i]);
-        const std::string v = bpy::extract<std::string>(obj);
         EXPECT_TRUE(volumes.find(v) != volumes.end());
     }
 }
@@ -337,17 +329,14 @@ TEST_F(PythonClientTest, list_volumes_by_node)
     const vfs::FrontendPath fname(make_volume_name("/some-volume"));
     const vfs::ObjectId id(create_file(fname, vsize));
 
-    {
-        const bpy::list l(client_.list_volumes(remote_node_id().str()));
-        EXPECT_EQ(0, bpy::len(l));
-    }
+    EXPECT_TRUE(client_.list_volumes(remote_node_id().str()).empty());
 
     {
-        const bpy::list l(client_.list_volumes(local_node_id().str()));
-        ASSERT_EQ(1, bpy::len(l));
-        const std::string s = bpy::extract<std::string>(l[0]);
+        const std::vector<std::string> vs(client_.list_volumes(local_node_id().str()));
+        ASSERT_EQ(1,
+                  vs.size());
         EXPECT_EQ(id.str(),
-                  s);
+                  vs[0]);
     }
 }
 
@@ -364,8 +353,7 @@ TEST_F(PythonClientTest, snapshot_excessive_metadata)
     EXPECT_THROW(client_.create_snapshot(vname, snapname, meta),
                  vfs::clienterrors::PythonClientException);
 
-    const bpy::list l(client_.list_snapshots(vname));
-    EXPECT_EQ(0, bpy::len(l));
+    EXPECT_TRUE(client_.list_snapshots(vname).empty());
 }
 
 TEST_F(PythonClientTest, volume_potential)
@@ -396,11 +384,11 @@ TEST_F(PythonClientTest, snapshot_management)
     const std::string vname(create_file(vpath, 10 << 20));
 
     const uint32_t snap_num = 10;
-    bpy::list modeled_snapshots;
+    std::vector<std::string> modeled_snapshots;
+    modeled_snapshots.reserve(snap_num);
 
     for (uint32_t i = 0; i < snap_num; i++)
     {
-
         std::string snapname;
         while(true)
         {
@@ -416,7 +404,7 @@ TEST_F(PythonClientTest, snapshot_management)
         }
 
 
-        modeled_snapshots.append(snapname);
+        modeled_snapshots.push_back(snapname);
         check_snapshot(vname, snapname);
         EXPECT_TRUE(modeled_snapshots == client_.list_snapshots(vname));
     }
@@ -426,9 +414,9 @@ TEST_F(PythonClientTest, snapshot_management)
 
     for (uint32_t cnt = 0; cnt < 3; cnt++)
     {
-        std::string snap_todelete = bpy::extract<std::string>(modeled_snapshots[2]);
-        client_.delete_snapshot(vname, snap_todelete);
-        modeled_snapshots.remove(snap_todelete);
+        auto it = modeled_snapshots.begin() + 2;
+        client_.delete_snapshot(vname, *it);
+        modeled_snapshots.erase(it);
         EXPECT_TRUE(modeled_snapshots == client_.list_snapshots(vname));
     }
 }
@@ -438,8 +426,8 @@ TEST_F(PythonClientTest, volume_queries)
     const vfs::FrontendPath vpath(make_volume_name("/testing_info"));
     const std::string vname(create_file(vpath, 10 << 20));
 
-    const bpy::list l(client_.list_volumes());
-    EXPECT_EQ(1, bpy::len(l));
+    EXPECT_EQ(1,
+              client_.list_volumes().size());
 
     vfs::XMLRPCVolumeInfo vol_info;
     EXPECT_NO_THROW(vol_info = client_.info_volume(vname));
@@ -755,7 +743,8 @@ TEST_F(PythonClientTest, scrubbing)
     }
 
     auto scrub_workitems = client_.get_scrubbing_work(vol_id);
-    ASSERT_EQ(snapshot_num, bpy::len(scrub_workitems));
+    ASSERT_EQ(snapshot_num,
+              scrub_workitems.size());
 
     client_.delete_snapshot(vol_id, snapshot_names[2]);
 
@@ -764,10 +753,11 @@ TEST_F(PythonClientTest, scrubbing)
 
     //one snapshot deleted, one scrubbed
     ASSERT_EQ(snapshot_num - 2,
-              bpy::len(client_.get_scrubbing_work(vol_id)));
+              client_.get_scrubbing_work(vol_id).size());
 
     //deleted snapshot before scrubbing
-    ASSERT_THROW(scrub_wrap(scrub_workitems[2]), std::exception);
+    ASSERT_THROW(scrub_wrap(scrub_workitems[2]),
+                 std::exception);
 
     // deleted snapshot after scrubbing but before applyscrubbing
     // ... the ScrubManager will notice.
@@ -789,7 +779,7 @@ TEST_F(PythonClientTest, scrubbing)
                   sm.get_counters().parent_scrubs_nok);
     }
 
-    uint32_t togo = bpy::len(client_.get_scrubbing_work(vol_id));
+    uint32_t togo = client_.get_scrubbing_work(vol_id).size();
     //two snapshots deleted, one scrubbed
     ASSERT_EQ(snapshot_num - 3, togo);
 
@@ -797,7 +787,7 @@ TEST_F(PythonClientTest, scrubbing)
     while(true)
     {
         auto scrub_workitems = client_.get_scrubbing_work(vol_id);
-        ASSERT_EQ(togo, bpy::len(scrub_workitems));
+        ASSERT_EQ(togo, scrub_workitems.size());
         if (togo == 0)
         {
             break;
@@ -1075,9 +1065,9 @@ TEST_F(PythonClientTest, family_scrubbing)
                                                    pname,
                                                    snap));
 
-    const bpy::list scrub_work(client_.get_scrubbing_work(pname));
+    const std::vector<std::string> scrub_work(client_.get_scrubbing_work(pname));
     ASSERT_EQ(1,
-              bpy::len(scrub_work));
+              scrub_work.size());
 
     client_.apply_scrubbing_result(scrub_wrap(scrub_work[0]));
 
@@ -1125,9 +1115,9 @@ TEST_F(PythonClientTest, templates_and_scrubbing)
     wait_for_snapshot(pname,
                       snap);
 
-    const bpy::list scrub_work(client_.get_scrubbing_work(pname));
+    const std::vector<std::string> scrub_work(client_.get_scrubbing_work(pname));
     ASSERT_EQ(1,
-              bpy::len(scrub_work));
+              scrub_work.size());
 
     client_.set_volume_as_template(pname);
     EXPECT_EQ(vfs::ObjectType::Template,
@@ -1575,20 +1565,15 @@ TEST_F(PythonClientTest, update_cluster_node_configs)
 
 TEST_F(PythonClientTest, vaai_copy)
 {
-    {
-        const bpy::list l(client_.list_volumes());
-        EXPECT_EQ(0, bpy::len(l));
-    }
+    EXPECT_TRUE(client_.list_volumes().empty());
 
     const vfs::FrontendPath vpath(make_volume_name("/vol"));
     const vfs::ObjectId vname(create_file(vpath, 10 << 20));
 
     const vfs::FrontendPath fc_vpath(make_volume_name("/vol-full-clone"));
     const vfs::ObjectId fc_vname(create_file(fc_vpath, 10 << 20));
-    {
-        const bpy::list l(client_.list_volumes());
-        EXPECT_EQ(2, bpy::len(l));
-    }
+
+    EXPECT_EQ(2, client_.list_volumes().size());
 
     const std::string src_path("/vol-flat.vmdk");
     const std::string fc_target_path("/vol-full-clone-flat.vmdk");
@@ -1849,14 +1834,14 @@ TEST_F(PythonClientTest, locked_scrub)
                                                        dummy);
                                      }));
 
-    const bpy::list work(lclient->get_scrubbing_work());
+    const std::vector<std::string> work(lclient->get_scrubbing_work());
     ASSERT_EQ(1,
-              bpy::len(work));
+              work.size());
 
     const fs::path tmp(topdir_ / "scrubscratchspace");
     fs::create_directories(tmp);
 
-    const std::string res(lclient->scrub(bpy::extract<std::string>(work[0]),
+    const std::string res(lclient->scrub(work[0],
                                          tmp.string(),
                                          scrubbing::ScrubberAdapter::region_size_exponent_default,
                                          scrubbing::ScrubberAdapter::fill_ratio_default,

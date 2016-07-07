@@ -179,7 +179,7 @@ LockedPythonClient::info()
     return volume_id_ + ": LockedPythonClient";
 }
 
-bpy::list
+std::vector<std::string>
 LockedPythonClient::get_scrubbing_work()
 {
     LOG_INFO(volume_id_ << ": getting scrub work");
