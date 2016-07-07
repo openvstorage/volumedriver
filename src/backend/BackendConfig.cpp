@@ -25,12 +25,17 @@
 #include <boost/filesystem.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
+
 #include <youtils/Assert.h>
+#include <youtils/ConfigLocation.h>
+#include <youtils/ConfigFetcher.h>
+#include <youtils/OptionValidators.h>
 
 namespace backend
 {
 namespace fs = boost::filesystem;
 namespace ip = initialized_params;
+namespace yt = youtils;
 
 std::unique_ptr<BackendConfig>
 BackendConfig::makeBackendConfig(const std::string& json_string)
@@ -44,12 +49,10 @@ BackendConfig::makeBackendConfig(const std::string& json_string)
 }
 
 std::unique_ptr<BackendConfig>
-BackendConfig::makeBackendConfig(const fs::path& json_file)
+BackendConfig::makeBackendConfig(const yt::ConfigLocation& loc)
 {
-    boost::property_tree::ptree pt;
-    boost::property_tree::json_parser::read_json(json_file.string(),
-                                                 pt);
-    return makeBackendConfig(pt);
+    yt::ConfigFetcher fetch_config(loc);
+    return makeBackendConfig(fetch_config(VerifyConfig::F));
 }
 
 std::unique_ptr<BackendConfig>
