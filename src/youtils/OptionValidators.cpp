@@ -63,14 +63,14 @@ validate(boost::any& v,
 
     if (EtcdUrl::is_one(s))
     {
-        v = boost::any(MaybeConfigLocation(s));
+        v = boost::any(MaybeConfigLocation(ConfigLocation(s)));
     }
     else
     {
         const fs::path p(s);
         if(fs::exists(p))
         {
-            v = boost::any(MaybeConfigLocation(s));
+            v = boost::any(MaybeConfigLocation(ConfigLocation(s)));
         }
         else
         {

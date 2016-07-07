@@ -16,6 +16,8 @@
 #ifndef OPTION_VALIDATORS_H_
 #define OPTION_VALIDATORS_H_
 
+#include "ConfigLocation.h"
+
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <boost/optional.hpp>
@@ -40,10 +42,10 @@ validate(boost::any& v,
          int);
 
 struct MaybeConfigLocation
-    : boost::optional<std::string>
+    : boost::optional<ConfigLocation>
 {
-    MaybeConfigLocation(const std::string& loc)
-        : boost::optional<std::string>(loc)
+    MaybeConfigLocation(const ConfigLocation& loc)
+        : boost::optional<ConfigLocation>(loc)
     {}
 
     MaybeConfigLocation() = default;
@@ -55,7 +57,6 @@ validate(boost::any& v,
          MaybeConfigLocation* loc,
          int);
 }
-
 
 #endif // OPTION_VALIDATORS_H_
 

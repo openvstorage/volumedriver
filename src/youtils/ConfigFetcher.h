@@ -16,6 +16,7 @@
 #ifndef YT_CONFIG_FETCHER_H_
 #define YT_CONFIG_FETCHER_H_
 
+#include "ConfigLocation.h"
 #include "IOException.h"
 #include "Logging.h"
 #include "EtcdReply.h"
@@ -33,7 +34,7 @@ class ConfigFetcher
 public:
     MAKE_EXCEPTION(Exception, fungi::IOException);
 
-    explicit ConfigFetcher(const std::string& config)
+    explicit ConfigFetcher(const ConfigLocation& config)
         : config_(config)
     {}
 
@@ -48,7 +49,7 @@ public:
 private:
     DECLARE_LOGGER("ConfigFetcher");
 
-    std::string config_;
+    ConfigLocation config_;
 };
 
 }

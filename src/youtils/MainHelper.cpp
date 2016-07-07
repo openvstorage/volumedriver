@@ -13,6 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "ConfigLocation.h"
 #include "FileUtils.h"
 #include "Logging.h"
 #include "MainHelper.h"
@@ -231,7 +232,7 @@ MainHelper::parse_standard_options()
 
     if (not backend_config_ and backend_config_file_)
     {
-        backend_config_ = backend_config_file_->string();
+        backend_config_ = ConfigLocation(backend_config_file_->string());
     }
 }
 

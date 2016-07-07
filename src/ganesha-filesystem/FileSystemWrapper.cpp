@@ -16,9 +16,9 @@
 #include "FileSystemWrapper.h"
 
 #include <boost/filesystem/path.hpp>
-#include <boost/property_tree/json_parser.hpp>
 
 #include <youtils/ConfigFetcher.h>
+#include <youtils/ConfigLocation.h>
 #include <youtils/VolumeDriverComponent.h>
 
 namespace ganesha
@@ -152,8 +152,8 @@ FileSystemWrapper::FileSystemWrapper(const std::string& export_path,
                                      const std::string& config)
     : export_path_(export_path)
 {
-    boost::property_tree::ptree configuration_ptree;
-    yt::ConfigFetcher config_fetcher(config);
+    const yt::ConfigLocation loc(config);
+    yt::ConfigFetcher config_fetcher(loc);
     fs_.reset(new FileSystem(config_fetcher(VerifyConfig::T)));
 }
 
