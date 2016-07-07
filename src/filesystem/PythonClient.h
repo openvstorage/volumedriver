@@ -101,6 +101,7 @@ public:
 
     PythonClient(const std::string& cluster_id,
                  const std::vector<ClusterContact>& cluster_contacts,
+                 const boost::optional<boost::chrono::seconds>& timeout = boost::none,
                  const unsigned max_redirects = max_redirects_default);
 
     virtual ~PythonClient() = default;
@@ -319,8 +320,9 @@ public:
                    bool force_restart);
 
 protected:
-    PythonClient()
-        : max_redirects(max_redirects_default)
+    PythonClient(const boost::optional<boost::chrono::seconds>& timeout)
+        : timeout_(timeout)
+        , max_redirects(max_redirects_default)
     {}
 
     XmlRpc::XmlRpcValue
@@ -338,6 +340,7 @@ protected:
     std::mutex lock_;
     //this list does not necessarily contain all nodes in the cluster
     std::vector<ClusterContact> cluster_contacts_;
+    const boost::optional<boost::chrono::seconds> timeout_;
 
 private:
     DECLARE_LOGGER("PythonClient");

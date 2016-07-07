@@ -589,6 +589,7 @@ TEST_F(PythonClientTest, redirection_response)
 
     vfs::PythonClient client(vrouter_cluster_id(),
                              {{address(), local_config().xmlrpc_port}},
+                             boost::none,
                              0);
     vfs::ObjectId dummy_volume("dummy");
 

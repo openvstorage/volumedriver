@@ -44,9 +44,11 @@ namespace yt = youtils;
 
 PythonClient::PythonClient(const std::string& cluster_id,
                            const std::vector< ClusterContact >& cluster_contacts,
+                           const boost::optional<boost::chrono::seconds>& timeout,
                            const unsigned max_redirects)
     : cluster_id_(cluster_id)
     , cluster_contacts_(cluster_contacts)
+    , timeout_(timeout)
     , max_redirects(max_redirects)
 {
 }
@@ -89,7 +91,10 @@ PythonClient::redirected_xmlrpc(const std::string& addr,
     XmlRpc::XmlRpcClient xclient(addr.c_str(), port);
     const bool res = xclient.execute(method,
                                      req,
-                                     rsp);
+                                     rsp,
+                                     timeout_ ?
+                                     timeout_->count() :
+                                     -1.0);
     if (not res)
     {
         // Bummer, there does not seem to be a way to get at a precise error message.
@@ -945,6 +950,7 @@ PythonClient::make_locked_client(const std::string& volume_id,
     return LockedPythonClient::create(cluster_id_,
                                       cluster_contacts_,
                                       volume_id,
+                                      timeout_,
                                       update_interval_secs,
                                       grace_period_secs);
 }

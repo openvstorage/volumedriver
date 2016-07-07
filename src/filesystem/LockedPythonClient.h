@@ -48,6 +48,7 @@ public:
     create(const std::string& cluster_id,
            const std::vector<ClusterContact>&,
            const std::string& volume_id,
+           const boost::optional<boost::chrono::seconds>& = boost::none,
            const unsigned update_interval_secs = 3,
            const unsigned grace_period_secs = 5);
 
@@ -102,6 +103,7 @@ private:
     LockedPythonClient(const std::string& cluster_id,
                        const std::vector<ClusterContact>&,
                        const std::string& volume_id,
+                       const boost::optional<boost::chrono::seconds>&,
                        const youtils::UpdateInterval&,
                        const youtils::GracePeriod&);
 

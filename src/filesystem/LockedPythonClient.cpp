@@ -42,10 +42,12 @@ namespace yt = youtils;
 LockedPythonClient::LockedPythonClient(const std::string& cluster_id,
                                        const std::vector<ClusterContact>& cluster_contacts,
                                        const std::string& volume_id,
+                                       const boost::optional<boost::chrono::seconds>& timeout,
                                        const yt::UpdateInterval& update_interval,
                                        const yt::GracePeriod& grace_period)
     : PythonClient(cluster_id,
-                   cluster_contacts)
+                   cluster_contacts,
+                   timeout)
     , volume_id_(volume_id)
     , grace_period_(grace_period)
     , update_interval_(update_interval)
@@ -68,12 +70,14 @@ LockedPythonClient::Ptr
 LockedPythonClient::create(const std::string& cluster_id,
                            const std::vector<ClusterContact>& cluster_contacts,
                            const std::string& volume_id,
+                           const boost::optional<boost::chrono::seconds>& timeout,
                            const unsigned update_interval_secs,
                            const unsigned grace_period_secs)
 {
     return Ptr(new LockedPythonClient(cluster_id,
                                       cluster_contacts,
                                       volume_id,
+                                      timeout,
                                       yt::UpdateInterval(boost::posix_time::seconds(update_interval_secs)),
                                       yt::GracePeriod(boost::posix_time::seconds(grace_period_secs))));
 }
