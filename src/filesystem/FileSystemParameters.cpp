@@ -152,6 +152,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_registry_cache_capacity,
                                       ShowDocumentation::T,
                                       1024);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_xmlrpc_client_timeout_ms,
+                                      volumerouter_component_name,
+                                      "vrouter_xmlrpc_client_timeout_ms",
+                                      "timeout for XMLRPC client calls in milliseconds",
+                                      ShowDocumentation::F,
+                                      60000);
+
 // ObjectRouterCluster
 const char volumeroutercluster_component_name[] = "volume_router_cluster";
 

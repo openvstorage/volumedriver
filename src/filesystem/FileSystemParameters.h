@@ -65,6 +65,9 @@ DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_routing_retries,
                                                   uint32_t);
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_lock_reaper_interval,
                                                   std::atomic<uint64_t>);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_xmlrpc_client_timeout_ms,
+                                                  std::atomic<uint32_t>);
+
 DECLARE_INITIALIZED_PARAM(vrouter_id,
                           std::string);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_sco_multiplier,

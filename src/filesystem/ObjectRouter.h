@@ -410,6 +410,7 @@ private:
     DECLARE_PARAMETER(vrouter_min_workers);
     DECLARE_PARAMETER(vrouter_max_workers);
     DECLARE_PARAMETER(vrouter_registry_cache_capacity);
+    DECLARE_PARAMETER(vrouter_xmlrpc_client_timeout_ms);
 
     std::shared_ptr<youtils::LockedArakoon> larakoon_;
     std::shared_ptr<CachedObjectRegistry> object_registry_;
