@@ -16,10 +16,10 @@
 #include <youtils/Assert.h>
 #include <youtils/Catchers.h>
 
-#include <ObjectRouter.h>
-
 #include "NetworkXioIOHandler.h"
 #include "NetworkXioProtocol.h"
+#include "ObjectRouter.h"
+#include "PythonClient.h" // clienterrors
 
 namespace volumedriverfs
 {
@@ -396,10 +396,10 @@ NetworkXioIOHandler::handle_list_snapshots(NetworkXioRequest *req,
         return;
     }
 
-    std::list<volumedriver::SnapshotName> snaps;
+    std::vector<std::string> snaps;
     try
     {
-        snaps = fs_.object_router().list_snapshots_local(*volume_id);
+        snaps = fs_.object_router().list_snapshots(*volume_id);
         req->retval = 0;
         req->errval = 0;
     }
@@ -474,9 +474,9 @@ NetworkXioIOHandler::handle_create_snapshot(NetworkXioRequest *req,
     const volumedriver::SnapshotName snap(snap_name);
     try
     {
-        fs_.object_router().create_snapshot_local(*volume_id,
-                                                  snap,
-                                                  timeout);
+        fs_.object_router().create_snapshot(*volume_id,
+                                            snap,
+                                            timeout);
         req->retval = 0;
         req->errval = 0;
     }
@@ -487,13 +487,13 @@ NetworkXioIOHandler::handle_create_snapshot(NetworkXioRequest *req,
         req->retval = -1;
         req->errval = ETIMEDOUT;
     }
-    catch (volumedriver::SnapshotPersistor::SnapshotNameAlreadyExists& e)
+    catch (clienterrors::SnapshotNameAlreadyExistsException& e)
     {
         LOG_INFO("Volume still has children: " << volume_name);
         req->retval = -1;
         req->errval = EEXIST;
     }
-    catch (volumedriver::PreviousSnapshotNotOnBackendException& e)
+    catch (clienterrors::PreviousSnapshotNotOnBackendException& e)
     {
         LOG_INFO("Previous snapshot not on backend yet for volume: " <<
                  volume_name);
@@ -530,18 +530,18 @@ NetworkXioIOHandler::handle_delete_snapshot(NetworkXioRequest *req,
     const volumedriver::SnapshotName snap(snap_name);
     try
     {
-        fs_.object_router().delete_snapshot_local(*volume_id,
-                                                  snap);
+        fs_.object_router().delete_snapshot(*volume_id,
+                                            snap);
         req->retval = 0;
         req->errval = 0;
     }
-    catch (volumedriver::SnapshotNotFoundException& e)
+    catch (clienterrors::SnapshotNotFoundException& e)
     {
         LOG_INFO("Snapshot not found: " << snap_name);
         req->retval = -1;
         req->errval = ENOENT;
     }
-    catch (ObjectStillHasChildrenException& e)
+    catch (clienterrors::ObjectStillHasChildrenException& e)
     {
         LOG_INFO("Volume still has children: " << volume_name);
         req->retval = -1;
@@ -577,12 +577,12 @@ NetworkXioIOHandler::handle_rollback_snapshot(NetworkXioRequest *req,
     const volumedriver::SnapshotName snap(snap_name);
     try
     {
-        fs_.object_router().rollback_volume_local(*volume_id,
-                                                  snap);
+        fs_.object_router().rollback_volume(*volume_id,
+                                            snap);
         req->retval = 0;
         req->errval = 0;
     }
-    catch (ObjectStillHasChildrenException& e)
+    catch (clienterrors::ObjectStillHasChildrenException& e)
     {
         LOG_INFO("Volume still has children: " << volume_name);
         req->retval = -1;
@@ -618,12 +618,12 @@ NetworkXioIOHandler::handle_is_snapshot_synced(NetworkXioRequest *req,
     const volumedriver::SnapshotName snap(snap_name);
     try
     {
-        bool is_synced = fs_.object_router().is_volume_synced_up_to_local(*volume_id,
-                                                                          snap);
+        bool is_synced = fs_.object_router().is_volume_synced_up_to(*volume_id,
+                                                                    snap);
         req->retval = is_synced;
         req->errval = 0;
     }
-    catch (volumedriver::SnapshotNotFoundException& e)
+    catch (clienterrors::SnapshotNotFoundException& e)
     {
         LOG_INFO("Snapshot not found: " << snap_name);
         req->retval = -1;

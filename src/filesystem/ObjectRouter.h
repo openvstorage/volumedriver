@@ -245,19 +245,39 @@ public:
                           const int64_t timeout);
 
     void
+    create_snapshot(const ObjectId& volume_id,
+                    const volumedriver::SnapshotName& snap_id,
+                    const int64_t timeout);
+
+    void
     rollback_volume_local(const ObjectId&,
                           const volumedriver::SnapshotName&);
+
+    void
+    rollback_volume(const ObjectId&,
+                    const volumedriver::SnapshotName&);
 
     void
     delete_snapshot_local(const ObjectId&,
                           const volumedriver::SnapshotName&);
 
+    void
+    delete_snapshot(const ObjectId&,
+                    const volumedriver::SnapshotName&);
+
     std::list<volumedriver::SnapshotName>
     list_snapshots_local(const ObjectId&);
 
+    std::vector<std::string>
+    list_snapshots(const ObjectId&);
+
     bool
-    is_volume_synced_up_to_local(const ObjectId& id,
-                                 const volumedriver::SnapshotName& snap_id);
+    is_volume_synced_up_to_local(const ObjectId&,
+                                 const volumedriver::SnapshotName&);
+
+    bool
+    is_volume_synced_up_to(const ObjectId&,
+                           const volumedriver::SnapshotName&);
 
     std::vector<scrubbing::ScrubWork>
     get_scrub_work_local(const ObjectId& oid,

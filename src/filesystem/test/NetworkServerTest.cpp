@@ -114,7 +114,8 @@ public:
     }
 
     CtxAttrPtr
-    make_ctx_attr(const size_t qdepth)
+    make_ctx_attr(const size_t qdepth,
+                  const uint16_t port = FileSystemTestSetup::local_edge_port())
     {
         CtxAttrPtr attr(ovs_ctx_attr_new());
         EXPECT_TRUE(attr != nullptr);
@@ -123,13 +124,142 @@ public:
                   ovs_ctx_attr_set_transport(attr.get(),
                                              FileSystemTestSetup::edge_transport().c_str(),
                                              FileSystemTestSetup::address().c_str(),
-                                             FileSystemTestSetup::local_edge_port()));
+                                             port));
 
         EXPECT_EQ(0,
                   ovs_ctx_attr_set_network_qdepth(attr.get(),
                                                   qdepth));
 
         return attr;
+    }
+
+    void
+    test_snapshot_ops(bool remote)
+    {
+        const std::string vname("volume");
+
+        {
+            CtxAttrPtr attrs(make_ctx_attr(1024,
+                                           remote ?
+                                           FileSystemTestSetup::remote_edge_port() :
+                                           FileSystemTestSetup::local_edge_port()));
+
+            CtxPtr ctx(ovs_ctx_new(attrs.get()));
+            ASSERT_TRUE(ctx != nullptr);
+
+            // TODO: there's a race with the startup of the network server on
+            // the remote instance and a proper fix is out of scope for the moment
+            const size_t max = remote ? 10 : 0;
+            size_t count = 0;
+
+            while (ovs_create_volume(ctx.get(),
+                                     vname.c_str(),
+                                     1ULL << 20) == -1)
+            {
+                ASSERT_GT(max, ++count) <<
+                    "failed to create volume after " << count << " attempts: " << strerror(errno);
+                boost::this_thread::sleep_for(boost::chrono::milliseconds(250));
+            }
+        }
+
+        CtxAttrPtr attrs(make_ctx_attr(1024,
+                                       FileSystemTestSetup::local_edge_port()));
+        CtxPtr ctx(ovs_ctx_new(attrs.get()));
+        ASSERT_TRUE(ctx != nullptr);
+
+        ASSERT_EQ(0,
+                  ovs_ctx_init(ctx.get(),
+                               vname.c_str(),
+                               O_RDWR));
+
+        const int64_t timeout = 10;
+        const std::string snap1("snap1");
+
+        EXPECT_EQ(-1,
+                  ovs_snapshot_create(ctx.get(),
+                                      (vname + "X").c_str(),
+                                      snap1.c_str(),
+                                      timeout));
+        EXPECT_EQ(ENOENT,
+                  errno);
+
+        EXPECT_EQ(0,
+                  ovs_snapshot_create(ctx.get(),
+                                      vname.c_str(),
+                                      snap1.c_str(),
+                                      timeout));
+
+        const std::string snap2("snap2");
+
+        EXPECT_EQ(0,
+                  ovs_snapshot_create(ctx.get(),
+                                      vname.c_str(),
+                                      snap2.c_str(),
+                                      0));
+
+        EXPECT_EQ(1,
+                  ovs_snapshot_is_synced(ctx.get(),
+                                         vname.c_str(),
+                                         snap2.c_str()));
+
+        EXPECT_EQ(-1,
+                  ovs_snapshot_is_synced(ctx.get(),
+                                         vname.c_str(),
+                                         "fsnap"));
+
+        int max_snaps = 1;
+
+        std::vector<ovs_snapshot_info_t> snaps(max_snaps);
+
+        int snap_count = ovs_snapshot_list(ctx.get(),
+                                           vname.c_str(),
+                                           snaps.data(),
+                                           &max_snaps);
+        EXPECT_EQ(-1,
+                  snap_count);
+        EXPECT_EQ(ERANGE,
+                  errno);
+        EXPECT_LT(1,
+                  max_snaps);
+
+        snaps.resize(max_snaps);
+
+        snap_count = ovs_snapshot_list(ctx.get(),
+                                           vname.c_str(),
+                                           snaps.data(),
+                                           &max_snaps);
+        ASSERT_EQ(2U, snap_count);
+        EXPECT_EQ(3U, max_snaps);
+
+        ovs_snapshot_list_free(snaps.data());
+
+        snaps.resize(1);
+        max_snaps = snaps.size();
+
+        EXPECT_EQ(-1,
+                  ovs_snapshot_list(ctx.get(),
+                                    "fvolume",
+                                    snaps.data(),
+                                    &max_snaps));
+        EXPECT_EQ(ENOENT,
+                  errno);
+
+        EXPECT_EQ(0,
+                  ovs_snapshot_rollback(ctx.get(),
+                                        vname.c_str(),
+                                        snap1.c_str()));
+
+        EXPECT_EQ(-1,
+                  ovs_snapshot_remove(ctx.get(),
+                                      vname.c_str(),
+                                      snap2.c_str()));
+        EXPECT_EQ(ENOENT,
+                  errno);
+
+        EXPECT_EQ(0,
+                  ovs_snapshot_remove(ctx.get(),
+                                      vname.c_str(),
+                                      snap1.c_str()));
     }
 
     std::unique_ptr<NetworkXioInterface> net_xio_server_;
@@ -843,108 +973,21 @@ TEST_F(NetworkServerTest, write_flush_read)
               ovs_ctx_attr_destroy(ctx_attr));
 }
 
-TEST_F(NetworkServerTest, create_rollback_list_remove_snapshot)
+TEST_F(NetworkServerTest, create_rollback_list_remove_snapshot_local)
 {
-    uint64_t volume_size = 1 << 30;
-    int64_t timeout = 10;
-    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
-    ASSERT_TRUE(ctx_attr != nullptr);
-    EXPECT_EQ(0,
-              ovs_ctx_attr_set_transport(ctx_attr,
-                                         FileSystemTestSetup::edge_transport().c_str(),
-                                         FileSystemTestSetup::address().c_str(),
-                                         FileSystemTestSetup::local_edge_port()));
-    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
-    ASSERT_TRUE(ctx != nullptr);
-    EXPECT_EQ(ovs_create_volume(ctx,
-                                "volume",
-                                volume_size),
-              0);
+    test_snapshot_ops(false);
+}
 
-    EXPECT_EQ(-1,
-              ovs_snapshot_create(ctx,
-                                  "fvolume",
-                                  "snap1",
-                                  timeout));
-    EXPECT_EQ(ENOENT,
-              errno);
+TEST_F(NetworkServerTest, create_rollback_list_remove_snapshot_remote)
+{
+    mount_remote();
 
-    EXPECT_EQ(0,
-              ovs_snapshot_create(ctx,
-                                  "volume",
-                                  "snap1",
-                                  timeout));
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         umount_remote();
+                                     }));
 
-    EXPECT_EQ(0,
-              ovs_snapshot_create(ctx,
-                                  "volume",
-                                  "snap2",
-                                  0));
-
-    EXPECT_EQ(1,
-              ovs_snapshot_is_synced(ctx,
-                                     "volume",
-                                     "snap2"));
-
-    EXPECT_EQ(-1,
-              ovs_snapshot_is_synced(ctx,
-                                     "volume",
-                                     "fsnap"));
-
-    int max_snaps = 1;
-    ovs_snapshot_info_t *snaps;
-    int snap_count;
-
-    do {
-        snaps = (ovs_snapshot_info_t *) malloc(sizeof(*snaps) * max_snaps);
-        snap_count = ovs_snapshot_list(ctx, "volume", snaps, &max_snaps);
-        if (snap_count <= 0)
-        {
-            free(snaps);
-        }
-    } while (snap_count == -1 && errno == ERANGE);
-
-    EXPECT_EQ(2U, snap_count);
-    EXPECT_EQ(3U, max_snaps);
-
-    if (snap_count > 0)
-    {
-        ovs_snapshot_list_free(snaps);
-    }
-
-    free(snaps);
-
-    snaps = (ovs_snapshot_info_t *) malloc(sizeof(*snaps));
-    max_snaps = 1;
-
-    EXPECT_EQ(-1,
-              ovs_snapshot_list(ctx, "fvolume", snaps, &max_snaps));
-    EXPECT_EQ(ENOENT,
-              errno);
-
-    free(snaps);
-
-    EXPECT_EQ(0,
-              ovs_snapshot_rollback(ctx,
-                                    "volume",
-                                    "snap1"));
-
-    EXPECT_EQ(-1,
-              ovs_snapshot_remove(ctx,
-                                  "volume",
-                                  "snap2"));
-    EXPECT_EQ(ENOENT,
-              errno);
-
-    EXPECT_EQ(0,
-              ovs_snapshot_remove(ctx,
-                                  "volume",
-                                  "snap1"));
-
-    EXPECT_EQ(0,
-              ovs_ctx_destroy(ctx));
-    EXPECT_EQ(0,
-              ovs_ctx_attr_destroy(ctx_attr));
+    test_snapshot_ops(true);
 }
 
 TEST_F(NetworkServerTest, connect_to_nonexistent_port)
