@@ -50,6 +50,7 @@ MAKE_EXCEPTION(PythonClientException, fungi::IOException);
 MAKE_EXCEPTION(ObjectNotFoundException, fungi::IOException);
 MAKE_EXCEPTION(InvalidOperationException, fungi::IOException);
 MAKE_EXCEPTION(SnapshotNotFoundException, fungi::IOException);
+MAKE_EXCEPTION(SnapshotNameAlreadyExistsException, fungi::IOException);
 MAKE_EXCEPTION(FileExistsException, fungi::IOException);
 MAKE_EXCEPTION(InsufficientResourcesException, fungi::IOException);
 MAKE_EXCEPTION(PreviousSnapshotNotOnBackendException, fungi::IOException);

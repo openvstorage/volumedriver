@@ -421,6 +421,31 @@ TEST_F(PythonClientTest, snapshot_management)
     }
 }
 
+TEST_F(PythonClientTest, snapshot_recreation)
+{
+    const vfs::FrontendPath vpath(make_volume_name("/some-volume"));
+    const std::string vname(create_file(vpath, 10 << 20));
+    const std::string snap("snapshot");
+
+    client_.create_snapshot(vname,
+                            snap);
+
+    const size_t max = 100;
+    size_t count = 0;
+
+    while (not client_.is_volume_synced_up_to_snapshot(vname,
+                                                       snap))
+    {
+        ASSERT_GT(max, ++count) <<
+            "failed to sync snapshot to backend after " << max << " attempts";
+        boost::this_thread::sleep_for(boost::chrono::milliseconds(250));
+    }
+
+    EXPECT_THROW(client_.create_snapshot(vname,
+                                         snap),
+                 vfs::clienterrors::SnapshotNameAlreadyExistsException);
+}
+
 TEST_F(PythonClientTest, volume_queries)
 {
     const vfs::FrontendPath vpath(make_volume_name("/testing_info"));

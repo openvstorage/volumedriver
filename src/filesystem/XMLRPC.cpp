@@ -361,6 +361,14 @@ XMLRPCTimingWrapper<T>::execute(::XmlRpc::XmlRpcValue& params,
                     e.what());
         return;
     }
+    catch(vd::SnapshotPersistor::SnapshotNameAlreadyExists& e)
+    {
+        LOG_XMLRPCERROR(T::_name << " " << boost::diagnostic_information(e));
+        T::setError(result,
+                    XMLRPCErrorCode::SnapshotNameAlreadyExists,
+                    e.what());
+        return;
+    }
     catch(vd::VolManager::InsufficientResourcesException & e)
     {
         LOG_XMLRPCERROR(T::_name << " " << boost::diagnostic_information(e));

@@ -45,7 +45,8 @@ enum class XMLRPCErrorCode
     FileExists = 4,
     InsufficientResources = 5,
     PreviousSnapshotNotOnBackend = 6,
-    ObjectStillHasChildren = 7
+    ObjectStillHasChildren = 7,
+    SnapshotNameAlreadyExists = 8,
 };
 
 class FileSystem;
