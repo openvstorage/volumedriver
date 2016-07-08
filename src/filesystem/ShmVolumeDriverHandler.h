@@ -233,9 +233,9 @@ public:
         const volumedriver::SnapshotName snap(snap_name);
         try
         {
-            fs_.object_router().create_snapshot(*volume_id,
-                                                snap,
-                                                timeout);
+            fs_.object_router().create_snapshot_local(*volume_id,
+                                                      snap,
+                                                      timeout);
         }
         catch (SyncTimeoutException& e)
         {
@@ -273,8 +273,8 @@ public:
         const volumedriver::SnapshotName snap(snap_name);
         try
         {
-            fs_.object_router().rollback_volume(*volume_id,
-                                                snap);
+            fs_.object_router().rollback_volume_local(*volume_id,
+                                                      snap);
         }
         catch (ObjectStillHasChildrenException& e)
         {
@@ -302,8 +302,8 @@ public:
         const volumedriver::SnapshotName snap(snap_name);
         try
         {
-            fs_.object_router().delete_snapshot(*volume_id,
-                                                snap);
+            fs_.object_router().delete_snapshot_local(*volume_id,
+                                                      snap);
         }
         catch (volumedriver::SnapshotNotFoundException& e)
         {
@@ -334,7 +334,7 @@ public:
         std::list<volumedriver::SnapshotName> snaps;
         try
         {
-            snaps = fs_.object_router().list_snapshots(*volume_id);
+            snaps = fs_.object_router().list_snapshots_local(*volume_id);
         }
         catch (std::exception& e)
         {
@@ -361,8 +361,8 @@ public:
         const volumedriver::SnapshotName snap(snap_name);
         try
         {
-            return fs_.object_router().is_volume_synced_up_to(*volume_id,
-                                                              snap);
+            return fs_.object_router().is_volume_synced_up_to_local(*volume_id,
+                                                                    snap);
         }
         catch (volumedriver::SnapshotNotFoundException& e)
         {

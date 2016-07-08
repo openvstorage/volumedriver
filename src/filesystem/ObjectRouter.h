@@ -237,36 +237,36 @@ public:
          volumedriver::DeleteLocalData = volumedriver::DeleteLocalData::T);
 
     void
-    set_volume_as_template(const volumedriver::VolumeId& id);
+    set_volume_as_template_local(const volumedriver::VolumeId& id);
 
     void
-    create_snapshot(const ObjectId& volume_id,
-                    const volumedriver::SnapshotName& snap_id,
-                    const int64_t timeout);
+    create_snapshot_local(const ObjectId& volume_id,
+                          const volumedriver::SnapshotName& snap_id,
+                          const int64_t timeout);
 
     void
-    rollback_volume(const ObjectId& volume_id,
-                    const volumedriver::SnapshotName& snap_id);
+    rollback_volume_local(const ObjectId&,
+                          const volumedriver::SnapshotName&);
 
     void
-    delete_snapshot(const ObjectId& oid,
-                    const volumedriver::SnapshotName& snap);
+    delete_snapshot_local(const ObjectId&,
+                          const volumedriver::SnapshotName&);
 
     std::list<volumedriver::SnapshotName>
-    list_snapshots(const ObjectId& oid);
+    list_snapshots_local(const ObjectId&);
 
     bool
-    is_volume_synced_up_to(const ObjectId& id,
-                           const volumedriver::SnapshotName& snap_id);
+    is_volume_synced_up_to_local(const ObjectId& id,
+                                 const volumedriver::SnapshotName& snap_id);
 
     std::vector<scrubbing::ScrubWork>
-    get_scrub_work(const ObjectId& oid,
-                   const boost::optional<volumedriver::SnapshotName>& start_snap,
-                   const boost::optional<volumedriver::SnapshotName>& end_snap);
+    get_scrub_work_local(const ObjectId& oid,
+                         const boost::optional<volumedriver::SnapshotName>& start_snap,
+                         const boost::optional<volumedriver::SnapshotName>& end_snap);
 
     void
-    queue_scrub_reply(const ObjectId& oid,
-                      const scrubbing::ScrubReply&);
+    queue_scrub_reply_local(const ObjectId& oid,
+                            const scrubbing::ScrubReply&);
 
     void
     mark_node_offline(const NodeId& node_id);

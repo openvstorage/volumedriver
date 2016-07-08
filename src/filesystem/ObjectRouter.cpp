@@ -1429,7 +1429,7 @@ ObjectRouter::restart(const ObjectId& id,
 }
 
 void
-ObjectRouter::set_volume_as_template(const vd::VolumeId& id)
+ObjectRouter::set_volume_as_template_local(const vd::VolumeId& id)
 {
     LOG_INFO("Set volume " << id << " as template");
     TODO("AR: revisit conversion to ObjectId at this point");
@@ -1437,9 +1437,9 @@ ObjectRouter::set_volume_as_template(const vd::VolumeId& id)
 }
 
 void
-ObjectRouter::create_snapshot(const ObjectId& volume_id,
-                              const vd::SnapshotName& snap_id,
-                              const int64_t timeout)
+ObjectRouter::create_snapshot_local(const ObjectId& volume_id,
+                                    const vd::SnapshotName& snap_id,
+                                    const int64_t timeout)
 {
     LOG_INFO("Snapshotting volume '" << volume_id << "' with snapshot name '"
              << snap_id << "'");
@@ -1449,8 +1449,8 @@ ObjectRouter::create_snapshot(const ObjectId& volume_id,
 }
 
 void
-ObjectRouter::rollback_volume(const ObjectId& volume_id,
-                              const vd::SnapshotName& snap_id)
+ObjectRouter::rollback_volume_local(const ObjectId& volume_id,
+                                    const vd::SnapshotName& snap_id)
 {
     LOG_INFO("Rolling back " << volume_id << " to snapshot " << snap_id);
 
@@ -1459,8 +1459,8 @@ ObjectRouter::rollback_volume(const ObjectId& volume_id,
 }
 
 void
-ObjectRouter::delete_snapshot(const ObjectId& oid,
-                              const vd::SnapshotName& snap)
+ObjectRouter::delete_snapshot_local(const ObjectId& oid,
+                                    const vd::SnapshotName& snap)
 {
     LOG_INFO("Deleting snapshot " << snap << " from " << oid);
     local_node_()->delete_snapshot(oid,
@@ -1468,23 +1468,23 @@ ObjectRouter::delete_snapshot(const ObjectId& oid,
 }
 
 std::list<vd::SnapshotName>
-ObjectRouter::list_snapshots(const ObjectId& oid)
+ObjectRouter::list_snapshots_local(const ObjectId& oid)
 {
     LOG_INFO("Listing snapshots for volume '" << oid << "'");
     return local_node_()->list_snapshots(oid);
 }
 
 bool
-ObjectRouter::is_volume_synced_up_to(const ObjectId& id,
-                                     const vd::SnapshotName& snap_id)
+ObjectRouter::is_volume_synced_up_to_local(const ObjectId& id,
+                                           const vd::SnapshotName& snap_id)
 {
     return local_node_()->is_volume_synced_up_to(id, snap_id);
 }
 
 std::vector<scrubbing::ScrubWork>
-ObjectRouter::get_scrub_work(const ObjectId& oid,
-                             const boost::optional<vd::SnapshotName>& start_snap,
-                             const boost::optional<vd::SnapshotName>& end_snap)
+ObjectRouter::get_scrub_work_local(const ObjectId& oid,
+                                   const boost::optional<vd::SnapshotName>& start_snap,
+                                   const boost::optional<vd::SnapshotName>& end_snap)
 {
     LOG_INFO(oid << ": getting scrub work, start snapshot " << start_snap <<
              ", end snapshot " << end_snap);
@@ -1494,8 +1494,8 @@ ObjectRouter::get_scrub_work(const ObjectId& oid,
 }
 
 void
-ObjectRouter::queue_scrub_reply(const ObjectId& oid,
-                                const scrubbing::ScrubReply& scrub_reply)
+ObjectRouter::queue_scrub_reply_local(const ObjectId& oid,
+                                      const scrubbing::ScrubReply& scrub_reply)
 {
     LOG_INFO(oid << ": queuing scrub reply");
     return local_node_()->queue_scrub_reply(oid,

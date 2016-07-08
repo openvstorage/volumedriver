@@ -1331,7 +1331,7 @@ LocalNode::vaai_copy(const ObjectId& src_id,
     const vd::SnapshotName snap(snapname);
     if (not synced)
     {
-        vrouter_.delete_snapshot(src_id, snap);
+        vrouter_.delete_snapshot_local(src_id, snap);
         throw fungi::IOException("timeout exceeded\n");
     }
 
@@ -1354,8 +1354,8 @@ LocalNode::vaai_copy(const ObjectId& src_id,
     }
     else
     {
-        vrouter_.delete_snapshot(src_id,
-                                 snap);
+        vrouter_.delete_snapshot_local(src_id,
+                                       snap);
         throw InvalidOperationException() <<
             error_desc("unknown volume-based VAAI call");
     }
@@ -1483,7 +1483,7 @@ LocalNode::create_snapshot(const ObjectId& id,
 
     if (not synced)
     {
-        vrouter_.delete_snapshot(id, snapname);
+        vrouter_.delete_snapshot_local(id, snapname);
         throw SyncTimeoutException("timeout syncing snapshot to backend\n");
     }
 }
