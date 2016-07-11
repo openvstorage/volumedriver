@@ -1776,6 +1776,8 @@ VolManager::update(const boost::property_tree::ptree& pt,
     dtl_write_trigger.update(pt, report);
 
     freespace_check_interval.update(pt, report);
+    dtl_check_interval_in_seconds.update(pt, report);
+
     read_cache_default_behaviour.update(pt, report);
     read_cache_default_mode.update(pt, report);
     sco_written_to_backend_action.update(pt, report);
@@ -1802,6 +1804,7 @@ VolManager::persist(boost::property_tree::ptree& pt,
     tlog_path.persist(pt, reportDefault);
     open_scos_per_volume.persist(pt, reportDefault);
     freespace_check_interval.persist(pt, reportDefault);
+    dtl_check_interval_in_seconds.persist(pt, reportDefault);
     read_cache_default_behaviour.persist(pt, reportDefault);
     read_cache_default_mode.persist(pt, reportDefault);
     sco_written_to_backend_action.persist(pt, reportDefault);
