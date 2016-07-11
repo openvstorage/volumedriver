@@ -1661,10 +1661,30 @@ VolManager::checkMetaDataFreeSpace()
 void
 VolManager::checkVolumeFailoverCaches()
 {
-    LOCK_MANAGER();
-    for(auto& name_volume_pair : volMap_)
+    std::vector<VolumeId> vols;
+
+    // TODO: technically a copy of the map should also work which could then
+    // be used without the mgmt mutex held, but this needs thorough review /
+    // checking of e.g. volume removal vs. this one.
+    // Play it safe for now.
     {
-        name_volume_pair.second->check_and_fix_failovercache();
+        LOCK_MANAGER();
+        vols.reserve(volMap_.size());
+
+        for(const auto& p : volMap_)
+        {
+            vols.push_back(p.first);
+        }
+    }
+
+    for (const auto& vol : vols)
+    {
+        LOCK_MANAGER();
+        SharedVolumePtr v(findVolume_noThrow_(vol));
+        if (v)
+        {
+            v->check_and_fix_failovercache();
+        }
     }
 }
 
