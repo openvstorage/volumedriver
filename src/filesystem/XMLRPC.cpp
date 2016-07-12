@@ -1863,6 +1863,20 @@ VAAICopy::execute_internal(XmlRpc::XmlRpcValue& params,
 }
 
 void
+ListEdgeConnections::execute_internal(::XmlRpc::XmlRpcValue& /*params*/,
+                                      ::XmlRpc::XmlRpcValue& result)
+{
+    result.clear();
+    result.setSize(0);
+
+    int k = 0;
+    for (const auto& i: fs_.list_xio_cdata())
+    {
+        result[k++] = ::XmlRpc::XmlRpcValue(i);
+    }
+}
+
+void
 GetFailOverCacheConfigMode::execute_internal(::XmlRpc::XmlRpcValue& params,
                                              ::XmlRpc::XmlRpcValue& result)
 {
