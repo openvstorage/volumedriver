@@ -317,7 +317,8 @@ NetworkXioServer::create_session_connection(xio_session *session,
         try
         {
             NetworkXioIOHandler *ioh_ptr = new NetworkXioIOHandler(fs_,
-                                                                   wq_);
+                                                                   wq_,
+                                                                   cd);
             cd->ioh = ioh_ptr;
             cd->session = session;
             cd->conn = evdata->conn;
@@ -345,6 +346,7 @@ NetworkXioServer::destroy_session_connection(xio_session *session ATTR_UNUSED,
 {
     auto cd = static_cast<NetworkXioClientData*>(evdata->conn_user_context);
     cd->disconnected = true;
+    cd->ioh->remove_fs_client_info();
     if (!cd->refcnt)
     {
         xio_connection_destroy(cd->conn);

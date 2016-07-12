@@ -56,6 +56,7 @@ NetworkXioIOHandler::handle_open(NetworkXioRequest *req,
     try
     {
         fs_.open(p, O_RDWR, handle_);
+        update_fs_client_info(volume_name);
         volume_name_ = volume_name;
         req->retval = 0;
         req->errval = 0;

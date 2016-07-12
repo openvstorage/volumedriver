@@ -1443,4 +1443,36 @@ FileSystem::vaai_copy(const FrontendPath& src_path,
     }
 }
 
+void
+FileSystem::insert_xio_cdata(NetworkXioClientData *cdata,
+                             const std::string info)
+{
+
+    std::lock_guard<std::mutex> lock(cdata_info_lock_);
+    cdata_info_map_.emplace(cdata, info);
+}
+
+void
+FileSystem::remove_xio_cdata(NetworkXioClientData *cdata)
+{
+    std::lock_guard<std::mutex> lock(cdata_info_lock_);
+    cdata_info_map_.erase(cdata);
+}
+
+std::vector<std::string>
+FileSystem::list_xio_cdata()
+{
+    std::vector<std::string> info_vec_;
+    std::unordered_map<NetworkXioClientData*, std::string> map_copy_;
+    {
+        std::lock_guard<std::mutex> lock(cdata_info_lock_);
+        map_copy_ = cdata_info_map_;
+    }
+    for (const auto& kv: map_copy_)
+    {
+        info_vec_.push_back(kv.second);
+    }
+    return info_vec_;
+}
+
 }
