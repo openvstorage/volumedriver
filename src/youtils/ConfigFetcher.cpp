@@ -14,6 +14,8 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "ConfigFetcher.h"
+#include "EtcdReply.h"
+#include "EtcdUrl.h"
 
 #include <boost/lexical_cast.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -21,18 +23,13 @@
 
 #include <etcdcpp/etcd.hpp>
 
-#include <youtils/EtcdReply.h>
-#include <youtils/EtcdUrl.h>
-#include <youtils/VolumeDriverComponent.h>
-
-namespace volumedriverfs
+namespace youtils
 {
 
 namespace bpt = boost::property_tree;
-namespace yt = youtils;
 
 std::string
-ConfigFetcher::parse_config(const yt::EtcdReply::Records& recs)
+ConfigFetcher::parse_config(const EtcdReply::Records& recs)
 {
     bpt::ptree pt;
     std::stringstream ss;
@@ -62,23 +59,23 @@ ConfigFetcher::operator()(VerifyConfig verify_config)
 {
     LOG_INFO("Fetching config from " << config_);
 
-    boost::optional<yt::EtcdUrl> etcd_url;
+    boost::optional<EtcdUrl> etcd_url;
 
     try
     {
-        etcd_url = boost::lexical_cast<yt::EtcdUrl>(config_);
+        etcd_url = boost::lexical_cast<EtcdUrl>(config_);
     }
     catch (...)
     {}
 
     if (etcd_url)
     {
-        etcd::Client<yt::EtcdReply> client(etcd_url->host,
-                                           etcd_url->port);
+        etcd::Client<EtcdReply> client(etcd_url->host,
+                                       etcd_url->port);
 
-        const yt::EtcdReply reply(client.Get(etcd_url->key,
-                                             true));
-        const boost::optional<yt::EtcdReply::Error> err(reply.error());
+        const EtcdReply reply(client.Get(etcd_url->key,
+                                         true));
+        const boost::optional<EtcdReply::Error> err(reply.error());
         if (err)
         {
             LOG_ERROR("Etcd reported error retrieving " << *etcd_url <<
@@ -88,27 +85,27 @@ ConfigFetcher::operator()(VerifyConfig verify_config)
             throw Exception("Failed to retrieve config from etcd");
         }
 
-        const boost::optional<yt::EtcdReply::Node> node(reply.node());
+        const boost::optional<EtcdReply::Node> node(reply.node());
         if (not node)
         {
             LOG_ERROR("Failed to find desired node in " << *etcd_url);
             throw Exception("Failed to find node in etcd");
         }
 
-        const yt::EtcdReply::Records recs(reply.records());
+        const EtcdReply::Records recs(reply.records());
         if (recs.size() < 2)
         {
             LOG_ERROR("Failed to find config subsections under " << *etcd_url);
             throw Exception("Failed to find config subsections");
         }
         std::stringstream ss(parse_config(recs));
-        return yt::VolumeDriverComponent::read_config(ss,
-                                                      verify_config);
+        return VolumeDriverComponent::read_config(ss,
+                                                  verify_config);
     }
     else
     {
-        return yt::VolumeDriverComponent::read_config_file(config_,
-                                                           verify_config);
+        return VolumeDriverComponent::read_config_file(config_,
+                                                       verify_config);
     }
 }
 

@@ -210,7 +210,8 @@ LockedPythonClient::scrub(const std::string& scrub_work,
                           const bool verbose,
                           const std::string& scrubber_name,
                           const yt::Severity severity,
-                          const std::vector<std::string>& log_sinks)
+                          const std::vector<std::string>& log_sinks,
+                          const boost::optional<std::string>& backend_config)
 {
     LOG_INFO(volume_id_ << ": scrubbing " << scrub_work);
 
@@ -218,17 +219,25 @@ LockedPythonClient::scrub(const std::string& scrub_work,
     THROW_UNLESS(locked_section_);
 
     std::vector<std::string> args;
-    args.reserve(13 + 2 * log_sinks.size());
+    args.reserve(13 + 2 * log_sinks.size() + (backend_config ? 2 : 0));
 
     args.emplace_back(scrubber_name);
-    args.emplace_back("--scrub-work");
-    args.emplace_back(scrub_work);
+
+    if (backend_config)
+    {
+        args.emplace_back("--backend-config");
+        args.emplace_back(*backend_config);
+    }
+
     args.emplace_back("--scratch-dir");
     args.emplace_back(scratch_dir);
     args.emplace_back("--region-size-exponent");
     args.emplace_back(boost::lexical_cast<std::string>(region_size_exponent));
     args.emplace_back("--fill-ratio");
     args.emplace_back(boost::lexical_cast<std::string>(fill_ratio));
+    args.emplace_back("--scrub-work");
+    args.emplace_back(scrub_work);
+
     args.emplace_back("--verbose");
     args.emplace_back(boost::lexical_cast<std::string>(verbose));
     args.emplace_back("--loglevel");

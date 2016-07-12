@@ -53,6 +53,7 @@ libyoutils_la_SOURCES = \
 	Catchers.cpp \
 	Chooser.cpp \
 	ConfigurationReport.cpp \
+	ConfigFetcher.cpp \
 	CorbaTestSetup.cpp \
 	cpu_timer.cpp \
 	DeferredFileRemover.cpp \

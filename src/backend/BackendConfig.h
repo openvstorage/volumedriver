@@ -23,10 +23,15 @@
 #include <boost/serialization/export.hpp>
 
 #include <youtils/BooleanEnum.h>
-#include <youtils/Logging.h>
 #include <youtils/ConfigurationReport.h>
+#include <youtils/Logging.h>
 #include <youtils/UpdateReport.h>
 
+namespace youtils
+{
+class ConfigLocation;
+class JsonString;
+}
 
 namespace backend
 {
@@ -44,11 +49,10 @@ public:
     makeBackendConfig(const boost::property_tree::ptree&);
 
     static std::unique_ptr<BackendConfig>
-    makeBackendConfig(const std::string& backend_config);
+    makeBackendConfig(const youtils::JsonString&);
 
     static std::unique_ptr<BackendConfig>
-    makeBackendConfig(const boost::filesystem::path& json_file);
-
+    makeBackendConfig(const youtils::ConfigLocation&);
 
     virtual std::unique_ptr<BackendConfig>
     clone() const = 0;

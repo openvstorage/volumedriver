@@ -70,7 +70,8 @@ LockedClient::registerize()
               bpy::args("verbose_scrubbing") = scrubbing::ScrubberAdapter::verbose_scrubbing_default,
               bpy::args("scrubber_binary") = "ovs_scrubber",
               bpy::args("severity") = yt::Severity::info,
-              bpy::args("log_sinks") = std::vector<std::string>()),
+              bpy::args("log_sinks") = std::vector<std::string>(),
+              bpy::args("backend_config") = boost::optional<std::string>()),
               "Scrubs a work unit and returns a scrub_result\n"
              "@param work_unit: a string, a opaque string that encodes the scrub work\n"
              "@param region_size_exponent: a number, "
@@ -82,6 +83,7 @@ LockedClient::registerize()
              "@param scrubber_binary: string, scrubber binary to use\n"
              "@param severity: Severity, log level to use\n"
              "@param log_sinks: [ string ], log sinks to use (if empty, stderr is used)\n"
+             "@param backend_config: optional string, backend config location (file, etcd url, ...)\n"
              "@result a (n opaque) string that encodes the scrub result to apply")
         ;
 }

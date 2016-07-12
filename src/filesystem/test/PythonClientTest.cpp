@@ -25,10 +25,13 @@
 #include <xmlrpc++0.7/src/XmlRpcClient.h>
 
 #include <youtils/Catchers.h>
+#include <youtils/ConfigLocation.h>
 #include <youtils/IOException.h>
 #include <youtils/InitializedParam.h>
 #include <youtils/FileDescriptor.h>
 #include <youtils/ScopeExit.h>
+
+#include <backend/BackendConfig.h>
 
 #include <volumedriver/metadata-server/Manager.h>
 #include <volumedriver/SnapshotPersistor.h>
@@ -51,6 +54,7 @@
 namespace volumedriverfstest
 {
 
+namespace be = backend;
 namespace bpt = boost::property_tree;
 namespace bpy = boost::python;
 namespace fs = boost::filesystem;
@@ -182,7 +186,9 @@ protected:
 
         const std::string work_str = bpy::extract<std::string>(work_item);
         const ScrubWork work(work_str);
-        const ScrubReply reply(ScrubberAdapter::scrub(work,
+        const yt::ConfigLocation loc(configuration_.string());
+        const ScrubReply reply(ScrubberAdapter::scrub(be::BackendConfig::makeBackendConfig(loc),
+                                                      work,
                                                       "/tmp"));
         return bpy::make_tuple(work.id_.str(),
                                reply.str());
@@ -1863,7 +1869,8 @@ TEST_F(PythonClientTest, locked_scrub)
                                          scrubbing::ScrubberAdapter::verbose_scrubbing_default,
                                          "ovs_scrubber",
                                          yt::Severity::info,
-                                         std::vector<std::string>()));
+                                         std::vector<std::string>(),
+                                         configuration_.string()));
 
     lclient->apply_scrubbing_result(res);
 }

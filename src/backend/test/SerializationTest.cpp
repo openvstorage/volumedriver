@@ -13,6 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include <youtils/JsonString.h>
 #include <youtils/StrongTypedString.h>
 #include <youtils/TestBase.h>
 
@@ -30,7 +31,10 @@ STRONG_TYPED_STRING(TestStringType1, backendtest);
 
 namespace backendtest
 {
+
 using namespace backend;
+
+namespace yt = youtils;
 
 class SerializationTest
     : public youtilstest::TestBase
@@ -47,7 +51,7 @@ protected:
                    pt);
 
         {
-            std::unique_ptr<BackendConfig> bc = BackendConfig::makeBackendConfig(ss.str());
+            std::unique_ptr<BackendConfig> bc = BackendConfig::makeBackendConfig(yt::JsonString(ss.str()));
             EXPECT_TRUE(config == *bc.get()) << "Test failed for backend type " << config.name();
         }
     }
