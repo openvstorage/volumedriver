@@ -100,8 +100,7 @@ public:
     find(const ObjectId&,
          IgnoreCache);
 
-    // use a vector instead?
-    std::list<ObjectId>
+    std::vector<ObjectId>
     list(RefreshCache = RefreshCache::F);
 
     ObjectRegistrationPtr

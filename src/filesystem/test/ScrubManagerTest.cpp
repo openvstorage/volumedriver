@@ -608,7 +608,7 @@ TEST_F(ScrubManagerTest, random_stress_single_job)
 
     const std::string id(parent.id.str());
 
-    const std::list<ObjectId> regs(object_registry_->list());
+    const std::vector<ObjectId> regs(object_registry_->list());
     ASSERT_FALSE(regs.empty());
 
     std::set<ObjectId> oids(regs.begin(),

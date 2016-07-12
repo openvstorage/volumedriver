@@ -52,25 +52,29 @@ serialize_volume_registration(const ObjectRegistration& reg)
 }
 
 ObjectRegistrationPtr
+deserialize_volume_registration(std::istream& is)
+{
+    ObjectRegistration* reg = nullptr;
+
+    try
+    {
+        iarchive_type ia(is);
+        ia >> reg;
+        return ObjectRegistrationPtr(reg);
+    }
+    catch (...)
+    {
+        delete reg;
+        throw;
+    }
+}
+
+ObjectRegistrationPtr
 deserialize_volume_registration(const ara::buffer& buf)
 {
-    return buf.as_istream<ObjectRegistrationPtr>([](std::istream& is) ->
-                                                 ObjectRegistrationPtr
-        {
-            ObjectRegistration* reg = nullptr;
-
-            try
-            {
-                iarchive_type ia(is);
-                ia >> reg;
-                return ObjectRegistrationPtr(reg);
-            }
-            catch (...)
-            {
-                delete reg;
-                throw;
-            }
-        });
+    using FunPtr = ObjectRegistrationPtr(*)(std::istream&);
+    FunPtr fun = deserialize_volume_registration;
+    return buf.as_istream<ObjectRegistrationPtr>(fun);
 }
 
 }
@@ -113,7 +117,7 @@ ObjectRegistry::destroy()
 {
     LOG_INFO("Removing object registrations for " << cluster_id_);
 
-    std::list<ObjectId> l(list());
+    std::vector<ObjectId> l(list());
 
     for (const auto& o : l)
     {
@@ -241,7 +245,7 @@ ObjectRegistry::find_throw(const ObjectId& vol_id)
     }
 }
 
-std::list<ObjectId>
+std::vector<ObjectId>
 ObjectRegistry::list()
 {
     LOG_TRACE(ID() << ": getting list of registrations");
@@ -255,7 +259,8 @@ ObjectRegistry::list()
 
     ara::value_list l(larakoon_->prefix(prefix()));
 
-    std::list<ObjectId> vols;
+    std::vector<ObjectId> vols;
+    vols.reserve(l.size());
 
     ara::arakoon_buffer val;
     ara::value_list::iterator it(l.begin());
@@ -266,10 +271,57 @@ ObjectRegistry::list()
 
         std::string s(static_cast<const char*>(val.second) + pfx.size(),
                       val.first - pfx.size());
-        vols.push_back(ObjectId(s));
+        vols.emplace_back(ObjectId(s));
     }
 
     return vols;
+}
+
+std::vector<ObjectRegistrationPtr>
+ObjectRegistry::get_all_registrations(size_t batch_size)
+{
+    LOG_TRACE(ID() << ": getting all registrations");
+
+    ASSERT(batch_size > 0);
+
+    // TODO: This is inefficient as list() converts the ara::value_list into a
+    // vector<string>, shaving off the prefix and below it's added back again.
+    // However, for now convenience trumps and in the long run the use of 'prefix'
+    // will also have to be reconsidered for a big number of keys.
+    const std::vector<ObjectId> ids(list());
+
+    std::vector<ObjectRegistrationPtr> vec;
+    vec.reserve(ids.size());
+
+    if (not ids.empty())
+    {
+        const std::string last(make_key_(ids.back()));
+
+        for (size_t i = 0; i < ids.size(); i += batch_size)
+        {
+            const ara::key_value_list kvl(larakoon_->range_entries(make_key_(ids[i]),
+                                                                   true,
+                                                                   last,
+                                                                   true,
+                                                                   batch_size));
+
+            ara::key_value_list::iterator it(kvl.begin());
+
+            ara::arakoon_buffer key;
+            ara::arakoon_buffer val;
+
+            while (it.next(key,
+                           val))
+            {
+                std::stringstream ss;
+                ss << std::string(static_cast<const char*>(val.second),
+                                  val.first);
+                vec.emplace_back(deserialize_volume_registration(ss));
+            }
+        }
+    }
+
+    return vec;
 }
 
 void
