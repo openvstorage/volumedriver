@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include "youtils/Assert.h"
 
@@ -25,7 +25,7 @@ namespace test
 using namespace volumedriver;
 
 
-class TimeZoneTests : public ExGTest
+class TimeZoneTests : public testing::TestWithParam<VolumeDriverTestConfig>
 {
 
 protected:

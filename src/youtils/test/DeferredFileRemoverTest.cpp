@@ -17,7 +17,7 @@
 #include "../FileDescriptor.h"
 #include "../FileUtils.h"
 #include "../System.h"
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 #include "../Timer.h"
 #include "../UUID.h"
 
@@ -30,11 +30,11 @@ using namespace youtils;
 namespace fs = boost::filesystem;
 
 class DeferredFileRemoverTest
-    : public TestBase
+    : public testing::Test
 {
 public:
     DeferredFileRemoverTest()
-        : root_(getTempPath("DeferredFileRemoverTest"))
+        : root_(FileUtils::temp_path("DeferredFileRemoverTest"))
     {}
 
     virtual void

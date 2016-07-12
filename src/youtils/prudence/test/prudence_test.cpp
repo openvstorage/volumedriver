@@ -13,12 +13,13 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include <gtest/gtest.h>
+
 #include "../../Assert.h"
 #include "../../FileUtils.h"
 #include "../../Main.h"
 #include <pstreams/pstream.h>
 #include "../../wall_timer.h"
-#include "../../TestBase.h"
 #include "../../TestMainHelper.h"
 
 #include "../prudence.h"
@@ -37,7 +38,7 @@ namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
 class TestPrudence
-    : public youtilstest::TestBase
+    : public testing::Test
 {
 
 protected:

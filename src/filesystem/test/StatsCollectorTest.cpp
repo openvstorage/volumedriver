@@ -18,7 +18,7 @@
 #include <chrono>
 #include <thread>
 
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 
 namespace volumedriverfstest
 {
@@ -26,7 +26,7 @@ namespace volumedriverfstest
 using namespace volumedriverfs;
 
 class StatsCollectorTest
-    : public youtilstest::TestBase
+    : public testing::Test
 {};
 
 TEST_F(StatsCollectorTest, simple)

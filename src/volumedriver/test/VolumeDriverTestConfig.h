@@ -13,8 +13,8 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef EXGTEST_H_
-#define EXGTEST_H_
+#ifndef VD_TEST_CONFIG_H_
+#define VD_TEST_CONFIG_H_
 
 #include "../FailOverCacheMode.h"
 #include "../Types.h"
@@ -60,66 +60,9 @@ struct VolumeDriverTestConfig
 #undef PARAM
 };
 
-// TODO: this is not the best approach; please remake sometime by overriding the calling of the testbody
-// directly, which will require some more subtle changes to google test
-
-// Z42: rename ExGTest to VolumeDriverTest
-class ExGTest :
-        public testing::TestWithParam<VolumeDriverTestConfig>
-{
-protected:
-    ExGTest()
-        : catch_(true)
-    {}
-
-    void dontCatch()
-    {
-        catch_ = false;
-    }
-
-    virtual void Run()
-    {
-        if (catch_)
-        {
-            try
-            {
-                testing::Test::Run();
-            }
-            catch (fungi::IOException &e)
-            {
-                TearDown();
-                FAIL() << "IOException: " << e.what();
-            }
-            catch (std::exception &e)
-            {
-                TearDown();
-                FAIL() << "exception: " << e.what();
-            }
-            catch (...)
-            {
-                TearDown();
-                FAIL() << "unknown exception";
-            }
-        }
-        else
-        {
-            testing::Test::Run();
-        }
-    }
-
-private:
-    bool catch_;
-
-    static unsigned xmlrpcport_;
-
-public:
-    static boost::filesystem::path
-    getTempPath(const std::string& ipath);
-};
-
 }
 
-#endif /* EXGTEST_H_ */
+#endif /* VD_TEST_CONFIG_H_ */
 
 // Local Variables: **
 // mode: c++ **

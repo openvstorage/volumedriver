@@ -13,23 +13,19 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "ExGTest.h"
-#include "youtils/FileUtils.h"
-namespace volumedriver
+#include <stdexcept>
+#include <gtest/gtest.h>
+
+namespace youtilstest
 {
 
-namespace fs = boost::filesystem;
+class GTestTest :
+        public testing::Test
+{};
 
-fs::path
-ExGTest::getTempPath(const std::string& ipath)
+TEST_F(GTestTest, DISABLED_escaping_exception)
 {
-    fs::path tmp_path = youtils::FileUtils::temp_path();
-    fs::create_directories(tmp_path);
-    return tmp_path / ipath;
-
+    throw std::logic_error("this one should not take down the whole tester but be reported as test failure");
 }
 
 }
-// Local Variables: **
-// mode: c++ **
-// End: **

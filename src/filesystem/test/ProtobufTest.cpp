@@ -15,13 +15,13 @@
 
 #include "ProtobufTest.pb.h"
 
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 
 namespace volumedriverfstest
 {
 
 class ProtobufTest
-    : public youtilstest::TestBase
+    : public testing::Test
 {};
 
 TEST_F(ProtobufTest, DISABLED_future_enum_values)

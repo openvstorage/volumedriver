@@ -23,7 +23,7 @@ namespace backendtest
 using namespace backend;
 
 class BackendSemanticsTest
-    : public BackendTestSetup, public youtilstest::TestBase
+    : public BackendTestSetup, public testing::Test
 {
      public:
      BackendSemanticsTest()

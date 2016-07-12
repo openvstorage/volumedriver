@@ -13,13 +13,13 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 #include <procon/ProCon.h>
 #include "boost/filesystem.hpp"
 namespace volumedriver
 {
 
-class ProducerConsumerTest : public ExGTest
+class ProducerConsumerTest : public testing::TestWithParam<VolumeDriverTestConfig>
 {};
 
 class SimpleIntProducer : public yin::Producer<int>

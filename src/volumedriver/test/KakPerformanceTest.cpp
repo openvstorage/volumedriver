@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #if IMMANUEL
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 //#include <timer.h>
 #include <fstream>
 #include <boost/ptr_container/ptr_vector.hpp>
@@ -31,7 +31,7 @@ using namespace RandomLib;
 
 
 
-class KaKPerformanceTest : public ExGTest
+class KaKPerformanceTest : public testing::TestWithParam<VolumeDriverTestConfig>
 {
 public:
     KaKPerformanceTest()

@@ -19,7 +19,7 @@
 #include <boost/property_tree/ptree_fwd.hpp>
 
 #include <youtils/ArakoonTestSetup.h>
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 
 #include "../Registry.h"
 
@@ -27,7 +27,7 @@ namespace volumedriverfstest
 {
 
 class RegistryTestSetup
-    : public youtilstest::TestBase
+    : public testing::Test
     , public arakoon::ArakoonTestSetup
 {
 protected:

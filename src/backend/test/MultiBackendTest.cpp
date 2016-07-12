@@ -15,14 +15,16 @@
 
 #include "BackendTestBase.h"
 
+#include <boost/chrono.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/thread/thread.hpp>
 
 #include <backend/Multi_Connection.h>
 #include <youtils/Chooser.h>
+#include <youtils/FileUtils.h>
 #include <youtils/UUID.h>
-#include <boost/chrono.hpp>
-#include <boost/thread/thread.hpp>
+
 namespace backendtest
 {
 using namespace backend;
@@ -36,7 +38,7 @@ class MultiBackendTest :
 public:
     MultiBackendTest()
         : BackendTestBase("multibackendtest")
-        , multi_dir_base_(getTempPath("multi_dir_base"))
+        , multi_dir_base_(yt::FileUtils::temp_path("multi_dir_base"))
         , stop_switcher(false)
     {
 
@@ -44,7 +46,7 @@ public:
         {
             std::stringstream ss;
             ss << "multi_dir_" << i;
-            multi_dirs_.push_back(getTempPath(ss.str()));
+            multi_dirs_.push_back(yt::FileUtils::temp_path(ss.str()));
         }
     }
 

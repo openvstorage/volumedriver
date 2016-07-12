@@ -15,16 +15,15 @@
 
 #include "../FileSystemCall.h"
 
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 
 namespace volumedriverfstest
 {
 
 namespace vfs = volumedriverfs;
-namespace ytt = youtilstest;
 
 class FileSystemCallTest
-    : public ytt::TestBase
+    : public testing::Test
 {
 public:
     static void

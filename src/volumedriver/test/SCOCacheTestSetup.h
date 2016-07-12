@@ -16,38 +16,38 @@
 #ifndef SCO_CACHE_TEST_SETUP_H_
 #define SCO_CACHE_TEST_SETUP_H_
 
-#include <youtils/Logging.h>
+#include "VolumeDriverTestConfig.h"
+
+#include "../SCOCache.h"
 
 #include <boost/foreach.hpp>
 
-#include "ExGTest.h"
+#include <youtils/FileUtils.h>
+#include <youtils/Logging.h>
+
 #include <backend/BackendTestSetup.h>
-#include "../SCOCache.h"
 
 namespace volumedriver
 {
 namespace be = backend;
+namespace yt = youtils;
 
 class SCOCacheTestSetup
-    : public ExGTest
+    : public testing::TestWithParam<VolumeDriverTestConfig>
     , public be::BackendTestSetup
-
 {
 protected:
     SCOCacheTestSetup()
-        : ExGTest()
-        , be::BackendTestSetup()
     {}
 
     virtual void
     SetUp() override
     {
         const std::string s(testing::UnitTest::GetInstance()->current_test_info()->test_case_name());
-        pathPfx_ = getTempPath(s);
+        pathPfx_ = yt::FileUtils::temp_path(s);
         fs::remove_all(pathPfx_);
         fs::create_directories(pathPfx_);
         initialize_connection_manager();
-
     }
 
     virtual void

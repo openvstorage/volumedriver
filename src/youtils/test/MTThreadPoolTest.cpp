@@ -17,7 +17,7 @@
 #include "../IOException.h"
 #include "../SourceOfUncertainty.h"
 #include "../SpinLock.h"
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 #include "../ThreadPool.h"
 
 #include <algorithm>
@@ -112,7 +112,7 @@ using namespace fungi;
 using namespace initialized_params;
 
 class MTThreadPoolTest
-    : public TestBase
+    : public testing::Test
 {};
 
 class BigThreadPool

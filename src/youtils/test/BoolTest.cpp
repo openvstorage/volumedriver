@@ -20,7 +20,7 @@ namespace youtilstest
 {
 //using namespace youtils;
 
-class BoolTest : public TestBase
+class BoolTest : public testing::Test
 {
 public:
 

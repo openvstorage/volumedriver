@@ -20,7 +20,7 @@
 #include <SimpleAmqpClient/SimpleAmqpClient.h>
 
 #include <youtils/Logging.h>
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 #include <youtils/UUID.h>
 #include <thread>
 
@@ -40,10 +40,9 @@ namespace ip = initialized_params;
 namespace vd = volumedriver;
 namespace vfs = volumedriverfs;
 namespace yt = youtils;
-namespace ytt = youtilstest;
 
 class FileSystemEventTest
-    : public ytt::TestBase
+    : public testing::Test
     , public FileSystemEventTestSetup
 {
 protected:
@@ -51,8 +50,7 @@ protected:
         : FileSystemEventTestSetup("FileSystemEventTest")
     {}
 
-    virtual ~FileSystemEventTest()
-    {}
+    virtual ~FileSystemEventTest() = default;
 
     DECLARE_LOGGER("FileSystemEventTest");
 };

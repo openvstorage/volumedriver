@@ -25,6 +25,8 @@
 #include <boost/filesystem/fstream.hpp>
 #include <boost/ptr_container/ptr_map.hpp>
 
+#include <gtest/gtest.h>
+
 #include <pstreams/pstream.h>
 
 #include <youtils/BuildInfo.h>
@@ -33,7 +35,6 @@
 #include <youtils/Logger.h>
 #include <youtils/ScriptFile.h>
 #include <youtils/System.h>
-#include <youtils/TestBase.h>
 #include <youtils/VolumeDriverComponent.h>
 
 #include <youtils/prudence/prudence.h>

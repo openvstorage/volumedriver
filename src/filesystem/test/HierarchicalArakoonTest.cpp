@@ -13,8 +13,10 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include <gtest/gtest.h>
+
 #include <youtils/ArakoonTestSetup.h>
-#include <youtils/TestBase.h>
+#include <youtils/FileUtils.h>
 #include <youtils/UUID.h>
 
 #include <boost/lexical_cast.hpp>
@@ -30,7 +32,6 @@ namespace volumedriverfstest
 namespace ara = arakoon;
 namespace vfs = volumedriverfs;
 namespace yt = youtils;
-namespace ytt = youtilstest;
 
 namespace
 {
@@ -161,13 +162,12 @@ namespace volumedriverfstest
 {
 
 class HierarchicalArakoonTest
-    : public ytt::TestBase
+    : public testing::Test
     , public ara::ArakoonTestSetup
 {
 protected:
     HierarchicalArakoonTest()
-        : ytt::TestBase()
-        , ara::ArakoonTestSetup(getTempPath("HierarchicalArakoonTest") / "arakoon")
+        : ara::ArakoonTestSetup(yt::FileUtils::temp_path("HierarchicalArakoonTest") / "arakoon")
         , prefix_("harakoon_test")
     {}
 

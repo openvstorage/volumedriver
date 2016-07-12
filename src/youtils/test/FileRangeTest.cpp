@@ -13,23 +13,24 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 
 #include <boost/iostreams/stream.hpp>
 
 #include "../FileRange.h"
 #include "../FileDescriptor.h"
+#include "../FileUtils.h"
 
 namespace youtilstest
 {
 using namespace youtils;
 
 class FileRangeTest
-    : public TestBase
+    : public testing::Test
 {
 public:
     FileRangeTest()
-        : dir_(getTempPath("FileRangeTest"))
+        : dir_(FileUtils::temp_path("FileRangeTest"))
     {}
 
     virtual void

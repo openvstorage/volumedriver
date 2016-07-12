@@ -15,7 +15,7 @@
 
 #include <youtils/JsonString.h>
 #include <youtils/StrongTypedString.h>
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 
 #include "../AlbaConfig.h"
 #include "../BackendConfig.h"
@@ -37,7 +37,7 @@ using namespace backend;
 namespace yt = youtils;
 
 class SerializationTest
-    : public youtilstest::TestBase
+    : public testing::Test
 {
 protected:
     void

@@ -15,7 +15,7 @@
 
 #include "VolManagerTestSetup.h"
 
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 #include "../VolumeDriverError.h"
 
 namespace volumedriver

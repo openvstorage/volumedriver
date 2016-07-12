@@ -17,7 +17,7 @@
 #define VOLMANAGER_TEST_SETUP_H
 
 #include "EventCollector.h"
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 #include "FailOverCacheTestSetup.h"
 #include "MetaDataStoreTestSetup.h"
 
@@ -237,7 +237,7 @@ struct VolManagerTestSetupParameters
 };
 
 class VolManagerTestSetup
-    : public ExGTest
+    : public testing::TestWithParam<VolumeDriverTestConfig>
     , public be::BackendTestSetup
     , public volumedrivertest::FailOverCacheTestSetup
 {

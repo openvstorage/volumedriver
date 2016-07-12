@@ -443,7 +443,7 @@ protected:
     {
         return scrubbing::ScrubberAdapter::scrub(VolManager::get()->getBackendConfig().clone(),
                                                  work,
-                                                 getTempPath(testName_),
+                                                 yt::FileUtils::temp_path(testName_),
                                                  5, // region_size_exponent
                                                  fill_ratio, // fill ratio
                                                  false, // apply immediately
@@ -549,7 +549,7 @@ protected:
 
         std::map<ClusterAddress, ClusterLocation> relocmap;
 
-        auto treader(CombinedTLogReader::create(getTempPath(testName_).string(),
+        auto treader(CombinedTLogReader::create(yt::FileUtils::temp_path(testName_).string(),
                                                 scrub_res.relocs,
                                                 v.getBackendInterface()->clone()));
 

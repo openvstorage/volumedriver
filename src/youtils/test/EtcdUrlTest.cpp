@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "../EtcdUrl.h"
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 
 #include <boost/lexical_cast.hpp>
 
@@ -25,7 +25,7 @@ using namespace youtils;
 using namespace std::literals::string_literals;
 
 class EtcdUrlTest
-    : public TestBase
+    : public testing::Test
 {};
 
 TEST_F(EtcdUrlTest, full)

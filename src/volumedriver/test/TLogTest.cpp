@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "LBAGenerator.h"
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 #include "VolManagerTestSetup.h"
 
 #include <math.h>
@@ -46,11 +46,11 @@ namespace fs = boost::filesystem;
 namespace yt = youtils;
 
 class TLogTest
-    : public ExGTest
+    : public testing::TestWithParam<VolumeDriverTestConfig>
 {
 public:
     TLogTest()
-        : directory_(getTempPath("TLogTest"))
+        : directory_(yt::FileUtils::temp_path("TLogTest"))
     {}
 
     DECLARE_LOGGER("TLogTest");
@@ -107,13 +107,13 @@ void assertTLogReadersEqual(TLogReaderInterface* x, TLogReaderInterface* y)
 // Y42 Rest of this should move to TLogWriterTest!!!
 TEST_F(TLogTest, combined)
 {
-    fs::path p1 = getTempPath("tmp1");
+    fs::path p1 = yt::FileUtils::temp_path("tmp1");
     fs::remove(p1);
-    fs::path p2 = getTempPath("tmp2");
+    fs::path p2 = yt::FileUtils::temp_path("tmp2");
     fs::remove(p2);
-    fs::path p3 = getTempPath("tmp3");
+    fs::path p3 = yt::FileUtils::temp_path("tmp3");
     fs::remove(p3);
-    fs::path p123 = getTempPath("tmp123");
+    fs::path p123 = yt::FileUtils::temp_path("tmp123");
     fs::remove(p123);
 
     int total_size = 10;
@@ -270,7 +270,7 @@ TEST_F(TLogTest, prefetchSpeedTest)
 
 TEST_F(TLogTest, sync)
 {
-    fs::path p1 = getTempPath("tmp1");
+    fs::path p1 = yt::FileUtils::temp_path("tmp1");
     fs::remove(p1);
     ALWAYS_CLEANUP_FILE(p1);
     ClusterLocationAndHash l(ClusterLocation(10), VolManagerTestSetup::growWeed());
@@ -325,7 +325,7 @@ TEST_F(TLogTest, sync)
 
 TEST_F(TLogTest, checksums)
 {
-    fs::path p1 = getTempPath("tmp1");
+    fs::path p1 = yt::FileUtils::temp_path("tmp1");
     fs::remove(p1);
     ALWAYS_CLEANUP_FILE(p1);
     CheckSum checksum(drand48() * std::numeric_limits<CheckSum::value_type>::max());
@@ -381,7 +381,7 @@ TEST_F(TLogTest, checksums)
 
 TEST_F(TLogTest, syncchecksums)
 {
-    fs::path p1 = getTempPath("tmp1");
+    fs::path p1 = yt::FileUtils::temp_path("tmp1");
     fs::remove(p1);
     ALWAYS_CLEANUP_FILE(p1);
     std::list<CheckSum> css;
@@ -449,7 +449,7 @@ TEST_F(TLogTest, syncchecksums)
 // AR: could be merged with the previous test
 TEST_F(TLogTest, forth_and_back)
 {
-    const fs::path p(getTempPath("temp_tlog"));
+    const fs::path p(yt::FileUtils::temp_path("temp_tlog"));
     fs::remove(p);
 
     youtils::Weed weed(VolManagerTestSetup::growWeed());

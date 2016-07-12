@@ -13,14 +13,14 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 
 #include <algorithm>
 #include <iostream>
 
 #include <boost/filesystem/fstream.hpp>
 
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 #include <boost/thread.hpp>
 #include <boost/thread/reverse_lock.hpp>
 namespace volumedrivertest
@@ -173,7 +173,7 @@ struct UnlockingCallInThread
 
 
 class LockingTest
-    : public youtilstest::TestBase
+    : public testing::Test
 {
 
 };

@@ -18,7 +18,7 @@
 #include <boost/lexical_cast.hpp>
 
 #include <youtils/InitializedParam.h>
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 #include <youtils/UUID.h>
 
 #include "../ClusterRegistry.h"

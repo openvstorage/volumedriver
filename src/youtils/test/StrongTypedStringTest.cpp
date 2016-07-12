@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "../StrongTypedString.h"
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 
 #include <functional>
 #include <unordered_set>
@@ -25,7 +25,7 @@ namespace youtilstest
 {
 
 class StrongTypedStringTest
-    : public TestBase
+    : public testing::Test
 {};
 
 TEST_F(StrongTypedStringTest, hash)

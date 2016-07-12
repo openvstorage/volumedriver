@@ -54,7 +54,6 @@ volumedriver_test_SOURCES = \
 	EntryTest.cpp \
 	ErrorHandlingTest.cpp \
 	EventCollector.cpp \
-	ExGTest.cpp \
 	FailOverCacheTester.cpp \
 	FailOverCacheTransportTest.cpp \
 	FawltyTests.cpp \

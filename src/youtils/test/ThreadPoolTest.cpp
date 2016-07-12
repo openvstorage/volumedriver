@@ -17,7 +17,7 @@
 #include "../InitializedParam.h"
 #include "../IOException.h"
 #include "../SourceOfUncertainty.h"
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 #include "../WaitForIt.h"
 
 #include <algorithm>
@@ -630,7 +630,7 @@ private:
 }
 
 class TestThreadPool
-    : public TestBase
+    : public testing::Test
 {
 protected:
     virtual void

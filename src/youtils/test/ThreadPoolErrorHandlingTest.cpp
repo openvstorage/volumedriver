@@ -15,7 +15,7 @@
 
 #include "../InitializedParam.h"
 #include "../IOException.h"
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 #include "../ThreadPool.h"
 
 #include <boost/thread/condition_variable.hpp>
@@ -135,11 +135,10 @@ using namespace initialized_params;
 using namespace youtils;
 
 class ThreadPoolErrorHandlingTest
-    : public TestBase
+    : public testing::Test
 {
 public:
     ThreadPoolErrorHandlingTest()
-        : TestBase()
     {
         LOG_WARN("We might need to review this");
     }
@@ -161,7 +160,7 @@ protected:
         {
 
             EXPECT_NO_THROW(tp_->stop()) << "Failed to stop threadpool";
-            TestBase::TearDown();
+            testing::Test::TearDown();
         }
     }
 

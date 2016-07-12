@@ -20,7 +20,7 @@
 
 #include <youtils/Logging.h>
 #include <youtils/System.h>
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 #include <youtils/UUID.h>
 #include <youtils/wall_timer.h>
 
@@ -34,7 +34,7 @@ namespace vfs = volumedriverfs;
 namespace yt = youtils;
 
 class ZWorkerPoolTest
-    : public youtilstest::TestBase
+    : public testing::Test
 {
 protected:
     ZWorkerPoolTest()

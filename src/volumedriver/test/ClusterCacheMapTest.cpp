@@ -19,7 +19,7 @@
 #include "../ClusterCacheEntry.h"
 #include "../ClusterCacheMap.h"
 
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 
 #include <algorithm>
 
@@ -33,7 +33,7 @@ namespace bi = boost::intrusive;
 namespace yt = youtils;
 
 class ClusterCacheMapTest
-    : public ExGTest
+    : public testing::TestWithParam<VolumeDriverTestConfig>
 {
 protected:
     std::unique_ptr<ClusterCacheEntry>

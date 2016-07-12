@@ -27,7 +27,7 @@
 #include <boost/ptr_container/ptr_map.hpp>
 
 #include <youtils/BuildInfo.h>
-#include "youtils/TestBase.h"
+#include "gtest/gtest.h"
 #include <youtils/Logger.h>
 
 #include <../BackendParameters.h>

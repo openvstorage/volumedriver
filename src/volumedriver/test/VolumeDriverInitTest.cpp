@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 #include "../VolManager.h"
 
 #include <boost/property_tree/ptree.hpp>
@@ -23,7 +23,7 @@ namespace volumedrivertest
 {
 using namespace volumedriver;
 
-class VolumeDriverInitTest : public ExGTest
+class VolumeDriverInitTest : public testing::TestWithParam<VolumeDriverTestConfig>
 {};
 
 

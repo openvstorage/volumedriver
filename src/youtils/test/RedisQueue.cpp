@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "../RedisQueue.h"
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 
 #include <boost/lexical_cast.hpp>
 
@@ -24,7 +24,7 @@ using namespace youtils;
 using namespace std::literals::string_literals;
 
 class RedisQueueTest
-    : public TestBase
+    : public testing::Test
 {};
 
 TEST_F(RedisQueueTest, simple_push_pop)

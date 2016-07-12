@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "../OurStrongTypedef.h"
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
@@ -28,7 +28,7 @@ namespace ba = boost::archive;
 namespace bs = boost::serialization;
 
 class OurStrongTypedefTest
-    : public TestBase
+    : public testing::Test
 {
 protected:
     template<typename T, typename D>

@@ -24,6 +24,8 @@
 
 #include <boost/filesystem/fstream.hpp>
 
+#include <youtils/FileUtils.h>
+
 #include <backend/GarbageCollector.h>
 
 namespace volumedrivertest
@@ -33,6 +35,8 @@ BOOLEAN_ENUM(CollectScrubGarbage);
 
 using namespace scrubbing;
 using namespace volumedriver;
+
+namespace yt = youtils;
 
 class ScrubberTest
     : public VolManagerTestSetup
@@ -70,7 +74,7 @@ public:
     {
         return ScrubberAdapter::scrub(VolManager::get()->getBackendConfig().clone(),
                                       scrub_work,
-                                      getTempPath(testName_),
+                                      yt::FileUtils::temp_path(testName_),
                                       region_size_exponent,
                                       fill_ratio,
                                       apply_immediately,

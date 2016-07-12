@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "LBAGenerator.h"
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 
 #include <iostream>
 #include <memory>
@@ -31,7 +31,7 @@ namespace yt = youtils;
 using namespace volumedriver;
 
 class PageSortingGeneratorTest
-    : public ExGTest
+    : public testing::TestWithParam<VolumeDriverTestConfig>
 {};
 
 TEST_F(PageSortingGeneratorTest, performance)

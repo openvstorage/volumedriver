@@ -16,6 +16,7 @@
 #include "FileSystemTestSetup.h"
 
 #include <youtils/Assert.h>
+#include <youtils/FileUtils.h>
 #include <youtils/LockedArakoon.h>
 #include <youtils/System.h>
 
@@ -45,7 +46,6 @@ namespace vd = volumedriver;
 namespace vdt = volumedrivertest;
 namespace vfs = volumedriverfs;
 namespace yt = youtils;
-namespace ytt = youtilstest;
 
 using namespace std::literals::string_literals;
 
@@ -62,10 +62,9 @@ std::string
 FileSystemTestSetup::edge_transport_("tcp");
 
 FileSystemTestSetup::FileSystemTestSetup(const FileSystemTestSetupParameters& params)
-    : ytt::TestBase()
-    , be::BackendTestSetup()
+    : be::BackendTestSetup()
     , test_name_(params.name_)
-    , topdir_(getTempPath(test_name_))
+    , topdir_(yt::FileUtils::temp_path(test_name_))
     , configuration_(topdir_ / "configuration")
     , scache_size_(yt::DimensionedValue(params.scocache_size_).getBytes())
     , scache_trigger_gap_(yt::DimensionedValue(params.scocache_trigger_gap_).getBytes())

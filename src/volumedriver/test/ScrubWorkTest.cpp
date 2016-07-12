@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 #include "../ScrubWork.h"
 #include "../ScrubReply.h"
 
@@ -31,7 +31,7 @@ using namespace scrubbing;
 TODO("Y42 MAKE A TEST THAT FAILS IF YOU ADD A NEW BACKEND");
 
 class ScrubWorkTest
-    : public ExGTest
+    : public testing::TestWithParam<VolumeDriverTestConfig>
 {
 public:
     ScrubWork

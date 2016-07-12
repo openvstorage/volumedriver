@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 
 #include <../FailOverCacheTransport.h>
 
@@ -24,7 +24,7 @@ namespace volumedrivertest
 using namespace volumedriver;
 
 class FailOverCacheTransportTest
-    : public ExGTest
+    : public testing::TestWithParam<VolumeDriverTestConfig>
 {};
 
 TEST_F(FailOverCacheTransportTest, lexical_cast)

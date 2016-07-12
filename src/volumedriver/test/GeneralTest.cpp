@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 #include <tcutil.h>
 #include <tcbdb.h>
 #include <tcfdb.h>
@@ -26,7 +26,7 @@ namespace volumedrivertest
 using namespace volumedriver;
 namespace fs = boost::filesystem;
 
-class GeneralTest : public ExGTest
+class GeneralTest : public testing::TestWithParam<VolumeDriverTestConfig>
 {};
 
 #define HANDLE(x) if(not x)                                             \

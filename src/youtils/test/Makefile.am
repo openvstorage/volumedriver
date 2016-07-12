@@ -43,6 +43,7 @@ youtils_test_SOURCES = \
 	GeneratorTest.cpp \
 	GlobalLockTest.cpp \
 	Go.cpp \
+	GTestTest.cpp \
 	HeartBeatLockTest.cpp \
 	IncrementalChecksumTest.cpp \
 	InitializedParamTest.cpp \

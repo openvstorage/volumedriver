@@ -25,7 +25,7 @@
 
 #include <youtils/Catchers.h>
 #include <youtils/System.h>
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 #include <youtils/wall_timer.h>
 #include <youtils/System.h>
 
@@ -117,7 +117,7 @@ namespace vfs = volumedriverfs;
 namespace yt = youtils;
 
 class ZMQTest
-    : public youtilstest::TestBase
+    : public testing::Test
 {};
 
 TEST_F(ZMQTest, DISABLED_inproc)

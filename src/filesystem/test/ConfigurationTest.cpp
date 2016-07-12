@@ -17,7 +17,7 @@
 
 #include <youtils/BuildInfoString.h>
 #include <youtils/InitializedParam.h>
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 #include <youtils/BuildInfo.h>
 #include <boost/python/dict.hpp>
 #include <boost/python/list.hpp>
@@ -29,7 +29,7 @@ namespace volumedriverfstest
 {
 
 class ConfigurationTest
-    : public youtilstest::TestBase
+    : public testing::Test
 {};
 
 TEST_F(ConfigurationTest, print_documentation)

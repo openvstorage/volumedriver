@@ -17,7 +17,7 @@
 #include "../Catchers.h"
 #include "../Logging.h"
 #include "../System.h"
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 #include "../UUID.h"
 #include "../wall_timer.h"
 
@@ -325,7 +325,7 @@ public:
 }
 
 class PosixMQTest
-    : public TestBase
+    : public testing::Test
 {
     DECLARE_LOGGER("PosixMQTest");
 

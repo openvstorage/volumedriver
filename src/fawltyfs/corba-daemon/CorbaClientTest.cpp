@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 #include <fawlty.hh>
 #include <youtils/Logging.h>
 #include <youtils/Assert.h>
@@ -24,7 +24,7 @@
 namespace fs = boost::filesystem;
 using youtils::FileUtils;
 
-class CorbaClientTest : public youtilstest::TestBase
+class CorbaClientTest : public testing::Test
 {
 public:
     CorbaClientTest()
@@ -228,8 +228,7 @@ protected:
     CORBA::ORB_var orb_;
 
     Fawlty::FileSystemFactory_var fawlty_ref_;
-    fs::path dir_ = getTempPath("CorbaClientTest");
-
+    fs::path dir_ = FileUtils::temp_path("CorbaClientTest");
 };
 
 TEST_F(CorbaClientTest, hello)
@@ -240,7 +239,6 @@ TEST_F(CorbaClientTest, hello)
 
     EXPECT_EQ(std::string(src), std::string(dest));
 }
-
 
 TEST_F(CorbaClientTest, CreateFileSystem)
 {
@@ -286,7 +284,6 @@ TEST_F(CorbaClientTest, AddDelayRules)
 
     EXPECT_EQ(rule->duration, 102);
     EXPECT_EQ(rule->delay_usecs, 103);
-
 }
 
 TEST_F(CorbaClientTest, shutdown)

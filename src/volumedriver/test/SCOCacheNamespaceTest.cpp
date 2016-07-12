@@ -15,7 +15,7 @@
 
 #include <youtils/Logging.h>
 
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 #include "../SCOCacheNamespace.h"
 
 namespace volumedriver
@@ -47,7 +47,7 @@ TEST(SCOCacheNamespaceConstructorTest, constructor)
     }
 }
 
-class SCOCacheNamespaceTest : public ExGTest
+class SCOCacheNamespaceTest : public testing::TestWithParam<VolumeDriverTestConfig>
 {
 protected:
     virtual void

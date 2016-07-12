@@ -28,10 +28,9 @@ using youtils::FileDescriptor;
 using youtils::FileUtils;
 using youtils::FDMode;
 
-
 BackendTestBase::BackendTestBase(const std::string& name)
     : BackendTestSetup()
-    , path_(youtilstest::TestBase::getTempPath(name))
+    , path_(FileUtils::temp_path(name))
 {}
 
 void

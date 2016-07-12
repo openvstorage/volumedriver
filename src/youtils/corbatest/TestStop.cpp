@@ -42,7 +42,7 @@ private:
 };
 
 
-class TestStop : public youtilstest::TestBase
+class TestStop : public testing::Test
 {
 public:
     void

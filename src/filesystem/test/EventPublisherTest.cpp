@@ -16,7 +16,7 @@
 #include "../EventPublisher.h"
 #include "../FileSystemEvents.h"
 
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 
 namespace volumedriverfstest
 {
@@ -24,7 +24,7 @@ namespace volumedriverfstest
 using namespace volumedriverfs;
 
 class EventPublisherTest
-    : public youtilstest::TestBase
+    : public testing::Test
 {
 protected:
     struct TestPublisher
