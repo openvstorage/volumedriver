@@ -318,6 +318,8 @@ public:
     restart_object(const std::string& id,
                    bool force_restart);
 
+    boost::python::list
+    list_edge_connections();
 protected:
     PythonClient()
         : max_redirects(max_redirects_default)
