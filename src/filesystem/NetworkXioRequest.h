@@ -18,6 +18,8 @@
 
 #include <boost/intrusive/slist.hpp>
 
+#include "ClientInfo.h"
+
 #include "NetworkXioWork.h"
 #include "NetworkXioCommon.h"
 
@@ -65,6 +67,7 @@ struct NetworkXioClientData
     NetworkXioServer *server;
     NetworkXioIOHandler *ioh;
     std::list<NetworkXioRequest*> done_reqs;
+    ClientInfoTag tag;
 };
 
 } //namespace

@@ -483,16 +483,16 @@ PythonClient::list_snapshots(const std::string& volume_id)
     return l;
 }
 
-bpy::list
+std::vector<ClientInfo>
 PythonClient::list_edge_connections()
 {
     XmlRpc::XmlRpcValue req;
     auto rsp(call(ListEdgeConnections::method_name(), req));
 
-    bpy::list info;
+    std::vector<ClientInfo> info;
     for (auto i = 0; i < rsp.size(); ++i)
     {
-        info.append(std::string(rsp[i]));
+        info.push_back(XMLRPCStructs::deserialize_from_xmlrpc_value<ClientInfo>(rsp[i]));
     }
     return info;
 }

@@ -1268,14 +1268,14 @@ TEST_F(NetworkServerTest, list_open_connections)
                                 volume_size),
               0);
 
-    const bpy::list m(client_.list_edge_connections());
-    EXPECT_EQ(0, bpy::len(m));
+    const std::vector<vfs::ClientInfo> m(client_.list_edge_connections());
+    EXPECT_EQ(0, m.size());
 
     ASSERT_EQ(0,
               ovs_ctx_init(ctx, "volume", O_RDONLY));
 
-    const bpy::list l(client_.list_edge_connections());
-    EXPECT_EQ(1, bpy::len(l));
+    const std::vector<vfs::ClientInfo> l(client_.list_edge_connections());
+    EXPECT_EQ(1, l.size());
 
     EXPECT_EQ(0,
               ovs_ctx_destroy(ctx));

@@ -64,26 +64,24 @@ public:
                                     XIO_CONNECTION_ATTR_USER_CTX |
                                     XIO_CONNECTION_ATTR_PEER_ADDR);
         /* Get peer info */
-        getnameinfo((struct sockaddr *)&xcon_peer.peer_addr,
-                     sizeof(struct sockaddr_storage),
-                     hoststr, sizeof(hoststr),
-                     portstr, sizeof(portstr),
-                     NI_NUMERICHOST | NI_NUMERICSERV);
+        (void) getnameinfo((struct sockaddr *)&xcon_peer.peer_addr,
+                           sizeof(struct sockaddr_storage),
+                           hoststr, sizeof(hoststr),
+                           portstr, sizeof(portstr),
+                           NI_NUMERICHOST | NI_NUMERICSERV);
 
         const FrontendPath volume_path(make_volume_path(volume_name));
         boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
-        std::string info(*volume_id +
-                         ":" +
-                         std::string(hoststr) +
-                         ":" +
-                         std::string(portstr));
-        fs_.insert_xio_cdata(cd_, info);
+        ClientInfo info(volume_id,
+                        hoststr,
+                        portstr);
+        cd_->tag = fs_.register_client(info);
     }
 
     void
     remove_fs_client_info()
     {
-        fs_.remove_xio_cdata(cd_);
+        fs_.unregister_client(cd_->tag);
     }
 
 private:

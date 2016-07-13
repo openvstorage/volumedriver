@@ -22,6 +22,7 @@
 #include "XMLRPCStructs.h"
 #include "XMLRPCUtils.h"
 #include "CloneFileFlags.h"
+#include "ClientInfo.h"
 
 #include <cerrno>
 #include <fstream>
@@ -1870,9 +1871,9 @@ ListEdgeConnections::execute_internal(::XmlRpc::XmlRpcValue& /*params*/,
     result.setSize(0);
 
     int k = 0;
-    for (const auto& i: fs_.list_xio_cdata())
+    for (const auto& i: fs_.list_registered_clients())
     {
-        result[k++] = ::XmlRpc::XmlRpcValue(i);
+        result[k++] = XMLRPCStructs::serialize_to_xmlrpc_value(i);
     }
 }
 

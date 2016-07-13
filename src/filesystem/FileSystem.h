@@ -29,7 +29,7 @@
 #include "ObjectRouter.h"
 #include "StatsCollectorComponent.h"
 #include "VirtualDiskFormat.h"
-#include "NetworkXioRequest.h"
+#include "ClientInfo.h"
 
 #include <functional>
 #include <system_error>
@@ -525,15 +525,14 @@ public:
         return fs_enable_network_interface.value();
     }
 
-    void
-    insert_xio_cdata(NetworkXioClientData *cdata,
-                     const std::string info);
+    ClientInfoTag
+    register_client(ClientInfo info);
 
     void
-    remove_xio_cdata(NetworkXioClientData *cdata);
+    unregister_client(ClientInfoTag tag);
 
-    std::vector<std::string>
-    list_xio_cdata();
+    std::vector<ClientInfo>
+    list_registered_clients();
 private:
     DECLARE_LOGGER("FileSystem");
 
@@ -543,8 +542,8 @@ private:
 
     mutable boost::mutex config_lock_;
 
-    std::unordered_map<NetworkXioClientData*, std::string> cdata_info_map_;
-    std::mutex cdata_info_lock_;
+    std::unordered_map<ClientInfoTag, ClientInfo> client_info_map_;
+    std::mutex client_info_lock_;
 
     DECLARE_PARAMETER(fs_ignore_sync);
     DECLARE_PARAMETER(fs_internal_suffix);
