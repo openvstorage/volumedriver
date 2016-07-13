@@ -269,6 +269,12 @@ mds_mdb_config_timeout_secs(const vd::MDSMetaDataBackendConfig* c)
     return c->timeout().count();
 }
 
+boost::optional<vfs::ObjectId>
+get_client_info_object_id(const vfs::ClientInfo* ci)
+{
+    return ci->object_id;
+}
+
 }
 
 TODO("AR: this is a bit of a mess - split into smaller, logical pieces");
@@ -522,6 +528,12 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "@returns: Statistics object\n"
              "@raises \n"
              "      ObjectNotFoundException\n")
+        .def("list_client_connections",
+             &vfs::PythonClient::list_client_connections,
+             (bpy::args("node_id")),
+             "List client connections per node.\n"
+             "@param node_id: string, Node ID\n"
+             "@returns: ClientInfo object\n")
         .def("statistics_node",
              &vfs::PythonClient::statistics_node,
              (bpy::args("node_id"),
@@ -876,6 +888,33 @@ BOOST_PYTHON_MODULE(storagerouterclient)
         ;
 
     REGISTER_ITERABLE_CONVERTER(std::vector<vfs::ClusterNodeConfig>);
+
+    bpy::class_<vfs::ClientInfo>("ClientInfo",
+                                 "Client connection information",
+                                 bpy::init<const boost::optional<vfs::ObjectId>&,
+                                           const std::string&,
+                                           const uint16_t>((bpy::args("object_id"),
+                                                            bpy::args("ip"),
+                                                            bpy::args("port")),
+                                                           "Create a client connection information object\n"
+                                                           "@param object_id: string, Object ID\n"
+                                                           "@param ip: string, IP address\n"
+                                                           "@param port: uint16_t, TCP/IP or RDMA client port\n"))
+        .def("__str__", &vfs::ClientInfo::str)
+        .def("__repr__", &vfs::ClientInfo::str)
+
+#define DEF_READONLY_PROP_(name)                                \
+        .def_readonly(#name, &vfs::ClientInfo::name)
+
+        DEF_READONLY_PROP_(object_id)
+        DEF_READONLY_PROP_(ip)
+        DEF_READONLY_PROP_(port)
+        .add_property("object_id",
+                      &get_client_info_object_id)
+
+#undef DEF_READONLY_PROP_
+        ;
+    REGISTER_ITERABLE_CONVERTER(std::vector<vfs::ClientInfo>);
 
     bpy::class_<vfs::ClusterRegistry,
                 boost::noncopyable>("ClusterRegistry",
