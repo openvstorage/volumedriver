@@ -655,7 +655,6 @@ NetworkXioIOHandler::process_request(NetworkXioRequest *req)
     xio_iovec_ex *isglist = vmsg_sglist(&xio_req->in);
     int inents = vmsg_sglist_nents(&xio_req->in);
 
-    req->cd->refcnt++;
     NetworkXioMsg i_msg(NetworkXioMsgOpcode::Noop);
     try
     {
