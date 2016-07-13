@@ -402,6 +402,7 @@ NetworkXioServer::allocate_request(NetworkXioClientData *cd,
         req->retval = 0;
         req->errval = 0;
         req->from_pool = true;
+        cd->refcnt++;
         return req;
     }
     catch (const std::bad_alloc&)
