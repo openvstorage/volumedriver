@@ -1864,8 +1864,8 @@ VAAICopy::execute_internal(XmlRpc::XmlRpcValue& params,
 }
 
 void
-ListEdgeConnections::execute_internal(::XmlRpc::XmlRpcValue& /*params*/,
-                                      ::XmlRpc::XmlRpcValue& result)
+ListClientConnections::execute_internal(::XmlRpc::XmlRpcValue& /*params*/,
+                                        ::XmlRpc::XmlRpcValue& result)
 {
     result.clear();
     result.setSize(0);

@@ -320,7 +320,7 @@ public:
                    bool force_restart);
 
     std::vector<ClientInfo>
-    list_edge_connections();
+    list_client_connections(const std::string& node_id);
 protected:
     PythonClient()
         : max_redirects(max_redirects_default)

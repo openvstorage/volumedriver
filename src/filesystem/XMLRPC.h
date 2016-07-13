@@ -475,10 +475,10 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
                 "scheduleBackendSync",
                 "Closes current SCO and TLog and schedules them for write to backend");
 
-REGISTER_XMLRPC(XMLRPCCallTiming,
-                ListEdgeConnections,
-                "ListEdgeConnections",
-                "List Edge connections (open volumes)");
+REGISTER_XMLRPC(XMLRPCCallTimingRedirect,
+                ListClientConnections,
+                "ListClientConnections",
+                "List client connections");
 
 // ================== NOT EXPOSED, NOT TESTED   ==================
 
@@ -758,7 +758,7 @@ typedef LOKI_TYPELIST_85(
                          IsVolumeSyncedUpToTLog,
                          ScheduleBackendSync,
                          VAAICopy,
-                         ListEdgeConnections,
+                         ListClientConnections,
                          // ================== NOT EXPOSED, NOT TESTED   ==================
                          GetFailOverMode,
                          ScoCacheInfo,

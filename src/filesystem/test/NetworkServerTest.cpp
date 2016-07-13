@@ -1268,13 +1268,13 @@ TEST_F(NetworkServerTest, list_open_connections)
                                 volume_size),
               0);
 
-    const std::vector<vfs::ClientInfo> m(client_.list_edge_connections());
+    const std::vector<vfs::ClientInfo> m(client_.list_client_connections(local_node_id()));
     EXPECT_EQ(0, m.size());
 
     ASSERT_EQ(0,
               ovs_ctx_init(ctx, "volume", O_RDONLY));
 
-    const std::vector<vfs::ClientInfo> l(client_.list_edge_connections());
+    const std::vector<vfs::ClientInfo> l(client_.list_client_connections(local_node_id()));
     EXPECT_EQ(1, l.size());
 
     EXPECT_EQ(0,

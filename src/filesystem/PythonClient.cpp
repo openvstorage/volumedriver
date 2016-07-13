@@ -484,10 +484,12 @@ PythonClient::list_snapshots(const std::string& volume_id)
 }
 
 std::vector<ClientInfo>
-PythonClient::list_edge_connections()
+PythonClient::list_client_connections(const std::string& node_id)
 {
     XmlRpc::XmlRpcValue req;
-    auto rsp(call(ListEdgeConnections::method_name(), req));
+    req[XMLRPCKeys::vrouter_id] = node_id;
+
+    auto rsp(call(ListClientConnections::method_name(), req));
 
     std::vector<ClientInfo> info;
     for (auto i = 0; i < rsp.size(); ++i)
