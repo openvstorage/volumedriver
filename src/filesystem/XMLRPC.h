@@ -475,6 +475,11 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
                 "scheduleBackendSync",
                 "Closes current SCO and TLog and schedules them for write to backend");
 
+REGISTER_XMLRPC(XMLRPCCallTimingRedirect,
+                ListClientConnections,
+                "ListClientConnections",
+                "List client connections");
+
 // ================== NOT EXPOSED, NOT TESTED   ==================
 
 REGISTER_XMLRPC(XMLRPCCallTimingLock,
@@ -687,7 +692,7 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
                 "getMetaDataCacheCapacity",
                 "get capacity of the metadata cache (in pages)");
 
-typedef LOKI_TYPELIST_84(
+typedef LOKI_TYPELIST_85(
 // ================== EXPOSED IN XMLRPC CLIENT ===================
                          VolumeCreate,
                          VolumesList,
@@ -753,6 +758,7 @@ typedef LOKI_TYPELIST_84(
                          IsVolumeSyncedUpToTLog,
                          ScheduleBackendSync,
                          VAAICopy,
+                         ListClientConnections,
                          // ================== NOT EXPOSED, NOT TESTED   ==================
                          GetFailOverMode,
                          ScoCacheInfo,

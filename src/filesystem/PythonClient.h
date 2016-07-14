@@ -21,6 +21,7 @@
 #include "XMLRPC.h"
 #include "XMLRPCStructs.h"
 #include "CloneFileFlags.h"
+#include "ClientInfo.h"
 
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
@@ -318,6 +319,8 @@ public:
     restart_object(const std::string& id,
                    bool force_restart);
 
+    std::vector<ClientInfo>
+    list_client_connections(const std::string& node_id);
 protected:
     PythonClient()
         : max_redirects(max_redirects_default)

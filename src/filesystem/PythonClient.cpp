@@ -483,6 +483,22 @@ PythonClient::list_snapshots(const std::string& volume_id)
     return l;
 }
 
+std::vector<ClientInfo>
+PythonClient::list_client_connections(const std::string& node_id)
+{
+    XmlRpc::XmlRpcValue req;
+    req[XMLRPCKeys::vrouter_id] = node_id;
+
+    auto rsp(call(ListClientConnections::method_name(), req));
+
+    std::vector<ClientInfo> info;
+    for (auto i = 0; i < rsp.size(); ++i)
+    {
+        info.push_back(XMLRPCStructs::deserialize_from_xmlrpc_value<ClientInfo>(rsp[i]));
+    }
+    return info;
+}
+
 XMLRPCSnapshotInfo
 PythonClient::info_snapshot(const std::string& volume_id,
                             const std::string& snapshot_id)

@@ -21,6 +21,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/python/extract.hpp>
 
 #include <youtils/ArakoonInterface.h>
 #include <youtils/Catchers.h>
@@ -40,6 +41,7 @@ namespace volumedriverfstest
 {
 
 namespace bpt = boost::property_tree;
+namespace bpy = boost::python;
 namespace fs = boost::filesystem;
 namespace vfs = volumedriverfs;
 namespace yt = youtils;
@@ -82,7 +84,16 @@ public:
                              .backend_sync_timeout_ms(9500)
                              .migrate_timeout_ms(500)
                              .redirect_retries(1))
-    {}
+        , client_(vrouter_cluster_id(),
+                  {{address(), local_config().xmlrpc_port}})
+    {
+        Py_Initialize();
+    }
+
+    ~NetworkServerTest()
+    {
+        Py_Finalize();
+    }
 
     virtual void
     SetUp()
@@ -134,6 +145,7 @@ public:
 
     std::unique_ptr<NetworkXioInterface> net_xio_server_;
     boost::thread net_xio_thread_;
+    vfs::PythonClient client_;
 };
 
 TEST_F(NetworkServerTest, create_destroy_context)
@@ -1231,6 +1243,39 @@ TEST_F(NetworkServerTest, fail_to_truncate_volume)
                            new_volume_size),
               -1);
     EXPECT_EQ(EBADF, errno);
+
+    EXPECT_EQ(0,
+              ovs_ctx_destroy(ctx));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
+}
+
+TEST_F(NetworkServerTest, list_open_connections)
+{
+    uint64_t volume_size = 1 << 20;
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
+    EXPECT_EQ(0,
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         FileSystemTestSetup::edge_transport().c_str(),
+                                         FileSystemTestSetup::address().c_str(),
+                                         FileSystemTestSetup::local_edge_port()));
+
+    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
+    ASSERT_TRUE(ctx != nullptr);
+    EXPECT_EQ(ovs_create_volume(ctx,
+                                "volume",
+                                volume_size),
+              0);
+
+    const std::vector<vfs::ClientInfo> m(client_.list_client_connections(local_node_id()));
+    EXPECT_EQ(0, m.size());
+
+    ASSERT_EQ(0,
+              ovs_ctx_init(ctx, "volume", O_RDONLY));
+
+    const std::vector<vfs::ClientInfo> l(client_.list_client_connections(local_node_id()));
+    EXPECT_EQ(1, l.size());
 
     EXPECT_EQ(0,
               ovs_ctx_destroy(ctx));

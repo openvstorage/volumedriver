@@ -21,6 +21,7 @@
 #include "XMLRPCStructs.h"
 #include "XMLRPCUtils.h"
 #include "CloneFileFlags.h"
+#include "ClientInfo.h"
 
 #include <cerrno>
 #include <fstream>
@@ -1860,6 +1861,20 @@ VAAICopy::execute_internal(XmlRpc::XmlRpcValue& params,
     uint64_t dst_filesize = fs_.object_router().get_size(*dst_id);
     result[XMLRPCKeys::volume_size] =
         XmlRpc::XmlRpcValue(std::to_string(dst_filesize));
+}
+
+void
+ListClientConnections::execute_internal(::XmlRpc::XmlRpcValue& /*params*/,
+                                        ::XmlRpc::XmlRpcValue& result)
+{
+    result.clear();
+    result.setSize(0);
+
+    int k = 0;
+    for (const auto& i: fs_.list_registered_clients())
+    {
+        result[k++] = XMLRPCStructs::serialize_to_xmlrpc_value(i);
+    }
 }
 
 void

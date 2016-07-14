@@ -56,6 +56,7 @@ NetworkXioIOHandler::handle_open(NetworkXioRequest *req,
     try
     {
         fs_.open(p, O_RDWR, handle_);
+        update_fs_client_info(volume_name);
         volume_name_ = volume_name;
         req->retval = 0;
         req->errval = 0;
@@ -688,7 +689,6 @@ NetworkXioIOHandler::process_request(NetworkXioRequest *req)
     xio_iovec_ex *isglist = vmsg_sglist(&xio_req->in);
     int inents = vmsg_sglist_nents(&xio_req->in);
 
-    req->cd->refcnt++;
     NetworkXioMsg i_msg(NetworkXioMsgOpcode::Noop);
     try
     {
