@@ -572,7 +572,7 @@ TEST_F(ObjectRouterTest, volume_snapshot_create_rollback_delete)
                                                          0));
     wait_for_snapshot(vname, "some-volume-snap1", 30);
 
-    std::list<vd::SnapshotName> snaps;
+    std::vector<std::string> snaps;
     snaps = fs_->object_router().list_snapshots(vname);
 
     EXPECT_EQ(1U,
@@ -581,7 +581,7 @@ TEST_F(ObjectRouterTest, volume_snapshot_create_rollback_delete)
     EXPECT_THROW(fs_->object_router().create_snapshot(vname,
                                                       snap,
                                                       0),
-                 vd::SnapshotPersistor::SnapshotNameAlreadyExists);
+                 vfs::clienterrors::SnapshotNameAlreadyExistsException);
     EXPECT_NO_THROW(fs_->object_router().delete_snapshot(vname,
                                                          snap));
 
@@ -592,20 +592,19 @@ TEST_F(ObjectRouterTest, volume_snapshot_create_rollback_delete)
 
     EXPECT_THROW(fs_->object_router().delete_snapshot(vname,
                                                       snap),
-                 vd::SnapshotNotFoundException);
+                 vfs::clienterrors::SnapshotNotFoundException);
     EXPECT_THROW(fs_->object_router().rollback_volume(vname,
                                                       snap),
-                 vd::SnapshotNotFoundException);
+                 vfs::clienterrors::SnapshotNotFoundException);
 
     const vfs::ObjectId fvname("/f-volume");
     EXPECT_THROW(fs_->object_router().create_snapshot(fvname,
                                                       snap,
                                                       0),
-                 vd::VolManager::VolumeDoesNotExistException);
+                 vfs::clienterrors::ObjectNotFoundException);
 
     EXPECT_THROW(snaps = fs_->object_router().list_snapshots(fvname),
-                 fungi::IOException);
-
+                 vfs::clienterrors::ObjectNotFoundException);
 }
 
 }

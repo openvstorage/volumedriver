@@ -17,13 +17,14 @@
 #define __SHM_VOLUME_DRIVER_HANDLER_H_
 
 #include "FileSystem.h"
+#include "ObjectRouter.h"
+#include "PythonClient.h"
 #include "ShmCommon.h"
 
 #include <boost/interprocess/managed_shared_memory.hpp>
 
 #include <youtils/Assert.h>
 #include <youtils/Catchers.h>
-#include <ObjectRouter.h>
 
 #include <volumedriver/SnapshotName.h>
 
@@ -279,25 +280,21 @@ public:
         }
         catch (SyncTimeoutException& e)
         {
-            LOG_INFO("Sync timeout exception for volume: " << volume_name);
+            LOG_ERROR("Sync timeout exception for volume: " << volume_name);
             throw ShmIdlInterface::SyncTimeoutException(snap_name.c_str());
         }
-        catch (volumedriver::SnapshotPersistor::SnapshotNameAlreadyExists& e)
+        catch (clienterrors::SnapshotNameAlreadyExistsException& e)
         {
-            LOG_INFO("Volume still has children: " << volume_name);
+            LOG_ERROR("Volume " << volume_name << " already has a snapshot called " << snap_name);
             throw ShmIdlInterface::SnapshotAlreadyExists(snap_name.c_str());
         }
-        catch (volumedriver::PreviousSnapshotNotOnBackendException& e)
+        catch (clienterrors::PreviousSnapshotNotOnBackendException& e)
         {
-            LOG_INFO("Previous snapshot not on backend yet for volume: " << volume_name);
+            LOG_ERROR("Previous snapshot not on backend yet for volume: " << volume_name);
             throw ShmIdlInterface::PreviousSnapshotNotOnBackendException(snap_name.c_str());
         }
-        catch (std::exception& e)
-        {
-            LOG_INFO("Problem creating snapshot: " << snap_name <<
-                     " for volume: "<<  volume_name << ",err: " << e.what());
-            throw;
-        }
+        CATCH_STD_ALL_LOG_RETHROW("Problem creating snapshot: " << snap_name <<
+                                  " for volume: "<<  volume_name << ",err: ");
     }
 
     void
@@ -345,22 +342,18 @@ public:
             fs_.object_router().delete_snapshot(*volume_id,
                                                 snap);
         }
-        catch (volumedriver::SnapshotNotFoundException& e)
+        catch (clienterrors::SnapshotNotFoundException& e)
         {
-            LOG_INFO("Snapshot not found: " << snap_name);
+            LOG_ERROR("Snapshot not found: " << snap_name);
             throw ShmIdlInterface::SnapshotNotFound(volume_name.c_str());
         }
         catch (ObjectStillHasChildrenException& e)
         {
-            LOG_INFO("Volume still has children: " << volume_name);
+            LOG_ERROR("Volume still has children: " << volume_name);
             throw ShmIdlInterface::VolumeHasChildren(volume_name.c_str());
         }
-        catch (std::exception& e)
-        {
-            LOG_INFO("Problem removing snapshot: " << snap_name <<
-                     " for volume: "<<  volume_name << ",err: " << e.what());
-            throw;
-        }
+        CATCH_STD_ALL_LOG_RETHROW("Problem removing snapshot: " << snap_name <<
+                                  " for volume: "<<  volume_name << ",err: ");
     }
 
     std::vector<std::string>
@@ -371,7 +364,7 @@ public:
 
         const FrontendPath volume_path(make_volume_path(volume_name));
         boost::optional<ObjectId> volume_id(get_objectid(volume_path));
-        std::list<volumedriver::SnapshotName> snaps;
+        std::vector<std::string> snaps;
         try
         {
             snaps = fs_.object_router().list_snapshots(*volume_id);
@@ -404,7 +397,7 @@ public:
             return fs_.object_router().is_volume_synced_up_to(*volume_id,
                                                               snap);
         }
-        catch (volumedriver::SnapshotNotFoundException& e)
+        catch (clienterrors::SnapshotNotFoundException& e)
         {
             LOG_INFO("Snapshot not found: " << snap_name);
             throw ShmIdlInterface::SnapshotNotFound(volume_name.c_str());

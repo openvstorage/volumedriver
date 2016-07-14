@@ -44,9 +44,11 @@ namespace yt = youtils;
 
 PythonClient::PythonClient(const std::string& cluster_id,
                            const std::vector< ClusterContact >& cluster_contacts,
+                           const boost::optional<boost::chrono::seconds>& timeout,
                            const unsigned max_redirects)
     : cluster_id_(cluster_id)
     , cluster_contacts_(cluster_contacts)
+    , timeout_(timeout)
     , max_redirects(max_redirects)
 {
 }
@@ -89,7 +91,10 @@ PythonClient::redirected_xmlrpc(const std::string& addr,
     XmlRpc::XmlRpcClient xclient(addr.c_str(), port);
     const bool res = xclient.execute(method,
                                      req,
-                                     rsp);
+                                     rsp,
+                                     timeout_ ?
+                                     timeout_->count() :
+                                     -1.0);
     if (not res)
     {
         // Bummer, there does not seem to be a way to get at a precise error message.
@@ -141,6 +146,8 @@ PythonClient::redirected_xmlrpc(const std::string& addr,
             throw clienterrors::PreviousSnapshotNotOnBackendException(errorstring.c_str());
         case XMLRPCErrorCode::ObjectStillHasChildren:
             throw clienterrors::ObjectStillHasChildrenException(errorstring.c_str());
+        case XMLRPCErrorCode::SnapshotNameAlreadyExists:
+            throw clienterrors::SnapshotNameAlreadyExistsException(errorstring.c_str());
         default:
             {
                 //forward compatibility
@@ -383,7 +390,29 @@ PythonClient::set_automatic_failover_cache_config(const std::string& volume_id)
     auto rsp(call(SetAutomaticFailOverCacheConfig::method_name(), req));
 }
 
-bpy::list
+namespace
+{
+
+std::vector<std::string>
+extract_vec(const XmlRpc::XmlRpcValue& rsp)
+{
+    std::vector<std::string> vec;
+    vec.reserve(rsp.size());
+
+    for (auto i = 0; i < rsp.size(); ++i)
+    {
+        // TODO: fix xmlrpc++ to support const overloads of the
+        // conversion operators.
+        std::string s = const_cast<XmlRpc::XmlRpcValue&>(rsp[i]);
+        vec.emplace_back(std::move(s));
+    }
+
+    return vec;
+}
+
+}
+
+std::vector<std::string>
 PythonClient::list_volumes(const boost::optional<std::string>& node_id)
 {
     XmlRpc::XmlRpcValue req;
@@ -392,53 +421,26 @@ PythonClient::list_volumes(const boost::optional<std::string>& node_id)
         req[XMLRPCKeys::vrouter_id] = *node_id;
     }
 
-    auto rsp(call(VolumesList::method_name(), req));
-
-    bpy::list l;
-
-    for (auto i = 0; i < rsp.size(); ++i)
-    {
-        const std::string v(rsp[i]);
-        LOG_TRACE("found volume " << v);
-        l.append(v);
-    }
-
-    return l;
+    return extract_vec(call(VolumesList::method_name(),
+                            req));
 }
 
-bpy::list
+std::vector<std::string>
 PythonClient::list_volumes_by_path()
 {
     XmlRpc::XmlRpcValue req;
-    auto rsp(call(VolumesListByPath::method_name(), req));
-
-    bpy::list l;
-
-    for (auto i = 0; i < rsp.size(); ++i)
-    {
-        const std::string v(rsp[i]);
-        LOG_TRACE("found volume " << v);
-        l.append(v);
-    }
-
-    return l;
+    return extract_vec(call(VolumesListByPath::method_name(),
+                            req));
 }
 
-bpy::list
+std::vector<std::string>
 PythonClient::get_scrubbing_work(const std::string& volume_id)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
 
-    auto rsp(call(GetScrubbingWork::method_name(), req));
-
-    bpy::list l;
-    for(auto i = 0; i < rsp.size(); ++i)
-    {
-        const std::string s(rsp[i]);
-        l.append(s);
-    }
-    return l;
+    return extract_vec(call(GetScrubbingWork::method_name(),
+                            req));
 }
 
 void
@@ -462,25 +464,15 @@ PythonClient::apply_scrubbing_result(const std::string& volume_id,
     call(ApplyScrubbingResult::method_name(), req);
 }
 
-bpy::list
+std::vector<std::string>
 PythonClient::list_snapshots(const std::string& volume_id)
 {
     XmlRpc::XmlRpcValue req;
 
     req[XMLRPCKeys::volume_id] = volume_id;
 
-    auto rsp(call(SnapshotsList::method_name(), req));
-
-    bpy::list l;
-
-    for (auto i = 0; i < rsp.size(); ++i)
-    {
-        const std::string s(rsp[i]);
-        LOG_TRACE(volume_id << ": found snapshot " << s);
-        l.append(s);
-    }
-
-    return l;
+    return extract_vec(call(SnapshotsList::method_name(),
+                            req));
 }
 
 std::vector<ClientInfo>
@@ -539,7 +531,7 @@ PythonClient::statistics_volume(const std::string& volume_id,
 
 XMLRPCStatistics
 PythonClient::statistics_node(const std::string& node_id,
-                                bool reset)
+                              bool reset)
 {
     XmlRpc::XmlRpcValue req;
 
@@ -976,6 +968,7 @@ PythonClient::make_locked_client(const std::string& volume_id,
     return LockedPythonClient::create(cluster_id_,
                                       cluster_contacts_,
                                       volume_id,
+                                      timeout_,
                                       update_interval_secs,
                                       grace_period_secs);
 }

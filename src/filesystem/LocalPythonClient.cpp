@@ -35,8 +35,10 @@ namespace bpt = boost::property_tree;
 namespace vd = volumedriver;
 namespace yt = youtils;
 
-LocalPythonClient::LocalPythonClient(const std::string& config)
-    : config_fetcher_(yt::ConfigLocation(config))
+LocalPythonClient::LocalPythonClient(const std::string& config,
+                                     const boost::optional<boost::chrono::seconds>& timeout)
+    : PythonClient(timeout)
+    , config_fetcher_(yt::ConfigLocation(config))
 {
     const bpt::ptree pt(config_fetcher_(VerifyConfig::F));
     const ConfigHelper argument_helper(pt);

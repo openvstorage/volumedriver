@@ -35,7 +35,8 @@ class LocalPythonClient final
     : public PythonClient
 {
 public:
-    explicit LocalPythonClient(const std::string& config);
+    explicit LocalPythonClient(const std::string& config,
+                               const boost::optional<boost::chrono::seconds>& = boost::none);
 
     ~LocalPythonClient() = default;
 

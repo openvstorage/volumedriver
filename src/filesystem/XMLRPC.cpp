@@ -362,6 +362,14 @@ XMLRPCTimingWrapper<T>::execute(::XmlRpc::XmlRpcValue& params,
                     e.what());
         return;
     }
+    catch(vd::SnapshotPersistor::SnapshotNameAlreadyExists& e)
+    {
+        LOG_XMLRPCERROR(T::_name << " " << boost::diagnostic_information(e));
+        T::setError(result,
+                    XMLRPCErrorCode::SnapshotNameAlreadyExists,
+                    e.what());
+        return;
+    }
     catch(vd::VolManager::InsufficientResourcesException & e)
     {
         LOG_XMLRPCERROR(T::_name << " " << boost::diagnostic_information(e));
@@ -813,9 +821,9 @@ GetScrubbingWork::execute_internal(::XmlRpc::XmlRpcValue& params,
     }
 
     const std::vector<scrubbing::ScrubWork>
-        work(fs_.object_router().get_scrub_work(volid,
-                                                ssnap,
-                                                esnap));
+        work(fs_.object_router().get_scrub_work_local(volid,
+                                                      ssnap,
+                                                      esnap));
 
     result.clear();
     result.setSize(0);
@@ -833,8 +841,8 @@ ApplyScrubbingResult::execute_internal(::XmlRpc::XmlRpcValue&  params,
     const ObjectId volid(getID(params[0]));
     const std::string scrub_rsp_str(getScrubbingWorkResult(params[0]));
 
-    fs_.object_router().queue_scrub_reply(volid,
-                                          scrubbing::ScrubReply(scrub_rsp_str));
+    fs_.object_router().queue_scrub_reply_local(volid,
+                                                scrubbing::ScrubReply(scrub_rsp_str));
 }
 
 void
@@ -1050,7 +1058,7 @@ SnapshotRestore::execute_internal(::XmlRpc::XmlRpcValue& params,
 {
     const ObjectId volName(getID(params[0]));
     const vd::SnapshotName snapid(getSnapID(params[0]));
-    fs_.object_router().rollback_volume(volName, snapid);
+    fs_.object_router().rollback_volume_local(volName, snapid);
 }
 
 void
@@ -1060,7 +1068,7 @@ SnapshotDestroy::execute_internal(::XmlRpc::XmlRpcValue& params,
     const ObjectId volName(getID(params[0]));
     const vd::SnapshotName snapid(getSnapID(params[0]));
 
-    fs_.object_router().delete_snapshot(volName, snapid);
+    fs_.object_router().delete_snapshot_local(volName, snapid);
 }
 
 void
@@ -1151,7 +1159,7 @@ SetVolumeAsTemplate::execute_internal(XmlRpc::XmlRpcValue& params,
                                       XmlRpc::XmlRpcValue& /*result*/)
 {
     const vd::VolumeId volName(getID(params[0]));
-    fs_.object_router().set_volume_as_template(volName);
+    fs_.object_router().set_volume_as_template_local(volName);
 }
 
 void
