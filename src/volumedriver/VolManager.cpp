@@ -1661,10 +1661,30 @@ VolManager::checkMetaDataFreeSpace()
 void
 VolManager::checkVolumeFailoverCaches()
 {
-    LOCK_MANAGER();
-    for(auto& name_volume_pair : volMap_)
+    std::vector<VolumeId> vols;
+
+    // TODO: technically a copy of the map should also work which could then
+    // be used without the mgmt mutex held, but this needs thorough review /
+    // checking of e.g. volume removal vs. this one.
+    // Play it safe for now.
     {
-        name_volume_pair.second->check_and_fix_failovercache();
+        LOCK_MANAGER();
+        vols.reserve(volMap_.size());
+
+        for(const auto& p : volMap_)
+        {
+            vols.push_back(p.first);
+        }
+    }
+
+    for (const auto& vol : vols)
+    {
+        LOCK_MANAGER();
+        SharedVolumePtr v(findVolume_noThrow_(vol));
+        if (v)
+        {
+            v->check_and_fix_failovercache();
+        }
     }
 }
 
@@ -1776,6 +1796,8 @@ VolManager::update(const boost::property_tree::ptree& pt,
     dtl_write_trigger.update(pt, report);
 
     freespace_check_interval.update(pt, report);
+    dtl_check_interval_in_seconds.update(pt, report);
+
     read_cache_default_behaviour.update(pt, report);
     read_cache_default_mode.update(pt, report);
     sco_written_to_backend_action.update(pt, report);
@@ -1802,6 +1824,7 @@ VolManager::persist(boost::property_tree::ptree& pt,
     tlog_path.persist(pt, reportDefault);
     open_scos_per_volume.persist(pt, reportDefault);
     freespace_check_interval.persist(pt, reportDefault);
+    dtl_check_interval_in_seconds.persist(pt, reportDefault);
     read_cache_default_behaviour.persist(pt, reportDefault);
     read_cache_default_mode.persist(pt, reportDefault);
     sco_written_to_backend_action.persist(pt, reportDefault);

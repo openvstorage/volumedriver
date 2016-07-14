@@ -21,6 +21,7 @@
 #include "MessageUtils.h"
 #include "Messages.pb.h"
 #include "Protocol.h"
+#include "PythonClient.h"
 #include "RemoteNode.h"
 #include "ObjectRouter.h"
 #include "ZUtils.h"
@@ -85,6 +86,7 @@ ObjectRouter::ObjectRouter(const bpt::ptree& pt,
     , vrouter_min_workers(pt)
     , vrouter_max_workers(pt)
     , vrouter_registry_cache_capacity(pt)
+    , vrouter_xmlrpc_client_timeout_ms(pt)
     , larakoon_(larakoon)
     , object_registry_(std::make_shared<CachedObjectRegistry>(cluster_id(),
                                                               node_id(),
@@ -1428,7 +1430,7 @@ ObjectRouter::restart(const ObjectId& id,
 }
 
 void
-ObjectRouter::set_volume_as_template(const vd::VolumeId& id)
+ObjectRouter::set_volume_as_template_local(const vd::VolumeId& id)
 {
     LOG_INFO("Set volume " << id << " as template");
     TODO("AR: revisit conversion to ObjectId at this point");
@@ -1436,9 +1438,9 @@ ObjectRouter::set_volume_as_template(const vd::VolumeId& id)
 }
 
 void
-ObjectRouter::create_snapshot(const ObjectId& volume_id,
-                              const vd::SnapshotName& snap_id,
-                              const int64_t timeout)
+ObjectRouter::create_snapshot_local(const ObjectId& volume_id,
+                                    const vd::SnapshotName& snap_id,
+                                    const int64_t timeout)
 {
     LOG_INFO("Snapshotting volume '" << volume_id << "' with snapshot name '"
              << snap_id << "'");
@@ -1448,8 +1450,45 @@ ObjectRouter::create_snapshot(const ObjectId& volume_id,
 }
 
 void
-ObjectRouter::rollback_volume(const ObjectId& volume_id,
-                              const vd::SnapshotName& snap_id)
+ObjectRouter::create_snapshot(const ObjectId& volume_id,
+                              const vd::SnapshotName& snap_id,
+                              const int64_t timeout)
+{
+    LOG_INFO("Snapshotting volume '" << volume_id << "' with snapshot name '"
+             << snap_id << "'");
+    std::unique_ptr<PythonClient> client(xmlrpc_client());
+
+    client->create_snapshot(volume_id.str(),
+                            snap_id.str());
+
+    if (timeout >= 0)
+    {
+        const auto end = boost::chrono::steady_clock::now() + boost::chrono::seconds(timeout);
+        bool synced = false;
+
+        do
+        {
+            synced = client->is_volume_synced_up_to_snapshot(volume_id.str(),
+                                                             snap_id.str());
+            if (not synced)
+            {
+                boost::this_thread::sleep_for(boost::chrono::milliseconds(250));
+            }
+        }
+        while (not synced and (timeout == 0 or boost::chrono::steady_clock::now() < end));
+
+        if (not synced)
+        {
+            client->delete_snapshot(volume_id.str(),
+                                    snap_id.str());
+            throw SyncTimeoutException("timeout syncing snapshot to backend\n");
+        }
+    }
+}
+
+void
+ObjectRouter::rollback_volume_local(const ObjectId& volume_id,
+                                    const vd::SnapshotName& snap_id)
 {
     LOG_INFO("Rolling back " << volume_id << " to snapshot " << snap_id);
 
@@ -1458,32 +1497,66 @@ ObjectRouter::rollback_volume(const ObjectId& volume_id,
 }
 
 void
-ObjectRouter::delete_snapshot(const ObjectId& oid,
-                              const vd::SnapshotName& snap)
+ObjectRouter::rollback_volume(const ObjectId& volume_id,
+                              const vd::SnapshotName& snap_id)
+{
+    LOG_INFO("Rolling back " << volume_id << " to snapshot " << snap_id);
+
+    xmlrpc_client()->rollback_volume(volume_id.str(),
+                                     snap_id.str());
+}
+
+void
+ObjectRouter::delete_snapshot_local(const ObjectId& oid,
+                                    const vd::SnapshotName& snap)
 {
     LOG_INFO("Deleting snapshot " << snap << " from " << oid);
     local_node_()->delete_snapshot(oid,
                                    snap);
 }
 
+void
+ObjectRouter::delete_snapshot(const ObjectId& oid,
+                              const vd::SnapshotName& snap)
+{
+    LOG_INFO("Deleting snapshot " << snap << " from " << oid);
+    xmlrpc_client()->delete_snapshot(oid.str(),
+                                     snap.str());
+}
+
 std::list<vd::SnapshotName>
-ObjectRouter::list_snapshots(const ObjectId& oid)
+ObjectRouter::list_snapshots_local(const ObjectId& oid)
 {
     LOG_INFO("Listing snapshots for volume '" << oid << "'");
     return local_node_()->list_snapshots(oid);
+}
+
+std::vector<std::string>
+ObjectRouter::list_snapshots(const ObjectId& oid)
+{
+    return xmlrpc_client()->list_snapshots(oid.str());
+}
+
+bool
+ObjectRouter::is_volume_synced_up_to_local(const ObjectId& id,
+                                           const vd::SnapshotName& snap_id)
+{
+    return local_node_()->is_volume_synced_up_to(id,
+                                                 snap_id);
 }
 
 bool
 ObjectRouter::is_volume_synced_up_to(const ObjectId& id,
                                      const vd::SnapshotName& snap_id)
 {
-    return local_node_()->is_volume_synced_up_to(id, snap_id);
+    return xmlrpc_client()->is_volume_synced_up_to_snapshot(id.str(),
+                                                            snap_id.str());
 }
 
 std::vector<scrubbing::ScrubWork>
-ObjectRouter::get_scrub_work(const ObjectId& oid,
-                             const boost::optional<vd::SnapshotName>& start_snap,
-                             const boost::optional<vd::SnapshotName>& end_snap)
+ObjectRouter::get_scrub_work_local(const ObjectId& oid,
+                                   const boost::optional<vd::SnapshotName>& start_snap,
+                                   const boost::optional<vd::SnapshotName>& end_snap)
 {
     LOG_INFO(oid << ": getting scrub work, start snapshot " << start_snap <<
              ", end snapshot " << end_snap);
@@ -1493,8 +1566,8 @@ ObjectRouter::get_scrub_work(const ObjectId& oid,
 }
 
 void
-ObjectRouter::queue_scrub_reply(const ObjectId& oid,
-                                const scrubbing::ScrubReply& scrub_reply)
+ObjectRouter::queue_scrub_reply_local(const ObjectId& oid,
+                                      const scrubbing::ScrubReply& scrub_reply)
 {
     LOG_INFO(oid << ": queuing scrub reply");
     return local_node_()->queue_scrub_reply(oid,
@@ -1527,6 +1600,7 @@ ObjectRouter::update(const bpt::ptree& pt,
     U(vrouter_id);
     U(vrouter_cluster_id);
     U(vrouter_registry_cache_capacity);
+    U(vrouter_xmlrpc_client_timeout_ms);
 
     ip::PARAMETER_TYPE(vrouter_min_workers) min(pt);
     ip::PARAMETER_TYPE(vrouter_min_workers) max(pt);
@@ -1580,6 +1654,7 @@ ObjectRouter::persist(bpt::ptree& pt,
     P(vrouter_min_workers);
     P(vrouter_max_workers);
     P(vrouter_registry_cache_capacity);
+    P(vrouter_xmlrpc_client_timeout_ms);
 
 #undef P
 
@@ -1722,6 +1797,37 @@ void
 ObjectRouter::set_automatic_foc_config(const ObjectId& oid)
 {
     local_node_()->set_automatic_foc_config(oid);
+}
+
+std::unique_ptr<PythonClient>
+ObjectRouter::xmlrpc_client()
+{
+    std::vector<ClusterContact> contacts;
+
+    {
+        RLOCK_NODES();
+
+        contacts.reserve(node_map_.size());
+
+        auto it = node_map_.find(node_id());
+        VERIFY(it != node_map_.end());
+
+        contacts.emplace_back(it->second->config.host,
+                              it->second->config.xmlrpc_port);
+
+        for (const auto& p : node_map_)
+        {
+            if (p.first != node_id())
+            {
+                contacts.emplace_back(p.second->config.host,
+                                      p.second->config.xmlrpc_port);
+            }
+        }
+    }
+
+    return std::make_unique<PythonClient>(cluster_id(),
+                                          contacts,
+                                          boost::chrono::seconds(vrouter_xmlrpc_client_timeout_ms.value() * 1000));
 }
 
 }

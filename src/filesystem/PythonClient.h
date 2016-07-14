@@ -50,6 +50,7 @@ MAKE_EXCEPTION(PythonClientException, fungi::IOException);
 MAKE_EXCEPTION(ObjectNotFoundException, fungi::IOException);
 MAKE_EXCEPTION(InvalidOperationException, fungi::IOException);
 MAKE_EXCEPTION(SnapshotNotFoundException, fungi::IOException);
+MAKE_EXCEPTION(SnapshotNameAlreadyExistsException, fungi::IOException);
 MAKE_EXCEPTION(FileExistsException, fungi::IOException);
 MAKE_EXCEPTION(InsufficientResourcesException, fungi::IOException);
 MAKE_EXCEPTION(PreviousSnapshotNotOnBackendException, fungi::IOException);
@@ -101,17 +102,18 @@ public:
 
     PythonClient(const std::string& cluster_id,
                  const std::vector<ClusterContact>& cluster_contacts,
+                 const boost::optional<boost::chrono::seconds>& timeout = boost::none,
                  const unsigned max_redirects = max_redirects_default);
 
     virtual ~PythonClient() = default;
 
-    boost::python::list
+    std::vector<std::string>
     list_volumes(const boost::optional<std::string>& node_id = boost::none);
 
-    boost::python::list
+    std::vector<std::string>
     list_volumes_by_path();
 
-    boost::python::list
+    std::vector<std::string>
     list_snapshots(const std::string& volume_id);
 
     XMLRPCSnapshotInfo
@@ -171,7 +173,7 @@ public:
     void
     set_volume_as_template(const std::string& vname);
 
-    boost::python::list
+    std::vector<std::string>
     get_scrubbing_work(const std::string& volume_id);
 
     void
@@ -319,8 +321,9 @@ public:
                    bool force_restart);
 
 protected:
-    PythonClient()
-        : max_redirects(max_redirects_default)
+    PythonClient(const boost::optional<boost::chrono::seconds>& timeout)
+        : timeout_(timeout)
+        , max_redirects(max_redirects_default)
     {}
 
     XmlRpc::XmlRpcValue
@@ -338,6 +341,7 @@ protected:
     std::mutex lock_;
     //this list does not necessarily contain all nodes in the cluster
     std::vector<ClusterContact> cluster_contacts_;
+    const boost::optional<boost::chrono::seconds> timeout_;
 
 private:
     DECLARE_LOGGER("PythonClient");

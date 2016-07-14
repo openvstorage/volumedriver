@@ -16,10 +16,10 @@
 #include <youtils/Assert.h>
 #include <youtils/Catchers.h>
 
-#include <ObjectRouter.h>
-
 #include "NetworkXioIOHandler.h"
 #include "NetworkXioProtocol.h"
+#include "ObjectRouter.h"
+#include "PythonClient.h" // clienterrors
 
 namespace volumedriverfs
 {
@@ -396,7 +396,7 @@ NetworkXioIOHandler::handle_list_snapshots(NetworkXioRequest *req,
         return;
     }
 
-    std::list<volumedriver::SnapshotName> snaps;
+    std::vector<std::string> snaps;
     try
     {
         snaps = fs_.object_router().list_snapshots(*volume_id);
@@ -487,13 +487,13 @@ NetworkXioIOHandler::handle_create_snapshot(NetworkXioRequest *req,
         req->retval = -1;
         req->errval = ETIMEDOUT;
     }
-    catch (volumedriver::SnapshotPersistor::SnapshotNameAlreadyExists& e)
+    catch (clienterrors::SnapshotNameAlreadyExistsException& e)
     {
         LOG_INFO("Volume still has children: " << volume_name);
         req->retval = -1;
         req->errval = EEXIST;
     }
-    catch (volumedriver::PreviousSnapshotNotOnBackendException& e)
+    catch (clienterrors::PreviousSnapshotNotOnBackendException& e)
     {
         LOG_INFO("Previous snapshot not on backend yet for volume: " <<
                  volume_name);
@@ -535,13 +535,13 @@ NetworkXioIOHandler::handle_delete_snapshot(NetworkXioRequest *req,
         req->retval = 0;
         req->errval = 0;
     }
-    catch (volumedriver::SnapshotNotFoundException& e)
+    catch (clienterrors::SnapshotNotFoundException& e)
     {
         LOG_INFO("Snapshot not found: " << snap_name);
         req->retval = -1;
         req->errval = ENOENT;
     }
-    catch (ObjectStillHasChildrenException& e)
+    catch (clienterrors::ObjectStillHasChildrenException& e)
     {
         LOG_INFO("Volume still has children: " << volume_name);
         req->retval = -1;
@@ -582,7 +582,7 @@ NetworkXioIOHandler::handle_rollback_snapshot(NetworkXioRequest *req,
         req->retval = 0;
         req->errval = 0;
     }
-    catch (ObjectStillHasChildrenException& e)
+    catch (clienterrors::ObjectStillHasChildrenException& e)
     {
         LOG_INFO("Volume still has children: " << volume_name);
         req->retval = -1;
@@ -623,7 +623,7 @@ NetworkXioIOHandler::handle_is_snapshot_synced(NetworkXioRequest *req,
         req->retval = is_synced;
         req->errval = 0;
     }
-    catch (volumedriver::SnapshotNotFoundException& e)
+    catch (clienterrors::SnapshotNotFoundException& e)
     {
         LOG_INFO("Snapshot not found: " << snap_name);
         req->retval = -1;
@@ -655,7 +655,6 @@ NetworkXioIOHandler::process_request(NetworkXioRequest *req)
     xio_iovec_ex *isglist = vmsg_sglist(&xio_req->in);
     int inents = vmsg_sglist_nents(&xio_req->in);
 
-    req->cd->refcnt++;
     NetworkXioMsg i_msg(NetworkXioMsgOpcode::Noop);
     try
     {
