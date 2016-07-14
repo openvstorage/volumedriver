@@ -1281,6 +1281,9 @@ TEST_F(NetworkServerTest, list_open_connections)
               ovs_ctx_destroy(ctx));
     EXPECT_EQ(0,
               ovs_ctx_attr_destroy(ctx_attr));
+
+    const std::vector<vfs::ClientInfo> k(client_.list_client_connections(local_node_id()));
+    EXPECT_EQ(0, k.size());
 }
 
 } //namespace
