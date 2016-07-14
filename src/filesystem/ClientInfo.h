@@ -21,14 +21,15 @@
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 
+#include <youtils/OurStrongTypedef.h>
 #include <youtils/Serialization.h>
 
 #include <xmlrpc++0.7/src/XmlRpcValue.h>
 
+OUR_STRONG_ARITHMETIC_TYPEDEF(uint64_t, ClientInfoTag, volumedriverfs)
+
 namespace volumedriverfs
 {
-
-typedef uint64_t ClientInfoTag;
 
 struct ClientInfo
 {

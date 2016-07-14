@@ -542,7 +542,7 @@ private:
 
     mutable boost::mutex config_lock_;
 
-    std::unordered_map<ClientInfoTag, ClientInfo> client_info_map_;
+    std::map<ClientInfoTag, ClientInfo> client_info_map_;
     std::mutex client_info_lock_;
 
     DECLARE_PARAMETER(fs_ignore_sync);
