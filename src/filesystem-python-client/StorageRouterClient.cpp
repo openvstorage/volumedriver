@@ -145,6 +145,7 @@ DEFINE_EXCEPTION_TRANSLATOR(FileExistsException);
 DEFINE_EXCEPTION_TRANSLATOR(InsufficientResourcesException);
 DEFINE_EXCEPTION_TRANSLATOR(PreviousSnapshotNotOnBackendException);
 DEFINE_EXCEPTION_TRANSLATOR(ObjectStillHasChildrenException);
+DEFINE_EXCEPTION_TRANSLATOR(SnapshotNameAlreadyExistsException);
 
 void
 reminder(vfs::XMLRPCErrorCode code) __attribute__((unused));
@@ -166,6 +167,7 @@ reminder(vfs::XMLRPCErrorCode code)
     case vfs::XMLRPCErrorCode::InsufficientResources:
     case vfs::XMLRPCErrorCode::PreviousSnapshotNotOnBackend:
     case vfs::XMLRPCErrorCode::ObjectStillHasChildren:
+    case vfs::XMLRPCErrorCode::SnapshotNameAlreadyExists:
         break;
     }
 }
