@@ -165,6 +165,10 @@ FuseInterface::init_ops_(fuse_operations& ops) const
 {
     bzero(&ops, sizeof(ops));
 
+    // allow callbacks that use a fuse_file_info* handle
+    // to pass in a nullptr as path argument.
+    ops.flag_nopath = 1;
+
 #define INSTALL_CB(name)                        \
     ops.name = FuseInterface::name
 
