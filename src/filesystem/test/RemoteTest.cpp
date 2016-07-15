@@ -1534,6 +1534,26 @@ TEST_F(RemoteTest, fsync)
                     false));
 }
 
+// https://github.com/openvstorage/volumedriver/issues/67
+// fuse invokes FuseInterface::releasedir with path set to nullptr
+TEST_F(RemoteTest, unlink_open_directory)
+{
+    const fs::path rdir(remote_root_ / "directory");
+    fs::create_directories(rdir);
+    ASSERT_TRUE(fs::exists(rdir));
+
+    const int fd = ::open(rdir.string().c_str(),
+                          O_RDONLY);
+    ASSERT_LE(0, fd);
+
+    auto on_exit(yt::make_scope_exit([fd]
+                                     {
+                                         ::close(fd);
+                                     }));
+
+    fs::remove_all(rdir);
+}
+
 TEST_F(RemoteTest, DISABLED_setup_remote_hack)
 {
     sleep(1000000);
