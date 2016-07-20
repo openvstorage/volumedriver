@@ -165,6 +165,10 @@ FuseInterface::init_ops_(fuse_operations& ops) const
 {
     bzero(&ops, sizeof(ops));
 
+    // allow callbacks that use a fuse_file_info* handle
+    // to pass in a nullptr as path argument.
+    ops.flag_nopath = 1;
+
 #define INSTALL_CB(name)                        \
     ops.name = FuseInterface::name
 
@@ -402,12 +406,9 @@ template<typename... A>
 int
 FuseInterface::route_to_fs_instance_(void (FileSystem::*mem_fun)(const FrontendPath& path,
                                                                  A... args),
-                                     const char* frontend_path,
+                                     const FrontendPath& p,
                                      A...args) throw ()
 {
-    LOG_TRACE(frontend_path);
-    const FrontendPath p(frontend_path);
-
     fuse_context* ctx = fuse_get_context();
     VERIFY(ctx);
 
@@ -418,6 +419,18 @@ FuseInterface::route_to_fs_instance_(void (FileSystem::*mem_fun)(const FrontendP
                                     fi->fs_,
                                     p,
                                     std::forward<A>(args)...);
+}
+
+template<typename... A>
+int
+FuseInterface::route_to_fs_instance_(void (FileSystem::*mem_fun)(const FrontendPath& path,
+                                                                 A... args),
+                                     const char* p,
+                                     A...args) throw ()
+{
+    return route_to_fs_instance_<A...>(mem_fun,
+                                       FrontendPath(p),
+                                       std::forward<A>(args)...);
 }
 
 int
@@ -445,34 +458,40 @@ FuseInterface::opendir(const char* path,
 }
 
 int
-FuseInterface::releasedir(const char* path,
+FuseInterface::releasedir(const char* /* path */,
                           fuse_file_info* fi)
 {
     Handle::Ptr h(get_handle(*fi));
     fi->fh = 0;
 
+    VERIFY(h != nullptr);
+
     return route_to_fs_instance_(&FileSystem::releasedir,
-                                 path,
+                                 h->path(),
                                  std::move(h));
 }
 
 int
-FuseInterface::readdir(const char* path,
+FuseInterface::readdir(const char* /* path */,
                        void* buf,
                        fuse_fill_dir_t filler,
                        off_t /* offset */,
-                       fuse_file_info* /* fi */,
+                       fuse_file_info* fi,
                        // fuse3/fuse.h says that it's ok to ignore
                        // the sole supported flag - FUSE_READDIR_PLUS -
                        // for now
                        fuse_readdir_flags /* readdir_flags */)
 {
-    LOG_TRACE(path);
+    Handle* h = get_handle(*fi);
+    VERIFY(h != nullptr);
+
+    LOG_TRACE(h->path());
+
 
     std::vector<std::string> l;
     int ret = route_to_fs_instance_<std::vector<std::string>&,
                                     size_t>(&FileSystem::read_dirents,
-                                            path,
+                                            h->path(),
                                             l,
                                             0);
     if (ret == 0)
@@ -598,30 +617,33 @@ FuseInterface::open(const char* path,
 }
 
 int
-FuseInterface::release(const char* path,
+FuseInterface::release(const char* /* path */,
                        fuse_file_info* fi)
 {
     Handle::Ptr h(get_handle(*fi));
     fi->fh = 0;
+    VERIFY(h);
 
     return route_to_fs_instance_(&FileSystem::release,
-                                 path,
+                                 h->path(),
                                  std::move(h));
 }
 
 int
-FuseInterface::read(const char* path,
+FuseInterface::read(const char* /* path */,
                     char* buf,
                     size_t size,
                     off_t off,
                     fuse_file_info* fi)
 {
     Handle* h = get_handle(*fi);
+    VERIFY(h);
+
     int ret = route_to_fs_instance_<Handle&,
                                     size_t&,
                                     decltype(buf),
                                     decltype(off)>(&FileSystem::read,
-                                                   path,
+                                                   h->path(),
                                                    *h,
                                                    size,
                                                    buf,
@@ -630,18 +652,20 @@ FuseInterface::read(const char* path,
 }
 
 int
-FuseInterface::write(const char* path,
+FuseInterface::write(const char* /* path */,
                      const char* buf,
                      size_t size,
                      off_t off,
                      fuse_file_info* fi)
 {
     Handle* h = get_handle(*fi);
+    VERIFY(h);
+
     int ret = route_to_fs_instance_<Handle&,
                                     size_t&,
                                     decltype(buf),
                                     decltype(off)>(&FileSystem::write,
-                                                   path,
+                                                   h->path(),
                                                    *h,
                                                    size,
                                                    buf,
@@ -650,14 +674,16 @@ FuseInterface::write(const char* path,
 }
 
 int
-FuseInterface::fsync(const char* path,
+FuseInterface::fsync(const char* /* path */,
                      int datasync,
                      fuse_file_info* fi)
 {
     Handle* h = get_handle(*fi);
+    VERIFY(h);
+
     return route_to_fs_instance_<Handle&,
                                  bool>(&FileSystem::fsync,
-                                       path,
+                                       h->path(),
                                        *h,
                                        datasync);
 }
