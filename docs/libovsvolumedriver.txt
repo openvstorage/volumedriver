@@ -879,15 +879,16 @@ Asynchronous volume synchronization::
         - EINVAL Synchronized I/O is not supported for this volume
         - ENOSYS ovs_aio_flushcb() is not implemented
 
-Shared memory allocation::
+Memory allocation::
     ovs_buffer_t* ovs_allocate(ovs_ctx_t *ctx,
                                size_t size)
 
     Description
     -----------
-    Allocate shared memory of the specified 'size' to be sent in zero-copy
-    fashion. The content of the buffer is undefined after allocation and it
-    should be filled in by the user.
+    Allocate memory of the specified 'size' to be sent in zero-copy
+    fashion when shared memory is being used as a transport type otherwise
+    it's implementation defined. The content of the buffer is undefined after
+    allocation and it should be filled in by the user.
 
     Return Value
     ------------
@@ -935,7 +936,7 @@ Retrieve size of buffer::
     ------
         - EINVAL The value specified by 'ptr' is invalid.
 
-Shared memory deallocation::
+Memory deallocation::
     int ovs_deallocate(ovs_ctx_t *ctx,
                        ovs_buffer_t *shptr)
 
