@@ -24,6 +24,7 @@
 #include "FailOverCacheConfigMode.h"
 
 #include <atomic>
+#include <thread>
 
 #include <youtils/ArakoonNodeConfig.h>
 #include <youtils/InitializedParam.h>
@@ -166,6 +167,9 @@ DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(network_uri,
 
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(network_snd_rcv_queue_depth,
                                        size_t);
+
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(workqueue_max_threads,
+                                       unsigned int);
 
 // EventPublisher:
 extern const char events_component_name[];

@@ -211,6 +211,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(network_snd_rcv_queue_depth,
                                       ShowDocumentation::T,
                                       2048);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(workqueue_max_threads,
+                                      network_interface_component_name,
+                                      "workqueue_max_threads",
+                                      "Maximum workqueue threads",
+                                      ShowDocumentation::T,
+                                      std::thread::hardware_concurrency());
+
 // FileSystem:
 const char filesystem_component_name[] = "filesystem";
 
