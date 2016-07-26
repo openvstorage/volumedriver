@@ -108,13 +108,15 @@ static_evfd_stop_loop(int fd, int events, void *data)
 
 NetworkXioServer::NetworkXioServer(FileSystem& fs,
                                    const std::string& uri,
-                                   size_t snd_rcv_queue_depth)
+                                   size_t snd_rcv_queue_depth,
+                                   unsigned int workqueue_max_threads)
     : fs_(fs)
     , uri_(uri)
     , stopping(false)
     , stopped(true)
     , evfd()
     , queue_depth(snd_rcv_queue_depth)
+    , wq_max_threads(workqueue_max_threads)
 {}
 
 void
@@ -213,7 +215,9 @@ NetworkXioServer::run(std::promise<void> promise)
 
     try
     {
-        wq_ = std::make_shared<NetworkXioWorkQueue>("ovs_xio_wq", evfd);
+        wq_ = std::make_shared<NetworkXioWorkQueue>("ovs_xio_wq",
+                                                    evfd,
+                                                    wq_max_threads);
     }
     catch (const WorkQueueThreadsException&)
     {

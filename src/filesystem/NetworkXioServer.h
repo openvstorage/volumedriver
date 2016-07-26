@@ -40,7 +40,8 @@ class NetworkXioServer
 public:
     NetworkXioServer(FileSystem& fs,
                      const std::string& uri,
-                     size_t snd_rcv_queue_depth);
+                     size_t snd_rcv_queue_depth,
+                     unsigned int workqueue_max_threads);
 
     ~NetworkXioServer();
 
@@ -100,6 +101,7 @@ private:
     bool stopped;
     EventFD evfd;
     int queue_depth;
+    unsigned int wq_max_threads;
 
     NetworkXioWorkQueuePtr wq_;
 

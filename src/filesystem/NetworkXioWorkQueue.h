@@ -38,7 +38,9 @@ MAKE_EXCEPTION(WorkQueueThreadsException, Exception);
 class NetworkXioWorkQueue
 {
 public:
-    NetworkXioWorkQueue(const std::string& name, EventFD& evfd_)
+    NetworkXioWorkQueue(const std::string& name,
+                        EventFD& evfd_,
+                        unsigned int wq_max_threads)
     : name_(name)
     , nr_threads_(0)
     , nr_queued_work(0)
@@ -46,6 +48,7 @@ public:
     , stopping(false)
     , stopped(false)
     , evfd(evfd_)
+    , max_threads(wq_max_threads)
     {
         int ret = create_workqueue_threads(1);
         if (ret < 0)
@@ -136,6 +139,7 @@ private:
     bool stopping;
     bool stopped;
     EventFD& evfd;
+    unsigned int max_threads;
 
     void xstop_loop(NetworkXioWorkQueue *wq)
     {
@@ -148,10 +152,11 @@ private:
         return std::chrono::steady_clock::now();
     }
 
-    size_t
+    unsigned int
     get_max_wq_depth()
     {
-        return std::thread::hardware_concurrency();
+        return std::min(max_threads,
+                        std::thread::hardware_concurrency());
     }
 
     bool
