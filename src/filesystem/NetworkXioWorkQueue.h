@@ -141,9 +141,9 @@ private:
     EventFD& evfd;
     unsigned int max_threads;
 
-    void xstop_loop(NetworkXioWorkQueue *wq)
+    void xstop_loop()
     {
-        wq->evfd.writefd();
+        evfd.writefd();
     }
 
     std::chrono::steady_clock::time_point
@@ -193,10 +193,9 @@ private:
             {
                 std::thread thr([&](){
                     auto fp = std::bind(&NetworkXioWorkQueue::worker_routine,
-                                        this,
-                                        std::placeholders::_1);
+                                        this);
                     pthread_setname_np(pthread_self(), name_.c_str());
-                    fp(this);
+                    fp();
                 });
                 thr.detach();
                 nr_threads_++;
@@ -211,43 +210,41 @@ private:
     }
 
     void
-    worker_routine(void *arg)
+    worker_routine()
     {
-        NetworkXioWorkQueue *wq = reinterpret_cast<NetworkXioWorkQueue*>(arg);
-
         NetworkXioRequest *req;
         while (true)
         {
-            std::unique_lock<std::mutex> lock_(wq->inflight_lock);
-            if (wq->need_to_shrink())
+            std::unique_lock<std::mutex> lock_(inflight_lock);
+            if (need_to_shrink())
             {
-                wq->nr_threads_--;
+                nr_threads_--;
                 lock_.unlock();
                 break;
             }
 retry:
-            if (wq->inflight_queue.empty())
+            if (inflight_queue.empty())
             {
-                wq->inflight_cond.wait(lock_);
-                if (wq->stopping)
+                inflight_cond.wait(lock_);
+                if (stopping)
                 {
-                    wq->nr_threads_--;
+                    nr_threads_--;
                     break;
                 }
                 goto retry;
             }
-            req = wq->inflight_queue.front();
-            wq->inflight_queue.pop();
+            req = inflight_queue.front();
+            inflight_queue.pop();
             lock_.unlock();
-            wq->queued_work_dec();
+            queued_work_dec();
             if (req->work.func)
             {
                 req->work.func(&req->work);
             }
-            wq->finished_lock.lock();
-            wq->finished_list.push_back(*req);
-            wq->finished_lock.unlock();
-            xstop_loop(wq);
+            finished_lock.lock();
+            finished_list.push_back(*req);
+            finished_lock.unlock();
+            xstop_loop();
         }
     }
 };
