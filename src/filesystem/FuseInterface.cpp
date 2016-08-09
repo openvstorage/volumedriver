@@ -466,8 +466,9 @@ FuseInterface::releasedir(const char* /* path */,
 
     VERIFY(h != nullptr);
 
+    const FrontendPath p(h->path());
     return route_to_fs_instance_(&FileSystem::releasedir,
-                                 h->path(),
+                                 p,
                                  std::move(h));
 }
 
@@ -624,8 +625,9 @@ FuseInterface::release(const char* /* path */,
     fi->fh = 0;
     VERIFY(h);
 
+    const FrontendPath p(h->path());
     return route_to_fs_instance_(&FileSystem::release,
-                                 h->path(),
+                                 p,
                                  std::move(h));
 }
 
