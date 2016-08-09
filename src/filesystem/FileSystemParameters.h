@@ -168,7 +168,7 @@ DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(network_uri,
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(network_snd_rcv_queue_depth,
                                        size_t);
 
-DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(workqueue_max_threads,
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(network_workqueue_max_threads,
                                        unsigned int);
 
 // EventPublisher:

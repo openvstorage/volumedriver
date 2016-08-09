@@ -38,7 +38,7 @@ public:
                                      pt)
     , network_uri(pt)
     , network_snd_rcv_queue_depth(pt)
-    , workqueue_max_threads(pt)
+    , network_workqueue_max_threads(pt)
     , fs_(fs)
     , xio_server_(fs_,
                   uri(),
@@ -92,14 +92,14 @@ public:
     unsigned int
     wq_max_threads() const
     {
-        return workqueue_max_threads.value();
+        return network_workqueue_max_threads.value();
     }
 private:
     DECLARE_LOGGER("NetworkXioInterface");
 
     DECLARE_PARAMETER(network_uri);
     DECLARE_PARAMETER(network_snd_rcv_queue_depth);
-    DECLARE_PARAMETER(workqueue_max_threads);
+    DECLARE_PARAMETER(network_workqueue_max_threads);
 
     FileSystem& fs_;
     NetworkXioServer xio_server_;

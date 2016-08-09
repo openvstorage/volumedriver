@@ -57,6 +57,8 @@ NetworkXioInterface::update(const bpt::ptree& pt,
 #define U(var)              \
     (var).update(pt, rep)
     U(network_uri);
+    U(network_snd_rcv_queue_depth);
+    U(network_workqueue_max_threads);
 #undef U
 }
 
@@ -67,6 +69,8 @@ NetworkXioInterface::persist(bpt::ptree& pt,
 #define P(var)              \
     (var).persist(pt, rep)
     P(network_uri);
+    P(network_snd_rcv_queue_depth);
+    P(network_workqueue_max_threads);
 #undef P
 }
 
