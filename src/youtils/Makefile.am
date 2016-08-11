@@ -112,6 +112,7 @@ libyoutils_la_SOURCES = \
 	Time.cpp \
 	Tracer.cpp \
 	UpdateReport.cpp \
+	Uri.cpp \
 	UUID.cpp \
 	VolumeDriverComponent.cpp \
 	WaitForIt.cpp \

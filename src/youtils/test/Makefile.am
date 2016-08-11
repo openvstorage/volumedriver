@@ -77,8 +77,9 @@ youtils_test_SOURCES = \
 	ThrowingDestructorTest.cpp \
 	TimeTest.cpp \
 	UnlockingGlobalLockService.cpp \
-	VolumeDriverComponentTest.cpp \
+	UriTest.cpp \
 	UUIDTest.cpp \
+	VolumeDriverComponentTest.cpp \
 	WeedTest.cpp \
 	WrapperTest.cpp
 
