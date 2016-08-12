@@ -58,7 +58,6 @@ libyoutils_la_SOURCES = \
 	cpu_timer.cpp \
 	DeferredFileRemover.cpp \
 	DimensionedValue.cpp \
-	EtcdUrl.cpp \
 	EtcdReply.cpp \
 	FileDescriptor.cpp \
 	FileRange.cpp \
@@ -92,7 +91,6 @@ libyoutils_la_SOURCES = \
 	PythonLogging.cpp \
 	PythonBuildInfo.cpp \
 	RedisQueue.cpp \
-	RedisUrl.cpp \
 	RocksLogger.cpp \
 	RWLock.cpp \
 	ScriptFile.cpp \

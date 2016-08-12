@@ -70,10 +70,13 @@ ConfigFetcher::operator()(VerifyConfig verify_config)
 
     if (etcd_url)
     {
-        etcd::Client<EtcdReply> client(etcd_url->host,
-                                       etcd_url->port);
+        const boost::optional<uint16_t> port(etcd_url->port());
+        VERIFY(port);
 
-        const EtcdReply reply(client.Get(etcd_url->key,
+        etcd::Client<EtcdReply> client(etcd_url->host(),
+                                       *port);
+
+        const EtcdReply reply(client.Get(etcd_url->path(),
                                          true));
         const boost::optional<EtcdReply::Error> err(reply.error());
         if (err)

@@ -94,6 +94,10 @@ private:                                            \
 
 #undef URI_COMPONENT
 
+public:
+    std::string
+    path() const;
+
 private:
     DECLARE_LOGGER("Uri");
 };

@@ -25,6 +25,8 @@
 namespace youtils
 {
 
+using namespace std::literals::string_literals;
+
 Uri::Uri(const std::string& s)
 {
     *this = boost::lexical_cast<Uri>(s);
@@ -47,6 +49,33 @@ Uri::operator==(const Uri& other) const
         CMP(absolute_path_);
 
 #undef CMP
+}
+
+std::string
+Uri::path() const
+{
+    std::string s;
+
+    if (absolute_path())
+    {
+        s += "/"s;
+    }
+
+    bool first = true;
+    for (const auto& p : path_segments())
+    {
+        if (first)
+        {
+            s += p;
+            first = false;
+        }
+        else
+        {
+            s += "/"s + p;
+        }
+    }
+
+    return s;
 }
 
 namespace
