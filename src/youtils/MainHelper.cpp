@@ -13,11 +13,11 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "ConfigLocation.h"
 #include "FileUtils.h"
 #include "Logging.h"
 #include "MainHelper.h"
 #include "ProtobufLogger.h"
+#include "Uri.h"
 #include "VolumeDriverComponent.h"
 
 #include <iostream>
@@ -31,7 +31,7 @@ namespace bpt = boost::property_tree;
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
-MaybeConfigLocation
+MaybeUri
 MainHelper::backend_config_;
 
 MainHelper::MainHelper(const constructor_type& args)
@@ -232,7 +232,7 @@ MainHelper::parse_standard_options()
 
     if (not backend_config_ and backend_config_file_)
     {
-        backend_config_ = ConfigLocation(backend_config_file_->string());
+        backend_config_ = Uri(backend_config_file_->string());
     }
 }
 

@@ -16,10 +16,10 @@
 #ifndef YT_CONFIG_FETCHER_H_
 #define YT_CONFIG_FETCHER_H_
 
-#include "ConfigLocation.h"
 #include "IOException.h"
 #include "Logging.h"
 #include "EtcdReply.h"
+#include "Uri.h"
 #include "VolumeDriverComponent.h"
 
 #include <boost/property_tree/ptree_fwd.hpp>
@@ -34,7 +34,7 @@ class ConfigFetcher
 public:
     MAKE_EXCEPTION(Exception, fungi::IOException);
 
-    explicit ConfigFetcher(const ConfigLocation& config)
+    explicit ConfigFetcher(const Uri& config)
         : config_(config)
     {}
 
@@ -49,7 +49,7 @@ public:
 private:
     DECLARE_LOGGER("ConfigFetcher");
 
-    ConfigLocation config_;
+    Uri config_;
 };
 
 }

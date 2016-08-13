@@ -1455,7 +1455,7 @@ UpdateConfiguration::execute_internal(XmlRpc::XmlRpcValue& params,
                                       XmlRpc::XmlRpcValue& result)
 {
     XMLRPCUtils::ensure_arg(params[0], XMLRPCKeys::configuration_path);
-    const yt::ConfigLocation config(params[0][XMLRPCKeys::configuration_path]);
+    const yt::Uri config(params[0][XMLRPCKeys::configuration_path]);
 
     const boost::variant<yt::UpdateReport,
                          yt::ConfigurationReport>

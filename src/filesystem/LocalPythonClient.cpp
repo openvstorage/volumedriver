@@ -25,8 +25,8 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 
-#include <youtils/ConfigLocation.h>
 #include <youtils/Logging.h>
+#include <youtils/Uri.h>
 
 namespace volumedriverfs
 {
@@ -38,7 +38,7 @@ namespace yt = youtils;
 LocalPythonClient::LocalPythonClient(const std::string& config,
                                      const boost::optional<boost::chrono::seconds>& timeout)
     : PythonClient(timeout)
-    , config_fetcher_(yt::ConfigLocation(config))
+    , config_fetcher_(yt::Uri(config))
 {
     const bpt::ptree pt(config_fetcher_(VerifyConfig::F));
     const ConfigHelper argument_helper(pt);

@@ -53,7 +53,7 @@ Scrubber::scrub(const std::string& scrub_work_str,
     std::unique_ptr<be::BackendConfig> bcfg;
     if (backend_config)
     {
-        bcfg = be::BackendConfig::makeBackendConfig(yt::ConfigLocation(*backend_config));
+        bcfg = be::BackendConfig::makeBackendConfig(yt::Uri(*backend_config));
     }
 
     const ScrubReply reply(ScrubberAdapter::scrub(std::move(bcfg),

@@ -104,7 +104,7 @@ protected:
     std::vector<std::string> unparsed_options_;
 
 public:
-    static MaybeConfigLocation backend_config_;
+    static MaybeUri backend_config_;
 
 private:
     std::vector<std::string> args_;

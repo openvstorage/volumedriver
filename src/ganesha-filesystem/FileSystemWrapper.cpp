@@ -18,7 +18,7 @@
 #include <boost/filesystem/path.hpp>
 
 #include <youtils/ConfigFetcher.h>
-#include <youtils/ConfigLocation.h>
+#include <youtils/Uri.h>
 #include <youtils/VolumeDriverComponent.h>
 
 namespace ganesha
@@ -152,7 +152,7 @@ FileSystemWrapper::FileSystemWrapper(const std::string& export_path,
                                      const std::string& config)
     : export_path_(export_path)
 {
-    const yt::ConfigLocation loc(config);
+    const yt::Uri loc(config);
     yt::ConfigFetcher config_fetcher(loc);
     fs_.reset(new FileSystem(config_fetcher(VerifyConfig::T)));
 }

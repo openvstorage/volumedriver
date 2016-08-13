@@ -107,7 +107,7 @@ ConfigFetcher::operator()(VerifyConfig verify_config)
     }
     else
     {
-        return VolumeDriverComponent::read_config_file(config_,
+        return VolumeDriverComponent::read_config_file(boost::lexical_cast<std::string>(config_),
                                                        verify_config);
     }
 }

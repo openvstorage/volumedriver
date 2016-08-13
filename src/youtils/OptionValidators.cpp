@@ -51,7 +51,7 @@ validate(boost::any& v,
 void
 validate(boost::any& v,
          const std::vector<std::string>& values,
-         MaybeConfigLocation* /* out */,
+         MaybeUri* /* out */,
          int)
 {
     validators::check_first_occurrence(v);
@@ -63,14 +63,14 @@ validate(boost::any& v,
 
     if (EtcdUrl::is_one(s))
     {
-        v = boost::any(MaybeConfigLocation(ConfigLocation(s)));
+        v = boost::any(MaybeUri(Uri(s)));
     }
     else
     {
         const fs::path p(s);
         if(fs::exists(p))
         {
-            v = boost::any(MaybeConfigLocation(ConfigLocation(s)));
+            v = boost::any(MaybeUri(Uri(s)));
         }
         else
         {
