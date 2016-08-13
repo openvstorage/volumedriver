@@ -51,8 +51,8 @@ BackendConfig::makeBackendConfig(const yt::JsonString& json_string)
 std::unique_ptr<BackendConfig>
 BackendConfig::makeBackendConfig(const yt::Uri& loc)
 {
-    yt::ConfigFetcher fetch_config(loc);
-    return makeBackendConfig(fetch_config(VerifyConfig::F));
+    std::unique_ptr<yt::ConfigFetcher> fetcher(yt::ConfigFetcher::create(loc));
+    return makeBackendConfig((*fetcher)(VerifyConfig::F));
 }
 
 std::unique_ptr<BackendConfig>

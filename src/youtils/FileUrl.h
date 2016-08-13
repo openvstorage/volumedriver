@@ -13,29 +13,31 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "ConfigFetcher.h"
-#include "EtcdConfigFetcher.h"
-#include "FileConfigFetcher.h"
+#ifndef YT_FILE_URL_H_
+#define YT_FILE_URL_H_
+
+#include "Url.h"
 
 namespace youtils
 {
 
-std::unique_ptr<ConfigFetcher>
-ConfigFetcher::create(const Uri& uri)
+struct FileUrlTraits
 {
-    if (EtcdUrl::is_one(uri))
+    static boost::optional<std::string>
+    scheme()
     {
-        return std::make_unique<EtcdConfigFetcher>(EtcdUrl(uri));
+        return boost::none;
     }
-    else if (FileUrl::is_one(uri))
+
+    static boost::optional<uint16_t>
+    default_port()
     {
-        return std::make_unique<FileConfigFetcher>(FileUrl(uri));
+        return boost::none;
     }
-    else
-    {
-        LOG_ERROR("Unsupported URI " << uri);
-        throw Exception("Unsupported URI");
-    }
-}
+};
+
+using FileUrl = Url<FileUrlTraits>;
 
 }
+
+#endif // YT_FILE_URL_H_

@@ -58,6 +58,7 @@ libyoutils_la_SOURCES = \
 	cpu_timer.cpp \
 	DeferredFileRemover.cpp \
 	DimensionedValue.cpp \
+	EtcdConfigFetcher.cpp \
 	EtcdReply.cpp \
 	FileDescriptor.cpp \
 	FileRange.cpp \

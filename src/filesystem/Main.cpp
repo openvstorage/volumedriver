@@ -156,8 +156,8 @@ public:
             return 1;
         }
 
-        yt::ConfigFetcher config_fetcher(*config_location_);
-        const bpt::ptree pt(config_fetcher(VerifyConfig::T));
+        std::unique_ptr<yt::ConfigFetcher> config_fetcher(yt::ConfigFetcher::create(*config_location_));
+        const bpt::ptree pt((*config_fetcher)(VerifyConfig::T));
 
         // These are unblocked again and "handled" by FileSystem::operator(). We do
         // however want them to be blocked while the constructor / destructor is running.

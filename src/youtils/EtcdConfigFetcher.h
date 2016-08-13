@@ -13,29 +13,40 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#ifndef YT_ETCD_CONFIG_FETCHER_H_
+#define YT_ETCD_CONFIG_FETCHER_H_
+
 #include "ConfigFetcher.h"
-#include "EtcdConfigFetcher.h"
-#include "FileConfigFetcher.h"
+#include "EtcdUrl.h"
+#include "Logging.h"
 
 namespace youtils
 {
 
-std::unique_ptr<ConfigFetcher>
-ConfigFetcher::create(const Uri& uri)
+class EtcdConfigFetcher
+    : public ConfigFetcher
 {
-    if (EtcdUrl::is_one(uri))
-    {
-        return std::make_unique<EtcdConfigFetcher>(EtcdUrl(uri));
-    }
-    else if (FileUrl::is_one(uri))
-    {
-        return std::make_unique<FileConfigFetcher>(FileUrl(uri));
-    }
-    else
-    {
-        LOG_ERROR("Unsupported URI " << uri);
-        throw Exception("Unsupported URI");
-    }
-}
+public:
+    explicit EtcdConfigFetcher(const EtcdUrl& url)
+        : url_(url)
+    {}
+
+    virtual ~EtcdConfigFetcher() = default;
+
+    EtcdConfigFetcher(const EtcdConfigFetcher&) = delete;
+
+    EtcdConfigFetcher&
+    operator=(const EtcdConfigFetcher&) = delete;
+
+    virtual boost::property_tree::ptree
+    operator()(VerifyConfig) override final;
+
+private:
+    DECLARE_LOGGER("EtcdConfigFetcher");
+
+    const EtcdUrl url_;
+};
 
 }
+
+#endif // !YT_ETCD_CONFIG_FETCHER_H_

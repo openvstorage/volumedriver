@@ -89,7 +89,7 @@ TestWithBackendMainHelper::setupTestBackend()
 
     if(backend_config_)
     {
-        pt = yt::ConfigFetcher(*yt::MainHelper::backend_config_)(VerifyConfig::F);
+        pt = (*yt::ConfigFetcher::create(*yt::MainHelper::backend_config_))(VerifyConfig::F);
         auto backend_config_ = BackendConfig::makeBackendConfig(pt);
         using namespace std::string_literals;
 

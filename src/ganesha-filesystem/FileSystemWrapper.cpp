@@ -153,8 +153,8 @@ FileSystemWrapper::FileSystemWrapper(const std::string& export_path,
     : export_path_(export_path)
 {
     const yt::Uri loc(config);
-    yt::ConfigFetcher config_fetcher(loc);
-    fs_.reset(new FileSystem(config_fetcher(VerifyConfig::T)));
+    std::unique_ptr<yt::ConfigFetcher> config_fetcher(yt::ConfigFetcher::create(loc));
+    fs_.reset(new FileSystem((*config_fetcher)(VerifyConfig::T)));
 }
 
 FileSystemWrapper::~FileSystemWrapper()

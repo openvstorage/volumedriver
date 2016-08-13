@@ -18,8 +18,6 @@
 
 #include "IOException.h"
 #include "Logging.h"
-#include "EtcdReply.h"
-#include "Uri.h"
 #include "VolumeDriverComponent.h"
 
 #include <boost/property_tree/ptree_fwd.hpp>
@@ -27,29 +25,22 @@
 namespace youtils
 {
 
-class EtcdReply;
+class Uri;
 
-class ConfigFetcher
+struct ConfigFetcher
 {
-public:
     MAKE_EXCEPTION(Exception, fungi::IOException);
 
-    explicit ConfigFetcher(const Uri& config)
-        : config_(config)
-    {}
+    static std::unique_ptr<ConfigFetcher>
+    create(const Uri&);
 
-    ~ConfigFetcher() = default;
+    virtual ~ConfigFetcher() = default;
 
-    boost::property_tree::ptree
-    operator()(VerifyConfig);
-
-    std::string
-    parse_config(const EtcdReply::Records&);
+    virtual boost::property_tree::ptree
+    operator()(VerifyConfig) = 0;
 
 private:
     DECLARE_LOGGER("ConfigFetcher");
-
-    Uri config_;
 };
 
 }

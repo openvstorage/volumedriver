@@ -106,8 +106,8 @@ main(int argc,
         return 1;
     }
 
-    yt::ConfigFetcher config_fetcher(*config_location);
-    const vfs::ConfigHelper argument_helper(config_fetcher(VerifyConfig::F));
+    std::unique_ptr<yt::ConfigFetcher> config_fetcher(yt::ConfigFetcher::create(*config_location));
+    const vfs::ConfigHelper argument_helper((*config_fetcher)(VerifyConfig::F));
 
     // LOG_INFO("Finished parsing property tree");
 

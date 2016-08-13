@@ -88,7 +88,7 @@ public:
 private:
     DECLARE_LOGGER("LocalPythonClient");
 
-    youtils::ConfigFetcher config_fetcher_;
+    std::unique_ptr<youtils::ConfigFetcher> config_fetcher_;
 };
 
 }
