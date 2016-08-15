@@ -482,8 +482,20 @@ VolManager::getCurrentVolumesTLogRequirements()
 
         LOG_TRACE("restarting volume: " << v.second.id_ <<
                   ", sco size: " << s <<
-                  ", tlog miltiplier: " << t);
+                  ", tlog multiplier: " << t);
+
+        // g++ (observed with 4.9) emits a false positive warning for this one in release builds,
+        // cf. https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47679
+        // /opt/vmachines/jenkins_work/workspace/volumedriver-no-dedup-compile-warnings-ubuntu-14.04/volumedriver-core/src/volumedriver/VolManager.cpp:486:18: warning: '*((void*)(& t)+4).volumedriver::TLogMultiplier::t' may be used uninitialized in this function [-Wmaybe-uninitialized]
+        //  res += s * ((t == boost::none) ? number_of_scos_in_tlog.value() : t.get());
+        //           ^
+#if defined(__GNUC__) && __GNUC__ <= 4 && GNUC_MINOR__ <= 9
+        PRAGMA_IGNORE_WARNING_BEGIN("-Wmaybe-uninitialized");
+#endif
         res += s * (t ? *t : number_of_scos_in_tlog.value());
+#if defined(__GNUC__) && __GNUC__ <= 4 && GNUC_MINOR__ <= 9
+        PRAGMA_IGNORE_WARNING_END;
+#endif
     }
 
     return res;
