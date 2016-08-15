@@ -27,6 +27,7 @@ YoutilsTestPrecompiledHeader.h.$(PCH_SUFFIX) : YoutilsTestPrecompiledHeader.h.hx
 
 youtils_test_SOURCES = \
 	AlternativeOptionsAgainTest.cpp \
+	ArakoonConfigFetcherTest.cpp \
 	ArakoonTest.cpp \
 	ArakoonIniParserTest.cpp \
 	ArakoonLockStoreTest.cpp \

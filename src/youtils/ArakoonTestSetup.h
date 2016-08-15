@@ -108,6 +108,9 @@ public:
     void
     write_config(std::ostream&);
 
+    boost::filesystem::path
+    server_config_file() const;
+
 protected:
     DECLARE_LOGGER("ArakoonTestSetup");
 
@@ -137,9 +140,6 @@ protected:
 
     boost::filesystem::path
     node_home_dir_(unsigned id) const;
-
-    boost::filesystem::path
-    arakoonServerConfigPath_() const;
 
     void
     waitForArakoon_() const;

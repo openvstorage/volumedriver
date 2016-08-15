@@ -155,7 +155,7 @@ ArakoonTestSetup::setUpArakoon()
 
         {
             LOG_DEBUG("Creating config file");
-            fs::ofstream ofs(arakoonServerConfigPath_());
+            fs::ofstream ofs(server_config_file());
             write_config(ofs);
         }
 
@@ -177,7 +177,7 @@ ArakoonTestSetup::start_nodes()
         redi::pstreams::argv_type arguments;
         arguments.push_back("arakoon-from-vdtest");
         arguments.push_back("-config");
-        arguments.push_back(arakoonServerConfigPath_().string());
+        arguments.push_back(server_config_file().string());
         arguments.push_back("--node");
         arguments.push_back(nodeID(i));
         redi::ipstream* stream = new redi::ipstream(binary_path_.string(), arguments);
@@ -330,7 +330,7 @@ ArakoonTestSetup::waitForArakoon_() const
 }
 
 fs::path
-ArakoonTestSetup::arakoonServerConfigPath_() const
+ArakoonTestSetup::server_config_file() const
 {
     return fs::path(dir_ / server_cfg_);
 }

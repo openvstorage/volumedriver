@@ -44,6 +44,7 @@ libyoutils_la_CPPFLAGS = \
 libyoutils_la_LDFLAGS = -static
 
 libyoutils_la_SOURCES = \
+	ArakoonConfigFetcher.cpp \
 	ArakoonIniParser.cpp \
 	ArakoonInterface.cpp \
 	ArakoonLockStore.cpp \

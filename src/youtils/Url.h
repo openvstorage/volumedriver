@@ -101,6 +101,12 @@ public:
         return uri_.path();
     }
 
+    const Uri::Query&
+    query() const
+    {
+        return uri_.query();
+    }
+
     const Uri&
     uri() const
     {
