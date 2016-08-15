@@ -13,6 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "ArakoonConfigFetcher.h"
 #include "ConfigFetcher.h"
 #include "EtcdConfigFetcher.h"
 #include "FileConfigFetcher.h"
@@ -23,7 +24,11 @@ namespace youtils
 std::unique_ptr<ConfigFetcher>
 ConfigFetcher::create(const Uri& uri)
 {
-    if (EtcdUrl::is_one(uri))
+    if (ArakoonUrl::is_one(uri))
+    {
+        return std::make_unique<ArakoonConfigFetcher>(ArakoonUrl(uri));
+    }
+    else if (EtcdUrl::is_one(uri))
     {
         return std::make_unique<EtcdConfigFetcher>(EtcdUrl(uri));
     }
