@@ -164,8 +164,6 @@ private:
     std::string name_;
 };
 
-DECLARE_LOGGER("HeartBeatLockTest");
-
 }
 
 class HeartBeatLockTest
