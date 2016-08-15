@@ -30,7 +30,7 @@
 #include <youtils/BuildInfo.h>
 #include <youtils/Catchers.h>
 #include <youtils/ConfigFetcher.h>
-#include <youtils/EtcdUrl.h>
+#include <youtils/FileUrl.h>
 #include <youtils/Logger.h>
 #include <youtils/Logging.h>
 #include <youtils/Main.h>
@@ -131,9 +131,9 @@ public:
         umask(0);
 
         const bool lock_config_file = lock_file_.empty();
-        if (lock_config_file and yt::EtcdUrl::is_one(*config_location_))
+        if (lock_config_file and not yt::FileUrl::is_one(*config_location_))
         {
-            std::cerr << "No lock file specified / config file will not be used as etcd was requested" << std::endl;
+            std::cerr << "No lock file specified / config is not read from a local file" << std::endl;
             return 1;
         }
 
