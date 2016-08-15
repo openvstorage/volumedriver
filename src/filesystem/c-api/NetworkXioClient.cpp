@@ -350,12 +350,16 @@ NetworkXioClient::xio_run_loop_worker(void *arg)
     while (not stopping)
     {
         int ret = xio_context_run_loop(cli->ctx.get(), XIO_INFINITE);
+
+        // For now we won't leave the loop if the assert is compiled out,
+        // so in the worst case this will degrade into a busy loop.
         ASSERT(ret == 0);
+
         while (not cli->is_queue_empty())
         {
             xio_msg_s *req = cli->pop_request();
-            int r = xio_send_request(cli->conn, &req->xreq);
-            if (r < 0)
+            ret = xio_send_request(cli->conn, &req->xreq);
+            if (ret < 0)
             {
                 req_queue_release();
                 ovs_aio_request::handle_xio_request(get_ovs_aio_request(req->opaque),
@@ -376,7 +380,6 @@ NetworkXioClient::xio_run_loop_worker(void *arg)
     {
         xio_connection_destroy(cli->conn);
     }
-    return;
 }
 
 void
