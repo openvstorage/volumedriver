@@ -263,12 +263,9 @@ NetworkXioClient::run(std::promise<bool>& promise)
         throw XioClientCreateException("failed to connect");
     }
 
-    auto fp = std::bind(&NetworkXioClient::xio_run_loop_worker,
-                        this,
-                        std::placeholders::_1);
     pthread_setname_np(pthread_self(), "xio_run_loop_worker");
     promise.set_value(true);
-    fp(this);
+    xio_run_loop_worker();
 }
 
 void
@@ -344,21 +341,20 @@ NetworkXioClient::xstop_loop()
 }
 
 void
-NetworkXioClient::xio_run_loop_worker(void *arg)
+NetworkXioClient::xio_run_loop_worker()
 {
-    NetworkXioClient *cli = reinterpret_cast<NetworkXioClient*>(arg);
     while (not stopping)
     {
-        int ret = xio_context_run_loop(cli->ctx.get(), XIO_INFINITE);
+        int ret = xio_context_run_loop(ctx.get(), XIO_INFINITE);
 
         // For now we won't leave the loop if the assert is compiled out,
         // so in the worst case this will degrade into a busy loop.
         ASSERT(ret == 0);
 
-        while (not cli->is_queue_empty())
+        while (not is_queue_empty())
         {
-            xio_msg_s *req = cli->pop_request();
-            ret = xio_send_request(cli->conn, &req->xreq);
+            xio_msg_s *req = pop_request();
+            ret = xio_send_request(conn, &req->xreq);
             if (ret < 0)
             {
                 req_queue_release();
@@ -370,15 +366,15 @@ NetworkXioClient::xio_run_loop_worker(void *arg)
         }
     }
 
-    xio_disconnect(cli->conn);
+    xio_disconnect(conn);
     if (not disconnected)
     {
         disconnecting = true;
-        xio_context_run_loop(cli->ctx.get(), XIO_INFINITE);
+        xio_context_run_loop(ctx.get(), XIO_INFINITE);
     }
     else
     {
-        xio_connection_destroy(cli->conn);
+        xio_connection_destroy(conn);
     }
 }
 
