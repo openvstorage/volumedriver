@@ -23,6 +23,7 @@
 #include <sys/time.h>
 
 #include <atomic>
+#include <cassert>
 #include <exception>
 #include <functional>
 #include <typeinfo>
@@ -161,6 +162,9 @@ struct SeverityVisitor
         case severity_level::fatal:
             return Severity::fatal;
         }
+
+        assert(0 == "this should not be reached");
+        return Severity::fatal;
     }
 };
 
