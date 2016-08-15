@@ -16,15 +16,17 @@
 #ifndef __NETWORK_XIO_PROTOCOL_H_
 #define __NETWORK_XIO_PROTOCOL_H_
 
-#include <msgpack.hpp>
-
 #include "NetworkXioCommon.h"
+
+PRAGMA_IGNORE_WARNING_BEGIN("-Wctor-dtor-privacy")
+#include <msgpack.hpp>
+PRAGMA_IGNORE_WARNING_END;
 
 class NetworkXioMsg
 {
 public:
     explicit NetworkXioMsg(NetworkXioMsgOpcode opcode =
-                                NetworkXioMsgOpcode::Noop,
+                           NetworkXioMsgOpcode::Noop,
                            const std::string& volname = "",
                            const std::string& snapname = "",
                            const size_t size = 0,
