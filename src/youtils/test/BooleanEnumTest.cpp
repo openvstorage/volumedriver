@@ -25,7 +25,7 @@ class BooleanEnumTest
     : public testing::Test
 {};
 
-BOOLEAN_ENUM(BooleanTest)
+VD_BOOLEAN_ENUM(BooleanTest)
 
 TEST_F(BooleanEnumTest, test0)
 {

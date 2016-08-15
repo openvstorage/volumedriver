@@ -46,7 +46,7 @@
 #include <youtils/LoggingToolCut.h>
 #include <youtils/PythonBuildInfo.h>
 
-#define MAKE_PYTHON_BOOLEAN_ENUM(name, doc)     \
+#define MAKE_PYTHON_VD_BOOLEAN_ENUM(name, doc)     \
     enum_<name>(#name, doc)                     \
     .value("F", name::F)                        \
     .value("T", name::T);
@@ -58,7 +58,7 @@ BOOST_PYTHON_MODULE(ToolCut)
 
     youtils::Logger::disableLogging();
 
-    MAKE_PYTHON_BOOLEAN_ENUM(OverwriteObject, "Whether to overwrite an existing object in the backend, values are T and F")
+    MAKE_PYTHON_VD_BOOLEAN_ENUM(OverwriteObject, "Whether to overwrite an existing object in the backend, values are T and F")
 
     scope().attr("__doc__") = "Access the basic building blocks of VolumeDriver\n"
         "such as SCO, ClusterLocation, TLog, TLogReader, Snapshot, VolumeInfo, ScrubbingResult...";

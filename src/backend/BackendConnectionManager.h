@@ -30,7 +30,7 @@
 #include <youtils/StrongTypedString.h>
 #include <youtils/VolumeDriverComponent.h>
 
-BOOLEAN_ENUM(ForceNewConnection)
+VD_BOOLEAN_ENUM(ForceNewConnection)
 
 namespace youtils
 {

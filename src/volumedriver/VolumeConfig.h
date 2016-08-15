@@ -58,7 +58,7 @@ class CloneVolumeConfigParameters;
 class VanillaVolumeConfigParameters;
 class WriteOnlyVolumeConfigParameters;
 
-BOOLEAN_ENUM(IsVolumeTemplate)
+VD_BOOLEAN_ENUM(IsVolumeTemplate)
 
 class VolumeConfig
 {

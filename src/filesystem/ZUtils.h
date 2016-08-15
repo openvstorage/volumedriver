@@ -32,7 +32,7 @@
 namespace volumedriverfs
 {
 
-BOOLEAN_ENUM(MoreMessageParts);
+VD_BOOLEAN_ENUM(MoreMessageParts);
 
 MAKE_EXCEPTION(ProtocolError, fungi::IOException);
 

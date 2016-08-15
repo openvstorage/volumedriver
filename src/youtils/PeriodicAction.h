@@ -28,7 +28,7 @@
 namespace youtils
 {
 
-BOOLEAN_ENUM(PeriodicActionContinue);
+VD_BOOLEAN_ENUM(PeriodicActionContinue);
 
 class PeriodicAction
 {

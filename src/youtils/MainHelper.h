@@ -29,9 +29,9 @@
 namespace youtils
 {
 
-BOOLEAN_ENUM(ExcludeExecutableName);
-BOOLEAN_ENUM(AllowUnregisteredOptions);
-BOOLEAN_ENUM(MakeDefaultLocalBackendIfNotSet);
+VD_BOOLEAN_ENUM(ExcludeExecutableName);
+VD_BOOLEAN_ENUM(AllowUnregisteredOptions);
+VD_BOOLEAN_ENUM(MakeDefaultLocalBackendIfNotSet);
 
 
 class MainHelper

@@ -27,8 +27,8 @@
 
 #include <youtils/IOException.h>
 
-BOOLEAN_ENUM(IncludingStartSnapshot);
-BOOLEAN_ENUM(IncludingEndSnapshot);
+VD_BOOLEAN_ENUM(IncludingStartSnapshot);
+VD_BOOLEAN_ENUM(IncludingEndSnapshot);
 
 namespace volumedriver
 {

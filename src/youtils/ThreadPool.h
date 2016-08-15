@@ -41,7 +41,7 @@
 
 namespace youtils
 {
-BOOLEAN_ENUM(BarrierTask);
+VD_BOOLEAN_ENUM(BarrierTask);
 
 template<typename T>
 struct ThreadPoolTraits

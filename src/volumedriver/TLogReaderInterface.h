@@ -22,8 +22,8 @@
 
 namespace volumedriver
 {
-BOOLEAN_ENUM(KeepRunningCRC);
-BOOLEAN_ENUM(CheckSCOCRC);
+VD_BOOLEAN_ENUM(KeepRunningCRC);
+VD_BOOLEAN_ENUM(CheckSCOCRC);
 
 class TLogReaderInterface
 {

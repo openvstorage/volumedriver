@@ -39,7 +39,7 @@ class FailOverCacheClientInterface;
 class DataStoreNG;
 class MetaDataBackendConfig;
 
-BOOLEAN_ENUM(AppendCheckSum);
+VD_BOOLEAN_ENUM(AppendCheckSum);
 
 class VolumeInterface
 {

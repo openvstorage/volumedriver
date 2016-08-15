@@ -35,7 +35,7 @@ class path;
 namespace youtils
 {
 
-BOOLEAN_ENUM(LogRotation);
+VD_BOOLEAN_ENUM(LogRotation);
 
 enum class Severity
 {

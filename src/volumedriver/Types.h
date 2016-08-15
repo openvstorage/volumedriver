@@ -87,16 +87,16 @@ namespace volumedriver
 
 typedef uint64_t PageAddress;
 
-BOOLEAN_ENUM(DeleteLocalData);
-BOOLEAN_ENUM(RemoveVolumeCompletely);
-BOOLEAN_ENUM(ForceVolumeDeletion);
-BOOLEAN_ENUM(DeleteVolumeNamespace);
-BOOLEAN_ENUM(PrefetchVolumeData);
-BOOLEAN_ENUM(IgnoreFOCIfUnreachable);
-BOOLEAN_ENUM(FallBackToBackendRestart);
-BOOLEAN_ENUM(CreateNamespace);
-BOOLEAN_ENUM(DryRun);
-BOOLEAN_ENUM(Reset);
+VD_BOOLEAN_ENUM(DeleteLocalData);
+VD_BOOLEAN_ENUM(RemoveVolumeCompletely);
+VD_BOOLEAN_ENUM(ForceVolumeDeletion);
+VD_BOOLEAN_ENUM(DeleteVolumeNamespace);
+VD_BOOLEAN_ENUM(PrefetchVolumeData);
+VD_BOOLEAN_ENUM(IgnoreFOCIfUnreachable);
+VD_BOOLEAN_ENUM(FallBackToBackendRestart);
+VD_BOOLEAN_ENUM(CreateNamespace);
+VD_BOOLEAN_ENUM(DryRun);
+VD_BOOLEAN_ENUM(Reset);
 
 // AR: these have to go
 #if 1

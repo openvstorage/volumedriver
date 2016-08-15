@@ -29,7 +29,7 @@
 namespace youtils
 {
 
-BOOLEAN_ENUM(RetryOnArakoonAssert);
+VD_BOOLEAN_ENUM(RetryOnArakoonAssert);
 
 // The idea - besides serializing access to the arakoon client - is to provide a
 // number of read-only accessors and to funnel write access through run_sequence.

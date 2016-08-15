@@ -43,11 +43,11 @@ namespace toolcut
 {
 class SnapshotPersistorToolCut;
 }
-BOOLEAN_ENUM(WithCurrent)
+VD_BOOLEAN_ENUM(WithCurrent)
 
-BOOLEAN_ENUM(SyncAndRename);
+VD_BOOLEAN_ENUM(SyncAndRename);
 
-BOOLEAN_ENUM(FromOldest);
+VD_BOOLEAN_ENUM(FromOldest);
 
 MAKE_EXCEPTION(CorkNotFoundException, fungi::IOException);
 

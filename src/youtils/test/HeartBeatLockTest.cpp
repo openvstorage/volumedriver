@@ -38,7 +38,7 @@ using namespace youtils;
 namespace
 {
 
-BOOLEAN_ENUM(MustBeEmpty);
+VD_BOOLEAN_ENUM(MustBeEmpty);
 
 struct Locks
 {
