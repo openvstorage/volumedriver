@@ -161,7 +161,7 @@ Connection::Connection(const string& host,
 
     client_ = apc::make_proxy_client(host,
                                      boost::lexical_cast<string>(port),
-                                     boost::posix_time::seconds(timeout),
+                                     std::chrono::seconds(timeout),
                                      transport,
                                      rora_config);
 }
