@@ -12,7 +12,7 @@ VOLUMEDRIVER_DIR=$1
 
 . ${VOLUMEDRIVER_DIR}/src/buildscripts/get_revision.sh
 BUILD_DIR=${VOLUMEDRIVER_DIR}/build
-export RUN_TESTS=yes
+export RUN_TESTS=${RUN_TESTS:-"yes"}
 export USE_MD5_HASH=no
 export CLEAN_BUILD=yes
 export RECONFIGURE_BUILD=yes

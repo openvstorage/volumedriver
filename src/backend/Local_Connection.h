@@ -40,8 +40,8 @@
 namespace backend
 {
 
-BOOLEAN_ENUM(EnablePartialRead);
-BOOLEAN_ENUM(SyncObjectAfterWrite)
+VD_BOOLEAN_ENUM(EnablePartialRead);
+VD_BOOLEAN_ENUM(SyncObjectAfterWrite)
 
 namespace local
 {

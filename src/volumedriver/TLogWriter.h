@@ -33,7 +33,7 @@ namespace volumedriver
 /**
  *  Transaction Log acccess, write (append) only role.
  */
-BOOLEAN_ENUM(ForceWriteIfDirty)
+VD_BOOLEAN_ENUM(ForceWriteIfDirty)
 class TLogWriter
 {
 public:

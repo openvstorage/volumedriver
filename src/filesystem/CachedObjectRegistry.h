@@ -45,8 +45,8 @@ class LockedArakoon;
 namespace volumedriverfs
 {
 
-BOOLEAN_ENUM(IgnoreCache);
-BOOLEAN_ENUM(RefreshCache);
+VD_BOOLEAN_ENUM(IgnoreCache);
+VD_BOOLEAN_ENUM(RefreshCache);
 
 class CachedObjectRegistry
 {

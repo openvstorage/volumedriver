@@ -59,8 +59,8 @@ struct StrongArithmeticTypedefConverter
                 return nullptr;
             }
 
-            if (l >= std::numeric_limits<arithmetic_type>::min() and
-                l <= std::numeric_limits<arithmetic_type>::max())
+            if (static_cast<arithmetic_type>(l) >= std::numeric_limits<arithmetic_type>::min() and
+                static_cast<arithmetic_type>(l) <= std::numeric_limits<arithmetic_type>::max())
             {
                 return o;
             }
@@ -73,8 +73,9 @@ struct StrongArithmeticTypedefConverter
     from_python(PyObject* o,
                 boost::python::converter::rvalue_from_python_stage1_data* data)
     {
-        arithmetic_type t = PyInt_AsLong(o);
-        assert(not (t == -1 and PyErr_Occurred()));
+        const long l = PyInt_AsLong(o);
+        assert(not (l == -1 and PyErr_Occurred()));
+        arithmetic_type t = l;
 
         typedef boost::python::converter::rvalue_from_python_storage<T> storage_type;
 

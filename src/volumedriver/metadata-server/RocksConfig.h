@@ -38,8 +38,8 @@ OUR_STRONG_ARITHMETIC_TYPEDEF(size_t,
 namespace metadata_server
 {
 
-BOOLEAN_ENUM(EnableWal);
-BOOLEAN_ENUM(DataSync);
+VD_BOOLEAN_ENUM(EnableWal);
+VD_BOOLEAN_ENUM(DataSync);
 
 struct RocksConfig
 {

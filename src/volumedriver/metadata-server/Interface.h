@@ -29,7 +29,7 @@
 #include <volumedriver/ScrubId.h>
 #include <volumedriver/Types.h>
 
-BOOLEAN_ENUM(Barrier);
+VD_BOOLEAN_ENUM(Barrier);
 
 namespace metadata_server
 {

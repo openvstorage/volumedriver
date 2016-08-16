@@ -36,9 +36,9 @@ class JsonString;
 namespace backend
 {
 
-BOOLEAN_ENUM(UseSSL);
-BOOLEAN_ENUM(SSLVerifyHost);
-BOOLEAN_ENUM(StrictConsistency);
+VD_BOOLEAN_ENUM(UseSSL);
+VD_BOOLEAN_ENUM(SSLVerifyHost);
+VD_BOOLEAN_ENUM(StrictConsistency);
 
 class BackendConfig
 {

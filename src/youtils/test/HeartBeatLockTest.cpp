@@ -38,7 +38,7 @@ using namespace youtils;
 namespace
 {
 
-BOOLEAN_ENUM(MustBeEmpty);
+VD_BOOLEAN_ENUM(MustBeEmpty);
 
 struct Locks
 {
@@ -163,8 +163,6 @@ private:
     UUID uuid_;
     std::string name_;
 };
-
-DECLARE_LOGGER("HeartBeatLockTest");
 
 }
 

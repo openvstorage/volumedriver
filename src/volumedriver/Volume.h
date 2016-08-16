@@ -62,7 +62,7 @@ class MetaDataStoreTest;
 
 namespace volumedriver
 {
-BOOLEAN_ENUM(DeleteFailOverCache);
+VD_BOOLEAN_ENUM(DeleteFailOverCache);
 
 class ClusterReadDescriptor;
 class DataStoreNG;

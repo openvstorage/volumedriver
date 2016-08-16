@@ -25,7 +25,7 @@
 #include <boost/asio.hpp>
 #include <boost/variant.hpp>
 
-BOOLEAN_ENUM(ForceRemote);
+VD_BOOLEAN_ENUM(ForceRemote);
 
 namespace youtils
 {

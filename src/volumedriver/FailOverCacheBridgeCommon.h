@@ -23,7 +23,7 @@
 namespace volumedriver
 {
 
-BOOLEAN_ENUM(SyncFailOverToBackend);
+VD_BOOLEAN_ENUM(SyncFailOverToBackend);
 
 // Z42: we want an exception hierarchy here.
 class FailOverCacheNotConfiguredException

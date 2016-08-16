@@ -31,8 +31,8 @@ struct statvfs;
 namespace youtils
 {
 
-BOOLEAN_ENUM(SyncFileBeforeRename)
-BOOLEAN_ENUM(ForceFileSize)
+VD_BOOLEAN_ENUM(SyncFileBeforeRename)
+VD_BOOLEAN_ENUM(ForceFileSize)
 
 class FileUtils
 {

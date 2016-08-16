@@ -22,8 +22,8 @@
 #include <youtils/IOException.h>
 #include <youtils/Logging.h>
 
-BOOLEAN_ENUM(UseClusterCache);
-BOOLEAN_ENUM(CleanupLocalBackend);
+VD_BOOLEAN_ENUM(UseClusterCache);
+VD_BOOLEAN_ENUM(CleanupLocalBackend);
 
 namespace volumedriver
 {

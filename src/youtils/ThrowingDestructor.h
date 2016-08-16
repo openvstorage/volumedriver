@@ -17,7 +17,7 @@
 #define THROW_IN_DESTRUCTOR_H_
 #include "BooleanEnum.h"
 
-BOOLEAN_ENUM(EnableThrowInDestructor)
+VD_BOOLEAN_ENUM(EnableThrowInDestructor)
 
 // See the ThrowingDestructorTest for an example of how to use this
 // https://akrzemi1.wordpress.com/2011/09/21/destructors-that-thro/w

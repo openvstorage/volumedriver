@@ -38,7 +38,7 @@ class FileSystemTestBase;
 namespace volumedriverfs
 {
 
-BOOLEAN_ENUM(UseCache);
+VD_BOOLEAN_ENUM(UseCache);
 
 template<typename T>
 struct MetaDataStoreKeyTraits;

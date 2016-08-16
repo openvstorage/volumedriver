@@ -89,9 +89,9 @@ class LockedArakoon;
 class PythonClient;
 class RemoteNode;
 
-BOOLEAN_ENUM(OnlyStealFromOfflineNode);
-BOOLEAN_ENUM(IsRemoteNode);
-BOOLEAN_ENUM(AttemptTheft);
+VD_BOOLEAN_ENUM(OnlyStealFromOfflineNode);
+VD_BOOLEAN_ENUM(IsRemoteNode);
+VD_BOOLEAN_ENUM(AttemptTheft);
 
 MAKE_EXCEPTION(Exception, fungi::IOException);
 MAKE_EXCEPTION(RemoteException, Exception);

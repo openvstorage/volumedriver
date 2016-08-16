@@ -33,10 +33,10 @@
 #include <boost/optional.hpp>
 #include <boost/property_tree/ptree.hpp>
 
-BOOLEAN_ENUM(ShowDocumentation)
-BOOLEAN_ENUM(ReportDefault)
-BOOLEAN_ENUM(CanBeReset);
-BOOLEAN_ENUM(HasDefault);
+VD_BOOLEAN_ENUM(ShowDocumentation)
+VD_BOOLEAN_ENUM(ReportDefault)
+VD_BOOLEAN_ENUM(CanBeReset);
+VD_BOOLEAN_ENUM(HasDefault);
 
 namespace initialized_params
 {

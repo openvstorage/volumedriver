@@ -226,7 +226,7 @@ private:
     std::shared_ptr<xio_mempool> mpool;
 
     void
-    xio_run_loop_worker(void *arg);
+    xio_run_loop_worker();
 
     void
     req_queue_wait_until(xio_msg_s *xmsg);

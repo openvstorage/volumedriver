@@ -59,6 +59,8 @@
 #include <sstream>
 #include <string>
 
+#include <boost/lexical_cast.hpp>
+
 #ifndef ETCD_SERVER
 // Enable by default or use build flags
 #define ETCD_SERVER 1
@@ -577,7 +579,7 @@ struct Server {
     }
 
     std::string _GetUrlList(const UrlList& urls, uint16_t port) {
-        const std::string _SUFFIX = (port ? ":" + std::to_string(port) : "");
+        const std::string _SUFFIX = (port ? ":" + boost::lexical_cast<std::string>(port) : "");
         return _ListJoin(urls, HTTP_PREFIX, _SUFFIX);
     }
 
@@ -638,8 +640,8 @@ struct Server {
         for (auto const& peer: initial_cluster) {
             if (i++) peer_list += ",";
             peer_list += peer.name + "=" + HTTP_PREFIX + peer.url;
-            if(peer.port) peer_list += ":" + std::to_string(peer.port);
-            else if (peer_port) peer_list += ":" + std::to_string (peer_port);
+            if(peer.port) peer_list += ":" + boost::lexical_cast<std::string>(peer.port);
+            else if (peer_port) peer_list += ":" + boost::lexical_cast<std::string>(peer_port);
         }
 
         _SetArg("-initial-cluster", peer_list, args);
@@ -696,8 +698,8 @@ struct Server {
         for (auto const& peer: initial_cluster) {
             if (i++) peer_list += ",";
             peer_list += peer.name + "=" + HTTP_PREFIX + peer.url;
-            if(peer.port) peer_list += ":" + std::to_string(peer.port);
-            else if (peer_port) peer_list += ":" + std::to_string (peer_port);
+            if(peer.port) peer_list += ":" + boost::lexical_cast<std::string>(peer.port);
+            else if (peer_port) peer_list += ":" + boost::lexical_cast<std::string> (peer_port);
         }
 
         _SetArg("ETCD_INITIAL_CLUSTER", peer_list, args);
@@ -824,7 +826,7 @@ Set(const std::string& key,
         ret = handle_->Set(url_prefix_ + key, kPutRequest,
             {
                 {kValue, value},
-                {kTttl, std::to_string(ttl)},
+                {kTttl, boost::lexical_cast<std::string>(ttl)},
             });
     } catch (const std::exception& e) {
         throw ClientException(e.what());
@@ -929,7 +931,7 @@ AddDirectory(const std::string& dir, const TtlValue& ttl) {
         ret = handle_->Set(url_prefix_ + dir, kPutRequest,
             {
                 {kDir, "true"},
-                {kTttl, std::to_string(ttl)},
+                {kTttl, boost::lexical_cast<std::string>(ttl)},
             });
     } catch (const std::exception& e) {
         throw ClientException(e.what());
@@ -944,7 +946,7 @@ UpdateDirectoryTtl(const std::string& dir, const TtlValue& ttl) {
         ret = handle_->Set(url_prefix_ + dir, kPutRequest,
             {
                 {kDir, "true"},
-                {kTttl, std::to_string(ttl)},
+                {kTttl, boost::lexical_cast<std::string>(ttl)},
                 {kPrevExist, "true"}
             });
     } catch (const std::exception& e) {
@@ -993,7 +995,7 @@ CompareAndSwapIf(
      const Index& prevIndex) {
     std::ostringstream ostr;
     ostr << url_prefix_ << key << "?" << kPrevIndex
-         << "=" << std::to_string(prevIndex);
+         << "=" << boost::lexical_cast<std::string>(prevIndex);
 
     std::string ret;
     try {
@@ -1040,7 +1042,7 @@ template <typename Reply> Reply Client<Reply>::
 CompareAndDeleteIf(const std::string& key, const Index& prevIndex) {
     std::ostringstream ostr;
     ostr << url_prefix_ << key << "?" << kPrevIndex
-         << "=" << std::to_string(prevIndex);
+         << "=" << boost::lexical_cast<std::string>(prevIndex);
 
     std::string ret;
     try {
@@ -1105,9 +1107,9 @@ Run(const std::string& key, Watch::Callback callback, const Index& prevIndex) {
 
     if (prevIndex) {
         prev_index_ = prevIndex;
-        watch_url += std::to_string(prev_index_ + 1);
+        watch_url += boost::lexical_cast<std::string>(prev_index_ + 1);
     } else if (prev_index_) {
-        watch_url += std::to_string(prev_index_ + 1);
+        watch_url += boost::lexical_cast<std::string>(prev_index_ + 1);
     }
 
     int max_failures = MAX_FAILURES;
@@ -1123,7 +1125,7 @@ Run(const std::string& key, Watch::Callback callback, const Index& prevIndex) {
 
             // Update the prevIndex and the watch url
             prev_index_ = r.get_modified_index();
-            watch_url = wait_url_base + std::to_string(prev_index_ + 1);
+            watch_url = wait_url_base + boost::lexical_cast<std::string>(prev_index_ + 1);
 
             // reset failures on a successful watch response
             max_failures = MAX_FAILURES;
@@ -1154,7 +1156,7 @@ Run(const std::string& key, Watch::Callback callback, const Index& prevIndex) {
                     }
                 }
                 handle_->EnableHeader(false);
-                watch_url = wait_url_base + std::to_string(prev_index_ + 1);
+                watch_url = wait_url_base + boost::lexical_cast<std::string>(prev_index_ + 1);
                 } catch (...) {}
             }
             max_failures--; // still consider as a failure
@@ -1183,9 +1185,9 @@ RunOnce(
 
     if (prevIndex) {
         prev_index_ = prevIndex;
-        watch_url += std::to_string(prev_index_ + 1);
+        watch_url += boost::lexical_cast<std::string>(prev_index_ + 1);
     } else if (prev_index_) {
-        watch_url += std::to_string(prev_index_ + 1);
+        watch_url += boost::lexical_cast<std::string>(prev_index_ + 1);
     }
 
     try {
@@ -1198,7 +1200,7 @@ RunOnce(
 
         // Update the prevIndex and the watch url
         prev_index_ = r.get_modified_index();
-        watch_url = wait_url_base + std::to_string(prev_index_ + 1);
+        watch_url = wait_url_base + boost::lexical_cast<std::string>(prev_index_ + 1);
 
     } catch (const ReplyException& e) {
         if (e.error_code == 401) {
@@ -1226,7 +1228,7 @@ RunOnce(
                 }
             }
             handle_->EnableHeader(false);
-            watch_url = wait_url_base + std::to_string(prev_index_ + 1);
+            watch_url = wait_url_base + boost::lexical_cast<std::string>(prev_index_ + 1);
             } catch (...) {}
         }
     } catch (const std::exception& e) {

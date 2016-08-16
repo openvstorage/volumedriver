@@ -34,7 +34,7 @@
 namespace volumedriverfs
 {
 
-BOOLEAN_ENUM(ConvertBaseToClone);
+VD_BOOLEAN_ENUM(ConvertBaseToClone);
 
 struct ObjectRegistryException : virtual std::exception, virtual boost::exception { };
 struct ObjectAlreadyRegisteredException : virtual ObjectRegistryException { };

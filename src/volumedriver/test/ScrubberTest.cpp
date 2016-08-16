@@ -31,7 +31,7 @@
 namespace volumedrivertest
 {
 
-BOOLEAN_ENUM(CollectScrubGarbage);
+VD_BOOLEAN_ENUM(CollectScrubGarbage);
 
 using namespace scrubbing;
 using namespace volumedriver;

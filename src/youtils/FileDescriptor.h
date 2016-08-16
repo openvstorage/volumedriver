@@ -20,8 +20,8 @@
 #include "BooleanEnum.h"
 #include "Logging.h"
 
-BOOLEAN_ENUM(CreateIfNecessary);
-BOOLEAN_ENUM(SyncOnCloseAndDestructor);
+VD_BOOLEAN_ENUM(CreateIfNecessary);
+VD_BOOLEAN_ENUM(SyncOnCloseAndDestructor);
 struct statvfs;
 struct stat;
 

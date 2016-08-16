@@ -146,6 +146,7 @@ then
 fi
 
 #XXX: thread this through autoconf/make
+SUPPRESS_WARNINGS=${SUPPRESS_WARNINGS:-"yes"}
 if [ "x${SUPPRESS_WARNINGS}" == "xyes" ]
 then
     CXXFLAGS="${CXXFLAGS} -DSUPPRESS_WARNINGS"

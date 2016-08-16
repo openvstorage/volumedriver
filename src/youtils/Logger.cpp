@@ -23,6 +23,7 @@
 #include <sys/time.h>
 
 #include <atomic>
+#include <cassert>
 #include <exception>
 #include <functional>
 #include <typeinfo>
@@ -161,6 +162,9 @@ struct SeverityVisitor
         case severity_level::fatal:
             return Severity::fatal;
         }
+
+        assert(0 == "this should not be reached");
+        return Severity::fatal;
     }
 };
 
@@ -208,45 +212,6 @@ extract_severity(const bl::record_view& rec)
 }
 
 typedef struct timeval time_type;
-
-void
-default_log_formatter(const bl::record_view& rec,
-                      bl::formatting_ostream& strm)
-{
-    static const char* separator  = " -- ";
-    {
-        const time_type& the_time =
-            bl::extract_or_throw<time_type>(timestamp_key, rec);
-        static const char* time_format_tpl = "%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d:%6.6d %+02.2d%02.2d %s";
-        char buf[128];
-        struct tm bt;
-        localtime_r(&the_time.tv_sec, &bt);
-        snprintf(buf, 128, time_format_tpl, 1900 + bt.tm_year,
-                 1 + bt.tm_mon,
-                 bt.tm_mday,
-                 bt.tm_hour,
-                 bt.tm_min,
-                 bt.tm_sec,
-                 the_time.tv_usec,
-                 // #warning "check this time zone conversion for negative numbers"
-                 bt.tm_gmtoff / 3600,
-                 (bt.tm_gmtoff % 3600) / 60,
-                 bt.tm_zone);
-
-        strm << (const char*) buf << separator;
-    }
-
-    strm << extract_severity(rec) << separator;
-
-    strm << bl::extract_or_default<LoggerAttrType>(logger_attr_key,
-                                                             rec,
-                                                             "(UnspecifiedComponent)") << separator ;
-
-    strm << rec[bl::expressions::smessage] << separator ;
-
-    strm << "["
-         <<  bl::extract_or_default<bl::attributes::current_thread_id::value_type>(thread_id_key, rec, 0) << "]";
-}
 
 void
 ovs_log_formatter(const bl::record_view& rec,

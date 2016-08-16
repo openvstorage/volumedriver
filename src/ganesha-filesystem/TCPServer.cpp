@@ -13,14 +13,18 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "TCPServer.h"
+
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>
 
 #include <sstream>
-#include <msgpack.hpp>
 
-#include "TCPServer.h"
+PRAGMA_IGNORE_WARNING_BEGIN("-Wctor-dtor-privacy")
+#include <msgpack.hpp>
+PRAGMA_IGNORE_WARNING_END;
+
 
 using boost::asio::ip::tcp;
 

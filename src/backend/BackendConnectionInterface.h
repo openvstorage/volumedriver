@@ -33,10 +33,10 @@
 #include <youtils/Logging.h>
 #include <youtils/FileDescriptor.h>
 
-BOOLEAN_ENUM(OverwriteObject);
-BOOLEAN_ENUM(ObjectMayNotExist);
-BOOLEAN_ENUM(InsistOnLatestVersion);
-BOOLEAN_ENUM(NamespaceMustNotExist);
+VD_BOOLEAN_ENUM(OverwriteObject);
+VD_BOOLEAN_ENUM(ObjectMayNotExist);
+VD_BOOLEAN_ENUM(InsistOnLatestVersion);
+VD_BOOLEAN_ENUM(NamespaceMustNotExist);
 
 namespace backend
 {

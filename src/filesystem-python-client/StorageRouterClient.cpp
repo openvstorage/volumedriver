@@ -301,6 +301,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
     REGISTER_EXCEPTION_TRANSLATOR(InsufficientResourcesException);
     REGISTER_EXCEPTION_TRANSLATOR(PreviousSnapshotNotOnBackendException);
     REGISTER_EXCEPTION_TRANSLATOR(ObjectStillHasChildrenException);
+    REGISTER_EXCEPTION_TRANSLATOR(SnapshotNameAlreadyExistsException);
 
     REGISTER_STRINGY_CONVERTER(vfs::ObjectId);
     REGISTER_STRINGY_CONVERTER(vd::VolumeId);

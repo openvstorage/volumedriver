@@ -27,8 +27,8 @@
 #include <boost/filesystem.hpp>
 #include <boost/property_tree/ptree_fwd.hpp>
 
-BOOLEAN_ENUM(RegisterComponent);
-BOOLEAN_ENUM(VerifyConfig);
+VD_BOOLEAN_ENUM(RegisterComponent);
+VD_BOOLEAN_ENUM(VerifyConfig);
 
 namespace youtils
 {

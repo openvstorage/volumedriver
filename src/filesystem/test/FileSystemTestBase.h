@@ -38,7 +38,7 @@
 namespace volumedriverfstest
 {
 
-BOOLEAN_ENUM(PutClusterNodeConfigsInRegistry);
+VD_BOOLEAN_ENUM(PutClusterNodeConfigsInRegistry);
 
 class FileSystemTestBase
     : public FileSystemTestSetup
