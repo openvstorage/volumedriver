@@ -37,7 +37,7 @@ int
 main(int argc,
      char** argv)
 {
-    yt::MaybeConfigLocation config_location;
+    yt::MaybeUri config_location;
     fs::path failovercache_executable;
     std::vector<std::string> unparsed_options;
     po::options_description desc;
@@ -52,10 +52,10 @@ main(int argc,
          po::value<fs::path>(&failovercache_executable)->default_value("failovercache"),
          "path to the failovercache executable")
         ("config",
-         po::value<yt::MaybeConfigLocation>(&config_location),
+         po::value<yt::MaybeUri>(&config_location),
          "volumedriverfs (json) config file / etcd URL")
         ("config-file,C",
-         po::value<yt::MaybeConfigLocation>(&config_location),
+         po::value<yt::MaybeUri>(&config_location),
          "volumedriverfs (json) config file (deprecated, use --config instead!)");
 
     {
@@ -106,8 +106,8 @@ main(int argc,
         return 1;
     }
 
-    yt::ConfigFetcher config_fetcher(*config_location);
-    const vfs::ConfigHelper argument_helper(config_fetcher(VerifyConfig::F));
+    std::unique_ptr<yt::ConfigFetcher> config_fetcher(yt::ConfigFetcher::create(*config_location));
+    const vfs::ConfigHelper argument_helper((*config_fetcher)(VerifyConfig::F));
 
     // LOG_INFO("Finished parsing property tree");
 

@@ -25,12 +25,12 @@
 #include <xmlrpc++0.7/src/XmlRpcClient.h>
 
 #include <youtils/Catchers.h>
-#include <youtils/ConfigLocation.h>
 #include <youtils/IOException.h>
 #include <youtils/InitializedParam.h>
 #include <youtils/FileDescriptor.h>
 #include <youtils/FileUtils.h>
 #include <youtils/ScopeExit.h>
+#include <youtils/Uri.h>
 
 #include <backend/BackendConfig.h>
 
@@ -186,7 +186,7 @@ protected:
         using namespace scrubbing;
 
         const ScrubWork work(work_str);
-        const yt::ConfigLocation loc(configuration_.string());
+        const yt::Uri loc(configuration_.string());
         const ScrubReply reply(ScrubberAdapter::scrub(be::BackendConfig::makeBackendConfig(loc),
                                                       work,
                                                       yt::FileUtils::temp_path().string()));

@@ -103,7 +103,13 @@ public:
     stop_nodes();
 
     std::unique_ptr<Cluster>
-    make_client(const Cluster::MaybeMilliSeconds& mms = boost::none) const;
+    make_client(const Cluster::MaybeMilliSeconds& = boost::none) const;
+
+    void
+    write_config(std::ostream&);
+
+    boost::filesystem::path
+    server_config_file() const;
 
 protected:
     DECLARE_LOGGER("ArakoonTestSetup");
@@ -134,12 +140,6 @@ protected:
 
     boost::filesystem::path
     node_home_dir_(unsigned id) const;
-
-    boost::filesystem::path
-    arakoonServerConfigPath_() const;
-
-    void
-    createArakoonConfigFile_(const boost::filesystem::path& cfgfile);
 
     void
     waitForArakoon_() const;

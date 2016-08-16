@@ -29,7 +29,7 @@
 
 namespace youtils
 {
-class ConfigLocation;
+class Uri;
 class JsonString;
 }
 
@@ -52,7 +52,7 @@ public:
     makeBackendConfig(const youtils::JsonString&);
 
     static std::unique_ptr<BackendConfig>
-    makeBackendConfig(const youtils::ConfigLocation&);
+    makeBackendConfig(const youtils::Uri&);
 
     virtual std::unique_ptr<BackendConfig>
     clone() const = 0;

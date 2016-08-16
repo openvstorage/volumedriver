@@ -40,6 +40,7 @@
 #include <youtils/System.h>
 #include <youtils/wall_timer.h>
 #include <youtils/System.h>
+#include <youtils/Uri.h>
 
 #include <volumedriver/Api.h>
 #include <volumedriver/MetaDataBackendInterface.h>
@@ -1455,11 +1456,11 @@ UpdateConfiguration::execute_internal(XmlRpc::XmlRpcValue& params,
                                       XmlRpc::XmlRpcValue& result)
 {
     XMLRPCUtils::ensure_arg(params[0], XMLRPCKeys::configuration_path);
-    const yt::ConfigLocation config(params[0][XMLRPCKeys::configuration_path]);
+    const yt::Uri config(params[0][XMLRPCKeys::configuration_path]);
 
     const boost::variant<yt::UpdateReport,
                          yt::ConfigurationReport>
-        rep(api::updateConfiguration(yt::ConfigFetcher(config)(VerifyConfig::T)));
+        rep(api::updateConfiguration((*yt::ConfigFetcher::create(config))(VerifyConfig::T)));
 
     result = XMLRPCStructs::serialize_to_xmlrpc_value(rep);
 }

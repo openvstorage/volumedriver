@@ -13,36 +13,40 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef YT_CONFIG_FETCHER_H_
-#define YT_CONFIG_FETCHER_H_
+#ifndef YT_ARAKOON_CONFIG_FETCHER_H_
+#define YT_ARAKOON_CONFIG_FETCHER_H_
 
-#include "IOException.h"
+#include "ConfigFetcher.h"
+#include "ArakoonUrl.h"
 #include "Logging.h"
-#include "VolumeDriverComponent.h"
-
-#include <boost/property_tree/ptree_fwd.hpp>
 
 namespace youtils
 {
 
-class Uri;
-
-struct ConfigFetcher
+class ArakoonConfigFetcher
+    : public ConfigFetcher
 {
-    MAKE_EXCEPTION(Exception, fungi::IOException);
+public:
+    explicit ArakoonConfigFetcher(const ArakoonUrl& url)
+        : url_(url)
+    {}
 
-    static std::unique_ptr<ConfigFetcher>
-    create(const Uri&);
+    virtual ~ArakoonConfigFetcher() = default;
 
-    virtual ~ConfigFetcher() = default;
+    ArakoonConfigFetcher(const ArakoonConfigFetcher&) = delete;
+
+    ArakoonConfigFetcher&
+    operator=(const ArakoonConfigFetcher&) = delete;
 
     virtual boost::property_tree::ptree
-    operator()(VerifyConfig) = 0;
+    operator()(VerifyConfig) override final;
 
 private:
-    DECLARE_LOGGER("ConfigFetcher");
+    DECLARE_LOGGER("ArakoonConfigFetcher");
+
+    const ArakoonUrl url_;
 };
 
 }
 
-#endif // !YT_CONFIG_FETCHER_H_
+#endif // !YT_ARAKOON_CONFIG_FETCHER_H_

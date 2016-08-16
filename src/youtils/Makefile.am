@@ -44,6 +44,8 @@ libyoutils_la_CPPFLAGS = \
 libyoutils_la_LDFLAGS = -static
 
 libyoutils_la_SOURCES = \
+	ArakoonConfigFetcher.cpp \
+	ArakoonIniParser.cpp \
 	ArakoonInterface.cpp \
 	ArakoonLockStore.cpp \
 	ArakoonNodeConfig.cpp \
@@ -58,7 +60,7 @@ libyoutils_la_SOURCES = \
 	cpu_timer.cpp \
 	DeferredFileRemover.cpp \
 	DimensionedValue.cpp \
-	EtcdUrl.cpp \
+	EtcdConfigFetcher.cpp \
 	EtcdReply.cpp \
 	FileDescriptor.cpp \
 	FileRange.cpp \
@@ -92,7 +94,6 @@ libyoutils_la_SOURCES = \
 	PythonLogging.cpp \
 	PythonBuildInfo.cpp \
 	RedisQueue.cpp \
-	RedisUrl.cpp \
 	RocksLogger.cpp \
 	RWLock.cpp \
 	ScriptFile.cpp \
@@ -112,6 +113,7 @@ libyoutils_la_SOURCES = \
 	Time.cpp \
 	Tracer.cpp \
 	UpdateReport.cpp \
+	Uri.cpp \
 	UUID.cpp \
 	VolumeDriverComponent.cpp \
 	WaitForIt.cpp \

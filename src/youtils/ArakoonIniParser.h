@@ -13,36 +13,49 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef YT_CONFIG_FETCHER_H_
-#define YT_CONFIG_FETCHER_H_
+#ifndef ARAKOON_INI_PARSER_H_
+#define ARAKOON_INI_PARSER_H_
 
+#include "ArakoonNodeConfig.h"
 #include "IOException.h"
 #include "Logging.h"
-#include "VolumeDriverComponent.h"
 
-#include <boost/property_tree/ptree_fwd.hpp>
+#include <iosfwd>
 
-namespace youtils
+namespace arakoon
 {
 
-class Uri;
-
-struct ConfigFetcher
+class IniParser
 {
-    MAKE_EXCEPTION(Exception, fungi::IOException);
+public:
+    explicit IniParser(std::istream&);
 
-    static std::unique_ptr<ConfigFetcher>
-    create(const Uri&);
+    ~IniParser() = default;
 
-    virtual ~ConfigFetcher() = default;
+    IniParser(const IniParser&) = delete;
 
-    virtual boost::property_tree::ptree
-    operator()(VerifyConfig) = 0;
+    IniParser&
+    operator=(const IniParser&) = delete;
+
+    const ClusterID&
+    cluster_id() const
+    {
+        return cluster_id_;
+    }
+
+    const std::vector<ArakoonNodeConfig>&
+    node_configs() const
+    {
+        return node_configs_;
+    }
 
 private:
-    DECLARE_LOGGER("ConfigFetcher");
+    DECLARE_LOGGER("ArakoonIniParser");
+
+    ClusterID cluster_id_;
+    std::vector<ArakoonNodeConfig> node_configs_;
 };
 
 }
 
-#endif // !YT_CONFIG_FETCHER_H_
+#endif // !ARAKOON_INI_PARSER_H_

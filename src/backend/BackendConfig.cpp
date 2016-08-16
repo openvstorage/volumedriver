@@ -27,9 +27,9 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include <youtils/Assert.h>
-#include <youtils/ConfigLocation.h>
 #include <youtils/ConfigFetcher.h>
 #include <youtils/JsonString.h>
+#include <youtils/Uri.h>
 
 namespace backend
 {
@@ -49,10 +49,10 @@ BackendConfig::makeBackendConfig(const yt::JsonString& json_string)
 }
 
 std::unique_ptr<BackendConfig>
-BackendConfig::makeBackendConfig(const yt::ConfigLocation& loc)
+BackendConfig::makeBackendConfig(const yt::Uri& loc)
 {
-    yt::ConfigFetcher fetch_config(loc);
-    return makeBackendConfig(fetch_config(VerifyConfig::F));
+    std::unique_ptr<yt::ConfigFetcher> fetcher(yt::ConfigFetcher::create(loc));
+    return makeBackendConfig((*fetcher)(VerifyConfig::F));
 }
 
 std::unique_ptr<BackendConfig>

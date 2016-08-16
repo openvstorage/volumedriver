@@ -21,11 +21,23 @@
 namespace youtils
 {
 
-struct RedisUrl
-    : public Url<RedisUrl>
+struct RedisUrlTraits
 {
-    using Url<RedisUrl>::Url;
+    static boost::optional<std::string>
+    scheme()
+    {
+        static const std::string s("redis");
+        return s;
+    }
+
+    static boost::optional<uint16_t>
+    default_port()
+    {
+        return 6379;
+    }
 };
+
+using RedisUrl = Url<RedisUrlTraits>;
 
 } //namespace youtils
 

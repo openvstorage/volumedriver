@@ -13,12 +13,31 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "EtcdUrl.h"
+#ifndef YT_FILE_URL_H_
+#define YT_FILE_URL_H_
+
+#include "Url.h"
 
 namespace youtils
 {
 
-template<> const uint16_t Url<EtcdUrl>::default_port = 2379;
-template<> const std::string Url<EtcdUrl>::proto("etcd");
+struct FileUrlTraits
+{
+    static boost::optional<std::string>
+    scheme()
+    {
+        return boost::none;
+    }
+
+    static boost::optional<uint16_t>
+    default_port()
+    {
+        return boost::none;
+    }
+};
+
+using FileUrl = Url<FileUrlTraits>;
 
 }
+
+#endif // YT_FILE_URL_H_

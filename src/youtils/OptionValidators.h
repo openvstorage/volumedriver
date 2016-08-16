@@ -16,7 +16,7 @@
 #ifndef OPTION_VALIDATORS_H_
 #define OPTION_VALIDATORS_H_
 
-#include "ConfigLocation.h"
+#include "Uri.h"
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -41,20 +41,20 @@ validate(boost::any& v,
          ExistingFile* out,
          int);
 
-struct MaybeConfigLocation
-    : boost::optional<ConfigLocation>
+struct MaybeUri
+    : boost::optional<Uri>
 {
-    MaybeConfigLocation(const ConfigLocation& loc)
-        : boost::optional<ConfigLocation>(loc)
+    MaybeUri(const Uri& loc)
+        : boost::optional<Uri>(loc)
     {}
 
-    MaybeConfigLocation() = default;
+    MaybeUri() = default;
 };
 
 void
 validate(boost::any& v,
          const std::vector<std::string>& values,
-         MaybeConfigLocation* loc,
+         MaybeUri* loc,
          int);
 }
 

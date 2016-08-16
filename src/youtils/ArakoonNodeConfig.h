@@ -77,6 +77,28 @@ public:
         return not (*this == other);
     }
 
+    bool
+    operator<(const ArakoonNodeConfig& other) const
+    {
+        if (node_id_ < other.node_id_)
+        {
+            return true;
+        }
+        else if (node_id_ == other.node_id_)
+        {
+            if (hostname_ < other.hostname_)
+            {
+                return true;
+            }
+            else if (hostname_ == other.hostname_)
+            {
+                return port_ < other.port_;
+            }
+        }
+
+        return false;
+    }
+
     // for python consumption
     std::string
     str() const

@@ -30,8 +30,7 @@
 #include <youtils/BuildInfo.h>
 #include <youtils/Catchers.h>
 #include <youtils/ConfigFetcher.h>
-#include <youtils/ConfigLocation.h>
-#include <youtils/EtcdUrl.h>
+#include <youtils/FileUrl.h>
 #include <youtils/Logger.h>
 #include <youtils/Logging.h>
 #include <youtils/Main.h>
@@ -40,6 +39,7 @@
 #include <youtils/SignalBlocker.h>
 #include <youtils/SignalSet.h>
 #include <youtils/System.h>
+#include <youtils/Uri.h>
 #include <youtils/VolumeDriverComponent.h>
 
 namespace be = backend;
@@ -90,10 +90,10 @@ public:
     {
         opts_.add_options()
             ("config-file,C",
-             po::value<yt::MaybeConfigLocation>(&config_location_),
+             po::value<yt::MaybeUri>(&config_location_),
              "volumedriver (json) config file / etcd URL (deprecated, use --config instead!)")
             ("config",
-             po::value<yt::MaybeConfigLocation>(&config_location_),
+             po::value<yt::MaybeUri>(&config_location_),
              "volumedriver (json) config file / etcd URL")
             ("lock-file,L",
              po::value<std::string>(&lock_file_),
@@ -131,14 +131,14 @@ public:
         umask(0);
 
         const bool lock_config_file = lock_file_.empty();
-        if (lock_config_file and yt::EtcdUrl::is_one(config_location_->str()))
+        if (lock_config_file and not yt::FileUrl::is_one(*config_location_))
         {
-            std::cerr << "No lock file specified / config file will not be used as etcd was requested" << std::endl;
+            std::cerr << "No lock file specified / config is not read from a local file" << std::endl;
             return 1;
         }
 
         const fs::path lock_path(lock_config_file ?
-                                 *config_location_ :
+                                 config_location_->path() :
                                  lock_file_);
 
         yt::FileDescriptor fd(lock_path,
@@ -156,8 +156,8 @@ public:
             return 1;
         }
 
-        yt::ConfigFetcher config_fetcher(*config_location_);
-        const bpt::ptree pt(config_fetcher(VerifyConfig::T));
+        std::unique_ptr<yt::ConfigFetcher> config_fetcher(yt::ConfigFetcher::create(*config_location_));
+        const bpt::ptree pt((*config_fetcher)(VerifyConfig::T));
 
         // These are unblocked again and "handled" by FileSystem::operator(). We do
         // however want them to be blocked while the constructor / destructor is running.
@@ -200,7 +200,7 @@ private:
     DECLARE_LOGGER("VolumeDriverFS");
 
     po::options_description opts_;
-    yt::MaybeConfigLocation config_location_;
+    yt::MaybeUri config_location_;
     std::string lock_file_;
     std::string mountpoint_;
 

@@ -13,12 +13,32 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "RedisUrl.h"
+#ifndef YT_ARAKOON_URL_H_
+#define YT_ARAKOON_URL_H_
+
+#include "Url.h"
 
 namespace youtils
 {
 
-template<> const uint16_t Url<RedisUrl>::default_port = 6379;
-template<> const std::string Url<RedisUrl>::proto("redis");
+struct ArakoonUrlTraits
+{
+    static boost::optional<std::string>
+    scheme()
+    {
+        static const std::string s("arakoon");
+        return s;
+    }
 
-} //namespace youtils
+    static boost::optional<uint16_t>
+    default_port()
+    {
+        return boost::none;
+    }
+};
+
+using ArakoonUrl = Url<ArakoonUrlTraits>;
+
+}
+
+#endif // YT_ARAKOON_URL_H_

@@ -17,39 +17,46 @@
 #define YT_URL_H_
 
 #include "Assert.h"
+#include "Uri.h"
 
 #include <iosfwd>
 #include <string>
-#include <iostream>
+#include <vector>
 
+#include <boost/filesystem/path.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/optional.hpp>
 #include <boost/regex.hpp>
 
 namespace youtils
 {
 
-using namespace std::literals::string_literals;
-
-template<typename T>
-struct Url
+template<typename UrlTraits>
+class Url
 {
-    static const uint16_t default_port;
-    static const std::string proto;
+public:
+    explicit Url(const Uri& uri)
+        : uri_(uri)
+    {
+        if (uri.scheme() != UrlTraits::scheme())
+        {
+            throw std::invalid_argument("URI is not an URL of the expected type");
+        }
 
-    std::string host;
-    uint16_t port = default_port;
-    std::string key;
+        if (not uri_.port())
+        {
+            uri_.port(UrlTraits::default_port());
+        }
+    }
 
-
-    explicit Url(std::string h,
-                 uint16_t p = default_port,
-                 std::string k = std::string("/"))
-        : host(std::move(h))
-        , port(p)
-        , key(std::move(k))
+    explicit Url(const std::string& s)
+        : Url(Uri(s))
     {}
 
-    Url() = default;
+    Url()
+    {
+        uri_.scheme(UrlTraits::scheme()).port(UrlTraits::default_port());
+    }
 
     ~Url() = default;
 
@@ -66,10 +73,7 @@ struct Url
     bool
     operator==(const Url& other) const
     {
-        return
-            host == other.host and
-            port == other.port and
-            key == other.key;
+        return uri_ == other.uri_;
     }
 
     bool
@@ -78,55 +82,60 @@ struct Url
         return not operator==(other);
     }
 
+    std::string
+    host() const
+    {
+        VERIFY(uri_.host());
+        return *uri_.host();
+    }
+
+    const boost::optional<uint16_t>&
+    port() const
+    {
+        return uri_.port();
+    }
+
+    std::string
+    path() const
+    {
+        return uri_.path();
+    }
+
+    const Uri::Query&
+    query() const
+    {
+        return uri_.query();
+    }
+
+    const Uri&
+    uri() const
+    {
+        return uri_;
+    }
+
     friend std::ostream&
     operator<<(std::ostream& os,
                const Url& url)
     {
-        os << proto <<
-            "://" << url.host <<
-            ":" << url.port;
-        if (not url.key.empty())
-        {
-            os << url.key;
-        }
-        return os;
+        return os << url.uri_;
     }
 
     friend std::istream&
     operator>>(std::istream& is,
                Url& url)
     {
-        std::string str;
-        is >> str;
-        boost::regex rex("("s + proto + ")://([^/ :]+):?([^/ ]*)(/?[^ #?]*)"s);
+        Uri uri;
+        is >> uri;
 
-        boost::smatch match;
-        if (boost::regex_match(str,
-                               match,
-                               rex))
+        try
         {
-            ASSERT(proto == match[1]);
-
-            url.host = match[2];
-
-            if (not match[3].str().empty())
-            {
-                url.port = boost::lexical_cast<uint16_t>(match[3]);
-            }
-
-            if (not match[4].str().empty())
-            {
-                url.key = match[4];
-            }
-            else
-            {
-                url.key = "/"s;
-            }
+            url = Url(uri);
         }
-        else
+        catch (...)
         {
             is.setstate(std::ios::failbit);
         }
+
         return is;
     }
 
@@ -135,14 +144,24 @@ struct Url
     {
         try
         {
-            boost::lexical_cast<Url>(str);
-            return true;
+            return is_one(Uri(str));
         }
         catch (...)
         {
             return false;
         }
     }
+
+    static bool
+    is_one(const Uri& uri)
+    {
+        return uri.scheme() == UrlTraits::scheme();
+    }
+
+private:
+    DECLARE_LOGGER("Uri");
+
+    Uri uri_;
 };
 
 }
