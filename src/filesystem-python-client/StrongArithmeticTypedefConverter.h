@@ -46,9 +46,9 @@ struct StrongArithmeticTypedefConverter
     static void*
     convertible(PyObject* o)
     {
-        if (PyInt_Check(o))
+        if (PyLong_Check(o))
         {
-            long l = PyInt_AsLong(o);
+            long l = PyLong_AsLong(o);
             if (l == -1)
             {
                 if (PyErr_Occurred())

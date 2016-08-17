@@ -7,6 +7,9 @@
 #include <boost/python/object.hpp>
 #include <boost/python/to_python_converter.hpp>
 
+// pythonX.Y/patchlevel.h
+#include <patchlevel.h>
+
 #include <youtils/Assert.h>
 #include <youtils/Logging.h>
 
@@ -59,9 +62,13 @@ struct StringyConverter
     static void*
     convertible(PyObject* o)
     {
+#if PY_MAJOR_VERSION < 3
         LOG_TRACE(PyString_AsString(o)  << "convertible to " << typeid(S).name() << "?");
-
         return PyString_Check(o) ? o : nullptr;
+#else
+        LOG_TRACE(PyUnicode_AsASCIIString(o) << "convertible to " << typeid(S).name() << "?");
+        return PyUnicode_Check(o) ? o : nullptr;
+#endif
     }
 
     static void
@@ -69,7 +76,12 @@ struct StringyConverter
                 boost::python::converter::rvalue_from_python_stage1_data* data)
     {
         boost::python::handle<> handle(boost::python::borrowed(o));
+#if PY_MAJOR_VERSION < 3
         const char* cstr = PyString_AsString(handle.get());
+#else
+        const PyObject* tmp = PyUnicode_AsASCIIString(handle.get());
+        const char* cstr = PyBytes_AS_STRING(tmp);
+#endif
         VERIFY(cstr);
 
         LOG_TRACE("Converting " << typeid(S).name() << " \"" << cstr << "\" from python");

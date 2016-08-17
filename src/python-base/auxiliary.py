@@ -382,7 +382,7 @@ class ErrorReportingThread(threading.Thread):
     def run(self):
         try:
             threading.Thread.run(self)
-        except Exception, e:
+        except Exception as e:
             self.error = e
             raise
 
