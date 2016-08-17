@@ -60,7 +60,7 @@ struct StrongArithmeticTypedefConverter
             }
 
             if (l >= static_cast<long>(std::numeric_limits<arithmetic_type>::min()) and
-                l =< static_cast<long>(std::numeric_limits<arithmetic_type>::max()))
+                l <= static_cast<long>(std::numeric_limits<arithmetic_type>::max()))
             {
                 return o;
             }
