@@ -8,6 +8,9 @@
 #include <boost/python/object.hpp>
 #include <boost/python/to_python_converter.hpp>
 
+// pythonX.Y/patchlevel.h
+#include <patchlevel.h>
+
 #include <youtils/Logging.h>
 
 // TODO:
@@ -46,9 +49,22 @@ struct StrongArithmeticTypedefConverter
     static void*
     convertible(PyObject* o)
     {
-        if (PyLong_Check(o))
+        if (
+#if PY_MAJOR_VERSION < 3
+            PyInt_Check(o)
+#else
+            PyLong_Check(o)
+#endif
+            )
         {
-            long l = PyLong_AsLong(o);
+            long l =
+#if PY_MAJOR_VERSION < 3
+                       PyInt_AsLong(o)
+#else
+                       PyLong_AsLong(o)
+#endif
+                       ;
+
             if (l == -1)
             {
                 if (PyErr_Occurred())
@@ -73,7 +89,13 @@ struct StrongArithmeticTypedefConverter
     from_python(PyObject* o,
                 boost::python::converter::rvalue_from_python_stage1_data* data)
     {
-        const long l = PyInt_AsLong(o);
+        const long l =
+#if PY_MAJOR_VERSION < 3
+                       PyInt_AsLong(o)
+#else
+                       PyLong_AsLong(o)
+#endif
+            ;
         assert(not (l == -1 and PyErr_Occurred()));
         arithmetic_type t = l;
 
