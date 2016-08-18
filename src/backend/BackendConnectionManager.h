@@ -177,6 +177,9 @@ public:
     size_t
     size() const;
 
+    size_t
+    shards() const;
+
     // VolumeDriverComponent Interface
     virtual void
     persist(boost::property_tree::ptree& pt,
@@ -222,13 +225,14 @@ public:
 private:
     DECLARE_LOGGER("BackendConnectionManager");
 
-    // one per (logical) CPU.
-    std::vector<ConnectionPool> connection_pools_;
-
     DECLARE_PARAMETER(backend_connection_pool_capacity);
+    DECLARE_PARAMETER(backend_connection_pool_shards);
     DECLARE_PARAMETER(backend_interface_retries_on_error);
     DECLARE_PARAMETER(backend_interface_retry_interval_secs);
     DECLARE_PARAMETER(backend_interface_retry_backoff_multiplier);
+
+    // one per (logical) CPU.
+    std::vector<ConnectionPool> connection_pools_;
 
     std::unique_ptr<BackendConfig> config_;
 
@@ -273,7 +277,6 @@ private:
 
         ASSERT(not connection_pools_.empty());
         const auto n = static_cast<unsigned>(cpu);
-        ASSERT(n < connection_pools_.size());
 
         return connection_pools_[n % connection_pools_.size()];
     }

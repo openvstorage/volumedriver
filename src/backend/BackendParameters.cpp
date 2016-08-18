@@ -153,6 +153,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_connection_pool_capacity,
                                       ShowDocumentation::T,
                                       64);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_connection_pool_shards,
+                                      backend_connection_manager_name,
+                                      "backend_connection_pool_shards",
+                                      "Number of shards for the connection pool, 0 -> one per CPU",
+                                      ShowDocumentation::T,
+                                      1);
+
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_retries_on_error,
                                       backend_connection_manager_name,
                                       "backend_interface_retries_on_error",
