@@ -54,6 +54,10 @@ convertAlbaLevel(alba::logger::AlbaLogLevel albaLevel)
         {
             return youtils::Severity::info;
         }
+    case alba::logger::AlbaLogLevel::ERROR:
+        {
+            return youtils::Severity::error;
+        }
     case alba::logger::AlbaLogLevel::WARNING:
         {
             return youtils::Severity::warning;
