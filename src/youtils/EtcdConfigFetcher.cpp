@@ -68,7 +68,13 @@ EtcdConfigFetcher::operator()(VerifyConfig verify_config)
     etcd::Client<EtcdReply> client(url_.host(),
                                    *port);
 
-    const EtcdReply reply(client.Get(url_.path(),
+    const Uri& uri = url_.uri();
+    const std::string path((uri.absolute_path() ?
+                            "" :
+                            "/") +
+                           uri.path());
+
+    const EtcdReply reply(client.Get(path,
                                      true));
     const boost::optional<EtcdReply::Error> err(reply.error());
     if (err)

@@ -34,6 +34,7 @@ youtils_test_SOURCES = \
 	BooleanEnumTest.cpp \
 	CheckSumTest.cpp \
 	ChooserTest.cpp \
+	ConfigFetcherTest.cpp \
 	DeferredFileRemoverTest.cpp \
 	DenyLockService.cpp \
 	DimensionedValueTest.cpp \
