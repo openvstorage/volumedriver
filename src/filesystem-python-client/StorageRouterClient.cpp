@@ -856,6 +856,11 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "Get the volume's metadata cache capacity\n"
              "@param volume_id: string, volume identifier\n"
              "@returns num_pages, unsigned, number of metadata pages or None\n")
+        .def("client_timeout_secs",
+             &vfs::PythonClient::timeout,
+             bpy::return_value_policy<bpy::copy_const_reference>(),
+             "Get the client timeout (if any) in seconds\n"
+             "@returns: unsigned, client timeout in seconds, or None\n")
         ;
 
     vfspy::LocalClient::registerize();

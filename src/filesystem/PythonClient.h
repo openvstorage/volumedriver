@@ -98,12 +98,15 @@ private:
     static constexpr unsigned max_redirects_default = 2;
 
 public:
+    using Seconds = boost::chrono::seconds;
+    using MaybeSeconds = boost::optional<Seconds>;
+
     // max_redirects should only be changed from its default in the testers
     // or by the LocalPythonClient
 
     PythonClient(const std::string& cluster_id,
                  const std::vector<ClusterContact>& cluster_contacts,
-                 const boost::optional<boost::chrono::seconds>& timeout = boost::none,
+                 const MaybeSeconds& timeout = boost::none,
                  const unsigned max_redirects = max_redirects_default);
 
     virtual ~PythonClient() = default;
@@ -323,8 +326,15 @@ public:
 
     std::vector<ClientInfo>
     list_client_connections(const std::string& node_id);
+
+    const MaybeSeconds&
+    timeout() const
+    {
+        return timeout_;
+    }
+
 protected:
-    PythonClient(const boost::optional<boost::chrono::seconds>& timeout)
+    PythonClient(const MaybeSeconds& timeout)
         : timeout_(timeout)
         , max_redirects(max_redirects_default)
     {}
@@ -344,7 +354,7 @@ protected:
     std::mutex lock_;
     //this list does not necessarily contain all nodes in the cluster
     std::vector<ClusterContact> cluster_contacts_;
-    const boost::optional<boost::chrono::seconds> timeout_;
+    const MaybeSeconds timeout_;
 
 private:
     DECLARE_LOGGER("PythonClient");
