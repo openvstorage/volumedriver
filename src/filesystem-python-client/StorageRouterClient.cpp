@@ -14,6 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "ArakoonClient.h"
+#include "ChronoDurationConverter.h"
 #include "FileSystemMetaDataClient.h"
 #include "IterableConverter.h"
 #include "LocalClient.h"
@@ -398,16 +399,26 @@ BOOST_PYTHON_MODULE(storagerouterclient)
         .def_pickle(ClusterCacheHandlePickleSuite())
         ;
 
+    using Seconds = boost::chrono::seconds;
+    using MaybeSeconds = boost::optional<Seconds>;
+
+    REGISTER_CHRONO_DURATION_CONVERTER(Seconds);
+    REGISTER_OPTIONAL_CONVERTER(Seconds);
+
     bpy::class_<vfs::PythonClient,
-                boost::noncopyable>("StorageRouterClient",
-                                    "client for management and monitoring of a volumedriverfs cluster",
-                                    bpy::init<const std::string&,
-                                              const std::vector< vfs::ClusterContact >>
-                                    (bpy::args("vrouter_cluster_id",
-                                               "cluster_contacts"),
-                                     "Create a client interface to a volumedriverfs cluster\n"
-                                     "@param vrouter_cluster_id: string, cluster_id \n"
-                                     "@param cluster_contacts: [ClusterContact] contact points to the cluster\n"))
+                boost::noncopyable>
+        ("StorageRouterClient",
+         "client for management and monitoring of a volumedriverfs cluster",
+         bpy::init<const std::string&,
+                   const std::vector<vfs::ClusterContact>&,
+                   MaybeSeconds&>
+         ((bpy::args("vrouter_cluster_id"),
+           bpy::args("cluster_contacts"),
+           bpy::args("client_timeout_secs") = MaybeSeconds()),
+          "Create a client interface to a volumedriverfs cluster\n"
+          "@param vrouter_cluster_id: string, cluster_id \n"
+          "@param cluster_contacts: [ClusterContact] contact points to the cluster\n"
+          "@param client_timeout: unsigned, optional client timeout (seconds)"))
         .def("create_volume",
              &vfs::PythonClient::create_volume,
              (bpy::args("target_path"),

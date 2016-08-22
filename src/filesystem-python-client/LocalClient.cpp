@@ -94,14 +94,20 @@ LocalClient::registerize()
 
 #undef DEF_READONLY_PROP_
 
+    using MaybeSeconds = boost::optional<boost::chrono::seconds>;
+
     bpy::class_<vfs::LocalPythonClient,
                 boost::noncopyable,
-                bpy::bases<vfs::PythonClient>>("LocalStorageRouterClient",
-                                               "maintenance client for management and monitoring of a specific volumedriverfs cluster node",
-                    bpy::init<const std::string&>
-                    (bpy::args("config_file"),
-                     "Create a maintenance client interface to a volumedriverfs cluster\n"
-                     "@param config_file: string, path to the cluster config file\n"))
+                bpy::bases<vfs::PythonClient>>
+        ("LocalStorageRouterClient",
+         "maintenance client for management and monitoring of a specific volumedriverfs cluster node",
+         bpy::init<const std::string&,
+                   const MaybeSeconds&>
+         ((bpy::args("config_location"),
+           bpy::args("client_timeout") = MaybeSeconds()),
+          "Create a maintenance client interface to a volumedriverfs cluster\n"
+          "@param config_location: string, URI of the instance's configuration\n"
+          "@param client_timeout_secs: unsigned, optional client timeout (seconds)"))
         .def("destroy_filesystem",
              &vfs::LocalPythonClient::destroy,
              "Request that the filesystem is destroyed.\n"
