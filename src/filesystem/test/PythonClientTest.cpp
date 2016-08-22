@@ -872,6 +872,35 @@ TEST_F(PythonClientTest, volume_creation_and_removal)
                  std::exception);
 }
 
+TEST_F(PythonClientTest, volume_resize)
+{
+    const vfs::FrontendPath vpath("/volume");
+    const yt::DimensionedValue size("0B");
+    const vfs::ObjectId vname(client_.create_volume(vpath.str(),
+                                                    nullptr,
+                                                    size));
+
+    {
+        const vfs::XMLRPCVolumeInfo info(client_.info_volume(vname.str()));
+        EXPECT_EQ(vfs::ObjectType::Volume, info.object_type);
+        EXPECT_EQ(0, info.volume_size);
+    }
+
+    const yt::DimensionedValue newsize("1 GiB");
+    EXPECT_NO_THROW(client_.resize(vname.str(),
+                                   newsize));
+
+    {
+        const vfs::XMLRPCVolumeInfo info(client_.info_volume(vname.str()));
+        EXPECT_EQ(newsize.getBytes(),
+                  info.volume_size);
+    }
+
+    EXPECT_THROW(client_.resize(vname.str(),
+                                yt::DimensionedValue("500 MiB")),
+                 std::exception);
+}
+
 TEST_F(PythonClientTest, clone_from_template)
 {
     const vfs::FrontendPath tpath(make_volume_name("/template"));

@@ -154,6 +154,10 @@ public:
                  const std::string& node_id = "");
 
     void
+    resize(const std::string& object_id,
+           const youtils::DimensionedValue&);
+
+    void
     unlink(const std::string& target_path);
 
     void

@@ -599,7 +599,7 @@ PythonClient::create_snapshot(const std::string& volume_id,
 std::string
 PythonClient::create_volume(const std::string& target_path,
                             boost::shared_ptr<vd::MetaDataBackendConfig> mdb_config,
-                            const youtils::DimensionedValue& volume_size,
+                            const yt::DimensionedValue& volume_size,
                             const std::string& node_id)
 {
     XmlRpc::XmlRpcValue req;
@@ -620,6 +620,18 @@ PythonClient::create_volume(const std::string& target_path,
 
     auto rsp(call(VolumeCreate::method_name(), req));
     return rsp[XMLRPCKeys::volume_id];
+}
+
+void
+PythonClient::resize(const std::string& object_id,
+                     const yt::DimensionedValue& size)
+{
+    XmlRpc::XmlRpcValue req;
+
+    req[XMLRPCKeys::volume_id] = object_id;
+    req[XMLRPCKeys::volume_size] = size.toString();
+
+    call(ResizeObject::method_name(), req);
 }
 
 std::string

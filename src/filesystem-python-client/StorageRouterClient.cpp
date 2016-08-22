@@ -436,6 +436,13 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "@raises \n"
              "      InsufficientResourcesException\n"
              "      FileExistsException\n")
+        .def("truncate",
+             &vfs::PythonClient::resize,
+             (bpy::args("object_id"),
+              bpy::args("new_size")),
+             "Resize an object\n"
+             "@param object_id, string, ObjectId\n"
+             "@param new_size, string (DimensionedValue), new size of the object")
         .def("unlink",
              &vfs::PythonClient::unlink,
              (bpy::args("target_path")),

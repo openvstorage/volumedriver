@@ -847,6 +847,17 @@ ApplyScrubbingResult::execute_internal(::XmlRpc::XmlRpcValue&  params,
 }
 
 void
+ResizeObject::execute_internal(::XmlRpc::XmlRpcValue& params,
+                               ::XmlRpc::XmlRpcValue& /* results */)
+{
+    const ObjectId id(getID(params[0]));
+    const size_t newsize = getVOLSIZE(params[0]);
+
+    fs_.object_router().resize(id,
+                               newsize);
+}
+
+void
 VolumeInfo::execute_internal(::XmlRpc::XmlRpcValue& params,
                              ::XmlRpc::XmlRpcValue& result)
 {
