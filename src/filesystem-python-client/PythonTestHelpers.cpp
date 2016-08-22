@@ -125,6 +125,9 @@ PythonTestHelpers::registerize()
         .def("reflect_maybe_chrono_seconds",
              &PythonTestHelpers::reflect<boost::optional<boost::chrono::seconds>>)
         .staticmethod("reflect_maybe_chrono_seconds")
+        .def("reflect_dimensioned_value",
+             &PythonTestHelpers::reflect<yt::DimensionedValue>)
+        .staticmethod("reflect_dimensioned_value")
         ;
 }
 

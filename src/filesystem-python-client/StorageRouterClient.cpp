@@ -51,6 +51,7 @@
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
 
+#include <youtils/DimensionedValue.h>
 #include <youtils/Logger.h>
 #include <youtils/LoggerToolCut.h>
 #include <youtils/LoggingToolCut.h>
@@ -404,6 +405,8 @@ BOOST_PYTHON_MODULE(storagerouterclient)
 
     REGISTER_CHRONO_DURATION_CONVERTER(Seconds);
     REGISTER_OPTIONAL_CONVERTER(Seconds);
+
+    REGISTER_STRINGY_CONVERTER(youtils::DimensionedValue);
 
     bpy::class_<vfs::PythonClient,
                 boost::noncopyable>

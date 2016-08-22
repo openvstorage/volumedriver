@@ -154,3 +154,6 @@ class TestHelperTest(unittest.TestCase):
     def test_maybe_chrono_seconds(self):
         self.assertEqual(None, PythonTestHelpers.reflect_maybe_chrono_seconds(None))
         self.assertEqual(1234, PythonTestHelpers.reflect_maybe_chrono_seconds(1234))
+
+    def test_dimensioned_value(self):
+        self.assertEqual("1B", PythonTestHelpers.reflect_dimensioned_value("1B"))
