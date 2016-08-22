@@ -15,6 +15,7 @@
 
 #include "PythonTestHelpers.h"
 
+#include <boost/chrono.hpp>
 #include <boost/python/class.hpp>
 
 #include <youtils/ArakoonNodeConfig.h>
@@ -121,6 +122,9 @@ PythonTestHelpers::registerize()
         .def("arithmeticy_things",
              &PythonTestHelpers::arithmeticy_things)
         .staticmethod("arithmeticy_things")
+        .def("reflect_maybe_chrono_seconds",
+             &PythonTestHelpers::reflect<boost::optional<boost::chrono::seconds>>)
+        .staticmethod("reflect_maybe_chrono_seconds")
         ;
 }
 

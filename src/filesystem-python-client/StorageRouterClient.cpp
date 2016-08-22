@@ -411,7 +411,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
          "client for management and monitoring of a volumedriverfs cluster",
          bpy::init<const std::string&,
                    const std::vector<vfs::ClusterContact>&,
-                   MaybeSeconds&>
+                   const MaybeSeconds&>
          ((bpy::args("vrouter_cluster_id"),
            bpy::args("cluster_contacts"),
            bpy::args("client_timeout_secs") = MaybeSeconds()),

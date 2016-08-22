@@ -150,3 +150,7 @@ class TestHelperTest(unittest.TestCase):
         vname = "volume"
         self.assertEqual(
             vname, PythonTestHelpers.reflect_maybe_volume_id(vname))
+
+    def test_maybe_chrono_seconds(self):
+        self.assertEqual(None, PythonTestHelpers.reflect_maybe_chrono_seconds(None))
+        self.assertEqual(1234, PythonTestHelpers.reflect_maybe_chrono_seconds(1234))
