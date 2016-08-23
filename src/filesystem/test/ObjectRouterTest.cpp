@@ -181,7 +181,8 @@ public:
                        local_config().host,
                        vfs::MessagePort(local_config().message_port + next_port_off_),
                        vfs::XmlRpcPort(local_config().xmlrpc_port + next_port_off_),
-                       vfs::FailoverCachePort(local_config().failovercache_port + next_port_off_));
+                       vfs::FailoverCachePort(local_config().failovercache_port + next_port_off_),
+                       make_edge_uri_(local_node_id()));
 
         ++next_port_off_;
 
@@ -531,7 +532,8 @@ TEST_F(ObjectRouterTest, no_modification_of_existing_node_config)
                                    remote_config().host,
                                    vfs::MessagePort(remote_config().message_port + 1),
                                    remote_config().xmlrpc_port,
-                                   remote_config().failovercache_port) };
+                                   remote_config().failovercache_port,
+                                   remote_config().network_server_uri) };
 
     registry->erase_node_configs();
     registry->set_node_configs(configs);

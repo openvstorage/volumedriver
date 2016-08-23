@@ -385,12 +385,20 @@ bpt::ptree&
 FileSystemTestSetup::make_edge_config_(bpt::ptree& pt,
 				       const vfs::NodeId& node_id)
 {
-    const std::string uri(edge_transport() + "://"s + address() + ":"s +
-			  boost::lexical_cast<std::string>(node_id == local_node_id() ?
-							   local_edge_port() :
-							   remote_edge_port()));
-    ip::PARAMETER_TYPE(network_uri)(uri).persist(pt);
+    const yt::Uri uri(make_edge_uri_(node_id));
+    ip::PARAMETER_TYPE(network_uri)(boost::lexical_cast<std::string>(uri)).persist(pt);
     return pt;
+}
+
+yt::Uri
+FileSystemTestSetup::make_edge_uri_(const vfs::NodeId& node_id)
+{
+    return yt::Uri()
+        .scheme(edge_transport())
+        .host(address())
+        .port(node_id == local_node_id() ?
+              local_edge_port() :
+              remote_edge_port());
 }
 
 void

@@ -110,7 +110,8 @@ load_construct_data(Archive&,
                           "",
                           MessagePort(0),
                           XmlRpcPort(0),
-                          FailoverCachePort(0));
+                          FailoverCachePort(0),
+                          youtils::Uri());
 
     new(status) ClusterNodeStatus(cfg,
                                   ClusterNodeStatus::State::Offline);
