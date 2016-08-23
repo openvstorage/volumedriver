@@ -78,10 +78,7 @@ public:
     shutdown();
 
     youtils::Uri
-    uri() const
-    {
-        return network_uri.value();
-    }
+    uri() const;
 
     size_t
     snd_rcv_queue_depth() const

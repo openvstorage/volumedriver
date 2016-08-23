@@ -353,10 +353,6 @@ FileSystemTestSetup::make_config_(bpt::ptree& pt,
         ip::PARAMETER_TYPE(scrub_manager_interval)(scrub_manager_interval_secs_).persist(pt);
     }
 
-    // network server
-    make_edge_config_(pt,
-		      vrouter_id);
-
     // volume_router_cluster
     {
         ip::PARAMETER_TYPE(vrouter_cluster_id)(vrouter_cluster_id()).persist(pt);
@@ -381,16 +377,8 @@ FileSystemTestSetup::make_config_(bpt::ptree& pt,
     return pt;
 }
 
-bpt::ptree&
-FileSystemTestSetup::make_edge_config_(bpt::ptree& pt,
-				       const vfs::NodeId& node_id)
-{
-    ip::PARAMETER_TYPE(network_uri)(make_edge_uri_(node_id)).persist(pt);
-    return pt;
-}
-
 yt::Uri
-FileSystemTestSetup::make_edge_uri_(const vfs::NodeId& node_id)
+FileSystemTestSetup::network_server_uri(const vfs::NodeId& node_id)
 {
     return yt::Uri()
         .scheme(edge_transport())

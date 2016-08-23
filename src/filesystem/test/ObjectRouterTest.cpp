@@ -182,7 +182,7 @@ public:
                        vfs::MessagePort(local_config().message_port + next_port_off_),
                        vfs::XmlRpcPort(local_config().xmlrpc_port + next_port_off_),
                        vfs::FailoverCachePort(local_config().failovercache_port + next_port_off_),
-                       make_edge_uri_(local_node_id()));
+                       network_server_uri(local_node_id()));
 
         ++next_port_off_;
 

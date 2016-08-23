@@ -169,12 +169,8 @@ protected:
     boost::property_tree::ptree&
     make_registry_config_(boost::property_tree::ptree&) const;
 
-    static boost::property_tree::ptree&
-    make_edge_config_(boost::property_tree::ptree& pt,
-                      const volumedriverfs::NodeId& vrouter_id);
-
     static youtils::Uri
-    make_edge_uri_(const volumedriverfs::NodeId&);
+    network_server_uri(const volumedriverfs::NodeId&);
 
     void
     make_dirs_(const boost::filesystem::path& topdir) const;
@@ -278,7 +274,7 @@ protected:
                                                  volumedriverfs::MessagePort(port_base() + 1),
                                                  volumedriverfs::XmlRpcPort(port_base() + 3),
                                                  volumedriverfs::FailoverCachePort(port_base() + 5),
-                                                 make_edge_uri_(local_node_id()));
+                                                 network_server_uri(local_node_id()));
     }
 
     static volumedriverfs::ClusterNodeConfig
@@ -289,7 +285,7 @@ protected:
                                                  volumedriverfs::MessagePort(port_base() + 2),
                                                  volumedriverfs::XmlRpcPort(port_base() + 4),
                                                  volumedriverfs::FailoverCachePort(port_base() + 6),
-                                                 make_edge_uri_(remote_node_id()));
+                                                 network_server_uri(remote_node_id()));
     }
 
     static uint16_t
