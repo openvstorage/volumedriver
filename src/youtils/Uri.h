@@ -56,6 +56,9 @@ public:
         return not operator==(other);
     }
 
+    bool
+    operator<(const Uri& other) const;
+
     using Query = std::unordered_map<std::string, boost::optional<std::string>>;
 
 #define URI_COMPONENT(typ, name)                    \
