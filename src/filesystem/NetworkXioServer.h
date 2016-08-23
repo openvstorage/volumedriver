@@ -16,15 +16,17 @@
 #ifndef __NETWORK_XIO_SERVER_H_
 #define __NETWORK_XIO_SERVER_H_
 
+#include "FileSystem.h"
+#include "NetworkXioIOHandler.h"
+#include "NetworkXioRequest.h"
+#include "NetworkXioWorkQueue.h"
+
 #include <map>
 #include <tuple>
 #include <memory>
 #include <libxio.h>
 
-#include "FileSystem.h"
-#include "NetworkXioWorkQueue.h"
-#include "NetworkXioIOHandler.h"
-#include "NetworkXioRequest.h"
+#include <youtils/Uri.h>
 
 namespace volumedriverfs
 {
@@ -38,8 +40,8 @@ MAKE_EXCEPTION(FailedRegisterEventHandler, fungi::IOException);
 class NetworkXioServer
 {
 public:
-    NetworkXioServer(FileSystem& fs,
-                     const std::string& uri,
+    NetworkXioServer(FileSystem&,
+                     const youtils::Uri&,
                      size_t snd_rcv_queue_depth,
                      unsigned int workqueue_max_threads);
 
@@ -93,7 +95,7 @@ private:
     DECLARE_LOGGER("NetworkXioServer");
 
     FileSystem& fs_;
-    std::string uri_;
+    youtils::Uri uri_;
     bool stopping;
 
     std::mutex mutex_;

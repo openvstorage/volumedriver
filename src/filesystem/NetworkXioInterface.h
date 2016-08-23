@@ -77,7 +77,7 @@ public:
     void
     shutdown();
 
-    std::string
+    youtils::Uri
     uri() const
     {
         return network_uri.value();

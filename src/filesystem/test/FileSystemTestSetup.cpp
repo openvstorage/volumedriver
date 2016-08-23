@@ -385,8 +385,7 @@ bpt::ptree&
 FileSystemTestSetup::make_edge_config_(bpt::ptree& pt,
 				       const vfs::NodeId& node_id)
 {
-    const yt::Uri uri(make_edge_uri_(node_id));
-    ip::PARAMETER_TYPE(network_uri)(boost::lexical_cast<std::string>(uri)).persist(pt);
+    ip::PARAMETER_TYPE(network_uri)(make_edge_uri_(node_id)).persist(pt);
     return pt;
 }
 

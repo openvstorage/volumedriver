@@ -13,17 +13,19 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "NetworkXioServer.h"
+#include "NetworkXioProtocol.h"
+
 #include <libxio.h>
 
 #include <youtils/Assert.h>
-
-#include "NetworkXioServer.h"
-#include "NetworkXioProtocol.h"
 
 #define POLLING_TIME_USEC   20
 
 namespace volumedriverfs
 {
+
+namespace yt = youtils;
 
 template<class T>
 static int
@@ -107,7 +109,7 @@ static_evfd_stop_loop(int fd, int events, void *data)
 }
 
 NetworkXioServer::NetworkXioServer(FileSystem& fs,
-                                   const std::string& uri,
+                                   const yt::Uri& uri,
                                    size_t snd_rcv_queue_depth,
                                    unsigned int workqueue_max_threads)
     : fs_(fs)
@@ -192,7 +194,7 @@ NetworkXioServer::run(std::promise<void> promise)
     LOG_INFO("bind XIO server to '" << uri_ << "'");
     server = std::shared_ptr<xio_server>(xio_bind(ctx.get(),
                                                   &xio_s_ops,
-                                                  uri_.c_str(),
+                                                  boost::lexical_cast<std::string>(uri_).c_str(),
                                                   NULL,
                                                   0,
                                                   this),
