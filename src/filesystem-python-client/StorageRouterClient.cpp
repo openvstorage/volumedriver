@@ -866,6 +866,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
     vfspy::LocalClient::registerize();
     vfspy::ArakoonClient::registerize();
 
+    REGISTER_STRINGY_CONVERTER(youtils::Uri);
     REGISTER_STRINGY_CONVERTER(vfs::ClusterId);
     REGISTER_STRINGY_CONVERTER(vfs::NodeId);
 

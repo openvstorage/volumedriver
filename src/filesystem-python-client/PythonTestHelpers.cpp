@@ -19,6 +19,7 @@
 #include <boost/python/class.hpp>
 
 #include <youtils/ArakoonNodeConfig.h>
+#include <youtils/Uri.h>
 
 #include <volumedriver/Types.h>
 
@@ -125,6 +126,9 @@ PythonTestHelpers::registerize()
         .def("reflect_maybe_chrono_seconds",
              &PythonTestHelpers::reflect<boost::optional<boost::chrono::seconds>>)
         .staticmethod("reflect_maybe_chrono_seconds")
+        .def("reflect_uri",
+             &PythonTestHelpers::reflect<youtils::Uri>)
+        .staticmethod("reflect_uri")
         ;
 }
 
