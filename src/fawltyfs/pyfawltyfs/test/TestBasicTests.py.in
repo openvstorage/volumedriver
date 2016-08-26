@@ -598,7 +598,7 @@ class TestBasicTests(unittest.TestCase):
             pfx = ".fuse_hidden"
             l = len(pfx)
             eq_(expected,
-                len([ s for s in os.listdir(self._mntpoint) if s[0:l] == pfx ]))
+                len([s for s in os.listdir(self._mntpoint) if s[0:l] == pfx]))
 
         checkHidden(0)
 
