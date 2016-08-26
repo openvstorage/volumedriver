@@ -49,7 +49,7 @@ def _make_empty_file(path):
 
 def _write_to_file(path, content):
     with open(path, "wb") as f:
-        f.write(content)
+        f.write(content.encode("ASCII"))
 
 # TODO: move to a place where it can be reused
 
@@ -598,8 +598,7 @@ class TestBasicTests(unittest.TestCase):
             pfx = ".fuse_hidden"
             l = len(pfx)
             eq_(expected,
-                len(filter(lambda s: s[0:l] == pfx,
-                           os.listdir(self._mntpoint))))
+                len([ s for s in os.listdir(self._mntpoint) if s[0:l] == pfx ]))
 
         checkHidden(0)
 
