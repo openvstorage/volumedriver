@@ -1304,10 +1304,11 @@ TEST_F(NetworkServerTest, list_open_connections)
                                          FileSystemTestSetup::address().c_str(),
                                          FileSystemTestSetup::local_edge_port()));
 
+    const std::string vname("volume");
     ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
     ASSERT_TRUE(ctx != nullptr);
     EXPECT_EQ(ovs_create_volume(ctx,
-                                "volume",
+                                vname.c_str(),
                                 volume_size),
               0);
 
@@ -1315,10 +1316,21 @@ TEST_F(NetworkServerTest, list_open_connections)
     EXPECT_EQ(0, m.size());
 
     ASSERT_EQ(0,
-              ovs_ctx_init(ctx, "volume", O_RDONLY));
+              ovs_ctx_init(ctx,
+                           vname.c_str(),
+                           O_RDONLY));
 
     const std::vector<vfs::ClientInfo> l(client_.list_client_connections(local_node_id()));
     EXPECT_EQ(1, l.size());
+
+    const boost::optional<vfs::ObjectId> oid(find_object(vfs::FrontendPath(make_volume_name("/" + vname))));
+    const vfs::ClientInfo& info = l[0];
+
+    EXPECT_EQ(oid,
+              info.object_id);
+    EXPECT_FALSE(info.ip.empty());
+    EXPECT_NE(0,
+              info.port);
 
     EXPECT_EQ(0,
               ovs_ctx_destroy(ctx));

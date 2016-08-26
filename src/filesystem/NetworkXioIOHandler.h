@@ -55,28 +55,7 @@ public:
     handle_request(NetworkXioRequest* req);
 
     void
-    update_fs_client_info(const std::string& volume_name)
-    {
-        char hoststr[NI_MAXHOST], portstr[NI_MAXSERV];
-        xio_connection_attr xcon_peer;
-        (void) xio_query_connection(cd_->conn,
-                                    &xcon_peer,
-                                    XIO_CONNECTION_ATTR_USER_CTX |
-                                    XIO_CONNECTION_ATTR_PEER_ADDR);
-        /* Get peer info */
-        (void) getnameinfo((struct sockaddr *)&xcon_peer.peer_addr,
-                           sizeof(struct sockaddr_storage),
-                           hoststr, sizeof(hoststr),
-                           portstr, sizeof(portstr),
-                           NI_NUMERICHOST | NI_NUMERICSERV);
-
-        const FrontendPath volume_path(make_volume_path(volume_name));
-        boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
-        ClientInfo info(volume_id,
-                        hoststr,
-                        portstr);
-        cd_->tag = fs_.register_client(info);
-    }
+    update_fs_client_info(const std::string& volume_name);
 
     void
     remove_fs_client_info()

@@ -35,6 +35,56 @@ pack_msg(NetworkXioRequest *req)
 }
 
 void
+NetworkXioIOHandler::update_fs_client_info(const std::string& volume_name)
+{
+    uint16_t port = 0;
+    std::string host;
+
+    xio_connection_attr xcon_peer;
+    int ret = xio_query_connection(cd_->conn,
+                                   &xcon_peer,
+                                   XIO_CONNECTION_ATTR_USER_CTX |
+                                   XIO_CONNECTION_ATTR_PEER_ADDR);
+    if (ret < 0)
+    {
+        LOG_ERROR(volume_name << ": failed to query the xio connection: " <<
+                  xio_strerror(xio_errno()));
+    }
+    else
+    {
+        char hoststr[NI_MAXHOST], portstr[NI_MAXSERV];
+
+        /* Get peer info */
+        ret = getnameinfo(reinterpret_cast<const sockaddr*>(&xcon_peer.peer_addr),
+                          sizeof(struct sockaddr_storage),
+                          hoststr,
+                          sizeof(hoststr),
+                          portstr,
+                          sizeof(portstr),
+                          NI_NUMERICHOST | NI_NUMERICSERV);
+        if (ret != 0)
+        {
+            LOG_ERROR(volume_name << ": failed to retrieve host / port: " << gai_strerror(ret));
+        }
+        else
+        {
+            try
+            {
+                port = boost::lexical_cast<uint16_t>(portstr);
+            }
+            CATCH_STD_ALL_LOG_IGNORE(volume_name << ": failed to convert " << portstr << " to port");
+
+            host = hoststr;
+        }
+    }
+
+    const FrontendPath volume_path(make_volume_path(volume_name));
+    cd_->tag = fs_.register_client(ClientInfo(fs_.find_id(volume_path),
+                                              std::move(host),
+                                              port));
+}
+
+void
 NetworkXioIOHandler::handle_open(NetworkXioRequest *req,
                                  const std::string& volume_name)
 {

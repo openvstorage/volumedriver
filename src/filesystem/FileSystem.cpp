@@ -1446,11 +1446,11 @@ FileSystem::vaai_copy(const FrontendPath& src_path,
 ClientInfoTag
 FileSystem::register_client(ClientInfo info)
 {
-
     std::lock_guard<std::mutex> lock(client_info_lock_);
     static ClientInfoTag ci_tag_cnt(0);
     const ClientInfoTag tag(++ci_tag_cnt);
-    client_info_map_.emplace(tag, info);
+    client_info_map_.emplace(tag,
+                             std::move(info));
     return tag;
 }
 
