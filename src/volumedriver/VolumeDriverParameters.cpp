@@ -145,7 +145,7 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(max_volume_size,
                                       "max_volume_size",
                                       "Maximum size for volumes - checked on creation and resize",
                                       ShowDocumentation::F,
-                                      2ULL << 40);
+                                      16ULL << 40);
 
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(allow_inconsistent_partial_reads,
                                       volmanager_component_name,
