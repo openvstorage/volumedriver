@@ -19,11 +19,9 @@
 #include "VolumeCacheHandler.h"
 #include "ShmControlChannelClient.h"
 #include "internal.h"
-struct ovs_shm_context;
 
 struct IOThread
 {
-    ovs_shm_context *shm_ctx_;
     std::thread iothread_;
     std::mutex mutex_;
     std::condition_variable cv_;
@@ -49,9 +47,6 @@ struct IOThread
 };
 
 typedef std::unique_ptr<IOThread> IOThreadPtr;
-
-static void _aio_readreply_handler(void*);
-static void _aio_writereply_handler(void*);
 
 struct ovs_shm_context
 {
@@ -148,8 +143,8 @@ struct ovs_shm_context
             try
             {
                 iot = std::make_unique<IOThread>();
-                iot->shm_ctx_ = this;
-                iot->iothread_ = std::thread(_aio_readreply_handler,
+                iot->iothread_ = std::thread(&ovs_shm_context::rr_handler,
+                                             this,
                                              (void*)iot.get());
                 rr_iothreads.push_back(std::move(iot));
             }
@@ -166,8 +161,8 @@ struct ovs_shm_context
             try
             {
                 iot = std::make_unique<IOThread>();
-                iot->shm_ctx_ = this;
-                iot->iothread_ = std::thread(_aio_writereply_handler,
+                iot->iothread_ = std::thread(&ovs_shm_context::wr_handler,
+                                             this,
                                              (void*)iot.get());
                 wr_iothreads.push_back(std::move(iot));
             }
@@ -201,6 +196,58 @@ struct ovs_shm_context
         close_rr_iothreads();
     }
 
+    void
+    rr_handler(void *arg)
+    {
+        IOThread *iothread = (IOThread*) arg;
+        const struct timespec timeout = {2, 0};
+        size_t size_in_bytes;
+        bool failed;
+        //cnanakos: stop thread by sending a stop request?
+        while (not iothread->stopping)
+        {
+            ovs_aio_request *request;
+            failed = shm_client_->timed_receive_read_reply(size_in_bytes,
+                                                           reinterpret_cast<void**>(&request),
+                                                           &timeout);
+            if (request)
+            {
+                ovs_aio_request::handle_shm_request(request,
+                                                    size_in_bytes,
+                                                    failed);
+            }
+        }
+        std::lock_guard<std::mutex> lock_(iothread->mutex_);
+        iothread->stopped = true;
+        iothread->cv_.notify_all();
+    }
+
+    void
+    wr_handler(void *arg)
+    {
+        IOThread *iothread = (IOThread*) arg;
+        const struct timespec timeout = {2, 0};
+        size_t size_in_bytes;
+        bool failed;
+        //cnanakos: stop thread by sending a stop request?
+        while (not iothread->stopping)
+        {
+            ovs_aio_request *request;
+            failed = shm_client_->timed_receive_write_reply(size_in_bytes,
+                                                            reinterpret_cast<void**>(&request),
+                                                            &timeout);
+            if (request)
+            {
+                ovs_aio_request::handle_shm_request(request,
+                                                    size_in_bytes,
+                                                    failed);
+            }
+        }
+        std::lock_guard<std::mutex> lock_(iothread->mutex_);
+        iothread->stopped = true;
+        iothread->cv_.notify_all();
+    }
+
     int oflag;
     int io_threads_pool_size_;
     volumedriverfs::ShmClientPtr shm_client_;
@@ -209,59 +256,5 @@ struct ovs_shm_context
     VolumeCacheHandlerPtr cache_;
     ShmControlChannelClientPtr ctl_client_;
 };
-
-static void
-_aio_readreply_handler(void *arg)
-{
-    IOThread *iothread = (IOThread*) arg;
-    ovs_shm_context *ctx = iothread->shm_ctx_;
-    const struct timespec timeout = {2, 0};
-    size_t size_in_bytes;
-    bool failed;
-    //cnanakos: stop thread by sending a stop request?
-    while (not iothread->stopping)
-    {
-        ovs_aio_request *request;
-        failed = ctx->shm_client_->timed_receive_read_reply(size_in_bytes,
-                                                            reinterpret_cast<void**>(&request),
-                                                            &timeout);
-        if (request)
-        {
-            ovs_aio_request::handle_shm_request(request,
-                                                size_in_bytes,
-                                                failed);
-        }
-    }
-    std::lock_guard<std::mutex> lock_(iothread->mutex_);
-    iothread->stopped = true;
-    iothread->cv_.notify_all();
-}
-
-static void
-_aio_writereply_handler(void *arg)
-{
-    IOThread *iothread = (IOThread*) arg;
-    ovs_shm_context *ctx = iothread->shm_ctx_;
-    const struct timespec timeout = {2, 0};
-    size_t size_in_bytes;
-    bool failed;
-    //cnanakos: stop thread by sending a stop request?
-    while (not iothread->stopping)
-    {
-        ovs_aio_request *request;
-        failed = ctx->shm_client_->timed_receive_write_reply(size_in_bytes,
-                                                             reinterpret_cast<void**>(&request),
-                                                             &timeout);
-        if (request)
-        {
-            ovs_aio_request::handle_shm_request(request,
-                                                size_in_bytes,
-                                                failed);
-        }
-    }
-    std::lock_guard<std::mutex> lock_(iothread->mutex_);
-    iothread->stopped = true;
-    iothread->cv_.notify_all();
-}
 
 #endif //SHM_HANDLER_H
