@@ -263,8 +263,20 @@ ovs_log_formatter(const bl::record_view& rec,
                                                          "(UnspecifiedComponent)") <<
         sep <<
         sseq.str() <<
-        sep <<
-        extract_severity(rec) <<
+        sep;
+
+    // boost::optional adds a leading space if the value is present
+    const boost::optional<Severity> severity(extract_severity(rec));
+    if (severity)
+    {
+        os << *severity;
+    }
+    else
+    {
+        os << severity;
+    }
+
+    os <<
         sep <<
         rec[bl::expressions::smessage];
 }
