@@ -8,10 +8,9 @@ Homepage: www.openvstorage.com
 
 Package: volumedriver-server
 Architecture: any
-Depends: ${shlibs:Depends}
+Depends: ${shlibs:Depends}, omniorb-nameserver
 Suggests: lttng-tools
 Pre-Depends: volumedriver-base (>= 3.6.0)
-Recommends: omniorb-nameserver
 Conflicts: volumedriver-server (<< 3.6.0)
 Description: VolumeDriver daemon and helpers
  This package contains the binaries and the Python extensions
