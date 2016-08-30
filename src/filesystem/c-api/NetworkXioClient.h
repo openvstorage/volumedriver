@@ -16,19 +16,19 @@
 #ifndef __NETWORK_XIO_CLIENT_H_
 #define __NETWORK_XIO_CLIENT_H_
 
+#include "../NetworkXioProtocol.h"
+#include "internal.h"
+
+#include <boost/thread/lock_guard.hpp>
+#include <youtils/SpinLock.h>
+#include <youtils/Logger.h>
+
 #include <libxio.h>
 
 #include <queue>
 #include <mutex>
 #include <condition_variable>
 #include <chrono>
-#include <boost/thread/lock_guard.hpp>
-#include <youtils/SpinLock.h>
-
-#include <youtils/Logger.h>
-
-#include "../NetworkXioProtocol.h"
-#include "internal.h"
 
 namespace volumedriverfs
 {

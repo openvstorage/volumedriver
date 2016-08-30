@@ -16,6 +16,8 @@
 #ifndef __SHM_SERVER_H_
 #define __SHM_SERVER_H_
 
+#include "ShmProtocol.h"
+
 #include <boost/interprocess/ipc/message_queue.hpp>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 #include <boost/asio.hpp>
@@ -25,8 +27,6 @@
 #include <youtils/Assert.h>
 #include <youtils/Logging.h>
 #include <youtils/System.h>
-
-#include "ShmProtocol.h"
 
 namespace volumedriverfs
 {

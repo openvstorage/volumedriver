@@ -13,12 +13,11 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include <libxio.h>
-
-#include <youtils/Assert.h>
-
 #include "NetworkXioServer.h"
 #include "NetworkXioProtocol.h"
+
+#include <youtils/Assert.h>
+#include <libxio.h>
 
 #define POLLING_TIME_USEC   20
 

@@ -17,6 +17,7 @@
 #define __SHM_CONTROL_CHANNEL_PROTOCOL_H_
 
 #include <boost/interprocess/managed_shared_memory.hpp>
+#include <youtils/Assert.h>
 
 PRAGMA_IGNORE_WARNING_BEGIN("-Wctor-dtor-privacy");
 #include <msgpack.hpp>

@@ -18,13 +18,12 @@
 
 #include "ShmCommon.h"
 
-#include <future>
-
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/property_tree/ptree_fwd.hpp>
 #include <youtils/OrbHelper.h>
-
 #include <youtils/VolumeDriverComponent.h>
+
+#include <future>
 
 namespace volumedriverfs
 {

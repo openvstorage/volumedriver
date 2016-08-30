@@ -13,23 +13,23 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include <cerrno>
-#include <map>
-
-#include <limits.h>
-#include <libxio.h>
-
-#include <youtils/SpinLock.h>
-#include <youtils/System.h>
-#include <youtils/IOException.h>
-#include <youtils/ScopeExit.h>
-
 #include "volumedriver.h"
 #include "common.h"
 #include "tracing.h"
 #include "context.h"
 #include "ShmContext.h"
 #include "NetworkXioContext.h"
+
+#include <youtils/SpinLock.h>
+#include <youtils/System.h>
+#include <youtils/IOException.h>
+#include <youtils/ScopeExit.h>
+
+#include <limits.h>
+#include <libxio.h>
+
+#include <cerrno>
+#include <map>
 
 #ifdef __GNUC__
 #define likely(x)       __builtin_expect(!!(x), 1)

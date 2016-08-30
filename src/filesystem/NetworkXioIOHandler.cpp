@@ -13,13 +13,13 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include <youtils/Assert.h>
-#include <youtils/Catchers.h>
-
 #include "NetworkXioIOHandler.h"
 #include "NetworkXioProtocol.h"
 #include "ObjectRouter.h"
 #include "PythonClient.h" // clienterrors
+
+#include <youtils/Assert.h>
+#include <youtils/Catchers.h>
 
 namespace volumedriverfs
 {

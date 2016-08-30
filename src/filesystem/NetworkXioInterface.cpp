@@ -13,6 +13,8 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "NetworkXioInterface.h"
+
 #include <boost/exception_ptr.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -22,8 +24,6 @@
 #include <filesystem/Registry.h>
 
 #include <libxio.h>
-
-#include "NetworkXioInterface.h"
 
 namespace volumedriverfs
 {

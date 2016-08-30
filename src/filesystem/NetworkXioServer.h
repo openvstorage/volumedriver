@@ -16,15 +16,15 @@
 #ifndef __NETWORK_XIO_SERVER_H_
 #define __NETWORK_XIO_SERVER_H_
 
-#include <map>
-#include <tuple>
-#include <memory>
-#include <libxio.h>
-
 #include "FileSystem.h"
 #include "NetworkXioWorkQueue.h"
 #include "NetworkXioIOHandler.h"
 #include "NetworkXioRequest.h"
+
+#include <map>
+#include <tuple>
+#include <memory>
+#include <libxio.h>
 
 namespace volumedriverfs
 {

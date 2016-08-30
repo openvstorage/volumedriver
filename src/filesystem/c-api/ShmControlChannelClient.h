@@ -18,9 +18,10 @@
 
 #include "../ShmControlChannelProtocol.h"
 
-#include <memory>
 #include <boost/asio.hpp>
 #include <youtils/SpinLock.h>
+
+#include <memory>
 
 class ShmControlChannelClient
 {

@@ -16,6 +16,10 @@
 #ifndef NETWORK_XIO_WORKQUEUE_H_
 #define NETWORK_XIO_WORKQUEUE_H_
 
+#include "NetworkXioRequest.h"
+
+#include <boost/thread/lock_guard.hpp>
+#include <youtils/SpinLock.h>
 #include <youtils/IOException.h>
 
 #include <mutex>
@@ -24,11 +28,6 @@
 #include <atomic>
 #include <thread>
 #include <chrono>
-
-#include <boost/thread/lock_guard.hpp>
-#include <youtils/SpinLock.h>
-
-#include "NetworkXioRequest.h"
 
 namespace volumedriverfs
 {

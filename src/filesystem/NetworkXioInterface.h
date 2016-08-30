@@ -16,13 +16,13 @@
 #ifndef __NETWORK_XIO_INTERFACE_H_
 #define __NETWORK_XIO_INTERFACE_H_
 
-#include <boost/property_tree/ptree_fwd.hpp>
-#include <unordered_map>
-#include <libxio.h>
+#include "NetworkXioServer.h"
 
+#include <boost/property_tree/ptree_fwd.hpp>
 #include <youtils/VolumeDriverComponent.h>
 
-#include "NetworkXioServer.h"
+#include <libxio.h>
+#include <unordered_map>
 
 namespace volumedriverfs
 {

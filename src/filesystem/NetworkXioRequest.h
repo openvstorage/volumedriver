@@ -16,12 +16,12 @@
 #ifndef __NETWORK_XIO_REQUEST_H_
 #define __NETWORK_XIO_REQUEST_H_
 
-#include <boost/intrusive/slist.hpp>
-
 #include "ClientInfo.h"
 
 #include "NetworkXioWork.h"
 #include "NetworkXioCommon.h"
+
+#include <boost/intrusive/slist.hpp>
 
 namespace volumedriverfs
 {

@@ -17,6 +17,9 @@
 #define __NETWORK_XIO_COMMON_H_
 
 #include <sys/eventfd.h>
+#include <unistd.h>
+
+#include <stdexcept>
 
 #define ATTR_UNUSED     __attribute__((unused))
 
@@ -27,7 +30,7 @@ struct EventFD
 {
     EventFD()
     {
-        evfd_ = eventfd(0, EFD_NONBLOCK);
+        evfd_ = ::eventfd(0, EFD_NONBLOCK);
         if (evfd_ < 0)
         {
             throw std::runtime_error("failed to create eventfd");
@@ -38,7 +41,7 @@ struct EventFD
     {
         if (evfd_ != -1)
         {
-            close(evfd_);
+            ::close(evfd_);
         }
     }
 
@@ -55,7 +58,7 @@ struct EventFD
         int ret;
         eventfd_t value = 0;
         do {
-            ret = eventfd_read(evfd_, &value);
+            ret = ::eventfd_read(evfd_, &value);
         } while (ret < 0 && errno == EINTR);
         if (ret == 0)
         {
@@ -74,7 +77,7 @@ struct EventFD
         uint64_t u = 1;
         int ret;
         do {
-            ret = eventfd_write(evfd_, static_cast<eventfd_t>(u));
+            ret = ::eventfd_write(evfd_, static_cast<eventfd_t>(u));
         } while (ret < 0 && (errno == EINTR || errno == EAGAIN));
         if (ret < 0)
         {

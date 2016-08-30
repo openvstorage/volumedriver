@@ -15,6 +15,9 @@
 #ifndef __SHM_CONTROL_CHANNEL_SERVER_H
 #define __SHM_CONTROL_CHANNEL_SERVER_H
 
+#include "ShmControlChannelProtocol.h"
+#include "ShmVolumeCache.h"
+
 #include <boost/bind.hpp>
 #include <boost/array.hpp>
 #include <boost/enable_shared_from_this.hpp>
@@ -25,9 +28,6 @@
 
 #include <youtils/SpinLock.h>
 #include <youtils/Assert.h>
-
-#include "ShmControlChannelProtocol.h"
-#include "ShmVolumeCache.h"
 
 namespace volumedriverfs
 {

@@ -18,6 +18,8 @@
 
 #include "NetworkXioCommon.h"
 
+#include <youtils/Assert.h>
+
 PRAGMA_IGNORE_WARNING_BEGIN("-Wctor-dtor-privacy")
 #include <msgpack.hpp>
 PRAGMA_IGNORE_WARNING_END;

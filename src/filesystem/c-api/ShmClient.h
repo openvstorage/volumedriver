@@ -16,14 +16,14 @@
 #ifndef __SHM_CLIENT_H_
 #define __SHM_CLIENT_H_
 
+#include "../ShmProtocol.h"
+#include "../ShmIdlInterface.h"
+
 #include <boost/interprocess/ipc/message_queue.hpp>
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/errors.hpp>
 #include <youtils/Logging.h>
 #include <youtils/OrbHelper.h>
-
-#include "../ShmProtocol.h"
-#include "../ShmIdlInterface.h"
 
 namespace volumedriverfs
 {

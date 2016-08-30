@@ -16,12 +16,12 @@
 #ifndef __SHM_INTERFACE_H
 #define __SHM_INTERFACE_H
 
-#include <mutex>
-#include <youtils/OrbHelper.h>
-
 #include "ShmIdlInterface.h"
 #include "ShmServer.h"
 #include "ShmControlChannelServer.h"
+
+#include <mutex>
+#include <youtils/OrbHelper.h>
 
 namespace volumedriverfs
 {
