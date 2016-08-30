@@ -61,21 +61,14 @@ validate(boost::any& v,
         throw validation_error(validation_error::invalid_option_value);
     }
 
-    if (EtcdUrl::is_one(s))
+    try
     {
-        v = boost::any(MaybeUri(Uri(s)));
+        const Uri u(boost::lexical_cast<Uri>(s));
+        v = boost::any(MaybeUri(u));
     }
-    else
+    catch (...)
     {
-        const fs::path p(s);
-        if(fs::exists(p))
-        {
-            v = boost::any(MaybeUri(Uri(s)));
-        }
-        else
-        {
-            throw validation_error(validation_error::invalid_option_value);
-        }
+        throw validation_error(validation_error::invalid_option_value);
     }
 }
 
