@@ -110,10 +110,10 @@ MAKE_CHECKER(isSync, Type::SyncTC)
     type() const;
 
     // OVS-685 / SSOBF-10034:
-    // We artifically limit the volume size to 4G clusters (== 16TiB w/ 4k clusters)
+    // We artifically limit the volume size to 8G clusters (== 32TiB w/ 4k clusters)
     // as a sanity check. Bigger volumes are not supported by the codebase at the moment
     // anyway as that would lead to inordinate resource consumption e.g. during restart.
-    static constexpr ClusterAddress max_valid_cluster_address_ = (1ULL << 32) - 1;
+    static constexpr ClusterAddress max_valid_cluster_address_ = (1ULL << 33) - 1;
 
     static ClusterAddress
     max_valid_cluster_address()
