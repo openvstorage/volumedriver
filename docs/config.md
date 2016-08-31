@@ -1,5 +1,5 @@
 # VolumeDriver Config file
-The VolumeDriver gets configured per vPool. To change the config update the values in ETCD `/ovs/vpools/<vpool guid>`. Some of the values can be dynamically changed (dynamic reconfigurable), other values require a restart. To make sure the static values get applied execute ** service ovs-volumedriver-vpool_name restart**
+The VolumeDriver is configured per vPool. To change the config update the values in ETCD `/ovs/vpools/<vpool guid>`. Some of the values can be dynamically changed (dynamically reconfigurable), other values require a restart. To make sure the values that cannot be reconfigured dynamically are applied, execute ** service ovs-volumedriver-vpool_name restart**
 
 **Note: Modifying the config files incorrectly might result in data loss.**
 
