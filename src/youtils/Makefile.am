@@ -103,6 +103,7 @@ libyoutils_la_SOURCES = \
 	SignalBlocker.cpp \
 	SignalSet.cpp \
 	SignalThread.cpp \
+	SocketAddress.cpp \
 	SpinLock.cpp \
 	StreamUtils.cpp \
 	StrongTypedString.cpp \
