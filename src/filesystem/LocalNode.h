@@ -254,6 +254,7 @@ private:
     DECLARE_PARAMETER(vrouter_local_io_retries);
     DECLARE_PARAMETER(vrouter_sco_multiplier);
     DECLARE_PARAMETER(vrouter_lock_reaper_interval);
+    DECLARE_PARAMETER(vrouter_backend_sync_check_interval_ms);
     DECLARE_PARAMETER(scrub_manager_interval);
     DECLARE_PARAMETER(scrub_manager_sync_wait_secs);
 
