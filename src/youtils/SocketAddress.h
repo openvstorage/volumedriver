@@ -33,6 +33,21 @@ public:
     SocketAddress(const SocketAddress& other);
     ~SocketAddress();
 
+    const SocketAddress&
+    operator=(const SocketAddress& other);
+
+    const SocketAddress&
+    operator=(const struct sockaddr& s);
+
+    const SocketAddress&
+    operator=(const struct sockaddr_in& s);
+
+    const SocketAddress&
+    operator=(const struct sockaddr_in6& s);
+
+    const SocketAddress&
+    operator=(const struct sockaddr_storage& s);
+
     static socklen_t
     get_family_length(sa_family_t family)
     {

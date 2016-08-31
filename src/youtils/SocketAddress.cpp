@@ -55,6 +55,44 @@ SocketAddress::~SocketAddress()
 {
 }
 
+const SocketAddress&
+SocketAddress::operator=(const SocketAddress& other)
+{
+    if (this != &other)
+    {
+        socket_addr_ = other.socket_addr_;
+    }
+    return *this;
+}
+
+const SocketAddress&
+SocketAddress::operator=(const struct sockaddr& s)
+{
+    socket_addr_.sa = s;
+    return *this;
+}
+
+const SocketAddress&
+SocketAddress::operator=(const struct sockaddr_in& s)
+{
+    socket_addr_.sa_ipv4 = s;
+    return *this;
+}
+
+const SocketAddress&
+SocketAddress::operator=(const struct sockaddr_in6& s)
+{
+    socket_addr_.sa_ipv6 = s;
+    return *this;
+}
+
+const SocketAddress&
+SocketAddress::operator=(const struct sockaddr_storage& s)
+{
+    socket_addr_.sa_storage = s;
+    return *this;
+}
+
 sa_family_t
 SocketAddress::get_family() const
 {
