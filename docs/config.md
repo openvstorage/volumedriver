@@ -1,5 +1,5 @@
 # VolumeDriver Config file
-The VolumeDriver gets configured per vPool. To change the config file, edit the json. Some of the values can be dynamically changed (dynamic reconfigurable), other values require a restart. To make sure the static values get applied execute ** service ovs-volumedriver-vpool_name restart**
+The VolumeDriver gets configured per vPool. To change the config update the values in ETCD `/ovs/vpools/<vpool guid>`. Some of the values can be dynamically changed (dynamic reconfigurable), other values require a restart. To make sure the static values get applied execute ** service ovs-volumedriver-vpool_name restart**
 
 **Note: Modifying the config files incorrectly might result in data loss.**
 
@@ -108,11 +108,11 @@ The VolumeDriver gets configured per vPool. To change the config file, edit the 
 | scrub_manager | scrub_manager_wait_secs | "600" |  yes | Allows to configure how long the ScrubManager waits (in seconds) after scrub result application for the backend to be in sync before considering the scrub result application failed. |
 | shm_interface | shm_region_size | " 268435456" | no | Size of the shared memory segment (in bytes) employed by the shared memory server. |
 
-In case a dynamic property is changed, notify the Volume Driver of the update with the python api.
+In case a dynamic property is changed, notify the Volume Driver of the update.
 
 ```
-import volumedriver.storagerouter.storagerouterclient as src
-lclient = src.LocalStorageRouterClient("/opt/OpenvStorage/config/storagedriver/storagedriver/<vpool_name>.json")
-lclient.update_configuration("/opt/OpenvStorage/config/storagedriver/storagedriver/<vpool_name>.json")
+from volumedriver.storagerouter.storagerouterclient import LocalStorageRouterClient
+src = LocalStorageRouterClient('etcd://127.0.0.1:2379/ovs/vpools/<vpool guid>/hosts/<vrouter id>/config')
+src.update_configuration('etcd://127.0.0.1:2379/ovs/vpools/<vpool guid>/hosts/<vrouter id>/config')
 ```
-** Note: update the json of all nodes of the vPool to make sure the vPool is consistent**
+** Note: update the config of all nodes of the vPool to make sure the vPool is consistent**
