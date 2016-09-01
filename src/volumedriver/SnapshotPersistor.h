@@ -251,6 +251,17 @@ public:
     void
     getTLogsNotWrittenToBackend(OrderedTLogIds& out) const;
 
+    OrderedTLogIds
+    getCurrentTLogsNotWrittenToBackend() const
+    {
+        OrderedTLogIds tlogs;
+        getCurrentTLogsNotWrittenToBackend(tlogs);
+        return tlogs;
+    }
+
+    void
+    getCurrentTLogsNotWrittenToBackend(OrderedTLogIds&) const;
+
     void
     deleteAllButLastSnapshot();
 
