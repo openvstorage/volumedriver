@@ -16,6 +16,7 @@
 // Copyright Ralf W. Grosse-Kunstleve 2002-2004. Distributed under the Boost
 // Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
 #include "VolumeInfo.h"
 #include "SnapshotToolCut.h"
 #include "TLogToolCut.h"
@@ -62,6 +63,17 @@ BOOST_PYTHON_MODULE(ToolCut)
 
     scope().attr("__doc__") = "Access the basic building blocks of VolumeDriver\n"
         "such as SCO, ClusterLocation, TLog, TLogReader, Snapshot, VolumeInfo, ScrubbingResult...";
+
+    class_<volumedriver::TLogId>("TLogId",
+                                 "A TLog identifier",
+                                 bpy::no_init)
+        .def("__repr__",
+             &boost::lexical_cast<std::string>)
+        .def("__str__",
+             &boost::lexical_cast<std::string>)
+        .def("__eq__",
+             &volumedriver::TLogId::operator==)
+        ;
 
     enum_<volumedriver::FailOverCacheConfigWrapper::CacheType>("FailOverCacheType",
                                                                "Type of Failover cache.\n"
@@ -146,7 +158,6 @@ BOOST_PYTHON_MODULE(ToolCut)
              "@param the tlog name, a string\n"
              "@returns the uuid of this tlog name as a string\n")
         .staticmethod("getUUIDFromTLogName");
-
 
     class_<VolumeInfo,
            boost::noncopyable>("VolumeInfo",
@@ -446,7 +457,6 @@ BOOST_PYTHON_MODULE(ToolCut)
              "@param a string, the name to be checked\n"
              "@returns a bool, whether the string is a scrubbing_result")
         .staticmethod("isScrubbingResultString");
-
 
     class_<MetadataStoreToolCut, boost::noncopyable>("MetadataStore",
                                                      "Interface to the tokyo cabinet metadastore",
