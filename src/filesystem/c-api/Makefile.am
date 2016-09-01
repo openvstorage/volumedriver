@@ -16,6 +16,7 @@ libovsvolumedriver_la_SOURCES = \
 	AioCompletion.cpp \
 	../ShmIdlInterface.cpp \
 	ShmControlChannelClient.cpp \
+	ShmContext.cpp \
 	ShmClient.cpp \
 	ShmHandler.cpp \
 	VolumeCacheHandler.cpp \
