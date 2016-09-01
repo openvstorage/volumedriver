@@ -26,143 +26,32 @@
 class ShmControlChannelClient
 {
 public:
-    ShmControlChannelClient()
-    : socket_(io_service_)
-    , ep_(ShmConnectionDetails::Endpoint())
-    {}
+    ShmControlChannelClient();
 
-    ~ShmControlChannelClient()
-    {
-        socket_.shutdown(boost::asio::local::stream_protocol::socket::shutdown_both);
-        socket_.close();
-    };
+    ~ShmControlChannelClient();
 
     ShmControlChannelClient(const ShmControlChannelClient&) = delete;
     ShmControlChannelClient& operator=(const ShmControlChannelClient&) = delete;
 
     bool
     connect_and_register(const std::string& volume_name,
-                         const std::string& key)
-    {
-        boost::system::error_code ec;
-        ShmControlChannelMsg msg(ShmMsgOpcode::Register);
-        msg.volume_name(volume_name);
-        msg.key(key);
-
-        socket_.connect(ep_,
-                        ec);
-        if (ec)
-        {
-            return false;
-        }
-
-        if (not _ctl_sendmsg(msg))
-        {
-            return false;
-        }
-        if (not _ctl_recvmsg(msg))
-        {
-            return false;
-        }
-        if (msg.is_success())
-        {
-            return true;
-        }
-        return false;
-    }
+                         const std::string& key);
 
     bool
-    deregister()
-    {
-        ShmControlChannelMsg msg(ShmMsgOpcode::Deregister);
-
-        fungi::ScopedSpinLock lock_(ctl_channel_lock_);
-        if (not _ctl_sendmsg(msg))
-        {
-            return false;
-        }
-        if (not _ctl_recvmsg(msg))
-        {
-            return false;
-        }
-        if (msg.is_success())
-        {
-            return true;
-        }
-        return false;
-    }
+    deregister();
 
     bool
     allocate(boost::interprocess::managed_shared_memory::handle_t& hdl,
-             size_t size)
-    {
-        ShmControlChannelMsg msg(ShmMsgOpcode::Allocate);
-        msg.size(size);
-        {
-            fungi::ScopedSpinLock lock_(ctl_channel_lock_);
-            if (not _ctl_sendmsg(msg))
-            {
-                return false;
-            }
-            if (not _ctl_recvmsg(msg))
-            {
-                return false;
-            }
-        }
-        if (msg.is_success())
-        {
-            hdl = msg.handle();
-            return true;
-        }
-        return false;
-    }
+             size_t size);
 
     bool
-    deallocate(const boost::interprocess::managed_shared_memory::handle_t& hdl)
-    {
-        ShmControlChannelMsg msg(ShmMsgOpcode::Deallocate);
-        msg.handle(hdl);
-        {
-            fungi::ScopedSpinLock lock_(ctl_channel_lock_);
-            if (not _ctl_sendmsg(msg))
-            {
-                return false;
-            }
-            if (not _ctl_recvmsg(msg))
-            {
-                return false;
-            }
-        }
-        if (msg.is_success())
-        {
-            return true;
-        }
-        return false;
-    }
+    deallocate(const boost::interprocess::managed_shared_memory::handle_t& hdl);
 
     bool
-    is_open() const
-    {
-        return socket_.is_open();
-    }
+    is_open() const;
 
     bool
-    is_connected()
-    {
-        char buf;
-        ssize_t ret = recv(socket_.native_handle(),
-                           &buf,
-                           1,
-                           MSG_DONTWAIT | MSG_PEEK);
-        if (ret == 0)
-        {
-            return false;
-        }
-        else
-        {
-            return true;
-        }
-    }
+    is_connected();
 
 private:
     boost::asio::io_service io_service_;
