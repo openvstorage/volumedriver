@@ -17,6 +17,7 @@ libovsvolumedriver_la_SOURCES = \
 	../ShmIdlInterface.cpp \
 	ShmControlChannelClient.cpp \
 	ShmClient.cpp \
+	ShmHandler.cpp \
 	VolumeCacheHandler.cpp \
 	NetworkXioClient.cpp \
 	TracePoints_tp.c \
