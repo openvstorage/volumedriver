@@ -20,6 +20,7 @@
 #include "BackendException.h"
 #include "LocalConfig.h"
 
+#include <boost/interprocess/sync/named_mutex.hpp>
 #include <boost/thread/mutex.hpp>
 
 #include <youtils/IOException.h>
@@ -59,7 +60,7 @@ public:
                const EnablePartialRead = EnablePartialRead::T,
                const SyncObjectAfterWrite = SyncObjectAfterWrite::T);
 
-    virtual ~Connection() = default;
+    virtual ~Connection();
 
     Connection(const Connection&) = delete;
 
@@ -215,9 +216,6 @@ private:
                std::string& destination,
                std::string& md5);
 
-
-
-
     static void
     EvictFromCache(const KeyType&,
                    const ValueType&)
@@ -230,9 +228,8 @@ private:
     DECLARE_LOGGER("LocalConnection");
 
 protected:
-    typedef boost::mutex lock_type;
-    static lock_type lock_;
     boost::filesystem::path path_;
+    boost::interprocess::named_mutex lock_;
     struct timespec timespec_;
     const EnablePartialRead enable_partial_read_;
     const SyncObjectAfterWrite sync_object_after_write_;

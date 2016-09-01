@@ -28,27 +28,60 @@ namespace backend
 namespace local
 {
 
+namespace bi = boost::interprocess;
 namespace fs = boost::filesystem;
 namespace yt = youtils;
-
-
 
 Connection::LRUCacheType&
 Connection::lruCache()
 {
-
     static LRUCacheType lru_cache("Local Backend Cache",
                                   Connection::lru_cache_size,
                                   Connection::EvictFromCache);
     return lru_cache;
 }
 
-Connection::lock_type Connection::lock_;
+namespace
+{
+
+DECLARE_LOGGER("LocalConnectionUtils");
+
+// bi::named_mutex names have to abide by the rules set forth by sem_overview(7):
+// "A named semaphore is identified by a name  of the form /somename; that is, a
+// null-terminated string  of up to NAME_MAX-4 (i.e., 251) characters consisting
+// of an initial slash, followed by one or more characters, none of which are
+// slashes."
+std::string
+make_mutex_name(const fs::path& path)
+{
+    VERIFY(path.string().size() < NAME_MAX - 4);
+    std::string s;
+    bool fst = true;
+    for (const auto& p : path)
+    {
+        if (fst)
+        {
+            fst = false;
+        }
+        else
+        {
+            s += "-";
+        }
+
+        s += p.string();
+    }
+
+    VERIFY(s[0] == '/');
+
+    return s;
+}
+
+}
+
 // ALERT:
-// THIS LOCKING IS HERE TO MAKE THE TESTS WORK AND WILL ONLY WORK FOR:
-// COMPETING THREADS IN 1 PROCESS.
-// ALSO THE CODE HERE IS HIGHLY UNOPTIMIZED
-#define LOCK_BACKEND()  lock_type::scoped_lock l__(lock_)
+// THIS LOCKING IS HERE TO MAKE THE TESTS WORK AND IS HIGHLY UNOPTIMIZED
+#define LOCK_BACKEND()  \
+    boost::lock_guard<decltype(lock_)> l_g__(lock_);
 
 Connection::Connection(const config_type& cfg)
     : Connection(cfg.local_connection_path.value(),
@@ -73,6 +106,8 @@ Connection::Connection(const fs::path& path,
                        const EnablePartialRead enable_partial_read,
                        const SyncObjectAfterWrite sync_object_after_write)
     : path_(path)
+    , lock_(bi::open_or_create_t(),
+            make_mutex_name(path_).c_str())
     , timespec_(t)
     , enable_partial_read_(enable_partial_read)
     , sync_object_after_write_(sync_object_after_write)
@@ -84,6 +119,11 @@ Connection::Connection(const fs::path& path,
         LOG_ERROR("Backend root " << path_ << " does not exist");
         throw BackendBackendException();
     }
+}
+
+Connection::~Connection()
+{
+    bi::named_mutex::remove(make_mutex_name(path_).c_str());
 }
 
 bool
@@ -203,12 +243,11 @@ Connection::write_(const Namespace& nspace,
     }
 }
 
-
 bool
 Connection::objectExists_(const Namespace& nspace,
                           const std::string& name)
 {
-    fs::path dst(objectPath_(nspace, name));
+    const fs::path dst(objectPath_(nspace, name));
 
     // LOCK_BACKEND();
     const bool b = fs::exists(dst);
@@ -340,7 +379,6 @@ Connection::partial_read_(const Namespace& ns,
         return false;
     }
 }
-
 
 uint64_t
 Connection::getSize_(const Namespace& nspace,
