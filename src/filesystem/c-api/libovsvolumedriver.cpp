@@ -19,6 +19,7 @@
 #include "context.h"
 #include "ShmContext.h"
 #include "NetworkXioContext.h"
+#include "Utils.h"
 
 #include <youtils/SpinLock.h>
 #include <youtils/System.h>
@@ -28,6 +29,7 @@
 #include <limits.h>
 #include <libxio.h>
 
+#include <vector>
 #include <cerrno>
 #include <map>
 
@@ -89,14 +91,14 @@ ovs_ctx_attr_set_transport(ovs_ctx_attr_t *attr,
     {
         attr->transport = TransportType::TCP;
         attr->port = port;
-        return _hostname_to_ip(host, attr->host);
+        return hostname_to_ip(host, attr->host);
     }
 
     if ((not strcmp(transport, "rdma")) and host)
     {
         attr->transport = TransportType::RDMA;
         attr->port = port;
-        return _hostname_to_ip(host, attr->host);
+        return hostname_to_ip(host, attr->host);
     }
     errno = EINVAL;
     return -1;
@@ -200,7 +202,7 @@ ovs_ctx_init(ovs_ctx_t *ctx,
                                           errno);
                 }));
 
-    if (not _is_volume_name_valid(volume_name))
+    if (not is_volume_name_valid(volume_name))
     {
         errno = EINVAL;
         return -1;
@@ -260,7 +262,7 @@ ovs_create_volume(ovs_ctx_t *ctx,
                                           errno);
                 }));
 
-    if ((ctx == NULL) or (not _is_volume_name_valid(volume_name)))
+    if ((ctx == NULL) or (not is_volume_name_valid(volume_name)))
     {
         errno = EINVAL;
         return (r = -1);
@@ -287,7 +289,7 @@ ovs_remove_volume(ovs_ctx_t *ctx,
                                           errno);
                 }));
 
-    if ((ctx == NULL) or (not _is_volume_name_valid(volume_name)))
+    if ((ctx == NULL) or (not is_volume_name_valid(volume_name)))
     {
         errno = EINVAL;
         return (r = -1);
@@ -316,7 +318,7 @@ ovs_truncate_volume(ovs_ctx_t *ctx,
                                           errno);
                 }));
 
-    if ((ctx == NULL) or (not _is_volume_name_valid(volume_name)))
+    if ((ctx == NULL) or (not is_volume_name_valid(volume_name)))
     {
         errno = EINVAL;
         return (r = -1);
@@ -348,7 +350,7 @@ ovs_snapshot_create(ovs_ctx_t *ctx,
                                           errno);
                 }));
 
-    if ((ctx == NULL) or (not _is_volume_name_valid(volume_name)))
+    if ((ctx == NULL) or (not is_volume_name_valid(volume_name)))
     {
         errno = EINVAL;
         return (r = -1);
@@ -380,7 +382,7 @@ ovs_snapshot_rollback(ovs_ctx_t *ctx,
                                           errno);
                 }));
 
-    if ((ctx == NULL) or (not _is_volume_name_valid(volume_name)))
+    if ((ctx == NULL) or (not is_volume_name_valid(volume_name)))
     {
         errno = EINVAL;
         return (r = -1);
@@ -410,7 +412,7 @@ ovs_snapshot_remove(ovs_ctx_t *ctx,
                                           errno);
                 }));
 
-    if ((ctx == NULL) or (not _is_volume_name_valid(volume_name)))
+    if ((ctx == NULL) or (not is_volume_name_valid(volume_name)))
     {
         errno = EINVAL;
         return (r = -1);
@@ -447,7 +449,7 @@ ovs_snapshot_list(ovs_ctx_t *ctx,
         return -1;
     }
 
-    if ((ctx == NULL) or (not _is_volume_name_valid(volume_name)))
+    if ((ctx == NULL) or (not is_volume_name_valid(volume_name)))
     {
         tracepoint(openvstorage_libovsvolumedriver,
                    ovs_snapshot_list_exit,
@@ -570,7 +572,7 @@ ovs_snapshot_is_synced(ovs_ctx_t *ctx,
                                           errno);
                 }));
 
-    if ((ctx == NULL) or (not _is_volume_name_valid(volume_name)))
+    if ((ctx == NULL) or (not is_volume_name_valid(volume_name)))
     {
         errno = EINVAL;
         return (r = -1);

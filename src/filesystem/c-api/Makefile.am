@@ -21,7 +21,9 @@ libovsvolumedriver_la_SOURCES = \
 	ShmHandler.cpp \
 	VolumeCacheHandler.cpp \
 	NetworkXioClient.cpp \
+	NetworkXioContext.cpp \
 	TracePoints_tp.c \
+	Utils.cpp \
 	libovsvolumedriver.cpp
 
 libovsvolumedriver_la_CXXFLAGS = ${BUILDTOOLS_CFLAGS} \
