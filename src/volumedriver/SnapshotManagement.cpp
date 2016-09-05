@@ -1006,13 +1006,23 @@ SnapshotManagement::isTLogWrittenToBackend(const TLogId& tlog_id) const
 bool
 SnapshotManagement::isSyncedToBackend()
 {
-    OrderedTLogIds out;
-    getTLogsNotWrittenToBackend(out);
-    VERIFY(out.size() > 0);
-    if(out.size() > 1)
     {
-        return false;
+        LOCKSNAP;
+        const Snapshots& snaps(sp->getSnapshots());
+        if (not snaps.empty() and
+            not snaps.back().inBackend())
+        {
+            return false;
+        }
+
+        const OrderedTLogIds current(sp->getCurrentTLogsNotWrittenToBackend());
+        VERIFY(current.size() > 0);
+        if(current.size() > 1)
+        {
+            return false;
+        }
     }
+
     LOCKTLOG;
     REQUIRE_CURRENT_TLOG;
     syncTLog_(boost::none);

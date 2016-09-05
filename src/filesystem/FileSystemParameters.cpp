@@ -90,6 +90,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_backend_sync_timeout_ms,
                                       ShowDocumentation::T,
                                       0UL);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_backend_sync_check_interval_ms,
+                                      volumerouter_component_name,
+                                      "vrouter_backend_sync_check_interval_ms",
+                                      "how often to check whether a backend sync during shutdown / migration succeeded (msecs)",
+                                      ShowDocumentation::F,
+                                      1000UL);
+
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_migrate_timeout_ms,
                                       volumerouter_component_name,
                                       "vrouter_migrate_timeout_ms",
