@@ -25,6 +25,8 @@
 
 #define POLLING_TIME_USEC   20
 
+namespace yt = youtils;
+
 std::atomic<int> xio_init_refcnt =  ATOMIC_VAR_INIT(0);
 
 static inline void
@@ -218,6 +220,22 @@ NetworkXioClient::run(std::promise<bool>& promise)
                 XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_RCV_QUEUE_DEPTH_MSGS,
                 &xopt, sizeof(int));
 
+    struct xio_options_keepalive ka;
+    ka.time =
+        yt::System::get_env_with_default<int>("LIBOVSVOLUMEDRIVER_KEEPALIVE_TIME",
+                                              600);
+    ka.intvl =
+        yt::System::get_env_with_default<int>("LIBOVSVOLUMEDRIVER_KEEPALIVE_INTVL",
+                                              60);
+    ka.probes =
+        yt::System::get_env_with_default<int>("LIBOVSVOLUMEDRIVER_KEEPALIVE_PROBES",
+                                              20);
+
+    xio_set_opt(NULL,
+                XIO_OPTLEVEL_ACCELIO,
+                XIO_OPTNAME_CONFIG_KEEPALIVE,
+                &ka,
+                sizeof(ka));
     try
     {
         ctx = std::shared_ptr<xio_context>(

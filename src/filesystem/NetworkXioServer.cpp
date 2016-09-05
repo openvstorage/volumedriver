@@ -17,9 +17,12 @@
 #include "NetworkXioProtocol.h"
 
 #include <youtils/Assert.h>
+#include <youtils/System.h>
 #include <libxio.h>
 
 #define POLLING_TIME_USEC   20
+
+namespace yt = youtils;
 
 namespace volumedriverfs
 {
@@ -168,6 +171,23 @@ NetworkXioServer::run(std::promise<void> promise)
     xio_set_opt(NULL,
                 XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_RCV_QUEUE_DEPTH_MSGS,
                 &xopt, sizeof(int));
+
+    struct xio_options_keepalive ka;
+    ka.time =
+        yt::System::get_env_with_default<int>("NETWORK_XIO_KEEPALIVE_TIME",
+                                              600);
+    ka.intvl =
+        yt::System::get_env_with_default<int>("NETWORK_XIO_KEEPALIVE_INTVL",
+                                              60);
+    ka.probes =
+        yt::System::get_env_with_default<int>("NETWORK_XIO_KEEPALIVE_PROBES",
+                                              20);
+
+    xio_set_opt(NULL,
+                XIO_OPTLEVEL_ACCELIO,
+                XIO_OPTNAME_CONFIG_KEEPALIVE,
+                &ka,
+                sizeof(ka));
 
     ctx = std::shared_ptr<xio_context>(xio_context_create(NULL,
                                                           POLLING_TIME_USEC,
