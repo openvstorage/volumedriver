@@ -299,6 +299,7 @@ NetworkXioServer::allocate_client_data()
     {
         NetworkXioClientData *cd = new NetworkXioClientData;
         cd->disconnected = false;
+        cd->connection_closed = false;
         cd->refcnt = 0;
         cd->mpool = xio_mpool.get();
         cd->server = this;
@@ -307,6 +308,17 @@ NetworkXioServer::allocate_client_data()
     catch (const std::bad_alloc&)
     {
         return NULL;
+    }
+}
+
+void
+NetworkXioServer::clear_done_reqs(NetworkXioClientData *cd)
+{
+    while (not cd->done_reqs.empty())
+    {
+        NetworkXioRequest *req = cd->done_reqs.front();
+        cd->done_reqs.pop_front();
+        deallocate_request(req);
     }
 }
 
@@ -348,6 +360,13 @@ NetworkXioServer::destroy_session_connection(xio_session *session ATTR_UNUSED,
                                              xio_session_event_data *evdata)
 {
     auto cd = static_cast<NetworkXioClientData*>(evdata->conn_user_context);
+    if (cd->connection_closed)
+    {
+        while (not cd->done_reqs.empty())
+        {
+            clear_done_reqs(cd);
+        }
+    }
     cd->disconnected = true;
     cd->ioh->remove_fs_client_info();
     if (!cd->refcnt)
@@ -356,6 +375,24 @@ NetworkXioServer::destroy_session_connection(xio_session *session ATTR_UNUSED,
         delete cd->ioh;
         delete cd;
     }
+}
+
+void
+NetworkXioServer::mark_session_disconnected(xio_session *session ATTR_UNUSED,
+                                            xio_session_event_data *evdata)
+{
+    auto cd = static_cast<NetworkXioClientData*>(evdata->conn_user_context);
+    cd->disconnected = true;
+    return;
+}
+
+void
+NetworkXioServer::mark_session_closed(xio_session *session ATTR_UNUSED,
+                                      xio_session_event_data *evdata)
+{
+    auto cd = static_cast<NetworkXioClientData*>(evdata->conn_user_context);
+    cd->connection_closed = true;
+    return;
 }
 
 int
@@ -378,6 +415,18 @@ NetworkXioServer::on_session_event(xio_session *session,
     {
     case XIO_SESSION_NEW_CONNECTION_EVENT:
         create_session_connection(session, event_data);
+        break;
+    case XIO_SESSION_CONNECTION_CLOSED_EVENT:
+        if (event_data->reason == XIO_E_TIMEOUT)
+        {
+            xio_disconnect(event_data->conn);
+            mark_session_closed(session, event_data);
+        }
+        break;
+    case XIO_SESSION_CONNECTION_ERROR_EVENT:
+        break;
+    case XIO_SESSION_CONNECTION_DISCONNECTED_EVENT:
+        mark_session_disconnected(session, event_data);
         break;
     case XIO_SESSION_CONNECTION_TEARDOWN_EVENT:
         destroy_session_connection(session, event_data);
@@ -495,7 +544,16 @@ NetworkXioServer::xio_send_reply(NetworkXioRequest *req)
     }
     else
     {
-        req->cd->done_reqs.push_back(req);
+        auto cd = static_cast<NetworkXioClientData*>(req->cd);
+        if (cd->disconnected)
+        {
+            clear_done_reqs(cd);
+            deallocate_request(req);
+        }
+        else
+        {
+            cd->done_reqs.push_back(req);
+        }
     }
 }
 
