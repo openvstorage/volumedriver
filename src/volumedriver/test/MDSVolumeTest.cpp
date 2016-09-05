@@ -33,6 +33,7 @@
 #include "../CombinedTLogReader.h"
 #include "../MDSMetaDataBackend.h"
 #include "../MetaDataBackendConfig.h"
+#include "../MDSMetaDataStore.h"
 #include "../metadata-server/ClientNG.h"
 #include "../metadata-server/Manager.h"
 #include "../Scrubber.h"
@@ -1233,6 +1234,75 @@ TEST_P(MDSVolumeTest, scrub_with_slave_out_to_lunch)
 
     EXPECT_EQ(new_scrub_id,
               v->getMetaDataStore()->scrub_id());
+}
+
+TEST_P(MDSVolumeTest, scrub_id_mismatch)
+{
+    const auto wrns(make_random_namespace());
+    SharedVolumePtr v = make_volume(*wrns);
+
+    ASSERT_LE(2,
+              node_configs().size());
+
+    mds::ClientNG::Ptr client(mds::ClientNG::create(node_configs()[1]));
+    mds::TableInterfacePtr table(client->open(wrns->ns().str()));
+    EXPECT_EQ(mds::Role::Slave,
+              table->get_role());
+
+    const std::string pattern("some data");
+    writeToVolume(*v,
+                  v->getClusterMultiplier() * 2,
+                  v->getClusterSize(),
+                  pattern);
+
+    v->scheduleBackendSync();
+    waitForThisBackendWrite(*v);
+
+    EXPECT_EQ(1,
+              table->catch_up(DryRun::F));
+
+    const MaybeScrubId scrub_id(v->getMetaDataStore()->scrub_id());
+
+    auto ncfgs(node_configs());
+    std::rotate(ncfgs.begin(),
+                ncfgs.begin() + 1,
+                ncfgs.end());
+
+    for (size_t i = 1; i < ncfgs.size(); ++i)
+    {
+        mds_manager_->stop_one(ncfgs[i]);
+    }
+
+    const ScrubId bogus_scrub_id;
+
+    {
+        // temporarily become master to set the scrub ID.
+        table->set_role(mds::Role::Master);
+        auto on_exit(yt::make_scope_exit([&]
+                                         {
+                                             table->set_role(mds::Role::Slave);
+                                         }));
+
+        MetaDataBackendInterfacePtr mdb(std::make_shared<MDSMetaDataBackend>(ncfgs[0],
+                                                                             wrns->ns(),
+                                                                             boost::none));
+        EXPECT_EQ(scrub_id,
+                  mdb->scrub_id());
+        mdb->set_scrub_id(bogus_scrub_id);
+    }
+
+    v->updateMetaDataBackendConfig(MDSMetaDataBackendConfig(ncfgs,
+                                                            ApplyRelocationsToSlaves::T));
+
+    EXPECT_EQ(scrub_id,
+              v->getMetaDataStore()->scrub_id());
+
+    const MDSMetaDataStore& mdsm = dynamic_cast<const MDSMetaDataStore&>(*v->getMetaDataStore());
+    EXPECT_EQ(1,
+              mdsm.full_rebuild_count());
+
+    EXPECT_EQ(0,
+              mdsm.incremental_rebuild_count());
 }
 
 TEST_P(MDSVolumeTest, failover_performance)
