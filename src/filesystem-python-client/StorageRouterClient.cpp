@@ -51,6 +51,7 @@
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
 
+#include <youtils/DimensionedValue.h>
 #include <youtils/Logger.h>
 #include <youtils/LoggerToolCut.h>
 #include <youtils/LoggingToolCut.h>
@@ -405,6 +406,8 @@ BOOST_PYTHON_MODULE(storagerouterclient)
     REGISTER_CHRONO_DURATION_CONVERTER(Seconds);
     REGISTER_OPTIONAL_CONVERTER(Seconds);
 
+    REGISTER_STRINGY_CONVERTER(youtils::DimensionedValue);
+
     bpy::class_<vfs::PythonClient,
                 boost::noncopyable>
         ("StorageRouterClient",
@@ -433,6 +436,13 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "@raises \n"
              "      InsufficientResourcesException\n"
              "      FileExistsException\n")
+        .def("truncate",
+             &vfs::PythonClient::resize,
+             (bpy::args("object_id"),
+              bpy::args("new_size")),
+             "Resize an object\n"
+             "@param object_id, string, ObjectId\n"
+             "@param new_size, string (DimensionedValue), new size of the object")
         .def("unlink",
              &vfs::PythonClient::unlink,
              (bpy::args("target_path")),

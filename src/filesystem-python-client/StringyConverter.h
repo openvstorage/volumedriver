@@ -11,6 +11,7 @@
 #include <patchlevel.h>
 
 #include <youtils/Assert.h>
+#include <youtils/DimensionedValue.h>
 #include <youtils/Logging.h>
 
 // TODO: move to another namespace / location. youtils? youtils::pyconverters?
@@ -40,6 +41,16 @@ struct StringyConverterTraits<boost::filesystem::path>
     str(const boost::filesystem::path& p)
     {
         return p.string();
+    }
+};
+
+template<>
+struct StringyConverterTraits<youtils::DimensionedValue>
+{
+    static std::string
+    str(const youtils::DimensionedValue& d)
+    {
+        return d.toString();
     }
 };
 

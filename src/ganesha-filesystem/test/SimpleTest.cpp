@@ -388,7 +388,7 @@ TEST_F(SimpleTest, create_volume_clone_template)
 
     const volumedriverfs::ObjectId tname(client_.create_volume(vpath.str(),
                 volumedriverfstest::FileSystemTestSetup::make_metadata_backend_config(),
-                size.toString()));
+                size));
 
     const struct stat st(nfs_->stat(vpath));
     EXPECT_TRUE(S_ISREG(st.st_mode));

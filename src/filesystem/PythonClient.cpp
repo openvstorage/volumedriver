@@ -25,6 +25,7 @@
 #include <xmlrpc++0.7/src/XmlRpcClient.h>
 #include <xmlrpc++0.7/src/XmlRpcValue.h>
 
+#include <youtils/DimensionedValue.h>
 #include <youtils/Logging.h>
 #include <youtils/BuildInfoString.h>
 
@@ -598,13 +599,14 @@ PythonClient::create_snapshot(const std::string& volume_id,
 std::string
 PythonClient::create_volume(const std::string& target_path,
                             boost::shared_ptr<vd::MetaDataBackendConfig> mdb_config,
-                            const std::string& volume_size,
+                            const yt::DimensionedValue& volume_size,
                             const std::string& node_id)
 {
     XmlRpc::XmlRpcValue req;
 
     req[XMLRPCKeys::target_path] = target_path;
-    req[XMLRPCKeys::volume_size] = volume_size;
+    req[XMLRPCKeys::volume_size] = volume_size.toString();
+
     if (mdb_config)
     {
         req[XMLRPCKeys::metadata_backend_config] =
@@ -618,6 +620,18 @@ PythonClient::create_volume(const std::string& target_path,
 
     auto rsp(call(VolumeCreate::method_name(), req));
     return rsp[XMLRPCKeys::volume_id];
+}
+
+void
+PythonClient::resize(const std::string& object_id,
+                     const yt::DimensionedValue& size)
+{
+    XmlRpc::XmlRpcValue req;
+
+    req[XMLRPCKeys::volume_id] = object_id;
+    req[XMLRPCKeys::volume_size] = size.toString();
+
+    call(ResizeObject::method_name(), req);
 }
 
 std::string

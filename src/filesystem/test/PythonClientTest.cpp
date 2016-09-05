@@ -835,7 +835,7 @@ TEST_F(PythonClientTest, volume_creation)
     const yt::DimensionedValue size("1GiB");
     const vfs::ObjectId cname(client_.create_volume(vpath.str(),
                                                     make_metadata_backend_config(),
-                                                    size.toString()));
+                                                    size));
 
     const vfs::XMLRPCVolumeInfo info(client_.info_volume(cname.str()));
     EXPECT_EQ(vfs::ObjectType::Volume, info.object_type);
@@ -848,7 +848,7 @@ TEST_F(PythonClientTest, volume_creation_again)
     const yt::DimensionedValue size("0B");
     const vfs::ObjectId vname(client_.create_volume(vpath.str(),
                                                     nullptr,
-                                                    size.toString()));
+                                                    size));
 
     const vfs::XMLRPCVolumeInfo info(client_.info_volume(vname.str()));
     EXPECT_EQ(vfs::ObjectType::Volume, info.object_type);
@@ -861,7 +861,7 @@ TEST_F(PythonClientTest, volume_creation_and_removal)
     const yt::DimensionedValue size("0B");
     const vfs::ObjectId vname(client_.create_volume(vpath.str(),
                                                     nullptr,
-                                                    size.toString()));
+                                                    size));
 
     const vfs::XMLRPCVolumeInfo info(client_.info_volume(vname.str()));
     EXPECT_EQ(vfs::ObjectType::Volume, info.object_type);
@@ -869,6 +869,35 @@ TEST_F(PythonClientTest, volume_creation_and_removal)
 
     EXPECT_NO_THROW(client_.unlink(vpath.str()));
     EXPECT_THROW(client_.unlink(vpath.str()),
+                 std::exception);
+}
+
+TEST_F(PythonClientTest, volume_resize)
+{
+    const vfs::FrontendPath vpath("/volume");
+    const yt::DimensionedValue size("0B");
+    const vfs::ObjectId vname(client_.create_volume(vpath.str(),
+                                                    nullptr,
+                                                    size));
+
+    {
+        const vfs::XMLRPCVolumeInfo info(client_.info_volume(vname.str()));
+        EXPECT_EQ(vfs::ObjectType::Volume, info.object_type);
+        EXPECT_EQ(0, info.volume_size);
+    }
+
+    const yt::DimensionedValue newsize("1 GiB");
+    EXPECT_NO_THROW(client_.resize(vname.str(),
+                                   newsize));
+
+    {
+        const vfs::XMLRPCVolumeInfo info(client_.info_volume(vname.str()));
+        EXPECT_EQ(newsize.getBytes(),
+                  info.volume_size);
+    }
+
+    EXPECT_THROW(client_.resize(vname.str(),
+                                yt::DimensionedValue("500 MiB")),
                  std::exception);
 }
 
@@ -1326,7 +1355,7 @@ TEST_F(PythonClientTest, mds_management)
 
     const vfs::ObjectId vname(client_.create_volume(vpath.str(),
                                                     mcfg,
-                                                    size.toString()));
+                                                    size));
 
     auto check([&](const vd::MDSNodeConfigs& ref)
                {

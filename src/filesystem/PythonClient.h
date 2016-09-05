@@ -143,7 +143,7 @@ public:
     std::string
     create_volume(const std::string& target_path,
                   boost::shared_ptr<volumedriver::MetaDataBackendConfig> mdb_config = nullptr,
-                  const std::string& volume_size = "",
+                  const youtils::DimensionedValue& = youtils::DimensionedValue(),
                   const std::string& node_id = "");
 
     std::string
@@ -152,6 +152,10 @@ public:
                  const std::string& parent_volume_id,
                  const std::string& parent_snap_id,
                  const std::string& node_id = "");
+
+    void
+    resize(const std::string& object_id,
+           const youtils::DimensionedValue&);
 
     void
     unlink(const std::string& target_path);
