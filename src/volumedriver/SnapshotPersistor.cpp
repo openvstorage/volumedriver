@@ -251,9 +251,22 @@ void
 SnapshotPersistor::getCurrentTLogsWrittenToBackend(OrderedTLogIds& out) const
 {
 
+    for (const TLog& t: current)
+    {
+        if(t.writtenToBackend())
+        {
+            out.push_back(t.id());
+        }
+    }
+}
+
+void
+SnapshotPersistor::getCurrentTLogsNotWrittenToBackend(OrderedTLogIds& out) const
+{
+
     for(const TLog& t: current)
     {
-        if(isTLogWrittenToBackend(t.id()))
+        if (not t.writtenToBackend())
         {
             out.push_back(t.id());
         }

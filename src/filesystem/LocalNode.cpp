@@ -55,6 +55,8 @@ namespace ph = std::placeholders;
 namespace vd = volumedriver;
 namespace yt = youtils;
 
+using Clock = bc::steady_clock;
+
 #define LOCKVD()                                                        \
     std::lock_guard<fungi::Mutex> vdg__(api::getManagementMutex())
 
@@ -103,6 +105,7 @@ LocalNode::LocalNode(ObjectRouter& router,
     , vrouter_local_io_retries(pt)
     , vrouter_sco_multiplier(pt)
     , vrouter_lock_reaper_interval(pt)
+    , vrouter_backend_sync_check_interval_ms(pt)
     , scrub_manager_interval(pt)
     , scrub_manager_sync_wait_secs(pt)
 {
@@ -199,6 +202,7 @@ LocalNode::update_config(const bpt::ptree& pt,
         reset_lock_reaper_();
     }
 
+    U(vrouter_backend_sync_check_interval_ms);
     U(scrub_manager_interval);
     U(scrub_manager_sync_wait_secs);
 
@@ -215,6 +219,7 @@ LocalNode::persist_config(bpt::ptree& pt,
     P(vrouter_local_io_sleep_before_retry_usecs);
     P(vrouter_local_io_retries);
     P(vrouter_sco_multiplier);
+    P(vrouter_backend_sync_check_interval_ms)
     P(scrub_manager_interval);
     P(scrub_manager_sync_wait_secs);
 
@@ -878,6 +883,10 @@ LocalNode::destroy_(vd::WeakVolumePtr vol,
                     vd::RemoveVolumeCompletely remove_completely,
                     MaybeSyncTimeoutMilliSeconds maybe_sync_timeout_ms)
 {
+    const Clock::time_point deadline = maybe_sync_timeout_ms ?
+        Clock::now() + *maybe_sync_timeout_ms :
+        Clock::time_point::max();
+
     const vd::VolumeId id(api::getVolumeId(vol));
 
     LOG_TRACE(id << ": delete_local " << delete_local <<
@@ -885,11 +894,6 @@ LocalNode::destroy_(vd::WeakVolumePtr vol,
 
     get_lock_(static_cast<const ObjectId>(id))->assertWriteLocked();
 
-    yt::SteadyTimer timer;
-
-    // TODO: this is a bandaid that needs to go - with a FOC or a yet to be invented
-    // mechanism there's no need to schedule a backendsync; and we also want to be
-    // able to get out of this.
     if (remove_completely == vd::RemoveVolumeCompletely::F and
         delete_local == vd::DeleteLocalData::T)
     {
@@ -899,30 +903,34 @@ LocalNode::destroy_(vd::WeakVolumePtr vol,
             api::scheduleBackendSync(id);
         }
 
+        const Clock::duration sleep_msecs = maybe_sync_timeout_ms ?
+            std::min(bc::milliseconds(vrouter_backend_sync_check_interval_ms.value()),
+                     *maybe_sync_timeout_ms) :
+            bc::milliseconds(vrouter_backend_sync_check_interval_ms.value());
+
         while (true)
         {
-            if (maybe_sync_timeout_ms and
-                timer.elapsed() > *maybe_sync_timeout_ms)
+            if (Clock::now() >= deadline)
             {
                 LOG_ERROR(id <<
-                          ": timeout syncing to the backend: " <<
-                          timer.elapsed() << " > " << *maybe_sync_timeout_ms);
+                          ": timeout (" <<
+                          maybe_sync_timeout_ms <<
+                          ") syncing to the backend");
                 throw SyncTimeoutException("Timeout syncing volume to backend",
                                            id.str().c_str());
             }
 
-            bool synced = false;
-            LOCKVD();
-            synced = api::isVolumeSynced(id);
-            if (synced)
             {
-                LOG_INFO(id << ": synced to the backend");
-                break;
+                LOCKVD();
+                const bool synced = api::isVolumeSynced(id);
+                if (synced)
+                {
+                    LOG_INFO(id << ": synced to the backend");
+                    break;
+                }
             }
-            else
-            {
-                boost::this_thread::sleep_for(bc::milliseconds(10));
-            }
+
+            boost::this_thread::sleep_for(sleep_msecs);
         }
     }
 
