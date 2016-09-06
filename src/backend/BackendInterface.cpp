@@ -95,6 +95,10 @@ BackendInterface::do_wrap_(const BackendRequestParameters& params,
         {
             throw; /* ... no need to retry. */
         }
+        catch (BackendUniqueObjectTagMismatchException&)
+        {
+            throw; /* ... no need to retry. */
+        }
         catch (std::exception& e)
         {
             LOG_ERROR("Problem with connection " << conn.get() <<

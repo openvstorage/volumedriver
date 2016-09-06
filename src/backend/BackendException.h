@@ -104,6 +104,8 @@ DEFINE_BACKEND_EXCEPTION(UnAuthorized,
 DEFINE_BACKEND_EXCEPTION(NoMultiBackendAvailable,
                          "No MULTI backend available");
 
+DEFINE_BACKEND_EXCEPTION(UniqueObjectTagMismatch,
+                         "UniqueObjectTag does not match");
 
 //#undef DEFINE_BACKEND_EXCEPTION
 
