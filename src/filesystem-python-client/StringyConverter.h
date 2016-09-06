@@ -4,6 +4,7 @@
 #include <typeinfo>
 
 #include <boost/filesystem/path.hpp>
+#include <boost/lexical_cast.hpp>
 #include <boost/python/object.hpp>
 #include <boost/python/to_python_converter.hpp>
 
@@ -13,6 +14,7 @@
 #include <youtils/Assert.h>
 #include <youtils/DimensionedValue.h>
 #include <youtils/Logging.h>
+#include <youtils/Uri.h>
 
 // TODO: move to another namespace / location. youtils? youtils::pyconverters?
 namespace volumedriverfs
@@ -51,6 +53,16 @@ struct StringyConverterTraits<youtils::DimensionedValue>
     str(const youtils::DimensionedValue& d)
     {
         return d.toString();
+    }
+};
+
+template<>
+struct StringyConverterTraits<youtils::Uri>
+{
+    static std::string
+    str(const youtils::Uri& u)
+    {
+        return boost::lexical_cast<std::string>(u);
     }
 };
 

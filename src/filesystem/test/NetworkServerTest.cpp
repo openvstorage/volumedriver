@@ -101,8 +101,7 @@ public:
         FileSystemTestBase::SetUp();
         bpt::ptree pt;
 
-        net_xio_server_ = std::make_unique<NetworkXioInterface>(make_edge_config_(pt,
-										  local_node_id()),
+        net_xio_server_ = std::make_unique<NetworkXioInterface>(pt,
                                                                 RegisterComponent::F,
                                                                 *fs_);
         std::promise<void> promise;
@@ -277,6 +276,12 @@ public:
     boost::thread net_xio_thread_;
     vfs::PythonClient client_;
 };
+
+TEST_F(NetworkServerTest, uri)
+{
+    EXPECT_EQ(network_server_uri(local_node_id()),
+              net_xio_server_->uri());
+}
 
 TEST_F(NetworkServerTest, create_destroy_context)
 {

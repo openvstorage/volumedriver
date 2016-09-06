@@ -19,6 +19,7 @@
 #include <boost/python/class.hpp>
 
 #include <youtils/ArakoonNodeConfig.h>
+#include <youtils/Uri.h>
 
 #include <volumedriver/Types.h>
 
@@ -128,6 +129,9 @@ PythonTestHelpers::registerize()
         .def("reflect_dimensioned_value",
              &PythonTestHelpers::reflect<yt::DimensionedValue>)
         .staticmethod("reflect_dimensioned_value")
+        .def("reflect_uri",
+             &PythonTestHelpers::reflect<youtils::Uri>)
+        .staticmethod("reflect_uri")
         ;
 }
 

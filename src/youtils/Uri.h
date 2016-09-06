@@ -18,11 +18,13 @@
 
 #include "Assert.h"
 #include "Logging.h"
+#include "Serialization.h"
 
 #include <iosfwd>
 #include <string>
 #include <unordered_map>
 
+#include <boost/lexical_cast.hpp>
 #include <boost/optional.hpp>
 
 namespace youtils
@@ -55,6 +57,9 @@ public:
     {
         return not operator==(other);
     }
+
+    bool
+    operator<(const Uri& other) const;
 
     using Query = std::unordered_map<std::string, boost::optional<std::string>>;
 
@@ -100,6 +105,35 @@ public:
 
 private:
     DECLARE_LOGGER("Uri");
+
+    friend class boost::serialization::access;
+
+    BOOST_SERIALIZATION_SPLIT_MEMBER();
+
+    template<typename Archive>
+    void
+    load(Archive& ar,
+         const unsigned version)
+    {
+        CHECK_VERSION(version, 1);
+
+        auto s(boost::lexical_cast<std::string>(*this));
+        ar & boost::serialization::make_nvp("uri",
+                                            s);
+        *this = Uri(s);
+    }
+
+    template<typename Archive>
+    void
+    save(Archive& ar,
+         const unsigned version) const
+    {
+        CHECK_VERSION(version, 1);
+
+        const auto s(boost::lexical_cast<std::string>(*this));
+        ar & boost::serialization::make_nvp("uri",
+                                            s);
+    }
 };
 
 std::ostream&
@@ -111,5 +145,7 @@ operator>>(std::istream&,
            Uri&);
 
 }
+
+BOOST_CLASS_VERSION(youtils::Uri, 1);
 
 #endif // !YT_URI_H_

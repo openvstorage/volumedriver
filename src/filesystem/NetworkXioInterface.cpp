@@ -82,4 +82,18 @@ NetworkXioInterface::checkConfig(const bpt::ptree& /*pt*/,
     return res;
 }
 
+yt::Uri
+NetworkXioInterface::uri() const
+{
+    const boost::optional<yt::Uri> uri(fs_.object_router().node_config().network_server_uri);
+    if (uri)
+    {
+        return *uri;
+    }
+    else
+    {
+        return network_uri.value();
+    }
+}
+
 } //namespace volumedriverfs

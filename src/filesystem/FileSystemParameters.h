@@ -28,6 +28,7 @@
 
 #include <youtils/ArakoonNodeConfig.h>
 #include <youtils/InitializedParam.h>
+#include <youtils/Uri.h>
 
 #include <volumedriver/FailOverCacheTransport.h>
 #include <volumedriver/MDSNodeConfig.h>
@@ -166,7 +167,7 @@ DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(shm_region_size,
 extern const char network_interface_component_name[];
 
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(network_uri,
-                                       std::string);
+                                       youtils::Uri);
 
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(network_snd_rcv_queue_depth,
                                        size_t);

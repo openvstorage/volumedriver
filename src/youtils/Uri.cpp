@@ -51,6 +51,12 @@ Uri::operator==(const Uri& other) const
 #undef CMP
 }
 
+bool
+Uri::operator<(const Uri& other) const
+{
+    return boost::lexical_cast<std::string>(*this) < boost::lexical_cast<std::string>(other);
+}
+
 std::string
 Uri::path() const
 {

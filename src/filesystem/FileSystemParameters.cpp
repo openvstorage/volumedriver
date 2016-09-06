@@ -209,7 +209,7 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(network_uri,
                                       "network_uri",
                                       "URI to bind network interface",
                                       ShowDocumentation::T,
-                                      "tcp://127.0.0.1:21321"s);
+                                      yt::Uri("tcp://127.0.0.1:21321"));
 
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(network_snd_rcv_queue_depth,
                                       network_interface_component_name,

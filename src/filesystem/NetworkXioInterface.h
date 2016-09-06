@@ -77,11 +77,8 @@ public:
     void
     shutdown();
 
-    std::string
-    uri() const
-    {
-        return network_uri.value();
-    }
+    youtils::Uri
+    uri() const;
 
     size_t
     snd_rcv_queue_depth() const

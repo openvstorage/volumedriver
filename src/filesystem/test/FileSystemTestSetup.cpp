@@ -353,10 +353,6 @@ FileSystemTestSetup::make_config_(bpt::ptree& pt,
         ip::PARAMETER_TYPE(scrub_manager_interval)(scrub_manager_interval_secs_).persist(pt);
     }
 
-    // network server
-    make_edge_config_(pt,
-		      vrouter_id);
-
     // volume_router_cluster
     {
         ip::PARAMETER_TYPE(vrouter_cluster_id)(vrouter_cluster_id()).persist(pt);
@@ -381,16 +377,15 @@ FileSystemTestSetup::make_config_(bpt::ptree& pt,
     return pt;
 }
 
-bpt::ptree&
-FileSystemTestSetup::make_edge_config_(bpt::ptree& pt,
-				       const vfs::NodeId& node_id)
+yt::Uri
+FileSystemTestSetup::network_server_uri(const vfs::NodeId& node_id)
 {
-    const std::string uri(edge_transport() + "://"s + address() + ":"s +
-			  boost::lexical_cast<std::string>(node_id == local_node_id() ?
-							   local_edge_port() :
-							   remote_edge_port()));
-    ip::PARAMETER_TYPE(network_uri)(uri).persist(pt);
-    return pt;
+    return yt::Uri()
+        .scheme(edge_transport())
+        .host(address())
+        .port(node_id == local_node_id() ?
+              local_edge_port() :
+              remote_edge_port());
 }
 
 void

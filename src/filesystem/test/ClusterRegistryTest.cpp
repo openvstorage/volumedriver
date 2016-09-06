@@ -61,7 +61,8 @@ protected:
                                                      n,
                                                      vfs::MessagePort(i + 1),
                                                      vfs::XmlRpcPort(i + 1),
-                                                     vfs::FailoverCachePort(i + 1)));
+                                                     vfs::FailoverCachePort(i + 1),
+                                                     boost::none));
         }
 
         return configs;
