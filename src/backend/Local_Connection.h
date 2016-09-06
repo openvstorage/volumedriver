@@ -96,12 +96,23 @@ public:
           const std::string& mame,
           InsistOnLatestVersion) override final;
 
+    virtual std::unique_ptr<youtils::UniqueObjectTag>
+    get_tag_(const Namespace&,
+             const std::string&) override final;
+
     virtual void
     write_(const Namespace& nspace,
            const boost::filesystem::path &location,
            const std::string& name,
            const OverwriteObject overwrite,
            const youtils::CheckSum* chksum = 0) override final;
+
+    virtual std::unique_ptr<youtils::UniqueObjectTag>
+    write_tag_(const Namespace&,
+               const boost::filesystem::path&,
+               const std::string&,
+               const youtils::UniqueObjectTag*,
+               const OverwriteObject) override final;
 
     virtual bool
     objectExists_(const Namespace& nspace,
@@ -225,9 +236,9 @@ private:
     LRUCacheType&
     lruCache();
 
+protected:
     DECLARE_LOGGER("LocalConnection");
 
-protected:
     boost::filesystem::path path_;
     boost::interprocess::named_mutex lock_;
     struct timespec timespec_;
@@ -247,6 +258,12 @@ protected:
     boost::filesystem::path
     checkedObjectPath_(const Namespace& nspace,
                        const std::string& objname) const;
+
+    void
+    copy_(const Namespace&,
+          const boost::filesystem::path&,
+          const std::string&,
+          const OverwriteObject);
 };
 
 }

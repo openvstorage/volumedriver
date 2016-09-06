@@ -86,12 +86,23 @@ public:
           const std::string& Name,
           const InsistOnLatestVersion insist_on_latest) override final;
 
+    virtual std::unique_ptr<youtils::UniqueObjectTag>
+    get_tag_(const Namespace&,
+             const std::string&) override final;
+
     virtual void
     write_(const Namespace& nspace,
            const fs::path &location,
            const std::string& name,
            const OverwriteObject overwrite = OverwriteObject::F,
            const youtils::CheckSum* chksum = 0) override final;
+
+    virtual std::unique_ptr<youtils::UniqueObjectTag>
+    write_tag_(const Namespace&,
+               const boost::filesystem::path&,
+               const std::string&,
+               const youtils::UniqueObjectTag*,
+               const OverwriteObject) override final;
 
     virtual bool
     objectExists_(const Namespace& nspace,

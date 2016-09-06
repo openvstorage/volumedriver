@@ -21,6 +21,7 @@
 #include <youtils/CheckSum.h>
 #include <youtils/FileUtils.h>
 #include <youtils/FileDescriptor.h>
+#include <youtils/ObjectMd5.h>
 
 namespace backend
 {
@@ -197,7 +198,6 @@ Connection::write_(const Namespace& nspace,
 
     LOG_DEBUG("src path " << src << " name " << name);
 
-
     if (chksum != 0)
     {
         yt::CheckSum calc(youtils::FileUtils::calculate_checksum(src));
@@ -210,6 +210,20 @@ Connection::write_(const Namespace& nspace,
         }
     }
 
+    LOCK_BACKEND();
+
+    copy_(nspace,
+          src,
+          name,
+          overwrite);
+}
+
+void
+Connection::copy_(const Namespace& nspace,
+                  const fs::path& src,
+                  const std::string& name,
+                  const OverwriteObject overwrite)
+{
     auto dst = objectPath_(nspace, name);
     bool pre_exists = fs::exists(dst);
 
@@ -490,9 +504,9 @@ backend::ObjectInfo
 Connection::x_getMetadata_(const Namespace& nspace,
                            const std::string& name)
 {
-    const fs::path p(checkedObjectPath_(nspace, name));
-
     LOCK_BACKEND();
+
+    const fs::path p(checkedObjectPath_(nspace, name));
 
     try
     {
@@ -732,7 +746,66 @@ Connection::x_write_(const Namespace& nspace,
                    chksum);
 }
 
+std::unique_ptr<yt::UniqueObjectTag>
+Connection::get_tag_(const Namespace& nspace,
+                     const std::string& name)
+{
+    LOCK_BACKEND();
+
+    const fs::path src(checkedObjectPath_(nspace,
+                                        name));
+
+    fs::ifstream ifs(src);
+    return std::make_unique<yt::ObjectMd5>(yt::Weed(ifs));
 }
+
+std::unique_ptr<yt::UniqueObjectTag>
+Connection::write_tag_(const Namespace& nspace,
+                       const fs::path& src,
+                       const std::string& name,
+                       const yt::UniqueObjectTag* prev_tag,
+                       const OverwriteObject overwrite)
+{
+    auto prev_md5 = dynamic_cast<const yt::ObjectMd5*>(prev_tag);
+    VERIFY(not (prev_tag and not prev_md5));
+
+    LOCK_BACKEND();
+
+    const fs::path dst(objectPath_(nspace,
+                                   name));
+
+    if (prev_md5)
+    {
+        VERIFY(overwrite == OverwriteObject::T);
+
+        if (not fs::exists(dst))
+        {
+            LOG_ERROR(dst << ": does not exist");
+            throw BackendObjectDoesNotExistException();
+        }
+
+        fs::ifstream ifs(dst);
+        const yt::Weed w(ifs);
+        const yt::ObjectMd5 md5(w);
+        if (md5 != *prev_md5)
+        {
+            LOG_ERROR(dst << ": tag mismatch, have " << md5 <<
+                      ", expected " << *prev_md5);
+            throw BackendUniqueObjectTagMismatchException();
+        }
+    }
+
+    copy_(nspace,
+          src,
+          name,
+          overwrite);
+
+    fs::ifstream ifs(dst);
+    return std::make_unique<yt::ObjectMd5>(yt::Weed(ifs));
+}
+
+}
+
 }
 
 // Local Variables: **

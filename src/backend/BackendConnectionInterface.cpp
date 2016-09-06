@@ -199,6 +199,18 @@ BackendConnectionInterface::read(const Namespace& nspace,
     youtils::FileUtils::syncAndRename(temp_file, destination);
 }
 
+std::unique_ptr<UniqueObjectTag>
+BackendConnectionInterface::get_tag(const Namespace& nspace,
+                                    const std::string& name)
+{
+    Logger l(__FUNCTION__,
+             nspace,
+             name);
+
+    return get_tag_(nspace,
+                     name);
+}
+
 void
 BackendConnectionInterface::partial_read(const Namespace& ns,
                                          const PartialReads& partial_reads,
@@ -250,6 +262,24 @@ BackendConnectionInterface::write(const Namespace& nspace,
 {
     Logger l(__FUNCTION__, nspace, name);
     return write_(nspace, location, name, overwrite, chksum);
+}
+
+std::unique_ptr<UniqueObjectTag>
+BackendConnectionInterface::write_tag(const Namespace& nspace,
+                                      const fs::path& src,
+                                      const std::string& name,
+                                      const UniqueObjectTag* prev_tag,
+                                      const OverwriteObject overwrite)
+{
+    Logger l(__FUNCTION__, nspace, name);
+
+    VERIFY(not (prev_tag and overwrite == OverwriteObject::F));
+
+    return write_tag_(nspace,
+                      src,
+                      name,
+                      prev_tag,
+                      overwrite);
 }
 
 bool

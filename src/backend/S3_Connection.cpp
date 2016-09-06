@@ -732,6 +732,26 @@ Connection::write_(const Namespace& nspace,
     }
 }
 
+
+std::unique_ptr<yt::UniqueObjectTag>
+Connection::get_tag_(const Namespace&,
+                     const std::string&)
+{
+    LOG_ERROR("yt::UniqueObjectTag support is not available for S3 backend");
+    throw BackendNotImplementedException();
+}
+
+std::unique_ptr<yt::UniqueObjectTag>
+Connection::write_tag_(const Namespace&,
+                       const fs::path&,
+                       const std::string&,
+                       const yt::UniqueObjectTag*,
+                       const OverwriteObject)
+{
+    LOG_ERROR("yt::UniqueObjectTag support is not available for S3 backend");
+    throw BackendNotImplementedException();
+}
+
 }
 
 }

@@ -32,6 +32,7 @@
 #include <youtils/FileUtils.h>
 #include <youtils/Logging.h>
 #include <youtils/FileDescriptor.h>
+#include <youtils/UniqueObjectTag.h>
 
 VD_BOOLEAN_ENUM(OverwriteObject);
 VD_BOOLEAN_ENUM(ObjectMayNotExist);
@@ -99,6 +100,10 @@ protected:
          const boost::filesystem::path& destination,
          const std::string& name,
          const InsistOnLatestVersion insist_on_latest);
+
+    std::unique_ptr<youtils::UniqueObjectTag>
+    get_tag(const Namespace&,
+            const std::string&);
 
     struct ObjectSlice
     {
@@ -171,6 +176,13 @@ protected:
           const std::string& name,
           const OverwriteObject overwrite = OverwriteObject::F,
           const youtils::CheckSum* chksum = nullptr);
+
+    std::unique_ptr<youtils::UniqueObjectTag>
+    write_tag(const Namespace&,
+              const boost::filesystem::path&,
+              const std::string&,
+              const youtils::UniqueObjectTag*,
+              const OverwriteObject = OverwriteObject::T);
 
     bool
     objectExists(const Namespace& nspace,
@@ -285,6 +297,10 @@ private:
           const std::string& name,
           const InsistOnLatestVersion insist_on_latest) = 0;
 
+    virtual std::unique_ptr<youtils::UniqueObjectTag>
+    get_tag_(const Namespace&,
+             const std::string&) = 0;
+
 public:
     virtual bool
     partial_read_(const Namespace& ns,
@@ -298,6 +314,13 @@ private:
            const std::string& name,
            const OverwriteObject = OverwriteObject::F,
            const youtils::CheckSum* chksum = nullptr) = 0;
+
+    virtual std::unique_ptr<youtils::UniqueObjectTag>
+    write_tag_(const Namespace&,
+               const boost::filesystem::path&,
+               const std::string&,
+               const youtils::UniqueObjectTag* old_tag,
+               const OverwriteObject = OverwriteObject::T) = 0;
 
     virtual bool
     objectExists_(const Namespace&,

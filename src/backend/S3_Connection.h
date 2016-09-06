@@ -106,6 +106,10 @@ private
           const std::string& name,
           InsistOnLatestVersion) override final;
 
+    virtual std::unique_ptr<youtils::UniqueObjectTag>
+    get_tag_(const Namespace&,
+             const std::string&) override final;
+
     virtual bool
     partial_read_(const Namespace& /* ns */,
                   const PartialReads& /* partial_reads */,
@@ -120,6 +124,13 @@ private
            const std::string& name,
            OverwriteObject,
            const youtils::CheckSum* chksum = 0) override final;
+
+    virtual std::unique_ptr<youtils::UniqueObjectTag>
+    write_tag_(const Namespace&,
+               const boost::filesystem::path&,
+               const std::string&,
+               const youtils::UniqueObjectTag*,
+               const OverwriteObject) override final;
 
     virtual bool
     hasExtendedApi_() const override final

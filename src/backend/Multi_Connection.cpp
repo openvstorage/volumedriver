@@ -20,6 +20,9 @@ namespace backend
 {
 namespace multi
 {
+
+namespace yt = youtils;
+
 Connection::Connection(const config_type& cfg)
 {
     const std::vector<std::unique_ptr<BackendConfig> >& configs = cfg.configs_;
@@ -84,7 +87,7 @@ Connection::namespaceExists_(const Namespace& nspace)
     throw BackendNoMultiBackendAvailableException();
 }
 
-youtils::CheckSum
+yt::CheckSum
 Connection::getCheckSum_(const Namespace& nspace,
                         const std::string& name)
 {
@@ -217,7 +220,7 @@ Connection::write_(const Namespace& nspace,
                    const fs::path& src,
                    const std::string& name,
                    OverwriteObject overwrite,
-                   const youtils::CheckSum* chksum)
+                   const yt::CheckSum* chksum)
 {
     iterator_t start_iterator = current_iterator_;
     while(maybe_switch_back_to_default())
@@ -674,7 +677,7 @@ Connection::x_write_(const Namespace& nspace,
                     const std::string& name,
                     OverwriteObject overwrite,
                     const backend::ETag* etag,
-                    const youtils::CheckSum* chksum)
+                    const yt::CheckSum* chksum)
 {
     iterator_t start_iterator = current_iterator_;
     while(maybe_switch_back_to_default())
@@ -713,7 +716,7 @@ Connection::x_write_(const Namespace& nspace,
                      const std::string& name,
                      OverwriteObject overwrite,
                      const backend::ETag* etag,
-                     const youtils::CheckSum* chksum)
+                     const yt::CheckSum* chksum)
 {
     iterator_t start_iterator = current_iterator_;
     while(maybe_switch_back_to_default())
@@ -752,7 +755,7 @@ Connection::x_write_(const Namespace& nspace,
                      const std::string& name,
                      OverwriteObject overwrite,
                      const backend::ETag* etag,
-                     const youtils::CheckSum* chksum)
+                     const yt::CheckSum* chksum)
 {
     iterator_t start_iterator = current_iterator_;
     while(maybe_switch_back_to_default())
@@ -783,7 +786,78 @@ Connection::x_write_(const Namespace& nspace,
         }
     }
     throw BackendNoMultiBackendAvailableException();
+}
 
+std::unique_ptr<yt::UniqueObjectTag>
+Connection::get_tag_(const Namespace& nspace,
+                     const std::string& name)
+{
+    iterator_t start_iterator = current_iterator_;
+    while(maybe_switch_back_to_default())
+    {
+        try
+        {
+            return (*current_iterator_)->get_tag(nspace,
+                                                 name);
+        }
+        catch (BackendNotImplementedException&)
+        {
+            throw;
+        }
+        catch (BackendObjectDoesNotExistException&)
+        {
+            throw;
+        }
+        catch (std::exception&)
+        {
+            if(update_current_index(start_iterator))
+            {
+                throw;
+            }
+        }
+    }
+    throw BackendNoMultiBackendAvailableException();
+}
+
+std::unique_ptr<yt::UniqueObjectTag>
+Connection::write_tag_(const Namespace& nspace,
+                       const fs::path& src,
+                       const std::string& name,
+                       const yt::UniqueObjectTag* prev_tag,
+                       const OverwriteObject overwrite)
+{
+    iterator_t start_iterator = current_iterator_;
+    while(maybe_switch_back_to_default())
+    {
+        try
+        {
+            return (*current_iterator_)->write_tag(nspace,
+                                                   src,
+                                                   name,
+                                                   prev_tag,
+                                                   overwrite);
+        }
+        catch (BackendUniqueObjectTagMismatchException&)
+        {
+            throw;
+        }
+        catch (BackendNotImplementedException&)
+        {
+            throw;
+        }
+        catch (BackendObjectDoesNotExistException&)
+        {
+            throw;
+        }
+        catch (std::exception&)
+        {
+            if(update_current_index(start_iterator))
+            {
+                throw;
+            }
+        }
+    }
+    throw BackendNoMultiBackendAvailableException();
 }
 
 }
