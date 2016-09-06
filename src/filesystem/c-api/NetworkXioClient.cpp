@@ -281,7 +281,7 @@ NetworkXioClient::run(std::promise<bool>& promise)
         throw XioClientCreateException("failed to connect");
     }
 
-    pthread_setname_np(pthread_self(), "xio_run_loop_worker");
+    pthread_setname_np(pthread_self(), "xio_loop_worker");
     promise.set_value(true);
     xio_run_loop_worker();
 }
