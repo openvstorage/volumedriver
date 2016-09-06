@@ -29,6 +29,11 @@
 // #define CRYPTOPP_ENABLE_NAMESPACE_WEAK 1
 #include <openssl/md5.h>
 
+namespace youtilstest
+{
+class WeedTest;
+}
+
 namespace volumedrivertest
 {
 class KaKPerformanceTest;
@@ -42,6 +47,7 @@ namespace youtils
 
 class Weed
 {
+    friend class youtilstest::WeedTest;
     friend class volumedrivertest::KaKPerformanceTest;
     friend class volumedrivertest::ClusterCacheMapTest;
 
@@ -51,6 +57,8 @@ public:
     explicit Weed(const std::string& str);
 
     explicit Weed(const std::vector<uint8_t>& in);
+
+    explicit Weed(std::istream&);
 
     Weed()
     {
@@ -196,6 +204,8 @@ private:
         ar & *w_p1;
         ar & *(++w_p1);
     }
+
+    static constexpr size_t stream_chunk_size_ = 4096;
 };
 
 static_assert(sizeof(Weed) == Weed::weed_size,

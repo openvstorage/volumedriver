@@ -15,7 +15,6 @@
 
 #include "../FileUtils.h"
 #include "../System.h"
-#include <gtest/gtest.h>
 #include <../wall_timer.h>
 #include "../Weed.h"
 
@@ -24,16 +23,27 @@
 #include <string>
 #include <vector>
 
+#include <gtest/gtest.h>
+
 #include <boost/filesystem/fstream.hpp>
 #include <boost/foreach.hpp>
 #include <boost/timer.hpp>
 
 namespace youtilstest
 {
+
 using namespace youtils;
 
-class WeedTest : public testing::Test
-{};
+class WeedTest
+    : public testing::Test
+{
+protected:
+    size_t
+    stream_chunk_size()
+    {
+        return Weed::stream_chunk_size_;
+    }
+};
 
 // class FingerPrintTest : public testing::Test
 // {};
@@ -219,6 +229,32 @@ TEST_F(WeedTest, performance)
 
     std::cout << "calculating " << count << " hashes for 4k buffers took " << t <<
         " seconds => " << (count * buf.size() / (t * 1024 * 1024)) << " MiB/s" << std::endl;
+}
+
+TEST_F(WeedTest, from_stream)
+{
+    const std::string s("MdFive");
+
+    std::stringstream ss;
+    ss << s;
+
+    EXPECT_EQ(Weed(reinterpret_cast<const uint8_t*>(s.data()),
+                       s.size()),
+              Weed(ss));
+}
+
+TEST_F(WeedTest, from_stream_bigger)
+{
+    const std::vector<char> v(stream_chunk_size() + 1,
+                              'Q');
+    std::stringstream ss;
+
+    ss.write(v.data(),
+             v.size());
+
+    EXPECT_EQ(Weed(reinterpret_cast<const uint8_t*>(v.data()),
+                   v.size()),
+              Weed(ss));
 }
 
 }

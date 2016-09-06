@@ -83,6 +83,44 @@ Weed::Weed(const byte* input, const uint64_t input_size)
         weed_);
 }
 
+Weed::Weed(std::istream& is)
+{
+    MD5_CTX ctx;
+    int ret = MD5_Init(&ctx);
+    if (ret == 0)
+    {
+        throw fungi::IOException("MD5_Init failed");
+    }
+
+    std::vector<char> buf(stream_chunk_size_);
+
+    while (not is.eof())
+    {
+        is.read(buf.data(),
+                buf.size());
+        if (is.fail() and not is.eof())
+        {
+            throw fungi::IOException("Failed to read bytes from stream for MD5");
+        }
+
+        ret = MD5_Update(&ctx,
+                         buf.data(),
+                         is.gcount());
+        if (ret == 0)
+        {
+            throw fungi::IOException("MD5_Update failed");
+        }
+    }
+
+    ret = MD5_Final(weed_,
+                    &ctx);
+
+    if (ret == 0)
+    {
+        throw fungi::IOException("MD5_Final failed");
+    }
+}
+
 Weed::Weed(const std::vector<uint8_t>& input)
 {
     //    CryptoPP::Weak::MD5 md5;
