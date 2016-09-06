@@ -113,6 +113,7 @@ libyoutils_la_SOURCES = \
 	ThrowingDestructor.cpp \
 	Time.cpp \
 	Tracer.cpp \
+	UniqueObjectTag.cpp \
 	UpdateReport.cpp \
 	Uri.cpp \
 	UUID.cpp \
