@@ -164,7 +164,9 @@ WriteOnlyVolume::newWriteOnlyVolume()
 
     getBackendInterface()->write(tmp,
                                  FailOverCacheConfigWrapper::config_backend_name,
-                                 OverwriteObject::T);
+                                 OverwriteObject::T,
+                                 nullptr,
+                                 backend_write_condition());
     return this;
 }
 
@@ -972,7 +974,9 @@ WriteOnlyVolume::writeConfigToBackend_()
 
     getBackendInterface()->write(tmp,
                                  VolumeConfig::config_backend_name,
-                                 OverwriteObject::T);
+                                 OverwriteObject::T,
+                                 nullptr,
+                                 backend_write_condition());
 }
 
 fs::path
