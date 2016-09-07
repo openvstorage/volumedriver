@@ -85,6 +85,7 @@ namespace volumedriver
 using youtils::BarrierTask;
 
 namespace bc = boost::chrono;
+namespace be = backend;
 namespace yt = youtils;
 
 WriteOnlyVolume::WriteOnlyVolume(const VolumeConfig& vCfg,
@@ -162,11 +163,22 @@ WriteOnlyVolume::newWriteOnlyVolume()
     youtils::Serialization::serializeAndFlush<FailOverCacheConfigWrapper::oarchive_type>(tmp,
                                                                                          foc_config_wrapper);
 
-    getBackendInterface()->write(tmp,
-                                 FailOverCacheConfigWrapper::config_backend_name,
-                                 OverwriteObject::T,
-                                 nullptr,
-                                 backend_write_condition());
+    try
+    {
+        getBackendInterface()->write(tmp,
+                                     FailOverCacheConfigWrapper::config_backend_name,
+                                     OverwriteObject::T,
+                                     nullptr,
+                                     backend_write_condition());
+    }
+    catch (be::BackendUniqueObjectTagMismatchException&)
+    {
+        LOG_WARN(getName() << ": conditional write of " <<
+                 FailOverCacheConfigWrapper::config_backend_name << " failed");
+        halt();
+        throw;
+    }
+
     return this;
 }
 
@@ -972,11 +984,21 @@ WriteOnlyVolume::writeConfigToBackend_()
     ALWAYS_CLEANUP_FILE(tmp);
     youtils::Serialization::serializeAndFlush<VolumeConfig::oarchive_type>(tmp, cfg_);
 
-    getBackendInterface()->write(tmp,
-                                 VolumeConfig::config_backend_name,
-                                 OverwriteObject::T,
-                                 nullptr,
-                                 backend_write_condition());
+    try
+    {
+        getBackendInterface()->write(tmp,
+                                     VolumeConfig::config_backend_name,
+                                     OverwriteObject::T,
+                                     nullptr,
+                                     backend_write_condition());
+    }
+    catch (be::BackendUniqueObjectTagMismatchException&)
+    {
+        LOG_WARN(getName() << ": conditional write of " <<
+                 VolumeConfig::config_backend_name << " failed");
+        halt();
+        throw;
+    }
 }
 
 fs::path

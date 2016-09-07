@@ -1548,6 +1548,7 @@ Volume::cloneFromParentSnapshot(const yt::UUID& parent_snap_uuid,
             SCOAccessDataPersistor parent(nsidmap_.get(1)->clone());
             sad = parent.pull();
         }
+
         sad->rebase(getNamespace());
         {
             SCOAccessDataPersistor self(nsidmap_.get(0)->clone());
@@ -1555,6 +1556,13 @@ Volume::cloneFromParentSnapshot(const yt::UUID& parent_snap_uuid,
                       backend_write_condition());
         }
     }
+    catch (be::BackendUniqueObjectTagMismatchException&)
+    {
+        LOG_VWARN("conditional write of SCO access data failed");
+        halt();
+        throw;
+    }
+
     CATCH_STD_ALL_EWHAT({
             LOG_VINFO("Problem getting and rebasing parent access probabilities: " <<
                       EWHAT << " - proceeding");
@@ -2808,10 +2816,19 @@ Volume::writeConfigToBackend_(const VolumeConfig& cfg)
 {
     checkNotHalted_();
 
-    getBackendInterface()->writeObject(cfg,
-                                       VolumeConfig::config_backend_name,
-                                       OverwriteObject::T,
-                                       backend_write_condition());
+    try
+    {
+        getBackendInterface()->writeObject(cfg,
+                                           VolumeConfig::config_backend_name,
+                                           OverwriteObject::T,
+                                           backend_write_condition());
+    }
+    catch (be::BackendUniqueObjectTagMismatchException&)
+    {
+        LOG_VWARN("conditional write of " << VolumeConfig::config_backend_name << " failed");
+        halt();
+        throw;
+    }
 }
 
 void
@@ -2819,10 +2836,19 @@ Volume::writeFailOverCacheConfigToBackend_()
 {
     checkNotHalted_();
 
-    getBackendInterface()->writeObject(foc_config_wrapper_,
-                                       FailOverCacheConfigWrapper::config_backend_name,
-                                       OverwriteObject::T,
-                                       backend_write_condition());
+    try
+    {
+        getBackendInterface()->writeObject(foc_config_wrapper_,
+                                           FailOverCacheConfigWrapper::config_backend_name,
+                                           OverwriteObject::T,
+                                           backend_write_condition());
+    }
+    catch (be::BackendUniqueObjectTagMismatchException&)
+    {
+        LOG_VWARN("conditional write of " << VolumeConfig::config_backend_name << " failed");
+        halt();
+        throw;
+    }
 }
 
 void
