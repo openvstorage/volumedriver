@@ -2816,7 +2816,8 @@ Volume::writeConfigToBackend_(const VolumeConfig& cfg)
 
     getBackendInterface()->writeObject(cfg,
                                        VolumeConfig::config_backend_name,
-                                       OverwriteObject::T);
+                                       OverwriteObject::T,
+                                       backend_write_condition());
 }
 
 void
@@ -2826,7 +2827,8 @@ Volume::writeFailOverCacheConfigToBackend_()
 
     getBackendInterface()->writeObject(foc_config_wrapper_,
                                        FailOverCacheConfigWrapper::config_backend_name,
-                                       OverwriteObject::T);
+                                       OverwriteObject::T,
+                                       backend_write_condition());
 }
 
 void
