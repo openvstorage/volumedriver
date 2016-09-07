@@ -83,6 +83,7 @@ TEST_F(BackendNamesFilterTest, configs_etc)
     test(SCOAccessDataPersistor::backend_name);
     test(FailOverCacheConfigWrapper::config_backend_name);
     test(VolumeConfig::config_backend_name);
+    test(VolumeInterface::owner_tag_backend_name());
     test(snapshotFilename());
 }
 

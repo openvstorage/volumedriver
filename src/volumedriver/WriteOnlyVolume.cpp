@@ -90,10 +90,12 @@ namespace yt = youtils;
 
 WriteOnlyVolume::WriteOnlyVolume(const VolumeConfig& vCfg,
                                  const OwnerTag owner_tag,
+                                 const boost::shared_ptr<be::Condition>& backend_write_condition,
                                  std::unique_ptr<SnapshotManagement> snapshotManagement,
                                  std::unique_ptr<DataStoreNG> datastore,
                                  NSIDMap nsidmap)
-    : write_lock_()
+    : VolumeInterface(backend_write_condition)
+    , write_lock_()
     , rwlock_(vCfg.id_ + "-volume-rwlock")
     , halted_(false)
     , dataStore_(datastore.release())

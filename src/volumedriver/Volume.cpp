@@ -109,13 +109,15 @@ namespace yt = youtils;
 
 Volume::Volume(const VolumeConfig& vCfg,
                const OwnerTag owner_tag,
+               const boost::shared_ptr<be::Condition>& backend_write_condition,
                std::unique_ptr<SnapshotManagement> snapshotManagement,
                std::unique_ptr<DataStoreNG> datastore,
                std::unique_ptr<MetaDataStoreInterface> metadatastore,
                NSIDMap nsidmap,
                const std::atomic<unsigned>& foc_throttle_usecs,
                bool& readOnlyMode)
-    : mdstore_was_rebuilt_(false)
+    : VolumeInterface(backend_write_condition)
+    , mdstore_was_rebuilt_(false)
     , config_lock_()
     , write_lock_()
     , rwlock_("rwlock-" + vCfg.id_.str())

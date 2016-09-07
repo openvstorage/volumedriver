@@ -136,6 +136,18 @@ public:
         return perf_counters_;
     }
 
+    static const std::string&
+    owner_tag_backend_name()
+    {
+        static const std::string n("owner_tag");
+        return n;
+    }
+
+protected:
+    explicit VolumeInterface(const boost::shared_ptr<backend::Condition>& cond)
+        : backend_write_cond_(cond)
+    {}
+
 private:
     PerformanceCounters perf_counters_;
     boost::shared_ptr<backend::Condition> backend_write_cond_;
