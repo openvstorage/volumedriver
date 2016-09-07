@@ -145,7 +145,8 @@ public:
     pull(bool must_exist = false);
 
     void
-    push(const SCOAccessData&);
+    push(const SCOAccessData&,
+         const boost::shared_ptr<backend::Condition>&);
 
     static SCOAccessDataPtr
     deserialize(const fs::path& p);

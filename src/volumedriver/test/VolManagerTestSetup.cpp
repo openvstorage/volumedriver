@@ -1712,14 +1712,14 @@ VolManagerTestSetup::persistXVals(const VolumeId& volname) const
         VolManager::get()->getSCOCache()->fillSCOAccessData(sad);
 
         SCOAccessDataPersistor sadp(v->getBackendInterface()->cloneWithNewNamespace(v->getNamespace()));
-        sadp.push(sad);
+        sadp.push(sad,
+                  v->backend_write_condition());
     }
     else
     {
         // Y42 can we assert here of not?
         LOG_WARN("Volume " << volname << " not found, removed behind our backs?");
     }
-
 }
 
 void
@@ -1733,7 +1733,6 @@ VolManagerTestSetup::waitForPrefetching(Volume& v) const
     // Y42 Do an extra sleep here because the queue might be empty but there could
     // have been one in the barrel
     sleep(2);
-
 }
 
 void

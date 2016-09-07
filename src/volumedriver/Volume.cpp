@@ -1551,20 +1551,14 @@ Volume::cloneFromParentSnapshot(const yt::UUID& parent_snap_uuid,
         sad->rebase(getNamespace());
         {
             SCOAccessDataPersistor self(nsidmap_.get(0)->clone());
-            self.push(*sad);
+            self.push(*sad,
+                      backend_write_condition());
         }
     }
-    catch(std::exception& e)
-    {
-        LOG_VINFO("Problem getting and rebasing parent access probabilities: " <<
-                  e.what() << " - proceeding");
-    }
-
-    catch(...)
-    {
-        LOG_VINFO("Problem getting and rebasing parent access probabilities: " <<
-                  "unknown exception - proceeding");
-    }
+    CATCH_STD_ALL_EWHAT({
+            LOG_VINFO("Problem getting and rebasing parent access probabilities: " <<
+                      EWHAT << " - proceeding");
+        });
 
     register_with_cluster_cache_(getOwnerTag());
 }
