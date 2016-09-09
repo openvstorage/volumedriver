@@ -204,4 +204,17 @@ TEST_F(OurStrongTypedefTest, binary_serialization)
                        ba::binary_iarchive>(UnsignedInt(0xbeefcafe));
 }
 
+TEST_F(OurStrongTypedefTest, text_deserialization_from_underlying_type)
+{
+    std::stringstream ss;
+
+    const uint16_t u16 = 42;
+
+    ba::text_oarchive(ss) << u16;
+
+    UnsignedShort us;
+    EXPECT_THROW(ba::text_iarchive(ss) >> us,
+                 std::exception);
+}
+
 }

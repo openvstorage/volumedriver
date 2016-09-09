@@ -114,9 +114,9 @@ struct ClusterNodeConfig
 
         ar & const_cast<NodeId&>(vrouter_id);
         ar & const_cast<std::string&>(host);
-        ar & const_cast<MessagePort&>(message_port);
-        ar & const_cast<XmlRpcPort&>(xmlrpc_port);
-        ar & const_cast<FailoverCachePort&>(failovercache_port);
+        ar & static_cast<uint16_t&>(const_cast<MessagePort&>(message_port));
+        ar & static_cast<uint16_t&>(const_cast<XmlRpcPort&>(xmlrpc_port));
+        ar & static_cast<uint16_t&>(const_cast<FailoverCachePort&>(failovercache_port));
 
         if (version > 1)
         {
@@ -136,9 +136,9 @@ struct ClusterNodeConfig
 
         ar & vrouter_id;
         ar & host;
-        ar & message_port;
-        ar & xmlrpc_port;
-        ar & failovercache_port;
+        ar & static_cast<const uint16_t&>(message_port);
+        ar & static_cast<const uint16_t&>(xmlrpc_port);
+        ar & static_cast<const uint16_t&>(failovercache_port);
         ar & network_server_uri;
     }
 
