@@ -38,8 +38,13 @@ public:
 
     Condition(const Condition&) = delete;
 
+    Condition(Condition&&) = default;
+
     Condition&
     operator=(const Condition&) = delete;
+
+    Condition&
+    operator=(Condition&&) = default;
 
     const youtils::UniqueObjectTag&
     object_tag() const
