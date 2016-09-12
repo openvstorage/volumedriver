@@ -90,6 +90,7 @@ ObjectRouter::ObjectRouter(const bpt::ptree& pt,
     , vrouter_max_workers(pt)
     , vrouter_registry_cache_capacity(pt)
     , vrouter_xmlrpc_client_timeout_ms(pt)
+    , vrouter_use_fencing(pt)
     , larakoon_(larakoon)
     , object_registry_(std::make_shared<CachedObjectRegistry>(cluster_id(),
                                                               node_id(),
@@ -1604,6 +1605,7 @@ ObjectRouter::update(const bpt::ptree& pt,
     U(vrouter_cluster_id);
     U(vrouter_registry_cache_capacity);
     U(vrouter_xmlrpc_client_timeout_ms);
+    U(vrouter_use_fencing);
 
     ip::PARAMETER_TYPE(vrouter_min_workers) min(pt);
     ip::PARAMETER_TYPE(vrouter_min_workers) max(pt);
@@ -1658,6 +1660,7 @@ ObjectRouter::persist(bpt::ptree& pt,
     P(vrouter_max_workers);
     P(vrouter_registry_cache_capacity);
     P(vrouter_xmlrpc_client_timeout_ms);
+    P(vrouter_use_fencing);
 
 #undef P
 
@@ -1840,6 +1843,12 @@ ObjectRouter::xmlrpc_client()
     return std::make_unique<PythonClient>(cluster_id(),
                                           contacts,
                                           boost::chrono::seconds(vrouter_xmlrpc_client_timeout_ms.value() * 1000));
+}
+
+bool
+ObjectRouter::fencing_support_() const
+{
+    return api::fencing_support() and vrouter_use_fencing.value();
 }
 
 }

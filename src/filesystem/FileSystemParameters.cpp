@@ -166,6 +166,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_xmlrpc_client_timeout_ms,
                                       ShowDocumentation::F,
                                       60000);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_use_fencing,
+                                      volumerouter_component_name,
+                                      "vrouter_use_fencing",
+                                      "whether to use fencing support if it is available",
+                                      ShowDocumentation::T,
+                                      false);
+
 // ObjectRouterCluster
 const char volumeroutercluster_component_name[] = "volume_router_cluster";
 
