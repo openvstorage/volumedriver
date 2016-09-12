@@ -594,6 +594,15 @@ Connection::write_tag_(const Namespace&,
     throw BackendNotImplementedException();
 }
 
+std::unique_ptr<yt::UniqueObjectTag>
+Connection::read_tag_(const Namespace&,
+                      const fs::path&,
+                      const std::string&)
+{
+    LOG_ERROR("yt::UniqueObjectTag support is not available yet for Alba backend");
+    throw BackendNotImplementedException();
+}
+
 }
 
 }

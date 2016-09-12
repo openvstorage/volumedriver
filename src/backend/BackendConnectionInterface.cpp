@@ -283,6 +283,18 @@ BackendConnectionInterface::write_tag(const Namespace& nspace,
                       overwrite);
 }
 
+std::unique_ptr<UniqueObjectTag>
+BackendConnectionInterface::read_tag(const Namespace& nspace,
+                                     const fs::path& src,
+                                     const std::string& name)
+{
+    Logger l(__FUNCTION__, nspace, name);
+
+    return read_tag_(nspace,
+                     src,
+                     name);
+}
+
 bool
 BackendConnectionInterface::objectExists(const Namespace& nspace,
                                          const std::string& name)

@@ -134,6 +134,11 @@ private
                const youtils::UniqueObjectTag*,
                const OverwriteObject) override final;
 
+    virtual std::unique_ptr<youtils::UniqueObjectTag>
+    read_tag_(const Namespace&,
+              const boost::filesystem::path&,
+              const std::string&) override final;
+
     virtual bool
     hasExtendedApi_() const override final
     {

@@ -77,6 +77,11 @@ public:
               const OverwriteObject = OverwriteObject::T,
               const BackendRequestParameters& = default_request_parameters());
 
+    std::unique_ptr<youtils::UniqueObjectTag>
+    read_tag(const boost::filesystem::path&,
+             const std::string&,
+             const BackendRequestParameters& = default_request_parameters());
+
     youtils::CheckSum
     getCheckSum(const std::string& name,
                 const BackendRequestParameters& = default_request_parameters());

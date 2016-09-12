@@ -186,6 +186,11 @@ protected:
               const youtils::UniqueObjectTag*,
               const OverwriteObject = OverwriteObject::T);
 
+    std::unique_ptr<youtils::UniqueObjectTag>
+    read_tag(const Namespace&,
+             const boost::filesystem::path&,
+             const std::string&);
+
     bool
     objectExists(const Namespace& nspace,
                  const std::string& name);
@@ -325,6 +330,11 @@ private:
                const std::string&,
                const youtils::UniqueObjectTag* old_tag,
                const OverwriteObject = OverwriteObject::T) = 0;
+
+    virtual std::unique_ptr<youtils::UniqueObjectTag>
+    read_tag_(const Namespace&,
+              const boost::filesystem::path&,
+              const std::string&) = 0;
 
     virtual bool
     objectExists_(const Namespace&,

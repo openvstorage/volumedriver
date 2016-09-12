@@ -872,6 +872,43 @@ Connection::write_tag_(const Namespace& nspace,
     throw BackendNoMultiBackendAvailableException();
 }
 
+std::unique_ptr<yt::UniqueObjectTag>
+Connection::read_tag_(const Namespace& nspace,
+                      const fs::path& src,
+                      const std::string& name)
+{
+    iterator_t start_iterator = current_iterator_;
+    while(maybe_switch_back_to_default())
+    {
+        try
+        {
+            return (*current_iterator_)->read_tag(nspace,
+                                                  src,
+                                                  name);
+        }
+        catch (BackendUniqueObjectTagMismatchException&)
+        {
+            throw;
+        }
+        catch (BackendNotImplementedException&)
+        {
+            throw;
+        }
+        catch (BackendObjectDoesNotExistException&)
+        {
+            throw;
+        }
+        catch (std::exception&)
+        {
+            if(update_current_index(start_iterator))
+            {
+                throw;
+            }
+        }
+    }
+    throw BackendNoMultiBackendAvailableException();
+}
+
 }
 }
 

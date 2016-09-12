@@ -797,9 +797,25 @@ Connection::get_tag_(const Namespace& nspace,
     LOCK_BACKEND();
 
     const fs::path src(checkedObjectPath_(nspace,
-                                        name));
+                                          name));
 
     fs::ifstream ifs(src);
+    return std::make_unique<yt::ObjectMd5>(yt::Weed(ifs));
+}
+
+std::unique_ptr<yt::UniqueObjectTag>
+Connection::read_tag_(const Namespace& nspace,
+                      const fs::path& dst,
+                      const std::string& name)
+{
+    LOCK_BACKEND();
+
+    read_(nspace,
+          dst,
+          name,
+          InsistOnLatestVersion::T);
+
+    fs::ifstream ifs(dst);
     return std::make_unique<yt::ObjectMd5>(yt::Weed(ifs));
 }
 

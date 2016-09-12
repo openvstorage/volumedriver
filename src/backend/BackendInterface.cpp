@@ -554,6 +554,19 @@ BackendInterface::write_tag(const fs::path& src,
                                   overwrite);
 }
 
+std::unique_ptr<yt::UniqueObjectTag>
+BackendInterface::read_tag(const fs::path& src,
+                           const std::string& name,
+                           const BackendRequestParameters& params)
+{
+    return wrap_<std::unique_ptr<yt::UniqueObjectTag>,
+                 decltype(src),
+                 decltype(name)>(params,
+                                 &BackendConnectionInterface::read_tag,
+                                 src,
+                                 name);
+}
+
 }
 
 // Local Variables: **
