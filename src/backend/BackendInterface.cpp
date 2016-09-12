@@ -567,6 +567,12 @@ BackendInterface::read_tag(const fs::path& src,
                                  name);
 }
 
+bool
+BackendInterface::unique_tag_support() const
+{
+    return conn_manager_->config().unique_tag_support();
+}
+
 }
 
 // Local Variables: **

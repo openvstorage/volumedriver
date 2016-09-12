@@ -63,17 +63,17 @@ TEST_F(ArakoonLockStoreTest, existentialism)
     const HeartBeatLock lock(bptime::seconds(1),
                             bptime::seconds(1));
 
-    const GlobalLockTag ltag(als.write(lock,
-                                       boost::none));
+    const std::unique_ptr<UniqueObjectTag> ltag(als.write(lock,
+                                                          nullptr));
 
     EXPECT_TRUE(als.exists());
 
-    const std::tuple<HeartBeatLock, GlobalLockTag> t(als.read());
+    const std::tuple<HeartBeatLock, std::unique_ptr<UniqueObjectTag>> t(als.read());
 
     EXPECT_TRUE(lock.same_owner(std::get<0>(t)));
 
-    EXPECT_EQ(ltag,
-              std::get<1>(t));
+    EXPECT_EQ(*ltag,
+              *std::get<1>(t));
 
     als.erase();
 
@@ -90,61 +90,64 @@ TEST_F(ArakoonLockStoreTest, overwrite)
     const HeartBeatLock lock1(bptime::seconds(1),
                               bptime::seconds(1));
 
-    const GlobalLockTag ltag1(als.write(lock1,
-                                        boost::none));
+    const std::unique_ptr<UniqueObjectTag> ltag1(als.write(lock1,
+                                                           nullptr));
 
     const HeartBeatLock lock2(bptime::seconds(1),
                               bptime::seconds(1));
 
     EXPECT_THROW(als.write(lock2,
-                           boost::none),
+                           nullptr),
                  std::exception);
 
-    const GlobalLockTag ltag2(als.write(lock2,
-                                        ltag1));
+    const std::unique_ptr<UniqueObjectTag> ltag2(als.write(lock2,
+                                                           ltag1.get()));
 
-    EXPECT_NE(ltag1,
-              ltag2);
+    EXPECT_NE(*ltag1,
+              *ltag2);
 
     auto check([&](const HeartBeatLock& exp_lock,
-                   const GlobalLockTag& exp_ltag,
+                   const UniqueObjectTag& exp_ltag,
                    const HeartBeatLock& other_lock,
-                   const GlobalLockTag& other_ltag)
+                   const UniqueObjectTag& other_ltag)
                {
-                   const std::tuple<HeartBeatLock, GlobalLockTag> t(als.read());
+                   const std::tuple<HeartBeatLock, std::unique_ptr<UniqueObjectTag>> t(als.read());
                    EXPECT_EQ(exp_ltag,
-                             std::get<1>(t));
+                             *std::get<1>(t));
                    EXPECT_NE(other_ltag,
-                             std::get<1>(t));
+                             *std::get<1>(t));
 
                    EXPECT_TRUE(exp_lock.same_owner(std::get<0>(t)));
                    EXPECT_FALSE(other_lock.same_owner(std::get<0>(t)));
                });
 
     check(lock2,
-          ltag2,
+          *ltag2,
           lock1,
-          ltag1);
+          *ltag1);
 
     EXPECT_THROW(als.write(lock1,
-                           ltag1),
+                           ltag1.get()),
                  GlobalLockStore::LockHasChanged);
 
     check(lock2,
-          ltag2,
+          *ltag2,
           lock1,
-          ltag1);
+          *ltag1);
 
-    const GlobalLockTag ltag3(als.write(lock1,
-                                        ltag2));
+    const std::unique_ptr<UniqueObjectTag> ltag3(als.write(lock1,
+                                                           ltag2.get()));
 
-    EXPECT_EQ(ltag1,
-              ltag3);
+    EXPECT_EQ(*ltag1,
+              *ltag3) <<
+        "ltag1 " << *ltag1 <<
+        ", ltag2 " << *ltag2 <<
+        ", ltag3 " << *ltag3;
 
     check(lock1,
-          ltag1,
+          *ltag1,
           lock2,
-          ltag2);
+          *ltag2);
 }
 
 }

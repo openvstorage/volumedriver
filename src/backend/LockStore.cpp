@@ -15,11 +15,13 @@
 
 #include "LockStore.h"
 
+#include <youtils/FileUtils.h>
 #include <youtils/Logging.h>
 
 namespace backend
 {
 
+namespace fs = boost::filesystem;
 namespace yt = youtils;
 
 namespace
@@ -37,7 +39,7 @@ lock_name()
 LockStore::LockStore(BackendInterfacePtr bi)
     : bi_(std::move(bi))
 {
-    if (not bi_->hasExtendedApi())
+    if (not bi_->unique_tag_support())
     {
         LOG_ERROR("Backend type cannot be used as LockStore as it doesn't support the extended API");
         throw BackendNotImplementedException();
@@ -50,33 +52,51 @@ LockStore::exists()
     return bi_->objectExists(lock_name());
 }
 
-std::tuple<yt::HeartBeatLock, yt::GlobalLockTag>
+std::tuple<yt::HeartBeatLock, std::unique_ptr<yt::UniqueObjectTag>>
 LockStore::read()
 {
-    std::string s;
-    const ETag etag(bi_->x_read(s,
-                                lock_name(),
-                                InsistOnLatestVersion::T).etag_);
-    return std::make_tuple(yt::HeartBeatLock(s),
-                           static_cast<const yt::GlobalLockTag>(etag));
+    const fs::path p(yt::FileUtils::create_temp_file_in_temp_dir(bi_->getNS().str() + "." + lock_name()));
+    ALWAYS_CLEANUP_FILE(p);
+
+    std::unique_ptr<yt::UniqueObjectTag> tag(bi_->read_tag(p,
+                                                           lock_name()));
+
+    yt::FileDescriptor fd(p,
+                          yt::FDMode::Read);
+    std::vector<char> vec(fd.size());
+    size_t r = fd.read(vec.data(),
+                       vec.size());
+
+    VERIFY(r == vec.size());
+
+    return std::make_tuple(yt::HeartBeatLock(std::string(vec.data(),
+                                                         vec.size())),
+                           std::move(tag));
 }
 
-yt::GlobalLockTag
+std::unique_ptr<yt::UniqueObjectTag>
 LockStore::write(const yt::HeartBeatLock& lock,
-                 const boost::optional<yt::GlobalLockTag>& lock_tag)
+                 const yt::UniqueObjectTag* prev_tag)
 {
     std::string s;
     lock.save(s);
 
-    const ETag etag(bi_->x_write(s,
-                                 lock_name(),
-                                 lock_tag ?
-                                 OverwriteObject::T :
-                                 OverwriteObject::F,
-                                 lock_tag ?
-                                 &reinterpret_cast<const ETag&>(*lock_tag) :
-                                 nullptr).etag_);
-    return static_cast<const yt::GlobalLockTag>(etag);
+    const fs::path p(yt::FileUtils::create_temp_file_in_temp_dir(bi_->getNS().str() + "." + lock_name()));
+    ALWAYS_CLEANUP_FILE(p);
+
+    yt::FileDescriptor fd(p,
+                          yt::FDMode::Write);
+    size_t r = fd.write(s.data(),
+                        s.size());
+
+    VERIFY(r == s.size());
+
+    return bi_->write_tag(p,
+                          lock_name(),
+                          prev_tag,
+                          prev_tag ?
+                          OverwriteObject::T :
+                          OverwriteObject::F);
 }
 
 const std::string&

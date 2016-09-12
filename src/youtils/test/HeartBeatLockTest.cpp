@@ -13,6 +13,14 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "../GlobalLockStore.h"
+#include "../HeartBeatLockService.h"
+#include "../HeartBeatLockService.h"
+#include "../HeartBeatLockCommunicator.h"
+#include "../ObjectMd5.h"
+#include "../Weed.h"
+#include "../WithGlobalLock.h"
+
 #include <map>
 
 #include <sys/types.h>
@@ -21,13 +29,7 @@
 
 #include <boost/make_shared.hpp>
 
-#include "../GlobalLockStore.h"
-#include "../HeartBeatLockService.h"
-#include "../HeartBeatLockService.h"
-#include "../HeartBeatLockCommunicator.h"
 #include <gtest/gtest.h>
-#include "../Weed.h"
-#include "../WithGlobalLock.h"
 
 namespace youtilstest
 {
@@ -93,7 +95,7 @@ public:
         return not it->second.empty();
     }
 
-    std::tuple<HeartBeatLock, GlobalLockTag>
+    std::tuple<HeartBeatLock, std::unique_ptr<UniqueObjectTag>>
     read() override final
     {
         boost::lock_guard<decltype(Locks::lock)> g(locks_.lock);
@@ -107,12 +109,12 @@ public:
         const Weed weed(reinterpret_cast<const byte*>(it->second.data()),
                         it->second.size());
         return std::make_tuple(HeartBeatLock(it->second),
-                               boost::lexical_cast<GlobalLockTag>(weed));
+                               std::make_unique<ObjectMd5>(weed));
     }
 
-    GlobalLockTag
+    std::unique_ptr<UniqueObjectTag>
     write(const HeartBeatLock& lock,
-          const boost::optional<GlobalLockTag>& tag) override final
+          const UniqueObjectTag* tag) override final
     {
         boost::lock_guard<decltype(Locks::lock)> g(locks_.lock);
 
@@ -127,8 +129,8 @@ public:
             const Weed weed(reinterpret_cast<const byte*>(it->second.data()),
                         it->second.size());
 
-            const auto current_tag(boost::lexical_cast<GlobalLockTag>(weed));
-            if (*tag != current_tag)
+            const auto current_tag(std::make_unique<ObjectMd5>(weed));
+            if (*tag != *current_tag)
             {
                 throw std::runtime_error("lock has changed for "s + name());
             }
@@ -140,7 +142,7 @@ public:
 
         const Weed weed(reinterpret_cast<const byte*>(s.data()),
                         s.size());
-        return boost::lexical_cast<GlobalLockTag>(weed);
+        return std::make_unique<ObjectMd5>(weed);
     }
 
     const std::string&

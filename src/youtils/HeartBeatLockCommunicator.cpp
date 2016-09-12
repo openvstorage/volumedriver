@@ -22,8 +22,8 @@ namespace youtils
 {
 
 HeartBeatLockCommunicator::HeartBeatLockCommunicator(GlobalLockStorePtr lock_store,
-                                   const boost::posix_time::time_duration connection_timeout,
-                                   const boost::posix_time::time_duration interrupt_timeout)
+                                                     const boost::posix_time::time_duration connection_timeout,
+                                                     const boost::posix_time::time_duration interrupt_timeout)
     : lock_store_(lock_store)
     , lock_(connection_timeout,
             interrupt_timeout)
@@ -50,18 +50,18 @@ HeartBeatLockCommunicator::getLock()
     HeartBeatLock lock(lock_);
     std::tie(lock, tag_) = lock_store_->read();
 
-    LOG_INFO(name() << ": new tag " << tag_);
+    LOG_INFO(name() << ": new tag " << *tag_);
     return lock;
 }
 
 bool
 HeartBeatLockCommunicator::overwriteLock()
 {
-    LOG_INFO(name() << ": overwriting the lock with tag " << tag_);
+    LOG_INFO(name() << ": overwriting the lock with tag " << *tag_);
     try
     {
         tag_ = lock_store_->write(lock_,
-                                  tag_);
+                                  tag_.get());
 
         LOG_INFO(name() << ": overwrote the lock");
         return true;
@@ -81,7 +81,7 @@ HeartBeatLockCommunicator::putLock()
     try
     {
         tag_ = lock_store_->write(lock_,
-                                  boost::none);
+                                  nullptr);
 
         LOG_INFO(name() << ": put the lock");
         return true;
@@ -109,7 +109,7 @@ HeartBeatLockCommunicator::tryToAcquireLock()
         {
             boost::this_thread::sleep(l.get_timeout());
             LOG_INFO(name() <<
-                     ": trying to steal the lock with tag " << tag_);
+                     ": trying to steal the lock with tag " << *tag_);
             return overwriteLock();
         }
     }

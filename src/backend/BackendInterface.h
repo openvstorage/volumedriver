@@ -58,6 +58,9 @@ public:
          InsistOnLatestVersion insist_on_latest,
          const BackendRequestParameters& = default_request_parameters());
 
+    bool
+    unique_tag_support() const;
+
     std::unique_ptr<youtils::UniqueObjectTag>
     get_tag(const std::string&,
             const BackendRequestParameters& = default_request_parameters());

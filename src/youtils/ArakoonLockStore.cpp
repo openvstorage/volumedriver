@@ -14,9 +14,8 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "ArakoonLockStore.h"
+#include "ObjectMd5.h"
 #include "Weed.h"
-
-#include <boost/lexical_cast.hpp>
 
 namespace youtils
 {
@@ -28,11 +27,11 @@ using namespace std::literals::string_literals;
 namespace
 {
 
-GlobalLockTag
+std::unique_ptr<UniqueObjectTag>
 global_lock_tag(const std::string& s)
 {
-    return boost::lexical_cast<GlobalLockTag>(Weed(reinterpret_cast<const uint8_t*>(s.data()),
-                                                   s.size()));
+    return std::make_unique<ObjectMd5>(Weed(reinterpret_cast<const uint8_t*>(s.data()),
+                                            s.size()));
 }
 
 }
@@ -68,7 +67,7 @@ ArakoonLockStore::name() const
     return nspace_;
 }
 
-std::tuple<HeartBeatLock, GlobalLockTag>
+std::tuple<HeartBeatLock, std::unique_ptr<UniqueObjectTag>>
 ArakoonLockStore::read()
 {
     const std::string s(larakoon_->get<std::string,
@@ -78,9 +77,9 @@ ArakoonLockStore::read()
                            global_lock_tag(s));
 }
 
-GlobalLockTag
+std::unique_ptr<UniqueObjectTag>
 ArakoonLockStore::write(const HeartBeatLock& lock,
-                        const boost::optional<GlobalLockTag>& lock_tag)
+                        const UniqueObjectTag* lock_tag)
 {
     std::string new_val;
     lock.save(new_val);
@@ -95,7 +94,7 @@ ArakoonLockStore::write(const HeartBeatLock& lock,
                          old_val(larakoon_->get<std::string,
                                                 std::string>(key));
 
-                     if (global_lock_tag(old_val) != *lock_tag)
+                     if (*global_lock_tag(old_val) != *lock_tag)
                      {
                          LOG_INFO(nspace_ << ": lock has changed");
                          throw GlobalLockStore::LockHasChanged("lock has changed",
