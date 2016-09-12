@@ -18,6 +18,7 @@
 
 #include "BackendException.h"
 #include "BackendPolicyConfig.h"
+#include "Condition.h"
 #include "Namespace.h"
 #include "ObjectInfo.h"
 
@@ -171,11 +172,12 @@ protected:
                  PartialReadFallbackFun& fallback);
 
     void
-    write(const Namespace& nspace,
-          const boost::filesystem::path& location,
-          const std::string& name,
-          const OverwriteObject overwrite = OverwriteObject::F,
-          const youtils::CheckSum* chksum = nullptr);
+    write(const Namespace&,
+          const boost::filesystem::path&,
+          const std::string&,
+          const OverwriteObject = OverwriteObject::F,
+          const youtils::CheckSum* = nullptr,
+          const boost::shared_ptr<Condition>& = nullptr);
 
     std::unique_ptr<youtils::UniqueObjectTag>
     write_tag(const Namespace&,
@@ -189,9 +191,10 @@ protected:
                  const std::string& name);
 
     void
-    remove(const Namespace& nspace,
-           const std::string& name,
-           const ObjectMayNotExist may_not_exist = ObjectMayNotExist::F);
+    remove(const Namespace&,
+           const std::string&,
+           const ObjectMayNotExist = ObjectMayNotExist::F,
+           const boost::shared_ptr<Condition>& = nullptr);
 
     uint64_t
     getSize(const Namespace& nspace,
@@ -310,10 +313,11 @@ public:
 private:
     virtual void
     write_(const Namespace&,
-           const boost::filesystem::path& location,
-           const std::string& name,
+           const boost::filesystem::path&,
+           const std::string&,
            const OverwriteObject = OverwriteObject::F,
-           const youtils::CheckSum* chksum = nullptr) = 0;
+           const youtils::CheckSum* = nullptr,
+           const boost::shared_ptr<Condition>& = nullptr) = 0;
 
     virtual std::unique_ptr<youtils::UniqueObjectTag>
     write_tag_(const Namespace&,
@@ -328,8 +332,9 @@ private:
 
     virtual void
     remove_(const Namespace&,
-            const std::string& name,
-            const ObjectMayNotExist) = 0;
+            const std::string&,
+            const ObjectMayNotExist,
+            const boost::shared_ptr<Condition>& = nullptr) = 0;
 
     virtual uint64_t
     getSize_(const Namespace&,

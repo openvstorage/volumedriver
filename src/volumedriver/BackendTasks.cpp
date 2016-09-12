@@ -90,6 +90,7 @@ WriteSCO::run(int threadid)
                                               sco_.str(),
                                               overwrite_,
                                               &cs_,
+                                              volume_->backend_write_condition(),
                                               fail_fast_request_params);
 
         const auto duration_us(bc::duration_cast<bc::microseconds>(t.elapsed()));
@@ -159,6 +160,7 @@ WriteTLog::run(int /*threadid*/)
                                               boost::lexical_cast<std::string>(tlogid_),
                                               OverwriteObject::T,
                                               &checksum_,
+                                              volume_->backend_write_condition(),
                                               fail_fast_request_params);
         volume_->tlogWrittenToBackendCallback(tlogid_,
                                               sconame_);
@@ -214,6 +216,7 @@ WriteSnapshot::run(int /*threadID*/)
                                               snapshotFilename(),
                                               OverwriteObject::T,
                                               &chk,
+                                              volume_->backend_write_condition(),
                                               fail_fast_request_params);
     }
     CATCH_STD_ALL_EWHAT({
@@ -245,6 +248,7 @@ DeleteTLog::run(int /*threadID*/)
     {
         volume_->getBackendInterface()->remove(tlog_,
                                                ObjectMayNotExist::T,
+                                               volume_->backend_write_condition(),
                                                fail_fast_request_params);
         LOG_INFO("Deleted TLog " << tlog_);
     }
@@ -277,6 +281,7 @@ BlockDeleteTLogs::run(int /*threadID*/)
         {
             volume_->getBackendInterface()->remove(*it,
                                                    ObjectMayNotExist::T,
+                                                   volume_->backend_write_condition(),
                                                    fail_fast_request_params);
             LOG_INFO("Deleted TLog " << *it);
 
@@ -320,6 +325,7 @@ BlockDeleteSCOS::run(int /*threadID*/)
         {
             volume_->getBackendInterface()->remove(it->str(),
                                                    ObjectMayNotExist::T,
+                                                   volume_->backend_write_condition(),
                                                    fail_fast_request_params);
             LOG_INFO("Deleted SCO " << *it);
 
@@ -358,6 +364,7 @@ DeleteSCO::run(int /*threadID*/)
     {
         volume_->getBackendInterface()->remove(sco_.str(),
                                                ObjectMayNotExist::T,
+                                               volume_->backend_write_condition(),
                                                fail_fast_request_params);
         LOG_INFO("Deleted SCO " << sco_);
 

@@ -220,7 +220,8 @@ Connection::write_(const Namespace& nspace,
                    const fs::path& src,
                    const std::string& name,
                    OverwriteObject overwrite,
-                   const yt::CheckSum* chksum)
+                   const youtils::CheckSum* chksum,
+                   const boost::shared_ptr<Condition>& cond)
 {
     iterator_t start_iterator = current_iterator_;
     while(maybe_switch_back_to_default())
@@ -231,21 +232,26 @@ Connection::write_(const Namespace& nspace,
                                                src,
                                                name,
                                                overwrite,
-                                               chksum);
+                                               chksum,
+                                               cond);
         }
-        catch(BackendNotImplementedException)
+        catch (BackendNotImplementedException&)
         {
             throw;
         }
-        catch(BackendNamespaceAlreadyExistsException&)
+        catch (BackendNamespaceAlreadyExistsException&)
         {
             throw;
         }
-        catch(BackendObjectDoesNotExistException)
+        catch (BackendObjectDoesNotExistException&)
         {
             throw;
         }
-        catch(std::exception&)
+        catch (BackendUniqueObjectTagMismatchException&)
+        {
+            throw;
+        }
+        catch (std::exception&)
         {
             if(update_current_index(start_iterator))
             {
@@ -294,7 +300,8 @@ Connection::objectExists_(const Namespace& nspace,
 void
 Connection::remove_(const Namespace& nspace,
                     const std::string& name,
-                    const ObjectMayNotExist may_not_exist)
+                    const ObjectMayNotExist may_not_exist,
+                    const boost::shared_ptr<Condition>& cond)
 {
     iterator_t start_iterator = current_iterator_;
     while(maybe_switch_back_to_default())
@@ -303,17 +310,22 @@ Connection::remove_(const Namespace& nspace,
         {
             return (*current_iterator_)->remove(nspace,
                                                 name,
-                                                may_not_exist);
+                                                may_not_exist,
+                                                cond);
         }
-        catch(BackendNotImplementedException)
+        catch (BackendNotImplementedException&)
         {
             throw;
         }
-        catch(BackendNamespaceAlreadyExistsException&)
+        catch (BackendNamespaceAlreadyExistsException&)
         {
             throw;
         }
-        catch(BackendObjectDoesNotExistException)
+        catch (BackendObjectDoesNotExistException&)
+        {
+            throw;
+        }
+        catch (BackendUniqueObjectTagMismatchException&)
         {
             throw;
         }

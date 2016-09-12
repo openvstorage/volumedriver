@@ -192,7 +192,8 @@ Connection::write_(const Namespace& nspace,
                    const fs::path &src,
                    const std::string& name,
                    const OverwriteObject overwrite,
-                   const yt::CheckSum* chksum)
+                   const yt::CheckSum* chksum,
+                   const boost::shared_ptr<Condition>& cond)
 {
     nanosleep(&timespec_,0);
 
@@ -215,15 +216,50 @@ Connection::write_(const Namespace& nspace,
     copy_(nspace,
           src,
           name,
-          overwrite);
+          overwrite,
+          cond ? &cond->object_name() : nullptr,
+          cond ? &cond->object_tag() : nullptr);
+}
+
+void
+Connection::verify_tag_(const Namespace& nspace,
+                        const std::string* tag_name,
+                        const yt::UniqueObjectTag* prev_tag) const
+{
+    if (prev_tag)
+    {
+        VERIFY(tag_name);
+
+        auto prev_md5 = dynamic_cast<const yt::ObjectMd5*>(prev_tag);
+        VERIFY(prev_md5);
+
+        const fs::path p(checkedObjectPath_(nspace,
+                                            *tag_name));
+
+        fs::ifstream ifs(p);
+        const yt::Weed w(ifs);
+        const yt::ObjectMd5 md5(w);
+        if (md5 != *prev_md5)
+        {
+            LOG_ERROR(p << ": tag mismatch, have " << md5 <<
+                      ", expected " << *prev_md5);
+            throw BackendUniqueObjectTagMismatchException();
+        }
+    }
 }
 
 void
 Connection::copy_(const Namespace& nspace,
                   const fs::path& src,
                   const std::string& name,
-                  const OverwriteObject overwrite)
+                  const OverwriteObject overwrite,
+                  const std::string* tag_name,
+                  const yt::UniqueObjectTag* prev_tag)
 {
+    verify_tag_(nspace,
+                tag_name,
+                prev_tag);
+
     auto dst = objectPath_(nspace, name);
     bool pre_exists = fs::exists(dst);
 
@@ -279,10 +315,18 @@ Connection::objectExists_(const Namespace& nspace,
 void
 Connection::remove_(const Namespace& nspace,
                     const std::string& name,
-                    const ObjectMayNotExist may_not_exist)
+                    const ObjectMayNotExist may_not_exist,
+                    const boost::shared_ptr<Condition>& cond)
 {
+    LOCK_BACKEND();
+
     const fs::path src(objectPath_(nspace, name));
     LOG_INFO("removing " << src);
+
+    verify_tag_(nspace,
+                cond ? &cond->object_name() : nullptr,
+                cond ? &cond->object_tag() : nullptr);
+
     // TODO: failure is ignored for now
     if (fs::exists(src))
     {
@@ -766,41 +810,22 @@ Connection::write_tag_(const Namespace& nspace,
                        const yt::UniqueObjectTag* prev_tag,
                        const OverwriteObject overwrite)
 {
-    auto prev_md5 = dynamic_cast<const yt::ObjectMd5*>(prev_tag);
-    VERIFY(not (prev_tag and not prev_md5));
-
-    LOCK_BACKEND();
-
-    const fs::path dst(objectPath_(nspace,
-                                   name));
-
-    if (prev_md5)
+    if (prev_tag)
     {
         VERIFY(overwrite == OverwriteObject::T);
-
-        if (not fs::exists(dst))
-        {
-            LOG_ERROR(dst << ": does not exist");
-            throw BackendObjectDoesNotExistException();
-        }
-
-        fs::ifstream ifs(dst);
-        const yt::Weed w(ifs);
-        const yt::ObjectMd5 md5(w);
-        if (md5 != *prev_md5)
-        {
-            LOG_ERROR(dst << ": tag mismatch, have " << md5 <<
-                      ", expected " << *prev_md5);
-            throw BackendUniqueObjectTagMismatchException();
-        }
     }
+
+    LOCK_BACKEND();
 
     copy_(nspace,
           src,
           name,
-          overwrite);
+          overwrite,
+          &name,
+          prev_tag);
 
-    fs::ifstream ifs(dst);
+    fs::ifstream ifs(checkedObjectPath_(nspace,
+                                        name));
     return std::make_unique<yt::ObjectMd5>(yt::Weed(ifs));
 }
 

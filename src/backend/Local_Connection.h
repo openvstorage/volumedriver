@@ -101,11 +101,12 @@ public:
              const std::string&) override final;
 
     virtual void
-    write_(const Namespace& nspace,
-           const boost::filesystem::path &location,
-           const std::string& name,
-           const OverwriteObject overwrite,
-           const youtils::CheckSum* chksum = 0) override final;
+    write_(const Namespace&,
+           const boost::filesystem::path&,
+           const std::string&,
+           const OverwriteObject,
+           const youtils::CheckSum* = nullptr,
+           const boost::shared_ptr<Condition>& = nullptr) override final;
 
     virtual std::unique_ptr<youtils::UniqueObjectTag>
     write_tag_(const Namespace&,
@@ -125,9 +126,10 @@ public:
     }
 
     virtual void
-    remove_(const Namespace& nspace,
-            const std::string& name,
-            const ObjectMayNotExist) override final;
+    remove_(const Namespace&,
+            const std::string&,
+            const ObjectMayNotExist,
+            const boost::shared_ptr<Condition>& = nullptr) override final;
 
     virtual uint64_t
     getSize_(const Namespace& nspace,
@@ -260,10 +262,17 @@ protected:
                        const std::string& objname) const;
 
     void
+    verify_tag_(const Namespace&,
+                const std::string*,
+                const youtils::UniqueObjectTag*) const;
+
+    void
     copy_(const Namespace&,
           const boost::filesystem::path&,
-          const std::string&,
-          const OverwriteObject);
+          const std::string& obj_name,
+          const OverwriteObject,
+          const std::string* tag_name,
+          const youtils::UniqueObjectTag* prev_tag);
 };
 
 }

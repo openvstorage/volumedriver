@@ -15,6 +15,7 @@
 
 #include "BackendTestBase.h"
 
+#include <boost/filesystem.hpp>
 #include <boost/property_tree/ptree.hpp>
 
 #include <youtils/Timer.h>
@@ -22,18 +23,19 @@
 namespace backendtest
 {
 
-namespace be = backend;
+using namespace backend;
+
 namespace bpt = boost::property_tree;
 namespace fs = boost::filesystem;
 namespace ip = initialized_params;
 namespace yt = youtils;
 
 class BackendInterfaceTest
-    : public be::BackendTestBase
+    : public BackendTestBase
 {
 public:
     BackendInterfaceTest()
-        : be::BackendTestBase("BackendInterfaceTest")
+        : BackendTestBase("BackendInterfaceTest")
     {}
 };
 
@@ -53,7 +55,7 @@ TEST_F(BackendInterfaceTest, retry_on_error)
     ASSERT_NE(wrong_cs,
               cs);
 
-    std::unique_ptr<be::BackendTestSetup::WithRandomNamespace>
+    std::unique_ptr<BackendTestSetup::WithRandomNamespace>
         nspace(make_random_namespace());
 
     const uint32_t retries = 5;
@@ -61,7 +63,7 @@ TEST_F(BackendInterfaceTest, retry_on_error)
     ASSERT_LE(retries,
               cm_->capacity());
 
-    be::BackendInterfacePtr bi(cm_->newBackendInterface(nspace->ns()));
+    BackendInterfacePtr bi(cm_->newBackendInterface(nspace->ns()));
 
     const uint32_t secs = 1;
 
@@ -87,13 +89,92 @@ TEST_F(BackendInterfaceTest, retry_on_error)
                            oname,
                            OverwriteObject::F,
                            &wrong_cs),
-                 be::BackendInputException);
+                 BackendInputException);
 
     EXPECT_EQ(retries + 1,
               cm_->size());
 
     EXPECT_LE(boost::chrono::seconds(retries * secs),
               t.elapsed());
+}
+
+TEST_F(BackendInterfaceTest, unique_tag)
+{
+    std::unique_ptr<BackendTestSetup::WithRandomNamespace>
+        nspace(make_random_namespace());
+    BackendInterfacePtr bi(cm_->newBackendInterface(nspace->ns()));
+
+    const std::string name("object");
+    const fs::path p(path_ / "p");
+
+    {
+        fs::ofstream ofs(p);
+        ofs << p.string();
+    }
+
+    std::unique_ptr<yt::UniqueObjectTag> tp(bi->write_tag(p,
+                                                          name,
+                                                          nullptr));
+
+    EXPECT_NE(nullptr,
+              tp);
+
+    EXPECT_EQ(*tp,
+              *(bi->get_tag(name)));
+
+    const fs::path q(path_ / "q");
+
+    {
+        fs::ofstream ofs(q);
+        ofs << q.string();
+    }
+
+    EXPECT_THROW(bi->write_tag(q,
+                               name,
+                               nullptr,
+                               OverwriteObject::F),
+                 BackendOverwriteNotAllowedException);
+
+    EXPECT_EQ(*tp,
+              *(bi->get_tag(name)));
+
+    std::unique_ptr<yt::UniqueObjectTag> tq(bi->write_tag(q,
+                                                          name,
+                                                          tp.get(),
+                                                          OverwriteObject::T));
+
+    EXPECT_NE(*tp,
+              *tq);
+    EXPECT_EQ(*tq,
+              *(bi->get_tag(name)));
+
+    EXPECT_THROW(bi->write_tag(p,
+                               name,
+                               tp.get(),
+                               OverwriteObject::T),
+                 BackendUniqueObjectTagMismatchException);
+
+    EXPECT_EQ(*tq,
+              *(bi->get_tag(name)));
+
+    const fs::path r(path_ / "r");
+
+    {
+        fs::ofstream ofs(r);
+        ofs << r.string();
+    }
+
+    std::unique_ptr<yt::UniqueObjectTag> tr(bi->write_tag(r,
+                                                          name,
+                                                          nullptr,
+                                                          OverwriteObject::T));
+
+    EXPECT_NE(*tp,
+              *tr);
+    EXPECT_NE(*tq,
+              *tr);
+    EXPECT_EQ(*tr,
+              *(bi->get_tag(name)));
 }
 
 }

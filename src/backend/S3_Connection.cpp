@@ -426,8 +426,15 @@ Connection::getCheckSum_(const Namespace&,
 void
 Connection::remove_(const Namespace& nspace,
                     const std::string& name,
-                    const ObjectMayNotExist may_not_exist)
+                    const ObjectMayNotExist may_not_exist,
+                    const boost::shared_ptr<Condition>& cond)
 {
+    if (cond)
+    {
+        LOG_ERROR("conditional write support is not available yet for S3 backend");
+        throw BackendNotImplementedException();
+    }
+
     try
     {
         ws_connection_->del(nspace.c_str(),
@@ -703,8 +710,15 @@ Connection::write_(const Namespace& nspace,
                    const fs::path& location,
                    const std::string& name,
                    const OverwriteObject overwrite_object,
-                   const yt::CheckSum* cs)
+                   const yt::CheckSum* cs,
+                   const boost::shared_ptr<Condition>& cond)
 {
+    if (cond)
+    {
+        LOG_ERROR("conditional write support is not available yet for S3 backend");
+        throw BackendNotImplementedException();
+    }
+
     if(F(overwrite_object) and objectExists_(nspace,
                                              name))
     {

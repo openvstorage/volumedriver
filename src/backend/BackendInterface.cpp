@@ -221,6 +221,7 @@ BackendInterface::write(const fs::path& src,
                         const std::string& name,
                         const OverwriteObject overwrite,
                         const yt::CheckSum* chksum,
+                        const boost::shared_ptr<Condition>& cond,
                         const BackendRequestParameters& params)
 {
     tracepoint(openvstorage_backend,
@@ -243,12 +244,14 @@ BackendInterface::write(const fs::path& src,
           decltype(src),
           decltype(name),
           OverwriteObject,
-          decltype(chksum)>(params,
-                            &BackendConnectionInterface::write,
-                            src,
-                            name,
-                            overwrite,
-                            chksum);
+          decltype(chksum),
+          decltype(cond)>(params,
+                          &BackendConnectionInterface::write,
+                          src,
+                          name,
+                          overwrite,
+                          chksum,
+                          cond);
 }
 
 yt::CheckSum
@@ -325,14 +328,17 @@ BackendInterface::objectExists(const std::string& name,
 void
 BackendInterface::remove(const std::string& name,
                          const ObjectMayNotExist may_not_exist,
+                         const boost::shared_ptr<Condition>& cond,
                          const BackendRequestParameters& params)
 {
     wrap_<void,
           decltype(name),
-          ObjectMayNotExist>(params,
-                             &BackendConnectionInterface::remove,
-                             name,
-                             may_not_exist);
+          ObjectMayNotExist,
+          decltype(cond)>(params,
+                          &BackendConnectionInterface::remove,
+                          name,
+                          may_not_exist,
+                          cond);
 }
 
 void
@@ -517,6 +523,35 @@ BackendInterface::x_write(const std::string& src,
                                    overwrite,
                                    etag,
                                    chksum);
+}
+
+std::unique_ptr<yt::UniqueObjectTag>
+BackendInterface::get_tag(const std::string& name,
+                          const BackendRequestParameters& params)
+{
+    return wrap_<std::unique_ptr<yt::UniqueObjectTag>,
+                 decltype(name)>(params,
+                                 &BackendConnectionInterface::get_tag,
+                                 name);
+}
+
+std::unique_ptr<yt::UniqueObjectTag>
+BackendInterface::write_tag(const fs::path& src,
+                            const std::string& name,
+                            const yt::UniqueObjectTag* prev_tag,
+                            const OverwriteObject overwrite,
+                            const BackendRequestParameters& params)
+{
+    return wrap_<std::unique_ptr<yt::UniqueObjectTag>,
+                 decltype(src),
+                 decltype(name),
+                 decltype(prev_tag),
+                 OverwriteObject>(params,
+                                  &BackendConnectionInterface::write_tag,
+                                  src,
+                                  name,
+                                  prev_tag,
+                                  overwrite);
 }
 
 }

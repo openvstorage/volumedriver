@@ -94,7 +94,8 @@ private
     virtual void
     remove_(const Namespace& nspace,
             const std::string& name,
-            const ObjectMayNotExist) override final;
+            const ObjectMayNotExist,
+            const boost::shared_ptr<Condition>& = nullptr) override final;
 
     virtual void
     listObjects_(const Namespace& nspace,
@@ -119,11 +120,12 @@ private
     }
 
     virtual void
-    write_(const Namespace& nspace,
-           const boost::filesystem::path &location,
-           const std::string& name,
+    write_(const Namespace&,
+           const boost::filesystem::path&,
+           const std::string&,
            OverwriteObject,
-           const youtils::CheckSum* chksum = 0) override final;
+           const youtils::CheckSum* = nullptr,
+           const boost::shared_ptr<Condition>& = nullptr) override final;
 
     virtual std::unique_ptr<youtils::UniqueObjectTag>
     write_tag_(const Namespace&,

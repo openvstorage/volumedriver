@@ -258,10 +258,11 @@ BackendConnectionInterface::write(const Namespace& nspace,
                                   const boost::filesystem::path& location,
                                   const std::string& name,
                                   const OverwriteObject overwrite,
-                                  const youtils::CheckSum* chksum)
+                                  const youtils::CheckSum* chksum,
+                                  const boost::shared_ptr<Condition>& cond)
 {
     Logger l(__FUNCTION__, nspace, name);
-    return write_(nspace, location, name, overwrite, chksum);
+    return write_(nspace, location, name, overwrite, chksum, cond);
 }
 
 std::unique_ptr<UniqueObjectTag>
@@ -293,12 +294,14 @@ BackendConnectionInterface::objectExists(const Namespace& nspace,
 void
 BackendConnectionInterface::remove(const Namespace& nspace,
                                    const std::string& name,
-                                   const ObjectMayNotExist may_not_exist)
+                                   const ObjectMayNotExist may_not_exist,
+                                   const boost::shared_ptr<Condition>& cond)
 {
     Logger l(__FUNCTION__, nspace, name);
     return remove_(nspace,
                    name,
-                   may_not_exist);
+                   may_not_exist,
+                   cond);
 }
 
 uint64_t

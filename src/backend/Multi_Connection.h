@@ -91,11 +91,12 @@ public:
              const std::string&) override final;
 
     virtual void
-    write_(const Namespace& nspace,
-           const fs::path &location,
-           const std::string& name,
-           const OverwriteObject overwrite = OverwriteObject::F,
-           const youtils::CheckSum* chksum = 0) override final;
+    write_(const Namespace&,
+           const fs::path&,
+           const std::string&,
+           const OverwriteObject = OverwriteObject::F,
+           const youtils::CheckSum* = nullptr,
+           const boost::shared_ptr<Condition>& = nullptr) override final;
 
     virtual std::unique_ptr<youtils::UniqueObjectTag>
     write_tag_(const Namespace&,
@@ -113,9 +114,10 @@ public:
 
 
     virtual void
-    remove_(const Namespace& nspace,
-            const std::string& name,
-            const ObjectMayNotExist) override final;
+    remove_(const Namespace&,
+            const std::string&,
+            const ObjectMayNotExist,
+            const boost::shared_ptr<Condition>& = nullptr) override final;
 
     virtual uint64_t
     getSize_(const Namespace& nspace,

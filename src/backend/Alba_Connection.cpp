@@ -367,10 +367,17 @@ Connection::write_(const Namespace& nspace,
                    const fs::path &src,
                    const string& name,
                    const OverwriteObject overwrite,
-                   const youtils::CheckSum* chksum)
+                   const youtils::CheckSum* chksum,
+                   const boost::shared_ptr<Condition>& cond)
 {
     LOG_TRACE(nspace << ": storing " << src << " as " << name << ", overwrite: " <<
               overwrite << ", checksum " << chksum);
+
+    if (cond)
+    {
+        LOG_ERROR("conditional write support is not available yet for Alba backend");
+        throw BackendNotImplementedException();
+    }
 
     convert_exceptions_<void>("write object",
                               [&]
@@ -421,9 +428,16 @@ Connection::objectExists_(const Namespace& nspace,
 void
 Connection::remove_(const Namespace& nspace,
                     const string& name,
-                    const ObjectMayNotExist may_not_exist)
+                    const ObjectMayNotExist may_not_exist,
+                    const boost::shared_ptr<Condition>& cond)
 {
     LOG_TRACE(nspace << ": deleting " << name << ", may not exist: " << may_not_exist);
+
+    if (cond)
+    {
+        LOG_ERROR("conditional write support is not available yet for Alba backend");
+        throw BackendNotImplementedException();
+    }
 
     convert_exceptions_<void>("delete object",
                               [&]
