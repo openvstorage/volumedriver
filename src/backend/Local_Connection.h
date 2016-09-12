@@ -124,12 +124,6 @@ public:
     objectExists_(const Namespace& nspace,
                   const std::string& name) override final;
 
-    virtual bool
-    hasExtendedApi_() const override final
-    {
-        return true;
-    }
-
     virtual void
     remove_(const Namespace&,
             const std::string&,
@@ -155,66 +149,7 @@ public:
                   const PartialReads& partial_reads,
                   InsistOnLatestVersion) override final;
 
-    virtual backend::ObjectInfo
-    x_getMetadata_(const Namespace& nspace,
-                   const std::string& name) override final;
-
-    virtual backend::ObjectInfo
-    x_setMetadata_(const Namespace& nspace,
-                   const std::string& name,
-                   const backend::ObjectInfo::CustomMetaData& metadata) override final;
-
-    virtual backend::ObjectInfo
-    x_updateMetadata_(const Namespace& nspace,
-                      const std::string& name,
-                      const backend::ObjectInfo::CustomMetaData& metadata) override final;
-
-    //the x_read_* functions can also return ObjectInfo but that's more involved as it's not returned as Json
-    virtual backend::ObjectInfo
-    x_read_(const Namespace& nspace,
-            const boost::filesystem::path& destination,
-            const std::string& name,
-            InsistOnLatestVersion) override final;
-
-    virtual backend::ObjectInfo
-    x_read_(const Namespace& nspace,
-            std::string& destination,
-            const std::string& name,
-            InsistOnLatestVersion) override final;
-
-    virtual backend::ObjectInfo
-    x_read_(const Namespace& nspace,
-            std::stringstream& destination,
-            const std::string& name,
-            InsistOnLatestVersion) override final;
-
-    virtual backend::ObjectInfo
-    x_write_(const Namespace& nspace,
-             const boost::filesystem::path &location,
-             const std::string& name,
-             const OverwriteObject,
-             const backend::ETag* etag,
-             const youtils::CheckSum* chksum) override final;
-
-    virtual backend::ObjectInfo
-    x_write_(const Namespace& nspace,
-             const std::string& istr,
-             const std::string& name,
-             const OverwriteObject,
-             const backend::ETag* etag,
-             const youtils::CheckSum* chksum) override final;
-
-    virtual backend::ObjectInfo
-    x_write_(const Namespace& nspace,
-             std::stringstream& strm,
-             const std::string& name,
-             const OverwriteObject,
-             const backend::ETag* etag,
-             const youtils::CheckSum* chksum)  override final;
-
     using KeyType = boost::filesystem::path;
-
-
     using ValueType = youtils::FileDescriptor;
 
     using LRUCacheType = youtils::LRUCache<KeyType,
@@ -223,17 +158,6 @@ public:
     const static size_t lru_cache_size = 32;
 
 private:
-    // CryptoPP::Weak::MD5 md5_;
-
-    void
-    getStringMD5(const std::string& input,
-                 std::string& output);
-
-    void
-    getFileMD5(const boost::filesystem::path& input,
-               std::string& destination,
-               std::string& md5);
-
     static void
     EvictFromCache(const KeyType&,
                    const ValueType&)

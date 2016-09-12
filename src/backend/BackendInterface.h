@@ -199,30 +199,6 @@ public:
                                   getNS())
             }
 
-    bool
-    hasExtendedApi();
-
-    // Add the other x_{read,write} flavours as needed.
-    ObjectInfo
-    x_read(std::string& destination,
-           const std::string& name,
-           InsistOnLatestVersion insist_on_latest,
-           const BackendRequestParameters& = default_request_parameters());
-
-    ObjectInfo
-    x_read(std::stringstream& dst,
-           const std::string& name,
-           InsistOnLatestVersion insist_on_latest,
-           const BackendRequestParameters& = default_request_parameters());
-
-    ObjectInfo
-    x_write(const std::string& istr,
-            const std::string& name,
-            const OverwriteObject overwrite = OverwriteObject::F,
-            const backend::ETag* etag = 0,
-            const youtils::CheckSum* chksum = 0,
-            const BackendRequestParameters& = default_request_parameters());
-
     template<typename ObjectType>
     void
     fillObject(ObjectType& obj,

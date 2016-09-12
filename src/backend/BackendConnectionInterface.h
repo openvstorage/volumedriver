@@ -20,7 +20,6 @@
 #include "BackendPolicyConfig.h"
 #include "Condition.h"
 #include "Namespace.h"
-#include "ObjectInfo.h"
 
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 #include <boost/filesystem.hpp>
@@ -209,72 +208,6 @@ protected:
     getCheckSum(const Namespace& nspace,
                 const std::string& name);
 
-    // Will return false on a non functioning extended interface
-    bool
-    hasExtendedApi()
-    {
-        return hasExtendedApi_();
-    }
-
-    // This is the Extended Api which is Only on Rest and partially on the local Backend
-    ObjectInfo
-    x_getMetadata(const Namespace& nspace,
-                  const std::string& name);
-
-
-    ObjectInfo
-    x_setMetadata(const Namespace& nspace,
-                  const std::string& name,
-                  const ObjectInfo::CustomMetaData& metadata);
-
-    ObjectInfo
-    x_updateMetadata(const Namespace& nspace,
-                     const std::string& name,
-                     const ObjectInfo::CustomMetaData& metadata);
-
-    //the x_read_* functions can also return ObjectInfo but that's more involved as it's not returned as Json
-    ObjectInfo
-    x_read(const Namespace& nspace,
-           const boost::filesystem::path& destination,
-           const std::string& name,
-           const InsistOnLatestVersion insist_on_latest);
-
-    ObjectInfo
-    x_read(const Namespace& nspace,
-           std::string& destination,
-           const std::string& name,
-           const InsistOnLatestVersion insist_on_latest);
-
-    ObjectInfo
-    x_read(const Namespace& nspace,
-           std::stringstream& destination,
-           const std::string& name,
-           const InsistOnLatestVersion insist_on_latest);
-
-    ObjectInfo
-    x_write(const Namespace& nspace,
-            const boost::filesystem::path& location,
-            const std::string& name,
-            const OverwriteObject overwrite = OverwriteObject::F,
-            const ETag* etag = nullptr,
-            const youtils::CheckSum* chksum = nullptr);
-
-    ObjectInfo
-    x_write(const Namespace& nspace,
-            const std::string& istr,
-            const std::string& name,
-            const OverwriteObject overwrite = OverwriteObject::F,
-            const ETag* etag = nullptr,
-            const youtils::CheckSum* chksum = nullptr);
-
-    ObjectInfo
-    x_write(const Namespace& nspace,
-            std::stringstream& strm,
-            const std::string& name,
-            const OverwriteObject overwrite = OverwriteObject::F,
-            const ETag* etag = nullptr,
-            const youtils::CheckSum* chksum = nullptr);
-
 private:
     virtual void
     listNamespaces_(std::list<std::string>& nspaces) = 0;
@@ -354,71 +287,8 @@ private:
     getCheckSum_(const Namespace&,
                  const std::string& name) = 0;
 
-public:
-    virtual bool
-    hasExtendedApi_() const = 0;
-
 private:
     DECLARE_LOGGER("BackendConnectionInterface");
-
-    // This is the Extended Api which is only available on Amplidata REST
-    // and *partially* on LocalBackend
-    virtual ObjectInfo
-    x_getMetadata_(const Namespace&,
-                   const std::string& name);
-
-    virtual ObjectInfo
-    x_setMetadata_(const Namespace&,
-                   const std::string& name,
-                   const ObjectInfo::CustomMetaData& metadata);
-
-    virtual ObjectInfo
-    x_updateMetadata_(const Namespace&,
-                      const std::string& name,
-                      const ObjectInfo::CustomMetaData& metadata);
-
-    //the x_read_* functions can also return ObjectInfo but that's more involved as it's not returned as Json
-    virtual ObjectInfo
-    x_read_(const Namespace&,
-            const boost::filesystem::path& destination,
-            const std::string& name,
-            const InsistOnLatestVersion);
-
-    virtual ObjectInfo
-    x_read_(const Namespace&,
-            std::string& destination,
-            const std::string& name,
-            const InsistOnLatestVersion);
-
-    virtual ObjectInfo
-    x_read_(const Namespace&,
-            std::stringstream& destination,
-            const std::string& name,
-            const InsistOnLatestVersion);
-
-    virtual ObjectInfo
-    x_write_(const Namespace&,
-             const boost::filesystem::path& location,
-             const std::string& name,
-             const OverwriteObject = OverwriteObject::F,
-             const ETag* etag = nullptr,
-             const youtils::CheckSum* chksum = nullptr);
-
-    virtual ObjectInfo
-    x_write_(const Namespace&,
-             const std::string& istr,
-             const std::string& name,
-             const OverwriteObject = OverwriteObject::F,
-             const ETag* etag = nullptr,
-             const youtils::CheckSum* chksum = nullptr);
-
-    virtual ObjectInfo
-    x_write_(const Namespace&,
-             std::stringstream& strm,
-             const std::string& name,
-             const OverwriteObject = OverwriteObject::F,
-             const ETag* etag = nullptr,
-             const youtils::CheckSum* chksum = nullptr);
 };
 
 class BackendConnectionDeleter;

@@ -114,10 +114,6 @@ public:
     objectExists_(const Namespace& nspace,
                   const std::string& name) override final;
 
-    virtual bool
-    hasExtendedApi_() const override final;
-
-
     virtual void
     remove_(const Namespace&,
             const std::string&,
@@ -131,64 +127,6 @@ public:
     virtual youtils::CheckSum
     getCheckSum_(const Namespace& nspace,
                  const std::string& name) override final;
-
-    virtual backend::ObjectInfo
-    x_getMetadata_(const Namespace& nspace,
-                   const std::string& name) override final;
-
-    virtual backend::ObjectInfo
-    x_setMetadata_(const Namespace& nspace,
-                   const std::string& name,
-                   const backend::ObjectInfo::CustomMetaData& metadata) override final;
-
-    virtual backend::ObjectInfo
-    x_updateMetadata_(const Namespace& nspace,
-                      const std::string& name,
-                      const backend::ObjectInfo::CustomMetaData& metadata) override final;
-
-    //the x_read_* functions can also return ObjectInfo but that's more involved as it's not returned as Json
-
-    virtual backend::ObjectInfo
-    x_read_(const Namespace& nspace,
-            const fs::path& destination,
-            const std::string& name,
-            const InsistOnLatestVersion) override final;
-
-    virtual backend::ObjectInfo
-    x_read_(const Namespace& nspace,
-            std::string& destination,
-            const std::string& name,
-            const InsistOnLatestVersion) override final;
-
-    virtual backend::ObjectInfo
-    x_read_(const Namespace& nspace,
-            std::stringstream& destination,
-            const std::string& name,
-            const InsistOnLatestVersion) override final;
-
-    virtual backend::ObjectInfo
-    x_write_(const Namespace& nspace,
-             const fs::path &location,
-             const std::string& name,
-             const OverwriteObject,
-             const backend::ETag* etag,
-             const youtils::CheckSum* chksum) override final;
-
-    virtual backend::ObjectInfo
-    x_write_(const Namespace& nspace,
-             const std::string& istr,
-             const std::string& name,
-             const OverwriteObject,
-             const backend::ETag* etag,
-             const youtils::CheckSum* chksum) override final;
-
-    virtual backend::ObjectInfo
-    x_write_(const Namespace& nspace,
-             std::stringstream& strm,
-             const std::string& name,
-             const OverwriteObject,
-             const backend::ETag* etag,
-             const youtils::CheckSum* chksum) override final;
 
 private:
     typedef std::vector<BackendConnectionInterface*>::iterator iterator_t;

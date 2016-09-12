@@ -139,12 +139,6 @@ private
               const boost::filesystem::path&,
               const std::string&) override final;
 
-    virtual bool
-    hasExtendedApi_() const override final
-    {
-        return false;
-    }
-
 private:
     DECLARE_LOGGER("S3Connection");
 
