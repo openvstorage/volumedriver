@@ -84,6 +84,9 @@ public:
     virtual const char*
     componentName() const;
 
+    virtual bool
+    unique_tag_support() const = 0;
+
     DECLARE_PARAMETER(backend_type);
 
 protected:

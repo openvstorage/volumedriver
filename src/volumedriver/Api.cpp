@@ -1031,6 +1031,12 @@ api::setMetaDataCacheCapacity(const vd::VolumeId& volName,
     return VolManager::get()->findVolume_(volName)->set_metadata_cache_capacity(npages);
 }
 
+bool
+api::fencing_support()
+{
+    return backend_connection_manager()->config().unique_tag_support();
+}
+
 // Local Variables: **
 // mode: c++ **
 // End: **

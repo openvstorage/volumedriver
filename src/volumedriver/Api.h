@@ -143,7 +143,6 @@ public:
     Init(const boost::property_tree::ptree& pt,
          events::PublisherPtr event_publisher = nullptr);
 
-
     static void
     Exit(void);
 
@@ -523,6 +522,9 @@ public:
     static void
     setMetaDataCacheCapacity(const volumedriver::VolumeId&,
                              const boost::optional<size_t>& num_pages);
+
+    static bool
+    fencing_support();
 };
 
 #endif // API_H_

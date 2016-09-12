@@ -70,6 +70,12 @@ public:
         return StrictConsistency::T;
     }
 
+    virtual bool
+    unique_tag_support() const override final
+    {
+        return true;
+    }
+
     virtual const char*
     name() const override final
     {
