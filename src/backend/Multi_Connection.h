@@ -40,7 +40,7 @@ public:
 
     explicit Connection(const config_type& cfg);
 
-    virtual ~Connection();
+    virtual ~Connection() = default;
 
     Connection(const Connection&) = delete;
 
@@ -68,11 +68,6 @@ public:
 
     virtual void
     deleteNamespace_(const Namespace& nspace) override final;
-
-    DECLARE_LOGGER("MultiConnection");
-
-    // void
-    // print(std::ostream&) const;
 
     virtual bool
     healthy() const override final
@@ -129,14 +124,16 @@ public:
                  const std::string& name) override final;
 
 private:
-    typedef std::vector<BackendConnectionInterface*>::iterator iterator_t;
-    std::vector<BackendConnectionInterface*> backends_;
-    std::vector<BackendConnectionInterface*>::iterator current_iterator_;
+    DECLARE_LOGGER("MultiConnection");
+
+    using ConnVector = std::vector<std::unique_ptr<BackendConnectionInterface>>;
+    ConnVector backends_;
+    ConnVector::iterator current_iterator_;
     youtils::wall_timer2 switch_back_timer_;
     const unsigned switch_back_seconds = 10 * 60;
 
     bool
-    update_current_index(const iterator_t& start_iterator)
+    update_current_index(const ConnVector::iterator& start_iterator)
     {
         switch_back_timer_.restart();
 
@@ -162,8 +159,15 @@ private:
         return current_iterator_ != backends_.end();
     }
 
+    template<typename Ret,
+             typename... Args>
+    Ret
+    wrap_(Ret (BackendConnectionInterface::*fun)(Args...),
+          Args...);
 };
+
 }
+
 }
 
 
