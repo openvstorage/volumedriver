@@ -490,7 +490,12 @@ ObjectRouter::maybe_steal_(R (ClusterNode::*fn)(const Object&,
             }
 
             const bool stolen = steal_(reg,
-                                       OnlyStealFromOfflineNode::T);
+                                       fencing_support_() ?
+                                       OnlyStealFromOfflineNode::F :
+                                       OnlyStealFromOfflineNode::T,
+                                       fencing_support_() ?
+                                       ForceRestart::F :
+                                       ForceRestart::T);
             if (not stolen)
             {
                 LOG_ERROR("Failed to steal " << id << " from " << owner_id <<
@@ -572,10 +577,12 @@ ObjectRouter::backend_restart_(const Object& obj,
 
 bool
 ObjectRouter::steal_(const ObjectRegistration& reg,
-                     OnlyStealFromOfflineNode only_steal_if_offline)
+                     OnlyStealFromOfflineNode only_steal_if_offline,
+                     ForceRestart force_restart)
 {
     LOG_INFO("Checking whether we should steal " << reg.volume_id << " from " <<
-             reg.node_id << ", only steal if offline: " << only_steal_if_offline);
+             reg.node_id << ", only steal if offline: " << only_steal_if_offline <<
+             ", force restart: " << force_restart);
     VERIFY(reg.node_id != node_id());
 
     auto fun([&](ara::sequence& seq)
@@ -613,7 +620,7 @@ ObjectRouter::steal_(const ObjectRegistration& reg,
     try
     {
         backend_restart_(reg.object(),
-                         ForceRestart::T,
+                         force_restart,
                          [](const Object&){});
         LOG_INFO(reg.volume_id << ": successfully stolen from " << reg.node_id);
         return true;
@@ -794,7 +801,11 @@ ObjectRouter::maybe_migrate_(P&& migrate_pred,
                 // to the backend before we do a restart here, so the FOC will be
                 // empty anyway.
                 migrate_(*reg,
+                         fencing_support_() ?
+                         OnlyStealFromOfflineNode::F :
                          OnlyStealFromOfflineNode::T,
+                         fencing_support_() ?
+                         ForceRestart::F :
                          ForceRestart::T);
                 LOG_INFO(id << ": auto migration from " << reg->node_id << " done");
             }
@@ -1282,7 +1293,8 @@ ObjectRouter::migrate_(const ObjectRegistration& reg,
         {
             LOG_ERROR(id << ": remote node " << from << " timed out while migrating");
             if (not steal_(reg,
-                           only_steal_if_offline))
+                           only_steal_if_offline,
+                           force))
             {
                 throw;
             }
