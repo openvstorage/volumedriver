@@ -58,6 +58,7 @@ volumedriver_test_SOURCES = \
 	FailOverCacheTransportTest.cpp \
 	FawltyTests.cpp \
 	FawltyCorba.cpp \
+	FencingTest.cpp \
 	FileDescriptorResourceLimitTest.cpp \
 	KakPerformanceTest.cpp \
 	Literals.cpp \

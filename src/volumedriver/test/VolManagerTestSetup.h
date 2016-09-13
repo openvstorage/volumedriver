@@ -705,6 +705,10 @@ protected:
                                const SCOMultiplier,
                                const boost::optional<TLogMultiplier>&);
 
+    static boost::shared_ptr<backend::Condition>
+    claim_namespace(const backend::Namespace&,
+                    const OwnerTag);
+
     static OwnerTag
     new_owner_tag();
 

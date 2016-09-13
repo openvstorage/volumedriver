@@ -293,9 +293,11 @@ new_volume_prechecks(const VolumeConfig& config)
     verify_absence_from_sco_cache(config);
 }
 
+} // anon namespace
+
 boost::shared_ptr<be::Condition>
-claim_namespace(const be::Namespace& nspace,
-                const OwnerTag owner_tag)
+VolumeFactory::claim_namespace(const be::Namespace& nspace,
+                               const OwnerTag owner_tag)
 {
     const std::string& name(VolumeInterface::owner_tag_backend_name());
     const fs::path p(yt::FileUtils::create_temp_file_in_temp_dir(nspace.str() + "." + name));
@@ -318,8 +320,6 @@ claim_namespace(const be::Namespace& nspace,
         return nullptr;
     }
 }
-
-} // anon namespace
 
 std::unique_ptr<Volume>
 VolumeFactory::createNewVolume(const VolumeConfig& config)
@@ -600,10 +600,12 @@ private:
     NSIDMap& nsid_map_;
 };
 
+}
+
 std::unique_ptr<Volume>
-local_restart_volume(const VolumeConfig& config,
-                     const OwnerTag owner_tag,
-                     const IgnoreFOCIfUnreachable)
+VolumeFactory::local_restart_volume(const VolumeConfig& config,
+                                    const OwnerTag owner_tag,
+                                    const IgnoreFOCIfUnreachable)
 try
 {
     boost::shared_ptr<be::Condition> backend_write_cond(claim_namespace(config.getNS(),
@@ -632,6 +634,9 @@ CATCH_STD_ALL_LOGLEVEL_RETHROW("Cannot restart volume for namespace " <<
                                config.getNS() <<
                                " locally, reason should be in the logs",
                                WARN)
+
+namespace
+{
 
 std::unique_ptr<Volume>
 fall_back_to_backend_restart(const VolumeConfig& config,

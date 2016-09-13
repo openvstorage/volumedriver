@@ -58,7 +58,6 @@ namespace ara = arakoon;
 namespace be = backend;
 namespace bpt = boost::property_tree;
 namespace mds = metadata_server;
-namespace vd = volumedriver;
 namespace vdt = volumedrivertest;
 namespace yt = youtils;
 
@@ -1838,12 +1837,12 @@ VolManagerTestSetup::default_test_config()
 }
 
 void
-VolManagerTestSetup::fill_backend_cache(const backend::Namespace& ns)
+VolManagerTestSetup::fill_backend_cache(const be::Namespace& ns)
 {
 
     switch(VolManager::get()->getBackendConnectionManager()->config().backend_type.value())
     {
-    case backend::BackendType::LOCAL:
+    case be::BackendType::LOCAL:
         {
             auto con = VolManager::get()->getBackendConnectionManager()->getConnection();
 
@@ -1859,7 +1858,7 @@ VolManagerTestSetup::fill_backend_cache(const backend::Namespace& ns)
 
                 std::vector<char> rbuf(s.size());
 
-                for(unsigned i = 0; i < backend::local::Connection::lru_cache_size; ++i)
+                for(unsigned i = 0; i < be::local::Connection::lru_cache_size; ++i)
                 {
                     const std::string
                         oname(boost::lexical_cast<std::string>(i));
@@ -1895,11 +1894,11 @@ VolManagerTestSetup::fill_backend_cache(const backend::Namespace& ns)
         }
 
         break;
-    case backend::BackendType::S3:
+    case be::BackendType::S3:
         break;
-    case backend::BackendType::MULTI:
+    case be::BackendType::MULTI:
         break;
-    case backend::BackendType::ALBA:
+    case be::BackendType::ALBA:
         break;
     }
 }
@@ -1932,7 +1931,7 @@ VolManagerTestSetup::destroyVolume(SharedVolumePtr& v,
                                    const DeleteLocalData delete_local_data,
                                    const RemoveVolumeCompletely remove_volume_completely)
 {
-    const backend::Namespace ns = v->getNamespace();
+    const be::Namespace ns = v->getNamespace();
 
     const std::string name = v->getName();
 
@@ -2000,6 +1999,14 @@ VolManagerTestSetup::apply_scrub_reply(Volume& v,
 
         future.wait();
     }
+}
+
+boost::shared_ptr<be::Condition>
+VolManagerTestSetup::claim_namespace(const be::Namespace& nspace,
+                                     const OwnerTag owner_tag)
+{
+    return VolumeFactory::claim_namespace(nspace,
+                                          owner_tag);
 }
 
 }
