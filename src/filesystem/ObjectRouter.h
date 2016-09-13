@@ -138,6 +138,7 @@ class ObjectRouter
 {
     friend class volumedriverfstest::FileSystemTestBase;
     friend class volumedriverfstest::ObjectRouterTest;
+    friend class volumedriverfstest::RemoteTest;
 
 public:
     using MaybeFailOverCacheConfig = boost::optional<volumedriver::FailOverCacheConfig>;
@@ -611,6 +612,9 @@ private:
 
     bool
     fencing_support_() const;
+
+    void
+    shutdown_();
 };
 
 }

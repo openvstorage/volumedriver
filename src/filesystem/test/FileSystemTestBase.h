@@ -416,6 +416,10 @@ protected:
     void
     wait_for_remote_();
 
+    template<typename Param>
+    void
+    set_object_router_param_(const Param&);
+
     void
     set_volume_write_threshold(uint64_t wthresh);
 
@@ -429,10 +433,13 @@ protected:
     set_file_read_threshold(uint64_t rthresh);
 
     void
-    set_backend_sync_timeout(const boost::chrono::milliseconds& ms);
+    set_backend_sync_timeout(const boost::chrono::milliseconds&);
 
     void
     set_lock_reaper_interval(uint64_t rthresh);
+
+    void
+    set_use_fencing(bool);
 
     void
     check_snapshots(const volumedriverfs::ObjectId& volume_id,

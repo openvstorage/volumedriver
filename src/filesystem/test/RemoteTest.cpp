@@ -635,6 +635,16 @@ public:
                         state);
     }
 
+    // Returning the LocalNode allows callers to keep the local voldrv alive while stopping
+    // vfsprotocol messaging.
+    std::shared_ptr<vfs::LocalNode>
+    shut_down_object_router()
+    {
+        std::shared_ptr<vfs::LocalNode> local_node(fs_->object_router().local_node_());
+        fs_->object_router().shutdown_();
+        return local_node;
+    }
+
     const fs::path remote_root_;
 };
 
@@ -1582,6 +1592,45 @@ TEST_F(RemoteTest, only_steal_from_offlined_node)
                              off));
     EXPECT_EQ(vfs::ClusterNodeStatus::State::Online,
               reg->get_node_state(remote_node_id()));
+}
+
+TEST_F(RemoteTest, stealing_and_fencing)
+{
+    umount_remote();
+    set_use_fencing(true);
+    mount_remote();
+
+    const vfs::FrontendPath vpath(make_volume_name("/some-volume"));
+    const uint64_t vsize = 10ULL << 20;
+    const vfs::ObjectId oid(create_file(vpath,
+                                        vsize));
+
+    const std::string pattern1("written first");
+
+    write_to_file(vpath,
+                  pattern1.data(),
+                  pattern1.size(),
+                  vsize / 2);
+
+    const std::string snap(client_.create_snapshot(oid));
+    wait_for_snapshot(oid,
+                      snap);
+
+    // cling to the LocalNode so we can still access the local volumedriver afterwards
+    std::shared_ptr<vfs::LocalNode> local_node(shut_down_object_router());
+
+    check_remote_file(remote_root_ / vpath,
+                      pattern1,
+                      vsize / 2);
+
+    const vd::VolumeId vid(oid.str());
+
+    LOCKVD();
+    // triggers a volume halt by trying to write to the backend.
+    EXPECT_THROW(api::setFailOverCacheConfig(vid,
+                                             boost::none),
+                 std::exception);
+    EXPECT_TRUE(api::getHalted(vid));
 }
 
 TEST_F(RemoteTest, DISABLED_setup_remote_hack)

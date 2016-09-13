@@ -990,69 +990,60 @@ FileSystemTestBase::find_object(const vfs::FrontendPath& p)
     return id;
 }
 
+template<typename Param>
 void
-FileSystemTestBase::set_volume_write_threshold(uint64_t wthresh)
+FileSystemTestBase::set_object_router_param_(const Param& param)
 {
     bpt::ptree pt;
     fs_->object_router().persist(pt, ReportDefault::F);
+    param.persist(pt);
 
-    ip::PARAMETER_TYPE(vrouter_volume_write_threshold)(wthresh).persist(pt);
     vd::UpdateReport urep;
-
     fs_->object_router().update(pt, urep);
     EXPECT_EQ(1U, urep.update_size()) << "fix yer test";
+}
+
+void
+FileSystemTestBase::set_volume_write_threshold(uint64_t wthresh)
+{
+    set_object_router_param_(ip::PARAMETER_TYPE(vrouter_volume_write_threshold)(wthresh));
 }
 
 void
 FileSystemTestBase::set_volume_read_threshold(uint64_t rthresh)
 {
-    bpt::ptree pt;
-    fs_->object_router().persist(pt, ReportDefault::F);
-
-    ip::PARAMETER_TYPE(vrouter_volume_read_threshold)(rthresh).persist(pt);
-    vd::UpdateReport urep;
-
-    fs_->object_router().update(pt, urep);
-    EXPECT_EQ(1U, urep.update_size()) << "fix yer test";
+    set_object_router_param_(ip::PARAMETER_TYPE(vrouter_volume_read_threshold)(rthresh));
 }
 
 void
 FileSystemTestBase::set_file_write_threshold(uint64_t wthresh)
 {
-    bpt::ptree pt;
-    fs_->object_router().persist(pt, ReportDefault::F);
-
-    ip::PARAMETER_TYPE(vrouter_file_write_threshold)(wthresh).persist(pt);
-    vd::UpdateReport urep;
-
-    fs_->object_router().update(pt, urep);
-    EXPECT_EQ(1U, urep.update_size()) << "fix yer test";
+    set_object_router_param_(ip::PARAMETER_TYPE(vrouter_file_write_threshold)(wthresh));
 }
 
 void
 FileSystemTestBase::set_file_read_threshold(uint64_t rthresh)
 {
-    bpt::ptree pt;
-    fs_->object_router().persist(pt, ReportDefault::F);
-
-    ip::PARAMETER_TYPE(vrouter_file_read_threshold)(rthresh).persist(pt);
-    vd::UpdateReport urep;
-
-    fs_->object_router().update(pt, urep);
-    EXPECT_EQ(1U, urep.update_size()) << "fix yer test";
+    set_object_router_param_(ip::PARAMETER_TYPE(vrouter_file_read_threshold)(rthresh));
 }
 
 void
 FileSystemTestBase::set_backend_sync_timeout(const boost::chrono::milliseconds& ms)
 {
-    bpt::ptree pt;
-    fs_->object_router().persist(pt, ReportDefault::F);
+    set_object_router_param_(ip::PARAMETER_TYPE(vrouter_backend_sync_timeout_ms)(ms.count()));
+}
 
-    ip::PARAMETER_TYPE(vrouter_backend_sync_timeout_ms)(ms.count()).persist(pt);
-    vd::UpdateReport urep;
+void
+FileSystemTestBase::set_lock_reaper_interval(uint64_t seconds)
+{
+    set_object_router_param_(ip::PARAMETER_TYPE(vrouter_lock_reaper_interval)(seconds));
+}
 
-    fs_->object_router().update(pt, urep);
-    EXPECT_EQ(1U, urep.update_size()) << "fix yer test";
+void
+FileSystemTestBase::set_use_fencing(bool use_fencing)
+{
+    use_fencing_ = use_fencing;
+    set_object_router_param_(ip::PARAMETER_TYPE(vrouter_use_fencing)(use_fencing));
 }
 
 void
@@ -1164,19 +1155,6 @@ std::shared_ptr<vfs::ClusterRegistry>
 FileSystemTestBase::cluster_registry(vfs::ObjectRouter& router)
 {
     return router.cluster_registry_;
-}
-
-void
-FileSystemTestBase::set_lock_reaper_interval(uint64_t seconds)
-{
-    bpt::ptree pt;
-    fs_->object_router().persist(pt, ReportDefault::F);
-
-    ip::PARAMETER_TYPE(vrouter_lock_reaper_interval)(seconds).persist(pt);
-    vd::UpdateReport urep;
-
-    fs_->object_router().update(pt, urep);
-    EXPECT_EQ(1U, urep.update_size()) << "fix yer test";
 }
 
 size_t
