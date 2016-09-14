@@ -83,6 +83,11 @@ MDSMetaDataStore::MDSMetaDataStore(const MDSMetaDataBackendConfig& cfg,
     {
         mdstore_ = connect_(node_configs_[0]);
     }
+    catch (OwnerTagMismatchException& e)
+    {
+        LOG_ERROR(bi_->getNS() << ": " << e.what());
+        throw;
+    }
     CATCH_STD_ALL_EWHAT({
             LOG_ERROR(bi_->getNS() << ": failed to connect to " <<
                       node_configs_[0] << ": " << EWHAT);
@@ -139,6 +144,11 @@ MDSMetaDataStore::do_handle_(const char* desc,
         {
             return fun(md);
         }
+    }
+    catch (OwnerTagMismatchException& e)
+    {
+        LOG_ERROR(bi_->getNS() << ": " << e.what());
+        throw;
     }
     CATCH_STD_ALL_EWHAT({
             LOG_ERROR(bi_->getNS() << ": " << desc << " failed: " << EWHAT);
@@ -230,6 +240,11 @@ MDSMetaDataStore::do_failover_(bool startup)
                                       ss.str(),
                                       VolumeId(bi_->getNS().str()));
             return md;
+        }
+        catch (OwnerTagMismatchException& e)
+        {
+            LOG_ERROR(bi_->getNS() << ": " << e.what());
+            throw;
         }
         CATCH_STD_ALL_EWHAT({
                 LOG_ERROR(bi_->getNS() << ": failover to " << node_configs_[0] <<

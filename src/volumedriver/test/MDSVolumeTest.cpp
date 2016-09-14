@@ -19,6 +19,8 @@
 #include <functional>
 #include <future>
 
+#include <boost/chrono.hpp>
+
 #include <youtils/Assert.h>
 #include <youtils/ScopeExit.h>
 #include <youtils/SourceOfUncertainty.h>
@@ -44,6 +46,7 @@
 namespace volumedrivertest
 {
 
+namespace bc = boost::chrono;
 namespace be = backend;
 namespace fs = boost::filesystem;
 namespace mds = metadata_server;
@@ -1646,6 +1649,73 @@ TEST_P(MDSVolumeTest, table_counters)
                    0,
                    0,
                    Reset::F);
+}
+
+// this one could equally well live in FencingTests?
+TEST_P(MDSVolumeTest, no_failover_on_owner_tag_mismatch)
+{
+    const auto rns(make_random_namespace());
+    SharedVolumePtr v = make_volume(*rns);
+
+    const std::string pattern("meh");
+
+    const MDSNodeConfigs ncfgs(node_configs());
+    ASSERT_LT(1,
+              ncfgs.size());
+
+    mds::ClientNG::Ptr mclient(mds::ClientNG::create(ncfgs[0]));
+    mds::TableInterfacePtr mtable(mclient->open(rns->ns().str()));
+
+    auto check_mdses([&]
+                     {
+                         EXPECT_EQ(mds::Role::Master,
+                                   mtable->get_role());
+
+                         for (size_t i = 1; i < ncfgs.size(); ++i)
+                         {
+                             mds::ClientNG::Ptr sclient(mds::ClientNG::create(ncfgs[i]));
+                             mds::TableInterfacePtr stable(sclient->open(rns->ns().str()));
+                             EXPECT_EQ(mds::Role::Slave,
+                                       stable->get_role());
+                         }
+                     });
+
+    check_mdses();
+    EXPECT_EQ(v->getOwnerTag(),
+              mtable->owner_tag());
+
+    mtable->set_role(mds::Role::Master,
+                     new_owner_tag());
+
+    writeToVolume(*v,
+                  0,
+                  v->getClusterSize(),
+                  pattern);
+
+    v->scheduleBackendSync();
+
+    using Clock = bc::steady_clock;
+    const Clock::time_point deadline = Clock::now() + bc::seconds(60);
+
+    while (not v->is_halted() and Clock::now() < deadline)
+    {
+        boost::this_thread::sleep_for(bc::milliseconds(250));
+    }
+
+    ASSERT_TRUE(v->is_halted()) << "volume should be halted by now";
+
+    const std::unique_ptr<MetaDataBackendConfig> cfg(v->getMetaDataStore()->getBackendConfig());
+    const auto mcfg(dynamic_cast<const MDSMetaDataBackendConfig*>(cfg.get()));
+
+    EXPECT_EQ(ncfgs,
+              mcfg->node_configs());
+
+    EXPECT_EQ(mds::Role::Master,
+              mtable->get_role());
+    EXPECT_NE(v->getOwnerTag(),
+              mtable->owner_tag());
+
+    check_mdses();
 }
 
 namespace

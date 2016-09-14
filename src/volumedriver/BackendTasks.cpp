@@ -16,10 +16,11 @@
 #include "BackendTasks.h"
 #include "CachedSCO.h"
 #include "DataStoreCallBack.h"
-#include "Volume.h"
-#include "VolumeDriverError.h"
+#include "OwnerTag.h"
 #include "SnapshotManagement.h"
 #include "TransientException.h"
+#include "Volume.h"
+#include "VolumeDriverError.h"
 
 #include <youtils/Catchers.h>
 #include <youtils/Timer.h>
@@ -169,6 +170,11 @@ WriteTLog::run(int /*threadid*/)
                                               fail_fast_request_params);
         volume_->tlogWrittenToBackendCallback(tlogid_,
                                               sconame_);
+    }
+    catch (OwnerTagMismatchException& e)
+    {
+        LOG_WARN(volume_->getName() << ": " << e.what());
+        volume_->halt();
     }
     catch (be::BackendUniqueObjectTagMismatchException&)
     {
