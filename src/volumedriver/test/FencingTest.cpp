@@ -32,6 +32,23 @@ public:
     FencingTest()
         : VolManagerTestSetup("FencingTest")
     {}
+
+
+    void
+    wait_for_halt(Volume& v,
+                  const bc::seconds secs = bc::seconds(60))
+    {
+        using Clock = bc::steady_clock;
+        const Clock::time_point deadline = Clock::now() + secs;
+
+        while (not v.is_halted() and Clock::now() < deadline)
+        {
+            boost::this_thread::sleep_for(bc::milliseconds(250));
+        }
+
+        ASSERT_TRUE(v.is_halted()) << "volume should be halted by now";
+
+    }
 };
 
 TEST_P(FencingTest, reconfigure_volume)
@@ -94,15 +111,13 @@ TEST_P(FencingTest, write)
 
     v->scheduleBackendSync();
 
-    using Clock = bc::steady_clock;
-    const Clock::time_point deadline = Clock::now() + bc::seconds(60);
+    wait_for_halt(*v);
 
-    while (not v->is_halted() and Clock::now() < deadline)
-    {
-        boost::this_thread::sleep_for(bc::milliseconds(250));
-    }
-
-    ASSERT_TRUE(v->is_halted()) << "volume should be halted by now";
+    std::vector<uint8_t> buf(4096);
+    EXPECT_THROW(v->read(0,
+                         buf.data(),
+                         buf.size()),
+                 std::exception);
 
     destroyVolume(v,
                   DeleteLocalData::T,
@@ -116,6 +131,43 @@ TEST_P(FencingTest, write)
                 0,
                 wsize,
                 pattern1);
+}
+
+TEST_P(FencingTest, snapshot)
+{
+    auto rns(make_random_namespace());
+    SharedVolumePtr v = newVolume(*rns);
+    const VolumeConfig cfg(v->get_config());
+
+    const SnapshotName snap1("snap1");
+    createSnapshot(*v,
+                   snap1);
+    waitForThisBackendWrite(*v);
+
+    claim_namespace(rns->ns(),
+                    new_owner_tag());
+
+    const SnapshotName snap2("snap2");
+    createSnapshot(*v,
+                   snap2);
+
+    wait_for_halt(*v);
+
+    destroyVolume(v,
+                  DeleteLocalData::T,
+                  RemoveVolumeCompletely::F);
+
+    restartVolume(cfg);
+    v = getVolume(cfg.id_);
+    ASSERT_TRUE(v != nullptr);
+
+    std::list<SnapshotName> snapl;
+    v->listSnapshots(snapl);
+
+    ASSERT_EQ(1,
+              snapl.size());
+    ASSERT_EQ(snap1,
+              snapl.front());
 }
 
 INSTANTIATE_TEST_CASE_P(FencingTests,
