@@ -46,6 +46,7 @@ namespace yt = youtils;
 MDSMetaDataStore::MDSMetaDataStore(const MDSMetaDataBackendConfig& cfg,
                                    be::BackendInterfacePtr bi,
                                    const fs::path& home,
+                                   const OwnerTag owner_tag,
                                    uint64_t num_pages_cached)
     : VolumeBackPointer(getLogger__())
     , rwlock_("mdsmdstore-" + bi->getNS().str())
@@ -57,6 +58,7 @@ MDSMetaDataStore::MDSMetaDataStore(const MDSMetaDataBackendConfig& cfg,
     , home_(home)
     , incremental_rebuild_count_(0)
     , full_rebuild_count_(0)
+    , owner_tag_(owner_tag)
 {
     check_config_(cfg);
 
@@ -246,6 +248,7 @@ MDSMetaDataStore::connect_(const MDSNodeConfig& ncfg) const
 
     auto mdb(std::make_shared<MDSMetaDataBackend>(ncfg,
                                                   bi_->getNS(),
+                                                  owner_tag_,
                                                   timeout_));
 
     auto md(std::make_shared<CachedMetaDataStore>(mdb,

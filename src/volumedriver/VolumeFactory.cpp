@@ -107,7 +107,8 @@ make_data_store(const VolumeConfig& config)
 }
 
 std::unique_ptr<MetaDataStoreInterface>
-make_metadata_store(const VolumeConfig& config)
+make_metadata_store(const VolumeConfig& config,
+                    const OwnerTag owner_tag)
 {
     VolManager& vm = *VolManager::get();
     const size_t num_pages_cached = vm.effective_metadata_cache_capacity(config);
@@ -137,6 +138,7 @@ make_metadata_store(const VolumeConfig& config)
             return std::unique_ptr<MetaDataStoreInterface>(new MDSMetaDataStore(mcfg,
                                                                                 std::move(bi),
                                                                                 home,
+                                                                                owner_tag,
                                                                                 num_pages_cached));
         }
     }
@@ -148,9 +150,11 @@ make_metadata_store(const VolumeConfig& config)
 
 std::unique_ptr<MetaDataStoreInterface>
 make_metadata_store(const VolumeConfig& config,
-                    const ScrubId& sp_scrub_id)
+                    const ScrubId& sp_scrub_id,
+                    const OwnerTag owner_tag)
 {
-    auto md(make_metadata_store(config));
+    auto md(make_metadata_store(config,
+                                owner_tag));
     const MaybeScrubId md_scrub_id(md->scrub_id());
 
     if (md_scrub_id != boost::none)
@@ -190,7 +194,8 @@ create_volume_stage_1(const VolumeConfig& config,
     if (not md)
     {
         md = make_metadata_store(config,
-                                 sm->scrub_id());
+                                 sm->scrub_id(),
+                                 owner_tag);
     }
 
     const MaybeScrubId md_scrub_id(md->scrub_id());
@@ -555,11 +560,13 @@ replay_tlogs_not_on_backend(const VolumeConfig& config,
 }
 
 std::unique_ptr<MetaDataStoreInterface>
-local_restart_metadata_store(const VolumeConfig& config)
+local_restart_metadata_store(const VolumeConfig& config,
+                             const OwnerTag owner_tag)
 {
     SnapshotPersistor sp(VolManager::get()->getSnapshotsPath(config));
     std::unique_ptr<MetaDataStoreInterface> mdstore(make_metadata_store(config,
-                                                                        sp.scrub_id()));
+                                                                        sp.scrub_id(),
+                                                                        owner_tag));
 
     LOG_INFO("Trying to get the cork from the SnapshotPersistor");
 
@@ -612,7 +619,8 @@ try
                                                                         owner_tag));
 
     std::unique_ptr<MetaDataStoreInterface>
-        mdstore(local_restart_metadata_store(config));
+        mdstore(local_restart_metadata_store(config,
+                                             owner_tag));
     NSIDMap nsid;
     SnapshotPersistor sp(config.parent());
     NSIDMapBuilder builder(nsid);
@@ -747,7 +755,8 @@ VolumeFactory::backend_restart(const VolumeConfig& config,
 
         std::unique_ptr<MetaDataStoreInterface>
             mdstore(make_metadata_store(config,
-                                        sp.scrub_id()));
+                                        sp.scrub_id(),
+                                        owner_tag));
 
         const boost::optional<yt::UUID> maybe_cork(mdstore->lastCork());
 

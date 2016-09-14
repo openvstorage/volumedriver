@@ -51,7 +51,8 @@ struct TableHandle
 
     virtual void
     multiset(const Records& records,
-             Barrier barrier) override final
+             Barrier barrier,
+             vd::OwnerTag owner_tag) override final
     {
         auto b([&](mdsproto::Methods::MultiSetParams::Builder& builder)
                {
@@ -59,6 +60,7 @@ struct TableHandle
 
                    builder.setNspace(nspace_);
                    builder.setBarrier(barrier == Barrier::T);
+                   builder.setOwnerTag(static_cast<uint64_t>(owner_tag));
 
                    size_t idx = 0;
                    auto l = builder.initRecords(records.size());
@@ -164,12 +166,13 @@ struct TableHandle
     }
 
     virtual void
-    clear() override final
+    clear(vd::OwnerTag owner_tag) override final
     {
         auto b([&](mdsproto::Methods::ClearParams::Builder& builder)
                {
                    // LOG_TRACE(nspace_ << ": building Clear request");
                    builder.setNspace(nspace_);
+                   builder.setOwnerTag(static_cast<uint64_t>(owner_tag));
                });
 
         auto r([&](mdsproto::Methods::ClearResults::Reader&)
@@ -204,14 +207,39 @@ struct TableHandle
         return role;
     }
 
+    virtual vd::OwnerTag
+    owner_tag() const override final
+    {
+        auto b([&](mdsproto::Methods::GetOwnerTagParams::Builder& builder)
+               {
+                   // LOG_TRACE(nspace_ << ": building GetOwnerTag request");
+                   builder.setNspace(nspace_);
+               });
+
+        vd::OwnerTag owner_tag(0);
+
+        auto r([&](mdsproto::Methods::GetOwnerTagResults::Reader& reader)
+               {
+                   // LOG_TRACE(nspace_ << ": reading GetOwnerTag response");
+                   owner_tag = vd::OwnerTag(reader.getOwnerTag());
+               });
+
+        client_->interact_<mdsproto::RequestHeader::Type::GetOwnerTag>(std::move(b),
+                                                                       std::move(r));
+
+        return owner_tag;
+    }
+
     virtual void
-    set_role(Role role) override final
+    set_role(Role role,
+             vd::OwnerTag owner_tag) override final
     {
         auto b([&](mdsproto::Methods::SetRoleParams::Builder& builder)
                {
                    // LOG_TRACE(nspace_ << ": building SetRole request");
                    builder.setNspace(nspace_);
                    builder.setRole(translate_role(role));
+                   builder.setOwnerTag(static_cast<uint64_t>(owner_tag));
                });
 
         auto r([&](mdsproto::Methods::SetRoleResults::Reader&)

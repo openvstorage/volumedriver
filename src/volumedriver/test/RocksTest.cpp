@@ -35,6 +35,7 @@ namespace metadata_server_test
 namespace fs = boost::filesystem;
 namespace mds = metadata_server;
 namespace rdb = rocksdb;
+namespace vd = volumedriver;
 namespace yt = youtils;
 
 using namespace std::string_literals;
@@ -118,7 +119,8 @@ protected:
             ASSERT_TRUE(table != nullptr);
 
             table->multiset(records,
-                            Barrier::F);
+                            Barrier::F,
+                            vd::OwnerTag(0));
         }
 
         {
@@ -155,7 +157,8 @@ protected:
             ASSERT_TRUE(table != nullptr);
 
             table->multiset(records,
-                            Barrier::F);
+                            Barrier::F,
+                            vd::OwnerTag(0));
         }
 
         verify_absence_of_keys();
@@ -168,7 +171,8 @@ protected:
     {
         const mds::TableInterface::Records recs{ rec };
         table->multiset(recs,
-                        barrier);
+                        barrier,
+                        vd::OwnerTag(0));
     }
 
     boost::optional<std::string>
@@ -328,7 +332,7 @@ TEST_F(RocksTest, cleared_table)
         mds::RocksDataBase db(path_);
         mds::TableInterfacePtr table(db.open(nspace));
 
-        table->clear();
+        table->clear(vd::OwnerTag(0));
 
         const auto maybe_str(get(table, rec1.key));
         ASSERT_TRUE(maybe_str == boost::none);
@@ -387,7 +391,8 @@ TEST_F(RocksTest, dropped_table)
         const mds::TableInterface::Records records{ mds::Record(mds::Key(pair.first),
                                                                 mds::Value(pair.second)) };
         table->multiset(records,
-                        Barrier::F);
+                        Barrier::F,
+                        vd::OwnerTag(0));
 
         verify_presence(table);
 

@@ -58,7 +58,11 @@ public:
 
     void
     set_role(const std::string& nspace,
-             Role role) const;
+             Role,
+             volumedriver::OwnerTag) const;
+
+    volumedriver::OwnerTag
+    owner_tag(const std::string& nspace) const;
 
     boost::optional<std::string>
     get_cork_id(const std::string& nspace) const;

@@ -216,6 +216,7 @@ ServerNG::dispatch_(C& conn,
         CASE(ApplyRelocationLogs, apply_relocation_logs_);
         CASE(CatchUp, catch_up_);
         CASE(GetTableCounters, get_table_counters_);
+        CASE(GetOwnerTag, get_owner_tag_);
     }
 
 #undef CASE
@@ -528,9 +529,10 @@ ServerNG::clear_(mdsproto::Methods::ClearParams::Reader& reader,
 {
     const std::string nspace(reader.getNspace().begin(),
                              reader.getNspace().size());
+    const vd::OwnerTag owner_tag(reader.getOwnerTag());
 
     // LOG_TRACE("request to clear " << nspace);
-    db_->open(nspace)->clear();
+    db_->open(nspace)->clear(owner_tag);
 }
 
 void
@@ -586,6 +588,8 @@ ServerNG::multiset_(mdsproto::Methods::MultiSetParams::Reader& reader,
                           Barrier::T :
                           Barrier::F);
 
+    const vd::OwnerTag owner_tag(reader.getOwnerTag());
+
     auto recs_reader(reader.getRecords());
 
     TableInterface::Records recs;
@@ -607,7 +611,8 @@ ServerNG::multiset_(mdsproto::Methods::MultiSetParams::Reader& reader,
     // LOG_TRACE("multiset request to " << nspace << ", size " << recs.size());
 
     db_->open(nspace)->multiset(recs,
-                                barrier);
+                                barrier,
+                                owner_tag);
 }
 
 void
@@ -616,12 +621,12 @@ ServerNG::set_role_(mdsproto::Methods::SetRoleParams::Reader& reader,
 {
     const std::string nspace(reader.getNspace().begin(),
                              reader.getNspace().size());
-
     const Role role(translate_role(reader.getRole()));
+    const vd::OwnerTag owner_tag(reader.getOwnerTag());
 
     // LOG_TRACE("request to set role of " << nspace << " to " << role);
-
-    db_->open(nspace)->set_role(role);
+    db_->open(nspace)->set_role(role,
+                                owner_tag);
 }
 
 void
@@ -734,6 +739,17 @@ ServerNG::get_table_counters_(mdsproto::Methods::GetTableCountersParams::Reader&
     cbuilder.setTotalTLogsRead(table_counters.total_tlogs_read);
     cbuilder.setIncrementalUpdates(table_counters.incremental_updates);
     cbuilder.setFullRebuilds(table_counters.full_rebuilds);
+}
+
+void
+ServerNG::get_owner_tag_(mdsproto::Methods::GetOwnerTagParams::Reader& reader,
+                         mdsproto::Methods::GetOwnerTagResults::Builder& builder)
+{
+    const std::string nspace(reader.getNspace().begin(),
+                             reader.getNspace().size());
+
+    const vd::OwnerTag owner_tag = db_->open(nspace)->owner_tag();
+    builder.setOwnerTag(static_cast<const uint64_t>(owner_tag));
 }
 
 }

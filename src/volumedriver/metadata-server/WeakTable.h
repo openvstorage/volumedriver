@@ -38,10 +38,12 @@ public:
 
     virtual void
     multiset(const Records& recs,
-             Barrier barrier) override final
+             Barrier barrier,
+             volumedriver::OwnerTag owner_tag) override final
     {
         lock_()->multiset(recs,
-                          barrier);
+                          barrier,
+                          owner_tag);
     }
 
     virtual TableInterface::MaybeStrings
@@ -61,9 +63,9 @@ public:
     }
 
     virtual void
-    clear() override final
+    clear(volumedriver::OwnerTag owner_tag) override final
     {
-        lock_()->clear();
+        lock_()->clear(owner_tag);
     }
 
     virtual Role
@@ -73,9 +75,17 @@ public:
     }
 
     virtual void
-    set_role(Role role) override final
+    set_role(Role role,
+             volumedriver::OwnerTag owner_tag) override final
     {
-        lock_()->set_role(role);
+        lock_()->set_role(role,
+                          owner_tag);
+    }
+
+    virtual volumedriver::OwnerTag
+    owner_tag() const override final
+    {
+        return lock_()->owner_tag();
     }
 
     virtual const std::string&

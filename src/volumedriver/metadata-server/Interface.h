@@ -16,6 +16,7 @@
 #ifndef META_DATA_SERVER_INTERFACE_H_
 #define META_DATA_SERVER_INTERFACE_H_
 
+#include <atomic>
 #include <functional>
 #include <iosfwd>
 #include <memory>
@@ -26,6 +27,7 @@
 
 #include <youtils/BooleanEnum.h>
 
+#include <volumedriver/OwnerTag.h>
 #include <volumedriver/ScrubId.h>
 #include <volumedriver/Types.h>
 
@@ -198,8 +200,9 @@ public:
 
     // allows deletion by setting a Record's value to `None' (nullptr).
     virtual void
-    multiset(const Records& sets,
-             Barrier barrier) = 0;
+    multiset(const Records&,
+             Barrier,
+             volumedriver::OwnerTag) = 0;
 
     typedef boost::optional<std::string> MaybeString;
     typedef std::vector<MaybeString> MaybeStrings;
@@ -211,12 +214,12 @@ public:
     using RelocationLogs = std::vector<std::string>;
 
     virtual void
-    apply_relocations(const volumedriver::ScrubId& scrub_id,
-                      const volumedriver::SCOCloneID cid,
-                      const RelocationLogs& relocs) = 0;
+    apply_relocations(const volumedriver::ScrubId&,
+                      const volumedriver::SCOCloneID,
+                      const RelocationLogs&) = 0;
 
     virtual void
-    clear() = 0;
+    clear(volumedriver::OwnerTag) = 0;
 
     // default; specific implementations might want to override it.
     virtual Role
@@ -227,9 +230,19 @@ public:
 
     // default; specific implementations might want to override it.
     virtual void
-    set_role(Role role)
+    set_role(Role role,
+             volumedriver::OwnerTag owner_tag)
     {
+        // TODO AR: locking?
         role_ = role;
+        owner_tag_ = owner_tag;
+    }
+
+    // default; specific implementations might want to override it.
+    virtual volumedriver::OwnerTag
+    owner_tag() const
+    {
+        return owner_tag_;
     }
 
     virtual const std::string&
@@ -245,8 +258,10 @@ public:
     virtual TableCounters
     get_counters(volumedriver::Reset) = 0;
 
+
 private:
     Role role_ = Role::Slave;
+    volumedriver::OwnerTag owner_tag_ = volumedriver::OwnerTag(0);
 };
 
 typedef std::shared_ptr<TableInterface> TableInterfacePtr;

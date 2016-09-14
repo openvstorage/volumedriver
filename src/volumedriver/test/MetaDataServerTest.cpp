@@ -165,15 +165,19 @@ public:
 
         verify_absence_of_keys();
 
+        const vd::OwnerTag owner_tag(1);
+
         {
             auto client(make_client());
             mds::TableInterfacePtr table(client->open(nspace));
 
             ASSERT_TRUE(table != nullptr);
-            table->set_role(mds::Role::Master);
+            table->set_role(mds::Role::Master,
+                            owner_tag);
 
             table->multiset(records,
-                            Barrier::F);
+                            Barrier::F,
+                            owner_tag);
         }
 
         {
@@ -210,7 +214,8 @@ public:
             ASSERT_TRUE(table != nullptr);
 
             table->multiset(records,
-                            Barrier::F);
+                            Barrier::F,
+                            vd::OwnerTag(1));
         }
 
         verify_absence_of_keys();
@@ -218,11 +223,15 @@ public:
 
     void
     set(mds::TableInterfacePtr& table,
-        const mds::Record& rec)
+        const mds::Record& rec,
+        const boost::optional<vd::OwnerTag>& owner_tag = boost::none)
     {
         const mds::TableInterface::Records recs{ rec };
+        const vd::OwnerTag tag = owner_tag ? *owner_tag : table->owner_tag();
+
         table->multiset(recs,
-                        Barrier::F);
+                        Barrier::F,
+                        tag);
     }
 
     boost::optional<std::string>
@@ -257,6 +266,8 @@ public:
         ASSERT_LT(0U, vsize) << "fix your test";
         ASSERT_LT(0U, nclients) << "fix your test";
 
+        const vd::OwnerTag owner_tag(1);
+
         auto fun([&]() -> double
                  {
                      be::BackendTestSetup::WithRandomNamespace wrns("",
@@ -276,7 +287,8 @@ public:
                          table = db->open(nspace);
                      }
 
-                     table->set_role(mds::Role::Master);
+                     table->set_role(mds::Role::Master,
+                                     owner_tag);
 
                      std::vector<uint64_t> ks;
                      std::vector<std::string> vs;
@@ -303,7 +315,8 @@ public:
                      if (not empty)
                      {
                          table->multiset(recs,
-                                         Barrier::F);
+                                         Barrier::F,
+                                         owner_tag);
                      }
 
                      yt::wall_timer w;
@@ -375,14 +388,17 @@ TEST_P(MetaDataServerTest, no_updates_on_slave)
     const mds::Record record(mds::Key(pair.first),
                              mds::Value(pair.second));
 
-    EXPECT_THROW(set(table, record),
+    const vd::OwnerTag owner_tag(1);
+
+    EXPECT_THROW(set(table, record, owner_tag),
                  std::exception);
 
     EXPECT_TRUE(get(table, record.key) == boost::none);
 
-    table->set_role(mds::Role::Master);
+    table->set_role(mds::Role::Master,
+                    owner_tag);
 
-    set(table, record);
+    set(table, record, owner_tag);
 
     const auto maybe_string(get(table, record.key));
     ASSERT_TRUE(maybe_string != boost::none);
@@ -473,10 +489,13 @@ TEST_P(MetaDataServerTest, cleared_table)
                                                    cm_);
     const std::string nspace(wrns.ns().str());
 
+    const vd::OwnerTag owner_tag(1);
+
     {
         auto client(make_client());
         mds::TableInterfacePtr table(client->open(nspace));
-        table->set_role(mds::Role::Master);
+        table->set_role(mds::Role::Master,
+                        owner_tag);
 
         set(table, rec1);
 
@@ -490,12 +509,12 @@ TEST_P(MetaDataServerTest, cleared_table)
         auto client(make_client());
         mds::TableInterfacePtr table(client->open(nspace));
 
-        table->clear();
+        table->clear(owner_tag);
 
         const auto maybe_str(get(table, rec1.key));
         ASSERT_TRUE(maybe_str == boost::none);
 
-        set(table, rec2);
+        set(table, rec2, owner_tag);
     }
 
     {
@@ -527,12 +546,16 @@ TEST_P(MetaDataServerTest, python_client_exceptional)
     EXPECT_THROW(client.get_role(nspace),
                  std::exception);
 
+    const vd::OwnerTag owner_tag(1);
+
     EXPECT_THROW(client.set_role(nspace,
-                                 mds::Role::Master),
+                                 mds::Role::Master,
+                                 owner_tag),
                  std::exception);
 
     EXPECT_THROW(client.set_role(nspace,
-                                 mds::Role::Slave),
+                                 mds::Role::Slave,
+                                 owner_tag),
                  std::exception);
 
     EXPECT_THROW(client.get_cork_id(nspace),
@@ -562,8 +585,11 @@ TEST_P(MetaDataServerTest, python_client_role)
     ASSERT_EQ(mds::Role::Slave,
               client.get_role(nspace));
 
+    const vd::OwnerTag owner_tag(1);
+
     client.set_role(nspace,
-                    mds::Role::Master);
+                    mds::Role::Master,
+                    owner_tag);
 
     ASSERT_EQ(mds::Role::Master,
               client.get_role(nspace));
@@ -572,6 +598,77 @@ TEST_P(MetaDataServerTest, python_client_role)
 
     ASSERT_EQ(mds::Role::Master,
               client.get_role(nspace));
+}
+
+TEST_P(MetaDataServerTest, get_owner_tag)
+{
+    be::BackendTestSetup::WithRandomNamespace wrns("",
+                                                   cm_);
+
+    auto client(make_client());
+    mds::TableInterfacePtr table(client->open(wrns.ns().str()));
+
+    EXPECT_EQ(vd::OwnerTag(0),
+              table->owner_tag());
+
+    const vd::OwnerTag owner_tag(1234);
+    table->set_role(mds::Role::Master,
+                    owner_tag);
+
+    EXPECT_EQ(owner_tag,
+              table->owner_tag());
+}
+
+TEST_P(MetaDataServerTest, owner_tag)
+{
+    be::BackendTestSetup::WithRandomNamespace wrns("",
+                                                   cm_);
+
+    auto client(make_client());
+    mds::TableInterfacePtr table(client->open(wrns.ns().str()));
+
+    const vd::OwnerTag owner_tag(2);
+
+    table->set_role(mds::Role::Master,
+                    owner_tag);
+
+    const mds::Key key("key"s);
+    const std::string val1("val1");
+
+    set(table,
+        mds::Record(key,
+                    mds::Value(val1)),
+        owner_tag);
+
+    const auto check([&]
+                     {
+                         const boost::optional<std::string> maybe_string(get(table,
+                                                                             key));
+
+                         ASSERT_NE(boost::none,
+                                   maybe_string);
+                         ASSERT_EQ(val1,
+                                   *maybe_string);
+                     });
+
+    check();
+
+    const vd::OwnerTag old_owner_tag(1);
+    ASSERT_NE(owner_tag,
+              old_owner_tag);
+
+    const std::string val2("val2");
+
+    EXPECT_THROW(set(table,
+                     mds::Record(key,
+                                 mds::Value(val2)),
+                     old_owner_tag),
+                 std::exception);
+
+    EXPECT_THROW(table->clear(old_owner_tag),
+                 std::exception);
+
+    check();
 }
 
 TEST_P(MetaDataServerTest, python_client_cork_id)
@@ -593,13 +690,17 @@ TEST_P(MetaDataServerTest, python_client_cork_id)
 
     const yt::UUID cork;
 
+    const vd::OwnerTag owner_tag(1);
+
     // no updates while slave
     client.set_role(nspace,
-                    mds::Role::Master);
+                    mds::Role::Master,
+                    owner_tag);
 
     {
         vd::MDSMetaDataBackend backend(mds_config(),
                                        wrns.ns(),
+                                       owner_tag,
                                        boost::none);
         backend.setCork(cork);
     }
@@ -678,7 +779,11 @@ TEST_P(MetaDataServerTest, exceeding_the_shmem_size)
 
     auto client(make_client());
     auto table(client->open(wrns.ns().str()));
-    table->set_role(mds::Role::Master);
+
+    const vd::OwnerTag owner_tag(1);
+
+    table->set_role(mds::Role::Master,
+                    owner_tag);
 
     auto shmem_out_overruns([&]() -> uint64_t
                             {
@@ -704,7 +809,8 @@ TEST_P(MetaDataServerTest, exceeding_the_shmem_size)
     EXPECT_EQ(0U, shmem_in_overruns());
 
     table->multiset(recs,
-                    Barrier::F);
+                    Barrier::F,
+                    owner_tag);
 
     EXPECT_EQ(expect_overrun ? 1U : 0U, shmem_out_overruns());
     EXPECT_EQ(0U, shmem_in_overruns());

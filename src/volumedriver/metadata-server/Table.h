@@ -62,6 +62,8 @@ namespace metadata_server
 //   All other calls use it in shared mode.
 //
 //   The counters are protected by a plain mutex which needs to be grabbed *after* the shared one.
+//   The Role / OwnerTag are protected by a plain mutex which needs to be grapped *after* the shared
+//   one to check ownership when doing updates.
 class Table
     : public TableInterface
 {
@@ -91,8 +93,9 @@ public:
                       const TableInterface::RelocationLogs&) override final;
 
     virtual void
-    multiset(const TableInterface::Records& records,
-             Barrier) override final;
+    multiset(const TableInterface::Records&,
+             Barrier,
+             volumedriver::OwnerTag) override final;
 
     virtual TableInterface::MaybeStrings
     multiget(const TableInterface::Keys&) override final;
@@ -101,7 +104,8 @@ public:
     get_role() const override final;
 
     virtual void
-    set_role(Role role) override final;
+    set_role(Role,
+             volumedriver::OwnerTag) override final;
 
     virtual const std::string&
     nspace() const override final
@@ -110,7 +114,7 @@ public:
     }
 
     virtual void
-    clear() override final;
+    clear(volumedriver::OwnerTag) override final;
 
     virtual size_t
     catch_up(volumedriver::DryRun) override final;
@@ -125,6 +129,7 @@ private:
     DECLARE_LOGGER("MetaDataServerTable");
 
     mutable boost::shared_mutex rwlock_;
+    mutable boost::mutex owner_lock_;
 
     DataBaseInterfacePtr db_;
     TableInterfacePtr table_;
@@ -158,7 +163,8 @@ private:
     update_nsid_map_(const volumedriver::NSIDMap&);
 
     void
-    prevent_updates_on_slaves_(const char* desc);
+    check_updates_permitted_(const volumedriver::OwnerTag,
+                             const char* desc) const;
 
     void
     update_counters_(const volumedriver::MetaDataStoreBuilder::Result&);
