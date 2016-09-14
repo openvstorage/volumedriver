@@ -663,10 +663,10 @@ TEST_P(MetaDataServerTest, owner_tag)
                      mds::Record(key,
                                  mds::Value(val2)),
                      old_owner_tag),
-                 std::exception);
+                 vd::OwnerTagMismatchException);
 
     EXPECT_THROW(table->clear(old_owner_tag),
-                 std::exception);
+                 vd::OwnerTagMismatchException);
 
     check();
 }

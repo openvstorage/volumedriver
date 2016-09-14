@@ -326,6 +326,22 @@ ServerNG::handle_shmem_(C& conn,
                   mem_fn);
 }
 
+namespace
+{
+
+mdsproto::ResponseHeader::Type
+build_error(capnp::MessageBuilder& builder,
+            mdsproto::ErrorType error_type,
+            const char* msg)
+{
+    auto txroot(builder.initRoot<mdsproto::Error>());
+    txroot.setMessage(msg);
+    txroot.setErrorType(error_type);
+    return mdsproto::ResponseHeader::Type::Error;
+}
+
+}
+
 template<enum mdsproto::RequestHeader::Type R,
          typename C,
          typename Traits>
@@ -360,12 +376,20 @@ ServerNG::do_handle_(C& conn,
         LOG_ERROR("Failed to build shmem message " << e.what());
         throw;
     }
+    catch (vd::OwnerTagMismatchException& e)
+    {
+        LOG_ERROR(&conn << ": processing " << hdr.request_type <<
+                  " caught exception " << e.what());
+        rsp = build_error(builder,
+                          mdsproto::ErrorType::OWNER_TAG_MISMATCH,
+                          e.what());
+    }
     CATCH_STD_ALL_EWHAT({
             LOG_ERROR(&conn << ": processing " << hdr.request_type <<
                       " caught exception " << EWHAT);
-            auto txroot(builder.initRoot<typename mdsproto::Error>());
-            txroot.setMessage(EWHAT);
-            rsp = mdsproto::ResponseHeader::Type::Error;
+            rsp = build_error(builder,
+                              mdsproto::ErrorType::UNKNOWN,
+                              EWHAT);
         });
 
     send_response_(conn,

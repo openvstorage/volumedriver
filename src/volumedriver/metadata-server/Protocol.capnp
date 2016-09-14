@@ -15,12 +15,19 @@ struct Record
     val @1 : Data;
 }
 
+# Arrr matey, ye olde scumbag Cap'n P. insists on camelCase.
+
+enum ErrorType
+{
+    unknown @0;
+    ownerTagMismatch @1;
+}
+
 struct Error
 {
     message @0 : Text;
+    errorType @1 : ErrorType = unknown;
 }
-
-# Arrr matey, ye olde scumbag Cap'n P. insists on camelCase.
 
 struct TableCounters
 {

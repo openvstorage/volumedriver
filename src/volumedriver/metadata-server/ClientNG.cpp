@@ -678,7 +678,13 @@ ClientNG::handle_response_(const mdsproto::ResponseHeader& hdr,
         const std::string msg(root.getMessage().begin(),
                               root.getMessage().size());
         LOG_ERROR("Got an error: " << msg);
-        throw fungi::IOException(msg.c_str());
+        switch (root.getErrorType()) {
+        case mdsproto::ErrorType::OWNER_TAG_MISMATCH:
+            throw vd::OwnerTagMismatchException(msg.c_str());
+            break;
+        default:
+            throw fungi::IOException(msg.c_str());
+        }
     }
     else
     {
