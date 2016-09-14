@@ -463,7 +463,7 @@ public:
     effective_cluster_cache_behaviour() const;
 
     OwnerTag
-    getOwnerTag()
+    getOwnerTag() const
     {
         std::lock_guard<decltype(config_lock_)> g(config_lock_);
         return config_.owner_tag_;
