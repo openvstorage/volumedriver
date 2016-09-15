@@ -18,13 +18,12 @@
 
 #include "Object.h"
 
-#include <boost/archive/binary_iarchive.hpp>
-#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/xml_iarchive.hpp>
+#include <boost/archive/xml_oarchive.hpp>
+#include <boost/serialization/optional.hpp>
 
 #include <youtils/OurStrongTypedef.h>
 #include <youtils/Serialization.h>
-
-#include <xmlrpc++0.7/src/XmlRpcValue.h>
 
 OUR_STRONG_ARITHMETIC_TYPEDEF(uint64_t, ClientInfoTag, volumedriverfs)
 
@@ -42,33 +41,15 @@ struct ClientInfo
 
     ClientInfo(boost::optional<ObjectId> id_,
                std::string ip_,
-               std::string port_)
-    : object_id(id_)
-    , ip(ip_)
-    {
-        try
-        {
-            port = std::stoi(port_,
-                             nullptr,
-                             10);
-        }
-        catch (...)
-        {
-            port = 0;
-        }
-    }
-
-    ClientInfo(boost::optional<ObjectId> id_,
-               std::string ip_,
                uint16_t port_)
-    : object_id(id_)
-    , ip(ip_)
-    , port(port_)
+        : object_id(std::move(id_))
+        , ip(std::move(ip_))
+        , port(port_)
     {}
 
-    ClientInfo() = default;
-
-    friend class boost::serialization::access;
+    ClientInfo()
+        : port(0)
+    {}
 
     template<typename Archive>
     void

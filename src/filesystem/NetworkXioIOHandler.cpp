@@ -20,9 +20,12 @@
 
 #include <youtils/Assert.h>
 #include <youtils/Catchers.h>
+#include <youtils/SocketAddress.h>
 
 namespace volumedriverfs
 {
+
+namespace yt = youtils;
 
 static inline void
 pack_msg(NetworkXioRequest *req)
@@ -32,6 +35,35 @@ pack_msg(NetworkXioRequest *req)
     o_msg.errval(req->errval);
     o_msg.opaque(req->opaque);
     req->s_msg= o_msg.pack_msg();
+}
+
+void
+NetworkXioIOHandler::update_fs_client_info(const std::string& volume_name)
+{
+    uint16_t port = 0;
+    std::string host;
+
+    xio_connection_attr xcon_peer;
+    int ret = xio_query_connection(cd_->conn,
+                                   &xcon_peer,
+                                   XIO_CONNECTION_ATTR_USER_CTX |
+                                   XIO_CONNECTION_ATTR_PEER_ADDR);
+    if (ret < 0)
+    {
+        LOG_ERROR(volume_name << ": failed to query the xio connection: " <<
+                  xio_strerror(xio_errno()));
+    }
+    else
+    {
+        const yt::SocketAddress sa(xcon_peer.peer_addr);
+        port = sa.get_port();
+        host = sa.get_ip_address();
+    }
+
+    const FrontendPath volume_path(make_volume_path(volume_name));
+    cd_->tag = fs_.register_client(ClientInfo(fs_.find_id(volume_path),
+                                              std::move(host),
+                                              port));
 }
 
 void
