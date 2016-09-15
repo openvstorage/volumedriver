@@ -136,6 +136,18 @@ public:
     MDSNodeConfig
     current_node() const;
 
+    size_t
+    incremental_rebuild_count() const
+    {
+        return incremental_rebuild_count_;
+    }
+
+    size_t
+    full_rebuild_count() const
+    {
+        return full_rebuild_count_;
+    }
+
 private:
     DECLARE_LOGGER("MDSMetaDataStore");
 
@@ -155,6 +167,9 @@ private:
     const uint64_t num_pages_cached_;
     const boost::filesystem::path home_;
 
+    size_t incremental_rebuild_count_;
+    size_t full_rebuild_count_;
+
     using MetaDataStorePtr = std::shared_ptr<CachedMetaDataStore>;
 
     MetaDataStorePtr
@@ -162,7 +177,7 @@ private:
 
     MetaDataStorePtr
     build_new_one_(const MDSNodeConfig& ncfg,
-                   bool startup) const;
+                   bool startup);
 
     void
     failover_(MetaDataStorePtr& md,

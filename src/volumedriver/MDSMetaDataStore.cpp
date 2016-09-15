@@ -55,6 +55,8 @@ MDSMetaDataStore::MDSMetaDataStore(const MDSMetaDataBackendConfig& cfg,
     , timeout_(cfg.timeout())
     , num_pages_cached_(num_pages_cached)
     , home_(home)
+    , incremental_rebuild_count_(0)
+    , full_rebuild_count_(0)
 {
     check_config_(cfg);
 
@@ -257,7 +259,7 @@ MDSMetaDataStore::connect_(const MDSNodeConfig& ncfg) const
 
 MDSMetaDataStore::MetaDataStorePtr
 MDSMetaDataStore::build_new_one_(const MDSNodeConfig& ncfg,
-                                 bool startup) const
+                                 bool startup)
 {
     ASSERT_WLOCKED();
 
@@ -280,8 +282,16 @@ MDSMetaDataStore::build_new_one_(const MDSNodeConfig& ncfg,
         MetaDataStoreBuilder build(*md,
                                    bi_->clone(),
                                    tmpdir);
-        build(end_cork,
-              CheckScrubId::T);
+        const MetaDataStoreBuilder::Result res(build(end_cork,
+                                                     CheckScrubId::T));
+        if (res.full_rebuild)
+        {
+            ++full_rebuild_count_;
+        }
+        else
+        {
+            ++incremental_rebuild_count_;
+        }
 
         md->copy_corked_entries_from(*mdstore_);
     }
