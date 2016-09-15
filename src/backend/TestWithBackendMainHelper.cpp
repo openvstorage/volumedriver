@@ -87,10 +87,10 @@ TestWithBackendMainHelper::setupTestBackend()
 {
     boost::property_tree::ptree pt;
 
-    if(backend_config_)
+    if(backend_config_uri())
     {
-        pt = (*yt::ConfigFetcher::create(*yt::MainHelper::backend_config_))(VerifyConfig::F);
-        auto backend_config_ = BackendConfig::makeBackendConfig(pt);
+        pt = (*yt::ConfigFetcher::create(*backend_config_uri()))(VerifyConfig::F);
+        backend_config_ = BackendConfig::makeBackendConfig(pt);
         using namespace std::string_literals;
 
         if(skip_backend_setup_)

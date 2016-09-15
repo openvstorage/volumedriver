@@ -120,9 +120,9 @@ public:
         }
 
         std::unique_ptr<be::BackendConfig> bcfg;
-        if (yt::MainHelper::backend_config_)
+        if (yt::MainHelper::backend_config_uri())
         {
-            bcfg = be::BackendConfig::makeBackendConfig(*yt::MainHelper::backend_config_);
+            bcfg = be::BackendConfig::makeBackendConfig(*yt::MainHelper::backend_config_uri());
         }
 
         const ScrubReply reply(ScrubberAdapter::scrub(std::move(bcfg),

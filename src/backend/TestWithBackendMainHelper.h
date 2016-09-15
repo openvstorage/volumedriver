@@ -40,7 +40,6 @@ struct TestWithBackendMainHelper : public youtils::TestMainHelper
     void
     setupTestBackend();
 
-
     void
     tearDownTestBackend();
 

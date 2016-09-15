@@ -99,14 +99,18 @@ protected:
     virtual void
     check_no_unrecognized();
 
+    MaybeUri
+    backend_config_uri() const
+    {
+        return backend_config_;
+    }
+
 protected:
     boost::program_options::variables_map vm_;
     std::vector<std::string> unparsed_options_;
 
-public:
-    static MaybeUri backend_config_;
-
 private:
+    static MaybeUri backend_config_;
     std::vector<std::string> args_;
 
     boost::program_options::options_description logging_options_;
