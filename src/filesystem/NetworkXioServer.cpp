@@ -293,9 +293,8 @@ NetworkXioServer::run(std::promise<void> promise)
                                 32,
                                 4,
                                 0);
-
-    promise.set_value();
     stopped = false;
+    promise.set_value();
     while (not stopping)
     {
         int ret = xio_context_run_loop(ctx.get(), XIO_INFINITE);
