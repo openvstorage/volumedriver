@@ -13,17 +13,22 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include <libxio.h>
-
-#include <youtils/Assert.h>
-
 #include "NetworkXioServer.h"
 #include "NetworkXioProtocol.h"
 
+#include <libxio.h>
+
+#include <youtils/Assert.h>
+#include <youtils/System.h>
+
 #define POLLING_TIME_USEC   20
+
+namespace yt = youtils;
 
 namespace volumedriverfs
 {
+
+namespace yt = youtils;
 
 template<class T>
 static int
@@ -107,14 +112,16 @@ static_evfd_stop_loop(int fd, int events, void *data)
 }
 
 NetworkXioServer::NetworkXioServer(FileSystem& fs,
-                                   const std::string& uri,
-                                   size_t snd_rcv_queue_depth)
+                                   const yt::Uri& uri,
+                                   size_t snd_rcv_queue_depth,
+                                   unsigned int workqueue_max_threads)
     : fs_(fs)
     , uri_(uri)
     , stopping(false)
     , stopped(true)
     , evfd()
     , queue_depth(snd_rcv_queue_depth)
+    , wq_max_threads(workqueue_max_threads)
 {}
 
 void
@@ -168,6 +175,23 @@ NetworkXioServer::run(std::promise<void> promise)
                 XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_RCV_QUEUE_DEPTH_MSGS,
                 &xopt, sizeof(int));
 
+    struct xio_options_keepalive ka;
+    ka.time =
+        yt::System::get_env_with_default<int>("NETWORK_XIO_KEEPALIVE_TIME",
+                                              600);
+    ka.intvl =
+        yt::System::get_env_with_default<int>("NETWORK_XIO_KEEPALIVE_INTVL",
+                                              60);
+    ka.probes =
+        yt::System::get_env_with_default<int>("NETWORK_XIO_KEEPALIVE_PROBES",
+                                              20);
+
+    xio_set_opt(NULL,
+                XIO_OPTLEVEL_ACCELIO,
+                XIO_OPTNAME_CONFIG_KEEPALIVE,
+                &ka,
+                sizeof(ka));
+
     ctx = std::shared_ptr<xio_context>(xio_context_create(NULL,
                                                           POLLING_TIME_USEC,
                                                           -1),
@@ -190,7 +214,7 @@ NetworkXioServer::run(std::promise<void> promise)
     LOG_INFO("bind XIO server to '" << uri_ << "'");
     server = std::shared_ptr<xio_server>(xio_bind(ctx.get(),
                                                   &xio_s_ops,
-                                                  uri_.c_str(),
+                                                  boost::lexical_cast<std::string>(uri_).c_str(),
                                                   NULL,
                                                   0,
                                                   this),
@@ -213,7 +237,9 @@ NetworkXioServer::run(std::promise<void> promise)
 
     try
     {
-        wq_ = std::make_shared<NetworkXioWorkQueue>("ovs_xio_wq", evfd);
+        wq_ = std::make_shared<NetworkXioWorkQueue>("ovs_xio_wq",
+                                                    evfd,
+                                                    wq_max_threads);
     }
     catch (const WorkQueueThreadsException&)
     {
@@ -296,6 +322,7 @@ NetworkXioServer::allocate_client_data()
     {
         NetworkXioClientData *cd = new NetworkXioClientData;
         cd->disconnected = false;
+        cd->connection_closed = false;
         cd->refcnt = 0;
         cd->mpool = xio_mpool.get();
         cd->server = this;
@@ -304,6 +331,17 @@ NetworkXioServer::allocate_client_data()
     catch (const std::bad_alloc&)
     {
         return NULL;
+    }
+}
+
+void
+NetworkXioServer::clear_done_reqs(NetworkXioClientData *cd)
+{
+    while (not cd->done_reqs.empty())
+    {
+        NetworkXioRequest *req = cd->done_reqs.front();
+        cd->done_reqs.pop_front();
+        deallocate_request(req);
     }
 }
 
@@ -317,7 +355,8 @@ NetworkXioServer::create_session_connection(xio_session *session,
         try
         {
             NetworkXioIOHandler *ioh_ptr = new NetworkXioIOHandler(fs_,
-                                                                   wq_);
+                                                                   wq_,
+                                                                   cd);
             cd->ioh = ioh_ptr;
             cd->session = session;
             cd->conn = evdata->conn;
@@ -344,13 +383,39 @@ NetworkXioServer::destroy_session_connection(xio_session *session ATTR_UNUSED,
                                              xio_session_event_data *evdata)
 {
     auto cd = static_cast<NetworkXioClientData*>(evdata->conn_user_context);
+    if (cd->connection_closed)
+    {
+        while (not cd->done_reqs.empty())
+        {
+            clear_done_reqs(cd);
+        }
+    }
     cd->disconnected = true;
+    cd->ioh->remove_fs_client_info();
     if (!cd->refcnt)
     {
         xio_connection_destroy(cd->conn);
         delete cd->ioh;
         delete cd;
     }
+}
+
+void
+NetworkXioServer::mark_session_disconnected(xio_session *session ATTR_UNUSED,
+                                            xio_session_event_data *evdata)
+{
+    auto cd = static_cast<NetworkXioClientData*>(evdata->conn_user_context);
+    cd->disconnected = true;
+    return;
+}
+
+void
+NetworkXioServer::mark_session_closed(xio_session *session ATTR_UNUSED,
+                                      xio_session_event_data *evdata)
+{
+    auto cd = static_cast<NetworkXioClientData*>(evdata->conn_user_context);
+    cd->connection_closed = true;
+    return;
 }
 
 int
@@ -373,6 +438,18 @@ NetworkXioServer::on_session_event(xio_session *session,
     {
     case XIO_SESSION_NEW_CONNECTION_EVENT:
         create_session_connection(session, event_data);
+        break;
+    case XIO_SESSION_CONNECTION_CLOSED_EVENT:
+        if (event_data->reason == XIO_E_TIMEOUT)
+        {
+            xio_disconnect(event_data->conn);
+            mark_session_closed(session, event_data);
+        }
+        break;
+    case XIO_SESSION_CONNECTION_ERROR_EVENT:
+        break;
+    case XIO_SESSION_CONNECTION_DISCONNECTED_EVENT:
+        mark_session_disconnected(session, event_data);
         break;
     case XIO_SESSION_CONNECTION_TEARDOWN_EVENT:
         destroy_session_connection(session, event_data);
@@ -490,7 +567,16 @@ NetworkXioServer::xio_send_reply(NetworkXioRequest *req)
     }
     else
     {
-        req->cd->done_reqs.push_back(req);
+        auto cd = static_cast<NetworkXioClientData*>(req->cd);
+        if (cd->disconnected)
+        {
+            clear_done_reqs(cd);
+            deallocate_request(req);
+        }
+        else
+        {
+            cd->done_reqs.push_back(req);
+        }
     }
 }
 

@@ -27,11 +27,14 @@ YoutilsTestPrecompiledHeader.h.$(PCH_SUFFIX) : YoutilsTestPrecompiledHeader.h.hx
 
 youtils_test_SOURCES = \
 	AlternativeOptionsAgainTest.cpp \
+	ArakoonConfigFetcherTest.cpp \
 	ArakoonTest.cpp \
+	ArakoonIniParserTest.cpp \
 	ArakoonLockStoreTest.cpp \
 	BooleanEnumTest.cpp \
 	CheckSumTest.cpp \
 	ChooserTest.cpp \
+	ConfigFetcherTest.cpp \
 	DeferredFileRemoverTest.cpp \
 	DenyLockService.cpp \
 	DimensionedValueTest.cpp \
@@ -43,6 +46,7 @@ youtils_test_SOURCES = \
 	GeneratorTest.cpp \
 	GlobalLockTest.cpp \
 	Go.cpp \
+	GTestTest.cpp \
 	HeartBeatLockTest.cpp \
 	IncrementalChecksumTest.cpp \
 	InitializedParamTest.cpp \
@@ -76,8 +80,9 @@ youtils_test_SOURCES = \
 	ThrowingDestructorTest.cpp \
 	TimeTest.cpp \
 	UnlockingGlobalLockService.cpp \
-	VolumeDriverComponentTest.cpp \
+	UriTest.cpp \
 	UUIDTest.cpp \
+	VolumeDriverComponentTest.cpp \
 	WeedTest.cpp \
 	WrapperTest.cpp
 

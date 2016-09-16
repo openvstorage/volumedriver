@@ -16,9 +16,11 @@
 #include "../LockStoreFactory.h"
 #include "../VolumeDriverParameters.h"
 
+#include <gtest/gtest.h>
+
 #include <youtils/ArakoonLockStore.h>
 #include <youtils/ArakoonTestSetup.h>
-#include <youtils/TestBase.h>
+#include <youtils/FileUtils.h>
 
 #include <backend/BackendTestSetup.h>
 #include <backend/LocalConfig.h>
@@ -36,12 +38,12 @@ namespace ip = initialized_params;
 namespace yt = youtils;
 
 class LockStoreFactoryTest
-    : public youtilstest::TestBase
+    : public testing::Test
     , public be::BackendTestSetup
 {
 public:
     LockStoreFactoryTest()
-        : ara_test_setup_(getTempPath("LockStoreFactoryTest") / "arakoon")
+        : ara_test_setup_(yt::FileUtils::temp_path("LockStoreFactoryTest") / "arakoon")
 
     {
         ara_test_setup_.setUpArakoon();

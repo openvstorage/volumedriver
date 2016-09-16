@@ -26,7 +26,7 @@
 #include "xmlrpc++0.7/src/XmlRpcClient.h"
 #include "xmlrpc++0.7/src/Server.h"
 
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 
 namespace xmlrpc
 {
@@ -70,7 +70,7 @@ private:
 }
 
 class XMLRPCShutDownTest
-    : public vd::ExGTest
+    : public testing::TestWithParam<VolumeDriverTestConfig>
 {
 protected:
     XMLRPCShutDownTest()

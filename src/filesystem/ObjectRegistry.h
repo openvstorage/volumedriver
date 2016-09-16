@@ -34,7 +34,7 @@
 namespace volumedriverfs
 {
 
-BOOLEAN_ENUM(ConvertBaseToClone);
+VD_BOOLEAN_ENUM(ConvertBaseToClone);
 
 struct ObjectRegistryException : virtual std::exception, virtual boost::exception { };
 struct ObjectAlreadyRegisteredException : virtual ObjectRegistryException { };
@@ -107,9 +107,11 @@ public:
     ObjectRegistrationPtr
     find(const ObjectId& vol_id);
 
-    // use a vector instead?
-    std::list<ObjectId>
+    std::vector<ObjectId>
     list();
+
+    std::vector<ObjectRegistrationPtr>
+    get_all_registrations(const size_t batch_size = 1024);
 
     ObjectRegistrationPtr
     prepare_migrate(arakoon::sequence& seq,

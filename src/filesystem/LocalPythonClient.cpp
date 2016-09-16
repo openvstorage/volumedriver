@@ -13,7 +13,6 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "ConfigFetcher.h"
 #include "ConfigHelper.h"
 #include "FileSystem.h"
 #include "LocalPythonClient.h"
@@ -27,6 +26,7 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include <youtils/Logging.h>
+#include <youtils/Uri.h>
 
 namespace volumedriverfs
 {
@@ -38,9 +38,9 @@ namespace yt = youtils;
 LocalPythonClient::LocalPythonClient(const std::string& config,
                                      const boost::optional<boost::chrono::seconds>& timeout)
     : PythonClient(timeout)
-    , config_fetcher_(config)
+    , config_fetcher_(yt::ConfigFetcher::create(yt::Uri(config)))
 {
-    const bpt::ptree pt(config_fetcher_(VerifyConfig::F));
+    const bpt::ptree pt((*config_fetcher_)(VerifyConfig::F));
     const ConfigHelper argument_helper(pt);
     cluster_id_ = argument_helper.cluster_id();
     cluster_contacts_.emplace_back(argument_helper.localnode_config().host,
@@ -50,7 +50,7 @@ LocalPythonClient::LocalPythonClient(const std::string& config,
 void
 LocalPythonClient::destroy()
 {
-    FileSystem::destroy(config_fetcher_(VerifyConfig::F));
+    FileSystem::destroy((*config_fetcher_)(VerifyConfig::F));
 }
 
 std::string

@@ -16,13 +16,13 @@
 #ifndef __NETWORK_XIO_INTERFACE_H_
 #define __NETWORK_XIO_INTERFACE_H_
 
-#include <boost/property_tree/ptree_fwd.hpp>
-#include <unordered_map>
-#include <libxio.h>
+#include "NetworkXioServer.h"
 
+#include <boost/property_tree/ptree_fwd.hpp>
 #include <youtils/VolumeDriverComponent.h>
 
-#include "NetworkXioServer.h"
+#include <libxio.h>
+#include <unordered_map>
 
 namespace volumedriverfs
 {
@@ -38,10 +38,12 @@ public:
                                      pt)
     , network_uri(pt)
     , network_snd_rcv_queue_depth(pt)
+    , network_workqueue_max_threads(pt)
     , fs_(fs)
     , xio_server_(fs_,
                   uri(),
-                  snd_rcv_queue_depth())
+                  snd_rcv_queue_depth(),
+                  wq_max_threads())
     {}
 
     ~NetworkXioInterface()
@@ -75,22 +77,26 @@ public:
     void
     shutdown();
 
-    std::string
-    uri() const
-    {
-        return network_uri.value();
-    }
+    youtils::Uri
+    uri() const;
 
     size_t
     snd_rcv_queue_depth() const
     {
         return network_snd_rcv_queue_depth.value();
     }
+
+    unsigned int
+    wq_max_threads() const
+    {
+        return network_workqueue_max_threads.value();
+    }
 private:
     DECLARE_LOGGER("NetworkXioInterface");
 
     DECLARE_PARAMETER(network_uri);
     DECLARE_PARAMETER(network_snd_rcv_queue_depth);
+    DECLARE_PARAMETER(network_workqueue_max_threads);
 
     FileSystem& fs_;
     NetworkXioServer xio_server_;

@@ -13,6 +13,11 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "ShmIdlInterface.h"
+#include "ShmInterface.h"
+#include "ShmVolumeDriverHandler.h"
+#include "ShmOrbInterface.h"
+
 #include <boost/exception_ptr.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -22,11 +27,6 @@
 #include <youtils/OrbHelper.h>
 #include <filesystem/ObjectRouter.h>
 #include <filesystem/Registry.h>
-
-#include "ShmIdlInterface.h"
-#include "ShmInterface.h"
-#include "ShmVolumeDriverHandler.h"
-#include "ShmOrbInterface.h"
 
 namespace volumedriverfs
 {

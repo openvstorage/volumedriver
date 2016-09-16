@@ -19,5 +19,14 @@ function python_test {
     fi
 
     skip_selected_tests "python"
-    nosetests -s -v $DROP_INTO_DEBUGGER --with-xunit --xunit-file=$TEST_OUTPUT_FILE "$@" || true
+
+    NOSETESTS=""
+    if [[ @PYTHON_VERSION@ < 3.0 ]]
+    then
+	NOSETESTS=nosetests
+    else
+	NOSETESTS=nosetests3
+    fi
+
+    ${NOSETESTS} -s -v $DROP_INTO_DEBUGGER --with-xunit --xunit-file=$TEST_OUTPUT_FILE "$@" || true
 }

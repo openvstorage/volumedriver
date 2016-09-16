@@ -1443,4 +1443,34 @@ FileSystem::vaai_copy(const FrontendPath& src_path,
     }
 }
 
+ClientInfoTag
+FileSystem::register_client(ClientInfo info)
+{
+    std::lock_guard<std::mutex> lock(client_info_lock_);
+    static ClientInfoTag ci_tag_cnt(0);
+    const ClientInfoTag tag(++ci_tag_cnt);
+    client_info_map_.emplace(tag,
+                             std::move(info));
+    return tag;
+}
+
+void
+FileSystem::unregister_client(ClientInfoTag tag)
+{
+    std::lock_guard<std::mutex> lock(client_info_lock_);
+    client_info_map_.erase(tag);
+}
+
+std::vector<ClientInfo>
+FileSystem::list_registered_clients()
+{
+    std::vector<ClientInfo> info_vec_;
+    std::lock_guard<std::mutex> lock(client_info_lock_);
+    for (const auto& kv: client_info_map_)
+    {
+        info_vec_.push_back(kv.second);
+    }
+    return info_vec_;
+}
+
 }

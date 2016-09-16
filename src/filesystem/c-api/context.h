@@ -16,11 +16,9 @@
 #ifndef __CONTEXT_H
 #define __CONTEXT_H
 
-#include <boost/asio.hpp>
+#include "common.h"
 
-#include "../ShmControlChannelProtocol.h"
-#include "../ShmClient.h"
-#include "../NetworkXioClient.h"
+#include <vector>
 
 struct ovs_context_t
 {
@@ -72,48 +70,11 @@ struct ovs_context_t
     virtual ovs_buffer_t* allocate(size_t size) = 0;
 
     virtual int deallocate(ovs_buffer_t *ptr) = 0;
+
+    virtual int truncate_volume(const char *volume_name,
+                                uint64_t length) = 0;
+
+    virtual int truncate(uint64_t length) = 0;
 };
 
-static bool
-_is_volume_name_valid(const char *volume_name)
-{
-    if (volume_name == NULL || strlen(volume_name) == 0 ||
-        strlen(volume_name) >= NAME_MAX)
-    {
-        return false;
-    }
-    else
-    {
-        return true;
-    }
-}
-
-static inline int
-_hostname_to_ip(const char *hostname, std::string& ip)
-{
-
-    try
-    {
-        boost::asio::io_service io_service;
-        boost::asio::ip::tcp::resolver resolver(io_service);
-        boost::asio::ip::tcp::resolver::query query(std::string(hostname), "");
-        for (boost::asio::ip::tcp::resolver::iterator i = resolver.resolve(query);
-                i != boost::asio::ip::tcp::resolver::iterator(); i++)
-        {
-            boost::asio::ip::tcp::endpoint ep = *i;
-            ip = ep.address().to_string();
-            return 0;
-        }
-        errno = EINVAL;
-    }
-    catch (const std::bad_alloc&)
-    {
-        errno = ENOMEM;
-    }
-    catch (...)
-    {
-        errno = EIO;
-    }
-    return -1;
-}
 #endif // __CONTEXT_H

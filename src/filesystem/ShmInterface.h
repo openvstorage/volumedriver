@@ -16,12 +16,12 @@
 #ifndef __SHM_INTERFACE_H
 #define __SHM_INTERFACE_H
 
-#include <mutex>
-#include <youtils/OrbHelper.h>
-
 #include "ShmIdlInterface.h"
 #include "ShmServer.h"
 #include "ShmControlChannelServer.h"
+
+#include <mutex>
+#include <youtils/OrbHelper.h>
 
 namespace volumedriverfs
 {
@@ -169,6 +169,22 @@ public:
     {
         std::unique_ptr<Handler> h(new Handler(handler_args_));
         h->remove_volume(volume_name);
+    }
+
+    void
+    truncate_volume(const char *volume_name,
+                    CORBA::ULongLong volume_size)
+    {
+        std::unique_ptr<Handler> h(new Handler(handler_args_));
+        h->truncate_volume(volume_name,
+                           volume_size);
+    }
+
+    uint64_t
+    stat_volume(const char *volume_name)
+    {
+        std::unique_ptr<Handler> h(new Handler(handler_args_));
+        return h->stat_volume(volume_name);
     }
 
     void

@@ -18,7 +18,7 @@
 #include <boost/lexical_cast.hpp>
 
 #include <youtils/System.h>
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 
 namespace volumedrivertest
 {
@@ -52,12 +52,14 @@ make_directory(const boost::optional<fs::path>& path,
 
 FailOverCacheTestContext::FailOverCacheTestContext(FailOverCacheTestSetup& setup,
                                                    const boost::optional<std::string>& addr,
-                                                   const uint16_t port)
+                                                   const uint16_t port,
+                                                   const boost::chrono::microseconds busy_retry_duration)
     : setup_(setup)
     , addr_(addr)
     , port_(port)
     , acceptor_(make_directory(setup_.path,
-                               port_))
+                               port_),
+                busy_retry_duration)
     , server_(fungi::SocketServer::createSocketServer(acceptor_,
                                                       addr_,
                                                       port_,
@@ -95,6 +97,9 @@ FailOverCacheTestSetup::port_base_ =
 
 vd::FailOverCacheTransport
 FailOverCacheTestSetup::transport_(vd::FailOverCacheTransport::TCP);
+
+boost::chrono::microseconds
+FailOverCacheTestSetup::busy_retry_duration_(0);
 
 FailOverCacheTestSetup::FailOverCacheTestSetup(const boost::optional<fs::path>& p)
         : path(p)
@@ -148,7 +153,8 @@ FailOverCacheTestSetup::start_one_foc()
 
     foctest_context_ptr ctx(new FailOverCacheTestContext(*this,
                                                          addr,
-                                                         port));
+                                                         port,
+                                                         busy_retry_duration_));
     ports_.insert(port);
 
     return ctx;

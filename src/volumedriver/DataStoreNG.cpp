@@ -621,7 +621,8 @@ DataStoreNG::readClusters(const std::vector<ClusterReadDescriptor>& descs)
         cacheHitCounter_ += fallback.hits;
         cacheMissCounter_ += fallback.misses;
 
-        if (fallback.misses)
+        if (fallback.misses or
+            (fallback.hits == 0 and fallback.misses == 0))
         {
             const auto duration_us(bc::duration_cast<bc::microseconds>(t.elapsed()));
             PerformanceCounters& c = getVolume()->performance_counters();

@@ -15,7 +15,7 @@
 
 #include "../Logging.h"
 #include "../Serialization.h"
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 
 #include <memory>
 
@@ -103,7 +103,7 @@ struct TwoStrings
 }
 
 class SerializationTest
-    : public TestBase
+    : public testing::Test
 {
 protected:
     template<typename IArchive, typename OArchive>

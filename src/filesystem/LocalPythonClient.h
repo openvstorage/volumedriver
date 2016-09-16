@@ -16,7 +16,6 @@
 #ifndef VFS_LOCAL_PYTHON_CLIENT_H_
 #define VFS_LOCAL_PYTHON_CLIENT_H_
 
-#include "ConfigFetcher.h"
 #include "PythonClient.h"
 
 #include <boost/filesystem.hpp>
@@ -24,6 +23,7 @@
 #include <string>
 #include <vector>
 
+#include <youtils/ConfigFetcher.h>
 #include <youtils/Logger.h>
 #include <youtils/Logging.h>
 #include <youtils/UpdateReport.h>
@@ -88,7 +88,7 @@ public:
 private:
     DECLARE_LOGGER("LocalPythonClient");
 
-    ConfigFetcher config_fetcher_;
+    std::unique_ptr<youtils::ConfigFetcher> config_fetcher_;
 };
 
 }

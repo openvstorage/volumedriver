@@ -16,7 +16,7 @@
 #include "../Logging.h"
 #include "../RWLock.h"
 #include "../System.h"
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 #include "../wall_timer.h"
 
 #include <boost/thread.hpp>
@@ -44,7 +44,7 @@ struct RWLockTraits<fungi::RWLock>
 };
 
 class RWLockTest
-    : public TestBase
+    : public testing::Test
 {
 protected:
     RWLockTest()

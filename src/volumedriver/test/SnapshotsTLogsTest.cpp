@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 
 #include <boost/serialization/wrapper.hpp>
 #include <boost/archive/xml_iarchive.hpp>
@@ -30,7 +30,7 @@ namespace volumedriver
 using namespace youtils;
 
 class SnapshotsTLogsTest
-    : public ExGTest
+    : public testing::TestWithParam<VolumeDriverTestConfig>
 {
     void
     add_tlog(Snapshot& snap, TLog& tlog)
@@ -62,7 +62,7 @@ TEST_F(SnapshotsTLogsTest, test1)
     add_tlog(snap2, T2);
     add_snap(snaps, snap2);
 
-    const fs::path tmpfile = getTempPath("serialization.txt");
+    const fs::path tmpfile = yt::FileUtils::temp_path("serialization.txt");
     ALWAYS_CLEANUP_FILE(tmpfile);
 
     Serialization::serializeAndFlush<boost::archive::xml_oarchive>(tmpfile,

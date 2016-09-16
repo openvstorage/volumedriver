@@ -14,14 +14,14 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "../Entry.h"
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 
 #include "VolManagerTestSetup.h"
 
 namespace volumedriver
 {
 class EntryTest
-    : public ExGTest
+    : public testing::TestWithParam<VolumeDriverTestConfig>
 {};
 
 #define PRINT(x) std::cout << #x << ": " << Entry :: x << std::endl;

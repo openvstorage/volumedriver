@@ -125,13 +125,13 @@ MetaDataStoreBuilder::update_metadata_store_(const boost::optional<yt::UUID>& fr
                     mdstore_.clear_all_keys();
                 }
 
+                res.full_rebuild = true;
                 start_cork = boost::none;
             }
         }
         else
         {
             LOG_INFO(bi_->getNS() << ": no scrub ID found in local metadata store");
-            VERIFY(mdstore_.lastCork() == boost::none);
         }
     }
 
@@ -178,13 +178,16 @@ MetaDataStoreBuilder::update_metadata_store_(const boost::optional<yt::UUID>& fr
         {
             LOG_INFO(bi_->getNS() << ": replaying " << res.num_tlogs << " TLogs");
 
-            mdstore_.set_scrub_id(sp.scrub_id());
-
             mdstore_.processCloneTLogs(tlogs,
                                        res.nsid_map,
                                        scratch_dir_,
                                        true,
                                        end_cork);
+
+            if (res.full_rebuild or check_scrub_id == CheckScrubId::T)
+            {
+                mdstore_.set_scrub_id(sp_scrub_id);
+            }
         }
     }
 

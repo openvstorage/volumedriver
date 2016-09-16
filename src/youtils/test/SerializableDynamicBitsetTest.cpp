@@ -13,15 +13,17 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 #include "../SerializableDynamicBitset.h"
 #include <../wall_timer.h>
 #include <../FileUtils.h>
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 #include "../SourceOfUncertainty.h"
+
 namespace volumedrivertest
 {
+
 using namespace youtils;
 
 namespace
@@ -29,7 +31,7 @@ namespace
 DECLARE_LOGGER("SerializableDynamicBitset");
 }
 
-class SerializableDynamicBitsetTest : public youtilstest::TestBase
+class SerializableDynamicBitsetTest : public testing::Test
 {
 public:
     // void
@@ -80,7 +82,7 @@ TEST_F(SerializableDynamicBitsetTest, DISABLED_test1)
         bs[i] = getbool();
     }
 
-    boost::filesystem::path p = TestBase::getTempPath("dynamic_bitset_serialization");
+    boost::filesystem::path p = FileUtils::temp_path("dynamic_bitset_serialization");
     ALWAYS_CLEANUP_FILE(p);
 
 

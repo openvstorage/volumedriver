@@ -4,11 +4,17 @@
 #include <typeinfo>
 
 #include <boost/filesystem/path.hpp>
+#include <boost/lexical_cast.hpp>
 #include <boost/python/object.hpp>
 #include <boost/python/to_python_converter.hpp>
 
+// pythonX.Y/patchlevel.h
+#include <patchlevel.h>
+
 #include <youtils/Assert.h>
+#include <youtils/DimensionedValue.h>
 #include <youtils/Logging.h>
+#include <youtils/Uri.h>
 
 // TODO: move to another namespace / location. youtils? youtils::pyconverters?
 namespace volumedriverfs
@@ -40,6 +46,26 @@ struct StringyConverterTraits<boost::filesystem::path>
     }
 };
 
+template<>
+struct StringyConverterTraits<youtils::DimensionedValue>
+{
+    static std::string
+    str(const youtils::DimensionedValue& d)
+    {
+        return d.toString();
+    }
+};
+
+template<>
+struct StringyConverterTraits<youtils::Uri>
+{
+    static std::string
+    str(const youtils::Uri& u)
+    {
+        return boost::lexical_cast<std::string>(u);
+    }
+};
+
 // Gee, this is complicated and under-documented. Taken from:
 // http://stackoverflow.com/questions/15842126/feeding-a-python-list-into-a-function-taking-in-a-vector-with-boost-python
 template<typename S, typename Traits = StringyConverterTraits<S> >
@@ -59,9 +85,13 @@ struct StringyConverter
     static void*
     convertible(PyObject* o)
     {
+#if PY_MAJOR_VERSION < 3
         LOG_TRACE(PyString_AsString(o)  << "convertible to " << typeid(S).name() << "?");
-
         return PyString_Check(o) ? o : nullptr;
+#else
+        LOG_TRACE(PyUnicode_AsASCIIString(o) << "convertible to " << typeid(S).name() << "?");
+        return PyUnicode_Check(o) ? o : nullptr;
+#endif
     }
 
     static void
@@ -69,7 +99,12 @@ struct StringyConverter
                 boost::python::converter::rvalue_from_python_stage1_data* data)
     {
         boost::python::handle<> handle(boost::python::borrowed(o));
+#if PY_MAJOR_VERSION < 3
         const char* cstr = PyString_AsString(handle.get());
+#else
+        const PyObject* tmp = PyUnicode_AsASCIIString(handle.get());
+        const char* cstr = PyBytes_AS_STRING(tmp);
+#endif
         VERIFY(cstr);
 
         LOG_TRACE("Converting " << typeid(S).name() << " \"" << cstr << "\" from python");

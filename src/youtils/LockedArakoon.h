@@ -29,7 +29,7 @@
 namespace youtils
 {
 
-BOOLEAN_ENUM(RetryOnArakoonAssert);
+VD_BOOLEAN_ENUM(RetryOnArakoonAssert);
 
 // The idea - besides serializing access to the arakoon client - is to provide a
 // number of read-only accessors and to funnel write access through run_sequence.
@@ -100,6 +100,25 @@ public:
     {
         LOCK();
         return arakoon_->prefix<T, Traits>(begin_key, max_elements);
+    }
+
+    template<typename K,
+             typename V,
+             typename KTraits = arakoon::DataBufferTraits<K>,
+             typename VTraits = arakoon::DataBufferTraits<V> >
+    arakoon::key_value_list
+    range_entries(const K& begin_key,
+                  const bool begin_key_included,
+                  const V& end_key,
+                  const bool end_key_included,
+                  const ssize_t max_elements)
+    {
+        LOCK();
+        return arakoon_->range_entries<K, V, KTraits, VTraits>(begin_key,
+                                                               begin_key_included,
+                                                               end_key,
+                                                               end_key_included,
+                                                               max_elements);
     }
 
     void

@@ -60,6 +60,8 @@ TEST_F(ConnectionManagerTest, limited_pool)
                    pin_to_cpu_0();
 
                    const size_t cap = cm_->capacity();
+                   const size_t shards = cm_->shards();
+
                    ASSERT_LT(0U, cap);
 
                    ASSERT_EQ(0U,
@@ -67,15 +69,15 @@ TEST_F(ConnectionManagerTest, limited_pool)
 
                    for (size_t i = 0; i < cap; ++i)
                    {
-                                   cm_->getConnection(ForceNewConnection::T);
+                       cm_->getConnection(ForceNewConnection::T);
                    }
 
-                   ASSERT_EQ(cap / boost::thread::hardware_concurrency(),
+                   ASSERT_EQ(cap / shards,
                              cm_->size());
 
                    cm_->getConnection(ForceNewConnection::T);
 
-                   ASSERT_EQ(cap / boost::thread::hardware_concurrency(),
+                   ASSERT_EQ(cap / shards,
                              cm_->size());
                }).wait();
 }
@@ -115,7 +117,7 @@ TEST_F(ConnectionManagerTest, limited_pool_on_errors)
                                     be::BackendInputException);
                    }
 
-                   ASSERT_EQ(cm_->capacity() / boost::thread::hardware_concurrency(),
+                   ASSERT_EQ(cm_->capacity() / cm_->shards(),
                              cm_->size());
                }).wait();
 }

@@ -13,6 +13,8 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "NetworkXioInterface.h"
+
 #include <boost/exception_ptr.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -22,8 +24,6 @@
 #include <filesystem/Registry.h>
 
 #include <libxio.h>
-
-#include "NetworkXioInterface.h"
 
 namespace volumedriverfs
 {
@@ -57,6 +57,8 @@ NetworkXioInterface::update(const bpt::ptree& pt,
 #define U(var)              \
     (var).update(pt, rep)
     U(network_uri);
+    U(network_snd_rcv_queue_depth);
+    U(network_workqueue_max_threads);
 #undef U
 }
 
@@ -67,6 +69,8 @@ NetworkXioInterface::persist(bpt::ptree& pt,
 #define P(var)              \
     (var).persist(pt, rep)
     P(network_uri);
+    P(network_snd_rcv_queue_depth);
+    P(network_workqueue_max_threads);
 #undef P
 }
 
@@ -76,6 +80,20 @@ NetworkXioInterface::checkConfig(const bpt::ptree& /*pt*/,
 {
     bool res = true;
     return res;
+}
+
+yt::Uri
+NetworkXioInterface::uri() const
+{
+    const boost::optional<yt::Uri> uri(fs_.object_router().node_config().network_server_uri);
+    if (uri)
+    {
+        return *uri;
+    }
+    else
+    {
+        return network_uri.value();
+    }
 }
 
 } //namespace volumedriverfs

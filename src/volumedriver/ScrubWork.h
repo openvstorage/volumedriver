@@ -24,10 +24,10 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
+#include <youtils/JsonString.h>
 #include <youtils/Serialization.h>
 
 #include <backend/BackendConfig.h>
-
 
 namespace scrubbing
 {
@@ -124,7 +124,7 @@ struct ScrubWork
     {
         std::string backend_config;
         ar & BOOST_SERIALIZATION_NVP(backend_config);
-        backend_config_ = backend::BackendConfig::makeBackendConfig(backend_config);
+        backend_config_ = backend::BackendConfig::makeBackendConfig(youtils::JsonString(backend_config));
 
         ar & BOOST_SERIALIZATION_NVP(ns_);
         ar & BOOST_SERIALIZATION_NVP(id_);

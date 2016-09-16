@@ -16,7 +16,7 @@
 #ifndef BACKEND_TEST_BASE_H_
 #define BACKEND_TEST_BASE_H_
 
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 #include "../BackendInterface.h"
 #include "../BackendTestSetup.h"
 
@@ -26,7 +26,7 @@ namespace backend
 // convenient base class for Backend*Test.cpp
 // should probably switch names with BackendTestSetup
 class BackendTestBase
-    : public youtilstest::TestBase
+    : public testing::Test
     , public BackendTestSetup
 {
     DECLARE_LOGGER("BackendTestBase");

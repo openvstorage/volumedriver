@@ -15,21 +15,24 @@
 
 #ifndef OPTION_VALIDATORS_H_
 #define OPTION_VALIDATORS_H_
+
+#include "Uri.h"
+
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <boost/optional.hpp>
+
 namespace youtils
 {
 
-struct ExistingFile : boost::optional<boost::filesystem::path>
+struct ExistingFile
+    : boost::optional<boost::filesystem::path>
 {
     ExistingFile(boost::filesystem::path& pth)
         : boost::optional<boost::filesystem::path>(pth)
     {}
 
-    ExistingFile()
-    {}
-
+    ExistingFile() = default;
 };
 
 void
@@ -38,10 +41,25 @@ validate(boost::any& v,
          ExistingFile* out,
          int);
 
+struct MaybeUri
+    : boost::optional<Uri>
+{
+    MaybeUri(const Uri& loc)
+        : boost::optional<Uri>(loc)
+    {}
+
+    MaybeUri() = default;
+};
+
+void
+validate(boost::any& v,
+         const std::vector<std::string>& values,
+         MaybeUri* loc,
+         int);
 }
 
-
 #endif // OPTION_VALIDATORS_H_
+
 // Local Variables: **
 // mode: c++ **
 // End: **

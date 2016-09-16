@@ -20,7 +20,7 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include <youtils/FileUtils.h>
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 
 #include <backend/BackendTestSetup.h>
 
@@ -33,10 +33,9 @@ namespace fs = boost::filesystem;
 namespace mds = metadata_server;
 namespace vd = volumedriver;
 namespace yt = youtils;
-namespace ytt = youtilstest;
 
 class MDSManagerTest
-    : public ytt::TestBase
+    : public testing::Test
     , public be::BackendTestSetup
 {
 public:

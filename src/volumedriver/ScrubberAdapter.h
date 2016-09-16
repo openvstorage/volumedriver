@@ -46,7 +46,8 @@ struct ScrubberAdapter
     const static bool verbose_scrubbing_default;
 
     static ScrubReply
-    scrub(const ScrubWork&,
+    scrub(std::unique_ptr<backend::BackendConfig>,
+          const ScrubWork&,
           const boost::filesystem::path& workdir,
           const uint64_t region_size_exponent = region_size_exponent_default,
           const float fill_ratio = fill_ratio_default,

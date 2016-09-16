@@ -21,11 +21,23 @@
 namespace youtils
 {
 
-struct EtcdUrl
-    : public Url<EtcdUrl>
+struct EtcdUrlTraits
 {
-    using Url<EtcdUrl>::Url;
+    static boost::optional<std::string>
+    scheme()
+    {
+        static const std::string s("etcd");
+        return s;
+    }
+
+    static boost::optional<uint16_t>
+    default_port()
+    {
+        return 2379;
+    }
 };
+
+using EtcdUrl = Url<EtcdUrlTraits>;
 
 }
 

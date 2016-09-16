@@ -16,8 +16,12 @@
 #ifndef __NETWORK_XIO_REQUEST_H_
 #define __NETWORK_XIO_REQUEST_H_
 
+#include "ClientInfo.h"
+
 #include "NetworkXioWork.h"
 #include "NetworkXioCommon.h"
+
+#include <boost/intrusive/slist.hpp>
 
 namespace volumedriverfs
 {
@@ -25,6 +29,7 @@ namespace volumedriverfs
 struct NetworkXioClientData;
 
 struct NetworkXioRequest
+    : public boost::intrusive::list_base_hook<>
 {
     NetworkXioMsgOpcode op;
 
@@ -58,10 +63,12 @@ struct NetworkXioClientData
     xio_connection *conn;
     xio_mempool *mpool;
     std::atomic<bool> disconnected;
+    std::atomic<bool> connection_closed;
     std::atomic<uint64_t> refcnt;
     NetworkXioServer *server;
     NetworkXioIOHandler *ioh;
     std::list<NetworkXioRequest*> done_reqs;
+    ClientInfoTag tag;
 };
 
 } //namespace

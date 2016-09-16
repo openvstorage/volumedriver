@@ -24,8 +24,8 @@
 
 #include <boost/lexical_cast.hpp>
 
-BOOLEAN_ENUM(LRUCloseFiles)
-BOOLEAN_ENUM(LRUFreeMemory)
+VD_BOOLEAN_ENUM(LRUCloseFiles)
+VD_BOOLEAN_ENUM(LRUFreeMemory)
 
 #define OVS_MAGIC_SIGNATURE "4F56535F636E616E616B6F73"
 

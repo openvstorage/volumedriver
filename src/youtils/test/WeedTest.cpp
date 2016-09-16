@@ -15,7 +15,7 @@
 
 #include "../FileUtils.h"
 #include "../System.h"
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 #include <../wall_timer.h>
 #include "../Weed.h"
 
@@ -32,10 +32,10 @@ namespace youtilstest
 {
 using namespace youtils;
 
-class WeedTest : public TestBase
+class WeedTest : public testing::Test
 {};
 
-// class FingerPrintTest : public TestBase
+// class FingerPrintTest : public testing::Test
 // {};
 
 

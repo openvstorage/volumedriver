@@ -34,7 +34,7 @@
 #include <backend/MultiConfig.h>
 #include <backend/S3Config.h>
 
-#define MAKE_PYTHON_BOOLEAN_ENUM(name, doc)     \
+#define MAKE_PYTHON_VD_BOOLEAN_ENUM(name, doc)     \
     enum_<name>(#name, doc)                     \
     .value("F", name::F)                        \
     .value("T", name::T);
@@ -124,7 +124,7 @@ BOOST_PYTHON_MODULE(Backend)
              "param progname, String, program name to use for logging\n")
         .staticmethod("setupFileLogging");
 
-    MAKE_PYTHON_BOOLEAN_ENUM(OverwriteObject,
+    MAKE_PYTHON_VD_BOOLEAN_ENUM(OverwriteObject,
                              "Whether to overwrite an existing object in the backend, values are T and F");
 
     enum_<backend::BackendType>("BackendType",

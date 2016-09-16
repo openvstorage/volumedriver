@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 #include "../Logging.h"
 #include "../PeriodicActionPool.h"
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 #include "../Timer.h"
 
 #include <boost/thread/future.hpp>
@@ -25,7 +25,7 @@ namespace youtilstest
 using namespace youtils;
 
 class PeriodicActionPoolTest
-    : public TestBase
+    : public testing::Test
 {
 protected:
     DECLARE_LOGGER("PeriodicActionPoolTest");

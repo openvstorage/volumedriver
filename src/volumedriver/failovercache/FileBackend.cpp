@@ -96,6 +96,11 @@ FileBackend::add_entries(std::vector<vd::FailOverCacheEntry> entries,
 {
     VERIFY(file_);
 
+    if (not entries.empty())
+    {
+        VERIFY(buf);
+    }
+
     for (const auto& e : entries)
     {
         const vd::ClusterLocation& loc = e.cli_;

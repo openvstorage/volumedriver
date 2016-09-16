@@ -124,7 +124,8 @@ class TestHelperTest(unittest.TestCase):
                                       "hostname%i" % i,
                                       10 * i + 1,
                                       10 * i + 2,
-                                      10 * i + 3) for i in xrange(5)]
+                                      10 * i + 3,
+                                      "rdma://hostname%i:23456" % i) for i in range(5)]
         self.assertEqual(
             cfg_list, PythonTestHelpers.reflect_cluster_node_config_list(cfg_list))
 
@@ -150,3 +151,14 @@ class TestHelperTest(unittest.TestCase):
         vname = "volume"
         self.assertEqual(
             vname, PythonTestHelpers.reflect_maybe_volume_id(vname))
+
+    def test_maybe_chrono_seconds(self):
+        self.assertEqual(None, PythonTestHelpers.reflect_maybe_chrono_seconds(None))
+        self.assertEqual(1234, PythonTestHelpers.reflect_maybe_chrono_seconds(1234))
+
+    def test_dimensioned_value(self):
+        self.assertEqual("1B", PythonTestHelpers.reflect_dimensioned_value("1B"))
+
+    def test_uri(self):
+        s = "tcp://127.0.0.1:1234"
+        self.assertEqual(s, PythonTestHelpers.reflect_uri(s))

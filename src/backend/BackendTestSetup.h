@@ -21,7 +21,7 @@
 
 #include <loki/Typelist.h>
 #include <youtils/Logging.h>
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 #include <youtils/UUID.h>
 
 namespace backend

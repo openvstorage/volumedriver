@@ -153,6 +153,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_connection_pool_capacity,
                                       ShowDocumentation::T,
                                       64);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_connection_pool_shards,
+                                      backend_connection_manager_name,
+                                      "backend_connection_pool_shards",
+                                      "Number of shards for the connection pool, 0 -> one per CPU",
+                                      ShowDocumentation::T,
+                                      1);
+
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_retries_on_error,
                                       backend_connection_manager_name,
                                       "backend_interface_retries_on_error",
@@ -322,6 +329,20 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_transport,
                                       "When backend_type is ALBA: the ALBA connection to use: TCP (default) or RDMA",
                                       ShowDocumentation::T,
                                       alba::proxy_client::Transport::tcp);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_use_rora,
+                                      backend_connection_manager_name,
+                                      "alba_connection_use_rora",
+                                      "Whether to enable Read Optimized RDMA ASD (RORA) support",
+                                      ShowDocumentation::T,
+                                      false);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_rora_manifest_cache_capacity,
+                                      backend_connection_manager_name,
+                                      "alba_connection_rora_manifest_cache_capacity",
+                                      "Capacity of the RORA fetcher's manifest cache",
+                                      ShowDocumentation::T,
+                                      10000ULL);
 
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(bgc_threads,
                                       backend::GarbageCollector::name(),

@@ -70,6 +70,9 @@ public:
     setRequestTimeout(const boost::chrono::seconds) override;
 
     virtual void
+    setBusyLoopDuration(const boost::chrono::microseconds) override;
+
+    virtual void
     removeUpTo(const SCO& sconame) override;
 
     virtual uint64_t

@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 #include "../Generator.h"
 
 namespace youtilstest
@@ -22,7 +22,7 @@ namespace youtilstest
 using namespace youtils;
 
 class ThreadedGeneratorTest
-    : public TestBase
+    : public testing::Test
 {
     DECLARE_LOGGER("ThreadedGeneratorTest");
 
@@ -142,7 +142,7 @@ TEST_F(ThreadedGeneratorTest, testThrowingProducer)
 }
 
 struct PrefetchGeneratorTest
-    : public TestBase
+    : public testing::Test
 {};
 
 TEST_F(PrefetchGeneratorTest, empty)

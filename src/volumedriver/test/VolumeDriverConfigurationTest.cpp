@@ -470,7 +470,7 @@ TEST_P(VolumeDriverConfigurationTest, num_threads)
             LOG_INFO("updated: " << u.parameter_name);
         }
 
-        EXPECT_EQ(43U,
+        EXPECT_EQ(45U,
                   u_rep.no_update_size());
     }
 
@@ -491,7 +491,7 @@ TEST_P(VolumeDriverConfigurationTest, num_threads)
             std::cerr << u.parameter_name << std::endl;
         }
 
-        EXPECT_EQ(44U,
+        EXPECT_EQ(46U,
                   u_rep.no_update_size());
     }
 }

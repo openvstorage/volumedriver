@@ -26,17 +26,16 @@
 #include <boost/serialization/unique_ptr.hpp>
 
 #include <youtils/Serialization.h>
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 
 namespace volumedrivertest
 {
 
 namespace ba = boost::archive;
 namespace vd = volumedriver;
-namespace ytt = youtilstest;
 
 class MetaDataBackendConfigTest
-    : public ytt::TestBase
+    : public testing::Test
 {
 protected:
     template<typename IArchive,

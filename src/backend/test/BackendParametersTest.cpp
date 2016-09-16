@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 #include <youtils/Logging.h>
 #include <youtils/UUID.h>
 
@@ -28,7 +28,7 @@ namespace be = backend;
 namespace yt = youtils;
 
 class BackendParametersTest
-    : public youtilstest::TestBase
+    : public testing::Test
 {
 protected:
     template<typename T>

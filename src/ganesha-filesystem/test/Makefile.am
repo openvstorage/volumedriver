@@ -18,7 +18,6 @@ volumedriverfs_ganesha_test_LDADD = \
 	../../youtils/libyoutils.la \
 	-lnfs \
 	-lfuse3 \
-	-lpython2.7 \
 	$(BUILDTOOLS_LIBS)
 
 volumedriverfs_ganesha_test_SOURCES = \

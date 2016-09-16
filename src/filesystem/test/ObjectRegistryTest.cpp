@@ -16,7 +16,7 @@
 #include "RegistryTestSetup.h"
 
 #include <youtils/InitializedParam.h>
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 #include <youtils/UUID.h>
 
 #include "../FileSystemParameters.h"
@@ -27,9 +27,10 @@
 namespace volumedriverfstest
 {
 
+using namespace volumedriverfs;
+
 namespace be = backend;
 namespace vd = volumedriver;
-namespace vfs = volumedriverfs;
 namespace yt = youtils;
 
 class ObjectRegistryTest
@@ -46,29 +47,48 @@ protected:
     SetUp() override
     {
         RegistryTestSetup::SetUp();
-        object_registry_.reset(new vfs::ObjectRegistry(cluster_id_,
-                                                       node_id_,
-                                                       registry_));
+        object_registry_.reset(new ObjectRegistry(cluster_id_,
+                                                  node_id_,
+                                                  registry_));
     }
 
-    const vfs::ClusterId cluster_id_;
-    const vfs::NodeId node_id_;
-    std::unique_ptr<vfs::ObjectRegistry> object_registry_;
+    std::set<ObjectId>
+    fill(const size_t count)
+    {
+        std::set<ObjectId> vols;
+
+        for (unsigned i = 0; i < count; ++i)
+        {
+            const std::string s(yt::UUID().str());
+            const ObjectId id(s);
+            object_registry_->register_base_volume(id,
+                                                   be::Namespace(s));
+
+            const auto res(vols.insert(id));
+            EXPECT_TRUE(res.second);
+        }
+
+        return vols;
+    }
+
+    const ClusterId cluster_id_;
+    const NodeId node_id_;
+    std::unique_ptr<ObjectRegistry> object_registry_;
 };
 
 TEST_F(ObjectRegistryTest, register_lookup_and_unregister)
 {
-    const vfs::ObjectId vol_id("volume");
+    const ObjectId vol_id("volume");
 
     EXPECT_FALSE(object_registry_->find(vol_id));
     EXPECT_THROW(object_registry_->unregister(vol_id),
-                 vfs::ObjectNotRegisteredException);
+                 ObjectNotRegisteredException);
 
     const be::Namespace nspace;
 
     object_registry_->register_base_volume(vol_id, nspace);
 
-    vfs::ObjectRegistrationPtr reg(object_registry_->find(vol_id));
+    ObjectRegistrationPtr reg(object_registry_->find(vol_id));
     ASSERT_TRUE(reg != nullptr);
 
     EXPECT_EQ(vol_id, reg->volume_id);
@@ -78,7 +98,7 @@ TEST_F(ObjectRegistryTest, register_lookup_and_unregister)
     object_registry_->unregister(vol_id);
     EXPECT_TRUE(object_registry_->find(vol_id) == nullptr);
     EXPECT_THROW(object_registry_->find_throw(vol_id),
-                 vfs::ObjectNotRegisteredException);
+                 ObjectNotRegisteredException);
 }
 
 TEST_F(ObjectRegistryTest, destruction)
@@ -87,12 +107,12 @@ TEST_F(ObjectRegistryTest, destruction)
 
     {
         const be::Namespace nspace;
-        const vfs::ObjectId oid("volume");
+        const ObjectId oid("volume");
 
         object_registry_->register_base_volume(oid, nspace);
     }
 
-    const vfs::ObjectId tmpl("template");
+    const ObjectId tmpl("template");
 
     {
         const be::Namespace nspace;
@@ -103,7 +123,7 @@ TEST_F(ObjectRegistryTest, destruction)
 
     {
         const be::Namespace nspace;
-        const vfs::ObjectId oid("clone");
+        const ObjectId oid("clone");
 
         object_registry_->register_clone(oid,
                                          nspace,
@@ -113,7 +133,7 @@ TEST_F(ObjectRegistryTest, destruction)
 
     {
         const be::Namespace nspace;
-        const vfs::ObjectId oid("file");
+        const ObjectId oid("file");
 
         object_registry_->register_file(oid);
     }
@@ -127,15 +147,15 @@ TEST_F(ObjectRegistryTest, destruction)
 
 TEST_F(ObjectRegistryTest, reregister)
 {
-    const vfs::ObjectId vol_id("volume");
+    const ObjectId vol_id("volume");
     const be::Namespace nspace;
 
     object_registry_->register_base_volume(vol_id, nspace);
     EXPECT_THROW(object_registry_->register_base_volume(vol_id,
                                                         nspace),
-                 vfs::ObjectAlreadyRegisteredException);
+                 ObjectAlreadyRegisteredException);
 
-    const vfs::ObjectRegistrationPtr reg(object_registry_->find(vol_id));
+    const ObjectRegistrationPtr reg(object_registry_->find(vol_id));
     ASSERT_TRUE(reg != nullptr);
 
     EXPECT_EQ(vol_id, reg->volume_id);
@@ -148,48 +168,48 @@ TEST_F(ObjectRegistryTest, reregister)
 
 TEST_F(ObjectRegistryTest, migrate_inexistent)
 {
-    const vfs::ObjectId vol_id("volume");
+    const ObjectId vol_id("volume");
 
     EXPECT_THROW(object_registry_->migrate(vol_id,
-                                           vfs::NodeId("from"),
-                                           vfs::NodeId("to")),
-                 vfs::ObjectNotRegisteredException);
+                                           NodeId("from"),
+                                           NodeId("to")),
+                 ObjectNotRegisteredException);
 }
 
 TEST_F(ObjectRegistryTest, migrate_from_wrong_node)
 {
-    const vfs::ObjectId vol_id("volume");
+    const ObjectId vol_id("volume");
     const be::Namespace nspace;
 
     object_registry_->register_base_volume(vol_id,
                                            nspace);
 
-    const vfs::NodeId node_id("from");
+    const NodeId node_id("from");
     EXPECT_TRUE(node_id != object_registry_->node_id());
 
     EXPECT_THROW(object_registry_->migrate(vol_id,
                                            node_id,
                                            object_registry_->node_id()),
-                 vfs::WrongOwnerException);
+                 WrongOwnerException);
 }
 
 TEST_F(ObjectRegistryTest, migrate)
 {
-    const vfs::NodeId node("othernode");
+    const NodeId node("othernode");
     ASSERT_TRUE(object_registry_->node_id() != node);
 
-    vfs::ObjectRegistry registry(object_registry_->cluster_id(),
-                                 node,
-                                 registry_);
+    ObjectRegistry registry(object_registry_->cluster_id(),
+                            node,
+                            registry_);
 
     EXPECT_TRUE(registry.node_id() == node);
 
-    const vfs::ObjectId vol_id("volume");
+    const ObjectId vol_id("volume");
     const be::Namespace nspace;
 
     registry.register_base_volume(vol_id, nspace);
 
-    vfs::ObjectRegistrationPtr reg(object_registry_->find(vol_id));
+    ObjectRegistrationPtr reg(object_registry_->find(vol_id));
     ASSERT_TRUE(reg != nullptr);
 
     EXPECT_TRUE(reg->node_id == registry.node_id());
@@ -198,7 +218,7 @@ TEST_F(ObjectRegistryTest, migrate)
 
     object_registry_->migrate(vol_id, node, object_registry_->node_id());
 
-    vfs::ObjectRegistrationPtr new_reg(registry.find(vol_id));
+    ObjectRegistrationPtr new_reg(registry.find(vol_id));
     ASSERT_TRUE(new_reg != nullptr);
 
     EXPECT_TRUE(new_reg->node_id == object_registry_->node_id());
@@ -210,23 +230,23 @@ TEST_F(ObjectRegistryTest, migrate)
 
 TEST_F(ObjectRegistryTest, unregister_from_wrong_node)
 {
-    const vfs::NodeId node("othernode");
+    const NodeId node("othernode");
     ASSERT_TRUE(object_registry_->node_id() != node);
 
-    vfs::ObjectRegistry registry(object_registry_->cluster_id(),
-                                 node,
-                                 registry_);
+    ObjectRegistry registry(object_registry_->cluster_id(),
+                            node,
+                            registry_);
 
     EXPECT_TRUE(registry.node_id() == node);
 
-    const vfs::ObjectId vol_id("volume");
+    const ObjectId vol_id("volume");
     const be::Namespace nspace;
 
     registry.register_base_volume(vol_id, nspace);
 
     EXPECT_TRUE(object_registry_->find(vol_id) != nullptr);
     EXPECT_THROW(object_registry_->unregister(vol_id),
-                 vfs::WrongOwnerException);
+                 WrongOwnerException);
 
     registry.unregister(vol_id);
 }
@@ -234,20 +254,9 @@ TEST_F(ObjectRegistryTest, unregister_from_wrong_node)
 TEST_F(ObjectRegistryTest, list_registrations)
 {
     const unsigned count = 1000;
-    std::set<vfs::ObjectId> vols;
+    std::set<ObjectId> vols(fill(count));
 
-    for (unsigned i = 0; i < count; ++i)
-    {
-        const std::string s(yt::UUID().str());
-        const vfs::ObjectId id(s);
-        object_registry_->register_base_volume(id,
-                                   be::Namespace(s));
-
-        const auto res(vols.insert(id));
-        EXPECT_TRUE(res.second);
-    }
-
-    EXPECT_EQ(count, vols.size());
+    ASSERT_EQ(count, vols.size());
 
     const auto voll(object_registry_->list());
 
@@ -261,57 +270,83 @@ TEST_F(ObjectRegistryTest, list_registrations)
     EXPECT_TRUE(vols.empty());
 }
 
+TEST_F(ObjectRegistryTest, get_all_registrations)
+{
+    ASSERT_TRUE(object_registry_->get_all_registrations(1).empty());
+
+    const size_t count = 128;
+    ASSERT_LT(0, count);
+
+    std::set<ObjectId> ids(fill(count));
+    ASSERT_EQ(count,
+              ids.size());
+
+    const size_t batch_size = count - 1;
+    std::vector<ObjectRegistrationPtr> regv(object_registry_->get_all_registrations(batch_size));
+
+    ASSERT_EQ(count,
+              regv.size());
+
+    for (const auto& reg : regv)
+    {
+        EXPECT_EQ(1U,
+                  ids.erase(reg->volume_id)) << "volume id: " << reg->volume_id;
+    }
+
+    EXPECT_TRUE(ids.empty());
+}
+
 TEST_F(ObjectRegistryTest, tree_config)
 {
-    EXPECT_EQ(vfs::ObjectType::Volume,
-              vfs::ObjectTreeConfig::makeBase().object_type);
+    EXPECT_EQ(ObjectType::Volume,
+              ObjectTreeConfig::makeBase().object_type);
 
-    EXPECT_EQ(vfs::ObjectType::Template,
-              vfs::ObjectTreeConfig::makeTemplate(boost::none).object_type);
+    EXPECT_EQ(ObjectType::Template,
+              ObjectTreeConfig::makeTemplate(boost::none).object_type);
 
-    EXPECT_EQ(vfs::ObjectType::Volume,
-              vfs::ObjectTreeConfig::makeClone(vfs::ObjectId("some_id")).object_type);
+    EXPECT_EQ(ObjectType::Volume,
+              ObjectTreeConfig::makeClone(ObjectId("some_id")).object_type);
 
-    EXPECT_EQ(vfs::ObjectType::File,
-              vfs::ObjectTreeConfig::makeFile().object_type);
+    EXPECT_EQ(ObjectType::File,
+              ObjectTreeConfig::makeFile().object_type);
 
     // the following two are rather silly
-    EXPECT_EQ(vfs::ObjectType::Volume,
-              vfs::ObjectTreeConfig::makeParent(vfs::ObjectType::Volume,
-                                                vfs::ObjectTreeConfig::Descendants(),
-                                                boost::none).object_type);
-    EXPECT_EQ(vfs::ObjectType::Template,
-              vfs::ObjectTreeConfig::makeParent(vfs::ObjectType::Template,
-                                                vfs::ObjectTreeConfig::Descendants(),
-                                                boost::none).object_type);
+    EXPECT_EQ(ObjectType::Volume,
+              ObjectTreeConfig::makeParent(ObjectType::Volume,
+                                           ObjectTreeConfig::Descendants(),
+                                           boost::none).object_type);
+    EXPECT_EQ(ObjectType::Template,
+              ObjectTreeConfig::makeParent(ObjectType::Template,
+                                           ObjectTreeConfig::Descendants(),
+                                           boost::none).object_type);
 }
 
 TEST_F(ObjectRegistryTest, unique_prefix)
 {
-    const vfs::ClusterId cluster_id(yt::UUID().str());
-    vfs::ObjectRegistry oregistry(cluster_id,
-                                  node_id_,
-                                  registry_);
+    const ClusterId cluster_id(yt::UUID().str());
+    ObjectRegistry oregistry(cluster_id,
+                             node_id_,
+                             registry_);
 
     EXPECT_NE(oregistry.prefix(), object_registry_->prefix());
 }
 
 TEST_F(ObjectRegistryTest, foc_config_mode)
 {
-    const vfs::ObjectId vol_id("volume");
+    const ObjectId vol_id("volume");
     const be::Namespace nspace;
     object_registry_->register_base_volume(vol_id, nspace);
 
-    vfs::FailOverCacheConfigMode foc_cm = object_registry_->find(vol_id)->foc_config_mode;
-    EXPECT_TRUE(vfs::FailOverCacheConfigMode::Automatic == foc_cm);
+    FailOverCacheConfigMode foc_cm = object_registry_->find(vol_id)->foc_config_mode;
+    EXPECT_TRUE(FailOverCacheConfigMode::Automatic == foc_cm);
 
-    object_registry_->set_foc_config_mode(vol_id, vfs::FailOverCacheConfigMode::Manual);
+    object_registry_->set_foc_config_mode(vol_id, FailOverCacheConfigMode::Manual);
     foc_cm = object_registry_->find(vol_id)->foc_config_mode;
-    EXPECT_TRUE(vfs::FailOverCacheConfigMode::Manual == foc_cm);
+    EXPECT_TRUE(FailOverCacheConfigMode::Manual == foc_cm);
 
-    object_registry_->set_foc_config_mode(vol_id, vfs::FailOverCacheConfigMode::Automatic);
+    object_registry_->set_foc_config_mode(vol_id, FailOverCacheConfigMode::Automatic);
     foc_cm = object_registry_->find(vol_id)->foc_config_mode;
-    EXPECT_TRUE(vfs::FailOverCacheConfigMode::Automatic == foc_cm);
+    EXPECT_TRUE(FailOverCacheConfigMode::Automatic == foc_cm);
 
     // not much else to do at this level
 

@@ -147,6 +147,7 @@ try
           , dtl_throttle_usecs(pt)
           , dtl_queue_depth(pt)
           , dtl_write_trigger(pt)
+          , dtl_busy_loop_usecs(pt)
           , number_of_scos_in_tlog(pt)
           , non_disposable_scos_factor(pt)
           , default_cluster_size(pt)
@@ -481,8 +482,20 @@ VolManager::getCurrentVolumesTLogRequirements()
 
         LOG_TRACE("restarting volume: " << v.second.id_ <<
                   ", sco size: " << s <<
-                  ", tlog miltiplier: " << t);
+                  ", tlog multiplier: " << t);
+
+        // g++ (observed with 4.9) emits a false positive warning for this one in release builds,
+        // cf. https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47679
+        // /opt/vmachines/jenkins_work/workspace/volumedriver-no-dedup-compile-warnings-ubuntu-14.04/volumedriver-core/src/volumedriver/VolManager.cpp:486:18: warning: '*((void*)(& t)+4).volumedriver::TLogMultiplier::t' may be used uninitialized in this function [-Wmaybe-uninitialized]
+        //  res += s * ((t == boost::none) ? number_of_scos_in_tlog.value() : t.get());
+        //           ^
+#if defined(__GNUC__) && __GNUC__ <= 4 && GNUC_MINOR__ <= 9
+        PRAGMA_IGNORE_WARNING_BEGIN("-Wmaybe-uninitialized");
+#endif
         res += s * (t ? *t : number_of_scos_in_tlog.value());
+#if defined(__GNUC__) && __GNUC__ <= 4 && GNUC_MINOR__ <= 9
+        PRAGMA_IGNORE_WARNING_END;
+#endif
     }
 
     return res;
@@ -1794,6 +1807,7 @@ VolManager::update(const boost::property_tree::ptree& pt,
     dtl_throttle_usecs.update(pt, report);
     dtl_queue_depth.update(pt, report);
     dtl_write_trigger.update(pt, report);
+    dtl_busy_loop_usecs.update(pt, report);
 
     freespace_check_interval.update(pt, report);
     dtl_check_interval_in_seconds.update(pt, report);
@@ -1836,6 +1850,7 @@ VolManager::persist(boost::property_tree::ptree& pt,
     dtl_throttle_usecs.persist(pt, reportDefault);
     dtl_queue_depth.persist(pt, reportDefault);
     dtl_write_trigger.persist(pt, reportDefault);
+    dtl_busy_loop_usecs.persist(pt, reportDefault);
 
     number_of_scos_in_tlog.persist(pt, reportDefault);
     non_disposable_scos_factor.persist(pt, reportDefault);

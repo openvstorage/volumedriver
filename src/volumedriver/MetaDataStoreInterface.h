@@ -32,8 +32,8 @@ class RelocationReaderFactory;
 class TLogReaderInterface;
 class VolumeInterface;
 
-BOOLEAN_ENUM(DeleteLocalArtefacts);
-BOOLEAN_ENUM(DeleteGlobalArtefacts);
+VD_BOOLEAN_ENUM(DeleteLocalArtefacts);
+VD_BOOLEAN_ENUM(DeleteGlobalArtefacts);
 
 MAKE_EXCEPTION(MetaDataStoreException, fungi::IOException);
 MAKE_EXCEPTION(UpdateMetaDataBackendConfigException, MetaDataStoreException);

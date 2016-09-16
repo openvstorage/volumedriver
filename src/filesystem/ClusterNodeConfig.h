@@ -25,6 +25,7 @@
 #include <youtils/Assert.h>
 #include <youtils/OurStrongTypedef.h>
 #include <youtils/Serialization.h>
+#include <youtils/Uri.h>
 
 OUR_STRONG_ARITHMETIC_TYPEDEF(uint16_t, MessagePort, volumedriverfs);
 OUR_STRONG_ARITHMETIC_TYPEDEF(uint16_t, XmlRpcPort, volumedriverfs);
@@ -35,16 +36,20 @@ namespace volumedriverfs
 
 struct ClusterNodeConfig
 {
+    using MaybeUri = boost::optional<youtils::Uri>;
+
     ClusterNodeConfig(const NodeId& id,
                       const std::string& h,
                       MessagePort mport,
                       XmlRpcPort xport,
-                      FailoverCachePort fport)
+                      FailoverCachePort fport,
+                      const MaybeUri& nw_uri)
         : vrouter_id(id)
         , host(h)
         , message_port(mport)
         , xmlrpc_port(xport)
         , failovercache_port(fport)
+        , network_server_uri(nw_uri)
     {
         //we don't allow empty node_id's as the empty string is
         //used in our python API as "don't care"
@@ -59,6 +64,7 @@ struct ClusterNodeConfig
         , message_port(other.message_port)
         , xmlrpc_port(other.xmlrpc_port)
         , failovercache_port(other.failovercache_port)
+        , network_server_uri(other.network_server_uri)
     {}
 
     ClusterNodeConfig&
@@ -71,6 +77,7 @@ struct ClusterNodeConfig
             const_cast<MessagePort&>(message_port) = other.message_port;
             const_cast<XmlRpcPort&>(xmlrpc_port) = other.xmlrpc_port;
             const_cast<FailoverCachePort&>(failovercache_port) = other.failovercache_port;
+            const_cast<MaybeUri&>(network_server_uri) = other.network_server_uri;
         }
 
         return *this;
@@ -84,7 +91,8 @@ struct ClusterNodeConfig
             (host == other.host) and
             (message_port == other.message_port) and
             (xmlrpc_port == other.xmlrpc_port) and
-            (failovercache_port == other.failovercache_port);
+            (failovercache_port == other.failovercache_port) and
+            (network_server_uri == other.network_server_uri);
     }
 
     bool
@@ -93,17 +101,45 @@ struct ClusterNodeConfig
         return not (*this == other);
     }
 
+    BOOST_SERIALIZATION_SPLIT_MEMBER();
+
     template<class Archive>
     void
-    serialize(Archive& ar, const unsigned version)
+    load(Archive& ar, const unsigned version)
     {
-        CHECK_VERSION(version, 1);
+        if (version > 2)
+        {
+            THROW_SERIALIZATION_ERROR(version, 2, 1);
+        }
 
         ar & const_cast<NodeId&>(vrouter_id);
         ar & const_cast<std::string&>(host);
         ar & static_cast<uint16_t&>(const_cast<MessagePort&>(message_port));
         ar & static_cast<uint16_t&>(const_cast<XmlRpcPort&>(xmlrpc_port));
         ar & static_cast<uint16_t&>(const_cast<FailoverCachePort&>(failovercache_port));
+
+        if (version > 1)
+        {
+            ar & const_cast<MaybeUri&>(network_server_uri);
+        }
+        else
+        {
+            const_cast<MaybeUri&>(network_server_uri) = boost::none;
+        }
+    }
+
+    template<class Archive>
+    void
+    save(Archive& ar, const unsigned version) const
+    {
+        CHECK_VERSION(version, 2);
+
+        ar & vrouter_id;
+        ar & host;
+        ar & static_cast<const uint16_t&>(message_port);
+        ar & static_cast<const uint16_t&>(xmlrpc_port);
+        ar & static_cast<const uint16_t&>(failovercache_port);
+        ar & network_server_uri;
     }
 
     // for python consumption
@@ -115,6 +151,7 @@ struct ClusterNodeConfig
     const MessagePort message_port;
     const XmlRpcPort xmlrpc_port;
     const FailoverCachePort failovercache_port;
+    const MaybeUri network_server_uri;
 };
 
 std::ostream&
@@ -125,7 +162,7 @@ using ClusterNodeConfigs = std::vector<ClusterNodeConfig>;
 
 }
 
-BOOST_CLASS_VERSION(volumedriverfs::ClusterNodeConfig, 1);
+BOOST_CLASS_VERSION(volumedriverfs::ClusterNodeConfig, 2);
 
 namespace boost
 {
@@ -145,7 +182,8 @@ load_construct_data(Archive& ar,
                                   "",
                                   MessagePort(0),
                                   XmlRpcPort(0),
-                                  FailoverCachePort(0));
+                                  FailoverCachePort(0),
+                                  youtils::Uri());
 }
 
 }

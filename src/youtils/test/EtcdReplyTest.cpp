@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "../EtcdReply.h"
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 
 #include <boost/lexical_cast.hpp>
 
@@ -25,7 +25,7 @@ using namespace youtils;
 using namespace std::literals::string_literals;
 
 class EtcdReplyTest
-    : public TestBase
+    : public testing::Test
 {};
 
 // json snippets taken from https://coreos.com/etcd/docs/0.4.7/etcd-api/

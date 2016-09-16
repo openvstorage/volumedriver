@@ -79,9 +79,9 @@ public:
     explicit RedisQueue(const RedisUrl& url,
                         const int timeout)
     : _context(nullptr)
-    , _host(url.host)
-    , _port(url.port)
-    , _key(url.key)
+    , _host(url.host())
+    , _port(url.port() ? *url.port() : 0)
+    , _key(url.path())
     , _timeout(timeout)
     {
         connect();

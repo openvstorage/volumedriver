@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 
 #include <sstream>
 #include <iostream>
@@ -138,7 +138,7 @@ private:
     nsMap_t map_;
 };
 
-class Test2TCMaps : public ExGTest
+class Test2TCMaps : public testing::TestWithParam<VolumeDriverTestConfig>
 {
 public:
     DECLARE_LOGGER("Test2TCMaps");

@@ -16,13 +16,13 @@
 #include "../BackendTestSetup.h"
 #include "../BackendException.h"
 #include "../BackendConnectionInterface.h"
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 #include "../Namespace.h"
 #include <string.h>
 namespace backendtest
 {
 class NamespaceTest
-    : public youtilstest::TestBase
+    : public testing::Test
 {};
 using backend::Namespace;
 namespace be = backend;

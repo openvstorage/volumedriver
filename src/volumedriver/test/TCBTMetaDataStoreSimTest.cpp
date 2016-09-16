@@ -20,20 +20,20 @@
 #include <cassert>
 // Y42 Make hell freeze over by the end of the week.
 #ifdef HELL_FREEZES_OVER
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 
 #include "TCBTMetaDataStoreSim.h"
 #include "MetaDataStoreInterface.h"
 
 namespace volumedriver {
 
-class TCBTMetaDataStoreSimTest : public ExGTest
+class TCBTMetaDataStoreSimTest : public testing::TestWithParam<VolumeDriverTestConfig>
 {
 protected:
     void SetUp()
     {
         std::string testCase(testing::UnitTest::GetInstance()->current_test_info()->test_case_name());
-	pathPfx_ = getTempPath(testCase);
+	pathPfx_ = yt::FileUtils::temp_path(testCase);
         removeTestDir(pathPfx_);
         fungi::File::recursiveMkDir("/", pathPfx_);
         md_.reset(new TCBTMetaDataStoreSim<14>(pathPfx_, 0));

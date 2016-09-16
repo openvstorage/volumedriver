@@ -65,7 +65,16 @@ VolumeDriverComponent::read_config(std::stringstream& ss,
 
     if (verify_config == VerifyConfig::T)
     {
-        VolumeDriverComponent::verify_property_tree(pt);
+        try
+        {
+            VolumeDriverComponent::verify_property_tree(pt);
+        }
+        catch (ip::ParameterInfo::UnknownParameterException&)
+        {
+            // We do want the ptree verification to log unknown params
+            // but we don't want to bail out for backward / forward
+            // compatibility reasons.
+        }
     }
 
     return pt;

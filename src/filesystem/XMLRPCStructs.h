@@ -340,9 +340,9 @@ struct XMLRPCClusterCacheHandleInfo
     std::vector<uint64_t> map_stats;
 
     XMLRPCClusterCacheHandleInfo(const volumedriver::ClusterCacheHandle hdl,
-                                    const uint64_t cnt,
-                                    const boost::optional<uint64_t> max,
-                                    const std::vector<uint64_t>& stats)
+                                 const uint64_t cnt,
+                                 const boost::optional<uint64_t> max,
+                                 const std::vector<uint64_t>& stats)
         : cluster_cache_handle(hdl)
         , entries(cnt)
         , max_entries(max)

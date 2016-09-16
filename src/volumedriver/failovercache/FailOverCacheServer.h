@@ -77,6 +77,7 @@ private:
     std::string addr_;
     uint16_t port_;
     volumedriver::FailOverCacheTransport transport_;
+    unsigned busy_loop_usecs_;
     bool running_;
 
     // *ONLY* for testers. Really. I mean it.

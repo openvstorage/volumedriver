@@ -1016,7 +1016,7 @@ TEST_P(cases, DISABLED_test_snapshot_persistor)
 
     std::cout << "deserialize wall: " << wt.elapsed() << std::endl;
 
-    const fs::path tmp(getTempPath("snaps.xml"));
+    const fs::path tmp(yt::FileUtils::temp_path("snaps.xml"));
     ALWAYS_CLEANUP_FILE(tmp);
 
     wt.restart();

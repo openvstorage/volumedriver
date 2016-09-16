@@ -31,6 +31,7 @@
 
 #include <youtils/Assert.h>
 #include <youtils/ScopeExit.h>
+#include <youtils/Timer.h>
 
 namespace failovercache
 {
@@ -40,18 +41,22 @@ using namespace volumedriver;
 
 FailOverCacheProtocol::FailOverCacheProtocol(std::unique_ptr<fungi::Socket> sock,
                                              fungi::SocketServer& /*parentServer*/,
-                                             FailOverCacheAcceptor& fact)
+                                             FailOverCacheAcceptor& fact,
+                                             const boost::chrono::microseconds busy_loop_duration)
     : sock_(std::move(sock))
     , stream_(*sock_)
     , fact_(fact)
     , use_rs_(sock_->isRdma())
+    , stop_(false)
+    , busy_loop_duration_(busy_loop_duration)
 {
+    sock_->setNonBlocking();
     if(pipe(pipes_) != 0)
     {
         stream_.close();
         throw fungi::IOException("could not not open pipe");
     }
-    nfds_ = std::max(sock_->fileno(), pipes_[0]) + 1;
+
     thread_ = new fungi::Thread(*this,
                                 true);
 };
@@ -82,11 +87,75 @@ void FailOverCacheProtocol::start()
 
 void FailOverCacheProtocol::stop()
 {
+    stop_ = true;
     ssize_t ret;
     ret = write(pipes_[1],"a",1);
     if(ret < 0) {
     	LOG_ERROR("Failed to send stop request to thread: " << strerror(errno));
     }
+}
+
+bool
+FailOverCacheProtocol::poll_(int32_t& cmd)
+{
+    struct pollfd fds[2];
+    fds[0].fd = sock_->fileno();
+    fds[1].fd = pipes_[0];
+
+    fds[0].events = POLLIN | POLLPRI;
+    fds[1].events = POLLIN | POLLPRI;
+    fds[0].revents = POLLIN | POLLPRI;
+    fds[1].revents = POLLIN | POLLPRI;
+
+    int res = 0;
+
+    yt::SteadyTimer t;
+
+    while (not stop_)
+    {
+        if (t.elapsed() < busy_loop_duration_)
+        {
+            res = rs_recv(sock_->fileno(), &cmd, 0, 0);
+            if (res < 0)
+            {
+                if (errno == EAGAIN or errno == EINTR)
+                {
+                    continue;
+                }
+                else
+                {
+                    LOG_ERROR("Error in rs_recv: " << strerror(errno));
+                    throw fungi::IOException("Error in rs_recv");
+                }
+            }
+            ASSERT(res == 0);
+        }
+        else
+        {
+            res = rs_poll(fds, 2, -1);
+            ASSERT(res != 0);
+            if (res < 0)
+            {
+                res = -errno;
+                if (res != -EINTR)
+                {
+                    LOG_ERROR("Error in poll: " << strerror(-res));
+                    throw fungi::IOException("Error in poll");
+                }
+            }
+            else if (fds[1].revents or stop_)
+            {
+                break;
+            }
+        }
+
+        stream_ >> fungi::IOBaseStream::cork;
+        stream_ >> cmd;
+        return true;
+    }
+
+    LOG_INFO("Stop requested");
+    return false;
 }
 
 void
@@ -100,40 +169,10 @@ FailOverCacheProtocol::run()
 
             try
             {
-                struct pollfd fds[2];
-                fds[0].fd = sock_->fileno();
-                fds[1].fd = pipes_[0];
-
-                fds[0].events = POLLIN | POLLPRI;
-                fds[1].events = POLLIN | POLLPRI;
-                fds[0].revents = POLLIN | POLLPRI;
-                fds[1].revents = POLLIN | POLLPRI;
-
-                int res = rs_poll(fds, 2, -1);
-
-                if(res < 0)
+                if (not poll_(com))
                 {
-                    if(errno == EINTR)
-                    {
-                        continue;
-                    }
-                    else
-                    {
-                        LOG_ERROR("Error in select");
-                        throw fungi::IOException("Error in select");
-                    }
-                }
-                else if(fds[1].revents)
-                {
-                    LOG_INFO("Stop Requested, breaking out main loop");
                     break;
                 }
-                else
-                {
-                    stream_ >> fungi::IOBaseStream::cork;
-                    stream_ >> com;
-                }
-
             }
             CATCH_STD_ALL_EWHAT({
                     LOG_INFO("Reading command from socked failed, will exit this thread: " << EWHAT);
@@ -142,7 +181,6 @@ FailOverCacheProtocol::run()
 
             switch (com)
             {
-
             case volumedriver::Register:
                 LOG_TRACE("Executing Register");
                 register_();

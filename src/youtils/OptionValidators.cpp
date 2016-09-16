@@ -13,10 +13,13 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "EtcdUrl.h"
 #include "OptionValidators.h"
 
 namespace youtils
 {
+
+using namespace boost::program_options;
 namespace fs = ::boost::filesystem;
 
 void
@@ -25,7 +28,6 @@ validate(boost::any& v,
          ExistingFile* /* out */,
          int)
 {
-    using namespace boost::program_options;
     validators::check_first_occurrence(v);
     const std::string& s = validators::get_single_string(values);
     if(s.empty())
@@ -45,4 +47,29 @@ validate(boost::any& v,
         throw validation_error(validation_error::invalid_option_value);
     }
 }
+
+void
+validate(boost::any& v,
+         const std::vector<std::string>& values,
+         MaybeUri* /* out */,
+         int)
+{
+    validators::check_first_occurrence(v);
+    const std::string& s = validators::get_single_string(values);
+    if(s.empty())
+    {
+        throw validation_error(validation_error::invalid_option_value);
+    }
+
+    try
+    {
+        const Uri u(boost::lexical_cast<Uri>(s));
+        v = boost::any(MaybeUri(u));
+    }
+    catch (...)
+    {
+        throw validation_error(validation_error::invalid_option_value);
+    }
+}
+
 }

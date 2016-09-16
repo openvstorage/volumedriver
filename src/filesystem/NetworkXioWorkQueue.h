@@ -16,6 +16,10 @@
 #ifndef NETWORK_XIO_WORKQUEUE_H_
 #define NETWORK_XIO_WORKQUEUE_H_
 
+#include "NetworkXioRequest.h"
+
+#include <boost/thread/lock_guard.hpp>
+#include <youtils/SpinLock.h>
 #include <youtils/IOException.h>
 
 #include <mutex>
@@ -25,11 +29,6 @@
 #include <thread>
 #include <chrono>
 
-#include <boost/thread/lock_guard.hpp>
-#include <youtils/SpinLock.h>
-
-#include "NetworkXioRequest.h"
-
 namespace volumedriverfs
 {
 
@@ -38,7 +37,9 @@ MAKE_EXCEPTION(WorkQueueThreadsException, Exception);
 class NetworkXioWorkQueue
 {
 public:
-    NetworkXioWorkQueue(const std::string& name, EventFD& evfd_)
+    NetworkXioWorkQueue(const std::string& name,
+                        EventFD& evfd_,
+                        unsigned int wq_max_threads)
     : name_(name)
     , nr_threads_(0)
     , nr_queued_work(0)
@@ -46,6 +47,7 @@ public:
     , stopping(false)
     , stopped(false)
     , evfd(evfd_)
+    , max_threads(wq_max_threads)
     {
         int ret = create_workqueue_threads(1);
         if (ret < 0)
@@ -104,8 +106,8 @@ public:
     get_finished()
     {
         boost::lock_guard<decltype(finished_lock)> lock_(finished_lock);
-        NetworkXioRequest *req = finished.front();
-        finished.pop();
+        NetworkXioRequest *req = &finished_list.front();
+        finished_list.pop_front();
         return req;
     }
 
@@ -113,7 +115,7 @@ public:
     is_finished_empty()
     {
         boost::lock_guard<decltype(finished_lock)> lock_(finished_lock);
-        return finished.empty();
+        return finished_list.empty();
     }
 private:
     DECLARE_LOGGER("NetworkXioWorkQueue");
@@ -126,7 +128,7 @@ private:
     std::queue<NetworkXioRequest*> inflight_queue;
 
     mutable fungi::SpinLock finished_lock;
-    std::queue<NetworkXioRequest*> finished;
+    boost::intrusive::list<NetworkXioRequest> finished_list;
 
     std::atomic<size_t> nr_queued_work;
 
@@ -136,10 +138,11 @@ private:
     bool stopping;
     bool stopped;
     EventFD& evfd;
+    unsigned int max_threads;
 
-    void xstop_loop(NetworkXioWorkQueue *wq)
+    void xstop_loop()
     {
-        wq->evfd.writefd();
+        evfd.writefd();
     }
 
     std::chrono::steady_clock::time_point
@@ -148,10 +151,11 @@ private:
         return std::chrono::steady_clock::now();
     }
 
-    size_t
+    unsigned int
     get_max_wq_depth()
     {
-        return std::thread::hardware_concurrency();
+        return std::min(max_threads,
+                        std::thread::hardware_concurrency());
     }
 
     bool
@@ -188,10 +192,9 @@ private:
             {
                 std::thread thr([&](){
                     auto fp = std::bind(&NetworkXioWorkQueue::worker_routine,
-                                        this,
-                                        std::placeholders::_1);
+                                        this);
                     pthread_setname_np(pthread_self(), name_.c_str());
-                    fp(this);
+                    fp();
                 });
                 thr.detach();
                 nr_threads_++;
@@ -206,42 +209,41 @@ private:
     }
 
     void
-    worker_routine(void *arg)
+    worker_routine()
     {
-        NetworkXioWorkQueue *wq = reinterpret_cast<NetworkXioWorkQueue*>(arg);
-
         NetworkXioRequest *req;
         while (true)
         {
-            std::unique_lock<std::mutex> lock_(wq->inflight_lock);
-            if (wq->need_to_shrink())
+            std::unique_lock<std::mutex> lock_(inflight_lock);
+            if (need_to_shrink())
             {
-                wq->nr_threads_--;
+                nr_threads_--;
                 lock_.unlock();
                 break;
             }
 retry:
-            if (wq->inflight_queue.empty())
+            if (inflight_queue.empty())
             {
-                wq->inflight_cond.wait(lock_);
-                if (wq->stopping)
+                inflight_cond.wait(lock_);
+                if (stopping)
                 {
-                    wq->nr_threads_--;
+                    nr_threads_--;
                     break;
                 }
                 goto retry;
             }
-            req = wq->inflight_queue.front();
-            wq->inflight_queue.pop();
+            req = inflight_queue.front();
+            inflight_queue.pop();
             lock_.unlock();
+            queued_work_dec();
             if (req->work.func)
             {
                 req->work.func(&req->work);
             }
-            wq->finished_lock.lock();
-            wq->finished.push(req);
-            wq->finished_lock.unlock();
-            xstop_loop(wq);
+            finished_lock.lock();
+            finished_list.push_back(*req);
+            finished_lock.unlock();
+            xstop_loop();
         }
     }
 };

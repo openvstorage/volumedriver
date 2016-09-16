@@ -21,21 +21,23 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include <youtils/Assert.h>
+#include <youtils/ConfigFetcher.h>
 #include <youtils/Logging.h>
+#include <youtils/OptionValidators.h>
 
-#include <../ConfigFetcher.h>
 #include <../ConfigHelper.h>
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 namespace vfs = volumedriverfs;
+namespace yt = youtils;
 
 // Not using MainHelper as it only has 2 args itself and routes the rest through.
 int
 main(int argc,
      char** argv)
 {
-    std::string config_location;
+    yt::MaybeUri config_location;
     fs::path failovercache_executable;
     std::vector<std::string> unparsed_options;
     po::options_description desc;
@@ -50,10 +52,10 @@ main(int argc,
          po::value<fs::path>(&failovercache_executable)->default_value("failovercache"),
          "path to the failovercache executable")
         ("config",
-         po::value<std::string>(&config_location),
+         po::value<yt::MaybeUri>(&config_location),
          "volumedriverfs (json) config file / etcd URL")
         ("config-file,C",
-         po::value<std::string>(&config_location),
+         po::value<yt::MaybeUri>(&config_location),
          "volumedriverfs (json) config file (deprecated, use --config instead!)");
 
     {
@@ -98,14 +100,14 @@ main(int argc,
     //
     // LOG_INFO("Parsing the property tree in " << config_location_);
 
-    if (config_location.empty())
+    if (not config_location)
     {
         std::cerr << "No config location specified" << std::endl;
         return 1;
     }
 
-    vfs::ConfigFetcher config_fetcher(config_location);
-    const vfs::ConfigHelper argument_helper(config_fetcher(VerifyConfig::F));
+    std::unique_ptr<yt::ConfigFetcher> config_fetcher(yt::ConfigFetcher::create(*config_location));
+    const vfs::ConfigHelper argument_helper((*config_fetcher)(VerifyConfig::F));
 
     // LOG_INFO("Finished parsing property tree");
 

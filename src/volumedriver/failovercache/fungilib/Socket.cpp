@@ -23,13 +23,12 @@
 
 #include <fcntl.h>
 #include <errno.h>
-// #ifndef _WIN32
+
 #include <sys/socket.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>
-// #endif
 
 #include <sys/time.h>
 #include <cstring>
@@ -45,17 +44,16 @@
 #include <youtils/IOException.h>
 #include <youtils/Logging.h>
 #include <youtils/System.h>
+#include <youtils/Timer.h>
 
 #include <rdma/rdma_cma.h>
 #include <rdma/rsocket.h>
 
 #include "use_rs.h"
 
-//#undef LOG_DEBUG
-//#define LOG_DEBUG LOG_INFO
-
 namespace fungi {
 
+namespace yt = youtils;
 
 class Interval {
 public:
@@ -157,24 +155,34 @@ Socket::createSocket(bool rdma, int sock_type) {
     { // rsocket cannot handle IPv6
         return std::unique_ptr<Socket>(new IPv4Socket(true, sock_type));
     }
-    // always use IPv4 in windows for now TODO
-#ifndef _WIN32
+
     try {
         return std::unique_ptr<Socket>(new IPv6Socket(sock_type));
     } catch (IOException & /* e */) {
           LOG_DEBUG("Fall back on IPv4");
-#endif
+
           return std::unique_ptr<Socket>(new IPv4Socket(false,
                                                         sock_type));
-#ifndef _WIN32
     }
-#endif
 }
 
-Socket::Socket(int domain, int sock_type, bool rdma) :
-	sock_(-1), domain_(domain), sock_type_(sock_type), use_rs_(rdma), nonblocking_(false),
-    port_(0), stop_(false), connectionInProgress_(false), requestTimeout_(0), remote_ip_(""), remote_port_(0),
-    parent_socket_(0), closed_(true), corked_(false) {
+Socket::Socket(int domain, int sock_type, bool rdma)
+    : sock_(-1)
+    , domain_(domain)
+    , sock_type_(sock_type)
+    , use_rs_(rdma)
+    , nonblocking_(false)
+    , port_(0)
+    , stop_(false)
+    , connectionInProgress_(false)
+    , requestTimeout_(0)
+    , busy_loop_duration_(0)
+    , remote_ip_("")
+    , remote_port_(0)
+    , parent_socket_(0)
+    , closed_(true)
+    , corked_(false)
+{
 	sock_ = rs_socket(domain_, sock_type_, 0);
 	if (sock_ == -1) {
 		throw IOException("socket", "", getErrorNumber());
@@ -184,20 +192,21 @@ Socket::Socket(int domain, int sock_type, bool rdma) :
 }
 
 Socket::Socket(const Socket *parent_socket, int sock, int domain,
-		int sock_type, const char *remote_ip, uint16_t remote_port) :
-	sock_(sock),
-        domain_(domain),
-        sock_type_(sock_type),
-        use_rs_(parent_socket->isRdma()),
-        nonblocking_(false),
-        stop_(false),
-        connectionInProgress_(false),
-	requestTimeout_(0),
-        remote_ip_(remote_ip),
-        remote_port_(remote_port),
-        parent_socket_(parent_socket),
-        closed_(false),
-        corked_(false)
+		int sock_type, const char *remote_ip, uint16_t remote_port)
+    : sock_(sock)
+    , domain_(domain)
+    , sock_type_(sock_type)
+    , use_rs_(parent_socket->isRdma())
+    , nonblocking_(false)
+    , stop_(false)
+    , connectionInProgress_(false)
+    , requestTimeout_(0)
+    , busy_loop_duration_(0)
+    , remote_ip_(remote_ip)
+    , remote_port_(remote_port)
+    , parent_socket_(parent_socket)
+    , closed_(false)
+    , corked_(false)
 {
 	LOG_DEBUG("New socket created:" << sock_ << " transport=" << (use_rs_ ? "RDMA" : "TCP"));
 }
@@ -258,21 +267,17 @@ void Socket::setCork() {
 // TODO NoDelay win32 support
 
 void Socket::clearNoDelay() {
-#ifndef _WIN32
 	u_int yes = 0;
 	if (rs_setsockopt(sock_, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes)) == -1) {
 		throw IOException("setsockopt TCP_NODELAY", "", getErrorNumber());
 	}
-#endif
 }
 
 void Socket::setNoDelay() {
-#ifndef _WIN32
 	u_int yes = 1;
 	if (rs_setsockopt(sock_, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes)) == -1) {
 		throw IOException("setsockopt TCP_NODELAY", "", getErrorNumber());
 	}
-#endif
 }
 
 void Socket::clearCork() {
@@ -306,8 +311,6 @@ void Socket::setRequestTimeout(double timeout) {
     requestTimeout_ = timeout;
 }
 void Socket::setNonBlocking() {
-  //fuut();
-#ifndef _WIN32
 	int flags = rs_fcntl2(sock_, F_GETFL);
 	if (flags < 0) {
 		throw IOException("Socket::nonblocking", "", getErrorNumber());
@@ -316,18 +319,10 @@ void Socket::setNonBlocking() {
 	if (rs_fcntl3(sock_, F_SETFL, flags) < 0) {
 		throw IOException("Socket::nonblocking2", "", getErrorNumber());
 	}
-#else
-	ULONG on = 1;
-	if (ioctlsocket(sock_, FIONBIO, &on) < 0) {
-	throw IOException("Socket::nonblocking", "", getErrorNumber());
-	}
-#endif
 	nonblocking_ = true;
 }
 void Socket::clearNonBlocking()
 {
-  //fuut();
-#ifndef _WIN32
 	int flags = rs_fcntl2(sock_, F_GETFL);
 	if (flags < 0) {
 		throw IOException("Socket::blocking", "", errno);
@@ -336,12 +331,6 @@ void Socket::clearNonBlocking()
 	if (rs_fcntl3(sock_, F_SETFL, flags) < 0) {
 		throw IOException("Socket::blocking2", "", errno);
 	}
-#else
-	ULONG on = 0;
-	if (ioctlsocket(sock_, FIONBIO, &on) < 0) {
-	throw IOException("Socket::blocking", "", getErrorNumber());
-	}
-#endif
     nonblocking_ = false;
 }
 
@@ -350,11 +339,7 @@ bool Socket::isNonblocking() const {
 }
 
 int Socket::getErrorNumber() {
-    //#ifndef _WIN32
 	return errno;
-        // #else
-        //	return WSAGetLastError();
-        //#endif
 }
 
 int32_t Socket::read(byte *buf, const int32_t n)
@@ -373,25 +358,34 @@ int32_t Socket::read(byte *buf, const int32_t n)
 
     byte *bufp = buf;
     assert(n < std::numeric_limits<int>::max());
-    //    const int32_t n2 = (int32_t)n;
-    int32_t n3 = n;
-    while (n3 > 0)
+    int32_t n2 = n;
+
+    yt::SteadyTimer t;
+
+    while (n2 > 0)
     {
-        if (nonblocking_ || requestTimeout_ > 0)
-        {
-            wait_for_read();
-        }
-        int32_t s = rs_recv(sock_, (char*)bufp, n3, 0);
-        assert(s <= n3);
+        int32_t s = rs_recv(sock_, (char*)bufp, n2, 0);
+        assert(s <= n2);
         int err = 0;
         if (s < 0)
         {
             err = getErrorNumber();
-            if (err== EAGAIN || err == EINTR)
+            switch (err)
             {
+            case EAGAIN:
+                if ((nonblocking_ or requestTimeout_ > 0) and t.elapsed() >= busy_loop_duration_)
+                {
+                    wait_for_read();
+                }
+                // fall through
+            case EINTR:
                 continue;
+            default:
+                LOG_DEBUG("read error < 0, other error");
+                throw IOException("Socket::read/other", "", err);
             }
         }
+
         // s == 0: indicates connection closed, as the socket is
         // readable, and it has to return at least one byte!
         if (s == 0)
@@ -399,12 +393,8 @@ int32_t Socket::read(byte *buf, const int32_t n)
             LOG_DEBUG("read error 0, assuming connection closed");
             throw IOException("Socket::read/closed", "", 0);
         }
-        else if (s < 0)
-        {
-            LOG_DEBUG("read error < 0, other error");
-            throw IOException("Socket::read/other", "", err);
-        }
-        n3 -= s;
+
+        n2 -= s;
         bufp += s;
     }
 
@@ -524,49 +514,50 @@ void Socket::wait_for_write() {
     }
 }
 
-int32_t Socket::write(const byte *buf, int32_t n) {
+int32_t Socket::write(const byte *buf, int32_t n)
+{
     if (corked_)
     {
         wbuf_.append((byte *) buf, (int) n);
         return n;
     }
-	const byte *bufp = buf;
-	assert(n < std::numeric_limits<int>::max());
-	const int32_t n2 = (int32_t)n;
-	int32_t n3 = n2;
-	while (n3 > 0) {
-		if (nonblocking_ || requestTimeout_ > 0) {
-			wait_for_write();
-		}
-		int32_t s = rs_send(sock_, (const char *)bufp, n3, 0);
-		assert(s <= n3);
-		int err = 0;
-		if (s < 0)
+
+    const byte *bufp = buf;
+    assert(n < std::numeric_limits<int>::max());
+    int32_t n2 = n;
+
+    yt::SteadyTimer t;
+
+    while (n2 > 0)
+    {
+        int32_t s = rs_send(sock_, (const char *)bufp, n2, 0);
+        assert(s <= n2);
+        int err = 0;
+        if (s < 0)
         {
             err = getErrorNumber();
-            if (err== EAGAIN || err == EINTR) {
+            switch (err)
+            {
+            case EAGAIN:
+                {
+                    if ((nonblocking_ or requestTimeout_ > 0) and t.elapsed() >= busy_loop_duration_)
+                    {
+                        wait_for_write();
+                    }
+                }
+                // fall through
+            case EINTR:
                 continue;
+            default:
+                LOG_DEBUG("write error < 0, other error");
+                throw IOException("Socket::write", "", err);
             }
-		}
-		// in case of write, 0 has no special meaning
-		if (s == 0) {
-#ifndef _WIN32
-			LOG_DEBUG("write error 0, ignoring");
-			continue;
-#else
-			// on windows a return of 0 from send() can also indicate
-			// a normal disconnect
-			LOG_DEBUG("write error 0, win32 error");
-			throw IOException("Socket::write", "", err);
-#endif
-		} else if (s < 0) {
-			LOG_DEBUG("write error < 0, other error");
-			throw IOException("Socket::write", "", err);
-		}
-		n3 -= s;
-		bufp += s;
-	}
-	return n2;
+        }
+
+        n2 -= s;
+        bufp += s;
+    }
+    return n;
 }
 
 void Socket::shutdown()
@@ -768,35 +759,20 @@ struct in6_addr Socket::resolveIPv6(const std::string &addr) {
 }
 
 std::string Socket::toString(const struct in6_addr &addr) {
-	//fuut();
-#ifndef _WIN32
 	char buf[INET6_ADDRSTRLEN + 1];
 	if (inet_ntop(AF_INET6, (void*)&addr, buf, INET6_ADDRSTRLEN) == 0) {
 		throw IOException("Socket:: failure", "inet_ntop", errno);
 	}
 	std::string s(buf);
-#else
-	// TODO: runtime detect XP vs Vista and use inet_ntop on Vista
-	// is that possible at all, because the program actually already fails
-	// at startup on windows XP if a call to inet_ntop is contained in the
-	// binary...
-	std::string s("inet_ntop missing in win32 < vista");
-#endif
 	return s;
 }
 
 std::string Socket::toString(const in_addr_t &addr) {
-	//fuut();
-#ifndef _WIN32
 	char buf[INET_ADDRSTRLEN + 1];
 	if (inet_ntop(AF_INET, (void*)&addr, buf, INET_ADDRSTRLEN) == 0) {
 		throw IOException("Socket:: failure", "inet_ntop", getErrorNumber());
 	}
 	std::string s(buf);
-#else
-	// same remark as above for toString
-	std::string s("inet_ntop missing in win32 < vista");
-#endif
 	return s;
 }
 
@@ -805,16 +781,9 @@ void Socket::close() {
 		LOG_DEBUG("Socket already closed: " << sock_);
 		return;
 	}
-#ifndef _WIN32
 	if (rs_close(sock_) < 0) {
 		throw IOException("Failure to close socket", "", getErrorNumber());
 	}
-#else
-	// on windows, close() is not allowed on sockets
-	if (::closesocket(sock_) < 0) {
-		throw IOException("Failure to close socket", "", getErrorNumber());
-	}
-#endif
 	LOG_DEBUG("closed:" << sock_);
 	closed_ = true;
 	sock_ = -1;
@@ -824,7 +793,6 @@ void Socket::closeNoThrow(){
 		LOG_DEBUG("Socket already closed: " << sock_);
 		return;
 	}
-#ifndef _WIN32
 	if (rs_close(sock_) < 0) {
 		int e = getErrorNumber();
 		if(e == EBADF){
@@ -834,23 +802,11 @@ void Socket::closeNoThrow(){
 			LOG_WARN("Failure to close socket("<< sock_<<") "<< e << "(" << (res!=0?res:"null") << ") ... ignoring");
 		}
 	}
-#else
-	if (::closesocket(sock_) < 0) {
-		int e = getErrorNumber();
-		if(e == EBADF){
-			// TODO: is this the same on windows ??? probably not (unverified)
-		} else{
-			LOG_WARN("Failure to close socket " << e <<" ... ignoring");
-		}
-	}
-#endif
 	LOG_DEBUG("closed:" << sock_);
 	closed_ = true;
 	sock_ = -1;
 }
 
-// for now only do sendfile on linux...
-#ifdef __linux__
 void Socket::send(File &file, int32_t count, int32_t offset) {
 	//fudeb("Socket::send %s(%d) to %d.%d.%d.%d:%d", file.name().c_str(), count, NIPQUAD(remote_ip_), remote_port_);
 	int res = 0;
@@ -859,12 +815,7 @@ void Socket::send(File &file, int32_t count, int32_t offset) {
 	off_t off = offset;
 	off_t *offp = &off;
 	do {
-#ifdef DARWIN
-		off_t size_as_off_t = count;
-		res = sendfile(file.fileno(),fileno(), off, &size_as_off_t, 0, 0);
-#else
 		res = sendfile(fileno(), file.fileno(), offp, count);
-#endif
 		if (res > 0) {
 			count -= res;
 		}
@@ -878,66 +829,6 @@ void Socket::send(File &file, int32_t count, int32_t offset) {
 	}
 	//fudeb("sendfile res: %d", res);
 }
-#else
-
-// for now we do NOT want to use TransmitFile in windows, because it kills
-// performance on non-server editions of windows, because only a very few of them (1 or 2)
-// are allowed to run in parallel...
-
-//#define WIN_USE_TRANSMITFILE
-#undef WIN_USE_TRANSMITFILE
-#ifdef WIN_USE_TRANSMITFILE
-void Socket::send(File &file, int32_t count) {
-	file.rewind();
-	const bool nb = isNonblocking();
-	if (nb) clearNonblocking();
-
-	static GUID TransmitFileGUID = WSAID_TRANSMITFILE;
-	LPFN_TRANSMITFILE TransmitFile;
-	DWORD cbBytesReturned;
-
-	if (WSAIoctl(fileno(),
-               SIO_GET_EXTENSION_FUNCTION_POINTER,
-               &TransmitFileGUID,
-               sizeof(TransmitFileGUID),
-               &TransmitFile,
-               sizeof(TransmitFile),
-               &cbBytesReturned,
-               0,
-               0) == SOCKET_ERROR) {
-				   throw IOException("Socket::send: WSAIoctl failure");
-	}
-	HANDLE h = (HANDLE)_get_osfhandle(file.fileno());
-
-	BOOL res = TransmitFile(
-		/* SOCKET */ fileno(),
-		/* HANDLE hFile */ h,
-		/* DWORD nNumberOfBytesToWrite */ (DWORD)count,
-		/* DWORD nNumberOfBytesPerSend */ 0  /* use default */,
-		/* LPOVERLAPPED lpOverlapped */ 0 /* don't do overlapped => synchronous call */,
-		/* LPTRANSMIT_FILE_BUFFERS lpTransmitBuffers */ 0 /* no header or tail */,
-		/* DWORD dwFlags */ 0
-	);
-	int err = 0;
-	if (res == FALSE) {
-		err = getErrorNumber();
-	}
-	if (nb) setNonblocking();
-	if (res == false) {
-		throw IOException("Socket::send[TransmitFile]", file.name().c_str(), err);
-	}
-}
-#else
-void Socket::send(File &file, int32_t count, int32_t offset) {
-	if(offset)
-		file.seek(offset);
-	byte *buf = new byte[count];
-    file.append(buf, count);
-    write(buf, count);
-    delete[] buf;
-}
-#endif
-#endif
 
 bool Socket::isIpv4() const {
 	return domain_ == AF_INET;
@@ -957,13 +848,6 @@ bool Socket::isRdma() const {
 
 bool Socket::wait_connected(double seconds)
 {
-    // struct timeval tv;
-    // tv.tv_sec = (long)seconds;
-    // tv.tv_usec = 0;
-    // fd_set rset, wset;
-    // FD_ZERO(&rset);
-    // FD_SET(sock_, &rset);
-    // wset = rset;
     struct pollfd pfd;
     pfd.fd = sock_;
     // boost asio only wait for pollout
@@ -1013,20 +897,13 @@ int Socket::get_SO_ERROR()
 {
     socklen_t sl = sizeof(int);
     int val = 0;
-    if (rs_getsockopt(sock_, SOL_SOCKET, SO_ERROR, (
-#ifdef WIN32
-		char*
-#else
-		void*
-#endif
-		)(&val), &sl) < 0) {
+    if (rs_getsockopt(sock_, SOL_SOCKET, SO_ERROR, (char*)(&val), &sl) < 0) {
         throw IOException("Socket::get_SO_ERROR", name_.c_str(), getErrorNumber());
     }
     return val;
 }
 
 }
-
 
 // Local Variables: **
 // mode: c++ **

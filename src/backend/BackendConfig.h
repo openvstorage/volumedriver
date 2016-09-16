@@ -23,17 +23,22 @@
 #include <boost/serialization/export.hpp>
 
 #include <youtils/BooleanEnum.h>
-#include <youtils/Logging.h>
 #include <youtils/ConfigurationReport.h>
+#include <youtils/Logging.h>
 #include <youtils/UpdateReport.h>
 
+namespace youtils
+{
+class Uri;
+class JsonString;
+}
 
 namespace backend
 {
 
-BOOLEAN_ENUM(UseSSL);
-BOOLEAN_ENUM(SSLVerifyHost);
-BOOLEAN_ENUM(StrictConsistency);
+VD_BOOLEAN_ENUM(UseSSL);
+VD_BOOLEAN_ENUM(SSLVerifyHost);
+VD_BOOLEAN_ENUM(StrictConsistency);
 
 class BackendConfig
 {
@@ -44,11 +49,10 @@ public:
     makeBackendConfig(const boost::property_tree::ptree&);
 
     static std::unique_ptr<BackendConfig>
-    makeBackendConfig(const std::string& backend_config);
+    makeBackendConfig(const youtils::JsonString&);
 
     static std::unique_ptr<BackendConfig>
-    makeBackendConfig(const boost::filesystem::path& json_file);
-
+    makeBackendConfig(const youtils::Uri&);
 
     virtual std::unique_ptr<BackendConfig>
     clone() const = 0;

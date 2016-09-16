@@ -8,10 +8,9 @@ Homepage: www.openvstorage.com
 
 Package: volumedriver-no-dedup-server
 Architecture: any
-Depends: ${shlibs:Depends}
+Depends: ${shlibs:Depends}, omniorb-nameserver
 Suggests: lttng-tools
 Pre-Depends: volumedriver-no-dedup-base (>= 3.6.0)
-Recommends: omniorb-nameserver
 Conflicts: volumedriver-server
 Replace: volumedriver-server
 Description: VolumeDriver daemon and helpers

@@ -26,7 +26,7 @@
 
 #include <backend/Namespace.h>
 
-DECLARE_BOOLEAN_ENUM(ReportDefault);
+DECLARE_VD_BOOLEAN_ENUM(ReportDefault);
 
 namespace volumedriver
 {

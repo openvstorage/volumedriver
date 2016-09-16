@@ -156,6 +156,14 @@ FileUtils::temp_path()
     return tmp_path;
 }
 
+fs::path
+FileUtils::temp_path(const fs::path& sub)
+{
+    const fs::path tmp(temp_path() / sub);
+    fs::create_directories(tmp);
+    return tmp;
+}
+
 void
 FileUtils::ensure_directory(const fs::path& path)
 {

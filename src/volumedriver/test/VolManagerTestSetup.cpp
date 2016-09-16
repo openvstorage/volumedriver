@@ -443,9 +443,9 @@ VolManagerTestSetup::VolManagerTestSetup(const VolManagerTestSetupParameters& pa
     : be::BackendTestSetup()
     , FailOverCacheTestSetup(GetParam().foc_in_memory() ?
                              boost::none :
-                             boost::optional<fs::path>(getTempPath(params.name()) / "foc"))
+                             boost::optional<fs::path>(yt::FileUtils::temp_path(params.name()) / "foc"))
     , testName_(params.name())
-    , directory_(getTempPath(testName_))
+    , directory_(yt::FileUtils::temp_path(testName_))
     , configuration_(directory_ / "configuration")
     , sc_mp1_size_(yt::DimensionedValue(params.sco_cache_mp1_size()).getBytes())
     , sc_mp2_size_(yt::DimensionedValue(params.sco_cache_mp2_size()).getBytes())

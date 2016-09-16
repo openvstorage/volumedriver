@@ -16,6 +16,7 @@
 #ifndef __AIO_COMPLETION_H
 #define __AIO_COMPLETION_H
 
+#include "volumedriver.h"
 #include "common.h"
 
 #include <limits.h>
@@ -29,13 +30,7 @@ public:
     static AioCompletion& get_aio_context();
 
     void
-    schedule(ovs_completion_t *completion)
-    {
-        completion->_calling = true;
-        io_service_.post(boost::bind(completion->complete_cb,
-                                     completion,
-                                     completion->cb_arg));
-    }
+    schedule(ovs_completion_t *completion);
 private:
     AioCompletion()
     : work_(io_service_)
@@ -68,12 +63,4 @@ private:
     boost::asio::io_service::work work_;
     boost::thread_group group_;
 };
-
-AioCompletion&
-AioCompletion::get_aio_context()
-{
-    static AioCompletion aio_completion_instance_;
-    return aio_completion_instance_;
-}
-
 #endif

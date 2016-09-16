@@ -142,6 +142,17 @@ ovs_remove_volume(ovs_ctx_t *ctx,
                   const char *volume_name);
 
 /*
+ * Extend the size of an Open vStorage volume
+ * param ctx: Open vStorage context
+ * param volume_name: Volume name
+ * param length: Length bytes
+ */
+int
+ovs_truncate_volume(ovs_ctx_t *ctx,
+                    const char *volume_name,
+                    uint64_t length);
+
+/*
  * Create a snapshot of an Open vStorage volume
  * param ctx: Open vStorage context
  * param volume_name: Volume name
@@ -306,6 +317,15 @@ ovs_flush(ovs_ctx_t *ctx);
 int
 ovs_stat(ovs_ctx_t *ctx,
          struct stat *buf);
+
+/*
+ * Extend the size of an Open vStorage volume
+ * param ctx: Open vStorage context
+ * param length: Length bytes
+ */
+int
+ovs_truncate(ovs_ctx_t *ctx,
+             uint64_t length);
 
 /*
  * Suspend until asynchronous I/O operation or timeout complete

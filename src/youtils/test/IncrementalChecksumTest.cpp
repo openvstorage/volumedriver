@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 #include "../FileUtils.h"
 #include <boost/filesystem/fstream.hpp>
 #include "../DimensionedValue.h"
@@ -24,7 +24,7 @@ namespace youtilstest
 {
 using namespace youtils;
 
-class IncrementalChecksumTest : public TestBase
+class IncrementalChecksumTest : public testing::Test
 {};
 
 TEST_F(IncrementalChecksumTest, test0)

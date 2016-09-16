@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 #include "../ClusterLocation.h"
 
 namespace volumedrivertest
@@ -21,7 +21,7 @@ namespace volumedrivertest
 using namespace volumedriver;
 
 class ClusterLocationTest
-    : public ExGTest
+    : public testing::TestWithParam<VolumeDriverTestConfig>
 {
 public:
     ClusterLocation

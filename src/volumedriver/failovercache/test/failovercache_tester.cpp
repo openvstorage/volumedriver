@@ -34,7 +34,7 @@
 #include <youtils/Logger.h>
 #include <youtils/ScopeExit.h>
 #include <youtils/System.h>
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 
 namespace failovercachetest
 {
@@ -149,7 +149,7 @@ public:
 };
 
 class FailOverCacheTest
-    : public youtilstest::TestBase
+    : public testing::Test
 {
 
     virtual void

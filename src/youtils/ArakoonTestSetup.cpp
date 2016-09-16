@@ -153,8 +153,11 @@ ArakoonTestSetup::setUpArakoon()
             fs::create_directories(node_home_dir_(i));
         }
 
-        LOG_DEBUG("Creating config file");
-        createArakoonConfigFile_(arakoonServerConfigPath_());
+        {
+            LOG_DEBUG("Creating config file");
+            fs::ofstream ofs(server_config_file());
+            write_config(ofs);
+        }
 
         symlink_plugins_();
 
@@ -174,7 +177,7 @@ ArakoonTestSetup::start_nodes()
         redi::pstreams::argv_type arguments;
         arguments.push_back("arakoon-from-vdtest");
         arguments.push_back("-config");
-        arguments.push_back(arakoonServerConfigPath_().string());
+        arguments.push_back(server_config_file().string());
         arguments.push_back("--node");
         arguments.push_back(nodeID(i));
         redi::ipstream* stream = new redi::ipstream(binary_path_.string(), arguments);
@@ -264,47 +267,45 @@ plugin_name_from_path(const fs::path& p)
 }
 
 void
-ArakoonTestSetup::createArakoonConfigFile_(const fs::path& cfgfile)
+ArakoonTestSetup::write_config(std::ostream& os)
 {
-    fs::ofstream ofs(cfgfile);
-
-    ofs << "[global]" << std::endl;
-    ofs << "cluster_id = " << cluster_name_ << std::endl;
+    os << "[global]" << std::endl;
+    os << "cluster_id = " << cluster_name_ << std::endl;
     // here we have to add all the nodes
-    ofs << "cluster =";
+    os << "cluster =";
 
     for(int i = 0; i < num_nodes_; ++i)
     {
-        ofs << (i ?  ", " : " ") << nodeID(i);
+        os << (i ?  ", " : " ") << nodeID(i);
     }
 
-    ofs << std::endl;
+    os << std::endl;
 
     if (not plugins_.empty())
     {
-        ofs << "plugins =";
+        os << "plugins =";
 
         for (size_t i = 0; i < plugins_.size(); ++i)
         {
-            ofs << (i ? ", " : " ") << plugin_name_from_path(plugins_[i]);
+            os << (i ? ", " : " ") << plugin_name_from_path(plugins_[i]);
         }
 
-        ofs << std::endl;
+        os << std::endl;
     }
 
-    ofs << "master = " << nodeID(0) << std::endl;
-    ofs << "preferred_master = true" << std::endl;
+    os << "master = " << nodeID(0) << std::endl;
+    os << "preferred_master = true" << std::endl;
 
     for(uint16_t i = 0; i < num_nodes_; ++i)
     {
-        ofs << "[" << nodeID(i) << "]" << std::endl;
-        ofs << "ip = " << host_name() << std::endl;
-        ofs << "client_port = " << client_port(i) << std::endl;
-        ofs << "log_level = " << log_level_ << std::endl;
-        ofs << "messaging_port = " << message_port(i) << std::endl;
-        ofs << "log_dir = " << node_home_dir_(i).string() << std::endl;
-        ofs << "home = " << node_home_dir_(i).string() << std::endl;
-        ofs << "disable_tlog_compression = true" << std::endl;
+        os << "[" << nodeID(i) << "]" << std::endl;
+        os << "ip = " << host_name() << std::endl;
+        os << "client_port = " << client_port(i) << std::endl;
+        os << "log_level = " << log_level_ << std::endl;
+        os << "messaging_port = " << message_port(i) << std::endl;
+        os << "log_dir = " << node_home_dir_(i).string() << std::endl;
+        os << "home = " << node_home_dir_(i).string() << std::endl;
+        os << "disable_tlog_compression = true" << std::endl;
     }
 }
 
@@ -329,7 +330,7 @@ ArakoonTestSetup::waitForArakoon_() const
 }
 
 fs::path
-ArakoonTestSetup::arakoonServerConfigPath_() const
+ArakoonTestSetup::server_config_file() const
 {
     return fs::path(dir_ / server_cfg_);
 }

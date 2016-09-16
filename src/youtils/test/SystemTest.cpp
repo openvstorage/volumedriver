@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 #include "../System.h"
 
 namespace youtilstest
@@ -21,7 +21,7 @@ namespace youtilstest
 using namespace youtils;
 
 class SystemTest
-    : public TestBase
+    : public testing::Test
 {};
 
 TEST_F(SystemTest, DISABLED_test_data)

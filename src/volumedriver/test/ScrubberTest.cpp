@@ -24,15 +24,19 @@
 
 #include <boost/filesystem/fstream.hpp>
 
+#include <youtils/FileUtils.h>
+
 #include <backend/GarbageCollector.h>
 
 namespace volumedrivertest
 {
 
-BOOLEAN_ENUM(CollectScrubGarbage);
+VD_BOOLEAN_ENUM(CollectScrubGarbage);
 
 using namespace scrubbing;
 using namespace volumedriver;
+
+namespace yt = youtils;
 
 class ScrubberTest
     : public VolManagerTestSetup
@@ -68,8 +72,9 @@ public:
              bool apply_immediately = false,
              bool verbose_scrubbing = true)
     {
-        return ScrubberAdapter::scrub(scrub_work,
-                                      getTempPath(testName_),
+        return ScrubberAdapter::scrub(VolManager::get()->getBackendConfig().clone(),
+                                      scrub_work,
+                                      yt::FileUtils::temp_path(testName_),
                                       region_size_exponent,
                                       fill_ratio,
                                       apply_immediately,

@@ -21,7 +21,7 @@
 namespace volumedriverfs
 {
 
-BOOLEAN_ENUM(ForceRestart);
+VD_BOOLEAN_ENUM(ForceRestart);
 
 }
 

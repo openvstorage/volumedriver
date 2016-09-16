@@ -21,6 +21,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/python/extract.hpp>
 
 #include <youtils/ArakoonInterface.h>
 #include <youtils/Catchers.h>
@@ -40,6 +41,7 @@ namespace volumedriverfstest
 {
 
 namespace bpt = boost::property_tree;
+namespace bpy = boost::python;
 namespace fs = boost::filesystem;
 namespace vfs = volumedriverfs;
 namespace yt = youtils;
@@ -82,7 +84,16 @@ public:
                              .backend_sync_timeout_ms(9500)
                              .migrate_timeout_ms(500)
                              .redirect_retries(1))
-    {}
+        , client_(vrouter_cluster_id(),
+                  {{address(), local_config().xmlrpc_port}})
+    {
+        Py_Initialize();
+    }
+
+    ~NetworkServerTest()
+    {
+        Py_Finalize();
+    }
 
     virtual void
     SetUp()
@@ -90,8 +101,7 @@ public:
         FileSystemTestBase::SetUp();
         bpt::ptree pt;
 
-        net_xio_server_ = std::make_unique<NetworkXioInterface>(make_edge_config_(pt,
-										  local_node_id()),
+        net_xio_server_ = std::make_unique<NetworkXioInterface>(pt,
                                                                 RegisterComponent::F,
                                                                 *fs_);
         std::promise<void> promise;
@@ -264,7 +274,14 @@ public:
 
     std::unique_ptr<NetworkXioInterface> net_xio_server_;
     boost::thread net_xio_thread_;
+    vfs::PythonClient client_;
 };
+
+TEST_F(NetworkServerTest, uri)
+{
+    EXPECT_EQ(network_server_uri(local_node_id()),
+              net_xio_server_->uri());
+}
 
 TEST_F(NetworkServerTest, create_destroy_context)
 {
@@ -1142,6 +1159,191 @@ TEST_F(NetworkServerTest, stress)
         " bytes sized reads @ qdepth " << qdepth << ": " <<
         total << " ops in " << elapsed << " seconds -> " <<
         total / elapsed << " IOPS" << std::endl;
+}
+
+TEST_F(NetworkServerTest, create_truncate_volume)
+{
+    uint64_t volume_size = 1 << 20;
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
+    EXPECT_EQ(0,
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         FileSystemTestSetup::edge_transport().c_str(),
+                                         FileSystemTestSetup::address().c_str(),
+                                         FileSystemTestSetup::local_edge_port()));
+    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
+    ASSERT_TRUE(ctx != nullptr);
+    EXPECT_EQ(ovs_create_volume(ctx,
+                                "volume",
+                                volume_size),
+              0);
+    ASSERT_EQ(0,
+              ovs_ctx_init(ctx, "volume", O_RDWR));
+
+    struct stat st;
+    EXPECT_EQ(0,
+              ovs_stat(ctx, &st));
+    EXPECT_EQ(st.st_size,
+              volume_size);
+
+    uint64_t new_volume_size = 1 << 30;
+    EXPECT_EQ(ovs_truncate_volume(ctx,
+                                  "volume",
+                                  new_volume_size),
+              0);
+    EXPECT_EQ(0,
+              ovs_stat(ctx, &st));
+    EXPECT_EQ(st.st_size,
+              new_volume_size);
+
+    EXPECT_EQ(ovs_truncate_volume(ctx,
+                                  "non_existend_volume",
+                                  new_volume_size),
+              -1);
+    EXPECT_EQ(ENOENT, errno);
+
+    EXPECT_EQ(0,
+              ovs_ctx_destroy(ctx));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
+}
+
+TEST_F(NetworkServerTest, truncate_volume)
+{
+    uint64_t volume_size = 1 << 20;
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
+    EXPECT_EQ(0,
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         FileSystemTestSetup::edge_transport().c_str(),
+                                         FileSystemTestSetup::address().c_str(),
+                                         FileSystemTestSetup::local_edge_port()));
+
+    EXPECT_EQ(ovs_create_volume(nullptr,
+                                "nullctx_volume",
+                                volume_size),
+              -1);
+
+    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
+    ASSERT_TRUE(ctx != nullptr);
+    EXPECT_EQ(ovs_create_volume(ctx,
+                                "volume",
+                                volume_size),
+              0);
+
+    uint64_t new_volume_size = 1 << 30;
+    EXPECT_EQ(ovs_truncate(ctx,
+                           new_volume_size),
+              -1);
+    EXPECT_EQ(EBADF, errno);
+
+    ASSERT_EQ(0,
+              ovs_ctx_init(ctx, "volume", O_RDWR));
+
+    struct stat st;
+    EXPECT_EQ(0,
+              ovs_stat(ctx, &st));
+    EXPECT_EQ(st.st_size,
+              volume_size);
+
+    EXPECT_EQ(ovs_truncate(ctx,
+                           new_volume_size),
+              0);
+    EXPECT_EQ(0,
+              ovs_stat(ctx, &st));
+    EXPECT_EQ(st.st_size,
+              new_volume_size);
+
+    EXPECT_EQ(0,
+              ovs_ctx_destroy(ctx));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
+}
+
+TEST_F(NetworkServerTest, fail_to_truncate_volume)
+{
+    uint64_t volume_size = 1 << 20;
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
+    EXPECT_EQ(0,
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         FileSystemTestSetup::edge_transport().c_str(),
+                                         FileSystemTestSetup::address().c_str(),
+                                         FileSystemTestSetup::local_edge_port()));
+
+    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
+    ASSERT_TRUE(ctx != nullptr);
+    EXPECT_EQ(ovs_create_volume(ctx,
+                                "volume",
+                                volume_size),
+              0);
+
+    uint64_t new_volume_size = 1 << 30;
+    EXPECT_EQ(ovs_truncate(ctx,
+                           new_volume_size),
+              -1);
+    EXPECT_EQ(EBADF, errno);
+
+    ASSERT_EQ(0,
+              ovs_ctx_init(ctx, "volume", O_RDONLY));
+
+    EXPECT_EQ(ovs_truncate(ctx,
+                           new_volume_size),
+              -1);
+    EXPECT_EQ(EBADF, errno);
+
+    EXPECT_EQ(0,
+              ovs_ctx_destroy(ctx));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
+}
+
+TEST_F(NetworkServerTest, list_open_connections)
+{
+    uint64_t volume_size = 1 << 20;
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
+    EXPECT_EQ(0,
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         FileSystemTestSetup::edge_transport().c_str(),
+                                         FileSystemTestSetup::address().c_str(),
+                                         FileSystemTestSetup::local_edge_port()));
+
+    const std::string vname("volume");
+    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
+    ASSERT_TRUE(ctx != nullptr);
+    EXPECT_EQ(ovs_create_volume(ctx,
+                                vname.c_str(),
+                                volume_size),
+              0);
+
+    const std::vector<vfs::ClientInfo> m(client_.list_client_connections(local_node_id()));
+    EXPECT_EQ(0, m.size());
+
+    ASSERT_EQ(0,
+              ovs_ctx_init(ctx,
+                           vname.c_str(),
+                           O_RDONLY));
+
+    const std::vector<vfs::ClientInfo> l(client_.list_client_connections(local_node_id()));
+    EXPECT_EQ(1, l.size());
+
+    const boost::optional<vfs::ObjectId> oid(find_object(vfs::FrontendPath(make_volume_name("/" + vname))));
+    const vfs::ClientInfo& info = l[0];
+
+    EXPECT_EQ(oid,
+              info.object_id);
+    EXPECT_FALSE(info.ip.empty());
+    EXPECT_NE(0,
+              info.port);
+
+    EXPECT_EQ(0,
+              ovs_ctx_destroy(ctx));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
+
+    const std::vector<vfs::ClientInfo> k(client_.list_client_connections(local_node_id()));
+    EXPECT_EQ(0, k.size());
 }
 
 } //namespace

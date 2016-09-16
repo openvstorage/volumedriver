@@ -54,11 +54,24 @@ BackendConnectionDeleter::operator()(BackendConnectionInterface* conn)
 
 namespace
 {
+
+DECLARE_LOGGER("BackendConnectionManagerUtils");
+
 size_t
-num_connection_pools()
+num_connection_pools(size_t shards)
 {
-    size_t n = boost::thread::hardware_concurrency();
-    return n ? n : 1;
+    if (shards == 0)
+    {
+        shards = boost::thread::hardware_concurrency();
+    }
+
+    if (shards == 0)
+    {
+        LOG_ERROR("Failed to get hardware concurrency");
+        shards = 1;
+    }
+
+    return shards;
 }
 
 }
@@ -68,11 +81,12 @@ BackendConnectionManager::BackendConnectionManager(const bpt::ptree& pt,
                                                    const RegisterComponent registerize)
     : VolumeDriverComponent(registerize,
                             pt)
-    , connection_pools_(num_connection_pools())
     , backend_connection_pool_capacity(pt)
+    , backend_connection_pool_shards(pt)
     , backend_interface_retries_on_error(pt)
     , backend_interface_retry_interval_secs(pt)
     , backend_interface_retry_backoff_multiplier(pt)
+    , connection_pools_(num_connection_pools(backend_connection_pool_shards.value()))
     , config_(BackendConfig::makeBackendConfig(pt))
 {
     VERIFY(connection_pools_.size() > 0);
@@ -181,6 +195,12 @@ BackendConnectionManager::size() const
     }
 
     return n;
+}
+
+size_t
+BackendConnectionManager::shards() const
+{
+    return connection_pools_.size();
 }
 
 BackendInterfacePtr
@@ -297,6 +317,7 @@ BackendConnectionManager::persist(bpt::ptree& pt,
               report_default)
 
     P(backend_connection_pool_capacity);
+    P(backend_connection_pool_shards);
     P(backend_interface_retries_on_error);
     P(backend_interface_retry_interval_secs);
     P(backend_interface_retry_backoff_multiplier);
@@ -327,6 +348,7 @@ BackendConnectionManager::update(const bpt::ptree& pt,
              report)
 
     U(backend_connection_pool_capacity);
+    U(backend_connection_pool_shards);
     U(backend_interface_retries_on_error);
     U(backend_interface_retry_interval_secs);
     U(backend_interface_retry_backoff_multiplier);

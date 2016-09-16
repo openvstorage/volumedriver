@@ -18,9 +18,7 @@ but WITHOUT ANY WARRANTY of any kind.
 '''
 
 import sys
-assert sys.version_info[0] == 2, "Wrong major version for python interpreter"
-assert sys.version_info[
-    1] == 7, "Wrong minor version for python interpreter, are you using wrong sandbox python?"
+assert "{}.{}".format(sys.version_info[0], sys.version_info[1]) == "@PYTHON_VERSION@", "Wrong Python version, want @PYTHON_VERSION@"
 __version__ = "@PACKAGE_VERSION@"
 __author__ = "@PACKAGE_BUGREPORT@"
 __url__ = "@PACKAGE_URL@"

@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 
 #include "../Entry.h"
 #include "../SCOAccessData.h"
@@ -34,7 +34,7 @@ namespace volumedrivertest
 using namespace volumedriver;
 
 class BackwardsCompatibilityTest
-    : public ExGTest
+    : public testing::TestWithParam<VolumeDriverTestConfig>
 {
 protected:
     void

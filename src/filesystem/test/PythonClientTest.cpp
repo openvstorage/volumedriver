@@ -30,6 +30,9 @@
 #include <youtils/FileDescriptor.h>
 #include <youtils/FileUtils.h>
 #include <youtils/ScopeExit.h>
+#include <youtils/Uri.h>
+
+#include <backend/BackendConfig.h>
 
 #include <volumedriver/metadata-server/Manager.h>
 #include <volumedriver/SnapshotPersistor.h>
@@ -52,6 +55,7 @@
 namespace volumedriverfstest
 {
 
+namespace be = backend;
 namespace bpt = boost::property_tree;
 namespace bpy = boost::python;
 namespace fs = boost::filesystem;
@@ -182,7 +186,9 @@ protected:
         using namespace scrubbing;
 
         const ScrubWork work(work_str);
-        const ScrubReply reply(ScrubberAdapter::scrub(work,
+        const yt::Uri loc(configuration_.string());
+        const ScrubReply reply(ScrubberAdapter::scrub(be::BackendConfig::makeBackendConfig(loc),
+                                                      work,
                                                       yt::FileUtils::temp_path().string()));
         return bpy::make_tuple(work.id_.str(),
                                reply.str());
@@ -829,7 +835,7 @@ TEST_F(PythonClientTest, volume_creation)
     const yt::DimensionedValue size("1GiB");
     const vfs::ObjectId cname(client_.create_volume(vpath.str(),
                                                     make_metadata_backend_config(),
-                                                    size.toString()));
+                                                    size));
 
     const vfs::XMLRPCVolumeInfo info(client_.info_volume(cname.str()));
     EXPECT_EQ(vfs::ObjectType::Volume, info.object_type);
@@ -842,7 +848,7 @@ TEST_F(PythonClientTest, volume_creation_again)
     const yt::DimensionedValue size("0B");
     const vfs::ObjectId vname(client_.create_volume(vpath.str(),
                                                     nullptr,
-                                                    size.toString()));
+                                                    size));
 
     const vfs::XMLRPCVolumeInfo info(client_.info_volume(vname.str()));
     EXPECT_EQ(vfs::ObjectType::Volume, info.object_type);
@@ -855,7 +861,7 @@ TEST_F(PythonClientTest, volume_creation_and_removal)
     const yt::DimensionedValue size("0B");
     const vfs::ObjectId vname(client_.create_volume(vpath.str(),
                                                     nullptr,
-                                                    size.toString()));
+                                                    size));
 
     const vfs::XMLRPCVolumeInfo info(client_.info_volume(vname.str()));
     EXPECT_EQ(vfs::ObjectType::Volume, info.object_type);
@@ -863,6 +869,35 @@ TEST_F(PythonClientTest, volume_creation_and_removal)
 
     EXPECT_NO_THROW(client_.unlink(vpath.str()));
     EXPECT_THROW(client_.unlink(vpath.str()),
+                 std::exception);
+}
+
+TEST_F(PythonClientTest, volume_resize)
+{
+    const vfs::FrontendPath vpath("/volume");
+    const yt::DimensionedValue size("0B");
+    const vfs::ObjectId vname(client_.create_volume(vpath.str(),
+                                                    nullptr,
+                                                    size));
+
+    {
+        const vfs::XMLRPCVolumeInfo info(client_.info_volume(vname.str()));
+        EXPECT_EQ(vfs::ObjectType::Volume, info.object_type);
+        EXPECT_EQ(0, info.volume_size);
+    }
+
+    const yt::DimensionedValue newsize("1 GiB");
+    EXPECT_NO_THROW(client_.resize(vname.str(),
+                                   newsize));
+
+    {
+        const vfs::XMLRPCVolumeInfo info(client_.info_volume(vname.str()));
+        EXPECT_EQ(newsize.getBytes(),
+                  info.volume_size);
+    }
+
+    EXPECT_THROW(client_.resize(vname.str(),
+                                yt::DimensionedValue("500 MiB")),
                  std::exception);
 }
 
@@ -1320,7 +1355,7 @@ TEST_F(PythonClientTest, mds_management)
 
     const vfs::ObjectId vname(client_.create_volume(vpath.str(),
                                                     mcfg,
-                                                    size.toString()));
+                                                    size));
 
     auto check([&](const vd::MDSNodeConfigs& ref)
                {
@@ -1874,7 +1909,8 @@ TEST_F(PythonClientTest, locked_scrub)
                                          scrubbing::ScrubberAdapter::verbose_scrubbing_default,
                                          "ovs_scrubber",
                                          yt::Severity::info,
-                                         std::vector<std::string>()));
+                                         std::vector<std::string>(),
+                                         configuration_.string()));
 
     lclient->apply_scrubbing_result(res);
 }

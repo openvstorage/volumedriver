@@ -25,6 +25,7 @@
 #include <xmlrpc++0.7/src/XmlRpcClient.h>
 #include <xmlrpc++0.7/src/XmlRpcValue.h>
 
+#include <youtils/DimensionedValue.h>
 #include <youtils/Logging.h>
 #include <youtils/BuildInfoString.h>
 
@@ -475,6 +476,22 @@ PythonClient::list_snapshots(const std::string& volume_id)
                             req));
 }
 
+std::vector<ClientInfo>
+PythonClient::list_client_connections(const std::string& node_id)
+{
+    XmlRpc::XmlRpcValue req;
+    req[XMLRPCKeys::vrouter_id] = node_id;
+
+    auto rsp(call(ListClientConnections::method_name(), req));
+
+    std::vector<ClientInfo> info;
+    for (auto i = 0; i < rsp.size(); ++i)
+    {
+        info.push_back(XMLRPCStructs::deserialize_from_xmlrpc_value<ClientInfo>(rsp[i]));
+    }
+    return info;
+}
+
 XMLRPCSnapshotInfo
 PythonClient::info_snapshot(const std::string& volume_id,
                             const std::string& snapshot_id)
@@ -582,13 +599,14 @@ PythonClient::create_snapshot(const std::string& volume_id,
 std::string
 PythonClient::create_volume(const std::string& target_path,
                             boost::shared_ptr<vd::MetaDataBackendConfig> mdb_config,
-                            const std::string& volume_size,
+                            const yt::DimensionedValue& volume_size,
                             const std::string& node_id)
 {
     XmlRpc::XmlRpcValue req;
 
     req[XMLRPCKeys::target_path] = target_path;
-    req[XMLRPCKeys::volume_size] = volume_size;
+    req[XMLRPCKeys::volume_size] = volume_size.toString();
+
     if (mdb_config)
     {
         req[XMLRPCKeys::metadata_backend_config] =
@@ -602,6 +620,18 @@ PythonClient::create_volume(const std::string& target_path,
 
     auto rsp(call(VolumeCreate::method_name(), req));
     return rsp[XMLRPCKeys::volume_id];
+}
+
+void
+PythonClient::resize(const std::string& object_id,
+                     const yt::DimensionedValue& size)
+{
+    XmlRpc::XmlRpcValue req;
+
+    req[XMLRPCKeys::volume_id] = object_id;
+    req[XMLRPCKeys::volume_size] = size.toString();
+
+    call(ResizeObject::method_name(), req);
 }
 
 std::string

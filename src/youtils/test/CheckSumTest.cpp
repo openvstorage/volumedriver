@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "../CheckSum.h"
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 #include "../wall_timer.h"
 #include "../System.h"
 
@@ -34,7 +34,7 @@ class SWCheckSum;
 class BuchlaCheckSum;
 
 class CheckSumTest
-    : public TestBase
+    : public testing::Test
 {
 public:
     static uint32_t

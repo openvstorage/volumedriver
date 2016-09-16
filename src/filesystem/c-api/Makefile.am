@@ -13,10 +13,17 @@ libovsvolumedriverdir = @prefix@/lib/openvstorage
 libovsvolumedriver_LTLIBRARIES = libovsvolumedriver.la
 
 libovsvolumedriver_la_SOURCES = \
+	AioCompletion.cpp \
 	../ShmIdlInterface.cpp \
-	../ShmClient.cpp \
-	../NetworkXioClient.cpp \
+	ShmControlChannelClient.cpp \
+	ShmContext.cpp \
+	ShmClient.cpp \
+	ShmHandler.cpp \
+	VolumeCacheHandler.cpp \
+	NetworkXioClient.cpp \
+	NetworkXioContext.cpp \
 	TracePoints_tp.c \
+	Utils.cpp \
 	libovsvolumedriver.cpp
 
 libovsvolumedriver_la_CXXFLAGS = ${BUILDTOOLS_CFLAGS} \

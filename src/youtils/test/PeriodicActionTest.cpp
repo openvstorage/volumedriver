@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 #include "../PeriodicAction.h"
 #include "../Assert.h"
 #include "../SourceOfUncertainty.h"
@@ -37,7 +37,7 @@ using namespace youtils;
 using namespace std::string_literals;
 
 class PeriodicActionTest
-    : public TestBase
+    : public testing::Test
 {
 protected:
     DECLARE_LOGGER("PeriodicActionTest");

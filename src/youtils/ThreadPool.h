@@ -41,7 +41,7 @@
 
 namespace youtils
 {
-BOOLEAN_ENUM(BarrierTask);
+VD_BOOLEAN_ENUM(BarrierTask);
 
 template<typename T>
 struct ThreadPoolTraits
@@ -334,6 +334,8 @@ private:
                         {
                             threads_[i].join();
                         }
+
+                        threads_.clear();
                         runnables_.clear();
                         currentTasks_.resize(num_threads.value());
                         init_();
@@ -519,7 +521,8 @@ public:
     init_()
     {
         queueIt_ = taskQueues_.begin();
-        VERIFY(runnables_.size() == 0);
+        VERIFY(runnables_.empty());
+        VERIFY(threads_.empty());
 
         for (size_t i = 0; i < num_threads.value(); ++i)
         {

@@ -13,7 +13,6 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "ConfigFetcher.h"
 #include "FileSystem.h"
 #include "ObjectRouter.h"
 
@@ -22,6 +21,7 @@
 #include "XMLRPCStructs.h"
 #include "XMLRPCUtils.h"
 #include "CloneFileFlags.h"
+#include "ClientInfo.h"
 
 #include <cerrno>
 #include <fstream>
@@ -34,11 +34,13 @@
 #include <boost/thread/thread.hpp>
 
 #include <youtils/ArakoonNodeConfig.h>
+#include <youtils/ConfigFetcher.h>
 #include <youtils/DimensionedValue.h>
 #include <youtils/IOException.h>
 #include <youtils/System.h>
 #include <youtils/wall_timer.h>
 #include <youtils/System.h>
+#include <youtils/Uri.h>
 
 #include <volumedriver/Api.h>
 #include <volumedriver/MetaDataBackendInterface.h>
@@ -548,20 +550,20 @@ VolumesList::execute_internal(::XmlRpc::XmlRpcValue& params,
     }
     else
     {
-        auto registry(fs_.object_router().object_registry());
-        const auto objs(registry->list());
+        std::shared_ptr<CachedObjectRegistry> cached_registry(fs_.object_router().object_registry());
+        VERIFY(cached_registry);
+        const std::vector<ObjectRegistrationPtr> regs(cached_registry->registry().get_all_registrations());
 
         int k = 0;
 
-        for(const auto& o : objs)
+        for(const auto& reg : regs)
         {
-            const auto reg(registry->find(o,
-                                          IgnoreCache::F));
-            if (reg and
-                (reg->object().type == ObjectType::Volume or
-                 reg->object().type == ObjectType::Template))
+            VERIFY(reg);
+
+            if (reg->object().type == ObjectType::Volume or
+                reg->object().type == ObjectType::Template)
             {
-                result[k++] = ::XmlRpc::XmlRpcValue(o);
+                result[k++] = ::XmlRpc::XmlRpcValue(reg->volume_id);
             }
         }
     }
@@ -571,26 +573,26 @@ void
 VolumesListByPath::execute_internal(::XmlRpc::XmlRpcValue& /* params */,
                                     ::XmlRpc::XmlRpcValue& result)
 {
-    auto registry(fs_.object_router().object_registry());
-    const auto objs(registry->list());
-
     result.clear();
     result.setSize(0);
 
     int k = 0;
 
-    for (const auto& o: objs)
+    std::shared_ptr<CachedObjectRegistry> cached_registry(fs_.object_router().object_registry());
+    VERIFY(cached_registry);
+    const std::vector<ObjectRegistrationPtr> regs(cached_registry->registry().get_all_registrations());
+
+    for(const auto& reg : regs)
     {
-        const auto reg(registry->find(o,
-                                      IgnoreCache::F));
-        if (reg and
-            (reg->object().type == ObjectType::Volume or
-             reg->object().type == ObjectType::Template))
+        VERIFY(reg);
+
+        if (reg->object().type == ObjectType::Volume or
+            reg->object().type == ObjectType::Template)
         {
             try
             {
-                const FrontendPath volume_path(fs_.find_path(reg->volume_id));
-                result[k++] = ::XmlRpc::XmlRpcValue(volume_path.string());
+                const FrontendPath path(fs_.find_path(reg->volume_id));
+                result[k++] = ::XmlRpc::XmlRpcValue(path.string());
             }
             CATCH_STD_ALL_LOG_IGNORE("Failed to get path for " << reg->volume_id);
         }
@@ -842,6 +844,17 @@ ApplyScrubbingResult::execute_internal(::XmlRpc::XmlRpcValue&  params,
 
     fs_.object_router().queue_scrub_reply_local(volid,
                                                 scrubbing::ScrubReply(scrub_rsp_str));
+}
+
+void
+ResizeObject::execute_internal(::XmlRpc::XmlRpcValue& params,
+                               ::XmlRpc::XmlRpcValue& /* results */)
+{
+    const ObjectId id(getID(params[0]));
+    const size_t newsize = getVOLSIZE(params[0]);
+
+    fs_.object_router().resize(id,
+                               newsize);
 }
 
 void
@@ -1454,11 +1467,11 @@ UpdateConfiguration::execute_internal(XmlRpc::XmlRpcValue& params,
                                       XmlRpc::XmlRpcValue& result)
 {
     XMLRPCUtils::ensure_arg(params[0], XMLRPCKeys::configuration_path);
-    const std::string config(params[0][XMLRPCKeys::configuration_path]);
+    const yt::Uri config(params[0][XMLRPCKeys::configuration_path]);
 
     const boost::variant<yt::UpdateReport,
                          yt::ConfigurationReport>
-        rep(api::updateConfiguration(ConfigFetcher(config)(VerifyConfig::T)));
+        rep(api::updateConfiguration((*yt::ConfigFetcher::create(config))(VerifyConfig::T)));
 
     result = XMLRPCStructs::serialize_to_xmlrpc_value(rep);
 }
@@ -1868,6 +1881,20 @@ VAAICopy::execute_internal(XmlRpc::XmlRpcValue& params,
     uint64_t dst_filesize = fs_.object_router().get_size(*dst_id);
     result[XMLRPCKeys::volume_size] =
         XmlRpc::XmlRpcValue(std::to_string(dst_filesize));
+}
+
+void
+ListClientConnections::execute_internal(::XmlRpc::XmlRpcValue& /*params*/,
+                                        ::XmlRpc::XmlRpcValue& result)
+{
+    result.clear();
+    result.setSize(0);
+
+    int k = 0;
+    for (const auto& i: fs_.list_registered_clients())
+    {
+        result[k++] = XMLRPCStructs::serialize_to_xmlrpc_value(i);
+    }
 }
 
 void

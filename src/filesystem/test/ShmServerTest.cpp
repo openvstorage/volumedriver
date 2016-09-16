@@ -33,7 +33,7 @@
 
 #include <filesystem/ObjectRouter.h>
 #include <filesystem/Registry.h>
-#include <filesystem/ShmClient.h>
+#include <filesystem/c-api/ShmClient.h>
 #include <filesystem/c-api/volumedriver.h>
 
 namespace volumedriverfstest
@@ -925,6 +925,138 @@ TEST_F(ShmServerTest, ovs_write_flush_read)
     EXPECT_EQ(0,
               ovs_deallocate(ctx,
                              rbuf));
+
+    EXPECT_EQ(0,
+              ovs_ctx_destroy(ctx));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
+}
+
+TEST_F(ShmServerTest, ovs_create_truncate_volume)
+{
+    uint64_t volume_size = 1 << 20;
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
+    EXPECT_EQ(0,
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         "shm",
+                                         NULL,
+                                         0));
+    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
+    ASSERT_TRUE(ctx != nullptr);
+    EXPECT_EQ(ovs_create_volume(ctx,
+                                "volume",
+                                volume_size),
+              0);
+    ASSERT_EQ(0,
+              ovs_ctx_init(ctx, "volume", O_RDWR));
+
+    struct stat st;
+    EXPECT_EQ(0,
+              ovs_stat(ctx, &st));
+    EXPECT_EQ(st.st_size,
+              volume_size);
+
+    uint64_t new_volume_size = 1 << 30;
+    EXPECT_EQ(ovs_truncate_volume(ctx,
+                                  "volume",
+                                  new_volume_size),
+              0);
+    memset(&st, 0x0, sizeof(struct stat));
+    EXPECT_EQ(0,
+              ovs_stat(ctx, &st));
+    EXPECT_EQ(st.st_size,
+              new_volume_size);
+
+    EXPECT_EQ(ovs_truncate_volume(ctx,
+                                  "non_existend_volume",
+                                  new_volume_size),
+              -1);
+    EXPECT_EQ(ENOENT, errno);
+
+    EXPECT_EQ(0,
+              ovs_ctx_destroy(ctx));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
+}
+
+TEST_F(ShmServerTest, ovs_truncate_volume)
+{
+    uint64_t volume_size = 1 << 20;
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
+    EXPECT_EQ(0,
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         "shm",
+                                         NULL,
+                                         0));
+    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
+    ASSERT_TRUE(ctx != nullptr);
+    EXPECT_EQ(ovs_create_volume(ctx,
+                                "volume",
+                                volume_size),
+              0);
+
+    uint64_t new_volume_size = 1 << 30;
+    EXPECT_EQ(ovs_truncate(ctx,
+                           new_volume_size),
+              -1);
+    EXPECT_EQ(EBADF, errno);
+
+    ASSERT_EQ(0,
+              ovs_ctx_init(ctx, "volume", O_RDWR));
+
+    struct stat st;
+    EXPECT_EQ(0,
+              ovs_stat(ctx, &st));
+    EXPECT_EQ(st.st_size,
+              volume_size);
+
+    EXPECT_EQ(ovs_truncate(ctx,
+                           new_volume_size),
+              0);
+    EXPECT_EQ(0,
+              ovs_stat(ctx, &st));
+    EXPECT_EQ(st.st_size,
+              new_volume_size);
+
+    EXPECT_EQ(0,
+              ovs_ctx_destroy(ctx));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
+}
+
+TEST_F(ShmServerTest, ovs_fail_to_truncate_volume)
+{
+    uint64_t volume_size = 1 << 20;
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
+    EXPECT_EQ(0,
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         "shm",
+                                         NULL,
+                                         0));
+
+    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
+    ASSERT_TRUE(ctx != nullptr);
+    EXPECT_EQ(ovs_create_volume(ctx,
+                                "volume",
+                                volume_size),
+              0);
+
+    uint64_t new_volume_size = 1 << 30;
+    EXPECT_EQ(ovs_truncate(ctx,
+                           new_volume_size),
+              -1);
+    EXPECT_EQ(EBADF, errno);
+
+    ASSERT_EQ(0,
+              ovs_ctx_init(ctx, "volume", O_RDONLY));
+
+    EXPECT_EQ(ovs_truncate(ctx,
+                           new_volume_size),
+              -1);
+    EXPECT_EQ(EBADF, errno);
 
     EXPECT_EQ(0,
               ovs_ctx_destroy(ctx));

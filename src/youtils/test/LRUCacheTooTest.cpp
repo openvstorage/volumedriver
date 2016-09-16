@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "../LRUCacheToo.h"
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 
 #include <boost/lexical_cast.hpp>
 #include <boost/optional/optional_io.hpp>
@@ -25,7 +25,7 @@ namespace youtilstest
 namespace yt = youtils;
 
 class LRUCacheTooTest
-    : public TestBase
+    : public testing::Test
 {
 protected:
     using LRUCache = yt::LRUCacheToo<uint64_t, std::string>;

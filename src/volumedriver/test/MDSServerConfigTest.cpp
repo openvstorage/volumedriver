@@ -20,7 +20,7 @@
 #include <boost/filesystem.hpp>
 
 #include <youtils/InitializedParam.h>
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 
 namespace volumedrivertest
 {
@@ -33,7 +33,7 @@ namespace mds = metadata_server;
 using namespace volumedriver;
 
 class MDSServerConfigTest
-    : public youtilstest::TestBase
+    : public testing::Test
 {};
 
 TEST_F(MDSServerConfigTest, roundtrip)

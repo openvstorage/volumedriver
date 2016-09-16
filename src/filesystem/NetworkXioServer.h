@@ -16,15 +16,22 @@
 #ifndef __NETWORK_XIO_SERVER_H_
 #define __NETWORK_XIO_SERVER_H_
 
+#include "FileSystem.h"
+#include "NetworkXioIOHandler.h"
+#include "NetworkXioRequest.h"
+#include "NetworkXioWorkQueue.h"
+
 #include <map>
 #include <tuple>
 #include <memory>
 #include <libxio.h>
 
-#include "FileSystem.h"
-#include "NetworkXioWorkQueue.h"
-#include "NetworkXioIOHandler.h"
-#include "NetworkXioRequest.h"
+#include <youtils/Uri.h>
+
+#include <map>
+#include <tuple>
+#include <memory>
+#include <libxio.h>
 
 namespace volumedriverfs
 {
@@ -38,9 +45,10 @@ MAKE_EXCEPTION(FailedRegisterEventHandler, fungi::IOException);
 class NetworkXioServer
 {
 public:
-    NetworkXioServer(FileSystem& fs,
-                     const std::string& uri,
-                     size_t snd_rcv_queue_depth);
+    NetworkXioServer(FileSystem&,
+                     const youtils::Uri&,
+                     size_t snd_rcv_queue_depth,
+                     unsigned int workqueue_max_threads);
 
     ~NetworkXioServer();
 
@@ -92,7 +100,7 @@ private:
     DECLARE_LOGGER("NetworkXioServer");
 
     FileSystem& fs_;
-    std::string uri_;
+    youtils::Uri uri_;
     bool stopping;
 
     std::mutex mutex_;
@@ -100,6 +108,7 @@ private:
     bool stopped;
     EventFD evfd;
     int queue_depth;
+    unsigned int wq_max_threads;
 
     NetworkXioWorkQueuePtr wq_;
 
@@ -123,6 +132,17 @@ private:
 
     void
     free_request(NetworkXioRequest *req);
+
+    void
+    mark_session_disconnected(xio_session *session,
+                              xio_session_event_data *event_data);
+
+    void
+    mark_session_closed(xio_session *session,
+                        xio_session_event_data *event_data);
+
+    void
+    clear_done_reqs(NetworkXioClientData *cd);
 
     NetworkXioClientData*
     allocate_client_data();

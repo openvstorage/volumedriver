@@ -29,6 +29,7 @@
 #include "ObjectRouter.h"
 #include "StatsCollectorComponent.h"
 #include "VirtualDiskFormat.h"
+#include "ClientInfo.h"
 
 #include <functional>
 #include <system_error>
@@ -524,6 +525,14 @@ public:
         return fs_enable_network_interface.value();
     }
 
+    ClientInfoTag
+    register_client(ClientInfo info);
+
+    void
+    unregister_client(ClientInfoTag tag);
+
+    std::vector<ClientInfo>
+    list_registered_clients();
 private:
     DECLARE_LOGGER("FileSystem");
 
@@ -532,6 +541,9 @@ private:
     std::unique_ptr<VirtualDiskFormat> vdisk_format_;
 
     mutable boost::mutex config_lock_;
+
+    std::map<ClientInfoTag, ClientInfo> client_info_map_;
+    std::mutex client_info_lock_;
 
     DECLARE_PARAMETER(fs_ignore_sync);
     DECLARE_PARAMETER(fs_internal_suffix);

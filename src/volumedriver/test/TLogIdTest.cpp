@@ -16,7 +16,7 @@
 #include "../TLog.h"
 #include "../TLogId.h"
 
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 
 #include <boost/lexical_cast.hpp>
 
@@ -29,7 +29,7 @@ using namespace volumedriver;
 namespace yt = youtils;
 
 class TLogIdTest
-    : public ExGTest
+    : public testing::TestWithParam<VolumeDriverTestConfig>
 {};
 
 TEST_F(TLogIdTest, basics)

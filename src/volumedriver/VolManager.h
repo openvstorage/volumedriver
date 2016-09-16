@@ -530,6 +530,7 @@ public:
     DECLARE_PARAMETER(dtl_throttle_usecs);
     DECLARE_PARAMETER(dtl_queue_depth);
     DECLARE_PARAMETER(dtl_write_trigger);
+    DECLARE_PARAMETER(dtl_busy_loop_usecs);
 
     DECLARE_PARAMETER(number_of_scos_in_tlog);
     DECLARE_PARAMETER(non_disposable_scos_factor);

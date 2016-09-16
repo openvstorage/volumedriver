@@ -156,10 +156,10 @@ CachedObjectRegistry::drop_cache()
     cache_.clear();
 }
 
-std::list<ObjectId>
+std::vector<ObjectId>
 CachedObjectRegistry::list(RefreshCache refresh_cache)
 {
-    std::list<ObjectId> objs(registry_.list());
+    std::vector<ObjectId> objs(registry_.list());
 
     if (refresh_cache == RefreshCache::T)
     {

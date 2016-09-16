@@ -93,10 +93,16 @@ public:
     Wrapper&
     operator=(const Wrapper&) = default;
 
-    std::list<ObjectId>
+    std::vector<ObjectId>
     list() const
     {
         return registry_()->list();
+    }
+
+    std::vector<ObjectRegistrationPtr>
+    get_all_registrations() const
+    {
+        return registry_()->get_all_registrations();
     }
 
     ObjectRegistrationPtr
@@ -189,12 +195,18 @@ foc_config_mode(const ObjectRegistration* reg)
     return reg->foc_config_mode;
 }
 
+ObjectType
+object_type(const ObjectRegistration* reg)
+{
+    return reg->object().type;
+}
+
 }
 
 void
 ObjectRegistryClient::registerize()
 {
-    REGISTER_ITERABLE_CONVERTER(std::list<ObjectId>);
+    REGISTER_ITERABLE_CONVERTER(std::vector<ObjectId>);
 
     bpy::class_<ObjectRegistration,
                 boost::shared_ptr<ObjectRegistration>>("ObjectRegistration",
@@ -212,7 +224,12 @@ ObjectRegistryClient::registerize()
         .def("dtl_config_mode",
              foc_config_mode,
              "@return DTLConfigMode\n")
+        .def("object_type",
+             object_type,
+             "@return ObjectType\n")
         ;
+
+    REGISTER_ITERABLE_CONVERTER(std::vector<ObjectRegistrationPtr>);
 
     bpy::class_<Wrapper>("ObjectRegistryClient",
                          "debugging tool for the ObjectRegistry",
@@ -229,6 +246,9 @@ ObjectRegistryClient::registerize()
         .def("list",
              &Wrapper::list,
              "get a list of registered ObjectId's")
+        .def("get_all_registrations",
+             &Wrapper::get_all_registrations,
+             "get a list of all ObjectRegistrations")
         .def("find",
              &Wrapper::find,
              bpy::args("object_id"),

@@ -62,7 +62,7 @@
 //
 // TODO: push to youtils?
 
-BOOLEAN_ENUM(CanMakeProgress);
+VD_BOOLEAN_ENUM(CanMakeProgress);
 
 namespace volumedriverfs
 {

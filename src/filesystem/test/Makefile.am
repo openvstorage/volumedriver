@@ -45,7 +45,6 @@ volumedriver_fs_test_LDADD = \
 	../../youtils/libyoutils.la \
 	-lfuse3 \
 	$(BUILDTOOLS_LIBS) \
-	-lpython2.7 \
 	-lomniORB4 \
 	-lomnithread \
 	-lxio

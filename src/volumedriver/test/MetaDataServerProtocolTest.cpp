@@ -40,7 +40,7 @@
 
 #include <youtils/Logging.h>
 #include <youtils/System.h>
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 #include <youtils/wall_timer.h>
 
 namespace volumedrivertest
@@ -50,11 +50,10 @@ namespace ba = boost::archive;
 namespace bio = boost::iostreams;
 namespace mds = metadata_server;
 namespace mdsproto = metadata_server_protocol;
-namespace ytt = youtilstest;
 namespace yt = youtils;
 
 class MetaDataServerProtocolTest
-    : public ytt::TestBase
+    : public testing::Test
 {
     DECLARE_LOGGER("MetaDataServerProtocolTest");
 

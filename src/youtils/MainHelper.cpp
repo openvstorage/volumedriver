@@ -17,6 +17,7 @@
 #include "Logging.h"
 #include "MainHelper.h"
 #include "ProtobufLogger.h"
+#include "Uri.h"
 #include "VolumeDriverComponent.h"
 
 #include <iostream>
@@ -30,8 +31,8 @@ namespace bpt = boost::property_tree;
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
-ExistingFile
-MainHelper::backend_config_file_;
+MaybeUri
+MainHelper::backend_config_;
 
 MainHelper::MainHelper(const constructor_type& args)
     : unparsed_options_(args.second)
@@ -66,7 +67,10 @@ MainHelper::MainHelper(const constructor_type& args)
     backend_options_.add_options()
         ("backend-config-file",
          po::value<ExistingFile>(&backend_config_file_),
-         "backend config file, a json file that holds the backend configuration");
+         "backend config file, a json file that holds the backend configuration (DEPRECATED, use 'backend-config' instead!)")
+        ("backend-config",
+         po::value<decltype(backend_config_)>(&backend_config_),
+         "backend config (file, etcd url, ...)");
 
     standard_options_.add(logging_options_)
         .add(general_options_)
@@ -224,6 +228,11 @@ MainHelper::parse_standard_options()
         std::cout << standard_options_ << std::endl;
         log_extra_help(std::cout);
         exit(0);
+    }
+
+    if (not backend_config_ and backend_config_file_)
+    {
+        backend_config_ = Uri(backend_config_file_->string());
     }
 }
 

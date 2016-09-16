@@ -296,10 +296,18 @@ private:
 
     template<typename... A>
     static int
-    route_to_fs_instance_(void (FileSystem::*mem_fun)(const FrontendPath& path,
+    route_to_fs_instance_(void (FileSystem::*mem_fun)(const FrontendPath&,
+                                                      A... args),
+                          const FrontendPath&,
+                          A... args) throw ();
+
+    template<typename... A>
+    static int
+    route_to_fs_instance_(void (FileSystem::*mem_fun)(const FrontendPath&,
                                                       A... args),
                           const char* frontend_path,
                           A... args) throw ();
+
 };
 
 }

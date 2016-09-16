@@ -29,9 +29,9 @@
 namespace youtils
 {
 
-BOOLEAN_ENUM(ExcludeExecutableName);
-BOOLEAN_ENUM(AllowUnregisteredOptions);
-BOOLEAN_ENUM(MakeDefaultLocalBackendIfNotSet);
+VD_BOOLEAN_ENUM(ExcludeExecutableName);
+VD_BOOLEAN_ENUM(AllowUnregisteredOptions);
+VD_BOOLEAN_ENUM(MakeDefaultLocalBackendIfNotSet);
 
 
 class MainHelper
@@ -99,20 +99,26 @@ protected:
     virtual void
     check_no_unrecognized();
 
+    MaybeUri
+    backend_config_uri() const
+    {
+        return backend_config_;
+    }
+
 protected:
     boost::program_options::variables_map vm_;
     std::vector<std::string> unparsed_options_;
 
-public:
-    static ExistingFile backend_config_file_;
-
 private:
+    static MaybeUri backend_config_;
     std::vector<std::string> args_;
 
     boost::program_options::options_description logging_options_;
     boost::program_options::options_description general_options_;
     boost::program_options::options_description standard_options_;
     boost::program_options::options_description backend_options_;
+
+    ExistingFile backend_config_file_;
 
 protected:
     const std::string executable_name_;

@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 #include "../MainHelper.h"
 #include "../TestMainHelper.h"
 
@@ -103,7 +103,7 @@ struct TestMainHelperTestExecutable
 };
 
 // The
-class MainHelperTest : public TestBase
+class MainHelperTest : public testing::Test
 {
 
 };

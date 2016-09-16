@@ -13,16 +13,19 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include <youtils/Assert.h>
-#include <youtils/Catchers.h>
-
 #include "NetworkXioIOHandler.h"
 #include "NetworkXioProtocol.h"
 #include "ObjectRouter.h"
 #include "PythonClient.h" // clienterrors
 
+#include <youtils/Assert.h>
+#include <youtils/Catchers.h>
+#include <youtils/SocketAddress.h>
+
 namespace volumedriverfs
 {
+
+namespace yt = youtils;
 
 static inline void
 pack_msg(NetworkXioRequest *req)
@@ -32,6 +35,35 @@ pack_msg(NetworkXioRequest *req)
     o_msg.errval(req->errval);
     o_msg.opaque(req->opaque);
     req->s_msg= o_msg.pack_msg();
+}
+
+void
+NetworkXioIOHandler::update_fs_client_info(const std::string& volume_name)
+{
+    uint16_t port = 0;
+    std::string host;
+
+    xio_connection_attr xcon_peer;
+    int ret = xio_query_connection(cd_->conn,
+                                   &xcon_peer,
+                                   XIO_CONNECTION_ATTR_USER_CTX |
+                                   XIO_CONNECTION_ATTR_PEER_ADDR);
+    if (ret < 0)
+    {
+        LOG_ERROR(volume_name << ": failed to query the xio connection: " <<
+                  xio_strerror(xio_errno()));
+    }
+    else
+    {
+        const yt::SocketAddress sa(xcon_peer.peer_addr);
+        port = sa.get_port();
+        host = sa.get_ip_address();
+    }
+
+    const FrontendPath volume_path(make_volume_path(volume_name));
+    cd_->tag = fs_.register_client(ClientInfo(fs_.find_id(volume_path),
+                                              std::move(host),
+                                              port));
 }
 
 void
@@ -56,6 +88,7 @@ NetworkXioIOHandler::handle_open(NetworkXioRequest *req,
     try
     {
         fs_.open(p, O_RDWR, handle_);
+        update_fs_client_info(volume_name);
         volume_name_ = volume_name;
         req->retval = 0;
         req->errval = 0;
@@ -302,6 +335,37 @@ NetworkXioIOHandler::handle_stat_volume(NetworkXioRequest *req,
         req->retval = fs_.object_router().get_size(*volume_id);
         req->errval = 0;
     }
+    pack_msg(req);
+}
+
+void
+NetworkXioIOHandler::handle_truncate(NetworkXioRequest *req,
+                                     const std::string& volume_name,
+                                     const uint64_t offset)
+{
+    VERIFY(not handle_);
+    req->op = NetworkXioMsgOpcode::TruncateRsp;
+
+    const std::string root_("/");
+    const FrontendPath volume_path(root_ + volume_name +
+                                   fs_.vdisk_format().volume_suffix());
+    try
+    {
+        fs_.truncate(volume_path,
+                     static_cast<off_t>(offset));
+        req->retval = 0;
+        req->errval = 0;
+    }
+    catch (const HierarchicalArakoon::DoesNotExistException&)
+    {
+        req->retval = -1;
+        req->errval = ENOENT;
+    }
+    CATCH_STD_ALL_EWHAT({
+        LOG_ERROR("Problem truncating volume: " << EWHAT);
+        req->retval = -1;
+        req->errval = EIO;
+    });
     pack_msg(req);
 }
 
@@ -640,9 +704,11 @@ NetworkXioIOHandler::handle_is_snapshot_synced(NetworkXioRequest *req,
 }
 
 void
-NetworkXioIOHandler::handle_error(NetworkXioRequest *req, int errval)
+NetworkXioIOHandler::handle_error(NetworkXioRequest *req,
+                                  NetworkXioMsgOpcode op,
+                                  int errval)
 {
-    req->op = NetworkXioMsgOpcode::ErrorRsp;
+    req->op = op;
     req->retval = -1;
     req->errval = errval;
     pack_msg(req);
@@ -664,7 +730,9 @@ NetworkXioIOHandler::process_request(NetworkXioRequest *req)
     catch (...)
     {
         LOG_ERROR("cannot unpack message");
-        handle_error(req, EBADMSG);
+        handle_error(req,
+                     NetworkXioMsgOpcode::ErrorRsp,
+                     EBADMSG);
         return;
     }
 
@@ -700,9 +768,9 @@ NetworkXioIOHandler::process_request(NetworkXioRequest *req)
         else
         {
             LOG_ERROR("inents is smaller than 1, cannot proceed with write I/O");
-            req->op = NetworkXioMsgOpcode::WriteRsp;
-            req->retval = -1;
-            req->errval = EIO;
+            handle_error(req,
+                         NetworkXioMsgOpcode::WriteRsp,
+                         EIO);
         }
         break;
     }
@@ -770,9 +838,18 @@ NetworkXioIOHandler::process_request(NetworkXioRequest *req)
                                   i_msg.snap_name());
         break;
     }
+    case NetworkXioMsgOpcode::TruncateReq:
+    {
+        handle_truncate(req,
+                        i_msg.volume_name(),
+                        i_msg.offset());
+        break;
+    }
     default:
         LOG_ERROR("Unknown command");
-        handle_error(req, EIO);
+        handle_error(req,
+                     NetworkXioMsgOpcode::ErrorRsp,
+                     EIO);
         return;
     };
 }

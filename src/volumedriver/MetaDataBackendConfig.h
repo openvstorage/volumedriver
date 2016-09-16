@@ -277,7 +277,7 @@ private:
     }
 };
 
-BOOLEAN_ENUM(ApplyRelocationsToSlaves);
+VD_BOOLEAN_ENUM(ApplyRelocationsToSlaves);
 
 struct MDSMetaDataBackendConfig
     : public MetaDataBackendConfig

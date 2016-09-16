@@ -34,9 +34,10 @@ class FailOverCacheProtocol
     : public fungi::Protocol
 {
 public:
-    FailOverCacheProtocol(std::unique_ptr<fungi::Socket> sock,
-                          fungi::SocketServer& /*parentServer*/,
-                          FailOverCacheAcceptor& fact);
+    FailOverCacheProtocol(std::unique_ptr<fungi::Socket>,
+                          fungi::SocketServer&,
+                          FailOverCacheAcceptor&,
+                          const boost::chrono::microseconds busy_loop_duration);
 
     ~FailOverCacheProtocol();
 
@@ -62,12 +63,11 @@ private:
     std::unique_ptr<fungi::Socket> sock_;
     fungi::IOBaseStream stream_;
     fungi::Thread* thread_;
-
     FailOverCacheAcceptor& fact_;
     bool use_rs_;
-
+    std::atomic<bool> stop_;
     int pipes_[2];
-    int nfds_;
+    boost::chrono::microseconds busy_loop_duration_;
 
     void
     addEntries_();
@@ -108,6 +108,9 @@ private:
                                const byte* buf,
                                int64_t size,
                                bool cork);
+
+    bool
+    poll_(int32_t& cmd);
 };
 
 }

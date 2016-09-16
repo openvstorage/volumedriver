@@ -14,6 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "ArakoonClient.h"
+#include "ChronoDurationConverter.h"
 #include "FileSystemMetaDataClient.h"
 #include "IterableConverter.h"
 #include "LocalClient.h"
@@ -50,6 +51,7 @@
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
 
+#include <youtils/DimensionedValue.h>
 #include <youtils/Logger.h>
 #include <youtils/LoggerToolCut.h>
 #include <youtils/LoggingToolCut.h>
@@ -145,6 +147,7 @@ DEFINE_EXCEPTION_TRANSLATOR(FileExistsException);
 DEFINE_EXCEPTION_TRANSLATOR(InsufficientResourcesException);
 DEFINE_EXCEPTION_TRANSLATOR(PreviousSnapshotNotOnBackendException);
 DEFINE_EXCEPTION_TRANSLATOR(ObjectStillHasChildrenException);
+DEFINE_EXCEPTION_TRANSLATOR(SnapshotNameAlreadyExistsException);
 
 void
 reminder(vfs::XMLRPCErrorCode code) __attribute__((unused));
@@ -166,6 +169,7 @@ reminder(vfs::XMLRPCErrorCode code)
     case vfs::XMLRPCErrorCode::InsufficientResources:
     case vfs::XMLRPCErrorCode::PreviousSnapshotNotOnBackend:
     case vfs::XMLRPCErrorCode::ObjectStillHasChildren:
+    case vfs::XMLRPCErrorCode::SnapshotNameAlreadyExists:
         break;
     }
 }
@@ -269,6 +273,12 @@ mds_mdb_config_timeout_secs(const vd::MDSMetaDataBackendConfig* c)
     return c->timeout().count();
 }
 
+boost::optional<vfs::ObjectId>
+get_client_info_object_id(const vfs::ClientInfo* ci)
+{
+    return ci->object_id;
+}
+
 }
 
 TODO("AR: this is a bit of a mess - split into smaller, logical pieces");
@@ -293,6 +303,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
     REGISTER_EXCEPTION_TRANSLATOR(InsufficientResourcesException);
     REGISTER_EXCEPTION_TRANSLATOR(PreviousSnapshotNotOnBackendException);
     REGISTER_EXCEPTION_TRANSLATOR(ObjectStillHasChildrenException);
+    REGISTER_EXCEPTION_TRANSLATOR(SnapshotNameAlreadyExistsException);
 
     REGISTER_STRINGY_CONVERTER(vfs::ObjectId);
     REGISTER_STRINGY_CONVERTER(vd::VolumeId);
@@ -389,16 +400,28 @@ BOOST_PYTHON_MODULE(storagerouterclient)
         .def_pickle(ClusterCacheHandlePickleSuite())
         ;
 
+    using Seconds = boost::chrono::seconds;
+    using MaybeSeconds = boost::optional<Seconds>;
+
+    REGISTER_CHRONO_DURATION_CONVERTER(Seconds);
+    REGISTER_OPTIONAL_CONVERTER(Seconds);
+
+    REGISTER_STRINGY_CONVERTER(youtils::DimensionedValue);
+
     bpy::class_<vfs::PythonClient,
-                boost::noncopyable>("StorageRouterClient",
-                                    "client for management and monitoring of a volumedriverfs cluster",
-                                    bpy::init<const std::string&,
-                                              const std::vector< vfs::ClusterContact >>
-                                    (bpy::args("vrouter_cluster_id",
-                                               "cluster_contacts"),
-                                     "Create a client interface to a volumedriverfs cluster\n"
-                                     "@param vrouter_cluster_id: string, cluster_id \n"
-                                     "@param cluster_contacts: [ClusterContact] contact points to the cluster\n"))
+                boost::noncopyable>
+        ("StorageRouterClient",
+         "client for management and monitoring of a volumedriverfs cluster",
+         bpy::init<const std::string&,
+                   const std::vector<vfs::ClusterContact>&,
+                   const MaybeSeconds&>
+         ((bpy::args("vrouter_cluster_id"),
+           bpy::args("cluster_contacts"),
+           bpy::args("client_timeout_secs") = MaybeSeconds()),
+          "Create a client interface to a volumedriverfs cluster\n"
+          "@param vrouter_cluster_id: string, cluster_id \n"
+          "@param cluster_contacts: [ClusterContact] contact points to the cluster\n"
+          "@param client_timeout: unsigned, optional client timeout (seconds)"))
         .def("create_volume",
              &vfs::PythonClient::create_volume,
              (bpy::args("target_path"),
@@ -413,6 +436,13 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "@raises \n"
              "      InsufficientResourcesException\n"
              "      FileExistsException\n")
+        .def("truncate",
+             &vfs::PythonClient::resize,
+             (bpy::args("object_id"),
+              bpy::args("new_size")),
+             "Resize an object\n"
+             "@param object_id, string, ObjectId\n"
+             "@param new_size, string (DimensionedValue), new size of the object")
         .def("unlink",
              &vfs::PythonClient::unlink,
              (bpy::args("target_path")),
@@ -522,6 +552,12 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "@returns: Statistics object\n"
              "@raises \n"
              "      ObjectNotFoundException\n")
+        .def("list_client_connections",
+             &vfs::PythonClient::list_client_connections,
+             (bpy::args("node_id")),
+             "List client connections per node.\n"
+             "@param node_id: string, Node ID\n"
+             "@returns: ClientInfo object\n")
         .def("statistics_node",
              &vfs::PythonClient::statistics_node,
              (bpy::args("node_id"),
@@ -830,11 +866,17 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "Get the volume's metadata cache capacity\n"
              "@param volume_id: string, volume identifier\n"
              "@returns num_pages, unsigned, number of metadata pages or None\n")
+        .def("client_timeout_secs",
+             &vfs::PythonClient::timeout,
+             bpy::return_value_policy<bpy::copy_const_reference>(),
+             "Get the client timeout (if any) in seconds\n"
+             "@returns: unsigned, client timeout in seconds, or None\n")
         ;
 
     vfspy::LocalClient::registerize();
     vfspy::ArakoonClient::registerize();
 
+    REGISTER_STRINGY_CONVERTER(youtils::Uri);
     REGISTER_STRINGY_CONVERTER(vfs::ClusterId);
     REGISTER_STRINGY_CONVERTER(vfs::NodeId);
 
@@ -842,26 +884,38 @@ BOOST_PYTHON_MODULE(storagerouterclient)
     REGISTER_STRONG_ARITHMETIC_TYPEDEF_CONVERTER(vfs::XmlRpcPort);
     REGISTER_STRONG_ARITHMETIC_TYPEDEF_CONVERTER(vfs::FailoverCachePort);
 
-    bpy::class_<vfs::ClusterNodeConfig>("ClusterNodeConfig",
-                                        "configuration of a single volumedriverfs cluster node",
-                                        bpy::init<const vfs::NodeId&,
-                                                  const std::string&,
-                                                  vfs::MessagePort,
-                                                  vfs::XmlRpcPort,
-                                                  vfs::FailoverCachePort>((bpy::args("vrouter_id"),
-                                                                           bpy::args("host"),
-                                                                           bpy::args("message_port"),
-                                                                           bpy::args("xmlrpc_port"),
-                                                                           bpy::args("failovercache_port")),
-                                                                          "Create a cluster node configuration\n"
-                                                                          "@param vrouter_id: string, node ID\n"
-                                                                          "@param host: string, hostname or IP address\n"
-                                                                          "@param message_port: uint16_t, TCP port used for communication between nodes\n"
-                                                                          "@param xmlrpc_port: uint16_t, TCP port used for XMLRPC based management\n"
-                                                                          "@param failovercache_port: uint16_t, TCP port of the FailoverCache for this node\n"))
-        .def("__str__", &vfs::ClusterNodeConfig::str)
-        .def("__repr__", &vfs::ClusterNodeConfig::str)
-        .def("__eq__", &vfs::ClusterNodeConfig::operator==)
+    using MaybeUri = boost::optional<youtils::Uri>;
+
+    REGISTER_OPTIONAL_CONVERTER(youtils::Uri);
+
+    bpy::class_<vfs::ClusterNodeConfig>
+        ("ClusterNodeConfig",
+         "configuration of a single volumedriverfs cluster node",
+         bpy::init<const vfs::NodeId&,
+                   const std::string&,
+                   vfs::MessagePort,
+                   vfs::XmlRpcPort,
+                   vfs::FailoverCachePort,
+                   const MaybeUri&>
+         ((bpy::args("vrouter_id"),
+           bpy::args("host"),
+           bpy::args("message_port"),
+           bpy::args("xmlrpc_port"),
+           bpy::args("failovercache_port"),
+           bpy::args("network_server_uri") = MaybeUri()),
+          "Create a cluster node configuration\n"
+          "@param vrouter_id: string, node ID\n"
+          "@param host: string, hostname or IP address\n"
+          "@param message_port: uint16_t, TCP port used for communication between nodes\n"
+          "@param xmlrpc_port: uint16_t, TCP port used for XMLRPC based management\n"
+          "@param failovercache_port: uint16_t, TCP port of the FailoverCache for this node\n"
+          "@param network_server_uri: optional string (URI), URI the network server shall listen on\n"))
+        .def("__str__",
+             &vfs::ClusterNodeConfig::str)
+        .def("__repr__",
+             &vfs::ClusterNodeConfig::str)
+        .def("__eq__",
+             &vfs::ClusterNodeConfig::operator==)
 
 #define DEF_READONLY_PROP_(name)                                \
         .def_readonly(#name, &vfs::ClusterNodeConfig::name)
@@ -871,11 +925,39 @@ BOOST_PYTHON_MODULE(storagerouterclient)
         DEF_READONLY_PROP_(message_port)
         DEF_READONLY_PROP_(xmlrpc_port)
         DEF_READONLY_PROP_(failovercache_port)
+        DEF_READONLY_PROP_(network_server_uri)
 
 #undef DEF_READONLY_PROP_
         ;
 
     REGISTER_ITERABLE_CONVERTER(std::vector<vfs::ClusterNodeConfig>);
+
+    bpy::class_<vfs::ClientInfo>("ClientInfo",
+                                 "Client connection information",
+                                 bpy::init<const boost::optional<vfs::ObjectId>&,
+                                           const std::string&,
+                                           const uint16_t>((bpy::args("object_id"),
+                                                            bpy::args("ip"),
+                                                            bpy::args("port")),
+                                                           "Create a client connection information object\n"
+                                                           "@param object_id: string, Object ID\n"
+                                                           "@param ip: string, IP address\n"
+                                                           "@param port: uint16_t, TCP/IP or RDMA client port\n"))
+        .def("__str__", &vfs::ClientInfo::str)
+        .def("__repr__", &vfs::ClientInfo::str)
+
+#define DEF_READONLY_PROP_(name)                                \
+        .def_readonly(#name, &vfs::ClientInfo::name)
+
+        DEF_READONLY_PROP_(object_id)
+        DEF_READONLY_PROP_(ip)
+        DEF_READONLY_PROP_(port)
+        .add_property("object_id",
+                      &get_client_info_object_id)
+
+#undef DEF_READONLY_PROP_
+        ;
+    REGISTER_ITERABLE_CONVERTER(std::vector<vfs::ClientInfo>);
 
     bpy::class_<vfs::ClusterRegistry,
                 boost::noncopyable>("ClusterRegistry",

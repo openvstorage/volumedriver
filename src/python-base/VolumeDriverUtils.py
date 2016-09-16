@@ -137,9 +137,9 @@ def verifyServerPortRange(begin, end):
 
 
 def helpWithPostfixes():
-    print "PostFixes supported are B, KiB, MiB,GiB,TiB (byte and 1024 powers)"
-    print "and KB, MB, GB,TB (1000 powers)"
-    print "They have to be attached to the number they modify i.e no space in between"
+    print("PostFixes supported are B, KiB, MiB,GiB,TiB (byte and 1024 powers)")
+    print("and KB, MB, GB,TB (1000 powers)")
+    print("They have to be attached to the number they modify i.e no space in between")
 
 # Local Variables: **
 # mode: python **

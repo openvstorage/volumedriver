@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "../LRUCache.h"
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 
 #include <boost/bimap/unordered_set_of.hpp>
 #include <boost/lexical_cast.hpp>
@@ -25,7 +25,7 @@ namespace youtilstest
 namespace yt = youtils;
 
 class LRUCacheTest
-    : public TestBase
+    : public testing::Test
 {
 protected:
     typedef yt::LRUCache<uint64_t, std::string, boost::bimaps::unordered_set_of> LRUCache;

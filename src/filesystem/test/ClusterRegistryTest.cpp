@@ -18,7 +18,7 @@
 #include <boost/lexical_cast.hpp>
 
 #include <youtils/InitializedParam.h>
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 #include <youtils/UUID.h>
 
 #include "../ClusterRegistry.h"
@@ -61,7 +61,8 @@ protected:
                                                      n,
                                                      vfs::MessagePort(i + 1),
                                                      vfs::XmlRpcPort(i + 1),
-                                                     vfs::FailoverCachePort(i + 1)));
+                                                     vfs::FailoverCachePort(i + 1),
+                                                     boost::none));
         }
 
         return configs;

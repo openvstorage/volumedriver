@@ -16,13 +16,15 @@
 #ifndef TEST_WITH_DIR_H_
 #define TEST_WITH_DIR_H_
 
-#include "../TestBase.h"
+#include <gtest/gtest.h>
+
+#include <boost/filesystem.hpp>
 
 namespace youtilstest
 {
 
 class TestWithDir
-    : public TestBase
+    : public testing::Test
 {
 public:
     TestWithDir(const std::string& dirName);

@@ -25,18 +25,23 @@
 #include <boost/filesystem.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
+
 #include <youtils/Assert.h>
+#include <youtils/ConfigFetcher.h>
+#include <youtils/JsonString.h>
+#include <youtils/Uri.h>
 
 namespace backend
 {
 namespace fs = boost::filesystem;
 namespace ip = initialized_params;
+namespace yt = youtils;
 
 std::unique_ptr<BackendConfig>
-BackendConfig::makeBackendConfig(const std::string& json_string)
+BackendConfig::makeBackendConfig(const yt::JsonString& json_string)
 {
     boost::property_tree::ptree pt;
-    std::stringstream ss(json_string);
+    std::stringstream ss(json_string.str());
 
     boost::property_tree::json_parser::read_json(ss,
                                                  pt);
@@ -44,12 +49,10 @@ BackendConfig::makeBackendConfig(const std::string& json_string)
 }
 
 std::unique_ptr<BackendConfig>
-BackendConfig::makeBackendConfig(const fs::path& json_file)
+BackendConfig::makeBackendConfig(const yt::Uri& loc)
 {
-    boost::property_tree::ptree pt;
-    boost::property_tree::json_parser::read_json(json_file.string(),
-                                                 pt);
-    return makeBackendConfig(pt);
+    std::unique_ptr<yt::ConfigFetcher> fetcher(yt::ConfigFetcher::create(loc));
+    return makeBackendConfig((*fetcher)(VerifyConfig::F));
 }
 
 std::unique_ptr<BackendConfig>

@@ -27,7 +27,7 @@
 
 #include <youtils/FileUtils.h>
 #include <youtils/System.h>
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 
 namespace metadata_server_test
 {
@@ -36,17 +36,15 @@ namespace fs = boost::filesystem;
 namespace mds = metadata_server;
 namespace rdb = rocksdb;
 namespace yt = youtils;
-namespace ytt = youtilstest;
 
 using namespace std::string_literals;
 
 class RocksTest
-    : public ytt::TestBase
+    : public testing::Test
 {
 protected:
     RocksTest()
-        : ytt::TestBase()
-        , root_(yt::FileUtils::temp_path() / "RocksTest"s)
+        : root_(yt::FileUtils::temp_path() / "RocksTest"s)
         , path_(root_ / "rocksdb"s)
     {}
 

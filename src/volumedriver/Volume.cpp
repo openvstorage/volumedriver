@@ -2235,6 +2235,8 @@ getFailOverCacheConfig()
 void
 Volume::init_failover_cache_()
 {
+    failover_->setBusyLoopDuration(bc::microseconds(VolManager::get()->dtl_busy_loop_usecs.value()));
+
     failover_->initialize([&]() noexcept
                           {
                               LOG_VINFO("setting DTL degraded");

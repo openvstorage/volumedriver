@@ -65,7 +65,7 @@ struct CurlException : public std::runtime_error {
 
     virtual const char* what() const throw() {
         std::ostringstream estr;
-        estr << msg << " [code: " << error_code << "] ";
+        estr << msg << " [code: " << static_cast<unsigned>(error_code) << "] ";
         estr << curl_easy_strerror(error_code);
         return estr.str().c_str();
     }

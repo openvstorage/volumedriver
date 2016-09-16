@@ -612,3 +612,39 @@ TRACEPOINT_EVENT(
               ctf_integer(int, retval, result_arg)
      		  ctf_integer(int, errval, errval_arg))
 )
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_truncate_volume_enter,
+	TP_ARGS(const char*, volume_name_arg,
+            uint64_t, length_arg),
+	TP_FIELDS(ctf_string(volume_name, volume_name_arg)
+              ctf_integer(int, size, length_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_truncate_volume_exit,
+	TP_ARGS(const char*, volume_name_arg,
+            int, result_arg,
+            int, errval_arg),
+	TP_FIELDS(ctf_string(volume_name, volume_name_arg)
+              ctf_integer(int, retval, result_arg)
+              ctf_integer(int, errval, errval_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_truncate_enter,
+	TP_ARGS(uint64_t, length_arg),
+	TP_FIELDS(ctf_integer(int, size, length_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_libovsvolumedriver,
+	ovs_truncate_exit,
+	TP_ARGS(int, result_arg,
+            int, errval_arg),
+	TP_FIELDS(ctf_integer(int, retval, result_arg)
+              ctf_integer(int, errval, errval_arg))
+)

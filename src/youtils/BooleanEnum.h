@@ -13,15 +13,15 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef BOOLEAN_ENUM_H_
-#define BOOLEAN_ENUM_H_
+#ifndef VD_BOOLEAN_ENUM_H_
+#define VD_BOOLEAN_ENUM_H_
 
 // <iostream> is not included here on purpose, as this header is also used by
 // Logger.h which in turn is used by Logging.h.
 #include <iostream>
-#define DECLARE_BOOLEAN_ENUM(name) enum class name : bool;
+#define DECLARE_VD_BOOLEAN_ENUM(name) enum class name : bool;
 
-#define BOOLEAN_ENUM(name)                                              \
+#define VD_BOOLEAN_ENUM(name)                                              \
     enum class name : bool                                              \
                                                                         \
     {                                                                   \

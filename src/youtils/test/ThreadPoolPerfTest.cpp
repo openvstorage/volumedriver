@@ -15,7 +15,7 @@
 
 #include "../InitializedParam.h"
 #include "../System.h"
-#include "../TestBase.h"
+#include <gtest/gtest.h>
 #include "../ThreadPool.h"
 #include "../wall_timer.h"
 
@@ -295,12 +295,11 @@ allbarriers
 }
 
 class ThreadPoolPerfTest
-    : public TestBase
+    : public testing::Test
 {
 public:
     ThreadPoolPerfTest()
-        : TestBase()
-        , num_threads_(youtils::System::get_env_with_default("THREADPOOL_THREADS", 1U))
+        : num_threads_(youtils::System::get_env_with_default("THREADPOOL_THREADS", 1U))
         , tasks_per_queue_(youtils::System::get_env_with_default("TASKS_PER_QUEUE", 1ULL << 20))
         , num_queues_(youtils::System::get_env_with_default("NUM_QUEUES", 1U))
         , idle_queues_(youtils::System::get_env_with_default("IDLE_QUEUES", 0U))

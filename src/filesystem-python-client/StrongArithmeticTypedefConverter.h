@@ -8,6 +8,9 @@
 #include <boost/python/object.hpp>
 #include <boost/python/to_python_converter.hpp>
 
+// pythonX.Y/patchlevel.h
+#include <patchlevel.h>
+
 #include <youtils/Logging.h>
 
 // TODO:
@@ -46,9 +49,22 @@ struct StrongArithmeticTypedefConverter
     static void*
     convertible(PyObject* o)
     {
-        if (PyInt_Check(o))
+        if (
+#if PY_MAJOR_VERSION < 3
+            PyInt_Check(o)
+#else
+            PyLong_Check(o)
+#endif
+            )
         {
-            long l = PyInt_AsLong(o);
+            long l =
+#if PY_MAJOR_VERSION < 3
+                       PyInt_AsLong(o)
+#else
+                       PyLong_AsLong(o)
+#endif
+                       ;
+
             if (l == -1)
             {
                 if (PyErr_Occurred())
@@ -59,8 +75,8 @@ struct StrongArithmeticTypedefConverter
                 return nullptr;
             }
 
-            if (l >= std::numeric_limits<arithmetic_type>::min() and
-                l <= std::numeric_limits<arithmetic_type>::max())
+            if (l >= static_cast<long>(std::numeric_limits<arithmetic_type>::min()) and
+                l <= static_cast<long>(std::numeric_limits<arithmetic_type>::max()))
             {
                 return o;
             }
@@ -73,8 +89,15 @@ struct StrongArithmeticTypedefConverter
     from_python(PyObject* o,
                 boost::python::converter::rvalue_from_python_stage1_data* data)
     {
-        arithmetic_type t = PyInt_AsLong(o);
-        assert(not (t == -1 and PyErr_Occurred()));
+        const long l =
+#if PY_MAJOR_VERSION < 3
+                       PyInt_AsLong(o)
+#else
+                       PyLong_AsLong(o)
+#endif
+            ;
+        assert(not (l == -1 and PyErr_Occurred()));
+        arithmetic_type t = l;
 
         typedef boost::python::converter::rvalue_from_python_storage<T> storage_type;
 

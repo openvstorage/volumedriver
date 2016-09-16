@@ -18,7 +18,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include <youtils/FileUtils.h>
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 #include <youtils/System.h>
 #include <youtils/wall_timer.h>
 
@@ -92,19 +92,6 @@ public:
         uninitialize_connection_manager();
 
         fs::remove_all(root_);
-    }
-
-    virtual void
-    Run() override final
-    {
-        try
-        {
-            testing::Test::Run();
-        }
-        CATCH_STD_ALL_EWHAT({
-                TearDown();
-                FAIL() << "caught exception: " << EWHAT;
-            });
     }
 
     vd::MDSNodeConfig

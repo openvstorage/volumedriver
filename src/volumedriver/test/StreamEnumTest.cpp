@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "../VolumeConfig.h"
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 
 #include <youtils/EnumUtils.h>
 
@@ -23,7 +23,7 @@ namespace volumedrivertest
 using namespace volumedriver;
 namespace yt = youtils;
 
-class StreamEnumTest : public ExGTest
+class StreamEnumTest : public testing::TestWithParam<VolumeDriverTestConfig>
 {
 protected:
     template<typename T>

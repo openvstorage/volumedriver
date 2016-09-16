@@ -12,6 +12,7 @@
 // the LICENSE.txt file of the Open vStorage OSE distribution.
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
+
 #include "../ScrubberAdapter.h"
 #include "../ScrubReply.h"
 #include "../ScrubWork.h"
@@ -27,6 +28,7 @@
 namespace
 {
 
+namespace be = backend;
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 namespace sc = scrubbing;
@@ -117,7 +119,14 @@ public:
             return ret;
         }
 
-        const ScrubReply reply(ScrubberAdapter::scrub(ScrubWork(scrub_work_str_),
+        std::unique_ptr<be::BackendConfig> bcfg;
+        if (yt::MainHelper::backend_config_uri())
+        {
+            bcfg = be::BackendConfig::makeBackendConfig(*yt::MainHelper::backend_config_uri());
+        }
+
+        const ScrubReply reply(ScrubberAdapter::scrub(std::move(bcfg),
+                                                      ScrubWork(scrub_work_str_),
                                                       scratch_dir_,
                                                       region_size_exponent_,
                                                       fill_ratio_,

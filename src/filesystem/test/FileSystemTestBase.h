@@ -31,14 +31,14 @@
 
 #include <youtils/ArakoonTestSetup.h>
 #include <youtils/Logging.h>
-#include <youtils/TestBase.h>
+#include <gtest/gtest.h>
 
 #include <backend/BackendTestSetup.h>
 
 namespace volumedriverfstest
 {
 
-BOOLEAN_ENUM(PutClusterNodeConfigsInRegistry);
+VD_BOOLEAN_ENUM(PutClusterNodeConfigsInRegistry);
 
 class FileSystemTestBase
     : public FileSystemTestSetup

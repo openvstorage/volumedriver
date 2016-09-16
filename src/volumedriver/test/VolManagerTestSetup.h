@@ -17,7 +17,7 @@
 #define VOLMANAGER_TEST_SETUP_H
 
 #include "EventCollector.h"
-#include "ExGTest.h"
+#include "VolumeDriverTestConfig.h"
 #include "FailOverCacheTestSetup.h"
 #include "MetaDataStoreTestSetup.h"
 
@@ -54,10 +54,10 @@ namespace volumedriver
 class SCOCache;
 class SnapshotManagement;
 
-BOOLEAN_ENUM(UseFawltyMDStores);
-BOOLEAN_ENUM(UseFawltyTLogStores);
-BOOLEAN_ENUM(UseFawltyDataStores);
-BOOLEAN_ENUM(CheckVolumeNameForRestart);
+VD_BOOLEAN_ENUM(UseFawltyMDStores);
+VD_BOOLEAN_ENUM(UseFawltyTLogStores);
+VD_BOOLEAN_ENUM(UseFawltyDataStores);
+VD_BOOLEAN_ENUM(CheckVolumeNameForRestart);
 
 namespace fs = boost::filesystem;
 namespace be = backend;
@@ -106,7 +106,7 @@ private:
 // - read/write ordering (first write then read, random)
 // - io sizes (fixed vs. random)
 // - duration
-BOOLEAN_ENUM(CheckReadResult)
+VD_BOOLEAN_ENUM(CheckReadResult)
 
 class VolumeRandomIOThread
 {
@@ -237,7 +237,7 @@ struct VolManagerTestSetupParameters
 };
 
 class VolManagerTestSetup
-    : public ExGTest
+    : public testing::TestWithParam<VolumeDriverTestConfig>
     , public be::BackendTestSetup
     , public volumedrivertest::FailOverCacheTestSetup
 {
