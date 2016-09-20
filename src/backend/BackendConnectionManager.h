@@ -222,6 +222,12 @@ public:
         return default_timeout_;
     }
 
+    bool
+    partial_read_nullio() const
+    {
+        return backend_interface_partial_read_nullio.value();
+    }
+
 private:
     DECLARE_LOGGER("BackendConnectionManager");
 
@@ -230,6 +236,7 @@ private:
     DECLARE_PARAMETER(backend_interface_retries_on_error);
     DECLARE_PARAMETER(backend_interface_retry_interval_secs);
     DECLARE_PARAMETER(backend_interface_retry_backoff_multiplier);
+    DECLARE_PARAMETER(backend_interface_partial_read_nullio);
 
     // one per (logical) CPU.
     std::vector<ConnectionPool> connection_pools_;

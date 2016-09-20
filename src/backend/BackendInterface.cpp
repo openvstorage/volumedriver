@@ -376,8 +376,11 @@ BackendInterface::partial_read(const BackendConnectionInterface::PartialReads& p
                                                fallback_fun);
              });
 
-    handle_eventual_consistency_<void>(insist_on_latest,
-                                       std::move(fun));
+    if (not conn_manager_->partial_read_nullio())
+    {
+        handle_eventual_consistency_<void>(insist_on_latest,
+                                           std::move(fun));
+    }
 }
 
 BackendInterfacePtr
