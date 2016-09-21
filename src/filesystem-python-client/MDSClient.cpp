@@ -20,9 +20,9 @@
 
 #include <youtils/Logger.h>
 
-#include <volumedriver/metadata-server/Interface.h>
-
 #include <volumedriver/MDSNodeConfig.h>
+#include <volumedriver/OwnerTag.h>
+#include <volumedriver/metadata-server/Interface.h>
 #include <volumedriver/metadata-server/PythonClient.h>
 
 namespace bpy = boost::python;
@@ -107,10 +107,12 @@ MDSClient::registerize()
         .def("set_role",
              &mds::PythonClient::set_role,
              (bpy::args("nspace"),
-              bpy::args("role")),
+              bpy::args("role"),
+              bpy::args("owner_tag") = vd::OwnerTag(0)),
              "Set the Role of a namespace on that MDS.\n"
              "@param: nspace: string, namespace name\n"
              "@param: role: Role enum value, role to assume\n"
+             "@param: owner_tag: Optional OwnerTag, tag that identifies the current owner / fences old owners\n"
              "@returns: eventually\n")
         .def("get_cork_id",
              &mds::PythonClient::get_cork_id,
@@ -140,6 +142,12 @@ MDSClient::registerize()
              "@param: nspace: string, namespace name\n"
              "@param: reset: boolean, whether to reset the counters after retrieval\n"
              "@returns: MDSTableCounters\n")
+        .def("get_owner_tag",
+             &mds::PythonClient::owner_tag,
+             (bpy::args("nspace")),
+             "Retrieve the current OwnerTag for the given namespace.\n"
+             "@param: nspace: string, namespace name\n"
+             "@returns: OwnerTag\n")
         ;
 }
 
