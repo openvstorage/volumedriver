@@ -197,9 +197,14 @@ public:
     uint64_t
     volume_potential(const ObjectId&);
 
+    using MaybeFailOverCacheConfig = boost::optional<volumedriver::FailOverCacheConfig>;
+
     void
-    set_manual_foc_config(const ObjectId& oid,
-                          const boost::optional<volumedriver::FailOverCacheConfig>& foc_cfg);
+    set_manual_foc_config(const ObjectId&,
+                          const MaybeFailOverCacheConfig&);
+
+    void
+    set_manual_default_foc_config(const MaybeFailOverCacheConfig&);
 
     void
     set_automatic_foc_config(const ObjectId&);
@@ -207,7 +212,7 @@ public:
     FailOverCacheConfigMode
     get_foc_config_mode(const ObjectId& oid);
 
-    boost::optional<volumedriver::FailOverCacheConfig>
+    MaybeFailOverCacheConfig
     get_foc_config(const ObjectId& oid);
 
     void
@@ -342,9 +347,13 @@ private:
              MaybeSyncTimeoutMilliSeconds);
 
     void
+    do_adjust_failovercache_config_(const volumedriver::VolumeId&,
+                                    const MaybeFailOverCacheConfig&);
+
+    void
     adjust_failovercache_config_(const ObjectId& volume_id,
                                  const FailOverCacheConfigMode&,
-                                 const boost::optional<volumedriver::FailOverCacheConfig>&);
+                                 const MaybeFailOverCacheConfig&);
 
     void
     try_adjust_failovercache_config_(const ObjectId& id);
