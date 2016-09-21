@@ -234,6 +234,7 @@ stream_perf_counter(std::ostream& os,
                     const char* pfx)
 {
     return os <<
+        "," << pfx << "_events=" << pc.events() <<
         "," << pfx << "_sum=" << pc.sum() <<
         "," << pfx << "_sqsum=" << pc.sum_of_squares() <<
         "," << pfx << "_min=" << pc.min() <<
