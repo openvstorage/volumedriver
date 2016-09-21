@@ -217,7 +217,7 @@ protected:
     vd::FailOverCacheConfig
     check_initial_foc_config(const std::string& vname)
     {
-        const vd::FailOverCacheConfig cfg(remote_config().host,
+        const vd::FailOverCacheConfig cfg(remote_config().failovercache_host,
                                           remote_config().failovercache_port,
                                           vd::FailOverCacheMode::Asynchronous);
         check_foc_config(vname,
@@ -658,7 +658,7 @@ TEST_F(PythonClientTest, redirection_response)
     }                                                                   \
     catch (vfs::clienterrors::MaxRedirectsExceededException& e)         \
     {                                                                   \
-        EXPECT_EQ(remote_config().host, e.host);                        \
+        EXPECT_EQ(remote_config().xmlrpc_host, e.host);                 \
         EXPECT_EQ(remote_config().xmlrpc_port, e.port);                 \
     }                                                                   \
     CATCH_STD_ALL_EWHAT({                                               \
@@ -1746,7 +1746,7 @@ TEST_F(PythonClientTest, failovercache_config)
 
     //
 
-    const vd::FailOverCacheConfig cfg2(local_config().host,
+    const vd::FailOverCacheConfig cfg2(local_config().failovercache_host,
                                        local_config().failovercache_port,
                                        vd::FailOverCacheMode::Asynchronous);
 

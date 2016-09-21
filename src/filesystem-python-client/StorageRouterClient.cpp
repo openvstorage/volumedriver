@@ -888,6 +888,8 @@ BOOST_PYTHON_MODULE(storagerouterclient)
 
     REGISTER_OPTIONAL_CONVERTER(youtils::Uri);
 
+    using MaybeString = boost::optional<std::string>;
+
     bpy::class_<vfs::ClusterNodeConfig>
         ("ClusterNodeConfig",
          "configuration of a single volumedriverfs cluster node",
@@ -896,20 +898,26 @@ BOOST_PYTHON_MODULE(storagerouterclient)
                    vfs::MessagePort,
                    vfs::XmlRpcPort,
                    vfs::FailoverCachePort,
-                   const MaybeUri&>
+         const MaybeUri&,
+         const boost::optional<std::string>&,
+         const boost::optional<std::string>&>
          ((bpy::args("vrouter_id"),
            bpy::args("host"),
            bpy::args("message_port"),
            bpy::args("xmlrpc_port"),
            bpy::args("failovercache_port"),
-           bpy::args("network_server_uri") = MaybeUri()),
+           bpy::args("network_server_uri") = MaybeUri(),
+           bpy::args("xmlrpc_host") = MaybeString(),
+           bpy::args("failovercache_host") = MaybeString()),
           "Create a cluster node configuration\n"
           "@param vrouter_id: string, node ID\n"
-          "@param host: string, hostname or IP address\n"
+          "@param host: string, hostname or IP address to be used for communication between nodes\n"
           "@param message_port: uint16_t, TCP port used for communication between nodes\n"
           "@param xmlrpc_port: uint16_t, TCP port used for XMLRPC based management\n"
           "@param failovercache_port: uint16_t, TCP port of the FailoverCache for this node\n"
-          "@param network_server_uri: optional string (URI), URI the network server shall listen on\n"))
+          "@param network_server_uri: optional string (URI), URI the network server shall listen on\n"
+          "@param xmlrpc_host: optional string, address the XMLRPC server shall use, falls back to 'host' if unspecified\n"
+          "@param failovercache_host: optional string, address the DTL shall use, falls back to 'host' if unspecified\n"))
         .def("__str__",
              &vfs::ClusterNodeConfig::str)
         .def("__repr__",
@@ -921,9 +929,15 @@ BOOST_PYTHON_MODULE(storagerouterclient)
         .def_readonly(#name, &vfs::ClusterNodeConfig::name)
 
         DEF_READONLY_PROP_(vrouter_id)
-        DEF_READONLY_PROP_(host)
+        // "host" is only left for backward compatibility - phase out eventually
+        .add_property("host",
+                      bpy::make_getter(&vfs::ClusterNodeConfig::message_host,
+                                       bpy::return_value_policy<bpy::return_by_value>()))
+        DEF_READONLY_PROP_(message_host)
         DEF_READONLY_PROP_(message_port)
+        DEF_READONLY_PROP_(xmlrpc_host)
         DEF_READONLY_PROP_(xmlrpc_port)
+        DEF_READONLY_PROP_(failovercache_host)
         DEF_READONLY_PROP_(failovercache_port)
         DEF_READONLY_PROP_(network_server_uri)
 

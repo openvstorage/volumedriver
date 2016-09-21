@@ -499,11 +499,11 @@ XMLRPCRedirectWrapper<T>::execute(::XmlRpc::XmlRpcValue& params,
 
     VERIFY(maybe_remote_config);
 
-    LOG_INFO("Redirecting to " << maybe_remote_config->host << ", port " <<
+    LOG_INFO("Redirecting to " << maybe_remote_config->xmlrpc_host << ", port " <<
              maybe_remote_config->xmlrpc_port);
 
     result.clear();
-    result[XMLRPCKeys::xmlrpc_redirect_host] = T::XMLVAL(maybe_remote_config->host);
+    result[XMLRPCKeys::xmlrpc_redirect_host] = T::XMLVAL(maybe_remote_config->xmlrpc_host);
     result[XMLRPCKeys::xmlrpc_redirect_port] = T::XMLVAL(maybe_remote_config->xmlrpc_port);
 }
 

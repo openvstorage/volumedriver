@@ -174,7 +174,7 @@ FileSystem::FileSystem(const bpt::ptree& pt,
                UseCache::F)
     , stats_collector_(pt,
                     registerizle)
-    , xmlrpc_svc_(router_.node_config().host,
+    , xmlrpc_svc_(router_.node_config().xmlrpc_host,
                   router_.node_config().xmlrpc_port)
 {
     verify_volume_suffix_(fs_internal_suffix.value());

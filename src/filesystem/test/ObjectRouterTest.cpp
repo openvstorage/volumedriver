@@ -50,7 +50,7 @@ public:
         , next_port_off_(2)
     {
         const std::string addr("tcp://"s +
-                               local_config().host +
+                               local_config().message_host +
                                ":"s +
                                boost::lexical_cast<std::string>(local_config().message_port));
         zock.connect(addr.c_str());
@@ -178,11 +178,13 @@ public:
 
         const vfs::ClusterNodeConfig
             new_config(new_node_id,
-                       local_config().host,
+                       local_config().message_host,
                        vfs::MessagePort(local_config().message_port + next_port_off_),
                        vfs::XmlRpcPort(local_config().xmlrpc_port + next_port_off_),
                        vfs::FailoverCachePort(local_config().failovercache_port + next_port_off_),
-                       network_server_uri(local_node_id()));
+                       network_server_uri(local_node_id()),
+                       local_config().xmlrpc_host,
+                       local_config().failovercache_host);
 
         ++next_port_off_;
 
@@ -529,11 +531,13 @@ TEST_F(ObjectRouterTest, no_modification_of_existing_node_config)
 
     const vfs::ClusterNodeConfigs configs{ local_config(),
             vfs::ClusterNodeConfig(remote_config().vrouter_id,
-                                   remote_config().host,
+                                   remote_config().message_host,
                                    vfs::MessagePort(remote_config().message_port + 1),
                                    remote_config().xmlrpc_port,
                                    remote_config().failovercache_port,
-                                   remote_config().network_server_uri) };
+                                   remote_config().network_server_uri,
+                                   remote_config().xmlrpc_host,
+                                   remote_config().failovercache_host), };
 
     registry->erase_node_configs();
     registry->set_node_configs(configs);

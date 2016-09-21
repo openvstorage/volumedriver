@@ -114,7 +114,7 @@ main(int argc,
     const std::string
         path_for_failover_cache(argument_helper.failover_cache_path().string());
     const std::string
-        addr(argument_helper.localnode_config().host);
+        addr(argument_helper.failover_cache_host());
     const auto
         port(boost::lexical_cast<std::string>(argument_helper.failover_cache_port()));
     const auto

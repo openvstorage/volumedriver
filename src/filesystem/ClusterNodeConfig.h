@@ -34,20 +34,28 @@ OUR_STRONG_ARITHMETIC_TYPEDEF(uint16_t, FailoverCachePort, volumedriverfs);
 namespace volumedriverfs
 {
 
+// TODO:
+// Completely converting this one to use URIs would make it nicer / more consistent but
+// we're stuck with the current mix for backward compat reasons. Try cleaning this up over
+// a few releases?
 struct ClusterNodeConfig
 {
     using MaybeUri = boost::optional<youtils::Uri>;
 
     ClusterNodeConfig(const NodeId& id,
-                      const std::string& h,
+                      const std::string& mhost,
                       MessagePort mport,
                       XmlRpcPort xport,
                       FailoverCachePort fport,
-                      const MaybeUri& nw_uri)
+                      const MaybeUri& nw_uri,
+                      const boost::optional<std::string>& xhost = boost::none,
+                      const boost::optional<std::string>& fhost = boost::none)
         : vrouter_id(id)
-        , host(h)
+        , message_host(mhost)
         , message_port(mport)
+        , xmlrpc_host(xhost ? *xhost : mhost)
         , xmlrpc_port(xport)
+        , failovercache_host(fhost ? *fhost : mhost)
         , failovercache_port(fport)
         , network_server_uri(nw_uri)
     {
@@ -60,9 +68,11 @@ struct ClusterNodeConfig
 
     ClusterNodeConfig(const ClusterNodeConfig& other)
         : vrouter_id(other.vrouter_id)
-        , host(other.host)
+        , message_host(other.message_host)
         , message_port(other.message_port)
+        , xmlrpc_host(other.xmlrpc_host)
         , xmlrpc_port(other.xmlrpc_port)
+        , failovercache_host(other.failovercache_host)
         , failovercache_port(other.failovercache_port)
         , network_server_uri(other.network_server_uri)
     {}
@@ -73,9 +83,11 @@ struct ClusterNodeConfig
         if (this != &other)
         {
             const_cast<NodeId&>(vrouter_id) = other.vrouter_id;
-            const_cast<std::string&>(host) = other.host;
+            const_cast<std::string&>(message_host) = other.message_host;
             const_cast<MessagePort&>(message_port) = other.message_port;
+            const_cast<std::string&>(xmlrpc_host) = other.xmlrpc_host;
             const_cast<XmlRpcPort&>(xmlrpc_port) = other.xmlrpc_port;
+            const_cast<std::string&>(failovercache_host) = other.failovercache_host;
             const_cast<FailoverCachePort&>(failovercache_port) = other.failovercache_port;
             const_cast<MaybeUri&>(network_server_uri) = other.network_server_uri;
         }
@@ -88,9 +100,11 @@ struct ClusterNodeConfig
     {
         return
             (vrouter_id == other.vrouter_id) and
-            (host == other.host) and
+            (message_host == other.message_host) and
             (message_port == other.message_port) and
+            (xmlrpc_host == other.xmlrpc_host) and
             (xmlrpc_port == other.xmlrpc_port) and
+            (failovercache_host == other.failovercache_host) and
             (failovercache_port == other.failovercache_port) and
             (network_server_uri == other.network_server_uri);
     }
@@ -107,13 +121,13 @@ struct ClusterNodeConfig
     void
     load(Archive& ar, const unsigned version)
     {
-        if (version > 2)
+        if (version > 3)
         {
-            THROW_SERIALIZATION_ERROR(version, 2, 1);
+            THROW_SERIALIZATION_ERROR(version, 3, 1);
         }
 
         ar & const_cast<NodeId&>(vrouter_id);
-        ar & const_cast<std::string&>(host);
+        ar & const_cast<std::string&>(message_host);
         ar & static_cast<uint16_t&>(const_cast<MessagePort&>(message_port));
         ar & static_cast<uint16_t&>(const_cast<XmlRpcPort&>(xmlrpc_port));
         ar & static_cast<uint16_t&>(const_cast<FailoverCachePort&>(failovercache_port));
@@ -126,20 +140,33 @@ struct ClusterNodeConfig
         {
             const_cast<MaybeUri&>(network_server_uri) = boost::none;
         }
+
+        if (version > 2)
+        {
+            ar & const_cast<std::string&>(xmlrpc_host);
+            ar & const_cast<std::string&>(failovercache_host);
+        }
+        else
+        {
+            const_cast<std::string&>(xmlrpc_host) = message_host;
+            const_cast<std::string&>(failovercache_host) = message_host;
+        }
     }
 
     template<class Archive>
     void
     save(Archive& ar, const unsigned version) const
     {
-        CHECK_VERSION(version, 2);
+        CHECK_VERSION(version, 3);
 
         ar & vrouter_id;
-        ar & host;
+        ar & message_host;
         ar & static_cast<const uint16_t&>(message_port);
         ar & static_cast<const uint16_t&>(xmlrpc_port);
         ar & static_cast<const uint16_t&>(failovercache_port);
         ar & network_server_uri;
+        ar & xmlrpc_host;
+        ar & failovercache_host;
     }
 
     // for python consumption
@@ -147,9 +174,11 @@ struct ClusterNodeConfig
     str() const;
 
     const NodeId vrouter_id;
-    const std::string host;
+    const std::string message_host;
     const MessagePort message_port;
+    const std::string xmlrpc_host;
     const XmlRpcPort xmlrpc_port;
+    const std::string failovercache_host;
     const FailoverCachePort failovercache_port;
     const MaybeUri network_server_uri;
 };
@@ -162,7 +191,7 @@ using ClusterNodeConfigs = std::vector<ClusterNodeConfig>;
 
 }
 
-BOOST_CLASS_VERSION(volumedriverfs::ClusterNodeConfig, 2);
+BOOST_CLASS_VERSION(volumedriverfs::ClusterNodeConfig, 3);
 
 namespace boost
 {

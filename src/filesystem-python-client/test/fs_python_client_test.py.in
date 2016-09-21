@@ -111,10 +111,13 @@ class TestHelperTest(unittest.TestCase):
 
     def test_cluster_node_config(self):
         cfg = ClusterNodeConfig("ClusterNodeId",
-                                "hostname",
+                                "message_host",
                                 123,
                                 456,
-                                789)
+                                789,
+                                "rdma://edge_host:101",
+                                "xmlrpc_host",
+                                "dtl_host")
         self.assertEqual(
             cfg, PythonTestHelpers.reflect_cluster_node_config(cfg))
 

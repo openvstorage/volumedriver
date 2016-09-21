@@ -108,7 +108,7 @@ FileSystemTestSetup::start_failovercache_for_local_node()
 {
     local_foc_helper_ =
         std::make_unique<FailOverCacheTestHelper>(failovercache_dir(remote_dir(topdir_)),
-                                                  remote_config().host,
+                                                  remote_config().failovercache_host,
                                                   remote_config().failovercache_port,
                                                   failovercache_transport());
 }
@@ -124,7 +124,7 @@ FileSystemTestSetup::start_failovercache_for_remote_node()
 {
     remote_foc_helper_ =
         std::make_unique<FailOverCacheTestHelper>(failovercache_dir(topdir_),
-                                                  local_config().host,
+                                                  local_config().failovercache_host,
                                                   local_config().failovercache_port,
                                                   failovercache_transport());
 }
