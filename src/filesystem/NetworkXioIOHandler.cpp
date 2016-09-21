@@ -704,6 +704,69 @@ NetworkXioIOHandler::handle_is_snapshot_synced(NetworkXioRequest *req,
 }
 
 void
+NetworkXioIOHandler::handle_list_cluster_node_uri(NetworkXioRequest *req)
+{
+    VERIFY(not handle_);
+    req->op = NetworkXioMsgOpcode::ListClusterNodeURIRsp;
+
+    auto registry(fs_.object_router().cluster_registry());
+    const auto configs(registry->get_node_configs());
+
+    uint64_t total_size = 0;
+    std::vector<std::string> uris;
+    try
+    {
+        for (const auto& c: configs)
+        {
+            if (c.network_server_uri)
+            {
+                std::string uri(boost::lexical_cast<std::string>(*c.network_server_uri));
+                total_size += uri.length() + 1;
+                uris.push_back(uri);
+            }
+        }
+    }
+    CATCH_STD_ALL_EWHAT({
+        LOG_ERROR("Problem listing cluster nodes URI: " << EWHAT);
+        req->retval = -1;
+        req->errval = EIO;
+        pack_msg(req);
+        return;
+    });
+
+    if (uris.empty())
+    {
+        req->errval = 0;
+        req->retval = 0;
+        pack_msg(req);
+        return;
+    }
+
+    int ret = xio_mem_alloc(total_size, &req->reg_mem);
+    if (ret < 0)
+    {
+        LOG_ERROR("cannot allocate requested buffer, size: " << total_size);
+        req->retval = -1;
+        req->errval = ENOMEM;
+        pack_msg(req);
+        return;
+    }
+    req->from_pool = false;
+    req->data = req->reg_mem.addr;
+    req->data_len = total_size;
+    uint64_t idx = 0;
+    for(auto& uri: uris)
+    {
+        const char *un = uri.c_str();
+        strcpy(static_cast<char*>(req->data) + idx, un);
+        idx += strlen(un) + 1;
+    }
+    req->errval = 0;
+    req->retval = uris.size();
+    pack_msg(req);
+}
+
+void
 NetworkXioIOHandler::handle_error(NetworkXioRequest *req,
                                   NetworkXioMsgOpcode op,
                                   int errval)
@@ -843,6 +906,11 @@ NetworkXioIOHandler::process_request(NetworkXioRequest *req)
         handle_truncate(req,
                         i_msg.volume_name(),
                         i_msg.offset());
+        break;
+    }
+    case NetworkXioMsgOpcode::ListClusterNodeURIReq:
+    {
+        handle_list_cluster_node_uri(req);
         break;
     }
     default:
