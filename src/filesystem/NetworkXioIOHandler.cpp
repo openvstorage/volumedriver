@@ -195,6 +195,24 @@ NetworkXioIOHandler::handle_write(NetworkXioRequest *req,
         return;
     }
 
+    xio_msg *xio_req = req->xio_req;
+    xio_iovec_ex *isglist = vmsg_sglist(&xio_req->in);
+    int inents = vmsg_sglist_nents(&xio_req->in);
+
+    if (inents >= 1)
+    {
+        req->data = isglist[0].iov_base;
+        req->data_len = isglist[0].iov_len;
+    }
+    else
+    {
+        LOG_ERROR("inents is '" << inents << "', write I/O error");
+        req->retval = -1;
+        req->errval = EIO;
+        pack_msg(req);
+        return;
+    }
+
     if (req->data_len < size)
     {
        LOG_ERROR("data buffer size is smaller than the requested write size"
@@ -781,8 +799,6 @@ void
 NetworkXioIOHandler::process_request(NetworkXioRequest *req)
 {
     xio_msg *xio_req = req->xio_req;
-    xio_iovec_ex *isglist = vmsg_sglist(&xio_req->in);
-    int inents = vmsg_sglist_nents(&xio_req->in);
 
     NetworkXioMsg i_msg(NetworkXioMsgOpcode::Noop);
     try
@@ -822,19 +838,9 @@ NetworkXioIOHandler::process_request(NetworkXioRequest *req)
     }
     case NetworkXioMsgOpcode::WriteReq:
     {
-        if (inents >= 1)
-        {
-            req->data = isglist[0].iov_base;
-            req->data_len = isglist[0].iov_len;
-            handle_write(req, i_msg.size(), i_msg.offset());
-        }
-        else
-        {
-            LOG_ERROR("inents is smaller than 1, cannot proceed with write I/O");
-            handle_error(req,
-                         NetworkXioMsgOpcode::WriteRsp,
-                         EIO);
-        }
+        handle_write(req,
+                     i_msg.size(),
+                     i_msg.offset());
         break;
     }
     case NetworkXioMsgOpcode::FlushReq:
