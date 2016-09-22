@@ -28,9 +28,9 @@ TEST(SCOCacheNamespaceConstructorTest, constructor)
     uint64_t max = 1 << 30;
 
     {
-        std::auto_ptr<SCOCacheNamespace> ns(new SCOCacheNamespace(nspace,
-                                                                  max,
-                                                                  min));
+        std::unique_ptr<SCOCacheNamespace> ns(new SCOCacheNamespace(nspace,
+                                                                    max,
+                                                                    min));
 
         EXPECT_EQ(nspace, ns->getName());
         EXPECT_EQ(max, ns->getMinSize());
@@ -38,8 +38,8 @@ TEST(SCOCacheNamespaceConstructorTest, constructor)
     }
     {
         std::unique_ptr<SCOCacheNamespace> ns(new SCOCacheNamespace(nspace,
-                                                                  min,
-                                                                  max));
+                                                                    min,
+                                                                    max));
 
         EXPECT_EQ(nspace, ns->getName());
         EXPECT_EQ(min, ns->getMinSize());
@@ -47,7 +47,8 @@ TEST(SCOCacheNamespaceConstructorTest, constructor)
     }
 }
 
-class SCOCacheNamespaceTest : public testing::TestWithParam<VolumeDriverTestConfig>
+class SCOCacheNamespaceTest
+    : public testing::TestWithParam<VolumeDriverTestConfig>
 {
 protected:
     virtual void
