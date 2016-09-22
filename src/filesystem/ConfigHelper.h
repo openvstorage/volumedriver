@@ -64,6 +64,13 @@ public:
         return localnode_config_->failovercache_port;
     }
 
+    const std::string&
+    failover_cache_host() const
+    {
+        VERIFY(localnode_config_);
+        return localnode_config_->failovercache_host;
+    }
+
     const ClusterNodeConfig&
     localnode_config() const
     {

@@ -111,7 +111,7 @@ ObjectRouter::ObjectRouter(const bpt::ptree& pt,
 
     const ClusterNodeConfig ncfg(node_config());
     const std::string addr("tcp://" +
-                           ncfg.host +
+                           ncfg.message_host +
                            ":"s +
                            boost::lexical_cast<std::string>(ncfg.message_port));
 
@@ -1737,7 +1737,7 @@ ObjectRouter::failoverconfig_as_it_should_be() const
                     it = node_map_.begin();
                 }
 
-                return vd::FailOverCacheConfig(it->second->config.host,
+                return vd::FailOverCacheConfig(it->second->config.failovercache_host,
                                                it->second->config.failovercache_port,
                                                foc_mode_);
             }
@@ -1812,14 +1812,14 @@ ObjectRouter::xmlrpc_client()
         auto it = node_map_.find(node_id());
         VERIFY(it != node_map_.end());
 
-        contacts.emplace_back(it->second->config.host,
+        contacts.emplace_back(it->second->config.xmlrpc_host,
                               it->second->config.xmlrpc_port);
 
         for (const auto& p : node_map_)
         {
             if (p.first != node_id())
             {
-                contacts.emplace_back(p.second->config.host,
+                contacts.emplace_back(p.second->config.xmlrpc_host,
                                       p.second->config.xmlrpc_port);
             }
         }
