@@ -614,17 +614,17 @@ private:
     restart_();
 
     void
-    create_volume_(const FrontendPath& path,
-                   volumedriver::VolumeConfig::MetaDataBackendConfigPtr mdb_config,
+    create_volume_(const FrontendPath&,
+                   volumedriver::VolumeConfig::MetaDataBackendConfigPtr,
                    const uint64_t size,
-                   DirectoryEntryPtr dentry);
+                   DirectoryEntryPtr);
 
     void
-    create_clone_(const FrontendPath& path,
-                  volumedriver::VolumeConfig::MetaDataBackendConfigPtr mdb_config,
+    create_clone_(const FrontendPath&,
+                  volumedriver::VolumeConfig::MetaDataBackendConfigPtr,
                   const volumedriver::VolumeId& parent,
                   const MaybeSnapshotName& maybe_parent_snap,
-                  DirectoryEntryPtr dentry);
+                  DirectoryEntryPtr);
 
     typedef std::function<void(const FrontendPath&,
                                DirectoryEntryPtr)> CreateVolumeOrCloneFun;
@@ -632,26 +632,30 @@ private:
     create_volume_or_clone_(const FrontendPath&,
                             CreateVolumeOrCloneFun&&);
 
-    template<typename ...A>
+    template<typename ...Args>
     void
-    do_mknod(const FrontendPath& path,
-             UserId uid,
-             GroupId gid,
-             Permissions pms,
-             A&&... args);
+    do_mknod(const FrontendPath&,
+             UserId,
+             GroupId,
+             Permissions,
+             Args&&...);
 
-    template<typename ...A>
+    template<typename ...Args>
     void
-    do_mkdir(UserId uid,
-             GroupId gid,
-             Permissions pms,
-             A&&... args);
+    do_mkdir(UserId,
+             GroupId,
+             Permissions,
+             Args&&...);
 
-    template<typename ...A>
+    template<typename ...Args>
     void
-    do_unlink(const FrontendPath& path,
-              const DirectoryEntryPtr& dentry,
-              A... args);
+    do_unlink(const FrontendPath&,
+              const DirectoryEntryPtr&,
+              Args...);
+
+    void
+    update_dtl_settings_(const boost::property_tree::ptree&,
+                         youtils::UpdateReport&);
 };
 
 }

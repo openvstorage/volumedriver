@@ -134,14 +134,14 @@ DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(fs_nullio,
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(fs_dtl_config_mode,
                                        volumedriverfs::FailOverCacheConfigMode);
 
-DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(fs_dtl_host,
-                                       std::string);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(fs_dtl_host,
+                                                  std::string);
 
-DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(fs_dtl_port,
-                                       uint16_t);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(fs_dtl_port,
+                                                  uint16_t);
 
-DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(fs_dtl_mode,
-                                       volumedriver::FailOverCacheMode);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(fs_dtl_mode,
+                                                  volumedriver::FailOverCacheMode);
 
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(fs_enable_shm_interface,
                                        bool);

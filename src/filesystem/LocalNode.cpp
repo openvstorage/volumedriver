@@ -1815,35 +1815,44 @@ LocalNode::transfer(const Object& obj,
 void
 LocalNode::adjust_failovercache_config_(const ObjectId& id,
                                         const FailOverCacheConfigMode& mode,
-                                        const boost::optional<vd::FailOverCacheConfig>& config)
+                                        const MaybeFailOverCacheConfig& config)
 {
-    ASSERT_LOCKABLE_LOCKED(api::getManagementMutex());
-
     LOG_INFO(id);
 
     const vd::VolumeId& vid = static_cast<const vd::VolumeId>(id);
-    const boost::optional<vd::FailOverCacheConfig>
-        old_config(api::getFailOverCacheConfig(vid));
+
+    do_adjust_failovercache_config_(vid,
+                                    config);
 
     vrouter_.object_registry()->set_foc_config_mode(id,
                                                     mode);
+}
+
+void
+LocalNode::do_adjust_failovercache_config_(const vd::VolumeId& vid,
+                                           const MaybeFailOverCacheConfig& config)
+{
+    ASSERT_LOCKABLE_LOCKED(api::getManagementMutex());
+
+    const boost::optional<vd::FailOverCacheConfig>
+        old_config(api::getFailOverCacheConfig(vid));
 
     if (old_config != config)
     {
-        LOG_INFO(id << ": setting FailOverCacheConfig from " <<
+        LOG_INFO(vid << ": setting FailOverCacheConfig from " <<
                  old_config << " -> " << config);
         try
         {
             api::setFailOverCacheConfig(vid,
                                         config);
         }
-        CATCH_STD_ALL_LOG_IGNORE(id <<
+        CATCH_STD_ALL_LOG_IGNORE(vid <<
                                  ": error while setting FailOverCacheConfig to " <<
                                  config);
     }
     else
     {
-        LOG_INFO(id << ": FailOverCacheConfig is unchanged: " << old_config);
+        LOG_INFO(vid << ": FailOverCacheConfig is unchanged: " << old_config);
     }
 }
 
@@ -1904,9 +1913,9 @@ LocalNode::stop(const Object& obj,
 }
 
 uint64_t
-LocalNode::volume_potential(const boost::optional<volumedriver::ClusterSize>& c,
-                            const boost::optional<volumedriver::SCOMultiplier>& s,
-                            const boost::optional<volumedriver::TLogMultiplier>& t)
+LocalNode::volume_potential(const boost::optional<vd::ClusterSize>& c,
+                            const boost::optional<vd::SCOMultiplier>& s,
+                            const boost::optional<vd::TLogMultiplier>& t)
 {
     return api::volumePotential(c ?
                                 *c :
@@ -1926,11 +1935,34 @@ LocalNode::volume_potential(const ObjectId& id)
 
 void
 LocalNode::set_manual_foc_config(const ObjectId& oid,
-                                 const boost::optional<vd::FailOverCacheConfig>& cfg)
+                                 const MaybeFailOverCacheConfig& cfg)
 {
     adjust_failovercache_config_(oid,
                                  FailOverCacheConfigMode::Manual,
                                  cfg);
+}
+
+void
+LocalNode::set_manual_default_foc_config(const MaybeFailOverCacheConfig& cfg)
+{
+    ASSERT_LOCKABLE_LOCKED(api::getManagementMutex());
+
+    std::list<vd::VolumeId> vols;
+    api::getVolumeList(vols);
+
+    for (const auto& vid : vols)
+    {
+        try
+        {
+            const FailOverCacheConfigMode mode = get_foc_config_mode(ObjectId(vid.str()));
+            if (mode == FailOverCacheConfigMode::Automatic)
+            {
+                do_adjust_failovercache_config_(vid,
+                                                cfg);
+            }
+        }
+        CATCH_STD_ALL_LOG_IGNORE(vid << ": failed to adjust FailOverCacheConfig");
+    }
 }
 
 void
@@ -1941,7 +1973,7 @@ LocalNode::set_automatic_foc_config(const ObjectId& oid)
                                  vrouter_.failoverconfig_as_it_should_be());
 }
 
-boost::optional<volumedriver::FailOverCacheConfig>
+LocalNode::MaybeFailOverCacheConfig
 LocalNode::get_foc_config(const ObjectId& oid)
 {
     return api::getFailOverCacheConfig(static_cast<const vd::VolumeId>(oid));

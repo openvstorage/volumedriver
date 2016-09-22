@@ -55,6 +55,9 @@ using namespace std::literals::string_literals;
 #define LOCK_REDIRECTS()                                \
     std::lock_guard<decltype(redirects_lock_)> rlg__(redirects_lock_)
 
+#define LOCK_FOC_CONFIG()                                               \
+    std::lock_guard<decltype(foc_config_lock_)> fclg__(foc_config_lock_)
+
 namespace ara = arakoon;
 namespace be = backend;
 namespace bpt = boost::property_tree;
@@ -66,7 +69,7 @@ ObjectRouter::ObjectRouter(const bpt::ptree& pt,
                            std::shared_ptr<yt::LockedArakoon>(larakoon),
                            const FailOverCacheConfigMode foc_config_mode,
                            const vd::FailOverCacheMode foc_mode,
-                           const boost::optional<vd::FailOverCacheConfig>& foc_config,
+                           const MaybeFailOverCacheConfig& foc_config,
                            const RegisterComponent registrate)
     : VolumeDriverComponent(registrate,
                             pt)
@@ -1329,7 +1332,7 @@ ObjectRouter::clone_to_existing_volume(const vd::VolumeId& clone_id,
 void
 ObjectRouter::vaai_copy(const ObjectId& src_id,
                         const boost::optional<ObjectId>& maybe_dst_id,
-                        std::unique_ptr<volumedriver::MetaDataBackendConfig> mdb_config,
+                        std::unique_ptr<vd::MetaDataBackendConfig> mdb_config,
                         const uint64_t timeout,
                         const CloneFileFlags flags,
                         VAAICreateCloneFun fun)
@@ -1703,13 +1706,14 @@ ObjectRouter::checkConfig(const bpt::ptree& pt,
     return result;
 }
 
-boost::optional<vd::FailOverCacheConfig>
+ObjectRouter::MaybeFailOverCacheConfig
 ObjectRouter::failoverconfig_as_it_should_be() const
 {
     switch (foc_config_mode_)
     {
     case FailOverCacheConfigMode::Manual:
         {
+            LOCK_FOC_CONFIG();
             return foc_config_;
         }
     case FailOverCacheConfigMode::Automatic:
@@ -1788,9 +1792,17 @@ ObjectRouter::get_foc_config_mode(const ObjectId& oid)
 
 void
 ObjectRouter::set_manual_foc_config(const ObjectId& oid,
-                                    const boost::optional<volumedriver::FailOverCacheConfig>& foc_config)
+                                    const MaybeFailOverCacheConfig& foc_config)
 {
     local_node_()->set_manual_foc_config(oid, foc_config);
+}
+
+void
+ObjectRouter::set_manual_default_foc_config(const MaybeFailOverCacheConfig& foc_config)
+{
+    local_node_()->set_manual_default_foc_config(foc_config);
+    LOCK_FOC_CONFIG();
+    foc_config_ = foc_config;
 }
 
 void

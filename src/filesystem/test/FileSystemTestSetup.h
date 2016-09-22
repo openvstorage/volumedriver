@@ -28,6 +28,7 @@
 
 #include <filesystem/ClusterId.h>
 #include <filesystem/ClusterNodeConfig.h>
+#include <filesystem/FailOverCacheConfigMode.h>
 #include <filesystem/NodeId.h>
 #include <filesystem/PythonClient.h>
 #include <filesystem/VirtualDiskFormat.h>
@@ -81,6 +82,10 @@ struct FileSystemTestSetupParameters
     PARAM(uint64_t, redirect_timeout_ms) = 0;
     PARAM(uint64_t, redirect_retries) = 2;
     PARAM(uint64_t, scrub_manager_interval_secs) = 1;
+    PARAM(volumedriverfs::FailOverCacheConfigMode, dtl_config_mode) =
+        volumedriverfs::FailOverCacheConfigMode::Automatic;
+    PARAM(volumedriver::FailOverCacheMode, dtl_mode) =
+        volumedriver::FailOverCacheMode::Asynchronous;
 
 #undef PARAM
 };
@@ -159,12 +164,16 @@ protected:
     TearDown();
 
     boost::property_tree::ptree&
-    make_mdstore_config_(boost::property_tree::ptree& pt) const;
+    make_mdstore_config_(boost::property_tree::ptree&) const;
 
     boost::property_tree::ptree&
-    make_config_(boost::property_tree::ptree& pt,
+    make_dtl_config_(const volumedriverfs::NodeId&,
+                     boost::property_tree::ptree&) const;
+
+    boost::property_tree::ptree&
+    make_config_(boost::property_tree::ptree&,
                  const boost::filesystem::path& topdir,
-                 const volumedriverfs::NodeId& vrouter_id) const;
+                 const volumedriverfs::NodeId&) const;
 
     boost::property_tree::ptree&
     make_registry_config_(boost::property_tree::ptree&) const;
@@ -340,6 +349,9 @@ protected:
     uint64_t redirect_timeout_ms_;
     uint32_t redirect_retries_;
     uint64_t scrub_manager_interval_secs_;
+
+    volumedriverfs::FailOverCacheConfigMode dtl_config_mode_;
+    volumedriver::FailOverCacheMode dtl_mode_;
 
     const backend::Namespace fdriver_namespace_;
 

@@ -67,6 +67,7 @@ volumedriver_fs_test_SOURCES = \
 	LocalNodeTest.cpp \
 	LocalPythonClientTest.cpp \
 	Main.cpp \
+	ManualDtlConfigModeTest.cpp \
 	MessageTest.cpp \
 	MetaDataStoreTest.cpp \
 	NetworkServerTest.cpp \

@@ -140,11 +140,13 @@ class ObjectRouter
     friend class volumedriverfstest::ObjectRouterTest;
 
 public:
+    using MaybeFailOverCacheConfig = boost::optional<volumedriver::FailOverCacheConfig>;
+
     ObjectRouter(const boost::property_tree::ptree& pt,
                  std::shared_ptr<youtils::LockedArakoon> larakoon,
                  const FailOverCacheConfigMode,
                  const volumedriver::FailOverCacheMode,
-                 const boost::optional<volumedriver::FailOverCacheConfig>&,
+                 const MaybeFailOverCacheConfig&,
                  const RegisterComponent registerize = RegisterComponent::T);
 
     ~ObjectRouter();
@@ -360,7 +362,7 @@ public:
         return boost::chrono::milliseconds(vrouter_migrate_timeout_ms.value());
     }
 
-    boost::optional<volumedriver::FailOverCacheConfig>
+    MaybeFailOverCacheConfig
     failoverconfig_as_it_should_be() const;
 
     std::shared_ptr<events::PublisherInterface>
@@ -375,14 +377,23 @@ public:
                            const boost::optional<volumedriver::TLogMultiplier>&);
 
     FailOverCacheConfigMode
-    get_foc_config_mode(const ObjectId& id);
+    get_foc_config_mode(const ObjectId&);
+
+    FailOverCacheConfigMode
+    get_default_foc_config_mode() const
+    {
+        return foc_config_mode_;
+    }
 
     void
-    set_manual_foc_config(const ObjectId& id,
-                          const boost::optional<volumedriver::FailOverCacheConfig>& foc_config);
+    set_manual_default_foc_config(const MaybeFailOverCacheConfig&);
 
     void
-    set_automatic_foc_config(const ObjectId& id);
+    set_manual_foc_config(const ObjectId&,
+                          const MaybeFailOverCacheConfig&);
+
+    void
+    set_automatic_foc_config(const ObjectId&);
 
     std::unique_ptr<PythonClient>
     xmlrpc_client();
@@ -422,7 +433,8 @@ private:
 
     FailOverCacheConfigMode foc_config_mode_;
     volumedriver::FailOverCacheMode foc_mode_;
-    boost::optional<volumedriver::FailOverCacheConfig> foc_config_;
+    mutable std::mutex foc_config_lock_;
+    MaybeFailOverCacheConfig foc_config_;
 
     struct RedirectCounter
     {
