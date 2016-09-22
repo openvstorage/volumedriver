@@ -29,7 +29,11 @@ operator<<(std::ostream& os,
         "host: \"" << cfg.host << "\", " <<
         "message_port: " << cfg.message_port << ", " <<
         "xmlrpc_port: " << cfg.xmlrpc_port << ", " <<
-        "failovercache_port: " << cfg.failovercache_port << " }";
+        "failovercache_port: " << cfg.failovercache_port << ", " <<
+        "network_server_uri: \"" <<
+        (cfg.network_server_uri ?
+         boost::lexical_cast<std::string>(*cfg.network_server_uri) :
+         "") << "\"}";
 
     return os;
 }
