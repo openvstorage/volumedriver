@@ -888,10 +888,9 @@ BOOST_PYTHON_MODULE(storagerouterclient)
     REGISTER_STRONG_ARITHMETIC_TYPEDEF_CONVERTER(vfs::FailoverCachePort);
 
     using MaybeUri = boost::optional<youtils::Uri>;
+    using MaybeString = boost::optional<std::string>;
 
     REGISTER_OPTIONAL_CONVERTER(youtils::Uri);
-
-    using MaybeString = boost::optional<std::string>;
 
     bpy::class_<vfs::ClusterNodeConfig>
         ("ClusterNodeConfig",
@@ -902,8 +901,8 @@ BOOST_PYTHON_MODULE(storagerouterclient)
                    vfs::XmlRpcPort,
                    vfs::FailoverCachePort,
          const MaybeUri&,
-         const boost::optional<std::string>&,
-         const boost::optional<std::string>&>
+         const MaybeString&,
+         const MaybeString&>
          ((bpy::args("vrouter_id"),
            bpy::args("host"),
            bpy::args("message_port"),
