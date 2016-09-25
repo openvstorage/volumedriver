@@ -2,17 +2,9 @@
 //
 // Copyright (C) 2015 KONDO Takatoshi
 //
-//    Licensed under the Apache License, Version 2.0 (the "License");
-//    you may not use this file except in compliance with the License.
-//    You may obtain a copy of the License at
-//
-//        http://www.apache.org/licenses/LICENSE-2.0
-//
-//    Unless required by applicable law or agreed to in writing, software
-//    distributed under the License is distributed on an "AS IS" BASIS,
-//    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-//    See the License for the specific language governing permissions and
-//    limitations under the License.
+//    Distributed under the Boost Software License, Version 1.0.
+//    (See accompanying file LICENSE_1_0.txt or copy at
+//    http://www.boost.org/LICENSE_1_0.txt)
 //
 
 #include <string>
@@ -53,7 +45,11 @@ struct proc:boost::static_visitor<void> {
                 // You can remove key-value pair from msgpack::type::variant_ref
 
 #if defined(MSGPACK_USE_CPP03)
+#  if MSGPACK_LIB_STD_CXX
+                v.erase(std::multimap<msgpack::type::variant_ref, msgpack::type::variant_ref>::const_iterator(it++));
+#  else  // MSGPACK_LIB_STD_CXX
                 v.erase(it++);
+#  endif // MSGPACK_LIB_STD_CXX
 #else  // defined(MSGPACK_USE_CPP03)
 #  if MSGPACK_LIB_STD_CXX
                 it = v.erase(std::multimap<msgpack::type::variant_ref, msgpack::type::variant_ref>::const_iterator(it));
@@ -87,8 +83,8 @@ int main() {
     u.address = "Tokyo";
     msgpack::pack(ss, u);
 
-    msgpack::unpacked unp = msgpack::unpack(ss.str().data(), ss.str().size());
-    msgpack::object const& obj = unp.get();
+    msgpack::object_handle oh = msgpack::unpack(ss.str().data(), ss.str().size());
+    msgpack::object const& obj = oh.get();
     std::cout << "Unpacked msgpack object." << std::endl;
     std::cout << obj << std::endl;
     msgpack::type::variant_ref v = obj.as<msgpack::type::variant_ref>();

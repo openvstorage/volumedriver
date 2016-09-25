@@ -3,17 +3,9 @@
  *
  * Copyright (C) 2008-2009 FURUHASHI Sadayuki
  *
- *    Licensed under the Apache License, Version 2.0 (the "License");
- *    you may not use this file except in compliance with the License.
- *    You may obtain a copy of the License at
- *
- *        http://www.apache.org/licenses/LICENSE-2.0
- *
- *    Unless required by applicable law or agreed to in writing, software
- *    distributed under the License is distributed on an "AS IS" BASIS,
- *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *    See the License for the specific language governing permissions and
- *    limitations under the License.
+ *    Distributed under the Boost Software License, Version 1.0.
+ *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    http://www.boost.org/LICENSE_1_0.txt)
  */
 #include "msgpack/unpack.h"
 #include "msgpack/unpack_define.h"
@@ -518,7 +510,8 @@ void msgpack_unpacker_reset(msgpack_unpacker* mpac)
     mpac->parsed = 0;
 }
 
-msgpack_unpack_return msgpack_unpacker_next(msgpack_unpacker* mpac, msgpack_unpacked* result)
+static inline msgpack_unpack_return unpacker_next(msgpack_unpacker* mpac,
+                                                  msgpack_unpacked* result)
 {
     int ret;
 
@@ -537,11 +530,40 @@ msgpack_unpack_return msgpack_unpacker_next(msgpack_unpacker* mpac, msgpack_unpa
     }
     result->zone = msgpack_unpacker_release_zone(mpac);
     result->data = msgpack_unpacker_data(mpac);
-    msgpack_unpacker_reset(mpac);
 
     return MSGPACK_UNPACK_SUCCESS;
 }
 
+msgpack_unpack_return msgpack_unpacker_next(msgpack_unpacker* mpac,
+                                            msgpack_unpacked* result)
+{
+    int ret;
+
+    ret = unpacker_next(mpac, result);
+    if (ret == MSGPACK_UNPACK_SUCCESS) {
+        msgpack_unpacker_reset(mpac);
+    }
+
+    return ret;
+}
+
+msgpack_unpack_return
+msgpack_unpacker_next_with_size(msgpack_unpacker* mpac,
+                                msgpack_unpacked* result, size_t *p_bytes)
+{
+    int ret;
+
+    ret = unpacker_next(mpac, result);
+    if (ret == MSGPACK_UNPACK_SUCCESS || ret == MSGPACK_UNPACK_CONTINUE) {
+        *p_bytes = mpac->parsed;
+    }
+
+    if (ret == MSGPACK_UNPACK_SUCCESS) {
+        msgpack_unpacker_reset(mpac);
+    }
+
+    return ret;
+}
 
 msgpack_unpack_return
 msgpack_unpack(const char* data, size_t len, size_t* off,

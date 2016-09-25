@@ -3,17 +3,9 @@
  *
  * Copyright (C) 2008-2010 FURUHASHI Sadayuki
  *
- *    Licensed under the Apache License, Version 2.0 (the "License");
- *    you may not use this file except in compliance with the License.
- *    You may obtain a copy of the License at
- *
- *        http://www.apache.org/licenses/LICENSE-2.0
- *
- *    Unless required by applicable law or agreed to in writing, software
- *    distributed under the License is distributed on an "AS IS" BASIS,
- *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *    See the License for the specific language governing permissions and
- *    limitations under the License.
+ *    Distributed under the Boost Software License, Version 1.0.
+ *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    http://www.boost.org/LICENSE_1_0.txt)
  */
 #ifndef MSGPACK_SYSDEP_H
 #define MSGPACK_SYSDEP_H
@@ -22,14 +14,19 @@
 
 #include <stdlib.h>
 #include <stddef.h>
+
+#if defined(_MSC_VER) && _MSC_VER <= 1800
+#   define snprintf(buf, len, format,...) _snprintf_s(buf, len, len, format, __VA_ARGS__)
+#endif
+
 #if defined(_MSC_VER) && _MSC_VER < 1600
-    typedef __int8 int8_t;
+    typedef signed __int8 int8_t;
     typedef unsigned __int8 uint8_t;
-    typedef __int16 int16_t;
+    typedef signed __int16 int16_t;
     typedef unsigned __int16 uint16_t;
-    typedef __int32 int32_t;
+    typedef signed __int32 int32_t;
     typedef unsigned __int32 uint32_t;
-    typedef __int64 int64_t;
+    typedef signed __int64 int64_t;
     typedef unsigned __int64 uint64_t;
 #elif defined(_MSC_VER)  // && _MSC_VER >= 1600
 #   include <stdint.h>
@@ -38,11 +35,13 @@
 #   include <stdbool.h>
 #endif
 
+#if !defined(MSGPACK_DLLEXPORT)
 #if defined(_MSC_VER)
 #   define MSGPACK_DLLEXPORT __declspec(dllexport)
 #else  /* _MSC_VER */
 #   define MSGPACK_DLLEXPORT
 #endif /* _MSC_VER */
+#endif
 
 #ifdef _WIN32
 #   define _msgpack_atomic_counter_header <windows.h>
@@ -84,7 +83,7 @@
 
 #endif
 
-#ifdef MSGPACK_ENDIAN_LITTLE_BYTE
+#if MSGPACK_ENDIAN_LITTLE_BYTE
 
 #   ifdef _WIN32
 #       if defined(ntohs)
@@ -190,6 +189,10 @@
 #    define false FALSE
 #  endif
 #  define inline __inline
+#endif
+
+#ifdef __APPLE__
+#  include <TargetConditionals.h>
 #endif
 
 #endif /* msgpack/sysdep.h */

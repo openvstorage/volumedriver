@@ -2,17 +2,9 @@
 //
 // Copyright (C) 2015 KONDO Takatoshi
 //
-//    Licensed under the Apache License, Version 2.0 (the "License");
-//    you may not use this file except in compliance with the License.
-//    You may obtain a copy of the License at
-//
-//        http://www.apache.org/licenses/LICENSE-2.0
-//
-//    Unless required by applicable law or agreed to in writing, software
-//    distributed under the License is distributed on an "AS IS" BASIS,
-//    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-//    See the License for the specific language governing permissions and
-//    limitations under the License.
+//    Distributed under the Boost Software License, Version 1.0.
+//    (See accompanying file LICENSE_1_0.txt or copy at
+//    http://www.boost.org/LICENSE_1_0.txt)
 //
 
 #include <string>
@@ -81,8 +73,8 @@ int main() {
     msgpack::pack(ss1, u);
     print(ss1.str());
 
-    msgpack::unpacked unp1 = msgpack::unpack(ss1.str().data(), ss1.str().size());
-    msgpack::object const& obj1 = unp1.get();
+    msgpack::object_handle oh1 = msgpack::unpack(ss1.str().data(), ss1.str().size());
+    msgpack::object const& obj1 = oh1.get();
     std::cout << "Unpacked msgpack object." << std::endl;
     std::cout << obj1 << std::endl;
 
@@ -95,8 +87,8 @@ int main() {
     msgpack::pack(ss2, v);
     print(ss2.str());
 
-    msgpack::unpacked unp2 = msgpack::unpack(ss2.str().data(), ss2.str().size());
-    msgpack::object const& obj2 = unp2.get();
+    msgpack::object_handle oh2 = msgpack::unpack(ss2.str().data(), ss2.str().size());
+    msgpack::object const& obj2 = oh2.get();
     std::cout << "Modified msgpack object." << std::endl;
     std::cout << obj2 << std::endl;
 }

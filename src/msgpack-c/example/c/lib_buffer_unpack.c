@@ -44,13 +44,14 @@ size_t receiver_recv(receiver *r, char* buf, size_t try_size) {
 size_t receiver_to_unpacker(receiver* r, size_t request_size,
         msgpack_unpacker *unpacker)
 {
+    size_t recv_len;
     // make sure there's enough room, or expand the unpacker accordingly
     if (msgpack_unpacker_buffer_capacity(unpacker) < request_size) {
         msgpack_unpacker_reserve_buffer(unpacker, request_size);
         assert(msgpack_unpacker_buffer_capacity(unpacker) >= request_size);
     }
-    size_t recv_len = receiver_recv(r, msgpack_unpacker_buffer(unpacker),
-                                    request_size);
+    recv_len = receiver_recv(r, msgpack_unpacker_buffer(unpacker),
+                             request_size);
     msgpack_unpacker_buffer_consumed(unpacker, recv_len);
     return recv_len;
 }
@@ -70,7 +71,11 @@ void unpack(receiver* r) {
     while (true) {
         recv_len = receiver_to_unpacker(r, EACH_RECV_SIZE, unp);
         if (recv_len == 0) break; // (reached end of input)
+#if defined(_MSC_VER) || defined(__MINGW32__)
+        printf("receive count: %d %Id bytes received.\n", recv_count++, recv_len);
+#else // defined(_MSC_VER) || defined(__MINGW32__)
         printf("receive count: %d %zd bytes received.\n", recv_count++, recv_len);
+#endif // defined(_MSC_VER) || defined(__MINGW32__)
         ret = msgpack_unpacker_next(unp, &result);
         while (ret == MSGPACK_UNPACK_SUCCESS) {
             msgpack_object obj = result.data;

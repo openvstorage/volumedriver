@@ -68,11 +68,11 @@ TEST(object, convert)
     msgpack::sbuffer sbuf;
     msgpack::pack(sbuf, m1);
 
-    msgpack::unpacked ret;
-    msgpack::unpack(ret, sbuf.data(), sbuf.size());
+    msgpack::object_handle oh =
+        msgpack::unpack(sbuf.data(), sbuf.size());
 
     myclass m2;
-    ret.get().convert(&m2);
+    oh.get().convert(m2);
 
     EXPECT_EQ(m1, m2);
 }
@@ -85,10 +85,10 @@ TEST(object, as)
     msgpack::sbuffer sbuf;
     msgpack::pack(sbuf, m1);
 
-    msgpack::unpacked ret;
-    msgpack::unpack(ret, sbuf.data(), sbuf.size());
+    msgpack::object_handle oh =
+        msgpack::unpack(sbuf.data(), sbuf.size());
 
-    EXPECT_EQ(m1, ret.get().as<myclass>());
+    EXPECT_EQ(m1, oh.get().as<myclass>());
 }
 
 TEST(object, cross_zone_copy)
@@ -294,7 +294,7 @@ TEST(object, construct_enum)
 {
     msgpack::object obj(elem);
     EXPECT_EQ(msgpack::type::POSITIVE_INTEGER, obj.type);
-    EXPECT_EQ(elem, obj.via.u64);
+    EXPECT_EQ(static_cast<uint64_t>(elem), obj.via.u64);
 }
 
 #if !defined(MSGPACK_USE_CPP03)
@@ -312,7 +312,7 @@ TEST(object, construct_enum_outer)
 {
     msgpack::object obj(outer_enum::elem);
     EXPECT_EQ(msgpack::type::POSITIVE_INTEGER, obj.type);
-    EXPECT_EQ(elem, obj.via.u64);
+    EXPECT_EQ(static_cast<uint64_t>(elem), obj.via.u64);
 }
 
 #if !defined(MSGPACK_USE_CPP03)
