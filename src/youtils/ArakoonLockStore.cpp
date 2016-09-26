@@ -15,7 +15,7 @@
 
 #include "ArakoonLockStore.h"
 #include "ObjectMd5.h"
-#include "Weed.h"
+#include "Md5.h"
 
 namespace youtils
 {

@@ -24,7 +24,7 @@
 #include <boost/intrusive/link_mode.hpp>
 
 #include <youtils/Assert.h>
-#include <youtils/Weed.h>
+#include <youtils/Md5.h>
 
 namespace volumedriver
 {

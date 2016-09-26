@@ -85,6 +85,7 @@ libyoutils_la_SOURCES = \
 	LRUCache.cpp \
 	MainEvent.cpp \
 	MainHelper.cpp \
+	Md5.cpp \
 	Notifier.cpp \
 	OptionValidators.cpp \
 	OrbHelper.cpp \
@@ -98,6 +99,7 @@ libyoutils_la_SOURCES = \
 	RWLock.cpp \
 	ScriptFile.cpp \
 	SerializableDynamicBitset.cpp \
+	Sha1.cpp \
 	SharedMemoryRegion.cpp \
 	SharedMemoryRegionId.cpp \
 	SignalBlocker.cpp \
@@ -120,7 +122,6 @@ libyoutils_la_SOURCES = \
 	VolumeDriverComponent.cpp \
 	WaitForIt.cpp \
 	wall_timer.cpp \
-	Weed.cpp \
 	WithGlobalLock.cpp
 
 libyoutils_la_LIBADD = \

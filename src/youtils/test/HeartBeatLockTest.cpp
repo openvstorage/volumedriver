@@ -18,7 +18,7 @@
 #include "../HeartBeatLockService.h"
 #include "../HeartBeatLockCommunicator.h"
 #include "../ObjectMd5.h"
-#include "../Weed.h"
+#include "../Md5.h"
 #include "../WithGlobalLock.h"
 
 #include <map>
@@ -106,7 +106,7 @@ public:
         EXPECT_TRUE(locks_.map.end() != it);
         EXPECT_FALSE(it->second.empty());
 
-        const Weed weed(reinterpret_cast<const byte*>(it->second.data()),
+        const Weed weed(reinterpret_cast<const uint8_t*>(it->second.data()),
                         it->second.size());
         return std::make_tuple(HeartBeatLock(it->second),
                                std::make_unique<ObjectMd5>(weed));
@@ -126,7 +126,7 @@ public:
         {
             EXPECT_FALSE(it->second.empty());
 
-            const Weed weed(reinterpret_cast<const byte*>(it->second.data()),
+            const Weed weed(reinterpret_cast<const uint8_t*>(it->second.data()),
                         it->second.size());
 
             const auto current_tag(std::make_unique<ObjectMd5>(weed));
@@ -140,7 +140,7 @@ public:
         lock.save(s);
         locks_.map[uuid_] = s;
 
-        const Weed weed(reinterpret_cast<const byte*>(s.data()),
+        const Weed weed(reinterpret_cast<const uint8_t*>(s.data()),
                         s.size());
         return std::make_unique<ObjectMd5>(weed);
     }

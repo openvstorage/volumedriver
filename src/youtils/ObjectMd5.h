@@ -17,7 +17,7 @@
 #define YOUTILS_OBJECT_MD5_H_
 
 #include "UniqueObjectTag.h"
-#include "Weed.h"
+#include "Md5.h"
 
 #include <boost/lexical_cast.hpp>
 

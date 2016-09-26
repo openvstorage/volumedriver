@@ -16,7 +16,7 @@
 #include "../FileUtils.h"
 #include "../System.h"
 #include <../wall_timer.h>
-#include "../Weed.h"
+#include "../Md5.h"
 
 #include <fstream>
 #include <sstream>
@@ -72,7 +72,7 @@ TEST_F(WeedTest, greaterthan)
 }
 
 // static void
-// getMD5FromSystem(const byte* buf,
+// getMD5FromSystem(const uint8_t* buf,
 //                  std::string& weed)
 // {
 //     fs::path p = FileUtils::create_temp_file_in_temp_dir("md5temp");
@@ -102,7 +102,7 @@ TEST_F(WeedTest, greaterthan)
 // {
 //     const uint64_t num_bufs = 512*1024;
 
-//     std::vector<byte*> randoms;
+//     std::vector<uint8_t*> randoms;
 //     std::ifstream rand("/dev/urandom");
 //     std::vector<Weed> weeds;
 //     for(uint64_t i = 0; i < num_bufs ; ++i)
@@ -183,7 +183,7 @@ TEST_F(WeedTest, timing)
 
 TEST_F(WeedTest, stringification)
 {
-    std::vector<byte> v(4096, 7);
+    std::vector<uint8_t> v(4096, 7);
     const Weed w1(&v[0], v.size());
     std::stringstream ss;
     ss << w1;
@@ -194,7 +194,7 @@ TEST_F(WeedTest, stringification)
 
 TEST_F(WeedTest, serialization)
 {
-    std::vector<byte> v(4096, 7);
+    std::vector<uint8_t> v(4096, 7);
 
     for(int i = 0; i < 1024; i++)
     {

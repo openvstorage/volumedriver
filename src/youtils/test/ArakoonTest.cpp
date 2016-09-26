@@ -25,7 +25,7 @@
 #include "../System.h"
 #include "../UUID.h"
 #include "../wall_timer.h"
-#include "../Weed.h"
+#include "../Md5.h"
 
 namespace arakoontest
 {
