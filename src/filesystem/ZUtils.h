@@ -172,6 +172,26 @@ struct ZUtils
         deserialize_from_message<T, Traits>(msg, t);
     }
 
+    static void
+    send_delimiter(zmq::socket_t& sock,
+                   MoreMessageParts more)
+    {
+        zmq::message_t delim(0);
+        sock.send(delim, more == MoreMessageParts::T ? ZMQ_SNDMORE : 0);
+    }
+
+    static void
+    recv_delimiter(zmq::socket_t& sock)
+    {
+        zmq::message_t delim;
+        sock.recv(&delim);
+        if (delim.size() != 0)
+        {
+            LOG_ERROR("Expected delimiter, got message part of " << delim.size() << " bytes");
+            throw volumedriverfs::ProtocolError("Expected empty delimiter");
+        }
+    }
+
     static bool
     more_message_parts(zmq::socket_t& sock)
     {
@@ -197,6 +217,24 @@ struct ZUtils
     {
         const int linger = 0;
         zock.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
+    }
+
+    static bool
+    writable(zmq::socket_t& sock)
+    {
+        uint32_t events = 0;
+        size_t events_size = sizeof(events);
+        sock.getsockopt(ZMQ_EVENTS, &events, &events_size);
+        return (events bitand ZMQ_POLLOUT);
+    }
+
+    static bool
+    readable(zmq::socket_t& sock)
+    {
+        uint32_t events = 0;
+        size_t events_size = sizeof(events);
+        sock.getsockopt(ZMQ_EVENTS, &events, &events_size);
+        return (events bitand ZMQ_POLLIN);
     }
 
 private:
