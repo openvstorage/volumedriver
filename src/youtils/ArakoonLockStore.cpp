@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "ArakoonLockStore.h"
-#include "ObjectMd5.h"
+#include "ObjectDigest.h"
 #include "Md5.h"
 
 namespace youtils

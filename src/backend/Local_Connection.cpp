@@ -21,7 +21,7 @@
 #include <youtils/CheckSum.h>
 #include <youtils/FileUtils.h>
 #include <youtils/FileDescriptor.h>
-#include <youtils/ObjectMd5.h>
+#include <youtils/ObjectDigest.h>
 
 namespace backend
 {

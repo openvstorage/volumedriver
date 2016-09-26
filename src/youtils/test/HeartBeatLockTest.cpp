@@ -17,7 +17,7 @@
 #include "../HeartBeatLockService.h"
 #include "../HeartBeatLockService.h"
 #include "../HeartBeatLockCommunicator.h"
-#include "../ObjectMd5.h"
+#include "../ObjectDigest.h"
 #include "../Md5.h"
 #include "../WithGlobalLock.h"
 

@@ -13,56 +13,61 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef YOUTILS_OBJECT_MD5_H_
-#define YOUTILS_OBJECT_MD5_H_
+#ifndef YOUTILS_OBJECT_DIGEST_H_
+#define YOUTILS_OBJECT_DIGEST_H_
 
-#include "UniqueObjectTag.h"
 #include "Md5.h"
+#include "Sha1.h"
+#include "UniqueObjectTag.h"
 
 #include <boost/lexical_cast.hpp>
 
 namespace youtils
 {
 
-class ObjectMd5
+template<typename MessageDigest>
+class ObjectDigest
     : public UniqueObjectTag
 {
 public:
-    explicit ObjectMd5(const Weed& w)
-        : weed_(w)
+    explicit ObjectDigest(const MessageDigest& w)
+        : digest_(w)
     {}
 
-    virtual ~ObjectMd5() = default;
+    virtual ~ObjectDigest() = default;
 
     std::string
     str() const override final
     {
-        return boost::lexical_cast<std::string>(weed_);
+        return boost::lexical_cast<std::string>(digest_);
     }
 
     bool
     eq(const UniqueObjectTag& other) const override final
     {
-        auto md5 = dynamic_cast<const ObjectMd5*>(&other);
-        return md5 ? operator==(*md5) : false;
+        auto digest = dynamic_cast<const ObjectDigest*>(&other);
+        return digest ? operator==(*digest) : false;
     }
 
     bool
-    operator==(const ObjectMd5& other) const
+    operator==(const ObjectDigest& other) const
     {
-        return weed_ == other.weed_;
+        return digest_ == other.digest_;
     }
 
     bool
-    operator!=(const ObjectMd5& other) const
+    operator!=(const ObjectDigest& other) const
     {
-        return weed_ != other.weed_;
+        return digest_ != other.digest_;
     }
 
 private:
-    Weed weed_;
+    MessageDigest digest_;
 };
+
+using ObjectMd5 = ObjectDigest<Md5>;
+using ObjectSha1 = ObjectDigest<Sha1>;
 
 }
 
-#endif // !YOUTILS_OBJECT_MD5_H_
+#endif // !YOUTILS_OBJECT_DIGEST_H_
