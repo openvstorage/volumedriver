@@ -38,7 +38,7 @@ protected:
 TEST_F(SCOCacheConstructorTest, invalid)
 {
     MountPointConfigs mpCfgs;
-    std::auto_ptr<SCOCache> scoCache;
+    std::unique_ptr<SCOCache> scoCache;
     boost::property_tree::ptree pt;
 
     PARAMETER_TYPE(datastore_throttle_usecs)(throttling).persist(pt);

@@ -489,12 +489,16 @@ VolManager::getCurrentVolumesTLogRequirements()
         // /opt/vmachines/jenkins_work/workspace/volumedriver-no-dedup-compile-warnings-ubuntu-14.04/volumedriver-core/src/volumedriver/VolManager.cpp:486:18: warning: '*((void*)(& t)+4).volumedriver::TLogMultiplier::t' may be used uninitialized in this function [-Wmaybe-uninitialized]
         //  res += s * ((t == boost::none) ? number_of_scos_in_tlog.value() : t.get());
         //           ^
-#if defined(__GNUC__) && __GNUC__ <= 4 && GNUC_MINOR__ <= 9
+        // NB: still present with g++ 5.4.
+#if defined(__GNUC__) && \
+    (__GNUC__ <= 4 || \
+     (__GNUC__ == 5 && GNUC_MINOR__ <= 4))
         PRAGMA_IGNORE_WARNING_BEGIN("-Wmaybe-uninitialized");
 #endif
         res += s * (t ? *t : number_of_scos_in_tlog.value());
-#if defined(__GNUC__) && __GNUC__ <= 4 && GNUC_MINOR__ <= 9
-        PRAGMA_IGNORE_WARNING_END;
+#if defined(__GNUC__) && \
+    (__GNUC__ <= 4 || \
+     (__GNUC__ == 5 && GNUC_MINOR__ <= 4))
 #endif
     }
 
