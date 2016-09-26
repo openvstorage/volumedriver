@@ -23,8 +23,6 @@
 #include <atomic>
 #include <system_error>
 
-#define POLLING_TIME_USEC   20
-
 namespace yt = youtils;
 
 std::atomic<int> xio_init_refcnt =  ATOMIC_VAR_INIT(0);
@@ -222,13 +220,13 @@ NetworkXioClient::run(std::promise<bool>& promise)
 
     struct xio_options_keepalive ka;
     ka.time =
-        yt::System::get_env_with_default<int>("LIBOVSVOLUMEDRIVER_KEEPALIVE_TIME",
+        yt::System::get_env_with_default<int>("LIBOVSVOLUMEDRIVER_XIO_KEEPALIVE_TIME",
                                               600);
     ka.intvl =
-        yt::System::get_env_with_default<int>("LIBOVSVOLUMEDRIVER_KEEPALIVE_INTVL",
+        yt::System::get_env_with_default<int>("LIBOVSVOLUMEDRIVER_XIO_KEEPALIVE_INTVL",
                                               60);
     ka.probes =
-        yt::System::get_env_with_default<int>("LIBOVSVOLUMEDRIVER_KEEPALIVE_PROBES",
+        yt::System::get_env_with_default<int>("LIBOVSVOLUMEDRIVER_XIO_KEEPALIVE_PROBES",
                                               20);
 
     xio_set_opt(NULL,
@@ -238,8 +236,11 @@ NetworkXioClient::run(std::promise<bool>& promise)
                 sizeof(ka));
     try
     {
+        int polling_timeout_us =
+        yt::System::get_env_with_default<int>("LIBOVSVOLUMEDRIVER_XIO_POLLING_TIMEOUT_US",
+                                              0);
         ctx = std::shared_ptr<xio_context>(
-                            xio_context_create(NULL, POLLING_TIME_USEC, -1),
+                            xio_context_create(NULL, polling_timeout_us, -1),
                             xio_destroy_ctx_shutdown);
     }
     catch (const std::bad_alloc&)
