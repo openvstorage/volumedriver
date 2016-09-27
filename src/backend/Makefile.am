@@ -33,6 +33,7 @@ BUILT_SOURCES = \
 libbackend_la_SOURCES = \
 	AlbaConfig.cpp \
 	Alba_Connection.cpp \
+	AlbaSequence.cpp \
 	BackendConfig.cpp \
 	BackendConnectionManager.cpp \
 	BackendConnectionInterface.cpp \
