@@ -64,7 +64,7 @@ public:
 
     explicit MessageDigest(const std::vector<uint8_t>& in)
         : MessageDigest(in.data(),
-                in.size())
+                        in.size())
     {}
 
     explicit MessageDigest(std::istream& is)

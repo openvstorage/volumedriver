@@ -42,6 +42,12 @@ public:
         return boost::lexical_cast<std::string>(digest_);
     }
 
+    std::unique_ptr<UniqueObjectTag>
+    clone() const override final
+    {
+        return std::make_unique<ObjectDigest>(digest_);
+    }
+
     bool
     eq(const UniqueObjectTag& other) const override final
     {

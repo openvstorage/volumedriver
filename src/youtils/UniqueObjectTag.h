@@ -16,6 +16,7 @@
 #ifndef YOUTILS_UNIQUE_OBJECT_TAG_H_
 #define YOUTILS_UNIQUE_OBJECT_TAG_H_
 
+#include <memory>
 #include <iosfwd>
 #include <string>
 
@@ -29,6 +30,9 @@ public:
 
     virtual std::string
     str() const = 0;
+
+    virtual std::unique_ptr<UniqueObjectTag>
+    clone() const = 0;
 
     bool
     operator==(const UniqueObjectTag& other) const
