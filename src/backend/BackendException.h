@@ -107,6 +107,9 @@ DEFINE_BACKEND_EXCEPTION(NoMultiBackendAvailable,
 DEFINE_BACKEND_EXCEPTION(UniqueObjectTagMismatch,
                          "UniqueObjectTag does not match");
 
+DEFINE_BACKEND_EXCEPTION(AssertionFailed,
+                         "Assertion failed");
+
 //#undef DEFINE_BACKEND_EXCEPTION
 
 }
