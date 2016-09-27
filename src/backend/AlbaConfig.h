@@ -75,7 +75,7 @@ public:
     virtual bool
     unique_tag_support() const override final
     {
-        return false;
+        return true;
     }
 
     virtual const char*

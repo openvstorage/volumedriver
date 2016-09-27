@@ -14,6 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "Alba_Connection.h"
+#include "AlbaSequence.h"
 #include "BackendException.h"
 
 #include <mutex>
@@ -26,6 +27,7 @@
 
 #include <youtils/Assert.h>
 #include <youtils/CheckSum.h>
+#include <youtils/ObjectDigest.h>
 
 using namespace std;
 
@@ -36,7 +38,7 @@ namespace fs = boost::filesystem;
 namespace yt = youtils;
 
 using MaybeString = boost::optional<std::string>;
-using AlbaObjectInfo = std::tuple<uint64_t, alba::Checksum*>;
+using AlbaObjectInfo = std::tuple<uint64_t, ::alba::Checksum*>;
 
 namespace
 {
@@ -197,6 +199,7 @@ Connection::convert_exceptions_(const char* desc,
             X(NAMESPACE_ALREADY_EXISTS, BackendNamespaceAlreadyExistsException);
             X(NAMESPACE_DOES_NOT_EXIST, BackendNamespaceDoesNotExistException);
             X(CHECKSUM_MISMATCH, BackendInputException);
+            X(ASSERT_FAILED, BackendAssertionFailedException);
         default:
             healthy_ = false;
             throw;
@@ -204,7 +207,7 @@ Connection::convert_exceptions_(const char* desc,
 
 #undef X
     }
-    catch (alba::llio::output_stream_exception& e)
+    catch (::alba::llio::output_stream_exception& e)
     {
         LOG_ERROR(desc << ": caught ALBA output stream exception: " << e.what() <<
                   " - assuming we failed to connect to the proxy");
@@ -237,7 +240,7 @@ Connection::getCheckSum_(const Namespace& nspace,
         {
             TODO("This seems not to be the correct interface");
 
-            alba::Checksum* c;
+            ::alba::Checksum* c;
             std::tie(std::ignore, c) =
                 client_->get_object_info(nspace.str(),
                                          name,
@@ -246,8 +249,8 @@ Connection::getCheckSum_(const Namespace& nspace,
 
             if (c)
             {
-                std::unique_ptr<alba::Checksum> chksum(c);
-                auto crc32c = dynamic_cast<const alba::Crc32c*>(chksum.get());
+                std::unique_ptr<::alba::Checksum> chksum(c);
+                auto crc32c = dynamic_cast<const ::alba::Crc32c*>(chksum.get());
                 if (crc32c)
                 {
                     return yt::CheckSum(crc32c->_digest);
@@ -304,9 +307,9 @@ Connection::read_(const Namespace& nspace,
                                     name,
                                     dst.string(),
                                     T(insist_on_latest_version) ?
-                                    alba::proxy_client::consistent_read::T :
-                                    alba::proxy_client::consistent_read::F,
-                                    alba::proxy_client::should_cache::F);
+                                    apc::consistent_read::T :
+                                    apc::consistent_read::F,
+                                    apc::should_cache::F);
         });
 }
 
@@ -354,17 +357,51 @@ Connection::partial_read_(const Namespace& ns,
             client_->read_objects_slices(ns.str(),
                                          app_slicesv,
                                          insist_on_latest_version == InsistOnLatestVersion::T ?
-                                         alba::proxy_client::consistent_read::T :
-                                         alba::proxy_client::consistent_read::F);
+                                         apc::consistent_read::T :
+                                         apc::consistent_read::F);
         });
 
     return true;
 }
 
+namespace
+{
+
+Sequence
+make_write_sequence(const fs::path& path,
+                    const std::string& name,
+                    const Condition* cond,
+                    const ::alba::Checksum* chksum,
+                    const OverwriteObject overwrite)
+{
+    const size_t nasserts =
+        (overwrite == OverwriteObject::F ? 1 : 0) +
+        (cond != nullptr ? 1 : 0);
+
+    Sequence seq(1, nasserts);
+    seq.add_write(name,
+                  path,
+                  chksum);
+
+    if (cond)
+    {
+        seq.add_assert(*cond);
+    }
+
+    if (overwrite == OverwriteObject::F)
+    {
+        seq.add_assert(name,
+                       false);
+    }
+
+    return seq;
+}
+
+}
 
 void
 Connection::write_(const Namespace& nspace,
-                   const fs::path &src,
+                   const fs::path& src,
                    const string& name,
                    const OverwriteObject overwrite,
                    const youtils::CheckSum* chksum,
@@ -373,22 +410,36 @@ Connection::write_(const Namespace& nspace,
     LOG_TRACE(nspace << ": storing " << src << " as " << name << ", overwrite: " <<
               overwrite << ", checksum " << chksum);
 
-    if (cond)
-    {
-        LOG_ERROR("conditional write support is not available yet for Alba backend");
-        throw BackendNotImplementedException();
-    }
+    const ::alba::Crc32c crc(chksum ? chksum->getValue() : 0);
+    const Sequence seq(make_write_sequence(src,
+                                           name,
+                                           cond.get(),
+                                           chksum ? & crc : nullptr,
+                                           overwrite));
 
-    convert_exceptions_<void>("write object",
-                              [&]
+    try
+    {
+        convert_exceptions_<void>("write object",
+                                  [&]
+            {
+                seq.apply(*client_,
+                          nspace);
+            });
+    }
+    catch (BackendAssertionFailedException& e)
+    {
+        LOG_ERROR(nspace << "/" << name << ": failed assertion, cond: " << cond <<
+                  ": " << e.what());
+
+        if (cond)
         {
-            const alba::Crc32c crc32c(chksum ? chksum->getValue() : 0);
-            client_->write_object_fs(nspace.str(),
-                                     name,
-                                     src.string(),
-                                     apc::allow_overwrite(overwrite == OverwriteObject::T),
-                                     chksum ? &crc32c : nullptr);
-        });
+            throw BackendUniqueObjectTagMismatchException();
+        }
+        else
+        {
+            throw;
+        }
+    }
 }
 
 bool
@@ -403,12 +454,12 @@ Connection::objectExists_(const Namespace& nspace,
             try
             {
                 uint64_t size;
-                alba::Checksum* c;
+                ::alba::Checksum* c;
                 std::tie(size, c) = client_->get_object_info(nspace.str(),
                                                              name,
-                                                             alba::proxy_client::consistent_read::T,
-                                                             alba::proxy_client::should_cache::F);
-                std::unique_ptr<alba::Checksum> chksum(c);
+                                                             apc::consistent_read::T,
+                                                             apc::should_cache::F);
+                std::unique_ptr<::alba::Checksum> chksum(c);
                 return true;
             }
             catch (apc::proxy_exception& e)
@@ -433,19 +484,42 @@ Connection::remove_(const Namespace& nspace,
 {
     LOG_TRACE(nspace << ": deleting " << name << ", may not exist: " << may_not_exist);
 
+    const bool must_exist = may_not_exist == ObjectMayNotExist::F;
+    const size_t nasserts = (cond ? 1 : 0) + (must_exist ? 1 : 0);
+    Sequence seq(1, nasserts);
+    seq.add_delete(name);
     if (cond)
     {
-        LOG_ERROR("conditional write support is not available yet for Alba backend");
-        throw BackendNotImplementedException();
+        seq.add_assert(*cond);
+    }
+    if (must_exist)
+    {
+        seq.add_assert(name,
+                       true);
     }
 
-    convert_exceptions_<void>("delete object",
-                              [&]
+    try
+    {
+        convert_exceptions_<void>("delete object",
+                                  [&]
         {
-            client_->delete_object(nspace.str(),
-                                   name,
-                                   apc::may_not_exist(may_not_exist == ObjectMayNotExist::T));
+            seq.apply(*client_,
+                      nspace);
         });
+    }
+    catch (BackendAssertionFailedException& e)
+    {
+        LOG_ERROR(nspace << "/" << name << ": failed assertion, cond: " << cond <<
+                  ", must_exist: " << must_exist << ": " << e.what());
+        if (cond)
+        {
+            throw BackendUniqueObjectTagMismatchException();
+        }
+        else if (must_exist)
+        {
+            throw BackendObjectDoesNotExistException();
+        }
+    }
 }
 
 void
@@ -491,13 +565,13 @@ Connection::getSize_(const Namespace& nspace,
                                          [&]() -> uint64_t
         {
             uint64_t size;
-            alba::Checksum* c;
+            ::alba::Checksum* c;
 
             std::tie(size, c) = client_->get_object_info(nspace.str(),
                                                          name,
-                                                         alba::proxy_client::consistent_read::T,
-                                                         alba::proxy_client::should_cache::F);
-            std::unique_ptr<alba::Checksum> chksum(c);
+                                                         apc::consistent_read::T,
+                                                         apc::should_cache::F);
+            std::unique_ptr<::alba::Checksum> chksum(c);
             return size;
         });
 }
@@ -576,31 +650,114 @@ Connection::listNamespaces_(list<string>& nspaces)
 }
 
 std::unique_ptr<yt::UniqueObjectTag>
-Connection::get_tag_(const Namespace&,
-                     const std::string&)
+Connection::get_tag_(const Namespace& nspace,
+                     const std::string& name)
 {
-    LOG_ERROR("yt::UniqueObjectTag support is not available yet for Alba backend");
-    throw BackendNotImplementedException();
+    ::alba::Checksum* c = nullptr;
+
+    convert_exceptions_<void>("get tag",
+                              [&]
+        {
+            std::tie(std::ignore, c) = client_->get_object_info(nspace.str(),
+                                                                name,
+                                                                apc::consistent_read::T,
+                                                                apc::should_cache::F);
+        });
+
+    if (not c)
+    {
+        LOG_ERROR(nspace << "/" << name << ": no checksum returned - did we forget to add it?");
+        throw BackendException("failed to get checksum");
+    }
+
+    std::unique_ptr<::alba::Checksum> cs(c);
+    auto asha = dynamic_cast<::alba::Sha1*>(cs.get());
+
+    if (not asha)
+    {
+        LOG_ERROR(nspace << "/" << name << ": checksum " << *cs << " is not a SHA1");
+    }
+
+    yt::Sha1 sha1;
+    VERIFY(asha->_digest.size() == sha1.size());
+    memcpy(sha1.bytes(),
+           asha->_digest.data(),
+           sha1.size());
+
+    return std::make_unique<yt::ObjectSha1>(sha1);
 }
 
 std::unique_ptr<yt::UniqueObjectTag>
-Connection::write_tag_(const Namespace&,
-                       const fs::path&,
-                       const std::string&,
-                       const yt::UniqueObjectTag*,
-                       const OverwriteObject)
+Connection::write_tag_(const Namespace& nspace,
+                       const fs::path& src,
+                       const std::string& name,
+                       const yt::UniqueObjectTag* prev_tag,
+                       const OverwriteObject overwrite)
 {
-    LOG_ERROR("yt::UniqueObjectTag support is not available yet for Alba backend");
-    throw BackendNotImplementedException();
+    if (prev_tag)
+    {
+        VERIFY(overwrite == OverwriteObject::T);
+    }
+
+    fs::ifstream ifs(src);
+    const yt::Sha1 sha1(ifs);
+
+    std::string sha1_str(reinterpret_cast<const char*>(sha1.bytes()),
+                         sha1.size());
+    ::alba::Sha1 asha(sha1_str);
+
+    std::unique_ptr<Condition> cond;
+    if (prev_tag)
+    {
+        cond = std::make_unique<Condition>(name,
+                                           prev_tag->clone());
+    }
+
+    const Sequence seq(make_write_sequence(src,
+                                           name,
+                                           cond.get(),
+                                           &asha,
+                                           overwrite));
+
+    try
+    {
+        convert_exceptions_<void>("write tag",
+                                  [&]
+            {
+                seq.apply(*client_,
+                          nspace);
+            });
+    }
+    catch (BackendAssertionFailedException& e)
+    {
+        LOG_ERROR(nspace << "/" << name << ": failed assertion, prev_tag: " << prev_tag <<
+                  ": " << e.what());
+
+        if (prev_tag)
+        {
+            throw BackendUniqueObjectTagMismatchException();
+        }
+        else
+        {
+            throw;
+        }
+    }
+
+    return std::make_unique<yt::ObjectSha1>(sha1);
 }
 
 std::unique_ptr<yt::UniqueObjectTag>
-Connection::read_tag_(const Namespace&,
-                      const fs::path&,
-                      const std::string&)
+Connection::read_tag_(const Namespace& nspace,
+                      const fs::path& dst,
+                      const std::string& object)
 {
-    LOG_ERROR("yt::UniqueObjectTag support is not available yet for Alba backend");
-    throw BackendNotImplementedException();
+    read_(nspace,
+          dst,
+          object,
+          InsistOnLatestVersion::T);
+
+    fs::ifstream ifs(dst);
+    return std::make_unique<yt::ObjectSha1>(yt::Sha1(ifs));
 }
 
 }
