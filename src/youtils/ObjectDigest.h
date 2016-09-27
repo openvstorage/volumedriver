@@ -61,6 +61,12 @@ public:
         return digest_ != other.digest_;
     }
 
+    const MessageDigest&
+    digest() const
+    {
+        return digest_;
+    }
+
 private:
     MessageDigest digest_;
 };
