@@ -14,12 +14,16 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "MessageUtils.h"
+#include "ObjectRouter.h"
 #include "Protocol.h"
 #include "RemoteNode.h"
-#include "ObjectRouter.h"
 #include "ZUtils.h"
 
+#include <boost/chrono.hpp>
+#include <boost/exception_ptr.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/make_shared.hpp>
+#include <boost/thread/future.hpp>
 
 #include <youtils/Assert.h>
 #include <youtils/Catchers.h>
@@ -32,171 +36,372 @@
 namespace volumedriverfs
 {
 
+namespace bc = boost::chrono;
 namespace vd = volumedriver;
+namespace yt = youtils;
 
 #define LOCK()                                  \
-    std::lock_guard<lock_type> lg__(lock_)
+    boost::lock_guard<decltype(work_lock_)> lwg__(work_lock_)
 
 RemoteNode::RemoteNode(ObjectRouter& vrouter,
                        const ClusterNodeConfig& cfg,
                        std::shared_ptr<zmq::context_t> ztx)
     : ClusterNode(vrouter, cfg)
     , ztx_(ztx)
+    , event_fd_(::eventfd(0, EFD_NONBLOCK))
+    , stop_(false)
 {
-    LOCK();
-    init_zock_();
+    VERIFY(event_fd_ >= 0);
+
+    try
+    {
+        LOCK();
+        init_zock_();
+        thread_ = boost::thread(boost::bind(&RemoteNode::work_, this));
+    }
+    catch (...)
+    {
+        ::close(event_fd_);
+        throw;
+    }
+}
+
+RemoteNode::~RemoteNode()
+{
+    try
+    {
+        {
+            LOCK();
+
+            ASSERT(queued_work_.empty());
+            ASSERT(submitted_work_.empty());
+
+            stop_ = true;
+            notify_();
+        }
+        thread_.join();
+        ::close(event_fd_);
+    }
+    CATCH_STD_ALL_LOG_IGNORE(config.vrouter_id << ": exception shutting down");
+}
+
+void
+RemoteNode::notify_()
+{
+    const eventfd_t val = 1;
+    int ret = eventfd_write(event_fd_,
+                            val);
+    VERIFY(ret == 0);
 }
 
 void
 RemoteNode::init_zock_()
 {
     VERIFY(ztx_ != nullptr);
-    ASSERT_LOCKABLE_LOCKED(lock_);
 
     const std::string rport(boost::lexical_cast<std::string>(config.message_port));
-    zock_.reset(new zmq::socket_t(*ztx_, ZMQ_REQ));
+    zock_.reset(new zmq::socket_t(*ztx_, ZMQ_DEALER));
 
     const std::string tcp_addr("tcp://" + config.message_host + std::string(":") + rport);
     ZUtils::socket_no_linger(*zock_);
 
-    LOG_INFO("Connecting to " << tcp_addr);
+    LOG_INFO(config.vrouter_id << ": connecting to " << tcp_addr);
     zock_->connect(tcp_addr.c_str());
 }
 
-void
-RemoteNode::wait_for_remote_(const boost::chrono::milliseconds& timeout_ms)
+struct RemoteNode::WorkItem
 {
-    ASSERT_LOCKABLE_LOCKED(lock_);
+    const google::protobuf::Message& request;
+    const vfsprotocol::Tag request_tag;
+    vfsprotocol::RequestType request_type;
+    const char* request_desc;
 
-    LOG_TRACE("waiting for response from remote " << config.vrouter_id <<
-              ", timeout: " << timeout_ms << " ms");
+    ExtraSendFun* send_extra_fun;
+    ExtraRecvFun* recv_extra_fun;
 
-    ASSERT(zock_ != nullptr);
+    boost::promise<vfsprotocol::ResponseType> promise;
+    boost::unique_future<vfsprotocol::ResponseType> future;
 
-    zmq::pollitem_t item;
-    item.socket = *zock_;
-    item.events = ZMQ_POLLIN;
+    template<typename Request>
+    WorkItem(const Request& req,
+             ExtraSendFun* send_extra,
+             ExtraRecvFun* recv_extra)
+        : request(req)
+        , request_tag(reinterpret_cast<uint64_t>(&req))
+        , request_type(vfsprotocol::RequestTraits<Request>::request_type)
+        , request_desc(vfsprotocol::request_type_to_string(request_type))
+        , send_extra_fun(send_extra)
+        , recv_extra_fun(recv_extra)
+        , future(promise.get_future())
+    {}
+};
 
-    // TODO: ZMQ exceptions are passed on - are there cases where we don't
-    // want that, e.g. EINTR?
-    const int ret = zmq::poll(&item,
-                              1,
-                              timeout_ms.count() == 0 ?
-                              - 1 :
-                              timeout_ms.count());
-    THROW_WHEN(ret < 0);
-
-    if (ret == 0)
-    {
-        LOG_INFO("Remote did not respond within " << timeout_ms <<
-                 " milliseconds - giving up");
-
-        init_zock_();
-        throw RequestTimeoutException("request to remote node timed out");
-    }
+void
+RemoteNode::drop_request_(const WorkItem& work)
+{
+    LOCK();
+    std::remove_if(queued_work_.begin(),
+                   queued_work_.end(),
+                   [&](const WorkItemPtr w)
+                   {
+                       VERIFY(w);
+                       return w->request_tag == work.request_tag;
+                   });
+    submitted_work_.erase(work.request_tag);
 }
 
 template<typename Request>
 void
 RemoteNode::handle_(const Request& req,
-                    const boost::chrono::milliseconds& timeout_ms,
+                    const bc::milliseconds& timeout_ms,
                     ExtraSendFun* send_extra,
                     ExtraRecvFun* recv_extra)
 {
-    const vfsprotocol::RequestType req_type =
-        vfsprotocol::RequestTraits<Request>::request_type;
+    auto work = boost::make_shared<WorkItem>(req,
+                                             send_extra,
+                                             recv_extra);
 
-    const char* req_desc = vfsprotocol::request_type_to_string(req_type);
-    LOG_TRACE(req_desc);
-
-    LOCK();
-
-    ASSERT(zock_ != nullptr);
-
-    ZUtils::serialize_to_socket(*zock_, req_type, MoreMessageParts::T);
-
-    vfsprotocol::Tag req_tag(reinterpret_cast<uint64_t>(&req));
-    ZUtils::serialize_to_socket(*zock_, req_tag, MoreMessageParts::T);
-
-    ZUtils::serialize_to_socket(*zock_,
-                                req,
-                                (send_extra != nullptr) ?
-                                MoreMessageParts::T :
-                                MoreMessageParts::F);
-
-    if (send_extra != nullptr)
     {
-        (*send_extra)();
+        LOCK();
+        queued_work_.push_back(work);
+        notify_();
     }
 
-    LOG_TRACE("sent " << req_desc << ", tag " << req_tag <<
-              ", extra: " << (send_extra != nullptr) << ", timeout ms: " << timeout_ms);
-
-    wait_for_remote_(timeout_ms);
-
-    vfsprotocol::ResponseType rsp_type;
-    ZUtils::deserialize_from_socket(*zock_, rsp_type);
-
-    ZEXPECT_MORE(*zock_, "response tag");
-
-    vfsprotocol::Tag rsp_tag;
-    ZUtils::deserialize_from_socket(*zock_, rsp_tag);
-
-    const char* rsp_desc = vfsprotocol::response_type_to_string(rsp_type);
-    LOG_TRACE("recv'd " << rsp_desc << ", tag " << rsp_tag);
-
-    if (rsp_tag != req_tag)
+    switch (work->future.wait_for(timeout_ms))
     {
-        LOG_ERROR("req " << req_desc << ", rsp " << rsp_desc <<
-                  ": expected tag " << req_tag << ", got " << rsp_tag);
-        throw ProtocolError("Wrong tag in response");
-    }
-
-    try
-    {
-        switch (rsp_type)
+    case boost::future_status::deferred:
         {
-        case vfsprotocol::ResponseType::Ok:
-            if (recv_extra != nullptr)
-            {
-                (*recv_extra)();
-            }
-            ZEXPECT_NOTHING_MORE(*zock_);
+            LOG_ERROR(config.vrouter_id << ": " << work->request_desc << ", tag " <<
+                      work->request_tag << ": future unexpectedly returned 'deferred' status");
+            drop_request_(*work);
+            VERIFY(0 == "unexpected future_status 'deferred'");
+        }
+    case boost::future_status::timeout:
+        {
+            LOG_INFO(config.vrouter_id << ": remote did not respond within " << timeout_ms <<
+                     " milliseconds - giving up");
+            drop_request_(*work);
+            throw RequestTimeoutException("request to remote node timed out");
+        }
+    case boost::future_status::ready:
+        {
+            handle_response_(*work);
             break;
-        case vfsprotocol::ResponseType::ObjectNotRunningHere:
-            ZEXPECT_NOTHING_MORE(*zock_);
-            LOG_INFO("volume not present on node " << config.vrouter_id);
-
-            throw vd::VolManager::VolumeDoesNotExistException("volume not present on node",
-                                                              req_desc);
-            break;
-        case vfsprotocol::ResponseType::UnknownRequest:
-            ZEXPECT_NOTHING_MORE(*zock_);
-            LOG_WARN("got an UnknownRequest response status in response to " <<
-                     req_desc);
-            // handle differently once we need to take care of backward compatibility.
-            throw ProtocolError("Remote sent UnknownRequest response status",
-                                req_desc);
-            break;
-        case vfsprotocol::ResponseType::Timeout:
-            ZEXPECT_NOTHING_MORE(*zock_);
-            LOG_ERROR("got a Timeout response status in response to " <<
-                      req_desc);
-            throw RemoteTimeoutException("Remote sent timeout status",
-                                         req_desc);
-            break;
-        default:
-            ZEXPECT_NOTHING_MORE(*zock_);
-            LOG_ERROR(req_desc << " failed, remote returned status " <<
-                      rsp_desc << " (" << static_cast<uint32_t>(rsp_type) << ")");
-            throw fungi::IOException("Remote operation failed",
-                                     req_desc);
         }
     }
-    catch (...)
+}
+
+void
+RemoteNode::handle_response_(WorkItem& work)
+{
+    const vfsprotocol::ResponseType rsp_type = work.future.get();
+    switch (rsp_type)
     {
-        ZUtils::drop_remaining_message_parts(*zock_);
-        throw;
+    case vfsprotocol::ResponseType::Ok:
+        // all is well
+        break;
+    case vfsprotocol::ResponseType::ObjectNotRunningHere:
+        LOG_INFO(config.vrouter_id << ": volume not present on that node");
+        throw vd::VolManager::VolumeDoesNotExistException("volume not present on node",
+                                                          work.request_desc);
+        break;
+    case vfsprotocol::ResponseType::UnknownRequest:
+        LOG_WARN(config.vrouter_id << ": got an UnknownRequest response status in response to " <<
+                 work.request_desc);
+        // handle differently once we need to take care of backward compatibility.
+        throw ProtocolError("Remote sent UnknownRequest response status",
+                            work.request_desc);
+        break;
+    case vfsprotocol::ResponseType::Timeout:
+        LOG_ERROR(config.vrouter_id << ": got a Timeout response status in response to " <<
+                  work.request_desc);
+        throw RemoteTimeoutException("Remote sent timeout status",
+                                     work.request_desc);
+        break;
+    default:
+        LOG_ERROR(config.vrouter_id << ": " << work.request_desc <<
+                  " failed, remote returned status " << vfsprotocol::response_type_to_string(rsp_type) <<
+                  " (" << static_cast<uint32_t>(rsp_type) << ")");
+        throw fungi::IOException("Remote operation failed",
+                                 work.request_desc);
+        break;
+    }
+}
+
+void
+RemoteNode::work_()
+{
+    {
+        LOCK();
+        // the socket was created by another thread, per ZMQs documentation ownership
+        // transfer requires a full fence memory barrier which this lock should offer
+        LOG_INFO(config.vrouter_id << ": starting worker");
+    }
+
+    zmq::pollitem_t items[2];
+    bool wait_for_write = false;
+
+    while (true)
+    {
+        try
+        {
+            ASSERT(zock_ != nullptr);
+
+            items[0].socket = *zock_;
+            items[0].fd = -1;
+            items[0].events = ZMQ_POLLIN;
+            if (wait_for_write)
+            {
+                items[0].events |= ZMQ_POLLOUT;
+            }
+
+            items[1].socket = nullptr;
+            items[1].fd = event_fd_;
+            items[1].events = ZMQ_POLLIN;
+
+            const int ret = zmq::poll(items,
+                                      2,
+                                      -1);
+            THROW_WHEN(ret <= 0);
+
+            if (stop_)
+            {
+                LOCK();
+                ASSERT(queued_work_.empty());
+                ASSERT(submitted_work_.empty());
+                break;
+            }
+            else
+            {
+                if ((items[0].revents bitand ZMQ_POLLIN))
+                {
+                    recv_responses_();
+                }
+
+                if ((items[0].revents bitand ZMQ_POLLOUT))
+                {
+                    wait_for_write = not send_requests_();
+                }
+
+                if (items[1].revents bitand ZMQ_POLLIN)
+                {
+                    wait_for_write = not send_requests_();
+                }
+            }
+        }
+        CATCH_STD_ALL_EWHAT({
+                LOG_ERROR(config.vrouter_id << ": caught exception in event loop: " << EWHAT << ". Resetting.");
+                init_zock_();
+            });
+    }
+}
+
+bool
+RemoteNode::send_requests_()
+{
+    eventfd_t val = 0;
+    int ret = eventfd_read(event_fd_,
+                           &val);
+    if (ret < 0)
+    {
+        VERIFY(errno == EAGAIN);
+    }
+    else
+    {
+        VERIFY(ret == 0);
+        VERIFY(val > 0);
+    }
+
+    while (true)
+    {
+        LOCK();
+
+        if (queued_work_.empty())
+        {
+            return true;
+        }
+
+        if (not ZUtils::writable(*zock_))
+        {
+            LOG_WARN(config.vrouter_id << ": queuing limit reached");
+            return false;
+        }
+
+        WorkItemPtr work = queued_work_.front();
+        VERIFY(work);
+
+        queued_work_.pop_front();
+        const auto res(submitted_work_.emplace(work->request_tag,
+                                               work));
+        VERIFY(res.second);
+
+        ZUtils::send_delimiter(*zock_, MoreMessageParts::T);
+        ZUtils::serialize_to_socket(*zock_, work->request_type, MoreMessageParts::T);
+        ZUtils::serialize_to_socket(*zock_, work->request_tag, MoreMessageParts::T);
+        ZUtils::serialize_to_socket(*zock_,
+                                    work->request,
+                                    (work->send_extra_fun != nullptr) ?
+                                    MoreMessageParts::T :
+                                    MoreMessageParts::F);
+
+        if (work->send_extra_fun != nullptr)
+        {
+            (*work->send_extra_fun)();
+        }
+
+        LOG_TRACE(config.vrouter_id << ": sent " << work->request_desc << ", tag " << work->request_tag <<
+                  ", extra: " << (work->send_extra_fun != nullptr));
+    }
+}
+
+void
+RemoteNode::recv_responses_()
+{
+    while (ZUtils::readable(*zock_))
+    {
+        ZUtils::recv_delimiter(*zock_);
+        ZEXPECT_MORE(*zock_, "response type");
+
+        vfsprotocol::ResponseType rsp_type;
+        ZUtils::deserialize_from_socket(*zock_, rsp_type);
+        ZEXPECT_MORE(*zock_, "response tag");
+
+        vfsprotocol::Tag rsp_tag;
+        ZUtils::deserialize_from_socket(*zock_, rsp_tag);
+
+        LOG_TRACE(config.vrouter_id << ": recv'd " << static_cast<uint32_t>(rsp_type) << ", tag " << rsp_tag);
+
+        LOCK();
+
+        auto it = submitted_work_.find(rsp_tag);
+        if (it == submitted_work_.end())
+        {
+            LOG_WARN(config.vrouter_id << ": received orphan response with tag " <<
+                     rsp_tag << " - did we time out?");
+            ZUtils::drop_remaining_message_parts(*zock_);
+        }
+        else
+        {
+            WorkItemPtr w = it->second;
+            submitted_work_.erase(it);
+
+            try
+            {
+                if (rsp_type == vfsprotocol::ResponseType::Ok and
+                    w->recv_extra_fun != nullptr)
+                {
+                    (*w->recv_extra_fun)();
+                }
+
+                ZEXPECT_NOTHING_MORE(*zock_);
+                w->promise.set_value(rsp_type);
+            }
+            catch (...)
+            {
+                ZUtils::drop_remaining_message_parts(*zock_);
+                w->promise.set_exception(boost::current_exception());
+            }
+        }
     }
 }
 
@@ -208,8 +413,7 @@ RemoteNode::read(const Object& obj,
 {
     ASSERT(size);
 
-    LOG_TRACE(obj.id << ": remote node " << config.vrouter_id <<
-              ", size " << *size << ", off " << off);
+    LOG_TRACE(config.vrouter_id << ": obj " << obj.id << ", size " << *size << ", off " << off);
 
     const auto req(vfsprotocol::MessageUtils::create_read_request(obj, *size, off));
 
@@ -222,8 +426,8 @@ RemoteNode::read(const Object& obj,
 
                                if (msg.size() > *size)
                                {
-                                   LOG_ERROR("Read " << msg.size() << " > expected " <<
-                                             *size << " from " << obj.id);
+                                   LOG_ERROR(config.vrouter_id << ": read " << msg.size() <<
+                                             " > expected " << *size << " from " << obj.id);
                                    throw fungi::IOException("Read size mismatch",
                                                             obj.id.str().c_str());
                                }
@@ -246,8 +450,7 @@ RemoteNode::write(const Object& obj,
 {
     ASSERT(size);
 
-    LOG_TRACE(obj.id << ": remote node " << config.vrouter_id <<
-              ", size " << *size << ", off " << off);
+    LOG_TRACE(config.vrouter_id << ": obj " << obj.id << ", size " << *size << ", off " << off);
 
     const auto req(vfsprotocol::MessageUtils::create_write_request(obj, *size, off));
 
@@ -278,7 +481,7 @@ RemoteNode::write(const Object& obj,
 void
 RemoteNode::sync(const Object& obj)
 {
-    LOG_TRACE(obj.id);
+    LOG_TRACE(config.vrouter_id << ": obj " << obj.id);
 
     const auto req(vfsprotocol::MessageUtils::create_sync_request(obj));
 
@@ -289,7 +492,7 @@ RemoteNode::sync(const Object& obj)
 uint64_t
 RemoteNode::get_size(const Object& obj)
 {
-    LOG_TRACE(obj.id);
+    LOG_TRACE(config.vrouter_id << ": obj " << obj.id);
 
     uint64_t size = 0;
     ExtraRecvFun get_size([&]
@@ -317,7 +520,7 @@ void
 RemoteNode::resize(const Object& obj,
                    uint64_t newsize)
 {
-    LOG_TRACE(obj.id << ": new size " << newsize);
+    LOG_TRACE(config.vrouter_id << ": obj " << obj.id << ", new size " << newsize);
 
     const auto req(vfsprotocol::MessageUtils::create_resize_request(obj, newsize));
 
@@ -328,7 +531,7 @@ RemoteNode::resize(const Object& obj,
 void
 RemoteNode::unlink(const Object& obj)
 {
-    LOG_TRACE(obj.id << ": unlinking");
+    LOG_TRACE(config.vrouter_id << ": obj " << obj.id);
 
     const auto req(vfsprotocol::MessageUtils::create_delete_request(obj));
 
@@ -339,13 +542,13 @@ RemoteNode::unlink(const Object& obj)
 void
 RemoteNode::transfer(const Object& obj)
 {
-    LOG_TRACE(obj.id << ", transfer volume");
+    LOG_TRACE(config.vrouter_id << ": obj " << obj.id);
 
     const auto req(vfsprotocol::MessageUtils::create_transfer_request(obj,
                                                                       vrouter_.node_id(),
                                                                       vrouter_.backend_sync_timeout()));
 
-    const boost::chrono::milliseconds req_timeout =
+    const bc::milliseconds req_timeout =
         vrouter_.backend_sync_timeout().count() ?
         vrouter_.backend_sync_timeout() + vrouter_.migrate_timeout() :
         vrouter_.backend_sync_timeout();
@@ -357,7 +560,8 @@ RemoteNode::transfer(const Object& obj)
 void
 RemoteNode::ping()
 {
-    LOG_TRACE("ping requested");
+    LOG_TRACE(config.vrouter_id);
+
     const auto req(vfsprotocol::MessageUtils::create_ping_message(vrouter_.node_id()));
 
     ExtraRecvFun handle_pong([&]
