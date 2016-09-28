@@ -74,7 +74,7 @@ Connection::wrap_(Ret (BackendConnectionInterface::*fun)(Args...),
         {
             throw;
         }
-        catch (BackendUniqueObjectTagMismatchException&)
+        catch (BackendAssertionFailedException&)
         {
             throw;
         }

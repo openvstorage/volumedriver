@@ -145,7 +145,7 @@ TEST_F(BackendInterfaceTest, unique_tag)
                                name,
                                tp.get(),
                                OverwriteObject::T),
-                 BackendUniqueObjectTagMismatchException);
+                 BackendAssertionFailedException);
 
     EXPECT_EQ(*tq,
               *(bi->get_tag(name)));
@@ -202,7 +202,7 @@ TEST_F(BackendInterfaceTest, conditional_operations)
                            OverwriteObject::F,
                            &chkp,
                            bogus_cond),
-                 BackendUniqueObjectTagMismatchException);
+                 BackendAssertionFailedException);
 
     EXPECT_FALSE(bi->objectExists(oname));
 
@@ -217,7 +217,7 @@ TEST_F(BackendInterfaceTest, conditional_operations)
     EXPECT_THROW(bi->remove(oname,
                             ObjectMayNotExist::F,
                             bogus_cond),
-                 BackendUniqueObjectTagMismatchException);
+                 BackendAssertionFailedException);
 
     EXPECT_TRUE(bi->objectExists(oname));
 
@@ -232,7 +232,7 @@ TEST_F(BackendInterfaceTest, conditional_operations)
                            OverwriteObject::T,
                            &chkq,
                            bogus_cond),
-                 BackendUniqueObjectTagMismatchException);
+                 BackendAssertionFailedException);
 
     const fs::path r(path_ / "r");
     bi->read(r,

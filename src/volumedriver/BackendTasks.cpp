@@ -101,7 +101,7 @@ WriteSCO::run(int threadid)
                                              duration_us);
         cb_->writtenToBackend(sco_);
     }
-    catch (be::BackendUniqueObjectTagMismatchException&)
+    catch (be::BackendAssertionFailedException&)
     {
         LOG_WARN(volume_->getName() << ": conditional write of " << sco_.str() << " failed");
         volume_->halt();
@@ -176,7 +176,7 @@ WriteTLog::run(int /*threadid*/)
         LOG_WARN(volume_->getName() << ": " << e.what());
         volume_->halt();
     }
-    catch (be::BackendUniqueObjectTagMismatchException&)
+    catch (be::BackendAssertionFailedException&)
     {
         LOG_WARN(volume_->getName() << ": conditional write failed");
         volume_->halt();
@@ -235,7 +235,7 @@ WriteSnapshot::run(int /*threadID*/)
                                               volume_->backend_write_condition(),
                                               fail_fast_request_params);
     }
-    catch (be::BackendUniqueObjectTagMismatchException&)
+    catch (be::BackendAssertionFailedException&)
     {
         LOG_WARN(volume_->getName() << ": conditional write of " << snapshotFilename() << " failed");
         volume_->halt();
@@ -273,7 +273,7 @@ DeleteTLog::run(int /*threadID*/)
                                                fail_fast_request_params);
         LOG_INFO("Deleted TLog " << tlog_);
     }
-    catch (be::BackendUniqueObjectTagMismatchException&)
+    catch (be::BackendAssertionFailedException&)
     {
         LOG_WARN(volume_->getName() << ": conditional deletion of TLog " << tlog_ << " failed");
         volume_->halt();
@@ -312,7 +312,7 @@ BlockDeleteTLogs::run(int /*threadID*/)
             LOG_INFO("Deleted TLog " << *it);
 
         }
-        catch (be::BackendUniqueObjectTagMismatchException&)
+        catch (be::BackendAssertionFailedException&)
         {
             LOG_WARN(volume_->getName() << ": conditional deletion of TLog " << *it << " failed");
             volume_->halt();
@@ -361,7 +361,7 @@ BlockDeleteSCOS::run(int /*threadID*/)
             LOG_INFO("Deleted SCO " << *it);
 
         }
-        catch (be::BackendUniqueObjectTagMismatchException&)
+        catch (be::BackendAssertionFailedException&)
         {
             LOG_WARN(volume_->getName() << ": conditional deletion of SCO " << *it << " failed");
             volume_->halt();
@@ -405,7 +405,7 @@ DeleteSCO::run(int /*threadID*/)
         LOG_INFO("Deleted SCO " << sco_);
 
     }
-    catch (be::BackendUniqueObjectTagMismatchException&)
+    catch (be::BackendAssertionFailedException&)
     {
         LOG_WARN(volume_->getName() << ": conditional deletion of SCO " << sco_.str() << " failed");
         volume_->halt();

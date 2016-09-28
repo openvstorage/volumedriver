@@ -173,7 +173,7 @@ WriteOnlyVolume::newWriteOnlyVolume()
                                      nullptr,
                                      backend_write_condition());
     }
-    catch (be::BackendUniqueObjectTagMismatchException&)
+    catch (be::BackendAssertionFailedException&)
     {
         LOG_WARN(getName() << ": conditional write of " <<
                  FailOverCacheConfigWrapper::config_backend_name << " failed");
@@ -994,7 +994,7 @@ WriteOnlyVolume::writeConfigToBackend_()
                                      nullptr,
                                      backend_write_condition());
     }
-    catch (be::BackendUniqueObjectTagMismatchException&)
+    catch (be::BackendAssertionFailedException&)
     {
         LOG_WARN(getName() << ": conditional write of " <<
                  VolumeConfig::config_backend_name << " failed");

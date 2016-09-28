@@ -1558,7 +1558,7 @@ Volume::cloneFromParentSnapshot(const yt::UUID& parent_snap_uuid,
                       backend_write_condition());
         }
     }
-    catch (be::BackendUniqueObjectTagMismatchException&)
+    catch (be::BackendAssertionFailedException&)
     {
         LOG_VWARN("conditional write of SCO access data failed");
         halt();
@@ -2825,7 +2825,7 @@ Volume::writeConfigToBackend_(const VolumeConfig& cfg)
                                            OverwriteObject::T,
                                            backend_write_condition());
     }
-    catch (be::BackendUniqueObjectTagMismatchException&)
+    catch (be::BackendAssertionFailedException&)
     {
         LOG_VWARN("conditional write of " << VolumeConfig::config_backend_name << " failed");
         halt();
@@ -2845,7 +2845,7 @@ Volume::writeFailOverCacheConfigToBackend_()
                                            OverwriteObject::T,
                                            backend_write_condition());
     }
-    catch (be::BackendUniqueObjectTagMismatchException&)
+    catch (be::BackendAssertionFailedException&)
     {
         LOG_VWARN("conditional write of " << VolumeConfig::config_backend_name << " failed");
         halt();

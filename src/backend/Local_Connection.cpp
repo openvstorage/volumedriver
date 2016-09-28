@@ -243,7 +243,7 @@ Connection::verify_tag_(const Namespace& nspace,
         {
             LOG_ERROR(p << ": tag mismatch, have " << md5 <<
                       ", expected " << *prev_md5);
-            throw BackendUniqueObjectTagMismatchException();
+            throw BackendAssertionFailedException();
         }
     }
 }

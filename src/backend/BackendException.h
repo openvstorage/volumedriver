@@ -26,7 +26,7 @@ MAKE_EXCEPTION(BackendException, fungi::IOException);
 // Y42 : NEEDS TO HAVE CONSTRUCTORS THAT ALLOW YOU TO PASS A NON GENERIC DESCRIPTION
 // DONT OVERRIDE THE WHAT WITHOUT USING THE fungi::IOException WHAT...
 // ALL THIS STUFF IS WAY TOO MUCH TIED TO THE DSS BACKEND.
-#define DEFINE_BACKEND_EXCEPTION(errclass, desc)        \
+#define DEFINE_BACKEND_EXCEPTION(errclass, desc)         \
     class Backend##errclass##Exception                   \
         : public BackendException                        \
     {                                                    \
@@ -103,9 +103,6 @@ DEFINE_BACKEND_EXCEPTION(UnAuthorized,
 
 DEFINE_BACKEND_EXCEPTION(NoMultiBackendAvailable,
                          "No MULTI backend available");
-
-DEFINE_BACKEND_EXCEPTION(UniqueObjectTagMismatch,
-                         "UniqueObjectTag does not match");
 
 DEFINE_BACKEND_EXCEPTION(AssertionFailed,
                          "Assertion failed");

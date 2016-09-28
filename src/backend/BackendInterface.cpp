@@ -95,7 +95,7 @@ BackendInterface::do_wrap_(const BackendRequestParameters& params,
         {
             throw; /* ... no need to retry. */
         }
-        catch (BackendUniqueObjectTagMismatchException&)
+        catch (BackendAssertionFailedException&)
         {
             throw; /* ... no need to retry. */
         }

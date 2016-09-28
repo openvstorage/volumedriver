@@ -417,29 +417,12 @@ Connection::write_(const Namespace& nspace,
                                            chksum ? & crc : nullptr,
                                            overwrite));
 
-    try
-    {
-        convert_exceptions_<void>("write object",
-                                  [&]
-            {
-                seq.apply(*client_,
-                          nspace);
-            });
-    }
-    catch (BackendAssertionFailedException& e)
-    {
-        LOG_ERROR(nspace << "/" << name << ": failed assertion, cond: " << cond <<
-                  ": " << e.what());
-
-        if (cond)
+    convert_exceptions_<void>("write object",
+                              [&]
         {
-            throw BackendUniqueObjectTagMismatchException();
-        }
-        else
-        {
-            throw;
-        }
-    }
+            seq.apply(*client_,
+                      nspace);
+        });
 }
 
 bool
@@ -498,28 +481,12 @@ Connection::remove_(const Namespace& nspace,
                        true);
     }
 
-    try
-    {
-        convert_exceptions_<void>("delete object",
-                                  [&]
+    convert_exceptions_<void>("delete object",
+                              [&]
         {
             seq.apply(*client_,
                       nspace);
         });
-    }
-    catch (BackendAssertionFailedException& e)
-    {
-        LOG_ERROR(nspace << "/" << name << ": failed assertion, cond: " << cond <<
-                  ", must_exist: " << must_exist << ": " << e.what());
-        if (cond)
-        {
-            throw BackendUniqueObjectTagMismatchException();
-        }
-        else if (must_exist)
-        {
-            throw BackendObjectDoesNotExistException();
-        }
-    }
 }
 
 void
@@ -719,29 +686,12 @@ Connection::write_tag_(const Namespace& nspace,
                                            &asha,
                                            overwrite));
 
-    try
-    {
-        convert_exceptions_<void>("write tag",
-                                  [&]
-            {
-                seq.apply(*client_,
-                          nspace);
-            });
-    }
-    catch (BackendAssertionFailedException& e)
-    {
-        LOG_ERROR(nspace << "/" << name << ": failed assertion, prev_tag: " << prev_tag <<
-                  ": " << e.what());
-
-        if (prev_tag)
+    convert_exceptions_<void>("write tag",
+                              [&]
         {
-            throw BackendUniqueObjectTagMismatchException();
-        }
-        else
-        {
-            throw;
-        }
-    }
+            seq.apply(*client_,
+                      nspace);
+        });
 
     return std::make_unique<yt::ObjectSha1>(sha1);
 }
