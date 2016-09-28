@@ -32,7 +32,7 @@ void translate(const backend::BackendBackendException&);
 void translate(const backend::BackendFatalException&);
 void translate(const backend::BackendStoreException&);
 void translate(const backend::BackendRestoreException&);
-void translate(const backend::BackendOverwriteNotAllowedException&);
+void translate(const backend::BackendAssertionFailedException&);
 void translate(const backend::BackendObjectDoesNotExistException&);
 void translate(const backend::BackendObjectExistsException&);
 void translate(const backend::BackendInputException&);

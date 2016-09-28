@@ -56,9 +56,9 @@ BOOST_PYTHON_MODULE(Backend)
     EXN(backend::BackendBackendException);
     EXN(backend::BackendStoreException);
     EXN(backend::BackendRestoreException);
-    EXN(backend::BackendOverwriteNotAllowedException);
+    EXN(backend::BackendAssertionFailedException);
     EXN(backend::BackendRestoreException);
-    EXN(backend::BackendOverwriteNotAllowedException);
+    EXN(backend::BackendAssertionFailedException);
     EXN(backend::BackendObjectDoesNotExistException);
     EXN(backend::BackendObjectExistsException);
     EXN(backend::BackendInputException);

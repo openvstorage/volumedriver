@@ -194,7 +194,7 @@ Connection::convert_exceptions_(const char* desc,
 
         switch (e._return_code)
         {
-            X(OVERWRITE_NOT_ALLOWED, BackendOverwriteNotAllowedException);
+            X(OVERWRITE_NOT_ALLOWED, BackendAssertionFailedException);
             X(OBJECT_DOES_NOT_EXIST, BackendObjectDoesNotExistException);
             X(NAMESPACE_ALREADY_EXISTS, BackendNamespaceAlreadyExistsException);
             X(NAMESPACE_DOES_NOT_EXIST, BackendNamespaceDoesNotExistException);

@@ -61,9 +61,6 @@ DEFINE_BACKEND_EXCEPTION(Store, "store error");
 // error instead.
 DEFINE_BACKEND_EXCEPTION(Restore, "restore error");
 
-// attempt to overwrite but not explicity requested
-DEFINE_BACKEND_EXCEPTION(OverwriteNotAllowed, "overwrite not allowed");
-
 // self explanatory
 DEFINE_BACKEND_EXCEPTION(ObjectDoesNotExist, "object does not exist");
 

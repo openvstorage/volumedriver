@@ -126,7 +126,7 @@ TEST_F(BackendInterfaceTest, unique_tag)
                                name,
                                nullptr,
                                OverwriteObject::F),
-                 BackendOverwriteNotAllowedException);
+                 BackendAssertionFailedException);
 
     EXPECT_EQ(*tp,
               *(bi->get_tag(name)));

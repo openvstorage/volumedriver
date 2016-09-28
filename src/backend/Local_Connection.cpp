@@ -266,7 +266,7 @@ Connection::copy_(const Namespace& nspace,
     if (pre_exists and F(overwrite))
     {
         LOG_ERROR("Target already in backend " << dst);
-        throw BackendOverwriteNotAllowedException();
+        throw BackendAssertionFailedException();
     }
     try
     {

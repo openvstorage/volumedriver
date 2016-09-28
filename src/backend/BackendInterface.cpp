@@ -83,7 +83,7 @@ BackendInterface::do_wrap_(const BackendRequestParameters& params,
         {
             return ((conn.get())->*mem_fun)(args...);
         }
-        catch (BackendOverwriteNotAllowedException&)
+        catch (BackendAssertionFailedException&)
         {
             throw; /* ... no need to retry. */
         }
@@ -92,10 +92,6 @@ BackendInterface::do_wrap_(const BackendRequestParameters& params,
             throw; /* ... no need to retry. */
         }
         catch (BackendObjectDoesNotExistException&)
-        {
-            throw; /* ... no need to retry. */
-        }
-        catch (BackendAssertionFailedException&)
         {
             throw; /* ... no need to retry. */
         }

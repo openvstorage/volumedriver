@@ -724,7 +724,7 @@ Connection::write_(const Namespace& nspace,
     {
         LOG_ERROR("object " << name << " already exists on the backend " << nspace <<
                   " and you didn't ask overwrite ");
-        throw BackendOverwriteNotAllowedException();
+        throw BackendAssertionFailedException();
     }
 
     ObjectWriteCallback cb(location, cs);
