@@ -71,8 +71,8 @@ Sequence::add_assert(const Condition& cond)
     const auto& osha = dynamic_cast<const yt::ObjectSha1&>(cond.object_tag());
 
     // TODO: alba::Sha1 should accept a const string& or move from a string instead of expecting a string&
-    std::string s(reinterpret_cast<const char*>(osha.digest().bytes(),
-                                                osha.digest().size()));
+    std::string s(reinterpret_cast<const char*>(osha.digest().bytes()),
+                  osha.digest().size());
     asserts_.emplace_back(std::make_shared<aps::AssertObjectHasChecksum>(cond.object_name(),
                                                                          std::make_unique<::alba::Sha1>(s)));
 
