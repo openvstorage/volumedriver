@@ -56,9 +56,9 @@ MDSMetaDataStore::MDSMetaDataStore(const MDSMetaDataBackendConfig& cfg,
     , timeout_(cfg.timeout())
     , num_pages_cached_(num_pages_cached)
     , home_(home)
+    , owner_tag_(owner_tag)
     , incremental_rebuild_count_(0)
     , full_rebuild_count_(0)
-    , owner_tag_(owner_tag)
 {
     check_config_(cfg);
 

@@ -80,9 +80,9 @@ FileSystemTestSetup::FileSystemTestSetup(const FileSystemTestSetupParameters& pa
     , redirect_timeout_ms_(params.redirect_timeout_ms_)
     , redirect_retries_(params.redirect_retries_)
     , scrub_manager_interval_secs_(params.scrub_manager_interval_secs_)
+    , use_fencing_(params.use_fencing_)
     , dtl_config_mode_(params.dtl_config_mode_)
     , dtl_mode_(params.dtl_mode_)
-    , use_fencing_(params.use_fencing_)
     , fdriver_namespace_("ovs-fdnspc-fstest-"s + yt::UUID().str())
     , arakoon_test_setup_(std::make_shared<ara::ArakoonTestSetup>(topdir_ / "arakoon"))
     , client_(vrouter_cluster_id(),
