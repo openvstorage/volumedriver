@@ -234,6 +234,12 @@ public:
 
         verify_registration(*maybe_id,
                             local_node_id());
+
+        // check that there is no outdated cached entry.
+        std::shared_ptr<vfs::CachedObjectRegistry> oreg(fs_->object_router().object_registry());
+        EXPECT_EQ(local_node_id(),
+                  oreg->find(*maybe_id,
+                             vfs::IgnoreCache::F)->node_id);
     }
 
     void
