@@ -22,7 +22,9 @@
 #include "NodeId.h"
 
 #include <memory>
-#include <mutex>
+
+#include <boost/thread/mutex.hpp>
+#include <boost/thread/thread.hpp>
 
 #include <cppzmq/zmq.hpp>
 
@@ -38,6 +40,8 @@ public:
     RemoteNode(ObjectRouter& vrouter,
                const ClusterNodeConfig& cfg,
                std::shared_ptr<zmq::context_t> ztx);
+
+    ~RemoteNode();
 
     RemoteNode(const RemoteNode&) = delete;
 
@@ -80,19 +84,39 @@ private:
 
     std::shared_ptr<zmq::context_t> ztx_;
     std::unique_ptr<zmq::socket_t> zock_;
+    int event_fd_;
+    bool stop_;
+    boost::thread thread_;
 
-    // Protects the zock_ as it's accessed from different (fuse)
-    // threads concurrently.
-    // Not exactly the recommended way of using ZMQ (which would be
-    // a socket per thread).
-    typedef std::mutex lock_type;
-    mutable lock_type lock_;
+    // Protects the work queue / map.
+    boost::mutex work_lock_;
+
+    struct WorkItem;
+    using WorkItemPtr = boost::shared_ptr<WorkItem>;
+
+    std::list<WorkItemPtr> queued_work_; // push back / pop front
+    std::map<vfsprotocol::Tag, WorkItemPtr> submitted_work_;
+
+    void
+    notify_();
 
     void
     init_zock_();
 
+    bool
+    send_requests_();
+
     void
-    wait_for_remote_(const boost::chrono::milliseconds& timeout_ms);
+    drop_request_(const WorkItem&);
+
+    void
+    recv_responses_();
+
+    void
+    handle_response_(WorkItem&);
+
+    void
+    work_();
 
     typedef std::function<void()> ExtraSendFun;
     typedef std::function<void()> ExtraRecvFun;
