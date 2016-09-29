@@ -1839,7 +1839,7 @@ ObjectRouter::xmlrpc_client()
 
     return std::make_unique<PythonClient>(cluster_id(),
                                           contacts,
-                                          boost::chrono::seconds(vrouter_xmlrpc_client_timeout_ms.value() * 1000));
+                                          boost::chrono::seconds(vrouter_xmlrpc_client_timeout_ms.value() / 1000));
 }
 
 }
