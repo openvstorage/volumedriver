@@ -102,6 +102,9 @@ private:
     const ClusterId cluster_id_;
     std::shared_ptr<youtils::LockedArakoon> arakoon_;
 
+    arakoon::buffer
+    get_node_status_map_();
+
     void
     verify_(const ClusterNodeConfigs& node_configs);
 
