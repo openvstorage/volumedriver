@@ -128,7 +128,18 @@ ClusterRegistry::erase_node_configs()
 void
 ClusterRegistry::set_node_configs(const ClusterNodeConfigs& configs)
 {
-    NodeStatusMap map;
+    NodeStatusMap old_map;
+    boost::optional<ara::buffer> buf;
+
+    try
+    {
+        buf = get_node_status_map_();
+        old_map = deserialize_node_map(*buf);
+    }
+    catch (ClusterNotRegisteredException&)
+    {}
+
+    NodeStatusMap new_map;
 
     if (configs.empty())
     {
@@ -139,8 +150,16 @@ ClusterRegistry::set_node_configs(const ClusterNodeConfigs& configs)
 
     for (const auto& cfg : configs)
     {
-        ClusterNodeStatus st(cfg, ClusterNodeStatus::State::Online);
-        const auto res(map.insert(std::make_pair(cfg.vrouter_id, st)));
+        ClusterNodeStatus::State state = ClusterNodeStatus::State::Online;
+        const auto it = old_map.find(cfg.vrouter_id);
+        if (it != old_map.end())
+        {
+            state = it->second.state;
+        }
+
+        const auto res(new_map.emplace(cfg.vrouter_id,
+                                       ClusterNodeStatus(cfg,
+                                                         state)));
         if (not res.second)
         {
             LOG_ERROR("Duplicate node ID " << cfg.vrouter_id << " in cluster config");
@@ -152,8 +171,20 @@ ClusterRegistry::set_node_configs(const ClusterNodeConfigs& configs)
     arakoon_->run_sequence("set node configs",
                            [&](ara::sequence& seq)
                            {
-                               seq.add_set(make_key(),
-                                           serialize_node_map(map));
+                               const std::string key(make_key());
+                               if (buf)
+                               {
+                                   seq.add_assert(key,
+                                                  *buf);
+                               }
+                               else
+                               {
+                                   seq.add_assert(key,
+                                                  ara::None());
+                               }
+
+                               seq.add_set(key,
+                                           serialize_node_map(new_map));
                            },
                            yt::RetryOnArakoonAssert::F);
 
