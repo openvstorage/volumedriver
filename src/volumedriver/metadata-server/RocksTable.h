@@ -33,6 +33,8 @@
 namespace metadata_server
 {
 
+// TODO: AR: reconsider using the TableInterface here - OwnerTag and Role
+// do not make a lot of sense / are ignored, so better introduce a TableBackendInterface.
 class RocksTable
     : public TableInterface
 {
@@ -53,8 +55,9 @@ public:
     drop();
 
     virtual void
-    multiset(const TableInterface::Records& sets,
-             Barrier) override final;
+    multiset(const TableInterface::Records&,
+             Barrier,
+             volumedriver::OwnerTag) override final;
 
     virtual TableInterface::MaybeStrings
     multiget(const TableInterface::Keys&) override final;
@@ -71,7 +74,7 @@ public:
                       const TableInterface::RelocationLogs&) override final;
 
     virtual void
-    clear() override final;
+    clear(volumedriver::OwnerTag) override final;
 
     virtual size_t
     catch_up(volumedriver::DryRun) override final;

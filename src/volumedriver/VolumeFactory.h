@@ -90,6 +90,18 @@ struct VolumeFactory
                       InsistOnLatestVersion::T);
         return cfg;
     }
+
+private:
+    friend class VolManagerTestSetup;
+
+    static std::unique_ptr<Volume>
+    local_restart_volume(const VolumeConfig&,
+                         const OwnerTag,
+                         const IgnoreFOCIfUnreachable);
+
+    static boost::shared_ptr<backend::Condition>
+    claim_namespace(const backend::Namespace&,
+                    const OwnerTag);
 };
 
 } // namespace volumedriver

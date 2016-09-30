@@ -20,7 +20,6 @@ backend_test_SOURCES = \
 	BackendStreamTest.cpp \
 	BackendTestBase.cpp \
 	ConnectionManagerTest.cpp \
-	ExtendedApiTest.cpp \
 	GarbageCollectorTest.cpp \
 	MultiBackendTest.cpp \
 	NamespaceTest.cpp \

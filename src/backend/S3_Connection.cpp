@@ -31,7 +31,7 @@
 #include <youtils/FileUtils.h>
 #include <youtils/IOException.h>
 #include <youtils/FileDescriptor.h>
-#include <youtils/Weed.h>
+#include <youtils/Md5.h>
 
 
 namespace backend
@@ -426,8 +426,15 @@ Connection::getCheckSum_(const Namespace&,
 void
 Connection::remove_(const Namespace& nspace,
                     const std::string& name,
-                    const ObjectMayNotExist may_not_exist)
+                    const ObjectMayNotExist may_not_exist,
+                    const boost::shared_ptr<Condition>& cond)
 {
+    if (cond)
+    {
+        LOG_ERROR("conditional write support is not available yet for S3 backend");
+        throw BackendNotImplementedException();
+    }
+
     try
     {
         ws_connection_->del(nspace.c_str(),
@@ -703,14 +710,21 @@ Connection::write_(const Namespace& nspace,
                    const fs::path& location,
                    const std::string& name,
                    const OverwriteObject overwrite_object,
-                   const yt::CheckSum* cs)
+                   const yt::CheckSum* cs,
+                   const boost::shared_ptr<Condition>& cond)
 {
+    if (cond)
+    {
+        LOG_ERROR("conditional write support is not available yet for S3 backend");
+        throw BackendNotImplementedException();
+    }
+
     if(F(overwrite_object) and objectExists_(nspace,
                                              name))
     {
         LOG_ERROR("object " << name << " already exists on the backend " << nspace <<
                   " and you didn't ask overwrite ");
-        throw BackendOverwriteNotAllowedException();
+        throw BackendAssertionFailedException();
     }
 
     ObjectWriteCallback cb(location, cs);
@@ -730,6 +744,35 @@ Connection::write_(const Namespace& nspace,
         LOG_ERROR("PUT failed " << e.what());
         throw BackendStoreException();
     }
+}
+
+
+std::unique_ptr<yt::UniqueObjectTag>
+Connection::get_tag_(const Namespace&,
+                     const std::string&)
+{
+    LOG_ERROR("yt::UniqueObjectTag support is not available for S3 backend");
+    throw BackendNotImplementedException();
+}
+
+std::unique_ptr<yt::UniqueObjectTag>
+Connection::write_tag_(const Namespace&,
+                       const fs::path&,
+                       const std::string&,
+                       const yt::UniqueObjectTag*,
+                       const OverwriteObject)
+{
+    LOG_ERROR("yt::UniqueObjectTag support is not available for S3 backend");
+    throw BackendNotImplementedException();
+}
+
+std::unique_ptr<yt::UniqueObjectTag>
+Connection::read_tag_(const Namespace&,
+                      const fs::path&,
+                      const std::string&)
+{
+    LOG_ERROR("yt::UniqueObjectTag support is not available yet for Alba backend");
+    throw BackendNotImplementedException();
 }
 
 }

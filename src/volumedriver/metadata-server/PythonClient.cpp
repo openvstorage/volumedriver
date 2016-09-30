@@ -111,9 +111,11 @@ PythonClient::get_role(const std::string& nspace) const
 
 void
 PythonClient::set_role(const std::string& nspace,
-                       Role role) const
+                       Role role,
+                       vd::OwnerTag owner_tag) const
 {
-    get_table_(nspace)->set_role(role);
+    get_table_(nspace)->set_role(role,
+                                 owner_tag);
 }
 
 boost::optional<std::string>
@@ -124,6 +126,7 @@ PythonClient::get_cork_id(const std::string& nspace) const
 
     vd::MDSMetaDataBackend backend(config_,
                                    be::Namespace(nspace),
+                                   boost::none,
                                    timeout_);
     const boost::optional<yt::UUID> cork(backend.lastCorkUUID());
     if (cork != boost::none)
@@ -144,6 +147,7 @@ PythonClient::get_scrub_id(const std::string& nspace) const
 
     vd::MDSMetaDataBackend backend(config_,
                                    be::Namespace(nspace),
+                                   boost::none,
                                    timeout_);
     const vd::MaybeScrubId scrub_id(backend.scrub_id());
     if (scrub_id != boost::none)
@@ -172,6 +176,12 @@ PythonClient::get_table_counters(const std::string& nspace,
     return get_table_(nspace)->get_counters(reset ?
                                             vd::Reset::T :
                                             vd::Reset::F);
+}
+
+vd::OwnerTag
+PythonClient::owner_tag(const std::string& nspace) const
+{
+    return get_table_(nspace)->owner_tag();
 }
 
 }

@@ -94,7 +94,8 @@ private
     virtual void
     remove_(const Namespace& nspace,
             const std::string& name,
-            const ObjectMayNotExist) override final;
+            const ObjectMayNotExist,
+            const boost::shared_ptr<Condition>& = nullptr) override final;
 
     virtual void
     listObjects_(const Namespace& nspace,
@@ -106,6 +107,10 @@ private
           const std::string& name,
           InsistOnLatestVersion) override final;
 
+    virtual std::unique_ptr<youtils::UniqueObjectTag>
+    get_tag_(const Namespace&,
+             const std::string&) override final;
+
     virtual bool
     partial_read_(const Namespace& /* ns */,
                   const PartialReads& /* partial_reads */,
@@ -115,17 +120,24 @@ private
     }
 
     virtual void
-    write_(const Namespace& nspace,
-           const boost::filesystem::path &location,
-           const std::string& name,
+    write_(const Namespace&,
+           const boost::filesystem::path&,
+           const std::string&,
            OverwriteObject,
-           const youtils::CheckSum* chksum = 0) override final;
+           const youtils::CheckSum* = nullptr,
+           const boost::shared_ptr<Condition>& = nullptr) override final;
 
-    virtual bool
-    hasExtendedApi_() const override final
-    {
-        return false;
-    }
+    virtual std::unique_ptr<youtils::UniqueObjectTag>
+    write_tag_(const Namespace&,
+               const boost::filesystem::path&,
+               const std::string&,
+               const youtils::UniqueObjectTag*,
+               const OverwriteObject) override final;
+
+    virtual std::unique_ptr<youtils::UniqueObjectTag>
+    read_tag_(const Namespace&,
+              const boost::filesystem::path&,
+              const std::string&) override final;
 
 private:
     DECLARE_LOGGER("S3Connection");

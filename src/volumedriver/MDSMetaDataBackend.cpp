@@ -103,6 +103,7 @@ TODO("AR: expose shmem size!?");
 
 MDSMetaDataBackend::MDSMetaDataBackend(const MDSNodeConfig& config,
                                        const be::Namespace& nspace,
+                                       const boost::optional<OwnerTag>& owner_tag,
                                        const boost::optional<std::chrono::seconds>& timeout)
 try
     : db_(make_db(config,
@@ -110,19 +111,22 @@ try
                   timeout))
     , table_(db_->open(nspace.str()))
     , used_clusters_(0)
+    , owner_tag_(owner_tag)
 {
-    LOG_INFO(nspace << ": using " << config);
+    LOG_INFO(nspace << ": using " << config << ", owner tag " << owner_tag_);
 
     init_();
 }
 CATCH_STD_ALL_LOG_RETHROW(nspace << ": failed to create MDSMetaDataBackend " << config)
 
 MDSMetaDataBackend::MDSMetaDataBackend(mds::DataBaseInterfacePtr db,
-                                       const be::Namespace& nspace)
+                                       const be::Namespace& nspace,
+                                       const OwnerTag owner_tag)
 try
     : db_(db)
     , table_(db_->open(nspace.str()))
     , used_clusters_(0)
+    , owner_tag_(owner_tag)
 {
     LOG_INFO(nspace);
 
@@ -199,8 +203,11 @@ MDSMetaDataBackend::putPage(const CachePage& p,
               mds::Record(mds::Key(used_clusters_key),
                           mds::Value(used_clusters)) };
 
+    VERIFY(owner_tag_);
+
     table_->multiset(recs,
-                     Barrier::F);
+                     Barrier::F,
+                     *owner_tag_);
 
     used_clusters_ = used_clusters;
 }
@@ -224,8 +231,11 @@ MDSMetaDataBackend::discardPage(const CachePage& p,
               mds::Record(mds::Key(used_clusters_key),
                           mds::Value(used_clusters)) };
 
+    VERIFY(owner_tag_);
+
     table_->multiset(recs,
-                     Barrier::F);
+                     Barrier::F,
+                     *owner_tag_);
 
     used_clusters_ = used_clusters;
 }
@@ -241,7 +251,9 @@ void
 MDSMetaDataBackend::clear_all_keys()
 {
     LOG_INFO(table_->nspace() << ": requesting removal of all records");
-    table_->clear();
+
+    VERIFY(owner_tag_);
+    table_->clear(*owner_tag_);
 }
 
 void
@@ -254,8 +266,10 @@ MDSMetaDataBackend::setCork(const yt::UUID& cork_id)
     const mds::TableInterface::Records recs{ mds::Record(mds::Key(cork_key),
                                                          mds::Value(s)) };
 
+    VERIFY(owner_tag_);
     table_->multiset(recs,
-                     Barrier::T);
+                     Barrier::T,
+                     *owner_tag_);
 }
 
 boost::optional<yt::UUID>
@@ -287,8 +301,10 @@ MDSMetaDataBackend::set_scrub_id(const ScrubId& scrub_id)
     const std::string s(static_cast<const yt::UUID&>(scrub_id).str());
     const mds::TableInterface::Records recs{ mds::Record(mds::Key(scrub_id_key),
                                                          mds::Value(s)) };
+    VERIFY(owner_tag_);
     table_->multiset(recs,
-                     Barrier::T);
+                     Barrier::T,
+                     *owner_tag_);
 }
 
 MaybeScrubId

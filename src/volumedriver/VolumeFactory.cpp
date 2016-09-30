@@ -41,6 +41,8 @@
 #include <sys/types.h>
 #include <dirent.h>
 
+#include <boost/make_shared.hpp>
+
 #include <youtils/Catchers.h>
 
 #include <backend/Namespace.h>
@@ -105,7 +107,8 @@ make_data_store(const VolumeConfig& config)
 }
 
 std::unique_ptr<MetaDataStoreInterface>
-make_metadata_store(const VolumeConfig& config)
+make_metadata_store(const VolumeConfig& config,
+                    const OwnerTag owner_tag)
 {
     VolManager& vm = *VolManager::get();
     const size_t num_pages_cached = vm.effective_metadata_cache_capacity(config);
@@ -135,6 +138,7 @@ make_metadata_store(const VolumeConfig& config)
             return std::unique_ptr<MetaDataStoreInterface>(new MDSMetaDataStore(mcfg,
                                                                                 std::move(bi),
                                                                                 home,
+                                                                                owner_tag,
                                                                                 num_pages_cached));
         }
     }
@@ -146,9 +150,11 @@ make_metadata_store(const VolumeConfig& config)
 
 std::unique_ptr<MetaDataStoreInterface>
 make_metadata_store(const VolumeConfig& config,
-                    const ScrubId& sp_scrub_id)
+                    const ScrubId& sp_scrub_id,
+                    const OwnerTag owner_tag)
 {
-    auto md(make_metadata_store(config));
+    auto md(make_metadata_store(config,
+                                owner_tag));
     const MaybeScrubId md_scrub_id(md->scrub_id());
 
     if (md_scrub_id != boost::none)
@@ -177,6 +183,7 @@ std::unique_ptr<Volume, FreshVolumeDestroyer<delete_local_data,
                                              remove_volume_completely> >
 create_volume_stage_1(const VolumeConfig& config,
                       const OwnerTag owner_tag,
+                      const boost::shared_ptr<be::Condition>& backend_write_cond,
                       const RestartContext context,
                       NSIDMap nsid,
                       std::unique_ptr<MetaDataStoreInterface> md)
@@ -187,7 +194,8 @@ create_volume_stage_1(const VolumeConfig& config,
     if (not md)
     {
         md = make_metadata_store(config,
-                                 sm->scrub_id());
+                                 sm->scrub_id(),
+                                 owner_tag);
     }
 
     const MaybeScrubId md_scrub_id(md->scrub_id());
@@ -226,6 +234,7 @@ create_volume_stage_1(const VolumeConfig& config,
                                                         remove_volume_completely> >
         (new Volume(config,
                     owner_tag,
+                    backend_write_cond,
                     std::move(sm),
                     std::move(ds),
                     std::move(md),
@@ -240,6 +249,7 @@ std::unique_ptr<WriteOnlyVolume, FreshVolumeDestroyer<delete_local_data,
                                                       remove_volume_completely> >
 create_write_only_volume_stage_1(const VolumeConfig& config,
                                  const OwnerTag owner_tag,
+                                 const boost::shared_ptr<be::Condition>& backend_write_cond,
                                  const RestartContext context,
                                  NSIDMap nsid)
 {
@@ -251,6 +261,7 @@ create_write_only_volume_stage_1(const VolumeConfig& config,
                            FreshVolumeDestroyer<delete_local_data,
                                                 remove_volume_completely> >(new WriteOnlyVolume(config,
                                                                                                 owner_tag,
+                                                                                                backend_write_cond,
                                                                                                 std::move(sm),
                                                                                                 std::move(ds),
                                                                                                 std::move(nsid)));
@@ -289,6 +300,32 @@ new_volume_prechecks(const VolumeConfig& config)
 
 } // anon namespace
 
+boost::shared_ptr<be::Condition>
+VolumeFactory::claim_namespace(const be::Namespace& nspace,
+                               const OwnerTag owner_tag)
+{
+    const std::string& name(VolumeInterface::owner_tag_backend_name());
+    const fs::path p(yt::FileUtils::create_temp_file_in_temp_dir(nspace.str() + "." + name));
+    ALWAYS_CLEANUP_FILE(p);
+
+    fs::ofstream(p) << owner_tag;
+
+    be::BackendInterfacePtr bi(VolManager::get()->createBackendInterface(nspace));
+
+    try
+    {
+        return boost::make_shared<be::Condition>(name,
+                                                 bi->write_tag(p,
+                                                               name,
+                                                               nullptr,
+                                                               OverwriteObject::T));
+    }
+    catch (be::BackendNotImplementedException&)
+    {
+        return nullptr;
+    }
+}
+
 std::unique_ptr<Volume>
 VolumeFactory::createNewVolume(const VolumeConfig& config)
 {
@@ -300,6 +337,8 @@ VolumeFactory::createNewVolume(const VolumeConfig& config)
     auto vol(create_volume_stage_1<DeleteLocalData::T,
                                    RemoveVolumeCompletely::T>(config,
                                                               config.owner_tag_,
+                                                              claim_namespace(config.getNS(),
+                                                                              config.owner_tag_),
                                                               RestartContext::Creation,
                                                               std::move(nsid),
                                                               nullptr));
@@ -320,6 +359,8 @@ VolumeFactory::createWriteOnlyVolume(const VolumeConfig& config)
     auto vol(create_write_only_volume_stage_1<DeleteLocalData::T,
                                               RemoveVolumeCompletely::T>(config,
                                                                          config.owner_tag_,
+                                                                         claim_namespace(config.getNS(),
+                                                                                         config.owner_tag_),
                                                                          RestartContext::Creation,
                                                                          std::move(nsid)));
     vol->newWriteOnlyVolume();
@@ -519,11 +560,13 @@ replay_tlogs_not_on_backend(const VolumeConfig& config,
 }
 
 std::unique_ptr<MetaDataStoreInterface>
-local_restart_metadata_store(const VolumeConfig& config)
+local_restart_metadata_store(const VolumeConfig& config,
+                             const OwnerTag owner_tag)
 {
     SnapshotPersistor sp(VolManager::get()->getSnapshotsPath(config));
     std::unique_ptr<MetaDataStoreInterface> mdstore(make_metadata_store(config,
-                                                                        sp.scrub_id()));
+                                                                        sp.scrub_id(),
+                                                                        owner_tag));
 
     LOG_INFO("Trying to get the cork from the SnapshotPersistor");
 
@@ -564,14 +607,20 @@ private:
     NSIDMap& nsid_map_;
 };
 
+}
+
 std::unique_ptr<Volume>
-local_restart_volume(const VolumeConfig& config,
-                     const OwnerTag owner_tag,
-                     const IgnoreFOCIfUnreachable)
+VolumeFactory::local_restart_volume(const VolumeConfig& config,
+                                    const OwnerTag owner_tag,
+                                    const IgnoreFOCIfUnreachable)
 try
 {
+    boost::shared_ptr<be::Condition> backend_write_cond(claim_namespace(config.getNS(),
+                                                                        owner_tag));
+
     std::unique_ptr<MetaDataStoreInterface>
-        mdstore(local_restart_metadata_store(config));
+        mdstore(local_restart_metadata_store(config,
+                                             owner_tag));
     NSIDMap nsid;
     SnapshotPersistor sp(config.parent());
     NSIDMapBuilder builder(nsid);
@@ -582,6 +631,7 @@ try
     auto vol(create_volume_stage_1<DeleteLocalData::F,
                                    RemoveVolumeCompletely::F>(config,
                                                               owner_tag,
+                                                              backend_write_cond,
                                                               RestartContext::LocalRestart,
                                                               std::move(nsid),
                                                               std::move(mdstore)));
@@ -592,6 +642,9 @@ CATCH_STD_ALL_LOGLEVEL_RETHROW("Cannot restart volume for namespace " <<
                                config.getNS() <<
                                " locally, reason should be in the logs",
                                WARN)
+
+namespace
+{
 
 std::unique_ptr<Volume>
 fall_back_to_backend_restart(const VolumeConfig& config,
@@ -669,6 +722,9 @@ VolumeFactory::backend_restart(const VolumeConfig& config,
     // tlogs anymore.
     vm->getSCOCache()->removeDisabledNamespace(nspace);
 
+    const boost::shared_ptr<be::Condition> backend_write_cond(claim_namespace(config.getNS(),
+                                                                              owner_tag));
+
     try
     {
         BackendInterfacePtr bi(vm->createBackendInterface(nspace));
@@ -699,7 +755,8 @@ VolumeFactory::backend_restart(const VolumeConfig& config,
 
         std::unique_ptr<MetaDataStoreInterface>
             mdstore(make_metadata_store(config,
-                                        sp.scrub_id()));
+                                        sp.scrub_id(),
+                                        owner_tag));
 
         const boost::optional<yt::UUID> maybe_cork(mdstore->lastCork());
 
@@ -742,6 +799,7 @@ VolumeFactory::backend_restart(const VolumeConfig& config,
         auto vol(create_volume_stage_1<DeleteLocalData::T,
                                        RemoveVolumeCompletely::F>(config,
                                                                   owner_tag,
+                                                                  backend_write_cond,
                                                                   RestartContext::BackendRestart,
                                                                   std::move(nsid),
                                                                   std::move(mdstore)));
@@ -791,8 +849,10 @@ VolumeFactory::backend_restart_write_only_volume(const VolumeConfig& config,
     // tlogs anymore.
     vm->getSCOCache()->removeDisabledNamespace(nspace);
 
-    NSIDMap nsid;
+    const boost::shared_ptr<be::Condition> backend_write_cond(claim_namespace(config.getNS(),
+                                                                              owner_tag));
 
+    NSIDMap nsid;
     nsid.set(0,
              VolManager::get()->createBackendInterface(nspace));
 
@@ -843,6 +903,7 @@ VolumeFactory::backend_restart_write_only_volume(const VolumeConfig& config,
     auto v(create_write_only_volume_stage_1<DeleteLocalData::T,
                                             RemoveVolumeCompletely::F>(config,
                                                                        owner_tag,
+                                                                       backend_write_cond,
                                                                        RestartContext::BackendRestart,
                                                                        std::move(nsid)));
     v->backend_restart(restart_sco_num);
@@ -914,6 +975,8 @@ VolumeFactory::createClone(const VolumeConfig& config,
     auto vol(create_volume_stage_1<DeleteLocalData::T,
                                    RemoveVolumeCompletely::T>(config,
                                                               config.owner_tag_,
+                                                              claim_namespace(config.getNS(),
+                                                                              config.owner_tag_),
                                                               RestartContext::Cloning,
                                                               std::move(nsid),
                                                               nullptr));

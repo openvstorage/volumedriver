@@ -204,7 +204,8 @@ public:
           const vfs::OnlyStealFromOfflineNode only_steal_from_offline_node)
     {
         return router.steal_(reg,
-                             only_steal_from_offline_node);
+                             only_steal_from_offline_node,
+                             vfs::ForceRestart::T);
     }
 
     zmq::context_t ztx;

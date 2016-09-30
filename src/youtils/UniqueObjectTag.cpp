@@ -13,11 +13,18 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef YT_GLOBAL_LOCK_TAG_H_
-#define YT_GLOBAL_LOCK_TAG_H_
+#include "UniqueObjectTag.h"
 
-#include "StrongTypedString.h"
+#include <iostream>
 
-STRONG_TYPED_STRING(youtils, GlobalLockTag);
+namespace youtils
+{
 
-#endif // !YT_GLOBAL_LOCK_TAG_H_
+std::ostream&
+operator<<(std::ostream& os,
+           const UniqueObjectTag& t)
+{
+    return os << t.str();
+}
+
+}

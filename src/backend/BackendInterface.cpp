@@ -83,7 +83,7 @@ BackendInterface::do_wrap_(const BackendRequestParameters& params,
         {
             return ((conn.get())->*mem_fun)(args...);
         }
-        catch (BackendOverwriteNotAllowedException&)
+        catch (BackendAssertionFailedException&)
         {
             throw; /* ... no need to retry. */
         }
@@ -217,6 +217,7 @@ BackendInterface::write(const fs::path& src,
                         const std::string& name,
                         const OverwriteObject overwrite,
                         const yt::CheckSum* chksum,
+                        const boost::shared_ptr<Condition>& cond,
                         const BackendRequestParameters& params)
 {
     tracepoint(openvstorage_backend,
@@ -239,12 +240,14 @@ BackendInterface::write(const fs::path& src,
           decltype(src),
           decltype(name),
           OverwriteObject,
-          decltype(chksum)>(params,
-                            &BackendConnectionInterface::write,
-                            src,
-                            name,
-                            overwrite,
-                            chksum);
+          decltype(chksum),
+          decltype(cond)>(params,
+                          &BackendConnectionInterface::write,
+                          src,
+                          name,
+                          overwrite,
+                          chksum,
+                          cond);
 }
 
 yt::CheckSum
@@ -321,14 +324,17 @@ BackendInterface::objectExists(const std::string& name,
 void
 BackendInterface::remove(const std::string& name,
                          const ObjectMayNotExist may_not_exist,
+                         const boost::shared_ptr<Condition>& cond,
                          const BackendRequestParameters& params)
 {
     wrap_<void,
           decltype(name),
-          ObjectMayNotExist>(params,
-                             &BackendConnectionInterface::remove,
-                             name,
-                             may_not_exist);
+          ObjectMayNotExist,
+          decltype(cond)>(params,
+                          &BackendConnectionInterface::remove,
+                          name,
+                          may_not_exist,
+                          cond);
 }
 
 void
@@ -424,95 +430,52 @@ BackendInterface::getNS() const
     return nspace_;
 }
 
-bool
-BackendInterface::hasExtendedApi()
-{
-    return conn_manager_->getConnection()->hasExtendedApi();
-}
-
-ObjectInfo
-BackendInterface::x_read(std::stringstream& dst,
-                         const std::string& name,
-                         InsistOnLatestVersion insist_on_latest,
-                         const BackendRequestParameters& params)
-{
-    typedef ObjectInfo
-        (BackendConnectionInterface::*fn_type)(const Namespace&,
-                                               std::stringstream&, // dst
-                                               const std::string&, // name
-                                               InsistOnLatestVersion);
-
-    auto fun([&](InsistOnLatestVersion insist)
-             {
-                 return wrap_<ObjectInfo,
-                              decltype(dst),
-                              decltype(name),
-                              decltype(insist)>(params,
-                                                static_cast<fn_type>(&BackendConnectionInterface::x_read),
-                                                dst,
-                                                name,
-                                                insist);
-             });
-
-    return handle_eventual_consistency_<ObjectInfo>(insist_on_latest, std::move(fun));
-}
-
-ObjectInfo
-BackendInterface::x_read(std::string& dst,
-                         const std::string& name,
-                         InsistOnLatestVersion insist_on_latest,
-                         const BackendRequestParameters& params)
-{
-    typedef ObjectInfo
-        (BackendConnectionInterface::*fn_type)(const Namespace&,
-                                               std::string&, // dst
-                                               const std::string&, // name
-                                               InsistOnLatestVersion);
-
-    auto fun([&](InsistOnLatestVersion insist)
-             {
-                 return wrap_<ObjectInfo,
-                              decltype(dst),
-                              decltype(name),
-                              decltype(insist)>(params,
-                                                static_cast<fn_type>(&BackendConnectionInterface::x_read),
-                                                dst,
-                                                name,
-                                                insist);
-             });
-
-    return handle_eventual_consistency_<ObjectInfo>(insist_on_latest,
-                                                    std::move(fun));
-}
-
-ObjectInfo
-BackendInterface::x_write(const std::string& src,
-                          const std::string& name,
-                          const OverwriteObject overwrite,
-                          const backend::ETag* etag,
-                          const yt::CheckSum* chksum,
+std::unique_ptr<yt::UniqueObjectTag>
+BackendInterface::get_tag(const std::string& name,
                           const BackendRequestParameters& params)
 {
-    typedef ObjectInfo
-        (BackendConnectionInterface::*fn_type)(const Namespace&,
-                                               const std::string&, // src
-                                               const std::string&, // name
-                                               const OverwriteObject,
-                                               const backend::ETag*,
-                                               const yt::CheckSum*);
+    return wrap_<std::unique_ptr<yt::UniqueObjectTag>,
+                 decltype(name)>(params,
+                                 &BackendConnectionInterface::get_tag,
+                                 name);
+}
 
-    return wrap_<ObjectInfo,
+std::unique_ptr<yt::UniqueObjectTag>
+BackendInterface::write_tag(const fs::path& src,
+                            const std::string& name,
+                            const yt::UniqueObjectTag* prev_tag,
+                            const OverwriteObject overwrite,
+                            const BackendRequestParameters& params)
+{
+    return wrap_<std::unique_ptr<yt::UniqueObjectTag>,
                  decltype(src),
                  decltype(name),
-                 OverwriteObject,
-                 decltype(etag),
-                 decltype(chksum)>(params,
-                                   static_cast<fn_type>(&BackendConnectionInterface::x_write),
-                                   src,
-                                   name,
-                                   overwrite,
-                                   etag,
-                                   chksum);
+                 decltype(prev_tag),
+                 OverwriteObject>(params,
+                                  &BackendConnectionInterface::write_tag,
+                                  src,
+                                  name,
+                                  prev_tag,
+                                  overwrite);
+}
+
+std::unique_ptr<yt::UniqueObjectTag>
+BackendInterface::read_tag(const fs::path& src,
+                           const std::string& name,
+                           const BackendRequestParameters& params)
+{
+    return wrap_<std::unique_ptr<yt::UniqueObjectTag>,
+                 decltype(src),
+                 decltype(name)>(params,
+                                 &BackendConnectionInterface::read_tag,
+                                 src,
+                                 name);
+}
+
+bool
+BackendInterface::unique_tag_support() const
+{
+    return conn_manager_->config().unique_tag_support();
 }
 
 }

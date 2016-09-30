@@ -17,7 +17,7 @@
 #define BACKEND_GLOBAL_LOCK_STORE_H_
 
 #include "HeartBeatLock.h"
-#include "GlobalLockTag.h"
+#include "UniqueObjectTag.h"
 
 #include <boost/shared_ptr.hpp>
 
@@ -36,12 +36,12 @@ struct GlobalLockStore
     virtual bool
     exists() = 0;
 
-    virtual std::tuple<HeartBeatLock, GlobalLockTag>
+    virtual std::tuple<HeartBeatLock, std::unique_ptr<UniqueObjectTag>>
     read() = 0;
 
-    virtual GlobalLockTag
+    virtual std::unique_ptr<UniqueObjectTag>
     write(const HeartBeatLock&,
-          const boost::optional<GlobalLockTag>&) = 0;
+          const UniqueObjectTag*) = 0;
 
     virtual const std::string&
     name() const = 0;

@@ -16,10 +16,11 @@
 #include "BackendTasks.h"
 #include "CachedSCO.h"
 #include "DataStoreCallBack.h"
-#include "Volume.h"
-#include "VolumeDriverError.h"
+#include "OwnerTag.h"
 #include "SnapshotManagement.h"
 #include "TransientException.h"
+#include "Volume.h"
+#include "VolumeDriverError.h"
 
 #include <youtils/Catchers.h>
 #include <youtils/Timer.h>
@@ -90,6 +91,7 @@ WriteSCO::run(int threadid)
                                               sco_.str(),
                                               overwrite_,
                                               &cs_,
+                                              volume_->backend_write_condition(),
                                               fail_fast_request_params);
 
         const auto duration_us(bc::duration_cast<bc::microseconds>(t.elapsed()));
@@ -98,6 +100,11 @@ WriteSCO::run(int threadid)
         volume_->SCOWrittenToBackendCallback(file_size,
                                              duration_us);
         cb_->writtenToBackend(sco_);
+    }
+    catch (be::BackendAssertionFailedException&)
+    {
+        LOG_WARN(volume_->getName() << ": conditional write of " << sco_.str() << " failed");
+        volume_->halt();
     }
     catch (backend::BackendInputException &e)
     {
@@ -159,9 +166,20 @@ WriteTLog::run(int /*threadid*/)
                                               boost::lexical_cast<std::string>(tlogid_),
                                               OverwriteObject::T,
                                               &checksum_,
+                                              volume_->backend_write_condition(),
                                               fail_fast_request_params);
         volume_->tlogWrittenToBackendCallback(tlogid_,
                                               sconame_);
+    }
+    catch (OwnerTagMismatchException& e)
+    {
+        LOG_WARN(volume_->getName() << ": " << e.what());
+        volume_->halt();
+    }
+    catch (be::BackendAssertionFailedException&)
+    {
+        LOG_WARN(volume_->getName() << ": conditional write failed");
+        volume_->halt();
     }
     catch (backend::BackendInputException& e)
     {
@@ -214,7 +232,13 @@ WriteSnapshot::run(int /*threadID*/)
                                               snapshotFilename(),
                                               OverwriteObject::T,
                                               &chk,
+                                              volume_->backend_write_condition(),
                                               fail_fast_request_params);
+    }
+    catch (be::BackendAssertionFailedException&)
+    {
+        LOG_WARN(volume_->getName() << ": conditional write of " << snapshotFilename() << " failed");
+        volume_->halt();
     }
     CATCH_STD_ALL_EWHAT({
             LOG_WARN("Couldn't write snapshot to backend, will be retried: " << EWHAT);
@@ -245,8 +269,14 @@ DeleteTLog::run(int /*threadID*/)
     {
         volume_->getBackendInterface()->remove(tlog_,
                                                ObjectMayNotExist::T,
+                                               volume_->backend_write_condition(),
                                                fail_fast_request_params);
         LOG_INFO("Deleted TLog " << tlog_);
+    }
+    catch (be::BackendAssertionFailedException&)
+    {
+        LOG_WARN(volume_->getName() << ": conditional deletion of TLog " << tlog_ << " failed");
+        volume_->halt();
     }
     CATCH_STD_ALL_LOGLEVEL_IGNORE("Exception deleting TLog " << tlog_,
                                   WARN);
@@ -277,9 +307,15 @@ BlockDeleteTLogs::run(int /*threadID*/)
         {
             volume_->getBackendInterface()->remove(*it,
                                                    ObjectMayNotExist::T,
+                                                   volume_->backend_write_condition(),
                                                    fail_fast_request_params);
             LOG_INFO("Deleted TLog " << *it);
 
+        }
+        catch (be::BackendAssertionFailedException&)
+        {
+            LOG_WARN(volume_->getName() << ": conditional deletion of TLog " << *it << " failed");
+            volume_->halt();
         }
         catch(std::exception& e)
         {
@@ -320,9 +356,15 @@ BlockDeleteSCOS::run(int /*threadID*/)
         {
             volume_->getBackendInterface()->remove(it->str(),
                                                    ObjectMayNotExist::T,
+                                                   volume_->backend_write_condition(),
                                                    fail_fast_request_params);
             LOG_INFO("Deleted SCO " << *it);
 
+        }
+        catch (be::BackendAssertionFailedException&)
+        {
+            LOG_WARN(volume_->getName() << ": conditional deletion of SCO " << *it << " failed");
+            volume_->halt();
         }
         catch(std::exception& e)
         {
@@ -358,9 +400,15 @@ DeleteSCO::run(int /*threadID*/)
     {
         volume_->getBackendInterface()->remove(sco_.str(),
                                                ObjectMayNotExist::T,
+                                               volume_->backend_write_condition(),
                                                fail_fast_request_params);
         LOG_INFO("Deleted SCO " << sco_);
 
+    }
+    catch (be::BackendAssertionFailedException&)
+    {
+        LOG_WARN(volume_->getName() << ": conditional deletion of SCO " << sco_.str() << " failed");
+        volume_->halt();
     }
     catch(std::exception& e)
     {

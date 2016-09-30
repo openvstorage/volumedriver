@@ -33,6 +33,7 @@ BUILT_SOURCES = \
 libbackend_la_SOURCES = \
 	AlbaConfig.cpp \
 	Alba_Connection.cpp \
+	AlbaSequence.cpp \
 	BackendConfig.cpp \
 	BackendConnectionManager.cpp \
 	BackendConnectionInterface.cpp \
@@ -51,7 +52,6 @@ libbackend_la_SOURCES = \
 	MultiConfig.cpp \
 	Multi_Connection.cpp \
 	Namespace.cpp \
-	ObjectInfo.cpp \
 	S3Config.cpp \
 	S3_Connection.cpp \
 	SimpleFetcher.cpp \

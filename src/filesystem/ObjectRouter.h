@@ -138,6 +138,7 @@ class ObjectRouter
 {
     friend class volumedriverfstest::FileSystemTestBase;
     friend class volumedriverfstest::ObjectRouterTest;
+    friend class volumedriverfstest::RemoteTest;
 
 public:
     using MaybeFailOverCacheConfig = boost::optional<volumedriver::FailOverCacheConfig>;
@@ -422,6 +423,7 @@ private:
     DECLARE_PARAMETER(vrouter_max_workers);
     DECLARE_PARAMETER(vrouter_registry_cache_capacity);
     DECLARE_PARAMETER(vrouter_xmlrpc_client_timeout_ms);
+    DECLARE_PARAMETER(vrouter_use_fencing);
 
     std::shared_ptr<youtils::LockedArakoon> larakoon_;
     std::shared_ptr<CachedObjectRegistry> object_registry_;
@@ -534,42 +536,43 @@ private:
                    Args...);
 
     void
-    handle_message_(zmq::socket_t& router_sock);
+    handle_message_(zmq::socket_t&);
 
     zmq::message_t
-    handle_ping_(const vfsprotocol::PingMessage& req);
+    handle_ping_(const vfsprotocol::PingMessage&);
 
     zmq::message_t
-    handle_read_(const vfsprotocol::ReadRequest& req);
+    handle_read_(const vfsprotocol::ReadRequest&);
 
     zmq::message_t
-    handle_write_(const vfsprotocol::WriteRequest& req,
+    handle_write_(const vfsprotocol::WriteRequest&,
                   const zmq::message_t& data);
 
 
     void
-    handle_sync_(const vfsprotocol::SyncRequest& req);
+    handle_sync_(const vfsprotocol::SyncRequest&);
 
     zmq::message_t
-    handle_get_size_(const vfsprotocol::GetSizeRequest& req);
+    handle_get_size_(const vfsprotocol::GetSizeRequest&);
 
     void
-    handle_resize_(const vfsprotocol::ResizeRequest& req);
+    handle_resize_(const vfsprotocol::ResizeRequest&);
 
     void
-    handle_delete_volume_(const vfsprotocol::DeleteRequest& req);
+    handle_delete_volume_(const vfsprotocol::DeleteRequest&);
 
     void
-    handle_transfer_(const vfsprotocol::TransferRequest& req);
+    handle_transfer_(const vfsprotocol::TransferRequest&);
 
     void
-    migrate_(const ObjectRegistration& reg,
-             OnlyStealFromOfflineNode only_steal_if_offline,
-             ForceRestart force);
+    migrate_(const ObjectRegistration&,
+             OnlyStealFromOfflineNode,
+             ForceRestart);
 
     bool
-    steal_(const ObjectRegistration& reg,
-           OnlyStealFromOfflineNode only_steal_if_offline);
+    steal_(const ObjectRegistration&,
+           OnlyStealFromOfflineNode,
+           ForceRestart);
 
     void
     maybe_register_base_(const ObjectId& id,
@@ -580,9 +583,9 @@ private:
     using PrepareRestartFun = std::function<void(const Object&)>;
 
     void
-    backend_restart_(const Object& obj,
-                     ForceRestart force,
-                     PrepareRestartFun prep_restart_fun);
+    backend_restart_(const Object&,
+                     ForceRestart,
+                     PrepareRestartFun);
 
     FastPathCookie
     write_(const ObjectId&,
@@ -606,6 +609,12 @@ private:
                  FastPathCookie (LocalNode::*fast_fun)(const FastPathCookie&,
                                                        Args...),
                  Args...);
+
+    bool
+    fencing_support_() const;
+
+    void
+    shutdown_();
 };
 
 }

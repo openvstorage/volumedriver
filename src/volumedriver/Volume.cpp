@@ -109,13 +109,15 @@ namespace yt = youtils;
 
 Volume::Volume(const VolumeConfig& vCfg,
                const OwnerTag owner_tag,
+               const boost::shared_ptr<be::Condition>& backend_write_condition,
                std::unique_ptr<SnapshotManagement> snapshotManagement,
                std::unique_ptr<DataStoreNG> datastore,
                std::unique_ptr<MetaDataStoreInterface> metadatastore,
                NSIDMap nsidmap,
                const std::atomic<unsigned>& foc_throttle_usecs,
                bool& readOnlyMode)
-    : mdstore_was_rebuilt_(false)
+    : VolumeInterface(backend_write_condition)
+    , mdstore_was_rebuilt_(false)
     , config_lock_()
     , write_lock_()
     , rwlock_("rwlock-" + vCfg.id_.str())
@@ -1575,23 +1577,25 @@ Volume::cloneFromParentSnapshot(const yt::UUID& parent_snap_uuid,
             SCOAccessDataPersistor parent(nsidmap_.get(1)->clone());
             sad = parent.pull();
         }
+
         sad->rebase(getNamespace());
         {
             SCOAccessDataPersistor self(nsidmap_.get(0)->clone());
-            self.push(*sad);
+            self.push(*sad,
+                      backend_write_condition());
         }
     }
-    catch(std::exception& e)
+    catch (be::BackendAssertionFailedException&)
     {
-        LOG_VINFO("Problem getting and rebasing parent access probabilities: " <<
-                  e.what() << " - proceeding");
+        LOG_VWARN("conditional write of SCO access data failed");
+        halt();
+        throw;
     }
 
-    catch(...)
-    {
-        LOG_VINFO("Problem getting and rebasing parent access probabilities: " <<
-                  "unknown exception - proceeding");
-    }
+    CATCH_STD_ALL_EWHAT({
+            LOG_VINFO("Problem getting and rebasing parent access probabilities: " <<
+                      EWHAT << " - proceeding");
+        });
 
     register_with_cluster_cache_(getOwnerTag());
 }
@@ -2842,9 +2846,19 @@ Volume::writeConfigToBackend_(const VolumeConfig& cfg)
 {
     checkNotHalted_();
 
-    getBackendInterface()->writeObject(cfg,
-                                       VolumeConfig::config_backend_name,
-                                       OverwriteObject::T);
+    try
+    {
+        getBackendInterface()->writeObject(cfg,
+                                           VolumeConfig::config_backend_name,
+                                           OverwriteObject::T,
+                                           backend_write_condition());
+    }
+    catch (be::BackendAssertionFailedException&)
+    {
+        LOG_VWARN("conditional write of " << VolumeConfig::config_backend_name << " failed");
+        halt();
+        throw;
+    }
 }
 
 void
@@ -2852,9 +2866,19 @@ Volume::writeFailOverCacheConfigToBackend_()
 {
     checkNotHalted_();
 
-    getBackendInterface()->writeObject(foc_config_wrapper_,
-                                       FailOverCacheConfigWrapper::config_backend_name,
-                                       OverwriteObject::T);
+    try
+    {
+        getBackendInterface()->writeObject(foc_config_wrapper_,
+                                           FailOverCacheConfigWrapper::config_backend_name,
+                                           OverwriteObject::T,
+                                           backend_write_condition());
+    }
+    catch (be::BackendAssertionFailedException&)
+    {
+        LOG_VWARN("conditional write of " << VolumeConfig::config_backend_name << " failed");
+        halt();
+        throw;
+    }
 }
 
 void

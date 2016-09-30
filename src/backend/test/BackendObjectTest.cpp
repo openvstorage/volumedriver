@@ -207,7 +207,7 @@ TEST_F(BackendObjectTest, overwrite)
                                                objname,
                                                OverwriteObject::F,
                                                &chksum2),
-                     BackendOverwriteNotAllowedException);
+                     BackendAssertionFailedException);
 
         try
         {

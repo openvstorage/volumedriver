@@ -18,8 +18,8 @@
 
 #include "BackendException.h"
 #include "BackendPolicyConfig.h"
+#include "Condition.h"
 #include "Namespace.h"
-#include "ObjectInfo.h"
 
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 #include <boost/filesystem.hpp>
@@ -32,6 +32,7 @@
 #include <youtils/FileUtils.h>
 #include <youtils/Logging.h>
 #include <youtils/FileDescriptor.h>
+#include <youtils/UniqueObjectTag.h>
 
 VD_BOOLEAN_ENUM(OverwriteObject);
 VD_BOOLEAN_ENUM(ObjectMayNotExist);
@@ -100,6 +101,10 @@ protected:
          const std::string& name,
          const InsistOnLatestVersion insist_on_latest);
 
+    std::unique_ptr<youtils::UniqueObjectTag>
+    get_tag(const Namespace&,
+            const std::string&);
+
     struct ObjectSlice
     {
         uint32_t size;
@@ -166,20 +171,34 @@ protected:
                  PartialReadFallbackFun& fallback);
 
     void
-    write(const Namespace& nspace,
-          const boost::filesystem::path& location,
-          const std::string& name,
-          const OverwriteObject overwrite = OverwriteObject::F,
-          const youtils::CheckSum* chksum = nullptr);
+    write(const Namespace&,
+          const boost::filesystem::path&,
+          const std::string&,
+          const OverwriteObject = OverwriteObject::F,
+          const youtils::CheckSum* = nullptr,
+          const boost::shared_ptr<Condition>& = nullptr);
+
+    std::unique_ptr<youtils::UniqueObjectTag>
+    write_tag(const Namespace&,
+              const boost::filesystem::path&,
+              const std::string&,
+              const youtils::UniqueObjectTag*,
+              const OverwriteObject = OverwriteObject::T);
+
+    std::unique_ptr<youtils::UniqueObjectTag>
+    read_tag(const Namespace&,
+             const boost::filesystem::path&,
+             const std::string&);
 
     bool
     objectExists(const Namespace& nspace,
                  const std::string& name);
 
     void
-    remove(const Namespace& nspace,
-           const std::string& name,
-           const ObjectMayNotExist may_not_exist = ObjectMayNotExist::F);
+    remove(const Namespace&,
+           const std::string&,
+           const ObjectMayNotExist = ObjectMayNotExist::F,
+           const boost::shared_ptr<Condition>& = nullptr);
 
     uint64_t
     getSize(const Namespace& nspace,
@@ -188,72 +207,6 @@ protected:
     youtils::CheckSum
     getCheckSum(const Namespace& nspace,
                 const std::string& name);
-
-    // Will return false on a non functioning extended interface
-    bool
-    hasExtendedApi()
-    {
-        return hasExtendedApi_();
-    }
-
-    // This is the Extended Api which is Only on Rest and partially on the local Backend
-    ObjectInfo
-    x_getMetadata(const Namespace& nspace,
-                  const std::string& name);
-
-
-    ObjectInfo
-    x_setMetadata(const Namespace& nspace,
-                  const std::string& name,
-                  const ObjectInfo::CustomMetaData& metadata);
-
-    ObjectInfo
-    x_updateMetadata(const Namespace& nspace,
-                     const std::string& name,
-                     const ObjectInfo::CustomMetaData& metadata);
-
-    //the x_read_* functions can also return ObjectInfo but that's more involved as it's not returned as Json
-    ObjectInfo
-    x_read(const Namespace& nspace,
-           const boost::filesystem::path& destination,
-           const std::string& name,
-           const InsistOnLatestVersion insist_on_latest);
-
-    ObjectInfo
-    x_read(const Namespace& nspace,
-           std::string& destination,
-           const std::string& name,
-           const InsistOnLatestVersion insist_on_latest);
-
-    ObjectInfo
-    x_read(const Namespace& nspace,
-           std::stringstream& destination,
-           const std::string& name,
-           const InsistOnLatestVersion insist_on_latest);
-
-    ObjectInfo
-    x_write(const Namespace& nspace,
-            const boost::filesystem::path& location,
-            const std::string& name,
-            const OverwriteObject overwrite = OverwriteObject::F,
-            const ETag* etag = nullptr,
-            const youtils::CheckSum* chksum = nullptr);
-
-    ObjectInfo
-    x_write(const Namespace& nspace,
-            const std::string& istr,
-            const std::string& name,
-            const OverwriteObject overwrite = OverwriteObject::F,
-            const ETag* etag = nullptr,
-            const youtils::CheckSum* chksum = nullptr);
-
-    ObjectInfo
-    x_write(const Namespace& nspace,
-            std::stringstream& strm,
-            const std::string& name,
-            const OverwriteObject overwrite = OverwriteObject::F,
-            const ETag* etag = nullptr,
-            const youtils::CheckSum* chksum = nullptr);
 
 private:
     virtual void
@@ -285,6 +238,10 @@ private:
           const std::string& name,
           const InsistOnLatestVersion insist_on_latest) = 0;
 
+    virtual std::unique_ptr<youtils::UniqueObjectTag>
+    get_tag_(const Namespace&,
+             const std::string&) = 0;
+
 public:
     virtual bool
     partial_read_(const Namespace& ns,
@@ -294,10 +251,23 @@ public:
 private:
     virtual void
     write_(const Namespace&,
-           const boost::filesystem::path& location,
-           const std::string& name,
+           const boost::filesystem::path&,
+           const std::string&,
            const OverwriteObject = OverwriteObject::F,
-           const youtils::CheckSum* chksum = nullptr) = 0;
+           const youtils::CheckSum* = nullptr,
+           const boost::shared_ptr<Condition>& = nullptr) = 0;
+
+    virtual std::unique_ptr<youtils::UniqueObjectTag>
+    write_tag_(const Namespace&,
+               const boost::filesystem::path&,
+               const std::string&,
+               const youtils::UniqueObjectTag* old_tag,
+               const OverwriteObject = OverwriteObject::T) = 0;
+
+    virtual std::unique_ptr<youtils::UniqueObjectTag>
+    read_tag_(const Namespace&,
+              const boost::filesystem::path&,
+              const std::string&) = 0;
 
     virtual bool
     objectExists_(const Namespace&,
@@ -305,8 +275,9 @@ private:
 
     virtual void
     remove_(const Namespace&,
-            const std::string& name,
-            const ObjectMayNotExist) = 0;
+            const std::string&,
+            const ObjectMayNotExist,
+            const boost::shared_ptr<Condition>& = nullptr) = 0;
 
     virtual uint64_t
     getSize_(const Namespace&,
@@ -316,71 +287,8 @@ private:
     getCheckSum_(const Namespace&,
                  const std::string& name) = 0;
 
-public:
-    virtual bool
-    hasExtendedApi_() const = 0;
-
 private:
     DECLARE_LOGGER("BackendConnectionInterface");
-
-    // This is the Extended Api which is only available on Amplidata REST
-    // and *partially* on LocalBackend
-    virtual ObjectInfo
-    x_getMetadata_(const Namespace&,
-                   const std::string& name);
-
-    virtual ObjectInfo
-    x_setMetadata_(const Namespace&,
-                   const std::string& name,
-                   const ObjectInfo::CustomMetaData& metadata);
-
-    virtual ObjectInfo
-    x_updateMetadata_(const Namespace&,
-                      const std::string& name,
-                      const ObjectInfo::CustomMetaData& metadata);
-
-    //the x_read_* functions can also return ObjectInfo but that's more involved as it's not returned as Json
-    virtual ObjectInfo
-    x_read_(const Namespace&,
-            const boost::filesystem::path& destination,
-            const std::string& name,
-            const InsistOnLatestVersion);
-
-    virtual ObjectInfo
-    x_read_(const Namespace&,
-            std::string& destination,
-            const std::string& name,
-            const InsistOnLatestVersion);
-
-    virtual ObjectInfo
-    x_read_(const Namespace&,
-            std::stringstream& destination,
-            const std::string& name,
-            const InsistOnLatestVersion);
-
-    virtual ObjectInfo
-    x_write_(const Namespace&,
-             const boost::filesystem::path& location,
-             const std::string& name,
-             const OverwriteObject = OverwriteObject::F,
-             const ETag* etag = nullptr,
-             const youtils::CheckSum* chksum = nullptr);
-
-    virtual ObjectInfo
-    x_write_(const Namespace&,
-             const std::string& istr,
-             const std::string& name,
-             const OverwriteObject = OverwriteObject::F,
-             const ETag* etag = nullptr,
-             const youtils::CheckSum* chksum = nullptr);
-
-    virtual ObjectInfo
-    x_write_(const Namespace&,
-             std::stringstream& strm,
-             const std::string& name,
-             const OverwriteObject = OverwriteObject::F,
-             const ETag* etag = nullptr,
-             const youtils::CheckSum* chksum = nullptr);
 };
 
 class BackendConnectionDeleter;

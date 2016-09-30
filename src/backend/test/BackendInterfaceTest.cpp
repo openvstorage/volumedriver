@@ -15,6 +15,8 @@
 
 #include "BackendTestBase.h"
 
+#include <boost/filesystem.hpp>
+#include <boost/make_shared.hpp>
 #include <boost/property_tree/ptree.hpp>
 
 #include <youtils/Timer.h>
@@ -22,18 +24,19 @@
 namespace backendtest
 {
 
-namespace be = backend;
+using namespace backend;
+
 namespace bpt = boost::property_tree;
 namespace fs = boost::filesystem;
 namespace ip = initialized_params;
 namespace yt = youtils;
 
 class BackendInterfaceTest
-    : public be::BackendTestBase
+    : public BackendTestBase
 {
 public:
     BackendInterfaceTest()
-        : be::BackendTestBase("BackendInterfaceTest")
+        : BackendTestBase("BackendInterfaceTest")
     {}
 };
 
@@ -53,7 +56,7 @@ TEST_F(BackendInterfaceTest, retry_on_error)
     ASSERT_NE(wrong_cs,
               cs);
 
-    std::unique_ptr<be::BackendTestSetup::WithRandomNamespace>
+    std::unique_ptr<BackendTestSetup::WithRandomNamespace>
         nspace(make_random_namespace());
 
     const uint32_t retries = 5;
@@ -61,7 +64,7 @@ TEST_F(BackendInterfaceTest, retry_on_error)
     ASSERT_LE(retries,
               cm_->capacity());
 
-    be::BackendInterfacePtr bi(cm_->newBackendInterface(nspace->ns()));
+    BackendInterfacePtr bi(cm_->newBackendInterface(nspace->ns()));
 
     const uint32_t secs = 1;
 
@@ -87,13 +90,180 @@ TEST_F(BackendInterfaceTest, retry_on_error)
                            oname,
                            OverwriteObject::F,
                            &wrong_cs),
-                 be::BackendInputException);
+                 BackendInputException);
 
     EXPECT_EQ(retries + 1,
               cm_->size());
 
     EXPECT_LE(boost::chrono::seconds(retries * secs),
               t.elapsed());
+}
+
+TEST_F(BackendInterfaceTest, unique_tag)
+{
+    std::unique_ptr<BackendTestSetup::WithRandomNamespace>
+        nspace(make_random_namespace());
+    BackendInterfacePtr bi(cm_->newBackendInterface(nspace->ns()));
+
+    const std::string name("object");
+    const fs::path p(path_ / "p");
+    fs::ofstream(p) << p;
+
+    std::unique_ptr<yt::UniqueObjectTag> tp(bi->write_tag(p,
+                                                          name,
+                                                          nullptr));
+
+    EXPECT_NE(nullptr,
+              tp);
+
+    EXPECT_EQ(*tp,
+              *(bi->get_tag(name)));
+
+    const fs::path q(path_ / "q");
+    fs::ofstream(q) << q;
+
+    EXPECT_THROW(bi->write_tag(q,
+                               name,
+                               nullptr,
+                               OverwriteObject::F),
+                 BackendAssertionFailedException);
+
+    EXPECT_EQ(*tp,
+              *(bi->get_tag(name)));
+
+    std::unique_ptr<yt::UniqueObjectTag> tq(bi->write_tag(q,
+                                                          name,
+                                                          tp.get(),
+                                                          OverwriteObject::T));
+
+    EXPECT_NE(*tp,
+              *tq);
+    EXPECT_EQ(*tq,
+              *(bi->get_tag(name)));
+
+    EXPECT_THROW(bi->write_tag(p,
+                               name,
+                               tp.get(),
+                               OverwriteObject::T),
+                 BackendAssertionFailedException);
+
+    EXPECT_EQ(*tq,
+              *(bi->get_tag(name)));
+
+    const fs::path r(path_ / "r");
+    fs::ofstream(r) << r;
+
+    std::unique_ptr<yt::UniqueObjectTag> tr(bi->write_tag(r,
+                                                          name,
+                                                          nullptr,
+                                                          OverwriteObject::T));
+
+    EXPECT_NE(*tp,
+              *tr);
+    EXPECT_NE(*tq,
+              *tr);
+    EXPECT_EQ(*tr,
+              *(bi->get_tag(name)));
+}
+
+TEST_F(BackendInterfaceTest, conditional_operations)
+{
+    std::unique_ptr<BackendTestSetup::WithRandomNamespace>
+        nspace(make_random_namespace());
+    BackendInterfacePtr bi(cm_->newBackendInterface(nspace->ns()));
+
+    auto make_tag([&](const std::string& n) -> std::unique_ptr<yt::UniqueObjectTag>
+                   {
+                       const fs::path cpath(path_ / n);
+                       fs::ofstream(cpath) << cpath;
+                       return bi->write_tag(cpath,
+                                            n,
+                                            nullptr,
+                                            OverwriteObject::T);
+                   });
+
+    const std::string cname("cond");
+    const auto cond(boost::make_shared<Condition>(cname,
+                                                  make_tag(cname)));
+    const auto bogus_cond(boost::make_shared<Condition>(cname,
+                                                        make_tag("another_cond")));
+
+    const size_t fsize = 8192;
+    const fs::path p(path_ / "p");
+    const std::string patternp("PatternP");
+    const yt::CheckSum chkp(createTestFile(p,
+                                           fsize,
+                                           patternp));
+
+    const std::string oname("object");
+
+    EXPECT_THROW(bi->write(p,
+                           oname,
+                           OverwriteObject::F,
+                           &chkp,
+                           bogus_cond),
+                 BackendAssertionFailedException);
+
+    EXPECT_FALSE(bi->objectExists(oname));
+
+    bi->write(p,
+              oname,
+              OverwriteObject::F,
+              &chkp,
+              cond);
+
+    EXPECT_TRUE(bi->objectExists(oname));
+
+    EXPECT_THROW(bi->remove(oname,
+                            ObjectMayNotExist::F,
+                            bogus_cond),
+                 BackendAssertionFailedException);
+
+    EXPECT_TRUE(bi->objectExists(oname));
+
+    const fs::path q(path_ / "q");
+    const std::string patternq("PatternQ");
+    const yt::CheckSum chkq(createTestFile(q,
+                                           fsize + 1,
+                                           patternq));
+
+    EXPECT_THROW(bi->write(q,
+                           oname,
+                           OverwriteObject::T,
+                           &chkq,
+                           bogus_cond),
+                 BackendAssertionFailedException);
+
+    const fs::path r(path_ / "r");
+    bi->read(r,
+             oname,
+             InsistOnLatestVersion::T);
+
+    EXPECT_TRUE(verifyTestFile(r,
+                               fsize,
+                               patternp,
+                               &chkp));
+
+    bi->write(q,
+              oname,
+              OverwriteObject::T,
+              &chkq,
+              cond);
+
+    bi->read(r,
+             oname,
+             InsistOnLatestVersion::T);
+
+    EXPECT_TRUE(verifyTestFile(r,
+                               fsize + 1,
+                               patternq,
+                               &chkq));
+
+    bi->remove(oname,
+               ObjectMayNotExist::F,
+               cond);
+
+    EXPECT_FALSE(bi->objectExists(oname));
 }
 
 }

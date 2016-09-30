@@ -17,7 +17,7 @@
 #define LBAGENERATOR_H_
 
 #include <youtils/SourceOfUncertainty.h>
-#include <youtils/Weed.h>
+#include <youtils/Md5.h>
 
 #include "../ClusterLocationAndHash.h"
 #include "../CombinedTLogReader.h"

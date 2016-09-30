@@ -26,7 +26,7 @@ MAKE_EXCEPTION(BackendException, fungi::IOException);
 // Y42 : NEEDS TO HAVE CONSTRUCTORS THAT ALLOW YOU TO PASS A NON GENERIC DESCRIPTION
 // DONT OVERRIDE THE WHAT WITHOUT USING THE fungi::IOException WHAT...
 // ALL THIS STUFF IS WAY TOO MUCH TIED TO THE DSS BACKEND.
-#define DEFINE_BACKEND_EXCEPTION(errclass, desc)        \
+#define DEFINE_BACKEND_EXCEPTION(errclass, desc)         \
     class Backend##errclass##Exception                   \
         : public BackendException                        \
     {                                                    \
@@ -60,9 +60,6 @@ DEFINE_BACKEND_EXCEPTION(Store, "store error");
 // failure to write to a local file. the latter should be mapped to an output
 // error instead.
 DEFINE_BACKEND_EXCEPTION(Restore, "restore error");
-
-// attempt to overwrite but not explicity requested
-DEFINE_BACKEND_EXCEPTION(OverwriteNotAllowed, "overwrite not allowed");
 
 // self explanatory
 DEFINE_BACKEND_EXCEPTION(ObjectDoesNotExist, "object does not exist");
@@ -104,6 +101,8 @@ DEFINE_BACKEND_EXCEPTION(UnAuthorized,
 DEFINE_BACKEND_EXCEPTION(NoMultiBackendAvailable,
                          "No MULTI backend available");
 
+DEFINE_BACKEND_EXCEPTION(AssertionFailed,
+                         "Assertion failed");
 
 //#undef DEFINE_BACKEND_EXCEPTION
 

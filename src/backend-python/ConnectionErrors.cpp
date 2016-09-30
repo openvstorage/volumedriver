@@ -43,7 +43,7 @@ void translate(const backend::BackendRestoreException& e)
     PyErr_SetString(PyExc_RuntimeError, e.what());
 }
 
-void translate(const backend::BackendOverwriteNotAllowedException& e)
+void translate(const backend::BackendAssertionFailedException& e)
 {
     PyErr_SetString(PyExc_RuntimeError, e.what());
 }

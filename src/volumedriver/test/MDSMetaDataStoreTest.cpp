@@ -86,6 +86,7 @@ TEST_F(MDSMetaDataStoreTest, construction_with_empty_configs)
                                                                                      vd::ApplyRelocationsToSlaves::T),
                                                         cm_->newBackendInterface(wrns.ns()),
                                                         mdstore_home(),
+                                                        vd::OwnerTag(1),
                                                         1024),
                  std::exception);
 }
@@ -103,6 +104,7 @@ TEST_F(MDSMetaDataStoreTest, construction_with_awol_server)
     EXPECT_THROW(std::make_unique<vd::MDSMetaDataStore>(cfg,
                                                         cm_->newBackendInterface(wrns.ns()),
                                                         mdstore_home(),
+                                                        vd::OwnerTag(1),
                                                         1024),
                  std::exception);
 }
@@ -125,6 +127,7 @@ TEST_F(MDSMetaDataStoreTest, construction_with_awol_master_and_present_slave)
     auto mdstore(std::make_unique<vd::MDSMetaDataStore>(mcfg,
                                                         cm_->newBackendInterface(wrns.ns()),
                                                         mdstore_home(),
+                                                        vd::OwnerTag(1),
                                                         1024));
 
     const vd::MDSNodeConfigs ncfgs2(mdstore->get_config().node_configs());
@@ -147,6 +150,7 @@ TEST_F(MDSMetaDataStoreTest, successful_construction)
     auto mdstore(std::make_unique<vd::MDSMetaDataStore>(cfg,
                                                         cm_->newBackendInterface(wrns.ns()),
                                                         mdstore_home(),
+                                                        vd::OwnerTag(1),
                                                         1024));
 
     EXPECT_EQ(ncfgs[0],

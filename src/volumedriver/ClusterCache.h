@@ -50,7 +50,7 @@
 #include <youtils/RWLock.h>
 #include <youtils/Serialization.h>
 #include <youtils/VolumeDriverComponent.h>
-#include <youtils/Weed.h>
+#include <youtils/Md5.h>
 
 namespace volumedrivertest
 {

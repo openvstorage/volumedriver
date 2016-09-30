@@ -20,7 +20,7 @@
 #include "Types.h"
 
 #include <youtils/Serialization.h>
-#include <youtils/Weed.h>
+#include <youtils/Md5.h>
 
 namespace volumedriver
 {

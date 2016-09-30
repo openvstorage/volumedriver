@@ -40,12 +40,14 @@ class MDSMetaDataBackend
     : public MetaDataBackendInterface
 {
 public:
-    MDSMetaDataBackend(const MDSNodeConfig& config,
-                       const backend::Namespace& nspace,
+    MDSMetaDataBackend(const MDSNodeConfig&,
+                       const backend::Namespace&,
+                       const boost::optional<OwnerTag>&,
                        const boost::optional<std::chrono::seconds>& timeout);
 
-    MDSMetaDataBackend(metadata_server::DataBaseInterfacePtr db,
-                       const backend::Namespace& nspace);
+    MDSMetaDataBackend(metadata_server::DataBaseInterfacePtr,
+                       const backend::Namespace&,
+                       const OwnerTag);
 
     virtual ~MDSMetaDataBackend();
 
@@ -138,7 +140,9 @@ public:
     void
     set_master()
     {
-        table_->set_role(metadata_server::Role::Master);
+        VERIFY(owner_tag_);
+        table_->set_role(metadata_server::Role::Master,
+                         *owner_tag_);
     }
 
 private:
@@ -148,6 +152,7 @@ private:
     metadata_server::TableInterfacePtr table_;
     const boost::optional<MDSNodeConfig> config_;
     uint64_t used_clusters_;
+    const boost::optional<OwnerTag> owner_tag_;
 
     void
     init_();

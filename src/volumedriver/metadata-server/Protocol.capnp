@@ -15,12 +15,19 @@ struct Record
     val @1 : Data;
 }
 
+# Arrr matey, ye olde scumbag Cap'n P. insists on camelCase.
+
+enum ErrorType
+{
+    unknown @0;
+    ownerTagMismatch @1;
+}
+
 struct Error
 {
     message @0 : Text;
+    errorType @1 : ErrorType = unknown;
 }
-
-# Arrr matey, ye olde scumbag Cap'n P. insists on camelCase.
 
 struct TableCounters
 {
@@ -36,7 +43,8 @@ interface Methods
 {
     drop @0 (nspace : Text) -> ();
 
-    clear @1 (nspace : Text) -> ();
+    clear @1 (nspace : Text,
+    	      ownerTag : UInt64 = 0) -> ();
 
     list @2 () -> (nspaces : List(Text));
 
@@ -44,9 +52,11 @@ interface Methods
 
     multiSet @4 (nspace : Text,
     	     	 records : List(Record),
-		 barrier : Bool = false) -> ();
+		 barrier : Bool = false,
+		 ownerTag : UInt64 = 0) -> ();
 
-    setRole @5 (nspace : Text, role : Role) -> ();
+    setRole @5 (nspace : Text, role : Role,
+    	        ownerTag : UInt64 = 0) -> ();
 
     getRole @6 (nspace : Text) -> (role : Role);
 
@@ -62,4 +72,6 @@ interface Methods
     catchUp @ 10 (nspace : Text, dryRun : Bool) -> (numTLogs : UInt32);
 
     getTableCounters @ 11 (nspace : Text, reset : Bool) -> (counters : TableCounters);
+
+    getOwnerTag @ 12 (nspace : Text) -> (ownerTag : UInt64);
 }

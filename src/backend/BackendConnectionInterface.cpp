@@ -199,6 +199,18 @@ BackendConnectionInterface::read(const Namespace& nspace,
     youtils::FileUtils::syncAndRename(temp_file, destination);
 }
 
+std::unique_ptr<UniqueObjectTag>
+BackendConnectionInterface::get_tag(const Namespace& nspace,
+                                    const std::string& name)
+{
+    Logger l(__FUNCTION__,
+             nspace,
+             name);
+
+    return get_tag_(nspace,
+                     name);
+}
+
 void
 BackendConnectionInterface::partial_read(const Namespace& ns,
                                          const PartialReads& partial_reads,
@@ -246,10 +258,41 @@ BackendConnectionInterface::write(const Namespace& nspace,
                                   const boost::filesystem::path& location,
                                   const std::string& name,
                                   const OverwriteObject overwrite,
-                                  const youtils::CheckSum* chksum)
+                                  const youtils::CheckSum* chksum,
+                                  const boost::shared_ptr<Condition>& cond)
 {
     Logger l(__FUNCTION__, nspace, name);
-    return write_(nspace, location, name, overwrite, chksum);
+    return write_(nspace, location, name, overwrite, chksum, cond);
+}
+
+std::unique_ptr<UniqueObjectTag>
+BackendConnectionInterface::write_tag(const Namespace& nspace,
+                                      const fs::path& src,
+                                      const std::string& name,
+                                      const UniqueObjectTag* prev_tag,
+                                      const OverwriteObject overwrite)
+{
+    Logger l(__FUNCTION__, nspace, name);
+
+    VERIFY(not (prev_tag and overwrite == OverwriteObject::F));
+
+    return write_tag_(nspace,
+                      src,
+                      name,
+                      prev_tag,
+                      overwrite);
+}
+
+std::unique_ptr<UniqueObjectTag>
+BackendConnectionInterface::read_tag(const Namespace& nspace,
+                                     const fs::path& src,
+                                     const std::string& name)
+{
+    Logger l(__FUNCTION__, nspace, name);
+
+    return read_tag_(nspace,
+                     src,
+                     name);
 }
 
 bool
@@ -263,12 +306,14 @@ BackendConnectionInterface::objectExists(const Namespace& nspace,
 void
 BackendConnectionInterface::remove(const Namespace& nspace,
                                    const std::string& name,
-                                   const ObjectMayNotExist may_not_exist)
+                                   const ObjectMayNotExist may_not_exist,
+                                   const boost::shared_ptr<Condition>& cond)
 {
     Logger l(__FUNCTION__, nspace, name);
     return remove_(nspace,
                    name,
-                   may_not_exist);
+                   may_not_exist,
+                   cond);
 }
 
 uint64_t
@@ -287,98 +332,6 @@ BackendConnectionInterface::getCheckSum(const Namespace& nspace,
     return getCheckSum_(nspace, name);
 }
 
-ObjectInfo
-BackendConnectionInterface::x_getMetadata(const Namespace& nspace,
-                                          const std::string& name)
-{
-    Logger l(__FUNCTION__, nspace, name);
-    return x_getMetadata_(nspace, name);
-}
-
-ObjectInfo
-BackendConnectionInterface::x_setMetadata(const Namespace& nspace,
-                                          const std::string& name,
-                                          const ObjectInfo::CustomMetaData& metadata)
-{
-    Logger l(__FUNCTION__, nspace, name);
-    return x_setMetadata_(nspace, name, metadata);
-}
-
-ObjectInfo
-BackendConnectionInterface::x_updateMetadata(const Namespace& nspace,
-                                             const std::string& name,
-                                             const ObjectInfo::CustomMetaData& metadata)
-{
-    Logger l(__FUNCTION__, nspace, name);
-    return x_updateMetadata_(nspace, name, metadata);
-}
-
-ObjectInfo
-BackendConnectionInterface::x_read(const Namespace& nspace,
-                                   const boost::filesystem::path& destination,
-                                   const std::string& name,
-                                   const InsistOnLatestVersion insist_on_latest)
-{
-    Logger l(__FUNCTION__, nspace, name);
-    return x_read_(nspace, destination, name, insist_on_latest);
-}
-
-ObjectInfo
-BackendConnectionInterface::x_read(const Namespace& nspace,
-                                   std::string& destination,
-                                   const std::string& name,
-                                   const InsistOnLatestVersion insist_on_latest)
-{
-    Logger l(__FUNCTION__, nspace, name);
-    return x_read_(nspace, destination, name, insist_on_latest);
-}
-
-ObjectInfo
-BackendConnectionInterface::x_read(const Namespace& nspace,
-                                   std::stringstream& destination,
-                                   const std::string& name,
-                                   const InsistOnLatestVersion insist_on_latest)
-{
-    Logger l(__FUNCTION__, nspace, name);
-    return x_read_(nspace, destination, name, insist_on_latest);
-}
-
-ObjectInfo
-BackendConnectionInterface::x_write(const Namespace& nspace,
-                                    const boost::filesystem::path& location,
-                                    const std::string& name,
-                                    const OverwriteObject overwrite,
-                                    const ETag* etag,
-                                    const youtils::CheckSum* chksum)
-{
-    Logger l(__FUNCTION__, nspace, name);
-    return x_write_(nspace, location, name, overwrite, etag, chksum);
-}
-
-ObjectInfo
-BackendConnectionInterface::x_write(const Namespace& nspace,
-                                    const std::string& istr,
-                                    const std::string& name,
-                                    const OverwriteObject overwrite,
-                                    const ETag* etag,
-                                    const youtils::CheckSum* chksum)
-{
-    Logger l(__FUNCTION__, nspace, name);
-    return x_write_(nspace, istr, name, overwrite, etag, chksum);
-}
-
-ObjectInfo
-BackendConnectionInterface::x_write(const Namespace& nspace,
-                                    std::stringstream& strm,
-                                    const std::string& name,
-                                    const OverwriteObject overwrite,
-                                    const ETag* etag,
-                                    const youtils::CheckSum* chksum)
-{
-    Logger l(__FUNCTION__, nspace, name);
-    return x_write_(nspace, strm, name, overwrite, etag, chksum);
-}
-
 void
 BackendConnectionInterface::invalidate_cache_(const boost::optional<Namespace>& nspace)
 {
@@ -393,102 +346,6 @@ BackendConnectionInterface::clearNamespace_(const Namespace& nspace)
     invalidate_cache_(nspace);
     return createNamespace_(nspace);
 
-}
-
-ObjectInfo
-BackendConnectionInterface::x_getMetadata_(const Namespace& nspace,
-                                           const std::string& name)
-{
-    LOG_ERROR(nspace << "/" << name << ": x_getMetadata is not supported");
-    throw BackendNotImplementedException();
-}
-
-ObjectInfo
-BackendConnectionInterface::x_setMetadata_(const Namespace& nspace,
-                                           const std::string& name,
-                                           const ObjectInfo::CustomMetaData& /*metadata*/)
-{
-    LOG_ERROR(nspace << "/" << name << ": x_setMetadata is not supported");
-    throw BackendNotImplementedException();
-}
-
-ObjectInfo
-BackendConnectionInterface::x_updateMetadata_(const Namespace& nspace,
-                                              const std::string& name,
-                                              const ObjectInfo::CustomMetaData& /*metadata*/)
-{
-    LOG_ERROR(nspace << "/" << name << ": x_updateMetadata is not supported");
-    throw BackendNotImplementedException();
-}
-
-ObjectInfo
-BackendConnectionInterface::x_read_(const Namespace& nspace,
-                                    const fs::path& destination,
-                                    const std::string& name,
-                                    const InsistOnLatestVersion /*insist_on_latest_version*/)
-{
-    LOG_ERROR(nspace << "/" << name << " -> " << destination <<
-              ": x_read is not supported");
-    throw BackendNotImplementedException();
-}
-
-ObjectInfo
-BackendConnectionInterface::x_read_(const Namespace& nspace,
-                                    std::string& destination,
-                                    const std::string& name,
-                                    const InsistOnLatestVersion /*insist_on_latest_version*/)
-{
-    LOG_ERROR(nspace << "/" << name << " -> " << destination <<
-              ": x_read is not supported");
-    throw BackendNotImplementedException();
-}
-
-ObjectInfo
-BackendConnectionInterface::x_read_(const Namespace& nspace,
-                                    std::stringstream& /* destination*/,
-                                    const std::string& name,
-                                    const InsistOnLatestVersion /*insist_on_latest_version*/)
-{
-    LOG_ERROR(nspace << "/" << name << ": x_read is not supported");
-    throw BackendNotImplementedException();
-}
-
-ObjectInfo
-BackendConnectionInterface::x_write_(const Namespace& nspace,
-                                     const fs::path& location,
-                                     const std::string& name,
-                                     OverwriteObject /*overwrite*/,
-                                     const ETag* /*etag*/,
-                                     const youtils::CheckSum* /*chksum*/)
-{
-    LOG_ERROR(nspace << "/" << name << " <- " << location <<
-              ": x_write is not supported");
-    throw BackendNotImplementedException();
-}
-
-ObjectInfo
-BackendConnectionInterface::x_write_(const Namespace& nspace,
-                                     const std::string& location,
-                                     const std::string& name,
-                                     OverwriteObject /*overwrite*/,
-                                     const ETag* /*etag*/,
-                                     const youtils::CheckSum* /*chksum*/)
-{
-    LOG_ERROR(nspace << "/" << name << " <- " << location <<
-              ": x_write is not supported");
-    throw BackendNotImplementedException();
-}
-
-ObjectInfo
-BackendConnectionInterface::x_write_(const Namespace& nspace,
-                                     std::stringstream& /*location*/,
-                                     const std::string& name,
-                                     OverwriteObject /*overwrite*/,
-                                     const ETag* /*etag*/,
-                                     const youtils::CheckSum* /*chksum*/)
-{
-    LOG_ERROR(nspace << "/" << name << ": x_write is not supported");
-    throw BackendNotImplementedException();
 }
 
 }

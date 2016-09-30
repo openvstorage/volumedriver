@@ -201,6 +201,9 @@ private:
     get_table_counters_(metadata_server_protocol::Methods::GetTableCountersParams::Reader&,
                         metadata_server_protocol::Methods::GetTableCountersResults::Builder&);
 
+    void
+    get_owner_tag_(metadata_server_protocol::Methods::GetOwnerTagParams::Reader&,
+                   metadata_server_protocol::Methods::GetOwnerTagResults::Builder&);
 };
 
 }

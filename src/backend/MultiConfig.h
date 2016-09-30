@@ -128,10 +128,21 @@ public:
         {
             return StrictConsistency::T;
         }
-
     }
 
 
+    virtual bool
+    unique_tag_support() const override final
+    {
+        if (not configs_.empty())
+        {
+            return configs_.front()->unique_tag_support();
+        }
+        else
+        {
+            return false;
+        }
+    }
 
     virtual std::unique_ptr<BackendConfig>
     clone() const override final

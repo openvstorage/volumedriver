@@ -13,7 +13,14 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "ObjectInfo.h"
+#include "Sha1.h"
+
+namespace youtils
+{
+
+static_assert(sizeof(Sha1) == Sha1::Traits::digest_size, "Sha1 size strangeness");
+
+}
 
 // Local Variables: **
 // mode: c++ **

@@ -41,12 +41,12 @@ public:
     virtual bool
     exists() override final;
 
-    virtual std::tuple<HeartBeatLock, GlobalLockTag>
+    virtual std::tuple<HeartBeatLock, std::unique_ptr<UniqueObjectTag>>
     read() override final;
 
-    virtual GlobalLockTag
+    virtual std::unique_ptr<UniqueObjectTag>
     write(const HeartBeatLock&,
-          const boost::optional<GlobalLockTag>&) override final;
+          const UniqueObjectTag*) override final;
 
     virtual const std::string&
     name() const override final;

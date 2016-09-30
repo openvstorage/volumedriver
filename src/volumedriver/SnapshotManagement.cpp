@@ -40,7 +40,7 @@
 #include <youtils/IOException.h>
 #include <youtils/ScopeExit.h>
 #include <youtils/UUID.h>
-#include <youtils/Weed.h>
+#include <youtils/Md5.h>
 
 #define GETVOLUME() getVolume()
 #include "youtils/Catchers.h"

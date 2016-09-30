@@ -90,6 +90,7 @@ ObjectRouter::ObjectRouter(const bpt::ptree& pt,
     , vrouter_max_workers(pt)
     , vrouter_registry_cache_capacity(pt)
     , vrouter_xmlrpc_client_timeout_ms(pt)
+    , vrouter_use_fencing(pt)
     , larakoon_(larakoon)
     , object_registry_(std::make_shared<CachedObjectRegistry>(cluster_id(),
                                                               node_id(),
@@ -131,6 +132,13 @@ ObjectRouter::ObjectRouter(const bpt::ptree& pt,
 
 ObjectRouter::~ObjectRouter()
 {
+    shutdown_();
+    LOG_INFO("Bye");
+}
+
+void
+ObjectRouter::shutdown_()
+{
     // ZMQ teardown
     // (1) destruct (close) all req sockets and all shared_ptrs to the ztx_
     node_map_.clear();
@@ -138,8 +146,6 @@ ObjectRouter::~ObjectRouter()
     // (2) this will close the ZMQ context and lead to ZWorkerPool shutting down
     //     synchronously.
     ztx_ = nullptr;
-
-    LOG_INFO("Bye");
 }
 
 ObjectRouter::NodeMap
@@ -489,7 +495,12 @@ ObjectRouter::maybe_steal_(R (ClusterNode::*fn)(const Object&,
             }
 
             const bool stolen = steal_(reg,
-                                       OnlyStealFromOfflineNode::T);
+                                       fencing_support_() ?
+                                       OnlyStealFromOfflineNode::F :
+                                       OnlyStealFromOfflineNode::T,
+                                       fencing_support_() ?
+                                       ForceRestart::F :
+                                       ForceRestart::T);
             if (not stolen)
             {
                 LOG_ERROR("Failed to steal " << id << " from " << owner_id <<
@@ -571,10 +582,12 @@ ObjectRouter::backend_restart_(const Object& obj,
 
 bool
 ObjectRouter::steal_(const ObjectRegistration& reg,
-                     OnlyStealFromOfflineNode only_steal_if_offline)
+                     OnlyStealFromOfflineNode only_steal_if_offline,
+                     ForceRestart force_restart)
 {
     LOG_INFO("Checking whether we should steal " << reg.volume_id << " from " <<
-             reg.node_id << ", only steal if offline: " << only_steal_if_offline);
+             reg.node_id << ", only steal if offline: " << only_steal_if_offline <<
+             ", force restart: " << force_restart);
     VERIFY(reg.node_id != node_id());
 
     auto fun([&](ara::sequence& seq)
@@ -612,7 +625,7 @@ ObjectRouter::steal_(const ObjectRegistration& reg,
     try
     {
         backend_restart_(reg.object(),
-                         ForceRestart::T,
+                         force_restart,
                          [](const Object&){});
         LOG_INFO(reg.volume_id << ": successfully stolen from " << reg.node_id);
         return true;
@@ -793,7 +806,11 @@ ObjectRouter::maybe_migrate_(P&& migrate_pred,
                 // to the backend before we do a restart here, so the FOC will be
                 // empty anyway.
                 migrate_(*reg,
+                         fencing_support_() ?
+                         OnlyStealFromOfflineNode::F :
                          OnlyStealFromOfflineNode::T,
+                         fencing_support_() ?
+                         ForceRestart::F :
                          ForceRestart::T);
                 LOG_INFO(id << ": auto migration from " << reg->node_id << " done");
             }
@@ -1281,7 +1298,8 @@ ObjectRouter::migrate_(const ObjectRegistration& reg,
         {
             LOG_ERROR(id << ": remote node " << from << " timed out while migrating");
             if (not steal_(reg,
-                           only_steal_if_offline))
+                           only_steal_if_offline,
+                           force))
             {
                 throw;
             }
@@ -1604,6 +1622,7 @@ ObjectRouter::update(const bpt::ptree& pt,
     U(vrouter_cluster_id);
     U(vrouter_registry_cache_capacity);
     U(vrouter_xmlrpc_client_timeout_ms);
+    U(vrouter_use_fencing);
 
     ip::PARAMETER_TYPE(vrouter_min_workers) min(pt);
     ip::PARAMETER_TYPE(vrouter_min_workers) max(pt);
@@ -1658,6 +1677,7 @@ ObjectRouter::persist(bpt::ptree& pt,
     P(vrouter_max_workers);
     P(vrouter_registry_cache_capacity);
     P(vrouter_xmlrpc_client_timeout_ms);
+    P(vrouter_use_fencing);
 
 #undef P
 
@@ -1840,6 +1860,12 @@ ObjectRouter::xmlrpc_client()
     return std::make_unique<PythonClient>(cluster_id(),
                                           contacts,
                                           boost::chrono::seconds(vrouter_xmlrpc_client_timeout_ms.value() / 1000));
+}
+
+bool
+ObjectRouter::fencing_support_() const
+{
+    return api::fencing_support() and vrouter_use_fencing.value();
 }
 
 }

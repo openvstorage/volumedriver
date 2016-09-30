@@ -18,6 +18,7 @@
 
 #include "BackendConnectionManager.h"
 #include "BackendPolicyConfig.h"
+#include "Condition.h"
 
 #include <functional>
 
@@ -57,12 +58,32 @@ public:
          InsistOnLatestVersion insist_on_latest,
          const BackendRequestParameters& = default_request_parameters());
 
+    bool
+    unique_tag_support() const;
+
+    std::unique_ptr<youtils::UniqueObjectTag>
+    get_tag(const std::string&,
+            const BackendRequestParameters& = default_request_parameters());
+
     void
     write(const boost::filesystem::path& src,
           const std::string& name,
           const OverwriteObject = OverwriteObject::F,
           const youtils::CheckSum* chksum = 0,
+          const boost::shared_ptr<Condition>& = nullptr,
           const BackendRequestParameters& = default_request_parameters());
+
+    std::unique_ptr<youtils::UniqueObjectTag>
+    write_tag(const boost::filesystem::path&,
+              const std::string&,
+              const youtils::UniqueObjectTag* prev_tag,
+              const OverwriteObject = OverwriteObject::T,
+              const BackendRequestParameters& = default_request_parameters());
+
+    std::unique_ptr<youtils::UniqueObjectTag>
+    read_tag(const boost::filesystem::path&,
+             const std::string&,
+             const BackendRequestParameters& = default_request_parameters());
 
     youtils::CheckSum
     getCheckSum(const std::string& name,
@@ -100,6 +121,7 @@ public:
     void
     remove(const std::string& name,
            const ObjectMayNotExist = ObjectMayNotExist::F,
+           const boost::shared_ptr<Condition>& = nullptr,
            const BackendRequestParameters& = default_request_parameters());
 
     BackendInterfacePtr
@@ -177,30 +199,6 @@ public:
                                   getNS())
             }
 
-    bool
-    hasExtendedApi();
-
-    // Add the other x_{read,write} flavours as needed.
-    ObjectInfo
-    x_read(std::string& destination,
-           const std::string& name,
-           InsistOnLatestVersion insist_on_latest,
-           const BackendRequestParameters& = default_request_parameters());
-
-    ObjectInfo
-    x_read(std::stringstream& dst,
-           const std::string& name,
-           InsistOnLatestVersion insist_on_latest,
-           const BackendRequestParameters& = default_request_parameters());
-
-    ObjectInfo
-    x_write(const std::string& istr,
-            const std::string& name,
-            const OverwriteObject overwrite = OverwriteObject::F,
-            const backend::ETag* etag = 0,
-            const youtils::CheckSum* chksum = 0,
-            const BackendRequestParameters& = default_request_parameters());
-
     template<typename ObjectType>
     void
     fillObject(ObjectType& obj,
@@ -219,6 +217,7 @@ public:
     writeObject(const ObjectType& obj,
                 const std::string& nameOnBackend,
                 const OverwriteObject overwrite = OverwriteObject::F,
+                const boost::shared_ptr<Condition>& cond = nullptr,
                 const BackendRequestParameters& params = default_request_parameters())
     {
         try
@@ -232,6 +231,7 @@ public:
                   nameOnBackend,
                   overwrite,
                   nullptr,
+                  cond,
                   params);
         }
         CATCH_STD_ALL_LOG_RETHROW("Problem writing " << nameOnBackend << " to " <<
@@ -243,11 +243,13 @@ public:
     void
     writeObject(const ObjectType& obj,
                 const OverwriteObject overwrite = OverwriteObject::F,
+                const boost::shared_ptr<Condition>& cond = nullptr,
                 const BackendRequestParameters& params = default_request_parameters())
     {
         return writeObject(obj,
                            ObjectType::config_backend_name,
                            overwrite,
+                           cond,
                            params);
     }
 

@@ -20,128 +20,104 @@ namespace backend
 {
 namespace multi
 {
+
+namespace yt = youtils;
+
 Connection::Connection(const config_type& cfg)
 {
     const std::vector<std::unique_ptr<BackendConfig> >& configs = cfg.configs_;
 
-    for(size_t i = 0; i < configs.size(); ++i)
+    backends_.reserve(configs.size());
+
+    for (const auto& config : configs)
     {
-        const BackendConfig* config = configs[i].get();
         switch (config->backend_type.value())
         {
         case BackendType::LOCAL:
             {
-                const LocalConfig* config_tmp(dynamic_cast<const LocalConfig*>(config));
-                backends_.push_back(new local::Connection(*config_tmp));
+                const LocalConfig* config_tmp(dynamic_cast<const LocalConfig*>(config.get()));
+                backends_.emplace_back(std::make_unique<local::Connection>(*config_tmp));
                 break;
-
             }
         default:
             throw "backend type not supported in MULTI backend";
         }
     }
+
     current_iterator_ = backends_.begin();
-
 }
 
-Connection::~Connection()
+template<typename Ret,
+         typename... Args>
+Ret
+Connection::wrap_(Ret (BackendConnectionInterface::*fun)(Args...),
+                  Args... args)
 {
-    for(unsigned i = 0; i < backends_.size(); ++i)
-    {
-        delete backends_[i];
-    }
-}
+    ConnVector::iterator start_iterator = current_iterator_;
 
-bool
-Connection::hasExtendedApi_() const
-{
-    if(current_iterator_ != backends_.end())
+    while (maybe_switch_back_to_default())
     {
-        return (*current_iterator_)->hasExtendedApi_();
+        try
+        {
+            BackendConnectionInterface& conn = *current_iterator_->get();
+            return (conn.*fun)(std::forward<Args>(args)...);
+        }
+        catch (BackendNamespaceAlreadyExistsException&)
+        {
+            throw;
+        }
+        catch (BackendNotImplementedException&)
+        {
+            throw;
+        }
+        catch (BackendObjectDoesNotExistException&)
+        {
+            throw;
+        }
+        catch (BackendAssertionFailedException&)
+        {
+            throw;
+        }
+        catch (std::exception&)
+        {
+            if (update_current_index(start_iterator))
+            {
+                throw;
+            }
+        }
     }
+
     throw BackendNoMultiBackendAvailableException();
 }
 
 bool
 Connection::namespaceExists_(const Namespace& nspace)
 {
-    iterator_t start_iterator = current_iterator_;
-
-    while(maybe_switch_back_to_default())
-    {
-        try
-        {
-            return (*current_iterator_)->namespaceExists(nspace);
-        }
-        catch(std::exception& e)
-        {
-            if(update_current_index(start_iterator))
-            {
-                throw;
-            }
-        }
-    }
-    throw BackendNoMultiBackendAvailableException();
+    return wrap_<bool,
+                 decltype(nspace)>(&BackendConnectionInterface::namespaceExists,
+                                   nspace);
 }
 
-youtils::CheckSum
+yt::CheckSum
 Connection::getCheckSum_(const Namespace& nspace,
                         const std::string& name)
 {
-    iterator_t start_iterator = current_iterator_;
-    while(maybe_switch_back_to_default())
-    {
-        try
-        {
-            return (*current_iterator_)->getCheckSum(nspace,
-                                                     name);
-        }
-        catch(BackendNotImplementedException)
-        {
-            throw;
-        }
-        catch(std::exception&)
-        {
-            if(update_current_index(start_iterator))
-            {
-                throw;
-            }
-        }
-
-    }
-    throw BackendNoMultiBackendAvailableException();
+    return wrap_<yt::CheckSum,
+                 decltype(nspace),
+                 decltype(name)>(&BackendConnectionInterface::getCheckSum,
+                                 nspace,
+                                 name);
 }
 
 void
 Connection::createNamespace_(const Namespace& nspace,
                              const NamespaceMustNotExist must_not_exist)
 {
-    iterator_t start_iterator = current_iterator_;
-    while(maybe_switch_back_to_default())
-    {
-        try
-        {
-            return (*current_iterator_)->createNamespace(nspace,
-                                                         must_not_exist);
-        }
-        catch(BackendNotImplementedException)
-        {
-            throw;
-        }
-        catch(BackendNamespaceAlreadyExistsException&)
-        {
-            throw;
-        }
-
-        catch(std::exception&)
-        {
-            if(update_current_index(start_iterator))
-            {
-                throw;
-            }
-        }
-    }
-    throw BackendNoMultiBackendAvailableException();
+    return wrap_<void,
+                 decltype(nspace),
+                 NamespaceMustNotExist>(&BackendConnectionInterface::createNamespace,
+                                        nspace,
+                                        must_not_exist);
 }
 
 void
@@ -150,37 +126,15 @@ Connection::read_(const Namespace& nspace,
                   const std::string& name,
                   InsistOnLatestVersion insist_on_latest_version)
 {
-    iterator_t start_iterator = current_iterator_;
-    while(maybe_switch_back_to_default())
-    {
-        try
-        {
-            return (*current_iterator_)->read(nspace,
-                                              dst,
-                                              name,
-                                              insist_on_latest_version);
-        }
-        catch(BackendNotImplementedException)
-        {
-            throw;
-        }
-        catch(BackendNamespaceAlreadyExistsException&)
-        {
-            throw;
-        }
-        catch(BackendObjectDoesNotExistException)
-        {
-            throw;
-        }
-        catch(std::exception&)
-        {
-            if(update_current_index(start_iterator))
-            {
-                throw;
-            }
-        }
-    }
-    throw BackendNoMultiBackendAvailableException();
+    return wrap_<void,
+                 decltype(nspace),
+                 decltype(dst),
+                 decltype(name),
+                 decltype(insist_on_latest_version)>(&BackendConnectionInterface::read,
+                                                     nspace,
+                                                     dst,
+                                                     name,
+                                                     insist_on_latest_version);
 }
 
 bool
@@ -188,28 +142,13 @@ Connection::partial_read_(const Namespace& nspace,
                           const PartialReads& partial_reads,
                           InsistOnLatestVersion insist)
 {
-    iterator_t start_iterator = current_iterator_;
-    while(maybe_switch_back_to_default())
-    {
-        try
-        {
-            return (*current_iterator_)->partial_read_(nspace,
-                                                       partial_reads,
-                                                       insist);
-        }
-        catch(BackendObjectDoesNotExistException)
-        {
-            throw;
-        }
-        catch(std::exception&)
-        {
-            if(update_current_index(start_iterator))
-            {
-                throw;
-            }
-        }
-    }
-    throw BackendNoMultiBackendAvailableException();
+    return wrap_<bool,
+                 decltype(nspace),
+                 decltype(partial_reads),
+                 decltype(insist)>(&BackendConnectionInterface::partial_read_,
+                                   nspace,
+                                   partial_reads,
+                                   insist);
 }
 
 void
@@ -217,576 +156,137 @@ Connection::write_(const Namespace& nspace,
                    const fs::path& src,
                    const std::string& name,
                    OverwriteObject overwrite,
-                   const youtils::CheckSum* chksum)
+                   const youtils::CheckSum* chksum,
+                   const boost::shared_ptr<Condition>& cond)
 {
-    iterator_t start_iterator = current_iterator_;
-    while(maybe_switch_back_to_default())
-    {
-        try
-        {
-            return (*current_iterator_)->write(nspace,
-                                               src,
-                                               name,
-                                               overwrite,
-                                               chksum);
-        }
-        catch(BackendNotImplementedException)
-        {
-            throw;
-        }
-        catch(BackendNamespaceAlreadyExistsException&)
-        {
-            throw;
-        }
-        catch(BackendObjectDoesNotExistException)
-        {
-            throw;
-        }
-        catch(std::exception&)
-        {
-            if(update_current_index(start_iterator))
-            {
-                throw;
-            }
-        }
-    }
-    throw BackendNoMultiBackendAvailableException();
+    return wrap_<void,
+                 decltype(nspace),
+                 decltype(src),
+                 decltype(name),
+                 decltype(overwrite),
+                 decltype(chksum),
+                 decltype(cond)>(&BackendConnectionInterface::write,
+                                 nspace,
+                                 src,
+                                 name,
+                                 overwrite,
+                                 chksum,
+                                 cond);
 }
 
 bool
 Connection::objectExists_(const Namespace& nspace,
                          const std::string& name)
 {
-    iterator_t start_iterator = current_iterator_;
-    while(maybe_switch_back_to_default())
-    {
-        try
-        {
-            return (*current_iterator_)->objectExists(nspace,
-                                                      name);
-        }
-        catch(BackendNotImplementedException)
-        {
-            throw;
-        }
-        catch(BackendNamespaceAlreadyExistsException&)
-        {
-            throw;
-        }
-        catch(BackendObjectDoesNotExistException)
-        {
-            throw;
-        }
-        catch(std::exception&)
-        {
-            if(update_current_index(start_iterator))
-            {
-                throw;
-            }
-        }
-    }
-    throw BackendNoMultiBackendAvailableException();
+    return wrap_<bool,
+                 decltype(nspace),
+                 decltype(name)>(&BackendConnectionInterface::objectExists,
+                                 nspace,
+                                 name);
 }
 
 void
 Connection::remove_(const Namespace& nspace,
                     const std::string& name,
-                    const ObjectMayNotExist may_not_exist)
+                    const ObjectMayNotExist may_not_exist,
+                    const boost::shared_ptr<Condition>& cond)
 {
-    iterator_t start_iterator = current_iterator_;
-    while(maybe_switch_back_to_default())
-    {
-        try
-        {
-            return (*current_iterator_)->remove(nspace,
-                                                name,
-                                                may_not_exist);
-        }
-        catch(BackendNotImplementedException)
-        {
-            throw;
-        }
-        catch(BackendNamespaceAlreadyExistsException&)
-        {
-            throw;
-        }
-        catch(BackendObjectDoesNotExistException)
-        {
-            throw;
-        }
-        catch(std::exception&)
-        {
-            if(update_current_index(start_iterator))
-            {
-                throw;
-            }
-        }
-    }
-    throw BackendNoMultiBackendAvailableException();
+    return wrap_<void,
+                 decltype(nspace),
+                 decltype(name),
+                 ObjectMayNotExist,
+                 decltype(cond)>(&BackendConnectionInterface::remove,
+                                 nspace,
+                                 name,
+                                 may_not_exist,
+                                 cond);
 }
 
 void
 Connection::deleteNamespace_(const Namespace& nspace)
 {
-    iterator_t start_iterator = current_iterator_;
-    while(maybe_switch_back_to_default())
-    {
-        try
-        {
-            return (*current_iterator_)->deleteNamespace(nspace);
-        }
-        catch(BackendNotImplementedException)
-        {
-            throw;
-        }
-        catch(BackendNamespaceAlreadyExistsException&)
-        {
-            throw;
-        }
-        catch(BackendObjectDoesNotExistException)
-        {
-            throw;
-        }
-        catch(std::exception&)
-        {
-            if(update_current_index(start_iterator))
-            {
-                throw;
-            }
-        }
-    }
-    throw BackendNoMultiBackendAvailableException();
+    return wrap_<void,
+                 decltype(nspace)>(&BackendConnectionInterface::deleteNamespace,
+                                   nspace);
 }
 
 uint64_t
 Connection::getSize_(const Namespace& nspace,
                     const std::string& name)
 {
-    iterator_t start_iterator = current_iterator_;
-    while(maybe_switch_back_to_default())
-    {
-        try
-        {
-            return (*current_iterator_)->getSize(nspace,
-                                                 name);
-        }
-        catch(BackendNotImplementedException)
-        {
-            throw;
-        }
-        catch(BackendNamespaceAlreadyExistsException&)
-        {
-            throw;
-        }
-        catch(BackendObjectDoesNotExistException)
-        {
-            throw;
-        }
-        catch(std::exception&)
-        {
-            if(update_current_index(start_iterator))
-            {
-                throw;
-            }
-        }
-    }
-    throw BackendNoMultiBackendAvailableException();
+    return wrap_<uint64_t,
+                 decltype(nspace),
+                 decltype(name)>(&BackendConnectionInterface::getSize,
+                                 nspace,
+                                 name);
 }
 
 void
 Connection::listNamespaces_(std::list<std::string>& nspaces)
 {
-    iterator_t start_iterator = current_iterator_;
-    while(maybe_switch_back_to_default())
-    {
-        try
-        {
-            return (*current_iterator_)->listNamespaces(nspaces);
-        }
-        catch(BackendNotImplementedException)
-        {
-            throw;
-        }
-        catch(BackendNamespaceAlreadyExistsException&)
-        {
-            throw;
-        }
-        catch(BackendObjectDoesNotExistException)
-        {
-            throw;
-        }
-        catch(std::exception&)
-        {
-            if(update_current_index(start_iterator))
-            {
-                throw;
-            }
-        }
-    }
-    throw BackendNoMultiBackendAvailableException();
+    return wrap_<void,
+                 decltype(nspaces)>(&BackendConnectionInterface::listNamespaces,
+                                    nspaces);
 }
-
-
 
 void
 Connection::listObjects_(const Namespace& nspace,
                         std::list<std::string>& out)
 {
-    iterator_t start_iterator = current_iterator_;
-    while(maybe_switch_back_to_default())
-    {
-        try
-        {
-            return (*current_iterator_)->listObjects(nspace,
-                                                     out);
-        }
-        catch(BackendNotImplementedException)
-        {
-            throw;
-        }
-        catch(BackendNamespaceAlreadyExistsException&)
-        {
-            throw;
-        }
-        catch(BackendObjectDoesNotExistException)
-        {
-            throw;
-        }
-        catch(std::exception&)
-        {
-            if(update_current_index(start_iterator))
-            {
-                throw;
-            }
-        }
-    }
-    throw BackendNoMultiBackendAvailableException();
+    return wrap_<void,
+                 decltype(nspace),
+                 decltype(out)>(&BackendConnectionInterface::listObjects,
+                                nspace,
+                                out);
 }
 
-backend::ObjectInfo
-Connection::x_getMetadata_(const Namespace& nspace,
-                           const std::string& name)
+std::unique_ptr<yt::UniqueObjectTag>
+Connection::get_tag_(const Namespace& nspace,
+                     const std::string& name)
 {
-    iterator_t start_iterator = current_iterator_;
-    while(maybe_switch_back_to_default())
-    {
-        try
-        {
-            return (*current_iterator_)->x_getMetadata(nspace,
-                                                       name);
-        }
-        catch(BackendNotImplementedException)
-        {
-            throw;
-        }
-        catch(BackendObjectDoesNotExistException)
-        {
-            throw;
-        }
-        catch(std::exception&)
-        {
-            if(update_current_index(start_iterator))
-            {
-                throw;
-            }
-        }
-    }
-    throw BackendNoMultiBackendAvailableException();
+    return wrap_<std::unique_ptr<yt::UniqueObjectTag>,
+                 decltype(nspace),
+                 decltype(name)>(&BackendConnectionInterface::get_tag,
+                                 nspace,
+                                 name);
 }
 
-backend::ObjectInfo
-Connection::x_setMetadata_(const Namespace& nspace,
-                          const std::string& name,
-                          const backend::ObjectInfo::CustomMetaData& metadata)
+std::unique_ptr<yt::UniqueObjectTag>
+Connection::write_tag_(const Namespace& nspace,
+                       const fs::path& src,
+                       const std::string& name,
+                       const yt::UniqueObjectTag* prev_tag,
+                       const OverwriteObject overwrite)
 {
-    iterator_t start_iterator = current_iterator_;
-    while(maybe_switch_back_to_default())
-    {
-        try
-        {
-            return (*current_iterator_)->x_setMetadata(nspace,
-                                                       name,
-                                                       metadata);
-        }
-        catch(BackendNotImplementedException)
-        {
-            throw;
-        }
-        catch(BackendObjectDoesNotExistException)
-        {
-            throw;
-        }
-        catch(std::exception&)
-        {
-            if(update_current_index(start_iterator))
-            {
-                throw;
-            }
-        }
-    }
-    throw BackendNoMultiBackendAvailableException();
+    return wrap_<std::unique_ptr<yt::UniqueObjectTag>,
+                 decltype(nspace),
+                 decltype(src),
+                 decltype(name),
+                 decltype(prev_tag),
+                 OverwriteObject>(&BackendConnectionInterface::write_tag,
+                                  nspace,
+                                  src,
+                                  name,
+                                  prev_tag,
+                                  overwrite);
 }
 
-backend::ObjectInfo
-Connection::x_updateMetadata_(const Namespace& nspace,
-                             const std::string& name,
-                             const backend::ObjectInfo::CustomMetaData& metadata)
+std::unique_ptr<yt::UniqueObjectTag>
+Connection::read_tag_(const Namespace& nspace,
+                      const fs::path& dst,
+                      const std::string& name)
 {
-    iterator_t start_iterator = current_iterator_;
-    while(maybe_switch_back_to_default())
-    {
-        try
-        {
-            return (*current_iterator_)->x_updateMetadata(nspace,
-                                                       name,
-                                                       metadata);
-        }
-        catch(BackendNotImplementedException)
-        {
-            throw;
-        }
-        catch(BackendObjectDoesNotExistException)
-        {
-            throw;
-        }
-        catch(std::exception&)
-        {
-            if(update_current_index(start_iterator))
-            {
-                throw;
-            }
-        }
-    }
-    throw BackendNoMultiBackendAvailableException();
-}
-
-
-
-backend::ObjectInfo
-Connection::x_read_(const Namespace& nspace,
-                    const fs::path& destination,
-                    const std::string& name,
-                    const InsistOnLatestVersion insist_on_latest_version)
-{
-    iterator_t start_iterator = current_iterator_;
-    while(maybe_switch_back_to_default())
-    {
-        try
-        {
-            return (*current_iterator_)->x_read(nspace,
-                                                destination,
-                                                name,
-                                                insist_on_latest_version);
-        }
-        catch(BackendNotImplementedException)
-        {
-            throw;
-        }
-        catch(BackendObjectDoesNotExistException)
-        {
-            throw;
-        }
-        catch(std::exception&)
-        {
-            if(update_current_index(start_iterator))
-            {
-                throw;
-            }
-        }
-    }
-    throw BackendNoMultiBackendAvailableException();
-
-}
-
-backend::ObjectInfo
-Connection::x_read_(const Namespace& nspace,
-                    std::string& destination,
-                    const std::string& name,
-                    const InsistOnLatestVersion insist_on_latest_version)
-{
-    iterator_t start_iterator = current_iterator_;
-    while(maybe_switch_back_to_default())
-    {
-        try
-        {
-            return (*current_iterator_)->x_read(nspace,
-                                                destination,
-                                                name,
-                                                insist_on_latest_version);
-        }
-        catch(BackendNotImplementedException)
-        {
-            throw;
-        }
-        catch(BackendObjectDoesNotExistException)
-        {
-            throw;
-        }
-        catch(std::exception&)
-        {
-            if(update_current_index(start_iterator))
-            {
-                throw;
-            }
-        }
-    }
-    throw BackendNoMultiBackendAvailableException();
-}
-
-backend::ObjectInfo
-Connection::x_read_(const Namespace& nspace,
-                    std::stringstream& destination,
-                    const std::string& name,
-                    const InsistOnLatestVersion insist_on_latest_version)
-{
-    iterator_t start_iterator = current_iterator_;
-    while(maybe_switch_back_to_default())
-    {
-        try
-        {
-            return (*current_iterator_)->x_read(nspace,
-                                                destination,
-                                                name,
-                                                insist_on_latest_version);
-        }
-        catch(BackendNotImplementedException)
-        {
-            throw;
-        }
-        catch(BackendObjectDoesNotExistException)
-        {
-            throw;
-        }
-        catch(std::exception&)
-        {
-            if(update_current_index(start_iterator))
-            {
-                throw;
-            }
-        }
-    }
-    throw BackendNoMultiBackendAvailableException();
-}
-
-backend::ObjectInfo
-Connection::x_write_(const Namespace& nspace,
-                    const fs::path& location,
-                    const std::string& name,
-                    OverwriteObject overwrite,
-                    const backend::ETag* etag,
-                    const youtils::CheckSum* chksum)
-{
-    iterator_t start_iterator = current_iterator_;
-    while(maybe_switch_back_to_default())
-    {
-        try
-        {
-            return (*current_iterator_)->x_write(nspace,
-                                                 location,
-                                                 name,
-                                                 overwrite,
-                                                 etag,
-                                                 chksum);
-        }
-        catch(BackendNotImplementedException)
-        {
-            throw;
-        }
-        catch(BackendObjectDoesNotExistException)
-        {
-            throw;
-        }
-        catch(std::exception&)
-        {
-            if(update_current_index(start_iterator))
-            {
-                throw;
-            }
-        }
-    }
-    throw BackendNoMultiBackendAvailableException();
-}
-
-backend::ObjectInfo
-Connection::x_write_(const Namespace& nspace,
-                     const std::string& location,
-                     const std::string& name,
-                     OverwriteObject overwrite,
-                     const backend::ETag* etag,
-                     const youtils::CheckSum* chksum)
-{
-    iterator_t start_iterator = current_iterator_;
-    while(maybe_switch_back_to_default())
-    {
-        try
-        {
-            return (*current_iterator_)->x_write(nspace,
-                                                 location,
-                                                 name,
-                                                 overwrite,
-                                                 etag,
-                                                 chksum);
-        }
-        catch(BackendNotImplementedException)
-        {
-            throw;
-        }
-        catch(BackendObjectDoesNotExistException)
-        {
-            throw;
-        }
-        catch(std::exception&)
-        {
-            if(update_current_index(start_iterator))
-            {
-                throw;
-            }
-        }
-    }
-    throw BackendNoMultiBackendAvailableException();
-}
-
-backend::ObjectInfo
-Connection::x_write_(const Namespace& nspace,
-                     std::stringstream& location,
-                     const std::string& name,
-                     OverwriteObject overwrite,
-                     const backend::ETag* etag,
-                     const youtils::CheckSum* chksum)
-{
-    iterator_t start_iterator = current_iterator_;
-    while(maybe_switch_back_to_default())
-    {
-        try
-        {
-            return (*current_iterator_)->x_write(nspace,
-                                                 location,
-                                                 name,
-                                                 overwrite,
-                                                 etag,
-                                                 chksum);
-        }
-        catch(BackendNotImplementedException)
-        {
-            throw;
-        }
-        catch(BackendObjectDoesNotExistException)
-        {
-            throw;
-        }
-        catch(std::exception&)
-        {
-            if(update_current_index(start_iterator))
-            {
-                throw;
-            }
-        }
-    }
-    throw BackendNoMultiBackendAvailableException();
-
+    return wrap_<std::unique_ptr<yt::UniqueObjectTag>,
+                 decltype(nspace),
+                 decltype(dst),
+                 decltype(name)>(&BackendConnectionInterface::read_tag,
+                                 nspace,
+                                 dst,
+                                 name);
 }
 
 }
+
 }
 
 // Local Variables: **

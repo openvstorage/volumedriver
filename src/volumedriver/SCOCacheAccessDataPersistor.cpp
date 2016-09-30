@@ -20,6 +20,8 @@
 namespace volumedriver
 {
 
+namespace be = backend;
+
 void
 SCOCacheAccessDataPersistor::operator()()
 {
@@ -27,7 +29,11 @@ SCOCacheAccessDataPersistor::operator()()
 
     VolManager* vm = VolManager::get();
 
-    std::list<SCOAccessDataPtr> sads;
+    using SadCondition = std::pair<SCOAccessDataPtr,
+                                   boost::shared_ptr<be::Condition>>;
+
+    std::vector<SadCondition> sad_conds;
+
     {
         std::list<VolumeId> vols;
         // Don't remove this lock without really understanding what you're doing.!!
@@ -35,56 +41,37 @@ SCOCacheAccessDataPersistor::operator()()
         vm->updateReadActivity();
         vm->getVolumeList(vols);
 
+        sad_conds.reserve(vols.size());
+
         for (const auto& vol : vols)
         {
             SharedVolumePtr v = VolManager::get()->findVolumeConst_(vol);
             LOG_PERIODIC("collecting SCO access data for volume " << vol);
-                SCOAccessDataPtr sad(new SCOAccessData(v->getNamespace(),
-                                                       v->readActivity()));
+            SCOAccessDataPtr sad(new SCOAccessData(v->getNamespace(),
+                                                   v->readActivity()));
 
-                try
-                {
-                    scocache_.fillSCOAccessData(*sad);
-                    sads.push_back(std::move(sad));
-                }
-                catch (std::exception& e)
-                {
-                    LOG_ERROR("Failed to collect SCO access data for " << vol <<
-                              ": " << e.what());
-                    // swallow it
-                }
-                catch (...)
-                {
-                    LOG_ERROR("Failed to collect SCO access data for " << vol <<
-                              ": unknown exception");
-                    // swallow it
-                }
+            try
+            {
+                scocache_.fillSCOAccessData(*sad);
+                sad_conds.emplace_back(std::make_pair(std::move(sad),
+                                                      v->backend_write_condition()));
+            }
+            CATCH_STD_ALL_LOG_IGNORE("Failed to collect SCO access data for " << vol);
         }
     }
 
-    for (SCOAccessDataPtr& sad : sads)
+    for (const auto& sad_cond : sad_conds)
     {
         try
         {
             // can this throw?
-            BackendInterfacePtr bi(vm->createBackendInterface(sad->getNamespace()));
+            BackendInterfacePtr bi(vm->createBackendInterface(sad_cond.first->getNamespace()));
             SCOAccessDataPersistor sadp(std::move(bi));
-            sadp.push(*sad);
+            sadp.push(*sad_cond.first,
+                      sad_cond.second);
         }
-        catch (std::exception& e)
-        {
-            LOG_ERROR("Failed to persist SCO access data for " <<
-                      sad->getNamespace() << ": " << e.what() <<
-                      " - proceeding");
-            // swallow it
-        }
-        catch (...)
-        {
-            LOG_ERROR("Failed to persist SCO access data for " <<
-                      sad->getNamespace() << ": unknown exception" <<
-                      " - proceeding");
-            // swallow it
-        }
+        CATCH_STD_ALL_LOG_IGNORE("Failed to persist SCO access data for " <<
+                                 sad_cond.first->getNamespace());
     }
 
     LOG_PERIODIC("done");

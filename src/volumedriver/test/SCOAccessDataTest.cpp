@@ -54,7 +54,7 @@ public:
         // const backend::Namespace nspace;
 
         SharedVolumePtr v = newVolume(volname,
-                              nspace);
+                                      nspace);
 
         std::unique_ptr<SCOAccessData> sad(makeSCOAccessData(*v));
         sad->reserve(size);
@@ -65,7 +65,8 @@ public:
         }
 
         SCOAccessDataPersistor sadp(v->getBackendInterface()->cloneWithNewNamespace(nspace));
-        sadp.push(*sad);
+        sadp.push(*sad,
+                  v->backend_write_condition());
 
         destroyVolume(v,
                       DeleteLocalData::T,
@@ -264,7 +265,8 @@ TEST_P(SCOAccessDataTest, InAndOut)
     BackendInterfacePtr bi(v->getBackendInterface()->cloneWithNewNamespace(nspace));
     SCOAccessDataPersistor sadp(std::move(bi));
 
-    sadp.push(sad_in);
+    sadp.push(sad_in,
+              v->backend_write_condition());
 
     EXPECT_TRUE(v->getBackendInterface()->objectExists(SCOAccessDataPersistor::backend_name));
 
