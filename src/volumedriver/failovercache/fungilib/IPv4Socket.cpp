@@ -55,6 +55,8 @@
 
 namespace fungi {
 
+namespace bc = boost::chrono;
+
 IPv4Socket::IPv4Socket(bool rdma, int sock_type):Socket(AF_INET, sock_type, rdma) {
 }
 
@@ -199,22 +201,13 @@ static void setup_sockaddr_v4_(struct sockaddr_in &inaddr, const std::string &ho
 	inaddr.sin_addr.s_addr = Socket::resolveIPv4(host);
 }
 
-// TODO: avoid code duplication between ipv4 and ipv6 connect?
-void IPv4Socket::connect(const std::string &host, uint16_t port)
+int
+IPv4Socket::poll_(pollfd* pfd,
+                  nfds_t nfd,
+                  const boost::optional<bc::milliseconds>& timeout)
 {
-    LOG_DEBUG("IPv4Socket::connect "<< host.c_str() << ":" << port << "/" << (use_rs_ ? "RDMA" : "TCP"));
-	struct sockaddr *saddr = 0;
-	struct sockaddr_in inaddr;
-    setup_sockaddr_v4_(inaddr, host, port);
-	socklen_t len = sizeof(sockaddr_in);
-	saddr = (struct sockaddr *) &inaddr;
-
-	if (rs_connect(sock_, saddr, len) < 0) {
-		std::stringstream ss;
-		ss << host << ":" << port;
-		std::string str = ss.str();
-		throw ConnectionRefusedError("Failure to connect to", str.c_str(), getErrorNumber());
-	};
+    const int t = timeout ? timeout->count() : -1;
+    return rs_poll(pfd, nfd, t);
 }
 
 // nonblocking connect is described in detail in chapter 15.4 of stevens unix network programming

@@ -42,6 +42,11 @@ DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(dtl_write_trigger,
                                                   std::atomic<unsigned>);
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(dtl_busy_loop_usecs,
                                                   std::atomic<unsigned>);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(dtl_request_timeout_ms,
+                                                  std::atomic<unsigned>);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(dtl_connect_timeout_ms,
+                                                  std::atomic<unsigned>);
+
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(freespace_check_interval,
                                                   std::atomic<uint64_t>);
 DECLARE_RESETTABLE_INITIALIZED_PARAM(clean_interval,

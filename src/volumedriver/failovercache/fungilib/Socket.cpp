@@ -40,19 +40,27 @@
 
 #include <sys/sendfile.h>
 
-#include <youtils/Assert.h>
-#include <youtils/IOException.h>
-#include <youtils/Logging.h>
-#include <youtils/System.h>
-#include <youtils/Timer.h>
-
 #include <rdma/rdma_cma.h>
 #include <rdma/rsocket.h>
 
+#include <boost/chrono.hpp>
+#include <boost/lexical_cast.hpp>
+
+#include <youtils/Assert.h>
+#include <youtils/IOException.h>
+#include <youtils/Logging.h>
+#include <youtils/ScopeExit.h>
+#include <youtils/System.h>
+#include <youtils/Timer.h>
+
+// TODO: GET RID OF THIS USE_RS HACK!!!
 #include "use_rs.h"
 
 namespace fungi {
 
+using namespace std::literals::string_literals;
+
+namespace bc = boost::chrono;
 namespace yt = youtils;
 
 class Interval {
@@ -121,7 +129,10 @@ static const int SOCKET_MAX_STRING_SIZE = 1024;
 static const int SOCKET_MAX_BYTEARRAY_SIZE = 64 * 1024;
 
 std::unique_ptr<Socket>
-Socket::createClientSocket(const std::string &host, uint16_t port, int sock_type)
+Socket::createClientSocket(const std::string &host,
+                           uint16_t port,
+                           const boost::optional<bc::milliseconds>& connect_timeout,
+                           int sock_type)
 {
     std::unique_ptr<Socket> sock;
     bool created = false;
@@ -129,7 +140,7 @@ Socket::createClientSocket(const std::string &host, uint16_t port, int sock_type
     try {
         sock = createSocket(true, sock_type);
         created = true;
-        sock->connect(host, port);
+        sock->connect(host, port, connect_timeout);
     }
     catch (IOException& e1) {
         LOG_DEBUG((created ? "Connect" : "Create") << " RDMA socket [" << host << ":" << port << "] failed (" << getErrorNumber() << ") - retry with TCP");
@@ -138,7 +149,7 @@ Socket::createClientSocket(const std::string &host, uint16_t port, int sock_type
         try {
             sock = createSocket(false, sock_type);
             created = true;
-            sock->connect(host, port);
+            sock->connect(host, port, connect_timeout);
         }
         catch (IOException& e2) {
             LOG_DEBUG((created ? "Connect" : "Create") << " TCP socket [" << host << ":" << port << "] failed (" << getErrorNumber() << ") - give up");
@@ -901,6 +912,74 @@ int Socket::get_SO_ERROR()
         throw IOException("Socket::get_SO_ERROR", name_.c_str(), getErrorNumber());
     }
     return val;
+}
+
+int
+Socket::poll_(pollfd* pfd,
+              nfds_t nfds,
+              const boost::optional<boost::chrono::milliseconds>& timeout)
+{
+    return ::poll(pfd,
+                  nfds,
+                  timeout ? timeout->count() : -1);
+}
+
+void
+Socket::connect(const std::string& host,
+                uint16_t port,
+                const boost::optional<bc::milliseconds>& timeout)
+{
+    bool connected = connect_nb(host,
+                                port);
+    if (not connected)
+    {
+        ASSERT(connectionInProgress_);
+        auto on_exit(yt::make_scope_exit([&]
+                                         {
+                                             clearNonBlocking();
+                                             connectionInProgress_ = false;
+                                         }));
+        pollfd pfd;
+        pfd.fd = sock_;
+        pfd.events = POLLOUT bitor POLLERR;
+        pfd.revents = 0;
+
+        auto addr([&]
+                  {
+                      return host + ":"s + boost::lexical_cast<std::string>(port);
+                  });
+
+        int ret = poll_(&pfd, 1, timeout);
+        switch (ret)
+        {
+        case 0:
+            {
+                LOG_ERROR("timeout connecting to " << addr() << " - poll timeout");
+                throw ConnectionRefusedError("Failure to connect",
+                                             addr().c_str(),
+                                             ETIMEDOUT);
+            }
+        case -1:
+            {
+                ret = errno;
+                LOG_ERROR("poll error while connecting to " << addr() << ": " << strerror(ret));
+                throw ConnectionRefusedError("Failure to connect to",
+                                             addr().c_str(),
+                                             ret);
+            }
+        default:
+            if (pfd.revents != POLLOUT)
+            {
+                LOG_ERROR("error connecting to " << addr() << " - connect timeout");
+                throw ConnectionRefusedError("Failure to connect to",
+                                             addr().c_str(),
+                                             ETIMEDOUT);
+            }
+
+            ASSERT(pfd.revents == POLLOUT);
+        }
+    }
+
 }
 
 }

@@ -46,9 +46,6 @@ public:
     virtual Socket*
     accept(bool nonblocking = true) override;
 
-    virtual void
-    connect(const std::string &host, uint16_t port) override;
-
     virtual bool
     connect_nb(const std::string &host, uint16_t port) override;
 

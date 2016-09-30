@@ -24,13 +24,17 @@ namespace volumedriver
 
 using namespace fungi;
 
+namespace bc = boost::chrono;
+
 FailOverCacheProxy::FailOverCacheProxy(const FailOverCacheConfig& cfg,
                                        const Namespace& ns,
                                        const LBASize lba_size,
                                        const ClusterMultiplier cluster_mult,
-                                       const boost::chrono::seconds timeout)
+                                       const bc::milliseconds request_timeout,
+                                       const boost::optional<bc::milliseconds>& connect_timeout)
     : socket_(fungi::Socket::createClientSocket(cfg.host,
-                                                cfg.port))
+                                                cfg.port,
+                                                connect_timeout))
     , stream_(*socket_)
     , ns_(ns)
     , lba_size_(lba_size)
@@ -39,7 +43,7 @@ FailOverCacheProxy::FailOverCacheProxy(const FailOverCacheConfig& cfg,
 {
     socket_->setNonBlocking();
     //        stream_ << fungi::IOBaseStream::cork; --AT-- removed because this command is never sent over the wire
-    stream_ << fungi::IOBaseStream::RequestTimeout(timeout.count());
+    stream_ << fungi::IOBaseStream::RequestTimeout(request_timeout.count() / 1000.0);
     //        stream_ << fungi::IOBaseStream::uncork;
     register_();
 }
@@ -126,15 +130,15 @@ FailOverCacheProxy::removeUpTo(const SCO sconame) throw ()
 }
 
 void
-FailOverCacheProxy::setRequestTimeout(const boost::chrono::seconds seconds)
+FailOverCacheProxy::setRequestTimeout(const bc::milliseconds msecs)
 {
     stream_ << fungi::IOBaseStream::cork;
-    stream_ << fungi::IOBaseStream::RequestTimeout(seconds.count());
+    stream_ << fungi::IOBaseStream::RequestTimeout(msecs.count() / 1000);
     stream_ << fungi::IOBaseStream::uncork;
 }
 
 void
-FailOverCacheProxy::setBusyLoopDuration(const boost::chrono::microseconds usecs)
+FailOverCacheProxy::setBusyLoopDuration(const bc::microseconds usecs)
 {
     socket_->setBusyLoopDuration(usecs);
 }
