@@ -205,23 +205,6 @@ static void setup_sockaddr_v6_(struct sockaddr_in6 &inaddr6, const std::string &
 	inaddr6.sin6_addr = Socket::resolveIPv6(host);
 }
 
-// TODO: avoid code duplication between ipv4 and ipv6 connect?
-void IPv6Socket::connect(const std::string &host, uint16_t port) {
-    LOG_DEBUG("IPv6Socket::connect "<< host.c_str() << ":" << port << "/" << (use_rs_ ? "RDMA" : "TCP"));
-	struct sockaddr *saddr = 0;
-	struct sockaddr_in6 inaddr6;
-    setup_sockaddr_v6_(inaddr6, host, port);
-	socklen_t len = sizeof(sockaddr_in6);
-	saddr = (struct sockaddr *) &inaddr6;
-
-	if (::connect(sock_, saddr, len) < 0) {
-		std::stringstream ss;
-		ss << host << ":" << port;
-		std::string str = ss.str();
-		throw ConnectionRefusedError("Failure to connect to", str.c_str(), getErrorNumber());
-	};
-}
-
 bool IPv6Socket::connect_nb(const std::string &host, uint16_t port) {
 	LOG_DEBUG("IPv6Socket::connect_nb "<< host.c_str() <<":" << port);
     connectionInProgress_ = true;

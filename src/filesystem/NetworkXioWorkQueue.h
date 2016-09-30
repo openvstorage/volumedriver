@@ -154,8 +154,14 @@ private:
     unsigned int
     get_max_wq_depth()
     {
-        return std::min(max_threads,
-                        std::thread::hardware_concurrency());
+        if (max_threads == 0)
+        {
+            return std::thread::hardware_concurrency();
+        }
+        else
+        {
+            return max_threads;
+        }
     }
 
     bool

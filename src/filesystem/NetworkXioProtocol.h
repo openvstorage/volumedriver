@@ -171,28 +171,26 @@ public:
     const std::string
     pack_msg() const
     {
-        std::stringstream sbuf;
+        msgpack::sbuffer sbuf;
         msgpack::pack(sbuf, *this);
-        return sbuf.str();
+        return std::string(sbuf.data(), sbuf.size());
     }
 
     void
     unpack_msg(const char *sbuf,
                const size_t size)
     {
-        msgpack::unpacked msg;
-        msgpack::unpack(&msg, sbuf, size);
-        msgpack::object obj = msg.get();
-        obj.convert(this);
+        msgpack::object_handle oh = msgpack::unpack(sbuf, size);
+        msgpack::object obj = oh.get();
+        obj.convert(*this);
     }
 
     void
     unpack_msg(const std::string& sbuf)
     {
-        msgpack::unpacked msg;
-        msgpack::unpack(&msg, sbuf.data(), sbuf.size());
-        msgpack::object obj = msg.get();
-        obj.convert(this);
+        msgpack::object_handle oh = msgpack::unpack(sbuf.data(), sbuf.size());
+        msgpack::object obj = oh.get();
+        obj.convert(*this);
     }
 
     void

@@ -13,6 +13,8 @@ from volumedriver.storagerouter.storagerouterclient import \
     , ClusterNodeConfig \
     , ClusterNodeState \
     , ClusterNotReachableException \
+    , DTLConfig \
+    , DTLMode \
     , FileExistsException \
     , InsufficientResourcesException \
     , InvalidOperationException \
@@ -111,10 +113,13 @@ class TestHelperTest(unittest.TestCase):
 
     def test_cluster_node_config(self):
         cfg = ClusterNodeConfig("ClusterNodeId",
-                                "hostname",
+                                "message_host",
                                 123,
                                 456,
-                                789)
+                                789,
+                                "rdma://edge_host:101",
+                                "xmlrpc_host",
+                                "dtl_host")
         self.assertEqual(
             cfg, PythonTestHelpers.reflect_cluster_node_config(cfg))
 
@@ -162,3 +167,45 @@ class TestHelperTest(unittest.TestCase):
     def test_uri(self):
         s = "tcp://127.0.0.1:1234"
         self.assertEqual(s, PythonTestHelpers.reflect_uri(s))
+
+    def test_cluster_node_config(self):
+        node_id = "node_X"
+        host = "192.168.1.1"
+        port = 1234
+        dtl_port = port + 1
+        msg_port = port + 2
+        xml_port = port + 3
+        net_uri = "rdma://192.168.1.2:7890"
+
+        cfg = ClusterNodeConfig(vrouter_id = node_id,
+                                host = host,
+                                failovercache_port = dtl_port,
+                                xmlrpc_port = xml_port,
+                                message_port = msg_port,
+                                network_server_uri = net_uri)
+
+        self.assertEqual(node_id, cfg.vrouter_id)
+        self.assertEqual(host, cfg.host)
+        self.assertEqual(dtl_port, cfg.failovercache_port)
+        self.assertEqual(msg_port, cfg.message_port)
+        self.assertEqual(xml_port, cfg.xmlrpc_port)
+        self.assertEqual(net_uri, cfg.network_server_uri)
+
+    def test_failovercache_config(self):
+        h = "127.0.0.1"
+        m = DTLMode.SYNCHRONOUS
+        p = 12345
+        cfg = DTLConfig(mode = m,
+                        host = h,
+                        port = p)
+        self.assertEqual(h, cfg.host)
+        self.assertEqual(m, cfg.mode)
+        self.assertEqual(p, cfg.port)
+
+        def test_cluster_contact(self):
+            h = "127.0.0.1"
+            p = 12345
+            c = ClusterContact(port = p,
+                               host = h)
+            self.assertEqual(h, c.host)
+            self.assertEqual(p, c.port)

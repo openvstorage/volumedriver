@@ -436,6 +436,31 @@ Volume::localRestartDataStore_(SCONumber last_sco_num_in_backend,
     }
 }
 
+namespace
+{
+
+boost::optional<bc::milliseconds>
+dtl_connect_timeout()
+{
+    const unsigned t = VolManager::get()->dtl_connect_timeout_ms.value();
+    if (t == 0)
+    {
+        return boost::none;
+    }
+    else
+    {
+        return bc::milliseconds(t);
+    }
+}
+
+bc::milliseconds
+dtl_request_timeout()
+{
+    return bc::milliseconds(VolManager::get()->dtl_request_timeout_ms.value());
+}
+
+}
+
 void
 Volume::localRestart()
 {
@@ -472,7 +497,8 @@ Volume::localRestart()
                                                      TODO("AR: fix getLBASize instead")
                                                      LBASize(getLBASize()),
                                                      getClusterMultiplier(),
-                                                     failover_->getDefaultRequestTimeout());
+                                                     dtl_request_timeout(),
+                                                     dtl_connect_timeout());
         }
         CATCH_STD_ALL_EWHAT({
                 LOG_VINFO("Could not start with previous failover settings: " << EWHAT);
@@ -593,7 +619,8 @@ Volume::backend_restart(const CloneTLogs& restartTLogs,
                                                      cfg.getNS(),
                                                      LBASize(getLBASize()),
                                                      getClusterMultiplier(),
-                                                     failover_->getDefaultRequestTimeout());
+                                                     dtl_request_timeout(),
+                                                     dtl_connect_timeout());
         }
         CATCH_STD_ALL_EWHAT({
                 if (ignoreFOCIfUnreachable == IgnoreFOCIfUnreachable::T)
@@ -2278,7 +2305,8 @@ Volume::setFailOverCacheConfig_(const FailOverCacheConfig& config)
                                                              getNamespace(),
                                                              LBASize(getLBASize()),
                                                              getClusterMultiplier(),
-                                                             failover_->getDefaultRequestTimeout()));
+                                                             dtl_request_timeout(),
+                                                             dtl_connect_timeout()));
     failover_->Clear();
 
     MaybeCheckSum cs = dataStore_->finalizeCurrentSCO();

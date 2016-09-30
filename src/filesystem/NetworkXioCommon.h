@@ -126,6 +126,8 @@ enum class NetworkXioMsgOpcode
     IsSnapshotSyncedRsp,
     TruncateReq,
     TruncateRsp,
+    ListClusterNodeURIReq,
+    ListClusterNodeURIRsp,
 };
 
 #endif //__NETWORK_XIO_COMMON_H_

@@ -62,10 +62,10 @@ public:
     virtual void
     newCache(std::unique_ptr<FailOverCacheProxy>) = 0;
 
-    virtual boost::chrono::seconds
+    virtual boost::chrono::milliseconds
     getDefaultRequestTimeout() const
     {
-        return boost::chrono::seconds(60);
+        return boost::chrono::milliseconds(60000);
     }
 
     virtual void

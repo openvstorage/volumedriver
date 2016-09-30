@@ -115,6 +115,8 @@ private:
                                    const std::string& volume_name,
                                    const std::string& snap_name);
 
+    void handle_list_cluster_node_uri(NetworkXioRequest *req);
+
     void handle_error(NetworkXioRequest *req,
                       NetworkXioMsgOpcode op,
                       int errval);

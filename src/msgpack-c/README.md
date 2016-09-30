@@ -1,7 +1,7 @@
 `msgpack` for C/C++
 ===================
 
-Version 1.2.0 [![Build Status](https://travis-ci.org/msgpack/msgpack-c.svg?branch=master)](https://travis-ci.org/msgpack/msgpack-c) [![Build status](https://ci.appveyor.com/api/projects/status/8kstcgt79qj123mw/branch/master?svg=true)](https://ci.appveyor.com/project/redboltz/msgpack-c/branch/master)
+Version 2.0.0 (under development)[![Build Status](https://travis-ci.org/msgpack/msgpack-c.svg?branch=master)](https://travis-ci.org/msgpack/msgpack-c) [![Build status](https://ci.appveyor.com/api/projects/status/8kstcgt79qj123mw/branch/master?svg=true)](https://ci.appveyor.com/project/redboltz/msgpack-c/branch/master)
 
 It's like JSON but small and fast.
 
@@ -83,12 +83,11 @@ int main(void)
     // deserialize the buffer into msgpack::object instance.
     std::string str(buffer.str());
 
-    msgpack::unpacked result;
+    msgpack::object_handle oh =
+        msgpack::unpack(str.data(), str.size());
 
-    msgpack::unpack(result, str.data(), str.size());
-
-    // deserialized object is valid during the msgpack::unpacked instance alive.
-    msgpack::object deserialized = result.get();
+    // deserialized object is valid during the msgpack::object_handle instance is alive.
+    msgpack::object deserialized = oh.get();
 
     // msgpack::object supports ostream.
     std::cout << deserialized << std::endl;
@@ -96,7 +95,7 @@ int main(void)
     // convert msgpack::object instance into the original type.
     // if the type is mismatched, it throws msgpack::type_error exception.
     msgpack::type::tuple<int, bool, std::string> dst;
-    deserialized.convert(&dst);
+    deserialized.convert(dst);
 
     return 0;
 }
@@ -215,5 +214,5 @@ Here's the list of [great contributors](https://github.com/msgpack/msgpack-c/gra
 License
 -------
 
-`msgpack-c` is licensed under the Apache License Version 2.0. See
-the [`LICENSE`](./LICENSE) file for details.
+`msgpack-c` is licensed under the Boost Software License, Version 1.0. See
+the [`LICENSE_1_0.txt`](./LICENSE_1_0.txt) file for details.

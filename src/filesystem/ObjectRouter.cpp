@@ -55,6 +55,9 @@ using namespace std::literals::string_literals;
 #define LOCK_REDIRECTS()                                \
     std::lock_guard<decltype(redirects_lock_)> rlg__(redirects_lock_)
 
+#define LOCK_FOC_CONFIG()                                               \
+    std::lock_guard<decltype(foc_config_lock_)> fclg__(foc_config_lock_)
+
 namespace ara = arakoon;
 namespace be = backend;
 namespace bpt = boost::property_tree;
@@ -66,7 +69,7 @@ ObjectRouter::ObjectRouter(const bpt::ptree& pt,
                            std::shared_ptr<yt::LockedArakoon>(larakoon),
                            const FailOverCacheConfigMode foc_config_mode,
                            const vd::FailOverCacheMode foc_mode,
-                           const boost::optional<vd::FailOverCacheConfig>& foc_config,
+                           const MaybeFailOverCacheConfig& foc_config,
                            const RegisterComponent registrate)
     : VolumeDriverComponent(registrate,
                             pt)
@@ -111,7 +114,7 @@ ObjectRouter::ObjectRouter(const bpt::ptree& pt,
 
     const ClusterNodeConfig ncfg(node_config());
     const std::string addr("tcp://" +
-                           ncfg.host +
+                           ncfg.message_host +
                            ":"s +
                            boost::lexical_cast<std::string>(ncfg.message_port));
 
@@ -1329,7 +1332,7 @@ ObjectRouter::clone_to_existing_volume(const vd::VolumeId& clone_id,
 void
 ObjectRouter::vaai_copy(const ObjectId& src_id,
                         const boost::optional<ObjectId>& maybe_dst_id,
-                        std::unique_ptr<volumedriver::MetaDataBackendConfig> mdb_config,
+                        std::unique_ptr<vd::MetaDataBackendConfig> mdb_config,
                         const uint64_t timeout,
                         const CloneFileFlags flags,
                         VAAICreateCloneFun fun)
@@ -1703,13 +1706,14 @@ ObjectRouter::checkConfig(const bpt::ptree& pt,
     return result;
 }
 
-boost::optional<vd::FailOverCacheConfig>
+ObjectRouter::MaybeFailOverCacheConfig
 ObjectRouter::failoverconfig_as_it_should_be() const
 {
     switch (foc_config_mode_)
     {
     case FailOverCacheConfigMode::Manual:
         {
+            LOCK_FOC_CONFIG();
             return foc_config_;
         }
     case FailOverCacheConfigMode::Automatic:
@@ -1737,7 +1741,7 @@ ObjectRouter::failoverconfig_as_it_should_be() const
                     it = node_map_.begin();
                 }
 
-                return vd::FailOverCacheConfig(it->second->config.host,
+                return vd::FailOverCacheConfig(it->second->config.failovercache_host,
                                                it->second->config.failovercache_port,
                                                foc_mode_);
             }
@@ -1788,9 +1792,17 @@ ObjectRouter::get_foc_config_mode(const ObjectId& oid)
 
 void
 ObjectRouter::set_manual_foc_config(const ObjectId& oid,
-                                    const boost::optional<volumedriver::FailOverCacheConfig>& foc_config)
+                                    const MaybeFailOverCacheConfig& foc_config)
 {
     local_node_()->set_manual_foc_config(oid, foc_config);
+}
+
+void
+ObjectRouter::set_manual_default_foc_config(const MaybeFailOverCacheConfig& foc_config)
+{
+    local_node_()->set_manual_default_foc_config(foc_config);
+    LOCK_FOC_CONFIG();
+    foc_config_ = foc_config;
 }
 
 void
@@ -1812,14 +1824,14 @@ ObjectRouter::xmlrpc_client()
         auto it = node_map_.find(node_id());
         VERIFY(it != node_map_.end());
 
-        contacts.emplace_back(it->second->config.host,
+        contacts.emplace_back(it->second->config.xmlrpc_host,
                               it->second->config.xmlrpc_port);
 
         for (const auto& p : node_map_)
         {
             if (p.first != node_id())
             {
-                contacts.emplace_back(p.second->config.host,
+                contacts.emplace_back(p.second->config.xmlrpc_host,
                                       p.second->config.xmlrpc_port);
             }
         }
@@ -1827,7 +1839,7 @@ ObjectRouter::xmlrpc_client()
 
     return std::make_unique<PythonClient>(cluster_id(),
                                           contacts,
-                                          boost::chrono::seconds(vrouter_xmlrpc_client_timeout_ms.value() * 1000));
+                                          boost::chrono::seconds(vrouter_xmlrpc_client_timeout_ms.value() / 1000));
 }
 
 }

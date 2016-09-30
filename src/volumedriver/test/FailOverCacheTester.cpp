@@ -25,8 +25,13 @@
 
 #include <future>
 
+#include <youtils/Timer.h>
+
 namespace volumedriver
 {
+
+namespace bc = boost::chrono;
+namespace yt = youtils;
 
 class FailOverCacheTester
     : public VolManagerTestSetup
@@ -681,7 +686,7 @@ TEST_P(FailOverCacheTester, adding_and_flushing)
                                {
                                    foc.Flush();
                                    ++flushes;
-                                   boost::this_thread::sleep_for(boost::chrono::milliseconds(5));
+                                   boost::this_thread::sleep_for(bc::milliseconds(5));
                                }
                            }));
 
@@ -705,7 +710,7 @@ TEST_P(FailOverCacheTester, adding_and_flushing)
                                   i,
                                   buf.data()))
         {
-            boost::this_thread::sleep_for(boost::chrono::milliseconds(5));
+            boost::this_thread::sleep_for(bc::milliseconds(5));
         }
     }
 
@@ -868,8 +873,37 @@ TEST_P(FailOverCacheTester, wrong_cluster_size)
                                     wrns->ns(),
                                     LBASize(default_lba_size()),
                                     ClusterMultiplier(default_cluster_multiplier()),
-                                    boost::chrono::seconds(60)),
+                                    bc::milliseconds(60000)),
                  std::exception);
+}
+
+TEST_P(FailOverCacheTester, DISABLED_connect_timeout)
+{
+    auto wrns(make_random_namespace());
+
+    const FailOverCacheConfig cfg("192.168.23.7",
+                                  23000,
+                                  GetParam().foc_mode());
+
+    auto test([&](const boost::optional<bc::milliseconds>& connect_timeout)
+              {
+                  yt::SteadyTimer t;
+
+                  EXPECT_THROW(FailOverCacheProxy(cfg,
+                                                  wrns->ns(),
+                                                  default_lba_size(),
+                                                  default_cluster_multiplier(),
+                                                  bc::milliseconds(1000),
+                                                  connect_timeout),
+                               std::exception);
+
+                  std::cout << "connection attempt with connect timeout of " <<
+                      connect_timeout << " took " << bc::duration_cast<bc::milliseconds>(t.elapsed()) <<
+                      std::endl;
+              });
+
+    test(boost::none);
+    test(bc::milliseconds(1000));
 }
 
 TEST_P(FailOverCacheTester, DISABLED_a_whole_lotta_clients)
@@ -892,7 +926,7 @@ TEST_P(FailOverCacheTester, DISABLED_a_whole_lotta_clients)
                                                                       wrns.back()->ns(),
                                                                       default_lba_size(),
                                                                       default_cluster_multiplier(),
-                                                                      boost::chrono::seconds(1)));
+                                                                      bc::milliseconds(1000)));
         }
 
         FAIL() << "eventually the DTL should've run out of FDs";

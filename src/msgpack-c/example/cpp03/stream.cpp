@@ -2,17 +2,9 @@
 //
 // Copyright (C) 2008-2015 FURUHASHI Sadayuki and KONDO Takatoshi
 //
-//    Licensed under the Apache License, Version 2.0 (the "License");
-//    you may not use this file except in compliance with the License.
-//    You may obtain a copy of the License at
-//
-//        http://www.apache.org/licenses/LICENSE-2.0
-//
-//    Unless required by applicable law or agreed to in writing, software
-//    distributed under the License is distributed on an "AS IS" BASIS,
-//    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-//    See the License for the specific language governing permissions and
-//    limitations under the License.
+//    Distributed under the Boost Software License, Version 1.0.
+//    (See accompanying file LICENSE_1_0.txt or copy at
+//    http://www.boost.org/LICENSE_1_0.txt)
 //
 
 #include <msgpack.hpp>
@@ -23,6 +15,12 @@
 #include <unistd.h>
 #include <errno.h>
 #include <pthread.h>
+
+#if defined(_MSC_VER) || defined(__MINGW32__)
+#include <io.h>
+#include <fcntl.h>
+#define pipe(fds) _pipe(fds, 4096, _O_BINARY)
+#endif // _MSC_VER || __MINGW32__
 
 class Server {
 public:
@@ -51,10 +49,10 @@ public:
 
         m_pac.buffer_consumed(count);
 
-        msgpack::unpacked result;
-        while (m_pac.next(&result)) {
-            msgpack::object msg = result.get();
-            unique_zone& life = result.zone();
+        msgpack::object_handle oh;
+        while (m_pac.next(oh)) {
+            msgpack::object msg = oh.get();
+            unique_zone& life = oh.zone();
             process_message(msg, life);
         }
 

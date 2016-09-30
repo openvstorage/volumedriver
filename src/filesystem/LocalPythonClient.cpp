@@ -43,7 +43,7 @@ LocalPythonClient::LocalPythonClient(const std::string& config,
     const bpt::ptree pt((*config_fetcher_)(VerifyConfig::F));
     const ConfigHelper argument_helper(pt);
     cluster_id_ = argument_helper.cluster_id();
-    cluster_contacts_.emplace_back(argument_helper.localnode_config().host,
+    cluster_contacts_.emplace_back(argument_helper.localnode_config().xmlrpc_host,
                                    argument_helper.localnode_config().xmlrpc_port);
 }
 

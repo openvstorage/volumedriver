@@ -102,7 +102,7 @@ RemoteNode::init_zock_()
     const std::string rport(boost::lexical_cast<std::string>(config.message_port));
     zock_.reset(new zmq::socket_t(*ztx_, ZMQ_DEALER));
 
-    const std::string tcp_addr("tcp://" + config.host + std::string(":") + rport);
+    const std::string tcp_addr("tcp://" + config.message_host + std::string(":") + rport);
     ZUtils::socket_no_linger(*zock_);
 
     LOG_INFO(config.vrouter_id << ": connecting to " << tcp_addr);

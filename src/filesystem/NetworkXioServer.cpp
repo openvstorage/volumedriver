@@ -21,8 +21,6 @@
 #include <youtils/Assert.h>
 #include <youtils/System.h>
 
-#define POLLING_TIME_USEC   20
-
 namespace yt = youtils;
 
 namespace volumedriverfs
@@ -192,8 +190,12 @@ NetworkXioServer::run(std::promise<void> promise)
                 &ka,
                 sizeof(ka));
 
+    int polling_timeout_us =
+    yt::System::get_env_with_default<int>("NETWORK_XIO_POLLING_TIMEOUT_US",
+                                          0);
+
     ctx = std::shared_ptr<xio_context>(xio_context_create(NULL,
-                                                          POLLING_TIME_USEC,
+                                                          polling_timeout_us,
                                                           -1),
                                        xio_destroy_ctx_shutdown);
 
@@ -293,9 +295,8 @@ NetworkXioServer::run(std::promise<void> promise)
                                 32,
                                 4,
                                 0);
-
-    promise.set_value();
     stopped = false;
+    promise.set_value();
     while (not stopping)
     {
         int ret = xio_context_run_loop(ctx.get(), XIO_INFINITE);
@@ -491,7 +492,8 @@ NetworkXioServer::deallocate_request(NetworkXioRequest *req)
 {
     if ((req->op == NetworkXioMsgOpcode::ReadRsp ||
          req->op == NetworkXioMsgOpcode::ListVolumesRsp ||
-         req->op == NetworkXioMsgOpcode::ListSnapshotsRsp) && req->data)
+         req->op == NetworkXioMsgOpcode::ListSnapshotsRsp ||
+         req->op == NetworkXioMsgOpcode::ListClusterNodeURIRsp) && req->data)
     {
         if (req->from_pool)
         {
@@ -548,7 +550,8 @@ NetworkXioServer::xio_send_reply(NetworkXioRequest *req)
     req->xio_reply.out.header.iov_len = req->s_msg.length();
     if ((req->op == NetworkXioMsgOpcode::ReadRsp ||
          req->op == NetworkXioMsgOpcode::ListVolumesRsp ||
-         req->op == NetworkXioMsgOpcode::ListSnapshotsRsp) && req->data)
+         req->op == NetworkXioMsgOpcode::ListSnapshotsRsp ||
+         req->op == NetworkXioMsgOpcode::ListClusterNodeURIRsp) && req->data)
     {
         vmsg_sglist_set_nents(&req->xio_reply.out, 1);
         req->xio_reply.out.sgl_type = XIO_SGL_TYPE_IOV;

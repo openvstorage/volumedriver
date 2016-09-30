@@ -174,7 +174,7 @@ FileSystem::FileSystem(const bpt::ptree& pt,
                UseCache::F)
     , stats_collector_(pt,
                     registerizle)
-    , xmlrpc_svc_(router_.node_config().host,
+    , xmlrpc_svc_(router_.node_config().xmlrpc_host,
                   router_.node_config().xmlrpc_port)
 {
     verify_volume_suffix_(fs_internal_suffix.value());
@@ -237,6 +237,36 @@ FileSystem::componentName() const
 }
 
 void
+FileSystem::update_dtl_settings_(const bpt::ptree& pt,
+                                 yt::UpdateReport& rep)
+{
+#define U(var)                                  \
+        (var).update(pt, rep)
+
+    if (fs_dtl_config_mode.value() == FailOverCacheConfigMode::Manual)
+    {
+        const ip::PARAMETER_TYPE(fs_dtl_host) new_host(pt);
+        const ip::PARAMETER_TYPE(fs_dtl_port) new_port(pt);
+        const ip::PARAMETER_TYPE(fs_dtl_mode) new_mode(pt);
+
+        try
+        {
+            router_.set_manual_default_foc_config(make_foc_config(new_host.value(),
+                                                                  new_port.value(),
+                                                                  new_mode.value()));
+        }
+        CATCH_STD_ALL_LOG_IGNORE("Failed to apply new DTL settings");
+    }
+
+    U(fs_dtl_config_mode);
+    U(fs_dtl_host);
+    U(fs_dtl_port);
+    U(fs_dtl_mode);
+
+#undef U
+}
+
+void
 FileSystem::update(const bpt::ptree& pt,
                    yt::UpdateReport& rep)
 {
@@ -255,10 +285,9 @@ FileSystem::update(const bpt::ptree& pt,
     U(fs_metadata_backend_mds_timeout_secs);
     U(fs_cache_dentries);
     U(fs_nullio);
-    U(fs_dtl_config_mode);
-    U(fs_dtl_host);
-    U(fs_dtl_port);
-    U(fs_dtl_mode);
+
+    update_dtl_settings_(pt, rep);
+
     U(fs_enable_shm_interface);
     U(fs_enable_network_interface);
     U(ip::PARAMETER_TYPE(fs_virtual_disk_format)(vdisk_format_->name()));

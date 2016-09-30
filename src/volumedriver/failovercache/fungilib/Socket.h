@@ -25,6 +25,7 @@
 #include <string>
 #include <cassert>
 
+#include <poll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -47,6 +48,7 @@ public:
     static std::unique_ptr<Socket>
     createClientSocket(const std::string &host,
                        uint16_t port,
+                       const boost::optional<boost::chrono::milliseconds>& connect_timeout = boost::none,
                        int sock_type = SOCK_STREAM);
 
     static std::unique_ptr<Socket>
@@ -65,10 +67,12 @@ public:
                       bool reuseaddr = true) = 0;
 
     /** @exception IOException */
-    virtual Socket *accept(bool nonblocking = true)=0;
+    virtual Socket *accept(bool nonblocking = true) = 0;
 
-    /** @exception IOException */
-    virtual void connect(const std::string &host, uint16_t port) = 0;
+    void
+    connect(const std::string&,
+            uint16_t,
+            const boost::optional<boost::chrono::milliseconds>&);
 
     /** @exception IOException
      * will return false if connection is still pending,
@@ -192,6 +196,11 @@ protected:
     /** @exception IOException */
     void close();
     void closeNoThrow();
+
+    virtual int
+    poll_(pollfd*,
+          nfds_t,
+          const boost::optional<boost::chrono::milliseconds>&);
 
 private:
     DECLARE_LOGGER("Socket");

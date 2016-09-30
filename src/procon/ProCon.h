@@ -531,24 +531,24 @@ public:
 
         Latch theLatch, noLatch(true);
 
+        std::unique_ptr<_ProducerTp> producer;
+        std::unique_ptr<_ConsumerTp> consumer;
 #if defined(_HAS_PUTTABLETAKABLE)
         Puttable<_Tp, _ChannelTp> puttable(chan);
         Takable<_Tp, _ChannelTp>  takable(chan);
 
-        _ProducerTp* producer = bHidePuttableTakable_
-            ? new _ProducerTp(chan, noLatch)
-            : new _ProducerTp(puttable, noLatch) ;
-        _ConsumerTp* consumer = bHidePuttableTakable_
-            ? new _ConsumerTp(chan, syncStart_ ? theLatch : noLatch)
-            : new _ConsumerTp(takable, syncStart_ ? theLatch : noLatch);
+        producer = bHidePuttableTakable_
+            ? std::make_unique<_ProducerTp>(chan, noLatch)
+            : std::make_unique<_ProducerTp>(puttable, noLatch);
+
+        consumer = bHidePuttableTakable_
+            ? std::make_unique<_ConsumerTp>(chan, syncStart_ ? theLatch : noLatch)
+            : std::make_unique<_ConsumerTp>(takable, syncStart_ ? theLatch : noLatch);
 #else
-        _ProducerTp* producer =
-            new _ProducerTp(chan, noLatch);
-        _ConsumerTp* consumer =
-            new _ConsumerTp(chan, syncStart_ ? theLatch : noLatch);
+        producer = std::make_unique<_ProducerTp>(chan, noLatch);
+        consumer = std::make_unique<_ConsumerTp>(chan, syncStart_ ? theLatch : noLatch);
 #endif
-        std::auto_ptr<_ProducerTp> prodClean(producer);
-        std::auto_ptr<_ConsumerTp> consClean(consumer);
+
         consumer->mayStop(false);
 
         pcModelCreated(*producer, *consumer);
@@ -618,18 +618,19 @@ public:
     {
         Latch theLatch, noLatch(true);
 
+        std::unique_ptr<_ConsumerTp> consumer;
+
 #if defined(_HAS_PUTTABLETAKABLE)
         Takable<_Tp, _ChannelTp>  takable(channel_); // valid in this function scope
 
         // consumer is created here, and it is shared by all consumer threads...
         // in a sense the single consumer is the model for a group of threaded live consumers
-        _ConsumerTp* consumer = bHidePuttableTakable_
-            ? new _ConsumerTp(channel_, syncStart_ ? theLatch : noLatch)
-            : new _ConsumerTp(takable, syncStart_ ? theLatch : noLatch);
+        consumer = bHidePuttableTakable_
+            ? std::make_unique<_ConsumerTp>(channel_, syncStart_ ? theLatch : noLatch)
+            : std::make_unique<_ConsumerTp>(takable, syncStart_ ? theLatch : noLatch);
 #else
-        _ConsumerTp* consumer = new _ConsumerTp(channel_, syncStart_ ? theLatch : noLatch);
+        consumer = std::make_unique<_ConsumerTp>(channel_, syncStart_ ? theLatch : noLatch);
 #endif
-        std::auto_ptr<_ConsumerTp> consClean(consumer);
         consumer->mayStop(true);
         consumerModelCreated(*consumer);
 

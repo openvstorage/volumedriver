@@ -181,6 +181,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_retry_backoff_multiplier
                                       ShowDocumentation::T,
                                       1.0);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_partial_read_nullio,
+                                      backend_connection_manager_name,
+                                      "backend_interface_partial_read_nullio",
+                                      "nullio for partial reads: immediately return instead of actually reading data",
+                                      ShowDocumentation::F,
+                                      false);
+
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_type,
                                       backend_connection_manager_name,
                                       "backend_type",

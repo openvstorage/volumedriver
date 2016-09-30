@@ -40,7 +40,8 @@ public:
                        const Namespace&,
                        const LBASize,
                        const ClusterMultiplier,
-                       const boost::chrono::seconds);
+                       const boost::chrono::milliseconds request_timeout,
+                       const boost::optional<boost::chrono::milliseconds>& connect_timeout = boost::none);
 
     FailOverCacheProxy(const FailOverCacheProxy&) = delete;
 
@@ -72,7 +73,7 @@ public:
     removeUpTo(const SCO) throw ();
 
     void
-    setRequestTimeout(const boost::chrono::seconds);
+    setRequestTimeout(const boost::chrono::milliseconds);
 
     void
     setBusyLoopDuration(const boost::chrono::microseconds);

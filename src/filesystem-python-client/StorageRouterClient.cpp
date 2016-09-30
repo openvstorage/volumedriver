@@ -368,8 +368,11 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              &vd::FailOverCacheConfig::operator==)
         .def("__repr__",
              &failovercache_config_repr)
-#define DEF_READONLY_PROP_(name)                                \
-        .def_readonly(#name, &vd::FailOverCacheConfig::name)
+
+#define DEF_READONLY_PROP_(name)                                        \
+        .add_property(#name,                                            \
+                  bpy::make_getter(&vd::FailOverCacheConfig::name,      \
+                                   bpy::return_value_policy<bpy::return_by_value>()))
 
         DEF_READONLY_PROP_(host)
         DEF_READONLY_PROP_(port)
@@ -885,6 +888,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
     REGISTER_STRONG_ARITHMETIC_TYPEDEF_CONVERTER(vfs::FailoverCachePort);
 
     using MaybeUri = boost::optional<youtils::Uri>;
+    using MaybeString = boost::optional<std::string>;
 
     REGISTER_OPTIONAL_CONVERTER(youtils::Uri);
 
@@ -896,20 +900,26 @@ BOOST_PYTHON_MODULE(storagerouterclient)
                    vfs::MessagePort,
                    vfs::XmlRpcPort,
                    vfs::FailoverCachePort,
-                   const MaybeUri&>
+         const MaybeUri&,
+         const MaybeString&,
+         const MaybeString&>
          ((bpy::args("vrouter_id"),
            bpy::args("host"),
            bpy::args("message_port"),
            bpy::args("xmlrpc_port"),
            bpy::args("failovercache_port"),
-           bpy::args("network_server_uri") = MaybeUri()),
+           bpy::args("network_server_uri") = MaybeUri(),
+           bpy::args("xmlrpc_host") = MaybeString(),
+           bpy::args("failovercache_host") = MaybeString()),
           "Create a cluster node configuration\n"
           "@param vrouter_id: string, node ID\n"
-          "@param host: string, hostname or IP address\n"
+          "@param host: string, hostname or IP address to be used for communication between nodes\n"
           "@param message_port: uint16_t, TCP port used for communication between nodes\n"
           "@param xmlrpc_port: uint16_t, TCP port used for XMLRPC based management\n"
           "@param failovercache_port: uint16_t, TCP port of the FailoverCache for this node\n"
-          "@param network_server_uri: optional string (URI), URI the network server shall listen on\n"))
+          "@param network_server_uri: optional string (URI), URI the network server shall listen on\n"
+          "@param xmlrpc_host: optional string, address the XMLRPC server shall use, falls back to 'host' if unspecified\n"
+          "@param failovercache_host: optional string, address the DTL shall use, falls back to 'host' if unspecified\n"))
         .def("__str__",
              &vfs::ClusterNodeConfig::str)
         .def("__repr__",
@@ -917,13 +927,21 @@ BOOST_PYTHON_MODULE(storagerouterclient)
         .def("__eq__",
              &vfs::ClusterNodeConfig::operator==)
 
-#define DEF_READONLY_PROP_(name)                                \
-        .def_readonly(#name, &vfs::ClusterNodeConfig::name)
+#define DEF_READONLY_PROP_(name)                                        \
+        .add_property(#name,                                            \
+                      bpy::make_getter(&vfs::ClusterNodeConfig::name,   \
+                                       bpy::return_value_policy<bpy::return_by_value>()))
 
         DEF_READONLY_PROP_(vrouter_id)
-        DEF_READONLY_PROP_(host)
+        // "host" is only left for backward compatibility - phase out eventually
+        .add_property("host",
+                      bpy::make_getter(&vfs::ClusterNodeConfig::message_host,
+                                       bpy::return_value_policy<bpy::return_by_value>()))
+        DEF_READONLY_PROP_(message_host)
         DEF_READONLY_PROP_(message_port)
+        DEF_READONLY_PROP_(xmlrpc_host)
         DEF_READONLY_PROP_(xmlrpc_port)
+        DEF_READONLY_PROP_(failovercache_host)
         DEF_READONLY_PROP_(failovercache_port)
         DEF_READONLY_PROP_(network_server_uri)
 
@@ -946,8 +964,10 @@ BOOST_PYTHON_MODULE(storagerouterclient)
         .def("__str__", &vfs::ClientInfo::str)
         .def("__repr__", &vfs::ClientInfo::str)
 
-#define DEF_READONLY_PROP_(name)                                \
-        .def_readonly(#name, &vfs::ClientInfo::name)
+#define DEF_READONLY_PROP_(name)                                        \
+        .add_property(#name,                                            \
+                      bpy::make_getter(&vfs::ClientInfo::name,          \
+                                       bpy::return_value_policy<bpy::return_by_value>()))
 
         DEF_READONLY_PROP_(object_id)
         DEF_READONLY_PROP_(ip)
@@ -957,6 +977,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
 
 #undef DEF_READONLY_PROP_
         ;
+
     REGISTER_ITERABLE_CONVERTER(std::vector<vfs::ClientInfo>);
 
     bpy::class_<vfs::ClusterRegistry,
@@ -998,14 +1019,18 @@ BOOST_PYTHON_MODULE(storagerouterclient)
         .value("ONLINE", vfs::ClusterNodeStatus::State::Online);
 
 #define DEF_READONLY_PROP_(name)                        \
-    .def_readonly(#name, &vfs::XMLRPCVolumeInfo::name)
+    .add_property(#name,                                                \
+                  bpy::make_getter(&vfs::XMLRPCVolumeInfo::name,       \
+                                   bpy::return_value_policy<bpy::return_by_value>()))
 
     bpy::class_<vfs::XMLRPCVolumeInfo>("VolumeInfo")
         .def("__str__", &vfs::XMLRPCVolumeInfo::str)
         .def("__repr__", &vfs::XMLRPCVolumeInfo::str)
         .def("__eq__", &vfs::XMLRPCVolumeInfo::operator==)
         DEF_READONLY_PROP_(volume_id)
-        .def_readonly("namespace", &vfs::XMLRPCVolumeInfo::_namespace_)
+        .add_property("namespace",
+                      bpy::make_getter(&vfs::XMLRPCVolumeInfo::_namespace_,
+                                       bpy::return_value_policy<bpy::return_by_value>()))
         DEF_READONLY_PROP_(parent_namespace)
         DEF_READONLY_PROP_(parent_snapshot_id)
         DEF_READONLY_PROP_(volume_size)
@@ -1050,8 +1075,10 @@ BOOST_PYTHON_MODULE(storagerouterclient)
         .def_pickle(PerformanceCounterU64PickleSuite())
         ;
 
-#define DEF_READONLY_PROP_(name)                        \
-    .def_readonly(#name, &vd::PerformanceCounters::name)
+#define DEF_READONLY_PROP_(name)                                        \
+    .add_property(#name,                                                \
+                  bpy::make_getter(&vd::PerformanceCounters::name,      \
+                                   bpy::return_value_policy<bpy::return_by_value>()))
 
     bpy::class_<vd::PerformanceCounters>("PerformanceCounters")
         .def("__eq__",
@@ -1073,8 +1100,10 @@ BOOST_PYTHON_MODULE(storagerouterclient)
         ;
 #undef DEF_READONLY_PROP_
 
-#define DEF_READONLY_PROP_(name)                        \
-    .def_readonly(#name, &vfs::XMLRPCStatistics::name)
+#define DEF_READONLY_PROP_(name)                                        \
+    .add_property(#name,                                                \
+                  bpy::make_getter(&vfs::XMLRPCStatistics::name,        \
+                                   bpy::return_value_policy<bpy::return_by_value>()))
 
     bpy::class_<vfs::XMLRPCStatistics>("Statistics")
         .def("__str__", &vfs::XMLRPCStatistics::str)
@@ -1092,8 +1121,10 @@ BOOST_PYTHON_MODULE(storagerouterclient)
         ;
 #undef DEF_READONLY_PROP_
 
-#define DEF_READONLY_PROP_(name)                                \
-    .def_readonly(#name, &vfs::XMLRPCSnapshotInfo::name)
+#define DEF_READONLY_PROP_(name)                                        \
+    .add_property(#name,                                                \
+                  bpy::make_getter(&vfs::XMLRPCSnapshotInfo::name,      \
+                                   bpy::return_value_policy<bpy::return_by_value>()))
 
     bpy::class_<vfs::XMLRPCSnapshotInfo>("SnapshotInfo")
         .def("__str__", &vfs::XMLRPCSnapshotInfo::str)
@@ -1109,13 +1140,22 @@ BOOST_PYTHON_MODULE(storagerouterclient)
         ;
 #undef DEF_READONLY_PROP_
 
-     bpy::class_<vfs::ClusterContact>("ClusterContact",
-                                      "simple object to hold an ip and port to a vrouter node",
-                                      bpy::init<const std::string&,
-                                                const uint16_t>(bpy::args("host",
-                                                                          "port")))
-            .def_readonly("host", &vfs::ClusterContact::host)
-            .def_readonly("port", &vfs::ClusterContact::port);
+
+#define DEF_READONLY_PROP_(name)                                        \
+    .add_property(#name,                                                \
+                  bpy::make_getter(&vfs::ClusterContact::name,          \
+                                   bpy::return_value_policy<bpy::return_by_value>()))
+
+    bpy::class_<vfs::ClusterContact>("ClusterContact",
+                                     "simple object to hold an ip and port to a vrouter node",
+                                     bpy::init<const std::string&,
+                                               const uint16_t>(bpy::args("host",
+                                                                         "port")))
+        DEF_READONLY_PROP_(host)
+        DEF_READONLY_PROP_(port)
+        ;
+
+#undef DEF_READONLY_PROP_
 
     bpy::to_python_converter<yt::UpdateReport, UpdateReportConverter>();
 

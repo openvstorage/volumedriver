@@ -80,6 +80,8 @@ FileSystemTestSetup::FileSystemTestSetup(const FileSystemTestSetupParameters& pa
     , redirect_timeout_ms_(params.redirect_timeout_ms_)
     , redirect_retries_(params.redirect_retries_)
     , scrub_manager_interval_secs_(params.scrub_manager_interval_secs_)
+    , dtl_config_mode_(params.dtl_config_mode_)
+    , dtl_mode_(params.dtl_mode_)
     , fdriver_namespace_("ovs-fdnspc-fstest-"s + yt::UUID().str())
     , arakoon_test_setup_(std::make_shared<ara::ArakoonTestSetup>(topdir_ / "arakoon"))
     , client_(vrouter_cluster_id(),
@@ -108,7 +110,7 @@ FileSystemTestSetup::start_failovercache_for_local_node()
 {
     local_foc_helper_ =
         std::make_unique<FailOverCacheTestHelper>(failovercache_dir(remote_dir(topdir_)),
-                                                  remote_config().host,
+                                                  remote_config().failovercache_host,
                                                   remote_config().failovercache_port,
                                                   failovercache_transport());
 }
@@ -124,7 +126,7 @@ FileSystemTestSetup::start_failovercache_for_remote_node()
 {
     remote_foc_helper_ =
         std::make_unique<FailOverCacheTestHelper>(failovercache_dir(topdir_),
-                                                  local_config().host,
+                                                  local_config().failovercache_host,
                                                   local_config().failovercache_port,
                                                   failovercache_transport());
 }
@@ -258,6 +260,25 @@ FileSystemTestSetup::make_mdstore_config_(bpt::ptree& pt) const
 }
 
 bpt::ptree&
+FileSystemTestSetup::make_dtl_config_(const vfs::NodeId& vrouter_id,
+                                      bpt::ptree& pt) const
+{
+    ip::PARAMETER_TYPE(fs_dtl_config_mode)(dtl_config_mode_).persist(pt);
+    if (dtl_config_mode_ == vfs::FailOverCacheConfigMode::Manual)
+    {
+        const vfs::ClusterNodeConfig cfg(vrouter_id == local_node_id() ?
+                                         local_config() :
+                                         remote_config());
+
+        ip::PARAMETER_TYPE(fs_dtl_host)(cfg.failovercache_host).persist(pt);
+        ip::PARAMETER_TYPE(fs_dtl_port)(cfg.failovercache_port).persist(pt);
+        ip::PARAMETER_TYPE(fs_dtl_mode)(dtl_mode_).persist(pt);
+    }
+
+    return pt;
+}
+
+bpt::ptree&
 FileSystemTestSetup::make_config_(bpt::ptree& pt,
                                   const fs::path& topdir,
                                   const vfs::NodeId& vrouter_id) const
@@ -341,6 +362,8 @@ FileSystemTestSetup::make_config_(bpt::ptree& pt,
         ip::PARAMETER_TYPE(fs_enable_network_interface)(true).persist(pt);
 
         make_mdstore_config_(pt);
+        make_dtl_config_(vrouter_id,
+                         pt);
     }
 
     // volume_router

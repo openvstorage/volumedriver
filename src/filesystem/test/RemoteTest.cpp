@@ -1560,6 +1560,36 @@ TEST_F(RemoteTest, unlink_open_directory)
     fs::remove_all(rdir);
 }
 
+TEST_F(RemoteTest, only_steal_from_offlined_node)
+{
+    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const size_t vsize = 1ULL << 20;
+
+    const auto rpath(make_remote_file(fname,
+                                      vsize));
+
+    const off_t off = 0;
+    const std::string pattern("remotely written");
+    write_to_remote_file(rpath,
+                         pattern,
+                         off);
+
+    umount_remote();
+
+    std::shared_ptr<vfs::ClusterRegistry> reg(cluster_registry(fs_->object_router()));
+    EXPECT_EQ(vfs::ClusterNodeStatus::State::Online,
+              reg->get_node_state(remote_node_id()));
+
+    std::vector<char> buf(pattern.size());
+    EXPECT_GT(0,
+              read_from_file(fname,
+                             buf.data(),
+                             buf.size(),
+                             off));
+    EXPECT_EQ(vfs::ClusterNodeStatus::State::Online,
+              reg->get_node_state(remote_node_id()));
+}
+
 TEST_F(RemoteTest, DISABLED_setup_remote_hack)
 {
     sleep(1000000);

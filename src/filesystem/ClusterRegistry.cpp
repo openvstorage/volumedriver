@@ -128,7 +128,18 @@ ClusterRegistry::erase_node_configs()
 void
 ClusterRegistry::set_node_configs(const ClusterNodeConfigs& configs)
 {
-    NodeStatusMap map;
+    NodeStatusMap old_map;
+    boost::optional<ara::buffer> buf;
+
+    try
+    {
+        buf = get_node_status_map_();
+        old_map = deserialize_node_map(*buf);
+    }
+    catch (ClusterNotRegisteredException&)
+    {}
+
+    NodeStatusMap new_map;
 
     if (configs.empty())
     {
@@ -139,8 +150,16 @@ ClusterRegistry::set_node_configs(const ClusterNodeConfigs& configs)
 
     for (const auto& cfg : configs)
     {
-        ClusterNodeStatus st(cfg, ClusterNodeStatus::State::Online);
-        const auto res(map.insert(std::make_pair(cfg.vrouter_id, st)));
+        ClusterNodeStatus::State state = ClusterNodeStatus::State::Online;
+        const auto it = old_map.find(cfg.vrouter_id);
+        if (it != old_map.end())
+        {
+            state = it->second.state;
+        }
+
+        const auto res(new_map.emplace(cfg.vrouter_id,
+                                       ClusterNodeStatus(cfg,
+                                                         state)));
         if (not res.second)
         {
             LOG_ERROR("Duplicate node ID " << cfg.vrouter_id << " in cluster config");
@@ -152,27 +171,43 @@ ClusterRegistry::set_node_configs(const ClusterNodeConfigs& configs)
     arakoon_->run_sequence("set node configs",
                            [&](ara::sequence& seq)
                            {
-                               seq.add_set(make_key(),
-                                           serialize_node_map(map));
+                               const std::string key(make_key());
+                               if (buf)
+                               {
+                                   seq.add_assert(key,
+                                                  *buf);
+                               }
+                               else
+                               {
+                                   seq.add_assert(key,
+                                                  ara::None());
+                               }
+
+                               seq.add_set(key,
+                                           serialize_node_map(new_map));
                            },
                            yt::RetryOnArakoonAssert::F);
 
     LOG_INFO("Registry for cluster " << cluster_id_ << " initialized");
 }
 
-ClusterRegistry::NodeStatusMap
-ClusterRegistry::get_node_status_map()
+ara::buffer
+ClusterRegistry::get_node_status_map_()
 try
 {
     LOG_TRACE("getting the node status map for " << cluster_id_);
-
-    const ara::buffer buf(arakoon_->get(make_key()));
-    return deserialize_node_map(buf);
+    return arakoon_->get(make_key());
 }
 catch (ara::error_not_found&)
 {
     throw ClusterNotRegisteredException("cluster not registered",
                                         cluster_id_.str().c_str());
+}
+
+ClusterRegistry::NodeStatusMap
+ClusterRegistry::get_node_status_map()
+{
+    return deserialize_node_map(get_node_status_map_());
 }
 
 ClusterNodeConfigs
@@ -211,24 +246,23 @@ try
 {
     LOG_TRACE(node_id << ", state " << state);
 
-    // The code could be refactored so we can cling onto the originally returned
-    // ara::buffer instead of serializing the map here.
-    // OTOH this should not be used in a critical path anyway, so let's not
-    // bother for now.
-
-    NodeStatusMap map(get_node_status_map());
-    auto it = find_node_throw_(node_id, map);
-
     arakoon_->run_sequence("set node state",
                            [&](ara::sequence& seq)
                            {
-                               const std::string key(make_key());
-                               seq.add_assert(key, serialize_node_map(map));
+                               const ara::buffer buf(get_node_status_map_());
+                               NodeStatusMap map(deserialize_node_map(buf));
+
+                               auto it = find_node_throw_(node_id, map);
+                               const ClusterNodeStatus::State old_state = it->second.state;
+                               it->second = ClusterNodeStatus(it->second.config, state);
 
                                LOG_INFO("Updating state of node " << node_id <<
-                                        " from " << it->second.state << " to " << state);
+                                        " from " << old_state << " to " << state);
 
-                               it->second = ClusterNodeStatus(it->second.config, state);
+                               const std::string key(make_key());
+                               seq.add_assert(key,
+                                              buf);
+
                                seq.add_set(key, serialize_node_map(map));
                            },
                            yt::RetryOnArakoonAssert::T);
@@ -244,7 +278,8 @@ void
 ClusterRegistry::prepare_node_offline_assertion(arakoon::sequence& seq,
                                                 const NodeId& node_id)
 {
-    const NodeStatusMap map(get_node_status_map());
+    const ara::buffer buf(get_node_status_map_());
+    const NodeStatusMap map(deserialize_node_map(buf));
     const auto it = find_node_throw_(node_id, map);
 
     const ClusterNodeStatus::State state = it->second.state;
@@ -256,7 +291,7 @@ ClusterRegistry::prepare_node_offline_assertion(arakoon::sequence& seq,
     }
 
     seq.add_assert(make_key(),
-                   serialize_node_map(map));
+                   buf);
 }
 
 }

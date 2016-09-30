@@ -83,6 +83,20 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(dtl_busy_loop_usecs,
                                       ShowDocumentation::T,
                                       0U);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(dtl_request_timeout_ms,
+                                      volmanager_component_name,
+                                      "dtl_request_timeout_ms",
+                                      "Timeout for DTL requests",
+                                      ShowDocumentation::T,
+                                      60000U);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(dtl_connect_timeout_ms,
+                                      volmanager_component_name,
+                                      "dtl_connect_timeout_ms",
+                                      "Timeout for connection attempts to the DTL - 0: wait forever / the OS to signal errors",
+                                      ShowDocumentation::T,
+                                      0U);
+
 DEFINE_INITIALIZED_PARAM(clean_interval,
                          volmanager_component_name,
                          "scocache_cleanup_interval",
