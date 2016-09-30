@@ -99,12 +99,11 @@ NetworkXioIOHandler::handle_open(NetworkXioRequest *req,
         req->retval = -1;
         req->errval = ENOENT;
     }
-    catch (...)
-    {
-        LOG_ERROR("failed to open volume '" << volume_name << "'");
-        req->retval = -1;
-        req->errval = EIO;
-    }
+    CATCH_STD_ALL_EWHAT({
+       LOG_ERROR("failed to open volume '" << volume_name << "' " << EWHAT);
+       req->retval = -1;
+       req->errval = EIO;
+    });
     pack_msg(req);
 }
 
@@ -112,18 +111,26 @@ void
 NetworkXioIOHandler::handle_close(NetworkXioRequest *req)
 {
     req->op = NetworkXioMsgOpcode::CloseRsp;
-    if (handle_)
+    try
     {
-        fs_.release(std::move(handle_));
-        req->retval = 0;
-        req->errval = 0;
+        if (handle_)
+        {
+            fs_.release(std::move(handle_));
+            req->retval = 0;
+            req->errval = 0;
+        }
+        else
+        {
+            LOG_ERROR("failed to close volume '" << volume_name_ << "'");
+            req->retval = -1;
+            req->errval = EIO;
+        }
     }
-    else
-    {
-        LOG_ERROR("failed to close volume '" << volume_name_ << "'");
-        req->retval = -1;
-        req->errval = EIO;
-    }
+    CATCH_STD_ALL_EWHAT({
+       LOG_ERROR("close I/O error: " << EWHAT);
+       req->retval = -1;
+       req->errval = EIO;
+    });
     pack_msg(req);
 }
 
@@ -342,17 +349,25 @@ NetworkXioIOHandler::handle_stat_volume(NetworkXioRequest *req,
     req->op = NetworkXioMsgOpcode::StatVolumeRsp;
 
     const FrontendPath volume_path(make_volume_path(volume_name));
-    boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
-    if (not volume_id)
+    try
     {
+        boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
+        if (not volume_id)
+        {
+            req->retval = -1;
+            req->errval = ENOENT;
+        }
+        else
+        {
+            req->retval = fs_.object_router().get_size(*volume_id);
+            req->errval = 0;
+        }
+    }
+    CATCH_STD_ALL_EWHAT({
+        LOG_ERROR("Problem retrieving volume size: " << EWHAT);
         req->retval = -1;
-        req->errval = ENOENT;
-    }
-    else
-    {
-        req->retval = fs_.object_router().get_size(*volume_id);
-        req->errval = 0;
-    }
+        req->errval = EIO;
+    });
     pack_msg(req);
 }
 
@@ -393,13 +408,12 @@ NetworkXioIOHandler::handle_list_volumes(NetworkXioRequest *req)
     VERIFY(not handle_);
     req->op = NetworkXioMsgOpcode::ListVolumesRsp;
 
-    auto registry(fs_.object_router().object_registry());
-    const auto objs(registry->list());
-
     uint64_t total_size = 0;
     std::vector<std::string> volumes;
     try
     {
+        auto registry(fs_.object_router().object_registry());
+        const auto objs(registry->list());
         for (const auto& o: objs)
         {
             const auto reg(registry->find(o, IgnoreCache::F));
@@ -469,19 +483,20 @@ NetworkXioIOHandler::handle_list_snapshots(NetworkXioRequest *req,
     req->op = NetworkXioMsgOpcode::ListSnapshotsRsp;
 
     const FrontendPath volume_path(make_volume_path(volume_name));
-    boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
-    if (not volume_id)
-    {
-        req->retval = -1;
-        req->errval = ENOENT;
-        pack_msg(req);
-        return;
-    }
-
     std::vector<std::string> snaps;
+    size_t volume_size = 0;
     try
     {
+        boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
+        if (not volume_id)
+        {
+            req->retval = -1;
+            req->errval = ENOENT;
+            pack_msg(req);
+            return;
+        }
         snaps = fs_.object_router().list_snapshots(*volume_id);
+        volume_size = fs_.object_router().get_size(*volume_id);
         req->retval = 0;
         req->errval = 0;
     }
@@ -498,7 +513,7 @@ NetworkXioIOHandler::handle_list_snapshots(NetworkXioRequest *req,
     {
         req->errval = 0;
         req->retval = 0;
-        req->size = fs_.object_router().get_size(*volume_id);
+        req->size = volume_size;
         pack_msg(req);
         return;
     }
@@ -530,7 +545,7 @@ NetworkXioIOHandler::handle_list_snapshots(NetworkXioRequest *req,
     }
     req->errval = 0;
     req->retval = snaps.size();
-    req->size = fs_.object_router().get_size(*volume_id);
+    req->size = volume_size;
     pack_msg(req);
 }
 
@@ -544,18 +559,17 @@ NetworkXioIOHandler::handle_create_snapshot(NetworkXioRequest *req,
     req->op = NetworkXioMsgOpcode::CreateSnapshotRsp;
 
     const FrontendPath volume_path(make_volume_path(volume_name));
-    boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
-    if (not volume_id)
-    {
-        req->retval = -1;
-        req->errval = ENOENT;
-        pack_msg(req);
-        return;
-    }
-
     const volumedriver::SnapshotName snap(snap_name);
     try
     {
+        boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
+        if (not volume_id)
+        {
+            req->retval = -1;
+            req->errval = ENOENT;
+            pack_msg(req);
+            return;
+        }
         fs_.object_router().create_snapshot(*volume_id,
                                             snap,
                                             timeout);
@@ -600,18 +614,17 @@ NetworkXioIOHandler::handle_delete_snapshot(NetworkXioRequest *req,
     req->op = NetworkXioMsgOpcode::DeleteSnapshotRsp;
 
     const FrontendPath volume_path(make_volume_path(volume_name));
-    boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
-    if (not volume_id)
-    {
-        req->retval = -1;
-        req->errval = ENOENT;
-        pack_msg(req);
-        return;
-    }
-
     const volumedriver::SnapshotName snap(snap_name);
     try
     {
+        boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
+        if (not volume_id)
+        {
+            req->retval = -1;
+            req->errval = ENOENT;
+            pack_msg(req);
+            return;
+        }
         fs_.object_router().delete_snapshot(*volume_id,
                                             snap);
         req->retval = 0;
@@ -647,18 +660,17 @@ NetworkXioIOHandler::handle_rollback_snapshot(NetworkXioRequest *req,
     req->op = NetworkXioMsgOpcode::RollbackSnapshotRsp;
 
     const FrontendPath volume_path(make_volume_path(volume_name));
-    boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
-    if (not volume_id)
-    {
-        req->retval = -1;
-        req->errval = ENOENT;
-        pack_msg(req);
-        return;
-    }
-
     const volumedriver::SnapshotName snap(snap_name);
     try
     {
+        boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
+        if (not volume_id)
+        {
+            req->retval = -1;
+            req->errval = ENOENT;
+            pack_msg(req);
+            return;
+        }
         fs_.object_router().rollback_volume(*volume_id,
                                             snap);
         req->retval = 0;
@@ -688,18 +700,17 @@ NetworkXioIOHandler::handle_is_snapshot_synced(NetworkXioRequest *req,
     req->op = NetworkXioMsgOpcode::IsSnapshotSyncedRsp;
 
     const FrontendPath volume_path(make_volume_path(volume_name));
-    boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
-    if (not volume_id)
-    {
-        req->retval = -1;
-        req->errval = ENOENT;
-        pack_msg(req);
-        return;
-    }
-
     const volumedriver::SnapshotName snap(snap_name);
     try
     {
+        boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
+        if (not volume_id)
+        {
+            req->retval = -1;
+            req->errval = ENOENT;
+            pack_msg(req);
+            return;
+        }
         bool is_synced = fs_.object_router().is_volume_synced_up_to(*volume_id,
                                                                     snap);
         req->retval = is_synced;
@@ -727,13 +738,12 @@ NetworkXioIOHandler::handle_list_cluster_node_uri(NetworkXioRequest *req)
     VERIFY(not handle_);
     req->op = NetworkXioMsgOpcode::ListClusterNodeURIRsp;
 
-    auto registry(fs_.object_router().cluster_registry());
-    const auto configs(registry->get_node_configs());
-
     uint64_t total_size = 0;
     std::vector<std::string> uris;
     try
     {
+        auto registry(fs_.object_router().cluster_registry());
+        const auto configs(registry->get_node_configs());
         for (const auto& c: configs)
         {
             if (c.network_server_uri)
