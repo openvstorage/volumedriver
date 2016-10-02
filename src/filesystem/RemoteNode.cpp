@@ -88,9 +88,12 @@ RemoteNode::~RemoteNode()
 void
 RemoteNode::notify_()
 {
+    int ret;
     const eventfd_t val = 1;
-    int ret = eventfd_write(event_fd_,
+    do {
+        ret = eventfd_write(event_fd_,
                             val);
+    } while (ret < 0 && errno == EINTR);
     VERIFY(ret == 0);
 }
 
@@ -299,9 +302,14 @@ RemoteNode::work_()
 bool
 RemoteNode::send_requests_()
 {
+    int ret;
     eventfd_t val = 0;
-    int ret = eventfd_read(event_fd_,
+
+    do {
+        ret = eventfd_read(event_fd_,
                            &val);
+    } while (ret < 0 && errno == EINTR);
+
     if (ret < 0)
     {
         VERIFY(errno == EAGAIN);
