@@ -18,7 +18,7 @@
 #include "tracing.h"
 #include "context.h"
 #include "ShmContext.h"
-#include "NetworkXioContext.h"
+#include "NetworkHAContext.h"
 #include "Utils.h"
 
 #include <youtils/SpinLock.h>
@@ -163,8 +163,9 @@ ovs_ctx_new(const ovs_ctx_attr_t *attr)
         {
         case TransportType::TCP:
         case TransportType::RDMA:
-            ctx = new NetworkXioContext(uri,
-                                        attr->network_qdepth);
+            ctx = new volumedriverfs::NetworkHAContext(uri,
+                                                       attr->network_qdepth,
+                                                       false);
             break;
         case TransportType::SharedMemory:
             ctx = new ShmContext;
