@@ -558,49 +558,15 @@ NetworkXioContext::stat_volume(struct stat *st)
 }
 
 ovs_buffer_t*
-NetworkXioContext::allocate(size_t size)
+NetworkXioContext::allocate(size_t size ATTR_UNUSED)
 {
-    ovs_buffer_t *buf = new ovs_buffer_t;
-    int r  = net_client_->allocate(&buf->mem,
-                                   size);
-    if (r < 0)
-    {
-        void *ptr;
-        /* try to be on the safe side with 4k alignment */
-        int ret = posix_memalign(&ptr, 4096, size);
-        if (ret != 0)
-        {
-            errno = ret;
-            delete buf;
-            return NULL;
-        }
-        else
-        {
-            buf->buf = ptr;
-            buf->size = size;
-            buf->from_mpool = false;
-        }
-    }
-    else
-    {
-        buf->buf = buf->mem.addr;
-        buf->size = buf->mem.length;
-        buf->from_mpool = true;
-    }
-    return buf;
+    errno = ENOSYS;
+    return nullptr;
 }
 
 int
-NetworkXioContext::deallocate(ovs_buffer_t *ptr)
+NetworkXioContext::deallocate(ovs_buffer_t *ptr ATTR_UNUSED)
 {
-    if (ptr->from_mpool)
-    {
-        net_client_->deallocate(&ptr->mem);
-    }
-    else
-    {
-        free(ptr->buf);
-    }
-    delete ptr;
-    return 0;
+    errno = ENOSYS;
+    return -1;
 }
