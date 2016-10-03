@@ -78,6 +78,9 @@ struct ShmContext : public ovs_context_t
     list_volumes(std::vector<std::string>& volumes);
 
     int
+    list_cluster_node_uri(std::vector<std::string>& uris);
+
+    int
     send_read_request(struct ovs_aiocb *ovs_aiocbp,
                       ovs_aio_request *request);
 

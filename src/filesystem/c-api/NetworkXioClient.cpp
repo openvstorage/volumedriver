@@ -674,6 +674,11 @@ NetworkXioClient::on_msg_control(xio_session *session ATTR_UNUSED,
                               imsg.retval(),
                               imsg.size());
         break;
+    case NetworkXioMsgOpcode::ListClusterNodeURIRsp:
+        handle_list_cluster_node_uri(xctl,
+                                     vmsg_sglist(&reply->in),
+                                     imsg.retval());
+        break;
     default:
         break;
     }
@@ -831,6 +836,14 @@ NetworkXioClient::handle_list_snapshots(xio_ctl_s *xctl,
 }
 
 void
+NetworkXioClient::handle_list_cluster_node_uri(xio_ctl_s *xctl,
+                                               xio_iovec_ex *sglist,
+                                               int vec_size)
+{
+    create_vec_from_buf(xctl, sglist, vec_size);
+}
+
+void
 NetworkXioClient::xio_msg_prepare(xio_msg_s *xmsg)
 {
     xmsg->s_msg = xmsg->msg.pack_msg();
@@ -913,6 +926,19 @@ NetworkXioClient::xio_list_volumes(const std::string& uri,
     auto xctl = std::make_unique<xio_ctl_s>();
     xctl->vec = &volumes;
     xctl->xmsg.msg.opcode(NetworkXioMsgOpcode::ListVolumesReq);
+    xctl->xmsg.msg.opaque((uintptr_t)xctl.get());
+
+    xio_msg_prepare(&xctl->xmsg);
+    xio_submit_request(uri, xctl.get(), NULL);
+}
+
+void
+NetworkXioClient::xio_list_cluster_node_uri(const std::string& uri,
+                                            std::vector<std::string>& uris)
+{
+    auto xctl = std::make_unique<xio_ctl_s>();
+    xctl->vec = &uris;
+    xctl->xmsg.msg.opcode(NetworkXioMsgOpcode::ListClusterNodeURIReq);
     xctl->xmsg.msg.opaque((uintptr_t)xctl.get());
 
     xio_msg_prepare(&xctl->xmsg);

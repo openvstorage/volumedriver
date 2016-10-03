@@ -57,6 +57,8 @@ struct ovs_context_t
 
     virtual int list_volumes(std::vector<std::string>& volumes) = 0;
 
+    virtual int list_cluster_node_uri(std::vector<std::string>& uris) = 0;
+
     virtual int send_read_request(struct ovs_aiocb *ovs_aiocbp,
                                   ovs_aio_request *request) = 0;
 
