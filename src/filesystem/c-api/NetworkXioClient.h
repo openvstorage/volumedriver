@@ -281,6 +281,23 @@ private:
     create_vec_from_buf(xio_ctl_s *xctl,
                         xio_iovec_ex *sglist,
                         int vec_size);
+
+    bool
+    is_ha_enabled() const
+    {
+        return ha_ctx_.is_ha_enabled();
+    }
+
+    void
+    remove_inflight_request(xio_msg_s *xio_msg)
+    {
+        if (is_ha_enabled())
+        {
+            uint64_t id = get_ovs_aio_request(xio_msg->opaque)->_id;
+            ha_ctx_.remove_inflight_request(id);
+        }
+
+    }
 };
 
 typedef std::shared_ptr<NetworkXioClient> NetworkXioClientPtr;

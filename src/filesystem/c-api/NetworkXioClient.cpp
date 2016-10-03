@@ -365,6 +365,38 @@ NetworkXioClient::evfd_stop_loop(int /*fd*/, int /*events*/, void * /*data*/)
 }
 
 int
+NetworkXioClient::on_response(xio_session *session __attribute__((unused)),
+                              xio_msg *reply,
+                              int last_in_rxq __attribute__((unused)))
+{
+    NetworkXioMsg imsg;
+    try
+    {
+        imsg.unpack_msg(static_cast<const char*>(reply->in.header.iov_base),
+                        reply->in.header.iov_len);
+    }
+    catch (...)
+    {
+        //cnanakos: logging
+        return 0;
+    }
+    xio_msg_s *xio_msg = reinterpret_cast<xio_msg_s*>(imsg.opaque());
+
+    remove_inflight_request(xio_msg);
+    ovs_aio_request::handle_xio_request(get_ovs_aio_request(xio_msg->opaque),
+                                        imsg.retval(),
+                                        imsg.errval());
+
+    reply->in.header.iov_base = NULL;
+    reply->in.header.iov_len = 0;
+    vmsg_sglist_set_nents(&reply->in, 0);
+    xio_release_response(reply);
+    req_queue_release();
+    delete xio_msg;
+    return 0;
+}
+
+int
 NetworkXioClient::on_msg_error(xio_session *session __attribute__((unused)),
                                xio_status error __attribute__((unused)),
                                xio_msg_direction direction,
@@ -404,6 +436,8 @@ NetworkXioClient::on_msg_error(xio_session *session __attribute__((unused)),
         xio_release_response(msg);
     }
     xio_msg = reinterpret_cast<xio_msg_s*>(imsg.opaque());
+
+    remove_inflight_request(xio_msg);
     ovs_aio_request::handle_xio_request(get_ovs_aio_request(xio_msg->opaque),
                                         -1,
                                         EIO);
@@ -550,37 +584,6 @@ NetworkXioClient::xio_send_close_request(const void *opaque)
     req_queue_wait_until(xmsg);
     push_request(xmsg);
     xstop_loop();
-}
-
-int
-NetworkXioClient::on_response(xio_session *session __attribute__((unused)),
-                              xio_msg *reply,
-                              int last_in_rxq __attribute__((unused)))
-{
-    NetworkXioMsg imsg;
-    try
-    {
-        imsg.unpack_msg(static_cast<const char*>(reply->in.header.iov_base),
-                        reply->in.header.iov_len);
-    }
-    catch (...)
-    {
-        //cnanakos: logging
-        return 0;
-    }
-    xio_msg_s *xio_msg = reinterpret_cast<xio_msg_s*>(imsg.opaque());
-
-    ovs_aio_request::handle_xio_request(get_ovs_aio_request(xio_msg->opaque),
-                                        imsg.retval(),
-                                        imsg.errval());
-
-    reply->in.header.iov_base = NULL;
-    reply->in.header.iov_len = 0;
-    vmsg_sglist_set_nents(&reply->in, 0);
-    xio_release_response(reply);
-    req_queue_release();
-    delete xio_msg;
-    return 0;
 }
 
 int

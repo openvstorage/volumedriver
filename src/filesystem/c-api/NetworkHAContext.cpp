@@ -22,6 +22,9 @@
 #include <thread>
 #include <chrono>
 
+#define LOCK_INFLIGHT()                                 \
+    fungi::ScopedSpinLock ifrl_(inflight_reqs_lock_)
+
 namespace volumedriverfs
 {
 
@@ -36,6 +39,10 @@ NetworkHAContext::NetworkHAContext(const std::string& uri,
     , uri_(uri)
     , qd_(net_client_qdepth)
     , ha_enabled_(ha_enabled)
+    , request_id_(0)
+    , opened_(false)
+    , openning_(true)
+    , connection_error_(false)
 {
     mpool = std::shared_ptr<xio_mempool>(
                     xio_mempool_create(-1,
@@ -71,6 +78,27 @@ NetworkHAContext::~NetworkHAContext()
     delete std::atomic_load(&ctx_);
 }
 
+uint64_t
+NetworkHAContext::assign_request_id(ovs_aio_request *request)
+{
+    request->_id = ++request_id_;
+    return request->_id;
+}
+
+void
+NetworkHAContext::insert_inflight_request(uint64_t id,
+                                          ovs_aio_request *request)
+{
+    inflight_ha_reqs_.emplace(id, request);
+}
+
+void
+NetworkHAContext::remove_inflight_request(uint64_t id)
+{
+    LOCK_INFLIGHT();
+    inflight_ha_reqs_.erase(id);
+}
+
 int
 NetworkHAContext::open_volume(const char *volume_name,
                               int oflag)
@@ -80,6 +108,8 @@ NetworkHAContext::open_volume(const char *volume_name,
     {
         volume_name_ = std::string(volume_name);
         oflag_ = oflag;
+        openning_ = false;
+        opened_ = true;
     }
     return r;
 }
@@ -172,20 +202,69 @@ int
 NetworkHAContext::send_read_request(struct ovs_aiocb *ovs_aiocbp,
                                     ovs_aio_request *request)
 {
-    return atomic_get_ctx()->send_read_request(ovs_aiocbp, request);
+    int r;
+    if (is_ha_enabled())
+    {
+        uint64_t id = assign_request_id(request);
+        LOCK_INFLIGHT();
+        r = atomic_get_ctx()->send_read_request(ovs_aiocbp,
+                                                request);
+        if (not r)
+        {
+            insert_inflight_request(id, request);
+        }
+    }
+    else
+    {
+        r = atomic_get_ctx()->send_read_request(ovs_aiocbp,
+                                                request);
+    }
+    return r;
 }
 
 int
 NetworkHAContext::send_write_request(struct ovs_aiocb *ovs_aiocbp,
                                      ovs_aio_request *request)
 {
-    return atomic_get_ctx()->send_write_request(ovs_aiocbp, request);
+    int r;
+    if (is_ha_enabled())
+    {
+        uint64_t id = assign_request_id(request);
+        LOCK_INFLIGHT();
+        r = atomic_get_ctx()->send_write_request(ovs_aiocbp,
+                                                 request);
+        if (not r)
+        {
+            insert_inflight_request(id, request);
+        }
+    }
+    else
+    {
+        r = atomic_get_ctx()->send_write_request(ovs_aiocbp,
+                                                 request);
+    }
+    return r;
 }
 
 int
 NetworkHAContext::send_flush_request(ovs_aio_request *request)
 {
-    return atomic_get_ctx()->send_flush_request(request);
+    int r;
+    if (is_ha_enabled())
+    {
+        uint64_t id = assign_request_id(request);
+        LOCK_INFLIGHT();
+        r = atomic_get_ctx()->send_flush_request(request);
+        if (not r)
+        {
+            insert_inflight_request(id, request);
+        }
+    }
+    else
+    {
+        r = atomic_get_ctx()->send_flush_request(request);
+    }
+    return r;
 }
 
 int

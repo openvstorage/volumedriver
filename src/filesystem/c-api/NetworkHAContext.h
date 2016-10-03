@@ -109,6 +109,31 @@ public:
 
     int
     deallocate(ovs_buffer_t *ptr);
+
+    uint64_t
+    assign_request_id(ovs_aio_request *request);
+
+    void
+    insert_inflight_request(uint64_t id,
+                            ovs_aio_request *request);
+
+    void
+    remove_inflight_request(uint64_t id);
+
+    bool
+    is_ha_enabled() const
+    {
+        return ha_enabled_;
+    }
+
+    void
+    set_connection_error()
+    {
+        if (is_ha_enabled())
+        {
+            connection_error_ = true;
+        }
+    }
 private:
     std::atomic<ovs_context_t*> ctx_;
     std::string volume_name_;
@@ -117,6 +142,15 @@ private:
     uint64_t qd_;
     bool ha_enabled_;
     std::shared_ptr<xio_mempool> mpool;
+
+    fungi::SpinLock inflight_reqs_lock_;
+    std::unordered_map<uint64_t, ovs_aio_request*> inflight_ha_reqs_;
+
+    std::atomic<uint64_t> request_id_;
+
+    bool opened_;
+    bool openning_;
+    bool connection_error_;
 
     ovs_context_t*
     atomic_get_ctx()

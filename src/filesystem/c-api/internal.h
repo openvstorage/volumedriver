@@ -34,6 +34,7 @@ struct ovs_aio_request
     ssize_t _rv;
     pthread_cond_t _cond;
     pthread_mutex_t _mutex;
+    uint64_t _id;
 
     ovs_aio_request(RequestOp op,
                     struct ovs_aiocb *aio,
