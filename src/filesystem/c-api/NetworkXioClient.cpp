@@ -109,7 +109,9 @@ static_evfd_stop_loop(int fd, int events, void *data)
     obj->evfd_stop_loop(fd, events, data);
 }
 
-NetworkXioClient::NetworkXioClient(const std::string& uri, const uint64_t qd)
+NetworkXioClient::NetworkXioClient(const std::string& uri,
+                                   const uint64_t qd,
+                                   NetworkHAContext& ha_ctx)
     : uri_(uri)
     , stopping(false)
     , stopped(false)
@@ -117,6 +119,7 @@ NetworkXioClient::NetworkXioClient(const std::string& uri, const uint64_t qd)
     , disconnecting(false)
     , nr_req_queue(qd)
     , evfd()
+    , ha_ctx_(ha_ctx)
 {
     ses_ops.on_session_event = static_on_session_event<NetworkXioClient>;
     ses_ops.on_session_established = NULL;
@@ -132,8 +135,6 @@ NetworkXioClient::NetworkXioClient(const std::string& uri, const uint64_t qd)
     params.ses_ops = &ses_ops;
     params.user_context = this;
     params.uri = uri_.c_str();
-
-    int queue_depth = 2 * nr_req_queue;
 
     xrefcnt_init();
 

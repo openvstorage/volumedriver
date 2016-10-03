@@ -16,18 +16,19 @@
 #ifndef __NETWORK_XIO_CONTEXT_H
 #define __NETWORK_XIO_CONTEXT_H
 
+#include "NetworkHAContext.h"
 #include "NetworkXioClient.h"
 #include "context.h"
 
-struct NetworkXioContext : public ovs_context_t
+namespace volumedriverfs
 {
-    volumedriverfs::NetworkXioClientPtr net_client_;
-    std::string uri_;
-    uint64_t net_client_qdepth_;
-    std::string volname_;
 
+class NetworkXioContext : public ovs_context_t
+{
+public:
     NetworkXioContext(const std::string& uri,
-                      uint64_t net_client_qdepth);
+                      uint64_t net_client_qdepth,
+                      NetworkHAContext& ha_ctx);
 
     ~NetworkXioContext();
 
@@ -103,6 +104,13 @@ struct NetworkXioContext : public ovs_context_t
 
     int
     deallocate(ovs_buffer_t *ptr);
+private:
+    volumedriverfs::NetworkXioClientPtr net_client_;
+    std::string uri_;
+    uint64_t net_client_qdepth_;
+    std::string volname_;
+    NetworkHAContext& ha_ctx_;
 };
 
+} //namespace volumedriverfs
 #endif //__NETWORK_XIO_CONTEXT_H

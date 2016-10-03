@@ -31,7 +31,8 @@ NetworkHAContext::NetworkHAContext(const std::string& uri,
                                    uint64_t net_client_qdepth,
                                    bool ha_enabled)
     : ctx_(new NetworkXioContext(uri,
-                                 net_client_qdepth))
+                                 net_client_qdepth,
+                                 *this))
     , uri_(uri)
     , qd_(net_client_qdepth)
     , ha_enabled_(ha_enabled)

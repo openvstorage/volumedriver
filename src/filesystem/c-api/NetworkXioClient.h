@@ -17,6 +17,7 @@
 #define __NETWORK_XIO_CLIENT_H_
 
 #include "../NetworkXioProtocol.h"
+#include "NetworkHAContext.h"
 #include "internal.h"
 
 #include <boost/thread/lock_guard.hpp>
@@ -40,7 +41,9 @@ MAKE_EXCEPTION(XioClientQueueIsBusyException, fungi::IOException);
 class NetworkXioClient
 {
 public:
-    NetworkXioClient(const std::string& uri, const uint64_t qd);
+    NetworkXioClient(const std::string& uri,
+                     const uint64_t qd,
+                     NetworkHAContext& ha_ctx);
 
     ~NetworkXioClient();
 
@@ -215,6 +218,8 @@ private:
     std::condition_variable req_queue_cond;
 
     EventFD evfd;
+
+    NetworkHAContext& ha_ctx_;
 
     void
     xio_run_loop_worker();

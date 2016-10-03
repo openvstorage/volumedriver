@@ -15,11 +15,16 @@
 
 #include "NetworkXioContext.h"
 
+namespace volumedriverfs
+{
+
 NetworkXioContext::NetworkXioContext(const std::string& uri,
-                                     uint64_t net_client_qdepth)
+                                     uint64_t net_client_qdepth,
+                                     NetworkHAContext& ha_ctx)
     : net_client_(nullptr)
     , uri_(uri)
     , net_client_qdepth_(net_client_qdepth)
+    , ha_ctx_(ha_ctx)
 {
 }
 
@@ -89,7 +94,8 @@ NetworkXioContext::open_volume(const char *volume_name,
     {
         net_client_ =
             std::make_shared<volumedriverfs::NetworkXioClient>(uri_,
-                    net_client_qdepth_);
+                    net_client_qdepth_,
+                    ha_ctx_);
         net_client_->xio_send_open_request(volume_name,
                                            reinterpret_cast<void*>(request.get()));
     }
@@ -570,3 +576,5 @@ NetworkXioContext::deallocate(ovs_buffer_t *ptr ATTR_UNUSED)
     errno = ENOSYS;
     return -1;
 }
+
+} //namespace volumedriverfs
