@@ -50,6 +50,7 @@ ovs_ctx_attr_new()
         attr->transport = TransportType::Error;
         attr->port = 0;
         attr->network_qdepth = 256;
+        attr->enable_ha = false;
         return attr;
     }
     catch (const std::bad_alloc&)
@@ -122,6 +123,18 @@ ovs_ctx_attr_set_network_qdepth(ovs_ctx_attr_t *attr,
     return 0;
 }
 
+int
+ovs_ctx_attr_enable_ha(ovs_ctx_attr_t *attr)
+{
+    if (attr == NULL)
+    {
+        errno = EINVAL;
+        return -1;
+    }
+    attr->enable_ha = true;
+    return 0;
+}
+
 ovs_ctx_t*
 ovs_ctx_new(const ovs_ctx_attr_t *attr)
 {
@@ -165,7 +178,7 @@ ovs_ctx_new(const ovs_ctx_attr_t *attr)
         case TransportType::RDMA:
             ctx = new volumedriverfs::NetworkHAContext(uri,
                                                        attr->network_qdepth,
-                                                       false);
+                                                       attr->enable_ha);
             break;
         case TransportType::SharedMemory:
             ctx = new ShmContext;

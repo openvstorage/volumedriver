@@ -46,6 +46,7 @@ struct ovs_context_attr_t
     std::string host;
     int port;
     uint64_t network_qdepth;
+    bool enable_ha;
 };
 
 struct ovs_buffer
