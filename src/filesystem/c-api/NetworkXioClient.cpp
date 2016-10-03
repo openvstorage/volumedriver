@@ -170,34 +170,6 @@ NetworkXioClient::NetworkXioClient(const std::string& uri, const uint64_t qd)
         xio_thread_.join();
         throw XioClientCreateException("failed to create XIO worker thread");
     }
-
-    mpool = std::shared_ptr<xio_mempool>(
-                    xio_mempool_create(-1,
-                                       XIO_MEMPOOL_FLAG_REGULAR_PAGES_ALLOC),
-                    xio_mempool_destroy);
-    if (mpool == nullptr)
-    {
-        shutdown();
-        throw XioClientCreateException("failed to create XIO memory pool");
-    }
-    (void) xio_mempool_add_slab(mpool.get(),
-                                4096,
-                                0,
-                                queue_depth,
-                                32,
-                                0);
-    (void) xio_mempool_add_slab(mpool.get(),
-                                32768,
-                                0,
-                                32,
-                                32,
-                                0);
-    (void) xio_mempool_add_slab(mpool.get(),
-                                131072,
-                                0,
-                                8,
-                                32,
-                                0);
 }
 
 void
@@ -308,19 +280,6 @@ NetworkXioClient::shutdown()
 NetworkXioClient::~NetworkXioClient()
 {
     shutdown();
-}
-
-int
-NetworkXioClient::allocate(xio_reg_mem* mem,
-                           const uint64_t size)
-{
-    return xio_mempool_alloc(mpool.get(), size, mem);
-}
-
-void
-NetworkXioClient::deallocate(xio_reg_mem *mem)
-{
-    xio_mempool_free(mem);
 }
 
 void

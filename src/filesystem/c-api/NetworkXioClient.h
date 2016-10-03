@@ -91,13 +91,6 @@ public:
     xio_send_flush_request(const void *opaque);
 
     int
-    allocate(xio_reg_mem *mem,
-             const uint64_t size);
-
-    void
-    deallocate(xio_reg_mem *reg_mem);
-
-    int
     on_session_event(xio_session *session,
                      xio_session_event_data *event_data);
 
@@ -222,8 +215,6 @@ private:
     std::condition_variable req_queue_cond;
 
     EventFD evfd;
-
-    std::shared_ptr<xio_mempool> mpool;
 
     void
     xio_run_loop_worker();
