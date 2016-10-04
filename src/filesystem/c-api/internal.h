@@ -183,6 +183,27 @@ struct ovs_aio_request
     }
 
     static void
+    handle_xio_request_nosched(ovs_aio_request *request,
+                               size_t retval,
+                               int errval)
+    {
+        ovs_completion_t *completion = request->get_completion();
+        struct ovs_aiocb *aiocbp = request->get_aio();
+        request->xio_complete(retval,
+                              errval);
+        if (completion)
+        {
+            request->set_completion();
+            if (request->is_async_flush())
+            {
+                delete aiocbp;
+                delete request;
+            }
+            completion->complete_cb(completion, completion->cb_arg);
+        }
+    }
+
+    static void
     handle_xio_ctrl_request(ovs_aio_request *request,
                             ssize_t retval,
                             int errval)

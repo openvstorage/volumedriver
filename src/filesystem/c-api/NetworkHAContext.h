@@ -151,6 +151,10 @@ private:
 
     std::atomic<uint64_t> request_id_;
 
+    std::vector<std::string> cluster_nw_uris_;
+
+    IOThread ha_ctx_thread_;
+
     bool opened_;
     bool openning_;
     bool connection_error_;
@@ -160,6 +164,29 @@ private:
     {
         return std::atomic_load(&ctx_);
     }
+
+    void
+    atomic_xchg_ctx(ovs_context_t *ctx)
+    {
+        auto old_ctx = atomic_get_ctx();
+        std::atomic_store(&ctx_, reinterpret_cast<ovs_context_t*>(ctx));
+        delete old_ctx;
+    }
+
+    bool
+    is_connection_error() const
+    {
+        return connection_error_;
+    }
+
+    void
+    update_cluster_node_uri();
+
+    void
+    ha_ctx_handler(void *arg);
+
+    void
+    fail_inflight_requests(int errval);
 };
 
 } //namespace volumedriverfs

@@ -22,6 +22,8 @@
 #include <thread>
 #include <chrono>
 
+#define HA_HANDLER_SLEEP_TIME   5ms
+
 #define LOCK_INFLIGHT()                                 \
     fungi::ScopedSpinLock ifrl_(inflight_reqs_lock_)
 
@@ -71,10 +73,31 @@ NetworkHAContext::NetworkHAContext(const std::string& uri,
                                 8,
                                 32,
                                 0);
+
+    if (ha_enabled)
+    {
+        try
+        {
+            ha_ctx_thread_.iothread_ =
+                std::thread(&NetworkHAContext::ha_ctx_handler,
+                            this,
+                            reinterpret_cast<void*>(&ha_ctx_thread_));
+        }
+        catch (const std::system_error&)
+        {
+            //cnanakos: log
+            throw;
+        }
+    }
 }
 
 NetworkHAContext::~NetworkHAContext()
 {
+    if (is_ha_enabled())
+    {
+        ha_ctx_thread_.stop();
+        ha_ctx_thread_.reset_iothread();
+    }
     delete std::atomic_load(&ctx_);
 }
 
@@ -97,6 +120,49 @@ NetworkHAContext::remove_inflight_request(uint64_t id)
 {
     LOCK_INFLIGHT();
     inflight_ha_reqs_.erase(id);
+}
+
+void
+NetworkHAContext::fail_inflight_requests(int errval)
+{
+    LOCK_INFLIGHT();
+    for (auto req_it = inflight_ha_reqs_.cbegin();
+            req_it != inflight_ha_reqs_.cend();)
+    {
+        ovs_aio_request::handle_xio_request_nosched(req_it->second,
+                                                    -1,
+                                                    errval);
+        inflight_ha_reqs_.erase(req_it++);
+    }
+}
+
+void
+NetworkHAContext::update_cluster_node_uri()
+{
+    int rl = list_cluster_node_uri(cluster_nw_uris_);
+    if (rl < 0)
+    {
+        //cnanakos TODO: log the error, HA will probably fail
+    }
+}
+
+void
+NetworkHAContext::ha_ctx_handler(void *arg)
+{
+    using namespace std::chrono_literals;
+    IOThread *thread = reinterpret_cast<IOThread*>(arg);
+    while (not thread->stopping)
+    {
+        if (is_connection_error())
+        {
+            fail_inflight_requests(EIO);
+        }
+        //cnanakos: use a cv and wait?
+        std::this_thread::sleep_for(HA_HANDLER_SLEEP_TIME);
+    }
+    std::lock_guard<std::mutex> lock_(thread->mutex_);
+    thread->stopped = true;
+    thread->cv_.notify_all();
 }
 
 int
