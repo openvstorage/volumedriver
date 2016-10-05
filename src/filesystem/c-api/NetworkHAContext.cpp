@@ -27,6 +27,9 @@
 #define LOCK_INFLIGHT()                                 \
     fungi::ScopedSpinLock ifrl_(inflight_reqs_lock_)
 
+#define LOCK_SEEN()                                     \
+    fungi::ScopedSpinLock ifrl_(seen_reqs_lock_)
+
 namespace volumedriverfs
 {
 
@@ -37,7 +40,8 @@ NetworkHAContext::NetworkHAContext(const std::string& uri,
                                    bool ha_enabled)
     : ctx_(new NetworkXioContext(uri,
                                  net_client_qdepth,
-                                 *this))
+                                 *this,
+                                 false))
     , uri_(uri)
     , qd_(net_client_qdepth)
     , ha_enabled_(ha_enabled)
@@ -116,13 +120,6 @@ NetworkHAContext::insert_inflight_request(uint64_t id,
 }
 
 void
-NetworkHAContext::remove_inflight_request(uint64_t id)
-{
-    LOCK_INFLIGHT();
-    inflight_ha_reqs_.erase(id);
-}
-
-void
 NetworkHAContext::fail_inflight_requests(int errval)
 {
     LOCK_INFLIGHT();
@@ -137,8 +134,131 @@ NetworkHAContext::fail_inflight_requests(int errval)
 }
 
 void
+NetworkHAContext::insert_seen_request(uint64_t id)
+{
+    LOCK_SEEN();
+    seen_ha_reqs_.push(id);
+}
+
+void
+NetworkHAContext::remove_seen_requests()
+{
+    std::queue<uint64_t> q_;
+    {
+        LOCK_SEEN();
+        seen_ha_reqs_.swap(q_);
+    }
+    while (not q_.empty())
+    {
+        uint64_t id = q_.front();
+        q_.pop();
+        {
+            LOCK_INFLIGHT();
+            inflight_ha_reqs_.erase(id);
+        }
+    }
+}
+
+void
+NetworkHAContext::remove_all_seen_requests()
+{
+    LOCK_SEEN();
+    while (not seen_ha_reqs_.empty())
+    {
+        uint64_t id = seen_ha_reqs_.front();
+        seen_ha_reqs_.pop();
+        LOCK_INFLIGHT();
+        inflight_ha_reqs_.erase(id);
+    }
+}
+
+void
+NetworkHAContext::resend_inflight_requests()
+{
+    for (auto& req_entry: inflight_ha_reqs_)
+    {
+        auto request = req_entry.second;
+        switch (request->_op)
+        {
+        case RequestOp::Read:
+            atomic_get_ctx()->send_read_request(request->ovs_aiocbp,
+                                                request);
+            break;
+        case RequestOp::Write:
+            atomic_get_ctx()->send_write_request(request->ovs_aiocbp,
+                                                 request);
+            break;
+        case RequestOp::Flush:
+        case RequestOp::AsyncFlush:
+            atomic_get_ctx()->send_flush_request(request);
+            break;
+        default:
+            //cnanakos TODO: shouldn't be here, log
+            ;
+        }
+    }
+}
+
+int
+NetworkHAContext::reconnect()
+{
+    int r = -1;
+    bool connected = false;
+    while (not cluster_nw_uris_.empty())
+    {
+        std::string uri = cluster_nw_uris_.back();
+        cluster_nw_uris_.pop_back();
+        if (uri == uri_)
+        {
+            continue;
+        }
+        auto tmp_ctx = new NetworkXioContext(uri,
+                                             qd_,
+                                             *this,
+                                             true);
+        r = tmp_ctx->open_volume_(volume_name_.c_str(),
+                                  oflag_,
+                                  false);
+        if (r < 0)
+        {
+            delete tmp_ctx;
+            continue;
+        }
+        else
+        {
+            uri_ = uri;
+            connected = true;
+            atomic_xchg_ctx(tmp_ctx);
+        }
+        if (connected)
+        {
+            update_cluster_node_uri();
+            break;
+        }
+    }
+    return r;
+}
+
+void
+NetworkHAContext::try_to_reconnect()
+{
+    LOCK_INFLIGHT();
+    int r = reconnect();
+    if (r < 0)
+    {
+        opened_ = false;
+    }
+    else
+    {
+        connection_error_ = false;
+        resend_inflight_requests();
+    }
+}
+
+void
 NetworkHAContext::update_cluster_node_uri()
 {
+    /* cnanakos TODO: update on specific intervals? */
     int rl = list_cluster_node_uri(cluster_nw_uris_);
     if (rl < 0)
     {
@@ -155,9 +275,20 @@ NetworkHAContext::ha_ctx_handler(void *arg)
     {
         if (is_connection_error())
         {
-            fail_inflight_requests(EIO);
+            remove_all_seen_requests();
+            if (is_volume_open())
+            {
+                try_to_reconnect();
+            }
+            else
+            {
+                fail_inflight_requests(EIO);
+            }
         }
-        //cnanakos: use a cv and wait?
+        else
+        {
+            remove_seen_requests();
+        }
         std::this_thread::sleep_for(HA_HANDLER_SLEEP_TIME);
     }
     std::lock_guard<std::mutex> lock_(thread->mutex_);
@@ -176,6 +307,7 @@ NetworkHAContext::open_volume(const char *volume_name,
         oflag_ = oflag;
         openning_ = false;
         opened_ = true;
+        update_cluster_node_uri();
     }
     return r;
 }

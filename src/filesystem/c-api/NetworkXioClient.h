@@ -43,7 +43,8 @@ class NetworkXioClient
 public:
     NetworkXioClient(const std::string& uri,
                      const uint64_t qd,
-                     NetworkHAContext& ha_ctx);
+                     NetworkHAContext& ha_ctx,
+                     bool ha_try_reconnect);
 
     ~NetworkXioClient();
 
@@ -224,6 +225,8 @@ private:
     EventFD evfd;
 
     NetworkHAContext& ha_ctx_;
+    bool ha_try_reconnect_;
+    bool connection_error_;
 
     void
     xio_run_loop_worker();
@@ -236,9 +239,6 @@ private:
 
     void
     shutdown();
-
-    template<class E>
-    void set_exception_ptr(E e);
 
     static xio_connection*
     create_connection_control(session_data *sdata,
@@ -297,15 +297,47 @@ private:
         return ha_ctx_.is_ha_enabled();
     }
 
+    bool
+    try_fail_request_on_conn_error()
+    {
+        bool ha_and_conn_error = connection_error_ and is_ha_enabled();
+        bool try_reconn_not_openning = (not ha_ctx_.is_volume_openning() and
+                ha_try_reconnect_);
+        return (ha_and_conn_error and (ha_ctx_.is_volume_openning() or
+                                       try_reconn_not_openning));
+    }
+
+    bool
+    try_fail_request_on_msg_error()
+    {
+        bool ha_conn_err_not_try_reconn = is_ha_enabled() and
+            connection_error_ and (not ha_try_reconnect_);
+        return ((not ha_conn_err_not_try_reconn) or
+                (ha_conn_err_not_try_reconn and ha_ctx_.is_volume_openning()));
+    }
+
     void
-    remove_inflight_request(xio_msg_s *xio_msg)
+    insert_seen_request(xio_msg_s *xio_msg)
     {
         if (is_ha_enabled())
         {
             uint64_t id = get_ovs_aio_request(xio_msg->opaque)->_id;
-            ha_ctx_.remove_inflight_request(id);
+            maybe_insert_seen_request(id);
         }
+    }
 
+    void
+    maybe_insert_seen_request(uint64_t id)
+    {
+        if (not ha_try_reconnect_)
+        {
+            ha_ctx_.insert_seen_request(id);
+        }
+        else
+        {
+            /* in state machine order */
+            ha_try_reconnect_ = false;
+        }
     }
 };
 

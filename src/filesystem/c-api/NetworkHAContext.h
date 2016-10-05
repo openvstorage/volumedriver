@@ -121,12 +121,24 @@ public:
                             ovs_aio_request *request);
 
     void
-    remove_inflight_request(uint64_t id);
+    insert_seen_request(uint64_t id);
 
     bool
     is_ha_enabled() const
     {
         return ha_enabled_;
+    }
+
+    bool
+    is_volume_openning() const
+    {
+        return openning_;
+    }
+
+    bool
+    is_volume_open() const
+    {
+        return opened_;
     }
 
     void
@@ -148,6 +160,9 @@ private:
 
     fungi::SpinLock inflight_reqs_lock_;
     std::unordered_map<uint64_t, ovs_aio_request*> inflight_ha_reqs_;
+
+    fungi::SpinLock seen_reqs_lock_;
+    std::queue<uint64_t> seen_ha_reqs_;
 
     std::atomic<uint64_t> request_id_;
 
@@ -187,6 +202,21 @@ private:
 
     void
     fail_inflight_requests(int errval);
+
+    void
+    resend_inflight_requests();
+
+    void
+    remove_seen_requests();
+
+    void
+    remove_all_seen_requests();
+
+    void
+    try_to_reconnect();
+
+    int
+    reconnect();
 };
 
 } //namespace volumedriverfs

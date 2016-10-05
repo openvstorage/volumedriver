@@ -28,7 +28,8 @@ class NetworkXioContext : public ovs_context_t
 public:
     NetworkXioContext(const std::string& uri,
                       uint64_t net_client_qdepth,
-                      NetworkHAContext& ha_ctx);
+                      NetworkHAContext& ha_ctx,
+                      bool ha_try_reconnect);
 
     ~NetworkXioContext();
 
@@ -41,6 +42,11 @@ public:
     int
     open_volume(const char *volume_name,
                 int oflag);
+
+    int
+    open_volume_(const char *volume_name,
+                 int oflag,
+                 bool should_insert_request);
 
     void
     close_volume();
@@ -113,6 +119,7 @@ private:
     uint64_t net_client_qdepth_;
     std::string volname_;
     NetworkHAContext& ha_ctx_;
+    bool ha_try_reconnect_;
 };
 
 } //namespace volumedriverfs

@@ -111,7 +111,8 @@ static_evfd_stop_loop(int fd, int events, void *data)
 
 NetworkXioClient::NetworkXioClient(const std::string& uri,
                                    const uint64_t qd,
-                                   NetworkHAContext& ha_ctx)
+                                   NetworkHAContext& ha_ctx,
+                                   bool ha_try_reconnect)
     : uri_(uri)
     , stopping(false)
     , stopped(false)
@@ -120,6 +121,8 @@ NetworkXioClient::NetworkXioClient(const std::string& uri,
     , nr_req_queue(qd)
     , evfd()
     , ha_ctx_(ha_ctx)
+    , ha_try_reconnect_(ha_try_reconnect)
+    , connection_error_(false)
 {
     ses_ops.on_session_event = static_on_session_event<NetworkXioClient>;
     ses_ops.on_session_established = NULL;
@@ -337,9 +340,12 @@ NetworkXioClient::xio_run_loop_worker()
             if (ret < 0)
             {
                 req_queue_release();
-                ovs_aio_request::handle_xio_request(get_ovs_aio_request(req->opaque),
-                                                    -1,
-                                                    EIO);
+                if ((not is_ha_enabled()) or try_fail_request_on_conn_error())
+                {
+                    ovs_aio_request::handle_xio_request(get_ovs_aio_request(req->opaque),
+                                                        -1,
+                                                        EIO);
+                }
                 delete req;
             }
         }
@@ -382,7 +388,7 @@ NetworkXioClient::on_response(xio_session *session __attribute__((unused)),
     }
     xio_msg_s *xio_msg = reinterpret_cast<xio_msg_s*>(imsg.opaque());
 
-    remove_inflight_request(xio_msg);
+    insert_seen_request(xio_msg);
     ovs_aio_request::handle_xio_request(get_ovs_aio_request(xio_msg->opaque),
                                         imsg.retval(),
                                         imsg.errval());
@@ -436,11 +442,12 @@ NetworkXioClient::on_msg_error(xio_session *session __attribute__((unused)),
         xio_release_response(msg);
     }
     xio_msg = reinterpret_cast<xio_msg_s*>(imsg.opaque());
-
-    remove_inflight_request(xio_msg);
-    ovs_aio_request::handle_xio_request(get_ovs_aio_request(xio_msg->opaque),
-                                        -1,
-                                        EIO);
+    if (try_fail_request_on_msg_error())
+    {
+        ovs_aio_request::handle_xio_request(get_ovs_aio_request(xio_msg->opaque),
+                                            -1,
+                                            EIO);
+    }
     req_queue_release();
     delete xio_msg;
     return 0;
@@ -453,6 +460,18 @@ NetworkXioClient::on_session_event(xio_session *session __attribute__((unused)),
 
     switch (event_data->event)
     {
+    case XIO_SESSION_ERROR_EVENT:
+    case XIO_SESSION_CONNECTION_ERROR_EVENT:
+    case XIO_SESSION_CONNECTION_REFUSED_EVENT:
+        connection_error_ = true;
+        ha_ctx_.set_connection_error();
+        break;
+    case XIO_SESSION_CONNECTION_CLOSED_EVENT:
+        break;
+    case XIO_SESSION_CONNECTION_DISCONNECTED_EVENT:
+        connection_error_ = disconnected = true;
+        ha_ctx_.set_connection_error();
+        break;
     case XIO_SESSION_CONNECTION_TEARDOWN_EVENT:
         if (disconnecting)
         {

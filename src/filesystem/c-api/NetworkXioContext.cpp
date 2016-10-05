@@ -20,11 +20,13 @@ namespace volumedriverfs
 
 NetworkXioContext::NetworkXioContext(const std::string& uri,
                                      uint64_t net_client_qdepth,
-                                     NetworkHAContext& ha_ctx)
+                                     NetworkHAContext& ha_ctx,
+                                     bool ha_try_reconnect)
     : net_client_(nullptr)
     , uri_(uri)
     , net_client_qdepth_(net_client_qdepth)
     , ha_ctx_(ha_ctx)
+    , ha_try_reconnect_(ha_try_reconnect)
 {
 }
 
@@ -69,8 +71,9 @@ NetworkXioContext::aio_return(ovs_aiocb *ovs_aiocbp)
 }
 
 int
-NetworkXioContext::open_volume(const char *volume_name,
-                               int oflag __attribute__((unused)))
+NetworkXioContext::open_volume_(const char *volume_name,
+                                int oflag __attribute__((unused)),
+                                bool should_insert_request)
 {
     ssize_t r = 0;
     struct ovs_aiocb aio;
@@ -95,7 +98,14 @@ NetworkXioContext::open_volume(const char *volume_name,
         net_client_ =
             std::make_shared<volumedriverfs::NetworkXioClient>(uri_,
                     net_client_qdepth_,
-                    ha_ctx_);
+                    ha_ctx_,
+                    ha_try_reconnect_);
+        if (should_insert_request)
+        {
+            ha_ctx_.insert_inflight_request(
+                    ha_ctx_.assign_request_id(request.get()),
+                    request.get());
+        }
         net_client_->xio_send_open_request(volume_name,
                                            reinterpret_cast<void*>(request.get()));
     }
@@ -122,6 +132,15 @@ NetworkXioContext::open_volume(const char *volume_name,
         return r;
     }
     return aio_return(&aio);
+}
+
+int
+NetworkXioContext::open_volume(const char *volume_name,
+                               int oflag)
+{
+    return open_volume_(volume_name,
+                        oflag,
+                        true);
 }
 
 void
