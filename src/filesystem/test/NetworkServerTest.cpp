@@ -99,6 +99,7 @@ public:
     SetUp()
     {
         FileSystemTestBase::SetUp();
+        start_failovercache_for_remote_node();
         bpt::ptree pt;
 
         net_xio_server_ = std::make_unique<NetworkXioInterface>(pt,
@@ -117,6 +118,7 @@ public:
     virtual void
     TearDown()
     {
+        stop_failovercache_for_remote_node();
         net_xio_server_->shutdown();
         net_xio_thread_.join();
         net_xio_server_ = nullptr;
@@ -412,6 +414,169 @@ public:
             " bytes sized reads @ qdepth " << qdepth << ": " <<
             total << " ops in " << elapsed << " seconds -> " <<
             total / elapsed << " IOPS" << std::endl;
+    }
+
+    void
+    test_high_availability(bool enable_ha,
+                           bool mark_offline,
+                           bool fencing)
+    {
+        if (fencing)
+        {
+            set_use_fencing(true);
+        }
+        mount_remote();
+
+        const std::string vname("volume");
+        uint64_t volume_size = 1 << 20;
+        ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+        ASSERT_TRUE(ctx_attr != nullptr);
+        EXPECT_EQ(0,
+                  ovs_ctx_attr_set_transport(ctx_attr,
+                                             FileSystemTestSetup::edge_transport().c_str(),
+                                             FileSystemTestSetup::address().c_str(),
+                                             FileSystemTestSetup::remote_edge_port()));
+
+        if (enable_ha)
+        {
+            EXPECT_EQ(0, ovs_ctx_attr_enable_ha(ctx_attr));
+        }
+
+        ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
+        ASSERT_TRUE(ctx != nullptr);
+        const size_t max = 10;
+        size_t count = 0;
+
+        while (ovs_create_volume(ctx,
+                                 vname.c_str(),
+                                 1ULL << 20) == -1)
+        {
+            ASSERT_GT(max, ++count) <<
+                "failed to create volume after " << count << " attempts: " << strerror(errno);
+            boost::this_thread::sleep_for(boost::chrono::milliseconds(250));
+        }
+
+        ASSERT_EQ(0,
+                  ovs_ctx_init(ctx,
+                               vname.c_str(),
+                               O_RDWR));
+
+        std::string pattern("openvstorage1");
+        auto wbuf = std::make_unique<uint8_t[]>(pattern.length());
+        ASSERT_TRUE(wbuf != nullptr);
+
+        memcpy(wbuf.get(),
+               pattern.c_str(),
+               pattern.length());
+
+        EXPECT_EQ(pattern.length(),
+                  ovs_write(ctx,
+                            wbuf.get(),
+                            pattern.length(),
+                            1024));
+
+        EXPECT_EQ(0, ovs_flush(ctx));
+
+        wbuf.reset();
+
+        auto rbuf = std::make_unique<uint8_t[]>(pattern.length());
+        ASSERT_TRUE(rbuf != nullptr);
+
+        EXPECT_EQ(pattern.length(),
+                  ovs_read(ctx,
+                           rbuf.get(),
+                           pattern.length(),
+                           1024));
+
+        EXPECT_TRUE(memcmp(rbuf.get(),
+                           pattern.c_str(),
+                           pattern.length()) == 0);
+
+        rbuf.reset();
+
+        const int64_t timeout = 10;
+        const std::string snap1("snap1");
+
+        EXPECT_EQ(-1,
+                  ovs_snapshot_create(ctx,
+                                      (vname + "X").c_str(),
+                                      snap1.c_str(),
+                                      timeout));
+        EXPECT_EQ(ENOENT,
+                  errno);
+
+        EXPECT_EQ(0,
+                  ovs_snapshot_create(ctx,
+                                      vname.c_str(),
+                                      snap1.c_str(),
+                                      timeout));
+
+        const std::string snap2("snap2");
+
+        EXPECT_EQ(0,
+                  ovs_snapshot_create(ctx,
+                                      vname.c_str(),
+                                      snap2.c_str(),
+                                      0));
+
+        EXPECT_EQ(1,
+                  ovs_snapshot_is_synced(ctx,
+                                         vname.c_str(),
+                                         snap2.c_str()));
+
+        umount_remote();
+
+        if (mark_offline)
+        {
+            std::shared_ptr<vfs::ClusterRegistry> reg(cluster_registry(fs_->object_router()));
+            reg->set_node_state(remote_node_id(),
+                                vfs::ClusterNodeStatus::State::Offline);
+        }
+
+        auto rbuf_local = std::make_unique<uint8_t[]>(pattern.length());
+        ASSERT_TRUE(rbuf_local != nullptr);
+
+        if (enable_ha)
+        {
+            EXPECT_EQ(pattern.length(),
+                      ovs_read(ctx,
+                               rbuf_local.get(),
+                               pattern.length(),
+                               1024));
+
+            EXPECT_TRUE(memcmp(rbuf_local.get(),
+                               pattern.c_str(),
+                               pattern.length()) == 0);
+
+            rbuf_local.reset();
+
+            EXPECT_EQ(0,
+                      ovs_create_volume(ctx,
+                                        "local_volume",
+                                        volume_size));
+        }
+        else
+        {
+            EXPECT_EQ(-1,
+                      ovs_read(ctx,
+                               rbuf_local.get(),
+                               pattern.length(),
+                               1024));
+            EXPECT_EQ(EIO, errno);
+
+            rbuf_local.reset();
+
+            EXPECT_EQ(-1,
+                      ovs_create_volume(ctx,
+                                        "local_volume",
+                                        volume_size));
+            EXPECT_EQ(ENOTCONN, errno);
+        }
+
+        EXPECT_EQ(0,
+                  ovs_ctx_destroy(ctx));
+        EXPECT_EQ(0,
+                  ovs_ctx_attr_destroy(ctx_attr));
     }
 
     std::unique_ptr<NetworkXioInterface> net_xio_server_;
@@ -1362,6 +1527,27 @@ TEST_F(NetworkServerTest, list_open_connections)
 
     const std::vector<vfs::ClientInfo> k(client_.list_client_connections(local_node_id()));
     EXPECT_EQ(0, k.size());
+}
+
+TEST_F(NetworkServerTest, high_availability_fail_remote_mark_offline)
+{
+    test_high_availability(true,
+                           true,
+                           false);
+}
+
+TEST_F(NetworkServerTest, high_availability_fail_remote_and_fail)
+{
+    test_high_availability(false,
+                           true,
+                           false);
+}
+
+TEST_F(NetworkServerTest, high_availability_fail_remote_automated)
+{
+    test_high_availability(true,
+                           false,
+                           true);
 }
 
 } //namespace
