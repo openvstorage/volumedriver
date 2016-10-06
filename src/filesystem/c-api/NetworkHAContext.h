@@ -217,6 +217,9 @@ private:
 
     int
     reconnect();
+
+    std::string
+    get_rand_cluster_uri();
 };
 
 } //namespace volumedriverfs

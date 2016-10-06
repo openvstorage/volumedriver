@@ -21,6 +21,7 @@
 #include <memory>
 #include <thread>
 #include <chrono>
+#include <random>
 
 #define HA_HANDLER_SLEEP_TIME   5ms
 
@@ -103,6 +104,22 @@ NetworkHAContext::~NetworkHAContext()
         ha_ctx_thread_.reset_iothread();
     }
     delete std::atomic_load(&ctx_);
+}
+
+std::string
+NetworkHAContext::get_rand_cluster_uri()
+{
+    static std::random_device rd;
+    static std::mt19937 generator(rd());
+    std::uniform_int_distribution<> dist(0,
+                                         std::distance(cluster_nw_uris_.begin(),
+                                                       cluster_nw_uris_.end())
+                                         -1);
+    auto it = cluster_nw_uris_.begin();
+    std::advance(it, dist(generator));
+    std::string uri = *it;
+    cluster_nw_uris_.erase(it);
+    return uri;
 }
 
 uint64_t
@@ -206,8 +223,7 @@ NetworkHAContext::reconnect()
     bool connected = false;
     while (not cluster_nw_uris_.empty())
     {
-        std::string uri = cluster_nw_uris_.back();
-        cluster_nw_uris_.pop_back();
+        std::string uri = get_rand_cluster_uri();
         if (uri == uri_)
         {
             continue;
