@@ -90,6 +90,12 @@ public:
         return scrub_manager_.get_scrub_tree(reply);
     }
 
+    void
+    destroy()
+    {
+        scrub_manager_.destroy();
+    }
+
 private:
     ObjectRegistry registry_;
     ScrubManager scrub_manager_;
@@ -208,6 +214,10 @@ ScrubManagerClient::registerize()
              "Return the tree of clones a ScrubReply is queued for\n"
              "@param scrub_reply, ScrubReply\n"
              "@return Clone tree\n")
+        .def("_destroy",
+             &Wrapper::destroy,
+             "Wipe all queues (parent + clone scrubs, garbage) from Arakoon\n"
+             "MUST NOT BE USED WHILE CLUSTER MEMBERS ARE RUNNING\n")
         ;
 }
 
