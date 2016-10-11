@@ -63,11 +63,9 @@ struct NetworkXioClientData
     xio_connection *conn;
     xio_mempool *mpool;
     std::atomic<bool> disconnected;
-    std::atomic<bool> connection_closed;
     std::atomic<uint64_t> refcnt;
     NetworkXioServer *server;
     NetworkXioIOHandler *ioh;
-    std::list<NetworkXioRequest*> done_reqs;
     ClientInfoTag tag;
 };
 

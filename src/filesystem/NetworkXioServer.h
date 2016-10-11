@@ -137,13 +137,6 @@ private:
     mark_session_disconnected(xio_session *session,
                               xio_session_event_data *event_data);
 
-    void
-    mark_session_closed(xio_session *session,
-                        xio_session_event_data *event_data);
-
-    void
-    clear_done_reqs(NetworkXioClientData *cd);
-
     NetworkXioClientData*
     allocate_client_data();
 };
