@@ -73,12 +73,12 @@ class ZWorkerPool
 {
 public:
     typedef std::vector<zmq::message_t> MessageParts;
-    typedef std::function<MessageParts(MessageParts&&)> WorkerFun;
+    typedef std::function<MessageParts(MessageParts)> WorkerFun;
 
     ZWorkerPool(const std::string& name,
                 zmq::context_t& ztx,
                 const std::string& pub_addr,
-                WorkerFun&& worker_fun,
+                WorkerFun worker_fun,
                 uint16_t min_workers,
                 uint16_t max_workers = 128);
 

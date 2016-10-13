@@ -284,7 +284,7 @@ private:
 ZWorkerPool::ZWorkerPool(const std::string& name,
                          zmq::context_t& ztx,
                          const std::string& pub_addr,
-                         WorkerFun&& worker_fun,
+                         WorkerFun worker_fun,
                          uint16_t min_workers,
                          uint16_t max_workers)
     : min_(min_workers)

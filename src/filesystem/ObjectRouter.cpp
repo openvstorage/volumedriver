@@ -119,15 +119,15 @@ ObjectRouter::ObjectRouter(const bpt::ptree& pt,
                            ":"s +
                            boost::lexical_cast<std::string>(ncfg.message_port));
 
-    worker_pool_.reset(new ZWorkerPool("ObjectRouterWorkerPool",
-                                       *ztx_,
-                                       addr,
-                                       [this](ZWorkerPool::MessageParts&& parts)
-                                       {
-                                           return redirected_work_(std::move(parts));
-                                       },
-                                       vrouter_min_workers.value(),
-                                       vrouter_max_workers.value()));
+    worker_pool_ = std::make_unique<ZWorkerPool>("ObjectRouterWorkerPool",
+                                                 *ztx_,
+                                                 addr,
+                                                 [this](ZWorkerPool::MessageParts parts)
+                                                 {
+                                                     return redirected_work_(std::move(parts));
+                                                 },
+                                                 vrouter_min_workers.value(),
+                                                 vrouter_max_workers.value());
 }
 
 ObjectRouter::~ObjectRouter()
@@ -301,7 +301,7 @@ get_req(const ZWorkerPool::MessageParts& parts)
 }
 
 ZWorkerPool::MessageParts
-ObjectRouter::redirected_work_(ZWorkerPool::MessageParts&& parts_in)
+ObjectRouter::redirected_work_(ZWorkerPool::MessageParts parts_in)
 {
     // XXX: All this juggling with vector indices is pretty brittle. Slices would
     // be nice
