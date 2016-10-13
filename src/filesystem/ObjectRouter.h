@@ -460,7 +460,7 @@ private:
     build_node_map_(const boost::optional<const boost::property_tree::ptree&>& pt);
 
     ZWorkerPool::MessageParts
-    redirected_work_(ZWorkerPool::MessageParts&& parts_in);
+    redirected_work_(ZWorkerPool::MessageParts parts_in);
 
     std::shared_ptr<ClusterNode>
     find_node_(const NodeId&) const;
@@ -529,7 +529,7 @@ private:
     template<typename MigratePred,
              typename... Args>
     FastPathCookie
-    maybe_migrate_(MigratePred&& ,
+    maybe_migrate_(MigratePred&&,
                    void (ClusterNode::*fn)(const Object&,
                                            Args...),
                    const ObjectId&,
@@ -573,12 +573,6 @@ private:
     steal_(const ObjectRegistration&,
            OnlyStealFromOfflineNode,
            ForceRestart);
-
-    void
-    maybe_register_base_(const ObjectId& id,
-                         const char* desc,
-                         std::function<void(const ObjectId&,
-                                            const backend::Namespace&)>&& fn);
 
     using PrepareRestartFun = std::function<void(const Object&)>;
 
