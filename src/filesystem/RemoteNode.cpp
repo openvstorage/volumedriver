@@ -27,6 +27,7 @@
 
 #include <youtils/Assert.h>
 #include <youtils/Catchers.h>
+#include <youtils/SourceOfUncertainty.h>
 
 // XXX: needed as we throw VolManager::VolumeDoesNotExistException.
 // This needs to be redone, we don't want to know about VolManager
@@ -112,6 +113,18 @@ RemoteNode::init_zock_()
     zock_->connect(tcp_addr.c_str());
 }
 
+namespace
+{
+
+vfsprotocol::Tag
+allocate_tag()
+{
+    static std::atomic<uint64_t> t(yt::SourceOfUncertainty()(static_cast<uint64_t>(0)));
+    return vfsprotocol::Tag(t++);
+}
+
+}
+
 struct RemoteNode::WorkItem
 {
     const google::protobuf::Message& request;
@@ -130,7 +143,7 @@ struct RemoteNode::WorkItem
              ExtraSendFun* send_extra,
              ExtraRecvFun* recv_extra)
         : request(req)
-        , request_tag(reinterpret_cast<uint64_t>(&req))
+        , request_tag(allocate_tag())
         , request_type(vfsprotocol::RequestTraits<Request>::request_type)
         , request_desc(vfsprotocol::request_type_to_string(request_type))
         , send_extra_fun(send_extra)
