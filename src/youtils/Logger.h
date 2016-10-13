@@ -105,6 +105,13 @@ public:
         return n;
     }
 
+    static const std::string&
+    syslog_sink_name()
+    {
+        static const std::string sl("syslog:");
+        return sl;
+    }
+
     static void
     disableLogging();
 

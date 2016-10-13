@@ -40,6 +40,7 @@
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/path.hpp>
 
+#define BOOST_LOG_USE_NATIVE_SYSLOG
 #include <boost/log/attributes.hpp>
 #include <boost/log/attributes/attribute_set.hpp>
 #include <boost/log/attributes/attribute_value_set.hpp>
@@ -54,6 +55,7 @@
 #include <boost/log/utility/string_literal.hpp>
 #include <boost/log/sinks/basic_sink_backend.hpp>
 #include <boost/log/sinks/frontend_requirements.hpp>
+#include <boost/log/sinks/syslog_backend.hpp>
 
 #include <boost/lexical_cast.hpp>
 
@@ -472,6 +474,18 @@ make_redis_sink(const RedisUrl& url)
     return sink;
 }
 
+LogSinkPtr
+make_syslog_sink()
+{
+    boost::shared_ptr<bl::sinks::syslog_backend> backend(
+    new bl::sinks::syslog_backend(bl::keywords::facility = bl::sinks::syslog::user,
+                                  bl::keywords::use_impl = bl::sinks::syslog::native));
+    using SyslogSink = bl::sinks::synchronous_sink<bl::sinks::syslog_backend>;
+    auto sink(boost::make_shared<SyslogSink>(backend));
+    sink->set_formatter(&ovs_log_formatter);
+    return sink;
+}
+
 }
 
 SeverityLoggerWithName::SeverityLoggerWithName(const std::string& n,
@@ -518,6 +532,11 @@ Logger::setupLogging(const std::string& progname,
             {
                 log_sinks.emplace(std::make_pair(s,
                                                  make_console_sink()));
+            }
+            else if (s == syslog_sink_name())
+            {
+                log_sinks.emplace(std::make_pair(s,
+                                                 make_syslog_sink()));
             }
             else
             {
