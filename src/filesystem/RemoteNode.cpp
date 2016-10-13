@@ -140,13 +140,11 @@ void
 RemoteNode::drop_request_(const WorkItem& work)
 {
     LOCK();
-    std::remove_if(queued_work_.begin(),
-                   queued_work_.end(),
-                   [&](const WorkItemPtr w)
-                   {
-                       VERIFY(w);
-                       return w->request_tag == work.request_tag;
-                   });
+    queued_work_.remove_if([&](const WorkItemPtr& w)
+                           {
+                               VERIFY(w);
+                               return w->request_tag == work.request_tag;
+                           });
     submitted_work_.erase(work.request_tag);
 }
 
