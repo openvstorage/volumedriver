@@ -1655,7 +1655,7 @@ TEST_F(RemoteTest, back_to_life)
                          pattern,
                          off);
 
-    set_redirect_timeout(bc::milliseconds(100));
+    set_redirect_timeout(bc::milliseconds(500));
     umount_remote();
 
     std::vector<char> buf(pattern.size());
