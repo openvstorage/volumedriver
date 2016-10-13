@@ -389,13 +389,20 @@ protected:
     volumedriverfs::FrontendPath
     clone_path_to_volume_path(const volumedriverfs::FrontendPath& clone_path);
 
-    std::shared_ptr<volumedriverfs::LocalNode>
-    local_node(volumedriverfs::ObjectRouter& vrouter);
+    static std::shared_ptr<volumedriverfs::LocalNode>
+    local_node(volumedriverfs::ObjectRouter&);
 
-    std::shared_ptr<volumedriverfs::ClusterRegistry>
-    cluster_registry(volumedriverfs::ObjectRouter& vrouter);
+    static std::shared_ptr<volumedriverfs::RemoteNode>
+    remote_node(volumedriverfs::ObjectRouter&,
+                const volumedriverfs::NodeId&);
 
-    bool
+    static std::shared_ptr<volumedriverfs::ClusterRegistry>
+    cluster_registry(volumedriverfs::ObjectRouter&);
+
+    static bool
+    remote_node_queue_full(volumedriverfs::RemoteNode&);
+
+    static bool
     is_mounted(const boost::filesystem::path& p);
 
     bool
@@ -440,6 +447,9 @@ protected:
 
     void
     set_use_fencing(bool);
+
+    void
+    set_redirect_timeout(const boost::chrono::milliseconds&);
 
     void
     check_snapshots(const volumedriverfs::ObjectId& volume_id,

@@ -30,12 +30,19 @@
 
 #include <youtils/Logging.h>
 
+namespace volumedriverfstest
+{
+class FileSystemTestBase;
+}
+
 namespace volumedriverfs
 {
 
 class RemoteNode final
     : public ClusterNode
 {
+    friend class volumedriverfstest::FileSystemTestBase;
+
 public:
     RemoteNode(ObjectRouter& vrouter,
                const ClusterNodeConfig& cfg,

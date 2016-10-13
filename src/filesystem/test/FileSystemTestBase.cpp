@@ -32,10 +32,13 @@
 
 #include "../FuseInterface.h"
 #include "../ObjectRegistry.h"
+#include "../Protocol.h"
 #include "../Registry.h"
+#include "../RemoteNode.h"
 #include "../VirtualDiskFormat.h"
 #include "../VirtualDiskFormatVmdk.h"
 #include "../VirtualDiskFormatRaw.h"
+#include "../ZUtils.h"
 
 namespace volumedriverfstest
 {
@@ -1040,6 +1043,12 @@ FileSystemTestBase::set_lock_reaper_interval(uint64_t seconds)
 }
 
 void
+FileSystemTestBase::set_redirect_timeout(const boost::chrono::milliseconds& ms)
+{
+    set_object_router_param_(ip::PARAMETER_TYPE(vrouter_redirect_timeout_ms)(ms.count()));
+}
+
+void
 FileSystemTestBase::set_use_fencing(bool use_fencing)
 {
     use_fencing_ = use_fencing;
@@ -1151,6 +1160,13 @@ FileSystemTestBase::local_node(vfs::ObjectRouter& router)
     return router.local_node_();
 }
 
+std::shared_ptr<vfs::RemoteNode>
+FileSystemTestBase::remote_node(vfs::ObjectRouter& router,
+                                const vfs::NodeId& node_id)
+{
+    return std::dynamic_pointer_cast<vfs::RemoteNode>(router.find_node_(node_id));
+}
+
 std::shared_ptr<vfs::ClusterRegistry>
 FileSystemTestBase::cluster_registry(vfs::ObjectRouter& router)
 {
@@ -1163,6 +1179,13 @@ FileSystemTestBase::get_cluster_size(const vfs::ObjectId& oid) const
     LOCKVD();
     vd::WeakVolumePtr v = api::getVolumePointer(vd::VolumeId(oid.str()));
     return api::GetClusterSize(v);
+}
+
+bool
+FileSystemTestBase::remote_node_queue_full(vfs::RemoteNode& rnode)
+{
+    boost::lock_guard<decltype(rnode.work_lock_)> g(rnode.work_lock_);
+    return vfs::ZUtils::writable(*rnode.zock_);
 }
 
 }

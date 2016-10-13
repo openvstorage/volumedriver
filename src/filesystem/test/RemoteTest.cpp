@@ -24,6 +24,7 @@
 #include <youtils/FileUtils.h>
 #include <youtils/FileDescriptor.h>
 #include <youtils/wall_timer.h>
+#include <youtils/System.h>
 
 #include <volumedriver/Api.h>
 #include <volumedriver/Volume.h>
@@ -37,6 +38,7 @@ namespace volumedriverfstest
 {
 
 namespace ara = arakoon;
+namespace bc = boost::chrono;
 namespace be = backend;
 namespace bpt = boost::property_tree;
 namespace fs = boost::filesystem;
@@ -1637,6 +1639,89 @@ TEST_F(RemoteTest, stealing_and_fencing)
                                              boost::none),
                  std::exception);
     EXPECT_TRUE(api::getHalted(vid));
+}
+
+// Cf. https://github.com/openvstorage/volumedriver/issues/145
+TEST_F(RemoteTest, back_to_life)
+{
+    const vfs::FrontendPath vname(make_volume_name("/some-volume"));
+    const size_t vsize = 1ULL << 20;
+    const fs::path rpath(make_remote_file(vname, vsize));
+
+    const std::string pattern("remotely written");
+    const size_t off = 0;
+
+    write_to_remote_file(rpath,
+                         pattern,
+                         off);
+
+    set_redirect_timeout(bc::milliseconds(100));
+    umount_remote();
+
+    std::vector<char> buf(pattern.size());
+
+    std::shared_ptr<vfs::RemoteNode> rnode(remote_node(fs_->object_router(),
+                                                       remote_node_id()));
+    ASSERT_TRUE(rnode != nullptr);
+
+    const size_t extra_reads = yt::System::get_env_with_default("REMOTE_TEST_BACK_TO_LIFE_EXTRA_READS",
+                                                                50ULL);
+
+    auto fun([&]
+             {
+                 while (not remote_node_queue_full(*rnode))
+                 {
+                     EXPECT_GT(0,
+                               read_from_file(vname,
+                                              buf.data(),
+                                              buf.size(),
+                                              off));
+                 }
+
+                 for (size_t i = 0; i < extra_reads; ++i)
+                 {
+                     EXPECT_GT(0,
+                               read_from_file(vname,
+                                              buf.data(),
+                                              buf.size(),
+                                              off));
+                 }
+             });
+
+    const size_t nthreads = 4;
+    std::vector<boost::thread> threads;
+    threads.reserve(nthreads);
+
+    for (size_t i = 0; i < nthreads; ++i)
+    {
+        threads.emplace_back(fun);
+    }
+
+    for (auto& t : threads)
+    {
+        t.join();
+    }
+
+    mount_remote();
+
+    threads.clear();
+
+    for (size_t i = 0; i < nthreads; ++i)
+    {
+        threads.emplace_back([&]
+                             {
+                                 EXPECT_EQ(buf.size(),
+                                           read_from_file(vname,
+                                                          buf.data(),
+                                                          buf.size(),
+                                                          off));
+                             });
+    }
+
+    for (auto& t : threads)
+    {
+        t.join();
+    }
 }
 
 TEST_F(RemoteTest, DISABLED_setup_remote_hack)
