@@ -101,13 +101,10 @@ void
 Sequence::apply(apc::Proxy_client& client,
                 const Namespace& nspace) const
 {
-    std::vector<app::object_info> infov;
-
     client.apply_sequence(nspace.str(),
                           apc::write_barrier::F,
                           asserts_,
-                          updates_,
-                          infov);
+                          updates_);
 }
 
 }

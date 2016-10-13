@@ -354,11 +354,14 @@ Connection::partial_read_(const Namespace& ns,
     convert_exceptions_<void>("partial read",
                               [&]
         {
+            alba::statistics::RoraCounter rora_counter;
+
             client_->read_objects_slices(ns.str(),
                                          app_slicesv,
                                          insist_on_latest_version == InsistOnLatestVersion::T ?
                                          apc::consistent_read::T :
-                                         apc::consistent_read::F);
+                                         apc::consistent_read::F,
+                                         rora_counter);
         });
 
     return true;
