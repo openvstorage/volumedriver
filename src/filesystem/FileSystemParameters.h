@@ -61,7 +61,8 @@ DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_backend_sync_timeout_m
                                                   uint64_t);
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_backend_sync_check_interval_ms,
                                                   uint64_t);
-
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_ping_timeout_ms,
+                                                  uint64_t);
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_migrate_timeout_ms,
                                                   uint64_t);
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_redirect_retries,

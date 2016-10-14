@@ -364,6 +364,12 @@ public:
         return boost::chrono::milliseconds(vrouter_migrate_timeout_ms.value());
     }
 
+    boost::chrono::milliseconds
+    ping_timeout() const
+    {
+        return boost::chrono::milliseconds(vrouter_ping_timeout_ms.value());
+    }
+
     MaybeFailOverCacheConfig
     failoverconfig_as_it_should_be() const;
 
@@ -415,6 +421,7 @@ private:
     DECLARE_PARAMETER(vrouter_check_local_volume_potential_period);
     DECLARE_PARAMETER(vrouter_backend_sync_timeout_ms);
     DECLARE_PARAMETER(vrouter_migrate_timeout_ms);
+    DECLARE_PARAMETER(vrouter_ping_timeout_ms);
     DECLARE_PARAMETER(vrouter_redirect_timeout_ms);
     DECLARE_PARAMETER(vrouter_redirect_retries);
     DECLARE_PARAMETER(vrouter_routing_retries);

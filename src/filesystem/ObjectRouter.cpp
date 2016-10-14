@@ -81,6 +81,7 @@ ObjectRouter::ObjectRouter(const bpt::ptree& pt,
     , vrouter_check_local_volume_potential_period(pt)
     , vrouter_backend_sync_timeout_ms(pt)
     , vrouter_migrate_timeout_ms(pt)
+    , vrouter_ping_timeout_ms(pt)
     , vrouter_redirect_timeout_ms(pt)
     , vrouter_redirect_retries(pt)
     , vrouter_routing_retries(pt)
@@ -1615,6 +1616,7 @@ ObjectRouter::update(const bpt::ptree& pt,
     U(vrouter_check_local_volume_potential_period);
     U(vrouter_backend_sync_timeout_ms);
     U(vrouter_migrate_timeout_ms);
+    U(vrouter_ping_timeout_ms);
     U(vrouter_redirect_timeout_ms);
     U(vrouter_routing_retries);
     U(vrouter_redirect_retries);
@@ -1668,6 +1670,7 @@ ObjectRouter::persist(bpt::ptree& pt,
     P(vrouter_check_local_volume_potential_period);
     P(vrouter_backend_sync_timeout_ms);
     P(vrouter_migrate_timeout_ms);
+    P(vrouter_ping_timeout_ms);
     P(vrouter_redirect_timeout_ms);
     P(vrouter_redirect_retries);
     P(vrouter_routing_retries);

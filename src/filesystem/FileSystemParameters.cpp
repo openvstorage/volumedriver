@@ -104,6 +104,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_migrate_timeout_ms,
                                       ShowDocumentation::T,
                                       500UL);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_ping_timeout_ms,
+                                      volumerouter_component_name,
+                                      "vrouter_ping_timeout_ms",
+                                      "timeout for ping requests in milliseconds",
+                                      ShowDocumentation::T,
+                                      1000UL);
+
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_redirect_retries,
                                       volumerouter_component_name,
                                       "vrouter_redirect_retries",

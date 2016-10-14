@@ -609,7 +609,7 @@ RemoteNode::ping()
     try
     {
         handle_(req,
-                vrouter_.redirect_timeout(),
+                vrouter_.ping_timeout(),
                 nullptr,
                 &handle_pong,
                 false);
