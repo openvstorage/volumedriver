@@ -169,7 +169,8 @@ void
 RemoteNode::handle_(const Request& req,
                     const bc::milliseconds& timeout_ms,
                     ExtraSendFun* send_extra,
-                    ExtraRecvFun* recv_extra)
+                    ExtraRecvFun* recv_extra,
+                    bool check_liveliness_on_timeout)
 {
     auto work = boost::make_shared<WorkItem>(req,
                                              send_extra,
@@ -195,6 +196,18 @@ RemoteNode::handle_(const Request& req,
             LOG_INFO(config.vrouter_id << ": remote did not respond within " << timeout_ms <<
                      " milliseconds - giving up");
             drop_request_(*work);
+
+            if (check_liveliness_on_timeout)
+            {
+                LOG_INFO(config.vrouter_id << ": checking liveliness");
+
+                try
+                {
+                    ping();
+                }
+                CATCH_STD_ALL_LOG_RETHROW("Failed to ping " << config.vrouter_id);
+            }
+
             throw RequestTimeoutException("request to remote node timed out");
         }
     case boost::future_status::ready:
@@ -593,10 +606,19 @@ RemoteNode::ping()
                                  LOG_TRACE("got pong from " << rsp.sender_id());
                              });
 
-    handle_(req,
-            vrouter_.redirect_timeout(),
-            nullptr,
-            &handle_pong);
+    try
+    {
+        handle_(req,
+                vrouter_.redirect_timeout(),
+                nullptr,
+                &handle_pong,
+                false);
+    }
+    catch (RequestTimeoutException&)
+    {
+        throw NodeTimeoutException("Ping to remote node timed out",
+                                   config.vrouter_id.str().c_str());
+    }
 }
 
 }

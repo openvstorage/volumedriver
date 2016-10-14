@@ -96,6 +96,7 @@ VD_BOOLEAN_ENUM(AttemptTheft);
 MAKE_EXCEPTION(Exception, fungi::IOException);
 MAKE_EXCEPTION(RemoteException, Exception);
 MAKE_EXCEPTION(RequestTimeoutException, Exception);
+MAKE_EXCEPTION(NodeTimeoutException, Exception);
 MAKE_EXCEPTION(RemoteTimeoutException, Exception);
 MAKE_EXCEPTION(ObjectNotRunningHereException, Exception);
 MAKE_EXCEPTION(ClusterNodeNotOnlineException, Exception);

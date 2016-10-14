@@ -663,7 +663,7 @@ TEST_F(RemoteTest, ping)
     umount_remote();
 
     EXPECT_THROW(vrouter.ping(remote_node_id()),
-                 vfs::RequestTimeoutException);
+                 vfs::NodeTimeoutException);
 
     mount_remote();
     EXPECT_NO_THROW(vrouter.ping(remote_node_id()));

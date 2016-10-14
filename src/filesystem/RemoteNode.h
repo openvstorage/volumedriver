@@ -133,7 +133,8 @@ private:
     handle_(const Request& req,
             const boost::chrono::milliseconds& timeout_ms,
             ExtraSendFun* send_extra = nullptr,
-            ExtraRecvFun* recv_extra = nullptr);
+            ExtraRecvFun* recv_extra = nullptr,
+            bool check_liveliness_on_timeout = true);
 };
 
 }

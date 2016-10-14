@@ -475,7 +475,7 @@ ObjectRouter::maybe_steal_(R (ClusterNode::*fn)(const Object&,
             ClusterNode& cn = *node;
             return (cn.*fn)(obj, std::forward<A>(args)...);
         }
-        catch (RequestTimeoutException&)
+        catch (NodeTimeoutException&)
         {
             VERIFY(remote == IsRemoteNode::T);
             LOG_ERROR(id << ": remote node " << owner_id << " timed out");
@@ -1294,7 +1294,7 @@ ObjectRouter::migrate_(const ObjectRegistration& reg,
 
             LOG_INFO(obj << " successfully migrated from " << from);
         }
-        catch (RequestTimeoutException&)
+        catch (NodeTimeoutException&)
         {
             LOG_ERROR(id << ": remote node " << from << " timed out while migrating");
             if (not steal_(reg,
