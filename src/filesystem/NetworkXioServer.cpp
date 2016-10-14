@@ -399,15 +399,6 @@ NetworkXioServer::destroy_session_connection(xio_session *session ATTR_UNUSED,
     }
 }
 
-void
-NetworkXioServer::mark_session_disconnected(xio_session *session ATTR_UNUSED,
-                                            xio_session_event_data *evdata)
-{
-    auto cd = static_cast<NetworkXioClientData*>(evdata->conn_user_context);
-    cd->disconnected = true;
-    return;
-}
-
 int
 NetworkXioServer::on_new_session(xio_session *session,
                                  xio_new_session_req * /*req*/)
@@ -438,7 +429,6 @@ NetworkXioServer::on_session_event(xio_session *session,
     case XIO_SESSION_CONNECTION_ERROR_EVENT:
         break;
     case XIO_SESSION_CONNECTION_DISCONNECTED_EVENT:
-        mark_session_disconnected(session, event_data);
         break;
     case XIO_SESSION_CONNECTION_TEARDOWN_EVENT:
         destroy_session_connection(session, event_data);

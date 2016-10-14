@@ -133,10 +133,6 @@ private:
     void
     free_request(NetworkXioRequest *req);
 
-    void
-    mark_session_disconnected(xio_session *session,
-                              xio_session_event_data *event_data);
-
     NetworkXioClientData*
     allocate_client_data();
 };
