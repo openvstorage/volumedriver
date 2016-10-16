@@ -24,6 +24,7 @@
 #include "MetaDataStoreBuilder.h"
 #include "MetaDataStoreDebug.h"
 #include "MetaDataStoreInterface.h"
+#include "NSIDMapBuilder.h"
 #include "RocksDBMetaDataBackend.h"
 #include "SCOCache.h"
 #include "SnapshotManagement.h"
@@ -539,30 +540,6 @@ local_restart_metadata_store(const VolumeConfig& config)
     //                 sp);
     return mdstore;
 }
-
-class NSIDMapBuilder
-{
-public:
-    explicit NSIDMapBuilder(NSIDMap& nsid)
-        : nsid_map_(nsid)
-    {}
-
-    void
-    operator()(const SnapshotPersistor&,
-               BackendInterfacePtr& bi,
-               const std::string& /* snapshot_name */,
-               SCOCloneID clone_id)
-    {
-        nsid_map_.set(clone_id,
-                      bi->clone());
-    }
-
-    static const FromOldest direction = FromOldest::T;
-
-private:
-    DECLARE_LOGGER("NSIDMapBuilder");
-    NSIDMap& nsid_map_;
-};
 
 std::unique_ptr<Volume>
 local_restart_volume(const VolumeConfig& config,

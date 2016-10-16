@@ -17,7 +17,6 @@
 #define VD_META_DATA_STORE_BUILDER_H_
 
 #include "MetaDataStoreInterface.h"
-#include "NSIDMap.h"
 
 #include <youtils/Logging.h>
 
@@ -46,7 +45,6 @@ public:
 
     struct Result
     {
-        NSIDMap nsid_map;
         size_t num_tlogs = 0;
         bool full_rebuild = false;
     };

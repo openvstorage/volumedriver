@@ -20,6 +20,7 @@
 #include <youtils/Assert.h>
 
 #include <volumedriver/MetaDataStoreBuilder.h>
+#include <volumedriver/NSIDMapBuilder.h>
 #include <volumedriver/RelocationReaderFactory.h>
 
 namespace metadata_server
@@ -119,7 +120,6 @@ Table::set_role(Role role)
 
     if (role != old_role)
     {
-
         switch (role)
         {
         case Role::Master:
@@ -138,28 +138,21 @@ Table::set_role(Role role)
     }
 }
 
-void
-Table::update_nsid_map_(const vd::NSIDMap& nsid_map)
+vd::NSIDMap&
+Table::get_nsid_map_()
 {
-    // XXX: we might as well build the nsidmap only once - it shouldn't change
-    // afterwards anymore.
-    for (size_t i = 0; i < nsid_map.size(); ++i)
+    if (not nsid_map_)
     {
-        auto& bi_new = nsid_map.get(i);
-        if (bi_new)
-        {
-            auto& bi_old = nsid_map_.get(i);
-            if (bi_old)
-            {
-                VERIFY(bi_new->getNS() == bi_old->getNS());
-            }
-            else
-            {
-                nsid_map_.set(vd::SCOCloneID(i),
-                              bi_new->clone());
-            }
-        }
+        VERIFY(bi_);
+        auto nsid_map(std::make_unique<vd::NSIDMap>());
+        vd::NSIDMapBuilder builder(*nsid_map);
+        vd::SnapshotPersistor(bi_).vold(builder,
+                                        bi_->clone());
+        nsid_map_ = std::move(nsid_map);
     }
+
+    VERIFY(nsid_map_->get(vd::SCOCloneID(0)) != nullptr);
+    return *nsid_map_;
 }
 
 void
@@ -201,8 +194,6 @@ Table::apply_relocations(const vd::ScrubId& scrub_id,
 
         const vd::MetaDataStoreBuilder::Result res(builder(boost::none,
                                                            vd::CheckScrubId::T));
-
-        update_nsid_map_(res.nsid_map);
         update_counters_(res);
 
         if (mdstore->scrub_id() == scrub_id)
@@ -216,7 +207,7 @@ Table::apply_relocations(const vd::ScrubId& scrub_id,
             {
                 vd::RelocationReaderFactory factory(relocs,
                                                     scratch_dir_,
-                                                    nsid_map_.get(cid)->clone(),
+                                                    get_nsid_map_().get(cid)->clone(),
                                                     vd::CombinedTLogReader::FetchStrategy::Concurrent);
                 mdstore->applyRelocs(factory,
                                      cid,
@@ -296,8 +287,6 @@ Table::work_()
                                                                vd::CheckScrubId::F));
 
             boost::upgrade_to_unique_lock<decltype(rwlock_)> u(ulg);
-
-            update_nsid_map_(res.nsid_map);
             update_counters_(res);
         }
         catch (be::BackendNamespaceDoesNotExistException& e)
@@ -354,7 +343,6 @@ Table::catch_up(vd::DryRun dry_run)
                                                            dry_run));
         if (dry_run == vd::DryRun::F)
         {
-            update_nsid_map_(res.nsid_map);
             update_counters_(res);
         }
 

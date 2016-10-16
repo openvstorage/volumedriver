@@ -137,7 +137,7 @@ private:
     const uint32_t max_cached_pages_;
     const boost::filesystem::path scratch_dir_;
 
-    volumedriver::NSIDMap nsid_map_;
+    std::unique_ptr<volumedriver::NSIDMap> nsid_map_;
 
     boost::mutex counters_lock_;
     TableCounters counters_;
@@ -155,13 +155,13 @@ private:
     make_mdstore_();
 
     void
-    update_nsid_map_(const volumedriver::NSIDMap&);
-
-    void
     prevent_updates_on_slaves_(const char* desc);
 
     void
     update_counters_(const volumedriver::MetaDataStoreBuilder::Result&);
+
+    volumedriver::NSIDMap&
+    get_nsid_map_();
 };
 
 typedef std::shared_ptr<Table> TablePtr;

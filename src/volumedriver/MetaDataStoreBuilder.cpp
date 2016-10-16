@@ -145,7 +145,7 @@ MetaDataStoreBuilder::update_metadata_store_(const boost::optional<yt::UUID>& fr
     if (start_cork != boost::none and
         *start_cork == end_cork)
     {
-        LOG_INFO(bi_->getNS() << "requested interval already present, nothing to do");
+        LOG_INFO(bi_->getNS() << ": requested interval already present, nothing to do");
     }
     else
     {
@@ -155,8 +155,8 @@ MetaDataStoreBuilder::update_metadata_store_(const boost::optional<yt::UUID>& fr
 
         LOG_INFO(bi_->getNS() << ": determining the TLogs to replay");
 
-
-        BackendRestartAccumulator acc(res.nsid_map,
+        NSIDMap nsid_map;
+        BackendRestartAccumulator acc(nsid_map,
                                       start_cork,
                                       end_cork);
 
@@ -165,7 +165,7 @@ MetaDataStoreBuilder::update_metadata_store_(const boost::optional<yt::UUID>& fr
 
         const CloneTLogs& tlogs(acc.clone_tlogs());
 
-        VERIFY(tlogs.size() <= res.nsid_map.size());
+        VERIFY(tlogs.size() <= nsid_map.size());
         VERIFY(not tlogs.empty());
         VERIFY(tlogs.back().first == SCOCloneID(0));
 
@@ -179,7 +179,7 @@ MetaDataStoreBuilder::update_metadata_store_(const boost::optional<yt::UUID>& fr
             LOG_INFO(bi_->getNS() << ": replaying " << res.num_tlogs << " TLogs");
 
             mdstore_.processCloneTLogs(tlogs,
-                                       res.nsid_map,
+                                       nsid_map,
                                        scratch_dir_,
                                        true,
                                        end_cork);
