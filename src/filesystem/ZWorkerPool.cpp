@@ -467,7 +467,7 @@ ZWorkerPool::handle_front_(zmq::socket_t& front_sock,
             LOG_TRACE(name_ << ": using idle zworker " << w->id());
 
             unused_ones_.pop_front();
-            auto res(busy_ones_.emplace(std::make_pair(w->id(), std::move(w))));
+            auto res(busy_ones_.emplace(w->id(), std::move(w)));
             VERIFY(res.second);
             id = res.first->first;
         }
@@ -486,7 +486,7 @@ ZWorkerPool::handle_front_(zmq::socket_t& front_sock,
 
             LOG_INFO(name_ << ": waiting for newly spun up zworker " << w->id());
 
-            auto res(busy_ones_.emplace(std::make_pair(w->id(), std::move(w))));
+            auto res(busy_ones_.emplace(w->id(), std::move(w)));
             VERIFY(res.second);
 
             return CanMakeProgress::F;
