@@ -3119,6 +3119,76 @@ TEST_P(LocalRestartTest, fall_back_to_backend_restart)
                  FallBackToBackendRestart::T);
 }
 
+// Cf. https://github.com/openvstorage/volumedriver/issues/152 :
+// Voldrv crashed after marking a TLog T as "safe" on the backend but not locally yet.
+// The MDS is also restarted and while still in slave mode updates itself to T.
+// On local restart this trips over an ASSERT in TLogs::getReversedTLogsOnBackendSinceLastCork
+// since the local SnapshotPersistor thinks that T is not on the backend yet.
+TEST_P(LocalRestartTest, mdstore_running_ahead)
+{
+    auto wrns(make_random_namespace());
+    SharedVolumePtr v = newVolume(*wrns);
+
+    const size_t cluster_size = v->getClusterSize();
+    const size_t off = 4096;
+
+    const std::string fst("first");
+    writeToVolume(*v,
+                  0,
+                  cluster_size,
+                  fst);
+
+    v->scheduleBackendSync();
+
+    const std::string snd("second");
+    writeToVolume(*v,
+                  off,
+                  cluster_size,
+                  snd);
+
+    v->scheduleBackendSync();
+    waitForThisBackendWrite(*v);
+
+    const fs::path sfile(VolManager::get()->getSnapshotsPath(*v));
+
+    destroyVolume(v,
+                  DeleteLocalData::F,
+                  RemoveVolumeCompletely::F);
+
+    OrderedTLogIds tlogs;
+
+    {
+        SnapshotPersistor sp(sfile);
+        tlogs = sp.getTLogsWrittenToBackend();
+        ASSERT_EQ(2,
+                  tlogs.size());
+
+        sp.setTLogWrittenToBackend(tlogs.back(),
+                                   false);
+
+        sp.saveToFile(sfile,
+                      SyncAndRename::T);
+    }
+
+    v = localRestart(wrns->ns());
+
+    {
+        SnapshotPersistor sp(sfile);
+        EXPECT_EQ(tlogs,
+                  sp.getTLogsWrittenToBackend());
+    }
+
+    checkVolume(*v,
+                0,
+                cluster_size,
+                fst);
+
+    checkVolume(*v,
+                off,
+                cluster_size,
+                snd);
+}
+
 namespace
 {
 

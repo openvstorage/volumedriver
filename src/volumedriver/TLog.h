@@ -28,6 +28,8 @@
 namespace volumedriver
 {
 
+MAKE_EXCEPTION(CorkNotOnBackendException, fungi::IOException);
+
 class TLogs;
 
 class TLog
@@ -46,7 +48,7 @@ public:
     operator=(const TLog&) = default;
 
     void
-    writtenToBackend(bool i_wds);
+    writtenToBackend(bool);
 
     bool
     writtenToBackend() const;
@@ -61,7 +63,7 @@ public:
     getName() const;
 
     static bool
-    isTLogString(const std::string& in);
+    isTLogString(const std::string&);
 
     uint64_t
     backend_size() const
@@ -149,7 +151,7 @@ class TLogs
 {
 public:
     void
-    getOrderedTLogIds(OrderedTLogIds& out) const;
+    getOrderedTLogIds(OrderedTLogIds&) const;
 
     OrderedTLogIds
     getOrderedTLogIds() const
@@ -160,17 +162,18 @@ public:
     }
 
     void
-    getReverseOrderedTLogIds(OrderedTLogIds& out) const;
+    getReverseOrderedTLogIds(OrderedTLogIds&) const;
 
     void
     replace(const OrderedTLogIds& in,
             const std::vector<TLog>& out);
 
     bool
-    setTLogWrittenToBackend(const TLogId& tid);
+    setTLogWrittenToBackend(const TLogId&,
+                            bool = true);
 
     boost::tribool
-    isTLogWrittenToBackend(const TLogId& tid) const;
+    isTLogWrittenToBackend(const TLogId&) const;
 
     bool
     writtenToBackend() const;
@@ -190,8 +193,8 @@ public:
 
     //returns whether cork was seen
     bool
-    getReversedTLogsOnBackendSinceLastCork(const boost::optional<youtils::UUID>& cork,
-                                           OrderedTLogIds& reverse_vec) const;
+    getReversedTLogsOnBackendSinceLastCork(const boost::optional<youtils::UUID>&,
+                                           OrderedTLogIds&) const;
 
     uint64_t
     backend_size() const;

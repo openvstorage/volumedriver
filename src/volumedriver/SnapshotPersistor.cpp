@@ -219,13 +219,14 @@ SnapshotPersistor::newTLog()
 }
 
 void
-SnapshotPersistor::setTLogWrittenToBackend(const TLogId& tlogid)
+SnapshotPersistor::setTLogWrittenToBackend(const TLogId& tlogid,
+                                           bool on_backend)
 {
     // The "snapshots before current" order needs to be maintained as the
     // consistency check in TLogs::setTLogWrittenToBackend() relies on it.
-    if(not snapshots.setTLogWrittenToBackend(tlogid))
+    if(not snapshots.setTLogWrittenToBackend(tlogid, on_backend))
     {
-        if (not current.setTLogWrittenToBackend(tlogid))
+        if (not current.setTLogWrittenToBackend(tlogid, on_backend))
         {
             LOG_WARN("Couldn't find tlog " << tlogid <<
                      " probably snapshot restore. These messages should not persist!");

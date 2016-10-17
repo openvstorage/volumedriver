@@ -67,13 +67,13 @@ public:
     MAKE_EXCEPTION(SnapshotPersistorException, fungi::IOException);
     MAKE_EXCEPTION(SnapshotNameAlreadyExists, SnapshotPersistorException);
 
-    explicit SnapshotPersistor(const MaybeParentConfig& parent_cfg);
+    explicit SnapshotPersistor(const MaybeParentConfig&);
 
-    explicit SnapshotPersistor(const fs::path& path);
+    explicit SnapshotPersistor(const fs::path&);
 
-    explicit SnapshotPersistor(std::istream& stream);
+    explicit SnapshotPersistor(std::istream&);
 
-    explicit SnapshotPersistor(BackendInterfacePtr& bi);
+    explicit SnapshotPersistor(BackendInterfacePtr&);
 
     ~SnapshotPersistor() = default;
 
@@ -131,57 +131,57 @@ public:
     }
 
     void
-    saveToFile(const fs::path& path,
-               const SyncAndRename sync_and_rename) const;
+    saveToFile(const fs::path&,
+               const SyncAndRename) const;
 
     void
-    snapshot(const SnapshotName& name,
-             const SnapshotMetaData& metadata = SnapshotMetaData(),
-             const youtils::UUID& guid = youtils::UUID(),
+    snapshot(const SnapshotName&,
+             const SnapshotMetaData& = SnapshotMetaData(),
+             const youtils::UUID& = youtils::UUID(),
              const bool create_scrubbed = false);
 
     bool
-    checkSnapshotUUID(const SnapshotName& snapshotName,
-                      const volumedriver::UUID& uuid) const;
+    checkSnapshotUUID(const SnapshotName&,
+                      const volumedriver::UUID&) const;
 
     /** Return the tlogs in this snapshot in the order they were taken
      */
     bool
-    getTLogsInSnapshot(SnapshotNum num,
-                       OrderedTLogIds& out) const;
+    getTLogsInSnapshot(SnapshotNum,
+                       OrderedTLogIds&) const;
 
     bool
-    isSnapshotInBackend(const SnapshotNum num) const;
+    isSnapshotInBackend(const SnapshotNum) const;
 
     SnapshotNum
-    getSnapshotNum(const SnapshotName& name) const;
+    getSnapshotNum(const SnapshotName&) const;
 
     SnapshotName
-    getSnapshotName(SnapshotNum num) const;
+    getSnapshotName(SnapshotNum) const;
 
     const Snapshot&
-    getSnapshot(const SnapshotName& snapname) const;
+    getSnapshot(const SnapshotName&) const;
 
     void
-    getSnapshotsTill(SnapshotNum num,
+    getSnapshotsTill(SnapshotNum,
                      std::vector<SnapshotNum>&,
                      bool including = true) const;
 
     void
-    getSnapshotsAfter(SnapshotNum num,
+    getSnapshotsAfter(SnapshotNum,
                       std::vector<SnapshotNum>&) const;
 
     bool
-    snapshotExists(const SnapshotName& name) const;
+    snapshotExists(const SnapshotName&) const;
 
     bool
-    snapshotExists(SnapshotNum num) const;
+    snapshotExists(SnapshotNum) const;
 
     void
-    deleteSnapshot(SnapshotNum num);
+    deleteSnapshot(SnapshotNum);
 
     void
-    getCurrentTLogs(OrderedTLogIds& outTLogs) const;
+    getCurrentTLogs(OrderedTLogIds&) const;
 
     OrderedTLogIds
     getCurrentTLogs() const
@@ -200,19 +200,19 @@ public:
     TLogId
     getCurrentTLog() const;
 
-    void getTLogsTillSnapshot(const SnapshotName& name,
-                              OrderedTLogIds& out) const;
+    void getTLogsTillSnapshot(const SnapshotName&,
+                              OrderedTLogIds&) const;
 
     void
-    getTLogsTillSnapshot(SnapshotNum num,
-                         OrderedTLogIds& out)  const;
+    getTLogsTillSnapshot(SnapshotNum,
+                         OrderedTLogIds&)  const;
 
     void
-    getTLogsAfterSnapshot(SnapshotNum num,
-                          OrderedTLogIds& out) const;
+    getTLogsAfterSnapshot(SnapshotNum,
+                          OrderedTLogIds&) const;
 
     void
-    deleteTLogsAndSnapshotsAfterSnapshot(SnapshotNum num);
+    deleteTLogsAndSnapshotsAfterSnapshot(SnapshotNum);
 
     void
     getTLogsBetweenSnapshots(const SnapshotNum start,
@@ -221,11 +221,11 @@ public:
                              IncludingEndSnapshot = IncludingEndSnapshot::T) const;
 
     void
-    getAllSnapshots(std::vector<SnapshotNum>& vec) const;
+    getAllSnapshots(std::vector<SnapshotNum>&) const;
 
     void
-    getAllTLogs(OrderedTLogIds& vec,
-                const WithCurrent with_current) const;
+    getAllTLogs(OrderedTLogIds&,
+                const WithCurrent) const;
 
     // DOES NOT SET CURRENT SIZE!!
     void
@@ -243,13 +243,14 @@ public:
     }
 
     void
-    setTLogWrittenToBackend(const TLogId& tlogid);
+    setTLogWrittenToBackend(const TLogId&,
+                            bool on_backend = true);
 
     bool
-    isTLogWrittenToBackend(const TLogId& tlogid) const;
+    isTLogWrittenToBackend(const TLogId&) const;
 
     void
-    getTLogsNotWrittenToBackend(OrderedTLogIds& out) const;
+    getTLogsNotWrittenToBackend(OrderedTLogIds&) const;
 
     OrderedTLogIds
     getCurrentTLogsNotWrittenToBackend() const
@@ -274,7 +275,7 @@ public:
     }
 
     void
-    getTLogsWrittenToBackend(OrderedTLogIds& out) const;
+    getTLogsWrittenToBackend(OrderedTLogIds&) const;
 
     OrderedTLogIds
     getTLogsWrittenToBackend() const
@@ -285,11 +286,11 @@ public:
     }
 
     bool
-    getSnapshotScrubbed(SnapshotNum num,
+    getSnapshotScrubbed(SnapshotNum,
                         bool nothrow) const;
 
     void
-    setSnapshotScrubbed(SnapshotNum num,
+    setSnapshotScrubbed(SnapshotNum,
                         bool scrubbed);
 
     uint64_t
@@ -307,7 +308,7 @@ public:
                              SnapshotWork& out) const;
 
     void
-    addCurrentBackendSize(uint64_t file_size);
+    addCurrentBackendSize(uint64_t);
 
     // Y42 align the backendsize calls.
     uint64_t
@@ -325,10 +326,10 @@ public:
     hasUUIDSpecified() const;
 
     const youtils::UUID&
-    getUUID(const SnapshotNum name) const;
+    getUUID(const SnapshotNum) const;
 
     bool
-    hasSnapshotWithUUID(const youtils::UUID& uuid) const;
+    hasSnapshotWithUUID(const youtils::UUID&) const;
 
     const Snapshots&
     getSnapshots() const
@@ -342,7 +343,7 @@ public:
             const SnapshotNum num);
 
     const youtils::UUID&
-    getSnapshotCork(const SnapshotName& snapshot_name) const;
+    getSnapshotCork(const SnapshotName&) const;
 
     boost::optional<youtils::UUID>
     lastCork() const;

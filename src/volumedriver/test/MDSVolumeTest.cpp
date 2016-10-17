@@ -1636,6 +1636,34 @@ TEST_P(MDSVolumeTest, table_counters)
                    Reset::F);
 }
 
+// Cf. https://github.com/openvstorage/volumedriver/issues/141
+// On restart of an MDS slave the NSIDMap wasn't rebuilt if the slave was in sync, leading
+// to a nullptr deref when applying relocations to the slave.
+TEST_P(MDSVolumeTest, slave_has_nsidmap_after_restart)
+{
+    const auto wrns(make_random_namespace());
+    SharedVolumePtr v = make_volume(*wrns);
+
+    const scrubbing::ScrubReply scrub_reply(prepare_scrub_test(*v));
+
+    const mds::ServerConfigs scfgs(mds_manager_->server_configs());
+    catch_up(scfgs[1].node_config,
+             wrns->ns().str(),
+             DryRun::F);
+
+    destroyVolume(v,
+                  DeleteLocalData::F,
+                  RemoveVolumeCompletely::F);
+
+    mds_manager_->stop_one(scfgs[1].node_config);
+    mds_manager_->start_one(scfgs[1]);
+
+    v = localRestart(wrns->ns());
+
+    apply_scrub_reply(*v,
+                      scrub_reply);
+}
+
 namespace
 {
 
