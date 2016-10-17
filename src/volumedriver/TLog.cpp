@@ -172,16 +172,17 @@ TLogs::snip(const TLogId& tlog_id,
 }
 
 bool
-TLogs::setTLogWrittenToBackend(const TLogId& tid)
+TLogs::setTLogWrittenToBackend(const TLogId& tid,
+                               bool on_backend)
 {
     for (auto& tlog : *this)
     {
         if (tlog.id() == tid)
         {
-            tlog.written_to_backend = true;
+            tlog.written_to_backend = on_backend;
             return true;
         }
-        else if (tlog.written_to_backend == false)
+        else if (on_backend and tlog.written_to_backend == false)
         {
             // VERIFY() might seem more appropriate here, but that will exit the
             // tester for this very functionality in debug builds.
@@ -261,8 +262,15 @@ TLogs::getReversedTLogsOnBackendSinceLastCork(const boost::optional<yt::UUID>& c
     {
         if(cork != boost::none and it->id() == TLogId(*cork))
         {
-            VERIFY(it->writtenToBackend());
-            return true;
+            if (not it->writtenToBackend())
+            {
+                throw CorkNotOnBackendException("TLog not on backend",
+                                                boost::lexical_cast<std::string>(it->id()).c_str());
+            }
+            else
+            {
+                return true;
+            }
         }
         else if(it->writtenToBackend())
         {
