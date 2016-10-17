@@ -150,7 +150,8 @@ public:
         }
     }
 private:
-    std::atomic<ovs_context_t*> ctx_;
+    std::shared_ptr<ovs_context_t> ctx_;
+    fungi::SpinLock ctx_lock_;
     std::string volume_name_;
     int oflag_;
     std::string uri_;
@@ -174,18 +175,19 @@ private:
     bool openning_;
     bool connection_error_;
 
-    ovs_context_t*
+    const std::shared_ptr<ovs_context_t>&
     atomic_get_ctx()
     {
-        return std::atomic_load(&ctx_);
+        fungi::ScopedSpinLock l_(ctx_lock_);
+        return ctx_;
     }
 
     void
-    atomic_xchg_ctx(ovs_context_t *ctx)
+    atomic_xchg_ctx(std::shared_ptr<ovs_context_t> ctx)
     {
-        auto old_ctx = atomic_get_ctx();
-        std::atomic_store(&ctx_, reinterpret_cast<ovs_context_t*>(ctx));
-        delete old_ctx;
+        fungi::ScopedSpinLock l_(ctx_lock_);
+        ctx_.swap(ctx);
+        ctx.reset();
     }
 
     bool
