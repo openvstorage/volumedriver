@@ -140,11 +140,13 @@ Snapshots::tlogReferenced(const TLogId& tlog_id) const
 }
 
 bool
-Snapshots::setTLogWrittenToBackend(const TLogId& tid)
+Snapshots::setTLogWrittenToBackend(const TLogId& tid,
+                                   bool on_backend)
 {
     for(iterator i = begin(); i != end(); ++i)
     {
-        if (i->setTLogWrittenToBackend(tid))
+        if (i->setTLogWrittenToBackend(tid,
+                                       on_backend))
         {
             return true;
         }

@@ -141,6 +141,18 @@ public:
                                  config_location_->path() :
                                  lock_file_);
 
+        // These are unblocked again and "handled" by FileSystem::operator(). We do
+        // however want them to be blocked while the constructor / destructor is running.
+        // This of course points to making the blocker a member of FileSystem but that
+        // will get in the way of testing as there we want to be able to Ctrl-C out of
+        // a tester.
+        const yt::SignalSet block{ SIGHUP,
+                // SIGINT, // screws up gdb!
+                SIGPIPE,
+                SIGTERM };
+
+        const yt::SignalBlocker blocker(block);
+
         yt::FileDescriptor fd(lock_path,
                               yt::FDMode::Write,
                               lock_config_file ?
@@ -158,17 +170,6 @@ public:
 
         std::unique_ptr<yt::ConfigFetcher> config_fetcher(yt::ConfigFetcher::create(*config_location_));
         const bpt::ptree pt((*config_fetcher)(VerifyConfig::T));
-
-        // These are unblocked again and "handled" by FileSystem::operator(). We do
-        // however want them to be blocked while the constructor / destructor is running.
-        // This of course points to making the blocker a member of FileSystem but that
-        // will get in the way of testing as there we want to be able to Ctrl-C out of
-        // a tester.
-        const yt::SignalSet block{ SIGHUP,
-                // SIGINT, // screws up gdb!
-                SIGTERM };
-
-        const yt::SignalBlocker blocker(block);
 
         vfs::FuseInterface(pt,
                            RegisterComponent::T)(mountpoint_,

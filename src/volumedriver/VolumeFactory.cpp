@@ -24,6 +24,7 @@
 #include "MetaDataStoreBuilder.h"
 #include "MetaDataStoreDebug.h"
 #include "MetaDataStoreInterface.h"
+#include "NSIDMapBuilder.h"
 #include "RocksDBMetaDataBackend.h"
 #include "SCOCache.h"
 #include "SnapshotManagement.h"
@@ -443,8 +444,8 @@ try
         LOG_INFO("Snapshot Cork: " << sp_cork << ", MetaDataStore Cork: " << md_cork <<
                  ", implicit start Cork " << start_cork);
 
-        OrderedTLogIds tlogs_to_replay_now(sp.getTLogsOnBackendSinceLastCork(md_cork,
-                                                                               start_cork));
+        const OrderedTLogIds tlogs_to_replay_now(sp.getTLogsOnBackendSinceLastCork(md_cork,
+                                                                                   start_cork));
 
         if (not tlogs_to_replay_now.empty())
         {
@@ -478,6 +479,11 @@ try
                                       sp_cork);
         }
     }
+}
+catch (CorkNotOnBackendException&)
+{
+    // let this one pass unscathed
+    throw;
 }
 CATCH_STD_ALL_LOG_THROWFUNGI("Local restart not possible, exception during replay of TLogs from backend");
 
@@ -563,49 +569,41 @@ std::unique_ptr<MetaDataStoreInterface>
 local_restart_metadata_store(const VolumeConfig& config,
                              const OwnerTag owner_tag)
 {
-    SnapshotPersistor sp(VolManager::get()->getSnapshotsPath(config));
+    auto sp(std::make_unique<SnapshotPersistor>(VolManager::get()->getSnapshotsPath(config)));
     std::unique_ptr<MetaDataStoreInterface> mdstore(make_metadata_store(config,
-                                                                        sp.scrub_id(),
+                                                                        sp->scrub_id(),
                                                                         owner_tag));
 
-    LOG_INFO("Trying to get the cork from the SnapshotPersistor");
+    LOG_INFO(config.id_ << ": trying to get the cork from the local SnapshotPersistor");
+    try
+    {
+        replay_tlogs_on_backend_since_last_cork(config,
+                                                *mdstore,
+                                                *sp);
+    }
+    catch (CorkNotOnBackendException&)
+    {
+        // Cf. https://github.com/openvstorage/volumedriver/issues/152 :
+        // Voldrv could have crashed after marking a TLog as "safe" on the backend but not
+        // locally yet. An MDS slave could then update itself to that cork before being used as
+        // master by this restart.
+        LOG_WARN(config.id_ << ": the local SnapshotPersistor thinks the MDStore cork is not on the backend - assuming the former to be outdated, retrying with info from backend");
+        BackendInterfacePtr bi(VolManager::get()->createBackendInterface(be::Namespace(config.ns_)));
+        sp = std::make_unique<SnapshotPersistor>(bi);
 
-    replay_tlogs_on_backend_since_last_cork(config,
-                                            *mdstore,
-                                            sp);
+        replay_tlogs_on_backend_since_last_cork(config,
+                                                *mdstore,
+                                                *sp);
+    }
 
     replay_tlogs_not_on_backend(config,
                                 *mdstore,
-                                sp);
+                                *sp);
 
     // check_last_tlog(config,
     //                 sp);
     return mdstore;
 }
-
-class NSIDMapBuilder
-{
-public:
-    explicit NSIDMapBuilder(NSIDMap& nsid)
-        : nsid_map_(nsid)
-    {}
-
-    void
-    operator()(const SnapshotPersistor&,
-               BackendInterfacePtr& bi,
-               const std::string& /* snapshot_name */,
-               SCOCloneID clone_id)
-    {
-        nsid_map_.set(clone_id,
-                      bi->clone());
-    }
-
-    static const FromOldest direction = FromOldest::T;
-
-private:
-    DECLARE_LOGGER("NSIDMapBuilder");
-    NSIDMap& nsid_map_;
-};
 
 }
 

@@ -45,11 +45,11 @@ class Snapshot
     : public TLogs
 {
 public:
-    Snapshot(const SnapshotNum num,
-             const SnapshotName& name,
-             const TLogs& i_tlogs,
-             const SnapshotMetaData& metadata = SnapshotMetaData(),
-             const UUID& uuid = UUID(),
+    Snapshot(const SnapshotNum,
+             const SnapshotName&,
+             const TLogs&,
+             const SnapshotMetaData& = SnapshotMetaData(),
+             const UUID& = UUID(),
              bool set_scrubbed = false);
 
     const SnapshotNum&
@@ -96,8 +96,8 @@ public:
 
     //returns whether cork was seen
     bool
-    getReversedTLogsOnBackendSinceLastCork(const boost::optional<youtils::UUID>& cork,
-                                           OrderedTLogIds& reverse_vec) const;
+    getReversedTLogsOnBackendSinceLastCork(const boost::optional<youtils::UUID>&,
+                                           OrderedTLogIds&) const;
 
     const SnapshotMetaData&
     metadata() const
@@ -221,10 +221,11 @@ class Snapshots
 {
 public:
     bool
-    setTLogWrittenToBackend(const TLogId& tid);
+    setTLogWrittenToBackend(const TLogId&,
+                            bool);
 
     bool
-    isTLogWrittenToBackend(const TLogId& tid) const;
+    isTLogWrittenToBackend(const TLogId&) const;
 
     bool
     getTLogsInSnapshot(const SnapshotNum,
@@ -252,13 +253,13 @@ public:
     getSnapshot(const UUID&) const;
 
     void
-    getSnapshotsTill(SnapshotNum num,
-                     std::vector<SnapshotNum>& out,
+    getSnapshotsTill(SnapshotNum,
+                     std::vector<SnapshotNum>&,
                      bool including) const;
 
     void
-    getSnapshotsAfter(SnapshotNum num,
-                      std::vector<SnapshotNum>& out) const;
+    getSnapshotsAfter(SnapshotNum,
+                      std::vector<SnapshotNum>&) const;
 
     void
     deleteSnapshot(const SnapshotNum,
@@ -279,12 +280,12 @@ public:
                    const boost::optional<SnapshotName>& start_snapshot) const;
 
     void
-    getTLogsTillSnapshot(const SnapshotNum num,
-                         OrderedTLogIds& out) const;
+    getTLogsTillSnapshot(const SnapshotNum,
+                         OrderedTLogIds&) const;
 
     void
-    getTLogsAfterSnapshot(SnapshotNum num,
-                          OrderedTLogIds& out) const;
+    getTLogsAfterSnapshot(SnapshotNum,
+                          OrderedTLogIds&) const;
 
     void
     getTLogsBetweenSnapshots(const SnapshotNum start,
@@ -293,10 +294,10 @@ public:
                              IncludingEndSnapshot) const;
 
     void
-    deleteTLogsAndSnapshotsAfterSnapshot(SnapshotNum num);
+    deleteTLogsAndSnapshotsAfterSnapshot(SnapshotNum);
 
     void
-    getAllSnapshots(std::vector<SnapshotNum>& vec) const;
+    getAllSnapshots(std::vector<SnapshotNum>&) const;
 
     void
     replace(const OrderedTLogIds& in,
@@ -322,14 +323,14 @@ public:
     }
 
     const UUID&
-    getUUID(SnapshotNum num) const;
+    getUUID(SnapshotNum) const;
 
     bool
-    hasSnapshotWithUUID(const UUID& uuid) const;
+    hasSnapshotWithUUID(const UUID&) const;
 
     bool
-    checkSnapshotUUID(const SnapshotName& name,
-                      const UUID& uuid) const;
+    checkSnapshotUUID(const SnapshotName&,
+                      const UUID&) const;
 
     template<typename T>
     void
@@ -350,22 +351,22 @@ private:
     friend class SnapshotsTLogsTest;
 
     const_iterator
-    find_(const SnapshotName& name) const;
+    find_(const SnapshotName&) const;
 
     iterator
-    find_(const SnapshotName& name);
+    find_(const SnapshotName&);
 
     const_iterator
-    find_(const SnapshotNum num) const;
+    find_(const SnapshotNum) const;
 
     iterator
-    find_(const SnapshotNum num);
+    find_(const SnapshotNum);
 
     const_iterator
-    find_(const UUID& uuid) const;
+    find_(const UUID&) const;
 
     iterator
-    find_(const UUID& uuid);
+    find_(const UUID&);
 
     template<typename T>
     const_iterator
