@@ -13,6 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "Logger.h"
 #include "../ShmCommon.h"
 #include "ShmClient.h"
 
@@ -122,15 +123,15 @@ ShmClient::~ShmClient()
     }
     catch (CORBA::TRANSIENT& e)
     {
-        //LOG_INFO("Transient exception when stopping mem client: server down?");
+        LIBLOG_INFO("Transient exception when stopping mem client: server down?");
     }
     catch (std::exception& e)
     {
-        //LOG_INFO("std::exception when stopping mem client: server down?");
+        LIBLOG_INFO("std::exception when stopping mem client: server down?");
     }
     catch (...)
     {
-        //LOG_INFO("unknown exception when stopping mem client: server down?");
+        LIBLOG_INFO("unknown exception when stopping mem client: server down?");
     }
 
     try

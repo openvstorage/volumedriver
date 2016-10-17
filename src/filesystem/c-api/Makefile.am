@@ -20,6 +20,7 @@ libovsvolumedriver_la_SOURCES = \
 	ShmClient.cpp \
 	ShmHandler.cpp \
 	VolumeCacheHandler.cpp \
+	Logger.cpp \
 	NetworkHAContext.cpp \
 	NetworkXioClient.cpp \
 	NetworkXioContext.cpp \

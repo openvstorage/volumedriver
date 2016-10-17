@@ -150,6 +150,9 @@ public:
         }
     }
 private:
+    /* cnanakos TODO: use atomic overloads for shared_ptr
+     * when g++ > 5.0.0 is used
+     */
     std::shared_ptr<ovs_context_t> ctx_;
     fungi::SpinLock ctx_lock_;
     std::string volume_name_;
@@ -159,10 +162,10 @@ private:
     bool ha_enabled_;
     std::shared_ptr<xio_mempool> mpool;
 
-    fungi::SpinLock inflight_reqs_lock_;
+    std::mutex inflight_reqs_lock_;
     std::unordered_map<uint64_t, ovs_aio_request*> inflight_ha_reqs_;
 
-    fungi::SpinLock seen_reqs_lock_;
+    std::mutex seen_reqs_lock_;
     std::queue<uint64_t> seen_ha_reqs_;
 
     std::atomic<uint64_t> request_id_;

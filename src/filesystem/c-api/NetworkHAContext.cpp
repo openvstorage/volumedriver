@@ -13,6 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "Logger.h"
 #include "NetworkHAContext.h"
 #include "NetworkXioContext.h"
 #include "IOThread.h"
@@ -26,10 +27,10 @@
 #define HA_HANDLER_SLEEP_TIME   5ms
 
 #define LOCK_INFLIGHT()                                 \
-    fungi::ScopedSpinLock ifrl_(inflight_reqs_lock_)
+    std::lock_guard<std::mutex> ifrl_(inflight_reqs_lock_)
 
 #define LOCK_SEEN()                                     \
-    fungi::ScopedSpinLock ifrl_(seen_reqs_lock_)
+    std::lock_guard<std::mutex> srl_(seen_reqs_lock_)
 
 namespace volumedriverfs
 {
@@ -89,9 +90,9 @@ NetworkHAContext::NetworkHAContext(const std::string& uri,
                             this,
                             reinterpret_cast<void*>(&ha_ctx_thread_));
         }
-        catch (const std::system_error&)
+        catch (const std::system_error& e)
         {
-            //cnanakos: log
+            LIBLOG_ERROR("cannot create HA handler thread: " << e.what());
             throw;
         }
     }
@@ -211,8 +212,8 @@ NetworkHAContext::resend_inflight_requests()
             atomic_get_ctx()->send_flush_request(request);
             break;
         default:
-            //cnanakos TODO: shouldn't be here, log
-            ;
+            LIBLOG_ERROR("unknown inflight request, op:"
+                         << static_cast<int>(request->_op));
         }
     }
 }
@@ -239,6 +240,7 @@ NetworkHAContext::reconnect()
                                   false);
         if (r < 0)
         {
+            LIBLOG_ERROR("reconnection to URI ' << uri << ' failed");
             tmp_ctx.reset();
             continue;
         }
@@ -251,6 +253,7 @@ NetworkHAContext::reconnect()
         if (connected)
         {
             update_cluster_node_uri();
+            LIBLOG_INFO("reconnection to URI '" << uri << "' succeeded");
             break;
         }
     }
@@ -280,7 +283,8 @@ NetworkHAContext::update_cluster_node_uri()
     int rl = list_cluster_node_uri(cluster_nw_uris_);
     if (rl < 0)
     {
-        //cnanakos TODO: log the error, HA will probably fail
+        LIBLOG_ERROR("failed to update cluster node URI list: "
+                     << strerror(errno));
     }
 }
 

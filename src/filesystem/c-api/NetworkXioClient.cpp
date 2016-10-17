@@ -13,6 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "Logger.h"
 #include "NetworkXioClient.h"
 
 #include <youtils/Assert.h>
@@ -160,8 +161,9 @@ NetworkXioClient::NetworkXioClient(const std::string& uri,
                 }
         });
     }
-    catch (const std::system_error&)
+    catch (const std::system_error& e)
     {
+        LIBLOG_ERROR("failed to create xio thread: " << e.what());
         throw XioClientCreateException("failed to create XIO worker thread");
     }
 
@@ -169,8 +171,9 @@ NetworkXioClient::NetworkXioClient(const std::string& uri,
     {
         future.get();
     }
-    catch (const std::exception&)
+    catch (const std::exception& e)
     {
+        LIBLOG_ERROR("failed to create xio thread: " << e.what());
         xio_thread_.join();
         throw XioClientCreateException("failed to create XIO worker thread");
     }
@@ -383,7 +386,7 @@ NetworkXioClient::on_response(xio_session *session __attribute__((unused)),
     }
     catch (...)
     {
-        //cnanakos: logging
+        LIBLOG_ERROR("failed to unpack msg");
         return 0;
     }
     xio_msg_s *xio_msg = reinterpret_cast<xio_msg_s*>(imsg.opaque());
@@ -420,7 +423,7 @@ NetworkXioClient::on_msg_error(xio_session *session __attribute__((unused)),
         }
         catch (...)
         {
-            //cnanakos: client logging?
+            LIBLOG_ERROR("failed to unpack msg");
             return 0;
         }
     }
@@ -433,6 +436,7 @@ NetworkXioClient::on_msg_error(xio_session *session __attribute__((unused)),
         }
         catch (...)
         {
+            LIBLOG_ERROR("failed to unpack msg");
             xio_release_response(msg);
             return 0;
         }
@@ -643,7 +647,7 @@ NetworkXioClient::on_msg_error_control(xio_session *session ATTR_UNUSED,
         }
         catch (...)
         {
-            //cnanakos: client logging?
+            LIBLOG_ERROR("failed to unpack msg");
             return 0;
         }
     }
@@ -672,7 +676,7 @@ NetworkXioClient::on_msg_control(xio_session *session ATTR_UNUSED,
     }
     catch (...)
     {
-        //cnanakos: logging
+        LIBLOG_ERROR("failed to unpack msg");
         return 0;
     }
     xio_ctl_s *xctl = reinterpret_cast<xio_ctl_s*>(imsg.opaque());
