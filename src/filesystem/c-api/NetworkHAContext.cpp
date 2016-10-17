@@ -39,10 +39,11 @@ MAKE_EXCEPTION(NetworkHAContextMemPoolException, fungi::IOException);
 NetworkHAContext::NetworkHAContext(const std::string& uri,
                                    uint64_t net_client_qdepth,
                                    bool ha_enabled)
-    : ctx_(new NetworkXioContext(uri,
-                                 net_client_qdepth,
-                                 *this,
-                                 false))
+    : ctx_(std::shared_ptr<ovs_context_t>(
+                new NetworkXioContext(uri,
+                                      net_client_qdepth,
+                                      *this,
+                                      false)))
     , uri_(uri)
     , qd_(net_client_qdepth)
     , ha_enabled_(ha_enabled)
@@ -103,7 +104,7 @@ NetworkHAContext::~NetworkHAContext()
         ha_ctx_thread_.stop();
         ha_ctx_thread_.reset_iothread();
     }
-    delete std::atomic_load(&ctx_);
+    ctx_.reset();
 }
 
 std::string
@@ -228,23 +229,24 @@ NetworkHAContext::reconnect()
         {
             continue;
         }
-        auto tmp_ctx = new NetworkXioContext(uri,
-                                             qd_,
-                                             *this,
-                                             true);
+        auto tmp_ctx = std::shared_ptr<NetworkXioContext>(
+                new NetworkXioContext(uri,
+                                      qd_,
+                                      *this,
+                                      true));
         r = tmp_ctx->open_volume_(volume_name_.c_str(),
                                   oflag_,
                                   false);
         if (r < 0)
         {
-            delete tmp_ctx;
+            tmp_ctx.reset();
             continue;
         }
         else
         {
             uri_ = uri;
             connected = true;
-            atomic_xchg_ctx(tmp_ctx);
+            atomic_xchg_ctx(std::dynamic_pointer_cast<ovs_context_t>(tmp_ctx));
         }
         if (connected)
         {
