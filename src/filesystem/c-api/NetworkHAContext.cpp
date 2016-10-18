@@ -240,7 +240,7 @@ NetworkHAContext::reconnect()
                                   false);
         if (r < 0)
         {
-            LIBLOG_ERROR("reconnection to URI ' << uri << ' failed");
+            LIBLOG_ERROR("reconnection to URI '" << uri << "' failed");
             tmp_ctx.reset();
             continue;
         }
