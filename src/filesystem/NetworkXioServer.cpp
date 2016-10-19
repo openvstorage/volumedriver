@@ -510,8 +510,8 @@ NetworkXioServer::on_msg_send_complete(xio_session *session ATTR_UNUSED,
 }
 
 int
-NetworkXioServer::on_msg_error(xio_session *session ATTR_UNUSED,
-                               xio_status error ATTR_UNUSED,
+NetworkXioServer::on_msg_error(xio_session *session,
+                               xio_status error,
                                xio_msg_direction direction,
                                xio_msg *msg)
 {
@@ -519,6 +519,12 @@ NetworkXioServer::on_msg_error(xio_session *session ATTR_UNUSED,
     {
         NetworkXioRequest *req = reinterpret_cast<NetworkXioRequest*>(msg->user_context);
         deallocate_request(req);
+    }
+    else
+    {
+        LOG_ERROR("[" << session << "] message " << msg->request->sn
+                  << " failed. reason: " << xio_strerror(error));
+        xio_release_response(msg);
     }
     return 0;
 }
