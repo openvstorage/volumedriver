@@ -13,7 +13,13 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "Logger.h"
 #include "NetworkXioContext.h"
+
+#include <sstream>
+#include <boost/type_index.hpp>
+
+namespace bti =  boost::typeindex;
 
 namespace volumedriverfs
 {
@@ -28,10 +34,20 @@ NetworkXioContext::NetworkXioContext(const std::string& uri,
     , ha_ctx_(ha_ctx)
     , ha_try_reconnect_(ha_try_reconnect)
 {
+    LIBLOGID_DEBUG("uri: " << uri <<
+                   ",queue depth: " << net_client_qdepth);
 }
 
 NetworkXioContext::~NetworkXioContext()
 {
+}
+
+const std::string
+NetworkXioContext::get_log_identifier()
+{
+    std::ostringstream os;
+    os << bti::type_id_runtime(*this).pretty_name() << "(" << this << ")";
+    return os.str();
 }
 
 int
@@ -138,6 +154,8 @@ int
 NetworkXioContext::open_volume(const char *volume_name,
                                int oflag)
 {
+    LIBLOGID_DEBUG("volume name: " << volume_name
+                   << ",oflag: " << oflag);
     return open_volume_(volume_name,
                         oflag,
                         true);

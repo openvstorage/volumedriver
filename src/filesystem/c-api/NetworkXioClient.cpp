@@ -23,6 +23,10 @@
 #include <functional>
 #include <atomic>
 #include <system_error>
+#include <sstream>
+#include <boost/type_index.hpp>
+
+namespace bti =  boost::typeindex;
 
 namespace yt = youtils;
 
@@ -110,6 +114,14 @@ static_evfd_stop_loop(int fd, int events, void *data)
     obj->evfd_stop_loop(fd, events, data);
 }
 
+const std::string
+NetworkXioClient::get_log_identifier()
+{
+    std::ostringstream os;
+    os << bti::type_id_runtime(*this).pretty_name() << "(" << this << ")";
+    return os.str();
+}
+
 NetworkXioClient::NetworkXioClient(const std::string& uri,
                                    const uint64_t qd,
                                    NetworkHAContext& ha_ctx,
@@ -125,6 +137,7 @@ NetworkXioClient::NetworkXioClient(const std::string& uri,
     , ha_try_reconnect_(ha_try_reconnect)
     , connection_error_(false)
 {
+    LIBLOGID_INFO("uri: " << uri << ", queue depth: " << qd);
     ses_ops.on_session_event = static_on_session_event<NetworkXioClient>;
     ses_ops.on_session_established = NULL;
     ses_ops.on_msg = static_on_response<NetworkXioClient>;
@@ -163,7 +176,7 @@ NetworkXioClient::NetworkXioClient(const std::string& uri,
     }
     catch (const std::system_error& e)
     {
-        LIBLOG_ERROR("failed to create xio thread: " << e.what());
+        LIBLOGID_ERROR("failed to create xio thread: " << e.what());
         throw XioClientCreateException("failed to create XIO worker thread");
     }
 
@@ -173,7 +186,7 @@ NetworkXioClient::NetworkXioClient(const std::string& uri,
     }
     catch (const std::exception& e)
     {
-        LIBLOG_ERROR("failed to create xio thread: " << e.what());
+        LIBLOGID_ERROR("failed to create xio thread: " << e.what());
         xio_thread_.join();
         throw XioClientCreateException("failed to create XIO worker thread");
     }
@@ -222,14 +235,16 @@ NetworkXioClient::run(std::promise<bool>& promise)
                             xio_context_create(NULL, polling_timeout_us, -1),
                             xio_destroy_ctx_shutdown);
     }
-    catch (const std::bad_alloc&)
+    catch (const std::bad_alloc& e)
     {
+        LIBLOGID_ERROR(e.what());
         xrefcnt_shutdown();
         throw;
     }
 
     if (ctx == nullptr)
     {
+        LIBLOGID_ERROR("failed to create XIO context");
         throw XioClientCreateException("failed to create XIO context");
     }
 
@@ -239,6 +254,7 @@ NetworkXioClient::run(std::promise<bool>& promise)
                                   static_evfd_stop_loop<NetworkXioClient>,
                                   this))
     {
+        LIBLOGID_ERROR("failed to register event handler");
         throw XioClientRegHandlerException("failed to register event handler");
     }
 
@@ -247,7 +263,8 @@ NetworkXioClient::run(std::promise<bool>& promise)
     if(session == nullptr)
     {
         xio_context_del_ev_handler(ctx.get(), evfd);
-        throw XioClientCreateException("failed to create XIO client");
+        LIBLOGID_ERROR("failed to create XIO session");
+        throw XioClientCreateException("failed to create XIO session");
     }
 
     cparams.session = session.get();
@@ -258,6 +275,7 @@ NetworkXioClient::run(std::promise<bool>& promise)
     if (conn == nullptr)
     {
         xio_context_del_ev_handler(ctx.get(), evfd);
+        LIBLOGID_ERROR("failed to connect");
         throw XioClientCreateException("failed to connect");
     }
 
@@ -386,7 +404,7 @@ NetworkXioClient::on_response(xio_session *session __attribute__((unused)),
     }
     catch (...)
     {
-        LIBLOG_ERROR("failed to unpack msg");
+        LIBLOGID_ERROR("failed to unpack msg");
         return 0;
     }
     xio_msg_s *xio_msg = reinterpret_cast<xio_msg_s*>(imsg.opaque());
@@ -423,7 +441,7 @@ NetworkXioClient::on_msg_error(xio_session *session __attribute__((unused)),
         }
         catch (...)
         {
-            LIBLOG_ERROR("failed to unpack msg");
+            LIBLOGID_ERROR("failed to unpack msg");
             return 0;
         }
     }
@@ -436,7 +454,7 @@ NetworkXioClient::on_msg_error(xio_session *session __attribute__((unused)),
         }
         catch (...)
         {
-            LIBLOG_ERROR("failed to unpack msg");
+            LIBLOGID_ERROR("failed to unpack msg");
             xio_release_response(msg);
             return 0;
         }
@@ -506,6 +524,7 @@ NetworkXioClient::req_queue_wait_until(xio_msg_s *xmsg)
                                           [&]{return nr_req_queue >= 0;}))
         {
             delete xmsg;
+            LIBLOGID_ERROR("request queue is busy");
             throw XioClientQueueIsBusyException("request queue is busy");
         }
     }

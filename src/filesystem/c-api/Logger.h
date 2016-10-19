@@ -47,6 +47,15 @@ public:
         __FUNCTION__ << "(" << __LINE__ << "): " << msg;                      \
     }
 
+#define LIBLOG_ID_(sev, msg)                                                  \
+    if (::youtils::Logger::filter(volumedriverfs::Logger::getLogger().name,   \
+                                  sev))                                       \
+    {                                                                         \
+        BOOST_LOG_SEV(volumedriverfs::Logger::getLogger().get(), sev) <<      \
+        get_log_identifier() << " - " <<                                      \
+        __FUNCTION__ << "(" << __LINE__ << "): " << msg;                      \
+    }
+
 #define LIBLOG_TRACE(msg)  LIBLOG_(::youtils::Severity::trace, msg)
 #define LIBLOG_DEBUG(msg)  LIBLOG_(::youtils::Severity::debug, msg)
 #define LIBLOG_INFO(msg)   LIBLOG_(::youtils::Severity::info, msg)
@@ -54,3 +63,11 @@ public:
 #define LIBLOG_ERROR(msg)  LIBLOG_(::youtils::Severity::error, msg)
 #define LIBLOG_FATAL(msg)  LIBLOG_(::youtils::Severity::fatal, msg)
 #define LIBLOG_NOTIFY(msg) LIBLOG_(::youtils::Severity::notification, msg)
+
+#define LIBLOGID_TRACE(msg)  LIBLOG_ID_(::youtils::Severity::trace, msg)
+#define LIBLOGID_DEBUG(msg)  LIBLOG_ID_(::youtils::Severity::debug, msg)
+#define LIBLOGID_INFO(msg)   LIBLOG_ID_(::youtils::Severity::info, msg)
+#define LIBLOGID_WARN(msg)   LIBLOG_ID_(::youtils::Severity::warn, msg)
+#define LIBLOGID_ERROR(msg)  LIBLOG_ID_(::youtils::Severity::error, msg)
+#define LIBLOGID_FATAL(msg)  LIBLOG_ID_(::youtils::Severity::fatal, msg)
+#define LIBLOGID_NOTIFY(msg) LIBLOG_ID_(::youtils::Severity::notification, msg)

@@ -102,7 +102,6 @@ ovs_ctx_attr_set_transport(ovs_ctx_attr_t *attr,
         attr->port = port;
         return hostname_to_ip(host, attr->host);
     }
-    LIBLOG_ERROR("wrong transport type: " << transport);
     errno = EINVAL;
     return -1;
 }
@@ -118,7 +117,6 @@ ovs_ctx_attr_set_network_qdepth(ovs_ctx_attr_t *attr,
     }
     if (qdepth <= 0)
     {
-        LIBLOG_ERROR("wrong queue depth: " << qdepth);
         errno = EINVAL;
         return -1;
     }

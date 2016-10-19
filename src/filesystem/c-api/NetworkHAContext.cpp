@@ -23,6 +23,10 @@
 #include <thread>
 #include <chrono>
 #include <random>
+#include <sstream>
+#include <boost/type_index.hpp>
+
+namespace bti =  boost::typeindex;
 
 #define HA_HANDLER_SLEEP_TIME   5ms
 
@@ -53,12 +57,15 @@ NetworkHAContext::NetworkHAContext(const std::string& uri,
     , openning_(true)
     , connection_error_(false)
 {
+    LIBLOGID_INFO("uri: " << uri <<
+                  ",queue depth: " << net_client_qdepth);
     mpool = std::shared_ptr<xio_mempool>(
                     xio_mempool_create(-1,
                                        XIO_MEMPOOL_FLAG_REGULAR_PAGES_ALLOC),
                     xio_mempool_destroy);
     if (mpool == nullptr)
     {
+        LIBLOGID_ERROR("failed to create memory pool");
         throw NetworkHAContextMemPoolException("failed to create memory pool");
     }
 
@@ -212,8 +219,8 @@ NetworkHAContext::resend_inflight_requests()
             atomic_get_ctx()->send_flush_request(request);
             break;
         default:
-            LIBLOG_ERROR("unknown inflight request, op:"
-                         << static_cast<int>(request->_op));
+            LIBLOGID_ERROR("unknown inflight request, op:"
+                           << static_cast<int>(request->_op));
         }
     }
 }
@@ -240,7 +247,7 @@ NetworkHAContext::reconnect()
                                   false);
         if (r < 0)
         {
-            LIBLOG_ERROR("reconnection to URI '" << uri << "' failed");
+            LIBLOGID_ERROR("reconnection to URI '" << uri << "' failed");
             tmp_ctx.reset();
             continue;
         }
@@ -253,7 +260,7 @@ NetworkHAContext::reconnect()
         if (connected)
         {
             update_cluster_node_uri();
-            LIBLOG_INFO("reconnection to URI '" << uri << "' succeeded");
+            LIBLOGID_INFO("reconnection to URI '" << uri << "' succeeded");
             break;
         }
     }
@@ -283,8 +290,8 @@ NetworkHAContext::update_cluster_node_uri()
     int rl = list_cluster_node_uri(cluster_nw_uris_);
     if (rl < 0)
     {
-        LIBLOG_ERROR("failed to update cluster node URI list: "
-                     << strerror(errno));
+        LIBLOGID_ERROR("failed to update cluster node URI list: "
+                       << strerror(errno));
     }
 }
 
@@ -322,6 +329,8 @@ int
 NetworkHAContext::open_volume(const char *volume_name,
                               int oflag)
 {
+    LIBLOGID_DEBUG("volume name: " << volume_name
+                   << ", oflag: " << oflag);
     int r = atomic_get_ctx()->open_volume(volume_name, oflag);
     if (not r)
     {
@@ -544,6 +553,14 @@ NetworkHAContext::deallocate(ovs_buffer_t *ptr)
     }
     delete ptr;
     return 0;
+}
+
+const std::string
+NetworkHAContext::get_log_identifier()
+{
+    std::ostringstream os;
+    os << bti::type_id_runtime(*this).pretty_name() << "(" << this << ")";
+    return os.str();
 }
 
 } //namespace volumedriverfs

@@ -22,7 +22,7 @@ void
 Logger::ovs_log_init(::youtils::Severity severity)
 {
     std::vector<std::string> sinks = {::youtils::Logger::syslog_sink_name()};
-    ::youtils::Logger::setupLogging("ovs_logger",
+    ::youtils::Logger::setupLogging("logger",
                                     sinks,
                                     severity,
                                     youtils::LogRotation::F);

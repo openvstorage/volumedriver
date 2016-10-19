@@ -45,6 +45,9 @@ struct ovs_shm_context
     void
     wr_handler(void *arg);
 
+    const std::string
+    get_log_identifier();
+
     int oflag;
     int io_threads_pool_size_;
     volumedriverfs::ShmClientPtr shm_client_;

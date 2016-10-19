@@ -21,6 +21,11 @@
 #include <youtils/UUID.h>
 #include <youtils/OrbHelper.h>
 
+#include <sstream>
+#include <boost/type_index.hpp>
+
+namespace bti =  boost::typeindex;
+
 namespace volumedriverfs
 {
 
@@ -76,6 +81,14 @@ ShmClient::orb_helper()
     return *orb_helper_instance;
 }
 
+const std::string
+ShmClient::get_log_identifier()
+{
+    std::ostringstream os;
+    os << bti::type_id_runtime(*this).pretty_name() << "(" << this << ")";
+    return os.str();
+}
+
 ShmClient::ShmClient(const std::string& volume_name,
                      const std::string& vd_context_name,
                      const std::string& vd_context_kind,
@@ -85,6 +98,11 @@ ShmClient::ShmClient(const std::string& volume_name,
     , shm_segment_(new ipc::managed_shared_memory(ipc::open_only,
                                                   ShmSegmentDetails::Name()))
 {
+    LIBLOGID_INFO("volume name: " << volume_name
+                  << ",context name: " << vd_context_name
+                  << ",context kind: " << vd_context_kind
+                  << ", object name: " << vd_object_name
+                  << ", object kind: " << vd_object_kind);
     CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
                                                             vd_context_kind,
                                                             vd_object_name,
@@ -123,15 +141,15 @@ ShmClient::~ShmClient()
     }
     catch (CORBA::TRANSIENT& e)
     {
-        LIBLOG_INFO("Transient exception when stopping mem client: server down?");
+        LIBLOGID_INFO("Transient exception when stopping mem client: server down?");
     }
     catch (std::exception& e)
     {
-        LIBLOG_INFO("std::exception when stopping mem client: server down?");
+        LIBLOGID_INFO("std::exception when stopping mem client: server down?");
     }
     catch (...)
     {
-        LIBLOG_INFO("unknown exception when stopping mem client: server down?");
+        LIBLOGID_INFO("unknown exception when stopping mem client: server down?");
     }
 
     try

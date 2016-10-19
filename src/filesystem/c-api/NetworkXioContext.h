@@ -120,6 +120,9 @@ private:
     std::string volname_;
     NetworkHAContext& ha_ctx_;
     bool ha_try_reconnect_;
+
+    const std::string
+    get_log_identifier();
 };
 
 } //namespace volumedriverfs
