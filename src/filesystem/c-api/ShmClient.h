@@ -25,7 +25,7 @@
 #include <youtils/Logging.h>
 #include <youtils/OrbHelper.h>
 
-namespace volumedriverfs
+namespace libovsvolumedriver
 {
 namespace ipc = boost::interprocess;
 
@@ -33,10 +33,10 @@ class ShmClient
 {
 public:
     ShmClient(const std::string& volume_name,
-              const std::string& context_name = vd_context_name,
-              const std::string& context_kind = vd_context_kind,
-              const std::string& object_name = vd_object_name,
-              const std::string& object_kind = vd_object_kind);
+              const std::string& context_name = volumedriverfs::vd_context_name,
+              const std::string& context_kind = volumedriverfs::vd_context_kind,
+              const std::string& object_name = volumedriverfs::vd_object_name,
+              const std::string& object_kind = volumedriverfs::vd_object_kind);
 
     ~ShmClient();
 
@@ -178,5 +178,5 @@ private:
 
 typedef std::shared_ptr<ShmClient> ShmClientPtr;
 
-} //namespace volumedriverfs
+} //namespace libovsvolumedriver
 #endif

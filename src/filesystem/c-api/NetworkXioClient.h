@@ -31,7 +31,7 @@
 #include <condition_variable>
 #include <chrono>
 
-namespace volumedriverfs
+namespace libovsvolumedriver
 {
 
 MAKE_EXCEPTION(XioClientCreateException, fungi::IOException);
@@ -222,7 +222,7 @@ private:
     std::mutex req_queue_lock;
     std::condition_variable req_queue_cond;
 
-    EventFD evfd;
+    volumedriverfs::EventFD evfd;
 
     NetworkHAContext& ha_ctx_;
     bool ha_try_reconnect_;
@@ -343,6 +343,6 @@ private:
 
 typedef std::shared_ptr<NetworkXioClient> NetworkXioClientPtr;
 
-} //namespace volumedriverfs
+} //namespace libovsvolumedriver
 
 #endif //__NETWORK_XIO_CLIENT_H_

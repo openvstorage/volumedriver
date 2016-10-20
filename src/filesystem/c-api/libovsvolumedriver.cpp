@@ -42,6 +42,8 @@
 #define unlikely(x)     (x)
 #endif
 
+namespace libvoldrv = libovsvolumedriver;
+
 ovs_ctx_attr_t*
 ovs_ctx_attr_new()
 {
@@ -175,16 +177,16 @@ ovs_ctx_new(const ovs_ctx_attr_t *attr)
     const youtils::Severity severity(
             youtils::System::get_env_with_default(loglevel_key,
                                                   youtils::Severity::info));
-    volumedriverfs::Logger::ovs_log_init(severity);
+    libvoldrv::Logger::ovs_log_init(severity);
     try
     {
         switch (attr->transport)
         {
         case TransportType::TCP:
         case TransportType::RDMA:
-            ctx = new volumedriverfs::NetworkHAContext(uri,
-                                                       attr->network_qdepth,
-                                                       attr->enable_ha);
+            ctx = new libvoldrv::NetworkHAContext(uri,
+                                                  attr->network_qdepth,
+                                                  attr->enable_ha);
             break;
         case TransportType::SharedMemory:
             ctx = new ShmContext;

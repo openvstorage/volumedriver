@@ -30,7 +30,7 @@
 class VolumeCacheHandler
 {
 public:
-    VolumeCacheHandler(volumedriverfs::ShmClientPtr shm_client,
+    VolumeCacheHandler(libovsvolumedriver::ShmClientPtr shm_client,
                        ShmControlChannelClientPtr ctl_client);
 
     ~VolumeCacheHandler();
@@ -52,7 +52,7 @@ public:
 
 private:
     typedef std::queue<void*> BufferQueue;
-    volumedriverfs::ShmClientPtr shm_client_;
+    libovsvolumedriver::ShmClientPtr shm_client_;
     ShmControlChannelClientPtr ctl_client_;
 
     enum BufferSize

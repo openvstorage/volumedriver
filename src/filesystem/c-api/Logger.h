@@ -16,7 +16,7 @@
 #include <youtils/Logger.h>
 #include <boost/type_index.hpp>
 
-namespace volumedriverfs
+namespace libovsvolumedriver
 {
 
 class Logger
@@ -38,21 +38,23 @@ public:
     getLogger();
 };
 
-} //namespace volumedriverfs
+} //namespace libovsvolumedriver
 
 #define LIBLOG_(sev, msg)                                                     \
-    if (::youtils::Logger::filter(volumedriverfs::Logger::getLogger().name,   \
+    if (::youtils::Logger::filter(                                            \
+                libovsvolumedriver::Logger::getLogger().name,                 \
                                   sev))                                       \
     {                                                                         \
-        BOOST_LOG_SEV(volumedriverfs::Logger::getLogger().get(), sev) <<      \
+        BOOST_LOG_SEV(libovsvolumedriver::Logger::getLogger().get(), sev) <<  \
         __FUNCTION__ << "(" << __LINE__ << "): " << msg;                      \
     }
 
 #define LIBLOG_ID_(sev, msg)                                                  \
-    if (::youtils::Logger::filter(volumedriverfs::Logger::getLogger().name,   \
+    if (::youtils::Logger::filter(                                            \
+                libovsvolumedriver::Logger::getLogger().name,                 \
                                   sev))                                       \
     {                                                                         \
-        BOOST_LOG_SEV(volumedriverfs::Logger::getLogger().get(), sev) <<      \
+        BOOST_LOG_SEV(libovsvolumedriver::Logger::getLogger().get(), sev) <<  \
         boost::typeindex::type_id_runtime(*this).pretty_name() <<             \
         "(" << this << ")" << " - " <<                                        \
         __FUNCTION__ << "(" << __LINE__ << "): " << msg;                      \

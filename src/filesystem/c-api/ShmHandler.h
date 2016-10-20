@@ -47,7 +47,7 @@ struct ovs_shm_context
 
     int oflag;
     int io_threads_pool_size_;
-    volumedriverfs::ShmClientPtr shm_client_;
+    libovsvolumedriver::ShmClientPtr shm_client_;
     std::vector<IOThreadPtr> rr_iothreads;
     std::vector<IOThreadPtr> wr_iothreads;
     VolumeCacheHandlerPtr cache_;

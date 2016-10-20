@@ -31,7 +31,7 @@
 #include <map>
 #include <unordered_map>
 
-namespace volumedriverfs
+namespace libovsvolumedriver
 {
 
 class NetworkHAContext : public ovs_context_t
@@ -227,6 +227,6 @@ private:
     get_rand_cluster_uri();
 };
 
-} //namespace volumedriverfs
+} //namespace libovsvolumedriver
 
 #endif //__NETWORK_HA_CONTEXT_H

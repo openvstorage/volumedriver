@@ -20,7 +20,7 @@
 #include "NetworkXioClient.h"
 #include "context.h"
 
-namespace volumedriverfs
+namespace libovsvolumedriver
 {
 
 class NetworkXioContext : public ovs_context_t
@@ -114,7 +114,7 @@ public:
     int
     deallocate(ovs_buffer_t *ptr);
 private:
-    volumedriverfs::NetworkXioClientPtr net_client_;
+    libovsvolumedriver::NetworkXioClientPtr net_client_;
     std::string uri_;
     uint64_t net_client_qdepth_;
     std::string volname_;
@@ -122,5 +122,5 @@ private:
     bool ha_try_reconnect_;
 };
 
-} //namespace volumedriverfs
+} //namespace libovsvolumedriver
 #endif //__NETWORK_XIO_CONTEXT_H

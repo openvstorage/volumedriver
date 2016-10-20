@@ -15,7 +15,7 @@
 
 #include "Logger.h"
 
-namespace volumedriverfs
+namespace libovsvolumedriver
 {
 
 void
@@ -53,4 +53,4 @@ Logger::getLogger()
     return logger;
 }
 
-} //namespace volumedriverfs
+} //namespace libovsvolumedriver

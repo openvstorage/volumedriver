@@ -32,7 +32,7 @@
 #define LOCK_SEEN()                                     \
     std::lock_guard<std::mutex> srl_(seen_reqs_lock_)
 
-namespace volumedriverfs
+namespace libovsvolumedriver
 {
 
 MAKE_EXCEPTION(NetworkHAContextMemPoolException, fungi::IOException);
@@ -551,4 +551,4 @@ NetworkHAContext::deallocate(ovs_buffer_t *ptr)
     return 0;
 }
 
-} //namespace volumedriverfs
+} //namespace libovsvolumedriver

@@ -46,7 +46,7 @@ xrefcnt_shutdown()
     }
 }
 
-namespace volumedriverfs
+namespace libovsvolumedriver
 {
 
 template<class T>
@@ -1064,4 +1064,4 @@ NetworkXioClient::xio_is_snapshot_synced(const std::string& uri,
     xio_submit_request(uri, xctl.get(), opaque);
 }
 
-} //namespace volumedriverfs
+} //namespace libovsvolumedriver

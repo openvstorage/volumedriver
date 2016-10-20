@@ -23,7 +23,7 @@ ovs_shm_context::ovs_shm_context(const std::string& volume_name,
     const std::string io_env_var("LIBOVSVOLUMEDRIVER_IO_THREADS_POOL_SIZE");
     io_threads_pool_size_ =
                 youtils::System::get_env_with_default<int>(io_env_var, 1);
-    shm_client_ = std::make_shared<volumedriverfs::ShmClient>(volume_name);
+    shm_client_ = std::make_shared<libovsvolumedriver::ShmClient>(volume_name);
     try
     {
         ctl_client_ = std::make_shared<ShmControlChannelClient>();
