@@ -103,6 +103,23 @@ Set network queue depth::
     The function shall fail if:
         - EINVAL Invalid arguments supplied
 
+Enable high availability::
+    int ovs_ctx_attr_enable_ha(ovs_ctx_attr_t *attr);
+
+    Description
+    -----------
+    The ovs_ctx_attr_enable_ha() function enables high availability.
+
+    Return Value
+    ------------
+    On success 0 is returned, otherwise it shall return -1 and errno will be
+    set with the type of failure.
+
+    Errors
+    ------
+    The function shall fail if:
+        - EINVAL Invalid arguments supplied
+
 Create Open vStorage context::
     ovs_ctx_t *ovs_ctx_new(const ovs_ctx_attr_t *attr);
 
