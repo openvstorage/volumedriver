@@ -23,10 +23,6 @@
 #include <thread>
 #include <chrono>
 #include <random>
-#include <sstream>
-#include <boost/type_index.hpp>
-
-namespace bti =  boost::typeindex;
 
 #define HA_HANDLER_SLEEP_TIME   5ms
 
@@ -553,14 +549,6 @@ NetworkHAContext::deallocate(ovs_buffer_t *ptr)
     }
     delete ptr;
     return 0;
-}
-
-const std::string
-NetworkHAContext::get_log_identifier()
-{
-    std::ostringstream os;
-    os << bti::type_id_runtime(*this).pretty_name() << "(" << this << ")";
-    return os.str();
 }
 
 } //namespace volumedriverfs

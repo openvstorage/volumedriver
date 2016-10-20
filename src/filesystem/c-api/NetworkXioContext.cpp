@@ -16,11 +16,6 @@
 #include "Logger.h"
 #include "NetworkXioContext.h"
 
-#include <sstream>
-#include <boost/type_index.hpp>
-
-namespace bti =  boost::typeindex;
-
 namespace volumedriverfs
 {
 
@@ -40,14 +35,6 @@ NetworkXioContext::NetworkXioContext(const std::string& uri,
 
 NetworkXioContext::~NetworkXioContext()
 {
-}
-
-const std::string
-NetworkXioContext::get_log_identifier()
-{
-    std::ostringstream os;
-    os << bti::type_id_runtime(*this).pretty_name() << "(" << this << ")";
-    return os.str();
 }
 
 int

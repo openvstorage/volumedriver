@@ -21,11 +21,6 @@
 #include <youtils/UUID.h>
 #include <youtils/OrbHelper.h>
 
-#include <sstream>
-#include <boost/type_index.hpp>
-
-namespace bti =  boost::typeindex;
-
 namespace volumedriverfs
 {
 
@@ -79,14 +74,6 @@ ShmClient::orb_helper()
         orb_helper_instance = std::make_unique<yt::OrbHelper>("ShmClient");
     }
     return *orb_helper_instance;
-}
-
-const std::string
-ShmClient::get_log_identifier()
-{
-    std::ostringstream os;
-    os << bti::type_id_runtime(*this).pretty_name() << "(" << this << ")";
-    return os.str();
 }
 
 ShmClient::ShmClient(const std::string& volume_name,

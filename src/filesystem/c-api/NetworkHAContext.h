@@ -225,9 +225,6 @@ private:
 
     std::string
     get_rand_cluster_uri();
-
-    const std::string
-    get_log_identifier();
 };
 
 } //namespace volumedriverfs

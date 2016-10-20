@@ -291,9 +291,6 @@ private:
                         xio_iovec_ex *sglist,
                         int vec_size);
 
-    const std::string
-    get_log_identifier();
-
     bool
     is_ha_enabled() const
     {

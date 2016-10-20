@@ -174,9 +174,6 @@ private:
     std::unique_ptr<ShmIdlInterface::CreateResult> create_result;
 
     std::unique_ptr<ipc::managed_shared_memory> shm_segment_;
-
-    const std::string
-    get_log_identifier();
 };
 
 typedef std::shared_ptr<ShmClient> ShmClientPtr;

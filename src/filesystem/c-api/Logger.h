@@ -14,6 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include <youtils/Logger.h>
+#include <boost/type_index.hpp>
 
 namespace volumedriverfs
 {
@@ -52,7 +53,8 @@ public:
                                   sev))                                       \
     {                                                                         \
         BOOST_LOG_SEV(volumedriverfs::Logger::getLogger().get(), sev) <<      \
-        get_log_identifier() << " - " <<                                      \
+        boost::typeindex::type_id_runtime(*this).pretty_name() <<             \
+        "(" << this << ")" << " - " <<                                        \
         __FUNCTION__ << "(" << __LINE__ << "): " << msg;                      \
     }
 

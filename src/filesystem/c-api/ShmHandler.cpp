@@ -16,11 +16,6 @@
 #include "Logger.h"
 #include "ShmHandler.h"
 
-#include <sstream>
-#include <boost/type_index.hpp>
-
-namespace bti =  boost::typeindex;
-
 ovs_shm_context::ovs_shm_context(const std::string& volume_name,
                                  int flag)
     : oflag(flag)
@@ -89,14 +84,6 @@ ovs_shm_context::~ovs_shm_context()
     shm_client_.reset();
     ctl_client_->deregister();
     ctl_client_.reset();
-}
-
-const std::string
-ovs_shm_context::get_log_identifier()
-{
-    std::ostringstream os;
-    os << bti::type_id_runtime(*this).pretty_name() << "(" << this << ")";
-    return os.str();
 }
 
 void

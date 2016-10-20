@@ -23,10 +23,6 @@
 #include <functional>
 #include <atomic>
 #include <system_error>
-#include <sstream>
-#include <boost/type_index.hpp>
-
-namespace bti =  boost::typeindex;
 
 namespace yt = youtils;
 
@@ -112,14 +108,6 @@ static_evfd_stop_loop(int fd, int events, void *data)
         return;
     }
     obj->evfd_stop_loop(fd, events, data);
-}
-
-const std::string
-NetworkXioClient::get_log_identifier()
-{
-    std::ostringstream os;
-    os << bti::type_id_runtime(*this).pretty_name() << "(" << this << ")";
-    return os.str();
 }
 
 NetworkXioClient::NetworkXioClient(const std::string& uri,
