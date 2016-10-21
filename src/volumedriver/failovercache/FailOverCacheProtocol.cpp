@@ -18,6 +18,7 @@
 #include "FailOverCacheStreamers.h"
 #include "fungilib/WrapByteArray.h"
 #include "fungilib/use_rs.h"
+#include "TracePoints_tp.h"
 
 #include <signal.h>
 #include <unistd.h>
@@ -303,16 +304,33 @@ FailOverCacheProtocol::addEntries_()
     volumedriver::CommandData<volumedriver::AddEntries> data;
     stream_ >> data;
 
-    // TODO: consider preventing empty AddEntries requests
-    if (data.entries_.empty())
     {
-        VERIFY(data.buf_ == nullptr);
-    }
-    else
-    {
-        VERIFY(data.buf_ != nullptr);
-        cache_->addEntries(std::move(data.entries_),
-                           std::move(data.buf_));
+        tracepoint(openvstorage_volumedriver,
+                   dtl_add_entries_start,
+                   cache_->getNamespace().c_str(),
+                   data.entries_.size());
+
+        auto on_exit(yt::make_scope_exit([&]
+                                         {
+                                             tracepoint(openvstorage_volumedriver,
+                                                        dtl_add_entries_end,
+                                                        cache_->getNamespace().c_str(),
+                                                        data.entries_.size(),
+                                                        std::uncaught_exception());
+                                         }));
+
+
+        // TODO: consider preventing empty AddEntries requests
+        if (data.entries_.empty())
+        {
+            VERIFY(data.buf_ == nullptr);
+        }
+        else
+        {
+            VERIFY(data.buf_ != nullptr);
+            cache_->addEntries(std::move(data.entries_),
+                               std::move(data.buf_));
+        }
     }
 
     returnOk();

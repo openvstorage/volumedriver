@@ -216,3 +216,23 @@ TRACEPOINT_EVENT(
 		  ctf_integer(uint64_t, sco_number, sco_number_arg)
 		  ctf_integer(int, status, status_arg))
 )
+
+TRACEPOINT_EVENT(
+	openvstorage_volumedriver,
+	dtl_add_entries_start,
+	TP_ARGS(const char*, nspace_arg,
+		const uint64_t, num_entries_arg),
+	TP_FIELDS(ctf_string(nspace, nspace_arg)
+		  ctf_integer(uint64_t, num_entries, num_entries_arg))
+)
+
+TRACEPOINT_EVENT(
+	openvstorage_volumedriver,
+	dtl_add_entries_end,
+	TP_ARGS(const char*, nspace_arg,
+		const uint64_t, num_entries_arg,
+		int, status_arg),
+	TP_FIELDS(ctf_string(nspace, nspace_arg)
+		  ctf_integer(uint64_t, num_entries, num_entries_arg)
+		  ctf_integer(int, status, status_arg))
+)
