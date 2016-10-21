@@ -286,7 +286,7 @@ ShmClient::timed_receive_write_reply(size_t& size_in_bytes,
                                                 ptimeout);
         if (ret)
         {
-            assert(received_size == writereply_size);
+            assert(received_size == vfs::writereply_size);
             *opaque = reinterpret_cast<void*>(writereply_.opaque);
         }
         else
