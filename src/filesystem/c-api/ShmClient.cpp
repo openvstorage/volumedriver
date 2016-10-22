@@ -191,7 +191,7 @@ ShmClient::send_write_request(const void *buf,
     try
     {
         writerequest_mq_->send(&writerequest_,
-                               vfs::writerequest_size,
+                               sizeof(vfs::ShmWriteRequest),
                                0);
     }
     catch (...)
@@ -221,7 +221,7 @@ ShmClient::timed_send_write_request(const void *buf,
     try
     {
         int ret = writerequest_mq_->timed_send(&writerequest_,
-                                               vfs::writerequest_size,
+                                               sizeof(vfs::ShmWriteRequest),
                                                0,
                                                ptimeout);
         if (not ret)
@@ -249,10 +249,10 @@ ShmClient::receive_write_reply(size_t& size_in_bytes,
     try
     {
         writereply_mq_->receive(&writereply_,
-                                vfs::writereply_size,
+                                sizeof(vfs::ShmWriteReply),
                                 received_size,
                                 priority);
-        assert(received_size == vfs::writereply_size);
+        assert(received_size == sizeof(vfs::ShmWriteReply));
         *opaque = reinterpret_cast<void*>(writereply_.opaque);
     }
     catch (...)
@@ -280,13 +280,13 @@ ShmClient::timed_receive_write_reply(size_t& size_in_bytes,
     try
     {
         int ret = writereply_mq_->timed_receive(&writereply_,
-                                                vfs::writereply_size,
+                                                sizeof(vfs::ShmWriteReply),
                                                 received_size,
                                                 priority,
                                                 ptimeout);
         if (ret)
         {
-            assert(received_size == vfs::writereply_size);
+            assert(received_size == sizeof(vfs::ShmWriteReply));
             *opaque = reinterpret_cast<void*>(writereply_.opaque);
         }
         else
@@ -321,7 +321,7 @@ ShmClient::send_read_request(const void *buf,
     try
     {
         readrequest_mq_->send(&readrequest_,
-                              vfs::readrequest_size,
+                              sizeof(vfs::ShmReadRequest),
                               0);
     }
     catch (...)
@@ -351,7 +351,7 @@ ShmClient::timed_send_read_request(const void *buf,
     try
     {
         int ret = readrequest_mq_->timed_send(&readrequest_,
-                                              vfs::readrequest_size,
+                                              sizeof(vfs::ShmReadRequest),
                                               0,
                                               ptimeout);
         if (not ret)
@@ -379,10 +379,10 @@ ShmClient::receive_read_reply(size_t& size_in_bytes,
     try
     {
         readreply_mq_->receive(&readreply_,
-                               vfs::readreply_size,
+                               sizeof(vfs::ShmReadReply),
                                received_size,
                                priority);
-        assert(received_size == vfs::readreply_size);
+        assert(received_size == sizeof(vfs::ShmReadReply));
         *opaque = reinterpret_cast<void*>(readreply_.opaque);
     }
     catch (...)
@@ -410,13 +410,13 @@ ShmClient::timed_receive_read_reply(size_t& size_in_bytes,
     try
     {
         int ret = readreply_mq_->timed_receive(&readreply_,
-                                               vfs::readreply_size,
+                                               sizeof(vfs::ShmReadReply),
                                                received_size,
                                                priority,
                                                ptimeout);
         if (ret)
         {
-            assert(received_size == vfs::readreply_size);
+            assert(received_size == sizeof(vfs::ShmReadReply));
             *opaque = reinterpret_cast<void*>(readreply_.opaque);
         }
         else
@@ -448,7 +448,7 @@ ShmClient::stop_reply_queues(int n)
         try
         {
             readreply_mq_->send(&readreply_,
-                                vfs::readreply_size,
+                                sizeof(vfs::ShmReadReply),
                                 0);
         }
         catch (...)
@@ -464,7 +464,7 @@ ShmClient::stop_reply_queues(int n)
         try
         {
             writereply_mq_->send(&writereply_,
-                                 vfs::writereply_size,
+                                 sizeof(vfs::ShmWriteReply),
                                  0);
         }
         catch (...)

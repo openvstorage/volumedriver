@@ -40,8 +40,6 @@ struct ShmWriteRequest
     boost::interprocess::managed_shared_memory::handle_t handle;
 };
 
-static const uint64_t writerequest_size = sizeof(ShmWriteRequest);
-
 struct ShmReadRequest
 {
     bool stop = false;
@@ -51,8 +49,6 @@ struct ShmReadRequest
     boost::interprocess::managed_shared_memory::handle_t handle;
 };
 
-static const uint64_t readrequest_size = sizeof(ShmReadRequest);
-
 struct ShmReadReply
 {
     bool stop = false;
@@ -61,8 +57,6 @@ struct ShmReadReply
     size_t  size_in_bytes = 0;
 };
 
-static const uint64_t readreply_size = sizeof(ShmReadReply);
-
 struct ShmWriteReply
 {
     bool stop = false;
@@ -70,8 +64,6 @@ struct ShmWriteReply
     uintptr_t opaque;
     size_t size_in_bytes = 0;
 };
-
-static const uint64_t writereply_size = sizeof(ShmWriteReply);
 
 }
 

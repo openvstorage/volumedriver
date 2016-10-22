@@ -50,22 +50,22 @@ public:
         writerequest_mq_.reset(new ipc::message_queue(ipc::create_only,
                                                       writerequest_mq_uuid_.str().c_str(),
                                                       max_write_queue_size,
-                                                      writerequest_size));
+                                                      sizeof(ShmWriteRequest)));
 
         writereply_mq_.reset(new ipc::message_queue(ipc::create_only,
                                                      writereply_mq_uuid_.str().c_str(),
                                                      max_write_queue_size,
-                                                     writereply_size));
+                                                     sizeof(ShmWriteReply)));
 
         readrequest_mq_.reset(new ipc::message_queue(ipc::create_only,
                                                      readrequest_mq_uuid_.str().c_str(),
                                                      max_read_queue_size,
-                                                     readrequest_size));
+                                                     sizeof(ShmReadRequest)));
 
         readreply_mq_.reset(new ipc::message_queue(ipc::create_only,
                                                    readreply_mq_uuid_.str().c_str(),
                                                    max_reply_queue_size,
-                                                   readreply_size));
+                                                   sizeof(ShmReadReply)));
 
         const std::string shm_server_env_var("SHM_SERVER_THREAD_POOL_SIZE");
         thread_pool_size_ =
@@ -85,7 +85,7 @@ public:
         for (int i = 0; i < thread_pool_size_; i++)
         {
             writerequest_mq_->send(getStopRequest<ShmWriteRequest>(),
-                                   writerequest_size,
+                                   sizeof(ShmWriteRequest),
                                    0);
         }
         {
@@ -94,7 +94,7 @@ public:
             ShmWriteReply write_reply_;
 
             while (writereply_mq_->try_receive(&write_reply_,
-                                               writereply_size,
+                                               sizeof(ShmWriteReply),
                                                received_size,
                                                priority))
             {
@@ -109,7 +109,7 @@ public:
         for (int i = 0; i < thread_pool_size_; i++)
         {
             readrequest_mq_->send(getStopRequest<ShmReadRequest>(),
-                                  readrequest_size,
+                                  sizeof(ShmReadRequest),
                                   0);
         }
         {
@@ -118,7 +118,7 @@ public:
             ShmReadReply read_reply_;
 
             while (readreply_mq_->try_receive(&read_reply_,
-                                              readreply_size,
+                                              sizeof(ShmReadReply),
                                               received_size,
                                               priority))
             {
@@ -208,10 +208,10 @@ private:
         while (true)
         {
             writerequest_mq_->receive(writerequest_msg_.get(),
-                                      writerequest_size,
+                                      sizeof(ShmWriteRequest),
                                       received_size,
                                       priority);
-            VERIFY(received_size == writerequest_size);
+            VERIFY(received_size == sizeof(ShmWriteRequest));
             writereply_msg_->opaque = writerequest_msg_->opaque;
             if (writerequest_msg_->stop)
             {
@@ -222,7 +222,7 @@ private:
                 writereply_msg_->failed = handler_->flush() ? false : true;
                 writereply_msg_->size_in_bytes = 0;
                 writereply_mq_->send(writereply_msg_.get(),
-                                     writereply_size,
+                                     sizeof(ShmWriteReply),
                                      0);
             }
             else
@@ -230,7 +230,7 @@ private:
                 handler_->write(writerequest_msg_.get(),
                                 writereply_msg_.get());
                 writereply_mq_->send(writereply_msg_.get(),
-                                     writereply_size,
+                                     sizeof(ShmWriteReply),
                                      0);
             }
         }
@@ -244,10 +244,10 @@ private:
         while (true)
         {
             readrequest_mq_->receive(readrequest_msg_.get(),
-                                     readrequest_size,
+                                     sizeof(ShmReadRequest),
                                      received_size,
                                      priority);
-            VERIFY(received_size == readrequest_size);
+            VERIFY(received_size == sizeof(ShmReadRequest));
             if (readrequest_msg_->stop)
             {
                 break;
@@ -257,7 +257,7 @@ private:
                 handler_->read(readrequest_msg_.get(),
                                readreply_msg_.get());
                 readreply_mq_->send(readreply_msg_.get(),
-                                    readreply_size,
+                                    sizeof(ShmReadReply),
                                     0);
             }
         }
