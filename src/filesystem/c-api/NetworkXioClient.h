@@ -158,6 +158,11 @@ public:
                               std::vector<std::string>& uris);
 
     static void
+    xio_get_volume_uri(const std::string& uri,
+                       const char* volume_name,
+                       std::string& volume_uri);
+
+    static void
     xio_list_snapshots(const std::string& uri,
                        const char* volume_name,
                        std::vector<std::string>& snapshots,
@@ -285,6 +290,11 @@ private:
     handle_list_cluster_node_uri(xio_ctl_s *xctl,
                                  xio_iovec_ex *sglist,
                                  int vec_size);
+
+    static void
+    handle_get_volume_uri(xio_ctl_s *xctl,
+                          xio_iovec_ex *sglist,
+                          int vec_size);
 
     static void
     create_vec_from_buf(xio_ctl_s *xctl,

@@ -488,6 +488,26 @@ NetworkXioContext::list_cluster_node_uri(std::vector<std::string>& uris)
 }
 
 int
+NetworkXioContext::get_volume_uri(const char* volume_name,
+                                  std::string& volume_uri)
+{
+    try
+    {
+        NetworkXioClient::xio_get_volume_uri(uri_, volume_name, volume_uri);
+        return 0;
+    }
+    catch (const std::bad_alloc&)
+    {
+        errno = ENOMEM;
+    }
+    catch (...)
+    {
+        errno = EIO;
+    }
+    return -1;
+}
+
+int
 NetworkXioContext::send_read_request(struct ovs_aiocb *ovs_aiocbp,
                                      ovs_aio_request *request)
 {

@@ -286,6 +286,14 @@ ShmContext::list_cluster_node_uri(std::vector<std::string>& /*uris*/)
 }
 
 int
+ShmContext::get_volume_uri(const char* /* volume_name */,
+                           std::string& /*uri*/)
+{
+    errno = ENOSYS;
+    return -1;
+}
+
+int
 ShmContext::send_read_request(struct ovs_aiocb *ovs_aiocbp,
                               ovs_aio_request *request)
 {

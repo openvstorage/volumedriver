@@ -35,6 +35,8 @@
 
 #include <filesystem/ObjectRouter.h>
 #include <filesystem/Registry.h>
+
+#include <filesystem/c-api/context.h>
 #include <filesystem/c-api/volumedriver.h>
 
 namespace volumedriverfstest
@@ -1548,6 +1550,32 @@ TEST_F(NetworkServerTest, high_availability_fail_remote_automated)
     test_high_availability(true,
                            false,
                            true);
+}
+
+TEST_F(NetworkServerTest, get_volume_uri)
+{
+    CtxAttrPtr attrs(make_ctx_attr(1024,
+                                   false,
+                                   FileSystemTestSetup::local_edge_port()));
+    CtxPtr ctx(ovs_ctx_new(attrs.get()));
+    ASSERT_TRUE(ctx != nullptr);
+
+    const std::string vname("volume");
+    const size_t vsize = 1ULL << 20;
+
+    ASSERT_EQ(0,
+              ovs_create_volume(ctx.get(),
+                                vname.c_str(),
+                                vsize));
+
+    auto& ctx_iface = dynamic_cast<ovs_context_t&>(*ctx);
+
+    std::string uri;
+    ctx_iface.get_volume_uri(vname.c_str(),
+                             uri);
+
+    EXPECT_EQ(network_server_uri(local_node_id()),
+              yt::Uri(uri));
 }
 
 } //namespace

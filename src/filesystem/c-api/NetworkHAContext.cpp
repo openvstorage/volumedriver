@@ -430,6 +430,14 @@ NetworkHAContext::list_cluster_node_uri(std::vector<std::string>& uris)
 }
 
 int
+NetworkHAContext::get_volume_uri(const char* volume_name,
+                                 std::string& uri)
+{
+    return atomic_get_ctx()->get_volume_uri(volume_name,
+                                            uri);
+}
+
+int
 NetworkHAContext::send_read_request(struct ovs_aiocb *ovs_aiocbp,
                                     ovs_aio_request *request)
 {
