@@ -227,8 +227,8 @@ ClusterRegistry::get_node_configs()
     return configs;
 }
 
-ClusterNodeStatus::State
-ClusterRegistry::get_node_state(const NodeId& node_id)
+ClusterNodeStatus
+ClusterRegistry::get_node_status(const NodeId& node_id)
 {
     LOG_TRACE(node_id);
 
@@ -236,7 +236,7 @@ ClusterRegistry::get_node_state(const NodeId& node_id)
     const auto it = find_node_throw_(node_id, map);
     LOG_TRACE(node_id << ", state " << it->second.state);
 
-    return it->second.state;
+    return it->second;
 }
 
 void

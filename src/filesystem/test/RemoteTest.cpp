@@ -1590,7 +1590,7 @@ TEST_F(RemoteTest, only_steal_from_offlined_node)
 
     std::shared_ptr<vfs::ClusterRegistry> reg(cluster_registry(fs_->object_router()));
     EXPECT_EQ(vfs::ClusterNodeStatus::State::Online,
-              reg->get_node_state(remote_node_id()));
+              reg->get_node_status(remote_node_id()).state);
 
     std::vector<char> buf(pattern.size());
     EXPECT_GT(0,
@@ -1599,7 +1599,7 @@ TEST_F(RemoteTest, only_steal_from_offlined_node)
                              buf.size(),
                              off));
     EXPECT_EQ(vfs::ClusterNodeStatus::State::Online,
-              reg->get_node_state(remote_node_id()));
+              reg->get_node_status(remote_node_id()).state);
 }
 
 TEST_F(RemoteTest, stealing_and_fencing)
