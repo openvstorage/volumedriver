@@ -203,12 +203,12 @@ NetworkHAContext::resend_inflight_requests()
         switch (request->_op)
         {
         case RequestOp::Read:
-            atomic_get_ctx()->send_read_request(request->ovs_aiocbp,
-                                                request);
+            atomic_get_ctx()->send_read_request(request,
+                                                request->ovs_aiocbp);
             break;
         case RequestOp::Write:
-            atomic_get_ctx()->send_write_request(request->ovs_aiocbp,
-                                                 request);
+            atomic_get_ctx()->send_write_request(request,
+                                                 request->ovs_aiocbp);
             break;
         case RequestOp::Flush:
         case RequestOp::AsyncFlush:
@@ -437,17 +437,20 @@ NetworkHAContext::get_volume_uri(const char* volume_name,
                                             uri);
 }
 
+template<typename... Args>
 int
-NetworkHAContext::send_read_request(struct ovs_aiocb *ovs_aiocbp,
-                                    ovs_aio_request *request)
+NetworkHAContext::wrap_io(int (ovs_context_t::*mem_fun)(ovs_aio_request*, Args...),
+                          ovs_aio_request* request,
+                          Args... args)
 {
     int r;
+
     if (is_ha_enabled())
     {
         uint64_t id = assign_request_id(request);
+
         LOCK_INFLIGHT();
-        r = atomic_get_ctx()->send_read_request(ovs_aiocbp,
-                                                request);
+        r = (atomic_get_ctx().get()->*mem_fun)(request, std::forward<Args>(args)...);
         if (not r)
         {
             insert_inflight_request(id, request);
@@ -455,55 +458,34 @@ NetworkHAContext::send_read_request(struct ovs_aiocb *ovs_aiocbp,
     }
     else
     {
-        r = atomic_get_ctx()->send_read_request(ovs_aiocbp,
-                                                request);
+        r = (atomic_get_ctx().get()->*mem_fun)(request, std::forward<Args>(args)...);
     }
     return r;
+ }
+
+int
+NetworkHAContext::send_read_request(ovs_aio_request* request,
+                                    ovs_aiocb* aiocb)
+{
+    return wrap_io(&ovs_context_t::send_read_request,
+                   request,
+                   aiocb);
 }
 
 int
-NetworkHAContext::send_write_request(struct ovs_aiocb *ovs_aiocbp,
-                                     ovs_aio_request *request)
+NetworkHAContext::send_write_request(ovs_aio_request* request,
+                                     ovs_aiocb* aiocb)
 {
-    int r;
-    if (is_ha_enabled())
-    {
-        uint64_t id = assign_request_id(request);
-        LOCK_INFLIGHT();
-        r = atomic_get_ctx()->send_write_request(ovs_aiocbp,
-                                                 request);
-        if (not r)
-        {
-            insert_inflight_request(id, request);
-        }
-    }
-    else
-    {
-        r = atomic_get_ctx()->send_write_request(ovs_aiocbp,
-                                                 request);
-    }
-    return r;
+    return wrap_io(&ovs_context_t::send_write_request,
+                   request,
+                   aiocb);
 }
 
 int
-NetworkHAContext::send_flush_request(ovs_aio_request *request)
+NetworkHAContext::send_flush_request(ovs_aio_request* request)
 {
-    int r;
-    if (is_ha_enabled())
-    {
-        uint64_t id = assign_request_id(request);
-        LOCK_INFLIGHT();
-        r = atomic_get_ctx()->send_flush_request(request);
-        if (not r)
-        {
-            insert_inflight_request(id, request);
-        }
-    }
-    else
-    {
-        r = atomic_get_ctx()->send_flush_request(request);
-    }
-    return r;
+    return wrap_io(&ovs_context_t::send_flush_request,
+                   request);
 }
 
 int

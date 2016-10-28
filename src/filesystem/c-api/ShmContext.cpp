@@ -294,8 +294,8 @@ ShmContext::get_volume_uri(const char* /* volume_name */,
 }
 
 int
-ShmContext::send_read_request(struct ovs_aiocb *ovs_aiocbp,
-                              ovs_aio_request *request)
+ShmContext::send_read_request(ovs_aio_request* request,
+                              ovs_aiocb* ovs_aiocbp)
 {
     return shm_ctx_->shm_client_->send_read_request(ovs_aiocbp->aio_buf,
                                                     ovs_aiocbp->aio_nbytes,
@@ -304,8 +304,8 @@ ShmContext::send_read_request(struct ovs_aiocb *ovs_aiocbp,
 }
 
 int
-ShmContext::send_write_request(struct ovs_aiocb *ovs_aiocbp,
-                               ovs_aio_request *request)
+ShmContext::send_write_request(ovs_aio_request* request,
+                               ovs_aiocb* ovs_aiocbp)
 {
     return shm_ctx_->shm_client_->send_write_request(ovs_aiocbp->aio_buf,
                                                      ovs_aiocbp->aio_nbytes,
@@ -314,7 +314,7 @@ ShmContext::send_write_request(struct ovs_aiocb *ovs_aiocbp,
 }
 
 int
-ShmContext::send_flush_request(ovs_aio_request *request)
+ShmContext::send_flush_request(ovs_aio_request* request)
 {
     struct ovs_aiocb *ovs_aiocbp = request->ovs_aiocbp;
     return shm_ctx_->shm_client_->send_write_request(ovs_aiocbp->aio_buf,

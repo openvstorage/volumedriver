@@ -98,15 +98,15 @@ public:
                    std::string& volume_uri) override final;
 
     int
-    send_read_request(struct ovs_aiocb *ovs_aiocbp,
-                      ovs_aio_request *request);
+    send_read_request(ovs_aio_request*,
+                      ovs_aiocb*) override final;
 
     int
-    send_write_request(struct ovs_aiocb *ovs_aiocbp,
-                       ovs_aio_request *request);
+    send_write_request(ovs_aio_request*,
+                       ovs_aiocb*) override final;
 
     int
-    send_flush_request(ovs_aio_request *request);
+    send_flush_request(ovs_aio_request*) override final;
 
     int
     stat_volume(struct stat *st);
@@ -196,6 +196,12 @@ private:
         fungi::ScopedSpinLock l_(ctx_lock_);
         ctx_.swap(ctx);
     }
+
+    template<typename... Args>
+    int
+    wrap_io(int (ovs_context_t::*mem_fun)(ovs_aio_request*, Args...),
+            ovs_aio_request*,
+            Args...);
 
     bool
     is_connection_error() const

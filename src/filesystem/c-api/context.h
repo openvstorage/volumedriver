@@ -65,13 +65,13 @@ struct ovs_context_t
     virtual int get_volume_uri(const char* volume_name,
                                std::string& uri) = 0;
 
-    virtual int send_read_request(struct ovs_aiocb *ovs_aiocbp,
-                                  ovs_aio_request *request) = 0;
+    virtual int send_read_request(ovs_aio_request*,
+                                  ovs_aiocb*) = 0;
 
-    virtual int send_write_request(struct ovs_aiocb *ovs_aiocbp,
-                                   ovs_aio_request *request) = 0;
+    virtual int send_write_request(ovs_aio_request*,
+                                   ovs_aiocb*) = 0;
 
-    virtual int send_flush_request(ovs_aio_request *request) = 0;
+    virtual int send_flush_request(ovs_aio_request*) = 0;
 
     virtual int stat_volume(struct stat *st) = 0;
 

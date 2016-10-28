@@ -508,8 +508,8 @@ NetworkXioContext::get_volume_uri(const char* volume_name,
 }
 
 int
-NetworkXioContext::send_read_request(struct ovs_aiocb *ovs_aiocbp,
-                                     ovs_aio_request *request)
+NetworkXioContext::send_read_request(ovs_aio_request* request,
+                                     ovs_aiocb* ovs_aiocbp)
 {
     int r = 0;
     try
@@ -535,8 +535,8 @@ NetworkXioContext::send_read_request(struct ovs_aiocb *ovs_aiocbp,
 }
 
 int
-NetworkXioContext::send_write_request(struct ovs_aiocb *ovs_aiocbp,
-                                      ovs_aio_request *request)
+NetworkXioContext::send_write_request(ovs_aio_request* request,
+                                      ovs_aiocb* ovs_aiocbp)
 {
     int r = 0;
     try
@@ -562,7 +562,7 @@ NetworkXioContext::send_write_request(struct ovs_aiocb *ovs_aiocbp,
 }
 
 int
-NetworkXioContext::send_flush_request(ovs_aio_request *request)
+NetworkXioContext::send_flush_request(ovs_aio_request* request)
 {
     int r = 0;
     try

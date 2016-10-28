@@ -85,15 +85,15 @@ struct ShmContext : public ovs_context_t
                    std::string& uri) override final;
 
     int
-    send_read_request(struct ovs_aiocb *ovs_aiocbp,
-                      ovs_aio_request *request);
+    send_read_request(ovs_aio_request*,
+                      ovs_aiocb*) override final;
 
     int
-    send_write_request(struct ovs_aiocb *ovs_aiocbp,
-                       ovs_aio_request *request);
+    send_write_request(ovs_aio_request*,
+                       ovs_aiocb*) override final;
 
     int
-    send_flush_request(ovs_aio_request *request);
+    send_flush_request(ovs_aio_request*) override final;
 
     int
     stat_volume(struct stat *st);

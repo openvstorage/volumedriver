@@ -768,15 +768,15 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
     case RequestOp::Read:
     {
         /* on error returns -1, errno is already set */
-        r = ctx->send_read_request(ovs_aiocbp,
-                                   request);
+        r = ctx->send_read_request(request,
+                                   ovs_aiocbp);
     }
         break;
     case RequestOp::Write:
     {
         /* on error returns -1, errno is already set */
-        r = ctx->send_write_request(ovs_aiocbp,
-                                    request);
+        r = ctx->send_write_request(request,
+                                    ovs_aiocbp);
     }
         break;
     case RequestOp::Flush:
