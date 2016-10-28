@@ -135,10 +135,11 @@ NetworkHAContext::assign_request_id(ovs_aio_request *request)
 }
 
 void
-NetworkHAContext::insert_inflight_request(uint64_t id,
-                                          ovs_aio_request *request)
+NetworkHAContext::insert_inflight_request(ovs_aio_request* req,
+                                          ContextPtr ctx)
 {
-    inflight_ha_reqs_.emplace(id, request);
+    const uint64_t id = req->_id;
+    inflight_ha_reqs_.emplace(id, std::make_pair(req, std::move(ctx)));
 }
 
 void
@@ -148,7 +149,7 @@ NetworkHAContext::fail_inflight_requests(int errval)
     for (auto req_it = inflight_ha_reqs_.cbegin();
             req_it != inflight_ha_reqs_.cend();)
     {
-        ovs_aio_request::handle_xio_request_nosched(req_it->second,
+        ovs_aio_request::handle_xio_request_nosched(req_it->second.first,
                                                     -1,
                                                     errval);
         inflight_ha_reqs_.erase(req_it++);
@@ -199,25 +200,29 @@ NetworkHAContext::resend_inflight_requests()
 {
     for (auto& req_entry: inflight_ha_reqs_)
     {
-        auto request = req_entry.second;
+        auto request = req_entry.second.first;
+        ContextPtr ctx = atomic_get_ctx();
+
         switch (request->_op)
         {
         case RequestOp::Read:
-            atomic_get_ctx()->send_read_request(request,
-                                                request->ovs_aiocbp);
+            ctx->send_read_request(request,
+                                   request->ovs_aiocbp);
             break;
         case RequestOp::Write:
-            atomic_get_ctx()->send_write_request(request,
-                                                 request->ovs_aiocbp);
+            ctx->send_write_request(request,
+                                    request->ovs_aiocbp);
             break;
         case RequestOp::Flush:
         case RequestOp::AsyncFlush:
-            atomic_get_ctx()->send_flush_request(request);
+            ctx->send_flush_request(request);
             break;
         default:
             LIBLOGID_ERROR("unknown inflight request, op:"
                            << static_cast<int>(request->_op));
         }
+
+        req_entry.second.second = ctx;
     }
 }
 
@@ -443,25 +448,26 @@ NetworkHAContext::wrap_io(int (ovs_context_t::*mem_fun)(ovs_aio_request*, Args..
                           ovs_aio_request* request,
                           Args... args)
 {
+    ContextPtr ctx = atomic_get_ctx();
     int r;
 
     if (is_ha_enabled())
     {
-        uint64_t id = assign_request_id(request);
+        assign_request_id(request);
 
         LOCK_INFLIGHT();
-        r = (atomic_get_ctx().get()->*mem_fun)(request, std::forward<Args>(args)...);
+        r = (ctx.get()->*mem_fun)(request, std::forward<Args>(args)...);
         if (not r)
         {
-            insert_inflight_request(id, request);
+            insert_inflight_request(request, std::move(ctx));
         }
     }
     else
     {
-        r = (atomic_get_ctx().get()->*mem_fun)(request, std::forward<Args>(args)...);
+        r = (ctx.get()->*mem_fun)(request, std::forward<Args>(args)...);
     }
     return r;
- }
+}
 
 int
 NetworkHAContext::send_read_request(ovs_aio_request* request,

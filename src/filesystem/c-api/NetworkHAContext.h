@@ -117,13 +117,6 @@ public:
     int
     deallocate(ovs_buffer_t *ptr);
 
-    uint64_t
-    assign_request_id(ovs_aio_request *request);
-
-    void
-    insert_inflight_request(uint64_t id,
-                            ovs_aio_request *request);
-
     void
     insert_seen_request(uint64_t id);
 
@@ -158,7 +151,9 @@ private:
     /* cnanakos TODO: use atomic overloads for shared_ptr
      * when g++ > 5.0.0 is used
      */
-    std::shared_ptr<ovs_context_t> ctx_;
+    using ContextPtr = std::shared_ptr<ovs_context_t>;
+    ContextPtr ctx_;
+
     fungi::SpinLock ctx_lock_;
     std::string volume_name_;
     int oflag_;
@@ -168,7 +163,12 @@ private:
     std::shared_ptr<xio_mempool> mpool;
 
     std::mutex inflight_reqs_lock_;
-    std::unordered_map<uint64_t, ovs_aio_request*> inflight_ha_reqs_;
+
+    // Cling to a context as long as it's still having outstanding requests.
+    // Look into a custom allocator for the map (e.g. based on boost::pool?) if
+    // allocations get in the way.
+    using RequestAndContext = std::pair<ovs_aio_request*, ContextPtr>;
+    std::unordered_map<uint64_t, RequestAndContext> inflight_ha_reqs_;
 
     std::mutex seen_reqs_lock_;
     std::queue<uint64_t> seen_ha_reqs_;
@@ -183,7 +183,7 @@ private:
     bool openning_;
     bool connection_error_;
 
-    std::shared_ptr<ovs_context_t>
+    ContextPtr
     atomic_get_ctx()
     {
         fungi::ScopedSpinLock l_(ctx_lock_);
@@ -191,12 +191,24 @@ private:
     }
 
     void
-    atomic_xchg_ctx(std::shared_ptr<ovs_context_t> ctx)
+    atomic_xchg_ctx(ContextPtr ctx)
     {
         fungi::ScopedSpinLock l_(ctx_lock_);
         ctx_.swap(ctx);
     }
 
+    // TODO:
+    // * these need to become private - fix the callsite in NetworkXioRequest::open
+    // * move assign_request_id to the ctor of ovs_aio_request
+public:
+    uint64_t
+    assign_request_id(ovs_aio_request*);
+
+    void
+    insert_inflight_request(ovs_aio_request*,
+                            ContextPtr);
+
+private:
     template<typename... Args>
     int
     wrap_io(int (ovs_context_t::*mem_fun)(ovs_aio_request*, Args...),
