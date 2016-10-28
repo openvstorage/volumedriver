@@ -153,6 +153,7 @@ public:
             connection_error_ = true;
         }
     }
+
 private:
     /* cnanakos TODO: use atomic overloads for shared_ptr
      * when g++ > 5.0.0 is used
@@ -182,7 +183,7 @@ private:
     bool openning_;
     bool connection_error_;
 
-    const std::shared_ptr<ovs_context_t>&
+    std::shared_ptr<ovs_context_t>
     atomic_get_ctx()
     {
         fungi::ScopedSpinLock l_(ctx_lock_);
@@ -194,7 +195,6 @@ private:
     {
         fungi::ScopedSpinLock l_(ctx_lock_);
         ctx_.swap(ctx);
-        ctx.reset();
     }
 
     bool
