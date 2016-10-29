@@ -34,12 +34,16 @@
 namespace libovsvolumedriver
 {
 
-class NetworkHAContext : public ovs_context_t
+class RequestDispatcherCallback;
+
+class NetworkHAContext
+    : public ovs_context_t
 {
 public:
     NetworkHAContext(const std::string& uri,
                      uint64_t net_client_qdepth,
-                     bool ha_enabled);
+                     bool ha_enabled,
+                     RequestDispatcherCallback&);
 
     ~NetworkHAContext();
 
@@ -194,6 +198,8 @@ private:
     bool opened_;
     bool openning_;
     bool connection_error_;
+
+    RequestDispatcherCallback& callback_;
 
     std::shared_ptr<ovs_context_t>
     atomic_get_ctx() const

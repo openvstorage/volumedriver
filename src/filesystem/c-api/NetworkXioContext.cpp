@@ -22,12 +22,14 @@ namespace libovsvolumedriver
 NetworkXioContext::NetworkXioContext(const std::string& uri,
                                      uint64_t net_client_qdepth,
                                      NetworkHAContext& ha_ctx,
-                                     bool ha_try_reconnect)
+                                     bool ha_try_reconnect,
+                                     RequestDispatcherCallback& callback)
     : net_client_(nullptr)
     , uri_(uri)
     , net_client_qdepth_(net_client_qdepth)
     , ha_ctx_(ha_ctx)
     , ha_try_reconnect_(ha_try_reconnect)
+    , callback_(callback)
 {
     LIBLOGID_DEBUG("uri: " << uri <<
                    ",queue depth: " << net_client_qdepth);
@@ -102,7 +104,8 @@ NetworkXioContext::open_volume_(const char *volume_name,
             std::make_shared<NetworkXioClient>(uri_,
                                                net_client_qdepth_,
                                                ha_ctx_,
-                                               ha_try_reconnect_);
+                                               ha_try_reconnect_,
+                                               callback_);
         if (should_insert_request)
         {
             ha_ctx_.insert_inflight_request(

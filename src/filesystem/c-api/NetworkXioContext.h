@@ -29,7 +29,8 @@ public:
     NetworkXioContext(const std::string& uri,
                       uint64_t net_client_qdepth,
                       NetworkHAContext& ha_ctx,
-                      bool ha_try_reconnect);
+                      bool ha_try_reconnect,
+                      RequestDispatcherCallback&);
 
     ~NetworkXioContext();
 
@@ -144,6 +145,7 @@ private:
     std::string volname_;
     NetworkHAContext& ha_ctx_;
     bool ha_try_reconnect_;
+    RequestDispatcherCallback& callback_;
 };
 
 } //namespace libovsvolumedriver

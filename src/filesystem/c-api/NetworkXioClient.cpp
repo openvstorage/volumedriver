@@ -113,7 +113,8 @@ static_evfd_stop_loop(int fd, int events, void *data)
 NetworkXioClient::NetworkXioClient(const std::string& uri,
                                    const uint64_t qd,
                                    NetworkHAContext& ha_ctx,
-                                   bool ha_try_reconnect)
+                                   bool ha_try_reconnect,
+                                   RequestDispatcherCallback& callback)
     : uri_(uri)
     , stopping(false)
     , stopped(false)
@@ -124,6 +125,7 @@ NetworkXioClient::NetworkXioClient(const std::string& uri,
     , ha_ctx_(ha_ctx)
     , ha_try_reconnect_(ha_try_reconnect)
     , connection_error_(false)
+    , callback_(callback)
 {
     LIBLOGID_INFO("uri: " << uri << ", queue depth: " << qd);
     ses_ops.on_session_event = static_on_session_event<NetworkXioClient>;
@@ -351,9 +353,10 @@ NetworkXioClient::xio_run_loop_worker()
                 req_queue_release();
                 if ((not is_ha_enabled()) or try_fail_request_on_conn_error())
                 {
-                    ovs_aio_request::handle_xio_request(get_ovs_aio_request(req->opaque),
-                                                        -1,
-                                                        EIO);
+                    callback_.complete_request(*get_ovs_aio_request(req->opaque),
+                                               -1,
+                                               EIO,
+                                               true);
                 }
                 delete req;
             }
@@ -398,9 +401,10 @@ NetworkXioClient::on_response(xio_session *session __attribute__((unused)),
     xio_msg_s *xio_msg = reinterpret_cast<xio_msg_s*>(imsg.opaque());
 
     insert_seen_request(xio_msg);
-    ovs_aio_request::handle_xio_request(get_ovs_aio_request(xio_msg->opaque),
-                                        imsg.retval(),
-                                        imsg.errval());
+    callback_.complete_request(*get_ovs_aio_request(xio_msg->opaque),
+                               imsg.retval(),
+                               imsg.errval(),
+                               true);
 
     reply->in.header.iov_base = NULL;
     reply->in.header.iov_len = 0;
@@ -454,9 +458,10 @@ NetworkXioClient::on_msg_error(xio_session *session __attribute__((unused)),
     xio_msg = reinterpret_cast<xio_msg_s*>(imsg.opaque());
     if (try_fail_request_on_msg_error())
     {
-        ovs_aio_request::handle_xio_request(get_ovs_aio_request(xio_msg->opaque),
-                                            -1,
-                                            EIO);
+        callback_.complete_request(*get_ovs_aio_request(xio_msg->opaque),
+                                   -1,
+                                   EIO,
+                                   true);
     }
     req_queue_release();
     delete xio_msg;

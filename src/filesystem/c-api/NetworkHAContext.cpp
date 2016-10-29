@@ -13,16 +13,17 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "IOThread.h"
 #include "Logger.h"
 #include "NetworkHAContext.h"
 #include "NetworkXioContext.h"
-#include "IOThread.h"
+#include "RequestDispatcherCallback.h"
 
 #include <atomic>
-#include <memory>
-#include <thread>
 #include <chrono>
+#include <memory>
 #include <random>
+#include <thread>
 
 #define HA_HANDLER_SLEEP_TIME   5ms
 
@@ -39,12 +40,13 @@ MAKE_EXCEPTION(NetworkHAContextMemPoolException, fungi::IOException);
 
 NetworkHAContext::NetworkHAContext(const std::string& uri,
                                    uint64_t net_client_qdepth,
-                                   bool ha_enabled)
-    : ctx_(std::shared_ptr<ovs_context_t>(
-                new NetworkXioContext(uri,
-                                      net_client_qdepth,
-                                      *this,
-                                      false)))
+                                   bool ha_enabled,
+                                   RequestDispatcherCallback& callback)
+    : ctx_(std::make_shared<NetworkXioContext>(uri,
+                                               net_client_qdepth,
+                                               *this,
+                                               false,
+                                               callback))
     , uri_(uri)
     , qd_(net_client_qdepth)
     , ha_enabled_(ha_enabled)
@@ -52,6 +54,7 @@ NetworkHAContext::NetworkHAContext(const std::string& uri,
     , opened_(false)
     , openning_(true)
     , connection_error_(false)
+    , callback_(callback)
 {
     LIBLOGID_INFO("uri: " << uri <<
                   ",queue depth: " << net_client_qdepth);
@@ -148,9 +151,10 @@ NetworkHAContext::fail_inflight_requests(int errval)
     for (auto req_it = inflight_ha_reqs_.cbegin();
             req_it != inflight_ha_reqs_.cend();)
     {
-        ovs_aio_request::handle_xio_request_nosched(req_it->second,
-                                                    -1,
-                                                    errval);
+        callback_.complete_request(*req_it->second,
+                                   -1,
+                                   errval,
+                                   false);
         inflight_ha_reqs_.erase(req_it++);
     }
 }
@@ -233,11 +237,11 @@ NetworkHAContext::reconnect()
         {
             continue;
         }
-        auto tmp_ctx = std::shared_ptr<NetworkXioContext>(
-                new NetworkXioContext(uri,
-                                      qd_,
-                                      *this,
-                                      true));
+        auto tmp_ctx = std::make_shared<NetworkXioContext>(uri,
+                                                           qd_,
+                                                           *this,
+                                                           true,
+                                                           callback_);
         r = tmp_ctx->open_volume_(volume_name_.c_str(),
                                   oflag_,
                                   false);
@@ -251,7 +255,7 @@ NetworkHAContext::reconnect()
         {
             uri_ = uri;
             connected = true;
-            atomic_xchg_ctx(std::dynamic_pointer_cast<ovs_context_t>(tmp_ctx));
+            atomic_xchg_ctx(tmp_ctx);
         }
         if (connected)
         {

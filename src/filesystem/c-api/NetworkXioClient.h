@@ -44,7 +44,8 @@ public:
     NetworkXioClient(const std::string& uri,
                      const uint64_t qd,
                      NetworkHAContext& ha_ctx,
-                     bool ha_try_reconnect);
+                     bool ha_try_reconnect,
+                     RequestDispatcherCallback&);
 
     ~NetworkXioClient();
 
@@ -232,6 +233,8 @@ private:
     NetworkHAContext& ha_ctx_;
     bool ha_try_reconnect_;
     bool connection_error_;
+
+    RequestDispatcherCallback& callback_;
 
     void
     xio_run_loop_worker();

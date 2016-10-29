@@ -44,6 +44,13 @@
 
 namespace libvoldrv = libovsvolumedriver;
 
+namespace
+{
+
+libvoldrv::DefaultRequestDispatcherCallback default_request_callback;
+
+}
+
 ovs_ctx_attr_t*
 ovs_ctx_attr_new()
 {
@@ -186,7 +193,8 @@ ovs_ctx_new(const ovs_ctx_attr_t *attr)
         case TransportType::RDMA:
             ctx = new libvoldrv::NetworkHAContext(uri,
                                                   attr->network_qdepth,
-                                                  attr->enable_ha);
+                                                  attr->enable_ha,
+                                                  default_request_callback);
             break;
         case TransportType::SharedMemory:
             ctx = new ShmContext;
