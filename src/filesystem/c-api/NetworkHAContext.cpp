@@ -24,8 +24,6 @@
 #include <chrono>
 #include <random>
 
-#define HA_HANDLER_SLEEP_TIME   5ms
-
 #define LOCK_INFLIGHT()                                 \
     std::lock_guard<std::mutex> ifrl_(inflight_reqs_lock_)
 
@@ -34,6 +32,17 @@
 
 namespace libovsvolumedriver
 {
+
+namespace
+{
+
+using namespace std::chrono_literals;
+
+using Clock = std::chrono::steady_clock;
+const Clock::duration ha_handler_sleep_time = 5ms;
+const Clock::duration location_check_interval = 30s;
+
+}
 
 MAKE_EXCEPTION(NetworkHAContextMemPoolException, fungi::IOException);
 
@@ -227,38 +236,61 @@ NetworkHAContext::resend_inflight_requests()
 }
 
 int
-NetworkHAContext::reconnect()
+NetworkHAContext::do_reconnect(const std::string& uri)
 {
-    int r = -1;
-    bool connected = false;
-    while (not cluster_nw_uris_.empty())
+    int ret = -1;
+
+    try
     {
-        std::string uri = get_rand_cluster_uri();
-        if (uri == uri_)
+        auto tmp_ctx = std::make_shared<NetworkXioContext>(uri,
+                                                           qd_,
+                                                           *this,
+                                                           true);
+        ret = tmp_ctx->open_volume_(volume_name_.c_str(),
+                                    oflag,
+                                    false);
+        if (ret)
         {
-            continue;
-        }
-        auto tmp_ctx = std::shared_ptr<NetworkXioContext>(
-                new NetworkXioContext(uri,
-                                      qd_,
-                                      *this,
-                                      true));
-        r = tmp_ctx->open_volume_(volume_name_.c_str(),
-                                  oflag_,
-                                  false);
-        if (r < 0)
-        {
-            LIBLOGID_ERROR("reconnection to URI '" << uri << "' failed");
-            tmp_ctx.reset();
-            continue;
+            LIBLOGID_ERROR("failed to open " << volume_name_ << " at " << uri);
         }
         else
         {
-            uri_ = uri;
-            connected = true;
-            atomic_xchg_ctx(std::dynamic_pointer_cast<ovs_context_t>(tmp_ctx));
+            atomic_xchg_ctx(tmp_ctx);
+            current_uri(uri);
         }
-        if (connected)
+    }
+    catch (std::exception& e)
+    {
+        LIBLOGID_ERROR("failed to create new context for volume " << volume_name_ <<
+                       " at " << uri << ":" << e.what());
+    }
+    catch (...)
+    {
+        LIBLOGID_ERROR("failed to create new context for volume " << volume_name_ <<
+                       " at " << uri << ": unknown exception");
+    }
+
+    return ret;
+}
+
+int
+NetworkHAContext::reconnect()
+{
+    int r = -1;
+    while (not cluster_nw_uris_.empty())
+    {
+        std::string uri = get_rand_cluster_uri();
+        if (uri == current_uri())
+        {
+            continue;
+        }
+
+        r = do_reconnect(uri);
+        if (r)
+        {
+            LIBLOGID_ERROR("reconnection to URI '" << uri << "' failed");
+        }
+        else
         {
             update_cluster_node_uri();
             LIBLOGID_INFO("reconnection to URI '" << uri << "' succeeded");
@@ -296,11 +328,36 @@ NetworkHAContext::update_cluster_node_uri()
     }
 }
 
+// Must not run concurrently to HA - currently this is guaranteed by
+// being run only by the HA thread.
+void
+NetworkHAContext::maybe_update_volume_location()
+{
+    LIBLOGID_INFO(volume_name() << ": check if location has changed");
+    if (not volume_name().empty())
+    {
+        std::string uri;
+        int ret = atomic_get_ctx()->get_volume_uri(volume_name_.c_str(),
+                                                   uri);
+        if (ret)
+        {
+            LIBLOGID_ERROR("failed to retrieve location of " << volume_name_ << ": " << ret);
+        }
+        else if (uri != current_uri())
+        {
+            LIBLOGID_INFO("location of " << volume_name_ <<
+                          " has changed from " << current_uri() << " to " << uri << " - trying to adjust");
+            do_reconnect(uri);
+        }
+    }
+}
+
 void
 NetworkHAContext::ha_ctx_handler(void *arg)
 {
-    using namespace std::chrono_literals;
     IOThread *thread = reinterpret_cast<IOThread*>(arg);
+    auto last_location_check = Clock::time_point::min();
+
     while (not thread->stopping)
     {
         if (is_connection_error())
@@ -314,12 +371,21 @@ NetworkHAContext::ha_ctx_handler(void *arg)
             {
                 fail_inflight_requests(EIO);
             }
+
+            last_location_check = Clock::now();
         }
         else
         {
             remove_seen_requests();
+
+            if (last_location_check + location_check_interval <= Clock::now())
+            {
+                maybe_update_volume_location();
+                last_location_check = Clock::now();
+            }
         }
-        std::this_thread::sleep_for(HA_HANDLER_SLEEP_TIME);
+
+        std::this_thread::sleep_for(ha_handler_sleep_time);
     }
     std::lock_guard<std::mutex> lock_(thread->mutex_);
     thread->stopped = true;
@@ -327,15 +393,15 @@ NetworkHAContext::ha_ctx_handler(void *arg)
 }
 
 int
-NetworkHAContext::open_volume(const char *volume_name,
+NetworkHAContext::open_volume(const char *volname,
                               int oflag)
 {
-    LIBLOGID_DEBUG("volume name: " << volume_name
+    LIBLOGID_DEBUG("volume name: " << volname
                    << ", oflag: " << oflag);
-    int r = atomic_get_ctx()->open_volume(volume_name, oflag);
+    int r = atomic_get_ctx()->open_volume(volname, oflag);
     if (not r)
     {
-        volume_name_ = std::string(volume_name);
+        volume_name(volname);
         oflag_ = oflag;
         openning_ = false;
         opened_ = true;

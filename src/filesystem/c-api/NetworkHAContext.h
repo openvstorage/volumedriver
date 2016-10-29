@@ -147,6 +147,20 @@ public:
         }
     }
 
+    std::string
+    current_uri() const
+    {
+        std::lock_guard<decltype(config_lock_)> g(config_lock_);
+        return uri_;
+    }
+
+    std::string
+    volume_name() const
+    {
+        std::lock_guard<decltype(config_lock_)> g(config_lock_);
+        return volume_name_;
+    }
+
 private:
     /* cnanakos TODO: use atomic overloads for shared_ptr
      * when g++ > 5.0.0 is used
@@ -155,7 +169,11 @@ private:
     ContextPtr ctx_;
 
     fungi::SpinLock ctx_lock_;
+
+    // protects volume_name_ and uri_
+    mutable std::mutex config_lock_;
     std::string volume_name_;
+
     int oflag_;
     std::string uri_;
     uint64_t qd_;
@@ -245,8 +263,28 @@ private:
     int
     reconnect();
 
+    int
+    do_reconnect(const std::string& uri);
+
     std::string
     get_rand_cluster_uri();
+
+    void
+    maybe_update_volume_location();
+
+    void
+    current_uri(const std::string& u)
+    {
+        std::lock_guard<decltype(config_lock_)> g(config_lock_);
+        uri_ = u;
+    }
+
+    void
+    volume_name(const std::string& n)
+    {
+        std::lock_guard<decltype(config_lock_)> g(config_lock_);
+        volume_name_ = n;
+    }
 };
 
 } //namespace libovsvolumedriver
