@@ -19,6 +19,7 @@
 #include "context.h"
 #include "ShmContext.h"
 #include "NetworkHAContext.h"
+#include "PathSelector.h"
 #include "Utils.h"
 #include "Logger.h"
 
@@ -48,6 +49,27 @@ namespace
 {
 
 libvoldrv::DefaultRequestDispatcherCallback default_request_callback;
+
+std::unique_ptr<ovs_context_t>
+make_network_context(const std::string& uri,
+                     const size_t qdepth,
+                     bool enable_ha)
+{
+    using namespace libovsvolumedriver;
+
+    auto f([qdepth, enable_ha](const std::string& u,
+                               RequestDispatcherCallback& c) -> std::shared_ptr<ovs_context_t>
+           {
+               return std::make_shared<NetworkHAContext>(u,
+                                                         qdepth,
+                                                         enable_ha,
+                                                         c);
+           });
+
+    return std::make_unique<PathSelector>(uri,
+                                          std::move(f),
+                                          default_request_callback);
+}
 
 }
 
@@ -191,10 +213,9 @@ ovs_ctx_new(const ovs_ctx_attr_t *attr)
         {
         case TransportType::TCP:
         case TransportType::RDMA:
-            ctx = new libvoldrv::NetworkHAContext(uri,
-                                                  attr->network_qdepth,
-                                                  attr->enable_ha,
-                                                  default_request_callback);
+            ctx = make_network_context(uri,
+                                       attr->network_qdepth,
+                                       attr->enable_ha).release();
             break;
         case TransportType::SharedMemory:
             ctx = new ShmContext;
@@ -211,6 +232,12 @@ ovs_ctx_new(const ovs_ctx_attr_t *attr)
         errno = ENOMEM;
         return NULL;
     }
+    catch (...)
+    {
+        errno = EIO;
+        return nullptr;
+    }
+
     return ctx;
 }
 

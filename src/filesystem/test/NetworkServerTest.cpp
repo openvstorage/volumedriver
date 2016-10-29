@@ -37,16 +37,19 @@
 #include <filesystem/Registry.h>
 
 #include <filesystem/c-api/context.h>
+#include <filesystem/c-api/PathSelector.h>
 #include <filesystem/c-api/volumedriver.h>
 
 namespace volumedriverfstest
 {
 
+namespace bc = boost::chrono;
 namespace bpt = boost::property_tree;
 namespace bpy = boost::python;
 namespace fs = boost::filesystem;
 namespace vfs = volumedriverfs;
 namespace yt = youtils;
+namespace libovs = libovsvolumedriver;
 
 using namespace volumedriverfs;
 
@@ -178,7 +181,7 @@ public:
             {
                 ASSERT_GT(max, ++count) <<
                     "failed to create volume after " << count << " attempts: " << strerror(errno);
-                boost::this_thread::sleep_for(boost::chrono::milliseconds(250));
+                boost::this_thread::sleep_for(bc::milliseconds(250));
             }
         }
 
@@ -397,7 +400,7 @@ public:
                                             reader));
         }
 
-        boost::this_thread::sleep_for(boost::chrono::seconds(duration_secs));
+        boost::this_thread::sleep_for(bc::seconds(duration_secs));
 
         stop = true;
         size_t total = 0;
@@ -455,7 +458,7 @@ public:
         {
             ASSERT_GT(max, ++count) <<
                 "failed to create volume after " << count << " attempts: " << strerror(errno);
-            boost::this_thread::sleep_for(boost::chrono::milliseconds(250));
+            boost::this_thread::sleep_for(bc::milliseconds(250));
         }
 
         ASSERT_EQ(0,
@@ -1576,6 +1579,60 @@ TEST_F(NetworkServerTest, get_volume_uri)
 
     EXPECT_EQ(network_server_uri(local_node_id()),
               yt::Uri(uri));
+}
+
+TEST_F(NetworkServerTest, path_selector)
+{
+    mount_remote();
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         umount_remote();
+                                     }));
+
+    const std::string vname("some-volume");
+    const size_t vsize = 1ULL << 20;
+
+    {
+        CtxAttrPtr attrs(make_ctx_attr(1024,
+                                       false,
+                                       FileSystemTestSetup::local_edge_port()));
+        CtxPtr ctx(ovs_ctx_new(attrs.get()));
+        ASSERT_TRUE(ctx != nullptr);
+
+        ASSERT_EQ(0,
+                  ovs_create_volume(ctx.get(),
+                                    vname.c_str(),
+                                    vsize));
+    }
+
+    CtxAttrPtr attrs(make_ctx_attr(1024,
+                                   false,
+                                   FileSystemTestSetup::remote_edge_port()));
+
+    ovs_ctx_attr_enable_ha(attrs.get());
+    CtxPtr ctx(ovs_ctx_new(attrs.get()));
+    ASSERT_TRUE(ctx != nullptr);
+    ASSERT_EQ(0,
+              ovs_ctx_init(ctx.get(),
+                           vname.c_str(),
+                           O_RDWR));
+
+    auto& pselector = dynamic_cast<libovs::PathSelector&>(*ctx);
+
+    using Clock = bc::steady_clock;
+    const Clock::time_point end = Clock::now() + bc::seconds(60);
+
+    while (Clock::now() < end)
+    {
+        if (yt::Uri(pselector.current_uri()) == network_server_uri(local_node_id()))
+        {
+            break;
+        }
+        boost::this_thread::sleep_for(bc::milliseconds(250));
+    }
+
+    EXPECT_EQ(network_server_uri(local_node_id()),
+              yt::Uri(pselector.current_uri()));
 }
 
 } //namespace
