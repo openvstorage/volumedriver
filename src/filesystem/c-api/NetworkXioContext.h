@@ -117,6 +117,26 @@ public:
 
     int
     deallocate(ovs_buffer_t *ptr);
+
+    boost::optional<std::string>
+    volume_name() const override final
+    {
+        if (not volname_.empty())
+        {
+            return volname_;
+        }
+        else
+        {
+            return boost::none;
+        }
+    }
+
+    std::string
+    current_uri() const override final
+    {
+        return uri_;
+    }
+
 private:
     libovsvolumedriver::NetworkXioClientPtr net_client_;
     std::string uri_;

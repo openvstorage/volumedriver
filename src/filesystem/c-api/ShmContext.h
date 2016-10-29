@@ -103,6 +103,12 @@ struct ShmContext : public ovs_context_t
 
     int
     deallocate(ovs_buffer_t *ptr);
+
+    std::string
+    current_uri() const override final;
+
+    boost::optional<std::string>
+    volume_name() const override final;
 };
 
 #endif //__SHM_CONTEXT_H

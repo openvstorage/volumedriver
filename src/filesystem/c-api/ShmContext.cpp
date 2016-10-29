@@ -358,3 +358,15 @@ ShmContext::deallocate(ovs_buffer_t *ptr)
     }
     return r;
 }
+
+std::string
+ShmContext::current_uri() const
+{
+    throw std::logic_error("ShmContext::current_uri is not implemented yet");
+}
+
+boost::optional<std::string>
+ShmContext::volume_name() const
+{
+    throw std::logic_error("ShmContext::volume_name is not implemented yet");
+}

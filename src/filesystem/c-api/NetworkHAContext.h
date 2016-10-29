@@ -43,6 +43,18 @@ public:
 
     ~NetworkHAContext();
 
+    boost::optional<std::string>
+    volume_name() const override final
+    {
+        return atomic_get_ctx()->volume_name();
+    }
+
+    std::string
+    current_uri() const override final
+    {
+        return atomic_get_ctx()->current_uri();
+    }
+
     int
     open_volume(const char *volume_name,
                 int oflag);

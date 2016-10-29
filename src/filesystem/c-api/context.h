@@ -20,6 +20,8 @@
 
 #include <vector>
 
+#include <boost/optional.hpp>
+
 struct ovs_aio_request;
 struct ovs_aiocb;
 
@@ -83,6 +85,12 @@ struct ovs_context_t
                                 uint64_t length) = 0;
 
     virtual int truncate(uint64_t length) = 0;
+
+    virtual std::string
+    current_uri() const = 0;
+
+    virtual boost::optional<std::string>
+    volume_name() const = 0;
 };
 
 #endif // __CONTEXT_H
