@@ -29,7 +29,8 @@ public:
     NetworkXioContext(const std::string& uri,
                       uint64_t net_client_qdepth,
                       NetworkHAContext& ha_ctx,
-                      bool ha_try_reconnect);
+                      bool ha_try_reconnect,
+                      RequestDispatcherCallback&);
 
     ~NetworkXioContext();
 
@@ -95,15 +96,19 @@ public:
     list_cluster_node_uri(std::vector<std::string>& uris);
 
     int
-    send_read_request(struct ovs_aiocb *ovs_aiocbp,
-                      ovs_aio_request *request);
+    get_volume_uri(const char* volume_name,
+                   std::string& uri) override final;
 
     int
-    send_write_request(struct ovs_aiocb *ovs_aiocbp,
-                       ovs_aio_request *request);
+    send_read_request(ovs_aio_request*,
+                      ovs_aiocb*) override final;
 
     int
-    send_flush_request(ovs_aio_request *request);
+    send_write_request(ovs_aio_request*,
+                       ovs_aiocb*) override final;
+
+    int
+    send_flush_request(ovs_aio_request*) override final;
 
     int
     stat_volume(struct stat *st);
@@ -113,6 +118,26 @@ public:
 
     int
     deallocate(ovs_buffer_t *ptr);
+
+    boost::optional<std::string>
+    volume_name() const override final
+    {
+        if (not volname_.empty())
+        {
+            return volname_;
+        }
+        else
+        {
+            return boost::none;
+        }
+    }
+
+    std::string
+    current_uri() const override final
+    {
+        return uri_;
+    }
+
 private:
     libovsvolumedriver::NetworkXioClientPtr net_client_;
     std::string uri_;
@@ -120,6 +145,7 @@ private:
     std::string volname_;
     NetworkHAContext& ha_ctx_;
     bool ha_try_reconnect_;
+    RequestDispatcherCallback& callback_;
 };
 
 } //namespace libovsvolumedriver

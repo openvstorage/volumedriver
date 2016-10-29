@@ -17,6 +17,7 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
+#include <boost/logic/tribool_io.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 #include <youtils/ArakoonInterface.h>
@@ -40,6 +41,7 @@ namespace volumedriverfstest
 namespace ara = arakoon;
 namespace bc = boost::chrono;
 namespace be = backend;
+namespace bl = boost::logic;
 namespace bpt = boost::property_tree;
 namespace fs = boost::filesystem;
 namespace ip = initialized_params;
@@ -1590,7 +1592,7 @@ TEST_F(RemoteTest, only_steal_from_offlined_node)
 
     std::shared_ptr<vfs::ClusterRegistry> reg(cluster_registry(fs_->object_router()));
     EXPECT_EQ(vfs::ClusterNodeStatus::State::Online,
-              reg->get_node_state(remote_node_id()));
+              reg->get_node_status(remote_node_id()).state);
 
     std::vector<char> buf(pattern.size());
     EXPECT_GT(0,
@@ -1599,7 +1601,7 @@ TEST_F(RemoteTest, only_steal_from_offlined_node)
                              buf.size(),
                              off));
     EXPECT_EQ(vfs::ClusterNodeStatus::State::Online,
-              reg->get_node_state(remote_node_id()));
+              reg->get_node_status(remote_node_id()).state);
 }
 
 TEST_F(RemoteTest, stealing_and_fencing)
@@ -1722,6 +1724,102 @@ TEST_F(RemoteTest, back_to_life)
     {
         t.join();
     }
+}
+
+TEST_F(RemoteTest, volume_location_from_handle)
+{
+    const vfs::FrontendPath vname(make_volume_name("/some-volume"));
+    const uint64_t vsize = 1 << 20;
+    const vfs::ObjectId oid(create_file(vname,
+                                        vsize));
+
+    vfs::Handle::Ptr handle;
+    EXPECT_EQ(0,
+              open(vname,
+                   handle,
+                   O_RDONLY));
+    ASSERT_TRUE(handle != nullptr);
+
+    auto fun([&]
+             {
+                 std::vector<char> buf(4096);
+                 size_t size = buf.size();
+                 bool eof = true;
+                 fs_->read(*handle,
+                           size,
+                           buf.data(),
+                           0,
+                           eof);
+
+                 EXPECT_EQ(buf.size(),
+                           size);
+                 EXPECT_FALSE(eof);
+             });
+
+    EXPECT_TRUE(bl::indeterminate(handle->is_local()));
+
+    fun();
+    EXPECT_TRUE(handle->is_local());
+
+    client_.migrate(oid.str(),
+                    remote_node_id());
+    EXPECT_TRUE(handle->is_local());
+
+    fun();
+    EXPECT_FALSE(handle->is_local());
+
+    fun();
+    EXPECT_FALSE(handle->is_local());
+
+    client_.migrate(oid.str(),
+                    local_node_id());
+    EXPECT_FALSE(handle->is_local());
+
+    fun();
+    EXPECT_TRUE(handle->is_local());
+}
+
+TEST_F(RemoteTest, file_location_from_handle)
+{
+    const vfs::FrontendPath fname("/some-file");
+    const uint64_t fsize = 1 << 20;
+    const vfs::ObjectId oid(create_file(fname,
+                                        fsize));
+
+    vfs::Handle::Ptr handle;
+    EXPECT_EQ(0,
+              open(fname,
+                   handle,
+                   O_RDONLY));
+    ASSERT_TRUE(handle != nullptr);
+
+    auto fun([&]
+             {
+                 std::vector<char> buf(4096);
+                 size_t size = buf.size();
+                 bool eof = true;
+                 fs_->read(*handle,
+                           size,
+                           buf.data(),
+                           0,
+                           eof);
+
+                 EXPECT_EQ(buf.size(),
+                           size);
+                 EXPECT_FALSE(eof);
+                 EXPECT_TRUE(bl::indeterminate(handle->is_local()));
+             });
+
+    EXPECT_TRUE(bl::indeterminate(handle->is_local()));
+
+    fun();
+
+    client_.migrate(oid.str(),
+                    remote_node_id());
+    fun();
+    client_.migrate(oid.str(),
+                    local_node_id());
+    fun();
 }
 
 TEST_F(RemoteTest, DISABLED_setup_remote_hack)

@@ -19,9 +19,19 @@
 #include "volumedriver.h"
 #include "common.h"
 #include "AioCompletion.h"
+#include "RequestDispatcherCallback.h"
+
+namespace libovsvolumedriver
+{
+
+struct DefaultRequestDispatcherCallback;
+
+}
 
 struct ovs_aio_request
 {
+    friend struct libovsvolumedriver::DefaultRequestDispatcherCallback;
+
     struct ovs_aiocb *ovs_aiocbp;
     ovs_completion_t *_completion;
     RequestOp _op;
@@ -161,10 +171,12 @@ struct ovs_aio_request
         }
     }
 
+private:
     static void
     handle_xio_request(ovs_aio_request *request,
-                       ssize_t retval,
-                       int errval)
+                       size_t retval,
+                       int errval,
+                       bool sched)
     {
         ovs_completion_t *completion = request->get_completion();
         struct ovs_aiocb *aiocbp = request->get_aio();
@@ -178,31 +190,19 @@ struct ovs_aio_request
                 delete aiocbp;
                 delete request;
             }
-            AioCompletion::get_aio_context().schedule(completion);
-        }
-    }
 
-    static void
-    handle_xio_request_nosched(ovs_aio_request *request,
-                               size_t retval,
-                               int errval)
-    {
-        ovs_completion_t *completion = request->get_completion();
-        struct ovs_aiocb *aiocbp = request->get_aio();
-        request->xio_complete(retval,
-                              errval);
-        if (completion)
-        {
-            request->set_completion();
-            if (request->is_async_flush())
+            if (sched)
             {
-                delete aiocbp;
-                delete request;
+                AioCompletion::get_aio_context().schedule(completion);
             }
-            completion->complete_cb(completion, completion->cb_arg);
+            else
+            {
+                completion->complete_cb(completion, completion->cb_arg);
+            }
         }
     }
 
+public:
     static void
     handle_xio_ctrl_request(ovs_aio_request *request,
                             ssize_t retval,
@@ -215,5 +215,26 @@ struct ovs_aio_request
         }
     }
 };
+
+namespace libovsvolumedriver
+{
+
+struct DefaultRequestDispatcherCallback
+    : public RequestDispatcherCallback
+{
+    void
+    complete_request(ovs_aio_request& req,
+                     ssize_t ret,
+                     int err,
+                     bool schedule) override final
+    {
+        ovs_aio_request::handle_xio_request(&req,
+                                            ret,
+                                            err,
+                                            schedule);
+    }
+};
+
+}
 
 #endif //__LIB_OVS_INTERNAL_H

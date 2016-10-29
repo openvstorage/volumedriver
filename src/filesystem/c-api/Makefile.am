@@ -24,6 +24,7 @@ libovsvolumedriver_la_SOURCES = \
 	NetworkHAContext.cpp \
 	NetworkXioClient.cpp \
 	NetworkXioContext.cpp \
+	PathSelector.cpp \
 	TracePoints_tp.c \
 	Utils.cpp \
 	libovsvolumedriver.cpp

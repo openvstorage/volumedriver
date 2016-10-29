@@ -80,7 +80,7 @@ TEST_F(ClusterRegistryTest, empty_registry)
     EXPECT_THROW(cluster_registry_->get_node_status_map(),
                  vfs::ClusterNotRegisteredException);
 
-    EXPECT_THROW(cluster_registry_->get_node_state(vfs::NodeId("some-node")),
+    EXPECT_THROW(cluster_registry_->get_node_status(vfs::NodeId("some-node")),
                  vfs::ClusterNotRegisteredException);
 
     EXPECT_THROW(cluster_registry_->set_node_state(vfs::NodeId("some-node"),
@@ -174,13 +174,13 @@ TEST_F(ClusterRegistryTest, node_states)
     cluster_registry_->set_node_configs(configs);
 
     EXPECT_EQ(vfs::ClusterNodeStatus::State::Online,
-              cluster_registry_->get_node_state(configs[0].vrouter_id));
+              cluster_registry_->get_node_status(configs[0].vrouter_id).state);
 
     cluster_registry_->set_node_state(configs[0].vrouter_id,
                                       vfs::ClusterNodeStatus::State::Offline);
 
     EXPECT_EQ(vfs::ClusterNodeStatus::State::Offline,
-              cluster_registry_->get_node_state(configs[0].vrouter_id));
+              cluster_registry_->get_node_status(configs[0].vrouter_id).state);
 
     const vfs::ClusterRegistry::NodeStatusMap
         status_map(cluster_registry_->get_node_status_map());
@@ -188,7 +188,7 @@ TEST_F(ClusterRegistryTest, node_states)
     EXPECT_EQ(vfs::ClusterNodeStatus::State::Offline,
               status_map.begin()->second.state);
 
-    EXPECT_THROW(cluster_registry_->get_node_state(vfs::NodeId("InexistentNode")),
+    EXPECT_THROW(cluster_registry_->get_node_status(vfs::NodeId("InexistentNode")),
                  vfs::ClusterNodeNotRegisteredException);
 
     EXPECT_THROW(cluster_registry_->set_node_state(vfs::NodeId("InexistentNode"),

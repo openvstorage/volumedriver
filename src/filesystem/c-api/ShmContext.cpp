@@ -286,8 +286,16 @@ ShmContext::list_cluster_node_uri(std::vector<std::string>& /*uris*/)
 }
 
 int
-ShmContext::send_read_request(struct ovs_aiocb *ovs_aiocbp,
-                              ovs_aio_request *request)
+ShmContext::get_volume_uri(const char* /* volume_name */,
+                           std::string& /*uri*/)
+{
+    errno = ENOSYS;
+    return -1;
+}
+
+int
+ShmContext::send_read_request(ovs_aio_request* request,
+                              ovs_aiocb* ovs_aiocbp)
 {
     return shm_ctx_->shm_client_->send_read_request(ovs_aiocbp->aio_buf,
                                                     ovs_aiocbp->aio_nbytes,
@@ -296,8 +304,8 @@ ShmContext::send_read_request(struct ovs_aiocb *ovs_aiocbp,
 }
 
 int
-ShmContext::send_write_request(struct ovs_aiocb *ovs_aiocbp,
-                               ovs_aio_request *request)
+ShmContext::send_write_request(ovs_aio_request* request,
+                               ovs_aiocb* ovs_aiocbp)
 {
     return shm_ctx_->shm_client_->send_write_request(ovs_aiocbp->aio_buf,
                                                      ovs_aiocbp->aio_nbytes,
@@ -306,7 +314,7 @@ ShmContext::send_write_request(struct ovs_aiocb *ovs_aiocbp,
 }
 
 int
-ShmContext::send_flush_request(ovs_aio_request *request)
+ShmContext::send_flush_request(ovs_aio_request* request)
 {
     struct ovs_aiocb *ovs_aiocbp = request->ovs_aiocbp;
     return shm_ctx_->shm_client_->send_write_request(ovs_aiocbp->aio_buf,
@@ -349,4 +357,16 @@ ShmContext::deallocate(ovs_buffer_t *ptr)
         errno = EFAULT;
     }
     return r;
+}
+
+std::string
+ShmContext::current_uri() const
+{
+    throw std::logic_error("ShmContext::current_uri is not implemented yet");
+}
+
+boost::optional<std::string>
+ShmContext::volume_name() const
+{
+    throw std::logic_error("ShmContext::volume_name is not implemented yet");
 }

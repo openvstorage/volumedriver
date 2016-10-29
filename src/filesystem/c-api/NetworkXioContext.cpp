@@ -22,12 +22,14 @@ namespace libovsvolumedriver
 NetworkXioContext::NetworkXioContext(const std::string& uri,
                                      uint64_t net_client_qdepth,
                                      NetworkHAContext& ha_ctx,
-                                     bool ha_try_reconnect)
+                                     bool ha_try_reconnect,
+                                     RequestDispatcherCallback& callback)
     : net_client_(nullptr)
     , uri_(uri)
     , net_client_qdepth_(net_client_qdepth)
     , ha_ctx_(ha_ctx)
     , ha_try_reconnect_(ha_try_reconnect)
+    , callback_(callback)
 {
     LIBLOGID_DEBUG("uri: " << uri <<
                    ",queue depth: " << net_client_qdepth);
@@ -102,7 +104,8 @@ NetworkXioContext::open_volume_(const char *volume_name,
             std::make_shared<NetworkXioClient>(uri_,
                                                net_client_qdepth_,
                                                ha_ctx_,
-                                               ha_try_reconnect_);
+                                               ha_try_reconnect_,
+                                               callback_);
         if (should_insert_request)
         {
             ha_ctx_.insert_inflight_request(
@@ -488,8 +491,28 @@ NetworkXioContext::list_cluster_node_uri(std::vector<std::string>& uris)
 }
 
 int
-NetworkXioContext::send_read_request(struct ovs_aiocb *ovs_aiocbp,
-                                     ovs_aio_request *request)
+NetworkXioContext::get_volume_uri(const char* volume_name,
+                                  std::string& volume_uri)
+{
+    try
+    {
+        NetworkXioClient::xio_get_volume_uri(uri_, volume_name, volume_uri);
+        return 0;
+    }
+    catch (const std::bad_alloc&)
+    {
+        errno = ENOMEM;
+    }
+    catch (...)
+    {
+        errno = EIO;
+    }
+    return -1;
+}
+
+int
+NetworkXioContext::send_read_request(ovs_aio_request* request,
+                                     ovs_aiocb* ovs_aiocbp)
 {
     int r = 0;
     try
@@ -515,8 +538,8 @@ NetworkXioContext::send_read_request(struct ovs_aiocb *ovs_aiocbp,
 }
 
 int
-NetworkXioContext::send_write_request(struct ovs_aiocb *ovs_aiocbp,
-                                      ovs_aio_request *request)
+NetworkXioContext::send_write_request(ovs_aio_request* request,
+                                      ovs_aiocb* ovs_aiocbp)
 {
     int r = 0;
     try
@@ -542,7 +565,7 @@ NetworkXioContext::send_write_request(struct ovs_aiocb *ovs_aiocbp,
 }
 
 int
-NetworkXioContext::send_flush_request(ovs_aio_request *request)
+NetworkXioContext::send_flush_request(ovs_aio_request* request)
 {
     int r = 0;
     try

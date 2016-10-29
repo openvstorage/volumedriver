@@ -18,6 +18,8 @@
 
 #define ATTRIBUTE_UNUSED __attribute__((unused))
 
+#include "volumedriver.h"
+
 #include <string>
 #include <libxio.h>
 

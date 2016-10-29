@@ -34,14 +34,30 @@
 namespace libovsvolumedriver
 {
 
-class NetworkHAContext : public ovs_context_t
+class RequestDispatcherCallback;
+
+class NetworkHAContext
+    : public ovs_context_t
 {
 public:
     NetworkHAContext(const std::string& uri,
                      uint64_t net_client_qdepth,
-                     bool ha_enabled);
+                     bool ha_enabled,
+                     RequestDispatcherCallback&);
 
     ~NetworkHAContext();
+
+    boost::optional<std::string>
+    volume_name() const override final
+    {
+        return atomic_get_ctx()->volume_name();
+    }
+
+    std::string
+    current_uri() const override final
+    {
+        return atomic_get_ctx()->current_uri();
+    }
 
     int
     open_volume(const char *volume_name,
@@ -94,15 +110,19 @@ public:
     list_cluster_node_uri(std::vector<std::string>& uris);
 
     int
-    send_read_request(struct ovs_aiocb *ovs_aiocbp,
-                      ovs_aio_request *request);
+    get_volume_uri(const char* volume_name,
+                   std::string& volume_uri) override final;
 
     int
-    send_write_request(struct ovs_aiocb *ovs_aiocbp,
-                       ovs_aio_request *request);
+    send_read_request(ovs_aio_request*,
+                      ovs_aiocb*) override final;
 
     int
-    send_flush_request(ovs_aio_request *request);
+    send_write_request(ovs_aio_request*,
+                       ovs_aiocb*) override final;
+
+    int
+    send_flush_request(ovs_aio_request*) override final;
 
     int
     stat_volume(struct stat *st);
@@ -149,12 +169,13 @@ public:
             connection_error_ = true;
         }
     }
+
 private:
     /* cnanakos TODO: use atomic overloads for shared_ptr
      * when g++ > 5.0.0 is used
      */
     std::shared_ptr<ovs_context_t> ctx_;
-    fungi::SpinLock ctx_lock_;
+    mutable fungi::SpinLock ctx_lock_;
     std::string volume_name_;
     int oflag_;
     std::string uri_;
@@ -178,8 +199,10 @@ private:
     bool openning_;
     bool connection_error_;
 
-    const std::shared_ptr<ovs_context_t>&
-    atomic_get_ctx()
+    RequestDispatcherCallback& callback_;
+
+    std::shared_ptr<ovs_context_t>
+    atomic_get_ctx() const
     {
         fungi::ScopedSpinLock l_(ctx_lock_);
         return ctx_;
@@ -190,8 +213,13 @@ private:
     {
         fungi::ScopedSpinLock l_(ctx_lock_);
         ctx_.swap(ctx);
-        ctx.reset();
     }
+
+    template<typename... Args>
+    int
+    wrap_io(int (ovs_context_t::*mem_fun)(ovs_aio_request*, Args...),
+            ovs_aio_request*,
+            Args...);
 
     bool
     is_connection_error() const

@@ -480,7 +480,7 @@ ObjectRouter::maybe_steal_(R (ClusterNode::*fn)(const Object&,
             VERIFY(remote == IsRemoteNode::T);
             LOG_ERROR(id << ": remote node " << owner_id << " timed out");
 
-            if (cluster_registry_->get_node_state(owner_id) ==
+            if (cluster_registry_->get_node_status(owner_id).state ==
                 ClusterNodeStatus::State::Online)
             {
                 const auto ev(FileSystemEvents::redirect_timeout_while_online(owner_id));

@@ -128,6 +128,8 @@ enum class NetworkXioMsgOpcode
     TruncateRsp,
     ListClusterNodeURIReq,
     ListClusterNodeURIRsp,
+    GetVolumeURIReq,
+    GetVolumeURIRsp,
 };
 
 #endif //__NETWORK_XIO_COMMON_H_

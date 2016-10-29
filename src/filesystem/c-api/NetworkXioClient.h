@@ -44,7 +44,8 @@ public:
     NetworkXioClient(const std::string& uri,
                      const uint64_t qd,
                      NetworkHAContext& ha_ctx,
-                     bool ha_try_reconnect);
+                     bool ha_try_reconnect,
+                     RequestDispatcherCallback&);
 
     ~NetworkXioClient();
 
@@ -158,6 +159,11 @@ public:
                               std::vector<std::string>& uris);
 
     static void
+    xio_get_volume_uri(const std::string& uri,
+                       const char* volume_name,
+                       std::string& volume_uri);
+
+    static void
     xio_list_snapshots(const std::string& uri,
                        const char* volume_name,
                        std::vector<std::string>& snapshots,
@@ -228,6 +234,8 @@ private:
     bool ha_try_reconnect_;
     bool connection_error_;
 
+    RequestDispatcherCallback& callback_;
+
     void
     xio_run_loop_worker();
 
@@ -285,6 +293,11 @@ private:
     handle_list_cluster_node_uri(xio_ctl_s *xctl,
                                  xio_iovec_ex *sglist,
                                  int vec_size);
+
+    static void
+    handle_get_volume_uri(xio_ctl_s *xctl,
+                          xio_iovec_ex *sglist,
+                          int vec_size);
 
     static void
     create_vec_from_buf(xio_ctl_s *xctl,

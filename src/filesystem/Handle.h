@@ -21,6 +21,7 @@
 #include "FrontendPath.h"
 #include "Object.h"
 
+#include <boost/logic/tribool.hpp>
 #include <boost/make_shared.hpp>
 
 #include <youtils/Logging.h>
@@ -36,9 +37,10 @@ public:
     using Ptr = std::unique_ptr<Handle>;
 
     Handle(const FrontendPath& p,
-           DirectoryEntryPtr& d)
+           const DirectoryEntryPtr& d)
         : path_(p)
         , dentry_(d)
+        , is_local_(boost::logic::indeterminate)
     {}
 
     ~Handle() = default;
@@ -67,11 +69,40 @@ public:
         return cookie_;
     }
 
-    void
+    // TODO: at this point we should not have to know about the fact
+    // that there are no FastPathCookies for non-volume objects (files) - this
+    // is entirely a detail of FastPathCookie.
+    FastPathCookie
     update_cookie(FastPathCookie c)
     {
         boost::lock_guard<decltype(cookie_lock_)> g(cookie_lock_);
-        cookie_ = c;
+        std::swap(cookie_, c);
+
+        if (cookie_)
+        {
+            is_local_ = true;
+        }
+        else if (c)
+        {
+            is_local_ = false;
+        }
+        else if (dentry_->type() == DirectoryEntry::Type::Volume)
+        {
+            is_local_ = false;
+        }
+        else
+        {
+            is_local_ = boost::logic::indeterminate;
+        }
+
+        return c;
+    }
+
+    boost::logic::tribool
+    is_local() const
+    {
+        boost::lock_guard<decltype(cookie_lock_)> g(cookie_lock_);
+        return is_local_;
     }
 
 private:
@@ -82,6 +113,7 @@ private:
 
     mutable fungi::SpinLock cookie_lock_;
     FastPathCookie cookie_;
+    boost::logic::tribool is_local_;
 };
 
 }
