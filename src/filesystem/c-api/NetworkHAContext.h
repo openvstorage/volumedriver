@@ -159,7 +159,7 @@ private:
      * when g++ > 5.0.0 is used
      */
     std::shared_ptr<ovs_context_t> ctx_;
-    fungi::SpinLock ctx_lock_;
+    mutable fungi::SpinLock ctx_lock_;
     std::string volume_name_;
     int oflag_;
     std::string uri_;
@@ -184,7 +184,7 @@ private:
     bool connection_error_;
 
     std::shared_ptr<ovs_context_t>
-    atomic_get_ctx()
+    atomic_get_ctx() const
     {
         fungi::ScopedSpinLock l_(ctx_lock_);
         return ctx_;
