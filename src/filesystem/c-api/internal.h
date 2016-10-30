@@ -164,7 +164,8 @@ struct ovs_aio_request
     static void
     handle_xio_request(ovs_aio_request *request,
                        ssize_t retval,
-                       int errval)
+                       int errval,
+                       bool sched)
     {
         ovs_completion_t *completion = request->get_completion();
         struct ovs_aiocb *aiocbp = request->get_aio();
@@ -178,28 +179,14 @@ struct ovs_aio_request
                 delete aiocbp;
                 delete request;
             }
-            AioCompletion::get_aio_context().schedule(completion);
-        }
-    }
-
-    static void
-    handle_xio_request_nosched(ovs_aio_request *request,
-                               size_t retval,
-                               int errval)
-    {
-        ovs_completion_t *completion = request->get_completion();
-        struct ovs_aiocb *aiocbp = request->get_aio();
-        request->xio_complete(retval,
-                              errval);
-        if (completion)
-        {
-            request->set_completion();
-            if (request->is_async_flush())
+            if (sched)
             {
-                delete aiocbp;
-                delete request;
+                AioCompletion::get_aio_context().schedule(completion);
             }
-            completion->complete_cb(completion, completion->cb_arg);
+            else
+            {
+                completion->complete_cb(completion, completion->cb_arg);
+            }
         }
     }
 

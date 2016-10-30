@@ -81,12 +81,10 @@ struct ShmContext : public ovs_context_t
     list_cluster_node_uri(std::vector<std::string>& uris);
 
     int
-    send_read_request(struct ovs_aiocb *ovs_aiocbp,
-                      ovs_aio_request *request);
+    send_read_request(ovs_aio_request *request);
 
     int
-    send_write_request(struct ovs_aiocb *ovs_aiocbp,
-                       ovs_aio_request *request);
+    send_write_request(ovs_aio_request *request);
 
     int
     send_flush_request(ovs_aio_request *request);

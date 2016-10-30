@@ -353,7 +353,8 @@ NetworkXioClient::xio_run_loop_worker()
                 {
                     ovs_aio_request::handle_xio_request(get_ovs_aio_request(req->opaque),
                                                         -1,
-                                                        EIO);
+                                                        EIO,
+                                                        true);
                 }
                 delete req;
             }
@@ -400,7 +401,8 @@ NetworkXioClient::on_response(xio_session *session __attribute__((unused)),
     insert_seen_request(xio_msg);
     ovs_aio_request::handle_xio_request(get_ovs_aio_request(xio_msg->opaque),
                                         imsg.retval(),
-                                        imsg.errval());
+                                        imsg.errval(),
+                                        true);
 
     reply->in.header.iov_base = NULL;
     reply->in.header.iov_len = 0;
@@ -456,7 +458,8 @@ NetworkXioClient::on_msg_error(xio_session *session __attribute__((unused)),
     {
         ovs_aio_request::handle_xio_request(get_ovs_aio_request(xio_msg->opaque),
                                             -1,
-                                            EIO);
+                                            EIO,
+                                            true);
     }
     req_queue_release();
     delete xio_msg;

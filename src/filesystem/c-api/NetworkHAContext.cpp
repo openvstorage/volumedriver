@@ -148,9 +148,10 @@ NetworkHAContext::fail_inflight_requests(int errval)
     for (auto req_it = inflight_ha_reqs_.cbegin();
             req_it != inflight_ha_reqs_.cend();)
     {
-        ovs_aio_request::handle_xio_request_nosched(req_it->second,
-                                                    -1,
-                                                    errval);
+        ovs_aio_request::handle_xio_request(req_it->second,
+                                            -1,
+                                            errval,
+                                            false);
         inflight_ha_reqs_.erase(req_it++);
     }
 }
@@ -203,12 +204,10 @@ NetworkHAContext::resend_inflight_requests()
         switch (request->_op)
         {
         case RequestOp::Read:
-            atomic_get_ctx()->send_read_request(request->ovs_aiocbp,
-                                                request);
+            atomic_get_ctx()->send_read_request(request);
             break;
         case RequestOp::Write:
-            atomic_get_ctx()->send_write_request(request->ovs_aiocbp,
-                                                 request);
+            atomic_get_ctx()->send_write_request(request);
             break;
         case RequestOp::Flush:
         case RequestOp::AsyncFlush:
@@ -430,16 +429,14 @@ NetworkHAContext::list_cluster_node_uri(std::vector<std::string>& uris)
 }
 
 int
-NetworkHAContext::send_read_request(struct ovs_aiocb *ovs_aiocbp,
-                                    ovs_aio_request *request)
+NetworkHAContext::send_read_request(ovs_aio_request *request)
 {
     int r;
     if (is_ha_enabled())
     {
         uint64_t id = assign_request_id(request);
         LOCK_INFLIGHT();
-        r = atomic_get_ctx()->send_read_request(ovs_aiocbp,
-                                                request);
+        r = atomic_get_ctx()->send_read_request(request);
         if (not r)
         {
             insert_inflight_request(id, request);
@@ -447,23 +444,20 @@ NetworkHAContext::send_read_request(struct ovs_aiocb *ovs_aiocbp,
     }
     else
     {
-        r = atomic_get_ctx()->send_read_request(ovs_aiocbp,
-                                                request);
+        r = atomic_get_ctx()->send_read_request(request);
     }
     return r;
 }
 
 int
-NetworkHAContext::send_write_request(struct ovs_aiocb *ovs_aiocbp,
-                                     ovs_aio_request *request)
+NetworkHAContext::send_write_request(ovs_aio_request *request)
 {
     int r;
     if (is_ha_enabled())
     {
         uint64_t id = assign_request_id(request);
         LOCK_INFLIGHT();
-        r = atomic_get_ctx()->send_write_request(ovs_aiocbp,
-                                                 request);
+        r = atomic_get_ctx()->send_write_request(request);
         if (not r)
         {
             insert_inflight_request(id, request);
@@ -471,8 +465,7 @@ NetworkHAContext::send_write_request(struct ovs_aiocb *ovs_aiocbp,
     }
     else
     {
-        r = atomic_get_ctx()->send_write_request(ovs_aiocbp,
-                                                 request);
+        r = atomic_get_ctx()->send_write_request(request);
     }
     return r;
 }

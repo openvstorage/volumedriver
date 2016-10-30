@@ -488,10 +488,10 @@ NetworkXioContext::list_cluster_node_uri(std::vector<std::string>& uris)
 }
 
 int
-NetworkXioContext::send_read_request(struct ovs_aiocb *ovs_aiocbp,
-                                     ovs_aio_request *request)
+NetworkXioContext::send_read_request(ovs_aio_request *request)
 {
     int r = 0;
+    ovs_aiocb *ovs_aiocbp = request->ovs_aiocbp;
     try
     {
         net_client_->xio_send_read_request(ovs_aiocbp->aio_buf,
@@ -515,10 +515,10 @@ NetworkXioContext::send_read_request(struct ovs_aiocb *ovs_aiocbp,
 }
 
 int
-NetworkXioContext::send_write_request(struct ovs_aiocb *ovs_aiocbp,
-                                      ovs_aio_request *request)
+NetworkXioContext::send_write_request(ovs_aio_request *request)
 {
     int r = 0;
+    ovs_aiocb *ovs_aiocbp = request->ovs_aiocbp;
     try
     {
         net_client_->xio_send_write_request(ovs_aiocbp->aio_buf,
