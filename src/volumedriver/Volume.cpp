@@ -789,7 +789,7 @@ Volume::setAsTemplate()
     }
 }
 
-void
+DtlInSync
 Volume::writeClustersToFailOverCache_(const std::vector<ClusterLocation>& locs,
                                       size_t num_locs,
                                       uint64_t start_address,
@@ -797,6 +797,8 @@ Volume::writeClustersToFailOverCache_(const std::vector<ClusterLocation>& locs,
 {
     ASSERT_WRITES_SERIALIZED();
     ASSERT_RLOCKED();
+
+    DtlInSync dtl_in_sync = DtlInSync::F;
 
     if (failover_->backup())
     {
@@ -826,10 +828,18 @@ Volume::writeClustersToFailOverCache_(const std::vector<ClusterLocation>& locs,
         {
             throttle_(foc_throttle_usecs_);
         }
+
+        if (failover_->mode() == FailOverCacheMode::Synchronous and
+            getVolumeFailOverState() == VolumeFailOverState::OK_SYNC)
+        {
+            dtl_in_sync = DtlInSync::T;
+        }
     }
+
+    return dtl_in_sync;
 }
 
-void
+DtlInSync
 Volume::write(uint64_t lba,
               const uint8_t *buf,
               uint64_t buflen)
@@ -854,7 +864,7 @@ Volume::write(uint64_t lba,
 
     if (VolManager::get()->volume_nullio.value())
     {
-        return;
+        return DtlInSync::T;
     }
 
     yt::SteadyTimer t;
@@ -906,6 +916,8 @@ Volume::write(uint64_t lba,
     size_t wsize = len;
     size_t off = 0;
 
+    DtlInSync dtl_in_sync = DtlInSync::T;
+
     while (off < len)
     {
         SERIALIZE_WRITES();
@@ -931,7 +943,12 @@ Volume::write(uint64_t lba,
                       dtl_cap,
                       static_cast<size_t>(sco_cap)});
 
-        writeClusters_(addr + off, p + off, chunksize);
+        const DtlInSync in_sync = writeClusters_(addr + off, p + off, chunksize);
+        if (in_sync == DtlInSync::F)
+        {
+            dtl_in_sync = DtlInSync::F;
+        }
+
         off += chunksize;
         wsize -= chunksize;
     }
@@ -940,6 +957,8 @@ Volume::write(uint64_t lba,
     performance_counters().write_request_usecs.count(duration_us.count());
 
     VERIFY(off == len);
+
+    return dtl_in_sync;
 }
 
 namespace
@@ -965,7 +984,7 @@ make_cluster_location_and_hash(const ClusterLocation& loc,
 
 }
 
-void
+DtlInSync
 Volume::writeClusters_(uint64_t addr,
                        const uint8_t* buf,
                        uint64_t bufsize)
@@ -977,6 +996,8 @@ Volume::writeClusters_(uint64_t addr,
     size_t num_locs = bufsize / getClusterSize();
     unsigned throttle_usecs = 0;
     uint32_t ds_throttle = 0;
+
+    DtlInSync dtl_in_sync = DtlInSync::F;
 
     {
         // prevent tlog rollover interfering with snapshotting and friends
@@ -1020,10 +1041,10 @@ Volume::writeClusters_(uint64_t addr,
         }
 
         yt::SteadyTimer t;
-        writeClustersToFailOverCache_(cluster_locations_,
-                                      num_locs,
-                                      addr >> volOffset_,
-                                      buf);
+        dtl_in_sync = writeClustersToFailOverCache_(cluster_locations_,
+                                                    num_locs,
+                                                    addr >> volOffset_,
+                                                    buf);
 
         throttle_usecs += bc::duration_cast<bc::microseconds>(t.elapsed()).count();
 
@@ -1051,6 +1072,8 @@ Volume::writeClusters_(uint64_t addr,
 
         throttle_(throttle_usecs);
     }
+
+    return dtl_in_sync;
 }
 
 void
@@ -2463,7 +2486,7 @@ Volume::setFOCTimeout(const boost::chrono::seconds timeout)
     failover_->setRequestTimeout(timeout);
 }
 
-void
+DtlInSync
 Volume::sync()
 {
     tracepoint(openvstorage_volumedriver,
@@ -2480,7 +2503,7 @@ Volume::sync()
 
     if (VolManager::get()->volume_nullio.value())
     {
-        return;
+        return DtlInSync::T;
     }
 
     yt::SteadyTimer t;
@@ -2492,19 +2515,23 @@ Volume::sync()
 
     ++total_number_of_syncs_;
 
+    DtlInSync dtl_in_sync = DtlInSync::F;
+
     if((++number_of_syncs_ > number_of_syncs_to_ignore) or
        (sync_wall_timer_.elapsed_in_seconds() > maximum_time_to_ignore_syncs_in_seconds))
     {
         number_of_syncs_ = 0;
         sync_wall_timer_.restart();
-        sync_(AppendCheckSum::F);
+        dtl_in_sync = sync_(AppendCheckSum::F);
     }
 
     const auto duration_us(bc::duration_cast<bc::microseconds>(t.elapsed()));
     performance_counters().sync_request_usecs.count(duration_us.count());
+
+    return dtl_in_sync;
 }
 
-void
+DtlInSync
 Volume::sync_(AppendCheckSum append_chksum)
 {
     ASSERT_WLOCKED();
@@ -2521,6 +2548,16 @@ Volume::sync_(AppendCheckSum append_chksum)
                               boost::none);
 
     failover_->Flush();
+
+    if (failover_->backup() and
+        getVolumeFailOverState() == VolumeFailOverState::OK_SYNC)
+    {
+        return DtlInSync::T;
+    }
+    else
+    {
+        return DtlInSync::F;
+    }
 }
 
 bool

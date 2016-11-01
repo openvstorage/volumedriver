@@ -172,7 +172,8 @@ public:
           const ObjectId&,
           const uint8_t* buf,
           size_t size,
-          off_t off);
+          off_t off,
+          volumedriver::DtlInSync&);
 
     FastPathCookie
     read(const FastPathCookie&,
@@ -183,7 +184,8 @@ public:
 
     FastPathCookie
     sync(const FastPathCookie&,
-         const ObjectId&);
+         const ObjectId&,
+         volumedriver::DtlInSync&);
 
     uint64_t
     get_size(const ObjectId& id);
@@ -424,6 +426,7 @@ private:
     DECLARE_PARAMETER(vrouter_registry_cache_capacity);
     DECLARE_PARAMETER(vrouter_xmlrpc_client_timeout_ms);
     DECLARE_PARAMETER(vrouter_use_fencing);
+    DECLARE_PARAMETER(vrouter_send_sync_response);
 
     std::shared_ptr<youtils::LockedArakoon> larakoon_;
     std::shared_ptr<CachedObjectRegistry> object_registry_;
@@ -480,7 +483,7 @@ private:
                  AttemptTheft,
                  const ObjectRegistration&,
                  FastPathCookie&,
-                 Args...);
+                 Args&&...);
 
     template<typename Ret,
              typename... Args>
@@ -491,7 +494,7 @@ private:
               AttemptTheft,
               const ObjectId&,
               FastPathCookie&,
-              Args...);
+              Args&&...);
 
     template<typename Ret,
              typename... Args>
@@ -502,7 +505,7 @@ private:
               AttemptTheft,
               ObjectRegistrationPtr,
               FastPathCookie&,
-              Args...);
+              Args&&...);
 
     template<typename Ret,
              typename... Args>
@@ -548,8 +551,7 @@ private:
     handle_write_(const vfsprotocol::WriteRequest&,
                   const zmq::message_t& data);
 
-
-    void
+    zmq::message_t
     handle_sync_(const vfsprotocol::SyncRequest&);
 
     zmq::message_t
@@ -585,7 +587,8 @@ private:
     write_(const ObjectId&,
            const uint8_t* buf,
            size_t* size,
-           off_t off);
+           off_t off,
+           volumedriver::DtlInSync&);
 
     FastPathCookie
     read_(const ObjectId&,
@@ -594,7 +597,8 @@ private:
           off_t off);
 
     FastPathCookie
-    sync_(const ObjectId&);
+    sync_(const ObjectId&,
+          volumedriver::DtlInSync&);
 
     template<typename... Args>
     FastPathCookie

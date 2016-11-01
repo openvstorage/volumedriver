@@ -547,7 +547,7 @@ FileSystemTestBase::rename(const vfs::ObjectId& from_parent_id,
 int
 FileSystemTestBase::open(const vfs::FrontendPath& path,
                          vfs::Handle::Ptr& h,
-                         int flags)
+                         mode_t flags)
 {
     return vfs::FuseInterface::convert_exceptions<mode_t,
                                                   decltype(h)>(&vfs::FileSystem::open,
@@ -620,13 +620,15 @@ FileSystemTestBase::write(vfs::Handle& h,
                                     size_t&,
                                     decltype(buf),
                                     decltype(off),
-                                    bool&>(*fs_,
-                                           &vfs::FileSystem::write,
-                                           h,
-                                           size,
-                                           buf,
-                                           off,
-                                           sync);
+                                    bool&,
+                                    vd::DtlInSync*>(*fs_,
+                                                    &vfs::FileSystem::write,
+                                                    h,
+                                                    size,
+                                                    buf,
+                                                    off,
+                                                    sync,
+                                                    nullptr);
     return ret ? ret : size;
 }
 
@@ -635,10 +637,12 @@ FileSystemTestBase::fsync(volumedriverfs::Handle& h,
                           bool datasync)
 {
     return fs_convert_exceptions<vfs::Handle&,
-                                 bool>(*fs_,
-                                       &vfs::FileSystem::fsync,
-                                       h,
-                                       datasync);
+                                 bool,
+                                 vd::DtlInSync*>(*fs_,
+                                                 &vfs::FileSystem::fsync,
+                                                 h,
+                                                 datasync,
+                                                 nullptr);
 }
 
 int

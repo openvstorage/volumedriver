@@ -81,6 +81,7 @@ FileSystemTestSetup::FileSystemTestSetup(const FileSystemTestSetupParameters& pa
     , redirect_retries_(params.redirect_retries_)
     , scrub_manager_interval_secs_(params.scrub_manager_interval_secs_)
     , use_fencing_(params.use_fencing_)
+    , send_sync_response_(params.send_sync_response_)
     , dtl_config_mode_(params.dtl_config_mode_)
     , dtl_mode_(params.dtl_mode_)
     , fdriver_namespace_("ovs-fdnspc-fstest-"s + yt::UUID().str())
@@ -376,6 +377,7 @@ FileSystemTestSetup::make_config_(bpt::ptree& pt,
         ip::PARAMETER_TYPE(vrouter_id)(vrouter_id).persist(pt);
         ip::PARAMETER_TYPE(scrub_manager_interval)(scrub_manager_interval_secs_).persist(pt);
         ip::PARAMETER_TYPE(vrouter_use_fencing)(use_fencing_).persist(pt);
+        ip::PARAMETER_TYPE(vrouter_send_sync_response)(send_sync_response_).persist(pt);
     }
 
     // volume_router_cluster

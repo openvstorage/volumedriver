@@ -154,7 +154,8 @@ public:
           size_t& size,
           const char* buf,
           off_t off,
-          bool& sync);
+          bool& sync,
+          volumedriver::DtlInSync* = nullptr);
 
     void
     write(const FrontendPath& path,
@@ -170,7 +171,8 @@ public:
 
     void
     fsync(Handle& h,
-          bool datasync);
+          bool datasync,
+          volumedriver::DtlInSync* = nullptr);
 
     template<typename T>
     void

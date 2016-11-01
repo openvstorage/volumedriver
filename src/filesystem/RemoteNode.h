@@ -65,10 +65,12 @@ public:
     write(const Object& obj,
           const uint8_t* buf,
           size_t* size,
-          off_t off) override final;
+          off_t off,
+          volumedriver::DtlInSync&) override final;
 
     virtual void
-    sync(const Object& obj) override final;
+    sync(const Object&,
+         volumedriver::DtlInSync&) override final;
 
     virtual uint64_t
     get_size(const Object& obj) override final;

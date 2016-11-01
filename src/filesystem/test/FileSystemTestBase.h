@@ -210,7 +210,7 @@ protected:
     int
     open(const volumedriverfs::FrontendPath& path,
          volumedriverfs::Handle::Ptr& handle,
-         int flags);
+         mode_t flags);
 
     int
     open(const volumedriverfs::ObjectId& id,
@@ -593,17 +593,17 @@ protected:
 private:
     DECLARE_LOGGER("FileSystemTestBase");
 
-    template<typename ...A>
+    template<typename... Args>
     static int
     fs_convert_exceptions(volumedriverfs::FileSystem& fs_,
-                          void (volumedriverfs::FileSystem::*func)(A ...args),
-                          A ...args) throw()
+                          void (volumedriverfs::FileSystem::*func)(Args...),
+                          Args... args) throw()
     {
         int ret = 0;
 
         try
         {
-            ((&fs_)->*func)(std::forward<A>(args)...);
+            ((&fs_)->*func)(std::forward<Args>(args)...);
         }
         catch (volumedriverfs::GetAttrOnInexistentPath&)
         {

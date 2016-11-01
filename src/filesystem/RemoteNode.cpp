@@ -465,7 +465,8 @@ void
 RemoteNode::write(const Object& obj,
                   const uint8_t* buf,
                   size_t* size,
-                  off_t off)
+                  off_t off,
+                  vd::DtlInSync& dtl_in_sync)
 {
     ASSERT(size);
 
@@ -480,32 +481,53 @@ RemoteNode::write(const Object& obj,
                                zock_->send(msg, 0);
                            });
 
-    ExtraRecvFun get_size([&]
-                          {
-                              ZEXPECT_MORE(*zock_, "WriteResponse");
+    ExtraRecvFun get_rsp([&]
+                         {
+                             ZEXPECT_MORE(*zock_, "WriteResponse");
 
-                              vfsprotocol::WriteResponse rsp;
-                              ZUtils::deserialize_from_socket(*zock_, rsp);
+                             vfsprotocol::WriteResponse rsp;
+                             ZUtils::deserialize_from_socket(*zock_, rsp);
 
-                              rsp.CheckInitialized();
-                              *size = rsp.size();
-                          });
+                             rsp.CheckInitialized();
+                             *size = rsp.size();
+                             dtl_in_sync = rsp.dtl_in_sync() ? vd::DtlInSync::T : vd::DtlInSync::F;
+                         });
 
     handle_(req,
             vrouter_.redirect_timeout(),
             &send_data,
-            &get_size);
+            &get_rsp);
 }
 
 void
-RemoteNode::sync(const Object& obj)
+RemoteNode::sync(const Object& obj,
+                 vd::DtlInSync& dtl_in_sync)
 {
     LOG_TRACE(config.vrouter_id << ": obj " << obj.id);
 
     const auto req(vfsprotocol::MessageUtils::create_sync_request(obj));
 
+    ExtraRecvFun get_rsp([&]
+                         {
+                             // the SyncResponse data was introduced at a later point
+                             // so older versions might not send it.
+                             if (ZUtils::more_message_parts(*zock_))
+                             {
+                                 vfsprotocol::SyncResponse rsp;
+                                 ZUtils::deserialize_from_socket(*zock_, rsp);
+                                 rsp.CheckInitialized();
+                                 dtl_in_sync = rsp.dtl_in_sync() ? vd::DtlInSync::T : vd::DtlInSync::F;
+                             }
+                             else
+                             {
+                                 dtl_in_sync = vd::DtlInSync::F;
+                             }
+                         });
+
     handle_(req,
-            vrouter_.redirect_timeout());
+            vrouter_.redirect_timeout(),
+            nullptr,
+            &get_rsp);
 }
 
 uint64_t

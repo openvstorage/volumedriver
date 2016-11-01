@@ -173,6 +173,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_use_fencing,
                                       ShowDocumentation::T,
                                       false);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_send_sync_response,
+                                      volumerouter_component_name,
+                                      "vrouter_send_sync_response",
+                                      "whether to send extended response data on sync requests",
+                                      ShowDocumentation::T,
+                                      false);
+
 // ObjectRouterCluster
 const char volumeroutercluster_component_name[] = "volume_router_cluster";
 

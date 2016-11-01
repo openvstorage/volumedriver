@@ -22,6 +22,7 @@
 
 #include <youtils/Logging.h>
 
+#include <volumedriver/DtlInSync.h>
 #include <volumedriver/Types.h>
 
 namespace volumedriverfs
@@ -43,7 +44,8 @@ public:
     write(const Object& obj,
           const uint8_t* buf,
           size_t* size,
-          off_t off) = 0;
+          off_t off,
+          volumedriver::DtlInSync&) = 0;
 
     virtual void
     read(const Object& obj,
@@ -52,7 +54,8 @@ public:
          off_t off) = 0;
 
     virtual void
-    sync(const Object& obj) = 0;
+    sync(const Object&,
+         volumedriver::DtlInSync&) = 0;
 
     virtual uint64_t
     get_size(const Object& obj) = 0;

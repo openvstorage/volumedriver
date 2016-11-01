@@ -87,6 +87,7 @@ struct FileSystemTestSetupParameters
     PARAM(volumedriver::FailOverCacheMode, dtl_mode) =
         volumedriver::FailOverCacheMode::Asynchronous;
     PARAM(bool, use_fencing) = false;
+    PARAM(bool, send_sync_response) = true;
 
 #undef PARAM
 };
@@ -351,6 +352,7 @@ protected:
     uint32_t redirect_retries_;
     uint64_t scrub_manager_interval_secs_;
     bool use_fencing_;
+    bool send_sync_response_;
 
     volumedriverfs::FailOverCacheConfigMode dtl_config_mode_;
     volumedriver::FailOverCacheMode dtl_mode_;
