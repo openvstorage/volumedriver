@@ -47,7 +47,7 @@
 #include <youtils/LoggingToolCut.h>
 #include <youtils/PythonBuildInfo.h>
 
-#define MAKE_PYTHON_VD_BOOLEAN_ENUM(name, doc)     \
+#define MAKE_PYTHON_VD_BOOLEAN_ENUM(name, doc)  \
     enum_<name>(#name, doc)                     \
     .value("F", name::F)                        \
     .value("T", name::T);
@@ -67,10 +67,11 @@ BOOST_PYTHON_MODULE(ToolCut)
     class_<volumedriver::TLogId>("TLogId",
                                  "A TLog identifier",
                                  bpy::no_init)
+        // clang++ (3.8.0-2ubuntu3~trusty4) needs the 'Source' type as well
         .def("__repr__",
-             &boost::lexical_cast<std::string>)
+             &boost::lexical_cast<std::string, volumedriver::TLogId>)
         .def("__str__",
-             &boost::lexical_cast<std::string>)
+             &boost::lexical_cast<std::string, volumedriver::TLogId>)
         .def("__eq__",
              &volumedriver::TLogId::operator==)
         ;
