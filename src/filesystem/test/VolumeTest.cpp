@@ -1530,6 +1530,45 @@ TEST_F(VolumeTest, concurrent_unaligned_writes)
          });
 }
 
+// Converting to a template involves removing snapshots. As
+// showcased by https://github.com/openvstorage/volumedriver/issues/163
+// this was not checked by the ObjectRegistry and lead to clones being
+// orphaned.
+TEST_F(VolumeTest, no_template_creation_if_clones_are_present)
+{
+    const vfs::FrontendPath vpath(make_volume_name("/volume"));
+    const size_t vsize = 1ULL << 20;
+    const vfs::ObjectId vid(create_file(vpath, vsize));
+
+    const std::string snap(client_.create_snapshot(vid));
+    const std::string pattern("some irrelevant blurb");
+    write_to_file(vpath, pattern, get_cluster_size(vid), 0);
+
+    wait_for_snapshot(vid, snap);
+
+    const vfs::FrontendPath cpath(make_volume_name("/clone"));
+    const vfs::ObjectId cid(fs_->create_clone(cpath,
+                                              make_metadata_backend_config(),
+                                              vd::VolumeId(vid.str()),
+                                              vd::SnapshotName(snap)).str());
+
+    auto check([&]
+               {
+                   vfs::ObjectRegistrationPtr
+                       oreg(fs_->object_router().object_registry()->find_throw(vid,
+                                                                               vfs::IgnoreCache::T));
+                   EXPECT_EQ(vfs::ObjectType::Volume,
+                             oreg->treeconfig.object_type);
+               });
+
+    check();
+
+    EXPECT_THROW(client_.set_volume_as_template(vid),
+                 std::exception);
+
+    check();
+}
+
 }
 
 // Local Variables: **
