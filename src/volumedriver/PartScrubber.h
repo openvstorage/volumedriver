@@ -16,7 +16,7 @@
 #ifndef PARTSCRUBBER_H
 #define PARTSCRUBBER_H
 
-#include "SCOPool.h"
+#include "FilePool.h"
 #include "TLogSplitter.h"
 #include <string>
 
@@ -43,7 +43,6 @@ private:
     // What the F?
     const uint16_t clustersize_;
     RegionExponent regionsize_;
-    //    SCOPool& scopool_;
     scrubbing::ScrubbingSCODataVector& scodata_;
 
     volumedriver::FilePool& filepool_;
