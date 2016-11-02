@@ -148,6 +148,9 @@ struct RemoteNode::WorkItem
         , request_desc(vfsprotocol::request_type_to_string(request_type))
         , send_extra_fun(send_extra)
         , recv_extra_fun(recv_extra)
+          // clang++ (3.8.0-2ubuntu3~trusty4) complains otherwise about
+          // 'promise' being used unitialized when initializing 'future'
+        , promise()
         , future(promise.get_future())
     {}
 };
