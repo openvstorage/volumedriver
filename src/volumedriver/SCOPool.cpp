@@ -248,7 +248,7 @@ SCOPool::operator()()
 
     }
 
-    current_sco_ == nullptr;
+    current_sco_ = nullptr;
 
     return std::make_pair(ss,
                           relocationEntries);
