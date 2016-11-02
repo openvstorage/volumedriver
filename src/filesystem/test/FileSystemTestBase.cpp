@@ -1194,6 +1194,51 @@ FileSystemTestBase::remote_node_queue_full(RemoteNode& rnode)
     return ZUtils::writable(*rnode.zock_);
 }
 
+void
+FileSystemTestBase::test_dtl_status(const FrontendPath& vname)
+{
+    Handle::Ptr h;
+    fs_->open(vname, O_WRONLY, h);
+    ASSERT_TRUE(h != nullptr);
+
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         EXPECT_NO_THROW(fs_->release(vname,
+                                                                      std::move(h)));
+                                     }));
+
+    vd::DtlInSync dtl_in_sync = vd::DtlInSync::F;
+    const std::string pattern("not that interesting really");
+    size_t size = pattern.size();
+    bool sync = false;
+
+    fs_->write(*h,
+               size,
+               pattern.data(),
+               0,
+               sync,
+               &dtl_in_sync);
+
+    if (dtl_mode_ == vd::FailOverCacheMode::Synchronous)
+    {
+        EXPECT_EQ(vd::DtlInSync::T,
+                  dtl_in_sync);
+    }
+    else
+    {
+        EXPECT_EQ(vd::DtlInSync::F,
+                  dtl_in_sync);
+    }
+
+    dtl_in_sync = vd::DtlInSync::F;
+    fs_->fsync(*h,
+               true,
+               &dtl_in_sync);
+
+    EXPECT_EQ(vd::DtlInSync::T,
+              dtl_in_sync);
+}
+
 }
 
 // Local Variables: **

@@ -575,6 +575,9 @@ protected:
         EXPECT_EQ(ts[1].tv_sec, st.st_mtime);
     }
 
+    void
+    test_dtl_status(const volumedriverfs::FrontendPath&);
+
     size_t
     get_cluster_size(const volumedriverfs::ObjectId&) const;
 

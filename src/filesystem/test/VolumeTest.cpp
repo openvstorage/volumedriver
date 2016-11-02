@@ -1531,6 +1531,15 @@ TEST_F(VolumeTest, concurrent_unaligned_writes)
          });
 }
 
+TEST_F(VolumeTest, dtl_status)
+{
+    const FrontendPath vname(make_volume_name("/some-volume"));
+    const size_t vsize = 1ULL << 20;
+    create_file(vname, vsize);
+
+    test_dtl_status(vname);
+}
+
 }
 
 // Local Variables: **

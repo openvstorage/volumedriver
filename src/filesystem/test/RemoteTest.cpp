@@ -1725,6 +1725,17 @@ TEST_F(RemoteTest, back_to_life)
     }
 }
 
+TEST_F(RemoteTest, dtl_status)
+{
+    const FrontendPath vname(make_volume_name("/some-volume"));
+    const size_t vsize = 1ULL << 20;
+    const fs::path rpath(make_remote_file(vname, vsize));
+
+    EXPECT_TRUE(fs::exists(rpath));
+
+    test_dtl_status(vname);
+}
+
 TEST_F(RemoteTest, DISABLED_setup_remote_hack)
 {
     sleep(1000000);
