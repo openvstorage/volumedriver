@@ -37,6 +37,8 @@
 namespace volumedriverfstest
 {
 
+using namespace volumedriverfs;
+
 namespace ara = arakoon;
 namespace bc = boost::chrono;
 namespace be = backend;
@@ -44,10 +46,9 @@ namespace bpt = boost::property_tree;
 namespace fs = boost::filesystem;
 namespace ip = initialized_params;
 namespace vd = volumedriver;
-namespace vfs = volumedriverfs;
 namespace yt = youtils;
 
-#define LOCKVD() \
+#define LOCKVD()                                        \
     fungi::ScopedLock ag__(api::getManagementMutex())
 
 // *** WARNING ***
@@ -159,12 +160,12 @@ public:
     }
 
     void
-    fake_remote_registration(const vfs::ObjectId& id)
+    fake_remote_registration(const ObjectId& id)
     {
-        std::shared_ptr<vfs::CachedObjectRegistry>
+        std::shared_ptr<CachedObjectRegistry>
             registry(fs_->object_router().object_registry());
-        vfs::ObjectRegistrationPtr reg(registry->find(id,
-                                                      vfs::IgnoreCache::F));
+        ObjectRegistrationPtr reg(registry->find(id,
+                                                 IgnoreCache::F));
         ASSERT_TRUE(reg != nullptr);
 
         registry->drop_entry_from_cache(id);
@@ -173,31 +174,31 @@ public:
 
         bpt::ptree pt;
         std::shared_ptr<yt::LockedArakoon>
-            larakoon(new vfs::Registry(make_registry_config_(pt),
-                                       RegisterComponent::F));
-        vfs::OwnerTagAllocator owner_tag_allocator(vrouter_cluster_id(),
-                                                   larakoon);
+            larakoon(new Registry(make_registry_config_(pt),
+                                  RegisterComponent::F));
+        OwnerTagAllocator owner_tag_allocator(vrouter_cluster_id(),
+                                              larakoon);
 
-        vfs::ObjectRegistrationPtr
-            new_reg(new vfs::ObjectRegistration(reg->getNS(),
-                                                id,
-                                                remote_node_id(),
-                                                reg->treeconfig.object_type == vfs::ObjectType::Volume ?
-                                                vfs::ObjectTreeConfig::makeBase() :
-                                                vfs::ObjectTreeConfig::makeFile(),
-                                                owner_tag_allocator(),
-                                                vfs::FailOverCacheConfigMode::Automatic));
+        ObjectRegistrationPtr
+            new_reg(new ObjectRegistration(reg->getNS(),
+                                           id,
+                                           remote_node_id(),
+                                           reg->treeconfig.object_type == ObjectType::Volume ?
+                                           ObjectTreeConfig::makeBase() :
+                                           ObjectTreeConfig::makeFile(),
+                                           owner_tag_allocator(),
+                                           FailOverCacheConfigMode::Automatic));
 
         registry->TESTONLY_add_to_cache_(new_reg);
     }
 
     void
-    test_stale_registration(const vfs::FrontendPath& fname)
+    test_stale_registration(const FrontendPath& fname)
     {
         const auto rpath(remote_root_ / fname);
 
         const uint64_t vsize = 10 << 20;
-        const vfs::ObjectId oid(create_file(fname, vsize));
+        const ObjectId oid(create_file(fname, vsize));
 
         fake_remote_registration(oid);
 
@@ -207,9 +208,9 @@ public:
     }
 
     void
-    test_larceny_(const vfs::FrontendPath& fname,
-                  std::function<void(const vfs::FrontendPath&,
-                                     const vfs::ObjectId&,
+    test_larceny_(const FrontendPath& fname,
+                  std::function<void(const FrontendPath&,
+                                     const ObjectId&,
                                      const std::string& pattern,
                                      const uint64_t offset)> fun_without_remote)
     {
@@ -228,9 +229,9 @@ public:
 
         umount_remote();
 
-        std::shared_ptr<vfs::ClusterRegistry> reg(cluster_registry(fs_->object_router()));
+        std::shared_ptr<ClusterRegistry> reg(cluster_registry(fs_->object_router()));
         reg->set_node_state(remote_node_id(),
-                            vfs::ClusterNodeStatus::State::Offline);
+                            ClusterNodeStatus::State::Offline);
 
         fun_without_remote(fname, *maybe_id, pattern, off);
 
@@ -238,18 +239,18 @@ public:
                             local_node_id());
 
         // check that there is no outdated cached entry.
-        std::shared_ptr<vfs::CachedObjectRegistry> oreg(fs_->object_router().object_registry());
+        std::shared_ptr<CachedObjectRegistry> oreg(fs_->object_router().object_registry());
         EXPECT_EQ(local_node_id(),
                   oreg->find(*maybe_id,
-                             vfs::IgnoreCache::F)->node_id);
+                             IgnoreCache::F)->node_id);
     }
 
     void
-    test_larceny(const vfs::FrontendPath& fname)
+    test_larceny(const FrontendPath& fname)
     {
         test_larceny_(fname,
-                      [&](const vfs::FrontendPath& fname,
-                          const vfs::ObjectId&,
+                      [&](const FrontendPath& fname,
+                          const ObjectId&,
                           const std::string& pattern,
                           const uint64_t offset)
                       {
@@ -281,11 +282,11 @@ public:
     }
 
     void
-    test_theft_while_migrating(const vfs::FrontendPath& fname)
+    test_theft_while_migrating(const FrontendPath& fname)
     {
         test_larceny_(fname,
-                      [&](const vfs::FrontendPath& fname,
-                          const vfs::ObjectId& id,
+                      [&](const FrontendPath& fname,
+                          const ObjectId& id,
                           const std::string& pattern,
                           const uint64_t offset)
                       {
@@ -299,7 +300,7 @@ public:
     }
 
     void
-    test_migration(const vfs::FrontendPath& fname)
+    test_migration(const FrontendPath& fname)
     {
         const uint64_t vsize = 10 << 20;
         const auto rpath(make_remote_file(fname, vsize));
@@ -317,14 +318,14 @@ public:
 
         write_to_remote_file(rpath, pattern, off);
 
-        fs_->migrate(vfs::ObjectId(*maybe_id));
+        fs_->migrate(ObjectId(*maybe_id));
         verify_registration(*maybe_id, local_node_id());
 
         check_file(fname, pattern, pattern.size(), off);
     }
 
     void
-    test_auto_migration_on_write(const vfs::FrontendPath& fname)
+    test_auto_migration_on_write(const FrontendPath& fname)
     {
         const uint64_t wthresh = 10;
         set_volume_write_threshold(wthresh);
@@ -358,7 +359,7 @@ public:
     }
 
     void
-    test_auto_migration_on_read(const vfs::FrontendPath& fname)
+    test_auto_migration_on_read(const FrontendPath& fname)
     {
         const uint64_t rthresh = 10;
         set_volume_read_threshold(rthresh);
@@ -405,10 +406,10 @@ public:
 
     // Might not work reliably under gdb / valgrind - see above.
     void
-    dreaded_threaded_threat(const vfs::FrontendPath& fname)
+    dreaded_threaded_threat(const FrontendPath& fname)
     {
         const uint64_t vsize = 10 << 20;
-        const vfs::ObjectId vname(create_file(fname, vsize));
+        const ObjectId vname(create_file(fname, vsize));
 
         std::atomic_bool stop = { false };
 
@@ -473,7 +474,7 @@ public:
 
     // Might not work reliably under gdb / valgrind - see above.
     void
-    test_remove_while_migrating(const vfs::FrontendPath& fname)
+    test_remove_while_migrating(const FrontendPath& fname)
     {
         const unsigned iterations = 29;
 
@@ -481,7 +482,7 @@ public:
         {
             verify_absence(fname);
 
-            const vfs::ObjectId vname(create_file(fname));
+            const ObjectId vname(create_file(fname));
 
             std::thread mover([&]
                               {
@@ -505,7 +506,7 @@ public:
 
     // Might not work reliably under gdb / valgrind - see above.
     void
-    test_migrate_while_removing(const vfs::FrontendPath& fname)
+    test_migrate_while_removing(const FrontendPath& fname)
     {
         const unsigned iterations = 29;
 
@@ -513,7 +514,7 @@ public:
         {
             verify_absence(fname);
 
-            const vfs::ObjectId vname(create_file(fname));
+            const ObjectId vname(create_file(fname));
 
             const fs::path rpath(remote_root_ / fname);
             wait_for_file(rpath);
@@ -543,9 +544,9 @@ public:
     void
     test_create_and_destroy(bool volume)
     {
-        const vfs::FrontendPath fname(volume ?
-                                      make_volume_name("/some-volume") :
-                                      "/some-file");
+        const FrontendPath fname(volume ?
+                                 make_volume_name("/some-volume") :
+                                 "/some-file");
         const auto rpath(remote_root_ / fname);
 
         EXPECT_FALSE(fs::exists(rpath));
@@ -558,10 +559,10 @@ public:
         {
             const auto maybe_id(find_object(fname));
 
-            vfs::ObjectRegistrationPtr reg(find_registration(*maybe_id));
+            ObjectRegistrationPtr reg(find_registration(*maybe_id));
             EXPECT_EQ(volume ?
-                      vfs::ObjectType::Volume :
-                      vfs::ObjectType::File,
+                      ObjectType::Volume :
+                      ObjectType::File,
                       reg->object().type);
 
             verify_registration(*maybe_id, remote_node_id());
@@ -582,9 +583,9 @@ public:
     void
     test_read_write(bool volume)
     {
-        const vfs::FrontendPath fname(volume ?
-                                      make_volume_name("/some-volume") :
-                                      "/some-file");
+        const FrontendPath fname(volume ?
+                                 make_volume_name("/some-volume") :
+                                 "/some-file");
 
         const uint64_t size = 10ULL << 20;
         const auto rpath(make_remote_file(fname, size));
@@ -602,8 +603,8 @@ public:
     }
 
     void
-    check_foc_state(const vfs::ObjectId& id,
-                    const vfs::FailOverCacheConfigMode exp_mode,
+    check_foc_state(const ObjectId& id,
+                    const FailOverCacheConfigMode exp_mode,
                     const boost::optional<vd::FailOverCacheConfig>& exp_config,
                     const vd::VolumeFailOverState exp_state)
     {
@@ -621,15 +622,15 @@ public:
     {
         const uint64_t vsize = 1ULL << 20;
 
-        const vfs::FrontendPath fname(make_volume_name("/local-volume"));
-        const vfs::ObjectId id(create_file(fname,
-                                           vsize));
+        const FrontendPath fname(make_volume_name("/local-volume"));
+        const ObjectId id(create_file(fname,
+                                      vsize));
 
         client_.set_manual_failover_cache_config(id.str(),
                                                  manual_cfg);
 
         check_foc_state(id,
-                        vfs::FailOverCacheConfigMode::Manual,
+                        FailOverCacheConfigMode::Manual,
                         manual_cfg,
                         state);
 
@@ -638,17 +639,17 @@ public:
                         true);
 
         check_foc_state(id,
-                        vfs::FailOverCacheConfigMode::Manual,
+                        FailOverCacheConfigMode::Manual,
                         manual_cfg,
                         state);
     }
 
     // Returning the LocalNode allows callers to keep the local voldrv alive while stopping
     // vfsprotocol messaging.
-    std::shared_ptr<vfs::LocalNode>
+    std::shared_ptr<LocalNode>
     shut_down_object_router()
     {
-        std::shared_ptr<vfs::LocalNode> local_node(fs_->object_router().local_node_());
+        std::shared_ptr<LocalNode> local_node(fs_->object_router().local_node_());
         fs_->object_router().shutdown_();
         return local_node;
     }
@@ -658,12 +659,12 @@ public:
 
 TEST_F(RemoteTest, ping)
 {
-    vfs::ObjectRouter& vrouter = fs_->object_router();
+    ObjectRouter& vrouter = fs_->object_router();
     EXPECT_NO_THROW(vrouter.ping(remote_node_id()));
     umount_remote();
 
     EXPECT_THROW(vrouter.ping(remote_node_id()),
-                 vfs::RequestTimeoutException);
+                 RequestTimeoutException);
 
     mount_remote();
     EXPECT_NO_THROW(vrouter.ping(remote_node_id()));
@@ -691,7 +692,7 @@ TEST_F(RemoteTest, file_read_write)
 
 TEST_F(RemoteTest, stale_volume_registration)
 {
-    test_stale_registration(vfs::FrontendPath(make_volume_name("/some-volume")));
+    test_stale_registration(FrontendPath(make_volume_name("/some-volume")));
 }
 
 // Cf. OVS-4498:
@@ -703,7 +704,7 @@ TEST_F(RemoteTest, stale_volume_registration)
 //     and retrying after fetching the registration again from arakoon)
 TEST_F(RemoteTest, stale_file_registration)
 {
-    test_stale_registration(vfs::FrontendPath("/some-file"));
+    test_stale_registration(FrontendPath("/some-file"));
 }
 
 // This was a fun one: the DirectoryEntry was cached to speed up lookups, which of course
@@ -711,7 +712,7 @@ TEST_F(RemoteTest, stale_file_registration)
 // don't run into it again:
 TEST_F(RemoteTest, file_rename)
 {
-    const vfs::FrontendPath fname1("/some-file");
+    const FrontendPath fname1("/some-file");
     const auto rpath1(make_remote_file(fname1, 0));
 
     const std::string pattern1("written before rename");
@@ -732,68 +733,68 @@ TEST_F(RemoteTest, file_rename)
 
 TEST_F(RemoteTest, volume_migration)
 {
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const FrontendPath fname(make_volume_name("/some-volume"));
     test_migration(fname);
 }
 
 TEST_F(RemoteTest, file_migration)
 {
-    const vfs::FrontendPath fname("/some-file");
+    const FrontendPath fname("/some-file");
     test_migration(fname);
 }
 
 TEST_F(RemoteTest, volume_auto_migration_on_write)
 {
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const FrontendPath fname(make_volume_name("/some-volume"));
     test_auto_migration_on_write(fname);
 }
 
 TEST_F(RemoteTest, file_auto_migration_on_write)
 {
-    const vfs::FrontendPath fname("/some-file");
+    const FrontendPath fname("/some-file");
     test_auto_migration_on_write(fname);
 }
 
 TEST_F(RemoteTest, volume_auto_migration_on_read)
 {
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const FrontendPath fname(make_volume_name("/some-volume"));
     test_auto_migration_on_read(fname);
 }
 
 TEST_F(RemoteTest, file_auto_migration_on_read)
 {
-    const vfs::FrontendPath fname("/some-file");
+    const FrontendPath fname("/some-file");
     test_auto_migration_on_read(fname);
 }
 
 // TODO: tests which simulate node crashes (i.e. rely on the FOC)
 TEST_F(RemoteTest, volume_larceny)
 {
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const FrontendPath fname(make_volume_name("/some-volume"));
     test_larceny(fname);
 }
 
 TEST_F(RemoteTest, file_larceny)
 {
-    const vfs::FrontendPath fname("/some-file");
+    const FrontendPath fname("/some-file");
     test_larceny(fname);
 }
 
 TEST_F(RemoteTest, volume_theft_while_migrating)
 {
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const FrontendPath fname(make_volume_name("/some-volume"));
     test_theft_while_migrating(fname);
 }
 
 TEST_F(RemoteTest, file_theft_while_migrating)
 {
-    const vfs::FrontendPath fname("/some-file");
+    const FrontendPath fname("/some-file");
     test_theft_while_migrating(fname);
 }
 
 TEST_F(RemoteTest, remote_temporarily_out_of_service)
 {
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const FrontendPath fname(make_volume_name("/some-volume"));
     const uint64_t vsize = 10 << 20;
     const auto rpath(make_remote_file(fname, vsize));
 
@@ -807,7 +808,7 @@ TEST_F(RemoteTest, remote_temporarily_out_of_service)
                          pattern,
                          off);
 
-    vfs::Handle::Ptr h;
+    Handle::Ptr h;
 
     EXPECT_EQ(0, open(fname, h, O_RDONLY));
 
@@ -841,7 +842,7 @@ TEST_F(RemoteTest, remote_temporarily_out_of_service)
 
 TEST_F(RemoteTest, remote_gone_and_offlined_after_a_while)
 {
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const FrontendPath fname(make_volume_name("/some-volume"));
     const uint64_t vsize = 10 << 20;
     const auto rpath(make_remote_file(fname, vsize));
 
@@ -855,7 +856,7 @@ TEST_F(RemoteTest, remote_gone_and_offlined_after_a_while)
                          pattern,
                          off);
 
-    vfs::Handle::Ptr h;
+    Handle::Ptr h;
 
     EXPECT_EQ(0, open(fname, h, O_RDONLY));
 
@@ -883,10 +884,10 @@ TEST_F(RemoteTest, remote_gone_and_offlined_after_a_while)
     std::thread t([&]()
                   {
                       std::this_thread::sleep_for(std::chrono::milliseconds(redirect_timeout_ms_ * retries));
-                      std::shared_ptr<vfs::ClusterRegistry>
+                      std::shared_ptr<ClusterRegistry>
                           reg(cluster_registry(fs_->object_router()));
                       reg->set_node_state(remote_node_id(),
-                                          vfs::ClusterNodeStatus::State::Offline);
+                                          ClusterNodeStatus::State::Offline);
                   });
 
     std::vector<char> buf(pattern.size());
@@ -914,7 +915,7 @@ TEST_F(RemoteTest, remote_gone_and_offlined_after_a_while)
 TEST_F(RemoteTest, directory_listing)
 {
     const std::string parent_name("/directory");
-    const vfs::FrontendPath parent(parent_name);
+    const FrontendPath parent(parent_name);
     const fs::path rparent(remote_root_ / parent_name);
 
     EXPECT_FALSE(fs::exists(rparent));
@@ -925,7 +926,7 @@ TEST_F(RemoteTest, directory_listing)
 
     const std::string
         volume_name((make_volume_name("/volume")).string());
-    const vfs::FrontendPath volume((fs::path(parent.str()) / volume_name).string());
+    const FrontendPath volume((fs::path(parent.str()) / volume_name).string());
     const fs::path rvolume(rparent / volume_name);
 
     EXPECT_FALSE(fs::exists(rvolume));
@@ -941,7 +942,7 @@ TEST_F(RemoteTest, directory_listing)
     }
 
     const std::string file_name("file");
-    const vfs::FrontendPath file((fs::path(parent.str()) / file_name).string());
+    const FrontendPath file((fs::path(parent.str()) / file_name).string());
     const fs::path rfile(rparent / file_name);
 
     EXPECT_FALSE(fs::exists(rfile));
@@ -957,7 +958,7 @@ TEST_F(RemoteTest, directory_listing)
     }
 
     const std::string child_name("child");
-    const vfs::FrontendPath child((fs::path(parent.str()) / child_name).string());
+    const FrontendPath child((fs::path(parent.str()) / child_name).string());
     const fs::path rchild(rparent / child_name);
 
     EXPECT_FALSE(fs::exists(rchild));
@@ -993,13 +994,13 @@ TEST_F(RemoteTest, directory_listing)
 TEST_F(RemoteTest, locally_list_remote_volumes)
 {
     unsigned count = 3;
-    std::set<vfs::ObjectId> vols;
+    std::set<ObjectId> vols;
     const uint64_t vsize = 10 << 20;
 
     for (unsigned i = 0; i < count; ++i)
     {
-        const vfs::FrontendPath fname(make_volume_name("/volume-" +
-                                                       boost::lexical_cast<std::string>(i)));
+        const FrontendPath fname(make_volume_name("/volume-" +
+                                                  boost::lexical_cast<std::string>(i)));
         const auto rpath(make_remote_file(fname, vsize));
         auto maybe_id(find_object(fname));
         ASSERT_TRUE(static_cast<bool>(maybe_id));
@@ -1023,7 +1024,7 @@ TEST_F(RemoteTest, locally_list_remote_volumes)
 
 TEST_F(RemoteTest, volume_entry_cache)
 {
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const FrontendPath fname(make_volume_name("/some-volume"));
     const uint64_t vsize = 10 << 20;
     const auto rpath(make_remote_file(fname, vsize));
 
@@ -1037,7 +1038,7 @@ TEST_F(RemoteTest, volume_entry_cache)
     auto maybe_id(find_object(fname));
 
     {
-        vfs::DirectoryEntryPtr entry(find_in_volume_entry_cache(fname));
+        DirectoryEntryPtr entry(find_in_volume_entry_cache(fname));
         ASSERT_TRUE(entry != nullptr);
         EXPECT_EQ(*maybe_id, entry->object_id());
     }
@@ -1046,18 +1047,18 @@ TEST_F(RemoteTest, volume_entry_cache)
 
     // it's still cached ...
     {
-        vfs::DirectoryEntryPtr entry(find_in_volume_entry_cache(fname));
+        DirectoryEntryPtr entry(find_in_volume_entry_cache(fname));
         ASSERT_TRUE(entry != nullptr);
         EXPECT_EQ(*maybe_id, entry->object_id());
     }
 
     // ... we can even open it:
-    vfs::Handle::Ptr h;
+    Handle::Ptr h;
 
     EXPECT_EQ(0, open(fname, h, O_RDWR));
 
     {
-        vfs::DirectoryEntryPtr entry(find_in_volume_entry_cache(fname));
+        DirectoryEntryPtr entry(find_in_volume_entry_cache(fname));
         ASSERT_TRUE(entry != nullptr);
         EXPECT_EQ(*maybe_id, entry->object_id());
     }
@@ -1072,45 +1073,45 @@ TEST_F(RemoteTest, volume_entry_cache)
 
 TEST_F(RemoteTest, volume_dreaded_threaded_threat)
 {
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const FrontendPath fname(make_volume_name("/some-volume"));
     dreaded_threaded_threat(fname);
 }
 
 TEST_F(RemoteTest, file_dreaded_threaded_threat)
 {
-    const vfs::FrontendPath fname("/some-file");
+    const FrontendPath fname("/some-file");
     dreaded_threaded_threat(fname);
 }
 
 TEST_F(RemoteTest, volume_remove_while_migrating)
 {
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const FrontendPath fname(make_volume_name("/some-volume"));
     test_remove_while_migrating(fname);
 }
 
 TEST_F(RemoteTest, file_remove_while_migrating)
 {
-    const vfs::FrontendPath fname("/some-file");
+    const FrontendPath fname("/some-file");
     test_remove_while_migrating(fname);
 }
 
 TEST_F(RemoteTest, volume_migrate_while_removing)
 {
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const FrontendPath fname(make_volume_name("/some-volume"));
     test_migrate_while_removing(fname);
 }
 
 TEST_F(RemoteTest, file_migrate_while_removing)
 {
-    const vfs::FrontendPath fname("/some-file");
+    const FrontendPath fname("/some-file");
     test_migrate_while_removing(fname);
 }
 
 // Disabled and needs to be fixed by OVS-205
 TEST_F(RemoteTest, DISABLED_unlink_deleted_but_still_registered_volume)
 {
-    const vfs::FrontendPath fname(make_volume_name("/volume"));
-    const vfs::ObjectId id(create_file(fname));
+    const FrontendPath fname(make_volume_name("/volume"));
+    const ObjectId id(create_file(fname));
     const fs::path rpath(remote_root_ / fname);
 
     verify_presence(fname);
@@ -1140,19 +1141,19 @@ TEST_F(RemoteTest, focced)
 {
     const uint64_t vsize = 1ULL << 20;
 
-    const vfs::FrontendPath local_fname(make_volume_name("/local-volume"));
-    const vfs::ObjectId local_id(create_file(local_fname, vsize));
+    const FrontendPath local_fname(make_volume_name("/local-volume"));
+    const ObjectId local_id(create_file(local_fname, vsize));
     verify_presence(local_fname);
 
-    const vfs::FrontendPath remote_fname(make_volume_name("/remote-volume"));
+    const FrontendPath remote_fname(make_volume_name("/remote-volume"));
     const fs::path rpath(make_remote_file(remote_fname, vsize));
     verify_presence(remote_fname);
 
     const auto maybe_remote_id(find_object(remote_fname));
     EXPECT_TRUE(static_cast<bool>(maybe_remote_id));
 
-    const vfs::XMLRPCVolumeInfo local_info(client_.info_volume(local_id));
-    const vfs::XMLRPCVolumeInfo remote_info(client_.info_volume(*maybe_remote_id));
+    const XMLRPCVolumeInfo local_info(client_.info_volume(local_id));
+    const XMLRPCVolumeInfo remote_info(client_.info_volume(*maybe_remote_id));
 
     {
         EXPECT_EQ(remote_config().failovercache_port, local_info.failover_port);
@@ -1173,7 +1174,7 @@ TEST_F(RemoteTest, focced)
 
 TEST_F(RemoteTest, online_offline_node_listing)
 {
-    using State = vfs::ClusterNodeStatus::State;
+    using State = ClusterNodeStatus::State;
 
     EXPECT_EQ(State::Online, client_.info_cluster()[remote_node_id()]);
     EXPECT_NO_THROW(client_.mark_node_offline(remote_node_id()));
@@ -1189,7 +1190,7 @@ TEST_F(RemoteTest, online_offline_node_listing)
     EXPECT_NO_THROW(client_.mark_node_online(remote_node_id()));
 
     EXPECT_THROW(client_.mark_node_offline(local_node_id()),
-                 vfs::clienterrors::InvalidOperationException);
+                 clienterrors::InvalidOperationException);
     EXPECT_EQ(State::Online, client_.info_cluster()[local_node_id()]);
 
     EXPECT_NO_THROW(client_.mark_node_online(local_node_id()));
@@ -1203,7 +1204,7 @@ TEST_F(RemoteTest, online_offline_node_listing)
 
 TEST_F(RemoteTest, inode_allocation)
 {
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const FrontendPath fname(make_volume_name("/some-volume"));
     const auto rpath(make_remote_file(fname, 0));
 
     struct stat lst;
@@ -1217,18 +1218,18 @@ TEST_F(RemoteTest, inode_allocation)
 
 TEST_F(RemoteTest, clone_from_unavailable_template)
 {
-    const vfs::FrontendPath tpath(make_volume_name("/template"));
+    const FrontendPath tpath(make_volume_name("/template"));
     const uint64_t size = 10ULL << 20;
 
     make_remote_file(tpath, size);
-    boost::optional<vfs::ObjectId> maybe_tname(find_object(tpath));
+    boost::optional<ObjectId> maybe_tname(find_object(tpath));
 
     ASSERT_TRUE(static_cast<bool>(maybe_tname));
     client_.set_volume_as_template(*maybe_tname);
 
     umount_remote();
 
-    const vfs::FrontendPath cpath("/clone");
+    const FrontendPath cpath("/clone");
     client_.create_clone_from_template(cpath.str(),
                                        make_metadata_backend_config(),
                                        *maybe_tname);
@@ -1245,7 +1246,7 @@ TEST_F(RemoteTest, destruction)
 
     const auto rfpath(make_remote_file("/file.remote", 1ULL << 20));
 
-    const vfs::FrontendPath vname(make_volume_name("/volume.remote"));
+    const FrontendPath vname(make_volume_name("/volume.remote"));
     const auto rvpath(make_remote_file(vname, 1ULL << 20));
 
     const auto maybe_vid(find_object(vname));
@@ -1264,13 +1265,13 @@ TEST_F(RemoteTest, destruction)
 
     const std::string pfx("");
 
-    std::shared_ptr<yt::LockedArakoon> reg(new vfs::Registry(pt, RegisterComponent::F));
+    std::shared_ptr<yt::LockedArakoon> reg(new Registry(pt, RegisterComponent::F));
     EXPECT_LT(0U, reg->prefix(pfx).size());
 
-    vfs::FileSystem::destroy(pt);
+    FileSystem::destroy(pt);
 
-    vfs::ClusterRegistry(vrouter_cluster_id(),
-                         reg).erase_node_configs();
+    ClusterRegistry(vrouter_cluster_id(),
+                    reg).erase_node_configs();
 
     EXPECT_FALSE(fbi->namespaceExists());
     EXPECT_FALSE(vbi->namespaceExists());
@@ -1291,10 +1292,10 @@ TEST_F(RemoteTest, destruction)
 
 TEST_F(RemoteTest, remove_remote_clone)
 {
-    const vfs::FrontendPath ppath(make_volume_name("/parent"));
+    const FrontendPath ppath(make_volume_name("/parent"));
     const uint64_t size = 10ULL << 20;
 
-    const vfs::ObjectId pname(create_file(ppath, size));
+    const ObjectId pname(create_file(ppath, size));
 
     const std::string pattern("before");
     write_to_file(ppath, pattern, 1024 * pattern.size(), 0);
@@ -1304,12 +1305,12 @@ TEST_F(RemoteTest, remove_remote_clone)
     wait_for_snapshot(pname,
                       snap);
 
-    const vfs::FrontendPath cpath("/clone");
-    const vfs::ObjectId cname(client_.create_clone(cpath.str(),
-                                                   make_metadata_backend_config(),
-                                                   pname,
-                                                   snap,
-                                                   remote_node_id()));
+    const FrontendPath cpath("/clone");
+    const ObjectId cname(client_.create_clone(cpath.str(),
+                                              make_metadata_backend_config(),
+                                              pname,
+                                              snap,
+                                              remote_node_id()));
 
     // const fs::path rppath(remote_root_ / ppath);
 
@@ -1332,7 +1333,7 @@ TEST_F(RemoteTest, remove_remote_clone)
 
 TEST_F(RemoteTest, volume_migrate_timeout)
 {
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const FrontendPath fname(make_volume_name("/some-volume"));
     const uint64_t vsize = 10 << 20;
     const auto rpath(make_remote_file(fname,
                                       vsize));
@@ -1359,7 +1360,7 @@ TEST_F(RemoteTest, volume_migrate_timeout)
     }
 
     EXPECT_THROW(fs_->object_router().migrate(*maybe_id),
-                 vfs::RemoteTimeoutException);
+                 RemoteTimeoutException);
 
     boost::this_thread::sleep_for(boost::chrono::milliseconds(migrate_timeout_ms_ + 1));
 
@@ -1391,17 +1392,17 @@ TEST_F(RemoteTest, volume_migrate_timeout)
 
 TEST_F(RemoteTest, owner_tag_after_migration)
 {
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const FrontendPath fname(make_volume_name("/some-volume"));
     const uint64_t size = 10ULL << 20;
 
     make_remote_file(fname,
                      size);
 
-    boost::optional<vfs::ObjectId> maybe_id(find_object(fname));
-    const vfs::ObjectRegistrationPtr old_reg(find_registration(*maybe_id));
+    boost::optional<ObjectId> maybe_id(find_object(fname));
+    const ObjectRegistrationPtr old_reg(find_registration(*maybe_id));
     fs_->migrate(*maybe_id);
 
-    const vfs::ObjectRegistrationPtr new_reg(find_registration(*maybe_id));
+    const ObjectRegistrationPtr new_reg(find_registration(*maybe_id));
     EXPECT_NE(old_reg->owner_tag,
               new_reg->owner_tag);
 
@@ -1415,11 +1416,11 @@ TEST_F(RemoteTest, owner_tag_after_migration)
 
 TEST_F(RemoteTest, location_based_caching)
 {
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const FrontendPath fname(make_volume_name("/some-volume"));
     const uint64_t size = 10ULL << 20;
 
-    const vfs::ObjectId vname(create_file(fname,
-                                          size));
+    const ObjectId vname(create_file(fname,
+                                     size));
     const vd::VolumeId volid(vname.str());
 
     {
@@ -1470,7 +1471,7 @@ TEST_F(RemoteTest, auto_migration_without_foc)
     set_volume_read_threshold(rthresh);
 
     const uint64_t vsize = 10ULL << 20;
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const FrontendPath fname(make_volume_name("/some-volume"));
 
     const auto rpath(make_remote_file(fname, vsize));
     const auto maybe_id(find_object(fname));
@@ -1507,7 +1508,7 @@ TEST_F(RemoteTest, auto_migration_without_foc)
 
 TEST_F(RemoteTest, resize)
 {
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const FrontendPath fname(make_volume_name("/some-volume"));
     const fs::path rpath(make_remote_file(fname,
                                           0));
 
@@ -1523,12 +1524,12 @@ TEST_F(RemoteTest, resize)
 
 TEST_F(RemoteTest, fsync)
 {
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const FrontendPath fname(make_volume_name("/some-volume"));
     const fs::path rpath(make_remote_file(fname,
                                           1ULL << 20));
 
 
-    vfs::Handle::Ptr h;
+    Handle::Ptr h;
     EXPECT_EQ(0,
               open(fname,
                    h,
@@ -1574,7 +1575,7 @@ TEST_F(RemoteTest, unlink_open_directory)
 
 TEST_F(RemoteTest, only_steal_from_offlined_node)
 {
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const FrontendPath fname(make_volume_name("/some-volume"));
     const size_t vsize = 1ULL << 20;
 
     const auto rpath(make_remote_file(fname,
@@ -1588,8 +1589,8 @@ TEST_F(RemoteTest, only_steal_from_offlined_node)
 
     umount_remote();
 
-    std::shared_ptr<vfs::ClusterRegistry> reg(cluster_registry(fs_->object_router()));
-    EXPECT_EQ(vfs::ClusterNodeStatus::State::Online,
+    std::shared_ptr<ClusterRegistry> reg(cluster_registry(fs_->object_router()));
+    EXPECT_EQ(ClusterNodeStatus::State::Online,
               reg->get_node_state(remote_node_id()));
 
     std::vector<char> buf(pattern.size());
@@ -1598,7 +1599,7 @@ TEST_F(RemoteTest, only_steal_from_offlined_node)
                              buf.data(),
                              buf.size(),
                              off));
-    EXPECT_EQ(vfs::ClusterNodeStatus::State::Online,
+    EXPECT_EQ(ClusterNodeStatus::State::Online,
               reg->get_node_state(remote_node_id()));
 }
 
@@ -1608,10 +1609,10 @@ TEST_F(RemoteTest, stealing_and_fencing)
     set_use_fencing(true);
     mount_remote();
 
-    const vfs::FrontendPath vpath(make_volume_name("/some-volume"));
+    const FrontendPath vpath(make_volume_name("/some-volume"));
     const uint64_t vsize = 10ULL << 20;
-    const vfs::ObjectId oid(create_file(vpath,
-                                        vsize));
+    const ObjectId oid(create_file(vpath,
+                                   vsize));
 
     const std::string pattern1("written first");
 
@@ -1625,7 +1626,7 @@ TEST_F(RemoteTest, stealing_and_fencing)
                       snap);
 
     // cling to the LocalNode so we can still access the local volumedriver afterwards
-    std::shared_ptr<vfs::LocalNode> local_node(shut_down_object_router());
+    std::shared_ptr<LocalNode> local_node(shut_down_object_router());
 
     check_remote_file(remote_root_ / vpath,
                       pattern1,
@@ -1644,7 +1645,7 @@ TEST_F(RemoteTest, stealing_and_fencing)
 // Cf. https://github.com/openvstorage/volumedriver/issues/145
 TEST_F(RemoteTest, back_to_life)
 {
-    const vfs::FrontendPath vname(make_volume_name("/some-volume"));
+    const FrontendPath vname(make_volume_name("/some-volume"));
     const size_t vsize = 1ULL << 20;
     const fs::path rpath(make_remote_file(vname, vsize));
 
@@ -1660,8 +1661,8 @@ TEST_F(RemoteTest, back_to_life)
 
     std::vector<char> buf(pattern.size());
 
-    std::shared_ptr<vfs::RemoteNode> rnode(remote_node(fs_->object_router(),
-                                                       remote_node_id()));
+    std::shared_ptr<RemoteNode> rnode(remote_node(fs_->object_router(),
+                                                  remote_node_id()));
     ASSERT_TRUE(rnode != nullptr);
 
     const size_t extra_reads = yt::System::get_env_with_default("REMOTE_TEST_BACK_TO_LIFE_EXTRA_READS",
