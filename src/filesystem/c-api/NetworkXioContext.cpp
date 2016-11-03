@@ -619,4 +619,10 @@ NetworkXioContext::deallocate(ovs_buffer_t *ptr ATTR_UNUSED)
     return -1;
 }
 
+bool
+NetworkXioContext::is_dtl_in_sync()
+{
+    return net_client_->is_dtl_in_sync();
+}
+
 } //namespace libovsvolumedriver

@@ -20,11 +20,9 @@
 
 #include <vector>
 
-struct ovs_context_t
+class ovs_context_t
 {
-    TransportType transport;
-    int oflag;
-
+public:
     virtual ~ovs_context_t() {};
 
     virtual int open_volume(const char *volume_name,
@@ -77,6 +75,11 @@ struct ovs_context_t
                                 uint64_t length) = 0;
 
     virtual int truncate(uint64_t length) = 0;
+
+    virtual bool is_dtl_in_sync() = 0;
+
+    TransportType transport;
+    int oflag;
 };
 
 #endif // __CONTEXT_H

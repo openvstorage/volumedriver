@@ -124,6 +124,7 @@ NetworkXioClient::NetworkXioClient(const std::string& uri,
     , ha_ctx_(ha_ctx)
     , ha_try_reconnect_(ha_try_reconnect)
     , connection_error_(false)
+    , dtl_in_sync_(true)
 {
     LIBLOGID_INFO("uri: " << uri << ", queue depth: " << qd);
     ses_ops.on_session_event = static_on_session_event<NetworkXioClient>;
@@ -389,6 +390,10 @@ NetworkXioClient::on_response(xio_session *session __attribute__((unused)),
     {
         imsg.unpack_msg(static_cast<const char*>(reply->in.header.iov_base),
                         reply->in.header.iov_len);
+        set_dtl_in_sync(imsg.opcode(),
+                        imsg.retval(),
+                        imsg.errval(),
+                        imsg.dtl_in_sync());
     }
     catch (...)
     {
@@ -439,6 +444,10 @@ NetworkXioClient::on_msg_error(xio_session *session __attribute__((unused)),
         {
             imsg.unpack_msg(static_cast<const char*>(msg->in.header.iov_base),
                             msg->in.header.iov_len);
+            set_dtl_in_sync(imsg.opcode(),
+                            imsg.retval(),
+                            imsg.errval(),
+                            imsg.dtl_in_sync());
         }
         catch (...)
         {

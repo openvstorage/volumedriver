@@ -226,6 +226,11 @@ NetworkHAContext::reconnect()
 {
     int r = -1;
     bool connected = false;
+    if (not is_dtl_in_sync())
+    {
+        return r;
+    }
+
     while (not cluster_nw_uris_.empty())
     {
         std::string uri = get_rand_cluster_uri();
@@ -233,11 +238,10 @@ NetworkHAContext::reconnect()
         {
             continue;
         }
-        auto tmp_ctx = std::shared_ptr<NetworkXioContext>(
-                new NetworkXioContext(uri,
-                                      qd_,
-                                      *this,
-                                      true));
+        auto tmp_ctx = std::make_shared<NetworkXioContext>(uri,
+                                                           qd_,
+                                                           *this,
+                                                           true);
         r = tmp_ctx->open_volume_(volume_name_.c_str(),
                                   oflag_,
                                   false);
@@ -251,7 +255,7 @@ NetworkHAContext::reconnect()
         {
             uri_ = uri;
             connected = true;
-            atomic_xchg_ctx(std::dynamic_pointer_cast<ovs_context_t>(tmp_ctx));
+            atomic_xchg_ctx(tmp_ctx);
         }
         if (connected)
         {
@@ -549,6 +553,12 @@ NetworkHAContext::deallocate(ovs_buffer_t *ptr)
     }
     delete ptr;
     return 0;
+}
+
+bool
+NetworkHAContext::is_dtl_in_sync()
+{
+    return atomic_get_ctx()->is_dtl_in_sync();
 }
 
 } //namespace libovsvolumedriver

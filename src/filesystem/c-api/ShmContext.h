@@ -99,6 +99,9 @@ struct ShmContext : public ovs_context_t
 
     int
     deallocate(ovs_buffer_t *ptr);
+
+    bool
+    is_dtl_in_sync();
 };
 
 #endif //__SHM_CONTEXT_H

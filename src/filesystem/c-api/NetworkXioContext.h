@@ -113,6 +113,9 @@ public:
 
     int
     deallocate(ovs_buffer_t *ptr);
+
+    bool
+    is_dtl_in_sync();
 private:
     libovsvolumedriver::NetworkXioClientPtr net_client_;
     std::string uri_;

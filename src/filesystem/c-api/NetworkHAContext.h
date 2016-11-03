@@ -113,6 +113,9 @@ public:
     int
     deallocate(ovs_buffer_t *ptr);
 
+    bool
+    is_dtl_in_sync();
+
     uint64_t
     assign_request_id(ovs_aio_request *request);
 
