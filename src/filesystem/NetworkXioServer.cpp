@@ -547,7 +547,8 @@ NetworkXioServer::xio_send_reply(NetworkXioRequest *req)
     if ((req->op == NetworkXioMsgOpcode::ReadRsp ||
          req->op == NetworkXioMsgOpcode::ListVolumesRsp ||
          req->op == NetworkXioMsgOpcode::ListSnapshotsRsp ||
-         req->op == NetworkXioMsgOpcode::ListClusterNodeURIRsp) && req->data)
+         req->op == NetworkXioMsgOpcode::ListClusterNodeURIRsp ||
+         req->op == NetworkXioMsgOpcode::GetVolumeURIRsp) && req->data)
     {
         vmsg_sglist_set_nents(&req->xio_reply.out, 1);
         req->xio_reply.out.sgl_type = XIO_SGL_TYPE_IOV;
