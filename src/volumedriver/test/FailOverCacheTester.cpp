@@ -938,6 +938,58 @@ TEST_P(FailOverCacheTester, DISABLED_a_whole_lotta_clients)
     }
 }
 
+// Might be better suited in SimpleVolumeTest or sth. similar?
+TEST_P(FailOverCacheTester, dtl_in_sync)
+{
+    auto wrns = make_random_namespace();
+    auto foc_ctx(start_one_foc());
+
+    const FailOverCacheMode mode = GetParam().foc_mode();
+
+    SharedVolumePtr v = newVolume(*wrns);
+    const std::vector<uint8_t> buf(v->getClusterSize(), 42);
+
+    EXPECT_EQ(VolumeFailOverState::OK_STANDALONE,
+              v->getVolumeFailOverState());
+    EXPECT_EQ(DtlInSync::F,
+              v->write(0, buf.data(), buf.size()));
+    EXPECT_EQ(DtlInSync::F,
+              v->sync());
+
+    {
+        SCOPED_BLOCK_BACKEND(*v);
+
+        v->setFailOverCacheConfig(foc_ctx->config(mode));
+
+        EXPECT_EQ(DtlInSync::F,
+                  v->write(0, buf.data(), buf.size()));
+        EXPECT_EQ(DtlInSync::F,
+                  v->sync());
+    }
+
+    v->scheduleBackendSync();
+    waitForThisBackendWrite(*v);
+
+    ASSERT_EQ(VolumeFailOverState::OK_SYNC,
+              v->getVolumeFailOverState());
+
+    const DtlInSync dtl_in_sync = v->write(0, buf.data(), buf.size());
+
+    if (mode == FailOverCacheMode::Synchronous)
+    {
+        EXPECT_EQ(DtlInSync::T,
+                  dtl_in_sync);
+    }
+    else
+    {
+        EXPECT_EQ(DtlInSync::F,
+                  dtl_in_sync);
+    }
+
+    EXPECT_EQ(DtlInSync::T,
+              v->sync());
+}
+
 // needs to be run as root, and messes with the iptables, so use with _extreme_
 // caution
 /*

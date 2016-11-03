@@ -456,6 +456,7 @@ NetworkXioServer::allocate_request(NetworkXioClientData *cd,
         req->retval = 0;
         req->errval = 0;
         req->from_pool = true;
+        req->dtl_in_sync = true;
         cd->refcnt++;
         return req;
     }

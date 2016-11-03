@@ -14,6 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "Api.h"
+#include "DtlInSync.h"
 #include "MetaDataStoreInterface.h"
 #include "ScrubWork.h"
 #include "SnapshotManagement.h"
@@ -84,15 +85,15 @@ api::updateMetaDataBackendConfig(const vd::VolumeId& volume_id,
                                 mdb);
 }
 
-void
+vd::DtlInSync
 api::Write(WeakVolumePtr vol,
            const uint64_t lba,
            const uint8_t *buf,
            const uint64_t buflen)
 {
-    SharedVolumePtr(vol)->write(lba,
-                                buf,
-                                buflen);
+    return SharedVolumePtr(vol)->write(lba,
+                                       buf,
+                                       buflen);
 }
 
 void
@@ -118,10 +119,10 @@ api::Write(WriteOnlyVolume* vol,
                buflen);
 }
 
-void
+vd::DtlInSync
 api::Sync(vd::WeakVolumePtr vol)
 {
-    SharedVolumePtr(vol)->sync();
+    return SharedVolumePtr(vol)->sync();
 }
 
 uint64_t

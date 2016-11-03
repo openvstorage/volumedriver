@@ -284,6 +284,12 @@ int
 NetworkHAContext::reconnect()
 {
     int r = -1;
+
+    if (not is_dtl_in_sync())
+    {
+        return r;
+    }
+
     while (not cluster_nw_uris_.empty())
     {
         std::string uri = get_rand_cluster_uri();
@@ -616,6 +622,12 @@ NetworkHAContext::deallocate(ovs_buffer_t *ptr)
     }
     delete ptr;
     return 0;
+}
+
+bool
+NetworkHAContext::is_dtl_in_sync()
+{
+    return atomic_get_ctx()->is_dtl_in_sync();
 }
 
 } //namespace libovsvolumedriver

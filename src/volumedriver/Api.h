@@ -21,6 +21,7 @@
 
 #include "ClusterCache.h"
 #include "ClusterCount.h"
+#include "DtlInSync.h"
 #include "Events.h"
 #include "FailOverCacheConfig.h"
 #include "MetaDataStoreStats.h"
@@ -101,7 +102,7 @@ public:
     static const volumedriver::VolumeId
     getVolumeId(volumedriver::WeakVolumePtr);
 
-    static void
+    static volumedriver::DtlInSync
     Write(volumedriver::WeakVolumePtr vol,
           uint64_t lba,
           const uint8_t *buf,
@@ -119,7 +120,7 @@ public:
          uint8_t *buf,
          const uint64_t buflen);
 
-    static void
+    static volumedriver::DtlInSync
     Sync(volumedriver::WeakVolumePtr);
 
     static void

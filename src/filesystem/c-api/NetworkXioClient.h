@@ -127,6 +127,12 @@ public:
     void
     xstop_loop();
 
+    bool
+    is_dtl_in_sync()
+    {
+        return dtl_in_sync_;
+    }
+
     static void
     xio_create_volume(const std::string& uri,
                       const char* volume_name,
@@ -200,9 +206,7 @@ public:
     static ovs_aio_request*
     get_ovs_aio_request(const void *opaque)
     {
-        ovs_aio_request *request = reinterpret_cast<ovs_aio_request*>(
-                const_cast<void*>(opaque));
-        return request;
+        return reinterpret_cast<ovs_aio_request*>(const_cast<void*>(opaque));
     }
 private:
     std::shared_ptr<xio_context> ctx;
@@ -232,6 +236,7 @@ private:
     NetworkHAContext& ha_ctx_;
     bool ha_try_reconnect_;
     bool connection_error_;
+    std::atomic<bool> dtl_in_sync_;
 
     void
     xio_run_loop_worker();
@@ -300,6 +305,26 @@ private:
     create_vec_from_buf(xio_ctl_s *xctl,
                         xio_iovec_ex *sglist,
                         int vec_size);
+
+    void
+    set_dtl_in_sync(const NetworkXioMsgOpcode op,
+                    const ssize_t retval,
+                    const int errval,
+                    const bool dtl_in_sync)
+    {
+        switch (op)
+        {
+        case NetworkXioMsgOpcode::WriteRsp:
+        case NetworkXioMsgOpcode::FlushRsp:
+            if (retval >= 0 && errval == 0)
+            {
+                dtl_in_sync_ = dtl_in_sync;
+            }
+            break;
+        default:
+            break;
+        }
+    }
 
     bool
     is_ha_enabled() const

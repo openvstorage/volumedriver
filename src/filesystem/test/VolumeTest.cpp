@@ -29,13 +29,14 @@
 namespace volumedriverfstest
 {
 
+using namespace volumedriverfs;
+
 namespace bpt = boost::property_tree;
 namespace bpy = boost::python;
 namespace fs = boost::filesystem;
 namespace ip = initialized_params;
 namespace mds = metadata_server;
 namespace vd = volumedriver;
-namespace vfs = volumedriverfs;
 namespace yt = youtils;
 
 using namespace std::literals::string_literals;
@@ -51,7 +52,7 @@ protected:
     void
     test_suffix(const std::string sfx)
     {
-        vfs::FileSystem::verify_volume_suffix_(sfx);
+        FileSystem::verify_volume_suffix_(sfx);
     }
 
     DECLARE_LOGGER("VolumeTest");
@@ -87,11 +88,11 @@ TEST_F(VolumeTest, volume_suffix)
 
 TEST_F(VolumeTest, create_and_destroy)
 {
-    const vfs::FrontendPath fname(make_volume_name("/volume"));
+    const FrontendPath fname(make_volume_name("/volume"));
 
     verify_absence(fname);
 
-    const vfs::ObjectId vname(create_file(fname));
+    const ObjectId vname(create_file(fname));
     verify_registration(vname, local_node_id());
 
     {
@@ -123,12 +124,12 @@ TEST_F(VolumeTest, create_and_destroy)
 
 TEST_F(VolumeTest, uuid_create_and_destroy)
 {
-    const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
-    const vfs::FrontendPath vname(make_volume_name("/volume"));
+    const ObjectId root_id(*find_object(FrontendPath("/")));
+    const FrontendPath vname(make_volume_name("/volume"));
 
     verify_absence(vname);
 
-    const vfs::ObjectId volume_id(create_file(root_id,
+    const ObjectId volume_id(create_file(root_id,
                                               vname.str().substr(1)));
     verify_registration(volume_id, local_node_id());
 
@@ -163,10 +164,10 @@ TEST_F(VolumeTest, uuid_create_and_destroy)
 
 TEST_F(VolumeTest, recreation)
 {
-    const vfs::FrontendPath vname(make_volume_name("/volume"));
+    const FrontendPath vname(make_volume_name("/volume"));
 
     verify_absence(vname);
-    const vfs::ObjectId id(create_file(vname));
+    const ObjectId id(create_file(vname));
 
     verify_registration(id, local_node_id());
     check_stat(vname, 0);
@@ -182,11 +183,11 @@ TEST_F(VolumeTest, recreation)
 
 TEST_F(VolumeTest, uuid_recreation)
 {
-    const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
-    const vfs::FrontendPath vname(make_volume_name("/volume"));
+    const ObjectId root_id(*find_object(FrontendPath("/")));
+    const FrontendPath vname(make_volume_name("/volume"));
 
     verify_absence(vname);
-    const vfs::ObjectId volume_id(create_file(root_id,
+    const ObjectId volume_id(create_file(root_id,
                                               vname.str().substr(1)));
 
     verify_registration(volume_id, local_node_id());
@@ -202,10 +203,10 @@ TEST_F(VolumeTest, uuid_recreation)
 
 TEST_F(VolumeTest, open_close)
 {
-    const vfs::FrontendPath vname(make_volume_name("/volume"));
+    const FrontendPath vname(make_volume_name("/volume"));
     create_file(vname);
 
-    vfs::Handle::Ptr h;
+    Handle::Ptr h;
 
     EXPECT_EQ(0, open(vname, h, O_RDONLY));
     EXPECT_EQ(0, release(vname, std::move(h)));
@@ -213,14 +214,14 @@ TEST_F(VolumeTest, open_close)
 
 TEST_F(VolumeTest, uuid_open_close)
 {
-    const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
+    const ObjectId root_id(*find_object(FrontendPath("/")));
     const std::string fname(make_volume_name("volume").string());
 
-    const vfs::ObjectId volume_id(create_file(root_id,
+    const ObjectId volume_id(create_file(root_id,
                                               fname));
     const mode_t openflags = O_RDONLY;
 
-    vfs::Handle::Ptr h;
+    Handle::Ptr h;
 
     EXPECT_EQ(0, open(volume_id,
                        h,
@@ -230,7 +231,7 @@ TEST_F(VolumeTest, uuid_open_close)
 
 TEST_F(VolumeTest, rename)
 {
-    const vfs::FrontendPath p(make_volume_name("/some-volume"));
+    const FrontendPath p(make_volume_name("/some-volume"));
 
     verify_absence(p);
 
@@ -238,7 +239,7 @@ TEST_F(VolumeTest, rename)
     check_stat(p, 0);
     verify_registration(vname, local_node_id());
 
-    const vfs::FrontendPath q(make_volume_name("/some-volume-renamed"));
+    const FrontendPath q(make_volume_name("/some-volume-renamed"));
     verify_absence(q);
 
     EXPECT_EQ(-EPERM, rename(p, q));
@@ -250,8 +251,8 @@ TEST_F(VolumeTest, rename)
 
 TEST_F(VolumeTest, uuid_rename)
 {
-    const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
-    const vfs::FrontendPath p(make_volume_name("/some-volume"));
+    const ObjectId root_id(*find_object(FrontendPath("/")));
+    const FrontendPath p(make_volume_name("/some-volume"));
 
     verify_absence(p);
 
@@ -260,7 +261,7 @@ TEST_F(VolumeTest, uuid_rename)
     check_stat(volume_id, 0);
     verify_registration(volume_id, local_node_id());
 
-    const vfs::FrontendPath q(make_volume_name("/some-volume-renamed"));
+    const FrontendPath q(make_volume_name("/some-volume-renamed"));
     verify_absence(q);
 
     EXPECT_EQ(-EPERM, rename(root_id,
@@ -275,8 +276,8 @@ TEST_F(VolumeTest, uuid_rename)
 
 TEST_F(VolumeTest, resize)
 {
-    const vfs::FrontendPath fname(make_volume_name("/volume"));
-    const vfs::ObjectId vname(create_file(fname));
+    const FrontendPath fname(make_volume_name("/volume"));
+    const ObjectId vname(create_file(fname));
 
     vd::WeakVolumePtr v;
 
@@ -305,7 +306,7 @@ TEST_F(VolumeTest, resize)
 
 TEST_F(VolumeTest, uuid_resize)
 {
-    const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
+    const ObjectId root_id(*find_object(FrontendPath("/")));
 
     const auto volume_id(create_file(root_id,
                                      make_volume_name("volume").string()));
@@ -339,8 +340,8 @@ TEST_F(VolumeTest, read_empty_aligned)
 {
     const uint64_t vsize = 1 << 20;
 
-    const vfs::FrontendPath fname(make_volume_name("/volume"));
-    const vfs::ObjectId vname(create_file(fname, vsize));
+    const FrontendPath fname(make_volume_name("/volume"));
+    const ObjectId vname(create_file(fname, vsize));
     const uint64_t csize = get_cluster_size(vname);
 
     const std::vector<char> ref(csize, 0);
@@ -374,7 +375,7 @@ TEST_F(VolumeTest, uuid_read_empty_aligned)
 {
     const uint64_t vsize = 1 << 20;
 
-    const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
+    const ObjectId root_id(*find_object(FrontendPath("/")));
     const auto volume_id(create_file(root_id,
                                      make_volume_name("volume").string(),
                                      vsize));
@@ -411,8 +412,8 @@ TEST_F(VolumeTest, read_write_aligned)
 {
     const uint64_t vsize = 10 << 20;
 
-    const vfs::FrontendPath fname(make_volume_name("/volume"));
-    const vfs::ObjectId vname(create_file(fname, vsize));
+    const FrontendPath fname(make_volume_name("/volume"));
+    const ObjectId vname(create_file(fname, vsize));
     const uint64_t csize = get_cluster_size(vname);
 
     const std::string pattern("Herr Bar");
@@ -441,7 +442,7 @@ TEST_F(VolumeTest, uuid_read_write_aligned)
 {
     const uint64_t vsize = 10 << 20;
 
-    const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
+    const ObjectId root_id(*find_object(FrontendPath("/")));
     const auto volume_id(create_file(root_id,
                                      make_volume_name("volume").string(),
                                      vsize));
@@ -474,8 +475,8 @@ TEST_F(VolumeTest, read_write_subcluster)
 {
     const uint64_t vsize = 1 << 20;
 
-    const vfs::FrontendPath fname(make_volume_name("/volume"));
-    const vfs::ObjectId vname(create_file(fname, vsize));
+    const FrontendPath fname(make_volume_name("/volume"));
+    const ObjectId vname(create_file(fname, vsize));
 
     const std::string pattern("Frau Wav");
     const off_t off = 3;
@@ -488,7 +489,7 @@ TEST_F(VolumeTest, uuid_read_write_subcluster)
 {
     const uint64_t vsize = 10 << 20;
 
-    const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
+    const ObjectId root_id(*find_object(FrontendPath("/")));
     const auto volume_id(create_file(root_id,
                                      make_volume_name("volume").string(),
                                      vsize));
@@ -504,8 +505,8 @@ TEST_F(VolumeTest, read_write_unaligned)
 {
     const uint64_t vsize = 1 << 20;
 
-    const vfs::FrontendPath fname(make_volume_name("/volume"));
-    const vfs::ObjectId vname(create_file(fname, vsize));
+    const FrontendPath fname(make_volume_name("/volume"));
+    const ObjectId vname(create_file(fname, vsize));
     const uint64_t csize = get_cluster_size(vname);
 
     const std::string pattern("Ted");
@@ -535,7 +536,7 @@ TEST_F(VolumeTest, uuid_read_write_unaligned)
 {
     const uint64_t vsize = 10 << 20;
 
-    const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
+    const ObjectId root_id(*find_object(FrontendPath("/")));
     const auto volume_id(create_file(root_id,
                                      make_volume_name("volume").string(),
                                      vsize));
@@ -567,8 +568,8 @@ TEST_F(VolumeTest, uuid_read_write_unaligned)
 TEST_F(VolumeTest, lost_registration)
 {
     const uint64_t vsize = 1 << 20;
-    const vfs::FrontendPath fname(make_volume_name("/volume"));
-    const vfs::ObjectId vname(create_file(fname, vsize));
+    const FrontendPath fname(make_volume_name("/volume"));
+    const ObjectId vname(create_file(fname, vsize));
 
     fs_->object_router().object_registry()->unregister(vname);
 
@@ -582,7 +583,7 @@ TEST_F(VolumeTest, uuid_lost_registration)
 {
     const uint64_t vsize = 10 << 20;
 
-    const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
+    const ObjectId root_id(*find_object(FrontendPath("/")));
     const auto volume_id(create_file(root_id,
                                      make_volume_name("volume").string(),
                                      vsize));
@@ -597,14 +598,14 @@ TEST_F(VolumeTest, uuid_lost_registration)
 
 TEST_F(VolumeTest, clone)
 {
-    const vfs::FrontendPath parent_path(make_volume_name("/volume"));
+    const FrontendPath parent_path(make_volume_name("/volume"));
 
     struct stat st;
     EXPECT_EQ(-ENOENT, getattr(parent_path, st));
 
     const uint64_t vsize = 1 << 20;
 
-    const vfs::ObjectId parent_id(create_file(parent_path, vsize));
+    const ObjectId parent_id(create_file(parent_path, vsize));
 
     const std::string pattern("Konstantin");
     const off_t off = 10 * get_cluster_size(parent_id);
@@ -616,9 +617,9 @@ TEST_F(VolumeTest, clone)
     check_stat(parent_path, vsize);
     client_.set_volume_as_template(parent_id);
 
-    const vfs::FrontendPath clone_path(make_volume_name("/the_clone"));
+    const FrontendPath clone_path(make_volume_name("/the_clone"));
 
-    const vfs::ObjectId
+    const ObjectId
         clone_id(fs_->create_clone(clone_path,
                                    make_metadata_backend_config(),
                                    vd::VolumeId(parent_id.str()),
@@ -633,7 +634,7 @@ TEST_F(VolumeTest, clone)
         ASSERT_GT(st.st_size, 0);
     }
 
-    const vfs::FrontendPath vpath(clone_path_to_volume_path(clone_path));
+    const FrontendPath vpath(clone_path_to_volume_path(clone_path));
 
     //TODO [BDV] change to a diff-> simpler and stronger check
     check_stat(vpath, vsize);
@@ -642,7 +643,7 @@ TEST_F(VolumeTest, clone)
 
 TEST_F(VolumeTest, uuid_clone)
 {
-    const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
+    const ObjectId root_id(*find_object(FrontendPath("/")));
     const uint64_t vsize = 1 << 20;
 
     const auto volume_id(create_file(root_id,
@@ -659,9 +660,9 @@ TEST_F(VolumeTest, uuid_clone)
     check_stat(volume_id, vsize);
     client_.set_volume_as_template(volume_id);
 
-    const vfs::FrontendPath clone_path(make_volume_name("/the_clone"));
+    const FrontendPath clone_path(make_volume_name("/the_clone"));
 
-    const vfs::ObjectId
+    const ObjectId
         clone_id(fs_->create_clone(clone_path,
                                    make_metadata_backend_config(),
                                    vd::VolumeId(volume_id.str()),
@@ -676,8 +677,8 @@ TEST_F(VolumeTest, uuid_clone)
         ASSERT_GT(st.st_size, 0);
     }
 
-    const vfs::FrontendPath vpath(clone_path_to_volume_path(clone_path));
-    const vfs::ObjectId vpath_id(*find_object(vpath));
+    const FrontendPath vpath(clone_path_to_volume_path(clone_path));
+    const ObjectId vpath_id(*find_object(vpath));
 
     check_stat(vpath_id, vsize);
     check_file(vpath_id, pattern, size, off);
@@ -687,8 +688,8 @@ TEST_F(VolumeTest, no_unlinking_of_used_templates)
 {
     const uint64_t vsize = 1 << 20;
 
-    const vfs::FrontendPath templ_path(make_volume_name("/template"));
-    const vfs::ObjectId templ_id(create_file(templ_path, vsize));
+    const FrontendPath templ_path(make_volume_name("/template"));
+    const ObjectId templ_id(create_file(templ_path, vsize));
     const std::string pattern("Orpheus sat gloomy in his garden shed\n"
                               "Wondering what to do\n"
                               "With a lump of wood and a piece of wire\n"
@@ -702,13 +703,13 @@ TEST_F(VolumeTest, no_unlinking_of_used_templates)
 
     client_.set_volume_as_template(templ_id);
 
-    const vfs::FrontendPath clone_path(make_volume_name("/clone"));
-    const vfs::ObjectId clone_id(fs_->create_clone(clone_path,
+    const FrontendPath clone_path(make_volume_name("/clone"));
+    const ObjectId clone_id(fs_->create_clone(clone_path,
                                                    make_metadata_backend_config(),
                                                    vd::VolumeId(templ_id.str()),
                                                    boost::none));
 
-    const vfs::FrontendPath clone_vpath(clone_path_to_volume_path(clone_path));
+    const FrontendPath clone_vpath(clone_path_to_volume_path(clone_path));
 
     verify_presence(clone_path);
     verify_presence(clone_vpath);
@@ -725,11 +726,11 @@ TEST_F(VolumeTest, no_unlinking_of_used_templates)
 
 TEST_F(VolumeTest, uuid_no_unlinking_of_used_templates)
 {
-    const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
+    const ObjectId root_id(*find_object(FrontendPath("/")));
     const uint64_t vsize = 1 << 20;
 
-    const vfs::FrontendPath templ_path(make_volume_name("/template"));
-    const vfs::ObjectId templ_id(create_file(root_id,
+    const FrontendPath templ_path(make_volume_name("/template"));
+    const ObjectId templ_id(create_file(root_id,
                                              templ_path.str().substr(1),
                                              vsize));
     const std::string pattern("Orpheus sat gloomy in his garden shed\n"
@@ -745,14 +746,14 @@ TEST_F(VolumeTest, uuid_no_unlinking_of_used_templates)
 
     client_.set_volume_as_template(templ_id);
 
-    const vfs::FrontendPath clone_path(make_volume_name("/clone"));
-    const vfs::ObjectId clone_id(fs_->create_clone(clone_path,
+    const FrontendPath clone_path(make_volume_name("/clone"));
+    const ObjectId clone_id(fs_->create_clone(clone_path,
                                                    make_metadata_backend_config(),
                                                    vd::VolumeId(templ_id.str()),
                                                    boost::none));
 
-    const vfs::FrontendPath clone_vpath(clone_path_to_volume_path(clone_path));
-    const vfs::ObjectId clone_vpath_id(*find_object(clone_vpath));
+    const FrontendPath clone_vpath(clone_path_to_volume_path(clone_path));
+    const ObjectId clone_vpath_id(*find_object(clone_vpath));
 
     verify_presence(clone_id);
     verify_presence(clone_vpath_id);
@@ -772,19 +773,19 @@ TEST_F(VolumeTest, uuid_no_unlinking_of_used_templates)
 
 TEST_F(VolumeTest, clone_path_collisions)
 {
-    const vfs::FrontendPath parent_path(make_volume_name("/volume"));
+    const FrontendPath parent_path(make_volume_name("/volume"));
 
     struct stat st;
     EXPECT_EQ(-ENOENT, getattr(parent_path, st));
 
     const uint64_t vsize = 1 << 20;
 
-    const vfs::ObjectId parent_id(create_file(parent_path, vsize));
+    const ObjectId parent_id(create_file(parent_path, vsize));
     client_.set_volume_as_template(parent_id);
 
-    const vfs::FrontendPath clone_path(make_volume_name("/the_clone"));
+    const FrontendPath clone_path(make_volume_name("/the_clone"));
 
-    const vfs::ObjectId
+    const ObjectId
         clone_id(fs_->create_clone(clone_path,
                                    make_metadata_backend_config(),
                                    vd::VolumeId(parent_id.str()),
@@ -802,22 +803,22 @@ TEST_F(VolumeTest, clone_path_collisions)
 
 TEST_F(VolumeTest, uuid_clone_path_collisions)
 {
-    const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
-    const vfs::FrontendPath parent_path(make_volume_name("/volume"));
+    const ObjectId root_id(*find_object(FrontendPath("/")));
+    const FrontendPath parent_path(make_volume_name("/volume"));
 
     struct stat st;
     EXPECT_EQ(-ENOENT, getattr(parent_path, st));
 
     const uint64_t vsize = 1 << 20;
 
-    const vfs::ObjectId parent_id(create_file(root_id,
+    const ObjectId parent_id(create_file(root_id,
                                               parent_path.str().substr(1),
                                               vsize));
     client_.set_volume_as_template(parent_id);
 
-    const vfs::FrontendPath clone_path(make_volume_name("/the_clone"));
+    const FrontendPath clone_path(make_volume_name("/the_clone"));
 
-    const vfs::ObjectId
+    const ObjectId
         clone_id(fs_->create_clone(clone_path,
                                    make_metadata_backend_config(),
                                    vd::VolumeId(parent_id.str()),
@@ -835,17 +836,17 @@ TEST_F(VolumeTest, uuid_clone_path_collisions)
 
 TEST_F(VolumeTest, clone_intermediate_dirs)
 {
-    const vfs::FrontendPath parent_path(make_volume_name("/volume"));
+    const FrontendPath parent_path(make_volume_name("/volume"));
 
     const uint64_t vsize = 1 << 20;
-    const vfs::ObjectId parent_id(create_file(parent_path, vsize));
+    const ObjectId parent_id(create_file(parent_path, vsize));
     client_.set_volume_as_template(parent_id);
 
-    const vfs::FrontendPath
+    const FrontendPath
         clone_path( std::string("/some/deep/non/existing/directory/structure/the_clone") +
                     fs_->vdisk_format().volume_suffix());
 
-    const vfs::ObjectId
+    const ObjectId
         clone_id(fs_->create_clone(clone_path,
                                    make_metadata_backend_config(),
                                    vd::VolumeId(parent_id.str()),
@@ -853,26 +854,26 @@ TEST_F(VolumeTest, clone_intermediate_dirs)
 
     verify_presence(clone_path);
 
-    const vfs::FrontendPath vpath(clone_path_to_volume_path(clone_path));
+    const FrontendPath vpath(clone_path_to_volume_path(clone_path));
     check_stat(vpath, vsize);
 }
 
 TEST_F(VolumeTest, uuid_clone_intermediate_dirs)
 {
-    const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
-    const vfs::FrontendPath parent_path(make_volume_name("/volume"));
+    const ObjectId root_id(*find_object(FrontendPath("/")));
+    const FrontendPath parent_path(make_volume_name("/volume"));
 
     const uint64_t vsize = 1 << 20;
-    const vfs::ObjectId parent_id(create_file(root_id,
+    const ObjectId parent_id(create_file(root_id,
                                               parent_path.str().substr(1),
                                               vsize));
     client_.set_volume_as_template(parent_id);
 
-    const vfs::FrontendPath
+    const FrontendPath
         clone_path( std::string("/some/deep/non/existing/directory/structure/the_clone") +
                     fs_->vdisk_format().volume_suffix());
 
-    const vfs::ObjectId
+    const ObjectId
         clone_id(fs_->create_clone(clone_path,
                                    make_metadata_backend_config(),
                                    vd::VolumeId(parent_id.str()),
@@ -880,29 +881,29 @@ TEST_F(VolumeTest, uuid_clone_intermediate_dirs)
 
     verify_presence(clone_id);
 
-    const vfs::FrontendPath vpath(clone_path_to_volume_path(clone_path));
-    const vfs::ObjectId vpath_id(*find_object(vpath));
+    const FrontendPath vpath(clone_path_to_volume_path(clone_path));
+    const ObjectId vpath_id(*find_object(vpath));
     check_stat(vpath_id, vsize);
 }
 
 TEST_F(VolumeTest, clone_file_exists)
 {
-    const vfs::FrontendPath parent_path(make_volume_name("/volume"));
+    const FrontendPath parent_path(make_volume_name("/volume"));
 
     const uint64_t vsize = 1 << 20;
-    const vfs::ObjectId parent_id(create_file(parent_path, vsize));
+    const ObjectId parent_id(create_file(parent_path, vsize));
     client_.set_volume_as_template(parent_id);
 
     EXPECT_THROW(client_.create_clone_from_template(parent_path.str(),
                                                     make_metadata_backend_config(),
                                                     parent_id),
-                 vfs::clienterrors::FileExistsException);
+                 clienterrors::FileExistsException);
 
-    const vfs::FrontendPath fpath(make_volume_name("/existing_file"));
+    const FrontendPath fpath(make_volume_name("/existing_file"));
     // Trick to create file with volumename without creating a volume, cause
     // we don't create volumes after rename
     {
-        const vfs::FrontendPath tmp("/file");
+        const FrontendPath tmp("/file");
         create_file(tmp);
         fs_->rename(tmp, fpath);
     }
@@ -910,7 +911,7 @@ TEST_F(VolumeTest, clone_file_exists)
     EXPECT_THROW(client_.create_clone_from_template(fpath.str(),
                                                     make_metadata_backend_config(),
                                                     parent_id),
-                  vfs::clienterrors::FileExistsException);
+                  clienterrors::FileExistsException);
 
     EXPECT_EQ(0, unlink(fpath));
     verify_absence(fpath);
@@ -924,11 +925,11 @@ TEST_F(VolumeTest, clone_file_exists)
 
 TEST_F(VolumeTest, uuid_clone_file_exists)
 {
-    const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
-    const vfs::FrontendPath parent_path(make_volume_name("/volume"));
+    const ObjectId root_id(*find_object(FrontendPath("/")));
+    const FrontendPath parent_path(make_volume_name("/volume"));
 
     const uint64_t vsize = 1 << 20;
-    const vfs::ObjectId parent_id(create_file(root_id,
+    const ObjectId parent_id(create_file(root_id,
                                               parent_path.str().substr(1),
                                               vsize));
     client_.set_volume_as_template(parent_id);
@@ -936,9 +937,9 @@ TEST_F(VolumeTest, uuid_clone_file_exists)
     EXPECT_THROW(client_.create_clone_from_template(parent_path.str(),
                                                     make_metadata_backend_config(),
                                                     parent_id),
-                 vfs::clienterrors::FileExistsException);
+                 clienterrors::FileExistsException);
 
-    const vfs::FrontendPath fpath(make_volume_name("/existing_file"));
+    const FrontendPath fpath(make_volume_name("/existing_file"));
     // Trick to create file with volumename without creating a volume, cause
     // we don't create volumes after rename
     {
@@ -953,9 +954,9 @@ TEST_F(VolumeTest, uuid_clone_file_exists)
     EXPECT_THROW(client_.create_clone_from_template(fpath.str(),
                                                     make_metadata_backend_config(),
                                                     parent_id),
-                  vfs::clienterrors::FileExistsException);
+                  clienterrors::FileExistsException);
 
-    const vfs::ObjectId fpath_id(*find_object(fpath));
+    const ObjectId fpath_id(*find_object(fpath));
 
     EXPECT_EQ(0, unlink(root_id,
                         fpath.str().substr(1)));
@@ -970,7 +971,7 @@ TEST_F(VolumeTest, uuid_clone_file_exists)
 
 TEST_F(VolumeTest, chmod)
 {
-    const vfs::FrontendPath v(make_volume_name("/volume"));
+    const FrontendPath v(make_volume_name("/volume"));
     create_file(v);
 
     test_chmod_file(v, S_IWUSR bitor S_IRUSR bitor S_IRGRP bitor S_IROTH);
@@ -978,24 +979,24 @@ TEST_F(VolumeTest, chmod)
 
 TEST_F(VolumeTest, uuid_chmod)
 {
-    const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
-    const vfs::FrontendPath v(make_volume_name("/volume"));
+    const ObjectId root_id(*find_object(FrontendPath("/")));
+    const FrontendPath v(make_volume_name("/volume"));
 
     create_file(root_id,
                 v.str().substr(1));
 
-    const vfs::ObjectId id(*find_object(v));
+    const ObjectId id(*find_object(v));
 
     test_chmod_file(id, S_IWUSR bitor S_IRUSR bitor S_IRGRP bitor S_IROTH);
 }
 
 TEST_F(VolumeTest, volume_entry_cache)
 {
-    const vfs::FrontendPath path(make_volume_name("/volume"));
-    vfs::DirectoryEntryPtr entry(find_in_volume_entry_cache(path));
+    const FrontendPath path(make_volume_name("/volume"));
+    DirectoryEntryPtr entry(find_in_volume_entry_cache(path));
     ASSERT_TRUE(entry == nullptr);
 
-    const vfs::ObjectId id(create_file(path));
+    const ObjectId id(create_file(path));
 
     entry = find_in_volume_entry_cache(path);
     ASSERT_TRUE(entry != nullptr);
@@ -1008,12 +1009,12 @@ TEST_F(VolumeTest, volume_entry_cache)
 
 TEST_F(VolumeTest, uuid_volume_entry_cache)
 {
-    const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
-    const vfs::FrontendPath path(make_volume_name("/volume"));
-    vfs::DirectoryEntryPtr entry(find_in_volume_entry_cache(path));
+    const ObjectId root_id(*find_object(FrontendPath("/")));
+    const FrontendPath path(make_volume_name("/volume"));
+    DirectoryEntryPtr entry(find_in_volume_entry_cache(path));
     ASSERT_TRUE(entry == nullptr);
 
-    const vfs::ObjectId id(create_file(root_id,
+    const ObjectId id(create_file(root_id,
                                        path.str().substr(1)));
 
     entry = find_in_volume_entry_cache(id);
@@ -1028,9 +1029,9 @@ TEST_F(VolumeTest, uuid_volume_entry_cache)
 
 TEST_F(VolumeTest, rollback_volume)
 {
-    const vfs::FrontendPath volume_path(make_volume_name("/volume"));
+    const FrontendPath volume_path(make_volume_name("/volume"));
     const uint64_t vsize = 1 << 20;
-    const vfs::ObjectId vol_id(create_file(volume_path, vsize));
+    const ObjectId vol_id(create_file(volume_path, vsize));
     const off_t off = 10 * get_cluster_size(vol_id);
     const uint64_t size = 30 * get_cluster_size(vol_id);
 
@@ -1054,7 +1055,7 @@ TEST_F(VolumeTest, rollback_volume)
     wait_for_snapshot(vol_id, snapB);
 
     ASSERT_THROW(client_.rollback_volume(vol_id, "non-existing snapshot"),
-                 vfs::clienterrors::SnapshotNotFoundException);
+                 clienterrors::SnapshotNotFoundException);
 
     client_.rollback_volume(vol_id, snapB);
     check_file(volume_path, patternB, size, off);
@@ -1068,10 +1069,10 @@ TEST_F(VolumeTest, rollback_volume)
 
 TEST_F(VolumeTest, uuid_rollback_volume)
 {
-    const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
+    const ObjectId root_id(*find_object(FrontendPath("/")));
 
     const uint64_t vsize = 1 << 20;
-    const vfs::ObjectId vol_id(create_file(root_id,
+    const ObjectId vol_id(create_file(root_id,
                                            make_volume_name("volume").string(),
                                            vsize));
     const off_t off = 10 * get_cluster_size(vol_id);
@@ -1097,7 +1098,7 @@ TEST_F(VolumeTest, uuid_rollback_volume)
     wait_for_snapshot(vol_id, snapB);
 
     ASSERT_THROW(client_.rollback_volume(vol_id, "non-existing snapshot"),
-                 vfs::clienterrors::SnapshotNotFoundException);
+                 clienterrors::SnapshotNotFoundException);
 
     client_.rollback_volume(vol_id, snapB);
     check_file(vol_id, patternB, size, off);
@@ -1111,8 +1112,8 @@ TEST_F(VolumeTest, uuid_rollback_volume)
 
 TEST_F(VolumeTest, unlink_unregistered_volume)
 {
-    const vfs::FrontendPath fname(make_volume_name("/volume"));
-    const vfs::ObjectId id(create_file(fname));
+    const FrontendPath fname(make_volume_name("/volume"));
+    const ObjectId id(create_file(fname));
 
     verify_presence(fname);
 
@@ -1127,9 +1128,9 @@ TEST_F(VolumeTest, unlink_unregistered_volume)
 
 TEST_F(VolumeTest, uuid_unlink_unregistered_volume)
 {
-    const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
-    const vfs::FrontendPath fname(make_volume_name("volume"));
-    const vfs::ObjectId id(create_file(root_id, fname.str()));
+    const ObjectId root_id(*find_object(FrontendPath("/")));
+    const FrontendPath fname(make_volume_name("volume"));
+    const ObjectId id(create_file(root_id, fname.str()));
 
     verify_presence(id);
 
@@ -1144,8 +1145,8 @@ TEST_F(VolumeTest, uuid_unlink_unregistered_volume)
 
 TEST_F(VolumeTest, unlink_deleted_but_still_registered_volume)
 {
-    const vfs::FrontendPath fname(make_volume_name("/volume"));
-    const vfs::ObjectId id(create_file(fname));
+    const FrontendPath fname(make_volume_name("/volume"));
+    const ObjectId id(create_file(fname));
 
     verify_presence(fname);
 
@@ -1167,9 +1168,9 @@ TEST_F(VolumeTest, unlink_deleted_but_still_registered_volume)
 
 TEST_F(VolumeTest, uuid_unlink_deleted_but_still_registered_volume)
 {
-    const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
-    const vfs::FrontendPath fname(make_volume_name("volume"));
-    const vfs::ObjectId id(create_file(root_id, fname.str()));
+    const ObjectId root_id(*find_object(FrontendPath("/")));
+    const FrontendPath fname(make_volume_name("volume"));
+    const ObjectId id(create_file(root_id, fname.str()));
 
     verify_presence(id);
 
@@ -1191,7 +1192,7 @@ TEST_F(VolumeTest, uuid_unlink_deleted_but_still_registered_volume)
 
 TEST_F(VolumeTest, chown)
 {
-    const vfs::FrontendPath fname(make_volume_name("/volume"));
+    const FrontendPath fname(make_volume_name("/volume"));
     create_file(fname);
 
     test_chown(fname);
@@ -1199,18 +1200,18 @@ TEST_F(VolumeTest, chown)
 
 TEST_F(VolumeTest, uuid_chown)
 {
-    const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
+    const ObjectId root_id(*find_object(FrontendPath("/")));
     const std::string fname(make_volume_name("volume").string());
-    const vfs::ObjectId id(create_file(root_id, fname));
+    const ObjectId id(create_file(root_id, fname));
 
     test_chown(id);
 }
 
 TEST_F(VolumeTest, start_while_running)
 {
-    const vfs::FrontendPath fname(make_volume_name("/volume"));
+    const FrontendPath fname(make_volume_name("/volume"));
     const uint64_t vsize = 1 << 20;
-    const vfs::ObjectId id(create_file(fname, vsize));
+    const ObjectId id(create_file(fname, vsize));
 
     const std::string pattern("some data");
     const uint64_t wsize = pattern.size();
@@ -1226,10 +1227,10 @@ TEST_F(VolumeTest, start_while_running)
 
 TEST_F(VolumeTest, uuid_start_while_running)
 {
-    const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
+    const ObjectId root_id(*find_object(FrontendPath("/")));
     const std::string fname(make_volume_name("volume").string());
     const uint64_t vsize = 1 << 20;
-    const vfs::ObjectId id(create_file(root_id,
+    const ObjectId id(create_file(root_id,
                                        fname,
                                        vsize));
 
@@ -1247,9 +1248,9 @@ TEST_F(VolumeTest, uuid_start_while_running)
 
 TEST_F(VolumeTest, stop_and_start)
 {
-    const vfs::FrontendPath fname(make_volume_name("/volume"));
+    const FrontendPath fname(make_volume_name("/volume"));
     const uint64_t vsize = 1 << 20;
-    const vfs::ObjectId id(create_file(fname, vsize));
+    const ObjectId id(create_file(fname, vsize));
 
     const std::string pattern1("written-first");
     const uint64_t wsize = pattern1.size();
@@ -1276,10 +1277,10 @@ TEST_F(VolumeTest, stop_and_start)
 
 TEST_F(VolumeTest, uuid_stop_and_start)
 {
-    const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
+    const ObjectId root_id(*find_object(FrontendPath("/")));
     const std::string fname(make_volume_name("volume").string());
     const uint64_t vsize = 1 << 20;
-    const vfs::ObjectId id(create_file(root_id,
+    const ObjectId id(create_file(root_id,
                                        fname,
                                        vsize));
 
@@ -1308,9 +1309,9 @@ TEST_F(VolumeTest, uuid_stop_and_start)
 
 TEST_F(VolumeTest, hygiene)
 {
-    const vfs::FrontendPath fname(make_volume_name("/volume"));
+    const FrontendPath fname(make_volume_name("/volume"));
     const uint64_t vsize = 1 << 20;
-    const vfs::ObjectId id(create_file(fname, vsize));
+    const ObjectId id(create_file(fname, vsize));
 
     const std::string pattern1("not of any importance");
     const uint64_t wsize = pattern1.size();
@@ -1338,10 +1339,10 @@ TEST_F(VolumeTest, hygiene)
 
 TEST_F(VolumeTest, uuid_hygiene)
 {
-    const vfs::ObjectId root_id(*find_object(vfs::FrontendPath("/")));
+    const ObjectId root_id(*find_object(FrontendPath("/")));
     const std::string fname(make_volume_name("volume").string());
     const uint64_t vsize = 1 << 20;
-    const vfs::ObjectId id(create_file(root_id,
+    const ObjectId id(create_file(root_id,
                                        fname,
                                        vsize));
 
@@ -1386,10 +1387,10 @@ TEST_F(VolumeTest, update_mds_config)
 
     const ip::PARAMETER_TYPE(fs_metadata_backend_mds_nodes) old_mds_nodes(pt);
 
-    const vfs::FrontendPath vname1(make_volume_name("/volume1"));
-    const vfs::ObjectId id1(create_file(vname1));
+    const FrontendPath vname1(make_volume_name("/volume1"));
+    const ObjectId id1(create_file(vname1));
 
-    auto check_mds_config([&](const vfs::ObjectId& oid,
+    auto check_mds_config([&](const ObjectId& oid,
                               const vd::MDSNodeConfigs& ncfgs)
     {
         LOCKVD();
@@ -1428,8 +1429,8 @@ TEST_F(VolumeTest, update_mds_config)
 
     ASSERT_EQ(1U, urep.update_size());
 
-    const vfs::FrontendPath vname2(make_volume_name("/volume2"));
-    const vfs::ObjectId id2(create_file(vname2));
+    const FrontendPath vname2(make_volume_name("/volume2"));
+    const ObjectId id2(create_file(vname2));
 
     check_mds_config(id2,
                      new_mds_nodes.value());
@@ -1437,9 +1438,9 @@ TEST_F(VolumeTest, update_mds_config)
 
 TEST_F(VolumeTest, owner_tag)
 {
-    const vfs::FrontendPath fname(make_volume_name("/volume"));
-    const vfs::ObjectId oid(create_file(fname));
-    const vfs::ObjectRegistrationPtr reg(find_registration(oid));
+    const FrontendPath fname(make_volume_name("/volume"));
+    const ObjectId oid(create_file(fname));
+    const ObjectRegistrationPtr reg(find_registration(oid));
 
     LOCKVD();
 
@@ -1451,9 +1452,9 @@ TEST_F(VolumeTest, owner_tag)
 // https://github.com/openvstorage/volumedriver/issues/48
 TEST_F(VolumeTest, concurrent_unaligned_writes)
 {
-    const vfs::FrontendPath fname(make_volume_name("/volume"));
+    const FrontendPath fname(make_volume_name("/volume"));
     const uint64_t vsize = 10ULL << 20;
-    const vfs::ObjectId oid(create_file(fname,
+    const ObjectId oid(create_file(fname,
                                         vsize));
     const uint64_t csize = get_cluster_size(oid);
     ASSERT_EQ(0, vsize % csize);
@@ -1464,7 +1465,7 @@ TEST_F(VolumeTest, concurrent_unaligned_writes)
     ASSERT_NE(0,
               csize / num_workers);
 
-    using WorkerFun = std::function<void(const vfs::FrontendPath&,
+    using WorkerFun = std::function<void(const FrontendPath&,
                                          const std::string&,
                                          uint64_t,
                                          off_t)>;
@@ -1507,7 +1508,7 @@ TEST_F(VolumeTest, concurrent_unaligned_writes)
                   }
               });
 
-    work([&](const vfs::FrontendPath& fname,
+    work([&](const FrontendPath& fname,
              const std::string& pattern,
              uint64_t size,
              off_t off)
@@ -1518,7 +1519,7 @@ TEST_F(VolumeTest, concurrent_unaligned_writes)
                            off);
          });
 
-    work([&](const vfs::FrontendPath& fname,
+    work([&](const FrontendPath& fname,
              const std::string& pattern,
              uint64_t size,
              off_t off)
@@ -1536,9 +1537,9 @@ TEST_F(VolumeTest, concurrent_unaligned_writes)
 // orphaned.
 TEST_F(VolumeTest, no_template_creation_if_clones_are_present)
 {
-    const vfs::FrontendPath vpath(make_volume_name("/volume"));
+    const FrontendPath vpath(make_volume_name("/volume"));
     const size_t vsize = 1ULL << 20;
-    const vfs::ObjectId vid(create_file(vpath, vsize));
+    const ObjectId vid(create_file(vpath, vsize));
 
     const std::string snap(client_.create_snapshot(vid));
     const std::string pattern("some irrelevant blurb");
@@ -1546,18 +1547,18 @@ TEST_F(VolumeTest, no_template_creation_if_clones_are_present)
 
     wait_for_snapshot(vid, snap);
 
-    const vfs::FrontendPath cpath(make_volume_name("/clone"));
-    const vfs::ObjectId cid(fs_->create_clone(cpath,
-                                              make_metadata_backend_config(),
-                                              vd::VolumeId(vid.str()),
-                                              vd::SnapshotName(snap)).str());
+    const FrontendPath cpath(make_volume_name("/clone"));
+    const ObjectId cid(fs_->create_clone(cpath,
+                                         make_metadata_backend_config(),
+                                         vd::VolumeId(vid.str()),
+                                         vd::SnapshotName(snap)).str());
 
     auto check([&]
                {
-                   vfs::ObjectRegistrationPtr
+                   ObjectRegistrationPtr
                        oreg(fs_->object_router().object_registry()->find_throw(vid,
-                                                                               vfs::IgnoreCache::T));
-                   EXPECT_EQ(vfs::ObjectType::Volume,
+                                                                               IgnoreCache::T));
+                   EXPECT_EQ(ObjectType::Volume,
                              oreg->treeconfig.object_type);
                });
 
@@ -1567,6 +1568,15 @@ TEST_F(VolumeTest, no_template_creation_if_clones_are_present)
                  std::exception);
 
     check();
+}
+
+TEST_F(VolumeTest, dtl_status)
+{
+    const FrontendPath vname(make_volume_name("/some-volume"));
+    const size_t vsize = 1ULL << 20;
+    create_file(vname, vsize);
+
+    test_dtl_status(vname);
 }
 
 }

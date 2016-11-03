@@ -1223,12 +1223,19 @@ FileSystem::read(const FrontendPath& path,
 }
 
 void
-FileSystem::write( Handle& h,
+FileSystem::write(Handle& h,
                   size_t& size,
                   const char* buf,
                   off_t off,
-                  bool& sync)
+                  bool& sync,
+                  vd::DtlInSync* dtl_in_sync)
 {
+    vd::DtlInSync dummy = vd::DtlInSync::F;
+    if (dtl_in_sync == nullptr)
+    {
+        dtl_in_sync = &dummy;
+    }
+
     tracepoint(openvstorage_filesystem,
                object_write_start,
                h.dentry()->object_id().str().c_str(),
@@ -1255,12 +1262,14 @@ FileSystem::write( Handle& h,
                                       h.dentry()->object_id(),
                                       reinterpret_cast<const uint8_t*>(buf),
                                       size,
-                                      off));
+                                      off,
+                                      *dtl_in_sync));
 
         if (sync and not fs_ignore_sync.value())
         {
             h.update_cookie(router_.sync(h.cookie(),
-                                         h.dentry()->object_id()));
+                                         h.dentry()->object_id(),
+                                         *dtl_in_sync));
         }
         else
         {
@@ -1296,8 +1305,15 @@ FileSystem::write(const FrontendPath& path,
 
 void
 FileSystem::fsync(Handle& h,
-                  bool datasync)
+                  bool datasync,
+                  vd::DtlInSync* dtl_in_sync)
 {
+    vd::DtlInSync dummy = vd::DtlInSync::F;
+    if (dtl_in_sync == nullptr)
+    {
+        dtl_in_sync = &dummy;
+    }
+
     tracepoint(openvstorage_filesystem,
                object_sync_start,
                h.dentry()->object_id().str().c_str(),
@@ -1316,7 +1332,8 @@ FileSystem::fsync(Handle& h,
     if (not fs_nullio.value())
     {
         h.update_cookie(router_.sync(h.cookie(),
-                                     h.dentry()->object_id()));
+                                     h.dentry()->object_id(),
+                                     *dtl_in_sync));
     }
 }
 

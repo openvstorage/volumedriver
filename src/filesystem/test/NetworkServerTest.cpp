@@ -47,6 +47,7 @@ namespace bc = boost::chrono;
 namespace bpt = boost::property_tree;
 namespace bpy = boost::python;
 namespace fs = boost::filesystem;
+namespace vd = volumedriver;
 namespace vfs = volumedriverfs;
 namespace yt = youtils;
 namespace libovs = libovsvolumedriver;
@@ -88,7 +89,8 @@ public:
                              .redirect_timeout_ms(10000)
                              .backend_sync_timeout_ms(9500)
                              .migrate_timeout_ms(500)
-                             .redirect_retries(1))
+                             .redirect_retries(1)
+                             .dtl_mode(vd::FailOverCacheMode::Synchronous))
         , client_(vrouter_cluster_id(),
                   {{address(), local_config().xmlrpc_port}})
     {

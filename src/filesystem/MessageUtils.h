@@ -22,6 +22,7 @@
 
 #include <youtils/Logging.h>
 
+#include <volumedriver/DtlInSync.h>
 #include <volumedriver/Types.h>
 
 namespace vfsprotocol
@@ -33,39 +34,42 @@ struct MessageUtils
     create_ping_message(const volumedriverfs::NodeId& sender_id);
 
     static ReadRequest
-    create_read_request(const volumedriverfs::Object& obj,
+    create_read_request(const volumedriverfs::Object&,
                         const uint64_t size,
                         const uint64_t offset);
 
     static WriteRequest
-    create_write_request(const volumedriverfs::Object& obj,
+    create_write_request(const volumedriverfs::Object&,
                          const uint64_t size,
                          const uint64_t offset);
 
     static WriteResponse
-    create_write_response(const uint64_t size);
+    create_write_response(const uint64_t size,
+                          const volumedriver::DtlInSync);
 
     static SyncRequest
-    create_sync_request(const volumedriverfs::Object& obj);
+    create_sync_request(const volumedriverfs::Object&);
+
+    static SyncResponse
+    create_sync_response(const volumedriver::DtlInSync);
 
     static GetSizeRequest
-    create_get_size_request(const volumedriverfs::Object& obj);
+    create_get_size_request(const volumedriverfs::Object&);
 
     static GetSizeResponse
     create_get_size_response(const uint64_t size);
 
     static ResizeRequest
-    create_resize_request(const volumedriverfs::Object& obj,
+    create_resize_request(const volumedriverfs::Object&,
                           uint64_t newsize);
 
     static DeleteRequest
-    create_delete_request(const volumedriverfs::Object& obj);
+    create_delete_request(const volumedriverfs::Object&);
 
     static TransferRequest
-    create_transfer_request(const volumedriverfs::Object& obj,
+    create_transfer_request(const volumedriverfs::Object&,
                             const volumedriverfs::NodeId& target_node_id,
                             const boost::chrono::milliseconds& sync_timeout_ms);
-
 };
 
 }

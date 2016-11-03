@@ -93,10 +93,12 @@ public:
     write(const Object& obj,
           const uint8_t* buf,
           size_t* size,
-          const off_t off) override final;
+          const off_t off,
+          volumedriver::DtlInSync&) override final;
 
     virtual void
-    sync(const Object& obj) override final;
+    sync(const Object&,
+         volumedriver::DtlInSync&) override final;
 
     virtual uint64_t
     get_size(const Object& obj) override final;
@@ -234,11 +236,13 @@ public:
           const ObjectId&,
           const uint8_t* buf,
           size_t* size,
-          off_t off);
+          off_t off,
+          volumedriver::DtlInSync&);
 
     FastPathCookie
     sync(const FastPathCookie&,
-         const ObjectId&);
+         const ObjectId&,
+         volumedriver::DtlInSync&);
 
     FastPathCookie
     fast_path_cookie(const Object&);
@@ -299,17 +303,17 @@ private:
     RWLockPtr
     get_lock_(const ObjectId& id);
 
-    template<typename R, typename... A>
-    R
-    with_volume_pointer_(R(LocalNode::*fn)(volumedriver::WeakVolumePtr,
-                                           A... args),
-                         const ObjectId& id,
-                         A... args);
+    template<typename Ret, typename... Args>
+    Ret
+    with_volume_pointer_(Ret (LocalNode::*fn)(volumedriver::WeakVolumePtr,
+                                              Args...),
+                         const ObjectId&,
+                         Args...);
 
-    template<typename... A>
-    void
-    maybe_retry_(void(*fn)(A... args),
-                 A... args);
+    template<typename Ret, typename... Args>
+    Ret
+    maybe_retry_(Ret (*fn)(Args...),
+                 Args...);
 
     void
     read_(volumedriver::WeakVolumePtr vol,
@@ -322,16 +326,19 @@ private:
            const ObjectId&,
            const uint8_t* buf,
            size_t* size,
-           off_t off);
+           off_t off,
+           volumedriver::DtlInSync&);
 
     void
-    write_(volumedriver::WeakVolumePtr vol,
+    write_(volumedriver::WeakVolumePtr,
            const uint8_t* buf,
            size_t size,
-           off_t off);
+           off_t off,
+           volumedriver::DtlInSync&);
 
     void
-    sync_(volumedriver::WeakVolumePtr vol);
+    sync_(volumedriver::WeakVolumePtr,
+          volumedriver::DtlInSync&);
 
     uint64_t
     get_size_(volumedriver::WeakVolumePtr vol);

@@ -115,6 +115,9 @@ public:
     int
     deallocate(ovs_buffer_t *ptr);
 
+    bool
+    is_dtl_in_sync() override final;
+
     void
     insert_seen_request(uint64_t id);
 

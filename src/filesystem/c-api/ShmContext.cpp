@@ -358,3 +358,10 @@ ShmContext::deallocate(ovs_buffer_t *ptr)
     }
     return r;
 }
+
+bool
+ShmContext::is_dtl_in_sync()
+{
+    std::abort();
+    return false;
+}

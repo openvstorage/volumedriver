@@ -74,6 +74,9 @@ DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_xmlrpc_client_timeout_
                                                   std::atomic<uint32_t>);
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_use_fencing,
                                                   bool);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_send_sync_response,
+                                                  bool);
+
 DECLARE_INITIALIZED_PARAM(vrouter_id,
                           std::string);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_sco_multiplier,

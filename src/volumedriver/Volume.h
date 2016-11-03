@@ -18,6 +18,7 @@
 
 #include "BackendTasks.h"
 #include "ClusterCacheHandle.h"
+#include "DtlInSync.h"
 #include "FailOverCacheConfigWrapper.h"
 #include "FailOverCacheProxy.h"
 #include "NSIDMap.h"
@@ -160,7 +161,7 @@ public:
     validateIOAlignment(uint64_t lba, uint64_t len) const;
 
     /** @exception IOException, MetaDataStoreException */
-    void
+    DtlInSync
     write(uint64_t lba, const uint8_t *buf, uint64_t len);
 
    /** @exception IOException, MetaDataStoreException */
@@ -168,7 +169,7 @@ public:
     read(uint64_t lba, uint8_t *buf, uint64_t len);
 
     /** @exception IOException */
-    void
+    DtlInSync
     sync();
 
     void
@@ -605,7 +606,7 @@ private:
     void
     executeDeletions_(TLogReader &);
 
-    void
+    DtlInSync
     writeClusters_(uint64_t addr,
                    const uint8_t* buf,
                    uint64_t bufsize);
@@ -657,7 +658,7 @@ private:
                                     const ClusterLocation& loc,
                                     const uint8_t* buf);
 
-    void
+    DtlInSync
     writeClustersToFailOverCache_(const std::vector<ClusterLocation>& locs,
                                   size_t num_locs,
                                   uint64_t start_address,
@@ -669,7 +670,7 @@ private:
     void
     writeFailOverCacheConfigToBackend_();
 
-    void
+    DtlInSync
     sync_(AppendCheckSum append_chksum);
 
     void

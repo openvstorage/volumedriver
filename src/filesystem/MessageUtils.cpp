@@ -18,6 +18,7 @@
 namespace vfsprotocol
 {
 
+namespace vd = volumedriver;
 namespace vfs = volumedriverfs;
 
 PingMessage
@@ -65,10 +66,12 @@ MessageUtils::create_write_request(const vfs::Object& obj,
 }
 
 WriteResponse
-MessageUtils::create_write_response(const uint64_t size)
+MessageUtils::create_write_response(const uint64_t size,
+                                    const vd::DtlInSync dtl_in_sync)
 {
     WriteResponse msg;
     msg.set_size(size);
+    msg.set_dtl_in_sync(dtl_in_sync == vd::DtlInSync::T);
 
     msg.CheckInitialized();
 
@@ -81,6 +84,17 @@ MessageUtils::create_sync_request(const vfs::Object& obj)
     SyncRequest msg;
     msg.set_object_id(obj.id.str());
     msg.set_object_type(static_cast<uint32_t>(obj.type));
+
+    msg.CheckInitialized();
+
+    return msg;
+}
+
+SyncResponse
+MessageUtils::create_sync_response(const vd::DtlInSync dtl_in_sync)
+{
+    SyncResponse msg;
+    msg.set_dtl_in_sync(dtl_in_sync == vd::DtlInSync::T);
 
     msg.CheckInitialized();
 
