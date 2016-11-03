@@ -895,10 +895,17 @@ NetworkXioClient::handle_list_cluster_node_uri(xio_ctl_s *xctl,
 void
 NetworkXioClient::handle_get_volume_uri(xio_ctl_s *xctl,
                                         xio_iovec_ex *sglist,
-                                        int vec_size)
+                                        int size)
 {
-    assert(vec_size <= 1);
-    create_vec_from_buf(xctl, sglist, vec_size);
+    try
+    {
+        auto data = std::make_unique<uint8_t[]>(size);
+        memcpy(data.get(), sglist[0].iov_base, size);
+        xctl->data = std::move(data);
+        xctl->size = size;
+    }
+    catch (const std::bad_alloc&)
+    {}
 }
 
 void
@@ -1009,8 +1016,6 @@ NetworkXioClient::xio_get_volume_uri(const std::string& uri,
                                      std::string& volume_uri)
 {
     auto xctl(std::make_unique<xio_ctl_s>());
-    std::vector<std::string> vec;
-    xctl->vec = &vec;
     xctl->xmsg.msg.opcode(NetworkXioMsgOpcode::GetVolumeURIReq);
     xctl->xmsg.msg.opaque(reinterpret_cast<uintptr_t>(xctl.get()));
     xctl->xmsg.msg.volume_name(volume_name);
@@ -1018,10 +1023,10 @@ NetworkXioClient::xio_get_volume_uri(const std::string& uri,
     xio_msg_prepare(&xctl->xmsg);
     xio_submit_request(uri, xctl.get(), nullptr);
 
-    assert(vec.size() <= 1);
-    if (not vec.empty())
+    if (xctl->data)
     {
-        volume_uri = vec[0];
+        volume_uri = std::string(reinterpret_cast<char*>(xctl->data.get()),
+                                 xctl->size);
     }
 }
 

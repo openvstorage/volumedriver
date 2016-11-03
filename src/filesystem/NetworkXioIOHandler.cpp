@@ -840,9 +840,10 @@ NetworkXioIOHandler::handle_get_volume_uri(NetworkXioRequest* req,
             }
 
             strcpy(static_cast<char*>(req->reg_mem.addr), uri.c_str());
-            req->retval = 1;
+            req->retval = uri.size() + 1;
             req->data_len = uri.size() + 1;
             req->data = req->reg_mem.addr;
+            req->from_pool = false;
         }
         else
         {
@@ -881,7 +882,7 @@ NetworkXioIOHandler::handle_get_volume_uri(NetworkXioRequest* req,
             LOG_ERROR("Failed to look up location of " << vname << ": " << EWHAT);
             req->errval = EIO;
             req->retval = -1;
-        });
+    });
 
     pack_msg(req);
 }
