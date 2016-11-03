@@ -57,11 +57,10 @@ MAKE_EXCEPTION(NetworkHAContextMemPoolException, fungi::IOException);
 NetworkHAContext::NetworkHAContext(const std::string& uri,
                                    uint64_t net_client_qdepth,
                                    bool ha_enabled)
-    : ctx_(std::shared_ptr<ovs_context_t>(
-                new NetworkXioContext(uri,
-                                      net_client_qdepth,
-                                      *this,
-                                      false)))
+    : ctx_(std::make_shared<NetworkXioContext>(uri,
+                                               net_client_qdepth,
+                                               *this,
+                                               false))
     , uri_(uri)
     , qd_(net_client_qdepth)
     , ha_enabled_(ha_enabled)
@@ -526,7 +525,8 @@ NetworkHAContext::get_volume_uri(const char* volume_name,
 
 template<typename... Args>
 int
-NetworkHAContext::wrap_io(int (ovs_context_t::*mem_fun)(ovs_aio_request*, Args...),
+NetworkHAContext::wrap_io(int (NetworkXioContext::*mem_fun)(ovs_aio_request*,
+                                                            Args...),
                           ovs_aio_request* request,
                           Args... args)
 {
@@ -554,21 +554,21 @@ NetworkHAContext::wrap_io(int (ovs_context_t::*mem_fun)(ovs_aio_request*, Args..
 int
 NetworkHAContext::send_read_request(ovs_aio_request* request)
 {
-    return wrap_io(&ovs_context_t::send_read_request,
+    return wrap_io(&NetworkXioContext::send_read_request,
                    request);
 }
 
 int
 NetworkHAContext::send_write_request(ovs_aio_request* request)
 {
-    return wrap_io(&ovs_context_t::send_write_request,
+    return wrap_io(&NetworkXioContext::send_write_request,
                    request);
 }
 
 int
 NetworkHAContext::send_flush_request(ovs_aio_request* request)
 {
-    return wrap_io(&ovs_context_t::send_flush_request,
+    return wrap_io(&NetworkXioContext::send_flush_request,
                    request);
 }
 

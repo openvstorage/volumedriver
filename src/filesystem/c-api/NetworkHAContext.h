@@ -34,6 +34,8 @@
 namespace libovsvolumedriver
 {
 
+class NetworkXioContext;
+
 class NetworkHAContext : public ovs_context_t
 {
 public:
@@ -166,7 +168,7 @@ private:
     /* cnanakos TODO: use atomic overloads for shared_ptr
      * when g++ > 5.0.0 is used
      */
-    using ContextPtr = std::shared_ptr<ovs_context_t>;
+    using ContextPtr = std::shared_ptr<NetworkXioContext>;
     ContextPtr ctx_;
 
     fungi::SpinLock ctx_lock_;
@@ -230,7 +232,7 @@ public:
 private:
     template<typename... Args>
     int
-    wrap_io(int (ovs_context_t::*mem_fun)(ovs_aio_request*, Args...),
+    wrap_io(int (NetworkXioContext::*mem_fun)(ovs_aio_request*, Args...),
             ovs_aio_request*,
             Args...);
 
