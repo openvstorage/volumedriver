@@ -287,6 +287,7 @@ NetworkHAContext::reconnect()
 
     if (not is_dtl_in_sync())
     {
+        LIBLOGID_ERROR("not attempting to failover as the DTL is known not to be in sync");
         return r;
     }
 
