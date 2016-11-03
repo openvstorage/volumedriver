@@ -24,6 +24,8 @@
 #include <chrono>
 #include <random>
 
+#include <youtils/System.h>
+
 #define LOCK_INFLIGHT()                                 \
     std::lock_guard<std::mutex> ifrl_(inflight_reqs_lock_)
 
@@ -38,10 +40,16 @@ namespace
 
 using namespace std::chrono_literals;
 
-using Clock = std::chrono::steady_clock;
-const Clock::duration ha_handler_sleep_time = 5ms;
-const Clock::duration location_check_interval = 30s;
+namespace yt = youtils;
 
+using Clock = std::chrono::steady_clock;
+
+const Clock::duration ha_handler_sleep_time =
+    std::chrono::milliseconds(yt::System::get_env_with_default("LIBOVSVOLUMEDRIVER_HA_HANDLER_INTERVAL_MSECS",
+                                                               5UL));
+const Clock::duration location_check_interval =
+    std::chrono::seconds(yt::System::get_env_with_default("LIBOVSVOLUMEDRIVER_LOCATION_CHECK_INTERVAL_SECS",
+                                                          30UL));
 }
 
 MAKE_EXCEPTION(NetworkHAContextMemPoolException, fungi::IOException);
@@ -357,6 +365,7 @@ NetworkHAContext::ha_ctx_handler(void *arg)
 {
     IOThread *thread = reinterpret_cast<IOThread*>(arg);
     auto last_location_check = Clock::time_point::min();
+    const bool check_location = location_check_interval.count() != 0;
 
     while (not thread->stopping)
     {
@@ -378,7 +387,8 @@ NetworkHAContext::ha_ctx_handler(void *arg)
         {
             remove_seen_requests();
 
-            if (last_location_check + location_check_interval <= Clock::now())
+            if (check_location and
+                last_location_check + location_check_interval <= Clock::now())
             {
                 maybe_update_volume_location();
                 last_location_check = Clock::now();
