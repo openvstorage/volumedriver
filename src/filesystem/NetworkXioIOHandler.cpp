@@ -18,6 +18,7 @@
 #include "ObjectRouter.h"
 #include "PythonClient.h" // clienterrors
 
+#include <volumedriver/DtlInSync.h>
 #include <youtils/Assert.h>
 #include <youtils/Catchers.h>
 #include <youtils/SocketAddress.h>
@@ -26,6 +27,7 @@ namespace volumedriverfs
 {
 
 namespace yt = youtils;
+namespace vd = volumedriver;
 
 static inline void
 pack_msg(NetworkXioRequest *req)
@@ -33,6 +35,7 @@ pack_msg(NetworkXioRequest *req)
     NetworkXioMsg o_msg(req->op);
     o_msg.retval(req->retval);
     o_msg.errval(req->errval);
+    o_msg.dtl_in_sync(req->dtl_in_sync);
     o_msg.opaque(req->opaque);
     req->s_msg= o_msg.pack_msg();
 }
@@ -235,11 +238,14 @@ NetworkXioIOHandler::handle_write(NetworkXioRequest *req,
     bool sync = false;
     try
     {
+       vd::DtlInSync dtl_in_sync;
        fs_.write(*handle_,
                  req->size,
                  static_cast<char*>(req->data),
                  req->offset,
-                 sync);
+                 sync,
+                 &dtl_in_sync);
+       req->dtl_in_sync = (dtl_in_sync == vd::DtlInSync::T) ? true : false;
        req->retval = req->size;
        req->errval = 0;
     }
@@ -266,7 +272,11 @@ NetworkXioIOHandler::handle_flush(NetworkXioRequest *req)
     LOG_TRACE("Flushing");
     try
     {
-       fs_.fsync(*handle_, false);
+       vd::DtlInSync dtl_in_sync;
+       fs_.fsync(*handle_,
+                 false,
+                 &dtl_in_sync);
+       req->dtl_in_sync = (dtl_in_sync == vd::DtlInSync::T) ? true : false;
        req->retval = 0;
        req->errval = 0;
     }

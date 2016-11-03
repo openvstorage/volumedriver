@@ -37,6 +37,7 @@ struct NetworkXioRequest
     unsigned int data_len;
     size_t size;
     uint64_t offset;
+    bool dtl_in_sync;
 
     ssize_t retval;
     int errval;

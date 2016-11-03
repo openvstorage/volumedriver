@@ -36,7 +36,8 @@ public:
                            const ssize_t retval = 0,
                            const int errval = 0,
                            const uintptr_t opaque = 0,
-                           const int64_t timeout = 0)
+                           const int64_t timeout = 0,
+                           const bool dtl_in_sync = true)
     : opcode_(opcode)
     , volname_(volname)
     , snapname_(snapname)
@@ -46,6 +47,7 @@ public:
     , errval_(errval)
     , opaque_(opaque)
     , timeout_(timeout)
+    , dtl_in_sync_(dtl_in_sync)
     {}
 
 public:
@@ -58,6 +60,7 @@ public:
     int errval_;
     uintptr_t opaque_;
     int64_t timeout_;
+    bool dtl_in_sync_;
 
 public:
     const NetworkXioMsgOpcode&
@@ -168,6 +171,18 @@ public:
         timeout_ = timeout;
     }
 
+    const bool&
+    dtl_in_sync() const
+    {
+        return dtl_in_sync_;
+    }
+
+    void
+    dtl_in_sync(const bool& dtlinsync)
+    {
+        dtl_in_sync_ = dtlinsync;
+    }
+
     const std::string
     pack_msg() const
     {
@@ -205,6 +220,7 @@ public:
         errval_ = 0;
         opaque_ = 0;
         timeout_ = 0;
+        dtl_in_sync_ = true;
     }
 public:
     MSGPACK_DEFINE(opcode_,
@@ -215,7 +231,8 @@ public:
                    retval_,
                    errval_,
                    opaque_,
-                   timeout_);
+                   timeout_,
+                   dtl_in_sync_);
 };
 
 MSGPACK_ADD_ENUM(NetworkXioMsgOpcode);
