@@ -20,12 +20,13 @@
 #include "BackendException.h"
 #include "LocalConfig.h"
 
+#include <boost/interprocess/sync/named_mutex.hpp>
 #include <boost/thread/mutex.hpp>
 
 #include <youtils/IOException.h>
 #include <youtils/Logging.h>
 #include <youtils/LRUCache.h>
-#include <youtils/Weed.h>
+#include <youtils/Md5.h>
 
 
 // namespace youtils
@@ -59,7 +60,7 @@ public:
                const EnablePartialRead = EnablePartialRead::T,
                const SyncObjectAfterWrite = SyncObjectAfterWrite::T);
 
-    virtual ~Connection() = default;
+    virtual ~Connection();
 
     Connection(const Connection&) = delete;
 
@@ -95,27 +96,39 @@ public:
           const std::string& mame,
           InsistOnLatestVersion) override final;
 
+    virtual std::unique_ptr<youtils::UniqueObjectTag>
+    get_tag_(const Namespace&,
+             const std::string&) override final;
+
     virtual void
-    write_(const Namespace& nspace,
-           const boost::filesystem::path &location,
-           const std::string& name,
-           const OverwriteObject overwrite,
-           const youtils::CheckSum* chksum = 0) override final;
+    write_(const Namespace&,
+           const boost::filesystem::path&,
+           const std::string&,
+           const OverwriteObject,
+           const youtils::CheckSum* = nullptr,
+           const boost::shared_ptr<Condition>& = nullptr) override final;
+
+    virtual std::unique_ptr<youtils::UniqueObjectTag>
+    write_tag_(const Namespace&,
+               const boost::filesystem::path&,
+               const std::string&,
+               const youtils::UniqueObjectTag*,
+               const OverwriteObject) override final;
+
+    virtual std::unique_ptr<youtils::UniqueObjectTag>
+    read_tag_(const Namespace&,
+              const boost::filesystem::path&,
+              const std::string&) override final;
 
     virtual bool
     objectExists_(const Namespace& nspace,
                   const std::string& name) override final;
 
-    virtual bool
-    hasExtendedApi_() const override final
-    {
-        return true;
-    }
-
     virtual void
-    remove_(const Namespace& nspace,
-            const std::string& name,
-            const ObjectMayNotExist) override final;
+    remove_(const Namespace&,
+            const std::string&,
+            const ObjectMayNotExist,
+            const boost::shared_ptr<Condition>& = nullptr) override final;
 
     virtual uint64_t
     getSize_(const Namespace& nspace,
@@ -136,66 +149,7 @@ public:
                   const PartialReads& partial_reads,
                   InsistOnLatestVersion) override final;
 
-    virtual backend::ObjectInfo
-    x_getMetadata_(const Namespace& nspace,
-                   const std::string& name) override final;
-
-    virtual backend::ObjectInfo
-    x_setMetadata_(const Namespace& nspace,
-                   const std::string& name,
-                   const backend::ObjectInfo::CustomMetaData& metadata) override final;
-
-    virtual backend::ObjectInfo
-    x_updateMetadata_(const Namespace& nspace,
-                      const std::string& name,
-                      const backend::ObjectInfo::CustomMetaData& metadata) override final;
-
-    //the x_read_* functions can also return ObjectInfo but that's more involved as it's not returned as Json
-    virtual backend::ObjectInfo
-    x_read_(const Namespace& nspace,
-            const boost::filesystem::path& destination,
-            const std::string& name,
-            InsistOnLatestVersion) override final;
-
-    virtual backend::ObjectInfo
-    x_read_(const Namespace& nspace,
-            std::string& destination,
-            const std::string& name,
-            InsistOnLatestVersion) override final;
-
-    virtual backend::ObjectInfo
-    x_read_(const Namespace& nspace,
-            std::stringstream& destination,
-            const std::string& name,
-            InsistOnLatestVersion) override final;
-
-    virtual backend::ObjectInfo
-    x_write_(const Namespace& nspace,
-             const boost::filesystem::path &location,
-             const std::string& name,
-             const OverwriteObject,
-             const backend::ETag* etag,
-             const youtils::CheckSum* chksum) override final;
-
-    virtual backend::ObjectInfo
-    x_write_(const Namespace& nspace,
-             const std::string& istr,
-             const std::string& name,
-             const OverwriteObject,
-             const backend::ETag* etag,
-             const youtils::CheckSum* chksum) override final;
-
-    virtual backend::ObjectInfo
-    x_write_(const Namespace& nspace,
-             std::stringstream& strm,
-             const std::string& name,
-             const OverwriteObject,
-             const backend::ETag* etag,
-             const youtils::CheckSum* chksum)  override final;
-
     using KeyType = boost::filesystem::path;
-
-
     using ValueType = youtils::FileDescriptor;
 
     using LRUCacheType = youtils::LRUCache<KeyType,
@@ -204,20 +158,6 @@ public:
     const static size_t lru_cache_size = 32;
 
 private:
-    // CryptoPP::Weak::MD5 md5_;
-
-    void
-    getStringMD5(const std::string& input,
-                 std::string& output);
-
-    void
-    getFileMD5(const boost::filesystem::path& input,
-               std::string& destination,
-               std::string& md5);
-
-
-
-
     static void
     EvictFromCache(const KeyType&,
                    const ValueType&)
@@ -227,12 +167,11 @@ private:
     LRUCacheType&
     lruCache();
 
+protected:
     DECLARE_LOGGER("LocalConnection");
 
-protected:
-    typedef boost::mutex lock_type;
-    static lock_type lock_;
     boost::filesystem::path path_;
+    boost::interprocess::named_mutex lock_;
     struct timespec timespec_;
     const EnablePartialRead enable_partial_read_;
     const SyncObjectAfterWrite sync_object_after_write_;
@@ -250,6 +189,19 @@ protected:
     boost::filesystem::path
     checkedObjectPath_(const Namespace& nspace,
                        const std::string& objname) const;
+
+    void
+    verify_tag_(const Namespace&,
+                const std::string*,
+                const youtils::UniqueObjectTag*) const;
+
+    void
+    copy_(const Namespace&,
+          const boost::filesystem::path&,
+          const std::string& obj_name,
+          const OverwriteObject,
+          const std::string* tag_name,
+          const youtils::UniqueObjectTag* prev_tag);
 };
 
 }

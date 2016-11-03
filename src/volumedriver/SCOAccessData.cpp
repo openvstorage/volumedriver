@@ -13,19 +13,21 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "BackendTasks.h"
+#include "ClusterLocation.h"
+#include "SCOAccessData.h"
+
 #include <cmath>
 
 #include <boost/filesystem/fstream.hpp>
-#include <boost/scope_exit.hpp>
 
-#include "backend/BackendException.h"
-#include "SCOAccessData.h"
-#include "ClusterLocation.h"
-#include "BackendTasks.h"
-#include "youtils/FileUtils.h"
+#include <youtils/FileUtils.h>
+#include <backend/BackendException.h>
 
 namespace volumedriver
 {
+
+namespace be = backend;
 
 SCOAccessData::SCOAccessData(const backend::Namespace& nspace,
                              float read_activity)
@@ -172,7 +174,8 @@ SCOAccessDataPersistor::pull(bool must_exist)
 }
 
 void
-SCOAccessDataPersistor::push(const SCOAccessData& sad)
+SCOAccessDataPersistor::push(const SCOAccessData& sad,
+                             const boost::shared_ptr<be::Condition>& cond)
 {
     VERIFY(sad.getNamespace() == bi_->getNS());
 
@@ -187,7 +190,9 @@ SCOAccessDataPersistor::push(const SCOAccessData& sad)
 
     bi_->write(p.string(),
                backend_name,
-               OverwriteObject::T);
+               OverwriteObject::T,
+               nullptr,
+               cond);
 }
 
 }

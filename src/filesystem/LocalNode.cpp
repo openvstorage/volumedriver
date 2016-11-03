@@ -293,9 +293,9 @@ LocalNode::with_volume_pointer_(R (LocalNode::*fn)(vd::WeakVolumePtr,
                        std::forward<A>(args)...);
 }
 
-template<typename... A>
-void
-LocalNode::maybe_retry_(void (*fn)(A... args),
+template<typename R, typename... A>
+R
+LocalNode::maybe_retry_(R (*fn)(A... args),
                         A... args)
 {
     uint64_t attempt = 0;
@@ -307,8 +307,7 @@ LocalNode::maybe_retry_(void (*fn)(A... args),
 
         try
         {
-            (*fn)(args...);
-            return;
+            return (*fn)(std::forward<A>(args)...);
         }
         catch (vd::TransientException& e)
         {
@@ -392,11 +391,14 @@ LocalNode::read(const Object& obj,
     }
     else
     {
-        with_volume_pointer_(&LocalNode::read_,
-                             obj.id,
-                             buf,
-                             size,
-                             off);
+        with_volume_pointer_<void,
+                             uint8_t*,
+                             size_t*,
+                             off_t>(&LocalNode::read_,
+                                    obj.id,
+                                    buf,
+                                    size,
+                                    off);
     }
 }
 
@@ -487,22 +489,22 @@ LocalNode::read_(vd::WeakVolumePtr vol,
     if (unaligned)
     {
         std::vector<uint8_t> bounce_buf(rsize);
-        maybe_retry_(&api::Read,
-                     vol,
-                     lba,
-                     bounce_buf.data(),
-                     bounce_buf.size());
+        maybe_retry_<void>(&api::Read,
+                           vol,
+                           lba,
+                           bounce_buf.data(),
+                           bounce_buf.size());
 
         memcpy(buf, bounce_buf.data() + lbaoff, to_read);
     }
     else
     {
         ASSERT(to_read == rsize);
-        maybe_retry_(&api::Read,
-                     vol,
-                     lba,
-                     buf,
-                     to_read);
+        maybe_retry_<void>(&api::Read,
+                           vol,
+                           lba,
+                           buf,
+                           to_read);
     }
     *size = to_read;
 }
@@ -511,7 +513,8 @@ void
 LocalNode::write(const Object& obj,
                  const uint8_t* buf,
                  size_t* size,
-                 off_t off)
+                 off_t off,
+                 vd::DtlInSync& dtl_in_sync)
 {
     ASSERT(size);
 
@@ -544,6 +547,7 @@ LocalNode::write(const Object& obj,
                                                     off,
                                                     buf,
                                                     *size);
+        dtl_in_sync = vd::DtlInSync::T;
     }
     else
     {
@@ -551,20 +555,30 @@ LocalNode::write(const Object& obj,
                          off))
         {
             fungi::ScopedWriteLock wg(*l);
-            with_volume_pointer_(&LocalNode::write_,
-                                 obj.id,
-                                 buf,
-                                 *size,
-                                 off);
+            with_volume_pointer_<void,
+                                 const uint8_t*,
+                                 size_t,
+                                 off_t,
+                                 vd::DtlInSync&>(&LocalNode::write_,
+                                                 obj.id,
+                                                 buf,
+                                                 *size,
+                                                 off,
+                                                 dtl_in_sync);
         }
         else
         {
             fungi::ScopedReadLock rg(*l);
-            with_volume_pointer_(&LocalNode::write_,
-                                 obj.id,
-                                 buf,
-                                 *size,
-                                 off);
+            with_volume_pointer_<void,
+                                 const uint8_t*,
+                                 size_t,
+                                 off_t,
+                                 vd::DtlInSync&>(&LocalNode::write_,
+                                                 obj.id,
+                                                 buf,
+                                                 *size,
+                                                 off,
+                                                 dtl_in_sync);
         }
     }
 }
@@ -574,7 +588,8 @@ LocalNode::write(const FastPathCookie& cookie,
                  const ObjectId& id,
                  const uint8_t* buf,
                  size_t* size,
-                 off_t off)
+                 off_t off,
+                 vd::DtlInSync& dtl_in_sync)
 {
     ASSERT(size);
 
@@ -604,7 +619,8 @@ LocalNode::write(const FastPathCookie& cookie,
                       id,
                       buf,
                       size,
-                      off);
+                      off,
+                      dtl_in_sync);
     }
     else
     {
@@ -613,7 +629,8 @@ LocalNode::write(const FastPathCookie& cookie,
                       id,
                       buf,
                       size,
-                      off);
+                      off,
+                      dtl_in_sync);
     }
 }
 
@@ -622,7 +639,8 @@ LocalNode::write_(const FastPathCookie& cookie,
                   const ObjectId& id,
                   const uint8_t* buf,
                   size_t* size,
-                  off_t off)
+                  off_t off,
+                  vd::DtlInSync& dtl_in_sync)
 {
     vd::SharedVolumePtr vol(cookie->volume.lock());
     if (vol != nullptr)
@@ -630,7 +648,8 @@ LocalNode::write_(const FastPathCookie& cookie,
         write_(vol,
                buf,
                *size,
-               off);
+               off,
+               dtl_in_sync);
         return cookie;
     }
     else
@@ -646,7 +665,8 @@ void
 LocalNode::write_(vd::WeakVolumePtr vol,
                   const uint8_t* buf,
                   const size_t size,
-                  const off_t off)
+                  const off_t off,
+                  vd::DtlInSync& dtl_in_sync)
 {
     const uint64_t lbasize = api::GetLbaSize(vol);
     const uint64_t lba = off / lbasize;
@@ -668,41 +688,43 @@ LocalNode::write_(vd::WeakVolumePtr vol,
     LOG_TRACE("writing, off " << (lba * lbasize) << " (LBA " << lba <<
               "), size " << wsize << ", unaligned " << unaligned);
 
-    typedef void (Writer)(vd::WeakVolumePtr,
-                          uint64_t,
-                          const uint8_t*,
-                          uint64_t);
+    using Writer = vd::DtlInSync (*)(vd::WeakVolumePtr,
+                                     uint64_t,
+                                     const uint8_t*,
+                                     uint64_t);
+
     // Const casts here are necessary
     if (unaligned)
     {
         std::vector<uint8_t> bounce_buf(wsize);
 
-        maybe_retry_(&api::Read,
-                     vol,
-                     const_cast<uint64_t&>(lba),
-                     bounce_buf.data(),
-                     bounce_buf.size());
+        maybe_retry_<void>(&api::Read,
+                           vol,
+                           const_cast<uint64_t&>(lba),
+                           bounce_buf.data(),
+                           bounce_buf.size());
 
         memcpy(bounce_buf.data() + lbaoff, buf, size);
 
-        maybe_retry_(static_cast<Writer*>(&api::Write),
-                     vol,
-                     lba,
-                     static_cast<const unsigned char*>(bounce_buf.data()),
-                     wsize);
+        dtl_in_sync = maybe_retry_<vd::DtlInSync>(static_cast<Writer>(&api::Write),
+                                                  vol,
+                                                  lba,
+                                                  static_cast<const unsigned char*>(bounce_buf.data()),
+                                                  wsize);
     }
     else
     {
-        maybe_retry_(static_cast<Writer*>(&api::Write),
-                     vol,
-                     lba,
-                     buf,
-                     wsize);
+        maybe_retry_<vd::DtlInSync>(static_cast<Writer>(&api::Write),
+                                    vol,
+                                    lba,
+                                    buf,
+                                    wsize);
     }
 }
 
 void
-LocalNode::sync(const Object& obj)
+LocalNode::sync(const Object& obj,
+                vd::DtlInSync& dtl_in_sync)
 {
     tracepoint(openvstorage_filesystem,
 	       local_object_sync_start,
@@ -723,17 +745,21 @@ LocalNode::sync(const Object& obj)
     {
         convert_fdriver_exceptions_<void>(&fd::ContainerManager::sync,
                                           obj);
+        dtl_in_sync = vd::DtlInSync::T;
     }
     else
     {
-        with_volume_pointer_(&LocalNode::sync_,
-                             obj.id);
+        with_volume_pointer_<void,
+                             vd::DtlInSync&>(&LocalNode::sync_,
+                                             obj.id,
+                                             dtl_in_sync);
     }
 }
 
 FastPathCookie
 LocalNode::sync(const FastPathCookie& cookie,
-                const ObjectId& id)
+                const ObjectId& id,
+                vd::DtlInSync& dtl_in_sync)
 {
     tracepoint(openvstorage_filesystem,
 	       local_object_sync_start,
@@ -754,7 +780,8 @@ LocalNode::sync(const FastPathCookie& cookie,
 
     if (vol != nullptr)
     {
-        sync_(vol);
+        sync_(vol,
+              dtl_in_sync);
 
         return cookie;
     }
@@ -766,9 +793,10 @@ LocalNode::sync(const FastPathCookie& cookie,
 }
 
 void
-LocalNode::sync_(vd::WeakVolumePtr vol)
+LocalNode::sync_(vd::WeakVolumePtr vol,
+                 vd::DtlInSync& dtl_in_sync)
 {
-    api::Sync(vol);
+    dtl_in_sync = api::Sync(vol);
 }
 
 uint64_t
@@ -1391,11 +1419,14 @@ LocalNode::vaai_filecopy(const ObjectId& src_id,
              &read_size,
              offset);
 
+        vd::DtlInSync dtl_in_sync = vd::DtlInSync::F;
+
         size_t write_size = read_size;
         write(dst_obj,
               buf,
               &write_size,
-              offset);
+              offset,
+              dtl_in_sync);
         if (write_size != read_size)
         {
             throw fungi::IOException("Couldn't write whole buffer");

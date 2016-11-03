@@ -18,9 +18,9 @@
 
 #include "GlobalLockStore.h"
 #include "HeartBeatLock.h"
-#include "GlobalLockTag.h"
 #include "HeartBeatLock.h"
 #include "Logging.h"
+#include "UniqueObjectTag.h"
 
 #include <boost/chrono.hpp>
 #include <boost/chrono/system_clocks.hpp>
@@ -64,7 +64,7 @@ private:
     DECLARE_LOGGER("HeartBeatLockCommunicator");
 
     GlobalLockStorePtr lock_store_;
-    GlobalLockTag tag_;
+    std::unique_ptr<UniqueObjectTag> tag_;
     HeartBeatLock lock_;
 
     // Don't try to update more than this number of times...

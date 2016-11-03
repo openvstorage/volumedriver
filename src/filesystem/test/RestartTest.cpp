@@ -91,12 +91,12 @@ TEST_F(RestartTest, offlined_node)
                         vfs::ClusterNodeStatus::State::Offline);
 
     EXPECT_EQ(vfs::ClusterNodeStatus::State::Offline,
-              reg->get_node_state(local_node_id()));
+              reg->get_node_status(local_node_id()).state);
 
     ASSERT_NO_THROW(start_fs());
 
     EXPECT_EQ(vfs::ClusterNodeStatus::State::Online,
-              reg->get_node_state(local_node_id()));
+              reg->get_node_status(local_node_id()).state);
 }
 
 TEST_F(RestartTest, owner_tag)

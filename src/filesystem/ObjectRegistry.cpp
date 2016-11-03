@@ -971,6 +971,14 @@ ObjectRegistry::do_prepare_set_volume_as_template_(const std::string& key,
         }
     case ObjectType::Volume:
         {
+            if (not old_treeconfig.descendants.empty())
+            {
+                LOG_ERROR(ID() << ": cannot convert volume to template as it still has descendants");
+                throw InvalidOperationException() <<
+                error_object_id(old_reg.volume_id) <<
+                error_desc("cannot convert a volume with descendants into a template");
+            }
+
             reg = boost::make_shared<ObjectRegistration>(old_reg.getNS(),
                                                          old_reg.volume_id,
                                                          node_id_,

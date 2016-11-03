@@ -18,8 +18,9 @@
 #include "tracing.h"
 #include "context.h"
 #include "ShmContext.h"
-#include "NetworkXioContext.h"
+#include "NetworkHAContext.h"
 #include "Utils.h"
+#include "Logger.h"
 
 #include <youtils/SpinLock.h>
 #include <youtils/System.h>
@@ -41,6 +42,8 @@
 #define unlikely(x)     (x)
 #endif
 
+namespace libvoldrv = libovsvolumedriver;
+
 ovs_ctx_attr_t*
 ovs_ctx_attr_new()
 {
@@ -50,6 +53,7 @@ ovs_ctx_attr_new()
         attr->transport = TransportType::Error;
         attr->port = 0;
         attr->network_qdepth = 256;
+        attr->enable_ha = false;
         return attr;
     }
     catch (const std::bad_alloc&)
@@ -122,6 +126,18 @@ ovs_ctx_attr_set_network_qdepth(ovs_ctx_attr_t *attr,
     return 0;
 }
 
+int
+ovs_ctx_attr_enable_ha(ovs_ctx_attr_t *attr)
+{
+    if (attr == NULL)
+    {
+        errno = EINVAL;
+        return -1;
+    }
+    attr->enable_ha = true;
+    return 0;
+}
+
 ovs_ctx_t*
 ovs_ctx_new(const ovs_ctx_attr_t *attr)
 {
@@ -157,14 +173,20 @@ ovs_ctx_new(const ovs_ctx_attr_t *attr)
         return NULL;
     }
 
+    const std::string loglevel_key("LIBOVSVOLUMEDRIVER_LOGLEVEL");
+    const youtils::Severity severity(
+            youtils::System::get_env_with_default(loglevel_key,
+                                                  youtils::Severity::info));
+    libvoldrv::Logger::ovs_log_init(severity);
     try
     {
         switch (attr->transport)
         {
         case TransportType::TCP:
         case TransportType::RDMA:
-            ctx = new NetworkXioContext(uri,
-                                        attr->network_qdepth);
+            ctx = new libvoldrv::NetworkHAContext(uri,
+                                                  attr->network_qdepth,
+                                                  attr->enable_ha);
             break;
         case TransportType::SharedMemory:
             ctx = new ShmContext;
@@ -744,18 +766,16 @@ _ovs_submit_aio_request(ovs_ctx_t *ctx,
     switch (op)
     {
     case RequestOp::Read:
-    {
-        /* on error returns -1, errno is already set */
-        r = ctx->send_read_request(ovs_aiocbp,
-                                   request);
-    }
+        {
+            /* on error returns -1, errno is already set */
+            r = ctx->send_read_request(request);
+        }
         break;
     case RequestOp::Write:
-    {
-        /* on error returns -1, errno is already set */
-        r = ctx->send_write_request(ovs_aiocbp,
-                                    request);
-    }
+        {
+            /* on error returns -1, errno is already set */
+            r = ctx->send_write_request(request);
+        }
         break;
     case RequestOp::Flush:
     case RequestOp::AsyncFlush:

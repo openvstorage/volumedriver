@@ -16,18 +16,23 @@
 #ifndef __NETWORK_XIO_CONTEXT_H
 #define __NETWORK_XIO_CONTEXT_H
 
+#include "NetworkHAContext.h"
 #include "NetworkXioClient.h"
 #include "context.h"
 
-struct NetworkXioContext : public ovs_context_t
+namespace libovsvolumedriver
 {
-    volumedriverfs::NetworkXioClientPtr net_client_;
-    std::string uri_;
-    uint64_t net_client_qdepth_;
-    std::string volname_;
 
+class NetworkXioContext
+    : public ovs_context_t
+// this is just a bandaid for the moment - cf. NetworkXioContext::open
+    , public std::enable_shared_from_this<NetworkXioContext>
+{
+public:
     NetworkXioContext(const std::string& uri,
-                      uint64_t net_client_qdepth);
+                      uint64_t net_client_qdepth,
+                      NetworkHAContext& ha_ctx,
+                      bool ha_try_reconnect);
 
     ~NetworkXioContext();
 
@@ -40,6 +45,11 @@ struct NetworkXioContext : public ovs_context_t
     int
     open_volume(const char *volume_name,
                 int oflag);
+
+    int
+    open_volume_(const char *volume_name,
+                 int oflag,
+                 bool should_insert_request);
 
     void
     close_volume();
@@ -85,15 +95,20 @@ struct NetworkXioContext : public ovs_context_t
     list_volumes(std::vector<std::string>& volumes);
 
     int
-    send_read_request(struct ovs_aiocb *ovs_aiocbp,
-                      ovs_aio_request *request);
+    list_cluster_node_uri(std::vector<std::string>& uris);
 
     int
-    send_write_request(struct ovs_aiocb *ovs_aiocbp,
-                       ovs_aio_request *request);
+    get_volume_uri(const char* volume_name,
+                   std::string& uri) override final;
 
     int
-    send_flush_request(ovs_aio_request *request);
+    send_read_request(ovs_aio_request*) override final;
+
+    int
+    send_write_request(ovs_aio_request*) override final;
+
+    int
+    send_flush_request(ovs_aio_request*) override final;
 
     int
     stat_volume(struct stat *st);
@@ -103,6 +118,18 @@ struct NetworkXioContext : public ovs_context_t
 
     int
     deallocate(ovs_buffer_t *ptr);
+
+    bool
+    is_dtl_in_sync() override final;
+
+private:
+    libovsvolumedriver::NetworkXioClientPtr net_client_;
+    std::string uri_;
+    uint64_t net_client_qdepth_;
+    std::string volname_;
+    NetworkHAContext& ha_ctx_;
+    bool ha_try_reconnect_;
 };
 
+} //namespace libovsvolumedriver
 #endif //__NETWORK_XIO_CONTEXT_H

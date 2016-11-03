@@ -52,7 +52,7 @@ operator<<(std::ostream& os,
     case ObjectType::Volume:
         return os << "Volume";
     case ObjectType::Template:
-        return os << "File";
+        return os << "Template";
     }
     UNREACHABLE;
 }

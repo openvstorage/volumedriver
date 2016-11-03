@@ -25,7 +25,7 @@
 #include <youtils/Assert.h>
 #include <youtils/IOException.h>
 #include <youtils/Logging.h>
-#include <youtils/Weed.h>
+#include <youtils/Md5.h>
 
 namespace volumedriver
 {
@@ -213,7 +213,7 @@ public:
           uint32_t index)
     {
         VERIFY(device_fd_ >= 0);
-        std::vector<byte> vec(cluster_size_);
+        std::vector<uint8_t> vec(cluster_size_);
         VERIFY(pread(device_fd_, &vec[0], cluster_size_, (index+1) * cluster_size_) == (ssize_t)cluster_size_);
         youtils::Weed w (vec);
         if (w != key)

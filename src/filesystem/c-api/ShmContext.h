@@ -78,15 +78,20 @@ struct ShmContext : public ovs_context_t
     list_volumes(std::vector<std::string>& volumes);
 
     int
-    send_read_request(struct ovs_aiocb *ovs_aiocbp,
-                      ovs_aio_request *request);
+    list_cluster_node_uri(std::vector<std::string>& uris);
 
     int
-    send_write_request(struct ovs_aiocb *ovs_aiocbp,
-                       ovs_aio_request *request);
+    get_volume_uri(const char* volume_name,
+                   std::string& uri) override final;
 
     int
-    send_flush_request(ovs_aio_request *request);
+    send_read_request(ovs_aio_request*) override final;
+
+    int
+    send_write_request(ovs_aio_request*) override final;
+
+    int
+    send_flush_request(ovs_aio_request*) override final;
 
     int
     stat_volume(struct stat *st);
@@ -96,6 +101,9 @@ struct ShmContext : public ovs_context_t
 
     int
     deallocate(ovs_buffer_t *ptr);
+
+    bool
+    is_dtl_in_sync();
 };
 
 #endif //__SHM_CONTEXT_H

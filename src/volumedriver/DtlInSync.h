@@ -13,11 +13,16 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef YT_GLOBAL_LOCK_TAG_H_
-#define YT_GLOBAL_LOCK_TAG_H_
+#ifndef VD_DTL_IN_SYNC_H_
+#define VD_DTL_IN_SYNC_H_
 
-#include "StrongTypedString.h"
+#include <youtils/BooleanEnum.h>
 
-STRONG_TYPED_STRING(youtils, GlobalLockTag);
+namespace volumedriver
+{
 
-#endif // !YT_GLOBAL_LOCK_TAG_H_
+VD_BOOLEAN_ENUM(DtlInSync);
+
+}
+
+#endif // !VD_DTL_IN_SYNC_H_

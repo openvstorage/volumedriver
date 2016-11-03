@@ -18,6 +18,8 @@
 
 #define ATTRIBUTE_UNUSED __attribute__((unused))
 
+#include "volumedriver.h"
+
 #include <string>
 #include <libxio.h>
 
@@ -46,6 +48,7 @@ struct ovs_context_attr_t
     std::string host;
     int port;
     uint64_t network_qdepth;
+    bool enable_ha;
 };
 
 struct ovs_buffer

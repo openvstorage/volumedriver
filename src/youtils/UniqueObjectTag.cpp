@@ -13,8 +13,18 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "ObjectInfo.h"
+#include "UniqueObjectTag.h"
 
-// Local Variables: **
-// mode: c++ **
-// End: **
+#include <iostream>
+
+namespace youtils
+{
+
+std::ostream&
+operator<<(std::ostream& os,
+           const UniqueObjectTag& t)
+{
+    return os << t.str();
+}
+
+}

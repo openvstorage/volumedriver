@@ -13,14 +13,24 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "Logger.h"
 #include "NetworkXioContext.h"
 
+namespace libovsvolumedriver
+{
+
 NetworkXioContext::NetworkXioContext(const std::string& uri,
-                                     uint64_t net_client_qdepth)
+                                     uint64_t net_client_qdepth,
+                                     NetworkHAContext& ha_ctx,
+                                     bool ha_try_reconnect)
     : net_client_(nullptr)
     , uri_(uri)
     , net_client_qdepth_(net_client_qdepth)
+    , ha_ctx_(ha_ctx)
+    , ha_try_reconnect_(ha_try_reconnect)
 {
+    LIBLOGID_DEBUG("uri: " << uri <<
+                   ",queue depth: " << net_client_qdepth);
 }
 
 NetworkXioContext::~NetworkXioContext()
@@ -64,8 +74,9 @@ NetworkXioContext::aio_return(ovs_aiocb *ovs_aiocbp)
 }
 
 int
-NetworkXioContext::open_volume(const char *volume_name,
-                               int oflag __attribute__((unused)))
+NetworkXioContext::open_volume_(const char *volume_name,
+                                int oflag __attribute__((unused)),
+                                bool should_insert_request)
 {
     ssize_t r = 0;
     struct ovs_aiocb aio;
@@ -88,12 +99,21 @@ NetworkXioContext::open_volume(const char *volume_name,
     try
     {
         net_client_ =
-            std::make_shared<volumedriverfs::NetworkXioClient>(uri_,
-                    net_client_qdepth_);
+            std::make_shared<NetworkXioClient>(uri_,
+                                               net_client_qdepth_,
+                                               ha_ctx_,
+                                               ha_try_reconnect_);
+        // TODO: this has to go, and the enable_shared_from_this in the declaration with it.
+        if (should_insert_request)
+        {
+            ha_ctx_.assign_request_id(request.get());
+            ha_ctx_.insert_inflight_request(request.get(),
+                                            shared_from_this());
+        }
         net_client_->xio_send_open_request(volume_name,
                                            reinterpret_cast<void*>(request.get()));
     }
-    catch (const volumedriverfs::XioClientQueueIsBusyException&)
+    catch (const libovsvolumedriver::XioClientQueueIsBusyException&)
     {
         errno = EBUSY;  r = -1;
     }
@@ -116,6 +136,17 @@ NetworkXioContext::open_volume(const char *volume_name,
         return r;
     }
     return aio_return(&aio);
+}
+
+int
+NetworkXioContext::open_volume(const char *volume_name,
+                               int oflag)
+{
+    LIBLOGID_DEBUG("volume name: " << volume_name
+                   << ",oflag: " << oflag);
+    return open_volume_(volume_name,
+                        oflag,
+                        true);
 }
 
 void
@@ -143,10 +174,10 @@ NetworkXioContext::create_volume(const char *volume_name,
     }
     try
     {
-        volumedriverfs::NetworkXioClient::xio_create_volume(uri_,
-                                                            volume_name,
-                                                            size,
-                                                            static_cast<void*>(request.get()));
+        NetworkXioClient::xio_create_volume(uri_,
+                                            volume_name,
+                                            size,
+                                            static_cast<void*>(request.get()));
         errno = request->_errno; r = request->_rv;
     }
     catch (const std::bad_alloc&)
@@ -179,10 +210,10 @@ NetworkXioContext::truncate_volume(const char *volume_name,
     }
     try
     {
-        volumedriverfs::NetworkXioClient::xio_truncate_volume(uri_,
-                                                             volume_name,
-                                                             offset,
-                                                             static_cast<void*>(request.get()));
+        NetworkXioClient::xio_truncate_volume(uri_,
+                                              volume_name,
+                                              offset,
+                                              static_cast<void*>(request.get()));
         errno = request->_errno; r = request->_rv;
     }
     catch (const std::bad_alloc&)
@@ -220,9 +251,9 @@ NetworkXioContext::remove_volume(const char *volume_name)
     }
     try
     {
-        volumedriverfs::NetworkXioClient::xio_remove_volume(uri_,
-                                                            volume_name,
-                                                            static_cast<void*>(request.get()));
+        NetworkXioClient::xio_remove_volume(uri_,
+                                            volume_name,
+                                            static_cast<void*>(request.get()));
         errno = request->_errno; r = request->_rv;
     }
     catch (const std::bad_alloc&)
@@ -256,11 +287,11 @@ NetworkXioContext::snapshot_create(const char *volume_name,
     }
     try
     {
-        volumedriverfs::NetworkXioClient::xio_create_snapshot(uri_,
-                                                              volume_name,
-                                                              snapshot_name,
-                                                              timeout,
-                                                              static_cast<void*>(request.get()));
+        NetworkXioClient::xio_create_snapshot(uri_,
+                                              volume_name,
+                                              snapshot_name,
+                                              timeout,
+                                              static_cast<void*>(request.get()));
         errno = request->_errno; r = request->_rv;
     }
     catch (const std::bad_alloc&)
@@ -293,10 +324,10 @@ NetworkXioContext::snapshot_rollback(const char *volume_name,
     }
     try
     {
-        volumedriverfs::NetworkXioClient::xio_rollback_snapshot(uri_,
-                                                                volume_name,
-                                                                snapshot_name,
-                                                                static_cast<void*>(request.get()));
+        NetworkXioClient::xio_rollback_snapshot(uri_,
+                                                volume_name,
+                                                snapshot_name,
+                                                static_cast<void*>(request.get()));
         errno = request->_errno; r = request->_rv;
     }
     catch (const std::bad_alloc&)
@@ -329,10 +360,10 @@ NetworkXioContext::snapshot_remove(const char *volume_name,
     }
     try
     {
-        volumedriverfs::NetworkXioClient::xio_delete_snapshot(uri_,
-                                                              volume_name,
-                                                              snapshot_name,
-                                                              static_cast<void*>(request.get()));
+        NetworkXioClient::xio_delete_snapshot(uri_,
+                                              volume_name,
+                                              snapshot_name,
+                                              static_cast<void*>(request.get()));
         errno = request->_errno; r = request->_rv;
     }
     catch (const std::bad_alloc&)
@@ -366,11 +397,11 @@ NetworkXioContext::list_snapshots(std::vector<std::string>& snaps,
     }
     try
     {
-        volumedriverfs::NetworkXioClient::xio_list_snapshots(uri_,
-                                                             volume_name,
-                                                             snaps,
-                                                             size,
-                                                             static_cast<void*>(request.get()));
+        NetworkXioClient::xio_list_snapshots(uri_,
+                                             volume_name,
+                                             snaps,
+                                             size,
+                                             static_cast<void*>(request.get()));
         *saved_errno = request->_errno;
     }
     catch (const std::bad_alloc&)
@@ -402,10 +433,10 @@ NetworkXioContext::is_snapshot_synced(const char *volume_name,
     }
     try
     {
-        volumedriverfs::NetworkXioClient::xio_is_snapshot_synced(uri_,
-                                                                 volume_name,
-                                                                 snapshot_name,
-                                                                 static_cast<void*>(request.get()));
+        NetworkXioClient::xio_is_snapshot_synced(uri_,
+                                                 volume_name,
+                                                 snapshot_name,
+                                                 static_cast<void*>(request.get()));
         errno = request->_errno; r = request->_rv;
     }
     catch (const std::bad_alloc&)
@@ -424,8 +455,7 @@ NetworkXioContext::list_volumes(std::vector<std::string>& volumes)
 {
     try
     {
-        volumedriverfs::NetworkXioClient::xio_list_volumes(uri_,
-                                                           volumes);
+        NetworkXioClient::xio_list_volumes(uri_, volumes);
         return 0;
     }
     catch (const std::bad_alloc&)
@@ -440,10 +470,49 @@ NetworkXioContext::list_volumes(std::vector<std::string>& volumes)
 }
 
 int
-NetworkXioContext::send_read_request(struct ovs_aiocb *ovs_aiocbp,
-                                     ovs_aio_request *request)
+NetworkXioContext::list_cluster_node_uri(std::vector<std::string>& uris)
+{
+    try
+    {
+        NetworkXioClient::xio_list_cluster_node_uri(uri_, uris);
+        return 0;
+    }
+    catch (const std::bad_alloc&)
+    {
+        errno = ENOMEM;
+    }
+    catch (...)
+    {
+        errno = EIO;
+    }
+    return -1;
+}
+
+int
+NetworkXioContext::get_volume_uri(const char* volume_name,
+                                  std::string& volume_uri)
+{
+    try
+    {
+        NetworkXioClient::xio_get_volume_uri(uri_, volume_name, volume_uri);
+        return 0;
+    }
+    catch (const std::bad_alloc&)
+    {
+        errno = ENOMEM;
+    }
+    catch (...)
+    {
+        errno = EIO;
+    }
+    return -1;
+}
+
+int
+NetworkXioContext::send_read_request(ovs_aio_request* request)
 {
     int r = 0;
+    ovs_aiocb *ovs_aiocbp = request->ovs_aiocbp;
     try
     {
         net_client_->xio_send_read_request(ovs_aiocbp->aio_buf,
@@ -451,7 +520,7 @@ NetworkXioContext::send_read_request(struct ovs_aiocb *ovs_aiocbp,
                                            ovs_aiocbp->aio_offset,
                                            reinterpret_cast<void*>(request));
     }
-    catch (const volumedriverfs::XioClientQueueIsBusyException&)
+    catch (const libovsvolumedriver::XioClientQueueIsBusyException&)
     {
         errno = EBUSY;  r = -1;
     }
@@ -467,10 +536,10 @@ NetworkXioContext::send_read_request(struct ovs_aiocb *ovs_aiocbp,
 }
 
 int
-NetworkXioContext::send_write_request(struct ovs_aiocb *ovs_aiocbp,
-                                      ovs_aio_request *request)
+NetworkXioContext::send_write_request(ovs_aio_request *request)
 {
     int r = 0;
+    ovs_aiocb *ovs_aiocbp = request->ovs_aiocbp;
     try
     {
         net_client_->xio_send_write_request(ovs_aiocbp->aio_buf,
@@ -478,7 +547,7 @@ NetworkXioContext::send_write_request(struct ovs_aiocb *ovs_aiocbp,
                                             ovs_aiocbp->aio_offset,
                                             reinterpret_cast<void*>(request));
     }
-    catch (const volumedriverfs::XioClientQueueIsBusyException&)
+    catch (const libovsvolumedriver::XioClientQueueIsBusyException&)
     {
         errno = EBUSY;  r = -1;
     }
@@ -494,14 +563,14 @@ NetworkXioContext::send_write_request(struct ovs_aiocb *ovs_aiocbp,
 }
 
 int
-NetworkXioContext::send_flush_request(ovs_aio_request *request)
+NetworkXioContext::send_flush_request(ovs_aio_request* request)
 {
     int r = 0;
     try
     {
         net_client_->xio_send_flush_request(reinterpret_cast<void*>(request));
     }
-    catch (const volumedriverfs::XioClientQueueIsBusyException&)
+    catch (const libovsvolumedriver::XioClientQueueIsBusyException&)
     {
         errno = EBUSY;  r = -1;
     }
@@ -534,9 +603,9 @@ NetworkXioContext::stat_volume(struct stat *st)
     }
     try
     {
-        volumedriverfs::NetworkXioClient::xio_stat_volume(uri_,
-                                                          volname_,
-                                                          static_cast<void*>(request.get()));
+        NetworkXioClient::xio_stat_volume(uri_,
+                                          volname_,
+                                          static_cast<void*>(request.get()));
         errno = request->_errno;
         r = request->_errno ? -1 : 0;
         if (not request->_errno)
@@ -558,49 +627,23 @@ NetworkXioContext::stat_volume(struct stat *st)
 }
 
 ovs_buffer_t*
-NetworkXioContext::allocate(size_t size)
+NetworkXioContext::allocate(size_t size ATTR_UNUSED)
 {
-    ovs_buffer_t *buf = new ovs_buffer_t;
-    int r  = net_client_->allocate(&buf->mem,
-                                   size);
-    if (r < 0)
-    {
-        void *ptr;
-        /* try to be on the safe side with 4k alignment */
-        int ret = posix_memalign(&ptr, 4096, size);
-        if (ret != 0)
-        {
-            errno = ret;
-            delete buf;
-            return NULL;
-        }
-        else
-        {
-            buf->buf = ptr;
-            buf->size = size;
-            buf->from_mpool = false;
-        }
-    }
-    else
-    {
-        buf->buf = buf->mem.addr;
-        buf->size = buf->mem.length;
-        buf->from_mpool = true;
-    }
-    return buf;
+    errno = ENOSYS;
+    return nullptr;
 }
 
 int
-NetworkXioContext::deallocate(ovs_buffer_t *ptr)
+NetworkXioContext::deallocate(ovs_buffer_t *ptr ATTR_UNUSED)
 {
-    if (ptr->from_mpool)
-    {
-        net_client_->deallocate(&ptr->mem);
-    }
-    else
-    {
-        free(ptr->buf);
-    }
-    delete ptr;
-    return 0;
+    errno = ENOSYS;
+    return -1;
 }
+
+bool
+NetworkXioContext::is_dtl_in_sync()
+{
+    return net_client_->is_dtl_in_sync();
+}
+
+} //namespace libovsvolumedriver

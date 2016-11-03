@@ -34,6 +34,7 @@ struct ovs_aio_request
     ssize_t _rv;
     pthread_cond_t _cond;
     pthread_mutex_t _mutex;
+    uint64_t _id;
 
     ovs_aio_request(RequestOp op,
                     struct ovs_aiocb *aio,
@@ -163,7 +164,8 @@ struct ovs_aio_request
     static void
     handle_xio_request(ovs_aio_request *request,
                        ssize_t retval,
-                       int errval)
+                       int errval,
+                       bool sched)
     {
         ovs_completion_t *completion = request->get_completion();
         struct ovs_aiocb *aiocbp = request->get_aio();
@@ -177,7 +179,14 @@ struct ovs_aio_request
                 delete aiocbp;
                 delete request;
             }
-            AioCompletion::get_aio_context().schedule(completion);
+            if (sched)
+            {
+                AioCompletion::get_aio_context().schedule(completion);
+            }
+            else
+            {
+                completion->complete_cb(completion, completion->cb_arg);
+            }
         }
     }
 

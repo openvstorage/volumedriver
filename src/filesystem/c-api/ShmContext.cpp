@@ -15,7 +15,7 @@
 
 #include "ShmContext.h"
 
-namespace vfs = volumedriverfs;
+namespace libvoldrv = libovsvolumedriver;
 
 ShmContext::ShmContext()
     : shm_ctx_(nullptr)
@@ -66,8 +66,8 @@ ShmContext::create_volume(const char *volume_name,
 {
     try
     {
-        vfs::ShmClient::create_volume(volume_name,
-                                      size);
+        libvoldrv::ShmClient::create_volume(volume_name,
+                                            size);
         return 0;
     }
     catch (const ShmIdlInterface::VolumeExists&)
@@ -86,7 +86,7 @@ ShmContext::remove_volume(const char *volume_name)
 {
     try
     {
-        vfs::ShmClient::remove_volume(volume_name);
+        libvoldrv::ShmClient::remove_volume(volume_name);
         return 0;
     }
     catch (const ShmIdlInterface::VolumeDoesNotExist&)
@@ -106,8 +106,8 @@ ShmContext::truncate_volume(const char *volume_name,
 {
     try
     {
-        vfs::ShmClient::truncate_volume(volume_name,
-                                        size);
+        libvoldrv::ShmClient::truncate_volume(volume_name,
+                                              size);
         return 0;
     }
     catch (const ShmIdlInterface::VolumeDoesNotExist&)
@@ -134,9 +134,9 @@ ShmContext::snapshot_create(const char *volume_name,
 {
     try
     {
-        vfs::ShmClient::create_snapshot(volume_name,
-                                        snapshot_name,
-                                        timeout);
+        libvoldrv::ShmClient::create_snapshot(volume_name,
+                                           snapshot_name,
+                                           timeout);
         return 0;
     }
     catch (const ShmIdlInterface::PreviousSnapshotNotOnBackendException&)
@@ -168,8 +168,8 @@ ShmContext::snapshot_rollback(const char *volume_name,
 {
     try
     {
-        vfs::ShmClient::rollback_snapshot(volume_name,
-                                          snapshot_name);
+        libvoldrv::ShmClient::rollback_snapshot(volume_name,
+                                                snapshot_name);
         return 0;
     }
     catch (const ShmIdlInterface::VolumeDoesNotExist&)
@@ -194,8 +194,8 @@ ShmContext::snapshot_remove(const char *volume_name,
 {
     try
     {
-        vfs::ShmClient::delete_snapshot(volume_name,
-                                        snapshot_name);
+        libvoldrv::ShmClient::delete_snapshot(volume_name,
+                                              snapshot_name);
         return 0;
     }
     catch (const ShmIdlInterface::VolumeDoesNotExist&)
@@ -226,8 +226,8 @@ ShmContext::list_snapshots(std::vector<std::string>& snaps,
 {
     try
     {
-        snaps = vfs::ShmClient::list_snapshots(volume_name,
-                                               size);
+        snaps = libvoldrv::ShmClient::list_snapshots(volume_name,
+                                                     size);
     }
     catch (const ShmIdlInterface::VolumeDoesNotExist&)
     {
@@ -245,8 +245,8 @@ ShmContext::is_snapshot_synced(const char *volume_name,
 {
     try
     {
-        return vfs::ShmClient::is_snapshot_synced(volume_name,
-                                                  snapshot_name);
+        return libvoldrv::ShmClient::is_snapshot_synced(volume_name,
+                                                        snapshot_name);
     }
     catch (const ShmIdlInterface::VolumeDoesNotExist&)
     {
@@ -268,7 +268,7 @@ ShmContext::list_volumes(std::vector<std::string>& volumes)
 {
     try
     {
-        volumes = vfs::ShmClient::list_volumes();
+        volumes = libvoldrv::ShmClient::list_volumes();
         return 0;
     }
     catch (...)
@@ -279,9 +279,24 @@ ShmContext::list_volumes(std::vector<std::string>& volumes)
 }
 
 int
-ShmContext::send_read_request(struct ovs_aiocb *ovs_aiocbp,
-                              ovs_aio_request *request)
+ShmContext::list_cluster_node_uri(std::vector<std::string>& /*uris*/)
 {
+    errno = ENOSYS;
+    return -1;
+}
+
+int
+ShmContext::get_volume_uri(const char* /* volume_name */,
+                           std::string& /*uri*/)
+{
+    errno = ENOSYS;
+    return -1;
+}
+
+int
+ShmContext::send_read_request(ovs_aio_request* request)
+{
+    ovs_aiocb *ovs_aiocbp = request->ovs_aiocbp;
     return shm_ctx_->shm_client_->send_read_request(ovs_aiocbp->aio_buf,
                                                     ovs_aiocbp->aio_nbytes,
                                                     ovs_aiocbp->aio_offset,
@@ -289,9 +304,9 @@ ShmContext::send_read_request(struct ovs_aiocb *ovs_aiocbp,
 }
 
 int
-ShmContext::send_write_request(struct ovs_aiocb *ovs_aiocbp,
-                               ovs_aio_request *request)
+ShmContext::send_write_request(ovs_aio_request *request)
 {
+    ovs_aiocb *ovs_aiocbp = request->ovs_aiocbp;
     return shm_ctx_->shm_client_->send_write_request(ovs_aiocbp->aio_buf,
                                                      ovs_aiocbp->aio_nbytes,
                                                      ovs_aiocbp->aio_offset,
@@ -299,7 +314,7 @@ ShmContext::send_write_request(struct ovs_aiocb *ovs_aiocbp,
 }
 
 int
-ShmContext::send_flush_request(ovs_aio_request *request)
+ShmContext::send_flush_request(ovs_aio_request* request)
 {
     struct ovs_aiocb *ovs_aiocbp = request->ovs_aiocbp;
     return shm_ctx_->shm_client_->send_write_request(ovs_aiocbp->aio_buf,
@@ -342,4 +357,11 @@ ShmContext::deallocate(ovs_buffer_t *ptr)
         errno = EFAULT;
     }
     return r;
+}
+
+bool
+ShmContext::is_dtl_in_sync()
+{
+    std::abort();
+    return false;
 }

@@ -67,6 +67,7 @@ public:
 
     WriteOnlyVolume(const VolumeConfig&,
                     const OwnerTag,
+                    const boost::shared_ptr<backend::Condition>&,
                     std::unique_ptr<SnapshotManagement>,
                     std::unique_ptr<DataStoreNG>,
                     NSIDMap);

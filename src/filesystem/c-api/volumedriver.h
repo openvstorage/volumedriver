@@ -92,6 +92,14 @@ ovs_ctx_attr_set_network_qdepth(ovs_ctx_attr_t *attr,
                                 const uint64_t qdepth);
 
 /*
+ * Enable high availability
+ * param attr: Context attributes object
+ * return: 0 on success, -1 on fail
+ */
+int
+ovs_ctx_attr_enable_ha(ovs_ctx_attr_t *attr);
+
+/*
  * Create Open vStorage context
  * param attr: Context attributes object
  * return: Open vStorage context on success, or NULL on fail

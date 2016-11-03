@@ -138,6 +138,7 @@ class ObjectRouter
 {
     friend class volumedriverfstest::FileSystemTestBase;
     friend class volumedriverfstest::ObjectRouterTest;
+    friend class volumedriverfstest::RemoteTest;
 
 public:
     using MaybeFailOverCacheConfig = boost::optional<volumedriver::FailOverCacheConfig>;
@@ -171,7 +172,8 @@ public:
           const ObjectId&,
           const uint8_t* buf,
           size_t size,
-          off_t off);
+          off_t off,
+          volumedriver::DtlInSync&);
 
     FastPathCookie
     read(const FastPathCookie&,
@@ -182,7 +184,8 @@ public:
 
     FastPathCookie
     sync(const FastPathCookie&,
-         const ObjectId&);
+         const ObjectId&,
+         volumedriver::DtlInSync&);
 
     uint64_t
     get_size(const ObjectId& id);
@@ -422,6 +425,8 @@ private:
     DECLARE_PARAMETER(vrouter_max_workers);
     DECLARE_PARAMETER(vrouter_registry_cache_capacity);
     DECLARE_PARAMETER(vrouter_xmlrpc_client_timeout_ms);
+    DECLARE_PARAMETER(vrouter_use_fencing);
+    DECLARE_PARAMETER(vrouter_send_sync_response);
 
     std::shared_ptr<youtils::LockedArakoon> larakoon_;
     std::shared_ptr<CachedObjectRegistry> object_registry_;
@@ -458,7 +463,7 @@ private:
     build_node_map_(const boost::optional<const boost::property_tree::ptree&>& pt);
 
     ZWorkerPool::MessageParts
-    redirected_work_(ZWorkerPool::MessageParts&& parts_in);
+    redirected_work_(ZWorkerPool::MessageParts parts_in);
 
     std::shared_ptr<ClusterNode>
     find_node_(const NodeId&) const;
@@ -478,7 +483,7 @@ private:
                  AttemptTheft,
                  const ObjectRegistration&,
                  FastPathCookie&,
-                 Args...);
+                 Args&&...);
 
     template<typename Ret,
              typename... Args>
@@ -489,7 +494,7 @@ private:
               AttemptTheft,
               const ObjectId&,
               FastPathCookie&,
-              Args...);
+              Args&&...);
 
     template<typename Ret,
              typename... Args>
@@ -500,7 +505,7 @@ private:
               AttemptTheft,
               ObjectRegistrationPtr,
               FastPathCookie&,
-              Args...);
+              Args&&...);
 
     template<typename Ret,
              typename... Args>
@@ -527,68 +532,63 @@ private:
     template<typename MigratePred,
              typename... Args>
     FastPathCookie
-    maybe_migrate_(MigratePred&& ,
+    maybe_migrate_(MigratePred&&,
                    void (ClusterNode::*fn)(const Object&,
                                            Args...),
                    const ObjectId&,
                    Args...);
 
     void
-    handle_message_(zmq::socket_t& router_sock);
+    handle_message_(zmq::socket_t&);
 
     zmq::message_t
-    handle_ping_(const vfsprotocol::PingMessage& req);
+    handle_ping_(const vfsprotocol::PingMessage&);
 
     zmq::message_t
-    handle_read_(const vfsprotocol::ReadRequest& req);
+    handle_read_(const vfsprotocol::ReadRequest&);
 
     zmq::message_t
-    handle_write_(const vfsprotocol::WriteRequest& req,
+    handle_write_(const vfsprotocol::WriteRequest&,
                   const zmq::message_t& data);
 
-
-    void
-    handle_sync_(const vfsprotocol::SyncRequest& req);
+    zmq::message_t
+    handle_sync_(const vfsprotocol::SyncRequest&);
 
     zmq::message_t
-    handle_get_size_(const vfsprotocol::GetSizeRequest& req);
+    handle_get_size_(const vfsprotocol::GetSizeRequest&);
 
     void
-    handle_resize_(const vfsprotocol::ResizeRequest& req);
+    handle_resize_(const vfsprotocol::ResizeRequest&);
 
     void
-    handle_delete_volume_(const vfsprotocol::DeleteRequest& req);
+    handle_delete_volume_(const vfsprotocol::DeleteRequest&);
 
     void
-    handle_transfer_(const vfsprotocol::TransferRequest& req);
+    handle_transfer_(const vfsprotocol::TransferRequest&);
 
     void
-    migrate_(const ObjectRegistration& reg,
-             OnlyStealFromOfflineNode only_steal_if_offline,
-             ForceRestart force);
+    migrate_(const ObjectRegistration&,
+             OnlyStealFromOfflineNode,
+             ForceRestart);
 
     bool
-    steal_(const ObjectRegistration& reg,
-           OnlyStealFromOfflineNode only_steal_if_offline);
-
-    void
-    maybe_register_base_(const ObjectId& id,
-                         const char* desc,
-                         std::function<void(const ObjectId&,
-                                            const backend::Namespace&)>&& fn);
+    steal_(const ObjectRegistration&,
+           OnlyStealFromOfflineNode,
+           ForceRestart);
 
     using PrepareRestartFun = std::function<void(const Object&)>;
 
     void
-    backend_restart_(const Object& obj,
-                     ForceRestart force,
-                     PrepareRestartFun prep_restart_fun);
+    backend_restart_(const Object&,
+                     ForceRestart,
+                     PrepareRestartFun);
 
     FastPathCookie
     write_(const ObjectId&,
            const uint8_t* buf,
            size_t* size,
-           off_t off);
+           off_t off,
+           volumedriver::DtlInSync&);
 
     FastPathCookie
     read_(const ObjectId&,
@@ -597,7 +597,8 @@ private:
           off_t off);
 
     FastPathCookie
-    sync_(const ObjectId&);
+    sync_(const ObjectId&,
+          volumedriver::DtlInSync&);
 
     template<typename... Args>
     FastPathCookie
@@ -606,6 +607,12 @@ private:
                  FastPathCookie (LocalNode::*fast_fun)(const FastPathCookie&,
                                                        Args...),
                  Args...);
+
+    bool
+    fencing_support_() const;
+
+    void
+    shutdown_();
 };
 
 }

@@ -117,6 +117,9 @@ private:
 
     void handle_list_cluster_node_uri(NetworkXioRequest *req);
 
+    void handle_get_volume_uri(NetworkXioRequest*,
+                               const std::string& volume_name);
+
     void handle_error(NetworkXioRequest *req,
                       NetworkXioMsgOpcode op,
                       int errval);

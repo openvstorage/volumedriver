@@ -109,6 +109,23 @@ static_evfd_stop_loop(int fd, int events, void *data)
     obj->evfd_stop_loop(fd, events, data);
 }
 
+template<class T>
+static int
+static_on_msg_error(xio_session *session,
+                    xio_status error,
+                    xio_msg_direction direction,
+                    xio_msg *msg,
+                    void *cb_user_context)
+{
+    T *obj = reinterpret_cast<T*>(cb_user_context);
+    if (obj == NULL)
+    {
+        assert(obj != NULL);
+        return -1;
+    }
+    return obj->on_msg_error(session, error, direction, msg);
+}
+
 NetworkXioServer::NetworkXioServer(FileSystem& fs,
                                    const yt::Uri& uri,
                                    size_t snd_rcv_queue_depth,
@@ -211,7 +228,7 @@ NetworkXioServer::run(std::promise<void> promise)
     xio_s_ops.on_msg_send_complete = static_on_msg_send_complete<NetworkXioClientData>;
     xio_s_ops.on_msg = static_on_request<NetworkXioClientData>;
     xio_s_ops.assign_data_in_buf = NULL;
-    xio_s_ops.on_msg_error = NULL;
+    xio_s_ops.on_msg_error = static_on_msg_error<NetworkXioServer>;
 
     LOG_INFO("bind XIO server to '" << uri_ << "'");
     server = std::shared_ptr<xio_server>(xio_bind(ctx.get(),
@@ -323,7 +340,6 @@ NetworkXioServer::allocate_client_data()
     {
         NetworkXioClientData *cd = new NetworkXioClientData;
         cd->disconnected = false;
-        cd->connection_closed = false;
         cd->refcnt = 0;
         cd->mpool = xio_mpool.get();
         cd->server = this;
@@ -332,17 +348,6 @@ NetworkXioServer::allocate_client_data()
     catch (const std::bad_alloc&)
     {
         return NULL;
-    }
-}
-
-void
-NetworkXioServer::clear_done_reqs(NetworkXioClientData *cd)
-{
-    while (not cd->done_reqs.empty())
-    {
-        NetworkXioRequest *req = cd->done_reqs.front();
-        cd->done_reqs.pop_front();
-        deallocate_request(req);
     }
 }
 
@@ -384,13 +389,6 @@ NetworkXioServer::destroy_session_connection(xio_session *session ATTR_UNUSED,
                                              xio_session_event_data *evdata)
 {
     auto cd = static_cast<NetworkXioClientData*>(evdata->conn_user_context);
-    if (cd->connection_closed)
-    {
-        while (not cd->done_reqs.empty())
-        {
-            clear_done_reqs(cd);
-        }
-    }
     cd->disconnected = true;
     cd->ioh->remove_fs_client_info();
     if (!cd->refcnt)
@@ -399,24 +397,6 @@ NetworkXioServer::destroy_session_connection(xio_session *session ATTR_UNUSED,
         delete cd->ioh;
         delete cd;
     }
-}
-
-void
-NetworkXioServer::mark_session_disconnected(xio_session *session ATTR_UNUSED,
-                                            xio_session_event_data *evdata)
-{
-    auto cd = static_cast<NetworkXioClientData*>(evdata->conn_user_context);
-    cd->disconnected = true;
-    return;
-}
-
-void
-NetworkXioServer::mark_session_closed(xio_session *session ATTR_UNUSED,
-                                      xio_session_event_data *evdata)
-{
-    auto cd = static_cast<NetworkXioClientData*>(evdata->conn_user_context);
-    cd->connection_closed = true;
-    return;
 }
 
 int
@@ -444,13 +424,11 @@ NetworkXioServer::on_session_event(xio_session *session,
         if (event_data->reason == XIO_E_TIMEOUT)
         {
             xio_disconnect(event_data->conn);
-            mark_session_closed(session, event_data);
         }
         break;
     case XIO_SESSION_CONNECTION_ERROR_EVENT:
         break;
     case XIO_SESSION_CONNECTION_DISCONNECTED_EVENT:
-        mark_session_disconnected(session, event_data);
         break;
     case XIO_SESSION_CONNECTION_TEARDOWN_EVENT:
         destroy_session_connection(session, event_data);
@@ -478,6 +456,7 @@ NetworkXioServer::allocate_request(NetworkXioClientData *cd,
         req->retval = 0;
         req->errval = 0;
         req->from_pool = true;
+        req->dtl_in_sync = true;
         cd->refcnt++;
         return req;
     }
@@ -523,13 +502,31 @@ NetworkXioServer::free_request(NetworkXioRequest *req)
 
 int
 NetworkXioServer::on_msg_send_complete(xio_session *session ATTR_UNUSED,
-                                       xio_msg *msg ATTR_UNUSED,
-                                       void *cb_user_ctx)
+                                       xio_msg *msg,
+                                       void *cb_user_ctx ATTR_UNUSED)
 {
-    NetworkXioClientData *cd = static_cast<NetworkXioClientData*>(cb_user_ctx);
-    NetworkXioRequest *req = cd->done_reqs.front();
-    cd->done_reqs.pop_front();
+    NetworkXioRequest *req = reinterpret_cast<NetworkXioRequest*>(msg->user_context);
     deallocate_request(req);
+    return 0;
+}
+
+int
+NetworkXioServer::on_msg_error(xio_session *session,
+                               xio_status error,
+                               xio_msg_direction direction,
+                               xio_msg *msg)
+{
+    if (direction == XIO_MSG_DIRECTION_OUT)
+    {
+        NetworkXioRequest *req = reinterpret_cast<NetworkXioRequest*>(msg->user_context);
+        deallocate_request(req);
+    }
+    else
+    {
+        LOG_ERROR("[" << session << "] message " << msg->request->sn
+                  << " failed. reason: " << xio_strerror(error));
+        xio_release_response(msg);
+    }
     return 0;
 }
 
@@ -551,7 +548,8 @@ NetworkXioServer::xio_send_reply(NetworkXioRequest *req)
     if ((req->op == NetworkXioMsgOpcode::ReadRsp ||
          req->op == NetworkXioMsgOpcode::ListVolumesRsp ||
          req->op == NetworkXioMsgOpcode::ListSnapshotsRsp ||
-         req->op == NetworkXioMsgOpcode::ListClusterNodeURIRsp) && req->data)
+         req->op == NetworkXioMsgOpcode::ListClusterNodeURIRsp ||
+         req->op == NetworkXioMsgOpcode::GetVolumeURIRsp) && req->data)
     {
         vmsg_sglist_set_nents(&req->xio_reply.out, 1);
         req->xio_reply.out.sgl_type = XIO_SGL_TYPE_IOV;
@@ -561,25 +559,13 @@ NetworkXioServer::xio_send_reply(NetworkXioRequest *req)
         req->xio_reply.out.data_iov.sglist[0].mr = req->reg_mem.mr;
     }
     req->xio_reply.flags = XIO_MSG_FLAG_IMM_SEND_COMP;
+    req->xio_reply.user_context = reinterpret_cast<void*>(req);
 
     int ret = xio_send_response(&req->xio_reply);
     if (ret != 0)
     {
         LOG_ERROR("failed to send reply: " << xio_strerror(xio_errno()));
         deallocate_request(req);
-    }
-    else
-    {
-        auto cd = static_cast<NetworkXioClientData*>(req->cd);
-        if (cd->disconnected)
-        {
-            clear_done_reqs(cd);
-            deallocate_request(req);
-        }
-        else
-        {
-            cd->done_reqs.push_back(req);
-        }
     }
 }
 

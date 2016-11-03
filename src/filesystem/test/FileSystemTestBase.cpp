@@ -32,13 +32,18 @@
 
 #include "../FuseInterface.h"
 #include "../ObjectRegistry.h"
+#include "../Protocol.h"
 #include "../Registry.h"
+#include "../RemoteNode.h"
 #include "../VirtualDiskFormat.h"
 #include "../VirtualDiskFormatVmdk.h"
 #include "../VirtualDiskFormatRaw.h"
+#include "../ZUtils.h"
 
 namespace volumedriverfstest
 {
+
+using namespace volumedriverfs;
 
 namespace ara = arakoon;
 namespace ba = boost::asio;
@@ -89,7 +94,7 @@ FileSystemTestBase::start_fs(bpt::ptree& pt, PutClusterNodeConfigsInRegistry put
         put_cluster_node_configs_in_registry(pt);
     }
 
-    fs_.reset(new vfs::FileSystem(pt));
+    fs_.reset(new FileSystem(pt));
 }
 
 void
@@ -105,56 +110,56 @@ FileSystemTestBase::TearDown()
     FileSystemTestSetup::TearDown();
 }
 
-vfs::ObjectId
-FileSystemTestBase::create_file(const vfs::FrontendPath& fname)
+ObjectId
+FileSystemTestBase::create_file(const FrontendPath& fname)
 {
     EXPECT_EQ(0, mknod(fname,
                        S_IFREG bitor S_IWUSR bitor S_IRUSR,
                        0));
 
-    vfs::DirectoryEntryPtr dentry(fs_->mdstore_.find_throw(fname));
+    DirectoryEntryPtr dentry(fs_->mdstore_.find_throw(fname));
     VERIFY(dentry != nullptr);
-    VERIFY(dentry->type() != vfs::DirectoryEntry::Type::Directory);
+    VERIFY(dentry->type() != DirectoryEntry::Type::Directory);
     return dentry->object_id();
 }
 
-vfs::ObjectId
-FileSystemTestBase::create_file(const vfs::ObjectId& parent_id,
+ObjectId
+FileSystemTestBase::create_file(const ObjectId& parent_id,
                                 const std::string& name)
 {
     EXPECT_EQ(0, mknod(parent_id,
                        name,
                        S_IFREG bitor S_IWUSR bitor S_IRUSR));
 
-    const vfs::FrontendPath fpath(fs_->mdstore_.find_path(parent_id) / name);
-    vfs::DirectoryEntryPtr dentry(fs_->mdstore_.find_throw(fpath));
+    const FrontendPath fpath(fs_->mdstore_.find_path(parent_id) / name);
+    DirectoryEntryPtr dentry(fs_->mdstore_.find_throw(fpath));
     VERIFY(dentry != nullptr);
-    VERIFY(dentry->type() != vfs::DirectoryEntry::Type::Directory);
+    VERIFY(dentry->type() != DirectoryEntry::Type::Directory);
     return dentry->object_id();
 }
 
-vfs::ObjectId
-FileSystemTestBase::create_file(const vfs::FrontendPath& path,
+ObjectId
+FileSystemTestBase::create_file(const FrontendPath& path,
                                  uint64_t size)
 {
-    const vfs::ObjectId id(create_file(path));
+    const ObjectId id(create_file(path));
     truncate(path, size);
     return id;
 }
 
-vfs::ObjectId
-FileSystemTestBase::create_file(const vfs::ObjectId& parent_id,
+ObjectId
+FileSystemTestBase::create_file(const ObjectId& parent_id,
                                 const std::string& name,
                                 uint64_t size)
 {
-    const vfs::ObjectId id(create_file(parent_id,
+    const ObjectId id(create_file(parent_id,
                                        name));
     truncate(id, size);
     return id;
 }
 
 void
-FileSystemTestBase::create_directory(const vfs::FrontendPath& path)
+FileSystemTestBase::create_directory(const FrontendPath& path)
 {
     VERIFY(not fs_->is_volume_path_(path));
     EXPECT_EQ(0, mkdir(path,
@@ -162,10 +167,10 @@ FileSystemTestBase::create_directory(const vfs::FrontendPath& path)
 }
 
 void
-FileSystemTestBase::create_directory(const vfs::ObjectId& parent_id,
+FileSystemTestBase::create_directory(const ObjectId& parent_id,
                                      const std::string& name)
 {
-    const vfs::FrontendPath fpath(fs_->mdstore_.find_path(parent_id) / name);
+    const FrontendPath fpath(fs_->mdstore_.find_path(parent_id) / name);
 
     VERIFY(not fs_->is_volume_path_(fpath));
     EXPECT_EQ(0, mkdir(parent_id,
@@ -174,34 +179,34 @@ FileSystemTestBase::create_directory(const vfs::ObjectId& parent_id,
 }
 
 void
-FileSystemTestBase::destroy_volume(const vfs::FrontendPath& fname)
+FileSystemTestBase::destroy_volume(const FrontendPath& fname)
 {
     VERIFY(fs_->is_volume_path_(fname));
 
     ASSERT_EQ(0, unlink(fname));
     ASSERT_THROW(fs_->mdstore_.find_throw(fname),
-                 vfs::HierarchicalArakoon::DoesNotExistException);
+                 HierarchicalArakoon::DoesNotExistException);
 }
 
 void
-FileSystemTestBase::destroy_volume(const vfs::ObjectId& parent_id,
+FileSystemTestBase::destroy_volume(const ObjectId& parent_id,
                                    const std::string& name)
 {
-    const vfs::FrontendPath fpath(fs_->mdstore_.find_path(parent_id) / name);
+    const FrontendPath fpath(fs_->mdstore_.find_path(parent_id) / name);
     VERIFY(fs_->is_volume_path_(fpath));
 
     ASSERT_EQ(0, unlink(parent_id, name));
     ASSERT_THROW(fs_->mdstore_.find_throw(fpath),
-                 vfs::HierarchicalArakoon::DoesNotExistException);
+                 HierarchicalArakoon::DoesNotExistException);
 }
 
 ssize_t
-FileSystemTestBase::write_to_file(const vfs::FrontendPath& fname,
+FileSystemTestBase::write_to_file(const FrontendPath& fname,
                                   const char* buf,
                                   uint64_t size,
                                   off_t off)
 {
-    vfs::Handle::Ptr h;
+    Handle::Ptr h;
 
     EXPECT_EQ(0, open(fname, h, O_WRONLY));
 
@@ -217,12 +222,12 @@ FileSystemTestBase::write_to_file(const vfs::FrontendPath& fname,
 }
 
 ssize_t
-FileSystemTestBase::write_to_file(const vfs::ObjectId& id,
+FileSystemTestBase::write_to_file(const ObjectId& id,
                                   const char* buf,
                                   uint64_t size,
                                   off_t off)
 {
-    vfs::Handle::Ptr h;
+    Handle::Ptr h;
 
     EXPECT_EQ(0, open(id, h, O_WRONLY));
 
@@ -238,7 +243,7 @@ FileSystemTestBase::write_to_file(const vfs::ObjectId& id,
 }
 
 ssize_t
-FileSystemTestBase::write_to_file(const vfs::FrontendPath& fname,
+FileSystemTestBase::write_to_file(const FrontendPath& fname,
                                    const std::string& pattern,
                                    uint64_t size,
                                    off_t off)
@@ -256,7 +261,7 @@ FileSystemTestBase::write_to_file(const vfs::FrontendPath& fname,
 }
 
 ssize_t
-FileSystemTestBase::write_to_file(const vfs::ObjectId& id,
+FileSystemTestBase::write_to_file(const ObjectId& id,
                                   const std::string& pattern,
                                   uint64_t size,
                                   off_t off)
@@ -274,12 +279,12 @@ FileSystemTestBase::write_to_file(const vfs::ObjectId& id,
 }
 
 ssize_t
-FileSystemTestBase::read_from_file(const vfs::FrontendPath& fname,
+FileSystemTestBase::read_from_file(const FrontendPath& fname,
                                     char* buf,
                                     uint64_t size,
                                     off_t off)
 {
-    vfs::Handle::Ptr h;
+    Handle::Ptr h;
 
     // ASSERT_EQ just does not work here so we'll have to have this crude construct.
     int ret = open(fname, h, O_RDONLY);
@@ -303,12 +308,12 @@ FileSystemTestBase::read_from_file(const vfs::FrontendPath& fname,
 }
 
 ssize_t
-FileSystemTestBase::read_from_file(const vfs::ObjectId& id,
+FileSystemTestBase::read_from_file(const ObjectId& id,
                                    char *buf,
                                    uint64_t size,
                                    off_t off)
 {
-    vfs::Handle::Ptr h;
+    Handle::Ptr h;
 
     int ret = open(id, h, O_RDONLY);
     EXPECT_EQ(0, ret);
@@ -331,36 +336,36 @@ FileSystemTestBase::read_from_file(const vfs::ObjectId& id,
 }
 
 int
-FileSystemTestBase::opendir(const vfs::FrontendPath& path,
-                            vfs::Handle::Ptr& h)
+FileSystemTestBase::opendir(const FrontendPath& path,
+                            Handle::Ptr& h)
 {
-    return vfs::FuseInterface::convert_exceptions<decltype(h)>(&vfs::FileSystem::opendir,
+    return FuseInterface::convert_exceptions<decltype(h)>(&FileSystem::opendir,
                                                                *fs_,
                                                                path,
                                                                h);
 }
 
 int
-FileSystemTestBase::releasedir(const vfs::FrontendPath& path,
-                               vfs::Handle::Ptr h)
+FileSystemTestBase::releasedir(const FrontendPath& path,
+                               Handle::Ptr h)
 {
-    return vfs::FuseInterface::convert_exceptions<decltype(h)>(&vfs::FileSystem::releasedir,
+    return FuseInterface::convert_exceptions<decltype(h)>(&FileSystem::releasedir,
                                                                *fs_,
                                                                path,
                                                                std::move(h));
 }
 
 int
-FileSystemTestBase::mkdir(const vfs::FrontendPath& path,
+FileSystemTestBase::mkdir(const FrontendPath& path,
                           mode_t mode)
 {
-    const vfs::UserId uid(::getuid());
-    const vfs::GroupId gid(::getgid());
-    const vfs::Permissions pms(mode);
+    const UserId uid(::getuid());
+    const GroupId gid(::getgid());
+    const Permissions pms(mode);
 
-    return vfs::FuseInterface::convert_exceptions<vfs::UserId,
-                                                  vfs::GroupId,
-                                                  vfs::Permissions>(&vfs::FileSystem::mkdir,
+    return FuseInterface::convert_exceptions<UserId,
+                                                  GroupId,
+                                                  Permissions>(&FileSystem::mkdir,
                                                                     *fs_,
                                                                     path,
                                                                     uid,
@@ -369,20 +374,20 @@ FileSystemTestBase::mkdir(const vfs::FrontendPath& path,
 }
 
 int
-FileSystemTestBase::mkdir(const vfs::ObjectId& parent_id,
+FileSystemTestBase::mkdir(const ObjectId& parent_id,
                           const std::string& name,
                           mode_t mode)
 {
-    const vfs::UserId uid(::getuid());
-    const vfs::GroupId gid(::getgid());
-    const vfs::Permissions pms(mode);
+    const UserId uid(::getuid());
+    const GroupId gid(::getgid());
+    const Permissions pms(mode);
 
-    return fs_convert_exceptions<const vfs::ObjectId&,
+    return fs_convert_exceptions<const ObjectId&,
                                  const std::string&,
-                                 vfs::UserId,
-                                 vfs::GroupId,
-                                 vfs::Permissions>(*fs_,
-                                                   &vfs::FileSystem::mkdir,
+                                 UserId,
+                                 GroupId,
+                                 Permissions>(*fs_,
+                                                   &FileSystem::mkdir,
                                                    parent_id,
                                                    name,
                                                    uid,
@@ -391,33 +396,33 @@ FileSystemTestBase::mkdir(const vfs::ObjectId& parent_id,
 }
 
 int
-FileSystemTestBase::rmdir(const vfs::FrontendPath& path)
+FileSystemTestBase::rmdir(const FrontendPath& path)
 {
-    return vfs::FuseInterface::convert_exceptions(&vfs::FileSystem::rmdir,
+    return FuseInterface::convert_exceptions(&FileSystem::rmdir,
                                                   *fs_,
                                                   path);
 }
 
 int
-FileSystemTestBase::rmdir(const vfs::ObjectId& id)
+FileSystemTestBase::rmdir(const ObjectId& id)
 {
-    return fs_convert_exceptions<const vfs::ObjectId&>(*fs_,
-                                                       &vfs::FileSystem::rmdir,
+    return fs_convert_exceptions<const ObjectId&>(*fs_,
+                                                       &FileSystem::rmdir,
                                                        id);
 }
 
 int
-FileSystemTestBase::mknod(const vfs::FrontendPath& path,
+FileSystemTestBase::mknod(const FrontendPath& path,
                           mode_t mode,
                           dev_t /* rdev */)
 {
-    const vfs::UserId uid(::getuid());
-    const vfs::GroupId gid(::getgid());
-    const vfs::Permissions pms(mode);
+    const UserId uid(::getuid());
+    const GroupId gid(::getgid());
+    const Permissions pms(mode);
 
-    return vfs::FuseInterface::convert_exceptions<vfs::UserId,
-                                                  vfs::GroupId,
-                                                  vfs::Permissions>(&vfs::FileSystem::mknod,
+    return FuseInterface::convert_exceptions<UserId,
+                                                  GroupId,
+                                                  Permissions>(&FileSystem::mknod,
                                                                     *fs_,
                                                                     path,
                                                                     uid,
@@ -426,20 +431,20 @@ FileSystemTestBase::mknod(const vfs::FrontendPath& path,
 }
 
 int
-FileSystemTestBase::mknod(const vfs::ObjectId& parent_id,
+FileSystemTestBase::mknod(const ObjectId& parent_id,
                           const std::string& name,
                           mode_t mode)
 {
-    const vfs::UserId uid(::getuid());
-    const vfs::GroupId gid(::getgid());
-    const vfs::Permissions pms(mode);
+    const UserId uid(::getuid());
+    const GroupId gid(::getgid());
+    const Permissions pms(mode);
 
-    return fs_convert_exceptions<const vfs::ObjectId&,
+    return fs_convert_exceptions<const ObjectId&,
                                  const std::string&,
-                                 vfs::UserId,
-                                 vfs::GroupId,
-                                 vfs::Permissions>(*fs_,
-                                                   &vfs::FileSystem::mknod,
+                                 UserId,
+                                 GroupId,
+                                 Permissions>(*fs_,
+                                                   &FileSystem::mknod,
                                                    parent_id,
                                                    name,
                                                    uid,
@@ -448,73 +453,73 @@ FileSystemTestBase::mknod(const vfs::ObjectId& parent_id,
 }
 
 int
-FileSystemTestBase::unlink(const vfs::FrontendPath& path)
+FileSystemTestBase::unlink(const FrontendPath& path)
 {
-    return vfs::FuseInterface::convert_exceptions(&vfs::FileSystem::unlink,
+    return FuseInterface::convert_exceptions(&FileSystem::unlink,
                                                   *fs_,
                                                   path);
 }
 
 int
-FileSystemTestBase::unlink(const vfs::ObjectId& parent_id,
+FileSystemTestBase::unlink(const ObjectId& parent_id,
                            const std::string& name)
 {
-    return fs_convert_exceptions<const vfs::ObjectId&,
+    return fs_convert_exceptions<const ObjectId&,
                                  const std::string&>(*fs_,
-                                                     &vfs::FileSystem::unlink,
+                                                     &FileSystem::unlink,
                                                      parent_id,
                                                      name);
 }
 
 int
-FileSystemTestBase::truncate(const vfs::FrontendPath& path,
+FileSystemTestBase::truncate(const FrontendPath& path,
                               off_t size)
 {
-    return vfs::FuseInterface::convert_exceptions(&vfs::FileSystem::truncate,
+    return FuseInterface::convert_exceptions(&FileSystem::truncate,
                                                   *fs_,
                                                   path,
                                                   size);
 }
 
 int
-FileSystemTestBase::truncate(const vfs::ObjectId& id,
+FileSystemTestBase::truncate(const ObjectId& id,
                              off_t size)
 {
-    return fs_convert_exceptions<const vfs::ObjectId&,
+    return fs_convert_exceptions<const ObjectId&,
                                  decltype(size)>(*fs_,
-                                                 &vfs::FileSystem::truncate,
+                                                 &FileSystem::truncate,
                                                  id,
                                                  size);
 }
 
 int
-FileSystemTestBase::getattr(const vfs::FrontendPath& path,
+FileSystemTestBase::getattr(const FrontendPath& path,
                              struct stat& st)
 {
-    return vfs::FuseInterface::convert_exceptions<decltype(st)>(&vfs::FileSystem::getattr,
+    return FuseInterface::convert_exceptions<decltype(st)>(&FileSystem::getattr,
                                                                 *fs_,
                                                                 path,
                                                                 st);
 }
 
 int
-FileSystemTestBase::getattr(const vfs::ObjectId& id,
+FileSystemTestBase::getattr(const ObjectId& id,
                             struct stat& st)
 {
-    return fs_convert_exceptions<const vfs::ObjectId&,
+    return fs_convert_exceptions<const ObjectId&,
                                  struct stat&>(*fs_,
-                                               &vfs::FileSystem::getattr,
+                                               &FileSystem::getattr,
                                                id,
                                                st);
 }
 
 int
-FileSystemTestBase::rename(const vfs::FrontendPath& from,
-                           const vfs::FrontendPath& to,
-                           vfs::FileSystem::RenameFlags flags)
+FileSystemTestBase::rename(const FrontendPath& from,
+                           const FrontendPath& to,
+                           FileSystem::RenameFlags flags)
 {
-    return vfs::FuseInterface::convert_exceptions<decltype(to),
-                                                  decltype(flags)>(&vfs::FileSystem::rename,
+    return FuseInterface::convert_exceptions<decltype(to),
+                                                  decltype(flags)>(&FileSystem::rename,
                                                                    *fs_,
                                                                    from,
                                                                    to,
@@ -522,18 +527,18 @@ FileSystemTestBase::rename(const vfs::FrontendPath& from,
 }
 
 int
-FileSystemTestBase::rename(const vfs::ObjectId& from_parent_id,
+FileSystemTestBase::rename(const ObjectId& from_parent_id,
                            const std::string& from_name,
-                           const vfs::ObjectId& to_parent_id,
+                           const ObjectId& to_parent_id,
                            const std::string& to_name,
-                           vfs::FileSystem::RenameFlags flags)
+                           FileSystem::RenameFlags flags)
 {
-    return fs_convert_exceptions<const vfs::ObjectId&,
+    return fs_convert_exceptions<const ObjectId&,
                                  const std::string&,
-                                 const vfs::ObjectId&,
+                                 const ObjectId&,
                                  const std::string&,
                                  decltype(flags)>(*fs_,
-                                                  &vfs::FileSystem::rename,
+                                                  &FileSystem::rename,
                                                   from_parent_id,
                                                   from_name,
                                                   to_parent_id,
@@ -542,12 +547,12 @@ FileSystemTestBase::rename(const vfs::ObjectId& from_parent_id,
 }
 
 int
-FileSystemTestBase::open(const vfs::FrontendPath& path,
-                         vfs::Handle::Ptr& h,
-                         int flags)
+FileSystemTestBase::open(const FrontendPath& path,
+                         Handle::Ptr& h,
+                         mode_t flags)
 {
-    return vfs::FuseInterface::convert_exceptions<mode_t,
-                                                  decltype(h)>(&vfs::FileSystem::open,
+    return FuseInterface::convert_exceptions<mode_t,
+                                                  decltype(h)>(&FileSystem::open,
                                                                *fs_,
                                                                path,
                                                                flags,
@@ -555,48 +560,48 @@ FileSystemTestBase::open(const vfs::FrontendPath& path,
 }
 
 int
-FileSystemTestBase::open(const vfs::ObjectId& id,
-                         vfs::Handle::Ptr& h,
+FileSystemTestBase::open(const ObjectId& id,
+                         Handle::Ptr& h,
                          mode_t flags)
 {
-    return fs_convert_exceptions<const vfs::ObjectId&,
+    return fs_convert_exceptions<const ObjectId&,
                                  mode_t,
                                  decltype(h)>(*fs_,
-                                         &vfs::FileSystem::open,
+                                         &FileSystem::open,
                                          id,
                                          flags,
                                          h);
 }
 
 int
-FileSystemTestBase::release(const vfs::FrontendPath& path,
-                            vfs::Handle::Ptr h)
+FileSystemTestBase::release(const FrontendPath& path,
+                            Handle::Ptr h)
 {
-    return vfs::FuseInterface::convert_exceptions<decltype(h)>(&vfs::FileSystem::release,
+    return FuseInterface::convert_exceptions<decltype(h)>(&FileSystem::release,
                                                                *fs_,
                                                                path,
                                                                std::move(h));
 }
 
 int
-FileSystemTestBase::release(vfs::Handle::Ptr h)
+FileSystemTestBase::release(Handle::Ptr h)
 {
     return fs_convert_exceptions<decltype(h)>(*fs_,
-                                              &vfs::FileSystem::release,
+                                              &FileSystem::release,
                                               std::move(h));
 }
 
 int
-FileSystemTestBase::write(const vfs::FrontendPath& path,
+FileSystemTestBase::write(const FrontendPath& path,
                           const char* buf,
                           uint64_t size,
                           off_t off,
-                          vfs::Handle& h)
+                          Handle& h)
 {
-    int ret = vfs::FuseInterface::convert_exceptions<vfs::Handle&,
+    int ret = FuseInterface::convert_exceptions<Handle&,
                                                      size_t&,
                                                      decltype(buf),
-                                                     decltype(off)>(&vfs::FileSystem::write,
+                                                     decltype(off)>(&FileSystem::write,
                                                                     *fs_,
                                                                     path,
                                                                     h,
@@ -607,23 +612,25 @@ FileSystemTestBase::write(const vfs::FrontendPath& path,
 }
 
 int
-FileSystemTestBase::write(vfs::Handle& h,
+FileSystemTestBase::write(Handle& h,
                           const char* buf,
                           uint64_t size,
                           off_t off)
 {
     bool sync = false;
-    int ret = fs_convert_exceptions<vfs::Handle&,
+    int ret = fs_convert_exceptions<Handle&,
                                     size_t&,
                                     decltype(buf),
                                     decltype(off),
-                                    bool&>(*fs_,
-                                           &vfs::FileSystem::write,
-                                           h,
-                                           size,
-                                           buf,
-                                           off,
-                                           sync);
+                                    bool&,
+                                    vd::DtlInSync*>(*fs_,
+                                                    &FileSystem::write,
+                                                    h,
+                                                    size,
+                                                    buf,
+                                                    off,
+                                                    sync,
+                                                    nullptr);
     return ret ? ret : size;
 }
 
@@ -631,24 +638,26 @@ int
 FileSystemTestBase::fsync(volumedriverfs::Handle& h,
                           bool datasync)
 {
-    return fs_convert_exceptions<vfs::Handle&,
-                                 bool>(*fs_,
-                                       &vfs::FileSystem::fsync,
-                                       h,
-                                       datasync);
+    return fs_convert_exceptions<Handle&,
+                                 bool,
+                                 vd::DtlInSync*>(*fs_,
+                                                 &FileSystem::fsync,
+                                                 h,
+                                                 datasync,
+                                                 nullptr);
 }
 
 int
-FileSystemTestBase::read(const vfs::FrontendPath& path,
+FileSystemTestBase::read(const FrontendPath& path,
                          char* buf,
                          uint64_t size,
                          off_t off,
-                         vfs::Handle& h)
+                         Handle& h)
 {
-    int ret = vfs::FuseInterface::convert_exceptions<vfs::Handle&,
+    int ret = FuseInterface::convert_exceptions<Handle&,
                                                      size_t&,
                                                      decltype(buf),
-                                                     decltype(off)>(&vfs::FileSystem::read,
+                                                     decltype(off)>(&FileSystem::read,
                                                                     *fs_,
                                                                     path,
                                                                     h,
@@ -660,18 +669,18 @@ FileSystemTestBase::read(const vfs::FrontendPath& path,
 }
 
 int
-FileSystemTestBase::read(vfs::Handle& h,
+FileSystemTestBase::read(Handle& h,
                          char *buf,
                          uint64_t size,
                          off_t off)
 {
     bool eof;
-    int ret = fs_convert_exceptions<vfs::Handle&,
+    int ret = fs_convert_exceptions<Handle&,
                                     size_t&,
                                     decltype(buf),
                                     decltype(off),
                                     bool&>(*fs_,
-                                           &vfs::FileSystem::read,
+                                           &FileSystem::read,
                                            h,
                                            size,
                                            buf,
@@ -681,33 +690,33 @@ FileSystemTestBase::read(vfs::Handle& h,
 }
 
 int
-FileSystemTestBase::chmod(const vfs::FrontendPath& path,
+FileSystemTestBase::chmod(const FrontendPath& path,
                            mode_t mode)
 {
-    return vfs::FuseInterface::convert_exceptions<decltype(mode)>(&vfs::FileSystem::chmod,
+    return FuseInterface::convert_exceptions<decltype(mode)>(&FileSystem::chmod,
                                                                   *fs_,
                                                                   path,
                                                                   mode);
 }
 
 int
-FileSystemTestBase::chmod(const vfs::ObjectId& id,
+FileSystemTestBase::chmod(const ObjectId& id,
                           mode_t mode)
 {
-    return fs_convert_exceptions<const vfs::ObjectId&,
+    return fs_convert_exceptions<const ObjectId&,
                                  decltype(mode)>(*fs_,
-                                                 &vfs::FileSystem::chmod,
+                                                 &FileSystem::chmod,
                                                  id,
                                                  mode);
 }
 
 int
-FileSystemTestBase::chown(const vfs::FrontendPath& path,
+FileSystemTestBase::chown(const FrontendPath& path,
                           uid_t uid,
                           gid_t gid)
 {
-    return vfs::FuseInterface::convert_exceptions<decltype(uid),
-                                                  decltype(gid)>(&vfs::FileSystem::chown,
+    return FuseInterface::convert_exceptions<decltype(uid),
+                                                  decltype(gid)>(&FileSystem::chown,
                                                                  *fs_,
                                                                  path,
                                                                  uid,
@@ -715,36 +724,36 @@ FileSystemTestBase::chown(const vfs::FrontendPath& path,
 }
 
 int
-FileSystemTestBase::chown(const vfs::ObjectId& id,
+FileSystemTestBase::chown(const ObjectId& id,
                           uid_t uid,
                           gid_t gid)
 {
-    return fs_convert_exceptions<const vfs::ObjectId&,
+    return fs_convert_exceptions<const ObjectId&,
                                  decltype(uid),
                                  decltype(gid)>(*fs_,
-                                                &vfs::FileSystem::chown,
+                                                &FileSystem::chown,
                                                 id,
                                                 uid,
                                                 gid);
 }
 
 int
-FileSystemTestBase::utimens(const vfs::FrontendPath& path,
+FileSystemTestBase::utimens(const FrontendPath& path,
                             const struct timespec ts[2])
 {
-    return vfs::FuseInterface::convert_exceptions<decltype(ts)>(&vfs::FileSystem::utimens,
+    return FuseInterface::convert_exceptions<decltype(ts)>(&FileSystem::utimens,
                                                                 *fs_,
                                                                 path,
                                                                 ts);
 }
 
 int
-FileSystemTestBase::utimens(const vfs::ObjectId& id,
+FileSystemTestBase::utimens(const ObjectId& id,
                             const struct timespec ts[2])
 {
-    return fs_convert_exceptions<const vfs::ObjectId&,
+    return fs_convert_exceptions<const ObjectId&,
                                  decltype(ts)>(*fs_,
-                                               &vfs::FileSystem::utimens,
+                                               &FileSystem::utimens,
                                                id,
                                                ts);
 }
@@ -974,95 +983,92 @@ FileSystemTestBase::wait_for_remote_()
     }
 }
 
-boost::optional<vfs::ObjectId>
-FileSystemTestBase::find_object(const vfs::FrontendPath& p)
+boost::optional<ObjectId>
+FileSystemTestBase::find_object(const FrontendPath& p)
 {
-    boost::optional<vfs::ObjectId> id;
+    boost::optional<ObjectId> id;
 
     try
     {
-        vfs::DirectoryEntryPtr dentry(fs_->mdstore_.find_throw(p));
+        DirectoryEntryPtr dentry(fs_->mdstore_.find_throw(p));
         return dentry->object_id();
     }
-    catch (vfs::HierarchicalArakoon::DoesNotExistException&)
+    catch (HierarchicalArakoon::DoesNotExistException&)
     {}
 
     return id;
 }
 
+template<typename Param>
 void
-FileSystemTestBase::set_volume_write_threshold(uint64_t wthresh)
+FileSystemTestBase::set_object_router_param_(const Param& param)
 {
     bpt::ptree pt;
     fs_->object_router().persist(pt, ReportDefault::F);
+    param.persist(pt);
 
-    ip::PARAMETER_TYPE(vrouter_volume_write_threshold)(wthresh).persist(pt);
     vd::UpdateReport urep;
-
     fs_->object_router().update(pt, urep);
     EXPECT_EQ(1U, urep.update_size()) << "fix yer test";
+}
+
+void
+FileSystemTestBase::set_volume_write_threshold(uint64_t wthresh)
+{
+    set_object_router_param_(ip::PARAMETER_TYPE(vrouter_volume_write_threshold)(wthresh));
 }
 
 void
 FileSystemTestBase::set_volume_read_threshold(uint64_t rthresh)
 {
-    bpt::ptree pt;
-    fs_->object_router().persist(pt, ReportDefault::F);
-
-    ip::PARAMETER_TYPE(vrouter_volume_read_threshold)(rthresh).persist(pt);
-    vd::UpdateReport urep;
-
-    fs_->object_router().update(pt, urep);
-    EXPECT_EQ(1U, urep.update_size()) << "fix yer test";
+    set_object_router_param_(ip::PARAMETER_TYPE(vrouter_volume_read_threshold)(rthresh));
 }
 
 void
 FileSystemTestBase::set_file_write_threshold(uint64_t wthresh)
 {
-    bpt::ptree pt;
-    fs_->object_router().persist(pt, ReportDefault::F);
-
-    ip::PARAMETER_TYPE(vrouter_file_write_threshold)(wthresh).persist(pt);
-    vd::UpdateReport urep;
-
-    fs_->object_router().update(pt, urep);
-    EXPECT_EQ(1U, urep.update_size()) << "fix yer test";
+    set_object_router_param_(ip::PARAMETER_TYPE(vrouter_file_write_threshold)(wthresh));
 }
 
 void
 FileSystemTestBase::set_file_read_threshold(uint64_t rthresh)
 {
-    bpt::ptree pt;
-    fs_->object_router().persist(pt, ReportDefault::F);
-
-    ip::PARAMETER_TYPE(vrouter_file_read_threshold)(rthresh).persist(pt);
-    vd::UpdateReport urep;
-
-    fs_->object_router().update(pt, urep);
-    EXPECT_EQ(1U, urep.update_size()) << "fix yer test";
+    set_object_router_param_(ip::PARAMETER_TYPE(vrouter_file_read_threshold)(rthresh));
 }
 
 void
 FileSystemTestBase::set_backend_sync_timeout(const boost::chrono::milliseconds& ms)
 {
-    bpt::ptree pt;
-    fs_->object_router().persist(pt, ReportDefault::F);
-
-    ip::PARAMETER_TYPE(vrouter_backend_sync_timeout_ms)(ms.count()).persist(pt);
-    vd::UpdateReport urep;
-
-    fs_->object_router().update(pt, urep);
-    EXPECT_EQ(1U, urep.update_size()) << "fix yer test";
+    set_object_router_param_(ip::PARAMETER_TYPE(vrouter_backend_sync_timeout_ms)(ms.count()));
 }
 
 void
-FileSystemTestBase::check_file_path_sanity(const vfs::FrontendPath& fp)
+FileSystemTestBase::set_lock_reaper_interval(uint64_t seconds)
 {
-    vfs::FileSystem::verify_file_path_(fp);
+    set_object_router_param_(ip::PARAMETER_TYPE(vrouter_lock_reaper_interval)(seconds));
 }
 
 void
-FileSystemTestBase::wait_for_snapshot(const vfs::ObjectId& volume_id,
+FileSystemTestBase::set_redirect_timeout(const boost::chrono::milliseconds& ms)
+{
+    set_object_router_param_(ip::PARAMETER_TYPE(vrouter_redirect_timeout_ms)(ms.count()));
+}
+
+void
+FileSystemTestBase::set_use_fencing(bool use_fencing)
+{
+    use_fencing_ = use_fencing;
+    set_object_router_param_(ip::PARAMETER_TYPE(vrouter_use_fencing)(use_fencing));
+}
+
+void
+FileSystemTestBase::check_file_path_sanity(const FrontendPath& fp)
+{
+    FileSystem::verify_file_path_(fp);
+}
+
+void
+FileSystemTestBase::wait_for_snapshot(const ObjectId& volume_id,
                                       const std::string& snapshot_name,
                                       uint32_t max_wait_secs)
 {
@@ -1084,17 +1090,17 @@ FileSystemTestBase::wait_for_snapshot(const vfs::ObjectId& volume_id,
     }
 }
 
-vfs::ObjectRegistrationPtr
-FileSystemTestBase::find_registration(const vfs::ObjectId& id)
+ObjectRegistrationPtr
+FileSystemTestBase::find_registration(const ObjectId& id)
 {
     // create a new instance instead of using the one at
     // fs_->object_router().volume_registry() as the fs_ could be a nullptr
     // (cf. stop_fs())
-    vfs::NodeId tmp(yt::UUID().str());
+    NodeId tmp(yt::UUID().str());
     bpt::ptree pt;
 
-    auto registry(std::make_shared<vfs::Registry>(make_registry_config_(pt)));
-    vfs::ObjectRegistry reg(vrouter_cluster_id(),
+    auto registry(std::make_shared<Registry>(make_registry_config_(pt)));
+    ObjectRegistry reg(vrouter_cluster_id(),
                             tmp,
                             std::static_pointer_cast<yt::LockedArakoon>(registry));
 
@@ -1102,34 +1108,34 @@ FileSystemTestBase::find_registration(const vfs::ObjectId& id)
 }
 
 bool
-FileSystemTestBase::is_registered(const vfs::ObjectId& id)
+FileSystemTestBase::is_registered(const ObjectId& id)
 {
     return find_registration(id) != nullptr;
 }
 
 void
-FileSystemTestBase::verify_registration(const vfs::ObjectId& id,
-                                        const vfs::NodeId& node_id)
+FileSystemTestBase::verify_registration(const ObjectId& id,
+                                        const NodeId& node_id)
 {
-    const vfs::ObjectRegistrationPtr reg(find_registration(id));
+    const ObjectRegistrationPtr reg(find_registration(id));
     ASSERT_TRUE(reg != nullptr);
     ASSERT_EQ(id, reg->volume_id);
     EXPECT_EQ(node_id, reg->node_id);
 }
 
-vfs::FrontendPath
-FileSystemTestBase::clone_path_to_volume_path(const vfs::FrontendPath& p)
+FrontendPath
+FileSystemTestBase::clone_path_to_volume_path(const FrontendPath& p)
 {
     VERIFY(fs_ != nullptr);
     {
-        auto fmt = dynamic_cast<vfs::VirtualDiskFormatVmdk*>(fs_->vdisk_format_.get());
+        auto fmt = dynamic_cast<VirtualDiskFormatVmdk*>(fs_->vdisk_format_.get());
         if ( fmt != nullptr)
         {
             return fmt->make_volume_path_(p);
         }
     }
     {
-        auto fmt = dynamic_cast<vfs::VirtualDiskFormatRaw*>(fs_->vdisk_format_.get());
+        auto fmt = dynamic_cast<VirtualDiskFormatRaw*>(fs_->vdisk_format_.get());
         if ( fmt != nullptr)
         {
             return p;
@@ -1139,7 +1145,7 @@ FileSystemTestBase::clone_path_to_volume_path(const vfs::FrontendPath& p)
 }
 
 void
-FileSystemTestBase::check_snapshots(const vfs::ObjectId& volume_id,
+FileSystemTestBase::check_snapshots(const ObjectId& volume_id,
                                      const std::vector<std::string>& expected_snapshots)
 {
     TODO("AR: expect a VolumeId instead of an ObjectId?");
@@ -1154,37 +1160,83 @@ FileSystemTestBase::check_snapshots(const vfs::ObjectId& volume_id,
     }
 }
 
-std::shared_ptr<vfs::LocalNode>
-FileSystemTestBase::local_node(vfs::ObjectRouter& router)
+std::shared_ptr<LocalNode>
+FileSystemTestBase::local_node(ObjectRouter& router)
 {
     return router.local_node_();
 }
 
-std::shared_ptr<vfs::ClusterRegistry>
-FileSystemTestBase::cluster_registry(vfs::ObjectRouter& router)
+std::shared_ptr<RemoteNode>
+FileSystemTestBase::remote_node(ObjectRouter& router,
+                                const NodeId& node_id)
+{
+    return std::dynamic_pointer_cast<RemoteNode>(router.find_node_(node_id));
+}
+
+std::shared_ptr<ClusterRegistry>
+FileSystemTestBase::cluster_registry(ObjectRouter& router)
 {
     return router.cluster_registry_;
 }
 
-void
-FileSystemTestBase::set_lock_reaper_interval(uint64_t seconds)
-{
-    bpt::ptree pt;
-    fs_->object_router().persist(pt, ReportDefault::F);
-
-    ip::PARAMETER_TYPE(vrouter_lock_reaper_interval)(seconds).persist(pt);
-    vd::UpdateReport urep;
-
-    fs_->object_router().update(pt, urep);
-    EXPECT_EQ(1U, urep.update_size()) << "fix yer test";
-}
-
 size_t
-FileSystemTestBase::get_cluster_size(const vfs::ObjectId& oid) const
+FileSystemTestBase::get_cluster_size(const ObjectId& oid) const
 {
     LOCKVD();
     vd::WeakVolumePtr v = api::getVolumePointer(vd::VolumeId(oid.str()));
     return api::GetClusterSize(v);
+}
+
+bool
+FileSystemTestBase::remote_node_queue_full(RemoteNode& rnode)
+{
+    boost::lock_guard<decltype(rnode.work_lock_)> g(rnode.work_lock_);
+    return ZUtils::writable(*rnode.zock_);
+}
+
+void
+FileSystemTestBase::test_dtl_status(const FrontendPath& vname)
+{
+    Handle::Ptr h;
+    fs_->open(vname, O_WRONLY, h);
+    ASSERT_TRUE(h != nullptr);
+
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         EXPECT_NO_THROW(fs_->release(vname,
+                                                                      std::move(h)));
+                                     }));
+
+    vd::DtlInSync dtl_in_sync = vd::DtlInSync::F;
+    const std::string pattern("not that interesting really");
+    size_t size = pattern.size();
+    bool sync = false;
+
+    fs_->write(*h,
+               size,
+               pattern.data(),
+               0,
+               sync,
+               &dtl_in_sync);
+
+    if (dtl_mode_ == vd::FailOverCacheMode::Synchronous)
+    {
+        EXPECT_EQ(vd::DtlInSync::T,
+                  dtl_in_sync);
+    }
+    else
+    {
+        EXPECT_EQ(vd::DtlInSync::F,
+                  dtl_in_sync);
+    }
+
+    dtl_in_sync = vd::DtlInSync::F;
+    fs_->fsync(*h,
+               true,
+               &dtl_in_sync);
+
+    EXPECT_EQ(vd::DtlInSync::T,
+              dtl_in_sync);
 }
 
 }

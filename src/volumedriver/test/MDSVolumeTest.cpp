@@ -19,6 +19,8 @@
 #include <functional>
 #include <future>
 
+#include <boost/chrono.hpp>
+
 #include <youtils/Assert.h>
 #include <youtils/ScopeExit.h>
 #include <youtils/SourceOfUncertainty.h>
@@ -44,6 +46,7 @@
 namespace volumedrivertest
 {
 
+namespace bc = boost::chrono;
 namespace be = backend;
 namespace fs = boost::filesystem;
 namespace mds = metadata_server;
@@ -335,6 +338,7 @@ protected:
     {
         MetaDataBackendInterfacePtr mdb(std::make_shared<MDSMetaDataBackend>(cfg,
                                                                              wrns.ns(),
+                                                                             boost::none,
                                                                              boost::none));
 
         const uint32_t secs = mds_manager_->poll_interval().count();
@@ -746,6 +750,7 @@ TEST_P(MDSVolumeTest, slave_catchup)
     const MDSNodeConfigs ncfgs(node_configs());
     MDSMetaDataBackend mdb(ncfgs[1],
                            wrns->ns(),
+                           boost::none,
                            boost::none);
 
     EXPECT_EQ(boost::none,
@@ -1053,6 +1058,7 @@ TEST_P(MDSVolumeTest, futile_scrub)
     const MDSNodeConfigs ncfgs(node_configs());
     MDSMetaDataBackend mdb(ncfgs[1],
                            wrns->ns(),
+                           boost::none,
                            boost::none);
 
     const auto old_scrub_id(v->getMetaDataStore()->scrub_id());
@@ -1126,6 +1132,7 @@ TEST_P(MDSVolumeTest, happy_scrub)
     const MDSNodeConfigs ncfgs(node_configs());
     MDSMetaDataBackend mdb(ncfgs[1],
                            wrns->ns(),
+                           boost::none,
                            boost::none);
 
     const scrubbing::ScrubReply scrub_reply(prepare_scrub_test(*v));
@@ -1274,17 +1281,21 @@ TEST_P(MDSVolumeTest, scrub_id_mismatch)
     }
 
     const ScrubId bogus_scrub_id;
+    const OwnerTag owner_tag(v->getOwnerTag());
 
     {
         // temporarily become master to set the scrub ID.
-        table->set_role(mds::Role::Master);
+        table->set_role(mds::Role::Master,
+                        owner_tag);
         auto on_exit(yt::make_scope_exit([&]
                                          {
-                                             table->set_role(mds::Role::Slave);
+                                             table->set_role(mds::Role::Slave,
+                                                             owner_tag);
                                          }));
 
         MetaDataBackendInterfacePtr mdb(std::make_shared<MDSMetaDataBackend>(ncfgs[0],
                                                                              wrns->ns(),
+                                                                             owner_tag,
                                                                              boost::none));
         EXPECT_EQ(scrub_id,
                   mdb->scrub_id());
@@ -1403,6 +1414,7 @@ TEST_P(MDSVolumeTest, no_relocations_on_slaves)
         MetaDataBackendInterfacePtr
             mdb(std::make_shared<MDSMetaDataBackend>(node_configs(*mgr)[1],
                                                      wrns->ns(),
+                                                     boost::none,
                                                      boost::none));
         const MaybeScrubId maybe_scrub_id(mdb->scrub_id());
 
@@ -1464,6 +1476,8 @@ TEST_P(MDSVolumeTest, local_restart_of_pristine_clone_with_empty_mds)
                                            CreateNamespace::F);
     }
 
+    const OwnerTag owner_tag(c->getOwnerTag());
+
     c->scheduleBackendSync();
     waitForThisBackendWrite(*c);
 
@@ -1475,8 +1489,9 @@ TEST_P(MDSVolumeTest, local_restart_of_pristine_clone_with_empty_mds)
     // RocksDB's WAL is disabled.
     mds::ClientNG::Ptr client(mds::ClientNG::create(node_configs()[0]));
     mds::TableInterfacePtr table(client->open(cns->ns().str()));
-    table->clear();
-    table->set_role(mds::Role::Slave);
+    table->clear(owner_tag);
+    table->set_role(mds::Role::Slave,
+                    owner_tag);
 
     localRestart(cns->ns());
 
@@ -1634,6 +1649,73 @@ TEST_P(MDSVolumeTest, table_counters)
                    0,
                    0,
                    Reset::F);
+}
+
+// this one could equally well live in FencingTests?
+TEST_P(MDSVolumeTest, no_failover_on_owner_tag_mismatch)
+{
+    const auto rns(make_random_namespace());
+    SharedVolumePtr v = make_volume(*rns);
+
+    const std::string pattern("meh");
+
+    const MDSNodeConfigs ncfgs(node_configs());
+    ASSERT_LT(1,
+              ncfgs.size());
+
+    mds::ClientNG::Ptr mclient(mds::ClientNG::create(ncfgs[0]));
+    mds::TableInterfacePtr mtable(mclient->open(rns->ns().str()));
+
+    auto check_mdses([&]
+                     {
+                         EXPECT_EQ(mds::Role::Master,
+                                   mtable->get_role());
+
+                         for (size_t i = 1; i < ncfgs.size(); ++i)
+                         {
+                             mds::ClientNG::Ptr sclient(mds::ClientNG::create(ncfgs[i]));
+                             mds::TableInterfacePtr stable(sclient->open(rns->ns().str()));
+                             EXPECT_EQ(mds::Role::Slave,
+                                       stable->get_role());
+                         }
+                     });
+
+    check_mdses();
+    EXPECT_EQ(v->getOwnerTag(),
+              mtable->owner_tag());
+
+    mtable->set_role(mds::Role::Master,
+                     new_owner_tag());
+
+    writeToVolume(*v,
+                  0,
+                  v->getClusterSize(),
+                  pattern);
+
+    v->scheduleBackendSync();
+
+    using Clock = bc::steady_clock;
+    const Clock::time_point deadline = Clock::now() + bc::seconds(60);
+
+    while (not v->is_halted() and Clock::now() < deadline)
+    {
+        boost::this_thread::sleep_for(bc::milliseconds(250));
+    }
+
+    ASSERT_TRUE(v->is_halted()) << "volume should be halted by now";
+
+    const std::unique_ptr<MetaDataBackendConfig> cfg(v->getMetaDataStore()->getBackendConfig());
+    const auto mcfg(dynamic_cast<const MDSMetaDataBackendConfig*>(cfg.get()));
+
+    EXPECT_EQ(ncfgs,
+              mcfg->node_configs());
+
+    EXPECT_EQ(mds::Role::Master,
+              mtable->get_role());
+    EXPECT_NE(v->getOwnerTag(),
+              mtable->owner_tag());
+
+    check_mdses();
 }
 
 // Cf. https://github.com/openvstorage/volumedriver/issues/141

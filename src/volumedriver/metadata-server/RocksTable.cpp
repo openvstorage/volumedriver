@@ -83,7 +83,8 @@ RocksTable::drop()
 
 void
 RocksTable::multiset(const TableInterface::Records& records,
-                     Barrier barrier)
+                     Barrier barrier,
+                     vd::OwnerTag)
 {
     rdb::WriteBatch batch;
 
@@ -173,7 +174,7 @@ RocksTable::apply_relocations(const vd::ScrubId&,
 }
 
 void
-RocksTable::clear()
+RocksTable::clear(vd::OwnerTag)
 {
     // The best (? fastest!) way to clear all records seems to be to drop the column family
     // and create a new one of the same name. For that we need exclusive access to the

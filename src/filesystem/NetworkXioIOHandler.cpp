@@ -18,6 +18,7 @@
 #include "ObjectRouter.h"
 #include "PythonClient.h" // clienterrors
 
+#include <volumedriver/DtlInSync.h>
 #include <youtils/Assert.h>
 #include <youtils/Catchers.h>
 #include <youtils/SocketAddress.h>
@@ -26,6 +27,7 @@ namespace volumedriverfs
 {
 
 namespace yt = youtils;
+namespace vd = volumedriver;
 
 static inline void
 pack_msg(NetworkXioRequest *req)
@@ -33,6 +35,7 @@ pack_msg(NetworkXioRequest *req)
     NetworkXioMsg o_msg(req->op);
     o_msg.retval(req->retval);
     o_msg.errval(req->errval);
+    o_msg.dtl_in_sync(req->dtl_in_sync);
     o_msg.opaque(req->opaque);
     req->s_msg= o_msg.pack_msg();
 }
@@ -235,11 +238,14 @@ NetworkXioIOHandler::handle_write(NetworkXioRequest *req,
     bool sync = false;
     try
     {
+       vd::DtlInSync dtl_in_sync;
        fs_.write(*handle_,
                  req->size,
                  static_cast<char*>(req->data),
                  req->offset,
-                 sync);
+                 sync,
+                 &dtl_in_sync);
+       req->dtl_in_sync = (dtl_in_sync == vd::DtlInSync::T) ? true : false;
        req->retval = req->size;
        req->errval = 0;
     }
@@ -266,7 +272,11 @@ NetworkXioIOHandler::handle_flush(NetworkXioRequest *req)
     LOG_TRACE("Flushing");
     try
     {
-       fs_.fsync(*handle_, false);
+       vd::DtlInSync dtl_in_sync;
+       fs_.fsync(*handle_,
+                 false,
+                 &dtl_in_sync);
+       req->dtl_in_sync = (dtl_in_sync == vd::DtlInSync::T) ? true : false;
        req->retval = 0;
        req->errval = 0;
     }
@@ -795,6 +805,88 @@ NetworkXioIOHandler::handle_list_cluster_node_uri(NetworkXioRequest *req)
 }
 
 void
+NetworkXioIOHandler::handle_get_volume_uri(NetworkXioRequest* req,
+                                           const std::string& vname)
+{
+    req->op = NetworkXioMsgOpcode::GetVolumeURIRsp;
+
+    // TODO: move exception conversion to a common helper
+    try
+    {
+        const FrontendPath path(make_volume_path(vname));
+        const boost::optional<ObjectId> oid(fs_.find_id(path));
+        if (not oid)
+        {
+            LOG_ERROR("failed to find object ID of " << vname);
+            throw fungi::IOException("Failed to find object ID",
+                                     vname.c_str(),
+                                     ENOENT);
+        }
+
+        std::shared_ptr<CachedObjectRegistry> oregistry(fs_.object_router().object_registry());
+        const ObjectRegistrationPtr oreg(oregistry->find_throw(*oid, IgnoreCache::T));
+        std::shared_ptr<ClusterRegistry> cregistry(fs_.object_router().cluster_registry());
+        const ClusterNodeStatus status(cregistry->get_node_status(oreg->node_id));
+
+        if (status.config.network_server_uri)
+        {
+            const auto uri(boost::lexical_cast<std::string>(*status.config.network_server_uri));
+
+            int ret = xio_mem_alloc(uri.size() + 1, &req->reg_mem);
+            if (ret < 0)
+            {
+                LOG_ERROR("failed to allocate buffer of size " << uri.size() + 1);
+                throw std::bad_alloc();
+            }
+
+            strcpy(static_cast<char*>(req->reg_mem.addr), uri.c_str());
+            req->retval = 1;
+            req->data_len = uri.size() + 1;
+            req->data = req->reg_mem.addr;
+        }
+        else
+        {
+            req->retval = 0;
+        }
+
+        req->errval = 0;
+    }
+    catch (std::bad_alloc&)
+    {
+        req->errval = ENOMEM;
+        req->retval = -1;
+    }
+    catch (ClusterNodeNotRegisteredException&)
+    {
+        // something else?
+        req->errval = ENOENT;
+        req->retval = -1;
+    }
+    catch (ObjectNotRegisteredException&)
+    {
+        req->errval = ENOENT;
+        req->retval = -1;
+    }
+    catch (fungi::IOException& e)
+    {
+        LOG_ERROR("Failed to look up location of " << vname << ": " << e.what());
+        req->retval = -1;
+        req->errval = e.getErrorCode();
+        if (req->errval == 0)
+        {
+            req->errval = EIO;
+        }
+    }
+    CATCH_STD_ALL_EWHAT({
+            LOG_ERROR("Failed to look up location of " << vname << ": " << EWHAT);
+            req->errval = EIO;
+            req->retval = -1;
+        });
+
+    pack_msg(req);
+}
+
+void
 NetworkXioIOHandler::handle_error(NetworkXioRequest *req,
                                   NetworkXioMsgOpcode op,
                                   int errval)
@@ -927,6 +1019,12 @@ NetworkXioIOHandler::process_request(NetworkXioRequest *req)
     case NetworkXioMsgOpcode::ListClusterNodeURIReq:
     {
         handle_list_cluster_node_uri(req);
+        break;
+    }
+    case NetworkXioMsgOpcode::GetVolumeURIReq:
+    {
+        handle_get_volume_uri(req,
+                              i_msg.volume_name());
         break;
     }
     default:

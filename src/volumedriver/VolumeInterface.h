@@ -25,10 +25,12 @@
 #include <string>
 
 #include <boost/chrono.hpp>
+#include <boost/shared_ptr.hpp>
 
 #include <youtils/BooleanEnum.h>
 
 #include <backend/BackendInterface.h>
+#include <backend/Condition.h>
 
 namespace volumedriver
 {
@@ -116,6 +118,12 @@ public:
     virtual void
     metaDataBackendConfigHasChanged(const MetaDataBackendConfig& cfg) = 0;
 
+    const boost::shared_ptr<backend::Condition>&
+    backend_write_condition() const
+    {
+        return backend_write_cond_;
+    }
+
     PerformanceCounters&
     performance_counters()
     {
@@ -128,8 +136,21 @@ public:
         return perf_counters_;
     }
 
+    static const std::string&
+    owner_tag_backend_name()
+    {
+        static const std::string n("owner_tag");
+        return n;
+    }
+
+protected:
+    explicit VolumeInterface(const boost::shared_ptr<backend::Condition>& cond)
+        : backend_write_cond_(cond)
+    {}
+
 private:
     PerformanceCounters perf_counters_;
+    boost::shared_ptr<backend::Condition> backend_write_cond_;
 };
 
 }

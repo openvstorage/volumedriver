@@ -137,31 +137,30 @@ public:
         {
             boost::this_thread::sleep(boost::posix_time::seconds(1));
             switch(action_chooser())
-             {
-             case Action::Add:
-                 {
-                     unsigned disk = dist(action_chooser.gen_);
-                     if(not status[disk])
-                     {
-                         setup_multi_dir(disk);
-                         status[disk] = true;
-                     }
-                 }
-                 break;
+            {
+            case Action::Add:
+                {
+                    unsigned disk = dist(action_chooser.gen_);
+                    if(not status[disk])
+                    {
+                        setup_multi_dir(disk);
+                        status[disk] = true;
+                    }
+                }
+                break;
 
-             case Action::Delete:
-                 {
-                     unsigned disk = dist(action_chooser.gen_);
-                     if(status[disk])
-                     {
-                         destroy_multi_dir(disk);
-                         status[disk] = false;
-                     }
+            case Action::Delete:
+                {
+                    unsigned disk = dist(action_chooser.gen_);
+                    if(status[disk])
+                    {
+                        destroy_multi_dir(disk);
+                        status[disk] = false;
+                    }
 
-                 }
-                 break;
-             }
-
+                }
+                break;
+            }
         }
     }
 
@@ -380,71 +379,6 @@ TEST_F(MultiBackendTest, empty_multi)
     EXPECT_THROW(connection->getCheckSum(Namespace(std::string("anyting")),
                                          "anything"),
                  BackendNoMultiBackendAvailableException);
-
-    EXPECT_THROW(connection->x_getMetadata(Namespace(std::string("anything")),
-                                           "anything"),
-                 BackendNoMultiBackendAvailableException);
-
-    ObjectInfo::CustomMetaData custom_metadata;
-
-    EXPECT_THROW(connection->x_setMetadata(Namespace(std::string("anything")),
-                                           "anything",
-                                           custom_metadata),
-                 BackendNoMultiBackendAvailableException);
-
-    EXPECT_THROW(connection->x_updateMetadata(Namespace(std::string("anything")),
-                                              "anything",
-                                              custom_metadata),
-                 BackendNoMultiBackendAvailableException);
-    EXPECT_THROW(connection->x_read(Namespace(std::string("anything")),
-                                    fs::path("anything"),
-                                    "anything",
-                                    InsistOnLatestVersion::T),
-                 BackendNoMultiBackendAvailableException);
-    std::string out_anything;
-
-    EXPECT_THROW(connection->x_read(Namespace(std::string("anything")),
-                                    out_anything,
-                                    "anything",
-                                    InsistOnLatestVersion::T),
-                 BackendNoMultiBackendAvailableException);
-    std::stringstream ss_anything;
-
-    EXPECT_THROW(connection->x_read(Namespace(std::string("anything")),
-                                    ss_anything,
-                                    "anything",
-                                    InsistOnLatestVersion::T),
-                 BackendNoMultiBackendAvailableException);
-    backend::ETag* etag_anything = 0;
-    youtils::CheckSum* checksum_anything = 0;
-
-    EXPECT_THROW(connection->x_write(Namespace(std::string("anything")),
-                                     fs::path("anything"),
-                                     "anything",
-                                     OverwriteObject::T,
-                                     etag_anything,
-                                     checksum_anything),
-                 BackendNoMultiBackendAvailableException);
-
-    EXPECT_THROW(connection->x_write(Namespace(std::string("anything")),
-                                     out_anything,
-                                     "anything",
-                                     OverwriteObject::T,
-                                     etag_anything,
-                                     checksum_anything),
-                 BackendNoMultiBackendAvailableException);
-
-    EXPECT_THROW(connection->x_write(Namespace(std::string("anything")),
-                                     ss_anything,
-                                     "anything",
-                                     OverwriteObject::T,
-                                     etag_anything,
-                                     checksum_anything),
-                 BackendNoMultiBackendAvailableException);
-
-
-
-
 }
 
 // AR: disabled while we only have a single backend type (LOCAL) that

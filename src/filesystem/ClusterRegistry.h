@@ -80,8 +80,8 @@ public:
     set_node_state(const NodeId& id,
                    const ClusterNodeStatus::State st);
 
-    ClusterNodeStatus::State
-    get_node_state(const NodeId& id);
+    ClusterNodeStatus
+    get_node_status(const NodeId&);
 
     ClusterId
     cluster_id() const

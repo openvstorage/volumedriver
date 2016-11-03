@@ -13,6 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "Logger.h"
 #include "ShmHandler.h"
 
 ovs_shm_context::ovs_shm_context(const std::string& volume_name,
@@ -21,8 +22,8 @@ ovs_shm_context::ovs_shm_context(const std::string& volume_name,
 {
     const std::string io_env_var("LIBOVSVOLUMEDRIVER_IO_THREADS_POOL_SIZE");
     io_threads_pool_size_ =
-    youtils::System::get_env_with_default<int>(io_env_var, 1);
-    shm_client_ = std::make_shared<volumedriverfs::ShmClient>(volume_name);
+                youtils::System::get_env_with_default<int>(io_env_var, 1);
+    shm_client_ = std::make_shared<libovsvolumedriver::ShmClient>(volume_name);
     try
     {
         ctl_client_ = std::make_shared<ShmControlChannelClient>();
@@ -38,6 +39,7 @@ ovs_shm_context::ovs_shm_context(const std::string& volume_name,
     {
         shm_client_.reset();
         ctl_client_.reset();
+        LIBLOGID_ERROR("cannot connect ang register to server");
         throw fungi::IOException("cannot connect and register to server");
     }
 
@@ -47,6 +49,7 @@ ovs_shm_context::ovs_shm_context(const std::string& volume_name,
     }
     catch (...)
     {
+        LIBLOGID_ERROR("failed to init aio");
         shm_client_.reset();
         ctl_client_.reset();
         throw;
@@ -59,6 +62,7 @@ ovs_shm_context::ovs_shm_context(const std::string& volume_name,
     }
     catch (...)
     {
+        LIBLOGID_ERROR("failed to create volume cache handler");
         ovs_aio_destroy();
         shm_client_.reset();
         ctl_client_->deregister();
@@ -68,6 +72,7 @@ ovs_shm_context::ovs_shm_context(const std::string& volume_name,
     int ret = cache_->preallocate();
     if (ret < 0)
     {
+        LIBLOGID_INFO("dropped caches");
         cache_->drop_caches();
     }
 }

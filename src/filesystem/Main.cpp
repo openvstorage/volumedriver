@@ -24,13 +24,13 @@
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <boost/property_tree/ptree.hpp>
-#include <boost/scope_exit.hpp>
 #include <boost/tokenizer.hpp>
 
 #include <youtils/BuildInfo.h>
 #include <youtils/Catchers.h>
 #include <youtils/ConfigFetcher.h>
 #include <youtils/FileUrl.h>
+#include <youtils/InitializedParam.h>
 #include <youtils/Logger.h>
 #include <youtils/Logging.h>
 #include <youtils/Main.h>
@@ -45,6 +45,7 @@
 namespace be = backend;
 namespace bpt = boost::property_tree;
 namespace fs = boost::filesystem;
+namespace ip = initialized_params;
 namespace po = boost::program_options;
 namespace vfs = volumedriverfs;
 namespace yt = youtils;
@@ -57,14 +58,14 @@ fuse_print_helper(const std::string& argv0,
                   const std::string& opt)
 {
     std::vector<char*> argv(2);
-    BOOST_SCOPE_EXIT((&argv))
-    {
-        for (char* str : argv)
-        {
-            free(str);
-        }
-    }
-    BOOST_SCOPE_EXIT_END;
+
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         for (char* str : argv)
+                                         {
+                                             free(str);
+                                         }
+                                     }));
 
     argv[0] = strdup(argv0.c_str());
     argv[1] = strdup(opt.c_str());
@@ -77,6 +78,64 @@ void
 print_fuse_help(const std::string& argv0)
 {
     fuse_print_helper(argv0, "-ho");
+}
+
+void
+print_config_help_markdown()
+{
+    std::cout << "| component | key | default value | dynamically reconfigurable | remarks |" << std::endl;
+    std::cout << "| --- | --- | --- | --- | --- |" << std::endl;
+    for (const auto& info : initialized_params::ParameterInfo::get_parameter_info_list())
+    {
+        if (T(info->document_))
+        {
+            std::cout << " | " << info->section_name;
+            std::cout << " | " << info->name;
+            std::cout << " | " << (info->has_default ? (std::string("\"") +  info->def_  + "\"") : "---");
+            std::cout << " | " << (info->can_be_reset ? "yes" : "no");
+            std::cout << " | " << info->doc_string;
+            std::cout << " | " << std::endl;
+        }
+    }
+}
+
+void
+print_config_help()
+{
+    for (const auto& info : ip::ParameterInfo::get_parameter_info_list())
+    {
+        if (T(info->document_))
+        {
+            std::cout << "* " << info->section_name << "/" << info->name << std::endl;
+
+            if (info->has_default)
+            {
+                std::cout << "** " << "default: " << info->def_ << std::endl;
+            }
+            else
+            {
+                std::cout << "** " << "required parameter " << std::endl;
+            }
+
+            if (info->dimensioned_value)
+            {
+                std::cout << "** Dimensioned Literal (\"234MiB\")" << std::endl;
+            }
+            else
+            {
+                std::cout << "** Normal Literal " << std::endl;
+            }
+
+            if (info->can_be_reset)
+            {
+                std::cout << "** " << "Parameter can be reconfigured dynamically" << std::endl;
+            }
+            else
+            {
+                std::cout << "** " << "Parameter cannot be reconfigured dynamically" << std::endl;
+            }
+        }
+    }
 }
 
 class FileSystemMain
@@ -95,11 +154,15 @@ public:
             ("config",
              po::value<yt::MaybeUri>(&config_location_),
              "volumedriver (json) config file / etcd URL")
+            ("config-help",
+             "print configuration documentation and exit")
+            ("config-help-markdown",
+             "print configuration documentation in markdown format and exit")
             ("lock-file,L",
              po::value<std::string>(&lock_file_),
              "a lock file used for advisory locking to prevent concurrently starting the same instance - the config-file is used if this is not specified")
             ("mountpoint,M",
-             po::value<std::string>(&mountpoint_)->required(),
+             po::value<std::string>(&mountpoint_),
              "path to mountpoint");
     }
 
@@ -108,7 +171,7 @@ public:
     {
         po::parsed_options
             parsed(parse_unparsed_options(opts_,
-                                          youtils::AllowUnregisteredOptions::T,
+                                          yt::AllowUnregisteredOptions::T,
                                           vm_));
 
         // XXX:
@@ -122,9 +185,27 @@ public:
     virtual int
     run()
     {
+        if (vm_.count("config-help"))
+        {
+            print_config_help();
+            return 0;
+        }
+
+        if (vm_.count("config-help-markdown"))
+        {
+            print_config_help_markdown();
+            return 0;
+        }
+
         if (not config_location_)
         {
             std::cerr << "No config location specified" << std::endl;
+            return 1;
+        }
+
+        if (mountpoint_.empty())
+        {
+            std::cerr << "No mountpoint specified" << std::endl;
             return 1;
         }
 

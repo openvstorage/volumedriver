@@ -24,12 +24,18 @@ message WriteRequest
 message WriteResponse
 {
 	required uint64 size = 1;
+	optional bool dtl_in_sync = 2 [default = false];
 }
 
 message SyncRequest
 {
 	required string object_id = 1;
 	required uint32 object_type = 2;
+}
+
+message SyncResponse
+{
+	optional bool dtl_in_sync = 1 [default = false];
 }
 
 message GetSizeRequest

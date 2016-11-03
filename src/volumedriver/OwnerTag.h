@@ -16,6 +16,7 @@
 #ifndef VD_OWNER_TAG_H_
 #define VD_OWNER_TAG_H_
 
+#include <youtils/IOException.h>
 #include <youtils/OurStrongTypedef.h>
 
 // Support for moving volumes between instances: a changed tag indicates changed
@@ -23,5 +24,13 @@
 // OwnerTag(0) is reserved: it is used internally by volumedriver for backward compat
 // purposes but callers must not use it.
 OUR_STRONG_NON_ARITHMETIC_TYPEDEF(uint64_t, OwnerTag, volumedriver);
+
+namespace volumedriver
+{
+
+MAKE_EXCEPTION(OwnerTagMismatchException,
+               fungi::IOException);
+}
+
 
 #endif // !VD_VOLUME_GENERATION_H_

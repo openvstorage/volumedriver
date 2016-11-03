@@ -13,6 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "Logger.h"
 #include "../ShmCommon.h"
 #include "ShmClient.h"
 
@@ -20,11 +21,13 @@
 #include <youtils/UUID.h>
 #include <youtils/OrbHelper.h>
 
-namespace volumedriverfs
+namespace libovsvolumedriver
 {
 
 namespace ipc = boost::interprocess;
+namespace bpt = boost::posix_time;
 namespace yt = youtils;
+namespace vfs = volumedriverfs;
 
 namespace
 {
@@ -76,18 +79,23 @@ ShmClient::orb_helper()
 }
 
 ShmClient::ShmClient(const std::string& volume_name,
-                     const std::string& vd_context_name,
-                     const std::string& vd_context_kind,
-                     const std::string& vd_object_name,
-                     const std::string& vd_object_kind)
+                     const std::string& context_name,
+                     const std::string& context_kind,
+                     const std::string& object_name,
+                     const std::string& object_kind)
     : volume_name_(volume_name)
     , shm_segment_(new ipc::managed_shared_memory(ipc::open_only,
                                                   ShmSegmentDetails::Name()))
 {
-    CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
-                                                            vd_context_kind,
-                                                            vd_object_name,
-                                                            vd_object_kind);
+    LIBLOGID_INFO("volume name: " << volume_name
+                  << ",context name: " << context_name
+                  << ",context kind: " << context_kind
+                  << ", object name: " << object_name
+                  << ", object kind: " << object_kind);
+    CORBA::Object_var obj = orb_helper().getObjectReference(context_name,
+                                                            context_kind,
+                                                            object_name,
+                                                            object_kind);
 
     assert(not CORBA::is_nil(obj));
     volumefactory_ref_ = ShmIdlInterface::VolumeFactory::_narrow(obj);
@@ -122,15 +130,15 @@ ShmClient::~ShmClient()
     }
     catch (CORBA::TRANSIENT& e)
     {
-        //LOG_INFO("Transient exception when stopping mem client: server down?");
+        LIBLOGID_INFO("Transient exception when stopping mem client: server down?");
     }
     catch (std::exception& e)
     {
-        //LOG_INFO("std::exception when stopping mem client: server down?");
+        LIBLOGID_INFO("std::exception when stopping mem client: server down?");
     }
     catch (...)
     {
-        //LOG_INFO("unknown exception when stopping mem client: server down?");
+        LIBLOGID_INFO("unknown exception when stopping mem client: server down?");
     }
 
     try
@@ -174,7 +182,7 @@ ShmClient::send_write_request(const void *buf,
                               const uint64_t offset_in_bytes,
                               const void *opaque)
 {
-    ShmWriteRequest writerequest_;
+    vfs::ShmWriteRequest writerequest_;
     writerequest_.size_in_bytes = size_in_bytes;
     writerequest_.offset_in_bytes = offset_in_bytes;
     writerequest_.handle = shm_segment_->get_handle_from_address(buf);
@@ -183,7 +191,7 @@ ShmClient::send_write_request(const void *buf,
     try
     {
         writerequest_mq_->send(&writerequest_,
-                               writerequest_size,
+                               sizeof(vfs::ShmWriteRequest),
                                0);
     }
     catch (...)
@@ -201,20 +209,19 @@ ShmClient::timed_send_write_request(const void *buf,
                                     const void *opaque,
                                     const struct timespec* timeout)
 {
-    ShmWriteRequest writerequest_;
+    vfs::ShmWriteRequest writerequest_;
     writerequest_.size_in_bytes = size_in_bytes;
     writerequest_.offset_in_bytes = offset_in_bytes;
     writerequest_.handle = shm_segment_->get_handle_from_address(buf);
     writerequest_.opaque = reinterpret_cast<uintptr_t>(opaque);
-    boost::posix_time::time_duration delay(boost::posix_time::seconds(timeout->tv_sec));
-    boost::posix_time::ptime ptimeout =
-        boost::posix_time::ptime(boost::posix_time::second_clock::universal_time());
+    bpt::time_duration delay(bpt::seconds(timeout->tv_sec));
+    bpt::ptime ptimeout = bpt::ptime(bpt::second_clock::universal_time());
     ptimeout += delay;
 
     try
     {
         int ret = writerequest_mq_->timed_send(&writerequest_,
-                                               writerequest_size,
+                                               sizeof(vfs::ShmWriteRequest),
                                                0,
                                                ptimeout);
         if (not ret)
@@ -235,17 +242,17 @@ bool
 ShmClient::receive_write_reply(size_t& size_in_bytes,
                                void **opaque)
 {
-    ShmWriteReply writereply_;
+    vfs::ShmWriteReply writereply_;
     unsigned int priority;
     ipc::message_queue::size_type received_size;
 
     try
     {
         writereply_mq_->receive(&writereply_,
-                                writereply_size,
+                                sizeof(vfs::ShmWriteReply),
                                 received_size,
                                 priority);
-        assert(received_size == writereply_size);
+        assert(received_size == sizeof(vfs::ShmWriteReply));
         *opaque = reinterpret_cast<void*>(writereply_.opaque);
     }
     catch (...)
@@ -263,24 +270,23 @@ ShmClient::timed_receive_write_reply(size_t& size_in_bytes,
                                      void **opaque,
                                      const struct timespec* timeout)
 {
-    ShmWriteReply writereply_;
+    vfs::ShmWriteReply writereply_;
     unsigned int priority;
     ipc::message_queue::size_type received_size;
-    boost::posix_time::time_duration delay(boost::posix_time::seconds(timeout->tv_sec));
-    boost::posix_time::ptime ptimeout =
-        boost::posix_time::ptime(boost::posix_time::second_clock::universal_time());
+    bpt::time_duration delay(bpt::seconds(timeout->tv_sec));
+    bpt::ptime ptimeout = bpt::ptime(bpt::second_clock::universal_time());
     ptimeout += delay;
 
     try
     {
         int ret = writereply_mq_->timed_receive(&writereply_,
-                                                writereply_size,
+                                                sizeof(vfs::ShmWriteReply),
                                                 received_size,
                                                 priority,
                                                 ptimeout);
         if (ret)
         {
-            assert(received_size == writereply_size);
+            assert(received_size == sizeof(vfs::ShmWriteReply));
             *opaque = reinterpret_cast<void*>(writereply_.opaque);
         }
         else
@@ -306,7 +312,7 @@ ShmClient::send_read_request(const void *buf,
                              const uint64_t offset_in_bytes,
                              const void *opaque)
 {
-    ShmReadRequest readrequest_;
+    vfs::ShmReadRequest readrequest_;
     readrequest_.size_in_bytes = size_in_bytes;
     readrequest_.offset_in_bytes = offset_in_bytes;
     readrequest_.handle = shm_segment_->get_handle_from_address(buf);
@@ -315,7 +321,7 @@ ShmClient::send_read_request(const void *buf,
     try
     {
         readrequest_mq_->send(&readrequest_,
-                              readrequest_size,
+                              sizeof(vfs::ShmReadRequest),
                               0);
     }
     catch (...)
@@ -333,20 +339,19 @@ ShmClient::timed_send_read_request(const void *buf,
                                    const void *opaque,
                                    const struct timespec* timeout)
 {
-    ShmReadRequest readrequest_;
+    vfs::ShmReadRequest readrequest_;
     readrequest_.size_in_bytes = size_in_bytes;
     readrequest_.offset_in_bytes = offset_in_bytes;
     readrequest_.handle = shm_segment_->get_handle_from_address(buf);
     readrequest_.opaque = reinterpret_cast<uintptr_t>(opaque);
-    boost::posix_time::time_duration delay(boost::posix_time::seconds(timeout->tv_sec));
-    boost::posix_time::ptime ptimeout =
-        boost::posix_time::ptime(boost::posix_time::second_clock::universal_time());
+    bpt::time_duration delay(bpt::seconds(timeout->tv_sec));
+    bpt::ptime ptimeout = bpt::ptime(bpt::second_clock::universal_time());
     ptimeout += delay;
 
     try
     {
         int ret = readrequest_mq_->timed_send(&readrequest_,
-                                              readrequest_size,
+                                              sizeof(vfs::ShmReadRequest),
                                               0,
                                               ptimeout);
         if (not ret)
@@ -367,17 +372,17 @@ bool
 ShmClient::receive_read_reply(size_t& size_in_bytes,
                               void **opaque)
 {
-    ShmReadReply readreply_;
+    vfs::ShmReadReply readreply_;
     unsigned int priority;
     ipc::message_queue::size_type received_size;
 
     try
     {
         readreply_mq_->receive(&readreply_,
-                               readreply_size,
+                               sizeof(vfs::ShmReadReply),
                                received_size,
                                priority);
-        assert(received_size == readreply_size);
+        assert(received_size == sizeof(vfs::ShmReadReply));
         *opaque = reinterpret_cast<void*>(readreply_.opaque);
     }
     catch (...)
@@ -395,24 +400,23 @@ ShmClient::timed_receive_read_reply(size_t& size_in_bytes,
                                     void **opaque,
                                     const struct timespec* timeout)
 {
-    ShmReadReply readreply_;
+    vfs::ShmReadReply readreply_;
     unsigned int priority;
     ipc::message_queue::size_type received_size;
-    boost::posix_time::time_duration delay(boost::posix_time::seconds(timeout->tv_sec));
-    boost::posix_time::ptime ptimeout =
-        boost::posix_time::ptime(boost::posix_time::second_clock::universal_time());
+    bpt::time_duration delay(bpt::seconds(timeout->tv_sec));
+    bpt::ptime ptimeout = bpt::ptime(bpt::second_clock::universal_time());
     ptimeout += delay;
 
     try
     {
         int ret = readreply_mq_->timed_receive(&readreply_,
-                                               readreply_size,
+                                               sizeof(vfs::ShmReadReply),
                                                received_size,
                                                priority,
                                                ptimeout);
         if (ret)
         {
-            assert(received_size == readreply_size);
+            assert(received_size == sizeof(vfs::ShmReadReply));
             *opaque = reinterpret_cast<void*>(readreply_.opaque);
         }
         else
@@ -435,7 +439,7 @@ ShmClient::timed_receive_read_reply(size_t& size_in_bytes,
 void
 ShmClient::stop_reply_queues(int n)
 {
-    ShmReadReply readreply_;
+    vfs::ShmReadReply readreply_;
     readreply_.opaque = 0;
     readreply_.stop = true;
 
@@ -444,14 +448,14 @@ ShmClient::stop_reply_queues(int n)
         try
         {
             readreply_mq_->send(&readreply_,
-                                readreply_size,
+                                sizeof(vfs::ShmReadReply),
                                 0);
         }
         catch (...)
         {}
     }
 
-    ShmWriteReply writereply_;
+    vfs::ShmWriteReply writereply_;
     writereply_.opaque = 0;
     writereply_.stop = true;
 
@@ -460,7 +464,7 @@ ShmClient::stop_reply_queues(int n)
         try
         {
             writereply_mq_->send(&writereply_,
-                                 writereply_size,
+                                 sizeof(vfs::ShmWriteReply),
                                  0);
         }
         catch (...)
@@ -472,10 +476,10 @@ void
 ShmClient::create_volume(const std::string& volume_name,
                          const uint64_t volume_size)
 {
-    CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
-                                                            vd_context_kind,
-                                                            vd_object_name,
-                                                            vd_object_kind);
+    CORBA::Object_var obj = orb_helper().getObjectReference(vfs::vd_context_name,
+                                                            vfs::vd_context_kind,
+                                                            vfs::vd_object_name,
+                                                            vfs::vd_object_kind);
     assert(not CORBA::is_nil(obj));
     ShmIdlInterface::VolumeFactory_var volumefactory_ref =
         ShmIdlInterface::VolumeFactory::_narrow(obj);
@@ -487,10 +491,10 @@ ShmClient::create_volume(const std::string& volume_name,
 void
 ShmClient::remove_volume(const std::string& volume_name)
 {
-    CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
-                                                            vd_context_kind,
-                                                            vd_object_name,
-                                                            vd_object_kind);
+    CORBA::Object_var obj = orb_helper().getObjectReference(vfs::vd_context_name,
+                                                            vfs::vd_context_kind,
+                                                            vfs::vd_object_name,
+                                                            vfs::vd_object_kind);
     assert(not CORBA::is_nil(obj));
     ShmIdlInterface::VolumeFactory_var volumefactory_ref =
         ShmIdlInterface::VolumeFactory::_narrow(obj);
@@ -502,10 +506,10 @@ void
 ShmClient::truncate_volume(const std::string& volume_name,
                            const uint64_t volume_size)
 {
-    CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
-                                                            vd_context_kind,
-                                                            vd_object_name,
-                                                            vd_object_kind);
+    CORBA::Object_var obj = orb_helper().getObjectReference(vfs::vd_context_name,
+                                                            vfs::vd_context_kind,
+                                                            vfs::vd_object_name,
+                                                            vfs::vd_object_kind);
     assert(not CORBA::is_nil(obj));
     ShmIdlInterface::VolumeFactory_var volumefactory_ref =
         ShmIdlInterface::VolumeFactory::_narrow(obj);
@@ -519,10 +523,10 @@ ShmClient::create_snapshot(const std::string& volume_name,
                            const std::string& snapshot_name,
                            const int64_t timeout)
 {
-    CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
-                                                            vd_context_kind,
-                                                            vd_object_name,
-                                                            vd_object_kind);
+    CORBA::Object_var obj = orb_helper().getObjectReference(vfs::vd_context_name,
+                                                            vfs::vd_context_kind,
+                                                            vfs::vd_object_name,
+                                                            vfs::vd_object_kind);
     assert(not CORBA::is_nil(obj));
     ShmIdlInterface::VolumeFactory_var volumefactory_ref =
         ShmIdlInterface::VolumeFactory::_narrow(obj);
@@ -536,10 +540,10 @@ void
 ShmClient::rollback_snapshot(const std::string& volume_name,
                              const std::string& snapshot_name)
 {
-    CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
-                                                            vd_context_kind,
-                                                            vd_object_name,
-                                                            vd_object_kind);
+    CORBA::Object_var obj = orb_helper().getObjectReference(vfs::vd_context_name,
+                                                            vfs::vd_context_kind,
+                                                            vfs::vd_object_name,
+                                                            vfs::vd_object_kind);
     assert(not CORBA::is_nil(obj));
     ShmIdlInterface::VolumeFactory_var volumefactory_ref =
         ShmIdlInterface::VolumeFactory::_narrow(obj);
@@ -552,10 +556,10 @@ void
 ShmClient::delete_snapshot(const std::string& volume_name,
                            const std::string& snapshot_name)
 {
-    CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
-                                                            vd_context_kind,
-                                                            vd_object_name,
-                                                            vd_object_kind);
+    CORBA::Object_var obj = orb_helper().getObjectReference(vfs::vd_context_name,
+                                                            vfs::vd_context_kind,
+                                                            vfs::vd_object_name,
+                                                            vfs::vd_object_kind);
     assert(not CORBA::is_nil(obj));
     ShmIdlInterface::VolumeFactory_var volumefactory_ref =
         ShmIdlInterface::VolumeFactory::_narrow(obj);
@@ -568,10 +572,10 @@ std::vector<std::string>
 ShmClient::list_snapshots(const std::string& volume_name,
                           uint64_t *size)
 {
-    CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
-                                                            vd_context_kind,
-                                                            vd_object_name,
-                                                            vd_object_kind);
+    CORBA::Object_var obj = orb_helper().getObjectReference(vfs::vd_context_name,
+                                                            vfs::vd_context_kind,
+                                                            vfs::vd_object_name,
+                                                            vfs::vd_object_kind);
     assert(not CORBA::is_nil(obj));
     ShmIdlInterface::VolumeFactory_var volumefactory_ref =
         ShmIdlInterface::VolumeFactory::_narrow(obj);
@@ -595,10 +599,10 @@ int
 ShmClient::is_snapshot_synced(const std::string& volume_name,
                               const std::string& snapshot_name)
 {
-    CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
-                                                            vd_context_kind,
-                                                            vd_object_name,
-                                                            vd_object_kind);
+    CORBA::Object_var obj = orb_helper().getObjectReference(vfs::vd_context_name,
+                                                            vfs::vd_context_kind,
+                                                            vfs::vd_object_name,
+                                                            vfs::vd_object_kind);
     assert(not CORBA::is_nil(obj));
     ShmIdlInterface::VolumeFactory_var volumefactory_ref =
         ShmIdlInterface::VolumeFactory::_narrow(obj);
@@ -610,10 +614,10 @@ ShmClient::is_snapshot_synced(const std::string& volume_name,
 std::vector<std::string>
 ShmClient::list_volumes()
 {
-    CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
-                                                            vd_context_kind,
-                                                            vd_object_name,
-                                                            vd_object_kind);
+    CORBA::Object_var obj = orb_helper().getObjectReference(vfs::vd_context_name,
+                                                            vfs::vd_context_kind,
+                                                            vfs::vd_object_name,
+                                                            vfs::vd_object_kind);
     assert(not CORBA::is_nil(obj));
     ShmIdlInterface::VolumeFactory_var volumefactory_ref =
         ShmIdlInterface::VolumeFactory::_narrow(obj);
@@ -633,10 +637,10 @@ int
 ShmClient::stat(const std::string& volume_name,
                 struct stat *st)
 {
-    CORBA::Object_var obj = orb_helper().getObjectReference(vd_context_name,
-                                                            vd_context_kind,
-                                                            vd_object_name,
-                                                            vd_object_kind);
+    CORBA::Object_var obj = orb_helper().getObjectReference(vfs::vd_context_name,
+                                                            vfs::vd_context_kind,
+                                                            vfs::vd_object_name,
+                                                            vfs::vd_object_kind);
     assert(not CORBA::is_nil(obj));
     ShmIdlInterface::VolumeFactory_var volfactory_ref =
         ShmIdlInterface::VolumeFactory::_narrow(obj);
@@ -648,4 +652,4 @@ ShmClient::stat(const std::string& volume_name,
     return 0;
 }
 
-} //namespace volumedriverfs
+} //namespace libovsvolumedriver

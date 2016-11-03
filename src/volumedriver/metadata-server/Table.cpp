@@ -21,6 +21,7 @@
 
 #include <volumedriver/MetaDataStoreBuilder.h>
 #include <volumedriver/NSIDMapBuilder.h>
+#include <volumedriver/OwnerTag.h>
 #include <volumedriver/RelocationReaderFactory.h>
 
 namespace metadata_server
@@ -39,6 +40,9 @@ namespace yt = youtils;
 
 #define LOCKW()                                                 \
     boost::unique_lock<decltype(rwlock_)> wlg__(rwlock_)
+
+#define LOCK_OWNER()                                            \
+    boost::lock_guard<decltype(owner_lock_)> olg__(owner_lock_)
 
 #define LOCK_COUNTERS()                                         \
     boost::lock_guard<decltype(counters_lock_)> clg__(counters_lock_)
@@ -76,7 +80,8 @@ std::unique_ptr<vd::CachedMetaDataStore>
 Table::make_mdstore_()
 {
     auto mdbackend(std::make_shared<vd::MDSMetaDataBackend>(db_,
-                                                            bi_->getNS()));
+                                                            bi_->getNS(),
+                                                            TableInterface::owner_tag()));
 
     return std::make_unique<vd::CachedMetaDataStore>(mdbackend,
                                                      table_->nspace(),
@@ -108,7 +113,8 @@ Table::get_role() const
 }
 
 void
-Table::set_role(Role role)
+Table::set_role(Role role,
+                vd::OwnerTag owner_tag)
 {
     decltype(act_) stop_act;
 
@@ -116,7 +122,8 @@ Table::set_role(Role role)
 
     const Role old_role = TableInterface::get_role();
     LOG_INFO(table_->nspace() << ": transition from " <<
-             old_role << " to " << role << " requested");
+             old_role << " to " << role <<
+             " requested, owner tag " << owner_tag);
 
     if (role != old_role)
     {
@@ -133,9 +140,11 @@ Table::set_role(Role role)
                 break;
             }
         }
-
-        TableInterface::set_role(role);
     }
+
+    LOCK_OWNER();
+    TableInterface::set_role(role,
+                             owner_tag);
 }
 
 vd::NSIDMap&
@@ -222,7 +231,7 @@ Table::apply_relocations(const vd::ScrubId& scrub_id,
                     {
                         LOG_ERROR(table_->nspace() <<
                                   ": table is in slave role - throwing metadata away");
-                        table_->clear();
+                        table_->clear(vd::OwnerTag(0));
                     }
                     throw;
                 });
@@ -231,8 +240,11 @@ Table::apply_relocations(const vd::ScrubId& scrub_id,
 }
 
 void
-Table::prevent_updates_on_slaves_(const char* desc)
+Table::check_updates_permitted_(const vd::OwnerTag owner_tag,
+                                const char* desc) const
 {
+    ASSERT_LOCKABLE_LOCKED(owner_lock_);
+
     if (TableInterface::get_role() == Role::Slave)
     {
         LOG_ERROR(table_->nspace() << ": updates (" << desc <<
@@ -240,20 +252,30 @@ Table::prevent_updates_on_slaves_(const char* desc)
         throw NoUpdatesOnSlavesException("Database updates are not permitted in slave role",
                                          table_->nspace().c_str());
     }
+
+    if (owner_tag != TableInterface::owner_tag())
+    {
+        LOG_ERROR(table_->nspace() << ": owner tag mismatch, have " <<
+                  TableInterface::owner_tag() << ", got " << owner_tag);
+        throw vd::OwnerTagMismatchException("Owner tag mismatch",
+                                            table_->nspace().c_str());
+    }
 }
 
 void
 Table::multiset(const TableInterface::Records& records,
-                Barrier barrier)
+                Barrier barrier,
+                vd::OwnerTag owner_tag)
 {
     // LOG_TRACE(table_->nspace() << ", " << records.size() << " records");
 
     LOCKR();
-
-    prevent_updates_on_slaves_("multiset");
-
+    LOCK_OWNER();
+    check_updates_permitted_(owner_tag,
+                             "multiset");
     table_->multiset(records,
-                     barrier);
+                     barrier,
+                     owner_tag);
 }
 
 TableInterface::MaybeStrings
@@ -308,14 +330,15 @@ Table::work_()
 }
 
 void
-Table::clear()
+Table::clear(vd::OwnerTag owner_tag)
 {
     LOG_INFO(table_->nspace() << ": removing all records");
 
     LOCKR();
-
-    prevent_updates_on_slaves_("clear");
-    table_->clear();
+    LOCK_OWNER();
+    check_updates_permitted_(owner_tag,
+                             "clear");
+    table_->clear(owner_tag);
 }
 
 size_t

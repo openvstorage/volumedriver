@@ -30,12 +30,19 @@
 
 #include <youtils/Logging.h>
 
+namespace volumedriverfstest
+{
+class FileSystemTestBase;
+}
+
 namespace volumedriverfs
 {
 
 class RemoteNode final
     : public ClusterNode
 {
+    friend class volumedriverfstest::FileSystemTestBase;
+
 public:
     RemoteNode(ObjectRouter& vrouter,
                const ClusterNodeConfig& cfg,
@@ -58,10 +65,12 @@ public:
     write(const Object& obj,
           const uint8_t* buf,
           size_t* size,
-          off_t off) override final;
+          off_t off,
+          volumedriver::DtlInSync&) override final;
 
     virtual void
-    sync(const Object& obj) override final;
+    sync(const Object&,
+         volumedriver::DtlInSync&) override final;
 
     virtual uint64_t
     get_size(const Object& obj) override final;

@@ -19,7 +19,6 @@
 #include "BackendInterface.h"
 
 #include <youtils/GlobalLockStore.h>
-#include <youtils/GlobalLockTag.h>
 #include <youtils/HeartBeatLock.h>
 #include <youtils/Logging.h>
 
@@ -42,12 +41,12 @@ public:
     bool
     exists() override final;
 
-    std::tuple<youtils::HeartBeatLock, youtils::GlobalLockTag>
+    std::tuple<youtils::HeartBeatLock, std::unique_ptr<youtils::UniqueObjectTag>>
     read() override final;
 
-    youtils::GlobalLockTag
+    std::unique_ptr<youtils::UniqueObjectTag>
     write(const youtils::HeartBeatLock&,
-          const boost::optional<youtils::GlobalLockTag>&) override final;
+          const youtils::UniqueObjectTag*) override final;
 
     const std::string&
     name() const override final;

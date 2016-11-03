@@ -20,6 +20,8 @@ libovsvolumedriver_la_SOURCES = \
 	ShmClient.cpp \
 	ShmHandler.cpp \
 	VolumeCacheHandler.cpp \
+	Logger.cpp \
+	NetworkHAContext.cpp \
 	NetworkXioClient.cpp \
 	NetworkXioContext.cpp \
 	TracePoints_tp.c \
@@ -43,7 +45,11 @@ libovsvolumedriver_la_CPPFLAGS = \
 libovsvolumedriver_nobase_includedir = @prefix@/include/openvstorage
 libovsvolumedriver_nobase_include_HEADERS = volumedriver.h
 
-libovsvolumedriver_la_LDFLAGS = -shared
+SOCURRENT=0
+SOREVISION=0
+SOAGE=0
+libovsvolumedriver_la_LDFLAGS = -shared -version-info \
+	$(SOCURRENT):$(SOREVISION):$(SOAGE)
 
 MOSTLYCLEANFILES = \
 	TracePoints_tp.h \

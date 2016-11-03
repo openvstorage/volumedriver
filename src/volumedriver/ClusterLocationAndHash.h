@@ -19,7 +19,7 @@
 #include "ClusterLocation.h"
 #include "VolumeConfig.h"
 
-#include <youtils/Weed.h>
+#include <youtils/Md5.h>
 
 namespace volumedrivertesting
 {

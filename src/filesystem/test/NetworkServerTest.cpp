@@ -35,16 +35,22 @@
 
 #include <filesystem/ObjectRouter.h>
 #include <filesystem/Registry.h>
+
+#include <filesystem/c-api/context.h>
+#include <filesystem/c-api/NetworkHAContext.h>
 #include <filesystem/c-api/volumedriver.h>
 
 namespace volumedriverfstest
 {
 
+namespace bc = boost::chrono;
 namespace bpt = boost::property_tree;
 namespace bpy = boost::python;
 namespace fs = boost::filesystem;
+namespace vd = volumedriver;
 namespace vfs = volumedriverfs;
 namespace yt = youtils;
+namespace libovs = libovsvolumedriver;
 
 using namespace volumedriverfs;
 
@@ -83,7 +89,8 @@ public:
                              .redirect_timeout_ms(10000)
                              .backend_sync_timeout_ms(9500)
                              .migrate_timeout_ms(500)
-                             .redirect_retries(1))
+                             .redirect_retries(1)
+                             .dtl_mode(vd::FailOverCacheMode::Synchronous))
         , client_(vrouter_cluster_id(),
                   {{address(), local_config().xmlrpc_port}})
     {
@@ -99,6 +106,7 @@ public:
     SetUp()
     {
         FileSystemTestBase::SetUp();
+        start_failovercache_for_remote_node();
         bpt::ptree pt;
 
         net_xio_server_ = std::make_unique<NetworkXioInterface>(pt,
@@ -117,6 +125,7 @@ public:
     virtual void
     TearDown()
     {
+        stop_failovercache_for_remote_node();
         net_xio_server_->shutdown();
         net_xio_thread_.join();
         net_xio_server_ = nullptr;
@@ -125,6 +134,7 @@ public:
 
     CtxAttrPtr
     make_ctx_attr(const size_t qdepth,
+                  const bool enable_ha,
                   const uint16_t port = FileSystemTestSetup::local_edge_port())
     {
         CtxAttrPtr attr(ovs_ctx_attr_new());
@@ -139,7 +149,11 @@ public:
         EXPECT_EQ(0,
                   ovs_ctx_attr_set_network_qdepth(attr.get(),
                                                   qdepth));
-
+        if (enable_ha)
+        {
+            EXPECT_EQ(0,
+                      ovs_ctx_attr_enable_ha(attr.get()));
+        }
         return attr;
     }
 
@@ -150,6 +164,7 @@ public:
 
         {
             CtxAttrPtr attrs(make_ctx_attr(1024,
+                                           false,
                                            remote ?
                                            FileSystemTestSetup::remote_edge_port() :
                                            FileSystemTestSetup::local_edge_port()));
@@ -168,11 +183,12 @@ public:
             {
                 ASSERT_GT(max, ++count) <<
                     "failed to create volume after " << count << " attempts: " << strerror(errno);
-                boost::this_thread::sleep_for(boost::chrono::milliseconds(250));
+                boost::this_thread::sleep_for(bc::milliseconds(250));
             }
         }
 
         CtxAttrPtr attrs(make_ctx_attr(1024,
+                                       false,
                                        FileSystemTestSetup::local_edge_port()));
         CtxPtr ctx(ovs_ctx_new(attrs.get()));
         ASSERT_TRUE(ctx != nullptr);
@@ -270,6 +286,304 @@ public:
                   ovs_snapshot_remove(ctx.get(),
                                       vname.c_str(),
                                       snap1.c_str()));
+    }
+
+    void
+    test_stress(bool enable_ha)
+    {
+        CtxAttrPtr ctx_attr(make_ctx_attr(1, enable_ha));
+        CtxPtr ctx(ovs_ctx_new(ctx_attr.get()));
+        ASSERT_TRUE(ctx != nullptr);
+
+        const size_t vsize = 1ULL << 20;
+        const std::string vname("volume");
+        ASSERT_EQ(0,
+                  ovs_create_volume(ctx.get(),
+                                    vname.c_str(),
+                                    vsize));
+
+        const size_t nreaders = yt::System::get_env_with_default("EDGE_STRESS_READERS",
+                                                                 2ULL);
+        const size_t qdepth = yt::System::get_env_with_default("EDGE_STRESS_QDEPTH",
+                                                               1024ULL);
+        const size_t duration_secs = yt::System::get_env_with_default("EDGE_STRESS_DURATION_SECS",
+                                                                      30ULL);
+        const size_t bufsize = yt::System::get_env_with_default("EDGE_STRESS_BUF_SIZE",
+                                                                4096ULL);
+
+        std::atomic<bool> stop(false);
+
+        auto reader([&]() -> size_t
+                    {
+                        CtxAttrPtr attr(make_ctx_attr(qdepth, enable_ha));
+                        CtxPtr ctx(ovs_ctx_new(attr.get()));
+
+                        EXPECT_EQ(0,
+                                  ovs_ctx_init(ctx.get(),
+                                               vname.c_str(),
+                                               O_RDWR));
+
+                        std::vector<uint8_t> buf(bufsize);
+
+                        using AiocbPtr = std::unique_ptr<ovs_aiocb>;
+                        using AiocbQueue = std::deque<AiocbPtr>;
+
+                        AiocbQueue free_queue;
+
+                        for (size_t i = 0; i < qdepth; ++i)
+                        {
+                            AiocbPtr aiocb(std::make_unique<ovs_aiocb>());
+                            aiocb->aio_buf = buf.data();
+                            aiocb->aio_nbytes = buf.size();
+                            aiocb->aio_offset = 0;
+
+                            free_queue.emplace_back(std::move(aiocb));
+                        }
+
+                        AiocbQueue pending_queue;
+                        size_t ops = 0;
+
+                        while (true)
+                        {
+                            if (stop or pending_queue.size() == qdepth)
+                            {
+                                AiocbPtr aiocb = std::move(pending_queue.front());
+                                pending_queue.pop_front();
+
+                                EXPECT_EQ(0,
+                                          ovs_aio_suspend(ctx.get(),
+                                                          aiocb.get(),
+                                                          nullptr));
+                                EXPECT_EQ(aiocb->aio_nbytes,
+                                          ovs_aio_return(ctx.get(),
+                                                         aiocb.get()));
+                                EXPECT_EQ(0,
+                                          ovs_aio_finish(ctx.get(),
+                                                         aiocb.get()));
+
+                                ops++;
+
+                                if (stop)
+                                {
+                                    if (pending_queue.empty())
+                                    {
+                                        break;
+                                    }
+                                }
+                                else
+                                {
+                                    free_queue.emplace_back(std::move(aiocb));
+                                }
+                            }
+                            else
+                            {
+                                EXPECT_FALSE(free_queue.empty());
+                                AiocbPtr aiocb = std::move(free_queue.front());
+                                free_queue.pop_front();
+
+                                EXPECT_EQ(0,
+                                          ovs_aio_read(ctx.get(),
+                                                       aiocb.get()));
+                                pending_queue.emplace_back(std::move(aiocb));
+                            }
+                        }
+
+                        return ops;
+                    });
+
+        std::vector<std::future<size_t>> futures;
+        futures.reserve(nreaders);
+
+        yt::wall_timer t;
+
+        for (size_t i = 0; i < nreaders; ++i)
+        {
+            futures.emplace_back(std::async(std::launch::async,
+                                            reader));
+        }
+
+        boost::this_thread::sleep_for(bc::seconds(duration_secs));
+
+        stop = true;
+        size_t total = 0;
+
+        for (auto& f : futures)
+        {
+            size_t ops = f.get();
+            EXPECT_LT(0, ops);
+            total += ops;
+
+        }
+
+        const double elapsed = t.elapsed();
+
+        std::cout << nreaders << " workers doing " << bufsize <<
+            " bytes sized reads @ qdepth " << qdepth << ": " <<
+            total << " ops in " << elapsed << " seconds -> " <<
+            total / elapsed << " IOPS" << std::endl;
+    }
+
+    void
+    test_high_availability(bool enable_ha,
+                           bool mark_offline,
+                           bool fencing)
+    {
+        if (fencing)
+        {
+            set_use_fencing(true);
+        }
+        mount_remote();
+
+        const std::string vname("volume");
+        uint64_t volume_size = 1 << 20;
+        ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+        ASSERT_TRUE(ctx_attr != nullptr);
+        EXPECT_EQ(0,
+                  ovs_ctx_attr_set_transport(ctx_attr,
+                                             FileSystemTestSetup::edge_transport().c_str(),
+                                             FileSystemTestSetup::address().c_str(),
+                                             FileSystemTestSetup::remote_edge_port()));
+
+        if (enable_ha)
+        {
+            EXPECT_EQ(0, ovs_ctx_attr_enable_ha(ctx_attr));
+        }
+
+        ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
+        ASSERT_TRUE(ctx != nullptr);
+        const size_t max = 10;
+        size_t count = 0;
+
+        while (ovs_create_volume(ctx,
+                                 vname.c_str(),
+                                 1ULL << 20) == -1)
+        {
+            ASSERT_GT(max, ++count) <<
+                "failed to create volume after " << count << " attempts: " << strerror(errno);
+            boost::this_thread::sleep_for(bc::milliseconds(250));
+        }
+
+        ASSERT_EQ(0,
+                  ovs_ctx_init(ctx,
+                               vname.c_str(),
+                               O_RDWR));
+
+        std::string pattern("openvstorage1");
+        auto wbuf = std::make_unique<uint8_t[]>(pattern.length());
+        ASSERT_TRUE(wbuf != nullptr);
+
+        memcpy(wbuf.get(),
+               pattern.c_str(),
+               pattern.length());
+
+        EXPECT_EQ(pattern.length(),
+                  ovs_write(ctx,
+                            wbuf.get(),
+                            pattern.length(),
+                            1024));
+
+        EXPECT_EQ(0, ovs_flush(ctx));
+
+        wbuf.reset();
+
+        auto rbuf = std::make_unique<uint8_t[]>(pattern.length());
+        ASSERT_TRUE(rbuf != nullptr);
+
+        EXPECT_EQ(pattern.length(),
+                  ovs_read(ctx,
+                           rbuf.get(),
+                           pattern.length(),
+                           1024));
+
+        EXPECT_TRUE(memcmp(rbuf.get(),
+                           pattern.c_str(),
+                           pattern.length()) == 0);
+
+        rbuf.reset();
+
+        const int64_t timeout = 10;
+        const std::string snap1("snap1");
+
+        EXPECT_EQ(-1,
+                  ovs_snapshot_create(ctx,
+                                      (vname + "X").c_str(),
+                                      snap1.c_str(),
+                                      timeout));
+        EXPECT_EQ(ENOENT,
+                  errno);
+
+        EXPECT_EQ(0,
+                  ovs_snapshot_create(ctx,
+                                      vname.c_str(),
+                                      snap1.c_str(),
+                                      timeout));
+
+        const std::string snap2("snap2");
+
+        EXPECT_EQ(0,
+                  ovs_snapshot_create(ctx,
+                                      vname.c_str(),
+                                      snap2.c_str(),
+                                      0));
+
+        EXPECT_EQ(1,
+                  ovs_snapshot_is_synced(ctx,
+                                         vname.c_str(),
+                                         snap2.c_str()));
+
+        umount_remote();
+
+        if (mark_offline)
+        {
+            std::shared_ptr<vfs::ClusterRegistry> reg(cluster_registry(fs_->object_router()));
+            reg->set_node_state(remote_node_id(),
+                                vfs::ClusterNodeStatus::State::Offline);
+        }
+
+        auto rbuf_local = std::make_unique<uint8_t[]>(pattern.length());
+        ASSERT_TRUE(rbuf_local != nullptr);
+
+        if (enable_ha)
+        {
+            EXPECT_EQ(pattern.length(),
+                      ovs_read(ctx,
+                               rbuf_local.get(),
+                               pattern.length(),
+                               1024));
+
+            EXPECT_TRUE(memcmp(rbuf_local.get(),
+                               pattern.c_str(),
+                               pattern.length()) == 0);
+
+            rbuf_local.reset();
+
+            EXPECT_EQ(0,
+                      ovs_create_volume(ctx,
+                                        "local_volume",
+                                        volume_size));
+        }
+        else
+        {
+            EXPECT_EQ(-1,
+                      ovs_read(ctx,
+                               rbuf_local.get(),
+                               pattern.length(),
+                               1024));
+            EXPECT_EQ(EIO, errno);
+
+            rbuf_local.reset();
+
+            EXPECT_EQ(-1,
+                      ovs_create_volume(ctx,
+                                        "local_volume",
+                                        volume_size));
+            EXPECT_EQ(ENOTCONN, errno);
+        }
+
+        EXPECT_EQ(0,
+                  ovs_ctx_destroy(ctx));
+        EXPECT_EQ(0,
+                  ovs_ctx_attr_destroy(ctx_attr));
     }
 
     std::unique_ptr<NetworkXioInterface> net_xio_server_;
@@ -1029,136 +1343,12 @@ TEST_F(NetworkServerTest, connect_to_nonexistent_port)
 
 TEST_F(NetworkServerTest, stress)
 {
-    CtxAttrPtr ctx_attr(make_ctx_attr(1));
-    CtxPtr ctx(ovs_ctx_new(ctx_attr.get()));
-    ASSERT_TRUE(ctx != nullptr);
+    test_stress(false);
+}
 
-    const size_t vsize = 1ULL << 20;
-    const std::string vname("volume");
-    ASSERT_EQ(0,
-              ovs_create_volume(ctx.get(),
-                                vname.c_str(),
-                                vsize));
-
-    const size_t nreaders = yt::System::get_env_with_default("EDGE_STRESS_READERS",
-                                                             2ULL);
-    const size_t qdepth = yt::System::get_env_with_default("EDGE_STRESS_QDEPTH",
-                                                           1024ULL);
-    const size_t duration_secs = yt::System::get_env_with_default("EDGE_STRESS_DURATION_SECS",
-                                                                  30ULL);
-    const size_t bufsize = yt::System::get_env_with_default("EDGE_STRESS_BUF_SIZE",
-                                                            4096ULL);
-
-    std::atomic<bool> stop(false);
-
-    auto reader([&]() -> size_t
-                {
-                    CtxAttrPtr attr(make_ctx_attr(qdepth));
-                    CtxPtr ctx(ovs_ctx_new(attr.get()));
-
-                    EXPECT_EQ(0,
-                              ovs_ctx_init(ctx.get(),
-                                           vname.c_str(),
-                                           O_RDWR));
-
-                    std::vector<uint8_t> buf(bufsize);
-
-                    using AiocbPtr = std::unique_ptr<ovs_aiocb>;
-                    using AiocbQueue = std::deque<AiocbPtr>;
-
-                    AiocbQueue free_queue;
-
-                    for (size_t i = 0; i < qdepth; ++i)
-                    {
-                        AiocbPtr aiocb(std::make_unique<ovs_aiocb>());
-                        aiocb->aio_buf = buf.data();
-                        aiocb->aio_nbytes = buf.size();
-                        aiocb->aio_offset = 0;
-
-                        free_queue.emplace_back(std::move(aiocb));
-                    }
-
-                    AiocbQueue pending_queue;
-                    size_t ops = 0;
-
-                    while (true)
-                    {
-                        if (stop or pending_queue.size() == qdepth)
-                        {
-                            AiocbPtr aiocb = std::move(pending_queue.front());
-                            pending_queue.pop_front();
-
-                            EXPECT_EQ(0,
-                                      ovs_aio_suspend(ctx.get(),
-                                                      aiocb.get(),
-                                                      nullptr));
-                            EXPECT_EQ(aiocb->aio_nbytes,
-                                      ovs_aio_return(ctx.get(),
-                                                     aiocb.get()));
-                            EXPECT_EQ(0,
-                                      ovs_aio_finish(ctx.get(),
-                                                     aiocb.get()));
-
-                            ops++;
-
-                            if (stop)
-                            {
-                                if (pending_queue.empty())
-                                {
-                                    break;
-                                }
-                            }
-                            else
-                            {
-                                free_queue.emplace_back(std::move(aiocb));
-                            }
-                        }
-                        else
-                        {
-                            EXPECT_FALSE(free_queue.empty());
-                            AiocbPtr aiocb = std::move(free_queue.front());
-                            free_queue.pop_front();
-
-                            EXPECT_EQ(0,
-                                      ovs_aio_read(ctx.get(),
-                                                   aiocb.get()));
-                            pending_queue.emplace_back(std::move(aiocb));
-                        }
-                    }
-
-                    return ops;
-                });
-
-    std::vector<std::future<size_t>> futures;
-    futures.reserve(nreaders);
-
-    yt::wall_timer t;
-
-    for (size_t i = 0; i < nreaders; ++i)
-    {
-        futures.emplace_back(std::async(std::launch::async,
-                                        reader));
-    }
-
-    boost::this_thread::sleep_for(boost::chrono::seconds(duration_secs));
-
-    stop = true;
-    size_t total = 0;
-
-    for (auto& f : futures)
-    {
-        size_t ops = f.get();
-        EXPECT_LT(0, ops);
-        total += ops;
-
-    }
-
-    const double elapsed = t.elapsed();
-
-    std::cout << nreaders << " workers doing " << bufsize <<
-        " bytes sized reads @ qdepth " << qdepth << ": " <<
-        total << " ops in " << elapsed << " seconds -> " <<
-        total / elapsed << " IOPS" << std::endl;
+TEST_F(NetworkServerTest, stress_ha_enabled)
+{
+    test_stress(true);
 }
 
 TEST_F(NetworkServerTest, create_truncate_volume)
@@ -1344,6 +1534,107 @@ TEST_F(NetworkServerTest, list_open_connections)
 
     const std::vector<vfs::ClientInfo> k(client_.list_client_connections(local_node_id()));
     EXPECT_EQ(0, k.size());
+}
+
+TEST_F(NetworkServerTest, high_availability_fail_remote_mark_offline)
+{
+    test_high_availability(true,
+                           true,
+                           false);
+}
+
+TEST_F(NetworkServerTest, high_availability_fail_remote_and_fail)
+{
+    test_high_availability(false,
+                           true,
+                           false);
+}
+
+TEST_F(NetworkServerTest, high_availability_fail_remote_automated)
+{
+    test_high_availability(true,
+                           false,
+                           true);
+}
+
+TEST_F(NetworkServerTest, get_volume_uri)
+{
+    CtxAttrPtr attrs(make_ctx_attr(1024,
+                                   false,
+                                   FileSystemTestSetup::local_edge_port()));
+    CtxPtr ctx(ovs_ctx_new(attrs.get()));
+    ASSERT_TRUE(ctx != nullptr);
+
+    const std::string vname("volume");
+    const size_t vsize = 1ULL << 20;
+
+    ASSERT_EQ(0,
+              ovs_create_volume(ctx.get(),
+                                vname.c_str(),
+                                vsize));
+
+    auto& ctx_iface = dynamic_cast<ovs_context_t&>(*ctx);
+
+    std::string uri;
+    ctx_iface.get_volume_uri(vname.c_str(),
+                             uri);
+
+    EXPECT_EQ(network_server_uri(local_node_id()),
+              yt::Uri(uri));
+}
+
+TEST_F(NetworkServerTest, redirect_uri)
+{
+    mount_remote();
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         umount_remote();
+                                     }));
+
+    const std::string vname("some-volume");
+    const size_t vsize = 1ULL << 20;
+
+    {
+        CtxAttrPtr attrs(make_ctx_attr(1024,
+                                       false,
+                                       FileSystemTestSetup::local_edge_port()));
+        CtxPtr ctx(ovs_ctx_new(attrs.get()));
+        ASSERT_TRUE(ctx != nullptr);
+
+        ASSERT_EQ(0,
+                  ovs_create_volume(ctx.get(),
+                                    vname.c_str(),
+                                    vsize));
+    }
+
+    CtxAttrPtr attrs(make_ctx_attr(1024,
+                                   false,
+                                   FileSystemTestSetup::remote_edge_port()));
+
+    ovs_ctx_attr_enable_ha(attrs.get());
+    CtxPtr ctx(ovs_ctx_new(attrs.get()));
+    ASSERT_TRUE(ctx != nullptr);
+    ASSERT_EQ(0,
+              ovs_ctx_init(ctx.get(),
+                           vname.c_str(),
+                           O_RDWR));
+
+    auto& ha_ctx = dynamic_cast<libovs::NetworkHAContext&>(*ctx);
+
+    using Clock = bc::steady_clock;
+    const Clock::time_point end = Clock::now() + bc::seconds(60);
+
+    while (Clock::now() < end)
+    {
+        if (yt::Uri(ha_ctx.current_uri()) == network_server_uri(local_node_id()))
+        {
+            break;
+        }
+        boost::this_thread::sleep_for(bc::milliseconds(250));
+    }
+
+    EXPECT_EQ(network_server_uri(local_node_id()),
+              yt::Uri(ha_ctx.current_uri()));
 }
 
 } //namespace

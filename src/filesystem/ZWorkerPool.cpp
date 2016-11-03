@@ -284,7 +284,7 @@ private:
 ZWorkerPool::ZWorkerPool(const std::string& name,
                          zmq::context_t& ztx,
                          const std::string& pub_addr,
-                         WorkerFun&& worker_fun,
+                         WorkerFun worker_fun,
                          uint16_t min_workers,
                          uint16_t max_workers)
     : min_(min_workers)
@@ -467,7 +467,7 @@ ZWorkerPool::handle_front_(zmq::socket_t& front_sock,
             LOG_TRACE(name_ << ": using idle zworker " << w->id());
 
             unused_ones_.pop_front();
-            auto res(busy_ones_.emplace(std::make_pair(w->id(), std::move(w))));
+            auto res(busy_ones_.emplace(w->id(), std::move(w)));
             VERIFY(res.second);
             id = res.first->first;
         }
@@ -486,7 +486,7 @@ ZWorkerPool::handle_front_(zmq::socket_t& front_sock,
 
             LOG_INFO(name_ << ": waiting for newly spun up zworker " << w->id());
 
-            auto res(busy_ones_.emplace(std::make_pair(w->id(), std::move(w))));
+            auto res(busy_ones_.emplace(w->id(), std::move(w)));
             VERIFY(res.second);
 
             return CanMakeProgress::F;

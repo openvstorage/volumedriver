@@ -17,6 +17,7 @@
 #define __NETWORK_XIO_CLIENT_H_
 
 #include "../NetworkXioProtocol.h"
+#include "NetworkHAContext.h"
 #include "internal.h"
 
 #include <boost/thread/lock_guard.hpp>
@@ -30,7 +31,7 @@
 #include <condition_variable>
 #include <chrono>
 
-namespace volumedriverfs
+namespace libovsvolumedriver
 {
 
 MAKE_EXCEPTION(XioClientCreateException, fungi::IOException);
@@ -40,7 +41,10 @@ MAKE_EXCEPTION(XioClientQueueIsBusyException, fungi::IOException);
 class NetworkXioClient
 {
 public:
-    NetworkXioClient(const std::string& uri, const uint64_t qd);
+    NetworkXioClient(const std::string& uri,
+                     const uint64_t qd,
+                     NetworkHAContext& ha_ctx,
+                     bool ha_try_reconnect);
 
     ~NetworkXioClient();
 
@@ -91,13 +95,6 @@ public:
     xio_send_flush_request(const void *opaque);
 
     int
-    allocate(xio_reg_mem *mem,
-             const uint64_t size);
-
-    void
-    deallocate(xio_reg_mem *reg_mem);
-
-    int
     on_session_event(xio_session *session,
                      xio_session_event_data *event_data);
 
@@ -130,6 +127,12 @@ public:
     void
     xstop_loop();
 
+    bool
+    is_dtl_in_sync()
+    {
+        return dtl_in_sync_;
+    }
+
     static void
     xio_create_volume(const std::string& uri,
                       const char* volume_name,
@@ -155,6 +158,15 @@ public:
     static void
     xio_list_volumes(const std::string& uri,
                      std::vector<std::string>& volumes);
+
+    static void
+    xio_list_cluster_node_uri(const std::string& uri,
+                              std::vector<std::string>& uris);
+
+    static void
+    xio_get_volume_uri(const std::string& uri,
+                       const char* volume_name,
+                       std::string& volume_uri);
 
     static void
     xio_list_snapshots(const std::string& uri,
@@ -194,9 +206,7 @@ public:
     static ovs_aio_request*
     get_ovs_aio_request(const void *opaque)
     {
-        ovs_aio_request *request = reinterpret_cast<ovs_aio_request*>(
-                const_cast<void*>(opaque));
-        return request;
+        return reinterpret_cast<ovs_aio_request*>(const_cast<void*>(opaque));
     }
 private:
     std::shared_ptr<xio_context> ctx;
@@ -221,9 +231,12 @@ private:
     std::mutex req_queue_lock;
     std::condition_variable req_queue_cond;
 
-    EventFD evfd;
+    volumedriverfs::EventFD evfd;
 
-    std::shared_ptr<xio_mempool> mpool;
+    NetworkHAContext& ha_ctx_;
+    bool ha_try_reconnect_;
+    bool connection_error_;
+    std::atomic<bool> dtl_in_sync_;
 
     void
     xio_run_loop_worker();
@@ -236,9 +249,6 @@ private:
 
     void
     shutdown();
-
-    template<class E>
-    void set_exception_ptr(E e);
 
     static xio_connection*
     create_connection_control(session_data *sdata,
@@ -282,13 +292,92 @@ private:
                           int size);
 
     static void
+    handle_list_cluster_node_uri(xio_ctl_s *xctl,
+                                 xio_iovec_ex *sglist,
+                                 int vec_size);
+
+    static void
+    handle_get_volume_uri(xio_ctl_s *xctl,
+                          xio_iovec_ex *sglist,
+                          int vec_size);
+
+    static void
     create_vec_from_buf(xio_ctl_s *xctl,
                         xio_iovec_ex *sglist,
                         int vec_size);
+
+    void
+    set_dtl_in_sync(const NetworkXioMsgOpcode op,
+                    const ssize_t retval,
+                    const int errval,
+                    const bool dtl_in_sync)
+    {
+        switch (op)
+        {
+        case NetworkXioMsgOpcode::WriteRsp:
+        case NetworkXioMsgOpcode::FlushRsp:
+            if (retval >= 0 && errval == 0)
+            {
+                dtl_in_sync_ = dtl_in_sync;
+            }
+            break;
+        default:
+            break;
+        }
+    }
+
+    bool
+    is_ha_enabled() const
+    {
+        return ha_ctx_.is_ha_enabled();
+    }
+
+    bool
+    try_fail_request_on_conn_error()
+    {
+        bool ha_and_conn_error = connection_error_ and is_ha_enabled();
+        bool try_reconn_not_openning = (not ha_ctx_.is_volume_openning() and
+                ha_try_reconnect_);
+        return (ha_and_conn_error and (ha_ctx_.is_volume_openning() or
+                                       try_reconn_not_openning));
+    }
+
+    bool
+    try_fail_request_on_msg_error()
+    {
+        bool ha_conn_err_not_try_reconn = is_ha_enabled() and
+            connection_error_ and (not ha_try_reconnect_);
+        return ((not ha_conn_err_not_try_reconn) or
+                (ha_conn_err_not_try_reconn and ha_ctx_.is_volume_openning()));
+    }
+
+    void
+    insert_seen_request(xio_msg_s *xio_msg)
+    {
+        if (is_ha_enabled())
+        {
+            uint64_t id = get_ovs_aio_request(xio_msg->opaque)->_id;
+            maybe_insert_seen_request(id);
+        }
+    }
+
+    void
+    maybe_insert_seen_request(uint64_t id)
+    {
+        if (not ha_try_reconnect_)
+        {
+            ha_ctx_.insert_seen_request(id);
+        }
+        else
+        {
+            /* in state machine order */
+            ha_try_reconnect_ = false;
+        }
+    }
 };
 
 typedef std::shared_ptr<NetworkXioClient> NetworkXioClientPtr;
 
-} //namespace volumedriverfs
+} //namespace libovsvolumedriver
 
 #endif //__NETWORK_XIO_CLIENT_H_

@@ -88,6 +88,12 @@ public:
             StrictConsistency::F;
     }
 
+    virtual bool
+    unique_tag_support() const override final
+    {
+        return false;
+    }
+
     virtual std::unique_ptr<BackendConfig>
     clone() const override final
     {

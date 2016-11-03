@@ -46,6 +46,7 @@ namespace yt = youtils;
 MDSMetaDataStore::MDSMetaDataStore(const MDSMetaDataBackendConfig& cfg,
                                    be::BackendInterfacePtr bi,
                                    const fs::path& home,
+                                   const OwnerTag owner_tag,
                                    uint64_t num_pages_cached)
     : VolumeBackPointer(getLogger__())
     , rwlock_("mdsmdstore-" + bi->getNS().str())
@@ -55,6 +56,7 @@ MDSMetaDataStore::MDSMetaDataStore(const MDSMetaDataBackendConfig& cfg,
     , timeout_(cfg.timeout())
     , num_pages_cached_(num_pages_cached)
     , home_(home)
+    , owner_tag_(owner_tag)
     , incremental_rebuild_count_(0)
     , full_rebuild_count_(0)
 {
@@ -80,6 +82,11 @@ MDSMetaDataStore::MDSMetaDataStore(const MDSMetaDataBackendConfig& cfg,
     try
     {
         mdstore_ = connect_(node_configs_[0]);
+    }
+    catch (OwnerTagMismatchException& e)
+    {
+        LOG_ERROR(bi_->getNS() << ": " << e.what());
+        throw;
     }
     CATCH_STD_ALL_EWHAT({
             LOG_ERROR(bi_->getNS() << ": failed to connect to " <<
@@ -137,6 +144,11 @@ MDSMetaDataStore::do_handle_(const char* desc,
         {
             return fun(md);
         }
+    }
+    catch (OwnerTagMismatchException& e)
+    {
+        LOG_ERROR(bi_->getNS() << ": " << e.what());
+        throw;
     }
     CATCH_STD_ALL_EWHAT({
             LOG_ERROR(bi_->getNS() << ": " << desc << " failed: " << EWHAT);
@@ -229,6 +241,11 @@ MDSMetaDataStore::do_failover_(bool startup)
                                       VolumeId(bi_->getNS().str()));
             return md;
         }
+        catch (OwnerTagMismatchException& e)
+        {
+            LOG_ERROR(bi_->getNS() << ": " << e.what());
+            throw;
+        }
         CATCH_STD_ALL_EWHAT({
                 LOG_ERROR(bi_->getNS() << ": failover to " << node_configs_[0] <<
                           " failed: " << EWHAT);
@@ -246,6 +263,7 @@ MDSMetaDataStore::connect_(const MDSNodeConfig& ncfg) const
 
     auto mdb(std::make_shared<MDSMetaDataBackend>(ncfg,
                                                   bi_->getNS(),
+                                                  owner_tag_,
                                                   timeout_));
 
     auto md(std::make_shared<CachedMetaDataStore>(mdb,

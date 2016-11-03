@@ -21,9 +21,9 @@
 #include <youtils/SpinLock.h>
 #include <queue>
 
-namespace vfs = volumedriverfs;
+namespace libvoldrv = libovsvolumedriver;
 
-VolumeCacheHandler::VolumeCacheHandler(vfs::ShmClientPtr shm_client,
+VolumeCacheHandler::VolumeCacheHandler(libvoldrv::ShmClientPtr shm_client,
                                        ShmControlChannelClientPtr ctl_client)
     : shm_client_(shm_client)
     , ctl_client_(ctl_client)

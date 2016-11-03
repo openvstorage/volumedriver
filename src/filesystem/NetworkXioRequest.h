@@ -37,6 +37,7 @@ struct NetworkXioRequest
     unsigned int data_len;
     size_t size;
     uint64_t offset;
+    bool dtl_in_sync;
 
     ssize_t retval;
     int errval;
@@ -63,11 +64,9 @@ struct NetworkXioClientData
     xio_connection *conn;
     xio_mempool *mpool;
     std::atomic<bool> disconnected;
-    std::atomic<bool> connection_closed;
     std::atomic<uint64_t> refcnt;
     NetworkXioServer *server;
     NetworkXioIOHandler *ioh;
-    std::list<NetworkXioRequest*> done_reqs;
     ClientInfoTag tag;
 };
 

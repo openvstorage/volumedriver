@@ -20,11 +20,12 @@
 
 #include <vector>
 
-struct ovs_context_t
-{
-    TransportType transport;
-    int oflag;
+struct ovs_aio_request;
+struct ovs_aiocb;
 
+class ovs_context_t
+{
+public:
     virtual ~ovs_context_t() {};
 
     virtual int open_volume(const char *volume_name,
@@ -57,24 +58,32 @@ struct ovs_context_t
 
     virtual int list_volumes(std::vector<std::string>& volumes) = 0;
 
-    virtual int send_read_request(struct ovs_aiocb *ovs_aiocbp,
-                                  ovs_aio_request *request) = 0;
+    virtual int list_cluster_node_uri(std::vector<std::string>& uris) = 0;
 
-    virtual int send_write_request(struct ovs_aiocb *ovs_aiocbp,
-                                   ovs_aio_request *request) = 0;
+    virtual int get_volume_uri(const char* volume_name,
+                               std::string& uri) = 0;
 
-    virtual int send_flush_request(ovs_aio_request *request) = 0;
+    virtual int send_write_request(ovs_aio_request*) = 0;
+
+    virtual int send_read_request(ovs_aio_request*) = 0;
+
+    virtual int send_flush_request(ovs_aio_request*) = 0;
 
     virtual int stat_volume(struct stat *st) = 0;
 
-    virtual ovs_buffer_t* allocate(size_t size) = 0;
+    virtual ovs_buffer* allocate(size_t size) = 0;
 
-    virtual int deallocate(ovs_buffer_t *ptr) = 0;
+    virtual int deallocate(ovs_buffer *ptr) = 0;
 
     virtual int truncate_volume(const char *volume_name,
                                 uint64_t length) = 0;
 
     virtual int truncate(uint64_t length) = 0;
+
+    virtual bool is_dtl_in_sync() = 0;
+
+    TransportType transport;
+    int oflag;
 };
 
 #endif // __CONTEXT_H

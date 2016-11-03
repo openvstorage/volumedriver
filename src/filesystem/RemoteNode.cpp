@@ -89,9 +89,12 @@ RemoteNode::~RemoteNode()
 void
 RemoteNode::notify_()
 {
+    int ret;
     const eventfd_t val = 1;
-    int ret = eventfd_write(event_fd_,
+    do {
+        ret = eventfd_write(event_fd_,
                             val);
+    } while (ret < 0 && errno == EINTR);
     VERIFY(ret == 0);
 }
 
@@ -145,6 +148,9 @@ struct RemoteNode::WorkItem
         , request_desc(vfsprotocol::request_type_to_string(request_type))
         , send_extra_fun(send_extra)
         , recv_extra_fun(recv_extra)
+          // clang++ (3.8.0-2ubuntu3~trusty4) complains otherwise about
+          // 'promise' being used unitialized when initializing 'future'
+        , promise()
         , future(promise.get_future())
     {}
 };
@@ -310,9 +316,14 @@ RemoteNode::work_()
 bool
 RemoteNode::send_requests_()
 {
+    int ret;
     eventfd_t val = 0;
-    int ret = eventfd_read(event_fd_,
+
+    do {
+        ret = eventfd_read(event_fd_,
                            &val);
+    } while (ret < 0 && errno == EINTR);
+
     if (ret < 0)
     {
         VERIFY(errno == EAGAIN);
@@ -457,7 +468,8 @@ void
 RemoteNode::write(const Object& obj,
                   const uint8_t* buf,
                   size_t* size,
-                  off_t off)
+                  off_t off,
+                  vd::DtlInSync& dtl_in_sync)
 {
     ASSERT(size);
 
@@ -472,32 +484,53 @@ RemoteNode::write(const Object& obj,
                                zock_->send(msg, 0);
                            });
 
-    ExtraRecvFun get_size([&]
-                          {
-                              ZEXPECT_MORE(*zock_, "WriteResponse");
+    ExtraRecvFun get_rsp([&]
+                         {
+                             ZEXPECT_MORE(*zock_, "WriteResponse");
 
-                              vfsprotocol::WriteResponse rsp;
-                              ZUtils::deserialize_from_socket(*zock_, rsp);
+                             vfsprotocol::WriteResponse rsp;
+                             ZUtils::deserialize_from_socket(*zock_, rsp);
 
-                              rsp.CheckInitialized();
-                              *size = rsp.size();
-                          });
+                             rsp.CheckInitialized();
+                             *size = rsp.size();
+                             dtl_in_sync = rsp.dtl_in_sync() ? vd::DtlInSync::T : vd::DtlInSync::F;
+                         });
 
     handle_(req,
             vrouter_.redirect_timeout(),
             &send_data,
-            &get_size);
+            &get_rsp);
 }
 
 void
-RemoteNode::sync(const Object& obj)
+RemoteNode::sync(const Object& obj,
+                 vd::DtlInSync& dtl_in_sync)
 {
     LOG_TRACE(config.vrouter_id << ": obj " << obj.id);
 
     const auto req(vfsprotocol::MessageUtils::create_sync_request(obj));
 
+    ExtraRecvFun get_rsp([&]
+                         {
+                             // the SyncResponse data was introduced at a later point
+                             // so older versions might not send it.
+                             if (ZUtils::more_message_parts(*zock_))
+                             {
+                                 vfsprotocol::SyncResponse rsp;
+                                 ZUtils::deserialize_from_socket(*zock_, rsp);
+                                 rsp.CheckInitialized();
+                                 dtl_in_sync = rsp.dtl_in_sync() ? vd::DtlInSync::T : vd::DtlInSync::F;
+                             }
+                             else
+                             {
+                                 dtl_in_sync = vd::DtlInSync::F;
+                             }
+                         });
+
     handle_(req,
-            vrouter_.redirect_timeout());
+            vrouter_.redirect_timeout(),
+            nullptr,
+            &get_rsp);
 }
 
 uint64_t

@@ -18,6 +18,7 @@
 
 #include "BackendTasks.h"
 #include "ClusterCacheHandle.h"
+#include "DtlInSync.h"
 #include "FailOverCacheConfigWrapper.h"
 #include "FailOverCacheProxy.h"
 #include "NSIDMap.h"
@@ -104,6 +105,7 @@ public:
 
     Volume(const VolumeConfig&,
            const OwnerTag,
+           const boost::shared_ptr<backend::Condition>&,
            std::unique_ptr<SnapshotManagement>,
            std::unique_ptr<DataStoreNG>,
            std::unique_ptr<MetaDataStoreInterface>,
@@ -159,7 +161,7 @@ public:
     validateIOAlignment(uint64_t lba, uint64_t len) const;
 
     /** @exception IOException, MetaDataStoreException */
-    void
+    DtlInSync
     write(uint64_t lba, const uint8_t *buf, uint64_t len);
 
    /** @exception IOException, MetaDataStoreException */
@@ -167,7 +169,7 @@ public:
     read(uint64_t lba, uint8_t *buf, uint64_t len);
 
     /** @exception IOException */
-    void
+    DtlInSync
     sync();
 
     void
@@ -462,7 +464,7 @@ public:
     effective_cluster_cache_behaviour() const;
 
     OwnerTag
-    getOwnerTag()
+    getOwnerTag() const
     {
         std::lock_guard<decltype(config_lock_)> g(config_lock_);
         return config_.owner_tag_;
@@ -604,7 +606,7 @@ private:
     void
     executeDeletions_(TLogReader &);
 
-    void
+    DtlInSync
     writeClusters_(uint64_t addr,
                    const uint8_t* buf,
                    uint64_t bufsize);
@@ -656,7 +658,7 @@ private:
                                     const ClusterLocation& loc,
                                     const uint8_t* buf);
 
-    void
+    DtlInSync
     writeClustersToFailOverCache_(const std::vector<ClusterLocation>& locs,
                                   size_t num_locs,
                                   uint64_t start_address,
@@ -668,7 +670,7 @@ private:
     void
     writeFailOverCacheConfigToBackend_();
 
-    void
+    DtlInSync
     sync_(AppendCheckSum append_chksum);
 
     void

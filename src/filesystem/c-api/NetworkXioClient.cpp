@@ -13,6 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "Logger.h"
 #include "NetworkXioClient.h"
 
 #include <youtils/Assert.h>
@@ -45,7 +46,7 @@ xrefcnt_shutdown()
     }
 }
 
-namespace volumedriverfs
+namespace libovsvolumedriver
 {
 
 template<class T>
@@ -109,7 +110,10 @@ static_evfd_stop_loop(int fd, int events, void *data)
     obj->evfd_stop_loop(fd, events, data);
 }
 
-NetworkXioClient::NetworkXioClient(const std::string& uri, const uint64_t qd)
+NetworkXioClient::NetworkXioClient(const std::string& uri,
+                                   const uint64_t qd,
+                                   NetworkHAContext& ha_ctx,
+                                   bool ha_try_reconnect)
     : uri_(uri)
     , stopping(false)
     , stopped(false)
@@ -117,7 +121,12 @@ NetworkXioClient::NetworkXioClient(const std::string& uri, const uint64_t qd)
     , disconnecting(false)
     , nr_req_queue(qd)
     , evfd()
+    , ha_ctx_(ha_ctx)
+    , ha_try_reconnect_(ha_try_reconnect)
+    , connection_error_(false)
+    , dtl_in_sync_(true)
 {
+    LIBLOGID_INFO("uri: " << uri << ", queue depth: " << qd);
     ses_ops.on_session_event = static_on_session_event<NetworkXioClient>;
     ses_ops.on_session_established = NULL;
     ses_ops.on_msg = static_on_response<NetworkXioClient>;
@@ -132,8 +141,6 @@ NetworkXioClient::NetworkXioClient(const std::string& uri, const uint64_t qd)
     params.ses_ops = &ses_ops;
     params.user_context = this;
     params.uri = uri_.c_str();
-
-    int queue_depth = 2 * nr_req_queue;
 
     xrefcnt_init();
 
@@ -156,8 +163,9 @@ NetworkXioClient::NetworkXioClient(const std::string& uri, const uint64_t qd)
                 }
         });
     }
-    catch (const std::system_error&)
+    catch (const std::system_error& e)
     {
+        LIBLOGID_ERROR("failed to create xio thread: " << e.what());
         throw XioClientCreateException("failed to create XIO worker thread");
     }
 
@@ -165,39 +173,12 @@ NetworkXioClient::NetworkXioClient(const std::string& uri, const uint64_t qd)
     {
         future.get();
     }
-    catch (const std::exception&)
+    catch (const std::exception& e)
     {
+        LIBLOGID_ERROR("failed to create xio thread: " << e.what());
         xio_thread_.join();
         throw XioClientCreateException("failed to create XIO worker thread");
     }
-
-    mpool = std::shared_ptr<xio_mempool>(
-                    xio_mempool_create(-1,
-                                       XIO_MEMPOOL_FLAG_REGULAR_PAGES_ALLOC),
-                    xio_mempool_destroy);
-    if (mpool == nullptr)
-    {
-        shutdown();
-        throw XioClientCreateException("failed to create XIO memory pool");
-    }
-    (void) xio_mempool_add_slab(mpool.get(),
-                                4096,
-                                0,
-                                queue_depth,
-                                32,
-                                0);
-    (void) xio_mempool_add_slab(mpool.get(),
-                                32768,
-                                0,
-                                32,
-                                32,
-                                0);
-    (void) xio_mempool_add_slab(mpool.get(),
-                                131072,
-                                0,
-                                8,
-                                32,
-                                0);
 }
 
 void
@@ -243,14 +224,16 @@ NetworkXioClient::run(std::promise<bool>& promise)
                             xio_context_create(NULL, polling_timeout_us, -1),
                             xio_destroy_ctx_shutdown);
     }
-    catch (const std::bad_alloc&)
+    catch (const std::bad_alloc& e)
     {
+        LIBLOGID_ERROR(e.what());
         xrefcnt_shutdown();
         throw;
     }
 
     if (ctx == nullptr)
     {
+        LIBLOGID_ERROR("failed to create XIO context");
         throw XioClientCreateException("failed to create XIO context");
     }
 
@@ -260,6 +243,7 @@ NetworkXioClient::run(std::promise<bool>& promise)
                                   static_evfd_stop_loop<NetworkXioClient>,
                                   this))
     {
+        LIBLOGID_ERROR("failed to register event handler");
         throw XioClientRegHandlerException("failed to register event handler");
     }
 
@@ -268,7 +252,8 @@ NetworkXioClient::run(std::promise<bool>& promise)
     if(session == nullptr)
     {
         xio_context_del_ev_handler(ctx.get(), evfd);
-        throw XioClientCreateException("failed to create XIO client");
+        LIBLOGID_ERROR("failed to create XIO session");
+        throw XioClientCreateException("failed to create XIO session");
     }
 
     cparams.session = session.get();
@@ -279,6 +264,7 @@ NetworkXioClient::run(std::promise<bool>& promise)
     if (conn == nullptr)
     {
         xio_context_del_ev_handler(ctx.get(), evfd);
+        LIBLOGID_ERROR("failed to connect");
         throw XioClientCreateException("failed to connect");
     }
 
@@ -308,19 +294,6 @@ NetworkXioClient::shutdown()
 NetworkXioClient::~NetworkXioClient()
 {
     shutdown();
-}
-
-int
-NetworkXioClient::allocate(xio_reg_mem* mem,
-                           const uint64_t size)
-{
-    return xio_mempool_alloc(mpool.get(), size, mem);
-}
-
-void
-NetworkXioClient::deallocate(xio_reg_mem *mem)
-{
-    xio_mempool_free(mem);
 }
 
 void
@@ -377,9 +350,13 @@ NetworkXioClient::xio_run_loop_worker()
             if (ret < 0)
             {
                 req_queue_release();
-                ovs_aio_request::handle_xio_request(get_ovs_aio_request(req->opaque),
-                                                    -1,
-                                                    EIO);
+                if ((not is_ha_enabled()) or try_fail_request_on_conn_error())
+                {
+                    ovs_aio_request::handle_xio_request(get_ovs_aio_request(req->opaque),
+                                                        -1,
+                                                        EIO,
+                                                        true);
+                }
                 delete req;
             }
         }
@@ -405,6 +382,43 @@ NetworkXioClient::evfd_stop_loop(int /*fd*/, int /*events*/, void * /*data*/)
 }
 
 int
+NetworkXioClient::on_response(xio_session *session __attribute__((unused)),
+                              xio_msg *reply,
+                              int last_in_rxq __attribute__((unused)))
+{
+    NetworkXioMsg imsg;
+    try
+    {
+        imsg.unpack_msg(static_cast<const char*>(reply->in.header.iov_base),
+                        reply->in.header.iov_len);
+        set_dtl_in_sync(imsg.opcode(),
+                        imsg.retval(),
+                        imsg.errval(),
+                        imsg.dtl_in_sync());
+    }
+    catch (...)
+    {
+        LIBLOGID_ERROR("failed to unpack msg");
+        return 0;
+    }
+    xio_msg_s *xio_msg = reinterpret_cast<xio_msg_s*>(imsg.opaque());
+
+    insert_seen_request(xio_msg);
+    ovs_aio_request::handle_xio_request(get_ovs_aio_request(xio_msg->opaque),
+                                        imsg.retval(),
+                                        imsg.errval(),
+                                        true);
+
+    reply->in.header.iov_base = NULL;
+    reply->in.header.iov_len = 0;
+    vmsg_sglist_set_nents(&reply->in, 0);
+    xio_release_response(reply);
+    req_queue_release();
+    delete xio_msg;
+    return 0;
+}
+
+int
 NetworkXioClient::on_msg_error(xio_session *session __attribute__((unused)),
                                xio_status error __attribute__((unused)),
                                xio_msg_direction direction,
@@ -422,7 +436,7 @@ NetworkXioClient::on_msg_error(xio_session *session __attribute__((unused)),
         }
         catch (...)
         {
-            //cnanakos: client logging?
+            LIBLOGID_ERROR("failed to unpack msg");
             return 0;
         }
     }
@@ -432,9 +446,14 @@ NetworkXioClient::on_msg_error(xio_session *session __attribute__((unused)),
         {
             imsg.unpack_msg(static_cast<const char*>(msg->in.header.iov_base),
                             msg->in.header.iov_len);
+            set_dtl_in_sync(imsg.opcode(),
+                            imsg.retval(),
+                            imsg.errval(),
+                            imsg.dtl_in_sync());
         }
         catch (...)
         {
+            LIBLOGID_ERROR("failed to unpack msg");
             xio_release_response(msg);
             return 0;
         }
@@ -444,9 +463,13 @@ NetworkXioClient::on_msg_error(xio_session *session __attribute__((unused)),
         xio_release_response(msg);
     }
     xio_msg = reinterpret_cast<xio_msg_s*>(imsg.opaque());
-    ovs_aio_request::handle_xio_request(get_ovs_aio_request(xio_msg->opaque),
-                                        -1,
-                                        EIO);
+    if (try_fail_request_on_msg_error())
+    {
+        ovs_aio_request::handle_xio_request(get_ovs_aio_request(xio_msg->opaque),
+                                            -1,
+                                            EIO,
+                                            true);
+    }
     req_queue_release();
     delete xio_msg;
     return 0;
@@ -459,6 +482,18 @@ NetworkXioClient::on_session_event(xio_session *session __attribute__((unused)),
 
     switch (event_data->event)
     {
+    case XIO_SESSION_ERROR_EVENT:
+    case XIO_SESSION_CONNECTION_ERROR_EVENT:
+    case XIO_SESSION_CONNECTION_REFUSED_EVENT:
+        connection_error_ = true;
+        ha_ctx_.set_connection_error();
+        break;
+    case XIO_SESSION_CONNECTION_CLOSED_EVENT:
+        break;
+    case XIO_SESSION_CONNECTION_DISCONNECTED_EVENT:
+        connection_error_ = disconnected = true;
+        ha_ctx_.set_connection_error();
+        break;
     case XIO_SESSION_CONNECTION_TEARDOWN_EVENT:
         if (disconnecting)
         {
@@ -489,6 +524,7 @@ NetworkXioClient::req_queue_wait_until(xio_msg_s *xmsg)
                                           [&]{return nr_req_queue >= 0;}))
         {
             delete xmsg;
+            LIBLOGID_ERROR("request queue is busy");
             throw XioClientQueueIsBusyException("request queue is busy");
         }
     }
@@ -593,37 +629,6 @@ NetworkXioClient::xio_send_close_request(const void *opaque)
 }
 
 int
-NetworkXioClient::on_response(xio_session *session __attribute__((unused)),
-                              xio_msg *reply,
-                              int last_in_rxq __attribute__((unused)))
-{
-    NetworkXioMsg imsg;
-    try
-    {
-        imsg.unpack_msg(static_cast<const char*>(reply->in.header.iov_base),
-                        reply->in.header.iov_len);
-    }
-    catch (...)
-    {
-        //cnanakos: logging
-        return 0;
-    }
-    xio_msg_s *xio_msg = reinterpret_cast<xio_msg_s*>(imsg.opaque());
-
-    ovs_aio_request::handle_xio_request(get_ovs_aio_request(xio_msg->opaque),
-                                        imsg.retval(),
-                                        imsg.errval());
-
-    reply->in.header.iov_base = NULL;
-    reply->in.header.iov_len = 0;
-    vmsg_sglist_set_nents(&reply->in, 0);
-    xio_release_response(reply);
-    req_queue_release();
-    delete xio_msg;
-    return 0;
-}
-
-int
 NetworkXioClient::on_msg_error_control(xio_session *session ATTR_UNUSED,
                                        xio_status error ATTR_UNUSED,
                                        xio_msg_direction direction,
@@ -661,7 +666,7 @@ NetworkXioClient::on_msg_error_control(xio_session *session ATTR_UNUSED,
         }
         catch (...)
         {
-            //cnanakos: client logging?
+            LIBLOG_ERROR("failed to unpack msg");
             return 0;
         }
     }
@@ -690,7 +695,7 @@ NetworkXioClient::on_msg_control(xio_session *session ATTR_UNUSED,
     }
     catch (...)
     {
-        //cnanakos: logging
+        LIBLOG_ERROR("failed to unpack msg");
         return 0;
     }
     xio_ctl_s *xctl = reinterpret_cast<xio_ctl_s*>(imsg.opaque());
@@ -710,6 +715,16 @@ NetworkXioClient::on_msg_control(xio_session *session ATTR_UNUSED,
                               vmsg_sglist(&reply->in),
                               imsg.retval(),
                               imsg.size());
+        break;
+    case NetworkXioMsgOpcode::ListClusterNodeURIRsp:
+        handle_list_cluster_node_uri(xctl,
+                                     vmsg_sglist(&reply->in),
+                                     imsg.retval());
+        break;
+    case NetworkXioMsgOpcode::GetVolumeURIRsp:
+        handle_get_volume_uri(xctl,
+                              vmsg_sglist(&reply->in),
+                              imsg.retval());
         break;
     default:
         break;
@@ -840,6 +855,8 @@ NetworkXioClient::create_vec_from_buf(xio_ctl_s *xctl,
                                       xio_iovec_ex *sglist,
                                       int vec_size)
 {
+    assert(xctl->vec);
+
     uint64_t idx = 0;
     for (int i = 0; i < vec_size; i++)
     {
@@ -865,6 +882,23 @@ NetworkXioClient::handle_list_snapshots(xio_ctl_s *xctl,
 {
     create_vec_from_buf(xctl, sglist, vec_size);
     xctl->size = size;
+}
+
+void
+NetworkXioClient::handle_list_cluster_node_uri(xio_ctl_s *xctl,
+                                               xio_iovec_ex *sglist,
+                                               int vec_size)
+{
+    create_vec_from_buf(xctl, sglist, vec_size);
+}
+
+void
+NetworkXioClient::handle_get_volume_uri(xio_ctl_s *xctl,
+                                        xio_iovec_ex *sglist,
+                                        int vec_size)
+{
+    assert(vec_size <= 1);
+    create_vec_from_buf(xctl, sglist, vec_size);
 }
 
 void
@@ -957,6 +991,41 @@ NetworkXioClient::xio_list_volumes(const std::string& uri,
 }
 
 void
+NetworkXioClient::xio_list_cluster_node_uri(const std::string& uri,
+                                            std::vector<std::string>& uris)
+{
+    auto xctl = std::make_unique<xio_ctl_s>();
+    xctl->vec = &uris;
+    xctl->xmsg.msg.opcode(NetworkXioMsgOpcode::ListClusterNodeURIReq);
+    xctl->xmsg.msg.opaque((uintptr_t)xctl.get());
+
+    xio_msg_prepare(&xctl->xmsg);
+    xio_submit_request(uri, xctl.get(), NULL);
+}
+
+void
+NetworkXioClient::xio_get_volume_uri(const std::string& uri,
+                                     const char* volume_name,
+                                     std::string& volume_uri)
+{
+    auto xctl(std::make_unique<xio_ctl_s>());
+    std::vector<std::string> vec;
+    xctl->vec = &vec;
+    xctl->xmsg.msg.opcode(NetworkXioMsgOpcode::GetVolumeURIReq);
+    xctl->xmsg.msg.opaque(reinterpret_cast<uintptr_t>(xctl.get()));
+    xctl->xmsg.msg.volume_name(volume_name);
+
+    xio_msg_prepare(&xctl->xmsg);
+    xio_submit_request(uri, xctl.get(), nullptr);
+
+    assert(vec.size() <= 1);
+    if (not vec.empty())
+    {
+        volume_uri = vec[0];
+    }
+}
+
+void
 NetworkXioClient::xio_list_snapshots(const std::string& uri,
                                      const char* volume_name,
                                      std::vector<std::string>& snapshots,
@@ -1045,4 +1114,4 @@ NetworkXioClient::xio_is_snapshot_synced(const std::string& uri,
     xio_submit_request(uri, xctl.get(), opaque);
 }
 
-} //namespace volumedriverfs
+} //namespace libovsvolumedriver

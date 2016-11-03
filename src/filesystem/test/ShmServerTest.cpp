@@ -41,6 +41,7 @@ namespace volumedriverfstest
 
 namespace bpt = boost::property_tree;
 namespace fs = boost::filesystem;
+namespace libvoldrv = libovsvolumedriver;
 
 using namespace volumedriverfs;
 
@@ -76,7 +77,7 @@ public:
 
         ASSERT_NO_THROW(future.get());
 
-        ShmClient::init();
+        libvoldrv::ShmClient::init();
     }
 
     virtual void
@@ -85,7 +86,7 @@ public:
         shm_orb_server_->stop_all_and_exit();
         shm_orb_thread_.join();
         shm_orb_server_ = nullptr;
-        ShmClient::fini();
+        libvoldrv::ShmClient::fini();
         FileSystemTestBase::TearDown();
     }
 
