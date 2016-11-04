@@ -472,7 +472,8 @@ NetworkXioServer::deallocate_request(NetworkXioRequest *req)
     if ((req->op == NetworkXioMsgOpcode::ReadRsp ||
          req->op == NetworkXioMsgOpcode::ListVolumesRsp ||
          req->op == NetworkXioMsgOpcode::ListSnapshotsRsp ||
-         req->op == NetworkXioMsgOpcode::ListClusterNodeURIRsp) && req->data)
+         req->op == NetworkXioMsgOpcode::ListClusterNodeURIRsp ||
+         req->op == NetworkXioMsgOpcode::GetVolumeURIRsp) && req->data)
     {
         if (req->from_pool)
         {

@@ -843,6 +843,7 @@ NetworkXioIOHandler::handle_get_volume_uri(NetworkXioRequest* req,
             req->retval = 1;
             req->data_len = uri.size() + 1;
             req->data = req->reg_mem.addr;
+            req->from_pool = false;
         }
         else
         {
