@@ -135,6 +135,9 @@ private:
 
     NetworkXioClientData*
     allocate_client_data();
+
+    void
+    prepare_msg_reply(NetworkXioRequest *req);
 };
 
 } //namespace

@@ -196,6 +196,8 @@ NetworkXioIOHandler::handle_write(NetworkXioRequest *req,
                                   size_t size,
                                   uint64_t offset)
 {
+    void *data;
+    unsigned int data_len;
     req->op = NetworkXioMsgOpcode::WriteRsp;
     if (not handle_)
     {
@@ -211,8 +213,8 @@ NetworkXioIOHandler::handle_write(NetworkXioRequest *req,
 
     if (inents >= 1)
     {
-        req->data = isglist[0].iov_base;
-        req->data_len = isglist[0].iov_len;
+        data = isglist[0].iov_base;
+        data_len = isglist[0].iov_len;
     }
     else
     {
@@ -223,7 +225,7 @@ NetworkXioIOHandler::handle_write(NetworkXioRequest *req,
         return;
     }
 
-    if (req->data_len < size)
+    if (data_len < size)
     {
        LOG_ERROR("data buffer size is smaller than the requested write size"
                  " for volume '" << volume_name_ << "'");
@@ -241,7 +243,7 @@ NetworkXioIOHandler::handle_write(NetworkXioRequest *req,
        vd::DtlInSync dtl_in_sync;
        fs_.write(*handle_,
                  req->size,
-                 static_cast<char*>(req->data),
+                 static_cast<char*>(data),
                  req->offset,
                  sync,
                  &dtl_in_sync);
