@@ -1832,7 +1832,8 @@ TEST_F(RemoteTest, dtl_status)
 
     EXPECT_TRUE(fs::exists(rpath));
 
-    test_dtl_status(vname);
+    test_dtl_status(vname,
+                    dtl_mode_);
 }
 
 TEST_F(RemoteTest, DISABLED_setup_remote_hack)

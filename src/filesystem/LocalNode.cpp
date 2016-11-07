@@ -714,11 +714,11 @@ LocalNode::write_(vd::WeakVolumePtr vol,
     }
     else
     {
-        maybe_retry_<vd::DtlInSync>(static_cast<Writer>(&api::Write),
-                                    vol,
-                                    lba,
-                                    buf,
-                                    wsize);
+        dtl_in_sync = maybe_retry_<vd::DtlInSync>(static_cast<Writer>(&api::Write),
+                                                  vol,
+                                                  lba,
+                                                  buf,
+                                                  wsize);
     }
 }
 

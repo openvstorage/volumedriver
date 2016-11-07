@@ -576,7 +576,8 @@ protected:
     }
 
     void
-    test_dtl_status(const volumedriverfs::FrontendPath&);
+    test_dtl_status(const volumedriverfs::FrontendPath&,
+                    const volumedriver::FailOverCacheMode);
 
     size_t
     get_cluster_size(const volumedriverfs::ObjectId&) const;
