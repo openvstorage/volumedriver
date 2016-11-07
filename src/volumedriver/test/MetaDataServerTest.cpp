@@ -632,7 +632,8 @@ TEST_P(MetaDataServerTest, owner_tag)
     table->set_role(mds::Role::Master,
                     owner_tag);
 
-    const mds::Key key("key"s);
+    const std::string keystr("key");
+    const mds::Key key(keystr);
     const std::string val1("val1");
 
     set(table,
