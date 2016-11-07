@@ -240,16 +240,16 @@ NetworkXioIOHandler::handle_write(NetworkXioRequest *req,
     bool sync = false;
     try
     {
-       vd::DtlInSync dtl_in_sync;
-       fs_.write(*handle_,
-                 req->size,
-                 static_cast<char*>(data),
-                 req->offset,
-                 sync,
-                 &dtl_in_sync);
-       req->dtl_in_sync = (dtl_in_sync == vd::DtlInSync::T) ? true : false;
-       req->retval = req->size;
-       req->errval = 0;
+        vd::DtlInSync dtl_in_sync = vd::DtlInSync::F;
+        fs_.write(*handle_,
+                  req->size,
+                  static_cast<char*>(data),
+                  req->offset,
+                  sync,
+                  &dtl_in_sync);
+        req->dtl_in_sync = (dtl_in_sync == vd::DtlInSync::T) ? true : false;
+        req->retval = req->size;
+        req->errval = 0;
     }
     CATCH_STD_ALL_EWHAT({
        LOG_ERROR("write I/O error: " << EWHAT);
@@ -274,13 +274,13 @@ NetworkXioIOHandler::handle_flush(NetworkXioRequest *req)
     LOG_TRACE("Flushing");
     try
     {
-       vd::DtlInSync dtl_in_sync;
-       fs_.fsync(*handle_,
-                 false,
-                 &dtl_in_sync);
-       req->dtl_in_sync = (dtl_in_sync == vd::DtlInSync::T) ? true : false;
-       req->retval = 0;
-       req->errval = 0;
+        vd::DtlInSync dtl_in_sync = vd::DtlInSync::T;
+        fs_.fsync(*handle_,
+                  false,
+                  &dtl_in_sync);
+        req->dtl_in_sync = (dtl_in_sync == vd::DtlInSync::T) ? true : false;
+        req->retval = 0;
+        req->errval = 0;
     }
     CATCH_STD_ALL_EWHAT({
        LOG_ERROR("flush I/O error: " << EWHAT);

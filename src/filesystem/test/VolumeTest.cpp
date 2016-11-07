@@ -29,8 +29,12 @@
 namespace volumedriverfstest
 {
 
+#define LOCKVD()                                        \
+    fungi::ScopedLock ag__(api::getManagementMutex())
+
 using namespace volumedriverfs;
 
+namespace bc = boost::chrono;
 namespace bpt = boost::property_tree;
 namespace bpy = boost::python;
 namespace fs = boost::filesystem;
@@ -55,11 +59,62 @@ protected:
         FileSystem::verify_volume_suffix_(sfx);
     }
 
+    void
+    test_dtl_status(vd::FailOverCacheMode mode,
+                    const bc::seconds& timeout = bc::seconds(60))
+    {
+        const FrontendPath vname(make_volume_name("/some-volume"));
+        const size_t vsize = 1ULL << 20;
+        const ObjectId oid(create_file(vname, vsize));
+
+        {
+            LOCKVD();
+
+            ObjectRouter& orouter = fs_->object_router();
+            const boost::optional<vd::FailOverCacheConfig> cfg(orouter.failoverconfig_as_it_should_be());
+            ASSERT_NE(boost::none,
+                      cfg);
+
+            orouter.set_manual_foc_config(oid,
+                                          vd::FailOverCacheConfig(cfg->host,
+                                                                  cfg->port,
+                                                                  mode));
+        }
+
+        const vd::VolumeId vid(oid.str());
+        const vd::TLogName tlog(client_.schedule_backend_sync(vid));
+
+        using Clock = bc::steady_clock;
+        const Clock::time_point deadline = Clock::now() + timeout;
+
+        while (true)
+        {
+            if (client_.is_volume_synced_up_to_tlog(vid,
+                                                    tlog))
+            {
+                break;
+            }
+            else if (Clock::now() < deadline)
+            {
+                boost::this_thread::sleep_for(bc::milliseconds(100));
+            }
+            else
+            {
+                FAIL() << "TLog " << tlog << " not on backend after " << timeout;
+            }
+        }
+
+        {
+            LOCKVD();
+            ASSERT_EQ(vd::VolumeFailOverState::OK_SYNC,
+                      api::getFailOverMode(vid));
+        }
+
+        FileSystemTestBase::test_dtl_status(vname, mode);
+    }
+
     DECLARE_LOGGER("VolumeTest");
 };
-
-#define LOCKVD()                                        \
-    fungi::ScopedLock ag__(api::getManagementMutex())
 
 TEST_F(VolumeTest, volume_suffix)
 {
@@ -1570,13 +1625,14 @@ TEST_F(VolumeTest, no_template_creation_if_clones_are_present)
     check();
 }
 
-TEST_F(VolumeTest, dtl_status)
+TEST_F(VolumeTest, dtl_status_async_dtl)
 {
-    const FrontendPath vname(make_volume_name("/some-volume"));
-    const size_t vsize = 1ULL << 20;
-    create_file(vname, vsize);
+    test_dtl_status(vd::FailOverCacheMode::Asynchronous);
+}
 
-    test_dtl_status(vname);
+TEST_F(VolumeTest, dtl_status_sync_dtl)
+{
+    test_dtl_status(vd::FailOverCacheMode::Synchronous);
 }
 
 }
