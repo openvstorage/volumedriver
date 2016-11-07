@@ -1195,7 +1195,8 @@ FileSystemTestBase::remote_node_queue_full(RemoteNode& rnode)
 }
 
 void
-FileSystemTestBase::test_dtl_status(const FrontendPath& vname)
+FileSystemTestBase::test_dtl_status(const FrontendPath& vname,
+                                    vd::FailOverCacheMode dtl_mode)
 {
     Handle::Ptr h;
     fs_->open(vname, O_WRONLY, h);
@@ -1207,30 +1208,41 @@ FileSystemTestBase::test_dtl_status(const FrontendPath& vname)
                                                                       std::move(h)));
                                      }));
 
+    auto write_test([&](size_t size)
+                   {
+                       vd::DtlInSync dtl_in_sync =
+                           dtl_mode == vd::FailOverCacheMode::Asynchronous ?
+                           vd::DtlInSync::T :
+                           vd::DtlInSync::F;
+
+                       bool sync = false;
+
+                       const std::vector<char> buf(size, 'Q');
+
+                       fs_->write(*h,
+                                  size,
+                                  buf.data(),
+                                  0,
+                                  sync,
+                                  &dtl_in_sync);
+
+                       if (dtl_mode == vd::FailOverCacheMode::Synchronous)
+                       {
+                           EXPECT_EQ(vd::DtlInSync::T,
+                                     dtl_in_sync);
+                       }
+                       else
+                       {
+                           EXPECT_EQ(vd::DtlInSync::F,
+                                     dtl_in_sync);
+                       }
+                   });
+
+    write_test(api::getDefaultClusterSize() / 2);
+    write_test(api::getDefaultClusterSize());
+
     vd::DtlInSync dtl_in_sync = vd::DtlInSync::F;
-    const std::string pattern("not that interesting really");
-    size_t size = pattern.size();
-    bool sync = false;
 
-    fs_->write(*h,
-               size,
-               pattern.data(),
-               0,
-               sync,
-               &dtl_in_sync);
-
-    if (dtl_mode_ == vd::FailOverCacheMode::Synchronous)
-    {
-        EXPECT_EQ(vd::DtlInSync::T,
-                  dtl_in_sync);
-    }
-    else
-    {
-        EXPECT_EQ(vd::DtlInSync::F,
-                  dtl_in_sync);
-    }
-
-    dtl_in_sync = vd::DtlInSync::F;
     fs_->fsync(*h,
                true,
                &dtl_in_sync);
