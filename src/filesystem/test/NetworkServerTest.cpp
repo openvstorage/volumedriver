@@ -288,19 +288,37 @@ public:
                                       snap1.c_str()));
     }
 
+    using StressExtraFun = std::function<void(const bc::seconds&,
+                                              const std::atomic<bool>&,
+                                              const std::string& vname)>;
+
     void
-    test_stress(bool enable_ha)
+    test_stress(bool enable_ha,
+                uint16_t port = FileSystemTestSetup::local_edge_port(),
+                StressExtraFun extra_fun = [&](const bc::seconds&,
+                                               const std::atomic<bool>&,
+                                               const std::string&)
+                {})
     {
-        CtxAttrPtr ctx_attr(make_ctx_attr(1, enable_ha));
+        CtxAttrPtr ctx_attr(make_ctx_attr(1, enable_ha, port));
         CtxPtr ctx(ovs_ctx_new(ctx_attr.get()));
         ASSERT_TRUE(ctx != nullptr);
 
         const size_t vsize = 1ULL << 20;
         const std::string vname("volume");
-        ASSERT_EQ(0,
-                  ovs_create_volume(ctx.get(),
-                                    vname.c_str(),
-                                    vsize));
+
+        // cf. comment in test_snapshot_ops
+        const size_t max = port == FileSystemTestSetup::remote_edge_port() ? 10 : 0;
+        size_t count = 0;
+
+        while (ovs_create_volume(ctx.get(),
+                                 vname.c_str(),
+                                 vsize) == -1)
+        {
+                ASSERT_GT(max, ++count) <<
+                    "failed to create volume after " << count << " attempts: " << strerror(errno);
+                boost::this_thread::sleep_for(bc::milliseconds(250));
+        }
 
         const size_t nreaders = yt::System::get_env_with_default("EDGE_STRESS_READERS",
                                                                  2ULL);
@@ -315,7 +333,7 @@ public:
 
         auto reader([&]() -> size_t
                     {
-                        CtxAttrPtr attr(make_ctx_attr(qdepth, enable_ha));
+                        CtxAttrPtr attr(make_ctx_attr(qdepth, enable_ha, port));
                         CtxPtr ctx(ovs_ctx_new(attr.get()));
 
                         EXPECT_EQ(0,
@@ -391,6 +409,28 @@ public:
                         return ops;
                     });
 
+        const bc::seconds duration(duration_secs);
+
+        // this fails to compile:
+        //
+        // std::future<void> extra_future(std::async(std::launch::async,
+        //                                           std::move(extra_fun),
+        //                                           duration,
+        //                                           stop,
+        //                                           vname));
+        //
+        // as somewhere along the way of (perfect) forwarding the const std::atomic<bool>& is
+        // converted into a std::atomic<bool> which fails due to copy construction.
+        // If you, esteemed reader, know how to fix this please let me know / fix it, but
+        // for now the ugly workaround below is used:
+        std::future<void> extra_future(std::async(std::launch::async,
+                                                  [&]
+                                                  {
+                                                      extra_fun(duration,
+                                                                stop,
+                                                                vname);
+                                                  }));
+
         std::vector<std::future<size_t>> futures;
         futures.reserve(nreaders);
 
@@ -402,7 +442,7 @@ public:
                                             reader));
         }
 
-        boost::this_thread::sleep_for(bc::seconds(duration_secs));
+        boost::this_thread::sleep_for(duration);
 
         stop = true;
         size_t total = 0;
@@ -416,6 +456,8 @@ public:
         }
 
         const double elapsed = t.elapsed();
+
+        extra_future.wait();
 
         std::cout << nreaders << " workers doing " << bufsize <<
             " bytes sized reads @ qdepth " << qdepth << ": " <<
@@ -1635,6 +1677,35 @@ TEST_F(NetworkServerTest, redirect_uri)
 
     EXPECT_EQ(network_server_uri(local_node_id()),
               yt::Uri(ha_ctx.current_uri()));
+}
+
+TEST_F(NetworkServerTest, DISABLED_ha_stress)
+{
+    set_use_fencing(true);
+    mount_remote();
+
+    const int hard_kill = yt::System::get_env_with_default("EDGE_HA_STRESS_KILL_REMOTE",
+                                                           0);
+
+    test_stress(true,
+                FileSystemTestSetup::remote_edge_port(),
+                [&](const bc::seconds& runtime,
+                    const std::atomic<bool>&,
+                    const std::string&)
+                {
+                    const bc::seconds wait(5);
+                    EXPECT_LT(wait,
+                              runtime);
+
+                    boost::this_thread::sleep_for(wait);
+
+                    if (hard_kill)
+                    {
+                        ::kill(remote_pid_, SIGKILL);
+                    }
+
+                    umount_remote(hard_kill);
+                });
 }
 
 } //namespace
