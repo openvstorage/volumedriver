@@ -20,6 +20,7 @@
 #include "../Types.h"
 #include "../VolumeConfig.h"
 
+#include <iosfwd>
 #include <stdexcept>
 
 #include <boost/filesystem.hpp>
@@ -59,6 +60,13 @@ struct VolumeDriverTestConfig
 
 #undef PARAM
 };
+
+// gtest will otherwise print out the bytewise representation,
+// which in turn will trip up valgrind if there are (and there are!)
+// padding bytes.
+std::ostream&
+operator<<(std::ostream&,
+           const VolumeDriverTestConfig&);
 
 }
 
