@@ -834,16 +834,16 @@ NetworkXioIOHandler::handle_get_volume_uri(NetworkXioRequest* req,
         {
             const auto uri(boost::lexical_cast<std::string>(*status.config.network_server_uri));
 
-            int ret = xio_mem_alloc(uri.size() + 1, &req->reg_mem);
+            int ret = xio_mem_alloc(uri.size(), &req->reg_mem);
             if (ret < 0)
             {
-                LOG_ERROR("failed to allocate buffer of size " << uri.size() + 1);
+                LOG_ERROR("failed to allocate buffer of size " << uri.size());
                 throw std::bad_alloc();
             }
 
             strcpy(static_cast<char*>(req->reg_mem.addr), uri.c_str());
-            req->retval = uri.size() + 1;
-            req->data_len = uri.size() + 1;
+            req->retval = uri.size();
+            req->data_len = uri.size();
             req->data = req->reg_mem.addr;
             req->from_pool = false;
         }
