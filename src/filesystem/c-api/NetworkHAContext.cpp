@@ -143,6 +143,34 @@ NetworkHAContext::get_rand_cluster_uri()
     return uri;
 }
 
+void
+NetworkHAContext::current_uri(const std::string& u)
+{
+    std::lock_guard<decltype(config_lock_)> g(config_lock_);
+    uri_ = u;
+}
+
+std::string
+NetworkHAContext::current_uri() const
+{
+    std::lock_guard<decltype(config_lock_)> g(config_lock_);
+    return uri_;
+}
+
+void
+NetworkHAContext::volume_name(const std::string& n)
+{
+    std::lock_guard<decltype(config_lock_)> g(config_lock_);
+    volume_name_ = n;
+}
+
+std::string
+NetworkHAContext::volume_name() const
+{
+    std::lock_guard<decltype(config_lock_)> g(config_lock_);
+    return volume_name_;
+}
+
 uint64_t
 NetworkHAContext::assign_request_id(ovs_aio_request *request)
 {
@@ -152,7 +180,7 @@ NetworkHAContext::assign_request_id(ovs_aio_request *request)
 
 void
 NetworkHAContext::insert_inflight_request(ovs_aio_request* req,
-                                          ContextPtr ctx)
+                                          NetworkXioContextPtr ctx)
 {
     const uint64_t id = req->_id;
     inflight_ha_reqs_.emplace(id, std::make_pair(req, std::move(ctx)));
@@ -218,7 +246,7 @@ NetworkHAContext::resend_inflight_requests()
     for (auto& req_entry: inflight_ha_reqs_)
     {
         auto request = req_entry.second.first;
-        ContextPtr ctx = atomic_get_ctx();
+        NetworkXioContextPtr ctx = atomic_get_ctx();
 
         switch (request->_op)
         {
@@ -252,9 +280,8 @@ NetworkHAContext::do_reconnect(const std::string& uri)
                                                            qd_,
                                                            *this,
                                                            true);
-        ret = tmp_ctx->open_volume_(volume_name_.c_str(),
-                                    oflag,
-                                    false);
+        ret = tmp_ctx->open_volume(volume_name_.c_str(),
+                                   oflag);
         if (ret)
         {
             LIBLOGID_ERROR("failed to open " << volume_name_ << " at " << uri);
@@ -354,12 +381,14 @@ NetworkHAContext::maybe_update_volume_location()
                                                    uri);
         if (ret)
         {
-            LIBLOGID_ERROR("failed to retrieve location of " << volume_name_ << ": " << ret);
+            LIBLOGID_ERROR("failed to retrieve location of " << volume_name_
+                           << ": " << ret);
         }
         else if (uri != current_uri())
         {
             LIBLOGID_INFO("location of " << volume_name_ <<
-                          " has changed from " << current_uri() << " to " << uri << " - trying to adjust");
+                          " has changed from " << current_uri() << " to " <<
+                          uri << " - trying to adjust");
             do_reconnect(uri);
         }
     }
@@ -374,6 +403,11 @@ NetworkHAContext::ha_ctx_handler(void *arg)
 
     while (not thread->stopping)
     {
+        if (is_volume_openning())
+        {
+            std::this_thread::sleep_for(ha_handler_sleep_time);
+            continue;
+        }
         if (is_connection_error())
         {
             remove_all_seen_requests();
@@ -411,8 +445,7 @@ int
 NetworkHAContext::open_volume(const char *volname,
                               int oflag)
 {
-    LIBLOGID_DEBUG("volume name: " << volname
-                   << ", oflag: " << oflag);
+    LIBLOGID_DEBUG("volume name: " << volname << ", oflag: " << oflag);
     int r = atomic_get_ctx()->open_volume(volname, oflag);
     if (not r)
     {
@@ -537,7 +570,7 @@ NetworkHAContext::wrap_io(int (NetworkXioContext::*mem_fun)(ovs_aio_request*,
         assign_request_id(request);
 
         LOCK_INFLIGHT();
-        ContextPtr ctx = atomic_get_ctx();
+        NetworkXioContextPtr ctx = atomic_get_ctx();
         r = (ctx.get()->*mem_fun)(request, std::forward<Args>(args)...);
         if (not r)
         {
@@ -546,7 +579,8 @@ NetworkHAContext::wrap_io(int (NetworkXioContext::*mem_fun)(ovs_aio_request*,
     }
     else
     {
-        r = (atomic_get_ctx().get()->*mem_fun)(request, std::forward<Args>(args)...);
+        r = (atomic_get_ctx().get()->*mem_fun)(request,
+                                               std::forward<Args>(args)...);
     }
     return r;
 }

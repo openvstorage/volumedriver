@@ -25,8 +25,6 @@ namespace libovsvolumedriver
 
 class NetworkXioContext
     : public ovs_context_t
-// this is just a bandaid for the moment - cf. NetworkXioContext::open
-    , public std::enable_shared_from_this<NetworkXioContext>
 {
 public:
     NetworkXioContext(const std::string& uri,
@@ -45,11 +43,6 @@ public:
     int
     open_volume(const char *volume_name,
                 int oflag);
-
-    int
-    open_volume_(const char *volume_name,
-                 int oflag,
-                 bool should_insert_request);
 
     void
     close_volume();
