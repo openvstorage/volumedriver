@@ -1679,13 +1679,13 @@ TEST_F(NetworkServerTest, redirect_uri)
               yt::Uri(ha_ctx.current_uri()));
 }
 
-TEST_F(NetworkServerTest, DISABLED_ha_stress)
+TEST_F(NetworkServerTest, ha_stress)
 {
     set_use_fencing(true);
     mount_remote();
 
     const int hard_kill = yt::System::get_env_with_default("EDGE_HA_STRESS_KILL_REMOTE",
-                                                           0);
+                                                           1);
 
     test_stress(true,
                 FileSystemTestSetup::remote_edge_port(),
