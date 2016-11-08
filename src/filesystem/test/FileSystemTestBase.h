@@ -418,7 +418,7 @@ protected:
     fork_and_exec_umount_(const boost::filesystem::path& mntpoint);
 
     void
-    umount_remote();
+    umount_remote(bool ignore_remote_errors = false);
 
     void
     wait_for_remote_();

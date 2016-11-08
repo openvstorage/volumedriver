@@ -914,7 +914,7 @@ FileSystemTestBase::fork_and_exec_umount_(const fs::path& mnt)
 }
 
 void
-FileSystemTestBase::umount_remote()
+FileSystemTestBase::umount_remote(bool ignore_remote_errors)
 {
     const fs::path pfx(remote_dir(topdir_));
     const fs::path mnt(mount_dir(pfx));
@@ -939,8 +939,13 @@ FileSystemTestBase::umount_remote()
 
         int status;
         ASSERT_EQ(remote_pid_, ::waitpid(remote_pid_, &status, 0));
-        ASSERT_TRUE(WIFEXITED(status));
-        ASSERT_EQ(0, WEXITSTATUS(status));
+
+        if (not ignore_remote_errors)
+        {
+            ASSERT_TRUE(WIFEXITED(status));
+            ASSERT_EQ(0, WEXITSTATUS(status));
+        }
+
         remote_pid_ = -1;
     }
     else
