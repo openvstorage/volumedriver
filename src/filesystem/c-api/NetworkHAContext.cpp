@@ -530,7 +530,6 @@ NetworkHAContext::wrap_io(int (NetworkXioContext::*mem_fun)(ovs_aio_request*,
                           ovs_aio_request* request,
                           Args... args)
 {
-    ContextPtr ctx = atomic_get_ctx();
     int r;
 
     if (is_ha_enabled())
@@ -538,6 +537,7 @@ NetworkHAContext::wrap_io(int (NetworkXioContext::*mem_fun)(ovs_aio_request*,
         assign_request_id(request);
 
         LOCK_INFLIGHT();
+        ContextPtr ctx = atomic_get_ctx();
         r = (ctx.get()->*mem_fun)(request, std::forward<Args>(args)...);
         if (not r)
         {
@@ -546,7 +546,7 @@ NetworkHAContext::wrap_io(int (NetworkXioContext::*mem_fun)(ovs_aio_request*,
     }
     else
     {
-        r = (ctx.get()->*mem_fun)(request, std::forward<Args>(args)...);
+        r = (atomic_get_ctx().get()->*mem_fun)(request, std::forward<Args>(args)...);
     }
     return r;
 }
