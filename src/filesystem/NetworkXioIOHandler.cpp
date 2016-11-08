@@ -841,7 +841,9 @@ NetworkXioIOHandler::handle_get_volume_uri(NetworkXioRequest* req,
                 throw std::bad_alloc();
             }
 
-            strcpy(static_cast<char*>(req->reg_mem.addr), uri.c_str());
+            strncpy(static_cast<char*>(req->reg_mem.addr),
+                    uri.c_str(),
+                    uri.size());
             req->retval = uri.size();
             req->data_len = uri.size();
             req->data = req->reg_mem.addr;
