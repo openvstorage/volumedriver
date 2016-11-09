@@ -91,6 +91,17 @@ NetworkXioIOHandler::handle_open(NetworkXioRequest *req,
     try
     {
         fs_.open(p, O_RDWR, handle_);
+
+        // The getattr is only here for the side effect of possibly
+        // triggering a failover at this stage where there's not yet
+        // a herd of WQ threads trying to handle I/O requests which
+        // would then end up being blocked on the volume restart.
+        // Hiding it behind FileSystem::open might get in the way of
+        // other interfaces that call open more frequently (kNFS on
+        // FUSE for example).
+        struct stat st;
+        fs_.getattr(p, st);
+
         update_fs_client_info(volume_name);
         volume_name_ = volume_name;
         req->retval = 0;

@@ -279,9 +279,9 @@ NetworkXioClient::shutdown()
     if (not stopped)
     {
         stopping = true;
-        xio_context_del_ev_handler(ctx.get(), evfd);
-        xio_context_stop_loop(ctx.get());
+        xstop_loop();
         xio_thread_.join();
+        xio_context_del_ev_handler(ctx.get(), evfd);
         while (not is_queue_empty())
         {
             xio_msg_s *req = pop_request();
