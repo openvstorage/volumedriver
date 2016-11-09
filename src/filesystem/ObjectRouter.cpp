@@ -142,7 +142,10 @@ ObjectRouter::shutdown_()
 {
     // ZMQ teardown
     // (1) destruct (close) all req sockets and all shared_ptrs to the ztx_
-    node_map_.clear();
+    {
+        WLOCK_NODES();
+        node_map_.clear();
+    }
 
     // (2) this will close the ZMQ context and lead to ZWorkerPool shutting down
     //     synchronously.

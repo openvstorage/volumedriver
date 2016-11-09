@@ -104,7 +104,7 @@ NetworkXioContext::open_volume_(const char *volume_name,
                                                ha_ctx_,
                                                ha_try_reconnect_);
         // TODO: this has to go, and the enable_shared_from_this in the declaration with it.
-        if (should_insert_request)
+        if (should_insert_request and ha_ctx_.is_ha_enabled())
         {
             ha_ctx_.assign_request_id(request.get());
             ha_ctx_.insert_inflight_request(request.get(),
