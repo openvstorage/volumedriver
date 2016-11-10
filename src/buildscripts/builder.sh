@@ -161,7 +161,7 @@ GCOV=/usr/bin/gcov
 LCOV=/usr/bin/lcov
 GENHTML=/usr/bin/genhtml
 CLANG=/usr/bin/clang
-SCAN_BUILD=/usr/bin/scan-build
+SCAN_BUILD=${SCAN_BUILD:-"/usr/bin/scan-build"}
 
 if [ "x${USE_CLANG_ANALYZER}" == "xyes" ]
 then
