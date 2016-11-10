@@ -42,6 +42,7 @@ struct ovs_aio_request
     : ovs_aiocbp(aio)
     , _completion(comp)
     , _op(op)
+    , _id(0)
     {
         /*cnanakos TODO: err handling */
         pthread_cond_init(&_cond, NULL);
