@@ -295,9 +295,9 @@ public:
     void
     test_stress(bool enable_ha,
                 uint16_t port = FileSystemTestSetup::local_edge_port(),
-                StressExtraFun extra_fun = [&](const bc::seconds&,
-                                               const std::atomic<bool>&,
-                                               const std::string&)
+                StressExtraFun extra_fun = [](const bc::seconds&,
+                                              const std::atomic<bool>&,
+                                              const std::string&)
                 {})
     {
         CtxAttrPtr ctx_attr(make_ctx_attr(1, enable_ha, port));
