@@ -68,6 +68,13 @@ struct CurrentTimeAsString
 
 }
 
+Snapshot::Snapshot()
+    : num(0)
+    , scrubbed(false)
+    , hasUUIDSpecified_(true)
+    , metadata_(0)
+{};
+
 Snapshot::Snapshot(const SnapshotNum i_num,
                    const SnapshotName& i_name,
                    const TLogs& tlogs,
