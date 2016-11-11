@@ -23,6 +23,7 @@
 #include "../CombinedTLogReader.h"
 #include "../DataStoreNG.h"
 #include "../FailOverCacheClientInterface.h"
+#include "../PrefetchData.h"
 #include "../SCOCache.h"
 #include "../TokyoCabinetMetaDataBackend.h"
 #include "../VolManager.h"
@@ -37,7 +38,6 @@
 #include <semaphore.h>
 
 #include <boost/filesystem/fstream.hpp>
-#include <boost/foreach.hpp>
 
 #include <fawltyfs/corba-daemon/Literals.h>
 
@@ -1721,10 +1721,16 @@ VolManagerTestSetup::persistXVals(const VolumeId& volname) const
     }
 }
 
-void
-VolManagerTestSetup::waitForPrefetching(Volume& v) const
+PrefetchData&
+VolManagerTestSetup::getPrefetchData(Volume& v)
 {
-    PrefetchData& pd = v.getPrefetchData();
+    return v.get_prefetch_data_();
+}
+
+void
+VolManagerTestSetup::waitForPrefetching(Volume& v)
+{
+    PrefetchData& pd = getPrefetchData(v);
     while (!pd.scos.empty())
     {
         sleep(1);
