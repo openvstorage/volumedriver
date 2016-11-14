@@ -33,25 +33,21 @@ public:
 
 TEST_F(ScopedExitTest, test1)
 {
-
     test_bool = false;
     ASSERT_FALSE(test_bool);
 
-    try
-    {
-        auto on_exit_1 = make_scope_exit([this](void)
-                                         {
-                                             test_bool = true;
-                                         });
-        ASSERT_FALSE(test_bool);
+    EXPECT_THROW({
+            auto on_exit_1 = make_scope_exit([this](void)
+                                             {
+                                                 test_bool = true;
+                                             });
+            ASSERT_FALSE(test_bool);
 
-        throw ScopedExitTestException("blah");
+            throw ScopedExitTestException("blah");
+        },
+        ScopedExitTestException);
 
-    }
-    catch(ScopedExitTestException& e)
-    {
-        ASSERT_TRUE(test_bool);
-    }
+    ASSERT_TRUE(test_bool);
 }
 
 TEST_F(ScopedExitTest, test2)
@@ -68,6 +64,32 @@ TEST_F(ScopedExitTest, test2)
     }
     ASSERT_TRUE(test_bool);
 }
+
+TEST_F(ScopedExitTest, exceptional)
+{
+    bool exception = false;
+
+    {
+        auto on_exit(make_scope_exit_on_exception([&]
+                                                  {
+                                                      exception = true;
+                                                  }));
+    }
+
+    EXPECT_FALSE(exception);
+
+    EXPECT_THROW({
+            auto on_exit(make_scope_exit_on_exception([&]
+                                                      {
+                                                          exception = true;
+                                                      }));
+            throw ScopedExitTestException("catch me");
+        },
+        ScopedExitTestException);
+
+    EXPECT_TRUE(exception);
+}
+
 }
 
 // Local Variables: **
