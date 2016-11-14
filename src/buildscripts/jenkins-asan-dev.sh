@@ -29,6 +29,7 @@ export VFS_PORT_BASE=${VFS_PORT_BASE:-$((FOC_PORT_BASE + 20))}
 export USE_CLANG=no
 export VD_EXTRA_VERSION=`get_debug_extra_version $VOLUMEDRIVER_DIR`
 export SUPRESS_WARNINGS=yes
+export LD_PRELOAD=/usr/lib/gcc/x86_64-linux-gnu/5/libasan.so
 
 # adds
 # * -Wno-mismatched-tags to disable "class X was previously declared as struct"
