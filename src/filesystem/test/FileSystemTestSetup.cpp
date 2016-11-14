@@ -330,7 +330,13 @@ FileSystemTestSetup::make_config_(bpt::ptree& pt,
 
     // metadata_server - we run it outside volmanager, hence empty ServerConfigs here.
     {
-        const mds::ServerConfigs scfgs;
+        // not 'const' as clang analyzer 3.8 does not like using the defaulted default ctor:
+        //         error: default initialization of an object of const type 'const mds::ServerConfigs' (aka 'const vector<metadata_server::ServerConfig>') without a user-provided default constructor
+        //         const mds::ServerConfigs scfgs;
+        //                                  ^
+        //                                       {}
+        // 1 error generated.
+        mds::ServerConfigs scfgs;
         mds_test_setup_->make_manager_config(pt,
                                              scfgs);
     }
