@@ -239,6 +239,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(network_workqueue_max_threads,
                                       ShowDocumentation::T,
                                       std::thread::hardware_concurrency());
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(network_workqueue_ctrl_max_threads,
+                                      network_interface_component_name,
+                                      "network_workqueue_ctrl_max_threads",
+                                      "Maximum control path workqueue threads",
+                                      ShowDocumentation::T,
+                                      128);
+
 // FileSystem:
 const char filesystem_component_name[] = "filesystem";
 

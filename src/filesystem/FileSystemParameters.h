@@ -179,6 +179,9 @@ DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(network_snd_rcv_queue_depth,
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(network_workqueue_max_threads,
                                        unsigned int);
 
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(network_workqueue_ctrl_max_threads,
+                                       unsigned int);
+
 // EventPublisher:
 extern const char events_component_name[];
 
