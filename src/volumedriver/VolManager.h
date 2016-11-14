@@ -597,6 +597,9 @@ private:
                     const CreateNamespace);
 
     void
+    remove_namespace_(const Namespace&) noexcept;
+
+    void
     setNamespaceRestarting_(const Namespace& ns, const VolumeConfig& config);
 
     template<typename V>
