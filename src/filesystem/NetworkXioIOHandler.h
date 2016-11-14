@@ -29,9 +29,11 @@ class NetworkXioIOHandler
 public:
     NetworkXioIOHandler(FileSystem& fs,
                         NetworkXioWorkQueuePtr wq,
+                        NetworkXioWorkQueuePtr wq_ctrl,
                         NetworkXioClientData* cd)
     : fs_(fs)
     , wq_(wq)
+    , wq_ctrl_(wq_ctrl)
     , cd_(cd)
     {}
 
@@ -52,7 +54,13 @@ public:
     process_request(NetworkXioRequest *req);
 
     void
-    handle_request(NetworkXioRequest* req);
+    process_ctrl_request(NetworkXioRequest *req);
+
+    void
+    handle_request(NetworkXioRequest *req);
+
+    void
+    dispatch_ctrl_request(NetworkXioRequest *req);
 
     void
     update_fs_client_info(const std::string& volume_name);
@@ -124,11 +132,14 @@ private:
                       NetworkXioMsgOpcode op,
                       int errval);
 
+    void prepare_ctrl_request(NetworkXioRequest *req);
+
 private:
     DECLARE_LOGGER("NetworkXioIOHandler");
 
     FileSystem& fs_;
     NetworkXioWorkQueuePtr wq_;
+    NetworkXioWorkQueuePtr wq_ctrl_;
     NetworkXioClientData *cd_;
 
     std::string volume_name_;

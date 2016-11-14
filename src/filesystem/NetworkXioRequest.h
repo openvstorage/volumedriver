@@ -31,6 +31,20 @@ struct NetworkXioClientData;
 struct NetworkXioRequest
     : public boost::intrusive::list_base_hook<>
 {
+    explicit NetworkXioRequest(NetworkXioClientData *cdata,
+                               xio_msg *xreq)
+    : data(nullptr)
+    , data_len(0)
+    , dtl_in_sync(true)
+    , retval(0)
+    , errval(0)
+    , xio_req(xreq)
+    , from_pool(true)
+    , cd(cdata)
+    {
+        work.func = work.func_ctrl = work.dispatch_ctrl_request = nullptr;
+        work.is_ctrl = false;
+    }
     NetworkXioMsgOpcode op;
 
     void *data;

@@ -129,7 +129,8 @@ static_on_msg_error(xio_session *session,
 NetworkXioServer::NetworkXioServer(FileSystem& fs,
                                    const yt::Uri& uri,
                                    size_t snd_rcv_queue_depth,
-                                   unsigned int workqueue_max_threads)
+                                   unsigned int workqueue_max_threads,
+                                   unsigned int workqueue_ctrl_max_threads)
     : fs_(fs)
     , uri_(uri)
     , stopping(false)
@@ -137,6 +138,7 @@ NetworkXioServer::NetworkXioServer(FileSystem& fs,
     , evfd()
     , queue_depth(snd_rcv_queue_depth)
     , wq_max_threads(workqueue_max_threads)
+    , wq_ctrl_max_threads(workqueue_ctrl_max_threads)
 {}
 
 void
@@ -258,7 +260,14 @@ NetworkXioServer::run(std::promise<void> promise)
     {
         wq_ = std::make_shared<NetworkXioWorkQueue>("ovs_xio_wq",
                                                     evfd,
+                                                    finished_lock,
+                                                    finished_list,
                                                     wq_max_threads);
+        wq_ctrl_ = std::make_shared<NetworkXioWorkQueue>("ovs_xio_wq_ctrl",
+                                                         evfd,
+                                                         finished_lock,
+                                                         finished_list,
+                                                         wq_ctrl_max_threads);
     }
     catch (const WorkQueueThreadsException&)
     {
@@ -362,6 +371,7 @@ NetworkXioServer::create_session_connection(xio_session *session,
         {
             NetworkXioIOHandler *ioh_ptr = new NetworkXioIOHandler(fs_,
                                                                    wq_,
+                                                                   wq_ctrl_,
                                                                    cd);
             cd->ioh = ioh_ptr;
             cd->session = session;
@@ -448,15 +458,7 @@ NetworkXioServer::allocate_request(NetworkXioClientData *cd,
 {
     try
     {
-        NetworkXioRequest *req = new NetworkXioRequest;
-        req->xio_req = xio_req;
-        req->cd = cd;
-        req->data = NULL;
-        req->data_len = 0;
-        req->retval = 0;
-        req->errval = 0;
-        req->from_pool = true;
-        req->dtl_in_sync = true;
+        NetworkXioRequest *req = new NetworkXioRequest(cd, xio_req);
         cd->refcnt++;
         return req;
     }

@@ -39,9 +39,13 @@ class NetworkXioWorkQueue
 public:
     NetworkXioWorkQueue(const std::string& name,
                         EventFD& evfd_,
+                        fungi::SpinLock& finished_lock_,
+                        boost::intrusive::list<NetworkXioRequest>& fl_,
                         unsigned int wq_max_threads)
     : name_(name)
     , nr_threads_(0)
+    , finished_lock(finished_lock_)
+    , finished_list(fl_)
     , nr_queued_work(0)
     , protection_period_(5000)
     , stopping(false)
@@ -127,8 +131,8 @@ private:
     std::mutex inflight_lock;
     std::queue<NetworkXioRequest*> inflight_queue;
 
-    mutable fungi::SpinLock finished_lock;
-    boost::intrusive::list<NetworkXioRequest> finished_list;
+    fungi::SpinLock& finished_lock;
+    boost::intrusive::list<NetworkXioRequest>& finished_list;
 
     std::atomic<size_t> nr_queued_work;
 
@@ -242,9 +246,18 @@ retry:
             inflight_queue.pop();
             lock_.unlock();
             queued_work_dec();
-            if (req->work.func)
+            if (not req->work.is_ctrl and req->work.func)
             {
                 req->work.func(&req->work);
+                if (req->work.is_ctrl)
+                {
+                    req->work.dispatch_ctrl_request(&req->work);
+                    continue;
+                }
+            }
+            if (req->work.is_ctrl and req->work.func_ctrl)
+            {
+                req->work.func_ctrl(&req->work);
             }
             finished_lock.lock();
             finished_list.push_back(*req);

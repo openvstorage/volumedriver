@@ -885,7 +885,8 @@ NetworkXioIOHandler::handle_get_volume_uri(NetworkXioRequest* req,
     }
     catch (fungi::IOException& e)
     {
-        LOG_ERROR("Failed to look up location of " << vname << ": " << e.what());
+        LOG_ERROR("Failed to look up location of " << vname << ": "
+                  << e.what());
         req->retval = -1;
         req->errval = e.getErrorCode();
         if (req->errval == 0)
@@ -894,7 +895,8 @@ NetworkXioIOHandler::handle_get_volume_uri(NetworkXioRequest* req,
         }
     }
     CATCH_STD_ALL_EWHAT({
-            LOG_ERROR("Failed to look up location of " << vname << ": " << EWHAT);
+            LOG_ERROR("Failed to look up location of " << vname << ": "
+                      << EWHAT);
             req->errval = EIO;
             req->retval = -1;
     });
@@ -914,7 +916,7 @@ NetworkXioIOHandler::handle_error(NetworkXioRequest *req,
 }
 
 void
-NetworkXioIOHandler::process_request(NetworkXioRequest *req)
+NetworkXioIOHandler::process_ctrl_request(NetworkXioRequest *req)
 {
     xio_msg *xio_req = req->xio_req;
 
@@ -933,7 +935,6 @@ NetworkXioIOHandler::process_request(NetworkXioRequest *req)
         return;
     }
 
-    req->opaque = i_msg.opaque();
     switch (i_msg.opcode())
     {
     case NetworkXioMsgOpcode::OpenReq:
@@ -945,25 +946,6 @@ NetworkXioIOHandler::process_request(NetworkXioRequest *req)
     case NetworkXioMsgOpcode::CloseReq:
     {
         handle_close(req);
-        break;
-    }
-    case NetworkXioMsgOpcode::ReadReq:
-    {
-        handle_read(req,
-                    i_msg.size(),
-                    i_msg.offset());
-        break;
-    }
-    case NetworkXioMsgOpcode::WriteReq:
-    {
-        handle_write(req,
-                     i_msg.size(),
-                     i_msg.offset());
-        break;
-    }
-    case NetworkXioMsgOpcode::FlushReq:
-    {
-        handle_flush(req);
         break;
     }
     case NetworkXioMsgOpcode::CreateVolumeReq:
@@ -1050,6 +1032,74 @@ NetworkXioIOHandler::process_request(NetworkXioRequest *req)
                      EIO);
         return;
     };
+}
+
+void
+NetworkXioIOHandler::process_request(NetworkXioRequest *req)
+{
+    xio_msg *xio_req = req->xio_req;
+    //TODO cnanakos: use a smart pointer
+    NetworkXioMsg i_msg(NetworkXioMsgOpcode::Noop);
+    try
+    {
+        i_msg.unpack_msg(static_cast<char*>(xio_req->in.header.iov_base),
+                         xio_req->in.header.iov_len);
+    }
+    catch (...)
+    {
+        LOG_ERROR("cannot unpack message");
+        handle_error(req,
+                     NetworkXioMsgOpcode::ErrorRsp,
+                     EBADMSG);
+        return;
+    }
+
+    req->opaque = i_msg.opaque();
+    switch (i_msg.opcode())
+    {
+    case NetworkXioMsgOpcode::ReadReq:
+    {
+        handle_read(req,
+                    i_msg.size(),
+                    i_msg.offset());
+        break;
+    }
+    case NetworkXioMsgOpcode::WriteReq:
+    {
+        handle_write(req,
+                     i_msg.size(),
+                     i_msg.offset());
+        break;
+    }
+    case NetworkXioMsgOpcode::FlushReq:
+    {
+        handle_flush(req);
+        break;
+    }
+    default:
+        prepare_ctrl_request(req);
+        return;
+    };
+}
+
+void
+NetworkXioIOHandler::prepare_ctrl_request(NetworkXioRequest *req)
+{
+    req->work.func_ctrl =
+        std::bind(&NetworkXioIOHandler::process_ctrl_request,
+                  this,
+                  req);
+    req->work.dispatch_ctrl_request =
+        std::bind(&NetworkXioIOHandler::dispatch_ctrl_request,
+                  this,
+                  req);
+    req->work.is_ctrl = true;
+}
+
+void
+NetworkXioIOHandler::dispatch_ctrl_request(NetworkXioRequest *req)
+{
+    wq_ctrl_->work_schedule(req);
 }
 
 void

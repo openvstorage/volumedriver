@@ -29,6 +29,9 @@ typedef std::function<void(Work*)> workitem_func_t;
 struct Work
 {
     workitem_func_t func;
+    workitem_func_t func_ctrl;
+    workitem_func_t dispatch_ctrl_request;
+    bool is_ctrl;
 };
 
 } //namespace
