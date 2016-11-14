@@ -703,6 +703,7 @@ NetworkXioClient::on_msg_control(xio_session *session ATTR_UNUSED,
                                              imsg.retval(),
                                              imsg.errval());
 
+    assert(vmsg_sglist(&reply->in));
     switch (imsg.opcode())
     {
     case NetworkXioMsgOpcode::ListVolumesRsp:
