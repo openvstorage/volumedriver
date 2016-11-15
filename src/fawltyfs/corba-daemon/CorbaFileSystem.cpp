@@ -173,7 +173,7 @@ CorbaFileSystem::listDirectIORules()
     fawltyfs::FileSystem::listDirectIORules(dios);
 
     size_t len = dios.size();
-    Fawlty::DirectIORules* directio_rules = new Fawlty::DirectIORules(len);
+    auto directio_rules(std::make_unique<Fawlty::DirectIORules>(len));
     directio_rules->length(len);
 
     size_t i = 0;
@@ -186,5 +186,5 @@ CorbaFileSystem::listDirectIORules()
         (*directio_rules)[i++] = d;
     }
     VERIFY(i == len);
-    return directio_rules;
+    return directio_rules.release();
 }

@@ -208,6 +208,7 @@ struct VolManagerTestSetupParameters
     PARAM(size_t, dtl_throttle_usecs) = 10000;
     PARAM(uint32_t, scos_per_tlog) = 20;
     PARAM(boost::chrono::seconds, dtl_check_interval) = boost::chrono::seconds(3600);
+
 #undef PARAM
 
     const std::string name_;
@@ -607,8 +608,11 @@ public:
     static VolumeDriverTestConfig
     default_test_config();
 
-    void
-    waitForPrefetching(Volume&) const;
+    static void
+    waitForPrefetching(Volume&);
+
+    static PrefetchData&
+    getPrefetchData(Volume&);
 
     SharedVolumePtr
     findVolume(const VolumeId& ns);

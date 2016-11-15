@@ -864,6 +864,14 @@ VolManager::createClone(const CloneVolumeConfigParameters& clone_params,
     ensureNamespace(ns,
                     create_namespace);
 
+    auto on_exit(yt::make_scope_exit_on_exception([&]
+                                                  {
+                                                      if (create_namespace == CreateNamespace::T)
+                                                      {
+                                                          remove_namespace_(ns);
+                                                      }
+                                                  }));
+
     const std::unique_ptr<SnapshotPersistor>
         sp(SnapshotManagement::createSnapshotPersistor(createBackendInterface(parent_ns)));
 
@@ -1036,6 +1044,14 @@ VolManager::createNewVolume(const VanillaVolumeConfigParameters& params,
     ensureNamespace(ns,
                     create_namespace);
 
+    auto on_exit(yt::make_scope_exit_on_exception([&]
+                                                  {
+                                                      if (create_namespace == CreateNamespace::T)
+                                                      {
+                                                          remove_namespace_(ns);
+                                                      }
+                                                  }));
+
     ensure_volume_size_(size);
 
     const VolumeConfig cfg(params);
@@ -1047,6 +1063,16 @@ VolManager::createNewVolume(const VanillaVolumeConfigParameters& params,
     volMap_[vol->getName()] = vol;
 
     return vol;
+}
+
+void
+VolManager::remove_namespace_(const Namespace& ns) noexcept
+{
+    try
+    {
+        createBackendInterface(ns)->deleteNamespace();
+    }
+    CATCH_STD_ALL_LOG_IGNORE("Failed to remove namespace " << ns);
 }
 
 void
@@ -1065,10 +1091,6 @@ VolManager::ensureNamespace(const Namespace& ns,
     else if (not createBackendInterface(ns)->namespaceExists())
     {
         throw NamespaceDoesNotExistException("namespace doesn't exist");
-    }
-    else
-    {
-        return;
     }
 }
 
@@ -1304,11 +1326,7 @@ VolManager::destroyVolume(SharedVolumePtr v,
 
     if(T(delete_volume_namespace))
     {
-        try
-        {
-            createBackendInterface(v->getNamespace())->deleteNamespace();
-        }
-        CATCH_STD_ALL_LOG_IGNORE("Could not delete namespace: " << v->getNamespace());
+        remove_namespace_(v->getNamespace());
     }
 }
 

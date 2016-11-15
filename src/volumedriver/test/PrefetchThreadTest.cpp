@@ -25,11 +25,9 @@ class PrefetchThreadTest
     : public VolManagerTestSetup
 {
 public:
-
     PrefetchThreadTest()
         : VolManagerTestSetup("PrefetchThreadTest")
     {}
-
 };
 
 TEST_P(PrefetchThreadTest, test_one)
@@ -85,8 +83,8 @@ TEST_P(PrefetchThreadTest, test_two)
     SCONameList list;
 
     VolManager::get()->getSCOCache()->getSCONameList(n1,
-                                        list,
-                                        true);
+                                                     list,
+                                                     true);
 
     ASSERT_EQ(numwrites, list.size());
 
@@ -108,7 +106,10 @@ TEST_P(PrefetchThreadTest, test_two)
     }
     //fill the cache with 1 SCO
     SCONameList::const_iterator it = list.begin();
-    v->getPrefetchData().addSCO(*it, 1);
+
+    PrefetchData& prefetch_data = getPrefetchData(*v);
+
+    prefetch_data.addSCO(*it, 1);
     ++it;
 
     //make sure cachedXValMin_ is set
@@ -118,7 +119,7 @@ TEST_P(PrefetchThreadTest, test_two)
     float sap = 0.01;
     for( ; it != list.end(); ++it)
     {
-        v->getPrefetchData().addSCO(*it, sap);
+        prefetch_data.addSCO(*it, sap);
         sap *= 0.9;
     }
 
@@ -142,7 +143,6 @@ TEST_P(PrefetchThreadTest, test_two)
 }
 
 INSTANTIATE_TEST(PrefetchThreadTest);
-
 
 }
 

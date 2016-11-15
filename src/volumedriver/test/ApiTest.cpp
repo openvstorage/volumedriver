@@ -820,7 +820,13 @@ TEST_P(ApiTest, snapshot_metadata)
     WeakVolumePtr vol = api::getVolumePointer(volid);
 
     const SnapshotName sname1("snapshot");
-    const SnapshotMetaData meta1;
+    // clang analyzer 3.8 does not like using the defaulted default ctor:
+    //     default initialization of an object of const type 'const SnapshotMetaData' (aka 'const vector<char>') without a user-provided default constructor
+    //     const SnapshotMetaData meta1;
+    //                            ^
+    //                                 {}
+    // 1 error generated.
+    const SnapshotMetaData meta1(0);
     api::createSnapshot(volid, meta1, &sname1);
 
     waitForThisBackendWrite(*SharedVolumePtr(vol));

@@ -74,10 +74,11 @@ NetworkXioContext::aio_return(ovs_aiocb *ovs_aiocbp)
 }
 
 int
-NetworkXioContext::open_volume_(const char *volume_name,
-                                int oflag __attribute__((unused)),
-                                bool should_insert_request)
+NetworkXioContext::open_volume(const char *volume_name,
+                               int oflag)
 {
+    LIBLOGID_DEBUG("volume name: " << volume_name
+                   << ",oflag: " << oflag);
     ssize_t r = 0;
     struct ovs_aiocb aio;
 
@@ -103,13 +104,6 @@ NetworkXioContext::open_volume_(const char *volume_name,
                                                net_client_qdepth_,
                                                ha_ctx_,
                                                ha_try_reconnect_);
-        // TODO: this has to go, and the enable_shared_from_this in the declaration with it.
-        if (should_insert_request and ha_ctx_.is_ha_enabled())
-        {
-            ha_ctx_.assign_request_id(request.get());
-            ha_ctx_.insert_inflight_request(request.get(),
-                                            shared_from_this());
-        }
         net_client_->xio_send_open_request(volume_name,
                                            reinterpret_cast<void*>(request.get()));
     }
@@ -136,17 +130,6 @@ NetworkXioContext::open_volume_(const char *volume_name,
         return r;
     }
     return aio_return(&aio);
-}
-
-int
-NetworkXioContext::open_volume(const char *volume_name,
-                               int oflag)
-{
-    LIBLOGID_DEBUG("volume name: " << volume_name
-                   << ",oflag: " << oflag);
-    return open_volume_(volume_name,
-                        oflag,
-                        true);
 }
 
 void

@@ -129,7 +129,8 @@ static_on_msg_error(xio_session *session,
 NetworkXioServer::NetworkXioServer(FileSystem& fs,
                                    const yt::Uri& uri,
                                    size_t snd_rcv_queue_depth,
-                                   unsigned int workqueue_max_threads)
+                                   unsigned int workqueue_max_threads,
+                                   unsigned int workqueue_ctrl_max_threads)
     : fs_(fs)
     , uri_(uri)
     , stopping(false)
@@ -137,6 +138,7 @@ NetworkXioServer::NetworkXioServer(FileSystem& fs,
     , evfd()
     , queue_depth(snd_rcv_queue_depth)
     , wq_max_threads(workqueue_max_threads)
+    , wq_ctrl_max_threads(workqueue_ctrl_max_threads)
 {}
 
 void
@@ -258,7 +260,14 @@ NetworkXioServer::run(std::promise<void> promise)
     {
         wq_ = std::make_shared<NetworkXioWorkQueue>("ovs_xio_wq",
                                                     evfd,
+                                                    finished_lock,
+                                                    finished_list,
                                                     wq_max_threads);
+        wq_ctrl_ = std::make_shared<NetworkXioWorkQueue>("ovs_xio_wq_ctrl",
+                                                         evfd,
+                                                         finished_lock,
+                                                         finished_list,
+                                                         wq_ctrl_max_threads);
     }
     catch (const WorkQueueThreadsException&)
     {
@@ -362,6 +371,7 @@ NetworkXioServer::create_session_connection(xio_session *session,
         {
             NetworkXioIOHandler *ioh_ptr = new NetworkXioIOHandler(fs_,
                                                                    wq_,
+                                                                   wq_ctrl_,
                                                                    cd);
             cd->ioh = ioh_ptr;
             cd->session = session;
@@ -448,15 +458,7 @@ NetworkXioServer::allocate_request(NetworkXioClientData *cd,
 {
     try
     {
-        NetworkXioRequest *req = new NetworkXioRequest;
-        req->xio_req = xio_req;
-        req->cd = cd;
-        req->data = NULL;
-        req->data_len = 0;
-        req->retval = 0;
-        req->errval = 0;
-        req->from_pool = true;
-        req->dtl_in_sync = true;
+        NetworkXioRequest *req = new NetworkXioRequest(cd, xio_req);
         cd->refcnt++;
         return req;
     }
@@ -469,11 +471,7 @@ NetworkXioServer::allocate_request(NetworkXioClientData *cd,
 void
 NetworkXioServer::deallocate_request(NetworkXioRequest *req)
 {
-    if ((req->op == NetworkXioMsgOpcode::ReadRsp ||
-         req->op == NetworkXioMsgOpcode::ListVolumesRsp ||
-         req->op == NetworkXioMsgOpcode::ListSnapshotsRsp ||
-         req->op == NetworkXioMsgOpcode::ListClusterNodeURIRsp ||
-         req->op == NetworkXioMsgOpcode::GetVolumeURIRsp) && req->data)
+    if (req->data)
     {
         if (req->from_pool)
         {
@@ -506,7 +504,8 @@ NetworkXioServer::on_msg_send_complete(xio_session *session ATTR_UNUSED,
                                        xio_msg *msg,
                                        void *cb_user_ctx ATTR_UNUSED)
 {
-    NetworkXioRequest *req = reinterpret_cast<NetworkXioRequest*>(msg->user_context);
+    NetworkXioRequest *req =
+        reinterpret_cast<NetworkXioRequest*>(msg->user_context);
     deallocate_request(req);
     return 0;
 }
@@ -519,7 +518,8 @@ NetworkXioServer::on_msg_error(xio_session *session,
 {
     if (direction == XIO_MSG_DIRECTION_OUT)
     {
-        NetworkXioRequest *req = reinterpret_cast<NetworkXioRequest*>(msg->user_context);
+        NetworkXioRequest *req =
+            reinterpret_cast<NetworkXioRequest*>(msg->user_context);
         deallocate_request(req);
     }
     else
@@ -532,7 +532,7 @@ NetworkXioServer::on_msg_error(xio_session *session,
 }
 
 void
-NetworkXioServer::xio_send_reply(NetworkXioRequest *req)
+NetworkXioServer::prepare_msg_reply(NetworkXioRequest *req)
 {
     xio_msg *xio_req = req->xio_req;
 
@@ -546,22 +546,37 @@ NetworkXioServer::xio_send_reply(NetworkXioRequest *req)
     req->xio_reply.out.header.iov_base =
         const_cast<void*>(reinterpret_cast<const void*>(req->s_msg.c_str()));
     req->xio_reply.out.header.iov_len = req->s_msg.length();
-    if ((req->op == NetworkXioMsgOpcode::ReadRsp ||
-         req->op == NetworkXioMsgOpcode::ListVolumesRsp ||
-         req->op == NetworkXioMsgOpcode::ListSnapshotsRsp ||
-         req->op == NetworkXioMsgOpcode::ListClusterNodeURIRsp ||
-         req->op == NetworkXioMsgOpcode::GetVolumeURIRsp) && req->data)
+
+    switch (req->op)
     {
-        vmsg_sglist_set_nents(&req->xio_reply.out, 1);
-        req->xio_reply.out.sgl_type = XIO_SGL_TYPE_IOV;
-        req->xio_reply.out.data_iov.max_nents = XIO_IOVLEN;
-        req->xio_reply.out.data_iov.sglist[0].iov_base = req->data;
-        req->xio_reply.out.data_iov.sglist[0].iov_len = req->data_len;
-        req->xio_reply.out.data_iov.sglist[0].mr = req->reg_mem.mr;
+    case NetworkXioMsgOpcode::ReadRsp:
+    case NetworkXioMsgOpcode::ListVolumesRsp:
+    case NetworkXioMsgOpcode::ListSnapshotsRsp:
+    case NetworkXioMsgOpcode::ListClusterNodeURIRsp:
+    case NetworkXioMsgOpcode::GetVolumeURIRsp:
+    {
+        if (req->data)
+        {
+            vmsg_sglist_set_nents(&req->xio_reply.out, 1);
+            req->xio_reply.out.sgl_type = XIO_SGL_TYPE_IOV;
+            req->xio_reply.out.data_iov.max_nents = XIO_IOVLEN;
+            req->xio_reply.out.data_iov.sglist[0].iov_base = req->data;
+            req->xio_reply.out.data_iov.sglist[0].iov_len = req->data_len;
+            req->xio_reply.out.data_iov.sglist[0].mr = req->reg_mem.mr;
+        }
+        break;
+    }
+    default:
+        break;
     }
     req->xio_reply.flags = XIO_MSG_FLAG_IMM_SEND_COMP;
     req->xio_reply.user_context = reinterpret_cast<void*>(req);
+}
 
+void
+NetworkXioServer::xio_send_reply(NetworkXioRequest *req)
+{
+    prepare_msg_reply(req);
     int ret = xio_send_response(&req->xio_reply);
     if (ret != 0)
     {

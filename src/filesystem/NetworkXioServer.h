@@ -48,7 +48,8 @@ public:
     NetworkXioServer(FileSystem&,
                      const youtils::Uri&,
                      size_t snd_rcv_queue_depth,
-                     unsigned int workqueue_max_threads);
+                     unsigned int workqueue_max_threads,
+                     unsigned int workqueue_ctrl_max_threads);
 
     ~NetworkXioServer();
 
@@ -109,8 +110,13 @@ private:
     EventFD evfd;
     int queue_depth;
     unsigned int wq_max_threads;
+    unsigned int wq_ctrl_max_threads;
 
     NetworkXioWorkQueuePtr wq_;
+    NetworkXioWorkQueuePtr wq_ctrl_;
+
+    mutable fungi::SpinLock finished_lock;
+    boost::intrusive::list<NetworkXioRequest> finished_list;
 
     std::shared_ptr<xio_context> ctx;
     std::shared_ptr<xio_server> server;
@@ -135,6 +141,9 @@ private:
 
     NetworkXioClientData*
     allocate_client_data();
+
+    void
+    prepare_msg_reply(NetworkXioRequest *req);
 };
 
 } //namespace

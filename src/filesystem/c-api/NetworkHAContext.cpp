@@ -57,11 +57,10 @@ MAKE_EXCEPTION(NetworkHAContextMemPoolException, fungi::IOException);
 NetworkHAContext::NetworkHAContext(const std::string& uri,
                                    uint64_t net_client_qdepth,
                                    bool ha_enabled)
-    : ctx_(std::shared_ptr<ovs_context_t>(
-                new NetworkXioContext(uri,
-                                      net_client_qdepth,
-                                      *this,
-                                      false)))
+    : ctx_(std::make_shared<NetworkXioContext>(uri,
+                                               net_client_qdepth,
+                                               *this,
+                                               false))
     , uri_(uri)
     , qd_(net_client_qdepth)
     , ha_enabled_(ha_enabled)
@@ -120,11 +119,6 @@ NetworkHAContext::NetworkHAContext(const std::string& uri,
 
 NetworkHAContext::~NetworkHAContext()
 {
-    if (is_ha_enabled())
-    {
-        ha_ctx_thread_.stop();
-        ha_ctx_thread_.reset_iothread();
-    }
     ctx_.reset();
 }
 
@@ -144,6 +138,34 @@ NetworkHAContext::get_rand_cluster_uri()
     return uri;
 }
 
+void
+NetworkHAContext::current_uri(const std::string& u)
+{
+    std::lock_guard<decltype(config_lock_)> g(config_lock_);
+    uri_ = u;
+}
+
+std::string
+NetworkHAContext::current_uri() const
+{
+    std::lock_guard<decltype(config_lock_)> g(config_lock_);
+    return uri_;
+}
+
+void
+NetworkHAContext::volume_name(const std::string& n)
+{
+    std::lock_guard<decltype(config_lock_)> g(config_lock_);
+    volume_name_ = n;
+}
+
+std::string
+NetworkHAContext::volume_name() const
+{
+    std::lock_guard<decltype(config_lock_)> g(config_lock_);
+    return volume_name_;
+}
+
 uint64_t
 NetworkHAContext::assign_request_id(ovs_aio_request *request)
 {
@@ -153,7 +175,7 @@ NetworkHAContext::assign_request_id(ovs_aio_request *request)
 
 void
 NetworkHAContext::insert_inflight_request(ovs_aio_request* req,
-                                          ContextPtr ctx)
+                                          NetworkXioContextPtr ctx)
 {
     const uint64_t id = req->_id;
     inflight_ha_reqs_.emplace(id, std::make_pair(req, std::move(ctx)));
@@ -219,7 +241,7 @@ NetworkHAContext::resend_inflight_requests()
     for (auto& req_entry: inflight_ha_reqs_)
     {
         auto request = req_entry.second.first;
-        ContextPtr ctx = atomic_get_ctx();
+        NetworkXioContextPtr ctx = atomic_get_ctx();
 
         switch (request->_op)
         {
@@ -253,9 +275,8 @@ NetworkHAContext::do_reconnect(const std::string& uri)
                                                            qd_,
                                                            *this,
                                                            true);
-        ret = tmp_ctx->open_volume_(volume_name_.c_str(),
-                                    oflag,
-                                    false);
+        ret = tmp_ctx->open_volume(volume_name_.c_str(),
+                                   oflag);
         if (ret)
         {
             LIBLOGID_ERROR("failed to open " << volume_name_ << " at " << uri);
@@ -355,12 +376,14 @@ NetworkHAContext::maybe_update_volume_location()
                                                    uri);
         if (ret)
         {
-            LIBLOGID_ERROR("failed to retrieve location of " << volume_name_ << ": " << ret);
+            LIBLOGID_ERROR("failed to retrieve location of " << volume_name_
+                           << ": " << ret);
         }
         else if (uri != current_uri())
         {
             LIBLOGID_INFO("location of " << volume_name_ <<
-                          " has changed from " << current_uri() << " to " << uri << " - trying to adjust");
+                          " has changed from " << current_uri() << " to " <<
+                          uri << " - trying to adjust");
             do_reconnect(uri);
         }
     }
@@ -375,6 +398,11 @@ NetworkHAContext::ha_ctx_handler(void *arg)
 
     while (not thread->stopping)
     {
+        if (is_volume_openning())
+        {
+            std::this_thread::sleep_for(ha_handler_sleep_time);
+            continue;
+        }
         if (is_connection_error())
         {
             remove_all_seen_requests();
@@ -412,8 +440,7 @@ int
 NetworkHAContext::open_volume(const char *volname,
                               int oflag)
 {
-    LIBLOGID_DEBUG("volume name: " << volname
-                   << ", oflag: " << oflag);
+    LIBLOGID_DEBUG("volume name: " << volname << ", oflag: " << oflag);
     int r = atomic_get_ctx()->open_volume(volname, oflag);
     if (not r)
     {
@@ -429,6 +456,11 @@ NetworkHAContext::open_volume(const char *volname,
 void
 NetworkHAContext::close_volume()
 {
+    if (is_ha_enabled())
+    {
+        ha_ctx_thread_.stop();
+        ha_ctx_thread_.reset_iothread();
+    }
     atomic_get_ctx()->close_volume();
 }
 
@@ -526,7 +558,8 @@ NetworkHAContext::get_volume_uri(const char* volume_name,
 
 template<typename... Args>
 int
-NetworkHAContext::wrap_io(int (ovs_context_t::*mem_fun)(ovs_aio_request*, Args...),
+NetworkHAContext::wrap_io(int (NetworkXioContext::*mem_fun)(ovs_aio_request*,
+                                                            Args...),
                           ovs_aio_request* request,
                           Args... args)
 {
@@ -537,7 +570,7 @@ NetworkHAContext::wrap_io(int (ovs_context_t::*mem_fun)(ovs_aio_request*, Args..
         assign_request_id(request);
 
         LOCK_INFLIGHT();
-        ContextPtr ctx = atomic_get_ctx();
+        NetworkXioContextPtr ctx = atomic_get_ctx();
         r = (ctx.get()->*mem_fun)(request, std::forward<Args>(args)...);
         if (not r)
         {
@@ -546,7 +579,8 @@ NetworkHAContext::wrap_io(int (ovs_context_t::*mem_fun)(ovs_aio_request*, Args..
     }
     else
     {
-        r = (atomic_get_ctx().get()->*mem_fun)(request, std::forward<Args>(args)...);
+        r = (atomic_get_ctx().get()->*mem_fun)(request,
+                                               std::forward<Args>(args)...);
     }
     return r;
 }
@@ -554,21 +588,21 @@ NetworkHAContext::wrap_io(int (ovs_context_t::*mem_fun)(ovs_aio_request*, Args..
 int
 NetworkHAContext::send_read_request(ovs_aio_request* request)
 {
-    return wrap_io(&ovs_context_t::send_read_request,
+    return wrap_io(&NetworkXioContext::send_read_request,
                    request);
 }
 
 int
 NetworkHAContext::send_write_request(ovs_aio_request* request)
 {
-    return wrap_io(&ovs_context_t::send_write_request,
+    return wrap_io(&NetworkXioContext::send_write_request,
                    request);
 }
 
 int
 NetworkHAContext::send_flush_request(ovs_aio_request* request)
 {
-    return wrap_io(&ovs_context_t::send_flush_request,
+    return wrap_io(&NetworkXioContext::send_flush_request,
                    request);
 }
 

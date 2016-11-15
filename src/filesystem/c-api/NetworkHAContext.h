@@ -34,6 +34,9 @@
 namespace libovsvolumedriver
 {
 
+class NetworkXioContext;
+typedef std::shared_ptr<NetworkXioContext> NetworkXioContextPtr;
+
 class NetworkHAContext : public ovs_context_t
 {
 public:
@@ -45,53 +48,53 @@ public:
 
     int
     open_volume(const char *volume_name,
-                int oflag);
+                int oflag) override final;
 
     void
-    close_volume();
+    close_volume() override final;
 
     int
     create_volume(const char *volume_name,
-                  uint64_t size);
+                  uint64_t size) override final;
 
     int
-    remove_volume(const char *volume_name);
+    remove_volume(const char *volume_name) override final;
 
     int
     truncate_volume(const char *volume_name,
-                    uint64_t size);
+                    uint64_t size) override final;
 
     int
-    truncate(uint64_t size);
+    truncate(uint64_t size) override final;
 
     int
     snapshot_create(const char *volume_name,
                     const char *snapshot_name,
-                    const uint64_t timeout);
+                    const uint64_t timeout) override final;
 
     int
     snapshot_rollback(const char *volume_name,
-                      const char *snapshot_name);
+                      const char *snapshot_name) override final;
 
     int
     snapshot_remove(const char *volume_name,
-                    const char *snapshot_name);
+                    const char *snapshot_name) override final;
 
     void
     list_snapshots(std::vector<std::string>& snaps,
                    const char *volume_name,
                    uint64_t *size,
-                   int *saved_errno);
+                   int *saved_errno) override final;
 
     int
     is_snapshot_synced(const char *volume_name,
-                       const char *snapshot_name);
+                       const char *snapshot_name) override final;
 
     int
-    list_volumes(std::vector<std::string>& volumes);
+    list_volumes(std::vector<std::string>& volumes) override final;
 
     int
-    list_cluster_node_uri(std::vector<std::string>& uris);
+    list_cluster_node_uri(std::vector<std::string>& uris) override final;
 
     int
     get_volume_uri(const char* volume_name,
@@ -107,10 +110,10 @@ public:
     send_flush_request(ovs_aio_request*) override final;
 
     int
-    stat_volume(struct stat *st);
+    stat_volume(struct stat *st) override final;
 
     ovs_buffer_t*
-    allocate(size_t size);
+    allocate(size_t size) override final;
 
     int
     deallocate(ovs_buffer_t *ptr);
@@ -120,6 +123,12 @@ public:
 
     void
     insert_seen_request(uint64_t id);
+
+    std::string
+    current_uri() const;
+
+    std::string
+    volume_name() const;
 
     bool
     is_ha_enabled() const
@@ -147,29 +156,12 @@ public:
             connection_error_ = true;
         }
     }
-
-    std::string
-    current_uri() const
-    {
-        std::lock_guard<decltype(config_lock_)> g(config_lock_);
-        return uri_;
-    }
-
-    std::string
-    volume_name() const
-    {
-        std::lock_guard<decltype(config_lock_)> g(config_lock_);
-        return volume_name_;
-    }
-
 private:
     /* cnanakos TODO: use atomic overloads for shared_ptr
      * when g++ > 5.0.0 is used
      */
-    using ContextPtr = std::shared_ptr<ovs_context_t>;
-    ContextPtr ctx_;
-
     fungi::SpinLock ctx_lock_;
+    NetworkXioContextPtr ctx_;
 
     // protects volume_name_ and uri_
     mutable std::mutex config_lock_;
@@ -186,7 +178,8 @@ private:
     // Cling to a context as long as it's still having outstanding requests.
     // Look into a custom allocator for the map (e.g. based on boost::pool?) if
     // allocations get in the way.
-    using RequestAndContext = std::pair<ovs_aio_request*, ContextPtr>;
+    using RequestAndContext = std::pair<ovs_aio_request*,
+                                        NetworkXioContextPtr>;
     std::unordered_map<uint64_t, RequestAndContext> inflight_ha_reqs_;
 
     std::mutex seen_reqs_lock_;
@@ -202,7 +195,13 @@ private:
     bool openning_;
     bool connection_error_;
 
-    ContextPtr
+    bool
+    is_connection_error() const
+    {
+        return connection_error_;
+    }
+
+    NetworkXioContextPtr
     atomic_get_ctx()
     {
         fungi::ScopedSpinLock l_(ctx_lock_);
@@ -210,35 +209,17 @@ private:
     }
 
     void
-    atomic_xchg_ctx(ContextPtr ctx)
+    atomic_xchg_ctx(NetworkXioContextPtr ctx)
     {
         fungi::ScopedSpinLock l_(ctx_lock_);
         ctx_.swap(ctx);
     }
 
-    // TODO:
-    // * these need to become private - fix the callsite in NetworkXioRequest::open
-    // * move assign_request_id to the ctor of ovs_aio_request
-public:
-    uint64_t
-    assign_request_id(ovs_aio_request*);
-
-    void
-    insert_inflight_request(ovs_aio_request*,
-                            ContextPtr);
-
-private:
     template<typename... Args>
     int
-    wrap_io(int (ovs_context_t::*mem_fun)(ovs_aio_request*, Args...),
+    wrap_io(int (NetworkXioContext::*mem_fun)(ovs_aio_request*, Args...),
             ovs_aio_request*,
             Args...);
-
-    bool
-    is_connection_error() const
-    {
-        return connection_error_;
-    }
 
     void
     update_cluster_node_uri();
@@ -273,19 +254,18 @@ private:
     void
     maybe_update_volume_location();
 
-    void
-    current_uri(const std::string& u)
-    {
-        std::lock_guard<decltype(config_lock_)> g(config_lock_);
-        uri_ = u;
-    }
+    uint64_t
+    assign_request_id(ovs_aio_request*);
 
     void
-    volume_name(const std::string& n)
-    {
-        std::lock_guard<decltype(config_lock_)> g(config_lock_);
-        volume_name_ = n;
-    }
+    insert_inflight_request(ovs_aio_request*,
+                            NetworkXioContextPtr);
+
+    void
+    current_uri(const std::string& u);
+
+    void
+    volume_name(const std::string& n);
 };
 
 } //namespace libovsvolumedriver

@@ -119,6 +119,7 @@ volumedriver_test_SOURCES = \
 	VolumeDriverConfigurationTest.cpp \
 	VolumeDriverErrorTest.cpp \
 	VolumeDriverInitTest.cpp \
+	VolumeDriverTestConfig.cpp \
 	VolumeStateManagementTest.cpp \
 	VolumeTest.cpp \
 	WriteOnlyVolumeTest.cpp \

@@ -138,11 +138,7 @@ private:
 public:
 #endif
     // only to be used for deserialization
-    Snapshot()
-        : num(0)
-        , scrubbed(false)
-        , hasUUIDSpecified_(true)
-    {};
+    Snapshot();
 #if BOOST_VERSION == 105800
 private:
 #endif

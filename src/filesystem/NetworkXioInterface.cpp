@@ -59,6 +59,7 @@ NetworkXioInterface::update(const bpt::ptree& pt,
     U(network_uri);
     U(network_snd_rcv_queue_depth);
     U(network_workqueue_max_threads);
+    U(network_workqueue_ctrl_max_threads);
 #undef U
 }
 
@@ -71,6 +72,7 @@ NetworkXioInterface::persist(bpt::ptree& pt,
     P(network_uri);
     P(network_snd_rcv_queue_depth);
     P(network_workqueue_max_threads);
+    P(network_workqueue_ctrl_max_threads);
 #undef P
 }
 
@@ -85,7 +87,8 @@ NetworkXioInterface::checkConfig(const bpt::ptree& /*pt*/,
 yt::Uri
 NetworkXioInterface::uri() const
 {
-    const boost::optional<yt::Uri> uri(fs_.object_router().node_config().network_server_uri);
+    const boost::optional<yt::Uri>
+        uri(fs_.object_router().node_config().network_server_uri);
     if (uri)
     {
         return *uri;

@@ -13,27 +13,23 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef NETWORK_XIO_WORK_H_
-#define NETWORK_XIO_WORK_H_
+#include "VolumeDriverTestConfig.h"
 
-#include <functional>
-#include <libxio.h>
+#include <iostream>
 
-namespace volumedriverfs
+namespace volumedriver
 {
 
-struct Work;
-
-typedef std::function<void(Work*)> workitem_func_t;
-
-struct Work
+std::ostream&
+operator<<(std::ostream& os,
+           const VolumeDriverTestConfig& c)
 {
-    workitem_func_t func;
-    workitem_func_t func_ctrl;
-    workitem_func_t dispatch_ctrl_request;
-    bool is_ctrl;
-};
+    return os <<
+        "VolumeDriverTestConfig{use_cluster_cache=" << c.use_cluster_cache() <<
+        ", foc_in_memory=" << c.foc_in_memory() <<
+        ", foc_mode=" << c.foc_mode() <<
+        ", cluster_multiplier=" << c.cluster_multiplier() <<
+        "}";
+}
 
-} //namespace
-
-#endif //NETWORK_XIO_WORK_H_
+}

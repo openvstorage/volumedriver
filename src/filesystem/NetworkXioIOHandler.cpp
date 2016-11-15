@@ -207,6 +207,8 @@ NetworkXioIOHandler::handle_write(NetworkXioRequest *req,
                                   size_t size,
                                   uint64_t offset)
 {
+    void *data;
+    unsigned int data_len;
     req->op = NetworkXioMsgOpcode::WriteRsp;
     if (not handle_)
     {
@@ -222,8 +224,8 @@ NetworkXioIOHandler::handle_write(NetworkXioRequest *req,
 
     if (inents >= 1)
     {
-        req->data = isglist[0].iov_base;
-        req->data_len = isglist[0].iov_len;
+        data = isglist[0].iov_base;
+        data_len = isglist[0].iov_len;
     }
     else
     {
@@ -234,7 +236,7 @@ NetworkXioIOHandler::handle_write(NetworkXioRequest *req,
         return;
     }
 
-    if (req->data_len < size)
+    if (data_len < size)
     {
        LOG_ERROR("data buffer size is smaller than the requested write size"
                  " for volume '" << volume_name_ << "'");
@@ -252,7 +254,7 @@ NetworkXioIOHandler::handle_write(NetworkXioRequest *req,
         vd::DtlInSync dtl_in_sync = vd::DtlInSync::F;
         fs_.write(*handle_,
                   req->size,
-                  static_cast<char*>(req->data),
+                  static_cast<char*>(data),
                   req->offset,
                   sync,
                   &dtl_in_sync);
@@ -843,16 +845,18 @@ NetworkXioIOHandler::handle_get_volume_uri(NetworkXioRequest* req,
         {
             const auto uri(boost::lexical_cast<std::string>(*status.config.network_server_uri));
 
-            int ret = xio_mem_alloc(uri.size() + 1, &req->reg_mem);
+            int ret = xio_mem_alloc(uri.size(), &req->reg_mem);
             if (ret < 0)
             {
-                LOG_ERROR("failed to allocate buffer of size " << uri.size() + 1);
+                LOG_ERROR("failed to allocate buffer of size " << uri.size());
                 throw std::bad_alloc();
             }
 
-            strcpy(static_cast<char*>(req->reg_mem.addr), uri.c_str());
-            req->retval = 1;
-            req->data_len = uri.size() + 1;
+            strncpy(static_cast<char*>(req->reg_mem.addr),
+                    uri.c_str(),
+                    uri.size());
+            req->retval = uri.size();
+            req->data_len = uri.size();
             req->data = req->reg_mem.addr;
             req->from_pool = false;
         }
@@ -881,7 +885,8 @@ NetworkXioIOHandler::handle_get_volume_uri(NetworkXioRequest* req,
     }
     catch (fungi::IOException& e)
     {
-        LOG_ERROR("Failed to look up location of " << vname << ": " << e.what());
+        LOG_ERROR("Failed to look up location of " << vname << ": "
+                  << e.what());
         req->retval = -1;
         req->errval = e.getErrorCode();
         if (req->errval == 0)
@@ -890,10 +895,11 @@ NetworkXioIOHandler::handle_get_volume_uri(NetworkXioRequest* req,
         }
     }
     CATCH_STD_ALL_EWHAT({
-            LOG_ERROR("Failed to look up location of " << vname << ": " << EWHAT);
+            LOG_ERROR("Failed to look up location of " << vname << ": "
+                      << EWHAT);
             req->errval = EIO;
             req->retval = -1;
-        });
+    });
 
     pack_msg(req);
 }
@@ -910,7 +916,7 @@ NetworkXioIOHandler::handle_error(NetworkXioRequest *req,
 }
 
 void
-NetworkXioIOHandler::process_request(NetworkXioRequest *req)
+NetworkXioIOHandler::process_ctrl_request(NetworkXioRequest *req)
 {
     xio_msg *xio_req = req->xio_req;
 
@@ -929,7 +935,6 @@ NetworkXioIOHandler::process_request(NetworkXioRequest *req)
         return;
     }
 
-    req->opaque = i_msg.opaque();
     switch (i_msg.opcode())
     {
     case NetworkXioMsgOpcode::OpenReq:
@@ -941,25 +946,6 @@ NetworkXioIOHandler::process_request(NetworkXioRequest *req)
     case NetworkXioMsgOpcode::CloseReq:
     {
         handle_close(req);
-        break;
-    }
-    case NetworkXioMsgOpcode::ReadReq:
-    {
-        handle_read(req,
-                    i_msg.size(),
-                    i_msg.offset());
-        break;
-    }
-    case NetworkXioMsgOpcode::WriteReq:
-    {
-        handle_write(req,
-                     i_msg.size(),
-                     i_msg.offset());
-        break;
-    }
-    case NetworkXioMsgOpcode::FlushReq:
-    {
-        handle_flush(req);
         break;
     }
     case NetworkXioMsgOpcode::CreateVolumeReq:
@@ -1046,6 +1032,74 @@ NetworkXioIOHandler::process_request(NetworkXioRequest *req)
                      EIO);
         return;
     };
+}
+
+void
+NetworkXioIOHandler::process_request(NetworkXioRequest *req)
+{
+    xio_msg *xio_req = req->xio_req;
+    //TODO cnanakos: use a smart pointer
+    NetworkXioMsg i_msg(NetworkXioMsgOpcode::Noop);
+    try
+    {
+        i_msg.unpack_msg(static_cast<char*>(xio_req->in.header.iov_base),
+                         xio_req->in.header.iov_len);
+    }
+    catch (...)
+    {
+        LOG_ERROR("cannot unpack message");
+        handle_error(req,
+                     NetworkXioMsgOpcode::ErrorRsp,
+                     EBADMSG);
+        return;
+    }
+
+    req->opaque = i_msg.opaque();
+    switch (i_msg.opcode())
+    {
+    case NetworkXioMsgOpcode::ReadReq:
+    {
+        handle_read(req,
+                    i_msg.size(),
+                    i_msg.offset());
+        break;
+    }
+    case NetworkXioMsgOpcode::WriteReq:
+    {
+        handle_write(req,
+                     i_msg.size(),
+                     i_msg.offset());
+        break;
+    }
+    case NetworkXioMsgOpcode::FlushReq:
+    {
+        handle_flush(req);
+        break;
+    }
+    default:
+        prepare_ctrl_request(req);
+        return;
+    };
+}
+
+void
+NetworkXioIOHandler::prepare_ctrl_request(NetworkXioRequest *req)
+{
+    req->work.func_ctrl =
+        std::bind(&NetworkXioIOHandler::process_ctrl_request,
+                  this,
+                  req);
+    req->work.dispatch_ctrl_request =
+        std::bind(&NetworkXioIOHandler::dispatch_ctrl_request,
+                  this,
+                  req);
+    req->work.is_ctrl = true;
+}
+
+void
+NetworkXioIOHandler::dispatch_ctrl_request(NetworkXioRequest *req)
+{
+    wq_ctrl_->work_schedule(req);
 }
 
 void

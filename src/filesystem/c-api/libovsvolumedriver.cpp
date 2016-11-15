@@ -203,6 +203,11 @@ ovs_ctx_new(const ovs_ctx_attr_t *attr)
         errno = ENOMEM;
         return NULL;
     }
+    catch (...)
+    {
+        errno = EIO;
+        return NULL;
+    }
     return ctx;
 }
 

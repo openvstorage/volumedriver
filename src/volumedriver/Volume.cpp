@@ -24,6 +24,7 @@
 #include "FailOverCacheClientInterface.h"
 #include "MDSMetaDataStore.h"
 #include "MetaDataStoreInterface.h"
+#include "PrefetchData.h"
 #include "RelocationReaderFactory.h"
 #include "SCOAccessData.h"
 #include "Scrubber.h"
@@ -166,9 +167,6 @@ Volume::Volume(const VolumeConfig& vCfg,
 
     metaDataStore_->initialize(*this);
     metaDataBackendConfigHasChanged(*metaDataStore_->getBackendConfig());
-
-    prefetch_data_.initialize(this);
-    prefetch_thread_.reset(new boost::thread(boost::ref(prefetch_data_)));
 }
 
 Volume::~Volume()
@@ -178,15 +176,9 @@ Volume::~Volume()
     LOG_VINFO("Destructor of " << this);
     VolManager::get()->backend_thread_pool()->stop(this);
 
-    // we really shouldn't end up here with a running prefetch_thread_ - destroy()
+    // we really shouldn't end up here with a running prefetch_data_ - destroy()
     // is supposed to have stopped it already.
-    ASSERT(prefetch_thread_ == nullptr);
-
-    try
-    {
-        stopPrefetch_();
-    }
-    CATCH_STD_ALL_VLOG_IGNORE("Exception stopping the prefetch thread");
+    ASSERT(prefetch_data_ == nullptr);
 }
 
 void
@@ -1437,7 +1429,7 @@ Volume::restoreSnapshot(const SnapshotName& name)
     {
         VolManager::get()->backend_thread_pool()->stop(this, 10);
 
-        stopPrefetch_();
+        prefetch_data_ = nullptr;
 
         LOG_VINFO("Stopping the readcache");
 
@@ -1662,7 +1654,7 @@ Volume::destroy(DeleteLocalData delete_local_data,
 
     // SYNC WAS REMOVED HERE
 
-    stopPrefetch_();
+    prefetch_data_ = nullptr;
 
     // OVS-827: wait forever, otherwise we might leave tasks that might try call back into
     // a deleted volume.
@@ -2038,8 +2030,9 @@ Volume::applyScrubbingWork(const scrubbing::ScrubReply& scrub_reply,
             float vra_factor = readActivity() / vra_sum;
 
             SCO sco = it->first;
-            getPrefetchData().addSCO(sco,
-                                     vra_factor * it->second);
+
+            get_prefetch_data_().addSCO(sco,
+                                        vra_factor * it->second);
         }
         LOG_VINFO("Finished Prefetching");
     }
@@ -2791,20 +2784,6 @@ Volume::updateReadActivity(time_t diff)
 }
 
 void
-Volume::stopPrefetch_()
-{
-    LOG_VINFO("Stopping the prefetching");
-
-    prefetch_data_.stop();
-    // Y42 not sure do we want a timed join here?
-    if(prefetch_thread_.get())
-    {
-        prefetch_thread_->join();
-        prefetch_thread_.reset();
-    }
-}
-
-void
 Volume::startPrefetch_(const SCOAccessData::VectorType& sadv,
                        SCONumber scoNum)
 {
@@ -2846,8 +2825,8 @@ Volume::startPrefetch_(const SCOAccessData::VectorType& sadv,
             LOG_VDEBUG(getNamespace() << "/" << scoName
                        << " with access probability "
                        << sco_sap << " is being prefetched.");
-            getPrefetchData().addSCO(scoName,
-                                     vra_factor * sco_sap);
+            get_prefetch_data_().addSCO(scoName,
+                                        vra_factor * sco_sap);
             numscos++;
         }
     }
@@ -2943,11 +2922,7 @@ Volume::startPrefetch(SCONumber last_sco_number)
                        last_sco_number);
 
     }
-    catch(std::exception& e)
-    {
-        LOG_VINFO("Did not start prefetching on volume: " <<
-                  e.what());
-    }
+    CATCH_STD_ALL_VLOG_IGNORE("failed to start prefetching on volume");
 }
 
 void
@@ -3478,6 +3453,17 @@ Volume::find_in_cluster_cache_(const ClusterCacheMode ccmode,
     {
         return false;
     }
+}
+
+PrefetchData&
+Volume::get_prefetch_data_()
+{
+    if (not prefetch_data_)
+    {
+        prefetch_data_ = std::make_unique<PrefetchData>(*this);
+    }
+
+    return *prefetch_data_;
 }
 
 }

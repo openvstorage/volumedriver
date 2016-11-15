@@ -15,6 +15,8 @@
 
 #include "MDSTestSetup.h"
 
+#include <iostream>
+
 #include <boost/algorithm/string.hpp>
 
 #include <youtils/FileUtils.h>
@@ -62,6 +64,19 @@ struct Config
     ForceRemote force_remote;
     size_t shmem_size;
 };
+
+// gtest will otherwise print out the bytewise representation,
+// which in turn will trip up valgrind if there are (and there are!)
+// padding bytes.
+std::ostream&
+operator<<(std::ostream& os,
+           const Config& c)
+{
+    return os <<
+        "MetaDataServerTest/Config{force_remote=" << c.force_remote <<
+        ", shmem_size=" << c.shmem_size <<
+        "}";
+}
 
 }
 
@@ -632,7 +647,8 @@ TEST_P(MetaDataServerTest, owner_tag)
     table->set_role(mds::Role::Master,
                     owner_tag);
 
-    const mds::Key key("key"s);
+    const std::string keystr("key");
+    const mds::Key key(keystr);
     const std::string val1("val1");
 
     set(table,

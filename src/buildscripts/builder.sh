@@ -136,14 +136,19 @@ CXX_SETTINGS=${CXX_SETTINGS:-"-std=gnu++14 -fPIC"}
 CXX_DEFINES=${CXX_DEFINES:-"-DBOOST_FILESYSTEM_VERSION=3 -DBOOST_ASIO_HAS_STD_CHRONO"}
 CXX_OPTIMIZE_FLAGS=${CXX_OPTIMIZE_FLAGS:-"-ggdb3 -gdwarf-3 -O0"}
 CXX_COVERAGE_FLAGS=${CXX_COVERAGE_FLAGS:-"-fprofile-arcs -ftest-coverage"}
-CXX_SANITIZE_FLAGS=${CXX_SANITIZE_FLAGS:-""}
-CXXFLAGS="$CXX_INCLUDES $CXX_WARNINGS $CXX_SETTINGS $CXX_DEFINES $CXX_OPTIMIZE_FLAGS $CXX_SANITIZE_FLAGS"
+CXXFLAGS="$CXX_INCLUDES $CXX_WARNINGS $CXX_SETTINGS $CXX_DEFINES $CXX_OPTIMIZE_FLAGS"
 VD_EXTRA_VERSION=${VD_EXTRA_VERSION:-"0"}
 
 if [ "x${COVERAGE}" == "xyes" ]
 then
     CXXFLAGS="${CXXFLAGS} ${CXX_COVERAGE_FLAGS}"
     LIBS="${LIBS} -lgcov"
+fi
+
+
+if [ "x${USE_ASAN}" = "xyes" ]
+then
+    CXXFLAGS="${CXXFLAGS} -fsanitize=address -fno-omit-frame-pointer"
 fi
 
 #XXX: thread this through autoconf/make
@@ -160,8 +165,8 @@ SCAN_BUILD_DIR_NAME=scan-build
 GCOV=/usr/bin/gcov
 LCOV=/usr/bin/lcov
 GENHTML=/usr/bin/genhtml
-CLANG=/usr/bin/clang
-SCAN_BUILD=/usr/bin/scan-build
+CLANG=${CLANG:-"/usr/bin/clang"}
+SCAN_BUILD=${SCAN_BUILD:-"/usr/bin/scan-build"}
 
 if [ "x${USE_CLANG_ANALYZER}" == "xyes" ]
 then

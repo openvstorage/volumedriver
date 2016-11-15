@@ -2,8 +2,10 @@
 set -eux
 # test .. this file should be in `pwd`!!!
 
+export CXX_OPTIMIZE_FLAGS="-ggdb3 -O1"
+export CXX_DEFINES="-DNDEBUG -DBOOST_FILESYSTEM_VERSION=3"
 
-BUILDTOOLS_TO_USE=$(realpath ${WORKSPACE}/BUILDS/volumedriver-buildtools-5.0/rtchecked)
+BUILDTOOLS_TO_USE=$(realpath ${WORKSPACE}/BUILDS/volumedriver-buildtools-5.0/release)
 
 VOLUMEDRIVER_DIR=$(realpath $1)
 . ${VOLUMEDRIVER_DIR}/src/buildscripts/get_revision.sh
@@ -24,8 +26,11 @@ export COVERAGE=nyet
 export ARAKOON_BINARY=/usr/bin/arakoon
 export ARAKOON_PORT_BASE=${ARAKOON_PORT_BASE:-$((FOC_PORT_BASE + 10))}
 export VFS_PORT_BASE=${VFS_PORT_BASE:-$((FOC_PORT_BASE + 20))}
-export USE_CLANG=yes
+export USE_CLANG=no
 export VD_EXTRA_VERSION=`get_debug_extra_version $VOLUMEDRIVER_DIR`
+export SUPRESS_WARNINGS=yes
+export USE_ASAN=yes
+export LD_PRELOAD=/usr/lib/gcc/x86_64-linux-gnu/5/libasan.so
 
 # adds
 # * -Wno-mismatched-tags to disable "class X was previously declared as struct"
@@ -33,9 +38,9 @@ export VD_EXTRA_VERSION=`get_debug_extra_version $VOLUMEDRIVER_DIR`
 # * -Wno-deprecated-register to disable "warning: 'register' storage class specifier
 #    is deprecated"
 #   We get a lot of these through boost and don't use it ourselves.
-export CXX_WARNINGS="-Wall -Wextra -Wno-unknown-pragmas -Wctor-dtor-privacy -Wsign-promo -Woverloaded-virtual -Wnon-virtual-dtor -Wno-mismatched-tags -Wno-deprecated-register -Wno-unused-local-typedef -Wno-unused-parameter -fsanitize=address -fno-omit-frame-pointer"
+export CXX_WARNINGS="-Wall -Wextra -Wno-unknown-pragmas -Wctor-dtor-privacy -Wsign-promo -Woverloaded-virtual -Wnon-virtual-dtor -Wno-mismatched-tags -Wno-deprecated-register -Wno-unused-local-typedef -Wno-unused-parameter"
 
-export ASAN_SYMBOLIZER_PATH=${BUILDTOOLS_TO_USE}/bin/llvm-symbolizer
+#export ASAN_SYMBOLIZER_PATH=${BUILDTOOLS_TO_USE}/bin/llvm-symbolizer
 export ASAN_OPTIONS=symbolize=1
 
 rm -rf ${TEMP}

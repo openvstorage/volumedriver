@@ -21,26 +21,37 @@
 namespace youtils
 {
 
-template<typename T>
-struct scope_exit
+template<typename T, bool only_on_exception>
+struct ScopeExit
 {
-    scope_exit(T&& f) :
+    ScopeExit(T&& f) :
         f_(std::move(f))
     {}
 
-    ~scope_exit()
+    ~ScopeExit()
     {
-        f_();
+        if (not only_on_exception or
+            std::uncaught_exception())
+        {
+            f_();
+        }
     }
 
     T f_;
 };
 
 template<typename T>
-scope_exit<T>
+ScopeExit<T, false>
 make_scope_exit(T&& f)
 {
-    return scope_exit<T>(std::move(f));
+    return ScopeExit<T, false>(std::move(f));
+}
+
+template<typename T>
+ScopeExit<T, true>
+make_scope_exit_on_exception(T&& f)
+{
+    return ScopeExit<T, true>(std::move(f));
 }
 
 }
