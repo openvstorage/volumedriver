@@ -1,5 +1,14 @@
 set -x
+
 export prefix=${prefix:-@prefix@}
+LD_PRELOAD=${LD_PRELOAD:-""}
+USE_ASAN=${USE_ASAN:-"no"}
+
+if [ "x${USE_ASAN}" = "xyes" ]
+then
+    export LD_PRELOAD="/usr/lib/gcc/x86_64-linux-gnu/5/libasan.so ${LD_PRELOAD}"
+fi
+
 . @script_directory@/skip_selected_tests.sh
 
 function python_test {

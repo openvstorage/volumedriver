@@ -13,7 +13,7 @@ VOLUMEDRIVER_DIR=$(realpath $1)
 BUILD_DIR=${VOLUMEDRIVER_DIR}/build
 export RUN_TESTS=yes
 export USE_MD5_HASH=no
-export CLEAN_BUILD=yes
+export CLEAN_BUILD=no
 export RECONFIGURE_BUILD=yes
 export TEMP=${TEMP:-${VOLUMEDRIVER_DIR}/tmp}
 export FOC_PORT_BASE=${FOC_PORT_BASE:-19250}
@@ -29,7 +29,7 @@ export VFS_PORT_BASE=${VFS_PORT_BASE:-$((FOC_PORT_BASE + 20))}
 export USE_CLANG=no
 export VD_EXTRA_VERSION=`get_debug_extra_version $VOLUMEDRIVER_DIR`
 export SUPRESS_WARNINGS=yes
-export LD_PRELOAD=/usr/lib/gcc/x86_64-linux-gnu/5/libasan.so
+export USE_ASAN=yes
 
 # adds
 # * -Wno-mismatched-tags to disable "class X was previously declared as struct"
@@ -38,10 +38,7 @@ export LD_PRELOAD=/usr/lib/gcc/x86_64-linux-gnu/5/libasan.so
 #    is deprecated"
 #   We get a lot of these through boost and don't use it ourselves.
 export CXX_WARNINGS="-Wall -Wextra -Wno-unknown-pragmas -Wctor-dtor-privacy -Wsign-promo -Woverloaded-virtual -Wnon-virtual-dtor -Wno-mismatched-tags -Wno-deprecated-register -Wno-unused-local-typedef -Wno-unused-parameter"
-export CXX_SANITIZE_FLAGS="-fsanitize=address -fno-omit-frame-pointer"
 
-export ASAN_SYMBOLIZER_PATH=${BUILDTOOLS_TO_USE}/bin/llvm-symbolizer
-export ASAN_OPTIONS=symbolize=1
 
 rm -rf ${TEMP}
 mkdir -p ${TEMP}
