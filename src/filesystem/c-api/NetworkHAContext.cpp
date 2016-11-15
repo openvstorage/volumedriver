@@ -119,11 +119,6 @@ NetworkHAContext::NetworkHAContext(const std::string& uri,
 
 NetworkHAContext::~NetworkHAContext()
 {
-    if (is_ha_enabled())
-    {
-        ha_ctx_thread_.stop();
-        ha_ctx_thread_.reset_iothread();
-    }
     ctx_.reset();
 }
 
@@ -461,6 +456,11 @@ NetworkHAContext::open_volume(const char *volname,
 void
 NetworkHAContext::close_volume()
 {
+    if (is_ha_enabled())
+    {
+        ha_ctx_thread_.stop();
+        ha_ctx_thread_.reset_iothread();
+    }
     atomic_get_ctx()->close_volume();
 }
 
