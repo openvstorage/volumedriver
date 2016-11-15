@@ -28,6 +28,7 @@
 #include <atomic>
 #include <thread>
 #include <chrono>
+#include <queue>
 
 namespace volumedriverfs
 {

@@ -23,7 +23,6 @@
 #include "FailOverCacheProxy.h"
 #include "NSIDMap.h"
 #include "PerformanceCounters.h"
-#include "PrefetchData.h"
 #include "RestartContext.h"
 #include "SCO.h"
 #include "SCOAccessData.h"
@@ -71,6 +70,7 @@ class FailOverCacheAsyncBridge;
 class FailOverCacheSyncBridge;
 class MetaDataBackendConfig;
 class MetaDataStoreInterface;
+class PrefetchData;
 class ScrubberResult;
 class SnapshotManagement;
 class SnapshotPersistor;
@@ -415,12 +415,6 @@ public:
     double
     readActivity() const;
 
-    PrefetchData&
-    getPrefetchData()
-    {
-        return prefetch_data_;
-    }
-
     void
     startPrefetch(SCONumber last_sco_number = 0);
 
@@ -578,8 +572,7 @@ private:
     std::atomic<uint64_t> readcounter_;
 
     double read_activity_;
-    PrefetchData prefetch_data_;
-    std::unique_ptr<boost::thread> prefetch_thread_;
+
     // volume_readcache_id_t read_cache_id_;
     std::vector<ClusterLocation> cluster_locations_;
 
@@ -599,6 +592,8 @@ private:
     uint64_t total_number_of_syncs_;
     boost::optional<ClusterCacheHandle> cluster_cache_handle_;
     youtils::wall_timer2 sync_wall_timer_;
+
+    std::unique_ptr<PrefetchData> prefetch_data_;
 
     void
     processReloc_(const TLogName &relocName, bool deletions);
@@ -635,9 +630,6 @@ private:
     void
     startPrefetch_(const SCOAccessData::VectorType& sadv,
                    SCONumber last_sco_number);
-
-    void
-    stopPrefetch_();
 
     void
     localRestartDataStore_(SCONumber lastSCOInBackend,
@@ -748,6 +740,9 @@ private:
                            const ClusterAddress,
                            const youtils::Weed&,
                            uint8_t*);
+
+    PrefetchData&
+    get_prefetch_data_();
 };
 
 using SharedVolumePtr = std::shared_ptr<Volume>;

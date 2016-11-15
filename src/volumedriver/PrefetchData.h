@@ -16,69 +16,69 @@
 #ifndef PREFETCH_DATA_H
 #define PREFETCH_DATA_H
 
-#include <vector>
-#include <string>
-#include <boost/thread.hpp>
 #include "Types.h"
-#include "NSIDMap.h"
-#include <youtils/Logging.h>
+#include "SCO.h"
 #include "VolumeBackPointer.h"
+
 #include <queue>
 #include <utility>
-#include "SCO.h"
+
+#include <boost/thread.hpp>
+
+#include <youtils/Logging.h>
+
 namespace volumedriver
 {
 
 class VolManagerTestSetup;
 
-class
-Compare
-{
-public:
-    typedef std::pair<SCO, float> TP;
-    bool
-    operator()(const TP& first, const TP& second)
-    {
-        return first.second < second.second;
-    }
-
-};
-
-class PrefetchData : public VolumeBackPointer
+class PrefetchData
+    : public VolumeBackPointer
 {
     friend class VolManagerTestSetup;
 
+    using TP = std::pair<SCO, float>;
+
+    struct Compare
+    {
+        bool
+        operator()(const TP& first, const TP& second)
+        {
+            return first.second < second.second;
+        }
+    };
+
+    using SCOQueue = std::priority_queue<TP, std::vector<TP>, Compare>;
+
 public:
-    typedef std::pair<SCO, float> TP;
+    explicit PrefetchData(Volume& v);
 
-    typedef std::priority_queue<TP, std::vector<TP>, Compare> SCOQueue;
+    ~PrefetchData();
 
-    PrefetchData();
+    PrefetchData(const PrefetchData&) = delete;
 
-    void
-    initialize(Volume* v);
-
-    DECLARE_LOGGER("PrefetchData");
+    PrefetchData&
+    operator=(const PrefetchData&) = delete;
 
     void
     addSCO(SCO a,
            float val);
 
-    void
-    stop();
-
-    void
-    operator()();
-
 private:
-    void run_();
-    bool stop_;
-    SCOQueue scos;
+    DECLARE_LOGGER("PrefetchData");
+
     boost::mutex mut;
+    SCOQueue scos;
+    bool stop_;
     boost::condition_variable cond;
+    boost::thread thread_;
 
+    void
+    run_();
+
+    void
+    clear_();
 };
-
 
 }
 

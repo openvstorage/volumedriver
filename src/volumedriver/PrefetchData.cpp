@@ -14,22 +14,49 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "PrefetchData.h"
-#include "VolManager.h"
 #include "SCOCache.h"
 #include "SCOFetcher.h"
+#include "VolManager.h"
+
+#include <youtils/Catchers.h>
 
 namespace volumedriver
 {
 
-PrefetchData::PrefetchData()
-    :VolumeBackPointer(getLogger__()),
-     stop_(false)
-{};
-
-void
-PrefetchData::initialize(Volume* v)
+PrefetchData::PrefetchData(Volume& v)
+    : VolumeBackPointer(getLogger__())
+    , stop_(false)
 {
-    setVolume(v);
+    setVolume(&v);
+
+    thread_ = boost::thread([&]
+                            {
+                                try
+                                {
+                                    run_();
+                                }
+                                CATCH_STD_ALL_EWHAT({
+                                        LOG_ERROR(getVolume()->getName() <<
+                                                  ": exception in prefetch thread: " <<
+                                                  EWHAT << " - exiting");
+                                    });
+                            });
+}
+
+PrefetchData::~PrefetchData()
+{
+    try
+    {
+        {
+            boost::lock_guard<boost::mutex> g(mut);
+            stop_ = true;
+            clear_();
+            cond.notify_one();
+        }
+
+        thread_.join();
+    }
+    CATCH_STD_ALL_LOG_IGNORE(getVolume()->getName() << ": failed to stop prefetch thread");
 }
 
 void
@@ -37,53 +64,36 @@ PrefetchData::addSCO(SCO a,
                      float val)
 {
     boost::lock_guard<boost::mutex> g(mut);
-    if (not stop_)
-    {
-        scos.push(std::make_pair(a, val));
-        cond.notify_one();
-    }
-}
 
-void
-PrefetchData::stop()
-{
-    boost::lock_guard<boost::mutex> g(mut);
-    stop_ = true;
-    while(not scos.empty())
-    {
-        scos.pop();
-    }
+    scos.push(std::make_pair(a, val));
     cond.notify_one();
 }
 
 void
-PrefetchData::operator()()
+PrefetchData::clear_()
 {
-    try
+    ASSERT_LOCKABLE_LOCKED(mut);
+
+    while (not scos.empty())
     {
-        run_();
+        scos.pop();
     }
-    CATCH_STD_ALL_EWHAT({
-            LOG_ERROR("Exception in prefetch thread: " << EWHAT <<
-                      " - exiting");
-            ASSERT(false);
-        });
 }
 
 void
 PrefetchData::run_()
 {
-    LOG_INFO("Starting prefetch thread");
+    LOG_INFO(getVolume()->getName() << ": starting prefetch thread");
+
     while(true)
     {
-
         if(not scos.empty())
         {
-
             SCO sconame;
             float val;
             {
                 boost::lock_guard<boost::mutex> g(mut);
+
                 if(scos.empty())
                 {
                     continue;
@@ -95,8 +105,7 @@ PrefetchData::run_()
 
             //Volume* vol = getVolume();
 
-            LOG_INFO("Prefetching sco " << getVolume()->getNamespace() << "/" <<
-                     sconame << " with sap " << val);
+            LOG_INFO(getVolume()->getName() << "Prefetching SCO " << sconame << " with SAP " << val);
 
             ClusterLocation loc(sconame, 0);
             BackendInterfacePtr bi = getVolume()->getBackendInterface(loc.cloneID())->clone();
@@ -113,17 +122,13 @@ PrefetchData::run_()
                                                               val,
                                                               fetcher);
 
-            LOG_INFO("Prefetching sco " << getVolume()->getNamespace() << "/"
-                     << sconame << " done, " <<
+            LOG_INFO(getVolume()->getName() << ": prefetching SCO " << sconame << " done, " <<
                      (res ? "continuing" : "stopping") << " prefetching");
 
             if(not res)
             {
                 boost::lock_guard<boost::mutex> g(mut);
-                while(not scos.empty())
-                {
-                    scos.pop();
-                }
+                clear_();
             }
         }
         else if(not stop_)
@@ -131,9 +136,9 @@ PrefetchData::run_()
             boost::unique_lock<boost::mutex> lock(mut);
             if(not stop_)
             {
-                LOG_INFO("I'm waiting for the man");
+                LOG_INFO(getVolume()->getName() << ": no prefetch work, going to sleep");
                 cond.wait(lock);
-                LOG_INFO("Woke up too early, 't was a terrible mistake");
+                LOG_INFO(getVolume()->getName() << ": waking up");
             }
             else
             {
@@ -145,7 +150,8 @@ PrefetchData::run_()
             break;
         }
     }
-    LOG_INFO("Stopping prefetch thread ");
+
+    LOG_INFO(getVolume()->getName() << ": stopping prefetch thread");
 }
 
 }
