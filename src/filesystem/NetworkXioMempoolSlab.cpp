@@ -40,8 +40,8 @@ NetworkXioMempoolSlab::NetworkXioMempoolSlab(size_t block_size,
 
 NetworkXioMempoolSlab::~NetworkXioMempoolSlab()
 {
-    LOG_INFO("destroying mempool slab with mb size: " << mb_size
-             << ", slab index: " << slab_index);
+    LOG_INFO("destroying mempool slab (mb size: " << mb_size
+             << ", slab index: " << slab_index << ")");
     free_regions_locked();
 }
 
@@ -63,11 +63,7 @@ NetworkXioMempoolSlab::free_regions_locked()
     }
 
     assert(total_blocks == 0);
-    for (const auto& r: regions)
-    {
-        assert(r.second->refcnt == 0);
-        xio_mem_free(&r.second->region_reg_mem);
-    }
+    for (const auto& r: regions) { assert(r.second->refcnt == 0); }
 }
 
 slab_mem_block*
@@ -136,13 +132,21 @@ NetworkXioMempoolSlab::allocate_new_blocks(size_t nr_blocks)
     auto blocks_list = std::make_shared<BlocksList>();
     for (size_t i = 0; i < nr_blocks; i++)
     {
-        slab_mem_block *block = new slab_mem_block(slab_index, region_index);
-        block->reg_mem.addr =
-            static_cast<uint8_t*>(region->region_reg_mem.addr) + i * mb_size;
-        block->reg_mem.length = mb_size;
-        block->reg_mem.mr =  region->region_reg_mem.mr;
-        blocks_list->push_back(*block);
-        total_blocks++;
+        try
+        {
+            slab_mem_block *block = new slab_mem_block(slab_index,
+                                                       region_index);
+            block->reg_mem.addr =
+                static_cast<uint8_t*>(region->region_reg_mem.addr) + i*mb_size;
+            block->reg_mem.length = mb_size;
+            block->reg_mem.mr =  region->region_reg_mem.mr;
+            blocks_list->push_back(*block);
+            region->items++; total_blocks++;
+        }
+        catch (const std::bad_alloc&)
+        {
+            break;
+        }
     }
     regions.emplace(std::make_pair(region_index, std::move(region)));
     blocks.emplace(std::make_pair(region_index, blocks_list));
@@ -150,9 +154,19 @@ NetworkXioMempoolSlab::allocate_new_blocks(size_t nr_blocks)
 }
 
 void
+NetworkXioMempoolSlab::clear_bucket(RegionBlocksBucketPtr bucket)
+{
+    while (not bucket->empty())
+    {
+        auto *block = &bucket->front();
+        bucket->pop_front();
+        delete block;
+    }
+}
+
+void
 NetworkXioMempoolSlab::try_free_unused_blocks()
 {
-    xio_reg_mem *reg_mem = nullptr;
     RegionBlocksBucketPtr bucket;
     {
         boost::lock_guard<decltype(lock)> lock_(lock);
@@ -168,22 +182,15 @@ NetworkXioMempoolSlab::try_free_unused_blocks()
                               ", mb: " << mb_size << ")");
                     bucket = blocks[r.second->region_index];
                     total_blocks -= r.second->items;
-                    reg_mem = &r.second->region_reg_mem;
                     regions.erase(r.second->region_index);
                     break;
                 }
             }
         }
     }
-    if (bucket && reg_mem)
+    if (bucket)
     {
-        xio_mem_free(reg_mem);
-        while (not bucket->empty())
-        {
-            auto *block = &bucket->front();
-            bucket->pop_front();
-            delete block;
-        }
+        clear_bucket(bucket);
     }
 }
 

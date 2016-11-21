@@ -65,7 +65,7 @@ private:
         explicit Region(size_t nr_blocks,
                         size_t mb_size,
                         uint64_t index)
-        : items(nr_blocks)
+        : items(0)
         , region_index(index)
         , refcnt(0)
         {
@@ -75,6 +75,11 @@ private:
                 throw std::bad_alloc();
             }
         };
+
+        ~Region()
+        {
+            xio_mem_free(&region_reg_mem);
+        }
         size_t items;
         xio_reg_mem region_reg_mem;
         uint64_t region_index;
@@ -104,6 +109,9 @@ private:
 
     void
     free_regions_locked();
+
+    void
+    clear_bucket(RegionBlocksBucketPtr bucket);
 
     slab_mem_block*
     try_alloc_block();
