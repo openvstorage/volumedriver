@@ -60,6 +60,9 @@ public:
 private:
     DECLARE_LOGGER("NetworkXioMempoolSlab");
 
+    typedef boost::intrusive::list<slab_mem_block> BlocksList;
+    typedef std::shared_ptr<BlocksList> RegionBlocksBucketPtr;
+
     struct Region
     {
         explicit Region(size_t nr_blocks,
@@ -74,6 +77,7 @@ private:
             {
                 throw std::bad_alloc();
             }
+            blocks = std::make_shared<BlocksList>();
         };
 
         ~Region()
@@ -84,11 +88,8 @@ private:
         xio_reg_mem region_reg_mem;
         uint64_t region_index;
         uint64_t refcnt;
+        RegionBlocksBucketPtr blocks;
     };
-
-    typedef std::unique_ptr<Region> RegionPtr;
-    typedef boost::intrusive::list<slab_mem_block> BlocksList;
-    typedef std::shared_ptr<BlocksList> RegionBlocksBucketPtr;
 
     size_t used_blocks;
     size_t total_blocks;
@@ -101,8 +102,8 @@ private:
     uint64_t min_slab_index;
 
     fungi::SpinLock lock;
+    typedef std::unique_ptr<Region> RegionPtr;
     std::map<uint64_t, RegionPtr> regions;
-    std::map<uint64_t, RegionBlocksBucketPtr> blocks;
 
     void
     allocate_new_blocks(size_t nr_blocks);
