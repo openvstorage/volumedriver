@@ -1625,6 +1625,66 @@ TEST_F(NetworkServerTest, get_volume_uri)
               yt::Uri(uri));
 }
 
+TEST_F(NetworkServerTest, get_volume_uri_stress)
+{
+    const uint16_t port = FileSystemTestSetup::local_edge_port();
+    CtxAttrPtr ctx_attr(make_ctx_attr(1, true, port));
+    CtxPtr ctx(ovs_ctx_new(ctx_attr.get()));
+    const std::string vname("volume");
+    const size_t vsize = 1ULL << 20;
+
+    EXPECT_EQ(0,
+              ovs_create_volume(ctx.get(),
+                                vname.c_str(),
+                                vsize));
+
+    const size_t nthreads = yt::System::get_env_with_default("EDGE_STRESS_READERS",
+                                                             4ULL);
+    const size_t duration_secs = yt::System::get_env_with_default("EDGE_STRESS_DURATION_SECS",
+                                                                  10ULL);
+
+    using Clock = bc::steady_clock;
+    const Clock::time_point deadline = Clock::now() + bc::seconds(duration_secs);
+
+    const std::string exp_uri(boost::lexical_cast<std::string>(network_server_uri(local_node_id())));
+
+    auto fun([&]
+             {
+                 CtxAttrPtr ctx_attr(make_ctx_attr(1, false, port));
+                 CtxPtr ctx(ovs_ctx_new(ctx_attr.get()));
+
+                 EXPECT_EQ(0,
+                           ovs_ctx_init(ctx.get(),
+                                        vname.c_str(),
+                                        O_RDWR)) << strerror(errno);
+
+                 auto& ctx_iface = dynamic_cast<ovs_context_t&>(*ctx);
+
+                 while (Clock::now() < deadline)
+                 {
+                     std::string uri;
+                     EXPECT_EQ(0,
+                               ctx_iface.get_volume_uri(vname.c_str(),
+                                                        uri));
+                     EXPECT_EQ(exp_uri,
+                               uri);
+                 }
+             });
+
+    std::vector<boost::thread> threads;
+    threads.reserve(nthreads);
+
+    for (size_t i = 0; i < nthreads; ++i)
+    {
+        threads.emplace_back(fun);
+    }
+
+    for (auto& t : threads)
+    {
+        t.join();
+    }
+}
+
 TEST_F(NetworkServerTest, redirect_uri)
 {
     mount_remote();
