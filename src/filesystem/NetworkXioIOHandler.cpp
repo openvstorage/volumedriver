@@ -162,24 +162,20 @@ NetworkXioIOHandler::handle_read(NetworkXioRequest *req,
         return;
     }
 
-    int ret = xio_mempool_alloc(req->cd->mpool, size, &req->reg_mem);
-    if (ret < 0)
+    slab_mem_block *block = req->cd->mpool->alloc(size);
+    if (not block)
     {
         LOG_INFO("cannot allocate requested buffer from mempool, size: "
-                 << size << ", falling back to non-mempool allocation");
-        ret = xio_mem_alloc(size, &req->reg_mem);
-        if (ret < 0)
-        {
-            LOG_ERROR("cannot allocate requested buffer, size: " << size);
-            req->retval = -1;
-            req->errval = ENOMEM;
-            pack_msg(req);
-            return;
-        }
-        req->from_pool = false;
+                 << size);
+        req->retval = -1;
+        req->errval = ENOMEM;
+        pack_msg(req);
+        return;
     }
 
-    req->data = req->reg_mem.addr;
+    req->from_pool = true;
+    req->mem_block = block;
+    req->data = block->reg_mem.addr;
     req->data_len = size;
     req->size = size;
     req->offset = offset;

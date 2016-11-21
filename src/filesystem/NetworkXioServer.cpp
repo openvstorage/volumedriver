@@ -141,13 +141,6 @@ NetworkXioServer::NetworkXioServer(FileSystem& fs,
     , wq_ctrl_max_threads(workqueue_ctrl_max_threads)
 {}
 
-void
-NetworkXioServer::xio_destroy_ctx_shutdown(xio_context *ctx)
-{
-    xio_context_destroy(ctx);
-    xio_shutdown();
-}
-
 NetworkXioServer::~NetworkXioServer()
 {
     shutdown();
@@ -209,6 +202,21 @@ NetworkXioServer::run(std::promise<void> promise)
                 &ka,
                 sizeof(ka));
 
+    xio_mempool_config mempool_config = {
+    6,
+    {
+      {1024,  queue_depth,  16384,  524288},
+      {4096,  queue_depth,  16384,  524288},
+      {16384, queue_depth,  16384,  524288},
+      {65536, queue_depth,  128,  65536},
+      {262144, 0,  32,  16384},
+      {1048576, 0, 8,  8192}
+    }
+    };
+    xio_set_opt(NULL,
+                XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_CONFIG_MEMPOOL,
+                &mempool_config, sizeof(mempool_config));
+
     int polling_timeout_us =
     yt::System::get_env_with_default<int>("NETWORK_XIO_POLLING_TIMEOUT_US",
                                           0);
@@ -216,7 +224,7 @@ NetworkXioServer::run(std::promise<void> promise)
     ctx = std::shared_ptr<xio_context>(xio_context_create(NULL,
                                                           polling_timeout_us,
                                                           -1),
-                                       xio_destroy_ctx_shutdown);
+                                       xio_context_destroy);
 
     if (ctx == nullptr)
     {
@@ -282,45 +290,46 @@ NetworkXioServer::run(std::promise<void> promise)
         throw;
     }
 
-    xio_mpool = std::shared_ptr<xio_mempool>(
-            xio_mempool_create(-1, XIO_MEMPOOL_FLAG_REG_MR),
-            xio_mempool_destroy);
-    if (xio_mpool == nullptr)
+    try
     {
-        LOG_FATAL("failed to create XIO memory pool");
-        xio_context_del_ev_handler(ctx.get(), evfd);
-        throw FailedCreateXioMempool("failed to create XIO memory pool");
+        mpool = std::make_shared<NetworkXioMempool>();
     }
-    (void) xio_mempool_add_slab(xio_mpool.get(),
-                                4096,
-                                0,
-                                queue_depth,
-                                32,
-                                0);
-    (void) xio_mempool_add_slab(xio_mpool.get(),
-                                32768,
-                                0,
-                                queue_depth,
-                                32,
-                                0);
-    (void) xio_mempool_add_slab(xio_mpool.get(),
-                                65536,
-                                0,
-                                queue_depth,
-                                32,
-                                0);
-    (void) xio_mempool_add_slab(xio_mpool.get(),
-                                131072,
-                                0,
-                                256,
-                                32,
-                                0);
-    (void) xio_mempool_add_slab(xio_mpool.get(),
-                                1048576,
-                                0,
-                                32,
-                                4,
-                                0);
+    catch (const FailedCreateMempoolThread&)
+    {
+        LOG_FATAL("failed to create memory pool thread");
+        xio_context_del_ev_handler(ctx.get(), evfd);
+        throw FailedCreateMempool("failed to create memory pool thread");
+    }
+
+    try
+    {
+        mpool->add_slab(4096,
+                        queue_depth,
+                        524288,
+                        16384);
+        mpool->add_slab(32768,
+                        queue_depth,
+                        524288,
+                        8192);
+        mpool->add_slab(65536,
+                        queue_depth,
+                        524288,
+                        8192);
+        mpool->add_slab(131072,
+                        256,
+                        262144,
+                        256);
+        mpool->add_slab(1048576,
+                        4,
+                        8192,
+                        16);
+    }
+    catch (const FailedCreateMempoolSlab&)
+    {
+        LOG_FATAL("failed to create memory pool slabs");
+        xio_context_del_ev_handler(ctx.get(), evfd);
+        throw FailedCreateMempool("failed to create memory pool slabs");
+    }
     stopped = false;
     promise.set_value();
     while (not stopping)
@@ -336,7 +345,8 @@ NetworkXioServer::run(std::promise<void> promise)
     wq_->shutdown();
     xio_context_del_ev_handler(ctx.get(), evfd);
     ctx.reset();
-    xio_mpool.reset();
+    mpool.reset();
+    xio_shutdown();
     std::lock_guard<std::mutex> lock_(mutex_);
     stopped = true;
     cv_.notify_one();
@@ -350,7 +360,7 @@ NetworkXioServer::allocate_client_data()
         NetworkXioClientData *cd = new NetworkXioClientData;
         cd->disconnected = false;
         cd->refcnt = 0;
-        cd->mpool = xio_mpool.get();
+        cd->mpool = mpool;
         cd->server = this;
         return cd;
     }
@@ -475,7 +485,7 @@ NetworkXioServer::deallocate_request(NetworkXioRequest *req)
     {
         if (req->from_pool)
         {
-            xio_mempool_free(&req->reg_mem);
+            req->cd->mpool->free(req->mem_block);
         }
         else
         {
@@ -562,7 +572,8 @@ NetworkXioServer::prepare_msg_reply(NetworkXioRequest *req)
             req->xio_reply.out.data_iov.max_nents = XIO_IOVLEN;
             req->xio_reply.out.data_iov.sglist[0].iov_base = req->data;
             req->xio_reply.out.data_iov.sglist[0].iov_len = req->data_len;
-            req->xio_reply.out.data_iov.sglist[0].mr = req->reg_mem.mr;
+            req->xio_reply.out.data_iov.sglist[0].mr = req->from_pool ?
+                req->mem_block->reg_mem.mr : req->reg_mem.mr;
         }
         break;
     }
@@ -612,7 +623,7 @@ NetworkXioServer::shutdown()
     if (not stopped)
     {
         stopping = true;
-        xio_context_stop_loop(ctx.get());
+        evfd.writefd();
         {
             std::unique_lock<std::mutex> lock_(mutex_);
             cv_.wait(lock_, [&]{return stopped == true;});
