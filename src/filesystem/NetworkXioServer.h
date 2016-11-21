@@ -20,6 +20,7 @@
 #include "NetworkXioIOHandler.h"
 #include "NetworkXioRequest.h"
 #include "NetworkXioWorkQueue.h"
+#include "NetworkXioMempool.h"
 
 #include <map>
 #include <tuple>
@@ -28,17 +29,12 @@
 
 #include <youtils/Uri.h>
 
-#include <map>
-#include <tuple>
-#include <memory>
-#include <libxio.h>
-
 namespace volumedriverfs
 {
 
 MAKE_EXCEPTION(FailedBindXioServer, fungi::IOException);
 MAKE_EXCEPTION(FailedCreateXioContext, fungi::IOException);
-MAKE_EXCEPTION(FailedCreateXioMempool, fungi::IOException);
+MAKE_EXCEPTION(FailedCreateMempool, fungi::IOException);
 MAKE_EXCEPTION(FailedCreateEventfd, fungi::IOException);
 MAKE_EXCEPTION(FailedRegisterEventHandler, fungi::IOException);
 
@@ -94,9 +90,6 @@ public:
 
     void
     evfd_stop_loop(int fd, int events, void *data);
-
-    static void
-    xio_destroy_ctx_shutdown(xio_context *ctx);
 private:
     DECLARE_LOGGER("NetworkXioServer");
 
@@ -108,7 +101,7 @@ private:
     std::condition_variable cv_;
     bool stopped;
     EventFD evfd;
-    int queue_depth;
+    size_t queue_depth;
     unsigned int wq_max_threads;
     unsigned int wq_ctrl_max_threads;
 
@@ -120,7 +113,7 @@ private:
 
     std::shared_ptr<xio_context> ctx;
     std::shared_ptr<xio_server> server;
-    std::shared_ptr<xio_mempool> xio_mpool;
+    NetworkXioMempoolPtr mpool;
 
     int
     create_session_connection(xio_session *session,
