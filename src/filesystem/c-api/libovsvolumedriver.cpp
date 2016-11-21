@@ -52,7 +52,7 @@ ovs_ctx_attr_new()
         ovs_ctx_attr_t *attr = new ovs_ctx_attr_t;
         attr->transport = TransportType::Error;
         attr->port = 0;
-        attr->network_qdepth = 256;
+        attr->network_qdepth = 64;
         attr->enable_ha = false;
         return attr;
     }
