@@ -51,7 +51,6 @@ public:
 private:
     DECLARE_LOGGER("NetworkXioMempool");
 
-    fungi::SpinLock lock;
     std::map<uint64_t, NetworkXioMempoolSlabPtr> slabs;
     uint64_t slab_index;
 

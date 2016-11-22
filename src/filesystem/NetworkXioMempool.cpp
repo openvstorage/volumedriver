@@ -73,7 +73,6 @@ NetworkXioMempool::add_slab(size_t block_size,
 slab_mem_block*
 NetworkXioMempool::alloc(size_t length)
 {
-    boost::lock_guard<decltype(lock)> lock_(lock);
     if (not slabs.empty())
     {
         for (const auto& s: slabs)
@@ -84,7 +83,11 @@ NetworkXioMempool::alloc(size_t length)
             }
         }
     }
-    return nullptr;
+    else
+    {
+        LOG_ERROR("failed to find available slabs");
+        return nullptr;
+    }
 }
 
 void
