@@ -202,6 +202,12 @@ NetworkXioServer::run(std::promise<void> promise)
                 &ka,
                 sizeof(ka));
 
+    xopt = 1;
+    xio_set_opt(NULL,
+                XIO_OPTLEVEL_ACCELIO,
+                XIO_OPTNAME_DISABLE_HUGETBL,
+                &xopt, sizeof(xopt));
+
     xio_mempool_config mempool_config = {
     6,
     {
