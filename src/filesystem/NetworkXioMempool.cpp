@@ -24,7 +24,6 @@ namespace yt = youtils;
 
 NetworkXioMempool::NetworkXioMempool()
     : slab_index(0)
-    , stopped(false)
     , stopping(false)
 {
     try
@@ -40,10 +39,10 @@ NetworkXioMempool::NetworkXioMempool()
 
 NetworkXioMempool::~NetworkXioMempool()
 {
-    stopping = true;
     {
-        std::unique_lock<std::mutex> lock_(mutex_);
-        cv_.wait(lock_, [&]{ return stopped == true; });
+        std::lock_guard<std::mutex> lock_(mutex_);
+        stopping = true;
+        cv_.notify_one();
     }
     slabs_manager_thread.join();
 }
@@ -83,11 +82,8 @@ NetworkXioMempool::alloc(size_t length)
             }
         }
     }
-    else
-    {
-        LOG_ERROR("failed to find available slabs");
-        return nullptr;
-    }
+    LOG_ERROR("failed to find available slabs");
+    return nullptr;
 }
 
 void
@@ -109,24 +105,31 @@ NetworkXioMempool::slabs_manager()
 
     auto sleep_time = std::chrono::milliseconds(500UL);
     auto time_point_interval =
-        std::chrono::minutes(System::get_env_with_default(c_intvl_env,
-                                                          5UL));
+        std::chrono::minutes(System::get_env_with_default(c_intvl_env, 5UL));
     auto time_point = Clock::time_point::min();
-    while (not stopping)
+    pthread_setname_np(pthread_self(), "slab_manager");
+    while (true)
     {
-        if (time_point + time_point_interval <= Clock::now())
+        std::unique_lock<std::mutex> lock_(mutex_);
+        const bool ret = cv_.wait_for(lock_,
+                                      sleep_time,
+                                      [&]{return stopping;});
+        if (ret)
         {
-            for (const auto& s: slabs)
-            {
-                s.second->try_free_unused_blocks();
-            }
-            time_point = Clock::now();
+            break;
         }
-        std::this_thread::sleep_for(sleep_time);
+        else
+        {
+            if (time_point + time_point_interval <= Clock::now())
+            {
+                for (const auto& s: slabs)
+                {
+                    s.second->try_free_unused_blocks();
+                }
+                time_point = Clock::now();
+            }
+        }
     }
-    std::lock_guard<std::mutex> lock_(mutex_);
-    stopped = true;
-    cv_.notify_all();
 }
 
 } //namespace

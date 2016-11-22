@@ -57,7 +57,6 @@ private:
     std::thread slabs_manager_thread;
     std::mutex mutex_;
     std::condition_variable cv_;
-    bool stopped;
     bool stopping;
 
     void
