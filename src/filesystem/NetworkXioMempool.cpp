@@ -105,7 +105,7 @@ NetworkXioMempool::slabs_manager()
 
     auto sleep_time = std::chrono::milliseconds(500UL);
     auto time_point_interval =
-        std::chrono::minutes(System::get_env_with_default(c_intvl_env, 5UL));
+        std::chrono::minutes(System::get_env_with_default(c_intvl_env, 15UL));
     auto time_point = Clock::time_point::min();
     pthread_setname_np(pthread_self(), "slab_manager");
     while (true)
