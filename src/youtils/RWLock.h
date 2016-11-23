@@ -16,13 +16,13 @@
 #ifndef _RWLOCK_H
 #define _RWLOCK_H
 
-
-#include <pthread.h>
+#include "ChronoUtils.h"
 #include "Logging.h"
 #include <string>
+#include <cassert>
 #include <cerrno>
-#include <assert.h>
 
+#include <pthread.h>
 
 namespace fungi {
 
@@ -55,6 +55,22 @@ public:
         return tryWriteLock();
     }
 
+    template<typename T>
+    bool
+    try_lock_until(const T& t)
+    {
+        return timed_lock_<T>(t,
+                              pthread_rwlock_timedwrlock);
+    }
+
+    template<typename T>
+    bool
+    try_lock_for(const T& t)
+    {
+        return timed_lock_<T>(t,
+                              pthread_rwlock_timedwrlock);
+    }
+
     void
     readLock();
 
@@ -62,6 +78,22 @@ public:
     lock_shared()
     {
         return readLock();
+    }
+
+    template<typename T>
+    bool
+    try_lock_shared_until(const T& t)
+    {
+        return timed_lock_<T>(t,
+                              pthread_rwlock_timedrdlock);
+    }
+
+    template<typename T>
+    bool
+    try_lock_shared_for(const T& t)
+    {
+        return timed_lock_<T>(t,
+                              pthread_rwlock_timedrdlock);
     }
 
     bool
@@ -105,6 +137,26 @@ private:
 #endif
     pthread_rwlock_t rwLock_;
     const std::string name_;
+
+    using LockFn = int (*)(pthread_rwlock_t*, const timespec*);
+
+    template<typename T>
+    bool
+    timed_lock_(const T& t,
+                LockFn fn)
+    {
+        const timespec ts(youtils::ChronoUtils::abs_timespec(t));
+        int ret = (*fn)(&rwLock_, &ts);
+        switch (ret)
+        {
+        case 0:
+            return true;
+        case ETIMEDOUT:
+            return false;
+        default:
+            throw fungi::IOException("RWLock::timed_lock_", name_.c_str(), ret);
+        }
+    }
 };
 
 class ScopedReadLock
