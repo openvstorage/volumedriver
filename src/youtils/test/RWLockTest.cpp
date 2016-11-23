@@ -16,14 +16,20 @@
 #include "../Logging.h"
 #include "../RWLock.h"
 #include "../System.h"
+#include "../Timer.h"
+
 #include <gtest/gtest.h>
+
 #include "../wall_timer.h"
 
+#include <boost/chrono.hpp>
 #include <boost/thread.hpp>
 
 namespace youtilstest
 {
-// using namespace youtils;
+
+using namespace youtils;
+namespace bc = boost::chrono;
 
 template<typename L>
 struct RWLockTraits;
@@ -61,10 +67,10 @@ protected:
     test_rlock_timings(LockType& rwlock)
     {
         const uint64_t count =
-            youtils::System::get_env_with_default("LOCK_ITERATIONS",
+            System::get_env_with_default("LOCK_ITERATIONS",
                                                   10000000ULL);
 
-        youtils::wall_timer w;
+        wall_timer w;
 
         for (unsigned i = 0; i < count; ++i)
         {
@@ -82,10 +88,10 @@ protected:
     test_wlock_timings(LockType& rwlock)
     {
         const uint64_t count =
-            youtils::System::get_env_with_default("LOCK_ITERATIONS",
+            System::get_env_with_default("LOCK_ITERATIONS",
                                                   10000000ULL);
 
-        youtils::wall_timer w;
+        wall_timer w;
 
         for (unsigned i = 0; i < count; ++i)
         {
@@ -106,17 +112,17 @@ protected:
         num_readers = (num_readers > 1) ? (num_readers - 1) : 1;
         num_readers = std::min(num_readers, (unsigned)4);
 
-        num_readers = youtils::System::get_env_with_default("LOCK_THREADS",
+        num_readers = System::get_env_with_default("LOCK_THREADS",
                                                             num_readers);
         std::vector<boost::thread> readers;
         readers.reserve(num_readers);
 
         const uint64_t max =
-            youtils::System::get_env_with_default("LOCK_ITERATIONS",
+            System::get_env_with_default("LOCK_ITERATIONS",
                                                   1000000ULL);
         uint64_t count = 0;
 
-        youtils::wall_timer w;
+        wall_timer w;
 
         for (unsigned i = 0; i < num_readers; ++i)
         {
@@ -158,17 +164,17 @@ protected:
         unsigned num_readers = ::sysconf(_SC_NPROCESSORS_ONLN);
         num_readers = std::min(num_readers, (unsigned)4);
 
-        num_readers = youtils::System::get_env_with_default("LOCK_THREADS",
+        num_readers = System::get_env_with_default("LOCK_THREADS",
                                                             num_readers);
         std::vector<boost::thread> readers;
         readers.reserve(num_readers);
 
         const uint64_t max =
-            youtils::System::get_env_with_default("LOCK_ITERATIONS",
-                                                  1000000ULL);
+            System::get_env_with_default("LOCK_ITERATIONS",
+                                         1000000ULL);
         std::atomic<uint64_t> count(0);
 
-        youtils::wall_timer w;
+        wall_timer w;
 
         for (unsigned i = 0; i < num_readers; ++i)
         {
@@ -194,6 +200,68 @@ protected:
         LOG_INFO(num_readers  << " readers: " <<
                  count << " iterations took " << t <<
                  " -> " << (count / t) << " locks per second");
+    }
+
+    template<typename Fst, typename Snd>
+    void
+    test_timeout()
+    {
+        using Clock = bc::steady_clock;
+        const Clock::duration timeout(bc::milliseconds(500));
+
+        {
+            Fst f(rwLock_);
+            ASSERT_TRUE(f);
+
+            std::async(std::launch::async,
+                       [&]
+                       {
+                           const Clock::time_point deadline = Clock::now() + timeout;
+
+                           {
+                               SteadyTimer t;
+                               Snd s(rwLock_, deadline);
+                               EXPECT_FALSE(s);
+
+                               EXPECT_LE(timeout,
+                                         t.elapsed());
+                               EXPECT_GT(timeout * 2,
+                                         t.elapsed());
+                           }
+                           {
+                               SteadyTimer t;
+                               Snd s(rwLock_, timeout);
+                               EXPECT_FALSE(s);
+
+                               EXPECT_LE(timeout,
+                                         t.elapsed());
+                               EXPECT_GT(timeout * 2,
+                                         t.elapsed());
+                           }
+                       }).wait();
+        }
+
+        {
+            const Clock::time_point deadline = Clock::now() + timeout;
+            SteadyTimer t;
+            Snd s(rwLock_,
+                  deadline);
+
+            EXPECT_TRUE(s);
+            EXPECT_GT(timeout,
+                      t.elapsed());
+        }
+
+        {
+            SteadyTimer t;
+            Snd s(rwLock_,
+                  timeout);
+
+            EXPECT_TRUE(s);
+            EXPECT_GT(timeout,
+                      t.elapsed());
+        }
+
     }
 };
 
@@ -270,6 +338,18 @@ TEST_F(RWLockTest, boost_read_contention)
 {
     boost::shared_mutex m;
     test_read_contention(m);
+}
+
+TEST_F(RWLockTest, wtimeout)
+{
+    test_timeout<boost::shared_lock<decltype(rwLock_)>,
+                 boost::unique_lock<decltype(rwLock_)>>();
+}
+
+TEST_F(RWLockTest, rtimeout)
+{
+    test_timeout<boost::unique_lock<decltype(rwLock_)>,
+                 boost::shared_lock<decltype(rwLock_)>>();
 }
 
 }

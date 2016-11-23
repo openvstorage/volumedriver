@@ -158,6 +158,9 @@ public:
                     PrepareRestartFun prep_restart_fun);
 
     using MaybeSyncTimeoutMilliSeconds = boost::optional<boost::chrono::milliseconds>;
+    using Clock = boost::chrono::steady_clock;
+    using Deadline = Clock::time_point;
+
     void
     transfer(const Object& obj,
              const NodeId target_node,
@@ -351,7 +354,7 @@ private:
     destroy_(volumedriver::WeakVolumePtr,
              volumedriver::DeleteLocalData,
              volumedriver::RemoveVolumeCompletely,
-             MaybeSyncTimeoutMilliSeconds);
+             Deadline);
 
     void
     do_adjust_failovercache_config_(const volumedriver::VolumeId&,

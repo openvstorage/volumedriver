@@ -55,8 +55,6 @@ namespace ph = std::placeholders;
 namespace vd = volumedriver;
 namespace yt = youtils;
 
-using Clock = bc::steady_clock;
-
 #define LOCKVD()                                                        \
     std::lock_guard<fungi::Mutex> vdg__(api::getManagementMutex())
 
@@ -864,6 +862,24 @@ LocalNode::resize_(vd::WeakVolumePtr vol,
                 clusters);
 }
 
+namespace
+{
+
+LocalNode::Deadline
+get_deadline(const boost::optional<bc::milliseconds>& maybe_timeout_ms)
+{
+    if (maybe_timeout_ms)
+    {
+        return LocalNode::Clock::now() + *maybe_timeout_ms;
+    }
+    else
+    {
+        return LocalNode::Clock::time_point::max();
+    }
+}
+
+}
+
 void
 LocalNode::unlink(const Object& obj)
 {
@@ -901,7 +917,7 @@ LocalNode::unlink(const Object& obj)
                              obj.id,
                              vd::DeleteLocalData::T,
                              vd::RemoveVolumeCompletely::T,
-                             MaybeSyncTimeoutMilliSeconds());
+                             get_deadline(boost::none));
     }
 }
 
@@ -909,12 +925,8 @@ void
 LocalNode::destroy_(vd::WeakVolumePtr vol,
                     vd::DeleteLocalData delete_local,
                     vd::RemoveVolumeCompletely remove_completely,
-                    MaybeSyncTimeoutMilliSeconds maybe_sync_timeout_ms)
+                    Deadline deadline)
 {
-    const Clock::time_point deadline = maybe_sync_timeout_ms ?
-        Clock::now() + *maybe_sync_timeout_ms :
-        Clock::time_point::max();
-
     const vd::VolumeId id(api::getVolumeId(vol));
 
     LOG_TRACE(id << ": delete_local " << delete_local <<
@@ -931,9 +943,7 @@ LocalNode::destroy_(vd::WeakVolumePtr vol,
             api::scheduleBackendSync(id);
         }
 
-        const Clock::duration sleep_msecs = maybe_sync_timeout_ms ?
-            std::min(bc::milliseconds(vrouter_backend_sync_check_interval_ms.value()),
-                     *maybe_sync_timeout_ms) :
+        const Clock::duration sleep_msecs =
             bc::milliseconds(vrouter_backend_sync_check_interval_ms.value());
 
         while (true)
@@ -941,9 +951,7 @@ LocalNode::destroy_(vd::WeakVolumePtr vol,
             if (Clock::now() >= deadline)
             {
                 LOG_ERROR(id <<
-                          ": timeout (" <<
-                          maybe_sync_timeout_ms <<
-                          ") syncing to the backend");
+                          ": timeout (deadline: " << deadline << ") syncing to the backend");
                 throw SyncTimeoutException("Timeout syncing volume to backend",
                                            id.str().c_str());
             }
@@ -958,7 +966,13 @@ LocalNode::destroy_(vd::WeakVolumePtr vol,
                 }
             }
 
-            boost::this_thread::sleep_for(sleep_msecs);
+            auto now = Clock::now();
+            if (now < deadline)
+            {
+                const Clock::duration diff = bc::duration_cast<bc::milliseconds>(deadline - now);
+                boost::this_thread::sleep_for(std::min(sleep_msecs,
+                                                       diff));
+            }
         }
     }
 
@@ -1290,7 +1304,7 @@ LocalNode::clone_to_existing_volume(const ObjectId& clone_id,
                          clone_id,
                          vd::DeleteLocalData::T,
                          vd::RemoveVolumeCompletely::F,
-                         MaybeSyncTimeoutMilliSeconds());
+                         get_deadline(boost::none));
     /*clear the clone namespace*/
     auto cm(api::backend_connection_manager());
     const ObjectRegistrationPtr
@@ -1811,8 +1825,17 @@ LocalNode::transfer(const Object& obj,
 {
     LOG_INFO(obj << ": target_node " << target_node);
 
+    const Deadline deadline(get_deadline(maybe_sync_timeout_ms));
+
     RWLockPtr l(get_lock_(obj.id));
-    fungi::ScopedWriteLock wg(*l);
+    boost::unique_lock<std::remove_reference<decltype(*l)>::type> u(*l, deadline);
+    if (!u)
+    {
+        LOG_ERROR(obj << ": deadline " << deadline <<
+                  " exceeded (timeout: " << maybe_sync_timeout_ms);
+        throw SyncTimeoutException("Timeout syncing object to backend",
+                                   obj.id.str().c_str());
+    }
 
     if (is_file(obj))
     {
@@ -1829,7 +1852,7 @@ LocalNode::transfer(const Object& obj,
                              obj.id,
                              vd::DeleteLocalData::T,
                              vd::RemoveVolumeCompletely::F,
-                             maybe_sync_timeout_ms);
+                             deadline);
     }
 
     ObjectRegistrationPtr
@@ -1922,7 +1945,7 @@ LocalNode::stop_volume_(const ObjectId& id,
                          id,
                          delete_local_data,
                          vd::RemoveVolumeCompletely::F,
-                         MaybeSyncTimeoutMilliSeconds());
+                         get_deadline(boost::none));
 }
 
 void

@@ -13,12 +13,13 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include <pthread.h>
-#include <string.h>
-
+#include "Assert.h"
 #include "IOException.h"
 #include "RWLock.h"
-#include "Assert.h"
+
+#include <string.h>
+
+#include <boost/optional.hpp>
 
 namespace fungi {
 
@@ -94,7 +95,6 @@ void RWLock::unlock()
         throw fungi::IOException("RWLock::unlock", name_.c_str(), ret);
     }
 }
-
 
 ScopedReadLock::ScopedReadLock(RWLock &rw)
     : rw_(rw)
