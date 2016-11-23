@@ -848,7 +848,7 @@ NetworkXioIOHandler::handle_get_volume_uri(NetworkXioRequest* req,
         }
 
         std::shared_ptr<CachedObjectRegistry> oregistry(fs_.object_router().object_registry());
-        const ObjectRegistrationPtr oreg(oregistry->find_throw(*oid, IgnoreCache::T));
+        const ObjectRegistrationPtr oreg(oregistry->find_throw(*oid, IgnoreCache::F));
         std::shared_ptr<ClusterRegistry> cregistry(fs_.object_router().cluster_registry());
         const ClusterNodeStatus status(cregistry->get_node_status(oreg->node_id));
 
