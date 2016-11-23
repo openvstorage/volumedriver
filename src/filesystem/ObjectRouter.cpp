@@ -1425,7 +1425,9 @@ ObjectRouter::migrate(const ObjectId& id,
     ObjectRegistrationPtr reg(object_registry_->find_throw(id,
                                                            IgnoreCache::T));
     migrate_(*reg,
-             OnlyStealFromOfflineNode::F,
+             force == ForceRestart::T ?
+             OnlyStealFromOfflineNode::F :
+             OnlyStealFromOfflineNode::T,
              force);
 }
 

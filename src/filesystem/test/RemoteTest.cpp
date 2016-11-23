@@ -1836,6 +1836,34 @@ TEST_F(RemoteTest, dtl_status)
                     dtl_mode_);
 }
 
+TEST_F(RemoteTest, forceful_migration_with_fencing_enabled)
+{
+    set_use_fencing(true);
+
+    const FrontendPath fname(make_volume_name("/some-volume"));
+    const size_t vsize = 1ULL << 20;
+
+    const auto rpath(make_remote_file(fname,
+                                      vsize));
+
+    auto maybe_id(find_object(fname));
+    ASSERT_NE(boost::none,
+              maybe_id);
+
+    umount_remote();
+
+    EXPECT_THROW(client_.migrate(maybe_id->str(),
+                                 local_node_id(),
+                                 false),
+                 std::exception);
+    verify_registration(*maybe_id, remote_node_id());
+
+    EXPECT_NO_THROW(client_.migrate(maybe_id->str(),
+                                    local_node_id(),
+                                    true));
+    verify_registration(*maybe_id, local_node_id());
+}
+
 TEST_F(RemoteTest, DISABLED_setup_remote_hack)
 {
     sleep(1000000);
