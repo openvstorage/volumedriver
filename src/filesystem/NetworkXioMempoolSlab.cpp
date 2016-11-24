@@ -56,7 +56,6 @@ NetworkXioMempoolSlab::free_regions_locked()
         {
             auto *block = &r.second->blocks->front();
             r.second->blocks->pop_front();
-            regions[block->region_index]->refcnt--;
             delete block;
             total_blocks--;
         }
