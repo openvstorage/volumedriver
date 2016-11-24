@@ -17,6 +17,7 @@
 #include "NetworkHAContext.h"
 #include "NetworkXioContext.h"
 #include "IOThread.h"
+#include "Utils.h"
 
 #include <atomic>
 #include <memory>
@@ -359,7 +360,7 @@ NetworkHAContext::update_cluster_node_uri()
     if (rl < 0)
     {
         LIBLOGID_ERROR("failed to update cluster node URI list: "
-                       << strerror(errno));
+                       << ovs_safe_error_str(errno));
     }
 }
 
@@ -374,10 +375,10 @@ NetworkHAContext::maybe_update_volume_location()
         std::string uri;
         int ret = atomic_get_ctx()->get_volume_uri(volume_name_.c_str(),
                                                    uri);
-        if (ret)
+        if (ret < 0)
         {
             LIBLOGID_ERROR("failed to retrieve location of " << volume_name_
-                           << ": " << ret);
+                           << ": " << ovs_safe_error_str(errno));
         }
         else if (uri != current_uri())
         {
