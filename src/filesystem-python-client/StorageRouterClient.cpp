@@ -879,6 +879,9 @@ BOOST_PYTHON_MODULE(storagerouterclient)
 
     REGISTER_OPTIONAL_CONVERTER(youtils::Uri);
 
+    REGISTER_DICT_CONVERTER(vfs::ClusterNodeConfig::NodeDistanceMap);
+    REGISTER_OPTIONAL_CONVERTER(vfs::ClusterNodeConfig::NodeDistanceMap);
+
     bpy::class_<vfs::ClusterNodeConfig>
         ("ClusterNodeConfig",
          "configuration of a single volumedriverfs cluster node",
@@ -887,9 +890,10 @@ BOOST_PYTHON_MODULE(storagerouterclient)
                    vfs::MessagePort,
                    vfs::XmlRpcPort,
                    vfs::FailoverCachePort,
-         const MaybeUri&,
-         const MaybeString&,
-         const MaybeString&>
+                   const MaybeUri&,
+                   const MaybeString&,
+                   const MaybeString&,
+                   const vfs::ClusterNodeConfig::MaybeNodeDistanceMap&>
          ((bpy::args("vrouter_id"),
            bpy::args("host"),
            bpy::args("message_port"),
@@ -897,7 +901,8 @@ BOOST_PYTHON_MODULE(storagerouterclient)
            bpy::args("failovercache_port"),
            bpy::args("network_server_uri") = MaybeUri(),
            bpy::args("xmlrpc_host") = MaybeString(),
-           bpy::args("failovercache_host") = MaybeString()),
+           bpy::args("failovercache_host") = MaybeString(),
+           bpy::args("node_distance_map") = vfs::ClusterNodeConfig::MaybeNodeDistanceMap()),
           "Create a cluster node configuration\n"
           "@param vrouter_id: string, node ID\n"
           "@param host: string, hostname or IP address to be used for communication between nodes\n"
@@ -906,7 +911,8 @@ BOOST_PYTHON_MODULE(storagerouterclient)
           "@param failovercache_port: uint16_t, TCP port of the FailoverCache for this node\n"
           "@param network_server_uri: optional string (URI), URI the network server shall listen on\n"
           "@param xmlrpc_host: optional string, address the XMLRPC server shall use, falls back to 'host' if unspecified\n"
-          "@param failovercache_host: optional string, address the DTL shall use, falls back to 'host' if unspecified\n"))
+          "@param failovercache_host: optional string, address the DTL shall use, falls back to 'host' if unspecified\n"
+          "@param node_distance_map: optional dict str -> uint32, distance of other NodeIds from this node\n"))
         .def("__str__",
              &vfs::ClusterNodeConfig::str)
         .def("__repr__",
@@ -931,7 +937,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
         DEF_READONLY_PROP_(failovercache_host)
         DEF_READONLY_PROP_(failovercache_port)
         DEF_READONLY_PROP_(network_server_uri)
-
+        DEF_READONLY_PROP_(node_distance_map)
 #undef DEF_READONLY_PROP_
         ;
 
@@ -993,6 +999,9 @@ BOOST_PYTHON_MODULE(storagerouterclient)
         .def("erase_node_configs",
              &vfs::ClusterRegistry::erase_node_configs,
              "Erase the cluster node configurations for this cluster from the registry\n")
+        .def("get_node_status_map",
+             &vfs::ClusterRegistry::get_node_status_map,
+             "Get the node status map\n")
         ;
 
     bpy::enum_<vfs::ObjectType>("ObjectType")

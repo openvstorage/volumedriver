@@ -50,9 +50,36 @@ ClusterRegistry::make_key() const
 namespace
 {
 
+DECLARE_LOGGER("ClusterRegistryUtils");
+
+void
+check_node_map(const ClusterRegistry::NodeStatusMap& map)
+{
+    for (const auto& p : map)
+    {
+        if (p.second.config.node_distance_map)
+        {
+            for (const auto& q : *p.second.config.node_distance_map)
+            {
+                auto it = map.find(q.first);
+                if (it == map.end())
+                {
+                    LOG_ERROR("Node " << q.first << " present in NodeDistanceMap of " <<
+                              p.first << " but absent from NodeStatusMap");
+                    throw InvalidConfigurationException("Node present in NodeDistanceMap but absent from NodeStatusMap",
+                                                        q.first.str().c_str(),
+                                                        EINVAL);
+                }
+            }
+        }
+    }
+}
+
 std::string
 serialize_node_map(const ClusterRegistry::NodeStatusMap& map)
 {
+    check_node_map(map);
+
     std::stringstream ss;
     oarchive_type oa(ss);
     oa << map;
