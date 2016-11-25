@@ -1673,6 +1673,41 @@ TEST_F(NetworkServerTest, get_volume_uri)
               yt::Uri(uri));
 }
 
+TEST_F(NetworkServerTest, get_volume_uri_errors)
+{
+    CtxAttrPtr attrs;
+    CtxPtr ctx;
+    const std::string vname("volume");
+
+    {
+        mount_remote();
+        auto on_exit(yt::make_scope_exit([&]
+                                         {
+                                             umount_remote();
+                                         }));
+
+        attrs = make_ctx_attr(1024,
+                              false,
+                              FileSystemTestSetup::remote_edge_port());
+        ASSERT_TRUE(attrs != nullptr);
+        ctx = CtxPtr(ovs_ctx_new(attrs.get()));
+        ASSERT_TRUE(ctx != nullptr);
+
+        const size_t vsize = 1ULL << 20;
+
+        ASSERT_EQ(0,
+                  ovs_create_volume(ctx.get(),
+                                vname.c_str(),
+                                vsize));
+    }
+
+    auto& ctx_iface = dynamic_cast<ovs_context_t&>(*ctx);
+
+    std::string uri;
+    EXPECT_NE(0, ctx_iface.get_volume_uri(vname.c_str(),
+                                          uri));
+}
+
 TEST_F(NetworkServerTest, get_volume_uri_stress)
 {
     const uint16_t port = FileSystemTestSetup::local_edge_port();
