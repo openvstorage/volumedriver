@@ -863,7 +863,7 @@ NetworkXioClient::create_vec_from_buf(xio_ctl_s *xctl,
     {
        assert(sglist);
        xctl->vec->push_back(static_cast<char*>(sglist[0].iov_base) + idx);
-       idx += strlen(static_cast<char*>(sglist[0].iov_base)) + 1;
+       idx += strlen(static_cast<char*>(sglist[0].iov_base) + idx) + 1;
     }
 }
 
