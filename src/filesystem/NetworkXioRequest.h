@@ -20,8 +20,9 @@
 
 #include "NetworkXioWork.h"
 #include "NetworkXioCommon.h"
+#include "NetworkXioMempool.h"
 
-#include <boost/intrusive/slist.hpp>
+#include <boost/intrusive/list.hpp>
 
 namespace volumedriverfs
 {
@@ -62,6 +63,7 @@ struct NetworkXioRequest
     xio_msg *xio_req;
     xio_msg xio_reply;
     xio_reg_mem reg_mem;
+    slab_mem_block *mem_block;
     bool from_pool;
 
     NetworkXioClientData *cd;
@@ -76,7 +78,7 @@ struct NetworkXioClientData
 {
     xio_session *session;
     xio_connection *conn;
-    xio_mempool *mpool;
+    NetworkXioMempoolPtr mpool;
     std::atomic<bool> disconnected;
     std::atomic<uint64_t> refcnt;
     NetworkXioServer *server;

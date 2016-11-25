@@ -42,6 +42,7 @@ export CXX_WARNINGS="-Wall -Wextra -Wno-unknown-pragmas -Wctor-dtor-privacy -Wsi
 
 #export ASAN_SYMBOLIZER_PATH=${BUILDTOOLS_TO_USE}/bin/llvm-symbolizer
 export ASAN_OPTIONS=symbolize=1
+export LSAN_OPTIONS=exitcode=0
 
 rm -rf ${TEMP}
 mkdir -p ${TEMP}

@@ -18,6 +18,8 @@
 
 #include <sys/eventfd.h>
 #include <unistd.h>
+#include <libxio.h>
+#include <boost/intrusive/list.hpp>
 
 #include <stdexcept>
 
@@ -87,6 +89,19 @@ struct EventFD
     }
 private:
     int evfd_;
+};
+
+struct slab_mem_block
+    : public boost::intrusive::list_base_hook<>
+{
+    explicit slab_mem_block(uint64_t index,
+                            uint64_t reg)
+    : slab_index(index)
+    , region_index(reg)
+    {}
+    uint64_t slab_index;
+    uint64_t region_index;
+    xio_reg_mem reg_mem;
 };
 
 } //namespace

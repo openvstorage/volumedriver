@@ -40,6 +40,18 @@ pack_msg(NetworkXioRequest *req)
     req->s_msg= o_msg.pack_msg();
 }
 
+static inline void
+pack_ctrl_msg(NetworkXioRequest *req)
+{
+    NetworkXioMsg o_msg(req->op);
+    o_msg.retval(req->retval);
+    o_msg.errval(req->errval);
+    o_msg.size(req->size);
+    o_msg.dtl_in_sync(req->dtl_in_sync);
+    o_msg.opaque(req->opaque);
+    req->s_msg= o_msg.pack_msg();
+}
+
 void
 NetworkXioIOHandler::update_fs_client_info(const std::string& volume_name)
 {
@@ -82,7 +94,7 @@ NetworkXioIOHandler::handle_open(NetworkXioRequest *req,
                   "' is already open for this session");
         req->retval = -1;
         req->errval = EIO;
-        pack_msg(req);
+        pack_ctrl_msg(req);
         return;
     }
 
@@ -118,7 +130,7 @@ NetworkXioIOHandler::handle_open(NetworkXioRequest *req,
        req->retval = -1;
        req->errval = EIO;
     });
-    pack_msg(req);
+    pack_ctrl_msg(req);
 }
 
 void
@@ -145,7 +157,7 @@ NetworkXioIOHandler::handle_close(NetworkXioRequest *req)
        req->retval = -1;
        req->errval = EIO;
     });
-    pack_msg(req);
+    pack_ctrl_msg(req);
 }
 
 void
@@ -162,24 +174,20 @@ NetworkXioIOHandler::handle_read(NetworkXioRequest *req,
         return;
     }
 
-    int ret = xio_mempool_alloc(req->cd->mpool, size, &req->reg_mem);
-    if (ret < 0)
+    slab_mem_block *block = req->cd->mpool->alloc(size);
+    if (not block)
     {
         LOG_INFO("cannot allocate requested buffer from mempool, size: "
-                 << size << ", falling back to non-mempool allocation");
-        ret = xio_mem_alloc(size, &req->reg_mem);
-        if (ret < 0)
-        {
-            LOG_ERROR("cannot allocate requested buffer, size: " << size);
-            req->retval = -1;
-            req->errval = ENOMEM;
-            pack_msg(req);
-            return;
-        }
-        req->from_pool = false;
+                 << size);
+        req->retval = -1;
+        req->errval = ENOMEM;
+        pack_msg(req);
+        return;
     }
 
-    req->data = req->reg_mem.addr;
+    req->from_pool = true;
+    req->mem_block = block;
+    req->data = block->reg_mem.addr;
     req->data_len = size;
     req->size = size;
     req->offset = offset;
@@ -333,7 +341,7 @@ NetworkXioIOHandler::handle_create_volume(NetworkXioRequest *req,
         req->retval = -1;
         req->errval = EIO;
     });
-    pack_msg(req);
+    pack_ctrl_msg(req);
 }
 
 void
@@ -361,7 +369,7 @@ NetworkXioIOHandler::handle_remove_volume(NetworkXioRequest *req,
         req->retval = -1;
         req->errval = EIO;
     });
-    pack_msg(req);
+    pack_ctrl_msg(req);
 }
 
 void
@@ -391,7 +399,7 @@ NetworkXioIOHandler::handle_stat_volume(NetworkXioRequest *req,
         req->retval = -1;
         req->errval = EIO;
     });
-    pack_msg(req);
+    pack_ctrl_msg(req);
 }
 
 void
@@ -422,7 +430,7 @@ NetworkXioIOHandler::handle_truncate(NetworkXioRequest *req,
         req->retval = -1;
         req->errval = EIO;
     });
-    pack_msg(req);
+    pack_ctrl_msg(req);
 }
 
 void
@@ -462,7 +470,7 @@ NetworkXioIOHandler::handle_list_volumes(NetworkXioRequest *req)
         LOG_ERROR("Problem listing volumes: " << EWHAT);
         req->retval = -1;
         req->errval = EIO;
-        pack_msg(req);
+        pack_ctrl_msg(req);
         return;
     });
 
@@ -470,7 +478,7 @@ NetworkXioIOHandler::handle_list_volumes(NetworkXioRequest *req)
     {
         req->errval = 0;
         req->retval = 0;
-        pack_msg(req);
+        pack_ctrl_msg(req);
         return;
     }
 
@@ -480,7 +488,7 @@ NetworkXioIOHandler::handle_list_volumes(NetworkXioRequest *req)
         LOG_ERROR("cannot allocate requested buffer, size: " << total_size);
         req->retval = -1;
         req->errval = ENOMEM;
-        pack_msg(req);
+        pack_ctrl_msg(req);
         return;
     }
     req->from_pool = false;
@@ -495,7 +503,7 @@ NetworkXioIOHandler::handle_list_volumes(NetworkXioRequest *req)
     }
     req->errval = 0;
     req->retval = volumes.size();
-    pack_msg(req);
+    pack_ctrl_msg(req);
 }
 
 void
@@ -515,7 +523,7 @@ NetworkXioIOHandler::handle_list_snapshots(NetworkXioRequest *req,
         {
             req->retval = -1;
             req->errval = ENOENT;
-            pack_msg(req);
+            pack_ctrl_msg(req);
             return;
         }
         snaps = fs_.object_router().list_snapshots(*volume_id);
@@ -528,7 +536,7 @@ NetworkXioIOHandler::handle_list_snapshots(NetworkXioRequest *req,
                   << " ,err:" << EWHAT);
         req->retval = -1;
         req->errval = EIO;
-        pack_msg(req);
+        pack_ctrl_msg(req);
         return;
     });
 
@@ -537,7 +545,7 @@ NetworkXioIOHandler::handle_list_snapshots(NetworkXioRequest *req,
         req->errval = 0;
         req->retval = 0;
         req->size = volume_size;
-        pack_msg(req);
+        pack_ctrl_msg(req);
         return;
     }
 
@@ -553,7 +561,7 @@ NetworkXioIOHandler::handle_list_snapshots(NetworkXioRequest *req,
         LOG_ERROR("cannot allocate requested buffer, size: " << total_size);
         req->retval = -1;
         req->errval = ENOMEM;
-        pack_msg(req);
+        pack_ctrl_msg(req);
         return;
     }
     req->from_pool = false;
@@ -569,7 +577,7 @@ NetworkXioIOHandler::handle_list_snapshots(NetworkXioRequest *req,
     req->errval = 0;
     req->retval = snaps.size();
     req->size = volume_size;
-    pack_msg(req);
+    pack_ctrl_msg(req);
 }
 
 void
@@ -590,7 +598,7 @@ NetworkXioIOHandler::handle_create_snapshot(NetworkXioRequest *req,
         {
             req->retval = -1;
             req->errval = ENOENT;
-            pack_msg(req);
+            pack_ctrl_msg(req);
             return;
         }
         fs_.object_router().create_snapshot(*volume_id,
@@ -625,7 +633,7 @@ NetworkXioIOHandler::handle_create_snapshot(NetworkXioRequest *req,
         req->retval = -1;
         req->errval = EIO;
     });
-    pack_msg(req);
+    pack_ctrl_msg(req);
 }
 
 void
@@ -645,7 +653,7 @@ NetworkXioIOHandler::handle_delete_snapshot(NetworkXioRequest *req,
         {
             req->retval = -1;
             req->errval = ENOENT;
-            pack_msg(req);
+            pack_ctrl_msg(req);
             return;
         }
         fs_.object_router().delete_snapshot(*volume_id,
@@ -671,7 +679,7 @@ NetworkXioIOHandler::handle_delete_snapshot(NetworkXioRequest *req,
         req->retval = -1;
         req->errval = EIO;
     });
-    pack_msg(req);
+    pack_ctrl_msg(req);
 }
 
 void
@@ -691,7 +699,7 @@ NetworkXioIOHandler::handle_rollback_snapshot(NetworkXioRequest *req,
         {
             req->retval = -1;
             req->errval = ENOENT;
-            pack_msg(req);
+            pack_ctrl_msg(req);
             return;
         }
         fs_.object_router().rollback_volume(*volume_id,
@@ -711,7 +719,7 @@ NetworkXioIOHandler::handle_rollback_snapshot(NetworkXioRequest *req,
         req->retval = -1;
         req->errval = EIO;
     });
-    pack_msg(req);
+    pack_ctrl_msg(req);
 }
 
 void
@@ -731,7 +739,7 @@ NetworkXioIOHandler::handle_is_snapshot_synced(NetworkXioRequest *req,
         {
             req->retval = -1;
             req->errval = ENOENT;
-            pack_msg(req);
+            pack_ctrl_msg(req);
             return;
         }
         bool is_synced = fs_.object_router().is_volume_synced_up_to(*volume_id,
@@ -752,7 +760,7 @@ NetworkXioIOHandler::handle_is_snapshot_synced(NetworkXioRequest *req,
         req->retval = -1;
         req->errval = EIO;
     });
-    pack_msg(req);
+    pack_ctrl_msg(req);
 }
 
 void
@@ -760,6 +768,7 @@ NetworkXioIOHandler::handle_list_cluster_node_uri(NetworkXioRequest *req)
 {
     VERIFY(not handle_);
     req->op = NetworkXioMsgOpcode::ListClusterNodeURIRsp;
+    req->size = 0;
 
     uint64_t total_size = 0;
     std::vector<std::string> uris;
@@ -771,7 +780,7 @@ NetworkXioIOHandler::handle_list_cluster_node_uri(NetworkXioRequest *req)
         {
             if (c.network_server_uri)
             {
-                std::string uri(boost::lexical_cast<std::string>(*c.network_server_uri));
+                auto uri(boost::lexical_cast<std::string>(*c.network_server_uri));
                 total_size += uri.length() + 1;
                 uris.push_back(uri);
             }
@@ -781,7 +790,7 @@ NetworkXioIOHandler::handle_list_cluster_node_uri(NetworkXioRequest *req)
         LOG_ERROR("Problem listing cluster nodes URI: " << EWHAT);
         req->retval = -1;
         req->errval = EIO;
-        pack_msg(req);
+        pack_ctrl_msg(req);
         return;
     });
 
@@ -789,7 +798,7 @@ NetworkXioIOHandler::handle_list_cluster_node_uri(NetworkXioRequest *req)
     {
         req->errval = 0;
         req->retval = 0;
-        pack_msg(req);
+        pack_ctrl_msg(req);
         return;
     }
 
@@ -799,7 +808,7 @@ NetworkXioIOHandler::handle_list_cluster_node_uri(NetworkXioRequest *req)
         LOG_ERROR("cannot allocate requested buffer, size: " << total_size);
         req->retval = -1;
         req->errval = ENOMEM;
-        pack_msg(req);
+        pack_ctrl_msg(req);
         return;
     }
     req->from_pool = false;
@@ -813,8 +822,9 @@ NetworkXioIOHandler::handle_list_cluster_node_uri(NetworkXioRequest *req)
         idx += strlen(un) + 1;
     }
     req->errval = 0;
-    req->retval = uris.size();
-    pack_msg(req);
+    req->retval = 0;
+    req->size = uris.size();
+    pack_ctrl_msg(req);
 }
 
 void
@@ -822,6 +832,7 @@ NetworkXioIOHandler::handle_get_volume_uri(NetworkXioRequest* req,
                                            const std::string& vname)
 {
     req->op = NetworkXioMsgOpcode::GetVolumeURIRsp;
+    req->size = 0;
 
     // TODO: move exception conversion to a common helper
     try
@@ -837,7 +848,7 @@ NetworkXioIOHandler::handle_get_volume_uri(NetworkXioRequest* req,
         }
 
         std::shared_ptr<CachedObjectRegistry> oregistry(fs_.object_router().object_registry());
-        const ObjectRegistrationPtr oreg(oregistry->find_throw(*oid, IgnoreCache::T));
+        const ObjectRegistrationPtr oreg(oregistry->find_throw(*oid, IgnoreCache::F));
         std::shared_ptr<ClusterRegistry> cregistry(fs_.object_router().cluster_registry());
         const ClusterNodeStatus status(cregistry->get_node_status(oreg->node_id));
 
@@ -855,7 +866,8 @@ NetworkXioIOHandler::handle_get_volume_uri(NetworkXioRequest* req,
             strncpy(static_cast<char*>(req->reg_mem.addr),
                     uri.c_str(),
                     uri.size());
-            req->retval = uri.size();
+            req->retval = 0;
+            req->size = uri.size();
             req->data_len = uri.size();
             req->data = req->reg_mem.addr;
             req->from_pool = false;
@@ -901,7 +913,7 @@ NetworkXioIOHandler::handle_get_volume_uri(NetworkXioRequest* req,
             req->retval = -1;
     });
 
-    pack_msg(req);
+    pack_ctrl_msg(req);
 }
 
 void

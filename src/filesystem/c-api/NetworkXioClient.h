@@ -60,9 +60,22 @@ public:
     struct xio_msg_s
     {
         xio_msg xreq;
-        const void *opaque;
+        void *opaque = nullptr;
         NetworkXioMsg msg;
         std::string s_msg;
+
+        void
+        set_opaque(ovs_aio_request *request)
+        {
+            opaque = static_cast<void*>(request);
+        }
+
+        ovs_aio_request*
+        get_request()
+        {
+            return reinterpret_cast<ovs_aio_request*>(opaque);
+        }
+
     };
 
     struct xio_ctl_s
@@ -76,25 +89,25 @@ public:
 
     void
     xio_send_open_request(const std::string& volname,
-                          const void *opaque);
+                          ovs_aio_request *request);
 
     void
-    xio_send_close_request(const void *opaque);
+    xio_send_close_request(ovs_aio_request *request);
 
     void
     xio_send_read_request(void *buf,
                           const uint64_t size_in_bytes,
                           const uint64_t offset_in_bytes,
-                          const void *opaque);
+                          ovs_aio_request *request);
 
     void
     xio_send_write_request(const void *buf,
                            const uint64_t size_in_bytes,
                            const uint64_t offset_in_bytes,
-                           const void *opaque);
+                           ovs_aio_request *request);
 
     void
-    xio_send_flush_request(const void *opaque);
+    xio_send_flush_request(ovs_aio_request *request);
 
     int
     on_session_event(xio_session *session,
@@ -139,77 +152,74 @@ public:
     xio_create_volume(const std::string& uri,
                       const char* volume_name,
                       size_t size,
-                      void *opaque);
+                      ovs_aio_request *request);
 
     static void
     xio_remove_volume(const std::string& uri,
                       const char* volume_name,
-                      void* opaque);
+                      ovs_aio_request *request);
 
     static void
     xio_stat_volume(const std::string& uri,
                     const std::string& volume_name,
-                    void *opaque);
+                    ovs_aio_request *request);
 
     static void
     xio_truncate_volume(const std::string& uri,
                         const char* volume_name,
                         uint64_t offset,
-                        void *opaque);
+                        ovs_aio_request *request);
 
     static void
     xio_list_volumes(const std::string& uri,
-                     std::vector<std::string>& volumes);
+                     std::vector<std::string>& volumes,
+                     ovs_aio_request *request);
 
     static void
     xio_list_cluster_node_uri(const std::string& uri,
-                              std::vector<std::string>& uris);
+                              std::vector<std::string>& uris,
+                              ovs_aio_request *request);
 
     static void
     xio_get_volume_uri(const std::string& uri,
                        const char* volume_name,
-                       std::string& volume_uri);
+                       std::string& volume_uri,
+                       ovs_aio_request *request);
 
     static void
     xio_list_snapshots(const std::string& uri,
                        const char* volume_name,
                        std::vector<std::string>& snapshots,
                        uint64_t *size,
-                       void *opaque);
+                       ovs_aio_request *request);
 
     static void
     xio_create_snapshot(const std::string& uri,
                         const char* volume_name,
                         const char* snap_name,
                         int64_t timeout,
-                        void *opaque);
+                        ovs_aio_request *request);
 
     static void
     xio_delete_snapshot(const std::string& uri,
                         const char* volume_name,
                         const char* snap_name,
-                        void *opaque);
+                        ovs_aio_request *request);
 
     static void
     xio_rollback_snapshot(const std::string& uri,
                           const char* volume_name,
                           const char* snap_name,
-                          void *opaque);
+                          ovs_aio_request *request);
 
     static void
     xio_is_snapshot_synced(const std::string& uri,
                            const char* volume_name,
                            const char* snap_name,
-                           void *opaque);
+                           ovs_aio_request *request);
 
     static void
     xio_destroy_ctx_shutdown(xio_context *ctx);
-
-    static ovs_aio_request*
-    get_ovs_aio_request(const void *opaque)
-    {
-        return reinterpret_cast<ovs_aio_request*>(const_cast<void*>(opaque));
-    }
 private:
     std::shared_ptr<xio_context> ctx;
     std::shared_ptr<xio_session> session;
@@ -277,7 +287,7 @@ private:
     static void
     xio_submit_request(const std::string& uri,
                        xio_ctl_s *xctl,
-                       void *opaque);
+                       ovs_aio_request *request);
 
     static void
     xio_msg_prepare(xio_msg_s *xmsg);
@@ -358,7 +368,7 @@ private:
     {
         if (is_ha_enabled())
         {
-            uint64_t id = get_ovs_aio_request(xio_msg->opaque)->_id;
+            uint64_t id = xio_msg->get_request()->_id;
             maybe_insert_seen_request(id);
         }
     }
