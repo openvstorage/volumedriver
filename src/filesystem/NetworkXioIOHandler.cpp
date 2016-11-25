@@ -772,17 +772,22 @@ NetworkXioIOHandler::handle_list_cluster_node_uri(NetworkXioRequest *req)
 
     uint64_t total_size = 0;
     std::vector<std::string> uris;
+
     try
     {
-        auto registry(fs_.object_router().cluster_registry());
-        const auto configs(registry->get_node_configs());
-        for (const auto& c: configs)
+        ObjectRouter& router = fs_.object_router();
+        const ClusterRegistry::NeighbourMap
+            nmap(router.cluster_registry()->get_neighbour_map(router.node_id()));
+        uris.reserve(nmap.size());
+
+        for (auto it = nmap.begin(); it != nmap.lower_bound(max_neighbour_distance_); ++it)
         {
+            const ClusterNodeConfig& c = it->second;
             if (c.network_server_uri)
             {
                 auto uri(boost::lexical_cast<std::string>(*c.network_server_uri));
                 total_size += uri.length() + 1;
-                uris.push_back(uri);
+                uris.push_back(std::move(uri));
             }
         }
     }
