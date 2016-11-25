@@ -1363,6 +1363,54 @@ TEST_F(NetworkServerTest, create_rollback_list_remove_snapshot_remote)
     test_snapshot_ops(true);
 }
 
+// reproduces https://github.com/openvstorage/volumedriver/issues/188
+TEST_F(NetworkServerTest, list_snapshots)
+{
+    const uint16_t port = FileSystemTestSetup::local_edge_port();
+    CtxAttrPtr ctx_attr(make_ctx_attr(1, false, port));
+    CtxPtr ctx(ovs_ctx_new(ctx_attr.get()));
+    const std::string vname("volume");
+    const size_t vsize = 1ULL << 20;
+
+    EXPECT_EQ(0,
+              ovs_create_volume(ctx.get(),
+                                vname.c_str(),
+                                vsize));
+
+    std::set<std::string> snaps = { "snap1", "snap2shot", "snap3" };
+
+    for (const auto& s : snaps)
+    {
+        EXPECT_EQ(0,
+                  ovs_snapshot_create(ctx.get(),
+                                      vname.c_str(),
+                                      s.c_str(),
+                                      0));
+    }
+
+    auto& ctx_iface = dynamic_cast<ovs_context_t&>(*ctx);
+
+    std::vector<std::string> vec;
+    vec.reserve(snaps.size());
+
+    int err = 0;
+    uint64_t ssize = snaps.size();
+    ctx_iface.list_snapshots(vec,
+                             vname.c_str(),
+                             &ssize,
+                             &err);
+    ASSERT_EQ(0, err);
+    EXPECT_EQ(vec.size(), snaps.size());
+
+    for (const auto& s : vec)
+    {
+        EXPECT_EQ(1,
+                  snaps.erase(s)) << s << " is not a known snapshot";
+    }
+
+    EXPECT_TRUE(snaps.empty());
+}
+
 TEST_F(NetworkServerTest, connect_to_nonexistent_port)
 {
     ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
