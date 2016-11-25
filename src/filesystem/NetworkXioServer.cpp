@@ -130,7 +130,8 @@ NetworkXioServer::NetworkXioServer(FileSystem& fs,
                                    const yt::Uri& uri,
                                    size_t snd_rcv_queue_depth,
                                    unsigned int workqueue_max_threads,
-                                   unsigned int workqueue_ctrl_max_threads)
+                                   unsigned int workqueue_ctrl_max_threads,
+                                   const std::atomic<uint32_t>& max_neigh_dist)
     : fs_(fs)
     , uri_(uri)
     , stopping(false)
@@ -139,6 +140,7 @@ NetworkXioServer::NetworkXioServer(FileSystem& fs,
     , queue_depth(snd_rcv_queue_depth)
     , wq_max_threads(workqueue_max_threads)
     , wq_ctrl_max_threads(workqueue_ctrl_max_threads)
+    , max_neighbour_distance(max_neigh_dist)
 {}
 
 NetworkXioServer::~NetworkXioServer()
@@ -388,7 +390,8 @@ NetworkXioServer::create_session_connection(xio_session *session,
             NetworkXioIOHandler *ioh_ptr = new NetworkXioIOHandler(fs_,
                                                                    wq_,
                                                                    wq_ctrl_,
-                                                                   cd);
+                                                                   cd,
+                                                                   max_neighbour_distance);
             cd->ioh = ioh_ptr;
             cd->session = session;
             cd->conn = evdata->conn;
