@@ -23,7 +23,6 @@
 #include <memory>
 #include <thread>
 #include <chrono>
-#include <random>
 
 #include <youtils/System.h>
 #include <youtils/StringUtils.h>
@@ -125,18 +124,11 @@ NetworkHAContext::~NetworkHAContext()
 }
 
 std::string
-NetworkHAContext::get_rand_cluster_uri()
+NetworkHAContext::get_next_cluster_uri()
 {
-    static std::random_device rd;
-    static std::mt19937 generator(rd());
-    std::uniform_int_distribution<> dist(0,
-                                         std::distance(cluster_nw_uris_.begin(),
-                                                       cluster_nw_uris_.end())
-                                         -1);
-    auto it = cluster_nw_uris_.begin();
-    std::advance(it, dist(generator));
-    std::string uri = *it;
-    cluster_nw_uris_.erase(it);
+    assert(not cluster_nw_uris_.empty());
+    std::string uri = cluster_nw_uris_.back();
+    cluster_nw_uris_.pop_back();
     return uri;
 }
 
@@ -316,7 +308,7 @@ NetworkHAContext::reconnect()
 
     while (not cluster_nw_uris_.empty())
     {
-        std::string uri = get_rand_cluster_uri();
+        std::string uri = get_next_cluster_uri();
         if (uri == current_uri())
         {
             continue;
@@ -362,6 +354,10 @@ NetworkHAContext::update_cluster_node_uri()
     {
         LIBLOGID_ERROR("failed to update cluster node URI list: "
                        << yt::safe_error_str(errno));
+    }
+    else
+    {
+        std::reverse(cluster_nw_uris_.begin(), cluster_nw_uris_.end());
     }
 }
 
