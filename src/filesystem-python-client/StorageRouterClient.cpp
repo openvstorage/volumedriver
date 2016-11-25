@@ -15,6 +15,7 @@
 
 #include "ArakoonClient.h"
 #include "ChronoDurationConverter.h"
+#include "DictConverter.h"
 #include "FileSystemMetaDataClient.h"
 #include "IterableConverter.h"
 #include "LocalClient.h"
@@ -22,6 +23,7 @@
 #include "MDSClient.h"
 #include "ObjectRegistryClient.h"
 #include "OptionalConverter.h"
+#include "PairConverter.h"
 #include "Piccalilli.h"
 #include "PythonTestHelpers.h"
 #include "ScrubManagerClient.h"
@@ -173,21 +175,6 @@ reminder(vfs::XMLRPCErrorCode code)
         break;
     }
 }
-
-template <typename M>
-struct MapToDictConverter
-{
-    static PyObject*
-    convert(const M& map)
-    {
-        bpy::dict d;
-        for (const auto& e : map)
-        {
-            d[e.first] = e.second;
-        }
-        return bpy::incref(d.ptr());
-    }
-};
 
 struct UpdateReportConverter
 {
@@ -1159,8 +1146,8 @@ BOOST_PYTHON_MODULE(storagerouterclient)
 
     bpy::to_python_converter<yt::UpdateReport, UpdateReportConverter>();
 
-    typedef std::map<vfs::NodeId, vfs::ClusterNodeStatus::State> NodeStatusMap;
-    bpy::to_python_converter<NodeStatusMap, MapToDictConverter<NodeStatusMap>>();
+    using NodeStatusMap = std::map<vfs::NodeId, vfs::ClusterNodeStatus::State>;
+    REGISTER_DICT_CONVERTER(NodeStatusMap);
 
     REGISTER_ITERABLE_CONVERTER(std::vector<vfs::ClusterContact>);
 
