@@ -24,7 +24,4 @@ bool is_volume_name_valid(const char *volume_name);
 /* Resolve hostname to IP */
 int hostname_to_ip(const char *hostname, std::string& ip);
 
-/* Return string describing error number */
-std::string ovs_safe_error_str(int error);
-
 #endif //__UTILS_H

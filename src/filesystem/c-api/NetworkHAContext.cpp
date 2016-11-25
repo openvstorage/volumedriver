@@ -26,6 +26,7 @@
 #include <random>
 
 #include <youtils/System.h>
+#include <youtils/StringUtils.h>
 
 #define LOCK_INFLIGHT()                                 \
     std::lock_guard<std::mutex> ifrl_(inflight_reqs_lock_)
@@ -360,7 +361,7 @@ NetworkHAContext::update_cluster_node_uri()
     if (rl < 0)
     {
         LIBLOGID_ERROR("failed to update cluster node URI list: "
-                       << ovs_safe_error_str(errno));
+                       << yt::safe_error_str(errno));
     }
 }
 
@@ -378,7 +379,7 @@ NetworkHAContext::maybe_update_volume_location()
         if (ret < 0)
         {
             LIBLOGID_ERROR("failed to retrieve location of " << volume_name_
-                           << ": " << ovs_safe_error_str(errno));
+                           << ": " << yt::safe_error_str(errno));
         }
         else if (uri != current_uri())
         {
