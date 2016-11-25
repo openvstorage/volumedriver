@@ -639,9 +639,8 @@ TEST_F(ShmServerTest, ovs_create_rollback_list_remove_snapshot)
     if (snap_count > 0)
     {
         ovs_snapshot_list_free(snaps);
+        free(snaps);
     }
-
-    free(snaps);
 
     snaps = (ovs_snapshot_info_t *) malloc(sizeof(*snaps));
     max_snaps = 1;
