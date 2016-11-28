@@ -332,7 +332,7 @@ public:
     run(int)
     {
         {
-            ScopedSpinLock l(sorderLock);
+            boost::lock_guard<decltype(sorderLock)> l(sorderLock);
             sorder.push_back(id_);
         }
 
@@ -341,7 +341,7 @@ public:
             usleep(1000);
         }
         {
-            ScopedSpinLock l(eorderLock);
+            boost::lock_guard<decltype(eorderLock)> l(eorderLock);
             eorder.push_back(id_);
         }
 
@@ -356,7 +356,7 @@ public:
     static bool
     find_in_eorder(int id)
     {
-        ScopedSpinLock l(eorderLock);
+        boost::lock_guard<decltype(eorderLock)> l(eorderLock);
         return std::find(Test2Task::eorder.begin(),
                          Test2Task::eorder.end(),
                          id) != Test2Task::eorder.end();

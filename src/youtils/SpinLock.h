@@ -54,23 +54,6 @@ private:
     pthread_spinlock_t lock_;
 };
 
-class ScopedSpinLock
-{
-public:
-    explicit ScopedSpinLock(SpinLock& sl);
-
-    ScopedSpinLock(const ScopedSpinLock&) = delete;
-    ScopedSpinLock& operator=(const ScopedSpinLock&) = delete;
-
-    ~ScopedSpinLock();
-
-
-private:
-    DECLARE_LOGGER("ScopedSpinLock");
-
-    SpinLock& sl_;
-};
-
 }
 
 #endif // !SPIN_LOCK_H_

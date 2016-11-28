@@ -35,8 +35,8 @@
 #define LOCK_CLEANUP()                                  \
     cleanup_lock_type::scoped_lock __cl(cleanupLock_)
 
-#define LOCK_XVALS()                            \
-    fungi::ScopedSpinLock __sl(xValSpinLock_)
+#define LOCK_XVALS()                                                    \
+    boost::lock_guard<decltype(xValSpinLock_)> __sl(xValSpinLock_)
 
 #define WLOCK_CACHE()                           \
     fungi::ScopedWriteLock __w(rwLock_)

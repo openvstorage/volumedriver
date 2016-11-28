@@ -61,8 +61,8 @@ class ThreadPool
 #define LOCK_MGMT()                                     \
     boost::lock_guard<lock_type> mguard__(mgmt_mutex_)
 
-#define LOCK_CURRENT_TASKS()                            \
-    fungi::ScopedSpinLock ctlg__(current_tasks_lock_)
+#define LOCK_CURRENT_TASKS()                                            \
+    boost::lock_guard<decltype(current_tasks_lock_)> ctlg__(current_tasks_lock_)
 
 private:
     class ThreadPoolRunnable

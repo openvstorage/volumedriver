@@ -21,6 +21,7 @@
 #include "context.h"
 #include "IOThread.h"
 
+#include <boost/thread/lock_guard.hpp>
 #include <youtils/SpinLock.h>
 
 #include <libxio.h>
@@ -205,14 +206,14 @@ private:
     NetworkXioContextPtr
     atomic_get_ctx()
     {
-        fungi::ScopedSpinLock l_(ctx_lock_);
+        boost::lock_guard<decltype(ctx_lock_)> g(ctx_lock_);
         return ctx_;
     }
 
     void
     atomic_xchg_ctx(NetworkXioContextPtr ctx)
     {
-        fungi::ScopedSpinLock l_(ctx_lock_);
+        boost::lock_guard<decltype(ctx_lock_)> g(ctx_lock_);
         ctx_.swap(ctx);
     }
 

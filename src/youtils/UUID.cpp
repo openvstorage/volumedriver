@@ -17,6 +17,8 @@
 #include "IOException.h"
 #include "Assert.h"
 
+#include <boost/thread/lock_guard.hpp>
+
 namespace youtils
 {
 
@@ -33,7 +35,7 @@ static_assert(sizeof(UUID) == 16,
 
 UUID::UUID()
 {
-    fungi::ScopedSpinLock sl(random_generator_lock_);
+    boost::lock_guard<decltype(random_generator_lock_)> sl(random_generator_lock_);
     uuid_ = random_generator_();
 }
 

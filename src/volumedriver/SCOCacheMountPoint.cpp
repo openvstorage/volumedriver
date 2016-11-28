@@ -39,7 +39,7 @@ namespace fs = boost::filesystem;
 namespace yt = youtils;
 
 #define USED_LOCK()                             \
-    fungi::ScopedSpinLock __l(usedLock_)
+    boost::lock_guard<decltype(usedLock_)> __l(usedLock_)
 
 void
 intrusive_ptr_add_ref(SCOCacheMountPoint* mp)

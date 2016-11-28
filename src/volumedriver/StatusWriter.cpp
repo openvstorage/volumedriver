@@ -24,7 +24,8 @@ namespace fs = boost::filesystem;
 namespace yt = youtils;
 namespace vd = volumedriver;
 
-#define WITH_LOCK  fungi::ScopedSpinLock l(spin_lock)
+#define WITH_LOCK \
+    boost::lock_guard<decltype(spin_lock)> l(spin_lock)
 
 StatusWriter::StatusWriter(const boost::posix_time::time_duration& report_interval,
                            const be::Namespace& target_namespace)

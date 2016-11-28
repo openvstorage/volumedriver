@@ -135,7 +135,7 @@ void
 VolumeCacheHandler::drop_caches()
 {
     {
-        fungi::ScopedSpinLock lock_(lock_4k);
+        boost::lock_guard<decltype(lock_4k)> g(lock_4k);
         while (not chunks_4k.empty())
         {
             void *buf = chunks_4k.front();
@@ -144,7 +144,7 @@ VolumeCacheHandler::drop_caches()
         }
     }
     {
-        fungi::ScopedSpinLock lock_(lock_32k);
+        boost::lock_guard<decltype(lock_32k)> g(lock_32k);
         while (not chunks_32k.empty())
         {
             void *buf = chunks_32k.front();
@@ -153,7 +153,7 @@ VolumeCacheHandler::drop_caches()
         }
     }
     {
-        fungi::ScopedSpinLock lock_(lock_128k);
+        boost::lock_guard<decltype(lock_128k)> g(lock_128k);
         while (not chunks_128k.empty())
         {
             void *buf = chunks_128k.front();
@@ -236,7 +236,7 @@ VolumeCacheHandler::_maybe_allocate_from_queue(size_t size,
     if (size <= max)
     {
         {
-            fungi::ScopedSpinLock queue_lock(lock_);
+            boost::lock_guard<decltype(lock_)> g(lock_);
             if (not queue.empty())
             {
                 void *buf = queue.front();

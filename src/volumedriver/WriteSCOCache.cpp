@@ -19,7 +19,7 @@
 #include "CachedSCO.h"
 
 #define LOCK()                                  \
-    fungi::ScopedSpinLock sl__(lock_)
+    boost::lock_guard<decltype(lock_)> sl__(lock_)
 
 #ifndef NDEBUG
 #define ASSERT_LOCKED()                         \

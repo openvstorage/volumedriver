@@ -15,11 +15,13 @@
 
 #include "ShmControlChannelClient.h"
 
-#include <boost/interprocess/managed_shared_memory.hpp>
-#include <boost/asio.hpp>
-#include <youtils/SpinLock.h>
-
 #include <string>
+
+#include <boost/asio.hpp>
+#include <boost/interprocess/managed_shared_memory.hpp>
+#include <boost/thread/lock_guard.hpp>
+
+#include <youtils/SpinLock.h>
 
 namespace ipc = boost::interprocess;
 namespace asio = boost::asio;
@@ -72,7 +74,7 @@ ShmControlChannelClient::deregister()
 {
     ShmControlChannelMsg msg(ShmMsgOpcode::Deregister);
 
-    fungi::ScopedSpinLock lock_(ctl_channel_lock_);
+    boost::lock_guard<decltype(ctl_channel_lock_)> g(ctl_channel_lock_);
     if (not _ctl_sendmsg(msg))
     {
         return false;
@@ -95,7 +97,7 @@ ShmControlChannelClient::allocate(ipc::managed_shared_memory::handle_t& hdl,
     ShmControlChannelMsg msg(ShmMsgOpcode::Allocate);
     msg.size(size);
     {
-        fungi::ScopedSpinLock lock_(ctl_channel_lock_);
+        boost::lock_guard<decltype(ctl_channel_lock_)> g(ctl_channel_lock_);
         if (not _ctl_sendmsg(msg))
         {
             return false;
@@ -119,7 +121,7 @@ ShmControlChannelClient::deallocate(const ipc::managed_shared_memory::handle_t& 
     ShmControlChannelMsg msg(ShmMsgOpcode::Deallocate);
     msg.handle(hdl);
     {
-        fungi::ScopedSpinLock lock_(ctl_channel_lock_);
+        boost::lock_guard<decltype(ctl_channel_lock_)> g(ctl_channel_lock_);
         if (not _ctl_sendmsg(msg))
         {
             return false;

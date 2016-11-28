@@ -212,7 +212,7 @@ public:
                bool barrier)
     {
         ASSERT_TRUE(queue_num < queues.size());
-        ScopedSpinLock ssl(*spinlocks[queue_num]);
+        boost::lock_guard<decltype(*spinlocks[queue_num])> ssl(*spinlocks[queue_num]);
         //std::cerr << "Queue num " << queue_num << " number " << number << ", barrier : " << barrier << std::endl;
         ASSERT_TRUE(number < queues[queue_num] + (2*barriers[queue_num]));
         ++intermediates[queue_num];

@@ -92,17 +92,6 @@ SpinLock::unlock()
     }
 }
 
-ScopedSpinLock::ScopedSpinLock(SpinLock& sl)
-    : sl_(sl)
-{
-    sl_.lock();
-}
-
-ScopedSpinLock::~ScopedSpinLock()
-{
-    sl_.unlock();
-}
-
 }
 
 // Local Variables: **
