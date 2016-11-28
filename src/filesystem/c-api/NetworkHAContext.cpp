@@ -286,6 +286,7 @@ NetworkHAContext::do_reconnect(const std::string& uri)
         {
             atomic_xchg_ctx(tmp_ctx);
             current_uri(uri);
+            update_cluster_node_uri();
         }
     }
     catch (std::exception& e)
@@ -329,7 +330,6 @@ NetworkHAContext::reconnect()
         }
         else
         {
-            update_cluster_node_uri();
             LIBLOGID_INFO("reconnection to URI '" << uri << "' succeeded");
             break;
         }
