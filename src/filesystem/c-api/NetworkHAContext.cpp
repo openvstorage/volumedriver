@@ -51,6 +51,9 @@ const Clock::duration ha_handler_sleep_time =
 const Clock::duration location_check_interval =
     std::chrono::seconds(yt::System::get_env_with_default("LIBOVSVOLUMEDRIVER_LOCATION_CHECK_INTERVAL_SECS",
                                                           30UL));
+const Clock::duration topology_check_interval =
+    std::chrono::seconds(yt::System::get_env_with_default("LIBOVSVOLUMEDRIVER_TOPOLOGY_CHECK_INTERVAL_SECS",
+                                                          300UL));
 }
 
 MAKE_EXCEPTION(NetworkHAContextMemPoolException, fungi::IOException);
@@ -348,7 +351,6 @@ NetworkHAContext::try_to_reconnect()
 void
 NetworkHAContext::update_cluster_node_uri()
 {
-    /* cnanakos TODO: update on specific intervals? */
     int rl = list_cluster_node_uri(cluster_nw_uris_);
     if (rl < 0)
     {
@@ -392,7 +394,10 @@ NetworkHAContext::ha_ctx_handler(void *arg)
 {
     IOThread *thread = reinterpret_cast<IOThread*>(arg);
     auto last_location_check = Clock::time_point::min();
+    auto last_topology_check = last_location_check;
+
     const bool check_location = location_check_interval.count() != 0;
+    const bool check_topology = topology_check_interval.count() != 0;
 
     while (not thread->stopping)
     {
@@ -414,6 +419,7 @@ NetworkHAContext::ha_ctx_handler(void *arg)
             }
 
             last_location_check = Clock::now();
+            last_topology_check = last_location_check;
         }
         else
         {
@@ -424,6 +430,13 @@ NetworkHAContext::ha_ctx_handler(void *arg)
             {
                 maybe_update_volume_location();
                 last_location_check = Clock::now();
+            }
+
+            if (check_topology and
+                last_topology_check + topology_check_interval <= Clock::now())
+            {
+                update_cluster_node_uri();
+                last_topology_check = Clock::now();
             }
         }
 
