@@ -83,6 +83,57 @@ NetworkXioIOHandler::update_fs_client_info(const std::string& volume_name)
                                               port));
 }
 
+std::pair<std::vector<std::string>, size_t>
+NetworkXioIOHandler::get_neighbours(const ClusterRegistry::NeighbourMap& nmap,
+                                    const uint32_t max_neighbour_distance)
+{
+    using Set = std::set<std::string>;
+    std::vector<Set> sets;
+    sets.reserve(nmap.size());
+
+    uint32_t distance = 0;
+    size_t count = 0;
+
+    for (auto it = nmap.begin();
+            it != nmap.lower_bound(max_neighbour_distance); ++it)
+    {
+        const ClusterNodeConfig& c = it->second;
+        auto uri(boost::lexical_cast<std::string>(*c.network_server_uri));
+
+        if (sets.empty() or distance != it->first)
+        {
+            ASSERT(it->first >= distance);
+            distance = it->first;
+            sets.push_back(Set{});
+        }
+
+        auto res(sets.back().emplace(std::move(uri)));
+        ASSERT(res.second);
+
+        ++count;
+    }
+
+    yt::SourceOfUncertainty rand;
+    std::vector<std::string> uris;
+    uris.reserve(count);
+
+    size_t total_size = 0;
+    for (auto& set : sets)
+    {
+        while (not set.empty())
+        {
+            auto it = set.begin();
+            std::advance(it, rand(set.size() - 1));
+            ASSERT(it != set.end());
+            total_size += it->size() + 1;
+            uris.push_back(std::move(*it));
+            set.erase(it);
+        }
+    }
+
+    return std::make_pair(std::move(uris), total_size);
+}
+
 void
 NetworkXioIOHandler::handle_open(NetworkXioRequest *req,
                                  const std::string& volume_name)
@@ -765,61 +816,6 @@ NetworkXioIOHandler::handle_is_snapshot_synced(NetworkXioRequest *req,
     pack_ctrl_msg(req);
 }
 
-namespace
-{
-
-std::pair<std::vector<std::string>, size_t>
-get_neighbours(const ClusterRegistry::NeighbourMap& nmap,
-               const uint32_t max_neighbour_distance)
-{
-    using Set = std::set<std::string>;
-    std::vector<Set> sets;
-    sets.reserve(nmap.size());
-
-    uint32_t distance = 0;
-    size_t count = 0;
-
-    for (auto it = nmap.begin(); it != nmap.lower_bound(max_neighbour_distance); ++it)
-    {
-        const ClusterNodeConfig& c = it->second;
-        auto uri(boost::lexical_cast<std::string>(*c.network_server_uri));
-
-        if (sets.empty() or distance != it->first)
-        {
-            ASSERT(it->first >= distance);
-            distance = it->first;
-            sets.push_back(Set{});
-        }
-
-        auto res(sets.back().emplace(std::move(uri)));
-        ASSERT(res.second);
-
-        ++count;
-    }
-
-    yt::SourceOfUncertainty rand;
-    std::vector<std::string> uris;
-    uris.reserve(count);
-
-    size_t total_size = 0;
-    for (auto& set : sets)
-    {
-        while (not set.empty())
-        {
-            auto it = set.begin();
-            std::advance(it, rand(set.size() - 1));
-            ASSERT(it != set.end());
-            total_size += it->size() + 1;
-            uris.push_back(std::move(*it));
-            set.erase(it);
-        }
-    }
-
-    return std::make_pair(std::move(uris), total_size);
-}
-
-}
-
 void
 NetworkXioIOHandler::handle_list_cluster_node_uri(NetworkXioRequest *req)
 {
@@ -834,7 +830,7 @@ NetworkXioIOHandler::handle_list_cluster_node_uri(NetworkXioRequest *req)
     {
         ObjectRouter& router = fs_.object_router();
         const ClusterRegistry::NeighbourMap
-            nmap(router.cluster_registry()->get_neighbour_map(router.node_id()));
+          nmap(router.cluster_registry()->get_neighbour_map(router.node_id()));
         std::tie(uris, total_size) = get_neighbours(nmap,
                                                     max_neighbour_distance_);
     }
@@ -899,10 +895,14 @@ NetworkXioIOHandler::handle_get_volume_uri(NetworkXioRequest* req,
                                      ENOENT);
         }
 
-        std::shared_ptr<CachedObjectRegistry> oregistry(fs_.object_router().object_registry());
-        const ObjectRegistrationPtr oreg(oregistry->find_throw(*oid, IgnoreCache::F));
-        std::shared_ptr<ClusterRegistry> cregistry(fs_.object_router().cluster_registry());
-        const ClusterNodeStatus status(cregistry->get_node_status(oreg->node_id));
+        std::shared_ptr<CachedObjectRegistry>
+            oregistry(fs_.object_router().object_registry());
+        const ObjectRegistrationPtr
+            oreg(oregistry->find_throw(*oid, IgnoreCache::F));
+        std::shared_ptr<ClusterRegistry>
+            cregistry(fs_.object_router().cluster_registry());
+        const ClusterNodeStatus
+            status(cregistry->get_node_status(oreg->node_id));
 
         if (status.config.network_server_uri)
         {

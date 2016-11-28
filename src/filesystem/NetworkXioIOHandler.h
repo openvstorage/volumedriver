@@ -148,6 +148,10 @@ private:
     std::string volume_name_;
     Handle::Ptr handle_;
 
+    std::pair<std::vector<std::string>, size_t>
+    get_neighbours(const ClusterRegistry::NeighbourMap&,
+                   const uint32_t);
+
     std::string
     make_volume_path(const std::string& volume_name)
     {
