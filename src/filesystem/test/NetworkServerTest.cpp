@@ -641,6 +641,32 @@ public:
         ASSERT_EQ(1, urep.update_size());
     }
 
+    void
+    add_ghost_node_configs(const size_t ghost_nodes,
+                           ClusterNodeConfigs& configs)
+    {
+        configs.reserve(configs.size() + ghost_nodes);
+
+        for (size_t i = 0; i < ghost_nodes; ++i)
+        {
+            ClusterNodeConfig ghost(configs[0]);
+            const std::string n("ghost-node-"s + boost::lexical_cast<std::string>(i));
+            ghost.vrouter_id = NodeId(n);
+            ghost.network_server_uri = yt::Uri("tcp://"s + n + ":1234"s);
+            configs.push_back(ghost);
+        }
+    }
+
+    ClusterNodeConfigs
+    update_cluster_registry(std::function<void(ClusterNodeConfigs&)> fun)
+    {
+        std::shared_ptr<ClusterRegistry> creg(fs_->object_router().cluster_registry());
+        ClusterNodeConfigs configs(creg->get_node_configs());
+        fun(configs);
+        creg->set_node_configs(configs);
+        return configs;
+    }
+
     std::unique_ptr<NetworkXioInterface> net_xio_server_;
     boost::thread net_xio_thread_;
     vfs::PythonClient client_;
@@ -1822,35 +1848,26 @@ TEST_F(NetworkServerTest, list_uris)
 
 TEST_F(NetworkServerTest, list_uris_filter)
 {
-    std::shared_ptr<ClusterRegistry> creg(fs_->object_router().cluster_registry());
-    ClusterNodeConfigs configs(creg->get_node_configs());
-
-    ASSERT_FALSE(configs.empty());
     const size_t ghost_nodes = 3;
-    configs.reserve(configs.size() + ghost_nodes);
+    const ClusterNodeConfigs
+        configs(update_cluster_registry([&](ClusterNodeConfigs& cfgs)
+                                        {
+                                            ASSERT_FALSE(cfgs.empty());
+                                            add_ghost_node_configs(ghost_nodes,
+                                                                   cfgs);
 
-    for (size_t i = 0; i < ghost_nodes; ++i)
-    {
-        ClusterNodeConfig ghost(configs[0]);
-        const std::string n("ghost-node-"s + boost::lexical_cast<std::string>(i));
-        ghost.vrouter_id = NodeId(n);
-        ghost.network_server_uri = yt::Uri("tcp://"s + n + ":1234"s);
-        configs.push_back(ghost);
-    }
-
-    for (auto& cfg : configs)
-    {
-        ClusterNodeConfig::NodeDistanceMap map;
-        uint32_t distance = 0;
-        for (const auto& c : configs)
-        {
-            const auto res(map.emplace(c.vrouter_id, distance++));
-            ASSERT_TRUE(res.second);
-        }
-        cfg.node_distance_map = std::move(map);
-    }
-
-    creg->set_node_configs(configs);
+                                            for (auto& cfg : cfgs)
+                                            {
+                                                ClusterNodeConfig::NodeDistanceMap map;
+                                                uint32_t distance = 0;
+                                                for (const auto& c : cfgs)
+                                                {
+                                                    const auto res(map.emplace(c.vrouter_id, distance++));
+                                                    ASSERT_TRUE(res.second);
+                                                }
+                                                cfg.node_distance_map = std::move(map);
+                                            }
+                                        }));
 
     CtxAttrPtr attrs(make_ctx_attr(1024,
                                    false,
@@ -1880,6 +1897,85 @@ TEST_F(NetworkServerTest, list_uris_filter)
                       uris[j]);
         }
     }
+}
+
+TEST_F(NetworkServerTest, list_uris_rand_order)
+{
+    const size_t ghost_nodes = 23;
+    std::set<std::string> set;
+    const ClusterNodeConfigs
+        configs(update_cluster_registry([&](ClusterNodeConfigs& cfgs)
+                                        {
+                                            ASSERT_EQ(2, cfgs.size());
+                                            add_ghost_node_configs(ghost_nodes,
+                                                                   cfgs);
+
+                                            ClusterNodeConfig::NodeDistanceMap map;
+                                            for (const auto& c : cfgs)
+                                            {
+                                                uint32_t d;
+                                                if (c == cfgs.front())
+                                                {
+                                                    d = 0;
+                                                }
+                                                else if (c == cfgs.back())
+                                                {
+                                                    d = 10;
+                                                }
+                                                else
+                                                {
+                                                    d = 5;
+                                                    set.emplace(boost::lexical_cast<std::string>(*c.network_server_uri));
+                                                }
+
+                                                map.emplace(c.vrouter_id, d);
+                                            }
+
+                                            cfgs.front().node_distance_map = std::move(map);
+
+                                            for (size_t i = 1; i < cfgs.size(); ++i)
+                                            {
+                                                cfgs[i].node_distance_map = ClusterNodeConfig::NodeDistanceMap();
+                                            }
+                                        }));
+
+    ASSERT_EQ(ghost_nodes,
+              set.size());
+
+    CtxAttrPtr attrs(make_ctx_attr(1024,
+                                   false,
+                                   FileSystemTestSetup::local_edge_port()));
+    CtxPtr ctx(ovs_ctx_new(attrs.get()));
+    ASSERT_TRUE(ctx != nullptr);
+
+    auto& ctx_iface = dynamic_cast<ovs_context_t&>(*ctx);
+    std::vector<std::string> uris;
+    uris.reserve(configs.size());
+
+    EXPECT_EQ(0,
+              ctx_iface.list_cluster_node_uri(uris));
+    EXPECT_EQ(configs.size(),
+              uris.size());
+
+    for (const auto& u : uris)
+    {
+        if (u == uris.front())
+        {
+            EXPECT_EQ(boost::lexical_cast<std::string>(*configs.front().network_server_uri),
+                      u);
+        }
+        else if (u == uris.back())
+        {
+            EXPECT_EQ(boost::lexical_cast<std::string>(*configs.back().network_server_uri),
+                      u);
+        }
+        else
+        {
+            EXPECT_EQ(1, set.erase(u)) << u;
+        }
+    }
+
+    EXPECT_TRUE(set.empty());
 }
 
 } //namespace
