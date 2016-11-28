@@ -76,10 +76,13 @@ static_assert(FLT_RADIX == 2, "Need to check code for non conforming FLT_RADIX")
     boost::shared_lock<decltype(rwlock_)> srwlg__(rwlock_)
 
 #define SERIALIZE_WRITES()                              \
-    boost::lock_guard<lock_type> gwl__(write_lock_)
+    boost::lock_guard<decltype(write_lock_)> gwl__(write_lock_)
 
 #define LOCK_CONFIG()                           \
     std::lock_guard<decltype(config_lock_)> gcfglck__(config_lock_)
+
+#define LOCK_DTL_STATE()                        \
+    boost::lock_guard<decltype(dtl_state_lock_)> dslg__(dtl_state_lock_)
 
 #ifndef NDEBUG
 
@@ -139,7 +142,6 @@ Volume::Volume(const VolumeConfig& vCfg,
     , readcounter_(0)
     , read_activity_(0)
     , cluster_locations_(vCfg.sco_mult_)
-    , volumeStateSpinLock_()
     , readOnlyMode(readOnlyMode)
     , datastore_throttle_usecs_(VolManager::get()->getSCOCache()->datastore_throttle_usecs.value())
     , foc_throttle_usecs_(foc_throttle_usecs)
@@ -2334,8 +2336,8 @@ Volume::setFailOverCacheConfig_(const FailOverCacheConfig& config)
     LOG_VINFO("finding out volume state");
     {
         OrderedTLogIds out;
-        fungi::ScopedSpinLock l(volumeStateSpinLock_);
 
+        LOCK_DTL_STATE();
         snapshotManagement_->getTLogsNotWrittenToBackend(out);
         const int size = out.size();
 
@@ -2384,7 +2386,7 @@ Volume::setNoFailOverCache_()
 void
 Volume::checkState(const TLogId& tlog_id)
 {
-    fungi::ScopedSpinLock l(volumeStateSpinLock_);
+    LOCK_DTL_STATE();
 
     if(last_tlog_not_on_failover_ and
        *last_tlog_not_on_failover_ == tlog_id)

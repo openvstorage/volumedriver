@@ -528,8 +528,7 @@ private:
     //   which together with the write_lock_ boils down to a single write / multiple reads
     //   for the moment.
     // -> lock order: write_lock_ before rwlock
-    typedef boost::mutex lock_type;
-    mutable lock_type write_lock_;
+    mutable boost::mutex write_lock_;
 
     uint64_t intCeiling(uint64_t x, uint64_t y) {
         //rounds x up to nearest multiple of y
@@ -576,7 +575,7 @@ private:
     // volume_readcache_id_t read_cache_id_;
     std::vector<ClusterLocation> cluster_locations_;
 
-    fungi::SpinLock volumeStateSpinLock_;
+    mutable boost::mutex dtl_state_lock_;
 
     //reference to readonlymode defined on volmanager
     bool& readOnlyMode;
