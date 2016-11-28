@@ -246,6 +246,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(network_workqueue_ctrl_max_threads,
                                       ShowDocumentation::T,
                                       128);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(network_max_neighbour_distance,
+                                      network_interface_component_name,
+                                      "network_max_neighbour_distance",
+                                      "Hide nodes that have a distance >= this value from network clients",
+                                      ShowDocumentation::T,
+                                      std::numeric_limits<uint32_t>::max());
+
 // FileSystem:
 const char filesystem_component_name[] = "filesystem";
 

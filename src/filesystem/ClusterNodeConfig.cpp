@@ -24,7 +24,7 @@ std::ostream&
 operator<<(std::ostream& os,
            const ClusterNodeConfig& cfg)
 {
-    os << "ClusterNodeConfig { " <<
+    os << "ClusterNodeConfig{" <<
         "vrouter_id: \"" << cfg.vrouter_id << "\", " <<
         "message_host: \"" << cfg.message_host << "\", " <<
         "message_port: " << cfg.message_port << ", " <<
@@ -35,9 +35,33 @@ operator<<(std::ostream& os,
         "network_server_uri: \"" <<
         (cfg.network_server_uri ?
          boost::lexical_cast<std::string>(*cfg.network_server_uri) :
-         "") << "\"}";
+         "") << "\", " <<
+        "node_distance_map: ";
 
-    return os;
+    if (cfg.node_distance_map)
+    {
+        os << "{";
+        bool fst = true;
+        for (const auto& e : *cfg.node_distance_map)
+        {
+            if (fst)
+            {
+                fst = false;
+            }
+            else
+            {
+                os << ", ";
+            }
+            os << "\"" << e.first << "\": " << e.second;
+        }
+        os << "}";
+    }
+    else
+    {
+        os << " ";
+    }
+
+    return os << "}";
 }
 
 std::string

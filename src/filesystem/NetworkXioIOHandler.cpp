@@ -18,10 +18,12 @@
 #include "ObjectRouter.h"
 #include "PythonClient.h" // clienterrors
 
-#include <volumedriver/DtlInSync.h>
 #include <youtils/Assert.h>
 #include <youtils/Catchers.h>
 #include <youtils/SocketAddress.h>
+#include <youtils/SourceOfUncertainty.h>
+
+#include <volumedriver/DtlInSync.h>
 
 namespace volumedriverfs
 {
@@ -763,6 +765,61 @@ NetworkXioIOHandler::handle_is_snapshot_synced(NetworkXioRequest *req,
     pack_ctrl_msg(req);
 }
 
+namespace
+{
+
+std::pair<std::vector<std::string>, size_t>
+get_neighbours(const ClusterRegistry::NeighbourMap& nmap,
+               const uint32_t max_neighbour_distance)
+{
+    using Set = std::set<std::string>;
+    std::vector<Set> sets;
+    sets.reserve(nmap.size());
+
+    uint32_t distance = 0;
+    size_t count = 0;
+
+    for (auto it = nmap.begin(); it != nmap.lower_bound(max_neighbour_distance); ++it)
+    {
+        const ClusterNodeConfig& c = it->second;
+        auto uri(boost::lexical_cast<std::string>(*c.network_server_uri));
+
+        if (sets.empty() or distance != it->first)
+        {
+            ASSERT(it->first >= distance);
+            distance = it->first;
+            sets.push_back(Set{});
+        }
+
+        auto res(sets.back().emplace(std::move(uri)));
+        ASSERT(res.second);
+
+        ++count;
+    }
+
+    yt::SourceOfUncertainty rand;
+    std::vector<std::string> uris;
+    uris.reserve(count);
+
+    size_t total_size = 0;
+    for (auto& set : sets)
+    {
+        while (not set.empty())
+        {
+            auto it = set.begin();
+            std::advance(it, rand(set.size() - 1));
+            ASSERT(it != set.end());
+            total_size += it->size() + 1;
+            uris.push_back(std::move(*it));
+            set.erase(it);
+        }
+    }
+
+    return std::make_pair(std::move(uris), total_size);
+}
+
+}
+
 void
 NetworkXioIOHandler::handle_list_cluster_node_uri(NetworkXioRequest *req)
 {
@@ -772,19 +829,14 @@ NetworkXioIOHandler::handle_list_cluster_node_uri(NetworkXioRequest *req)
 
     uint64_t total_size = 0;
     std::vector<std::string> uris;
+
     try
     {
-        auto registry(fs_.object_router().cluster_registry());
-        const auto configs(registry->get_node_configs());
-        for (const auto& c: configs)
-        {
-            if (c.network_server_uri)
-            {
-                auto uri(boost::lexical_cast<std::string>(*c.network_server_uri));
-                total_size += uri.length() + 1;
-                uris.push_back(uri);
-            }
-        }
+        ObjectRouter& router = fs_.object_router();
+        const ClusterRegistry::NeighbourMap
+            nmap(router.cluster_registry()->get_neighbour_map(router.node_id()));
+        std::tie(uris, total_size) = get_neighbours(nmap,
+                                                    max_neighbour_distance_);
     }
     CATCH_STD_ALL_EWHAT({
         LOG_ERROR("Problem listing cluster nodes URI: " << EWHAT);

@@ -168,6 +168,14 @@ class TestHelperTest(unittest.TestCase):
         s = "tcp://127.0.0.1:1234"
         self.assertEqual(s, PythonTestHelpers.reflect_uri(s))
 
+    def test_maybe_node_distance_map(self):
+        d = {}
+        self.assertEqual(d, PythonTestHelpers.reflect_maybe_node_distance_map(d))
+        d["node_1"] = 1
+        d["node_2"] = 1
+        d["node_3"] = 2
+        self.assertEqual(d, PythonTestHelpers.reflect_maybe_node_distance_map(d))
+
     def test_cluster_node_config(self):
         node_id = "node_X"
         host = "192.168.1.1"

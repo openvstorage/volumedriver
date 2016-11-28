@@ -76,6 +76,10 @@ DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_use_fencing,
                                                   bool);
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_send_sync_response,
                                                   bool);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_min_workers,
+                                                  uint16_t);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_max_workers,
+                                                  uint16_t);
 
 DECLARE_INITIALIZED_PARAM(vrouter_id,
                           std::string);
@@ -89,9 +93,6 @@ DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_registry_cache_capacity,
 extern const char volumeroutercluster_component_name[];
 
 DECLARE_INITIALIZED_PARAM(vrouter_cluster_id, std::string);
-
-DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_min_workers, uint16_t);
-DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_max_workers, uint16_t);
 
 // FileSystem:
 extern const char filesystem_component_name[];
@@ -181,6 +182,9 @@ DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(network_workqueue_max_threads,
 
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(network_workqueue_ctrl_max_threads,
                                        unsigned int);
+
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(network_max_neighbour_distance,
+                                                  std::atomic<uint32_t>);
 
 // EventPublisher:
 extern const char events_component_name[];

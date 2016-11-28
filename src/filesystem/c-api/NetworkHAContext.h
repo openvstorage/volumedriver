@@ -187,6 +187,7 @@ private:
 
     std::atomic<uint64_t> request_id_;
 
+    // Order: preferred/nearest ones at the end
     std::vector<std::string> cluster_nw_uris_;
 
     IOThread ha_ctx_thread_;
@@ -249,7 +250,7 @@ private:
     do_reconnect(const std::string& uri);
 
     std::string
-    get_rand_cluster_uri();
+    get_next_cluster_uri();
 
     void
     maybe_update_volume_location();
