@@ -1733,11 +1733,17 @@ TEST_F(NetworkServerTest, get_volume_uri_errors)
         ASSERT_TRUE(ctx != nullptr);
 
         const size_t vsize = 1ULL << 20;
+        const size_t max = 10;
+        size_t count = 0;
 
-        ASSERT_EQ(0,
-                  ovs_create_volume(ctx.get(),
-                                vname.c_str(),
-                                vsize));
+        while (ovs_create_volume(ctx.get(),
+                                 vname.c_str(),
+                                 vsize) == -1)
+        {
+            ASSERT_GT(max, ++count) <<
+                "failed to create volume after " << count << " attempts: " << strerror(errno);
+            boost::this_thread::sleep_for(bc::milliseconds(250));
+        }
     }
 
     auto& ctx_iface = dynamic_cast<ovs_context_t&>(*ctx);
