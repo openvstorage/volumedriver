@@ -356,7 +356,8 @@ NetworkHAContext::try_to_reconnect()
 void
 NetworkHAContext::update_cluster_node_uri()
 {
-    int rl = list_cluster_node_uri(cluster_nw_uris_);
+    std::vector<std::string> uris;
+    int rl = list_cluster_node_uri(uris);
     if (rl < 0)
     {
         LIBLOGID_ERROR("failed to update cluster node URI list: "
@@ -364,7 +365,14 @@ NetworkHAContext::update_cluster_node_uri()
     }
     else
     {
-        std::reverse(cluster_nw_uris_.begin(), cluster_nw_uris_.end());
+        LIBLOGID_INFO("cluster node URIs for " << volume_name() << ":");
+        for (const auto& u : uris)
+        {
+            LIBLOGID_INFO("\t" << u);
+        }
+
+        std::reverse(uris.begin(), uris.end());
+        std::swap(uris, cluster_nw_uris_);
     }
 }
 
