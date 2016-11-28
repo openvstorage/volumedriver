@@ -300,7 +300,7 @@ ShmContext::send_read_request(ovs_aio_request* request)
     return shm_ctx_->shm_client_->send_read_request(ovs_aiocbp->aio_buf,
                                                     ovs_aiocbp->aio_nbytes,
                                                     ovs_aiocbp->aio_offset,
-                                                    reinterpret_cast<void*>(request));
+                                                    request);
 }
 
 int
@@ -310,7 +310,7 @@ ShmContext::send_write_request(ovs_aio_request *request)
     return shm_ctx_->shm_client_->send_write_request(ovs_aiocbp->aio_buf,
                                                      ovs_aiocbp->aio_nbytes,
                                                      ovs_aiocbp->aio_offset,
-                                                     reinterpret_cast<void*>(request));
+                                                     request);
 }
 
 int
@@ -320,7 +320,7 @@ ShmContext::send_flush_request(ovs_aio_request* request)
     return shm_ctx_->shm_client_->send_write_request(ovs_aiocbp->aio_buf,
                                                      ovs_aiocbp->aio_nbytes,
                                                      ovs_aiocbp->aio_offset,
-                                                     reinterpret_cast<void*>(request));
+                                                     request);
 }
 
 int

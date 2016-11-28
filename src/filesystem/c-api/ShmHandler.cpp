@@ -180,7 +180,7 @@ ovs_shm_context::rr_handler(void *arg)
     {
         ovs_aio_request *request;
         failed = shm_client_->timed_receive_read_reply(size_in_bytes,
-                                                       reinterpret_cast<void**>(&request),
+                                                       &request,
                                                        &timeout);
         if (request)
         {
@@ -206,7 +206,7 @@ ovs_shm_context::wr_handler(void *arg)
     {
         ovs_aio_request *request;
         failed = shm_client_->timed_receive_write_reply(size_in_bytes,
-                                                        reinterpret_cast<void**>(&request),
+                                                        &request,
                                                         &timeout);
         if (request)
         {

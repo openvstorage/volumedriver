@@ -18,6 +18,7 @@
 
 #include "../ShmProtocol.h"
 #include "../ShmIdlInterface.h"
+#include "internal.h"
 
 #include <boost/interprocess/ipc/message_queue.hpp>
 #include <boost/interprocess/managed_shared_memory.hpp>
@@ -50,42 +51,42 @@ public:
     send_read_request(const void *buf,
                       const uint64_t size_in_bytes,
                       const uint64_t offset_in_bytes,
-                      const void *opaque);
+                      const ovs_aio_request *request);
 
     int
     timed_send_read_request(const void *buf,
                             const uint64_t size_in_bytes,
                             const uint64_t offset_in_bytes,
-                            const void *opaque,
+                            const ovs_aio_request *request,
                             const struct timespec* timeout);
 
     bool
     receive_read_reply(size_t& size_in_bytes,
-                       void **opaque);
+                       ovs_aio_request **request);
 
     bool
     timed_receive_read_reply(size_t& size_in_bytes,
-                             void **opaque,
+                             ovs_aio_request **request,
                              const struct timespec* timeout);
 
     int send_write_request(const void* buf,
                            const uint64_t size_in_bytes,
                            const uint64_t offset_in_bytes,
-                           const void *opaque);
+                           const ovs_aio_request *request);
 
     int timed_send_write_request(const void* buf,
                                  const uint64_t size_in_bytes,
                                  const uint64_t offset_in_bytes,
-                                 const void *opaque,
+                                 const ovs_aio_request *request,
                                  const struct timespec* timeout);
 
     bool
     receive_write_reply(size_t& size_in_bytes,
-                        void **opaque);
+                        ovs_aio_request **request);
 
     bool
     timed_receive_write_reply(size_t& size_in_bytes,
-                              void **opaque,
+                              ovs_aio_request **request,
                               const struct timespec* timeout);
 
     void
