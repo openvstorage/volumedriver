@@ -45,14 +45,18 @@ namespace yt = youtils;
 
 using Clock = std::chrono::steady_clock;
 
+std::string ha_hdlr_intvl("LIBOVSVOLUMEDRIVER_HA_HANDLER_INTERVAL_MSECS");
+std::string loc_chk_intvl("LIBOVSVOLUMEDRIVER_LOCATION_CHECK_INTERVAL_SECS");
+std::string top_chk_intvl("LIBOVSVOLUMEDRIVER_TOPOLOGY_CHECK_INTERVAL_SECS");
+
 const Clock::duration ha_handler_sleep_time =
-    std::chrono::milliseconds(yt::System::get_env_with_default("LIBOVSVOLUMEDRIVER_HA_HANDLER_INTERVAL_MSECS",
+    std::chrono::milliseconds(yt::System::get_env_with_default(ha_hdlr_intvl,
                                                                5UL));
 const Clock::duration location_check_interval =
-    std::chrono::seconds(yt::System::get_env_with_default("LIBOVSVOLUMEDRIVER_LOCATION_CHECK_INTERVAL_SECS",
+    std::chrono::seconds(yt::System::get_env_with_default(loc_chk_intvl,
                                                           30UL));
 const Clock::duration topology_check_interval =
-    std::chrono::seconds(yt::System::get_env_with_default("LIBOVSVOLUMEDRIVER_TOPOLOGY_CHECK_INTERVAL_SECS",
+    std::chrono::seconds(yt::System::get_env_with_default(top_chk_intvl,
                                                           300UL));
 }
 
@@ -286,13 +290,13 @@ NetworkHAContext::do_reconnect(const std::string& uri)
     }
     catch (std::exception& e)
     {
-        LIBLOGID_ERROR("failed to create new context for volume " << volume_name_ <<
-                       " at " << uri << ":" << e.what());
+        LIBLOGID_ERROR("failed to create new context for volume " <<
+                       volume_name_ << " at " << uri << ":" << e.what());
     }
     catch (...)
     {
-        LIBLOGID_ERROR("failed to create new context for volume " << volume_name_ <<
-                       " at " << uri << ": unknown exception");
+        LIBLOGID_ERROR("failed to create new context for volume " <<
+                       volume_name_ << " at " << uri << ": unknown exception");
     }
 
     return ret;
@@ -305,7 +309,8 @@ NetworkHAContext::reconnect()
 
     if (not is_dtl_in_sync())
     {
-        LIBLOGID_ERROR("not attempting to failover as the DTL is known not to be in sync");
+        LIBLOGID_ERROR("not attempting to failover as the DTL is "
+                       "known not to be in sync");
         return r;
     }
 
