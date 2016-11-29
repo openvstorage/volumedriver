@@ -17,6 +17,7 @@
 #include "NetworkXioProtocol.h"
 #include "ObjectRouter.h"
 #include "PythonClient.h" // clienterrors
+#include "ClusterRegistry.h"
 
 #include <youtils/Assert.h>
 #include <youtils/Catchers.h>
@@ -84,8 +85,8 @@ NetworkXioIOHandler::update_fs_client_info(const std::string& volume_name)
 }
 
 std::pair<std::vector<std::string>, size_t>
-NetworkXioIOHandler::get_neighbours(const ClusterRegistry::NeighbourMap& nmap,
-                                    const uint32_t max_neighbour_distance)
+NetworkXioIOHandler::get_neighbours(const ClusterRegistry::NeighbourMap& nmap)
+    const
 {
     using Set = std::set<std::string>;
     std::vector<Set> sets;
@@ -95,7 +96,7 @@ NetworkXioIOHandler::get_neighbours(const ClusterRegistry::NeighbourMap& nmap,
     size_t count = 0;
 
     for (auto it = nmap.begin();
-            it != nmap.lower_bound(max_neighbour_distance); ++it)
+            it != nmap.lower_bound(max_neighbour_distance_); ++it)
     {
         const ClusterNodeConfig& c = it->second;
         auto uri(boost::lexical_cast<std::string>(*c.network_server_uri));
@@ -831,8 +832,7 @@ NetworkXioIOHandler::handle_list_cluster_node_uri(NetworkXioRequest *req)
         ObjectRouter& router = fs_.object_router();
         const ClusterRegistry::NeighbourMap
           nmap(router.cluster_registry()->get_neighbour_map(router.node_id()));
-        std::tie(uris, total_size) = get_neighbours(nmap,
-                                                    max_neighbour_distance_);
+        std::tie(uris, total_size) = get_neighbours(nmap);
     }
     CATCH_STD_ALL_EWHAT({
         LOG_ERROR("Problem listing cluster nodes URI: " << EWHAT);

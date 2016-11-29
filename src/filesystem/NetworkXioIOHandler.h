@@ -17,6 +17,7 @@
 #define __NETWORK_XIO_IO_HANDLER_H_
 
 #include "FileSystem.h"
+#include "ClusterRegistry.h"
 
 #include "NetworkXioWorkQueue.h"
 #include "NetworkXioRequest.h"
@@ -149,8 +150,7 @@ private:
     Handle::Ptr handle_;
 
     std::pair<std::vector<std::string>, size_t>
-    get_neighbours(const ClusterRegistry::NeighbourMap&,
-                   const uint32_t);
+    get_neighbours(const ClusterRegistry::NeighbourMap&) const;
 
     std::string
     make_volume_path(const std::string& volume_name)
