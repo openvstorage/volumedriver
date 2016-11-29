@@ -278,7 +278,7 @@ NetworkHAContext::do_reconnect(const std::string& uri)
                                                            true);
         ret = tmp_ctx->open_volume(volume_name_.c_str(),
                                    oflag);
-        if (ret)
+        if (ret < 0)
         {
             LIBLOGID_ERROR("failed to open " << volume_name_ << " at " << uri);
         }
@@ -324,7 +324,7 @@ NetworkHAContext::reconnect()
         }
 
         r = do_reconnect(uri);
-        if (r)
+        if (r < 0)
         {
             LIBLOGID_ERROR("reconnection to URI '" << uri << "' failed");
         }
@@ -466,7 +466,12 @@ NetworkHAContext::open_volume(const char *volname,
 {
     LIBLOGID_DEBUG("volume name: " << volname << ", oflag: " << oflag);
     int r = atomic_get_ctx()->open_volume(volname, oflag);
-    if (not r)
+    if (r < 0)
+    {
+        LIBLOGID_INFO("failed to open volume: " << volname << ", error: "
+                      << yt::safe_error_str(errno));
+    }
+    else
     {
         volume_name(volname);
         oflag_ = oflag;
