@@ -171,15 +171,15 @@ FileSystemMetaDataClient::registerize()
                                     "Access to the filesystem's metadata",
                                     bpy::no_init)
         .def("__init__",
-             bpy::make_constructor(make_metadata_store))
-        //   try to get the below working:
-        //      (bpy::args("cluster_id"),
-        //       bpy::args("arakoon_cluster_id"),
-        //       bpy::args("arakoon_node_configs")),
-        //       "Construct a FileSystemMetaDataClient\n"
-        //       "@param cluster_id: string, filesystem cluster ID\n"
-        //       "@param arakoon_cluster_id: string, Arakoon cluster ID\n"
-        //       "@param arakoon_node_configs: list of ArakoonNodeConfigs\n")
+             bpy::make_constructor(make_metadata_store,
+                                   bpy::default_call_policies(),
+                                   (bpy::args("cluster_id"),
+                                    bpy::args("arakoon_cluster_id"),
+                                    bpy::args("arakoon_node_configs"))),
+             "Construct a FileSystemMetaDataClient\n"
+             "@param cluster_id: string, filesystem cluster ID\n"
+             "@param arakoon_cluster_id: string, Arakoon cluster ID\n"
+             "@param arakoon_node_configs: list of ArakoonNodeConfigs\n")
         .def("list_path",
              list_path,
              bpy::args("path"),
