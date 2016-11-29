@@ -82,7 +82,7 @@ public:
     {
         xio_msg_s xmsg;
         session_data sdata;
-        std::vector<std::string> *vec;
+        std::vector<std::string> vec;
         std::unique_ptr<uint8_t[]> data;
         uint64_t size;
     };
