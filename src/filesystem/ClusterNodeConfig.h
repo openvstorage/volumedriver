@@ -122,6 +122,15 @@ struct ClusterNodeConfig
         return not (*this == other);
     }
 
+    youtils::Uri
+    message_uri() const
+    {
+        return youtils::Uri()
+            .scheme(std::string("tcp"))
+            .host(message_host)
+            .port(static_cast<const uint16_t>(message_port));
+    }
+
     BOOST_SERIALIZATION_SPLIT_MEMBER();
 
     template<class Archive>

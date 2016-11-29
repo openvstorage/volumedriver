@@ -32,6 +32,7 @@ namespace volumedriverfstest
 
 namespace vfs = volumedriverfs;
 namespace yt = youtils;
+using namespace std::literals::string_literals;
 
 class ZWorkerPoolTest
     : public testing::Test
@@ -39,7 +40,7 @@ class ZWorkerPoolTest
 protected:
     ZWorkerPoolTest()
         : ztx_(0)
-        , addr_("inproc://" + yt::UUID().str())
+        , uri_(yt::Uri().scheme("inproc"s).host(yt::UUID().str()))
     {}
 
     vfs::ZWorkerPool::MessageParts
@@ -67,7 +68,7 @@ protected:
     {
         zmq::socket_t zock(ztx_, ZMQ_REQ);
         vfs::ZUtils::socket_no_linger(zock);
-        zock.connect(addr_.c_str());
+        zock.connect(boost::lexical_cast<std::string>(uri_).c_str());
 
         return zock;
     }
@@ -75,14 +76,14 @@ protected:
     DECLARE_LOGGER("ZWorkerPoolTest");
 
     zmq::context_t ztx_;
-    const std::string addr_;
+    const youtils::Uri uri_;
 };
 
 TEST_F(ZWorkerPoolTest, construction)
 {
     EXPECT_THROW(vfs::ZWorkerPool("MinSizeZero",
                                   ztx_,
-                                  addr_,
+                                  uri_,
                                   [&](std::vector<zmq::message_t>&& parts)
                                   -> std::vector<zmq::message_t>
                                   {
@@ -94,7 +95,7 @@ TEST_F(ZWorkerPoolTest, construction)
 
     EXPECT_THROW(vfs::ZWorkerPool("MaxLessThanMin",
                                   ztx_,
-                                  addr_,
+                                  uri_,
                                   [&](std::vector<zmq::message_t>&& parts)
                                   -> std::vector<zmq::message_t>
                                   {
@@ -106,7 +107,7 @@ TEST_F(ZWorkerPoolTest, construction)
 
     vfs::ZWorkerPool zwpool("TestZWorkerPool1",
                             ztx_,
-                            addr_,
+                            uri_,
                             [&](std::vector<zmq::message_t>&& parts)
                             -> std::vector<zmq::message_t>
                             {
@@ -124,7 +125,7 @@ TEST_F(ZWorkerPoolTest, address_conflict)
 
     vfs::ZWorkerPool zwpool("TestZWorkerPool1",
                             ztx_,
-                            addr_,
+                            uri_,
                             [&](std::vector<zmq::message_t>&& parts)
                             -> std::vector<zmq::message_t>
                             {
@@ -142,7 +143,7 @@ TEST_F(ZWorkerPoolTest, address_conflict)
 
         EXPECT_THROW(vfs::ZWorkerPool("TestZWorkerPool2",
                                       ztx_,
-                                      addr_,
+                                      uri_,
                                       [&](std::vector<zmq::message_t>&& parts)
                                       -> std::vector<zmq::message_t>
                                       {
@@ -166,7 +167,7 @@ TEST_F(ZWorkerPoolTest, basics)
 
     vfs::ZWorkerPool zwpool("TestZWorkerPool",
                             ztx_,
-                            addr_,
+                            uri_,
                             std::move(fun),
                             min_workers,
                             max_workers);
@@ -227,7 +228,7 @@ TEST_F(ZWorkerPoolTest, maxed_out)
 
     vfs::ZWorkerPool zwpool("TestZWorkerPool",
                             ztx_,
-                            addr_,
+                            uri_,
                             std::move(fun),
                             min_workers,
                             max_workers);
@@ -297,7 +298,7 @@ TEST_F(ZWorkerPoolTest, exceptional_work)
 
     vfs::ZWorkerPool zwpool("TestZWorkerPool",
                             ztx_,
-                            addr_,
+                            uri_,
                             std::move(fun),
                             min_workers,
                             max_workers);
@@ -355,7 +356,7 @@ TEST_F(ZWorkerPoolTest, stress)
 
     vfs::ZWorkerPool zwpool("TestZWorkerPool",
                             ztx_,
-                            addr_,
+                            uri_,
                             std::move(fun),
                             min_workers,
                             max_workers);

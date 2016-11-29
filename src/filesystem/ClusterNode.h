@@ -16,11 +16,10 @@
 #ifndef VFS_CLUSTER_NODE_H_
 #define VFS_CLUSTER_NODE_H_
 
-#include "ClusterNodeConfig.h"
-#include "Object.h"
 #include "NodeId.h"
 
 #include <youtils/Logging.h>
+#include <youtils/Uri.h>
 
 #include <volumedriver/DtlInSync.h>
 #include <volumedriver/Types.h>
@@ -28,13 +27,13 @@
 namespace volumedriverfs
 {
 
+class Object;
 class ObjectRouter;
 
 class ClusterNode
 {
 public:
-    virtual ~ClusterNode()
-    {}
+    virtual ~ClusterNode() = default;
 
     // XXX: we have to pass the size by a ptr instead of a reference since
     // our use of variadic templates in ObjectRouter leads to
@@ -67,16 +66,30 @@ public:
     virtual void
     unlink(const Object& obj) = 0;
 
-    const ClusterNodeConfig config;
+    const NodeId&
+    node_id() const
+    {
+        return node_id_;
+    }
+
+    const youtils::Uri&
+    uri() const
+    {
+        return uri_;
+    }
 
 protected:
-    ClusterNode(ObjectRouter& vrouter_,
-                const ClusterNodeConfig& cfg);
+    ClusterNode(ObjectRouter&_,
+                const NodeId&,
+                const youtils::Uri&);
 
     ObjectRouter& vrouter_;
 
 private:
     DECLARE_LOGGER("VFSClusterNode");
+
+    const NodeId node_id_;
+    const youtils::Uri uri_;
 };
 
 }

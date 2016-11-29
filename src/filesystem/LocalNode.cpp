@@ -98,7 +98,8 @@ LocalNode::LocalNode(ObjectRouter& router,
                      const ClusterNodeConfig& cfg,
                      const bpt::ptree& pt)
     : ClusterNode(router,
-                  cfg)
+                  cfg.vrouter_id,
+                  cfg.message_uri())
     , vrouter_local_io_sleep_before_retry_usecs(pt)
     , vrouter_local_io_retries(pt)
     , vrouter_sco_multiplier(pt)

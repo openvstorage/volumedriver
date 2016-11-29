@@ -407,7 +407,10 @@ private:
     mutable fungi::RWLock node_map_lock_;
 
     using NodeMap = std::unordered_map<NodeId, std::shared_ptr<ClusterNode>>;
+    using ConfigMap = std::unordered_map<NodeId, ClusterNodeConfig>;
+
     NodeMap node_map_;
+    ConfigMap config_map_;
 
     DECLARE_PARAMETER(vrouter_volume_read_threshold);
     DECLARE_PARAMETER(vrouter_volume_write_threshold);
@@ -457,10 +460,10 @@ private:
     mutable std::mutex redirects_lock_;
 
     void
-    update_node_map_(const boost::optional<const boost::property_tree::ptree&>& pt);
+    update_config_(const boost::optional<const boost::property_tree::ptree&>& pt);
 
-    NodeMap
-    build_node_map_(const boost::optional<const boost::property_tree::ptree&>& pt);
+    std::pair<NodeMap, ConfigMap>
+    build_config_(const boost::optional<const boost::property_tree::ptree&>& pt);
 
     ZWorkerPool::MessageParts
     redirected_work_(ZWorkerPool::MessageParts parts_in);
