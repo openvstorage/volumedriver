@@ -189,7 +189,7 @@ ovs_ctx_new(const ovs_ctx_attr_t *attr)
                                                   attr->enable_ha);
             break;
         case TransportType::SharedMemory:
-            ctx = new ShmContext;
+            ctx = new libvoldrv::ShmContext;
             break;
         default:
             errno = EINVAL;
