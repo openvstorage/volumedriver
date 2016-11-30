@@ -139,6 +139,30 @@ MessageUtils::create_get_size_response(const uint64_t size)
     return msg;
 }
 
+GetClusterMultiplierRequest
+MessageUtils::create_get_cluster_multiplier_request(const vfs::Object& obj)
+{
+    GetClusterMultiplierRequest msg;
+    msg.set_object_id(obj.id.str());
+    msg.set_object_type(static_cast<uint32_t>(obj.type));
+
+    msg.CheckInitialized();
+
+    return msg;
+}
+
+GetClusterMultiplierResponse
+MessageUtils::create_get_cluster_multiplier_response(const vd::ClusterMultiplier cm)
+{
+    GetClusterMultiplierResponse msg;
+    msg.set_size(static_cast<uint32_t>(cm));
+
+    msg.CheckInitialized();
+
+    return msg;
+
+}
+
 DeleteRequest
 MessageUtils::create_delete_request(const vfs::Object& obj)
 {

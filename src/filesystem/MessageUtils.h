@@ -59,6 +59,12 @@ struct MessageUtils
     static GetSizeResponse
     create_get_size_response(const uint64_t size);
 
+    static GetClusterMultiplierRequest
+    create_get_cluster_multiplier_request(const volumedriverfs::Object&);
+
+    static GetClusterMultiplierResponse
+    create_get_cluster_multiplier_response(const volumedriver::ClusterMultiplier);
+
     static ResizeRequest
     create_resize_request(const volumedriverfs::Object&,
                           uint64_t newsize);
