@@ -130,6 +130,9 @@ public:
     static uint64_t
     GetSize(volumedriver::WeakVolumePtr);
 
+    static volumedriver::ClusterMultiplier
+    GetClusterMultiplier(volumedriver::WeakVolumePtr);
+
     static uint64_t
     GetLbaSize(volumedriver::WeakVolumePtr);
 

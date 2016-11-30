@@ -131,6 +131,12 @@ api::GetSize(vd::WeakVolumePtr vol)
     return SharedVolumePtr(vol)->getSize();
 }
 
+vd::ClusterMultiplier
+api::GetClusterMultiplier(vd::WeakVolumePtr vol)
+{
+    return SharedVolumePtr(vol)->getClusterMultiplier();
+}
+
 void
 api::Resize(vd::WeakVolumePtr vol,
             uint64_t clusters)
