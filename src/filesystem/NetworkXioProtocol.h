@@ -32,7 +32,7 @@ public:
                            const std::string& volname = "",
                            const std::string& snapname = "",
                            const size_t size = 0,
-                           const uint64_t offset = 0,
+                           const uint64_t offset_and_generic = 0,
                            const ssize_t retval = 0,
                            const int errval = 0,
                            const uintptr_t opaque = 0,
@@ -42,7 +42,7 @@ public:
     , volname_(volname)
     , snapname_(snapname)
     , size_(size)
-    , offset_(offset)
+    , offset_and_generic_(offset_and_generic)
     , retval_(retval)
     , errval_(errval)
     , opaque_(opaque)
@@ -55,7 +55,7 @@ public:
     std::string volname_;
     std::string snapname_;
     size_t size_;
-    uint64_t offset_;
+    uint64_t offset_and_generic_;
     ssize_t retval_;
     int errval_;
     uintptr_t opaque_;
@@ -148,15 +148,15 @@ public:
     }
 
     const uint64_t&
-    offset() const
+    offset_and_generic() const
     {
-        return offset_;
+        return offset_and_generic_;
     }
 
     void
-    offset(const uint64_t& offset)
+    offset_and_generic(const uint64_t& offset)
     {
-        offset_ = offset;
+        offset_and_generic_ = offset;
     }
 
     const int64_t&
@@ -215,7 +215,7 @@ public:
         volname_.clear();
         snapname_.clear();
         size_ = 0;
-        offset_ = 0;
+        offset_and_generic_ = 0;
         retval_ = 0;
         errval_ = 0;
         opaque_ = 0;
@@ -227,7 +227,7 @@ public:
                    volname_,
                    snapname_,
                    size_,
-                   offset_,
+                   offset_and_generic_,
                    retval_,
                    errval_,
                    opaque_,

@@ -40,7 +40,7 @@ pack_msg(NetworkXioRequest *req)
     o_msg.errval(req->errval);
     o_msg.dtl_in_sync(req->dtl_in_sync);
     o_msg.opaque(req->opaque);
-    req->s_msg= o_msg.pack_msg();
+    req->s_msg = o_msg.pack_msg();
 }
 
 static inline void
@@ -50,9 +50,10 @@ pack_ctrl_msg(NetworkXioRequest *req)
     o_msg.retval(req->retval);
     o_msg.errval(req->errval);
     o_msg.size(req->size);
+    o_msg.offset_and_generic(req->offset_and_generic);
     o_msg.dtl_in_sync(req->dtl_in_sync);
     o_msg.opaque(req->opaque);
-    req->s_msg= o_msg.pack_msg();
+    req->s_msg = o_msg.pack_msg();
 }
 
 void
@@ -244,14 +245,14 @@ NetworkXioIOHandler::handle_read(NetworkXioRequest *req,
     req->data = block->reg_mem.addr;
     req->data_len = size;
     req->size = size;
-    req->offset = offset;
+    req->offset_and_generic = offset;
     try
     {
        bool eof = false;
        fs_.read(*handle_,
                 req->size,
                 static_cast<char*>(req->data),
-                req->offset,
+                req->offset_and_generic,
                 eof);
        req->retval = req->size;
        req->errval = 0;
@@ -309,7 +310,7 @@ NetworkXioIOHandler::handle_write(NetworkXioRequest *req,
     }
 
     req->size = size;
-    req->offset = offset;
+    req->offset_and_generic = offset;
     bool sync = false;
     try
     {
@@ -317,7 +318,7 @@ NetworkXioIOHandler::handle_write(NetworkXioRequest *req,
         fs_.write(*handle_,
                   req->size,
                   static_cast<char*>(data),
-                  req->offset,
+                  req->offset_and_generic,
                   sync,
                   &dtl_in_sync);
         req->dtl_in_sync = (dtl_in_sync == vd::DtlInSync::T) ? true : false;
@@ -969,6 +970,38 @@ NetworkXioIOHandler::handle_get_volume_uri(NetworkXioRequest* req,
 }
 
 void
+NetworkXioIOHandler::handle_get_cluster_multiplier(NetworkXioRequest *req,
+                                                   const std::string& vname)
+{
+    VERIFY(not handle_);
+    req->op = NetworkXioMsgOpcode::GetClusterMultiplierRsp;
+
+    const FrontendPath volume_path(make_volume_path(vname));
+    try
+    {
+        boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
+        if (not volume_id)
+        {
+            req->retval = -1;
+            req->errval = ENOENT;
+            pack_ctrl_msg(req);
+            return;
+        }
+        const vd::ClusterMultiplier cluster_multiplier =
+            fs_.object_router().get_cluster_multiplier(*volume_id);
+        req->offset_and_generic = static_cast<uint64_t>(cluster_multiplier);
+        req->retval = 0;
+        req->errval = 0;
+    }
+    CATCH_STD_ALL_EWHAT({
+       LOG_ERROR("get_cluster_multiplier error: " << EWHAT);
+       req->retval = -1;
+       req->errval = EIO;
+    });
+    pack_ctrl_msg(req);
+}
+
+void
 NetworkXioIOHandler::handle_error(NetworkXioRequest *req,
                                   NetworkXioMsgOpcode op,
                                   int errval)
@@ -1075,7 +1108,7 @@ NetworkXioIOHandler::process_ctrl_request(NetworkXioRequest *req)
     {
         handle_truncate(req,
                         i_msg.volume_name(),
-                        i_msg.offset());
+                        i_msg.offset_and_generic());
         break;
     }
     case NetworkXioMsgOpcode::ListClusterNodeURIReq:
@@ -1087,6 +1120,12 @@ NetworkXioIOHandler::process_ctrl_request(NetworkXioRequest *req)
     {
         handle_get_volume_uri(req,
                               i_msg.volume_name());
+        break;
+    }
+    case NetworkXioMsgOpcode::GetClusterMultiplierReq:
+    {
+        handle_get_cluster_multiplier(req,
+                                      i_msg.volume_name());
         break;
     }
     default:
@@ -1125,14 +1164,14 @@ NetworkXioIOHandler::process_request(NetworkXioRequest *req)
     {
         handle_read(req,
                     i_msg.size(),
-                    i_msg.offset());
+                    i_msg.offset_and_generic());
         break;
     }
     case NetworkXioMsgOpcode::WriteReq:
     {
         handle_write(req,
                      i_msg.size(),
-                     i_msg.offset());
+                     i_msg.offset_and_generic());
         break;
     }
     case NetworkXioMsgOpcode::FlushReq:

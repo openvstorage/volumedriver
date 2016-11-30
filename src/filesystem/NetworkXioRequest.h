@@ -56,7 +56,7 @@ struct NetworkXioRequest
     void *data;
     unsigned int data_len;
     size_t size;
-    uint64_t offset;
+    uint64_t offset_and_generic;
     bool dtl_in_sync;
 
     ssize_t retval;
