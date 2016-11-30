@@ -103,6 +103,9 @@ public:
     virtual uint64_t
     get_size(const Object& obj) override final;
 
+    virtual volumedriver::ClusterMultiplier
+    get_cluster_multiplier(const Object& obj) override final;
+
     virtual void
     resize(const Object& obj,
            uint64_t newsize) override final;
@@ -345,6 +348,9 @@ private:
 
     uint64_t
     get_size_(volumedriver::WeakVolumePtr vol);
+
+    volumedriver::ClusterMultiplier
+    get_cluster_multiplier_(volumedriver::WeakVolumePtr vol);
 
     void
     resize_(volumedriver::WeakVolumePtr vol,

@@ -821,6 +821,21 @@ LocalNode::get_size_(vd::WeakVolumePtr vol)
     return api::GetSize(vol);
 }
 
+vd::ClusterMultiplier
+LocalNode::get_cluster_multiplier(const Object& obj)
+{
+    RWLockPtr l(get_lock_(obj.id));
+    fungi::ScopedReadLock rg(*l);
+    return with_volume_pointer_(&LocalNode::get_cluster_multiplier_,
+                                obj.id);
+}
+
+vd::ClusterMultiplier
+LocalNode::get_cluster_multiplier_(vd::WeakVolumePtr vol)
+{
+    return api::GetClusterMultiplier(vol);
+}
+
 void
 LocalNode::resize(const Object& obj,
                   uint64_t newsize)

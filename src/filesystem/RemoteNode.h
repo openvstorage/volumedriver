@@ -75,6 +75,9 @@ public:
     virtual uint64_t
     get_size(const Object& obj) override final;
 
+    virtual volumedriver::ClusterMultiplier
+    get_cluster_multiplier(const Object& obj) override final;
+
     virtual void
     resize(const Object& obj,
            uint64_t newsize) override final;

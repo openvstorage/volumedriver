@@ -60,6 +60,9 @@ public:
     virtual uint64_t
     get_size(const Object& obj) = 0;
 
+    virtual volumedriver::ClusterMultiplier
+    get_cluster_multiplier(const Object&) = 0;
+
     virtual void
     resize(const Object& obj,
            uint64_t newsize) = 0;

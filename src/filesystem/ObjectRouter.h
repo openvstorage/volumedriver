@@ -59,6 +59,7 @@ class GetSizeRequest;
 class ResizeRequest;
 class DeleteRequest;
 class TransferRequest;
+class GetClusterMultiplierRequest;
 
 }
 
@@ -189,6 +190,9 @@ public:
 
     uint64_t
     get_size(const ObjectId& id);
+
+    volumedriver::ClusterMultiplier
+    get_cluster_multiplier(const ObjectId&);
 
     void
     resize(const ObjectId& id,
@@ -556,6 +560,9 @@ private:
 
     zmq::message_t
     handle_get_size_(const vfsprotocol::GetSizeRequest&);
+
+    zmq::message_t
+    handle_get_cluster_multiplier_(const vfsprotocol::GetClusterMultiplierRequest&);
 
     void
     handle_resize_(const vfsprotocol::ResizeRequest&);

@@ -560,6 +560,34 @@ RemoteNode::get_size(const Object& obj)
     return size;
 }
 
+vd::ClusterMultiplier
+RemoteNode::get_cluster_multiplier(const Object& obj)
+{
+    LOG_TRACE(config.vrouter_id << ": obj " << obj.id);
+
+    uint32_t size = 0;
+    ExtraRecvFun get_cluster_multiplier([&]
+                          {
+                              ZEXPECT_MORE(*zock_,
+                                           "GetClusterMultiplierResponse");
+
+                              vfsprotocol::GetClusterMultiplierResponse rsp;
+                              ZUtils::deserialize_from_socket(*zock_, rsp);
+
+                              rsp.CheckInitialized();
+                              size = rsp.size();
+                          });
+
+    const auto req(vfsprotocol::MessageUtils::create_get_cluster_multiplier_request(obj));
+
+    handle_(req,
+            vrouter_.redirect_timeout(),
+            nullptr,
+            &get_cluster_multiplier);
+
+    return vd::ClusterMultiplier(size);
+}
+
 void
 RemoteNode::resize(const Object& obj,
                    uint64_t newsize)
