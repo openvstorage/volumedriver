@@ -367,21 +367,26 @@ public:
                         {
                             if (stop or pending_queue.size() == qdepth)
                             {
-                                AiocbPtr aiocb = std::move(pending_queue.front());
-                                pending_queue.pop_front();
+                                AiocbPtr aiocb;
 
-                                EXPECT_EQ(0,
-                                          ovs_aio_suspend(ctx.get(),
-                                                          aiocb.get(),
-                                                          nullptr));
-                                EXPECT_EQ(aiocb->aio_nbytes,
-                                          ovs_aio_return(ctx.get(),
-                                                         aiocb.get()));
-                                EXPECT_EQ(0,
-                                          ovs_aio_finish(ctx.get(),
-                                                         aiocb.get()));
+                                if (not pending_queue.empty())
+                                {
+                                    aiocb = std::move(pending_queue.front());
+                                    pending_queue.pop_front();
 
-                                ops++;
+                                    EXPECT_EQ(0,
+                                              ovs_aio_suspend(ctx.get(),
+                                                              aiocb.get(),
+                                                              nullptr));
+                                    EXPECT_EQ(aiocb->aio_nbytes,
+                                              ovs_aio_return(ctx.get(),
+                                                             aiocb.get()));
+                                    EXPECT_EQ(0,
+                                              ovs_aio_finish(ctx.get(),
+                                                             aiocb.get()));
+
+                                    ops++;
+                                }
 
                                 if (stop)
                                 {
@@ -392,6 +397,7 @@ public:
                                 }
                                 else
                                 {
+                                    EXPECT_TRUE(aiocb != nullptr);
                                     free_queue.emplace_back(std::move(aiocb));
                                 }
                             }
