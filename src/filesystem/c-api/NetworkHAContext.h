@@ -101,6 +101,10 @@ public:
                    std::string& volume_uri) override final;
 
     int
+    get_cluster_multiplier(const char *volume_name,
+                           uint32_t *cluster_multiplier) override final;
+
+    int
     send_read_request(ovs_aio_request*) override final;
 
     int

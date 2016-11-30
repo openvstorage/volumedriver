@@ -82,6 +82,9 @@ public:
 
     virtual bool is_dtl_in_sync() = 0;
 
+    virtual int get_cluster_multiplier(const char *volume_name,
+                                       uint32_t *cluster_multiplier) = 0;
+
     TransportType transport;
     int oflag;
 };

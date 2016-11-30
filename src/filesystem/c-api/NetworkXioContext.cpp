@@ -502,7 +502,7 @@ NetworkXioContext::list_cluster_node_uri(std::vector<std::string>& uris)
 }
 
 int
-NetworkXioContext::get_volume_uri(const char* volume_name,
+NetworkXioContext::get_volume_uri(const char *volume_name,
                                   std::string& volume_uri)
 {
     int r;
@@ -524,6 +524,42 @@ NetworkXioContext::get_volume_uri(const char* volume_name,
                                              volume_name,
                                              volume_uri,
                                              request.get());
+        errno = request->_errno; r = request->_rv;
+    }
+    catch (const std::bad_alloc&)
+    {
+        errno = ENOMEM;
+    }
+    catch (...)
+    {
+        errno = EIO;
+    }
+    return r;
+}
+
+int
+NetworkXioContext::get_cluster_multiplier(const char *volume_name,
+                                          uint32_t *cluster_multiplier)
+{
+    int r;
+    std::shared_ptr<ovs_aio_request> request;
+    try
+    {
+        request = std::make_shared<ovs_aio_request>(RequestOp::Noop,
+                                                    nullptr,
+                                                    nullptr);
+    }
+    catch (const std::bad_alloc&)
+    {
+        errno = ENOMEM;
+        return -1;
+    }
+    try
+    {
+        NetworkXioClient::xio_get_cluster_multiplier(uri_,
+                                                     volume_name,
+                                                     cluster_multiplier,
+                                                     request.get());
         errno = request->_errno; r = request->_rv;
     }
     catch (const std::bad_alloc&)

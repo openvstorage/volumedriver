@@ -107,6 +107,9 @@ struct ShmContext : public ovs_context_t
 
     bool
     is_dtl_in_sync();
+
+    int get_cluster_multiplier(const char *volume_name,
+                               uint32_t *cluster_multiplier);
 };
 
 } //namespace libovsvolumedriver

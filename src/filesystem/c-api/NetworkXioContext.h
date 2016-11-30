@@ -91,8 +91,12 @@ public:
     list_cluster_node_uri(std::vector<std::string>& uris);
 
     int
-    get_volume_uri(const char* volume_name,
+    get_volume_uri(const char *volume_name,
                    std::string& uri) override final;
+
+    int
+    get_cluster_multiplier(const char *volume_name,
+                           uint32_t *cluster_multiplier);
 
     int
     send_read_request(ovs_aio_request*) override final;

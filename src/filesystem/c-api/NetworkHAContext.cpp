@@ -694,4 +694,12 @@ NetworkHAContext::is_dtl_in_sync()
     return atomic_get_ctx()->is_dtl_in_sync();
 }
 
+int
+NetworkHAContext::get_cluster_multiplier(const char *volume_name,
+                                         uint32_t *cluster_multiplier)
+{
+    return atomic_get_ctx()->get_cluster_multiplier(volume_name,
+                                                    cluster_multiplier);
+}
+
 } //namespace libovsvolumedriver

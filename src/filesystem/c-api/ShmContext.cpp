@@ -361,4 +361,12 @@ ShmContext::is_dtl_in_sync()
     return false;
 }
 
+int
+ShmContext::get_cluster_multiplier(const char * /*volume_name*/,
+                                   uint32_t * /*cluster_multiplier*/)
+{
+    std::abort();
+    return -1;
+}
+
 } //namespace libovsvolumedriver
