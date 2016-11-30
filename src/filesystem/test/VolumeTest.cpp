@@ -1635,6 +1635,22 @@ TEST_F(VolumeTest, dtl_status_sync_dtl)
     test_dtl_status(vd::FailOverCacheMode::Synchronous);
 }
 
+TEST_F(VolumeTest, get_cluster_multiplier)
+{
+    const FrontendPath fname(make_volume_name("/volume"));
+    const ObjectId vname(create_file(fname));
+
+    vd::WeakVolumePtr v;
+
+    {
+        LOCKVD();
+        v = api::getVolumePointer(vd::VolumeId(vname.str()));
+    }
+
+    EXPECT_EQ(vd::VolumeConfig::default_cluster_multiplier(),
+              api::GetClusterMultiplier(v));
+}
+
 }
 
 // Local Variables: **

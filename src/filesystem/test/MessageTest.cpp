@@ -177,6 +177,39 @@ TEST_F(MessageTest, get_size_response)
     EXPECT_EQ(size, msg2.size());
 }
 
+TEST_F(MessageTest, get_cluster_multiplier_request)
+{
+    const vfs::ObjectId id("volume");
+    const vfs::ObjectType tp = vfs::ObjectType::File;
+
+    const auto msg(vfsprotocol::MessageUtils::create_get_cluster_multiplier_request(vfs::Object(tp, id)));
+    ASSERT_TRUE(msg.IsInitialized());
+
+    const std::string s(msg.SerializeAsString());
+
+    vfsprotocol::GetClusterMultiplierRequest msg2;
+    msg2.ParseFromString(s);
+    ASSERT_TRUE(msg2.IsInitialized());
+
+    EXPECT_EQ(id.str(), msg2.object_id());
+    check_object_type(msg2, tp);
+}
+
+TEST_F(MessageTest, get_cluster_multiplier_response)
+{
+    const vd::ClusterMultiplier cm(4096);
+    const auto msg(vfsprotocol::MessageUtils::create_get_cluster_multiplier_response(cm));
+    ASSERT_TRUE(msg.IsInitialized());
+
+    const std::string s(msg.SerializeAsString());
+
+    vfsprotocol::GetClusterMultiplierResponse msg2;
+    msg2.ParseFromString(s);
+
+    ASSERT_TRUE(msg2.IsInitialized());
+    EXPECT_EQ(static_cast<uint32_t>(cm), msg2.size());
+}
+
 TEST_F(MessageTest, delete_request)
 {
     const vfs::ObjectId id("volume");
