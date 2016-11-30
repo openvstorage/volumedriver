@@ -2073,4 +2073,30 @@ TEST_F(NetworkServerTest, list_uris_rand_order)
     EXPECT_TRUE(set.empty());
 }
 
+TEST_F(NetworkServerTest, get_cluster_multiplier)
+{
+    CtxAttrPtr attrs(make_ctx_attr(1024,
+                                   false,
+                                   FileSystemTestSetup::local_edge_port()));
+    CtxPtr ctx(ovs_ctx_new(attrs.get()));
+    ASSERT_TRUE(ctx != nullptr);
+
+    const std::string vname("volume");
+    const size_t vsize = 1ULL << 20;
+
+    ASSERT_EQ(0,
+              ovs_create_volume(ctx.get(),
+                                vname.c_str(),
+                                vsize));
+
+    auto& ctx_iface = dynamic_cast<ovs_context_t&>(*ctx);
+
+    uint32_t cluster_multiplier;
+    ctx_iface.get_cluster_multiplier(vname.c_str(),
+                                     &cluster_multiplier);
+
+    EXPECT_EQ(vd::VolumeConfig::default_cluster_multiplier(),
+              cluster_multiplier);
+}
+
 } //namespace
