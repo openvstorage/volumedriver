@@ -1189,6 +1189,78 @@ TEST_P(MetaDataStoreTest, DISABLED_page_compression)
         std::endl;
 }
 
+TEST_P(MetaDataStoreTest, get_page)
+{
+    const uint32_t page_size = CachePage::capacity();
+    const uint32_t max_pages = 3;
+    const uint64_t locs = max_pages * page_size;
+    const size_t csize = default_lba_size() * default_cluster_multiplier();
+    const uint64_t volsize = locs * csize;
+
+    const auto wrns(make_random_namespace());
+
+    const auto params =
+        VanillaVolumeConfigParameters(VolumeId(wrns->ns().str()),
+                                      wrns->ns(),
+                                      VolumeSize(volsize),
+                                      new_owner_tag())
+        .metadata_cache_capacity(max_pages)
+        ;
+
+    SharedVolumePtr v(newVolume(params));
+    std::unique_ptr<MetaDataStoreInterface>& md = getMDStore(v);
+
+    auto check([&]
+               {
+                   std::vector<ClusterLocationAndHash> vec;
+                   for (ClusterAddress ca = 0; ca < locs; ++ca)
+                   {
+                       if ((ca % page_size) == 0)
+                       {
+                           vec = md->get_page(ca);
+                       }
+
+                       ASSERT_EQ(page_size,
+                                 vec.size());
+
+                       ClusterLocationAndHash clh;
+                       md->readCluster(ca, clh);
+
+                       PageAddress pa = CachePage::pageAddress(ca);
+                       off_t off = CachePage::offset(ca);
+                       EXPECT_EQ(clh,
+                                 vec.at(CachePage::offset(ca))) <<
+                           "CA " << ca << ", PA " << pa << ", off " << off;
+                   }
+               });
+
+    SCONumber sco_num = 1;
+
+    auto write([&](size_t n)
+               {
+                   for (size_t i = 0; i < max_pages; ++i)
+                   {
+                       for (size_t j = 0; j < n; ++j)
+                       {
+                           ClusterLocationAndHash clh(ClusterLocation(sco_num++),
+                                                      growWeed());
+                           const ClusterAddress ca = i * page_size + j;
+                           md->writeCluster(ca,
+                                            clh);
+                       }
+                   }
+               });
+    check();
+
+    write(4);
+    check();
+
+    md->cork(yt::UUID());
+
+    write(2);
+    check();
+}
+
 INSTANTIATE_TEST(MetaDataStoreTest);
 
 }

@@ -128,6 +128,9 @@ public:
 
     virtual void
     set_cache_capacity(const size_t npages) = 0;
+
+    virtual std::vector<ClusterLocationAndHash>
+    get_page(const ClusterAddress) = 0;
 };
 
 }

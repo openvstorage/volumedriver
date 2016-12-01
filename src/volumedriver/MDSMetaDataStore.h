@@ -128,6 +128,9 @@ public:
     virtual void
     set_cache_capacity(const size_t num_pages) override final;
 
+    virtual std::vector<ClusterLocationAndHash>
+    get_page(const ClusterAddress) override final;
+
     void
     set_config(const MDSMetaDataBackendConfig& cfg);
 
