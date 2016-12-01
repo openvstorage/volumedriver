@@ -13,15 +13,4 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef __UTILS_H
-#define __UTILS_H
-
-#include <string>
-
-/* Check volume name validity */
-bool is_volume_name_valid(const char *volume_name);
-
-/* Resolve hostname to IP */
-int hostname_to_ip(const char *hostname, std::string& ip);
-
-#endif //__UTILS_H
+#include "StringUtils.h"

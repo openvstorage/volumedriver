@@ -41,7 +41,8 @@ MAKE_EXCEPTION(InvalidConfigurationException, fungi::IOException);
 class ClusterRegistry
 {
 public:
-    typedef std::map<NodeId, ClusterNodeStatus> NodeStatusMap;
+    using NodeStatusMap = std::map<NodeId, ClusterNodeStatus>;
+    using NeighbourMap = std::multimap<uint32_t, ClusterNodeConfig>;
 
     ClusterRegistry(const ClusterId& cluster_id,
                     std::shared_ptr<youtils::LockedArakoon> arakoon);
@@ -65,7 +66,7 @@ public:
     operator=(const ClusterRegistry&) = delete;
 
     void
-    set_node_configs(const ClusterNodeConfigs& configs);
+    set_node_configs(const ClusterNodeConfigs&);
 
     ClusterNodeConfigs
     get_node_configs();
@@ -76,9 +77,12 @@ public:
     NodeStatusMap
     get_node_status_map();
 
+    NeighbourMap
+    get_neighbour_map(const NodeId&);
+
     void
-    set_node_state(const NodeId& id,
-                   const ClusterNodeStatus::State st);
+    set_node_state(const NodeId&,
+                   const ClusterNodeStatus::State);
 
     ClusterNodeStatus
     get_node_status(const NodeId&);
@@ -90,8 +94,8 @@ public:
     }
 
     void
-    prepare_node_offline_assertion(arakoon::sequence& seq,
-                                   const NodeId& node_id);
+    prepare_node_offline_assertion(arakoon::sequence&,
+                                   const NodeId&);
 
     std::string
     make_key() const;
@@ -109,12 +113,12 @@ private:
     verify_(const ClusterNodeConfigs& node_configs);
 
     NodeStatusMap::iterator
-    find_node_throw_(const NodeId& node_id,
-                     ClusterRegistry::NodeStatusMap& map);
+    find_node_throw_(const NodeId&,
+                     ClusterRegistry::NodeStatusMap&);
 
     NodeStatusMap::const_iterator
-    find_node_throw_(const NodeId& node_id,
-                     const NodeStatusMap& map);
+    find_node_throw_(const NodeId&,
+                     const NodeStatusMap&);
 };
 
 }

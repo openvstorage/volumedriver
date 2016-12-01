@@ -35,6 +35,7 @@ service ovs-volumedriver-vpool_name restart
 | network_interface | network_snd_rcv_queue_depth | "2048" | no | Maximum tx/rx queued messages |
 | network_interface | network_workqueue_max_threads | "4" | no | Maximum workqueue threads |
 | network_interface | network_workqueue_ctrl_max_threads | "128" | no | Maximum control path workqueue threads |
+| network_interface | network_max_neighbour_distance | "4294967295" | yes | Hide nodes that have a distance >= this value from network clients |
 | filesystem | fs_ignore_sync | "0" | yes | ignore sync requests - AT THE POTENTIAL EXPENSE OF DATA LOSS |
 | filesystem | fs_virtual_disk_format | --- | no | virtual disk format: vmdk or raw |
 | filesystem | fs_raw_disk_suffix | "" | no | Suffix to use when creating clones if fs_virtual_disk_format=raw |

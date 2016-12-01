@@ -58,16 +58,3 @@ hostname_to_ip(const char *hostname, std::string& ip)
     }
     return -1;
 }
-
-std::string
-ovs_safe_error_str(int error)
-{
-    char buf[1024];
-#if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE
-    strerror_r(error, buf, 1024);
-    std::string str(buf);
-#else
-    std::string str(strerror_r(error, buf, 1024));
-#endif
-    return str;
-}

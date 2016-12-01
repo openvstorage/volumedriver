@@ -50,9 +50,36 @@ ClusterRegistry::make_key() const
 namespace
 {
 
+DECLARE_LOGGER("ClusterRegistryUtils");
+
+void
+check_node_map(const ClusterRegistry::NodeStatusMap& map)
+{
+    for (const auto& p : map)
+    {
+        if (p.second.config.node_distance_map)
+        {
+            for (const auto& q : *p.second.config.node_distance_map)
+            {
+                auto it = map.find(q.first);
+                if (it == map.end())
+                {
+                    LOG_ERROR("Node " << q.first << " present in NodeDistanceMap of " <<
+                              p.first << " but absent from NodeStatusMap");
+                    throw InvalidConfigurationException("Node present in NodeDistanceMap but absent from NodeStatusMap",
+                                                        q.first.str().c_str(),
+                                                        EINVAL);
+                }
+            }
+        }
+    }
+}
+
 std::string
 serialize_node_map(const ClusterRegistry::NodeStatusMap& map)
 {
+    check_node_map(map);
+
     std::stringstream ss;
     oarchive_type oa(ss);
     oa << map;
@@ -292,6 +319,44 @@ ClusterRegistry::prepare_node_offline_assertion(arakoon::sequence& seq,
 
     seq.add_assert(make_key(),
                    buf);
+}
+
+ClusterRegistry::NeighbourMap
+ClusterRegistry::get_neighbour_map(const NodeId& node_id)
+{
+    const NodeStatusMap status_map(get_node_status_map());
+    auto it = find_node_throw_(node_id,
+                               status_map);
+
+    const ClusterNodeConfig& cfg = it->second.config;
+    ClusterRegistry::NeighbourMap neigh_map;
+
+    if (cfg.node_distance_map)
+    {
+        for (const auto& p : *cfg.node_distance_map)
+        {
+            auto it = status_map.find(p.first);
+            if (it == status_map.end())
+            {
+                // throw instead?
+                LOG_WARN(p.first << " present in NodeDistanceMap of " <<
+                         node_id << " but absent from NodeStatusMap - skipping it");
+            }
+            else
+            {
+                neigh_map.emplace(p.second, it->second.config);
+            }
+        }
+    }
+    else
+    {
+        for (const auto& p : status_map)
+        {
+            neigh_map.emplace(0, p.second.config);
+        }
+    }
+
+    return neigh_map;
 }
 
 }

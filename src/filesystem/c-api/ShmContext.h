@@ -21,6 +21,9 @@
 #include "ShmClient.h"
 #include "context.h"
 
+namespace libovsvolumedriver
+{
+
 struct ShmContext : public ovs_context_t
 {
     std::shared_ptr<ovs_shm_context> shm_ctx_;
@@ -105,5 +108,7 @@ struct ShmContext : public ovs_context_t
     bool
     is_dtl_in_sync();
 };
+
+} //namespace libovsvolumedriver
 
 #endif //__SHM_CONTEXT_H

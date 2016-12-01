@@ -48,7 +48,7 @@ public:
     , finished_lock(finished_lock_)
     , finished_list(fl_)
     , nr_queued_work(0)
-    , protection_period_(5000)
+    , protection_period_(60000)
     , stopping(false)
     , stopped(false)
     , evfd(evfd_)

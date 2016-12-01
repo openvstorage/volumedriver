@@ -15,7 +15,8 @@
 
 #include "ShmContext.h"
 
-namespace libvoldrv = libovsvolumedriver;
+namespace libovsvolumedriver
+{
 
 ShmContext::ShmContext()
     : shm_ctx_(nullptr)
@@ -66,8 +67,7 @@ ShmContext::create_volume(const char *volume_name,
 {
     try
     {
-        libvoldrv::ShmClient::create_volume(volume_name,
-                                            size);
+        ShmClient::create_volume(volume_name, size);
         return 0;
     }
     catch (const ShmIdlInterface::VolumeExists&)
@@ -86,7 +86,7 @@ ShmContext::remove_volume(const char *volume_name)
 {
     try
     {
-        libvoldrv::ShmClient::remove_volume(volume_name);
+        ShmClient::remove_volume(volume_name);
         return 0;
     }
     catch (const ShmIdlInterface::VolumeDoesNotExist&)
@@ -106,8 +106,7 @@ ShmContext::truncate_volume(const char *volume_name,
 {
     try
     {
-        libvoldrv::ShmClient::truncate_volume(volume_name,
-                                              size);
+        ShmClient::truncate_volume(volume_name, size);
         return 0;
     }
     catch (const ShmIdlInterface::VolumeDoesNotExist&)
@@ -134,9 +133,9 @@ ShmContext::snapshot_create(const char *volume_name,
 {
     try
     {
-        libvoldrv::ShmClient::create_snapshot(volume_name,
-                                           snapshot_name,
-                                           timeout);
+        ShmClient::create_snapshot(volume_name,
+                                   snapshot_name,
+                                   timeout);
         return 0;
     }
     catch (const ShmIdlInterface::PreviousSnapshotNotOnBackendException&)
@@ -168,8 +167,7 @@ ShmContext::snapshot_rollback(const char *volume_name,
 {
     try
     {
-        libvoldrv::ShmClient::rollback_snapshot(volume_name,
-                                                snapshot_name);
+        ShmClient::rollback_snapshot(volume_name, snapshot_name);
         return 0;
     }
     catch (const ShmIdlInterface::VolumeDoesNotExist&)
@@ -194,8 +192,7 @@ ShmContext::snapshot_remove(const char *volume_name,
 {
     try
     {
-        libvoldrv::ShmClient::delete_snapshot(volume_name,
-                                              snapshot_name);
+        ShmClient::delete_snapshot(volume_name, snapshot_name);
         return 0;
     }
     catch (const ShmIdlInterface::VolumeDoesNotExist&)
@@ -226,8 +223,7 @@ ShmContext::list_snapshots(std::vector<std::string>& snaps,
 {
     try
     {
-        snaps = libvoldrv::ShmClient::list_snapshots(volume_name,
-                                                     size);
+        snaps = ShmClient::list_snapshots(volume_name, size);
     }
     catch (const ShmIdlInterface::VolumeDoesNotExist&)
     {
@@ -245,8 +241,7 @@ ShmContext::is_snapshot_synced(const char *volume_name,
 {
     try
     {
-        return libvoldrv::ShmClient::is_snapshot_synced(volume_name,
-                                                        snapshot_name);
+        return ShmClient::is_snapshot_synced(volume_name, snapshot_name);
     }
     catch (const ShmIdlInterface::VolumeDoesNotExist&)
     {
@@ -268,7 +263,7 @@ ShmContext::list_volumes(std::vector<std::string>& volumes)
 {
     try
     {
-        volumes = libvoldrv::ShmClient::list_volumes();
+        volumes = ShmClient::list_volumes();
         return 0;
     }
     catch (...)
@@ -300,7 +295,7 @@ ShmContext::send_read_request(ovs_aio_request* request)
     return shm_ctx_->shm_client_->send_read_request(ovs_aiocbp->aio_buf,
                                                     ovs_aiocbp->aio_nbytes,
                                                     ovs_aiocbp->aio_offset,
-                                                    reinterpret_cast<void*>(request));
+                                                    request);
 }
 
 int
@@ -310,7 +305,7 @@ ShmContext::send_write_request(ovs_aio_request *request)
     return shm_ctx_->shm_client_->send_write_request(ovs_aiocbp->aio_buf,
                                                      ovs_aiocbp->aio_nbytes,
                                                      ovs_aiocbp->aio_offset,
-                                                     reinterpret_cast<void*>(request));
+                                                     request);
 }
 
 int
@@ -320,7 +315,7 @@ ShmContext::send_flush_request(ovs_aio_request* request)
     return shm_ctx_->shm_client_->send_write_request(ovs_aiocbp->aio_buf,
                                                      ovs_aiocbp->aio_nbytes,
                                                      ovs_aiocbp->aio_offset,
-                                                     reinterpret_cast<void*>(request));
+                                                     request);
 }
 
 int
@@ -365,3 +360,5 @@ ShmContext::is_dtl_in_sync()
     std::abort();
     return false;
 }
+
+} //namespace libovsvolumedriver

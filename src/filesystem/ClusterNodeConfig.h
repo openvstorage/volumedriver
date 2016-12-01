@@ -41,6 +41,8 @@ namespace volumedriverfs
 struct ClusterNodeConfig
 {
     using MaybeUri = boost::optional<youtils::Uri>;
+    using NodeDistanceMap = std::map<NodeId, uint32_t>;
+    using MaybeNodeDistanceMap = boost::optional<NodeDistanceMap>;
 
     ClusterNodeConfig(const NodeId& id,
                       const std::string& mhost,
@@ -49,7 +51,8 @@ struct ClusterNodeConfig
                       FailoverCachePort fport,
                       const MaybeUri& nw_uri,
                       const boost::optional<std::string>& xhost = boost::none,
-                      const boost::optional<std::string>& fhost = boost::none)
+                      const boost::optional<std::string>& fhost = boost::none,
+                      const MaybeNodeDistanceMap& node_dist_map = boost::none)
         : vrouter_id(id)
         , message_host(mhost)
         , message_port(mport)
@@ -58,6 +61,7 @@ struct ClusterNodeConfig
         , failovercache_host(fhost ? *fhost : mhost)
         , failovercache_port(fport)
         , network_server_uri(nw_uri)
+        , node_distance_map(node_dist_map)
     {
         //we don't allow empty node_id's as the empty string is
         //used in our python API as "don't care"
@@ -75,6 +79,7 @@ struct ClusterNodeConfig
         , failovercache_host(other.failovercache_host)
         , failovercache_port(other.failovercache_port)
         , network_server_uri(other.network_server_uri)
+        , node_distance_map(other.node_distance_map)
     {}
 
     ClusterNodeConfig&
@@ -82,14 +87,15 @@ struct ClusterNodeConfig
     {
         if (this != &other)
         {
-            const_cast<NodeId&>(vrouter_id) = other.vrouter_id;
-            const_cast<std::string&>(message_host) = other.message_host;
-            const_cast<MessagePort&>(message_port) = other.message_port;
-            const_cast<std::string&>(xmlrpc_host) = other.xmlrpc_host;
-            const_cast<XmlRpcPort&>(xmlrpc_port) = other.xmlrpc_port;
-            const_cast<std::string&>(failovercache_host) = other.failovercache_host;
-            const_cast<FailoverCachePort&>(failovercache_port) = other.failovercache_port;
-            const_cast<MaybeUri&>(network_server_uri) = other.network_server_uri;
+            vrouter_id = other.vrouter_id;
+            message_host = other.message_host;
+            message_port = other.message_port;
+            xmlrpc_host = other.xmlrpc_host;
+            xmlrpc_port = other.xmlrpc_port;
+            failovercache_host = other.failovercache_host;
+            failovercache_port = other.failovercache_port;
+            network_server_uri = other.network_server_uri;
+            node_distance_map = other.node_distance_map;
         }
 
         return *this;
@@ -106,7 +112,8 @@ struct ClusterNodeConfig
             (xmlrpc_port == other.xmlrpc_port) and
             (failovercache_host == other.failovercache_host) and
             (failovercache_port == other.failovercache_port) and
-            (network_server_uri == other.network_server_uri);
+            (network_server_uri == other.network_server_uri) and
+            (node_distance_map == other.node_distance_map);
     }
 
     bool
@@ -115,41 +122,59 @@ struct ClusterNodeConfig
         return not (*this == other);
     }
 
+    youtils::Uri
+    message_uri() const
+    {
+        return youtils::Uri()
+            .scheme(std::string("tcp"))
+            .host(message_host)
+            .port(static_cast<const uint16_t>(message_port));
+    }
+
     BOOST_SERIALIZATION_SPLIT_MEMBER();
 
     template<class Archive>
     void
     load(Archive& ar, const unsigned version)
     {
-        if (version > 3)
+        if (version > 4)
         {
-            THROW_SERIALIZATION_ERROR(version, 3, 1);
+            THROW_SERIALIZATION_ERROR(version, 4, 1);
         }
 
-        ar & const_cast<NodeId&>(vrouter_id);
-        ar & const_cast<std::string&>(message_host);
-        ar & static_cast<uint16_t&>(const_cast<MessagePort&>(message_port));
-        ar & static_cast<uint16_t&>(const_cast<XmlRpcPort&>(xmlrpc_port));
-        ar & static_cast<uint16_t&>(const_cast<FailoverCachePort&>(failovercache_port));
+        ar & vrouter_id;
+        ar & message_host;
+        ar & static_cast<uint16_t&>(message_port);
+        ar & static_cast<uint16_t&>(xmlrpc_port);
+        ar & static_cast<uint16_t&>(failovercache_port);
 
         if (version > 1)
         {
-            ar & const_cast<MaybeUri&>(network_server_uri);
+            ar & network_server_uri;
         }
         else
         {
-            const_cast<MaybeUri&>(network_server_uri) = boost::none;
+            network_server_uri = boost::none;
         }
 
         if (version > 2)
         {
-            ar & const_cast<std::string&>(xmlrpc_host);
-            ar & const_cast<std::string&>(failovercache_host);
+            ar & xmlrpc_host;
+            ar & failovercache_host;
         }
         else
         {
-            const_cast<std::string&>(xmlrpc_host) = message_host;
-            const_cast<std::string&>(failovercache_host) = message_host;
+            xmlrpc_host = message_host;
+            failovercache_host = message_host;
+        }
+
+        if (version > 3)
+        {
+            ar & node_distance_map;
+        }
+        else
+        {
+            node_distance_map = boost::none;
         }
     }
 
@@ -157,7 +182,7 @@ struct ClusterNodeConfig
     void
     save(Archive& ar, const unsigned version) const
     {
-        CHECK_VERSION(version, 3);
+        CHECK_VERSION(version, 4);
 
         ar & vrouter_id;
         ar & message_host;
@@ -167,20 +192,22 @@ struct ClusterNodeConfig
         ar & network_server_uri;
         ar & xmlrpc_host;
         ar & failovercache_host;
+        ar & node_distance_map;
     }
 
     // for python consumption
     std::string
     str() const;
 
-    const NodeId vrouter_id;
-    const std::string message_host;
-    const MessagePort message_port;
-    const std::string xmlrpc_host;
-    const XmlRpcPort xmlrpc_port;
-    const std::string failovercache_host;
-    const FailoverCachePort failovercache_port;
-    const MaybeUri network_server_uri;
+    NodeId vrouter_id;
+    std::string message_host;
+    MessagePort message_port;
+    std::string xmlrpc_host;
+    XmlRpcPort xmlrpc_port;
+    std::string failovercache_host;
+    FailoverCachePort failovercache_port;
+    MaybeUri network_server_uri;
+    MaybeNodeDistanceMap node_distance_map;
 };
 
 std::ostream&
@@ -191,7 +218,7 @@ using ClusterNodeConfigs = std::vector<ClusterNodeConfig>;
 
 }
 
-BOOST_CLASS_VERSION(volumedriverfs::ClusterNodeConfig, 3);
+BOOST_CLASS_VERSION(volumedriverfs::ClusterNodeConfig, 4);
 
 namespace boost
 {

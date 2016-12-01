@@ -13,15 +13,28 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef __UTILS_H
-#define __UTILS_H
+#ifndef YT_STRING_UTILS_H_
+#define YT_STRING_UTILS_H_
 
 #include <string>
 
-/* Check volume name validity */
-bool is_volume_name_valid(const char *volume_name);
+namespace youtils
+{
 
-/* Resolve hostname to IP */
-int hostname_to_ip(const char *hostname, std::string& ip);
+/* Return string describing error number */
+std::string
+safe_error_str(int error)
+{
+    char buf[1024];
+#if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE
+    strerror_r(error, buf, 1024);
+    std::string str(buf);
+#else
+    std::string str(strerror_r(error, buf, 1024));
+#endif
+    return str;
+}
 
-#endif //__UTILS_H
+}
+
+#endif // !YT_STRING_UTILS_H_

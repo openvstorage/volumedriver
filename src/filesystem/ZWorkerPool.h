@@ -17,8 +17,10 @@
 #define VFS_ZWORKER_POOL_H_
 
 #include <deque>
+#include <functional>
 #include <future>
 #include <map>
+#include <vector>
 
 #include <boost/thread.hpp>
 
@@ -26,6 +28,7 @@
 
 #include <youtils/BooleanEnum.h>
 #include <youtils/Logging.h>
+#include <youtils/Uri.h>
 
 // Design:
 // * ZWorkerPool binds to a public address
@@ -77,7 +80,7 @@ public:
 
     ZWorkerPool(const std::string& name,
                 zmq::context_t& ztx,
-                const std::string& pub_addr,
+                const youtils::Uri& pub_uri,
                 WorkerFun worker_fun,
                 uint16_t min_workers,
                 uint16_t max_workers = 128);
@@ -123,7 +126,7 @@ private:
     std::map<ZWorkerId, ZWorkerPtr> busy_ones_;
 
     const std::string name_;
-    const std::string pub_addr_;
+    const youtils::Uri pub_uri_;
 
     boost::thread router_thread_;
 

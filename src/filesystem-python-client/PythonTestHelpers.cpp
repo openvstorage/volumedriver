@@ -132,6 +132,9 @@ PythonTestHelpers::registerize()
         .def("reflect_uri",
              &PythonTestHelpers::reflect<youtils::Uri>)
         .staticmethod("reflect_uri")
+        .def("reflect_maybe_node_distance_map",
+             &PythonTestHelpers::reflect<ClusterNodeConfig::MaybeNodeDistanceMap>)
+        .staticmethod("reflect_maybe_node_distance_map")
         ;
 }
 

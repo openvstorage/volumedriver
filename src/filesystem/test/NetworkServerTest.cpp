@@ -47,11 +47,13 @@ namespace bc = boost::chrono;
 namespace bpt = boost::property_tree;
 namespace bpy = boost::python;
 namespace fs = boost::filesystem;
+namespace ip = initialized_params;
 namespace vd = volumedriver;
 namespace vfs = volumedriverfs;
 namespace yt = youtils;
 namespace libovs = libovsvolumedriver;
 
+using namespace std::literals::string_literals;
 using namespace volumedriverfs;
 
 namespace
@@ -365,21 +367,26 @@ public:
                         {
                             if (stop or pending_queue.size() == qdepth)
                             {
-                                AiocbPtr aiocb = std::move(pending_queue.front());
-                                pending_queue.pop_front();
+                                AiocbPtr aiocb;
 
-                                EXPECT_EQ(0,
-                                          ovs_aio_suspend(ctx.get(),
-                                                          aiocb.get(),
-                                                          nullptr));
-                                EXPECT_EQ(aiocb->aio_nbytes,
-                                          ovs_aio_return(ctx.get(),
-                                                         aiocb.get()));
-                                EXPECT_EQ(0,
-                                          ovs_aio_finish(ctx.get(),
-                                                         aiocb.get()));
+                                if (not pending_queue.empty())
+                                {
+                                    aiocb = std::move(pending_queue.front());
+                                    pending_queue.pop_front();
 
-                                ops++;
+                                    EXPECT_EQ(0,
+                                              ovs_aio_suspend(ctx.get(),
+                                                              aiocb.get(),
+                                                              nullptr));
+                                    EXPECT_EQ(aiocb->aio_nbytes,
+                                              ovs_aio_return(ctx.get(),
+                                                             aiocb.get()));
+                                    EXPECT_EQ(0,
+                                              ovs_aio_finish(ctx.get(),
+                                                             aiocb.get()));
+
+                                    ops++;
+                                }
 
                                 if (stop)
                                 {
@@ -390,6 +397,7 @@ public:
                                 }
                                 else
                                 {
+                                    EXPECT_TRUE(aiocb != nullptr);
                                     free_queue.emplace_back(std::move(aiocb));
                                 }
                             }
@@ -626,6 +634,43 @@ public:
                   ovs_ctx_destroy(ctx));
         EXPECT_EQ(0,
                   ovs_ctx_attr_destroy(ctx_attr));
+    }
+
+    void
+    set_max_neighbour_distance(uint32_t dist)
+    {
+        bpt::ptree pt;
+        net_xio_server_->persist(pt, ReportDefault::F);
+        ip::PARAMETER_TYPE(network_max_neighbour_distance)(dist).persist(pt);
+        yt::UpdateReport urep;
+        net_xio_server_->update(pt, urep);
+        ASSERT_EQ(1, urep.update_size());
+    }
+
+    void
+    add_ghost_node_configs(const size_t ghost_nodes,
+                           ClusterNodeConfigs& configs)
+    {
+        configs.reserve(configs.size() + ghost_nodes);
+
+        for (size_t i = 0; i < ghost_nodes; ++i)
+        {
+            ClusterNodeConfig ghost(configs[0]);
+            const std::string n("ghost-node-"s + boost::lexical_cast<std::string>(i));
+            ghost.vrouter_id = NodeId(n);
+            ghost.network_server_uri = yt::Uri("tcp://"s + n + ":1234"s);
+            configs.push_back(ghost);
+        }
+    }
+
+    ClusterNodeConfigs
+    update_cluster_registry(std::function<void(ClusterNodeConfigs&)> fun)
+    {
+        std::shared_ptr<ClusterRegistry> creg(fs_->object_router().cluster_registry());
+        ClusterNodeConfigs configs(creg->get_node_configs());
+        fun(configs);
+        creg->set_node_configs(configs);
+        return configs;
     }
 
     std::unique_ptr<NetworkXioInterface> net_xio_server_;
@@ -1363,6 +1408,54 @@ TEST_F(NetworkServerTest, create_rollback_list_remove_snapshot_remote)
     test_snapshot_ops(true);
 }
 
+// reproduces https://github.com/openvstorage/volumedriver/issues/188
+TEST_F(NetworkServerTest, list_snapshots)
+{
+    const uint16_t port = FileSystemTestSetup::local_edge_port();
+    CtxAttrPtr ctx_attr(make_ctx_attr(1, false, port));
+    CtxPtr ctx(ovs_ctx_new(ctx_attr.get()));
+    const std::string vname("volume");
+    const size_t vsize = 1ULL << 20;
+
+    EXPECT_EQ(0,
+              ovs_create_volume(ctx.get(),
+                                vname.c_str(),
+                                vsize));
+
+    std::set<std::string> snaps = { "snap1", "snap2shot", "snap3" };
+
+    for (const auto& s : snaps)
+    {
+        EXPECT_EQ(0,
+                  ovs_snapshot_create(ctx.get(),
+                                      vname.c_str(),
+                                      s.c_str(),
+                                      0));
+    }
+
+    auto& ctx_iface = dynamic_cast<ovs_context_t&>(*ctx);
+
+    std::vector<std::string> vec;
+    vec.reserve(snaps.size());
+
+    int err = 0;
+    uint64_t ssize = snaps.size();
+    ctx_iface.list_snapshots(vec,
+                             vname.c_str(),
+                             &ssize,
+                             &err);
+    ASSERT_EQ(0, err);
+    EXPECT_EQ(vec.size(), snaps.size());
+
+    for (const auto& s : vec)
+    {
+        EXPECT_EQ(1,
+                  snaps.erase(s)) << s << " is not a known snapshot";
+    }
+
+    EXPECT_TRUE(snaps.empty());
+}
+
 TEST_F(NetworkServerTest, connect_to_nonexistent_port)
 {
     ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
@@ -1625,6 +1718,47 @@ TEST_F(NetworkServerTest, get_volume_uri)
               yt::Uri(uri));
 }
 
+TEST_F(NetworkServerTest, get_volume_uri_errors)
+{
+    CtxAttrPtr attrs;
+    CtxPtr ctx;
+    const std::string vname("volume");
+
+    {
+        mount_remote();
+        auto on_exit(yt::make_scope_exit([&]
+                                         {
+                                             umount_remote();
+                                         }));
+
+        attrs = make_ctx_attr(1024,
+                              false,
+                              FileSystemTestSetup::remote_edge_port());
+        ASSERT_TRUE(attrs != nullptr);
+        ctx = CtxPtr(ovs_ctx_new(attrs.get()));
+        ASSERT_TRUE(ctx != nullptr);
+
+        const size_t vsize = 1ULL << 20;
+        const size_t max = 10;
+        size_t count = 0;
+
+        while (ovs_create_volume(ctx.get(),
+                                 vname.c_str(),
+                                 vsize) == -1)
+        {
+            ASSERT_GT(max, ++count) <<
+                "failed to create volume after " << count << " attempts: " << strerror(errno);
+            boost::this_thread::sleep_for(bc::milliseconds(250));
+        }
+    }
+
+    auto& ctx_iface = dynamic_cast<ovs_context_t&>(*ctx);
+
+    std::string uri;
+    EXPECT_NE(0, ctx_iface.get_volume_uri(vname.c_str(),
+                                          uri));
+}
+
 TEST_F(NetworkServerTest, get_volume_uri_stress)
 {
     const uint16_t port = FileSystemTestSetup::local_edge_port();
@@ -1766,6 +1900,177 @@ TEST_F(NetworkServerTest, ha_stress)
 
                     umount_remote(hard_kill);
                 });
+}
+
+TEST_F(NetworkServerTest, list_uris)
+{
+    std::shared_ptr<ClusterRegistry> creg(fs_->object_router().cluster_registry());
+    const ClusterNodeConfigs configs(creg->get_node_configs());
+    ASSERT_LT(0, configs.size());
+
+    CtxAttrPtr attrs(make_ctx_attr(1024,
+                                   false,
+                                   FileSystemTestSetup::local_edge_port()));
+    CtxPtr ctx(ovs_ctx_new(attrs.get()));
+    ASSERT_TRUE(ctx != nullptr);
+
+    auto& ctx_iface = dynamic_cast<ovs_context_t&>(*ctx);
+
+    std::vector<std::string> uris;
+    uris.reserve(configs.size());
+
+    EXPECT_EQ(0,
+              ctx_iface.list_cluster_node_uri(uris));
+    EXPECT_EQ(configs.size(),
+              uris.size());
+
+    for (const auto& u : uris)
+    {
+        bool found = false;
+        for (const auto& c : configs)
+        {
+            ASSERT_NE(boost::none,
+                      c.network_server_uri);
+            if (u == boost::lexical_cast<std::string>(*c.network_server_uri))
+            {
+                found = true;
+            }
+        }
+
+        EXPECT_TRUE(found);
+    }
+}
+
+TEST_F(NetworkServerTest, list_uris_filter)
+{
+    const size_t ghost_nodes = 3;
+    const ClusterNodeConfigs
+        configs(update_cluster_registry([&](ClusterNodeConfigs& cfgs)
+                                        {
+                                            ASSERT_FALSE(cfgs.empty());
+                                            add_ghost_node_configs(ghost_nodes,
+                                                                   cfgs);
+
+                                            for (auto& cfg : cfgs)
+                                            {
+                                                ClusterNodeConfig::NodeDistanceMap map;
+                                                uint32_t distance = 0;
+                                                for (const auto& c : cfgs)
+                                                {
+                                                    const auto res(map.emplace(c.vrouter_id, distance++));
+                                                    ASSERT_TRUE(res.second);
+                                                }
+                                                cfg.node_distance_map = std::move(map);
+                                            }
+                                        }));
+
+    CtxAttrPtr attrs(make_ctx_attr(1024,
+                                   false,
+                                   FileSystemTestSetup::local_edge_port()));
+    CtxPtr ctx(ovs_ctx_new(attrs.get()));
+    ASSERT_TRUE(ctx != nullptr);
+
+    auto& ctx_iface = dynamic_cast<ovs_context_t&>(*ctx);
+
+    for (size_t i = 0; i <= configs.size(); ++i)
+    {
+        set_max_neighbour_distance(i);
+
+        std::vector<std::string> uris;
+        uris.reserve(i);
+
+        EXPECT_EQ(0,
+                  ctx_iface.list_cluster_node_uri(uris));
+        EXPECT_EQ(i,
+                  uris.size());
+
+        for (size_t j = 0; j < uris.size(); ++j)
+        {
+            ASSERT_NE(boost::none,
+                      configs[j].network_server_uri);
+            EXPECT_EQ(boost::lexical_cast<std::string>(*configs[j].network_server_uri),
+                      uris[j]);
+        }
+    }
+}
+
+TEST_F(NetworkServerTest, list_uris_rand_order)
+{
+    const size_t ghost_nodes = 23;
+    std::set<std::string> set;
+    const ClusterNodeConfigs
+        configs(update_cluster_registry([&](ClusterNodeConfigs& cfgs)
+                                        {
+                                            ASSERT_EQ(2, cfgs.size());
+                                            add_ghost_node_configs(ghost_nodes,
+                                                                   cfgs);
+
+                                            ClusterNodeConfig::NodeDistanceMap map;
+                                            for (const auto& c : cfgs)
+                                            {
+                                                uint32_t d;
+                                                if (c == cfgs.front())
+                                                {
+                                                    d = 0;
+                                                }
+                                                else if (c == cfgs.back())
+                                                {
+                                                    d = 10;
+                                                }
+                                                else
+                                                {
+                                                    d = 5;
+                                                    set.emplace(boost::lexical_cast<std::string>(*c.network_server_uri));
+                                                }
+
+                                                map.emplace(c.vrouter_id, d);
+                                            }
+
+                                            cfgs.front().node_distance_map = std::move(map);
+
+                                            for (size_t i = 1; i < cfgs.size(); ++i)
+                                            {
+                                                cfgs[i].node_distance_map = ClusterNodeConfig::NodeDistanceMap();
+                                            }
+                                        }));
+
+    ASSERT_EQ(ghost_nodes,
+              set.size());
+
+    CtxAttrPtr attrs(make_ctx_attr(1024,
+                                   false,
+                                   FileSystemTestSetup::local_edge_port()));
+    CtxPtr ctx(ovs_ctx_new(attrs.get()));
+    ASSERT_TRUE(ctx != nullptr);
+
+    auto& ctx_iface = dynamic_cast<ovs_context_t&>(*ctx);
+    std::vector<std::string> uris;
+    uris.reserve(configs.size());
+
+    EXPECT_EQ(0,
+              ctx_iface.list_cluster_node_uri(uris));
+    EXPECT_EQ(configs.size(),
+              uris.size());
+
+    for (const auto& u : uris)
+    {
+        if (u == uris.front())
+        {
+            EXPECT_EQ(boost::lexical_cast<std::string>(*configs.front().network_server_uri),
+                      u);
+        }
+        else if (u == uris.back())
+        {
+            EXPECT_EQ(boost::lexical_cast<std::string>(*configs.back().network_server_uri),
+                      u);
+        }
+        else
+        {
+            EXPECT_EQ(1, set.erase(u)) << u;
+        }
+    }
+
+    EXPECT_TRUE(set.empty());
 }
 
 } //namespace

@@ -61,7 +61,6 @@ private:
     DECLARE_LOGGER("NetworkXioMempoolSlab");
 
     typedef boost::intrusive::list<slab_mem_block> BlocksList;
-    typedef std::shared_ptr<BlocksList> RegionBlocksBucketPtr;
 
     struct Region
     {
@@ -77,7 +76,6 @@ private:
             {
                 throw std::bad_alloc();
             }
-            blocks = std::make_shared<BlocksList>();
         };
 
         ~Region()
@@ -88,7 +86,7 @@ private:
         xio_reg_mem region_reg_mem;
         uint64_t region_index;
         uint64_t refcnt;
-        RegionBlocksBucketPtr blocks;
+        BlocksList blocks;
     };
 
     size_t used_blocks;
@@ -112,7 +110,7 @@ private:
     free_regions_locked();
 
     void
-    clear_bucket(RegionBlocksBucketPtr bucket);
+    clear_block_list(BlocksList& bucket);
 
     slab_mem_block*
     try_alloc_block();

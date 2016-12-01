@@ -40,12 +40,14 @@ public:
     , network_snd_rcv_queue_depth(pt)
     , network_workqueue_max_threads(pt)
     , network_workqueue_ctrl_max_threads(pt)
+    , network_max_neighbour_distance(pt)
     , fs_(fs)
     , xio_server_(fs_,
                   uri(),
                   snd_rcv_queue_depth(),
                   wq_max_threads(),
-                  wq_ctrl_max_threads())
+                  wq_ctrl_max_threads(),
+                  max_neighbour_distance())
     {}
 
     ~NetworkXioInterface()
@@ -99,6 +101,13 @@ public:
     {
         return network_workqueue_ctrl_max_threads.value();
     }
+
+    const std::atomic<uint32_t>&
+    max_neighbour_distance() const
+    {
+        return network_max_neighbour_distance.value();
+    }
+
 private:
     DECLARE_LOGGER("NetworkXioInterface");
 
@@ -106,6 +115,7 @@ private:
     DECLARE_PARAMETER(network_snd_rcv_queue_depth);
     DECLARE_PARAMETER(network_workqueue_max_threads);
     DECLARE_PARAMETER(network_workqueue_ctrl_max_threads);
+    DECLARE_PARAMETER(network_max_neighbour_distance);
 
     FileSystem& fs_;
     NetworkXioServer xio_server_;

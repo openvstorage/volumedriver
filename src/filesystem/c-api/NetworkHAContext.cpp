@@ -23,9 +23,9 @@
 #include <memory>
 #include <thread>
 #include <chrono>
-#include <random>
 
 #include <youtils/System.h>
+#include <youtils/StringUtils.h>
 
 #define LOCK_INFLIGHT()                                 \
     std::lock_guard<std::mutex> ifrl_(inflight_reqs_lock_)
@@ -45,12 +45,19 @@ namespace yt = youtils;
 
 using Clock = std::chrono::steady_clock;
 
+std::string ha_hdlr_intvl("LIBOVSVOLUMEDRIVER_HA_HANDLER_INTERVAL_MSECS");
+std::string loc_chk_intvl("LIBOVSVOLUMEDRIVER_LOCATION_CHECK_INTERVAL_SECS");
+std::string top_chk_intvl("LIBOVSVOLUMEDRIVER_TOPOLOGY_CHECK_INTERVAL_SECS");
+
 const Clock::duration ha_handler_sleep_time =
-    std::chrono::milliseconds(yt::System::get_env_with_default("LIBOVSVOLUMEDRIVER_HA_HANDLER_INTERVAL_MSECS",
+    std::chrono::milliseconds(yt::System::get_env_with_default(ha_hdlr_intvl,
                                                                5UL));
 const Clock::duration location_check_interval =
-    std::chrono::seconds(yt::System::get_env_with_default("LIBOVSVOLUMEDRIVER_LOCATION_CHECK_INTERVAL_SECS",
+    std::chrono::seconds(yt::System::get_env_with_default(loc_chk_intvl,
                                                           30UL));
+const Clock::duration topology_check_interval =
+    std::chrono::seconds(yt::System::get_env_with_default(top_chk_intvl,
+                                                          300UL));
 }
 
 MAKE_EXCEPTION(NetworkHAContextMemPoolException, fungi::IOException);
@@ -124,18 +131,11 @@ NetworkHAContext::~NetworkHAContext()
 }
 
 std::string
-NetworkHAContext::get_rand_cluster_uri()
+NetworkHAContext::get_next_cluster_uri()
 {
-    static std::random_device rd;
-    static std::mt19937 generator(rd());
-    std::uniform_int_distribution<> dist(0,
-                                         std::distance(cluster_nw_uris_.begin(),
-                                                       cluster_nw_uris_.end())
-                                         -1);
-    auto it = cluster_nw_uris_.begin();
-    std::advance(it, dist(generator));
-    std::string uri = *it;
-    cluster_nw_uris_.erase(it);
+    assert(not cluster_nw_uris_.empty());
+    std::string uri = cluster_nw_uris_.back();
+    cluster_nw_uris_.pop_back();
     return uri;
 }
 
@@ -278,7 +278,7 @@ NetworkHAContext::do_reconnect(const std::string& uri)
                                                            true);
         ret = tmp_ctx->open_volume(volume_name_.c_str(),
                                    oflag);
-        if (ret)
+        if (ret < 0)
         {
             LIBLOGID_ERROR("failed to open " << volume_name_ << " at " << uri);
         }
@@ -286,17 +286,18 @@ NetworkHAContext::do_reconnect(const std::string& uri)
         {
             atomic_xchg_ctx(tmp_ctx);
             current_uri(uri);
+            update_cluster_node_uri();
         }
     }
     catch (std::exception& e)
     {
-        LIBLOGID_ERROR("failed to create new context for volume " << volume_name_ <<
-                       " at " << uri << ":" << e.what());
+        LIBLOGID_ERROR("failed to create new context for volume " <<
+                       volume_name_ << " at " << uri << ":" << e.what());
     }
     catch (...)
     {
-        LIBLOGID_ERROR("failed to create new context for volume " << volume_name_ <<
-                       " at " << uri << ": unknown exception");
+        LIBLOGID_ERROR("failed to create new context for volume " <<
+                       volume_name_ << " at " << uri << ": unknown exception");
     }
 
     return ret;
@@ -309,26 +310,26 @@ NetworkHAContext::reconnect()
 
     if (not is_dtl_in_sync())
     {
-        LIBLOGID_ERROR("not attempting to failover as the DTL is known not to be in sync");
+        LIBLOGID_ERROR("not attempting to failover as the DTL is "
+                       "known not to be in sync");
         return r;
     }
 
     while (not cluster_nw_uris_.empty())
     {
-        std::string uri = get_rand_cluster_uri();
+        std::string uri = get_next_cluster_uri();
         if (uri == current_uri())
         {
             continue;
         }
 
         r = do_reconnect(uri);
-        if (r)
+        if (r < 0)
         {
             LIBLOGID_ERROR("reconnection to URI '" << uri << "' failed");
         }
         else
         {
-            update_cluster_node_uri();
             LIBLOGID_INFO("reconnection to URI '" << uri << "' succeeded");
             break;
         }
@@ -355,12 +356,23 @@ NetworkHAContext::try_to_reconnect()
 void
 NetworkHAContext::update_cluster_node_uri()
 {
-    /* cnanakos TODO: update on specific intervals? */
-    int rl = list_cluster_node_uri(cluster_nw_uris_);
+    std::vector<std::string> uris;
+    int rl = list_cluster_node_uri(uris);
     if (rl < 0)
     {
         LIBLOGID_ERROR("failed to update cluster node URI list: "
-                       << ovs_safe_error_str(errno));
+                       << yt::safe_error_str(errno));
+    }
+    else
+    {
+        LIBLOGID_INFO("cluster node URIs for " << volume_name() << ":");
+        for (const auto& u : uris)
+        {
+            LIBLOGID_INFO("\t" << u);
+        }
+
+        std::reverse(uris.begin(), uris.end());
+        std::swap(uris, cluster_nw_uris_);
     }
 }
 
@@ -378,7 +390,7 @@ NetworkHAContext::maybe_update_volume_location()
         if (ret < 0)
         {
             LIBLOGID_ERROR("failed to retrieve location of " << volume_name_
-                           << ": " << ovs_safe_error_str(errno));
+                           << ": " << yt::safe_error_str(errno));
         }
         else if (uri != current_uri())
         {
@@ -395,7 +407,10 @@ NetworkHAContext::ha_ctx_handler(void *arg)
 {
     IOThread *thread = reinterpret_cast<IOThread*>(arg);
     auto last_location_check = Clock::time_point::min();
+    auto last_topology_check = last_location_check;
+
     const bool check_location = location_check_interval.count() != 0;
+    const bool check_topology = topology_check_interval.count() != 0;
 
     while (not thread->stopping)
     {
@@ -417,6 +432,7 @@ NetworkHAContext::ha_ctx_handler(void *arg)
             }
 
             last_location_check = Clock::now();
+            last_topology_check = last_location_check;
         }
         else
         {
@@ -427,6 +443,13 @@ NetworkHAContext::ha_ctx_handler(void *arg)
             {
                 maybe_update_volume_location();
                 last_location_check = Clock::now();
+            }
+
+            if (check_topology and
+                last_topology_check + topology_check_interval <= Clock::now())
+            {
+                update_cluster_node_uri();
+                last_topology_check = Clock::now();
             }
         }
 
@@ -443,7 +466,12 @@ NetworkHAContext::open_volume(const char *volname,
 {
     LIBLOGID_DEBUG("volume name: " << volname << ", oflag: " << oflag);
     int r = atomic_get_ctx()->open_volume(volname, oflag);
-    if (not r)
+    if (r < 0)
+    {
+        LIBLOGID_INFO("failed to open volume: " << volname << ", error: "
+                      << yt::safe_error_str(errno));
+    }
+    else
     {
         volume_name(volname);
         oflag_ = oflag;

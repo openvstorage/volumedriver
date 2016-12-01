@@ -17,6 +17,7 @@
 #define __NETWORK_XIO_IO_HANDLER_H_
 
 #include "FileSystem.h"
+#include "ClusterRegistry.h"
 
 #include "NetworkXioWorkQueue.h"
 #include "NetworkXioRequest.h"
@@ -30,11 +31,13 @@ public:
     NetworkXioIOHandler(FileSystem& fs,
                         NetworkXioWorkQueuePtr wq,
                         NetworkXioWorkQueuePtr wq_ctrl,
-                        NetworkXioClientData* cd)
+                        NetworkXioClientData* cd,
+                        const std::atomic<uint32_t>& max_neighbour_distance)
     : fs_(fs)
     , wq_(wq)
     , wq_ctrl_(wq_ctrl)
     , cd_(cd)
+    , max_neighbour_distance_(max_neighbour_distance)
     {}
 
     ~NetworkXioIOHandler()
@@ -141,9 +144,13 @@ private:
     NetworkXioWorkQueuePtr wq_;
     NetworkXioWorkQueuePtr wq_ctrl_;
     NetworkXioClientData *cd_;
+    const std::atomic<uint32_t>& max_neighbour_distance_;
 
     std::string volume_name_;
     Handle::Ptr handle_;
+
+    std::pair<std::vector<std::string>, size_t>
+    get_neighbours(const ClusterRegistry::NeighbourMap&) const;
 
     std::string
     make_volume_path(const std::string& volume_name)

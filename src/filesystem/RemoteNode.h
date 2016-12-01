@@ -44,8 +44,9 @@ class RemoteNode final
     friend class volumedriverfstest::FileSystemTestBase;
 
 public:
-    RemoteNode(ObjectRouter& vrouter,
-               const ClusterNodeConfig& cfg,
+    RemoteNode(ObjectRouter&,
+               const NodeId&,
+               const youtils::Uri&,
                std::shared_ptr<zmq::context_t> ztx);
 
     ~RemoteNode();
@@ -56,13 +57,13 @@ public:
     operator=(const RemoteNode&) = delete;
 
     virtual void
-    read(const Object& obj,
+    read(const Object&,
          uint8_t* buf,
          size_t* size,
          off_t off) override final;
 
     virtual void
-    write(const Object& obj,
+    write(const Object&,
           const uint8_t* buf,
           size_t* size,
           off_t off,
@@ -73,17 +74,17 @@ public:
          volumedriver::DtlInSync&) override final;
 
     virtual uint64_t
-    get_size(const Object& obj) override final;
+    get_size(const Object&) override final;
 
     virtual void
-    resize(const Object& obj,
+    resize(const Object&,
            uint64_t newsize) override final;
 
     virtual void
-    unlink(const Object& id) override final;
+    unlink(const Object&) override final;
 
     void
-    transfer(const Object& obj);
+    transfer(const Object&);
 
     void
     ping();

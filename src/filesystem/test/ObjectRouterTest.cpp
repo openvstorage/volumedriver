@@ -34,9 +34,9 @@ namespace volumedriverfstest
 namespace be = backend;
 namespace fs = boost::filesystem;
 namespace vd = volumedriver;
-namespace vfs = volumedriverfs;
 namespace yt = youtils;
 
+using namespace volumedriverfs;
 using namespace std::literals::string_literals;
 
 class ObjectRouterTest
@@ -59,37 +59,37 @@ public:
     // Do we really want to assemble the message parts here?
     // (Try to) unify with the production client side code instead.
     std::string
-    remote_read(const vfs::ObjectId& vname,
+    remote_read(const ObjectId& vname,
                 uint64_t size,
                 uint64_t off)
     {
-        const vfs::Object obj(vfs::ObjectType::Volume,
+        const Object obj(ObjectType::Volume,
                               vname);
 
         const auto rreq(vfsprotocol::MessageUtils::create_read_request(obj,
                                                                        size,
                                                                        off));
-        vfs::ZUtils::serialize_to_socket(zock,
+        ZUtils::serialize_to_socket(zock,
                                          vfsprotocol::RequestType::Read,
-                                         vfs::MoreMessageParts::T);
+                                         MoreMessageParts::T);
 
         vfsprotocol::Tag tag(reinterpret_cast<uint64_t>(&rreq));
 
-        vfs::ZUtils::serialize_to_socket(zock,
+        ZUtils::serialize_to_socket(zock,
                                          tag,
-                                         vfs::MoreMessageParts::T);
+                                         MoreMessageParts::T);
 
-        vfs::ZUtils::serialize_to_socket(zock, rreq, vfs::MoreMessageParts::F);
+        ZUtils::serialize_to_socket(zock, rreq, MoreMessageParts::F);
 
         vfsprotocol::ResponseType rsp;
-        vfs::ZUtils::deserialize_from_socket(zock, rsp);
+        ZUtils::deserialize_from_socket(zock, rsp);
 
         EXPECT_TRUE(rsp == vfsprotocol::ResponseType::Ok);
 
         ZEXPECT_MORE(zock, "tag");
 
         vfsprotocol::Tag rsp_tag;
-        vfs::ZUtils::deserialize_from_socket(zock, rsp_tag);
+        ZUtils::deserialize_from_socket(zock, rsp_tag);
         EXPECT_EQ(tag, rsp_tag);
 
         ZEXPECT_MORE(zock, "read data");
@@ -104,84 +104,91 @@ public:
     }
 
     void
-    remote_write(const vfs::ObjectId& vname,
+    remote_write(const ObjectId& vname,
                  const std::string& pattern,
                  uint64_t off)
     {
-        const vfs::Object obj(vfs::ObjectType::Volume,
+        const Object obj(ObjectType::Volume,
                               vname);
 
         const auto wreq(vfsprotocol::MessageUtils::create_write_request(obj,
                                                                         pattern.size(),
                                                                         off));
 
-        vfs::ZUtils::serialize_to_socket(zock,
+        ZUtils::serialize_to_socket(zock,
                                          vfsprotocol::RequestType::Write,
-                                         vfs::MoreMessageParts::T);
+                                         MoreMessageParts::T);
 
         const vfsprotocol::Tag tag(reinterpret_cast<uint64_t>(&wreq));
-        vfs::ZUtils::serialize_to_socket(zock,
+        ZUtils::serialize_to_socket(zock,
                                          tag,
-                                         vfs::MoreMessageParts::T);
+                                         MoreMessageParts::T);
 
-        vfs::ZUtils::serialize_to_socket(zock,
+        ZUtils::serialize_to_socket(zock,
                                          wreq,
-                                         vfs::MoreMessageParts::T);
+                                         MoreMessageParts::T);
 
         zmq::message_t write_data(pattern.size());
         memcpy(write_data.data(), pattern.c_str(), pattern.size());
         zock.send(write_data, 0);
 
         vfsprotocol::ResponseType rsp;
-        vfs::ZUtils::deserialize_from_socket(zock, rsp);
+        ZUtils::deserialize_from_socket(zock, rsp);
 
         EXPECT_TRUE(rsp == vfsprotocol::ResponseType::Ok);
 
         ZEXPECT_MORE(zock, "tag");
 
         vfsprotocol::Tag rsp_tag;
-        vfs::ZUtils::deserialize_from_socket(zock, rsp_tag);
+        ZUtils::deserialize_from_socket(zock, rsp_tag);
 
         EXPECT_EQ(tag, rsp_tag);
 
         ZEXPECT_MORE(zock, "WriteResponse");
 
         vfsprotocol::WriteResponse wrsp;
-        vfs::ZUtils::deserialize_from_socket(zock, wrsp);
+        ZUtils::deserialize_from_socket(zock, wrsp);
 
         EXPECT_EQ(pattern.size(), wrsp.size());
 
         ZEXPECT_NOTHING_MORE(zock);
     }
 
-    using NodeMap = vfs::ObjectRouter::NodeMap;
+    using NodeMap = ObjectRouter::NodeMap;
+    using ConfigMap = ObjectRouter::ConfigMap;
 
     static const NodeMap&
-    node_map(const vfs::ObjectRouter& r)
+    node_map(const ObjectRouter& r)
     {
         return r.node_map_;
     }
 
-    NodeMap
-    build_node_map(vfs::ObjectRouter& r)
+    static const ConfigMap&
+    config_map(const ObjectRouter& r)
     {
-        return r.build_node_map_(boost::none);
+        return r.config_map_;
     }
 
-    vfs::ClusterNodeConfig
-    expand_cluster(vfs::ObjectRouter& router,
-                   const vfs::NodeId& new_node_id)
+    std::pair<NodeMap, ConfigMap>
+    build_config(ObjectRouter& r)
     {
-        std::shared_ptr<vfs::ClusterRegistry> registry(router.cluster_registry());
+        return r.build_config_(boost::none);
+    }
 
-        vfs::ClusterNodeConfigs configs(registry->get_node_configs());
+    ClusterNodeConfig
+    expand_cluster(ObjectRouter& router,
+                   const NodeId& new_node_id)
+    {
+        std::shared_ptr<ClusterRegistry> registry(router.cluster_registry());
 
-        const vfs::ClusterNodeConfig
+        ClusterNodeConfigs configs(registry->get_node_configs());
+
+        const ClusterNodeConfig
             new_config(new_node_id,
                        local_config().message_host,
-                       vfs::MessagePort(local_config().message_port + next_port_off_),
-                       vfs::XmlRpcPort(local_config().xmlrpc_port + next_port_off_),
-                       vfs::FailoverCachePort(local_config().failovercache_port + next_port_off_),
+                       MessagePort(local_config().message_port + next_port_off_),
+                       XmlRpcPort(local_config().xmlrpc_port + next_port_off_),
+                       FailoverCachePort(local_config().failovercache_port + next_port_off_),
                        network_server_uri(local_node_id()),
                        local_config().xmlrpc_host,
                        local_config().failovercache_host);
@@ -199,13 +206,13 @@ public:
     }
 
     bool
-    steal(vfs::ObjectRouter& router,
-          const vfs::ObjectRegistration& reg,
-          const vfs::OnlyStealFromOfflineNode only_steal_from_offline_node)
+    steal(ObjectRouter& router,
+          const ObjectRegistration& reg,
+          const OnlyStealFromOfflineNode only_steal_from_offline_node)
     {
         return router.steal_(reg,
                              only_steal_from_offline_node,
-                             vfs::ForceRestart::T);
+                             ForceRestart::T);
     }
 
     zmq::context_t ztx;
@@ -215,7 +222,7 @@ public:
 
 TEST_F(ObjectRouterTest, remote_read)
 {
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const FrontendPath fname(make_volume_name("/some-volume"));
     const uint64_t vsize = 10 << 20;
     const auto vname(create_file(fname, vsize));
 
@@ -228,7 +235,7 @@ TEST_F(ObjectRouterTest, remote_read)
 
 TEST_F(ObjectRouterTest, remote_write)
 {
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const FrontendPath fname(make_volume_name("/some-volume"));
     const uint64_t vsize = 10 << 20;
     const auto vname(create_file(fname, vsize));
 
@@ -241,7 +248,7 @@ TEST_F(ObjectRouterTest, remote_write)
 
 TEST_F(ObjectRouterTest, invalid_request_type)
 {
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const FrontendPath fname(make_volume_name("/some-volume"));
     const uint64_t vsize = 10 << 20;
     const auto vname(create_file(fname, vsize));
 
@@ -254,11 +261,11 @@ TEST_F(ObjectRouterTest, invalid_request_type)
     static_assert(sizeof(req_type) == sizeof(vfsprotocol::RequestType),
                   "fix yer test");
 
-    vfs::ZUtils::serialize_to_socket(zock,
+    ZUtils::serialize_to_socket(zock,
                                      static_cast<vfsprotocol::RequestType>(req_type),
-                                     vfs::MoreMessageParts::T);
+                                     MoreMessageParts::T);
 
-    const vfs::Object obj(vfs::ObjectType::Volume,
+    const Object obj(ObjectType::Volume,
                           vname);
 
     const auto rreq(vfsprotocol::MessageUtils::create_read_request(obj,
@@ -267,21 +274,21 @@ TEST_F(ObjectRouterTest, invalid_request_type)
 
     vfsprotocol::Tag tag(reinterpret_cast<uint64_t>(&rreq));
 
-    vfs::ZUtils::serialize_to_socket(zock,
+    ZUtils::serialize_to_socket(zock,
                                      tag,
-                                     vfs::MoreMessageParts::T);
+                                     MoreMessageParts::T);
 
-    vfs::ZUtils::serialize_to_socket(zock, rreq, vfs::MoreMessageParts::F);
+    ZUtils::serialize_to_socket(zock, rreq, MoreMessageParts::F);
 
     vfsprotocol::ResponseType rsp;
-    vfs::ZUtils::deserialize_from_socket(zock, rsp);
+    ZUtils::deserialize_from_socket(zock, rsp);
 
     EXPECT_TRUE(rsp == vfsprotocol::ResponseType::UnknownRequest);
 
     ZEXPECT_MORE(zock, "tag");
 
     vfsprotocol::Tag rsp_tag;
-    vfs::ZUtils::deserialize_from_socket(zock, rsp_tag);
+    ZUtils::deserialize_from_socket(zock, rsp_tag);
 
     EXPECT_EQ(tag, rsp_tag);
 
@@ -293,7 +300,7 @@ TEST_F(ObjectRouterTest, invalid_request_type)
 
 TEST_F(ObjectRouterTest, wrong_request_type)
 {
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const FrontendPath fname(make_volume_name("/some-volume"));
     const uint64_t vsize = 10 << 20;
     const auto vname(create_file(fname, vsize));
 
@@ -302,11 +309,11 @@ TEST_F(ObjectRouterTest, wrong_request_type)
 
     write_to_file(fname, pattern, pattern.size(), off);
 
-    vfs::ZUtils::serialize_to_socket(zock,
+    ZUtils::serialize_to_socket(zock,
                                      vfsprotocol::RequestType::Write,
-                                     vfs::MoreMessageParts::T);
+                                     MoreMessageParts::T);
 
-    const vfs::Object obj(vfs::ObjectType::Volume,
+    const Object obj(ObjectType::Volume,
                           vname);
 
     const auto rreq(vfsprotocol::MessageUtils::create_read_request(obj,
@@ -315,21 +322,21 @@ TEST_F(ObjectRouterTest, wrong_request_type)
 
     vfsprotocol::Tag tag(reinterpret_cast<uint64_t>(&rreq));
 
-    vfs::ZUtils::serialize_to_socket(zock,
+    ZUtils::serialize_to_socket(zock,
                                      tag,
-                                     vfs::MoreMessageParts::T);
+                                     MoreMessageParts::T);
 
-    vfs::ZUtils::serialize_to_socket(zock, rreq, vfs::MoreMessageParts::F);
+    ZUtils::serialize_to_socket(zock, rreq, MoreMessageParts::F);
 
     vfsprotocol::ResponseType rsp;
-    vfs::ZUtils::deserialize_from_socket(zock, rsp);
+    ZUtils::deserialize_from_socket(zock, rsp);
 
     EXPECT_TRUE(rsp == vfsprotocol::ResponseType::ProtocolError);
 
     ZEXPECT_MORE(zock, "tag");
 
     vfsprotocol::Tag rsp_tag;
-    vfs::ZUtils::deserialize_from_socket(zock, rsp_tag);
+    ZUtils::deserialize_from_socket(zock, rsp_tag);
 
     EXPECT_EQ(tag, rsp_tag);
 
@@ -341,7 +348,7 @@ TEST_F(ObjectRouterTest, wrong_request_type)
 
 TEST_F(ObjectRouterTest, missing_tag)
 {
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const FrontendPath fname(make_volume_name("/some-volume"));
     const uint64_t vsize = 10 << 20;
     const auto vname(create_file(fname, vsize));
 
@@ -350,28 +357,28 @@ TEST_F(ObjectRouterTest, missing_tag)
 
     write_to_file(fname, pattern, pattern.size(), off);
 
-    vfs::ZUtils::serialize_to_socket(zock,
+    ZUtils::serialize_to_socket(zock,
                                      vfsprotocol::RequestType::Write,
-                                     vfs::MoreMessageParts::T);
+                                     MoreMessageParts::T);
 
-    const vfs::Object obj(vfs::ObjectType::Volume,
+    const Object obj(ObjectType::Volume,
                           vname);
 
     const auto rreq(vfsprotocol::MessageUtils::create_read_request(obj,
                                                                    pattern.size(),
                                                                    off));
 
-    vfs::ZUtils::serialize_to_socket(zock, rreq, vfs::MoreMessageParts::F);
+    ZUtils::serialize_to_socket(zock, rreq, MoreMessageParts::F);
 
     vfsprotocol::ResponseType rsp;
-    vfs::ZUtils::deserialize_from_socket(zock, rsp);
+    ZUtils::deserialize_from_socket(zock, rsp);
 
     EXPECT_TRUE(rsp == vfsprotocol::ResponseType::ProtocolError);
 
     ZEXPECT_MORE(zock, "tag");
 
     vfsprotocol::Tag rsp_tag;
-    vfs::ZUtils::deserialize_from_socket(zock, rsp_tag);
+    ZUtils::deserialize_from_socket(zock, rsp_tag);
 
     ZEXPECT_NOTHING_MORE(zock);
 
@@ -379,80 +386,121 @@ TEST_F(ObjectRouterTest, missing_tag)
     EXPECT_EQ(pattern, remote_read(vname, pattern.size(), off));
 }
 
-TEST_F(ObjectRouterTest, node_map)
+TEST_F(ObjectRouterTest, config_and_node_maps)
 {
-    const vfs::ObjectRouter& router = fs_->object_router();
-    NodeMap nm(node_map(router));
+    const ObjectRouter& router = fs_->object_router();
+    ConfigMap cm(config_map(router));
+    EXPECT_EQ(2U,
+              cm.size());
 
+    NodeMap nm(node_map(router));
     EXPECT_EQ(2U,
               nm.size());
 
-    std::shared_ptr<vfs::ClusterNode> local(nm[local_config().vrouter_id]);
+    std::shared_ptr<ClusterNode> local(nm[local_config().vrouter_id]);
     ASSERT_TRUE(local != nullptr);
-    EXPECT_TRUE(std::dynamic_pointer_cast<vfs::LocalNode>(local) != nullptr);
-    EXPECT_EQ(local_config(),
-              local->config);
+    EXPECT_TRUE(std::dynamic_pointer_cast<LocalNode>(local) != nullptr);
 
-    std::shared_ptr<vfs::ClusterNode> remote(nm[remote_config().vrouter_id]);
+    {
+        auto it = cm.find(local_config().vrouter_id);
+        ASSERT_TRUE(it != cm.end());
+        EXPECT_EQ(local_config(),
+                  it->second);
+        EXPECT_EQ(local_config().message_uri(),
+                  local->uri());
+    }
+
+    std::shared_ptr<ClusterNode> remote(nm[remote_config().vrouter_id]);
     ASSERT_TRUE(remote != nullptr);
-    EXPECT_TRUE(std::dynamic_pointer_cast<vfs::RemoteNode>(remote) != nullptr);
-    EXPECT_EQ(remote_config(),
-              remote->config);
+    EXPECT_TRUE(std::dynamic_pointer_cast<RemoteNode>(remote) != nullptr);
+
+    {
+        auto it = cm.find(remote_config().vrouter_id);
+        ASSERT_TRUE(it != cm.end());
+        EXPECT_EQ(remote_config(),
+                  it->second);
+        EXPECT_EQ(remote_config().message_uri(),
+                  remote->uri());
+    }
 }
 
 TEST_F(ObjectRouterTest, expand_cluster)
 {
-    vfs::ObjectRouter& router = fs_->object_router();
-    std::shared_ptr<vfs::ClusterRegistry> registry(router.cluster_registry());
+    ObjectRouter& router = fs_->object_router();
+    std::shared_ptr<ClusterRegistry> registry(router.cluster_registry());
 
     {
-        NodeMap nm(node_map(router));
+        const NodeMap nm(node_map(router));
+        const ConfigMap cm(config_map(router));
 
         ASSERT_FALSE(nm.empty());
         ASSERT_EQ(2U,
                   nm.size());
+        ASSERT_EQ(2U,
+                  cm.size());
 
-        ASSERT_TRUE(nm[local_config().vrouter_id] != nullptr);
-        ASSERT_TRUE(nm[remote_config().vrouter_id] != nullptr);
+        ASSERT_TRUE(nm.find(local_config().vrouter_id) != nm.end());
+        ASSERT_TRUE(nm.find(remote_config().vrouter_id) != nm.end());
+        ASSERT_TRUE(cm.find(local_config().vrouter_id) != cm.end());
+        ASSERT_TRUE(cm.find(remote_config().vrouter_id) != cm.end());
     }
 
-    const vfs::NodeId new_node_id(yt::UUID().str());
-    const vfs::ClusterNodeConfig new_config(expand_cluster(router,
+    const NodeId new_node_id(yt::UUID().str());
+    const ClusterNodeConfig new_config(expand_cluster(router,
                                                            new_node_id));
 
     {
-        NodeMap nm(node_map(router));
+        const NodeMap nm(node_map(router));
+        const ConfigMap cm(config_map(router));
 
         EXPECT_FALSE(nm.empty());
         EXPECT_EQ(3U,
                   nm.size());
+        EXPECT_EQ(3U,
+                  cm.size());
 
-        EXPECT_TRUE(nm[local_config().vrouter_id] != nullptr);
-        EXPECT_TRUE(nm[remote_config().vrouter_id] != nullptr);
+        EXPECT_TRUE(nm.find(local_config().vrouter_id) != nm.end());
+        EXPECT_TRUE(nm.find(remote_config().vrouter_id) != nm.end());
+        EXPECT_TRUE(cm.find(local_config().vrouter_id) != cm.end());
+        EXPECT_TRUE(cm.find(remote_config().vrouter_id) != cm.end());
 
-        const std::shared_ptr<vfs::ClusterNode> new_node(nm[new_node_id]);
-        ASSERT_TRUE(new_node != nullptr);
-        EXPECT_EQ(new_config,
-                  new_node->config);
+        {
+            auto it = nm.find(new_node_id);
+            ASSERT_TRUE(it != nm.end());
+            const std::shared_ptr<ClusterNode> new_node(it->second);
+            ASSERT_TRUE(new_node != nullptr);
+            EXPECT_EQ(new_config.message_uri(),
+                      new_node->uri());
+        }
+
+        {
+            auto it = cm.find(new_node_id);
+            ASSERT_TRUE(it != cm.end());
+            EXPECT_EQ(new_config,
+                      it->second);
+        }
     }
 }
 
 TEST_F(ObjectRouterTest, shrink_cluster)
 {
-    vfs::ObjectRouter& router = fs_->object_router();
-    std::shared_ptr<vfs::ClusterRegistry> registry(router.cluster_registry());
+    ObjectRouter& router = fs_->object_router();
+    std::shared_ptr<ClusterRegistry> registry(router.cluster_registry());
 
     EXPECT_NE(boost::none,
               router.node_config(remote_config().vrouter_id));
 
     {
-        NodeMap nm(node_map(router));
+        const NodeMap nm(node_map(router));
+        const ConfigMap cm(config_map(router));
 
         EXPECT_EQ(2U,
                   nm.size());
 
-        EXPECT_TRUE(nm[local_config().vrouter_id] != nullptr);
-        EXPECT_TRUE(nm[remote_config().vrouter_id] != nullptr);
+        EXPECT_TRUE(nm.find(local_config().vrouter_id) != nm.end());
+        EXPECT_TRUE(nm.find(remote_config().vrouter_id) != nm.end());
+        EXPECT_TRUE(cm.find(local_config().vrouter_id) != cm.end());
+        EXPECT_TRUE(cm.find(remote_config().vrouter_id) != cm.end());
     }
 
     registry->erase_node_configs();
@@ -464,76 +512,89 @@ TEST_F(ObjectRouterTest, shrink_cluster)
               router.node_config(remote_config().vrouter_id));
 
     {
-        NodeMap nm(node_map(router));
+        const NodeMap nm(node_map(router));
+        const ConfigMap cm(config_map(router));
 
         EXPECT_EQ(1U,
                   nm.size());
+        EXPECT_EQ(1U,
+                  cm.size());
 
-        EXPECT_TRUE(nm[local_config().vrouter_id] != nullptr);
-        EXPECT_TRUE(nm[remote_config().vrouter_id] == nullptr);
+        EXPECT_TRUE(nm.find(local_config().vrouter_id) != nm.end());
+        EXPECT_TRUE(nm.find(remote_config().vrouter_id) == nm.end());
+        EXPECT_TRUE(cm.find(local_config().vrouter_id) != cm.end());
+        EXPECT_TRUE(cm.find(remote_config().vrouter_id) == cm.end());
     }
 }
 
 TEST_F(ObjectRouterTest, enforce_local_node)
 {
-    vfs::ObjectRouter& router = fs_->object_router();
-    std::shared_ptr<vfs::ClusterRegistry> registry(router.cluster_registry());
+    ObjectRouter& router = fs_->object_router();
+    std::shared_ptr<ClusterRegistry> registry(router.cluster_registry());
 
     EXPECT_NE(boost::none,
               router.node_config(remote_config().vrouter_id));
 
-    {
-        NodeMap nm(node_map(router));
+    auto check([&]
+               {
+                   const NodeMap nm(node_map(router));
+                   const ConfigMap cm(config_map(router));
 
-        EXPECT_EQ(2U,
-                  nm.size());
+                   EXPECT_EQ(2U,
+                             nm.size());
+                   EXPECT_EQ(2U,
+                             cm.size());
 
-        EXPECT_TRUE(nm[local_config().vrouter_id] != nullptr);
-        EXPECT_TRUE(nm[remote_config().vrouter_id] != nullptr);
-    }
+                   EXPECT_TRUE(nm.find(local_config().vrouter_id) != nm.end());
+                   EXPECT_TRUE(nm.find(remote_config().vrouter_id) != nm.end());
+                   EXPECT_TRUE(cm.find(local_config().vrouter_id) != cm.end());
+                   EXPECT_TRUE(cm.find(remote_config().vrouter_id) != cm.end());
+               });
 
-    const vfs::ClusterNodeConfig
+    check();
+
+    const ClusterNodeConfig
         rconfig(*router.node_config(remote_config().vrouter_id));
 
     registry->erase_node_configs();
     registry->set_node_configs({ rconfig });
 
     EXPECT_THROW(router.update_cluster_node_configs(),
-                 vfs::InvalidConfigurationException);
+                 InvalidConfigurationException);
 
     EXPECT_NE(boost::none,
               router.node_config(remote_config().vrouter_id));
 
-    {
-        NodeMap nm(node_map(router));
-
-        EXPECT_EQ(2U,
-                  nm.size());
-
-        EXPECT_TRUE(nm[local_config().vrouter_id] != nullptr);
-        EXPECT_TRUE(nm[remote_config().vrouter_id] != nullptr);
-    }
+    check();
 }
 
 TEST_F(ObjectRouterTest, no_modification_of_existing_node_config)
 {
-    vfs::ObjectRouter& router = fs_->object_router();
-    std::shared_ptr<vfs::ClusterRegistry> registry(router.cluster_registry());
+    ObjectRouter& router = fs_->object_router();
+    std::shared_ptr<ClusterRegistry> registry(router.cluster_registry());
 
-    {
-        NodeMap nm(node_map(router));
+    auto check([&]
+               {
+                   const NodeMap nm(node_map(router));
+                   const ConfigMap cm(config_map(router));
 
-        EXPECT_EQ(2U,
-                  nm.size());
+                   EXPECT_EQ(2U,
+                             nm.size());
+                   EXPECT_EQ(2U,
+                             cm.size());
 
-        EXPECT_TRUE(nm[local_config().vrouter_id] != nullptr);
-        EXPECT_TRUE(nm[remote_config().vrouter_id] != nullptr);
-    }
+                   EXPECT_TRUE(nm.find(local_config().vrouter_id) != nm.end());
+                   EXPECT_TRUE(nm.find(remote_config().vrouter_id) != nm.end());
+                   EXPECT_TRUE(cm.find(local_config().vrouter_id) != cm.end());
+                   EXPECT_TRUE(cm.find(remote_config().vrouter_id) != cm.end());
+               });
 
-    const vfs::ClusterNodeConfigs configs{ local_config(),
-            vfs::ClusterNodeConfig(remote_config().vrouter_id,
+    check();
+
+    const ClusterNodeConfigs configs{ local_config(),
+            ClusterNodeConfig(remote_config().vrouter_id,
                                    remote_config().message_host,
-                                   vfs::MessagePort(remote_config().message_port + 1),
+                                   MessagePort(remote_config().message_port + 1),
                                    remote_config().xmlrpc_port,
                                    remote_config().failovercache_port,
                                    remote_config().network_server_uri,
@@ -544,29 +605,61 @@ TEST_F(ObjectRouterTest, no_modification_of_existing_node_config)
     registry->set_node_configs(configs);
 
     EXPECT_THROW(router.update_cluster_node_configs(),
-                 vfs::InvalidConfigurationException);
+                 InvalidConfigurationException);
 
-    {
-        NodeMap nm(node_map(router));
+    check();
+}
 
-        EXPECT_EQ(2U,
-                  nm.size());
+TEST_F(ObjectRouterTest, allow_node_distance_map_updates)
+{
+    ObjectRouter& router = fs_->object_router();
+    std::shared_ptr<ClusterRegistry> registry(router.cluster_registry());
 
-        EXPECT_TRUE(nm[local_config().vrouter_id] != nullptr);
+    auto check([&](const boost::optional<ClusterNodeConfig::NodeDistanceMap>& exp_dist_map)
+               {
+                   const NodeMap nm(node_map(router));
+                   const ConfigMap cm(config_map(router));
 
-        const std::shared_ptr<vfs::ClusterNode>
-            remote(nm[remote_config().vrouter_id]);
-        ASSERT_TRUE(remote != nullptr);
-        EXPECT_EQ(remote_config(),
-                  remote->config);
-    }
+                   EXPECT_EQ(2U,
+                             nm.size());
+                   EXPECT_EQ(2U,
+                             cm.size());
+
+                   EXPECT_TRUE(nm.find(local_config().vrouter_id) != nm.end());
+                   EXPECT_TRUE(nm.find(remote_config().vrouter_id) != nm.end());
+
+                   {
+                       auto it = cm.find(local_config().vrouter_id);
+                       ASSERT_TRUE(it != cm.end());
+                       EXPECT_TRUE(exp_dist_map == it->second.node_distance_map);
+                   }
+                   {
+                       auto it = cm.find(remote_config().vrouter_id);
+                       ASSERT_TRUE(it != cm.end());
+                       EXPECT_TRUE(exp_dist_map == it->second.node_distance_map);
+                   }
+               });
+
+    check(boost::none);
+
+    const ClusterNodeConfig::NodeDistanceMap ndm;
+    ClusterNodeConfig local(local_config());
+    local.node_distance_map = ndm;
+    ClusterNodeConfig remote(remote_config());
+    remote.node_distance_map = ndm;
+
+    registry->erase_node_configs();
+    registry->set_node_configs({ local, remote });
+    router.update_cluster_node_configs();
+
+    check(ndm);
 }
 
 TEST_F(ObjectRouterTest, volume_snapshot_create_rollback_delete)
 {
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
+    const FrontendPath fname(make_volume_name("/some-volume"));
     const uint64_t vsize = 10 << 20;
-    const vfs::ObjectId vname(create_file(fname, vsize));
+    const ObjectId vname(create_file(fname, vsize));
 
     const std::string pattern("locally written");
     const uint64_t off = get_cluster_size(vname) - 1;
@@ -588,7 +681,7 @@ TEST_F(ObjectRouterTest, volume_snapshot_create_rollback_delete)
     EXPECT_THROW(fs_->object_router().create_snapshot(vname,
                                                       snap,
                                                       0),
-                 vfs::clienterrors::SnapshotNameAlreadyExistsException);
+                 clienterrors::SnapshotNameAlreadyExistsException);
     EXPECT_NO_THROW(fs_->object_router().delete_snapshot(vname,
                                                          snap));
 
@@ -599,19 +692,19 @@ TEST_F(ObjectRouterTest, volume_snapshot_create_rollback_delete)
 
     EXPECT_THROW(fs_->object_router().delete_snapshot(vname,
                                                       snap),
-                 vfs::clienterrors::SnapshotNotFoundException);
+                 clienterrors::SnapshotNotFoundException);
     EXPECT_THROW(fs_->object_router().rollback_volume(vname,
                                                       snap),
-                 vfs::clienterrors::SnapshotNotFoundException);
+                 clienterrors::SnapshotNotFoundException);
 
-    const vfs::ObjectId fvname("/f-volume");
+    const ObjectId fvname("/f-volume");
     EXPECT_THROW(fs_->object_router().create_snapshot(fvname,
                                                       snap,
                                                       0),
-                 vfs::clienterrors::ObjectNotFoundException);
+                 clienterrors::ObjectNotFoundException);
 
     EXPECT_THROW(snaps = fs_->object_router().list_snapshots(fvname),
-                 vfs::clienterrors::ObjectNotFoundException);
+                 clienterrors::ObjectNotFoundException);
 }
 
 }

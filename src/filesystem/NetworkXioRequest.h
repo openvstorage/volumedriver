@@ -34,18 +34,23 @@ struct NetworkXioRequest
 {
     explicit NetworkXioRequest(NetworkXioClientData *cdata,
                                xio_msg *xreq)
-    : data(nullptr)
-    , data_len(0)
-    , dtl_in_sync(true)
-    , retval(0)
-    , errval(0)
-    , xio_req(xreq)
-    , from_pool(true)
-    , cd(cdata)
+        : op(NetworkXioMsgOpcode::Noop)
+        , data(nullptr)
+        , data_len(0)
+        , size(0)
+        , offset(0)
+        , dtl_in_sync(true)
+        , retval(0)
+        , errval(0)
+        , opaque(0)
+        , xio_req(xreq)
+        , mem_block(nullptr)
+        , from_pool(true)
+        , cd(cdata)
     {
-        work.func = work.func_ctrl = work.dispatch_ctrl_request = nullptr;
-        work.is_ctrl = false;
+        memset(&xio_reply, 0, sizeof(xio_reply));
     }
+
     NetworkXioMsgOpcode op;
 
     void *data;

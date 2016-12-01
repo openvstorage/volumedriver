@@ -45,7 +45,8 @@ public:
                      const youtils::Uri&,
                      size_t snd_rcv_queue_depth,
                      unsigned int workqueue_max_threads,
-                     unsigned int workqueue_ctrl_max_threads);
+                     unsigned int workqueue_ctrl_max_threads,
+                     const std::atomic<uint32_t>& max_neighbour_distance);
 
     ~NetworkXioServer();
 
@@ -104,6 +105,7 @@ private:
     size_t queue_depth;
     unsigned int wq_max_threads;
     unsigned int wq_ctrl_max_threads;
+    const std::atomic<uint32_t>& max_neighbour_distance;
 
     NetworkXioWorkQueuePtr wq_;
     NetworkXioWorkQueuePtr wq_ctrl_;

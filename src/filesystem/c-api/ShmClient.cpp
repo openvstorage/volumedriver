@@ -180,13 +180,13 @@ int
 ShmClient::send_write_request(const void *buf,
                               const uint64_t size_in_bytes,
                               const uint64_t offset_in_bytes,
-                              const void *opaque)
+                              const ovs_aio_request *request)
 {
     vfs::ShmWriteRequest writerequest_;
     writerequest_.size_in_bytes = size_in_bytes;
     writerequest_.offset_in_bytes = offset_in_bytes;
     writerequest_.handle = shm_segment_->get_handle_from_address(buf);
-    writerequest_.opaque = reinterpret_cast<uintptr_t>(opaque);
+    writerequest_.opaque = reinterpret_cast<uintptr_t>(request);
 
     try
     {
@@ -206,14 +206,14 @@ int
 ShmClient::timed_send_write_request(const void *buf,
                                     const uint64_t size_in_bytes,
                                     const uint64_t offset_in_bytes,
-                                    const void *opaque,
+                                    const ovs_aio_request *request,
                                     const struct timespec* timeout)
 {
     vfs::ShmWriteRequest writerequest_;
     writerequest_.size_in_bytes = size_in_bytes;
     writerequest_.offset_in_bytes = offset_in_bytes;
     writerequest_.handle = shm_segment_->get_handle_from_address(buf);
-    writerequest_.opaque = reinterpret_cast<uintptr_t>(opaque);
+    writerequest_.opaque = reinterpret_cast<uintptr_t>(request);
     bpt::time_duration delay(bpt::seconds(timeout->tv_sec));
     bpt::ptime ptimeout = bpt::ptime(bpt::second_clock::universal_time());
     ptimeout += delay;
@@ -240,7 +240,7 @@ ShmClient::timed_send_write_request(const void *buf,
 
 bool
 ShmClient::receive_write_reply(size_t& size_in_bytes,
-                               void **opaque)
+                               ovs_aio_request **request)
 {
     vfs::ShmWriteReply writereply_;
     unsigned int priority;
@@ -253,11 +253,11 @@ ShmClient::receive_write_reply(size_t& size_in_bytes,
                                 received_size,
                                 priority);
         assert(received_size == sizeof(vfs::ShmWriteReply));
-        *opaque = reinterpret_cast<void*>(writereply_.opaque);
+        *request = reinterpret_cast<ovs_aio_request*>(writereply_.opaque);
     }
     catch (...)
     {
-        *opaque = NULL;
+        *request = NULL;
         errno = EIO;
         return true;
     }
@@ -267,7 +267,7 @@ ShmClient::receive_write_reply(size_t& size_in_bytes,
 
 bool
 ShmClient::timed_receive_write_reply(size_t& size_in_bytes,
-                                     void **opaque,
+                                     ovs_aio_request **request,
                                      const struct timespec* timeout)
 {
     vfs::ShmWriteReply writereply_;
@@ -287,18 +287,18 @@ ShmClient::timed_receive_write_reply(size_t& size_in_bytes,
         if (ret)
         {
             assert(received_size == sizeof(vfs::ShmWriteReply));
-            *opaque = reinterpret_cast<void*>(writereply_.opaque);
+            *request = reinterpret_cast<ovs_aio_request*>(writereply_.opaque);
         }
         else
         {
-            *opaque = NULL;
+            *request = NULL;
             errno = ETIMEDOUT;
             return true;
         }
     }
     catch (...)
     {
-        *opaque = NULL;
+        *request = NULL;
         errno = EIO;
         return true;
     }
@@ -310,13 +310,13 @@ int
 ShmClient::send_read_request(const void *buf,
                              const uint64_t size_in_bytes,
                              const uint64_t offset_in_bytes,
-                             const void *opaque)
+                             const ovs_aio_request *request)
 {
     vfs::ShmReadRequest readrequest_;
     readrequest_.size_in_bytes = size_in_bytes;
     readrequest_.offset_in_bytes = offset_in_bytes;
     readrequest_.handle = shm_segment_->get_handle_from_address(buf);
-    readrequest_.opaque = reinterpret_cast<uintptr_t>(opaque);
+    readrequest_.opaque = reinterpret_cast<uintptr_t>(request);
 
     try
     {
@@ -336,14 +336,14 @@ int
 ShmClient::timed_send_read_request(const void *buf,
                                    const uint64_t size_in_bytes,
                                    const uint64_t offset_in_bytes,
-                                   const void *opaque,
+                                   const ovs_aio_request *request,
                                    const struct timespec* timeout)
 {
     vfs::ShmReadRequest readrequest_;
     readrequest_.size_in_bytes = size_in_bytes;
     readrequest_.offset_in_bytes = offset_in_bytes;
     readrequest_.handle = shm_segment_->get_handle_from_address(buf);
-    readrequest_.opaque = reinterpret_cast<uintptr_t>(opaque);
+    readrequest_.opaque = reinterpret_cast<uintptr_t>(request);
     bpt::time_duration delay(bpt::seconds(timeout->tv_sec));
     bpt::ptime ptimeout = bpt::ptime(bpt::second_clock::universal_time());
     ptimeout += delay;
@@ -370,7 +370,7 @@ ShmClient::timed_send_read_request(const void *buf,
 
 bool
 ShmClient::receive_read_reply(size_t& size_in_bytes,
-                              void **opaque)
+                              ovs_aio_request **request)
 {
     vfs::ShmReadReply readreply_;
     unsigned int priority;
@@ -383,11 +383,11 @@ ShmClient::receive_read_reply(size_t& size_in_bytes,
                                received_size,
                                priority);
         assert(received_size == sizeof(vfs::ShmReadReply));
-        *opaque = reinterpret_cast<void*>(readreply_.opaque);
+        *request = reinterpret_cast<ovs_aio_request*>(readreply_.opaque);
     }
     catch (...)
     {
-        *opaque = NULL;
+        *request = NULL;
         errno = EIO;
         return true;
     }
@@ -397,7 +397,7 @@ ShmClient::receive_read_reply(size_t& size_in_bytes,
 
 bool
 ShmClient::timed_receive_read_reply(size_t& size_in_bytes,
-                                    void **opaque,
+                                    ovs_aio_request **request,
                                     const struct timespec* timeout)
 {
     vfs::ShmReadReply readreply_;
@@ -417,18 +417,18 @@ ShmClient::timed_receive_read_reply(size_t& size_in_bytes,
         if (ret)
         {
             assert(received_size == sizeof(vfs::ShmReadReply));
-            *opaque = reinterpret_cast<void*>(readreply_.opaque);
+            *request = reinterpret_cast<ovs_aio_request*>(readreply_.opaque);
         }
         else
         {
-            *opaque = NULL;
+            *request = NULL;
             errno = ETIMEDOUT;
             return true;
         }
     }
     catch (...)
     {
-        *opaque = NULL;
+        *request = NULL;
         errno = EIO;
         return true;
     }
