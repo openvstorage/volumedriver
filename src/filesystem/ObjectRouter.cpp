@@ -112,17 +112,12 @@ ObjectRouter::ObjectRouter(const bpt::ptree& pt,
     cluster_registry_ = std::make_shared<ClusterRegistry>(cluster_id(),
                                                           larakoon_);
     VERIFY(cluster_registry_);
-    update_node_map_(pt);
+    update_config_(pt);
 
     const ClusterNodeConfig ncfg(node_config());
-    const std::string addr("tcp://" +
-                           ncfg.message_host +
-                           ":"s +
-                           boost::lexical_cast<std::string>(ncfg.message_port));
-
     worker_pool_ = std::make_unique<ZWorkerPool>("ObjectRouterWorkerPool",
                                                  *ztx_,
-                                                 addr,
+                                                 ncfg.message_uri(),
                                                  [this](ZWorkerPool::MessageParts parts)
                                                  {
                                                      return redirected_work_(std::move(parts));
@@ -152,25 +147,40 @@ ObjectRouter::shutdown_()
     ztx_ = nullptr;
 }
 
-ObjectRouter::NodeMap
-ObjectRouter::build_node_map_(const boost::optional<const bpt::ptree&>& pt)
+std::pair<ObjectRouter::NodeMap, ObjectRouter::ConfigMap>
+ObjectRouter::build_config_(const boost::optional<const bpt::ptree&>& pt)
 {
     const ClusterRegistry::NodeStatusMap status_map(get_node_status_map());
-    NodeMap new_map;
+    NodeMap new_node_map;
+    ConfigMap new_config_map;
 
     for (const auto& v : status_map)
     {
         const ClusterNodeConfig& cfg = v.second.config;
-        std::shared_ptr<ClusterNode> old(find_node_(cfg.vrouter_id));
-        if (old)
+        std::shared_ptr<ClusterNode> old_node(find_node_(cfg.vrouter_id));
+        if (old_node)
         {
-            if (old->config != cfg)
+            const auto it = config_map_.find(cfg.vrouter_id);
+            VERIFY(it != config_map_.end());
+            const ClusterNodeConfig& old_cfg = it->second;
+
+#define NE(x)                                   \
+            cfg.x != old_cfg.x
+
+            if (NE(message_host) or
+                NE(message_port) or
+                NE(xmlrpc_host) or
+                NE(xmlrpc_port) or
+                NE(failovercache_host) or
+                NE(failovercache_port) or
+                NE(network_server_uri))
             {
-                LOG_ERROR("Refusing to modify an existing ClusterNodeConfig. Old: " <<
-                          old->config << ", new: " << cfg);
-                throw InvalidConfigurationException("Modifying an existing node config is not supported",
+                LOG_ERROR("Refusing to change the cluster config. Old: " <<
+                          old_cfg << ", new: " << cfg);
+                throw InvalidConfigurationException("Changing a cluster node's config is not supported",
                                                     cfg.vrouter_id.str().c_str());
             }
+#undef NE
         }
 
         std::shared_ptr<ClusterNode> n;
@@ -179,9 +189,9 @@ ObjectRouter::build_node_map_(const boost::optional<const bpt::ptree&>& pt)
         {
             if (pt)
             {
-                n = std::shared_ptr<ClusterNode>(new LocalNode(*this,
-                                                               cfg,
-                                                               *pt));
+                n = std::make_shared<LocalNode>(*this,
+                                                cfg,
+                                                *pt);
 
                 const auto& state = v.second.state;
                 if (state != ClusterNodeStatus::State::Online)
@@ -194,24 +204,27 @@ ObjectRouter::build_node_map_(const boost::optional<const bpt::ptree&>& pt)
             }
             else
             {
-                VERIFY(old);
-                n = old;
+                VERIFY(old_node);
+                n = old_node;
             }
         }
         else
         {
-            n = std::shared_ptr<ClusterNode>(new RemoteNode(*this,
-                                                            cfg,
-                                                            ztx_));
+            n = std::make_shared<RemoteNode>(*this,
+                                             cfg.vrouter_id,
+                                             cfg.message_uri(),
+                                             ztx_);
         }
 
-        const auto res(new_map.emplace(std::make_pair(cfg.vrouter_id,
-                                                      n)));
-        VERIFY(res.second);
+        bool ok = false;
+        std::tie(std::ignore, ok) = new_node_map.emplace(cfg.vrouter_id, n);
+        VERIFY(ok);
+        std::tie(std::ignore, ok) = new_config_map.emplace(cfg.vrouter_id, cfg);
+        VERIFY(ok);
     }
 
-    auto it = new_map.find(node_id());
-    if (it == new_map.end())
+    auto it = new_node_map.find(node_id());
+    if (it == new_node_map.end())
     {
         LOG_ERROR("Our very own node ID " << node_id() <<
                   " does not appear in the cluster nodes config");
@@ -219,31 +232,36 @@ ObjectRouter::build_node_map_(const boost::optional<const bpt::ptree&>& pt)
                                             node_id().str().c_str());
     }
 
-    return new_map;
+    return std::make_pair(std::move(new_node_map), std::move(new_config_map));
 }
 
 void
-ObjectRouter::update_node_map_(const boost::optional<const bpt::ptree&>& pt)
+ObjectRouter::update_config_(const boost::optional<const bpt::ptree&>& pt)
 {
-    NodeMap new_map(build_node_map_(pt));
+    NodeMap new_node_map;
+    ConfigMap new_config_map;
 
-    LOG_INFO("New ClusterNodeConfigs:");
+    std::tie(new_node_map, new_config_map) = build_config_(pt);
 
-    for (const auto& p : new_map)
+    LOG_INFO("New ClusterNode configs:");
+
+    for (const auto& p : new_config_map)
     {
-        LOG_INFO("\t" << p.second->config);
+        LOG_INFO("\t" << p.second);
     }
 
     WLOCK_NODES();
 
     std::swap(node_map_,
-              new_map);
+              new_node_map);
+    std::swap(config_map_,
+              new_config_map);
 }
 
 void
 ObjectRouter::update_cluster_node_configs()
 {
-    update_node_map_(boost::none);
+    update_config_(boost::none);
 }
 
 void
@@ -278,14 +296,14 @@ ObjectRouter::node_config(const NodeId& node_id) const
 {
     RLOCK_NODES();
 
-    auto it = node_map_.find(node_id);
-    if (it == node_map_.end())
+    auto it = config_map_.find(node_id);
+    if (it == config_map_.end())
     {
         return boost::none;
     }
     else
     {
-        return it->second->config;
+        return it->second;
     }
 }
 
@@ -1800,15 +1818,18 @@ ObjectRouter::failoverconfig_as_it_should_be() const
                 // The order of appearance of nodes in the json config file
                 // should not matter.
                 NodeId my_id = node_id();
-                NodeMap::const_iterator it = node_map_.find(my_id);
-                ASSERT(it != node_map_.end());
-                if(++it == node_map_.end())
+
+                RLOCK_NODES();
+
+                ConfigMap::const_iterator it = config_map_.find(my_id);
+                ASSERT(it != config_map_.end());
+                if(++it == config_map_.end())
                 {
-                    it = node_map_.begin();
+                    it = config_map_.begin();
                 }
 
-                return vd::FailOverCacheConfig(it->second->config.failovercache_host,
-                                               it->second->config.failovercache_port,
+                return vd::FailOverCacheConfig(it->second.failovercache_host,
+                                               it->second.failovercache_port,
                                                foc_mode_);
             }
         }
@@ -1885,20 +1906,20 @@ ObjectRouter::xmlrpc_client()
     {
         RLOCK_NODES();
 
-        contacts.reserve(node_map_.size());
+        contacts.reserve(config_map_.size());
 
-        auto it = node_map_.find(node_id());
-        VERIFY(it != node_map_.end());
+        auto it = config_map_.find(node_id());
+        VERIFY(it != config_map_.end());
 
-        contacts.emplace_back(it->second->config.xmlrpc_host,
-                              it->second->config.xmlrpc_port);
+        contacts.emplace_back(it->second.xmlrpc_host,
+                              it->second.xmlrpc_port);
 
-        for (const auto& p : node_map_)
+        for (const auto& p : config_map_)
         {
             if (p.first != node_id())
             {
-                contacts.emplace_back(p.second->config.xmlrpc_host,
-                                      p.second->config.xmlrpc_port);
+                contacts.emplace_back(p.second.xmlrpc_host,
+                                      p.second.xmlrpc_port);
             }
         }
     }

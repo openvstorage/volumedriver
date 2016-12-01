@@ -26,6 +26,8 @@
 namespace volumedriverfs
 {
 
+namespace yt = youtils;
+
 namespace
 {
 
@@ -283,7 +285,7 @@ private:
 
 ZWorkerPool::ZWorkerPool(const std::string& name,
                          zmq::context_t& ztx,
-                         const std::string& pub_addr,
+                         const yt::Uri& pub_uri,
                          WorkerFun worker_fun,
                          uint16_t min_workers,
                          uint16_t max_workers)
@@ -292,7 +294,7 @@ ZWorkerPool::ZWorkerPool(const std::string& name,
     , worker_fun_(std::move(worker_fun))
     , ztx_(ztx)
     , name_(name)
-    , pub_addr_(pub_addr)
+    , pub_uri_(pub_uri)
 {
     validate_settings(min_, max_);
 
@@ -367,12 +369,12 @@ ZWorkerPool::route_()
         zmq::socket_t front_sock(ztx_, ZMQ_ROUTER);
         ZUtils::socket_no_linger(front_sock);
 
-        LOG_INFO("Binding public interface to " << pub_addr_);
-        front_sock.bind(pub_addr_.c_str());
-        LOG_TRACE("Listening for requests from clients on " << pub_addr_);
+        const auto pub_addr(boost::lexical_cast<std::string>(pub_uri_));
+        LOG_INFO("Binding public interface to " << pub_addr);
+        front_sock.bind(pub_addr.c_str());
+        LOG_TRACE("Listening for requests from clients on " << pub_addr);
 
         zmq::socket_t back_sock(ztx_, ZMQ_ROUTER);
-
         ZUtils::socket_no_linger(back_sock);
 
         LOG_INFO("Binding interface to workers to " << back_address_());

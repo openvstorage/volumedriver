@@ -23,6 +23,7 @@
 #include "FileSystemParameters.h"
 #include "ForceRestart.h"
 #include "NodeId.h"
+#include "Object.h"
 
 #include <boost/property_tree/ptree_fwd.hpp>
 

@@ -14,15 +14,16 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "ClusterNode.h"
-#include "ObjectRouter.h"
 
 namespace volumedriverfs
 {
 
 ClusterNode::ClusterNode(ObjectRouter& vrouter,
-                         const ClusterNodeConfig& cfg)
-    : config(cfg)
-    , vrouter_(vrouter)
+                         const NodeId& node_id,
+                         const youtils::Uri& uri)
+    : vrouter_(vrouter)
+    , node_id_(node_id)
+    , uri_(uri)
 {}
 
 }
