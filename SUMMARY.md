@@ -4,6 +4,7 @@
 * [Concepts](docs/concepts.md)
 * [Components](docs/components.md)
     * [The Edge](docs/edge.md)
+    * [Libovsvolumedriver](docs/libovsvolumedriver.md)
 * [Building the Volume Driver](docs/building.md)
     * [Build with Docker](docs/build_with_docker.md)
     * [Manual building](docs/manual_building.md)
