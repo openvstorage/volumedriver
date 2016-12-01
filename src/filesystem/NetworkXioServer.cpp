@@ -555,8 +555,6 @@ NetworkXioServer::prepare_msg_reply(NetworkXioRequest *req)
 {
     xio_msg *xio_req = req->xio_req;
 
-    memset(&req->xio_reply, 0, sizeof(xio_msg));
-
     vmsg_sglist_set_nents(&req->xio_req->in, 0);
     xio_req->in.header.iov_base = NULL;
     xio_req->in.header.iov_len = 0;
