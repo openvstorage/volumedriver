@@ -95,7 +95,7 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(dtl_connect_timeout_ms,
                                       "dtl_connect_timeout_ms",
                                       "Timeout for connection attempts to the DTL - 0: wait forever / the OS to signal errors",
                                       ShowDocumentation::T,
-                                      0U);
+                                      1000U);
 
 DEFINE_INITIALIZED_PARAM(clean_interval,
                          volmanager_component_name,
