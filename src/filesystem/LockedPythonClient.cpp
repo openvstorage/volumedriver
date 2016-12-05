@@ -96,7 +96,8 @@ try
     req[XMLRPCKeys::vrouter_id] = vinfo.vrouter_id;
 
     const std::string s(call(PersistConfigurationToString::method_name(),
-                             req)[XMLRPCKeys::configuration]);
+                             req,
+                             boost::none)[XMLRPCKeys::configuration]);
     std::stringstream ss;
     ss << s;
 

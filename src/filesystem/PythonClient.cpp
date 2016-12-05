@@ -69,7 +69,8 @@ PythonClient::redirected_xmlrpc(const std::string& addr,
                                 const uint16_t port,
                                 const char* method,
                                 XmlRpc::XmlRpcValue& req,
-                                unsigned& redirect_count)
+                                unsigned& redirect_count,
+                                const MaybeSeconds& timeout)
 {
     if (redirect_count > max_redirects)
     {
@@ -89,12 +90,22 @@ PythonClient::redirected_xmlrpc(const std::string& addr,
 #endif
     XmlRpc::XmlRpcValue rsp;
 
+    MaybeSeconds t;
+    if (timeout)
+    {
+        t = timeout;
+    }
+    else
+    {
+        t = timeout_;
+    }
+
     XmlRpc::XmlRpcClient xclient(addr.c_str(), port);
     const bool res = xclient.execute(method,
                                      req,
                                      rsp,
-                                     timeout_ ?
-                                     timeout_->count() :
+                                     t ?
+                                     t->count() :
                                      -1.0);
     if (not res)
     {
@@ -170,7 +181,8 @@ PythonClient::redirected_xmlrpc(const std::string& addr,
                                  port,
                                  method,
                                  req,
-                                 ++redirect_count);
+                                 ++redirect_count,
+                                 timeout);
     }
     else
     {
@@ -180,7 +192,8 @@ PythonClient::redirected_xmlrpc(const std::string& addr,
 
 XmlRpc::XmlRpcValue
 PythonClient::call(const char* method,
-                   XmlRpc::XmlRpcValue& req)
+                   XmlRpc::XmlRpcValue& req,
+                   const PythonClient::MaybeSeconds& timeout)
 {
     unsigned redirect_counter = 0;
 
@@ -199,7 +212,8 @@ PythonClient::call(const char* method,
                                      contact.port,
                                      method,
                                      req,
-                                     redirect_counter);
+                                     redirect_counter,
+                                     timeout);
         }
         catch(clienterrors::NodeNotReachableException& e)
         {
@@ -223,11 +237,12 @@ PythonClient::call(const char* method,
 };
 
 bpy::dict
-PythonClient::get_sync_ignore(const std::string& volume_id)
+PythonClient::get_sync_ignore(const std::string& volume_id,
+                              const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
-    auto rsp(call(GetSyncIgnore::method_name(), req));
+    auto rsp(call(GetSyncIgnore::method_name(), req, timeout));
     bpy::dict the_dict;
     the_dict[XMLRPCKeys::number_of_syncs_to_ignore] =
         boost::lexical_cast<uint64_t>(static_cast<std::string>(rsp[XMLRPCKeys::number_of_syncs_to_ignore]));
@@ -240,7 +255,8 @@ PythonClient::get_sync_ignore(const std::string& volume_id)
 void
 PythonClient::set_sync_ignore(const std::string& volume_id,
                               const uint64_t number_of_syncs_to_ignore,
-                              const uint64_t maximum_time_to_ignore_syncs_in_seconds)
+                              const uint64_t maximum_time_to_ignore_syncs_in_seconds,
+                              const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
@@ -248,15 +264,16 @@ PythonClient::set_sync_ignore(const std::string& volume_id,
         boost::lexical_cast<std::string>(number_of_syncs_to_ignore);
     req[XMLRPCKeys::maximum_time_to_ignore_syncs_in_seconds] =
         boost::lexical_cast<std::string>(maximum_time_to_ignore_syncs_in_seconds);
-    auto rsp(call(SetSyncIgnore::method_name(), req));
+    auto rsp(call(SetSyncIgnore::method_name(), req, timeout));
 }
 
 uint32_t
-PythonClient::get_sco_multiplier(const std::string& volume_id)
+PythonClient::get_sco_multiplier(const std::string& volume_id,
+                                 const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
-    auto rsp(call(GetSCOMultiplier::method_name(), req));
+    auto rsp(call(GetSCOMultiplier::method_name(), req, timeout));
     uint32_t val =
         boost::lexical_cast<uint32_t>(static_cast<std::string>(rsp[XMLRPCKeys::sco_multiplier]));
     return val;
@@ -264,21 +281,23 @@ PythonClient::get_sco_multiplier(const std::string& volume_id)
 
 void
 PythonClient::set_sco_multiplier(const std::string& volume_id,
-                                 const uint32_t sco_multiplier)
+                                 const uint32_t sco_multiplier,
+                                 const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
     req[XMLRPCKeys::sco_multiplier] =
         boost::lexical_cast<std::string>(sco_multiplier);
-    auto rsp(call(SetSCOMultiplier::method_name(), req));
+    auto rsp(call(SetSCOMultiplier::method_name(), req, timeout));
 }
 
 boost::optional<uint32_t>
-PythonClient::get_tlog_multiplier(const std::string& volume_id)
+PythonClient::get_tlog_multiplier(const std::string& volume_id,
+                                  const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
-    auto rsp(call(GetTLogMultiplier::method_name(), req));
+    auto rsp(call(GetTLogMultiplier::method_name(), req, timeout));
 
     boost::optional<uint32_t> tm;
     if (rsp.hasMember(XMLRPCKeys::tlog_multiplier))
@@ -290,7 +309,8 @@ PythonClient::get_tlog_multiplier(const std::string& volume_id)
 
 void
 PythonClient::set_tlog_multiplier(const std::string& volume_id,
-                                  const boost::optional<uint32_t>& tlog_multiplier)
+                                  const boost::optional<uint32_t>& tlog_multiplier,
+                                  const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
@@ -298,15 +318,16 @@ PythonClient::set_tlog_multiplier(const std::string& volume_id,
     {
         req[XMLRPCKeys::tlog_multiplier] = boost::lexical_cast<std::string>(tlog_multiplier.get());
     }
-    auto rsp(call(SetTLogMultiplier::method_name(), req));
+    auto rsp(call(SetTLogMultiplier::method_name(), req, timeout));
 }
 
 boost::optional<float>
-PythonClient::get_sco_cache_max_non_disposable_factor(const std::string& volume_id)
+PythonClient::get_sco_cache_max_non_disposable_factor(const std::string& volume_id,
+                                                      const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
-    auto rsp(call(GetSCOCacheMaxNonDisposableFactor::method_name(), req));
+    auto rsp(call(GetSCOCacheMaxNonDisposableFactor::method_name(), req, timeout));
 
     boost::optional<float> scmndf;
     if (rsp.hasMember(XMLRPCKeys::max_non_disposable_factor))
@@ -319,7 +340,8 @@ PythonClient::get_sco_cache_max_non_disposable_factor(const std::string& volume_
 
 void
 PythonClient::set_sco_cache_max_non_disposable_factor(const std::string& volume_id,
-                                                      const boost::optional<float>& max_non_disposable_factor)
+                                                      const boost::optional<float>& max_non_disposable_factor,
+                                                      const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
@@ -327,17 +349,18 @@ PythonClient::set_sco_cache_max_non_disposable_factor(const std::string& volume_
     {
         req[XMLRPCKeys::max_non_disposable_factor] = boost::lexical_cast<std::string>(max_non_disposable_factor.get());
     }
-    auto rsp(call(SetSCOCacheMaxNonDisposableFactor::method_name(), req));
+    auto rsp(call(SetSCOCacheMaxNonDisposableFactor::method_name(), req, timeout));
 }
 
 
 FailOverCacheConfigMode
-PythonClient::get_failover_cache_config_mode(const std::string& volume_id)
+PythonClient::get_failover_cache_config_mode(const std::string& volume_id,
+                                             const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
 
-    auto rsp(call(GetFailOverCacheConfigMode::method_name(), req));
+    auto rsp(call(GetFailOverCacheConfigMode::method_name(), req, timeout));
     std::string res = rsp[XMLRPCKeys::foc_config_mode];
 
     FailOverCacheConfigMode foc_cm;
@@ -348,11 +371,12 @@ PythonClient::get_failover_cache_config_mode(const std::string& volume_id)
 }
 
 boost::optional<vd::FailOverCacheConfig>
-PythonClient::get_failover_cache_config(const std::string& volume_id)
+PythonClient::get_failover_cache_config(const std::string& volume_id,
+                                        const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
-    auto rsp(call(GetFailOverCacheConfig::method_name(), req));
+    auto rsp(call(GetFailOverCacheConfig::method_name(), req, timeout));
     boost::optional<vd::FailOverCacheConfig> foc_config;
     if (rsp.hasMember(XMLRPCKeys::foc_config))
     {
@@ -369,7 +393,8 @@ PythonClient::get_failover_cache_config(const std::string& volume_id)
 
 void
 PythonClient::set_manual_failover_cache_config(const std::string& volume_id,
-                                               const boost::optional<vd::FailOverCacheConfig>& foc_config)
+                                               const boost::optional<vd::FailOverCacheConfig>& foc_config,
+                                               const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
@@ -380,15 +405,16 @@ PythonClient::set_manual_failover_cache_config(const std::string& volume_id,
         oa << *foc_config;
         req[XMLRPCKeys::foc_config] = ss.str();
     }
-    auto rsp(call(SetManualFailOverCacheConfig::method_name(), req));
+    auto rsp(call(SetManualFailOverCacheConfig::method_name(), req, timeout));
 }
 
 void
-PythonClient::set_automatic_failover_cache_config(const std::string& volume_id)
+PythonClient::set_automatic_failover_cache_config(const std::string& volume_id,
+                                                  const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
-    auto rsp(call(SetAutomaticFailOverCacheConfig::method_name(), req));
+    auto rsp(call(SetAutomaticFailOverCacheConfig::method_name(), req, timeout));
 }
 
 namespace
@@ -414,7 +440,8 @@ extract_vec(const XmlRpc::XmlRpcValue& rsp)
 }
 
 std::vector<std::string>
-PythonClient::list_volumes(const boost::optional<std::string>& node_id)
+PythonClient::list_volumes(const boost::optional<std::string>& node_id,
+                           const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     if (node_id)
@@ -423,66 +450,76 @@ PythonClient::list_volumes(const boost::optional<std::string>& node_id)
     }
 
     return extract_vec(call(VolumesList::method_name(),
-                            req));
+                            req,
+                            timeout));
 }
 
 std::vector<std::string>
-PythonClient::list_volumes_by_path()
+PythonClient::list_volumes_by_path(const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     return extract_vec(call(VolumesListByPath::method_name(),
-                            req));
+                            req,
+                            timeout));
 }
 
 std::vector<std::string>
-PythonClient::get_scrubbing_work(const std::string& volume_id)
+PythonClient::get_scrubbing_work(const std::string& volume_id,
+                                 const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
 
     return extract_vec(call(GetScrubbingWork::method_name(),
-                            req));
+                            req,
+                            timeout));
 }
 
 void
-PythonClient::apply_scrubbing_result(const bpy::tuple& tup)
+PythonClient::apply_scrubbing_result(const bpy::tuple& tup,
+                                     const MaybeSeconds& timeout)
 {
     const std::string volume_id = bpy::extract<std::string>(tup[0]);
     const std::string work = bpy::extract<std::string>(tup[1]);
 
     apply_scrubbing_result(volume_id,
-                           work);
+                           work,
+                           timeout);
 }
 
 void
 PythonClient::apply_scrubbing_result(const std::string& volume_id,
-                                     const std::string& scrub_res)
+                                     const std::string& scrub_res,
+                                     const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
     req[XMLRPCKeys::scrubbing_work_result] = scrub_res;
 
-    call(ApplyScrubbingResult::method_name(), req);
+    call(ApplyScrubbingResult::method_name(), req, timeout);
 }
 
 std::vector<std::string>
-PythonClient::list_snapshots(const std::string& volume_id)
+PythonClient::list_snapshots(const std::string& volume_id,
+                             const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
 
     req[XMLRPCKeys::volume_id] = volume_id;
 
     return extract_vec(call(SnapshotsList::method_name(),
-                            req));
+                            req,
+                            timeout));
 }
 
 std::vector<ClientInfo>
-PythonClient::list_client_connections(const std::string& node_id)
+PythonClient::list_client_connections(const std::string& node_id,
+                                      const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::vrouter_id] = node_id;
 
-    auto rsp(call(ListClientConnections::method_name(), req));
+    auto rsp(call(ListClientConnections::method_name(), req, timeout));
 
     std::vector<ClientInfo> info;
     for (auto i = 0; i < rsp.size(); ++i)
@@ -494,30 +531,33 @@ PythonClient::list_client_connections(const std::string& node_id)
 
 XMLRPCSnapshotInfo
 PythonClient::info_snapshot(const std::string& volume_id,
-                            const std::string& snapshot_id)
+                            const std::string& snapshot_id,
+                            const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
 
     req[XMLRPCKeys::volume_id] = volume_id;
     req[XMLRPCKeys::snapshot_id] = snapshot_id;
 
-    auto rsp(call(SnapshotInfo::method_name(), req));
+    auto rsp(call(SnapshotInfo::method_name(), req, timeout));
     return XMLRPCStructs::deserialize_from_xmlrpc_value<XMLRPCSnapshotInfo>(rsp);
 }
 
 XMLRPCVolumeInfo
-PythonClient::info_volume(const std::string& volume_id)
+PythonClient::info_volume(const std::string& volume_id,
+                          const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
 
     req[XMLRPCKeys::volume_id] = volume_id;
-    auto rsp(call(VolumeInfo::method_name(), req));
+    auto rsp(call(VolumeInfo::method_name(), req, timeout));
     return XMLRPCStructs::deserialize_from_xmlrpc_value<XMLRPCVolumeInfo>(rsp);
 }
 
 XMLRPCStatistics
 PythonClient::statistics_volume(const std::string& volume_id,
-                                bool reset)
+                                bool reset,
+                                const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
 
@@ -526,13 +566,14 @@ PythonClient::statistics_volume(const std::string& volume_id,
                      XMLRPCKeys::reset,
                      reset);
 
-    auto rsp(call(VolumePerformanceCounters::method_name(), req));
+    auto rsp(call(VolumePerformanceCounters::method_name(), req, timeout));
     return XMLRPCStructs::deserialize_from_xmlrpc_value<XMLRPCStatistics>(rsp);
 }
 
 XMLRPCStatistics
 PythonClient::statistics_node(const std::string& node_id,
-                              bool reset)
+                              bool reset,
+                              const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
 
@@ -541,16 +582,17 @@ PythonClient::statistics_node(const std::string& node_id,
                      XMLRPCKeys::reset,
                      reset);
 
-    auto rsp(call(VolumeDriverPerformanceCounters::method_name(), req));
+    auto rsp(call(VolumeDriverPerformanceCounters::method_name(), req, timeout));
     return XMLRPCStructs::deserialize_from_xmlrpc_value<XMLRPCStatistics>(rsp);
 }
 
 boost::optional<vd::VolumeId>
-PythonClient::get_volume_id(const std::string& path)
+PythonClient::get_volume_id(const std::string& path,
+                            const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::target_path] = path;
-    auto rsp(call(GetVolumeId::method_name(), req));
+    auto rsp(call(GetVolumeId::method_name(), req, timeout));
 
     const std::string id(rsp[XMLRPCKeys::volume_id]);
     if (id.empty())
@@ -564,11 +606,12 @@ PythonClient::get_volume_id(const std::string& path)
 }
 
 boost::optional<ObjectId>
-PythonClient::get_object_id(const std::string& path)
+PythonClient::get_object_id(const std::string& path,
+                            const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::target_path] = path;
-    auto rsp(call(GetObjectId::method_name(), req));
+    auto rsp(call(GetObjectId::method_name(), req, timeout));
 
     const std::string id(rsp[XMLRPCKeys::object_id]);
     if (id.empty())
@@ -584,7 +627,8 @@ PythonClient::get_object_id(const std::string& path)
 std::string
 PythonClient::create_snapshot(const std::string& volume_id,
                               const std::string& snapshot_id,
-                              const std::string& meta)
+                              const std::string& meta,
+                              const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
 
@@ -592,7 +636,7 @@ PythonClient::create_snapshot(const std::string& volume_id,
     req[XMLRPCKeys::snapshot_id] = snapshot_id;
     req[XMLRPCKeys::metadata] = XmlRpc::XmlRpcValue(meta.data(), meta.size());
 
-    auto rsp(call(SnapshotCreate::method_name(), req));
+    auto rsp(call(SnapshotCreate::method_name(), req, timeout));
     return rsp;
 }
 
@@ -600,7 +644,8 @@ std::string
 PythonClient::create_volume(const std::string& target_path,
                             boost::shared_ptr<vd::MetaDataBackendConfig> mdb_config,
                             const yt::DimensionedValue& volume_size,
-                            const std::string& node_id)
+                            const std::string& node_id,
+                            const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
 
@@ -618,20 +663,21 @@ PythonClient::create_volume(const std::string& target_path,
         req[XMLRPCKeys::vrouter_id] = node_id;
     }
 
-    auto rsp(call(VolumeCreate::method_name(), req));
+    auto rsp(call(VolumeCreate::method_name(), req, timeout));
     return rsp[XMLRPCKeys::volume_id];
 }
 
 void
 PythonClient::resize(const std::string& object_id,
-                     const yt::DimensionedValue& size)
+                     const yt::DimensionedValue& size,
+                     const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
 
     req[XMLRPCKeys::volume_id] = object_id;
     req[XMLRPCKeys::volume_size] = size.toString();
 
-    call(ResizeObject::method_name(), req);
+    call(ResizeObject::method_name(), req, timeout);
 }
 
 std::string
@@ -639,7 +685,8 @@ PythonClient::create_clone(const std::string& target_path,
                            boost::shared_ptr<vd::MetaDataBackendConfig> mdb_config,
                            const std::string& parent_volume_id,
                            const std::string& parent_snap_id,
-                           const std::string& node_id)
+                           const std::string& node_id,
+                           const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
 
@@ -657,7 +704,7 @@ PythonClient::create_clone(const std::string& target_path,
         req[XMLRPCKeys::vrouter_id] = node_id;
     }
 
-    auto rsp(call(VolumeClone::method_name(), req));
+    auto rsp(call(VolumeClone::method_name(), req, timeout));
     return rsp[XMLRPCKeys::volume_id];
 }
 
@@ -665,28 +712,32 @@ std::string
 PythonClient::create_clone_from_template(const std::string& target_path,
                                          boost::shared_ptr<vd::MetaDataBackendConfig> mdb_config,
                                          const std::string& parent_volume_id,
-                                         const std::string& node_id)
+                                         const std::string& node_id,
+                                         const MaybeSeconds& timeout)
 {
     return create_clone(target_path,
                         mdb_config,
                         parent_volume_id,
                         "",
-                        node_id);
+                        node_id,
+                        timeout);
 }
 
 void
-PythonClient::unlink(const std::string& target_path)
+PythonClient::unlink(const std::string& target_path,
+                     const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::target_path] = target_path;
 
-    call(Unlink::method_name(), req);
+    call(Unlink::method_name(), req, timeout);
 }
 
 void
 PythonClient::update_metadata_backend_config(const std::string& volume_id,
                                              boost::shared_ptr<vd::MetaDataBackendConfig>
-                                             mdb_config)
+                                             mdb_config,
+                                             const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
 
@@ -694,11 +745,12 @@ PythonClient::update_metadata_backend_config(const std::string& volume_id,
     req[XMLRPCKeys::metadata_backend_config] =
         XMLRPCStructs::serialize_to_xmlrpc_value(mdb_config->clone());
 
-    call(UpdateMetaDataBackendConfig::method_name(), req);
+    call(UpdateMetaDataBackendConfig::method_name(), req, timeout);
 }
 
 uint64_t
-PythonClient::volume_potential(const std::string& node_id)
+PythonClient::volume_potential(const std::string& node_id,
+                               const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     if(not node_id.empty())
@@ -708,46 +760,50 @@ PythonClient::volume_potential(const std::string& node_id)
 
     req[XMLRPCKeys::sco_size] = boost::lexical_cast<std::string>(default_sco_size);
 
-    auto rsp(call(VolumePotential::method_name(), req));
+    auto rsp(call(VolumePotential::method_name(), req, timeout));
     std::string res = rsp[XMLRPCKeys::volume_potential];
     return boost::lexical_cast<uint64_t>(res);
 }
 
 void
 PythonClient::rollback_volume(const std::string& volume_id,
-                              const std::string& snapshot_id)
+                              const std::string& snapshot_id,
+                              const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
 
     req[XMLRPCKeys::volume_id] = volume_id;
     req[XMLRPCKeys::snapshot_id] = snapshot_id;
-    call(SnapshotRestore::method_name(), req);
+    call(SnapshotRestore::method_name(), req, timeout);
 }
 
 void
 PythonClient::delete_snapshot(const std::string& volume_id,
-                              const std::string& snapshot_id)
+                              const std::string& snapshot_id,
+                              const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
 
     req[XMLRPCKeys::volume_id] = volume_id;
     req[XMLRPCKeys::snapshot_id] = snapshot_id;
-    call(SnapshotDestroy::method_name(), req);
+    call(SnapshotDestroy::method_name(), req, timeout);
 }
 
 void
-PythonClient::set_volume_as_template(const std::string& volume_id)
+PythonClient::set_volume_as_template(const std::string& volume_id,
+                                     const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
 
     req[XMLRPCKeys::volume_id] = volume_id;
-    call(SetVolumeAsTemplate::method_name(), req);
+    call(SetVolumeAsTemplate::method_name(), req, timeout);
 }
 
 void
 PythonClient::migrate(const std::string& object_id,
                       const std::string& node_id,
-                      bool force_restart)
+                      bool force_restart,
+                      const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = object_id;
@@ -756,12 +812,13 @@ PythonClient::migrate(const std::string& object_id,
     XMLRPCUtils::put(req,
                      XMLRPCKeys::force,
                      force_restart);
-    call(MigrateObject::method_name(), req);
+    call(MigrateObject::method_name(), req, timeout);
 }
 
 void
 PythonClient::stop_object(const std::string& object_id,
-                          bool delete_local_data)
+                          bool delete_local_data,
+                          const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
 
@@ -771,25 +828,28 @@ PythonClient::stop_object(const std::string& object_id,
                      delete_local_data);
 
     call(StopObject::method_name(),
-         req);
+         req,
+         timeout);
 }
 
 
 void
 PythonClient::restart_object(const std::string& object_id,
-                             bool force_restart)
+                             bool force_restart,
+                             const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = object_id;
     XMLRPCUtils::put(req,
                      XMLRPCKeys::force,
                      force_restart);
-    call(RestartObject::method_name(), req);
+    call(RestartObject::method_name(), req, timeout);
 }
 
 void
 PythonClient::set_cluster_cache_behaviour(const std::string& volume_id,
-                                          const boost::optional<vd::ClusterCacheBehaviour>& b)
+                                          const boost::optional<vd::ClusterCacheBehaviour>& b,
+                                          const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
@@ -801,17 +861,20 @@ PythonClient::set_cluster_cache_behaviour(const std::string& volume_id,
     }
 
     call(SetClusterCacheBehaviour::method_name(),
-         req);
+         req,
+         timeout);
 }
 
 boost::optional<vd::ClusterCacheBehaviour>
-PythonClient::get_cluster_cache_behaviour(const std::string& volume_id)
+PythonClient::get_cluster_cache_behaviour(const std::string& volume_id,
+                                          const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
 
     auto rsp(call(GetClusterCacheBehaviour::method_name(),
-                  req));
+                  req,
+                  timeout));
 
     boost::optional<vd::ClusterCacheBehaviour> b;
 
@@ -826,7 +889,8 @@ PythonClient::get_cluster_cache_behaviour(const std::string& volume_id)
 
 void
 PythonClient::set_cluster_cache_mode(const std::string& volume_id,
-                                     const boost::optional<vd::ClusterCacheMode>& m)
+                                     const boost::optional<vd::ClusterCacheMode>& m,
+                                     const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
@@ -838,17 +902,20 @@ PythonClient::set_cluster_cache_mode(const std::string& volume_id,
     }
 
     call(SetClusterCacheMode::method_name(),
-         req);
+         req,
+         timeout);
 }
 
 boost::optional<vd::ClusterCacheMode>
-PythonClient::get_cluster_cache_mode(const std::string& volume_id)
+PythonClient::get_cluster_cache_mode(const std::string& volume_id,
+                                     const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
 
     auto rsp(call(GetClusterCacheMode::method_name(),
-                  req));
+                  req,
+                  timeout));
 
     boost::optional<vd::ClusterCacheMode> m;
 
@@ -862,10 +929,10 @@ PythonClient::get_cluster_cache_mode(const std::string& volume_id)
 }
 
 std::string
-PythonClient::server_revision()
+PythonClient::server_revision(const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
-    return call(Revision::method_name(), req);
+    return call(Revision::method_name(), req, timeout);
 }
 
 std::string
@@ -875,26 +942,28 @@ PythonClient::client_revision()
 }
 
 void
-PythonClient::mark_node_offline(const std::string& node_id)
+PythonClient::mark_node_offline(const std::string& node_id,
+                                const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::vrouter_id] = node_id;
-    call(MarkNodeOffline::method_name(), req);
+    call(MarkNodeOffline::method_name(), req, timeout);
 }
 
 void
-PythonClient::mark_node_online(const std::string& node_id)
+PythonClient::mark_node_online(const std::string& node_id,
+                               const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::vrouter_id] = node_id;
-    call(MarkNodeOnline::method_name(), req);
+    call(MarkNodeOnline::method_name(), req, timeout);
 }
 
 std::map<NodeId, ClusterNodeStatus::State>
-PythonClient::info_cluster()
+PythonClient::info_cluster(const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
-    auto rsp(call(GetNodesStatusMap::method_name(), req));
+    auto rsp(call(GetNodesStatusMap::method_name(), req, timeout));
     ClusterRegistry::NodeStatusMap nodestatusmap(XMLRPCStructs::deserialize_from_xmlrpc_value<ClusterRegistry::NodeStatusMap>(rsp));
 
     std::map<NodeId, ClusterNodeStatus::State> ret;
@@ -907,7 +976,8 @@ PythonClient::info_cluster()
 }
 
 void
-PythonClient::update_cluster_node_configs(const std::string& node_id)
+PythonClient::update_cluster_node_configs(const std::string& node_id,
+                                          const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
 
@@ -916,12 +986,13 @@ PythonClient::update_cluster_node_configs(const std::string& node_id)
         req[XMLRPCKeys::vrouter_id] = node_id;
     }
 
-    call(UpdateClusterNodeConfigs::method_name(), req);
+    call(UpdateClusterNodeConfigs::method_name(), req, timeout);
 }
 
 void
 PythonClient::set_cluster_cache_limit(const std::string& volume_id,
-                                      const boost::optional<vd::ClusterCount>& l)
+                                      const boost::optional<vd::ClusterCount>& l,
+                                      const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
@@ -933,17 +1004,20 @@ PythonClient::set_cluster_cache_limit(const std::string& volume_id,
     }
 
     call(SetClusterCacheLimit::method_name(),
-         req);
+         req,
+         timeout);
 }
 
 boost::optional<vd::ClusterCount>
-PythonClient::get_cluster_cache_limit(const std::string& volume_id)
+PythonClient::get_cluster_cache_limit(const std::string& volume_id,
+                                      const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
 
     auto rsp(call(GetClusterCacheLimit::method_name(),
-                  req));
+                  req,
+                  timeout));
 
     boost::optional<vd::ClusterCount> l;
 
@@ -960,7 +1034,8 @@ void
 PythonClient::vaai_copy(const std::string& src_path,
                         const std::string& target_path,
                         const uint64_t& timeout,
-                        const CloneFileFlags& flags)
+                        const CloneFileFlags& flags,
+                        const MaybeSeconds& xtimeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::src_path] = src_path;
@@ -969,7 +1044,8 @@ PythonClient::vaai_copy(const std::string& src_path,
     req[XMLRPCKeys::flags] = std::to_string(static_cast<int>(flags));
 
     call(VAAICopy::method_name(),
-         req);
+         req,
+         xtimeout);
 }
 
 LockedPythonClient::Ptr
@@ -988,12 +1064,14 @@ PythonClient::make_locked_client(const std::string& volume_id,
 }
 
 vd::TLogName
-PythonClient::schedule_backend_sync(const std::string& volume_id)
+PythonClient::schedule_backend_sync(const std::string& volume_id,
+                                    const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
     auto rsp(call(ScheduleBackendSync::method_name(),
-                  req));
+                  req,
+                  timeout));
 
     const vd::TLogName tlog_name(rsp[XMLRPCKeys::tlog_name]);
     return tlog_name;
@@ -1001,34 +1079,39 @@ PythonClient::schedule_backend_sync(const std::string& volume_id)
 
 bool
 PythonClient::is_volume_synced_up_to_tlog(const std::string& volume_id,
-                                          const vd::TLogName& tlog_name)
+                                          const vd::TLogName& tlog_name,
+                                          const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
     req[XMLRPCKeys::tlog_name] = tlog_name;
 
     return call(IsVolumeSyncedUpToTLog::method_name(),
-                req);
+                req,
+                timeout);
 }
 
 bool
 PythonClient::is_volume_synced_up_to_snapshot(const std::string& volume_id,
-                                              const std::string& snapshot_name)
+                                              const std::string& snapshot_name,
+                                              const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
     req[XMLRPCKeys::snapshot_id] = snapshot_name;
 
     return call(IsVolumeSyncedUpToSnapshot::method_name(),
-                req);
+                req,
+                timeout);
 }
 
 boost::optional<size_t>
-PythonClient::get_metadata_cache_capacity(const std::string& volume_id)
+PythonClient::get_metadata_cache_capacity(const std::string& volume_id,
+                                          const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
-    auto rsp(call(GetMetaDataCacheCapacity::method_name(), req));
+    auto rsp(call(GetMetaDataCacheCapacity::method_name(), req, timeout));
 
     if (rsp.hasMember(XMLRPCKeys::metadata_cache_capacity))
     {
@@ -1042,7 +1125,8 @@ PythonClient::get_metadata_cache_capacity(const std::string& volume_id)
 
 void
 PythonClient::set_metadata_cache_capacity(const std::string& volume_id,
-                                          const boost::optional<size_t>& num_pages)
+                                          const boost::optional<size_t>& num_pages,
+                                          const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::volume_id] = volume_id;
@@ -1051,7 +1135,7 @@ PythonClient::set_metadata_cache_capacity(const std::string& volume_id,
         req[XMLRPCKeys::metadata_cache_capacity] =
             boost::lexical_cast<std::string>(*num_pages);
     }
-    auto rsp(call(SetMetaDataCacheCapacity::method_name(), req));
+    auto rsp(call(SetMetaDataCacheCapacity::method_name(), req, timeout));
 }
 
 }
