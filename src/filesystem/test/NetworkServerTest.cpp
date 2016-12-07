@@ -43,6 +43,9 @@
 namespace volumedriverfstest
 {
 
+#define LOCKVD()                                        \
+    fungi::ScopedLock ag__(api::getManagementMutex())
+
 namespace bc = boost::chrono;
 namespace bpt = boost::property_tree;
 namespace bpy = boost::python;
@@ -2097,6 +2100,44 @@ TEST_F(NetworkServerTest, get_cluster_multiplier)
 
     EXPECT_EQ(vd::VolumeConfig::default_cluster_multiplier(),
               cluster_multiplier);
+}
+
+TEST_F(NetworkServerTest, get_clone_namespace_map)
+{
+    using CloneNamespaceMap = std::map<uint8_t, std::string>;
+    CtxAttrPtr attrs(make_ctx_attr(1024,
+                                   false,
+                                   FileSystemTestSetup::local_edge_port()));
+    CtxPtr ctx(ovs_ctx_new(attrs.get()));
+    ASSERT_TRUE(ctx != nullptr);
+
+    const std::string vname("volume");
+    const size_t vsize = 1ULL << 20;
+
+    ASSERT_EQ(0,
+              ovs_create_volume(ctx.get(),
+                                vname.c_str(),
+                                vsize));
+
+    auto& ctx_iface = dynamic_cast<ovs_context_t&>(*ctx);
+
+    CloneNamespaceMap cn;
+    ctx_iface.get_clone_namespace_map(vname.c_str(),
+                                      cn);
+
+    EXPECT_EQ(1UL, cn.size());
+
+    auto conn(cm_->getConnection());
+    vd::VolumeConfig cfg;
+    {
+        LOCKVD();
+        const FrontendPath vname(make_volume_name("/volume"));
+        auto object_id = find_object(vname);
+        ASSERT_TRUE(object_id != nullptr);
+        cfg = api::getVolumeConfig(vd::VolumeId(*object_id));
+    }
+    EXPECT_TRUE(conn->namespaceExists(cfg.getNS()));
+    EXPECT_EQ(cfg.getNS().str(), cn[0]);
 }
 
 } //namespace
