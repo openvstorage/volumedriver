@@ -13,11 +13,12 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "ClusterRegistry.h"
 #include "NetworkXioIOHandler.h"
+#include "NetworkXioMsgpackAdaptors.h"
 #include "NetworkXioProtocol.h"
 #include "ObjectRouter.h"
 #include "PythonClient.h" // clienterrors
-#include "ClusterRegistry.h"
 
 #include <youtils/Assert.h>
 #include <youtils/Catchers.h>
@@ -134,6 +135,14 @@ NetworkXioIOHandler::get_neighbours(const ClusterRegistry::NeighbourMap& nmap)
     }
 
     return std::make_pair(std::move(uris), total_size);
+}
+
+std::string
+NetworkXioIOHandler::pack_map(const vd::CloneNamespaceMap& cn)
+{
+    msgpack::sbuffer buffer;
+    msgpack::pack(buffer, cn);
+    return std::string(buffer.data(), buffer.size());
 }
 
 void
@@ -445,7 +454,8 @@ NetworkXioIOHandler::handle_stat_volume(NetworkXioRequest *req,
         }
         else
         {
-            req->retval = fs_.object_router().get_size(*volume_id);
+            req->offset_and_generic = fs_.object_router().get_size(*volume_id);
+            req->retval = 0;
             req->errval = 0;
         }
     }
@@ -1002,6 +1012,53 @@ NetworkXioIOHandler::handle_get_cluster_multiplier(NetworkXioRequest *req,
 }
 
 void
+NetworkXioIOHandler::handle_get_clone_namespace_map(NetworkXioRequest *req,
+                                                    const std::string& vname)
+{
+    VERIFY(not handle_);
+    req->op = NetworkXioMsgOpcode::GetCloneNamespaceMapRsp;
+
+    auto& router_ = fs_.object_router();
+    const FrontendPath volume_path(make_volume_path(vname));
+    try
+    {
+        boost::optional<ObjectId> volid(fs_.find_id(volume_path));
+        if (not volid)
+        {
+            req->retval = -1;
+            req->errval = ENOENT;
+            pack_ctrl_msg(req);
+            return;
+        }
+        std::string buffer(pack_map(router_.get_clone_namespace_map(*volid)));
+
+        int ret = xio_mem_alloc(buffer.size(), &req->reg_mem);
+        if (ret < 0)
+        {
+            LOG_ERROR("failed to allocate buffer of size " << buffer.size());
+            throw std::bad_alloc();
+        }
+        memcpy(req->reg_mem.addr, buffer.data(), buffer.size());
+        req->retval = 0;
+        req->errval = 0;
+        req->data_len = buffer.size();
+        req->data = req->reg_mem.addr;
+        req->from_pool = false;
+    }
+    catch (std::bad_alloc&)
+    {
+        req->errval = ENOMEM;
+        req->retval = -1;
+    }
+    CATCH_STD_ALL_EWHAT({
+       LOG_ERROR("get_clone_namespace_map error: " << EWHAT);
+       req->retval = -1;
+       req->errval = EIO;
+    });
+    pack_ctrl_msg(req);
+}
+
+void
 NetworkXioIOHandler::handle_error(NetworkXioRequest *req,
                                   NetworkXioMsgOpcode op,
                                   int errval)
@@ -1126,6 +1183,12 @@ NetworkXioIOHandler::process_ctrl_request(NetworkXioRequest *req)
     {
         handle_get_cluster_multiplier(req,
                                       i_msg.volume_name());
+        break;
+    }
+    case NetworkXioMsgOpcode::GetCloneNamespaceMapReq:
+    {
+        handle_get_clone_namespace_map(req,
+                                       i_msg.volume_name());
         break;
     }
     default:

@@ -38,7 +38,7 @@ struct NetworkXioRequest
         , data(nullptr)
         , data_len(0)
         , size(0)
-        , offset(0)
+        , offset_and_generic(0)
         , dtl_in_sync(true)
         , retval(0)
         , errval(0)
