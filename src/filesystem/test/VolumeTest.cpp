@@ -1651,6 +1651,34 @@ TEST_F(VolumeTest, get_cluster_multiplier)
               api::GetClusterMultiplier(v));
 }
 
+TEST_F(VolumeTest, get_clone_namespace_map)
+{
+    const FrontendPath fname(make_volume_name("/volume"));
+    const ObjectId vname(create_file(fname));
+
+    vd::WeakVolumePtr v;
+
+    {
+        LOCKVD();
+        v = api::getVolumePointer(vd::VolumeId(vname.str()));
+    }
+
+    vd::CloneNamespaceMap cnmap = api::GetCloneNamespaceMap(v);
+
+    EXPECT_EQ(1UL, cnmap.size());
+
+    auto conn(cm_->getConnection());
+    vd::VolumeConfig cfg;
+
+    {
+        LOCKVD();
+        cfg = api::getVolumeConfig(vd::VolumeId(vname.str()));
+    }
+
+    EXPECT_TRUE(conn->namespaceExists(cfg.getNS()));
+    EXPECT_EQ(cfg.getNS(), cnmap[vd::SCOCloneID(0)]);
+}
+
 }
 
 // Local Variables: **

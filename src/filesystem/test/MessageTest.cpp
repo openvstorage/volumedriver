@@ -210,6 +210,59 @@ TEST_F(MessageTest, get_cluster_multiplier_response)
     EXPECT_EQ(static_cast<uint32_t>(cm), msg2.size());
 }
 
+TEST_F(MessageTest, get_clone_namespace_map_request)
+{
+    const vfs::ObjectId id("volume");
+    const vfs::ObjectType tp = vfs::ObjectType::File;
+
+    const auto msg(vfsprotocol::MessageUtils::create_get_clone_namespace_map_request(vfs::Object(tp, id)));
+    ASSERT_TRUE(msg.IsInitialized());
+
+    const std::string s(msg.SerializeAsString());
+
+    vfsprotocol::GetCloneNamespaceMapRequest msg2;
+    msg2.ParseFromString(s);
+    ASSERT_TRUE(msg2.IsInitialized());
+
+    EXPECT_EQ(id.str(), msg2.object_id());
+    check_object_type(msg2, tp);
+}
+
+TEST_F(MessageTest, get_clone_namespace_map_response)
+{
+    vd::CloneNamespaceMap cnm;
+    auto clone_id_0 = vd::SCOCloneID(88);
+    auto ns0 = backend::Namespace(std::string("namespace0"));
+    cnm.emplace(clone_id_0, ns0);
+
+    auto clone_id_1 = vd::SCOCloneID(89);
+    auto ns1 = backend::Namespace(std::string("namespace1"));
+    cnm.emplace(clone_id_1, ns1);
+
+    const auto msg(vfsprotocol::MessageUtils::create_get_clone_namespace_map_response(cnm));
+    ASSERT_TRUE(msg.IsInitialized());
+
+    const std::string s(msg.SerializeAsString());
+
+    vfsprotocol::GetCloneNamespaceMapResponse msg2;
+    msg2.ParseFromString(s);
+
+    ASSERT_TRUE(msg2.IsInitialized());
+    EXPECT_EQ(2UL, msg2.map_entry_size());
+
+    vd::CloneNamespaceMap tmp;
+    for (int i = 0; i < msg2.map_entry_size(); i++)
+    {
+        const auto& e = msg2.map_entry(i);
+        tmp.emplace(vd::SCOCloneID(e.clone_id()), backend::Namespace(e.ns()));
+    }
+    EXPECT_TRUE(tmp.find(clone_id_0) != tmp.end());
+    EXPECT_EQ(ns0, tmp.find(clone_id_0)->second);
+
+    EXPECT_TRUE(tmp.find(clone_id_1) != tmp.end());
+    EXPECT_EQ(ns1, tmp.find(clone_id_1)->second);
+}
+
 TEST_F(MessageTest, delete_request)
 {
     const vfs::ObjectId id("volume");
