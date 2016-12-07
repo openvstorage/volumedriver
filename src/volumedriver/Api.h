@@ -133,6 +133,9 @@ public:
     static volumedriver::ClusterMultiplier
     GetClusterMultiplier(volumedriver::WeakVolumePtr);
 
+    static volumedriver::CloneNamespaceMap
+    GetCloneNamespaceMap(volumedriver::WeakVolumePtr);
+
     static uint64_t
     GetLbaSize(volumedriver::WeakVolumePtr);
 

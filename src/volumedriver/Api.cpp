@@ -137,6 +137,20 @@ api::GetClusterMultiplier(vd::WeakVolumePtr vol)
     return SharedVolumePtr(vol)->getClusterMultiplier();
 }
 
+vd::CloneNamespaceMap
+api::GetCloneNamespaceMap(vd::WeakVolumePtr vol)
+{
+    vd::CloneNamespaceMap cnmap;
+    auto& nsid_map = SharedVolumePtr(vol)->getNSIDMap();
+    for (size_t i = 0; i < nsid_map.size(); i++)
+    {
+        auto& bi = nsid_map.get(i);
+        VERIFY(bi);
+        cnmap.emplace(SCOCloneID(i), bi->getNS());
+    }
+    return cnmap;
+}
+
 void
 api::Resize(vd::WeakVolumePtr vol,
             uint64_t clusters)
