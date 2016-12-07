@@ -836,6 +836,21 @@ LocalNode::get_cluster_multiplier_(vd::WeakVolumePtr vol)
     return api::GetClusterMultiplier(vol);
 }
 
+vd::CloneNamespaceMap
+LocalNode::get_clone_namespace_map(const Object& obj)
+{
+    RWLockPtr l(get_lock_(obj.id));
+    fungi::ScopedReadLock rg(*l);
+    return with_volume_pointer_(&LocalNode::get_clone_namespace_map_,
+                                obj.id);
+}
+
+vd::CloneNamespaceMap
+LocalNode::get_clone_namespace_map_(vd::WeakVolumePtr vol)
+{
+    return api::GetCloneNamespaceMap(vol);
+}
+
 void
 LocalNode::resize(const Object& obj,
                   uint64_t newsize)

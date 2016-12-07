@@ -393,6 +393,12 @@ ObjectRouter::redirected_work_(ZWorkerPool::MessageParts parts_in)
                 parts_out.emplace_back(handle_get_cluster_multiplier_(get_req<vfsprotocol::GetClusterMultiplierRequest>(parts_in)));
                 break;
             }
+        case vfsprotocol::RequestType::GetCloneNamespaceMap:
+            {
+                CHECK(parts_in.size() == 3);
+                parts_out.emplace_back(handle_get_clone_namespace_map_(get_req<vfsprotocol::GetCloneNamespaceMapRequest>(parts_in)));
+                break;
+            }
         case vfsprotocol::RequestType::Resize:
             {
                 CHECK(parts_in.size() == 3);
@@ -1238,6 +1244,31 @@ ObjectRouter::handle_get_cluster_multiplier_(const vfsprotocol::GetClusterMultip
     const vd::ClusterMultiplier cm =
         local_node_()->get_cluster_multiplier(obj);
     const auto rsp(vfsprotocol::MessageUtils::create_get_cluster_multiplier_response(cm));
+    return ZUtils::serialize_to_message(rsp);
+}
+
+vd::CloneNamespaceMap
+ObjectRouter::get_clone_namespace_map(const ObjectId& id)
+{
+    LOG_TRACE(id);
+
+    FastPathCookie cookie;
+
+    return route_(&ClusterNode::get_clone_namespace_map,
+                  AttemptTheft::T,
+                  id,
+                  cookie);
+}
+
+zmq::message_t
+ObjectRouter::handle_get_clone_namespace_map_(const vfsprotocol::GetCloneNamespaceMapRequest& msg)
+{
+    const Object obj(obj_from_msg(msg));
+
+    LOG_TRACE(obj);
+    const vd::CloneNamespaceMap cnmap =
+        local_node_()->get_clone_namespace_map(obj);
+    const auto rsp(vfsprotocol::MessageUtils::create_get_clone_namespace_map_response(cnmap));
     return ZUtils::serialize_to_message(rsp);
 }
 

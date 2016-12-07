@@ -588,6 +588,39 @@ RemoteNode::get_cluster_multiplier(const Object& obj)
     return vd::ClusterMultiplier(size);
 }
 
+vd::CloneNamespaceMap
+RemoteNode::get_clone_namespace_map(const Object& obj)
+{
+    LOG_TRACE(config.vrouter_id << ": obj " << obj.id);
+
+    vd::CloneNamespaceMap cnmap;
+    ExtraRecvFun get_clone_namespace_map([&]
+                          {
+                            ZEXPECT_MORE(*zock_,
+                                         "GetCloneNamespaceMapResponse");
+
+                            vfsprotocol::GetCloneNamespaceMapResponse rsp;
+                            ZUtils::deserialize_from_socket(*zock_, rsp);
+
+                            rsp.CheckInitialized();
+                            for (int i = 0; i < rsp.map_entry_size(); i++)
+                            {
+                                const auto& e = rsp.map_entry(i);
+                                cnmap.emplace(vd::SCOCloneID(e.clone_id()),
+                                               backend::Namespace(e.ns()));
+                            }
+                          });
+
+    const auto req(vfsprotocol::MessageUtils::create_get_clone_namespace_map_request(obj));
+
+    handle_(req,
+            vrouter_.redirect_timeout(),
+            nullptr,
+            &get_clone_namespace_map);
+
+    return cnmap;
+}
+
 void
 RemoteNode::resize(const Object& obj,
                    uint64_t newsize)

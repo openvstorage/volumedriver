@@ -106,6 +106,9 @@ public:
     virtual volumedriver::ClusterMultiplier
     get_cluster_multiplier(const Object& obj) override final;
 
+    virtual volumedriver::CloneNamespaceMap
+    get_clone_namespace_map(const Object& obj) override final;
+
     virtual void
     resize(const Object& obj,
            uint64_t newsize) override final;
@@ -351,6 +354,9 @@ private:
 
     volumedriver::ClusterMultiplier
     get_cluster_multiplier_(volumedriver::WeakVolumePtr vol);
+
+    volumedriver::CloneNamespaceMap
+    get_clone_namespace_map_(volumedriver::WeakVolumePtr vol);
 
     void
     resize_(volumedriver::WeakVolumePtr vol,

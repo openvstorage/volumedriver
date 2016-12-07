@@ -63,6 +63,9 @@ public:
     virtual volumedriver::ClusterMultiplier
     get_cluster_multiplier(const Object&) = 0;
 
+    virtual volumedriver::CloneNamespaceMap
+    get_clone_namespace_map(const Object&) = 0;
+
     virtual void
     resize(const Object& obj,
            uint64_t newsize) = 0;

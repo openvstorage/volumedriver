@@ -60,6 +60,7 @@ class ResizeRequest;
 class DeleteRequest;
 class TransferRequest;
 class GetClusterMultiplierRequest;
+class GetCloneNamespaceMapRequest;
 
 }
 
@@ -193,6 +194,9 @@ public:
 
     volumedriver::ClusterMultiplier
     get_cluster_multiplier(const ObjectId&);
+
+    volumedriver::CloneNamespaceMap
+    get_clone_namespace_map(const ObjectId&);
 
     void
     resize(const ObjectId& id,
@@ -563,6 +567,9 @@ private:
 
     zmq::message_t
     handle_get_cluster_multiplier_(const vfsprotocol::GetClusterMultiplierRequest&);
+
+    zmq::message_t
+    handle_get_clone_namespace_map_(const vfsprotocol::GetCloneNamespaceMapRequest&);
 
     void
     handle_resize_(const vfsprotocol::ResizeRequest&);
