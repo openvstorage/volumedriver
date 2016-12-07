@@ -163,6 +163,34 @@ MessageUtils::create_get_cluster_multiplier_response(const vd::ClusterMultiplier
 
 }
 
+GetCloneNamespaceMapRequest
+MessageUtils::create_get_clone_namespace_map_request(const vfs::Object& obj)
+{
+    GetCloneNamespaceMapRequest msg;
+    msg.set_object_id(obj.id.str());
+    msg.set_object_type(static_cast<uint32_t>(obj.type));
+
+    msg.CheckInitialized();
+
+    return msg;
+}
+
+GetCloneNamespaceMapResponse
+MessageUtils::create_get_clone_namespace_map_response(const vd::CloneNamespaceMap cnm)
+{
+    GetCloneNamespaceMapResponse msg;
+    for (auto& e: cnm)
+    {
+        GetCloneNamespaceMapResponse::MapEntry *entry = msg.add_map_entry();
+        entry->set_clone_id(static_cast<uint32_t>(e.first));
+        entry->set_ns(e.second.str());
+    }
+
+    msg.CheckInitialized();
+
+    return msg;
+}
+
 DeleteRequest
 MessageUtils::create_delete_request(const vfs::Object& obj)
 {

@@ -60,6 +60,22 @@ message GetClusterMultiplierResponse
 	required uint32 size = 1;
 }
 
+message GetCloneNamespaceMapRequest
+{
+	required string object_id = 1;
+	required uint32 object_type = 2;
+}
+
+message GetCloneNamespaceMapResponse
+{
+    message MapEntry
+    {
+        required uint32 clone_id = 1;
+        required string ns = 2;
+    }
+    repeated MapEntry map_entry = 3;
+}
+
 message ResizeRequest
 {
 	required string object_id = 1;

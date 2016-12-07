@@ -65,6 +65,12 @@ struct MessageUtils
     static GetClusterMultiplierResponse
     create_get_cluster_multiplier_response(const volumedriver::ClusterMultiplier);
 
+    static GetCloneNamespaceMapRequest
+    create_get_clone_namespace_map_request(const volumedriverfs::Object&);
+
+    static GetCloneNamespaceMapResponse
+    create_get_clone_namespace_map_response(const volumedriver::CloneNamespaceMap);
+
     static ResizeRequest
     create_resize_request(const volumedriverfs::Object&,
                           uint64_t newsize);
