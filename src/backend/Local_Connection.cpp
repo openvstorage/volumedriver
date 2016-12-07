@@ -55,23 +55,11 @@ DECLARE_LOGGER("LocalConnectionUtils");
 std::string
 make_mutex_name(const fs::path& path)
 {
-    VERIFY(path.string().size() < NAME_MAX - 4);
-    std::string s;
-    bool fst = true;
-    for (const auto& p : path)
-    {
-        if (fst)
-        {
-            fst = false;
-        }
-        else
-        {
-            s += "-";
-        }
+    std::string s(fs::absolute(path).string());
+    VERIFY(s.size() > 0);
+    VERIFY(s.size() < NAME_MAX - 4);
 
-        s += p.string();
-    }
-
+    std::replace(s.begin() + 1, s.end(), '/', '-');
     VERIFY(s[0] == '/');
 
     return s;
