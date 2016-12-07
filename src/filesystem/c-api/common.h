@@ -21,6 +21,7 @@
 #include "volumedriver.h"
 
 #include <string>
+#include <map>
 #include <libxio.h>
 
 enum class RequestOp
@@ -71,4 +72,6 @@ struct ovs_completion
     pthread_cond_t _cond;
     pthread_mutex_t _mutex;
 };
+
+typedef std::map<uint8_t, std::string> CloneNamespaceMap;
 #endif

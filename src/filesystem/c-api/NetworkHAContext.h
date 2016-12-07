@@ -105,6 +105,10 @@ public:
                            uint32_t *cluster_multiplier) override final;
 
     int
+    get_clone_namespace_map(const char *volume_name,
+                            CloneNamespaceMap& cn) override final;
+
+    int
     send_read_request(ovs_aio_request*) override final;
 
     int
@@ -120,7 +124,7 @@ public:
     allocate(size_t size) override final;
 
     int
-    deallocate(ovs_buffer_t *ptr);
+    deallocate(ovs_buffer_t *ptr) override final;
 
     bool
     is_dtl_in_sync() override final;

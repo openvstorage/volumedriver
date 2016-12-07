@@ -369,4 +369,12 @@ ShmContext::get_cluster_multiplier(const char * /*volume_name*/,
     return -1;
 }
 
+int
+ShmContext::get_clone_namespace_map(const char * /*volume_name*/,
+                                    CloneNamespaceMap& /*cn*/)
+{
+    std::abort();
+    return -1;
+}
+
 } //namespace libovsvolumedriver

@@ -19,6 +19,7 @@
 #include "common.h"
 
 #include <vector>
+#include <map>
 
 struct ovs_aio_request;
 struct ovs_aiocb;
@@ -84,6 +85,10 @@ public:
 
     virtual int get_cluster_multiplier(const char *volume_name,
                                        uint32_t *cluster_multiplier) = 0;
+
+    virtual int
+    get_clone_namespace_map(const char *volume_name,
+                            CloneNamespaceMap& cn) = 0;
 
     TransportType transport;
     int oflag;

@@ -162,6 +162,7 @@ public:
     static void
     xio_stat_volume(const std::string& uri,
                     const std::string& volume_name,
+                    uint64_t *size,
                     ovs_aio_request *request);
 
     static void
@@ -223,6 +224,12 @@ public:
                                const char *volume_name,
                                uint32_t *cluster_multiplier,
                                ovs_aio_request *request);
+
+    static void
+    xio_get_clone_namespace_map(const std::string& uri,
+                                const char *volume_name,
+                                CloneNamespaceMap& cn,
+                                ovs_aio_request *request);
 
     static void
     xio_destroy_ctx_shutdown(xio_context *ctx);
@@ -320,8 +327,8 @@ private:
                           size_t size);
 
     static void
-    handle_get_cluster_multiplier(xio_ctl_s *xctl,
-                                  uint64_t cm);
+    handle_get_clone_namespace_map(xio_ctl_s *xctl,
+                                   xio_iovec_ex *sglist);
 
     static void
     create_vec_from_buf(xio_ctl_s *xctl,

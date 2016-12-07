@@ -702,4 +702,11 @@ NetworkHAContext::get_cluster_multiplier(const char *volume_name,
                                                     cluster_multiplier);
 }
 
+int
+NetworkHAContext::get_clone_namespace_map(const char *volume_name,
+                                          CloneNamespaceMap& cn)
+{
+    return atomic_get_ctx()->get_clone_namespace_map(volume_name, cn);
+}
+
 } //namespace libovsvolumedriver
