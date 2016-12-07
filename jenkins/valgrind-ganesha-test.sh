@@ -6,7 +6,7 @@
 
 export VDC_DIR="${0%/jenkins/*.sh}"
 
-BUILDTOOLS_TO_USE=$(realpath ${VDC_DIR}/../BUILDS/volumedriver-buildtools-4.0/rtchecked)
+BUILDTOOLS_TO_USE=${BUILDTOOLS_TO_USE:-$(realpath ${VDC_DIR}/../BUILDS/volumedriver-buildtools-5.0/rtchecked)}
 
 export TEMP=${TEMP:-${VDC_DIR}/tmp}
 export PATH=${VDC_DIR}/build/bin:${PATH}
