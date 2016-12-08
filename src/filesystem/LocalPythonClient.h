@@ -35,8 +35,10 @@ class LocalPythonClient final
     : public PythonClient
 {
 public:
+    using MaybeSeconds = PythonClient::MaybeSeconds;
+
     explicit LocalPythonClient(const std::string& config,
-                               const boost::optional<boost::chrono::seconds>& = boost::none);
+                               const MaybeSeconds& = boost::none);
 
     ~LocalPythonClient() = default;
 
@@ -49,41 +51,48 @@ public:
     destroy();
 
     std::string
-    get_running_configuration(bool report_defaults = false);
+    get_running_configuration(bool report_defaults = false,
+                              const MaybeSeconds& = boost::none);
 
     youtils::UpdateReport
-    update_configuration(const std::string& path);
+    update_configuration(const std::string& path,
+                         const MaybeSeconds& = boost::none);
 
     void
-    set_general_logging_level(youtils::Severity sev);
+    set_general_logging_level(youtils::Severity,
+                              const MaybeSeconds& = boost::none);
 
     youtils::Severity
-    get_general_logging_level();
+    get_general_logging_level(const MaybeSeconds& = boost::none);
 
     std::vector<youtils::Logger::filter_t>
-    get_logging_filters();
+    get_logging_filters(const MaybeSeconds& = boost::none);
 
     void
     add_logging_filter(const std::string& match,
-                       youtils::Severity sev);
+                       youtils::Severity sev,
+                       const MaybeSeconds& = boost::none);
 
     void
-    remove_logging_filter(const std::string& match);
+    remove_logging_filter(const std::string& match,
+                          const MaybeSeconds& = boost::none);
 
     void
-    remove_logging_filters();
+    remove_logging_filters(const MaybeSeconds& = boost::none);
 
     std::string
-    malloc_info();
+    malloc_info(const MaybeSeconds& = boost::none);
 
     std::vector<volumedriver::ClusterCacheHandle>
-    list_cluster_cache_handles();
+    list_cluster_cache_handles(const MaybeSeconds& = boost::none);
 
     XMLRPCClusterCacheHandleInfo
-    get_cluster_cache_handle_info(const volumedriver::ClusterCacheHandle);
+    get_cluster_cache_handle_info(const volumedriver::ClusterCacheHandle,
+                                  const MaybeSeconds& = boost::none);
 
     void
-    remove_cluster_cache_handle(const volumedriver::ClusterCacheHandle);
+    remove_cluster_cache_handle(const volumedriver::ClusterCacheHandle,
+                                const MaybeSeconds& = boost::none);
 
 private:
     DECLARE_LOGGER("LocalPythonClient");

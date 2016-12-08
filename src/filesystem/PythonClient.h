@@ -112,87 +112,106 @@ public:
     virtual ~PythonClient() = default;
 
     std::vector<std::string>
-    list_volumes(const boost::optional<std::string>& node_id = boost::none);
+    list_volumes(const boost::optional<std::string>& node_id = boost::none,
+                 const MaybeSeconds& = boost::none);
 
     std::vector<std::string>
-    list_volumes_by_path();
+    list_volumes_by_path(const MaybeSeconds& = boost::none);
 
     std::vector<std::string>
-    list_snapshots(const std::string& volume_id);
+    list_snapshots(const std::string& volume_id,
+                   const MaybeSeconds& = boost::none);
 
     XMLRPCSnapshotInfo
     info_snapshot(const std::string& volume_id,
-                  const std::string& snapshot_id);
+                  const std::string& snapshot_id,
+                  const MaybeSeconds& = boost::none);
 
     XMLRPCVolumeInfo
-    info_volume(const std::string& volume_id);
+    info_volume(const std::string& volume_id,
+                const MaybeSeconds& = boost::none);
 
     XMLRPCStatistics
     statistics_volume(const std::string& volume_id,
-                      bool reset = false);
+                      bool reset = false,
+                      const MaybeSeconds& = boost::none);
 
     XMLRPCStatistics
     statistics_node(const std::string& node_id,
-                    bool reset = false);
+                    bool reset = false,
+                    const MaybeSeconds& = boost::none);
 
     std::string
     create_snapshot(const std::string& volume_id,
                     const std::string& snapshot_id = "",
-                    const std::string& metadata = "");
+                    const std::string& metadata = "",
+                    const MaybeSeconds& = boost::none);
 
     std::string
     create_volume(const std::string& target_path,
                   boost::shared_ptr<volumedriver::MetaDataBackendConfig> mdb_config = nullptr,
                   const youtils::DimensionedValue& = youtils::DimensionedValue(),
-                  const std::string& node_id = "");
+                  const std::string& node_id = "",
+                  const MaybeSeconds& = boost::none);
 
     std::string
     create_clone(const std::string& target_path,
                  boost::shared_ptr<volumedriver::MetaDataBackendConfig> mdb_config,
                  const std::string& parent_volume_id,
                  const std::string& parent_snap_id,
-                 const std::string& node_id = "");
+                 const std::string& node_id = "",
+                 const MaybeSeconds& = boost::none);
 
     void
     resize(const std::string& object_id,
-           const youtils::DimensionedValue&);
+           const youtils::DimensionedValue&,
+           const MaybeSeconds& = boost::none);
 
     void
-    unlink(const std::string& target_path);
+    unlink(const std::string& target_path,
+           const MaybeSeconds& = boost::none);
 
     void
     update_metadata_backend_config(const std::string& volume_id,
-                                   boost::shared_ptr<volumedriver::MetaDataBackendConfig> mdb_config);
+                                   boost::shared_ptr<volumedriver::MetaDataBackendConfig> mdb_config,
+                                   const MaybeSeconds& = boost::none);
 
     std::string
     create_clone_from_template(const std::string& target_path,
                                boost::shared_ptr<volumedriver::MetaDataBackendConfig> mdb_config,
                                const std::string& parent_volume_id,
-                               const std::string& node_id = "");
+                               const std::string& node_id = "",
+                               const MaybeSeconds& = boost::none);
 
     void
     rollback_volume(const std::string& volume_id,
-                    const std::string& snapshot_id);
+                    const std::string& snapshot_id,
+                    const MaybeSeconds& = boost::none);
 
     void
     delete_snapshot(const std::string& volume_id,
-                    const std::string& snapshot_id);
+                    const std::string& snapshot_id,
+                    const MaybeSeconds& = boost::none);
 
     void
-    set_volume_as_template(const std::string& vname);
+    set_volume_as_template(const std::string& vname,
+                           const MaybeSeconds& = boost::none);
 
     std::vector<std::string>
-    get_scrubbing_work(const std::string& volume_id);
+    get_scrubbing_work(const std::string& volume_id,
+                       const MaybeSeconds& = boost::none);
 
     void
-    apply_scrubbing_result(const boost::python::tuple& tuple);
+    apply_scrubbing_result(const boost::python::tuple& tuple,
+                           const MaybeSeconds& = boost::none);
 
     void
     apply_scrubbing_result(const std::string& volume_id,
-                           const std::string& scrub_res);
+                           const std::string& scrub_res,
+                           const MaybeSeconds& = boost::none);
 
     std::string
-    server_revision();
+    server_revision(const MaybeSeconds& = boost::none);
 
     std::string
     client_revision();
@@ -200,102 +219,126 @@ public:
     void
     migrate(const std::string& object_id,
             const std::string& node_id,
-            bool force = false);
+            bool force = false,
+            const MaybeSeconds& = boost::none);
 
     void
-    mark_node_offline(const std::string& node_id);
+    mark_node_offline(const std::string& node_id,
+                      const MaybeSeconds& = boost::none);
 
     void
-    mark_node_online(const std::string& node_id);
+    mark_node_online(const std::string& node_id,
+                     const MaybeSeconds& = boost::none);
 
     uint64_t
-    volume_potential(const std::string& node_id);
+    volume_potential(const std::string& node_id,
+                     const MaybeSeconds& = boost::none);
 
     std::map<NodeId, ClusterNodeStatus::State>
-    info_cluster();
+    info_cluster(const MaybeSeconds& = boost::none);
 
     boost::optional<ObjectId>
-    get_object_id(const std::string& path);
+    get_object_id(const std::string& path,
+                  const MaybeSeconds& = boost::none);
 
     boost::optional<volumedriver::VolumeId>
-    get_volume_id(const std::string& path);
+    get_volume_id(const std::string& path,
+                  const MaybeSeconds& = boost::none);
 
     boost::python::dict
-    get_sync_ignore(const std::string& volume_id);
-
+    get_sync_ignore(const std::string& volume_id,
+                    const MaybeSeconds& = boost::none);
 
     void
     set_sync_ignore(const std::string& volume_id,
                     uint64_t number_of_syncs_to_ignore,
-                    uint64_t maximum_time_to_ignore_syncs_in_seconds);
+                    uint64_t maximum_time_to_ignore_syncs_in_seconds,
+                    const MaybeSeconds& = boost::none);
 
     uint32_t
-    get_sco_multiplier(const std::string& volume_id);
-
+    get_sco_multiplier(const std::string& volume_id,
+                       const MaybeSeconds& = boost::none);
 
     void
     set_sco_multiplier(const std::string& volume_id,
-                       uint32_t sco_multiplier);
+                       uint32_t sco_multiplier,
+                       const MaybeSeconds& = boost::none);
 
     boost::optional<uint32_t>
-    get_tlog_multiplier(const std::string& volume_id);
+    get_tlog_multiplier(const std::string& volume_id,
+                        const MaybeSeconds& = boost::none);
 
 
     void
     set_tlog_multiplier(const std::string& volume_id,
-                        const boost::optional<uint32_t>& tlog_multiplier);
+                        const boost::optional<uint32_t>& tlog_multiplier,
+                        const MaybeSeconds& = boost::none);
 
     boost::optional<float>
-    get_sco_cache_max_non_disposable_factor(const std::string& volume_id);
+    get_sco_cache_max_non_disposable_factor(const std::string& volume_id,
+                                            const MaybeSeconds& = boost::none);
 
 
     void
     set_sco_cache_max_non_disposable_factor(const std::string& volume_id,
-                                            const boost::optional<float>& max_non_disposable_factor);
+                                            const boost::optional<float>& max_non_disposable_factor,
+                                            const MaybeSeconds& = boost::none);
 
     FailOverCacheConfigMode
-    get_failover_cache_config_mode(const std::string& volume_id);
+    get_failover_cache_config_mode(const std::string& volume_id,
+                                   const MaybeSeconds& = boost::none);
 
     boost::optional<volumedriver::FailOverCacheConfig>
-    get_failover_cache_config(const std::string& volume_id);
+    get_failover_cache_config(const std::string& volume_id,
+                              const MaybeSeconds& = boost::none);
 
     void
     set_manual_failover_cache_config(const std::string& volume_id,
-                                     const boost::optional<volumedriver::FailOverCacheConfig>& foc_config);
+                                     const boost::optional<volumedriver::FailOverCacheConfig>& foc_config,
+                                     const MaybeSeconds& = boost::none);
 
     void
-    set_automatic_failover_cache_config(const std::string& volume_id);
+    set_automatic_failover_cache_config(const std::string& volume_id,
+                                        const MaybeSeconds& = boost::none);
 
     boost::optional<volumedriver::ClusterCacheBehaviour>
-    get_cluster_cache_behaviour(const std::string& volume_id);
+    get_cluster_cache_behaviour(const std::string& volume_id,
+                                const MaybeSeconds& = boost::none);
 
     void
     set_cluster_cache_behaviour(const std::string& volume_id,
-                                const boost::optional<volumedriver::ClusterCacheBehaviour>&);
+                                const boost::optional<volumedriver::ClusterCacheBehaviour>&,
+                                const MaybeSeconds& = boost::none);
 
     boost::optional<volumedriver::ClusterCacheMode>
-    get_cluster_cache_mode(const std::string& volume_id);
+    get_cluster_cache_mode(const std::string& volume_id,
+                           const MaybeSeconds& = boost::none);
 
     void
     set_cluster_cache_mode(const std::string& volume_id,
-                           const boost::optional<volumedriver::ClusterCacheMode>&);
+                           const boost::optional<volumedriver::ClusterCacheMode>&,
+                           const MaybeSeconds& = boost::none);
 
     void
     set_cluster_cache_limit(const std::string& volume_id,
                             const boost::optional<volumedriver::ClusterCount>&
-                            cluster_cache_limit);
+                            cluster_cache_limit,
+                            const MaybeSeconds& = boost::none);
 
     boost::optional<volumedriver::ClusterCount>
-    get_cluster_cache_limit(const std::string& volume_id);
+    get_cluster_cache_limit(const std::string& volume_id,
+                            const MaybeSeconds& = boost::none);
 
     void
-    update_cluster_node_configs(const std::string& node_id);
+    update_cluster_node_configs(const std::string& node_id,
+                                const MaybeSeconds& = boost::none);
 
     void
     vaai_copy(const std::string& src_path,
               const std::string& target_path,
               const uint64_t& timeout,
-              const CloneFileFlags& flags);
+              const CloneFileFlags& flags,
+              const MaybeSeconds& = boost::none);
 
     boost::shared_ptr<LockedPythonClient>
     make_locked_client(const std::string& volume_id,
@@ -303,33 +346,41 @@ public:
                        const unsigned grace_period_secs = 5);
 
     volumedriver::TLogName
-    schedule_backend_sync(const std::string& volume_id);
+    schedule_backend_sync(const std::string& volume_id,
+                          const MaybeSeconds& = boost::none);
 
     bool
     is_volume_synced_up_to_tlog(const std::string& volume_id,
-                                const volumedriver::TLogName&);
+                                const volumedriver::TLogName&,
+                                const MaybeSeconds& = boost::none);
 
     bool
     is_volume_synced_up_to_snapshot(const std::string& volume_id,
-                                    const std::string& snapshot_name);
+                                    const std::string& snapshot_name,
+                                    const MaybeSeconds& = boost::none);
 
     boost::optional<size_t>
-    get_metadata_cache_capacity(const std::string& volume_id);
+    get_metadata_cache_capacity(const std::string& volume_id,
+                                const MaybeSeconds& = boost::none);
 
     void
     set_metadata_cache_capacity(const std::string& volume_id,
-                                const boost::optional<size_t>& num_pages);
+                                const boost::optional<size_t>& num_pages,
+                                const MaybeSeconds& = boost::none);
 
     void
     stop_object(const std::string& id,
-                bool delete_local_data = true);
+                bool delete_local_data = true,
+                const MaybeSeconds& = boost::none);
 
     void
     restart_object(const std::string& id,
-                   bool force_restart);
+                   bool force_restart,
+                   const MaybeSeconds& = boost::none);
 
     std::vector<ClientInfo>
-    list_client_connections(const std::string& node_id);
+    list_client_connections(const std::string& node_id,
+                            const MaybeSeconds& = boost::none);
 
     const MaybeSeconds&
     timeout() const
@@ -345,14 +396,16 @@ protected:
 
     XmlRpc::XmlRpcValue
     call(const char* method,
-         XmlRpc::XmlRpcValue& req);
+         XmlRpc::XmlRpcValue& req,
+         const MaybeSeconds&);
 
     XmlRpc::XmlRpcValue
     redirected_xmlrpc(const std::string& addr,
                       const uint16_t port,
                       const char* method,
                       XmlRpc::XmlRpcValue& req,
-                      unsigned& redirect_count);
+                      unsigned& redirect_count,
+                      const MaybeSeconds&);
 
     std::string cluster_id_;
     std::mutex lock_;
