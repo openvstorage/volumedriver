@@ -417,56 +417,70 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              (bpy::args("target_path"),
               bpy::args("metadata_backend_config"),
               bpy::args("volume_size"),
-              bpy::args("node_id") = ""),
+              bpy::args("node_id") = "",
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Creates a new volume under the specified path.\n"
              "@param target_path: string, volume location\n"
              "@param metadata_backend_config: MetaDataBackendConfig\n"
              "@param volume_size: string (DimensionedValue), size of the volume\n"
              "@param node_id: string, on which storagerouter to create the clone, if empty (default) the clone is created on the node receiving this call\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@raises \n"
              "      InsufficientResourcesException\n"
              "      FileExistsException\n")
         .def("truncate",
              &vfs::PythonClient::resize,
              (bpy::args("object_id"),
-              bpy::args("new_size")),
+              bpy::args("new_size"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Resize an object\n"
              "@param object_id, string, ObjectId\n"
-             "@param new_size, string (DimensionedValue), new size of the object")
+             "@param new_size, string (DimensionedValue), new size of the object"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n")
         .def("unlink",
              &vfs::PythonClient::unlink,
-             (bpy::args("target_path")),
+             (bpy::args("target_path"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Unlink directory entry.\n",
              "@param target_path: string, volume location\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@raises \n"
              "      RuntimeError\n")
         .def("update_metadata_backend_config",
              &vfs::PythonClient::update_metadata_backend_config,
              (bpy::args("volume_id"),
-              bpy::args("metadata_backend_config")),
+              bpy::args("metadata_backend_config"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Update the volume's metadata backend config, possibly triggering a failover\n"
              "@param volume_id: string, volume identifier\n"
              "@param metadata_backend_config: MetaDataBackendConfig\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@raises\n"
              "      InvalidOperationException (config invalid / metadatastore doesn't support update)\n"
              "      PythonClientException\n")
         .def("list_volumes",
              &vfs::PythonClient::list_volumes,
-             (bpy::arg("node_id") = bpy::object()),
+             (bpy::arg("node_id") = bpy::object(),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "List the running volumes.\n"
              "@param node_id: optional string, list volumes on a particular node)\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: a list of volume IDs\n")
         .def("list_volumes_by_path",
              &vfs::PythonClient::list_volumes_by_path,
-             "List the running volumes by path.")
+             (bpy::args("req_timeout_secs") = MaybeSeconds()),
+             "List the running volumes by path.\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n")
         .def("rollback_volume",
              &vfs::PythonClient::rollback_volume,
              (bpy::args("volume_id"),
-              bpy::args("snapshot_id") = ""),
+              bpy::args("snapshot_id") = "",
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Rollback a volume to a snapshot.\n"
              "This only succeeds if the snapshot has arrived on the backend.\n"
              "@param volume_id: string, volume identifier\n"
              "@param snapshot_id: string, snapshot identifier (optional)\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@raises \n"
              "      ObjectNotFoundException\n"
              "      SnapshotNotFoundException\n"
@@ -478,13 +492,15 @@ BOOST_PYTHON_MODULE(storagerouterclient)
               bpy::args("metadata_backend_config"),
               bpy::args("parent_volume_id"),
               bpy::args("parent_snapshot_id"),
-              bpy::args("node_id") = ""),
+              bpy::args("node_id") = "",
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Creates a clone from a snapshot of a volume.\n"
              "@param target_path: string, volume location\n"
              "@param metadata_backend_config: MetaDataBackendConfig\n"
              "@param parent_volume_id: string, parent volume identifier\n"
              "@param parent_snapshot_id: string, parent snapshot identifier\n"
              "@param node_id: string, on which storagerouter to create the clone, if empty (default) the clone is created on the node receiving this call\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@raises \n"
              "      ObjectNotFoundException\n"
              "      InvalidOperationException (parent is not a template) \n"
@@ -495,12 +511,14 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              (bpy::args("target_path"),
               bpy::args("metadata_backend_config"),
               bpy::args("parent_volume_id"),
-              bpy::args("node_id") = ""),
+              bpy::args("node_id") = "",
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Creates a clone from a template volume.\n"
              "@param target_path: string, volume location\n"
              "@param metadata_backend_config: MetaDataBackendConfig\n"
              "@param parent_volume_id: string, parent volume identifier\n"
              "@param node_id: string, on which storagerouter to create the clone, if empty (default) the clone is created on the node receiving this call\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@raises \n"
              "      ObjectNotFoundException\n"
              "      InvalidOperationException (parent is not a template) \n"
@@ -508,64 +526,78 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "      FileExistsException\n")
         .def("list_snapshots",
              &vfs::PythonClient::list_snapshots,
-             (bpy::args("volume_id")),
+             (bpy::args("volume_id"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "List the snapshots of a volume.\n"
              "@param volume_id: string, volume identifier\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@raises \n"
              "      ObjectNotFoundException\n")
         .def("info_snapshot",
              &vfs::PythonClient::info_snapshot,
-             (bpy::args("volume_id",
-                        "snapshot_id")),
+             (bpy::args("volume_id"),
+              bpy::args("snapshot_id"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Show information about a particular snapshot of a volume.\n"
              "@param volume_id: string, volume_identifier\n"
              "@param snapshot_id: string, snapshot identifier\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: SnapshotInfo object\n"
              "@raises \n"
              "      ObjectNotFoundException\n"
              "      SnapshotNotFoundException\n")
         .def("info_volume",
              &vfs::PythonClient::info_volume,
-             (bpy::args("volume_id")),
+             (bpy::args("volume_id"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Show information about a volume.\n"
              "@param volume_id: string, volume_identifier\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: VolumeInfo object\n"
              "@raises \n"
              "      ObjectNotFoundException\n")
         .def("statistics_volume",
              &vfs::PythonClient::statistics_volume,
              (bpy::args("volume_id"),
-              bpy::args("reset") = false),
+              bpy::args("reset") = false,
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Show detailed performance statistics about a volume.\n"
              "@param volume_id: string, volume_identifier\n"
              "@param reset: boolean, whether to reset the performance_counters\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: Statistics object\n"
              "@raises \n"
              "      ObjectNotFoundException\n")
         .def("list_client_connections",
              &vfs::PythonClient::list_client_connections,
-             (bpy::args("node_id")),
+             (bpy::args("node_id"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "List client connections per node.\n"
              "@param node_id: string, Node ID\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: ClientInfo object\n")
         .def("statistics_node",
              &vfs::PythonClient::statistics_node,
              (bpy::args("node_id"),
-              bpy::args("reset") = false),
+              bpy::args("reset") = false,
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Show volume performance statistics aggregated per node.\n"
              "@param node_id: string, Node ID\n"
              "@param reset: boolean, whether to reset the performance_counters\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: Statistics object\n")
         .def("create_snapshot",
              &vfs::PythonClient::create_snapshot,
              (bpy::args("volume_id"),
               bpy::args("snapshot_id") = "",
-              bpy::args("metadata") = ""),
+              bpy::args("metadata") = "",
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Create a snapshot.\n"
              "This only succeeds if the previous snapshot (if any) has been written to the backend.\n"
              "@param volume_id: string, volume identifier\n"
              "@param snapshot_id: string, snapshot identifier (optional)\n"
              "@param metadata: string, up to 4096 bytes of metadata (optional)\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: string, snapshot identifier\n"
              "@raises \n"
              "      ObjectNotFoundException\n"
@@ -574,11 +606,13 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              )
         .def("delete_snapshot",
              &vfs::PythonClient::delete_snapshot,
-             bpy::args("volume_id",
-                       "snapshot_id"),
+             (bpy::args("volume_id"),
+              bpy::args("snapshot_id"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Delete a snapshot.\n"
              "@param volume_id: string, volume identifier\n"
              "@param snapshot_id: string, snapshot identifier\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@raises \n"
              "      ObjectNotFoundException\n"
              "      SnapshotNotFoundException\n"
@@ -586,10 +620,12 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "      ObjectStillHasChildrenException\n")
         .def("set_volume_as_template",
              &vfs::PythonClient::set_volume_as_template,
-             (bpy::args("volume_id")),
+             (bpy::args("volume_id"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Convert a volume into a template.\n"
              "Templates are read-only.\n"
              "@param volume_id: string, volume identifier\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@raises \n"
              "      ObjectNotFoundException\n"
              "      InvalidOperationException (on clone)\n")
@@ -613,32 +649,41 @@ BOOST_PYTHON_MODULE(storagerouterclient)
         //      "      InvalidOperationException (on template)\n")
         .def("get_volume_id",
              &vfs::PythonClient::get_volume_id,
-             (bpy::args("path")),
+             (bpy::args("path"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Look up the volume ID behind path (if any)\n"
              "@param path: string, path to check\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: string (volume ID) or None\n")
         .def("get_object_id",
              &vfs::PythonClient::get_object_id,
-             (bpy::args("path")),
+             (bpy::args("path"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Look up the object ID behind path (if any)\n"
              "@param path: string, path to check\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: string (object ID) or None\n")
         .def("server_revision",
              &vfs::PythonClient::server_revision,
-             "Get server revision information")
+             (bpy::args("req_timeout_secs") = MaybeSeconds()),
+             "Get server revision information\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n")
         .def("client_revision",
              &vfs::PythonClient::client_revision,
              "Get client revision information")
         .def("volume_potential",
              &vfs::PythonClient::volume_potential,
-             (bpy::args("node_id")),
-              "Check how many more volumes this node is capable of running"
-              "@param node_id: string, target node"
-              "@returns: int, the number of volumes the node can host")
+             (bpy::args("node_id"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
+             "Check how many more volumes this node is capable of running\n"
+             "@param node_id: string, target node\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
+             "@returns: int, the number of volumes the node can host")
         .def("stop_object",
              &vfs::PythonClient::stop_object,
              (bpy::args("object_id"),
-              bpy::args("delete_local_data")),
+              bpy::args("delete_local_data"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Request that an object (volume or file) is stopped.\n"
              "\n"
              "NOTE: This does not remove the associated file - any I/O to it will lead to an error.\n"
@@ -647,170 +692,218 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "@returns: eventually\n")
         .def("migrate",
              &vfs::PythonClient::migrate,
-             (bpy::args("object_id",
-                        "node_id",
-                        "force_restart")),
+             (bpy::args("object_id"),
+              bpy::args("node_id"),
+              bpy::args("force_restart"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Migrate an object (volume or file) to another node.\n"
              "@param volume_id: string, object identifier\n"
              "@param node_id: string, node to move the object to\n"
-             "@param force_restart: boolean, whether to forcibly restart on the new node even if that means data loss (e.g. if the FOC is not available)\n")
+             "@param force_restart: boolean, whether to forcibly restart on the new node even if that means data loss (e.g. if the FOC is not available)\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n")
         .def("restart_object",
              &vfs::PythonClient::restart_object,
              (bpy::args("object_id"),
-              bpy::args("force_restart")),
+              bpy::args("force_restart"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Request that an object (volume or file) is restarted.\n"
              "@param: object_id: string, ID of the object to be restarted\n"
              "@param: force: boolean, whether to force the restart even at the expense of data loss\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: eventually\n")
         .def("mark_node_offline",
              &vfs::PythonClient::mark_node_offline,
-             (bpy::args("node_id")),
+             (bpy::args("node_id"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Mark a node as offline.\n"
              "This allows volumes currently registered on that node to failover to other nodes in the cluster.\n"
              "Use with caution: only mark a node as offline if it's really not running anymore.\n"
              "If the node being offlined is still running this can lead to split-brain behavior and dataloss.\n"
              "@param node_id: string, node to set mark as offline\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@raises \n"
              "      InvalidOperationException (if executed on node to be offlined)")
         .def("mark_node_online",
              &vfs::PythonClient::mark_node_online,
-             (bpy::args("node_id")),
+             (bpy::args("node_id"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Mark a previously offlined node as online again.\n"
              "Only nodes marked as online can be started again.\n"
-             "@param node_id: string, node to set mark as offline\n")
+             "@param node_id: string, node to set mark as offline\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n")
         .def("info_cluster",
              &vfs::PythonClient::info_cluster,
+             (bpy::args("req_timeout_secs") = MaybeSeconds()),
              "get an overview of configured nodes in this cluster and their status (online/offline)\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: a dictionary")
         .def("set_sync_ignore",
              &vfs::PythonClient::set_sync_ignore,
              (bpy::args("volume_id"),
               bpy::args("number_of_syncs_to_ignore"),
-              bpy::args("maximum_time_to_ignore_syncs_in_seconds")),
+              bpy::args("maximum_time_to_ignore_syncs_in_seconds"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Set the sync ignore settings.\n"
              "@param volume_id: string, volume identifier\n"
              "@param number_of_syncs_to_ignore: uint64, the number of syncs to ignore\n"
-             "@param maximum_time_to_ignore_syncs_in_seconds: uint64, maximum time to ignore syncs in seconds\n")
+             "@param maximum_time_to_ignore_syncs_in_seconds: uint64, maximum time to ignore syncs in seconds\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n")
         .def("get_sync_ignore",
              &vfs::PythonClient::get_sync_ignore,
-             (bpy::args("volume_id")),
+             (bpy::args("volume_id"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "get the sync ignore settings.\n"
              "@param volume_id: string, volume identifier\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns a dict with the relevant settings")
          .def("set_sco_multiplier",
               &vfs::PythonClient::set_sco_multiplier,
               (bpy::args("volume_id"),
-               bpy::args("sco_multiplier")),
+               bpy::args("sco_multiplier"),
+               bpy::args("req_timeout_secs") = MaybeSeconds()),
               "Set the number of clusters in a SCO.\n"
               "@param volume_id: string, volume identifier\n"
               "@param sco_multiplier: uint32, the number of clusters in a SCO\n"
+              "@param req_timeout_secs: optional timeout in seconds for this request\n"
               "@raises \n"
               "      InvalidOperationException (if SCO size would become invalid)")
          .def("get_sco_multiplier",
               &vfs::PythonClient::get_sco_multiplier,
-              (bpy::args("volume_id")),
+              (bpy::args("volume_id"),
+               bpy::args("req_timeout_secs") = MaybeSeconds()),
               "Get the number of clusters in a SCO.\n"
               "@param volume_id: string, volume identifier\n"
+              "@param req_timeout_secs: optional timeout in seconds for this request\n"
               "@returns a uint32")
          .def("set_tlog_multiplier",
               &vfs::PythonClient::set_tlog_multiplier,
               (bpy::args("volume_id"),
-               bpy::args("tlog_multiplier")),
+               bpy::args("tlog_multiplier"),
+               bpy::args("req_timeout_secs") = MaybeSeconds()),
               "Set the number of SCO's in a TLOG.\n"
               "@param volume_id: string, volume identifier\n"
               "@param tlog_multiplier: None (= volumedriver global value is used) or uint32, the number of SCO's in a TLOG\n"
+              "@param req_timeout_secs: optional timeout in seconds for this request\n"
               "@raises \n"
               "      InvalidOperationException (if TLOG size would become invalid)")
          .def("get_tlog_multiplier",
               &vfs::PythonClient::get_tlog_multiplier,
-              (bpy::args("volume_id")),
+              (bpy::args("volume_id"),
+               bpy::args("req_timeout_secs") = MaybeSeconds()),
               "Get the number of SCO's in a TLOG.\n"
               "@param volume_id: string, volume identifier\n"
+              "@param req_timeout_secs: optional timeout in seconds for this request\n"
               "@returns a (optional) uint32")
          .def("set_sco_cache_max_non_disposable_factor",
               &vfs::PythonClient::set_sco_cache_max_non_disposable_factor,
               (bpy::args("volume_id"),
-               bpy::args("max_non_disposable_factor")),
+               bpy::args("max_non_disposable_factor"),
+               bpy::args("req_timeout_secs") = MaybeSeconds()),
               "Set the factor of non-disposable data.\n"
               "@param volume_id: string, volume identifier\n"
-              "@param max_non_disposable_factor: None (= volumedriver global value is used) or float, the factor of non-disposable data\n")
+              "@param max_non_disposable_factor: None (= volumedriver global value is used) or float, the factor of non-disposable data\n"
+              "@param req_timeout_secs: optional timeout in seconds for this request\n")
          .def("get_sco_cache_max_non_disposable_factor",
               &vfs::PythonClient::get_sco_cache_max_non_disposable_factor,
-              (bpy::args("volume_id")),
+              (bpy::args("volume_id"),
+               bpy::args("req_timeout_secs") = MaybeSeconds()),
               "Get the factor of non-disposable data.\n"
               "@param volume_id: string, volume identifier\n"
+              "@param req_timeout_secs: optional timeout in seconds for this request\n"
               "@returns a (optional) float")
           .def("get_dtl_config_mode",
                &vfs::PythonClient::get_failover_cache_config_mode,
-               (bpy::args("volume_id")),
+               (bpy::args("volume_id"),
+                bpy::args("req_timeout_secs") = MaybeSeconds()),
                "get a node's DTL configuration mode\n"
                "@param volume_id: string, volume identifier\n"
+               "@param req_timeout_secs: optional timeout in seconds for this request\n"
                "@returns the DTL configuration mode of the node of the volume: Automatic | Manual\n")
           .def("get_dtl_config",
                &vfs::PythonClient::get_failover_cache_config,
-               (bpy::args("volume_id")),
+               (bpy::args("volume_id"),
+                bpy::args("req_timeout_secs") = MaybeSeconds()),
                "get a volume's DTL configuration\n"
                "@param volume_id: string, volume identifier\n"
+               "@param req_timeout_secs: optional timeout in seconds for this request\n"
                "@returns the DTL configuration of the volume\n")
           .def("set_manual_dtl_config",
                &vfs::PythonClient::set_manual_failover_cache_config,
                (bpy::args("node_id"),
-                bpy::args("config")),
+                bpy::args("config"),
+                bpy::args("req_timeout_secs") = MaybeSeconds()),
                "set a volume's DTL configuration\n"
                "@param volume_id: string, volume identifier\n"
-               "@param config: a DTLConfig, or 'None' for no DTL")
+               "@param config: a DTLConfig, or 'None' for no DTL"
+               "@param req_timeout_secs: optional timeout in seconds for this request\n")
           .def("set_automatic_dtl_config",
                &vfs::PythonClient::set_automatic_failover_cache_config,
-               (bpy::args("node_id")),
+               (bpy::args("node_id"),
+                bpy::args("req_timeout_secs") = MaybeSeconds()),
                "set a volume's DTL configuration to Automatic\n"
-               "@param volume_id: string, volume identifier\n")
+               "@param volume_id: string, volume identifier\n"
+               "@param req_timeout_secs: optional timeout in seconds for this request\n")
         .def("get_readcache_behaviour",
              &vfs::PythonClient::get_cluster_cache_behaviour,
-             (bpy::args("volume_id")),
+             (bpy::args("volume_id"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "get a volume's readcache behaviour\n"
              "@param volume_id: string, volume identifier\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns None (= volumedriver global value is used) or a ReadCacheBehaviour value\n")
         .def("set_readcache_behaviour",
              &vfs::PythonClient::set_cluster_cache_behaviour,
              (bpy::args("volume_id"),
-              bpy::args("behaviour")),
+              bpy::args("behaviour"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "set a volume's readcache behaviour\n"
              "@param volume_id: string, volume identifier\n"
              "@param behaviour: None (= volumedriver global value is used) or a ReadCacheBehaviour value\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: nothing, eventually\n")
         .def("get_readcache_mode",
              &vfs::PythonClient::get_cluster_cache_mode,
-             (bpy::args("volume_id")),
+             (bpy::args("volume_id"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "get a volume's readcache mode\n"
              "@param volume_id: string, volume identifier\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns None (= volumedriver global value is used) or a ReadCacheMode value\n")
         .def("set_readcache_mode",
              &vfs::PythonClient::set_cluster_cache_mode,
              (bpy::args("volume_id"),
-              bpy::args("mode")),
+              bpy::args("mode"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "set a volume's readcache mode\n"
              "@param volume_id: string, volume identifier\n"
              "@param mode: None (= volumedriver global value is used) or a ReadCacheMode value\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: nothing, eventually\n")
         .def("get_readcache_limit",
              &vfs::PythonClient::get_cluster_cache_limit,
-             (bpy::args("volume_id")),
+             (bpy::args("volume_id"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "get a volume's readcache limit (when in LocationBased mode)\n"
              "@param volume_id: string, volume identifier\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns None (= no limit) or the maximum number of clusters the volume can cache\n")
         .def("set_readcache_limit",
              &vfs::PythonClient::set_cluster_cache_limit,
              (bpy::args("volume_id"),
-              bpy::args("limit")),
+              bpy::args("limit"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "set a volume's readcache limit (when in LocationBased mode)\n"
              "@param volume_id: string, volume identifier\n"
              "@param limit: None (= no limit) or an integer specifying the maximum number of clusters\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: nothing, eventually\n")
         .def("update_cluster_node_configs",
              &vfs::PythonClient::update_cluster_node_configs,
-             (bpy::args("node_id") = ""),
+             (bpy::args("node_id") = "",
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Re-read the cluster configuration from the ClusterRegistry.\n"
-             "@param node_id: string, on which storagerouter to re-read the configuration\n")
+             "@param node_id: string, on which storagerouter to re-read the configuration\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n")
         .def("make_locked_client",
              &vfs::PythonClient::make_locked_client,
              (bpy::args("nspace"),
@@ -823,38 +916,48 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "@returns: LockedClient context manager\n")
         .def("schedule_backend_sync",
              &vfs::PythonClient::schedule_backend_sync,
-             (bpy::args("volume_id")),
+             (bpy::args("volume_id"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Schedule a backend sync of the given Volume\n"
              "@param volume_id: string, volume identifier\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: string, name of the TLog covering the data written out\n")
         .def("is_volume_synced_up_to_tlog",
              &vfs::PythonClient::is_volume_synced_up_to_tlog,
              (bpy::args("volume_id"),
-              bpy::args("tlog_name")),
+              bpy::args("tlog_name"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Check whether a volume is synced to the backend up to a given TLog\n"
              "@param volume_id: string, volume identifier\n"
              "@param tlog_name: string, TLog name\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: boolean\n")
         .def("is_volume_synced_up_to_snapshot",
              &vfs::PythonClient::is_volume_synced_up_to_snapshot,
              (bpy::args("volume_id"),
-              bpy::args("snapshot_name")),
+              bpy::args("snapshot_name"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Check whether a volume is synced to the backend up to a given snapshot\n"
              "@param volume_id: string, volume identifier\n"
              "@param snapshot_name: string, snapshot name\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: boolean\n")
         .def("set_metadata_cache_capacity",
              &vfs::PythonClient::set_metadata_cache_capacity,
              (bpy::args("volume_id"),
-              bpy::args("num_pages")),
+              bpy::args("num_pages"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Set the volume's metadata cache capacity\n"
              "@param volume_id: string, volume identifier\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@param num_pages, unsigned, number of metadata pages\n")
         .def("get_metadata_cache_capacity",
              &vfs::PythonClient::get_metadata_cache_capacity,
-             (bpy::args("volume_id")),
+             (bpy::args("volume_id"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Get the volume's metadata cache capacity\n"
              "@param volume_id: string, volume identifier\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns num_pages, unsigned, number of metadata pages or None\n")
         .def("client_timeout_secs",
              &vfs::PythonClient::timeout,

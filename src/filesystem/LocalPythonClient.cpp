@@ -36,7 +36,7 @@ namespace vd = volumedriver;
 namespace yt = youtils;
 
 LocalPythonClient::LocalPythonClient(const std::string& config,
-                                     const boost::optional<boost::chrono::seconds>& timeout)
+                                     const MaybeSeconds& timeout)
     : PythonClient(timeout)
     , config_fetcher_(yt::ConfigFetcher::create(yt::Uri(config)))
 {
@@ -54,13 +54,15 @@ LocalPythonClient::destroy()
 }
 
 std::string
-LocalPythonClient::get_running_configuration(bool report_default)
+LocalPythonClient::get_running_configuration(bool report_default,
+                                             const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::show_defaults] = report_default ? "true" : "false";
 
     return call(PersistConfigurationToString::method_name(),
-                req)[XMLRPCKeys::configuration];
+                req,
+                timeout)[XMLRPCKeys::configuration];
 }
 
 namespace
@@ -97,11 +99,12 @@ struct ReportVisitor
 }
 
 yt::UpdateReport
-LocalPythonClient::update_configuration(const std::string& path)
+LocalPythonClient::update_configuration(const std::string& path,
+                                        const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::configuration_path] = path;
-    auto rsp(call(UpdateConfiguration::method_name(), req));
+    auto rsp(call(UpdateConfiguration::method_name(), req, timeout));
     const auto res(XMLRPCStructs::deserialize_from_xmlrpc_value<boost::variant<yt::UpdateReport,
                    yt::ConfigurationReport>>(rsp));
 
@@ -111,26 +114,27 @@ LocalPythonClient::update_configuration(const std::string& path)
 }
 
 void
-LocalPythonClient::set_general_logging_level(yt::Severity sev)
+LocalPythonClient::set_general_logging_level(yt::Severity sev,
+                                              const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::log_filter_level] = boost::lexical_cast<std::string>(sev);
-    call(SetGeneralLoggingLevel::method_name(), req);
+    call(SetGeneralLoggingLevel::method_name(), req, timeout);
 }
 
 yt::Severity
-LocalPythonClient::get_general_logging_level()
+LocalPythonClient::get_general_logging_level(const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
-    auto rsp(call(GetGeneralLoggingLevel::method_name(), req));
+    auto rsp(call(GetGeneralLoggingLevel::method_name(), req, timeout));
     return boost::lexical_cast<yt::Severity>(static_cast<std::string&>(rsp));
 }
 
 std::vector<yt::Logger::filter_t>
-LocalPythonClient::get_logging_filters()
+LocalPythonClient::get_logging_filters(const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
-    auto rsp(call(ShowLoggingFilters::method_name(), req));
+    auto rsp(call(ShowLoggingFilters::method_name(), req, timeout));
 
     std::vector<yt::Logger::filter_t> res;
     res.reserve(rsp.size());
@@ -153,44 +157,47 @@ LocalPythonClient::get_logging_filters()
 
 void
 LocalPythonClient::add_logging_filter(const std::string& match,
-                                      yt::Severity sev)
+                                      yt::Severity sev,
+                                      const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::log_filter_name] = match;
     req[XMLRPCKeys::log_filter_level] = boost::lexical_cast<std::string>(sev);
 
-    call(AddLoggingFilter::method_name(), req);
+    call(AddLoggingFilter::method_name(), req, timeout);
 }
 
 void
-LocalPythonClient::remove_logging_filter(const std::string& match)
+LocalPythonClient::remove_logging_filter(const std::string& match,
+                                         const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::log_filter_name] = match;
 
-    call(RemoveLoggingFilter::method_name(), req);
+    call(RemoveLoggingFilter::method_name(), req, timeout);
 }
 
 void
-LocalPythonClient::remove_logging_filters()
+LocalPythonClient::remove_logging_filters(const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
-    call(RemoveAllLoggingFilters::method_name(), req);
+    call(RemoveAllLoggingFilters::method_name(), req, timeout);
 }
 
 std::string
-LocalPythonClient::malloc_info()
+LocalPythonClient::malloc_info(const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     return call(MallocInfo::method_name(),
-                req);
+                req,
+                timeout);
 }
 
 std::vector<vd::ClusterCacheHandle>
-LocalPythonClient::list_cluster_cache_handles()
+LocalPythonClient::list_cluster_cache_handles(const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
-    auto rsp(call(ListClusterCacheHandles::method_name(), req));
+    auto rsp(call(ListClusterCacheHandles::method_name(), req, timeout));
     std::vector<vd::ClusterCacheHandle> v;
     v.reserve(rsp.size());
 
@@ -204,23 +211,25 @@ LocalPythonClient::list_cluster_cache_handles()
 }
 
 XMLRPCClusterCacheHandleInfo
-LocalPythonClient::get_cluster_cache_handle_info(const vd::ClusterCacheHandle handle)
+LocalPythonClient::get_cluster_cache_handle_info(const vd::ClusterCacheHandle handle,
+                                                 const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::cluster_cache_handle] = boost::lexical_cast<std::string>(handle);
 
-    auto rsp(call(GetClusterCacheHandleInfo::method_name(), req));
+    auto rsp(call(GetClusterCacheHandleInfo::method_name(), req, timeout));
     return
         XMLRPCStructs::deserialize_from_xmlrpc_value<XMLRPCClusterCacheHandleInfo>(rsp);
 }
 
 void
-LocalPythonClient::remove_cluster_cache_handle(const vd::ClusterCacheHandle handle)
+LocalPythonClient::remove_cluster_cache_handle(const vd::ClusterCacheHandle handle,
+                                               const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::cluster_cache_handle] = boost::lexical_cast<std::string>(handle);
 
-    call(RemoveClusterCacheHandle::method_name(), req);
+    call(RemoveClusterCacheHandle::method_name(), req, timeout);
 }
 
 }

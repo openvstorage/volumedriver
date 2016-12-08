@@ -78,7 +78,7 @@ service ovs-volumedriver-vpool_name restart
 | volume_manager | dtl_write_trigger | "8" | yes | Trigger to start writing entries in the foc queue to the backend |
 | volume_manager | dtl_busy_loop_usecs | "0" | yes | Timeout for busy retries sending/reading data before falling back to polling |
 | volume_manager | dtl_request_timeout_ms | "60000" | yes | Timeout for DTL requests |
-| volume_manager | dtl_connect_timeout_ms | "0" | yes | Timeout for connection attempts to the DTL - 0: wait forever / the OS to signal errors |
+| volume_manager | dtl_connect_timeout_ms | "1000" | yes | Timeout for connection attempts to the DTL - 0: wait forever / the OS to signal errors |
 | volume_manager | clean_interval | --- | yes | Interval between runs of scocache cleanups, in seconds. Should be small when running on ramdisk, larger when running on sata. scocache_cleanup_trigger / clean_interval should be larger than the aggregated write speed to the scocache. |
 | volume_manager | sap_persist_interval | "300" | yes | Interval between writing SAP data, in seconds |
 | volume_manager | dtl_check_interval_in_seconds | "300" | yes | Interval between checks of the DTL state of volumes |

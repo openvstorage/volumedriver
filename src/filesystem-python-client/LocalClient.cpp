@@ -110,70 +110,96 @@ LocalClient::registerize()
           "@param client_timeout_secs: unsigned, optional client timeout (seconds)"))
         .def("destroy_filesystem",
              &vfs::LocalPythonClient::destroy,
+             (bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Request that the filesystem is destroyed.\n"
              "All data and metadata in Arakoon and the backend will be removed.\n"
-             "Local data (caches) will not be removed.\n")
+             "Local data (caches) will not be removed.\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n")
         .def("get_running_configuration",
              &vfs::LocalPythonClient::get_running_configuration,
-             (bpy::args("report_defaults") = false),
+             (bpy::args("report_defaults") = false,
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Return a string containing the current configuration (JSON format)\n"
              "@param: report_defaults: bool, report default values (default: False)\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: string, configuration data (JSON)\n")
         .def("update_configuration",
              &vfs::LocalPythonClient::update_configuration,
-             (bpy::args("config")),
+             (bpy::args("config"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Request volumedriverfs to update its configuration from the given file\n"
              "@param: config: string, path to the config file (JSON) / etcd URL\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: a list of successfully applied updates - throws in case of error\n")
         .def("get_general_logging_level",
              &vfs::LocalPythonClient::get_general_logging_level,
+             (bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Get the currently active global loglevel\n"
              "Note that logging needs to be enabled, otherwise this call will throw\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: Severity enum value\n")
         .def("set_general_logging_level",
              &vfs::LocalPythonClient::set_general_logging_level,
-             (bpy::args("severity")),
+             (bpy::args("severity"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Set the global loglevel\n"
              "Note that logging needs to be enabled, otherwise this call will throw\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@param severity: Severity enum value\n")
         .def("list_logging_filters",
              &vfs::LocalPythonClient::get_logging_filters,
+             (bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Get a list of all active logging filters\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: a list of (string, Severity) pairs\n")
         .def("add_logging_filter",
              &vfs::LocalPythonClient::add_logging_filter,
              (bpy::args("filter_match"),
-              bpy::args("severity")),
+              bpy::args("severity"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Add a logging filter\n"
              "@param filter_match: string\n"
-             "@param severity: Severity enum value\n")
+             "@param severity: Severity enum value\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n")
         .def("remove_logging_filter",
              &vfs::LocalPythonClient::remove_logging_filter,
-             (bpy::args("filter_match")),
+             (bpy::args("filter_match"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Remove a specific logging filter\n"
-             "@param filter_match: string")
+             "@param filter_match: string"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n")
         .def("remove_logging_filters",
              &vfs::LocalPythonClient::remove_logging_filters,
-             "Remove *all* logging filters\n")
+             (bpy::args("req_timeout_secs") = MaybeSeconds()),
+             "Remove *all* logging filters\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n")
         .def("malloc_info",
              &vfs::LocalPythonClient::malloc_info,
+             (bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Retrieve allocator info from the filesystem instance for debugging purposes\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: a string containing the allocator's malloc_info\n")
         .def("list_cluster_cache_handles",
              &vfs::LocalPythonClient::list_cluster_cache_handles,
+             (bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Get a list of ClusterCacheHandles\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: a list containing ClusterCacheHandles\n")
         .def("get_cluster_cache_handle_info",
              &vfs::LocalPythonClient::get_cluster_cache_handle_info,
-             (bpy::args("handle")),
+             (bpy::args("handle"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Obtain detailed information about a ClusterCacheHandle\n"
              "@param handle, ClusterCacheHandle\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: a ClusterCacheHandleInfo object\n")
         .def("remove_cluster_cache_handle",
              &vfs::LocalPythonClient::remove_cluster_cache_handle,
-             (bpy::args("handle")),
+             (bpy::args("handle"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Remove a ClusterCacheHandle (and its entries) from the ClusterCache\n"
              "@param handle, ClusterCacheHandle\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: a ClusterCacheHandleInfo object\n");
         ;
 }
