@@ -621,6 +621,41 @@ RemoteNode::get_clone_namespace_map(const Object& obj)
     return cnmap;
 }
 
+std::vector<vd::ClusterLocationAndHash>
+RemoteNode::get_page(const Object& obj,
+                     const vd::ClusterAddress ca)
+{
+    LOG_TRACE(config.vrouter_id << ": obj " << obj.id << ", ca " << ca);
+
+    std::vector<vd::ClusterLocationAndHash> clp;
+    ExtraRecvFun get_page([&]
+    {
+      ZEXPECT_MORE(*zock_,
+                   "GetPageResponse");
+
+      vfsprotocol::GetPageResponse rsp;
+      ZUtils::deserialize_from_socket(*zock_, rsp);
+
+      rsp.CheckInitialized();
+      for (int i = 0; i < rsp.cluster_location_size(); i++)
+      {
+           vd::ClusterLocation cl;
+           *reinterpret_cast<uint64_t*>(&cl) = rsp.cluster_location(i);
+           clp.emplace_back(vd::ClusterLocationAndHash(cl));
+      }
+    });
+
+    const auto req(vfsprotocol::MessageUtils::create_get_page_request(obj,
+                                                                      ca));
+
+    handle_(req,
+            vrouter_.redirect_timeout(),
+            nullptr,
+            &get_page);
+
+    return clp;
+}
+
 void
 RemoteNode::resize(const Object& obj,
                    uint64_t newsize)

@@ -851,6 +851,24 @@ LocalNode::get_clone_namespace_map_(vd::WeakVolumePtr vol)
     return api::GetCloneNamespaceMap(vol);
 }
 
+std::vector<vd::ClusterLocationAndHash>
+LocalNode::get_page(const Object& obj,
+                    const vd::ClusterAddress ca)
+{
+    RWLockPtr l(get_lock_(obj.id));
+    fungi::ScopedReadLock rg(*l);
+    return with_volume_pointer_(&LocalNode::get_page_,
+                                obj.id,
+                                ca);
+}
+
+std::vector<vd::ClusterLocationAndHash>
+LocalNode::get_page_(vd::WeakVolumePtr vol,
+                     const vd::ClusterAddress ca)
+{
+    return api::GetPage(vol, ca);
+}
+
 void
 LocalNode::resize(const Object& obj,
                   uint64_t newsize)

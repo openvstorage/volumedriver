@@ -81,6 +81,10 @@ public:
     virtual volumedriver::CloneNamespaceMap
     get_clone_namespace_map(const Object& obj) override final;
 
+    virtual std::vector<volumedriver::ClusterLocationAndHash>
+    get_page(const Object& obj,
+             const volumedriver::ClusterAddress ca) override final;
+
     virtual void
     resize(const Object& obj,
            uint64_t newsize) override final;

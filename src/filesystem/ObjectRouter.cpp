@@ -399,6 +399,12 @@ ObjectRouter::redirected_work_(ZWorkerPool::MessageParts parts_in)
                 parts_out.emplace_back(handle_get_clone_namespace_map_(get_req<vfsprotocol::GetCloneNamespaceMapRequest>(parts_in)));
                 break;
             }
+        case vfsprotocol::RequestType::GetPage:
+            {
+                CHECK(parts_in.size() == 3);
+                parts_out.emplace_back(handle_get_page_(get_req<vfsprotocol::GetPageRequest>(parts_in)));
+                break;
+            }
         case vfsprotocol::RequestType::Resize:
             {
                 CHECK(parts_in.size() == 3);
@@ -1269,6 +1275,34 @@ ObjectRouter::handle_get_clone_namespace_map_(const vfsprotocol::GetCloneNamespa
     const vd::CloneNamespaceMap cnmap =
         local_node_()->get_clone_namespace_map(obj);
     const auto rsp(vfsprotocol::MessageUtils::create_get_clone_namespace_map_response(cnmap));
+    return ZUtils::serialize_to_message(rsp);
+}
+
+std::vector<vd::ClusterLocationAndHash>
+ObjectRouter::get_page(const ObjectId& id,
+                       const vd::ClusterAddress ca)
+{
+    LOG_TRACE(id);
+
+    FastPathCookie cookie;
+
+    return route_(&ClusterNode::get_page,
+                  AttemptTheft::T,
+                  id,
+                  cookie,
+                  ca);
+}
+
+zmq::message_t
+ObjectRouter::handle_get_page_(const vfsprotocol::GetPageRequest& msg)
+{
+    const Object obj(obj_from_msg(msg));
+
+    LOG_TRACE(obj);
+    const std::vector<vd::ClusterLocationAndHash> cl =
+        local_node_()->get_page(obj,
+                                vd::ClusterAddress(msg.cluster_address()));
+    const auto rsp(vfsprotocol::MessageUtils::create_get_page_response(cl));
     return ZUtils::serialize_to_message(rsp);
 }
 

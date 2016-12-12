@@ -61,6 +61,7 @@ class DeleteRequest;
 class TransferRequest;
 class GetClusterMultiplierRequest;
 class GetCloneNamespaceMapRequest;
+class GetPageRequest;
 
 }
 
@@ -197,6 +198,10 @@ public:
 
     volumedriver::CloneNamespaceMap
     get_clone_namespace_map(const ObjectId&);
+
+    std::vector<volumedriver::ClusterLocationAndHash>
+    get_page(const ObjectId&,
+             const volumedriver::ClusterAddress);
 
     void
     resize(const ObjectId& id,
@@ -570,6 +575,9 @@ private:
 
     zmq::message_t
     handle_get_clone_namespace_map_(const vfsprotocol::GetCloneNamespaceMapRequest&);
+
+    zmq::message_t
+    handle_get_page_(const vfsprotocol::GetPageRequest&);
 
     void
     handle_resize_(const vfsprotocol::ResizeRequest&);
