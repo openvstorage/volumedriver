@@ -22,6 +22,7 @@
 
 #include <youtils/Logging.h>
 
+#include <volumedriver/ClusterLocationAndHash.h>
 #include <volumedriver/DtlInSync.h>
 #include <volumedriver/Types.h>
 
@@ -69,7 +70,14 @@ struct MessageUtils
     create_get_clone_namespace_map_request(const volumedriverfs::Object&);
 
     static GetCloneNamespaceMapResponse
-    create_get_clone_namespace_map_response(const volumedriver::CloneNamespaceMap);
+    create_get_clone_namespace_map_response(const volumedriver::CloneNamespaceMap&);
+
+    static GetPageRequest
+    create_get_page_request(const volumedriverfs::Object&,
+                            const volumedriver::ClusterAddress);
+
+    static GetPageResponse
+    create_get_page_response(const std::vector<volumedriver::ClusterLocationAndHash>&);
 
     static ResizeRequest
     create_resize_request(const volumedriverfs::Object&,

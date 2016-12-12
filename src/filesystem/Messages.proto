@@ -76,6 +76,18 @@ message GetCloneNamespaceMapResponse
     repeated MapEntry map_entry = 3;
 }
 
+message GetPageRequest
+{
+    required string object_id = 1;
+    required uint32 object_type = 2;
+    required uint64 cluster_address = 3;
+}
+
+message GetPageResponse
+{
+    repeated uint64 cluster_location = 1;
+}
+
 message ResizeRequest
 {
 	required string object_id = 1;

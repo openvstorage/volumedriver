@@ -176,7 +176,7 @@ MessageUtils::create_get_clone_namespace_map_request(const vfs::Object& obj)
 }
 
 GetCloneNamespaceMapResponse
-MessageUtils::create_get_clone_namespace_map_response(const vd::CloneNamespaceMap cnm)
+MessageUtils::create_get_clone_namespace_map_response(const vd::CloneNamespaceMap& cnm)
 {
     GetCloneNamespaceMapResponse msg;
     for (auto& e: cnm)
@@ -184,6 +184,35 @@ MessageUtils::create_get_clone_namespace_map_response(const vd::CloneNamespaceMa
         GetCloneNamespaceMapResponse::MapEntry *entry = msg.add_map_entry();
         entry->set_clone_id(static_cast<uint32_t>(e.first));
         entry->set_ns(e.second.str());
+    }
+
+    msg.CheckInitialized();
+
+    return msg;
+}
+
+GetPageRequest
+MessageUtils::create_get_page_request(const vfs::Object& obj,
+                                      const vd::ClusterAddress ca)
+{
+    GetPageRequest msg;
+    msg.set_object_id(obj.id.str());
+    msg.set_object_type(static_cast<uint32_t>(obj.type));
+    msg.set_cluster_address(static_cast<uint64_t>(ca));
+
+    msg.CheckInitialized();
+
+    return msg;
+}
+
+GetPageResponse
+MessageUtils::create_get_page_response(const std::vector<vd::ClusterLocationAndHash>& cls)
+{
+    GetPageResponse msg;
+    for (auto& e: cls)
+    {
+        vd::ClusterLocation cl = e.clusterLocation;
+        msg.add_cluster_location(*reinterpret_cast<uint64_t*>(&cl));
     }
 
     msg.CheckInitialized();
