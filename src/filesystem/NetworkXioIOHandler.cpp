@@ -51,7 +51,7 @@ pack_ctrl_msg(NetworkXioRequest *req)
     o_msg.retval(req->retval);
     o_msg.errval(req->errval);
     o_msg.size(req->size);
-    o_msg.offset_and_generic(req->offset_and_generic);
+    o_msg.u64(req->u64);
     o_msg.dtl_in_sync(req->dtl_in_sync);
     o_msg.opaque(req->opaque);
     req->s_msg = o_msg.pack_msg();
@@ -262,14 +262,14 @@ NetworkXioIOHandler::handle_read(NetworkXioRequest *req,
     req->data = block->reg_mem.addr;
     req->data_len = size;
     req->size = size;
-    req->offset_and_generic = offset;
+    req->offset = offset;
     try
     {
        bool eof = false;
        fs_.read(*handle_,
                 req->size,
                 static_cast<char*>(req->data),
-                req->offset_and_generic,
+                req->offset,
                 eof);
        req->retval = req->size;
        req->errval = 0;
@@ -327,7 +327,7 @@ NetworkXioIOHandler::handle_write(NetworkXioRequest *req,
     }
 
     req->size = size;
-    req->offset_and_generic = offset;
+    req->offset = offset;
     bool sync = false;
     try
     {
@@ -335,7 +335,7 @@ NetworkXioIOHandler::handle_write(NetworkXioRequest *req,
         fs_.write(*handle_,
                   req->size,
                   static_cast<char*>(data),
-                  req->offset_and_generic,
+                  req->offset,
                   sync,
                   &dtl_in_sync);
         req->dtl_in_sync = (dtl_in_sync == vd::DtlInSync::T) ? true : false;
@@ -462,7 +462,7 @@ NetworkXioIOHandler::handle_stat_volume(NetworkXioRequest *req,
         }
         else
         {
-            req->offset_and_generic = fs_.object_router().get_size(*volume_id);
+            req->u64 = fs_.object_router().get_size(*volume_id);
             req->retval = 0;
             req->errval = 0;
         }
@@ -938,7 +938,6 @@ NetworkXioIOHandler::handle_get_volume_uri(NetworkXioRequest* req,
                     uri.c_str(),
                     uri.size());
             req->retval = 0;
-            req->size = uri.size();
             req->data_len = uri.size();
             req->data = req->reg_mem.addr;
             req->from_pool = false;
@@ -1007,7 +1006,7 @@ NetworkXioIOHandler::handle_get_cluster_multiplier(NetworkXioRequest *req,
         }
         const vd::ClusterMultiplier cluster_multiplier =
             fs_.object_router().get_cluster_multiplier(*volume_id);
-        req->offset_and_generic = static_cast<uint64_t>(cluster_multiplier);
+        req->u64 = static_cast<uint64_t>(cluster_multiplier);
         req->retval = 0;
         req->errval = 0;
     }
@@ -1222,7 +1221,7 @@ NetworkXioIOHandler::process_ctrl_request(NetworkXioRequest *req)
     {
         handle_truncate(req,
                         i_msg.volume_name(),
-                        i_msg.offset_and_generic());
+                        i_msg.offset());
         break;
     }
     case NetworkXioMsgOpcode::ListClusterNodeURIReq:
@@ -1252,7 +1251,7 @@ NetworkXioIOHandler::process_ctrl_request(NetworkXioRequest *req)
     {
         handle_get_page(req,
                         i_msg.volume_name(),
-                        i_msg.offset_and_generic());
+                        i_msg.u64());
         break;
     }
     default:
@@ -1291,14 +1290,14 @@ NetworkXioIOHandler::process_request(NetworkXioRequest *req)
     {
         handle_read(req,
                     i_msg.size(),
-                    i_msg.offset_and_generic());
+                    i_msg.offset());
         break;
     }
     case NetworkXioMsgOpcode::WriteReq:
     {
         handle_write(req,
                      i_msg.size(),
-                     i_msg.offset_and_generic());
+                     i_msg.offset());
         break;
     }
     case NetworkXioMsgOpcode::FlushReq:

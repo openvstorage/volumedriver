@@ -19,6 +19,7 @@
 #include "ShmHandler.h"
 #include "../ShmControlChannelProtocol.h"
 #include "ShmClient.h"
+#include "common_priv.h"
 #include "context.h"
 
 namespace libovsvolumedriver
@@ -113,6 +114,10 @@ struct ShmContext : public ovs_context_t
 
     int get_clone_namespace_map(const char *volume_name,
                                 CloneNamespaceMap& cn) override final;
+
+    int get_page(const char *volume_name,
+                 const ClusterAddress ca,
+                 ClusterLocationPage& cl) override final;
 };
 
 } //namespace libovsvolumedriver

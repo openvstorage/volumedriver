@@ -17,6 +17,7 @@
 #define __CONTEXT_H
 
 #include "common.h"
+#include "common_priv.h"
 
 #include <vector>
 #include <map>
@@ -88,7 +89,12 @@ public:
 
     virtual int
     get_clone_namespace_map(const char *volume_name,
-                            CloneNamespaceMap& cn) = 0;
+                            libovsvolumedriver::CloneNamespaceMap& cn) = 0;
+
+    virtual int
+    get_page(const char *volume_name,
+             const libovsvolumedriver::ClusterAddress ca,
+             libovsvolumedriver::ClusterLocationPage& cl) = 0;
 
     TransportType transport;
     int oflag;

@@ -15,6 +15,7 @@
 
 #include "Logger.h"
 #include "NetworkXioContext.h"
+#include "common_priv.h"
 
 namespace libovsvolumedriver
 {
@@ -600,6 +601,44 @@ NetworkXioContext::get_clone_namespace_map(const char *volume_name,
                                                       volume_name,
                                                       cn,
                                                       request.get());
+        errno = request->_errno; r = request->_rv;
+    }
+    catch (const std::bad_alloc&)
+    {
+        errno = ENOMEM;
+    }
+    catch (...)
+    {
+        errno = EIO;
+    }
+    return r;
+}
+
+int
+NetworkXioContext::get_page(const char *volume_name,
+                            const ClusterAddress ca,
+                            ClusterLocationPage& cl)
+{
+    int r;
+    std::shared_ptr<ovs_aio_request> request;
+    try
+    {
+        request = std::make_shared<ovs_aio_request>(RequestOp::Noop,
+                                                    nullptr,
+                                                    nullptr);
+    }
+    catch (const std::bad_alloc&)
+    {
+        errno = ENOMEM;
+        return -1;
+    }
+    try
+    {
+        NetworkXioClient::xio_get_page(uri_,
+                                       volume_name,
+                                       ca,
+                                       cl,
+                                       request.get());
         errno = request->_errno; r = request->_rv;
     }
     catch (const std::bad_alloc&)

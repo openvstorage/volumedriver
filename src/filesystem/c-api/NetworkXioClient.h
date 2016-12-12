@@ -18,6 +18,7 @@
 
 #include "../NetworkXioProtocol.h"
 #include "NetworkHAContext.h"
+#include "common_priv.h"
 #include "internal.h"
 
 #include <boost/thread/lock_guard.hpp>
@@ -232,6 +233,13 @@ public:
                                 ovs_aio_request *request);
 
     static void
+    xio_get_page(const std::string& uri,
+                 const char *volume_name,
+                 const ClusterAddress ca,
+                 ClusterLocationPage& cl,
+                 ovs_aio_request *request);
+
+    static void
     xio_destroy_ctx_shutdown(xio_context *ctx);
 private:
     std::shared_ptr<xio_context> ctx;
@@ -323,17 +331,24 @@ private:
 
     static void
     handle_get_volume_uri(xio_ctl_s *xctl,
-                          xio_iovec_ex *sglist,
-                          size_t size);
+                          xio_iovec_ex *sglist);
 
     static void
     handle_get_clone_namespace_map(xio_ctl_s *xctl,
                                    xio_iovec_ex *sglist);
 
     static void
+    handle_get_page_vector(xio_ctl_s *xctl,
+                           xio_iovec_ex *sglist);
+
+    static void
     create_vec_from_buf(xio_ctl_s *xctl,
                         xio_iovec_ex *sglist,
                         int vec_size);
+
+    static void
+    copy_sglist_buffer(xio_ctl_s *xctl,
+                       xio_iovec_ex *sglist);
 
     void
     set_dtl_in_sync(const NetworkXioMsgOpcode op,

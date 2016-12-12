@@ -377,4 +377,13 @@ ShmContext::get_clone_namespace_map(const char * /*volume_name*/,
     return -1;
 }
 
+int
+ShmContext::get_page(const char * /*volume_name*/,
+                     const ClusterAddress /*ca*/,
+                     ClusterLocationPage& /*cl*/)
+{
+    std::abort();
+    return -1;
+}
+
 } //namespace libovsvolumedriver

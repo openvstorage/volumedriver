@@ -18,6 +18,7 @@
 
 #include "volumedriver.h"
 #include "common.h"
+#include "common_priv.h"
 #include "context.h"
 #include "IOThread.h"
 
@@ -107,6 +108,11 @@ public:
     int
     get_clone_namespace_map(const char *volume_name,
                             CloneNamespaceMap& cn) override final;
+
+    int
+    get_page(const char *volume_name,
+             const ClusterAddress ca,
+             ClusterLocationPage& cl) override final;
 
     int
     send_read_request(ovs_aio_request*) override final;
