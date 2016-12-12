@@ -572,6 +572,7 @@ NetworkXioServer::prepare_msg_reply(NetworkXioRequest *req)
     case NetworkXioMsgOpcode::ListClusterNodeURIRsp:
     case NetworkXioMsgOpcode::GetVolumeURIRsp:
     case NetworkXioMsgOpcode::GetCloneNamespaceMapRsp:
+    case NetworkXioMsgOpcode::GetPageRsp:
     {
         if (req->data)
         {

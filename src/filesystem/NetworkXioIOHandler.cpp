@@ -145,6 +145,14 @@ NetworkXioIOHandler::pack_map(const vd::CloneNamespaceMap& cn)
     return std::string(buffer.data(), buffer.size());
 }
 
+std::string
+NetworkXioIOHandler::pack_vector(const std::vector<vd::ClusterLocationAndHash>& cl)
+{
+    msgpack::sbuffer buffer;
+    msgpack::pack(buffer, cl);
+    return std::string(buffer.data(), buffer.size());
+}
+
 void
 NetworkXioIOHandler::handle_open(NetworkXioRequest *req,
                                  const std::string& volume_name)
@@ -1059,6 +1067,55 @@ NetworkXioIOHandler::handle_get_clone_namespace_map(NetworkXioRequest *req,
 }
 
 void
+NetworkXioIOHandler::handle_get_page(NetworkXioRequest *req,
+                                     const std::string& vname,
+                                     const uint64_t cluster_address)
+{
+    VERIFY(not handle_);
+    req->op = NetworkXioMsgOpcode::GetPageRsp;
+
+    auto& router_ = fs_.object_router();
+    const FrontendPath volume_path(make_volume_path(vname));
+    const vd::ClusterAddress ca(cluster_address);
+    try
+    {
+        boost::optional<ObjectId> volid(fs_.find_id(volume_path));
+        if (not volid)
+        {
+            req->retval = -1;
+            req->errval = ENOENT;
+            pack_ctrl_msg(req);
+            return;
+        }
+        std::string buffer(pack_vector(router_.get_page(*volid, ca)));
+
+        int ret = xio_mem_alloc(buffer.size(), &req->reg_mem);
+        if (ret < 0)
+        {
+            LOG_ERROR("failed to allocate buffer of size " << buffer.size());
+            throw std::bad_alloc();
+        }
+        memcpy(req->reg_mem.addr, buffer.data(), buffer.size());
+        req->retval = 0;
+        req->errval = 0;
+        req->data_len = buffer.size();
+        req->data = req->reg_mem.addr;
+        req->from_pool = false;
+    }
+    catch (std::bad_alloc&)
+    {
+        req->errval = ENOMEM;
+        req->retval = -1;
+    }
+    CATCH_STD_ALL_EWHAT({
+       LOG_ERROR("get_page error: " << EWHAT);
+       req->retval = -1;
+       req->errval = EIO;
+    });
+    pack_ctrl_msg(req);
+}
+
+void
 NetworkXioIOHandler::handle_error(NetworkXioRequest *req,
                                   NetworkXioMsgOpcode op,
                                   int errval)
@@ -1189,6 +1246,13 @@ NetworkXioIOHandler::process_ctrl_request(NetworkXioRequest *req)
     {
         handle_get_clone_namespace_map(req,
                                        i_msg.volume_name());
+        break;
+    }
+    case NetworkXioMsgOpcode::GetPageReq:
+    {
+        handle_get_page(req,
+                        i_msg.volume_name(),
+                        i_msg.offset_and_generic());
         break;
     }
     default:

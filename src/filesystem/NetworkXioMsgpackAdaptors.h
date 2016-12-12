@@ -16,10 +16,7 @@
 #ifndef NETWORK_XIO_MSGPACK_ADAPTORS_H_
 #define NETWORK_XIO_MSGPACK_ADAPTORS_H_
 
-PRAGMA_IGNORE_WARNING_BEGIN("-Wctor-dtor-privacy")
 #include <msgpack.hpp>
-PRAGMA_IGNORE_WARNING_END;
-
 #include <backend/Namespace.h>
 #include <volumedriver/Types.h>
 
@@ -50,6 +47,18 @@ struct pack<volumedriver::SCOCloneID>
                                volumedriver::SCOCloneID const& id) const
     {
         p.pack(static_cast<uint8_t>(id));
+        return p;
+    }
+};
+
+template<>
+struct pack<volumedriver::ClusterLocationAndHash>
+{
+    template<typename Stream>
+    packer<Stream>& operator()(msgpack::packer<Stream>& p,
+                               volumedriver::ClusterLocationAndHash const& cl) const
+    {
+        p.pack_uint64(*reinterpret_cast<const uint64_t*>(&cl.clusterLocation));
         return p;
     }
 };

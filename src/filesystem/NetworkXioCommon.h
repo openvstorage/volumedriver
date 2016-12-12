@@ -149,6 +149,8 @@ enum class NetworkXioMsgOpcode
     GetClusterMultiplierRsp,
     GetCloneNamespaceMapReq,
     GetCloneNamespaceMapRsp,
+    GetPageReq,
+    GetPageRsp,
 };
 
 #endif //__NETWORK_XIO_COMMON_H_

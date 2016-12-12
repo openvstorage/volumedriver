@@ -139,6 +139,10 @@ private:
     void handle_get_clone_namespace_map(NetworkXioRequest *req,
                                         const std::string& volume_name);
 
+    void handle_get_page(NetworkXioRequest *req,
+                         const std::string& volume_name,
+                         const uint64_t cluster_address);
+
     void handle_error(NetworkXioRequest *req,
                       NetworkXioMsgOpcode op,
                       int errval);
@@ -169,6 +173,9 @@ private:
 
     std::string
     pack_map(const volumedriver::CloneNamespaceMap& cn);
+
+    std::string
+    pack_vector(const std::vector<volumedriver::ClusterLocationAndHash>& cl);
 };
 
 typedef std::unique_ptr<NetworkXioIOHandler> NetworkXioIOHandlerPtr;
