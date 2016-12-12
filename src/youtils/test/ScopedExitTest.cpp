@@ -90,6 +90,28 @@ TEST_F(ScopedExitTest, exceptional)
     EXPECT_TRUE(exception);
 }
 
+// while ScopeExit doesn't use C++-17's std::uncaught_exceptions yet this
+// one will take down the process *deliberately*.
+TEST_F(ScopedExitTest, DISABLED_on_exception_in_dtor)
+{
+    bool ran = false;
+
+    EXPECT_THROW({
+            auto on_exit(make_scope_exit([&]
+            {
+                auto on_failure(make_scope_exit_on_exception([&]
+                                                             {
+                                                                 ran = true;
+                                                             }));
+            }));
+
+            throw ScopedExitTestException("catch me if you can");
+        },
+        ScopedExitTestException);
+
+    ASSERT_FALSE(ran);
+}
+
 }
 
 // Local Variables: **

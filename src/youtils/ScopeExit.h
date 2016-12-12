@@ -16,6 +16,7 @@
 #ifndef SCOPE_EXIT_H
 #define SCOPE_EXIT_H
 
+#include <stdexcept>
 #include <utility>
 
 namespace youtils
@@ -26,7 +27,18 @@ struct ScopeExit
 {
     ScopeExit(T&& f) :
         f_(std::move(f))
-    {}
+    {
+        // Creating a new "on failure" ScopeExit while unwinding
+        // does not work with std::uncaught_exception as we cannot
+        // figure out if a new exception was raised. We need
+        // C++-17's std::uncaught_exceptions for that.
+        // IOW: DO NOT USE ScopeExit<T, true> IN DTORS!
+        if (only_on_exception and std::uncaught_exception())
+        {
+            // this will take down the process
+            throw std::logic_error("don't use ScopeExit<T, true> when unwinding!");
+        }
+    }
 
     ~ScopeExit()
     {
