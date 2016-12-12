@@ -1869,4 +1869,57 @@ TEST_F(RemoteTest, DISABLED_setup_remote_hack)
     sleep(1000000);
 }
 
+TEST_F(RemoteTest, locally_get_remote_cluster_multiplier)
+{
+    const uint64_t vsize = 10 << 20;
+    const FrontendPath fname(make_volume_name("/volume"));
+    const auto rpath(make_remote_file(fname, vsize));
+    auto maybe_id(find_object(fname));
+    ASSERT_TRUE(static_cast<bool>(maybe_id));
+
+    ASSERT_TRUE(fs_->object_router().node_id() == local_node_id());
+
+    auto cluster_multiplier(fs_->object_router().get_cluster_multiplier(*maybe_id));
+
+    EXPECT_EQ(vd::VolumeConfig::default_cluster_multiplier(),
+              cluster_multiplier);
+}
+
+TEST_F(RemoteTest, locally_get_remote_clone_namespace_map)
+{
+    const uint64_t vsize = 10 << 20;
+    const FrontendPath fname(make_volume_name("/volume"));
+    const auto rpath(make_remote_file(fname, vsize));
+    auto maybe_id(find_object(fname));
+    ASSERT_TRUE(static_cast<bool>(maybe_id));
+
+    ASSERT_TRUE(fs_->object_router().node_id() == local_node_id());
+
+    auto cnmap(fs_->object_router().get_clone_namespace_map(*maybe_id));
+
+    EXPECT_EQ(1UL, cnmap.size());
+
+    const be::Namespace nspace(find_registration(*maybe_id)->getNS());
+    EXPECT_EQ(nspace, cnmap[vd::SCOCloneID(0)]);
+}
+
+TEST_F(RemoteTest, locally_get_remote_page)
+{
+    const uint64_t vsize = 10 << 20;
+    const FrontendPath fname(make_volume_name("/volume"));
+    const auto rpath(make_remote_file(fname, vsize));
+    auto maybe_id(find_object(fname));
+    ASSERT_TRUE(static_cast<bool>(maybe_id));
+
+    ASSERT_TRUE(fs_->object_router().node_id() == local_node_id());
+
+    auto cl(fs_->object_router().get_page(*maybe_id, vd::ClusterAddress(0)));
+
+    EXPECT_EQ(256UL, cl.size());
+    for (const auto& e: cl)
+    {
+        EXPECT_TRUE(e.clusterLocation == vd::ClusterLocation(0));
+    }
+}
+
 }

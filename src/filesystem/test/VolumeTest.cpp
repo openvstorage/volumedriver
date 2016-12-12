@@ -1679,6 +1679,28 @@ TEST_F(VolumeTest, get_clone_namespace_map)
     EXPECT_EQ(cfg.getNS(), cnmap[vd::SCOCloneID(0)]);
 }
 
+TEST_F(VolumeTest, get_page)
+{
+    const FrontendPath fname(make_volume_name("/volume"));
+    const ObjectId vname(create_file(fname));
+
+    vd::WeakVolumePtr v;
+
+    {
+        LOCKVD();
+        v = api::getVolumePointer(vd::VolumeId(vname.str()));
+    }
+
+    const vd::ClusterAddress ca(0);
+    std::vector<vd::ClusterLocationAndHash> cls(api::GetPage(v, ca));
+
+    EXPECT_EQ(256UL, cls.size());
+    for (const auto& e: cls)
+    {
+        EXPECT_TRUE(e.clusterLocation == vd::ClusterLocation(0));
+    }
+}
+
 }
 
 // Local Variables: **

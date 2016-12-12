@@ -263,6 +263,66 @@ TEST_F(MessageTest, get_clone_namespace_map_response)
     EXPECT_EQ(ns1, tmp.find(clone_id_1)->second);
 }
 
+TEST_F(MessageTest, get_page_request)
+{
+    const vfs::ObjectId id("volume");
+    const vfs::ObjectType tp = vfs::ObjectType::File;
+    const vd::ClusterAddress ca(888);
+
+    const auto msg(vfsprotocol::MessageUtils::create_get_page_request(vfs::Object(tp, id),
+                                                                      ca));
+    ASSERT_TRUE(msg.IsInitialized());
+
+    const std::string s(msg.SerializeAsString());
+
+    vfsprotocol::GetPageRequest msg2;
+    msg2.ParseFromString(s);
+    ASSERT_TRUE(msg2.IsInitialized());
+
+    EXPECT_EQ(id.str(), msg2.object_id());
+    EXPECT_EQ(ca, vd::ClusterAddress(msg2.cluster_address()));
+    check_object_type(msg2, tp);
+}
+
+TEST_F(MessageTest, get_page_response)
+{
+    std::vector<vd::ClusterLocationAndHash> clp;
+    const vd::ClusterLocationAndHash clh_0(vd::ClusterLocation(vd::SCONumber(0),
+                                                               vd::SCOOffset(88),
+                                                               vd::SCOCloneID(89),
+                                                               vd::SCOVersion(90)));
+    const vd::ClusterLocationAndHash clh_1(vd::ClusterLocation(vd::SCONumber(1),
+                                                               vd::SCOOffset(91),
+                                                               vd::SCOCloneID(92),
+                                                               vd::SCOVersion(93)));
+    clp.push_back(clh_0);
+    clp.push_back(clh_1);
+
+    EXPECT_TRUE(clp[0] == clh_0);
+    EXPECT_TRUE(clp[1] == clh_1);
+
+    const auto msg(vfsprotocol::MessageUtils::create_get_page_response(clp));
+    ASSERT_TRUE(msg.IsInitialized());
+
+    const std::string s(msg.SerializeAsString());
+
+    vfsprotocol::GetPageResponse msg2;
+    msg2.ParseFromString(s);
+
+    ASSERT_TRUE(msg2.IsInitialized());
+    EXPECT_EQ(2UL, msg2.cluster_location_size());
+
+    std::vector<vd::ClusterLocationAndHash> tmp;
+    for (int i = 0; i < msg2.cluster_location_size(); i++)
+    {
+        vd::ClusterLocation cl;
+        *reinterpret_cast<uint64_t*>(&cl) = msg2.cluster_location(i);
+        tmp.emplace_back(vd::ClusterLocationAndHash(cl));
+    }
+
+    EXPECT_TRUE(tmp == clp);
+}
+
 TEST_F(MessageTest, delete_request)
 {
     const vfs::ObjectId id("volume");
