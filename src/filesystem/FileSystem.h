@@ -107,8 +107,8 @@ class FileSystem
     friend class volumedriverfstest::VolumeTest;
 
 public:
-    explicit FileSystem(const boost::property_tree::ptree& pt,
-                        const RegisterComponent registerize = RegisterComponent::T);
+    explicit FileSystem(const boost::property_tree::ptree&,
+                        const RegisterComponent = RegisterComponent::T);
 
     ~FileSystem();
 
@@ -136,21 +136,21 @@ public:
                 youtils::ConfigurationReport&) const override final;
 
     void
-    read(Handle& h,
+    read(Handle&,
          size_t& size,
          char* buf,
          off_t off,
          bool& eof);
 
     void
-    read(const FrontendPath& path,
-         Handle& h,
+    read(const FrontendPath&,
+         Handle&,
          size_t& size,
          char* buf,
          off_t off);
 
     void
-    write(Handle& h,
+    write(Handle&,
           size_t& size,
           const char* buf,
           off_t off,
@@ -158,19 +158,19 @@ public:
           volumedriver::DtlInSync* = nullptr);
 
     void
-    write(const FrontendPath& path,
-          Handle& h,
+    write(const FrontendPath&,
+          Handle&,
           size_t& size,
           const char* buf,
           off_t off);
 
     void
-    fsync(const FrontendPath& path,
-          Handle& h,
+    fsync(const FrontendPath&,
+          Handle&,
           bool datasync);
 
     void
-    fsync(Handle& h,
+    fsync(Handle&,
           bool datasync,
           volumedriver::DtlInSync* = nullptr);
 
@@ -274,10 +274,10 @@ public:
               const CloneFileFlags& flags);
 
     void
-    mknod(const FrontendPath& path,
-          UserId uid,
-          GroupId gid,
-          Permissions pms);
+    mknod(const FrontendPath&,
+          UserId,
+          GroupId,
+          Permissions);
 
     void
     mknod(const ObjectId& parent_id,
@@ -287,10 +287,10 @@ public:
           Permissions pms);
 
     void
-    mkdir(const FrontendPath& path,
-          UserId uid,
-          GroupId gid,
-          Permissions pms);
+    mkdir(const FrontendPath&,
+          UserId,
+          GroupId,
+          Permissions);
 
     void
     mkdir(const ObjectId& parent_id,
@@ -300,17 +300,17 @@ public:
           Permissions pms);
 
     void
-    unlink(const FrontendPath& path);
+    unlink(const FrontendPath&);
 
     void
     unlink(const ObjectId& parent_id,
            const std::string& name);
 
     void
-    rmdir(const FrontendPath& path);
+    rmdir(const FrontendPath&);
 
     void
-    rmdir(const ObjectId& id);
+    rmdir(const ObjectId&);
 
     // FUSE models its rename(from, to, flags) version after the renameat2
     // syscall on linux which is not wrapped by glibc, and these flags are
@@ -336,11 +336,11 @@ public:
            RenameFlags = RenameFlags::None);
 
     void
-    truncate(const FrontendPath& path,
+    truncate(const FrontendPath&,
              off_t size);
 
     void
-    truncate(const ObjectId& id,
+    truncate(const ObjectId&,
              off_t size);
 
     void
@@ -355,10 +355,10 @@ public:
 
     void
     release(const FrontendPath&,
-            Handle::Ptr h);
+            Handle::Ptr);
 
     void
-    release(Handle::Ptr h);
+    release(Handle::Ptr);
 
     template<typename T>
     void
@@ -535,6 +535,11 @@ public:
 
     std::vector<ClientInfo>
     list_registered_clients();
+
+    void
+    set_dtl_in_sync(const Handle&,
+                    const volumedriver::DtlInSync);
+
 private:
     DECLARE_LOGGER("FileSystem");
 

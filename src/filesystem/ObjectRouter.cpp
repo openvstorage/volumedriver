@@ -1009,10 +1009,13 @@ ObjectRouter::write_(const ObjectId& id,
 {
     LOG_TRACE(id << ": size " << *size << ", off " << off);
 
-    auto pred([this](const ObjectId& id,
-                     const ObjectType tp)
+    auto pred([this, &dtl_in_sync](const ObjectId& id,
+                                   const ObjectType tp)
               {
                   LOCK_REDIRECTS();
+
+                  RedirectCounter& counter = redirects_[id];
+                  counter.dtl_in_sync = dtl_in_sync;
 
                   return migrate_pred_helper_("write",
                                               id,
@@ -1020,7 +1023,7 @@ ObjectRouter::write_(const ObjectId& id,
                                               tp == ObjectType::File ?
                                               vrouter_file_write_threshold.value() :
                                               vrouter_volume_write_threshold.value(),
-                                              redirects_[id].writes);
+                                              counter.writes);
               });
 
     using WriteFun = void (ClusterNode::*)(const Object&,
@@ -1166,12 +1169,20 @@ ObjectRouter::sync(const FastPathCookie& cookie,
                    const ObjectId& id,
                    vd::DtlInSync& dtl_in_sync)
 {
-    return select_path_<decltype(id),
-                        decltype(dtl_in_sync)>(cookie,
-                                               &ObjectRouter::sync_,
-                                               &LocalNode::sync,
-                                               id,
-                                               dtl_in_sync);
+    FastPathCookie
+        fpc(select_path_<decltype(id),
+                         decltype(dtl_in_sync)>(cookie,
+                                                &ObjectRouter::sync_,
+                                                &LocalNode::sync,
+                                                id,
+                                                dtl_in_sync));
+    if (not fpc)
+    {
+        LOCK_REDIRECTS();
+        redirects_[id].dtl_in_sync = dtl_in_sync;
+    }
+
+    return fpc;
 }
 
 FastPathCookie
@@ -1933,6 +1944,19 @@ bool
 ObjectRouter::fencing_support_() const
 {
     return api::fencing_support() and vrouter_use_fencing.value();
+}
+
+void
+ObjectRouter::set_dtl_in_sync(const ObjectId& oid,
+                              const vd::DtlInSync dtl_in_sync)
+{
+    ObjectRegistrationPtr reg(object_registry_->find_throw(oid,
+                                                           IgnoreCache::F));
+    if (reg->node_id != local_node_()->node_id())
+    {
+        LOCK_REDIRECTS();
+        redirects_[oid].dtl_in_sync = dtl_in_sync;
+    }
 }
 
 }
