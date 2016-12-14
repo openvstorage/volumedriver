@@ -520,11 +520,12 @@ ObjectRouter::maybe_steal_(Ret (ClusterNode::*fn)(const Object&,
                 throw;
             }
 
+            const bool permit_steal = permit_steal_(id);
             const bool stolen = steal_(reg,
-                                       fencing_support_() ?
+                                       permit_steal ?
                                        OnlyStealFromOfflineNode::F :
                                        OnlyStealFromOfflineNode::T,
-                                       fencing_support_() ?
+                                       permit_steal ?
                                        ForceRestart::F :
                                        ForceRestart::T);
             if (not stolen)
@@ -831,11 +832,12 @@ ObjectRouter::maybe_migrate_(Pred&& migrate_pred,
                 // clear(er)) as the remote first has to write out all pending data
                 // to the backend before we do a restart here, so the FOC will be
                 // empty anyway.
+                const bool permit_steal = permit_steal_(id);
                 migrate_(*reg,
-                         fencing_support_() ?
+                         permit_steal ?
                          OnlyStealFromOfflineNode::F :
                          OnlyStealFromOfflineNode::T,
-                         fencing_support_() ?
+                         permit_steal ?
                          ForceRestart::F :
                          ForceRestart::T);
                 LOG_INFO(id << ": auto migration from " << reg->node_id << " done");
@@ -1944,6 +1946,37 @@ bool
 ObjectRouter::fencing_support_() const
 {
     return api::fencing_support() and vrouter_use_fencing.value();
+}
+
+volumedriver::DtlInSync
+ObjectRouter::dtl_in_sync_(const ObjectId& oid) const
+{
+    vd::DtlInSync dtl_in_sync = vd::DtlInSync::F;
+    bool found = false;
+
+    {
+        LOCK_REDIRECTS();
+
+        auto it = redirects_.find(oid);
+        if (it != redirects_.end())
+        {
+            found = true;
+            dtl_in_sync = it->second.dtl_in_sync;
+        }
+    }
+
+    // VERIFY(found) instead?
+    if (found)
+    {
+        LOG_INFO(oid << ": DtlInSync = " << dtl_in_sync);
+
+    }
+    else
+    {
+        LOG_WARN(oid << " not found in redirects map, assuming DtlInSync = " << vd::DtlInSync::F);
+    }
+
+    return dtl_in_sync;
 }
 
 void

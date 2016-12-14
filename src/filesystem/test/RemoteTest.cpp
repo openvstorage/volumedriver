@@ -1617,21 +1617,28 @@ TEST_F(RemoteTest, stealing_and_fencing)
     const ObjectId oid(create_file(vpath,
                                    vsize));
 
-    const std::string pattern1("written first");
-
-    write_to_file(vpath,
-                  pattern1.data(),
-                  pattern1.size(),
-                  vsize / 2);
-
     const std::string snap(client_.create_snapshot(oid));
     wait_for_snapshot(oid,
                       snap);
 
+    const std::string pattern1("written first");
+    const fs::path rpath(remote_root_ / vpath);
+
+    write_to_remote_file(rpath,
+                         pattern1,
+                         vsize / 2,
+                         true);
+    {
+        std::shared_ptr<CachedObjectRegistry> oreg(fs_->object_router().object_registry());
+        EXPECT_EQ(local_node_id(),
+                  oreg->find(oid,
+                             IgnoreCache::T)->node_id);
+    }
+
     // cling to the LocalNode so we can still access the local volumedriver afterwards
     std::shared_ptr<LocalNode> local_node(shut_down_object_router());
 
-    check_remote_file(remote_root_ / vpath,
+    check_remote_file(rpath,
                       pattern1,
                       vsize / 2);
 

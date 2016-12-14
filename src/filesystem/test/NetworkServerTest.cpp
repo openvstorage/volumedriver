@@ -536,6 +536,76 @@ public:
     }
 
     void
+    test_steal_remote_volume(bool stop_dtl)
+    {
+        set_use_fencing(true);
+
+        mount_remote();
+        auto on_exit(yt::make_scope_exit([&]
+                                         {
+                                             umount_remote();
+                                         }));
+
+        const std::string vname("volume");
+        const size_t vsize = 1ULL << 20;
+
+        make_volume(vname,
+                    vsize,
+                    FileSystemTestSetup::remote_edge_port());
+
+        CtxPtr ctx(open_volume(vname,
+                               FileSystemTestSetup::local_edge_port(),
+                               O_RDWR,
+                               EnableHa::F));
+
+        if (stop_dtl)
+        {
+            stop_failovercache_for_remote_node();
+        }
+
+        const std::string snap("snapshot-to-get-the-dtl-in-sync");
+        EXPECT_EQ(0,
+                  ovs_snapshot_create(ctx.get(),
+                                      vname.c_str(),
+                                      snap.c_str(),
+                                      30));
+        EXPECT_EQ(1,
+                  ovs_snapshot_is_synced(ctx.get(),
+                                         vname.c_str(),
+                                         snap.c_str()));
+
+        const std::string
+            pattern("Remote volumes can only be stolen if the DTL is in sync!");
+        ASSERT_EQ(pattern.size(),
+                  ovs_write(ctx.get(),
+                            reinterpret_cast<const uint8_t*>(pattern.data()),
+                            pattern.size(),
+                            0));
+        ASSERT_EQ(0,
+                  ovs_flush(ctx.get()));
+
+        umount_remote();
+
+        std::vector<char> rbuf(pattern.size());
+        const ssize_t ret = ovs_read(ctx.get(),
+                                     reinterpret_cast<uint8_t*>(rbuf.data()),
+                                     rbuf.size(),
+                                     0);
+
+        if (stop_dtl)
+        {
+            ASSERT_GT(0, ret);
+        }
+        else
+        {
+            ASSERT_EQ(ret, rbuf.size());
+            ASSERT_EQ(pattern,
+                      std::string(rbuf.data(),
+                                  rbuf.size()));
+        }
+    }
+
+    void
     test_high_availability(bool enable_ha,
                            bool mark_offline,
                            bool fencing)
@@ -2052,6 +2122,16 @@ TEST_F(NetworkServerTest, list_uris_rand_order)
     }
 
     EXPECT_TRUE(set.empty());
+}
+
+TEST_F(NetworkServerTest, steal_remote_volume_if_dtl_is_in_sync)
+{
+    test_steal_remote_volume(false);
+}
+
+TEST_F(NetworkServerTest, dont_steal_remote_volume_if_dtl_is_not_in_sync)
+{
+    test_steal_remote_volume(true);
 }
 
 } //namespace

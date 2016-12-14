@@ -620,6 +620,15 @@ private:
     bool
     fencing_support_() const;
 
+    volumedriver::DtlInSync
+    dtl_in_sync_(const ObjectId&) const;
+
+    bool
+    permit_steal_(const ObjectId& oid) const
+    {
+        return fencing_support_() and dtl_in_sync_(oid) == volumedriver::DtlInSync::T;
+    }
+
     void
     shutdown_();
 };
