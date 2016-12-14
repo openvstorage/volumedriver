@@ -642,7 +642,9 @@ CachedMetaDataStore::set_cache_capacity(const size_t new_capacity)
                                                             true);
 
         page_data_.resize(new_capacity * CachePage::capacity());
+        page_data_.shrink_to_fit();
         pages_.clear();
+        pages_.shrink_to_fit();
 
         init_pages_(new_capacity);
     }
