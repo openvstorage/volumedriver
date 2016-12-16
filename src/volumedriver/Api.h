@@ -21,7 +21,7 @@
 
 #include "ClusterCache.h"
 #include "ClusterCount.h"
-#include "ClusterLocationAndHash.h"
+#include "ClusterLocation.h"
 #include "DtlInSync.h"
 #include "Events.h"
 #include "FailOverCacheConfig.h"
@@ -137,7 +137,7 @@ public:
     static volumedriver::CloneNamespaceMap
     GetCloneNamespaceMap(volumedriver::WeakVolumePtr);
 
-    static std::vector<volumedriver::ClusterLocationAndHash>
+    static std::vector<volumedriver::ClusterLocation>
     GetPage(volumedriver::WeakVolumePtr,
             const volumedriver::ClusterAddress);
 

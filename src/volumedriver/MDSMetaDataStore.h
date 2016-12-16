@@ -128,7 +128,7 @@ public:
     virtual void
     set_cache_capacity(const size_t num_pages) override final;
 
-    virtual std::vector<ClusterLocationAndHash>
+    virtual std::vector<ClusterLocation>
     get_page(const ClusterAddress) override final;
 
     void

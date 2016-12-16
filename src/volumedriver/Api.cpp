@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "Api.h"
-#include "ClusterLocationAndHash.h"
+#include "ClusterLocation.h"
 #include "DtlInSync.h"
 #include "MetaDataStoreInterface.h"
 #include "ScrubWork.h"
@@ -152,7 +152,7 @@ api::GetCloneNamespaceMap(vd::WeakVolumePtr vol)
     return cnmap;
 }
 
-std::vector<vd::ClusterLocationAndHash>
+std::vector<vd::ClusterLocation>
 api::GetPage(vd::WeakVolumePtr vol,
              const vd::ClusterAddress ca)
 {

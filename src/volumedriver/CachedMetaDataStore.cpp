@@ -706,10 +706,11 @@ CachedMetaDataStore::get_page_(const ClusterAddress ca)
     return std::make_pair(page, hit);
 }
 
-std::vector<ClusterLocationAndHash>
+std::vector<ClusterLocation>
 CachedMetaDataStore::get_page(const ClusterAddress ca)
 {
-    std::vector<ClusterLocationAndHash> vec(CachePage::capacity());
+    std::vector<ClusterLocation> vec;
+    std::vector<ClusterLocationAndHash> tmp(CachePage::capacity());
 
     {
         LOCK_CORKS_READ;
@@ -719,7 +720,7 @@ CachedMetaDataStore::get_page(const ClusterAddress ca)
         std::tie(page, std::ignore) = get_page_(ca);
 
         VERIFY(page);
-        memcpy(vec.data(), page->data(), vec.size());
+        memcpy(tmp.data(), page->data(), tmp.size());
 
         const ClusterAddress ca_start =
             CachePage::clusterAddress(CachePage::pageAddress(ca));
@@ -731,21 +732,15 @@ CachedMetaDataStore::get_page(const ClusterAddress ca)
             {
                 if (p.first >= ca_start and p.first < ca_end)
                 {
-                    vec[CachePage::offset(p.first)] = p.second;
+                    tmp[CachePage::offset(p.first)] = p.second;
                 }
             }
         }
     }
 
-    if (ClusterLocationAndHash::use_hash())
+    for (auto& clh : tmp)
     {
-        for (auto& clh : vec)
-        {
-            if (static_cast<ClusterLocation>(clh).isNull())
-            {
-                clh = ClusterLocationAndHash::discarded_location_and_hash();
-            }
-        }
+        vec.emplace_back(clh.clusterLocation);
     }
 
     return vec;
