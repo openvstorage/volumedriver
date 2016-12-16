@@ -1918,7 +1918,7 @@ TEST_F(RemoteTest, locally_get_remote_page)
     EXPECT_EQ(256UL, cl.size());
     for (const auto& e: cl)
     {
-        EXPECT_TRUE(e.clusterLocation == vd::ClusterLocation(0));
+        EXPECT_TRUE(e == vd::ClusterLocation(0));
     }
 }
 

@@ -286,22 +286,22 @@ TEST_F(MessageTest, get_page_request)
 
 TEST_F(MessageTest, get_page_response)
 {
-    std::vector<vd::ClusterLocationAndHash> clp;
-    const vd::ClusterLocationAndHash clh_0(vd::ClusterLocation(vd::SCONumber(0),
-                                                               vd::SCOOffset(88),
-                                                               vd::SCOCloneID(89),
-                                                               vd::SCOVersion(90)));
-    const vd::ClusterLocationAndHash clh_1(vd::ClusterLocation(vd::SCONumber(1),
-                                                               vd::SCOOffset(91),
-                                                               vd::SCOCloneID(92),
-                                                               vd::SCOVersion(93)));
-    clp.push_back(clh_0);
-    clp.push_back(clh_1);
+    std::vector<vd::ClusterLocation> cloc;
+    const vd::ClusterLocation clh_0(vd::SCONumber(0),
+                                    vd::SCOOffset(88),
+                                    vd::SCOCloneID(89),
+                                    vd::SCOVersion(90));
+    const vd::ClusterLocation clh_1(vd::SCONumber(1),
+                                    vd::SCOOffset(91),
+                                    vd::SCOCloneID(92),
+                                    vd::SCOVersion(93));
+    cloc.push_back(clh_0);
+    cloc.push_back(clh_1);
 
-    EXPECT_TRUE(clp[0] == clh_0);
-    EXPECT_TRUE(clp[1] == clh_1);
+    EXPECT_TRUE(cloc[0] == clh_0);
+    EXPECT_TRUE(cloc[1] == clh_1);
 
-    const auto msg(vfsprotocol::MessageUtils::create_get_page_response(clp));
+    const auto msg(vfsprotocol::MessageUtils::create_get_page_response(cloc));
     ASSERT_TRUE(msg.IsInitialized());
 
     const std::string s(msg.SerializeAsString());
@@ -312,15 +312,15 @@ TEST_F(MessageTest, get_page_response)
     ASSERT_TRUE(msg2.IsInitialized());
     EXPECT_EQ(2UL, msg2.cluster_location_size());
 
-    std::vector<vd::ClusterLocationAndHash> tmp;
+    std::vector<vd::ClusterLocation> tmp;
     for (int i = 0; i < msg2.cluster_location_size(); i++)
     {
         vd::ClusterLocation cl;
         *reinterpret_cast<uint64_t*>(&cl) = msg2.cluster_location(i);
-        tmp.emplace_back(vd::ClusterLocationAndHash(cl));
+        tmp.emplace_back(cl);
     }
 
-    EXPECT_TRUE(tmp == clp);
+    EXPECT_TRUE(tmp == cloc);
 }
 
 TEST_F(MessageTest, delete_request)

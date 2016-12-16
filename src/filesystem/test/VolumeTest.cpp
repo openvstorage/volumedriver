@@ -1692,12 +1692,12 @@ TEST_F(VolumeTest, get_page)
     }
 
     const vd::ClusterAddress ca(0);
-    std::vector<vd::ClusterLocationAndHash> cls(api::GetPage(v, ca));
+    std::vector<vd::ClusterLocation> cloc(api::GetPage(v, ca));
 
-    EXPECT_EQ(256UL, cls.size());
-    for (const auto& e: cls)
+    EXPECT_EQ(256UL, cloc.size());
+    for (const auto& e: cloc)
     {
-        EXPECT_TRUE(e.clusterLocation == vd::ClusterLocation(0));
+        EXPECT_TRUE(e == vd::ClusterLocation(0));
     }
 }
 
