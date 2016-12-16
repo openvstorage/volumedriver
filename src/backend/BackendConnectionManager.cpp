@@ -13,22 +13,19 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "Alba_Connection.h"
 #include "BackendConfig.h"
 #include "BackendConnectionManager.h"
 #include "BackendInterface.h"
 #include "BackendParameters.h"
 #include "BackendSinkInterface.h"
-
-#include "ManagedBackendSink.h"
-#include "ManagedBackendSource.h"
-
 #include "Local_Connection.h"
 #include "Local_Sink.h"
 #include "Local_Source.h"
-
+#include "ManagedBackendSink.h"
+#include "ManagedBackendSource.h"
+#include "MultiConfig.h"
 #include "S3_Connection.h"
-#include "Multi_Connection.h"
-#include "Alba_Connection.h"
 
 #include <boost/iostreams/stream.hpp>
 #include <boost/thread/thread.hpp>
@@ -43,7 +40,6 @@ namespace bio = boost::iostreams;
 namespace ip = initialized_params;
 namespace yt = youtils;
 
-// This thing makes it effectively singleton per backend!!
 BackendConnectionManager::BackendConnectionManager(const bpt::ptree& pt,
                                                    const RegisterComponent registerize)
     : VolumeDriverComponent(registerize,

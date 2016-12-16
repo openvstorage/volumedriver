@@ -15,12 +15,13 @@
 
 #include "BackendTestBase.h"
 
+#include "../MultiConfig.h"
+
 #include <boost/chrono.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/thread/thread.hpp>
 
-#include <backend/Multi_Connection.h>
 #include <youtils/Chooser.h>
 #include <youtils/FileUtils.h>
 #include <youtils/UUID.h>
@@ -34,8 +35,8 @@ using youtils::Chooser;
 namespace bpt = boost::property_tree;
 namespace fs = boost::filesystem;
 
-class MultiBackendTest :
-        public BackendTestBase
+class MultiBackendTest
+    : public BackendTestBase
 {
 public:
     MultiBackendTest()
