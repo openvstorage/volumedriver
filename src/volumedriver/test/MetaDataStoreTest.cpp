@@ -1212,7 +1212,7 @@ TEST_P(MetaDataStoreTest, get_page)
 
     auto check([&]
                {
-                   std::vector<ClusterLocationAndHash> vec;
+                   std::vector<ClusterLocation> vec;
                    for (ClusterAddress ca = 0; ca < locs; ++ca)
                    {
                        if ((ca % page_size) == 0)
@@ -1228,7 +1228,7 @@ TEST_P(MetaDataStoreTest, get_page)
 
                        PageAddress pa = CachePage::pageAddress(ca);
                        off_t off = CachePage::offset(ca);
-                       EXPECT_EQ(clh,
+                       EXPECT_EQ(clh.clusterLocation,
                                  vec.at(CachePage::offset(ca))) <<
                            "CA " << ca << ", PA " << pa << ", off " << off;
                    }
