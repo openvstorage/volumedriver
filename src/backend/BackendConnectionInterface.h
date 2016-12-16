@@ -41,8 +41,6 @@ VD_BOOLEAN_ENUM(NamespaceMustNotExist);
 
 namespace backend
 {
-using byte = unsigned char;
-using buffer = byte*;
 
 class BackendConnectionInterface
     : public boost::intrusive::slist_base_hook<>
@@ -109,11 +107,11 @@ protected:
     {
         uint32_t size;
         uint64_t offset;
-        byte* buf;
+        uint8_t* buf;
 
         ObjectSlice(const uint32_t s,
                     const uint64_t o,
-                    byte* b)
+                    uint8_t* b)
             : size(s)
             , offset(o)
             , buf(b)
