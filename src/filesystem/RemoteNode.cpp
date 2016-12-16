@@ -29,6 +29,7 @@
 #include <youtils/Catchers.h>
 #include <youtils/SourceOfUncertainty.h>
 
+#include <volumedriver/ClusterLocation.h>
 // XXX: needed as we throw VolManager::VolumeDoesNotExistException.
 // This needs to be redone, we don't want to know about VolManager
 // at this level
@@ -621,13 +622,13 @@ RemoteNode::get_clone_namespace_map(const Object& obj)
     return cnmap;
 }
 
-std::vector<vd::ClusterLocationAndHash>
+std::vector<vd::ClusterLocation>
 RemoteNode::get_page(const Object& obj,
                      const vd::ClusterAddress ca)
 {
     LOG_TRACE(config.vrouter_id << ": obj " << obj.id << ", ca " << ca);
 
-    std::vector<vd::ClusterLocationAndHash> clp;
+    std::vector<vd::ClusterLocation> cloc;
     ExtraRecvFun get_page([&]
     {
       ZEXPECT_MORE(*zock_,
@@ -641,7 +642,7 @@ RemoteNode::get_page(const Object& obj,
       {
            vd::ClusterLocation cl;
            *reinterpret_cast<uint64_t*>(&cl) = rsp.cluster_location(i);
-           clp.emplace_back(vd::ClusterLocationAndHash(cl));
+           cloc.emplace_back(cl);
       }
     });
 
@@ -653,7 +654,7 @@ RemoteNode::get_page(const Object& obj,
             nullptr,
             &get_page);
 
-    return clp;
+    return cloc;
 }
 
 void

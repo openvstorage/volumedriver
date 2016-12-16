@@ -43,6 +43,7 @@
 #include <youtils/VolumeDriverComponent.h>
 
 #include <volumedriver/Api.h>
+#include <volumedriver/ClusterLocation.h>
 #include <volumedriver/Events.h>
 #include <volumedriver/VolumeDriverParameters.h>
 
@@ -199,7 +200,7 @@ public:
     volumedriver::CloneNamespaceMap
     get_clone_namespace_map(const ObjectId&);
 
-    std::vector<volumedriver::ClusterLocationAndHash>
+    std::vector<volumedriver::ClusterLocation>
     get_page(const ObjectId&,
              const volumedriver::ClusterAddress);
 

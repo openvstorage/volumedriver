@@ -35,6 +35,7 @@
 #include <youtils/System.h>
 
 #include <volumedriver/Api.h>
+#include <volumedriver/ClusterLocation.h>
 #include <volumedriver/ScrubWork.h>
 #include <volumedriver/TransientException.h>
 #include <volumedriver/VolManager.h>
@@ -1278,7 +1279,7 @@ ObjectRouter::handle_get_clone_namespace_map_(const vfsprotocol::GetCloneNamespa
     return ZUtils::serialize_to_message(rsp);
 }
 
-std::vector<vd::ClusterLocationAndHash>
+std::vector<vd::ClusterLocation>
 ObjectRouter::get_page(const ObjectId& id,
                        const vd::ClusterAddress ca)
 {
@@ -1299,7 +1300,7 @@ ObjectRouter::handle_get_page_(const vfsprotocol::GetPageRequest& msg)
     const Object obj(obj_from_msg(msg));
 
     LOG_TRACE(obj);
-    const std::vector<vd::ClusterLocationAndHash> cl =
+    const std::vector<vd::ClusterLocation> cl =
         local_node_()->get_page(obj,
                                 vd::ClusterAddress(msg.cluster_address()));
     const auto rsp(vfsprotocol::MessageUtils::create_get_page_response(cl));

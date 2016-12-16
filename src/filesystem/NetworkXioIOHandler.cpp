@@ -25,6 +25,7 @@
 #include <youtils/SocketAddress.h>
 #include <youtils/SourceOfUncertainty.h>
 
+#include <volumedriver/ClusterLocation.h>
 #include <volumedriver/DtlInSync.h>
 
 namespace volumedriverfs
@@ -146,7 +147,7 @@ NetworkXioIOHandler::pack_map(const vd::CloneNamespaceMap& cn)
 }
 
 std::string
-NetworkXioIOHandler::pack_vector(const std::vector<vd::ClusterLocationAndHash>& cl)
+NetworkXioIOHandler::pack_vector(const std::vector<vd::ClusterLocation>& cl)
 {
     msgpack::sbuffer buffer;
     msgpack::pack(buffer, cl);

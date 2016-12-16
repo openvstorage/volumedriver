@@ -22,7 +22,7 @@
 
 #include <youtils/Logging.h>
 
-#include <volumedriver/ClusterLocationAndHash.h>
+#include <volumedriver/ClusterLocation.h>
 #include <volumedriver/DtlInSync.h>
 #include <volumedriver/Types.h>
 
@@ -77,7 +77,7 @@ struct MessageUtils
                             const volumedriver::ClusterAddress);
 
     static GetPageResponse
-    create_get_page_response(const std::vector<volumedriver::ClusterLocationAndHash>&);
+    create_get_page_response(const std::vector<volumedriver::ClusterLocation>&);
 
     static ResizeRequest
     create_resize_request(const volumedriverfs::Object&,

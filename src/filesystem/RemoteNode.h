@@ -30,6 +30,8 @@
 
 #include <youtils/Logging.h>
 
+#include <volumedriver/ClusterLocation.h>
+
 namespace volumedriverfstest
 {
 class FileSystemTestBase;
@@ -81,7 +83,7 @@ public:
     virtual volumedriver::CloneNamespaceMap
     get_clone_namespace_map(const Object& obj) override final;
 
-    virtual std::vector<volumedriver::ClusterLocationAndHash>
+    virtual std::vector<volumedriver::ClusterLocation>
     get_page(const Object& obj,
              const volumedriver::ClusterAddress ca) override final;
 

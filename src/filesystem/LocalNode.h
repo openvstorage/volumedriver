@@ -31,6 +31,7 @@
 #include <youtils/PeriodicAction.h>
 
 #include <volumedriver/Api.h>
+#include <volumedriver/ClusterLocation.h>
 #include <volumedriver/VolumeDriverParameters.h>
 #include <volumedriver/FailOverCacheConfig.h>
 
@@ -109,7 +110,7 @@ public:
     virtual volumedriver::CloneNamespaceMap
     get_clone_namespace_map(const Object& obj) override final;
 
-    virtual std::vector<volumedriver::ClusterLocationAndHash>
+    virtual std::vector<volumedriver::ClusterLocation>
     get_page(const Object& obj,
              const volumedriver::ClusterAddress ca) override final;
 
@@ -362,7 +363,7 @@ private:
     volumedriver::CloneNamespaceMap
     get_clone_namespace_map_(volumedriver::WeakVolumePtr vol);
 
-    std::vector<volumedriver::ClusterLocationAndHash>
+    std::vector<volumedriver::ClusterLocation>
     get_page_(volumedriver::WeakVolumePtr vol,
               const volumedriver::ClusterAddress);
 

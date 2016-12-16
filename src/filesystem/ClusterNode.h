@@ -22,7 +22,7 @@
 
 #include <youtils/Logging.h>
 
-#include <volumedriver/ClusterLocationAndHash.h>
+#include <volumedriver/ClusterLocation.h>
 #include <volumedriver/DtlInSync.h>
 #include <volumedriver/Types.h>
 
@@ -67,7 +67,7 @@ public:
     virtual volumedriver::CloneNamespaceMap
     get_clone_namespace_map(const Object&) = 0;
 
-    virtual std::vector<volumedriver::ClusterLocationAndHash>
+    virtual std::vector<volumedriver::ClusterLocation>
     get_page(const Object&,
              const volumedriver::ClusterAddress) = 0;
 

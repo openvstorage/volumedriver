@@ -22,6 +22,7 @@
 #include "NetworkXioRequest.h"
 #include "NetworkXioWorkQueue.h"
 
+#include <volumedriver/ClusterLocation.h>
 #include <volumedriver/Types.h>
 
 namespace volumedriverfs
@@ -175,7 +176,7 @@ private:
     pack_map(const volumedriver::CloneNamespaceMap& cn);
 
     std::string
-    pack_vector(const std::vector<volumedriver::ClusterLocationAndHash>& cl);
+    pack_vector(const std::vector<volumedriver::ClusterLocation>& cl);
 };
 
 typedef std::unique_ptr<NetworkXioIOHandler> NetworkXioIOHandlerPtr;

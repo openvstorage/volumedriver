@@ -206,13 +206,12 @@ MessageUtils::create_get_page_request(const vfs::Object& obj,
 }
 
 GetPageResponse
-MessageUtils::create_get_page_response(const std::vector<vd::ClusterLocationAndHash>& cls)
+MessageUtils::create_get_page_response(const std::vector<vd::ClusterLocation>& cloc)
 {
     GetPageResponse msg;
-    for (auto& e: cls)
+    for (auto& e: cloc)
     {
-        vd::ClusterLocation cl = e.clusterLocation;
-        msg.add_cluster_location(*reinterpret_cast<uint64_t*>(&cl));
+        msg.add_cluster_location(*reinterpret_cast<const uint64_t*>(&e));
     }
 
     msg.CheckInitialized();

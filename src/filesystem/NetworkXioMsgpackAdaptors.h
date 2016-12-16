@@ -52,13 +52,13 @@ struct pack<volumedriver::SCOCloneID>
 };
 
 template<>
-struct pack<volumedriver::ClusterLocationAndHash>
+struct pack<volumedriver::ClusterLocation>
 {
     template<typename Stream>
     packer<Stream>& operator()(msgpack::packer<Stream>& p,
-                               volumedriver::ClusterLocationAndHash const& cl) const
+                               volumedriver::ClusterLocation const& cloc) const
     {
-        p.pack_uint64(*reinterpret_cast<const uint64_t*>(&cl.clusterLocation));
+        p.pack_uint64(*reinterpret_cast<const uint64_t*>(&cloc));
         return p;
     }
 };

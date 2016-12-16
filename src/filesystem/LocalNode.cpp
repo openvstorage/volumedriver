@@ -37,6 +37,7 @@
 #include <backend/GarbageCollector.h>
 
 #include <volumedriver/Api.h>
+#include <volumedriver/ClusterLocation.h>
 #include <volumedriver/ScrubWork.h>
 #include <volumedriver/TransientException.h>
 #include <volumedriver/VolManager.h>
@@ -851,7 +852,7 @@ LocalNode::get_clone_namespace_map_(vd::WeakVolumePtr vol)
     return api::GetCloneNamespaceMap(vol);
 }
 
-std::vector<vd::ClusterLocationAndHash>
+std::vector<vd::ClusterLocation>
 LocalNode::get_page(const Object& obj,
                     const vd::ClusterAddress ca)
 {
@@ -862,7 +863,7 @@ LocalNode::get_page(const Object& obj,
                                 ca);
 }
 
-std::vector<vd::ClusterLocationAndHash>
+std::vector<vd::ClusterLocation>
 LocalNode::get_page_(vd::WeakVolumePtr vol,
                      const vd::ClusterAddress ca)
 {
