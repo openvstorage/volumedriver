@@ -291,10 +291,7 @@ private:
     DECLARE_LOGGER("BackendConnectionInterface");
 };
 
-class BackendConnectionDeleter;
 
-typedef std::unique_ptr<BackendConnectionInterface,
-                        BackendConnectionDeleter> BackendConnectionInterfacePtr;
 
 }
 

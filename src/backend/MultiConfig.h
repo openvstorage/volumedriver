@@ -103,8 +103,8 @@ public:
         }
     }
 
-
     MultiConfig(const MultiConfig&) = delete;
+
     MultiConfig&
     operator=(const MultiConfig&) = delete;
 
@@ -129,7 +129,6 @@ public:
             return StrictConsistency::T;
         }
     }
-
 
     virtual bool
     unique_tag_support() const override final

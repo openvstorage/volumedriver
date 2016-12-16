@@ -27,9 +27,11 @@
 
 namespace backendtest
 {
+
 using namespace backend;
 using youtils::Chooser;
 
+namespace bpt = boost::property_tree;
 namespace fs = boost::filesystem;
 
 class MultiBackendTest :
@@ -292,10 +294,10 @@ public:
     }
 
 
-    boost::property_tree::ptree
+    bpt::ptree
     make_local_config(size_t num_backends = num_backup_backends_)
     {
-        boost::property_tree::ptree backend_connection_manager;
+        bpt::ptree backend_connection_manager;
         backend_connection_manager.put("backend_type", "MULTI");
 
         for(size_t i =  0; i < num_backends; ++i)
@@ -303,13 +305,13 @@ public:
             std::stringstream ss;
             ss << i;
 
-            boost::property_tree::ptree connection;
+            bpt::ptree connection;
             connection.put("backend_type", "LOCAL");
             connection.put("local_connection_path", multi_dirs_[i].string());
             backend_connection_manager.put_child(ss.str(), connection);
         }
 
-        boost::property_tree::ptree res;
+        bpt::ptree res;
         res.put_child("backend_connection_manager", backend_connection_manager);
 
         return res;
@@ -329,68 +331,18 @@ protected:
 
 TEST_F(MultiBackendTest, empty_multi)
 {
-    boost::property_tree::ptree pt = make_local_config(0);
+    bpt::ptree pt = make_local_config(0);
     std::unique_ptr<BackendConfig> config = BackendConfig::makeBackendConfig(pt);
-
-    BackendConnectionManagerPtr  bcm = BackendConnectionManager::create(pt);
-
-    BackendConnectionInterfacePtr connection = bcm->getConnection();
-    std::list<std::string> any_result;
-
-    EXPECT_THROW(connection->listNamespaces(any_result),
-                     BackendNoMultiBackendAvailableException);
-    EXPECT_THROW(connection->listObjects(Namespace(std::string("anything")),
-                                         any_result),
-                 BackendNoMultiBackendAvailableException);
-
-    EXPECT_THROW(connection->namespaceExists(std::string("anything")),
-                 BackendNoMultiBackendAvailableException);
-
-    EXPECT_THROW(connection->createNamespace(std::string("anything")),
-                 BackendNoMultiBackendAvailableException);
-
-    EXPECT_THROW(connection->deleteNamespace(std::string("anything")),
-                 BackendNoMultiBackendAvailableException);
-
-
-    EXPECT_THROW(connection->read(Namespace(std::string("anything")),
-                                  "anything",
-                                  "anything",
-                                  InsistOnLatestVersion::T),
-                 BackendNoMultiBackendAvailableException);
-
-    EXPECT_THROW(connection->write(Namespace(std::string("anything")),
-                                   "anything",
-                                   "anything"),
-                 BackendNoMultiBackendAvailableException);
-
-    EXPECT_THROW(connection->objectExists(Namespace(std::string("anything")),
-                                          "anything"),
-                 BackendNoMultiBackendAvailableException);
-
-    EXPECT_THROW(connection->remove(Namespace(std::string("anything")),
-                                    "anything"),
-                 BackendNoMultiBackendAvailableException);
-
-    EXPECT_THROW(connection->getSize(Namespace(std::string("anything")),
-                                     "anything"),
-                 BackendNoMultiBackendAvailableException);
-
-    EXPECT_THROW(connection->getCheckSum(Namespace(std::string("anyting")),
-                                         "anything"),
-                 BackendNoMultiBackendAvailableException);
+    EXPECT_THROW(BackendConnectionManager::create(pt),
+                 std::exception);
 }
 
-// AR: disabled while we only have a single backend type (LOCAL) that
-// MultiBackend can cope with
-TEST_F(MultiBackendTest, DISABLED_no_different_types_in_multi)
+TEST_F(MultiBackendTest, no_different_types_in_multi)
 {
-    boost::property_tree::ptree pt = make_local_config(2);
+    bpt::ptree pt = make_local_config(2);
     EXPECT_NO_THROW(BackendConfig::makeBackendConfig(pt));
 
-    // ALBA is not supported by MultiBackend - if you reanimate this
-    // test use a backend that actually is supported / make ALBA supported.
-    boost::property_tree::ptree connection;
+    bpt::ptree connection;
     connection.put("backend_type", "ALBA");
     connection.put("alba_connection_host", "localhost");
     connection.put("alba_connection_port", "12345");
@@ -401,240 +353,6 @@ TEST_F(MultiBackendTest, DISABLED_no_different_types_in_multi)
 
     EXPECT_THROW(BackendConnectionManager::create(pt),
                  DifferentTypesInMultiException);
-}
-
-TEST_F(MultiBackendTest, config_reading)
-{
-    boost::property_tree::ptree pt = make_local_config();
-    std::unique_ptr<BackendConfig> config = BackendConfig::makeBackendConfig(pt);
-
-    for(size_t i = 0; i < num_backup_backends_; ++i)
-    {
-        setup_multi_dir(i);
-    }
-    for(size_t i = 0; i < num_backup_backends_; ++i)
-    {
-        destroy_multi_dir(i);
-    }
-    // This doesn't work anymore because of redlicha da98615dfe22:
-    // existence of the directory is checked on creation already
-    // setup_multi_dir(0);
-    // BackendConnectionManagerPtr bcm = BackendConnectionManager::create(pt);
-    // BackendConnectionInterfacePtr connection = bcm->getConnection();
-
-    // EXPECT_NO_THROW(connection->namespaceExists(Namespace(std::string("anything"))));
-
-    // EXPECT_NO_THROW(connection->createNamespace(Namespace(std::string("anything"))));
-}
-
-TEST_F(MultiBackendTest, namespace_operations)
-{
-    boost::property_tree::ptree pt = make_local_config();
-    setup_multi_dirs();
-    BackendConnectionManagerPtr bcm = BackendConnectionManager::create(pt);
-    BackendConnectionInterfacePtr connection = bcm->getConnection();
-    const Namespace ns(youtils::UUID().str());
-    for(size_t i = 0; i < num_backup_backends_; ++i)
-    {
-        std::list<std::string> nss;
-        ASSERT_NO_THROW(connection->listNamespaces(nss));
-        EXPECT_TRUE(nss.empty());
-
-        bool ns_exists = false;
-        ASSERT_NO_THROW(ns_exists = connection->namespaceExists(ns));
-        EXPECT_FALSE(ns_exists);
-
-        ASSERT_NO_THROW(connection->createNamespace(ns));
-        ASSERT_NO_THROW(connection->listNamespaces(nss));
-        EXPECT_TRUE(nss.size() == 1);
-        EXPECT_TRUE(nss.front() == ns.str());
-        nss.clear();
-
-        ASSERT_NO_THROW(ns_exists = connection->namespaceExists(ns));
-        EXPECT_TRUE(ns_exists);
-
-
-        ASSERT_NO_THROW(connection->deleteNamespace(ns));
-        ASSERT_NO_THROW(connection->listNamespaces(nss));
-        EXPECT_TRUE(nss.empty());
-        ASSERT_NO_THROW(ns_exists = connection->namespaceExists(ns));
-        EXPECT_FALSE(ns_exists);
-
-        destroy_multi_dir(i);
-    }
-
-    {
-        std::list<std::string> nss;
-        ASSERT_THROW(connection->listNamespaces(nss),
-                     std::exception);
-
-        ASSERT_THROW(connection->namespaceExists(ns),
-                     std::exception);
-        ASSERT_THROW(connection->createNamespace(ns),
-                     std::exception);
-    }
-
-    {
-        setup_multi_dir(2);
-        std::list<std::string> nss;
-        ASSERT_NO_THROW(connection->listNamespaces(nss));
-        EXPECT_TRUE(nss.empty());
-        bool ns_exists = false;
-        ASSERT_NO_THROW(ns_exists = connection->namespaceExists(ns));
-        EXPECT_FALSE(ns_exists);
-
-        ASSERT_NO_THROW(connection->createNamespace(ns));
-        ASSERT_NO_THROW(connection->listNamespaces(nss));
-        EXPECT_TRUE(nss.size() == 1);
-        EXPECT_TRUE(nss.front() == ns.str());
-        nss.clear();
-
-        ASSERT_NO_THROW(ns_exists = connection->namespaceExists(ns));
-        EXPECT_TRUE(ns_exists);
-
-
-        ASSERT_NO_THROW(connection->deleteNamespace(ns));
-        ASSERT_NO_THROW(connection->listNamespaces(nss));
-        EXPECT_TRUE(nss.empty());
-        ASSERT_NO_THROW(ns_exists = connection->namespaceExists(ns));
-        EXPECT_FALSE(ns_exists);
-
-        destroy_multi_dir(2);
-
-    }
-}
-
-TEST_F(MultiBackendTest, read_write_create_operations)
-{
-
-    boost::property_tree::ptree pt = make_local_config();
-    setup_multi_dirs();
-    BackendConnectionManagerPtr bcm = BackendConnectionManager::create(pt);
-    BackendConnectionInterfacePtr connection = bcm->getConnection();
-    const Namespace ns(youtils::UUID().str());
-
-    ASSERT_NO_THROW(connection->createNamespace(ns));
-    ASSERT_TRUE(connection->namespaceExists(ns));
-    const std::string obj("OBJECT");
-    fs::path obj_path(youtils::FileUtils::create_temp_file_in_temp_dir(obj));
-    std::list<std::string> objs;
-    for(size_t i = 0; i < num_backup_backends_; ++i)
-    {
-
-        ASSERT_NO_THROW(connection->listObjects(ns,
-                                                objs));
-        EXPECT_TRUE(objs.empty());
-        bool obj_exists = false;
-        ASSERT_NO_THROW(obj_exists = connection->objectExists(ns, obj));
-        EXPECT_FALSE(obj_exists);
-
-        ASSERT_NO_THROW(connection->write(ns,
-                                          obj_path,
-                                          obj,
-                                          OverwriteObject::F));
-
-        ASSERT_NO_THROW(connection->listObjects(ns,
-                                                objs));
-        EXPECT_TRUE(objs.size() == 1);
-        EXPECT_TRUE(objs.front() == obj);
-        objs.clear();
-
-        ASSERT_NO_THROW(obj_exists = connection->objectExists(ns,
-                                                              obj));
-        EXPECT_TRUE(obj_exists);
-        fs::path obj_path(youtils::FileUtils::create_temp_file_in_temp_dir(obj));
-        ASSERT_NO_THROW(connection->read(ns,
-                                         obj_path,
-                                         obj,
-                                         InsistOnLatestVersion::T));
-        ASSERT_NO_THROW(connection->remove(ns,
-                                           obj,
-                                           ObjectMayNotExist::T));
-        ASSERT_NO_THROW(connection->listObjects(ns,
-                                                objs));
-        EXPECT_TRUE(objs.empty());
-        ASSERT_NO_THROW(obj_exists = connection->objectExists(ns, obj));
-        EXPECT_FALSE(obj_exists);
-        destroy_multi_dir(i);
-    }
-    {
-
-        ASSERT_THROW(connection->listObjects(ns,
-                                             objs),
-                     std::exception);
-
-        ASSERT_THROW(connection->objectExists(ns, obj),
-                     std::exception);
-
-
-        ASSERT_THROW(connection->write(ns,
-                                       obj_path,
-                                       obj,
-                                       OverwriteObject::F),
-                     std::exception);
-
-        ASSERT_THROW(connection->listObjects(ns,
-                                             objs),
-                     std::exception);
-        ASSERT_THROW(connection->objectExists(ns,
-                                              obj),
-                     std::exception);
-
-        fs::path obj_path(youtils::FileUtils::create_temp_file_in_temp_dir(obj));
-        ASSERT_THROW(connection->read(ns,
-                                      obj_path,
-                                      obj,
-                                      InsistOnLatestVersion::T),
-                     std::exception);
-        ASSERT_THROW(connection->remove(ns,
-                                        obj,
-                                        ObjectMayNotExist::T),
-                     std::exception);
-        ASSERT_THROW(connection->listObjects(ns,
-                                             objs),
-                     std::exception);
-
-        ASSERT_THROW(connection->objectExists(ns, obj),
-                     std::exception);
-    }
-    {
-        setup_multi_dir(1);
-
-        ASSERT_NO_THROW(connection->listObjects(ns,
-                                                objs));
-        EXPECT_TRUE(objs.empty());
-        bool obj_exists = false;
-        ASSERT_NO_THROW(obj_exists = connection->objectExists(ns, obj));
-        EXPECT_FALSE(obj_exists);
-
-        ASSERT_NO_THROW(connection->write(ns,
-                                          obj_path,
-                                          obj,
-                                          OverwriteObject::F));
-
-        ASSERT_NO_THROW(connection->listObjects(ns,
-                                                objs));
-        EXPECT_TRUE(objs.size() == 1);
-        EXPECT_TRUE(objs.front() == obj);
-        objs.clear();
-
-        ASSERT_NO_THROW(obj_exists = connection->objectExists(ns,
-                                                              obj));
-        EXPECT_TRUE(obj_exists);
-        fs::path obj_path(youtils::FileUtils::create_temp_file_in_temp_dir(obj));
-        ASSERT_NO_THROW(connection->read(ns,
-                                         obj_path,
-                                         obj,
-                                         InsistOnLatestVersion::T));
-        ASSERT_NO_THROW(connection->remove(ns,
-                                           obj,
-                                           ObjectMayNotExist::T));
-        ASSERT_NO_THROW(connection->listObjects(ns,
-                                                objs));
-        EXPECT_TRUE(objs.empty());
-        ASSERT_NO_THROW(obj_exists = connection->objectExists(ns, obj));
-        EXPECT_FALSE(obj_exists);
-    }
 }
 
 TEST_F(MultiBackendTest, DISABLED_stress)
@@ -652,7 +370,7 @@ TEST_F(MultiBackendTest, DISABLED_stress)
 
 
     setup_multi_dirs();
-    boost::property_tree::ptree pt = make_local_config();
+    bpt::ptree pt = make_local_config();
     BackendConnectionManagerPtr bcm = BackendConnectionManager::create(pt);
     BackendConnectionInterfacePtr connection = bcm->getConnection();
 

@@ -43,39 +43,6 @@ namespace bio = boost::iostreams;
 namespace ip = initialized_params;
 namespace yt = youtils;
 
-void
-BackendConnectionDeleter::operator()(BackendConnectionInterface* conn)
-{
-    if (conn != nullptr)
-    {
-        cm_->releaseConnection(conn);
-    }
-}
-
-namespace
-{
-
-DECLARE_LOGGER("BackendConnectionManagerUtils");
-
-size_t
-num_connection_pools(size_t shards)
-{
-    if (shards == 0)
-    {
-        shards = boost::thread::hardware_concurrency();
-    }
-
-    if (shards == 0)
-    {
-        LOG_ERROR("Failed to get hardware concurrency");
-        shards = 1;
-    }
-
-    return shards;
-}
-
-}
-
 // This thing makes it effectively singleton per backend!!
 BackendConnectionManager::BackendConnectionManager(const bpt::ptree& pt,
                                                    const RegisterComponent registerize)
@@ -87,119 +54,63 @@ BackendConnectionManager::BackendConnectionManager(const bpt::ptree& pt,
     , backend_interface_retry_interval_secs(pt)
     , backend_interface_retry_backoff_multiplier(pt)
     , backend_interface_partial_read_nullio(pt)
-    , connection_pools_(num_connection_pools(backend_connection_pool_shards.value()))
     , config_(BackendConfig::makeBackendConfig(pt))
 {
-    VERIFY(connection_pools_.size() > 0);
+    THROW_UNLESS(config_);
 
-    switch (config_->backend_type.value())
+    if (config_->backend_type.value() == BackendType::MULTI)
     {
-    case BackendType::LOCAL:
+        auto& cfg = dynamic_cast<const MultiConfig&>(*config_);
+        connection_pools_.reserve(cfg.configs_.size());
+        for (const auto& c : cfg.configs_)
         {
-            const LocalConfig* config(dynamic_cast<const LocalConfig*>(config_.get()));
-            VERIFY(config);
-            default_timeout_ = boost::posix_time::seconds(1);
-            return;
-        }
-    case BackendType::S3:
-        {
-            const S3Config* config(dynamic_cast<const S3Config*>(config_.get()));
-            VERIFY(config);
-            return;
-        }
-    case BackendType::MULTI:
-        {
-            const MultiConfig* config(dynamic_cast<const MultiConfig*>(config_.get()));
-            VERIFY(config);
-            return;
-        }
-    case BackendType::ALBA:
-        {
-            const AlbaConfig* config(dynamic_cast<const AlbaConfig*>(config_.get()));
-            VERIFY(config);
-            return;
-
+            connection_pools_.push_back(ConnectionPool::create(c->clone(),
+                                                               backend_connection_pool_capacity.value()));
         }
     }
+    else
+    {
+        connection_pools_.push_back(ConnectionPool::create(config_->clone(),
+                                                           backend_connection_pool_capacity.value()));
+    }
 
-    UNREACHABLE
+    THROW_WHEN(connection_pools_.empty());
 }
 
-BackendConnectionManager::~BackendConnectionManager()
+BackendConnectionManagerPtr
+BackendConnectionManager::create(const boost::property_tree::ptree& pt,
+                                 const RegisterComponent registrate)
 {
-    for (auto& p : connection_pools_)
-    {
-        while (not p.connections_.empty())
-        {
-            std::unique_ptr<BackendConnectionInterface> conn(&p.connections_.front());
-            p.connections_.pop_front();
-        }
-    }
-
-    switch (config_->backend_type.value())
-    {
-    case BackendType::LOCAL:
-        return;
-    case BackendType::S3:
-        return;
-    case BackendType::MULTI:
-        return;
-    case BackendType::ALBA:
-        return;
-    }
-    UNREACHABLE
-}
-
-BackendConnectionInterface*
-BackendConnectionManager::newConnection_()
-{
-    switch (config_->backend_type.value())
-    {
-    case BackendType::LOCAL:
-        {
-            const LocalConfig* config(dynamic_cast<const LocalConfig*>(config_.get()));
-            return new local::Connection(*config);
-        }
-    case BackendType::S3:
-        {
-            const S3Config* config(dynamic_cast<const S3Config*>(config_.get()));
-            return new s3::Connection(*config);
-        }
-    case BackendType::MULTI:
-        {
-            const MultiConfig* config(dynamic_cast<const MultiConfig*>(config_.get()));
-            return new multi::Connection(*config);
-        }
-    case BackendType::ALBA:
-        {
-            const AlbaConfig* config(dynamic_cast<const AlbaConfig*>(config_.get()));
-            return new albaconn::Connection(*config);
-        }
-    }
-    UNREACHABLE
+    return std::make_shared<yt::EnableMakeShared<BackendConnectionManager>>(pt,
+                                                                            registrate);
 }
 
 size_t
 BackendConnectionManager::capacity() const
 {
-    return backend_connection_pool_capacity.value();
+    return std::accumulate(connection_pools_.begin(),
+                           connection_pools_.end(),
+                           0,
+                           [](size_t n, const std::shared_ptr<ConnectionPool>& p)
+                           {
+                               return n + p->capacity();
+                           });
 }
 
 size_t
 BackendConnectionManager::size() const
 {
-    size_t n = 0;
-    for (const auto& p : connection_pools_)
-    {
-        boost::lock_guard<decltype(p.lock_)> g(p.lock_);
-        n += p.connections_.size();
-    }
-
-    return n;
+    return std::accumulate(connection_pools_.begin(),
+                           connection_pools_.end(),
+                           0,
+                           [](size_t n, const std::shared_ptr<ConnectionPool>& p)
+                           {
+                               return n + p->size();
+                           });
 }
 
 size_t
-BackendConnectionManager::shards() const
+BackendConnectionManager::pools() const
 {
     return connection_pools_.size();
 }
@@ -218,6 +129,7 @@ BackendConnectionManager::newBackendSink(const Namespace& nspace,
     switch (config_->backend_type.value())
     {
     case BackendType::LOCAL:
+    case BackendType::MULTI:
         {
             BackendConnectionInterfacePtr bc = getConnection();
             std::unique_ptr<local::Connection>
@@ -232,12 +144,6 @@ BackendConnectionManager::newBackendSink(const Namespace& nspace,
     case BackendType::S3:
         {
             LOG_FATAL("The S3 backend does not support output streaming");
-            throw BackendNotImplementedException();
-        }
-
-    case BackendType::MULTI:
-        {
-            LOG_FATAL("The MULTI backend does not support output streaming");
             throw BackendNotImplementedException();
         }
     case BackendType::ALBA:
@@ -257,6 +163,7 @@ BackendConnectionManager::newBackendSource(const Namespace& nspace,
     switch (config_->backend_type.value())
     {
     case BackendType::LOCAL:
+    case BackendType::MULTI:
         {
             BackendConnectionInterfacePtr bc = getConnection();
             std::unique_ptr<local::Connection>
@@ -272,10 +179,6 @@ BackendConnectionManager::newBackendSource(const Namespace& nspace,
         LOG_FATAL("The S3 backend does not support input streaming");
         throw BackendFatalException();
         // return std::unique_ptr<BackendSourceInterface>();
-
-    case BackendType::MULTI:
-        LOG_FATAL("The MULTI backend does not support input streaming");
-        throw BackendFatalException();
 
     case BackendType::ALBA:
         LOG_FATAL("The ALBA backend does not support input streaming");
@@ -337,12 +240,7 @@ BackendConnectionManager::update(const bpt::ptree& pt,
 
     for (auto& p : connection_pools_)
     {
-        boost::lock_guard<decltype(p.lock_)> g(p.lock_);
-        while (p.connections_.size() > new_cap.value() / connection_pools_.size())
-        {
-            std::unique_ptr<BackendConnectionInterface> conn(&p.connections_.front());
-            p.connections_.pop_front();
-        }
+        p->capacity(new_cap.value());
     }
 
 #define U(x)                                    \
