@@ -161,7 +161,6 @@ private:
     DECLARE_LOGGER("BackendConnectionManager");
 
     DECLARE_PARAMETER(backend_connection_pool_capacity);
-    DECLARE_PARAMETER(backend_connection_pool_shards);
     DECLARE_PARAMETER(backend_interface_retries_on_error);
     DECLARE_PARAMETER(backend_interface_retry_interval_secs);
     DECLARE_PARAMETER(backend_interface_retry_backoff_multiplier);

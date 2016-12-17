@@ -45,7 +45,6 @@ BackendConnectionManager::BackendConnectionManager(const bpt::ptree& pt,
     : VolumeDriverComponent(registerize,
                             pt)
     , backend_connection_pool_capacity(pt)
-    , backend_connection_pool_shards(pt)
     , backend_interface_retries_on_error(pt)
     , backend_interface_retry_interval_secs(pt)
     , backend_interface_retry_backoff_multiplier(pt)
@@ -217,7 +216,6 @@ BackendConnectionManager::persist(bpt::ptree& pt,
               report_default)
 
     P(backend_connection_pool_capacity);
-    P(backend_connection_pool_shards);
     P(backend_interface_retries_on_error);
     P(backend_interface_retry_interval_secs);
     P(backend_interface_retry_backoff_multiplier);
@@ -244,7 +242,6 @@ BackendConnectionManager::update(const bpt::ptree& pt,
              report)
 
     U(backend_connection_pool_capacity);
-    U(backend_connection_pool_shards);
     U(backend_interface_retries_on_error);
     U(backend_interface_retry_interval_secs);
     U(backend_interface_retry_backoff_multiplier);
