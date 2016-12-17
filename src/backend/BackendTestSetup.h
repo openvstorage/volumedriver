@@ -130,11 +130,11 @@ protected:
     void
     uninitialize_connection_manager();
 
-
+    static std::vector<std::shared_ptr<ConnectionPool>>&
+    connection_manager_pools(BackendConnectionManager&);
 
 private:
     DECLARE_LOGGER("BackendTestSetup");
-
 };
 
 }

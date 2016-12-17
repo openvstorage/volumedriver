@@ -45,10 +45,11 @@ class BackendConnectionToolCut;
 namespace backend
 {
 
+class BackendConnectionManager;
 class BackendSinkInterface;
 class BackendSourceInterface;
+class BackendTestSetup;
 
-class BackendConnectionManager;
 using BackendConnectionManagerPtr = std::shared_ptr<BackendConnectionManager>;
 using BackendInterfacePtr = std::unique_ptr<BackendInterface>;
 
@@ -188,6 +189,7 @@ private:
         return *connection_pools_[n % connection_pools_.size()];
     }
 
+    friend class BackendTestSetup;
     friend class toolcut::BackendToolCut;
     friend class toolcut::BackendConnectionToolCut;
     friend class youtils::EnableMakeShared<BackendConnectionManager>;

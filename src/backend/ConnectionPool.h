@@ -67,6 +67,12 @@ public:
     size_t
     size() const;
 
+    const BackendConfig&
+    config() const
+    {
+        return *config_;
+    }
+
 private:
     DECLARE_LOGGER("BackendConnectionPool");
 

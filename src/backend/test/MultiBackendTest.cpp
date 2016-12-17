@@ -326,8 +326,6 @@ private:
 protected:
     bool stop_switcher;
     // boost::chrono::seconds switcher_sleep_time_;
-
-
 };
 
 TEST_F(MultiBackendTest, empty_multi)
@@ -354,6 +352,29 @@ TEST_F(MultiBackendTest, no_different_types_in_multi)
 
     EXPECT_THROW(BackendConnectionManager::create(pt),
                  DifferentTypesInMultiException);
+}
+
+TEST_F(MultiBackendTest, basics)
+{
+    const size_t n = 3;
+    setup_multi_dirs(n);
+    const bpt::ptree pt(make_local_config(n));
+    const MultiConfig cfg(pt);
+    BackendConnectionManagerPtr cm(BackendConnectionManager::create(pt));
+
+    const std::vector<std::shared_ptr<ConnectionPool>>&
+        pools(BackendTestSetup::connection_manager_pools(*cm));
+
+    ASSERT_EQ(n,
+              cfg.configs_.size());
+    ASSERT_EQ(n,
+              pools.size());
+
+    for (size_t i = 0; i < n; ++i)
+    {
+        EXPECT_EQ(*cfg.configs_[i],
+                  pools[i]->config());
+    }
 }
 
 TEST_F(MultiBackendTest, DISABLED_stress)
