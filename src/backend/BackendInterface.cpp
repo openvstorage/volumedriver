@@ -44,10 +44,12 @@ BackendInterface::default_request_parameters()
     return params;
 }
 
-template<typename ReturnType,
+template<typename ConnFetcher,
+         typename ReturnType,
          typename... Args>
 ReturnType
-BackendInterface::do_wrap_(const BackendRequestParameters& params,
+BackendInterface::do_wrap_(ConnFetcher& get_conn,
+                           const BackendRequestParameters& params,
                            ReturnType
                            (BackendConnectionInterface::*mem_fun)(Args...),
                            Args... args)
@@ -59,12 +61,9 @@ BackendInterface::do_wrap_(const BackendRequestParameters& params,
 
     while (true)
     {
-        BackendConnectionInterfacePtr
-            conn(conn_manager_->getConnection(retries ?
-                                              ForceNewConnection::T :
-                                              ForceNewConnection::F,
-                                              nspace_));
-
+        BackendConnectionInterfacePtr conn(get_conn(*conn_manager_,
+                                                    nspace_,
+                                                    retries));
         if (retries != 0)
         {
             LOG_WARN("Retrying with new connection (retry: " <<
@@ -79,7 +78,7 @@ BackendInterface::do_wrap_(const BackendRequestParameters& params,
 
         try
         {
-            return ((conn.get())->*mem_fun)(args...);
+            return ((conn.get())->*mem_fun)(std::forward<Args>(args)...);
         }
         catch (BackendAssertionFailedException&)
         {
@@ -116,6 +115,44 @@ BackendInterface::do_wrap_(const BackendRequestParameters& params,
     }
 }
 
+namespace
+{
+
+struct NamespaceConnFetcher
+{
+    BackendConnectionInterfacePtr
+    operator()(BackendConnectionManager& cm,
+               const Namespace& nspace,
+               const uint32_t attempt)
+    {
+        return cm.getConnection(attempt == 0 ?
+                                ForceNewConnection::F :
+                                ForceNewConnection::T,
+                                nspace);
+    }
+};
+
+struct PoolConnFetcher
+{
+    std::shared_ptr<ConnectionPool> pool;
+
+    PoolConnFetcher(const std::shared_ptr<ConnectionPool>& p)
+        : pool(p)
+    {}
+
+    BackendConnectionInterfacePtr
+    operator()(BackendConnectionManager&,
+               const Namespace&,
+               const uint32_t attempt)
+    {
+        return pool->get_connection(attempt == 0 ?
+                                    ForceNewConnection::F :
+                                    ForceNewConnection::T);
+    }
+};
+
+}
+
 template<typename ReturnType,
          typename... Args>
 ReturnType
@@ -125,12 +162,16 @@ BackendInterface::wrap_(const BackendRequestParameters& params,
                                                                Args...),
                         Args... args)
 {
-    return do_wrap_<ReturnType,
+    NamespaceConnFetcher fetcher;
+
+    return do_wrap_<NamespaceConnFetcher,
+                    ReturnType,
                     const Namespace&,
-                    Args...>(params,
+                    Args...>(fetcher,
+                             params,
                              mem_fun,
                              nspace_,
-                             args...);
+                             std::forward<Args>(args)...);
 }
 
 // XXX: The incoming and outgoing values for "InsistOnLatestVersion" might be confusing -
@@ -302,10 +343,17 @@ BackendInterface::clearNamespace(const BackendRequestParameters& params)
 void
 BackendInterface::invalidate_cache(const BackendRequestParameters& params)
 {
-    do_wrap_<void,
-             const boost::optional<Namespace>&>(params,
-                                                &BackendConnectionInterface::invalidate_cache,
-                                                nspace_);
+    conn_manager_->visit_pools([&](std::shared_ptr<ConnectionPool> pool)
+    {
+        PoolConnFetcher fetcher(pool);
+
+        do_wrap_<PoolConnFetcher,
+                 void,
+                 const boost::optional<Namespace>&>(fetcher,
+                                                    params,
+                                                    &BackendConnectionInterface::invalidate_cache,
+                                                    nspace_);
+    });
 }
 
 bool

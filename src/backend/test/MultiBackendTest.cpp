@@ -15,7 +15,10 @@
 
 #include "BackendTestBase.h"
 
+#include "../ConnectionPool.h"
 #include "../MultiConfig.h"
+
+#include <set>
 
 #include <boost/chrono.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -320,6 +323,23 @@ public:
 
         return res;
     }
+
+    using ConnectionPoolSet = std::set<std::shared_ptr<ConnectionPool>>;
+
+    static ConnectionPoolSet
+    connection_manager_pools(BackendConnectionManager& cm)
+    {
+        ConnectionPoolSet set;
+        cm.visit_pools([&](std::shared_ptr<ConnectionPool> p)
+                       {
+                           bool ok = false;
+                           std::tie(std::ignore, ok) = set.emplace(p);
+                           EXPECT_TRUE(ok);
+                       });
+
+        return set;
+    }
+
 protected:
     std::vector<fs::path> multi_dirs_;
     static const size_t num_backup_backends_;
@@ -369,19 +389,26 @@ TEST_F(MultiBackendTest, basics)
     const MultiConfig cfg(pt);
     BackendConnectionManagerPtr cm(BackendConnectionManager::create(pt));
 
-    const std::vector<std::shared_ptr<ConnectionPool>>&
-        pools(BackendTestSetup::connection_manager_pools(*cm));
+    ConnectionPoolSet pools(connection_manager_pools(*cm));
 
     ASSERT_EQ(n,
               cfg.configs_.size());
     ASSERT_EQ(n,
               pools.size());
 
-    for (size_t i = 0; i < n; ++i)
+    for (const auto& c : cfg.configs_)
     {
-        EXPECT_EQ(*cfg.configs_[i],
-                  pools[i]->config());
+        for (auto& p : pools)
+        {
+            if (*c == p->config())
+            {
+                pools.erase(p);
+                break;
+            }
+        }
     }
+
+    EXPECT_TRUE(pools.empty());
 }
 
 TEST_F(MultiBackendTest, pool_distribution)
@@ -392,18 +419,18 @@ TEST_F(MultiBackendTest, pool_distribution)
     const MultiConfig cfg(pt);
     BackendConnectionManagerPtr cm(BackendConnectionManager::create(pt));
 
-    const std::vector<std::shared_ptr<ConnectionPool>>&
-        pools(BackendTestSetup::connection_manager_pools(*cm));
+    const ConnectionPoolSet pools(connection_manager_pools(*cm));
 
     ASSERT_EQ(n,
               pools.size());
 
+    std::map<std::shared_ptr<ConnectionPool>, size_t> dist;
+
     for (auto& p : pools)
     {
         ASSERT_EQ(0, p->size());
+        dist[p] = 0;
     }
-
-    std::vector<size_t> dist(n, 0);
 
     for (size_t i = 0; i < (n * 100); ++i)
     {
@@ -414,13 +441,9 @@ TEST_F(MultiBackendTest, pool_distribution)
         ASSERT_TRUE(c != nullptr);
         std::shared_ptr<ConnectionPool> p(BackendTestSetup::connection_manager_pool(*cm,
                                                                                     nspace));
-        for (size_t i = 0; i < n; ++i)
-        {
-            if (pools[i] == p)
-            {
-                ++dist[i];
-            }
-        }
+        auto it = dist.find(p);
+        ASSERT_TRUE(it != dist.end());
+        it->second += 1;
     }
 
     for (auto& p : pools)
@@ -428,9 +451,9 @@ TEST_F(MultiBackendTest, pool_distribution)
         ASSERT_EQ(1, p->size());
     }
 
-    for (size_t i = 0; i < n; ++i)
+    for (auto& p : dist)
     {
-        std::cout << "pool " << i << ": " << dist[i] << " nspaces" << std::endl;
+        std::cout << "pool " << p.first << ": " << p.second << " nspaces" << std::endl;
     }
 }
 

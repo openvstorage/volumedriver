@@ -156,6 +156,19 @@ public:
         return backend_interface_partial_read_nullio.value();
     }
 
+    // REVISIT (pun intended): I don't like offering this - it might
+    // be better to move the code that uses this (cf. BackendInterface)
+    // into a method of this class?
+    template<typename Visitor>
+    void
+    visit_pools(Visitor&& v)
+    {
+        for (auto p : connection_pools_)
+        {
+            v(p);
+        }
+    }
+
 private:
     DECLARE_LOGGER("BackendConnectionManager");
 

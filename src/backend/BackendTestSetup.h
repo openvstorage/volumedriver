@@ -130,9 +130,6 @@ protected:
     void
     uninitialize_connection_manager();
 
-    static std::vector<std::shared_ptr<ConnectionPool>>&
-    connection_manager_pools(BackendConnectionManager&);
-
     static std::shared_ptr<ConnectionPool>
     connection_manager_pool(BackendConnectionManager&,
                             const Namespace&);
