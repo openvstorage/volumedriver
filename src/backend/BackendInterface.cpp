@@ -62,7 +62,8 @@ BackendInterface::do_wrap_(const BackendRequestParameters& params,
         BackendConnectionInterfacePtr
             conn(conn_manager_->getConnection(retries ?
                                               ForceNewConnection::T :
-                                              ForceNewConnection::F));
+                                              ForceNewConnection::F,
+                                              nspace_));
 
         if (retries != 0)
         {

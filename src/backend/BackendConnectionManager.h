@@ -22,6 +22,7 @@
 #include "Namespace.h"
 
 #include <boost/chrono.hpp>
+#include <boost/optional.hpp>
 
 #include <youtils/ConfigurationReport.h>
 #include <youtils/EnableMakeShared.h>
@@ -74,10 +75,8 @@ public:
     operator=(const BackendConnectionManager&) = delete;
 
     BackendConnectionInterfacePtr
-    getConnection(ForceNewConnection force_new = ForceNewConnection::F)
-    {
-        return get_connection_pool_().get_connection(force_new);
-    }
+    getConnection(const ForceNewConnection force_new = ForceNewConnection::F,
+                  const boost::optional<Namespace>& = boost::none);
 
     BackendInterfacePtr
     newBackendInterface(const Namespace&);
@@ -166,27 +165,14 @@ private:
     DECLARE_PARAMETER(backend_interface_retry_backoff_multiplier);
     DECLARE_PARAMETER(backend_interface_partial_read_nullio);
 
-    // one per (logical) CPU.
     std::vector<std::shared_ptr<ConnectionPool>> connection_pools_;
     std::unique_ptr<BackendConfig> config_;
 
     explicit BackendConnectionManager(const boost::property_tree::ptree&,
                                       const RegisterComponent = RegisterComponent::T);
 
-    ConnectionPool&
-    get_connection_pool_()
-    {
-        int cpu = sched_getcpu();
-        if (cpu < 0)
-        {
-            cpu = 0;
-        }
-
-        ASSERT(not connection_pools_.empty());
-        const auto n = static_cast<unsigned>(cpu);
-
-        return *connection_pools_[n % connection_pools_.size()];
-    }
+    const std::shared_ptr<ConnectionPool>&
+    pool_(const Namespace& nspace) const;
 
     friend class BackendTestSetup;
     friend class toolcut::BackendToolCut;

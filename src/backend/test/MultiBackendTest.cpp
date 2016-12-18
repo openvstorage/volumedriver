@@ -85,6 +85,8 @@ public:
     void
     setup_multi_dir(size_t i)
     {
+        ASSERT_LT(i, num_backup_backends_);
+
         fs::path& dir = multi_dirs_[i];
 
         if(not fs::exists(dir))
@@ -96,6 +98,7 @@ public:
     void
     setup_multi_dirs(size_t num_backends = num_backup_backends_)
     {
+        ASSERT_LE(num_backends, num_backup_backends_);
 
         for(size_t i = 0; i < num_backends; ++i)
         {
@@ -319,14 +322,18 @@ public:
     }
 protected:
     std::vector<fs::path> multi_dirs_;
-    static const size_t num_backup_backends_ = 3;
+    static const size_t num_backup_backends_;
 
 private:
     const fs::path multi_dir_base_;
+
 protected:
     bool stop_switcher;
     // boost::chrono::seconds switcher_sleep_time_;
 };
+
+const size_t
+MultiBackendTest::num_backup_backends_ = 8;
 
 TEST_F(MultiBackendTest, empty_multi)
 {
@@ -374,6 +381,56 @@ TEST_F(MultiBackendTest, basics)
     {
         EXPECT_EQ(*cfg.configs_[i],
                   pools[i]->config());
+    }
+}
+
+TEST_F(MultiBackendTest, pool_distribution)
+{
+    const size_t n = num_backup_backends_;
+    setup_multi_dirs(n);
+    const bpt::ptree pt(make_local_config(n));
+    const MultiConfig cfg(pt);
+    BackendConnectionManagerPtr cm(BackendConnectionManager::create(pt));
+
+    const std::vector<std::shared_ptr<ConnectionPool>>&
+        pools(BackendTestSetup::connection_manager_pools(*cm));
+
+    ASSERT_EQ(n,
+              pools.size());
+
+    for (auto& p : pools)
+    {
+        ASSERT_EQ(0, p->size());
+    }
+
+    std::vector<size_t> dist(n, 0);
+
+    for (size_t i = 0; i < (n * 100); ++i)
+    {
+        const Namespace nspace(yt::UUID().str());
+        BackendConnectionInterfacePtr
+            c(cm->getConnection(ForceNewConnection::F,
+                                nspace));
+        ASSERT_TRUE(c != nullptr);
+        std::shared_ptr<ConnectionPool> p(BackendTestSetup::connection_manager_pool(*cm,
+                                                                                    nspace));
+        for (size_t i = 0; i < n; ++i)
+        {
+            if (pools[i] == p)
+            {
+                ++dist[i];
+            }
+        }
+    }
+
+    for (auto& p : pools)
+    {
+        ASSERT_EQ(1, p->size());
+    }
+
+    for (size_t i = 0; i < n; ++i)
+    {
+        std::cout << "pool " << i << ": " << dist[i] << " nspaces" << std::endl;
     }
 }
 

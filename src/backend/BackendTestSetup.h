@@ -133,6 +133,10 @@ protected:
     static std::vector<std::shared_ptr<ConnectionPool>>&
     connection_manager_pools(BackendConnectionManager&);
 
+    static std::shared_ptr<ConnectionPool>
+    connection_manager_pool(BackendConnectionManager&,
+                            const Namespace&);
+
 private:
     DECLARE_LOGGER("BackendTestSetup");
 };

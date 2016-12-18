@@ -19,36 +19,50 @@
 
 #include <boost/thread/thread.hpp>
 
+#include <youtils/System.h>
+#include <youtils/Timer.h>
 #include <youtils/UpdateReport.h>
 
 namespace backendtest
 {
 
-namespace be = backend;
+namespace bc = boost::chrono;
 namespace bpt = boost::property_tree;
 namespace fs = boost::filesystem;
 namespace ip = initialized_params;
 namespace yt = youtils;
 
+using namespace backend;
+
 class ConnectionManagerTest
-    : public be::BackendTestBase
+    : public BackendTestBase
 {
 public:
     ConnectionManagerTest()
-        : be::BackendTestBase("ConnectionManagerTest")
+        : BackendTestBase("ConnectionManagerTest")
     {}
 
     void
-    pin_to_cpu_0()
+    test_get_conns(const boost::optional<Namespace>& nspace)
     {
-        cpu_set_t cpu_set;
+        const size_t iterations =
+            yt::System::get_env_with_default("CONNECTION_MANAGER_TEST_ITERATIONS",
+                                             1000000ULL);
 
-        CPU_ZERO(&cpu_set);
-        CPU_SET(0, &cpu_set);
+        yt::SteadyTimer t;
+        for (size_t i = 0; i < iterations; ++i)
+        {
+            BackendConnectionInterfacePtr c(cm_->getConnection());
+            ASSERT_TRUE(c != nullptr);
+        }
 
-        ASSERT_EQ(0, pthread_setaffinity_np(pthread_self(),
-                                            sizeof(cpu_set),
-                                            &cpu_set));
+        const yt::SteadyTimer::Clock::duration elapsed = t.elapsed();
+        const double seconds =
+            bc::duration_cast<bc::nanoseconds>(elapsed).count() /
+            (1000.0 * 1000.0 * 1000.0);
+        std::cout << iterations << " lookups with nspace " << nspace <<
+            " took " << elapsed << " -> " << (iterations / seconds) <<
+            " OPS" << std::endl;
     }
 };
 
@@ -57,8 +71,6 @@ TEST_F(ConnectionManagerTest, limited_pool)
     std::async(std::launch::async,
                [&]
                {
-                   pin_to_cpu_0();
-
                    const size_t cap = cm_->capacity();
                    const size_t pools = cm_->pools();
 
@@ -89,7 +101,6 @@ TEST_F(ConnectionManagerTest, limited_pool_on_errors)
     std::async(std::launch::async,
                [&]
                {
-                   pin_to_cpu_0();
                    const std::string oname("some-object");
                    const fs::path opath(path_ / oname);
 
@@ -102,10 +113,10 @@ TEST_F(ConnectionManagerTest, limited_pool_on_errors)
                    ASSERT_NE(wrong_cs,
                              cs);
 
-                   std::unique_ptr<be::BackendTestSetup::WithRandomNamespace>
+                   std::unique_ptr<BackendTestSetup::WithRandomNamespace>
                        nspace(make_random_namespace());
 
-                   be::BackendInterfacePtr bi(bi_(nspace->ns()));
+                   BackendInterfacePtr bi(bi_(nspace->ns()));
                    const size_t count = 2 * cm_->capacity();
 
                    for (size_t i = 0; i < count; ++i)
@@ -114,7 +125,7 @@ TEST_F(ConnectionManagerTest, limited_pool_on_errors)
                                               oname,
                                               OverwriteObject::F,
                                               &wrong_cs),
-                                    be::BackendInputException);
+                                    BackendInputException);
                    }
 
                    ASSERT_EQ(cm_->capacity() * cm_->pools(),
@@ -160,6 +171,17 @@ TEST_F(ConnectionManagerTest, no_pool)
 
     ASSERT_EQ(0U,
               cm_->size());
+}
+
+TEST_F(ConnectionManagerTest, get_connection_without_nspace)
+{
+    test_get_conns(boost::none);
+}
+
+TEST_F(ConnectionManagerTest, get_connection_with_nspace)
+{
+    auto wrns(make_random_namespace());
+    test_get_conns(wrns->ns());
 }
 
 }

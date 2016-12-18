@@ -80,6 +80,30 @@ BackendConnectionManager::create(const boost::property_tree::ptree& pt,
                                                                             registrate);
 }
 
+const std::shared_ptr<ConnectionPool>&
+BackendConnectionManager::pool_(const Namespace& nspace) const
+{
+    ASSERT(not connection_pools_.empty());
+    size_t h = std::hash<std::string>()(nspace.str());
+    return connection_pools_[h % connection_pools_.size()];
+}
+
+BackendConnectionInterfacePtr
+BackendConnectionManager::getConnection(const ForceNewConnection force_new,
+                                        const boost::optional<Namespace>& nspace)
+{
+    ASSERT(not connection_pools_.empty());
+
+    if (nspace)
+    {
+        return pool_(*nspace)->get_connection(force_new);
+    }
+    else
+    {
+        return connection_pools_[0]->get_connection(force_new);
+    }
+}
+
 size_t
 BackendConnectionManager::capacity() const
 {

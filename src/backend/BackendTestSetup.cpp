@@ -117,6 +117,13 @@ BackendTestSetup::connection_manager_pools(BackendConnectionManager& cm)
     return cm.connection_pools_;
 }
 
+std::shared_ptr<ConnectionPool>
+BackendTestSetup::connection_manager_pool(BackendConnectionManager& cm,
+                                          const Namespace& nspace)
+{
+    return cm.pool_(nspace);
+}
+
 }
 
 // Local Variables: **

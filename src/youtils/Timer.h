@@ -21,10 +21,12 @@
 namespace youtils
 {
 
-template<typename Clock>
+template<typename C>
 class Timer
 {
 public:
+    using Clock = C;
+
     Timer()
         : start_(Clock::now())
     {}
