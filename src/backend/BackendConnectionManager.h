@@ -75,10 +75,7 @@ public:
     BackendConnectionInterfacePtr
     getConnection(ForceNewConnection force_new = ForceNewConnection::F)
     {
-        BackendConnectionInterfacePtr conn(get_connection_pool_().get_connection(force_new));
-        ASSERT(conn);
-        conn->timeout(default_timeout_);
-        return conn;
+        return get_connection_pool_().get_connection(force_new);
     }
 
     BackendInterfacePtr
@@ -153,12 +150,6 @@ public:
         return backend_interface_retry_backoff_multiplier.value();
     }
 
-    boost::posix_time::time_duration
-    default_timeout() const
-    {
-        return default_timeout_;
-    }
-
     bool
     partial_read_nullio() const
     {
@@ -181,8 +172,6 @@ private:
 
     explicit BackendConnectionManager(const boost::property_tree::ptree&,
                                       const RegisterComponent = RegisterComponent::T);
-
-    boost::posix_time::time_duration default_timeout_;
 
     ConnectionPool&
     get_connection_pool_()

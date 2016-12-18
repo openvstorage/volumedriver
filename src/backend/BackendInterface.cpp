@@ -63,9 +63,6 @@ BackendInterface::do_wrap_(const BackendRequestParameters& params,
             conn(conn_manager_->getConnection(retries ?
                                               ForceNewConnection::T :
                                               ForceNewConnection::F));
-        conn->timeout(params.timeout_ ?
-                      *params.timeout_ :
-                      conn_manager_->default_timeout());
 
         if (retries != 0)
         {

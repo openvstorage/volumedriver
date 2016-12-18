@@ -46,26 +46,10 @@ class BackendConnectionInterface
     : public boost::intrusive::slist_base_hook<>
 {
 protected:
-    boost::posix_time::time_duration timeout_;
-
-    BackendConnectionInterface(const boost::posix_time::time_duration& timeout = boost::posix_time::seconds(10))
-        :timeout_(timeout)
-    {}
+    BackendConnectionInterface() = default;
 
  public:
     virtual ~BackendConnectionInterface() = default;
-
-    virtual void
-    timeout(const boost::posix_time::time_duration& timeout)
-    {
-        timeout_ = timeout;
-    }
-
-    virtual const boost::posix_time::time_duration&
-    timeout() const
-    {
-        return timeout_;
-    }
 
     virtual bool
     healthy() const = 0;
