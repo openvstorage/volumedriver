@@ -18,6 +18,8 @@
 
 #include "BackendConfig.h"
 
+#include <iosfwd>
+
 #include <youtils/Logging.h>
 #include <youtils/System.h>
 
@@ -152,6 +154,9 @@ private:
         const_cast<timespec&>(timespec_).tv_sec = local_connection_tv_sec.value();
         const_cast<timespec&>(timespec_).tv_nsec = local_connection_tv_nsec.value();
     }
+
+    virtual std::ostream&
+    stream_out(std::ostream&) const override final;
 };
 
 }

@@ -18,6 +18,8 @@
 
 #include "BackendConfig.h"
 
+#include <iosfwd>
+
 #include <youtils/IOException.h>
 #include <youtils/Logging.h>
 
@@ -213,6 +215,9 @@ private:
         }
         return true;
     }
+
+    virtual std::ostream&
+    stream_out(std::ostream&) const override final;
 };
 
 }

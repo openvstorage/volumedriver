@@ -38,6 +38,7 @@ ConnectionPool::ConnectionPool(std::unique_ptr<BackendConfig> config,
     , capacity_(capacity)
 {
     VERIFY(config_->backend_type.value() != BackendType::MULTI);
+    LOG_INFO("Created pool for " << *config_ << ", capacity " << capacity);
 }
 
 ConnectionPool::~ConnectionPool()
@@ -162,7 +163,7 @@ ConnectionPool::capacity(size_t cap)
     {
         LOCK();
 
-        capacity_ = cap;
+        std::swap(capacity_, cap);
         if (connections_.size() > capacity_)
         {
             for (size_t i = 0; i < capacity_; ++i)
@@ -177,6 +178,9 @@ ConnectionPool::capacity(size_t cap)
     }
 
     clear_(tmp);
+
+    LOG_INFO(*config_ << ": updated capacity from " <<
+             cap << " to " << capacity());
 }
 
 }

@@ -364,7 +364,6 @@ BackendInterface::objectExists(const std::string& name,
                  decltype(name)>(params,
                                  &BackendConnectionInterface::objectExists,
                                  name);
-
 }
 
 void
