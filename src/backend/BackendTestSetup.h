@@ -130,10 +130,6 @@ protected:
     void
     uninitialize_connection_manager();
 
-    static std::shared_ptr<ConnectionPool>
-    connection_manager_pool(BackendConnectionManager&,
-                            const Namespace&);
-
 private:
     DECLARE_LOGGER("BackendTestSetup");
 };

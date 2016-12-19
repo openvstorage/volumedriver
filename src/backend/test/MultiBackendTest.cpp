@@ -439,9 +439,7 @@ TEST_F(MultiBackendTest, pool_distribution)
             c(cm->getConnection(ForceNewConnection::F,
                                 nspace));
         ASSERT_TRUE(c != nullptr);
-        std::shared_ptr<ConnectionPool> p(BackendTestSetup::connection_manager_pool(*cm,
-                                                                                    nspace));
-        auto it = dist.find(p);
+        auto it = dist.find(cm->pool(nspace));
         ASSERT_TRUE(it != dist.end());
         it->second += 1;
     }

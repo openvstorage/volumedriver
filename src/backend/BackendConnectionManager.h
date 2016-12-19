@@ -49,7 +49,6 @@ namespace backend
 class BackendConnectionManager;
 class BackendSinkInterface;
 class BackendSourceInterface;
-class BackendTestSetup;
 
 using BackendConnectionManagerPtr = std::shared_ptr<BackendConnectionManager>;
 using BackendInterfacePtr = std::unique_ptr<BackendInterface>;
@@ -169,6 +168,12 @@ public:
         }
     }
 
+    std::shared_ptr<ConnectionPool>
+    pool(const Namespace& nspace) const
+    {
+        return pool_(nspace);
+    }
+
 private:
     DECLARE_LOGGER("BackendConnectionManager");
 
@@ -187,7 +192,6 @@ private:
     const std::shared_ptr<ConnectionPool>&
     pool_(const Namespace& nspace) const;
 
-    friend class BackendTestSetup;
     friend class toolcut::BackendToolCut;
     friend class toolcut::BackendConnectionToolCut;
     friend class youtils::EnableMakeShared<BackendConnectionManager>;

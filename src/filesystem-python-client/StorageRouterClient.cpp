@@ -964,6 +964,14 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              bpy::return_value_policy<bpy::copy_const_reference>(),
              "Get the client timeout (if any) in seconds\n"
              "@returns: unsigned, client timeout in seconds, or None\n")
+        .def("_backend_connection_pool",
+             &vfs::PythonClient::get_backend_connection_pool,
+             (bpy::args("volume_id"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
+             "Identify the backend connection pool used by a volume (not a stable interface!)\n"
+             "@param volume_id: string, volume identifier\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
+             "@returns string, identifier for the backend connection pool\n")
         ;
 
     vfspy::LocalClient::registerize();

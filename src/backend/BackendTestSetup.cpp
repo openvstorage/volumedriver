@@ -111,13 +111,6 @@ BackendTestSetup::streamingSupport()
                 backend_config().backend_type.value() == BackendType::S3);
 }
 
-std::shared_ptr<ConnectionPool>
-BackendTestSetup::connection_manager_pool(BackendConnectionManager& cm,
-                                          const Namespace& nspace)
-{
-    return cm.pool_(nspace);
-}
-
 }
 
 // Local Variables: **
