@@ -19,6 +19,7 @@
 #include "BackendConnectionInterface.h"
 #include "ConnectionDeleter.h"
 
+#include <iosfwd>
 #include <memory>
 
 #include <boost/intrusive/slist.hpp>
@@ -73,6 +74,17 @@ public:
         return *config_;
     }
 
+    struct Counters
+    {
+        uint64_t gets_new = 0;
+        uint64_t gets_from_pool = 0;
+        uint64_t puts_delete = 0;
+        uint64_t puts_to_pool = 0;
+    };
+
+    Counters
+    counters() const;
+
 private:
     DECLARE_LOGGER("BackendConnectionPool");
 
@@ -89,6 +101,7 @@ private:
 
     std::unique_ptr<BackendConfig> config_;
     size_t capacity_;
+    Counters counters_;
 
     std::unique_ptr<BackendConnectionInterface>
     make_one_() const;
@@ -102,6 +115,10 @@ private:
     void
     release_connection_(BackendConnectionInterface*);
 };
+
+std::ostream&
+operator<<(std::ostream&,
+           const ConnectionPool::Counters&);
 
 }
 

@@ -22,6 +22,8 @@
 #include "S3Config.h"
 #include "S3_Connection.h"
 
+#include <iostream>
+
 #include <boost/thread/lock_guard.hpp>
 
 namespace backend
@@ -110,10 +112,18 @@ ConnectionPool::release_connection_(BackendConnectionInterface* conn)
     {
         LOCK();
 
-        if (conn and conn->healthy() and connections_.size() < capacity_)
+        if (conn)
         {
-            connections_.push_front(*conn);
-            return;
+            if (conn->healthy() and connections_.size() < capacity_)
+            {
+                ++counters_.puts_to_pool;
+                connections_.push_front(*conn);
+                return;
+            }
+            else
+            {
+                ++counters_.puts_delete;
+            }
         }
     }
 
@@ -129,12 +139,15 @@ ConnectionPool::get_connection(ForceNewConnection force_new)
     if (force_new == ForceNewConnection::F)
     {
         LOCK();
+        ++counters_.gets_from_pool;
         conn = BackendConnectionInterfacePtr(pop_(connections_).release(), d);
     }
 
     if (not conn)
     {
         conn = BackendConnectionInterfacePtr(make_one_().release(), d);
+        LOCK();
+        ++counters_.gets_new;
     }
 
     ASSERT(conn);
@@ -181,6 +194,24 @@ ConnectionPool::capacity(size_t cap)
 
     LOG_INFO(*config_ << ": updated capacity from " <<
              cap << " to " << capacity());
+}
+
+ConnectionPool::Counters
+ConnectionPool::counters() const
+{
+    LOCK();
+    return counters_;
+}
+
+std::ostream&
+operator<<(std::ostream& os,
+           const ConnectionPool::Counters& c)
+{
+    return os <<
+        "gets_new=" << c.gets_new <<
+        ",gets_from_pool=" << c.gets_from_pool <<
+        ",puts_delete=" << c.puts_delete <<
+        ",puts_to_pool=" << c.puts_to_pool;
 }
 
 }
