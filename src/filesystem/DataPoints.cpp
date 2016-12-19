@@ -295,4 +295,24 @@ operator<<(std::ostream& os,
         return os;
 }
 
+BackendConnectionPoolDataPoint::BackendConnectionPoolDataPoint(const backend::ConnectionPool& p)
+    : id(boost::lexical_cast<std::string>(p.config()))
+    , capacity(p.capacity())
+    , size(p.size())
+    , counters(p.counters())
+{}
+
+constexpr const char* BackendConnectionPoolDataPoint::name;
+
+std::ostream&
+operator<<(std::ostream& os,
+           const BackendConnectionPoolDataPoint& dp)
+{
+    return
+        name_and_id(os, dp) <<
+        ",capacity=" << dp.capacity <<
+        ",size=" << dp.size <<
+        "," << dp.counters;
+}
+
 }

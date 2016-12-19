@@ -173,7 +173,7 @@ FileSystem::FileSystem(const bpt::ptree& pt,
                UseCache::T :
                UseCache::F)
     , stats_collector_(pt,
-                    registerizle)
+                       registerizle)
     , xmlrpc_svc_(router_.node_config().xmlrpc_host,
                   router_.node_config().xmlrpc_port)
 {
