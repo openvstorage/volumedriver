@@ -401,6 +401,10 @@ public:
     std::unique_ptr<PythonClient>
     xmlrpc_client();
 
+    void
+    set_dtl_in_sync(const ObjectId&,
+                    const volumedriver::DtlInSync);
+
 private:
     DECLARE_LOGGER("VFSObjectRouter");
 
@@ -449,10 +453,12 @@ private:
         RedirectCounter()
             : reads(0)
             , writes(0)
+            , dtl_in_sync(volumedriver::DtlInSync::F)
         {}
 
         uint64_t reads;
         uint64_t writes;
+        volumedriver::DtlInSync dtl_in_sync;
     };
 
     std::map<ObjectId, RedirectCounter> redirects_;
@@ -613,6 +619,15 @@ private:
 
     bool
     fencing_support_() const;
+
+    volumedriver::DtlInSync
+    dtl_in_sync_(const ObjectId&) const;
+
+    bool
+    permit_steal_(const ObjectId& oid) const
+    {
+        return fencing_support_() and dtl_in_sync_(oid) == volumedriver::DtlInSync::T;
+    }
 
     void
     shutdown_();
