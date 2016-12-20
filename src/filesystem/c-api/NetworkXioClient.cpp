@@ -14,7 +14,9 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "Logger.h"
+#include "MsgpackAdaptors.h"
 #include "NetworkXioClient.h"
+#include "common_priv.h"
 
 #include <youtils/Assert.h>
 
@@ -23,6 +25,8 @@
 #include <functional>
 #include <atomic>
 #include <system_error>
+
+#include <msgpack.hpp>
 
 namespace yt = youtils;
 
@@ -78,6 +82,14 @@ static_on_response(xio_session *session,
         return -1;
     }
     return obj->on_response(session, req, last_in_rxq);
+}
+
+namespace
+{
+std::string xio_ka_time("LIBOVSVOLUMEDRIVER_XIO_KEEPALIVE_TIME");
+std::string xio_ka_intvl("LIBOVSVOLUMEDRIVER_XIO_KEEPALIVE_INTVL");
+std::string xio_ka_probes("LIBOVSVOLUMEDRIVER_XIO_KEEPALIVE_PROBES");
+std::string xio_poll_timeout_us("LIBOVSVOLUMEDRIVER_XIO_POLLING_TIMEOUT_US");
 }
 
 template<class T>
@@ -200,15 +212,9 @@ NetworkXioClient::run(std::promise<bool>& promise)
                 &xopt, sizeof(int));
 
     struct xio_options_keepalive ka;
-    ka.time =
-        yt::System::get_env_with_default<int>("LIBOVSVOLUMEDRIVER_XIO_KEEPALIVE_TIME",
-                                              600);
-    ka.intvl =
-        yt::System::get_env_with_default<int>("LIBOVSVOLUMEDRIVER_XIO_KEEPALIVE_INTVL",
-                                              60);
-    ka.probes =
-        yt::System::get_env_with_default<int>("LIBOVSVOLUMEDRIVER_XIO_KEEPALIVE_PROBES",
-                                              20);
+    ka.time = yt::System::get_env_with_default<int>(xio_ka_time, 600);
+    ka.intvl = yt::System::get_env_with_default<int>(xio_ka_intvl, 60);
+    ka.probes = yt::System::get_env_with_default<int>(xio_ka_probes, 20);
 
     xio_set_opt(NULL,
                 XIO_OPTLEVEL_ACCELIO,
@@ -218,8 +224,7 @@ NetworkXioClient::run(std::promise<bool>& promise)
     try
     {
         int polling_timeout_us =
-        yt::System::get_env_with_default<int>("LIBOVSVOLUMEDRIVER_XIO_POLLING_TIMEOUT_US",
-                                              0);
+            yt::System::get_env_with_default<int>(xio_poll_timeout_us, 0);
         ctx = std::shared_ptr<xio_context>(
                             xio_context_create(NULL, polling_timeout_us, -1),
                             xio_destroy_ctx_shutdown);
@@ -724,8 +729,21 @@ NetworkXioClient::on_msg_control(xio_session *session ATTR_UNUSED,
         break;
     case NetworkXioMsgOpcode::GetVolumeURIRsp:
         handle_get_volume_uri(xctl,
-                              vmsg_sglist(&reply->in),
-                              imsg.size());
+                              vmsg_sglist(&reply->in));
+        break;
+    case NetworkXioMsgOpcode::GetClusterMultiplierRsp:
+        xctl->size = imsg.u64();
+        break;
+    case NetworkXioMsgOpcode::StatVolumeRsp:
+        xctl->size = imsg.u64();
+        break;
+    case NetworkXioMsgOpcode::GetCloneNamespaceMapRsp:
+        handle_get_clone_namespace_map(xctl,
+                                       vmsg_sglist(&reply->in));
+        break;
+    case NetworkXioMsgOpcode::GetPageRsp:
+        handle_get_page_vector(xctl,
+                               vmsg_sglist(&reply->in));
         break;
     default:
         break;
@@ -866,6 +884,21 @@ NetworkXioClient::create_vec_from_buf(xio_ctl_s *xctl,
 }
 
 void
+NetworkXioClient::copy_sglist_buffer(xio_ctl_s *xctl,
+                                     xio_iovec_ex *sglist)
+{
+    try
+    {
+        auto data = std::make_unique<uint8_t[]>(sglist[0].iov_len);
+        memcpy(data.get(), sglist[0].iov_base, sglist[0].iov_len);
+        xctl->data = std::move(data);
+        xctl->size = sglist[0].iov_len;
+    }
+    catch (const std::bad_alloc&)
+    {}
+}
+
+void
 NetworkXioClient::handle_list_volumes(xio_ctl_s *xctl,
                                       xio_iovec_ex *sglist,
                                       int vec_size)
@@ -877,7 +910,7 @@ void
 NetworkXioClient::handle_list_snapshots(xio_ctl_s *xctl,
                                         xio_iovec_ex *sglist,
                                         int vec_size,
-                                        int size)
+                                        size_t size)
 {
     create_vec_from_buf(xctl, sglist, vec_size);
     xctl->size = size;
@@ -893,18 +926,23 @@ NetworkXioClient::handle_list_cluster_node_uri(xio_ctl_s *xctl,
 
 void
 NetworkXioClient::handle_get_volume_uri(xio_ctl_s *xctl,
-                                        xio_iovec_ex *sglist,
-                                        int size)
+                                        xio_iovec_ex *sglist)
 {
-    try
-    {
-        auto data = std::make_unique<uint8_t[]>(size);
-        memcpy(data.get(), sglist[0].iov_base, size);
-        xctl->data = std::move(data);
-        xctl->size = size;
-    }
-    catch (const std::bad_alloc&)
-    {}
+    copy_sglist_buffer(xctl, sglist);
+}
+
+void
+NetworkXioClient::handle_get_clone_namespace_map(xio_ctl_s *xctl,
+                                                 xio_iovec_ex *sglist)
+{
+    copy_sglist_buffer(xctl, sglist);
+}
+
+void
+NetworkXioClient::handle_get_page_vector(xio_ctl_s *xctl,
+                                         xio_iovec_ex *sglist)
+{
+    copy_sglist_buffer(xctl, sglist);
 }
 
 void
@@ -921,7 +959,7 @@ NetworkXioClient::xio_msg_prepare(xio_msg_s *xmsg)
 
 void
 NetworkXioClient::xio_create_volume(const std::string& uri,
-                                    const char* volume_name,
+                                    const char *volume_name,
                                     size_t size,
                                     ovs_aio_request *request)
 {
@@ -938,9 +976,9 @@ NetworkXioClient::xio_create_volume(const std::string& uri,
 
 void
 NetworkXioClient::xio_truncate_volume(const std::string& uri,
-                                      const char* volume_name,
-                                     uint64_t offset,
-                                     ovs_aio_request *request)
+                                      const char *volume_name,
+                                      uint64_t offset,
+                                      ovs_aio_request *request)
 {
     auto xctl = std::make_unique<xio_ctl_s>();
     xctl->xmsg.set_opaque(request);
@@ -955,7 +993,7 @@ NetworkXioClient::xio_truncate_volume(const std::string& uri,
 
 void
 NetworkXioClient::xio_remove_volume(const std::string& uri,
-                                    const char* volume_name,
+                                    const char *volume_name,
                                     ovs_aio_request *request)
 {
     auto xctl = std::make_unique<xio_ctl_s>();
@@ -971,6 +1009,7 @@ NetworkXioClient::xio_remove_volume(const std::string& uri,
 void
 NetworkXioClient::xio_stat_volume(const std::string& uri,
                                   const std::string& volume_name,
+                                  uint64_t *size,
                                   ovs_aio_request *request)
 {
     auto xctl = std::make_unique<xio_ctl_s>();
@@ -981,6 +1020,7 @@ NetworkXioClient::xio_stat_volume(const std::string& uri,
 
     xio_msg_prepare(&xctl->xmsg);
     xio_submit_request(uri, xctl.get(), request);
+    *size = xctl->size;
 }
 
 void
@@ -1015,7 +1055,7 @@ NetworkXioClient::xio_list_cluster_node_uri(const std::string& uri,
 
 void
 NetworkXioClient::xio_get_volume_uri(const std::string& uri,
-                                     const char* volume_name,
+                                     const char *volume_name,
                                      std::string& volume_uri,
                                      ovs_aio_request *request)
 {
@@ -1037,7 +1077,7 @@ NetworkXioClient::xio_get_volume_uri(const std::string& uri,
 
 void
 NetworkXioClient::xio_list_snapshots(const std::string& uri,
-                                     const char* volume_name,
+                                     const char *volume_name,
                                      std::vector<std::string>& snapshots,
                                      uint64_t *size,
                                      ovs_aio_request *request)
@@ -1056,8 +1096,8 @@ NetworkXioClient::xio_list_snapshots(const std::string& uri,
 
 void
 NetworkXioClient::xio_create_snapshot(const std::string& uri,
-                                      const char* volume_name,
-                                      const char* snap_name,
+                                      const char *volume_name,
+                                      const char *snap_name,
                                       int64_t timeout,
                                       ovs_aio_request *request)
 {
@@ -1075,8 +1115,8 @@ NetworkXioClient::xio_create_snapshot(const std::string& uri,
 
 void
 NetworkXioClient::xio_delete_snapshot(const std::string& uri,
-                                      const char* volume_name,
-                                      const char* snap_name,
+                                      const char *volume_name,
+                                      const char *snap_name,
                                       ovs_aio_request *request)
 {
     auto xctl = std::make_unique<xio_ctl_s>();
@@ -1092,8 +1132,8 @@ NetworkXioClient::xio_delete_snapshot(const std::string& uri,
 
 void
 NetworkXioClient::xio_rollback_snapshot(const std::string& uri,
-                                        const char* volume_name,
-                                        const char* snap_name,
+                                        const char *volume_name,
+                                        const char *snap_name,
                                         ovs_aio_request *request)
 {
     auto xctl = std::make_unique<xio_ctl_s>();
@@ -1109,8 +1149,8 @@ NetworkXioClient::xio_rollback_snapshot(const std::string& uri,
 
 void
 NetworkXioClient::xio_is_snapshot_synced(const std::string& uri,
-                                         const char* volume_name,
-                                         const char* snap_name,
+                                         const char *volume_name,
+                                         const char *snap_name,
                                          ovs_aio_request *request)
 {
     auto xctl = std::make_unique<xio_ctl_s>();
@@ -1122,6 +1162,74 @@ NetworkXioClient::xio_is_snapshot_synced(const std::string& uri,
 
     xio_msg_prepare(&xctl->xmsg);
     xio_submit_request(uri, xctl.get(), request);
+}
+
+void
+NetworkXioClient::xio_get_cluster_multiplier(const std::string& uri,
+                                             const char *volume_name,
+                                             uint32_t *cluster_multiplier,
+                                             ovs_aio_request *request)
+{
+    auto xctl = std::make_unique<xio_ctl_s>();
+    xctl->xmsg.set_opaque(request);
+    xctl->xmsg.msg.opcode(NetworkXioMsgOpcode::GetClusterMultiplierReq);
+    xctl->xmsg.msg.opaque((uintptr_t)xctl.get());
+    xctl->xmsg.msg.volume_name(volume_name);
+
+    xio_msg_prepare(&xctl->xmsg);
+    xio_submit_request(uri, xctl.get(), request);
+    *cluster_multiplier = xctl->size;
+}
+
+void
+NetworkXioClient::xio_get_clone_namespace_map(const std::string& uri,
+                                              const char *volume_name,
+                                              CloneNamespaceMap& cn,
+                                              ovs_aio_request *request)
+{
+    auto xctl = std::make_unique<xio_ctl_s>();
+    xctl->xmsg.set_opaque(request);
+    xctl->xmsg.msg.opcode(NetworkXioMsgOpcode::GetCloneNamespaceMapReq);
+    xctl->xmsg.msg.opaque((uintptr_t)xctl.get());
+    xctl->xmsg.msg.volume_name(volume_name);
+
+    xio_msg_prepare(&xctl->xmsg);
+    xio_submit_request(uri, xctl.get(), request);
+
+    if (xctl->data)
+    {
+        msgpack::object_handle oh =
+            msgpack::unpack(reinterpret_cast<char*>(xctl->data.get()),
+                            xctl->size);
+        msgpack::object obj = oh.get();
+        obj.convert(cn);
+    }
+}
+void
+NetworkXioClient::xio_get_page(const std::string& uri,
+                               const char *volume_name,
+                               const ClusterAddress ca,
+                               ClusterLocationPage& cl,
+                               ovs_aio_request *request)
+{
+    auto xctl = std::make_unique<xio_ctl_s>();
+    xctl->xmsg.set_opaque(request);
+    xctl->xmsg.msg.opcode(NetworkXioMsgOpcode::GetPageReq);
+    xctl->xmsg.msg.opaque((uintptr_t)xctl.get());
+    xctl->xmsg.msg.volume_name(volume_name);
+    xctl->xmsg.msg.u64(static_cast<uint64_t>(ca));
+
+    xio_msg_prepare(&xctl->xmsg);
+    xio_submit_request(uri, xctl.get(), request);
+
+    if (xctl->data)
+    {
+        msgpack::object_handle oh =
+            msgpack::unpack(reinterpret_cast<char*>(xctl->data.get()),
+                            xctl->size);
+        msgpack::object obj = oh.get();
+        obj.convert(cl);
+    }
 }
 
 } //namespace libovsvolumedriver

@@ -37,6 +37,7 @@
 #include <backend/GarbageCollector.h>
 
 #include <volumedriver/Api.h>
+#include <volumedriver/ClusterLocation.h>
 #include <volumedriver/ScrubWork.h>
 #include <volumedriver/TransientException.h>
 #include <volumedriver/VolManager.h>
@@ -820,6 +821,54 @@ uint64_t
 LocalNode::get_size_(vd::WeakVolumePtr vol)
 {
     return api::GetSize(vol);
+}
+
+vd::ClusterMultiplier
+LocalNode::get_cluster_multiplier(const Object& obj)
+{
+    RWLockPtr l(get_lock_(obj.id));
+    fungi::ScopedReadLock rg(*l);
+    return with_volume_pointer_(&LocalNode::get_cluster_multiplier_,
+                                obj.id);
+}
+
+vd::ClusterMultiplier
+LocalNode::get_cluster_multiplier_(vd::WeakVolumePtr vol)
+{
+    return api::GetClusterMultiplier(vol);
+}
+
+vd::CloneNamespaceMap
+LocalNode::get_clone_namespace_map(const Object& obj)
+{
+    RWLockPtr l(get_lock_(obj.id));
+    fungi::ScopedReadLock rg(*l);
+    return with_volume_pointer_(&LocalNode::get_clone_namespace_map_,
+                                obj.id);
+}
+
+vd::CloneNamespaceMap
+LocalNode::get_clone_namespace_map_(vd::WeakVolumePtr vol)
+{
+    return api::GetCloneNamespaceMap(vol);
+}
+
+std::vector<vd::ClusterLocation>
+LocalNode::get_page(const Object& obj,
+                    const vd::ClusterAddress ca)
+{
+    RWLockPtr l(get_lock_(obj.id));
+    fungi::ScopedReadLock rg(*l);
+    return with_volume_pointer_(&LocalNode::get_page_,
+                                obj.id,
+                                ca);
+}
+
+std::vector<vd::ClusterLocation>
+LocalNode::get_page_(vd::WeakVolumePtr vol,
+                     const vd::ClusterAddress ca)
+{
+    return api::GetPage(vol, ca);
 }
 
 void

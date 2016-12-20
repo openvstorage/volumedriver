@@ -21,6 +21,7 @@
 
 #include "ClusterCache.h"
 #include "ClusterCount.h"
+#include "ClusterLocation.h"
 #include "DtlInSync.h"
 #include "Events.h"
 #include "FailOverCacheConfig.h"
@@ -129,6 +130,16 @@ public:
 
     static uint64_t
     GetSize(volumedriver::WeakVolumePtr);
+
+    static volumedriver::ClusterMultiplier
+    GetClusterMultiplier(volumedriver::WeakVolumePtr);
+
+    static volumedriver::CloneNamespaceMap
+    GetCloneNamespaceMap(volumedriver::WeakVolumePtr);
+
+    static std::vector<volumedriver::ClusterLocation>
+    GetPage(volumedriver::WeakVolumePtr,
+            const volumedriver::ClusterAddress);
 
     static uint64_t
     GetLbaSize(volumedriver::WeakVolumePtr);

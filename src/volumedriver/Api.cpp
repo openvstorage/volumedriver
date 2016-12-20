@@ -14,6 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "Api.h"
+#include "ClusterLocation.h"
 #include "DtlInSync.h"
 #include "MetaDataStoreInterface.h"
 #include "ScrubWork.h"
@@ -129,6 +130,33 @@ uint64_t
 api::GetSize(vd::WeakVolumePtr vol)
 {
     return SharedVolumePtr(vol)->getSize();
+}
+
+vd::ClusterMultiplier
+api::GetClusterMultiplier(vd::WeakVolumePtr vol)
+{
+    return SharedVolumePtr(vol)->getClusterMultiplier();
+}
+
+vd::CloneNamespaceMap
+api::GetCloneNamespaceMap(vd::WeakVolumePtr vol)
+{
+    vd::CloneNamespaceMap cnmap;
+    auto& nsid_map = SharedVolumePtr(vol)->getNSIDMap();
+    for (size_t i = 0; i < nsid_map.size(); i++)
+    {
+        auto& bi = nsid_map.get(i);
+        VERIFY(bi);
+        cnmap.emplace(SCOCloneID(i), bi->getNS());
+    }
+    return cnmap;
+}
+
+std::vector<vd::ClusterLocation>
+api::GetPage(vd::WeakVolumePtr vol,
+             const vd::ClusterAddress ca)
+{
+    return SharedVolumePtr(vol)->getMetaDataStore()->get_page(ca);
 }
 
 void

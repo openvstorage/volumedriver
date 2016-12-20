@@ -21,6 +21,7 @@
 #include <youtils/Logging.h>
 #include <youtils/Uri.h>
 
+#include <volumedriver/ClusterLocation.h>
 #include <volumedriver/DtlInSync.h>
 #include <volumedriver/Types.h>
 
@@ -58,6 +59,16 @@ public:
 
     virtual uint64_t
     get_size(const Object& obj) = 0;
+
+    virtual volumedriver::ClusterMultiplier
+    get_cluster_multiplier(const Object&) = 0;
+
+    virtual volumedriver::CloneNamespaceMap
+    get_clone_namespace_map(const Object&) = 0;
+
+    virtual std::vector<volumedriver::ClusterLocation>
+    get_page(const Object&,
+             const volumedriver::ClusterAddress) = 0;
 
     virtual void
     resize(const Object& obj,

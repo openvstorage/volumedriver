@@ -13,6 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "common_priv.h"
 #include "Logger.h"
 #include "NetworkHAContext.h"
 #include "NetworkXioContext.h"
@@ -692,6 +693,29 @@ bool
 NetworkHAContext::is_dtl_in_sync()
 {
     return atomic_get_ctx()->is_dtl_in_sync();
+}
+
+int
+NetworkHAContext::get_cluster_multiplier(const char *volume_name,
+                                         uint32_t *cluster_multiplier)
+{
+    return atomic_get_ctx()->get_cluster_multiplier(volume_name,
+                                                    cluster_multiplier);
+}
+
+int
+NetworkHAContext::get_clone_namespace_map(const char *volume_name,
+                                          CloneNamespaceMap& cn)
+{
+    return atomic_get_ctx()->get_clone_namespace_map(volume_name, cn);
+}
+
+int
+NetworkHAContext::get_page(const char *volume_name,
+                           const ClusterAddress ca,
+                           ClusterLocationPage& cl)
+{
+    return atomic_get_ctx()->get_page(volume_name, ca, cl);
 }
 
 } //namespace libovsvolumedriver

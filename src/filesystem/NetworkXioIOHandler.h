@@ -19,8 +19,11 @@
 #include "FileSystem.h"
 #include "ClusterRegistry.h"
 
-#include "NetworkXioWorkQueue.h"
 #include "NetworkXioRequest.h"
+#include "NetworkXioWorkQueue.h"
+
+#include <volumedriver/ClusterLocation.h>
+#include <volumedriver/Types.h>
 
 namespace volumedriverfs
 {
@@ -128,8 +131,18 @@ private:
 
     void handle_list_cluster_node_uri(NetworkXioRequest *req);
 
-    void handle_get_volume_uri(NetworkXioRequest*,
+    void handle_get_volume_uri(NetworkXioRequest *req,
                                const std::string& volume_name);
+
+    void handle_get_cluster_multiplier(NetworkXioRequest *req,
+                                       const std::string& volume_name);
+
+    void handle_get_clone_namespace_map(NetworkXioRequest *req,
+                                        const std::string& volume_name);
+
+    void handle_get_page(NetworkXioRequest *req,
+                         const std::string& volume_name,
+                         const uint64_t cluster_address);
 
     void handle_error(NetworkXioRequest *req,
                       NetworkXioMsgOpcode op,
@@ -158,6 +171,12 @@ private:
         const std::string root_("/");
         return (root_ + volume_name + fs_.vdisk_format().volume_suffix());
     }
+
+    std::string
+    pack_map(const volumedriver::CloneNamespaceMap& cn);
+
+    std::string
+    pack_vector(const std::vector<volumedriver::ClusterLocation>& cl);
 };
 
 typedef std::unique_ptr<NetworkXioIOHandler> NetworkXioIOHandlerPtr;

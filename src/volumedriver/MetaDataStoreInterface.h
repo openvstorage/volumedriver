@@ -16,6 +16,7 @@
 #ifndef METADATA_STORE_INTERFACE_H_
 #define METADATA_STORE_INTERFACE_H_
 
+#include "ClusterLocation.h"
 #include "ScrubId.h"
 #include "Types.h"
 #include "MetaDataStoreStats.h"
@@ -128,6 +129,9 @@ public:
 
     virtual void
     set_cache_capacity(const size_t npages) = 0;
+
+    virtual std::vector<ClusterLocation>
+    get_page(const ClusterAddress) = 0;
 };
 
 }

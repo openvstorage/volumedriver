@@ -43,6 +43,7 @@
 #include <youtils/VolumeDriverComponent.h>
 
 #include <volumedriver/Api.h>
+#include <volumedriver/ClusterLocation.h>
 #include <volumedriver/Events.h>
 #include <volumedriver/VolumeDriverParameters.h>
 
@@ -59,6 +60,9 @@ class GetSizeRequest;
 class ResizeRequest;
 class DeleteRequest;
 class TransferRequest;
+class GetClusterMultiplierRequest;
+class GetCloneNamespaceMapRequest;
+class GetPageRequest;
 
 }
 
@@ -189,6 +193,16 @@ public:
 
     uint64_t
     get_size(const ObjectId& id);
+
+    volumedriver::ClusterMultiplier
+    get_cluster_multiplier(const ObjectId&);
+
+    volumedriver::CloneNamespaceMap
+    get_clone_namespace_map(const ObjectId&);
+
+    std::vector<volumedriver::ClusterLocation>
+    get_page(const ObjectId&,
+             const volumedriver::ClusterAddress);
 
     void
     resize(const ObjectId& id,
@@ -565,6 +579,15 @@ private:
 
     zmq::message_t
     handle_get_size_(const vfsprotocol::GetSizeRequest&);
+
+    zmq::message_t
+    handle_get_cluster_multiplier_(const vfsprotocol::GetClusterMultiplierRequest&);
+
+    zmq::message_t
+    handle_get_clone_namespace_map_(const vfsprotocol::GetCloneNamespaceMapRequest&);
+
+    zmq::message_t
+    handle_get_page_(const vfsprotocol::GetPageRequest&);
 
     void
     handle_resize_(const vfsprotocol::ResizeRequest&);

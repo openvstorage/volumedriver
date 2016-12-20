@@ -17,8 +17,10 @@
 #define __CONTEXT_H
 
 #include "common.h"
+#include "common_priv.h"
 
 #include <vector>
+#include <map>
 
 struct ovs_aio_request;
 struct ovs_aiocb;
@@ -81,6 +83,18 @@ public:
     virtual int truncate(uint64_t length) = 0;
 
     virtual bool is_dtl_in_sync() = 0;
+
+    virtual int get_cluster_multiplier(const char *volume_name,
+                                       uint32_t *cluster_multiplier) = 0;
+
+    virtual int
+    get_clone_namespace_map(const char *volume_name,
+                            libovsvolumedriver::CloneNamespaceMap& cn) = 0;
+
+    virtual int
+    get_page(const char *volume_name,
+             const libovsvolumedriver::ClusterAddress ca,
+             libovsvolumedriver::ClusterLocationPage& cl) = 0;
 
     TransportType transport;
     int oflag;

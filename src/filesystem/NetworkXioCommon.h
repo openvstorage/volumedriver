@@ -145,6 +145,12 @@ enum class NetworkXioMsgOpcode
     ListClusterNodeURIRsp,
     GetVolumeURIReq,
     GetVolumeURIRsp,
+    GetClusterMultiplierReq,
+    GetClusterMultiplierRsp,
+    GetCloneNamespaceMapReq,
+    GetCloneNamespaceMapRsp,
+    GetPageReq,
+    GetPageRsp,
 };
 
 #endif //__NETWORK_XIO_COMMON_H_

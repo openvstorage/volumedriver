@@ -71,4 +71,5 @@ struct ovs_completion
     pthread_cond_t _cond;
     pthread_mutex_t _mutex;
 };
+
 #endif

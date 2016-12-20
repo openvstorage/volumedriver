@@ -37,12 +37,16 @@
 #include <filesystem/ObjectRouter.h>
 #include <filesystem/Registry.h>
 
+#include <filesystem/c-api/common.h>
 #include <filesystem/c-api/context.h>
 #include <filesystem/c-api/NetworkHAContext.h>
 #include <filesystem/c-api/volumedriver.h>
 
 namespace volumedriverfstest
 {
+
+#define LOCKVD()                                        \
+    fungi::ScopedLock ag__(api::getManagementMutex())
 
 namespace bc = boost::chrono;
 namespace bpt = boost::property_tree;
@@ -2132,6 +2136,164 @@ TEST_F(NetworkServerTest, steal_remote_volume_if_dtl_is_in_sync)
 TEST_F(NetworkServerTest, dont_steal_remote_volume_if_dtl_is_not_in_sync)
 {
     test_steal_remote_volume(true);
+}
+
+TEST_F(NetworkServerTest, get_cluster_multiplier)
+{
+    const std::string vname("volume");
+    const size_t vsize = 1ULL << 20;
+
+    CtxPtr ctx(make_volume(vname,
+                           vsize,
+                           FileSystemTestSetup::local_edge_port(),
+                           EnableHa::F));
+
+    auto& ctx_iface = dynamic_cast<ovs_context_t&>(*ctx);
+
+    uint32_t cluster_multiplier;
+    ctx_iface.get_cluster_multiplier(vname.c_str(),
+                                     &cluster_multiplier);
+
+    EXPECT_EQ(vd::VolumeConfig::default_cluster_multiplier(),
+              cluster_multiplier);
+}
+
+TEST_F(NetworkServerTest, get_clone_namespace_map)
+{
+    using CloneNamespaceMap = std::map<uint8_t, std::string>;
+
+    const std::string vname("volume");
+    const size_t vsize = 1ULL << 20;
+
+    CtxPtr ctx(make_volume(vname,
+                           vsize,
+                           FileSystemTestSetup::local_edge_port(),
+                           EnableHa::F));
+
+    auto& ctx_iface = dynamic_cast<ovs_context_t&>(*ctx);
+
+    CloneNamespaceMap cn;
+    ctx_iface.get_clone_namespace_map(vname.c_str(),
+                                      cn);
+
+    EXPECT_EQ(1UL, cn.size());
+
+    auto conn(cm_->getConnection());
+    vd::VolumeConfig cfg;
+    {
+        LOCKVD();
+        const FrontendPath vname(make_volume_name("/volume"));
+        auto object_id = find_object(vname);
+        ASSERT_NE(boost::none,
+                  object_id);
+        cfg = api::getVolumeConfig(vd::VolumeId(*object_id));
+    }
+    EXPECT_TRUE(conn->namespaceExists(cfg.getNS()));
+    EXPECT_EQ(cfg.getNS().str(), cn[0]);
+}
+
+TEST_F(NetworkServerTest, get_page)
+{
+    const std::string vname("volume");
+    const size_t vsize = 1ULL << 20;
+
+    CtxPtr ctx(make_volume(vname,
+                           vsize,
+                           FileSystemTestSetup::local_edge_port(),
+                           EnableHa::F));
+
+    auto& ctx_iface = dynamic_cast<ovs_context_t&>(*ctx);
+
+    libovsvolumedriver::ClusterLocationPage clp;
+    ctx_iface.get_page(vname.c_str(),
+                       libovsvolumedriver::ClusterAddress(0),
+                       clp);
+
+    EXPECT_EQ(256UL, clp.size());
+    for (const auto& e: clp)
+    {
+        EXPECT_TRUE(e == libovsvolumedriver::ClusterLocation(0));
+    }
+
+    std::string pattern("openvstorage1");
+    auto wbuf = std::make_unique<uint8_t[]>(pattern.length());
+    ASSERT_TRUE(wbuf != nullptr);
+
+    memcpy(wbuf.get(),
+           pattern.c_str(),
+           pattern.length());
+
+    ASSERT_EQ(0,
+              ovs_ctx_init(ctx.get(),
+                           vname.c_str(),
+                           O_RDWR));
+
+    EXPECT_EQ(pattern.length(),
+              ovs_write(ctx.get(),
+                        wbuf.get(),
+                        pattern.length(),
+                        0));
+
+    EXPECT_EQ(0, ovs_flush(ctx.get()));
+
+    wbuf.reset();
+
+    auto rbuf = std::make_unique<uint8_t[]>(pattern.length());
+    ASSERT_TRUE(rbuf != nullptr);
+
+    EXPECT_EQ(pattern.length(),
+              ovs_read(ctx.get(),
+                       rbuf.get(),
+                       pattern.length(),
+                       0));
+
+    EXPECT_TRUE(memcmp(rbuf.get(),
+                       pattern.c_str(),
+                       pattern.length()) == 0);
+
+    rbuf.reset();
+
+    ctx_iface.get_page(vname.c_str(),
+                       libovsvolumedriver::ClusterAddress(0),
+                       clp);
+
+    EXPECT_EQ(256UL, clp.size());
+    for (const auto& e: clp)
+    {
+        if (e == clp[0])
+        {
+            EXPECT_TRUE(e == libovs::ClusterLocation(1));
+        }
+        else
+        {
+            EXPECT_TRUE(e == libovs::ClusterLocation(0));
+        }
+    }
+
+    vd::WeakVolumePtr v;
+
+    {
+        const FrontendPath fpath("/volume-flat.vmdk");
+        auto maybe_id(find_object(fpath));
+        LOCKVD();
+        v = api::getVolumePointer(vd::VolumeId(*maybe_id));
+    }
+
+    const vd::ClusterAddress ca(0);
+    std::vector<vd::ClusterLocation> cloc(api::GetPage(v, ca));
+
+    EXPECT_EQ(256UL, cloc.size());
+    for (const auto& e: cloc)
+    {
+        if (e == cloc[0])
+        {
+            EXPECT_TRUE(e == vd::ClusterLocation(1));
+        }
+        else
+        {
+            EXPECT_TRUE(e == vd::ClusterLocation(0));
+        }
+    }
 }
 
 } //namespace

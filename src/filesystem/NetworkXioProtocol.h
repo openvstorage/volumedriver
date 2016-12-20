@@ -42,12 +42,12 @@ public:
     , volname_(volname)
     , snapname_(snapname)
     , size_(size)
-    , offset_(offset)
     , retval_(retval)
     , errval_(errval)
     , opaque_(opaque)
     , timeout_(timeout)
     , dtl_in_sync_(dtl_in_sync)
+    , offset_(offset)
     {}
 
 public:
@@ -55,12 +55,17 @@ public:
     std::string volname_;
     std::string snapname_;
     size_t size_;
-    uint64_t offset_;
     ssize_t retval_;
     int errval_;
     uintptr_t opaque_;
     int64_t timeout_;
     bool dtl_in_sync_;
+    union
+    {
+        uint64_t offset_;
+        uint64_t u64_;
+        int64_t i64_;
+    };
 
 public:
     const NetworkXioMsgOpcode&
@@ -159,6 +164,30 @@ public:
         offset_ = offset;
     }
 
+    const uint64_t&
+    u64() const
+    {
+        return u64_;
+    }
+
+    void
+    u64(const uint64_t& u64)
+    {
+        u64_ = u64;
+    }
+
+    const int64_t&
+    i64() const
+    {
+        return i64_;
+    }
+
+    void
+    i64(const uint64_t& i64)
+    {
+        i64_ = i64;
+    }
+
     const int64_t&
     timeout() const
     {
@@ -227,12 +256,12 @@ public:
                    volname_,
                    snapname_,
                    size_,
-                   offset_,
                    retval_,
                    errval_,
                    opaque_,
                    timeout_,
-                   dtl_in_sync_);
+                   dtl_in_sync_,
+                   offset_);
 };
 
 MSGPACK_ADD_ENUM(NetworkXioMsgOpcode);

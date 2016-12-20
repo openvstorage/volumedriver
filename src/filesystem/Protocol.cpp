@@ -38,6 +38,9 @@ request_type_to_string(const RequestType type)
     case RequestType::Delete:
     case RequestType::Transfer:
     case RequestType::Ping:
+    case RequestType::GetClusterMultiplier:
+    case RequestType::GetCloneNamespaceMap:
+    case RequestType::GetPage:
         break;
     }
 
@@ -59,6 +62,12 @@ request_type_to_string(const RequestType type)
         return "Transfer";
     case RequestType::Ping:
         return "Ping";
+    case RequestType::GetClusterMultiplier:
+        return "GetClusterMultiplier";
+    case RequestType::GetCloneNamespaceMap:
+        return "GetCloneNamespaceMap";
+    case RequestType::GetPage:
+        return "GetPage";
     default:
         return "Unknown";
     }
