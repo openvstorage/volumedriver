@@ -27,6 +27,7 @@
 
 #include <youtils/Chooser.h>
 #include <youtils/FileUtils.h>
+#include <youtils/System.h>
 #include <youtils/UUID.h>
 
 namespace backendtest
@@ -37,6 +38,7 @@ using youtils::Chooser;
 
 namespace bpt = boost::property_tree;
 namespace fs = boost::filesystem;
+namespace yt = youtils;
 
 class MultiBackendTest
     : public BackendTestBase
@@ -413,15 +415,21 @@ TEST_F(MultiBackendTest, basics)
 
 TEST_F(MultiBackendTest, pool_distribution)
 {
-    const size_t n = num_backup_backends_;
-    setup_multi_dirs(n);
-    const bpt::ptree pt(make_local_config(n));
+    const size_t path_count =
+        std::min(num_backup_backends_,
+                 yt::System::get_env_with_default("MULTI_BACKEND_TEST_PATH_COUNT",
+                                                  num_backup_backends_));
+    const size_t nspace_count =
+        yt::System::get_env_with_default("MULTI_BACKEND_TEST_NAMESPACE_COUNT",
+                                         path_count * 100);
+    setup_multi_dirs(path_count);
+    const bpt::ptree pt(make_local_config(path_count));
     const MultiConfig cfg(pt);
     BackendConnectionManagerPtr cm(BackendConnectionManager::create(pt));
 
     const ConnectionPoolSet pools(connection_manager_pools(*cm));
 
-    ASSERT_EQ(n,
+    ASSERT_EQ(path_count,
               pools.size());
 
     std::map<std::shared_ptr<ConnectionPool>, size_t> dist;
@@ -432,7 +440,7 @@ TEST_F(MultiBackendTest, pool_distribution)
         dist[p] = 0;
     }
 
-    for (size_t i = 0; i < (n * 100); ++i)
+    for (size_t i = 0; i < nspace_count; ++i)
     {
         const Namespace nspace(yt::UUID().str());
         BackendConnectionInterfacePtr
