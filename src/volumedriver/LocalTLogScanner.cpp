@@ -17,6 +17,7 @@
 #include "MetaDataStoreInterface.h"
 #include "SnapshotPersistor.h"
 #include "TLogReaderInterface.h"
+#include "VolManager.h"
 #include "VolumeConfig.h"
 
 #include <youtils/UUID.h>
