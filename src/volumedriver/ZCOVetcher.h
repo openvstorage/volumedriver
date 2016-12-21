@@ -77,13 +77,17 @@ public:
     {
         if (foc_config_wrapper_->config())
         {
-            LOG_INFO("With FailOverCache, trying to get SCO " << sco <<
-                     " from the FOC or the backend");
-            RawFailOverCacheSCOFetcher fetcher(sco,
-                                               *foc_config_wrapper_->config(),
-                                               ns_,
-                                               lba_size_,
-                                               cluster_mult_);
+            LOG_INFO("Trying to get SCO " << ns_ << "/" << sco <<
+                     " from the DTL or the backend");
+
+            RawFailOverCacheSCOFetcher
+                fetcher(sco,
+                        *foc_config_wrapper_->config(),
+                        ns_,
+                        lba_size_,
+                        cluster_mult_,
+                        VolManager::get()->dtl_request_timeout(),
+                        VolManager::get()->dtl_connect_timeout());
 
             return sco_cache_.getSCO(ns_,
                                      sco,

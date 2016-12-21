@@ -31,6 +31,7 @@
 namespace volumedriver
 {
 
+namespace bc = boost::chrono;
 namespace fs = boost::filesystem;
 
 BackendSCOFetcher::BackendSCOFetcher(SCO sconame,
@@ -210,7 +211,8 @@ RawFailOverCacheSCOFetcher::RawFailOverCacheSCOFetcher(SCO sconame,
                                                        const Namespace& ns,
                                                        const LBASize lba_size,
                                                        const ClusterMultiplier cmult,
-                                                       const boost::chrono::seconds timeout)
+                                                       const bc::milliseconds req_timeout,
+                                                       const boost::optional<bc::milliseconds>& connect_timeout)
     : sconame_(sconame)
 {
     VERIFY(sconame.cloneID() == 0);
@@ -220,7 +222,8 @@ RawFailOverCacheSCOFetcher::RawFailOverCacheSCOFetcher(SCO sconame,
                                                    ns,
                                                    lba_size,
                                                    cmult,
-                                                   timeout);
+                                                   req_timeout,
+                                                   connect_timeout);
     }
     CATCH_STD_ALL_LOG_IGNORE("Failed to instantiate FailOverCacheProxy");
 }
