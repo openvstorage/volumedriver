@@ -475,6 +475,26 @@ public:
     size_t
     effective_metadata_cache_capacity(const VolumeConfig&) const;
 
+    boost::optional<boost::chrono::milliseconds>
+    dtl_connect_timeout() const
+    {
+        const unsigned t = dtl_connect_timeout_ms.value();
+        if (t == 0)
+        {
+            return boost::none;
+        }
+        else
+        {
+            return boost::chrono::milliseconds(t);
+        }
+    }
+
+    boost::chrono::milliseconds
+    dtl_request_timeout() const
+    {
+        return boost::chrono::milliseconds(dtl_request_timeout_ms.value());
+    }
+
 private:
     DECLARE_LOGGER("VolManager");
 
@@ -531,9 +551,10 @@ public:
     DECLARE_PARAMETER(dtl_queue_depth);
     DECLARE_PARAMETER(dtl_write_trigger);
     DECLARE_PARAMETER(dtl_busy_loop_usecs);
+private:
     DECLARE_PARAMETER(dtl_request_timeout_ms);
     DECLARE_PARAMETER(dtl_connect_timeout_ms);
-
+public:
     DECLARE_PARAMETER(number_of_scos_in_tlog);
     DECLARE_PARAMETER(non_disposable_scos_factor);
     DECLARE_PARAMETER(default_cluster_size);
