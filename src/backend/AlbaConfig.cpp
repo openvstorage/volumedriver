@@ -14,3 +14,29 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "AlbaConfig.h"
+
+#include <iostream>
+
+namespace backend
+{
+
+std::ostream&
+AlbaConfig::stream_out(std::ostream& os) const
+{
+#define V(x)                                    \
+    ((x).value())
+
+    return os <<
+        "AlbaConfig{host=" << V(alba_connection_host) <<
+        ",port=" << V(alba_connection_port) <<
+        ",timeout=" << V(alba_connection_timeout) <<
+        ",transport=" << V(alba_connection_transport) <<
+        ",use_rora=" << V(alba_connection_use_rora) <<
+        ",rora_manifest_cache_capacity=" << V(alba_connection_rora_manifest_cache_capacity) <<
+        ",preset=" << V(alba_connection_preset) <<
+        "}";
+
+#undef V
+}
+
+}

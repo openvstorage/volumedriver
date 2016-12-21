@@ -25,6 +25,7 @@ using namespace std::string_literals;
 // be reused by the daemon as well.
 struct XMLRPCKeys
 {
+    static const std::string backend_config_str;
     static const std::string backend_size;
     static const std::string backend_type;
     static const std::string choking;

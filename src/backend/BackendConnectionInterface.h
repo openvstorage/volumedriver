@@ -41,33 +41,15 @@ VD_BOOLEAN_ENUM(NamespaceMustNotExist);
 
 namespace backend
 {
-using byte = unsigned char;
-using buffer = byte*;
 
 class BackendConnectionInterface
     : public boost::intrusive::slist_base_hook<>
 {
 protected:
-    boost::posix_time::time_duration timeout_;
-
-    BackendConnectionInterface(const boost::posix_time::time_duration& timeout = boost::posix_time::seconds(10))
-        :timeout_(timeout)
-    {}
+    BackendConnectionInterface() = default;
 
  public:
     virtual ~BackendConnectionInterface() = default;
-
-    virtual void
-    timeout(const boost::posix_time::time_duration& timeout)
-    {
-        timeout_ = timeout;
-    }
-
-    virtual const boost::posix_time::time_duration&
-    timeout() const
-    {
-        return timeout_;
-    }
 
     virtual bool
     healthy() const = 0;
@@ -109,11 +91,11 @@ protected:
     {
         uint32_t size;
         uint64_t offset;
-        byte* buf;
+        uint8_t* buf;
 
         ObjectSlice(const uint32_t s,
                     const uint64_t o,
-                    byte* b)
+                    uint8_t* b)
             : size(s)
             , offset(o)
             , buf(b)
@@ -291,10 +273,7 @@ private:
     DECLARE_LOGGER("BackendConnectionInterface");
 };
 
-class BackendConnectionDeleter;
 
-typedef std::unique_ptr<BackendConnectionInterface,
-                        BackendConnectionDeleter> BackendConnectionInterfacePtr;
 
 }
 

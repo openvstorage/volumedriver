@@ -184,6 +184,10 @@ public:
     DECLARE_PARAMETER(s3_connection_ssl_verify_host);
     DECLARE_PARAMETER(s3_connection_ssl_cert_file);
     DECLARE_PARAMETER(s3_connection_strict_consistency);
+
+private:
+    virtual std::ostream&
+    stream_out(std::ostream&) const override final;
 };
 
 }

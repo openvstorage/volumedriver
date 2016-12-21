@@ -388,6 +388,10 @@ public:
         return timeout_;
     }
 
+    std::string
+    get_backend_connection_pool(const ObjectId&,
+                                const MaybeSeconds& = boost::none);
+
 protected:
     PythonClient(const MaybeSeconds& timeout)
         : timeout_(timeout)

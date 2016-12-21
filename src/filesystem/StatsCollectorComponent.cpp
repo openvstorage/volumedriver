@@ -87,6 +87,16 @@ make_push_fun(const std::string& dst)
 }
 
 void
+pull_backend_connection_pools_data_points(StatsCollector& pusher)
+{
+    be::BackendConnectionManagerPtr cm(api::backend_connection_manager());
+    cm->visit_pools([&](const std::shared_ptr<be::ConnectionPool>& p)
+                    {
+                        pusher.push(BackendConnectionPoolDataPoint(*p));
+                    });
+}
+
+void
 pull_cluster_cache_data_point(StatsCollector& pusher)
 {
     pusher.push(ClusterCacheDataPoint());
@@ -155,6 +165,7 @@ std::vector<StatsCollector::PullFun>
 make_pull_funs()
 {
     return std::vector<StatsCollector::PullFun>({
+                pull_backend_connection_pools_data_points,
                 pull_cluster_cache_data_point,
                 pull_cluster_cache_device_data_point,
                 pull_cluster_cache_namespace_data_point,

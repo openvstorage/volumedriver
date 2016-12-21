@@ -36,7 +36,6 @@ public:
                const bool use_rora = false,
                const size_t rora_manifest_cache_capacity = 10000,
                const std::string& preset = "")
-
         : BackendConfig(BackendType::ALBA)
         , alba_connection_host(host)
         , alba_connection_port(port)
@@ -158,6 +157,11 @@ public:
     DECLARE_PARAMETER(alba_connection_transport);
     DECLARE_PARAMETER(alba_connection_use_rora);
     DECLARE_PARAMETER(alba_connection_rora_manifest_cache_capacity);
+
+private:
+    virtual std::ostream&
+    stream_out(std::ostream&) const override final;
+
 };
 
 }

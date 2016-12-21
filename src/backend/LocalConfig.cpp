@@ -14,3 +14,25 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "LocalConfig.h"
+
+#include <iostream>
+
+namespace backend
+{
+
+std::ostream&
+LocalConfig::stream_out(std::ostream& os) const
+{
+#define V(x)                                    \
+    ((x).value())
+
+    return os <<
+        "LocalConfig{path=" << V(local_connection_path) <<
+        ",enable_partial_read=" << V(local_connection_enable_partial_read) <<
+        ",sync_object_after_write=" << V(local_connection_sync_object_after_write) <<
+        "}";
+
+#undef V
+}
+
+}

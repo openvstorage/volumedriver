@@ -58,6 +58,7 @@
 namespace volumedriverfs
 {
 
+namespace be = backend;
 namespace fs = boost::filesystem;
 namespace vd = volumedriver;
 namespace yt = youtils;
@@ -1998,8 +1999,25 @@ SetMetaDataCacheCapacity::execute_internal(::XmlRpc::XmlRpcValue& params,
             const std::string s(param[XMLRPCKeys::metadata_cache_capacity]);
             cap = boost::lexical_cast<size_t>(s);
         }
+
         api::setMetaDataCacheCapacity(vol_id,
                                       cap);
+    });
+}
+
+void
+GetBackendConnectionPool::execute_internal(::XmlRpc::XmlRpcValue& params,
+                                           ::XmlRpc::XmlRpcValue& result)
+{
+    auto param = params[0];
+    const vd::VolumeId vol_id(getID(param));
+    be::BackendConnectionManagerPtr cm(api::backend_connection_manager());
+
+    with_api_exception_conversion([&]
+    {
+        const vd::VolumeConfig cfg(api::getVolumeConfig(vol_id));
+        result[XMLRPCKeys::backend_config_str] =
+            boost::lexical_cast<std::string>(cm->pool(cfg.getNS())->config());
     });
 }
 
