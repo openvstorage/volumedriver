@@ -184,7 +184,8 @@ TEST_F(FailOverCacheTest, put_and_retrieve)
               FailOverCacheTestMain::ns(),
               LBASize(512),
               ClusterMultiplier(8),
-              boost::chrono::seconds(8));
+              boost::chrono::seconds(8),
+              boost::none);
 
     FailOverCacheEntryFactory factory(cluster_size,
                                       num_clusters_per_sco);
@@ -239,7 +240,8 @@ TEST_F(FailOverCacheTest, GetSCORange)
               FailOverCacheTestMain::ns(),
               LBASize(512),
               ClusterMultiplier(8),
-              boost::chrono::seconds(8));
+              boost::chrono::seconds(8),
+              boost::none);
 
     FailOverCacheEntryFactory factory(cluster_size,
                                       num_clusters_per_sco);
@@ -315,7 +317,8 @@ TEST_F(FailOverCacheTest, GetOneSCO)
               FailOverCacheTestMain::ns(),
               LBASize(512),
               ClusterMultiplier(8),
-              boost::chrono::seconds(8));
+              boost::chrono::seconds(8),
+              boost::none);
 
     FailOverCacheEntryFactory factory(cluster_size,
                                       num_clusters_per_sco);
@@ -390,7 +393,8 @@ TEST_F(FailOverCacheTest, DISABLED_DoubleRegister)
                FailOverCacheTestMain::ns(),
                LBASize(512),
                ClusterMultiplier(8),
-               boost::chrono::seconds(8));
+               boost::chrono::seconds(8),
+               boost::none);
 }
 
 struct FailOverCacheOneProcessor
@@ -454,7 +458,8 @@ public:
                  backend::Namespace(content),
                  LBASize(512),
                  ClusterMultiplier(8),
-                 boost::chrono::seconds(30))
+                 boost::chrono::seconds(30),
+                 boost::none)
         , factory_(cluster_size_,
                    num_clusters_per_sco_)
         , next_location_(1)
@@ -663,7 +668,8 @@ TEST_F(FailOverCacheTest, get_entries_xxl)
               FailOverCacheTestMain::ns(),
               lba_size,
               cmult,
-              boost::chrono::seconds(8));
+              boost::chrono::seconds(8),
+              boost::none);
 
     const SCOMultiplier smult(4096);
 
