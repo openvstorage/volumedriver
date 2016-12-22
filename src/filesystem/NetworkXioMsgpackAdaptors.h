@@ -16,7 +16,12 @@
 #ifndef NETWORK_XIO_MSGPACK_ADAPTORS_H_
 #define NETWORK_XIO_MSGPACK_ADAPTORS_H_
 
+#include <youtils/Assert.h>
+
+PRAGMA_IGNORE_WARNING_BEGIN("-Wctor-dtor-privacy")
 #include <msgpack.hpp>
+PRAGMA_IGNORE_WARNING_END;
+
 #include <backend/Namespace.h>
 #include <volumedriver/Types.h>
 
