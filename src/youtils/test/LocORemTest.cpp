@@ -139,7 +139,7 @@ protected:
 
     const uint32_t hdr_size_;
     const uint32_t msg_size_;
-    const uint32_t iterations_;
+    const uint64_t iterations_;
     uint32_t nthreads_;
     uint32_t nclients_;
     const std::string addr_;
