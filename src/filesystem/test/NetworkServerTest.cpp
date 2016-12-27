@@ -2296,4 +2296,45 @@ TEST_F(NetworkServerTest, get_page)
     }
 }
 
+TEST_F(NetworkServerTest, DISABLED_remote_going_away_during_ctrl_request)
+{
+    const int hard_kill = yt::System::get_env_with_default("EDGE_HA_STRESS_KILL_REMOTE",
+                                                           1);
+
+    mount_remote();
+
+    std::atomic<bool> stop(false);
+    CtxAttrPtr attrs(make_ctx_attr(1024,
+                                   EnableHa::T,
+                                   FileSystemTestSetup::remote_edge_port()));
+    CtxPtr ctx(ovs_ctx_new(attrs.get()));
+    ASSERT_TRUE(ctx != nullptr);
+
+    auto& ctx_iface = dynamic_cast<ovs_context_t&>(*ctx);
+
+    std::future<void>
+        f(std::async(std::launch::async,
+                     [&]
+                     {
+                         do
+                         {
+                             std::vector<std::string> uris;
+                             ctx_iface.list_cluster_node_uri(uris);
+                         }
+                         while (not stop);
+                     }));
+
+    boost::this_thread::sleep_for(bc::seconds(1));
+
+    if (hard_kill)
+    {
+        ::kill(remote_pid_, SIGKILL);
+    }
+
+    umount_remote(hard_kill);
+    stop = true;
+
+    f.wait();
+}
+
 } //namespace
