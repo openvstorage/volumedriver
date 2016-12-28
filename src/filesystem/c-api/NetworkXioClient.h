@@ -53,9 +53,9 @@ public:
     struct session_data
     {
         xio_context *ctx;
-        bool disconnected;
-        bool disconnecting;
-        bool connection_error;
+        bool disconnected = false;
+        bool disconnecting = false;
+        bool connection_error = false;
     };
 
     struct xio_msg_s

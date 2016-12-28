@@ -836,8 +836,6 @@ NetworkXioClient::xio_submit_request(const std::string& uri,
                                                                -1),
                                             xio_destroy_ctx_shutdown);
     xctl->sdata.ctx = ctx.get();
-    xctl->sdata.disconnecting = false;
-    xctl->sdata.disconnected = false;
     xio_connection *conn = create_connection_control(&xctl->sdata, uri);
     if (conn == nullptr)
     {
