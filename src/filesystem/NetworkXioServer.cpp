@@ -344,9 +344,10 @@ NetworkXioServer::run(std::promise<void> promise)
     {
         int ret = xio_context_run_loop(ctx.get(), XIO_INFINITE);
         VERIFY(ret == 0);
-        while (not wq_->is_finished_empty())
+        NetworkXioRequest *req = nullptr;
+        while ((req = wq_->get_finished()))
         {
-            xio_send_reply(wq_->get_finished());
+            xio_send_reply(req);
         }
     }
     server.reset();

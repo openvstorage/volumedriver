@@ -111,9 +111,16 @@ public:
     get_finished()
     {
         boost::lock_guard<decltype(finished_lock)> lock_(finished_lock);
-        NetworkXioRequest *req = &finished_list.front();
-        finished_list.pop_front();
-        return req;
+        if (not finished_list.empty())
+        {
+            NetworkXioRequest *req = &finished_list.front();
+            finished_list.pop_front();
+            return req;
+        }
+        else
+        {
+            return nullptr;
+        }
     }
 
     bool
