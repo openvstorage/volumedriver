@@ -204,12 +204,16 @@ NetworkXioClient::run(std::promise<bool>& promise)
 
     xopt = 2 * nr_req_queue;
     xio_set_opt(NULL,
-                XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_SND_QUEUE_DEPTH_MSGS,
-                &xopt, sizeof(int));
+                XIO_OPTLEVEL_ACCELIO,
+                XIO_OPTNAME_SND_QUEUE_DEPTH_MSGS,
+                &xopt,
+                sizeof(int));
 
     xio_set_opt(NULL,
-                XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_RCV_QUEUE_DEPTH_MSGS,
-                &xopt, sizeof(int));
+                XIO_OPTLEVEL_ACCELIO,
+                XIO_OPTNAME_RCV_QUEUE_DEPTH_MSGS,
+                &xopt,
+                sizeof(int));
 
     struct xio_options_keepalive ka;
     ka.time = yt::System::get_env_with_default<int>(xio_ka_time, 600);
@@ -221,6 +225,14 @@ NetworkXioClient::run(std::promise<bool>& promise)
                 XIO_OPTNAME_CONFIG_KEEPALIVE,
                 &ka,
                 sizeof(ka));
+
+    xopt = 1;
+    xio_set_opt(NULL,
+                XIO_OPTLEVEL_TCP,
+                XIO_OPTNAME_TCP_NO_DELAY,
+                &xopt,
+                sizeof(xopt));
+
     try
     {
         int polling_timeout_us =

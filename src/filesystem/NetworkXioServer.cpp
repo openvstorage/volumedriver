@@ -206,6 +206,13 @@ NetworkXioServer::run(std::promise<void> promise)
 
     xopt = 1;
     xio_set_opt(NULL,
+                XIO_OPTLEVEL_TCP,
+                XIO_OPTNAME_TCP_NO_DELAY,
+                &xopt,
+                sizeof(xopt));
+
+    xopt = 1;
+    xio_set_opt(NULL,
                 XIO_OPTLEVEL_ACCELIO,
                 XIO_OPTNAME_DISABLE_HUGETBL,
                 &xopt, sizeof(xopt));
