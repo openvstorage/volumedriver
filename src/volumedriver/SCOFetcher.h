@@ -114,8 +114,8 @@ public:
                                const Namespace&,
                                const LBASize,
                                const ClusterMultiplier,
-                               const boost::chrono::seconds timeout =
-                               boost::chrono::seconds(30));
+                               const boost::chrono::milliseconds req_timeout,
+                               const boost::optional<boost::chrono::milliseconds>& connect_timeout);
 
     RawFailOverCacheSCOFetcher(const RawFailOverCacheSCOFetcher&) = delete;
 

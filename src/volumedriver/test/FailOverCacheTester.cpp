@@ -755,7 +755,8 @@ TEST_P(FailOverCacheTester, clear)
                              wrns->ns(),
                              default_lba_size(),
                              default_cluster_multiplier(),
-                             boost::chrono::seconds(60));
+                             boost::chrono::seconds(60),
+                             boost::none);
 
     EXPECT_NO_THROW(proxy.clear());
 
@@ -815,7 +816,8 @@ TEST_P(FailOverCacheTester, non_standard_cluster_size)
                              wrns->ns(),
                              default_lba_size(),
                              cmult,
-                             boost::chrono::seconds(60));
+                             boost::chrono::seconds(60),
+                             boost::none);
 
     size_t count = 0;
 
@@ -873,7 +875,8 @@ TEST_P(FailOverCacheTester, wrong_cluster_size)
                                     wrns->ns(),
                                     LBASize(default_lba_size()),
                                     ClusterMultiplier(default_cluster_multiplier()),
-                                    bc::milliseconds(60000)),
+                                    bc::milliseconds(60000),
+                                    boost::none),
                  std::exception);
 }
 
@@ -926,7 +929,8 @@ TEST_P(FailOverCacheTester, DISABLED_a_whole_lotta_clients)
                                                                       wrns.back()->ns(),
                                                                       default_lba_size(),
                                                                       default_cluster_multiplier(),
-                                                                      bc::milliseconds(1000)));
+                                                                      bc::milliseconds(1000),
+                                                                      boost::none));
         }
 
         FAIL() << "eventually the DTL should've run out of FDs";
