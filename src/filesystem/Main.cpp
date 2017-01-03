@@ -89,12 +89,12 @@ print_config_help_markdown()
     {
         if (T(info->document_))
         {
-            std::cout << " | " << info->section_name;
+            std::cout << "| " << info->section_name;
             std::cout << " | " << info->name;
             std::cout << " | " << (info->has_default ? (std::string("\"") +  info->def_  + "\"") : "---");
             std::cout << " | " << (info->can_be_reset ? "yes" : "no");
             std::cout << " | " << info->doc_string;
-            std::cout << " | " << std::endl;
+            std::cout << " |" << std::endl;
         }
     }
 }
