@@ -152,6 +152,9 @@ public:
     virtual void
     set_cache_capacity(const size_t num_pages) override final;
 
+    virtual std::vector<ClusterLocation>
+    get_page(const ClusterAddress) override final;
+
     void
     discardCluster(const ClusterAddress caddr);
 
@@ -273,14 +276,17 @@ private:
     write_dirty_pages_to_backend_keeping_page_list();
 
     bool
-    get_page_unlocked_(const ClusterAddress ca,
-                       ClusterLocationAndHash& loc,
-                       bool for_write);
+    get_cluster_location_unlocked_(const ClusterAddress ca,
+                                   ClusterLocationAndHash& loc,
+                                   bool for_write);
 
     bool
-    get_page_(const ClusterAddress ca,
-              ClusterLocationAndHash& loc,
-              bool for_write);
+    get_cluster_location_(const ClusterAddress,
+                          ClusterLocationAndHash&,
+                          bool for_write);
+
+    std::pair<CachePage*, bool>
+    get_page_(const ClusterAddress);
 
     typedef void (MetaDataBackendInterface::*backend_mem_fun)(const CachePage&,
                                                               int32_t);

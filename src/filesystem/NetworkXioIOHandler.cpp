@@ -13,17 +13,19 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "ClusterRegistry.h"
 #include "NetworkXioIOHandler.h"
+#include "NetworkXioMsgpackAdaptors.h"
 #include "NetworkXioProtocol.h"
 #include "ObjectRouter.h"
 #include "PythonClient.h" // clienterrors
-#include "ClusterRegistry.h"
 
 #include <youtils/Assert.h>
 #include <youtils/Catchers.h>
 #include <youtils/SocketAddress.h>
 #include <youtils/SourceOfUncertainty.h>
 
+#include <volumedriver/ClusterLocation.h>
 #include <volumedriver/DtlInSync.h>
 
 namespace volumedriverfs
@@ -40,7 +42,7 @@ pack_msg(NetworkXioRequest *req)
     o_msg.errval(req->errval);
     o_msg.dtl_in_sync(req->dtl_in_sync);
     o_msg.opaque(req->opaque);
-    req->s_msg= o_msg.pack_msg();
+    req->s_msg = o_msg.pack_msg();
 }
 
 static inline void
@@ -50,9 +52,10 @@ pack_ctrl_msg(NetworkXioRequest *req)
     o_msg.retval(req->retval);
     o_msg.errval(req->errval);
     o_msg.size(req->size);
+    o_msg.u64(req->u64);
     o_msg.dtl_in_sync(req->dtl_in_sync);
     o_msg.opaque(req->opaque);
-    req->s_msg= o_msg.pack_msg();
+    req->s_msg = o_msg.pack_msg();
 }
 
 void
@@ -135,6 +138,22 @@ NetworkXioIOHandler::get_neighbours(const ClusterRegistry::NeighbourMap& nmap)
     return std::make_pair(std::move(uris), total_size);
 }
 
+std::string
+NetworkXioIOHandler::pack_map(const vd::CloneNamespaceMap& cn)
+{
+    msgpack::sbuffer buffer;
+    msgpack::pack(buffer, cn);
+    return std::string(buffer.data(), buffer.size());
+}
+
+std::string
+NetworkXioIOHandler::pack_vector(const std::vector<vd::ClusterLocation>& cl)
+{
+    msgpack::sbuffer buffer;
+    msgpack::pack(buffer, cl);
+    return std::string(buffer.data(), buffer.size());
+}
+
 void
 NetworkXioIOHandler::handle_open(NetworkXioRequest *req,
                                  const std::string& volume_name)
@@ -157,16 +176,9 @@ NetworkXioIOHandler::handle_open(NetworkXioRequest *req,
     try
     {
         fs_.open(p, O_RDWR, handle_);
-
-        // The getattr is only here for the side effect of possibly
-        // triggering a failover at this stage where there's not yet
-        // a herd of WQ threads trying to handle I/O requests which
-        // would then end up being blocked on the volume restart.
-        // Hiding it behind FileSystem::open might get in the way of
-        // other interfaces that call open more frequently (kNFS on
-        // FUSE for example).
-        struct stat st;
-        fs_.getattr(p, st);
+        // allow stealing the volume on the subsequent fsync
+        fs_.set_dtl_in_sync(*handle_, vd::DtlInSync::T);
+        fs_.fsync(*handle_, true);
 
         update_fs_client_info(volume_name);
         volume_name_ = volume_name;
@@ -444,7 +456,8 @@ NetworkXioIOHandler::handle_stat_volume(NetworkXioRequest *req,
         }
         else
         {
-            req->retval = fs_.object_router().get_size(*volume_id);
+            req->u64 = fs_.object_router().get_size(*volume_id);
+            req->retval = 0;
             req->errval = 0;
         }
     }
@@ -919,7 +932,6 @@ NetworkXioIOHandler::handle_get_volume_uri(NetworkXioRequest* req,
                     uri.c_str(),
                     uri.size());
             req->retval = 0;
-            req->size = uri.size();
             req->data_len = uri.size();
             req->data = req->reg_mem.addr;
             req->from_pool = false;
@@ -965,6 +977,134 @@ NetworkXioIOHandler::handle_get_volume_uri(NetworkXioRequest* req,
             req->retval = -1;
     });
 
+    pack_ctrl_msg(req);
+}
+
+void
+NetworkXioIOHandler::handle_get_cluster_multiplier(NetworkXioRequest *req,
+                                                   const std::string& vname)
+{
+    VERIFY(not handle_);
+    req->op = NetworkXioMsgOpcode::GetClusterMultiplierRsp;
+
+    const FrontendPath volume_path(make_volume_path(vname));
+    try
+    {
+        boost::optional<ObjectId> volume_id(fs_.find_id(volume_path));
+        if (not volume_id)
+        {
+            req->retval = -1;
+            req->errval = ENOENT;
+            pack_ctrl_msg(req);
+            return;
+        }
+        const vd::ClusterMultiplier cluster_multiplier =
+            fs_.object_router().get_cluster_multiplier(*volume_id);
+        req->u64 = static_cast<uint64_t>(cluster_multiplier);
+        req->retval = 0;
+        req->errval = 0;
+    }
+    CATCH_STD_ALL_EWHAT({
+       LOG_ERROR("get_cluster_multiplier error: " << EWHAT);
+       req->retval = -1;
+       req->errval = EIO;
+    });
+    pack_ctrl_msg(req);
+}
+
+void
+NetworkXioIOHandler::handle_get_clone_namespace_map(NetworkXioRequest *req,
+                                                    const std::string& vname)
+{
+    VERIFY(not handle_);
+    req->op = NetworkXioMsgOpcode::GetCloneNamespaceMapRsp;
+
+    auto& router_ = fs_.object_router();
+    const FrontendPath volume_path(make_volume_path(vname));
+    try
+    {
+        boost::optional<ObjectId> volid(fs_.find_id(volume_path));
+        if (not volid)
+        {
+            req->retval = -1;
+            req->errval = ENOENT;
+            pack_ctrl_msg(req);
+            return;
+        }
+        std::string buffer(pack_map(router_.get_clone_namespace_map(*volid)));
+
+        int ret = xio_mem_alloc(buffer.size(), &req->reg_mem);
+        if (ret < 0)
+        {
+            LOG_ERROR("failed to allocate buffer of size " << buffer.size());
+            throw std::bad_alloc();
+        }
+        memcpy(req->reg_mem.addr, buffer.data(), buffer.size());
+        req->retval = 0;
+        req->errval = 0;
+        req->data_len = buffer.size();
+        req->data = req->reg_mem.addr;
+        req->from_pool = false;
+    }
+    catch (std::bad_alloc&)
+    {
+        req->errval = ENOMEM;
+        req->retval = -1;
+    }
+    CATCH_STD_ALL_EWHAT({
+       LOG_ERROR("get_clone_namespace_map error: " << EWHAT);
+       req->retval = -1;
+       req->errval = EIO;
+    });
+    pack_ctrl_msg(req);
+}
+
+void
+NetworkXioIOHandler::handle_get_page(NetworkXioRequest *req,
+                                     const std::string& vname,
+                                     const uint64_t cluster_address)
+{
+    VERIFY(not handle_);
+    req->op = NetworkXioMsgOpcode::GetPageRsp;
+
+    auto& router_ = fs_.object_router();
+    const FrontendPath volume_path(make_volume_path(vname));
+    const vd::ClusterAddress ca(cluster_address);
+    try
+    {
+        boost::optional<ObjectId> volid(fs_.find_id(volume_path));
+        if (not volid)
+        {
+            req->retval = -1;
+            req->errval = ENOENT;
+            pack_ctrl_msg(req);
+            return;
+        }
+        std::string buffer(pack_vector(router_.get_page(*volid, ca)));
+
+        int ret = xio_mem_alloc(buffer.size(), &req->reg_mem);
+        if (ret < 0)
+        {
+            LOG_ERROR("failed to allocate buffer of size " << buffer.size());
+            throw std::bad_alloc();
+        }
+        memcpy(req->reg_mem.addr, buffer.data(), buffer.size());
+        req->retval = 0;
+        req->errval = 0;
+        req->data_len = buffer.size();
+        req->data = req->reg_mem.addr;
+        req->from_pool = false;
+    }
+    catch (std::bad_alloc&)
+    {
+        req->errval = ENOMEM;
+        req->retval = -1;
+    }
+    CATCH_STD_ALL_EWHAT({
+       LOG_ERROR("get_page error: " << EWHAT);
+       req->retval = -1;
+       req->errval = EIO;
+    });
     pack_ctrl_msg(req);
 }
 
@@ -1087,6 +1227,25 @@ NetworkXioIOHandler::process_ctrl_request(NetworkXioRequest *req)
     {
         handle_get_volume_uri(req,
                               i_msg.volume_name());
+        break;
+    }
+    case NetworkXioMsgOpcode::GetClusterMultiplierReq:
+    {
+        handle_get_cluster_multiplier(req,
+                                      i_msg.volume_name());
+        break;
+    }
+    case NetworkXioMsgOpcode::GetCloneNamespaceMapReq:
+    {
+        handle_get_clone_namespace_map(req,
+                                       i_msg.volume_name());
+        break;
+    }
+    case NetworkXioMsgOpcode::GetPageReq:
+    {
+        handle_get_page(req,
+                        i_msg.volume_name(),
+                        i_msg.u64());
         break;
     }
     default:

@@ -36,7 +36,6 @@ struct BackendRequestParameters
     MAKE_PARAM(retries_on_error, uint32_t) = boost::none;
     MAKE_PARAM(retry_interval, boost::chrono::milliseconds) = boost::none;
     MAKE_PARAM(retry_backoff_multiplier, double) = boost::none;
-    MAKE_PARAM(timeout, boost::posix_time::time_duration) = boost::none;
 
 #undef MAKE_PARAM
 

@@ -35,6 +35,7 @@
 #include <youtils/System.h>
 
 #include <volumedriver/Api.h>
+#include <volumedriver/ClusterLocation.h>
 #include <volumedriver/ScrubWork.h>
 #include <volumedriver/TransientException.h>
 #include <volumedriver/VolManager.h>
@@ -405,6 +406,24 @@ ObjectRouter::redirected_work_(ZWorkerPool::MessageParts parts_in)
                 parts_out.emplace_back(handle_get_size_(get_req<vfsprotocol::GetSizeRequest>(parts_in)));
                 break;
             }
+        case vfsprotocol::RequestType::GetClusterMultiplier:
+            {
+                CHECK(parts_in.size() == 3);
+                parts_out.emplace_back(handle_get_cluster_multiplier_(get_req<vfsprotocol::GetClusterMultiplierRequest>(parts_in)));
+                break;
+            }
+        case vfsprotocol::RequestType::GetCloneNamespaceMap:
+            {
+                CHECK(parts_in.size() == 3);
+                parts_out.emplace_back(handle_get_clone_namespace_map_(get_req<vfsprotocol::GetCloneNamespaceMapRequest>(parts_in)));
+                break;
+            }
+        case vfsprotocol::RequestType::GetPage:
+            {
+                CHECK(parts_in.size() == 3);
+                parts_out.emplace_back(handle_get_page_(get_req<vfsprotocol::GetPageRequest>(parts_in)));
+                break;
+            }
         case vfsprotocol::RequestType::Resize:
             {
                 CHECK(parts_in.size() == 3);
@@ -520,11 +539,12 @@ ObjectRouter::maybe_steal_(Ret (ClusterNode::*fn)(const Object&,
                 throw;
             }
 
+            const bool permit_steal = permit_steal_(id);
             const bool stolen = steal_(reg,
-                                       fencing_support_() ?
+                                       permit_steal ?
                                        OnlyStealFromOfflineNode::F :
                                        OnlyStealFromOfflineNode::T,
-                                       fencing_support_() ?
+                                       permit_steal ?
                                        ForceRestart::F :
                                        ForceRestart::T);
             if (not stolen)
@@ -831,11 +851,12 @@ ObjectRouter::maybe_migrate_(Pred&& migrate_pred,
                 // clear(er)) as the remote first has to write out all pending data
                 // to the backend before we do a restart here, so the FOC will be
                 // empty anyway.
+                const bool permit_steal = permit_steal_(id);
                 migrate_(*reg,
-                         fencing_support_() ?
+                         permit_steal ?
                          OnlyStealFromOfflineNode::F :
                          OnlyStealFromOfflineNode::T,
-                         fencing_support_() ?
+                         permit_steal ?
                          ForceRestart::F :
                          ForceRestart::T);
                 LOG_INFO(id << ": auto migration from " << reg->node_id << " done");
@@ -1009,10 +1030,13 @@ ObjectRouter::write_(const ObjectId& id,
 {
     LOG_TRACE(id << ": size " << *size << ", off " << off);
 
-    auto pred([this](const ObjectId& id,
-                     const ObjectType tp)
+    auto pred([this, &dtl_in_sync](const ObjectId& id,
+                                   const ObjectType tp)
               {
                   LOCK_REDIRECTS();
+
+                  RedirectCounter& counter = redirects_[id];
+                  counter.dtl_in_sync = dtl_in_sync;
 
                   return migrate_pred_helper_("write",
                                               id,
@@ -1020,7 +1044,7 @@ ObjectRouter::write_(const ObjectId& id,
                                               tp == ObjectType::File ?
                                               vrouter_file_write_threshold.value() :
                                               vrouter_volume_write_threshold.value(),
-                                              redirects_[id].writes);
+                                              counter.writes);
               });
 
     using WriteFun = void (ClusterNode::*)(const Object&,
@@ -1166,12 +1190,20 @@ ObjectRouter::sync(const FastPathCookie& cookie,
                    const ObjectId& id,
                    vd::DtlInSync& dtl_in_sync)
 {
-    return select_path_<decltype(id),
-                        decltype(dtl_in_sync)>(cookie,
-                                               &ObjectRouter::sync_,
-                                               &LocalNode::sync,
-                                               id,
-                                               dtl_in_sync);
+    FastPathCookie
+        fpc(select_path_<decltype(id),
+                         decltype(dtl_in_sync)>(cookie,
+                                                &ObjectRouter::sync_,
+                                                &LocalNode::sync,
+                                                id,
+                                                dtl_in_sync));
+    if (not fpc)
+    {
+        LOCK_REDIRECTS();
+        redirects_[id].dtl_in_sync = dtl_in_sync;
+    }
+
+    return fpc;
 }
 
 FastPathCookie
@@ -1225,6 +1257,84 @@ ObjectRouter::handle_get_size_(const vfsprotocol::GetSizeRequest& msg)
     LOG_TRACE(obj);
     const uint64_t size = local_node_()->get_size(obj);
     const auto rsp(vfsprotocol::MessageUtils::create_get_size_response(size));
+    return ZUtils::serialize_to_message(rsp);
+}
+
+vd::ClusterMultiplier
+ObjectRouter::get_cluster_multiplier(const ObjectId& id)
+{
+    LOG_TRACE(id);
+
+    FastPathCookie cookie;
+
+    return route_(&ClusterNode::get_cluster_multiplier,
+                  AttemptTheft::T,
+                  id,
+                  cookie);
+}
+
+zmq::message_t
+ObjectRouter::handle_get_cluster_multiplier_(const vfsprotocol::GetClusterMultiplierRequest& msg)
+{
+    const Object obj(obj_from_msg(msg));
+
+    LOG_TRACE(obj);
+    const vd::ClusterMultiplier cm =
+        local_node_()->get_cluster_multiplier(obj);
+    const auto rsp(vfsprotocol::MessageUtils::create_get_cluster_multiplier_response(cm));
+    return ZUtils::serialize_to_message(rsp);
+}
+
+vd::CloneNamespaceMap
+ObjectRouter::get_clone_namespace_map(const ObjectId& id)
+{
+    LOG_TRACE(id);
+
+    FastPathCookie cookie;
+
+    return route_(&ClusterNode::get_clone_namespace_map,
+                  AttemptTheft::T,
+                  id,
+                  cookie);
+}
+
+zmq::message_t
+ObjectRouter::handle_get_clone_namespace_map_(const vfsprotocol::GetCloneNamespaceMapRequest& msg)
+{
+    const Object obj(obj_from_msg(msg));
+
+    LOG_TRACE(obj);
+    const vd::CloneNamespaceMap cnmap =
+        local_node_()->get_clone_namespace_map(obj);
+    const auto rsp(vfsprotocol::MessageUtils::create_get_clone_namespace_map_response(cnmap));
+    return ZUtils::serialize_to_message(rsp);
+}
+
+std::vector<vd::ClusterLocation>
+ObjectRouter::get_page(const ObjectId& id,
+                       const vd::ClusterAddress ca)
+{
+    LOG_TRACE(id);
+
+    FastPathCookie cookie;
+
+    return route_(&ClusterNode::get_page,
+                  AttemptTheft::T,
+                  id,
+                  cookie,
+                  ca);
+}
+
+zmq::message_t
+ObjectRouter::handle_get_page_(const vfsprotocol::GetPageRequest& msg)
+{
+    const Object obj(obj_from_msg(msg));
+
+    LOG_TRACE(obj);
+    const std::vector<vd::ClusterLocation> cl =
+        local_node_()->get_page(obj,
+                                vd::ClusterAddress(msg.cluster_address()));
+    const auto rsp(vfsprotocol::MessageUtils::create_get_page_response(cl));
     return ZUtils::serialize_to_message(rsp);
 }
 
@@ -1933,6 +2043,50 @@ bool
 ObjectRouter::fencing_support_() const
 {
     return api::fencing_support() and vrouter_use_fencing.value();
+}
+
+volumedriver::DtlInSync
+ObjectRouter::dtl_in_sync_(const ObjectId& oid) const
+{
+    vd::DtlInSync dtl_in_sync = vd::DtlInSync::F;
+    bool found = false;
+
+    {
+        LOCK_REDIRECTS();
+
+        auto it = redirects_.find(oid);
+        if (it != redirects_.end())
+        {
+            found = true;
+            dtl_in_sync = it->second.dtl_in_sync;
+        }
+    }
+
+    // VERIFY(found) instead?
+    if (found)
+    {
+        LOG_INFO(oid << ": DtlInSync = " << dtl_in_sync);
+
+    }
+    else
+    {
+        LOG_WARN(oid << " not found in redirects map, assuming DtlInSync = " << vd::DtlInSync::F);
+    }
+
+    return dtl_in_sync;
+}
+
+void
+ObjectRouter::set_dtl_in_sync(const ObjectId& oid,
+                              const vd::DtlInSync dtl_in_sync)
+{
+    ObjectRegistrationPtr reg(object_registry_->find_throw(oid,
+                                                           IgnoreCache::F));
+    if (reg->node_id != local_node_()->node_id())
+    {
+        LOCK_REDIRECTS();
+        redirects_[oid].dtl_in_sync = dtl_in_sync;
+    }
 }
 
 }

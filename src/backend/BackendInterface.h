@@ -295,10 +295,12 @@ private:
                                                            Args...),
           Args... args);
 
-    template<typename ReturnType,
+    template<typename ConnFetcher,
+             typename ReturnType,
              typename... Args>
     ReturnType
-    do_wrap_(const BackendRequestParameters&,
+    do_wrap_(ConnFetcher&,
+             const BackendRequestParameters&,
              ReturnType(BackendConnectionInterface::*mem_fun)(Args...),
              Args... args);
 

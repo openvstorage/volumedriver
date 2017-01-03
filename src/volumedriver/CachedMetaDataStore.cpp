@@ -134,9 +134,9 @@ CachedMetaDataStore::readCluster(const ClusterAddress caddr,
         }
     }
 
-    get_page_(caddr, loc, false);
+    get_cluster_location_(caddr, loc, false);
 
-    if (loc.clusterLocation.isNull())
+    if (ClusterLocationAndHash::use_hash() and loc.clusterLocation.isNull())
     {
         // - loc previously not written to: all 0's (loc 0, hash 0)
         // - loc discarded: loc 0, hash of zeroed page
@@ -339,7 +339,7 @@ CachedMetaDataStore::unCork(const boost::optional<yt::UUID>& cork)
             LOCK_CORKS_READ;
             // Y42 not correct, just write to the own cache
             // Ordening here might be better
-            if (not get_page_(val.first, const_cast<ClusterLocationAndHash&>(val.second), true))
+            if (not get_cluster_location_(val.first, const_cast<ClusterLocationAndHash&>(val.second), true))
             {
                 misses++;
             }
@@ -445,9 +445,9 @@ CachedMetaDataStore::processPages(std::unique_ptr<yt::Generator<PageDataPtr>> r,
         {
             ClusterLocationAndHash loc = e.clusterLocationAndHash();
             loc.clusterLocation.cloneID(cloneid);
-            get_page_(e.clusterAddress(),
-                     const_cast<ClusterLocationAndHash&>(loc),
-                     true);
+            get_cluster_location_(e.clusterAddress(),
+                                  const_cast<ClusterLocationAndHash&>(loc),
+                                  true);
             entries++;
         }
         pages++;
@@ -590,17 +590,17 @@ CachedMetaDataStore::applyRelocs(RelocationReaderFactory& factory,
 
         LOCK_CACHE_WRITE;
 
-        get_page_unlocked_(a_old,
-                           l_current,
-                           false);
+        get_cluster_location_unlocked_(a_old,
+                                       l_current,
+                                       false);
 
         if (l_current.clusterLocation == l_old)
         {
             ClusterLocationAndHash l_new = e_new->clusterLocationAndHash();
             l_new.clusterLocation.cloneID(scid);
-            get_page_unlocked_(a_old,
-                               const_cast<ClusterLocationAndHash&>(l_new),
-                               true);
+            get_cluster_location_unlocked_(a_old,
+                                           const_cast<ClusterLocationAndHash&>(l_new),
+                                           true);
         }
         relocNum++;
     }
@@ -614,15 +614,15 @@ CachedMetaDataStore::applyRelocs(RelocationReaderFactory& factory,
 }
 
 bool
-CachedMetaDataStore::get_page_(const ClusterAddress ca,
+CachedMetaDataStore::get_cluster_location_(const ClusterAddress ca,
                                ClusterLocationAndHash& loc,
                                bool for_write)
 {
     LOCK_CACHE_WRITE;
 
-    return get_page_unlocked_(ca,
-                              loc,
-                              for_write);
+    return get_cluster_location_unlocked_(ca,
+                                          loc,
+                                          for_write);
 }
 
 void
@@ -642,23 +642,23 @@ CachedMetaDataStore::set_cache_capacity(const size_t new_capacity)
                                                             true);
 
         page_data_.resize(new_capacity * CachePage::capacity());
+        page_data_.shrink_to_fit();
         pages_.clear();
+        pages_.shrink_to_fit();
 
         init_pages_(new_capacity);
     }
 }
 
-bool
-CachedMetaDataStore::get_page_unlocked_(const ClusterAddress ca,
-                                        ClusterLocationAndHash& loc,
-                                        bool for_write)
+std::pair<CachePage*, bool>
+CachedMetaDataStore::get_page_(const ClusterAddress ca)
 {
+    const PageAddress pa = CachePage::pageAddress(ca);
     bool hit = false;
-    PageAddress pa = CachePage::pageAddress(ca);
-    CachePage* page = nullptr;
 
-    typename map_type::iterator it = page_map_.find(pa,
-                                                    PageCmp());
+    CachePage* page;
+    auto it = page_map_.find(pa,
+                             PageCmp());
     if (it == page_map_.end())
     {
         ++cache_misses_;
@@ -704,6 +704,59 @@ CachedMetaDataStore::get_page_unlocked_(const ClusterAddress ca,
     ASSERT(page->is_in_set());
 
     page_list_.push_back(*page);
+
+    return std::make_pair(page, hit);
+}
+
+std::vector<ClusterLocation>
+CachedMetaDataStore::get_page(const ClusterAddress ca)
+{
+    std::vector<ClusterLocation> vec;
+    std::vector<ClusterLocationAndHash> tmp(CachePage::capacity());
+
+    {
+        LOCK_CORKS_READ;
+        LOCK_CACHE_WRITE;
+
+        CachePage* page;
+        std::tie(page, std::ignore) = get_page_(ca);
+
+        VERIFY(page);
+        memcpy(tmp.data(), page->data(), tmp.size());
+
+        const ClusterAddress ca_start =
+            CachePage::clusterAddress(CachePage::pageAddress(ca));
+        const ClusterAddress ca_end = ca_start + CachePage::capacity();
+
+        for (const auto& cork : corks_)
+        {
+            for (const auto& p : *cork.second)
+            {
+                if (p.first >= ca_start and p.first < ca_end)
+                {
+                    tmp[CachePage::offset(p.first)] = p.second;
+                }
+            }
+        }
+    }
+
+    for (auto& clh : tmp)
+    {
+        vec.emplace_back(clh.clusterLocation);
+    }
+
+    return vec;
+}
+
+bool
+CachedMetaDataStore::get_cluster_location_unlocked_(const ClusterAddress ca,
+                                                    ClusterLocationAndHash& loc,
+                                                    bool for_write)
+{
+    bool hit;
+    CachePage* page;
+    std::tie(page, hit) = get_page_(ca);
+    ASSERT(page);
 
     if (for_write)
     {

@@ -18,6 +18,8 @@
 
 #include <iostream>
 
+#include <backend/ConnectionPool.h>
+
 #include <volumedriver/Api.h>
 #include <volumedriver/PerformanceCounters.h>
 
@@ -163,6 +165,22 @@ struct VolumePerformanceCountersDataPoint
 std::ostream&
 operator<<(std::ostream&,
            const VolumePerformanceCountersDataPoint&);
+
+struct BackendConnectionPoolDataPoint
+{
+    static constexpr const char* name = "backend_connection_pool_counters";
+
+    std::string id;
+    size_t capacity;
+    size_t size;
+    backend::ConnectionPool::Counters counters;
+
+    explicit BackendConnectionPoolDataPoint(const backend::ConnectionPool&);
+};
+
+std::ostream&
+operator<<(std::ostream&,
+           const BackendConnectionPoolDataPoint&);
 
 }
 

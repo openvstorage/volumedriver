@@ -29,6 +29,7 @@
 #include <youtils/Catchers.h>
 #include <youtils/SourceOfUncertainty.h>
 
+#include <volumedriver/ClusterLocation.h>
 // XXX: needed as we throw VolManager::VolumeDoesNotExistException.
 // This needs to be redone, we don't want to know about VolManager
 // at this level
@@ -556,6 +557,102 @@ RemoteNode::get_size(const Object& obj)
             &get_size);
 
     return size;
+}
+
+vd::ClusterMultiplier
+RemoteNode::get_cluster_multiplier(const Object& obj)
+{
+    LOG_TRACE(node_id() << ": obj " << obj.id);
+
+    uint32_t size = 0;
+    ExtraRecvFun get_cluster_multiplier([&]
+                          {
+                              ZEXPECT_MORE(*zock_,
+                                           "GetClusterMultiplierResponse");
+
+                              vfsprotocol::GetClusterMultiplierResponse rsp;
+                              ZUtils::deserialize_from_socket(*zock_, rsp);
+
+                              rsp.CheckInitialized();
+                              size = rsp.size();
+                          });
+
+    const auto req(vfsprotocol::MessageUtils::create_get_cluster_multiplier_request(obj));
+
+    handle_(req,
+            vrouter_.redirect_timeout(),
+            nullptr,
+            &get_cluster_multiplier);
+
+    return vd::ClusterMultiplier(size);
+}
+
+vd::CloneNamespaceMap
+RemoteNode::get_clone_namespace_map(const Object& obj)
+{
+    LOG_TRACE(node_id() << ": obj " << obj.id);
+
+    vd::CloneNamespaceMap cnmap;
+    ExtraRecvFun get_clone_namespace_map([&]
+                          {
+                            ZEXPECT_MORE(*zock_,
+                                         "GetCloneNamespaceMapResponse");
+
+                            vfsprotocol::GetCloneNamespaceMapResponse rsp;
+                            ZUtils::deserialize_from_socket(*zock_, rsp);
+
+                            rsp.CheckInitialized();
+                            for (int i = 0; i < rsp.map_entry_size(); i++)
+                            {
+                                const auto& e = rsp.map_entry(i);
+                                cnmap.emplace(vd::SCOCloneID(e.clone_id()),
+                                               backend::Namespace(e.ns()));
+                            }
+                          });
+
+    const auto req(vfsprotocol::MessageUtils::create_get_clone_namespace_map_request(obj));
+
+    handle_(req,
+            vrouter_.redirect_timeout(),
+            nullptr,
+            &get_clone_namespace_map);
+
+    return cnmap;
+}
+
+std::vector<vd::ClusterLocation>
+RemoteNode::get_page(const Object& obj,
+                     const vd::ClusterAddress ca)
+{
+    LOG_TRACE(node_id() << ": obj " << obj.id << ", ca " << ca);
+
+    std::vector<vd::ClusterLocation> cloc;
+    ExtraRecvFun get_page([&]
+    {
+      ZEXPECT_MORE(*zock_,
+                   "GetPageResponse");
+
+      vfsprotocol::GetPageResponse rsp;
+      ZUtils::deserialize_from_socket(*zock_, rsp);
+
+      rsp.CheckInitialized();
+      for (int i = 0; i < rsp.cluster_location_size(); i++)
+      {
+           vd::ClusterLocation cl;
+           *reinterpret_cast<uint64_t*>(&cl) = rsp.cluster_location(i);
+           cloc.emplace_back(cl);
+      }
+    });
+
+    const auto req(vfsprotocol::MessageUtils::create_get_page_request(obj,
+                                                                      ca));
+
+    handle_(req,
+            vrouter_.redirect_timeout(),
+            nullptr,
+            &get_page);
+
+    return cloc;
 }
 
 void

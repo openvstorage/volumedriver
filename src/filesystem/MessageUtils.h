@@ -22,6 +22,7 @@
 
 #include <youtils/Logging.h>
 
+#include <volumedriver/ClusterLocation.h>
 #include <volumedriver/DtlInSync.h>
 #include <volumedriver/Types.h>
 
@@ -58,6 +59,25 @@ struct MessageUtils
 
     static GetSizeResponse
     create_get_size_response(const uint64_t size);
+
+    static GetClusterMultiplierRequest
+    create_get_cluster_multiplier_request(const volumedriverfs::Object&);
+
+    static GetClusterMultiplierResponse
+    create_get_cluster_multiplier_response(const volumedriver::ClusterMultiplier);
+
+    static GetCloneNamespaceMapRequest
+    create_get_clone_namespace_map_request(const volumedriverfs::Object&);
+
+    static GetCloneNamespaceMapResponse
+    create_get_clone_namespace_map_response(const volumedriver::CloneNamespaceMap&);
+
+    static GetPageRequest
+    create_get_page_request(const volumedriverfs::Object&,
+                            const volumedriver::ClusterAddress);
+
+    static GetPageResponse
+    create_get_page_response(const std::vector<volumedriver::ClusterLocation>&);
 
     static ResizeRequest
     create_resize_request(const volumedriverfs::Object&,

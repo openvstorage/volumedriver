@@ -18,6 +18,8 @@
 
 #include "BackendConfig.h"
 
+#include <iosfwd>
+
 #include <youtils/IOException.h>
 #include <youtils/Logging.h>
 
@@ -103,8 +105,8 @@ public:
         }
     }
 
-
     MultiConfig(const MultiConfig&) = delete;
+
     MultiConfig&
     operator=(const MultiConfig&) = delete;
 
@@ -129,7 +131,6 @@ public:
             return StrictConsistency::T;
         }
     }
-
 
     virtual bool
     unique_tag_support() const override final
@@ -214,6 +215,9 @@ private:
         }
         return true;
     }
+
+    virtual std::ostream&
+    stream_out(std::ostream&) const override final;
 };
 
 }

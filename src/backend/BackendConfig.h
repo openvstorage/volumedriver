@@ -18,6 +18,7 @@
 
 #include "BackendParameters.h"
 
+#include <iosfwd>
 #include <memory>
 
 #include <boost/serialization/export.hpp>
@@ -45,6 +46,8 @@ class BackendConfig
     friend class boost::serialization::access;
 
 public:
+    virtual ~BackendConfig() = default;
+
     static std::unique_ptr<BackendConfig>
     makeBackendConfig(const boost::property_tree::ptree&);
 
@@ -56,9 +59,6 @@ public:
 
     virtual std::unique_ptr<BackendConfig>
     clone() const = 0;
-
-    virtual ~BackendConfig()
-    {}
 
     virtual bool
     operator==(const BackendConfig& cfg) const = 0;
@@ -86,6 +86,13 @@ public:
 
     virtual bool
     unique_tag_support() const = 0;
+
+    friend std::ostream&
+    operator<<(std::ostream& os,
+               const BackendConfig& cfg)
+    {
+        return cfg.stream_out(os);
+    }
 
     DECLARE_PARAMETER(backend_type);
 
@@ -117,6 +124,10 @@ protected:
 
     static std::string
     sectionName(const std::string& section);
+
+private:
+    virtual std::ostream&
+    stream_out(std::ostream&) const = 0;
 };
 
 }

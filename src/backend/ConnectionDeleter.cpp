@@ -13,30 +13,16 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "S3Config.h"
-
-#include <iostream>
+#include "ConnectionDeleter.h"
+#include "ConnectionPool.h"
 
 namespace backend
 {
 
-std::ostream&
-S3Config::stream_out(std::ostream& os) const
+void
+ConnectionDeleter::operator()(BackendConnectionInterface* conn)
 {
-#define V(x)                                    \
-    ((x).value())
-
-    return os <<
-        "S3Config{host=" << V(s3_connection_host) <<
-        ",port=" << V(s3_connection_port) <<
-        ",username=" << V(s3_connection_username) <<
-        ",use_ssl=" << V(s3_connection_use_ssl) <<
-        ",ssl_verify_host=" << V(s3_connection_ssl_verify_host) <<
-        ",ssl_cert_file=" << V(s3_connection_ssl_cert_file) <<
-        ",flavour=" << V(s3_connection_flavour) <<
-        "}";
-
-#undef V
+    pool_->release_connection_(conn);
 }
 
 }

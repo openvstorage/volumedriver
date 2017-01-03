@@ -41,7 +41,7 @@ public:
                        const LBASize,
                        const ClusterMultiplier,
                        const boost::chrono::milliseconds request_timeout,
-                       const boost::optional<boost::chrono::milliseconds>& connect_timeout = boost::none);
+                       const boost::optional<boost::chrono::milliseconds>& connect_timeout);
 
     FailOverCacheProxy(const FailOverCacheProxy&) = delete;
 

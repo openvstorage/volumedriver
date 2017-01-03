@@ -14,3 +14,32 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "MultiConfig.h"
+
+#include <iostream>
+
+namespace backend
+{
+
+std::ostream&
+MultiConfig::stream_out(std::ostream& os) const
+{
+    bool sep = false;
+    os << "MultiConfig{[";
+    for (const auto& cfg : configs_)
+    {
+        if (sep)
+        {
+            os << ",";
+        }
+        else
+        {
+            sep = true;
+        }
+
+        os << *cfg;
+    }
+
+    return os << "]}";
+}
+
+}

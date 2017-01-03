@@ -1617,21 +1617,28 @@ TEST_F(RemoteTest, stealing_and_fencing)
     const ObjectId oid(create_file(vpath,
                                    vsize));
 
-    const std::string pattern1("written first");
-
-    write_to_file(vpath,
-                  pattern1.data(),
-                  pattern1.size(),
-                  vsize / 2);
-
     const std::string snap(client_.create_snapshot(oid));
     wait_for_snapshot(oid,
                       snap);
 
+    const std::string pattern1("written first");
+    const fs::path rpath(remote_root_ / vpath);
+
+    write_to_remote_file(rpath,
+                         pattern1,
+                         vsize / 2,
+                         true);
+    {
+        std::shared_ptr<CachedObjectRegistry> oreg(fs_->object_router().object_registry());
+        EXPECT_EQ(local_node_id(),
+                  oreg->find(oid,
+                             IgnoreCache::T)->node_id);
+    }
+
     // cling to the LocalNode so we can still access the local volumedriver afterwards
     std::shared_ptr<LocalNode> local_node(shut_down_object_router());
 
-    check_remote_file(remote_root_ / vpath,
+    check_remote_file(rpath,
                       pattern1,
                       vsize / 2);
 
@@ -1867,6 +1874,59 @@ TEST_F(RemoteTest, forceful_migration_with_fencing_enabled)
 TEST_F(RemoteTest, DISABLED_setup_remote_hack)
 {
     sleep(1000000);
+}
+
+TEST_F(RemoteTest, locally_get_remote_cluster_multiplier)
+{
+    const uint64_t vsize = 10 << 20;
+    const FrontendPath fname(make_volume_name("/volume"));
+    const auto rpath(make_remote_file(fname, vsize));
+    auto maybe_id(find_object(fname));
+    ASSERT_TRUE(static_cast<bool>(maybe_id));
+
+    ASSERT_TRUE(fs_->object_router().node_id() == local_node_id());
+
+    auto cluster_multiplier(fs_->object_router().get_cluster_multiplier(*maybe_id));
+
+    EXPECT_EQ(vd::VolumeConfig::default_cluster_multiplier(),
+              cluster_multiplier);
+}
+
+TEST_F(RemoteTest, locally_get_remote_clone_namespace_map)
+{
+    const uint64_t vsize = 10 << 20;
+    const FrontendPath fname(make_volume_name("/volume"));
+    const auto rpath(make_remote_file(fname, vsize));
+    auto maybe_id(find_object(fname));
+    ASSERT_TRUE(static_cast<bool>(maybe_id));
+
+    ASSERT_TRUE(fs_->object_router().node_id() == local_node_id());
+
+    auto cnmap(fs_->object_router().get_clone_namespace_map(*maybe_id));
+
+    EXPECT_EQ(1UL, cnmap.size());
+
+    const be::Namespace nspace(find_registration(*maybe_id)->getNS());
+    EXPECT_EQ(nspace, cnmap[vd::SCOCloneID(0)]);
+}
+
+TEST_F(RemoteTest, locally_get_remote_page)
+{
+    const uint64_t vsize = 10 << 20;
+    const FrontendPath fname(make_volume_name("/volume"));
+    const auto rpath(make_remote_file(fname, vsize));
+    auto maybe_id(find_object(fname));
+    ASSERT_TRUE(static_cast<bool>(maybe_id));
+
+    ASSERT_TRUE(fs_->object_router().node_id() == local_node_id());
+
+    auto cl(fs_->object_router().get_page(*maybe_id, vd::ClusterAddress(0)));
+
+    EXPECT_EQ(256UL, cl.size());
+    for (const auto& e: cl)
+    {
+        EXPECT_TRUE(e == vd::ClusterLocation(0));
+    }
 }
 
 }

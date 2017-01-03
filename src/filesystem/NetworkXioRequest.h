@@ -38,8 +38,8 @@ struct NetworkXioRequest
         , data(nullptr)
         , data_len(0)
         , size(0)
-        , offset(0)
         , dtl_in_sync(true)
+        , offset(0)
         , retval(0)
         , errval(0)
         , opaque(0)
@@ -56,8 +56,13 @@ struct NetworkXioRequest
     void *data;
     unsigned int data_len;
     size_t size;
-    uint64_t offset;
     bool dtl_in_sync;
+    union
+    {
+        uint64_t offset;
+        uint64_t u64;
+        int64_t i64;
+    };
 
     ssize_t retval;
     int errval;

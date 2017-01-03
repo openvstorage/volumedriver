@@ -32,6 +32,7 @@
 #include <youtils/PeriodicAction.h>
 
 #include <volumedriver/Api.h>
+#include <volumedriver/ClusterLocation.h>
 #include <volumedriver/VolumeDriverParameters.h>
 #include <volumedriver/FailOverCacheConfig.h>
 
@@ -103,6 +104,16 @@ public:
 
     virtual uint64_t
     get_size(const Object& obj) override final;
+
+    virtual volumedriver::ClusterMultiplier
+    get_cluster_multiplier(const Object& obj) override final;
+
+    virtual volumedriver::CloneNamespaceMap
+    get_clone_namespace_map(const Object& obj) override final;
+
+    virtual std::vector<volumedriver::ClusterLocation>
+    get_page(const Object& obj,
+             const volumedriver::ClusterAddress ca) override final;
 
     virtual void
     resize(const Object& obj,
@@ -346,6 +357,16 @@ private:
 
     uint64_t
     get_size_(volumedriver::WeakVolumePtr vol);
+
+    volumedriver::ClusterMultiplier
+    get_cluster_multiplier_(volumedriver::WeakVolumePtr vol);
+
+    volumedriver::CloneNamespaceMap
+    get_clone_namespace_map_(volumedriver::WeakVolumePtr vol);
+
+    std::vector<volumedriver::ClusterLocation>
+    get_page_(volumedriver::WeakVolumePtr vol,
+              const volumedriver::ClusterAddress);
 
     void
     resize_(volumedriver::WeakVolumePtr vol,

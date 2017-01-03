@@ -130,11 +130,8 @@ protected:
     void
     uninitialize_connection_manager();
 
-
-
 private:
     DECLARE_LOGGER("BackendTestSetup");
-
 };
 
 }

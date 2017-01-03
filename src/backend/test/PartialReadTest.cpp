@@ -61,8 +61,8 @@ public:
 
     void
     partial_read_and_check(const PartialReads& partial_reads,
-                           const std::vector<byte>& src,
-                           const std::vector<byte>& dst)
+                           const std::vector<uint8_t>& src,
+                           const std::vector<uint8_t>& dst)
     {
         BackendConnectionInterfacePtr conn(cm_->getConnection());
         SimpleFetcher fetch(*conn,
@@ -97,12 +97,12 @@ TEST_P(PartialReadTest, simple)
 {
     const uint64_t max_test_size = 1024 * 16;
 
-    std::vector<byte> buf(max_test_size);
+    std::vector<uint8_t> buf(max_test_size);
     SourceOfUncertainty sou;
 
     for(unsigned i = 0; i < max_test_size; ++i)
     {
-        buf[i] = sou.operator()<byte>();
+        buf[i] = sou.operator()<uint8_t>();
     }
 
     fs::path tmp = FileUtils::create_temp_file_in_temp_dir("anobject");
@@ -121,7 +121,7 @@ TEST_P(PartialReadTest, simple)
                               OverwriteObject::F);
 
     uint64_t last = 0;
-    std::vector<byte> the_buffer(max_test_size);
+    std::vector<uint8_t> the_buffer(max_test_size);
 
     ObjectSlices slices;
 
@@ -148,12 +148,12 @@ TEST_P(PartialReadTest, simple_too)
 {
     const uint64_t max_test_size = 1024 * 16;
 
-    std::vector<byte> buf(max_test_size);
+    std::vector<uint8_t> buf(max_test_size);
     SourceOfUncertainty sou;
 
     for(unsigned i = 0; i < max_test_size; ++i)
     {
-        buf[i] = sou.operator()<byte>();
+        buf[i] = sou.operator()<uint8_t>();
     }
 
     fs::path tmp = FileUtils::create_temp_file_in_temp_dir("anobject");
@@ -173,7 +173,7 @@ TEST_P(PartialReadTest, simple_too)
                               OverwriteObject::F);
 
     uint64_t last = 0;
-    std::vector<byte> the_buffer(max_test_size);
+    std::vector<uint8_t> the_buffer(max_test_size);
 
     ObjectSlices slices;
 
@@ -202,7 +202,7 @@ TEST_P(PartialReadTest, multiple_objects)
     const size_t fsize = 1024;
     const uint64_t max_test_size = fsize * nfiles;
 
-    std::vector<byte> buf(max_test_size);
+    std::vector<uint8_t> buf(max_test_size);
     SourceOfUncertainty sou;
 
     auto make_object_name([](const size_t n) -> std::string
@@ -212,7 +212,7 @@ TEST_P(PartialReadTest, multiple_objects)
 
     for(unsigned i = 0; i < max_test_size; ++i)
     {
-        buf[i] = sou.operator()<byte>();
+        buf[i] = sou.operator()<uint8_t>();
     }
 
     for (size_t i = 0; i < nfiles; ++i)
@@ -231,7 +231,7 @@ TEST_P(PartialReadTest, multiple_objects)
                                   OverwriteObject::F);
     }
 
-    std::vector<byte> the_buffer(max_test_size);
+    std::vector<uint8_t> the_buffer(max_test_size);
 
     const size_t nslices = 4;
     const size_t slice_size = fsize / nslices;

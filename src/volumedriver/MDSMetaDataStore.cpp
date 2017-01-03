@@ -675,4 +675,13 @@ MDSMetaDataStore::set_cache_capacity(const size_t num_pages)
     mdstore_->set_cache_capacity(num_pages);
 }
 
+std::vector<ClusterLocation>
+MDSMetaDataStore::get_page(const ClusterAddress ca)
+{
+    return handle_<std::vector<ClusterLocation>,
+                   ClusterAddress>(__FUNCTION__,
+                                   &MetaDataStoreInterface::get_page,
+                                   ca);
+}
+
 }

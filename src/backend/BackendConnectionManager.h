@@ -18,19 +18,17 @@
 
 #include "BackendConnectionInterface.h"
 #include "BackendParameters.h"
+#include "ConnectionPool.h"
 #include "Namespace.h"
 
 #include <boost/chrono.hpp>
-#include <boost/thread/lock_guard.hpp>
+#include <boost/optional.hpp>
 
-#include <youtils/BooleanEnum.h>
 #include <youtils/ConfigurationReport.h>
+#include <youtils/EnableMakeShared.h>
 #include <youtils/IOException.h>
-#include <youtils/SpinLock.h>
 #include <youtils/StrongTypedString.h>
 #include <youtils/VolumeDriverComponent.h>
-
-VD_BOOLEAN_ENUM(ForceNewConnection)
 
 namespace youtils
 {
@@ -48,101 +46,36 @@ class BackendConnectionToolCut;
 namespace backend
 {
 
-class BackendConfig;
-class BackendInterface;
-typedef std::unique_ptr<BackendInterface> BackendInterfacePtr;
-
+class BackendConnectionManager;
 class BackendSinkInterface;
 class BackendSourceInterface;
 
-class BackendConnectionManager;
-typedef std::shared_ptr<BackendConnectionManager> BackendConnectionManagerPtr;
-
-class BackendConnectionDeleter
-{
-public:
-    explicit BackendConnectionDeleter(BackendConnectionManagerPtr cm)
-        : cm_(cm)
-    {}
-
-    ~BackendConnectionDeleter() = default;
-
-    BackendConnectionDeleter(const BackendConnectionDeleter&) = default;
-
-    BackendConnectionDeleter(BackendConnectionDeleter&&) = default;
-
-    BackendConnectionDeleter&
-    operator=(const BackendConnectionDeleter&) = default;
-
-    BackendConnectionDeleter&
-    operator=(BackendConnectionDeleter&&) = default;
-
-    void
-    operator()(BackendConnectionInterface* conn);
-
-private:
-    BackendConnectionManagerPtr cm_;
-};
+using BackendConnectionManagerPtr = std::shared_ptr<BackendConnectionManager>;
+using BackendInterfacePtr = std::unique_ptr<BackendInterface>;
 
 class BackendConnectionManager
     : public youtils::VolumeDriverComponent
     , public std::enable_shared_from_this<BackendConnectionManager>
 {
-private:
-    // Uses boost::intrusive to avoid (de)allocations when modifying the container.
-    // (which has to happen under the spinlock).
-    struct ConnectionPool
-    {
-        mutable fungi::SpinLock lock_;
-        boost::intrusive::slist<BackendConnectionInterface> connections_;
-    };
-
 public:
     // enfore usage via BackendConnectionManagerPtr
-    // rationale: BackendConnPtrs hold a reference (via BackendConnectionManagerPtr),
+    // rationale: BackendInterfaces hold a reference (via BackendConnectionManagerPtr),
     // so the BackendConnectionManager must not go out of scope before the last
     // reference is returned.
     static BackendConnectionManagerPtr
-    create(const boost::property_tree::ptree& pt,
-           const RegisterComponent registrate = RegisterComponent::T)
-    {
-        return BackendConnectionManagerPtr(new BackendConnectionManager(pt,
-                                                                        registrate));
-    }
+    create(const boost::property_tree::ptree&,
+           const RegisterComponent = RegisterComponent::T);
 
-    ~BackendConnectionManager();
+    ~BackendConnectionManager() = default;
 
     BackendConnectionManager(const BackendConnectionManager&) = delete;
 
     BackendConnectionManager&
     operator=(const BackendConnectionManager&) = delete;
 
-    inline BackendConnectionInterfacePtr
-    getConnection(ForceNewConnection force_new = ForceNewConnection::F)
-    {
-        ConnectionPool& pool = get_connection_pool_();
-        BackendConnectionDeleter d(shared_from_this());
-        BackendConnectionInterfacePtr conn(nullptr, d);
-
-        {
-            boost::lock_guard<decltype(pool.lock_)> g(pool.lock_);
-            if (force_new != ForceNewConnection::T and not pool.connections_.empty())
-            {
-                conn = BackendConnectionInterfacePtr(&pool.connections_.front(),
-                                                     d);
-                pool.connections_.pop_front();
-            }
-        }
-
-        if (not conn)
-        {
-            conn = BackendConnectionInterfacePtr(newConnection_(),
-                                                 d);
-        }
-
-        conn->timeout(default_timeout_);
-        return conn;
-    }
+    BackendConnectionInterfacePtr
+    getConnection(const ForceNewConnection force_new = ForceNewConnection::F,
+                  const boost::optional<Namespace>& = boost::none);
 
     BackendInterfacePtr
     newBackendInterface(const Namespace&);
@@ -154,20 +87,20 @@ public:
     }
 
     std::unique_ptr<BackendSinkInterface>
-    newBackendSink(const Namespace& nspace,
+    newBackendSink(const Namespace&,
                    const std::string& name);
 
     std::unique_ptr<std::ostream>
-    getOutputStream(const Namespace& nspace,
+    getOutputStream(const Namespace&,
                     const std::string& name,
                     size_t buf_size = 4096);
 
     std::unique_ptr<BackendSourceInterface>
-    newBackendSource(const Namespace& nspace,
+    newBackendSource(const Namespace&,
                      const std::string& name);
 
     std::unique_ptr<std::istream>
-    getInputStream(const Namespace& nspace,
+    getInputStream(const Namespace&,
                    const std::string& name,
                    size_t buf_size = 4096);
 
@@ -178,23 +111,23 @@ public:
     size() const;
 
     size_t
-    shards() const;
+    pools() const;
 
     // VolumeDriverComponent Interface
     virtual void
-    persist(boost::property_tree::ptree& pt,
-            const ReportDefault reportDefault = ReportDefault::F) const override final;
+    persist(boost::property_tree::ptree&,
+            const ReportDefault = ReportDefault::F) const override final;
 
     virtual const char*
     componentName() const override final;
 
     virtual void
-    update(const boost::property_tree::ptree& pt,
-           youtils::UpdateReport& report) override final;
+    update(const boost::property_tree::ptree&,
+           youtils::UpdateReport&) override final;
 
     virtual bool
-    checkConfig(const boost::property_tree::ptree& pt,
-                youtils::ConfigurationReport& rep) const override final;
+    checkConfig(const boost::property_tree::ptree&,
+                youtils::ConfigurationReport&) const override final;
     // end VolumeDriverComponent Interface
 
     uint32_t
@@ -216,81 +149,52 @@ public:
         return backend_interface_retry_backoff_multiplier.value();
     }
 
-    boost::posix_time::time_duration
-    default_timeout() const
-    {
-        return default_timeout_;
-    }
-
     bool
     partial_read_nullio() const
     {
         return backend_interface_partial_read_nullio.value();
     }
 
+    // REVISIT (pun intended): I don't like offering this - it might
+    // be better to move the code that uses this (cf. BackendInterface)
+    // into a method of this class?
+    template<typename Visitor>
+    void
+    visit_pools(Visitor&& v)
+    {
+        for (auto p : connection_pools_)
+        {
+            v(p);
+        }
+    }
+
+    std::shared_ptr<ConnectionPool>
+    pool(const Namespace& nspace) const
+    {
+        return pool_(nspace);
+    }
+
 private:
     DECLARE_LOGGER("BackendConnectionManager");
 
     DECLARE_PARAMETER(backend_connection_pool_capacity);
-    DECLARE_PARAMETER(backend_connection_pool_shards);
     DECLARE_PARAMETER(backend_interface_retries_on_error);
     DECLARE_PARAMETER(backend_interface_retry_interval_secs);
     DECLARE_PARAMETER(backend_interface_retry_backoff_multiplier);
     DECLARE_PARAMETER(backend_interface_partial_read_nullio);
 
-    // one per (logical) CPU.
-    std::vector<ConnectionPool> connection_pools_;
-
+    std::vector<std::shared_ptr<ConnectionPool>> connection_pools_;
     std::unique_ptr<BackendConfig> config_;
 
-    // Create through
-    // static BackendConnectionManagerPtr
-    // create(const boost::property_tree::ptree& pt,
-    //        const RegisterComponent registrate = RegisterComponent::T)
     explicit BackendConnectionManager(const boost::property_tree::ptree&,
-                                      const RegisterComponent reg = RegisterComponent::T);
+                                      const RegisterComponent = RegisterComponent::T);
 
-    BackendConnectionInterface*
-    newConnection_();
+    const std::shared_ptr<ConnectionPool>&
+    pool_(const Namespace& nspace) const;
 
-    boost::posix_time::time_duration default_timeout_;
-
-    void
-    releaseConnection(BackendConnectionInterface* conn)
-    {
-        ASSERT(conn != nullptr);
-        if (conn->healthy())
-        {
-            ConnectionPool& pool = get_connection_pool_();
-            boost::lock_guard<decltype(pool.lock_)> g(pool.lock_);
-            if (pool.connections_.size() < backend_connection_pool_capacity.value() / connection_pools_.size())
-            {
-                pool.connections_.push_front(*conn);
-                return;
-            }
-        }
-
-        delete conn;
-    }
-
-    ConnectionPool&
-    get_connection_pool_()
-    {
-        int cpu = sched_getcpu();
-        if (cpu < 0)
-        {
-            cpu = 0;
-        }
-
-        ASSERT(not connection_pools_.empty());
-        const auto n = static_cast<unsigned>(cpu);
-
-        return connection_pools_[n % connection_pools_.size()];
-    }
-
-    friend class BackendConnectionDeleter;
     friend class toolcut::BackendToolCut;
     friend class toolcut::BackendConnectionToolCut;
+    friend class youtils::EnableMakeShared<BackendConnectionManager>;
 };
 
 }

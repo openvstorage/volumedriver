@@ -140,11 +140,7 @@ while [  $a_counter -lt $N ]; do
 
 EOF
 
-    if [ ${port} -eq 8000 ]; then
-        nohup ${ALBA_BIN} asd-start --config ${CFG_PATH} --slow >> ${ASD_PATH}/output 2>&1 &
-    else
-        nohup ${ALBA_BIN} asd-start --config ${CFG_PATH} >> ${ASD_PATH}/output 2>&1 &
-    fi
+    nohup ${ALBA_BIN} asd-start --config ${CFG_PATH} >> ${ASD_PATH}/output 2>&1 &
     echo $! > ${ASD_PATH}/nohup.pid
     a_counter=$((a_counter+1))
 done

@@ -207,7 +207,8 @@ libvolumedriver_la_SOURCES = \
 	VolumeOverview.cpp \
 	VolumeThreadPool.cpp \
 	WriteOnlyVolume.cpp \
-	WriteSCOCache.cpp
+	WriteSCOCache.cpp \
+	ZCOVetcher.cpp
 
 pkgconfigdir = @pkgconfigdir@
 pkgconfig_DATA = volumedriver.pc

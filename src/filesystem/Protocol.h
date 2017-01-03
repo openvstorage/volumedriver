@@ -44,6 +44,9 @@ enum class RequestType
     Delete = 6,
     Transfer = 7,
     Ping = 8,
+    GetClusterMultiplier = 9,
+    GetCloneNamespaceMap = 10,
+    GetPage = 11,
 };
 
 enum class ResponseType
@@ -78,6 +81,9 @@ MAKE_REQUEST_TRAITS(GetSizeRequest, RequestType::GetSize);
 MAKE_REQUEST_TRAITS(ResizeRequest, RequestType::Resize);
 MAKE_REQUEST_TRAITS(DeleteRequest, RequestType::Delete);
 MAKE_REQUEST_TRAITS(TransferRequest, RequestType::Transfer);
+MAKE_REQUEST_TRAITS(GetClusterMultiplierRequest, RequestType::GetClusterMultiplier);
+MAKE_REQUEST_TRAITS(GetCloneNamespaceMapRequest, RequestType::GetCloneNamespaceMap);
+MAKE_REQUEST_TRAITS(GetPageRequest, RequestType::GetPage);
 
 const char*
 request_type_to_string(const RequestType t);

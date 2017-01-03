@@ -1635,6 +1635,72 @@ TEST_F(VolumeTest, dtl_status_sync_dtl)
     test_dtl_status(vd::FailOverCacheMode::Synchronous);
 }
 
+TEST_F(VolumeTest, get_cluster_multiplier)
+{
+    const FrontendPath fname(make_volume_name("/volume"));
+    const ObjectId vname(create_file(fname));
+
+    vd::WeakVolumePtr v;
+
+    {
+        LOCKVD();
+        v = api::getVolumePointer(vd::VolumeId(vname.str()));
+    }
+
+    EXPECT_EQ(vd::VolumeConfig::default_cluster_multiplier(),
+              api::GetClusterMultiplier(v));
+}
+
+TEST_F(VolumeTest, get_clone_namespace_map)
+{
+    const FrontendPath fname(make_volume_name("/volume"));
+    const ObjectId vname(create_file(fname));
+
+    vd::WeakVolumePtr v;
+
+    {
+        LOCKVD();
+        v = api::getVolumePointer(vd::VolumeId(vname.str()));
+    }
+
+    vd::CloneNamespaceMap cnmap = api::GetCloneNamespaceMap(v);
+
+    EXPECT_EQ(1UL, cnmap.size());
+
+    auto conn(cm_->getConnection());
+    vd::VolumeConfig cfg;
+
+    {
+        LOCKVD();
+        cfg = api::getVolumeConfig(vd::VolumeId(vname.str()));
+    }
+
+    EXPECT_TRUE(conn->namespaceExists(cfg.getNS()));
+    EXPECT_EQ(cfg.getNS(), cnmap[vd::SCOCloneID(0)]);
+}
+
+TEST_F(VolumeTest, get_page)
+{
+    const FrontendPath fname(make_volume_name("/volume"));
+    const ObjectId vname(create_file(fname));
+
+    vd::WeakVolumePtr v;
+
+    {
+        LOCKVD();
+        v = api::getVolumePointer(vd::VolumeId(vname.str()));
+    }
+
+    const vd::ClusterAddress ca(0);
+    std::vector<vd::ClusterLocation> cloc(api::GetPage(v, ca));
+
+    EXPECT_EQ(256UL, cloc.size());
+    for (const auto& e: cloc)
+    {
+        EXPECT_TRUE(e == vd::ClusterLocation(0));
+    }
+}
+
 }
 
 // Local Variables: **

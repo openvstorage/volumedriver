@@ -486,6 +486,11 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirect,
                 "ListClientConnections",
                 "List client connections");
 
+REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
+                GetBackendConnectionPool,
+                "getBackendConnectionPool",
+                "Get connection pool used for a volume");
+
 // ================== NOT EXPOSED, NOT TESTED   ==================
 
 REGISTER_XMLRPC(XMLRPCCallTimingLock,
@@ -698,7 +703,7 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
                 "getMetaDataCacheCapacity",
                 "get capacity of the metadata cache (in pages)");
 
-typedef LOKI_TYPELIST_86(
+typedef LOKI_TYPELIST_87(
 // ================== EXPOSED IN XMLRPC CLIENT ===================
                          VolumeCreate,
                          VolumesList,
@@ -766,6 +771,7 @@ typedef LOKI_TYPELIST_86(
                          VAAICopy,
                          ListClientConnections,
                          ResizeObject,
+                         GetBackendConnectionPool,
                          // ================== NOT EXPOSED, NOT TESTED   ==================
                          GetFailOverMode,
                          ScoCacheInfo,

@@ -30,6 +30,8 @@
 
 #include <youtils/Logging.h>
 
+#include <volumedriver/ClusterLocation.h>
+
 namespace volumedriverfstest
 {
 class FileSystemTestBase;
@@ -75,6 +77,16 @@ public:
 
     virtual uint64_t
     get_size(const Object&) override final;
+
+    virtual volumedriver::ClusterMultiplier
+    get_cluster_multiplier(const Object& obj) override final;
+
+    virtual volumedriver::CloneNamespaceMap
+    get_clone_namespace_map(const Object& obj) override final;
+
+    virtual std::vector<volumedriver::ClusterLocation>
+    get_page(const Object& obj,
+             const volumedriver::ClusterAddress ca) override final;
 
     virtual void
     resize(const Object&,

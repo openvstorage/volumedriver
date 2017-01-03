@@ -13,36 +13,22 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef YT_TIMER_H_
-#define YT_TIMER_H_
-
-#include <boost/chrono.hpp>
+#ifndef YT_ENABLE_MAKE_SHARED_H_
+#define YT_ENABLE_MAKE_SHARED_H_
 
 namespace youtils
 {
 
-template<typename C>
-class Timer
+template<typename T>
+struct EnableMakeShared
+    : public T
 {
-public:
-    using Clock = C;
-
-    Timer()
-        : start_(Clock::now())
+    template<typename... Args>
+    EnableMakeShared(Args&&... args)
+        : T(std::forward<Args>(args)...)
     {}
-
-    typename Clock::duration
-    elapsed() const
-    {
-        return Clock::now() - start_;
-    }
-
-private:
-    typename Clock::time_point start_;
 };
-
-using SteadyTimer = Timer<boost::chrono::steady_clock>;
 
 }
 
-#endif // !YT_TIMER_H_
+#endif // !YT_ENABLE_MAKE_SHARED_H_

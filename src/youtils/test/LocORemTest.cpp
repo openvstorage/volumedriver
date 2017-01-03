@@ -57,6 +57,8 @@ protected:
                                                                boost::thread::hardware_concurrency()))
         , nclients_(yt::System::get_env_with_default<uint16_t>("LOCOREM_CLIENTS",
                                                               1))
+        , addr_(yt::System::get_env_with_default<std::string>("LOCOREM_ADDRESS",
+                                                              "127.0.0.1"))
         , port_(yt::System::get_env_with_default<uint16_t>("LOCOREM_PORT",
                                                            23232))
         , hdr_bytes_(0)
@@ -68,7 +70,7 @@ protected:
     std::unique_ptr<yt::LocORemClient>
     make_client(const Seconds& timeout = Seconds(1))
     {
-        return std::make_unique<yt::LocORemClient>("127.0.0.1",
+        return std::make_unique<yt::LocORemClient>(addr_,
                                                    port_,
                                                    timeout,
                                                    GetParam());
@@ -126,7 +128,7 @@ protected:
                                              params);
                      });
 
-        return std::make_unique<yt::LocORemServer>("127.0.0.1",
+        return std::make_unique<yt::LocORemServer>(addr_,
                                                    port_,
                                                    std::move(unix_fun),
                                                    std::move(tcp_fun),
@@ -137,9 +139,10 @@ protected:
 
     const uint32_t hdr_size_;
     const uint32_t msg_size_;
-    const uint32_t iterations_;
+    const uint64_t iterations_;
     uint32_t nthreads_;
     uint32_t nclients_;
+    const std::string addr_;
     const uint16_t port_;
 
     std::atomic<uint64_t> hdr_bytes_;

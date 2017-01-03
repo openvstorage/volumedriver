@@ -18,6 +18,7 @@
 
 #include "../NetworkXioProtocol.h"
 #include "NetworkHAContext.h"
+#include "common_priv.h"
 #include "internal.h"
 
 #include <boost/thread/lock_guard.hpp>
@@ -52,9 +53,9 @@ public:
     struct session_data
     {
         xio_context *ctx;
-        bool disconnected;
-        bool disconnecting;
-        bool connection_error;
+        bool disconnected = false;
+        bool disconnecting = false;
+        bool connection_error = false;
     };
 
     struct xio_msg_s
@@ -162,6 +163,7 @@ public:
     static void
     xio_stat_volume(const std::string& uri,
                     const std::string& volume_name,
+                    uint64_t *size,
                     ovs_aio_request *request);
 
     static void
@@ -217,6 +219,25 @@ public:
                            const char* volume_name,
                            const char* snap_name,
                            ovs_aio_request *request);
+
+    static void
+    xio_get_cluster_multiplier(const std::string& uri,
+                               const char *volume_name,
+                               uint32_t *cluster_multiplier,
+                               ovs_aio_request *request);
+
+    static void
+    xio_get_clone_namespace_map(const std::string& uri,
+                                const char *volume_name,
+                                CloneNamespaceMap& cn,
+                                ovs_aio_request *request);
+
+    static void
+    xio_get_page(const std::string& uri,
+                 const char *volume_name,
+                 const ClusterAddress ca,
+                 ClusterLocationPage& cl,
+                 ovs_aio_request *request);
 
     static void
     xio_destroy_ctx_shutdown(xio_context *ctx);
@@ -301,7 +322,7 @@ private:
     handle_list_snapshots(xio_ctl_s *xctl,
                           xio_iovec_ex *sglist,
                           int vec_size,
-                          int size);
+                          size_t size);
 
     static void
     handle_list_cluster_node_uri(xio_ctl_s *xctl,
@@ -310,13 +331,24 @@ private:
 
     static void
     handle_get_volume_uri(xio_ctl_s *xctl,
-                          xio_iovec_ex *sglist,
-                          int vec_size);
+                          xio_iovec_ex *sglist);
+
+    static void
+    handle_get_clone_namespace_map(xio_ctl_s *xctl,
+                                   xio_iovec_ex *sglist);
+
+    static void
+    handle_get_page_vector(xio_ctl_s *xctl,
+                           xio_iovec_ex *sglist);
 
     static void
     create_vec_from_buf(xio_ctl_s *xctl,
                         xio_iovec_ex *sglist,
                         int vec_size);
+
+    static void
+    copy_sglist_buffer(xio_ctl_s *xctl,
+                       xio_iovec_ex *sglist);
 
     void
     set_dtl_in_sync(const NetworkXioMsgOpcode op,

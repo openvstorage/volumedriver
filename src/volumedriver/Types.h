@@ -154,6 +154,8 @@ typedef boost::intrusive_ptr<OpenSCO> OpenSCOPtr;
 class SCOCacheMountPoint;
 typedef boost::intrusive_ptr<SCOCacheMountPoint> SCOCacheMountPointPtr;
 
+typedef std::map<SCOCloneID, backend::Namespace> CloneNamespaceMap;
+
 // next doesn't work for some reason in combination with logging :(
 inline std::ostream & operator<<(std::ostream &o,
                                  const OrderedTLogIds &n)

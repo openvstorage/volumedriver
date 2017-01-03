@@ -23,6 +23,7 @@
 
 #include <unordered_map>
 
+#include <boost/thread/lock_guard.hpp>
 #include <boost/thread/mutex.hpp>
 
 #include "fungilib/ProtocolFactory.h"

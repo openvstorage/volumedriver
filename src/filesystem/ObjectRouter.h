@@ -43,6 +43,7 @@
 #include <youtils/VolumeDriverComponent.h>
 
 #include <volumedriver/Api.h>
+#include <volumedriver/ClusterLocation.h>
 #include <volumedriver/Events.h>
 #include <volumedriver/VolumeDriverParameters.h>
 
@@ -59,6 +60,9 @@ class GetSizeRequest;
 class ResizeRequest;
 class DeleteRequest;
 class TransferRequest;
+class GetClusterMultiplierRequest;
+class GetCloneNamespaceMapRequest;
+class GetPageRequest;
 
 }
 
@@ -189,6 +193,16 @@ public:
 
     uint64_t
     get_size(const ObjectId& id);
+
+    volumedriver::ClusterMultiplier
+    get_cluster_multiplier(const ObjectId&);
+
+    volumedriver::CloneNamespaceMap
+    get_clone_namespace_map(const ObjectId&);
+
+    std::vector<volumedriver::ClusterLocation>
+    get_page(const ObjectId&,
+             const volumedriver::ClusterAddress);
 
     void
     resize(const ObjectId& id,
@@ -401,6 +415,10 @@ public:
     std::unique_ptr<PythonClient>
     xmlrpc_client();
 
+    void
+    set_dtl_in_sync(const ObjectId&,
+                    const volumedriver::DtlInSync);
+
 private:
     DECLARE_LOGGER("VFSObjectRouter");
 
@@ -449,10 +467,12 @@ private:
         RedirectCounter()
             : reads(0)
             , writes(0)
+            , dtl_in_sync(volumedriver::DtlInSync::F)
         {}
 
         uint64_t reads;
         uint64_t writes;
+        volumedriver::DtlInSync dtl_in_sync;
     };
 
     std::map<ObjectId, RedirectCounter> redirects_;
@@ -560,6 +580,15 @@ private:
     zmq::message_t
     handle_get_size_(const vfsprotocol::GetSizeRequest&);
 
+    zmq::message_t
+    handle_get_cluster_multiplier_(const vfsprotocol::GetClusterMultiplierRequest&);
+
+    zmq::message_t
+    handle_get_clone_namespace_map_(const vfsprotocol::GetCloneNamespaceMapRequest&);
+
+    zmq::message_t
+    handle_get_page_(const vfsprotocol::GetPageRequest&);
+
     void
     handle_resize_(const vfsprotocol::ResizeRequest&);
 
@@ -613,6 +642,15 @@ private:
 
     bool
     fencing_support_() const;
+
+    volumedriver::DtlInSync
+    dtl_in_sync_(const ObjectId&) const;
+
+    bool
+    permit_steal_(const ObjectId& oid) const
+    {
+        return fencing_support_() and dtl_in_sync_(oid) == volumedriver::DtlInSync::T;
+    }
 
     void
     shutdown_();

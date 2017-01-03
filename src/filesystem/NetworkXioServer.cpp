@@ -206,6 +206,13 @@ NetworkXioServer::run(std::promise<void> promise)
 
     xopt = 1;
     xio_set_opt(NULL,
+                XIO_OPTLEVEL_TCP,
+                XIO_OPTNAME_TCP_NO_DELAY,
+                &xopt,
+                sizeof(xopt));
+
+    xopt = 1;
+    xio_set_opt(NULL,
                 XIO_OPTLEVEL_ACCELIO,
                 XIO_OPTNAME_DISABLE_HUGETBL,
                 &xopt, sizeof(xopt));
@@ -344,9 +351,10 @@ NetworkXioServer::run(std::promise<void> promise)
     {
         int ret = xio_context_run_loop(ctx.get(), XIO_INFINITE);
         VERIFY(ret == 0);
-        while (not wq_->is_finished_empty())
+        NetworkXioRequest *req = nullptr;
+        while ((req = wq_->get_finished()))
         {
-            xio_send_reply(wq_->get_finished());
+            xio_send_reply(req);
         }
     }
     server.reset();
@@ -571,6 +579,8 @@ NetworkXioServer::prepare_msg_reply(NetworkXioRequest *req)
     case NetworkXioMsgOpcode::ListSnapshotsRsp:
     case NetworkXioMsgOpcode::ListClusterNodeURIRsp:
     case NetworkXioMsgOpcode::GetVolumeURIRsp:
+    case NetworkXioMsgOpcode::GetCloneNamespaceMapRsp:
+    case NetworkXioMsgOpcode::GetPageRsp:
     {
         if (req->data)
         {

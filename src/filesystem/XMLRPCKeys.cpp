@@ -24,6 +24,7 @@ namespace volumedriverfs
 #define DEFINE_XMLRPC_KEY(name) \
         const std::string XMLRPCKeys::name(#name);
 
+DEFINE_XMLRPC_KEY(backend_config_str);
 DEFINE_XMLRPC_KEY(backend_size);
 DEFINE_XMLRPC_KEY(backend_type);
 DEFINE_XMLRPC_KEY(choking);

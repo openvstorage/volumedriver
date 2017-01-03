@@ -24,6 +24,7 @@
 #include <boost/python/extract.hpp>
 
 #include <youtils/ArakoonInterface.h>
+#include <youtils/BooleanEnum.h>
 #include <youtils/Catchers.h>
 #include <youtils/FileUtils.h>
 #include <youtils/FileDescriptor.h>
@@ -36,12 +37,16 @@
 #include <filesystem/ObjectRouter.h>
 #include <filesystem/Registry.h>
 
+#include <filesystem/c-api/common.h>
 #include <filesystem/c-api/context.h>
 #include <filesystem/c-api/NetworkHAContext.h>
 #include <filesystem/c-api/volumedriver.h>
 
 namespace volumedriverfstest
 {
+
+#define LOCKVD()                                        \
+    fungi::ScopedLock ag__(api::getManagementMutex())
 
 namespace bc = boost::chrono;
 namespace bpt = boost::property_tree;
@@ -58,6 +63,9 @@ using namespace volumedriverfs;
 
 namespace
 {
+
+VD_BOOLEAN_ENUM(EnableHa);
+
 struct CtxAttrDeleter
 {
     void
@@ -134,9 +142,18 @@ public:
         FileSystemTestBase::TearDown();
     }
 
-    CtxAttrPtr
+    static uint16_t
+    edge_port(const bool remote)
+    {
+        return
+            remote ?
+            FileSystemTestSetup::remote_edge_port() :
+            FileSystemTestSetup::local_edge_port();
+    }
+
+    static CtxAttrPtr
     make_ctx_attr(const size_t qdepth,
-                  const bool enable_ha,
+                  const EnableHa enable_ha,
                   const uint16_t port = FileSystemTestSetup::local_edge_port())
     {
         CtxAttrPtr attr(ovs_ctx_attr_new());
@@ -151,7 +168,7 @@ public:
         EXPECT_EQ(0,
                   ovs_ctx_attr_set_network_qdepth(attr.get(),
                                                   qdepth));
-        if (enable_ha)
+        if (enable_ha == EnableHa::T)
         {
             EXPECT_EQ(0,
                       ovs_ctx_attr_enable_ha(attr.get()));
@@ -159,46 +176,109 @@ public:
         return attr;
     }
 
+    CtxPtr
+    make_volume(const std::string& vname,
+                const size_t vsize,
+                const uint16_t port,
+                const EnableHa enable_ha = EnableHa::T,
+                const size_t qdepth = 1024)
+    {
+        CtxAttrPtr attrs(make_ctx_attr(qdepth,
+                                       enable_ha,
+                                       port));
+
+        CtxPtr ctx(ovs_ctx_new(attrs.get()));
+        EXPECT_TRUE(ctx != nullptr);
+
+        const size_t max = port == FileSystemTestSetup::local_edge_port() ? 0 : 10;
+        size_t count = 0;
+
+        // TODO: there's a race with the startup of the network server on
+        // the remote instance and a proper fix is out of scope for the moment
+        while (ovs_create_volume(ctx.get(),
+                                 vname.c_str(),
+                                 vsize) == -1)
+        {
+            EXPECT_GT(max, ++count) <<
+                "failed to create volume after " << count << " attempts: " << strerror(errno);
+            boost::this_thread::sleep_for(bc::milliseconds(250));
+        }
+
+        return ctx;
+    }
+
+    CtxPtr
+    open_volume(const std::string& vname,
+                const uint16_t port,
+                const int oflag,
+                const EnableHa enable_ha = EnableHa::T,
+                const size_t qdepth = 1024)
+    {
+        CtxAttrPtr attrs(make_ctx_attr(qdepth,
+                                       enable_ha,
+                                       port));
+        CtxPtr ctx(ovs_ctx_new(attrs.get()));
+        EXPECT_TRUE(ctx != nullptr);
+
+        EXPECT_EQ(0,
+                  ovs_ctx_init(ctx.get(),
+                               vname.c_str(),
+                               oflag));
+
+        return ctx;
+    }
+
     void
-    test_snapshot_ops(bool remote)
+    set_max_neighbour_distance(uint32_t dist)
+    {
+        bpt::ptree pt;
+        net_xio_server_->persist(pt, ReportDefault::F);
+        ip::PARAMETER_TYPE(network_max_neighbour_distance)(dist).persist(pt);
+        yt::UpdateReport urep;
+        net_xio_server_->update(pt, urep);
+        ASSERT_EQ(1, urep.update_size());
+    }
+
+    void
+    add_ghost_node_configs(const size_t ghost_nodes,
+                           ClusterNodeConfigs& configs)
+    {
+        configs.reserve(configs.size() + ghost_nodes);
+
+        for (size_t i = 0; i < ghost_nodes; ++i)
+        {
+            ClusterNodeConfig ghost(configs[0]);
+            const std::string n("ghost-node-"s + boost::lexical_cast<std::string>(i));
+            ghost.vrouter_id = NodeId(n);
+            ghost.network_server_uri = yt::Uri("tcp://"s + n + ":1234"s);
+            configs.push_back(ghost);
+        }
+    }
+
+    ClusterNodeConfigs
+    update_cluster_registry(std::function<void(ClusterNodeConfigs&)> fun)
+    {
+        std::shared_ptr<ClusterRegistry> creg(fs_->object_router().cluster_registry());
+        ClusterNodeConfigs configs(creg->get_node_configs());
+        fun(configs);
+        creg->set_node_configs(configs);
+        return configs;
+    }
+
+    void
+    test_snapshot_ops(const bool remote)
     {
         const std::string vname("volume");
 
-        {
-            CtxAttrPtr attrs(make_ctx_attr(1024,
-                                           false,
-                                           remote ?
-                                           FileSystemTestSetup::remote_edge_port() :
-                                           FileSystemTestSetup::local_edge_port()));
+        make_volume(vname,
+                    1ULL << 20,
+                    edge_port(remote));
 
-            CtxPtr ctx(ovs_ctx_new(attrs.get()));
-            ASSERT_TRUE(ctx != nullptr);
-
-            // TODO: there's a race with the startup of the network server on
-            // the remote instance and a proper fix is out of scope for the moment
-            const size_t max = remote ? 10 : 0;
-            size_t count = 0;
-
-            while (ovs_create_volume(ctx.get(),
-                                     vname.c_str(),
-                                     1ULL << 20) == -1)
-            {
-                ASSERT_GT(max, ++count) <<
-                    "failed to create volume after " << count << " attempts: " << strerror(errno);
-                boost::this_thread::sleep_for(bc::milliseconds(250));
-            }
-        }
-
-        CtxAttrPtr attrs(make_ctx_attr(1024,
-                                       false,
-                                       FileSystemTestSetup::local_edge_port()));
-        CtxPtr ctx(ovs_ctx_new(attrs.get()));
+        CtxPtr ctx(open_volume(vname,
+                               edge_port(false),
+                               O_RDWR,
+                               EnableHa::F));
         ASSERT_TRUE(ctx != nullptr);
-
-        ASSERT_EQ(0,
-                  ovs_ctx_init(ctx.get(),
-                               vname.c_str(),
-                               O_RDWR));
 
         const int64_t timeout = 10;
         const std::string snap1("snap1");
@@ -295,32 +375,20 @@ public:
                                               const std::string& vname)>;
 
     void
-    test_stress(bool enable_ha,
+    test_stress(const EnableHa enable_ha,
                 uint16_t port = FileSystemTestSetup::local_edge_port(),
                 StressExtraFun extra_fun = [](const bc::seconds&,
                                               const std::atomic<bool>&,
                                               const std::string&)
                 {})
     {
-        CtxAttrPtr ctx_attr(make_ctx_attr(1, enable_ha, port));
-        CtxPtr ctx(ovs_ctx_new(ctx_attr.get()));
-        ASSERT_TRUE(ctx != nullptr);
-
-        const size_t vsize = 1ULL << 20;
         const std::string vname("volume");
+        const size_t vsize = 1ULL << 20;
 
-        // cf. comment in test_snapshot_ops
-        const size_t max = port == FileSystemTestSetup::remote_edge_port() ? 10 : 0;
-        size_t count = 0;
-
-        while (ovs_create_volume(ctx.get(),
-                                 vname.c_str(),
-                                 vsize) == -1)
-        {
-                ASSERT_GT(max, ++count) <<
-                    "failed to create volume after " << count << " attempts: " << strerror(errno);
-                boost::this_thread::sleep_for(bc::milliseconds(250));
-        }
+        make_volume(vname,
+                    vsize,
+                    port,
+                    enable_ha);
 
         const size_t nreaders = yt::System::get_env_with_default("EDGE_STRESS_READERS",
                                                                  2ULL);
@@ -335,13 +403,11 @@ public:
 
         auto reader([&]() -> size_t
                     {
-                        CtxAttrPtr attr(make_ctx_attr(qdepth, enable_ha, port));
-                        CtxPtr ctx(ovs_ctx_new(attr.get()));
-
-                        EXPECT_EQ(0,
-                                  ovs_ctx_init(ctx.get(),
-                                               vname.c_str(),
-                                               O_RDWR));
+                        CtxPtr ctx(open_volume(vname,
+                                               port,
+                                               O_RDWR,
+                                               enable_ha,
+                                               qdepth));
 
                         std::vector<uint8_t> buf(bufsize);
 
@@ -471,6 +537,76 @@ public:
             " bytes sized reads @ qdepth " << qdepth << ": " <<
             total << " ops in " << elapsed << " seconds -> " <<
             total / elapsed << " IOPS" << std::endl;
+    }
+
+    void
+    test_steal_remote_volume(bool stop_dtl)
+    {
+        set_use_fencing(true);
+
+        mount_remote();
+        auto on_exit(yt::make_scope_exit([&]
+                                         {
+                                             umount_remote();
+                                         }));
+
+        const std::string vname("volume");
+        const size_t vsize = 1ULL << 20;
+
+        make_volume(vname,
+                    vsize,
+                    FileSystemTestSetup::remote_edge_port());
+
+        CtxPtr ctx(open_volume(vname,
+                               FileSystemTestSetup::local_edge_port(),
+                               O_RDWR,
+                               EnableHa::F));
+
+        if (stop_dtl)
+        {
+            stop_failovercache_for_remote_node();
+        }
+
+        const std::string snap("snapshot-to-get-the-dtl-in-sync");
+        EXPECT_EQ(0,
+                  ovs_snapshot_create(ctx.get(),
+                                      vname.c_str(),
+                                      snap.c_str(),
+                                      30));
+        EXPECT_EQ(1,
+                  ovs_snapshot_is_synced(ctx.get(),
+                                         vname.c_str(),
+                                         snap.c_str()));
+
+        const std::string
+            pattern("Remote volumes can only be stolen if the DTL is in sync!");
+        ASSERT_EQ(pattern.size(),
+                  ovs_write(ctx.get(),
+                            reinterpret_cast<const uint8_t*>(pattern.data()),
+                            pattern.size(),
+                            0));
+        ASSERT_EQ(0,
+                  ovs_flush(ctx.get()));
+
+        umount_remote();
+
+        std::vector<char> rbuf(pattern.size());
+        const ssize_t ret = ovs_read(ctx.get(),
+                                     reinterpret_cast<uint8_t*>(rbuf.data()),
+                                     rbuf.size(),
+                                     0);
+
+        if (stop_dtl)
+        {
+            ASSERT_GT(0, ret);
+        }
+        else
+        {
+            ASSERT_EQ(ret, rbuf.size());
+            ASSERT_EQ(pattern,
+                      std::string(rbuf.data(),
+                                  rbuf.size()));
+        }
     }
 
     void
@@ -634,43 +770,6 @@ public:
                   ovs_ctx_destroy(ctx));
         EXPECT_EQ(0,
                   ovs_ctx_attr_destroy(ctx_attr));
-    }
-
-    void
-    set_max_neighbour_distance(uint32_t dist)
-    {
-        bpt::ptree pt;
-        net_xio_server_->persist(pt, ReportDefault::F);
-        ip::PARAMETER_TYPE(network_max_neighbour_distance)(dist).persist(pt);
-        yt::UpdateReport urep;
-        net_xio_server_->update(pt, urep);
-        ASSERT_EQ(1, urep.update_size());
-    }
-
-    void
-    add_ghost_node_configs(const size_t ghost_nodes,
-                           ClusterNodeConfigs& configs)
-    {
-        configs.reserve(configs.size() + ghost_nodes);
-
-        for (size_t i = 0; i < ghost_nodes; ++i)
-        {
-            ClusterNodeConfig ghost(configs[0]);
-            const std::string n("ghost-node-"s + boost::lexical_cast<std::string>(i));
-            ghost.vrouter_id = NodeId(n);
-            ghost.network_server_uri = yt::Uri("tcp://"s + n + ":1234"s);
-            configs.push_back(ghost);
-        }
-    }
-
-    ClusterNodeConfigs
-    update_cluster_registry(std::function<void(ClusterNodeConfigs&)> fun)
-    {
-        std::shared_ptr<ClusterRegistry> creg(fs_->object_router().cluster_registry());
-        ClusterNodeConfigs configs(creg->get_node_configs());
-        fun(configs);
-        creg->set_node_configs(configs);
-        return configs;
     }
 
     std::unique_ptr<NetworkXioInterface> net_xio_server_;
@@ -1411,16 +1510,13 @@ TEST_F(NetworkServerTest, create_rollback_list_remove_snapshot_remote)
 // reproduces https://github.com/openvstorage/volumedriver/issues/188
 TEST_F(NetworkServerTest, list_snapshots)
 {
-    const uint16_t port = FileSystemTestSetup::local_edge_port();
-    CtxAttrPtr ctx_attr(make_ctx_attr(1, false, port));
-    CtxPtr ctx(ovs_ctx_new(ctx_attr.get()));
     const std::string vname("volume");
     const size_t vsize = 1ULL << 20;
 
-    EXPECT_EQ(0,
-              ovs_create_volume(ctx.get(),
-                                vname.c_str(),
-                                vsize));
+    CtxPtr ctx(make_volume(vname,
+                           vsize,
+                           FileSystemTestSetup::local_edge_port(),
+                           EnableHa::F));
 
     std::set<std::string> snaps = { "snap1", "snap2shot", "snap3" };
 
@@ -1478,12 +1574,12 @@ TEST_F(NetworkServerTest, connect_to_nonexistent_port)
 
 TEST_F(NetworkServerTest, stress)
 {
-    test_stress(false);
+    test_stress(EnableHa::F);
 }
 
 TEST_F(NetworkServerTest, stress_ha_enabled)
 {
-    test_stress(true);
+    test_stress(EnableHa::T);
 }
 
 TEST_F(NetworkServerTest, create_truncate_volume)
@@ -1694,19 +1790,12 @@ TEST_F(NetworkServerTest, high_availability_fail_remote_automated)
 
 TEST_F(NetworkServerTest, get_volume_uri)
 {
-    CtxAttrPtr attrs(make_ctx_attr(1024,
-                                   false,
-                                   FileSystemTestSetup::local_edge_port()));
-    CtxPtr ctx(ovs_ctx_new(attrs.get()));
-    ASSERT_TRUE(ctx != nullptr);
-
     const std::string vname("volume");
     const size_t vsize = 1ULL << 20;
-
-    ASSERT_EQ(0,
-              ovs_create_volume(ctx.get(),
-                                vname.c_str(),
-                                vsize));
+    CtxPtr ctx(make_volume(vname,
+                           vsize,
+                           FileSystemTestSetup::local_edge_port(),
+                           EnableHa::F));
 
     auto& ctx_iface = dynamic_cast<ovs_context_t&>(*ctx);
 
@@ -1720,7 +1809,6 @@ TEST_F(NetworkServerTest, get_volume_uri)
 
 TEST_F(NetworkServerTest, get_volume_uri_errors)
 {
-    CtxAttrPtr attrs;
     CtxPtr ctx;
     const std::string vname("volume");
 
@@ -1731,25 +1819,12 @@ TEST_F(NetworkServerTest, get_volume_uri_errors)
                                              umount_remote();
                                          }));
 
-        attrs = make_ctx_attr(1024,
-                              false,
-                              FileSystemTestSetup::remote_edge_port());
-        ASSERT_TRUE(attrs != nullptr);
-        ctx = CtxPtr(ovs_ctx_new(attrs.get()));
-        ASSERT_TRUE(ctx != nullptr);
-
         const size_t vsize = 1ULL << 20;
-        const size_t max = 10;
-        size_t count = 0;
 
-        while (ovs_create_volume(ctx.get(),
-                                 vname.c_str(),
-                                 vsize) == -1)
-        {
-            ASSERT_GT(max, ++count) <<
-                "failed to create volume after " << count << " attempts: " << strerror(errno);
-            boost::this_thread::sleep_for(bc::milliseconds(250));
-        }
+        ctx = make_volume(vname,
+                          vsize,
+                          FileSystemTestSetup::remote_edge_port(),
+                          EnableHa::F);
     }
 
     auto& ctx_iface = dynamic_cast<ovs_context_t&>(*ctx);
@@ -1761,16 +1836,14 @@ TEST_F(NetworkServerTest, get_volume_uri_errors)
 
 TEST_F(NetworkServerTest, get_volume_uri_stress)
 {
-    const uint16_t port = FileSystemTestSetup::local_edge_port();
-    CtxAttrPtr ctx_attr(make_ctx_attr(1, true, port));
-    CtxPtr ctx(ovs_ctx_new(ctx_attr.get()));
     const std::string vname("volume");
     const size_t vsize = 1ULL << 20;
+    const uint16_t port = FileSystemTestSetup::local_edge_port();
 
-    EXPECT_EQ(0,
-              ovs_create_volume(ctx.get(),
-                                vname.c_str(),
-                                vsize));
+    make_volume(vname,
+                vsize,
+                port,
+                EnableHa::F);
 
     const size_t nthreads = yt::System::get_env_with_default("EDGE_STRESS_READERS",
                                                              4ULL);
@@ -1784,13 +1857,11 @@ TEST_F(NetworkServerTest, get_volume_uri_stress)
 
     auto fun([&]
              {
-                 CtxAttrPtr ctx_attr(make_ctx_attr(1, false, port));
-                 CtxPtr ctx(ovs_ctx_new(ctx_attr.get()));
-
-                 EXPECT_EQ(0,
-                           ovs_ctx_init(ctx.get(),
-                                        vname.c_str(),
-                                        O_RDWR)) << strerror(errno);
+                 CtxPtr ctx(open_volume(vname,
+                                        port,
+                                        O_RDWR,
+                                        EnableHa::F,
+                                        1));
 
                  auto& ctx_iface = dynamic_cast<ovs_context_t&>(*ctx);
 
@@ -1830,30 +1901,14 @@ TEST_F(NetworkServerTest, redirect_uri)
     const std::string vname("some-volume");
     const size_t vsize = 1ULL << 20;
 
-    {
-        CtxAttrPtr attrs(make_ctx_attr(1024,
-                                       false,
-                                       FileSystemTestSetup::local_edge_port()));
-        CtxPtr ctx(ovs_ctx_new(attrs.get()));
-        ASSERT_TRUE(ctx != nullptr);
+    make_volume(vname,
+                vsize,
+                FileSystemTestSetup::local_edge_port());
 
-        ASSERT_EQ(0,
-                  ovs_create_volume(ctx.get(),
-                                    vname.c_str(),
-                                    vsize));
-    }
-
-    CtxAttrPtr attrs(make_ctx_attr(1024,
-                                   false,
-                                   FileSystemTestSetup::remote_edge_port()));
-
-    ovs_ctx_attr_enable_ha(attrs.get());
-    CtxPtr ctx(ovs_ctx_new(attrs.get()));
-    ASSERT_TRUE(ctx != nullptr);
-    ASSERT_EQ(0,
-              ovs_ctx_init(ctx.get(),
-                           vname.c_str(),
-                           O_RDWR));
+    CtxPtr ctx(open_volume(vname,
+                           FileSystemTestSetup::remote_edge_port(),
+                           O_RDWR,
+                           EnableHa::T));
 
     auto& ha_ctx = dynamic_cast<libovs::NetworkHAContext&>(*ctx);
 
@@ -1881,7 +1936,7 @@ TEST_F(NetworkServerTest, ha_stress)
     const int hard_kill = yt::System::get_env_with_default("EDGE_HA_STRESS_KILL_REMOTE",
                                                            1);
 
-    test_stress(true,
+    test_stress(EnableHa::T,
                 FileSystemTestSetup::remote_edge_port(),
                 [&](const bc::seconds& runtime,
                     const std::atomic<bool>&,
@@ -1909,7 +1964,7 @@ TEST_F(NetworkServerTest, list_uris)
     ASSERT_LT(0, configs.size());
 
     CtxAttrPtr attrs(make_ctx_attr(1024,
-                                   false,
+                                   EnableHa::F,
                                    FileSystemTestSetup::local_edge_port()));
     CtxPtr ctx(ovs_ctx_new(attrs.get()));
     ASSERT_TRUE(ctx != nullptr);
@@ -1965,7 +2020,7 @@ TEST_F(NetworkServerTest, list_uris_filter)
                                         }));
 
     CtxAttrPtr attrs(make_ctx_attr(1024,
-                                   false,
+                                   EnableHa::F,
                                    FileSystemTestSetup::local_edge_port()));
     CtxPtr ctx(ovs_ctx_new(attrs.get()));
     ASSERT_TRUE(ctx != nullptr);
@@ -2000,45 +2055,45 @@ TEST_F(NetworkServerTest, list_uris_rand_order)
     std::set<std::string> set;
     const ClusterNodeConfigs
         configs(update_cluster_registry([&](ClusterNodeConfigs& cfgs)
-                                        {
-                                            ASSERT_EQ(2, cfgs.size());
-                                            add_ghost_node_configs(ghost_nodes,
-                                                                   cfgs);
+        {
+            ASSERT_EQ(2, cfgs.size());
+            add_ghost_node_configs(ghost_nodes,
+                                   cfgs);
 
-                                            ClusterNodeConfig::NodeDistanceMap map;
-                                            for (const auto& c : cfgs)
-                                            {
-                                                uint32_t d;
-                                                if (c == cfgs.front())
-                                                {
-                                                    d = 0;
-                                                }
-                                                else if (c == cfgs.back())
-                                                {
-                                                    d = 10;
-                                                }
-                                                else
-                                                {
-                                                    d = 5;
-                                                    set.emplace(boost::lexical_cast<std::string>(*c.network_server_uri));
-                                                }
+            ClusterNodeConfig::NodeDistanceMap map;
+            for (const auto& c : cfgs)
+            {
+                uint32_t d;
+                if (c == cfgs.front())
+                {
+                    d = 0;
+                }
+                else if (c == cfgs.back())
+                {
+                    d = 10;
+                }
+                else
+                {
+                    d = 5;
+                    set.emplace(boost::lexical_cast<std::string>(*c.network_server_uri));
+                }
 
-                                                map.emplace(c.vrouter_id, d);
-                                            }
+                map.emplace(c.vrouter_id, d);
+            }
 
-                                            cfgs.front().node_distance_map = std::move(map);
+            cfgs.front().node_distance_map = std::move(map);
 
-                                            for (size_t i = 1; i < cfgs.size(); ++i)
-                                            {
-                                                cfgs[i].node_distance_map = ClusterNodeConfig::NodeDistanceMap();
-                                            }
-                                        }));
+            for (size_t i = 1; i < cfgs.size(); ++i)
+            {
+                cfgs[i].node_distance_map = ClusterNodeConfig::NodeDistanceMap();
+            }
+        }));
 
     ASSERT_EQ(ghost_nodes,
               set.size());
 
     CtxAttrPtr attrs(make_ctx_attr(1024,
-                                   false,
+                                   EnableHa::F,
                                    FileSystemTestSetup::local_edge_port()));
     CtxPtr ctx(ovs_ctx_new(attrs.get()));
     ASSERT_TRUE(ctx != nullptr);
@@ -2071,6 +2126,215 @@ TEST_F(NetworkServerTest, list_uris_rand_order)
     }
 
     EXPECT_TRUE(set.empty());
+}
+
+TEST_F(NetworkServerTest, steal_remote_volume_if_dtl_is_in_sync)
+{
+    test_steal_remote_volume(false);
+}
+
+TEST_F(NetworkServerTest, dont_steal_remote_volume_if_dtl_is_not_in_sync)
+{
+    test_steal_remote_volume(true);
+}
+
+TEST_F(NetworkServerTest, get_cluster_multiplier)
+{
+    const std::string vname("volume");
+    const size_t vsize = 1ULL << 20;
+
+    CtxPtr ctx(make_volume(vname,
+                           vsize,
+                           FileSystemTestSetup::local_edge_port(),
+                           EnableHa::F));
+
+    auto& ctx_iface = dynamic_cast<ovs_context_t&>(*ctx);
+
+    uint32_t cluster_multiplier;
+    ctx_iface.get_cluster_multiplier(vname.c_str(),
+                                     &cluster_multiplier);
+
+    EXPECT_EQ(vd::VolumeConfig::default_cluster_multiplier(),
+              cluster_multiplier);
+}
+
+TEST_F(NetworkServerTest, get_clone_namespace_map)
+{
+    using CloneNamespaceMap = std::map<uint8_t, std::string>;
+
+    const std::string vname("volume");
+    const size_t vsize = 1ULL << 20;
+
+    CtxPtr ctx(make_volume(vname,
+                           vsize,
+                           FileSystemTestSetup::local_edge_port(),
+                           EnableHa::F));
+
+    auto& ctx_iface = dynamic_cast<ovs_context_t&>(*ctx);
+
+    CloneNamespaceMap cn;
+    ctx_iface.get_clone_namespace_map(vname.c_str(),
+                                      cn);
+
+    EXPECT_EQ(1UL, cn.size());
+
+    auto conn(cm_->getConnection());
+    vd::VolumeConfig cfg;
+    {
+        LOCKVD();
+        const FrontendPath vname(make_volume_name("/volume"));
+        auto object_id = find_object(vname);
+        ASSERT_NE(boost::none,
+                  object_id);
+        cfg = api::getVolumeConfig(vd::VolumeId(*object_id));
+    }
+    EXPECT_TRUE(conn->namespaceExists(cfg.getNS()));
+    EXPECT_EQ(cfg.getNS().str(), cn[0]);
+}
+
+TEST_F(NetworkServerTest, get_page)
+{
+    const std::string vname("volume");
+    const size_t vsize = 1ULL << 20;
+
+    CtxPtr ctx(make_volume(vname,
+                           vsize,
+                           FileSystemTestSetup::local_edge_port(),
+                           EnableHa::F));
+
+    auto& ctx_iface = dynamic_cast<ovs_context_t&>(*ctx);
+
+    libovsvolumedriver::ClusterLocationPage clp;
+    ctx_iface.get_page(vname.c_str(),
+                       libovsvolumedriver::ClusterAddress(0),
+                       clp);
+
+    EXPECT_EQ(256UL, clp.size());
+    for (const auto& e: clp)
+    {
+        EXPECT_TRUE(e == libovsvolumedriver::ClusterLocation(0));
+    }
+
+    std::string pattern("openvstorage1");
+    auto wbuf = std::make_unique<uint8_t[]>(pattern.length());
+    ASSERT_TRUE(wbuf != nullptr);
+
+    memcpy(wbuf.get(),
+           pattern.c_str(),
+           pattern.length());
+
+    ASSERT_EQ(0,
+              ovs_ctx_init(ctx.get(),
+                           vname.c_str(),
+                           O_RDWR));
+
+    EXPECT_EQ(pattern.length(),
+              ovs_write(ctx.get(),
+                        wbuf.get(),
+                        pattern.length(),
+                        0));
+
+    EXPECT_EQ(0, ovs_flush(ctx.get()));
+
+    wbuf.reset();
+
+    auto rbuf = std::make_unique<uint8_t[]>(pattern.length());
+    ASSERT_TRUE(rbuf != nullptr);
+
+    EXPECT_EQ(pattern.length(),
+              ovs_read(ctx.get(),
+                       rbuf.get(),
+                       pattern.length(),
+                       0));
+
+    EXPECT_TRUE(memcmp(rbuf.get(),
+                       pattern.c_str(),
+                       pattern.length()) == 0);
+
+    rbuf.reset();
+
+    ctx_iface.get_page(vname.c_str(),
+                       libovsvolumedriver::ClusterAddress(0),
+                       clp);
+
+    EXPECT_EQ(256UL, clp.size());
+    for (const auto& e: clp)
+    {
+        if (e == clp[0])
+        {
+            EXPECT_TRUE(e == libovs::ClusterLocation(1));
+        }
+        else
+        {
+            EXPECT_TRUE(e == libovs::ClusterLocation(0));
+        }
+    }
+
+    vd::WeakVolumePtr v;
+
+    {
+        const FrontendPath fpath("/volume-flat.vmdk");
+        auto maybe_id(find_object(fpath));
+        LOCKVD();
+        v = api::getVolumePointer(vd::VolumeId(*maybe_id));
+    }
+
+    const vd::ClusterAddress ca(0);
+    std::vector<vd::ClusterLocation> cloc(api::GetPage(v, ca));
+
+    EXPECT_EQ(256UL, cloc.size());
+    for (const auto& e: cloc)
+    {
+        if (e == cloc[0])
+        {
+            EXPECT_TRUE(e == vd::ClusterLocation(1));
+        }
+        else
+        {
+            EXPECT_TRUE(e == vd::ClusterLocation(0));
+        }
+    }
+}
+
+TEST_F(NetworkServerTest, DISABLED_remote_going_away_during_ctrl_request)
+{
+    const int hard_kill = yt::System::get_env_with_default("EDGE_HA_STRESS_KILL_REMOTE",
+                                                           1);
+
+    mount_remote();
+
+    std::atomic<bool> stop(false);
+    CtxAttrPtr attrs(make_ctx_attr(1024,
+                                   EnableHa::T,
+                                   FileSystemTestSetup::remote_edge_port()));
+    CtxPtr ctx(ovs_ctx_new(attrs.get()));
+    ASSERT_TRUE(ctx != nullptr);
+
+    auto& ctx_iface = dynamic_cast<ovs_context_t&>(*ctx);
+
+    std::future<void>
+        f(std::async(std::launch::async,
+                     [&]
+                     {
+                         do
+                         {
+                             std::vector<std::string> uris;
+                             ctx_iface.list_cluster_node_uri(uris);
+                         }
+                         while (not stop);
+                     }));
+
+    boost::this_thread::sleep_for(bc::seconds(1));
+
+    if (hard_kill)
+    {
+        ::kill(remote_pid_, SIGKILL);
+    }
+
+    umount_remote(hard_kill);
+    stop = true;
+
+    f.wait();
 }
 
 } //namespace

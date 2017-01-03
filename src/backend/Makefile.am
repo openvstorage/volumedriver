@@ -41,6 +41,8 @@ libbackend_la_SOURCES = \
 	BackendTracePoints_tp.c \
 	BackendParameters.cpp \
 	BackendTestSetup.cpp \
+	ConnectionDeleter.cpp \
+	ConnectionPool.cpp \
 	GarbageCollector.cpp \
 	LocalConfig.cpp \
 	Local_Connection.cpp \
@@ -50,7 +52,6 @@ libbackend_la_SOURCES = \
 	ManagedBackendSink.cpp \
 	ManagedBackendSource.cpp \
 	MultiConfig.cpp \
-	Multi_Connection.cpp \
 	Namespace.cpp \
 	S3Config.cpp \
 	S3_Connection.cpp \

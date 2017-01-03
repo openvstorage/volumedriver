@@ -15,21 +15,24 @@
 
 #include "FileSystemEventTestSetup.h"
 
-#include <thread>
-
-#include <SimpleAmqpClient/SimpleAmqpClient.h>
-
-#include <youtils/Logging.h>
-#include <gtest/gtest.h>
-#include <youtils/UUID.h>
-#include <thread>
-
 #include "../AmqpEventPublisher.h"
 #include "../FileSystemEvents.h"
 #include "../FileSystemEvents.pb.h"
 #include "../FileSystemParameters.h"
 #include "../FrontendPath.h"
 #include "../Object.h"
+
+#include <thread>
+
+#include <boost/thread/lock_guard.hpp>
+
+#include <SimpleAmqpClient/SimpleAmqpClient.h>
+
+#include <gtest/gtest.h>
+#include <thread>
+
+#include <youtils/Logging.h>
+#include <youtils/UUID.h>
 
 namespace volumedriverfstest
 {

@@ -185,7 +185,8 @@ public:
                                                                        *ns_,
                                                                        lba_size,
                                                                        cmult,
-                                                                       failover_bridge->getDefaultRequestTimeout()));
+                                                                       failover_bridge->getDefaultRequestTimeout(),
+                                                                       boost::none));
         failover_bridge->Clear();
 
         ClusterFactory source(ClusterSize(lba_size * cmult),

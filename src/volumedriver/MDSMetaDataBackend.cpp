@@ -136,17 +136,17 @@ CATCH_STD_ALL_LOG_RETHROW(nspace << ": failed to create MDSMetaDataBackend")
 
 MDSMetaDataBackend::~MDSMetaDataBackend()
 {
-    LOG_INFO(table_->nspace() << ": used clusters: " << used_clusters_);
-
-    if (T(delete_global_artefacts))
+    try
     {
-        try
+        LOG_INFO(table_->nspace() << ": used clusters: " << used_clusters_);
+
+        if (T(delete_global_artefacts))
         {
             VERIFY(db_ != nullptr);
             db_->drop(table_->nspace());
         }
-        CATCH_STD_ALL_LOG_IGNORE("Failed to clean up");
     }
+    CATCH_STD_ALL_LOG_IGNORE("Failed to clean up");
 }
 
 void

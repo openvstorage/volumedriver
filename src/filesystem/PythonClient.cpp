@@ -1138,4 +1138,14 @@ PythonClient::set_metadata_cache_capacity(const std::string& volume_id,
     auto rsp(call(SetMetaDataCacheCapacity::method_name(), req, timeout));
 }
 
+std::string
+PythonClient::get_backend_connection_pool(const ObjectId& volume_id,
+                                          const MaybeSeconds& timeout)
+{
+    XmlRpc::XmlRpcValue req;
+    req[XMLRPCKeys::volume_id] = volume_id.str();
+    auto rsp(call(GetBackendConnectionPool::method_name(), req, timeout));
+    return static_cast<std::string>(rsp[XMLRPCKeys::backend_config_str]);
+}
+
 }

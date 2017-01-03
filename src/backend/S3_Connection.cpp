@@ -614,7 +614,7 @@ struct ObjectWriteCallback
 
         VERIFY(fs::exists(source));
 
-        std::vector<byte> rbuf(32 * 1024);
+        std::vector<uint8_t> rbuf(32 * 1024);
 
         size_t res = 0;
         yt::CheckSum crc;

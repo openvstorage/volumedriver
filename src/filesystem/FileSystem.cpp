@@ -173,7 +173,7 @@ FileSystem::FileSystem(const bpt::ptree& pt,
                UseCache::T :
                UseCache::F)
     , stats_collector_(pt,
-                    registerizle)
+                       registerizle)
     , xmlrpc_svc_(router_.node_config().xmlrpc_host,
                   router_.node_config().xmlrpc_port)
 {
@@ -1517,6 +1517,14 @@ FileSystem::list_registered_clients()
         info_vec_.push_back(kv.second);
     }
     return info_vec_;
+}
+
+void
+FileSystem::set_dtl_in_sync(const Handle& h,
+                            const vd::DtlInSync dtl_in_sync)
+{
+    router_.set_dtl_in_sync(h.dentry()->object_id(),
+                            dtl_in_sync);
 }
 
 }
