@@ -344,6 +344,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_rora_manifest_cache_capaci
                                       ShowDocumentation::T,
                                       10000ULL);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_rora_use_nullio,
+                                      backend_connection_manager_name,
+                                      "alba_connection_rora_use_nullio",
+                                      "RORA nullio mode for testing",
+                                      ShowDocumentation::F,
+                                      false);
+
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(bgc_threads,
                                       backend::GarbageCollector::name(),
                                       "bgc_threads",

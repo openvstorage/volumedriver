@@ -106,7 +106,8 @@ extract_rora_config(const AlbaConfig& cfg)
 {
     if (cfg.alba_connection_use_rora.value())
     {
-        return apc::RoraConfig(cfg.alba_connection_rora_manifest_cache_capacity.value());
+        return apc::RoraConfig(cfg.alba_connection_rora_manifest_cache_capacity.value(),
+                               cfg.alba_connection_rora_use_nullio.value());
     }
     else
     {

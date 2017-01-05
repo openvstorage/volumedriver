@@ -35,7 +35,8 @@ public:
                const alba::proxy_client::Transport transport = alba::proxy_client::Transport::tcp,
                const bool use_rora = false,
                const size_t rora_manifest_cache_capacity = 10000,
-               const std::string& preset = "")
+               const std::string& preset = "",
+               const bool rora_use_nullio = false)
         : BackendConfig(BackendType::ALBA)
         , alba_connection_host(host)
         , alba_connection_port(port)
@@ -44,6 +45,7 @@ public:
         , alba_connection_transport(transport)
         , alba_connection_use_rora(use_rora)
         , alba_connection_rora_manifest_cache_capacity(rora_manifest_cache_capacity)
+        , alba_connection_rora_use_nullio(rora_use_nullio)
     {}
 
     AlbaConfig(const boost::property_tree::ptree& pt)
@@ -55,6 +57,7 @@ public:
         , alba_connection_transport(pt)
         , alba_connection_use_rora(pt)
         , alba_connection_rora_manifest_cache_capacity(pt)
+        , alba_connection_rora_use_nullio(pt)
     {}
 
     AlbaConfig() = delete;
@@ -118,6 +121,8 @@ public:
                                          report_default);
         alba_connection_rora_manifest_cache_capacity.persist(pt,
                                                              report_default);
+        alba_connection_rora_use_nullio.persist(pt,
+                                                report_default);
     }
 
     virtual void
@@ -139,7 +144,8 @@ public:
             CMP(alba_connection_preset) and
             CMP(alba_connection_transport) and
             CMP(alba_connection_use_rora) and
-            CMP(alba_connection_rora_manifest_cache_capacity);
+            CMP(alba_connection_rora_manifest_cache_capacity) and
+            CMP(alba_connection_rora_use_nullio);
 #undef CMP
     }
 
@@ -157,6 +163,7 @@ public:
     DECLARE_PARAMETER(alba_connection_transport);
     DECLARE_PARAMETER(alba_connection_use_rora);
     DECLARE_PARAMETER(alba_connection_rora_manifest_cache_capacity);
+    DECLARE_PARAMETER(alba_connection_rora_use_nullio);
 
 private:
     virtual std::ostream&
