@@ -114,7 +114,7 @@ service ovs-volumedriver-vpool_name restart
 | backend_connection_manager | backend_interface_retries_on_error | "1" | yes | How many times to retry a failed backend operation |
 | backend_connection_manager | backend_interface_retry_interval_secs | "0" | yes | delay before retrying a failed backend operation in seconds |
 | backend_connection_manager | backend_interface_retry_backoff_multiplier | "1" | yes | multiplier for the retry interval on each subsequent retry |
-| backend_connection_manager | backend_type | "LOCAL" | no | Type of backend connection one of ALBA, LOCAL, or S3, the other parameters in this section are only used when their correct backendtype is set |
+| backend_connection_manager | backend_type | "LOCAL" | no | Type of backend connection one of ALBA, LOCAL, MULTI or S3, the other parameters in this section are only used when their correct backendtype is set |
 | backend_connection_manager | local_connection_path | --- | no | When backend_type is LOCAL: path to use as LOCAL backend, otherwise ignored |
 | backend_connection_manager | s3_connection_host | "s3.amazonaws.com" | no | When backend_type is S3: the S3 host to connect to, otherwise ignored |
 | backend_connection_manager | s3_connection_port | "80" | no | When backend_type is S3: the S3 port to connect to, otherwise ignored |

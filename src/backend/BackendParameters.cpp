@@ -184,7 +184,7 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_partial_read_nullio,
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_type,
                                       backend_connection_manager_name,
                                       "backend_type",
-                                      "Type of backend connection one of ALBA, LOCAL, or S3, the other parameters in this section are only used when their correct backendtype is set",
+                                      "Type of backend connection one of ALBA, LOCAL, MULTI or S3, the other parameters in this section are only used when their correct backendtype is set",
                                       ShowDocumentation::T,
                                       backend::BackendType::LOCAL);
 
