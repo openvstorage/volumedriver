@@ -351,6 +351,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_rora_use_nullio,
                                       ShowDocumentation::F,
                                       false);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_asd_connection_pool_capacity,
+                                      backend_connection_manager_name,
+                                      "alba_connection_asd_connection_pool_capacity",
+                                      "connection pool (per ASD) capacity",
+                                      ShowDocumentation::T,
+                                      5);
+
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(bgc_threads,
                                       backend::GarbageCollector::name(),
                                       "bgc_threads",
