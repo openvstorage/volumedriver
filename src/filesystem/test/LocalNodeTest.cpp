@@ -37,7 +37,7 @@ erratic_get_size(vd::WeakVolumePtr v,
 {
     EXPECT_FALSE(v.expired());
 
-    if ((attempt++ % 2 == 0))
+    if ((attempt++ % 2) == 0)
     {
         EXPECT_NO_THROW(vd::SharedVolumePtr(v));
         throw vd::TransientException("transient error");
@@ -50,7 +50,7 @@ erratic_get_size(vd::WeakVolumePtr v,
 
 }
 
-#define LOCK_LOCKS(lnode)                            \
+#define LOCK_LOCKS(lnode)                                               \
     std::lock_guard<decltype(LocalNode::object_lock_map_lock_)> g((lnode).object_lock_map_lock_)
 
 class LocalNodeTest
@@ -126,16 +126,16 @@ protected:
 
         FastPathCookie fpc(h->cookie());
         ASSERT_TRUE(fpc != nullptr);
-	unsigned attempt = 0;
+        unsigned attempt = 0;
 
-	LocalNode& lnode = *local_node(fs_->object_router());
-	size_t res = lnode.maybe_retry_<uint64_t,
-					vd::WeakVolumePtr,
-					unsigned&>(erratic_get_size,
-						   fpc->volume,
-						   attempt);
-	EXPECT_EQ(vsize,
-		  res);
+        LocalNode& lnode = *local_node(fs_->object_router());
+        size_t res = lnode.maybe_retry_<uint64_t,
+                                        vd::WeakVolumePtr,
+                                        unsigned&>(erratic_get_size,
+                                                   fpc->volume,
+                                                   attempt);
+        EXPECT_EQ(vsize,
+                  res);
     }
 };
 
