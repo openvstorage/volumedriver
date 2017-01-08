@@ -33,8 +33,9 @@
 
 #include <volumedriver/Api.h>
 #include <volumedriver/ClusterLocation.h>
-#include <volumedriver/VolumeDriverParameters.h>
 #include <volumedriver/FailOverCacheConfig.h>
+#include <volumedriver/TransientException.h>
+#include <volumedriver/VolumeDriverParameters.h>
 
 #include <filedriver/ContainerManager.h>
 
@@ -328,7 +329,41 @@ private:
     template<typename Ret, typename... Args>
     Ret
     maybe_retry_(Ret (*fn)(Args...),
-                 Args...);
+                 Args... args)
+    {
+        uint64_t attempt = 0;
+        const auto retries = vrouter_local_io_retries.value();
+
+        while (true)
+        {
+            LOG_TRACE("attempt " << attempt << " of " << retries);
+
+            try
+            {
+                return (*fn)(args...);
+            }
+            catch (volumedriver::TransientException& e)
+            {
+                LOG_TRACE("caught transient exception " << e.what() << ",  attempt " <<
+                          attempt << " of " << retries);
+                if (attempt < retries)
+                {
+                    // XXX:
+                    // * This will block the whole filesystem if running in single threaded
+                    //   mode!
+                    // * Figure out whether returning EAGAIN in the originating call
+                    //   leads to FUSE or the kernel retrying
+                    ++attempt;
+                    const auto t(std::chrono::microseconds(vrouter_local_io_sleep_before_retry_usecs.value()));
+                    std::this_thread::sleep_for(t);
+                }
+                else
+                {
+                    throw;
+                }
+            }
+        }
+    }
 
     void
     read_(volumedriver::WeakVolumePtr vol,
