@@ -61,10 +61,21 @@ struct ovs_buffer
 
 struct ovs_completion
 {
+    ovs_completion(ovs_callback_t cb, void *arg)
+    : complete_cb(cb)
+    , cb_arg(arg)
+    , _on_wait(false)
+    , _signaled(false)
+    , _failed(false)
+    , _rv(-1)
+    {
+        pthread_cond_init(&_cond, NULL);
+        pthread_mutex_init(&_mutex, NULL);
+    }
+
     ovs_callback_t complete_cb;
     void *cb_arg;
     bool _on_wait;
-    bool _calling;
     bool _signaled;
     bool _failed;
     ssize_t _rv;

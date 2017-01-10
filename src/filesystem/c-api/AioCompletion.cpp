@@ -18,7 +18,6 @@
 void
 AioCompletion::schedule(ovs_completion_t *completion)
 {
-    completion->_calling = true;
     io_service_.post(boost::bind(completion->complete_cb,
                                  completion,
                                  completion->cb_arg));
