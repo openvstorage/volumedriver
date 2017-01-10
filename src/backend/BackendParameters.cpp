@@ -184,7 +184,7 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_partial_read_nullio,
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_type,
                                       backend_connection_manager_name,
                                       "backend_type",
-                                      "Type of backend connection one of ALBA, LOCAL, or S3, the other parameters in this section are only used when their correct backendtype is set",
+                                      "Type of backend connection one of ALBA, LOCAL, MULTI or S3, the other parameters in this section are only used when their correct backendtype is set",
                                       ShowDocumentation::T,
                                       backend::BackendType::LOCAL);
 
@@ -343,6 +343,20 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_rora_manifest_cache_capaci
                                       "Capacity of the RORA fetcher's manifest cache",
                                       ShowDocumentation::T,
                                       10000ULL);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_rora_use_nullio,
+                                      backend_connection_manager_name,
+                                      "alba_connection_rora_use_nullio",
+                                      "RORA nullio mode for testing",
+                                      ShowDocumentation::F,
+                                      false);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_asd_connection_pool_capacity,
+                                      backend_connection_manager_name,
+                                      "alba_connection_asd_connection_pool_capacity",
+                                      "connection pool (per ASD) capacity",
+                                      ShowDocumentation::T,
+                                      5);
 
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(bgc_threads,
                                       backend::GarbageCollector::name(),
