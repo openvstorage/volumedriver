@@ -73,6 +73,12 @@ struct ovs_completion
         pthread_mutex_init(&_mutex, NULL);
     }
 
+    ~ovs_completion()
+    {
+        pthread_mutex_destroy(&_mutex);
+        pthread_cond_destroy(&_cond);
+    }
+
     ovs_callback_t complete_cb;
     void *cb_arg;
     bool _on_wait;

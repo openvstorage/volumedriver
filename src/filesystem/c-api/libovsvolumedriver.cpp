@@ -1223,8 +1223,6 @@ ovs_aio_release_completion(ovs_completion_t *completion)
         errno = EINVAL;
         return -1;
     }
-    pthread_mutex_destroy(&completion->_mutex);
-    pthread_cond_destroy(&completion->_cond);
     delete completion;
     return 0;
 }
