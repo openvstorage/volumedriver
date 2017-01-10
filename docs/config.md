@@ -114,7 +114,7 @@ service ovs-volumedriver-vpool_name restart
 | backend_connection_manager | backend_interface_retries_on_error | "1" | yes | How many times to retry a failed backend operation |
 | backend_connection_manager | backend_interface_retry_interval_secs | "0" | yes | delay before retrying a failed backend operation in seconds |
 | backend_connection_manager | backend_interface_retry_backoff_multiplier | "1" | yes | multiplier for the retry interval on each subsequent retry |
-| backend_connection_manager | backend_type | "LOCAL" | no | Type of backend connection one of ALBA, LOCAL, or S3, the other parameters in this section are only used when their correct backendtype is set |
+| backend_connection_manager | backend_type | "LOCAL" | no | Type of backend connection one of ALBA, LOCAL, MULTI or S3, the other parameters in this section are only used when their correct backendtype is set |
 | backend_connection_manager | local_connection_path | --- | no | When backend_type is LOCAL: path to use as LOCAL backend, otherwise ignored |
 | backend_connection_manager | s3_connection_host | "s3.amazonaws.com" | no | When backend_type is S3: the S3 host to connect to, otherwise ignored |
 | backend_connection_manager | s3_connection_port | "80" | no | When backend_type is S3: the S3 port to connect to, otherwise ignored |
@@ -132,6 +132,7 @@ service ovs-volumedriver-vpool_name restart
 | backend_connection_manager | alba_connection_transport | "TCP" | no | When backend_type is ALBA: the ALBA connection to use: TCP (default) or RDMA |
 | backend_connection_manager | alba_connection_use_rora | "0" | no | Whether to enable Read Optimized RDMA ASD (RORA) support |
 | backend_connection_manager | alba_connection_rora_manifest_cache_capacity | "10000" | no | Capacity of the RORA fetcher's manifest cache |
+| backend_connection_manager | alba_connection_asd_connection_pool_capacity | "5" | no | connection pool (per ASD) capacity |
 | backend_garbage_collector | bgc_threads | "4" | yes | Number of threads employed by the BackendGarbageCollector |
 
 In case a dynamic property is changed, notify the Volume Driver of the update with the python api.

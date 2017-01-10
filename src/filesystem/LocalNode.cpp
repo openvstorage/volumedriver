@@ -39,7 +39,6 @@
 #include <volumedriver/Api.h>
 #include <volumedriver/ClusterLocation.h>
 #include <volumedriver/ScrubWork.h>
-#include <volumedriver/TransientException.h>
 #include <volumedriver/VolManager.h>
 #include <volumedriver/VolumeConfig.h>
 #include <volumedriver/Snapshot.h>
@@ -291,45 +290,6 @@ LocalNode::with_volume_pointer_(R (LocalNode::*fn)(vd::WeakVolumePtr,
 
     return (this->*fn)(vol,
                        std::forward<A>(args)...);
-}
-
-template<typename R, typename... A>
-R
-LocalNode::maybe_retry_(R (*fn)(A... args),
-                        A... args)
-{
-    uint64_t attempt = 0;
-    const auto retries = vrouter_local_io_retries.value();
-
-    while (true)
-    {
-        LOG_TRACE("attempt " << attempt << " of " << retries);
-
-        try
-        {
-            return (*fn)(std::forward<A>(args)...);
-        }
-        catch (vd::TransientException& e)
-        {
-            LOG_TRACE("caught transient exception " << e.what() << ",  attempt " <<
-                      attempt << " of " << retries);
-            if (attempt < retries)
-            {
-                // XXX:
-                // * This will block the whole filesystem if running in single threaded
-                //   mode!
-                // * Figure out whether returning EAGAIN in the originating call
-                //   leads to FUSE or the kernel retrying
-                ++attempt;
-                const auto t(std::chrono::microseconds(vrouter_local_io_sleep_before_retry_usecs.value()));
-                std::this_thread::sleep_for(t);
-            }
-            else
-            {
-                throw;
-            }
-        }
-    }
 }
 
 template<typename ReturnType,
