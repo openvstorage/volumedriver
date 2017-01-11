@@ -44,6 +44,13 @@ enum class TransportType
 
 struct ovs_context_attr_t
 {
+    ovs_context_attr_t()
+    : transport(TransportType::Error)
+    , port(0)
+    , network_qdepth(64)
+    , enable_ha(false)
+    {}
+
     TransportType transport;
     std::string host;
     int port;
