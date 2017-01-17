@@ -32,8 +32,9 @@ using namespace fungi;
     boost::lock_guard<decltype(mutex_)> lg_(mutex_)
 
 FailOverCacheAcceptor::FailOverCacheAcceptor(const boost::optional<fs::path>& path,
+                                             const boost::optional<size_t> file_backend_buffer_size,
                                              const boost::chrono::microseconds busy_loop_duration)
-    : factory_(path)
+    : factory_(path, file_backend_buffer_size)
     , busy_loop_duration_(busy_loop_duration)
 {}
 

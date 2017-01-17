@@ -23,6 +23,7 @@
 
 #include <unordered_map>
 
+#include <boost/optional.hpp>
 #include <boost/thread/lock_guard.hpp>
 #include <boost/thread/mutex.hpp>
 
@@ -45,6 +46,7 @@ class FailOverCacheAcceptor
 
 public:
     FailOverCacheAcceptor(const boost::optional<boost::filesystem::path>& root,
+                          const boost::optional<size_t> file_backend_buffer_size,
                           const boost::chrono::microseconds busy_loop_duration);
 
     virtual ~FailOverCacheAcceptor();

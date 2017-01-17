@@ -14,6 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "FailOverCacheServer.h"
+#include "FileBackend.h"
 
 #include <boost/optional/optional_io.hpp>
 
@@ -31,6 +32,7 @@ FailOverCacheServer::FailOverCacheServer(const constructor_type& c)
     , desc_("Required Options")
     , transport_(vd::FailOverCacheTransport::TCP)
     , busy_loop_usecs_(0)
+    , file_backend_buffer_size_(failovercache::FileBackend::default_stream_buffer_size())
     , running_(false)
 {
     logger_ = &MainHelper::getLogger__();
@@ -51,6 +53,9 @@ FailOverCacheServer::FailOverCacheServer(const constructor_type& c)
         ("busy-loop-usecs",
          po::value<unsigned>(&busy_loop_usecs_)->default_value(busy_loop_usecs_),
          "usecs to try a busy loop read on a socket before falling back to poll()")
+        ("file-backend-buffer-size",
+         po::value<size_t>(&file_backend_buffer_size_)->default_value(file_backend_buffer_size_),
+         "stream buffer size for the file backend")
         ("daemonize,D",
          "run as a daemon");
 }
@@ -124,9 +129,11 @@ FailOverCacheServer::run()
               ", address to bind to: " << addr <<
               ", port: " << port_ <<
               ", transport type: " << transport_ <<
-              ", busy-loop usecs: " << busy_loop_usecs_);
+              ", busy-loop usecs: " << busy_loop_usecs_ <<
+              ", file backend stream buffer size: " << file_backend_buffer_size_);
 
     acceptor = std::make_unique<failovercache::FailOverCacheAcceptor>(path,
+                                                                      file_backend_buffer_size_,
                                                                       boost::chrono::microseconds(busy_loop_usecs_));
 
     LOG_INFO("Running the SocketServer");
