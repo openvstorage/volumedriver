@@ -23,8 +23,6 @@ namespace fungi {
 class Writable {
 public:
 	virtual ~Writable() {}
-	virtual void open() = 0;
-	virtual void close() = 0;
 	/** @exception IOException */
 	virtual int32_t write(const byte *ptr, int32_t count) = 0;
 	virtual int64_t tell() const  = 0;

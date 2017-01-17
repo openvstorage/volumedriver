@@ -16,13 +16,15 @@
 #ifndef _FILE_H
 #define	_FILE_H
 
+#include "Readable.h"
 #include "Streamable.h"
+#include "Writable.h"
+
 #include <string>
 #include <memory>
 #include <list>
 
-#include "Readable.h"
-#include "Writable.h"
+#include <boost/optional.hpp>
 
 namespace fungi {
 
@@ -45,21 +47,18 @@ namespace fungi {
             Update = 8
         };
 
-        File(const std::string &filename,FILE *wrap);
         File(const std::string &filename, int mode = Read);
+
         virtual ~File();
 
-        static std::unique_ptr<File> getStdin();
-        static std::unique_ptr<File> getStdout();
-        static std::unique_ptr<File> getStderr();
+        void try_open(boost::optional<size_t> bufsize = boost::none);
 
-        virtual void try_open();
-        virtual void open();
-        void reopen(int mode);
+        void open(boost::optional<size_t> bufsize = boost::none); // system default
+
         void close(); // throw IOException
         void closeNoThrow();
 
-        virtual bool isClosed() const { return closed_; }
+        virtual bool isClosed() const { return f_ == nullptr; }
 
 #ifndef _WIN32
         void setRO();
@@ -80,8 +79,9 @@ namespace fungi {
         /** @exception IOException */
         byte peek();
 
+        // AR: which one is this? Writable? Streamable? Sigh.
         /** @exception IOException */
-        int32_t write(const byte *ptr, int32_t count);
+        int32_t write(const byte *ptr, int32_t count) override final;
 
         /** @exception IOException */
         int32_t write(const ByteArray &data);
@@ -182,8 +182,9 @@ namespace fungi {
 
         const std::string filename_;
         FILE *f_;
-        bool closed_, noclose_;
         int mode_;
+
+        std::unique_ptr<char[]> buf_;
     };
 }
 

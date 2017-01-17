@@ -15,7 +15,6 @@
 
 #define INSIDE_FILE_CPP
 #include "File.h"
-#include <youtils/IOException.h>
 #include "ByteArray.h"
 
 #include <cstring>
@@ -38,172 +37,137 @@
 #include <sys/statvfs.h> //For statvfs()
 #endif
 
+#include <youtils/Assert.h>
+#include <youtils/IOException.h>
 
 namespace fungi {
 
-File::File(const std::string &filename, FILE *wrap) :
-	filename_(filename), f_(wrap), closed_(false), noclose_(true) {
-}
-
-std::unique_ptr<File> File::getStdin()
-{
-    std::unique_ptr<File> f(new File("stdin", stdin));
-    return f;
-}
-
-std::unique_ptr<File> File::getStdout()
-{
-    std::unique_ptr<File> f(new File("stdout", stdout));
-    return f;
-}
-
-std::unique_ptr<File> File::getStderr()
-{
-    std::unique_ptr<File> f(new File("stderr", stderr));
-    return f;
-}
-
 File::File(const std::string &filename, int mode) :
     filename_(filename),
-    f_(0),
-    closed_(true),
-    noclose_(false),
+    f_(nullptr),
     mode_(mode)
 {
 }
 
-void File::open()
+void File::open(boost::optional<size_t> bufsize)
 {
     // we may want to get rid of this LOG/throw anti-pattern in the future
     try
     {
-        try_open();
+        try_open(bufsize);
     }
-    catch (IOException& )
+    catch (IOException& e)
     {
-        LOG_ERROR("Could not open file " << filename_.c_str() << " "<< strerror(errno));
+        LOG_ERROR("Could not open file " << filename_.c_str() << ": " << e.what());
         throw;
     }
 }
 
+void
+File::try_open(boost::optional<size_t> bufsize)
+{
+    VERIFY(f_ == nullptr);
+    // the reason for the "F" below is that in Solaris 32-bit this is needed
+    // to allow files to have an underlying filedescriptor >= 256
+    // this is for legacy reasons and is explained more in detail in the
+    // manual page of fopen on solaris.
+    int mode = mode_;
+    const char *modes = 0;
 
-void File::try_open() {
-	if (!closed_) {
-		//throw IOException("File::open: already open", filename_.c_str(), 0);
-        return;
-	}
-	// the reason for the "F" below is that in Solaris 32-bit this is needed
-	// to allow files to have an underlying filedescriptor >= 256
-	// this is for legacy reasons and is explained more in detail in the
-	// manual page of fopen on solaris.
-	int mode = mode_;
-	const char *modes = 0;
+    switch (mode)
+    {
+    case Append:
+#ifdef _WIN32
+        modes = "ab";
+#else
+        modes = "abF";
+#endif
+        break;
+    case (Append|Read):
+#ifdef _WIN32
+        modes = "a+b";
+#else
+        modes = "a+bF";
+#endif
+        break;
+    case Read:
+#ifdef _WIN32
+        modes = "rb";
+#else
+        modes = "rbF";
+#endif
+        break;
+    case Write:
+#ifdef _WIN32
+        modes = "wb";
+#else
+        modes = "wbF";
+#endif
+        break;
+    case (Read|Write):
+#ifdef _WIN32
+        modes = "w+b";
+#else
+        modes = "w+bF";
+#endif
+        break;
+    case Update:
+#ifdef _WIN32
+        modes = "r+b";
+#else
+        modes = "r+bF";
+#endif
+        break;
+    default:
+        throw IOException("File::open: unsupported mode", filename_.c_str(), 0);
+    }
 
-        switch (mode)
-        {
-        case Append:
+    if (bufsize and *bufsize)
+    {
+        buf_ = std::make_unique<char[]>(*bufsize);
+    }
+    else
+    {
+        buf_ = nullptr;
+    }
+
 #ifdef _WIN32
-            modes = "ab";
-#else
-            modes = "abF";
-#endif
-            break;
-        case (Append|Read):
-#ifdef _WIN32
-            modes = "a+b";
-#else
-            modes = "a+bF";
-#endif
-            break;
-        case Read:
-#ifdef _WIN32
-            modes = "rb";
-#else
-            modes = "rbF";
-#endif
-            break;
-        case Write:
-#ifdef _WIN32
-            modes = "wb";
-#else
-            modes = "wbF";
-#endif
-            break;
-        case (Read|Write):
-#ifdef _WIN32
-            modes = "w+b";
-#else
-            modes = "w+bF";
-#endif
-            break;
-        case Update:
-#ifdef _WIN32
-            modes = "r+b";
-#else
-            modes = "r+bF";
-#endif
-            break;
-        default:
-            throw IOException("File::open: unsupported mode", filename_.c_str(), 0);
-	}
-#ifdef _WIN32
-	if (fopen_s(&f_, filename_.c_str(), modes)!=0) {
-		throw IOException("File::open", filename_.c_str(), errno);
-	}
-#else
-	f_ = fopen(filename_.c_str(), modes);
-#endif
-	if (f_ == 0) {
+    if (fopen_s(&f_, filename_.c_str(), modes)!=0) {
         throw IOException("File::open", filename_.c_str(), errno);
-	}
-	closed_ = false;
-	//std::cout << "File " << filename_ << " (re)opened in mode " << modes << ":" << mode_ <<  std::endl;
+    }
+#else
+    f_ = fopen(filename_.c_str(), modes);
+#endif
+    if (f_ == 0) {
+        throw IOException("File::open", filename_.c_str(), errno);
+    }
+
+    if (bufsize)
+    {
+        setbuffer(f_, buf_.get(), *bufsize);
+    }
 }
 
-File::~File() {
-	if (!closed_ && !noclose_) {
-		closeNoThrow();
-	}
-}
-
-void File::reopen(int mode) {
-	if (!closed_) {
-		close();
-	}
-	mode_ = mode;
-	open();
+File::~File()
+{
+        closeNoThrow();
 }
 
 void File::close() {
-	//std::cout << "File::close(" << filename_ << ")" << std::endl;
-	if (noclose_) {
-		LOG_WARN("File::close; ignoring close for noclose_ File.");
-		return;
-	}
-	if (closed_) {
-		LOG_DEBUG("File::close; ignoring close for closed_ File.");
-	    f_ = 0;
-		return;
-	}
-	if (fclose(f_) == EOF) {
-        f_ = 0;
-		throw IOException("File::close", filename_.c_str(), errno);
-	}
-	f_ = 0;
-	closed_ = true;
+    if (f_ and fclose(f_) == EOF) {
+        f_ = nullptr;
+        throw IOException("File::close", filename_.c_str(), errno);
+    }
+
+    f_ = nullptr;
 }
 
 void File::closeNoThrow() {
-	//std::cout << "File::close_no_throw(" << filename_ << ")" << std::endl;
-	if (noclose_) {
-		LOG_WARN("File::close; ignoring close for noclose_ File.");
-		return;
-	}
-    if (f_ != 0) {
-	    fclose(f_);
+    if (f_)
+    {
+        fclose(f_);
+        f_ = nullptr;
     }
-	f_ = 0;
-	closed_ = true;
 }
 
 #ifndef _WIN32
@@ -294,7 +258,7 @@ int32_t
 File::write(const byte *ptr,
             int32_t count)
 {
-    assert(!closed_);
+    ASSERT(f_);
     // LOG_WARN("XXX writing " << count << "bytes");
     // here count is casted to size_t, giving a possible loss
     // however we can safely assume that no-one wants to read more then 2**31-1 bytes at once
@@ -311,7 +275,7 @@ File::write(const byte *ptr,
 }
 
 int32_t File::write(const ByteArray &data) {
-	assert(!closed_);
+	ASSERT(f_);
 	return write(data, data.size());
 }
 
@@ -377,32 +341,33 @@ int64_t File::length() const
 }
 
 int64_t File::length(const std::string &filename) {
-	File file(filename);
-	file.open();
-	int64_t l = file.length();
-	file.close();
-	return l;
+    File file(filename);
+    file.open();
+    int64_t l = file.length();
+    file.close();
+    return l;
 }
 
 void File::rewind() {
-	assert(!closed_);
-	::rewind(f_);
+    ASSERT(f_);
+    ::rewind(f_);
 }
 
 int64_t File::tell() const
 {
-	if (closed_) {
-		return File::length(filename_);
-	}
-	const int64_t cur_pos = ftello(f_);
-	if (cur_pos == -1) {
-		throw IOException("length", filename_.c_str(), errno);
-	}
-	return cur_pos;
+    if (f_ == nullptr)
+    {
+        return File::length(filename_);
+    }
+    const int64_t cur_pos = ftello(f_);
+    if (cur_pos == -1) {
+        throw IOException("length", filename_.c_str(), errno);
+    }
+    return cur_pos;
 }
 
 void File::seek(int64_t offset, int WHENCE) {
-    assert(!closed_);
+    ASSERT(f_);
     if (fseeko(f_, offset, WHENCE) != 0) {
         throw IOException("seek", filename_.c_str(), errno);
     }
