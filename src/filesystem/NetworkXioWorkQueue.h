@@ -267,10 +267,22 @@ retry:
             {
                 req->work.func_ctrl(&req->work);
             }
+
+            bool wakeup = false;
+
             finished_lock.lock();
+            if (finished_list.empty())
+            {
+                wakeup = true;
+            }
+
             finished_list.push_back(*req);
             finished_lock.unlock();
-            xstop_loop();
+
+            if (wakeup)
+            {
+                xstop_loop();
+            }
         }
     }
 };
