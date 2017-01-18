@@ -16,10 +16,13 @@
 #include "VolManagerTestSetup.h"
 #include "../VolManager.h"
 #include "../TLogReader.h"
-#include "../failovercache/fungilib/File.h"
+
+#include <boost/filesystem.hpp>
 
 namespace volumedriver
 {
+
+namespace fs = boost::filesystem;
 
 class VolManagerVolumeDestroy
     : public VolManagerTestSetup
@@ -39,7 +42,6 @@ TEST_P(VolManagerVolumeDestroy, one)
     auto ns1_ptr = make_random_namespace();
     const Namespace& ns1 = ns1_ptr->ns();
 
-
     SharedVolumePtr v = newVolume(volume,
 			  ns1);
     //setTLogMaxEntries(v, 3);
@@ -51,34 +53,25 @@ TEST_P(VolManagerVolumeDestroy, one)
     v->sync();
     ::sync();
 
-    const std::string ssx = snapshotFilename();;
     const OrderedTLogIds tlog_ids(v->getSnapshotManagement().getCurrentTLogs());
     waitForThisBackendWrite(*v);
     // /tmp/VolManagerVolumeDestroy/localbackend/namespace1/tlog_00_0000000000000001
     // /tmp/VolManagerVolumeDestroy/localbackend/namespace1/snapshots.xml_00
-    const std::string localBackendDir = "/tmp/VolManagerVolumeDestroy/localbackend/";
-    const std::string namespaceDir = localBackendDir + ns1.str() + "/";
+    const fs::path localBackendDir("/tmp/VolManagerVolumeDestroy/localbackend");
+    const fs::path namespaceDir(localBackendDir / ns1.str());
 
-
-    //    const std::string tlog1 = namespaceDir + "tlog_00_0000000000000001";
-    //    const std::string tlog2 = namespaceDir + "tlog_00_0000000000000002";
-    const std::string assx = namespaceDir + ssx;
     for(unsigned i = 0; i < tlog_ids.size() - 1; i++)
     {
-        EXPECT_TRUE(fungi::File::exists(namespaceDir + boost::lexical_cast<std::string>(tlog_ids[i])));
+        EXPECT_TRUE(fs::exists(namespaceDir / boost::lexical_cast<std::string>(tlog_ids[i])));
     }
 
-    EXPECT_FALSE(fungi::File::exists(namespaceDir + boost::lexical_cast<std::string>(tlog_ids[tlog_ids.size() - 1])));
+    EXPECT_FALSE(fs::exists(namespaceDir / boost::lexical_cast<std::string>(tlog_ids[tlog_ids.size() - 1])));
     // Y42 there will be discussion about this.
     //    EXPECT_TRUE(fungi::File::exists(assx));
 
     destroyVolume(v,
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::T);
-
-//     EXPECT_FALSE(fungi::File::exists(tlog1));
-//     EXPECT_FALSE(fungi::File::exists(tlog2));
-//     EXPECT_FALSE(fungi::File::exists(assx));
 }
 
 INSTANTIATE_TEST(VolManagerVolumeDestroy);

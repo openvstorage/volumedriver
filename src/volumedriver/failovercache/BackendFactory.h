@@ -26,7 +26,8 @@ namespace failovercache
 class BackendFactory
 {
 public:
-    explicit BackendFactory(const boost::optional<boost::filesystem::path>&);
+    BackendFactory(const boost::optional<boost::filesystem::path>&,
+                   const boost::optional<size_t> file_backend_buffer_size);
 
     ~BackendFactory();
 
@@ -46,6 +47,7 @@ private:
     boost::unique_lock<youtils::FileDescriptor> file_lock_;
 
     const boost::optional<boost::filesystem::path> root_;
+    const boost::optional<size_t> file_backend_buffer_size_;
 };
 
 }

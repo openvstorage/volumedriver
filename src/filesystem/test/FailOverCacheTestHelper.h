@@ -31,10 +31,12 @@ public:
     FailOverCacheTestHelper(const boost::filesystem::path& pth,
                             const boost::optional<std::string>& addr,
                             const uint16_t prt,
-                            const volumedriver::FailOverCacheTransport transport)
+                            const volumedriver::FailOverCacheTransport transport,
+                            const boost::optional<size_t> file_backend_buffer_size = boost::none)
         : path(pth)
         , port(prt)
         , acceptor_(path,
+                    file_backend_buffer_size,
                     boost::chrono::microseconds(0))
         , server_(fungi::SocketServer::createSocketServer(acceptor_,
                                                           addr,

@@ -32,7 +32,8 @@ class FileBackend
 public:
     FileBackend(const boost::filesystem::path&,
                 const std::string&,
-                const volumedriver::ClusterSize);
+                const volumedriver::ClusterSize,
+                const boost::optional<size_t> stream_buffer_size);
 
     ~FileBackend();
 
@@ -67,11 +68,15 @@ public:
         return root_;
     }
 
+    static size_t
+    default_stream_buffer_size();
+
 private:
     DECLARE_LOGGER("DtlFileBackend");
 
     std::unique_ptr<fungi::File> file_;
     const boost::filesystem::path root_;
+    const size_t stream_buffer_size_;
 
     boost::filesystem::path
     make_path_(const volumedriver::SCO) const;

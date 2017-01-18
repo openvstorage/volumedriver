@@ -78,6 +78,8 @@ private:
     uint16_t port_;
     volumedriver::FailOverCacheTransport transport_;
     unsigned busy_loop_usecs_;
+    size_t file_backend_buffer_size_;
+
     bool running_;
 
     // *ONLY* for testers. Really. I mean it.

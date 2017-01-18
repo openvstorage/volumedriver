@@ -20,6 +20,7 @@
 #include <set>
 
 #include <boost/filesystem.hpp>
+#include <boost/optional.hpp>
 
 #include <youtils/Logging.h>
 
@@ -45,7 +46,8 @@ private:
     FailOverCacheTestContext(FailOverCacheTestSetup& setup,
                              const boost::optional<std::string>& addr,
                              const uint16_t port,
-                             const boost::chrono::microseconds busy_retry_duration);
+                             const boost::chrono::microseconds busy_retry_duration,
+                             const boost::optional<size_t> file_backend_buffer_size = boost::none);
 
     FailOverCacheTestContext(const FailOverCacheTestContext&) = delete;
 

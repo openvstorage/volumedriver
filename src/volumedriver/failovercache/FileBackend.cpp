@@ -30,12 +30,14 @@ namespace yt = youtils;
 
 FileBackend::FileBackend(const fs::path& root,
                          const std::string& nspace,
-                         const vd::ClusterSize cluster_size)
+                         const vd::ClusterSize cluster_size,
+                         const boost::optional<size_t> stream_buffer_size)
     : Backend(nspace,
-                          cluster_size)
+              cluster_size)
     , root_(root / nspace)
+    , stream_buffer_size_(stream_buffer_size ? *stream_buffer_size : default_stream_buffer_size())
 {
-    LOG_INFO("creating " << root_);
+    LOG_INFO("creating " << root_ << ", stream buffer size: " << stream_buffer_size);
     fs::create_directories(root_);
 }
 
@@ -87,7 +89,7 @@ FileBackend::open(const vd::SCO sco)
     file_ = std::make_unique<fungi::File>(p.string(),
                                           fungi::File::Append);
 
-    file_->open();
+    file_->open(stream_buffer_size_);
 }
 
 void
@@ -126,7 +128,7 @@ FileBackend::get_entries(const vd::SCO sco,
 
     fungi::File f(filename.string(),
                   fungi::File::Read);
-    f.open();
+    f.open(stream_buffer_size_);
     fungi::IOBaseStream fstream(f);
 
     // TODO: IOBaseStream should do that itself. Get rid of it.
@@ -159,6 +161,12 @@ FileBackend::get_entries(const vd::SCO sco,
             buf.get(),
             len);
     }
+}
+
+size_t
+FileBackend::default_stream_buffer_size()
+{
+    return 128ULL * 1024;
 }
 
 }
