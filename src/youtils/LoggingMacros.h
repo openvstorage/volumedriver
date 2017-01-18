@@ -51,8 +51,8 @@
 #define LOG_PERIODIC(message) _LOG_SEV(youtils::Severity::periodic, message)
 
 
-#define LOG_DEBUG(message) _LOG_SEV(youtils::Severity::debug, message)
+#define LOG_DEBUG(message)
 
-#define LOG_TRACE(message) _LOG_SEV(youtils::Severity::trace, message)
+#define LOG_TRACE(message)
 
 #endif // !LOGGING_MACROS_H_
