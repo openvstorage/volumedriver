@@ -18,7 +18,7 @@ PFX="${DATE} [$$]"
 if [ x${ALLOCATOR} != x ]
 then
     echo "${PFX}: Using ${ALLOCATOR} instead of libc's allocator"
-    if [ x${LD_PRELOAD} == x ]
+    if [ x${LD_PRELOAD} != x ]
     then
 	_LD_PRELOAD=${LD_PRELOAD}:${ALLOCATOR}
     else
@@ -29,5 +29,5 @@ else
 fi
 
 echo "${PFX}: args: $@"
-LD_PRELOAD=${_LD_PRELOAD}
+export LD_PRELOAD=${_LD_PRELOAD}
 exec volumedriver_fs $@
