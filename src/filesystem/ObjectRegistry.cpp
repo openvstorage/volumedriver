@@ -979,6 +979,19 @@ ObjectRegistry::do_prepare_set_volume_as_template_(const std::string& key,
                 error_desc("cannot convert a volume with descendants into a template");
             }
 
+            if (old_treeconfig.parent_volume)
+            {
+                ObjectRegistrationPtr parent(find_throw(*old_treeconfig.parent_volume));
+                // do we even want to allow this or refuse templates from templates as well?
+                if (parent->treeconfig.object_type != ObjectType::Template)
+                {
+                    LOG_ERROR(ID() << ": cannot create template with a non-template parent");
+                    throw InvalidOperationException() <<
+                        error_object_id(old_reg.volume_id) <<
+                        error_desc("cannot templatize a clone whose parent is not a template");
+                }
+            }
+
             reg = boost::make_shared<ObjectRegistration>(old_reg.getNS(),
                                                          old_reg.volume_id,
                                                          node_id_,

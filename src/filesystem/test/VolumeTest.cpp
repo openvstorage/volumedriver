@@ -1625,6 +1625,73 @@ TEST_F(VolumeTest, no_template_creation_if_clones_are_present)
     check();
 }
 
+// cf. https://github.com/openvstorage/volumedriver/issues/229:
+// while not the cause of the problem, templates from non-template parents is
+// currently not something we want to support to reduce complexity (otherwise
+// the scrub result application would have to take this into account, e.g. in
+// a P - T -C scenario, scrub results for parent volume P would have to either
+// be applied to template T and its child volume C (which is currenly not
+// allowed for T) or T needs to be skipped, leading to both the old and new
+// SCOs and TLogs having to be kept around).
+TEST_F(VolumeTest, no_template_creation_from_non_template_parent)
+{
+    const FrontendPath vpath(make_volume_name("/parent"));
+    const size_t vsize = 1ULL << 20;
+    const ObjectId vid(create_file(vpath, vsize));
+
+    const std::string snap(client_.create_snapshot(vid));
+    const std::string pattern("some irrelevant blurb");
+    write_to_file(vpath, pattern, get_cluster_size(vid), 0);
+    wait_for_snapshot(vid, snap);
+
+    const FrontendPath cpath(make_volume_name("/clone"));
+    const ObjectId cid(fs_->create_clone(cpath,
+                                         make_metadata_backend_config(),
+                                         vd::VolumeId(vid.str()),
+                                         vd::SnapshotName(snap)).str());
+
+    auto check([&]()
+               {
+                   ObjectRegistrationPtr
+                       oreg(fs_->object_router().object_registry()->find_throw(cid,
+                                                                               IgnoreCache::T));
+                   EXPECT_EQ(ObjectType::Volume,
+                             oreg->treeconfig.object_type);
+               });
+
+    check();
+    EXPECT_THROW(client_.set_volume_as_template(cid),
+                 std::exception);
+    check();
+ }
+
+TEST_F(VolumeTest, templates_from_templates)
+{
+    const FrontendPath vpath(make_volume_name("/parent"));
+    const size_t vsize = 1ULL << 20;
+    const ObjectId vid(create_file(vpath, vsize));
+    client_.set_volume_as_template(vid);
+
+    const FrontendPath cpath(make_volume_name("/clone"));
+    const ObjectId cid(fs_->create_clone(cpath,
+                                         make_metadata_backend_config(),
+                                         vd::VolumeId(vid.str()),
+                                         boost::none));
+
+    auto check([&](const ObjectType exp_type)
+               {
+                   ObjectRegistrationPtr
+                       oreg(fs_->object_router().object_registry()->find_throw(cid,
+                                                                               IgnoreCache::T));
+                   EXPECT_EQ(exp_type,
+                             oreg->treeconfig.object_type);
+               });
+
+    check(ObjectType::Volume);
+    client_.set_volume_as_template(cid);
+    check(ObjectType::Template);
+}
+
 TEST_F(VolumeTest, dtl_status_async_dtl)
 {
     test_dtl_status(vd::FailOverCacheMode::Asynchronous);
