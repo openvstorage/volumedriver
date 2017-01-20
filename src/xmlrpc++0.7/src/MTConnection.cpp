@@ -10,7 +10,7 @@ namespace x = ::XmlRpc;
 namespace
 {
 
-const std::string thread_pfx("xmlrpc_conn/");
+const std::string thread_pfx("xmlrpc/");
 
 }
 
