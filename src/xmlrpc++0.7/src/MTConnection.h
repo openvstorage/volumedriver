@@ -20,12 +20,10 @@ class MTServer;
 class MTConnection
     : public ConnectionBase
 {
-
     friend class MTServer;
 
 public:
-    virtual ~MTConnection();
-
+    virtual ~MTConnection() = default;
 
     void
     operator()();
@@ -33,9 +31,7 @@ public:
 private:
     DECLARE_LOGGER("XMLRPCConnection");
 
-
     struct pollfd poll_fd_;
-
 
     MTConnection(int sock,
                  MTServer*);
@@ -46,6 +42,5 @@ private:
 #endif // !XMLRPC_CONNECTION_H_
 
 // Local Variables: **
-// compile-command: "scons -D --kernel_version=system --ignore-buildinfo -j 5" **
 // mode: c++ **
 // End: *

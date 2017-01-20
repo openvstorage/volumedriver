@@ -4,26 +4,31 @@
 
 namespace xmlrpc
 {
+
 namespace x = ::XmlRpc;
+
+namespace
+{
+
+const std::string thread_pfx("xmlrpc_conn/");
+
+}
 
 MTConnection::MTConnection(int sock,
                            MTServer* server)
     : ConnectionBase(server)
 {
-    LOG_TRACE("Constructor");
     poll_fd_.fd = sock;
     poll_fd_.events = POLLIN | POLLOUT | POLLERR;
     poll_fd_.revents = 0;
 }
 
-MTConnection::~MTConnection()
-{
-    LOG_TRACE("Destructor");
-}
-
 void
 MTConnection::operator()()
 {
+    const std::string name(thread_pfx + std::to_string(poll_fd_.fd));
+    pthread_setname_np(pthread_self(),
+                       name.c_str());
     try
     {
         while(true)
@@ -84,12 +89,10 @@ MTConnection::operator()()
         LOG_INFO("Unknown error handling the connection, closing socket " << poll_fd_.fd);
         x::XmlRpcSocket::close(poll_fd_.fd);
     }
-
 }
 
 }
 
 // Local Variables: **
-// compile-command: "scons -D --kernel_version=system --ignore-buildinfo -j 5" **
 // mode: c++ **
 // End: **
