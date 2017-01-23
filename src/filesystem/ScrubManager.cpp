@@ -391,7 +391,8 @@ ScrubManager::apply_(const ObjectId& oid,
         // AR: throw a fit/exception in case of ObjectType::File?
         LOG_INFO(oid << ": not a volume (anymore?) but a " <<
                  reg->treeconfig.object_type);
-        return boost::none;
+        throw NotAVolumeException(oid.str().c_str(),
+                                  " object is not a volume (anymore?)");
     }
 
     if (reg->node_id == registry_.node_id())
