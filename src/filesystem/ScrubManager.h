@@ -79,6 +79,8 @@ public:
                    fungi::IOException);
     MAKE_EXCEPTION(NoSuchObjectException,
                    Exception);
+    MAKE_EXCEPTION(NotAVolumeException,
+                   Exception);
 
     struct Clone;
     using ClonePtr = boost::shared_ptr<Clone>;

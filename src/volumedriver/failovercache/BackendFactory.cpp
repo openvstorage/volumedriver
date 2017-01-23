@@ -42,8 +42,10 @@ maybe_make_dir(const boost::optional<fs::path>& p)
 
 }
 
-BackendFactory::BackendFactory(const boost::optional<fs::path>& path)
+BackendFactory::BackendFactory(const boost::optional<fs::path>& path,
+                               const boost::optional<size_t> file_backend_buffer_size)
     : root_(maybe_make_dir(path))
+    , file_backend_buffer_size_(file_backend_buffer_size)
 {
     if (root_)
     {
@@ -110,7 +112,8 @@ BackendFactory::make_backend(const std::string& nspace,
     {
         return std::make_unique<FileBackend>(*root_,
                                              nspace,
-                                             csize);
+                                             csize,
+                                             file_backend_buffer_size_);
     }
     else
     {

@@ -50,10 +50,6 @@ ovs_ctx_attr_new()
     try
     {
         ovs_ctx_attr_t *attr = new ovs_ctx_attr_t;
-        attr->transport = TransportType::Error;
-        attr->port = 0;
-        attr->network_qdepth = 64;
-        attr->enable_ha = false;
         return attr;
     }
     catch (const std::bad_alloc&)
@@ -1095,15 +1091,7 @@ ovs_aio_create_completion(ovs_callback_t complete_cb,
     }
     try
     {
-        completion = new ovs_completion_t;
-        completion->complete_cb = complete_cb;
-        completion->cb_arg = arg;
-        completion->_calling = false;
-        completion->_on_wait = false;
-        completion->_signaled = false;
-        completion->_failed = false;
-        pthread_cond_init(&completion->_cond, NULL);
-        pthread_mutex_init(&completion->_mutex, NULL);
+        completion = new ovs_completion_t(complete_cb, arg);
         return completion;
     }
     catch (const std::bad_alloc&)
@@ -1126,21 +1114,14 @@ ovs_aio_return_completion(ovs_completion_t *completion)
         return -1;
     }
 
-    if (not completion->_calling)
+    if (not completion->_failed)
     {
-        return -1;
+        return completion->_rv;
     }
     else
     {
-        if (not completion->_failed)
-        {
-            return completion->_rv;
-        }
-        else
-        {
-            errno = EIO;
-            return -1;
-        }
+        errno = EIO;
+        return -1;
     }
 }
 
@@ -1238,8 +1219,6 @@ ovs_aio_release_completion(ovs_completion_t *completion)
         errno = EINVAL;
         return -1;
     }
-    pthread_mutex_destroy(&completion->_mutex);
-    pthread_cond_destroy(&completion->_cond);
     delete completion;
     return 0;
 }

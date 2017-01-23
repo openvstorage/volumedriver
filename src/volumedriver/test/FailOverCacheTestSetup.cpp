@@ -53,12 +53,14 @@ make_directory(const boost::optional<fs::path>& path,
 FailOverCacheTestContext::FailOverCacheTestContext(FailOverCacheTestSetup& setup,
                                                    const boost::optional<std::string>& addr,
                                                    const uint16_t port,
-                                                   const boost::chrono::microseconds busy_retry_duration)
+                                                   const boost::chrono::microseconds busy_retry_duration,
+                                                   const boost::optional<size_t> file_backend_buffer_size)
     : setup_(setup)
     , addr_(addr)
     , port_(port)
     , acceptor_(make_directory(setup_.path,
                                port_),
+                file_backend_buffer_size,
                 busy_retry_duration)
     , server_(fungi::SocketServer::createSocketServer(acceptor_,
                                                       addr_,

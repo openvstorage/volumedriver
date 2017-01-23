@@ -100,7 +100,9 @@ public:
                               alba_connection_transport.value(),
                               alba_connection_use_rora.value(),
                               alba_connection_rora_manifest_cache_capacity.value(),
-                              alba_connection_preset.value()));
+                              alba_connection_preset.value(),
+                              alba_connection_rora_use_nullio.value(),
+                              alba_connection_asd_connection_pool_capacity.value()));
         return bc;
     }
 
