@@ -91,6 +91,7 @@ response_type_to_string(ResponseType type)
     case ResponseType::ObjectNotRunningHere:
     case ResponseType::IOError:
     case ResponseType::Timeout:
+    case ResponseType::AccessBeyondEndOfVolume:
         break;
     }
 
@@ -108,6 +109,8 @@ response_type_to_string(ResponseType type)
         return "IOError";
     case ResponseType::Timeout:
         return "Timeout";
+    case ResponseType::AccessBeyondEndOfVolume:
+        return "AccessBeyondEndOfVolume";
     default:
         return "Unknown";
     }

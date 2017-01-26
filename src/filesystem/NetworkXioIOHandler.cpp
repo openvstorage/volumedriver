@@ -336,6 +336,12 @@ NetworkXioIOHandler::handle_write(NetworkXioRequest *req,
         req->retval = req->size;
         req->errval = 0;
     }
+    catch (const vd::AccessBeyondEndOfVolumeException& e)
+    {
+       LOG_ERROR("write I/O error: " << e.what());
+       req->retval = -1;
+       req->errval = EFBIG;
+    }
     CATCH_STD_ALL_EWHAT({
        LOG_ERROR("write I/O error: " << EWHAT);
        req->retval = -1;

@@ -234,6 +234,11 @@ RemoteNode::handle_response_(WorkItem& work)
         throw RemoteTimeoutException("Remote sent timeout status",
                                      work.request_desc);
         break;
+    case vfsprotocol::ResponseType::AccessBeyondEndOfVolume:
+        LOG_ERROR(node_id() << ": got an access beyond volume boundaries in response to " <<
+                  work.request_desc);
+        throw vd::AccessBeyondEndOfVolumeException("Access beyond volume boundaries");
+        break;
     default:
         LOG_ERROR(node_id() << ": " << work.request_desc <<
                   " failed, remote returned status " << vfsprotocol::response_type_to_string(rsp_type) <<
