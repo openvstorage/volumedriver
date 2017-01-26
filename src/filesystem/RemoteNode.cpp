@@ -239,6 +239,16 @@ RemoteNode::handle_response_(WorkItem& work)
                   work.request_desc);
         throw vd::AccessBeyondEndOfVolumeException("Access beyond volume boundaries");
         break;
+    case vfsprotocol::ResponseType::CannotShrinkVolume:
+        LOG_ERROR(node_id() << ": cannot shrink volume in response to " <<
+                  work.request_desc);
+        throw vd::CannotShrinkVolumeException("Cannot shrink volume");
+        break;
+    case vfsprotocol::ResponseType::CannotGrowVolumeBeyondLimit:
+        LOG_ERROR(node_id() << ": cannot grow volume beyond limit in response to " <<
+                  work.request_desc);
+        throw vd::CannotGrowVolumeBeyondLimitException("Cannot grow volume beyond limit");
+        break;
     default:
         LOG_ERROR(node_id() << ": " << work.request_desc <<
                   " failed, remote returned status " << vfsprotocol::response_type_to_string(rsp_type) <<
