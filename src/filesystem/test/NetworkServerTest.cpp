@@ -2337,4 +2337,87 @@ TEST_F(NetworkServerTest, DISABLED_remote_going_away_during_ctrl_request)
     f.wait();
 }
 
+TEST_F(NetworkServerTest, write_beyond_volume_boundaries)
+{
+    uint64_t volume_size = 1048576;
+    off_t offset = 2147483648;
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
+    EXPECT_EQ(0,
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         FileSystemTestSetup::edge_transport().c_str(),
+                                         FileSystemTestSetup::address().c_str(),
+                                         FileSystemTestSetup::local_edge_port()));
+    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
+    ASSERT_TRUE(ctx != nullptr);
+    EXPECT_EQ(0,
+              ovs_create_volume(ctx,
+                                "volume",
+                                volume_size));
+    ASSERT_EQ(0,
+              ovs_ctx_init(ctx,
+                           "volume",
+                           O_RDWR));
+
+    std::string pattern("openvstorage1");
+    auto wbuf = std::make_unique<uint8_t[]>(pattern.length());
+    ASSERT_TRUE(wbuf != nullptr);
+
+    memcpy(wbuf.get(),
+           pattern.c_str(),
+           pattern.length());
+
+    EXPECT_EQ(-1,
+              ovs_write(ctx,
+                        wbuf.get(),
+                        pattern.length(),
+                        offset));
+
+    EXPECT_EQ(EFBIG, errno);
+
+    EXPECT_EQ(0,
+              ovs_ctx_destroy(ctx));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
+}
+
+TEST_F(NetworkServerTest, remote_write_beyond_volume_boundaries)
+{
+    mount_remote();
+
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                        umount_remote();
+                                     }));
+
+    const std::string vname("volume");
+    off_t offset = 2147483648;
+
+    make_volume(vname,
+                1ULL << 20,
+                edge_port(true));
+
+    CtxPtr ctx(open_volume(vname,
+                           edge_port(true),
+                           O_RDWR,
+                           EnableHa::F));
+    ASSERT_TRUE(ctx != nullptr);
+
+    std::string pattern("openvstorage1");
+    auto wbuf = std::make_unique<uint8_t[]>(pattern.length());
+    ASSERT_TRUE(wbuf != nullptr);
+
+    memcpy(wbuf.get(),
+           pattern.c_str(),
+           pattern.length());
+
+    EXPECT_EQ(-1,
+              ovs_write(ctx.get(),
+                        wbuf.get(),
+                        pattern.length(),
+                        offset));
+
+    EXPECT_EQ(EFBIG, errno);
+}
+
 } //namespace
