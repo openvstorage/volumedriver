@@ -686,7 +686,7 @@ Volume::validateIOLength(uint64_t lba, uint64_t len) const
                  << (lba + len / getLBASize()) << " > "
                  << getLBACount());
         // don't throw return boolean!!
-        throw fungi::IOException("Access beyond end of volume");
+        throw AccessBeyondEndOfVolumeException("Access beyond end of volume");
     }
 }
 
@@ -3123,15 +3123,15 @@ Volume::resize(uint64_t clusters)
     {
         LOG_VERROR("Cannot shrink volume from " << ncl << " to " << clusters <<
                    " clusters");
-        throw fungi::IOException("Cannot shrink volume",
-                                 getName().c_str());
+        throw CannotShrinkVolumeException("Cannot shrink volume",
+                                          getName().c_str());
     }
     else if (clusters > maxcl)
     {
         LOG_VERROR("Cannot grow volume to " << clusters <<
                    " clusters as that exceeds the limit of " << maxcl << " clusters");
-        throw fungi::IOException("Cannot grow volume beyond limit",
-                                 getName().c_str());
+        throw CannotGrowVolumeBeyondLimitException("Cannot grow volume beyond limit",
+                                                   getName().c_str());
     }
     else if (ncl < clusters)
     {

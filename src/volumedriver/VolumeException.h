@@ -22,6 +22,9 @@ namespace volumedriver
 {
 
 MAKE_EXCEPTION(VolumeException, fungi::IOException);
+MAKE_EXCEPTION(AccessBeyondEndOfVolumeException, fungi::IOException);
+MAKE_EXCEPTION(CannotGrowVolumeBeyondLimitException, fungi::IOException);
+MAKE_EXCEPTION(CannotShrinkVolumeException, fungi::IOException);
 MAKE_EXCEPTION(VolumeIsTemplateException, VolumeException);
 MAKE_EXCEPTION(PreviousSnapshotNotOnBackendException, VolumeException);
 MAKE_EXCEPTION(SnapshotNotOnBackendException, VolumeException);
