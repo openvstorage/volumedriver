@@ -236,6 +236,8 @@ truncated.
 The function shall fail if:
 - ENOENT The named volume doesn't exist
 - EINVAL Invalid arguments supplied
+- EFBIG  Cannot grow volume beyond the implementation limit
+- EPERM  Not allowed to shrink volume
 - EIO An error occured during ovs_truncate_volume()
 
 ### Snapshot a volume
@@ -527,6 +529,8 @@ truncated.
 The function shall fail if:
 - EBADF Volume is not open for writing or is not open yet
 - EINVAL Invalid arguments supplied
+- EFBIG  Cannot grow volume beyond the implementation limit
+- EPERM  Not allowed to shrink volume
 - EIO An error occured during ovs_truncate()
 
 ### Asynchronous read from a volume
