@@ -1237,6 +1237,8 @@ BOOST_PYTHON_MODULE(storagerouterclient)
         DEF_READONLY_PROP_(metadata_store_hits)
         DEF_READONLY_PROP_(metadata_store_misses)
         DEF_READONLY_PROP_(stored)
+        DEF_READONLY_PROP_(partial_read_fast)
+        DEF_READONLY_PROP_(partial_read_slow)
         DEF_READONLY_PROP_(performance_counters)
         .def_pickle(XMLRPCStatisticsPickleSuite())
         ;

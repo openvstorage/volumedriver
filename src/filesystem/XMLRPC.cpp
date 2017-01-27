@@ -42,6 +42,8 @@
 #include <youtils/System.h>
 #include <youtils/Uri.h>
 
+#include <backend/PartialReadCounter.h>
+
 #include <volumedriver/Api.h>
 #include <volumedriver/MetaDataBackendInterface.h>
 #include <volumedriver/ScrubReply.h>
@@ -1102,6 +1104,10 @@ VolumePerformanceCounters::execute_internal(XmlRpc::XmlRpcValue& params,
         results_stats.metadata_store_hits = mdStats.cache_hits;
         results_stats.metadata_store_misses = mdStats.cache_misses;
         results_stats.stored = api::getStored(volName);
+
+        const be::PartialReadCounter prc(api::getPartialReadCounter(volName));
+        results_stats.partial_read_fast = prc.fast;
+        results_stats.partial_read_slow = prc.slow;
 
         vd::PerformanceCounters& perf_counters = api::performance_counters(volName);
         results_stats.performance_counters = perf_counters;

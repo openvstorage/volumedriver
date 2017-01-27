@@ -200,6 +200,8 @@ struct XMLRPCStatistics
     uint64_t metadata_store_hits = 0;
     uint64_t metadata_store_misses = 0;
     uint64_t stored = 0;
+    uint64_t partial_read_fast = 0;
+    uint64_t partial_read_slow = 0;
 
     volumedriver::PerformanceCounters performance_counters;
 
@@ -216,8 +218,10 @@ struct XMLRPCStatistics
             EQ(metadata_store_hits) and
             EQ(metadata_store_misses) and
             EQ(stored) and
-            EQ(performance_counters);
-
+            EQ(partial_read_fast) and
+            EQ(partial_read_slow) and
+            EQ(performance_counters)
+            ;
 #undef EQ
     }
 
@@ -236,6 +240,12 @@ struct XMLRPCStatistics
         if (version > 1)
         {
             ar & BOOST_SERIALIZATION_NVP(stored);
+        }
+
+        if (version > 2)
+        {
+            ar & BOOST_SERIALIZATION_NVP(partial_read_fast);
+            ar & BOOST_SERIALIZATION_NVP(partial_read_slow);
         }
     }
 
@@ -398,7 +408,7 @@ struct XMLRPCClusterCacheHandleInfo
 }
 
 BOOST_CLASS_VERSION(volumedriverfs::XMLRPCVolumeInfo, 2);
-BOOST_CLASS_VERSION(volumedriverfs::XMLRPCStatistics, 2);
+BOOST_CLASS_VERSION(volumedriverfs::XMLRPCStatistics, 3);
 BOOST_CLASS_VERSION(volumedriverfs::XMLRPCSnapshotInfo, 2);
 BOOST_CLASS_VERSION(volumedriverfs::XMLRPCClusterCacheHandleInfo, 1);
 
