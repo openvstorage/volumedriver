@@ -147,7 +147,8 @@ public:
     virtual bool
     partial_read_(const Namespace& ns,
                   const PartialReads& partial_reads,
-                  InsistOnLatestVersion) override final;
+                  InsistOnLatestVersion,
+                  PartialReadCounter&) override final;
 
     using KeyType = boost::filesystem::path;
     using ValueType = youtils::FileDescriptor;

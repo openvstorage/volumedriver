@@ -17,6 +17,7 @@
 #include "BackendTestBase.h"
 
 #include "../BackendConnectionInterface.h"
+#include "../PartialReadCounter.h"
 #include "../SimpleFetcher.h"
 
 #include <boost/thread.hpp>

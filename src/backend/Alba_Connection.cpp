@@ -16,6 +16,7 @@
 #include "Alba_Connection.h"
 #include "AlbaSequence.h"
 #include "BackendException.h"
+#include "PartialReadCounter.h"
 
 #include <mutex>
 
@@ -318,7 +319,8 @@ Connection::read_(const Namespace& nspace,
 bool
 Connection::partial_read_(const Namespace& ns,
                           const PartialReads& partial_reads,
-                          InsistOnLatestVersion insist_on_latest_version)
+                          InsistOnLatestVersion insist_on_latest_version,
+                          PartialReadCounter& prc)
 {
     if(partial_reads.empty())
     {
@@ -364,6 +366,9 @@ Connection::partial_read_(const Namespace& ns,
                                          apc::consistent_read::T :
                                          apc::consistent_read::F,
                                          rora_counter);
+
+            prc.fast += rora_counter.fast_path;
+            prc.slow += rora_counter.slow_path;
         });
 
     return true;
