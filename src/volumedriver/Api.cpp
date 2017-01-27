@@ -15,6 +15,7 @@
 
 #include "Api.h"
 #include "ClusterLocation.h"
+#include "DataStoreNG.h"
 #include "DtlInSync.h"
 #include "MetaDataStoreInterface.h"
 #include "ScrubWork.h"
@@ -24,6 +25,9 @@
 
 #include <youtils/BuildInfoString.h>
 #include <youtils/Logger.h>
+
+#include <backend/PartialReadCounter.h>
+
 #include "failovercache/fungilib/Mutex.h"
 
 using namespace volumedriver;
@@ -554,6 +558,13 @@ api::getHalted(const vd::VolumeId& volName)
 {
     vd::SharedVolumePtr v = VolManager::get()->findVolume_(volName);
     return v->is_halted();
+}
+
+be::PartialReadCounter
+api::getPartialReadCounter(const vd::VolumeId& volName)
+{
+    vd::SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    return v->getDataStore()->partial_read_counter();
 }
 
 uint64_t
