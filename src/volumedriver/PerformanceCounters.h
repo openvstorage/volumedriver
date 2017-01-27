@@ -16,9 +16,10 @@
 #ifndef PERFORMANCE_COUNTERS_H
 #define PERFORMANCE_COUNTERS_H
 
-#include <atomic>
 #include <mutex>
 
+#include <boost/array.hpp>
+#include <boost/serialization/array.hpp>
 #include <boost/serialization/nvp.hpp>
 
 #include <youtils/Serialization.h>
@@ -28,10 +29,34 @@ namespace volumedriver
 {
 
 template<typename T>
+struct NoBucketTraits
+{
+    static constexpr size_t max_buckets = 0;
+
+    static const boost::array<T, max_buckets>&
+    bounds()
+    {
+        static const boost::array<T, max_buckets> b;
+        return b;
+    }
+};
+
+template<typename T, typename BuckTraits = NoBucketTraits<T>>
 class PerformanceCounter
 {
+private:
+    mutable fungi::SpinLock lock_;
+    uint64_t events_;
+    T sum_;
+    T sqsum_;
+    T min_;
+    T max_;
+    boost::array<uint64_t, BuckTraits::max_buckets> buckets_;
+
 public:
     using Type = T;
+    using BucketTraits = BuckTraits;
+    static constexpr size_t max_buckets = BucketTraits::max_buckets;
 
     PerformanceCounter()
         : events_(0)
@@ -39,7 +64,9 @@ public:
         , sqsum_(0)
         , min_(std::numeric_limits<T>::max())
         , max_(std::numeric_limits<T>::min())
-    {}
+    {
+        buckets_.fill(0);
+    }
 
     PerformanceCounter(const PerformanceCounter& other)
         : events_(other.events())
@@ -47,6 +74,7 @@ public:
         , sqsum_(other.sum_of_squares())
         , min_(other.min())
         , max_(other.max())
+        , buckets_(other.buckets())
     {}
 
     PerformanceCounter&
@@ -62,6 +90,7 @@ public:
             sqsum_ = other.sqsum_;
             min_ = other.min_;
             max_ = other.max_;
+            buckets_ = other.buckets_;
         }
 
         return *this;
@@ -76,6 +105,10 @@ public:
             events_ *= 2;
             sum_ *= 2;
             sqsum_ *= 2;
+            for (auto& b : buckets_)
+            {
+                b *= 2;
+            }
             return *this;
         }
         else
@@ -89,6 +122,10 @@ public:
             max_ = std::max<T>(max_,
                                other.max_);
 
+            for (size_t i = 0; i < buckets_.max_size(); ++i)
+            {
+                buckets_[i] += other.buckets_[i];
+            }
             return *this;
         }
     }
@@ -117,6 +154,15 @@ public:
         {
             max_ = t;
         }
+
+        for (size_t i = 0; i < buckets_.max_size(); ++i)
+        {
+            if (t < BucketTraits::bounds()[i])
+            {
+                ++buckets_[i];
+                break;
+            }
+        }
     }
 
     void
@@ -129,6 +175,7 @@ public:
         sqsum_ = 0;
         min_ = std::numeric_limits<T>::max();
         max_ = std::numeric_limits<T>::min();
+        buckets_.fill(0);
     }
 
     uint64_t
@@ -166,25 +213,48 @@ public:
         return max_;
     }
 
+    decltype(buckets_)
+        buckets() const
+    {
+        std::lock_guard<decltype(lock_)> g(lock_);
+        return buckets_;
+    }
+
+    static const boost::array<T, BucketTraits::max_buckets>&
+    bucket_bounds()
+    {
+        return BucketTraits::bounds();
+    }
+
     bool
-    operator==(const PerformanceCounter<T>& other) const
+    operator==(const PerformanceCounter& other) const
     {
         return
             events() == other.events() and
             sum() == other.sum() and
             sum_of_squares() == other.sum_of_squares() and
             min() == other.min() and
-            max() == other.max();
+            max() == other.max() and
+            buckets() == other.buckets();
+    }
+
+    std::map<T, uint64_t>
+    distribution() const
+    {
+        const auto bounds(BucketTraits::bounds());
+        const auto bucks(buckets());
+
+        std::map<T, uint64_t> m;
+
+        for (size_t i = 0; i < bounds.max_size(); ++i)
+        {
+            m[bounds[i]] = bucks[i];
+        }
+
+        return m;
     }
 
 private:
-    mutable fungi::SpinLock lock_;
-    uint64_t events_;
-    T sum_;
-    T sqsum_;
-    T min_;
-    T max_;
-
     friend class boost::serialization::access;
     BOOST_SERIALIZATION_SPLIT_MEMBER();
 
@@ -207,6 +277,15 @@ private:
                                                 min_);
             ar & boost::serialization::make_nvp("max",
                                                 max_);
+        }
+
+        if (version > 1)
+        {
+            if (BucketTraits::max_buckets > 0)
+            {
+                ar & boost::serialization::make_nvp("buckets",
+                                                    buckets_);
+            }
         }
     }
 
@@ -232,27 +311,81 @@ private:
         const T mx = max();
         ar & boost::serialization::make_nvp("max",
                                             mx);
+
+        if (BucketTraits::max_buckets > 0)
+        {
+            const decltype(buckets_) bs = buckets();
+            ar & boost::serialization::make_nvp("buckets",
+                                                bs);
+        }
     }
 };
 
+struct RequestSizeBucketTraits
+{
+    static constexpr size_t max_buckets = 8;
+
+    static const boost::array<uint64_t, max_buckets>&
+    bounds()
+    {
+        static const boost::array<uint64_t, max_buckets> buckets = { 4 * 1024,
+                                                                     8 * 1024,
+                                                                     16 * 1024,
+                                                                     32 * 1024,
+                                                                     64 * 1024,
+                                                                     128 * 1024,
+                                                                     256 * 1024,
+                                                                     512 * 1024,
+        };
+
+        return buckets;
+    }
+};
+
+struct RequestUSecsBucketTraits
+{
+    static constexpr size_t max_buckets = 10;
+
+    static const boost::array<uint64_t, max_buckets>&
+    bounds()
+    {
+        static const boost::array<uint64_t, max_buckets> buckets = { 100,
+                                                                     250,
+                                                                     500,
+                                                                     750,
+                                                                     1000,
+                                                                     2000,
+                                                                     5000,
+                                                                     10000,
+                                                                     100000,
+                                                                     1000000,
+        };
+
+        return buckets;
+    }
+};
+
+using RequestSizeCounter = PerformanceCounter<uint64_t, RequestSizeBucketTraits>;
+using RequestUSecsCounter = PerformanceCounter<uint64_t, RequestUSecsBucketTraits>;
+
 struct PerformanceCounters
 {
-    PerformanceCounter<uint64_t> write_request_size;
-    PerformanceCounter<uint64_t> write_request_usecs;
+    RequestSizeCounter write_request_size;
+    RequestUSecsCounter write_request_usecs;
 
-    PerformanceCounter<uint64_t> unaligned_write_request_size;
+    RequestSizeCounter unaligned_write_request_size;
 
-    PerformanceCounter<uint64_t> backend_write_request_usecs;
-    PerformanceCounter<uint64_t> backend_write_request_size;
+    RequestUSecsCounter backend_write_request_usecs;
+    RequestSizeCounter backend_write_request_size;
 
-    PerformanceCounter<uint64_t> read_request_size;
-    PerformanceCounter<uint64_t> read_request_usecs;
+    RequestSizeCounter read_request_size;
+    RequestUSecsCounter read_request_usecs;
 
-    PerformanceCounter<uint64_t> unaligned_read_request_size;
-    PerformanceCounter<uint64_t> backend_read_request_size;
-    PerformanceCounter<uint64_t> backend_read_request_usecs;
+    RequestSizeCounter unaligned_read_request_size;
+    RequestSizeCounter backend_read_request_size;
+    RequestUSecsCounter backend_read_request_usecs;
 
-    PerformanceCounter<uint64_t> sync_request_usecs;
+    RequestUSecsCounter sync_request_usecs;
 
     PerformanceCounters() = default;
 
@@ -341,7 +474,7 @@ struct PerformanceCounters
     serialize(Archive& ar,
               const unsigned /* version */)
     {
-#define S(x)                                   \
+#define S(x)                                    \
         ar & BOOST_SERIALIZATION_NVP(x)
 
         S(write_request_size);
@@ -362,8 +495,8 @@ struct PerformanceCounters
 
 }
 
-BOOST_CLASS_VERSION(volumedriver::PerformanceCounter<uint64_t>, 1);
-
+BOOST_CLASS_VERSION(volumedriver::RequestSizeCounter, 2);
+BOOST_CLASS_VERSION(volumedriver::RequestUSecsCounter, 2);
 BOOST_CLASS_VERSION(volumedriver::PerformanceCounters, 0);
 
 #endif // PERFORMANCE_COUNTERS_H

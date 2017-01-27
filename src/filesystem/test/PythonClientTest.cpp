@@ -470,6 +470,53 @@ TEST_F(PythonClientTest, volume_queries)
     EXPECT_NO_THROW(vol_statistics = client_.statistics_volume(vname));
 }
 
+namespace
+{
+
+struct PerfCounterExpectNothing
+{
+    template<typename T, typename U>
+    void
+    operator()(const vd::PerformanceCounter<T, U>& ctr) const
+    {
+        EXPECT_EQ(0U,
+                  ctr.events());
+        EXPECT_EQ(0U,
+                  ctr.sum());
+        EXPECT_EQ(0U,
+                  ctr.sum_of_squares());
+        EXPECT_EQ(std::numeric_limits<uint64_t>::max(),
+                  ctr.min());
+        EXPECT_EQ(std::numeric_limits<uint64_t>::min(),
+                  ctr.max());
+        for (size_t i = 0; i < ctr.bucket_bounds().size(); ++i)
+        {
+            EXPECT_EQ(0, ctr.buckets()[i]);
+        }
+    };
+};
+
+struct PerfCounterExpectBucketsNotEmpty
+{
+    template<typename T, typename U>
+    void
+    operator()(const vd::PerformanceCounter<T, U>& ctr) const
+    {
+        bool empty = true;
+        for (size_t i = 0; i < ctr.bucket_bounds().size(); ++i)
+        {
+            if (ctr.buckets()[i] != 0)
+            {
+                empty = false;
+            }
+        }
+
+        EXPECT_FALSE(empty);
+    }
+};
+
+}
+
 TEST_F(PythonClientTest, performance_counters)
 {
     mount_remote();
@@ -484,22 +531,9 @@ TEST_F(PythonClientTest, performance_counters)
 
     const size_t csize = get_cluster_size(vfs::ObjectId(vname));
 
-    auto expect_nothing_([&](const vd::PerformanceCounter<uint64_t>& ctr)
-    {
-        EXPECT_EQ(0U,
-                  ctr.events());
-        EXPECT_EQ(0U,
-                  ctr.sum());
-        EXPECT_EQ(0U,
-                  ctr.sum_of_squares());
-        EXPECT_EQ(std::numeric_limits<uint64_t>::max(),
-                  ctr.min());
-        EXPECT_EQ(std::numeric_limits<uint64_t>::min(),
-                  ctr.max());
-    });
-
     auto expect_nothing([&](const vfs::XMLRPCStatistics& stats)
                         {
+                            const PerfCounterExpectNothing expect_nothing_;
                             expect_nothing_(stats.performance_counters.write_request_size);
                             expect_nothing_(stats.performance_counters.read_request_size);
                             expect_nothing_(stats.performance_counters.sync_request_usecs);
@@ -538,6 +572,9 @@ TEST_F(PythonClientTest, performance_counters)
                               EXPECT_EQ(csize,
                                         stats.performance_counters.write_request_size.max());
 
+                              PerfCounterExpectBucketsNotEmpty()(stats.performance_counters.write_request_size);
+
+                              const PerfCounterExpectNothing expect_nothing_;
                               expect_nothing_(stats.performance_counters.read_request_size);
                               expect_nothing_(stats.performance_counters.sync_request_usecs);
                           });
