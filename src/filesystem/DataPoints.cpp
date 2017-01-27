@@ -215,6 +215,25 @@ operator<<(std::ostream& os,
         ",cache_misses=" << vsc.cache_misses;
 };
 
+VolumeBackendDataPoint::VolumeBackendDataPoint(const vd::VolumeId& vid)
+    : id(vid)
+{
+    LOCKVD();
+    partial_read_counter_ = api::getPartialReadCounter(vid);
+}
+
+constexpr const char* VolumeBackendDataPoint::name;
+
+std::ostream&
+operator<<(std::ostream& os,
+           const VolumeBackendDataPoint& dp)
+{
+    return
+        name_and_id(os, dp) <<
+        ",fast=" << dp.partial_read_counter_.fast <<
+        ",slow=" << dp.partial_read_counter_.slow;
+};
+
 namespace
 {
 

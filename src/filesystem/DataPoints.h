@@ -19,6 +19,7 @@
 #include <iostream>
 
 #include <backend/ConnectionPool.h>
+#include <backend/PartialReadCounter.h>
 
 #include <volumedriver/Api.h>
 #include <volumedriver/PerformanceCounters.h>
@@ -151,6 +152,19 @@ struct VolumeSCOCacheDataPoint
 std::ostream&
 operator<<(std::ostream&,
            const VolumeSCOCacheDataPoint&);
+
+struct VolumeBackendDataPoint
+{
+    static constexpr const char* name = "volume_backend_counters";
+    std::string id;
+    backend::PartialReadCounter partial_read_counter_;
+
+    explicit VolumeBackendDataPoint(const volumedriver::VolumeId&);
+};
+
+std::ostream&
+operator<<(std::ostream&,
+           const VolumeBackendDataPoint&);
 
 struct VolumePerformanceCountersDataPoint
 {
