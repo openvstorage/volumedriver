@@ -17,22 +17,14 @@
 #define NETWORK_XIO_WORK_H_
 
 #include <functional>
-#include <libxio.h>
 
 namespace volumedriverfs
 {
 
-struct Work;
+class NetworkXioRequest;
 
-typedef std::function<void(Work*)> workitem_func_t;
-
-struct Work
-{
-    workitem_func_t func = nullptr;
-    workitem_func_t func_ctrl = nullptr;
-    workitem_func_t dispatch_ctrl_request = nullptr;
-    bool is_ctrl = false;
-};
+using WorkCompletion = std::function<void()>;
+using Work = std::function<void(WorkCompletion)>;
 
 } //namespace
 

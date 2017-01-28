@@ -1120,7 +1120,8 @@ NetworkXioIOHandler::handle_error(NetworkXioRequest *req,
 }
 
 void
-NetworkXioIOHandler::process_ctrl_request(NetworkXioRequest *req)
+NetworkXioIOHandler::process_ctrl_request(NetworkXioRequest *req,
+                                          WorkCompletion complete)
 {
     xio_msg *xio_req = req->xio_req;
 
@@ -1136,6 +1137,7 @@ NetworkXioIOHandler::process_ctrl_request(NetworkXioRequest *req)
         handle_error(req,
                      NetworkXioMsgOpcode::ErrorRsp,
                      EBADMSG);
+        complete();
         return;
     }
 
@@ -1253,12 +1255,14 @@ NetworkXioIOHandler::process_ctrl_request(NetworkXioRequest *req)
         handle_error(req,
                      NetworkXioMsgOpcode::ErrorRsp,
                      EIO);
-        return;
     };
+
+    complete();
 }
 
 void
-NetworkXioIOHandler::process_request(NetworkXioRequest *req)
+NetworkXioIOHandler::process_request(NetworkXioRequest *req,
+                                     WorkCompletion complete)
 {
     xio_msg *xio_req = req->xio_req;
     //TODO cnanakos: use a smart pointer
@@ -1274,6 +1278,7 @@ NetworkXioIOHandler::process_request(NetworkXioRequest *req)
         handle_error(req,
                      NetworkXioMsgOpcode::ErrorRsp,
                      EBADMSG);
+        complete();
         return;
     }
 
@@ -1303,34 +1308,28 @@ NetworkXioIOHandler::process_request(NetworkXioRequest *req)
         prepare_ctrl_request(req);
         return;
     };
+
+    complete();
 }
 
 void
 NetworkXioIOHandler::prepare_ctrl_request(NetworkXioRequest *req)
 {
-    req->work.func_ctrl =
-        std::bind(&NetworkXioIOHandler::process_ctrl_request,
-                  this,
-                  req);
-    req->work.dispatch_ctrl_request =
-        std::bind(&NetworkXioIOHandler::dispatch_ctrl_request,
-                  this,
-                  req);
-    req->work.is_ctrl = true;
-}
-
-void
-NetworkXioIOHandler::dispatch_ctrl_request(NetworkXioRequest *req)
-{
+    ASSERT(not req->work);
+    req->work = std::bind(&NetworkXioIOHandler::process_ctrl_request,
+                          this,
+                          req,
+                          std::placeholders::_1);
     wq_ctrl_->work_schedule(req);
 }
 
 void
 NetworkXioIOHandler::handle_request(NetworkXioRequest *req)
 {
-    req->work.func = std::bind(&NetworkXioIOHandler::process_request,
-                               this,
-                               req);
+    req->work = std::bind(&NetworkXioIOHandler::process_request,
+                          this,
+                          req,
+                          std::placeholders::_1);
     wq_->work_schedule(req);
 }
 

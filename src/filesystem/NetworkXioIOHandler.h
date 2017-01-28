@@ -20,6 +20,7 @@
 #include "ClusterRegistry.h"
 
 #include "NetworkXioRequest.h"
+#include "NetworkXioWork.h"
 #include "NetworkXioWorkQueue.h"
 
 #include <volumedriver/ClusterLocation.h>
@@ -57,16 +58,13 @@ public:
     operator=(const NetworkXioIOHandler&) = delete;
 
     void
-    process_request(NetworkXioRequest *req);
+    process_request(NetworkXioRequest *req, WorkCompletion);
 
     void
-    process_ctrl_request(NetworkXioRequest *req);
+    process_ctrl_request(NetworkXioRequest *req, WorkCompletion);
 
     void
     handle_request(NetworkXioRequest *req);
-
-    void
-    dispatch_ctrl_request(NetworkXioRequest *req);
 
     void
     update_fs_client_info(const std::string& volume_name);
@@ -148,7 +146,8 @@ private:
                       NetworkXioMsgOpcode op,
                       int errval);
 
-    void prepare_ctrl_request(NetworkXioRequest *req);
+    void
+    prepare_ctrl_request(NetworkXioRequest *req);
 
 private:
     DECLARE_LOGGER("NetworkXioIOHandler");

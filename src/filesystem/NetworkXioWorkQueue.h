@@ -254,23 +254,23 @@ retry:
             inflight_queue.pop();
             lock_.unlock();
             queued_work_dec();
-            if (not req->work.is_ctrl and req->work.func)
-            {
-                req->work.func(&req->work);
-                if (req->work.is_ctrl)
-                {
-                    req->work.dispatch_ctrl_request(&req->work);
-                    continue;
-                }
-            }
-            if (req->work.is_ctrl and req->work.func_ctrl)
-            {
-                req->work.func_ctrl(&req->work);
-            }
-            finished_lock.lock();
-            finished_list.push_back(*req);
-            finished_lock.unlock();
-            xstop_loop();
+
+            Work w;
+            std::swap(req->work, w);
+            w([req, this]
+              {
+                  bool wakeup = false;
+                  {
+                      boost::lock_guard<decltype(finished_lock)> g(finished_lock);
+                      wakeup = finished_list.empty();
+                      finished_list.push_back(*req);
+                  }
+
+                  if (wakeup)
+                  {
+                      xstop_loop();
+                  }
+              });
         }
     }
 };
