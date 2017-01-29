@@ -38,7 +38,7 @@
 #include <boost/thread/shared_mutex.hpp>
 
 #include <youtils/CheckSum.h>
-
+#include <youtils/Continuation.h>
 #include <backend/BackendInterface.h>
 
 namespace volumedriver
@@ -143,7 +143,11 @@ public:
     initialize(VolumeInterface* vol);
 
     void
-    readClusters(const std::vector<ClusterReadDescriptor>& descs);
+    readClusters(const std::vector<ClusterReadDescriptor>&);
+
+    void
+    readClusters(const std::vector<ClusterReadDescriptor>&,
+                 youtils::Continuation);
 
     void
     writeClusterToLocation(const uint8_t* buf,

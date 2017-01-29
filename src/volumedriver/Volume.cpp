@@ -1048,26 +1048,55 @@ Volume::read(uint64_t lba,
              uint8_t *buf,
              uint64_t buflen)
 {
-    tracepoint(openvstorage_volumedriver,
-               volume_read_start,
-               config_.id_.str().c_str(),
-               lba,
-               buflen);
+    std::promise<void> p;
+    std::future<void> f(p.get_future());
+    read(lba,
+         buf,
+         buflen,
+         [&](std::exception_ptr e)
+         {
+             if (e)
+             {
+                 p.set_exception(e);
+             }
+             else
+             {
+                 p.set_value();
+             }
+         });
 
-    auto on_exit(yt::make_scope_exit([&]
-                                     {
-                                         tracepoint(openvstorage_volumedriver,
-                                                    volume_read_end,
-                                                    config_.id_.str().c_str(),
-                                                    lba,
-                                                    buflen,
-                                                    std::uncaught_exception());
-                                     }));
+    f.get();
+}
+
+void
+Volume::read(uint64_t lba,
+             uint8_t *buf,
+             uint64_t buflen,
+             yt::Continuation cont)
+{
+    TODO("AR: reinstate tracepoints");
+
+    // tracepoint(openvstorage_volumedriver,
+    //            volume_read_start,
+    //            config_.id_.str().c_str(),
+    //            lba,
+    //            buflen);
+
+    // auto on_exit(yt::make_scope_exit([&]
+    //                                  {
+    //                                      tracepoint(openvstorage_volumedriver,
+    //                                                 volume_read_end,
+    //                                                 config_.id_.str().c_str(),
+    //                                                 lba,
+    //                                                 buflen,
+    //                                                 std::uncaught_exception());
+    //                                  }));
 
     performance_counters().read_request_size.count(buflen);
 
     if (VolManager::get()->volume_nullio.value())
     {
+        cont(nullptr);
         return;
     }
 
@@ -1093,7 +1122,8 @@ Volume::read(uint64_t lba,
         len = buflen;
     }
 
-    std::vector<uint8_t> bufv;
+    TODO("AR: don't create the bounce buffer unconditionally");
+    auto bufv(std::make_shared<std::vector<uint8_t>>());
     uint8_t *p;
 
     if (unaligned)
@@ -1101,8 +1131,8 @@ Volume::read(uint64_t lba,
         performance_counters().unaligned_read_request_size.count(buflen);
 
         validateIOAlignment(lba & caMask_, len);
-        bufv.resize(len);
-        p = &bufv[0];
+        bufv->resize(len);
+        p = bufv->data();
     }
     else
     {
@@ -1110,28 +1140,44 @@ Volume::read(uint64_t lba,
     }
     uint64_t addr = LBA2Addr(lba);
 
+    auto fun([buf,
+              buflen,
+              bufv,
+              cont = std::move(cont),
+              lba,
+              p,
+              t,
+              this,
+              unaligned](std::exception_ptr e)
+             {
+                 if (not e)
+                 {
+                     if (unaligned)
+                     {
+                         memcpy(buf, p + (lba & ~caMask_) * getLBASize(), buflen);
+                     }
+                 }
+                 else
+                 {
+                     const auto duration_us(bc::duration_cast<bc::microseconds>(t.elapsed()));
+                     performance_counters().read_request_usecs.count(duration_us.count());
+                 }
+                 cont(e);
+             });
+
     readClusters_(addr,
                   p,
-                  len);
-
-    if (unaligned)
-    {
-        LOG_VDEBUG("Unaligned read: lba " << lba << ", len " <<
-                   buflen << " -> using bounce buffer " << &p <<
-                   " for lba " << (lba & caMask_) << ", len " << len);
-        memcpy(buf, p + (lba & ~caMask_) * getLBASize(), buflen);
-    }
-
-    const auto duration_us(bc::duration_cast<bc::microseconds>(t.elapsed()));
-    performance_counters().read_request_usecs.count(duration_us.count());
+                  len,
+                  std::move(fun));
 }
 
 void
 Volume::readClusters_(uint64_t addr,
                       uint8_t* buf,
-                      uint64_t bufsize)
+                      uint64_t bufsize,
+                      yt::Continuation cont)
 {
-    RLOCK();
+    auto rguard(std::make_shared<boost::shared_lock<decltype(rwlock_)>>(rwlock_));
 
     // Z42: Move this to the caller or make it thread local storage to
     // avoid allocations
@@ -1196,10 +1242,27 @@ Volume::readClusters_(uint64_t addr,
         }
     }
 
-    dataStore_->readClusters(read_descriptors);
-
+    TODO("AR: support for async path if there's a cluster cache");
     if (effective_cluster_cache_behaviour() != ClusterCacheBehaviour::NoCache)
     {
+        std::promise<void> p;
+        std::future<void> f(p.get_future());
+
+        dataStore_->readClusters(read_descriptors,
+                                 [&](std::exception_ptr e)
+                                 {
+                                     if (e)
+                                     {
+                                         p.set_exception(e);
+                                     }
+                                     else
+                                     {
+                                         p.set_value();
+                                     }
+                                 });
+
+        f.wait();
+
         for (const ClusterReadDescriptor& clrd : read_descriptors)
         {
             add_to_cluster_cache_(ccmode,
@@ -1207,6 +1270,17 @@ Volume::readClusters_(uint64_t addr,
                                   clrd.weed(),
                                   clrd.getBuffer());
         }
+
+        cont(nullptr);
+    }
+    else
+    {
+        dataStore_->readClusters(read_descriptors,
+                                 [cont = std::move(cont),
+                                  rguard](std::exception_ptr e)
+                                 {
+                                     cont(e);
+                                 });
     }
 }
 

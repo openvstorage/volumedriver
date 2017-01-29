@@ -19,8 +19,9 @@
 #include "Volume.h"
 #include "VolManager.h"
 
-#include <cerrno>
 #include <algorithm>
+#include <cerrno>
+#include <future>
 
 #include <youtils/Assert.h>
 #include <youtils/ScopeExit.h>
@@ -452,7 +453,7 @@ struct PartialReadFallback
     uint32_t hits;
     uint32_t misses;
 
-    explicit PartialReadFallback(Fun&& f)
+    explicit PartialReadFallback(Fun f)
         : fun(std::move(f))
         , hits(0)
         , misses(0)
@@ -504,10 +505,34 @@ struct PartialReadFallback
 void
 DataStoreNG::readClusters(const std::vector<ClusterReadDescriptor>& descs)
 {
-    RLOCK_DATASTORE();
+    std::promise<void> p;
+    std::future<void> f(p.get_future());
+
+    readClusters(descs,
+                 [&](std::exception_ptr e)
+                 {
+                     if (e)
+                     {
+                         p.set_exception(e);
+                     }
+                     else
+                     {
+                         p.set_value();
+                     }
+                 });
+
+    f.wait();
+}
+
+void
+DataStoreNG::readClusters(const std::vector<ClusterReadDescriptor>& descs,
+                          yt::Continuation cont)
+{
+    auto rguard(std::make_shared<boost::shared_lock<decltype(rw_lock_)>>(rw_lock_));
 
     if(descs.empty())
     {
+        cont(nullptr);
         return;
     }
 
@@ -516,7 +541,7 @@ DataStoreNG::readClusters(const std::vector<ClusterReadDescriptor>& descs)
 
     using PartialReadsMap =
         std::map<SCOCloneID, backend::BackendConnectionInterface::PartialReads>;
-    PartialReadsMap partial_reads_map;
+    auto partial_reads_map(std::make_shared<PartialReadsMap>());
 
     const size_t csize = getClusterSize();
 
@@ -573,7 +598,7 @@ DataStoreNG::readClusters(const std::vector<ClusterReadDescriptor>& descs)
                           descs[start].getBuffer());
 
                 be::BackendConnectionInterface::PartialReads&
-                    partial_reads = partial_reads_map[start_cid];
+                    partial_reads = (*partial_reads_map)[start_cid];
                 const auto res(partial_reads[sco.str()].emplace(std::move(slice)));
                 VERIFY(res.second);
             }
@@ -587,8 +612,16 @@ DataStoreNG::readClusters(const std::vector<ClusterReadDescriptor>& descs)
         InsistOnLatestVersion::F :
         InsistOnLatestVersion::T;
 
+    if (partial_reads_map->empty())
+    {
+        cont(nullptr);
+        return;
+    }
+
+    auto expected_completions(std::make_shared<std::atomic<size_t>>(partial_reads_map->size()));
+
     // Candidate for parallelization
-    for (const auto& partial_reads : partial_reads_map)
+    for (const auto& partial_reads : *partial_reads_map)
     {
         yt::SteadyTimer t;
 
@@ -605,40 +638,59 @@ DataStoreNG::readClusters(const std::vector<ClusterReadDescriptor>& descs)
                                     nullptr);
                  });
 
-        PartialReadFallback fallback(fun);
+        auto fallback(std::make_shared<PartialReadFallback>(std::move(fun)));
+        auto complete([cid,
+                       cont,
+                       expected_completions,
+                       fallback,
+                       partial_reads_map,
+                       rguard,
+                       t,
+                       this](std::exception_ptr e)
+                      {
+                          if (not e)
+                          {
+                              cacheHitCounter_ += fallback->hits;
+                              cacheMissCounter_ += fallback->misses;
+
+                              if (fallback->misses or
+                                  (fallback->hits == 0 and fallback->misses == 0))
+                              {
+                                  const auto duration_us(bc::duration_cast<bc::microseconds>(t.elapsed()));
+                                  PerformanceCounters& c = getVolume()->performance_counters();
+                                  c.backend_read_request_usecs.count(duration_us.count());
+
+                                  uint64_t bytes = 0;
+                                  for (const auto& pr : (*partial_reads_map)[cid])
+                                  {
+                                      for (const auto& slice : pr.second)
+                                      {
+                                          bytes += slice.size;
+                                      }
+                                  }
+
+                                  c.backend_read_request_size.count(bytes);
+                              }
+                          }
+
+                          if (--(*expected_completions) == 0)
+                          {
+                              cont(e);
+                          }
+                      });
 
         try
         {
             bi->partial_read(partial_reads.second,
-                             fallback,
-                             insist_on_latest);
+                             *fallback,
+                             insist_on_latest,
+                             complete);
         }
-        catch (be::BackendConnectFailureException&)
+        catch (std::exception& e)
         {
-            throw TransientException("Backend connection failure");
+            complete(std::current_exception());
         }
 
-        cacheHitCounter_ += fallback.hits;
-        cacheMissCounter_ += fallback.misses;
-
-        if (fallback.misses or
-            (fallback.hits == 0 and fallback.misses == 0))
-        {
-            const auto duration_us(bc::duration_cast<bc::microseconds>(t.elapsed()));
-            PerformanceCounters& c = getVolume()->performance_counters();
-            c.backend_read_request_usecs.count(duration_us.count());
-
-            uint64_t bytes = 0;
-            for (const auto& pr : partial_reads.second)
-            {
-                for (const auto& slice : pr.second)
-                {
-                    bytes += slice.size;
-                }
-            }
-
-            c.backend_read_request_size.count(bytes);
-        }
     }
 }
 

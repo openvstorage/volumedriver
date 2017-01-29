@@ -50,6 +50,7 @@
 #include <youtils/ArakoonNodeConfig.h>
 #include <youtils/Assert.h>
 #include <youtils/ConfigurationReport.h>
+#include <youtils/Continuation.h>
 #include <youtils/UpdateReport.h>
 #include <youtils/UUID.h>
 
@@ -114,6 +115,13 @@ public:
           const uint64_t lba,
           const uint8_t *buf,
           const uint64_t buflen);
+
+    static void
+    Read(volumedriver::WeakVolumePtr vol,
+         const uint64_t lba,
+         uint8_t *buf,
+         const uint64_t buflen,
+         youtils::Continuation);
 
     static void
     Read(volumedriver::WeakVolumePtr vol,

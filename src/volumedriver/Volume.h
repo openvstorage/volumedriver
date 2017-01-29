@@ -44,6 +44,7 @@
 #include <boost/thread/mutex.hpp>
 #include <boost/utility.hpp>
 
+#include <youtils/Continuation.h>
 #include <youtils/Logging.h>
 #include <youtils/RWLock.h>
 
@@ -167,6 +168,9 @@ public:
    /** @exception IOException, MetaDataStoreException */
     void
     read(uint64_t lba, uint8_t *buf, uint64_t len);
+
+    void
+    read(uint64_t lba, uint8_t *buf, uint64_t len, youtils::Continuation);
 
     /** @exception IOException */
     DtlInSync
@@ -609,7 +613,8 @@ private:
     void
     readClusters_(uint64_t addr,
                   uint8_t* buf,
-                  uint64_t bufsize);
+                  uint64_t bufsize,
+                  youtils::Continuation);
 
     fs::path
     getCurrentTLogPath_() const;

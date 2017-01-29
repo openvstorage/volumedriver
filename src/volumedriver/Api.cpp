@@ -13,6 +13,8 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include <future>
+
 #include "Api.h"
 #include "ClusterLocation.h"
 #include "DtlInSync.h"
@@ -34,6 +36,7 @@ namespace bpt = boost::property_tree;
 // this one also comes in via Types.h - clean this up.
 // namespace fs = boost::filesystem;
 namespace vd = volumedriver;
+namespace yt = youtils;
 
 namespace
 {
@@ -103,9 +106,36 @@ api::Read(WeakVolumePtr vol,
           uint8_t *buf,
           const uint64_t buflen)
 {
+    std::promise<void> p;
+    std::future<void> f(p.get_future());
+    Read(vol,
+         lba,
+         buf,
+         buflen,
+         [&](std::exception_ptr e)
+         {
+             if (e)
+             {
+                 p.set_exception(e);
+             }
+             else
+             {
+                 p.set_value();
+             }
+         });
+}
+
+void
+api::Read(WeakVolumePtr vol,
+          const uint64_t lba,
+          uint8_t* buf,
+          const uint64_t buflen,
+          yt::Continuation cont)
+{
     SharedVolumePtr(vol)->read(lba,
                                buf,
-                               buflen);
+                               buflen,
+                               std::move(cont));
 }
 
 void
