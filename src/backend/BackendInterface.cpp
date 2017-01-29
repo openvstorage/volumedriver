@@ -20,6 +20,10 @@
 #include "BackendRequestParameters.h"
 #include "BackendTracePoints_tp.h"
 
+#include <future>
+
+#include <boost/asio.hpp>
+#include <boost/asio/steady_timer.hpp>
 #include <boost/chrono.hpp>
 #include <boost/thread.hpp>
 
@@ -28,6 +32,8 @@
 namespace backend
 {
 
+namespace ba = boost::asio;
+namespace bs = boost::system;
 namespace fs = boost::filesystem;
 namespace yt = youtils;
 
@@ -388,6 +394,34 @@ BackendInterface::partial_read(const BackendConnectionInterface::PartialReads& p
                                InsistOnLatestVersion insist_on_latest,
                                const BackendRequestParameters& params)
 {
+    std::promise<void> p;
+    std::future<void> f(p.get_future());
+    partial_read(partial_reads,
+                 fallback_fun,
+                 insist_on_latest,
+                 [&](std::exception_ptr e)
+                 {
+                     if (e)
+                     {
+                         p.set_exception(e);
+                     }
+                     else
+                     {
+                         p.set_value();
+                     }
+                 },
+                 params);
+
+    f.get();
+}
+
+void
+BackendInterface::partial_read(const BackendConnectionInterface::PartialReads& partial_reads,
+                               BackendConnectionInterface::PartialReadFallbackFun& fallback_fun,
+                               InsistOnLatestVersion insist_on_latest,
+                               yt::Continuation cont,
+                               const BackendRequestParameters& params)
+{
     size_t bytes = 0;
 
     for (const auto& p : partial_reads)
@@ -398,43 +432,56 @@ BackendInterface::partial_read(const BackendConnectionInterface::PartialReads& p
         }
     }
 
-    tracepoint(openvstorage_backend,
-               backend_interface_partial_read_start,
-               nspace_.str().c_str(),
-               partial_reads.size(),
-               bytes,
-               insist_on_latest == InsistOnLatestVersion::T);
+    TODO("AR: reinstate tracepoints");
+    // tracepoint(openvstorage_backend,
+    //            backend_interface_partial_read_start,
+    //            nspace_.str().c_str(),
+    //            partial_reads.size(),
+    //            bytes,
+    //            insist_on_latest == InsistOnLatestVersion::T);
 
-    auto exit(yt::make_scope_exit([&]
-                                  {
-                                      tracepoint(openvstorage_backend,
-                                                 backend_interface_partial_read_end,
-                                                 nspace_.str().c_str(),
-                                                 partial_reads.size(),
-                                                 bytes,
-                                                 std::uncaught_exception());
-                                  }));
-
-    auto fun([&](InsistOnLatestVersion insist)
-             {
-                 wrap_<void,
-                       decltype(partial_reads),
-                       decltype(insist),
-                       decltype(fallback_fun)>(params,
-                                               &BackendConnectionInterface::partial_read,
-                                               partial_reads,
-                                               insist,
-                                               fallback_fun);
-             });
+    // auto exit(yt::make_scope_exit([&]
+    //                               {
+    //                                   tracepoint(openvstorage_backend,
+    //                                              backend_interface_partial_read_end,
+    //                                              nspace_.str().c_str(),
+    //                                              partial_reads.size(),
+    //                                              bytes,
+    //                                              std::uncaught_exception());
+    //                               }));
 
     if (not conn_manager_->partial_read_nullio())
     {
+        using PR = void (BackendConnectionInterface::*)(const Namespace&,
+                                                        const BackendConnectionInterface::PartialReads&,
+                                                        InsistOnLatestVersion,
+                                                        BackendConnectionInterface::PartialReadFallbackFun&,
+                                                        yt::Continuation);
+        auto fun([&](InsistOnLatestVersion insist)
+                 {
+                     wrap_<void,
+                           decltype(partial_reads),
+                           decltype(insist),
+                           decltype(fallback_fun),
+                           decltype(cont)>(params,
+                                           static_cast<PR>(&BackendConnectionInterface::partial_read),
+                                           partial_reads,
+                                           insist,
+                                           fallback_fun,
+                                           std::move(cont));
+                 });
         handle_eventual_consistency_<void>(insist_on_latest,
                                            std::move(fun));
     }
-    else if (conn_manager_->partial_read_nullio_delay_usecs().count())
+    else
     {
-        boost::this_thread::sleep_for(conn_manager_->partial_read_nullio_delay_usecs());
+        auto t(std::make_shared<ba::steady_timer>(conn_manager_->io_service()));
+        t->expires_from_now(std::chrono::microseconds(conn_manager_->partial_read_nullio_delay_usecs().count()));
+        t->async_wait([t,
+                       cont = std::move(cont)](const bs::error_code& /* e */)
+                      {
+                          cont(nullptr);
+                      });
     }
 }
 

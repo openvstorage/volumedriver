@@ -15,6 +15,8 @@
 
 #include "BackendConnectionInterface.h"
 
+#include <future>
+
 #include <boost/optional/optional_io.hpp>
 
 #include <youtils/FileDescriptor.h>
@@ -24,7 +26,8 @@
 namespace backend
 {
 
-using namespace youtils;
+namespace fs = boost::filesystem;
+namespace yt = youtils;
 using namespace std::literals::string_literals;
 
 namespace
@@ -187,7 +190,7 @@ BackendConnectionInterface::read(const Namespace& nspace,
     boost::filesystem::path temp_file;
     try
     {
-        temp_file = youtils::FileUtils::create_temp_file(destination);
+        temp_file = yt::FileUtils::create_temp_file(destination);
     }
     catch(...)
     {
@@ -196,10 +199,10 @@ BackendConnectionInterface::read(const Namespace& nspace,
 
     ALWAYS_CLEANUP_FILE(temp_file);
     read_(nspace, temp_file, name, insist_on_latest);
-    youtils::FileUtils::syncAndRename(temp_file, destination);
+    yt::FileUtils::syncAndRename(temp_file, destination);
 }
 
-std::unique_ptr<UniqueObjectTag>
+std::unique_ptr<yt::UniqueObjectTag>
 BackendConnectionInterface::get_tag(const Namespace& nspace,
                                     const std::string& name)
 {
@@ -216,18 +219,61 @@ BackendConnectionInterface::partial_read(const Namespace& ns,
                                          const PartialReads& partial_reads,
                                          InsistOnLatestVersion insist_on_latest,
                                          PartialReadFallbackFun& fallback_fun)
+{
+    std::promise<void> p;
+    std::future<void> f(p.get_future());
+
+    partial_read(ns,
+                 partial_reads,
+                 insist_on_latest,
+                 fallback_fun,
+                 [&](std::exception_ptr e)
+                 {
+                     if (e)
+                     {
+                         p.set_exception(e);
+                     }
+                     else
+                     {
+                         p.set_value();
+                     }
+                 });
+
+    f.get();
+}
+
+bool
+BackendConnectionInterface::partial_read_async_(const Namespace& nspace,
+                                                const PartialReads& partial_reads,
+                                                InsistOnLatestVersion insist_on_latest,
+                                                yt::Continuation cont)
+{
+    const bool ret = partial_read_(nspace,
+                                   partial_reads,
+                                   insist_on_latest);
+    cont(nullptr);
+    return ret;
+}
+
+void
+BackendConnectionInterface::partial_read(const Namespace& ns,
+                                         const PartialReads& partial_reads,
+                                         InsistOnLatestVersion insist_on_latest,
+                                         PartialReadFallbackFun& fallback_fun,
+                                         yt::Continuation cont)
 try
 {
-    const bool ok = partial_read_(ns,
-                                  partial_reads,
-                                  insist_on_latest);
+    const bool ok = partial_read_async_(ns,
+                                        partial_reads,
+                                        insist_on_latest,
+                                        std::move(cont));
     if (not ok)
     {
         LOG_TRACE(ns << ": partial read not supported - falling back to emulation");
 
         for(const auto& p : partial_reads)
         {
-            youtils::FileDescriptor& sio = fallback_fun(ns,
+            yt::FileDescriptor& sio = fallback_fun(ns,
                                                         p.first,
                                                         insist_on_latest);
 
@@ -246,6 +292,8 @@ try
                 }
             }
         }
+
+        cont(nullptr);
     }
 }
 CATCH_STD_ALL_EWHAT({
@@ -258,18 +306,18 @@ BackendConnectionInterface::write(const Namespace& nspace,
                                   const boost::filesystem::path& location,
                                   const std::string& name,
                                   const OverwriteObject overwrite,
-                                  const youtils::CheckSum* chksum,
+                                  const yt::CheckSum* chksum,
                                   const boost::shared_ptr<Condition>& cond)
 {
     Logger l(__FUNCTION__, nspace, name);
     return write_(nspace, location, name, overwrite, chksum, cond);
 }
 
-std::unique_ptr<UniqueObjectTag>
+std::unique_ptr<yt::UniqueObjectTag>
 BackendConnectionInterface::write_tag(const Namespace& nspace,
                                       const fs::path& src,
                                       const std::string& name,
-                                      const UniqueObjectTag* prev_tag,
+                                      const yt::UniqueObjectTag* prev_tag,
                                       const OverwriteObject overwrite)
 {
     Logger l(__FUNCTION__, nspace, name);
@@ -283,7 +331,7 @@ BackendConnectionInterface::write_tag(const Namespace& nspace,
                       overwrite);
 }
 
-std::unique_ptr<UniqueObjectTag>
+std::unique_ptr<yt::UniqueObjectTag>
 BackendConnectionInterface::read_tag(const Namespace& nspace,
                                      const fs::path& src,
                                      const std::string& name)
@@ -324,7 +372,7 @@ BackendConnectionInterface::getSize(const Namespace& nspace,
     return getSize_(nspace, name);
 }
 
-youtils::CheckSum
+yt::CheckSum
 BackendConnectionInterface::getCheckSum(const Namespace& nspace,
                                         const std::string& name)
 {

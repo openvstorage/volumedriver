@@ -29,6 +29,7 @@
 #include <youtils/Assert.h>
 #include <youtils/BooleanEnum.h>
 #include <youtils/CheckSum.h>
+#include <youtils/Continuation.h>
 #include <youtils/FileUtils.h>
 #include <youtils/Logging.h>
 #include <youtils/FileDescriptor.h>
@@ -147,10 +148,17 @@ protected:
     };
 
     void
-    partial_read(const Namespace& ns,
-                 const PartialReads& partial_reads,
+    partial_read(const Namespace&,
+                 const PartialReads&,
                  InsistOnLatestVersion,
-                 PartialReadFallbackFun& fallback);
+                 PartialReadFallbackFun&,
+                 youtils::Continuation);
+
+    void
+    partial_read(const Namespace&,
+                 const PartialReads&,
+                 InsistOnLatestVersion,
+                 PartialReadFallbackFun&);
 
     void
     write(const Namespace&,
@@ -226,9 +234,15 @@ private:
 
 public:
     virtual bool
-    partial_read_(const Namespace& ns,
-                  const PartialReads& reads,
+    partial_read_(const Namespace&,
+                  const PartialReads&,
                   InsistOnLatestVersion) = 0;
+
+    virtual bool
+    partial_read_async_(const Namespace&,
+                        const PartialReads&,
+                        InsistOnLatestVersion,
+                        youtils::Continuation);
 
 private:
     virtual void

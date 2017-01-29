@@ -28,6 +28,7 @@
 
 #include <youtils/Catchers.h>
 #include <youtils/CheckSum.h>
+#include <youtils/Continuation.h>
 #include <youtils/FileUtils.h>
 #include <youtils/Logging.h>
 #include <youtils/Serialization.h>
@@ -100,6 +101,13 @@ public:
     partial_read(const BackendConnectionInterface::PartialReads& partial_reads,
                  BackendConnectionInterface::PartialReadFallbackFun& fallback_fun,
                  InsistOnLatestVersion,
+                 const BackendRequestParameters& = default_request_parameters());
+
+    void
+    partial_read(const BackendConnectionInterface::PartialReads& partial_reads,
+                 BackendConnectionInterface::PartialReadFallbackFun& fallback_fun,
+                 InsistOnLatestVersion,
+                 youtils::Continuation,
                  const BackendRequestParameters& = default_request_parameters());
 
     void

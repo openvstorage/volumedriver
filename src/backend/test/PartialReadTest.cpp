@@ -263,6 +263,89 @@ TEST_P(PartialReadTest, multiple_objects)
                            the_buffer);
 }
 
+TEST_P(PartialReadTest, async)
+{
+    const size_t ssize = 4096;
+    const size_t qdepth = 64;
+    const size_t max_test_size = ssize * qdepth;
+
+    std::vector<uint8_t> buf(max_test_size);
+    SourceOfUncertainty sou;
+
+    for(unsigned i = 0; i < max_test_size; ++i)
+    {
+        buf[i] = sou.operator()<uint8_t>();
+    }
+
+    fs::path tmp = FileUtils::create_temp_file_in_temp_dir("anobject");
+    ALWAYS_CLEANUP_FILE(tmp);
+    {
+
+        FileDescriptor io(tmp,
+                          FDMode::Write);
+        io.write(buf.data(),
+                 max_test_size);
+    }
+
+    const std::string object_name("object_name");
+
+    bi_(nspace_->ns())->write(tmp,
+                              object_name,
+                              OverwriteObject::F);
+
+    std::vector<uint8_t> rbuf(max_test_size);
+
+
+    std::vector<PartialReads> partial_reads;
+    partial_reads.reserve(qdepth);
+
+    std::vector<std::promise<void>> promises(qdepth);
+    std::vector<std::future<void>> futures;
+    futures.reserve(qdepth);
+
+    for (size_t i = 0; i < qdepth; ++i)
+    {
+        futures.push_back(promises[i].get_future());
+
+        const size_t off = ssize * i;
+        ObjectSlices slices;
+        ASSERT_TRUE(slices.emplace(ssize,
+                                   off,
+                                   rbuf.data() + off).second);
+        PartialReads preads;
+        ASSERT_TRUE(preads.emplace(object_name, std::move(slices)).second);
+        partial_reads.push_back(std::move(preads));
+
+        BackendConnectionInterfacePtr conn(cm_->getConnection());
+        SimpleFetcher fetch(*conn,
+                            nspace_->ns(),
+                            partial_read_cache_);
+
+        bi_(nspace_->ns())->partial_read(partial_reads.back(),
+                                         fetch,
+                                         GetParam(),
+                                         [i, &promises](std::exception_ptr e)
+                                         {
+                                             if (e)
+                                             {
+                                                 promises[i].set_exception(e);
+                                             }
+                                             else
+                                             {
+                                                 promises[i].set_value();
+                                             }
+                                         });
+    }
+
+    for (auto& f : futures)
+    {
+        f.get();
+    }
+
+    EXPECT_EQ(buf,
+              rbuf);
+}
+
 TEST_P(PartialReadTest, DISABLED_performance)
 {
     const size_t nnspaces = yt::System::get_env_with_default("BACKEND_PARTIAL_READ_TEST_NAMESPACES",
