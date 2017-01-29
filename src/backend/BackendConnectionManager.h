@@ -155,6 +155,12 @@ public:
         return backend_interface_partial_read_nullio.value();
     }
 
+    boost::chrono::microseconds
+    partial_read_nullio_delay_usecs() const
+    {
+        return boost::chrono::microseconds(backend_interface_partial_read_nullio_delay_usecs.value());
+    }
+
     // REVISIT (pun intended): I don't like offering this - it might
     // be better to move the code that uses this (cf. BackendInterface)
     // into a method of this class?
@@ -182,6 +188,7 @@ private:
     DECLARE_PARAMETER(backend_interface_retry_interval_secs);
     DECLARE_PARAMETER(backend_interface_retry_backoff_multiplier);
     DECLARE_PARAMETER(backend_interface_partial_read_nullio);
+    DECLARE_PARAMETER(backend_interface_partial_read_nullio_delay_usecs);
 
     std::vector<std::shared_ptr<ConnectionPool>> connection_pools_;
     std::unique_ptr<BackendConfig> config_;

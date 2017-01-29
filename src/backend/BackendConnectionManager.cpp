@@ -49,6 +49,7 @@ BackendConnectionManager::BackendConnectionManager(const bpt::ptree& pt,
     , backend_interface_retry_interval_secs(pt)
     , backend_interface_retry_backoff_multiplier(pt)
     , backend_interface_partial_read_nullio(pt)
+    , backend_interface_partial_read_nullio_delay_usecs(pt)
     , config_(BackendConfig::makeBackendConfig(pt))
 {
     THROW_UNLESS(config_);
@@ -244,6 +245,7 @@ BackendConnectionManager::persist(bpt::ptree& pt,
     P(backend_interface_retry_interval_secs);
     P(backend_interface_retry_backoff_multiplier);
     P(backend_interface_partial_read_nullio);
+    P(backend_interface_partial_read_nullio_delay_usecs);
 
 #undef P
 }
@@ -270,6 +272,7 @@ BackendConnectionManager::update(const bpt::ptree& pt,
     U(backend_interface_retry_interval_secs);
     U(backend_interface_retry_backoff_multiplier);
     U(backend_interface_partial_read_nullio);
+    U(backend_interface_partial_read_nullio_delay_usecs);
 
 #undef U
 }

@@ -432,6 +432,10 @@ BackendInterface::partial_read(const BackendConnectionInterface::PartialReads& p
         handle_eventual_consistency_<void>(insist_on_latest,
                                            std::move(fun));
     }
+    else if (conn_manager_->partial_read_nullio_delay_usecs().count())
+    {
+        boost::this_thread::sleep_for(conn_manager_->partial_read_nullio_delay_usecs());
+    }
 }
 
 BackendInterfacePtr
