@@ -74,6 +74,8 @@ DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_partial_read_nullio,
                                        bool);
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_partial_read_nullio_delay_usecs,
                                                   std::atomic<uint32_t>);
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_threads,
+                                       uint32_t);
 
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(backend_type, backend::BackendType);
 DECLARE_INITIALIZED_PARAM(local_connection_path, std::string);

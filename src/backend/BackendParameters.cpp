@@ -187,6 +187,12 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_partial_read_nullio_dela
                                       "nullio for partial reads: delay (in usecs) before returning (without reading data from the backend",
                                       ShowDocumentation::F,
                                       0U);
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_threads,
+                                      backend_connection_manager_name,
+                                      "backend_interface_threads",
+                                      "number of threads handling async backend operations",
+                                      ShowDocumentation::F,
+                                      1U);
 
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_type,
                                       backend_connection_manager_name,

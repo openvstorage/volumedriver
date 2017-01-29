@@ -27,6 +27,7 @@
 #include "MultiConfig.h"
 #include "S3_Connection.h"
 
+#include <boost/asio/error.hpp>
 #include <boost/iostreams/stream.hpp>
 #include <boost/thread/thread.hpp>
 
@@ -35,7 +36,9 @@
 namespace backend
 {
 
+namespace ba = boost::asio;
 namespace bpt = boost::property_tree;
+namespace bs = boost::system;
 namespace bio = boost::iostreams;
 namespace ip = initialized_params;
 namespace yt = youtils;
@@ -50,7 +53,9 @@ BackendConnectionManager::BackendConnectionManager(const bpt::ptree& pt,
     , backend_interface_retry_backoff_multiplier(pt)
     , backend_interface_partial_read_nullio(pt)
     , backend_interface_partial_read_nullio_delay_usecs(pt)
+    , backend_interface_threads(pt)
     , config_(BackendConfig::makeBackendConfig(pt))
+    , work_(io_service_)
 {
     THROW_UNLESS(config_);
 
@@ -71,6 +76,98 @@ BackendConnectionManager::BackendConnectionManager(const bpt::ptree& pt,
     }
 
     THROW_WHEN(connection_pools_.empty());
+
+    const size_t nthreads =
+        backend_interface_threads.value() ?
+        backend_interface_threads.value() :
+        boost::thread::hardware_concurrency();
+
+    try
+    {
+        for (size_t i = 0; i < nthreads; ++i)
+        {
+            threads_.create_thread(boost::bind(&BackendConnectionManager::run_,
+                                               this));
+        }
+    }
+    CATCH_STD_ALL_EWHAT({
+            LOG_ERROR("Failed to create thread group: " << EWHAT);
+            stop_();
+            throw;
+        });
+
+}
+
+BackendConnectionManager::~BackendConnectionManager()
+{
+    try
+    {
+        stop_();
+    }
+    CATCH_STD_ALL_LOG_IGNORE("failed to stop");
+}
+
+void
+BackendConnectionManager::stop_()
+{
+    bs::error_code ec;
+    io_service_.stop();
+    if (ec)
+    {
+        LOG_ERROR("Failed to stop I/O service: " << ec.message());
+    }
+
+    threads_.join_all();
+}
+
+void
+BackendConnectionManager::run_()
+{
+    static const std::string name("backend_aio");
+    pthread_setname_np(pthread_self(),
+                       name.c_str());
+
+    while (true)
+    {
+        try
+        {
+            io_service_.run();
+            LOG_INFO("I/O service exited, breaking out of loop");
+            return;
+        }
+        catch (bs::system_error& e)
+        {
+            const bs::error_code& ec = e.code();
+            if (ec.category() == ba::error::system_category)
+            {
+                switch (ec.value())
+                {
+                case bs::errc::operation_canceled:
+                    {
+                        LOG_INFO("Shutdown requested, breaking out of loop");
+                        return;
+                    }
+                case bs::errc::broken_pipe:
+                case bs::errc::connection_aborted:
+                case bs::errc::connection_reset:
+                    {
+                        LOG_INFO(ec.message() << " - proceeding");
+                        break;
+                    }
+                default:
+                    {
+                        LOG_ERROR(ec.message() << " - proceeding anyway");
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                LOG_ERROR(ec.message() << " - proceeding anyway");
+            }
+        }
+        CATCH_STD_ALL_LOG_IGNORE("Caught exception in server thread");
+    }
 }
 
 BackendConnectionManagerPtr
@@ -246,7 +343,7 @@ BackendConnectionManager::persist(bpt::ptree& pt,
     P(backend_interface_retry_backoff_multiplier);
     P(backend_interface_partial_read_nullio);
     P(backend_interface_partial_read_nullio_delay_usecs);
-
+    P(backend_interface_threads);
 #undef P
 }
 
@@ -273,6 +370,7 @@ BackendConnectionManager::update(const bpt::ptree& pt,
     U(backend_interface_retry_backoff_multiplier);
     U(backend_interface_partial_read_nullio);
     U(backend_interface_partial_read_nullio_delay_usecs);
+    U(backend_interface_threads);
 
 #undef U
 }

@@ -21,8 +21,10 @@
 #include "ConnectionPool.h"
 #include "Namespace.h"
 
+#include <boost/asio/io_service.hpp>
 #include <boost/chrono.hpp>
 #include <boost/optional.hpp>
+#include <boost/thread.hpp>
 
 #include <youtils/ConfigurationReport.h>
 #include <youtils/EnableMakeShared.h>
@@ -66,7 +68,7 @@ public:
     create(const boost::property_tree::ptree&,
            const RegisterComponent = RegisterComponent::T);
 
-    ~BackendConnectionManager() = default;
+    ~BackendConnectionManager();
 
     BackendConnectionManager(const BackendConnectionManager&) = delete;
 
@@ -180,6 +182,13 @@ public:
         return pool_(nspace);
     }
 
+    // TODO AR: provide safer interface if the io_service is here to stay
+    boost::asio::io_service&
+    io_service()
+    {
+        return io_service_;
+    }
+
 private:
     DECLARE_LOGGER("BackendConnectionManager");
 
@@ -189,15 +198,26 @@ private:
     DECLARE_PARAMETER(backend_interface_retry_backoff_multiplier);
     DECLARE_PARAMETER(backend_interface_partial_read_nullio);
     DECLARE_PARAMETER(backend_interface_partial_read_nullio_delay_usecs);
+    DECLARE_PARAMETER(backend_interface_threads);
 
     std::vector<std::shared_ptr<ConnectionPool>> connection_pools_;
     std::unique_ptr<BackendConfig> config_;
+
+    boost::asio::io_service io_service_;
+    boost::asio::io_service::work work_;
+    boost::thread_group threads_;
 
     explicit BackendConnectionManager(const boost::property_tree::ptree&,
                                       const RegisterComponent = RegisterComponent::T);
 
     const std::shared_ptr<ConnectionPool>&
     pool_(const Namespace& nspace) const;
+
+    void
+    run_();
+
+    void
+    stop_();
 
     friend class toolcut::BackendToolCut;
     friend class toolcut::BackendConnectionToolCut;
