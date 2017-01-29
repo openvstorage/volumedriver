@@ -1106,25 +1106,60 @@ ObjectRouter::read(const FastPathCookie& cookie,
                    const ObjectId& id,
                    uint8_t* buf,
                    size_t& size,
-                   off_t off)
+                   off_t off,
+                   yt::Continuation cont)
 {
     return select_path_<decltype(id),
                         decltype(buf),
                         size_t*,
-                        decltype(off)>(cookie,
-                                       &ObjectRouter::read_,
-                                       &LocalNode::read,
-                                       id,
-                                       buf,
-                                       &size,
-                                       off);
+                        decltype(off),
+                        yt::Continuation>(cookie,
+                                          &ObjectRouter::read_,
+                                          &LocalNode::read,
+                                          id,
+                                          buf,
+                                          &size,
+                                          off,
+                                          std::move(cont));
+}
+
+FastPathCookie
+ObjectRouter::read(const FastPathCookie& cookie,
+                   const ObjectId& id,
+                   uint8_t* buf,
+                   size_t& size,
+                   off_t off)
+{
+    std::promise<void> p;
+    std::future<void> f(p.get_future());
+
+    FastPathCookie fpc(read(cookie,
+                            id,
+                            buf,
+                            size,
+                            off,
+                            [&](std::exception_ptr e)
+                            {
+                                if (e)
+                                {
+                                    p.set_exception(e);
+                                }
+                                else
+                                {
+                                    p.set_value();
+                                }
+                            }));
+
+    f.get();
+    return fpc;
 }
 
 FastPathCookie
 ObjectRouter::read_(const ObjectId& id,
                     uint8_t* buf,
                     size_t* size,
-                    off_t off)
+                    off_t off,
+                    yt::Continuation cont)
 {
     LOG_TRACE(id << ": size " << size << ", off " << off);
 
@@ -1142,12 +1177,14 @@ ObjectRouter::read_(const ObjectId& id,
                                               redirects_[id].reads);
               });
 
-    return maybe_migrate_(std::move(pred),
-                          &ClusterNode::read,
-                          id,
-                          buf,
-                          size,
-                          off);
+    FastPathCookie fpc(maybe_migrate_(std::move(pred),
+                                      &ClusterNode::read,
+                                      id,
+                                      buf,
+                                      size,
+                                      off));
+    cont(nullptr);
+    return fpc;
 }
 
 namespace

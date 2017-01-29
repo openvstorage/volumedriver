@@ -38,6 +38,7 @@
 #include <cppzmq/zmq.hpp>
 
 #include <youtils/BooleanEnum.h>
+#include <youtils/Continuation.h>
 #include <youtils/InitializedParam.h>
 #include <youtils/Logging.h>
 #include <youtils/VolumeDriverComponent.h>
@@ -185,6 +186,14 @@ public:
          uint8_t* buf,
          size_t& size,
          off_t off);
+
+    FastPathCookie
+    read(const FastPathCookie&,
+         const ObjectId&,
+         uint8_t* buf,
+         size_t& size,
+         off_t off,
+         youtils::Continuation);
 
     FastPathCookie
     sync(const FastPathCookie&,
@@ -626,7 +635,8 @@ private:
     read_(const ObjectId&,
           uint8_t* buf,
           size_t* size,
-          off_t off);
+          off_t off,
+          youtils::Continuation);
 
     FastPathCookie
     sync_(const ObjectId&,

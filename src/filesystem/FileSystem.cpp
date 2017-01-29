@@ -1167,42 +1167,76 @@ FileSystem::read(Handle& h,
                  size_t& size,
                  char* buf,
                  off_t off,
-                 bool& eof)
+                 bool& eof,
+                 yt::Continuation cont)
 {
-    tracepoint(openvstorage_filesystem,
-               object_read_start,
-               h.dentry()->object_id().str().c_str(),
-               off,
-               size);
+    TODO("AR: reinstate tracepoints");
 
-    auto on_exit(yt::make_scope_exit([&]
-                                     {
-                                         tracepoint(openvstorage_filesystem,
-                                                    object_read_end,
-                                                    h.dentry()->object_id().str().c_str(),
-                                                    off,
-                                                    size,
-                                                    std::uncaught_exception());
-                                     }));
+    // tracepoint(openvstorage_filesystem,
+    //            object_read_start,
+    //            h.dentry()->object_id().str().c_str(),
+    //            off,
+    //            size);
+
+    // auto on_exit(yt::make_scope_exit([&]
+    //                                  {
+    //                                      tracepoint(openvstorage_filesystem,
+    //                                                 object_read_end,
+    //                                                 h.dentry()->object_id().str().c_str(),
+    //                                                 off,
+    //                                                 size,
+    //                                                 std::uncaught_exception());
+    //                                  }));
 
     LOG_TRACE("size " << size << ", off " << off << ", path " << h.path());
 
     if (fs_nullio.value())
     {
         eof = false;
+        cont(nullptr);
     }
     else
     {
-        size_t rsize = size;
+        TODO("AR: sort out size / eof updates");
+        eof = false;
+
         h.update_cookie(router_.read(h.cookie(),
                                      h.dentry()->object_id(),
                                      reinterpret_cast<uint8_t*>(buf),
-                                     rsize,
-                                     off));
-
-        eof = rsize < size;
-        size = rsize;
+                                     size,
+                                     off,
+                                     std::move(cont)));
     }
+}
+
+void
+FileSystem::read(Handle& h,
+                 size_t& size,
+                 char* buf,
+                 off_t off,
+                 bool& eof)
+{
+    std::promise<void> p;
+    std::future<void> f(p.get_future());
+
+    read(h,
+         size,
+         buf,
+         off,
+         eof,
+         [&](std::exception_ptr e)
+         {
+             if (e)
+             {
+                 p.set_exception(e);
+             }
+             else
+             {
+                 p.set_value();
+             }
+         });
+
+    f.get();
 }
 
 void

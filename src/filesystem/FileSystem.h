@@ -46,6 +46,7 @@
 #include <boost/thread/mutex.hpp>
 
 #include <youtils/Catchers.h>
+#include <youtils/Continuation.h>
 #include <youtils/InitializedParam.h>
 #include <youtils/IOException.h>
 #include <youtils/VolumeDriverComponent.h>
@@ -134,6 +135,14 @@ public:
     virtual bool
     checkConfig(const boost::property_tree::ptree&,
                 youtils::ConfigurationReport&) const override final;
+
+    void
+    read(Handle&,
+         size_t& size,
+         char* buf,
+         off_t off,
+         bool& eof,
+         youtils::Continuation);
 
     void
     read(Handle&,

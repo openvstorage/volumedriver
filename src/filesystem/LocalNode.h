@@ -28,6 +28,7 @@
 #include <boost/property_tree/ptree_fwd.hpp>
 
 #include <youtils/ArakoonInterface.h>
+#include <youtils/Continuation.h>
 #include <youtils/Logging.h>
 #include <youtils/PeriodicAction.h>
 
@@ -245,7 +246,8 @@ public:
          const ObjectId&,
          uint8_t* buf,
          size_t* size,
-         off_t off);
+         off_t off,
+         youtils::Continuation);
 
     FastPathCookie
     write(const FastPathCookie&,
@@ -369,7 +371,8 @@ private:
     read_(volumedriver::WeakVolumePtr vol,
           uint8_t* buf,
           size_t* size,
-          off_t off);
+          off_t off,
+          youtils::Continuation);
 
     FastPathCookie
     write_(const FastPathCookie&,

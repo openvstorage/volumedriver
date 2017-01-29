@@ -22,6 +22,7 @@
 
 #include <youtils/Assert.h>
 #include <youtils/Catchers.h>
+#include <youtils/Continuation.h>
 #include <youtils/SocketAddress.h>
 #include <youtils/SourceOfUncertainty.h>
 
@@ -229,7 +230,8 @@ NetworkXioIOHandler::handle_close(NetworkXioRequest *req)
 void
 NetworkXioIOHandler::handle_read(NetworkXioRequest *req,
                                  size_t size,
-                                 uint64_t offset)
+                                 uint64_t offset,
+                                 WorkCompletion complete)
 {
     req->op = NetworkXioMsgOpcode::ReadRsp;
     if (not handle_)
@@ -237,6 +239,7 @@ NetworkXioIOHandler::handle_read(NetworkXioRequest *req,
         req->retval = -1;
         req->errval = EIO;
         pack_msg(req);
+        complete();
         return;
     }
 
@@ -248,6 +251,7 @@ NetworkXioIOHandler::handle_read(NetworkXioRequest *req,
         req->retval = -1;
         req->errval = ENOMEM;
         pack_msg(req);
+        complete();
         return;
     }
 
@@ -257,6 +261,31 @@ NetworkXioIOHandler::handle_read(NetworkXioRequest *req,
     req->data_len = size;
     req->size = size;
     req->offset = offset;
+
+    auto cont([complete = std::move(complete), req](std::exception_ptr e)
+             {
+                 if (not e)
+                 {
+                     req->retval = req->size;
+                     req->errval = 0;
+                 }
+                 else
+                 {
+                     try
+                     {
+                         std::rethrow_exception(e);
+                     }
+                     CATCH_STD_ALL_EWHAT({
+                             LOG_ERROR("read I/O error: " << EWHAT);
+                             req->retval = -1;
+                             req->errval = EIO;
+                         });
+                 }
+
+                 pack_msg(req);
+                 complete();
+             });
+
     try
     {
        bool eof = false;
@@ -264,16 +293,13 @@ NetworkXioIOHandler::handle_read(NetworkXioRequest *req,
                 req->size,
                 static_cast<char*>(req->data),
                 req->offset,
-                eof);
-       req->retval = req->size;
-       req->errval = 0;
+                eof,
+                cont);
     }
-    CATCH_STD_ALL_EWHAT({
-       LOG_ERROR("read I/O error: " << EWHAT);
-       req->retval = -1;
-       req->errval = EIO;
-    });
-    pack_msg(req);
+    catch (std::exception& e)
+    {
+        cont(std::current_exception());
+    }
 }
 
 void
@@ -1289,7 +1315,9 @@ NetworkXioIOHandler::process_request(NetworkXioRequest *req,
     {
         handle_read(req,
                     i_msg.size(),
-                    i_msg.offset());
+                    i_msg.offset(),
+                    std::move(complete));
+        return;
         break;
     }
     case NetworkXioMsgOpcode::WriteReq:

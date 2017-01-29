@@ -317,21 +317,22 @@ LocalNode::read(const Object& obj,
                 size_t* size,
                 off_t off)
 {
-    tracepoint(openvstorage_filesystem,
-	       local_object_read_start,
-	       obj.id.str().c_str(),
-	       off,
-	       *size);
+    TODO("AR: reinstate tracepoints");
+    // tracepoint(openvstorage_filesystem,
+    //            local_object_read_start,
+    //            obj.id.str().c_str(),
+    //            off,
+    //            *size);
 
-    auto on_exit(yt::make_scope_exit([&]
-				     {
-				       tracepoint(openvstorage_filesystem,
-						  local_object_read_end,
-						  obj.id.str().c_str(),
-						  off,
-						  *size,
-						  std::uncaught_exception());
-				     }));
+    // auto on_exit(yt::make_scope_exit([&]
+    //     			     {
+    //     			       tracepoint(openvstorage_filesystem,
+    //     					  local_object_read_end,
+    //     					  obj.id.str().c_str(),
+    //     					  off,
+    //     					  *size,
+    //     					  std::uncaught_exception());
+    //     			     }));
 
     ASSERT(size);
 
@@ -351,14 +352,31 @@ LocalNode::read(const Object& obj,
     }
     else
     {
+        std::promise<void> p;
+        std::future<void> f(p.get_future());
+
         with_volume_pointer_<void,
                              uint8_t*,
                              size_t*,
-                             off_t>(&LocalNode::read_,
-                                    obj.id,
-                                    buf,
-                                    size,
-                                    off);
+                             off_t,
+                             yt::Continuation>(&LocalNode::read_,
+                                               obj.id,
+                                               buf,
+                                               size,
+                                               off,
+                                               [&p](std::exception_ptr e)
+                                               {
+                                                   if (e)
+                                                   {
+                                                       p.set_exception(e);
+                                                   }
+                                                   else
+                                                   {
+                                                       p.set_value();
+                                                   }
+                                               });
+
+        f.get();
     }
 }
 
@@ -367,28 +385,30 @@ LocalNode::read(const FastPathCookie& cookie,
                 const ObjectId& id,
                 uint8_t* buf,
                 size_t* size,
-                off_t off)
+                off_t off,
+                yt::Continuation cont)
 {
     ASSERT(size);
 
-    tracepoint(openvstorage_filesystem,
-	       local_object_read_start,
-	       id.str().c_str(),
-	       off,
-	       *size);
+    TODO("AR: reinstate tracepoints");
+    // tracepoint(openvstorage_filesystem,
+    //            local_object_read_start,
+    //            id.str().c_str(),
+    //            off,
+    //            *size);
 
-    auto on_exit(yt::make_scope_exit([&]
-				     {
-				       tracepoint(openvstorage_filesystem,
-						  local_object_read_end,
-						  id.str().c_str(),
-						  off,
-						  *size,
-						  std::uncaught_exception());
-				     }));
+    // auto on_exit(yt::make_scope_exit([&]
+    //     			     {
+    //     			       tracepoint(openvstorage_filesystem,
+    //     					  local_object_read_end,
+    //     					  id.str().c_str(),
+    //     					  off,
+    //     					  *size,
+    //     					  std::uncaught_exception());
+    //     			     }));
 
     RWLockPtr l(get_lock_(id));
-    fungi::ScopedReadLock rg(*l);
+    auto rg(std::make_shared<boost::shared_lock<fungi::RWLock>>(*l));
 
     vd::SharedVolumePtr vol(cookie->volume.lock());
 
@@ -397,7 +417,12 @@ LocalNode::read(const FastPathCookie& cookie,
         read_(vol,
               buf,
               size,
-              off);
+              off,
+              [cont = std::move(cont),
+               rg](std::exception_ptr e)
+              {
+                  cont(e);
+              });
 
         return cookie;
     }
@@ -414,12 +439,14 @@ void
 LocalNode::read_(vd::WeakVolumePtr vol,
                  uint8_t* buf,
                  size_t* size,
-                 const off_t off)
+                 const off_t off,
+                 yt::Continuation cont)
 {
     const uint64_t volume_size = api::GetSize(vol);
     if (off >= static_cast<decltype(off)>(volume_size))
     {
         *size = 0;
+        cont(nullptr);
         return;
     }
 
@@ -446,27 +473,42 @@ LocalNode::read_(vd::WeakVolumePtr vol,
     LOG_TRACE("reading, off " << (lba * lbasize) << " (LBA " << lba <<
               "), size " << rsize << ", unaligned " << unaligned);
 
+    *size = to_read;
+
+    using Reader = void (*)(vd::WeakVolumePtr,
+                            const uint64_t,
+                            uint8_t*,
+                            const uint64_t,
+                            yt::Continuation);
     if (unaligned)
     {
-        std::vector<uint8_t> bounce_buf(rsize);
-        maybe_retry_<void>(&api::Read,
+        auto bounce_buf(std::make_shared<std::vector<uint8_t>>(rsize));
+        yt::Continuation c([&, bounce_buf, cont = std::move(cont)](std::exception_ptr e)
+                           {
+                               if (not e)
+                               {
+                                   memcpy(buf, bounce_buf->data() + lbaoff, to_read);
+                               }
+                               cont(e);
+                           });
+
+        maybe_retry_<void>(static_cast<Reader>(&api::Read),
                            vol,
                            lba,
-                           bounce_buf.data(),
-                           bounce_buf.size());
-
-        memcpy(buf, bounce_buf.data() + lbaoff, to_read);
+                           bounce_buf->data(),
+                           bounce_buf->size(),
+                           std::move(c));
     }
     else
     {
         ASSERT(to_read == rsize);
-        maybe_retry_<void>(&api::Read,
+        maybe_retry_<void>(static_cast<Reader>(&api::Read),
                            vol,
                            lba,
                            buf,
-                           to_read);
+                           to_read,
+                           std::move(cont));
     }
-    *size = to_read;
 }
 
 void
@@ -657,8 +699,12 @@ LocalNode::write_(vd::WeakVolumePtr vol,
     if (unaligned)
     {
         std::vector<uint8_t> bounce_buf(wsize);
+        using Reader = void (*)(vd::WeakVolumePtr,
+                                const uint64_t,
+                                uint8_t*,
+                                const uint64_t);
 
-        maybe_retry_<void>(&api::Read,
+        maybe_retry_<void>(static_cast<Reader>(&api::Read),
                            vol,
                            const_cast<uint64_t&>(lba),
                            bounce_buf.data(),

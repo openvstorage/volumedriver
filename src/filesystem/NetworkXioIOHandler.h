@@ -83,7 +83,8 @@ private:
 
     void handle_read(NetworkXioRequest *req,
                      size_t size,
-                     uint64_t offset);
+                     uint64_t offset,
+                     WorkCompletion);
 
     void handle_write(NetworkXioRequest *req,
                       size_t size,
