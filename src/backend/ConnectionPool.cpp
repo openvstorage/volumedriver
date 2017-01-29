@@ -16,6 +16,7 @@
 #include "AlbaConfig.h"
 #include "Alba_Connection.h"
 #include "BackendConfig.h"
+#include "BackendConnectionManager.h"
 #include "ConnectionPool.h"
 #include "LocalConfig.h"
 #include "Local_Connection.h"
@@ -35,9 +36,11 @@ namespace backend
 namespace yt = youtils;
 
 ConnectionPool::ConnectionPool(std::unique_ptr<BackendConfig> config,
-                               size_t capacity)
+                               size_t capacity,
+                               BackendConnectionManager& cm)
     : config_(std::move(config))
     , capacity_(capacity)
+    , cm_(cm)
 {
     VERIFY(config_->backend_type.value() != BackendType::MULTI);
     LOG_INFO("Created pool for " << *config_ << ", capacity " << capacity);
@@ -50,10 +53,12 @@ ConnectionPool::~ConnectionPool()
 
 std::shared_ptr<ConnectionPool>
 ConnectionPool::create(std::unique_ptr<BackendConfig> config,
-                       size_t capacity)
+                       size_t capacity,
+                       BackendConnectionManager& cm)
 {
     return std::make_shared<yt::EnableMakeShared<ConnectionPool>>(std::move(config),
-                                                                  capacity);
+                                                                  capacity,
+                                                                  cm);
 }
 
 std::unique_ptr<BackendConnectionInterface>
@@ -86,7 +91,8 @@ ConnectionPool::make_one_() const
     case BackendType::LOCAL:
         {
             const LocalConfig* config(dynamic_cast<const LocalConfig*>(config_.get()));
-            return std::make_unique<local::Connection>(*config);
+            return std::make_unique<local::Connection>(*config,
+                                                       cm_.io_service());
         }
     case BackendType::S3:
         {

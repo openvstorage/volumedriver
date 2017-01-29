@@ -35,6 +35,7 @@ namespace backend
 {
 
 class BackendConfig;
+class BackendConnectionManager;
 class BackendInterface;
 class Namespace;
 
@@ -47,7 +48,8 @@ class ConnectionPool
 public:
     static std::shared_ptr<ConnectionPool>
     create(std::unique_ptr<BackendConfig>,
-           size_t capacity);
+           size_t capacity,
+           BackendConnectionManager&);
 
     ~ConnectionPool();
 
@@ -91,9 +93,6 @@ private:
     friend class youtils::EnableMakeShared<ConnectionPool>;
     friend class ConnectionDeleter;
 
-    ConnectionPool(std::unique_ptr<BackendConfig>,
-                   size_t);
-
     mutable fungi::SpinLock lock_;
 
     using Connections = boost::intrusive::slist<BackendConnectionInterface>;
@@ -102,6 +101,11 @@ private:
     std::unique_ptr<BackendConfig> config_;
     size_t capacity_;
     Counters counters_;
+    BackendConnectionManager& cm_;
+
+    ConnectionPool(std::unique_ptr<BackendConfig>,
+                   size_t,
+                   BackendConnectionManager&);
 
     std::unique_ptr<BackendConnectionInterface>
     make_one_() const;

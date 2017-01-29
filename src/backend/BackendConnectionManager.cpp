@@ -66,13 +66,15 @@ BackendConnectionManager::BackendConnectionManager(const bpt::ptree& pt,
         for (const auto& c : cfg.configs_)
         {
             connection_pools_.push_back(ConnectionPool::create(c->clone(),
-                                                               backend_connection_pool_capacity.value()));
+                                                               backend_connection_pool_capacity.value(),
+                                                               *this));
         }
     }
     else
     {
         connection_pools_.push_back(ConnectionPool::create(config_->clone(),
-                                                           backend_connection_pool_capacity.value()));
+                                                           backend_connection_pool_capacity.value(),
+                                                           *this));
     }
 
     THROW_WHEN(connection_pools_.empty());

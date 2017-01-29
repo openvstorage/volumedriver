@@ -20,9 +20,11 @@
 #include "BackendException.h"
 #include "LocalConfig.h"
 
+#include <boost/asio/io_service.hpp>
 #include <boost/interprocess/sync/named_mutex.hpp>
 #include <boost/thread/mutex.hpp>
 
+#include <youtils/Continuation.h>
 #include <youtils/IOException.h>
 #include <youtils/Logging.h>
 #include <youtils/LRUCache.h>
@@ -53,9 +55,11 @@ class Connection
 public:
     typedef LocalConfig config_type;
 
-    explicit Connection(const config_type& cfg);
+    explicit Connection(const config_type&,
+                        boost::asio::io_service&);
 
-    Connection(const boost::filesystem::path& path,
+    Connection(const boost::filesystem::path&,
+               boost::asio::io_service&,
                const timespec& = {0, 0},
                const EnablePartialRead = EnablePartialRead::T,
                const SyncObjectAfterWrite = SyncObjectAfterWrite::T);
@@ -149,6 +153,12 @@ public:
                   const PartialReads& partial_reads,
                   InsistOnLatestVersion) override final;
 
+    virtual bool
+    partial_read_async_(const Namespace&,
+                        const PartialReads&,
+                        InsistOnLatestVersion,
+                        youtils::Continuation) override final;
+
     using KeyType = boost::filesystem::path;
     using ValueType = youtils::FileDescriptor;
 
@@ -171,6 +181,7 @@ protected:
     DECLARE_LOGGER("LocalConnection");
 
     boost::filesystem::path path_;
+    boost::asio::io_service& io_service_;
     boost::interprocess::named_mutex lock_;
     struct timespec timespec_;
     const EnablePartialRead enable_partial_read_;

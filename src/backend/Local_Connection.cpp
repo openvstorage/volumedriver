@@ -29,6 +29,7 @@ namespace backend
 namespace local
 {
 
+namespace ba = boost::asio;
 namespace bi = boost::interprocess;
 namespace fs = boost::filesystem;
 namespace yt = youtils;
@@ -72,8 +73,10 @@ make_mutex_name(const fs::path& path)
 #define LOCK_BACKEND()  \
     boost::lock_guard<decltype(lock_)> l_g__(lock_);
 
-Connection::Connection(const config_type& cfg)
+Connection::Connection(const config_type& cfg,
+                       ba::io_service& io_service)
     : Connection(cfg.local_connection_path.value(),
+                 io_service,
                  timespec{cfg.local_connection_tv_sec.value(),
                          cfg.local_connection_tv_nsec.value()},
                  cfg.local_connection_enable_partial_read.value() ?
@@ -91,10 +94,12 @@ Connection::Connection(const config_type& cfg)
 }
 
 Connection::Connection(const fs::path& path,
+                       ba::io_service& io_service,
                        const timespec& t,
                        const EnablePartialRead enable_partial_read,
                        const SyncObjectAfterWrite sync_object_after_write)
     : path_(path)
+    , io_service_(io_service)
     , lock_(bi::open_or_create_t(),
             make_mutex_name(path_).c_str())
     , timespec_(t)
@@ -418,6 +423,40 @@ Connection::partial_read_(const Namespace& ns,
             }
         }
 
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+bool
+Connection::partial_read_async_(const Namespace& ns,
+                                const PartialReads& partial_reads,
+                                InsistOnLatestVersion insist_on_latest,
+                                yt::Continuation cont)
+{
+    if (enable_partial_read_ == EnablePartialRead::T)
+    {
+        io_service_.post([cont = std::move(cont),
+                          insist_on_latest,
+                          ns,
+                          &partial_reads,
+                          this]
+                         {
+                             try
+                             {
+                                 partial_read_(ns,
+                                               partial_reads,
+                                               insist_on_latest);
+                                 cont(nullptr);
+                             }
+                             catch (std::exception&)
+                             {
+                                 cont(std::current_exception());
+                             }
+                         });
         return true;
     }
     else
