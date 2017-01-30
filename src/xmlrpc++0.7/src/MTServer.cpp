@@ -2,11 +2,12 @@
 
 #include "MTServer.h"
 #include "MTConnection.h"
+
 #include <youtils/Assert.h>
+#include <youtils/System.h>
 
 namespace xmlrpc
 {
-
 
 #define LOCK_SERVER                             \
     lock_type::scoped_lock l__(lock_)
@@ -16,6 +17,14 @@ const boost::posix_time::time_duration
 MTServer::join_timeout = boost::posix_time::milliseconds(0);
 
 namespace x = XmlRpc;
+namespace yt = youtils;
+
+namespace
+{
+
+const size_t max_threads = yt::System::get_env_with_default("XMLRPC_MT_SERVER_MAX_THREADS",
+                                                            512UL);
+}
 
 MTServer::MTServer()
     : fd_(-1)
@@ -49,19 +58,6 @@ MTServer::startAcceptingConnections()
 void
 MTServer::acceptConnection()
 {
-    {
-        LOCK_SERVER;
-        if(not accepting_connections_)
-        {
-            int sock = x::XmlRpcSocket::accept(fd_);
-            if(sock >= 0)
-            {
-                x::XmlRpcSocket::close(sock);
-            }
-        }
-
-    }
-
     int sock = x::XmlRpcSocket::accept(fd_);
     if (sock < 0)
     {
@@ -75,23 +71,32 @@ MTServer::acceptConnection()
     else
     {
         LOCK_SERVER;
-        LOG_DEBUG("Creating new connection");
-        try
+        if (not accepting_connections_ or threads_.size() >= max_threads)
         {
-            MTConnection connection(sock, this);
+            LOG_ERROR("Refusing connection: accept connections " <<
+                      accepting_connections_ << ", running threads " <<
+                      threads_.size() << " (max: " << max_threads << ")");
+            x::XmlRpcSocket::close(sock);
+        }
+        else
+        {
+            try
+            {
+                MTConnection connection(sock, this);
 
-            //            conns_.insert(new XMLRPCConnection(sock, this));
-            boost::thread* t = new boost::thread(connection);
-            LOCK_SERVER;
-            threads_.push_back(t);
-        }
-        catch (std::exception &e)
-        {
-            LOG_ERROR("Failed to create new connection: " << e.what());
-        }
-        catch (...)
-        {
-            LOG_ERROR("Failed to create new connection: unknown exception");
+                //            conns_.insert(new XMLRPCConnection(sock, this));
+                boost::thread* t = new boost::thread(connection);
+                LOCK_SERVER;
+                threads_.push_back(t);
+            }
+            catch (std::exception &e)
+            {
+                LOG_ERROR("Failed to create new connection: " << e.what());
+            }
+            catch (...)
+            {
+                LOG_ERROR("Failed to create new connection: unknown exception");
+            }
         }
     }
 }
@@ -307,6 +312,5 @@ MTServer::shutdown()
 
 }
 // Local Variables: **
-// compile-command: "scons -D --kernel_version=system --ignore-buildinfo -j 5" **
 // mode: c++ **
 // End: **
