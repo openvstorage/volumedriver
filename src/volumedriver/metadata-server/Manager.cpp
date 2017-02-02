@@ -245,13 +245,13 @@ Manager::make_nodes_(const ServerConfigs& configs) const
 Manager::ServerPtr
 Manager::make_server_(const ServerConfig& cfg) const
 {
-    auto db(std::make_shared<DataBase>(std::make_shared<RocksDataBase>(cfg.db_path,
-                                                                       cfg.rocks_config),
-                                       cm_,
-                                       act_pool_,
-                                       cfg.scratch_path,
-                                       mds_cached_pages.value(),
-                                       mds_poll_secs.value()));
+    auto db(DataBase::create(std::make_shared<RocksDataBase>(cfg.db_path,
+                                                             cfg.rocks_config),
+                             cm_,
+                             act_pool_,
+                             cfg.scratch_path,
+                             mds_cached_pages.value(),
+                             mds_poll_secs.value()));
 
     const size_t nthreads = mds_threads.value() ?
         mds_threads.value() :
