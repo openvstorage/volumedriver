@@ -46,6 +46,12 @@ public:
     void
     operator()(BackendConnectionInterface*);
 
+    std::shared_ptr<ConnectionPool>
+    pool() const
+    {
+        return pool_;
+    }
+
 private:
     std::shared_ptr<ConnectionPool> pool_;
 };

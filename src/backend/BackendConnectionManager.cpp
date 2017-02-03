@@ -35,6 +35,7 @@
 namespace backend
 {
 
+namespace bc = boost::chrono;
 namespace bpt = boost::property_tree;
 namespace bio = boost::iostreams;
 namespace ip = initialized_params;
@@ -45,6 +46,7 @@ BackendConnectionManager::BackendConnectionManager(const bpt::ptree& pt,
     : VolumeDriverComponent(registerize,
                             pt)
     , backend_connection_pool_capacity(pt)
+    , backend_connection_pool_blacklist_secs(pt)
     , backend_interface_retries_on_error(pt)
     , backend_interface_retry_interval_secs(pt)
     , backend_interface_retry_backoff_multiplier(pt)
@@ -81,11 +83,40 @@ BackendConnectionManager::create(const boost::property_tree::ptree& pt,
 }
 
 const std::shared_ptr<ConnectionPool>&
-BackendConnectionManager::pool_(const Namespace& nspace) const
+BackendConnectionManager::pool_(const Namespace& nspace)
 {
     ASSERT(not connection_pools_.empty());
-    size_t h = std::hash<std::string>()(nspace.str());
-    return connection_pools_[h % connection_pools_.size()];
+    const size_t h = std::hash<std::string>()(nspace.str());
+    const size_t idx = h % connection_pools_.size();
+    size_t i = idx;
+    const bc::seconds timeout(backend_connection_pool_blacklist_secs.value());
+    const auto now(ConnectionPool::Clock::now());
+
+    while (true)
+    {
+        ASSERT(i < connection_pools_.size());
+        if (connection_pools_[i]->last_error() + timeout < now)
+        {
+            break;
+        }
+        else
+        {
+            ++i;
+            if (i == connection_pools_.size())
+            {
+                i = 0;
+            }
+
+            if (i == idx)
+            {
+                LOG_ERROR("all pools are blacklisted, picking a random one");
+                i = rand_(connection_pools_.size() - 1);
+                break;
+            }
+        }
+    }
+
+    return connection_pools_[i];
 }
 
 BackendConnectionInterfacePtr
@@ -93,7 +124,6 @@ BackendConnectionManager::getConnection(const ForceNewConnection force_new,
                                         const boost::optional<Namespace>& nspace)
 {
     ASSERT(not connection_pools_.empty());
-
     if (nspace)
     {
         return pool_(*nspace)->get_connection(force_new);
@@ -240,6 +270,7 @@ BackendConnectionManager::persist(bpt::ptree& pt,
               report_default)
 
     P(backend_connection_pool_capacity);
+    P(backend_connection_pool_blacklist_secs);
     P(backend_interface_retries_on_error);
     P(backend_interface_retry_interval_secs);
     P(backend_interface_retry_backoff_multiplier);
@@ -266,6 +297,7 @@ BackendConnectionManager::update(const bpt::ptree& pt,
              report)
 
     U(backend_connection_pool_capacity);
+    U(backend_connection_pool_blacklist_secs);
     U(backend_interface_retries_on_error);
     U(backend_interface_retry_interval_secs);
     U(backend_interface_retry_backoff_multiplier);
