@@ -899,12 +899,10 @@ Return pointer to the buffer content previously allocated by
 ovs_allocate().
 
 #### Return Value
-If the function succeeds pointer to the allocated buffer is returned.
-Otherwise NULL is returned and errno is set to one of the values defined
-below.
+Upon successful completion, a pointer to the allocated buffer is returned.
 
 #### Errors
-- EINVAL The value specified by 'ptr' is invalid.
+No errors are defined.
 
 ### Retrieve size of buffer
 ```
@@ -916,12 +914,10 @@ Return size of the buffer content previously allocated by
 ovs_allocate().
 
 #### Return Value
-If the function succeeds the size of the buffer content is returned.
-Otherwise -1 is returned and errno is set to one of the values defined
-below.
+Upon successful completion, the size of the buffer content is returned.
 
 #### Errors
-- EINVAL The value specified by 'ptr' is invalid.
+No errors are defined.
 
 ### Shared memory deallocation
 ```

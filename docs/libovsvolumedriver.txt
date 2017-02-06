@@ -931,13 +931,11 @@ Retrieve pointer to buffer content::
 
     Return Value
     ------------
-    If the function succeeds pointer to the allocated buffer is returned.
-    Otherwise NULL is returned and errno is set to one of the values defined
-    below.
+    Upon successful completion, a pointer to the allocated buffer is returned.
 
     Errors
     ------
-        - EINVAL The value specified by 'ptr' is invalid.
+    No errors are defined.
 
 Retrieve size of buffer::
     size_t ovs_buffer_size(ovs_buffer_t *ptr)
@@ -949,13 +947,11 @@ Retrieve size of buffer::
 
     Return Value
     ------------
-    If the function succeeds the size of the buffer content is returned.
-    Otherwise -1 is returned and errno is set to one of the values defined
-    below.
+    Upon successful completion, the size of the buffer content is returned.
 
     Errors
     ------
-        - EINVAL The value specified by 'ptr' is invalid.
+    No errors are defined.
 
 Memory deallocation::
     int ovs_deallocate(ovs_ctx_t *ctx,
