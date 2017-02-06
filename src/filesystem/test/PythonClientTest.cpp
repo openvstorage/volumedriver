@@ -131,6 +131,34 @@ protected:
 
     DECLARE_LOGGER("PythonClientTest");
 
+    std::vector<std::string>
+    list_methods()
+    {
+        return client_.list_methods();
+    }
+
+    void
+    test_fallback()
+    {
+        const std::string rev(client_.server_revision());
+        XmlRpc::XmlRpcValue req;
+        ASSERT_EQ(rev,
+                  client_.fallback_<std::string>("frobnicate",
+                                                 Revision::method_name(),
+                                                 req,
+                                                 boost::none,
+                                                 [](XmlRpc::XmlRpcValue&) -> std::string
+                      {
+                          EXPECT_TRUE(false) <<
+                              "this should not be reached, the fallback needs to be called instead";
+                          return "oh no!";
+                      },
+                                                 [](XmlRpc::XmlRpcValue& rsp) -> std::string
+                      {
+                          return static_cast<std::string>(rsp);
+                      }));
+    }
+
     void
     check_snapshot(const std::string& vname,
                    const std::string& sname,
@@ -2095,6 +2123,20 @@ TEST_F(PythonClientTest, restart_volume)
 
     ASSERT_EQ(pattern,
               s);
+}
+
+TEST_F(PythonClientTest, DISABLED_list_methods)
+{
+    const std::vector<std::string> ms(list_methods());
+    for (const auto& m : ms)
+    {
+        std::cout << "method: " << m << std::endl;
+    }
+}
+
+TEST_F(PythonClientTest, fallback)
+{
+    test_fallback();
 }
 
 }
