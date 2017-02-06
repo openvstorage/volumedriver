@@ -62,9 +62,9 @@ namespace fs = boost::filesystem;
 namespace ip = initialized_params;
 namespace mds = metadata_server;
 namespace vd = volumedriver;
-namespace vfs = volumedriverfs;
 namespace yt = youtils;
 
+using namespace volumedriverfs;
 using namespace std::literals::string_literals;
 
 #define LOCKVD()                                                        \
@@ -100,9 +100,9 @@ struct SomeRedirects
 
         if (redirects++ < max_redirects)
         {
-            result[vfs::XMLRPCKeys::xmlrpc_redirect_host] =
+            result[XMLRPCKeys::xmlrpc_redirect_host] =
                 FileSystemTestSetup::address();
-            result[vfs::XMLRPCKeys::xmlrpc_redirect_port] =
+            result[XMLRPCKeys::xmlrpc_redirect_port] =
                 boost::lexical_cast<std::string>(port);
         }
     }
@@ -136,7 +136,7 @@ protected:
                    const std::string& sname,
                    const std::string& meta = "")
     {
-        vfs::XMLRPCSnapshotInfo snap_info(client_.info_snapshot(vname, sname));
+        XMLRPCSnapshotInfo snap_info(client_.info_snapshot(vname, sname));
 
         EXPECT_TRUE(sname == snap_info.snapshot_id);
         EXPECT_TRUE(meta == snap_info.metadata);
@@ -164,15 +164,15 @@ protected:
                                              srv.join();
                                          }));
 
-        vfs::PythonClient remoteclient(vrouter_cluster_id(),
-                                       {{address(), port}});
-        const vfs::ObjectId id(yt::UUID().str());
+        PythonClient remoteclient(vrouter_cluster_id(),
+                                  {{address(), port}});
+        const ObjectId id(yt::UUID().str());
         const std::string snap("snapshot");
 
         if (max_redirects > client_.max_redirects)
         {
             EXPECT_THROW(remoteclient.delete_snapshot(id, snap),
-                         vfs::clienterrors::MaxRedirectsExceededException);
+                         clienterrors::MaxRedirectsExceededException);
         }
         else
         {
@@ -196,7 +196,7 @@ protected:
 
     void
     check_foc_config(const std::string& vname,
-                     const vfs::FailOverCacheConfigMode exp_mode,
+                     const FailOverCacheConfigMode exp_mode,
                      const boost::optional<vd::FailOverCacheConfig>& exp_config)
     {
         EXPECT_EQ(exp_mode,
@@ -209,7 +209,7 @@ protected:
     check_foc_state(const std::string& vname,
                     const vd::VolumeFailOverState state)
     {
-        const vfs::XMLRPCVolumeInfo info(client_.info_volume(vname));
+        const XMLRPCVolumeInfo info(client_.info_volume(vname));
         EXPECT_EQ(state,
                   boost::lexical_cast<vd::VolumeFailOverState>(info.failover_mode));
     }
@@ -221,13 +221,13 @@ protected:
                                           remote_config().failovercache_port,
                                           vd::FailOverCacheMode::Asynchronous);
         check_foc_config(vname,
-                         vfs::FailOverCacheConfigMode::Automatic,
+                         FailOverCacheConfigMode::Automatic,
                          cfg);
 
         return cfg;
     }
 
-    vfs::PythonClient client_;
+    PythonClient client_;
 };
 
 // Oh yeah, without Py_Initialize (and its Py_Finalize counterpart) even things
@@ -248,25 +248,25 @@ TEST_F(PythonClientTest, DISABLED_pylist)
 TEST_F(PythonClientTest, no_one_listening)
 {
     // there should not be anyone listening on the remote XMLRPC port
-    vfs::PythonClient c(vrouter_cluster_id(),
-                        {{address(), remote_config().xmlrpc_port}});
-    EXPECT_THROW(c.list_volumes(), vfs::clienterrors::ClusterNotReachableException);
+    PythonClient c(vrouter_cluster_id(),
+                   {{address(), remote_config().xmlrpc_port}});
+    EXPECT_THROW(c.list_volumes(), clienterrors::ClusterNotReachableException);
 }
 
 TEST_F(PythonClientTest, wrong_cluster_id)
 {
     // there should not be anyone listening on the remote XMLRPC port
-    vfs::PythonClient c("non-existing-cluster-id",
-                        {{address(),
-                          local_config().xmlrpc_port}});
+    PythonClient c("non-existing-cluster-id",
+                   {{address(),
+                               local_config().xmlrpc_port}});
     EXPECT_THROW(c.list_volumes(),
-                 vfs::clienterrors::PythonClientException);
+                 clienterrors::PythonClientException);
 }
 
 TEST_F(PythonClientTest, list_volumes)
 {
-    const vfs::ObjectId fid(create_file(vfs::FrontendPath("/some-file"s),
-                                        4096));
+    const ObjectId fid(create_file(FrontendPath("/some-file"s),
+                                   4096));
 
     EXPECT_TRUE(client_.list_volumes().empty());
 
@@ -275,10 +275,10 @@ TEST_F(PythonClientTest, list_volumes)
 
     for (uint32_t i = 0; i < num_volumes; ++i)
     {
-        const vfs::FrontendPath
+        const FrontendPath
             vpath(make_volume_name("/vol-"s +
                                    boost::lexical_cast<std::string>(i)));
-        const vfs::ObjectId vname(create_file(vpath, 10 << 20));
+        const ObjectId vname(create_file(vpath, 10 << 20));
         const auto res(volumes.insert(vname));
         EXPECT_TRUE(res.second);
     }
@@ -295,8 +295,8 @@ TEST_F(PythonClientTest, list_volumes)
 
 TEST_F(PythonClientTest, list_volumes_by_path)
 {
-    const vfs::ObjectId fid(create_file(vfs::FrontendPath("/some-file"s),
-                                        4096));
+    const ObjectId fid(create_file(FrontendPath("/some-file"s),
+                                   4096));
 
     EXPECT_TRUE(client_.list_volumes().empty());
 
@@ -305,10 +305,10 @@ TEST_F(PythonClientTest, list_volumes_by_path)
 
     for (uint32_t i = 0; i < num_volumes; ++i)
     {
-        const vfs::FrontendPath
+        const FrontendPath
             vpath(make_volume_name("/vol-"s +
                                    boost::lexical_cast<std::string>(i)));
-        const vfs::ObjectId vname(create_file(vpath, 10 << 20));
+        const ObjectId vname(create_file(vpath, 10 << 20));
         const auto res(volumes.insert(vpath.string()));
         EXPECT_TRUE(res.second);
     }
@@ -332,8 +332,8 @@ TEST_F(PythonClientTest, list_volumes_by_node)
                                      }));
 
     const uint64_t vsize = 1ULL << 20;
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
-    const vfs::ObjectId id(create_file(fname, vsize));
+    const FrontendPath fname(make_volume_name("/some-volume"));
+    const ObjectId id(create_file(fname, vsize));
 
     EXPECT_TRUE(client_.list_volumes(remote_node_id().str()).empty());
 
@@ -348,7 +348,7 @@ TEST_F(PythonClientTest, list_volumes_by_node)
 
 TEST_F(PythonClientTest, snapshot_excessive_metadata)
 {
-    const vfs::FrontendPath vpath(make_volume_name("/some-volume"));
+    const FrontendPath vpath(make_volume_name("/some-volume"));
     const std::string vname(create_file(vpath, 10 << 20));
     const std::string snapname("snapshot");
 
@@ -357,7 +357,7 @@ TEST_F(PythonClientTest, snapshot_excessive_metadata)
     const std::string meta(metav.begin(), metav.end());
 
     EXPECT_THROW(client_.create_snapshot(vname, snapname, meta),
-                 vfs::clienterrors::PythonClientException);
+                 clienterrors::PythonClientException);
 
     EXPECT_TRUE(client_.list_snapshots(vname).empty());
 }
@@ -375,7 +375,7 @@ TEST_F(PythonClientTest, volume_potential)
 
 TEST_F(PythonClientTest, snapshot_metadata)
 {
-    const vfs::FrontendPath vpath(make_volume_name("/some-volume"));
+    const FrontendPath vpath(make_volume_name("/some-volume"));
     const std::string vname(create_file(vpath, 10 << 20));
     const std::string meta("some metadata");
     const std::string snapname("snapshot");
@@ -386,7 +386,7 @@ TEST_F(PythonClientTest, snapshot_metadata)
 
 TEST_F(PythonClientTest, snapshot_management)
 {
-    const vfs::FrontendPath vpath(make_volume_name("/some-volume"));
+    const FrontendPath vpath(make_volume_name("/some-volume"));
     const std::string vname(create_file(vpath, 10 << 20));
 
     const uint32_t snap_num = 10;
@@ -403,7 +403,7 @@ TEST_F(PythonClientTest, snapshot_management)
                 snapname = client_.create_snapshot(vname);
                 break;
             }
-            catch(vfs::clienterrors::PreviousSnapshotNotOnBackendException&)
+            catch(clienterrors::PreviousSnapshotNotOnBackendException&)
             {
                 usleep(10000);
             }
@@ -416,7 +416,7 @@ TEST_F(PythonClientTest, snapshot_management)
     }
 
     EXPECT_THROW(client_.delete_snapshot(vname, "non-existing-snaphot"),
-                 vfs::clienterrors::SnapshotNotFoundException);
+                 clienterrors::SnapshotNotFoundException);
 
     for (uint32_t cnt = 0; cnt < 3; cnt++)
     {
@@ -429,7 +429,7 @@ TEST_F(PythonClientTest, snapshot_management)
 
 TEST_F(PythonClientTest, snapshot_recreation)
 {
-    const vfs::FrontendPath vpath(make_volume_name("/some-volume"));
+    const FrontendPath vpath(make_volume_name("/some-volume"));
     const std::string vname(create_file(vpath, 10 << 20));
     const std::string snap("snapshot");
 
@@ -449,25 +449,24 @@ TEST_F(PythonClientTest, snapshot_recreation)
 
     EXPECT_THROW(client_.create_snapshot(vname,
                                          snap),
-                 vfs::clienterrors::SnapshotNameAlreadyExistsException);
+                 clienterrors::SnapshotNameAlreadyExistsException);
 }
 
 TEST_F(PythonClientTest, volume_queries)
 {
-    const vfs::FrontendPath vpath(make_volume_name("/testing_info"));
+    const FrontendPath vpath(make_volume_name("/testing_info"));
     const std::string vname(create_file(vpath, 10 << 20));
 
     EXPECT_EQ(1,
               client_.list_volumes().size());
 
-    vfs::XMLRPCVolumeInfo vol_info;
+    XMLRPCVolumeInfo vol_info;
     EXPECT_NO_THROW(vol_info = client_.info_volume(vname));
 
     EXPECT_EQ(vd::volumeFailoverStateToString(vd::VolumeFailOverState::OK_SYNC),
               vol_info.failover_mode);
 
-    vfs::XMLRPCStatistics vol_statistics;
-    EXPECT_NO_THROW(vol_statistics = client_.statistics_volume(vname));
+    XMLRPCStatisticsV3 vol_statistics = client_.statistics_volume(vname);
 }
 
 namespace
@@ -526,13 +525,14 @@ TEST_F(PythonClientTest, performance_counters)
                                          umount_remote();
                                      }));
 
-    const vfs::FrontendPath vpath(make_volume_name("/testing_info"));
+    const FrontendPath vpath(make_volume_name("/testing_info"));
     const std::string vname(create_file(vpath, 10 << 20));
 
-    const size_t csize = get_cluster_size(vfs::ObjectId(vname));
+    const size_t csize = get_cluster_size(ObjectId(vname));
 
-    auto expect_nothing([&](const vfs::XMLRPCStatistics& stats)
+    auto expect_nothing([&](const XMLRPCStatisticsV3& stats)
                         {
+                            LOG_INFO("expect nothing: " << stats.str());
                             const PerfCounterExpectNothing expect_nothing_;
                             expect_nothing_(stats.performance_counters.write_request_size);
                             expect_nothing_(stats.performance_counters.read_request_size);
@@ -555,8 +555,9 @@ TEST_F(PythonClientTest, performance_counters)
                   csize,
                   0);
 
-    auto expect_something([&](const vfs::XMLRPCStatistics& stats)
+    auto expect_something([&](const XMLRPCStatisticsV3& stats)
                           {
+                              LOG_INFO("expect something: " << stats.str());
                               EXPECT_EQ(1U,
                                         stats.performance_counters.write_request_size.events());
                               EXPECT_EQ(csize,
@@ -605,14 +606,14 @@ TEST_F(PythonClientTest, redirect)
                                      }));
 
     const uint64_t vsize = 1ULL << 20;
-    const vfs::FrontendPath fname(make_volume_name("/some-volume"));
-    const vfs::ObjectId id(create_file(fname, vsize));
+    const FrontendPath fname(make_volume_name("/some-volume"));
+    const ObjectId id(create_file(fname, vsize));
 
-    const vfs::XMLRPCVolumeInfo local_info(client_.info_volume(id));
+    const XMLRPCVolumeInfo local_info(client_.info_volume(id));
 
-    vfs::PythonClient remote_client(vrouter_cluster_id(),
-                                    {{address(), remote_config().xmlrpc_port}});
-    const vfs::XMLRPCVolumeInfo remote_info(remote_client.info_volume(id));
+    PythonClient remote_client(vrouter_cluster_id(),
+                               {{address(), remote_config().xmlrpc_port}});
+    const XMLRPCVolumeInfo remote_info(remote_client.info_volume(id));
 
 #define EQ_(x)                                  \
     EXPECT_TRUE(local_info.x == remote_info.x)
@@ -640,11 +641,11 @@ TEST_F(PythonClientTest, redirect)
 
 #undef EQ_
 
-    const vfs::ObjectId inexistent_id(yt::UUID().str());
+    const ObjectId inexistent_id(yt::UUID().str());
     EXPECT_THROW(client_.info_volume(inexistent_id),
-                 vfs::clienterrors::ObjectNotFoundException);
+                 clienterrors::ObjectNotFoundException);
     EXPECT_THROW(remote_client.info_volume(inexistent_id),
-                 vfs::clienterrors::ObjectNotFoundException);
+                 clienterrors::ObjectNotFoundException);
 }
 
 TEST_F(PythonClientTest, redirection_response)
@@ -655,37 +656,37 @@ TEST_F(PythonClientTest, redirection_response)
     // (which isn't running anyhow), but at least we receive a
     // MaxRedirectsExceededException
 
-    vfs::PythonClient client(vrouter_cluster_id(),
-                             {{address(), local_config().xmlrpc_port}},
-                             boost::none,
-                             0);
-    vfs::ObjectId dummy_volume("dummy");
+    PythonClient client(vrouter_cluster_id(),
+                        {{address(), local_config().xmlrpc_port}},
+                        boost::none,
+                        0);
+    ObjectId dummy_volume("dummy");
 
     auto registry(fs_->object_router().object_registry());
 
     bpt::ptree pt;
     std::shared_ptr<yt::LockedArakoon>
-        larakoon(new vfs::Registry(make_registry_config_(pt),
-                                   RegisterComponent::F));
-    vfs::OwnerTagAllocator owner_tag_allocator(vrouter_cluster_id(),
-                                               larakoon);
+        larakoon(new Registry(make_registry_config_(pt),
+                              RegisterComponent::F));
+    OwnerTagAllocator owner_tag_allocator(vrouter_cluster_id(),
+                                          larakoon);
 
-    const vfs::ObjectRegistration reg(vd::Namespace(),
-                                      dummy_volume,
-                                      remote_config().vrouter_id,
-                                      vfs::ObjectTreeConfig::makeBase(),
-                                      owner_tag_allocator(),
-                                      vfs::FailOverCacheConfigMode::Automatic);
+    const ObjectRegistration reg(vd::Namespace(),
+                                 dummy_volume,
+                                 remote_config().vrouter_id,
+                                 ObjectTreeConfig::makeBase(),
+                                 owner_tag_allocator(),
+                                 FailOverCacheConfigMode::Automatic);
 
     registry->TESTONLY_add_to_registry_(reg);
 
     auto exit(yt::make_scope_exit([&]
-              {
-                  registry->migrate(dummy_volume,
-                                    remote_config().vrouter_id,
-                                    local_config().vrouter_id);
-                  registry->unregister(dummy_volume);
-              }));
+                                  {
+                                      registry->migrate(dummy_volume,
+                                                        remote_config().vrouter_id,
+                                                        local_config().vrouter_id);
+                                      registry->unregister(dummy_volume);
+                                  }));
 
 #define CHECK_REDIRECT(call)                                            \
     try                                                                 \
@@ -693,7 +694,7 @@ TEST_F(PythonClientTest, redirection_response)
         call;                                                           \
         ADD_FAILURE() << #call " No exception thrown, MaxRedirectsExceededException expected"; \
     }                                                                   \
-    catch (vfs::clienterrors::MaxRedirectsExceededException& e)         \
+    catch (clienterrors::MaxRedirectsExceededException& e)              \
     {                                                                   \
         EXPECT_EQ(remote_config().xmlrpc_host, e.host);                 \
         EXPECT_EQ(remote_config().xmlrpc_port, e.port);                 \
@@ -704,54 +705,54 @@ TEST_F(PythonClientTest, redirection_response)
                 EWHAT;                                                  \
         })
 
-//redirection based on volumeID
-    CHECK_REDIRECT(client.list_snapshots(dummy_volume));
-    CHECK_REDIRECT(client.info_snapshot(dummy_volume,
-                                        "non-existing snapshot"));
-    CHECK_REDIRECT(client.info_volume(dummy_volume));
-    CHECK_REDIRECT(client.statistics_volume(dummy_volume));
-    CHECK_REDIRECT(client.create_snapshot(dummy_volume));
-    CHECK_REDIRECT(client.rollback_volume(dummy_volume,
-                                          "non-existing snapshot"));
-    CHECK_REDIRECT(client.delete_snapshot(dummy_volume,
-                                          "non-existing snapshot"));
-    CHECK_REDIRECT(client.set_volume_as_template(dummy_volume));
-    CHECK_REDIRECT(client.get_scrubbing_work(dummy_volume));
-    CHECK_REDIRECT(client.set_cluster_cache_behaviour(dummy_volume,
+    //redirection based on volumeID
+        CHECK_REDIRECT(client.list_snapshots(dummy_volume));
+        CHECK_REDIRECT(client.info_snapshot(dummy_volume,
+                                            "non-existing snapshot"));
+        CHECK_REDIRECT(client.info_volume(dummy_volume));
+        CHECK_REDIRECT(client.statistics_volume(dummy_volume));
+        CHECK_REDIRECT(client.create_snapshot(dummy_volume));
+        CHECK_REDIRECT(client.rollback_volume(dummy_volume,
+                                              "non-existing snapshot"));
+        CHECK_REDIRECT(client.delete_snapshot(dummy_volume,
+                                              "non-existing snapshot"));
+        CHECK_REDIRECT(client.set_volume_as_template(dummy_volume));
+        CHECK_REDIRECT(client.get_scrubbing_work(dummy_volume));
+        CHECK_REDIRECT(client.set_cluster_cache_behaviour(dummy_volume,
+                                                          boost::none));
+        CHECK_REDIRECT(client.get_cluster_cache_behaviour(dummy_volume));
+        CHECK_REDIRECT(client.set_cluster_cache_mode(dummy_volume,
+                                                     boost::none));
+        CHECK_REDIRECT(client.get_cluster_cache_mode(dummy_volume));
+        CHECK_REDIRECT(client.set_cluster_cache_limit(dummy_volume,
                                                       boost::none));
-    CHECK_REDIRECT(client.get_cluster_cache_behaviour(dummy_volume));
-    CHECK_REDIRECT(client.set_cluster_cache_mode(dummy_volume,
-                                                 boost::none));
-    CHECK_REDIRECT(client.get_cluster_cache_mode(dummy_volume));
-    CHECK_REDIRECT(client.set_cluster_cache_limit(dummy_volume,
-                                                 boost::none));
-    CHECK_REDIRECT(client.get_cluster_cache_limit(dummy_volume));
+        CHECK_REDIRECT(client.get_cluster_cache_limit(dummy_volume));
 
-    CHECK_REDIRECT(client.get_sync_ignore(dummy_volume));
-    CHECK_REDIRECT(client.set_sync_ignore(dummy_volume, 10, 300));
-    CHECK_REDIRECT(client.get_sco_multiplier(dummy_volume));
-    CHECK_REDIRECT(client.set_sco_multiplier(dummy_volume, 1024));
-    CHECK_REDIRECT(client.get_tlog_multiplier(dummy_volume));
-    CHECK_REDIRECT(client.set_tlog_multiplier(dummy_volume, 1024));
-    CHECK_REDIRECT(client.get_sco_cache_max_non_disposable_factor(dummy_volume));
-    CHECK_REDIRECT(client.set_sco_cache_max_non_disposable_factor(dummy_volume, 12.0F));
-    CHECK_REDIRECT(client.set_manual_failover_cache_config(dummy_volume,
-                                                           boost::none));
-    CHECK_REDIRECT(client.set_automatic_failover_cache_config(dummy_volume));
-    CHECK_REDIRECT(client.get_failover_cache_config(dummy_volume));
-    CHECK_REDIRECT(client.schedule_backend_sync(dummy_volume));
-    CHECK_REDIRECT(client.is_volume_synced_up_to_tlog(dummy_volume,
-                                                      boost::lexical_cast<std::string>(vd::TLogId())));
-    CHECK_REDIRECT(client.is_volume_synced_up_to_snapshot(dummy_volume,
-                                                          "some-snapshot"));
-    CHECK_REDIRECT(client.set_metadata_cache_capacity(dummy_volume,
-                                                      boost::none));
-    CHECK_REDIRECT(client.get_metadata_cache_capacity(dummy_volume));
+        CHECK_REDIRECT(client.get_sync_ignore(dummy_volume));
+        CHECK_REDIRECT(client.set_sync_ignore(dummy_volume, 10, 300));
+        CHECK_REDIRECT(client.get_sco_multiplier(dummy_volume));
+        CHECK_REDIRECT(client.set_sco_multiplier(dummy_volume, 1024));
+        CHECK_REDIRECT(client.get_tlog_multiplier(dummy_volume));
+        CHECK_REDIRECT(client.set_tlog_multiplier(dummy_volume, 1024));
+        CHECK_REDIRECT(client.get_sco_cache_max_non_disposable_factor(dummy_volume));
+        CHECK_REDIRECT(client.set_sco_cache_max_non_disposable_factor(dummy_volume, 12.0F));
+        CHECK_REDIRECT(client.set_manual_failover_cache_config(dummy_volume,
+                                                               boost::none));
+        CHECK_REDIRECT(client.set_automatic_failover_cache_config(dummy_volume));
+        CHECK_REDIRECT(client.get_failover_cache_config(dummy_volume));
+        CHECK_REDIRECT(client.schedule_backend_sync(dummy_volume));
+        CHECK_REDIRECT(client.is_volume_synced_up_to_tlog(dummy_volume,
+                                                          boost::lexical_cast<std::string>(vd::TLogId())));
+        CHECK_REDIRECT(client.is_volume_synced_up_to_snapshot(dummy_volume,
+                                                              "some-snapshot"));
+        CHECK_REDIRECT(client.set_metadata_cache_capacity(dummy_volume,
+                                                          boost::none));
+        CHECK_REDIRECT(client.get_metadata_cache_capacity(dummy_volume));
 
-//redirection based on nodeID
-    CHECK_REDIRECT(client.migrate("non-existing volume",
-                                  remote_node_id()));
-    CHECK_REDIRECT(client.update_cluster_node_configs(remote_node_id()));
+        //redirection based on nodeID
+        CHECK_REDIRECT(client.migrate("non-existing volume",
+                                      remote_node_id()));
+        CHECK_REDIRECT(client.update_cluster_node_configs(remote_node_id()));
 
 #undef CHECK_REDIRECT
 }
@@ -768,18 +769,18 @@ TEST_F(PythonClientTest, max_redirects_exceeded)
 
 TEST_F(PythonClientTest, set_as_template)
 {
-    const vfs::FrontendPath vpath(make_volume_name("/test_template"));
+    const FrontendPath vpath(make_volume_name("/test_template"));
     const std::string vname(create_file(vpath, 10 << 20));
 
-    EXPECT_EQ(vfs::ObjectType::Volume, client_.info_volume(vname).object_type);
+    EXPECT_EQ(ObjectType::Volume, client_.info_volume(vname).object_type);
     EXPECT_NO_THROW(client_.set_volume_as_template(vname));
-    EXPECT_EQ(vfs::ObjectType::Template, client_.info_volume(vname).object_type);
+    EXPECT_EQ(ObjectType::Template, client_.info_volume(vname).object_type);
 
     //testing idempotency
     EXPECT_NO_THROW(client_.set_volume_as_template(vname));
 
-    ASSERT_THROW(client_.create_snapshot(vname), vfs::clienterrors::InvalidOperationException);
-    ASSERT_THROW(client_.get_scrubbing_work(vname), vfs::clienterrors::InvalidOperationException);
+    ASSERT_THROW(client_.create_snapshot(vname), clienterrors::InvalidOperationException);
+    ASSERT_THROW(client_.get_scrubbing_work(vname), clienterrors::InvalidOperationException);
 }
 
 TEST_F(PythonClientTest, revision_info)
@@ -794,8 +795,8 @@ TEST_F(PythonClientTest, revision_info)
 
 TEST_F(PythonClientTest, scrubbing)
 {
-    const vfs::FrontendPath vpath(make_volume_name("/testing_the_scrubber"));
-    const vfs::ObjectId vol_id(create_file(vpath, 10 << 20));
+    const FrontendPath vpath(make_volume_name("/testing_the_scrubber"));
+    const ObjectId vol_id(create_file(vpath, 10 << 20));
     const off_t off = 10 * get_cluster_size(vol_id);
     const uint64_t size = 30 * get_cluster_size(vol_id);
 
@@ -833,7 +834,7 @@ TEST_F(PythonClientTest, scrubbing)
     {
         auto result = scrub_wrap(scrub_workitems[3]);
         client_.delete_snapshot(vol_id, snapshot_names[3]);
-        vfs::ScrubManager& sm = local_node(fs_->object_router())->scrub_manager();
+        ScrubManager& sm = local_node(fs_->object_router())->scrub_manager();
         EXPECT_EQ(0,
                   sm.get_counters().parent_scrubs_nok);
 
@@ -868,41 +869,41 @@ TEST_F(PythonClientTest, scrubbing)
 
 TEST_F(PythonClientTest, volume_creation)
 {
-    const vfs::FrontendPath vpath("/volume");
+    const FrontendPath vpath("/volume");
     const yt::DimensionedValue size("1GiB");
-    const vfs::ObjectId cname(client_.create_volume(vpath.str(),
-                                                    make_metadata_backend_config(),
-                                                    size));
+    const ObjectId cname(client_.create_volume(vpath.str(),
+                                               make_metadata_backend_config(),
+                                               size));
 
-    const vfs::XMLRPCVolumeInfo info(client_.info_volume(cname.str()));
-    EXPECT_EQ(vfs::ObjectType::Volume, info.object_type);
-    EXPECT_EQ(local_node_id(), vfs::NodeId(info.vrouter_id));
+    const XMLRPCVolumeInfo info(client_.info_volume(cname.str()));
+    EXPECT_EQ(ObjectType::Volume, info.object_type);
+    EXPECT_EQ(local_node_id(), NodeId(info.vrouter_id));
 }
 
 TEST_F(PythonClientTest, volume_creation_again)
 {
-    const vfs::FrontendPath vpath("/volume");
+    const FrontendPath vpath("/volume");
     const yt::DimensionedValue size("0B");
-    const vfs::ObjectId vname(client_.create_volume(vpath.str(),
-                                                    nullptr,
-                                                    size));
+    const ObjectId vname(client_.create_volume(vpath.str(),
+                                               nullptr,
+                                               size));
 
-    const vfs::XMLRPCVolumeInfo info(client_.info_volume(vname.str()));
-    EXPECT_EQ(vfs::ObjectType::Volume, info.object_type);
-    EXPECT_EQ(local_node_id(), vfs::NodeId(info.vrouter_id));
+    const XMLRPCVolumeInfo info(client_.info_volume(vname.str()));
+    EXPECT_EQ(ObjectType::Volume, info.object_type);
+    EXPECT_EQ(local_node_id(), NodeId(info.vrouter_id));
 }
 
 TEST_F(PythonClientTest, volume_creation_and_removal)
 {
-    const vfs::FrontendPath vpath("/volume");
+    const FrontendPath vpath("/volume");
     const yt::DimensionedValue size("0B");
-    const vfs::ObjectId vname(client_.create_volume(vpath.str(),
-                                                    nullptr,
-                                                    size));
+    const ObjectId vname(client_.create_volume(vpath.str(),
+                                               nullptr,
+                                               size));
 
-    const vfs::XMLRPCVolumeInfo info(client_.info_volume(vname.str()));
-    EXPECT_EQ(vfs::ObjectType::Volume, info.object_type);
-    EXPECT_EQ(local_node_id(), vfs::NodeId(info.vrouter_id));
+    const XMLRPCVolumeInfo info(client_.info_volume(vname.str()));
+    EXPECT_EQ(ObjectType::Volume, info.object_type);
+    EXPECT_EQ(local_node_id(), NodeId(info.vrouter_id));
 
     EXPECT_NO_THROW(client_.unlink(vpath.str()));
     EXPECT_THROW(client_.unlink(vpath.str()),
@@ -911,15 +912,15 @@ TEST_F(PythonClientTest, volume_creation_and_removal)
 
 TEST_F(PythonClientTest, volume_resize)
 {
-    const vfs::FrontendPath vpath("/volume");
+    const FrontendPath vpath("/volume");
     const yt::DimensionedValue size("0B");
-    const vfs::ObjectId vname(client_.create_volume(vpath.str(),
-                                                    nullptr,
-                                                    size));
+    const ObjectId vname(client_.create_volume(vpath.str(),
+                                               nullptr,
+                                               size));
 
     {
-        const vfs::XMLRPCVolumeInfo info(client_.info_volume(vname.str()));
-        EXPECT_EQ(vfs::ObjectType::Volume, info.object_type);
+        const XMLRPCVolumeInfo info(client_.info_volume(vname.str()));
+        EXPECT_EQ(ObjectType::Volume, info.object_type);
         EXPECT_EQ(0, info.volume_size);
     }
 
@@ -928,7 +929,7 @@ TEST_F(PythonClientTest, volume_resize)
                                    newsize));
 
     {
-        const vfs::XMLRPCVolumeInfo info(client_.info_volume(vname.str()));
+        const XMLRPCVolumeInfo info(client_.info_volume(vname.str()));
         EXPECT_EQ(newsize.getBytes(),
                   info.volume_size);
     }
@@ -940,30 +941,30 @@ TEST_F(PythonClientTest, volume_resize)
 
 TEST_F(PythonClientTest, clone_from_template)
 {
-    const vfs::FrontendPath tpath(make_volume_name("/template"));
-    const vfs::ObjectId tname(create_file(tpath));
+    const FrontendPath tpath(make_volume_name("/template"));
+    const ObjectId tname(create_file(tpath));
 
-    const vfs::FrontendPath cpath("/clone");
+    const FrontendPath cpath("/clone");
     ASSERT_THROW(client_.create_clone_from_template(cpath.str(),
                                                     make_metadata_backend_config(),
                                                     tname.str()),
-                 vfs::clienterrors::InvalidOperationException);
+                 clienterrors::InvalidOperationException);
 
     client_.set_volume_as_template(tname.str());
-    const vfs::ObjectId cname(client_.create_clone_from_template(cpath.str(),
-                                                                 make_metadata_backend_config(),
-                                                                 tname.str()));
+    const ObjectId cname(client_.create_clone_from_template(cpath.str(),
+                                                            make_metadata_backend_config(),
+                                                            tname.str()));
 
-    const vfs::XMLRPCVolumeInfo info(client_.info_volume(cname.str()));
-    EXPECT_EQ(vfs::ObjectType::Volume, info.object_type);
-    EXPECT_EQ(tname, vfs::ObjectId(info.parent_volume_id));
-    EXPECT_EQ(local_node_id(), vfs::NodeId(info.vrouter_id));
+    const XMLRPCVolumeInfo info(client_.info_volume(cname.str()));
+    EXPECT_EQ(ObjectType::Volume, info.object_type);
+    EXPECT_EQ(tname, ObjectId(info.parent_volume_id));
+    EXPECT_EQ(local_node_id(), NodeId(info.vrouter_id));
 }
 
 TEST_F(PythonClientTest, clone)
 {
-    const vfs::FrontendPath ppath(make_volume_name("/parent"));
-    const vfs::ObjectId pname(create_file(ppath));
+    const FrontendPath ppath(make_volume_name("/parent"));
+    const ObjectId pname(create_file(ppath));
 
     const vd::SnapshotName snap("snapshot");
     EXPECT_EQ(snap, client_.create_snapshot(pname,
@@ -971,22 +972,22 @@ TEST_F(PythonClientTest, clone)
     wait_for_snapshot(pname,
                       snap);
 
-    const vfs::FrontendPath cpath("/clone");
-    const vfs::ObjectId cname(client_.create_clone(cpath.str(),
-                                                   make_metadata_backend_config(),
-                                                   pname,
-                                                   snap));
+    const FrontendPath cpath("/clone");
+    const ObjectId cname(client_.create_clone(cpath.str(),
+                                              make_metadata_backend_config(),
+                                              pname,
+                                              snap));
 
-    const vfs::XMLRPCVolumeInfo info(client_.info_volume(cname.str()));
-    EXPECT_EQ(vfs::ObjectType::Volume, info.object_type);
-    EXPECT_EQ(pname, vfs::ObjectId(info.parent_volume_id));
-    EXPECT_EQ(local_node_id(), vfs::NodeId(info.vrouter_id));
+    const XMLRPCVolumeInfo info(client_.info_volume(cname.str()));
+    EXPECT_EQ(ObjectType::Volume, info.object_type);
+    EXPECT_EQ(pname, ObjectId(info.parent_volume_id));
+    EXPECT_EQ(local_node_id(), NodeId(info.vrouter_id));
 }
 
 TEST_F(PythonClientTest, prevent_orphaned_clones)
 {
-    const vfs::FrontendPath ppath(make_volume_name("/parent"));
-    const vfs::ObjectId pname(create_file(ppath));
+    const FrontendPath ppath(make_volume_name("/parent"));
+    const ObjectId pname(create_file(ppath));
 
     const vd::SnapshotName snap("snapshot");
     EXPECT_EQ(snap, client_.create_snapshot(pname,
@@ -1008,21 +1009,21 @@ TEST_F(PythonClientTest, prevent_orphaned_clones)
 
     check_snap();
 
-    const vfs::FrontendPath cpath1("/clone-1");
-    const vfs::ObjectId cname1(client_.create_clone(cpath1.str(),
-                                                    make_metadata_backend_config(),
-                                                    pname,
-                                                    snap));
+    const FrontendPath cpath1("/clone-1");
+    const ObjectId cname1(client_.create_clone(cpath1.str(),
+                                               make_metadata_backend_config(),
+                                               pname,
+                                               snap));
 
-    const vfs::FrontendPath cpath2("/clone-2");
-    const vfs::ObjectId cname2(client_.create_clone(cpath2.str(),
-                                                    make_metadata_backend_config(),
-                                                    pname,
-                                                    snap));
+    const FrontendPath cpath2("/clone-2");
+    const ObjectId cname2(client_.create_clone(cpath2.str(),
+                                               make_metadata_backend_config(),
+                                               pname,
+                                               snap));
 
     EXPECT_THROW(client_.delete_snapshot(pname,
                                          snap),
-                 vfs::clienterrors::ObjectStillHasChildrenException);
+                 clienterrors::ObjectStillHasChildrenException);
     check_snap();
     EXPECT_NE(0, unlink(ppath));
     check_snap();
@@ -1032,7 +1033,7 @@ TEST_F(PythonClientTest, prevent_orphaned_clones)
 
     EXPECT_THROW(client_.delete_snapshot(pname,
                                          snap),
-                 vfs::clienterrors::ObjectStillHasChildrenException);
+                 clienterrors::ObjectStillHasChildrenException);
     check_snap();
     EXPECT_NE(0, unlink(ppath));
     check_snap();
@@ -1052,8 +1053,8 @@ TEST_F(PythonClientTest, prevent_orphaned_clones)
 
 TEST_F(PythonClientTest, prevent_rollback_beyond_clone)
 {
-    const vfs::FrontendPath ppath(make_volume_name("/parent"));
-    const vfs::ObjectId pname(create_file(ppath, 1ULL << 20));
+    const FrontendPath ppath(make_volume_name("/parent"));
+    const ObjectId pname(create_file(ppath, 1ULL << 20));
 
     std::vector<vd::SnapshotName> snaps;
     snaps.reserve(4);
@@ -1093,11 +1094,11 @@ TEST_F(PythonClientTest, prevent_rollback_beyond_clone)
 
     check_snaps(snaps.size());
 
-    const vfs::FrontendPath cpath("/clone");
-    const vfs::ObjectId cname(client_.create_clone(cpath.str(),
-                                                   make_metadata_backend_config(),
-                                                   pname,
-                                                   snaps.at(1)));
+    const FrontendPath cpath("/clone");
+    const ObjectId cname(client_.create_clone(cpath.str(),
+                                              make_metadata_backend_config(),
+                                              pname,
+                                              snaps.at(1)));
 
     check_file(clone_path_to_volume_path(cpath),
                snaps.at(1),
@@ -1114,7 +1115,7 @@ TEST_F(PythonClientTest, prevent_rollback_beyond_clone)
 
     EXPECT_THROW(client_.rollback_volume(pname,
                                          snaps.at(0)),
-                 vfs::clienterrors::ObjectStillHasChildrenException);
+                 clienterrors::ObjectStillHasChildrenException);
 
     check_snaps(2);
 
@@ -1134,11 +1135,11 @@ TEST_F(PythonClientTest, prevent_rollback_beyond_clone)
 
 TEST_F(PythonClientTest, family_scrubbing)
 {
-    const vfs::FrontendPath ppath(make_volume_name("/parent"));
+    const FrontendPath ppath(make_volume_name("/parent"));
     const size_t vsize = 10 << 20;
 
-    const vfs::ObjectId pname(create_file(ppath,
-                                          vsize));
+    const ObjectId pname(create_file(ppath,
+                                     vsize));
 
     const size_t csize = get_cluster_size(pname);
 
@@ -1157,11 +1158,11 @@ TEST_F(PythonClientTest, family_scrubbing)
     wait_for_snapshot(pname,
                       snap);
 
-    const vfs::FrontendPath cpath("/clone");
-    const vfs::ObjectId cname(client_.create_clone(cpath.str(),
-                                                   make_metadata_backend_config(),
-                                                   pname,
-                                                   snap));
+    const FrontendPath cpath("/clone");
+    const ObjectId cname(client_.create_clone(cpath.str(),
+                                              make_metadata_backend_config(),
+                                              pname,
+                                              snap));
 
     const std::vector<std::string> scrub_work(client_.get_scrubbing_work(pname));
     ASSERT_EQ(1,
@@ -1169,7 +1170,7 @@ TEST_F(PythonClientTest, family_scrubbing)
 
     client_.apply_scrubbing_result(scrub_wrap(scrub_work[0]));
 
-    vfs::ScrubManager& sm = local_node(fs_->object_router())->scrub_manager();
+    ScrubManager& sm = local_node(fs_->object_router())->scrub_manager();
 
     while (not sm.get_parent_scrubs().empty() or
            not sm.get_clone_scrubs().empty())
@@ -1177,7 +1178,7 @@ TEST_F(PythonClientTest, family_scrubbing)
         boost::this_thread::sleep_for(boost::chrono::seconds(scrub_manager_interval_secs_));
     }
 
-    const vfs::ScrubManager::Counters c(sm.get_counters());
+    const ScrubManager::Counters c(sm.get_counters());
     EXPECT_EQ(1,
               c.parent_scrubs_ok);
     EXPECT_EQ(0,
@@ -1190,11 +1191,11 @@ TEST_F(PythonClientTest, family_scrubbing)
 
 TEST_F(PythonClientTest, templates_and_scrubbing)
 {
-    const vfs::FrontendPath ppath(make_volume_name("/parent"));
+    const FrontendPath ppath(make_volume_name("/parent"));
     const size_t vsize = 10 << 20;
 
-    const vfs::ObjectId pname(create_file(ppath,
-                                          vsize));
+    const ObjectId pname(create_file(ppath,
+                                     vsize));
 
     const size_t csize = get_cluster_size(pname);
 
@@ -1218,7 +1219,7 @@ TEST_F(PythonClientTest, templates_and_scrubbing)
               scrub_work.size());
 
     client_.set_volume_as_template(pname);
-    EXPECT_EQ(vfs::ObjectType::Template,
+    EXPECT_EQ(ObjectType::Template,
               client_.info_volume(pname).object_type);
 
     // no more scrub work from a template
@@ -1228,7 +1229,7 @@ TEST_F(PythonClientTest, templates_and_scrubbing)
     // queuing it up works, the ScrubManager will however not be able to apply it
     client_.apply_scrubbing_result(scrub_wrap(scrub_work[0]));
 
-    vfs::ScrubManager& sm = local_node(fs_->object_router())->scrub_manager();
+    ScrubManager& sm = local_node(fs_->object_router())->scrub_manager();
 
     while (not sm.get_parent_scrubs().empty() or
            not sm.get_clone_scrubs().empty())
@@ -1236,7 +1237,7 @@ TEST_F(PythonClientTest, templates_and_scrubbing)
         boost::this_thread::sleep_for(boost::chrono::seconds(scrub_manager_interval_secs_));
     }
 
-    const vfs::ScrubManager::Counters c(sm.get_counters());
+    const ScrubManager::Counters c(sm.get_counters());
     EXPECT_EQ(0,
               c.parent_scrubs_ok);
     EXPECT_EQ(1,
@@ -1249,35 +1250,35 @@ TEST_F(PythonClientTest, templates_and_scrubbing)
 
 TEST_F(PythonClientTest, no_templating_of_files)
 {
-    const vfs::FrontendPath fpath("/file");
-    const vfs::ObjectId fname(create_file(fpath));
+    const FrontendPath fpath("/file");
+    const ObjectId fname(create_file(fpath));
     EXPECT_THROW(client_.set_volume_as_template(fname),
-                 vfs::clienterrors::InvalidOperationException);
+                 clienterrors::InvalidOperationException);
 }
 
 TEST_F(PythonClientTest, no_clone_from_file)
 {
-    const vfs::FrontendPath fpath("/file");
-    const vfs::ObjectId fname(create_file(fpath));
+    const FrontendPath fpath("/file");
+    const ObjectId fname(create_file(fpath));
 
-    const vfs::FrontendPath cpath("/clone");
+    const FrontendPath cpath("/clone");
     EXPECT_THROW(client_.create_clone_from_template(cpath.str(),
                                                     make_metadata_backend_config(),
                                                     fname),
-                 vfs::clienterrors::InvalidOperationException);
+                 clienterrors::InvalidOperationException);
 
     const vd::SnapshotName snap("snap");
     EXPECT_THROW(client_.create_clone(cpath.str(),
                                       make_metadata_backend_config(),
                                       fname,
                                       snap),
-                 vfs::clienterrors::InvalidOperationException);
+                 clienterrors::InvalidOperationException);
 }
 
 TEST_F(PythonClientTest, no_clone_from_template_with_snapshot)
 {
-    const vfs::FrontendPath ppath(make_volume_name("/parent"));
-    const vfs::ObjectId pname(create_file(ppath));
+    const FrontendPath ppath(make_volume_name("/parent"));
+    const ObjectId pname(create_file(ppath));
 
     const vd::SnapshotName snap("snapshot");
     EXPECT_EQ(snap, client_.create_snapshot(pname,
@@ -1287,13 +1288,13 @@ TEST_F(PythonClientTest, no_clone_from_template_with_snapshot)
 
     client_.set_volume_as_template(pname.str());
 
-    const vfs::FrontendPath cpath("/clone");
+    const FrontendPath cpath("/clone");
 
     EXPECT_THROW(client_.create_clone(cpath.str(),
                                       make_metadata_backend_config(),
                                       pname,
                                       snap),
-                 vfs::clienterrors::InvalidOperationException);
+                 clienterrors::InvalidOperationException);
 }
 
 TEST_F(PythonClientTest, remote_clone)
@@ -1305,28 +1306,28 @@ TEST_F(PythonClientTest, remote_clone)
                                          umount_remote();
                                      }));
 
-    const vfs::FrontendPath tpath(make_volume_name("/template"));
-    const vfs::ObjectId tname(create_file(tpath));
+    const FrontendPath tpath(make_volume_name("/template"));
+    const ObjectId tname(create_file(tpath));
 
     client_.set_volume_as_template(tname.str());
 
-    const vfs::FrontendPath cpath("/clone");
-    const vfs::ObjectId cname(client_.create_clone_from_template(cpath.str(),
-                                                                 make_metadata_backend_config(),
-                                                                 tname.str(),
-                                                                 remote_node_id()));
+    const FrontendPath cpath("/clone");
+    const ObjectId cname(client_.create_clone_from_template(cpath.str(),
+                                                            make_metadata_backend_config(),
+                                                            tname.str(),
+                                                            remote_node_id()));
 
-    const vfs::XMLRPCVolumeInfo info(client_.info_volume(cname.str()));
-    EXPECT_EQ(vfs::ObjectType::Volume, info.object_type);
-    EXPECT_EQ(tname, vfs::ObjectId(info.parent_volume_id));
-    EXPECT_EQ(remote_node_id(), vfs::NodeId(info.vrouter_id));
+    const XMLRPCVolumeInfo info(client_.info_volume(cname.str()));
+    EXPECT_EQ(ObjectType::Volume, info.object_type);
+    EXPECT_EQ(tname, ObjectId(info.parent_volume_id));
+    EXPECT_EQ(remote_node_id(), NodeId(info.vrouter_id));
 }
 
 TEST_F(PythonClientTest, volume_and_object_id)
 {
     {
-        const vfs::FrontendPath vpath(make_volume_name("/some-volume"s));
-        const vfs::ObjectId vname(create_file(vpath, 10 << 20));
+        const FrontendPath vpath(make_volume_name("/some-volume"s));
+        const ObjectId vname(create_file(vpath, 10 << 20));
 
         const boost::optional<vd::VolumeId>
             maybe_vid(client_.get_volume_id(vpath.str()));
@@ -1335,7 +1336,7 @@ TEST_F(PythonClientTest, volume_and_object_id)
         EXPECT_EQ(vname,
                   *maybe_vid);
 
-        const boost::optional<vfs::ObjectId>
+        const boost::optional<ObjectId>
             maybe_oid(client_.get_object_id(vpath.str()));
         ASSERT_NE(boost::none,
                   maybe_oid);
@@ -1344,13 +1345,13 @@ TEST_F(PythonClientTest, volume_and_object_id)
     }
 
     {
-        const vfs::FrontendPath fpath("/some-file");
-        const vfs::ObjectId fname(create_file(fpath));
+        const FrontendPath fpath("/some-file");
+        const ObjectId fname(create_file(fpath));
 
         ASSERT_EQ(boost::none,
                   client_.get_volume_id(fpath.str()));
 
-        const boost::optional<vfs::ObjectId>
+        const boost::optional<ObjectId>
             maybe_oid(client_.get_object_id(fpath.str()));
         ASSERT_NE(boost::none,
                   maybe_oid);
@@ -1359,7 +1360,7 @@ TEST_F(PythonClientTest, volume_and_object_id)
     }
 
     {
-        const vfs::FrontendPath nopath("/does-not-exist");
+        const FrontendPath nopath("/does-not-exist");
         verify_absence(nopath);
 
         ASSERT_EQ(boost::none,
@@ -1380,23 +1381,23 @@ TEST_F(PythonClientTest, mds_management)
     ASSERT_NE(scfg1,
               scfg2);
 
-    const vfs::FrontendPath vpath("/volume");
+    const FrontendPath vpath("/volume");
     const yt::DimensionedValue size("1GiB");
 
     const vd::MDSNodeConfigs ncfgs{ scfg1.node_config,
-                                    scfg2.node_config };
+            scfg2.node_config };
 
     boost::shared_ptr<vd::MDSMetaDataBackendConfig>
         mcfg(new vd::MDSMetaDataBackendConfig(ncfgs,
                                               vd::ApplyRelocationsToSlaves::T));
 
-    const vfs::ObjectId vname(client_.create_volume(vpath.str(),
-                                                    mcfg,
-                                                    size));
+    const ObjectId vname(client_.create_volume(vpath.str(),
+                                               mcfg,
+                                               size));
 
     auto check([&](const vd::MDSNodeConfigs& ref)
                {
-                   const vfs::XMLRPCVolumeInfo
+                   const XMLRPCVolumeInfo
                        info(client_.info_volume(vname.str()));
 
                    auto c(boost::dynamic_pointer_cast<const vd::MDSMetaDataBackendConfig>(info.metadata_backend_config));
@@ -1412,7 +1413,7 @@ TEST_F(PythonClientTest, mds_management)
     check(ncfgs);
 
     const vd::MDSNodeConfigs ncfgs2{ scfg2.node_config,
-                                     scfg1.node_config };
+            scfg1.node_config };
 
     boost::shared_ptr<vd::MDSMetaDataBackendConfig>
         mcfg2(new vd::MDSMetaDataBackendConfig(ncfgs2,
@@ -1426,13 +1427,13 @@ TEST_F(PythonClientTest, mds_management)
 
 TEST_F(PythonClientTest, sync_ignore)
 {
-    const vfs::FrontendPath vpath(make_volume_name("/syncignore-test"));
+    const FrontendPath vpath(make_volume_name("/syncignore-test"));
     const std::string vname(create_file(vpath, 10 << 20));
     auto res = client_.get_sync_ignore(vname);
 
-    uint64_t number_of_syncs_to_ignore = bpy::extract<uint64_t>(res[vfs::XMLRPCKeys::number_of_syncs_to_ignore]);
+    uint64_t number_of_syncs_to_ignore = bpy::extract<uint64_t>(res[XMLRPCKeys::number_of_syncs_to_ignore]);
 
-    uint64_t maximum_time_to_ignore_syncs_in_seconds = bpy::extract<uint64_t>(res[vfs::XMLRPCKeys::maximum_time_to_ignore_syncs_in_seconds]);
+    uint64_t maximum_time_to_ignore_syncs_in_seconds = bpy::extract<uint64_t>(res[XMLRPCKeys::maximum_time_to_ignore_syncs_in_seconds]);
 
     EXPECT_EQ(0U, number_of_syncs_to_ignore);
     EXPECT_EQ(0U, maximum_time_to_ignore_syncs_in_seconds);
@@ -1446,8 +1447,8 @@ TEST_F(PythonClientTest, sync_ignore)
 
     res = client_.get_sync_ignore(vname);
 
-    number_of_syncs_to_ignore = bpy::extract<uint64_t>(res[vfs::XMLRPCKeys::number_of_syncs_to_ignore]);
-    maximum_time_to_ignore_syncs_in_seconds = bpy::extract<uint64_t>(res[vfs::XMLRPCKeys::maximum_time_to_ignore_syncs_in_seconds]);
+    number_of_syncs_to_ignore = bpy::extract<uint64_t>(res[XMLRPCKeys::number_of_syncs_to_ignore]);
+    maximum_time_to_ignore_syncs_in_seconds = bpy::extract<uint64_t>(res[XMLRPCKeys::maximum_time_to_ignore_syncs_in_seconds]);
 
     EXPECT_EQ(number_of_syncs_to_ignore_c, number_of_syncs_to_ignore);
     EXPECT_EQ(maximum_time_to_ignore_syncs_in_seconds_c, maximum_time_to_ignore_syncs_in_seconds);
@@ -1457,8 +1458,8 @@ TEST_F(PythonClientTest, sync_ignore)
                             0);
 
     res = client_.get_sync_ignore(vname);
-    number_of_syncs_to_ignore = bpy::extract<uint64_t>(res[vfs::XMLRPCKeys::number_of_syncs_to_ignore]);
-    maximum_time_to_ignore_syncs_in_seconds = bpy::extract<uint64_t>(res[vfs::XMLRPCKeys::maximum_time_to_ignore_syncs_in_seconds]);
+    number_of_syncs_to_ignore = bpy::extract<uint64_t>(res[XMLRPCKeys::number_of_syncs_to_ignore]);
+    maximum_time_to_ignore_syncs_in_seconds = bpy::extract<uint64_t>(res[XMLRPCKeys::maximum_time_to_ignore_syncs_in_seconds]);
 
     EXPECT_EQ(0U, number_of_syncs_to_ignore);
     EXPECT_EQ(0U, maximum_time_to_ignore_syncs_in_seconds);
@@ -1466,7 +1467,7 @@ TEST_F(PythonClientTest, sync_ignore)
 
 TEST_F(PythonClientTest, sco_multiplier)
 {
-    const vfs::FrontendPath vpath(make_volume_name("/sco_multiplier-test"));
+    const FrontendPath vpath(make_volume_name("/sco_multiplier-test"));
     const std::string vname(create_file(vpath, 10 << 20));
 
     uint32_t sco_multiplier = client_.get_sco_multiplier(vname);
@@ -1478,7 +1479,7 @@ TEST_F(PythonClientTest, sco_multiplier)
     EXPECT_EQ(sco_multiplier_c, sco_multiplier);
 
     EXPECT_THROW(client_.set_sco_multiplier(vname, 1),
-                 vfs::clienterrors::InvalidOperationException);
+                 clienterrors::InvalidOperationException);
 
     // could throw an InvalidOperationException or an InsufficientResourcesException
     // depending on the available SCOCache space
@@ -1488,7 +1489,7 @@ TEST_F(PythonClientTest, sco_multiplier)
 
 TEST_F(PythonClientTest, tlog_multiplier)
 {
-    const vfs::FrontendPath vpath(make_volume_name("/tlog_multiplier-test"));
+    const FrontendPath vpath(make_volume_name("/tlog_multiplier-test"));
     const std::string vname(create_file(vpath, 10 << 20));
 
     EXPECT_EQ(boost::none,
@@ -1513,7 +1514,7 @@ TEST_F(PythonClientTest, tlog_multiplier)
 
 TEST_F(PythonClientTest, max_non_disposable_factor)
 {
-    const vfs::FrontendPath vpath(make_volume_name("/max_non_disposable_factor-test"));
+    const FrontendPath vpath(make_volume_name("/max_non_disposable_factor-test"));
     const std::string vname(create_file(vpath, 10 << 20));
 
     EXPECT_EQ(boost::none,
@@ -1533,7 +1534,7 @@ TEST_F(PythonClientTest, max_non_disposable_factor)
 
     EXPECT_THROW(client_.set_sco_cache_max_non_disposable_factor(vname,
                                                                  0.99F),
-                 vfs::clienterrors::InvalidOperationException);
+                 clienterrors::InvalidOperationException);
 
     client_.set_sco_cache_max_non_disposable_factor(vname,
                                                     boost::none);
@@ -1544,7 +1545,7 @@ TEST_F(PythonClientTest, max_non_disposable_factor)
 
 TEST_F(PythonClientTest, cluster_cache_behaviour)
 {
-    const vfs::FrontendPath vpath(make_volume_name("/cluster-cache-behaviour-test"));
+    const FrontendPath vpath(make_volume_name("/cluster-cache-behaviour-test"));
     const std::string vname(create_file(vpath, 10 << 20));
 
     ASSERT_EQ(boost::none,
@@ -1567,7 +1568,7 @@ TEST_F(PythonClientTest, cluster_cache_behaviour)
 
 TEST_F(PythonClientTest, cluster_cache_mode)
 {
-    const vfs::FrontendPath vpath(make_volume_name("/cluster-cache-mode-test"));
+    const FrontendPath vpath(make_volume_name("/cluster-cache-mode-test"));
     const std::string vname(create_file(vpath, 10 << 20));
 
     ASSERT_EQ(boost::none,
@@ -1598,7 +1599,7 @@ TEST_F(PythonClientTest, cluster_cache_mode)
 
 TEST_F(PythonClientTest, cluster_cache_limit)
 {
-    const vfs::FrontendPath vpath(make_volume_name("/cluster-cache-mode-test"));
+    const FrontendPath vpath(make_volume_name("/cluster-cache-mode-test"));
     const std::string vname(create_file(vpath, 10 << 20));
 
     ASSERT_EQ(boost::none,
@@ -1630,15 +1631,15 @@ TEST_F(PythonClientTest, update_cluster_node_configs)
 {
     ASSERT_NO_THROW(client_.update_cluster_node_configs(std::string()));
 
-    vfs::ObjectRouter& router = fs_->object_router();
+    ObjectRouter& router = fs_->object_router();
 
     ASSERT_EQ(local_config(),
               router.node_config());
     ASSERT_EQ(remote_config(),
               *router.node_config(remote_config().vrouter_id));
 
-    std::shared_ptr<vfs::ClusterRegistry> registry(router.cluster_registry());
-    const vfs::ClusterNodeConfigs configs(registry->get_node_configs());
+    std::shared_ptr<ClusterRegistry> registry(router.cluster_registry());
+    const ClusterNodeConfigs configs(registry->get_node_configs());
 
     registry->erase_node_configs();
     registry->set_node_configs({ router.node_config() });
@@ -1665,26 +1666,26 @@ TEST_F(PythonClientTest, vaai_copy)
 {
     EXPECT_TRUE(client_.list_volumes().empty());
 
-    const vfs::FrontendPath vpath(make_volume_name("/vol"));
-    const vfs::ObjectId vname(create_file(vpath, 10 << 20));
+    const FrontendPath vpath(make_volume_name("/vol"));
+    const ObjectId vname(create_file(vpath, 10 << 20));
 
-    const vfs::FrontendPath fc_vpath(make_volume_name("/vol-full-clone"));
-    const vfs::ObjectId fc_vname(create_file(fc_vpath, 10 << 20));
+    const FrontendPath fc_vpath(make_volume_name("/vol-full-clone"));
+    const ObjectId fc_vname(create_file(fc_vpath, 10 << 20));
 
     EXPECT_EQ(2, client_.list_volumes().size());
 
     const std::string src_path("/vol-flat.vmdk");
     const std::string fc_target_path("/vol-full-clone-flat.vmdk");
     const uint64_t timeout = 10;
-    const vfs::CloneFileFlags fc_flags(vfs::CloneFileFlags::SkipZeroes);
+    const CloneFileFlags fc_flags(CloneFileFlags::SkipZeroes);
 
     EXPECT_NO_THROW(client_.vaai_copy(src_path,
                                       fc_target_path,
                                       timeout,
                                       fc_flags));
 
-    const vfs::CloneFileFlags lz_flags(vfs::CloneFileFlags::Lazy |
-                                       vfs::CloneFileFlags::Guarded);
+    const CloneFileFlags lz_flags(CloneFileFlags::Lazy |
+                                  CloneFileFlags::Guarded);
 
     const std::string lz_target_path("/vol-lazy-snapshot-flat.vmdk");
     EXPECT_NO_THROW(client_.vaai_copy(src_path,
@@ -1697,49 +1698,49 @@ TEST_F(PythonClientTest, vaai_copy)
                                    nonexistent_target_path,
                                    timeout,
                                    fc_flags),
-                                   vfs::clienterrors::ObjectNotFoundException);
+                 clienterrors::ObjectNotFoundException);
 
     EXPECT_THROW(client_.vaai_copy(src_path,
                                    lz_target_path,
                                    timeout,
                                    lz_flags),
-                                   vfs::clienterrors::FileExistsException);
+                 clienterrors::FileExistsException);
 
-    const vfs::FrontendPath fc_size_mismatch(make_volume_name("/vol-size-mismatch"));
-    const vfs::ObjectId sm_vname(create_file(fc_size_mismatch, 10 << 10));
+    const FrontendPath fc_size_mismatch(make_volume_name("/vol-size-mismatch"));
+    const ObjectId sm_vname(create_file(fc_size_mismatch, 10 << 10));
 
     EXPECT_THROW(client_.vaai_copy(fc_size_mismatch.string(),
                                    fc_target_path,
                                    timeout,
                                    fc_flags),
-                                   vfs::clienterrors::InvalidOperationException);
+                 clienterrors::InvalidOperationException);
 
     const std::string nonexistent_src_path("/non-existent-src-volume-flat.vmdk");
     EXPECT_THROW(client_.vaai_copy(nonexistent_src_path,
                                    fc_target_path,
                                    timeout,
                                    fc_flags),
-                                   vfs::clienterrors::ObjectNotFoundException);
+                 clienterrors::ObjectNotFoundException);
 
     EXPECT_THROW(client_.vaai_copy(nonexistent_src_path,
                                    lz_target_path,
                                    timeout,
                                    lz_flags),
-                                   vfs::clienterrors::ObjectNotFoundException);
+                 clienterrors::ObjectNotFoundException);
 
-    const vfs::CloneFileFlags fault_flags(static_cast<vfs::CloneFileFlags>(0));
-    const vfs::FrontendPath fc_vpath_2(make_volume_name("/vol-full-clone-2"));
-    const vfs::ObjectId fc_vname_2(create_file(fc_vpath_2, 10 << 20));
+    const CloneFileFlags fault_flags(static_cast<CloneFileFlags>(0));
+    const FrontendPath fc_vpath_2(make_volume_name("/vol-full-clone-2"));
+    const ObjectId fc_vname_2(create_file(fc_vpath_2, 10 << 20));
     const std::string fc_target_path_2("/vol-full-clone-2-flat.vmdk");
     EXPECT_THROW(client_.vaai_copy(src_path,
                                    fc_target_path_2,
                                    timeout,
                                    fault_flags),
-                                   vfs::clienterrors::InvalidOperationException);
+                 clienterrors::InvalidOperationException);
 
     const std::string src_vmdk_path("/vol.vmdk");
-    const vfs::ObjectId fid(create_file(vfs::FrontendPath(src_vmdk_path),
-                                        4096));
+    const ObjectId fid(create_file(FrontendPath(src_vmdk_path),
+                                   4096));
     const std::string non_existent_vmdk_path("/vol-non-existent.vmdk");
     EXPECT_NO_THROW(client_.vaai_copy(src_vmdk_path,
                                       non_existent_vmdk_path,
@@ -1755,14 +1756,14 @@ TEST_F(PythonClientTest, vaai_copy)
                                    non_existent_vmdk_path,
                                    timeout,
                                    fault_flags),
-                                   vfs::clienterrors::InvalidOperationException);
+                 clienterrors::InvalidOperationException);
 }
 
 TEST_F(PythonClientTest, failovercache_config)
 {
     start_failovercache_for_remote_node();
 
-    const vfs::FrontendPath vpath(make_volume_name("/failovercacheconfig-test"));
+    const FrontendPath vpath(make_volume_name("/failovercacheconfig-test"));
     const std::string vname(create_file(vpath, 10 << 20));
 
     const vd::FailOverCacheConfig cfg1(check_initial_foc_config(vname));
@@ -1775,7 +1776,7 @@ TEST_F(PythonClientTest, failovercache_config)
     client_.set_manual_failover_cache_config(vname,
                                              boost::none);
     check_foc_config(vname,
-                     vfs::FailOverCacheConfigMode::Manual,
+                     FailOverCacheConfigMode::Manual,
                      boost::none);
 
     check_foc_state(vname,
@@ -1794,7 +1795,7 @@ TEST_F(PythonClientTest, failovercache_config)
                                              cfg2);
 
     check_foc_config(vname,
-                     vfs::FailOverCacheConfigMode::Manual,
+                     FailOverCacheConfigMode::Manual,
                      cfg2);
 
     check_foc_state(vname,
@@ -1810,7 +1811,7 @@ TEST_F(PythonClientTest, failovercache_config)
                                              cfg3);
 
     check_foc_config(vname,
-                     vfs::FailOverCacheConfigMode::Manual,
+                     FailOverCacheConfigMode::Manual,
                      cfg3);
 
     check_foc_state(vname,
@@ -1819,7 +1820,7 @@ TEST_F(PythonClientTest, failovercache_config)
     client_.set_automatic_failover_cache_config(vname);
 
     check_foc_config(vname,
-                     vfs::FailOverCacheConfigMode::Automatic,
+                     FailOverCacheConfigMode::Automatic,
                      cfg1);
 
     check_foc_state(vname,
@@ -1835,7 +1836,7 @@ TEST_F(PythonClientTest, failovercache_config)
                                              cfg4);
 
     check_foc_config(vname,
-                     vfs::FailOverCacheConfigMode::Manual,
+                     FailOverCacheConfigMode::Manual,
                      cfg4);
 
     check_foc_state(vname,
@@ -1845,7 +1846,7 @@ TEST_F(PythonClientTest, failovercache_config)
 
 TEST_F(PythonClientTest, locked_client)
 {
-    const vfs::FrontendPath vpath(make_volume_name("/some-volume"));
+    const FrontendPath vpath(make_volume_name("/some-volume"));
     const std::string vname(create_file(vpath, 10 << 20));
 
     int counter = 0;
@@ -1853,7 +1854,7 @@ TEST_F(PythonClientTest, locked_client)
 
     auto fun([&](int n)
              {
-                 boost::shared_ptr<vfs::LockedPythonClient>
+                 boost::shared_ptr<LockedPythonClient>
                      lclient(client_.make_locked_client(vname));
 
                  while (not stop)
@@ -1899,10 +1900,10 @@ TEST_F(PythonClientTest, locked_client)
 
 TEST_F(PythonClientTest, locked_scrub)
 {
-    const vfs::FrontendPath vpath(make_volume_name("/some-volume"));
+    const FrontendPath vpath(make_volume_name("/some-volume"));
     const std::string vname(create_file(vpath, 10 << 20));
 
-    const uint64_t csize = get_cluster_size(vfs::ObjectId(vname));
+    const uint64_t csize = get_cluster_size(ObjectId(vname));
     const std::string fst("first");
 
     write_to_file(vpath,
@@ -1918,10 +1919,10 @@ TEST_F(PythonClientTest, locked_scrub)
 
     const std::string snap(client_.create_snapshot(vname));
 
-    wait_for_snapshot(vfs::ObjectId(vname),
+    wait_for_snapshot(ObjectId(vname),
                       snap);
 
-    boost::shared_ptr<vfs::LockedPythonClient>
+    boost::shared_ptr<LockedPythonClient>
         lclient(client_.make_locked_client(vname)->enter());
 
     bpy::object dummy;
@@ -1954,7 +1955,7 @@ TEST_F(PythonClientTest, locked_scrub)
 
 TEST_F(PythonClientTest, backend_sync_tlog)
 {
-    const vfs::FrontendPath vpath(make_volume_name("/some-volume"));
+    const FrontendPath vpath(make_volume_name("/some-volume"));
     const std::string vname(create_file(vpath, 10 << 20));
 
     const vd::TLogName tlog_name(client_.schedule_backend_sync(vname));
@@ -1981,7 +1982,7 @@ TEST_F(PythonClientTest, backend_sync_tlog)
 
 TEST_F(PythonClientTest, backend_sync_snapshot)
 {
-    const vfs::FrontendPath vpath(make_volume_name("/some-volume"));
+    const FrontendPath vpath(make_volume_name("/some-volume"));
     const std::string vname(create_file(vpath, 10 << 20));
 
     const std::string snap("some-snapshot");
@@ -2013,7 +2014,7 @@ TEST_F(PythonClientTest, backend_sync_snapshot)
 
 TEST_F(PythonClientTest, metadata_cache_capacity)
 {
-    const vfs::FrontendPath vpath(make_volume_name("/some-volume"));
+    const FrontendPath vpath(make_volume_name("/some-volume"));
     const std::string vname(create_file(vpath, 10 << 20));
 
     EXPECT_EQ(boost::none,
@@ -2051,9 +2052,9 @@ TEST_F(PythonClientTest, restart_volume)
                                          umount_remote();
                                      }));
 
-    const vfs::FrontendPath vname(make_volume_name("/volume"));
-    const vfs::ObjectId oid(create_file(vname,
-                                        1ULL << 20));
+    const FrontendPath vname(make_volume_name("/volume"));
+    const ObjectId oid(create_file(vname,
+                                   1ULL << 20));
 
     const std::string pattern("a rather important message");
 
@@ -2062,8 +2063,8 @@ TEST_F(PythonClientTest, restart_volume)
                   pattern.size(),
                   0);
 
-    vfs::PythonClient remote_client(vrouter_cluster_id(),
-                                    {{address(), remote_config().xmlrpc_port}});
+    PythonClient remote_client(vrouter_cluster_id(),
+                               {{address(), remote_config().xmlrpc_port}});
 
     remote_client.stop_object(oid.str());
 
