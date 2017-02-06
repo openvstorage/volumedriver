@@ -258,14 +258,14 @@ ovs_allocate(ovs_ctx_t *ctx,
 
 /* Retrieve pointer to buffer content
  * param ptr: Pointer to buffer structure
- * return: Buffer pointer on success, or NULL on fail
+ * return: Buffer pointer upon successful completion
  */
 void*
 ovs_buffer_data(ovs_buffer_t *ptr);
 
 /* Retrieve size of buffer
  * param ptr: Pointer to buffer structure
- * return: Size of buffer on success, -1 on fail
+ * return: Size of buffer upon successful completion
  */
 size_t
 ovs_buffer_size(ovs_buffer_t *ptr);
@@ -309,7 +309,7 @@ ovs_write(ovs_ctx_t *ctx,
           off_t offset);
 
 /*
- * Syncronize a volume's in-core state with that on disk
+ * Synchronize a volume's in-core state with that on disk
  * param ctx: Open vStorage context
  * return: 0 on success, -1 on fail
  */

@@ -1021,15 +1021,7 @@ ovs_buffer_data(ovs_buffer_t *ptr)
                ovs_buffer_data,
                reinterpret_cast<uintptr_t>(ptr));
 
-    if (likely(ptr != NULL))
-    {
-        return ptr->buf;
-    }
-    else
-    {
-        errno = EINVAL;
-        return NULL;
-    }
+    return ptr->buf;
 }
 
 size_t
@@ -1039,15 +1031,7 @@ ovs_buffer_size(ovs_buffer_t *ptr)
               ovs_buffer_size,
               reinterpret_cast<uintptr_t>(ptr));
 
-    if (likely(ptr != NULL))
-    {
-        return ptr->size;
-    }
-    else
-    {
-        errno = EINVAL;
-        return -1;
-    }
+    return ptr->size;
 }
 
 int
