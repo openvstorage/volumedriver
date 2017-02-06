@@ -16,9 +16,11 @@
 #ifndef PERFORMANCE_COUNTERS_H
 #define PERFORMANCE_COUNTERS_H
 
+#include "PerformanceCountersV1.h"
+
+#include <array>
 #include <mutex>
 
-#include <boost/array.hpp>
 #include <boost/serialization/array.hpp>
 #include <boost/serialization/nvp.hpp>
 
@@ -32,18 +34,64 @@ template<typename T>
 struct NoBucketTraits
 {
     static constexpr size_t max_buckets = 0;
+    using Buckets = boost::array<T, max_buckets>;
 
-    static const boost::array<T, max_buckets>&
+    static const Buckets&
     bounds()
     {
-        static const boost::array<T, max_buckets> b;
+        static const Buckets b;
         return b;
     }
 };
 
-template<typename T, typename BuckTraits = NoBucketTraits<T>>
+// 0-sized arrays are not supported by boost serialization (e.g.
+// binary archives)
+template<typename BucketTraits>
+struct BucketSerializationTraits
+{
+    template<typename Archive>
+    static void
+    load(Archive& ar,
+         typename BucketTraits::Buckets& buckets)
+    {
+        ar & boost::serialization::make_nvp("buckets",
+                                            buckets);
+    }
+
+    template<typename Archive>
+    static void
+    save(Archive& ar,
+         const typename BucketTraits::Buckets& buckets)
+    {
+        ar & boost::serialization::make_nvp("buckets",
+                                            buckets);
+    }
+
+};
+
+template<typename T>
+struct BucketSerializationTraits<NoBucketTraits<T>>
+{
+    template<typename Archive>
+    static void
+    load(Archive&,
+         typename NoBucketTraits<T>::Buckets&)
+    {}
+
+    template<typename Archive>
+    static void
+    save(Archive&,
+         const typename NoBucketTraits<T>::Buckets&)
+    {}
+};
+
+template<typename T, typename BucketTraits = NoBucketTraits<T>>
 class PerformanceCounter
 {
+public:
+    using Buckets = typename BucketTraits::Buckets;
+    static constexpr size_t max_buckets = BucketTraits::max_buckets;
+
 private:
     mutable fungi::SpinLock lock_;
     uint64_t events_;
@@ -51,13 +99,9 @@ private:
     T sqsum_;
     T min_;
     T max_;
-    boost::array<uint64_t, BuckTraits::max_buckets> buckets_;
+    Buckets buckets_;
 
 public:
-    using Type = T;
-    using BucketTraits = BuckTraits;
-    static constexpr size_t max_buckets = BucketTraits::max_buckets;
-
     PerformanceCounter()
         : events_(0)
         , sum_(0)
@@ -76,6 +120,16 @@ public:
         , max_(other.max())
         , buckets_(other.buckets())
     {}
+
+    PerformanceCounter(const PerformanceCounterV1<T>& other)
+        : events_(other.events())
+        , sum_(other.sum())
+        , sqsum_(other.sum_of_squares())
+        , min_(other.min())
+        , max_(other.max())
+    {
+        buckets_.fill(0);
+    }
 
     PerformanceCounter&
     operator=(const PerformanceCounter& other)
@@ -214,13 +268,13 @@ public:
     }
 
     decltype(buckets_)
-        buckets() const
+    buckets() const
     {
         std::lock_guard<decltype(lock_)> g(lock_);
         return buckets_;
     }
 
-    static const boost::array<T, BucketTraits::max_buckets>&
+    static const Buckets&
     bucket_bounds()
     {
         return BucketTraits::bounds();
@@ -254,8 +308,21 @@ public:
         return m;
     }
 
+    // backward compat
+    PerformanceCounterV1<T>
+    v1() const
+    {
+        std::lock_guard<decltype(lock_)> g(lock_);
+        return PerformanceCounterV1<T>(events_,
+                                       sum_,
+                                       sqsum_,
+                                       min_,
+                                       max_);
+    }
+
 private:
     friend class boost::serialization::access;
+
     BOOST_SERIALIZATION_SPLIT_MEMBER();
 
     template<typename Archive>
@@ -281,18 +348,15 @@ private:
 
         if (version > 1)
         {
-            if (BucketTraits::max_buckets > 0)
-            {
-                ar & boost::serialization::make_nvp("buckets",
-                                                    buckets_);
-            }
+            BucketSerializationTraits<BucketTraits>::load(ar,
+                                                          buckets_);
         }
     }
 
     template<typename Archive>
     void
     save(Archive& ar,
-         const unsigned /* version */) const
+         const unsigned version) const
     {
         const uint64_t evts = events();
         ar & boost::serialization::make_nvp("events",
@@ -305,18 +369,20 @@ private:
         ar & boost::serialization::make_nvp("sqsum",
                                             sq);
 
-        const T mn = min();
-        ar & boost::serialization::make_nvp("min",
-                                            mn);
-        const T mx = max();
-        ar & boost::serialization::make_nvp("max",
-                                            mx);
-
-        if (BucketTraits::max_buckets > 0)
+        if (version > 0)
         {
-            const decltype(buckets_) bs = buckets();
-            ar & boost::serialization::make_nvp("buckets",
-                                                bs);
+            const T mn = min();
+            ar & boost::serialization::make_nvp("min",
+                                                mn);
+            const T mx = max();
+            ar & boost::serialization::make_nvp("max",
+                                                mx);
+        }
+
+        if (version > 1)
+        {
+            BucketSerializationTraits<BucketTraits>::save(ar,
+                                                          buckets_);
         }
     }
 };
@@ -324,18 +390,19 @@ private:
 struct RequestSizeBucketTraits
 {
     static constexpr size_t max_buckets = 8;
+    using Buckets = boost::array<uint64_t, max_buckets>;
 
-    static const boost::array<uint64_t, max_buckets>&
+    static const Buckets&
     bounds()
     {
-        static const boost::array<uint64_t, max_buckets> buckets = { 4 * 1024,
-                                                                     8 * 1024,
-                                                                     16 * 1024,
-                                                                     32 * 1024,
-                                                                     64 * 1024,
-                                                                     128 * 1024,
-                                                                     256 * 1024,
-                                                                     512 * 1024,
+        static const Buckets buckets = { 4 * 1024,
+                                         8 * 1024,
+                                         16 * 1024,
+                                         32 * 1024,
+                                         64 * 1024,
+                                         128 * 1024,
+                                         256 * 1024,
+                                         512 * 1024,
         };
 
         return buckets;
@@ -345,20 +412,21 @@ struct RequestSizeBucketTraits
 struct RequestUSecsBucketTraits
 {
     static constexpr size_t max_buckets = 10;
+    using Buckets = boost::array<uint64_t, max_buckets>;
 
-    static const boost::array<uint64_t, max_buckets>&
+    static const Buckets&
     bounds()
     {
-        static const boost::array<uint64_t, max_buckets> buckets = { 100,
-                                                                     250,
-                                                                     500,
-                                                                     750,
-                                                                     1000,
-                                                                     2000,
-                                                                     5000,
-                                                                     10000,
-                                                                     100000,
-                                                                     1000000,
+        static const Buckets buckets = { 100,
+                                         250,
+                                         500,
+                                         750,
+                                         1000,
+                                         2000,
+                                         5000,
+                                         10000,
+                                         100000,
+                                         1000000,
         };
 
         return buckets;
@@ -396,6 +464,24 @@ struct PerformanceCounters
     PerformanceCounters&
     operator=(const PerformanceCounters&) = default;
 
+#define C(x) \
+    x(v1.x)
+
+    PerformanceCounters(const PerformanceCountersV1& v1)
+        : C(write_request_size)
+        , C(write_request_usecs)
+        , C(unaligned_write_request_size)
+        , C(backend_write_request_usecs)
+        , C(backend_write_request_size)
+        , C(read_request_size)
+        , C(read_request_usecs)
+        , C(unaligned_read_request_size)
+        , C(backend_read_request_size)
+        , C(backend_read_request_usecs)
+        , C(sync_request_usecs)
+    {}
+#undef C
+
     bool
     operator==(const PerformanceCounters& other) const
     {
@@ -416,6 +502,12 @@ struct PerformanceCounters
             EQ(sync_request_usecs);
 
 #undef EQ
+    }
+
+    bool
+    operator!=(const PerformanceCounters& other) const
+    {
+        return not operator==(other);
     }
 
     PerformanceCounters&
@@ -490,6 +582,32 @@ struct PerformanceCounters
         S(sync_request_usecs);
 
 #undef S
+    }
+
+    // backward compat
+    PerformanceCountersV1
+    v1() const
+    {
+        PerformanceCountersV1 old;
+
+#define C(x)                                    \
+        old.x = x.v1()
+
+        C(write_request_size);
+        C(write_request_usecs);
+        C(unaligned_write_request_size);
+        C(backend_write_request_usecs);
+        C(backend_write_request_size);
+        C(read_request_size);
+        C(read_request_usecs);
+        C(unaligned_read_request_size);
+        C(backend_read_request_size);
+        C(backend_read_request_usecs);
+        C(sync_request_usecs);
+
+#undef C
+
+        return old;
     }
 };
 

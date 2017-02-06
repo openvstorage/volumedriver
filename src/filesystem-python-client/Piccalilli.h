@@ -92,7 +92,7 @@ struct PickleTraits<volumedriver::PerformanceCounter<T, BucketTraits>>
     {
         std::stringstream ss;
         OArchive oa(ss);
-        oa << boost::serialization::make_nvp("PerformanceCounterU64",
+        oa << boost::serialization::make_nvp("PerformanceCounter",
                                              c);
         return ss.str();
     }
@@ -103,7 +103,7 @@ struct PickleTraits<volumedriver::PerformanceCounter<T, BucketTraits>>
     {
         std::stringstream ss(s);
         IArchive ia(ss);
-        ia >> boost::serialization::make_nvp("PerformanceCounterU64",
+        ia >> boost::serialization::make_nvp("PerformanceCounter",
                                              c);
     }
 };

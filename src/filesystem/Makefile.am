@@ -110,7 +110,6 @@ libvolumedriverfs_la_SOURCES = \
 		VirtualDiskFormatRaw.cpp \
 		XMLRPC.cpp \
 		XMLRPCKeys.cpp \
-		XMLRPCStructs.cpp \
 		XMLRPCUtils.cpp \
 		ZWorkerPool.cpp
 

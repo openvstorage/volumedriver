@@ -494,7 +494,7 @@ TEST_F(PythonClientTest, volume_queries)
     EXPECT_EQ(vd::volumeFailoverStateToString(vd::VolumeFailOverState::OK_SYNC),
               vol_info.failover_mode);
 
-    XMLRPCStatisticsV3 vol_statistics = client_.statistics_volume(vname);
+    XMLRPCStatistics vol_statistics = client_.statistics_volume(vname);
 }
 
 namespace
@@ -558,7 +558,7 @@ TEST_F(PythonClientTest, performance_counters)
 
     const size_t csize = get_cluster_size(ObjectId(vname));
 
-    auto expect_nothing([&](const XMLRPCStatisticsV3& stats)
+    auto expect_nothing([&](const XMLRPCStatistics& stats)
                         {
                             LOG_INFO("expect nothing: " << stats.str());
                             const PerfCounterExpectNothing expect_nothing_;
@@ -583,7 +583,7 @@ TEST_F(PythonClientTest, performance_counters)
                   csize,
                   0);
 
-    auto expect_something([&](const XMLRPCStatisticsV3& stats)
+    auto expect_something([&](const XMLRPCStatistics& stats)
                           {
                               LOG_INFO("expect something: " << stats.str());
                               EXPECT_EQ(1U,
