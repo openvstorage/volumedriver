@@ -45,7 +45,7 @@ SCOCacheAccessDataPersistor::operator()()
 
         for (const auto& vol : vols)
         {
-            SharedVolumePtr v = VolManager::get()->findVolume_(vol);
+            SharedVolumePtr v = VolManager::get()->find_volume(vol);
             LOG_PERIODIC("collecting SCO access data for volume " << vol);
             SCOAccessDataPtr sad(new SCOAccessData(v->getNamespace(),
                                                    v->readActivity()));

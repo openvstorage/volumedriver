@@ -491,12 +491,12 @@ public:
     /** @locking mgmtMutex_ must be locked */
     template<typename Id>
     SharedVolumePtr
-    findVolume_(const Id& id,
+    find_volume(const Id& id,
                 const std::string& message = "Pity: ") const
     {
         mgmtMutex_.assertLocked();
 
-        SharedVolumePtr vol = findVolume_noThrow_(id);
+        SharedVolumePtr vol = find_volume_no_throw(id);
         if (vol == nullptr)
         {
             throw VolumeDoesNotExistException((message + " volume does not exist").c_str(),
@@ -511,10 +511,10 @@ public:
 
     /** @locking mgmtMutex_ must be locked */
     SharedVolumePtr
-    findVolume_noThrow_(const VolumeId&) const;
+    find_volume_no_throw(const VolumeId&) const;
 
     SharedVolumePtr
-    findVolume_noThrow_(const Namespace&) const;
+    find_volume_no_throw(const Namespace&) const;
 
 private:
     DECLARE_LOGGER("VolManager");

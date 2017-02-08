@@ -81,7 +81,7 @@ void
 api::updateMetaDataBackendConfig(const vd::VolumeId& volume_id,
                                  const vd::MetaDataBackendConfig& mdb)
 {
-    auto vol = VolManager::get()->findVolume_(volume_id);
+    auto vol = VolManager::get()->find_volume(volume_id);
     updateMetaDataBackendConfig(vol,
                                 mdb);
 }
@@ -203,13 +203,13 @@ api::Exit(void)
 vd::WeakVolumePtr
 api::getVolumePointer(const VolumeId& volname)
 {
-    return VolManager::get()->findVolume_(volname);
+    return VolManager::get()->find_volume(volname);
 }
 
 boost::optional<vd::WeakVolumePtr>
 api::get_volume_pointer_no_throw(const VolumeId& volname)
 {
-    SharedVolumePtr v(VolManager::get()->findVolume_noThrow_(volname));
+    SharedVolumePtr v(VolManager::get()->find_volume_no_throw(volname));
     if (not v)
     {
         return boost::none;
@@ -224,7 +224,7 @@ api::get_volume_pointer_no_throw(const VolumeId& volname)
 vd::WeakVolumePtr
 api::getVolumePointer(const Namespace& ns)
 {
-    return VolManager::get()->findVolume_(ns);
+    return VolManager::get()->find_volume(ns);
 }
 
 const vd::VolumeId
@@ -236,7 +236,7 @@ api::getVolumeId(vd::WeakVolumePtr vol)
 bool
 api::volumeExists(const VolumeId& volname)
 {
-    return VolManager::get()->findVolume_noThrow_(volname) != nullptr;
+    return VolManager::get()->find_volume_no_throw(volname) != nullptr;
 }
 
 void
@@ -254,7 +254,7 @@ api::getVolumesOverview(std::map<vd::VolumeId, vd::VolumeOverview>& out_map)
 VolumeConfig
 api::getVolumeConfig(const vd::VolumeId& volName)
 {
-    const SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    const SharedVolumePtr v = VolManager::get()->find_volume(volName);
     return v->get_config();
 }
 
@@ -425,7 +425,7 @@ api::getSnapshot(const vd::VolumeId& id,
                  const vd::SnapshotName& snapname)
 {
     ASSERT_LOCKABLE_LOCKED(getManagementMutex());
-    const auto vol = VolManager::get()->findVolume_(id);
+    const auto vol = VolManager::get()->find_volume(id);
     return getSnapshot(vol, snapname);
 }
 
@@ -467,7 +467,7 @@ api::createSnapshot(const VolumeId& volName,
                     const vd::SnapshotMetaData& metadata,
                     const vd::SnapshotName* const snapid)
 {
-    auto v = VolManager::get()->findVolume_(volName);
+    auto v = VolManager::get()->find_volume(volName);
     return createSnapshot(v,
                           metadata,
                           snapid);
@@ -483,7 +483,7 @@ void
 api::showSnapshots(const VolumeId& volName,
                    std::list<vd::SnapshotName>& l)
 {
-    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->find_volume(volName);
     v->listSnapshots(l);
 }
 
@@ -499,7 +499,7 @@ void
 api::destroySnapshot(const VolumeId& volName,
                      const vd::SnapshotName& snapid)
 {
-    vd::SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    vd::SharedVolumePtr v = VolManager::get()->find_volume(volName);
     v->deleteSnapshot(snapid);
 }
 
@@ -524,70 +524,70 @@ api::restoreSnapshot(WriteOnlyVolume* vol,
 //                               const boost::optional<std::string>& end_snap,
 //                               VolumeWork& work)
 // {
-//     Volume* v = VolManager::get()->findVolume_(volName);
+//     Volume* v = VolManager::get()->find_volume(volName);
 //     v->getSnapshotScrubbingWork(start_snap, end_snap, work);
 // }
 
 uint64_t
 api::VolumeDataStoreWriteUsed(const vd::VolumeId& volName)
 {
-    vd::SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    vd::SharedVolumePtr v = VolManager::get()->find_volume(volName);
     return v->VolumeDataStoreWriteUsed();
 }
 
 uint64_t
 api::VolumeDataStoreReadUsed(const vd::VolumeId& volName)
 {
-    vd::SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    vd::SharedVolumePtr v = VolManager::get()->find_volume(volName);
     return v->VolumeDataStoreReadUsed();
 }
 
 PerformanceCounters&
 api::performance_counters(const vd::VolumeId& volName)
 {
-    vd::SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    vd::SharedVolumePtr v = VolManager::get()->find_volume(volName);
     return v->performance_counters();
 }
 
 bool
 api::getHalted(const vd::VolumeId& volName)
 {
-    vd::SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    vd::SharedVolumePtr v = VolManager::get()->find_volume(volName);
     return v->is_halted();
 }
 
 uint64_t
 api::getCacheHits(const vd::VolumeId& volName)
 {
-    vd::SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    vd::SharedVolumePtr v = VolManager::get()->find_volume(volName);
     return v->getCacheHits();
 }
 
 uint64_t
 api::getCacheMisses(const vd::VolumeId& volName)
 {
-    vd::SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    vd::SharedVolumePtr v = VolManager::get()->find_volume(volName);
     return v->getCacheMisses();
 }
 
 uint64_t
 api::getNonSequentialReads(const vd::VolumeId& volName)
 {
-    vd::SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    vd::SharedVolumePtr v = VolManager::get()->find_volume(volName);
     return v->getNonSequentialReads();
 }
 
 uint64_t
 api::getClusterCacheHits(const vd::VolumeId& volName)
 {
-    vd::SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    vd::SharedVolumePtr v = VolManager::get()->find_volume(volName);
     return v->getClusterCacheHits();
 }
 
 uint64_t
 api::getClusterCacheMisses(const vd::VolumeId& volName)
 {
-    vd::SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    vd::SharedVolumePtr v = VolManager::get()->find_volume(volName);
     return v->getClusterCacheMisses();
 }
 
@@ -606,14 +606,14 @@ api::getQueueSize(const VolumeId& volName)
 uint64_t
 api::getTLogUsed(const vd::VolumeId& volName)
 {
-    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->find_volume(volName);
     return v->getTLogUsed();
 }
 
 vd::TLogId
 api::scheduleBackendSync(const vd::VolumeId& volName)
 {
-    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->find_volume(volName);
     return v->scheduleBackendSync();
 }
 
@@ -621,7 +621,7 @@ bool
 api::isVolumeSynced(const vd::VolumeId& volName)
 {
 
-    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->find_volume(volName);
     return v->isSyncedToBackend();
 }
 
@@ -629,7 +629,7 @@ bool
 api::isVolumeSyncedUpTo(const vd::VolumeId& volName,
                         const vd::SnapshotName& snapshotName)
 {
-    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->find_volume(volName);
     return v->isSyncedToBackendUpTo(snapshotName);
 }
 
@@ -637,7 +637,7 @@ bool
 api::isVolumeSyncedUpTo(const vd::VolumeId& vol_id,
                         const vd::TLogId& tlog_id)
 {
-    SharedVolumePtr v = VolManager::get()->findVolume_(vol_id);
+    SharedVolumePtr v = VolManager::get()->find_volume(vol_id);
     return v->isSyncedToBackendUpTo(tlog_id);
 }
 
@@ -677,14 +677,14 @@ api::getVolumeSCOCacheInfo(const backend::Namespace ns)
 vd::VolumeFailOverState
 api::getFailOverMode(const vd::VolumeId& volName)
 {
-    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->find_volume(volName);
     return v->getVolumeFailOverState();
 }
 
 boost::optional<vd::FailOverCacheConfig>
 api::getFailOverCacheConfig(const vd::VolumeId& volName)
 {
-    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->find_volume(volName);
     return v->getFailOverCacheConfig();
 }
 
@@ -692,14 +692,14 @@ void
 api::setFailOverCacheConfig(const vd::VolumeId& volName,
                             const boost::optional<vd::FailOverCacheConfig>& maybe_foc_config)
 {
-    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->find_volume(volName);
     v->setFailOverCacheConfig(maybe_foc_config);
 }
 
 uint64_t
 api::getCurrentSCOCount(const vd::VolumeId& volName)
 {
-    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->find_volume(volName);
     return  v->getSnapshotSCOCount();
 }
 
@@ -707,7 +707,7 @@ uint64_t
 api::getSnapshotSCOCount(const vd::VolumeId& volName,
                          const vd::SnapshotName& snapid)
 {
-    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->find_volume(volName);
     return v->getSnapshotSCOCount(snapid);
 }
 
@@ -715,14 +715,14 @@ void
 api::setFOCTimeout(const vd::VolumeId& volName,
                    const boost::chrono::seconds timeout)
 {
-    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->find_volume(volName);
     v->setFOCTimeout(timeout);
 }
 
 bool
 api::checkVolumeConsistency(const vd::VolumeId& volName)
 {
-    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->find_volume(volName);
     return v->checkConsistency();
 }
 
@@ -730,14 +730,14 @@ uint64_t
 api::getSnapshotBackendSize(const vd::VolumeId& volName,
                             const vd::SnapshotName& snapName)
 {
-    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->find_volume(volName);
     return v->getSnapshotBackendSize(snapName);
 }
 
 uint64_t
 api::getCurrentBackendSize(const vd::VolumeId& volName)
 {
-    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->find_volume(volName);
     return v->getCurrentBackendSize();
 }
 
@@ -803,7 +803,7 @@ api::getClusterCacheDeviceInfo(vd::ClusterCache::ManagerType::Info& info)
 vd::ClusterCacheVolumeInfo
 api::getClusterCacheVolumeInfo(const vd::VolumeId& volName)
 {
-    return VolManager::get()->findVolume_(volName)->getClusterCacheVolumeInfo();
+    return VolManager::get()->find_volume(volName)->getClusterCacheVolumeInfo();
 }
 
 vd::ClusterSize
@@ -821,7 +821,7 @@ api::getDefaultClusterSize()
 void
 api::startPrefetching(const vd::VolumeId& volName)
 {
-    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->find_volume(volName);
     v->startPrefetch();
 }
 
@@ -840,7 +840,7 @@ api::getMetaDataStoreStats(const vd::VolumeId& volname)
 {
     MetaDataStoreStats mdss;
     vd::MetaDataStoreInterface* mdi =
-        VolManager::get()->findVolume_(volname)->getMetaDataStore();
+        VolManager::get()->find_volume(volname)->getMetaDataStore();
     mdi->getStats(mdss);
     return mdss;
 }
@@ -898,7 +898,7 @@ api::checkConfiguration(const fs::path& path,
 uint64_t
 api::getStored(const vd::VolumeId& volName)
 {
-    return VolManager::get()->findVolume_(volName)->getTotalBackendSize();
+    return VolManager::get()->find_volume(volName)->getTotalBackendSize();
 }
 
 bool
@@ -911,41 +911,41 @@ void
 api::setClusterCacheBehaviour(const vd::VolumeId& volName,
                               const boost::optional<vd::ClusterCacheBehaviour> b)
 {
-    VolManager::get()->findVolume_(volName)->set_cluster_cache_behaviour(b);
+    VolManager::get()->find_volume(volName)->set_cluster_cache_behaviour(b);
 }
 
 
 boost::optional<vd::ClusterCacheBehaviour>
 api::getClusterCacheBehaviour(const vd::VolumeId& volName)
 {
-    return VolManager::get()->findVolume_(volName)->get_cluster_cache_behaviour();
+    return VolManager::get()->find_volume(volName)->get_cluster_cache_behaviour();
 }
 
 void
 api::setClusterCacheMode(const vd::VolumeId& volName,
                          const boost::optional<vd::ClusterCacheMode>& m)
 {
-    VolManager::get()->findVolume_(volName)->set_cluster_cache_mode(m);
+    VolManager::get()->find_volume(volName)->set_cluster_cache_mode(m);
 }
 
 
 boost::optional<vd::ClusterCacheMode>
 api::getClusterCacheMode(const vd::VolumeId& volName)
 {
-    return VolManager::get()->findVolume_(volName)->get_cluster_cache_mode();
+    return VolManager::get()->find_volume(volName)->get_cluster_cache_mode();
 }
 
 void
 api::setClusterCacheLimit(const vd::VolumeId& volName,
                           const boost::optional<vd::ClusterCount>& l)
 {
-    VolManager::get()->findVolume_(volName)->set_cluster_cache_limit(l);
+    VolManager::get()->find_volume(volName)->set_cluster_cache_limit(l);
 }
 
 boost::optional<vd::ClusterCount>
 api::getClusterCacheLimit(const vd::VolumeId& volName)
 {
-    return VolManager::get()->findVolume_(volName)->get_cluster_cache_limit();
+    return VolManager::get()->find_volume(volName)->get_cluster_cache_limit();
 }
 
 std::vector<scrubbing::ScrubWork>
@@ -953,7 +953,7 @@ api::getScrubbingWork(const vd::VolumeId& volName,
                       const boost::optional<vd::SnapshotName>& start_snap,
                       const boost::optional<vd::SnapshotName>& end_snap)
 {
-    return VolManager::get()->findVolume_(volName)->getScrubbingWork(start_snap,
+    return VolManager::get()->find_volume(volName)->getScrubbingWork(start_snap,
                                                                      end_snap);
 }
 
@@ -962,7 +962,7 @@ api::applyScrubbingWork(const vd::VolumeId& volName,
                         const scrubbing::ScrubReply& scrub_reply,
                         const vd::ScrubbingCleanup cleanup)
 {
-    SharedVolumePtr v = VolManager::get()->findVolume_(volName);
+    SharedVolumePtr v = VolManager::get()->find_volume(volName);
     return v->applyScrubbingWork(scrub_reply,
                                  cleanup);
 }
@@ -1000,7 +1000,7 @@ api::setSyncIgnore(const vd::VolumeId& volName,
                    const uint64_t number_of_syncs_to_ignore,
                    const uint64_t maximum_time_to_ignore_syncs_in_seconds)
 {
-    return VolManager::get()->findVolume_(volName)->setSyncIgnore(number_of_syncs_to_ignore,
+    return VolManager::get()->find_volume(volName)->setSyncIgnore(number_of_syncs_to_ignore,
                                                                   maximum_time_to_ignore_syncs_in_seconds);
 }
 
@@ -1009,7 +1009,7 @@ api::getSyncIgnore(const vd::VolumeId& volName,
                    uint64_t& number_of_syncs_to_ignore,
                    uint64_t& maximum_time_to_ignore_syncs_in_seconds)
 {
-    return VolManager::get()->findVolume_(volName)->getSyncIgnore(number_of_syncs_to_ignore,
+    return VolManager::get()->find_volume(volName)->getSyncIgnore(number_of_syncs_to_ignore,
                                                                   maximum_time_to_ignore_syncs_in_seconds);
 }
 
@@ -1017,39 +1017,39 @@ void
 api::setSCOMultiplier(const vd::VolumeId& volName,
                       const vd::SCOMultiplier sco_mult)
 {
-    VolManager::get()->findVolume_(volName)->setSCOMultiplier(sco_mult);
+    VolManager::get()->find_volume(volName)->setSCOMultiplier(sco_mult);
 }
 
 SCOMultiplier
 api::getSCOMultiplier(const vd::VolumeId& volName)
 {
-    return VolManager::get()->findVolume_(volName)->getSCOMultiplier();
+    return VolManager::get()->find_volume(volName)->getSCOMultiplier();
 }
 
 void
 api::setTLogMultiplier(const vd::VolumeId& volName,
                        const boost::optional<vd::TLogMultiplier>& tlog_mult)
 {
-    VolManager::get()->findVolume_(volName)->setTLogMultiplier(tlog_mult);
+    VolManager::get()->find_volume(volName)->setTLogMultiplier(tlog_mult);
 }
 
 boost::optional<TLogMultiplier>
 api::getTLogMultiplier(const vd::VolumeId& volName)
 {
-    return VolManager::get()->findVolume_(volName)->getTLogMultiplier();
+    return VolManager::get()->find_volume(volName)->getTLogMultiplier();
 }
 
 void
 api::setSCOCacheMaxNonDisposableFactor(const vd::VolumeId& volName,
                                        const boost::optional<vd::SCOCacheNonDisposableFactor>& max_non_disposable_factor)
 {
-    VolManager::get()->findVolume_(volName)->setSCOCacheMaxNonDisposableFactor(max_non_disposable_factor);
+    VolManager::get()->find_volume(volName)->setSCOCacheMaxNonDisposableFactor(max_non_disposable_factor);
 }
 
 boost::optional<SCOCacheNonDisposableFactor>
 api::getSCOCacheMaxNonDisposableFactor(const vd::VolumeId& volName)
 {
-    return VolManager::get()->findVolume_(volName)->getSCOCacheMaxNonDisposableFactor();
+    return VolManager::get()->find_volume(volName)->getSCOCacheMaxNonDisposableFactor();
 }
 
 void
@@ -1057,7 +1057,7 @@ api::setMetaDataCacheCapacity(const vd::VolumeId& volName,
                               const boost::optional<size_t>& npages)
 {
     ASSERT_LOCKABLE_LOCKED(getManagementMutex());
-    return VolManager::get()->findVolume_(volName)->set_metadata_cache_capacity(npages);
+    return VolManager::get()->find_volume(volName)->set_metadata_cache_capacity(npages);
 }
 
 bool

@@ -424,7 +424,7 @@ VolManager::scheduleTask(VolPoolTask* t)
 void
 VolManager::ensureVolumeNotPresent(const VolumeId& id) const
 {
-    if (findVolume_noThrow_(id) != 0)
+    if (find_volume_no_throw(id) != 0)
     {
         LOG_ERROR("Volume with name " << id << " already present");
         throw VolumeNameAlreadyPresent("volume / clone with this name exists",
@@ -1102,7 +1102,7 @@ VolManager::restoreSnapshot(const VolumeId& volid,
 
     MAIN_EVENT("Restoring Snapshot, VolumeID: " << volid << ", SnapshotName: " << snapid);
 
-    SharedVolumePtr vol = findVolume_(volid);
+    SharedVolumePtr vol = find_volume(volid);
     const VolumeConfig cfg(vol->get_config());
     const be::Namespace nspace(vol->getNamespace());
 
@@ -1167,7 +1167,7 @@ VolManager::setAsTemplate(const VolumeId volid)
 {
     mgmtMutex_.assertLocked();
     MAIN_EVENT("Set Volume As Template, volume ID " << volid);
-    SharedVolumePtr vol = findVolume_(volid);
+    SharedVolumePtr vol = find_volume(volid);
     {
         UNLOCK_MANAGER();
         vol->setAsTemplate();
@@ -1264,7 +1264,7 @@ VolManager::destroyVolume(const VolumeId& name,
 {
     mgmtMutex_.assertLocked();
 
-    SharedVolumePtr v = findVolume_(name);
+    SharedVolumePtr v = find_volume(name);
     destroyVolume(v,
                   delete_local_data,
                   remove_volume_completely,
@@ -1346,7 +1346,7 @@ VolManager::removeLocalVolumeData(const be::Namespace& nspace)
 {
     ASSERT_LOCKABLE_LOCKED(mgmtMutex_);
 
-    SharedVolumePtr vol = findVolume_noThrow_(nspace);
+    SharedVolumePtr vol = find_volume_no_throw(nspace);
     if (vol != nullptr)
     {
         LOG_ERROR("Volume " << vol->getName() << " backed by namespace " <<
@@ -1404,7 +1404,7 @@ VolManager::getVolumeList(std::list<VolumeId> &vlist) const
 }
 
 SharedVolumePtr
-VolManager::findVolume_noThrow_(const VolumeId& id)  const
+VolManager::find_volume_no_throw(const VolumeId& id)  const
 {
     mgmtMutex_.assertLocked();
 
@@ -1420,7 +1420,7 @@ VolManager::findVolume_noThrow_(const VolumeId& id)  const
 }
 
 SharedVolumePtr
-VolManager::findVolume_noThrow_(const Namespace& nspace) const
+VolManager::find_volume_no_throw(const Namespace& nspace) const
 {
     mgmtMutex_.assertLocked();
 
@@ -1476,7 +1476,7 @@ private:
 uint64_t
 VolManager::getQueueCount(const VolumeId& volName)
 {
-    SharedVolumePtr v = findVolume_(volName);
+    SharedVolumePtr v = find_volume(volName);
 
     try
     {
@@ -1496,7 +1496,7 @@ uint64_t
 VolManager::getQueueSize(const VolumeId& volName)
 {
     //returns an estimate of data
-    SharedVolumePtr v = findVolume_(volName);
+    SharedVolumePtr v = find_volume(volName);
     return v->getSCOSize() * getQueueCount(volName);
 }
 
@@ -1661,7 +1661,7 @@ VolManager::checkVolumeFailoverCaches()
     for (const auto& vol : vols)
     {
         LOCK_MANAGER();
-        SharedVolumePtr v(findVolume_noThrow_(vol));
+        SharedVolumePtr v(find_volume_no_throw(vol));
         if (v)
         {
             v->check_and_fix_failovercache();
