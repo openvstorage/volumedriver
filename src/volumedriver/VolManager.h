@@ -423,13 +423,6 @@ public:
     setTLogMultiplier(const VolumeId&,
                       const boost::optional<TLogMultiplier>&);
 
-    SharedVolumePtr
-    findVolumeConst_(const VolumeId& volname,
-                     const std::string& message = "Pity: ") const;
-
-    SharedVolumePtr
-    findVolumeConst_(const Namespace& ns) const;
-
     uint64_t
     get_sco_cache_max_non_disposable_bytes(const VolumeConfig&) const;
 
@@ -494,6 +487,34 @@ public:
     {
         return boost::chrono::milliseconds(dtl_request_timeout_ms.value());
     }
+
+    /** @locking mgmtMutex_ must be locked */
+    template<typename Id>
+    SharedVolumePtr
+    findVolume_(const Id& id,
+                const std::string& message = "Pity: ") const
+    {
+        mgmtMutex_.assertLocked();
+
+        SharedVolumePtr vol = findVolume_noThrow_(id);
+        if (vol == nullptr)
+        {
+            throw VolumeDoesNotExistException((message + " volume does not exist").c_str(),
+                                              id.c_str(),
+                                              ENOENT);
+        }
+        else
+        {
+            return vol;
+        }
+    }
+
+    /** @locking mgmtMutex_ must be locked */
+    SharedVolumePtr
+    findVolume_noThrow_(const VolumeId&) const;
+
+    SharedVolumePtr
+    findVolume_noThrow_(const Namespace&) const;
 
 private:
     DECLARE_LOGGER("VolManager");
@@ -565,10 +586,6 @@ public:
     DECLARE_PARAMETER(volume_nullio);
 
 private:
-        /** @locking mgmtMutex_ must be locked */
-    SharedVolumePtr
-    findVolume_noThrow_(const VolumeId&) const;
-
     void
     ensureVolumeNotPresent(const VolumeId&) const;
 
@@ -654,16 +671,6 @@ private:
     virtual bool
     checkConfig(const boost::property_tree::ptree&,
                 ConfigurationReport&) const override;
-
-    SharedVolumePtr
-    findVolume_(const VolumeId& volname,
-                const std::string& message = "Pity: ");
-
-    SharedVolumePtr
-    findVolume_(const Namespace& ns);
-
-    SharedVolumePtr
-    findVolumeFromNamespace(const Namespace& i_namespace) const;
 
     uint64_t
     getCurrentVolumesTLogRequirements();
