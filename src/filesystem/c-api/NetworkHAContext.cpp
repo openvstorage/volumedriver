@@ -478,7 +478,10 @@ NetworkHAContext::open_volume(const char *volname,
         oflag_ = oflag;
         openning_ = false;
         opened_ = true;
-        update_cluster_node_uri();
+        if (is_ha_enabled())
+        {
+            update_cluster_node_uri();
+        }
     }
     return r;
 }
