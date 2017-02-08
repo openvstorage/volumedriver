@@ -995,10 +995,10 @@ TEST_P(ApiTest, volume_destruction_vs_monitoring)
         LOCK_MGMT();
 
         EXPECT_THROW(api::getVolumePointer(vname),
-                     VolManager::VolumeDoesNotExistException);
+                     std::exception);
 
         EXPECT_THROW(api::getMetaDataStoreStats(vname),
-                     VolManager::VolumeDoesNotExistException);
+                     std::exception);
     }
 
     t.join();

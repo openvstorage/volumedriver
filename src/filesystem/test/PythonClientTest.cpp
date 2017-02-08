@@ -116,6 +116,7 @@ class PythonClientTest
 protected:
     PythonClientTest()
         : FileSystemTestBase(FileSystemTestSetupParameters("PythonClientTest")
+                             .migrate_timeout_ms(5000)
                              .scrub_manager_interval_secs(1))
         , client_(vrouter_cluster_id(),
                   {{address(), local_config().xmlrpc_port}})
@@ -2057,6 +2058,62 @@ TEST_F(PythonClientTest, restart_volume)
 
     ASSERT_EQ(pattern,
               s);
+}
+
+// https://github.com/openvstorage/volumedriver/issues/258
+TEST_F(PythonClientTest, list_snapshots_while_migrating)
+{
+    start_failovercache_for_remote_node();
+    mount_remote();
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         umount_remote();
+                                     }));
+
+    const uint64_t vsize = 1ULL << 20;
+    const vfs::FrontendPath vname(make_volume_name("/some-volume"));
+    const vfs::ObjectId id(create_file(vname, vsize));
+
+    const std::string snap("snap");
+    client_.create_snapshot(id, snap);
+    wait_for_snapshot(id, snap);
+
+    std::atomic<bool> stop(false);
+
+    std::future<void>
+        f(std::async(std::launch::async,
+                     [&]
+                     {
+                         vfs::PythonClient
+                             client(vrouter_cluster_id(),
+                                    {
+                                        { address(), remote_config().xmlrpc_port },
+                                        { address(), local_config().xmlrpc_port }
+                                    });
+                         while (not stop)
+                         {
+                             try
+                             {
+                                 EXPECT_EQ(1,
+                                           client.list_snapshots(id).size());
+                             }
+                             catch (vfs::clienterrors::VolumeRestartInProgressException&)
+                             {}
+
+                             std::this_thread::sleep_for(std::chrono::milliseconds(200));
+                         }
+                     }));
+
+    for (size_t i = 0; i < 1; ++i)
+    {
+        client_.migrate(id,
+                        remote_node_id());
+        client_.migrate(id,
+                        local_node_id());
+    }
+
+    stop = true;
+    EXPECT_NO_THROW(f.get());
 }
 
 }

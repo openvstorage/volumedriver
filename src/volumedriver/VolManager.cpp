@@ -449,13 +449,32 @@ VolManager::ensureVolumeNotPresent(const Namespace& ns) const
 }
 
 void
+VolManager::ensureNamespaceNotRestarting(const VolumeId& id) const
+{
+    for (const auto& p : restartMap_)
+    {
+        if (p.second.id_ == id)
+        {
+            LOG_ERROR("Volume restart of " << id << ", namespace " << p.first << " in progress");
+            throw VolumeRestartInProgressException("Volume restart in progress",
+                                                   id.str().c_str(),
+                                                   EAGAIN);
+        }
+    }
+}
+
+void
 VolManager::ensureNamespaceNotRestarting(const Namespace& ns) const
 {
-    if (restartMap_.find(ns) != restartMap_.end())
+    auto it = restartMap_.find(ns);
+    if (it != restartMap_.end())
     {
-        LOG_ERROR("Volume restart for namespace " << ns <<
-                  " already in progress");
-        throw fungi::IOException("Volume restart already in progress");
+        const VolumeId& id = it->second.id_;
+        LOG_ERROR("Volume restart of " << id << ", namespace " << ns <<
+                  " in progress");
+        throw VolumeRestartInProgressException("Volume restart in progress",
+                                               id.str().c_str(),
+                                               EAGAIN);
     }
 }
 
@@ -1354,6 +1373,8 @@ VolManager::removeLocalVolumeData(const be::Namespace& nspace)
         throw fungi::IOException("Cannot remove local volume data while volume is present",
                                  nspace.str().c_str());
     }
+
+    ensureNamespaceNotRestarting(nspace);
 
     fs::remove_all(getMetaDataPath(nspace));
     fs::remove_all(getTLogPath(nspace));

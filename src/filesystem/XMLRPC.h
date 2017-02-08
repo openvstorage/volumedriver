@@ -47,6 +47,7 @@ enum class XMLRPCErrorCode
     PreviousSnapshotNotOnBackend = 6,
     ObjectStillHasChildren = 7,
     SnapshotNameAlreadyExists = 8,
+    VolumeRestartInProgress = 9,
 };
 
 class FileSystem;

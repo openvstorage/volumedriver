@@ -20,6 +20,7 @@ from volumedriver.storagerouter.storagerouterclient import \
     , InvalidOperationException \
     , LocalStorageRouterClient \
     , MaxRedirectsExceededException \
+    , ObjectNotFoundException \
     , PythonTestHelpers \
     , Severity \
     , SnapshotInfo \
@@ -27,7 +28,7 @@ from volumedriver.storagerouter.storagerouterclient import \
     , Statistics \
     , StorageRouterClient\
     , VolumeInfo \
-    , ObjectNotFoundException
+    , VolumeRestartInProgressException
 
 
 class PicklingPythonClientTest(unittest.TestCase):
@@ -79,6 +80,7 @@ class TestHelperTest(unittest.TestCase):
         self.check_exception_type(4, SnapshotNotFoundException)
         self.check_exception_type(5, FileExistsException)
         self.check_exception_type(6, InsufficientResourcesException)
+        self.check_exception_type(7, VolumeRestartInProgressException)
 
     def test_info_cluster(self):
         self.assertDictEqual({'A': ClusterNodeState.ONLINE,

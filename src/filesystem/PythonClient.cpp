@@ -160,6 +160,8 @@ PythonClient::redirected_xmlrpc(const std::string& addr,
             throw clienterrors::ObjectStillHasChildrenException(errorstring.c_str());
         case XMLRPCErrorCode::SnapshotNameAlreadyExists:
             throw clienterrors::SnapshotNameAlreadyExistsException(errorstring.c_str());
+        case XMLRPCErrorCode::VolumeRestartInProgress:
+            throw clienterrors::VolumeRestartInProgressException(errorstring.c_str());
         default:
             {
                 //forward compatibility

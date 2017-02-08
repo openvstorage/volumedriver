@@ -99,6 +99,7 @@ public:
     MAKE_EXCEPTION(VolumeNotTemplatedButNoSnapshotSpecifiedException, VolManagerException);
     MAKE_EXCEPTION(InsufficientResourcesException, VolManagerException);
     MAKE_EXCEPTION(NamespaceDoesNotExistException, VolManagerException);
+    MAKE_EXCEPTION(VolumeRestartInProgressException, VolManagerException);
 
     //    friend class ::api;
     friend class VolumeTestSetup;
@@ -499,6 +500,7 @@ public:
         SharedVolumePtr vol = find_volume_no_throw(id);
         if (vol == nullptr)
         {
+            ensureNamespaceNotRestarting(id);
             throw VolumeDoesNotExistException((message + " volume does not exist").c_str(),
                                               id.c_str(),
                                               ENOENT);
@@ -600,6 +602,9 @@ private:
 
     void
     ensure_volume_size_(const VolumeSize) const;
+
+    void
+    ensureNamespaceNotRestarting(const VolumeId&) const;
 
     void
     ensureNamespaceNotRestarting(const Namespace&) const;

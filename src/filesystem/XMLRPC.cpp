@@ -388,7 +388,16 @@ XMLRPCTimingWrapper<T>::execute(::XmlRpc::XmlRpcValue& params,
                     e.what());
         return;
     }
+    catch (vd::VolManager::VolumeRestartInProgressException& e)
+    {
+        LOG_XMLRPCERROR(T::_name << " " << boost::diagnostic_information(e));
+        T::setError(result,
+                    XMLRPCErrorCode::VolumeRestartInProgress,
+                    e.what());
+        return;
+    }
     catch(fungi::IOException& e)
+
     {
         LOG_XMLRPCERROR(T::_name << " Caught fungi::IOException: " << e.what());
         throw ::XmlRpc::XmlRpcException(T::_name + " Caught fungi::IOException: " + e.what(),
