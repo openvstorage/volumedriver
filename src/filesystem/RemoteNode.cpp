@@ -702,11 +702,7 @@ RemoteNode::transfer(const Object& obj)
                                                                       vrouter_.node_id(),
                                                                       vrouter_.backend_sync_timeout()));
 
-    const bc::milliseconds req_timeout =
-        vrouter_.backend_sync_timeout().count() ?
-        vrouter_.backend_sync_timeout() + vrouter_.migrate_timeout() :
-        vrouter_.backend_sync_timeout();
-
+    const bc::milliseconds req_timeout(vrouter_.backend_sync_timeout() + vrouter_.migrate_timeout());
     handle_(req,
             req_timeout);
 }
