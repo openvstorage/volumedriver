@@ -93,8 +93,7 @@ public:
 
     MAKE_EXCEPTION(VolManagerException, fungi::IOException);
     MAKE_EXCEPTION(VolumeDoesNotHaveCorrectRole, VolManagerException);
-    MAKE_EXCEPTION(VolumeNameAlreadyPresent, VolManagerException);
-    MAKE_EXCEPTION(NamespaceAlreadyPresent, VolManagerException);
+    MAKE_EXCEPTION(VolumeAlreadyPresent, VolManagerException);
     MAKE_EXCEPTION(VolumeDoesNotExistException, VolManagerException);
     MAKE_EXCEPTION(VolumeNotTemplatedButNoSnapshotSpecifiedException, VolManagerException);
     MAKE_EXCEPTION(InsufficientResourcesException, VolManagerException);
@@ -588,11 +587,20 @@ public:
     DECLARE_PARAMETER(volume_nullio);
 
 private:
+    template<typename Id>
     void
-    ensureVolumeNotPresent(const VolumeId&) const;
+    ensureVolumeNotPresent(const Id& id) const
+    {
+        if (find_volume_no_throw(id) != nullptr)
+        {
+            LOG_ERROR("Volume with name " << id << " already present");
+            throw VolumeAlreadyPresent("volume / clone already present",
+                                       id.c_str(),
+                                       EEXIST);
+        }
 
-    void
-    ensureVolumeNotPresent(const Namespace&) const;
+        ensureNamespaceNotRestarting(id);
+    }
 
     void
     ensureResourceLimits(const VolumeConfig&);

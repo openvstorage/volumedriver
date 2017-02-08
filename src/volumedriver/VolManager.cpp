@@ -422,33 +422,6 @@ VolManager::scheduleTask(VolPoolTask* t)
 }
 
 void
-VolManager::ensureVolumeNotPresent(const VolumeId& id) const
-{
-    if (find_volume_no_throw(id) != 0)
-    {
-        LOG_ERROR("Volume with name " << id << " already present");
-        throw VolumeNameAlreadyPresent("volume / clone with this name exists",
-                                       id.c_str(),
-                                       EEXIST);
-    }
-}
-
-void
-VolManager::ensureVolumeNotPresent(const Namespace& ns) const
-{
-    for(VolumeMap::const_iterator it = volMap_.begin(); it != volMap_.end(); ++it)
-    {
-        if(it->second->getNamespace() == ns)
-        {
-            LOG_ERROR("Volume with namespace " << ns << " already present");
-            throw NamespaceAlreadyPresent(ns.c_str());
-        }
-    }
-
-    ensureNamespaceNotRestarting(ns);
-}
-
-void
 VolManager::ensureNamespaceNotRestarting(const VolumeId& id) const
 {
     for (const auto& p : restartMap_)
