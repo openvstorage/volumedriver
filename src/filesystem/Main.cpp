@@ -138,6 +138,10 @@ print_config_help()
     }
 }
 
+const char* config_help_flag = "config-help";
+const char* config_help_markdown_flag = "config-help-markdown";
+const char* dont_restart_volumes_flag = "dont-restart-volumes";
+
 class FileSystemMain
     : public yt::MainHelper
 {
@@ -154,10 +158,12 @@ public:
             ("config",
              po::value<yt::MaybeUri>(&config_location_),
              "volumedriver (json) config file / etcd URL")
-            ("config-help",
+            (config_help_flag,
              "print configuration documentation and exit")
-            ("config-help-markdown",
+            (config_help_markdown_flag,
              "print configuration documentation in markdown format and exit")
+            (dont_restart_volumes_flag,
+             "don't restart local volumes")
             ("lock-file,L",
              po::value<std::string>(&lock_file_),
              "a lock file used for advisory locking to prevent concurrently starting the same instance - the config-file is used if this is not specified")
@@ -185,13 +191,13 @@ public:
     virtual int
     run()
     {
-        if (vm_.count("config-help"))
+        if (vm_.count(config_help_flag))
         {
             print_config_help();
             return 0;
         }
 
-        if (vm_.count("config-help-markdown"))
+        if (vm_.count(config_help_markdown_flag))
         {
             print_config_help_markdown();
             return 0;
@@ -210,6 +216,11 @@ public:
         }
 
         umask(0);
+
+        const vfs::RestartVolumes restart_volumes =
+            (vm_.count(dont_restart_volumes_flag) == 0) ?
+            vfs::RestartVolumes::T :
+            vfs::RestartVolumes::F;
 
         const bool lock_config_file = lock_file_.empty();
         if (lock_config_file and not yt::FileUrl::is_one(*config_location_))
@@ -253,8 +264,9 @@ public:
         const bpt::ptree pt((*config_fetcher)(VerifyConfig::T));
 
         vfs::FuseInterface(pt,
-                           RegisterComponent::T)(mountpoint_,
-                                                 unparsed_);
+                           RegisterComponent::T,
+                           restart_volumes)(mountpoint_,
+                                            unparsed_);
 
         return 0;
     }
