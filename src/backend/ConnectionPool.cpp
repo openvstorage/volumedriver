@@ -26,6 +26,8 @@
 
 #include <boost/thread/lock_guard.hpp>
 
+#include <youtils/Catchers.h>
+
 namespace backend
 {
 
@@ -38,6 +40,7 @@ ConnectionPool::ConnectionPool(std::unique_ptr<BackendConfig> config,
                                size_t capacity)
     : config_(std::move(config))
     , capacity_(capacity)
+    , last_error_(Clock::time_point::min())
 {
     VERIFY(config_->backend_type.value() != BackendType::MULTI);
     LOG_INFO("Created pool for " << *config_ << ", capacity " << capacity);
@@ -79,7 +82,8 @@ ConnectionPool::clear_(Connections& conns)
 }
 
 std::unique_ptr<BackendConnectionInterface>
-ConnectionPool::make_one_() const
+ConnectionPool::make_one_()
+try
 {
     switch (config_->backend_type.value())
     {
@@ -105,6 +109,11 @@ ConnectionPool::make_one_() const
     }
     UNREACHABLE
 }
+CATCH_STD_ALL_EWHAT({
+        LOG_ERROR(*config_ << ": failed to create new connection:"  << EWHAT);
+        error_();
+        throw;
+    })
 
 void
 ConnectionPool::release_connection_(BackendConnectionInterface* conn)
@@ -212,6 +221,20 @@ operator<<(std::ostream& os,
         ",gets_from_pool=" << c.gets_from_pool <<
         ",puts_delete=" << c.puts_delete <<
         ",puts_to_pool=" << c.puts_to_pool;
+}
+
+ConnectionPool::Clock::time_point
+ConnectionPool::last_error() const
+{
+    LOCK();
+    return last_error_;
+}
+
+void
+ConnectionPool::error_()
+{
+    LOCK();
+    last_error_ = Clock::now();
 }
 
 }

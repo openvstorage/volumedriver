@@ -87,6 +87,11 @@ protected:
                    const std::string& pattern,
                    const youtils::CheckSum* expected_chksum);
 
+    static void
+    inject_error_into_connection_pool(ConnectionPool& p)
+    {
+        p.error_();
+    }
 };
 
 }
