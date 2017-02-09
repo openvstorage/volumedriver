@@ -491,8 +491,7 @@ public:
     /** @locking mgmtMutex_ must be locked */
     template<typename Id>
     SharedVolumePtr
-    find_volume(const Id& id,
-                const std::string& message = "Pity: ") const
+    find_volume(const Id& id) const
     {
         mgmtMutex_.assertLocked();
 
@@ -500,7 +499,7 @@ public:
         if (vol == nullptr)
         {
             ensureNamespaceNotRestarting(id);
-            throw VolumeDoesNotExistException((message + " volume does not exist").c_str(),
+            throw VolumeDoesNotExistException("volume does not exist",
                                               id.c_str(),
                                               ENOENT);
         }
