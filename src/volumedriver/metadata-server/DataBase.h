@@ -19,6 +19,8 @@
 #include "Interface.h"
 #include "Table.h"
 
+#include <deque>
+
 #include <boost/filesystem.hpp>
 #include <boost/thread/mutex.hpp>
 
@@ -31,16 +33,21 @@ namespace metadata_server
 // Find a better name for this. Or even better, find a way to get rid of it, since all
 // it does is housekeeping for `Table's, which wrap around `RocksTable's, which are in
 // turn managed by `RocksTable'. So we have double housekeeping here.
+// Since `Table's will self-destruct when the backend namespace is gone while they're
+// actually owned (shared) by `DataBase' and its users, their destruction has to be
+// deferred to a GC thread.
 class DataBase
     : public DataBaseInterface
+    , public std::enable_shared_from_this<DataBase>
 {
 public:
-    DataBase(DataBaseInterfacePtr,
-             backend::BackendConnectionManagerPtr,
-             youtils::PeriodicActionPool::Ptr,
-             const boost::filesystem::path& scratch_dir,
-             uint32_t cached_pages,
-             const std::atomic<uint64_t>& poll_secs);
+    static std::shared_ptr<DataBase>
+    create(const DataBaseInterfacePtr&,
+           const backend::BackendConnectionManagerPtr&,
+           const youtils::PeriodicActionPool::Ptr&,
+           const boost::filesystem::path& scratch_dir,
+           uint32_t cached_pages,
+           const std::atomic<uint64_t>& poll_secs);
 
     virtual ~DataBase();
 
@@ -67,7 +74,7 @@ public:
 private:
     DECLARE_LOGGER("MetaDataServerDataBase");
 
-    // protects tables_ and server_
+    // protects tables_,  server_, gc_stop_, garbage_
     mutable boost::mutex lock_;
 
     // Represents open tables.
@@ -80,12 +87,30 @@ private:
     const uint32_t cached_pages_;
     const std::atomic<uint64_t>& poll_secs_;
 
+    boost::condition_variable gc_cond_;
+    bool gc_stop_;
+    std::deque<TablePtr> garbage_;
+    boost::thread gc_;
+
+    DataBase(const DataBaseInterfacePtr&,
+             const backend::BackendConnectionManagerPtr&,
+             const youtils::PeriodicActionPool::Ptr&,
+             const boost::filesystem::path& scratch_dir,
+             uint32_t cached_pages,
+             const std::atomic<uint64_t>& poll_secs);
+
     void
     restart_();
 
     TablePtr
     create_table_(const std::string& nspace,
                   const std::chrono::milliseconds ramp_up);
+
+    void
+    collect_garbage_();
+
+    void
+    schedule_garbage_(const std::string&);
 };
 
 typedef std::shared_ptr<DataBase> DataBasePtr;

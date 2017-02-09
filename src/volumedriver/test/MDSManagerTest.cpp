@@ -17,6 +17,8 @@
 
 #include "../metadata-server/Manager.h"
 
+#include <thread>
+
 #include <boost/property_tree/ptree.hpp>
 
 #include <youtils/FileUtils.h>
@@ -31,8 +33,9 @@ namespace be = backend;
 namespace bpt = boost::property_tree;
 namespace fs = boost::filesystem;
 namespace mds = metadata_server;
-namespace vd = volumedriver;
 namespace yt = youtils;
+
+using namespace volumedriver;
 
 class MDSManagerTest
     : public testing::Test
@@ -127,8 +130,8 @@ TEST_F(MDSManagerTest, conflicting_configs)
 
     // different node config but same directory
     mds::ServerConfig scfg2 = scfg;
-    scfg2.node_config = vd::MDSNodeConfig(scfg.node_config.address(),
-                                          scfg.node_config.port() + 1);
+    scfg2.node_config = MDSNodeConfig(scfg.node_config.address(),
+                                      scfg.node_config.port() + 1);
 
     ASSERT_THROW(mds_manager_->start_one(scfg2),
                  std::exception);
@@ -275,6 +278,40 @@ TEST_F(MDSManagerTest, find)
 
     db = mds_manager_->find(scfg.node_config);
     ASSERT_TRUE(db == nullptr);
+}
+
+TEST_F(MDSManagerTest, namespace_auto_removal)
+{
+    const auto poll_interval(std::chrono::seconds(1));
+
+    mds_manager_ = mds_test_setup_->make_manager(cm_,
+                                                 0,
+                                                 poll_interval);
+
+    const mds::ServerConfig scfg(mds_test_setup_->next_server_config());
+    mds_manager_->start_one(scfg);
+
+    mds::DataBaseInterfacePtr db(mds_manager_->find(scfg.node_config));
+    ASSERT_TRUE(db->list_namespaces().empty());
+
+    mds::TableInterfacePtr table;
+    {
+        auto wrns(make_random_namespace());
+        table = db->open(wrns->ns().str());
+
+        const std::vector<std::string> nspaces(db->list_namespaces());
+        ASSERT_EQ(1, nspaces.size());
+        ASSERT_EQ(wrns->ns().str(),
+                  nspaces.front());
+    }
+
+    std::this_thread::sleep_for(3 * poll_interval);
+    EXPECT_TRUE(db->list_namespaces().empty());
+
+    mds_manager_->stop_one(scfg.node_config);
+    mds_manager_->start_one(scfg);
+    db = mds_manager_->find(scfg.node_config);
+    EXPECT_TRUE(db->list_namespaces().empty());
 }
 
 }

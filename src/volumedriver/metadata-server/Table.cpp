@@ -47,13 +47,14 @@ namespace yt = youtils;
 #define LOCK_COUNTERS()                                         \
     boost::lock_guard<decltype(counters_lock_)> clg__(counters_lock_)
 
-Table::Table(DataBaseInterfacePtr db,
+Table::Table(const DataBaseInterfacePtr& db,
              be::BackendInterfacePtr bi,
-             yt::PeriodicActionPool::Ptr act_pool,
+             const yt::PeriodicActionPool::Ptr& act_pool,
              const fs::path& scratch_dir,
              const uint32_t max_cached_pages,
              const std::atomic<uint64_t>& poll_secs,
-             const sc::milliseconds& ramp_up)
+             const sc::milliseconds& ramp_up,
+             DropCallback drop_callback)
     : db_(db)
     , table_(db_->open(bi->getNS().str()))
     , bi_(std::move(bi))
@@ -61,6 +62,7 @@ Table::Table(DataBaseInterfacePtr db,
     , poll_secs_(poll_secs)
     , max_cached_pages_(max_cached_pages)
     , scratch_dir_(scratch_dir)
+    , drop_callback_(std::move(drop_callback))
 {
     VERIFY(bi_->getNS().str() == table_->nspace());
 
@@ -315,7 +317,9 @@ Table::work_()
         {
             LOG_WARN(table_->nspace() <<
                      ": does not exist anymore on the backend, cleaning up");
-            db_->drop(table_->nspace());
+
+            ulg.unlock();
+            drop_callback_(table_->nspace());
             return yt::PeriodicActionContinue::F;
         }
     }

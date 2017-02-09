@@ -16,6 +16,8 @@
 #include "DataBase.h"
 #include "Table.h"
 
+#include <boost/thread/reverse_lock.hpp>
+
 #include <youtils/SourceOfUncertainty.h>
 
 namespace metadata_server
@@ -29,9 +31,29 @@ namespace yt = youtils;
 #define LOCK()                                          \
     boost::lock_guard<decltype(lock_)> lg__(lock_)
 
-DataBase::DataBase(DataBaseInterfacePtr db,
-                   be::BackendConnectionManagerPtr cm,
-                   yt::PeriodicActionPool::Ptr act_pool,
+std::shared_ptr<DataBase>
+DataBase::create(const DataBaseInterfacePtr& db,
+                 const be::BackendConnectionManagerPtr& cm,
+                 const yt::PeriodicActionPool::Ptr& act_pool,
+                 const fs::path& scratch_dir,
+                 uint32_t cached_pages,
+                 const std::atomic<uint64_t>& poll_secs)
+{
+    std::shared_ptr<DataBase> p(new DataBase(db,
+                                             cm,
+                                             act_pool,
+                                             scratch_dir,
+                                             cached_pages,
+                                             poll_secs));
+    // not part of the ctor as it invokes create_table_()
+    // which in turn uses shared_from_this()
+    p->restart_();
+    return p;
+}
+
+DataBase::DataBase(const DataBaseInterfacePtr& db,
+                   const be::BackendConnectionManagerPtr& cm,
+                   const yt::PeriodicActionPool::Ptr& act_pool,
                    const fs::path& scratch_dir,
                    uint32_t cached_pages,
                    const std::atomic<uint64_t>& poll_secs)
@@ -41,17 +63,42 @@ DataBase::DataBase(DataBaseInterfacePtr db,
     , scratch_dir_(scratch_dir)
     , cached_pages_(cached_pages)
     , poll_secs_(poll_secs)
+    , gc_stop_(false)
+    , gc_(boost::bind(&DataBase::collect_garbage_, this))
 {
     VERIFY(cm != nullptr);
-    restart_();
 }
 
 DataBase::~DataBase()
 {
     LOG_INFO("Releasing all open tables (" << tables_.size() << ")");
 
-    LOCK();
-    tables_.clear();
+    // possibly non-obvious: Tables have a callback into DataBase which
+    // could run at any point from a PeriodicAction until the Table itself
+    // is destructed.
+    {
+        boost::unique_lock<decltype(lock_)> u(lock_);
+
+        while (not tables_.empty())
+        {
+            auto it = tables_.begin();
+            VERIFY(it != tables_.end());
+            TableInterfacePtr t = it->second;
+            tables_.erase(it);
+            boost::reverse_lock<decltype(u)> r(u);
+            t = nullptr;
+        }
+
+        gc_stop_ = true;
+        gc_cond_.notify_all();
+    }
+
+    try
+    {
+        gc_.join();
+    }
+    CATCH_STD_ALL_LOG_IGNORE("Failed to stop gc thread");
+
 }
 
 void
@@ -84,13 +131,24 @@ TablePtr
 DataBase::create_table_(const std::string& nspace,
                         const sc::milliseconds ramp_up)
 {
+    // Avoid use-after-free in case a consumer clings to a TablePtr longer than to
+    // this DataBase.
+    std::weak_ptr<DataBase> self(shared_from_this());
     auto table(std::make_shared<Table>(db_,
                                        cm_->newBackendInterface(be::Namespace(nspace)),
                                        act_pool_,
                                        scratch_dir(nspace),
                                        cached_pages_,
                                        poll_secs_,
-                                       ramp_up));
+                                       ramp_up,
+                                       [self](const std::string& nspace)
+                                       {
+                                           std::shared_ptr<DataBase> db(self.lock());
+                                           if (db)
+                                           {
+                                               db->schedule_garbage_(nspace);
+                                           }
+                                       }));
     tables_[nspace] = table;
     return table;
 }
@@ -146,5 +204,52 @@ DataBase::list_namespaces()
     return nspaces;
 }
 
+void
+DataBase::collect_garbage_()
+{
+    pthread_setname_np(pthread_self(), "mds_db_gc");
+
+    while (true)
+    {
+        boost::unique_lock<decltype(lock_)> u(lock_);
+        gc_cond_.wait(u,
+                      [&]() -> bool
+                      {
+                          return gc_stop_ or not garbage_.empty();
+                      });
+
+        while (not garbage_.empty())
+        {
+            TablePtr t = garbage_.front();
+            garbage_.pop_front();
+
+            try
+            {
+                db_->drop(t->nspace());
+            }
+            CATCH_STD_ALL_LOG_IGNORE("Failed to drop " << t->nspace());
+        }
+
+        if (gc_stop_)
+        {
+            break;
+        }
+    }
+}
+
+void
+DataBase::schedule_garbage_(const std::string& nspace)
+{
+    LOCK();
+
+    auto it = tables_.find(nspace);
+    if (it != tables_.end())
+    {
+        garbage_.push_back(it->second);
+        tables_.erase(it);
+    }
+
+    gc_cond_.notify_all();
+}
 
 }
