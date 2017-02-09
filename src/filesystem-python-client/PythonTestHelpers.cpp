@@ -53,6 +53,8 @@ PythonTestHelpers::generate_exceptions(uint32_t type)
         throw clienterrors::FileExistsException("some_vol");
     case 6:
         throw clienterrors::InsufficientResourcesException("some_vol");
+    case 7:
+        throw clienterrors::VolumeRestartInProgressException("restart in progress", "some_volume", EAGAIN);
     }
     return "no problem";
 }
