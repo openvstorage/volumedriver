@@ -770,13 +770,13 @@ typedef LOKI_TYPELIST_87(
                          ScheduleBackendSync,
                          VAAICopy,
                          ListClientConnections,
+                         RemoveNamespaceFromSCOCache,
                          ResizeObject,
                          GetBackendConnectionPool,
                          // ================== NOT EXPOSED, NOT TESTED   ==================
                          GetFailOverMode,
                          ScoCacheInfo,
                          VolumeScoCacheInfo,
-                         RemoveNamespaceFromSCOCache,
                          VolumeDestroy,
                          // These are not supposed to be executed via xmlrpc but only
                          // (implicitly) via the filesystem interface.

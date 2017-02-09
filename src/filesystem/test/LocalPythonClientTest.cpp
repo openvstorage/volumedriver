@@ -33,19 +33,21 @@
 namespace volumedriverfstest
 {
 
+namespace be = backend;
 namespace bpt = boost::property_tree;
 namespace bpy = boost::python;
 namespace fs = boost::filesystem;
 namespace ip = initialized_params;
 namespace vd = volumedriver;
-namespace vfs = volumedriverfs;
 namespace yt = youtils;
+
+using namespace volumedriverfs;
 
 class LocalPythonClientTest
     : public FileSystemTestBase
 {
 protected:
-    std::unique_ptr<vfs::LocalPythonClient> local_client_;
+    std::unique_ptr<LocalPythonClient> local_client_;
 
     LocalPythonClientTest()
         : FileSystemTestBase(FileSystemTestSetupParameters("LocalLocalPythonClientTest"))
@@ -63,7 +65,7 @@ protected:
     SetUp()
     {
         FileSystemTestBase::SetUp();
-        local_client_.reset(new vfs::LocalPythonClient(configuration_.string()));
+        local_client_.reset(new LocalPythonClient(configuration_.string()));
     }
 
     void
@@ -150,7 +152,7 @@ TEST_F(LocalPythonClientTest, update_configuration)
                                  pt);
 
     ASSERT_THROW(local_client_->update_configuration(path.string()),
-                 vfs::clienterrors::ConfigurationUpdateException);
+                 clienterrors::ConfigurationUpdateException);
 }
 
 TEST_F(LocalPythonClientTest, general_loglevel)
@@ -227,7 +229,7 @@ TEST_F(LocalPythonClientTest, malloc_info)
 
 TEST_F(LocalPythonClientTest, cluster_cache_handles)
 {
-    const vfs::FrontendPath vpath(make_volume_name("/cluster-cache-handles-test"));
+    const FrontendPath vpath(make_volume_name("/cluster-cache-handles-test"));
     const std::string vname(create_file(vpath, 10 << 20));
 
     auto check_content_based_map([&]
@@ -254,7 +256,7 @@ TEST_F(LocalPythonClientTest, cluster_cache_handles)
 
     for (const auto& h : v)
     {
-        const vfs::XMLRPCClusterCacheHandleInfo
+        const XMLRPCClusterCacheHandleInfo
             info(local_client_->get_cluster_cache_handle_info(h));
         EXPECT_EQ(h,
                   info.cluster_cache_handle);
@@ -280,6 +282,28 @@ TEST_F(LocalPythonClientTest, cluster_cache_handles)
     }
 
     check_content_based_map();
+}
+
+TEST_F(LocalPythonClientTest, remove_sco_cache_namespace)
+{
+    const FrontendPath vpath(make_volume_name("/some-volume"));
+    const std::string id(create_file(vpath, 10 << 20));
+    const be::Namespace nspace(id);
+
+    vd::SCOCache& sco_cache = *vd::VolManager::get()->getSCOCache();
+    EXPECT_TRUE(sco_cache.hasNamespace(nspace));
+
+    EXPECT_THROW(local_client_->remove_namespace_from_sco_cache(id),
+                 std::exception);
+    EXPECT_TRUE(sco_cache.hasNamespace(nspace));
+
+    local_client_->stop_object(id,
+                               false);
+    EXPECT_TRUE(sco_cache.hasDisabledNamespace(nspace));
+
+    local_client_->remove_namespace_from_sco_cache(id);
+    EXPECT_FALSE(sco_cache.hasNamespace(nspace));
+    EXPECT_FALSE(sco_cache.hasDisabledNamespace(nspace));
 }
 
 }

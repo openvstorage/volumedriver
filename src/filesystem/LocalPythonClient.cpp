@@ -232,4 +232,13 @@ LocalPythonClient::remove_cluster_cache_handle(const vd::ClusterCacheHandle hand
     call(RemoveClusterCacheHandle::method_name(), req, timeout);
 }
 
+void
+LocalPythonClient::remove_namespace_from_sco_cache(const std::string& nspace,
+                                                   const MaybeSeconds& timeout)
+{
+    XmlRpc::XmlRpcValue req;
+    req[XMLRPCKeys::nspace] = nspace;
+    call(RemoveNamespaceFromSCOCache::method_name(), req, timeout);
+}
+
 }

@@ -140,13 +140,15 @@ fuse_teardown(struct fuse *fuse,
 }
 
 FuseInterface::FuseInterface(const bpt::ptree& pt,
-                             const RegisterComponent registerizle)
+                             const RegisterComponent registerizle,
+                             const RestartVolumes restart_volumes)
     : yt::VolumeDriverComponent(registerizle,
                                 pt)
     , fuse_min_workers(pt)
     , fuse_max_workers(pt)
     , fs_(pt,
-          registerizle)
+          registerizle,
+          restart_volumes)
     , fuse_(nullptr)
     , shm_orb_server_(fs_.enable_shm_interface() ?
                       std::make_unique<ShmOrbInterface>(pt,

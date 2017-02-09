@@ -74,6 +74,8 @@ class VolumeTest;
 namespace volumedriverfs
 {
 
+VD_BOOLEAN_ENUM(RestartVolumes);
+
 #define LOG_N_THROW(code, msg)                                      \
     do                                                              \
     {                                                               \
@@ -108,7 +110,8 @@ class FileSystem
 
 public:
     explicit FileSystem(const boost::property_tree::ptree&,
-                        const RegisterComponent = RegisterComponent::T);
+                        const RegisterComponent = RegisterComponent::T,
+                        const RestartVolumes = RestartVolumes::T);
 
     ~FileSystem();
 
@@ -618,7 +621,7 @@ private:
                                const FrontendPath& to);
 
     void
-    restart_();
+    restart_(const RestartVolumes);
 
     void
     create_volume_(const FrontendPath&,
