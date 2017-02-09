@@ -25,6 +25,7 @@
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/serialization/shared_ptr.hpp>
 #include <boost/serialization/unique_ptr.hpp>
+#include <boost/variant.hpp>
 
 #include <youtils/Serialization.h>
 
@@ -39,40 +40,127 @@
 namespace volumedriverfs
 {
 
-struct
-XMLRPCStructs
+template<typename T>
+struct SerializationName
 {
-    typedef boost::archive::binary_iarchive iarchive_type;
-    typedef boost::archive::binary_oarchive oarchive_type;
+    static const char*
+    name()
+    {
+        return T::serialization_name;
+    }
+};
 
-    template<typename T>
+template<>
+struct SerializationName<boost::variant<youtils::UpdateReport,
+                                        youtils::ConfigurationReport>>
+{
+    static const char*
+    name()
+    {
+        return "ConfigurationUpdateResult";
+    }
+};
+
+template<typename T>
+struct SerializationName<std::unique_ptr<T>>
+{
+    static const char*
+    name()
+    {
+        return SerializationName<T>::name();
+    }
+};
+
+template<>
+struct SerializationName<volumedriver::MetaDataBackendConfig>
+{
+    static const char*
+    name()
+    {
+        return "MetaDataBackendConfig";
+    }
+};
+
+class ClusterNodeStatus;
+
+template<>
+struct SerializationName<std::map<NodeId, ClusterNodeStatus>>
+{
+    static const char*
+    name()
+    {
+        return "ClusterNodeStatusMap";
+    }
+};
+
+template<typename iarchive_type, typename oarchive_type>
+struct XMLRPCStructsT
+{
+    template<typename T, typename SerName = SerializationName<T>>
     static ::XmlRpc::XmlRpcValue
-    serialize_to_xmlrpc_value(const T& the_value)
+    serialize_to_xmlrpc_value(const T& t)
     {
         std::stringstream ss;
         oarchive_type oa(ss);
-        oa << the_value;
-
+        oa & boost::serialization::make_nvp(SerName::name(),
+                                            t);
         return ::XmlRpc::XmlRpcValue(static_cast<const void*>(ss.str().c_str()),
                                      ss.str().size());
     }
 
-    template<typename T>
+    template<typename T, typename SerName = SerializationName<T>>
     static T
     deserialize_from_xmlrpc_value(XmlRpc::XmlRpcValue& xval)
     {
-        T return_value;
+        T t;
         std::stringstream ss;
         XmlRpc::XmlRpcValue::BinaryData data = xval;
         ss.str(std::string(data.begin(), data.end()));
 
         iarchive_type ia(ss);
-        ia >> return_value;
-        return return_value;
+        ia & boost::serialization::make_nvp(SerName::name(),
+                                            t);
+        return t;
+    }
+};
+
+// The old flavour - it uses binary archive which are not future-proof. Phase out their
+// use as-needed.
+using XMLRPCStructsBinary = XMLRPCStructsT<boost::archive::binary_iarchive,
+                                           boost::archive::binary_oarchive>;
+
+// Use this for new code.
+using XMLRPCStructsXML = XMLRPCStructsT<boost::archive::xml_iarchive,
+                                        boost::archive::xml_oarchive>;
+
+//Just borrowing boost's semi human readable xml serialization to support printing these objects in python.
+//This is only intended for interactive python sessions (debugging/operations).
+//Production client code should of course directly use the properties of the object.
+template<typename T>
+struct XMLRPCSerializer
+{
+    void
+    set_from_str(const std::string& str)
+    {
+        std::stringstream ss;
+        typename T::iarchive_type ia(ss);
+        ia & boost::serialization::make_nvp(T::serialization_name,
+                                            static_cast<T&>(*this));
+    }
+
+    std::string
+    str() const
+    {
+        std::stringstream ss;
+        youtils::Serialization::serializeNVPAndFlush<typename T::oarchive_type>(ss,
+                                                                                T::serialization_name,
+                                                                                static_cast<const T&>(*this));
+        return ss.str();
     }
 };
 
 struct XMLRPCVolumeInfo
+    : public XMLRPCSerializer<XMLRPCVolumeInfo>
 {
     typedef boost::archive::xml_oarchive oarchive_type;
     typedef boost::archive::xml_iarchive iarchive_type;
@@ -140,7 +228,6 @@ struct XMLRPCVolumeInfo
 #undef EQ
     }
 
-
     friend class boost::serialization::access;
 
     template<typename Archive>
@@ -178,17 +265,13 @@ struct XMLRPCVolumeInfo
     }
 
     static constexpr const char* serialization_name =  "XMLRPCVolumeInfo";
-
-    void
-    set_from_str(const std::string& str);
-
-    std::string
-    str() const;
 };
 
-// No reference to "volume" in XMLRPCStatistics structname or python classname as we
-// could reuse this struct for reporting aggregate values (per VSA / vPool)
-struct XMLRPCStatistics
+// No reference to "volume" in XMLRPCStatisticsV2 structname or python classname as we
+// could reuse this struct for reporting aggregate values (per VSA / vPool).
+// This one is deprecated - there's a new version of this (XMLRPCStatistics).
+struct XMLRPCStatisticsV2
+    : public XMLRPCSerializer<XMLRPCStatisticsV2>
 {
     typedef boost::archive::xml_oarchive oarchive_type;
     typedef boost::archive::xml_iarchive iarchive_type;
@@ -201,10 +284,10 @@ struct XMLRPCStatistics
     uint64_t metadata_store_misses = 0;
     uint64_t stored = 0;
 
-    volumedriver::PerformanceCounters performance_counters;
+    volumedriver::PerformanceCountersV1 performance_counters;
 
     bool
-    operator==(const XMLRPCStatistics& other) const
+    operator==(const XMLRPCStatisticsV2& other) const
     {
 #define EQ(x)                                   \
         (x == other.x)
@@ -216,8 +299,8 @@ struct XMLRPCStatistics
             EQ(metadata_store_hits) and
             EQ(metadata_store_misses) and
             EQ(stored) and
-            EQ(performance_counters);
-
+            EQ(performance_counters)
+            ;
 #undef EQ
     }
 
@@ -240,15 +323,99 @@ struct XMLRPCStatistics
     }
 
     static constexpr const char* serialization_name =  "XMLRPCStatistics";
+};
 
+// largely duplicates XMLRPCStatisticsV2 above which is kept
+// around for backward compat purposes.
+struct XMLRPCStatistics
+    : public XMLRPCSerializer<XMLRPCStatistics>
+{
+    XMLRPCStatistics() = default;
+
+    ~XMLRPCStatistics() = default;
+
+    XMLRPCStatistics(const XMLRPCStatistics&) = default;
+
+    XMLRPCStatistics&
+    operator=(const XMLRPCStatistics&) = default;
+
+    XMLRPCStatistics(const XMLRPCStatisticsV2& old)
+        : sco_cache_hits(old.sco_cache_hits)
+        , sco_cache_misses(old.sco_cache_misses)
+        , cluster_cache_hits(old.cluster_cache_hits)
+        , cluster_cache_misses(old.cluster_cache_misses)
+        , metadata_store_hits(old.metadata_store_hits)
+        , metadata_store_misses(old.metadata_store_misses)
+        , stored(old.stored)
+        , partial_read_fast(0)
+        , partial_read_slow(0)
+        , performance_counters(static_cast<volumedriver::PerformanceCounters>(old.performance_counters))
+    {}
+
+    using iarchive_type = boost::archive::xml_iarchive;
+    using oarchive_type = boost::archive::xml_oarchive;
+
+    uint64_t sco_cache_hits = 0;
+    uint64_t sco_cache_misses = 0;
+    uint64_t cluster_cache_hits = 0;
+    uint64_t cluster_cache_misses = 0;
+    uint64_t metadata_store_hits = 0;
+    uint64_t metadata_store_misses = 0;
+    uint64_t stored = 0;
+    uint64_t partial_read_fast = 0;
+    uint64_t partial_read_slow = 0;
+
+    volumedriver::PerformanceCounters performance_counters;
+
+    bool
+    operator==(const XMLRPCStatistics& other) const
+    {
+#define EQ(x)                                   \
+        (x == other.x)
+        return
+            EQ(sco_cache_hits) and
+            EQ(sco_cache_misses) and
+            EQ(cluster_cache_hits) and
+            EQ(cluster_cache_misses) and
+            EQ(metadata_store_hits) and
+            EQ(metadata_store_misses) and
+            EQ(stored) and
+            EQ(performance_counters) and
+            EQ(partial_read_fast) and
+            EQ(partial_read_slow)
+            ;
+#undef EQ
+    }
+
+    template<typename Archive>
     void
-    set_from_str(const std::string& str);
+    serialize(Archive& ar, const unsigned int version)
+    {
+        ar & BOOST_SERIALIZATION_NVP(sco_cache_hits);
+        ar & BOOST_SERIALIZATION_NVP(sco_cache_misses);
+        ar & BOOST_SERIALIZATION_NVP(cluster_cache_hits);
+        ar & BOOST_SERIALIZATION_NVP(cluster_cache_misses);
+        ar & BOOST_SERIALIZATION_NVP(metadata_store_hits);
+        ar & BOOST_SERIALIZATION_NVP(metadata_store_misses);
+        ar & BOOST_SERIALIZATION_NVP(performance_counters);
 
-    std::string
-    str() const;
+        if (version > 1)
+        {
+            ar & BOOST_SERIALIZATION_NVP(stored);
+        }
+
+        if (version > 2)
+        {
+            ar & BOOST_SERIALIZATION_NVP(partial_read_fast);
+            ar & BOOST_SERIALIZATION_NVP(partial_read_slow);
+        }
+    }
+
+    static constexpr const char* serialization_name = "XMLRPCStatisticsV2";
 };
 
 struct XMLRPCSnapshotInfo
+    : public XMLRPCSerializer<XMLRPCSnapshotInfo>
 {
     typedef boost::archive::xml_oarchive oarchive_type;
     typedef boost::archive::xml_iarchive iarchive_type;
@@ -321,15 +488,10 @@ struct XMLRPCSnapshotInfo
     }
 
     static constexpr const char* serialization_name = "XMLRPCSnapshotInfo";
-
-    void
-    set_from_str(const std::string& str);
-
-    std::string
-    str() const;
 };
 
 struct XMLRPCClusterCacheHandleInfo
+    : public XMLRPCSerializer<XMLRPCClusterCacheHandleInfo>
 {
     typedef boost::archive::xml_oarchive oarchive_type;
     typedef boost::archive::xml_iarchive iarchive_type;
@@ -387,18 +549,13 @@ struct XMLRPCClusterCacheHandleInfo
     }
 
     static constexpr const char* serialization_name = "XMLRPCClusterCacheHandleInfo";
-
-    void
-    set_from_str(const std::string& str);
-
-    std::string
-    str() const;
 };
 
 }
 
 BOOST_CLASS_VERSION(volumedriverfs::XMLRPCVolumeInfo, 2);
-BOOST_CLASS_VERSION(volumedriverfs::XMLRPCStatistics, 2);
+BOOST_CLASS_VERSION(volumedriverfs::XMLRPCStatisticsV2, 2);
+BOOST_CLASS_VERSION(volumedriverfs::XMLRPCStatistics, 3);
 BOOST_CLASS_VERSION(volumedriverfs::XMLRPCSnapshotInfo, 2);
 BOOST_CLASS_VERSION(volumedriverfs::XMLRPCClusterCacheHandleInfo, 1);
 

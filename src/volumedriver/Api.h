@@ -56,6 +56,11 @@
 #include <backend/GarbageCollectorFwd.h>
 #include <backend/Namespace.h>
 
+namespace backend
+{
+class PartialReadCounter;
+}
+
 namespace volumedriver
 {
 
@@ -282,6 +287,9 @@ public:
 
     static uint64_t
     getCacheMisses(const volumedriver::VolumeId&);
+
+    static backend::PartialReadCounter
+    getPartialReadCounter(const volumedriver::VolumeId&);
 
     static uint64_t
     getNonSequentialReads(const volumedriver::VolumeId& volName);

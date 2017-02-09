@@ -2683,6 +2683,38 @@ TEST_P(SimpleVolumeTest, dtl_queue_depth_and_large_requests)
                 pattern);
 }
 
+TEST_P(SimpleVolumeTest, partial_read_counters)
+{
+    auto wrns(make_random_namespace());
+    SharedVolumePtr v = newVolume(*wrns);
+
+    const std::string pattern("testing partial read counters");
+    writeToVolume(*v, 0, v->getClusterSize(), pattern);
+
+    {
+        const be::PartialReadCounter prc(v->getDataStore()->partial_read_counter());
+        EXPECT_EQ(0UL, prc.fast + prc.slow);
+    }
+
+    const VolumeConfig cfg(v->get_config());
+    v->scheduleBackendSync();
+    waitForThisBackendWrite(*v);
+
+    destroyVolume(v,
+                  DeleteLocalData::T,
+                  RemoveVolumeCompletely::F);
+
+    v = nullptr;
+    restartVolume(cfg);
+    v = getVolume(cfg.id_);
+    ASSERT_NE(nullptr, v);
+
+    checkVolume(*v, 0, v->getClusterSize(), pattern);
+
+    const be::PartialReadCounter prc(v->getDataStore()->partial_read_counter());
+    EXPECT_LT(0UL, prc.fast + prc.slow);
+}
+
 namespace
 {
 

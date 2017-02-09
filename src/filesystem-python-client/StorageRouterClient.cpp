@@ -267,6 +267,32 @@ get_client_info_object_id(const vfs::ClientInfo* ci)
     return ci->object_id;
 }
 
+template<typename PerfCounter>
+bpy::class_<PerfCounter>
+register_perf_counter(const char* name)
+{
+    return
+        bpy::class_<PerfCounter>(name)
+        .def("__eq__",
+             &PerfCounter::operator==)
+        .def("__repr__",
+             &repr<PerfCounter>)
+        .def("events",
+             &PerfCounter::events)
+        .def("min",
+             &PerfCounter::min)
+        .def("max",
+             &PerfCounter::max)
+        .def("sum",
+             &PerfCounter::sum)
+        .def("sum_of_squares",
+             &PerfCounter::sum_of_squares)
+        .def("distribution",
+             &PerfCounter::distribution)
+        .def_pickle(PickleSuite<PerfCounter>())
+        ;
+}
+
 }
 
 TODO("AR: this is a bit of a mess - split into smaller, logical pieces");
@@ -1133,6 +1159,9 @@ BOOST_PYTHON_MODULE(storagerouterclient)
                   bpy::make_getter(&vfs::XMLRPCVolumeInfo::name,       \
                                    bpy::return_value_policy<bpy::return_by_value>()))
 
+    using UInt64Distribution = std::map<uint64_t, uint64_t>;
+    REGISTER_DICT_CONVERTER(UInt64Distribution);
+
     bpy::class_<vfs::XMLRPCVolumeInfo>("VolumeInfo")
         .def("__str__", &vfs::XMLRPCVolumeInfo::str)
         .def("__repr__", &vfs::XMLRPCVolumeInfo::str)
@@ -1167,23 +1196,8 @@ BOOST_PYTHON_MODULE(storagerouterclient)
         ;
 #undef DEF_READONLY_PROP_
 
-    bpy::class_<vd::PerformanceCounter<uint64_t>>("PerformanceCounterU64")
-        .def("__eq__",
-             &vd::PerformanceCounter<uint64_t>::operator==)
-        .def("__repr__",
-             &repr<vd::PerformanceCounter<uint64_t>>)
-        .def("events",
-             &vd::PerformanceCounter<uint64_t>::events)
-        .def("min",
-             &vd::PerformanceCounter<uint64_t>::min)
-        .def("max",
-             &vd::PerformanceCounter<uint64_t>::max)
-        .def("sum",
-             &vd::PerformanceCounter<uint64_t>::sum)
-        .def("sum_of_squares",
-             &vd::PerformanceCounter<uint64_t>::sum_of_squares)
-        .def_pickle(PerformanceCounterU64PickleSuite())
-        ;
+    register_perf_counter<vd::RequestSizeCounter>("RequestSizeCounter");
+    register_perf_counter<vd::RequestUSecsCounter>("RequestUSecsCounter");
 
 #define DEF_READONLY_PROP_(name)                                        \
     .add_property(#name,                                                \
@@ -1226,6 +1240,8 @@ BOOST_PYTHON_MODULE(storagerouterclient)
         DEF_READONLY_PROP_(metadata_store_hits)
         DEF_READONLY_PROP_(metadata_store_misses)
         DEF_READONLY_PROP_(stored)
+        DEF_READONLY_PROP_(partial_read_fast)
+        DEF_READONLY_PROP_(partial_read_slow)
         DEF_READONLY_PROP_(performance_counters)
         .def_pickle(XMLRPCStatisticsPickleSuite())
         ;

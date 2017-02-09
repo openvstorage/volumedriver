@@ -50,6 +50,9 @@ namespace yt = youtils;
 #define SERIALIZE_ERROR_HANDLING()                      \
     boost::lock_guard<decltype(error_lock_)> elg__(error_lock_)
 
+#define LOCK_PARTIAL_READ_COUNTER()                     \
+    boost::lock_guard<decltype(partial_read_counter_lock_)> prclg__(partial_read_counter_lock_)
+
 DataStoreNG::DataStoreNG(const VolumeConfig& cfg,
                          SCOCache* scoCache,
                          unsigned num_open_scos)
@@ -609,9 +612,11 @@ DataStoreNG::readClusters(const std::vector<ClusterReadDescriptor>& descs)
 
         try
         {
-            bi->partial_read(partial_reads.second,
-                             fallback,
-                             insist_on_latest);
+            const be::PartialReadCounter prc(bi->partial_read(partial_reads.second,
+                                                              fallback,
+                                                              insist_on_latest));
+            LOCK_PARTIAL_READ_COUNTER();
+            partial_read_counter_ += prc;
         }
         catch (be::BackendConnectFailureException&)
         {
@@ -1499,6 +1504,13 @@ DataStoreNG::getSCOMultiplier() const
 {
     RLOCK_DATASTORE();
     return sco_mult_;
+}
+
+be::PartialReadCounter
+DataStoreNG::partial_read_counter() const
+{
+    LOCK_PARTIAL_READ_COUNTER();
+    return partial_read_counter_;
 }
 
 }

@@ -14,6 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "BackendConnectionInterface.h"
+#include "PartialReadCounter.h"
 
 #include <boost/optional/optional_io.hpp>
 
@@ -211,16 +212,18 @@ BackendConnectionInterface::get_tag(const Namespace& nspace,
                      name);
 }
 
-void
+PartialReadCounter
 BackendConnectionInterface::partial_read(const Namespace& ns,
                                          const PartialReads& partial_reads,
                                          InsistOnLatestVersion insist_on_latest,
                                          PartialReadFallbackFun& fallback_fun)
 try
 {
+    PartialReadCounter prc;
     const bool ok = partial_read_(ns,
                                   partial_reads,
-                                  insist_on_latest);
+                                  insist_on_latest,
+                                  prc);
     if (not ok)
     {
         LOG_TRACE(ns << ": partial read not supported - falling back to emulation");
@@ -244,9 +247,13 @@ try
                               s.offset);
                     throw BackendRestoreException();
                 }
+
+                ++prc.slow;
             }
         }
     }
+
+    return prc;
 }
 CATCH_STD_ALL_EWHAT({
         LOG_ERROR(ns << ": partial read failed: " << EWHAT);

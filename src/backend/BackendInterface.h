@@ -96,7 +96,7 @@ public:
     createNamespace(const NamespaceMustNotExist = NamespaceMustNotExist::T,
                     const BackendRequestParameters& = default_request_parameters());
 
-    void
+    PartialReadCounter
     partial_read(const BackendConnectionInterface::PartialReads& partial_reads,
                  BackendConnectionInterface::PartialReadFallbackFun& fallback_fun,
                  InsistOnLatestVersion,

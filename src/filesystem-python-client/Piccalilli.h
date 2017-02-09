@@ -42,8 +42,6 @@ struct PickleTraits
     }
 };
 
-using PerformanceCounterU64 = volumedriver::PerformanceCounter<uint64_t>;
-
 template<>
 struct PickleTraits<volumedriver::ClusterCacheHandle>
 {
@@ -82,29 +80,30 @@ struct PickleTraits<volumedriver::OwnerTag>
     }
 };
 
-template<>
-struct PickleTraits<PerformanceCounterU64>
+template<typename T, typename BucketTraits>
+struct PickleTraits<volumedriver::PerformanceCounter<T, BucketTraits>>
 {
+    using PerfCounter = volumedriver::PerformanceCounter<T, BucketTraits>;
     using IArchive = boost::archive::xml_iarchive;
     using OArchive = boost::archive::xml_oarchive;
 
     static std::string
-    str(const PerformanceCounterU64& c)
+    str(const PerfCounter& c)
     {
         std::stringstream ss;
         OArchive oa(ss);
-        oa << boost::serialization::make_nvp("PerformanceCounterU64",
+        oa << boost::serialization::make_nvp("PerformanceCounter",
                                              c);
         return ss.str();
     }
 
     static void
-    unstr(PerformanceCounterU64& c,
+    unstr(PerfCounter& c,
           const std::string& s)
     {
         std::stringstream ss(s);
         IArchive ia(ss);
-        ia >> boost::serialization::make_nvp("PerformanceCounterU64",
+        ia >> boost::serialization::make_nvp("PerformanceCounter",
                                              c);
     }
 };
@@ -177,8 +176,6 @@ using XMLRPCClusterCacheHandleInfoPickleSuite =
     PickleSuite<volumedriverfs::XMLRPCClusterCacheHandleInfo>;
 using XMLRPCStatisticsPickleSuite = PickleSuite<volumedriverfs::XMLRPCStatistics>;
 using XMLRPCSnapshotInfoPickleSuite = PickleSuite<volumedriverfs::XMLRPCSnapshotInfo>;
-using PerformanceCounterU64PickleSuite =
-    PickleSuite<volumedriver::PerformanceCounter<uint64_t>>;
 using PerformanceCountersPickleSuite = PickleSuite<volumedriver::PerformanceCounters>;
 using ClusterCacheHandlePickleSuite = PickleSuite<volumedriver::ClusterCacheHandle>;
 using OwnerTagPickleSuite = PickleSuite<volumedriver::OwnerTag>;

@@ -105,7 +105,7 @@ LocalPythonClient::update_configuration(const std::string& path,
     XmlRpc::XmlRpcValue req;
     req[XMLRPCKeys::configuration_path] = path;
     auto rsp(call(UpdateConfiguration::method_name(), req, timeout));
-    const auto res(XMLRPCStructs::deserialize_from_xmlrpc_value<boost::variant<yt::UpdateReport,
+    const auto res(XMLRPCStructsBinary::deserialize_from_xmlrpc_value<boost::variant<yt::UpdateReport,
                    yt::ConfigurationReport>>(rsp));
 
     ReportVisitor v;
@@ -219,7 +219,7 @@ LocalPythonClient::get_cluster_cache_handle_info(const vd::ClusterCacheHandle ha
 
     auto rsp(call(GetClusterCacheHandleInfo::method_name(), req, timeout));
     return
-        XMLRPCStructs::deserialize_from_xmlrpc_value<XMLRPCClusterCacheHandleInfo>(rsp);
+        XMLRPCStructsBinary::deserialize_from_xmlrpc_value<XMLRPCClusterCacheHandleInfo>(rsp);
 }
 
 void
