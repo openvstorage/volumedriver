@@ -1044,7 +1044,7 @@ VolManagerTestSetup::getCurrentTLog(const VolumeId& volid) const
     VolManager *vm = VolManager::get();
     SharedVolumePtr v;
     fungi::ScopedLock m(vm->getLock_());
-    v = vm->findVolume_(volid);
+    v = vm->find_volume(volid);
     return v->getSnapshotManagement().getCurrentTLogPath();
 }
 
@@ -1055,7 +1055,7 @@ VolManagerTestSetup::getTLogsNotInBackend(const VolumeId& volid,
     VolManager *vm = VolManager::get();
     SharedVolumePtr v;
     fungi::ScopedLock m(vm->getLock_());
-    v = vm->findVolume_(volid);
+    v = vm->find_volume(volid);
     return v->getSnapshotManagement().getTLogsNotWrittenToBackend(tlogs);
 }
 
@@ -1094,7 +1094,7 @@ VolManagerTestSetup::restartVolume(const VolumeConfig& cfg,
     if(T(check_name))
     {
         __attribute__ ((__unused__)) SharedVolumePtr v =
-            VolManager::get()->findVolume_noThrow_(cfg.id_);
+            VolManager::get()->find_volume_no_throw(cfg.id_);
     }
 }
 
@@ -1110,7 +1110,7 @@ SharedVolumePtr
 VolManagerTestSetup::findVolume(const VolumeId& ns)
 {
     fungi::ScopedLock l(VolManager::get()->mgmtMutex_);
-    return VolManager::get()->findVolume_noThrow_(ns);
+    return VolManager::get()->find_volume_no_throw(ns);
 }
 
 SharedVolumePtr
@@ -1323,7 +1323,7 @@ VolManagerTestSetup::getVolume(const VolumeId &name)
     VolManager *vm = VolManager::get();
     SharedVolumePtr v = 0;
     fungi::ScopedLock m(vm->getLock_());
-    v= vm->findVolume_noThrow_(name);
+    v= vm->find_volume_no_throw(name);
     return v;
 }
 
@@ -1444,7 +1444,7 @@ VolManagerTestSetup::setFailOverCacheConfig(const VolumeId& volid,
                                             const boost::optional<FailOverCacheConfig>& maybe_config)
 {
     SharedVolumePtr v;
-    ASSERT_NO_THROW(v = VolManager::get()->findVolume_(volid));
+    ASSERT_NO_THROW(v = VolManager::get()->find_volume(volid));
     v->setFailOverCacheConfig(maybe_config);
 }
 
@@ -1703,7 +1703,7 @@ void
 VolManagerTestSetup::persistXVals(const VolumeId& volname) const
 {
     fungi::ScopedLock l(VolManager::get()->getLock_());
-    SharedVolumePtr v = VolManager::get()->findVolume_(volname);
+    SharedVolumePtr v = VolManager::get()->find_volume(volname);
     if (v != nullptr)
     {
         SCOAccessData sad(v->getNamespace(),

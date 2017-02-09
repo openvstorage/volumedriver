@@ -785,7 +785,7 @@ TEST_F(NetworkServerTest, uri)
 
 TEST_F(NetworkServerTest, create_destroy_context)
 {
-    uint64_t volume_size = 1 << 30;
+    uint64_t volume_size = 1ULL << 30;
     ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
     ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
@@ -849,7 +849,7 @@ TEST_F(NetworkServerTest, remove_non_existent_volume)
 
 TEST_F(NetworkServerTest, already_created_volume)
 {
-    uint64_t volume_size = 1 << 30;
+    uint64_t volume_size = 1ULL << 30;
     ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
     ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
@@ -880,7 +880,7 @@ TEST_F(NetworkServerTest, already_created_volume)
 
 TEST_F(NetworkServerTest, open_same_volume_twice)
 {
-    uint64_t volume_size = 1 << 30;
+    uint64_t volume_size = 1ULL << 30;
     ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
     ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
@@ -914,7 +914,7 @@ TEST_F(NetworkServerTest, open_same_volume_twice)
 
 TEST_F(NetworkServerTest, create_write_read_destroy)
 {
-    uint64_t volume_size = 1 << 30;
+    uint64_t volume_size = 1ULL << 30;
     ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
     ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
@@ -1036,7 +1036,7 @@ TEST_F(NetworkServerTest, completion)
         }
     };
 
-    uint64_t volume_size = 1 << 30;
+    uint64_t volume_size = 1ULL << 30;
     ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
     ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
@@ -1162,7 +1162,7 @@ TEST_F(NetworkServerTest, completion)
 
 TEST_F(NetworkServerTest, stat)
 {
-    uint64_t volume_size = 1 << 30;
+    uint64_t volume_size = 1ULL << 30;
     ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
     ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
@@ -1193,7 +1193,7 @@ TEST_F(NetworkServerTest, stat)
 
 TEST_F(NetworkServerTest, list_volumes)
 {
-    uint64_t volume_size = 1 << 30;
+    uint64_t volume_size = 1ULL << 30;
     size_t max_size = 1;
     int len = -1;
     char *names = NULL;
@@ -1273,7 +1273,7 @@ TEST_F(NetworkServerTest, completion_two_ctxs)
         }
     };
 
-    uint64_t volume_size = 1 << 30;
+    uint64_t volume_size = 1ULL << 30;
     ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
     ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
@@ -1432,7 +1432,7 @@ TEST_F(NetworkServerTest, completion_two_ctxs)
 
 TEST_F(NetworkServerTest, write_flush_read)
 {
-    uint64_t volume_size = 1 << 30;
+    uint64_t volume_size = 1ULL << 30;
     ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
     ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
@@ -1584,7 +1584,7 @@ TEST_F(NetworkServerTest, stress_ha_enabled)
 
 TEST_F(NetworkServerTest, create_truncate_volume)
 {
-    uint64_t volume_size = 1 << 20;
+    uint64_t volume_size = 1ULL << 20;
     ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
     ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
@@ -1607,7 +1607,7 @@ TEST_F(NetworkServerTest, create_truncate_volume)
     EXPECT_EQ(st.st_size,
               volume_size);
 
-    uint64_t new_volume_size = 1 << 30;
+    uint64_t new_volume_size = 1ULL << 30;
     EXPECT_EQ(ovs_truncate_volume(ctx,
                                   "volume",
                                   new_volume_size),
@@ -1631,7 +1631,7 @@ TEST_F(NetworkServerTest, create_truncate_volume)
 
 TEST_F(NetworkServerTest, truncate_volume)
 {
-    uint64_t volume_size = 1 << 20;
+    uint64_t volume_size = 1ULL << 20;
     ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
     ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
@@ -1652,7 +1652,7 @@ TEST_F(NetworkServerTest, truncate_volume)
                                 volume_size),
               0);
 
-    uint64_t new_volume_size = 1 << 30;
+    uint64_t new_volume_size = 1ULL << 30;
     EXPECT_EQ(ovs_truncate(ctx,
                            new_volume_size),
               -1);
@@ -1683,7 +1683,7 @@ TEST_F(NetworkServerTest, truncate_volume)
 
 TEST_F(NetworkServerTest, fail_to_truncate_volume)
 {
-    uint64_t volume_size = 1 << 20;
+    uint64_t volume_size = 1ULL << 20;
     ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
     ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
@@ -1699,7 +1699,7 @@ TEST_F(NetworkServerTest, fail_to_truncate_volume)
                                 volume_size),
               0);
 
-    uint64_t new_volume_size = 1 << 30;
+    uint64_t new_volume_size = 1ULL << 30;
     EXPECT_EQ(ovs_truncate(ctx,
                            new_volume_size),
               -1);
@@ -1721,7 +1721,7 @@ TEST_F(NetworkServerTest, fail_to_truncate_volume)
 
 TEST_F(NetworkServerTest, list_open_connections)
 {
-    uint64_t volume_size = 1 << 20;
+    uint64_t volume_size = 1ULL << 20;
     ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
     ASSERT_TRUE(ctx_attr != nullptr);
     EXPECT_EQ(0,
@@ -2335,6 +2335,247 @@ TEST_F(NetworkServerTest, DISABLED_remote_going_away_during_ctrl_request)
     stop = true;
 
     f.wait();
+}
+
+TEST_F(NetworkServerTest, write_beyond_volume_boundaries)
+{
+    uint64_t volume_size = 1ULL << 20;
+    off_t offset = 1ULL << 23;
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
+    EXPECT_EQ(0,
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         FileSystemTestSetup::edge_transport().c_str(),
+                                         FileSystemTestSetup::address().c_str(),
+                                         FileSystemTestSetup::local_edge_port()));
+    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
+    ASSERT_TRUE(ctx != nullptr);
+    EXPECT_EQ(0,
+              ovs_create_volume(ctx,
+                                "volume",
+                                volume_size));
+    ASSERT_EQ(0,
+              ovs_ctx_init(ctx,
+                           "volume",
+                           O_RDWR));
+
+    std::string pattern("openvstorage1");
+    auto wbuf = std::make_unique<uint8_t[]>(pattern.length());
+    ASSERT_TRUE(wbuf != nullptr);
+
+    memcpy(wbuf.get(),
+           pattern.c_str(),
+           pattern.length());
+
+    EXPECT_EQ(-1,
+              ovs_write(ctx,
+                        wbuf.get(),
+                        pattern.length(),
+                        offset));
+
+    EXPECT_EQ(EFBIG, errno);
+
+    EXPECT_EQ(0,
+              ovs_ctx_destroy(ctx));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
+}
+
+TEST_F(NetworkServerTest, remote_write_beyond_volume_boundaries)
+{
+    mount_remote();
+
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                        umount_remote();
+                                     }));
+
+    const std::string vname("volume");
+    off_t offset = 2147483648;
+
+    make_volume(vname,
+                1ULL << 20,
+                edge_port(true));
+
+    CtxPtr ctx(open_volume(vname,
+                           edge_port(true),
+                           O_RDWR,
+                           EnableHa::F));
+    ASSERT_TRUE(ctx != nullptr);
+
+    std::string pattern("openvstorage1");
+    auto wbuf = std::make_unique<uint8_t[]>(pattern.length());
+    ASSERT_TRUE(wbuf != nullptr);
+
+    memcpy(wbuf.get(),
+           pattern.c_str(),
+           pattern.length());
+
+    EXPECT_EQ(-1,
+              ovs_write(ctx.get(),
+                        wbuf.get(),
+                        pattern.length(),
+                        offset));
+
+    EXPECT_EQ(EFBIG, errno);
+}
+
+TEST_F(NetworkServerTest, fail_shrink_volume)
+{
+    uint64_t volume_size = 1ULL << 30;
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
+    EXPECT_EQ(0,
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         FileSystemTestSetup::edge_transport().c_str(),
+                                         FileSystemTestSetup::address().c_str(),
+                                         FileSystemTestSetup::local_edge_port()));
+    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
+    ASSERT_TRUE(ctx != nullptr);
+    EXPECT_EQ(ovs_create_volume(ctx,
+                                "volume",
+                                volume_size),
+              0);
+    ASSERT_EQ(0,
+              ovs_ctx_init(ctx, "volume", O_RDWR));
+
+    struct stat st;
+    EXPECT_EQ(0,
+              ovs_stat(ctx, &st));
+    EXPECT_EQ(st.st_size,
+              volume_size);
+
+    uint64_t new_volume_size = 1ULL << 20;
+    EXPECT_EQ(-1, ovs_truncate_volume(ctx,
+                                     "volume",
+                                     new_volume_size));
+    EXPECT_EQ(EPERM, errno);
+    EXPECT_EQ(0,
+              ovs_stat(ctx, &st));
+    EXPECT_EQ(st.st_size,
+              volume_size);
+
+    EXPECT_EQ(0,
+              ovs_ctx_destroy(ctx));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
+}
+
+TEST_F(NetworkServerTest, remote_fail_shrink_volume)
+{
+    mount_remote();
+
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                        umount_remote();
+                                     }));
+
+    const std::string vname("volume");
+    uint64_t volume_size = 1ULL << 30;
+    make_volume(vname,
+                volume_size,
+                edge_port(true));
+
+    CtxPtr ctx(open_volume(vname,
+                           edge_port(true),
+                           O_RDWR,
+                           EnableHa::F));
+    ASSERT_TRUE(ctx != nullptr);
+
+    struct stat st;
+    EXPECT_EQ(0,
+              ovs_stat(ctx.get(), &st));
+    EXPECT_EQ(st.st_size,
+              volume_size);
+
+    uint64_t new_volume_size = 1ULL << 20;
+    EXPECT_EQ(-1, ovs_truncate_volume(ctx.get(),
+                                     "volume",
+                                     new_volume_size));
+    EXPECT_EQ(EPERM, errno);
+    EXPECT_EQ(0,
+              ovs_stat(ctx.get(), &st));
+    EXPECT_EQ(st.st_size,
+              volume_size);
+}
+
+TEST_F(NetworkServerTest, fail_grow_volume_beyond_limit)
+{
+    uint64_t volume_size = 1ULL << 30;
+    ovs_ctx_attr_t *ctx_attr = ovs_ctx_attr_new();
+    ASSERT_TRUE(ctx_attr != nullptr);
+    EXPECT_EQ(0,
+              ovs_ctx_attr_set_transport(ctx_attr,
+                                         FileSystemTestSetup::edge_transport().c_str(),
+                                         FileSystemTestSetup::address().c_str(),
+                                         FileSystemTestSetup::local_edge_port()));
+    ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
+    ASSERT_TRUE(ctx != nullptr);
+    EXPECT_EQ(ovs_create_volume(ctx,
+                                "volume",
+                                volume_size),
+              0);
+    ASSERT_EQ(0,
+              ovs_ctx_init(ctx, "volume", O_RDWR));
+
+    struct stat st;
+    EXPECT_EQ(0,
+              ovs_stat(ctx, &st));
+    EXPECT_EQ(st.st_size,
+              volume_size);
+
+    uint64_t new_volume_size = UINT64_MAX;
+    EXPECT_EQ(-1, ovs_truncate_volume(ctx,
+                                     "volume",
+                                     new_volume_size));
+    EXPECT_EQ(EFBIG, errno);
+    EXPECT_EQ(0,
+              ovs_stat(ctx, &st));
+    EXPECT_EQ(st.st_size,
+              volume_size);
+
+    EXPECT_EQ(0,
+              ovs_ctx_destroy(ctx));
+    EXPECT_EQ(0,
+              ovs_ctx_attr_destroy(ctx_attr));
+}
+
+TEST_F(NetworkServerTest, remote_fail_grow_volume_beyond_limit)
+{
+    mount_remote();
+
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                        umount_remote();
+                                     }));
+
+    const std::string vname("volume");
+    uint64_t volume_size = 1ULL << 20;
+    make_volume(vname,
+                volume_size,
+                edge_port(true));
+
+    CtxPtr ctx(open_volume(vname,
+                           edge_port(true),
+                           O_RDWR,
+                           EnableHa::F));
+    ASSERT_TRUE(ctx != nullptr);
+
+    struct stat st;
+    EXPECT_EQ(0,
+              ovs_stat(ctx.get(), &st));
+    EXPECT_EQ(st.st_size,
+              volume_size);
+
+    uint64_t new_volume_size = UINT64_MAX;
+    EXPECT_EQ(-1, ovs_truncate_volume(ctx.get(),
+                                     "volume",
+                                     new_volume_size));
+    EXPECT_EQ(EFBIG, errno);
+    EXPECT_EQ(0,
+              ovs_stat(ctx.get(), &st));
+    EXPECT_EQ(st.st_size,
+              volume_size);
 }
 
 } //namespace

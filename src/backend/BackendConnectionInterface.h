@@ -42,6 +42,8 @@ VD_BOOLEAN_ENUM(NamespaceMustNotExist);
 namespace backend
 {
 
+class PartialReadCounter;
+
 class BackendConnectionInterface
     : public boost::intrusive::slist_base_hook<>
 {
@@ -146,7 +148,7 @@ protected:
                    InsistOnLatestVersion) = 0;
     };
 
-    void
+    PartialReadCounter
     partial_read(const Namespace& ns,
                  const PartialReads& partial_reads,
                  InsistOnLatestVersion,
@@ -228,7 +230,8 @@ public:
     virtual bool
     partial_read_(const Namespace& ns,
                   const PartialReads& reads,
-                  InsistOnLatestVersion) = 0;
+                  InsistOnLatestVersion,
+                  PartialReadCounter&) = 0;
 
 private:
     virtual void

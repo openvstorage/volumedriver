@@ -40,6 +40,7 @@
 #include <youtils/CheckSum.h>
 
 #include <backend/BackendInterface.h>
+#include <backend/PartialReadCounter.h>
 
 namespace volumedriver
 {
@@ -249,6 +250,9 @@ public:
         return currentClusterLoc_.number();
     }
 
+    backend::PartialReadCounter
+    partial_read_counter() const;
+
 private:
     //INVARIANT: currentSCO_ == 0 => currentClusterLoc_.getSCOOffset() == 0
 
@@ -280,9 +284,11 @@ private:
 
     mutable boost::shared_mutex rw_lock_;
     mutable boost::mutex error_lock_;
+    mutable fungi::SpinLock partial_read_counter_lock_;
 
     std::atomic<uint64_t> cacheHitCounter_;
     std::atomic<uint64_t> cacheMissCounter_;
+    backend::PartialReadCounter partial_read_counter_;
 
     std::unique_ptr<CheckSum> currentCheckSum_;
 

@@ -94,6 +94,10 @@ public:
     remove_cluster_cache_handle(const volumedriver::ClusterCacheHandle,
                                 const MaybeSeconds& = boost::none);
 
+    void
+    remove_namespace_from_sco_cache(const std::string&,
+                                    const MaybeSeconds& = boost::none);
+
 private:
     DECLARE_LOGGER("LocalPythonClient");
 

@@ -154,6 +154,48 @@ public:
         ZEXPECT_NOTHING_MORE(zock);
     }
 
+    void
+    remote_sync(const ObjectId& vname)
+    {
+        const Object obj(ObjectType::Volume,
+                         vname);
+
+        const auto sreq(vfsprotocol::MessageUtils::create_sync_request(obj));
+
+        ZUtils::serialize_to_socket(zock,
+                                    vfsprotocol::RequestType::Sync,
+                                    MoreMessageParts::T);
+
+        const vfsprotocol::Tag tag(reinterpret_cast<uint64_t>(&sreq));
+        ZUtils::serialize_to_socket(zock,
+                                    tag,
+                                    MoreMessageParts::T);
+
+        ZUtils::serialize_to_socket(zock,
+                                    sreq,
+                                    MoreMessageParts::F);
+
+        vfsprotocol::ResponseType rsp;
+        ZUtils::deserialize_from_socket(zock, rsp);
+
+        EXPECT_TRUE(rsp == vfsprotocol::ResponseType::Ok);
+
+        ZEXPECT_MORE(zock, "tag");
+
+        vfsprotocol::Tag rsp_tag;
+        ZUtils::deserialize_from_socket(zock, rsp_tag);
+
+        EXPECT_EQ(tag, rsp_tag);
+
+        ZEXPECT_MORE(zock, "SyncResponse");
+
+        vfsprotocol::SyncResponse srsp;
+        ZUtils::deserialize_from_socket(zock, srsp);
+        ZEXPECT_NOTHING_MORE(zock);
+
+        EXPECT_TRUE(srsp.dtl_in_sync());
+    }
+
     using NodeMap = ObjectRouter::NodeMap;
     using ConfigMap = ObjectRouter::ConfigMap;
 
@@ -244,6 +286,15 @@ TEST_F(ObjectRouterTest, remote_write)
 
     remote_write(vname, pattern, off);
     check_file(fname, pattern, pattern.size(), off);
+}
+
+TEST_F(ObjectRouterTest, remote_sync)
+{
+    const FrontendPath fname(make_volume_name("/some-volume"));
+    const uint64_t vsize = 10 << 20;
+    const auto vname(create_file(fname, vsize));
+
+    remote_sync(vname);
 }
 
 TEST_F(ObjectRouterTest, invalid_request_type)

@@ -160,6 +160,8 @@ PythonClient::redirected_xmlrpc(const std::string& addr,
             throw clienterrors::ObjectStillHasChildrenException(errorstring.c_str());
         case XMLRPCErrorCode::SnapshotNameAlreadyExists:
             throw clienterrors::SnapshotNameAlreadyExistsException(errorstring.c_str());
+        case XMLRPCErrorCode::VolumeRestartInProgress:
+            throw clienterrors::VolumeRestartInProgressException(errorstring.c_str());
         default:
             {
                 //forward compatibility
@@ -524,7 +526,7 @@ PythonClient::list_client_connections(const std::string& node_id,
     std::vector<ClientInfo> info;
     for (auto i = 0; i < rsp.size(); ++i)
     {
-        info.push_back(XMLRPCStructs::deserialize_from_xmlrpc_value<ClientInfo>(rsp[i]));
+        info.push_back(XMLRPCStructsBinary::deserialize_from_xmlrpc_value<ClientInfo>(rsp[i]));
     }
     return info;
 }
@@ -540,7 +542,7 @@ PythonClient::info_snapshot(const std::string& volume_id,
     req[XMLRPCKeys::snapshot_id] = snapshot_id;
 
     auto rsp(call(SnapshotInfo::method_name(), req, timeout));
-    return XMLRPCStructs::deserialize_from_xmlrpc_value<XMLRPCSnapshotInfo>(rsp);
+    return XMLRPCStructsBinary::deserialize_from_xmlrpc_value<XMLRPCSnapshotInfo>(rsp);
 }
 
 XMLRPCVolumeInfo
@@ -551,7 +553,7 @@ PythonClient::info_volume(const std::string& volume_id,
 
     req[XMLRPCKeys::volume_id] = volume_id;
     auto rsp(call(VolumeInfo::method_name(), req, timeout));
-    return XMLRPCStructs::deserialize_from_xmlrpc_value<XMLRPCVolumeInfo>(rsp);
+    return XMLRPCStructsBinary::deserialize_from_xmlrpc_value<XMLRPCVolumeInfo>(rsp);
 }
 
 XMLRPCStatistics
@@ -566,8 +568,18 @@ PythonClient::statistics_volume(const std::string& volume_id,
                      XMLRPCKeys::reset,
                      reset);
 
-    auto rsp(call(VolumePerformanceCounters::method_name(), req, timeout));
-    return XMLRPCStructs::deserialize_from_xmlrpc_value<XMLRPCStatistics>(rsp);
+    return fallback_<XMLRPCStatistics>(VolumePerformanceCountersV3::method_name(),
+                                       VolumePerformanceCounters::method_name(),
+                                       req,
+                                       timeout,
+                                       [](XmlRpc::XmlRpcValue& rsp) -> XMLRPCStatistics
+        {
+            return XMLRPCStructsXML::deserialize_from_xmlrpc_value<XMLRPCStatistics>(rsp);
+        },
+                                         [](XmlRpc::XmlRpcValue& rsp) -> XMLRPCStatistics
+        {
+            return XMLRPCStructsBinary::deserialize_from_xmlrpc_value<XMLRPCStatisticsV2>(rsp);
+        });
 }
 
 XMLRPCStatistics
@@ -582,8 +594,18 @@ PythonClient::statistics_node(const std::string& node_id,
                      XMLRPCKeys::reset,
                      reset);
 
-    auto rsp(call(VolumeDriverPerformanceCounters::method_name(), req, timeout));
-    return XMLRPCStructs::deserialize_from_xmlrpc_value<XMLRPCStatistics>(rsp);
+    return fallback_<XMLRPCStatistics>(VolumeDriverPerformanceCountersV3::method_name(),
+                                       VolumeDriverPerformanceCounters::method_name(),
+                                       req,
+                                       timeout,
+                                       [](XmlRpc::XmlRpcValue& rsp) -> XMLRPCStatistics
+        {
+            return XMLRPCStructsXML::deserialize_from_xmlrpc_value<XMLRPCStatistics>(rsp);
+        },
+                                         [](XmlRpc::XmlRpcValue& rsp) -> XMLRPCStatistics
+        {
+            return XMLRPCStructsBinary::deserialize_from_xmlrpc_value<XMLRPCStatisticsV2>(rsp);
+        });
 }
 
 boost::optional<vd::VolumeId>
@@ -655,7 +677,7 @@ PythonClient::create_volume(const std::string& target_path,
     if (mdb_config)
     {
         req[XMLRPCKeys::metadata_backend_config] =
-            XMLRPCStructs::serialize_to_xmlrpc_value(mdb_config->clone());
+            XMLRPCStructsBinary::serialize_to_xmlrpc_value(mdb_config->clone());
     }
 
     if (not node_id.empty())
@@ -696,7 +718,7 @@ PythonClient::create_clone(const std::string& target_path,
     if (mdb_config)
     {
         req[XMLRPCKeys::metadata_backend_config] =
-            XMLRPCStructs::serialize_to_xmlrpc_value(mdb_config->clone());
+            XMLRPCStructsBinary::serialize_to_xmlrpc_value(mdb_config->clone());
     }
 
     if (not node_id.empty())
@@ -743,7 +765,7 @@ PythonClient::update_metadata_backend_config(const std::string& volume_id,
 
     req[XMLRPCKeys::volume_id] = volume_id;
     req[XMLRPCKeys::metadata_backend_config] =
-        XMLRPCStructs::serialize_to_xmlrpc_value(mdb_config->clone());
+        XMLRPCStructsBinary::serialize_to_xmlrpc_value(mdb_config->clone());
 
     call(UpdateMetaDataBackendConfig::method_name(), req, timeout);
 }
@@ -964,7 +986,7 @@ PythonClient::info_cluster(const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     auto rsp(call(GetNodesStatusMap::method_name(), req, timeout));
-    ClusterRegistry::NodeStatusMap nodestatusmap(XMLRPCStructs::deserialize_from_xmlrpc_value<ClusterRegistry::NodeStatusMap>(rsp));
+    ClusterRegistry::NodeStatusMap nodestatusmap(XMLRPCStructsBinary::deserialize_from_xmlrpc_value<ClusterRegistry::NodeStatusMap>(rsp));
 
     std::map<NodeId, ClusterNodeStatus::State> ret;
     for (const auto& stat : nodestatusmap)
@@ -1146,6 +1168,13 @@ PythonClient::get_backend_connection_pool(const ObjectId& volume_id,
     req[XMLRPCKeys::volume_id] = volume_id.str();
     auto rsp(call(GetBackendConnectionPool::method_name(), req, timeout));
     return static_cast<std::string>(rsp[XMLRPCKeys::backend_config_str]);
+}
+
+std::vector<std::string>
+PythonClient::list_methods(const MaybeSeconds& timeout)
+{
+    XmlRpc::XmlRpcValue req;
+    return extract_vec(call("system.listMethods", req, timeout));
 }
 
 }

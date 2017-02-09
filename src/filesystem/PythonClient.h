@@ -39,6 +39,11 @@
 #include <volumedriver/MetaDataBackendConfig.h>
 #include <volumedriver/FailOverCacheConfig.h>
 
+namespace volumedriverfstest
+{
+class PythonClientTest;
+}
+
 namespace volumedriverfs
 {
 
@@ -59,6 +64,7 @@ MAKE_EXCEPTION(ConfigurationUpdateException, fungi::IOException);
 MAKE_EXCEPTION(NodeNotReachableException, fungi::IOException);
 MAKE_EXCEPTION(ClusterNotReachableException, fungi::IOException);
 MAKE_EXCEPTION(ObjectStillHasChildrenException, fungi::IOException);
+MAKE_EXCEPTION(VolumeRestartInProgressException, fungi::IOException);
 
 class MaxRedirectsExceededException
     : public PythonClientException
@@ -95,6 +101,8 @@ struct ClusterContact
 class PythonClient
 {
 private:
+    friend class volumedriverfstest::PythonClientTest;
+
     static constexpr unsigned max_redirects_default = 2;
 
 public:
@@ -410,6 +418,46 @@ protected:
                       XmlRpc::XmlRpcValue& req,
                       unsigned& redirect_count,
                       const MaybeSeconds&);
+
+    std::vector<std::string>
+    list_methods(const MaybeSeconds& = boost::none);
+
+    template<typename ReturnValue,
+             typename Fun,
+             typename FallbackFun>
+    ReturnValue
+    fallback_(const char* method,
+              const char* fallback_method,
+              XmlRpc::XmlRpcValue& req,
+              const MaybeSeconds& timeout,
+              Fun&& fun,
+              FallbackFun&& fallback_fun)
+    {
+
+        try
+        {
+            XmlRpc::XmlRpcValue rsp(call(method, req, timeout));
+            return fun(rsp);
+        }
+        catch (clienterrors::PythonClientException&)
+        {
+            // that's as close as we get to a "method not found" error - so
+            // let's add a basic sanity check to see if it's really the absence
+            // of `method' that got in our way
+            std::vector<std::string> vec(list_methods(timeout));
+            for (const auto& m : vec)
+            {
+                if (m == method)
+                {
+                    throw;
+                }
+            }
+
+            LOG_WARN(method << " not found, trying " << fallback_method);
+            XmlRpc::XmlRpcValue rsp(call(fallback_method, req, timeout));
+            return fallback_fun(rsp);
+        }
+    }
 
     std::string cluster_id_;
     std::mutex lock_;

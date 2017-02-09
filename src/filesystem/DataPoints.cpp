@@ -215,6 +215,25 @@ operator<<(std::ostream& os,
         ",cache_misses=" << vsc.cache_misses;
 };
 
+VolumeBackendDataPoint::VolumeBackendDataPoint(const vd::VolumeId& vid)
+    : id(vid)
+{
+    LOCKVD();
+    partial_read_counter_ = api::getPartialReadCounter(vid);
+}
+
+constexpr const char* VolumeBackendDataPoint::name;
+
+std::ostream&
+operator<<(std::ostream& os,
+           const VolumeBackendDataPoint& dp)
+{
+    return
+        name_and_id(os, dp) <<
+        ",fast=" << dp.partial_read_counter_.fast <<
+        ",slow=" << dp.partial_read_counter_.slow;
+};
+
 namespace
 {
 
@@ -228,18 +247,35 @@ get_perf_counters(const vd::VolumeId& id)
     return pc;
 }
 
+template<typename T, typename U>
 std::ostream&
 stream_perf_counter(std::ostream& os,
-                    const vd::PerformanceCounter<uint64_t>& pc,
+                    const vd::PerformanceCounter<T, U>& pc,
                     const char* pfx)
 {
-    return os <<
+    os <<
         "," << pfx << "_events=" << pc.events() <<
         "," << pfx << "_sum=" << pc.sum() <<
         "," << pfx << "_sqsum=" << pc.sum_of_squares() <<
         "," << pfx << "_min=" << pc.min() <<
-        "," << pfx << "_max=" << pc.max();
+        "," << pfx << "_max=" << pc.max() <<
+        "," << pfx << "_distribution={";
 
+    bool fst = true;
+    for (size_t i = 0; i < pc.bucket_bounds().size(); ++i)
+    {
+        if (fst)
+        {
+            fst = false;
+        }
+        else
+        {
+            os << ",";
+        }
+        os << pc.bucket_bounds()[i] << ":" << pc.buckets()[i];
+    }
+
+    os << "}";
     return os;
 }
 

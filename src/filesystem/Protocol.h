@@ -58,6 +58,9 @@ enum class ResponseType
     ObjectNotRunningHere = 1004,
     IOError = 1005,
     Timeout = 1006,
+    AccessBeyondEndOfVolume = 1007,
+    CannotShrinkVolume = 1008,
+    CannotGrowVolumeBeyondLimit = 1009,
 };
 
 template<typename T>

@@ -14,6 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "Local_Connection.h"
+#include "PartialReadCounter.h"
 
 #include <boost/filesystem/fstream.hpp>
 
@@ -396,7 +397,8 @@ OpenASCO(const Connection::KeyType& key)
 bool
 Connection::partial_read_(const Namespace& ns,
                           const PartialReads& partial_reads,
-                          InsistOnLatestVersion)
+                          InsistOnLatestVersion,
+                          PartialReadCounter& prc)
 {
     if (enable_partial_read_ == EnablePartialRead::T)
     {
@@ -415,6 +417,8 @@ Connection::partial_read_(const Namespace& ns,
                 {
                     throw BackendRestoreException();
                 }
+
+                ++prc.fast;
             }
         }
 

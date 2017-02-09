@@ -42,7 +42,8 @@ class FuseInterface
 {
 public:
     FuseInterface(const boost::property_tree::ptree& pt,
-                  const RegisterComponent registerize = RegisterComponent::T);
+                  const RegisterComponent registerize = RegisterComponent::T,
+                  const RestartVolumes = RestartVolumes::T);
 
     ~FuseInterface() = default;
 

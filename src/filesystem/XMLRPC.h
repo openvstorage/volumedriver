@@ -47,6 +47,7 @@ enum class XMLRPCErrorCode
     PreviousSnapshotNotOnBackend = 6,
     ObjectStillHasChildren = 7,
     SnapshotNameAlreadyExists = 8,
+    VolumeRestartInProgress = 9,
 };
 
 class FileSystem;
@@ -316,8 +317,18 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
                 "Performance data");
 
 REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
+                VolumePerformanceCountersV3,
+                "volumePerformanceCountersV3",
+                "Performance data");
+
+REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
                 VolumeDriverPerformanceCounters,
                 "volumeDriverPerformanceCounters",
+                "Performance data");
+
+REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
+                VolumeDriverPerformanceCountersV3,
+                "volumeDriverPerformanceCountersV3",
                 "Performance data");
 
 REGISTER_XMLRPC(XMLRPCCallTimingRedirect,
@@ -703,7 +714,7 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
                 "getMetaDataCacheCapacity",
                 "get capacity of the metadata cache (in pages)");
 
-typedef LOKI_TYPELIST_87(
+typedef LOKI_TYPELIST_89(
 // ================== EXPOSED IN XMLRPC CLIENT ===================
                          VolumeCreate,
                          VolumesList,
@@ -719,7 +730,9 @@ typedef LOKI_TYPELIST_87(
                          SnapshotDestroy,
                          IsVolumeSyncedUpToSnapshot,
                          VolumePerformanceCounters,
+                         VolumePerformanceCountersV3,
                          VolumeDriverPerformanceCounters,
+                         VolumeDriverPerformanceCountersV3,
                          SetVolumeAsTemplate,
                          GetScrubbingWork,
                          ApplyScrubbingResult,
@@ -770,13 +783,13 @@ typedef LOKI_TYPELIST_87(
                          ScheduleBackendSync,
                          VAAICopy,
                          ListClientConnections,
+                         RemoveNamespaceFromSCOCache,
                          ResizeObject,
                          GetBackendConnectionPool,
                          // ================== NOT EXPOSED, NOT TESTED   ==================
                          GetFailOverMode,
                          ScoCacheInfo,
                          VolumeScoCacheInfo,
-                         RemoveNamespaceFromSCOCache,
                          VolumeDestroy,
                          // These are not supposed to be executed via xmlrpc but only
                          // (implicitly) via the filesystem interface.

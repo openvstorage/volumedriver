@@ -236,6 +236,8 @@ truncated.
 The function shall fail if:
 - ENOENT The named volume doesn't exist
 - EINVAL Invalid arguments supplied
+- EFBIG  Cannot grow volume beyond the implementation limit
+- EPERM  Not allowed to shrink volume
 - EIO An error occured during ovs_truncate_volume()
 
 ### Snapshot a volume
@@ -527,6 +529,8 @@ truncated.
 The function shall fail if:
 - EBADF Volume is not open for writing or is not open yet
 - EINVAL Invalid arguments supplied
+- EFBIG  Cannot grow volume beyond the implementation limit
+- EPERM  Not allowed to shrink volume
 - EIO An error occured during ovs_truncate()
 
 ### Asynchronous read from a volume
@@ -895,12 +899,10 @@ Return pointer to the buffer content previously allocated by
 ovs_allocate().
 
 #### Return Value
-If the function succeeds pointer to the allocated buffer is returned.
-Otherwise NULL is returned and errno is set to one of the values defined
-below.
+Upon successful completion, a pointer to the allocated buffer is returned.
 
 #### Errors
-- EINVAL The value specified by 'ptr' is invalid.
+No errors are defined.
 
 ### Retrieve size of buffer
 ```
@@ -912,12 +914,10 @@ Return size of the buffer content previously allocated by
 ovs_allocate().
 
 #### Return Value
-If the function succeeds the size of the buffer content is returned.
-Otherwise -1 is returned and errno is set to one of the values defined
-below.
+Upon successful completion, the size of the buffer content is returned.
 
 #### Errors
-- EINVAL The value specified by 'ptr' is invalid.
+No errors are defined.
 
 ### Shared memory deallocation
 ```

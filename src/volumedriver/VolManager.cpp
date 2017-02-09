@@ -422,40 +422,32 @@ VolManager::scheduleTask(VolPoolTask* t)
 }
 
 void
-VolManager::ensureVolumeNotPresent(const VolumeId& id) const
+VolManager::ensureNamespaceNotRestarting(const VolumeId& id) const
 {
-    if (findVolume_noThrow_(id) != 0)
+    for (const auto& p : restartMap_)
     {
-        LOG_ERROR("Volume with name " << id << " already present");
-        throw VolumeNameAlreadyPresent("volume / clone with this name exists",
-                                       id.c_str(),
-                                       EEXIST);
-    }
-}
-
-void
-VolManager::ensureVolumeNotPresent(const Namespace& ns) const
-{
-    for(VolumeMap::const_iterator it = volMap_.begin(); it != volMap_.end(); ++it)
-    {
-        if(it->second->getNamespace() == ns)
+        if (p.second.id_ == id)
         {
-            LOG_ERROR("Volume with namespace " << ns << " already present");
-            throw NamespaceAlreadyPresent(ns.c_str());
+            LOG_ERROR("Volume restart of " << id << ", namespace " << p.first << " in progress");
+            throw VolumeRestartInProgressException("Volume restart in progress",
+                                                   id.str().c_str(),
+                                                   EAGAIN);
         }
     }
-
-    ensureNamespaceNotRestarting(ns);
 }
 
 void
 VolManager::ensureNamespaceNotRestarting(const Namespace& ns) const
 {
-    if (restartMap_.find(ns) != restartMap_.end())
+    auto it = restartMap_.find(ns);
+    if (it != restartMap_.end())
     {
-        LOG_ERROR("Volume restart for namespace " << ns <<
-                  " already in progress");
-        throw fungi::IOException("Volume restart already in progress");
+        const VolumeId& id = it->second.id_;
+        LOG_ERROR("Volume restart of " << id << ", namespace " << ns <<
+                  " in progress");
+        throw VolumeRestartInProgressException("Volume restart in progress",
+                                               id.str().c_str(),
+                                               EAGAIN);
     }
 }
 
@@ -1102,7 +1094,7 @@ VolManager::restoreSnapshot(const VolumeId& volid,
 
     MAIN_EVENT("Restoring Snapshot, VolumeID: " << volid << ", SnapshotName: " << snapid);
 
-    SharedVolumePtr vol = findVolume_(volid);
+    SharedVolumePtr vol = find_volume(volid);
     const VolumeConfig cfg(vol->get_config());
     const be::Namespace nspace(vol->getNamespace());
 
@@ -1167,7 +1159,7 @@ VolManager::setAsTemplate(const VolumeId volid)
 {
     mgmtMutex_.assertLocked();
     MAIN_EVENT("Set Volume As Template, volume ID " << volid);
-    SharedVolumePtr vol = findVolume_(volid);
+    SharedVolumePtr vol = find_volume(volid);
     {
         UNLOCK_MANAGER();
         vol->setAsTemplate();
@@ -1264,7 +1256,7 @@ VolManager::destroyVolume(const VolumeId& name,
 {
     mgmtMutex_.assertLocked();
 
-    SharedVolumePtr v = findVolume_(name);
+    SharedVolumePtr v = find_volume(name);
     destroyVolume(v,
                   delete_local_data,
                   remove_volume_completely,
@@ -1346,7 +1338,7 @@ VolManager::removeLocalVolumeData(const be::Namespace& nspace)
 {
     ASSERT_LOCKABLE_LOCKED(mgmtMutex_);
 
-    SharedVolumePtr vol = findVolumeFromNamespace(nspace);
+    SharedVolumePtr vol = find_volume_no_throw(nspace);
     if (vol != nullptr)
     {
         LOG_ERROR("Volume " << vol->getName() << " backed by namespace " <<
@@ -1354,6 +1346,8 @@ VolManager::removeLocalVolumeData(const be::Namespace& nspace)
         throw fungi::IOException("Cannot remove local volume data while volume is present",
                                  nspace.str().c_str());
     }
+
+    ensureNamespaceNotRestarting(nspace);
 
     fs::remove_all(getMetaDataPath(nspace));
     fs::remove_all(getTLogPath(nspace));
@@ -1404,91 +1398,35 @@ VolManager::getVolumeList(std::list<VolumeId> &vlist) const
 }
 
 SharedVolumePtr
-VolManager::findVolume_noThrow_(const VolumeId& id)  const
+VolManager::find_volume_no_throw(const VolumeId& id)  const
 {
     mgmtMutex_.assertLocked();
 
-    VolumeMap::const_iterator it = volMap_.find(id);
+    auto it = volMap_.find(id);
     if (it == volMap_.end())
     {
-        return 0;
+        return nullptr;
     }
-    return it->second;
+    else
+    {
+        return it->second;
+    }
 }
 
 SharedVolumePtr
-VolManager::findVolumeFromNamespace(const Namespace& ns) const
+VolManager::find_volume_no_throw(const Namespace& nspace) const
 {
-    for(VolumeMap::const_iterator it = volMap_.begin(); it != volMap_.end(); ++it)
+    mgmtMutex_.assertLocked();
+
+    for (const auto& p : volMap_)
     {
-        if(it->second->getNamespace() == ns)
+        if (p.second->getNamespace() == nspace)
         {
-            return it->second;
+            return p.second;
         }
     }
+
     return nullptr;
-}
-
-SharedVolumePtr
-VolManager::findVolumeConst_(const VolumeId& id,
-                             const std::string& message) const
-{
-    mgmtMutex_.assertLocked();
-
-    SharedVolumePtr vol = findVolume_noThrow_(id);
-    if (vol == nullptr)
-    {
-        throw VolumeDoesNotExistException((message + " volume does not exist").c_str(),
-                                          id.c_str(),
-                                          ENOENT);
-    }
-
-    return vol;
-}
-
-SharedVolumePtr
-VolManager::findVolume_(const VolumeId& id,
-                        const std::string& message)
-{
-    mgmtMutex_.assertLocked();
-
-    SharedVolumePtr vol = findVolume_noThrow_(id);
-    if (vol == nullptr)
-    {
-        throw VolumeDoesNotExistException((message + " volume does not exist").c_str(),
-                                          id.c_str(),
-                                          ENOENT);
-    }
-
-    return vol;
-}
-
-SharedVolumePtr
-VolManager::findVolumeConst_(const Namespace& ns) const
-{
-    mgmtMutex_.assertLocked();
-    SharedVolumePtr vol = findVolumeFromNamespace(ns);
-    if(vol)
-    {
-        return vol;
-    }
-
-    throw VolumeDoesNotExistException("Volume does not exist", ns.c_str(),
-                                      ENOENT);
-}
-
-SharedVolumePtr
-VolManager::findVolume_(const Namespace& ns)
-{
-    mgmtMutex_.assertLocked();
-    SharedVolumePtr vol = findVolumeFromNamespace(ns);
-    if(vol)
-    {
-        return vol;
-    }
-
-    throw VolumeDoesNotExistException("Volume does not exist", ns.c_str(),
-                                      ENOENT);
 }
 
 VolPool*
@@ -1532,7 +1470,7 @@ private:
 uint64_t
 VolManager::getQueueCount(const VolumeId& volName)
 {
-    SharedVolumePtr v = findVolume_(volName);
+    SharedVolumePtr v = find_volume(volName);
 
     try
     {
@@ -1552,7 +1490,7 @@ uint64_t
 VolManager::getQueueSize(const VolumeId& volName)
 {
     //returns an estimate of data
-    SharedVolumePtr v = findVolume_(volName);
+    SharedVolumePtr v = find_volume(volName);
     return v->getSCOSize() * getQueueCount(volName);
 }
 
@@ -1717,7 +1655,7 @@ VolManager::checkVolumeFailoverCaches()
     for (const auto& vol : vols)
     {
         LOCK_MANAGER();
-        SharedVolumePtr v(findVolume_noThrow_(vol));
+        SharedVolumePtr v(find_volume_no_throw(vol));
         if (v)
         {
             v->check_and_fix_failovercache();

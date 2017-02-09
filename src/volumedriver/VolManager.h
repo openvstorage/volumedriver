@@ -93,12 +93,12 @@ public:
 
     MAKE_EXCEPTION(VolManagerException, fungi::IOException);
     MAKE_EXCEPTION(VolumeDoesNotHaveCorrectRole, VolManagerException);
-    MAKE_EXCEPTION(VolumeNameAlreadyPresent, VolManagerException);
-    MAKE_EXCEPTION(NamespaceAlreadyPresent, VolManagerException);
+    MAKE_EXCEPTION(VolumeAlreadyPresent, VolManagerException);
     MAKE_EXCEPTION(VolumeDoesNotExistException, VolManagerException);
     MAKE_EXCEPTION(VolumeNotTemplatedButNoSnapshotSpecifiedException, VolManagerException);
     MAKE_EXCEPTION(InsufficientResourcesException, VolManagerException);
     MAKE_EXCEPTION(NamespaceDoesNotExistException, VolManagerException);
+    MAKE_EXCEPTION(VolumeRestartInProgressException, VolManagerException);
 
     //    friend class ::api;
     friend class VolumeTestSetup;
@@ -423,13 +423,6 @@ public:
     setTLogMultiplier(const VolumeId&,
                       const boost::optional<TLogMultiplier>&);
 
-    SharedVolumePtr
-    findVolumeConst_(const VolumeId& volname,
-                     const std::string& message = "Pity: ") const;
-
-    SharedVolumePtr
-    findVolumeConst_(const Namespace& ns) const;
-
     uint64_t
     get_sco_cache_max_non_disposable_bytes(const VolumeConfig&) const;
 
@@ -494,6 +487,34 @@ public:
     {
         return boost::chrono::milliseconds(dtl_request_timeout_ms.value());
     }
+
+    /** @locking mgmtMutex_ must be locked */
+    template<typename Id>
+    SharedVolumePtr
+    find_volume(const Id& id) const
+    {
+        mgmtMutex_.assertLocked();
+
+        SharedVolumePtr vol = find_volume_no_throw(id);
+        if (vol == nullptr)
+        {
+            ensureNamespaceNotRestarting(id);
+            throw VolumeDoesNotExistException("volume does not exist",
+                                              id.c_str(),
+                                              ENOENT);
+        }
+        else
+        {
+            return vol;
+        }
+    }
+
+    /** @locking mgmtMutex_ must be locked */
+    SharedVolumePtr
+    find_volume_no_throw(const VolumeId&) const;
+
+    SharedVolumePtr
+    find_volume_no_throw(const Namespace&) const;
 
 private:
     DECLARE_LOGGER("VolManager");
@@ -565,15 +586,20 @@ public:
     DECLARE_PARAMETER(volume_nullio);
 
 private:
-        /** @locking mgmtMutex_ must be locked */
-    SharedVolumePtr
-    findVolume_noThrow_(const VolumeId&) const;
-
+    template<typename Id>
     void
-    ensureVolumeNotPresent(const VolumeId&) const;
+    ensureVolumeNotPresent(const Id& id) const
+    {
+        if (find_volume_no_throw(id) != nullptr)
+        {
+            LOG_ERROR("Volume with name " << id << " already present");
+            throw VolumeAlreadyPresent("volume / clone already present",
+                                       id.c_str(),
+                                       EEXIST);
+        }
 
-    void
-    ensureVolumeNotPresent(const Namespace&) const;
+        ensureNamespaceNotRestarting(id);
+    }
 
     void
     ensureResourceLimits(const VolumeConfig&);
@@ -583,6 +609,9 @@ private:
 
     void
     ensure_volume_size_(const VolumeSize) const;
+
+    void
+    ensureNamespaceNotRestarting(const VolumeId&) const;
 
     void
     ensureNamespaceNotRestarting(const Namespace&) const;
@@ -654,16 +683,6 @@ private:
     virtual bool
     checkConfig(const boost::property_tree::ptree&,
                 ConfigurationReport&) const override;
-
-    SharedVolumePtr
-    findVolume_(const VolumeId& volname,
-                const std::string& message = "Pity: ");
-
-    SharedVolumePtr
-    findVolume_(const Namespace& ns);
-
-    SharedVolumePtr
-    findVolumeFromNamespace(const Namespace& i_namespace) const;
 
     uint64_t
     getCurrentVolumesTLogRequirements();

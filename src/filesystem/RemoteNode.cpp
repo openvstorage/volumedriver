@@ -234,6 +234,21 @@ RemoteNode::handle_response_(WorkItem& work)
         throw RemoteTimeoutException("Remote sent timeout status",
                                      work.request_desc);
         break;
+    case vfsprotocol::ResponseType::AccessBeyondEndOfVolume:
+        LOG_ERROR(node_id() << ": got an access beyond volume boundaries in response to " <<
+                  work.request_desc);
+        throw vd::AccessBeyondEndOfVolumeException("Access beyond volume boundaries");
+        break;
+    case vfsprotocol::ResponseType::CannotShrinkVolume:
+        LOG_ERROR(node_id() << ": cannot shrink volume in response to " <<
+                  work.request_desc);
+        throw vd::CannotShrinkVolumeException("Cannot shrink volume");
+        break;
+    case vfsprotocol::ResponseType::CannotGrowVolumeBeyondLimit:
+        LOG_ERROR(node_id() << ": cannot grow volume beyond limit in response to " <<
+                  work.request_desc);
+        throw vd::CannotGrowVolumeBeyondLimitException("Cannot grow volume beyond limit");
+        break;
     default:
         LOG_ERROR(node_id() << ": " << work.request_desc <<
                   " failed, remote returned status " << vfsprotocol::response_type_to_string(rsp_type) <<
@@ -687,11 +702,7 @@ RemoteNode::transfer(const Object& obj)
                                                                       vrouter_.node_id(),
                                                                       vrouter_.backend_sync_timeout()));
 
-    const bc::milliseconds req_timeout =
-        vrouter_.backend_sync_timeout().count() ?
-        vrouter_.backend_sync_timeout() + vrouter_.migrate_timeout() :
-        vrouter_.backend_sync_timeout();
-
+    const bc::milliseconds req_timeout(vrouter_.backend_sync_timeout() + vrouter_.migrate_timeout());
     handle_(req,
             req_timeout);
 }

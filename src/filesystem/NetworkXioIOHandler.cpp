@@ -336,6 +336,12 @@ NetworkXioIOHandler::handle_write(NetworkXioRequest *req,
         req->retval = req->size;
         req->errval = 0;
     }
+    catch (const vd::AccessBeyondEndOfVolumeException& e)
+    {
+       LOG_ERROR("write I/O error: " << e.what());
+       req->retval = -1;
+       req->errval = EFBIG;
+    }
     CATCH_STD_ALL_EWHAT({
        LOG_ERROR("write I/O error: " << EWHAT);
        req->retval = -1;
@@ -491,6 +497,18 @@ NetworkXioIOHandler::handle_truncate(NetworkXioRequest *req,
     {
         req->retval = -1;
         req->errval = ENOENT;
+    }
+    catch (const vd::CannotShrinkVolumeException& e)
+    {
+        LOG_ERROR("Problem truncating volume: " << e.what());
+        req->retval = -1;
+        req->errval = EPERM;
+    }
+    catch (const vd::CannotGrowVolumeBeyondLimitException& e)
+    {
+        LOG_ERROR("Problem truncating volume: " << e.what());
+        req->retval = -1;
+        req->errval = EFBIG;
     }
     CATCH_STD_ALL_EWHAT({
         LOG_ERROR("Problem truncating volume: " << EWHAT);

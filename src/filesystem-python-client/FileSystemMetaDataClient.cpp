@@ -210,7 +210,7 @@ FileSystemMetaDataClient::registerize()
              "look up the path of a DirectoryEntry with a given ID\n"
              "@param object_id, string, ObjectId\n"
              "@return string\n")
-        .def("mknod",
+        .def("_mknod",
              add_directory_entry,
              (bpy::args("parent_id"),
               bpy::args("object_id"),
@@ -228,7 +228,7 @@ FileSystemMetaDataClient::registerize()
              "@param user_id, integer, Owner ID of the entry\n"
              "@param group_id, integer, Group ID of the entry\n"
              "@return nothing")
-        .def("unlink",
+        .def("_unlink",
              unlink_id,
              (bpy::args("parent_id"),
               bpy::args("name")),
@@ -236,7 +236,7 @@ FileSystemMetaDataClient::registerize()
              "@param parent_id, string, ObjectID of parent entry\n"
              "@param name, string, name of the entry to remove\n"
              "@return nothing")
-        .def("rename",
+        .def("_rename",
              rename_id,
              (bpy::args("from_parent"),
               bpy::args("from"),

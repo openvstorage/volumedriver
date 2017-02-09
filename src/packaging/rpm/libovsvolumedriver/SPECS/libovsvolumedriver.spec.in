@@ -30,4 +30,4 @@ rm /etc/ld.so.conf.d/openvstorage-x86_64.conf
 %files
 /usr/lib/openvstorage/libovsvolumedriver.so
 /usr/lib/openvstorage/libovsvolumedriver.so.1
-/usr/lib/openvstorage/libovsvolumedriver.so.1.0.0
+/usr/lib/openvstorage/libovsvolumedriver.so.1.0.1

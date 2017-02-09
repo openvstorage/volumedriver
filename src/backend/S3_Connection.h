@@ -114,7 +114,8 @@ private
     virtual bool
     partial_read_(const Namespace& /* ns */,
                   const PartialReads& /* partial_reads */,
-                  InsistOnLatestVersion) override final
+                  InsistOnLatestVersion,
+                  PartialReadCounter&) override final
     {
         return false;
     }

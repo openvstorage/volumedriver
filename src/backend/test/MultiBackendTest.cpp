@@ -36,8 +36,10 @@ namespace backendtest
 using namespace backend;
 using youtils::Chooser;
 
+namespace bc = boost::chrono;
 namespace bpt = boost::property_tree;
 namespace fs = boost::filesystem;
+namespace ip = initialized_params;
 namespace yt = youtils;
 
 class MultiBackendTest
@@ -461,6 +463,41 @@ TEST_F(MultiBackendTest, pool_distribution)
     {
         std::cout << "pool " << p.first << ": " << p.second << " nspaces" << std::endl;
     }
+}
+
+TEST_F(MultiBackendTest, failover)
+{
+    const size_t path_count = 2;
+    bpt::ptree pt(make_local_config(path_count));
+
+    const size_t blacklist_secs = 1;
+    ip::PARAMETER_TYPE(backend_connection_pool_blacklist_secs)(blacklist_secs).persist(pt);
+
+    BackendConnectionManagerPtr cm(BackendConnectionManager::create(pt));
+    const Namespace nspace(yt::UUID().str());
+
+    auto get_pool([&]
+                  {
+                      return cm->getConnection(ForceNewConnection::F,
+                                               nspace).get_deleter().pool();
+                  });
+
+    std::shared_ptr<ConnectionPool> orig_pool(get_pool());
+    EXPECT_EQ(orig_pool,
+              get_pool());
+
+    inject_error_into_connection_pool(*orig_pool);
+
+    std::shared_ptr<ConnectionPool> fallback_pool(get_pool());
+    EXPECT_NE(orig_pool,
+              fallback_pool);
+    EXPECT_EQ(fallback_pool,
+              get_pool());
+
+    boost::this_thread::sleep_for(bc::seconds(blacklist_secs));
+
+    EXPECT_EQ(orig_pool,
+              get_pool());
 }
 
 TEST_F(MultiBackendTest, DISABLED_stress)

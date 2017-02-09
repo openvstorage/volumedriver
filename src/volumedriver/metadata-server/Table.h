@@ -18,6 +18,7 @@
 
 #include "Interface.h"
 
+#include <functional>
 #include <memory>
 
 #include <boost/chrono.hpp>
@@ -62,8 +63,13 @@ namespace metadata_server
 //   All other calls use it in shared mode.
 //
 //   The counters are protected by a plain mutex which needs to be grabbed *after* the shared one.
-//   The Role / OwnerTag are protected by a plain mutex which needs to be grapped *after* the shared
+//   The Role / OwnerTag are protected by a plain mutex which needs to be grabbed *after* the shared
 //   one to check ownership when doing updates.
+//
+// TODO AR: revisit the idea of the periodic action being part of this, as the self-destruction
+// triggered from within it muddles ownership: owners have to provide a callback to be notified
+// in case of self-destruction so they can drop the Table. Specific case:
+// https://github.com/openvstorage/volumedriver/issues/255 .
 class Table
     : public TableInterface
 {
@@ -71,14 +77,16 @@ public:
     MAKE_EXCEPTION(Exception, fungi::IOException);
     MAKE_EXCEPTION(NoUpdatesOnSlavesException, Exception);
 
-    Table(DataBaseInterfacePtr db,
+    using DropCallback = std::function<void(const std::string&)> ;
+
+    Table(const DataBaseInterfacePtr&,
           backend::BackendInterfacePtr bi,
-          youtils::PeriodicActionPool::Ptr,
+          const youtils::PeriodicActionPool::Ptr&,
           const boost::filesystem::path& scratch_dir,
           const uint32_t max_cached_pages,
           const std::atomic<uint64_t>& poll_secs,
-          const std::chrono::milliseconds& ramp_up =
-          std::chrono::milliseconds(0));
+          const std::chrono::milliseconds& ramp_up,
+          DropCallback);
 
     virtual ~Table();
 
@@ -146,6 +154,7 @@ private:
 
     boost::mutex counters_lock_;
     TableCounters counters_;
+    DropCallback drop_callback_;
 
     void
     start_(const std::chrono::milliseconds& ramp_up);

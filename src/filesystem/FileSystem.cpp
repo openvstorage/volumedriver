@@ -138,7 +138,8 @@ make_foc_config(const std::string& host,
 }
 
 FileSystem::FileSystem(const bpt::ptree& pt,
-                       const RegisterComponent registerizle)
+                       const RegisterComponent registerizle,
+                       const RestartVolumes restart_volumes)
     : VolumeDriverComponent(registerizle,
                             pt)
     , file_event_rules_(PARAMETER_VALUE_FROM_PROPERTY_TREE(fs_file_event_rules, pt))
@@ -182,7 +183,7 @@ FileSystem::FileSystem(const bpt::ptree& pt,
     DECLARE_PARAMETER(fs_max_open_files)(pt);
     setlimit(RLIMIT_NOFILE, fs_max_open_files.value());
 
-    restart_();
+    restart_(restart_volumes);
 
     InstantiateXMLRPCS<xmlrpcs>::doit(xmlrpc_svc_, *this);
     xmlrpc_svc_.start();
@@ -394,21 +395,28 @@ FileSystem::is_volume_path_(const FrontendPath& p) const
 }
 
 void
-FileSystem::restart_()
+FileSystem::restart_(const RestartVolumes restart_volumes)
 {
-    auto fun([this](const FrontendPath& p, const DirectoryEntryPtr dentry)
+    auto fun([&](const FrontendPath& p, const DirectoryEntryPtr dentry)
              {
                  const ObjectId& id = dentry->object_id();
                  if (not is_directory(dentry))
                  {
-                     LOG_TRACE(p << ": trying to restart " << id);
-                     try
+                     if (is_volume(dentry) and restart_volumes == RestartVolumes::F)
                      {
-                         router_.maybe_restart(id,
-                                               ForceRestart::F);
+                         LOG_INFO(p << ": skipping restart of volume " << id);
                      }
-                     CATCH_STD_ALL_LOG_IGNORE(p << ": failed to restart volume " <<
-                                              id);
+                     else
+                     {
+                         LOG_TRACE(p << ": trying to restart " << id);
+                         try
+                         {
+                             router_.maybe_restart(id,
+                                                   ForceRestart::F);
+                         }
+                         CATCH_STD_ALL_LOG_IGNORE(p << ": failed to restart volume " <<
+                                                  id);
+                     }
                  }
              });
 

@@ -106,9 +106,10 @@ private:
              const std::string&) override final;
 
     virtual bool
-    partial_read_(const Namespace& ns,
-                  const PartialReads& partial_reads,
-                  InsistOnLatestVersion) override final;
+    partial_read_(const Namespace&,
+                  const PartialReads&,
+                  InsistOnLatestVersion,
+                  PartialReadCounter&) override final;
 
     virtual void
     write_(const Namespace&,

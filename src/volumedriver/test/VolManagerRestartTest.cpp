@@ -1004,7 +1004,7 @@ TEST_P(VolManagerRestartTest, same_volume_name_different_namespaces)
     //    Namespace nid2;
     ASSERT_THROW(newVolume(vid1,
                            nid2),
-                 VolManager::VolumeNameAlreadyPresent);
+                 VolManager::VolumeAlreadyPresent);
 
     destroyVolume(v,
                   DeleteLocalData::T,
@@ -1028,7 +1028,7 @@ TEST_P(VolManagerRestartTest, same_volume_name_different_namespaces)
     checkVolume(*v,0, 4096,"xyz");
     checkCurrentBackendSize(*v);
 
-    ASSERT_THROW(restartVolume(cfg2), VolManager::VolumeNameAlreadyPresent);
+    ASSERT_THROW(restartVolume(cfg2), VolManager::VolumeAlreadyPresent);
     destroyVolume(v,
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::F);
@@ -1038,7 +1038,7 @@ TEST_P(VolManagerRestartTest, same_volume_name_different_namespaces)
     v = getVolume(vid1);
     checkVolume(*v,0, 4096,"abc");
 
-    ASSERT_THROW(restartVolume(cfg1), VolManager::VolumeNameAlreadyPresent);
+    ASSERT_THROW(restartVolume(cfg1), VolManager::VolumeAlreadyPresent);
     destroyVolume(v,
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::T);

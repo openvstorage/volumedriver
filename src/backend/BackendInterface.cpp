@@ -19,6 +19,7 @@
 #include "BackendInterface.h"
 #include "BackendRequestParameters.h"
 #include "BackendTracePoints_tp.h"
+#include "PartialReadCounter.h"
 
 #include <boost/chrono.hpp>
 #include <boost/thread.hpp>
@@ -382,7 +383,7 @@ BackendInterface::remove(const std::string& name,
                           cond);
 }
 
-void
+PartialReadCounter
 BackendInterface::partial_read(const BackendConnectionInterface::PartialReads& partial_reads,
                                BackendConnectionInterface::PartialReadFallbackFun& fallback_fun,
                                InsistOnLatestVersion insist_on_latest,
@@ -415,22 +416,26 @@ BackendInterface::partial_read(const BackendConnectionInterface::PartialReads& p
                                                  std::uncaught_exception());
                                   }));
 
-    auto fun([&](InsistOnLatestVersion insist)
+    auto fun([&](InsistOnLatestVersion insist) -> PartialReadCounter
              {
-                 wrap_<void,
-                       decltype(partial_reads),
-                       decltype(insist),
-                       decltype(fallback_fun)>(params,
-                                               &BackendConnectionInterface::partial_read,
-                                               partial_reads,
-                                               insist,
-                                               fallback_fun);
+                 return wrap_<PartialReadCounter,
+                              decltype(partial_reads),
+                              decltype(insist),
+                              decltype(fallback_fun)>(params,
+                                                      &BackendConnectionInterface::partial_read,
+                                                      partial_reads,
+                                                      insist,
+                                                      fallback_fun);
              });
 
     if (not conn_manager_->partial_read_nullio())
     {
-        handle_eventual_consistency_<void>(insist_on_latest,
-                                           std::move(fun));
+        return handle_eventual_consistency_<PartialReadCounter>(insist_on_latest,
+                                                                std::move(fun));
+    }
+    else
+    {
+        return PartialReadCounter();
     }
 }
 

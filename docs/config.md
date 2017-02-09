@@ -111,7 +111,8 @@ service ovs-volumedriver-vpool_name restart
 | metadata_server | mds_threads | "1" | no | Number of threads per node (0 -> autoconfiguration based on the number of available CPUs) |
 | metadata_server | mds_nodes | "[]" | yes | an array of MDS node configurations each containing address, port, db_directory and scratch_directory |
 | backend_connection_manager | backend_connection_pool_capacity | "64" | yes | Capacity of the connection pool maintained by the BackendConnectionManager |
-| backend_connection_manager | backend_interface_retries_on_error | "1" | yes | How many times to retry a failed backend operation |
+| backend_connection_manager | backend_connection_pool_blacklist_secs | "60" | yes | Duration (in seconds) in which to skip a connection pool after an error |
+| backend_connection_manager | backend_interface_retries_on_error | "2" | yes | How many times to retry a failed backend operation |
 | backend_connection_manager | backend_interface_retry_interval_secs | "0" | yes | delay before retrying a failed backend operation in seconds |
 | backend_connection_manager | backend_interface_retry_backoff_multiplier | "1" | yes | multiplier for the retry interval on each subsequent retry |
 | backend_connection_manager | backend_type | "LOCAL" | no | Type of backend connection one of ALBA, LOCAL, MULTI or S3, the other parameters in this section are only used when their correct backendtype is set |

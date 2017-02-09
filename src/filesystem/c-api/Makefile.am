@@ -46,7 +46,7 @@ libovsvolumedriver_nobase_includedir = @prefix@/include/openvstorage
 libovsvolumedriver_nobase_include_HEADERS = volumedriver.h
 
 SOCURRENT=1
-SOREVISION=0
+SOREVISION=1
 SOAGE=0
 libovsvolumedriver_la_LDFLAGS = -shared -version-info \
 	$(SOCURRENT):$(SOREVISION):$(SOAGE)

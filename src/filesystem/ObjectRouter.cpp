@@ -452,6 +452,18 @@ ObjectRouter::redirected_work_(ZWorkerPool::MessageParts parts_in)
     {
         rsp_type = vfsprotocol::ResponseType::ObjectNotRunningHere;
     }
+    catch (vd::AccessBeyondEndOfVolumeException&)
+    {
+        rsp_type = vfsprotocol::ResponseType::AccessBeyondEndOfVolume;
+    }
+    catch (vd::CannotShrinkVolumeException&)
+    {
+        rsp_type = vfsprotocol::ResponseType::CannotShrinkVolume;
+    }
+    catch (vd::CannotGrowVolumeBeyondLimitException&)
+    {
+        rsp_type = vfsprotocol::ResponseType::CannotGrowVolumeBeyondLimit;
+    }
     catch (ObjectNotRunningHereException&)
     {
         rsp_type = vfsprotocol::ResponseType::ObjectNotRunningHere;

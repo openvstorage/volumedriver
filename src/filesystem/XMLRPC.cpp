@@ -42,6 +42,8 @@
 #include <youtils/System.h>
 #include <youtils/Uri.h>
 
+#include <backend/PartialReadCounter.h>
+
 #include <volumedriver/Api.h>
 #include <volumedriver/MetaDataBackendInterface.h>
 #include <volumedriver/ScrubReply.h>
@@ -388,7 +390,16 @@ XMLRPCTimingWrapper<T>::execute(::XmlRpc::XmlRpcValue& params,
                     e.what());
         return;
     }
+    catch (vd::VolManager::VolumeRestartInProgressException& e)
+    {
+        LOG_XMLRPCERROR(T::_name << " " << boost::diagnostic_information(e));
+        T::setError(result,
+                    XMLRPCErrorCode::VolumeRestartInProgress,
+                    e.what());
+        return;
+    }
     catch(fungi::IOException& e)
+
     {
         LOG_XMLRPCERROR(T::_name << " Caught fungi::IOException: " << e.what());
         throw ::XmlRpc::XmlRpcException(T::_name + " Caught fungi::IOException: " + e.what(),
@@ -917,7 +928,7 @@ VolumeInfo::execute_internal(::XmlRpc::XmlRpcValue& params,
         std::string("");
     volume_info.vrouter_id = reg->node_id;
 
-    result = XMLRPCStructs::serialize_to_xmlrpc_value(volume_info);
+    result = XMLRPCStructsBinary::serialize_to_xmlrpc_value(volume_info);
 }
 
 void
@@ -951,7 +962,7 @@ UpdateMetaDataBackendConfig::execute_internal(::XmlRpc::XmlRpcValue& params,
     {
         const vd::VolumeId volume_id(getID(params[0]));
         vd::VolumeConfig::MetaDataBackendConfigPtr mdb_config;
-        mdb_config = XMLRPCStructs::deserialize_from_xmlrpc_value<decltype(mdb_config)>(params[0][XMLRPCKeys::metadata_backend_config]);
+        mdb_config = XMLRPCStructsBinary::deserialize_from_xmlrpc_value<decltype(mdb_config)>(params[0][XMLRPCKeys::metadata_backend_config]);
 
         api::updateMetaDataBackendConfig(volume_id,
                                          *mdb_config);
@@ -998,7 +1009,7 @@ SnapshotInfo::execute_internal(::XmlRpc::XmlRpcValue& params,
                                            snap.inBackend(),
                                            std::string(meta.begin(), meta.end()));
 
-        result = XMLRPCStructs::serialize_to_xmlrpc_value(snap_info);
+        result = XMLRPCStructsBinary::serialize_to_xmlrpc_value(snap_info);
     });
 }
 
@@ -1016,7 +1027,7 @@ VolumeCreate::execute_internal(::XmlRpc::XmlRpcValue& params,
     if (params[0].hasMember(XMLRPCKeys::metadata_backend_config))
     {
         mdb_config =
-            XMLRPCStructs::deserialize_from_xmlrpc_value<decltype(mdb_config)>(params[0][XMLRPCKeys::metadata_backend_config]);
+            XMLRPCStructsBinary::deserialize_from_xmlrpc_value<decltype(mdb_config)>(params[0][XMLRPCKeys::metadata_backend_config]);
     }
 
     const ObjectId id(fs_.create_volume(path,
@@ -1052,7 +1063,7 @@ VolumeClone::execute_internal(::XmlRpc::XmlRpcValue& params,
     if (params[0].hasMember(XMLRPCKeys::metadata_backend_config))
     {
         mdb_config =
-            XMLRPCStructs::deserialize_from_xmlrpc_value<decltype(mdb_config)>(params[0][XMLRPCKeys::metadata_backend_config]);
+            XMLRPCStructsBinary::deserialize_from_xmlrpc_value<decltype(mdb_config)>(params[0][XMLRPCKeys::metadata_backend_config]);
     }
 
     const ObjectId id(fs_.create_clone(path,
@@ -1088,12 +1099,12 @@ void
 VolumePerformanceCounters::execute_internal(XmlRpc::XmlRpcValue& params,
                                             XmlRpc::XmlRpcValue& result)
 {
+    const vd::VolumeId volName(getID(params[0]));
+
     with_api_exception_conversion([&]()
     {
-        const vd::VolumeId volName(getID(params[0]));
+        XMLRPCStatisticsV2 results_stats;
         const vd::MetaDataStoreStats mdStats(api::getMetaDataStoreStats(volName));
-
-        XMLRPCStatistics results_stats;
 
         results_stats.sco_cache_hits = api::getCacheHits(volName);
         results_stats.sco_cache_misses = api::getCacheMisses(volName);
@@ -1102,6 +1113,47 @@ VolumePerformanceCounters::execute_internal(XmlRpc::XmlRpcValue& params,
         results_stats.metadata_store_hits = mdStats.cache_hits;
         results_stats.metadata_store_misses = mdStats.cache_misses;
         results_stats.stored = api::getStored(volName);
+
+        vd::PerformanceCounters& perf_counters = api::performance_counters(volName);
+        results_stats.performance_counters = perf_counters.v1();
+
+        if (params[0].hasMember(XMLRPCKeys::reset))
+        {
+            const bool reset = getboolWithDefault(params[0],
+                                                  XMLRPCKeys::reset,
+                                                  false);
+            if (reset)
+            {
+                perf_counters.reset_all_counters();
+            }
+        }
+
+        result = XMLRPCStructsBinary::serialize_to_xmlrpc_value(results_stats);
+    });
+}
+
+void
+VolumePerformanceCountersV3::execute_internal(XmlRpc::XmlRpcValue& params,
+                                              XmlRpc::XmlRpcValue& result)
+{
+    const vd::VolumeId volName(getID(params[0]));
+
+    with_api_exception_conversion([&]()
+    {
+        XMLRPCStatistics results_stats;
+        const vd::MetaDataStoreStats mdStats(api::getMetaDataStoreStats(volName));
+
+        results_stats.sco_cache_hits = api::getCacheHits(volName);
+        results_stats.sco_cache_misses = api::getCacheMisses(volName);
+        results_stats.cluster_cache_hits = api::getClusterCacheHits(volName);
+        results_stats.cluster_cache_misses = api::getClusterCacheMisses(volName);
+        results_stats.metadata_store_hits = mdStats.cache_hits;
+        results_stats.metadata_store_misses = mdStats.cache_misses;
+        results_stats.stored = api::getStored(volName);
+
+        const be::PartialReadCounter prc(api::getPartialReadCounter(volName));
+        results_stats.partial_read_slow = prc.slow;
+        results_stats.partial_read_slow = prc.fast;
 
         vd::PerformanceCounters& perf_counters = api::performance_counters(volName);
         results_stats.performance_counters = perf_counters;
@@ -1117,13 +1169,59 @@ VolumePerformanceCounters::execute_internal(XmlRpc::XmlRpcValue& params,
             }
         }
 
-        result = XMLRPCStructs::serialize_to_xmlrpc_value(results_stats);
+        result = XMLRPCStructsXML::serialize_to_xmlrpc_value(results_stats);
     });
 }
 
 void
 VolumeDriverPerformanceCounters::execute_internal(XmlRpc::XmlRpcValue& params,
                                                   XmlRpc::XmlRpcValue& result)
+{
+    bool reset = false;
+
+    if (params[0].hasMember(XMLRPCKeys::reset))
+    {
+        reset = getboolWithDefault(params[0],
+                                   XMLRPCKeys::reset,
+                                   false);
+    }
+
+    XMLRPCStatisticsV2 stats;
+    vd::PerformanceCounters perf_counters;
+
+    std::list<vd::VolumeId> l;
+    api::getVolumeList(l);
+
+
+    for (const auto& v : l)
+    {
+        const vd::MetaDataStoreStats mds(api::getMetaDataStoreStats(v));
+        stats.sco_cache_hits += api::getCacheHits(v);
+        stats.sco_cache_misses += api::getCacheMisses(v);
+        stats.cluster_cache_hits += api::getClusterCacheHits(v);
+        stats.cluster_cache_misses += api::getClusterCacheMisses(v);
+        stats.metadata_store_hits += mds.cache_hits;
+        stats.metadata_store_misses += mds.cache_misses;
+        stats.stored += api::getStored(v);
+
+        vd::PerformanceCounters& pc = api::performance_counters(v);
+
+        perf_counters += pc;
+
+        if (reset)
+        {
+            pc.reset_all_counters();
+        }
+    }
+
+    stats.performance_counters = perf_counters.v1();
+
+    result = XMLRPCStructsBinary::serialize_to_xmlrpc_value(stats);
+}
+
+void
+VolumeDriverPerformanceCountersV3::execute_internal(XmlRpc::XmlRpcValue& params,
+                                                    XmlRpc::XmlRpcValue& result)
 {
     bool reset = false;
 
@@ -1152,8 +1250,11 @@ VolumeDriverPerformanceCounters::execute_internal(XmlRpc::XmlRpcValue& params,
         stats.metadata_store_misses += mds.cache_misses;
         stats.stored += api::getStored(v);
 
-        vd::PerformanceCounters& pc = api::performance_counters(v);
+        const be::PartialReadCounter prc(api::getPartialReadCounter(v));
+        stats.partial_read_fast += prc.fast;
+        stats.partial_read_slow += prc.slow;
 
+        vd::PerformanceCounters& pc = api::performance_counters(v);
         perf_counters += pc;
 
         if (reset)
@@ -1164,7 +1265,7 @@ VolumeDriverPerformanceCounters::execute_internal(XmlRpc::XmlRpcValue& params,
 
     stats.performance_counters = perf_counters;
 
-    result = XMLRPCStructs::serialize_to_xmlrpc_value(stats);
+    result = XMLRPCStructsXML::serialize_to_xmlrpc_value(stats);
 }
 
 void
@@ -1204,7 +1305,7 @@ void
 GetNodesStatusMap::execute_internal(XmlRpc::XmlRpcValue& /*params*/,
                             XmlRpc::XmlRpcValue& result)
 {
-    result = XMLRPCStructs::serialize_to_xmlrpc_value(fs_.object_router().get_node_status_map());
+    result = XMLRPCStructsBinary::serialize_to_xmlrpc_value(fs_.object_router().get_node_status_map());
 }
 
 void
@@ -1474,7 +1575,7 @@ UpdateConfiguration::execute_internal(XmlRpc::XmlRpcValue& params,
                          yt::ConfigurationReport>
         rep(api::updateConfiguration((*yt::ConfigFetcher::create(config))(VerifyConfig::T)));
 
-    result = XMLRPCStructs::serialize_to_xmlrpc_value(rep);
+    result = XMLRPCStructsBinary::serialize_to_xmlrpc_value(rep);
 }
 
 void
@@ -1637,7 +1738,7 @@ GetClusterCacheHandleInfo::execute_internal(XmlRpc::XmlRpcValue& params,
                                              info.max_entries,
                                              info.map_stats);
 
-    result = XMLRPCStructs::serialize_to_xmlrpc_value(xinfo);
+    result = XMLRPCStructsBinary::serialize_to_xmlrpc_value(xinfo);
 }
 
 void
@@ -1894,7 +1995,7 @@ ListClientConnections::execute_internal(::XmlRpc::XmlRpcValue& /*params*/,
     int k = 0;
     for (const auto& i: fs_.list_registered_clients())
     {
-        result[k++] = XMLRPCStructs::serialize_to_xmlrpc_value(i);
+        result[k++] = XMLRPCStructsBinary::serialize_to_xmlrpc_value(i);
     }
 }
 
