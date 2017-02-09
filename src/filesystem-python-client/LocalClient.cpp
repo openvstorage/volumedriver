@@ -200,7 +200,14 @@ LocalClient::registerize()
              "Remove a ClusterCacheHandle (and its entries) from the ClusterCache\n"
              "@param handle, ClusterCacheHandle\n"
              "@param req_timeout_secs: optional timeout in seconds for this request\n"
-             "@returns: a ClusterCacheHandleInfo object\n");
+             "@returns: a ClusterCacheHandleInfo object\n")
+        .def("_remove_namespace_from_sco_cache",
+             &vfs::LocalPythonClient::remove_namespace_from_sco_cache,
+             (bpy::args("nspace"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
+             "Remove a namespace (and its SCOs) from the SCO cache\n"
+             "@param nspace, string, namespace name\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n")
         ;
 }
 
