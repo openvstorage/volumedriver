@@ -204,7 +204,6 @@ export_debug_module()
     bpy::scope scope = module;
     scope.attr("__doc__") = "debugging helpers - this ain't no stable public API!";
 
-    vfspy::FileSystemMetaDataClient::registerize();
     vfspy::ScrubManagerClient::registerize();
 }
 
@@ -974,8 +973,9 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "@returns string, identifier for the backend connection pool\n")
         ;
 
-    vfspy::LocalClient::registerize();
     vfspy::ArakoonClient::registerize();
+    vfspy::FileSystemMetaDataClient::registerize();
+    vfspy::LocalClient::registerize();
 
     REGISTER_STRINGY_CONVERTER(youtils::Uri);
     REGISTER_STRINGY_CONVERTER(vfs::ClusterId);
