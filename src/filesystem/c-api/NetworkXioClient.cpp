@@ -196,7 +196,7 @@ NetworkXioClient::NetworkXioClient(const std::string& uri,
 void
 NetworkXioClient::run(std::promise<bool>& promise)
 {
-    int xopt = 0;
+    int xopt = 0, optlen;
     xio_set_opt(NULL,
                 XIO_OPTLEVEL_ACCELIO,
                 XIO_OPTNAME_ENABLE_FLOW_CONTROL,
@@ -216,9 +216,19 @@ NetworkXioClient::run(std::promise<bool>& promise)
                 sizeof(int));
 
     struct xio_options_keepalive ka;
-    ka.time = yt::System::get_env_with_default<int>(xio_ka_time, 600);
-    ka.intvl = yt::System::get_env_with_default<int>(xio_ka_intvl, 60);
-    ka.probes = yt::System::get_env_with_default<int>(xio_ka_probes, 20);
+    optlen = sizeof(ka);
+    xio_get_opt(NULL,
+                XIO_OPTLEVEL_ACCELIO,
+                XIO_OPTNAME_CONFIG_KEEPALIVE,
+                &ka,
+                &optlen);
+
+    ka.time = yt::System::get_env_with_default<int>(xio_ka_time,
+                                                    ka.time);
+    ka.intvl = yt::System::get_env_with_default<int>(xio_ka_intvl,
+                                                     ka.intvl);
+    ka.probes = yt::System::get_env_with_default<int>(xio_ka_probes,
+                                                      ka.probes);
 
     xio_set_opt(NULL,
                 XIO_OPTLEVEL_ACCELIO,
