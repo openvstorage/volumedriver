@@ -85,7 +85,8 @@ volumedriver_fs_test_SOURCES = \
 	StatsCollectorTest.cpp \
 	VolumeTest.cpp \
 	ZMQTest.cpp \
-	ZWorkerPoolTest.cpp
+	ZWorkerPoolTest.cpp \
+	XMLRPCStructsTest.cpp
 
 nodist_volumedriver_fs_test_SOURCES = \
 	ProtobufTest.pb.cc \
