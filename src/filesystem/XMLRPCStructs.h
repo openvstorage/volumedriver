@@ -142,7 +142,7 @@ struct XMLRPCSerializer
     void
     set_from_str(const std::string& str)
     {
-        std::stringstream ss;
+        std::stringstream ss(str);
         typename T::iarchive_type ia(ss);
         ia & boost::serialization::make_nvp(T::serialization_name,
                                             static_cast<T&>(*this));
