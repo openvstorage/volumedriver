@@ -160,6 +160,8 @@ NetworkXioServer::run(std::promise<void> promise)
 {
     int xopt = 2, optlen;
 
+    pthread_setname_np(pthread_self(), "xio_server");
+
     xio_init();
 
     xio_set_opt(NULL,
@@ -287,12 +289,12 @@ NetworkXioServer::run(std::promise<void> promise)
 
     try
     {
-        wq_ = std::make_shared<NetworkXioWorkQueue>("ovs_xio_wq",
+        wq_ = std::make_shared<NetworkXioWorkQueue>("xio_wq",
                                                     evfd,
                                                     finished_lock,
                                                     finished_list,
                                                     wq_max_threads);
-        wq_ctrl_ = std::make_shared<NetworkXioWorkQueue>("ovs_xio_wq_ctrl",
+        wq_ctrl_ = std::make_shared<NetworkXioWorkQueue>("xio_wq_ctrl",
                                                          evfd,
                                                          finished_lock,
                                                          finished_list,
