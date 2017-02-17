@@ -39,9 +39,9 @@
 #include <volumedriver/Api.h>
 #include <volumedriver/ClusterLocation.h>
 #include <volumedriver/ScrubWork.h>
+#include <volumedriver/Snapshot.h>
 #include <volumedriver/VolManager.h>
 #include <volumedriver/VolumeConfig.h>
-#include <volumedriver/Snapshot.h>
 
 namespace volumedriverfs
 {
@@ -115,6 +115,11 @@ LocalNode::LocalNode(ObjectRouter& router,
 
     api::Init(pt,
               router.event_publisher());
+
+    auto on_error(yt::make_scope_exit_on_exception([]
+                                                   {
+                                                       api::Exit();
+                                                   }));
 
     fdriver_.reset(new fd::ContainerManager(api::backend_connection_manager(),
                                             pt));
