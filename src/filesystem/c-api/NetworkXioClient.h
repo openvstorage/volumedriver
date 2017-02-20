@@ -382,7 +382,7 @@ private:
     maybe_fail_request(xio_msg_s *req)
     {
         RequestOp op = req->get_request_op();
-        assert(op != Request::Noop);
+        assert(op != RequestOp::Noop);
         if (op == RequestOp::Open or op == RequestOp::Close)
         {
             return true;
@@ -404,7 +404,7 @@ private:
         {
             uint64_t id = xio_msg->get_request_id();
             RequestOp op = xio_msg->get_request_op();
-            assert(op != Request::Noop);
+            assert(op != RequestOp::Noop);
             switch (op)
             {
             case RequestOp::Read:
