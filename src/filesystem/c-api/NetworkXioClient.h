@@ -38,15 +38,13 @@ namespace libovsvolumedriver
 
 MAKE_EXCEPTION(XioClientCreateException, fungi::IOException);
 MAKE_EXCEPTION(XioClientRegHandlerException, fungi::IOException);
-MAKE_EXCEPTION(XioClientQueueIsBusyException, fungi::IOException);
 
 class NetworkXioClient
 {
 public:
     NetworkXioClient(const std::string& uri,
                      const uint64_t qd,
-                     NetworkHAContext& ha_ctx,
-                     bool ha_try_reconnect);
+                     NetworkHAContext& ha_ctx);
 
     ~NetworkXioClient();
 
@@ -77,6 +75,18 @@ public:
             return reinterpret_cast<ovs_aio_request*>(opaque);
         }
 
+        uint64_t
+        get_request_id()
+        {
+            return reinterpret_cast<ovs_aio_request*>(opaque)->_id;
+        }
+
+        RequestOp
+        get_request_op()
+        {
+            return reinterpret_cast<ovs_aio_request*>(opaque)->_op;
+        }
+
     };
 
     struct xio_ctl_s
@@ -85,7 +95,8 @@ public:
         session_data sdata;
         std::vector<std::string> vec;
         std::unique_ptr<uint8_t[]> data;
-        uint64_t size;
+        uint64_t size = 0;
+        bool serviced = false;
     };
 
     void
@@ -261,24 +272,15 @@ private:
     bool disconnecting;
 
     int64_t nr_req_queue;
-    std::mutex req_queue_lock;
-    std::condition_variable req_queue_cond;
 
     volumedriverfs::EventFD evfd;
 
     NetworkHAContext& ha_ctx_;
-    bool ha_try_reconnect_;
     bool connection_error_;
     std::atomic<bool> dtl_in_sync_;
 
     void
     xio_run_loop_worker();
-
-    void
-    req_queue_wait_until(xio_msg_s *xmsg);
-
-    void
-    req_queue_release();
 
     void
     shutdown();
@@ -377,22 +379,22 @@ private:
     }
 
     bool
-    try_fail_request_on_conn_error()
+    maybe_fail_request(xio_msg_s *req)
     {
-        bool ha_and_conn_error = connection_error_ and is_ha_enabled();
-        bool try_reconn_not_openning = (not ha_ctx_.is_volume_openning() and
-                ha_try_reconnect_);
-        return (ha_and_conn_error and (ha_ctx_.is_volume_openning() or
-                                       try_reconn_not_openning));
-    }
-
-    bool
-    try_fail_request_on_msg_error()
-    {
-        bool ha_conn_err_not_try_reconn = is_ha_enabled() and
-            connection_error_ and (not ha_try_reconnect_);
-        return ((not ha_conn_err_not_try_reconn) or
-                (ha_conn_err_not_try_reconn and ha_ctx_.is_volume_openning()));
+        RequestOp op = req->get_request_op();
+        assert(op != Request::Noop);
+        if (op == RequestOp::Open or op == RequestOp::Close)
+        {
+            return true;
+        }
+        else if (connection_error_ and not is_ha_enabled())
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
 
     void
@@ -400,22 +402,20 @@ private:
     {
         if (is_ha_enabled())
         {
-            uint64_t id = xio_msg->get_request()->_id;
-            maybe_insert_seen_request(id);
-        }
-    }
-
-    void
-    maybe_insert_seen_request(uint64_t id)
-    {
-        if (not ha_try_reconnect_)
-        {
-            ha_ctx_.insert_seen_request(id);
-        }
-        else
-        {
-            /* in state machine order */
-            ha_try_reconnect_ = false;
+            uint64_t id = xio_msg->get_request_id();
+            RequestOp op = xio_msg->get_request_op();
+            assert(op != Request::Noop);
+            switch (op)
+            {
+            case RequestOp::Read:
+            case RequestOp::Write:
+            case RequestOp::Flush:
+            case RequestOp::AsyncFlush:
+                ha_ctx_.insert_seen_request(id);
+                break;
+            default:
+                break;
+            }
         }
     }
 };

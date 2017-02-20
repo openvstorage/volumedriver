@@ -42,16 +42,18 @@ struct ovs_aio_request
     : ovs_aiocbp(aio)
     , _completion(comp)
     , _op(op)
+    , _on_suspend(false)
+    , _canceled(false)
+    , _completed(false)
+    , _signaled(false)
+    , _failed(false)
+    , _errno(0)
+    , _rv(0)
     , _id(0)
     {
         /*cnanakos TODO: err handling */
         pthread_cond_init(&_cond, NULL);
         pthread_mutex_init(&_mutex, NULL);
-        _on_suspend = false;
-        _canceled = false;
-        _completed = false;
-        _signaled = false;
-        _rv = 0;
         if (aio and op != RequestOp::Noop)
         {
             aio->request_ = this;
