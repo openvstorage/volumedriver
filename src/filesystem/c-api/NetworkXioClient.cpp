@@ -259,7 +259,8 @@ NetworkXioClient::run(std::promise<bool>& promise)
 
     if (ctx == nullptr)
     {
-        LIBLOGID_ERROR("failed to create XIO context");
+        LIBLOGID_ERROR("failed to create XIO context: " <<
+                       xio_strerror(xio_errno()));
         throw XioClientCreateException("failed to create XIO context");
     }
 
@@ -269,7 +270,8 @@ NetworkXioClient::run(std::promise<bool>& promise)
                                   static_evfd_stop_loop<NetworkXioClient>,
                                   this))
     {
-        LIBLOGID_ERROR("failed to register event handler");
+        LIBLOGID_ERROR("failed to register event handler: " <<
+                       xio_strerror(xio_errno()));
         throw XioClientRegHandlerException("failed to register event handler");
     }
 
@@ -278,7 +280,8 @@ NetworkXioClient::run(std::promise<bool>& promise)
     if(session == nullptr)
     {
         xio_context_del_ev_handler(ctx.get(), evfd);
-        LIBLOGID_ERROR("failed to create XIO session");
+        LIBLOGID_ERROR("failed to create XIO session: " <<
+                       xio_strerror(xio_errno()));
         throw XioClientCreateException("failed to create XIO session");
     }
 
@@ -290,7 +293,8 @@ NetworkXioClient::run(std::promise<bool>& promise)
     if (conn == nullptr)
     {
         xio_context_del_ev_handler(ctx.get(), evfd);
-        LIBLOGID_ERROR("failed to connect");
+        LIBLOGID_ERROR("failed to connect: " <<
+                       xio_strerror(xio_errno()));
         throw XioClientCreateException("failed to connect");
     }
 
