@@ -243,8 +243,14 @@ NetworkXioServer::run(std::promise<void> promise)
     int polling_timeout_us =
     yt::System::get_env_with_default<int>("NETWORK_XIO_POLLING_TIMEOUT_US",
                                           0);
+    int max_conns_per_ctx =
+    yt::System::get_env_with_default<int>("NETWORK_XIO_MAX_CONNS_PER_CTX",
+                                          256);
 
-    ctx = std::shared_ptr<xio_context>(xio_context_create(NULL,
+    xio_context_params ctx_params;
+    memset(&ctx_params, 0, sizeof(ctx_params));
+    ctx_params.max_conns_per_ctx = max_conns_per_ctx;
+    ctx = std::shared_ptr<xio_context>(xio_context_create(&ctx_params,
                                                           polling_timeout_us,
                                                           -1),
                                        xio_context_destroy);
