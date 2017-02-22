@@ -632,6 +632,8 @@ NetworkXioClient::on_msg_error_control(xio_session *session ATTR_UNUSED,
     NetworkXioMsg imsg;
     session_data *sdata = static_cast<session_data*>(cb_user_context);
     xio_context *ctx = sdata->ctx;
+    LIBLOG_DEBUG("msg control error: " << session
+                 << " error: " << xio_strerror(error));
     if (direction == XIO_MSG_DIRECTION_IN)
     {
         try
@@ -777,18 +779,27 @@ NetworkXioClient::on_session_event_control(xio_session *session,
     return 0;
 }
 
+int
+NetworkXioClient::on_session_established_control(xio_session * /*session*/,
+                                                 xio_new_session_rsp * /*rsp*/,
+                                                 void *cb_user_context)
+{
+    session_data *sdata = static_cast<session_data*>(cb_user_context);
+    sdata->session_established = true;
+    return 0;
+}
+
 xio_connection*
 NetworkXioClient::create_connection_control(session_data *sdata,
                                             const std::string& uri)
 {
     xio_connection *conn;
-    xio_session *session;
     xio_session_params params;
     xio_connection_params cparams;
 
     xio_session_ops s_ops;
     s_ops.on_session_event = on_session_event_control;
-    s_ops.on_session_established = NULL;
+    s_ops.on_session_established = on_session_established_control;
     s_ops.on_msg = on_msg_control;
     s_ops.on_msg_error = on_msg_error_control;
     s_ops.assign_data_in_buf = NULL;
@@ -799,13 +810,13 @@ NetworkXioClient::create_connection_control(session_data *sdata,
     params.uri = uri.c_str();
     params.user_context = sdata;
 
-    session = xio_session_create(&params);
-    if (not session)
+    sdata->session = xio_session_create(&params);
+    if (not sdata->session)
     {
         return nullptr;
     }
     memset(&cparams, 0, sizeof(cparams));
-    cparams.session = session;
+    cparams.session = sdata->session;
     cparams.ctx = sdata->ctx;
     cparams.conn_user_context = sdata;
 
@@ -853,19 +864,25 @@ NetworkXioClient::xio_submit_request(const std::string& uri,
                                                  ETIMEDOUT);
     }
 exit:
-    if (xctl->serviced)
+    if (xctl->sdata.session_established)
     {
         xio_disconnect(conn);
-    }
-    if (not xctl->sdata.disconnected and xctl->serviced)
-    {
-        xctl->sdata.disconnecting = true;
+        if (not xctl->sdata.disconnected)
+        {
+            xctl->sdata.disconnecting = true;
+        }
+        else
+        {
+            xio_connection_destroy(conn);
+        }
+        xio_context_run_loop(ctx.get(), XIO_INFINITE);
     }
     else
     {
+        xio_disconnect(conn);
         xio_connection_destroy(conn);
+        xio_session_destroy(xctl->sdata.session);
     }
-    xio_context_run_loop(ctx.get(), XIO_INFINITE);
 }
 
 void

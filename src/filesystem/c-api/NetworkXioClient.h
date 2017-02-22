@@ -51,9 +51,11 @@ public:
     struct session_data
     {
         xio_context *ctx;
+        xio_session *session;
         bool disconnected = false;
         bool disconnecting = false;
         bool connection_error = false;
+        bool session_established = false;
     };
 
     struct xio_msg_s
@@ -306,6 +308,11 @@ private:
     on_session_event_control(xio_session *session,
                              xio_session_event_data *event_data,
                              void *cb_user_context);
+
+    static int
+    on_session_established_control(xio_session *session,
+                                   xio_new_session_rsp *rsp,
+                                   void *cb_user_context);
 
     static void
     xio_submit_request(const std::string& uri,
