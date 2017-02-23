@@ -373,6 +373,7 @@ NetworkXioServer::run(std::promise<void> promise)
     }
     server.reset();
     wq_->shutdown();
+    wq_ctrl_->shutdown();
     xio_context_del_ev_handler(ctx.get(), evfd);
     ctx.reset();
     mpool.reset();
