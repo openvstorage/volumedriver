@@ -134,7 +134,6 @@ NetworkXioClient::NetworkXioClient(const std::string& uri,
     , nr_req_queue(qd)
     , evfd()
     , ha_ctx_(ha_ctx)
-    , connection_error_(false)
     , dtl_in_sync_(true)
 {
     LIBLOGID_INFO("uri: " << uri << ", queue depth: " << qd);
@@ -512,13 +511,12 @@ NetworkXioClient::on_session_event(xio_session *session __attribute__((unused)),
     case XIO_SESSION_ERROR_EVENT:
     case XIO_SESSION_CONNECTION_ERROR_EVENT:
     case XIO_SESSION_CONNECTION_REFUSED_EVENT:
-        connection_error_ = true;
         ha_ctx_.set_connection_error();
         break;
     case XIO_SESSION_CONNECTION_CLOSED_EVENT:
         break;
     case XIO_SESSION_CONNECTION_DISCONNECTED_EVENT:
-        connection_error_ = disconnected = true;
+        disconnected = true;
         ha_ctx_.set_connection_error();
         break;
     case XIO_SESSION_CONNECTION_TEARDOWN_EVENT:

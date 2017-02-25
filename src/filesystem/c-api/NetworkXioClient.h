@@ -278,7 +278,6 @@ private:
     volumedriverfs::EventFD evfd;
 
     NetworkHAContext& ha_ctx_;
-    bool connection_error_;
     std::atomic<bool> dtl_in_sync_;
 
     void
@@ -394,13 +393,9 @@ private:
         {
             return true;
         }
-        else if (connection_error_ and not is_ha_enabled())
-        {
-            return true;
-        }
         else
         {
-            return false;
+            return is_ha_enabled() ? false : true;
         }
     }
 
