@@ -16,12 +16,13 @@
 #ifndef VFS_PYTHON_CLIENT_H_
 #define VFS_PYTHON_CLIENT_H_
 
+#include "ClientInfo.h"
+#include "CloneFileFlags.h"
 #include "ClusterId.h"
 #include "ClusterRegistry.h"
+#include "ScrubManager.h"
 #include "XMLRPC.h"
 #include "XMLRPCStructs.h"
-#include "CloneFileFlags.h"
-#include "ClientInfo.h"
 
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
@@ -399,6 +400,10 @@ public:
     std::string
     get_backend_connection_pool(const ObjectId&,
                                 const MaybeSeconds& = boost::none);
+
+    ScrubManager::Counters
+    scrub_manager_counters(const std::string& node_id,
+                           const MaybeSeconds& = boost::none);
 
 protected:
     PythonClient(const MaybeSeconds& timeout)

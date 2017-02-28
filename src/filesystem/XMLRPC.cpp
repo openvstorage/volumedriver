@@ -13,15 +13,15 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "ClientInfo.h"
+#include "CloneFileFlags.h"
 #include "FileSystem.h"
 #include "ObjectRouter.h"
-
+#include "ScrubManager.h"
 #include "XMLRPC.h"
 #include "XMLRPCKeys.h"
 #include "XMLRPCStructs.h"
 #include "XMLRPCUtils.h"
-#include "CloneFileFlags.h"
-#include "ClientInfo.h"
 
 #include <cerrno>
 #include <fstream>
@@ -2120,6 +2120,14 @@ GetBackendConnectionPool::execute_internal(::XmlRpc::XmlRpcValue& params,
         result[XMLRPCKeys::backend_config_str] =
             boost::lexical_cast<std::string>(cm->pool(cfg.getNS())->config());
     });
+}
+
+void
+GetScrubManagerCounters::execute_internal(::XmlRpc::XmlRpcValue& /* params */,
+                                          ::XmlRpc::XmlRpcValue& result)
+{
+    const ScrubManager::Counters smc(fs_.object_router().scrub_manager().get_counters());
+    result[XMLRPCKeys::scrub_manager_counters] = XMLRPCStructsXML::serialize_to_xmlrpc_value(smc);
 }
 
 }

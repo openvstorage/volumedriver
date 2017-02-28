@@ -72,6 +72,7 @@
 #include <filesystem/NodeId.h>
 #include <filesystem/Object.h>
 #include <filesystem/PythonClient.h>
+#include <filesystem/ScrubManager.h>
 #include <filesystem/XMLRPCKeys.h>
 
 // The "storagerouterclient" name is inherited from the previous python implementation
@@ -395,6 +396,25 @@ BOOST_PYTHON_MODULE(storagerouterclient)
 
 #undef DEF_READONLY_PROP_
         ;
+
+#define DEF_READONLY_PROP_(name)                                \
+    .def_readonly(#name, &vfs::ScrubManager::Counters::name)
+
+    bpy::class_<vfs::ScrubManager::Counters>("ScrubManagerCounters")
+        .def("__str__",
+             &repr<vfs::ScrubManager::Counters>)
+        .def("__repr__",
+             &repr<vfs::ScrubManager::Counters>)
+        .def("__eq__",
+             &vfs::ScrubManager::Counters::operator==)
+        DEF_READONLY_PROP_(parent_scrubs_ok)
+        DEF_READONLY_PROP_(parent_scrubs_nok)
+        DEF_READONLY_PROP_(clone_scrubs_ok)
+        DEF_READONLY_PROP_(clone_scrubs_nok)
+        ;
+
+#undef DEF_READONLY_PROP_
+
 
     REGISTER_OPTIONAL_CONVERTER(vd::FailOverCacheConfig);
 
@@ -1000,6 +1020,13 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "@param volume_id: string, volume identifier\n"
              "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns string, identifier for the backend connection pool\n")
+        .def("_scrub_manager_counters",
+             &vfs::PythonClient::scrub_manager_counters,
+             (bpy::args("node_id"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
+             "Get ScrubManager counters of a given node\n"
+             "@param node_id: string, target node\n"
+             "@returns: a ScrubManagerCounters instance\n")
         ;
 
     vfspy::ArakoonClient::registerize();

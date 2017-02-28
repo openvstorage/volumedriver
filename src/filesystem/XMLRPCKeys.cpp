@@ -107,6 +107,7 @@ DEFINE_XMLRPC_KEY(sco_cache_hits);
 DEFINE_XMLRPC_KEY(sco_cache_misses);
 DEFINE_XMLRPC_KEY(sco_multiplier);
 DEFINE_XMLRPC_KEY(sco_size);
+DEFINE_XMLRPC_KEY(scrub_manager_counters);
 DEFINE_XMLRPC_KEY(scrubbing_name);
 DEFINE_XMLRPC_KEY(show_defaults);
 DEFINE_XMLRPC_KEY(size);

@@ -16,6 +16,7 @@
 #include "FailOverCacheConfigMode.h"
 #include "LockedPythonClient.h"
 #include "PythonClient.h"
+#include "ScrubManager.h"
 #include "XMLRPCKeys.h"
 #include "XMLRPCUtils.h"
 
@@ -1175,6 +1176,21 @@ PythonClient::list_methods(const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     return extract_vec(call("system.listMethods", req, timeout));
+}
+
+ScrubManager::Counters
+PythonClient::scrub_manager_counters(const std::string& node_id,
+                                     const MaybeSeconds& timeout)
+{
+    XmlRpc::XmlRpcValue req;
+
+    if (not node_id.empty())
+    {
+        req[XMLRPCKeys::vrouter_id] = node_id;
+    }
+
+    auto rsp(call(GetScrubManagerCounters::method_name(), req, timeout));
+    return XMLRPCStructsXML::deserialize_from_xmlrpc_value<ScrubManager::Counters>(rsp[XMLRPCKeys::scrub_manager_counters]);
 }
 
 }

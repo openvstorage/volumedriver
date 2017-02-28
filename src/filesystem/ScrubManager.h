@@ -25,6 +25,7 @@
 #include <youtils/LockedArakoon.h>
 #include <youtils/Logging.h>
 #include <youtils/PeriodicAction.h>
+#include <youtils/Serialization.h>
 
 #include <backend/Garbage.h>
 
@@ -163,6 +164,40 @@ public:
         uint64_t parent_scrubs_nok = 0;
         uint64_t clone_scrubs_ok = 0;
         uint64_t clone_scrubs_nok = 0;
+
+        bool
+        operator==(const Counters& other) const
+        {
+#define EQ(x)                                    \
+            x == other.x
+
+            return
+                EQ(parent_scrubs_ok) and
+                EQ(parent_scrubs_nok) and
+                EQ(clone_scrubs_ok) and
+                EQ(clone_scrubs_nok)
+                ;
+#undef EQ
+        }
+
+        bool
+        operator!=(const Counters& other) const
+        {
+            return not operator==(other);
+        }
+
+        template<typename Archive>
+        void
+        serialize(Archive& ar,
+                  const unsigned version)
+        {
+            ar & BOOST_SERIALIZATION_NVP(parent_scrubs_ok);
+            ar & BOOST_SERIALIZATION_NVP(parent_scrubs_nok);
+            ar & BOOST_SERIALIZATION_NVP(clone_scrubs_ok);
+            ar & BOOST_SERIALIZATION_NVP(clone_scrubs_nok);
+        }
+
+        static constexpr const char* serialization_name = "ScrubManagerCounters";
     };
 
     Counters
@@ -237,6 +272,12 @@ private:
     collect_scrub_garbage_();
 };
 
+std::ostream&
+operator<<(std::ostream&,
+           const ScrubManager::Counters&);
+
 }
+
+BOOST_CLASS_VERSION(volumedriverfs::ScrubManager::Counters, 1);
 
 #endif // !VFS_SCRUB_MANAGER_H_

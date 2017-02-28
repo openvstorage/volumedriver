@@ -342,6 +342,11 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirect,
                 "Get scrubbing work");
 
 REGISTER_XMLRPC(XMLRPCCallTimingRedirect,
+                GetScrubManagerCounters,
+                "getScrubManagerCounters",
+                "Get ScrubManager counters");
+
+REGISTER_XMLRPC(XMLRPCCallTimingRedirect,
                 ResizeObject,
                 "resizeObject",
                 "Resize an object");
@@ -714,7 +719,7 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
                 "getMetaDataCacheCapacity",
                 "get capacity of the metadata cache (in pages)");
 
-typedef LOKI_TYPELIST_89(
+typedef LOKI_TYPELIST_90(
 // ================== EXPOSED IN XMLRPC CLIENT ===================
                          VolumeCreate,
                          VolumesList,
@@ -736,6 +741,7 @@ typedef LOKI_TYPELIST_89(
                          SetVolumeAsTemplate,
                          GetScrubbingWork,
                          ApplyScrubbingResult,
+                         GetScrubManagerCounters,
                          Revision,
                          MarkNodeOffline,
                          MarkNodeOnline,

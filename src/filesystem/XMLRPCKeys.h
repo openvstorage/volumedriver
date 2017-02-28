@@ -110,6 +110,7 @@ struct XMLRPCKeys
     static const std::string sco_cache_misses;
     static const std::string sco_multiplier;
     static const std::string sco_size;
+    static const std::string scrub_manager_counters;
     static const std::string scrubbing_name;
     static const std::string scrubbing_work_result;
     static const std::string show_defaults;
