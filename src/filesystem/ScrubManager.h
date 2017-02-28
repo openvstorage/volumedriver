@@ -189,7 +189,7 @@ public:
         template<typename Archive>
         void
         serialize(Archive& ar,
-                  const unsigned version)
+                  const unsigned /*version*/)
         {
             ar & BOOST_SERIALIZATION_NVP(parent_scrubs_ok);
             ar & BOOST_SERIALIZATION_NVP(parent_scrubs_nok);
