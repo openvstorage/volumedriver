@@ -1153,7 +1153,7 @@ VolumePerformanceCountersV3::execute_internal(XmlRpc::XmlRpcValue& params,
 
         const be::PartialReadCounter prc(api::getPartialReadCounter(volName));
         results_stats.partial_read_slow = prc.slow;
-        results_stats.partial_read_slow = prc.fast;
+        results_stats.partial_read_fast = prc.fast;
 
         vd::PerformanceCounters& perf_counters = api::performance_counters(volName);
         results_stats.performance_counters = perf_counters;
