@@ -96,6 +96,7 @@ DEFINE_XMLRPC_KEY(param_name);
 DEFINE_XMLRPC_KEY(parent_nspace);
 DEFINE_XMLRPC_KEY(parent_snapshot_id);
 DEFINE_XMLRPC_KEY(parent_volume_id); // unify with parent_nspace!
+DEFINE_XMLRPC_KEY(path);
 DEFINE_XMLRPC_KEY(prefetch);
 DEFINE_XMLRPC_KEY(problem);
 DEFINE_XMLRPC_KEY(problems);

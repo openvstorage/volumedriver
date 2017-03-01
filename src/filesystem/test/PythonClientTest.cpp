@@ -2196,4 +2196,25 @@ TEST_F(PythonClientTest, fallback)
     test_fallback();
 }
 
+TEST_F(PythonClientTest, sco_cache_mount_point_info)
+{
+    vd::SCOCacheMountPointsInfo map;
+    api::getSCOCacheMountPointsInfo(map);
+
+    const std::vector<vd::SCOCacheMountPointInfo>
+        vec(client_.sco_cache_mount_point_info(local_node_id()));
+
+    ASSERT_FALSE(vec.empty());
+    ASSERT_EQ(map.size(),
+              vec.size());
+
+    for (const auto& mpinfo : vec)
+    {
+        auto it = map.find(mpinfo.path);
+        ASSERT_TRUE(it != map.end());
+        ASSERT_EQ(it->second,
+                  mpinfo);
+    }
+}
+
 }

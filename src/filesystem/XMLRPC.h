@@ -507,6 +507,11 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
                 "getBackendConnectionPool",
                 "Get connection pool used for a volume");
 
+REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
+                ScoCacheInfo,
+                "scoCacheInfo",
+                "Return disk usage information of the SCO cache");
+
 // ================== NOT EXPOSED, NOT TESTED   ==================
 
 REGISTER_XMLRPC(XMLRPCCallTimingLock,
@@ -533,11 +538,6 @@ REGISTER_XMLRPC(XMLRPCCallTimingLock,
                 TLogUsed,
                 "tlogUsed",
                 "Returns total size used by the tlogs");
-
-REGISTER_XMLRPC(XMLRPCCallTimingLock,
-                ScoCacheInfo,
-                "scoCacheInfo",
-                "Return disk usage information of the SCO cache");
 
 REGISTER_XMLRPC(XMLRPCCallTimingLock,
                 VolumeScoCacheInfo,

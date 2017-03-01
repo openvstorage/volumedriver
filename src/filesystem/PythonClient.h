@@ -40,6 +40,11 @@
 #include <volumedriver/MetaDataBackendConfig.h>
 #include <volumedriver/FailOverCacheConfig.h>
 
+namespace volumedriver
+{
+struct SCOCacheMountPointInfo;
+}
+
 namespace volumedriverfstest
 {
 class PythonClientTest;
@@ -404,6 +409,10 @@ public:
     ScrubManager::Counters
     scrub_manager_counters(const std::string& node_id,
                            const MaybeSeconds& = boost::none);
+
+    std::vector<volumedriver::SCOCacheMountPointInfo>
+    sco_cache_mount_point_info(const std::string& node_id,
+                               const MaybeSeconds& = boost::none);
 
 protected:
     PythonClient(const MaybeSeconds& timeout)

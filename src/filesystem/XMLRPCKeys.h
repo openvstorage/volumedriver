@@ -99,6 +99,7 @@ struct XMLRPCKeys
     static const std::string parent_nspace;
     static const std::string parent_snapshot_id;
     static const std::string parent_volume_id; // unify with parent_nspace_key!
+    static const std::string path;
     static const std::string prefetch;
     static const std::string problem;
     static const std::string problems;

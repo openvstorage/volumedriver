@@ -1418,15 +1418,20 @@ ScoCacheInfo::execute_internal(XmlRpc::XmlRpcValue& /*params*/,
     api::getSCOCacheMountPointsInfo(info);
     ensureStruct(result);
 
+    size_t k = 0;
+    result.clear();
+    result.setSize(0);
+
     for (const auto& i : info)
     {
         XmlRpc::XmlRpcValue val;
+        val[XMLRPCKeys::path] = i.first.string();
         val[XMLRPCKeys::max_size] = XMLVAL(yt::DimensionedValue(i.second.capacity).toString());
         val[XMLRPCKeys::free] = XMLVAL(i.second.free);
         val[XMLRPCKeys::used] = XMLVAL(i.second.used);
         val[XMLRPCKeys::choking] = XMLVAL(i.second.choking);
         val[XMLRPCKeys::offlined] = XMLVAL(i.second.offlined);
-        result[i.first.string()] = val;
+        result[k++] = val;
     }
 }
 
