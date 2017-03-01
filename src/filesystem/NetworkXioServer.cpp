@@ -158,7 +158,9 @@ NetworkXioServer::evfd_stop_loop(int /*fd*/, int /*events*/, void * /*data*/)
 void
 NetworkXioServer::run(std::promise<void> promise)
 {
-    int xopt = 2;
+    int xopt = 2, optlen;
+
+    pthread_setname_np(pthread_self(), "xio_server");
 
     xio_init();
 
@@ -188,15 +190,21 @@ NetworkXioServer::run(std::promise<void> promise)
                 &xopt, sizeof(int));
 
     struct xio_options_keepalive ka;
+    optlen = sizeof(ka);
+    xio_get_opt(NULL,
+                XIO_OPTLEVEL_ACCELIO,
+                XIO_OPTNAME_CONFIG_KEEPALIVE,
+                &ka,
+                &optlen);
     ka.time =
         yt::System::get_env_with_default<int>("NETWORK_XIO_KEEPALIVE_TIME",
-                                              600);
+                                              ka.time);
     ka.intvl =
         yt::System::get_env_with_default<int>("NETWORK_XIO_KEEPALIVE_INTVL",
-                                              60);
+                                              ka.intvl);
     ka.probes =
         yt::System::get_env_with_default<int>("NETWORK_XIO_KEEPALIVE_PROBES",
-                                              20);
+                                              ka.probes);
 
     xio_set_opt(NULL,
                 XIO_OPTLEVEL_ACCELIO,
@@ -235,8 +243,14 @@ NetworkXioServer::run(std::promise<void> promise)
     int polling_timeout_us =
     yt::System::get_env_with_default<int>("NETWORK_XIO_POLLING_TIMEOUT_US",
                                           0);
+    int max_conns_per_ctx =
+    yt::System::get_env_with_default<int>("NETWORK_XIO_MAX_CONNS_PER_CTX",
+                                          256);
 
-    ctx = std::shared_ptr<xio_context>(xio_context_create(NULL,
+    xio_context_params ctx_params;
+    memset(&ctx_params, 0, sizeof(ctx_params));
+    ctx_params.max_conns_per_ctx = max_conns_per_ctx;
+    ctx = std::shared_ptr<xio_context>(xio_context_create(&ctx_params,
                                                           polling_timeout_us,
                                                           -1),
                                        xio_context_destroy);
@@ -281,12 +295,12 @@ NetworkXioServer::run(std::promise<void> promise)
 
     try
     {
-        wq_ = std::make_shared<NetworkXioWorkQueue>("ovs_xio_wq",
+        wq_ = std::make_shared<NetworkXioWorkQueue>("xio_wq",
                                                     evfd,
                                                     finished_lock,
                                                     finished_list,
                                                     wq_max_threads);
-        wq_ctrl_ = std::make_shared<NetworkXioWorkQueue>("ovs_xio_wq_ctrl",
+        wq_ctrl_ = std::make_shared<NetworkXioWorkQueue>("xio_wq_ctrl",
                                                          evfd,
                                                          finished_lock,
                                                          finished_list,
@@ -359,6 +373,7 @@ NetworkXioServer::run(std::promise<void> promise)
     }
     server.reset();
     wq_->shutdown();
+    wq_ctrl_->shutdown();
     xio_context_del_ev_handler(ctx.get(), evfd);
     ctx.reset();
     mpool.reset();

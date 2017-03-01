@@ -30,8 +30,7 @@ class NetworkXioContext
 public:
     NetworkXioContext(const std::string& uri,
                       uint64_t net_client_qdepth,
-                      NetworkHAContext& ha_ctx,
-                      bool ha_try_reconnect);
+                      NetworkHAContext& ha_ctx);
 
     ~NetworkXioContext();
 
@@ -129,7 +128,6 @@ private:
     uint64_t net_client_qdepth_;
     std::string volname_;
     NetworkHAContext& ha_ctx_;
-    bool ha_try_reconnect_;
 
     int
     aio_suspend(ovs_aiocb *ovs_aiocbp);

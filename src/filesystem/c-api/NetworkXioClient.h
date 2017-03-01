@@ -38,24 +38,24 @@ namespace libovsvolumedriver
 
 MAKE_EXCEPTION(XioClientCreateException, fungi::IOException);
 MAKE_EXCEPTION(XioClientRegHandlerException, fungi::IOException);
-MAKE_EXCEPTION(XioClientQueueIsBusyException, fungi::IOException);
 
 class NetworkXioClient
 {
 public:
     NetworkXioClient(const std::string& uri,
                      const uint64_t qd,
-                     NetworkHAContext& ha_ctx,
-                     bool ha_try_reconnect);
+                     NetworkHAContext& ha_ctx);
 
     ~NetworkXioClient();
 
     struct session_data
     {
         xio_context *ctx;
+        xio_session *session;
         bool disconnected = false;
         bool disconnecting = false;
         bool connection_error = false;
+        bool session_established = false;
     };
 
     struct xio_msg_s
@@ -77,6 +77,18 @@ public:
             return reinterpret_cast<ovs_aio_request*>(opaque);
         }
 
+        uint64_t
+        get_request_id()
+        {
+            return reinterpret_cast<ovs_aio_request*>(opaque)->_id;
+        }
+
+        RequestOp
+        get_request_op()
+        {
+            return reinterpret_cast<ovs_aio_request*>(opaque)->_op;
+        }
+
     };
 
     struct xio_ctl_s
@@ -85,7 +97,8 @@ public:
         session_data sdata;
         std::vector<std::string> vec;
         std::unique_ptr<uint8_t[]> data;
-        uint64_t size;
+        uint64_t size = 0;
+        bool serviced = false;
     };
 
     void
@@ -261,24 +274,14 @@ private:
     bool disconnecting;
 
     int64_t nr_req_queue;
-    std::mutex req_queue_lock;
-    std::condition_variable req_queue_cond;
 
     volumedriverfs::EventFD evfd;
 
     NetworkHAContext& ha_ctx_;
-    bool ha_try_reconnect_;
-    bool connection_error_;
     std::atomic<bool> dtl_in_sync_;
 
     void
     xio_run_loop_worker();
-
-    void
-    req_queue_wait_until(xio_msg_s *xmsg);
-
-    void
-    req_queue_release();
 
     void
     shutdown();
@@ -305,10 +308,16 @@ private:
                              xio_session_event_data *event_data,
                              void *cb_user_context);
 
+    static int
+    on_session_established_control(xio_session *session,
+                                   xio_new_session_rsp *rsp,
+                                   void *cb_user_context);
+
     static void
     xio_submit_request(const std::string& uri,
                        xio_ctl_s *xctl,
-                       ovs_aio_request *request);
+                       ovs_aio_request *request,
+                       int timeout_ms_);
 
     static void
     xio_msg_prepare(xio_msg_s *xmsg);
@@ -377,22 +386,18 @@ private:
     }
 
     bool
-    try_fail_request_on_conn_error()
+    maybe_fail_request(xio_msg_s *req)
     {
-        bool ha_and_conn_error = connection_error_ and is_ha_enabled();
-        bool try_reconn_not_openning = (not ha_ctx_.is_volume_openning() and
-                ha_try_reconnect_);
-        return (ha_and_conn_error and (ha_ctx_.is_volume_openning() or
-                                       try_reconn_not_openning));
-    }
-
-    bool
-    try_fail_request_on_msg_error()
-    {
-        bool ha_conn_err_not_try_reconn = is_ha_enabled() and
-            connection_error_ and (not ha_try_reconnect_);
-        return ((not ha_conn_err_not_try_reconn) or
-                (ha_conn_err_not_try_reconn and ha_ctx_.is_volume_openning()));
+        RequestOp op = req->get_request_op();
+        assert(op != RequestOp::Noop);
+        if (op == RequestOp::Open or op == RequestOp::Close)
+        {
+            return true;
+        }
+        else
+        {
+            return is_ha_enabled() ? false : true;
+        }
     }
 
     void
@@ -400,22 +405,20 @@ private:
     {
         if (is_ha_enabled())
         {
-            uint64_t id = xio_msg->get_request()->_id;
-            maybe_insert_seen_request(id);
-        }
-    }
-
-    void
-    maybe_insert_seen_request(uint64_t id)
-    {
-        if (not ha_try_reconnect_)
-        {
-            ha_ctx_.insert_seen_request(id);
-        }
-        else
-        {
-            /* in state machine order */
-            ha_try_reconnect_ = false;
+            uint64_t id = xio_msg->get_request_id();
+            RequestOp op = xio_msg->get_request_op();
+            assert(op != RequestOp::Noop);
+            switch (op)
+            {
+            case RequestOp::Read:
+            case RequestOp::Write:
+            case RequestOp::Flush:
+            case RequestOp::AsyncFlush:
+                ha_ctx_.insert_seen_request(id);
+                break;
+            default:
+                break;
+            }
         }
     }
 };

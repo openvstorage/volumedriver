@@ -273,7 +273,8 @@ private:
     assign_request_id(ovs_aio_request*);
 
     void
-    insert_inflight_request(ovs_aio_request*,
+    insert_inflight_request(uint64_t id,
+                            ovs_aio_request*,
                             NetworkXioContextPtr);
 
     void

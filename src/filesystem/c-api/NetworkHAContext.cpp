@@ -68,8 +68,7 @@ NetworkHAContext::NetworkHAContext(const std::string& uri,
                                    bool ha_enabled)
     : ctx_(std::make_shared<NetworkXioContext>(uri,
                                                net_client_qdepth,
-                                               *this,
-                                               false))
+                                               *this))
     , uri_(uri)
     , qd_(net_client_qdepth)
     , ha_enabled_(ha_enabled)
@@ -176,10 +175,10 @@ NetworkHAContext::assign_request_id(ovs_aio_request *request)
 }
 
 void
-NetworkHAContext::insert_inflight_request(ovs_aio_request* req,
+NetworkHAContext::insert_inflight_request(const uint64_t id,
+                                          ovs_aio_request* req,
                                           NetworkXioContextPtr ctx)
 {
-    const uint64_t id = req->_id;
     inflight_ha_reqs_.emplace(id, std::make_pair(req, std::move(ctx)));
 }
 
@@ -187,6 +186,7 @@ void
 NetworkHAContext::fail_inflight_requests(int errval)
 {
     LOCK_INFLIGHT();
+    remove_all_seen_requests();
     for (auto req_it = inflight_ha_reqs_.cbegin();
             req_it != inflight_ha_reqs_.cend();)
     {
@@ -219,7 +219,12 @@ NetworkHAContext::remove_seen_requests()
         q_.pop();
         {
             LOCK_INFLIGHT();
-            inflight_ha_reqs_.erase(id);
+            auto ret = inflight_ha_reqs_.erase(id);
+            if (ret == 0)
+            {
+                LIBLOG_ERROR("inflight request does not exist.");
+                assert(ret == 1);
+            }
         }
     }
 }
@@ -232,14 +237,20 @@ NetworkHAContext::remove_all_seen_requests()
     {
         uint64_t id = seen_ha_reqs_.front();
         seen_ha_reqs_.pop();
-        LOCK_INFLIGHT();
-        inflight_ha_reqs_.erase(id);
+        auto ret = inflight_ha_reqs_.erase(id);
+        if (ret == 0)
+        {
+            LIBLOG_ERROR("inflight request does not exist.");
+            assert(ret == 1);
+        }
     }
 }
 
 void
 NetworkHAContext::resend_inflight_requests()
 {
+    LIBLOGID_INFO("sending inflight requests to URI '" << uri_
+                  << "' for volume '" << volume_name_ << "'");
     for (auto& req_entry: inflight_ha_reqs_)
     {
         auto request = req_entry.second.first;
@@ -264,6 +275,8 @@ NetworkHAContext::resend_inflight_requests()
 
         req_entry.second.second = ctx;
     }
+    LIBLOGID_INFO("inflight requests have been resend to URI '" << uri_
+                  << "' for volume '" << volume_name_ << "'");
 }
 
 int
@@ -275,8 +288,7 @@ NetworkHAContext::do_reconnect(const std::string& uri)
     {
         auto tmp_ctx = std::make_shared<NetworkXioContext>(uri,
                                                            qd_,
-                                                           *this,
-                                                           true);
+                                                           *this);
         ret = tmp_ctx->open_volume(volume_name_.c_str(),
                                    oflag);
         if (ret < 0)
@@ -342,6 +354,7 @@ void
 NetworkHAContext::try_to_reconnect()
 {
     LOCK_INFLIGHT();
+    remove_all_seen_requests();
     int r = reconnect();
     if (r < 0)
     {
@@ -422,7 +435,6 @@ NetworkHAContext::ha_ctx_handler(void *arg)
         }
         if (is_connection_error())
         {
-            remove_all_seen_requests();
             if (is_volume_open())
             {
                 try_to_reconnect();
@@ -598,16 +610,20 @@ NetworkHAContext::wrap_io(int (NetworkXioContext::*mem_fun)(ovs_aio_request*,
 {
     int r;
 
+    assert(request->_op != RequestOp::Noop);
+    assert(request->_op != RequestOp::Open);
+    assert(request->_op != RequestOp::Close);
+
     if (is_ha_enabled())
     {
-        assign_request_id(request);
+        uint64_t id = assign_request_id(request);
 
         LOCK_INFLIGHT();
         NetworkXioContextPtr ctx = atomic_get_ctx();
         r = (ctx.get()->*mem_fun)(request, std::forward<Args>(args)...);
         if (not r)
         {
-            insert_inflight_request(request, std::move(ctx));
+            insert_inflight_request(id, request, std::move(ctx));
         }
     }
     else

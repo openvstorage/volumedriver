@@ -342,6 +342,11 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirect,
                 "Get scrubbing work");
 
 REGISTER_XMLRPC(XMLRPCCallTimingRedirect,
+                GetScrubManagerCounters,
+                "getScrubManagerCounters",
+                "Get ScrubManager counters");
+
+REGISTER_XMLRPC(XMLRPCCallTimingRedirect,
                 ResizeObject,
                 "resizeObject",
                 "Resize an object");
@@ -502,6 +507,11 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
                 "getBackendConnectionPool",
                 "Get connection pool used for a volume");
 
+REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
+                ScoCacheInfo,
+                "scoCacheInfo",
+                "Return disk usage information of the SCO cache");
+
 // ================== NOT EXPOSED, NOT TESTED   ==================
 
 REGISTER_XMLRPC(XMLRPCCallTimingLock,
@@ -528,11 +538,6 @@ REGISTER_XMLRPC(XMLRPCCallTimingLock,
                 TLogUsed,
                 "tlogUsed",
                 "Returns total size used by the tlogs");
-
-REGISTER_XMLRPC(XMLRPCCallTimingLock,
-                ScoCacheInfo,
-                "scoCacheInfo",
-                "Return disk usage information of the SCO cache");
 
 REGISTER_XMLRPC(XMLRPCCallTimingLock,
                 VolumeScoCacheInfo,
@@ -714,7 +719,7 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
                 "getMetaDataCacheCapacity",
                 "get capacity of the metadata cache (in pages)");
 
-typedef LOKI_TYPELIST_89(
+typedef LOKI_TYPELIST_90(
 // ================== EXPOSED IN XMLRPC CLIENT ===================
                          VolumeCreate,
                          VolumesList,
@@ -736,6 +741,7 @@ typedef LOKI_TYPELIST_89(
                          SetVolumeAsTemplate,
                          GetScrubbingWork,
                          ApplyScrubbingResult,
+                         GetScrubManagerCounters,
                          Revision,
                          MarkNodeOffline,
                          MarkNodeOnline,

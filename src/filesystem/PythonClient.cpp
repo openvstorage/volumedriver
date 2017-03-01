@@ -16,6 +16,7 @@
 #include "FailOverCacheConfigMode.h"
 #include "LockedPythonClient.h"
 #include "PythonClient.h"
+#include "ScrubManager.h"
 #include "XMLRPCKeys.h"
 #include "XMLRPCUtils.h"
 
@@ -29,6 +30,7 @@
 #include <youtils/Logging.h>
 #include <youtils/BuildInfoString.h>
 
+#include <volumedriver/SCOCacheInfo.h>
 #include <volumedriver/Snapshot.h>
 #include <volumedriver/VolumeConfig.h>
 
@@ -1175,6 +1177,71 @@ PythonClient::list_methods(const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
     return extract_vec(call("system.listMethods", req, timeout));
+}
+
+ScrubManager::Counters
+PythonClient::scrub_manager_counters(const std::string& node_id,
+                                     const MaybeSeconds& timeout)
+{
+    XmlRpc::XmlRpcValue req;
+
+    if (not node_id.empty())
+    {
+        req[XMLRPCKeys::vrouter_id] = node_id;
+    }
+
+    auto rsp(call(GetScrubManagerCounters::method_name(), req, timeout));
+    return XMLRPCStructsXML::deserialize_from_xmlrpc_value<ScrubManager::Counters>(rsp[XMLRPCKeys::scrub_manager_counters]);
+}
+
+std::vector<vd::SCOCacheMountPointInfo>
+PythonClient::sco_cache_mount_point_info(const std::string& node_id,
+                                         const MaybeSeconds& timeout)
+{
+    XmlRpc::XmlRpcValue req;
+
+    if (not node_id.empty())
+    {
+        req[XMLRPCKeys::vrouter_id] = node_id;
+    }
+
+    auto rsp(call(ScoCacheInfo::method_name(), req, timeout));
+
+    std::vector<vd::SCOCacheMountPointInfo> vec;
+    vec.reserve(rsp.size());
+
+    for (auto i = 0; i < rsp.size(); ++i)
+    {
+        XmlRpc::XmlRpcValue& val = rsp[i];
+
+#define S(x)                                    \
+        static_cast<std::string>(x)
+
+#define B(x)                                    \
+        static_cast<bool>(x)
+
+        const fs::path path(S(val[XMLRPCKeys::path]));
+        const size_t capacity =
+            yt::DimensionedValue(S(val[XMLRPCKeys::max_size])).getBytes();
+        const size_t free =
+            boost::lexical_cast<size_t>(S(val[XMLRPCKeys::free]));
+        const size_t used =
+            boost::lexical_cast<size_t>(S(val[XMLRPCKeys::used]));
+        const bool choking = B(val[XMLRPCKeys::choking]);
+        const bool offlined = B(val[XMLRPCKeys::offlined]);
+
+#undef B
+#undef S
+
+        vec.emplace_back(path,
+                         capacity,
+                         free,
+                         used,
+                         choking,
+                         offlined);
+    }
+
+    return vec;
 }
 
 }

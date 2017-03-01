@@ -10,6 +10,7 @@
     * [Manual building](docs/manual_building.md)
     * [Running the testsuite](docs/running_included_testsuite.md)
 * [Using the Volume Driver](docs/using.md)
+    * [Backward Compatibility Notes](docs/backward_compatibility.md)
     * [Configuration](docs/config.md)
     * [Python API](docs/pythonapi.md)
     * [CLI](docs/volumedriver_fs_cli.md)

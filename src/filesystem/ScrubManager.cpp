@@ -766,4 +766,18 @@ ScrubManager::collect_scrub_garbage_()
                             yt::RetryOnArakoonAssert::F);
 }
 
+std::ostream&
+operator<<(std::ostream& os,
+           const ScrubManager::Counters& smc)
+{
+    return
+        os <<
+        "ScrubManagerCounters{parent_scrubs_ok=" << smc.parent_scrubs_ok <<
+        ",parent_scrubs_nok=" << smc.parent_scrubs_nok <<
+        ",clone_scrubs_ok=" << smc.clone_scrubs_ok <<
+        ",clone_scrubs_nok=" << smc.clone_scrubs_nok <<
+        "}"
+        ;
+}
+
 }

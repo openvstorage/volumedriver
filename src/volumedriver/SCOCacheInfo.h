@@ -22,7 +22,11 @@
 #include <map>
 #include <string>
 #include <stdint.h>
+
 #include <boost/filesystem.hpp>
+
+#include <youtils/Serialization.h>
+
 #include <backend/Namespace.h>
 
 namespace volumedriver
@@ -51,17 +55,25 @@ struct SCOCacheNamespaceInfo
 
 struct SCOCacheMountPointInfo
 {
+    fs::path path;
+    uint64_t capacity;
+    uint64_t free;
+    uint64_t used;
+    bool choking;
+    bool offlined;
+
     SCOCacheMountPointInfo(const fs::path& ipath,
                            uint64_t icapacity,
                            uint64_t ifree,
                            uint64_t iused,
-                           bool ichoking)
+                           bool ichoking,
+                           bool iofflined = false)
         : path(ipath)
         , capacity(icapacity)
         , free(ifree)
         , used(iused)
         , choking(ichoking)
-        , offlined(false)
+        , offlined(iofflined)
     {}
 
     SCOCacheMountPointInfo(const fs::path& ipath,
@@ -74,20 +86,51 @@ struct SCOCacheMountPointInfo
         , offlined(iofflined)
     {}
 
-    const fs::path path;
-    const uint64_t capacity;
-    const uint64_t free;
-    const uint64_t used;
-    const bool choking;
-    const bool offlined;
+    bool
+    operator==(const SCOCacheMountPointInfo& other) const
+    {
+#define EQ(x)                                   \
+        x == other.x
+
+        return
+            EQ(path) and
+            EQ(capacity) and
+            EQ(free) and
+            EQ(used) and
+            EQ(choking) and
+            EQ(offlined)
+            ;
+#undef EQ
+    }
+
+    bool
+    operator!=(const SCOCacheMountPointInfo& other) const
+    {
+        return not operator==(other);
+    }
+
+    template<typename Archive>
+    void
+    serialize(Archive& ar,
+              const unsigned /* version */)
+    {
+        ar & BOOST_SERIALIZATION_NVP(path);
+        ar & BOOST_SERIALIZATION_NVP(capacity);
+        ar & BOOST_SERIALIZATION_NVP(free);
+        ar & BOOST_SERIALIZATION_NVP(used);
+        ar & BOOST_SERIALIZATION_NVP(choking);
+        ar & BOOST_SERIALIZATION_NVP(offlined);
+    }
 };
 
 typedef std::map<fs::path, SCOCacheMountPointInfo> SCOCacheMountPointsInfo;
 typedef std::map<std::string, SCOCacheNamespaceInfo> SCOCacheNamespacesInfo;
 
 }
-#endif // !SCOCACHE_INFO_H_
 
+BOOST_CLASS_VERSION(volumedriver::SCOCacheMountPointInfo, 1);
+
+#endif // !SCOCACHE_INFO_H_
 
 // Local Variables: **
 // mode: c++ **

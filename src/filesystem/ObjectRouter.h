@@ -92,6 +92,7 @@ class LocalNode;
 class LockedArakoon;
 class PythonClient;
 class RemoteNode;
+class ScrubManager;
 
 VD_BOOLEAN_ENUM(OnlyStealFromOfflineNode);
 VD_BOOLEAN_ENUM(IsRemoteNode);
@@ -418,6 +419,9 @@ public:
     void
     set_dtl_in_sync(const ObjectId&,
                     const volumedriver::DtlInSync);
+
+    const ScrubManager&
+    scrub_manager() const;
 
 private:
     DECLARE_LOGGER("VFSObjectRouter");

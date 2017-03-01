@@ -2101,4 +2101,10 @@ ObjectRouter::set_dtl_in_sync(const ObjectId& oid,
     }
 }
 
+const ScrubManager&
+ObjectRouter::scrub_manager() const
+{
+    return local_node_()->scrub_manager();
+}
+
 }

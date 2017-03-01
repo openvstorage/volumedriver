@@ -26,7 +26,7 @@ service ovs-volumedriver-vpool_name restart
 | volume_router | vrouter_max_workers | "16" | yes | maximum number of worker threads to handle redirected requests |
 | volume_router | vrouter_registry_cache_capacity | "1024" | no | number of ObjectRegistrations to keep cached |
 | volume_router | vrouter_use_fencing | "0" | yes | whether to use fencing support if it is available |
-| volume_router | vrouter_send_sync_response | "0" | yes | whether to send extended response data on sync requests |
+| volume_router | vrouter_send_sync_response | "1" | yes | whether to send extended response data on sync requests |
 | volume_router_cluster | vrouter_cluster_id | --- | no | cluster_id of the volumeroutercluster this node belongs to |
 | fuse | fuse_min_workers | "8" | yes | minimum number of FUSE worker threads |
 | fuse | fuse_max_workers | "8" | yes | maximum number of FUSE worker threads |

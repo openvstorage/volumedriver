@@ -96,6 +96,7 @@ DEFINE_XMLRPC_KEY(param_name);
 DEFINE_XMLRPC_KEY(parent_nspace);
 DEFINE_XMLRPC_KEY(parent_snapshot_id);
 DEFINE_XMLRPC_KEY(parent_volume_id); // unify with parent_nspace!
+DEFINE_XMLRPC_KEY(path);
 DEFINE_XMLRPC_KEY(prefetch);
 DEFINE_XMLRPC_KEY(problem);
 DEFINE_XMLRPC_KEY(problems);
@@ -107,6 +108,7 @@ DEFINE_XMLRPC_KEY(sco_cache_hits);
 DEFINE_XMLRPC_KEY(sco_cache_misses);
 DEFINE_XMLRPC_KEY(sco_multiplier);
 DEFINE_XMLRPC_KEY(sco_size);
+DEFINE_XMLRPC_KEY(scrub_manager_counters);
 DEFINE_XMLRPC_KEY(scrubbing_name);
 DEFINE_XMLRPC_KEY(show_defaults);
 DEFINE_XMLRPC_KEY(size);

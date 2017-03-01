@@ -199,8 +199,16 @@ public:
                                  vname.c_str(),
                                  vsize) == -1)
         {
+            // What we *actually* want here is ASSERT_GT but that doesn't work here.
+            // Hence throw an exception to end the misery quickly.
             EXPECT_GT(max, ++count) <<
-                "failed to create volume after " << count << " attempts: " << strerror(errno);
+                "failed to create volume after " << count <<
+                " attempts: " << strerror(errno);
+            if (max <= count)
+            {
+                throw std::runtime_error("volume creation retries exceeded, aborting test");
+            }
+
             boost::this_thread::sleep_for(bc::milliseconds(250));
         }
 
@@ -2576,6 +2584,85 @@ TEST_F(NetworkServerTest, remote_fail_grow_volume_beyond_limit)
               ovs_stat(ctx.get(), &st));
     EXPECT_EQ(st.st_size,
               volume_size);
+}
+
+TEST_F(NetworkServerTest, unmount_while_doing_io)
+{
+    mount_remote();
+
+    const std::string vname("volume");
+    uint64_t volume_size = 1ULL << 20;
+    make_volume(vname,
+                volume_size,
+                edge_port(true));
+
+    CtxPtr ctx(open_volume(vname,
+                           edge_port(true),
+                           O_RDWR,
+                           EnableHa::F));
+    ASSERT_TRUE(ctx != nullptr);
+
+    auto io_fun = [&]() {
+        while (true)
+        {
+            std::vector<uint8_t> buf(4096);
+
+            ovs_aiocb aiocb;
+            aiocb.aio_buf = buf.data();
+            aiocb.aio_nbytes = buf.size();
+            aiocb.aio_offset = 0;
+
+            EXPECT_EQ(0,ovs_aio_read(ctx.get(), &aiocb));
+            ovs_aio_suspend(ctx.get(), &aiocb, nullptr);
+            auto ret = ovs_aio_return(ctx.get(), &aiocb);
+            if (ret < 0 && errno == EIO)
+            {
+                ovs_aio_finish(ctx.get(), &aiocb);
+                break;
+            }
+            ovs_aio_finish(ctx.get(), &aiocb);
+        }
+    };
+
+    auto io_thread = std::thread(io_fun);
+
+    const bc::seconds duration(5);
+    boost::this_thread::sleep_for(duration);
+
+    umount_remote();
+
+    io_thread.join();
+}
+
+TEST_F(NetworkServerTest, unmount_while_having_many_open_connections)
+{
+    const size_t nconns = yt::System::get_env_with_default("EDGE_NCONS",
+                                                           12ULL);
+
+    mount_remote();
+
+    const std::string vname("volume");
+    uint64_t volume_size = 1ULL << 20;
+    make_volume(vname,
+                volume_size,
+                edge_port(true));
+
+    std::vector<CtxPtr> connections;
+
+    for (size_t i = 0; i < nconns; i++)
+    {
+        CtxPtr ctx(open_volume(vname,
+                               edge_port(true),
+                               O_RDWR,
+                               EnableHa::F));
+        ASSERT_TRUE(ctx != nullptr);
+        connections.push_back(std::move(ctx));
+    }
+
+    const bc::seconds duration(1);
+    boost::this_thread::sleep_for(duration);
+    umount_remote();
+    boost::this_thread::sleep_for(duration);
 }
 
 } //namespace

@@ -90,6 +90,7 @@ std::string xio_ka_time("LIBOVSVOLUMEDRIVER_XIO_KEEPALIVE_TIME");
 std::string xio_ka_intvl("LIBOVSVOLUMEDRIVER_XIO_KEEPALIVE_INTVL");
 std::string xio_ka_probes("LIBOVSVOLUMEDRIVER_XIO_KEEPALIVE_PROBES");
 std::string xio_poll_timeout_us("LIBOVSVOLUMEDRIVER_XIO_POLLING_TIMEOUT_US");
+std::string xio_ctrl_timeout_ms("LIBOVSVOLUMEDRIVER_XIO_CONTROL_TIMEOUT_MS");
 }
 
 template<class T>
@@ -124,8 +125,7 @@ static_evfd_stop_loop(int fd, int events, void *data)
 
 NetworkXioClient::NetworkXioClient(const std::string& uri,
                                    const uint64_t qd,
-                                   NetworkHAContext& ha_ctx,
-                                   bool ha_try_reconnect)
+                                   NetworkHAContext& ha_ctx)
     : uri_(uri)
     , stopping(false)
     , stopped(false)
@@ -134,8 +134,6 @@ NetworkXioClient::NetworkXioClient(const std::string& uri,
     , nr_req_queue(qd)
     , evfd()
     , ha_ctx_(ha_ctx)
-    , ha_try_reconnect_(ha_try_reconnect)
-    , connection_error_(false)
     , dtl_in_sync_(true)
 {
     LIBLOGID_INFO("uri: " << uri << ", queue depth: " << qd);
@@ -196,7 +194,7 @@ NetworkXioClient::NetworkXioClient(const std::string& uri,
 void
 NetworkXioClient::run(std::promise<bool>& promise)
 {
-    int xopt = 0;
+    int xopt = 0, optlen;
     xio_set_opt(NULL,
                 XIO_OPTLEVEL_ACCELIO,
                 XIO_OPTNAME_ENABLE_FLOW_CONTROL,
@@ -216,9 +214,19 @@ NetworkXioClient::run(std::promise<bool>& promise)
                 sizeof(int));
 
     struct xio_options_keepalive ka;
-    ka.time = yt::System::get_env_with_default<int>(xio_ka_time, 600);
-    ka.intvl = yt::System::get_env_with_default<int>(xio_ka_intvl, 60);
-    ka.probes = yt::System::get_env_with_default<int>(xio_ka_probes, 20);
+    optlen = sizeof(ka);
+    xio_get_opt(NULL,
+                XIO_OPTLEVEL_ACCELIO,
+                XIO_OPTNAME_CONFIG_KEEPALIVE,
+                &ka,
+                &optlen);
+
+    ka.time = yt::System::get_env_with_default<int>(xio_ka_time,
+                                                    ka.time);
+    ka.intvl = yt::System::get_env_with_default<int>(xio_ka_intvl,
+                                                     ka.intvl);
+    ka.probes = yt::System::get_env_with_default<int>(xio_ka_probes,
+                                                      ka.probes);
 
     xio_set_opt(NULL,
                 XIO_OPTLEVEL_ACCELIO,
@@ -250,7 +258,8 @@ NetworkXioClient::run(std::promise<bool>& promise)
 
     if (ctx == nullptr)
     {
-        LIBLOGID_ERROR("failed to create XIO context");
+        LIBLOGID_ERROR("failed to create XIO context: " <<
+                       xio_strerror(xio_errno()));
         throw XioClientCreateException("failed to create XIO context");
     }
 
@@ -260,7 +269,8 @@ NetworkXioClient::run(std::promise<bool>& promise)
                                   static_evfd_stop_loop<NetworkXioClient>,
                                   this))
     {
-        LIBLOGID_ERROR("failed to register event handler");
+        LIBLOGID_ERROR("failed to register event handler: " <<
+                       xio_strerror(xio_errno()));
         throw XioClientRegHandlerException("failed to register event handler");
     }
 
@@ -269,7 +279,8 @@ NetworkXioClient::run(std::promise<bool>& promise)
     if(session == nullptr)
     {
         xio_context_del_ev_handler(ctx.get(), evfd);
-        LIBLOGID_ERROR("failed to create XIO session");
+        LIBLOGID_ERROR("failed to create XIO session: " <<
+                       xio_strerror(xio_errno()));
         throw XioClientCreateException("failed to create XIO session");
     }
 
@@ -281,11 +292,12 @@ NetworkXioClient::run(std::promise<bool>& promise)
     if (conn == nullptr)
     {
         xio_context_del_ev_handler(ctx.get(), evfd);
-        LIBLOGID_ERROR("failed to connect");
+        LIBLOGID_ERROR("failed to connect: " <<
+                       xio_strerror(xio_errno()));
         throw XioClientCreateException("failed to connect");
     }
 
-    pthread_setname_np(pthread_self(), "xio_loop_worker");
+    pthread_setname_np(pthread_self(), "xio_event_loop");
     promise.set_value(true);
     xio_run_loop_worker();
 }
@@ -366,8 +378,7 @@ NetworkXioClient::xio_run_loop_worker()
             ret = xio_send_request(conn, &req->xreq);
             if (ret < 0)
             {
-                req_queue_release();
-                if ((not is_ha_enabled()) or try_fail_request_on_conn_error())
+                if (maybe_fail_request(req))
                 {
                     ovs_aio_request::handle_xio_request(req->get_request(),
                                                         -1,
@@ -430,7 +441,6 @@ NetworkXioClient::on_response(xio_session *session __attribute__((unused)),
     reply->in.header.iov_len = 0;
     vmsg_sglist_set_nents(&reply->in, 0);
     xio_release_response(reply);
-    req_queue_release();
     delete xio_msg;
     return 0;
 }
@@ -480,14 +490,13 @@ NetworkXioClient::on_msg_error(xio_session *session __attribute__((unused)),
         xio_release_response(msg);
     }
     xio_msg = reinterpret_cast<xio_msg_s*>(imsg.opaque());
-    if (try_fail_request_on_msg_error())
+    if (maybe_fail_request(xio_msg))
     {
         ovs_aio_request::handle_xio_request(xio_msg->get_request(),
                                             -1,
                                             EIO,
                                             true);
     }
-    req_queue_release();
     delete xio_msg;
     return 0;
 }
@@ -502,13 +511,12 @@ NetworkXioClient::on_session_event(xio_session *session __attribute__((unused)),
     case XIO_SESSION_ERROR_EVENT:
     case XIO_SESSION_CONNECTION_ERROR_EVENT:
     case XIO_SESSION_CONNECTION_REFUSED_EVENT:
-        connection_error_ = true;
         ha_ctx_.set_connection_error();
         break;
     case XIO_SESSION_CONNECTION_CLOSED_EVENT:
         break;
     case XIO_SESSION_CONNECTION_DISCONNECTED_EVENT:
-        connection_error_ = disconnected = true;
+        disconnected = true;
         ha_ctx_.set_connection_error();
         break;
     case XIO_SESSION_CONNECTION_TEARDOWN_EVENT:
@@ -528,34 +536,6 @@ NetworkXioClient::on_session_event(xio_session *session __attribute__((unused)),
 }
 
 void
-NetworkXioClient::req_queue_wait_until(xio_msg_s *xmsg)
-{
-    using namespace std::chrono_literals;
-    std::unique_lock<std::mutex> l_(req_queue_lock);
-    if (--nr_req_queue <= 0)
-    {
-        TODO("cnanakos: export cv timeout")
-        if (not req_queue_cond.wait_until(l_,
-                                          std::chrono::steady_clock::now() +
-                                          60s,
-                                          [&]{return nr_req_queue >= 0;}))
-        {
-            delete xmsg;
-            LIBLOGID_ERROR("request queue is busy");
-            throw XioClientQueueIsBusyException("request queue is busy");
-        }
-    }
-}
-
-void
-NetworkXioClient::req_queue_release()
-{
-    std::lock_guard<std::mutex> l_(req_queue_lock);
-    nr_req_queue++;
-    req_queue_cond.notify_one();
-}
-
-void
 NetworkXioClient::xio_send_open_request(const std::string& volname,
                                         ovs_aio_request *request)
 {
@@ -566,7 +546,6 @@ NetworkXioClient::xio_send_open_request(const std::string& volname,
     xmsg->msg.volume_name(volname);
 
     xio_msg_prepare(xmsg);
-    req_queue_wait_until(xmsg);
     push_request(xmsg);
     xstop_loop();
 }
@@ -589,7 +568,6 @@ NetworkXioClient::xio_send_read_request(void *buf,
     vmsg_sglist_set_nents(&xmsg->xreq.in, 1);
     xmsg->xreq.in.data_iov.sglist[0].iov_base = buf;
     xmsg->xreq.in.data_iov.sglist[0].iov_len = size_in_bytes;
-    req_queue_wait_until(xmsg);
     push_request(xmsg);
     xstop_loop();
 }
@@ -612,7 +590,6 @@ NetworkXioClient::xio_send_write_request(const void *buf,
     vmsg_sglist_set_nents(&xmsg->xreq.out, 1);
     xmsg->xreq.out.data_iov.sglist[0].iov_base = const_cast<void*>(buf);
     xmsg->xreq.out.data_iov.sglist[0].iov_len = size_in_bytes;
-    req_queue_wait_until(xmsg);
     push_request(xmsg);
     xstop_loop();
 }
@@ -626,7 +603,6 @@ NetworkXioClient::xio_send_flush_request(ovs_aio_request *request)
     xmsg->msg.opaque((uintptr_t)xmsg);
 
     xio_msg_prepare(xmsg);
-    req_queue_wait_until(xmsg);
     push_request(xmsg);
     xstop_loop();
 }
@@ -640,7 +616,6 @@ NetworkXioClient::xio_send_close_request(ovs_aio_request *request)
     xmsg->msg.opaque((uintptr_t)xmsg);
 
     xio_msg_prepare(xmsg);
-    req_queue_wait_until(xmsg);
     push_request(xmsg);
     xstop_loop();
 }
@@ -653,10 +628,10 @@ NetworkXioClient::on_msg_error_control(xio_session *session ATTR_UNUSED,
                                        void *cb_user_context)
 {
     NetworkXioMsg imsg;
-    xio_msg_s *xio_msg;
-
     session_data *sdata = static_cast<session_data*>(cb_user_context);
     xio_context *ctx = sdata->ctx;
+    LIBLOG_DEBUG("msg control error: " << session
+                 << " error: " << xio_strerror(error));
     if (direction == XIO_MSG_DIRECTION_IN)
     {
         try
@@ -687,11 +662,12 @@ NetworkXioClient::on_msg_error_control(xio_session *session ATTR_UNUSED,
             return 0;
         }
     }
-    xio_msg = reinterpret_cast<xio_msg_s*>(imsg.opaque());
-    ovs_aio_request::handle_xio_ctrl_request(xio_msg->get_request(),
+    xio_ctl_s *xctl = reinterpret_cast<xio_ctl_s*>(imsg.opaque());
+    ovs_aio_request::handle_xio_ctrl_request(xctl->xmsg.get_request(),
                                              -1,
                                              sdata->connection_error ?
                                              ENOTCONN : EIO);
+    xctl->serviced = true;
     xio_context_stop_loop(ctx);
     return 0;
 }
@@ -719,6 +695,7 @@ NetworkXioClient::on_msg_control(xio_session *session ATTR_UNUSED,
     ovs_aio_request::handle_xio_ctrl_request(xctl->xmsg.get_request(),
                                              imsg.retval(),
                                              imsg.errval());
+    xctl->serviced = true;
 
     assert(vmsg_sglist(&reply->in));
     switch (imsg.opcode())
@@ -800,18 +777,27 @@ NetworkXioClient::on_session_event_control(xio_session *session,
     return 0;
 }
 
+int
+NetworkXioClient::on_session_established_control(xio_session * /*session*/,
+                                                 xio_new_session_rsp * /*rsp*/,
+                                                 void *cb_user_context)
+{
+    session_data *sdata = static_cast<session_data*>(cb_user_context);
+    sdata->session_established = true;
+    return 0;
+}
+
 xio_connection*
 NetworkXioClient::create_connection_control(session_data *sdata,
                                             const std::string& uri)
 {
     xio_connection *conn;
-    xio_session *session;
     xio_session_params params;
     xio_connection_params cparams;
 
     xio_session_ops s_ops;
     s_ops.on_session_event = on_session_event_control;
-    s_ops.on_session_established = NULL;
+    s_ops.on_session_established = on_session_established_control;
     s_ops.on_msg = on_msg_control;
     s_ops.on_msg_error = on_msg_error_control;
     s_ops.assign_data_in_buf = NULL;
@@ -822,13 +808,13 @@ NetworkXioClient::create_connection_control(session_data *sdata,
     params.uri = uri.c_str();
     params.user_context = sdata;
 
-    session = xio_session_create(&params);
-    if (not session)
+    sdata->session = xio_session_create(&params);
+    if (not sdata->session)
     {
         return nullptr;
     }
     memset(&cparams, 0, sizeof(cparams));
-    cparams.session = session;
+    cparams.session = sdata->session;
     cparams.ctx = sdata->ctx;
     cparams.conn_user_context = sdata;
 
@@ -839,9 +825,13 @@ NetworkXioClient::create_connection_control(session_data *sdata,
 void
 NetworkXioClient::xio_submit_request(const std::string& uri,
                                      xio_ctl_s *xctl,
-                                     ovs_aio_request *request)
+                                     ovs_aio_request *request,
+                                     int timeout_ms_)
 {
     xrefcnt_init();
+
+    int timeout_ms = yt::System::get_env_with_default<int>(xio_ctrl_timeout_ms,
+                                                           timeout_ms_);
 
     auto ctx = std::shared_ptr<xio_context>(xio_context_create(NULL,
                                                                0,
@@ -865,18 +855,33 @@ NetworkXioClient::xio_submit_request(const std::string& uri,
                                                  EIO);
         goto exit;
     }
-    xio_context_run_loop(ctx.get(), XIO_INFINITE);
-exit:
-    xio_disconnect(conn);
-    if (not xctl->sdata.disconnected)
+    xio_context_run_loop(ctx.get(), timeout_ms);
+    if (not xctl->serviced)
     {
-        xctl->sdata.disconnecting = true;
+        ovs_aio_request::handle_xio_ctrl_request(request,
+                                                 -1,
+                                                 ETIMEDOUT);
+    }
+exit:
+    if (xctl->sdata.session_established)
+    {
+        xio_disconnect(conn);
+        if (not xctl->sdata.disconnected)
+        {
+            xctl->sdata.disconnecting = true;
+        }
+        else
+        {
+            xio_connection_destroy(conn);
+        }
+        xio_context_run_loop(ctx.get(), XIO_INFINITE);
     }
     else
     {
+        xio_disconnect(conn);
         xio_connection_destroy(conn);
+        xio_session_destroy(xctl->sdata.session);
     }
-    xio_context_run_loop(ctx.get(), XIO_INFINITE);
 }
 
 void
@@ -981,7 +986,7 @@ NetworkXioClient::xio_create_volume(const std::string& uri,
     xctl->xmsg.msg.size(size);
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, XIO_INFINITE);
 }
 
 void
@@ -998,7 +1003,7 @@ NetworkXioClient::xio_truncate_volume(const std::string& uri,
     xctl->xmsg.msg.offset(offset);
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, XIO_INFINITE);
 }
 
 void
@@ -1013,7 +1018,7 @@ NetworkXioClient::xio_remove_volume(const std::string& uri,
     xctl->xmsg.msg.volume_name(volume_name);
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, XIO_INFINITE);
 }
 
 void
@@ -1029,7 +1034,7 @@ NetworkXioClient::xio_stat_volume(const std::string& uri,
     xctl->xmsg.msg.volume_name(volume_name);
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, XIO_INFINITE);
     *size = xctl->size;
 }
 
@@ -1044,7 +1049,7 @@ NetworkXioClient::xio_list_volumes(const std::string& uri,
     xctl->xmsg.msg.opaque((uintptr_t)xctl.get());
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, XIO_INFINITE);
     xctl->vec.swap(volumes);
 }
 
@@ -1059,7 +1064,7 @@ NetworkXioClient::xio_list_cluster_node_uri(const std::string& uri,
     xctl->xmsg.msg.opaque((uintptr_t)xctl.get());
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, 10000);
     xctl->vec.swap(uris);
 }
 
@@ -1076,7 +1081,7 @@ NetworkXioClient::xio_get_volume_uri(const std::string& uri,
     xctl->xmsg.msg.volume_name(volume_name);
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, 10000);
 
     if (xctl->data)
     {
@@ -1099,7 +1104,7 @@ NetworkXioClient::xio_list_snapshots(const std::string& uri,
     xctl->xmsg.msg.volume_name(volume_name);
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, XIO_INFINITE);
     xctl->vec.swap(snapshots);
     *size = xctl->size;
 }
@@ -1120,7 +1125,7 @@ NetworkXioClient::xio_create_snapshot(const std::string& uri,
     xctl->xmsg.msg.timeout(timeout);
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, XIO_INFINITE);
 }
 
 void
@@ -1137,7 +1142,7 @@ NetworkXioClient::xio_delete_snapshot(const std::string& uri,
     xctl->xmsg.msg.snap_name(snap_name);
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, XIO_INFINITE);
 }
 
 void
@@ -1154,7 +1159,7 @@ NetworkXioClient::xio_rollback_snapshot(const std::string& uri,
     xctl->xmsg.msg.snap_name(snap_name);
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, XIO_INFINITE);
 }
 
 void
@@ -1171,7 +1176,7 @@ NetworkXioClient::xio_is_snapshot_synced(const std::string& uri,
     xctl->xmsg.msg.snap_name(snap_name);
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, XIO_INFINITE);
 }
 
 void
@@ -1187,7 +1192,7 @@ NetworkXioClient::xio_get_cluster_multiplier(const std::string& uri,
     xctl->xmsg.msg.volume_name(volume_name);
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, 10000);
     *cluster_multiplier = xctl->size;
 }
 
@@ -1204,7 +1209,7 @@ NetworkXioClient::xio_get_clone_namespace_map(const std::string& uri,
     xctl->xmsg.msg.volume_name(volume_name);
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, 10000);
 
     if (xctl->data)
     {
@@ -1230,7 +1235,7 @@ NetworkXioClient::xio_get_page(const std::string& uri,
     xctl->xmsg.msg.u64(static_cast<uint64_t>(ca));
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, 10000);
 
     if (xctl->data)
     {

@@ -22,13 +22,11 @@ namespace libovsvolumedriver
 
 NetworkXioContext::NetworkXioContext(const std::string& uri,
                                      uint64_t net_client_qdepth,
-                                     NetworkHAContext& ha_ctx,
-                                     bool ha_try_reconnect)
+                                     NetworkHAContext& ha_ctx)
     : net_client_(nullptr)
     , uri_(uri)
     , net_client_qdepth_(net_client_qdepth)
     , ha_ctx_(ha_ctx)
-    , ha_try_reconnect_(ha_try_reconnect)
 {
     LIBLOGID_DEBUG("uri: " << uri <<
                    ",queue depth: " << net_client_qdepth);
@@ -113,13 +111,8 @@ NetworkXioContext::open_volume(const char *volume_name,
     {
         net_client_ = std::make_shared<NetworkXioClient>(uri_,
                                                          net_client_qdepth_,
-                                                         ha_ctx_,
-                                                         ha_try_reconnect_);
+                                                         ha_ctx_);
         net_client_->xio_send_open_request(volume_name, request.get());
-    }
-    catch (const libovsvolumedriver::XioClientQueueIsBusyException&)
-    {
-        errno = EBUSY;  r = -1;
     }
     catch (const std::bad_alloc&)
     {
@@ -664,10 +657,6 @@ NetworkXioContext::send_read_request(ovs_aio_request* request)
                                            ovs_aiocbp->aio_offset,
                                            request);
     }
-    catch (const libovsvolumedriver::XioClientQueueIsBusyException&)
-    {
-        errno = EBUSY;  r = -1;
-    }
     catch (const std::bad_alloc&)
     {
         errno = ENOMEM; r = -1;
@@ -691,10 +680,6 @@ NetworkXioContext::send_write_request(ovs_aio_request *request)
                                             ovs_aiocbp->aio_offset,
                                             request);
     }
-    catch (const libovsvolumedriver::XioClientQueueIsBusyException&)
-    {
-        errno = EBUSY;  r = -1;
-    }
     catch (const std::bad_alloc&)
     {
         errno = ENOMEM; r = -1;
@@ -713,10 +698,6 @@ NetworkXioContext::send_flush_request(ovs_aio_request* request)
     try
     {
         net_client_->xio_send_flush_request(request);
-    }
-    catch (const libovsvolumedriver::XioClientQueueIsBusyException&)
-    {
-        errno = EBUSY;  r = -1;
     }
     catch (const std::bad_alloc&)
     {

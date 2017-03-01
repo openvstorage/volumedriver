@@ -37,6 +37,7 @@
 
 #include <boost/python/class.hpp>
 #include <boost/python/copy_const_reference.hpp>
+#include <boost/python/data_members.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/enum.hpp>
 #include <boost/python/module.hpp>
@@ -64,6 +65,7 @@
 #include <volumedriver/MDSNodeConfig.h>
 #include <volumedriver/MetaDataBackendConfig.h>
 #include <volumedriver/PythonScrubber.h>
+#include <volumedriver/SCOCacheInfo.h>
 
 #include <filesystem/ClusterId.h>
 #include <filesystem/ClusterRegistry.h>
@@ -72,6 +74,7 @@
 #include <filesystem/NodeId.h>
 #include <filesystem/Object.h>
 #include <filesystem/PythonClient.h>
+#include <filesystem/ScrubManager.h>
 #include <filesystem/XMLRPCKeys.h>
 
 // The "storagerouterclient" name is inherited from the previous python implementation
@@ -322,6 +325,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
 
     REGISTER_STRINGY_CONVERTER(vfs::ObjectId);
     REGISTER_STRINGY_CONVERTER(vd::VolumeId);
+    REGISTER_STRINGY_CONVERTER(fs::path);
 
     REGISTER_OPTIONAL_CONVERTER(vfs::ObjectId);
     REGISTER_OPTIONAL_CONVERTER(vd::VolumeId);
@@ -395,6 +399,46 @@ BOOST_PYTHON_MODULE(storagerouterclient)
 
 #undef DEF_READONLY_PROP_
         ;
+
+#define DEF_READONLY_PROP_(name)                                \
+    .def_readonly(#name, &vfs::ScrubManager::Counters::name)
+
+    bpy::class_<vfs::ScrubManager::Counters>("ScrubManagerCounters")
+        .def("__str__",
+             &repr<vfs::ScrubManager::Counters>)
+        .def("__repr__",
+             &repr<vfs::ScrubManager::Counters>)
+        .def("__eq__",
+             &vfs::ScrubManager::Counters::operator==)
+        DEF_READONLY_PROP_(parent_scrubs_ok)
+        DEF_READONLY_PROP_(parent_scrubs_nok)
+        DEF_READONLY_PROP_(clone_scrubs_ok)
+        DEF_READONLY_PROP_(clone_scrubs_nok)
+        ;
+
+#undef DEF_READONLY_PROP_
+
+#define DEF_READONLY_PROP_(name)                                        \
+    .add_property(#name,                                                \
+                  bpy::make_getter(&vd::SCOCacheMountPointInfo::name,   \
+                                   bpy::return_value_policy<bpy::return_by_value>()))
+
+    bpy::class_<vd::SCOCacheMountPointInfo>("SCOCacheMountPointInfo",
+                                            "SCO cache mountpoint info",
+                                            bpy::no_init)
+        .def("__eq__",
+             &vd::SCOCacheMountPointInfo::operator==)
+        DEF_READONLY_PROP_(path)
+        DEF_READONLY_PROP_(capacity)
+        DEF_READONLY_PROP_(free)
+        DEF_READONLY_PROP_(used)
+        DEF_READONLY_PROP_(choking)
+        DEF_READONLY_PROP_(offlined)
+        ;
+
+#undef DEF_READONLY_PROP_
+
+    REGISTER_ITERABLE_CONVERTER(std::vector<vd::SCOCacheMountPointInfo>);
 
     REGISTER_OPTIONAL_CONVERTER(vd::FailOverCacheConfig);
 
@@ -1000,6 +1044,20 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "@param volume_id: string, volume identifier\n"
              "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns string, identifier for the backend connection pool\n")
+        .def("_scrub_manager_counters",
+             &vfs::PythonClient::scrub_manager_counters,
+             (bpy::args("node_id"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
+             "Get ScrubManager counters of a given node\n"
+             "@param node_id: string, target node\n"
+             "@returns: a ScrubManagerCounters instance\n")
+        .def("sco_cache_mount_point_info",
+             &vfs::PythonClient::sco_cache_mount_point_info,
+             (bpy::args("node_id"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
+             "Get SCO cache mountpoint info of a given node\n"
+             "@param node_id: string, target node\n"
+             "@returns: a list of SCOCacheMountPointInfos\n")
         ;
 
     vfspy::ArakoonClient::registerize();
