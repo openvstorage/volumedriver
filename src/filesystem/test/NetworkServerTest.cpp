@@ -199,8 +199,16 @@ public:
                                  vname.c_str(),
                                  vsize) == -1)
         {
+            // What we *actually* want here is ASSERT_GT but that doesn't work here.
+            // Hence throw an exception to end the misery quickly.
             EXPECT_GT(max, ++count) <<
-                "failed to create volume after " << count << " attempts: " << strerror(errno);
+                "failed to create volume after " << count <<
+                " attempts: " << strerror(errno);
+            if (max <= count)
+            {
+                throw std::runtime_error("volume creation retries exceeded, aborting test");
+            }
+
             boost::this_thread::sleep_for(bc::milliseconds(250));
         }
 
