@@ -825,12 +825,13 @@ NetworkXioClient::create_connection_control(session_data *sdata,
 void
 NetworkXioClient::xio_submit_request(const std::string& uri,
                                      xio_ctl_s *xctl,
-                                     ovs_aio_request *request)
+                                     ovs_aio_request *request,
+                                     int timeout_ms_)
 {
     xrefcnt_init();
 
     int timeout_ms = yt::System::get_env_with_default<int>(xio_ctrl_timeout_ms,
-                                                           10000);
+                                                           timeout_ms_);
 
     auto ctx = std::shared_ptr<xio_context>(xio_context_create(NULL,
                                                                0,
@@ -985,7 +986,7 @@ NetworkXioClient::xio_create_volume(const std::string& uri,
     xctl->xmsg.msg.size(size);
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, XIO_INFINITE);
 }
 
 void
@@ -1002,7 +1003,7 @@ NetworkXioClient::xio_truncate_volume(const std::string& uri,
     xctl->xmsg.msg.offset(offset);
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, XIO_INFINITE);
 }
 
 void
@@ -1017,7 +1018,7 @@ NetworkXioClient::xio_remove_volume(const std::string& uri,
     xctl->xmsg.msg.volume_name(volume_name);
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, XIO_INFINITE);
 }
 
 void
@@ -1033,7 +1034,7 @@ NetworkXioClient::xio_stat_volume(const std::string& uri,
     xctl->xmsg.msg.volume_name(volume_name);
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, XIO_INFINITE);
     *size = xctl->size;
 }
 
@@ -1048,7 +1049,7 @@ NetworkXioClient::xio_list_volumes(const std::string& uri,
     xctl->xmsg.msg.opaque((uintptr_t)xctl.get());
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, XIO_INFINITE);
     xctl->vec.swap(volumes);
 }
 
@@ -1063,7 +1064,7 @@ NetworkXioClient::xio_list_cluster_node_uri(const std::string& uri,
     xctl->xmsg.msg.opaque((uintptr_t)xctl.get());
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, 10000);
     xctl->vec.swap(uris);
 }
 
@@ -1080,7 +1081,7 @@ NetworkXioClient::xio_get_volume_uri(const std::string& uri,
     xctl->xmsg.msg.volume_name(volume_name);
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, 10000);
 
     if (xctl->data)
     {
@@ -1103,7 +1104,7 @@ NetworkXioClient::xio_list_snapshots(const std::string& uri,
     xctl->xmsg.msg.volume_name(volume_name);
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, XIO_INFINITE);
     xctl->vec.swap(snapshots);
     *size = xctl->size;
 }
@@ -1124,7 +1125,7 @@ NetworkXioClient::xio_create_snapshot(const std::string& uri,
     xctl->xmsg.msg.timeout(timeout);
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, XIO_INFINITE);
 }
 
 void
@@ -1141,7 +1142,7 @@ NetworkXioClient::xio_delete_snapshot(const std::string& uri,
     xctl->xmsg.msg.snap_name(snap_name);
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, XIO_INFINITE);
 }
 
 void
@@ -1158,7 +1159,7 @@ NetworkXioClient::xio_rollback_snapshot(const std::string& uri,
     xctl->xmsg.msg.snap_name(snap_name);
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, XIO_INFINITE);
 }
 
 void
@@ -1175,7 +1176,7 @@ NetworkXioClient::xio_is_snapshot_synced(const std::string& uri,
     xctl->xmsg.msg.snap_name(snap_name);
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, XIO_INFINITE);
 }
 
 void
@@ -1191,7 +1192,7 @@ NetworkXioClient::xio_get_cluster_multiplier(const std::string& uri,
     xctl->xmsg.msg.volume_name(volume_name);
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, 10000);
     *cluster_multiplier = xctl->size;
 }
 
@@ -1208,7 +1209,7 @@ NetworkXioClient::xio_get_clone_namespace_map(const std::string& uri,
     xctl->xmsg.msg.volume_name(volume_name);
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, 10000);
 
     if (xctl->data)
     {
@@ -1234,7 +1235,7 @@ NetworkXioClient::xio_get_page(const std::string& uri,
     xctl->xmsg.msg.u64(static_cast<uint64_t>(ca));
 
     xio_msg_prepare(&xctl->xmsg);
-    xio_submit_request(uri, xctl.get(), request);
+    xio_submit_request(uri, xctl.get(), request, 10000);
 
     if (xctl->data)
     {

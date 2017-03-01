@@ -316,7 +316,8 @@ private:
     static void
     xio_submit_request(const std::string& uri,
                        xio_ctl_s *xctl,
-                       ovs_aio_request *request);
+                       ovs_aio_request *request,
+                       int timeout_ms_);
 
     static void
     xio_msg_prepare(xio_msg_s *xmsg);
