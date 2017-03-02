@@ -49,7 +49,7 @@ public:
     RemoteNode(ObjectRouter&,
                const NodeId&,
                const youtils::Uri&,
-               std::shared_ptr<zmq::context_t> ztx);
+               zmq::context_t&);
 
     ~RemoteNode();
 
@@ -104,7 +104,7 @@ public:
 private:
     DECLARE_LOGGER("VFSRemoteNode");
 
-    std::shared_ptr<zmq::context_t> ztx_;
+    zmq::context_t& ztx_;
     std::unique_ptr<zmq::socket_t> zock_;
     int event_fd_;
     bool stop_;

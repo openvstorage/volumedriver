@@ -48,7 +48,7 @@ namespace yt = youtils;
 RemoteNode::RemoteNode(ObjectRouter& vrouter,
                        const NodeId& node_id,
                        const yt::Uri& uri,
-                       std::shared_ptr<zmq::context_t> ztx)
+                       zmq::context_t& ztx)
     : ClusterNode(vrouter, node_id, uri)
     , ztx_(ztx)
     , event_fd_(::eventfd(0, EFD_NONBLOCK))
@@ -103,9 +103,7 @@ RemoteNode::notify_()
 void
 RemoteNode::init_zock_()
 {
-    VERIFY(ztx_ != nullptr);
-
-    zock_.reset(new zmq::socket_t(*ztx_, ZMQ_DEALER));
+    zock_.reset(new zmq::socket_t(ztx_, ZMQ_DEALER));
     ZUtils::socket_no_linger(*zock_);
 
     LOG_INFO(node_id() << ": connecting to " << uri());
@@ -320,8 +318,23 @@ RemoteNode::work_()
                 }
             }
         }
+        catch (zmq::error_t& e)
+        {
+            if (e.num() == ETERM)
+            {
+                LOG_INFO(node_id() << ": stop requested, breaking out of the loop");
+                return;
+            }
+            else
+            {
+                LOG_ERROR(node_id() << ": caugh ZMQ exception in event loop: " <<
+                          e.what() << ". Resetting");
+                init_zock_();
+            }
+        }
         CATCH_STD_ALL_EWHAT({
-                LOG_ERROR(node_id() << ": caught exception in event loop: " << EWHAT << ". Resetting.");
+                LOG_ERROR(node_id() << ": caught exception in event loop: " <<
+                          EWHAT << ". Resetting.");
                 init_zock_();
             });
     }
