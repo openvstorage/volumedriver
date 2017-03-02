@@ -2165,6 +2165,12 @@ TEST_F(PythonClientTest, list_snapshots_while_migrating)
                              }
                              catch (clienterrors::VolumeRestartInProgressException&)
                              {}
+                             catch (clienterrors::MaxRedirectsExceededException&)
+                             {
+                                 // it's been observed that the client redirection
+                                 // sometimes loses the catch-up-with-the-volume-location
+                                 // race.
+                             }
 
                              std::this_thread::sleep_for(std::chrono::milliseconds(200));
                          }
