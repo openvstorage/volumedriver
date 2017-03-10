@@ -13,6 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "IterableConverter.h"
 #include "MDSClient.h"
 
 #include <boost/python/class.hpp>
@@ -20,10 +21,12 @@
 
 #include <youtils/Logger.h>
 
+#include <volumedriver/ClusterLocationAndHash.h>
 #include <volumedriver/MDSNodeConfig.h>
 #include <volumedriver/OwnerTag.h>
 #include <volumedriver/metadata-server/Interface.h>
 #include <volumedriver/metadata-server/PythonClient.h>
+#include <volumedriver/SCO.h>
 
 namespace bpy = boost::python;
 namespace mds = metadata_server;
@@ -74,6 +77,60 @@ MDSClient::registerize()
 
 #undef DEF_READONLY
         ;
+
+    vd::SCOCloneID (vd::SCO::*get_sco_clone_id)() const = &vd::SCO::cloneID;
+    vd::SCONumber (vd::SCO::*get_sco_number)() const = &vd::SCO::number;
+    vd::SCOVersion (vd::SCO::*get_sco_version)() const = &vd::SCO::version;
+
+    bpy::class_<vd::SCO,
+                boost::noncopyable>("SCO",
+                                    "A volumedriver SCO",
+                                    bpy::no_init)
+        .def("__repr__",
+             &repr<vd::SCO>)
+        .def("__str__",
+             &repr<vd::SCO>)
+        .def("clone_id",
+             get_sco_clone_id,
+             "SCO clone ID")
+        .def("number",
+             get_sco_number,
+             "SCO number")
+        .def("version",
+             get_sco_version,
+             "SCO version")
+        ;
+
+    vd::SCOOffset (vd::ClusterLocation::*get_loc_offset)() const = &vd::ClusterLocation::offset;
+
+    bpy::class_<vd::ClusterLocation>("ClusterLocation",
+                                     "A volumedriver ClusterLocation",
+                                     bpy::no_init)
+        .def("__repr__",
+             &repr<vd::ClusterLocation>)
+        .def("__str__",
+             &repr<vd::ClusterLocation>)
+        .def("offset",
+             get_loc_offset,
+             "offset")
+        .def("sco",
+             &vd::ClusterLocation::sco,
+             "SCO")
+        ;
+
+    bpy::class_<vd::ClusterLocationAndHash>("ClusterLocationAndHash",
+                                            "A volumedriver ClusterLocationAndHash",
+                                            bpy::no_init)
+        .def("__repr__",
+             &repr<vd::ClusterLocationAndHash>)
+        .def("__str__",
+             &repr<vd::ClusterLocationAndHash>)
+        .add_property("location",
+                      bpy::make_getter(&vd::ClusterLocationAndHash::clusterLocation,
+                                       bpy::return_value_policy<bpy::return_by_value>()))
+        ;
+
+    REGISTER_ITERABLE_CONVERTER(std::vector<vd::ClusterLocationAndHash>);
 
     bpy::class_<mds::PythonClient>("MDSClient",
                                    "management and monitoring of MetaDataServer (MDS)",
@@ -148,6 +205,14 @@ MDSClient::registerize()
              "Retrieve the current OwnerTag for the given namespace.\n"
              "@param: nspace: string, namespace name\n"
              "@returns: OwnerTag\n")
+        .def("_get_page",
+             &mds::PythonClient::get_page,
+             (bpy::args("nspace"),
+              bpy::args("cluster_address")),
+             "Retrieve the metadata page for the given cluster address.\n"
+             "@param: nspace: string, namespace name\n"
+             "@param: page address\n"
+             "@returns: [ ClusterLocationAndHash ]\n")
         ;
 }
 
