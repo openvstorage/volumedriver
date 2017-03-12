@@ -157,8 +157,7 @@ CachedMetaDataStore::writeCluster(const ClusterAddress caddr,
 {
     LOG_TRACE(id_ << ": ca " << caddr << ", loc " << loc);
 
-    //changed to read for testing, needs revision
-    LOCK_CORKS_READ;
+    LOCK_CORKS_WRITE;
     ASSERT(not corks_.empty());
     (*corks_.back().second)[caddr] = loc;
 }
@@ -271,8 +270,8 @@ CachedMetaDataStore::cork(const yt::UUID& cork)
     }
     else
     {
-        corks_.push_back(std::make_pair(cork,
-                                        ca_loc_map_ptr_type(new ca_loc_map_type())));
+        corks_.emplace_back(cork,
+                            std::make_shared<ca_loc_map_type>());
     }
 }
 
@@ -336,6 +335,8 @@ CachedMetaDataStore::unCork(const boost::optional<yt::UUID>& cork)
 
         for (const auto& val : *m)
         {
+            // AR: why is this here? The corked entries (map) itself should not be
+            // modified (see above, and if it was, the whole loop would have to be locked)?
             LOCK_CORKS_READ;
             // Y42 not correct, just write to the own cache
             // Ordening here might be better
