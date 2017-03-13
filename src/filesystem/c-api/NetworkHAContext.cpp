@@ -474,19 +474,50 @@ NetworkHAContext::ha_ctx_handler(void *arg)
 }
 
 int
+NetworkHAContext::find_volume_uri_and_open(const char *volname,
+                                           int oflag)
+{
+    volume_name(volname);
+    if (is_ha_enabled())
+    {
+        std::string uri;
+        int r = get_volume_uri(volname, uri);
+        if (r < 0)
+        {
+            LIBLOGID_ERROR("failed to find volume uri: " << volname <<
+                           ", error: " << yt::safe_error_str(errno));
+            return r;
+        }
+        else if (uri != current_uri())
+        {
+            return do_reconnect(uri);
+        }
+        else
+        {
+            return atomic_get_ctx()->open_volume(volname,
+                                                 oflag);
+        }
+    }
+    else
+    {
+        return atomic_get_ctx()->open_volume(volname,
+                                             oflag);
+    }
+}
+
+int
 NetworkHAContext::open_volume(const char *volname,
                               int oflag)
 {
     LIBLOGID_DEBUG("volume name: " << volname << ", oflag: " << oflag);
-    int r = atomic_get_ctx()->open_volume(volname, oflag);
+    int r = find_volume_uri_and_open(volname, oflag);
     if (r < 0)
     {
-        LIBLOGID_INFO("failed to open volume: " << volname << ", error: "
-                      << yt::safe_error_str(errno));
+        LIBLOGID_ERROR("failed to open volume: " << volname << ", error: "
+                       << yt::safe_error_str(errno));
     }
     else
     {
-        volume_name(volname);
         oflag_ = oflag;
         openning_ = false;
         opened_ = true;

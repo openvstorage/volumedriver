@@ -1950,7 +1950,7 @@ TEST_F(NetworkServerTest, ha_stress)
                     const std::atomic<bool>&,
                     const std::string&)
                 {
-                    const bc::seconds wait(5);
+                    const bc::seconds wait(20);
                     EXPECT_LT(wait,
                               runtime);
 
