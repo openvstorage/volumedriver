@@ -29,6 +29,11 @@
 #include "../MDSNodeConfig.h"
 #include "../MetaDataBackendConfig.h"
 
+namespace volumedriver
+{
+class ClusterLocationAndHash;
+}
+
 namespace metadata_server
 {
 
@@ -77,6 +82,10 @@ public:
     TableCounters
     get_table_counters(const std::string& nspace,
                        bool reset) const;
+
+    std::vector<volumedriver::ClusterLocationAndHash>
+    get_page(const std::string& nspace,
+             const volumedriver::PageAddress) const;
 
 private:
     DECLARE_LOGGER("MDSPythonClient");

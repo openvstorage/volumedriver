@@ -15,6 +15,8 @@
 
 #include "ClientNG.h"
 #include "PythonClient.h"
+
+#include "../ClusterLocationAndHash.h"
 #include "../MDSMetaDataBackend.h"
 
 #include <youtils/Assert.h>
@@ -182,6 +184,29 @@ vd::OwnerTag
 PythonClient::owner_tag(const std::string& nspace) const
 {
     return get_table_(nspace)->owner_tag();
+}
+
+std::vector<vd::ClusterLocationAndHash>
+PythonClient::get_page(const std::string& nspace,
+                       const vd::PageAddress pa) const
+{
+    const TableInterface::Keys keys{ Key(pa) };
+    const TableInterface::MaybeStrings ms(get_table_(nspace)->multiget(keys));
+    VERIFY(ms.size() == 1);
+
+    std::vector<vd::ClusterLocationAndHash> vec;
+    if (ms[0] != boost::none)
+    {
+        VERIFY(ms[0]->size());
+        VERIFY(ms[0]->size() % sizeof(vd::ClusterLocationAndHash) == 0);
+        vec.resize(ms[0]->size() / sizeof(vd::ClusterLocationAndHash));
+
+        memcpy(vec.data(),
+               ms[0]->data(),
+               ms[0]->size());
+    }
+
+    return vec;
 }
 
 }

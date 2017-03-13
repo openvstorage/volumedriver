@@ -214,7 +214,7 @@ ObjectRouter::build_config_(const boost::optional<const bpt::ptree&>& pt)
             n = std::make_shared<RemoteNode>(*this,
                                              cfg.vrouter_id,
                                              cfg.message_uri(),
-                                             ztx_);
+                                             *ztx_);
         }
 
         bool ok = false;

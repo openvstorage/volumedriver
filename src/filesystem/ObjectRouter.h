@@ -456,7 +456,7 @@ private:
     std::shared_ptr<youtils::LockedArakoon> larakoon_;
     std::shared_ptr<CachedObjectRegistry> object_registry_;
     std::shared_ptr<ClusterRegistry> cluster_registry_;
-    std::shared_ptr<zmq::context_t> ztx_;
+    std::unique_ptr<zmq::context_t> ztx_;
     std::shared_ptr<events::PublisherInterface> publisher_;
 
     std::unique_ptr<ZWorkerPool> worker_pool_;
