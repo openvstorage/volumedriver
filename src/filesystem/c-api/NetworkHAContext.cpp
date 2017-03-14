@@ -490,7 +490,16 @@ NetworkHAContext::find_volume_uri_and_open(const char *volname,
         }
         else if (uri != current_uri())
         {
-            return do_reconnect(uri);
+            r = do_reconnect(uri);
+            if (r < 0)
+            {
+                return atomic_get_ctx()->open_volume(volname,
+                                                     oflag);
+            }
+            else
+            {
+                return r;
+            }
         }
         else
         {
