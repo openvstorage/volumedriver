@@ -27,6 +27,7 @@ buildInfoString()
 
     ss << "version: " << BuildInfo::version << std::endl
        << "version revision: " << BuildInfo::version_revision << std::endl
+       << "repository URL: " << BuildInfo::repository_url << std::endl
        << "branch: " << BuildInfo::branch << std::endl
 #ifdef ENABLE_MD5_HASH
        << "md5 support: yes" <<  std::endl
