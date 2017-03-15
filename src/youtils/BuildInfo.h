@@ -36,6 +36,8 @@ struct BuildInfo
     static const char* branch;
 
     static const char* buildTime;
+
+    static const char* repository_url;
 };
 
 #ifdef __cplusplus

@@ -6,6 +6,7 @@ VERSION_REVISION=$(cd @abs_top_srcdir@/../../; git rev-parse --verify ${VERSION}
 REVISION=$(cd @abs_top_srcdir@/../..; git rev-parse HEAD)
 BRANCH=$(cd @abs_top_srcdir@/../..; git branch | awk '/^\*/ { print $2 }')
 BUILD_TIME=`LANG=C date -u`
+REPOSITORY_URL=$(cd @abs_top_srcdir@/../..; git ls-remote --get-url)
 
 cat <<EOF > @abs_top_builddir@/BuildInfo.cpp
 #include "BuildInfo.h"
@@ -19,6 +20,8 @@ const char* BuildInfo::revision = "$REVISION";
 const char* BuildInfo::branch = "$BRANCH";
 
 const char* BuildInfo::buildTime = "$BUILD_TIME";
+
+const char* BuildInfo::repository_url = "$REPOSITORY_URL";
 
 /*
 // Local Variables: **

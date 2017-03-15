@@ -282,6 +282,10 @@ private:
 
     void
     volume_name(const std::string& n);
+
+    int
+    find_volume_uri_and_open(const char *volname,
+                             int oflag);
 };
 
 } //namespace libovsvolumedriver
