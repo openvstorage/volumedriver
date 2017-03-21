@@ -398,6 +398,14 @@ XMLRPCTimingWrapper<T>::execute(::XmlRpc::XmlRpcValue& params,
                     e.what());
         return;
     }
+    catch (vd::VolumeHaltedException& e)
+    {
+        LOG_XMLRPCERROR(T::_name << " " << boost::diagnostic_information(e));
+        T::setError(result,
+                    XMLRPCErrorCode::VolumeHalted,
+                    e.what());
+        return;
+    }
     catch(fungi::IOException& e)
 
     {

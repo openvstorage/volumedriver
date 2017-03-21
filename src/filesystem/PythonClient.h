@@ -71,6 +71,7 @@ MAKE_EXCEPTION(NodeNotReachableException, fungi::IOException);
 MAKE_EXCEPTION(ClusterNotReachableException, fungi::IOException);
 MAKE_EXCEPTION(ObjectStillHasChildrenException, fungi::IOException);
 MAKE_EXCEPTION(VolumeRestartInProgressException, fungi::IOException);
+MAKE_EXCEPTION(VolumeHaltedException, fungi::IOException);
 
 class MaxRedirectsExceededException
     : public PythonClientException

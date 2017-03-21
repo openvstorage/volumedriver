@@ -154,6 +154,7 @@ DEFINE_EXCEPTION_TRANSLATOR(PreviousSnapshotNotOnBackendException);
 DEFINE_EXCEPTION_TRANSLATOR(ObjectStillHasChildrenException);
 DEFINE_EXCEPTION_TRANSLATOR(SnapshotNameAlreadyExistsException);
 DEFINE_EXCEPTION_TRANSLATOR(VolumeRestartInProgressException);
+DEFINE_EXCEPTION_TRANSLATOR(VolumeHaltedException);
 
 void
 reminder(vfs::XMLRPCErrorCode code) __attribute__((unused));
@@ -177,6 +178,7 @@ reminder(vfs::XMLRPCErrorCode code)
     case vfs::XMLRPCErrorCode::ObjectStillHasChildren:
     case vfs::XMLRPCErrorCode::SnapshotNameAlreadyExists:
     case vfs::XMLRPCErrorCode::VolumeRestartInProgress:
+    case vfs::XMLRPCErrorCode::VolumeHalted:
         break;
     }
 }
@@ -322,6 +324,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
     REGISTER_EXCEPTION_TRANSLATOR(ObjectStillHasChildrenException);
     REGISTER_EXCEPTION_TRANSLATOR(SnapshotNameAlreadyExistsException);
     REGISTER_EXCEPTION_TRANSLATOR(VolumeRestartInProgressException);
+    REGISTER_EXCEPTION_TRANSLATOR(VolumeHaltedException);
 
     REGISTER_STRINGY_CONVERTER(vfs::ObjectId);
     REGISTER_STRINGY_CONVERTER(vd::VolumeId);

@@ -48,6 +48,7 @@ enum class XMLRPCErrorCode
     ObjectStillHasChildren = 7,
     SnapshotNameAlreadyExists = 8,
     VolumeRestartInProgress = 9,
+    VolumeHalted = 10,
 };
 
 class FileSystem;

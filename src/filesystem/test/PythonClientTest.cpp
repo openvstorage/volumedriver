@@ -256,6 +256,15 @@ protected:
         return cfg;
     }
 
+    static void
+    halt_volume(const ObjectId& oid)
+    {
+        LOCKVD();
+        vd::SharedVolumePtr
+            v(api::getVolumePointer(static_cast<const vd::VolumeId>(oid)));
+        v->halt();
+    }
+
     PythonClient client_;
 };
 
@@ -2282,12 +2291,7 @@ TEST_F(PythonClientTest, list_halted_volumes)
 
     EXPECT_TRUE(client_.list_halted_volumes(local_node_id()).empty());
 
-    {
-        LOCKVD();
-        vd::SharedVolumePtr
-            v(api::getVolumePointer(static_cast<const vd::VolumeId>(oid)));
-        v->halt();
-    }
+    halt_volume(oid);
 
     const std::vector<std::string>
         vols(client_.list_halted_volumes(local_node_id()));
@@ -2296,6 +2300,20 @@ TEST_F(PythonClientTest, list_halted_volumes)
     EXPECT_EQ(1, vols.size());
     EXPECT_EQ(oid,
               ObjectId(vols[0]));
+}
+
+TEST_F(PythonClientTest, halted_volume_exception)
+{
+    const FrontendPath path(make_volume_name("/volume"));
+    const ObjectId oid(create_file(path));
+
+    halt_volume(oid);
+
+    EXPECT_THROW(client_.list_snapshots(oid.str()),
+                 clienterrors::VolumeHaltedException);
+    EXPECT_THROW(client_.statistics_volume(oid.str()),
+                 clienterrors::VolumeHaltedException);
+    EXPECT_NO_THROW(client_.info_volume(oid.str()));
 }
 
 }

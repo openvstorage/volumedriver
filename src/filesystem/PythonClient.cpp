@@ -164,6 +164,8 @@ PythonClient::redirected_xmlrpc(const std::string& addr,
             throw clienterrors::SnapshotNameAlreadyExistsException(errorstring.c_str());
         case XMLRPCErrorCode::VolumeRestartInProgress:
             throw clienterrors::VolumeRestartInProgressException(errorstring.c_str());
+        case XMLRPCErrorCode::VolumeHalted:
+            throw clienterrors::VolumeHaltedException(errorstring.c_str());
         default:
             {
                 //forward compatibility
