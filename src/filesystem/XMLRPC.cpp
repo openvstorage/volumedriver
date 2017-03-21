@@ -507,6 +507,27 @@ XMLRPCRedirectWrapper<T>::execute(::XmlRpc::XmlRpcValue& params,
                 throw;
             }
         }
+        catch (vd::VolumeHaltedException&)
+        {
+            const ObjectId id(T::getID(params[0]).str());
+
+            LOG_WARN("Object " << id <<
+                     " is halted on this node, figuring out if there's a healthy instance elsewhere");
+            const ObjectRegistrationPtr
+                reg(vrouter.object_registry()->find_throw(id,
+                                                          IgnoreCache::T));
+            if (reg->node_id != vrouter.node_id())
+            {
+                LOG_INFO("Object " << id << " is owned by " << reg->node_id);
+                maybe_remote_config = vrouter.node_config(reg->node_id);
+            }
+
+            if (not maybe_remote_config)
+            {
+                LOG_ERROR("No node config found for " << id);
+                throw;
+            }
+        }
     }
 
     VERIFY(maybe_remote_config);
