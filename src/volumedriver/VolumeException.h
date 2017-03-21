@@ -29,6 +29,7 @@ MAKE_EXCEPTION(VolumeIsTemplateException, VolumeException);
 MAKE_EXCEPTION(PreviousSnapshotNotOnBackendException, VolumeException);
 MAKE_EXCEPTION(SnapshotNotOnBackendException, VolumeException);
 MAKE_EXCEPTION(InvalidOperation, VolumeException);
+MAKE_EXCEPTION(VolumeHaltedException, VolumeException);
 
 }
 

@@ -2982,8 +2982,8 @@ Volume::checkNotHalted_() const
 {
     if (halted_)
     {
-        throw fungi::IOException("Volume is halted due to previous errors",
-                                 getName().c_str());
+        throw VolumeHaltedException("Volume is halted due to previous errors",
+                                    getName().c_str());
     }
 }
 

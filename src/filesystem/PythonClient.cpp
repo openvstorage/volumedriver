@@ -164,6 +164,8 @@ PythonClient::redirected_xmlrpc(const std::string& addr,
             throw clienterrors::SnapshotNameAlreadyExistsException(errorstring.c_str());
         case XMLRPCErrorCode::VolumeRestartInProgress:
             throw clienterrors::VolumeRestartInProgressException(errorstring.c_str());
+        case XMLRPCErrorCode::VolumeHalted:
+            throw clienterrors::VolumeHaltedException(errorstring.c_str());
         default:
             {
                 //forward compatibility
@@ -459,6 +461,18 @@ PythonClient::list_volumes(const boost::optional<std::string>& node_id,
 }
 
 std::vector<std::string>
+PythonClient::list_halted_volumes(const std::string& node_id,
+                                  const MaybeSeconds& timeout)
+{
+    XmlRpc::XmlRpcValue req;
+    req[XMLRPCKeys::vrouter_id] = node_id;
+
+    return extract_vec(call(VolumesListHalted::method_name(),
+                            req,
+                            timeout));
+}
+
+std::vector<std::string>
 PythonClient::list_volumes_by_path(const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
@@ -549,11 +563,15 @@ PythonClient::info_snapshot(const std::string& volume_id,
 
 XMLRPCVolumeInfo
 PythonClient::info_volume(const std::string& volume_id,
-                          const MaybeSeconds& timeout)
+                          const MaybeSeconds& timeout,
+                          const bool redirect_fenced)
 {
     XmlRpc::XmlRpcValue req;
 
     req[XMLRPCKeys::volume_id] = volume_id;
+    XMLRPCUtils::put(req,
+                     XMLRPCKeys::redirect_fenced,
+                     redirect_fenced);
     auto rsp(call(VolumeInfo::method_name(), req, timeout));
     return XMLRPCStructsBinary::deserialize_from_xmlrpc_value<XMLRPCVolumeInfo>(rsp);
 }

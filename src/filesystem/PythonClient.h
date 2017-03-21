@@ -71,6 +71,7 @@ MAKE_EXCEPTION(NodeNotReachableException, fungi::IOException);
 MAKE_EXCEPTION(ClusterNotReachableException, fungi::IOException);
 MAKE_EXCEPTION(ObjectStillHasChildrenException, fungi::IOException);
 MAKE_EXCEPTION(VolumeRestartInProgressException, fungi::IOException);
+MAKE_EXCEPTION(VolumeHaltedException, fungi::IOException);
 
 class MaxRedirectsExceededException
     : public PythonClientException
@@ -130,6 +131,10 @@ public:
                  const MaybeSeconds& = boost::none);
 
     std::vector<std::string>
+    list_halted_volumes(const std::string& node_id,
+                        const MaybeSeconds& = boost::none);
+
+    std::vector<std::string>
     list_volumes_by_path(const MaybeSeconds& = boost::none);
 
     std::vector<std::string>
@@ -143,7 +148,8 @@ public:
 
     XMLRPCVolumeInfo
     info_volume(const std::string& volume_id,
-                const MaybeSeconds& = boost::none);
+                const MaybeSeconds& = boost::none,
+                const bool redirect_fenced = true);
 
     XMLRPCStatistics
     statistics_volume(const std::string& volume_id,

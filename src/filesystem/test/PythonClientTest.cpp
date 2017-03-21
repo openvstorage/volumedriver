@@ -256,6 +256,39 @@ protected:
         return cfg;
     }
 
+    static void
+    halt_volume(const ObjectId& oid)
+    {
+        LOCKVD();
+        vd::SharedVolumePtr
+            v(api::getVolumePointer(static_cast<const vd::VolumeId>(oid)));
+        v->halt();
+    }
+
+    void
+    simulate_fencing(const ObjectId& oid)
+    {
+        halt_volume(oid);
+
+        std::shared_ptr<CachedObjectRegistry>
+            oreg(fs_->object_router().object_registry());
+        oreg->migrate(oid,
+                      local_node_id(),
+                      remote_node_id());
+
+        ASSERT_EQ(remote_node_id(),
+                  oreg->find_throw(oid,
+                                   IgnoreCache::T)->node_id);
+
+        PythonClient rclient(vrouter_cluster_id(),
+                             {{ remote_config().xmlrpc_host,
+                                remote_config().xmlrpc_port }});
+
+        rclient.migrate(oid,
+                        remote_node_id(),
+                        true);
+    }
+
     PythonClient client_;
 };
 
@@ -2221,6 +2254,88 @@ TEST_F(PythonClientTest, sco_cache_mount_point_info)
         ASSERT_EQ(it->second,
                   mpinfo);
     }
+}
+
+TEST_F(PythonClientTest, fenced_volume_info)
+{
+    mount_remote();
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         umount_remote();
+                                     }));
+
+    const FrontendPath path(make_volume_name("/volume"));
+    const ObjectId oid(create_file(path));
+
+    simulate_fencing(oid);
+
+    const XMLRPCVolumeInfo local_info(client_.info_volume(oid.str(),
+                                                          boost::none,
+                                                          false));
+    EXPECT_TRUE(local_info.halted);
+
+    const XMLRPCVolumeInfo redirected_info(client_.info_volume(oid.str(),
+                                                               boost::none,
+                                                               true));
+    EXPECT_FALSE(redirected_info.halted);
+
+    PythonClient rclient(vrouter_cluster_id(),
+                         {{ remote_config().xmlrpc_host,
+                            remote_config().xmlrpc_port }});
+
+    const XMLRPCVolumeInfo remote_info(rclient.info_volume(oid.str(),
+                                                           boost::none,
+                                                           false));
+    EXPECT_FALSE(remote_info.halted);
+}
+
+TEST_F(PythonClientTest, redirection_on_fencing)
+{
+    mount_remote();
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         umount_remote();
+                                     }));
+
+    const FrontendPath path(make_volume_name("/volume"));
+    const ObjectId oid(create_file(path));
+
+    simulate_fencing(oid);
+
+    EXPECT_TRUE(client_.list_snapshots(oid.str()).empty());
+    EXPECT_NO_THROW(client_.statistics_volume(oid.str()));
+}
+
+TEST_F(PythonClientTest, list_halted_volumes)
+{
+    const FrontendPath path(make_volume_name("/volume"));
+    const ObjectId oid(create_file(path));
+
+    EXPECT_TRUE(client_.list_halted_volumes(local_node_id()).empty());
+
+    halt_volume(oid);
+
+    const std::vector<std::string>
+        vols(client_.list_halted_volumes(local_node_id()));
+
+    ASSERT_FALSE(vols.empty());
+    EXPECT_EQ(1, vols.size());
+    EXPECT_EQ(oid,
+              ObjectId(vols[0]));
+}
+
+TEST_F(PythonClientTest, halted_volume_exception)
+{
+    const FrontendPath path(make_volume_name("/volume"));
+    const ObjectId oid(create_file(path));
+
+    halt_volume(oid);
+
+    EXPECT_THROW(client_.list_snapshots(oid.str()),
+                 clienterrors::VolumeHaltedException);
+    EXPECT_THROW(client_.statistics_volume(oid.str()),
+                 clienterrors::VolumeHaltedException);
+    EXPECT_NO_THROW(client_.info_volume(oid.str()));
 }
 
 }
