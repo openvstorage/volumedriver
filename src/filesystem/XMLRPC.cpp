@@ -582,6 +582,31 @@ VolumesList::execute_internal(::XmlRpc::XmlRpcValue& params,
 }
 
 void
+VolumesListHalted::execute_internal(::XmlRpc::XmlRpcValue& params,
+                                    ::XmlRpc::XmlRpcValue& result)
+{
+    result.clear();
+    result.setSize(0);
+
+    std::list<vd::VolumeId> l;
+
+    {
+        fungi::ScopedLock g(api::getManagementMutex());
+        api::getVolumeList(l);
+    }
+
+    int k = 0;
+    for (const auto& v : l)
+    {
+        fungi::ScopedLock g(api::getManagementMutex());
+        if (api::getHalted(v))
+        {
+            result[k++] = ::XmlRpc::XmlRpcValue(v.str());
+        }
+    }
+}
+
+void
 VolumesListByPath::execute_internal(::XmlRpc::XmlRpcValue& /* params */,
                                     ::XmlRpc::XmlRpcValue& result)
 {

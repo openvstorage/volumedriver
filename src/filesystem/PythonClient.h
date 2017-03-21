@@ -130,6 +130,10 @@ public:
                  const MaybeSeconds& = boost::none);
 
     std::vector<std::string>
+    list_halted_volumes(const std::string& node_id,
+                        const MaybeSeconds& = boost::none);
+
+    std::vector<std::string>
     list_volumes_by_path(const MaybeSeconds& = boost::none);
 
     std::vector<std::string>

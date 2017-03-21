@@ -261,6 +261,11 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirect,
                 "volumesList",
                 "Get a list of volumes");
 
+REGISTER_XMLRPC(XMLRPCCallTimingRedirect,
+                VolumesListHalted,
+                "volumesListHalted",
+                "Get a list of halted volumes");
+
 REGISTER_XMLRPC(XMLRPCCallTiming,
                 VolumesListByPath,
                 "volumesListByPath",
@@ -719,10 +724,11 @@ REGISTER_XMLRPC(XMLRPCCallTimingRedirectLock,
                 "getMetaDataCacheCapacity",
                 "get capacity of the metadata cache (in pages)");
 
-typedef LOKI_TYPELIST_90(
+typedef LOKI_TYPELIST_91(
 // ================== EXPOSED IN XMLRPC CLIENT ===================
                          VolumeCreate,
                          VolumesList,
+                         VolumesListHalted,
                          VolumesListByPath,
                          VolumeInfo,
                          Unlink,

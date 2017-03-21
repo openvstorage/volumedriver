@@ -2275,4 +2275,27 @@ TEST_F(PythonClientTest, fenced_volume_info)
     EXPECT_FALSE(remote_info.halted);
 }
 
+TEST_F(PythonClientTest, list_halted_volumes)
+{
+    const FrontendPath path(make_volume_name("/volume"));
+    const ObjectId oid(create_file(path));
+
+    EXPECT_TRUE(client_.list_halted_volumes(local_node_id()).empty());
+
+    {
+        LOCKVD();
+        vd::SharedVolumePtr
+            v(api::getVolumePointer(static_cast<const vd::VolumeId>(oid)));
+        v->halt();
+    }
+
+    const std::vector<std::string>
+        vols(client_.list_halted_volumes(local_node_id()));
+
+    ASSERT_FALSE(vols.empty());
+    EXPECT_EQ(1, vols.size());
+    EXPECT_EQ(oid,
+              ObjectId(vols[0]));
+}
+
 }

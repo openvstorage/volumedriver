@@ -538,6 +538,14 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "@param node_id: optional string, list volumes on a particular node)\n"
              "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: a list of volume IDs\n")
+        .def("list_halted_volumes",
+             &vfs::PythonClient::list_halted_volumes,
+             (bpy::arg("node_id"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
+             "List the halted volumes of a given node.\n"
+             "@param node_id: string, NodeId\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
+             "@returns: a list of volume IDs\n")
         .def("list_volumes_by_path",
              &vfs::PythonClient::list_volumes_by_path,
              (bpy::args("req_timeout_secs") = MaybeSeconds()),

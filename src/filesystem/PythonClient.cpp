@@ -459,6 +459,18 @@ PythonClient::list_volumes(const boost::optional<std::string>& node_id,
 }
 
 std::vector<std::string>
+PythonClient::list_halted_volumes(const std::string& node_id,
+                                  const MaybeSeconds& timeout)
+{
+    XmlRpc::XmlRpcValue req;
+    req[XMLRPCKeys::vrouter_id] = node_id;
+
+    return extract_vec(call(VolumesListHalted::method_name(),
+                            req,
+                            timeout));
+}
+
+std::vector<std::string>
 PythonClient::list_volumes_by_path(const MaybeSeconds& timeout)
 {
     XmlRpc::XmlRpcValue req;
