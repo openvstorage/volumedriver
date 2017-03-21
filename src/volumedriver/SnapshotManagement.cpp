@@ -303,6 +303,11 @@ SnapshotManagement::createSnapshot(const SnapshotName& name,
                   ": a snapshot with this name already exists");
         throw;
     }
+    catch (SnapshotPersistor::ExcessiveMetaDataException& e)
+    {
+        LOG_ERROR(VOLNAME() << ": " << e.what());
+        throw;
+    }
     CATCH_STD_ALL_VLOG_HALT_RETHROW("could not create snapshot")
 }
 
