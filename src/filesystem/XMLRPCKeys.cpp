@@ -102,6 +102,7 @@ DEFINE_XMLRPC_KEY(problem);
 DEFINE_XMLRPC_KEY(problems);
 DEFINE_XMLRPC_KEY(queue_count);
 DEFINE_XMLRPC_KEY(queue_size);
+DEFINE_XMLRPC_KEY(redirect_fenced);
 DEFINE_XMLRPC_KEY(restart_local);
 DEFINE_XMLRPC_KEY(reset);
 DEFINE_XMLRPC_KEY(sco_cache_hits);

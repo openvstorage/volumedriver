@@ -105,6 +105,7 @@ struct XMLRPCKeys
     static const std::string problems;
     static const std::string queue_count;
     static const std::string queue_size;
+    static const std::string redirect_fenced;
     static const std::string restart_local;
     static const std::string reset;
     static const std::string sco_cache_hits;

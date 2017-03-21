@@ -154,6 +154,7 @@ DEFINE_EXCEPTION_TRANSLATOR(PreviousSnapshotNotOnBackendException);
 DEFINE_EXCEPTION_TRANSLATOR(ObjectStillHasChildrenException);
 DEFINE_EXCEPTION_TRANSLATOR(SnapshotNameAlreadyExistsException);
 DEFINE_EXCEPTION_TRANSLATOR(VolumeRestartInProgressException);
+DEFINE_EXCEPTION_TRANSLATOR(VolumeHaltedException);
 
 void
 reminder(vfs::XMLRPCErrorCode code) __attribute__((unused));
@@ -177,6 +178,7 @@ reminder(vfs::XMLRPCErrorCode code)
     case vfs::XMLRPCErrorCode::ObjectStillHasChildren:
     case vfs::XMLRPCErrorCode::SnapshotNameAlreadyExists:
     case vfs::XMLRPCErrorCode::VolumeRestartInProgress:
+    case vfs::XMLRPCErrorCode::VolumeHalted:
         break;
     }
 }
@@ -322,6 +324,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
     REGISTER_EXCEPTION_TRANSLATOR(ObjectStillHasChildrenException);
     REGISTER_EXCEPTION_TRANSLATOR(SnapshotNameAlreadyExistsException);
     REGISTER_EXCEPTION_TRANSLATOR(VolumeRestartInProgressException);
+    REGISTER_EXCEPTION_TRANSLATOR(VolumeHaltedException);
 
     REGISTER_STRINGY_CONVERTER(vfs::ObjectId);
     REGISTER_STRINGY_CONVERTER(vd::VolumeId);
@@ -538,6 +541,14 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "@param node_id: optional string, list volumes on a particular node)\n"
              "@param req_timeout_secs: optional timeout in seconds for this request\n"
              "@returns: a list of volume IDs\n")
+        .def("list_halted_volumes",
+             &vfs::PythonClient::list_halted_volumes,
+             (bpy::arg("node_id"),
+              bpy::args("req_timeout_secs") = MaybeSeconds()),
+             "List the halted volumes of a given node.\n"
+             "@param node_id: string, NodeId\n"
+             "@param req_timeout_secs: optional timeout in seconds for this request\n"
+             "@returns: a list of volume IDs\n")
         .def("list_volumes_by_path",
              &vfs::PythonClient::list_volumes_by_path,
              (bpy::args("req_timeout_secs") = MaybeSeconds()),
@@ -621,10 +632,12 @@ BOOST_PYTHON_MODULE(storagerouterclient)
         .def("info_volume",
              &vfs::PythonClient::info_volume,
              (bpy::args("volume_id"),
-              bpy::args("req_timeout_secs") = MaybeSeconds()),
+              bpy::args("req_timeout_secs") = MaybeSeconds(),
+              bpy::args("redirect_fenced") = true),
              "Show information about a volume.\n"
              "@param volume_id: string, volume_identifier\n"
              "@param req_timeout_secs: optional timeout in seconds for this request\n"
+             "@param redirect_fenced: bool, whether to look up the info from the real owner if a volume was found to be fenced\n"
              "@returns: VolumeInfo object\n"
              "@raises \n"
              "      ObjectNotFoundException\n")

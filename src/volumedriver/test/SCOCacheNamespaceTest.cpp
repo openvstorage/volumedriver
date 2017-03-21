@@ -13,13 +13,20 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include <youtils/Logging.h>
+#include "../SCOCacheNamespace.h"
 
 #include "VolumeDriverTestConfig.h"
-#include "../SCOCacheNamespace.h"
+
+#include <youtils/Logging.h>
+#include <youtils/SourceOfUncertainty.h>
+#include <youtils/System.h>
+#include <youtils/Timer.h>
 
 namespace volumedriver
 {
+
+namespace bc = boost::chrono;
+namespace yt = youtils;
 
 TEST(SCOCacheNamespaceConstructorTest, constructor)
 {
@@ -74,13 +81,13 @@ TEST_F(SCOCacheNamespaceTest, lookup)
     EXPECT_TRUE(ns_->empty());
 
     SCOCacheNamespaceEntry* e = ns_->findEntry(SCO(1));
-    EXPECT_EQ(0, e);
+    EXPECT_EQ(nullptr, e);
 
     EXPECT_THROW(e = ns_->findEntry_throw(SCO(2)),
                  fungi::IOException);
 
 
-    CachedSCOPtr sco(0);
+    CachedSCOPtr sco(nullptr);
     SCOCacheNamespaceEntry e2(sco, true);
     std::pair<SCOCacheNamespace::iterator, bool> res =
         ns_->insert(std::make_pair(SCO(3), e2));
@@ -93,7 +100,7 @@ TEST_F(SCOCacheNamespaceTest, lookup)
     EXPECT_EQ(sco, e->getSCO());
     e->setBlocked(false);
 
-    e = 0;
+    e = nullptr;
     e = ns_->findEntry_throw(SCO(3));
     EXPECT_FALSE(e->isBlocked());
     EXPECT_EQ(sco, e->getSCO());
@@ -117,7 +124,48 @@ TEST_F(SCOCacheNamespaceTest, updateLimits)
     EXPECT_EQ(min, ns_->getMinSize());
     EXPECT_EQ(max, ns_->getMaxNonDisposableSize());
 }
+
+TEST_F(SCOCacheNamespaceTest, DISABLED_stress)
+{
+    const size_t count = yt::System::get_env_with_default("SCO_CACHE_NAMESPACE_TEST_ENTRIES",
+                                                          65536ULL);
+    const size_t lookups = yt::System::get_env_with_default("SCO_CACHE_NAMESPACE_TEST_LOOKUPS",
+                                                            1ULL << 20);
+
+    for (size_t i = 0; i < count; ++i)
+    {
+        bool ok = false;
+        std::tie(std::ignore, ok) =
+            ns_->emplace(SCO(i + 1),
+                         SCOCacheNamespaceEntry(nullptr, false));
+        EXPECT_TRUE(ok);
+    }
+
+    yt::SourceOfUncertainty rand;
+    yt::SteadyTimer t;
+
+    for (size_t i = 0; i < lookups; ++i)
+    {
+        size_t k = rand(2 * count);
+        SCOCacheNamespaceEntry* e = ns_->findEntry(SCO(k + 1));
+        if (k < count)
+        {
+            EXPECT_TRUE(e != nullptr);
+        }
+        else
+        {
+            EXPECT_TRUE(e == nullptr);
+        }
+    }
+
+    const yt::SteadyTimer::Clock::duration d = t.elapsed();
+    const double usecs = bc::duration_cast<bc::microseconds>(d).count() / 1000000;
+    std::cout << lookups << " in " << count << " keys took " << d <<
+        " -> " << (lookups * 1.0 / usecs) << " lookups/s" << std::endl;
 }
+
+}
+
 // Local Variables: **
 // mode: c++ **
 // End: **

@@ -507,8 +507,6 @@ struct PartialReadFallback
 void
 DataStoreNG::readClusters(const std::vector<ClusterReadDescriptor>& descs)
 {
-    RLOCK_DATASTORE();
-
     if(descs.empty())
     {
         return;
@@ -548,6 +546,8 @@ DataStoreNG::readClusters(const std::vector<ClusterReadDescriptor>& descs)
                 break;
             }
         }
+
+        RLOCK_DATASTORE();
 
         bool hit = read_adjacent_clusters_(descs[start],
                                            num_clusters,
@@ -602,6 +602,8 @@ DataStoreNG::readClusters(const std::vector<ClusterReadDescriptor>& descs)
                      InsistOnLatestVersion) -> CachedSCOPtr
                  {
                      sco.cloneID(cid);
+
+                     RLOCK_DATASTORE();
                      return getSCO_(sco,
                                     bi->clone(),
                                     cached,

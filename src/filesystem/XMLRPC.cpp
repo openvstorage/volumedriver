@@ -398,6 +398,14 @@ XMLRPCTimingWrapper<T>::execute(::XmlRpc::XmlRpcValue& params,
                     e.what());
         return;
     }
+    catch (vd::VolumeHaltedException& e)
+    {
+        LOG_XMLRPCERROR(T::_name << " " << boost::diagnostic_information(e));
+        T::setError(result,
+                    XMLRPCErrorCode::VolumeHalted,
+                    e.what());
+        return;
+    }
     catch(fungi::IOException& e)
 
     {
@@ -507,6 +515,27 @@ XMLRPCRedirectWrapper<T>::execute(::XmlRpc::XmlRpcValue& params,
                 throw;
             }
         }
+        catch (vd::VolumeHaltedException&)
+        {
+            const ObjectId id(T::getID(params[0]).str());
+
+            LOG_WARN("Object " << id <<
+                     " is halted on this node, figuring out if there's a healthy instance elsewhere");
+            const ObjectRegistrationPtr
+                reg(vrouter.object_registry()->find_throw(id,
+                                                          IgnoreCache::T));
+            if (reg->node_id != vrouter.node_id())
+            {
+                LOG_INFO("Object " << id << " is owned by " << reg->node_id);
+                maybe_remote_config = vrouter.node_config(reg->node_id);
+            }
+
+            if (not maybe_remote_config)
+            {
+                LOG_ERROR("No node config found for " << id);
+                throw;
+            }
+        }
     }
 
     VERIFY(maybe_remote_config);
@@ -527,7 +556,8 @@ XMLRPCRedirectWrapper<T>::execute(::XmlRpc::XmlRpcValue& params,
 namespace
 {
 
-void with_api_exception_conversion(std::function<void()>&& fn)
+void
+with_api_exception_conversion(std::function<void()>&& fn)
 {
     try
     {
@@ -536,6 +566,16 @@ void with_api_exception_conversion(std::function<void()>&& fn)
     catch (vd::VolManager::VolumeDoesNotExistException& e)
     {
         throw ObjectNotRunningHereException(e.what());
+    }
+}
+
+void
+check_not_halted(const vd::VolumeId& id)
+{
+    if (api::getHalted(id))
+    {
+        throw vd::VolumeHaltedException("volume instance is halted",
+                                        id.str().c_str());
     }
 }
 
@@ -577,6 +617,31 @@ VolumesList::execute_internal(::XmlRpc::XmlRpcValue& params,
             {
                 result[k++] = ::XmlRpc::XmlRpcValue(reg->volume_id);
             }
+        }
+    }
+}
+
+void
+VolumesListHalted::execute_internal(::XmlRpc::XmlRpcValue& params,
+                                    ::XmlRpc::XmlRpcValue& result)
+{
+    result.clear();
+    result.setSize(0);
+
+    std::list<vd::VolumeId> l;
+
+    {
+        fungi::ScopedLock g(api::getManagementMutex());
+        api::getVolumeList(l);
+    }
+
+    int k = 0;
+    for (const auto& v : l)
+    {
+        fungi::ScopedLock g(api::getManagementMutex());
+        if (api::getHalted(v))
+        {
+            result[k++] = ::XmlRpc::XmlRpcValue(v.str());
         }
     }
 }
@@ -874,6 +939,13 @@ VolumeInfo::execute_internal(::XmlRpc::XmlRpcValue& params,
                              ::XmlRpc::XmlRpcValue& result)
 {
     const vd::VolumeId vol_id(getID(params[0]));
+    bool redirect_fenced = true;
+    if (params[0].hasMember(XMLRPCKeys::redirect_fenced))
+    {
+        redirect_fenced = getboolWithDefault(params[0],
+                                             XMLRPCKeys::redirect_fenced,
+                                             true);
+    }
 
     XMLRPCVolumeInfo volume_info;
 
@@ -920,7 +992,20 @@ VolumeInfo::execute_internal(::XmlRpc::XmlRpcValue& params,
 
     const ObjectId oid(vol_id.str());
     ObjectRegistrationPtr reg(fs_.object_router().object_registry()->find_throw(oid,
+                                                                                (redirect_fenced and
+                                                                                 volume_info.halted) ?
+                                                                                IgnoreCache::T :
                                                                                 IgnoreCache::F));
+    if (redirect_fenced and volume_info.halted)
+    {
+        const NodeId our_id(fs_.object_router().node_id());
+        if (our_id != reg->node_id)
+        {
+            LOG_WARN(volume_info.volume_id << " instance is halted here (" << our_id <<
+                     "), actual owner is " << reg->node_id);
+            throw ObjectNotRunningHereException("volume not running here anymore, halted instance left");
+        }
+    }
 
     volume_info.object_type = reg->treeconfig.object_type;
     volume_info.parent_volume_id = reg->treeconfig.parent_volume ?
@@ -977,6 +1062,8 @@ SnapshotsList::execute_internal(::XmlRpc::XmlRpcValue& params,
     {
         std::list<vd::SnapshotName> l;
         const vd::VolumeId volName(getID(params[0]));
+        check_not_halted(volName);
+
         api::showSnapshots(volName, l);
 
         result.clear();
@@ -999,6 +1086,8 @@ SnapshotInfo::execute_internal(::XmlRpc::XmlRpcValue& params,
         std::list<std::string> l;
         const vd::VolumeId vol_id(getID(params[0]));
         const vd::SnapshotName snap_id(getSnapID(params[0]));
+
+        check_not_halted(vol_id);
 
         const auto snap(api::getSnapshot(vol_id, snap_id));
         const auto& meta(snap.metadata());
@@ -1103,6 +1192,8 @@ VolumePerformanceCounters::execute_internal(XmlRpc::XmlRpcValue& params,
 
     with_api_exception_conversion([&]()
     {
+        check_not_halted(volName);
+
         XMLRPCStatisticsV2 results_stats;
         const vd::MetaDataStoreStats mdStats(api::getMetaDataStoreStats(volName));
 
@@ -1140,6 +1231,8 @@ VolumePerformanceCountersV3::execute_internal(XmlRpc::XmlRpcValue& params,
 
     with_api_exception_conversion([&]()
     {
+        check_not_halted(volName);
+
         XMLRPCStatistics results_stats;
         const vd::MetaDataStoreStats mdStats(api::getMetaDataStoreStats(volName));
 
@@ -1339,7 +1432,6 @@ DataStoreReadUsed::execute_internal(XmlRpc::XmlRpcValue& params,
     const uint64_t res = api::VolumeDataStoreReadUsed(volName);
     result[XMLRPCKeys::data_store_read_used] = XMLVAL(res);
 }
-
 
 void
 QueueCount::execute_internal(XmlRpc::XmlRpcValue& params,
@@ -1729,7 +1821,7 @@ ListClusterCacheHandles::execute_internal(::XmlRpc::XmlRpcValue& /* params */,
 
 void
 GetClusterCacheHandleInfo::execute_internal(XmlRpc::XmlRpcValue& params,
-                                         XmlRpc::XmlRpcValue& result)
+                                            XmlRpc::XmlRpcValue& result)
 {
     XMLRPCUtils::ensure_arg(params[0], XMLRPCKeys::cluster_cache_handle);
     const std::string s(params[0][XMLRPCKeys::cluster_cache_handle]);
@@ -2025,6 +2117,8 @@ GetFailOverCacheConfig::execute_internal(::XmlRpc::XmlRpcValue& params,
     with_api_exception_conversion([&]
     {
         const vd::VolumeId volName(getID(params[0]));
+        check_not_halted(volName);
+
         const boost::optional<vd::FailOverCacheConfig>
             foc_config(api::getFailOverCacheConfig(volName));
         if (foc_config)

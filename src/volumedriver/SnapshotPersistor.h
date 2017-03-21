@@ -66,6 +66,7 @@ public:
 
     MAKE_EXCEPTION(SnapshotPersistorException, fungi::IOException);
     MAKE_EXCEPTION(SnapshotNameAlreadyExists, SnapshotPersistorException);
+    MAKE_EXCEPTION(ExcessiveMetaDataException, SnapshotPersistorException);
 
     explicit SnapshotPersistor(const MaybeParentConfig&);
 

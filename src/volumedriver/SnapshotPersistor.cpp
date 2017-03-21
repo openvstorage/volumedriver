@@ -333,7 +333,7 @@ SnapshotPersistor::snapshot(const SnapshotName& name,
                   " as the attached metadata exceeds the limit of " <<
                   max_snapshot_metadata_size <<
                   "bytes");
-        throw SnapshotPersistorException("Metadata size exceeds limit",
+        throw ExcessiveMetaDataException("Metadata size exceeds limit",
                                          name.c_str());
     }
 
