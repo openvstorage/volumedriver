@@ -556,7 +556,8 @@ XMLRPCRedirectWrapper<T>::execute(::XmlRpc::XmlRpcValue& params,
 namespace
 {
 
-void with_api_exception_conversion(std::function<void()>&& fn)
+void
+with_api_exception_conversion(std::function<void()>&& fn)
 {
     try
     {
@@ -565,6 +566,16 @@ void with_api_exception_conversion(std::function<void()>&& fn)
     catch (vd::VolManager::VolumeDoesNotExistException& e)
     {
         throw ObjectNotRunningHereException(e.what());
+    }
+}
+
+void
+check_not_halted(const vd::VolumeId& id)
+{
+    if (api::getHalted(id))
+    {
+        throw vd::VolumeHaltedException("volume instance is halted",
+                                        id.str().c_str());
     }
 }
 
@@ -1051,6 +1062,8 @@ SnapshotsList::execute_internal(::XmlRpc::XmlRpcValue& params,
     {
         std::list<vd::SnapshotName> l;
         const vd::VolumeId volName(getID(params[0]));
+        check_not_halted(volName);
+
         api::showSnapshots(volName, l);
 
         result.clear();
@@ -1073,6 +1086,8 @@ SnapshotInfo::execute_internal(::XmlRpc::XmlRpcValue& params,
         std::list<std::string> l;
         const vd::VolumeId vol_id(getID(params[0]));
         const vd::SnapshotName snap_id(getSnapID(params[0]));
+
+        check_not_halted(vol_id);
 
         const auto snap(api::getSnapshot(vol_id, snap_id));
         const auto& meta(snap.metadata());
@@ -1177,6 +1192,8 @@ VolumePerformanceCounters::execute_internal(XmlRpc::XmlRpcValue& params,
 
     with_api_exception_conversion([&]()
     {
+        check_not_halted(volName);
+
         XMLRPCStatisticsV2 results_stats;
         const vd::MetaDataStoreStats mdStats(api::getMetaDataStoreStats(volName));
 
@@ -1214,6 +1231,8 @@ VolumePerformanceCountersV3::execute_internal(XmlRpc::XmlRpcValue& params,
 
     with_api_exception_conversion([&]()
     {
+        check_not_halted(volName);
+
         XMLRPCStatistics results_stats;
         const vd::MetaDataStoreStats mdStats(api::getMetaDataStoreStats(volName));
 
@@ -1413,7 +1432,6 @@ DataStoreReadUsed::execute_internal(XmlRpc::XmlRpcValue& params,
     const uint64_t res = api::VolumeDataStoreReadUsed(volName);
     result[XMLRPCKeys::data_store_read_used] = XMLVAL(res);
 }
-
 
 void
 QueueCount::execute_internal(XmlRpc::XmlRpcValue& params,
@@ -2099,6 +2117,8 @@ GetFailOverCacheConfig::execute_internal(::XmlRpc::XmlRpcValue& params,
     with_api_exception_conversion([&]
     {
         const vd::VolumeId volName(getID(params[0]));
+        check_not_halted(volName);
+
         const boost::optional<vd::FailOverCacheConfig>
             foc_config(api::getFailOverCacheConfig(volName));
         if (foc_config)
