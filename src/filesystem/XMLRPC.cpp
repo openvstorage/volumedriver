@@ -874,6 +874,13 @@ VolumeInfo::execute_internal(::XmlRpc::XmlRpcValue& params,
                              ::XmlRpc::XmlRpcValue& result)
 {
     const vd::VolumeId vol_id(getID(params[0]));
+    bool redirect_fenced = true;
+    if (params[0].hasMember(XMLRPCKeys::redirect_fenced))
+    {
+        redirect_fenced = getboolWithDefault(params[0],
+                                             XMLRPCKeys::redirect_fenced,
+                                             true);
+    }
 
     XMLRPCVolumeInfo volume_info;
 
@@ -920,7 +927,20 @@ VolumeInfo::execute_internal(::XmlRpc::XmlRpcValue& params,
 
     const ObjectId oid(vol_id.str());
     ObjectRegistrationPtr reg(fs_.object_router().object_registry()->find_throw(oid,
+                                                                                (redirect_fenced and
+                                                                                 volume_info.halted) ?
+                                                                                IgnoreCache::T :
                                                                                 IgnoreCache::F));
+    if (redirect_fenced and volume_info.halted)
+    {
+        const NodeId our_id(fs_.object_router().node_id());
+        if (our_id != reg->node_id)
+        {
+            LOG_WARN(volume_info.volume_id << " instance is halted here (" << our_id <<
+                     "), actual owner is " << reg->node_id);
+            throw ObjectNotRunningHereException("volume not running here anymore, halted instance left");
+        }
+    }
 
     volume_info.object_type = reg->treeconfig.object_type;
     volume_info.parent_volume_id = reg->treeconfig.parent_volume ?
@@ -1729,7 +1749,7 @@ ListClusterCacheHandles::execute_internal(::XmlRpc::XmlRpcValue& /* params */,
 
 void
 GetClusterCacheHandleInfo::execute_internal(XmlRpc::XmlRpcValue& params,
-                                         XmlRpc::XmlRpcValue& result)
+                                            XmlRpc::XmlRpcValue& result)
 {
     XMLRPCUtils::ensure_arg(params[0], XMLRPCKeys::cluster_cache_handle);
     const std::string s(params[0][XMLRPCKeys::cluster_cache_handle]);

@@ -143,7 +143,8 @@ public:
 
     XMLRPCVolumeInfo
     info_volume(const std::string& volume_id,
-                const MaybeSeconds& = boost::none);
+                const MaybeSeconds& = boost::none,
+                const bool redirect_fenced = true);
 
     XMLRPCStatistics
     statistics_volume(const std::string& volume_id,

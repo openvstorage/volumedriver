@@ -549,11 +549,15 @@ PythonClient::info_snapshot(const std::string& volume_id,
 
 XMLRPCVolumeInfo
 PythonClient::info_volume(const std::string& volume_id,
-                          const MaybeSeconds& timeout)
+                          const MaybeSeconds& timeout,
+                          const bool redirect_fenced)
 {
     XmlRpc::XmlRpcValue req;
 
     req[XMLRPCKeys::volume_id] = volume_id;
+    XMLRPCUtils::put(req,
+                     XMLRPCKeys::redirect_fenced,
+                     redirect_fenced);
     auto rsp(call(VolumeInfo::method_name(), req, timeout));
     return XMLRPCStructsBinary::deserialize_from_xmlrpc_value<XMLRPCVolumeInfo>(rsp);
 }

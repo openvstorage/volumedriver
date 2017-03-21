@@ -621,10 +621,12 @@ BOOST_PYTHON_MODULE(storagerouterclient)
         .def("info_volume",
              &vfs::PythonClient::info_volume,
              (bpy::args("volume_id"),
-              bpy::args("req_timeout_secs") = MaybeSeconds()),
+              bpy::args("req_timeout_secs") = MaybeSeconds(),
+              bpy::args("redirect_fenced") = true),
              "Show information about a volume.\n"
              "@param volume_id: string, volume_identifier\n"
              "@param req_timeout_secs: optional timeout in seconds for this request\n"
+             "@param redirect_fenced: bool, whether to look up the info from the real owner if a volume was found to be fenced\n"
              "@returns: VolumeInfo object\n"
              "@raises \n"
              "      ObjectNotFoundException\n")
