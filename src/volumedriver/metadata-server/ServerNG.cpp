@@ -28,6 +28,9 @@
 namespace metadata_server
 {
 
+#define LOCK()                                  \
+    boost::lock_guard<decltype(lock_)> lg__(lock_)
+
 namespace ba = boost::asio;
 namespace bi = boost::interprocess;
 namespace mdsproto = metadata_server_protocol;
@@ -76,7 +79,85 @@ ServerNG::ServerNG(DataBaseInterfacePtr db,
                                std::make_shared<ConnectionState>());
               },
               nthreads)
-{}
+    , stop_(false)
+{
+    try
+    {
+        for (size_t i = 0; i < nthreads; ++i)
+        {
+            threads_.create_thread(boost::bind(&ServerNG::work_,
+                                               this));
+        }
+    }
+    CATCH_STD_ALL_EWHAT({
+            LOG_ERROR("Failed to create worker pool: " << EWHAT);
+            stop_work_();
+            throw;
+        });
+}
+
+ServerNG::~ServerNG()
+{
+    try
+    {
+        stop_work_();
+    }
+    CATCH_STD_ALL_LOG_IGNORE("Failed to stop");
+}
+
+void
+ServerNG::stop_work_()
+{
+    {
+        LOCK();
+        stop_ = true;
+        cond_.notify_all();
+    }
+
+    threads_.join_all();
+}
+
+void
+ServerNG::work_()
+{
+    pthread_setname_np(pthread_self(), "mds_del_work");
+
+    while (true)
+    {
+        try
+        {
+            DelayedFun fun;
+
+            {
+                boost::unique_lock<decltype(lock_)> u(lock_);
+                cond_.wait(u,
+                           [&]
+                           {
+                               return not delayed_work_.empty() or stop_;
+                           });
+
+                if (stop_)
+                {
+                    break;
+                }
+
+                if (not delayed_work_.empty())
+                {
+                    fun = std::move(delayed_work_.front());
+                    delayed_work_.pop_front();
+                }
+            }
+
+            if (fun)
+            {
+                fun();
+            }
+        }
+        CATCH_STD_ALL_LOG_IGNORE("Caught exception while executing delayed work");
+    }
+
+    LOG_INFO("stopping delayed work thread");
+}
 
 template<typename C>
 void

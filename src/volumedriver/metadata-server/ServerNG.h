@@ -40,7 +40,7 @@ public:
              const boost::optional<std::chrono::seconds>& timeout = boost::none,
              const uint32_t nthreads = boost::thread::hardware_concurrency());
 
-    ~ServerNG() = default;
+    ~ServerNG();
 
     ServerNG(const ServerNG&) = delete;
 
@@ -62,6 +62,20 @@ private:
     const boost::optional<std::chrono::seconds> timeout_;
     DataBaseInterfacePtr db_;
     youtils::LocORemServer server_;
+
+    // factor out into a class of its own
+    boost::mutex lock_;
+    boost::condition_variable cond_;
+    bool stop_;
+    using DelayedFun = std::function<void()>;
+    std::deque<DelayedFun> delayed_work_;
+    boost::thread_group threads_;
+
+    void
+    stop_work_();
+
+    void
+    work_();
 
     template<typename Connection>
     void
