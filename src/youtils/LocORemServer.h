@@ -141,7 +141,7 @@ private:
                      case errc_t::success:
                          {
                              auto c(LocORemConnection<Sock>::create(std::move(sock)));
-                             callback(*c);
+                             callback(c);
                              break;
                          }
                      case errc_t::connection_aborted:

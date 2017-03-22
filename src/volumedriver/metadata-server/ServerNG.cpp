@@ -65,12 +65,12 @@ ServerNG::ServerNG(DataBaseInterfacePtr db,
     , db_(db)
     , server_(addr,
               port,
-              [&](yt::LocORemUnixConnection& c) mutable
+              [&](const std::shared_ptr<yt::LocORemUnixConnection>& c) mutable
               {
                   recv_header_(c,
                                std::make_shared<ConnectionState>());
               },
-              [&](yt::LocORemTcpConnection& c) mutable
+              [&](const std::shared_ptr<yt::LocORemTcpConnection>& c) mutable
               {
                   recv_header_(c,
                                std::make_shared<ConnectionState>());
@@ -80,18 +80,18 @@ ServerNG::ServerNG(DataBaseInterfacePtr db,
 
 template<typename C>
 void
-ServerNG::recv_header_(C& conn,
+ServerNG::recv_header_(const std::shared_ptr<C>& conn,
                        ConnectionStatePtr state)
 {
     TODO("AR: figure out how to use boost::asio strand::wrap with non-copyable callables and use a unique_ptr instead");
 
     // LOG_TRACE(&conn << ": scheduling task to read headers");
 
-    auto hdr(std::make_shared<mdsproto::RequestHeader>());
-    auto buf(ba::buffer(hdr.get(),
-                        sizeof(*hdr)));
+    auto h(std::make_shared<mdsproto::RequestHeader>());
+    auto buf(ba::buffer(h.get(),
+                        sizeof(*h)));
 
-    auto fun([hdr, state, this](C& c)
+    auto fun([hdr = h, state, this](const std::shared_ptr<C>& c)
              {
                  if (hdr->magic != mdsproto::magic)
                  {
@@ -109,14 +109,14 @@ ServerNG::recv_header_(C& conn,
                            hdr);
              });
 
-    conn.async_read(buf,
-                    std::move(fun),
-                    boost::none);
+    conn->async_read(buf,
+                     std::move(fun),
+                     boost::none);
 }
 
 template<typename C>
 void
-ServerNG::get_data_(C& conn,
+ServerNG::get_data_(const std::shared_ptr<C>& conn,
                     ConnectionStatePtr state,
                     std::shared_ptr<mdsproto::RequestHeader> hdr)
 {
@@ -149,7 +149,7 @@ ServerNG::get_data_(C& conn,
 
 template<typename C>
 void
-ServerNG::recv_data_(C& conn,
+ServerNG::recv_data_(const std::shared_ptr<C>& conn,
                      ConnectionStatePtr state,
                      std::shared_ptr<mdsproto::RequestHeader> hdr)
 {
@@ -160,8 +160,8 @@ ServerNG::recv_data_(C& conn,
     auto data(std::make_shared<std::vector<uint8_t>>(hdr->size));
     auto buf(ba::buffer(*data));
 
-    auto fun([data, state, hdr, this]
-             (C& c)
+    auto fun([data, state, hdr = h, this]
+             (const std::shared_ptr<C>& c)
              {
                  // LOG_TRACE(&c << ": got data for header " << hdr->tag);
 
@@ -183,7 +183,7 @@ ServerNG::recv_data_(C& conn,
 
 template<typename C>
 void
-ServerNG::dispatch_(C& conn,
+ServerNG::dispatch_(const std::shared_ptr<C>& conn,
                     ConnectionStatePtr state,
                     const mdsproto::RequestHeader& hdr,
                     capnp::MessageReader& reader)
@@ -235,7 +235,7 @@ template<enum mdsproto::RequestHeader::Type R,
          typename C,
          typename Traits>
 void
-ServerNG::handle_(C& conn,
+ServerNG::handle_(const std::shared_ptr<C>& conn,
                   ConnectionStatePtr state,
                   const mdsproto::RequestHeader& hdr,
                   capnp::MessageReader& reader,
@@ -300,7 +300,7 @@ template<enum mdsproto::RequestHeader::Type R,
          typename C,
          typename Traits>
 void
-ServerNG::handle_shmem_(C& conn,
+ServerNG::handle_shmem_(const std::shared_ptr<C>& conn,
                         ConnectionStatePtr state,
                         const mdsproto::RequestHeader& hdr,
                         capnp::MessageReader& reader,
@@ -346,7 +346,7 @@ template<enum mdsproto::RequestHeader::Type R,
          typename C,
          typename Traits>
 void
-ServerNG::do_handle_(C& conn,
+ServerNG::do_handle_(const std::shared_ptr<C>& conn,
                      ConnectionStatePtr state,
                      const mdsproto::RequestHeader& hdr,
                      capnp::MessageBuilder& builder,
@@ -400,7 +400,7 @@ ServerNG::do_handle_(C& conn,
 }
 template<typename C>
 void
-ServerNG::error_(C& conn,
+ServerNG::error_(const std::shared_ptr<C>& conn,
                  ConnectionStatePtr state,
                  mdsproto::ResponseHeader::Type rsp,
                  mdsproto::Tag tag,
@@ -422,7 +422,7 @@ ServerNG::error_(C& conn,
 
 template<typename C>
 void
-ServerNG::send_response_(C& conn,
+ServerNG::send_response_(const std::shared_ptr<C>& conn,
                          ConnectionStatePtr state,
                          mdsproto::ResponseHeader::Type rsp,
                          mdsproto::Tag tag,
@@ -449,7 +449,7 @@ ServerNG::send_response_(C& conn,
 
 template<typename C>
 void
-ServerNG::send_response_shmem_(C& conn,
+ServerNG::send_response_shmem_(const std::shared_ptr<C>& conn,
                                ConnectionStatePtr state,
                                mdsproto::ResponseHeader::Type rsp,
                                mdsproto::Tag tag,
@@ -470,22 +470,22 @@ ServerNG::send_response_shmem_(C& conn,
 
     auto fun([hdr,
               state,
-              this](C& c)
+              this](const std::shared_ptr<C>& c)
              {
                  // LOG_TRACE(&c << ": " << hdr->tag << " send completion");
                  recv_header_(c,
                               state);
              });
 
-    conn.async_write(ba::buffer(hdr.get(),
-                                sizeof(*hdr)),
-                     std::move(fun),
-                     timeout_);
+    conn->async_write(ba::buffer(hdr.get(),
+                                 sizeof(*hdr)),
+                      std::move(fun),
+                      timeout_);
 }
 
 template<typename C>
 void
-ServerNG::send_response_inband_(C& conn,
+ServerNG::send_response_inband_(const std::shared_ptr<C>& conn,
                                 ConnectionStatePtr state,
                                 mdsproto::ResponseHeader::Type rsp,
                                 mdsproto::Tag tag,
@@ -513,16 +513,16 @@ ServerNG::send_response_inband_(C& conn,
     auto fun([data,
               hdr,
               state,
-              this](C& c)
+              this](const std::shared_ptr<C>& c)
              {
                  // LOG_TRACE(&c << ": " << hdr->tag << " send completion");
                  recv_header_(c,
                               state);
              });
 
-    conn.async_write(bufs,
-                     std::move(fun),
-                     timeout_);
+    conn->async_write(bufs,
+                      std::move(fun),
+                      timeout_);
 }
 
 void

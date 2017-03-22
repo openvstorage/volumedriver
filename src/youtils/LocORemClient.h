@@ -99,12 +99,12 @@ private:
 
         template<typename C>
         void
-        operator()(C conn)
+        operator()(const C& conn)
         {
             // LOG_TRACE("receiving");
             io_service_.reset();
 
-            auto fun([&](typename C::element_type&)
+            auto fun([&](const C&)
                      {
                          // LOG_TRACE("done receiving");
                      });
@@ -136,13 +136,13 @@ private:
 
         template<typename C>
         void
-        operator()(C conn)
+        operator()(const C& conn)
         {
             // LOG_TRACE("sending");
 
             io_service_.reset();
 
-            auto fun([&](typename C::element_type&)
+            auto fun([&](const C&)
                      {
                          // LOG_TRACE("done sending");
                      });

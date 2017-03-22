@@ -65,31 +65,31 @@ private:
 
     template<typename Connection>
     void
-    recv_header_(Connection&,
+    recv_header_(const std::shared_ptr<Connection>&,
                  ConnectionStatePtr);
 
     template<typename Connection>
     void
-    get_data_(Connection&,
+    get_data_(const std::shared_ptr<Connection>&,
               ConnectionStatePtr,
               std::shared_ptr<metadata_server_protocol::RequestHeader>);
 
     template<typename Connection>
     void
-    recv_data_(Connection&,
+    recv_data_(const std::shared_ptr<Connection>&,
                ConnectionStatePtr,
                std::shared_ptr<metadata_server_protocol::RequestHeader>);
 
     template<typename Connection>
     void
-    dispatch_(Connection&,
+    dispatch_(const std::shared_ptr<Connection>&,
               ConnectionStatePtr,
               const metadata_server_protocol::RequestHeader&,
               capnp::MessageReader&);
 
     template<typename Connection>
     void
-    send_response_(Connection&,
+    send_response_(const std::shared_ptr<Connection>&,
                    ConnectionStatePtr,
                    metadata_server_protocol::ResponseHeader::Type,
                    metadata_server_protocol::Tag,
@@ -97,7 +97,7 @@ private:
 
     template<typename Connection>
     void
-    send_response_inband_(Connection&,
+    send_response_inband_(const std::shared_ptr<Connection>&,
                           ConnectionStatePtr,
                           metadata_server_protocol::ResponseHeader::Type,
                           metadata_server_protocol::Tag,
@@ -105,7 +105,7 @@ private:
 
     template<typename Connection>
     void
-    send_response_shmem_(Connection&,
+    send_response_shmem_(const std::shared_ptr<Connection>&,
                          ConnectionStatePtr,
                          metadata_server_protocol::ResponseHeader::Type,
                          metadata_server_protocol::Tag,
@@ -113,7 +113,7 @@ private:
 
     template<typename Connection>
     void
-    error_(Connection&,
+    error_(const std::shared_ptr<Connection>&,
            ConnectionStatePtr,
            const metadata_server_protocol::ResponseHeader::Type,
            const metadata_server_protocol::Tag,
@@ -123,7 +123,7 @@ private:
              typename Connection,
              typename Traits = metadata_server_protocol::RequestTraits<r>>
     void
-    handle_(Connection&,
+    handle_(const std::shared_ptr<Connection>&,
             ConnectionStatePtr,
             const metadata_server_protocol::RequestHeader&,
             capnp::MessageReader&,
@@ -134,7 +134,7 @@ private:
              typename Connection,
              typename Traits = metadata_server_protocol::RequestTraits<r>>
     void
-    handle_shmem_(Connection&,
+    handle_shmem_(const std::shared_ptr<Connection>&,
                   ConnectionStatePtr,
                   const metadata_server_protocol::RequestHeader&,
                   capnp::MessageReader&,
@@ -145,7 +145,8 @@ private:
              typename Connection,
              typename Traits = metadata_server_protocol::RequestTraits<r>>
     void
-    do_handle_(Connection&,
+    do_handle_(const std::shared_ptr<Connection>&,
+               ConnectionStatePtr,
                ConnectionStatePtr,
                const metadata_server_protocol::RequestHeader&,
                capnp::MessageBuilder&,
