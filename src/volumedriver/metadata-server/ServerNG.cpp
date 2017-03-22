@@ -49,8 +49,8 @@ struct ServerNG::ConnectionState
         auto it = regions.find(id);
         if (it == regions.end())
         {
-            auto res(regions.emplace(std::make_pair(id,
-                                                    yt::SharedMemoryRegion(id))));
+            auto res(regions.emplace(id,
+                                     yt::SharedMemoryRegion(id)));
             VERIFY(res.second);
             it = res.first;
         }
@@ -199,7 +199,7 @@ template<typename C>
 void
 ServerNG::get_data_(const std::shared_ptr<C>& conn,
                     ConnectionStatePtr state,
-                    std::shared_ptr<mdsproto::RequestHeader> hdr)
+                    const HeaderPtr& hdr)
 {
     const yt::SharedMemoryRegionId& mr_id(hdr->out_region);
 
@@ -209,15 +209,16 @@ ServerNG::get_data_(const std::shared_ptr<C>& conn,
 
         auto& mr = state->get_region(mr_id);
 
-        auto seg(kj::arrayPtr(static_cast<const capnp::word*>(mr.address()) +
-                              hdr->out_offset,
-                              hdr->size / sizeof(capnp::word)));
-
-        capnp::SegmentArrayMessageReader reader(kj::arrayPtr(&seg, 1));
+        auto src(std::make_shared<DataSource>(kj::arrayPtr(static_cast<const capnp::word*>(mr.address()) +
+                                                           hdr->out_offset,
+                                                           hdr->size / sizeof(capnp::word))));
+        const auto& seg = boost::get<kj::ArrayPtr<const capnp::word>>(*src);
+        auto reader(std::make_shared<capnp::SegmentArrayMessageReader>(kj::arrayPtr(&seg, 1)));
 
         dispatch_(conn,
                   state,
-                  *hdr,
+                  hdr,
+                  src,
                   reader);
     }
     else
@@ -232,83 +233,86 @@ template<typename C>
 void
 ServerNG::recv_data_(const std::shared_ptr<C>& conn,
                      ConnectionStatePtr state,
-                     std::shared_ptr<mdsproto::RequestHeader> hdr)
+                     const HeaderPtr& h)
 {
     // LOG_TRACE(&conn << ": scheduling task to read data");
 
-    // shared_ptr<vector>, as moving a vector will stop at the asio strand, imposing
-    // a copy.
-    auto data(std::make_shared<std::vector<uint8_t>>(hdr->size));
-    auto buf(ba::buffer(*data));
+    // shared_ptr, as moving a unique_ptr will stop at the asio strand
+    auto data(std::make_shared<DataSource>(std::vector<uint8_t>(h->size)));
+    auto& vec = boost::get<std::vector<uint8_t>>(*data);
+    auto buf(ba::buffer(vec));
 
     auto fun([data, state, hdr = h, this]
              (const std::shared_ptr<C>& c)
              {
                  // LOG_TRACE(&c << ": got data for header " << hdr->tag);
-
-                 auto rxdata(kj::arrayPtr(reinterpret_cast<const capnp::word*>(data->data()),
-                                          data->size() / sizeof(capnp::word)));
-
-                 capnp::FlatArrayMessageReader reader(rxdata);
+                 auto& vec = boost::get<std::vector<uint8_t>>(*data);
+                 auto rxdata(kj::arrayPtr(reinterpret_cast<const capnp::word*>(vec.data()),
+                                          vec.size() / sizeof(capnp::word)));
+                 auto reader(std::make_shared<capnp::FlatArrayMessageReader>(rxdata));
 
                  dispatch_(c,
                            state,
-                           *hdr,
+                           hdr,
+                           data,
                            reader);
              });
 
-    conn.async_read(buf,
-                    std::move(fun),
-                    timeout_);
+    conn->async_read(buf,
+                     std::move(fun),
+                     timeout_);
 }
 
 template<typename C>
 void
 ServerNG::dispatch_(const std::shared_ptr<C>& conn,
                     ConnectionStatePtr state,
-                    const mdsproto::RequestHeader& hdr,
-                    capnp::MessageReader& reader)
+                    const HeaderPtr& hdr,
+                    const DataSourcePtr& data,
+                    const MessageReaderPtr& reader)
 {
     // LOG_TRACE(&conn << ": dispatching request: " <<
     //           hdr.request_type << ", tag " <<
     //           hdr.tag << ", size " <<
     //           hdr.size << " (hdr)");
 
-#define CASE(req_type, mem_fn)                                          \
+#define CASE(req_type, mem_fn, defer)                                   \
     case mdsproto::RequestHeader::Type::req_type:                       \
         handle_<mdsproto::RequestHeader::Type::req_type>(conn,          \
                                                          state,         \
                                                          hdr,           \
+                                                         data,          \
+                                                         defer,         \
                                                          reader,        \
                                                          &ServerNG::mem_fn); \
             return
 
-    switch (hdr.request_type)
+    switch (hdr->request_type)
     {
-        CASE(Open, open_);
-        CASE(Drop, drop_);
-        CASE(Clear, clear_);
-        CASE(MultiGet, multiget_);
-        CASE(MultiSet, multiset_);
-        CASE(SetRole, set_role_);
-        CASE(GetRole, get_role_);
-        CASE(List, list_namespaces_);
-        CASE(Ping, ping_);
-        CASE(ApplyRelocationLogs, apply_relocation_logs_);
-        CASE(CatchUp, catch_up_);
-        CASE(GetTableCounters, get_table_counters_);
-        CASE(GetOwnerTag, get_owner_tag_);
+        CASE(Open, open_, DeferExecution::F);
+        CASE(Drop, drop_, DeferExecution::F);
+        CASE(Clear, clear_, DeferExecution::F);
+        CASE(MultiGet, multiget_, DeferExecution::F);
+        CASE(MultiSet, multiset_, DeferExecution::F);
+        CASE(SetRole, set_role_, DeferExecution::T);
+        CASE(GetRole, get_role_, DeferExecution::F);
+        CASE(List, list_namespaces_, DeferExecution::F);
+        CASE(Ping, ping_, DeferExecution::F);
+        CASE(ApplyRelocationLogs, apply_relocation_logs_, DeferExecution::T);
+        CASE(CatchUp, catch_up_, DeferExecution::T);
+        CASE(GetTableCounters, get_table_counters_, DeferExecution::F);
+        CASE(GetOwnerTag, get_owner_tag_, DeferExecution::F);
     }
 
 #undef CASE
 
     LOG_ERROR(&conn << ": unknown request type " <<
-              static_cast<uint32_t>(hdr.request_type) << " - stopping processing here");
+              static_cast<uint32_t>(hdr->request_type) << " - stopping processing here");
 
     error_(conn,
            state,
            mdsproto::ResponseHeader::Type::UnknownRequest,
-           hdr.tag,
+           hdr->tag,
            "unknown request");
 }
 
@@ -318,23 +322,25 @@ template<enum mdsproto::RequestHeader::Type R,
 void
 ServerNG::handle_(const std::shared_ptr<C>& conn,
                   ConnectionStatePtr state,
-                  const mdsproto::RequestHeader& hdr,
-                  capnp::MessageReader& reader,
+                  const HeaderPtr& hdr,
+                  const DataSourcePtr& data,
+                  const DeferExecution defer,
+                  const MessageReaderPtr& reader,
                   void (ServerNG::*mem_fn)(typename Traits::Params::Reader& reader,
                                            typename Traits::Results::Builder& builder))
 {
-    // LOG_TRACE(&conn << ", " << hdr.request_type << ", tag " << hdr.tag);
+    // LOG_TRACE(&conn << ", " << hdr->request_type << ", tag " << hdr->tag);
 
-    bool use_shmem = hdr.in_region != yt::SharedMemoryRegionId(0);
+    bool use_shmem = hdr->in_region != yt::SharedMemoryRegionId(0);
     if (use_shmem)
     {
-        if (hdr.in_region == hdr.out_region and
-            hdr.out_offset + hdr.size > hdr.in_offset)
+        if (hdr->in_region == hdr->out_region and
+            hdr->out_offset + hdr->size > hdr->in_offset)
         {
             LOG_WARN(&conn <<
                      ": cannot deal with overlapping shmem regions for input (off: " <<
-                     hdr.out_offset << ", size " << hdr.size << ") and output (off: " <<
-                     hdr.in_offset << ") - falling back to sending data inband");
+                     hdr->out_offset << ", size " << hdr->size << ") and output (off: " <<
+                     hdr->in_offset << ") - falling back to sending data inband");
             use_shmem = false;
         }
         else
@@ -344,6 +350,8 @@ ServerNG::handle_(const std::shared_ptr<C>& conn,
                 handle_shmem_<R>(conn,
                                  state,
                                  hdr,
+                                 data,
+                                 defer,
                                  reader,
                                  mem_fn);
             }
@@ -366,11 +374,13 @@ ServerNG::handle_(const std::shared_ptr<C>& conn,
     {
         LOG_TRACE(&conn << ": sending data inband");
 
-        capnp::MallocMessageBuilder builder;
+        auto builder(std::make_shared<capnp::MallocMessageBuilder>());
 
         do_handle_<R>(conn,
                       state,
                       hdr,
+                      data,
+                      defer,
                       builder,
                       reader,
                       mem_fn);
@@ -383,25 +393,28 @@ template<enum mdsproto::RequestHeader::Type R,
 void
 ServerNG::handle_shmem_(const std::shared_ptr<C>& conn,
                         ConnectionStatePtr state,
-                        const mdsproto::RequestHeader& hdr,
-                        capnp::MessageReader& reader,
+                        const HeaderPtr& hdr,
+                        const DataSourcePtr& data,
+                        const DeferExecution defer,
+                        const MessageReaderPtr& reader,
                         void (ServerNG::*mem_fn)(typename Traits::Params::Reader&,
                                                  typename Traits::Results::Builder&))
 {
     // LOG_TRACE(&conn << ": trying shmem: region " <<
     //           hdr.in_region << ", offset " << hdr.in_offset);
 
-    auto& mr(state->get_region(hdr.in_region));
+    auto& mr(state->get_region(hdr->in_region));
 
-    uint8_t* addr = static_cast<uint8_t*>(mr.address()) + hdr.in_offset;
-
-    capnp::FlatMessageBuilder
-        builder(kj::arrayPtr(reinterpret_cast<capnp::word*>(addr),
-                             (mr.size() - hdr.in_offset) / sizeof(capnp::word)));
+    uint8_t* addr = static_cast<uint8_t*>(mr.address()) + hdr->in_offset;
+    auto array(kj::arrayPtr(reinterpret_cast<capnp::word*>(addr),
+                            (mr.size() - hdr->in_offset) / sizeof(capnp::word)));
+    auto builder(std::make_shared<capnp::FlatMessageBuilder>(array));
 
     do_handle_<R>(conn,
                   state,
                   hdr,
+                  data,
+                  defer,
                   builder,
                   reader,
                   mem_fn);
@@ -429,21 +442,71 @@ template<enum mdsproto::RequestHeader::Type R,
 void
 ServerNG::do_handle_(const std::shared_ptr<C>& conn,
                      ConnectionStatePtr state,
-                     const mdsproto::RequestHeader& hdr,
-                     capnp::MessageBuilder& builder,
-                     capnp::MessageReader& reader,
+                     const HeaderPtr& hdr,
+                     const DataSourcePtr& data,
+                     const DeferExecution defer,
+                     const MessageBuilderPtr& builder,
+                     const MessageReaderPtr& reader,
                      void (ServerNG::*mem_fn)(typename Traits::Params::Reader&,
                                               typename Traits::Results::Builder&))
 {
-    // LOG_TRACE(&conn << ", " << hdr.request_type << ", tag " << hdr.tag);
+    if (defer == DeferExecution::T)
+    {
+        // keep the shared_ptrs alive
+        auto fun([c = conn,
+                  b = builder,
+                  d = data,
+                  f = mem_fn,
+                  h = hdr,
+                  r = reader,
+                  s = state,
+                  this]
+                 {
+                     do_handle_<R, C, Traits>(c,
+                                              s,
+                                              h,
+                                              d,
+                                              b,
+                                              r,
+                                              f);
+                 });
 
-    auto rxroot(reader.getRoot<typename Traits::Params>());
+        LOCK();
+        delayed_work_.push_back(std::move(fun));
+        cond_.notify_one();
+    }
+    else
+    {
+        do_handle_<R, C, Traits>(conn,
+                                 state,
+                                 hdr,
+                                 data,
+                                 builder,
+                                 reader,
+                                 mem_fn);
+    }
+}
+
+template<enum mdsproto::RequestHeader::Type R,
+         typename C,
+         typename Traits>
+void
+ServerNG::do_handle_(const std::shared_ptr<C>& conn,
+                     ConnectionStatePtr state,
+                     const HeaderPtr& hdr,
+                     const DataSourcePtr& data,
+                     const MessageBuilderPtr& builder,
+                     const MessageReaderPtr& reader,
+                     void (ServerNG::*mem_fn)(typename Traits::Params::Reader&,
+                                              typename Traits::Results::Builder&))
+{
+    auto rxroot(reader->getRoot<typename Traits::Params>());
 
     mdsproto::ResponseHeader::Type rsp = mdsproto::ResponseHeader::Type::Ok;
 
     try
     {
-        auto txroot(builder.initRoot<typename Traits::Results>());
+        auto txroot(builder->initRoot<typename Traits::Results>());
         (this->*mem_fn)(rxroot,
                         txroot);
     }
@@ -459,16 +522,16 @@ ServerNG::do_handle_(const std::shared_ptr<C>& conn,
     }
     catch (vd::OwnerTagMismatchException& e)
     {
-        LOG_ERROR(&conn << ": processing " << hdr.request_type <<
+        LOG_ERROR(&conn << ": processing " << hdr->request_type <<
                   " caught exception " << e.what());
-        rsp = build_error(builder,
+        rsp = build_error(*builder,
                           mdsproto::ErrorType::OWNER_TAG_MISMATCH,
                           e.what());
     }
     CATCH_STD_ALL_EWHAT({
-            LOG_ERROR(&conn << ": processing " << hdr.request_type <<
+            LOG_ERROR(&conn << ": processing " << hdr->request_type <<
                       " caught exception " << EWHAT);
-            rsp = build_error(builder,
+            rsp = build_error(*builder,
                               mdsproto::ErrorType::UNKNOWN,
                               EWHAT);
         });
@@ -476,9 +539,10 @@ ServerNG::do_handle_(const std::shared_ptr<C>& conn,
     send_response_(conn,
                    state,
                    rsp,
-                   hdr.tag,
+                   hdr->tag,
                    builder);
 }
+
 template<typename C>
 void
 ServerNG::error_(const std::shared_ptr<C>& conn,
@@ -489,8 +553,8 @@ ServerNG::error_(const std::shared_ptr<C>& conn,
 {
     LOG_TRACE(&conn << ": error " << rsp << ", req tag " << tag << ", msg " << msg);
 
-    capnp::MallocMessageBuilder builder;
-    auto txroot(builder.initRoot<typename mdsproto::Error>());
+    auto builder(std::make_shared<capnp::MallocMessageBuilder>());
+    auto txroot(builder->initRoot<typename mdsproto::Error>());
 
     txroot.setMessage(msg);
 
@@ -507,16 +571,16 @@ ServerNG::send_response_(const std::shared_ptr<C>& conn,
                          ConnectionStatePtr state,
                          mdsproto::ResponseHeader::Type rsp,
                          mdsproto::Tag tag,
-                         capnp::MessageBuilder& builder)
+                         const MessageBuilderPtr& builder)
 {
-    auto fb_builder = dynamic_cast<capnp::FlatMessageBuilder*>(&builder);
+    auto fb_builder = std::dynamic_pointer_cast<capnp::FlatMessageBuilder>(builder);
     if (fb_builder != nullptr)
     {
         send_response_shmem_(conn,
                              state,
                              rsp,
                              tag,
-                             *fb_builder);
+                             fb_builder);
     }
     else
     {
@@ -534,11 +598,11 @@ ServerNG::send_response_shmem_(const std::shared_ptr<C>& conn,
                                ConnectionStatePtr state,
                                mdsproto::ResponseHeader::Type rsp,
                                mdsproto::Tag tag,
-                               capnp::FlatMessageBuilder& builder)
+                               const std::shared_ptr<capnp::FlatMessageBuilder>& builder)
 {
     // LOG_TRACE(&conn << ": scheduling task to send response");
 
-    const size_t size = capnp::computeSerializedSizeInWords(builder) *
+    const size_t size = capnp::computeSerializedSizeInWords(*builder) *
         sizeof(capnp::word);
 
     auto hdr(std::make_shared<const mdsproto::ResponseHeader>(rsp,
@@ -570,11 +634,11 @@ ServerNG::send_response_inband_(const std::shared_ptr<C>& conn,
                                 ConnectionStatePtr state,
                                 mdsproto::ResponseHeader::Type rsp,
                                 mdsproto::Tag tag,
-                                capnp::MessageBuilder& builder)
+                                const MessageBuilderPtr& builder)
 {
     // LOG_TRACE(&conn << ": scheduling task to send response");
 
-    auto data(std::make_shared<kj::Array<capnp::word>>(capnp::messageToFlatArray(builder)));
+    auto data(std::make_shared<kj::Array<capnp::word>>(capnp::messageToFlatArray(*builder)));
 
     auto hdr(std::make_shared<const mdsproto::ResponseHeader>(rsp,
                                                               data->size() *
