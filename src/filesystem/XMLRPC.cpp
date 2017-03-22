@@ -622,7 +622,7 @@ VolumesList::execute_internal(::XmlRpc::XmlRpcValue& params,
 }
 
 void
-VolumesListHalted::execute_internal(::XmlRpc::XmlRpcValue& params,
+VolumesListHalted::execute_internal(::XmlRpc::XmlRpcValue& /* params */,
                                     ::XmlRpc::XmlRpcValue& result)
 {
     result.clear();
