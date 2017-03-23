@@ -622,7 +622,7 @@ VolumesList::execute_internal(::XmlRpc::XmlRpcValue& params,
 }
 
 void
-VolumesListHalted::execute_internal(::XmlRpc::XmlRpcValue& params,
+VolumesListHalted::execute_internal(::XmlRpc::XmlRpcValue& /* params */,
                                     ::XmlRpc::XmlRpcValue& result)
 {
     result.clear();
@@ -1882,7 +1882,10 @@ StopObject::execute_internal(::XmlRpc::XmlRpcValue& params,
         XMLRPCUtils::get_boolean_enum<vd::DeleteLocalData>(params[0],
                                                            XMLRPCKeys::delete_local_data);
     fs_.object_router().stop(id,
-                             delete_local_data);
+                             delete_local_data,
+                             params[0].hasMember(XMLRPCKeys::vrouter_id) ?
+                             CheckOwner::F :
+                             CheckOwner::T);
 }
 
 void

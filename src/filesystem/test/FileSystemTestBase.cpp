@@ -961,7 +961,7 @@ FileSystemTestBase::wait_for_remote_()
 {
     bool mounted = false;
     const uint64_t retry_secs = 60;
-    const uint64_t sleep_msecs = 50;
+    const uint64_t sleep_msecs = 1000;
     const fs::path pfx(remote_dir(topdir_));
     const fs::path mnt(mount_dir(pfx));
 

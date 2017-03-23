@@ -115,14 +115,14 @@ protected:
         const auto params(std::make_shared<ServerParameters>(p));
 
         auto unix_fun([params,
-                       this](yt::LocORemUnixConnection& conn)
+                       this](std::shared_ptr<yt::LocORemUnixConnection> conn)
                       {
                           echo_server_accept_(conn,
                                               params);
                       });
 
         auto tcp_fun([params,
-                      this](yt::LocORemTcpConnection& conn)
+                      this](std::shared_ptr<yt::LocORemTcpConnection> conn)
                      {
                          echo_server_accept_(conn,
                                              params);
@@ -186,31 +186,31 @@ private:
 
     template<typename C>
     void
-    echo_server_read_header_(C& conn,
+    echo_server_read_header_(std::shared_ptr<C> conn,
                              ServerParametersPtr params,
                              HeaderPtr hdr,
                              MessagePtr msg)
     {
-        conn.async_read(ba::buffer(*hdr),
-                        [params,
-                         hdr,
-                         msg,
-                         this]
-                        (C& conn)
-                        {
-                            LOG_TRACE("read header completion");
-                            hdr_bytes_.fetch_add(hdr->size());
-                            echo_server_read_message_(conn,
-                                                      params,
-                                                      hdr,
-                                                      msg);
-                        },
-                        params->timeout_);
+        conn->async_read(ba::buffer(*hdr),
+                         [params,
+                          hdr,
+                          msg,
+                          this]
+                         (std::shared_ptr<C> conn)
+                         {
+                             LOG_TRACE("read header completion");
+                             hdr_bytes_.fetch_add(hdr->size());
+                             echo_server_read_message_(conn,
+                                                       params,
+                                                       hdr,
+                                                       msg);
+                         },
+                         params->timeout_);
     }
 
     template<typename C>
     void
-    echo_server_read_message_(C& conn,
+    echo_server_read_message_(std::shared_ptr<C> conn,
                               ServerParametersPtr params,
                               HeaderPtr hdr,
                               MessagePtr msg)
@@ -238,21 +238,21 @@ private:
             {
                 LOG_TRACE("reading req data from socket");
 
-                conn.async_read(ba::buffer(*msg),
-                                [hdr,
-                                 msg,
-                                 params,
-                                 this](C& conn)
-                                {
-                                    LOG_TRACE("read message completion");
-                                    msg_bytes_.fetch_add(msg->size());
+                conn->async_read(ba::buffer(*msg),
+                                 [hdr,
+                                  msg,
+                                  params,
+                                  this](std::shared_ptr<C> conn)
+                                 {
+                                     LOG_TRACE("read message completion");
+                                     msg_bytes_.fetch_add(msg->size());
 
-                                    echo_server_write_(conn,
-                                                       params,
-                                                       hdr,
-                                                       msg);
-                                },
-                                params->timeout_);
+                                     echo_server_write_(conn,
+                                                        params,
+                                                        hdr,
+                                                        msg);
+                                 },
+                                 params->timeout_);
             }
         }
         else
@@ -266,7 +266,7 @@ private:
 
     template<typename C>
     void
-    echo_server_write_(C& conn,
+    echo_server_write_(std::shared_ptr<C> conn,
                        ServerParametersPtr params,
                        HeaderPtr hdr,
                        MessagePtr msg)
@@ -276,7 +276,7 @@ private:
         auto f([hdr,
                 msg,
                 params,
-                this](C& conn)
+                this](std::shared_ptr<C> conn)
                {
                    LOG_TRACE("write completion");
                    maybe_take_a_nap_(params->write_delay_);
@@ -297,9 +297,9 @@ private:
                        msg->data(),
                        msg->size());
 
-                conn.async_write(ba::buffer(*hdr),
-                                 std::move(f),
-                                 params->timeout_);
+                conn->async_write(ba::buffer(*hdr),
+                                  std::move(f),
+                                  params->timeout_);
             }
             else
             {
@@ -310,16 +310,16 @@ private:
                         ba::buffer(*msg)
                 }};
 
-                conn.async_write(bufs,
-                                 std::move(f),
-                                 params->timeout_);
+                conn->async_write(bufs,
+                                  std::move(f),
+                                  params->timeout_);
             }
         }
         else
         {
-            conn.async_write(ba::buffer(*hdr),
-                             std::move(f),
-                             params->timeout_);
+            conn->async_write(ba::buffer(*hdr),
+                              std::move(f),
+                              params->timeout_);
         }
     }
 };

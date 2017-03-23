@@ -97,6 +97,7 @@ class ScrubManager;
 VD_BOOLEAN_ENUM(OnlyStealFromOfflineNode);
 VD_BOOLEAN_ENUM(IsRemoteNode);
 VD_BOOLEAN_ENUM(AttemptTheft);
+VD_BOOLEAN_ENUM(CheckOwner);
 
 MAKE_EXCEPTION(Exception, fungi::IOException);
 MAKE_EXCEPTION(RemoteException, Exception);
@@ -254,7 +255,8 @@ public:
 
     void
     stop(const ObjectId& id,
-         volumedriver::DeleteLocalData = volumedriver::DeleteLocalData::T);
+         volumedriver::DeleteLocalData = volumedriver::DeleteLocalData::T,
+         const CheckOwner = CheckOwner::T);
 
     void
     set_volume_as_template_local(const volumedriver::VolumeId& id);

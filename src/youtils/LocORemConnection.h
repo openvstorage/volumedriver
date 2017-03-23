@@ -117,7 +117,7 @@ public:
                        throw ShortReadException("read less than expected");
                    }
 
-                   fun(*self);
+                   fun(self);
                });
 
         boost::asio::async_read(sock_,
@@ -172,7 +172,7 @@ public:
                        throw ShortWriteException("wrote less than expected");
                    }
 
-                   fun(*self);
+                   fun(self);
                });
 
         boost::asio::async_write(sock_,
@@ -204,7 +204,7 @@ public:
                    // LOG_TRACE(this << ": work completion");
                    disable_deadline_();
 
-                   fun(*self);
+                   fun(self);
                });
 
         strand_.get_io_service().post(strand_.wrap(std::move(f)));

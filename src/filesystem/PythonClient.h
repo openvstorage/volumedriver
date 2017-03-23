@@ -391,7 +391,8 @@ public:
     void
     stop_object(const std::string& id,
                 bool delete_local_data = true,
-                const MaybeSeconds& = boost::none);
+                const MaybeSeconds& = boost::none,
+                const boost::optional<std::string>& node_id = boost::none);
 
     void
     restart_object(const std::string& id,

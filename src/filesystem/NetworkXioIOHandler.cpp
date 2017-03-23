@@ -851,7 +851,6 @@ NetworkXioIOHandler::handle_is_snapshot_synced(NetworkXioRequest *req,
 void
 NetworkXioIOHandler::handle_list_cluster_node_uri(NetworkXioRequest *req)
 {
-    VERIFY(not handle_);
     req->op = NetworkXioMsgOpcode::ListClusterNodeURIRsp;
     req->size = 0;
 
@@ -1002,7 +1001,6 @@ void
 NetworkXioIOHandler::handle_get_cluster_multiplier(NetworkXioRequest *req,
                                                    const std::string& vname)
 {
-    VERIFY(not handle_);
     req->op = NetworkXioMsgOpcode::GetClusterMultiplierRsp;
 
     const FrontendPath volume_path(make_volume_path(vname));
@@ -1034,7 +1032,6 @@ void
 NetworkXioIOHandler::handle_get_clone_namespace_map(NetworkXioRequest *req,
                                                     const std::string& vname)
 {
-    VERIFY(not handle_);
     req->op = NetworkXioMsgOpcode::GetCloneNamespaceMapRsp;
 
     auto& router_ = fs_.object_router();
@@ -1082,7 +1079,6 @@ NetworkXioIOHandler::handle_get_page(NetworkXioRequest *req,
                                      const std::string& vname,
                                      const uint64_t cluster_address)
 {
-    VERIFY(not handle_);
     req->op = NetworkXioMsgOpcode::GetPageRsp;
 
     auto& router_ = fs_.object_router();
