@@ -23,7 +23,9 @@ namespace libovsvolumedriver
 NetworkXioContext::NetworkXioContext(const std::string& uri,
                                      uint64_t net_client_qdepth,
                                      NetworkHAContext& ha_ctx)
-    : net_client_(nullptr)
+    : net_client_(std::make_shared<NetworkXioClient>(uri,
+                                                     net_client_qdepth,
+                                                     ha_ctx))
     , uri_(uri)
     , net_client_qdepth_(net_client_qdepth)
     , ha_ctx_(ha_ctx)
@@ -37,33 +39,33 @@ NetworkXioContext::~NetworkXioContext()
 }
 
 int
-NetworkXioContext::aio_suspend(ovs_aiocb *ovs_aiocbp)
+NetworkXioContext::aio_suspend(ovs_aio_request_ptr request)
 {
     int r = 0;
-    if (__sync_bool_compare_and_swap(&ovs_aiocbp->request_->_on_suspend,
+    if (__sync_bool_compare_and_swap(&request->_on_suspend,
                                      false,
                                      true,
                                      __ATOMIC_RELAXED))
     {
-        pthread_mutex_lock(&ovs_aiocbp->request_->_mutex);
-        while (not ovs_aiocbp->request_->_signaled && r == 0)
+        pthread_mutex_lock(&request->_mutex);
+        while (not request->_signaled && r == 0)
         {
-            r = pthread_cond_wait(&ovs_aiocbp->request_->_cond,
-                                  &ovs_aiocbp->request_->_mutex);
+            r = pthread_cond_wait(&request->_cond,
+                                  &request->_mutex);
         }
-        pthread_mutex_unlock(&ovs_aiocbp->request_->_mutex);
+        pthread_mutex_unlock(&request->_mutex);
     }
     return r;
 }
 
 ssize_t
-NetworkXioContext::aio_return(ovs_aiocb *ovs_aiocbp)
+NetworkXioContext::aio_return(ovs_aio_request_ptr request)
 {
     int r;
-    errno = ovs_aiocbp->request_->_errno;
-    if (not ovs_aiocbp->request_->_failed)
+    errno = request->_errno;
+    if (not request->_failed)
     {
-        r = ovs_aiocbp->request_->_rv;
+        r = request->_rv;
     }
     else
     {
@@ -73,14 +75,14 @@ NetworkXioContext::aio_return(ovs_aiocb *ovs_aiocbp)
 }
 
 ssize_t
-NetworkXioContext::wait_aio_request(ovs_aiocb *ovs_aiocbp)
+NetworkXioContext::wait_aio_request(ovs_aio_request_ptr request)
 {
     ssize_t r = 0;
-    if ((r = aio_suspend(ovs_aiocbp)) < 0)
+    if ((r = aio_suspend(request)) < 0)
     {
         return r;
     }
-    return aio_return(ovs_aiocbp);
+    return aio_return(request);
 }
 
 int
@@ -89,8 +91,7 @@ NetworkXioContext::open_volume(const char *volume_name,
 {
     LIBLOGID_DEBUG("volume name: " << volume_name
                    << ",oflag: " << oflag);
-    ssize_t r = 0;
-    struct ovs_aiocb aio;
+    int r = 0;
 
     volname_ = std::string(volume_name);
 
@@ -98,7 +99,7 @@ NetworkXioContext::open_volume(const char *volume_name,
     try
     {
         request = std::make_shared<ovs_aio_request>(RequestOp::Open,
-                                                    &aio,
+                                                    nullptr,
                                                     nullptr);
     }
     catch (const std::bad_alloc&)
@@ -109,9 +110,6 @@ NetworkXioContext::open_volume(const char *volume_name,
 
     try
     {
-        net_client_ = std::make_shared<NetworkXioClient>(uri_,
-                                                         net_client_qdepth_,
-                                                         ha_ctx_);
         net_client_->xio_send_open_request(volume_name, request.get());
     }
     catch (const std::bad_alloc&)
@@ -127,7 +125,7 @@ NetworkXioContext::open_volume(const char *volume_name,
     {
         return r;
     }
-    return wait_aio_request(&aio);
+    return wait_aio_request(request);
 }
 
 void
@@ -468,11 +466,11 @@ NetworkXioContext::list_volumes(std::vector<std::string>& volumes)
 int
 NetworkXioContext::list_cluster_node_uri(std::vector<std::string>& uris)
 {
-    int r;
+    int r = 0;
     std::shared_ptr<ovs_aio_request> request;
     try
     {
-        request = std::make_shared<ovs_aio_request>(RequestOp::Noop,
+        request = std::make_shared<ovs_aio_request>(RequestOp::ListClusterNodeUri,
                                                     nullptr,
                                                     nullptr);
     }
@@ -483,31 +481,33 @@ NetworkXioContext::list_cluster_node_uri(std::vector<std::string>& uris)
     }
     try
     {
-        NetworkXioClient::xio_list_cluster_node_uri(uri_,
-                                                    uris,
-                                                    request.get());
-        errno = request->_errno; r = request->_rv;
+        net_client_->xio_list_cluster_node_uri(uris,
+                                               request.get());
     }
     catch (const std::bad_alloc&)
     {
-        errno = ENOMEM;
+        errno = ENOMEM; r = -1;
     }
     catch (...)
     {
-        errno = EIO;
+        errno = EIO; r = -1;
     }
-    return r;
+    if (r < 0)
+    {
+        return r;
+    }
+    return wait_aio_request(request);
 }
 
 int
 NetworkXioContext::get_volume_uri(const char *volume_name,
                                   std::string& volume_uri)
 {
-    int r;
+    int r = 0;
     std::shared_ptr<ovs_aio_request> request;
     try
     {
-        request = std::make_shared<ovs_aio_request>(RequestOp::Noop,
+        request = std::make_shared<ovs_aio_request>(RequestOp::GetVolumeUri,
                                                     nullptr,
                                                     nullptr);
     }
@@ -518,32 +518,34 @@ NetworkXioContext::get_volume_uri(const char *volume_name,
     }
     try
     {
-        NetworkXioClient::xio_get_volume_uri(uri_,
-                                             volume_name,
-                                             volume_uri,
-                                             request.get());
-        errno = request->_errno; r = request->_rv;
+        net_client_->xio_get_volume_uri(volume_name,
+                                        volume_uri,
+                                        request.get());
     }
     catch (const std::bad_alloc&)
     {
-        errno = ENOMEM;
+        errno = ENOMEM; r = -1;
     }
     catch (...)
     {
-        errno = EIO;
+        errno = EIO; r = -1;
     }
-    return r;
+    if (r < 0)
+    {
+        return r;
+    }
+    return wait_aio_request(request);
 }
 
 int
 NetworkXioContext::get_cluster_multiplier(const char *volume_name,
                                           uint32_t *cluster_multiplier)
 {
-    int r;
+    int r = 0;
     std::shared_ptr<ovs_aio_request> request;
     try
     {
-        request = std::make_shared<ovs_aio_request>(RequestOp::Noop,
+        request = std::make_shared<ovs_aio_request>(RequestOp::GetClusterMultiplier,
                                                     nullptr,
                                                     nullptr);
     }
@@ -554,21 +556,23 @@ NetworkXioContext::get_cluster_multiplier(const char *volume_name,
     }
     try
     {
-        NetworkXioClient::xio_get_cluster_multiplier(uri_,
-                                                     volume_name,
-                                                     cluster_multiplier,
-                                                     request.get());
-        errno = request->_errno; r = request->_rv;
+        net_client_->xio_get_cluster_multiplier(volume_name,
+                                                cluster_multiplier,
+                                                request.get());
     }
     catch (const std::bad_alloc&)
     {
-        errno = ENOMEM;
+        errno = ENOMEM; r = -1;
     }
     catch (...)
     {
-        errno = EIO;
+        errno = EIO; r = -1;
     }
-    return r;
+    if (r < 0)
+    {
+        return r;
+    }
+    return wait_aio_request(request);
 }
 
 int
@@ -579,7 +583,7 @@ NetworkXioContext::get_clone_namespace_map(const char *volume_name,
     std::shared_ptr<ovs_aio_request> request;
     try
     {
-        request = std::make_shared<ovs_aio_request>(RequestOp::Noop,
+        request = std::make_shared<ovs_aio_request>(RequestOp::GetCloneNamespaceMap,
                                                     nullptr,
                                                     nullptr);
     }
@@ -590,21 +594,23 @@ NetworkXioContext::get_clone_namespace_map(const char *volume_name,
     }
     try
     {
-        NetworkXioClient::xio_get_clone_namespace_map(uri_,
-                                                      volume_name,
-                                                      cn,
-                                                      request.get());
-        errno = request->_errno; r = request->_rv;
+        net_client_->xio_get_clone_namespace_map(volume_name,
+                                                 cn,
+                                                 request.get());
     }
     catch (const std::bad_alloc&)
     {
-        errno = ENOMEM;
+        errno = ENOMEM; r = -1;
     }
     catch (...)
     {
-        errno = EIO;
+        errno = EIO; r = -1;
     }
-    return r;
+    if (r < 0)
+    {
+        return r;
+    }
+    return wait_aio_request(request);
 }
 
 int
@@ -616,7 +622,7 @@ NetworkXioContext::get_page(const char *volume_name,
     std::shared_ptr<ovs_aio_request> request;
     try
     {
-        request = std::make_shared<ovs_aio_request>(RequestOp::Noop,
+        request = std::make_shared<ovs_aio_request>(RequestOp::GetPage,
                                                     nullptr,
                                                     nullptr);
     }
@@ -627,26 +633,28 @@ NetworkXioContext::get_page(const char *volume_name,
     }
     try
     {
-        NetworkXioClient::xio_get_page(uri_,
-                                       volume_name,
-                                       ca,
-                                       cl,
-                                       request.get());
-        errno = request->_errno; r = request->_rv;
+        net_client_->xio_get_page(volume_name,
+                                  ca,
+                                  cl,
+                                  request.get());
     }
     catch (const std::bad_alloc&)
     {
-        errno = ENOMEM;
+        errno = ENOMEM; r = -1;
     }
     catch (...)
     {
-        errno = EIO;
+        errno = EIO; r = -1;
     }
-    return r;
+    if (r < 0)
+    {
+        return r;
+    }
+    return wait_aio_request(request);
 }
 
 int
-NetworkXioContext::send_read_request(ovs_aio_request* request)
+NetworkXioContext::send_read_request(ovs_aio_request *request)
 {
     int r = 0;
     ovs_aiocb *ovs_aiocbp = request->ovs_aiocbp;
@@ -692,7 +700,7 @@ NetworkXioContext::send_write_request(ovs_aio_request *request)
 }
 
 int
-NetworkXioContext::send_flush_request(ovs_aio_request* request)
+NetworkXioContext::send_flush_request(ovs_aio_request *request)
 {
     int r = 0;
     try

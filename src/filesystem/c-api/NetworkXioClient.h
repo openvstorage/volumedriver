@@ -26,6 +26,7 @@
 #include <youtils/Logger.h>
 
 #include <libxio.h>
+#include <msgpack.hpp>
 
 #include <queue>
 #include <mutex>
@@ -64,6 +65,7 @@ public:
         void *opaque = nullptr;
         NetworkXioMsg msg;
         std::string s_msg;
+        void *priv = nullptr;
 
         void
         set_opaque(ovs_aio_request *request)
@@ -88,7 +90,6 @@ public:
         {
             return reinterpret_cast<ovs_aio_request*>(opaque)->_op;
         }
-
     };
 
     struct xio_ctl_s
@@ -122,6 +123,31 @@ public:
 
     void
     xio_send_flush_request(ovs_aio_request *request);
+
+    void
+    xio_get_volume_uri(const char* volume_name,
+                       std::string& volume_uri,
+                       ovs_aio_request *request);
+
+    void
+    xio_list_cluster_node_uri(std::vector<std::string>& uris,
+                              ovs_aio_request *request);
+
+    void
+    xio_get_cluster_multiplier(const char *volume_name,
+                               uint32_t *cluster_multiplier,
+                               ovs_aio_request *request);
+
+    void
+    xio_get_page(const char *volume_name,
+                 const ClusterAddress ca,
+                 ClusterLocationPage& cl,
+                 ovs_aio_request *request);
+
+    void
+    xio_get_clone_namespace_map(const char *volume_name,
+                                CloneNamespaceMap& cn,
+                                ovs_aio_request *request);
 
     int
     on_session_event(xio_session *session,
@@ -191,17 +217,6 @@ public:
                      ovs_aio_request *request);
 
     static void
-    xio_list_cluster_node_uri(const std::string& uri,
-                              std::vector<std::string>& uris,
-                              ovs_aio_request *request);
-
-    static void
-    xio_get_volume_uri(const std::string& uri,
-                       const char* volume_name,
-                       std::string& volume_uri,
-                       ovs_aio_request *request);
-
-    static void
     xio_list_snapshots(const std::string& uri,
                        const char* volume_name,
                        std::vector<std::string>& snapshots,
@@ -232,25 +247,6 @@ public:
                            const char* volume_name,
                            const char* snap_name,
                            ovs_aio_request *request);
-
-    static void
-    xio_get_cluster_multiplier(const std::string& uri,
-                               const char *volume_name,
-                               uint32_t *cluster_multiplier,
-                               ovs_aio_request *request);
-
-    static void
-    xio_get_clone_namespace_map(const std::string& uri,
-                                const char *volume_name,
-                                CloneNamespaceMap& cn,
-                                ovs_aio_request *request);
-
-    static void
-    xio_get_page(const std::string& uri,
-                 const char *volume_name,
-                 const ClusterAddress ca,
-                 ClusterLocationPage& cl,
-                 ovs_aio_request *request);
 
     static void
     xio_destroy_ctx_shutdown(xio_context *ctx);
@@ -285,6 +281,32 @@ private:
 
     void
     shutdown();
+
+    void
+    handle_ctrl_response(const NetworkXioMsg& imsg,
+                         xio_msg_s *msg,
+                         xio_msg *reply);
+
+    void
+    handle_get_volume_uri(xio_msg_s *msg,
+                          xio_iovec_ex *sglist);
+
+    void
+    handle_list_cluster_node_uri(xio_msg_s *xmsg,
+                                 xio_iovec_ex *sglist,
+                                 int vec_size);
+
+    void
+    handle_get_cluster_multiplier(xio_msg_s *xmsg,
+                                  uint64_t cluster_size);
+
+    void
+    handle_get_page_vector(xio_msg_s *xmsg,
+                           xio_iovec_ex *sglist);
+
+    void
+    handle_get_clone_namespace_map(xio_msg_s *xmsg,
+                                   xio_iovec_ex *sglist);
 
     static xio_connection*
     create_connection_control(session_data *sdata,
@@ -334,23 +356,6 @@ private:
                           size_t size);
 
     static void
-    handle_list_cluster_node_uri(xio_ctl_s *xctl,
-                                 xio_iovec_ex *sglist,
-                                 int vec_size);
-
-    static void
-    handle_get_volume_uri(xio_ctl_s *xctl,
-                          xio_iovec_ex *sglist);
-
-    static void
-    handle_get_clone_namespace_map(xio_ctl_s *xctl,
-                                   xio_iovec_ex *sglist);
-
-    static void
-    handle_get_page_vector(xio_ctl_s *xctl,
-                           xio_iovec_ex *sglist);
-
-    static void
     create_vec_from_buf(xio_ctl_s *xctl,
                         xio_iovec_ex *sglist,
                         int vec_size);
@@ -358,6 +363,9 @@ private:
     static void
     copy_sglist_buffer(xio_ctl_s *xctl,
                        xio_iovec_ex *sglist);
+
+    msgpack::object_handle
+    msgpack_obj_handle(xio_iovec_ex *sglist);
 
     void
     set_dtl_in_sync(const NetworkXioMsgOpcode op,
@@ -390,13 +398,47 @@ private:
     {
         RequestOp op = req->get_request_op();
         assert(op != RequestOp::Noop);
-        if (op == RequestOp::Open or op == RequestOp::Close)
+        if (is_op_to_fail(op))
         {
             return true;
         }
         else
         {
             return is_ha_enabled() ? false : true;
+        }
+    }
+
+    bool
+    is_op_to_fail(RequestOp op)
+    {
+        switch (op)
+        {
+        case RequestOp::Open:
+        case RequestOp::Close:
+        case RequestOp::GetVolumeUri:
+        case RequestOp::ListClusterNodeUri:
+        case RequestOp::GetClusterMultiplier:
+        case RequestOp::GetPage:
+        case RequestOp::GetCloneNamespaceMap:
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    bool
+    is_ctrl_op_to_handle(NetworkXioMsgOpcode op)
+    {
+        switch (op)
+        {
+        case NetworkXioMsgOpcode::GetVolumeURIRsp:
+        case NetworkXioMsgOpcode::ListClusterNodeURIRsp:
+        case NetworkXioMsgOpcode::GetClusterMultiplierRsp:
+        case NetworkXioMsgOpcode::GetPageRsp:
+        case NetworkXioMsgOpcode::GetCloneNamespaceMapRsp:
+            return true;
+        default:
+            return false;
         }
     }
 

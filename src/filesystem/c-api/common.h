@@ -32,6 +32,11 @@ enum class RequestOp
     AsyncFlush,
     Open,
     Close,
+    GetVolumeUri,
+    ListClusterNodeUri,
+    GetClusterMultiplier,
+    GetPage,
+    GetCloneNamespaceMap,
 };
 
 enum class TransportType

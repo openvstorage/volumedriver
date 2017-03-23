@@ -129,14 +129,16 @@ private:
     std::string volname_;
     NetworkHAContext& ha_ctx_;
 
+    typedef std::shared_ptr<ovs_aio_request> ovs_aio_request_ptr;
+
     int
-    aio_suspend(ovs_aiocb *ovs_aiocbp);
+    aio_suspend(ovs_aio_request_ptr request);
 
     ssize_t
-    aio_return(ovs_aiocb *ovs_aiocbp);
+    aio_return(ovs_aio_request_ptr request);
 
     ssize_t
-    wait_aio_request(ovs_aiocb *ovs_aiocbp);
+    wait_aio_request(ovs_aio_request_ptr request);
 };
 
 } //namespace libovsvolumedriver
