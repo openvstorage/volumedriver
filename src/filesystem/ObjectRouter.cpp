@@ -1573,14 +1573,15 @@ ObjectRouter::migrate(const ObjectId& id,
 
 void
 ObjectRouter::stop(const ObjectId& id,
-                   vd::DeleteLocalData delete_local_data)
+                   vd::DeleteLocalData delete_local_data,
+                   const CheckOwner check_owner)
 {
     LOG_INFO("Attempting to stop " << id);
 
     ObjectRegistrationPtr reg(object_registry_->find_throw(id,
                                                            IgnoreCache::T));
 
-    if (reg->node_id != node_id())
+    if (check_owner == CheckOwner::T and reg->node_id != node_id())
     {
         LOG_ERROR(id << " is not running here (" << node_id() << ") but on node " <<
                   reg->node_id);

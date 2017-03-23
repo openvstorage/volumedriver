@@ -860,7 +860,8 @@ PythonClient::migrate(const std::string& object_id,
 void
 PythonClient::stop_object(const std::string& object_id,
                           bool delete_local_data,
-                          const MaybeSeconds& timeout)
+                          const MaybeSeconds& timeout,
+                          const boost::optional<std::string>& node_id)
 {
     XmlRpc::XmlRpcValue req;
 
@@ -868,6 +869,10 @@ PythonClient::stop_object(const std::string& object_id,
     XMLRPCUtils::put(req,
                      XMLRPCKeys::delete_local_data,
                      delete_local_data);
+    if (node_id)
+    {
+        req[XMLRPCKeys::vrouter_id] = *node_id;
+    }
 
     call(StopObject::method_name(),
          req,
