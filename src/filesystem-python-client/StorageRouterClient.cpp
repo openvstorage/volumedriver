@@ -768,7 +768,8 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              &vfs::PythonClient::stop_object,
              (bpy::args("object_id"),
               bpy::args("delete_local_data"),
-              bpy::args("req_timeout_secs") = MaybeSeconds()),
+              bpy::args("req_timeout_secs") = MaybeSeconds(),
+              bpy::args("node_id") = bpy::object()),
              "Request that an object (volume or file) is stopped.\n"
              "\n"
              "NOTE: This does not remove the associated file - any I/O to it will lead to an error.\n"

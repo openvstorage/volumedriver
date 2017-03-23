@@ -2338,4 +2338,38 @@ TEST_F(PythonClientTest, halted_volume_exception)
     EXPECT_NO_THROW(client_.info_volume(oid.str()));
 }
 
+TEST_F(PythonClientTest, stop_fenced_instance)
+{
+    mount_remote();
+    auto on_exit(yt::make_scope_exit([&]
+                                     {
+                                         umount_remote();
+                                     }));
+
+    const FrontendPath path(make_volume_name("/volume"));
+    const ObjectId oid(create_file(path));
+
+    auto check([&](const NodeId& node_id)
+               {
+                   const XMLRPCVolumeInfo info(client_.info_volume(oid.str(),
+                                                                   boost::none,
+                                                                   false));
+                   EXPECT_FALSE(info.halted) << node_id;
+                   EXPECT_EQ(node_id,
+                             info.vrouter_id);
+               });
+
+    simulate_fencing(oid);
+
+    EXPECT_TRUE(client_.info_volume(oid.str(),
+                                    boost::none,
+                                    false).halted);
+    client_.stop_object(oid.str(),
+                        false,
+                        boost::none,
+                        local_node_id().str());
+
+    check(remote_node_id());
+}
+
 }
