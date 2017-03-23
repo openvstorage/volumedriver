@@ -22,14 +22,18 @@
 #include <unordered_set>
 
 #include <boost/thread.hpp>
+#include <boost/variant.hpp>
 
 #include <capnp/message.h>
 
+#include <youtils/BooleanEnum.h>
 #include <youtils/LocORemServer.h>
 #include <youtils/Logging.h>
 
 namespace metadata_server
 {
+
+VD_BOOLEAN_ENUM(DeferExecution);
 
 class ServerNG
 {
@@ -40,7 +44,7 @@ public:
              const boost::optional<std::chrono::seconds>& timeout = boost::none,
              const uint32_t nthreads = boost::thread::hardware_concurrency());
 
-    ~ServerNG() = default;
+    ~ServerNG();
 
     ServerNG(const ServerNG&) = delete;
 
@@ -63,57 +67,81 @@ private:
     DataBaseInterfacePtr db_;
     youtils::LocORemServer server_;
 
+    // factor out into a class of its own
+    boost::mutex lock_;
+    boost::condition_variable cond_;
+    bool stop_;
+    using DelayedFun = std::function<void()>;
+    std::deque<DelayedFun> delayed_work_;
+    boost::thread_group threads_;
+
+    void
+    stop_work_();
+
+    void
+    work_();
+
     template<typename Connection>
     void
-    recv_header_(Connection&,
+    recv_header_(const std::shared_ptr<Connection>&,
                  ConnectionStatePtr);
 
-    template<typename Connection>
-    void
-    get_data_(Connection&,
-              ConnectionStatePtr,
-              std::shared_ptr<metadata_server_protocol::RequestHeader>);
+    using HeaderPtr = std::shared_ptr<metadata_server_protocol::RequestHeader>;
+    using MessageReaderPtr = std::shared_ptr<capnp::MessageReader>;
+    using MessageBuilderPtr = std::shared_ptr<capnp::MessageBuilder>;
+
+    using DataSource = boost::variant<std::vector<uint8_t>,
+                                      kj::ArrayPtr<const capnp::word>>;
+
+    using DataSourcePtr = std::shared_ptr<DataSource>;
 
     template<typename Connection>
     void
-    recv_data_(Connection&,
+    get_data_(const std::shared_ptr<Connection>&,
+              ConnectionStatePtr,
+              const HeaderPtr&);
+
+    template<typename Connection>
+    void
+    recv_data_(const std::shared_ptr<Connection>&,
                ConnectionStatePtr,
-               std::shared_ptr<metadata_server_protocol::RequestHeader>);
+               const HeaderPtr&);
 
     template<typename Connection>
     void
-    dispatch_(Connection&,
+    dispatch_(const std::shared_ptr<Connection>&,
               ConnectionStatePtr,
-              const metadata_server_protocol::RequestHeader&,
-              capnp::MessageReader&);
+              const HeaderPtr&,
+              const DataSourcePtr&,
+              const MessageReaderPtr&);
 
     template<typename Connection>
     void
-    send_response_(Connection&,
+    send_response_(const std::shared_ptr<Connection>&,
                    ConnectionStatePtr,
                    metadata_server_protocol::ResponseHeader::Type,
                    metadata_server_protocol::Tag,
-                   capnp::MessageBuilder&);
+                   const MessageBuilderPtr&);
 
     template<typename Connection>
     void
-    send_response_inband_(Connection&,
+    send_response_inband_(const std::shared_ptr<Connection>&,
                           ConnectionStatePtr,
                           metadata_server_protocol::ResponseHeader::Type,
                           metadata_server_protocol::Tag,
-                          capnp::MessageBuilder&);
+                          const MessageBuilderPtr&);
 
     template<typename Connection>
     void
-    send_response_shmem_(Connection&,
+    send_response_shmem_(const std::shared_ptr<Connection>&,
                          ConnectionStatePtr,
                          metadata_server_protocol::ResponseHeader::Type,
                          metadata_server_protocol::Tag,
-                         capnp::FlatMessageBuilder&);
+                         const std::shared_ptr<capnp::FlatMessageBuilder>&);
 
     template<typename Connection>
     void
-    error_(Connection&,
+    error_(const std::shared_ptr<Connection>&,
            ConnectionStatePtr,
            const metadata_server_protocol::ResponseHeader::Type,
            const metadata_server_protocol::Tag,
@@ -123,10 +151,12 @@ private:
              typename Connection,
              typename Traits = metadata_server_protocol::RequestTraits<r>>
     void
-    handle_(Connection&,
+    handle_(const std::shared_ptr<Connection>&,
             ConnectionStatePtr,
-            const metadata_server_protocol::RequestHeader&,
-            capnp::MessageReader&,
+            const HeaderPtr&,
+            const DataSourcePtr&,
+            const DeferExecution,
+            const MessageReaderPtr&,
             void (ServerNG::*mem_fn)(typename Traits::Params::Reader&,
                                      typename Traits::Results::Builder&));
 
@@ -134,10 +164,12 @@ private:
              typename Connection,
              typename Traits = metadata_server_protocol::RequestTraits<r>>
     void
-    handle_shmem_(Connection&,
+    handle_shmem_(const std::shared_ptr<Connection>&,
                   ConnectionStatePtr,
-                  const metadata_server_protocol::RequestHeader&,
-                  capnp::MessageReader&,
+                  const HeaderPtr&,
+                  const DataSourcePtr&,
+                  const DeferExecution,
+                  const MessageReaderPtr&,
                   void (ServerNG::*mem_fn)(typename Traits::Params::Reader&,
                                            typename Traits::Results::Builder&));
 
@@ -145,11 +177,26 @@ private:
              typename Connection,
              typename Traits = metadata_server_protocol::RequestTraits<r>>
     void
-    do_handle_(Connection&,
+    do_handle_(const std::shared_ptr<Connection>&,
                ConnectionStatePtr,
-               const metadata_server_protocol::RequestHeader&,
-               capnp::MessageBuilder&,
-               capnp::MessageReader&,
+               const HeaderPtr&,
+               const DataSourcePtr&,
+               const DeferExecution,
+               const MessageBuilderPtr&,
+               const MessageReaderPtr&,
+               void (ServerNG::*mem_fn)(typename Traits::Params::Reader&,
+                                        typename Traits::Results::Builder&));
+
+    template<enum metadata_server_protocol::RequestHeader::Type r,
+             typename Connection,
+             typename Traits = metadata_server_protocol::RequestTraits<r>>
+    void
+    do_handle_(const std::shared_ptr<Connection>&,
+               ConnectionStatePtr,
+               const HeaderPtr&,
+               const DataSourcePtr&,
+               const MessageBuilderPtr&,
+               const MessageReaderPtr&,
                void (ServerNG::*mem_fn)(typename Traits::Params::Reader&,
                                         typename Traits::Results::Builder&));
 
