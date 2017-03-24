@@ -2184,7 +2184,7 @@ TEST_F(NetworkServerTest, get_clone_namespace_map)
     ctx_iface.get_clone_namespace_map(vname.c_str(),
                                       cn);
 
-    EXPECT_EQ(1UL, cn.size());
+    ASSERT_EQ(1UL, cn.size());
 
     auto conn(cm_->getConnection());
     vd::VolumeConfig cfg;
@@ -2217,7 +2217,7 @@ TEST_F(NetworkServerTest, get_page)
                        libovsvolumedriver::ClusterAddress(0),
                        clp);
 
-    EXPECT_EQ(256UL, clp.size());
+    ASSERT_EQ(256UL, clp.size());
     for (const auto& e: clp)
     {
         EXPECT_TRUE(e == libovsvolumedriver::ClusterLocation(0));
@@ -2265,7 +2265,7 @@ TEST_F(NetworkServerTest, get_page)
                        libovsvolumedriver::ClusterAddress(0),
                        clp);
 
-    EXPECT_EQ(256UL, clp.size());
+    ASSERT_EQ(256UL, clp.size());
     for (const auto& e: clp)
     {
         if (e == clp[0])
@@ -2290,7 +2290,7 @@ TEST_F(NetworkServerTest, get_page)
     const vd::ClusterAddress ca(0);
     std::vector<vd::ClusterLocation> cloc(api::GetPage(v, ca));
 
-    EXPECT_EQ(256UL, cloc.size());
+    ASSERT_EQ(256UL, cloc.size());
     for (const auto& e: cloc)
     {
         if (e == cloc[0])
