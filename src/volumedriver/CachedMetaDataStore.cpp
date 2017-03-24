@@ -735,7 +735,7 @@ CachedMetaDataStore::get_page(const ClusterAddress ca)
             {
                 if (p.first >= ca_start and p.first < ca_end)
                 {
-                    tmp[CachePage::offset(p.first)] = p.second;
+                    tmp[CachePage::offset(p.first)] = ClusterLocationAndHash::discarded_location_and_hash();
                 }
             }
         }

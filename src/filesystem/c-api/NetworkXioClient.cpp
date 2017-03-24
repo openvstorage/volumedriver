@@ -26,7 +26,9 @@
 #include <atomic>
 #include <system_error>
 
+PRAGMA_IGNORE_WARNING_BEGIN("-Wctor-dtor-privacy")
 #include <msgpack.hpp>
+PRAGMA_IGNORE_WARNING_END;
 
 namespace yt = youtils;
 

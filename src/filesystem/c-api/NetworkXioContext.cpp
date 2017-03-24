@@ -579,7 +579,7 @@ int
 NetworkXioContext::get_clone_namespace_map(const char *volume_name,
                                            CloneNamespaceMap& cn)
 {
-    int r;
+    int r = 0;
     std::shared_ptr<ovs_aio_request> request;
     try
     {
@@ -618,7 +618,7 @@ NetworkXioContext::get_page(const char *volume_name,
                             const ClusterAddress ca,
                             ClusterLocationPage& cl)
 {
-    int r;
+    int r = 0;
     std::shared_ptr<ovs_aio_request> request;
     try
     {

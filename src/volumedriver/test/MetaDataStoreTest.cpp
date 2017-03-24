@@ -22,6 +22,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <unordered_set>
 
 #include <snappy.h>
 
@@ -1210,9 +1211,12 @@ TEST_P(MetaDataStoreTest, get_page)
     SharedVolumePtr v(newVolume(params));
     std::unique_ptr<MetaDataStoreInterface>& md = getMDStore(v);
 
-    auto check([&]
+    using CorkedAddresses = std::unordered_set<ClusterAddress>;
+
+    auto check([&](const CorkedAddresses& corked_ones)
                {
                    std::vector<ClusterLocation> vec;
+
                    for (ClusterAddress ca = 0; ca < locs; ++ca)
                    {
                        if ((ca % page_size) == 0)
@@ -1228,16 +1232,28 @@ TEST_P(MetaDataStoreTest, get_page)
 
                        PageAddress pa = CachePage::pageAddress(ca);
                        off_t off = CachePage::offset(ca);
-                       EXPECT_EQ(clh.clusterLocation,
-                                 vec.at(CachePage::offset(ca))) <<
-                           "CA " << ca << ", PA " << pa << ", off " << off;
+
+                       if (corked_ones.find(ca) == corked_ones.end())
+                       {
+                           EXPECT_EQ(clh.clusterLocation,
+                                     vec.at(CachePage::offset(ca))) <<
+                               "CA " << ca << ", PA " << pa << ", off " << off;
+                       }
+                       else
+                       {
+                           EXPECT_EQ(ClusterLocation(0),
+                                     vec.at(CachePage::offset(ca))) <<
+                                     "CA " << ca << ", PA " << pa << ", off " << off;
+                       }
                    }
                });
 
     SCONumber sco_num = 1;
 
-    auto write([&](size_t n)
+    auto write([&](size_t n) -> CorkedAddresses
                {
+                   CorkedAddresses corked_ones;
+
                    for (size_t i = 0; i < max_pages; ++i)
                    {
                        for (size_t j = 0; j < n; ++j)
@@ -1247,18 +1263,26 @@ TEST_P(MetaDataStoreTest, get_page)
                            const ClusterAddress ca = i * page_size + j;
                            md->writeCluster(ca,
                                             clh);
+                           bool ok = false;
+                           std::tie(std::ignore, ok) = corked_ones.insert(ca);
+                           EXPECT_TRUE(ok);
                        }
                    }
+
+                   return corked_ones;
                });
-    check();
 
-    write(4);
-    check();
+    // there's a start cork, but we've not written anything yet.
+    check(CorkedAddresses());
+    const CorkedAddresses corked(write(4));
 
+    check(corked);
+
+    // remove the start cork. we have to have a new one.
     md->cork(yt::UUID());
+    md->unCork();
 
-    write(2);
-    check();
+    check(CorkedAddresses());
 }
 
 INSTANTIATE_TEST(MetaDataStoreTest);
