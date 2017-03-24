@@ -2268,6 +2268,24 @@ TEST_F(NetworkServerTest, get_page)
     ASSERT_EQ(256UL, clp.size());
     for (const auto& e: clp)
     {
+        EXPECT_EQ(libovs::ClusterLocation(0),
+                  e);
+    }
+
+    ASSERT_EQ(0,
+              ovs_snapshot_create(ctx.get(),
+                                  vname.c_str(),
+                                  "snapshot",
+                                  60));
+
+    clp.clear();
+    ctx_iface.get_page(vname.c_str(),
+                       libovsvolumedriver::ClusterAddress(0),
+                       clp);
+
+    ASSERT_EQ(256UL, clp.size());
+    for (const auto& e: clp)
+    {
         if (e == clp[0])
         {
             EXPECT_TRUE(e == libovs::ClusterLocation(1));
