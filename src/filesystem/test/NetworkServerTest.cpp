@@ -2272,15 +2272,26 @@ TEST_F(NetworkServerTest, get_page)
                   e);
     }
 
+    // Trigger uncork.
     ASSERT_EQ(0,
               ovs_snapshot_create(ctx.get(),
                                   vname.c_str(),
-                                  "snapshot",
+                                  "snapshot-1",
+                                  60));
+
+    // There's a race between
+    // * marking the tlog as on the backend + uncork
+    // * checking whether the snapshot is on the backend
+    // . Creating a second snapshot closes that.
+    ASSERT_EQ(0,
+              ovs_snapshot_create(ctx.get(),
+                                  vname.c_str(),
+                                  "snapshot-2",
                                   60));
 
     clp.clear();
     ctx_iface.get_page(vname.c_str(),
-                       libovsvolumedriver::ClusterAddress(0),
+                       libovs::ClusterAddress(0),
                        clp);
 
     ASSERT_EQ(256UL, clp.size());
@@ -2288,11 +2299,13 @@ TEST_F(NetworkServerTest, get_page)
     {
         if (e == clp[0])
         {
-            EXPECT_TRUE(e == libovs::ClusterLocation(1));
+            EXPECT_EQ(libovs::ClusterLocation(1),
+                      e);
         }
         else
         {
-            EXPECT_TRUE(e == libovs::ClusterLocation(0));
+            EXPECT_EQ(libovs::ClusterLocation(0),
+                      e);
         }
     }
 
