@@ -225,10 +225,7 @@ TEST(MSGPACKC, simple_buffer_float)
         msgpack_unpack_return ret =
             msgpack_unpack(sbuf.data, sbuf.size, NULL, &z, &obj);
         EXPECT_EQ(MSGPACK_UNPACK_SUCCESS, ret);
-        EXPECT_EQ(MSGPACK_OBJECT_FLOAT, obj.type);
-#if defined(MSGPACK_USE_LEGACY_NAME_AS_FLOAT)
-        EXPECT_EQ(MSGPACK_OBJECT_DOUBLE, obj.type);
-#endif // MSGPACK_USE_LEGACY_NAME_AS_FLOAT
+        EXPECT_EQ(MSGPACK_OBJECT_FLOAT32, obj.type);
         if (isnan(val)) {
             EXPECT_TRUE(isnan(obj.via.f64));
 #if defined(MSGPACK_USE_LEGACY_NAME_AS_FLOAT)
@@ -290,6 +287,7 @@ TEST(MSGPACKC, simple_buffer_double)
         msgpack_unpack_return ret =
             msgpack_unpack(sbuf.data, sbuf.size, NULL, &z, &obj);
         EXPECT_EQ(MSGPACK_UNPACK_SUCCESS, ret);
+        EXPECT_EQ(MSGPACK_OBJECT_FLOAT64, obj.type);
         EXPECT_EQ(MSGPACK_OBJECT_FLOAT, obj.type);
 #if defined(MSGPACK_USE_LEGACY_NAME_AS_FLOAT)
         EXPECT_EQ(MSGPACK_OBJECT_DOUBLE, obj.type);
@@ -370,7 +368,7 @@ TEST(MSGPACKC, simple_buffer_false)
         msgpack_unpack(sbuf.data, sbuf.size, NULL, &z, &obj);
     EXPECT_EQ(MSGPACK_UNPACK_SUCCESS, ret);
     EXPECT_EQ(MSGPACK_OBJECT_BOOLEAN, obj.type);
-    EXPECT_EQ(false, obj.via.boolean);
+    EXPECT_FALSE(obj.via.boolean);
     msgpack_zone_destroy(&z);
     msgpack_sbuffer_destroy(&sbuf);
 }
@@ -665,7 +663,7 @@ TEST(MSGPACKC, simple_buffer_array)
             break;
         case 2:
             EXPECT_EQ(MSGPACK_OBJECT_BOOLEAN, o.type);
-            EXPECT_EQ(false, o.via.boolean);
+            EXPECT_FALSE(o.via.boolean);
             break;
         case 3:
             EXPECT_EQ(MSGPACK_OBJECT_POSITIVE_INTEGER, o.type);
@@ -713,7 +711,7 @@ TEST(MSGPACKC, simple_buffer_map)
             EXPECT_EQ(MSGPACK_OBJECT_BOOLEAN, key.type);
             EXPECT_EQ(true, key.via.boolean);
             EXPECT_EQ(MSGPACK_OBJECT_BOOLEAN, val.type);
-            EXPECT_EQ(false, val.via.boolean);
+            EXPECT_FALSE(val.via.boolean);
             break;
         case 1:
             EXPECT_EQ(MSGPACK_OBJECT_POSITIVE_INTEGER, key.type);
