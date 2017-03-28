@@ -19,6 +19,8 @@
 #include "Logging.h"
 #include "PeriodicAction.h"
 
+#include <deque>
+
 #include <boost/asio.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/enable_shared_from_this.hpp>
@@ -31,6 +33,10 @@ namespace youtils
 class PeriodicActionPool
     : public boost::enable_shared_from_this<PeriodicActionPool>
 {
+    class TaskImpl;
+    using TaskImplPtr = boost::shared_ptr<TaskImpl>;
+    using WeakTaskImplPtr = boost::weak_ptr<TaskImpl>;
+
 public:
     using Ptr = boost::shared_ptr<PeriodicActionPool>;
 
@@ -59,39 +65,38 @@ public:
         Task&
         operator=(const Task&) = delete;
 
-        Task(Task&&) = delete;
+        Task(Task&& other)
+            : impl_(std::move(other.impl_))
+            , pool_(std::move(other.pool_))
+        {}
 
         Task&
-        operator=(Task&&) = delete;
+        operator=(Task&& other)
+        {
+            if (this != &other)
+            {
+                impl_ = std::move(other.impl_);
+                pool_ = std::move(other.pool_);
+            }
 
+            return *this;
+        }
     private:
-        DECLARE_LOGGER("PeriodicActionPoolTask");
-
         friend class PeriodicActionPool;
 
+        DECLARE_LOGGER("PeriodicActionPoolTask");
+
+        TaskImplPtr impl_;
         Ptr pool_;
-        std::string name_;
-        const std::atomic<uint64_t>& period_;
-        PeriodicAction::AbortableAction action_;
-        bool period_in_seconds_;
-        boost::asio::steady_timer deadline_;
-        boost::mutex lock_;
-        boost::condition_variable cond_;
-        bool stop_;
-        bool stopped_;
 
-        Task(const std::string& name,
-             PeriodicAction::AbortableAction,
-             const std::atomic<uint64_t>& period,
-             const bool period_in_seconds,
-             const std::chrono::milliseconds& ramp_up,
-             Ptr pool);
-
-        void
-        run_(const std::chrono::milliseconds&);
+        Task(const TaskImplPtr& impl,
+             const Ptr& pool)
+            : impl_(impl)
+            , pool_(pool)
+        {}
     };
 
-    std::unique_ptr<Task>
+    Task
     create_task(const std::string& name,
                 PeriodicAction::AbortableAction action,
                 const std::atomic<uint64_t>& period,
@@ -103,17 +108,31 @@ private:
 
     boost::asio::io_service io_service_;
     decltype(io_service_)::work work_;
-    boost::thread_group threads_;
     const std::string name_;
+
+    boost::mutex mutex_;
+    boost::condition_variable cond_;
+    bool stop_;
+
+    std::deque<WeakTaskImplPtr> queue_;
+
+    boost::thread_group threads_;
+    boost::thread scheduler_;
 
     PeriodicActionPool(const std::string& name,
                        size_t nthreads);
 
     void
-    run_();
+    run_service_();
 
     void
-    stop_();
+    run_worker_();
+
+    void
+    enqueue_(const WeakTaskImplPtr&);
+
+    void
+    stop_threads_();
 };
 
 }

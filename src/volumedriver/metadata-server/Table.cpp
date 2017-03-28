@@ -100,11 +100,12 @@ Table::start_(const sc::milliseconds& ramp_up)
                                               return work_();
                                           });
 
-    act_ = act_pool_->create_task("mds-poll-namespace-"s + table_->nspace(),
-                                  std::move(a),
-                                  poll_secs_,
-                                  true,
-                                  ramp_up);
+    act_ =
+        std::make_unique<yt::PeriodicActionPool::Task>(act_pool_->create_task("mds-poll-namespace-"s + table_->nspace(),
+                                                                              std::move(a),
+                                                                              poll_secs_,
+                                                                              true,
+                                                                              ramp_up));
 }
 
 Role
