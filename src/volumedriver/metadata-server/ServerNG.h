@@ -26,14 +26,12 @@
 
 #include <capnp/message.h>
 
-#include <youtils/BooleanEnum.h>
+#include <youtils/DeferExecution.h>
 #include <youtils/LocORemServer.h>
 #include <youtils/Logging.h>
 
 namespace metadata_server
 {
-
-VD_BOOLEAN_ENUM(DeferExecution);
 
 class ServerNG
 {
@@ -155,7 +153,7 @@ private:
             ConnectionStatePtr,
             const HeaderPtr&,
             const DataSourcePtr&,
-            const DeferExecution,
+            const youtils::DeferExecution,
             const MessageReaderPtr&,
             void (ServerNG::*mem_fn)(typename Traits::Params::Reader&,
                                      typename Traits::Results::Builder&));
@@ -168,7 +166,7 @@ private:
                   ConnectionStatePtr,
                   const HeaderPtr&,
                   const DataSourcePtr&,
-                  const DeferExecution,
+                  const youtils::DeferExecution,
                   const MessageReaderPtr&,
                   void (ServerNG::*mem_fn)(typename Traits::Params::Reader&,
                                            typename Traits::Results::Builder&));
@@ -181,7 +179,7 @@ private:
                ConnectionStatePtr,
                const HeaderPtr&,
                const DataSourcePtr&,
-               const DeferExecution,
+               const youtils::DeferExecution,
                const MessageBuilderPtr&,
                const MessageReaderPtr&,
                void (ServerNG::*mem_fn)(typename Traits::Params::Reader&,
