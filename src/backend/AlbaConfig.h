@@ -37,7 +37,8 @@ public:
                const size_t rora_manifest_cache_capacity = 10000,
                const std::string& preset = "",
                const bool rora_use_nullio = false,
-               const size_t asd_connection_pool_capacity = 5)
+               const size_t asd_connection_pool_capacity = 5,
+               const std::chrono::milliseconds& rora_timeout_msecs = std::chrono::milliseconds(25))
         : BackendConfig(BackendType::ALBA)
         , alba_connection_host(host)
         , alba_connection_port(port)
@@ -48,6 +49,7 @@ public:
         , alba_connection_rora_manifest_cache_capacity(rora_manifest_cache_capacity)
         , alba_connection_rora_use_nullio(rora_use_nullio)
         , alba_connection_asd_connection_pool_capacity(asd_connection_pool_capacity)
+        , alba_connection_rora_timeout_msecs(rora_timeout_msecs.count())
     {}
 
     AlbaConfig(const boost::property_tree::ptree& pt)
@@ -61,6 +63,7 @@ public:
         , alba_connection_rora_manifest_cache_capacity(pt)
         , alba_connection_rora_use_nullio(pt)
         , alba_connection_asd_connection_pool_capacity(pt)
+        , alba_connection_rora_timeout_msecs(pt)
     {}
 
     AlbaConfig() = delete;
@@ -102,7 +105,8 @@ public:
                               alba_connection_rora_manifest_cache_capacity.value(),
                               alba_connection_preset.value(),
                               alba_connection_rora_use_nullio.value(),
-                              alba_connection_asd_connection_pool_capacity.value()));
+                              alba_connection_asd_connection_pool_capacity.value(),
+                              std::chrono::milliseconds(alba_connection_rora_timeout_msecs.value())));
         return bc;
     }
 
@@ -130,6 +134,8 @@ public:
                                                 report_default);
         alba_connection_asd_connection_pool_capacity.persist(pt,
                                                              report_default);
+        alba_connection_rora_timeout_msecs.persist(pt,
+                                                   report_default);
     }
 
     virtual void
@@ -153,7 +159,8 @@ public:
             CMP(alba_connection_use_rora) and
             CMP(alba_connection_rora_manifest_cache_capacity) and
             CMP(alba_connection_rora_use_nullio) and
-            CMP(alba_connection_asd_connection_pool_capacity)
+            CMP(alba_connection_asd_connection_pool_capacity) and
+            CMP(alba_connection_rora_timeout_msecs)
             ;
 #undef CMP
     }
@@ -174,6 +181,7 @@ public:
     DECLARE_PARAMETER(alba_connection_rora_manifest_cache_capacity);
     DECLARE_PARAMETER(alba_connection_rora_use_nullio);
     DECLARE_PARAMETER(alba_connection_asd_connection_pool_capacity);
+    DECLARE_PARAMETER(alba_connection_rora_timeout_msecs);
 
 private:
     virtual std::ostream&

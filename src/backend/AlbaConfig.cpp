@@ -35,6 +35,7 @@ AlbaConfig::stream_out(std::ostream& os) const
         ",rora_manifest_cache_capacity=" << V(alba_connection_rora_manifest_cache_capacity) <<
         ",rora_use_nullio=" << V(alba_connection_rora_use_nullio) <<
         ",asd_connection_pool_capacity=" << V(alba_connection_asd_connection_pool_capacity) <<
+        ",rora_timeout_msecs=" << V(alba_connection_rora_timeout_msecs) <<
         ",preset=" << V(alba_connection_preset) <<
         "}";
 
