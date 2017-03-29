@@ -119,12 +119,15 @@ ObjectRouter::ObjectRouter(const bpt::ptree& pt,
     worker_pool_ = std::make_unique<ZWorkerPool>("ObjectRouterWorkerPool",
                                                  *ztx_,
                                                  ncfg.message_uri(),
+                                                 vrouter_max_workers.value(),
                                                  [this](ZWorkerPool::MessageParts parts)
                                                  {
                                                      return redirected_work_(std::move(parts));
                                                  },
-                                                 vrouter_min_workers.value(),
-                                                 vrouter_max_workers.value());
+                                                 [](const ZWorkerPool::MessageParts&)
+                                                 {
+                                                     return yt::DeferExecution::T;
+                                                 });
 }
 
 ObjectRouter::~ObjectRouter()
