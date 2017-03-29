@@ -1809,31 +1809,8 @@ ObjectRouter::update(const bpt::ptree& pt,
     U(vrouter_xmlrpc_client_timeout_ms);
     U(vrouter_use_fencing);
     U(vrouter_send_sync_response);
-
-    ip::PARAMETER_TYPE(vrouter_min_workers) min(pt);
-    ip::PARAMETER_TYPE(vrouter_min_workers) max(pt);
-
-    try
-    {
-        if (min.value() != vrouter_min_workers.value() or
-            max.value() != vrouter_max_workers.value())
-        {
-            worker_pool_->resize(min.value(),
-                                 max.value());
-        }
-
-        U(vrouter_min_workers);
-        U(vrouter_max_workers);
-    }
-    CATCH_STD_ALL_EWHAT({
-            LOG_ERROR("Failed to resize worker pool: " << EWHAT);
-            rep.no_update(min.name(),
-                          vrouter_min_workers.value(),
-                          min.value());
-            rep.no_update(max.name(),
-                          vrouter_max_workers.value(),
-                          max.value());
-        });
+    U(vrouter_min_workers);
+    U(vrouter_max_workers);
 
 #undef U
 
