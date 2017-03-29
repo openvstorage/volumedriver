@@ -116,18 +116,19 @@ ObjectRouter::ObjectRouter(const bpt::ptree& pt,
     update_config_(pt);
 
     const ClusterNodeConfig ncfg(node_config());
-    worker_pool_ = std::make_unique<ZWorkerPool>("ObjectRouterWorkerPool",
-                                                 *ztx_,
-                                                 ncfg.message_uri(),
-                                                 vrouter_max_workers.value(),
-                                                 [this](ZWorkerPool::MessageParts parts)
-                                                 {
-                                                     return redirected_work_(std::move(parts));
-                                                 },
-                                                 [](const ZWorkerPool::MessageParts&)
-                                                 {
-                                                     return yt::DeferExecution::T;
-                                                 });
+    worker_pool_ =
+        std::make_unique<ZWorkerPool>("ObjectRouterWorkerPool",
+                                      *ztx_,
+                                      ncfg.message_uri(),
+                                      vrouter_max_workers.value(),
+                                      // TODO: use {std,boost}::bind instead if possible
+                                      [this](ZWorkerPool::MessageParts parts) -> ZWorkerPool::MessageParts
+                                      {
+                                          return redirected_work_(std::move(parts));
+                                      },
+                                      boost::bind(&ObjectRouter::dispatch_redirected_work_,
+                                                  this,
+                                                  _1));
 }
 
 ObjectRouter::~ObjectRouter()
@@ -324,6 +325,30 @@ get_req(const ZWorkerPool::MessageParts& parts)
     return m;
 }
 
+}
+
+yt::DeferExecution
+ObjectRouter::dispatch_redirected_work_(const ZWorkerPool::MessageParts& parts)
+{
+    if (parts.size() > 0)
+    {
+        try
+        {
+            vfsprotocol::RequestType req_type;
+            ZUtils::deserialize_from_message(parts[0],
+                                             req_type);
+            return req_type == vfsprotocol::RequestType::Ping ?
+                yt::DeferExecution::F :
+                yt::DeferExecution::T;
+        }
+        CATCH_STD_ALL_LOG_IGNORE("Failed to peek at request type");
+    }
+    else
+    {
+        LOG_ERROR("expected at least one message part, gone none");
+    }
+
+    return yt::DeferExecution::T;
 }
 
 ZWorkerPool::MessageParts

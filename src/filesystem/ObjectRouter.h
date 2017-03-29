@@ -492,7 +492,10 @@ private:
     build_config_(const boost::optional<const boost::property_tree::ptree&>& pt);
 
     ZWorkerPool::MessageParts
-    redirected_work_(ZWorkerPool::MessageParts parts_in);
+    redirected_work_(ZWorkerPool::MessageParts);
+
+    youtils::DeferExecution
+    dispatch_redirected_work_(const ZWorkerPool::MessageParts&);
 
     std::shared_ptr<ClusterNode>
     find_node_(const NodeId&) const;
