@@ -103,8 +103,12 @@ protected:
         }
     }
 
-    void readLBAs(Lba lba, uint64_t count, uint32_t pattern,
-                  bool verify=true, SharedVolumePtr vol = nullptr, int retries = 7)
+    void readLBAs(Lba lba,
+                  uint64_t count,
+                  uint32_t pattern,
+                  bool verify=true,
+                  SharedVolumePtr vol = nullptr,
+                  int retries = 7)
     {
         bool fail = true;
         if (vol == 0) {

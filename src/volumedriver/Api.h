@@ -115,6 +115,12 @@ public:
           const uint8_t *buf,
           uint64_t buflen);
 
+    static volumedriver::DtlInSync
+    Write(volumedriver::WeakVolumePtr,
+          const uint64_t off,
+          const uint8_t* buf,
+          uint64_t buflen);
+
     static void
     Write(volumedriver::WriteOnlyVolume*,
           const volumedriver::Lba,
@@ -124,6 +130,12 @@ public:
     static void
     Read(volumedriver::WeakVolumePtr vol,
          const volumedriver::Lba,
+         uint8_t *buf,
+         const uint64_t buflen);
+
+    static void
+    Read(volumedriver::WeakVolumePtr vol,
+         const uint64_t off,
          uint8_t *buf,
          const uint64_t buflen);
 

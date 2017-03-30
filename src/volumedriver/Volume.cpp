@@ -75,6 +75,12 @@ static_assert(FLT_RADIX == 2, "Need to check code for non conforming FLT_RADIX")
 #define RLOCK()                                 \
     boost::shared_lock<decltype(rwlock_)> srwlg__(rwlock_)
 
+#define RLOCK_UNALIGNED()                                \
+    boost::shared_lock<decltype(unaligned_lock_)> sualg__(unaligned_lock_)
+
+#define WLOCK_UNALIGNED()                                \
+    boost::unique_lock<decltype(unaligned_lock_)> uualg__(unaligned_lock_)
+
 #define SERIALIZE_WRITES()                              \
     boost::lock_guard<lock_type> gwl__(write_lock_)
 
@@ -122,6 +128,7 @@ Volume::Volume(const VolumeConfig& vCfg,
     , config_lock_()
     , write_lock_()
     , rwlock_("rwlock-" + vCfg.id_.str())
+    , unaligned_lock_("unaligned-lock-" + vCfg.id_.str())
     , halted_(false)
     , dataStore_(datastore.release())
     , failover_(FailOverCacheClientInterface::create(FailOverCacheMode::Asynchronous,
@@ -157,7 +164,6 @@ Volume::Volume(const VolumeConfig& vCfg,
 
     VERIFY(vCfg.lba_size_ == exp2(volOffset_));
 
-    caMask_ = ~(getClusterSize() / getLBASize() - 1);
     dataStore_->initialize(this);
     snapshotManagement_->initialize(this);
     init_failover_cache_();
@@ -669,41 +675,36 @@ Volume::backend_restart(const CloneTLogs& restartTLogs,
 // Y42 redo these, they should just be a right shift of lba by an amount
 ClusterAddress Volume::addr2CA(const uint64_t addr) const
 {
-    return addr / getClusterSize();
-}
-
-uint64_t Volume::LBA2Addr(const Lba lba) const
-{
-    return (lba & caMask_) * getLBASize();
+    return addr / clusterSize_;
 }
 
 void
-Volume::validateIOLength(const Lba lba, uint64_t len) const
+Volume::validateIOLength(const uint64_t off, uint64_t len) const
 {
-    if (lba + len / getLBASize() > getLBACount())
+    const size_t max = getLBACount() * getLBASize();
+    if (off + len > max)
     {
-        LOG_VWARN("Access beyond end of volume: LBA "
-                 << (lba + len / getLBASize()) << " > "
-                 << getLBACount());
+        LOG_VWARN("Access beyond end of volume: offset " <<
+                  off << " + length " << len << " > " << max);
         // don't throw return boolean!!
         throw AccessBeyondEndOfVolumeException("Access beyond end of volume");
     }
 }
 
 void
-Volume::validateIOAlignment(const Lba lba, uint64_t len) const
+Volume::validateIOAlignment(const uint64_t off, uint64_t len) const
 {
-    if (len % getClusterSize())
+    if (len % clusterSize_)
     {
-        LOG_VWARN("Access not aligned to cluster size: len " << len <<
-                 ", clustersize " << getClusterSize());
-        throw fungi::IOException("Access not aligned to cluster size");
+        LOG_VWARN("Request length not aligned to cluster size: len " << len <<
+                  ", clustersize " << clusterSize_);
+        throw fungi::IOException("Length not aligned to cluster size");
     }
-    if (lba & ~caMask_)
+    if (off % clusterSize_)
     {
-        LOG_VWARN("LBA " << lba << " not aligned to cluster (mask: " <<
-                 std::hex << ~caMask_ << std::dec);
-        throw fungi::IOException("LBA not aligned to cluster");
+        LOG_VWARN("Request address not aligned to cluster size: off " << off <<
+                  ", clustersize " << clusterSize_);
+        throw fungi::IOException("Request address not aligned to cluster");
     }
 }
 
@@ -811,23 +812,35 @@ Volume::write(const Lba lba,
               const uint8_t *buf,
               uint64_t buflen)
 {
+    return write(lba.t * getLBASize(),
+                 buf,
+                 buflen);
+}
+
+DtlInSync
+Volume::write(const uint64_t off,
+              const uint8_t *buf,
+              uint64_t len)
+{
     tracepoint(openvstorage_volumedriver,
                volume_write_start,
                config_.id_.str().c_str(),
-               lba,
-               buflen);
+               off,
+               len);
 
     auto on_exit(yt::make_scope_exit([&]
                                      {
                                          tracepoint(openvstorage_volumedriver,
                                                     volume_write_end,
                                                     config_.id_.str().c_str(),
-                                                    lba,
-                                                    buflen,
+                                                    off,
+                                                    len,
                                                     std::uncaught_exception());
                                      }));
 
-    performance_counters().write_request_size.count(buflen);
+    LOG_VTRACE("off " << off << ", len " << len);
+
+    performance_counters().write_request_size.count(len);
 
     if (VolManager::get()->volume_nullio.value())
     {
@@ -842,54 +855,76 @@ Volume::write(const Lba lba,
         throw VolumeIsTemplateException("Templated Volume, write forbidden");
     }
 
-    LOG_VTRACE("lba " << lba << ", len " << buflen << ", buf " << &buf);
-
     checkNotHalted_();
     checkNotReadOnly_();
+    validateIOLength(off, len);
 
-    //MeasureScopeInt ms("Volume::write", lba);
-    validateIOLength(lba, buflen);
+    const ClusterAddress ca = off / clusterSize_;
+    const uint64_t coff = off % clusterSize_;
+    const size_t nclusters = (coff + len) / clusterSize_ + (((coff + len) % clusterSize_) ? 1 : 0);
+    const uint64_t aligned_len = nclusters * clusterSize_;
+    const uint64_t aligned_off = ca * clusterSize_;
+    DtlInSync dtl_in_sync = DtlInSync::F;
 
-    uint64_t addrOffset = (lba & ~caMask_) * getLBASize();
-    uint64_t len = intCeiling(addrOffset + buflen, getClusterSize());
-
-    bool unaligned = (lba bitand ~caMask_) != 0 or
-                     buflen % getClusterSize() != 0;
-
-    std::vector<uint8_t> bufv;
-    const uint8_t *p;
-    const Lba alignedLBA(lba.t bitand caMask_);
-
-    if (unaligned)
+    if (aligned_off != off or
+        aligned_len != len)
     {
-        performance_counters().unaligned_write_request_size.count(buflen);
+        WLOCK_UNALIGNED();
 
-        validateIOAlignment(alignedLBA, len);
-        bufv.resize(len);
-        p = &bufv[0];
-        read(alignedLBA, &bufv[0], len);
-        LOG_VDEBUG("Unaligned write: lba " << lba << ", len " <<
-                   buflen << " -> using bounce buffer " << &p <<
-                   " for lba " << alignedLBA << ", len " << len);
-        memcpy(&bufv[0] + addrOffset, buf, buflen);
+        performance_counters().unaligned_write_request_size.count(len);
+
+        std::vector<uint8_t> bounce_buf(aligned_len);
+
+        read(aligned_off,
+             bounce_buf.data(),
+             bounce_buf.size());
+
+        memcpy(bounce_buf.data() + coff,
+               buf,
+               len);
+
+        dtl_in_sync = write_aligned_(aligned_off,
+                                     bounce_buf.data(),
+                                     bounce_buf.size());
     }
     else
     {
-        p = buf;
+        RLOCK_UNALIGNED();
+
+        ASSERT(coff == 0);
+        ASSERT(aligned_len == len);
+        ASSERT(aligned_off == off);
+
+        dtl_in_sync = write_aligned_(aligned_off,
+                                     buf,
+                                     aligned_len);
     }
 
-    // addr: closest cluster boundary in bytes
-    uint64_t addr = LBA2Addr(lba);
-    size_t wsize = len;
-    size_t off = 0;
+    const auto duration_us(bc::duration_cast<bc::microseconds>(t.elapsed()));
+    performance_counters().write_request_usecs.count(duration_us.count());
+
+    return dtl_in_sync;
+}
+
+DtlInSync
+Volume::write_aligned_(const uint64_t off,
+                       const uint8_t* buf,
+                       uint64_t len)
+{
+    LOG_VTRACE("off " << off << ", len " << len);
+
+    validateIOAlignment(off, len);
 
     DtlInSync dtl_in_sync = DtlInSync::T;
+    size_t write_off = 0;
+    size_t write_len = len;
 
-    while (off < len)
+    while (write_off < len)
     {
         SERIALIZE_WRITES();
+
         const ssize_t sco_cap =
-            dataStore_->getRemainingSCOCapacity() * getClusterSize();
+            dataStore_->getRemainingSCOCapacity() * clusterSize_;
         // we need to guarantee that ourselves by forcing a SCO rollover
         // when updating the SCOMultiplier
         VERIFY(sco_cap >= 0); // can we really deal with sco_cap == 0?
@@ -906,24 +941,24 @@ Volume::write(const Lba lba,
         VERIFY(dtl_cap > 0);
 
         const size_t chunksize =
-            std::min({wsize,
+            std::min({write_len,
                       dtl_cap,
                       static_cast<size_t>(sco_cap)});
 
-        const DtlInSync in_sync = writeClusters_(addr + off, p + off, chunksize);
+        const DtlInSync in_sync = writeClusters_(off + write_off,
+                                                 buf + write_off,
+                                                 chunksize);
         if (in_sync == DtlInSync::F)
         {
             dtl_in_sync = DtlInSync::F;
         }
 
-        off += chunksize;
-        wsize -= chunksize;
+        write_off += chunksize;
+        write_len -= chunksize;
     }
 
-    const auto duration_us(bc::duration_cast<bc::microseconds>(t.elapsed()));
-    performance_counters().write_request_usecs.count(duration_us.count());
-
-    VERIFY(off == len);
+    VERIFY(write_off == len);
+    VERIFY(write_len == 0);
 
     return dtl_in_sync;
 }
@@ -958,9 +993,10 @@ Volume::writeClusters_(uint64_t addr,
 {
     ASSERT_WRITES_SERIALIZED();
 
-    VERIFY(bufsize % getClusterSize() == 0);
+    VERIFY(addr % clusterSize_ == 0);
+    VERIFY(bufsize % clusterSize_ == 0);
 
-    size_t num_locs = bufsize / getClusterSize();
+    size_t num_locs = bufsize / clusterSize_;
     unsigned throttle_usecs = 0;
     uint32_t ds_throttle = 0;
 
@@ -981,14 +1017,14 @@ Volume::writeClusters_(uint64_t addr,
 
         for (size_t i = 0; i < num_locs; ++i)
         {
-            const uint8_t* data = buf + i * getClusterSize();
-            uint64_t clusteraddr = addr + i * getClusterSize();
+            const uint8_t* data = buf + i * clusterSize_;
+            uint64_t clusteraddr = addr + i * clusterSize_;
             ClusterAddress ca = addr2CA(clusteraddr);
             ClusterLocationAndHash
                 loc_and_hash(make_cluster_location_and_hash(cluster_locations_[i],
                                                             ccmode,
                                                             data,
-                                                            getClusterSize()));
+                                                            clusterSize_));
 
             writeClusterMetaData_(ca,
                                   loc_and_hash);
@@ -1048,23 +1084,35 @@ Volume::read(const Lba lba,
              uint8_t *buf,
              uint64_t buflen)
 {
+    read(lba.t * getLBASize(),
+         buf,
+         buflen);
+}
+
+void
+Volume::read(const uint64_t off,
+             uint8_t *buf,
+             uint64_t len)
+{
     tracepoint(openvstorage_volumedriver,
                volume_read_start,
                config_.id_.str().c_str(),
-               lba,
-               buflen);
+               off,
+               len);
 
     auto on_exit(yt::make_scope_exit([&]
                                      {
                                          tracepoint(openvstorage_volumedriver,
                                                     volume_read_end,
                                                     config_.id_.str().c_str(),
-                                                    lba,
-                                                    buflen,
+                                                    off,
+                                                    len,
                                                     std::uncaught_exception());
                                      }));
 
-    performance_counters().read_request_size.count(buflen);
+    LOG_VTRACE("off " << off << ", len " << len);
+
+    performance_counters().read_request_size.count(len);
 
     if (VolManager::get()->volume_nullio.value())
     {
@@ -1073,53 +1121,45 @@ Volume::read(const Lba lba,
 
     yt::SteadyTimer t;
 
-    LOG_VTRACE("lba " << lba << ", len " << buflen << ", buf " << &buf);
-
     checkNotHalted_();
+    validateIOLength(off, len);
 
-    validateIOLength(lba, buflen);
+    const ClusterAddress ca = off / clusterSize_;
+    const uint64_t coff = off % clusterSize_;
+    const size_t nclusters = (coff + len) / clusterSize_ + (((coff + len) % clusterSize_) ? 1 : 0);
+    const uint64_t aligned_len = nclusters * clusterSize_;
+    const uint64_t aligned_off = ca * clusterSize_;
+    uint8_t* ptr = buf;
+    std::vector<uint8_t> bounce_buf;
 
-    bool unaligned = (lba & ~caMask_) ? true : false;
-    uint64_t len;
-    if (unaligned || buflen % getClusterSize())
+    const bool unaligned = aligned_len != len or aligned_off != off;
+    if (unaligned)
     {
-        unaligned = true;
-        len = (lba bitand ~caMask_) * getLBASize() + buflen;
-        if (len % getClusterSize())
-            len = (len / getClusterSize() + 1) * getClusterSize();
+        performance_counters().unaligned_read_request_size.count(len);
+
+        validateIOAlignment(aligned_off, aligned_len);
+
+        bounce_buf.resize(aligned_len);
+        ptr = bounce_buf.data();
+
     }
     else
     {
-        len = buflen;
+        ASSERT(coff == 0);
+        validateIOAlignment(aligned_off, aligned_len);
     }
 
-    std::vector<uint8_t> bufv;
-    uint8_t *p;
+    LOG_VTRACE("aligned: off " << aligned_off << ", len " << aligned_len);
+
+    readClusters_(aligned_off,
+                  ptr,
+                  aligned_len);
 
     if (unaligned)
     {
-        performance_counters().unaligned_read_request_size.count(buflen);
-
-        validateIOAlignment(Lba(lba.t bitand caMask_), len);
-        bufv.resize(len);
-        p = &bufv[0];
-    }
-    else
-    {
-        p = buf;
-    }
-    uint64_t addr = LBA2Addr(lba);
-
-    readClusters_(addr,
-                  p,
-                  len);
-
-    if (unaligned)
-    {
-        LOG_VDEBUG("Unaligned read: lba " << lba << ", len " <<
-                   buflen << " -> using bounce buffer " << &p <<
-                   " for lba " << (lba.t bitand caMask_) << ", len " << len);
-        memcpy(buf, p + (lba & ~caMask_) * getLBASize(), buflen);
+        memcpy(buf,
+               ptr + coff,
+               len);
     }
 
     const auto duration_us(bc::duration_cast<bc::microseconds>(t.elapsed()));
@@ -2703,13 +2743,14 @@ Volume::replayFOC_(FailOverCacheProxy& foc)
 
                  VERIFY(size == static_cast<size_t>(clusterSize_));
 
-                 validateIOAlignment(lba, size);
+                 const uint64_t off = lba.t * getLBASize();
+                 validateIOAlignment(off, size);
 
                  while (true)
                  {
                      try
                      {
-                         replayClusterFromFailOverCache_(addr2CA(LBA2Addr(lba)),
+                         replayClusterFromFailOverCache_(addr2CA(off),
                                                          loc,
                                                          buf);
                          return;

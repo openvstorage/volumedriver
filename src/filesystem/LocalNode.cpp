@@ -451,10 +451,15 @@ LocalNode::read_(vd::WeakVolumePtr vol,
     LOG_TRACE("reading, off " << (lba.t * lbasize) << " (LBA " << lba <<
               "), size " << rsize << ", unaligned " << unaligned);
 
+    using Reader = void (*)(vd::WeakVolumePtr,
+                            const vd::Lba,
+                            uint8_t*,
+                            uint64_t);
+
     if (unaligned)
     {
         std::vector<uint8_t> bounce_buf(rsize);
-        maybe_retry_<void>(&api::Read,
+        maybe_retry_<void>(static_cast<Reader>(&api::Read),
                            vol,
                            lba,
                            bounce_buf.data(),
@@ -465,7 +470,7 @@ LocalNode::read_(vd::WeakVolumePtr vol,
     else
     {
         ASSERT(to_read == rsize);
-        maybe_retry_<void>(&api::Read,
+        maybe_retry_<void>(static_cast<Reader>(&api::Read),
                            vol,
                            lba,
                            buf,
@@ -658,12 +663,17 @@ LocalNode::write_(vd::WeakVolumePtr vol,
                                      const uint8_t*,
                                      uint64_t);
 
+    using Reader = void (*)(vd::WeakVolumePtr,
+                            const vd::Lba,
+                            uint8_t*,
+                            uint64_t);
+
     // Const casts here are necessary
     if (unaligned)
     {
         std::vector<uint8_t> bounce_buf(wsize);
 
-        maybe_retry_<void>(&api::Read,
+        maybe_retry_<void>(static_cast<Reader>(&api::Read),
                            vol,
                            const_cast<vd::Lba&>(lba),
                            bounce_buf.data(),

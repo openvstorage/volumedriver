@@ -2714,6 +2714,53 @@ TEST_P(SimpleVolumeTest, partial_read_counters)
     EXPECT_LT(0UL, prc.fast + prc.slow);
 }
 
+TEST_P(SimpleVolumeTest, bytewise)
+{
+    auto wrns(make_random_namespace());
+    SharedVolumePtr v = newVolume(*wrns);
+
+    const size_t csize = v->getClusterSize();
+    const std::string first("first");
+
+    std::stringstream ss;
+    const std::string s("second");
+
+    for (size_t i = 0; i < csize + 1; i += s.size())
+    {
+        ss << s;
+    }
+
+    const std::string second(ss.str());
+    const std::string third("3rd");
+
+    v->write(0,
+             reinterpret_cast<const uint8_t*>(first.data()),
+             first.size());
+    v->write(first.size(),
+             reinterpret_cast<const uint8_t*>(second.data()),
+             second.size());
+    v->write(first.size() + second.size(),
+             reinterpret_cast<const uint8_t*>(third.data()),
+             third.size());
+
+    auto check([&](const std::string& pattern,
+                   size_t off)
+               {
+                   std::vector<char> rbuf(pattern.size());
+                   v->read(off,
+                           reinterpret_cast<uint8_t*>(rbuf.data()),
+                           rbuf.size());
+                   EXPECT_EQ(pattern,
+                             std::string(rbuf.data(),
+                                         rbuf.size()));
+               });
+
+    check(first, 0);
+    check(second, first.size());
+    check(third, first.size() + second.size());
+    check("\0\0\0\0", first.size() + second.size() + third.size());
+}
+
 namespace
 {
 
