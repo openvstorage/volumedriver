@@ -84,14 +84,6 @@ with_api_exception_conversion(std::function<void()> fn)
     }
 }
 
-bool
-is_unaligned(const size_t size,
-             const off_t off)
-{
-    const vd::ClusterSize csize(api::getDefaultClusterSize());
-    return ((size % csize) != 0 or (off % csize) != 0);
-}
-
 }
 
 LocalNode::LocalNode(ObjectRouter& router,
@@ -413,8 +405,6 @@ LocalNode::read(const FastPathCookie& cookie,
     }
 }
 
-// TODO: align I/O to cluster instead of LBA size to avoid the volumedriver lib
-// having to do it internally.
 void
 LocalNode::read_(vd::WeakVolumePtr vol,
                  uint8_t* buf,
@@ -428,54 +418,20 @@ LocalNode::read_(vd::WeakVolumePtr vol,
         return;
     }
 
-    const uint64_t lbasize = api::GetLbaSize(vol);
-    const vd::Lba lba(off / lbasize);
-    const uint64_t lbaoff = off % lbasize;
-
-    uint64_t to_read = std::min(volume_size-off, *size);
-    uint64_t rsize = to_read;
-
-    bool unaligned = lbaoff != 0;
-
-    if (unaligned)
-    {
-        rsize += lbaoff;
-    }
-
-    if (rsize % lbasize)
-    {
-        unaligned = true;
-        rsize += lbasize - (rsize % lbasize);
-    }
-
-    LOG_TRACE("reading, off " << (lba.t * lbasize) << " (LBA " << lba <<
-              "), size " << rsize << ", unaligned " << unaligned);
+    const uint64_t to_read = std::min(volume_size - off,
+                                      *size);
 
     using Reader = void (*)(vd::WeakVolumePtr,
-                            const vd::Lba,
+                            const uint64_t,
                             uint8_t*,
                             uint64_t);
 
-    if (unaligned)
-    {
-        std::vector<uint8_t> bounce_buf(rsize);
-        maybe_retry_<void>(static_cast<Reader>(&api::Read),
-                           vol,
-                           lba,
-                           bounce_buf.data(),
-                           bounce_buf.size());
+    maybe_retry_<void>(static_cast<Reader>(&api::Read),
+                       vol,
+                       static_cast<const uint64_t>(off),
+                       buf,
+                       to_read);
 
-        memcpy(buf, bounce_buf.data() + lbaoff, to_read);
-    }
-    else
-    {
-        ASSERT(to_read == rsize);
-        maybe_retry_<void>(static_cast<Reader>(&api::Read),
-                           vol,
-                           lba,
-                           buf,
-                           to_read);
-    }
     *size = to_read;
 }
 
@@ -521,35 +477,17 @@ LocalNode::write(const Object& obj,
     }
     else
     {
-        if (is_unaligned(*size,
-                         off))
-        {
-            fungi::ScopedWriteLock wg(*l);
-            with_volume_pointer_<void,
-                                 const uint8_t*,
-                                 size_t,
-                                 off_t,
-                                 vd::DtlInSync&>(&LocalNode::write_,
-                                                 obj.id,
-                                                 buf,
-                                                 *size,
-                                                 off,
-                                                 dtl_in_sync);
-        }
-        else
-        {
-            fungi::ScopedReadLock rg(*l);
-            with_volume_pointer_<void,
-                                 const uint8_t*,
-                                 size_t,
-                                 off_t,
-                                 vd::DtlInSync&>(&LocalNode::write_,
-                                                 obj.id,
-                                                 buf,
-                                                 *size,
-                                                 off,
-                                                 dtl_in_sync);
-        }
+        fungi::ScopedReadLock rg(*l);
+        with_volume_pointer_<void,
+                             const uint8_t*,
+                             size_t,
+                             off_t,
+                             vd::DtlInSync&>(&LocalNode::write_,
+                                             obj.id,
+                                             buf,
+                                             *size,
+                                             off,
+                                             dtl_in_sync);
     }
 }
 
@@ -581,27 +519,13 @@ LocalNode::write(const FastPathCookie& cookie,
 
     RWLockPtr l(get_lock_(id));
 
-    if (is_unaligned(*size,
-                     off))
-    {
-        fungi::ScopedWriteLock wg(*l);
-        return write_(cookie,
-                      id,
-                      buf,
-                      size,
-                      off,
-                      dtl_in_sync);
-    }
-    else
-    {
-        fungi::ScopedReadLock rg(*l);
-        return write_(cookie,
-                      id,
-                      buf,
-                      size,
-                      off,
-                      dtl_in_sync);
-    }
+    fungi::ScopedReadLock rg(*l);
+    return write_(cookie,
+                  id,
+                  buf,
+                  size,
+                  off,
+                  dtl_in_sync);
 }
 
 FastPathCookie
@@ -629,8 +553,6 @@ LocalNode::write_(const FastPathCookie& cookie,
     }
 }
 
-// TODO: align I/O to cluster instead of LBA size to avoid the volumedriver lib
-// having to do it internally.
 void
 LocalNode::write_(vd::WeakVolumePtr vol,
                   const uint8_t* buf,
@@ -638,63 +560,16 @@ LocalNode::write_(vd::WeakVolumePtr vol,
                   const off_t off,
                   vd::DtlInSync& dtl_in_sync)
 {
-    const uint64_t lbasize = api::GetLbaSize(vol);
-    const vd::Lba lba(off / lbasize);
-    const uint64_t lbaoff = off % lbasize;
-    uint64_t wsize = size;
-    bool unaligned = lbaoff != 0;
-
-    if (unaligned)
-    {
-        wsize += off % lbasize;
-    }
-
-    if (wsize % lbasize)
-    {
-        unaligned = true;
-        wsize += lbasize - wsize % lbasize;
-    }
-
-    LOG_TRACE("writing, off " << (lba.t * lbasize) << " (LBA " << lba <<
-              "), size " << wsize << ", unaligned " << unaligned);
-
     using Writer = vd::DtlInSync (*)(vd::WeakVolumePtr,
-                                     const vd::Lba,
+                                     const uint64_t,
                                      const uint8_t*,
                                      uint64_t);
 
-    using Reader = void (*)(vd::WeakVolumePtr,
-                            const vd::Lba,
-                            uint8_t*,
-                            uint64_t);
-
-    // Const casts here are necessary
-    if (unaligned)
-    {
-        std::vector<uint8_t> bounce_buf(wsize);
-
-        maybe_retry_<void>(static_cast<Reader>(&api::Read),
-                           vol,
-                           const_cast<vd::Lba&>(lba),
-                           bounce_buf.data(),
-                           bounce_buf.size());
-
-        memcpy(bounce_buf.data() + lbaoff, buf, size);
-
-        dtl_in_sync = maybe_retry_<vd::DtlInSync>(static_cast<Writer>(&api::Write),
-                                                  vol,
-                                                  lba,
-                                                  static_cast<const unsigned char*>(bounce_buf.data()),
-                                                  wsize);
-    }
-    else
-    {
-        dtl_in_sync = maybe_retry_<vd::DtlInSync>(static_cast<Writer>(&api::Write),
-                                                  vol,
-                                                  lba,
-                                                  buf,
-                                                  wsize);
-    }
+    dtl_in_sync = maybe_retry_<vd::DtlInSync>(static_cast<Writer>(&api::Write),
+                                              vol,
+                                              static_cast<const uint64_t>(off),
+                                              buf,
+                                              size);
 }
 
 void
