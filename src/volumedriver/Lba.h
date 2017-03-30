@@ -13,20 +13,11 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef VD_SCOPROCESSORINTERFACE_H
-#define VD_SCOPROCESSORINTERFACE_H
+#ifndef VD_LBA_H_
+#define VD_LBA_H_
 
-#include "ClusterLocation.h"
-#include "Lba.h"
+#include <youtils/OurStrongTypedef.h>
 
-namespace volumedriver
-{
+OUR_STRONG_ARITHMETIC_TYPEDEF(uint64_t, Lba, volumedriver);
 
-using SCOProcessorFun = std::function<void(ClusterLocation,
-                                           Lba,
-                                           const uint8_t* /* buf */,
-                                           size_t /* bufsize */)>;
-
-} // namespace volumedriver
-
-#endif // VD_SCOPROCESSORINTERFACE_H
+#endif // !VD_LBA_H_

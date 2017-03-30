@@ -154,7 +154,7 @@ protected:
             SCOPED_BLOCK_BACKEND(*v);
 
             writeToVolume(*v,
-                          0,
+                          Lba(0),
                           cs * sm * tm,
                           "of no importance whatsoever");
 

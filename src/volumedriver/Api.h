@@ -25,6 +25,7 @@
 #include "DtlInSync.h"
 #include "Events.h"
 #include "FailOverCacheConfig.h"
+#include "Lba.h"
 #include "MetaDataStoreStats.h"
 #include "OwnerTag.h"
 #include "PerformanceCounters.h"
@@ -109,20 +110,20 @@ public:
     getVolumeId(volumedriver::WeakVolumePtr);
 
     static volumedriver::DtlInSync
-    Write(volumedriver::WeakVolumePtr vol,
-          uint64_t lba,
+    Write(volumedriver::WeakVolumePtr,
+          const volumedriver::Lba,
           const uint8_t *buf,
           uint64_t buflen);
 
     static void
-    Write(volumedriver::WriteOnlyVolume* vol,
-          const uint64_t lba,
+    Write(volumedriver::WriteOnlyVolume*,
+          const volumedriver::Lba,
           const uint8_t *buf,
           const uint64_t buflen);
 
     static void
     Read(volumedriver::WeakVolumePtr vol,
-         const uint64_t lba,
+         const volumedriver::Lba,
          uint8_t *buf,
          const uint64_t buflen);
 

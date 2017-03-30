@@ -64,7 +64,7 @@ protected:
     }
 
     void
-    writeLBAs(uint64_t lba,
+    writeLBAs(Lba lba,
               uint64_t count,
               uint32_t pattern,
               SharedVolumePtr vol = nullptr,
@@ -103,7 +103,7 @@ protected:
         }
     }
 
-    void readLBAs(uint64_t lba, uint64_t count, uint32_t pattern,
+    void readLBAs(Lba lba, uint64_t count, uint32_t pattern,
                   bool verify=true, SharedVolumePtr vol = nullptr, int retries = 7)
     {
         bool fail = true;
@@ -158,18 +158,18 @@ protected:
 
         for (size_t i = 0; i < iterations; ++i)
         {
-            vol_->write(off1 + i * w1_lbas_per_io,
+            vol_->write(Lba(off1 + i * w1_lbas_per_io),
                         w1_buf.data(),
                         w1_buf.size());
 
-            vol_->write(off2 + i * w2_lbas_per_io,
+            vol_->write(Lba(off2 + i * w2_lbas_per_io),
                         w2_buf.data(),
                         w2_buf.size());
         }
 
         {
             std::vector<byte> rbuf(w1_buf.size() * iterations);
-            vol_->read(off1, &rbuf[0], rbuf.size());
+            vol_->read(Lba(off1), &rbuf[0], rbuf.size());
             for (size_t i = 0; i < iterations; ++i)
             {
                 EXPECT_EQ(0, memcmp(&rbuf[i * w1_buf.size()],
@@ -180,7 +180,7 @@ protected:
 
         {
             std::vector<byte> rbuf(w2_buf.size() * iterations);
-            vol_->read(off2, &rbuf[0], rbuf.size());
+            vol_->read(Lba(off2), &rbuf[0], rbuf.size());
             for (size_t i = 0; i < iterations; ++i)
             {
                 EXPECT_EQ(0, memcmp(&rbuf[i * w2_buf.size()],
@@ -204,79 +204,79 @@ TEST_P(VolumeTest, VolumeConfig)
 
 TEST_P(VolumeTest, readCluster)
 {
-    ASSERT_NO_THROW(readLBAs(0, vol_->getClusterSize() / vol_->getLBASize(),
+    ASSERT_NO_THROW(readLBAs(Lba(0), vol_->getClusterSize() / vol_->getLBASize(),
                              0, false));
 }
 
 TEST_P(VolumeTest, readUnderflow)
 {
     uint64_t count = vol_->getClusterSize() / vol_->getLBASize() - 1;
-    ASSERT_NO_THROW(readLBAs(0, count, 0, false));
+    ASSERT_NO_THROW(readLBAs(Lba(0), count, 0, false));
 }
 
 TEST_P(VolumeTest, readOverflow)
 {
     uint64_t count = vol_->getClusterSize() / vol_->getLBASize() + 1;
-    ASSERT_NO_THROW(readLBAs(0, count, 0, false));
+    ASSERT_NO_THROW(readLBAs(Lba(0), count, 0, false));
 }
 
 TEST_P(VolumeTest, writeFirstLBA)
 {
     uint32_t pattern = 0xdeadbeef;
-    ASSERT_NO_THROW(writeLBAs(0, 1, pattern));
-    ASSERT_NO_THROW(readLBAs(0, 1, pattern));
+    ASSERT_NO_THROW(writeLBAs(Lba(0), 1, pattern));
+    ASSERT_NO_THROW(readLBAs(Lba(0), 1, pattern));
 }
 
 TEST_P(VolumeTest, writeUnderflow)
 {
     uint64_t count = vol_->getClusterSize() / vol_->getLBASize() - 1;
     uint32_t pattern = 0xdeadbeef;
-    ASSERT_NO_THROW(writeLBAs(0, count, pattern));
-    ASSERT_NO_THROW(readLBAs(0, count, pattern));
+    ASSERT_NO_THROW(writeLBAs(Lba(0), count, pattern));
+    ASSERT_NO_THROW(readLBAs(Lba(0), count, pattern));
 }
 
 TEST_P(VolumeTest, writeOverflow)
 {
     uint64_t count = vol_->getClusterSize() / vol_->getLBASize() + 1;
     uint32_t pattern = 0xdeadf00d;
-    ASSERT_NO_THROW(writeLBAs(0, count, pattern));
-    ASSERT_NO_THROW(readLBAs(0, count, pattern));
+    ASSERT_NO_THROW(writeLBAs(Lba(0), count, pattern));
+    ASSERT_NO_THROW(readLBAs(Lba(0), count, pattern));
 }
 
 TEST_P(VolumeTest, writeUnalignedLBA)
 {
     uint64_t count = vol_->getClusterSize() / vol_->getLBASize() - 1;
     uint32_t pattern = 0x01234567;
-    ASSERT_NO_THROW(writeLBAs(count - 1, count, pattern));
-    ASSERT_NO_THROW(readLBAs(count - 1, count, pattern));
+    ASSERT_NO_THROW(writeLBAs(Lba(count - 1), count, pattern));
+    ASSERT_NO_THROW(readLBAs(Lba(count - 1), count, pattern));
 }
 
 TEST_P(VolumeTest, reWriteUnalignedLBAs)
 {
     const uint64_t count1 = config_->cluster_mult_ * config_->sco_mult_ * 3;
     const uint32_t pattern1 = 0x01234567;
-    ASSERT_NO_THROW(writeLBAs(0, count1, pattern1));
-    ASSERT_NO_THROW(readLBAs(0, count1, pattern1));
+    ASSERT_NO_THROW(writeLBAs(Lba(0), count1, pattern1));
+    ASSERT_NO_THROW(readLBAs(Lba(0), count1, pattern1));
 
     const uint64_t count2 = config_->cluster_mult_;
     const uint32_t pattern2 = 0xcafebeef;
-    ASSERT_NO_THROW(writeLBAs(1, count2, pattern2));
-    ASSERT_NO_THROW(readLBAs(1, count2, pattern2));
-    ASSERT_NO_THROW(readLBAs(0, 1, pattern1));
+    ASSERT_NO_THROW(writeLBAs(Lba(1), count2, pattern2));
+    ASSERT_NO_THROW(readLBAs(Lba(1), count2, pattern2));
+    ASSERT_NO_THROW(readLBAs(Lba(0), 1, pattern1));
 }
 
 TEST_P(VolumeTest, writeUnalignedLen)
 {
     uint64_t count = vol_->getClusterSize() / vol_->getLBASize();
     uint32_t pattern = 0x01234567;
-    ASSERT_NO_THROW(writeLBAs(count, count + 1, pattern));
-    ASSERT_NO_THROW(readLBAs(count, count + 1, pattern));
+    ASSERT_NO_THROW(writeLBAs(Lba(count), count + 1, pattern));
+    ASSERT_NO_THROW(readLBAs(Lba(count), count + 1, pattern));
 }
 
 TEST_P(VolumeTest, writeUnalignedLenAndLBA)
 {
     uint64_t count = (vol_->getClusterSize() / vol_->getLBASize()) * 3 - 1;
-    uint64_t lba = vol_->getClusterSize() / vol_->getLBASize() - 1;
+    const Lba lba(vol_->getClusterSize() / vol_->getLBASize() - 1);
     uint32_t pattern = 0x01234567;
     ASSERT_NO_THROW(writeLBAs(lba, count, pattern));
     ASSERT_NO_THROW(readLBAs(lba, count, pattern));
@@ -284,8 +284,8 @@ TEST_P(VolumeTest, writeUnalignedLenAndLBA)
 
 TEST_P(VolumeTest, writeBeyondEnd)
 {
-    uint64_t lba = vol_->getSize() / vol_->getLBASize() +
-        vol_->getClusterSize() / vol_->getLBASize();
+    const Lba lba(vol_->getSize() / vol_->getLBASize() +
+                  vol_->getClusterSize() / vol_->getLBASize());
     ASSERT_THROW(writeLBAs(lba, vol_->getClusterSize() / vol_->getLBASize(),
                            0x89ABCDEF), fungi::IOException) <<
         "VolumeSize: " << vol_->getSize() << " LBASize: " <<
@@ -295,10 +295,10 @@ TEST_P(VolumeTest, writeBeyondEnd)
 TEST_P(VolumeTest, writeFirstCluster)
 {
     uint32_t pattern = 0xdeadbeef;
-    ASSERT_NO_THROW(writeLBAs(0,
+    ASSERT_NO_THROW(writeLBAs(Lba(0),
                               vol_->getClusterSize() / vol_->getLBASize(),
                               pattern));
-    ASSERT_NO_THROW(readLBAs(0,
+    ASSERT_NO_THROW(readLBAs(Lba(0),
                              vol_->getClusterSize() / vol_->getLBASize(),
                              pattern));
 }
@@ -307,8 +307,8 @@ TEST_P(VolumeTest, writeThirdCluster)
 {
     uint64_t lba = vol_->getClusterSize() * 3 / vol_->getLBASize();
     uint32_t pattern = 0xdeadbeef;
-    ASSERT_NO_THROW(writeLBAs(0, lba, pattern));
-    ASSERT_NO_THROW(readLBAs(0, lba, pattern));
+    ASSERT_NO_THROW(writeLBAs(Lba(0), lba, pattern));
+    ASSERT_NO_THROW(readLBAs(Lba(0), lba, pattern));
 }
 
 TEST_P(VolumeTest, writeClusters)
@@ -316,16 +316,16 @@ TEST_P(VolumeTest, writeClusters)
     uint32_t pattern = 0xdeadf00d;
     int count = 2;
     uint64_t lbacnt = (count * vol_->getClusterSize()) / vol_->getLBASize();
-    ASSERT_NO_THROW(writeLBAs(0, lbacnt, pattern));
-    ASSERT_NO_THROW(readLBAs(0, lbacnt, pattern));
+    ASSERT_NO_THROW(writeLBAs(Lba(0), lbacnt, pattern));
+    ASSERT_NO_THROW(readLBAs(Lba(0), lbacnt, pattern));
 }
 
 TEST_P(VolumeTest, writeClustersAcrossSCOs)
 {
     int count = config_->sco_mult_ * config_->cluster_mult_ + 13;
     uint32_t pattern = 0xfeedbeef;
-    ASSERT_NO_THROW(writeLBAs(0, count, pattern));
-    ASSERT_NO_THROW(readLBAs(0, count, pattern));
+    ASSERT_NO_THROW(writeLBAs(Lba(0), count, pattern));
+    ASSERT_NO_THROW(readLBAs(Lba(0), count, pattern));
 }
 
 TODO("Y42: HOW IS THIS POSSIBLE -> 2 tests have the same body")

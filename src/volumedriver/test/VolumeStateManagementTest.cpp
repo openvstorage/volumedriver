@@ -39,12 +39,12 @@ TEST_P(VolumeStateManagementTest, test1)
               v->getVolumeFailOverState());
 
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "xyz");
 
     checkVolume(*v,
-                0,
+                Lba(0),
                 4096,
                 "xyz");
 
@@ -71,12 +71,12 @@ TEST_P(VolumeStateManagementTest, NoCache)
               v->getVolumeFailOverState());
 
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "xyz");
 
     checkVolume(*v,
-                0,
+                Lba(0),
                 4096,
                 "xyz");
 
@@ -108,7 +108,7 @@ TEST_P(VolumeStateManagementTest, test2)
         for(int i =0; i < 32; ++i)
         {
             writeToVolume(*v,
-                          0,
+                          Lba(0),
                           4096,
                           "xyz");
         }
@@ -117,7 +117,7 @@ TEST_P(VolumeStateManagementTest, test2)
     for(int i = 0; i < 32; ++i)
     {
         writeToVolume(*v,
-                      0,
+                      Lba(0),
                       4096,
                       "abc");
     }
@@ -128,7 +128,7 @@ TEST_P(VolumeStateManagementTest, test2)
               v->getVolumeFailOverState());
 
     checkVolume(*v,
-                0,
+                Lba(0),
                 4096,
                 "abc");
 
@@ -180,7 +180,7 @@ TEST_P(VolumeStateManagementTest, CreateVolumeWithRemoteCache)
         {
             SCOPED_BLOCK_BACKEND(*v);
 
-            writeToVolume(*v,0,4096,"bart");
+            writeToVolume(*v, Lba(0),4096,"bart");
             EXPECT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
             EXPECT_EQ(VolumeFailOverState::KETCHUP,
                       v->getVolumeFailOverState());
@@ -254,7 +254,7 @@ TEST_P(VolumeStateManagementTest, CreateVolumeStandaloneLocalRestart)
     SharedVolumePtr v = newVolume("vol1",
 			  ns1);
 
-    writeToVolume (*v, 0, 4096, "bart");
+    writeToVolume(*v, Lba(0), 4096, "bart");
     v->sync();
 
     EXPECT_EQ(VolumeFailOverState::OK_STANDALONE,
@@ -266,7 +266,7 @@ TEST_P(VolumeStateManagementTest, CreateVolumeStandaloneLocalRestart)
 
     ASSERT_NO_THROW(v = localRestart(ns1));
 
-    checkVolume(*v,0,4096, "bart");
+    checkVolume(*v, Lba(0), 4096, "bart");
     EXPECT_EQ(VolumeFailOverState::OK_STANDALONE,
               v->getVolumeFailOverState());
     destroyVolume(v,
@@ -288,7 +288,7 @@ TEST_P(VolumeStateManagementTest, CreateVolumeWithFailoverLocalRestart)
 
     ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
 
-    writeToVolume(*v, 0, 4096, "bart");
+    writeToVolume(*v, Lba(0), 4096, "bart");
     EXPECT_EQ(VolumeFailOverState::OK_SYNC,
               v->getVolumeFailOverState());
     destroyVolume(v,
@@ -296,7 +296,7 @@ TEST_P(VolumeStateManagementTest, CreateVolumeWithFailoverLocalRestart)
                   RemoveVolumeCompletely::F);
     ASSERT_NO_THROW(v = localRestart(ns1));
 
-    checkVolume(*v,0,4096, "bart");
+    checkVolume(*v, Lba(0),4096, "bart");
     EXPECT_EQ(VolumeFailOverState::OK_SYNC,
               v->getVolumeFailOverState());
     destroyVolume(v,
@@ -320,7 +320,7 @@ TEST_P(VolumeStateManagementTest, CreateVolumeWithFailoverLocalRestart2)
 
         ASSERT_NO_THROW(v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode())));
 
-        writeToVolume(*v, 0, 4096, "bart");
+        writeToVolume(*v, Lba(0), 4096, "bart");
         EXPECT_EQ(VolumeFailOverState::OK_SYNC,
                   v->getVolumeFailOverState());
     }
@@ -330,7 +330,7 @@ TEST_P(VolumeStateManagementTest, CreateVolumeWithFailoverLocalRestart2)
                   RemoveVolumeCompletely::F);
     ASSERT_NO_THROW(v = localRestart(ns1));
 
-    checkVolume(*v,0,4096, "bart");
+    checkVolume(*v,Lba(0),4096, "bart");
     EXPECT_EQ(VolumeFailOverState::DEGRADED,
               v->getVolumeFailOverState());
     destroyVolume(v,
@@ -367,7 +367,7 @@ TEST_P(VolumeStateManagementTest, DISABLED_CreateVolumeStandaloneLocalRestartWit
         SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v,1,
                                               DeleteLocalData::F,
                                               RemoveVolumeCompletely::F);
-        writeToVolume(*v, 0, 4096, "bart");
+        writeToVolume(*v, Lba(0), 4096, "bart");
     }
     TODO("AR: how is this supposed to work - v is destroyed and afterwards the backend queue shall be blocked?")
     auto foc_ctx(start_one_foc());
@@ -379,7 +379,7 @@ TEST_P(VolumeStateManagementTest, DISABLED_CreateVolumeStandaloneLocalRestartWit
         ASSERT_NO_THROW(v = localRestart(ns1));
         v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
-        checkVolume(*v,0,4096, "bart");
+        checkVolume(*v,Lba(0),4096, "bart");
     }
     checkReachesState(v, VolumeFailOverState::OK_SYNC, 20);
     destroyVolume(v,
@@ -598,7 +598,7 @@ TEST_P(VolumeStateManagementTest, events)
     const std::string s("some data");
 
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   s);
 

@@ -257,7 +257,7 @@ TEST_P(SnapshotManagementTest, backendSizeBetweenSnapshots)
 
     for(size_t i = 0; i < 10; ++i)
     {
-        writeToVolume(*vol_, 0,  4096,"blue");
+        writeToVolume(*vol_, Lba(0),  4096,"blue");
         waitForThisBackendWrite(*vol_);
         vol_->createSnapshot(boost::lexical_cast<SnapshotName>(i));
     }
@@ -341,7 +341,7 @@ TEST_P(SnapshotManagementTest, test2)
     //c->setMaxTLogEntries(4);
     for(size_t i = 0; i < 10; ++i)
     {
-        writeToVolume(*vol_,0,4096,"blue");
+        writeToVolume(*vol_, Lba(0),4096,"blue");
     }
     const SnapshotName snapname("snap1");
     createSnapshot(c,snapname);
@@ -378,7 +378,7 @@ TEST_P(SnapshotManagementTest, test3)
     //c->setMaxTLogEntries(4);
     for(size_t i = 0; i < 10; ++i)
     {
-        writeToVolume(*vol_, 0, 4096, "wartdebever");
+        writeToVolume(*vol_, Lba(0), 4096, "wartdebever");
     }
 
     const SnapshotName snapname("snap1");
@@ -407,7 +407,7 @@ TEST_P(SnapshotManagementTest, test4)
     //c->setMaxTLogEntries(4);
     for(size_t i = 0; i < 10; ++i)
     {
-        writeToVolume(*vol_,0,4096,"dartbewever");
+        writeToVolume(*vol_, Lba(0),4096,"dartbewever");
     }
 
     const SnapshotName snapname("snap1");
@@ -430,7 +430,7 @@ TEST_P(SnapshotManagementTest, test5)
     //gc->setMaxTLogEntries(4);
     for(size_t i = 0; i < 10; ++i)
     {
-        writeToVolume(*vol_,0,4096,"drtdwvraee");
+        writeToVolume(*vol_, Lba(0),4096,"drtdwvraee");
 
     }
     const SnapshotName snapname("snap1");
@@ -438,7 +438,7 @@ TEST_P(SnapshotManagementTest, test5)
     //SnapshotNum num1 = c.getSnapshotNumberByName(snapname);
     for(size_t i = 0; i < 10; ++i)
     {
-        writeToVolume(*vol_,0,4096,"eearvwdtrd");
+        writeToVolume(*vol_, Lba(0),4096,"eearvwdtrd");
     }
     const SnapshotName snapname2("snap2");
     createSnapshot(c,snapname2);
@@ -446,7 +446,7 @@ TEST_P(SnapshotManagementTest, test5)
 
     for(size_t i = 0; i < 10; ++i)
     {
-        writeToVolume(*vol_,0,4096,"help");
+        writeToVolume(*vol_, Lba(0),4096,"help");
     }
     const SnapshotName snapname3("snap3");
     createSnapshot(c,snapname3);
@@ -620,13 +620,13 @@ TEST_P(SnapshotManagementTest, dontLeakTLogCheckSumsOnRestore)
 {
     const SnapshotName snap1("snap1");
 
-    writeToVolume(*vol_, 0, vol_->getClusterSize(), snap1);
+    writeToVolume(*vol_, Lba(0), vol_->getClusterSize(), snap1);
     VolManagerTestSetup::createSnapshot(*vol_, snap1);
 
     waitForThisBackendWrite(*vol_);
 
     const SnapshotName snap2("snap2");
-    writeToVolume(*vol_, 0, vol_->getClusterSize(), snap2);
+    writeToVolume(*vol_, Lba(0), vol_->getClusterSize(), snap2);
     vol_->sync();
 
     const OrderedTLogIds tlogpaths(getSnapshotManagement(*vol_)->getCurrentTLogs());
@@ -654,7 +654,7 @@ TEST_P(SnapshotManagementTest, dontLeakTLogCheckSumsOnRestore)
     //                  CheckSumStoreException);
     // }
 
-    checkVolume(*vol_, 0, vol_->getClusterSize(), snap1);
+    checkVolume(*vol_, Lba(0), vol_->getClusterSize(), snap1);
 }
 
 INSTANTIATE_TEST(SnapshotManagementTest);

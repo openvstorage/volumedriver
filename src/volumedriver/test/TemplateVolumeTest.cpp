@@ -58,7 +58,7 @@ TEST_P(TemplateVolumeTest, forbidden_actions)
     EXPECT_TRUE(T(v->isVolumeTemplate()));
 
     EXPECT_THROW(writeToVolume(*v,
-                               0,
+                               Lba(0),
                                4096,
                               "blah"),
                  VolumeIsTemplateException);
@@ -98,7 +98,7 @@ TEST_P(TemplateVolumeTest, set_template_no_data_no_snapshot)
     v->listSnapshots(snapshots);
     EXPECT_EQ(1U, snapshots.size());
 
-    checkVolume(*v, 0, 4096, std::string(1, 0));
+    checkVolume(*v, Lba(0), 4096, std::string(1, 0));
 }
 
 TEST_P(TemplateVolumeTest, idempotency)
@@ -109,14 +109,14 @@ TEST_P(TemplateVolumeTest, idempotency)
     SharedVolumePtr v = newVolume(vid1,
                           ns1);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "blah");
 
     EXPECT_NO_THROW(set_as_template(vid1));
     EXPECT_TRUE(T(v->isVolumeTemplate()));
     EXPECT_THROW(writeToVolume(*v,
-                               0,
+                               Lba(0),
                                4096,
                                "blah"),
                  VolumeIsTemplateException);
@@ -124,7 +124,7 @@ TEST_P(TemplateVolumeTest, idempotency)
     EXPECT_NO_THROW(set_as_template(vid1));
     EXPECT_TRUE(T(v->isVolumeTemplate()));
     EXPECT_THROW(writeToVolume(*v,
-                               0,
+                               Lba(0),
                                4096,
                                "blah"),
                  VolumeIsTemplateException);
@@ -135,7 +135,7 @@ TEST_P(TemplateVolumeTest, idempotency)
 
     EXPECT_TRUE(T(v->isVolumeTemplate()));
     EXPECT_THROW(writeToVolume(*v,
-                               0,
+                               Lba(0),
                                4096,
                                "blah"),
                  VolumeIsTemplateException);
@@ -150,7 +150,7 @@ TEST_P(TemplateVolumeTest, set_template_data_no_snapshot)
     SharedVolumePtr v = newVolume(vid1,
                           ns1);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "blah");
 
@@ -160,7 +160,7 @@ TEST_P(TemplateVolumeTest, set_template_data_no_snapshot)
     std::list<SnapshotName> snapshots;
     v->listSnapshots(snapshots);
     EXPECT_EQ(1U, snapshots.size());
-    checkVolume(*v, 0, 4096, "blah");
+    checkVolume(*v, Lba(0), 4096, "blah");
 }
 
 TEST_P(TemplateVolumeTest, set_template_with_last_snapshot)
@@ -171,7 +171,7 @@ TEST_P(TemplateVolumeTest, set_template_with_last_snapshot)
     SharedVolumePtr v = newVolume(vid1,
                           ns1);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "blah1");
 
@@ -179,7 +179,7 @@ TEST_P(TemplateVolumeTest, set_template_with_last_snapshot)
 
     v->createSnapshot(first_snap);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "blah2");
     waitForThisBackendWrite(*v);
@@ -195,7 +195,7 @@ TEST_P(TemplateVolumeTest, set_template_with_last_snapshot)
     EXPECT_EQ(1U, snapshots.size());
     EXPECT_EQ(snapshots.front(), second_snap);
 
-    checkVolume(*v, 0, 4096, "blah2");
+    checkVolume(*v, Lba(0), 4096, "blah2");
 }
 
 TEST_P(TemplateVolumeTest, set_template_with_data_beyond_last_snapshot)
@@ -206,14 +206,14 @@ TEST_P(TemplateVolumeTest, set_template_with_data_beyond_last_snapshot)
     SharedVolumePtr v = newVolume(vid1,
                           ns1);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "blaha");
     const SnapshotName first_snap("first_snap");
 
     v->createSnapshot(first_snap);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "blah2");
     waitForThisBackendWrite(*v);
@@ -221,7 +221,7 @@ TEST_P(TemplateVolumeTest, set_template_with_data_beyond_last_snapshot)
 
     v->createSnapshot(second_snap);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "blah3");
     waitForThisBackendWrite(*v);
@@ -229,7 +229,7 @@ TEST_P(TemplateVolumeTest, set_template_with_data_beyond_last_snapshot)
 
     v->createSnapshot(third_snap);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "blah4");
 
@@ -241,7 +241,7 @@ TEST_P(TemplateVolumeTest, set_template_with_data_beyond_last_snapshot)
     EXPECT_NE(snapshots.front(), first_snap);
     EXPECT_NE(snapshots.front(), second_snap);
     EXPECT_NE(snapshots.front(), third_snap);
-    checkVolume(*v, 0, 4096, "blah4");
+    checkVolume(*v, Lba(0), 4096, "blah4");
 }
 
 TEST_P(TemplateVolumeTest, localrestart)
@@ -252,14 +252,14 @@ TEST_P(TemplateVolumeTest, localrestart)
     SharedVolumePtr v = newVolume(vid1,
                           ns1);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "blaha");
     const SnapshotName first_snap("first_snap");
 
     v->createSnapshot(first_snap);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "blah2");
     waitForThisBackendWrite(*v);
@@ -267,7 +267,7 @@ TEST_P(TemplateVolumeTest, localrestart)
 
     v->createSnapshot(second_snap);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "blah3");
 
@@ -276,7 +276,7 @@ TEST_P(TemplateVolumeTest, localrestart)
 
     v->createSnapshot(third_snap);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "blah4");
 
@@ -284,7 +284,7 @@ TEST_P(TemplateVolumeTest, localrestart)
 
     EXPECT_TRUE(T(v->isVolumeTemplate()));
     EXPECT_THROW(writeToVolume(*v,
-                               0,
+                               Lba(0),
                                4096,
                                "blah"),
                  VolumeIsTemplateException);
@@ -299,9 +299,9 @@ TEST_P(TemplateVolumeTest, localrestart)
     ASSERT_TRUE(v != nullptr);
 
     EXPECT_TRUE(T(v->isVolumeTemplate()));
-    checkVolume(*v, 0, 4096, "blah4");
+    checkVolume(*v, Lba(0), 4096, "blah4");
     EXPECT_THROW(writeToVolume(*v,
-                               0,
+                               Lba(0),
                                4096,
                                "blah"),
                  VolumeIsTemplateException);
@@ -309,9 +309,9 @@ TEST_P(TemplateVolumeTest, localrestart)
     EXPECT_NO_THROW(set_as_template(vid1));
 
     EXPECT_TRUE(T(v->isVolumeTemplate()));
-    checkVolume(*v, 0, 4096, "blah4");
+    checkVolume(*v, Lba(0), 4096, "blah4");
     EXPECT_THROW(writeToVolume(*v,
-                               0,
+                               Lba(0),
                                4096,
                                "blah"),
                  VolumeIsTemplateException);
@@ -328,14 +328,14 @@ TEST_P(TemplateVolumeTest, backend_restart)
     SharedVolumePtr v = newVolume(vid1,
                           ns1);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "blaha");
     const SnapshotName first_snap("first_snap");
 
     v->createSnapshot(first_snap);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "blah2");
     waitForThisBackendWrite(*v);
@@ -343,7 +343,7 @@ TEST_P(TemplateVolumeTest, backend_restart)
 
     v->createSnapshot(second_snap);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "blah3");
     waitForThisBackendWrite(*v);
@@ -351,7 +351,7 @@ TEST_P(TemplateVolumeTest, backend_restart)
 
     v->createSnapshot(third_snap);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "blah4");
 
@@ -359,7 +359,7 @@ TEST_P(TemplateVolumeTest, backend_restart)
 
     EXPECT_TRUE(T(v->isVolumeTemplate()));
     EXPECT_THROW(writeToVolume(*v,
-                               0,
+                               Lba(0),
                                4096,
                                "blah"),
                  VolumeIsTemplateException);
@@ -376,9 +376,9 @@ TEST_P(TemplateVolumeTest, backend_restart)
     ASSERT_TRUE(v != nullptr);
 
     EXPECT_TRUE(T(v->isVolumeTemplate()));
-    checkVolume(*v, 0, 4096, "blah4");
+    checkVolume(*v, Lba(0), 4096, "blah4");
     EXPECT_THROW(writeToVolume(*v,
-                               0,
+                               Lba(0),
                                4096,
                                "blah"),
                  VolumeIsTemplateException);
@@ -386,9 +386,9 @@ TEST_P(TemplateVolumeTest, backend_restart)
     EXPECT_NO_THROW(set_as_template(vid1));
 
     EXPECT_TRUE(T(v->isVolumeTemplate()));
-    checkVolume(*v, 0, 4096, "blah4");
+    checkVolume(*v, Lba(0), 4096, "blah4");
     EXPECT_THROW(writeToVolume(*v,
-                               0,
+                               Lba(0),
                                4096,
                                "blah"),
                  VolumeIsTemplateException);
@@ -405,14 +405,14 @@ TEST_P(TemplateVolumeTest, cloneTemplatedVolume)
     SharedVolumePtr v = newVolume(vid1,
                           ns1);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "blaha");
     const SnapshotName first_snap("first_snap");
 
     v->createSnapshot(first_snap);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "blah2");
     waitForThisBackendWrite(*v);
@@ -420,7 +420,7 @@ TEST_P(TemplateVolumeTest, cloneTemplatedVolume)
 
     v->createSnapshot(second_snap);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "blah3");
     waitForThisBackendWrite(*v);
@@ -428,7 +428,7 @@ TEST_P(TemplateVolumeTest, cloneTemplatedVolume)
 
     v->createSnapshot(third_snap);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "blah4");
 
@@ -436,7 +436,7 @@ TEST_P(TemplateVolumeTest, cloneTemplatedVolume)
 
     EXPECT_TRUE(T(v->isVolumeTemplate()));
     EXPECT_THROW(writeToVolume(*v,
-                               0,
+                               Lba(0),
                                4096,
                                "blah"),
                  VolumeIsTemplateException);
@@ -457,7 +457,7 @@ TEST_P(TemplateVolumeTest, cloneTemplatedVolume)
                                      ns2,
                                      ns1,
                                      boost::none));
-    checkVolume(*c1, 0, 4096, "blah4");
+    checkVolume(*c1, Lba(0), 4096, "blah4");
     EXPECT_FALSE(T(c1->isVolumeTemplate()));
 }
 

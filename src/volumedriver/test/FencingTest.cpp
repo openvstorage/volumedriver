@@ -91,7 +91,7 @@ TEST_P(FencingTest, write)
     const size_t wsize = 64UL << 10;
     const std::string pattern1("before");
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   wsize,
                   pattern1);
 
@@ -105,7 +105,7 @@ TEST_P(FencingTest, write)
 
     const std::string pattern2("after");
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   wsize,
                   pattern2);
 
@@ -114,7 +114,7 @@ TEST_P(FencingTest, write)
     wait_for_halt(*v);
 
     std::vector<uint8_t> buf(4096);
-    EXPECT_THROW(v->read(0,
+    EXPECT_THROW(v->read(Lba(0),
                          buf.data(),
                          buf.size()),
                  std::exception);
@@ -128,7 +128,7 @@ TEST_P(FencingTest, write)
     ASSERT_TRUE(v != nullptr);
 
     checkVolume(*v,
-                0,
+                Lba(0),
                 wsize,
                 pattern1);
 }

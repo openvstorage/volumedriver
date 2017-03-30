@@ -181,7 +181,7 @@ protected:
             SCOPED_BLOCK_BACKEND(*v);
 
             writeToVolume(*v,
-                          v->getClusterMultiplier() * CachePage::capacity(),
+                          Lba(v->getClusterMultiplier() * CachePage::capacity()),
                           v->getClusterSize(),
                           pattern);
 
@@ -190,7 +190,7 @@ protected:
                 mds_manager_->stop_one(ncfgs[0]);
 
                 checkVolume(*v,
-                            0,
+                            Lba(0),
                             v->getClusterSize(),
                             "");
             }
@@ -208,7 +208,7 @@ protected:
                          true);
 
             checkVolume(*v,
-                        v->getClusterMultiplier() * CachePage::capacity(),
+                        Lba(v->getClusterMultiplier() * CachePage::capacity()),
                         v->getClusterSize(),
                         pattern);
         }
@@ -224,7 +224,7 @@ protected:
                      true);
 
         checkVolume(*v,
-                    v->getClusterMultiplier() * CachePage::capacity(),
+                    Lba(v->getClusterMultiplier() * CachePage::capacity()),
                     v->getClusterSize(),
                     pattern);
     }
@@ -242,7 +242,7 @@ protected:
             SCOPED_BLOCK_BACKEND(*v);
 
             writeToVolume(*v,
-                          v->getClusterMultiplier() * CachePage::capacity(),
+                          Lba(v->getClusterMultiplier() * CachePage::capacity()),
                           v->getClusterSize(),
                           pattern1);
         }
@@ -253,7 +253,7 @@ protected:
         const std::string pattern2("Such A Little Thing Makes Such A Big Difference");
 
         writeToVolume(*v,
-                      2 * v->getClusterMultiplier() * CachePage::capacity(),
+                      Lba(2 * v->getClusterMultiplier() * CachePage::capacity()),
                       v->getClusterSize(),
                       pattern2);
 
@@ -264,7 +264,7 @@ protected:
             mds_manager_->stop_one(ncfgs[0]);
 
             checkVolume(*v,
-                        0,
+                        Lba(0),
                         v->getClusterSize(),
                         "");
         }
@@ -282,12 +282,12 @@ protected:
                      true);
 
         checkVolume(*v,
-                    v->getClusterMultiplier() * CachePage::capacity(),
+                    Lba(v->getClusterMultiplier() * CachePage::capacity()),
                     v->getClusterSize(),
                     pattern1);
 
         checkVolume(*v,
-                    2 * v->getClusterMultiplier() * CachePage::capacity(),
+                    Lba(2 * v->getClusterMultiplier() * CachePage::capacity()),
                     v->getClusterSize(),
                     pattern2);
 
@@ -302,12 +302,12 @@ protected:
                      true);
 
         checkVolume(*v,
-                    v->getClusterMultiplier() * CachePage::capacity(),
+                    Lba(v->getClusterMultiplier() * CachePage::capacity()),
                     v->getClusterSize(),
                     pattern1);
 
         checkVolume(*v,
-                    2 * v->getClusterMultiplier() * CachePage::capacity(),
+                    Lba(2 * v->getClusterMultiplier() * CachePage::capacity()),
                     v->getClusterSize(),
                     pattern2);
     }
@@ -387,7 +387,7 @@ protected:
             for (size_t i = 0; i < clusters; ++i)
             {
                 writeToVolume(*&v,
-                              i * v.getClusterMultiplier(),
+                              Lba(i * v.getClusterMultiplier()),
                               csize,
                               make_pattern(worker_iterations,
                                            i));
@@ -398,7 +398,7 @@ protected:
             for (size_t i = 0; i < clusters; ++i)
             {
                 checkVolume(*&v,
-                            i * v.getClusterMultiplier(),
+                            Lba(i * v.getClusterMultiplier()),
                             csize,
                             make_pattern(worker_iterations,
                                          i));
@@ -485,7 +485,7 @@ protected:
         const size_t wsize(v.getClusterSize());
 
         writeToVolume(*&v,
-                      0,
+                      Lba(0),
                       wsize,
                       fst_cluster_pattern);
 
@@ -496,7 +496,7 @@ protected:
         for (size_t i = 0; i < nclusters; ++i)
         {
             writeToVolume(v,
-                          v.getClusterMultiplier(),
+                          Lba(v.getClusterMultiplier()),
                           wsize,
                           tmp_pattern);
         }
@@ -506,7 +506,7 @@ protected:
         waitForThisBackendWrite(v);
 
         writeToVolume(v,
-                      v.getClusterMultiplier(),
+                      Lba(v.getClusterMultiplier()),
                       wsize,
                       snd_cluster_pattern);
 
@@ -669,7 +669,7 @@ TEST_P(MDSVolumeTest, broken_config_update)
     const size_t wsize(v->getClusterSize() * CachePage::capacity() * 3);
 
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   wsize,
                   pattern);
 
@@ -689,7 +689,7 @@ TEST_P(MDSVolumeTest, broken_config_update)
               ncfgs2);
 
     checkVolume(*v,
-                0,
+                Lba(0),
                 wsize,
                 pattern);
 }
@@ -710,7 +710,7 @@ TEST_P(MDSVolumeTest, sole_mds_temporarily_gone)
     const size_t wsize(v->getClusterSize());
 
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   wsize,
                   pattern);
 
@@ -721,12 +721,12 @@ TEST_P(MDSVolumeTest, sole_mds_temporarily_gone)
     const std::string pattern2("test2");
 
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   wsize,
                   pattern2);
 
     checkVolume(*v,
-                0,
+                Lba(0),
                 wsize,
                 pattern2);
 
@@ -737,7 +737,7 @@ TEST_P(MDSVolumeTest, sole_mds_temporarily_gone)
                     snap);
 
     checkVolume(*v,
-                0,
+                Lba(0),
                 wsize,
                 pattern);
 }
@@ -758,7 +758,7 @@ TEST_P(MDSVolumeTest, slave_catchup)
 
     const std::string pattern1("first");
     writeToVolume(*v,
-                  v->getClusterMultiplier(),
+                  Lba(v->getClusterMultiplier()),
                   v->getClusterSize(),
                   pattern1);
 
@@ -772,7 +772,7 @@ TEST_P(MDSVolumeTest, slave_catchup)
 
     const std::string pattern2("second");
     writeToVolume(*v,
-                  2 * v->getClusterMultiplier(),
+                  Lba(2 * v->getClusterMultiplier()),
                   v->getClusterSize(),
                   pattern2);
 
@@ -839,7 +839,7 @@ TEST_P(MDSVolumeTest, catch_up)
     {
         const auto pattern(boost::lexical_cast<std::string>(i));
         writeToVolume(*v,
-                      i * v->getClusterMultiplier() * CachePage::capacity(),
+                      Lba(i * v->getClusterMultiplier() * CachePage::capacity()),
                       csize,
                       pattern);
         scheduleBackendSync(*v);
@@ -879,7 +879,7 @@ TEST_P(MDSVolumeTest, catch_up)
     {
         const auto pattern(boost::lexical_cast<std::string>(i));
         checkVolume(*v,
-                    i * v->getClusterMultiplier() * CachePage::capacity(),
+                    Lba(i * v->getClusterMultiplier() * CachePage::capacity()),
                     csize,
                     pattern);
     }
@@ -1069,7 +1069,7 @@ TEST_P(MDSVolumeTest, futile_scrub)
     const std::string pattern1("one");
 
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   wsize,
                   pattern1);
 
@@ -1080,7 +1080,7 @@ TEST_P(MDSVolumeTest, futile_scrub)
     const std::string pattern2("two");
 
     writeToVolume(*v,
-                  wsize / v->getLBASize(),
+                  Lba(wsize / v->getLBASize()),
                   wsize,
                   pattern2);
 
@@ -1228,12 +1228,12 @@ TEST_P(MDSVolumeTest, scrub_with_slave_out_to_lunch)
                     relocmap);
 
     checkVolume(*v,
-                0,
+                Lba(0),
                 v->getClusterSize(),
                 pattern1);
 
     checkVolume(*v,
-                v->getClusterMultiplier(),
+                Lba(v->getClusterMultiplier()),
                 v->getClusterSize(),
                 pattern2);
 
@@ -1258,7 +1258,7 @@ TEST_P(MDSVolumeTest, scrub_id_mismatch)
 
     const std::string pattern("some data");
     writeToVolume(*v,
-                  v->getClusterMultiplier() * 2,
+                  Lba(v->getClusterMultiplier() * 2),
                   v->getClusterSize(),
                   pattern);
 
@@ -1444,7 +1444,7 @@ TEST_P(MDSVolumeTest, local_restart_of_pristine_clone_with_empty_mds)
 
     const std::string pattern("template content");
     writeToVolume(*p,
-                  0,
+                  Lba(0),
                   p->getClusterSize(),
                   pattern);
 
@@ -1498,7 +1498,7 @@ TEST_P(MDSVolumeTest, local_restart_of_pristine_clone_with_empty_mds)
     c = getVolume(VolumeId(cns->ns().str()));
 
     checkVolume(*c,
-                0,
+                Lba(0),
                 c->getClusterSize(),
                 pattern);
 }
@@ -1527,7 +1527,7 @@ TEST_P(MDSVolumeTest, incremental_update_and_snapshots)
                    Reset::F);
 
     writeToVolume(*v,
-                  v->getClusterMultiplier() * 2,
+                  Lba(v->getClusterMultiplier() * 2),
                   v->getClusterSize(),
                   "one");
 
@@ -1544,7 +1544,7 @@ TEST_P(MDSVolumeTest, incremental_update_and_snapshots)
                    Reset::F);
 
     writeToVolume(*v,
-                  v->getClusterMultiplier() * 2,
+                  Lba(v->getClusterMultiplier() * 2),
                   v->getClusterSize(),
                   "two");
 
@@ -1591,7 +1591,7 @@ TEST_P(MDSVolumeTest, table_counters)
                    Reset::F);
 
     writeToVolume(*v,
-                  v->getClusterMultiplier() * 2,
+                  Lba(v->getClusterMultiplier() * 2),
                   v->getClusterSize(),
                   "one");
 
@@ -1616,7 +1616,7 @@ TEST_P(MDSVolumeTest, table_counters)
                    Reset::F);
 
     writeToVolume(*v,
-                  v->getClusterMultiplier() * 2,
+                  Lba(v->getClusterMultiplier() * 2),
                   v->getClusterSize(),
                   "two");
 
@@ -1688,7 +1688,7 @@ TEST_P(MDSVolumeTest, no_failover_on_owner_tag_mismatch)
                      new_owner_tag());
 
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   v->getClusterSize(),
                   pattern);
 

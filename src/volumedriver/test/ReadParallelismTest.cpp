@@ -59,7 +59,7 @@ struct VolumeReader
         {
             const uint64_t lba = dist(gen_);
             api::Read(v_,
-                      lba*8,
+                      Lba(lba*8),
                       buf_.data(),
                       len_);
         }
@@ -141,7 +141,7 @@ public:
         {
             VERIFY(4096*sco_multiplier == sco_size);
             writeToVolume(*v,
-                          i*8,
+                          Lba(i*8),
                           4096*sco_multiplier,
                           "kutmetperen");
         }

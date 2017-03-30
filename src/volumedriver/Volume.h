@@ -21,6 +21,7 @@
 #include "DtlInSync.h"
 #include "FailOverCacheConfigWrapper.h"
 #include "FailOverCacheProxy.h"
+#include "Lba.h"
 #include "NSIDMap.h"
 #include "PerformanceCounters.h"
 #include "RestartContext.h"
@@ -126,7 +127,7 @@ public:
         return nsidmap_;
     }
 
-    uint64_t LBA2Addr(const uint64_t) const;
+    uint64_t LBA2Addr(const Lba) const;
     ClusterAddress addr2CA(const uint64_t) const;
     uint64_t getSize() const;
     uint64_t getLBASize() const;
@@ -154,19 +155,23 @@ public:
 
     /** @exception IOException */
     void
-    validateIOLength(uint64_t lba, uint64_t len) const;
+    validateIOLength(const Lba, uint64_t len) const;
 
     /** @exception IOException */
     void
-    validateIOAlignment(uint64_t lba, uint64_t len) const;
+    validateIOAlignment(const Lba, uint64_t len) const;
 
     /** @exception IOException, MetaDataStoreException */
     DtlInSync
-    write(uint64_t lba, const uint8_t *buf, uint64_t len);
+    write(const Lba,
+          const uint8_t *buf,
+          uint64_t len);
 
    /** @exception IOException, MetaDataStoreException */
     void
-    read(uint64_t lba, uint8_t *buf, uint64_t len);
+    read(const Lba,
+         uint8_t *buf,
+         uint64_t len);
 
     /** @exception IOException */
     DtlInSync

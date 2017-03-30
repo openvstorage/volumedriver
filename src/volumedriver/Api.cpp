@@ -92,7 +92,7 @@ api::updateMetaDataBackendConfig(const vd::VolumeId& volume_id,
 
 vd::DtlInSync
 api::Write(WeakVolumePtr vol,
-           const uint64_t lba,
+           const vd::Lba lba,
            const uint8_t *buf,
            const uint64_t buflen)
 {
@@ -103,7 +103,7 @@ api::Write(WeakVolumePtr vol,
 
 void
 api::Read(WeakVolumePtr vol,
-          const uint64_t lba,
+          const vd::Lba lba,
           uint8_t *buf,
           const uint64_t buflen)
 {
@@ -114,7 +114,7 @@ api::Read(WeakVolumePtr vol,
 
 void
 api::Write(WriteOnlyVolume* vol,
-           uint64_t lba,
+           const vd::Lba lba,
            const uint8_t *buf,
            uint64_t buflen)
 {

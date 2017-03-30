@@ -429,7 +429,7 @@ LocalNode::read_(vd::WeakVolumePtr vol,
     }
 
     const uint64_t lbasize = api::GetLbaSize(vol);
-    const uint64_t lba = off / lbasize;
+    const vd::Lba lba(off / lbasize);
     const uint64_t lbaoff = off % lbasize;
 
     uint64_t to_read = std::min(volume_size-off, *size);
@@ -448,7 +448,7 @@ LocalNode::read_(vd::WeakVolumePtr vol,
         rsize += lbasize - (rsize % lbasize);
     }
 
-    LOG_TRACE("reading, off " << (lba * lbasize) << " (LBA " << lba <<
+    LOG_TRACE("reading, off " << (lba.t * lbasize) << " (LBA " << lba <<
               "), size " << rsize << ", unaligned " << unaligned);
 
     if (unaligned)
@@ -634,7 +634,7 @@ LocalNode::write_(vd::WeakVolumePtr vol,
                   vd::DtlInSync& dtl_in_sync)
 {
     const uint64_t lbasize = api::GetLbaSize(vol);
-    const uint64_t lba = off / lbasize;
+    const vd::Lba lba(off / lbasize);
     const uint64_t lbaoff = off % lbasize;
     uint64_t wsize = size;
     bool unaligned = lbaoff != 0;
@@ -650,11 +650,11 @@ LocalNode::write_(vd::WeakVolumePtr vol,
         wsize += lbasize - wsize % lbasize;
     }
 
-    LOG_TRACE("writing, off " << (lba * lbasize) << " (LBA " << lba <<
+    LOG_TRACE("writing, off " << (lba.t * lbasize) << " (LBA " << lba <<
               "), size " << wsize << ", unaligned " << unaligned);
 
     using Writer = vd::DtlInSync (*)(vd::WeakVolumePtr,
-                                     uint64_t,
+                                     const vd::Lba,
                                      const uint8_t*,
                                      uint64_t);
 
@@ -665,7 +665,7 @@ LocalNode::write_(vd::WeakVolumePtr vol,
 
         maybe_retry_<void>(&api::Read,
                            vol,
-                           const_cast<uint64_t&>(lba),
+                           const_cast<vd::Lba&>(lba),
                            bounce_buf.data(),
                            bounce_buf.size());
 

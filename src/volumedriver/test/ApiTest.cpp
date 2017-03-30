@@ -81,7 +81,7 @@ public:
         {
             const std::vector<byte> wbuf(4096, pattern);
             LOCK_MGMT();
-            api::Write(vol, 0, &wbuf[0], wbuf.size());
+            api::Write(vol, Lba(0), &wbuf[0], wbuf.size());
         }
 
         {
@@ -101,7 +101,7 @@ public:
 
         {
             LOCK_MGMT();
-            api::Read(vol, 0, &rbuf[0], rbuf.size());
+            api::Read(vol, Lba(0), &rbuf[0], rbuf.size());
         }
 
         EXPECT_TRUE(ref == rbuf);
@@ -340,7 +340,7 @@ TEST_P(ApiTest, QueueCount)
         for(int i = 0; i < 5; i++)
         {
             writeToVolume(*v,
-                          0,
+                          Lba(0),
                           4096,
                           "xyz");
         }

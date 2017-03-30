@@ -59,7 +59,7 @@ public:
 
 
         const std::string pattern("12345678");
-        writeToVolume(*v, 0, size, pattern);
+        writeToVolume(*v, Lba(0), size, pattern);
 
         boost::thread c1(boost::bind(&VolManagerTestSetup::checkVolume,
                                      boost::ref(*v),

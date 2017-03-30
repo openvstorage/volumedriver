@@ -98,12 +98,12 @@ void VolumeRandomIOThread::stop()
 void VolumeRandomIOThread::run()
 {
     unsigned int seed = time(0);
-    uint64_t lbaMax = vol_.getLBACount() - bufsize_;
+    const Lba lbaMax(vol_.getLBACount() - bufsize_);
 
     while (!stop_)
     {
-        uint64_t lba = rand_r(&seed) % (vol_.getSize() / vol_.getLBASize());
-        bool read = (lba % 2 == 0);
+        Lba lba(rand_r(&seed) % (vol_.getSize() / vol_.getLBASize()));
+        bool read = (lba.t % 2 == 0);
 
         if (lba > lbaMax)
         {
@@ -217,7 +217,7 @@ VolumeWriteThread::waitForFinish()
 void
 VolumeWriteThread::run()
 {
-    uint64_t lba = 0;
+    Lba lba(0);
     const uint64_t volSize = vol_.getSize();
     const uint64_t lbaSize = vol_.getLBASize();
     const uint64_t increment = bufsize / vol_.getLBASize();
@@ -232,9 +232,9 @@ VolumeWriteThread::run()
     while(not stop_ and
           maxNotExceeded())
     {
-        if(lba * lbaSize > volSize)
+        if(lba.t * lbaSize > volSize)
         {
-            lba = 0;
+            lba = Lba(0);
         }
         try {
             vol_.write(lba,buf, bufsize);
@@ -291,7 +291,7 @@ VolumeCheckerThread::run()
         {
             try
             {
-                v_->read(i / v_->getLBASize(),
+                v_->read(Lba(i / v_->getLBASize()),
                          &read_buf[0],
                          read_buf.size());
                 EXPECT_TRUE(buf_ == read_buf) <<
@@ -1384,7 +1384,7 @@ VolManagerTestSetup::createClone(const std::string& cloneName,
 // grrr naming...
 void
 VolManagerTestSetup::readVolume_(Volume& volume,
-                                 uint64_t lba,
+                                 const Lba lba,
                                  uint64_t block_size,
                                  const std::string* const pattern,
                                  unsigned retries)
@@ -1435,7 +1435,7 @@ VolManagerTestSetup::readVolume(Volume& vol,
 {
     for (size_t i = 0; i < vol.getSize(); i += block_size)
     {
-        readVolume_(vol, i / vol.getLBASize(), block_size, 0, retries);
+        readVolume_(vol, Lba(i / vol.getLBASize()), block_size, 0, retries);
     }
 }
 
@@ -1451,7 +1451,7 @@ VolManagerTestSetup::setFailOverCacheConfig(const VolumeId& volid,
 
 void
 VolManagerTestSetup::checkVolume(Volume& volume,
-                                 uint64_t lba,
+                                 const Lba lba,
                                  uint64_t block_size,
                                  const std::string& pattern,
                                  unsigned retries)
@@ -1461,14 +1461,14 @@ VolManagerTestSetup::checkVolume(Volume& volume,
 
 void
 VolManagerTestSetup::checkVolume_aux(Volume& v,
-                                 const std::string& pattern,
-                                 uint64_t size,
-                                 uint64_t block_size,
-                                 unsigned retries)
+                                     const std::string& pattern,
+                                     uint64_t size,
+                                     uint64_t block_size,
+                                     unsigned retries)
 {
     for (size_t i = 0; i < size; i += block_size)
     {
-        checkVolume(v, i / v.getLBASize(), block_size, pattern, retries);
+        checkVolume(v, Lba(i / v.getLBASize()), block_size, pattern, retries);
     }
 }
 
@@ -1495,8 +1495,8 @@ VolManagerTestSetup::checkVolumesIdentical(Volume& v1,
     std::vector<uint8_t> buf2(clustersz);
     for(uint64_t i = 0; i < volsz/clustersz ; ++i)
     {
-        v1.read(i*mult, &buf1[0], clustersz);
-        v2.read(i*mult, &buf2[0], clustersz);
+        v1.read(Lba(i*mult), &buf1[0], clustersz);
+        v2.read(Lba(i*mult), &buf2[0], clustersz);
         if(buf1 != buf2)
         {
             return false;

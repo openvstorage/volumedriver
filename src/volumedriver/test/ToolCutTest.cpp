@@ -77,7 +77,7 @@ TEST_P(ToolCutTest, DISABLED_toolcut_create_volume)
     SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns1);
 
-    writeToVolume(*v, 0, 4096,"immanuel");
+    writeToVolume(*v, Lba(0), 4096,"immanuel");
 
     const SnapshotName snap1("snap1");
 

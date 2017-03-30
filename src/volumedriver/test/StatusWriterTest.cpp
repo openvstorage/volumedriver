@@ -57,7 +57,7 @@ TEST_P(StatusWriterTest, write_a_bunch_of_crap)
         t.add_kept(cluster_size);
 
         writeToVolume(*v,
-                      0,
+                      Lba(0),
                       cluster_size,
                       "immanuel");
 

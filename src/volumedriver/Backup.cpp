@@ -766,7 +766,7 @@ Backup::replay_tlogs_on_target()
                             try
                             {
                                 api::Write(target_volume_.get(),
-                                           cluster_address << 3,
+                                           Lba(cluster_address * source_volume_config->cluster_mult_),
                                            &buf[0] + (cluster_location.offset() * cluster_size),
                                            cluster_size);
                                 finished = true;
