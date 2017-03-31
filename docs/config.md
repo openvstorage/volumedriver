@@ -134,6 +134,7 @@ service ovs-volumedriver-vpool_name restart
 | backend_connection_manager | alba_connection_use_rora | "0" | no | Whether to enable Read Optimized RDMA ASD (RORA) support |
 | backend_connection_manager | alba_connection_rora_manifest_cache_capacity | "10000" | no | Capacity of the RORA fetcher's manifest cache |
 | backend_connection_manager | alba_connection_asd_connection_pool_capacity | "5" | no | connection pool (per ASD) capacity |
+| backend_connection_manager | alba_connection_rora_timeout_msecs | "25" | no | Timeout for RORA (fast path) partial reads (milliseconds) |
 | backend_garbage_collector | bgc_threads | "4" | yes | Number of threads employed by the BackendGarbageCollector |
 
 In case a dynamic property is changed, notify the Volume Driver of the update with the python api.
