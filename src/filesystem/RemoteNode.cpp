@@ -129,22 +129,22 @@ struct RemoteNode::WorkItem
     vfsprotocol::RequestType request_type;
     const char* request_desc;
 
-    ExtraSendFun* send_extra_fun;
-    ExtraRecvFun* recv_extra_fun;
+    ExtraSendFun extra_send_fun;
+    ExtraRecvFun extra_recv_fun;
 
     boost::promise<vfsprotocol::ResponseType> promise;
     boost::unique_future<vfsprotocol::ResponseType> future;
 
     template<typename Request>
     WorkItem(const Request& req,
-             ExtraSendFun* send_extra,
-             ExtraRecvFun* recv_extra)
+             ExtraSendFun extra_send,
+             ExtraRecvFun extra_recv)
         : request(req)
         , request_tag(allocate_tag())
         , request_type(vfsprotocol::RequestTraits<Request>::request_type)
         , request_desc(vfsprotocol::request_type_to_string(request_type))
-        , send_extra_fun(send_extra)
-        , recv_extra_fun(recv_extra)
+        , extra_send_fun(std::move(extra_send))
+        , extra_recv_fun(std::move(extra_recv))
           // clang++ (3.8.0-2ubuntu3~trusty4) complains otherwise about
           // 'promise' being used unitialized when initializing 'future'
         , promise()
@@ -168,12 +168,12 @@ template<typename Request>
 void
 RemoteNode::handle_(const Request& req,
                     const bc::milliseconds& timeout_ms,
-                    ExtraSendFun* send_extra,
-                    ExtraRecvFun* recv_extra)
+                    ExtraSendFun extra_send,
+                    ExtraRecvFun extra_recv)
 {
     auto work = boost::make_shared<WorkItem>(req,
-                                             send_extra,
-                                             recv_extra);
+                                             std::move(extra_send),
+                                             std::move(extra_recv));
 
     {
         LOCK();
@@ -380,27 +380,37 @@ RemoteNode::send_requests_()
         VERIFY(work);
 
         queued_work_.pop_front();
-        const auto res(submitted_work_.emplace(work->request_tag,
-                                               work));
-        VERIFY(res.second);
 
-        ZUtils::send_delimiter(*zock_, MoreMessageParts::T);
-        ZUtils::serialize_to_socket(*zock_, work->request_type, MoreMessageParts::T);
-        ZUtils::serialize_to_socket(*zock_, work->request_tag, MoreMessageParts::T);
-        ZUtils::serialize_to_socket(*zock_,
-                                    work->request,
-                                    (work->send_extra_fun != nullptr) ?
-                                    MoreMessageParts::T :
-                                    MoreMessageParts::F);
-
-        if (work->send_extra_fun != nullptr)
-        {
-            (*work->send_extra_fun)();
-        }
-
-        LOG_TRACE(node_id() << ": sent " << work->request_desc << ", tag " << work->request_tag <<
-                  ", extra: " << (work->send_extra_fun != nullptr));
+        submit_work_(work);
     }
+}
+
+void
+RemoteNode::submit_work_(const WorkItemPtr& work)
+{
+    ASSERT_LOCKABLE_LOCKED(work_lock_);
+
+    bool ok = false;
+    std::tie(std::ignore, ok) = submitted_work_.emplace(work->request_tag,
+                                                        work);
+    VERIFY(ok);
+
+    ZUtils::send_delimiter(*zock_, MoreMessageParts::T);
+    ZUtils::serialize_to_socket(*zock_, work->request_type, MoreMessageParts::T);
+    ZUtils::serialize_to_socket(*zock_, work->request_tag, MoreMessageParts::T);
+    ZUtils::serialize_to_socket(*zock_,
+                                work->request,
+                                (work->extra_send_fun) ?
+                                MoreMessageParts::T :
+                                MoreMessageParts::F);
+
+    if (work->extra_send_fun)
+    {
+        work->extra_send_fun();
+    }
+
+    LOG_TRACE(node_id() << ": sent " << work->request_desc << ", tag " << work->request_tag <<
+              ", extra: " << (work->extra_send_fun != nullptr));
 }
 
 void
@@ -437,9 +447,9 @@ RemoteNode::recv_responses_()
             try
             {
                 if (rsp_type == vfsprotocol::ResponseType::Ok and
-                    w->recv_extra_fun != nullptr)
+                    w->extra_recv_fun)
                 {
-                    (*w->recv_extra_fun)();
+                    w->extra_recv_fun();
                 }
 
                 ZEXPECT_NOTHING_MORE(*zock_);
@@ -487,8 +497,8 @@ RemoteNode::read(const Object& obj,
 
     handle_(req,
             vrouter_.redirect_timeout(),
-            nullptr,
-            &recv_data);
+            ExtraSendFun(),
+            std::move(recv_data));
 }
 
 void
@@ -525,8 +535,8 @@ RemoteNode::write(const Object& obj,
 
     handle_(req,
             vrouter_.redirect_timeout(),
-            &send_data,
-            &get_rsp);
+            std::move(send_data),
+            std::move(get_rsp));
 }
 
 void
@@ -556,8 +566,8 @@ RemoteNode::sync(const Object& obj,
 
     handle_(req,
             vrouter_.redirect_timeout(),
-            nullptr,
-            &get_rsp);
+            ExtraSendFun(),
+            std::move(get_rsp));
 }
 
 uint64_t
@@ -581,8 +591,8 @@ RemoteNode::get_size(const Object& obj)
 
     handle_(req,
             vrouter_.redirect_timeout(),
-            nullptr,
-            &get_size);
+            ExtraSendFun(),
+            std::move(get_size));
 
     return size;
 }
@@ -609,8 +619,8 @@ RemoteNode::get_cluster_multiplier(const Object& obj)
 
     handle_(req,
             vrouter_.redirect_timeout(),
-            nullptr,
-            &get_cluster_multiplier);
+            ExtraSendFun(),
+            std::move(get_cluster_multiplier));
 
     return vd::ClusterMultiplier(size);
 }
@@ -642,8 +652,8 @@ RemoteNode::get_clone_namespace_map(const Object& obj)
 
     handle_(req,
             vrouter_.redirect_timeout(),
-            nullptr,
-            &get_clone_namespace_map);
+            ExtraSendFun(),
+            std::move(get_clone_namespace_map));
 
     return cnmap;
 }
@@ -677,8 +687,8 @@ RemoteNode::get_page(const Object& obj,
 
     handle_(req,
             vrouter_.redirect_timeout(),
-            nullptr,
-            &get_page);
+            ExtraSendFun(),
+            std::move(get_page));
 
     return cloc;
 }
@@ -739,8 +749,8 @@ RemoteNode::ping()
 
     handle_(req,
             vrouter_.redirect_timeout(),
-            nullptr,
-            &handle_pong);
+            ExtraSendFun(),
+            std::move(handle_pong));
 }
 
 }

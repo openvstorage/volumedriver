@@ -129,6 +129,9 @@ private:
     send_requests_();
 
     void
+    submit_work_(const WorkItemPtr&);
+
+    void
     drop_request_(const WorkItem&);
 
     void
@@ -145,10 +148,10 @@ private:
 
     template<typename Request>
     void
-    handle_(const Request& req,
+    handle_(const Request&,
             const boost::chrono::milliseconds& timeout_ms,
-            ExtraSendFun* send_extra = nullptr,
-            ExtraRecvFun* recv_extra = nullptr);
+            ExtraSendFun = ExtraSendFun(),
+            ExtraRecvFun = ExtraRecvFun());
 };
 
 }
