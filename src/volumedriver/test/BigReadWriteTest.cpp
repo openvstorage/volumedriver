@@ -41,7 +41,7 @@ TEST_P(BigReadWriteTest, bigReadsOnEmpty)
 
     for(size_t i = 0; i < scoMul; ++i)
     {
-        checkVolume(*v,0, csz*scoMul, pattern);
+        checkVolume(*v, Lba(0), csz * scoMul, pattern);
     }
 }
 
@@ -60,13 +60,13 @@ TEST_P(BigReadWriteTest, bigReadsOnFull)
     size_t scoMul = v->getSCOMultiplier();
     for(size_t i = 0;i < 50*scoMul; ++i)
     {
-        writeToVolume(*v, i* csz / lba_size, csz, pattern);
+        writeToVolume(*v, Lba(i * csz / lba_size), csz, pattern);
     }
 
     // Stop here to manually delete sco's to check error handling
     for(size_t i = 0; i < scoMul; ++i)
     {
-        checkVolume(*v,0, csz*scoMul, pattern);
+        checkVolume(*v, Lba(0), csz * scoMul, pattern);
     }
 
 }
@@ -85,13 +85,13 @@ TEST_P(BigReadWriteTest, bigWritesBigReads)
     size_t scoMul = v->getSCOMultiplier();
     for (size_t i = 0; i < scoMul; ++i)
     {
-        writeToVolume(*v, 0, csz * (i + 1), pattern);
+        writeToVolume(*v, Lba(0), csz * (i + 1), pattern);
     }
 
     // Stop here to manually delete sco's to check error handling
     for (size_t i = 0; i < scoMul; ++i)
     {
-        checkVolume(*v, 0, csz * (i + 1), pattern);
+        checkVolume(*v, Lba(0), csz * (i + 1), pattern);
     }
 
 }
@@ -109,10 +109,10 @@ TEST_P(BigReadWriteTest, OneBigWriteOneBigRead)
 
     const std::string pattern(csz,'a');
     size_t scoMul = v->getSCOMultiplier();
-    writeToVolume(*v, 0, csz * scoMul, pattern);
+    writeToVolume(*v, Lba(0), csz * scoMul, pattern);
 
     // Stop here to manually delete sco's to check error handling
-    checkVolume(*v,0, csz*scoMul, pattern);
+    checkVolume(*v, Lba(0), csz*scoMul, pattern);
 
 }
 

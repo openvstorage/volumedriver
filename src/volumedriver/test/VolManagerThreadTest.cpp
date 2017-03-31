@@ -45,7 +45,7 @@ TEST_P(VolManagerThreadTest, test1)
     for(int i = 0; i < 1024; ++i)
     {
         writeToVolume(*v1,
-                      0,
+                      Lba(0),
                       4096,
                       "test");
     }

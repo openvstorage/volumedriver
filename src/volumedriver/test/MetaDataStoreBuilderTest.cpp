@@ -118,7 +118,7 @@ TEST_P(MetaDataStoreBuilderTest, basics)
 
     const std::string pattern1("before-first-snapshot");
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   v->getSize() / 2,
                   pattern1);
 
@@ -134,7 +134,7 @@ TEST_P(MetaDataStoreBuilderTest, basics)
 
     const std::string pattern2("before-second-snapshot");
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   v->getSize() / 4,
                   pattern2);
 
@@ -159,7 +159,7 @@ TEST_P(MetaDataStoreBuilderTest, clone)
 
     const std::string pattern1("parent");
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   v->getSize() / 2,
                   pattern1);
 
@@ -175,7 +175,7 @@ TEST_P(MetaDataStoreBuilderTest, clone)
     const std::string pattern2("clone");
 
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   v->getSize() / 4,
                   pattern2);
 

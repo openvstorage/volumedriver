@@ -92,8 +92,8 @@ api::updateMetaDataBackendConfig(const vd::VolumeId& volume_id,
 
 vd::DtlInSync
 api::Write(WeakVolumePtr vol,
-           const uint64_t lba,
-           const uint8_t *buf,
+           const vd::Lba lba,
+           const uint8_t* buf,
            const uint64_t buflen)
 {
     return SharedVolumePtr(vol)->write(lba,
@@ -101,10 +101,21 @@ api::Write(WeakVolumePtr vol,
                                        buflen);
 }
 
+vd::DtlInSync
+api::Write(WeakVolumePtr vol,
+           const uint64_t off,
+           const uint8_t* buf,
+           const uint64_t buflen)
+{
+    return SharedVolumePtr(vol)->write(off,
+                                       buf,
+                                       buflen);
+}
+
 void
 api::Read(WeakVolumePtr vol,
-          const uint64_t lba,
-          uint8_t *buf,
+          const vd::Lba lba,
+          uint8_t* buf,
           const uint64_t buflen)
 {
     SharedVolumePtr(vol)->read(lba,
@@ -113,9 +124,20 @@ api::Read(WeakVolumePtr vol,
 }
 
 void
+api::Read(WeakVolumePtr vol,
+          const uint64_t off,
+          uint8_t* buf,
+          const uint64_t buflen)
+{
+    SharedVolumePtr(vol)->read(off,
+                               buf,
+                               buflen);
+}
+
+void
 api::Write(WriteOnlyVolume* vol,
-           uint64_t lba,
-           const uint8_t *buf,
+           const vd::Lba lba,
+           const uint8_t* buf,
            uint64_t buflen)
 {
     VERIFY(vol);

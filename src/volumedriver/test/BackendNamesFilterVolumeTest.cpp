@@ -47,7 +47,7 @@ TEST_P(BackendNamespaceFilterVolumeTest, ditto)
     v->setFailOverCacheConfig(foc_ctx->config(FailOverCacheMode::Asynchronous));
 
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   v->getClusterSize(),
                   "Not of any importance");
 

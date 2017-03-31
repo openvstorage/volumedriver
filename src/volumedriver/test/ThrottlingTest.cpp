@@ -42,7 +42,7 @@ public:
 
     uint64_t
     timedWrite(SharedVolumePtr v,
-               uint64_t lba,
+               const Lba lba,
                size_t size,
                const std::string& pattern)
     {
@@ -64,7 +64,7 @@ public:
             unsigned expected_delay)
     {
         uint64_t t = timedWrite(v,
-                                0,
+                                Lba(0),
                                 num_clusters * v->getClusterSize(),
                                 "12345678");
 
@@ -73,7 +73,7 @@ public:
         throttle(true);
 
         t = timedWrite(v,
-                       num_clusters * v->getClusterSize() / v->getLBASize(),
+                       Lba(num_clusters * v->getClusterSize() / v->getLBASize()),
                        num_clusters * v->getClusterSize(),
                        "abcdefgh");
 

@@ -53,7 +53,7 @@ TEST_P(CloneManagementTest, noclonesfromsnapshotsnotinbackend)
         SCOPED_BLOCK_BACKEND(*v);
 
         writeToVolume(*v,
-                      0,
+                      Lba(0),
                       4096,
                       "xyz");
         v->createSnapshot(snap);
@@ -77,7 +77,7 @@ TEST_P(CloneManagementTest, noclonesfromsnapshotsnotinbackend)
 
     ASSERT_TRUE(c != nullptr);
     checkVolume(*c,
-                0,
+                Lba(0),
                 4096,
                 "xyz");
 }
@@ -96,7 +96,7 @@ TEST_P(CloneManagementTest, sad_clone)
 
     ASSERT_TRUE(v != nullptr);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "xyz");
 
@@ -144,7 +144,7 @@ TEST_P(CloneManagementTest, recursiveclonelookup)
 
     ASSERT_TRUE(v != nullptr);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "xyz");
 
@@ -167,12 +167,12 @@ TEST_P(CloneManagementTest, recursiveclonelookup)
 
     ASSERT_TRUE(c != nullptr);
     checkVolume(*v,
-                0,
+                Lba(0),
                 4096,
                 "xyz");
 
     writeToVolume(*c,
-                  8,
+                  Lba(8),
                   4096,
                   "abc");
 
@@ -193,12 +193,12 @@ TEST_P(CloneManagementTest, recursiveclonelookup)
 
     ASSERT_TRUE(d != nullptr);
     checkVolume(*d,
-                0,
+                Lba(0),
                 4096,
                 "xyz");
 
     checkVolume(*d,
-                8,
+                Lba(8),
                 4096,
                 "abc");
 }

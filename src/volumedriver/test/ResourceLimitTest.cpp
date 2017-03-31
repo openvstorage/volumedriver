@@ -94,7 +94,7 @@ TEST_P(ResourceLimitTest, scrutinize_metadata_freespace_when_cloning_or_restarti
                           ns1);
     ASSERT_TRUE(v != nullptr);
 
-    writeToVolume(*v, 0, 65536, vname);
+    writeToVolume(*v, Lba(0), 65536, vname);
     const SnapshotName snap("snap");
     v->createSnapshot(snap);
     waitForThisBackendWrite(*v);

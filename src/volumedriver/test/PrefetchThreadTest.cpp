@@ -43,7 +43,7 @@ TEST_P(PrefetchThreadTest, test_one)
     for(size_t i = 0; i < numwrites; ++i)
     {
         writeToVolume(*v,
-                      0,
+                      Lba(0),
                       4096,
                       "Superflous");
     }
@@ -73,7 +73,7 @@ TEST_P(PrefetchThreadTest, test_two)
     for(size_t i = 0; i < numwrites; ++i)
     {
         writeToVolume(*v,
-                      0,
+                      Lba(0),
                       scoSize,
                       "Superflous");
     }

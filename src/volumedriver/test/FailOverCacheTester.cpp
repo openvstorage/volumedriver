@@ -134,13 +134,13 @@ TEST_P(FailOverCacheTester, VolumeWithFOC)
     for(int i =0; i < 128; ++i)
     {
         writeToVolume(*v,
-                      0,
+                      Lba(0),
                       4096,
                       "xyz");
     }
 
     checkVolume(*v,
-                0,
+                Lba(0),
                 4096,
                 "xyz");
 
@@ -167,12 +167,12 @@ TEST_P(FailOverCacheTester, VolumeWithoutFOC)
     for(int i =0; i < 128; ++i)
     {
         writeToVolume(*v,
-                      0,
+                      Lba(0),
                       4096,
                       "xyz");
     }
     checkVolume(*v,
-                0,
+                Lba(0),
                 4096,
                 "xyz");
 
@@ -202,7 +202,7 @@ TEST_P(FailOverCacheTester, StopRace)
         {
 
             writeToVolume(*v,
-                          0,
+                          Lba(0),
                           4096,
                           "xyz");
         }
@@ -211,7 +211,7 @@ TEST_P(FailOverCacheTester, StopRace)
     for(int i =0; i < 4; ++i)
     {
         writeToVolume(*v,
-                      0,
+                      Lba(0),
                       4096,
                       "xyz");
     }
@@ -244,7 +244,7 @@ TEST_P(FailOverCacheTester, StopCacheServer)
         for(int i = 0; i < 128; ++i)
         {
             writeToVolume(*v,
-                          0,
+                          Lba(0),
                           4096,
                           "xyz");
         }
@@ -253,7 +253,7 @@ TEST_P(FailOverCacheTester, StopCacheServer)
     for(int i =0; i < 128; ++i)
     {
         writeToVolume(*v,
-                      0,
+                      Lba(0),
                       4096,
                       "xyz");
     }
@@ -292,7 +292,7 @@ TEST_P(FailOverCacheTester, CacheServerHasNoMemory)
         for (size_t i = 0; i < num_clusters; ++i)
         {
             writeToVolume(*v,
-                          0,
+                          Lba(0),
                           4096,
                           "xyz");
         }
@@ -345,7 +345,7 @@ TEST_P(FailOverCacheTester, ResetCacheServer)
         }
 
         writeToVolume(*v,
-                      0,
+                      Lba(0),
                       4096,
                       "xyz");
     }
@@ -371,7 +371,7 @@ TEST_P(FailOverCacheTester, ClearCacheServer)
     for(unsigned i = 0; i < numwrites; ++i)
     {
         writeToVolume(*v,
-                      0,
+                      Lba(0),
                       4096,
                       "xyz");
     }
@@ -402,12 +402,12 @@ TEST_P(FailOverCacheTester, test2)
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "xyz");
 
     checkVolume(*v,
-                0,
+                Lba(0),
                 4096,
                 "xyz");
 
@@ -418,7 +418,7 @@ TEST_P(FailOverCacheTester, test2)
     ASSERT_NO_THROW(v2 = localRestart(ns));
 
     checkVolume(*v2,
-                0,
+                Lba(0),
                 4096,
                 "xyz");
 
@@ -443,13 +443,13 @@ TEST_P(FailOverCacheTester, test3)
     for(int i =0; i < 50; ++i)
     {
         writeToVolume(*v,
-                      0,
+                      Lba(0),
                       4096,
                       "xyz");
     }
 
     checkVolume(*v,
-                0,
+                Lba(0),
                 4096,
                 "xyz");
 
@@ -474,7 +474,7 @@ TEST_P(FailOverCacheTester, resetToSelf)
 
     for(unsigned i = 0; i < entries; i++)
     {
-        writeToVolume(*v, i * 4096, 4096, "bdv");
+        writeToVolume(*v, Lba(i * 4096), 4096, "bdv");
     }
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
@@ -484,7 +484,7 @@ TEST_P(FailOverCacheTester, resetToSelf)
 
     for(unsigned i = 0; i < entries; i++)
     {
-        writeToVolume(*v, i * 4096, 4096, "bdv");
+        writeToVolume(*v, Lba(i * 4096), 4096, "bdv");
     }
 
     flushFailOverCache(*v);
@@ -513,7 +513,7 @@ TEST_P(FailOverCacheTester, resetToOther)
 
     for(unsigned i = 0; i < entries; i++)
     {
-        writeToVolume(*v, i * 4096, 4096, "bdv");
+        writeToVolume(*v, Lba(i * 4096), 4096, "bdv");
     }
     EXPECT_EQ(VolumeFailOverState::OK_STANDALONE,
               v->getVolumeFailOverState());
@@ -539,7 +539,7 @@ TEST_P(FailOverCacheTester, resetToOther)
 
     for(unsigned i = 0; i < entries; i++)
     {
-        writeToVolume(*v, i * 4096, 4096, "bdv");
+        writeToVolume(*v, Lba(i * 4096), 4096, "bdv");
     }
 }
 
@@ -561,7 +561,7 @@ TEST_P(FailOverCacheTester, TLogsAreRemoved)
         ss << i;
         for(int j = 0; j < 32; ++j)
         {
-            writeToVolume(*v, j*4096,4096, "bdv");
+            writeToVolume(*v, Lba(j*4096),4096, "bdv");
         }
         waitForThisBackendWrite(*v);
         createSnapshot(*v,ss.str());
@@ -569,7 +569,7 @@ TEST_P(FailOverCacheTester, TLogsAreRemoved)
 
     for(int j = 0; j < 32; ++j)
     {
-        writeToVolume(*v, j*4096,4096, "bdv");
+        writeToVolume(*v, Lba(j*4096),4096, "bdv");
     }
 
     waitForThisBackendWrite(*v);
@@ -654,7 +654,7 @@ TEST_P(FailOverCacheTester, DirectoryRemovedOnUnRegister)
         ASSERT_TRUE(fs::is_directory(*foc_ns_path));
         EXPECT_TRUE(fs::is_empty(*foc_ns_path));
 
-        writeToVolume(*v, 0, 4096, "bdv");
+        writeToVolume(*v, Lba(0), 4096, "bdv");
         v->sync();
 
         ASSERT_FALSE(fs::is_empty(*foc_ns_path));
@@ -805,7 +805,7 @@ TEST_P(FailOverCacheTester, non_standard_cluster_size)
     for (size_t i = 0; i < num_clusters; ++i)
     {
         writeToVolume(*v,
-                      i * cmult,
+                      Lba(i * cmult),
                       csize,
                       make_pattern(i));
     }
@@ -865,7 +865,7 @@ TEST_P(FailOverCacheTester, wrong_cluster_size)
 
     const std::string pattern("cluster");
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   csize,
                   pattern);
 
@@ -956,7 +956,7 @@ TEST_P(FailOverCacheTester, dtl_in_sync)
     EXPECT_EQ(VolumeFailOverState::OK_STANDALONE,
               v->getVolumeFailOverState());
     EXPECT_EQ(DtlInSync::F,
-              v->write(0, buf.data(), buf.size()));
+              v->write(Lba(0), buf.data(), buf.size()));
     EXPECT_EQ(DtlInSync::F,
               v->sync());
 
@@ -966,7 +966,7 @@ TEST_P(FailOverCacheTester, dtl_in_sync)
         v->setFailOverCacheConfig(foc_ctx->config(mode));
 
         EXPECT_EQ(DtlInSync::F,
-                  v->write(0, buf.data(), buf.size()));
+                  v->write(Lba(0), buf.data(), buf.size()));
         EXPECT_EQ(DtlInSync::F,
                   v->sync());
     }
@@ -977,7 +977,7 @@ TEST_P(FailOverCacheTester, dtl_in_sync)
     ASSERT_EQ(VolumeFailOverState::OK_SYNC,
               v->getVolumeFailOverState());
 
-    const DtlInSync dtl_in_sync = v->write(0, buf.data(), buf.size());
+    const DtlInSync dtl_in_sync = v->write(Lba(0), buf.data(), buf.size());
 
     if (mode == FailOverCacheMode::Synchronous)
     {

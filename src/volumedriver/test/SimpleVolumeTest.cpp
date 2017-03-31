@@ -60,7 +60,7 @@ public:
 
         const std::string pattern("some data");
         writeToVolume(*v,
-                      0,
+                      Lba(0),
                       v->getClusterSize(),
                       pattern);
 
@@ -240,7 +240,7 @@ struct VolumeWriter
     {
         while(not stop_)
         {
-            VolManagerTestSetup::writeToVolume(*vol_,0, 4096,"blah");
+            VolManagerTestSetup::writeToVolume(*vol_,Lba(0), 4096,"blah");
             usleep(100);
         }
     }
@@ -295,25 +295,25 @@ TEST_P(SimpleVolumeTest, halted)
 
     ASSERT_TRUE(v != nullptr);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   pattern);
 
     checkVolume(*v,
-                0,
+                Lba(0),
                 4096,
                 pattern);
 
     v->halt();
 
     EXPECT_THROW(writeToVolume(*v,
-                               0,
+                               Lba(0),
                                4096,
                                "fubar"),
                  std::exception);
 
     EXPECT_THROW(checkVolume(*v,
-                             0,
+                             Lba(0),
                              4096,
                              pattern),
                  std::exception);
@@ -329,29 +329,29 @@ TEST_P(SimpleVolumeTest, test1)
 			  ns);
     ASSERT_TRUE(v != nullptr);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "immanuel");
     writeToVolume(*v,
-                  4096,
+                  Lba(4096),
                   4096,
                   "joost");
 
     writeToVolume(*v,
-                  2*4096,
+                  Lba(2*4096),
                   4096,
                   "arne");
 
     checkVolume(*v,
-                0,
+                Lba(0),
                 4096,
                 "immanuel");
     checkVolume(*v,
-                4096,
+                Lba(4096),
                 4096,
                 "joost");
     checkVolume(*v,
-                2*4096,
+                Lba(2*4096),
                 4096,
                 "arne");
 }
@@ -366,21 +366,21 @@ TEST_P(SimpleVolumeTest, test2)
 			  ns);
     ASSERT_TRUE(v != nullptr);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "immanuel");
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "joost");
 
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "arne");
 
     checkVolume(*v,
-                0,
+                Lba(0),
                 4096,
                 "arne");
 
@@ -400,7 +400,7 @@ TEST_P(SimpleVolumeTest, test3)
     ASSERT_TRUE(v != nullptr);
 
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "immanuel");
 
@@ -422,7 +422,7 @@ TEST_P(SimpleVolumeTest, test3)
                     snap1);
 
     checkVolume(*c,
-                0,
+                Lba(0),
                 4096,
                 "immanuel");
 }
@@ -439,7 +439,7 @@ TEST_P(SimpleVolumeTest, test4)
                   ns1);
     ASSERT_TRUE(v != nullptr);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "a");
 
@@ -459,18 +459,18 @@ TEST_P(SimpleVolumeTest, test4)
                      ns1,
                      snap1);
     writeToVolume(*c1,
-                  4096,
+                  Lba(4096),
                   4096,
                   "b");
 
     checkVolume(*c1,
-                0,
+                Lba(0),
                 4096,
                 "a");
 
 
     checkVolume(*c1,
-                4096,
+                Lba(4096),
                 4096,
                 "b");
 
@@ -491,21 +491,21 @@ TEST_P(SimpleVolumeTest, test4)
     ASSERT_TRUE(c2 != nullptr);
 
      checkVolume(*c2,
-                4096,
+                 Lba(4096),
                  4096,
                  "b");
     checkVolume(*c2,
-                0,
+                Lba(0),
                 4096,
                 "a");
 
 
     writeToVolume(*c2,
-                  2*4096,
+                  Lba(2*4096),
                   4096,
                   "c");
     checkVolume(*c2,
-                2*4096,
+                Lba(2*4096),
                 4096,
                 "c");
 
@@ -527,25 +527,25 @@ TEST_P(SimpleVolumeTest, test4)
     ASSERT_TRUE(c3 != nullptr);
 
     checkVolume(*c3,
-                0,
+                Lba(0),
                 4096,
                 "a");
 
     checkVolume(*c3,
-                4096,
+                Lba(4096),
                 4096,
                 "b");
     checkVolume(*c3,
-                2*4096,
+                Lba(2*4096),
                 4096,
                 "c");
     writeToVolume(*c3,
-                  3*4096,
+                  Lba(3*4096),
                   4096,
                   "d");
 
     checkVolume(*c3,
-                3*4096,
+                Lba(3*4096),
                 4096,
                 "d");
 
@@ -582,13 +582,13 @@ TEST_P(SimpleVolumeTest, switchTLog)
     uint64_t clusters = VolManager::get()->number_of_scos_in_tlog.value() *  v->getSCOMultiplier();
 
     for(unsigned i = 0; i < clusters - 1; ++i) {
-        writeToVolume(*v, 0, 4096, &v1[0]);
+        writeToVolume(*v, Lba(0), 4096, &v1[0]);
     }
 
     ASSERT_EQ(init_tlog,
               v->getSnapshotManagement().getCurrentTLogId());
 
-    writeToVolume(*v, 0, 4096, &v1[0]);
+    writeToVolume(*v, Lba(0), 4096, &v1[0]);
 
     ASSERT_NE(init_tlog,
               v->getSnapshotManagement().getCurrentTLogId());
@@ -609,19 +609,18 @@ TEST_P(SimpleVolumeTest, restoreSnapshot)
     const std::string snapshotName1("nikon");
     const std::string snapshotName2("canon");
 
+    writeToVolume(*v, Lba(0), count, snapshotName1);
+    writeToVolume(*v, Lba(0), count, snapshotName2);
 
-    writeToVolume(*v, 0, count, snapshotName1);
-    writeToVolume(*v, 0, count, snapshotName2);
-
-    checkVolume(*v, 0, count, snapshotName2);
+    checkVolume(*v, Lba(0), count, snapshotName2);
 
     {
         SCOPED_BLOCK_BACKEND(*v);
         ASSERT_NO_THROW(createSnapshot(*v, snapshotName1));
-        writeToVolume(*v, 0, count, snapshotName1);
+        writeToVolume(*v, Lba(0), count, snapshotName1);
 
         EXPECT_THROW(createSnapshot(*v, snapshotName2), PreviousSnapshotNotOnBackendException);
-        writeToVolume(*v,0, count,"bbbbb");
+        writeToVolume(*v, Lba(0), count,"bbbbb");
 
         EXPECT_THROW(restoreSnapshot(*v, snapshotName1), fungi::IOException);
 
@@ -632,7 +631,7 @@ TEST_P(SimpleVolumeTest, restoreSnapshot)
     {
         SCOPED_BLOCK_BACKEND(*v);
         ASSERT_NO_THROW(createSnapshot(*v, snapshotName2));
-        writeToVolume(*v,0, count,"ccccc");
+        writeToVolume(*v, Lba(0), count,"ccccc");
     }
     waitForThisBackendWrite(*v);
 
@@ -640,12 +639,12 @@ TEST_P(SimpleVolumeTest, restoreSnapshot)
     EXPECT_NO_THROW(restoreSnapshot(*v, snapshotName1));
 
 
-    checkVolume(*v,0,count,snapshotName2);
+    checkVolume(*v, Lba(0),count,snapshotName2);
 
     // we should be able to rewrite now:
-    writeToVolume(*v,0, count,"aaaaa");
+    writeToVolume(*v, Lba(0), count,"aaaaa");
 
-    checkVolume(*v,0,count,"aaaaa");
+    checkVolume(*v, Lba(0),count,"aaaaa");
 
     // make sure tlogs are not leaked
     waitForThisBackendWrite(*v);
@@ -695,10 +694,10 @@ TEST_P(SimpleVolumeTest, restoreSnapshot2)
     EXPECT_TRUE(v->isCacheOnRead());
     EXPECT_FALSE(v->isCacheOnWrite());
 
-    writeToVolume(*v, 0, count, snapshotName1);
-    writeToVolume(*v, 0, count, snapshotName2);
+    writeToVolume(*v, Lba(0), count, snapshotName1);
+    writeToVolume(*v, Lba(0), count, snapshotName2);
 
-    checkVolume(*v, 0, count, snapshotName2);
+    checkVolume(*v, Lba(0), count, snapshotName2);
 
     {
         SCOPED_BLOCK_BACKEND(*v);
@@ -710,10 +709,10 @@ TEST_P(SimpleVolumeTest, restoreSnapshot2)
         EXPECT_TRUE(v->isCacheOnRead());
         EXPECT_FALSE(v->isCacheOnWrite());
 
-        writeToVolume(*v, 0, count, snapshotName1);
+        writeToVolume(*v, Lba(0), count, snapshotName1);
 
         EXPECT_THROW(createSnapshot(*v, snapshotName2), PreviousSnapshotNotOnBackendException);
-        writeToVolume(*v,0, count,"cnanakos1");
+        writeToVolume(*v, Lba(0), count,"cnanakos1");
 
         EXPECT_THROW(restoreSnapshot(*v, snapshotName1), fungi::IOException);
     }
@@ -733,7 +732,7 @@ TEST_P(SimpleVolumeTest, restoreSnapshot2)
         EXPECT_TRUE(v->isCacheOnRead());
         EXPECT_FALSE(v->isCacheOnWrite());
 
-        writeToVolume(*v,0, count,"cnanakos2");
+        writeToVolume(*v, Lba(0), count,"cnanakos2");
     }
 
     waitForThisBackendWrite(*v);
@@ -748,11 +747,11 @@ TEST_P(SimpleVolumeTest, restoreSnapshot2)
     EXPECT_TRUE(v->isCacheOnRead());
     EXPECT_FALSE(v->isCacheOnWrite());
 
-    checkVolume(*v,0,count,snapshotName2);
+    checkVolume(*v, Lba(0),count,snapshotName2);
 
-    writeToVolume(*v,0, count,"cnanakos4");
+    writeToVolume(*v, Lba(0), count,"cnanakos4");
 
-    checkVolume(*v,0,count,"cnanakos4");
+    checkVolume(*v, Lba(0),count,"cnanakos4");
 
     waitForThisBackendWrite(*v);
 
@@ -800,7 +799,7 @@ TEST_P(SimpleVolumeTest, restoreSnapshotWithFuckedUpTLogs)
 
     const std::string snapshotName1("nikon1");
 
-    writeToVolume(*v, 0, count, snapshotName1);
+    writeToVolume(*v, Lba(0), count, snapshotName1);
 
     createSnapshot(*v, snapshotName1);
     waitForThisBackendWrite(*v);
@@ -809,7 +808,7 @@ TEST_P(SimpleVolumeTest, restoreSnapshotWithFuckedUpTLogs)
     for (uint32_t i = 0 ; i < 5 * clustersInSco * scosInTlog; i++)
     {
         writeToVolume(*v,
-                      0,
+                      Lba(0),
                       count,
                       "there are no rules without exceptions, so there are rules without exceptions");
     }
@@ -819,7 +818,7 @@ TEST_P(SimpleVolumeTest, restoreSnapshotWithFuckedUpTLogs)
     for (uint32_t i = 0 ; i < 5 * clustersInSco * scosInTlog; i++)
     {
         writeToVolume(*v,
-                      0,
+                      Lba(0),
                       count,
                       "there are no rules without exceptions, so there are rules without exceptions");
     }
@@ -832,7 +831,7 @@ TEST_P(SimpleVolumeTest, restoreSnapshotWithFuckedUpTLogs)
     v->getBackendInterface()->remove(boost::lexical_cast<std::string>(tlog_id));
 
     ASSERT_NO_THROW(restoreSnapshot(*v, snapshotName1));
-    checkVolume(*v,0,count,snapshotName1);
+    checkVolume(*v, Lba(0),count,snapshotName1);
 }
 
 TEST_P(SimpleVolumeTest, restoreSnapshotWithFuckedUpNeededTLogs)
@@ -856,21 +855,21 @@ TEST_P(SimpleVolumeTest, restoreSnapshotWithFuckedUpNeededTLogs)
 
     //make sure we delete some tlog in the middle, not just the first one
     for (uint32_t i = 0 ; i < 5 * clustersInSco * scosInTlog; i++) {
-        writeToVolume(*v, 0, count, "should be overwritten");
+        writeToVolume(*v, Lba(0), count, "should be overwritten");
     }
 
     const TLogId tlog_id = v->getSnapshotManagement().getCurrentTLogId();
 
     for (uint32_t i = 0 ; i < 5 * clustersInSco * scosInTlog; i++)
     {
-        writeToVolume(*v, 0, count, "should be overwritten");
+        writeToVolume(*v, Lba(0), count, "should be overwritten");
     }
 
-    writeToVolume(*v, 0, count, snapshotName1);
+    writeToVolume(*v, Lba(0), count, snapshotName1);
 
     for (uint32_t i = 0 ; i < 5 * clustersInSco * scosInTlog; i++)
     {
-        writeToVolume(*v, 0, count, "there are no rules without exceptions, so there are rules without exceptions");
+        writeToVolume(*v, Lba(0), count, "there are no rules without exceptions, so there are rules without exceptions");
     }
 
     createSnapshot(*v, snapshotName1);
@@ -900,13 +899,13 @@ TEST_P(SimpleVolumeTest, dontLeakStorageOnSnapshotRollback)
     const int size = v->getClusterSize();
 
     const std::string pattern1 = "sco1";
-    writeToVolume(*v, 0, size, pattern1);
+    writeToVolume(*v, Lba(0), size, pattern1);
     createSnapshot(*v, "snap1");
 
     waitForThisBackendWrite(*v);
 
     const std::string pattern2 = "sco2";
-    writeToVolume(*v, 0, size, pattern2);
+    writeToVolume(*v, Lba(0), size, pattern2);
     createSnapshot(*v, "snap2");
 
     waitForThisBackendWrite(*v);
@@ -1090,7 +1089,7 @@ TEST_P(SimpleVolumeTest, LocalRestartClone)
     for(int i = 0; i < 10; i++)
     {
         writeToVolume(*v1,
-                      0,
+                      Lba(0),
                       4096,
                       "immanuel");
     }
@@ -1120,7 +1119,7 @@ TEST_P(SimpleVolumeTest, LocalRestartClone)
     ASSERT_TRUE(c != nullptr);
 
     checkVolume(*c,
-                0,
+                Lba(0),
                 4096,
                 "immanuel");
 }
@@ -1140,7 +1139,7 @@ TEST_P(SimpleVolumeTest, RollBackClone)
     {
 
         writeToVolume(*v1,
-                      i*mult,
+                      Lba(i*mult),
                       v1->getClusterSize(),
                       "immanuel");
     }
@@ -1173,15 +1172,15 @@ TEST_P(SimpleVolumeTest, RollBackClone)
     for(int i = 50; i < 100; i++)
     {
         writeToVolume(*v2,
-                      i*mult,
+                      Lba(i*mult),
                       v1->getClusterSize(),
                       "arne");
         writeToVolume(*v3,
-                      i*mult,
+                      Lba(i*mult),
                       v1->getClusterSize(),
                       "arne");
         writeToVolume(*v1,
-                      i*mult,
+                      Lba(i*mult),
                       v1->getClusterSize(),
                       "arne");
     }
@@ -1195,7 +1194,7 @@ TEST_P(SimpleVolumeTest, RollBackClone)
     for(int i = 50; i < 100; i++)
     {
         writeToVolume(*v2,
-                      i*mult,
+                      Lba(i*mult),
                       v1->getClusterSize(),
                       "kristaf");
     }
@@ -1448,7 +1447,7 @@ TEST_P(SimpleVolumeTest, consistency)
     {
 
         writeToVolume(*v1,
-                      i*mult,
+                      Lba(i*mult),
                       v1->getClusterSize(),
                       "kristaf");
     }
@@ -1479,7 +1478,7 @@ TEST_P(SimpleVolumeTest, consistencyClone)
     {
 
         writeToVolume(*v1,
-                      i*mult,
+                      Lba(i*mult),
                       v1->getClusterSize(),
                       "kristaf");
     }
@@ -1500,12 +1499,12 @@ TEST_P(SimpleVolumeTest, consistencyClone)
     for(int i = 0; i < (1024 ); i++)
     {
         writeToVolume(*v1,
-                      i*mult,
+                      Lba(i*mult),
                       v1->getClusterSize(),
                       "kristaf");
 
         writeToVolume(*v2,
-                      i*mult + 20,
+                      Lba(i*mult + 20),
                       v2->getClusterSize(),
                       "kristaf");
     }
@@ -1540,7 +1539,7 @@ TEST_P(SimpleVolumeTest,  readCacheHits)
     SharedVolumePtr v1 = newVolume(VolumeId("volume1"),
                            ns1);
     writeToVolume(*v1,
-                  0,
+                  Lba(0),
                   v1->getClusterSize(),
                   "kristafke");
 
@@ -1549,13 +1548,13 @@ TEST_P(SimpleVolumeTest,  readCacheHits)
     uint64_t  misses =  api::getClusterCacheMisses(VolumeId("volume1"));
     EXPECT_EQ(0U, hits);
     EXPECT_EQ(0U, misses);
-    checkVolume(*v1,0, v1->getClusterSize(), "kristafke");
+    checkVolume(*v1, Lba(0), v1->getClusterSize(), "kristafke");
     hits =  api::getClusterCacheHits(VolumeId("volume1"));
     misses =  api::getClusterCacheMisses(VolumeId("volume1"));
     EXPECT_EQ(0U, hits);
     EXPECT_EQ(1U, misses);
 
-    checkVolume(*v1,0, v1->getClusterSize(), "kristafke");
+    checkVolume(*v1, Lba(0), v1->getClusterSize(), "kristafke");
     hits =  api::getClusterCacheHits(VolumeId("volume1"));
     misses =  api::getClusterCacheMisses(VolumeId("volume1"));
 #ifdef ENABLE_MD5_HASH
@@ -1566,7 +1565,7 @@ TEST_P(SimpleVolumeTest,  readCacheHits)
     EXPECT_EQ(2U, misses);
 #endif
 
-    checkVolume(*v1,0, v1->getClusterSize(), "kristafke");
+    checkVolume(*v1, Lba(0), v1->getClusterSize(), "kristafke");
     hits =  api::getClusterCacheHits(VolumeId("volume1"));
     misses =  api::getClusterCacheMisses(VolumeId("volume1"));
 #ifdef ENABLE_MD5_HASH
@@ -1577,7 +1576,7 @@ TEST_P(SimpleVolumeTest,  readCacheHits)
     EXPECT_EQ(3U, misses);
 #endif
 
-    checkVolume(*v1,0, v1->getClusterSize(), "kristafke");
+    checkVolume(*v1, Lba(0), v1->getClusterSize(), "kristafke");
     hits =  api::getClusterCacheHits(VolumeId("volume1"));
     misses =  api::getClusterCacheMisses(VolumeId("volume1"));
 #ifdef ENABLE_MD5_HASH
@@ -1603,7 +1602,7 @@ TEST_P(SimpleVolumeTest, backendSize)
     {
 
         writeToVolume(*v1,
-                      i*mult,
+                      Lba(i*mult),
                       v1->getClusterSize(),
                       "kristaf");
     }
@@ -1634,7 +1633,7 @@ TEST_P(SimpleVolumeTest, backendSize)
     for(int i = 0; i < 1024 ; i++)
     {
         writeToVolume(*v1,
-                      i*mult,
+                      Lba(i*mult),
                       v1->getClusterSize(),
                       "kristaf");
     }
@@ -1675,7 +1674,7 @@ TEST_P(SimpleVolumeTest, backendSize2)
     for(int i = 0; i < 1024 ; i++)
     {
         writeToVolume(*v1,
-                      i*mult,
+                      Lba(i*mult),
                       v1->getClusterSize(),
                       "kristaf");
     }
@@ -1699,7 +1698,7 @@ TEST_P(SimpleVolumeTest, backendSize3)
     {
 
         writeToVolume(*v1,
-                      i*mult,
+                      Lba(i*mult),
                       v1->getClusterSize(),
                       "kristaf");
     }
@@ -1724,7 +1723,7 @@ TEST_P(SimpleVolumeTest, backendSize3)
     {
 
         writeToVolume(*v1,
-                      i*mult,
+                      Lba(i*mult),
                       v1->getClusterSize(),
                       "joost");
     }
@@ -1805,8 +1804,8 @@ TEST_P(SimpleVolumeTest, readActivity)
 
     for(int i = 0; i < 128; ++i)
     {
-        v1->read(0, buf.data(), buf.size() / 2);
-        v2->read(0, buf.data(), buf.size());
+        v1->read(Lba(0), buf.data(), buf.size() / 2);
+        v2->read(Lba(0), buf.data(), buf.size());
     }
 
     boost::this_thread::sleep_for(boost::chrono::seconds(1));
@@ -1851,7 +1850,7 @@ TEST_P(SimpleVolumeTest, prefetch)
     const uint64_t size = cfg.lba_size_ * cfg.cluster_mult_ * cfg.sco_mult_ * num_scos;
     const std::string pattern("prefetchin'");
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   size,
                   pattern);
 
@@ -1861,7 +1860,7 @@ TEST_P(SimpleVolumeTest, prefetch)
     for(int i =0 ; i< 64; ++i)
     {
 
-        v->read(0, &buf[0], size);
+        v->read(Lba(0), &buf[0], size);
     }
 
     v->scheduleBackendSync();
@@ -1914,7 +1913,7 @@ TEST_P(SimpleVolumeTest, prefetch)
     EXPECT_LT(0U, vm->readActivity());
 
     checkVolume(*v,
-                0,
+                Lba(0),
                 size,
                 pattern);
 
@@ -1941,7 +1940,7 @@ TEST_P(SimpleVolumeTest, startPrefetch)
     const uint64_t size = cfg.lba_size_ * cfg.cluster_mult_ * cfg.sco_mult_ * num_scos;
 
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   size,
                   pattern);
 
@@ -1981,7 +1980,7 @@ TEST_P(SimpleVolumeTest, clusteredWriteTLogConsistency)
     ASSERT_TRUE(v != nullptr);
 
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   v->getClusterSize(),
                   "abcd");
 
@@ -1989,7 +1988,7 @@ TEST_P(SimpleVolumeTest, clusteredWriteTLogConsistency)
     sleep(1);
 
     writeToVolume(*v,
-                  v->getClusterSize() / v->getLBASize(),
+                  Lba(v->getClusterSize() / v->getLBASize()),
                   v->getClusterSize() * v->getSCOMultiplier(),
                   "defg");
 
@@ -2039,12 +2038,12 @@ TEST_P(SimpleVolumeTest, zero_sized_volume)
 
     uint8_t pattern = 0xab;
     const std::vector<uint8_t> wbuf(v->getClusterSize(), pattern);
-    EXPECT_THROW(v->write(0, &wbuf[0], wbuf.size()),
+    EXPECT_THROW(v->write(Lba(0), &wbuf[0], wbuf.size()),
                  std::exception);
 
     ++pattern;
     std::vector<uint8_t> rbuf(v->getClusterSize(), pattern);
-    EXPECT_THROW(v->read(0, &rbuf[0], rbuf.size()),
+    EXPECT_THROW(v->read(Lba(0), &rbuf[0], rbuf.size()),
                  std::exception);
 
     for (const auto& b : rbuf)
@@ -2099,7 +2098,7 @@ TEST_P(SimpleVolumeTest, grow)
     EXPECT_EQ(nclusters * csize, v->getSize());
 
     const std::string pattern("extended play");
-    uint64_t lba((nclusters - 1) * csize / v->getLBASize());
+    const Lba lba((nclusters - 1) * csize / v->getLBASize());
 
     writeToVolume(*v, lba, csize, pattern);
     checkVolume(*v, lba, csize, pattern);
@@ -2155,7 +2154,7 @@ TEST_P(SimpleVolumeTest, tlog_entries)
 
     for (unsigned i = 0; i < sco_mult; ++i)
     {
-        writeToVolume(*v, 0, csize, "not of any importance");
+        writeToVolume(*v, Lba(0), csize, "not of any importance");
     }
 
     // should not have any impact.
@@ -2166,7 +2165,7 @@ TEST_P(SimpleVolumeTest, tlog_entries)
     for (unsigned i = sco_mult; i < tlog_entries; ++i)
     {
         EXPECT_EQ(tlog1, sm.getCurrentTLogPath());
-        writeToVolume(*v, 0, csize, "neither of importance");
+        writeToVolume(*v, Lba(0), csize, "neither of importance");
     }
 
     // tlog should've rolled over by now:
@@ -2241,7 +2240,7 @@ TEST_P(SimpleVolumeTest, simple_backend_restart)
 
     const std::string pattern("Hullo?");
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   pattern);
 
@@ -2260,7 +2259,7 @@ TEST_P(SimpleVolumeTest, simple_backend_restart)
     v = getVolume(id);
 
     checkVolume(*v,
-                0,
+                Lba(0),
                 4096,
                 pattern);
 }
@@ -2311,7 +2310,7 @@ TEST_P(SimpleVolumeTest, clones_and_location_based_caching)
 
     const std::string pattern("written-to-parent");
     writeToVolume(*parent,
-                  0,
+                  Lba(0),
                   4096,
                   pattern);
 
@@ -2334,7 +2333,7 @@ TEST_P(SimpleVolumeTest, clones_and_location_based_caching)
               clone->effective_cluster_cache_behaviour());
 
     checkVolume(*clone,
-                0,
+                Lba(0),
                 4096,
                 pattern);
 }
@@ -2484,7 +2483,7 @@ TEST_P(SimpleVolumeTest, sco_multiplier_updates)
                            ds.getRemainingSCOCapacity());
 
                  writeToVolume(*v,
-                               0,
+                               Lba(0),
                                v->getClusterSize() * (sm.t - 1),
                                pattern);
 
@@ -2502,7 +2501,7 @@ TEST_P(SimpleVolumeTest, sco_multiplier_updates)
     EXPECT_LT(sco_num2, sco_num3);
 
     checkVolume(*v,
-                0,
+                Lba(0),
                 v->getClusterSize() * 2047,
                 "three");
 }
@@ -2524,7 +2523,7 @@ TEST_P(SimpleVolumeTest, synchronous_foc)
     const std::string s("a single cluster");
     const size_t csize = v->getClusterSize();
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   csize,
                   s);
 
@@ -2597,7 +2596,7 @@ TEST_P(SimpleVolumeTest, metadata_cache_capacity)
     const size_t csize = v->getClusterSize();
 
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   csize,
                   fst);
 
@@ -2605,7 +2604,7 @@ TEST_P(SimpleVolumeTest, metadata_cache_capacity)
 
     const std::string snd("second");
     writeToVolume(*v,
-                  csize,
+                  Lba(csize),
                   csize,
                   snd);
 
@@ -2617,12 +2616,12 @@ TEST_P(SimpleVolumeTest, metadata_cache_capacity)
                    check_cap(cap);
 
                    checkVolume(*v,
-                               0,
+                               Lba(0),
                                csize,
                                fst);
 
                    checkVolume(*v,
-                               csize,
+                               Lba(csize),
                                csize,
                                snd);
                });
@@ -2673,12 +2672,12 @@ TEST_P(SimpleVolumeTest, dtl_queue_depth_and_large_requests)
     const std::string pattern("not that interesting, really");
 
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   size,
                   pattern);
 
     checkVolume(*v,
-                0,
+                Lba(0),
                 size,
                 pattern);
 }
@@ -2689,7 +2688,7 @@ TEST_P(SimpleVolumeTest, partial_read_counters)
     SharedVolumePtr v = newVolume(*wrns);
 
     const std::string pattern("testing partial read counters");
-    writeToVolume(*v, 0, v->getClusterSize(), pattern);
+    writeToVolume(*v, Lba(0), v->getClusterSize(), pattern);
 
     {
         const be::PartialReadCounter prc(v->getDataStore()->partial_read_counter());
@@ -2709,10 +2708,57 @@ TEST_P(SimpleVolumeTest, partial_read_counters)
     v = getVolume(cfg.id_);
     ASSERT_NE(nullptr, v);
 
-    checkVolume(*v, 0, v->getClusterSize(), pattern);
+    checkVolume(*v, Lba(0), v->getClusterSize(), pattern);
 
     const be::PartialReadCounter prc(v->getDataStore()->partial_read_counter());
     EXPECT_LT(0UL, prc.fast + prc.slow);
+}
+
+TEST_P(SimpleVolumeTest, bytewise)
+{
+    auto wrns(make_random_namespace());
+    SharedVolumePtr v = newVolume(*wrns);
+
+    const size_t csize = v->getClusterSize();
+    const std::string first("first");
+
+    std::stringstream ss;
+    const std::string s("second");
+
+    for (size_t i = 0; i < csize + 1; i += s.size())
+    {
+        ss << s;
+    }
+
+    const std::string second(ss.str());
+    const std::string third("3rd");
+
+    v->write(0,
+             reinterpret_cast<const uint8_t*>(first.data()),
+             first.size());
+    v->write(first.size(),
+             reinterpret_cast<const uint8_t*>(second.data()),
+             second.size());
+    v->write(first.size() + second.size(),
+             reinterpret_cast<const uint8_t*>(third.data()),
+             third.size());
+
+    auto check([&](const std::string& pattern,
+                   size_t off)
+               {
+                   std::vector<char> rbuf(pattern.size());
+                   v->read(off,
+                           reinterpret_cast<uint8_t*>(rbuf.data()),
+                           rbuf.size());
+                   EXPECT_EQ(pattern,
+                             std::string(rbuf.data(),
+                                         rbuf.size()));
+               });
+
+    check(first, 0);
+    check(second, first.size());
+    check(third, first.size() + second.size());
+    check("\0\0\0\0", first.size() + second.size() + third.size());
 }
 
 namespace

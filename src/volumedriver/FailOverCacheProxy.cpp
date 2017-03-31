@@ -235,7 +235,7 @@ FailOverCacheProxy::getObject_(SCOProcessorFun processor,
 
             int32_t size = (int32_t) bal;
             buf.store(stream_.getSink(), size);
-            processor(cli, lba, buf.data(), size);
+            processor(cli, Lba(lba), buf.data(), size);
             ret += size;
         }
     }

@@ -217,13 +217,13 @@ ClusterAddress WriteOnlyVolume::addr2CA(const uint64_t addr) const
     return addr / getClusterSize();
 }
 
-uint64_t WriteOnlyVolume::LBA2Addr(const uint64_t lba) const
+uint64_t WriteOnlyVolume::LBA2Addr(const Lba lba) const
 {
     return (lba & caMask_) * getLBASize();
 }
 
 void
-WriteOnlyVolume::validateIOLength(uint64_t lba, uint64_t len) const
+WriteOnlyVolume::validateIOLength(const Lba lba, uint64_t len) const
 {
     if (lba + len / getLBASize() > getLBACount())
     {
@@ -236,7 +236,7 @@ WriteOnlyVolume::validateIOLength(uint64_t lba, uint64_t len) const
 }
 
 void
-WriteOnlyVolume::validateIOAlignment(uint64_t lba, uint64_t len) const
+WriteOnlyVolume::validateIOAlignment(const Lba lba, uint64_t len) const
 {
     if (len % getClusterSize())
     {
@@ -264,7 +264,7 @@ WriteOnlyVolume::writeClusterMetaData_(ClusterAddress ca,
 
 
 void
-WriteOnlyVolume::write(uint64_t lba,
+WriteOnlyVolume::write(const Lba lba,
                        const uint8_t *buf,
                        uint64_t buflen)
 {
