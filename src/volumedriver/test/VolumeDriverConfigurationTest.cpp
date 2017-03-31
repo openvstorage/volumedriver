@@ -334,12 +334,12 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
         EXPECT_EQ(0U, hits);
         EXPECT_EQ(0U, misses);
 
-        writeToVolume(*v, 0, 4096, pattern);
+        writeToVolume(*v, Lba(0), 4096, pattern);
         const uint64_t test_times = 5;
 
         for(unsigned i = 0; i < test_times; ++i)
         {
-            checkVolume(*v, 0, 4096, pattern);
+            checkVolume(*v, Lba(0), 4096, pattern);
         }
 
         VolManager::get()->getClusterCache().get_stats(hits, misses, entries);
@@ -383,7 +383,7 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
 
         for(unsigned i = 0; i < test_times; ++i)
         {
-            checkVolume(*v, 0, 4096, pattern);
+            checkVolume(*v, Lba(0), 4096, pattern);
         }
 
         VolManager::get()->getClusterCache().get_stats(hits, misses, entries);
@@ -408,7 +408,7 @@ TEST_P(VolumeDriverConfigurationTest, mount_points)
         }
         for(unsigned i = 0; i < test_times; ++i)
         {
-            checkVolume(*v, 0, 4096, pattern);
+            checkVolume(*v, Lba(0), 4096, pattern);
         }
 
         VolManager::get()->getClusterCache().get_stats(hits, misses, entries);

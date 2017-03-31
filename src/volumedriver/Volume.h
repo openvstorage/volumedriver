@@ -21,6 +21,7 @@
 #include "DtlInSync.h"
 #include "FailOverCacheConfigWrapper.h"
 #include "FailOverCacheProxy.h"
+#include "Lba.h"
 #include "NSIDMap.h"
 #include "PerformanceCounters.h"
 #include "RestartContext.h"
@@ -126,7 +127,6 @@ public:
         return nsidmap_;
     }
 
-    uint64_t LBA2Addr(const uint64_t) const;
     ClusterAddress addr2CA(const uint64_t) const;
     uint64_t getSize() const;
     uint64_t getLBASize() const;
@@ -154,19 +154,33 @@ public:
 
     /** @exception IOException */
     void
-    validateIOLength(uint64_t lba, uint64_t len) const;
+    validateIOLength(const uint64_t off, uint64_t len) const;
 
     /** @exception IOException */
     void
-    validateIOAlignment(uint64_t lba, uint64_t len) const;
+    validateIOAlignment(const uint64_t off, uint64_t len) const;
 
     /** @exception IOException, MetaDataStoreException */
     DtlInSync
-    write(uint64_t lba, const uint8_t *buf, uint64_t len);
+    write(const Lba,
+          const uint8_t *buf,
+          uint64_t len);
+
+    DtlInSync
+    write(const uint64_t off,
+          const uint8_t *buf,
+          uint64_t len);
 
    /** @exception IOException, MetaDataStoreException */
     void
-    read(uint64_t lba, uint8_t *buf, uint64_t len);
+    read(const Lba,
+         uint8_t *buf,
+         uint64_t len);
+
+    void
+    read(const uint64_t off,
+         uint8_t *buf,
+         uint64_t len);
 
     /** @exception IOException */
     DtlInSync
@@ -527,7 +541,9 @@ private:
     // - write_lock_ is required to prevent write throttling from delaying reads,
     //   which together with the write_lock_ boils down to a single write / multiple reads
     //   for the moment.
-    // -> lock order: write_lock_ before rwlock
+    // - unaligned_lock_  is taken by unaligned writes to prevent RMW (the read part happens
+    //   outside the write_lock_) from interfering with writes to the same cluster
+    // -> lock order: unaligned_lock_ > write_lock_ > rwlock_
     typedef boost::mutex lock_type;
     mutable lock_type write_lock_;
 
@@ -542,6 +558,7 @@ private:
     // desirable (vs. boost's shared mutex which is fair towards writers but
     // does not perform as well in the absence of writers).
     mutable fungi::RWLock rwlock_;
+    mutable fungi::RWLock unaligned_lock_;
 
     bool halted_;
 
@@ -551,8 +568,6 @@ private:
     std::unique_ptr<FailOverCacheClientInterface> failover_;
 
     std::unique_ptr<MetaDataStoreInterface> metaDataStore_;
-
-    uint64_t caMask_; // to be used with LBAs!
 
     const ClusterSize clusterSize_;
 
@@ -743,6 +758,11 @@ private:
 
     PrefetchData&
     get_prefetch_data_();
+
+    DtlInSync
+    write_aligned_(const uint64_t off,
+                   const uint8_t *buf,
+                   uint64_t len);
 };
 
 using SharedVolumePtr = std::shared_ptr<Volume>;

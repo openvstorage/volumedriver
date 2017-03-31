@@ -107,7 +107,7 @@ TEST_P(Test1, DISABLED_filedescriptors)
     ASSERT_TRUE(v2 != nullptr);
 
     writeToVolume(*v2,
-                  0,
+                  Lba(0),
                   4096,
                   "foo");
 
@@ -115,7 +115,7 @@ TEST_P(Test1, DISABLED_filedescriptors)
     v2->createSnapshot(snapname);
 
     writeToVolume(*v2,
-                  0,
+                  Lba(0),
                   4096,
                   "bar");
 

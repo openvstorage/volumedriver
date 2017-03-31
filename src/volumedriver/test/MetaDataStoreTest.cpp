@@ -651,7 +651,7 @@ TEST_P(MetaDataStoreTest, DataStoreMap)
 			     ns);
 
     // This depends on clustersize, sectorsize and such!!
-    writeToVolume(*vol_, 0, 8192, "pattern");
+    writeToVolume(*vol_, Lba(0), 8192, "pattern");
     Counter c;
     vol_->scheduleBackendSync();
     waitForThisBackendWrite(*vol_);
@@ -661,9 +661,9 @@ TEST_P(MetaDataStoreTest, DataStoreMap)
 
     ASSERT_EQ(2U, c.map.size());
 
-    writeToVolume(*vol_,0, 4096, "pattern");
+    writeToVolume(*vol_,Lba(0), 4096, "pattern");
 
-    writeToVolume(*vol_, 13,4096,"pattern");
+    writeToVolume(*vol_, Lba(13), 4096,"pattern");
 
     c.map.clear();
     vol_->scheduleBackendSync();
@@ -673,7 +673,7 @@ TEST_P(MetaDataStoreTest, DataStoreMap)
                                                        100000));
     ASSERT_EQ(3U, c.map.size());
 
-    writeToVolume(*vol_, 25,4096,"pattern");
+    writeToVolume(*vol_, Lba(25),4096,"pattern");
 
     c.map.clear();
     vol_->scheduleBackendSync();

@@ -223,13 +223,13 @@ public:
         }
 
         writeToVolume(*vol_,
-                      0,
+                      Lba(0),
                       size,
                       pattern);
 
         breakCurrentSCO();
 
-        uint64_t off = size / vol_->getLBASize();
+        Lba off(size / vol_->getLBASize());
         unsigned cnt = 1;
 
         if (with_foc)
@@ -240,7 +240,7 @@ public:
                           pattern);
 
             checkVolume(*vol_,
-                        0,
+                        Lba(0),
                         2 * size,
                         pattern);
 
@@ -252,13 +252,13 @@ public:
         }
 
         EXPECT_THROW(writeToVolume(*vol_,
-                                   (size * cnt) / vol_->getLBASize(),
+                                   Lba((size * cnt) / vol_->getLBASize()),
                                    size,
                                    pattern),
                      std::exception);
 
         EXPECT_THROW(checkVolume(*vol_,
-                                 0,
+                                 Lba(0),
                                  size * cnt,
                                  pattern),
                      std::exception);
@@ -298,7 +298,7 @@ public:
         const std::string pattern("abc");
 
         writeToVolume(*vol_,
-                      0,
+                      Lba(0),
                       size,
                       pattern);
 
@@ -327,7 +327,7 @@ public:
         if (with_foc || disposable)
         {
             checkVolume(*vol_,
-                        0,
+                        Lba(0),
                         size,
                         pattern);
 
@@ -336,7 +336,7 @@ public:
             scocorrupter(sco_to_break);
 
             EXPECT_THROW(checkVolume(*vol_,
-                                     0,
+                                     Lba(0),
                                      vol_->getClusterSize(),
                                      pattern),
                          std::exception);
@@ -344,7 +344,7 @@ public:
             EXPECT_EQ(0U, getMountPointList().size());
 
             EXPECT_THROW(writeToVolume(*vol_,
-                                       0,
+                                       Lba(0),
                                        vol_->getClusterSize(),
                                        pattern),
                          std::exception) <<
@@ -353,7 +353,7 @@ public:
         else
         {
             EXPECT_THROW(checkVolume(*vol_,
-                                     0,
+                                     Lba(0),
                                      size,
                                      pattern),
                          std::exception);
@@ -382,7 +382,7 @@ public:
         std::string pattern("abcd");
 
         writeToVolume(*vol_,
-                      0,
+                      Lba(0),
                       size,
                       pattern);
 
@@ -422,14 +422,14 @@ public:
             blocker.reset(new ScopedBackendBlocker(this, *vol_));
 
             checkVolume(*vol_,
-                        0,
+                        Lba(0),
                         size,
                         pattern);
 
             pattern = "efgh";
 
             writeToVolume(*vol_,
-                          0,
+                          Lba(0),
                           size,
                           pattern);
 
@@ -448,7 +448,7 @@ public:
         sleep(10);
 
         EXPECT_THROW(checkVolume(*vol_,
-                                 0,
+                                 Lba(0),
                                  size,
                                  pattern),
                      std::exception);
@@ -483,7 +483,7 @@ public:
         }
 
         writeToVolume(*vol_,
-                      0,
+                      Lba(0),
                       size,
                       pattern);
 
@@ -507,13 +507,13 @@ public:
         removeSCOAndBreakMountPoint_(loc.sco());
 
         EXPECT_NO_THROW(checkVolume(*vol_,
-                                    0,
+                                    Lba(0),
                                     size,
                                     pattern));
 
         EXPECT_EQ(1U, getMountPointList().size());
         ASSERT_NO_THROW(writeToVolume(*vol_,
-                                      size / vol_->getLBASize(),
+                                      Lba(size / vol_->getLBASize()),
                                       size,
                                       pattern));
 
@@ -525,7 +525,7 @@ public:
         removeSCOAndBreakMountPoint_(loc.sco());
 
         EXPECT_THROW(checkVolume(*vol_,
-                                 0,
+                                 Lba(0),
                                  size,
                                  pattern),
                      std::exception);
@@ -533,7 +533,7 @@ public:
         EXPECT_EQ(0U, getMountPointList().size());
 
         EXPECT_THROW(writeToVolume(*vol_,
-                                   0,
+                                   Lba(0),
                                    size,
                                    pattern),
                      std::exception) <<
@@ -553,9 +553,9 @@ public:
         ASSERT_THROW(vol_->checkNotHalted_(),
                      std::exception);
 
-        ASSERT_THROW(vol_->read(0, &buf[0], buf.size()),
+        ASSERT_THROW(vol_->read(Lba(0), &buf[0], buf.size()),
                      std::exception);
-        ASSERT_THROW(vol_->write(0, &buf[0], buf.size()),
+        ASSERT_THROW(vol_->write(Lba(0), &buf[0], buf.size()),
                      std::exception);
         ASSERT_THROW(vol_->scheduleBackendSync(),
                      std::exception);
@@ -748,7 +748,7 @@ TEST_P(ErrorHandlingTest, cleanupError)
     size_t size = 2 * mp_size_ - (2 * sco_size_);
 
     writeToVolume(*vol_,
-                  0,
+                  Lba(0),
                   size,
                   pattern);
 
@@ -793,7 +793,7 @@ TEST_P(ErrorHandlingTest, cleanupError)
     for (size_t i = 0; i < size; i += sco_size_)
     {
         checkVolume(*vol_,
-                    i % lba_size_,
+                    Lba(i % lba_size_),
                     sco_size_,
                     pattern);
         cache->cleanup();
@@ -804,7 +804,7 @@ TEST_P(ErrorHandlingTest, cleanupError)
     size = (size / sco_size_) * sco_size_;
 
     writeToVolume(*vol_,
-                  0,
+                  Lba(0),
                   size,
                   pattern);
 
@@ -843,7 +843,7 @@ TEST_P(ErrorHandlingTest, cleanupError)
     //              std::exception);
 
     EXPECT_THROW(writeToVolume(*vol_,
-                               0,
+                               Lba(0),
                                lba_size_ * cluster_mult_,
                                pattern),
                  std::exception);
@@ -867,7 +867,7 @@ TEST_P(ErrorHandlingTest, haltedVolume)
 
     const size_t size = sco_size_ / 2;
     writeToVolume(*vol_,
-                  0,
+                  Lba(0),
                   size,
                   "blah");
 

@@ -110,7 +110,7 @@ public:
                                                    ns_ptr->ns());
 
         writeToVolume(*v,
-                      0,
+                      Lba(0),
                       4096,
                       "bad");
 
@@ -195,7 +195,7 @@ TEST_P(DestroyVolumeTest, test_errors_when_deleting_mdstore)
                                                 ns);
 
     writeToVolume(*v1,
-                  0,
+                  Lba(0),
                   4096,
                   "bad");
 
@@ -237,7 +237,7 @@ TEST_P(DestroyVolumeTest, test_errors_when_deleting_tlogs)
                                                 ns);
 
     writeToVolume(*v1,
-                  0,
+                  Lba(0),
                   4096,
                   "bad");
 

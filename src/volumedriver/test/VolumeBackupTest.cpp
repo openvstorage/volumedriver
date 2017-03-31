@@ -514,7 +514,7 @@ TEST_P(VolumeBackupTest, simple_backup_restore)
     SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns1);
 
-    writeToVolume(*v, 0, 4096,"immanuel");
+    writeToVolume(*v, Lba(0), 4096,"immanuel");
 
     const SnapshotName snap1("snap1");
 
@@ -559,7 +559,7 @@ TEST_P(VolumeBackupTest, simple_backup_restore)
     v1 = restartVolumeFromBackup(restore_to);
     ASSERT_TRUE(v1 != nullptr);
 
-    checkVolume(*v1,0, 4096, "immanuel");
+    checkVolume(*v1, Lba(0), 4096, "immanuel");
     removeVolumeCompletely(v1);
 }
 
@@ -573,7 +573,7 @@ TEST_P(VolumeBackupTest, report_threshold)
 
     for(unsigned i = 0; i < 32; ++i)
     {
-        writeToVolume(*v, 0, 4096,"immanuel");
+        writeToVolume(*v, Lba(0), 4096,"immanuel");
     }
 
     const SnapshotName snap1("snap1");
@@ -622,7 +622,7 @@ TEST_P(VolumeBackupTest, report_threshold)
     v1 = restartVolumeFromBackup(restore_to);
     ASSERT_TRUE(v1 != nullptr);
 
-    checkVolume(*v1,0, 4096, "immanuel");
+    checkVolume(*v1, Lba(0), 4096, "immanuel");
     removeVolumeCompletely(v1);
 }
 
@@ -634,7 +634,7 @@ TEST_P(VolumeBackupTest, backup_backup)
     SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns1);
 
-    writeToVolume(*v, 0, 4096,"immanuel");
+    writeToVolume(*v, Lba(0), 4096,"immanuel");
 
     const SnapshotName snap1("snap1");
 
@@ -683,7 +683,7 @@ TEST_P(VolumeBackupTest, backup_backup)
     v1 = restartVolumeFromBackup(restore_to);
     ASSERT_TRUE(v1 != nullptr);
 
-    checkVolume(*v1,0, 4096, "immanuel");
+    checkVolume(*v1, Lba(0), 4096, "immanuel");
     removeVolumeCompletely(v1);
 }
 
@@ -695,13 +695,13 @@ TEST_P(VolumeBackupTest, backup_backup2)
     SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns1);
 
-    writeToVolume(*v, 0, 4096,"immanuel");
+    writeToVolume(*v, Lba(0), 4096,"immanuel");
 
     const SnapshotName snap1("snap1");
 
     v->createSnapshot(snap1);
 
-    writeToVolume(*v, 0, 8192,"bartdv");
+    writeToVolume(*v, Lba(0), 8192,"bartdv");
     waitForThisBackendWrite(*v);
 
     const SnapshotName snap2("snap2");
@@ -793,7 +793,7 @@ TEST_P(VolumeBackupTest, backup_backup2)
     v1 = restartVolumeFromBackup(restore_to);
     ASSERT_TRUE(v1 != nullptr);
 
-    checkVolume(*v1,0, 4096, "bartdv");
+    checkVolume(*v1, Lba(0), 4096, "bartdv");
     removeVolumeCompletely(v1);
 }
 
@@ -805,15 +805,15 @@ TEST_P(VolumeBackupTest, delete_snapshot)
     SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns);
 
-    writeToVolume(*v, 0, 4096,"immanuel");
+    writeToVolume(*v, Lba(0), 4096,"immanuel");
     const SnapshotName snap1("snap1");
     v->createSnapshot(snap1);
     waitForThisBackendWrite(*v);
-    writeToVolume(*v, 8, 4096,"arne");
+    writeToVolume(*v, Lba(8), 4096,"arne");
     const SnapshotName snap2("snap2");
     v->createSnapshot(snap2);
     waitForThisBackendWrite(*v);
-    writeToVolume(*v, 0, 2*4096,"bart");
+    writeToVolume(*v, Lba(0), 2*4096,"bart");
 
     Namespace ns2;
     ensure_target_namespace(ns2);
@@ -853,8 +853,8 @@ TEST_P(VolumeBackupTest, delete_snapshot)
     v1=restartVolumeFromBackup(restore_to);
     ASSERT_TRUE(v1 != nullptr);
 
-    checkVolume(*v1,0, 4096, "immanuel");
-    checkVolume(*v1,8, 4096, "arne");
+    checkVolume(*v1, Lba(0), 4096, "immanuel");
+    checkVolume(*v1, Lba(8), 4096, "arne");
     removeVolumeCompletely(v1);
     restore_to_ptr.reset();
 
@@ -880,15 +880,15 @@ TEST_P(VolumeBackupTest, delete_snapshot_has_no_influence_on_restore)
     SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns);
 
-    writeToVolume(*v, 0, 4096,"immanuel");
+    writeToVolume(*v, Lba(0), 4096,"immanuel");
     const SnapshotName snap1("snap1");
     v->createSnapshot(snap1);
     waitForThisBackendWrite(*v);
-    writeToVolume(*v, 8, 4096,"arne");
+    writeToVolume(*v, Lba(8), 4096,"arne");
     const SnapshotName snap2("snap2");
     v->createSnapshot(snap2);
     waitForThisBackendWrite(*v);
-    writeToVolume(*v, 0, 2*4096,"bart");
+    writeToVolume(*v, Lba(0), 2*4096,"bart");
 
     Namespace ns2;
     ensure_target_namespace(ns2);
@@ -936,8 +936,8 @@ TEST_P(VolumeBackupTest, delete_snapshot_has_no_influence_on_restore)
     v1=restartVolumeFromBackup(restore_to);
     ASSERT_TRUE(v1 != nullptr);
 
-    checkVolume(*v1,0, 4096, "immanuel");
-    checkVolume(*v1,8, 4096, "arne");
+    checkVolume(*v1, Lba(0), 4096, "immanuel");
+    checkVolume(*v1, Lba(8), 4096, "arne");
     removeVolumeCompletely(v1);
 }
 
@@ -949,7 +949,7 @@ TEST_P(VolumeBackupTest, start_and_end_snap_are_the_same)
     SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns1);
 
-    writeToVolume(*v, 0, 4096,"immanuel");
+    writeToVolume(*v, Lba(0), 4096,"immanuel");
 
     const SnapshotName snap1("snap1");
     v->createSnapshot(snap1);
@@ -982,7 +982,7 @@ TEST_P(VolumeBackupTest, start_and_end_snap_are_the_same)
                                       4096));
 
     // Do an incremental backup to ns2
-    writeToVolume(*v, 0, 4096,"bart");
+    writeToVolume(*v, Lba(0), 4096,"bart");
 
     const SnapshotName snap2("snap2");
 
@@ -1021,7 +1021,7 @@ TEST_P(VolumeBackupTest, start_and_end_snap_are_the_same)
 
     SharedVolumePtr v1 = 0;
     v1 = restartVolumeFromBackup(restore_to);
-    checkVolume(*v1,0, 4096, "bart");
+    checkVolume(*v1, Lba(0), 4096, "bart");
     removeVolumeCompletely(v1);
 }
 
@@ -1033,7 +1033,7 @@ TEST_P(VolumeBackupTest, end_snapshot_negotiation)
     SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns1);
 
-    writeToVolume(*v, 0, 4096,"immanuel");
+    writeToVolume(*v, Lba(0), 4096,"immanuel");
 
     const SnapshotName snap1("snap1");
 
@@ -1041,7 +1041,7 @@ TEST_P(VolumeBackupTest, end_snapshot_negotiation)
 
     waitForThisBackendWrite(*v);
 
-    writeToVolume(*v, 0, 4096,"bart");
+    writeToVolume(*v, Lba(0), 4096,"bart");
 
     const SnapshotName snap2("snap2");
 
@@ -1075,7 +1075,7 @@ TEST_P(VolumeBackupTest, end_snapshot_negotiation)
     v1 = restartVolumeFromBackup(restore_to);
     ASSERT_TRUE(v1 != nullptr);
 
-    checkVolume(*v1,0, 4096, "bart");
+    checkVolume(*v1, Lba(0), 4096, "bart");
     removeVolumeCompletely(v1);
 }
 
@@ -1087,7 +1087,7 @@ TEST_P(VolumeBackupTest, restore_to_backup)
     SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns1);
 
-    writeToVolume(*v, 0, 4096,"immanuel");
+    writeToVolume(*v, Lba(0), 4096,"immanuel");
 
     const SnapshotName snap1("snap1");
 
@@ -1128,7 +1128,7 @@ TEST_P(VolumeBackupTest, backup_fails_when_guids_do_not_match)
     SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns1);
 
-    writeToVolume(*v, 0, 4096,"immanuel");
+    writeToVolume(*v, Lba(0), 4096,"immanuel");
 
     const SnapshotName snap1("snap1");
 
@@ -1151,7 +1151,7 @@ TEST_P(VolumeBackupTest, backup_fails_when_guids_do_not_match)
     v->createSnapshot(snap1);
     waitForThisBackendWrite(*v);
 
-    writeToVolume(*v,0, 4096,"arne");
+    writeToVolume(*v, Lba(0), 4096,"arne");
     const SnapshotName snap2("snap2");
     v->createSnapshot(snap2);
     waitForThisBackendWrite(*v);
@@ -1177,7 +1177,7 @@ TEST_P(VolumeBackupTest, change_name_and_test_no_restore_from_incremental)
     VolumeConfig cfg = v->get_config();
 
     (void)v;
-    writeToVolume(*v, 0, 4096,"immanuel");
+    writeToVolume(*v, Lba(0), 4096,"immanuel");
 
     const SnapshotName snap1("snap1");
 
@@ -1256,10 +1256,10 @@ TEST_P(VolumeBackupTest, incremental_with_snapshot_negotiation)
     SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           source_ns);
 
-    writeToVolume(*v, 0, 4096,"immanuel");
+    writeToVolume(*v, Lba(0), 4096,"immanuel");
 
     v->createSnapshot(SnapshotName("snap1"));
-    writeToVolume(*v, 0, 4096,"arne");
+    writeToVolume(*v, Lba(0), 4096,"arne");
     waitForThisBackendWrite(*v);
 
     Namespace backup_ns;
@@ -1284,12 +1284,12 @@ TEST_P(VolumeBackupTest, incremental_with_snapshot_negotiation)
 
         SharedVolumePtr v1 = restartVolumeFromBackup(restore_ns);
         ASSERT_TRUE(v1 != nullptr);
-        checkVolume(*v1,0, 4096, "immanuel");
+        checkVolume(*v1, Lba(0), 4096, "immanuel");
         removeVolumeCompletely(v1);
     }
 
     v->createSnapshot(SnapshotName("snap2"));
-    writeToVolume(*v, 0, 4096,"immanuel");
+    writeToVolume(*v, Lba(0), 4096,"immanuel");
     waitForThisBackendWrite(*v);
 
     create_backup_config(backup_ns,
@@ -1311,7 +1311,7 @@ TEST_P(VolumeBackupTest, incremental_with_snapshot_negotiation)
 
         SharedVolumePtr v1 = restartVolumeFromBackup(restore_ns);
         ASSERT_TRUE(v1 != nullptr);
-        checkVolume(*v1,0, 4096, "arne");
+        checkVolume(*v1, Lba(0), 4096, "arne");
         removeVolumeCompletely(v1);
     }
 }
@@ -1326,7 +1326,7 @@ TEST_P(VolumeBackupTest, incremental_with_faulty_snapshot)
 
 
     (void)v;
-    writeToVolume(*v, 0, 4096,"immanuel");
+    writeToVolume(*v, Lba(0), 4096,"immanuel");
 
     v->createSnapshot(SnapshotName("snap1"));
 
@@ -1354,7 +1354,7 @@ TEST_P(VolumeBackupTest, incremental_with_faulty_snapshot)
 
     SharedVolumePtr v1 = restartVolumeFromBackup(restore_to);
     ASSERT_TRUE(v1 != nullptr);
-    checkVolume(*v1,0, 4096, "immanuel");
+    checkVolume(*v1, Lba(0), 4096, "immanuel");
     removeVolumeCompletely(v1);
     v1 = 0;
 
@@ -1362,9 +1362,9 @@ TEST_P(VolumeBackupTest, incremental_with_faulty_snapshot)
     v->createSnapshot(SnapshotName("snap1"));
     waitForThisBackendWrite(*v);
 
-    writeToVolume(*v, 0, 4096,"arne");
+    writeToVolume(*v, Lba(0), 4096,"arne");
     v->createSnapshot(SnapshotName("snap2"));
-    writeToVolume(*v, 0, 4096,"immanuel");
+    writeToVolume(*v, Lba(0), 4096,"immanuel");
     waitForThisBackendWrite(*v);
 
     restore_to_ptr = make_random_namespace();
@@ -1384,7 +1384,7 @@ TEST_P(VolumeBackupTest, incremental_with_faulty_snapshot)
 
     v1 = restartVolumeFromBackup(restore_to_2);
     ASSERT_TRUE(v1 != nullptr);
-    checkVolume(*v1,0, 4096, "immanuel");
+    checkVolume(*v1, Lba(0), 4096, "immanuel");
     removeVolumeCompletely(v1);
 }
 
@@ -1396,14 +1396,14 @@ TEST_P(VolumeBackupTest, string_of_incremental_backup_restore)
     SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           source_ns);
 
-    writeToVolume(*v, 0, 4096, "immanuel");
+    writeToVolume(*v, Lba(0), 4096, "immanuel");
 
     const SnapshotName snap1("snap1");
     v->createSnapshot(snap1);
 
     waitForThisBackendWrite(*v);
 
-    writeToVolume(*v,0, 4096, "arne");
+    writeToVolume(*v, Lba(0), 4096, "arne");
 
     Namespace backup_ns;
     create_backup_config(backup_ns,
@@ -1429,12 +1429,12 @@ TEST_P(VolumeBackupTest, string_of_incremental_backup_restore)
         SharedVolumePtr v1 = restartVolumeFromBackup(restore_ns);
         ASSERT_TRUE(v1 != nullptr);
 
-        checkVolume(*v1, 0, 4096, "immanuel");
+        checkVolume(*v1, Lba(0), 4096, "immanuel");
         removeVolumeCompletely(v1);
     }
 
-    writeToVolume(*v, 0, 4096, "arne");
-    writeToVolume(*v, 8, 4096, "bart");
+    writeToVolume(*v, Lba(0), 4096, "arne");
+    writeToVolume(*v, Lba(8), 4096, "bart");
 
     const SnapshotName snap2("snap2");
     v->createSnapshot(snap2);
@@ -1461,8 +1461,8 @@ TEST_P(VolumeBackupTest, string_of_incremental_backup_restore)
 
         SharedVolumePtr v1 = restartVolumeFromBackup(restore_ns);
         ASSERT_TRUE(v1 != nullptr);
-        checkVolume(*v1, 0, 4096, "arne");
-        checkVolume(*v1, 8, 4096, "bart");
+        checkVolume(*v1, Lba(0), 4096, "arne");
+        checkVolume(*v1, Lba(8), 4096, "bart");
         removeVolumeCompletely(v1);
     }
 }
@@ -1475,15 +1475,15 @@ TEST_P(VolumeBackupTest, simple_incremental_and_apply)
     SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns1);
 
-    writeToVolume(*v, 0, 4096,"immanuel");
+    writeToVolume(*v, Lba(0), 4096,"immanuel");
     const SnapshotName snap1("snap1");
     v->createSnapshot(snap1);
     waitForThisBackendWrite(*v);
-    writeToVolume(*v, 8, 4096,"arne");
+    writeToVolume(*v, Lba(8), 4096,"arne");
     const SnapshotName snap2("snap2");
     v->createSnapshot(snap2);
     waitForThisBackendWrite(*v);
-    writeToVolume(*v, 0, 2*4096,"bart");
+    writeToVolume(*v, Lba(0), 2*4096,"bart");
     Namespace ns2;
     create_backup_config(ns2,
                          ns1,
@@ -1530,8 +1530,8 @@ TEST_P(VolumeBackupTest, simple_incremental_and_apply)
     v1=restartVolumeFromBackup(restore_to);
     ASSERT_TRUE(v1 != nullptr);
 
-    checkVolume(*v1,0, 4096, "immanuel");
-    checkVolume(*v1,8, 4096, "arne");
+    checkVolume(*v1, Lba(0), 4096, "immanuel");
+    checkVolume(*v1, Lba(8), 4096, "arne");
     removeVolumeCompletely(v1);
 }
 
@@ -1543,7 +1543,7 @@ TEST_P(VolumeBackupTest, simple_backup_restore_with_clones)
     SharedVolumePtr v = newVolume(VolumeId("volume1"),
                           ns1);
 
-    writeToVolume(*v, 0, 4096,"immanuel");
+    writeToVolume(*v, Lba(0), 4096,"immanuel");
 
     const SnapshotName snap1("snap1");
 
@@ -1558,7 +1558,7 @@ TEST_P(VolumeBackupTest, simple_backup_restore_with_clones)
                      ns1,
                      snap1);
 
-    writeToVolume(*c1, 8, 4096, "arne");
+    writeToVolume(*c1, Lba(8), 4096, "arne");
     c1->createSnapshot(snap1);
     waitForThisBackendWrite(*c1);
     auto ns3_ptr = make_random_namespace();
@@ -1570,7 +1570,7 @@ TEST_P(VolumeBackupTest, simple_backup_restore_with_clones)
                      clone_ns1,
                      snap1);
 
-    writeToVolume(*c2, 16, 4096,"bart");
+    writeToVolume(*c2, Lba(16), 4096,"bart");
     c2->createSnapshot(snap1);
     waitForThisBackendWrite(*c2);
 
@@ -1600,9 +1600,9 @@ TEST_P(VolumeBackupTest, simple_backup_restore_with_clones)
     SharedVolumePtr v1 = restartVolumeFromBackup(restore_to);
     ASSERT_TRUE(v1 != nullptr);
 
-    checkVolume(*v1,0, 4096, "immanuel");
-    checkVolume(*v1,8, 4096, "arne");
-    checkVolume(*v1,16, 4096, "bart");
+    checkVolume(*v1, Lba(0), 4096, "immanuel");
+    checkVolume(*v1, Lba(8), 4096, "arne");
+    checkVolume(*v1, Lba(16), 4096, "bart");
     removeVolumeCompletely(v1);
 }
 
@@ -1616,7 +1616,7 @@ TEST_P(VolumeBackupTest, impotence_test)
     SharedVolumePtr v = newVolume(vid1,
                           ns1);
 
-    writeToVolume(*v, 0, 4096,"immanuel");
+    writeToVolume(*v, Lba(0), 4096,"immanuel");
 
     const SnapshotName snap1("snap1");
 
@@ -1639,7 +1639,7 @@ TEST_P(VolumeBackupTest, impotence_test)
     ASSERT_NO_THROW(check_backup_info(ns2,
                                       0));
 
-    writeToVolume(*v, 0, 4096,"bart");
+    writeToVolume(*v, Lba(0), 4096,"bart");
 
     const SnapshotName snap2("snap2");
 
@@ -1671,7 +1671,7 @@ TEST_P(VolumeBackupTest, impotence_test)
     v1 = restartVolumeFromBackup(restore_to);
     ASSERT_TRUE(v1 != nullptr);
 
-    checkVolume(*v1,0, 4096, "bart");
+    checkVolume(*v1, Lba(0), 4096, "bart");
     removeVolumeCompletely(v1);
 }
 
@@ -1685,7 +1685,7 @@ TEST_P(VolumeBackupTest, fix_backend)
     SharedVolumePtr v = newVolume(vid1,
                           ns1);
 
-    writeToVolume(*v, 0, 4096,"immanuel");
+    writeToVolume(*v, Lba(0), 4096,"immanuel");
 
     const SnapshotName snap1("snap1");
 

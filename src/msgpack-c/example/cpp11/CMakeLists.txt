@@ -8,6 +8,12 @@ IF (MSGPACK_CXX11)
         non_def_con_class.cpp
     )
 
+    IF ("${MSGPACK_DEFAULT_API_VERSION}" GREATER "1")
+        LIST (APPEND exec_PROGRAMS
+            socket_stream_example.cpp
+        )
+    ENDIF ()
+
     FOREACH (source_file ${exec_PROGRAMS})
         GET_FILENAME_COMPONENT (source_file_we ${source_file} NAME_WE)
         ADD_EXECUTABLE (

@@ -564,7 +564,7 @@ TEST_P(DataStoreNGTest, checksum)
         SCOPED_BLOCK_BACKEND(*vol_);
 
         writeToVolume(*vol_,
-                      0,
+                      Lba(0),
                       size,
                       pattern);
 

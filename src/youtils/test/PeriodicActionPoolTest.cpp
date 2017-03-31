@@ -12,11 +12,14 @@
 // the LICENSE.txt file of the Open vStorage OSE distribution.
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
+
 #include "../Logging.h"
 #include "../PeriodicActionPool.h"
-#include <gtest/gtest.h>
 #include "../Timer.h"
 
+#include <gtest/gtest.h>
+
+#include <boost/thread/reverse_lock.hpp>
 #include <boost/thread/future.hpp>
 
 namespace youtilstest
@@ -69,10 +72,10 @@ TEST_F(PeriodicActionPoolTest, basics)
 
     std::atomic<uint64_t> period(10);
 
-    std::unique_ptr<PeriodicActionPool::Task> t(pool->create_task("counter",
-                                                                  std::move(fun),
-                                                                  period,
-                                                                  false));
+    PeriodicActionPool::Task t(pool->create_task("counter",
+                                                 std::move(fun),
+                                                 period,
+                                                 false));
 
     EXPECT_TRUE(future.get());
 }
@@ -99,10 +102,10 @@ TEST_F(PeriodicActionPoolTest, cancellation)
 
     std::atomic<uint64_t> period(3600);
 
-    std::unique_ptr<PeriodicActionPool::Task> t(pool->create_task("LongPeriod",
-                                                                  std::move(fun),
-                                                                  period,
-                                                                  true));
+    PeriodicActionPool::Task t(pool->create_task("LongPeriod",
+                                                 std::move(fun),
+                                                 period,
+                                                 true));
 
     EXPECT_TRUE(future.get());
 }
@@ -131,7 +134,7 @@ TEST_F(PeriodicActionPoolTest, lotsa)
              });
 
     std::atomic<uint64_t> period(5);
-    std::vector<std::unique_ptr<PeriodicActionPool::Task>> vec;
+    std::vector<PeriodicActionPool::Task> vec;
     vec.reserve(ntasks);
 
     for (size_t i = 0; i < ntasks; ++i)
@@ -170,7 +173,7 @@ TEST_F(PeriodicActionPoolTest, ramp_up)
 
     SteadyTimer timer;
 
-    std::unique_ptr<PeriodicActionPool::Task>
+    PeriodicActionPool::Task
         task(pool->create_task("RampedUp",
                                fun,
                                period,
@@ -199,7 +202,7 @@ TEST_F(PeriodicActionPoolTest, self_termination)
 
     SteadyTimer timer;
 
-    std::unique_ptr<PeriodicActionPool::Task>
+    PeriodicActionPool::Task
         task(pool->create_task("OneShot",
                                fun,
                                period,
@@ -208,6 +211,86 @@ TEST_F(PeriodicActionPoolTest, self_termination)
     boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
     EXPECT_EQ(1,
               count);
+}
+
+TEST_F(PeriodicActionPoolTest, fast_cancellation)
+{
+    PeriodicActionPool::Ptr pool(PeriodicActionPool::create("TestPool",
+                                                            1));
+
+    boost::mutex mutex;
+    boost::condition_variable cond;
+
+    enum class State
+    {
+        Start,
+        Block,
+        Unblock,
+        Stop
+    };
+
+    State state = State::Start;
+
+    auto blocker_fun([&]() -> PeriodicActionContinue
+                     {
+                         boost::unique_lock<decltype(mutex)> u(mutex);
+                         state = State::Block;
+                         cond.notify_one();
+                         cond.wait(u,
+                                   [&]() -> bool
+                                   {
+                                       return state == State::Unblock;
+                                   });
+
+                         state = State::Stop;
+                         cond.notify_one();
+                         return PeriodicActionContinue::F;
+                     });
+
+    boost::unique_lock<decltype(mutex)> u(mutex);
+
+    const std::atomic<uint64_t> period(1);
+
+    PeriodicActionPool::Task
+        blocker(pool->create_task("Blocker",
+                                  std::move(blocker_fun),
+                                  period,
+                                  false));
+
+    cond.wait(u,
+              [&]() -> bool
+              {
+                  return state == State::Block;
+              });
+
+    {
+        boost::reverse_lock<decltype(u)> r(u);
+        bool ran = false;
+
+        auto blocked_fun([&]() -> PeriodicActionContinue
+                         {
+                             ran = true;
+                             return PeriodicActionContinue::T;
+                         });
+
+        PeriodicActionPool::Task
+            blocked(pool->create_task("Blocked",
+                                      std::move(blocked_fun),
+                                      period,
+                                      false,
+                                      std::chrono::milliseconds(0)));
+
+        EXPECT_FALSE(ran);
+    }
+
+    state = State::Unblock;
+    cond.notify_one();
+
+    cond.wait(u,
+              [&]() -> bool
+              {
+                  return state == State::Stop;
+              });
 }
 
 }

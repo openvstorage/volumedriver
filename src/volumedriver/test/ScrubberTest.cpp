@@ -149,8 +149,8 @@ TEST_P(ScrubberTest, DeletedSnap)
         ss << i;
         what = ss.str();
 
-        writeToVolume(*v1, 0, default_cluster_size(),what);
-        writeToVolume(*v1, 1 << 10, default_cluster_size(), what + "-" );
+        writeToVolume(*v1, Lba(0), default_cluster_size(),what);
+        writeToVolume(*v1, Lba(1ULL << 10), default_cluster_size(), what + "-" );
     }
 
     const SnapshotName snap1("snap1");
@@ -189,8 +189,8 @@ TEST_P(ScrubberTest, DeletedSnap2)
         ss << i;
         what = ss.str();
 
-        writeToVolume(*v1, 0, default_cluster_size(), what);
-        writeToVolume(*v1, 1 << 10, default_cluster_size(), what + "-" );
+        writeToVolume(*v1, Lba(0), default_cluster_size(), what);
+        writeToVolume(*v1, Lba(1ULL << 10), default_cluster_size(), what + "-" );
     }
 
     const SnapshotName snap1("snap1");
@@ -259,8 +259,8 @@ TEST_P(ScrubberTest, GetWork)
         ss << i;
         what = ss.str();
 
-        writeToVolume(*v1, 0, default_cluster_size(),what);
-        writeToVolume(*v1, 1 << 10, default_cluster_size(), what + "-" );
+        writeToVolume(*v1, Lba(0), default_cluster_size(),what);
+        writeToVolume(*v1, Lba(1ULL << 10), default_cluster_size(), what + "-" );
     }
 
     {
@@ -325,17 +325,17 @@ TEST_P(ScrubberTest, GetWork2)
                        ns);
 
     const SnapshotName snapa("A");
-    writeToVolume(*v, 0, default_cluster_size(), snapa);
+    writeToVolume(*v, Lba(0), default_cluster_size(), snapa);
     v->createSnapshot(snapa);
     waitForThisBackendWrite(*v);
 
     const SnapshotName snapb("B");
-    writeToVolume(*v, 0, default_cluster_size(), snapb);
+    writeToVolume(*v, Lba(0), default_cluster_size(), snapb);
     v->createSnapshot(snapb);
     waitForThisBackendWrite(*v);
 
     const SnapshotName snapc("C");
-    writeToVolume(*v, 0, default_cluster_size(), snapc);
+    writeToVolume(*v, Lba(0), default_cluster_size(), snapc);
     v->createSnapshot(snapc);
     waitForThisBackendWrite(*v);
 
@@ -442,8 +442,8 @@ TEST_P(ScrubberTest, Serialization)
         ss << i;
         what = ss.str();
 
-        writeToVolume(*v1, 0, default_cluster_size(),what);
-        writeToVolume(*v1, 1 << 10, default_cluster_size(), what + "-" );
+        writeToVolume(*v1, Lba(0), default_cluster_size(),what);
+        writeToVolume(*v1, Lba(1ULL << 10), default_cluster_size(), what + "-" );
     }
 
     const SnapshotName snap1("snap1");
@@ -463,8 +463,8 @@ TEST_P(ScrubberTest, Serialization)
     ASSERT_NO_THROW(apply_scrubbing(vid,
                                     scrub_result));
 
-    checkVolume(*v1, 0, default_cluster_size(),what);
-    checkVolume(*v1,1 << 10, default_cluster_size(), what + "-");
+    checkVolume(*v1, Lba(0), default_cluster_size(),what);
+    checkVolume(*v1, Lba(1ULL << 10), default_cluster_size(), what + "-");
     EXPECT_EQ(default_cluster_size() * 2,
               v1->getSnapshotBackendSize(snap1));
 }
@@ -496,8 +496,8 @@ TEST_P(ScrubberTest, ScrubNothing)
         ASSERT_EQ(0U, scrub_work_units.size());
     }
 
-    writeToVolume(*v1, 0, default_cluster_size(), "arner");
-    checkVolume(*v1, 0, default_cluster_size(), "arner");
+    writeToVolume(*v1, Lba(0), default_cluster_size(), "arner");
+    checkVolume(*v1, Lba(0), default_cluster_size(), "arner");
     destroyVolume(v1,
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::T);
@@ -522,7 +522,7 @@ TEST_P(ScrubberTest, SimpleScrub2)
         ss << i;
         what = ss.str();
 
-        writeToVolume(*v1, 0, default_cluster_size(),what);
+        writeToVolume(*v1, Lba(0), default_cluster_size(),what);
     }
 
     v1->createSnapshot(SnapshotName("snap1"));
@@ -535,7 +535,7 @@ TEST_P(ScrubberTest, SimpleScrub2)
     ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
     ASSERT_NO_THROW(apply_scrubbing(vid,
                                     scrub_result));
-    checkVolume(*v1, 0, default_cluster_size(),what);
+    checkVolume(*v1, Lba(0), default_cluster_size(),what);
 }
 
 TEST_P(ScrubberTest, SimpleScrub3)
@@ -557,8 +557,8 @@ TEST_P(ScrubberTest, SimpleScrub3)
         ss << i;
         what = ss.str();
 
-        writeToVolume(*v1, 0, default_cluster_size(),what);
-        writeToVolume(*v1, 1 << 10, default_cluster_size(), what + "-" );
+        writeToVolume(*v1, Lba(0), default_cluster_size(),what);
+        writeToVolume(*v1, Lba(1ULL << 10), default_cluster_size(), what + "-" );
     }
 
     v1->createSnapshot(SnapshotName("snap1"));
@@ -577,8 +577,8 @@ TEST_P(ScrubberTest, SimpleScrub3)
                                     scrub_result,
                                     ScrubbingCleanup::OnError));
 
-    checkVolume(*v1, 0, default_cluster_size(),what);
-    checkVolume(*v1,1 << 10, default_cluster_size(), what + "-");
+    checkVolume(*v1, Lba(0), default_cluster_size(),what);
+    checkVolume(*v1, Lba(1ULL << 10), default_cluster_size(), what + "-");
     destroyVolume(v1,
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::T);
@@ -604,9 +604,9 @@ TEST_P(ScrubberTest, SimpleScrub4)
         ss << i;
         what = ss.str();
 
-        writeToVolume(*v1, 0, default_cluster_size(),what);
-        writeToVolume(*v1, 1 << 10, default_cluster_size(), what + "-" );
-        writeToVolume(*v1, 1 << 15, default_cluster_size(), what + "--" );
+        writeToVolume(*v1, Lba(0), default_cluster_size(),what);
+        writeToVolume(*v1, Lba(1ULL << 10), default_cluster_size(), what + "-" );
+        writeToVolume(*v1, Lba(1ULL << 15), default_cluster_size(), what + "--" );
     }
 
     v1->createSnapshot(SnapshotName("snap1"));
@@ -623,9 +623,9 @@ TEST_P(ScrubberTest, SimpleScrub4)
     ASSERT_NO_THROW(apply_scrubbing(vid,
                                     scrub_result,
                                     ScrubbingCleanup::OnError));
-    checkVolume(*v1, 0, default_cluster_size(),what);
-    checkVolume(*v1,1 << 10, default_cluster_size(), what + "-");
-    checkVolume(*v1,1 << 15, default_cluster_size(), what + "--");
+    checkVolume(*v1, Lba(0), default_cluster_size(),what);
+    checkVolume(*v1, Lba(1ULL << 10), default_cluster_size(), what + "-");
+    checkVolume(*v1, Lba(1ULL << 15), default_cluster_size(), what + "--");
 }
 
 TEST_P(ScrubberTest, SmallRegionScrub1)
@@ -647,11 +647,11 @@ TEST_P(ScrubberTest, SmallRegionScrub1)
         ss << i;
         what = ss.str();
         writeToVolume(*v1,
-                      i * default_cluster_multiplier(),
+                      Lba(i * default_cluster_multiplier()),
                       default_cluster_size(),
                       what);
         writeToVolume(*v1,
-                      513 * default_cluster_multiplier(),
+                      Lba(513 * default_cluster_multiplier()),
                       default_cluster_size(),
                       "rest");
     }
@@ -676,12 +676,12 @@ TEST_P(ScrubberTest, SmallRegionScrub1)
         what = ss.str();
 
         checkVolume(*v1,
-                    i * default_cluster_multiplier(),
+                    Lba(i * default_cluster_multiplier()),
                     default_cluster_size(),
                     what);
     }
     checkVolume(*v1,
-                513 * default_cluster_multiplier(),
+                Lba(513 * default_cluster_multiplier()),
                 default_cluster_size(),
                 "rest");
 
@@ -703,14 +703,14 @@ TEST_P(ScrubberTest, CloneScrubbin)
 
     for(int i =0; i < num_writes; ++i)
     {
-        writeToVolume(*v1, 0, default_cluster_size(), "xxx");
-        writeToVolume(*v1, default_cluster_multiplier(), default_cluster_size(), "xxx");
-        writeToVolume(*v1, 2 * default_cluster_multiplier(), default_cluster_size(), "xxx");
+        writeToVolume(*v1, Lba(0), default_cluster_size(), "xxx");
+        writeToVolume(*v1, Lba(default_cluster_multiplier()), default_cluster_size(), "xxx");
+        writeToVolume(*v1, Lba(2 * default_cluster_multiplier()), default_cluster_size(), "xxx");
     }
 
-    writeToVolume(*v1, 0, default_cluster_size(), "bart");
-    writeToVolume(*v1, default_cluster_multiplier(), default_cluster_size(), "arne");
-    writeToVolume(*v1, 2 * default_cluster_multiplier(), default_cluster_size(), "immanuel");
+    writeToVolume(*v1, Lba(0), default_cluster_size(), "bart");
+    writeToVolume(*v1, Lba(default_cluster_multiplier()), default_cluster_size(), "arne");
+    writeToVolume(*v1, Lba(2 * default_cluster_multiplier()), default_cluster_size(), "immanuel");
 
     const SnapshotName v1_snap1("v1_snap1");
 
@@ -733,23 +733,23 @@ TEST_P(ScrubberTest, CloneScrubbin)
     for(int i = 0; i < num_writes; ++i)
     {
         writeToVolume(*c1,
-                      default_cluster_multiplier(),
+                      Lba(default_cluster_multiplier()),
                       default_cluster_size(),
                       "blah");
 
         writeToVolume(*c1,
-                      2 * default_cluster_multiplier(),
+                      Lba(2 * default_cluster_multiplier()),
                       default_cluster_size(),
                       "blah");
     }
 
     writeToVolume(*c1,
-                  default_cluster_multiplier(),
+                  Lba(default_cluster_multiplier()),
                   default_cluster_size(),
                   "joost");
 
     writeToVolume(*c1,
-                  2 * default_cluster_multiplier(),
+                  Lba(2 * default_cluster_multiplier()),
                   default_cluster_size(),
                   "wouter");
 
@@ -773,13 +773,13 @@ TEST_P(ScrubberTest, CloneScrubbin)
     for(int i = 0; i < num_writes; ++i)
     {
         writeToVolume(*c2,
-                      2 * default_cluster_multiplier(),
+                      Lba(2 * default_cluster_multiplier()),
                       default_cluster_size(),
                       "fubar");
     }
 
     writeToVolume(*c2,
-                  2 * default_cluster_multiplier(),
+                  Lba(2 * default_cluster_multiplier()),
                   default_cluster_size(),
                   "wim");
 
@@ -790,15 +790,15 @@ TEST_P(ScrubberTest, CloneScrubbin)
 
     auto check_volumes([&]
     {
-        checkVolume(*v1, 0, default_cluster_size(), "bart");
-        checkVolume(*v1, default_cluster_multiplier(), default_cluster_size(), "arne");
-        checkVolume(*v1, 2 * default_cluster_multiplier(), default_cluster_size(), "immanuel");
-        checkVolume(*c1, 0, default_cluster_size(), "bart");
-        checkVolume(*c1, default_cluster_multiplier(), default_cluster_size(), "joost");
-        checkVolume(*c1, 2 * default_cluster_multiplier(), default_cluster_size(), "wouter");
-        checkVolume(*c2, 0, default_cluster_size(), "bart");
-        checkVolume(*c2, default_cluster_multiplier(), default_cluster_size(), "joost");
-        checkVolume(*c2, 2 * default_cluster_multiplier(), default_cluster_size(), "wim");
+        checkVolume(*v1, Lba(0), default_cluster_size(), "bart");
+        checkVolume(*v1, Lba(default_cluster_multiplier()), default_cluster_size(), "arne");
+        checkVolume(*v1, Lba(2 * default_cluster_multiplier()), default_cluster_size(), "immanuel");
+        checkVolume(*c1, Lba(0), default_cluster_size(), "bart");
+        checkVolume(*c1, Lba(default_cluster_multiplier()), default_cluster_size(), "joost");
+        checkVolume(*c1, Lba(2 * default_cluster_multiplier()), default_cluster_size(), "wouter");
+        checkVolume(*c2, Lba(0), default_cluster_size(), "bart");
+        checkVolume(*c2, Lba(default_cluster_multiplier()), default_cluster_size(), "joost");
+        checkVolume(*c2, Lba(2 * default_cluster_multiplier()), default_cluster_size(), "wim");
     });
 
     auto check_consistency([&](Volume& v)
@@ -913,13 +913,13 @@ TEST_P(ScrubberTest, idempotent_scrub_result_application)
 
     for(int i =0; i < num_writes; ++i)
     {
-        writeToVolume(*v1, 0, default_cluster_size(), "xxx");
-        writeToVolume(*v1, 8, default_cluster_size(), "xxx");
-        writeToVolume(*v1, 16, default_cluster_size(), "xxx");
+        writeToVolume(*v1, Lba(0), default_cluster_size(), "xxx");
+        writeToVolume(*v1, Lba(8), default_cluster_size(), "xxx");
+        writeToVolume(*v1, Lba(16), default_cluster_size(), "xxx");
     }
-    writeToVolume(*v1, 0, default_cluster_size(), "bart");
-    writeToVolume(*v1, 8, default_cluster_size(), "arne");
-    writeToVolume(*v1, 16, default_cluster_size(), "immanuel");
+    writeToVolume(*v1, Lba(0), default_cluster_size(), "bart");
+    writeToVolume(*v1, Lba(8), default_cluster_size(), "arne");
+    writeToVolume(*v1, Lba(16), default_cluster_size(), "immanuel");
 
     const SnapshotName snap1("snap1");
     v1->createSnapshot(snap1);
@@ -992,7 +992,7 @@ TEST_P(ScrubberTest, consistency)
 
     for(unsigned i =0; i < num_writes ; ++i)
     {
-        writeToVolume(*v1, 0, default_cluster_size(), "xxx");
+        writeToVolume(*v1, Lba(0), default_cluster_size(), "xxx");
     }
 
     const SnapshotName v1_snap1("v1_snap1");
@@ -1029,8 +1029,8 @@ TEST_P(ScrubberTest, consistency)
                                     scrub_result,
                                     ScrubbingCleanup::OnError));
 
-    checkVolume(*c1,0,default_cluster_size(),"xxx");
-    checkVolume(*v1,0,default_cluster_size(),"xxx");
+    checkVolume(*c1,Lba(0),default_cluster_size(),"xxx");
+    checkVolume(*v1,Lba(0),default_cluster_size(),"xxx");
 
     ASSERT_TRUE(c1->checkConsistency());
     ASSERT_TRUE(v1->checkConsistency());
@@ -1049,7 +1049,7 @@ TEST_P(ScrubberTest, backend_error_while_fetching_relocations)
     SharedVolumePtr v = newVolume(*wrns);
 
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   default_cluster_size(),
                   "0");
 
@@ -1058,7 +1058,7 @@ TEST_P(ScrubberTest, backend_error_while_fetching_relocations)
     for (size_t i = 0; i < overwrites; ++i)
     {
         writeToVolume(*v,
-                      v->getClusterMultiplier(),
+                      Lba(v->getClusterMultiplier()),
                       default_cluster_size(),
                       boost::lexical_cast<std::string>(i + 1));
     }
@@ -1088,12 +1088,12 @@ TEST_P(ScrubberTest, backend_error_while_fetching_relocations)
     EXPECT_FALSE(v->is_halted());
 
     checkVolume(*v,
-                0,
+                Lba(0),
                 default_cluster_size(),
                 "0");
 
     checkVolume(*v,
-                v->getClusterMultiplier(),
+                Lba(v->getClusterMultiplier()),
                 default_cluster_size(),
                 boost::lexical_cast<std::string>(overwrites));
 }

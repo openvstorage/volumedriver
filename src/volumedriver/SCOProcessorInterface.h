@@ -17,12 +17,13 @@
 #define VD_SCOPROCESSORINTERFACE_H
 
 #include "ClusterLocation.h"
+#include "Lba.h"
 
 namespace volumedriver
 {
 
 using SCOProcessorFun = std::function<void(ClusterLocation,
-                                           uint64_t /* lba */,
+                                           Lba,
                                            const uint8_t* /* buf */,
                                            size_t /* bufsize */)>;
 

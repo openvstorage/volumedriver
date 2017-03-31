@@ -21,7 +21,9 @@
 #include "../TokyoCabinetMetaDataBackend.h"
 #include "../VolManager.h"
 #include "../VolumeConfig.h"
+
 #include <boost/range/adaptor/reversed.hpp>
+
 namespace volumedriver
 {
 
@@ -215,7 +217,7 @@ TEST_P(VolManagerRestartTest, localrestart3)
     v = newVolume("volume1",
                   ns);
     ASSERT_TRUE(v != nullptr);
-    writeToVolume(*v,0,4096,"bartd");
+    writeToVolume(*v,Lba(0),4096,"bartd");
 
     // Put some bogus data in the metadatastore...
     ClusterLocationAndHash loc_and_hash(ClusterLocation(5,
@@ -232,7 +234,7 @@ TEST_P(VolManagerRestartTest, localrestart3)
                   RemoveVolumeCompletely::F);
 
     ASSERT_NO_THROW(v = localRestart(ns));
-    checkVolume(*v,0,4096,"bartd");
+    checkVolume(*v, Lba(0), 4096,"bartd");
     checkCurrentBackendSize(*v);
 }
 
@@ -257,11 +259,11 @@ TEST_P(VolManagerRestartTest, test2)
     SharedVolumePtr v = newVolume("volume1",
                           ns);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "xyz");
     checkVolume(*v,
-                0,
+                Lba(0),
                 4096,
                 "xyz");
 
@@ -272,7 +274,7 @@ TEST_P(VolManagerRestartTest, test2)
 
     ASSERT_NO_THROW(v = localRestart(ns));
     checkVolume(*v,
-                0,
+                Lba(0),
                 4096,
                 "xyz");
     checkCurrentBackendSize(*v);
@@ -292,7 +294,7 @@ TEST_P(VolManagerRestartTest, testRescheduledSCOS)
     SharedVolumePtr v = newVolume(v1,
                           ns);
     VolumeConfig cfg = v->get_config();
-    writeToVolume(*v, 0, 4096, "doh");
+    writeToVolume(*v, Lba(0), 4096, "doh");
     ClusterLocation l(1);
 
     std::string scoptr_name =
@@ -335,13 +337,13 @@ TEST_P(VolManagerRestartTest, test3)
     SharedVolumePtr v = newVolume("volume1",
                           ns);
 
-    writeToVolume(*v, 0, 4096, "xyz");
-    checkVolume(*v, 0, 4096, "xyz");
+    writeToVolume(*v, Lba(0), 4096, "xyz");
+    checkVolume(*v, Lba(0), 4096, "xyz");
 
     v->createSnapshot(SnapshotName("first"));
 
-    writeToVolume(*v, 0, 4096, "abc");
-    checkVolume(*v, 0, 4096, "abc");
+    writeToVolume(*v, Lba(0), 4096, "abc");
+    checkVolume(*v, Lba(0), 4096, "abc");
 
     VolumeConfig cfg = v->get_config();
 
@@ -359,7 +361,7 @@ TEST_P(VolManagerRestartTest, test3)
     vNew = getVolume(VolumeId("volume1"));
     ASSERT_TRUE(vNew != nullptr);
 
-    checkVolume(*vNew, 0, 4096, "xyz");
+    checkVolume(*vNew, Lba(0), 4096, "xyz");
     checkCurrentBackendSize(*vNew);
 
     destroyVolume(vNew,
@@ -383,9 +385,9 @@ TEST_P(VolManagerRestartTest, RestoreSnapWith)
 
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
-    writeToVolume(*v, 0, 4096, "Immanuel");
+    writeToVolume(*v, Lba(0), 4096, "Immanuel");
     createSnapshot(*v,"snap1");
-    writeToVolume(*v,0, 4096, "Bart");
+    writeToVolume(*v, Lba(0), 4096, "Bart");
 
     v->setFailOverCacheConfig(boost::none);
     waitForThisBackendWrite(*v);
@@ -410,7 +412,7 @@ TEST_P(VolManagerRestartTest, RestoreSnapWith)
     v = getVolume(vid);
     ASSERT_TRUE(v != nullptr);
 
-    checkVolume(*v,0, 4096,"Immanuel");
+    checkVolume(*v, Lba(0),  4096,"Immanuel");
     checkCurrentBackendSize(*v);
 
     destroyVolume(v,
@@ -429,7 +431,7 @@ TEST_P(VolManagerRestartTest, DoubleRestartSmallTLogs)
 
     for(int i = 0; i < 128; ++i)
     {
-        writeToVolume(*v,i*1024,1024,"xyz");
+        writeToVolume(*v, Lba(i*1024), 1024,"xyz");
     }
 
     scheduleBackendSync(*v);
@@ -453,14 +455,14 @@ TEST_P(VolManagerRestartTest, DoubleRestartSmallTLogs)
     ASSERT_TRUE(v != nullptr);
     for(int i = 0; i < 128; ++i)
     {
-         checkVolume(*v,i*1024,1024,"xyz");
+        checkVolume(*v,Lba(i*1024),1024,"xyz");
     }
 
 
     for(int i =0; i < 128; ++i)
     {
 
-        writeToVolume(*v, i*1024, 1024,"abc");
+        writeToVolume(*v, Lba(i*1024), 1024,"abc");
     }
 
     scheduleBackendSync(*v);
@@ -484,7 +486,7 @@ TEST_P(VolManagerRestartTest, DoubleRestartSmallTLogs)
 
     for(int i = 0; i < 128; ++i)
     {
-        checkVolume(*v,i*1024,1024,"abc");
+        checkVolume(*v,Lba(i*1024),1024,"abc");
     }
     checkCurrentBackendSize(*v);
 }
@@ -502,7 +504,7 @@ TEST_P(VolManagerRestartTest, DoubleRestart)
 
     size_t size = 20 << 10;
 
-    writeToVolume(*v,0,size,"xyz");
+    writeToVolume(*v, Lba(0),size,"xyz");
 
     scheduleBackendSync(*v);
 
@@ -523,8 +525,8 @@ TEST_P(VolManagerRestartTest, DoubleRestart)
     v = getVolume(VolumeId("volume1"));
     ASSERT_TRUE(v != nullptr);
 
-    checkVolume(*v,0,size,"xyz");
-    writeToVolume(*v, 0, size,"abc");
+    checkVolume(*v, Lba(0), size,"xyz");
+    writeToVolume(*v, Lba(0), size,"abc");
 
     scheduleBackendSync(*v);
 
@@ -544,7 +546,7 @@ TEST_P(VolManagerRestartTest, DoubleRestart)
     restartVolume(cfg);
     v = getVolume(VolumeId("volume1"));
     ASSERT_TRUE(v != nullptr);
-    checkVolume(*v,0,size,"abc");
+    checkVolume(*v, Lba(0), size,"abc");
     checkCurrentBackendSize(*v);
 }
 
@@ -558,19 +560,19 @@ TEST_P(VolManagerRestartTest, test4)
 			  ns);
 
     size_t size = 20 << 10;
-    writeToVolume(*v, 0, size, "xyz");
-    checkVolume(*v, 0, size, "xyz");
+    writeToVolume(*v, Lba(0), size, "xyz");
+    checkVolume(*v, Lba(0), size, "xyz");
 
     v->createSnapshot(SnapshotName("first"));
 
-    writeToVolume(*v, 0, size, "abc");
-    checkVolume(*v, 0, size, "abc");
+    writeToVolume(*v, Lba(0), size, "abc");
+    checkVolume(*v, Lba(0), size, "abc");
     waitForThisBackendWrite(*v);
 
     v->createSnapshot(SnapshotName("second"));
 
-    writeToVolume(*v, 0, size, "def");
-    checkVolume(*v, 0, size, "def");
+    writeToVolume(*v, Lba(0), size, "def");
+    checkVolume(*v, Lba(0), size, "def");
 
     waitForThisBackendWrite(*v);
     VolumeConfig cfg = v->get_config();
@@ -587,10 +589,10 @@ TEST_P(VolManagerRestartTest, test4)
     vNew = getVolume(VolumeId("volume1"));
     ASSERT_TRUE(vNew != nullptr);
 
-    checkVolume(*vNew, 0, size, "abc");
+    checkVolume(*vNew, Lba(0), size, "abc");
     restoreSnapshot(*vNew, "first");
-    checkVolume(*vNew, 0, size,"xyz");
-    writeToVolume(*vNew, 0, 2048, "bdwz");
+    checkVolume(*vNew, Lba(0), size,"xyz");
+    writeToVolume(*vNew, Lba(0), 2048, "bdwz");
 
     checkCurrentBackendSize(*vNew);
 
@@ -610,8 +612,8 @@ TEST_P(VolManagerRestartTest, clone1)
 
     size_t size = 20 << 10;
 
-    writeToVolume(*v, 0, size, "xyz");
-    checkVolume(*v, 0, size, "xyz");
+    writeToVolume(*v, Lba(0), size, "xyz");
+    checkVolume(*v, Lba(0), size, "xyz");
 
     const SnapshotName first("first");
     v->createSnapshot(first);
@@ -628,7 +630,7 @@ TEST_P(VolManagerRestartTest, clone1)
     const SnapshotName snap1("snap1");
     clone->createSnapshot(snap1);
 
-    checkVolume(*v, 0, size, "xyz");
+    checkVolume(*v, Lba(0), size, "xyz");
 
     waitForThisBackendWrite(*clone);
     waitForThisBackendWrite(*clone);
@@ -654,15 +656,15 @@ TEST_P(VolManagerRestartTest, clone1)
     ASSERT_TRUE(vClone != nullptr);
 
     checkVolume(*vClone,
-                0,
-                 size,
-                 "xyz");
-     writeToVolume(*vClone, 0, size, "abdr");
-     checkCurrentBackendSize(*vClone);
+                Lba(0),
+                size,
+                "xyz");
+    writeToVolume(*vClone, Lba(0), size, "abdr");
+    checkCurrentBackendSize(*vClone);
 
-     destroyVolume(vClone,
-                   DeleteLocalData::T,
-                   RemoveVolumeCompletely::T);
+    destroyVolume(vClone,
+                  DeleteLocalData::T,
+                  RemoveVolumeCompletely::T);
 }
 
 TEST_P(VolManagerRestartTest, test5)
@@ -675,14 +677,14 @@ TEST_P(VolManagerRestartTest, test5)
 			  ns);
 
     size_t size = 20 << 10;
-    writeToVolume(*v, 0, size, "xyz");
-    checkVolume(*v, 0, size, "xyz");
+    writeToVolume(*v, Lba(0), size, "xyz");
+    checkVolume(*v, Lba(0), size, "xyz");
 
     const SnapshotName first("first");
     v->createSnapshot(first);
 
-    writeToVolume(*v, 0, size, "abc");
-    checkVolume(*v, 0, size, "abc");
+    writeToVolume(*v, Lba(0), size, "abc");
+    checkVolume(*v, Lba(0), size, "abc");
     waitForThisBackendWrite(*v);
 
     const SnapshotName second("second");
@@ -701,9 +703,9 @@ TEST_P(VolManagerRestartTest, test5)
                                 ns,
                                 second);
 
-    writeToVolume(*clone, 0, size, "def");
+    writeToVolume(*clone, Lba(0), size, "def");
     checkVolume(*clone,
-                0,
+                Lba(0),
                 size,
                 "def");
 
@@ -751,13 +753,13 @@ TEST_P(VolManagerRestartTest, test5)
     ASSERT_TRUE(vClone != nullptr);
 
     checkVolume(*vNew,
-                0,
+                Lba(0),
                 size,
                 "abc");
     checkCurrentBackendSize(*vNew);
 
     checkVolume(*vClone,
-                0,
+                Lba(0),
                 size,
                 "def");
     checkCurrentBackendSize(*vClone);
@@ -766,8 +768,8 @@ TEST_P(VolManagerRestartTest, test5)
     //vNew->put();
     //vClone->put();
 
-    writeToVolume(*vClone, 0, size, "abdr");
-    writeToVolume(*vNew, 0, size, "abdr");
+    writeToVolume(*vClone, Lba(0), size, "abdr");
+    writeToVolume(*vNew, Lba(0), size, "abdr");
     destroyVolume(vClone,
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::T);
@@ -786,15 +788,15 @@ TEST_P(VolManagerRestartTest, test6)
     SharedVolumePtr v = newVolume("volume1",
                         ns);
 
-    writeToVolume(*v, 0, 16384, "xyz");
+    writeToVolume(*v, Lba(0), 16384, "xyz");
 
-    checkVolume(*v, 0, 16384, "xyz");
+    checkVolume(*v, Lba(0), 16384, "xyz");
 
     const SnapshotName first("first");
     v->createSnapshot(first);
 
-    writeToVolume(*v, 0, 16384, "abc");
-    checkVolume(*v, 0, 16384, "abc");
+    writeToVolume(*v, Lba(0), 16384, "abc");
+    checkVolume(*v, Lba(0), 16384, "abc");
     waitForThisBackendWrite(*v);
     auto ns1_ptr = make_random_namespace();
     const Namespace& ns1 = ns1_ptr->ns();
@@ -810,16 +812,16 @@ TEST_P(VolManagerRestartTest, test6)
     v->createSnapshot(second);
 
     writeToVolume(*clone,
-                  0,
+                  Lba(0),
                   8192,
                   "def");
     checkVolume(*clone,
-                0,
+                Lba(0),
                 8192,
                 "def");
 
     checkVolume(*clone,
-                16,
+                Lba(16),
                 8192,
                 "zxy");
     checkCurrentBackendSize(*clone);
@@ -860,16 +862,16 @@ TEST_P(VolManagerRestartTest, test6)
     ASSERT_TRUE(vClone != nullptr);
 
     checkVolume(*vNew,
-                0,
+                Lba(0),
                 16384,
                 "abc");
     checkCurrentBackendSize(*vNew);
     checkVolume(*vClone,
-                0,
+                Lba(0),
                 8192,
                 "def");
     checkVolume(*vClone,
-                16,
+                Lba(16),
                 8192,
                 "zxy");
     checkCurrentBackendSize(*vClone);
@@ -898,10 +900,10 @@ TEST_P(VolManagerRestartTest,test7)
 
     for(int i = 0; i < 50; ++i)
     {
-        writeToVolume(*v, 0, 8192, "g");
+        writeToVolume(*v, Lba(0), 8192, "g");
     }
 
-    checkVolume(*v, 0, 8192, "g");
+    checkVolume(*v, Lba(0), 8192, "g");
     checkCurrentBackendSize(*v);
 
     const SnapshotName first("first");
@@ -932,9 +934,9 @@ TEST_P(VolManagerRestartTest,test7)
         //setTLogMaxEntries(clone, 3);
         for(int j = 0; j < 50; ++j)
         {
-            writeToVolume(*clone, (i+1) * 16, 8192, is);
+            writeToVolume(*clone, Lba((i+1) * 16), 8192, is);
         }
-        checkVolume(*clone, (i+1)*16, 8192, is);
+        checkVolume(*clone, Lba((i+1)*16), 8192, is);
         checkCurrentBackendSize(*clone);
 
         clone->createSnapshot(first);
@@ -971,7 +973,7 @@ TEST_P(VolManagerRestartTest,test7)
         std::string is = boost::lexical_cast<std::string>(i);
 
         checkVolume(*lastClone,
-                    (i+1) * 16,
+                    Lba((i+1) * 16),
                     8192,
                     is);
         checkCurrentBackendSize(*lastClone);
@@ -992,7 +994,7 @@ TEST_P(VolManagerRestartTest, same_volume_name_different_namespaces)
     //    backend::Namespace nid1;
 
     SharedVolumePtr v = newVolume(vid1, nid1);
-    writeToVolume(*v, 0, 4096, "xyz");
+    writeToVolume(*v, Lba(0), 4096, "xyz");
     v->createSnapshot(SnapshotName("first"));
     VolumeConfig cfg1 = v->get_config();
     waitForThisBackendWrite(*v);
@@ -1013,7 +1015,7 @@ TEST_P(VolManagerRestartTest, same_volume_name_different_namespaces)
 
     v = newVolume(vid1,
                   nid2);
-    writeToVolume(*v, 0, 4096, "abc");
+    writeToVolume(*v, Lba(0), 4096, "abc");
     v->createSnapshot(SnapshotName("first"));
     VolumeConfig cfg2 = v->get_config();
     waitForThisBackendWrite(*v);
@@ -1025,7 +1027,7 @@ TEST_P(VolManagerRestartTest, same_volume_name_different_namespaces)
     restartVolume(cfg1);
 
     v = getVolume(vid1);
-    checkVolume(*v,0, 4096,"xyz");
+    checkVolume(*v, Lba(0),  4096,"xyz");
     checkCurrentBackendSize(*v);
 
     ASSERT_THROW(restartVolume(cfg2), VolManager::VolumeAlreadyPresent);
@@ -1036,7 +1038,7 @@ TEST_P(VolManagerRestartTest, same_volume_name_different_namespaces)
     restartVolume(cfg2);
 
     v = getVolume(vid1);
-    checkVolume(*v,0, 4096,"abc");
+    checkVolume(*v, Lba(0),  4096,"abc");
 
     ASSERT_THROW(restartVolume(cfg1), VolManager::VolumeAlreadyPresent);
     destroyVolume(v,
@@ -1054,13 +1056,13 @@ TEST_P(VolManagerRestartTest, DISABLED_differenttlogpath)
                           ns);
 
     ASSERT_TRUE(v != nullptr);
-    writeToVolume(*v, 0, 4096, "xyz");
-    checkVolume(*v, 0, 4096, "xyz");
+    writeToVolume(*v, Lba(0), 4096, "xyz");
+    checkVolume(*v, Lba(0), 4096, "xyz");
 
     v->createSnapshot(SnapshotName("first"));
 
-    writeToVolume(*v, 0, 4096, "abc");
-    checkVolume(*v, 0, 4096, "abc");
+    writeToVolume(*v, Lba(0), 4096, "abc");
+    checkVolume(*v, Lba(0), 4096, "abc");
 
     VolumeConfig cfg = v->get_config();
     const fs::path newTlogPath = getVolDir(VolumeId("volume1")) / "newTlogsPath";
@@ -1086,7 +1088,7 @@ TEST_P(VolManagerRestartTest, DISABLED_differenttlogpath)
     vNew = getVolume(VolumeId("volume1"));
     ASSERT_TRUE(vNew != nullptr);
 
-    checkVolume(*vNew, 0, 4096, "xyz");
+    checkVolume(*vNew, Lba(0), 4096, "xyz");
     checkCurrentBackendSize(*vNew);
 
     destroyVolume(vNew,
@@ -1102,7 +1104,7 @@ TEST_P(VolManagerRestartTest, restartNothing)
     SharedVolumePtr v = newVolume(VolumeId("volume1"),
 			  ns);
     ASSERT_TRUE(v != nullptr);
-    writeToVolume(*v, 0, 4096, "xyz");
+    writeToVolume(*v, Lba(0), 4096, "xyz");
     VolumeConfig cfg = v->get_config();
     waitForThisBackendWrite(*v);
     destroyVolume(v,
@@ -1112,7 +1114,7 @@ TEST_P(VolManagerRestartTest, restartNothing)
     restartVolume(cfg);
     vNew = getVolume(VolumeId("volume1"));
     ASSERT_TRUE(vNew != nullptr);
-    checkVolume(*vNew, 0, 4096, "\0");
+    checkVolume(*vNew, Lba(0), 4096, "\0");
     destroyVolume(vNew,
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::T);
@@ -1132,7 +1134,7 @@ TEST_P(VolManagerRestartTest, failovercache0)
 
     VolumeConfig cfg = v->get_config();
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "abc");
 
@@ -1155,7 +1157,7 @@ TEST_P(VolManagerRestartTest, failovercache1)
 
     VolumeConfig cfg = v->get_config();
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "abc");
 
@@ -1168,7 +1170,7 @@ TEST_P(VolManagerRestartTest, failovercache1)
 
 
         writeToVolume(*v,
-                      0,
+                      Lba(0),
                       4096,
                       "def");
         flushFailOverCache(*v);
@@ -1181,7 +1183,7 @@ TEST_P(VolManagerRestartTest, failovercache1)
     restartVolume(cfg);
     v1 = getVolume(VolumeId("volume1"));
     ASSERT_TRUE(v1 != nullptr);
-    checkVolume(*v1,0,4096,"def");
+    checkVolume(*v1, Lba(0), 4096,"def");
     checkCurrentBackendSize(*v1);
 
     destroyVolume(v1,
@@ -1204,7 +1206,7 @@ TEST_P(VolManagerRestartTest, failovercache2)
 
     VolumeConfig cfg = v->get_config();
     writeToVolume(*v,
-                  4096,
+                  Lba(4096),
                   4096,
                   "abc");
 
@@ -1222,7 +1224,7 @@ TEST_P(VolManagerRestartTest, failovercache2)
             ss << i;
 
             writeToVolume(*v,
-                          i*512,
+                          Lba(i*512),
                           4096,
                           ss.str());
         }
@@ -1240,7 +1242,7 @@ TEST_P(VolManagerRestartTest, failovercache2)
         std::stringstream ss;
         ss << i;
 
-        checkVolume(*v1,i*512,4096,ss.str());
+        checkVolume(*v1,Lba(i*512),4096,ss.str());
     }
     checkCurrentBackendSize(*v1);
 
@@ -1263,7 +1265,7 @@ TEST_P(VolManagerRestartTest, failovercache3)
 
     VolumeConfig cfg = v->get_config();
         writeToVolume(*v,
-                      0,
+                      Lba(0),
                       4096,
                       "abc");
 
@@ -1277,11 +1279,11 @@ TEST_P(VolManagerRestartTest, failovercache3)
 
 
         writeToVolume(*v,
-                      0,
+                      Lba(0),
                       32768,
                       "def");
 
-        checkVolume(*v,0,32768,"def");
+        checkVolume(*v, Lba(0), 32768,"def");
     }
 
     SharedVolumePtr v1 = 0;
@@ -1291,7 +1293,7 @@ TEST_P(VolManagerRestartTest, failovercache3)
     restartVolume(cfg);
     v1 = getVolume(VolumeId("volume1"));
     ASSERT_TRUE(v1 != nullptr);
-    checkVolume(*v1,0,32768,"def");
+    checkVolume(*v1, Lba(0), 32768,"def");
     checkCurrentBackendSize(*v1);
 
     destroyVolume(v1,
@@ -1313,7 +1315,7 @@ TEST_P(VolManagerRestartTest, failovercache4)
 
     VolumeConfig cfg = v->get_config();
         writeToVolume(*v,
-                      0,
+                      Lba(0),
                       4096,
                       "abc");
 
@@ -1334,7 +1336,7 @@ TEST_P(VolManagerRestartTest, failovercache4)
             unsigned s = 1 << (9 + i);
             std::stringstream ss;
             ss << i;
-            writeToVolume(*v, o, s, ss.str());
+            writeToVolume(*v, Lba(o), s, ss.str());
             o += s;
         }
     }
@@ -1353,7 +1355,7 @@ TEST_P(VolManagerRestartTest, failovercache4)
         unsigned s = 1 << (9 + i);
         std::stringstream ss;
         ss << i;
-        checkVolume(*v1,o,s,ss.str());
+        checkVolume(*v1,Lba(o),s,ss.str());
         o += s;
     }
     checkCurrentBackendSize(*v1);
@@ -1377,7 +1379,7 @@ TEST_P(VolManagerRestartTest, failovercache5)
 
     VolumeConfig cfg = v->get_config();
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "abc");
 
@@ -1400,7 +1402,7 @@ TEST_P(VolManagerRestartTest, failovercache5)
     waitForThisBackendWrite(*v1);
 
     ASSERT_TRUE(v1 != nullptr);
-    checkVolume(*v1,0,4096,"abc");
+    checkVolume(*v1, Lba(0), 4096,"abc");
     checkCurrentBackendSize(*v1);
 
     destroyVolume(v1,
@@ -1434,7 +1436,7 @@ TEST_P(VolManagerRestartTest, focReplayAcrossTLogs)
 
     VolumeConfig cfg = v->get_config();
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "abc");
 
@@ -1456,14 +1458,14 @@ TEST_P(VolManagerRestartTest, focReplayAcrossTLogs)
         do
         {
             writeToVolume(*v,
-                          0,
+                          Lba(0),
                           wsize,
                           "def");
 
             scheduleBackendSync(*v);
 
             writeToVolume(*v,
-                          wsize / v->getLBASize(),
+                          Lba(wsize / v->getLBASize()),
                           wsize,
                           "ghi");
             t1 = time(0);
@@ -1472,8 +1474,8 @@ TEST_P(VolManagerRestartTest, focReplayAcrossTLogs)
 
         flushFailOverCache(*v);
 
-        checkVolume(*v, 0, wsize, "def");
-        checkVolume(*v, wsize / v->getLBASize(), wsize, "ghi");
+        checkVolume(*v, Lba(0), wsize, "def");
+        checkVolume(*v, Lba(wsize / v->getLBASize()), wsize, "ghi");
     }
 
     SharedVolumePtr v1 = 0;
@@ -1483,8 +1485,8 @@ TEST_P(VolManagerRestartTest, focReplayAcrossTLogs)
     restartVolume(cfg);
     v1 = getVolume(VolumeId("volume1"));
     ASSERT_TRUE(v1 != nullptr);
-    checkVolume(*v1, 0, wsize, "def");
-    checkVolume(*v1, wsize / v1->getLBASize(), wsize, "ghi");
+    checkVolume(*v1, Lba(0), wsize, "def");
+    checkVolume(*v1, Lba(wsize / v1->getLBASize()), wsize, "ghi");
     checkCurrentBackendSize(*v1);
 
     destroyVolume(v1,
@@ -1507,20 +1509,20 @@ TEST_P(VolManagerRestartTest, partialsnapshots)
 
     VolumeConfig cfg = v->get_config();
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "a");
 
     v->createSnapshot(SnapshotName("snap1"));
     writeToVolume(*v,
-                  8,
+                  Lba(8),
                   4096,
                   "d");
 
     for(int i=0;i<2;i++)
     {
         writeToVolume(*v,
-                      0,
+                      Lba(0),
                       4096,
                       "c");
     }
@@ -1536,7 +1538,7 @@ TEST_P(VolManagerRestartTest, partialsnapshots)
         for(int i=0;i<2;++i)
         {
             writeToVolume(*v,
-                          0,
+                          Lba(0),
                           4096,
                           "c");
         }
@@ -1551,7 +1553,7 @@ TEST_P(VolManagerRestartTest, partialsnapshots)
     restartVolume(cfg);
     v1 = getVolume(VolumeId("volume1"));
     ASSERT_TRUE(v != nullptr);
-    // checkVolume(*v1,0,4096,"c");
+    // checkVolume(*v1, Lba(0), 4096,"c");
     // checkVolume(*v1,8,4096,"d");
 
     destroyVolume(v1,
@@ -1564,8 +1566,8 @@ TEST_P(VolManagerRestartTest, partialsnapshots)
      restartVolume(cfg);
      v2 = getVolume(VolumeId("volume1"));
      ASSERT_TRUE(v2 != nullptr);
-     checkVolume(*v2,0,4096,"c");
-     checkVolume(*v2,8,4096,"d");
+     checkVolume(*v2,Lba(0),4096,"c");
+     checkVolume(*v2,Lba(8),4096,"d");
      checkCurrentBackendSize(*v2);
 }
 
@@ -1586,7 +1588,7 @@ TEST_P(VolManagerRestartTest, datastoreOverwrite)
     for(int i=0;i<64;i++)
     {
         writeToVolume(*v,
-                      0,
+                      Lba(0),
                       4096,
                       "abc");
     }
@@ -1596,7 +1598,7 @@ TEST_P(VolManagerRestartTest, datastoreOverwrite)
     for(int i=0;i<32;i++)
     {
         writeToVolume(*v,
-                      0,
+                      Lba(0),
                       4096,
                       "abc");
     }
@@ -1612,7 +1614,7 @@ TEST_P(VolManagerRestartTest, datastoreOverwrite)
         for(int i=0;i<64;++i)
         {
             writeToVolume(*v,
-                          0,
+                          Lba(0),
                           4096,
                           "def");
         }
@@ -1626,7 +1628,7 @@ TEST_P(VolManagerRestartTest, datastoreOverwrite)
     restartVolume(cfg);
     v1 = getVolume(VolumeId("volume1"));
     ASSERT_TRUE(v != nullptr);
-    checkVolume(*v1,0,4096,"def");
+    checkVolume(*v1, Lba(0), 4096,"def");
     checkCurrentBackendSize(*v1);
 
     destroyVolume(v1,
@@ -1650,7 +1652,7 @@ TEST_P(VolManagerRestartTest, backend_restart_non_empty_datastore)
 
     const std::string pattern1("before");
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   pattern1);
 
@@ -1665,12 +1667,12 @@ TEST_P(VolManagerRestartTest, backend_restart_non_empty_datastore)
 
         const std::string pattern2("after");
         writeToVolume(*v,
-                      0,
+                      Lba(0),
                       4096,
                       pattern2);
 
         checkVolume(*v,
-                    0,
+                    Lba(0),
                     4096,
                     pattern2);
     }
@@ -1688,7 +1690,7 @@ TEST_P(VolManagerRestartTest, backend_restart_non_empty_datastore)
     ASSERT_TRUE(v != nullptr);
 
     checkVolume(*v,
-                0,
+                Lba(0),
                 4096,
                 pattern1);
     checkCurrentBackendSize(*v);

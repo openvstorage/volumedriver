@@ -1,7 +1,7 @@
 `msgpack` for C/C++
 ===================
 
-Version 2.0.0 (under development)[![Build Status](https://travis-ci.org/msgpack/msgpack-c.svg?branch=master)](https://travis-ci.org/msgpack/msgpack-c) [![Build status](https://ci.appveyor.com/api/projects/status/8kstcgt79qj123mw/branch/master?svg=true)](https://ci.appveyor.com/project/redboltz/msgpack-c/branch/master)
+Version 2.1.1 [![Build Status](https://travis-ci.org/msgpack/msgpack-c.svg?branch=master)](https://travis-ci.org/msgpack/msgpack-c) [![Build status](https://ci.appveyor.com/api/projects/status/8kstcgt79qj123mw/branch/master?svg=true)](https://ci.appveyor.com/project/redboltz/msgpack-c/branch/master)
 
 It's like JSON but small and fast.
 
@@ -120,36 +120,7 @@ also install the C and C++ versions of msgpack.
 
 #### Install from git repository
 
-##### Using autotools
-
-You will need:
-
- - `gcc >= 4.1.0` or `clang >= 3.3.0`
- - `autoconf >= 2.60`
- - `automake >= 1.10`
- - `libtool >= 2.2.4`
-
-The build steps below are for C and C++03. If compiling for C++11,
-add `-std=c++11` to the environmental variable `CXXFLAGS` with
-`export CXXFLAGS="$CXXFLAGS -std=c++11"` prior to following the
-directions below.
-
-```bash
-$ git clone https://github.com/msgpack/msgpack-c
-$ cd msgpack-c
-$ ./bootstrap
-$ ./configure
-$ make
-```
-
-You can install the resulting library like this:
-
-```bash
-$ sudo make install
-```
-##### Using cmake
-
-###### Using the Terminal (CLI)
+##### Using the Terminal (CLI)
 
 You will need:
 
@@ -172,7 +143,7 @@ execute the following commands:
     $ cmake -DMSGPACK_CXX11=ON .
     $ sudo make install
 
-##### GUI on Windows
+#### GUI on Windows
 
 Clone msgpack-c git repository.
 

@@ -109,7 +109,8 @@ extract_rora_config(const AlbaConfig& cfg)
     {
         return apc::RoraConfig(cfg.alba_connection_rora_manifest_cache_capacity.value(),
                                cfg.alba_connection_rora_use_nullio.value(),
-                               cfg.alba_connection_asd_connection_pool_capacity.value());
+                               cfg.alba_connection_asd_connection_pool_capacity.value(),
+                               cfg.alba_connection_rora_timeout_msecs.value());
     }
     else
     {

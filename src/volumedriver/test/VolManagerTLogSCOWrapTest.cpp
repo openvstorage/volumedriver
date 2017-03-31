@@ -75,13 +75,13 @@ TEST_P(VolManagerTLogSCOWrapTest, DISABLED_one)
 			  backend::Namespace());
     //setTLogMaxEntries(v, 3);
 
-    writeToVolume(*v, 0, 4096, "g");
-    checkVolume(*v, 0, 4096, "g");
+    writeToVolume(*v, Lba(0), 4096, "g");
+    checkVolume(*v, Lba(0), 4096, "g");
 
     EXPECT_TRUE(checkSCO(*v, SCO("00_00000001_00"), false));
     EXPECT_FALSE(checkSCO(*v, SCO("00_00000002_00"), false));
 
-    writeToVolume(*v, 0, 4096, "g");
+    writeToVolume(*v, Lba(0), 4096, "g");
 
     v->sync();
     ::sync();
@@ -118,7 +118,7 @@ TEST_P(VolManagerTLogSCOWrapTest, DISABLED_one)
     EXPECT_TRUE(checkSCO(*v, SCO("00_00000001_00"), true));
     EXPECT_TRUE(checkSCO(*v, SCO("00_00000002_00"), false));
 
-    writeToVolume(*v, 0, 4096, "g");
+    writeToVolume(*v, Lba(0), 4096, "g");
     // expecting new second tlog with a sync2tc and 1 LOC
     // also expecting a second container to be started
     v->sync();

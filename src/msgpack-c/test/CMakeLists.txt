@@ -45,6 +45,13 @@ IF (MSGPACK_BOOST)
         boost_variant.cpp
         boost_optional.cpp
         boost_string_ref.cpp
+        boost_string_view.cpp
+    )
+ENDIF ()
+
+IF (MSGPACK_USE_X3_PARSE)
+    LIST (APPEND check_PROGRAMS
+        msgpack_x3_parse.cpp
     )
 ENDIF ()
 

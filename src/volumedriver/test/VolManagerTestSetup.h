@@ -271,7 +271,7 @@ public:
     {
         for (uint64_t i = 0; i < number_of_clusters; i++)
         {
-            uint64_t lba = (i * vol.getClusterMultiplier()) % vol.getLBACount();
+            const Lba lba((i * vol.getClusterMultiplier()) % vol.getLBACount());
             std::stringstream ss;
             ss << basepattern << ( pattern_period ? i % pattern_period : i);
             writeToVolume(vol, lba, vol.getClusterSize(), ss.str());
@@ -302,7 +302,7 @@ public:
     {
         for (uint64_t i = offset; i < number_of_clusters + offset; i++)
         {
-            uint64_t lba = (i * vol.getClusterMultiplier()) % vol.getLBACount();
+            const Lba lba((i * vol.getClusterMultiplier()) % vol.getLBACount());
             std::stringstream ss;
             ss << basepattern << ( pattern_period ? i % pattern_period : i);
             checkVolume(vol, lba, vol.getClusterSize(), ss.str());
@@ -318,14 +318,14 @@ public:
     {
         for (size_t i = 0; i < vol.getSize(); i += blocksize)
         {
-            writeToVolume(vol, i / vol.getLBASize(), blocksize, pattern, retries);
+            writeToVolume(vol, Lba(i / vol.getLBASize()), blocksize, pattern, retries);
         }
     }
 
     template<typename T>
     static void
     writeToVolume(T& volume,
-                  uint64_t lba,
+                  const Lba lba,
                   uint64_t size,
                   const std::string& pattern,
                   unsigned retries=5)
@@ -349,7 +349,7 @@ public:
     template<typename T>
     static void
     writeToVolume(T& volume,
-                  uint64_t lba,
+                  const Lba lba,
                   uint64_t size,
                   const uint8_t *buf,
                   unsigned retries = 5)
@@ -499,7 +499,7 @@ public:
 
     static void
     checkVolume(Volume& volume,
-                uint64_t lba,
+                const Lba,
                 uint64_t block_size,
                 const std::string& pattern = "",
                 unsigned retries = 10);
@@ -742,8 +742,8 @@ private:
     redi::ipstream pstream_;
 
     static void
-    readVolume_(Volume& vol,
-                uint64_t lba,
+    readVolume_(Volume&,
+                const Lba,
                 uint64_t block_size,
                 const std::string* const pattern,
                 unsigned retries);

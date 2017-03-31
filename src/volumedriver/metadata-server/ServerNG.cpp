@@ -494,7 +494,7 @@ void
 ServerNG::do_handle_(const std::shared_ptr<C>& conn,
                      ConnectionStatePtr state,
                      const HeaderPtr& hdr,
-                     const DataSourcePtr& data,
+                     const DataSourcePtr& /* data */,
                      const MessageBuilderPtr& builder,
                      const MessageReaderPtr& reader,
                      void (ServerNG::*mem_fn)(typename Traits::Params::Reader&,

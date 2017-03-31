@@ -46,9 +46,9 @@ TEST_P(VolManagerVolumeDestroy, one)
 			  ns1);
     //setTLogMaxEntries(v, 3);
 
-    writeToVolume(*v, 0, 4096, "g");
-    writeToVolume(*v, 0, 4096, "g");
-    writeToVolume(*v, 0, 4096, "g");
+    writeToVolume(*v, Lba(0), 4096, "g");
+    writeToVolume(*v, Lba(0), 4096, "g");
+    writeToVolume(*v, Lba(0), 4096, "g");
 
     v->sync();
     ::sync();

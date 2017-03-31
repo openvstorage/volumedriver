@@ -80,7 +80,7 @@ TEST_P(CloneVolumeTest, test1)
                   ns1);
     ASSERT_TRUE(v != nullptr);
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   4096,
                   "a");
 
@@ -101,7 +101,7 @@ TEST_P(CloneVolumeTest, test1)
                      snap1);
     checkCurrentBackendSize(*c1);
     writeToVolume(*c1,
-                  4096,
+                  Lba(4096),
                   4096,
                   "x");
 
@@ -110,12 +110,12 @@ TEST_P(CloneVolumeTest, test1)
 
     waitForThisBackendWrite(*c1);
     writeToVolume(*c1,
-                  4096,
+                  Lba(4096),
                   4096,
                   "b");
 
     writeToVolume(*c1,
-                  0,
+                  Lba(0),
                   4096,
                   "c");
     checkCurrentBackendSize(*c1);
@@ -124,8 +124,8 @@ TEST_P(CloneVolumeTest, test1)
 
     c1->restoreSnapshot(snap2);
 
-    checkVolume(*c1, 0, 4096, "a");
-    checkVolume(*c1, 4096, 4096, "x");
+    checkVolume(*c1, Lba(0), 4096, "a");
+    checkVolume(*c1, Lba(4096), 4096, "x");
     checkCurrentBackendSize(*c1);
 }
 

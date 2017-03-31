@@ -88,7 +88,7 @@ TEST_P(cases, DISABLED_cacheserver1)
 
     for(unsigned i = 0; i < num_writes; i++)
     {
-            writeToVolume(*v1, i*distance, sizew, "X");
+        writeToVolume(*v1, Lba(i*distance), sizew, "X");
     }
     createSnapshot(*v1, "snap1");
     while(not v1->isSyncedToBackend())
@@ -110,7 +110,7 @@ TEST_P(cases, DISABLED_cacheserver1)
     {
         if(i%3 == 1)
         {
-            writeToVolume(*v2, i*distance, sizew, "Y");
+            writeToVolume(*v2, Lba(i*distance), sizew, "Y");
         }
     }
     createSnapshot(*v2, "snap1");
@@ -128,7 +128,7 @@ TEST_P(cases, DISABLED_cacheserver1)
         {
             if(i%3 == 2)
             {
-                writeToVolume(*v2, i*distance, sizew, "Z");
+                writeToVolume(*v2, Lba(i*distance), sizew, "Z");
             }
 
         }
@@ -143,13 +143,13 @@ TEST_P(cases, DISABLED_cacheserver1)
         switch(i %3 )
         {
         case 0:
-            checkVolume(*v2,i*distance, sizew, "X");
+            checkVolume(*v2,Lba(i*distance), sizew, "X");
             break;
         case 1:
-            checkVolume(*v2,i*distance, sizew, "Y");
+            checkVolume(*v2,Lba(i*distance), sizew, "Y");
             break;
         case 2:
-            checkVolume(*v2,i*distance, sizew, "Z");
+            checkVolume(*v2,Lba(i*distance), sizew, "Z");
             break;
         default:
             assert(0=="remarkable");
@@ -341,7 +341,7 @@ TEST_P(cases, DISABLED_restartALittle) // Ev'ry time you go away, I ...
 
     v1->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
-    writeToVolume(*v1,0,4096*2048, t);
+    writeToVolume(*v1,Lba(0),4096*2048, t);
     const VolumeConfig vCfg(v1->get_config());
 
     destroyVolume(v1,
@@ -358,12 +358,12 @@ TEST_P(cases, DISABLED_restartALittle) // Ev'ry time you go away, I ...
         ASSERT_TRUE(v1 != nullptr);
         v1->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
-        checkVolume(*v1,0,4096*2048,t);
+        checkVolume(*v1,Lba(0),4096*2048,t);
 
         std::stringstream ss;
         ss << "bart_" << i;
         t = ss.str();
-        writeToVolume(*v1,0,4096*2048, t);
+        writeToVolume(*v1,Lba(0),4096*2048, t);
         destroyVolume(v1,
                       DeleteLocalData::F,
                       RemoveVolumeCompletely::F);
@@ -490,7 +490,7 @@ TEST_P(cases, test2)
     for(int i = 0; i < 1; ++i)
     {
         writeToVolume(*v,
-                      0,
+                      Lba(0),
                       16384,
                       "abc");
     }
@@ -498,9 +498,9 @@ TEST_P(cases, test2)
     for(int i = 0; i < numwrites; ++i)
     {
         checkVolume(*v,
-                0,
-                4096,
-                "abc");
+                    Lba(0),
+                    4096,
+                    "abc");
     }
 
     destroyVolume(v,
@@ -515,11 +515,11 @@ TEST_P(cases, DISABLED_test3)
                           ns_ptr->ns());
 
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   16384,
                   "abc");
     checkVolume(*v,
-                0,
+                Lba(0),
                 16384,
                 "abc");
     temporarilyStopVolManager();
@@ -528,7 +528,7 @@ TEST_P(cases, DISABLED_test3)
     SharedVolumePtr v1 = getVolume(VolumeId("1volume"));
     ASSERT_TRUE(v1 != nullptr);
     checkVolume(*v1,
-                0,
+                Lba(0),
                 16384,
                 "abc");
     //v1->put();
@@ -561,11 +561,11 @@ TEST_P(cases, DISABLED_bartNonLocalRestart)
     for(int i = 0; i < 1000; i++)
     {
         writeToVolume(*v1,
-                      i*mult,
+                      Lba(i*mult),
                       v1->getClusterSize(),
                       "immanuel");
         writeToVolume(*v2,
-                      i*mult,
+                      Lba(i*mult),
                       v1->getClusterSize(),
                       "immanuel");
 
@@ -576,11 +576,11 @@ TEST_P(cases, DISABLED_bartNonLocalRestart)
     for(int i = 0; i < 100; i++)
     {
         writeToVolume(*v1,
-                      i*mult,
+                      Lba(i*mult),
                       v1->getClusterSize(),
                       "bart");
         writeToVolume(*v2,
-                      i*mult,
+                      Lba(i*mult),
                       v2->getClusterSize(),
                       "bart");
 
@@ -924,7 +924,7 @@ TEST_P(cases, DISABLED_weirdSnapshotsFile)
 
     const std::string pattern1 = "11111111";
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   v->getClusterSize(),
                   pattern1);
 
@@ -935,7 +935,7 @@ TEST_P(cases, DISABLED_weirdSnapshotsFile)
 
     const std::string pattern2 = "22222222";
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   v->getClusterSize(),
                   pattern2);
 
@@ -943,7 +943,7 @@ TEST_P(cases, DISABLED_weirdSnapshotsFile)
 
     const std::string pattern3 = "33333333";
     writeToVolume(*v,
-                  0,
+                  Lba(0),
                   v->getClusterSize(),
                   pattern3);
 
@@ -954,7 +954,7 @@ TEST_P(cases, DISABLED_weirdSnapshotsFile)
     v->restoreSnapshot(SnapshotName("snap1"));
 
     checkVolume(*v,
-                0,
+                Lba(0),
                 v->getClusterSize(),
                 pattern1);
 
