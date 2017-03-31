@@ -382,6 +382,24 @@ public:
         return boost::chrono::milliseconds(vrouter_migrate_timeout_ms.value());
     }
 
+    boost::chrono::seconds
+    keepalive_time() const
+    {
+        return boost::chrono::seconds(vrouter_keepalive_time_secs.value());
+    }
+
+    boost::chrono::seconds
+    keepalive_interval() const
+    {
+        return boost::chrono::seconds(vrouter_keepalive_interval_secs.value());
+    }
+
+    size_t
+    keepalive_retries() const
+    {
+        return vrouter_keepalive_retries.value();
+    }
+
     MaybeFailOverCacheConfig
     failoverconfig_as_it_should_be() const;
 
@@ -454,6 +472,9 @@ private:
     DECLARE_PARAMETER(vrouter_xmlrpc_client_timeout_ms);
     DECLARE_PARAMETER(vrouter_use_fencing);
     DECLARE_PARAMETER(vrouter_send_sync_response);
+    DECLARE_PARAMETER(vrouter_keepalive_time_secs);
+    DECLARE_PARAMETER(vrouter_keepalive_interval_secs);
+    DECLARE_PARAMETER(vrouter_keepalive_retries);
 
     std::shared_ptr<youtils::LockedArakoon> larakoon_;
     std::shared_ptr<CachedObjectRegistry> object_registry_;

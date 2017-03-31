@@ -93,6 +93,9 @@ ObjectRouter::ObjectRouter(const bpt::ptree& pt,
     , vrouter_xmlrpc_client_timeout_ms(pt)
     , vrouter_use_fencing(pt)
     , vrouter_send_sync_response(pt)
+    , vrouter_keepalive_time_secs(pt)
+    , vrouter_keepalive_interval_secs(pt)
+    , vrouter_keepalive_retries(pt)
     , larakoon_(larakoon)
     , object_registry_(std::make_shared<CachedObjectRegistry>(cluster_id(),
                                                               node_id(),
@@ -1839,6 +1842,9 @@ ObjectRouter::update(const bpt::ptree& pt,
     U(vrouter_send_sync_response);
     U(vrouter_min_workers);
     U(vrouter_max_workers);
+    U(vrouter_keepalive_time_secs);
+    U(vrouter_keepalive_interval_secs);
+    U(vrouter_keepalive_retries);
 
 #undef U
 
@@ -1870,6 +1876,9 @@ ObjectRouter::persist(bpt::ptree& pt,
     P(vrouter_xmlrpc_client_timeout_ms);
     P(vrouter_use_fencing);
     P(vrouter_send_sync_response);
+    P(vrouter_keepalive_time_secs);
+    P(vrouter_keepalive_interval_secs);
+    P(vrouter_keepalive_retries);
 
 #undef P
 
@@ -1912,6 +1921,17 @@ ObjectRouter::checkConfig(const bpt::ptree& pt,
                                                      val.section_name(),
                                                      "Value must be > 0"));
             result = false;
+        }
+    }
+
+    {
+        ip::PARAMETER_TYPE(vrouter_keepalive_time_secs) time(pt);
+        ip::PARAMETER_TYPE(vrouter_keepalive_interval_secs) interval(pt);
+        if (time.value() < interval.value())
+        {
+            crep.push_front(yt::ConfigurationProblem(interval.name(),
+                                                     interval.section_name(),
+                                                     "value must be > keepalive time"));
         }
     }
 

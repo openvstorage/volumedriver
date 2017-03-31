@@ -76,6 +76,13 @@ DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_use_fencing,
                                                   bool);
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_send_sync_response,
                                                   bool);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_keepalive_time_secs,
+                                                  std::atomic<uint32_t>);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_keepalive_interval_secs,
+                                                  std::atomic<uint32_t>);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_keepalive_retries,
+                                                  std::atomic<uint32_t>);
+
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_min_workers,
                                        uint16_t);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_max_workers,
