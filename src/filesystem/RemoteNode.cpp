@@ -19,6 +19,9 @@
 #include "RemoteNode.h"
 #include "ZUtils.h"
 
+#include <sys/eventfd.h>
+#include <sys/timerfd.h>
+
 #include <boost/chrono.hpp>
 #include <boost/exception_ptr.hpp>
 #include <boost/lexical_cast.hpp>
@@ -27,6 +30,7 @@
 
 #include <youtils/Assert.h>
 #include <youtils/Catchers.h>
+#include <youtils/ScopeExit.h>
 #include <youtils/SourceOfUncertainty.h>
 
 #include <volumedriver/ClusterLocation.h>
@@ -51,22 +55,25 @@ RemoteNode::RemoteNode(ObjectRouter& vrouter,
                        zmq::context_t& ztx)
     : ClusterNode(vrouter, node_id, uri)
     , ztx_(ztx)
-    , event_fd_(::eventfd(0, EFD_NONBLOCK))
+    , event_fd_(::eventfd(0,
+                          EFD_NONBLOCK))
+    , timer_fd_(::timerfd_create(CLOCK_MONOTONIC,
+                                 TFD_NONBLOCK))
     , stop_(false)
+    , keepalive_probe_(vfsprotocol::MessageUtils::create_ping_message(vrouter_.node_id()))
+    , missing_keepalive_probes_(0)
 {
-    VERIFY(event_fd_ >= 0);
+    auto on_exception(yt::make_scope_exit_on_exception([&]
+                                                       {
+                                                           close_();
+                                                       }));
 
-    try
-    {
-        LOCK();
-        init_zock_();
-        thread_ = boost::thread(boost::bind(&RemoteNode::work_, this));
-    }
-    catch (...)
-    {
-        ::close(event_fd_);
-        throw;
-    }
+    VERIFY(event_fd_ >= 0);
+    VERIFY(timer_fd_ >= 0);
+
+    reset_();
+    thread_ = boost::thread(boost::bind(&RemoteNode::work_,
+                                        this));
 }
 
 RemoteNode::~RemoteNode()
@@ -76,6 +83,8 @@ RemoteNode::~RemoteNode()
         {
             LOCK();
 
+            drop_keepalive_work_();
+
             ASSERT(queued_work_.empty());
             ASSERT(submitted_work_.empty());
 
@@ -83,9 +92,30 @@ RemoteNode::~RemoteNode()
             notify_();
         }
         thread_.join();
-        ::close(event_fd_);
+        close_();
     }
     CATCH_STD_ALL_LOG_IGNORE(node_id() << ": exception shutting down");
+}
+
+void
+RemoteNode::close_()
+{
+    auto do_close([this](int fd, const char* desc)
+                  {
+                      if (fd > 0)
+                      {
+                          int ret = close(fd);
+                          if (ret < 0)
+                          {
+                              LOG_ERROR("Failed to close " <<
+                                        desc << " " << fd <<
+                                        ": " << strerror(errno));
+                          }
+                      }
+                  });
+
+    do_close(timer_fd_, "timer fd");
+    do_close(event_fd_, "event fd");
 }
 
 void
@@ -101,13 +131,20 @@ RemoteNode::notify_()
 }
 
 void
-RemoteNode::init_zock_()
+RemoteNode::reset_()
 {
+    LOCK();
+
     zock_.reset(new zmq::socket_t(ztx_, ZMQ_DEALER));
     ZUtils::socket_no_linger(*zock_);
 
     LOG_INFO(node_id() << ": connecting to " << uri());
     zock_->connect(boost::lexical_cast<std::string>(uri()).c_str());
+
+    submitted_work_.clear();
+    drop_keepalive_work_();
+    arm_keepalive_timer_(vrouter_.keepalive_time());
+    missing_keepalive_probes_ = 0;
 }
 
 namespace
@@ -155,6 +192,10 @@ struct RemoteNode::WorkItem
 void
 RemoteNode::drop_request_(const WorkItem& work)
 {
+    LOG_TRACE(node_id() << ": dropping request " <<
+              work.request_desc << ", tag " <<
+              work.request_tag);
+
     LOCK();
     queued_work_.remove_if([&](const WorkItemPtr& w)
                            {
@@ -181,28 +222,35 @@ RemoteNode::handle_(const Request& req,
         notify_();
     }
 
-    switch (work->future.wait_for(timeout_ms))
+    try
     {
-    case boost::future_status::deferred:
+        switch (work->future.wait_for(timeout_ms))
         {
-            LOG_ERROR(node_id() << ": " << work->request_desc << ", tag " <<
-                      work->request_tag << ": future unexpectedly returned 'deferred' status");
-            drop_request_(*work);
-            VERIFY(0 == "unexpected future_status 'deferred'");
-        }
-    case boost::future_status::timeout:
-        {
-            LOG_INFO(node_id() << ": remote did not respond within " << timeout_ms <<
-                     " milliseconds - giving up");
-            drop_request_(*work);
-            throw RequestTimeoutException("request to remote node timed out");
-        }
-    case boost::future_status::ready:
-        {
-            handle_response_(*work);
-            break;
+        case boost::future_status::deferred:
+            {
+                LOG_ERROR(node_id() << ": " << work->request_desc << ", tag " <<
+                          work->request_tag << ": future unexpectedly returned 'deferred' status");
+                VERIFY(0 == "unexpected future_status 'deferred'");
+            }
+        case boost::future_status::timeout:
+            {
+                LOG_INFO(node_id() << ": remote did not respond within " << timeout_ms <<
+                         " milliseconds - giving up");
+                throw RequestTimeoutException("request to remote node timed out");
+            }
+        case boost::future_status::ready:
+            {
+                break;
+            }
         }
     }
+    catch (...)
+    {
+        drop_request_(*work);
+        throw;
+    }
+
+    handle_response_(*work);
 }
 
 void
@@ -258,17 +306,140 @@ RemoteNode::handle_response_(WorkItem& work)
 }
 
 void
+RemoteNode::arm_keepalive_timer_(const bc::seconds& timeout)
+{
+    itimerspec its;
+    memset(&its, 0x0, sizeof(its));
+    its.it_value.tv_sec = timeout.count();
+
+    VERIFY(timer_fd_ >= 0);
+
+    int ret = timerfd_settime(timer_fd_,
+                              0,
+                              &its,
+                              nullptr);
+    if (ret < 0)
+    {
+        LOG_ERROR("Failed to arm keepalive timer with timeout " << timeout <<
+                  ": " << strerror(errno));
+    }
+}
+
+bc::seconds
+RemoteNode::check_keepalive_()
+{
+
+    bc::seconds timeout(vrouter_.keepalive_time());
+
+    if (keepalive_work_ and not keepalive_work_->future.is_ready())
+    {
+        ++missing_keepalive_probes_;
+
+        LOG_WARN(node_id() << ": keepalive probe " <<
+                 missing_keepalive_probes_ << " pending");
+
+        timeout = vrouter_.keepalive_interval();
+
+        if (missing_keepalive_probes_ > vrouter_.keepalive_retries())
+        {
+            LOG_ERROR(node_id() << ": missing keepalive probes (" <<
+                      missing_keepalive_probes_ << ") >= max (" <<
+                      vrouter_.keepalive_retries() << ")");
+
+            keepalive_work_ = nullptr;
+
+            // *Ugly* hack - boost has no std::make_exception_ptr equivalent (OTOH std::future does
+            // not have ->is_ready() which renders it completely useless for this use case), so
+            // we have to throw/catch/throw.
+            try
+            {
+                boost::throw_exception(ClusterNodeNotReachableException("cluster node not reachable",
+                                                                        node_id().str().c_str()));
+            }
+            catch (...)
+            {
+                LOCK();
+                for (auto& p : submitted_work_)
+                {
+                    LOG_TRACE(node_id() << ": request " << p.second->request_desc <<
+                              ", tag " << p.second->request_tag);
+                    p.second->promise.set_exception(boost::current_exception());
+                }
+
+                // submitted_work_ is cleared / the socket is reset and the timer rearmed
+                // by the caller (event loop)
+                throw;
+            }
+        }
+        else
+        {
+            LOCK();
+            drop_keepalive_work_();
+        }
+    }
+    else
+    {
+        missing_keepalive_probes_ = 0;
+    }
+
+    return timeout;
+}
+
+void
+RemoteNode::keepalive_()
+{
+    const bc::seconds timeout(check_keepalive_());
+
+    ExtraRecvFun extra_recv([&]
+                            {
+                                ZEXPECT_MORE(*zock_, "PingMessage");
+                                vfsprotocol::PingMessage rsp;
+                                ZUtils::deserialize_from_socket(*zock_, rsp);
+
+                                rsp.CheckInitialized();
+                                LOG_INFO("got keepalive rsp from " << rsp.sender_id());
+                            });
+
+    keepalive_work_ =
+        boost::make_shared<WorkItem>(keepalive_probe_,
+                                     ExtraSendFun(),
+                                     std::move(extra_recv));
+
+
+    LOCK();
+    submit_work_(keepalive_work_);
+    arm_keepalive_timer_(timeout);
+}
+
+void
+RemoteNode::drop_keepalive_work_()
+{
+    ASSERT_LOCKABLE_LOCKED(work_lock_);
+
+    if (keepalive_work_)
+    {
+        submitted_work_.erase(keepalive_work_->request_tag);
+        keepalive_work_ = nullptr;
+    }
+}
+
+void
 RemoteNode::work_()
 {
     {
         LOCK();
         // the socket was created by another thread, per ZMQs documentation ownership
         // transfer requires a full fence memory barrier which this lock should offer
-        LOG_INFO(node_id() << ": starting worker");
+        LOG_INFO(node_id() << ": starting worker, keepalive settings:" <<
+                 vrouter_.keepalive_time() << "/" <<
+                 vrouter_.keepalive_interval() << "/" <<
+                 vrouter_.keepalive_retries());
     }
 
-    zmq::pollitem_t items[2];
+    std::array<zmq::pollitem_t, 3> items;
     bool wait_for_write = false;
+
+    arm_keepalive_timer_(vrouter_.keepalive_time());
 
     while (true)
     {
@@ -288,20 +459,29 @@ RemoteNode::work_()
             items[1].fd = event_fd_;
             items[1].events = ZMQ_POLLIN;
 
-            const int ret = zmq::poll(items,
-                                      2,
+            items[2].socket = nullptr;
+            items[2].fd = timer_fd_;
+            items[2].events = ZMQ_POLLIN;
+
+            const int ret = zmq::poll(items.data(),
+                                      items.size(),
                                       -1);
             THROW_WHEN(ret <= 0);
 
             if (stop_)
             {
                 LOCK();
+                drop_keepalive_work_();
                 ASSERT(queued_work_.empty());
                 ASSERT(submitted_work_.empty());
                 break;
             }
             else
             {
+                if ((items[2].revents bitand ZMQ_POLLIN))
+                {
+                    keepalive_();
+                }
                 if ((items[0].revents bitand ZMQ_POLLIN))
                 {
                     recv_responses_();
@@ -327,15 +507,15 @@ RemoteNode::work_()
             }
             else
             {
-                LOG_ERROR(node_id() << ": caugh ZMQ exception in event loop: " <<
+                LOG_ERROR(node_id() << ": caught ZMQ exception in event loop: " <<
                           e.what() << ". Resetting");
-                init_zock_();
+                reset_();
             }
         }
         CATCH_STD_ALL_EWHAT({
                 LOG_ERROR(node_id() << ": caught exception in event loop: " <<
                           EWHAT << ". Resetting.");
-                init_zock_();
+                reset_();
             });
     }
 }

@@ -563,10 +563,10 @@ ObjectRouter::maybe_steal_(Ret (ClusterNode::*fn)(const Object&,
             ClusterNode& cn = *node;
             return (cn.*fn)(obj, std::forward<Args>(args)...);
         }
-        catch (RequestTimeoutException&)
+        catch (ClusterNodeNotReachableException&)
         {
             VERIFY(remote == IsRemoteNode::T);
-            LOG_ERROR(id << ": remote node " << owner_id << " timed out");
+            LOG_ERROR(id << ": remote node " << owner_id << " not reachable");
 
             if (cluster_registry_->get_node_status(owner_id).state ==
                 ClusterNodeStatus::State::Online)
@@ -1507,9 +1507,9 @@ ObjectRouter::migrate_(const ObjectRegistration& reg,
 
             LOG_INFO(obj << " successfully migrated from " << from);
         }
-        catch (RequestTimeoutException&)
+        catch (ClusterNodeNotReachableException&)
         {
-            LOG_ERROR(id << ": remote node " << from << " timed out while migrating");
+            LOG_ERROR(id << ": remote node " << from << " not reachable while migrating");
             if (not steal_(reg,
                            only_steal_if_offline,
                            force))

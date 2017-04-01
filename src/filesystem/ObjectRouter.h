@@ -108,6 +108,7 @@ MAKE_EXCEPTION(ClusterNodeNotOnlineException, Exception);
 MAKE_EXCEPTION(ClusterNodeNotOfflineException, Exception);
 MAKE_EXCEPTION(CannotSetSelfOfflineException, Exception);
 MAKE_EXCEPTION(ObjectStillHasChildrenException, Exception);
+MAKE_EXCEPTION(ClusterNodeNotReachableException, Exception);
 
 // Distributed volume access - the idea is as follows:
 // (1) ClusterNode running the volume is looked up in the registry
