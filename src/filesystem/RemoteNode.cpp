@@ -441,11 +441,17 @@ RemoteNode::work_()
 
     arm_keepalive_timer_(vrouter_.keepalive_time());
 
+    auto keepalive_is_enabled([&]() -> bool
+                              {
+                                  return vrouter_.keepalive_time() != bc::seconds(0);
+                              });
+
     while (true)
     {
         try
         {
             ASSERT(zock_ != nullptr);
+            const bool keepalive_was_disabled = not keepalive_is_enabled();
 
             items[0].socket = *zock_;
             items[0].fd = -1;
@@ -465,8 +471,8 @@ RemoteNode::work_()
 
             const int ret = zmq::poll(items.data(),
                                       items.size(),
-                                      -1);
-            THROW_WHEN(ret <= 0);
+                                      30000);
+            THROW_WHEN(ret < 0);
 
             if (stop_)
             {
@@ -492,10 +498,15 @@ RemoteNode::work_()
                     wait_for_write = not send_requests_();
                 }
 
-                if (items[1].revents bitand ZMQ_POLLIN)
+                if ((items[1].revents bitand ZMQ_POLLIN))
                 {
                     wait_for_write = not send_requests_();
                 }
+            }
+
+            if (keepalive_was_disabled and keepalive_is_enabled())
+            {
+                arm_keepalive_timer_(vrouter_.keepalive_time());
             }
         }
         catch (zmq::error_t& e)
