@@ -66,16 +66,16 @@ MAKE_EXCEPTION(NetworkHAContextMemPoolException, fungi::IOException);
 NetworkHAContext::NetworkHAContext(const std::string& uri,
                                    uint64_t net_client_qdepth,
                                    bool ha_enabled)
-    : ctx_(std::make_shared<NetworkXioContext>(uri,
-                                               net_client_qdepth,
-                                               *this))
-    , uri_(uri)
+    : uri_(uri)
     , qd_(net_client_qdepth)
     , ha_enabled_(ha_enabled)
     , request_id_(0)
     , opened_(false)
     , openning_(true)
     , connection_error_(false)
+    , ctx_(std::make_shared<NetworkXioContext>(uri,
+                                               net_client_qdepth,
+                                               *this))
 {
     LIBLOGID_INFO("uri: " << uri <<
                   ",queue depth: " << net_client_qdepth);

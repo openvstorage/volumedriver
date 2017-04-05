@@ -171,12 +171,6 @@ public:
         }
     }
 private:
-    /* cnanakos TODO: use atomic overloads for shared_ptr
-     * when g++ > 5.0.0 is used
-     */
-    fungi::SpinLock ctx_lock_;
-    NetworkXioContextPtr ctx_;
-
     // protects volume_name_ and uri_
     mutable std::mutex config_lock_;
     std::string volume_name_;
@@ -209,6 +203,12 @@ private:
     bool opened_;
     bool openning_;
     bool connection_error_;
+
+    /* cnanakos TODO: use atomic overloads for shared_ptr
+     * when g++ > 5.0.0 is used
+     */
+    fungi::SpinLock ctx_lock_;
+    NetworkXioContextPtr ctx_;
 
     bool
     is_connection_error() const
