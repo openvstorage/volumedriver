@@ -2372,4 +2372,13 @@ TEST_F(PythonClientTest, stop_fenced_instance)
     check(remote_node_id());
 }
 
+TEST_F(PythonClientTest, rmdir)
+{
+    const FrontendPath path("/some-directory");
+    create_directory(path);
+    check_dir_stat(path);
+    client_.unlink(path.str());
+    verify_absence(path);
+}
+
 }
