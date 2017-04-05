@@ -11,7 +11,7 @@ youtils_test_CPPFLAGS = \
 
 youtils_test_CXXFLAGS = $(BUILDTOOLS_CFLAGS) -Winvalid-pch
 youtils_test_LDFLAGS = -Wl,--as-needed
-youtils_test_LDADD = ../libyoutils.la $(BUILDTOOLS_LIBS)
+youtils_test_LDADD = ../libyoutils.la $(BUILDTOOLS_LIBS) -lgcrypt
 
 if CLANGPP
 PCH_SUFFIX = pch
@@ -44,6 +44,7 @@ youtils_test_SOURCES = \
 	FileRangeTest.cpp \
 	FileDescriptorTest.cpp \
 	FileUtilsTest.cpp \
+	GcryptTest.cpp \
 	GeneratorTest.cpp \
 	GlobalLockTest.cpp \
 	Go.cpp \
