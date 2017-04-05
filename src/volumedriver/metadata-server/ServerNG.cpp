@@ -289,19 +289,19 @@ ServerNG::dispatch_(const std::shared_ptr<C>& conn,
 
     switch (hdr->request_type)
     {
-        CASE(Open, open_, DeferExecution::F);
-        CASE(Drop, drop_, DeferExecution::F);
-        CASE(Clear, clear_, DeferExecution::F);
-        CASE(MultiGet, multiget_, DeferExecution::F);
-        CASE(MultiSet, multiset_, DeferExecution::F);
-        CASE(SetRole, set_role_, DeferExecution::T);
-        CASE(GetRole, get_role_, DeferExecution::F);
-        CASE(List, list_namespaces_, DeferExecution::F);
-        CASE(Ping, ping_, DeferExecution::F);
-        CASE(ApplyRelocationLogs, apply_relocation_logs_, DeferExecution::T);
-        CASE(CatchUp, catch_up_, DeferExecution::T);
-        CASE(GetTableCounters, get_table_counters_, DeferExecution::F);
-        CASE(GetOwnerTag, get_owner_tag_, DeferExecution::F);
+        CASE(Open, open_, yt::DeferExecution::F);
+        CASE(Drop, drop_, yt::DeferExecution::F);
+        CASE(Clear, clear_, yt::DeferExecution::F);
+        CASE(MultiGet, multiget_, yt::DeferExecution::F);
+        CASE(MultiSet, multiset_, yt::DeferExecution::F);
+        CASE(SetRole, set_role_, yt::DeferExecution::T);
+        CASE(GetRole, get_role_, yt::DeferExecution::F);
+        CASE(List, list_namespaces_, yt::DeferExecution::F);
+        CASE(Ping, ping_, yt::DeferExecution::F);
+        CASE(ApplyRelocationLogs, apply_relocation_logs_, yt::DeferExecution::T);
+        CASE(CatchUp, catch_up_, yt::DeferExecution::T);
+        CASE(GetTableCounters, get_table_counters_, yt::DeferExecution::F);
+        CASE(GetOwnerTag, get_owner_tag_, yt::DeferExecution::F);
     }
 
 #undef CASE
@@ -324,7 +324,7 @@ ServerNG::handle_(const std::shared_ptr<C>& conn,
                   ConnectionStatePtr state,
                   const HeaderPtr& hdr,
                   const DataSourcePtr& data,
-                  const DeferExecution defer,
+                  const yt::DeferExecution defer,
                   const MessageReaderPtr& reader,
                   void (ServerNG::*mem_fn)(typename Traits::Params::Reader& reader,
                                            typename Traits::Results::Builder& builder))
@@ -395,7 +395,7 @@ ServerNG::handle_shmem_(const std::shared_ptr<C>& conn,
                         ConnectionStatePtr state,
                         const HeaderPtr& hdr,
                         const DataSourcePtr& data,
-                        const DeferExecution defer,
+                        const yt::DeferExecution defer,
                         const MessageReaderPtr& reader,
                         void (ServerNG::*mem_fn)(typename Traits::Params::Reader&,
                                                  typename Traits::Results::Builder&))
@@ -444,13 +444,13 @@ ServerNG::do_handle_(const std::shared_ptr<C>& conn,
                      ConnectionStatePtr state,
                      const HeaderPtr& hdr,
                      const DataSourcePtr& data,
-                     const DeferExecution defer,
+                     const yt::DeferExecution defer,
                      const MessageBuilderPtr& builder,
                      const MessageReaderPtr& reader,
                      void (ServerNG::*mem_fn)(typename Traits::Params::Reader&,
                                               typename Traits::Results::Builder&))
 {
-    if (defer == DeferExecution::T)
+    if (defer == yt::DeferExecution::T)
     {
         // keep the shared_ptrs alive
         auto fun([c = conn,

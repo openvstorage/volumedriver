@@ -18,9 +18,12 @@
 
 #include "FailOverCacheTestHelper.h"
 
+#include <gtest/gtest.h>
+
+#include <boost/chrono.hpp>
+
 #include <youtils/ArakoonTestSetup.h>
 #include <youtils/Logging.h>
-#include <gtest/gtest.h>
 
 #include <backend/BackendTestSetup.h>
 
@@ -88,6 +91,9 @@ struct FileSystemTestSetupParameters
         volumedriver::FailOverCacheMode::Asynchronous;
     PARAM(bool, use_fencing) = false;
     PARAM(bool, send_sync_response) = true;
+    PARAM(boost::chrono::seconds, keepalive_time) = boost::chrono::seconds(2);
+    PARAM(boost::chrono::seconds, keepalive_interval) = boost::chrono::seconds(1);
+    PARAM(size_t, keepalive_retries) = 3;
 
 #undef PARAM
 };
@@ -353,6 +359,9 @@ protected:
     uint64_t scrub_manager_interval_secs_;
     bool use_fencing_;
     bool send_sync_response_;
+    boost::chrono::seconds keepalive_time_;
+    boost::chrono::seconds keepalive_interval_;
+    size_t keepalive_retries_;
 
     volumedriverfs::FailOverCacheConfigMode dtl_config_mode_;
     volumedriver::FailOverCacheMode dtl_mode_;
