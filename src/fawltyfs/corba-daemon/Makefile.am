@@ -27,7 +27,7 @@ corba_server_CXXFLAGS = $(BUILDTOOLS_CFLAGS)
 corba_server_LDADD = \
 	../libfawltyfs.la \
 	../../youtils/libyoutils.la \
-	-lfuse \
+	-lfuse -lgcrypt \
 	$(BUILDTOOLS_LIBS)
 
 corba_server_CPPFLAGS = -I@abs_top_srcdir@/..
@@ -43,7 +43,7 @@ corba_client_CXXFLAGS = $(BUILDTOOLS_CFLAGS)
 corba_client_LDADD = \
 	../libfawltyfs.la \
 	../../youtils/libyoutils.la \
-	-lfuse \
+	-lfuse -lgcrypt \
 	$(BUILDTOOLS_LIBS)
 
 corba_client_CPPFLAGS = -I@abs_top_srcdir@/..

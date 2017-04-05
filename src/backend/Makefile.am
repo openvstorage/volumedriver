@@ -8,7 +8,7 @@ lib_LTLIBRARIES = libbackend.la
 libbackend_la_CXXFLAGS = $(BUILDTOOLS_CFLAGS)
 libbackend_la_CFLAGS = $(BUILDTOOLS_CFLAGS)
 libbackend_la_CPPFLAGS = -I@abs_top_srcdir@/..
-libbackend_la_LDFLAGS = -static
+libbackend_la_LDFLAGS = -static -lgcrypt
 
 LTTNG_GEN_TP = @lttng_gen_tp@
 

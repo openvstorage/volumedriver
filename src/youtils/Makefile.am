@@ -41,7 +41,7 @@ libyoutils_la_CPPFLAGS = \
 	-Winvalid-pch
 #	-include LibyoutilsPrecompiledHeader.h
 
-libyoutils_la_LDFLAGS = -static
+libyoutils_la_LDFLAGS = -static -lgcrypt
 
 libyoutils_la_SOURCES = \
 	ArakoonConfigFetcher.cpp \

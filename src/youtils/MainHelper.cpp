@@ -13,6 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "Gcrypt.h"
 #include "FileUtils.h"
 #include "Logging.h"
 #include "MainHelper.h"
@@ -104,6 +105,11 @@ MainHelper::operator()()
         parse_command_line_arguments();
         check_no_unrecognized();
         print_version_data();
+        if (Gcrypt::init_gcrypt() < 0)
+        {
+            LOG_FATAL("failed to init gcrypt");
+            return res;
+        }
 
         res = run();
     }

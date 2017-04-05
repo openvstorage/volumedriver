@@ -97,14 +97,14 @@ precompiled_headers : YoutilsTestPrecompiledHeader.h.pch MainhelpertestExecutabl
 mainhelpertest_executable_CPPFLAGS = -I@abs_top_builddir@/test
 mainhelpertest_executable_CXXFLAGS = $(BUILDTOOLS_CFLAGS)
 mainhelpertest_executable_LDFLAGS = -Wl,--as-needed
-mainhelpertest_executable_LDADD = ../libyoutils.la  $(BUILDTOOLS_LIBS)
+mainhelpertest_executable_LDADD = ../libyoutils.la  $(BUILDTOOLS_LIBS) -lgcrypt
 mainhelpertest_executable_SOURCES = MainHelperTestExecutable.cpp
 
 
 testmainhelpertest_executable_CPPFLAGS = -I@abs_top_builddir@/test
 testmainhelpertest_executable_CXXFLAGS = $(BUILDTOOLS_CFLAGS)
 testmainhelpertest_executable_LDFLAGS = -Wl,--as-needed
-testmainhelpertest_executable_LDADD = ../libyoutils.la  $(BUILDTOOLS_LIBS)
+testmainhelpertest_executable_LDADD = ../libyoutils.la  $(BUILDTOOLS_LIBS) -lgcrypt
 testmainhelpertest_executable_SOURCES = TestMainHelperTestExecutable.cpp
 
 

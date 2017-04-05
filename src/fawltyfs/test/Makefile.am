@@ -6,7 +6,7 @@ fawltyfs_test_CPPFLAGS = -I@abs_top_srcdir@/.. -D_FILE_OFFSET_BITS=64
 fawltyfs_test_LDADD = \
 	../libfawltyfs.la \
 	../../youtils/libyoutils.la \
-	-lfuse \
+	-lfuse -lgcrypt \
 	$(BUILDTOOLS_LIBS)
 
 fawltyfs_test_LDFLAGS=-Wl,--as-needed

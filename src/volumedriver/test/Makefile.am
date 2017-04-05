@@ -8,7 +8,7 @@ libvolumedrivertest_la_CPPFLAGS = \
 	-I@abs_top_srcdir@/ \
 	-I@abs_top_srcdir@/..
 
-libvolumedrivertest_la_LDFLAGS = -static
+libvolumedrivertest_la_LDFLAGS = -static -lgcrypt
 
 libvolumedrivertest_la_SOURCES = \
 	FailOverCacheTestSetup.cpp \
@@ -25,7 +25,7 @@ volumedriver_test_LDADD = \
 	../../backend/libbackend.la \
 	../../fawltyfs/libfawltyfs.la \
 	../../youtils/libyoutils.la \
-	$(BUILDTOOLS_LIBS)
+	$(BUILDTOOLS_LIBS) -lgcrypt
 
 volumedriver_test_LDFLAGS = -Wl,--as-needed
 
