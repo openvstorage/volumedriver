@@ -1132,7 +1132,17 @@ Unlink::execute_internal(::XmlRpc::XmlRpcValue& params,
 {
     XMLRPCUtils::ensure_arg(params[0], XMLRPCKeys::target_path);
     const FrontendPath path(static_cast<const std::string&>(params[0][XMLRPCKeys::target_path]));
-    fs_.unlink(path);
+    struct stat st;
+    fs_.getattr(path,
+                st);
+    if (st.st_mode == S_IFDIR)
+    {
+        fs_.rmdir(path);
+    }
+    else
+    {
+        fs_.unlink(path);
+    }
 }
 
 void

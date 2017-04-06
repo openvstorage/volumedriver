@@ -65,6 +65,7 @@ libyoutils_la_SOURCES = \
 	FileDescriptor.cpp \
 	FileRange.cpp \
 	FileUtils.cpp \
+	Gcrypt.cpp \
 	Generator.cpp \
 	GlobalLockService.cpp \
 	GlobalLockedCallable.cpp \

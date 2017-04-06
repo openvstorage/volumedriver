@@ -23,12 +23,12 @@ namespace libovsvolumedriver
 NetworkXioContext::NetworkXioContext(const std::string& uri,
                                      uint64_t net_client_qdepth,
                                      NetworkHAContext& ha_ctx)
-    : net_client_(std::make_shared<NetworkXioClient>(uri,
-                                                     net_client_qdepth,
-                                                     ha_ctx))
-    , uri_(uri)
+    : uri_(uri)
     , net_client_qdepth_(net_client_qdepth)
     , ha_ctx_(ha_ctx)
+    , net_client_(std::make_shared<NetworkXioClient>(uri_,
+                                                     net_client_qdepth_,
+                                                     ha_ctx_))
 {
     LIBLOGID_DEBUG("uri: " << uri <<
                    ",queue depth: " << net_client_qdepth);

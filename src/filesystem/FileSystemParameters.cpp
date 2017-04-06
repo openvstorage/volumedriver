@@ -180,6 +180,27 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_send_sync_response,
                                       ShowDocumentation::T,
                                       true);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_keepalive_time_secs,
+                                      volumerouter_component_name,
+                                      "vrouter_keepalive_time_secs",
+                                      "time between two keepalive probe cycles in seconds (0 switches keepalive off)",
+                                      ShowDocumentation::T,
+                                      60);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_keepalive_interval_secs,
+                                      volumerouter_component_name,
+                                      "vrouter_keepalive_interval_secs",
+                                      "time (seconds) between probes of a cycle if the previous one was unacknowledged",
+                                      ShowDocumentation::T,
+                                      10);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(vrouter_keepalive_retries,
+                                      volumerouter_component_name,
+                                      "vrouter_keepalive_retries",
+                                      "number of unacknowledged probes before considering the other side dead",
+                                      ShowDocumentation::T,
+                                      5);
+
 // ObjectRouterCluster
 const char volumeroutercluster_component_name[] = "volume_router_cluster";
 

@@ -93,6 +93,9 @@ ObjectRouter::ObjectRouter(const bpt::ptree& pt,
     , vrouter_xmlrpc_client_timeout_ms(pt)
     , vrouter_use_fencing(pt)
     , vrouter_send_sync_response(pt)
+    , vrouter_keepalive_time_secs(pt)
+    , vrouter_keepalive_interval_secs(pt)
+    , vrouter_keepalive_retries(pt)
     , larakoon_(larakoon)
     , object_registry_(std::make_shared<CachedObjectRegistry>(cluster_id(),
                                                               node_id(),
@@ -116,15 +119,19 @@ ObjectRouter::ObjectRouter(const bpt::ptree& pt,
     update_config_(pt);
 
     const ClusterNodeConfig ncfg(node_config());
-    worker_pool_ = std::make_unique<ZWorkerPool>("ObjectRouterWorkerPool",
-                                                 *ztx_,
-                                                 ncfg.message_uri(),
-                                                 [this](ZWorkerPool::MessageParts parts)
-                                                 {
-                                                     return redirected_work_(std::move(parts));
-                                                 },
-                                                 vrouter_min_workers.value(),
-                                                 vrouter_max_workers.value());
+    worker_pool_ =
+        std::make_unique<ZWorkerPool>("ObjectRouterWorkerPool",
+                                      *ztx_,
+                                      ncfg.message_uri(),
+                                      vrouter_max_workers.value(),
+                                      // TODO: use {std,boost}::bind instead if possible
+                                      [this](ZWorkerPool::MessageParts parts) -> ZWorkerPool::MessageParts
+                                      {
+                                          return redirected_work_(std::move(parts));
+                                      },
+                                      boost::bind(&ObjectRouter::dispatch_redirected_work_,
+                                                  this,
+                                                  _1));
 }
 
 ObjectRouter::~ObjectRouter()
@@ -321,6 +328,30 @@ get_req(const ZWorkerPool::MessageParts& parts)
     return m;
 }
 
+}
+
+yt::DeferExecution
+ObjectRouter::dispatch_redirected_work_(const ZWorkerPool::MessageParts& parts)
+{
+    if (parts.size() > 0)
+    {
+        try
+        {
+            vfsprotocol::RequestType req_type;
+            ZUtils::deserialize_from_message(parts[0],
+                                             req_type);
+            return req_type == vfsprotocol::RequestType::Ping ?
+                yt::DeferExecution::F :
+                yt::DeferExecution::T;
+        }
+        CATCH_STD_ALL_LOG_IGNORE("Failed to peek at request type");
+    }
+    else
+    {
+        LOG_ERROR("expected at least one message part, gone none");
+    }
+
+    return yt::DeferExecution::T;
 }
 
 ZWorkerPool::MessageParts
@@ -532,10 +563,10 @@ ObjectRouter::maybe_steal_(Ret (ClusterNode::*fn)(const Object&,
             ClusterNode& cn = *node;
             return (cn.*fn)(obj, std::forward<Args>(args)...);
         }
-        catch (RequestTimeoutException&)
+        catch (ClusterNodeNotReachableException&)
         {
             VERIFY(remote == IsRemoteNode::T);
-            LOG_ERROR(id << ": remote node " << owner_id << " timed out");
+            LOG_ERROR(id << ": remote node " << owner_id << " not reachable");
 
             if (cluster_registry_->get_node_status(owner_id).state ==
                 ClusterNodeStatus::State::Online)
@@ -1476,9 +1507,9 @@ ObjectRouter::migrate_(const ObjectRegistration& reg,
 
             LOG_INFO(obj << " successfully migrated from " << from);
         }
-        catch (RequestTimeoutException&)
+        catch (ClusterNodeNotReachableException&)
         {
-            LOG_ERROR(id << ": remote node " << from << " timed out while migrating");
+            LOG_ERROR(id << ": remote node " << from << " not reachable while migrating");
             if (not steal_(reg,
                            only_steal_if_offline,
                            force))
@@ -1809,31 +1840,11 @@ ObjectRouter::update(const bpt::ptree& pt,
     U(vrouter_xmlrpc_client_timeout_ms);
     U(vrouter_use_fencing);
     U(vrouter_send_sync_response);
-
-    ip::PARAMETER_TYPE(vrouter_min_workers) min(pt);
-    ip::PARAMETER_TYPE(vrouter_min_workers) max(pt);
-
-    try
-    {
-        if (min.value() != vrouter_min_workers.value() or
-            max.value() != vrouter_max_workers.value())
-        {
-            worker_pool_->resize(min.value(),
-                                 max.value());
-        }
-
-        U(vrouter_min_workers);
-        U(vrouter_max_workers);
-    }
-    CATCH_STD_ALL_EWHAT({
-            LOG_ERROR("Failed to resize worker pool: " << EWHAT);
-            rep.no_update(min.name(),
-                          vrouter_min_workers.value(),
-                          min.value());
-            rep.no_update(max.name(),
-                          vrouter_max_workers.value(),
-                          max.value());
-        });
+    U(vrouter_min_workers);
+    U(vrouter_max_workers);
+    U(vrouter_keepalive_time_secs);
+    U(vrouter_keepalive_interval_secs);
+    U(vrouter_keepalive_retries);
 
 #undef U
 
@@ -1865,6 +1876,9 @@ ObjectRouter::persist(bpt::ptree& pt,
     P(vrouter_xmlrpc_client_timeout_ms);
     P(vrouter_use_fencing);
     P(vrouter_send_sync_response);
+    P(vrouter_keepalive_time_secs);
+    P(vrouter_keepalive_interval_secs);
+    P(vrouter_keepalive_retries);
 
 #undef P
 
@@ -1907,6 +1921,17 @@ ObjectRouter::checkConfig(const bpt::ptree& pt,
                                                      val.section_name(),
                                                      "Value must be > 0"));
             result = false;
+        }
+    }
+
+    {
+        ip::PARAMETER_TYPE(vrouter_keepalive_time_secs) time(pt);
+        ip::PARAMETER_TYPE(vrouter_keepalive_interval_secs) interval(pt);
+        if (time.value() < interval.value())
+        {
+            crep.push_front(yt::ConfigurationProblem(interval.name(),
+                                                     interval.section_name(),
+                                                     "value must be > keepalive time"));
         }
     }
 

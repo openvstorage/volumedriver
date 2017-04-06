@@ -44,6 +44,7 @@ youtils_test_SOURCES = \
 	FileRangeTest.cpp \
 	FileDescriptorTest.cpp \
 	FileUtilsTest.cpp \
+	GcryptTest.cpp \
 	GeneratorTest.cpp \
 	GlobalLockTest.cpp \
 	Go.cpp \

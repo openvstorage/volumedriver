@@ -22,11 +22,14 @@ service ovs-volumedriver-vpool_name restart
 | volume_router | vrouter_id | --- | no | the vrouter_id of this node of the cluster. Must be one of the vrouter_id's s specified in the vrouter_cluster_nodes section |
 | volume_router | vrouter_sco_multiplier | "1024" | no | number of clusters in a sco |
 | volume_router | vrouter_routing_retries | "30" | yes | number of times the routing shall be retried in case the volume is not found (exponential backoff inbetween retries!) |
-| volume_router | vrouter_min_workers | "4" | yes | minimum number of worker threads to handle redirected requests |
-| volume_router | vrouter_max_workers | "16" | yes | maximum number of worker threads to handle redirected requests |
+| volume_router | vrouter_min_workers | "4" | no | minimum number of worker threads to handle redirected requests |
+| volume_router | vrouter_max_workers | "16" | no | maximum number of worker threads to handle redirected requests |
 | volume_router | vrouter_registry_cache_capacity | "1024" | no | number of ObjectRegistrations to keep cached |
 | volume_router | vrouter_use_fencing | "0" | yes | whether to use fencing support if it is available |
 | volume_router | vrouter_send_sync_response | "1" | yes | whether to send extended response data on sync requests |
+| volume_router | vrouter_keepalive_time_secs | "60" | yes | time between two keepalive probe cycles in seconds (0 switches keepalive off) |
+| volume_router | vrouter_keepalive_interval_secs | "10" | yes | time (seconds) between probes of a cycle if the previous one was unacknowledged |
+| volume_router | vrouter_keepalive_retries | "5" | yes | number of unacknowledged probes before considering the other side dead |
 | volume_router_cluster | vrouter_cluster_id | --- | no | cluster_id of the volumeroutercluster this node belongs to |
 | fuse | fuse_min_workers | "8" | yes | minimum number of FUSE worker threads |
 | fuse | fuse_max_workers | "8" | yes | maximum number of FUSE worker threads |

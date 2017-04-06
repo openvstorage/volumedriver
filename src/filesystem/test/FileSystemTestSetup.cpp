@@ -82,6 +82,9 @@ FileSystemTestSetup::FileSystemTestSetup(const FileSystemTestSetupParameters& pa
     , scrub_manager_interval_secs_(params.scrub_manager_interval_secs_)
     , use_fencing_(params.use_fencing_)
     , send_sync_response_(params.send_sync_response_)
+    , keepalive_time_(params.keepalive_time_)
+    , keepalive_interval_(params.keepalive_interval_)
+    , keepalive_retries_(params.keepalive_retries_)
     , dtl_config_mode_(params.dtl_config_mode_)
     , dtl_mode_(params.dtl_mode_)
     , fdriver_namespace_("ovs-fdnspc-fstest-"s + yt::UUID().str())
@@ -384,6 +387,19 @@ FileSystemTestSetup::make_config_(bpt::ptree& pt,
         ip::PARAMETER_TYPE(scrub_manager_interval)(scrub_manager_interval_secs_).persist(pt);
         ip::PARAMETER_TYPE(vrouter_use_fencing)(use_fencing_).persist(pt);
         ip::PARAMETER_TYPE(vrouter_send_sync_response)(send_sync_response_).persist(pt);
+
+        // disable keepalive for other nodes - when valgrinding we're bumping into timeouts more
+        // often than not.
+        if (vrouter_id == local_node_id())
+        {
+            ip::PARAMETER_TYPE(vrouter_keepalive_time_secs)(keepalive_time_.count()).persist(pt);
+        }
+        else
+        {
+            ip::PARAMETER_TYPE(vrouter_keepalive_time_secs)(0).persist(pt);
+        }
+        ip::PARAMETER_TYPE(vrouter_keepalive_interval_secs)(keepalive_interval_.count()).persist(pt);
+        ip::PARAMETER_TYPE(vrouter_keepalive_retries)(keepalive_retries_).persist(pt);
     }
 
     // volume_router_cluster

@@ -123,11 +123,11 @@ public:
     is_dtl_in_sync() override final;
 
 private:
-    libovsvolumedriver::NetworkXioClientPtr net_client_;
     std::string uri_;
     uint64_t net_client_qdepth_;
     std::string volname_;
     NetworkHAContext& ha_ctx_;
+    libovsvolumedriver::NetworkXioClientPtr net_client_;
 
     typedef std::shared_ptr<ovs_aio_request> ovs_aio_request_ptr;
 

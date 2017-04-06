@@ -107,6 +107,7 @@ private:
     zmq::context_t& ztx_;
     std::unique_ptr<zmq::socket_t> zock_;
     int event_fd_;
+    int timer_fd_;
     bool stop_;
     boost::thread thread_;
 
@@ -119,14 +120,37 @@ private:
     std::list<WorkItemPtr> queued_work_; // push back / pop front
     std::map<vfsprotocol::Tag, WorkItemPtr> submitted_work_;
 
+    // no locking, only ever accessed from within thread_
+    const vfsprotocol::PingMessage keepalive_probe_;
+    WorkItemPtr keepalive_work_;
+    std::atomic<size_t> missing_keepalive_probes_;
+
+    void
+    close_();
+
     void
     notify_();
 
     void
-    init_zock_();
+    reset_();
+
+    void
+    arm_keepalive_timer_(const boost::chrono::seconds&);
+
+    void
+    keepalive_();
+
+    boost::chrono::seconds
+    check_keepalive_();
+
+    void
+    drop_keepalive_work_();
 
     bool
     send_requests_();
+
+    void
+    submit_work_(const WorkItemPtr&);
 
     void
     drop_request_(const WorkItem&);
@@ -145,10 +169,10 @@ private:
 
     template<typename Request>
     void
-    handle_(const Request& req,
+    handle_(const Request&,
             const boost::chrono::milliseconds& timeout_ms,
-            ExtraSendFun* send_extra = nullptr,
-            ExtraRecvFun* recv_extra = nullptr);
+            ExtraSendFun = ExtraSendFun(),
+            ExtraRecvFun = ExtraRecvFun());
 };
 
 }
