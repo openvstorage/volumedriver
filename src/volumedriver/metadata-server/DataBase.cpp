@@ -76,29 +76,36 @@ DataBase::~DataBase()
     // possibly non-obvious: Tables have a callback into DataBase which
     // could run at any point from a PeriodicAction until the Table itself
     // is destructed.
-    {
-        boost::unique_lock<decltype(lock_)> u(lock_);
+    boost::unique_lock<decltype(lock_)> u(lock_);
+    gc_stop_ = true;
+    gc_cond_.notify_all();
 
-        while (not tables_.empty())
+    {
+        boost::reverse_lock<decltype(u)> r(u);
+        try
         {
-            auto it = tables_.begin();
-            VERIFY(it != tables_.end());
-            TableInterfacePtr t = it->second;
-            tables_.erase(it);
-            boost::reverse_lock<decltype(u)> r(u);
-            t = nullptr;
+            gc_.join();
         }
-
-        gc_stop_ = true;
-        gc_cond_.notify_all();
+        CATCH_STD_ALL_LOG_IGNORE("Failed to stop gc thread");
     }
 
-    try
+    while (not tables_.empty())
     {
-        gc_.join();
+        auto it = tables_.begin();
+        VERIFY(it != tables_.end());
+        TableInterfacePtr t = it->second;
+        tables_.erase(it);
+        boost::reverse_lock<decltype(u)> r(u);
+        t = nullptr;
     }
-    CATCH_STD_ALL_LOG_IGNORE("Failed to stop gc thread");
 
+    while (not garbage_.empty())
+    {
+        TablePtr t = garbage_.front();
+        garbage_.pop_front();
+        boost::reverse_lock<decltype(u)> r(u);
+        t = nullptr;
+    }
 }
 
 void
@@ -228,6 +235,9 @@ DataBase::collect_garbage_()
                 db_->drop(t->nspace());
             }
             CATCH_STD_ALL_LOG_IGNORE("Failed to drop " << t->nspace());
+
+            boost::reverse_lock<decltype(u)> r(u);
+            t = nullptr;
         }
 
         if (gc_stop_)
