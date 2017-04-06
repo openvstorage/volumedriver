@@ -17,6 +17,8 @@
 #include "Catchers.h"
 #include "PeriodicActionPool.h"
 
+#include <boost/thread/reverse_lock.hpp>
+
 namespace youtils
 {
 
@@ -111,14 +113,16 @@ struct PeriodicActionPool::TaskImpl
     {
         LOG_TRACE(name_);
 
-        boost::lock_guard<decltype(lock_)> g(lock_);
+        boost::unique_lock<decltype(lock_)> g(lock_);
         PeriodicActionContinue cont = PeriodicActionContinue::T;
 
         if (state_ == State::Queue)
         {
+            state_ = State::Exec;
+            boost::reverse_lock<decltype(g)> r(g);
+
             try
             {
-                state_ = State::Exec;
                 cont = action_();
             }
             CATCH_STD_ALL_LOG_IGNORE(name_ << ": caught exception");
