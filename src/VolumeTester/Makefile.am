@@ -10,7 +10,7 @@ volumereader_CXXFLAGS = $(BUILDTOOLS_CFLAGS)
 
 volumereader_CPPFLAGS = -I@abs_top_srcdir@/..
 
-volumereader_LDADD = ../youtils/.libs/libyoutils.a $(BUILDTOOLS_LIBS) -lgcrypt
+volumereader_LDADD = ../youtils/.libs/libyoutils.a $(BUILDTOOLS_LIBS)
 
 volumereader_LDFLAGS = -Wl,--as-needed
 
@@ -28,7 +28,7 @@ volumewriter_CXXFLAGS = $(BUILDTOOLS_CFLAGS)
 
 volumewriter_CPPFLAGS = -I@abs_top_srcdir@/..
 
-volumewriter_LDADD = ../youtils/.libs/libyoutils.a $(BUILDTOOLS_LIBS) -lgcrypt
+volumewriter_LDADD = ../youtils/.libs/libyoutils.a $(BUILDTOOLS_LIBS)
 
 volumewriter_LDFLAGS = -Wl,--as-needed
 
@@ -44,7 +44,7 @@ volumewriter_random_CXXFLAGS = $(BUILDTOOLS_CFLAGS)
 
 volumewriter_random_CPPFLAGS = -I@abs_top_srcdir@/..
 
-volumewriter_random_LDADD =  ../youtils/.libs/libyoutils.a $(BUILDTOOLS_LIBS) -lgcrypt
+volumewriter_random_LDADD =  ../youtils/.libs/libyoutils.a $(BUILDTOOLS_LIBS)
 
 volumewriter_random_LDFLAGS = -Wl,--as-needed
 
@@ -60,7 +60,7 @@ volumewriter_skipoffset_CXXFLAGS = $(BUILDTOOLS_CFLAGS)
 
 volumewriter_skipoffset_CPPFLAGS = -I@abs_top_srcdir@/..
 
-volumewriter_skipoffset_LDADD = ../youtils/.libs/libyoutils.a $(BUILDTOOLS_LIBS) -lgcrypt
+volumewriter_skipoffset_LDADD = ../youtils/.libs/libyoutils.a $(BUILDTOOLS_LIBS)
 
 volumewriter_skipoffset_LDFLAGS = -Wl,--as-needed
 volumewriter_skipoffset_SOURCES = \

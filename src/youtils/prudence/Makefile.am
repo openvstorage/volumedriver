@@ -4,7 +4,7 @@ bin_PROGRAMS = prudence prudence_test
 
 prudence_CXXFLAGS = $(BUILDTOOLS_CFLAGS)
 prudence_LDFLAGS = -Wl,--as-needed
-prudence_LDADD = ../libyoutils.la $(BUILDTOOLS_LIBS) -lgcrypt
+prudence_LDADD = ../libyoutils.la $(BUILDTOOLS_LIBS)
 prudence_CPPFLAGS = \
 	-I@abs_top_srcdir@/..
 
@@ -13,7 +13,7 @@ prudence_SOURCES = \
 
 prudence_test_CXXFLAGS = $(BUILDTOOLS_CFLAGS)
 prudence_test_LDFLAGS = -Wl,--as-needed
-prudence_test_LDADD = ../libyoutils.la $(BUILDTOOLS_LIBS) -lgcrypt
+prudence_test_LDADD = ../libyoutils.la $(BUILDTOOLS_LIBS)
 prudence_test_CPPFLAGS = \
 	-I@abs_top_srcdir@/..
 

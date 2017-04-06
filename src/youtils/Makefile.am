@@ -8,7 +8,7 @@ noinst_LTLIBRARIES = \
 # not hold for other potential users, e.g. uuid code, ...
 libchecksum_la_CXXFLAGS = -msse4.2 $(BUILDTOOLS_CFLAGS)
 libchecksum_la_CPPFLAGS = -I@abs_top_srcdir@/..
-libchecksum_la_LDFLAGS = -static -lgcrypt
+libchecksum_la_LDFLAGS = -static
 
 libchecksum_la_SOURCES = \
 	CheckSum.cpp
@@ -41,7 +41,7 @@ libyoutils_la_CPPFLAGS = \
 	-Winvalid-pch
 #	-include LibyoutilsPrecompiledHeader.h
 
-libyoutils_la_LDFLAGS = -static -lgcrypt
+libyoutils_la_LDFLAGS = -static
 
 libyoutils_la_SOURCES = \
 	ArakoonConfigFetcher.cpp \

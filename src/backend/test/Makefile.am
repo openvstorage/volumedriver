@@ -5,7 +5,7 @@ backend_test_CXXFLAGS = $(BUILDTOOLS_CFLAGS)
 backend_test_CPPFLAGS = -I@abs_top_srcdir@/..
 backend_test_LDADD = \
 	../libbackend.la \
-	../../youtils/libyoutils.la -lgcrypt \
+	../../youtils/libyoutils.la \
 	$(BUILDTOOLS_LIBS)
 
 backend_test_LDFLAGS = -Wl,--as-needed
