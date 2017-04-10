@@ -282,6 +282,7 @@ private:
     DECLARE_PARAMETER(vrouter_backend_sync_check_interval_ms);
     DECLARE_PARAMETER(scrub_manager_interval);
     DECLARE_PARAMETER(scrub_manager_sync_wait_secs);
+    DECLARE_PARAMETER(scrub_manager_max_parent_scrubs);
 
     std::unique_ptr<filedriver::ContainerManager> fdriver_;
 

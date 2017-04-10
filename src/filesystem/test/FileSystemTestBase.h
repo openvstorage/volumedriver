@@ -446,6 +446,9 @@ protected:
     set_lock_reaper_interval(uint64_t rthresh);
 
     void
+    set_max_parent_scrubs(uint32_t);
+
+    void
     set_use_fencing(bool);
 
     void

@@ -99,6 +99,7 @@ LocalNode::LocalNode(ObjectRouter& router,
     , vrouter_backend_sync_check_interval_ms(pt)
     , scrub_manager_interval(pt)
     , scrub_manager_sync_wait_secs(pt)
+    , scrub_manager_max_parent_scrubs(pt)
 {
     LOG_TRACE("Initializing volumedriver");
 
@@ -201,6 +202,7 @@ LocalNode::update_config(const bpt::ptree& pt,
     U(vrouter_backend_sync_check_interval_ms);
     U(scrub_manager_interval);
     U(scrub_manager_sync_wait_secs);
+    U(scrub_manager_max_parent_scrubs);
 
 #undef U
 }
@@ -218,6 +220,7 @@ LocalNode::persist_config(bpt::ptree& pt,
     P(vrouter_backend_sync_check_interval_ms)
     P(scrub_manager_interval);
     P(scrub_manager_sync_wait_secs);
+    P(scrub_manager_max_parent_scrubs);
 
 #undef P
 }
@@ -1606,26 +1609,36 @@ LocalNode::get_scrub_work(const ObjectId& id,
         pending_scrubs(scrub_manager_->get_parent_scrubs());
 
     std::vector<scrubbing::ScrubWork> res;
-    res.reserve(work.size());
 
-    // Sub-awesome time complexity. Do we care?
-    for (auto&& w : work)
+    if (pending_scrubs.size() >= scrub_manager_max_parent_scrubs.value())
     {
-        bool pending = false;
-        for (const auto& p : pending_scrubs)
-        {
-            if (p.second == id and
-                p.first.ns_ == w.ns_ and
-                p.first.snapshot_name_ == w.snapshot_name_)
-            {
-                pending = true;
-                break;
-            }
-        }
+        LOG_WARN(id << ": not handing out further scrub work - there are already " <<
+                 pending_scrubs.size() << " scrub replies queued up (max: " <<
+                 scrub_manager_max_parent_scrubs.value() << ")");
+    }
+    else
+    {
+        res.reserve(work.size());
 
-        if (not pending)
+        // Sub-awesome time complexity. Do we care?
+        for (auto&& w : work)
         {
-            res.emplace_back(std::move(w));
+            bool pending = false;
+            for (const auto& p : pending_scrubs)
+            {
+                if (p.second == id and
+                    p.first.ns_ == w.ns_ and
+                    p.first.snapshot_name_ == w.snapshot_name_)
+                {
+                    pending = true;
+                    break;
+                }
+            }
+
+            if (not pending)
+            {
+                res.push_back(std::move(w));
+            }
         }
     }
 

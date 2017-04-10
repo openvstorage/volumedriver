@@ -67,6 +67,7 @@ service ovs-volumedriver-vpool_name restart
 | volume_registry | vregistry_arakoon_cluster_nodes | --- | yes | an array of arakoon cluster node configurations for the volume registry, each containing node_id, host and port |
 | scrub_manager | scrub_manager_interval | "300" | yes | interval (in seconds) of the ScrubManager |
 | scrub_manager | scrub_manager_sync_wait_secs | "600" | yes | number of seconds to wait for a scrub result application to be on the backend before giving up |
+| scrub_manager | scrub_manager_max_parent_scrubs | "1024" | yes | max number of pending scrub replies for parents |
 | stats_collector | stats_collector_interval_secs | "6000" | yes | interval with which stats and counters are pushed |
 | stats_collector | stats_collector_destination | "" | yes | destination of stats and counters |
 | file_driver | fd_cache_path | --- | no | cache for filedriver objects |

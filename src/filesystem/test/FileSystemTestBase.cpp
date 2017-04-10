@@ -1067,6 +1067,12 @@ FileSystemTestBase::set_use_fencing(bool use_fencing)
 }
 
 void
+FileSystemTestBase::set_max_parent_scrubs(uint32_t max)
+{
+    set_object_router_param_(ip::PARAMETER_TYPE(scrub_manager_max_parent_scrubs)(max));
+}
+
+void
 FileSystemTestBase::check_file_path_sanity(const FrontendPath& fp)
 {
     FileSystem::verify_file_path_(fp);

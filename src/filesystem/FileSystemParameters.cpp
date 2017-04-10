@@ -495,6 +495,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(scrub_manager_sync_wait_secs,
                                       ShowDocumentation::T,
                                       600);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(scrub_manager_max_parent_scrubs,
+                                      scrub_manager_component_name,
+                                      "scrub_manager_max_parent_scrubs",
+                                      "max number of pending scrub replies for parents",
+                                      ShowDocumentation::T,
+                                      1024);
+
 // StatsCollector
 const char stats_collector_component_name[] = "stats_collector";
 

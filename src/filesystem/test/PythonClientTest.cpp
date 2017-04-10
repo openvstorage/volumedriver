@@ -929,6 +929,23 @@ TEST_F(PythonClientTest, scrubbing)
     }
 }
 
+TEST_F(PythonClientTest, limit_scrub_work)
+{
+    const FrontendPath vpath(make_volume_name("/testing_the_scrubber"));
+    const ObjectId vol_id(create_file(vpath, 10 << 20));
+
+    const std::string snap("snapshot");
+    client_.create_snapshot(vol_id, snap);
+    wait_for_snapshot(vol_id, snap);
+
+    set_max_parent_scrubs(0);
+    EXPECT_TRUE(client_.get_scrubbing_work(vol_id).empty());
+
+    set_max_parent_scrubs(1);
+    EXPECT_EQ(1,
+              client_.get_scrubbing_work(vol_id).size());
+}
+
 TEST_F(PythonClientTest, volume_creation)
 {
     const FrontendPath vpath("/volume");
