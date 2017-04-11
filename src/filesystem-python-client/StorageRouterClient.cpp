@@ -1465,7 +1465,6 @@ BOOST_PYTHON_MODULE(storagerouterclient)
     scrubbing::python::Scrubber::registerize();
 
     vfspy::ObjectRegistryClient::registerize();
-    vfspy::ScrubManagerClient::registerize();
 
     export_debug_module();
 }
