@@ -19,6 +19,7 @@
 #include <boost/python/enum.hpp>
 #include <boost/python/module.hpp>
 
+#include <youtils/Gcrypt.h>
 #include <youtils/LoggerToolCut.h>
 #include <youtils/LoggingToolCut.h>
 #include <youtils/PythonBuildInfo.h>
@@ -28,6 +29,7 @@ BOOST_PYTHON_MODULE(scrubber)
     youtils::Logger::disableLogging();
 #include <youtils/LoggerToolCut.incl>
 
+    youtils::Gcrypt::init_gcrypt();
     youtils::python::BuildInfo::registerize();
 
     scrubbing::python::Scrubber::registerize();

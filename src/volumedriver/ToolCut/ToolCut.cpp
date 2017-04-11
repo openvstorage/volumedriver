@@ -42,6 +42,7 @@
 #include <boost/python/manage_new_object.hpp>
 #include <boost/python/module.hpp>
 
+#include <youtils/Gcrypt.h>
 #include <youtils/Logger.h>
 #include <youtils/LoggerToolCut.h>
 #include <youtils/LoggingToolCut.h>
@@ -58,6 +59,7 @@ BOOST_PYTHON_MODULE(ToolCut)
     using namespace toolcut;
 
     youtils::Logger::disableLogging();
+    youtils::Gcrypt::init_gcrypt();
 
     MAKE_PYTHON_VD_BOOLEAN_ENUM(OverwriteObject, "Whether to overwrite an existing object in the backend, values are T and F")
 
