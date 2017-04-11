@@ -72,6 +72,8 @@ namespace fs = boost::filesystem;
 namespace
 {
 
+using namespace std::literals::string_literals;
+
 const std::string severity_attr_key("Severity");
 
 const std::string logger_attr_key("ID");
@@ -170,6 +172,46 @@ struct SeverityVisitor
     }
 };
 
+const std::string&
+extract_logger_id(const std::string& s)
+{
+    return s;
+}
+
+const std::string&
+extract_logger_id(const bl::attribute_value_set& avs)
+{
+    return bl::extract_or_default<LoggerAttrType>(logger_attr_key,
+                                                  avs,
+                                                  ""s);
+}
+
+// delay the extraction of the logger id until it's really necessary.
+template<typename T>
+bool
+do_filter(const T& t,
+          const Severity sev)
+{
+    bool res = false;
+
+    if (sev >= global_severity)
+    {
+        res = true;
+    }
+
+    FilterTablePtr table(boost::atomic_load(&filter_table));
+    if (table != nullptr)
+    {
+        const auto it = table->find(extract_logger_id(t));
+        if (it != table->end())
+        {
+            res = sev >= it->second;
+        }
+    }
+
+    return res;
+}
+
 // Global filtering to integrate libs that use the boost::log::trivial logging at the moment
 // (I'm looking at you, gobjfs). Eventually this should go away again as it imposes extra
 // overhead since every log statement that passes our prefiltering (cf. Logger::filter) will be
@@ -186,7 +228,8 @@ struct GlobalFilter
                                                                                             sev));
         if (res)
         {
-            return sev >= global_severity;
+            return do_filter(avs,
+                             sev);
         }
         else
         {
@@ -663,27 +706,15 @@ bool
 Logger::filter(const std::string& name,
                const Severity sev)
 {
-    bool res = false;
-
     if (loggingEnabled())
     {
-        if (sev >= global_severity)
-        {
-            res = true;
-        }
-
-        FilterTablePtr table(boost::atomic_load(&filter_table));
-        if (table != nullptr)
-        {
-            const auto it = table->find(name);
-            if (it != table->end())
-            {
-                res = sev >= it->second;
-            }
-        }
+        return do_filter(name,
+                         sev);
     }
-
-    return res;
+    else
+    {
+        return false;
+    }
 }
 
 void
