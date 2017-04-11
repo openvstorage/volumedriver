@@ -43,9 +43,18 @@ public:
     void
     SetUp()
     {
-        if (Gcrypt::init_gcrypt() < 0)
+        try
         {
-            std::cerr << "gcrypt init failed, aborting...\n";
+            Gcrypt::init_gcrypt();
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "gcrypt_init failed: " << e.what();
+            abort();
+        }
+        catch (...)
+        {
+            std::cerr << "gcrypt_init failed with unknown error\n";
             abort();
         }
     }

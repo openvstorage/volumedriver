@@ -14,6 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "Gcrypt.h"
+#include "IOException.h";
 
 #include <iostream>
 #include <memory>
@@ -31,13 +32,13 @@ uint8_t AES256_BLOCK_SIZE = 16;
 namespace youtils
 {
 
-int
+void
 Gcrypt::init_gcrypt()
 {
     gcry_error_t err;
     if (gcry_control(GCRYCTL_ANY_INITIALIZATION_P))
     {
-        return 0;
+        return;
     }
 
     err = gcry_control(GCRYCTL_SET_THREAD_CBS,
@@ -46,12 +47,11 @@ Gcrypt::init_gcrypt()
     {
         std::cerr << "gcry_control(GCRYCTL_SET_THREAD_CBS) failed: "
                   << gcry_strerror(err);
-        return -1;
+        throw fungi::IOException("gcry_control failed)");
     }
     gcry_check_version(GCRYPT_VERSION);
     gcry_control (GCRYCTL_DISABLE_SECMEM, 0);
     gcry_control (GCRYCTL_INITIALIZATION_FINISHED, 0);
-    return 0;
 }
 
 std::string

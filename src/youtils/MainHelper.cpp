@@ -105,12 +105,7 @@ MainHelper::operator()()
         parse_command_line_arguments();
         check_no_unrecognized();
         print_version_data();
-        if (Gcrypt::init_gcrypt() < 0)
-        {
-            LOG_FATAL("failed to init gcrypt");
-            return res;
-        }
-
+        Gcrypt::init_gcrypt();
         res = run();
     }
     catch (std::exception& e)
