@@ -214,7 +214,8 @@ private:
     apply_relocs_on_slave_(const MDSNodeConfig& cfg,
                            const std::vector<std::string>& relocs,
                            SCOCloneID cid,
-                           const ScrubId& scrub_id);
+                           const ScrubId& new_scrub_id,
+                           const MaybeScrubId& old_scrub_id);
 };
 
 }

@@ -1378,7 +1378,7 @@ TEST_P(MDSVolumeTest, failover_performance)
         std::endl;
 }
 
-TEST_P(MDSVolumeTest, no_relocations_on_slaves)
+TEST_P(MDSVolumeTest, relocations_on_slaves)
 {
     const auto wrns(make_random_namespace());
     SharedVolumePtr v = make_volume(*wrns);
@@ -1387,6 +1387,8 @@ TEST_P(MDSVolumeTest, no_relocations_on_slaves)
         mgr(mds_test_setup_->make_manager(cm_,
                                           2,
                                           std::chrono::seconds(3600)));
+
+    mds::ClientNG::Ptr client(mds::ClientNG::create(node_configs(*mgr)[1]));
 
     auto check([&](ApplyRelocationsToSlaves apply_relocs)
     {
@@ -1417,6 +1419,10 @@ TEST_P(MDSVolumeTest, no_relocations_on_slaves)
                                                      boost::none,
                                                      boost::none));
         const MaybeScrubId maybe_scrub_id(mdb->scrub_id());
+        mds::TableInterfacePtr table(client->open(wrns->ns().str()));
+        const mds::TableCounters counters(table->get_counters(Reset::T));
+        EXPECT_EQ(0,
+                  counters.full_rebuilds);
 
         if (apply_relocs == ApplyRelocationsToSlaves::F)
         {
@@ -1434,6 +1440,69 @@ TEST_P(MDSVolumeTest, no_relocations_on_slaves)
 
     check(ApplyRelocationsToSlaves::F);
     check(ApplyRelocationsToSlaves::T);
+}
+
+// https://github.com/openvstorage/volumedriver/issues/127 and
+// https://github.com/openvstorage/volumedriver/issues/307
+TEST_P(MDSVolumeTest, relocations_again)
+{
+    const auto wrns(make_random_namespace());
+    SharedVolumePtr v = make_volume(*wrns);
+
+    EXPECT_NE(boost::none,
+              v->getMetaDataStore()->scrub_id());
+
+    std::unique_ptr<mds::Manager>
+        mgr(mds_test_setup_->make_manager(cm_,
+                                          2,
+                                          std::chrono::seconds(3600)));
+    v->updateMetaDataBackendConfig(MDSMetaDataBackendConfig(node_configs(*mgr),
+                                                            ApplyRelocationsToSlaves::T));
+
+    mds::ClientNG::Ptr client(mds::ClientNG::create(node_configs(*mgr)[1]));
+    mds::TableInterfacePtr table(client->open(wrns->ns().str()));
+
+    auto snap_and_scrub([&](const std::string& name)
+                        {
+                            const SnapshotName snap("snap-"s + name);
+                            v->createSnapshot(snap);
+                            waitForThisBackendWrite(*v);
+
+                            const auto fst_scrub_id(v->getMetaDataStore()->scrub_id());
+                            EXPECT_NE(boost::none,
+                                      fst_scrub_id);
+
+                            table->catch_up(DryRun::F);
+                            MetaDataBackendInterfacePtr
+                                mdb(std::make_shared<MDSMetaDataBackend>(node_configs(*mgr)[1],
+                                                                         wrns->ns(),
+                                                                         boost::none,
+                                                                         boost::none));
+                            EXPECT_EQ(fst_scrub_id,
+                                      mdb->scrub_id());
+                            mds::TableCounters counters(table->get_counters(Reset::T));
+                            EXPECT_EQ(0, counters.full_rebuilds);
+                            EXPECT_EQ(1, counters.incremental_updates);
+
+                            const std::vector<scrubbing::ScrubWork> work(v->getScrubbingWork(boost::none,
+                                                                                             snap));
+                            ASSERT_EQ(1,
+                                      work.size());
+                            apply_scrub_reply(*v,
+                                              scrub(work[0]));
+
+                            const auto snd_scrub_id(v->getMetaDataStore()->scrub_id());
+                            ASSERT_NE(fst_scrub_id,
+                                      snd_scrub_id);
+                            EXPECT_EQ(snd_scrub_id,
+                                      mdb->scrub_id());
+                            counters = table->get_counters(Reset::T);
+                            EXPECT_EQ(0, counters.full_rebuilds);
+                            EXPECT_EQ(0, counters.incremental_updates);
+                        });
+
+    snap_and_scrub("first");
+    snap_and_scrub("second");
 }
 
 // cf. OVS-2708

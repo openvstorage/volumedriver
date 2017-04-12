@@ -69,7 +69,8 @@ public:
     }
 
     virtual void
-    apply_relocations(const volumedriver::ScrubId&,
+    apply_relocations(const volumedriver::ScrubId& exp_backend_scrub_id,
+                      const volumedriver::MaybeScrubId& exp_table_scrub_id,
                       const volumedriver::SCOCloneID,
                       const TableInterface::RelocationLogs&) override final;
 

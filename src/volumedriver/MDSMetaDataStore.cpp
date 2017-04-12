@@ -429,9 +429,10 @@ MDSMetaDataStore::for_each(MetaDataStoreFunctor& functor,
 uint64_t
 MDSMetaDataStore::applyRelocs(RelocationReaderFactory& factory,
                               SCOCloneID cid,
-                              const ScrubId& scrub_id)
+                              const ScrubId& new_scrub_id)
 {
     TODO("AR: reconsider application of relocations to master tables");
+    const MaybeScrubId old_scrub_id(scrub_id());
 
     // Cf. Table.cpp, apply_relocations:
     // A unified apply_relocations via the underlying DataBase/TableInterface
@@ -442,7 +443,7 @@ MDSMetaDataStore::applyRelocs(RelocationReaderFactory& factory,
         {
             const uint64_t ret = md->applyRelocs(factory,
                                                  cid,
-                                                 scrub_id);
+                                                 new_scrub_id);
 
             const size_t ncfgs = node_configs_.size();
             if (ncfgs > 1)
@@ -456,7 +457,8 @@ MDSMetaDataStore::applyRelocs(RelocationReaderFactory& factory,
                         apply_relocs_on_slave_(node_configs_[i],
                                                factory.relocation_logs(),
                                                cid,
-                                               scrub_id);
+                                               new_scrub_id,
+                                               old_scrub_id);
                     }
                     CATCH_STD_ALL_LOG_IGNORE(bi_->getNS() <<
                                              ": failed schedule application of relocs to "
@@ -480,7 +482,8 @@ void
 MDSMetaDataStore::apply_relocs_on_slave_(const MDSNodeConfig& cfg,
                                          const std::vector<std::string>& relocs,
                                          SCOCloneID cid,
-                                         const ScrubId& scrub_id)
+                                         const ScrubId& scrub_id,
+                                         const MaybeScrubId& old_scrub_id)
 {
     if (apply_relocations_to_slaves_ == ApplyRelocationsToSlaves::F)
     {
@@ -492,12 +495,14 @@ MDSMetaDataStore::apply_relocs_on_slave_(const MDSNodeConfig& cfg,
                 cid,
                 ns = bi_->getNS().str(),
                 relocs,
-                scrub_id]
+                scrub_id,
+                old_scrub_id]
                {
                    try
                    {
                        auto client(mds::ClientNG::create(cfg));
                        client->open(ns)->apply_relocations(scrub_id,
+                                                           old_scrub_id,
                                                            cid,
                                                            relocs);
                    }

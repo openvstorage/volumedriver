@@ -1951,7 +1951,8 @@ Volume::applyScrubbingWork(const scrubbing::ScrubReply& scrub_reply,
 
         if (scrub_id == boost::none)
         {
-            TODO("AR: revisit: if a parent was scrubbed we need to be sure that its snapshots.xml made it to the backend before applying relocations");
+            // The caller (filesystem/ScrubManager) needs to make sure that a parent's snapshots.xml
+            //  made it to the backend before applying relocations
             VERIFY(scid != SCOCloneID(0));
             LOG_VINFO("Parent was scrubbed? We need a new scrub ID nevertheless.");
             scrub_id = snapshotManagement_->new_scrub_id();

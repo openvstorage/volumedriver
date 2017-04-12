@@ -67,7 +67,8 @@ interface Methods
     applyRelocationLogs @ 9 (nspace : Text,
     			     cloneId : UInt8,
     			     scrubId : Text,
-			     logs : List(Text)) -> ();
+			     logs : List(Text),
+                             mdScrubId : Text = "") -> ();
 
     catchUp @ 10 (nspace : Text, dryRun : Bool) -> (numTLogs : UInt32);
 

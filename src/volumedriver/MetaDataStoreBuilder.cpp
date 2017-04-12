@@ -98,7 +98,7 @@ MetaDataStoreBuilder::update_metadata_store_(const boost::optional<yt::UUID>& fr
     const ScrubId sp_scrub_id(sp.scrub_id());
     const MaybeScrubId md_scrub_id(mdstore_.scrub_id());
 
-    Result res;
+    Result res(sp_scrub_id);
     res.full_rebuild = full_rebuild;
 
     boost::optional<yt::UUID> start_cork(from);

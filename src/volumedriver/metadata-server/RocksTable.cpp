@@ -166,7 +166,8 @@ RocksTable::multiget(const TableInterface::Keys& keys)
 }
 
 void
-RocksTable::apply_relocations(const vd::ScrubId&,
+RocksTable::apply_relocations(const vd::ScrubId& /* exp_backend_scrub_id */,
+                              const vd::MaybeScrubId& /* exp_table_scrub_id */,
                               const vd::SCOCloneID,
                               const TableInterface::RelocationLogs&)
 {

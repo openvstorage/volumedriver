@@ -168,7 +168,8 @@ Table::get_nsid_map_()
 }
 
 void
-Table::apply_relocations(const vd::ScrubId& scrub_id,
+Table::apply_relocations(const vd::ScrubId& exp_backend_scrub_id,
+                         const vd::MaybeScrubId& exp_table_scrub_id,
                          const vd::SCOCloneID cid,
                          const TableInterface::RelocationLogs& relocs)
 {
@@ -185,9 +186,9 @@ Table::apply_relocations(const vd::ScrubId& scrub_id,
     TODO("AR: reconsider application of relocations to master tables");
 
     auto mdstore(make_mdstore_());
-    const auto old_scrub_id(mdstore->scrub_id());
+    const auto md_scrub_id(mdstore->scrub_id());
 
-    if (old_scrub_id == scrub_id)
+    if (md_scrub_id == exp_backend_scrub_id)
     {
         LOG_INFO(table_->nspace() <<
                  ": relocations already applied, nothing left to do");
@@ -196,7 +197,7 @@ Table::apply_relocations(const vd::ScrubId& scrub_id,
     {
         LOG_ERROR(table_->nspace() <<
                   ": table is in master role but scrub IDs do not match: have " <<
-                  old_scrub_id << ", got " << scrub_id);
+                  md_scrub_id << ", got " << exp_backend_scrub_id);
     }
     else
     {
@@ -204,11 +205,18 @@ Table::apply_relocations(const vd::ScrubId& scrub_id,
                                          bi_->clone(),
                                          scratch_dir_);
 
+        vd::CheckScrubId check_scrub_id = vd::CheckScrubId::F;
+        if (exp_table_scrub_id == boost::none or
+            mdstore->scrub_id() != *exp_table_scrub_id)
+        {
+            check_scrub_id = vd::CheckScrubId::T;
+        }
+
         const vd::MetaDataStoreBuilder::Result res(builder(boost::none,
-                                                           vd::CheckScrubId::T));
+                                                           check_scrub_id));
         update_counters_(res);
 
-        if (mdstore->scrub_id() == scrub_id)
+        if (mdstore->scrub_id() == exp_backend_scrub_id)
         {
             LOG_INFO(table_->nspace() <<
                      ": relocations already applied, metadata was probably rebuilt from scratch?");
@@ -217,13 +225,22 @@ Table::apply_relocations(const vd::ScrubId& scrub_id,
         {
             try
             {
+                if (res.backend_scrub_id != exp_backend_scrub_id)
+                {
+                    LOG_ERROR(table_->nspace() << " backend scrub ID " <<
+                              res.backend_scrub_id << " != expected scrub ID " <<
+                              exp_backend_scrub_id);
+                    throw fungi::IOException("backend scrub ID mismatch while applying relocations",
+                                             table_->nspace().c_str());
+                }
+
                 vd::RelocationReaderFactory factory(relocs,
                                                     scratch_dir_,
                                                     get_nsid_map_().get(cid)->clone(),
                                                     vd::CombinedTLogReader::FetchStrategy::Concurrent);
                 mdstore->applyRelocs(factory,
                                      cid,
-                                     scrub_id);
+                                     exp_backend_scrub_id);
             }
             CATCH_STD_ALL_EWHAT({
                     LOG_ERROR(table_->nspace() <<
