@@ -96,7 +96,8 @@ public:
     operator=(const Table&) = delete;
 
     virtual void
-    apply_relocations(const volumedriver::ScrubId&,
+    apply_relocations(const volumedriver::ScrubId& expected_backend_scrub_id,
+                      const volumedriver::MaybeScrubId& expected_table_scrub_id,
                       const volumedriver::SCOCloneID,
                       const TableInterface::RelocationLogs&) override final;
 

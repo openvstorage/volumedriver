@@ -19,6 +19,7 @@
 // currently the api leaks too many implementation details - this needs to be
 // revised
 
+#include "ApplyRelocsResult.h"
 #include "ClusterCache.h"
 #include "ClusterCount.h"
 #include "ClusterLocation.h"
@@ -502,7 +503,8 @@ public:
                      const boost::optional<volumedriver::SnapshotName>& start_snap,
                      const boost::optional<volumedriver::SnapshotName>& end_snap);
 
-    static boost::optional<backend::Garbage>
+    static std::tuple<boost::optional<backend::Garbage>,
+                      volumedriver::ApplyRelocsContinuations>
     applyScrubbingWork(const volumedriver::VolumeId&,
                        const scrubbing::ScrubReply&,
                        const volumedriver::ScrubbingCleanup = volumedriver::ScrubbingCleanup::OnSuccess);

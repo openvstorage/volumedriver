@@ -133,7 +133,8 @@ struct TableHandle
     }
 
     virtual void
-    apply_relocations(const vd::ScrubId& scrub_id,
+    apply_relocations(const vd::ScrubId& be_scrub_id,
+                      const vd::MaybeScrubId& md_scrub_id,
                       const vd::SCOCloneID cid,
                       const TableInterface::RelocationLogs& relocs) override final
     {
@@ -143,7 +144,12 @@ struct TableHandle
                    //           relocs.size() << ", scrub_id " << scrub_id);
 
                    builder.setNspace(nspace_);
-                   builder.setScrubId(static_cast<const yt::UUID&>(scrub_id).str());
+                   builder.setScrubId(static_cast<const yt::UUID&>(be_scrub_id).str());
+                   if (md_scrub_id)
+                   {
+                       builder.setMdScrubId(static_cast<const yt::UUID&>(*md_scrub_id).str());
+                   }
+
                    builder.setCloneId(cid);
 
                    size_t idx = 0;

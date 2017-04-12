@@ -89,7 +89,7 @@ public:
                       bool sync,
                       const boost::optional<youtils::UUID>& uuid) override;
 
-    virtual uint64_t
+    virtual ApplyRelocsResult
     applyRelocs(RelocationReaderFactory&,
                 SCOCloneID,
                 const ScrubId&) override final;
@@ -209,12 +209,6 @@ private:
 
     void
     check_config_(const MDSMetaDataBackendConfig&);
-
-    void
-    apply_relocs_on_slave_(const MDSNodeConfig& cfg,
-                           const std::vector<std::string>& relocs,
-                           SCOCloneID cid,
-                           const ScrubId& scrub_id);
 };
 
 }

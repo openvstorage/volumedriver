@@ -16,6 +16,7 @@
 #ifndef METADATA_STORE_INTERFACE_H_
 #define METADATA_STORE_INTERFACE_H_
 
+#include "ApplyRelocsResult.h"
 #include "ClusterLocation.h"
 #include "ScrubId.h"
 #include "Types.h"
@@ -91,7 +92,7 @@ public:
                       bool sync,
                       const boost::optional<youtils::UUID>& uuid) = 0;
 
-    virtual uint64_t
+    virtual ApplyRelocsResult
     applyRelocs(RelocationReaderFactory&,
                 SCOCloneID,
                 const ScrubId&) = 0;

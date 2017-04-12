@@ -214,7 +214,8 @@ public:
     using RelocationLogs = std::vector<std::string>;
 
     virtual void
-    apply_relocations(const volumedriver::ScrubId&,
+    apply_relocations(const volumedriver::ScrubId& expected_backend_scrub_id,
+                      const volumedriver::MaybeScrubId& expected_table_scrub_id,
                       const volumedriver::SCOCloneID,
                       const RelocationLogs&) = 0;
 

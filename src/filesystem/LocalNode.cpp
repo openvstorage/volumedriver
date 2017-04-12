@@ -1662,6 +1662,8 @@ LocalNode::apply_scrub_reply_(const ObjectId& id,
 
     const vd::VolumeId& vid = static_cast<const vd::VolumeId&>(id.str());
     boost::optional<be::Garbage> maybe_garbage;
+    vd::ApplyRelocsContinuations conts;
+
     vd::TLogId tlog_id;
 
     {
@@ -1671,9 +1673,9 @@ LocalNode::apply_scrub_reply_(const ObjectId& id,
 
         auto fun([&]
                  {
-                     maybe_garbage = api::applyScrubbingWork(vid,
-                                                             rsp,
-                                                             cleanup);
+                     std::tie(maybe_garbage, conts) = api::applyScrubbingWork(vid,
+                                                                              rsp,
+                                                                              cleanup);
                      tlog_id = api::scheduleBackendSync(vid);
                  });
 
@@ -1720,6 +1722,24 @@ LocalNode::apply_scrub_reply_(const ObjectId& id,
                      ": not sync'ed to backend yet - going to sleep for a while");
             boost::this_thread::sleep_for(bc::seconds(1));
         }
+    }
+
+    std::vector<std::future<void>> futs;
+    futs.reserve(conts.size());
+    const std::chrono::seconds timeout(scrub_manager_sync_wait_secs.value());
+
+    for (size_t i = 0; i < conts.size(); ++i)
+    {
+        futs.push_back(std::async(std::launch::async,
+                                  [&conts, i, timeout]
+                                  {
+                                      conts[i](timeout);
+                                  }));
+    }
+
+    for (auto& f : futs)
+    {
+        f.get();
     }
 
     return maybe_garbage;

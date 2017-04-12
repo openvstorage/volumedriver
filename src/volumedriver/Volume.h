@@ -375,7 +375,8 @@ public:
     getScrubbingWork(const boost::optional<SnapshotName>& start_snap,
                      const boost::optional<SnapshotName>& end_snap) const;
 
-    boost::optional<backend::Garbage>
+    std::tuple<boost::optional<backend::Garbage>,
+               ApplyRelocsContinuations>
     applyScrubbingWork(const scrubbing::ScrubReply&,
                        const ScrubbingCleanup = ScrubbingCleanup::OnSuccess,
                        const PrefetchVolumeData = PrefetchVolumeData::F);

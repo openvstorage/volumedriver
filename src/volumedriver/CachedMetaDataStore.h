@@ -126,7 +126,7 @@ public:
                       bool sync,
                       const boost::optional<youtils::UUID>& uuid) override final;
 
-    virtual uint64_t
+    virtual ApplyRelocsResult
     applyRelocs(RelocationReaderFactory&,
                 SCOCloneID,
                 const ScrubId&) override final;

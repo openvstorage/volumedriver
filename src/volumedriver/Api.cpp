@@ -990,7 +990,8 @@ api::getScrubbingWork(const vd::VolumeId& volName,
                                                                      end_snap);
 }
 
-boost::optional<be::Garbage>
+std::tuple<boost::optional<be::Garbage>,
+           vd::ApplyRelocsContinuations>
 api::applyScrubbingWork(const vd::VolumeId& volName,
                         const scrubbing::ScrubReply& scrub_reply,
                         const vd::ScrubbingCleanup cleanup)

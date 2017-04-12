@@ -98,7 +98,7 @@ MetaDataStoreBuilder::update_metadata_store_(const boost::optional<yt::UUID>& fr
     const ScrubId sp_scrub_id(sp.scrub_id());
     const MaybeScrubId md_scrub_id(mdstore_.scrub_id());
 
-    Result res;
+    Result res(sp_scrub_id);
     res.full_rebuild = full_rebuild;
 
     boost::optional<yt::UUID> start_cork(from);
@@ -149,6 +149,11 @@ MetaDataStoreBuilder::update_metadata_store_(const boost::optional<yt::UUID>& fr
     }
     else
     {
+        // 'res.full_rebuild' indicates whether the old state was thrown away,
+        // which does not cover the case of the mdstore being empty to begin with.
+        const bool from_scratch = mdstore_.lastCork() == boost::none;
+        ASSERT(not res.full_rebuild or from_scratch);
+
         VolumeConfig cfg;
         bi_->fillObject(cfg,
                         InsistOnLatestVersion::T);
@@ -184,7 +189,7 @@ MetaDataStoreBuilder::update_metadata_store_(const boost::optional<yt::UUID>& fr
                                        true,
                                        end_cork);
 
-            if (res.full_rebuild or check_scrub_id == CheckScrubId::T)
+            if (from_scratch or check_scrub_id == CheckScrubId::T)
             {
                 mdstore_.set_scrub_id(sp_scrub_id);
             }
