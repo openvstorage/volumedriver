@@ -1840,7 +1840,8 @@ Volume::cleanupScrubbingOnError_(const be::Namespace& nspace,
                                                                       std::move(garbage)));
 }
 
-boost::optional<be::Garbage>
+std::tuple<boost::optional<be::Garbage>,
+           ApplyRelocsContinuations>
 Volume::applyScrubbingWork(const scrubbing::ScrubReply& scrub_reply,
                            const ScrubbingCleanup cleanup,
                            const PrefetchVolumeData prefetch)
@@ -1985,12 +1986,17 @@ Volume::applyScrubbingWork(const scrubbing::ScrubReply& scrub_reply,
 
     VERIFY(scrub_id != boost::none);
 
+    ApplyRelocsContinuations apply_relocs_conts;
+
     try
     {
         LOG_VINFO("applying " << scrub_result.relocs.size() << " relocation tlogs");
-        const uint64_t relocNum = metaDataStore_->applyRelocs(*reloc_reader_factory,
-                                                              scid,
-                                                              *scrub_id);
+        uint64_t relocNum = 0;
+
+        std::tie(apply_relocs_conts, relocNum) =
+            metaDataStore_->applyRelocs(*reloc_reader_factory,
+                                        scid,
+                                        *scrub_id);
 
         if(relocNum == scrub_result.relocNum)
         {
@@ -2092,7 +2098,8 @@ Volume::applyScrubbingWork(const scrubbing::ScrubReply& scrub_reply,
         LOG_VINFO("finished determining garbage");
     }
 
-    return maybe_garbage;
+    return std::make_pair(std::move(maybe_garbage),
+                          std::move(apply_relocs_conts));
 }
 
 SnapshotName

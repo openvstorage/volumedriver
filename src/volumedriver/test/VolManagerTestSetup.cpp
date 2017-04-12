@@ -1983,18 +1983,26 @@ VolManagerTestSetup::apply_scrub_reply(Volume& v,
                                        const scrubbing::ScrubReply& scrub_reply,
                                        const ScrubbingCleanup cleanup)
 {
-    boost::optional<be::Garbage> garbage(v.applyScrubbingWork(scrub_reply,
-                                                              cleanup));
+    boost::optional<be::Garbage> garbage;
+    ApplyRelocsContinuations conts;
 
+    std::tie(garbage, conts) = v.applyScrubbingWork(scrub_reply,
+                                                    cleanup);
     if (garbage)
     {
         std::promise<void> promise;
         std::future<void> future(promise.get_future());
 
-        auto fun([&garbage,
+        auto fun([&conts,
+                  &garbage,
                   &promise,
                   nspace = v.getNamespace()]()
                  {
+                     for (auto& cont : conts)
+                     {
+                         cont(boost::none);
+                     };
+
                      be::GarbageCollectorPtr gc(api::backend_garbage_collector());
                      gc->queue(std::move(*garbage));
                      gc->barrier(nspace).get();

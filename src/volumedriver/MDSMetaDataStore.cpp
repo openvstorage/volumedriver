@@ -426,7 +426,7 @@ MDSMetaDataStore::for_each(MetaDataStoreFunctor& functor,
                                    max_ca);
 }
 
-uint64_t
+ApplyRelocsResult
 MDSMetaDataStore::applyRelocs(RelocationReaderFactory& factory,
                               SCOCloneID cid,
                               const ScrubId& new_scrub_id)
@@ -438,90 +438,59 @@ MDSMetaDataStore::applyRelocs(RelocationReaderFactory& factory,
     // A unified apply_relocations via the underlying DataBase/TableInterface
     // to both master and slave tables would be nicer to have. In order to get there
     // we'd however have to drop the local CachedMetaDataStore cache.
-    return do_handle_<uint64_t>(__FUNCTION__,
-                                [&](const MetaDataStorePtr& md) -> uint64_t
+    return do_handle_<ApplyRelocsResult>(__FUNCTION__,
+                                         [&](const MetaDataStorePtr& md) -> ApplyRelocsResult
         {
-            const uint64_t ret = md->applyRelocs(factory,
-                                                 cid,
-                                                 new_scrub_id);
+            ApplyRelocsResult ret = md->applyRelocs(factory,
+                                                    cid,
+                                                    new_scrub_id);
 
-            const size_t ncfgs = node_configs_.size();
-            if (ncfgs > 1)
+            if (apply_relocations_to_slaves_ == ApplyRelocationsToSlaves::F)
             {
-                const std::string ns(bi_->getNS().str());
+                LOG_INFO("Not applying scrub results to slaves - disabled in config");
+            }
+            else if (node_configs_.size() > 1)
+            {
+                ApplyRelocsContinuations& conts = std::get<0>(ret);
+                conts.reserve(conts.size() + node_configs_.size() - 1);
+                const std::string nspace(bi_->getNS().str());
+                const std::vector<std::string> relocs(factory.relocation_logs());
 
                 for (size_t i = 1; i < node_configs_.size(); ++i)
                 {
-                    try
-                    {
-                        apply_relocs_on_slave_(node_configs_[i],
-                                               factory.relocation_logs(),
-                                               cid,
-                                               new_scrub_id,
-                                               old_scrub_id);
-                    }
-                    CATCH_STD_ALL_LOG_IGNORE(bi_->getNS() <<
-                                             ": failed schedule application of relocs to "
-                                             << node_configs_[i]);
-                }
+                    auto fun([cid,
+                              ncfg = node_configs_[i],
+                              new_scrub_id,
+                              nspace,
+                              old_scrub_id,
+                              relocs](const boost::optional<std::chrono::seconds>& timeout)
+                             {
+                                 try
+                                 {
+                                     auto client(mds::ClientNG::create(ncfg));
+                                     client->timeout(timeout);
+                                     client->open(nspace)->apply_relocations(new_scrub_id,
+                                                                             old_scrub_id,
+                                                                             cid,
+                                                                             relocs);
+                                 }
+                                 CATCH_STD_ALL_EWHAT({
+                                         std::stringstream ss;
+                                         ss << nspace << ": failed to apply relocs to " << ncfg <<
+                                             ": " << EWHAT;
+                                         LOG_ERROR(ss.str());
+                                         VolumeDriverError::report(events::VolumeDriverErrorCode::ApplyScrubbingRelocs,
+                                                                   ss.str(),
+                                                                   VolumeId(nspace));
+                                     });
+                             });
 
-                try
-                {
-                    auto b(new backend_task::Barrier(getVolume()));
-                    VolManager::get()->scheduleTask(b);
+                    conts.emplace_back(std::move(fun));
                 }
-                CATCH_STD_ALL_LOG_IGNORE(bi_->getNS() <<
-                                         ": failed schedule barrier task");
             }
 
             return ret;
         });
-}
-
-void
-MDSMetaDataStore::apply_relocs_on_slave_(const MDSNodeConfig& cfg,
-                                         const std::vector<std::string>& relocs,
-                                         SCOCloneID cid,
-                                         const ScrubId& scrub_id,
-                                         const MaybeScrubId& old_scrub_id)
-{
-    if (apply_relocations_to_slaves_ == ApplyRelocationsToSlaves::F)
-    {
-        LOG_INFO("Not applying scrub results to slave " << cfg << " - disabled in config");
-    }
-    else
-    {
-        auto f([cfg,
-                cid,
-                ns = bi_->getNS().str(),
-                relocs,
-                scrub_id,
-                old_scrub_id]
-               {
-                   try
-                   {
-                       auto client(mds::ClientNG::create(cfg));
-                       client->open(ns)->apply_relocations(scrub_id,
-                                                           old_scrub_id,
-                                                           cid,
-                                                           relocs);
-                   }
-                   CATCH_STD_ALL_EWHAT({
-                           std::stringstream ss;
-                           ss << ns << ": failed to apply relocs to " << cfg <<
-                               ": " << EWHAT;
-                           LOG_ERROR(ss.str());
-                           VolumeDriverError::report(events::VolumeDriverErrorCode::ApplyScrubbingRelocs,
-                                                     ss.str(),
-                                                     VolumeId(ns));
-                       });
-               });
-
-        auto t(new backend_task::FunTask(*getVolume(),
-                                         std::move(f)));
-
-        VolManager::get()->scheduleTask(t);
-    }
 }
 
 void

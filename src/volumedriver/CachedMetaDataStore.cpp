@@ -549,7 +549,7 @@ struct PageCmp
 
 }
 
-uint64_t
+ApplyRelocsResult
 CachedMetaDataStore::applyRelocs(RelocationReaderFactory& factory,
                                  SCOCloneID scid,
                                  const ScrubId& scrub_id)
@@ -611,7 +611,7 @@ CachedMetaDataStore::applyRelocs(RelocationReaderFactory& factory,
 
     sync();
 
-    return relocNum;
+    return std::make_tuple(ApplyRelocsContinuations(), relocNum);
 }
 
 bool
