@@ -168,21 +168,25 @@ maybe_init_key(yt::LockedArakoon& larakoon,
 }
 
 ScrubManager::ScrubManager(ObjectRegistry& registry,
-                           std::shared_ptr<yt::LockedArakoon> larakoon)
+                           std::shared_ptr<yt::LockedArakoon> larakoon,
+                           const bool enabled)
     : registry_(registry)
     , parent_scrubs_key_(parent_scrubs_key(registry_.cluster_id()))
     , clone_scrubs_index_key_(clone_scrubs_index_key(registry_.cluster_id()))
     , larakoon_(larakoon)
+    , enabled_(enabled)
 {}
 
 ScrubManager::ScrubManager(ObjectRegistry& registry,
                            std::shared_ptr<yt::LockedArakoon> larakoon,
                            const std::atomic<uint64_t>& period_secs,
+                           const bool enabled,
                            ApplyScrubReplyFun apply_scrub_reply,
                            BuildScrubTreeFun build_scrub_tree,
                            CollectGarbageFun collect_garbage)
     : ScrubManager(registry,
-                   larakoon)
+                   larakoon,
+                   enabled)
 {
     apply_scrub_reply_= std::move(apply_scrub_reply);
     build_scrub_tree_ = std::move(build_scrub_tree);
@@ -339,13 +343,21 @@ ScrubManager::work_()
 
     for (const auto& p : parent_scrubs)
     {
-        try
+        if (enabled())
         {
-            apply_to_parent_(p.second,
-                             p.first);
+            try
+            {
+                apply_to_parent_(p.second,
+                                 p.first);
+            }
+            CATCH_STD_ALL_LOG_IGNORE("Failed to apply " << p.first <<
+                                     " to parent " << p.second);
         }
-        CATCH_STD_ALL_LOG_IGNORE("Failed to apply " << p.first <<
-                                 " to parent " << p.second);
+        else
+        {
+            LOG_INFO("disabled, skipping parent scrub queue");
+            break;
+        }
     }
 
     LOG_INFO("inspecting clone scrub queue");
@@ -355,19 +367,34 @@ ScrubManager::work_()
 
     for (const auto& p : clone_scrubs)
     {
-        try
+        if (enabled())
         {
-            apply_to_clones_(p.second,
-                             p.first);
+            try
+            {
+                apply_to_clones_(p.second,
+                                 p.first);
+            }
+            CATCH_STD_ALL_LOG_IGNORE("Failed to apply " << p.first << " to clones");
         }
-        CATCH_STD_ALL_LOG_IGNORE("Failed to apply " << p.first << " to clones");
+        else
+        {
+            LOG_INFO("disabled, skipping clone scrub queue");
+            break;
+        }
     }
 
-    try
+    if (enabled())
     {
-        collect_scrub_garbage_();
+        try
+        {
+            collect_scrub_garbage_();
+        }
+        CATCH_STD_ALL_LOG_IGNORE("Failed to collect garbage");
     }
-    CATCH_STD_ALL_LOG_IGNORE("Failed to collect garbage");
+    else
+    {
+        LOG_INFO("disabled, skipping garbage collection");
+    }
 }
 
 boost::optional<bool>

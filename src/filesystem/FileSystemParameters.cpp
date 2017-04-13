@@ -502,6 +502,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(scrub_manager_max_parent_scrubs,
                                       ShowDocumentation::T,
                                       1024);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(scrub_manager_enabled,
+                                      scrub_manager_component_name,
+                                      "scrub_manager_enabled",
+                                      "enable/disable the ScrubManager",
+                                      ShowDocumentation::F,
+                                      true);
+
 // StatsCollector
 const char stats_collector_component_name[] = "stats_collector";
 

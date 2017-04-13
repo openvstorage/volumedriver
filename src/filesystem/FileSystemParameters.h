@@ -228,6 +228,8 @@ DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(scrub_manager_sync_wait_secs,
                                                   std::atomic<uint64_t>);
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(scrub_manager_max_parent_scrubs,
                                                   std::atomic<uint32_t>);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(scrub_manager_enabled,
+                                                  bool);
 
 
 // StatsCollector

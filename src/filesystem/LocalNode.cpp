@@ -100,6 +100,7 @@ LocalNode::LocalNode(ObjectRouter& router,
     , scrub_manager_interval(pt)
     , scrub_manager_sync_wait_secs(pt)
     , scrub_manager_max_parent_scrubs(pt)
+    , scrub_manager_enabled(pt)
 {
     LOG_TRACE("Initializing volumedriver");
 
@@ -125,6 +126,7 @@ LocalNode::LocalNode(ObjectRouter& router,
         std::make_unique<ScrubManager>(reg,
                                        reg.locked_arakoon(),
                                        scrub_manager_interval.value(),
+                                       scrub_manager_enabled.value(),
                                        std::bind(&LocalNode::apply_scrub_reply_,
                                                  this,
                                                  ph::_1,
@@ -203,6 +205,9 @@ LocalNode::update_config(const bpt::ptree& pt,
     U(scrub_manager_interval);
     U(scrub_manager_sync_wait_secs);
     U(scrub_manager_max_parent_scrubs);
+    U(scrub_manager_enabled);
+
+    scrub_manager_->enable(scrub_manager_enabled.value());
 
 #undef U
 }
@@ -221,6 +226,7 @@ LocalNode::persist_config(bpt::ptree& pt,
     P(scrub_manager_interval);
     P(scrub_manager_sync_wait_secs);
     P(scrub_manager_max_parent_scrubs);
+    P(scrub_manager_enabled);
 
 #undef P
 }
