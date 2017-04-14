@@ -103,8 +103,14 @@ MetaDataStoreBuilder::update_metadata_store_(const boost::optional<yt::UUID>& fr
 
     boost::optional<yt::UUID> start_cork(from);
 
+    // Perhaps slightly more complex than necessary -
+    // 'if (not md_scrub_id or *md_scrub_id != sp_scrub_id)' would do - but this
+    // way the first build is accounted as an incremental build and not as a
+    // full rebuild.
     if (check_scrub_id == CheckScrubId::T)
     {
+        bool need_rebuild = false;
+
         if (md_scrub_id != boost::none)
         {
             if (*md_scrub_id != sp_scrub_id)
@@ -114,24 +120,37 @@ MetaDataStoreBuilder::update_metadata_store_(const boost::optional<yt::UUID>& fr
                          sp_scrub_id << " while the MetaDataStore believes it is " <<
                          *md_scrub_id);
 
-                if (dry_run == DryRun::T)
-                {
-                    LOG_WARN(bi_->getNS() <<
-                             ": assuming that MetaDataStore has to be rebuilt from scratch");
-                }
-                else
-                {
-                    LOG_WARN(bi_->getNS() << ": clearing the MetaDataStore!");
-                    mdstore_.clear_all_keys();
-                }
+                need_rebuild = true;
 
-                res.full_rebuild = true;
-                start_cork = boost::none;
             }
         }
         else
         {
             LOG_INFO(bi_->getNS() << ": no scrub ID found in local metadata store");
+            if (mdstore_.lastCork())
+            {
+                LOG_WARN(bi_->getNS() <<
+                         ": old MDS slave detected: cork present but no scrub ID. " <<
+                         "Rebuild required.");
+                need_rebuild = true;
+            }
+        }
+
+        if (need_rebuild)
+        {
+            if (dry_run == DryRun::T)
+            {
+                LOG_WARN(bi_->getNS() <<
+                         ": assuming that the MetaDataStore has to be rebuilt from scratch");
+            }
+            else
+            {
+                LOG_WARN(bi_->getNS() << ": clearing the MetaDataStore!");
+                mdstore_.clear_all_keys();
+            }
+
+            res.full_rebuild = true;
+            start_cork = boost::none;
         }
     }
 

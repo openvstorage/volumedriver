@@ -27,8 +27,6 @@
 namespace volumedriver
 {
 
-VD_BOOLEAN_ENUM(CheckScrubId);
-
 class MetaDataStoreBuilder
 {
 public:
