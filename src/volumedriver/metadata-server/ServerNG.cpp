@@ -767,11 +767,11 @@ ServerNG::multiset_(mdsproto::Methods::MultiSetParams::Reader& reader,
     for (const auto& r : recs_reader)
     {
         capnp::Data::Reader kreader(r.getKey());
-        Key k(kreader.begin(),
+        Key k(kreader.size() ? kreader.begin() : nullptr,
               kreader.size());
 
         capnp::Data::Reader vreader(r.getVal());
-        Value v(vreader.begin(),
+        Value v(vreader.size() ? vreader.begin() : nullptr,
                 vreader.size());
 
         recs.emplace_back(Record(k, v));
