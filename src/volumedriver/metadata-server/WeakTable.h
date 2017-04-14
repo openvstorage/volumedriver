@@ -97,9 +97,11 @@ public:
     }
 
     virtual size_t
-    catch_up(volumedriver::DryRun dry_run) override final
+    catch_up(volumedriver::DryRun dry_run,
+             volumedriver::CheckScrubId check_scrub_id) override final
     {
-        return lock_()->catch_up(dry_run);
+        return lock_()->catch_up(dry_run,
+                                 check_scrub_id);
     }
 
     virtual TableCounters

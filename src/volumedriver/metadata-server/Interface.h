@@ -249,16 +249,23 @@ public:
     virtual const std::string&
     nspace() const = 0;
 
+    size_t
+    catch_up(volumedriver::DryRun dry_run)
+    {
+        return catch_up(dry_run,
+                        volumedriver::CheckScrubId::T);
+    }
+
     // Catch up with the backend - returns the number of TLogs that were / have to be
     // replayed.
     // XXX: return an actual list of TLogs (actually pairs of clone ID or namespace and
     // tlog names)?
     virtual size_t
-    catch_up(volumedriver::DryRun) = 0;
+    catch_up(volumedriver::DryRun,
+             volumedriver::CheckScrubId) = 0;
 
     virtual TableCounters
     get_counters(volumedriver::Reset) = 0;
-
 
 private:
     Role role_ = Role::Slave;

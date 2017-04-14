@@ -895,10 +895,14 @@ ServerNG::catch_up_(mdsproto::Methods::CatchUpParams::Reader& reader,
     const vd::DryRun dry_run(reader.getDryRun() ?
                              vd::DryRun::T :
                              vd::DryRun::F);
+    const vd::CheckScrubId check_scrub_id(reader.getCheckScrubId() ?
+                                          vd::CheckScrubId::T :
+                                          vd::CheckScrubId::F);
 
     // LOG_TRACE("catch_up request to " << nspace << ", dry run: " << dry_run);
 
-    const size_t num_tlogs = db_->open(nspace)->catch_up(dry_run);
+    const size_t num_tlogs = db_->open(nspace)->catch_up(dry_run,
+                                                         check_scrub_id);
 
     builder.setNumTLogs(num_tlogs);
 }

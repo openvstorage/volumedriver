@@ -258,13 +258,15 @@ struct TableHandle
     }
 
     virtual size_t
-    catch_up(vd::DryRun dry_run) override final
+    catch_up(vd::DryRun dry_run,
+             vd::CheckScrubId check_scrub_id) override final
     {
         auto b([&](mdsproto::Methods::CatchUpParams::Builder& builder)
                {
                    // LOG_TRACE(nspace_ << ": building CatchUp request");
                    builder.setNspace(nspace_);
                    builder.setDryRun(dry_run == vd::DryRun::T);
+                   builder.setCheckScrubId(check_scrub_id == vd::CheckScrubId::T);
                });
 
         size_t num_tlogs = 0;

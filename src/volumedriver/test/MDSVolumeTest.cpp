@@ -16,19 +16,6 @@
 #include "MDSTestSetup.h"
 #include "VolManagerTestSetup.h"
 
-#include <functional>
-#include <future>
-
-#include <boost/chrono.hpp>
-
-#include <youtils/Assert.h>
-#include <youtils/ScopeExit.h>
-#include <youtils/SourceOfUncertainty.h>
-#include <youtils/System.h>
-#include <youtils/wall_timer.h>
-
-#include <backend/BackendTestSetup.h>
-
 #include "../Api.h"
 #include "../CachedMetaDataPage.h"
 #include "../CachedMetaDataStore.h"
@@ -42,6 +29,19 @@
 #include "../ScrubberAdapter.h"
 #include "../ScrubReply.h"
 #include "../ScrubWork.h"
+
+#include <functional>
+#include <future>
+
+#include <boost/chrono.hpp>
+
+#include <youtils/Assert.h>
+#include <youtils/ScopeExit.h>
+#include <youtils/SourceOfUncertainty.h>
+#include <youtils/System.h>
+#include <youtils/wall_timer.h>
+
+#include <backend/BackendTestSetup.h>
 
 namespace volumedrivertest
 {
@@ -536,11 +536,13 @@ protected:
     uint64_t
     catch_up(const MDSNodeConfig& cfg,
              const std::string& nspace,
-             DryRun dry_run)
+             DryRun dry_run,
+             CheckScrubId check_scrub_id = CheckScrubId::F)
     {
         mds::ClientNG::Ptr client(mds::ClientNG::create(cfg));
         mds::TableInterfacePtr table(client->open(nspace));
-        return table->catch_up(dry_run);
+        return table->catch_up(dry_run,
+                               check_scrub_id);
     }
 
     using RelocMap = std::map<ClusterAddress, ClusterLocation>;

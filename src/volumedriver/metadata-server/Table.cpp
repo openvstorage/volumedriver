@@ -364,9 +364,11 @@ Table::clear(vd::OwnerTag owner_tag)
 }
 
 size_t
-Table::catch_up(vd::DryRun dry_run)
+Table::catch_up(vd::DryRun dry_run,
+                vd::CheckScrubId check_scrub_id)
 {
-    LOG_INFO(table_->nspace() << ": request to catch up; dry run: " << dry_run);
+    LOG_INFO(table_->nspace() << ": request to catch up; dry run: " << dry_run <<
+             ", check scrub ID: " << check_scrub_id);
 
     LOCKW();
 
@@ -384,7 +386,7 @@ Table::catch_up(vd::DryRun dry_run)
                                          scratch_dir_);
 
         const vd::MetaDataStoreBuilder::Result res(builder(boost::none,
-                                                           vd::CheckScrubId::T,
+                                                           check_scrub_id,
                                                            dry_run));
         if (dry_run == vd::DryRun::F)
         {

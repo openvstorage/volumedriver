@@ -201,7 +201,8 @@ RocksTable::clear(vd::OwnerTag)
 
 // XXX: these two could suggest that RocksTable implementing TableInterface might not be a good idea after all?
 size_t
-RocksTable::catch_up(vd::DryRun)
+RocksTable::catch_up(vd::DryRun,
+                     vd::CheckScrubId)
 {
     VERIFY(0 == "RocksTable::catch_up shouldn't be invoked");
 }
