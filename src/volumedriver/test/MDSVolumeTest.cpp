@@ -606,6 +606,115 @@ protected:
         EXPECT_EQ(full, c.full_rebuilds);
     }
 
+    void
+    test_scrub_with_unregistered_slave(bool test_backward_compat)
+    {
+        const auto wrns(make_random_namespace());
+        SharedVolumePtr v = make_volume(*wrns);
+
+        auto& md = dynamic_cast<MDSMetaDataStore&>(*v->getMetaDataStore());
+
+        EXPECT_NE(boost::none,
+                  md.scrub_id());
+
+        std::unique_ptr<mds::Manager>
+            mgr(mds_test_setup_->make_manager(cm_,
+                                              2,
+                                              std::chrono::seconds(3600)));
+
+        v->updateMetaDataBackendConfig(MDSMetaDataBackendConfig(MDSNodeConfigs{node_configs(*mgr)[0]},
+                                                                ApplyRelocationsToSlaves::T));
+
+        mds::ClientNG::Ptr client(mds::ClientNG::create(node_configs(*mgr)[1]));
+        mds::TableInterfacePtr table(client->open(wrns->ns().str()));
+
+        const SnapshotName snap("snap");
+        v->createSnapshot(snap);
+        waitForThisBackendWrite(*v);
+
+        const MaybeScrubId fst_master_scrub_id(md.scrub_id());
+        EXPECT_NE(boost::none,
+                  fst_master_scrub_id);
+
+        MaybeScrubId snd_master_scrub_id;
+
+        // MDS slaves don't check the scrub ID by default
+        table->catch_up(DryRun::F,
+                        CheckScrubId::F);
+
+        {
+            MetaDataBackendInterfacePtr
+                slave_mdb(std::make_shared<MDSMetaDataBackend>(node_configs(*mgr)[1],
+                                                               wrns->ns(),
+                                                               boost::none,
+                                                               boost::none));
+
+            const MaybeScrubId slave_scrub_id(slave_mdb->scrub_id());
+            EXPECT_NE(boost::none,
+                      slave_scrub_id);
+
+            EXPECT_EQ(0,
+                      table->get_counters(Reset::T).full_rebuilds);
+
+            const std::vector<scrubbing::ScrubWork> work(v->getScrubbingWork(boost::none,
+                                                                             snap));
+            ASSERT_EQ(1,
+                      work.size());
+            apply_scrub_reply(*v,
+                              scrub(work[0]));
+
+            snd_master_scrub_id = md.scrub_id();
+            EXPECT_NE(boost::none,
+                      snd_master_scrub_id);
+            EXPECT_NE(fst_master_scrub_id,
+                      snd_master_scrub_id);
+
+            table->catch_up(DryRun::F,
+                            CheckScrubId::F);
+
+            const MaybeScrubId snd_slave_scrub_id();
+            EXPECT_EQ(slave_scrub_id,
+                      slave_mdb->scrub_id());
+            EXPECT_NE(slave_scrub_id,
+                      snd_master_scrub_id);
+            EXPECT_EQ(0,
+                      md.full_rebuild_count());
+        }
+
+        // prior to commit
+        // 3799494f "volumedriver/MetaDataStoreBuilder: set scrub ID when building from scratch"
+        // we could end up with a slave with a scrub_id == boost::none and cork != boost::none
+        // (i.e. non-empty).
+        if (test_backward_compat)
+        {
+            const OwnerTag owner_tag(1);
+            table->set_role(mds::Role::Master,
+                            owner_tag);
+            auto on_exit(yt::make_scope_exit([&]
+                                             {
+                                                 table->set_role(mds::Role::Slave,
+                                                                 owner_tag);
+                                             }));
+
+            MetaDataBackendInterfacePtr
+                mdb(std::make_shared<MDSMetaDataBackend>(node_configs(*mgr)[1],
+                                                         wrns->ns(),
+                                                         owner_tag,
+                                                         boost::none));
+            dynamic_cast<MDSMetaDataBackend&>(*mdb).clear_scrub_id_();
+            EXPECT_EQ(boost::none,
+                      mdb->scrub_id());
+        }
+
+        v->updateMetaDataBackendConfig(MDSMetaDataBackendConfig(MDSNodeConfigs{node_configs(*mgr)[1]},
+                                                                ApplyRelocationsToSlaves::T));
+
+        EXPECT_EQ(snd_master_scrub_id,
+                  md.scrub_id());
+        EXPECT_EQ(1,
+                  md.full_rebuild_count());
+    }
+
     std::unique_ptr<mds::Manager> mds_manager_;
 };
 
@@ -1316,6 +1425,18 @@ TEST_P(MDSVolumeTest, scrub_id_mismatch)
 
     EXPECT_EQ(0,
               mdsm.incremental_rebuild_count());
+}
+
+// Cf. https://github.com/openvstorage/volumedriver/issues/310
+TEST_P(MDSVolumeTest, scrub_with_unregistered_slave)
+{
+    test_scrub_with_unregistered_slave(false);
+}
+
+// Cf. https://github.com/openvstorage/volumedriver/issues/310
+TEST_P(MDSVolumeTest, scrub_with_unregistered_slave_backward_compat)
+{
+    test_scrub_with_unregistered_slave(true);
 }
 
 TEST_P(MDSVolumeTest, failover_performance)
