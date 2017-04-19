@@ -126,11 +126,13 @@ public:
                                    const volumedriver::SnapshotName&)>;
 
     ScrubManager(ObjectRegistry&,
-                 std::shared_ptr<youtils::LockedArakoon>);
+                 std::shared_ptr<youtils::LockedArakoon>,
+                 const bool enabled = false);
 
     ScrubManager(ObjectRegistry&,
                  std::shared_ptr<youtils::LockedArakoon>,
                  const std::atomic<uint64_t>& period_secs,
+                 const bool enabled,
                  ApplyScrubReplyFun,
                  BuildScrubTreeFun,
                  CollectGarbageFun);
@@ -203,6 +205,18 @@ public:
     Counters
     get_counters() const;
 
+    bool
+    enabled() const
+    {
+        return enabled_;
+    }
+
+    void
+    enable(bool e)
+    {
+        enabled_ = e;
+    }
+
 private:
     DECLARE_LOGGER("ScrubManager");
 
@@ -215,7 +229,7 @@ private:
     ApplyScrubReplyFun apply_scrub_reply_;
     BuildScrubTreeFun build_scrub_tree_;
     CollectGarbageFun collect_garbage_;
-
+    std::atomic<bool> enabled_;
     std::unique_ptr<youtils::PeriodicAction> periodic_action_;
 
     mutable boost::mutex counters_lock_;

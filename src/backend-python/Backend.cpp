@@ -23,6 +23,7 @@
 #include <boost/python/enum.hpp>
 #include <boost/python/module.hpp>
 
+#include <youtils/Gcrypt.h>
 #include <youtils/Logger.h>
 
 #include <youtils/PythonLogging.h>
@@ -74,6 +75,8 @@ BOOST_PYTHON_MODULE(Backend)
 #undef EXN
 
     youtils::Logger::disableLogging();
+    yt::Gcrypt::init_gcrypt();
+
     using youtils::Severity;
 
     enum_<Severity>("Severity",

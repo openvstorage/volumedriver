@@ -55,6 +55,7 @@
 #include <boost/archive/text_oarchive.hpp>
 
 #include <youtils/DimensionedValue.h>
+#include <youtils/Gcrypt.h>
 #include <youtils/Logger.h>
 #include <youtils/LoggerToolCut.h>
 #include <youtils/LoggingToolCut.h>
@@ -325,6 +326,8 @@ BOOST_PYTHON_MODULE(storagerouterclient)
     REGISTER_EXCEPTION_TRANSLATOR(SnapshotNameAlreadyExistsException);
     REGISTER_EXCEPTION_TRANSLATOR(VolumeRestartInProgressException);
     REGISTER_EXCEPTION_TRANSLATOR(VolumeHaltedException);
+
+    yt::Gcrypt::init_gcrypt();
 
     REGISTER_STRINGY_CONVERTER(vfs::ObjectId);
     REGISTER_STRINGY_CONVERTER(vd::VolumeId);

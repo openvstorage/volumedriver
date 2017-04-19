@@ -98,12 +98,20 @@ public:
         ASSERT_EQ(sp_scrub_id,
                   *md_scrub_id);
 
-        boost::optional<be::Garbage> garbage(v->applyScrubbingWork(scrub_reply,
-                                                                   cleanup));
+        boost::optional<be::Garbage> garbage;
+        ApplyRelocsContinuations conts;
+
+        std::tie(garbage, conts) = v->applyScrubbingWork(scrub_reply,
+                                                         cleanup);
 
         if (garbage and collect_garbage == CollectScrubGarbage::T)
         {
             waitForThisBackendWrite(*v);
+
+            for (auto& cont : conts)
+            {
+                cont(boost::none);
+            }
 
             be::GarbageCollectorPtr gc(api::backend_garbage_collector());
             gc->queue(std::move(*garbage));

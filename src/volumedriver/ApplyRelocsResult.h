@@ -13,24 +13,25 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "../PythonScrubber.h"
+#ifndef VD_APPLY_RELOCS_RESULT_H_
+#define VD_APPLY_RELOCS_RESULT_H_
 
-#include <boost/python/class.hpp>
-#include <boost/python/enum.hpp>
-#include <boost/python/module.hpp>
+#include <chrono>
+#include <functional>
+#include <vector>
 
-#include <youtils/Gcrypt.h>
-#include <youtils/LoggerToolCut.h>
-#include <youtils/LoggingToolCut.h>
-#include <youtils/PythonBuildInfo.h>
+#include <boost/optional.hpp>
 
-BOOST_PYTHON_MODULE(scrubber)
+namespace volumedriver
 {
-    youtils::Logger::disableLogging();
-#include <youtils/LoggerToolCut.incl>
 
-    youtils::Gcrypt::init_gcrypt();
-    youtils::python::BuildInfo::registerize();
+using ApplyRelocsContinuation =
+    std::function<void(const boost::optional<std::chrono::seconds>& timeout)>;
 
-    scrubbing::python::Scrubber::registerize();
-};
+using ApplyRelocsContinuations = std::vector<ApplyRelocsContinuation>;
+
+using ApplyRelocsResult = std::tuple<ApplyRelocsContinuations, uint64_t>;
+
+}
+
+#endif // !VD_APPLY_RELOCS_RESULT_H_

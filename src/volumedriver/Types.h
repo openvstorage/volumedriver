@@ -97,6 +97,7 @@ VD_BOOLEAN_ENUM(FallBackToBackendRestart);
 VD_BOOLEAN_ENUM(CreateNamespace);
 VD_BOOLEAN_ENUM(DryRun);
 VD_BOOLEAN_ENUM(Reset);
+VD_BOOLEAN_ENUM(CheckScrubId);
 
 // AR: these have to go
 #if 1

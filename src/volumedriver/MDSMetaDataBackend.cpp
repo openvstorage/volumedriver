@@ -307,6 +307,19 @@ MDSMetaDataBackend::set_scrub_id(const ScrubId& scrub_id)
                      *owner_tag_);
 }
 
+void
+MDSMetaDataBackend::clear_scrub_id_()
+{
+    LOG_INFO(table_->nspace() << ": clearing scrub ID");
+
+    const mds::TableInterface::Records recs{ mds::Record(mds::Key(scrub_id_key),
+                                                         mds::None()) };
+    VERIFY(owner_tag_);
+    table_->multiset(recs,
+                     Barrier::T,
+                     *owner_tag_);
+}
+
 MaybeScrubId
 MDSMetaDataBackend::scrub_id()
 {
@@ -317,6 +330,7 @@ MDSMetaDataBackend::scrub_id()
 
     MaybeScrubId scrub_id;
 
+    VERIFY(ms.size() == 1);
     if (ms[0] != boost::none)
     {
         VERIFY(ms[0]->size() == yt::UUID::getUUIDStringSize());

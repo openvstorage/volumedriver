@@ -96,7 +96,8 @@ public:
     operator=(const Table&) = delete;
 
     virtual void
-    apply_relocations(const volumedriver::ScrubId&,
+    apply_relocations(const volumedriver::ScrubId& expected_backend_scrub_id,
+                      const volumedriver::MaybeScrubId& expected_table_scrub_id,
                       const volumedriver::SCOCloneID,
                       const TableInterface::RelocationLogs&) override final;
 
@@ -125,7 +126,8 @@ public:
     clear(volumedriver::OwnerTag) override final;
 
     virtual size_t
-    catch_up(volumedriver::DryRun) override final;
+    catch_up(volumedriver::DryRun,
+             volumedriver::CheckScrubId) override final;
 
     virtual TableCounters
     get_counters(volumedriver::Reset) override final;

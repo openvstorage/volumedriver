@@ -22,6 +22,9 @@
 
 #include <future>
 
+#include <boost/chrono.hpp>
+#include <boost/thread.hpp>
+
 #include <youtils/SourceOfUncertainty.h>
 #include <youtils/SpinLock.h>
 #include <youtils/System.h>
@@ -37,6 +40,7 @@ using namespace std::literals::string_literals;
 using namespace volumedriverfs;
 
 namespace ara = arakoon;
+namespace bc = boost::chrono;
 namespace be = backend;
 namespace vd = volumedriver;
 namespace yt = youtils;
@@ -191,6 +195,7 @@ TEST_F(ScrubManagerTest, hygiene)
     ScrubManager mgr(*object_registry_,
                      std::static_pointer_cast<yt::LockedArakoon>(registry_),
                      period_secs,
+                     true,
                      apply_scrub_reply_nop,
                      build_scrub_tree_nop,
                      collect_garbage_nop);
@@ -238,6 +243,7 @@ TEST_F(ScrubManagerTest, queue_work)
     ScrubManager mgr(*object_registry_,
                      std::static_pointer_cast<yt::LockedArakoon>(registry_),
                      period_secs,
+                     true,
                      apply_scrub_reply_nop,
                      build_scrub_tree_nop,
                      collect_garbage_nop);
@@ -294,6 +300,7 @@ TEST_F(ScrubManagerTest, requeue_work)
     ScrubManager mgr(*object_registry_,
                      std::static_pointer_cast<yt::LockedArakoon>(registry_),
                      period_secs,
+                     true,
                      apply_scrub_reply_nop,
                      build_scrub_tree_nop,
                      collect_garbage_nop);
@@ -341,6 +348,7 @@ TEST_F(ScrubManagerTest, object_id_and_namespace_mismatch)
     ScrubManager mgr(*object_registry_,
                      std::static_pointer_cast<yt::LockedArakoon>(registry_),
                      period_secs,
+                     true,
                      apply_scrub_reply_nop,
                      build_scrub_tree_nop,
                      collect_garbage_nop);
@@ -365,6 +373,7 @@ TEST_F(ScrubManagerTest, parent_gone)
     ScrubManager mgr(*object_registry_,
                      std::static_pointer_cast<yt::LockedArakoon>(registry_),
                      period_secs,
+                     true,
                      apply_scrub_reply_nop,
                      build_scrub_tree_nop,
                      [&](be::Garbage)
@@ -429,6 +438,7 @@ TEST_F(ScrubManagerTest, clone_gone)
     ScrubManager mgr(*object_registry_,
                      std::static_pointer_cast<yt::LockedArakoon>(registry_),
                      period_secs,
+                     true,
                      [&](const ObjectId& oid,
                          const scrubbing::ScrubReply& reply,
                          const volumedriver::ScrubbingCleanup cleanup)
@@ -529,6 +539,7 @@ TEST_F(ScrubManagerTest, failure_to_apply_to_parent)
     ScrubManager mgr(*object_registry_,
                      std::static_pointer_cast<yt::LockedArakoon>(registry_),
                      period_secs,
+                     true,
                      [&](const ObjectId& oid,
                          const scrubbing::ScrubReply& reply,
                          const volumedriver::ScrubbingCleanup /* cleanup */)
@@ -700,6 +711,7 @@ TEST_F(ScrubManagerTest, random_stress_single_job)
         auto m(std::make_unique<ScrubManager>(*registries[i],
                                               registries[i]->locked_arakoon(),
                                               period_secs,
+                                              true,
                                               apply_scrub_reply,
                                               build_scrub_tree,
                                               collect_garbage));
@@ -870,6 +882,7 @@ TEST_F(ScrubManagerTest, random_stress_multiple_jobs)
         auto m(std::make_unique<ScrubManager>(*registries[i],
                                               registries[i]->locked_arakoon(),
                                               period_secs,
+                                              true,
                                               apply_scrub_reply,
                                               build_scrub_tree,
                                               collect_garbage));
@@ -930,6 +943,38 @@ TEST_F(ScrubManagerTest, random_stress_multiple_jobs)
 
     EXPECT_EQ(num_volumes,
               parent_scrubs_ok);
+}
+
+TEST_F(ScrubManagerTest, disable_and_enable)
+{
+    std::atomic<uint64_t> period_secs(1);
+
+    ScrubManager mgr(*object_registry_,
+                     std::static_pointer_cast<yt::LockedArakoon>(registry_),
+                     period_secs,
+                     false,
+                     apply_scrub_reply_nop,
+                     build_scrub_tree_nop,
+                     collect_garbage_nop);
+
+    const std::string str(yt::UUID().str());
+    const be::Namespace nspace(str);
+    const vd::SnapshotName snap(str);
+    const ObjectId oid(str);
+
+    scrubbing::ScrubReply reply(nspace,
+                                snap,
+                                str);
+    mgr.queue_scrub_reply(oid,
+                          reply);
+
+    boost::this_thread::sleep_for(bc::seconds(2 * period_secs));
+    EXPECT_FALSE(mgr.get_parent_scrubs().empty());
+
+    mgr.enable(true);
+
+    boost::this_thread::sleep_for(bc::seconds(2 * period_secs));
+    EXPECT_TRUE(mgr.get_parent_scrubs().empty());
 }
 
 }

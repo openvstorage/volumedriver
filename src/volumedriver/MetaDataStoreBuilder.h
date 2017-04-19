@@ -27,8 +27,6 @@
 namespace volumedriver
 {
 
-VD_BOOLEAN_ENUM(CheckScrubId);
-
 class MetaDataStoreBuilder
 {
 public:
@@ -47,6 +45,13 @@ public:
     {
         size_t num_tlogs = 0;
         bool full_rebuild = false;
+        ScrubId backend_scrub_id;
+
+        explicit Result(const ScrubId& scrub_id)
+            : backend_scrub_id(scrub_id)
+        {}
+
+        ~Result() = default;
     };
 
     // DryRun: don't apply to mdstore

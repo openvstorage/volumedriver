@@ -53,11 +53,13 @@ public:
     }
 
     virtual void
-    apply_relocations(const volumedriver::ScrubId& scrub_id,
+    apply_relocations(const volumedriver::ScrubId& expected_backend_scrub_id,
+                      const volumedriver::MaybeScrubId& expected_table_scrub_id,
                       const volumedriver::SCOCloneID cid,
                       const RelocationLogs& relocs) override final
     {
-        return lock_()->apply_relocations(scrub_id,
+        return lock_()->apply_relocations(expected_backend_scrub_id,
+                                          expected_table_scrub_id,
                                           cid,
                                           relocs);
     }
@@ -95,9 +97,11 @@ public:
     }
 
     virtual size_t
-    catch_up(volumedriver::DryRun dry_run) override final
+    catch_up(volumedriver::DryRun dry_run,
+             volumedriver::CheckScrubId check_scrub_id) override final
     {
-        return lock_()->catch_up(dry_run);
+        return lock_()->catch_up(dry_run,
+                                 check_scrub_id);
     }
 
     virtual TableCounters

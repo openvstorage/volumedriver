@@ -106,15 +106,29 @@ public:
         in = in_counters_;
     }
 
+    const boost::optional<std::chrono::seconds>
+    timeout() const
+    {
+        boost::lock_guard<decltype(lock_)> g(lock_);
+        return timeout_;
+    }
+
+    void
+    timeout(const boost::optional<std::chrono::seconds>& t)
+    {
+        boost::lock_guard<decltype(lock_)> g(lock_);
+        timeout_ = t;
+    }
+
 private:
     DECLARE_LOGGER("MetaDataServerClientNG");
 
     friend class TableHandle;
 
-    boost::mutex lock_;
+    mutable boost::mutex lock_;
     youtils::LocORemClient client_;
     std::unique_ptr<youtils::SharedMemoryRegion> mr_;
-    const boost::optional<std::chrono::seconds> timeout_;
+    boost::optional<std::chrono::seconds> timeout_;
 
     OutCounters out_counters_;
     InCounters in_counters_;

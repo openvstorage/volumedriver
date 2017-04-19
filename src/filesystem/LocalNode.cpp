@@ -99,6 +99,8 @@ LocalNode::LocalNode(ObjectRouter& router,
     , vrouter_backend_sync_check_interval_ms(pt)
     , scrub_manager_interval(pt)
     , scrub_manager_sync_wait_secs(pt)
+    , scrub_manager_max_parent_scrubs(pt)
+    , scrub_manager_enabled(pt)
 {
     LOG_TRACE("Initializing volumedriver");
 
@@ -124,6 +126,7 @@ LocalNode::LocalNode(ObjectRouter& router,
         std::make_unique<ScrubManager>(reg,
                                        reg.locked_arakoon(),
                                        scrub_manager_interval.value(),
+                                       scrub_manager_enabled.value(),
                                        std::bind(&LocalNode::apply_scrub_reply_,
                                                  this,
                                                  ph::_1,
@@ -201,6 +204,10 @@ LocalNode::update_config(const bpt::ptree& pt,
     U(vrouter_backend_sync_check_interval_ms);
     U(scrub_manager_interval);
     U(scrub_manager_sync_wait_secs);
+    U(scrub_manager_max_parent_scrubs);
+    U(scrub_manager_enabled);
+
+    scrub_manager_->enable(scrub_manager_enabled.value());
 
 #undef U
 }
@@ -218,6 +225,8 @@ LocalNode::persist_config(bpt::ptree& pt,
     P(vrouter_backend_sync_check_interval_ms)
     P(scrub_manager_interval);
     P(scrub_manager_sync_wait_secs);
+    P(scrub_manager_max_parent_scrubs);
+    P(scrub_manager_enabled);
 
 #undef P
 }
@@ -1606,26 +1615,36 @@ LocalNode::get_scrub_work(const ObjectId& id,
         pending_scrubs(scrub_manager_->get_parent_scrubs());
 
     std::vector<scrubbing::ScrubWork> res;
-    res.reserve(work.size());
 
-    // Sub-awesome time complexity. Do we care?
-    for (auto&& w : work)
+    if (pending_scrubs.size() >= scrub_manager_max_parent_scrubs.value())
     {
-        bool pending = false;
-        for (const auto& p : pending_scrubs)
-        {
-            if (p.second == id and
-                p.first.ns_ == w.ns_ and
-                p.first.snapshot_name_ == w.snapshot_name_)
-            {
-                pending = true;
-                break;
-            }
-        }
+        LOG_WARN(id << ": not handing out further scrub work - there are already " <<
+                 pending_scrubs.size() << " scrub replies queued up (max: " <<
+                 scrub_manager_max_parent_scrubs.value() << ")");
+    }
+    else
+    {
+        res.reserve(work.size());
 
-        if (not pending)
+        // Sub-awesome time complexity. Do we care?
+        for (auto&& w : work)
         {
-            res.emplace_back(std::move(w));
+            bool pending = false;
+            for (const auto& p : pending_scrubs)
+            {
+                if (p.second == id and
+                    p.first.ns_ == w.ns_ and
+                    p.first.snapshot_name_ == w.snapshot_name_)
+                {
+                    pending = true;
+                    break;
+                }
+            }
+
+            if (not pending)
+            {
+                res.push_back(std::move(w));
+            }
         }
     }
 
@@ -1649,6 +1668,8 @@ LocalNode::apply_scrub_reply_(const ObjectId& id,
 
     const vd::VolumeId& vid = static_cast<const vd::VolumeId&>(id.str());
     boost::optional<be::Garbage> maybe_garbage;
+    vd::ApplyRelocsContinuations conts;
+
     vd::TLogId tlog_id;
 
     {
@@ -1658,9 +1679,9 @@ LocalNode::apply_scrub_reply_(const ObjectId& id,
 
         auto fun([&]
                  {
-                     maybe_garbage = api::applyScrubbingWork(vid,
-                                                             rsp,
-                                                             cleanup);
+                     std::tie(maybe_garbage, conts) = api::applyScrubbingWork(vid,
+                                                                              rsp,
+                                                                              cleanup);
                      tlog_id = api::scheduleBackendSync(vid);
                  });
 
@@ -1707,6 +1728,24 @@ LocalNode::apply_scrub_reply_(const ObjectId& id,
                      ": not sync'ed to backend yet - going to sleep for a while");
             boost::this_thread::sleep_for(bc::seconds(1));
         }
+    }
+
+    std::vector<std::future<void>> futs;
+    futs.reserve(conts.size());
+    const std::chrono::seconds timeout(scrub_manager_sync_wait_secs.value());
+
+    for (size_t i = 0; i < conts.size(); ++i)
+    {
+        futs.push_back(std::async(std::launch::async,
+                                  [&conts, i, timeout]
+                                  {
+                                      conts[i](timeout);
+                                  }));
+    }
+
+    for (auto& f : futs)
+    {
+        f.get();
     }
 
     return maybe_garbage;

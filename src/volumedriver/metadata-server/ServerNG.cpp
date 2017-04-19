@@ -767,11 +767,11 @@ ServerNG::multiset_(mdsproto::Methods::MultiSetParams::Reader& reader,
     for (const auto& r : recs_reader)
     {
         capnp::Data::Reader kreader(r.getKey());
-        Key k(kreader.begin(),
+        Key k(kreader.size() ? kreader.begin() : nullptr,
               kreader.size());
 
         capnp::Data::Reader vreader(r.getVal());
-        Value v(vreader.begin(),
+        Value v(vreader.size() ? vreader.begin() : nullptr,
                 vreader.size());
 
         recs.emplace_back(Record(k, v));
@@ -851,9 +851,19 @@ ServerNG::apply_relocation_logs_(mdsproto::Methods::ApplyRelocationLogsParams::R
 {
     const std::string nspace(reader.getNspace().begin(),
                              reader.getNspace().size());
-    const yt::UUID uuid(std::string(reader.getScrubId().begin(),
+    const yt::UUID be_uuid(std::string(reader.getScrubId().begin(),
                                     reader.getScrubId().size()));
-    const vd::ScrubId scrub_id(uuid);
+    const vd::ScrubId be_scrub_id(be_uuid);
+
+    const auto md_uuid_str(std::string(reader.getMdScrubId().begin(),
+                                       reader.getMdScrubId().size()));
+
+    vd::MaybeScrubId md_scrub_id;
+    if (not md_uuid_str.empty())
+    {
+        md_scrub_id = vd::ScrubId(yt::UUID(md_uuid_str));
+    }
+
     const vd::SCOCloneID cid(reader.getCloneId());
 
     auto logs_reader(reader.getLogs());
@@ -869,7 +879,8 @@ ServerNG::apply_relocation_logs_(mdsproto::Methods::ApplyRelocationLogsParams::R
     // LOG_TRACE("apply_relocations request to " << nspace << ", size " << logs.size() <<
     //           ", scrub_id " << scrub_id << ", clone_id " << static_cast<uint32_t>(cid));
 
-    db_->open(nspace)->apply_relocations(scrub_id,
+    db_->open(nspace)->apply_relocations(be_scrub_id,
+                                         md_scrub_id,
                                          cid,
                                          logs);
 }
@@ -884,10 +895,14 @@ ServerNG::catch_up_(mdsproto::Methods::CatchUpParams::Reader& reader,
     const vd::DryRun dry_run(reader.getDryRun() ?
                              vd::DryRun::T :
                              vd::DryRun::F);
+    const vd::CheckScrubId check_scrub_id(reader.getCheckScrubId() ?
+                                          vd::CheckScrubId::T :
+                                          vd::CheckScrubId::F);
 
     // LOG_TRACE("catch_up request to " << nspace << ", dry run: " << dry_run);
 
-    const size_t num_tlogs = db_->open(nspace)->catch_up(dry_run);
+    const size_t num_tlogs = db_->open(nspace)->catch_up(dry_run,
+                                                         check_scrub_id);
 
     builder.setNumTLogs(num_tlogs);
 }

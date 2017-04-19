@@ -133,7 +133,8 @@ struct TableHandle
     }
 
     virtual void
-    apply_relocations(const vd::ScrubId& scrub_id,
+    apply_relocations(const vd::ScrubId& be_scrub_id,
+                      const vd::MaybeScrubId& md_scrub_id,
                       const vd::SCOCloneID cid,
                       const TableInterface::RelocationLogs& relocs) override final
     {
@@ -143,7 +144,12 @@ struct TableHandle
                    //           relocs.size() << ", scrub_id " << scrub_id);
 
                    builder.setNspace(nspace_);
-                   builder.setScrubId(static_cast<const yt::UUID&>(scrub_id).str());
+                   builder.setScrubId(static_cast<const yt::UUID&>(be_scrub_id).str());
+                   if (md_scrub_id)
+                   {
+                       builder.setMdScrubId(static_cast<const yt::UUID&>(*md_scrub_id).str());
+                   }
+
                    builder.setCloneId(cid);
 
                    size_t idx = 0;
@@ -252,13 +258,15 @@ struct TableHandle
     }
 
     virtual size_t
-    catch_up(vd::DryRun dry_run) override final
+    catch_up(vd::DryRun dry_run,
+             vd::CheckScrubId check_scrub_id) override final
     {
         auto b([&](mdsproto::Methods::CatchUpParams::Builder& builder)
                {
                    // LOG_TRACE(nspace_ << ": building CatchUp request");
                    builder.setNspace(nspace_);
                    builder.setDryRun(dry_run == vd::DryRun::T);
+                   builder.setCheckScrubId(check_scrub_id == vd::CheckScrubId::T);
                });
 
         size_t num_tlogs = 0;

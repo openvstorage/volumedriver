@@ -28,6 +28,11 @@
 
 #include <backend/Namespace.h>
 
+namespace volumedrivertest
+{
+class MDSVolumeTest;
+}
+
 namespace volumedriver
 {
 
@@ -39,6 +44,8 @@ class VolumeConfig;
 class MDSMetaDataBackend
     : public MetaDataBackendInterface
 {
+    friend class volumedrivertest::MDSVolumeTest;
+
 public:
     MDSMetaDataBackend(const MDSNodeConfig&,
                        const backend::Namespace&,
@@ -156,6 +163,9 @@ private:
 
     void
     init_();
+
+    void
+    clear_scrub_id_();
 };
 
 }

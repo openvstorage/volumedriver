@@ -21,6 +21,8 @@
 #include "Common.h"
 #include "TCPServer.h"
 
+#include <youtils/Gcrypt.h>
+
 extern "C" {
 #include <config_parsing.h>
 #include <FSAL/fsal_config.h>
@@ -372,6 +374,18 @@ static const char OVS_name[] = "OVS";
 MODULE_INIT void
 init(void)
 {
+    try
+    {
+        youtils::Gcrypt::init_gcrypt();
+    }
+    catch (std::exception& e)
+    {
+        LogCrit(COMPONENT_FSAL,
+                const_cast<char*>("Failed to initialize gcrypt: %s"),
+                e.what());
+        return;
+    }
+
     struct fsal_module *myself = &OVS.fsal;
 
     if (register_fsal(myself, OVS_name,

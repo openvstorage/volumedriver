@@ -38,7 +38,7 @@ public:
     , init_vector(init_vector_)
     {}
 
-    static int
+    static void
     init_gcrypt();
 
     std::string
