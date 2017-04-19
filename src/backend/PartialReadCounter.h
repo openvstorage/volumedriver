@@ -29,15 +29,18 @@ struct PartialReadCounter
 {
     uint64_t fast;
     uint64_t slow;
+    uint64_t block_cache;
 
     PartialReadCounter(uint64_t f,
-                       uint64_t s)
+                       uint64_t s,
+                       uint64_t c)
         : fast(f)
         , slow(s)
+        , block_cache(c)
     {}
 
     PartialReadCounter()
-        : PartialReadCounter(0, 0)
+        : PartialReadCounter(0, 0, 0)
     {}
 
     PartialReadCounter(const PartialReadCounter& other) = default;
@@ -50,6 +53,7 @@ struct PartialReadCounter
     {
         fast += other.fast;
         slow += other.slow;
+        block_cache += other.block_cache;
         return *this;
     }
 
@@ -66,7 +70,8 @@ struct PartialReadCounter
     {
         return
             fast == other.fast and
-            slow == other.slow;
+            slow == other.slow and
+            block_cache == other.block_cache;
     }
 
     bool
@@ -75,10 +80,12 @@ struct PartialReadCounter
         return not operator==(other);
     }
 
+    BOOST_SERIALIZATION_SPLIT_MEMBER();
+
     template<typename Archive>
     void
-    serialize(Archive& ar,
-              const unsigned /* version */)
+    load(Archive& ar,
+         const unsigned version)
     {
         using namespace boost::serialization;
 
@@ -86,12 +93,36 @@ struct PartialReadCounter
                       fast);
         ar & make_nvp("slow",
                       slow);
+
+        if (version > 1)
+        {
+            ar & make_nvp("block_cache",
+                          block_cache);
+        }
+        else
+        {
+            block_cache = 0;
+        }
     }
 
+    template<typename Archive>
+    void
+    save(Archive& ar,
+         const unsigned /* version */)
+    {
+        using namespace boost::serialization;
+
+        ar & make_nvp("fast",
+                      fast);
+        ar & make_nvp("slow",
+                      slow);
+        ar & make_nvp("block_cache",
+                      block_cache);
+    }
 };
 
 }
 
-BOOST_CLASS_VERSION(backend::PartialReadCounter, 1);
+BOOST_CLASS_VERSION(backend::PartialReadCounter, 2);
 
 #endif // !BACKEND_PARTIAL_READ_COUNTER_H_
