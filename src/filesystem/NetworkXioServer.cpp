@@ -558,6 +558,12 @@ NetworkXioServer::on_msg_error(xio_session *session,
                                xio_msg_direction direction,
                                xio_msg *msg)
 {
+    if (msg == nullptr or session == nullptr)
+    {
+        LOG_ERROR("xio_msg/session is null");
+        return -1;
+    }
+
     if (direction == XIO_MSG_DIRECTION_OUT)
     {
         NetworkXioRequest *req =

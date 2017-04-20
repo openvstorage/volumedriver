@@ -110,7 +110,7 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(sap_persist_interval,
                                       "sap_persist_interval",
                                       "Interval between writing SAP data, in seconds",
                                       ShowDocumentation::T,
-                                      300);
+                                      60 * 60 * 24);
 
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(dtl_check_interval_in_seconds,
                                       volmanager_component_name,
