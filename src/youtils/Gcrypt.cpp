@@ -14,7 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "Gcrypt.h"
-#include "IOException.h";
+#include "IOException.h"
 
 #include <iostream>
 #include <memory>
