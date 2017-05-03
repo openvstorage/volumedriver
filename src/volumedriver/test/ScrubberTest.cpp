@@ -47,6 +47,18 @@ public:
     {}
 
     void
+    SetUp() override final
+    {
+        VolManagerTestSetup::SetUp();
+
+        ClusterCache& ccache = VolManager::get()->getClusterCache();
+        ASSERT_EQ(0, ccache.totalSizeInEntries());
+        ClusterCache::ManagerType::Info ccache_info;
+        ccache.deviceInfo(ccache_info);
+        ASSERT_TRUE(ccache_info.empty());
+    }
+
+    void
     setBackendType(ScrubberArgs& args)
     {
         args.backend_config = VolManager::get()->getBackendConfig().clone();
@@ -141,13 +153,10 @@ TEST_P(ScrubberTest, DeletedSnap)
     VolumeId vid("volume1");
 
     auto ns_ptr = make_random_namespace();
-
     const backend::Namespace& ns = ns_ptr->ns();
 
-    //    backend::Namespace ns;
-
     SharedVolumePtr v1 = newVolume(vid,
-    			   ns);
+                                   ns);
 
     std::string what;
 
@@ -1112,14 +1121,18 @@ namespace
 const ClusterMultiplier
 big_cluster_multiplier(VolManagerTestSetup::default_test_config().cluster_multiplier() * 2);
 
+const auto default_config = VolManagerTestSetup::default_test_config()
+    .use_cluster_cache(false);
+
 const auto big_clusters_config = VolManagerTestSetup::default_test_config()
+    .use_cluster_cache(false)
     .cluster_multiplier(big_cluster_multiplier);
 
 }
 
 INSTANTIATE_TEST_CASE_P(ScrubberTests,
                         ScrubberTest,
-                        ::testing::Values(volumedriver::VolManagerTestSetup::default_test_config(),
+                        ::testing::Values(default_config,
                                           big_clusters_config));
 
 }
