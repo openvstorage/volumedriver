@@ -204,7 +204,7 @@ protected:
             else
             {
                 const std::vector<MDSNodeConfig> ncfgs2{ ncfgs[1],
-                                                         ncfgs[0] };
+                        ncfgs[0] };
 
                 v->updateMetaDataBackendConfig(MDSMetaDataBackendConfig(ncfgs2,
                                                                         ApplyRelocationsToSlaves::T));
@@ -278,7 +278,7 @@ protected:
         else
         {
             const std::vector<MDSNodeConfig> ncfgs2{ ncfgs[1],
-                                                     ncfgs[0] };
+                    ncfgs[0] };
 
             v->updateMetaDataBackendConfig(MDSMetaDataBackendConfig(ncfgs2,
                                                                     ApplyRelocationsToSlaves::T));
@@ -462,28 +462,6 @@ protected:
                                                  true); // verbose
     }
 
-    scrubbing::ScrubberResult
-    get_scrub_result(Volume& v,
-                     const scrubbing::ScrubReply& rep)
-    {
-        EXPECT_EQ(rep.ns_.str(),
-                  v.getNamespace().str());
-
-        fs::path p(FileUtils::temp_path() / rep.scrub_result_name_);
-        ALWAYS_CLEANUP_FILE(p);
-
-        v.getBackendInterface()->read(p,
-                                      rep.scrub_result_name_,
-                                      InsistOnLatestVersion::T);
-
-        scrubbing::ScrubberResult scrub_result;
-        fs::ifstream ifs(p);
-        boost::archive::text_iarchive ia(ifs);
-        ia >> scrub_result;
-
-        return scrub_result;
-    }
-
     const scrubbing::ScrubReply
     prepare_scrub_test(Volume& v,
                        const std::string& fst_cluster_pattern = "first cluster",
@@ -527,14 +505,12 @@ protected:
         const std::vector<scrubbing::ScrubWork>
             scrub_work(v.getScrubbingWork(boost::none,
                                           snap2));
-
         EXPECT_EQ(1U, scrub_work.size());
 
-        auto scrub_reply(scrub(scrub_work[0]));
-
-        const auto scrub_res(get_scrub_result(v,
-                                              scrub_reply));
-
+        const scrubbing::ScrubReply scrub_reply(scrub(scrub_work[0]));
+        const scrubbing::ScrubberResult
+            scrub_res(get_scrub_result(*v.getBackendInterface(),
+                                       scrub_reply));
         EXPECT_FALSE(scrub_res.relocs.empty());
 
         return scrub_reply;
@@ -552,38 +528,6 @@ protected:
                                check_scrub_id);
     }
 
-    using RelocMap = std::map<ClusterAddress, ClusterLocation>;
-
-    RelocMap
-    reloc_map(Volume& v,
-              const scrubbing::ScrubReply& scrub_reply)
-    {
-        const auto scrub_res(get_scrub_result(v,
-                                              scrub_reply));
-
-        std::map<ClusterAddress, ClusterLocation> relocmap;
-
-        auto treader(CombinedTLogReader::create(yt::FileUtils::temp_path(testName_).string(),
-                                                scrub_res.relocs,
-                                                v.getBackendInterface()->clone()));
-
-        const Entry* e = nullptr;
-        while ((e = treader->nextLocation()))
-        {
-            const Entry* f = treader->nextLocation();
-
-            EXPECT_TRUE(f != nullptr);
-            EXPECT_EQ(e->clusterAddress(),
-                      f->clusterAddress());
-
-            auto r(relocmap.insert(std::make_pair(f->clusterAddress(),
-                                                  f->clusterLocation())));
-            EXPECT_TRUE(r.second);
-        }
-
-        return relocmap;
-    }
-
     void
     check_reloc_map(Volume& v,
                     const RelocMap& relocmap)
@@ -595,7 +539,7 @@ protected:
             md.readCluster(p.first,
                            clh);
             ASSERT_EQ(p.second,
-                      clh.clusterLocation);
+                      clh);
         }
     }
 
@@ -1061,7 +1005,7 @@ TEST_P(MDSVolumeTest, failover_monkey_business)
                        boost::this_thread::sleep_for(boost::chrono::milliseconds(msecs));
 
                        const std::vector<MDSNodeConfig> cfgs{ scfg1.node_config,
-                                                              scfg.node_config };
+                               scfg.node_config };
                        v.updateMetaDataBackendConfig(MDSMetaDataBackendConfig(cfgs,
                                                                               ApplyRelocationsToSlaves::T));
                        mds_manager_->stop_one(scfg1.node_config);
@@ -1215,12 +1159,11 @@ TEST_P(MDSVolumeTest, futile_scrub)
 
     ASSERT_EQ(1U, scrub_work.size());
 
-    auto scrub_reply(scrub(scrub_work[0],
-                           0.0));
-
-    const auto scrub_res(get_scrub_result(*v,
-                                          scrub_reply));
-
+    const scrubbing::ScrubReply scrub_reply(scrub(scrub_work[0],
+                                                  0.0));
+    const scrubbing::ScrubberResult
+        scrub_res(get_scrub_result(*v->getBackendInterface(),
+                                   scrub_reply));
     ASSERT_TRUE(scrub_res.relocs.empty());
 
     apply_scrub_reply(*v,
@@ -1286,8 +1229,9 @@ TEST_P(MDSVolumeTest, scrub_with_master_out_to_lunch)
                                                                pattern1,
                                                                pattern2));
 
-    const auto relocmap(reloc_map(*v,
-                                  scrub_reply));
+    const RelocMap relocmap(build_reloc_map(*v->getBackendInterface(),
+                                            get_scrub_result(*v->getBackendInterface(),
+                                                             scrub_reply)));
 
     ASSERT_FALSE(relocmap.empty());
 
@@ -1316,11 +1260,11 @@ TEST_P(MDSVolumeTest, scrub_with_slave_out_to_lunch)
                                                                pattern1,
                                                                pattern2));
 
-    const auto scrub_res(get_scrub_result(*v,
+    const auto scrub_res(get_scrub_result(*v->getBackendInterface(),
                                           scrub_reply));
 
-    const auto relocmap(reloc_map(*v,
-                                  scrub_reply));
+    const RelocMap relocmap(build_reloc_map(*v->getBackendInterface(),
+                                            scrub_res));
     ASSERT_FALSE(relocmap.empty());
 
     const mds::ServerConfigs scfgs(mds_manager_->server_configs());
@@ -1521,52 +1465,52 @@ TEST_P(MDSVolumeTest, relocations_on_slaves)
     mds::ClientNG::Ptr client(mds::ClientNG::create(node_configs(*mgr)[1]));
 
     auto check([&](ApplyRelocationsToSlaves apply_relocs)
-    {
-        v->updateMetaDataBackendConfig(MDSMetaDataBackendConfig(node_configs(*mgr),
-                                                                apply_relocs));
+               {
+                   v->updateMetaDataBackendConfig(MDSMetaDataBackendConfig(node_configs(*mgr),
+                                                                           apply_relocs));
 
-        std::unique_ptr<MetaDataBackendConfig>
-            mcfg(v->getMetaDataStore()->getBackendConfig());
-        auto mdscfg = dynamic_cast<MDSMetaDataBackendConfig*>(mcfg.get());
+                   std::unique_ptr<MetaDataBackendConfig>
+                       mcfg(v->getMetaDataStore()->getBackendConfig());
+                   auto mdscfg = dynamic_cast<MDSMetaDataBackendConfig*>(mcfg.get());
 
-        ASSERT_TRUE(nullptr != mdscfg);
-        EXPECT_EQ(apply_relocs,
-                  mdscfg->apply_relocations_to_slaves());
+                   ASSERT_TRUE(nullptr != mdscfg);
+                   EXPECT_EQ(apply_relocs,
+                             mdscfg->apply_relocations_to_slaves());
 
-        const auto old_scrub_id(v->getMetaDataStore()->scrub_id());
+                   const auto old_scrub_id(v->getMetaDataStore()->scrub_id());
 
-        const scrubbing::ScrubReply scrub_reply(prepare_scrub_test(*v));
+                   const scrubbing::ScrubReply scrub_reply(prepare_scrub_test(*v));
 
-        apply_scrub_reply(*v,
-                          scrub_reply);
+                   apply_scrub_reply(*v,
+                                     scrub_reply);
 
-        const auto new_scrub_id(v->getMetaDataStore()->scrub_id());
-        EXPECT_NE(old_scrub_id, new_scrub_id);
+                   const auto new_scrub_id(v->getMetaDataStore()->scrub_id());
+                   EXPECT_NE(old_scrub_id, new_scrub_id);
 
-        MetaDataBackendInterfacePtr
-            mdb(std::make_shared<MDSMetaDataBackend>(node_configs(*mgr)[1],
-                                                     wrns->ns(),
-                                                     boost::none,
-                                                     boost::none));
-        const MaybeScrubId maybe_scrub_id(mdb->scrub_id());
-        mds::TableInterfacePtr table(client->open(wrns->ns().str()));
-        const mds::TableCounters counters(table->get_counters(Reset::T));
-        EXPECT_EQ(0,
-                  counters.full_rebuilds);
+                   MetaDataBackendInterfacePtr
+                       mdb(std::make_shared<MDSMetaDataBackend>(node_configs(*mgr)[1],
+                                                                wrns->ns(),
+                                                                boost::none,
+                                                                boost::none));
+                   const MaybeScrubId maybe_scrub_id(mdb->scrub_id());
+                   mds::TableInterfacePtr table(client->open(wrns->ns().str()));
+                   const mds::TableCounters counters(table->get_counters(Reset::T));
+                   EXPECT_EQ(0,
+                             counters.full_rebuilds);
 
-        if (apply_relocs == ApplyRelocationsToSlaves::F)
-        {
-            EXPECT_EQ(boost::none,
-                      maybe_scrub_id);
-        }
-        else
-        {
-            ASSERT_NE(boost::none,
-                      maybe_scrub_id);
-            EXPECT_EQ(new_scrub_id,
-                      *maybe_scrub_id);
-        }
-    });
+                   if (apply_relocs == ApplyRelocationsToSlaves::F)
+                   {
+                       EXPECT_EQ(boost::none,
+                                 maybe_scrub_id);
+                   }
+                   else
+                   {
+                       ASSERT_NE(boost::none,
+                                 maybe_scrub_id);
+                       EXPECT_EQ(new_scrub_id,
+                                 *maybe_scrub_id);
+                   }
+               });
 
     check(ApplyRelocationsToSlaves::F);
     check(ApplyRelocationsToSlaves::T);
