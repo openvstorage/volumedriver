@@ -47,7 +47,8 @@ class ScrubbingTest
 protected:
     ScrubbingTest()
         : FileSystemTestBase(FileSystemTestSetupParameters("ScrubbingTest")
-                             .scrub_manager_interval_secs(1))
+                             .scrub_manager_interval_secs(1)
+                             .use_cluster_cache(false))
     {}
 
     std::tuple<ObjectId, FrontendPath>
@@ -87,7 +88,8 @@ protected:
     }
 
     void
-    check_data(const ObjectId& id)
+    check_data(const ObjectId& id,
+               const boost::optional<std::string>& extra = boost::none)
     {
         const size_t csize = get_cluster_size(id);
 
@@ -101,8 +103,8 @@ protected:
         }
 
         check_file(id,
-                   id.str(),
-                   id.str().size(),
+                   extra ? *extra : id.str(),
+                   extra ? extra->size() : id.str().size(),
                    max_clusters_ * csize);
     }
 
@@ -190,7 +192,7 @@ TEST_F(ScrubbingTest, simple)
                                          snap,
                                          0);
 
-    std::vector<scrubbing::ScrubReply> reps(scrub(id));
+    const std::vector<scrubbing::ScrubReply> reps(scrub(id));
     ASSERT_EQ(1, reps.size());
     ASSERT_EQ(id.str(),
               reps[0].ns_.str());
@@ -213,6 +215,56 @@ TEST_F(ScrubbingTest, simple)
     wait_for_scrub_manager();
 
     check_data(id);
+}
+
+TEST_F(ScrubbingTest, clones)
+{
+    ObjectId pid;
+    std::tie(pid, std::ignore) = create_volume();
+
+    write_data(pid);
+
+    const vd::SnapshotName snap("snap");
+    fs_->object_router().create_snapshot(pid,
+                                         snap,
+                                         0);
+
+    const std::vector<scrubbing::ScrubReply> reps(scrub(pid));
+    ASSERT_EQ(1, reps.size());
+
+    const scrubbing::ScrubberResult res(fetch_scrub_result(reps[0]));
+    ASSERT_EQ(snap,
+              res.snapshot_name);
+    ASSERT_LT(0,
+              res.relocNum);
+    ASSERT_FALSE(res.relocs.empty());
+
+    const size_t nclones = 2;
+    std::vector<ObjectId> clones;
+    clones.reserve(nclones);
+
+    for (size_t i = 0; i < nclones; ++i)
+    {
+        const FrontendPath cpath(make_volume_name("/clone-" +
+                                                  boost::lexical_cast<std::string>(i)));
+        clones.push_back(ObjectId(fs_->create_clone(cpath,
+                                                    make_metadata_backend_config(),
+                                                    vd::VolumeId(pid.str()),
+                                                    snap).str()));
+    }
+
+    fs_->object_router().queue_scrub_reply_local(pid,
+                                                 reps[0]);
+
+    wait_for_scrub_manager();
+
+    check_data(pid);
+
+    for (auto& cid : clones)
+    {
+        check_data(cid,
+                   pid.str());
+    }
 }
 
 }
