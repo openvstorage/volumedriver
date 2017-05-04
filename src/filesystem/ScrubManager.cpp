@@ -62,8 +62,6 @@ serialize(A& ar,
 using CloneScrubs = std::map<scrubbing::ScrubReply,
                              youtils::UUID>;
 
-using PerNodeGarbage = std::list<youtils::UUID>;
-
 using IArchive = boost::archive::text_iarchive;
 using OArchive = boost::archive::text_oarchive;
 
@@ -759,6 +757,14 @@ ScrubManager::finalize_(const yt::UUID& uuid,
         LOG_INFO(reply << ", UUID " << uuid <<
                  ": someone else collected our garbage!?");
     }
+}
+
+ScrubManager::PerNodeGarbage
+ScrubManager::per_node_garbage_()
+{
+    const std::string key(node_garbage_queue_key(registry_.cluster_id(),
+                                                 registry_.node_id()));
+    return deserialize<PerNodeGarbage>(larakoon_->get(key));
 }
 
 void

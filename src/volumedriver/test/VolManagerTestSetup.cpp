@@ -2041,7 +2041,7 @@ VolManagerTestSetup::get_scrub_result(be::BackendInterface& bi,
 
     scrubbing::ScrubberResult scrub_result;
     fs::ifstream ifs(p);
-    boost::archive::text_iarchive ia(ifs);
+    scrubbing::ScrubberResult::IArchive ia(ifs);
     ia >> scrub_result;
 
     return scrub_result;

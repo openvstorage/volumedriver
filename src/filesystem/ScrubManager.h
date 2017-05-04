@@ -51,6 +51,7 @@ namespace volumedriverfstest
 {
 
 class ScrubManagerTest;
+class ScrubbingTest;
 
 }
 
@@ -73,6 +74,7 @@ class ObjectRegistry;
 //      data structure is empty garbage can be collected).
 class ScrubManager
 {
+    friend class volumedriverfstest::ScrubbingTest;
     friend class volumedriverfstest::ScrubManagerTest;
 
 public:
@@ -284,6 +286,11 @@ private:
 
     void
     collect_scrub_garbage_();
+
+    using PerNodeGarbage = std::list<youtils::UUID>;
+
+    PerNodeGarbage
+    per_node_garbage_();
 };
 
 std::ostream&

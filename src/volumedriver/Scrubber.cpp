@@ -316,8 +316,8 @@ Scrubber::operator()()
 
         //         No interruption points here
         fs::path result_file_name = filepool.newFile(result_name);
-        youtils::Serialization::serializeAndFlush<boost::archive::text_oarchive>(result_file_name,
-                                                                                 result_);
+        youtils::Serialization::serializeAndFlush<ScrubberResult::OArchive>(result_file_name,
+                                                                            result_);
 
         // work around ALBA uploads timing out but eventually succeeding in the
         // background, leading to overwrite on retry.

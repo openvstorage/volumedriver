@@ -24,6 +24,8 @@
 
 #include <memory>
 
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
 #include <boost/serialization/base_object.hpp>
 #include <boost/serialization/utility.hpp>
 #include <boost/serialization/vector.hpp>
@@ -141,6 +143,9 @@ struct ScrubberResult
     std::vector<std::pair<volumedriver::SCO, float> > prefetch;
     std::vector<volumedriver::SCO> new_sconames;
     uint32_t version;
+
+    using IArchive = boost::archive::text_iarchive;
+    using OArchive = boost::archive::text_oarchive;
 };
 
 class Scrubber
