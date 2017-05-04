@@ -82,6 +82,7 @@ FileSystemTestSetup::FileSystemTestSetup(const FileSystemTestSetupParameters& pa
     , scrub_manager_interval_secs_(params.scrub_manager_interval_secs_)
     , use_fencing_(params.use_fencing_)
     , send_sync_response_(params.send_sync_response_)
+    , use_cluster_cache_(params.use_cluster_cache_)
     , keepalive_time_(params.keepalive_time_)
     , keepalive_interval_(params.keepalive_interval_)
     , keepalive_retries_(params.keepalive_retries_)
@@ -306,12 +307,14 @@ FileSystemTestSetup::make_config_(bpt::ptree& pt,
     {
         std::vector<vd::MountPointConfig> kfgs;
 
-        yt::DimensionedValue csize("20MiB");
-
-        const fs::path kdev(clustercache_mountpoint(topdir));
-        maybe_setup_clustercache_device(kdev, csize.getBytes());
-        vd::MountPointConfig mp(kdev, csize.getBytes());
-        kfgs.push_back(mp);
+        if (use_cluster_cache_)
+        {
+            yt::DimensionedValue csize("20MiB");
+            const fs::path kdev(clustercache_mountpoint(topdir));
+            maybe_setup_clustercache_device(kdev, csize.getBytes());
+            vd::MountPointConfig mp(kdev, csize.getBytes());
+            kfgs.push_back(mp);
+        }
 
         ip::PARAMETER_TYPE(clustercache_mount_points)(kfgs).persist(pt);
         ip::PARAMETER_TYPE(read_cache_serialization_path)(clustercache_serialization_path(topdir).string()).persist(pt);
