@@ -42,6 +42,9 @@ namespace fs = boost::filesystem;
 namespace vd = volumedriver;
 namespace yt = youtils;
 
+#define LOCKVD()                                        \
+    fungi::ScopedLock ag__(api::getManagementMutex())
+
 class ScrubbingTest
     : public FileSystemTestBase
 {
@@ -100,7 +103,7 @@ protected:
     {
         const size_t csize = get_cluster_size(id);
 
-        for (size_t i = 0; i < max_clusters_; ++i)
+        for (size_t i = 0; i <= max_clusters_; ++i)
         {
             const auto s(make_pattern(i));
             check_file(id,
@@ -108,12 +111,6 @@ protected:
                        s.size(),
                        i * csize);
         }
-
-        const std::string s(make_pattern(max_clusters_));
-        check_file(id,
-                   s,
-                   s.size(),
-                   max_clusters_ * csize);
     }
 
     std::vector<scrubbing::ScrubReply>
@@ -231,6 +228,25 @@ protected:
         }
     }
 
+    template<typename Fun>
+    void
+    with_fenced_volume(const ObjectId& id,
+                       Fun&& fun)
+    {
+        {
+            LOCKVD();
+            vd::SharedVolumePtr(api::getVolumePointer(vd::VolumeId(id.str())))->halt();
+        }
+
+        fun();
+
+        fs_->object_router().stop(id,
+                                  vd::DeleteLocalData::F,
+                                  CheckOwner::F);
+        fs_->object_router().restart(id,
+                                     ForceRestart::F);
+    }
+
     const size_t max_clusters_ = 1024;
 };
 
@@ -330,6 +346,49 @@ TEST_F(ScrubbingTest, clones)
 
     check_backend_after_gc(reps[0],
                            res);
+}
+
+TEST_F(ScrubbingTest, fenced_parent)
+{
+    ObjectId id;
+    std::tie(id, std::ignore) = create_volume();
+
+    write_data(id);
+
+    const vd::SnapshotName snap("snap");
+    fs_->object_router().create_snapshot(id,
+                                         snap,
+                                         0);
+
+    const std::vector<scrubbing::ScrubReply> reps(scrub(id));
+    ASSERT_EQ(1, reps.size());
+    ASSERT_EQ(id.str(),
+              reps[0].ns_.str());
+    ASSERT_EQ(snap,
+              reps[0].snapshot_name_);
+
+    const scrubbing::ScrubberResult res(fetch_scrub_result(reps[0]));
+    ASSERT_EQ(snap,
+              res.snapshot_name);
+    ASSERT_LT(0,
+              res.relocNum);
+    ASSERT_FALSE(res.relocs.empty());
+    ASSERT_FALSE(res.tlog_names_in.empty());
+    ASSERT_FALSE(res.tlogs_out.empty());
+    ASSERT_FALSE(res.sconames_to_be_deleted.empty());
+
+    with_fenced_volume(id,
+                       [&]
+                       {
+                           fs_->object_router().queue_scrub_reply_local(id,
+                                                                        reps[0]);
+
+                           wait_for_scrub_manager();
+                       });
+    check_data(id);
+
+    check_backend_before_gc(reps[0].ns_,
+                            res);
 }
 
 }
