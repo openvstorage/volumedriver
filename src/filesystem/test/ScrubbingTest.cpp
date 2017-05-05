@@ -34,6 +34,7 @@ namespace volumedriverfstest
 {
 
 using namespace volumedriverfs;
+using namespace std::literals::string_literals;
 
 namespace bc = boost::chrono;
 namespace be = backend;
@@ -64,14 +65,21 @@ protected:
         return std::make_tuple(id, path);
     }
 
+    static std::string
+    make_pattern(const vd::ClusterAddress ca)
+    {
+        return "cluster-"s + boost::lexical_cast<std::string>(ca);
+    }
+
     void
     write_data(const ObjectId& id)
     {
         const size_t csize = get_cluster_size(id);
+        const std::string maxstr(make_pattern(max_clusters_));
 
         for (size_t i = 0; i < max_clusters_; ++i)
         {
-            const auto s(boost::lexical_cast<std::string>(i));
+            const auto s(make_pattern(i));
 
             EXPECT_EQ(s.size(),
                       write_to_file(id,
@@ -79,32 +87,32 @@ protected:
                                     s.size(),
                                     i * csize));
 
-            EXPECT_EQ(id.str().size(),
+            EXPECT_EQ(maxstr.size(),
                       write_to_file(id,
-                                    id.str(),
-                                    id.str().size(),
+                                    maxstr,
+                                    maxstr.size(),
                                     max_clusters_ * csize));
         }
     }
 
     void
-    check_data(const ObjectId& id,
-               const boost::optional<std::string>& extra = boost::none)
+    check_data(const ObjectId& id)
     {
         const size_t csize = get_cluster_size(id);
 
         for (size_t i = 0; i < max_clusters_; ++i)
         {
-            const auto s(boost::lexical_cast<std::string>(i));
+            const auto s(make_pattern(i));
             check_file(id,
                        s,
                        s.size(),
                        i * csize);
         }
 
+        const std::string s(make_pattern(max_clusters_));
         check_file(id,
-                   extra ? *extra : id.str(),
-                   extra ? extra->size() : id.str().size(),
+                   s,
+                   s.size(),
                    max_clusters_ * csize);
     }
 
@@ -177,6 +185,52 @@ protected:
         FAIL() << "timeout waiting for scrub manager to finish";
     }
 
+    void
+    check_backend_before_gc(const be::Namespace& nspace,
+                            const scrubbing::ScrubberResult& res)
+    {
+        be::BackendInterfacePtr bi(api::backend_connection_manager()->newBackendInterface(nspace));
+
+        for (auto& tlog_id : res.tlog_names_in)
+        {
+            EXPECT_TRUE(bi->objectExists(boost::lexical_cast<std::string>(tlog_id))) << tlog_id;
+        }
+
+        for (auto& tlog : res.tlogs_out)
+        {
+            EXPECT_TRUE(bi->objectExists(tlog.getName())) << tlog.getName();
+        }
+
+        for (auto& sco : res.sconames_to_be_deleted)
+        {
+            EXPECT_TRUE(bi->objectExists(boost::lexical_cast<std::string>(sco)));
+        }
+    }
+
+    void
+    check_backend_after_gc(const scrubbing::ScrubReply& reply,
+                           const scrubbing::ScrubberResult& res)
+    {
+        be::BackendInterfacePtr bi(api::backend_connection_manager()->newBackendInterface(reply.ns_));
+
+        EXPECT_FALSE(bi->objectExists(reply.scrub_result_name_));
+
+        for (auto& tlog_id : res.tlog_names_in)
+        {
+            EXPECT_FALSE(bi->objectExists(boost::lexical_cast<std::string>(tlog_id))) << tlog_id;
+        }
+
+        for (auto& tlog : res.tlogs_out)
+        {
+            EXPECT_TRUE(bi->objectExists(tlog.getName())) << tlog.getName();
+        }
+
+        for (auto& sco : res.sconames_to_be_deleted)
+        {
+            EXPECT_FALSE(bi->objectExists(boost::lexical_cast<std::string>(sco)));
+        }
+    }
+
     const size_t max_clusters_ = 1024;
 };
 
@@ -209,12 +263,18 @@ TEST_F(ScrubbingTest, simple)
     ASSERT_FALSE(res.tlogs_out.empty());
     ASSERT_FALSE(res.sconames_to_be_deleted.empty());
 
+    check_backend_before_gc(reps[0].ns_,
+                            res);
+
     fs_->object_router().queue_scrub_reply_local(id,
                                                  reps[0]);
 
     wait_for_scrub_manager();
 
     check_data(id);
+
+    check_backend_after_gc(reps[0],
+                           res);
 }
 
 TEST_F(ScrubbingTest, clones)
@@ -253,6 +313,9 @@ TEST_F(ScrubbingTest, clones)
                                                     snap).str()));
     }
 
+    check_backend_before_gc(reps[0].ns_,
+                            res);
+
     fs_->object_router().queue_scrub_reply_local(pid,
                                                  reps[0]);
 
@@ -262,9 +325,11 @@ TEST_F(ScrubbingTest, clones)
 
     for (auto& cid : clones)
     {
-        check_data(cid,
-                   pid.str());
+        check_data(cid);
     }
+
+    check_backend_after_gc(reps[0],
+                           res);
 }
 
 }
