@@ -133,6 +133,7 @@ NetworkXioClient::NetworkXioClient(const std::string& uri,
     , stopped(false)
     , disconnected(false)
     , disconnecting(false)
+    , connect_error(false)
     , nr_req_queue(qd)
     , evfd()
     , ha_ctx_(ha_ctx)
@@ -185,9 +186,25 @@ NetworkXioClient::NetworkXioClient(const std::string& uri,
     {
         future.get();
     }
+    catch (const XioClientCreateException& e)
+    {
+        xio_thread_.join();
+        throw;
+    }
+    catch (const XioClientRegHandlerException& e)
+    {
+        xio_thread_.join();
+        throw;
+    }
     catch (const std::exception& e)
     {
         LIBLOGID_ERROR("failed to create xio thread: " << e.what());
+        xio_thread_.join();
+        throw XioClientCreateException("failed to create XIO worker thread");
+    }
+    catch (...)
+    {
+        LIBLOGID_ERROR("failed to create xio thread, unknown exception ");
         xio_thread_.join();
         throw XioClientCreateException("failed to create XIO worker thread");
     }
@@ -262,7 +279,9 @@ NetworkXioClient::run(std::promise<bool>& promise)
     {
         LIBLOGID_ERROR("failed to create XIO context: " <<
                        xio_strerror(xio_errno()));
-        throw XioClientCreateException("failed to create XIO context");
+        throw XioClientCreateException("failed to create XIO context",
+                                       nullptr,
+                                       xio_errno());
     }
 
     if(xio_context_add_ev_handler(ctx.get(),
@@ -273,7 +292,9 @@ NetworkXioClient::run(std::promise<bool>& promise)
     {
         LIBLOGID_ERROR("failed to register event handler: " <<
                        xio_strerror(xio_errno()));
-        throw XioClientRegHandlerException("failed to register event handler");
+        throw XioClientRegHandlerException("failed to register event handler",
+                                           nullptr,
+                                           xio_errno());
     }
 
     session = std::shared_ptr<xio_session>(xio_session_create(&params),
@@ -283,7 +304,9 @@ NetworkXioClient::run(std::promise<bool>& promise)
         xio_context_del_ev_handler(ctx.get(), evfd);
         LIBLOGID_ERROR("failed to create XIO session: " <<
                        xio_strerror(xio_errno()));
-        throw XioClientCreateException("failed to create XIO session");
+        throw XioClientCreateException("failed to create XIO session",
+                                       nullptr,
+                                       xio_errno());
     }
 
     cparams.session = session.get();
@@ -296,7 +319,22 @@ NetworkXioClient::run(std::promise<bool>& promise)
         xio_context_del_ev_handler(ctx.get(), evfd);
         LIBLOGID_ERROR("failed to connect: " <<
                        xio_strerror(xio_errno()));
-        throw XioClientCreateException("failed to connect");
+        throw XioClientCreateException("failed to connect",
+                                       nullptr,
+                                       xio_errno());
+    }
+
+    xio_context_run_loop(ctx.get(), 100);
+    if (connect_error)
+    {
+        xio_context_del_ev_handler(ctx.get(), evfd);
+        xio_disconnect(conn);
+        xio_connection_destroy(conn);
+        xio_context_run_loop(ctx.get(), XIO_INFINITE);
+        LIBLOGID_ERROR("connection error: " << xio_strerror(xio_errno()));
+        throw XioClientCreateException("connection error",
+                                       nullptr,
+                                       xio_errno());
     }
 
     pthread_setname_np(pthread_self(), "xio_event_loop");
@@ -384,7 +422,7 @@ NetworkXioClient::xio_run_loop_worker()
                 {
                     ovs_aio_request::handle_xio_request(req->get_request(),
                                                         -1,
-                                                        EIO,
+                                                        xio_errno(),
                                                         true);
                 }
                 delete req;
@@ -502,7 +540,7 @@ NetworkXioClient::on_msg_error(xio_session *session __attribute__((unused)),
     {
         ovs_aio_request::handle_xio_request(xio_msg->get_request(),
                                             -1,
-                                            EIO,
+                                            xio_errno(),
                                             true);
     }
     delete xio_msg;
@@ -519,6 +557,10 @@ NetworkXioClient::on_session_event(xio_session *session __attribute__((unused)),
     case XIO_SESSION_ERROR_EVENT:
     case XIO_SESSION_CONNECTION_ERROR_EVENT:
     case XIO_SESSION_CONNECTION_REFUSED_EVENT:
+        if (event_data->reason == XIO_E_CONNECT_ERROR)
+        {
+            connect_error = true;
+        }
         ha_ctx_.set_connection_error();
         break;
     case XIO_SESSION_CONNECTION_CLOSED_EVENT:

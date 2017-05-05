@@ -268,6 +268,7 @@ private:
     xio_session_ops ses_ops;
     bool disconnected;
     bool disconnecting;
+    bool connect_error;
 
     int64_t nr_req_queue;
 

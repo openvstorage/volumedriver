@@ -749,7 +749,7 @@ public:
                                rbuf_local.get(),
                                pattern.length(),
                                1024)) << "errno: " << errno;
-            EXPECT_EQ(EIO, errno);
+            EXPECT_EQ(ESHUTDOWN, errno);
 
             EXPECT_EQ(-1,
                       ovs_create_volume(ctx.get(),
@@ -1549,12 +1549,7 @@ TEST_F(NetworkServerTest, connect_to_nonexistent_port)
                                          FileSystemTestSetup::address().c_str(),
                                          8));
     ovs_ctx_t *ctx = ovs_ctx_new(ctx_attr);
-    ASSERT_TRUE(ctx != nullptr);
-    EXPECT_EQ(-1,
-              ovs_ctx_init(ctx, "volume", O_RDWR));
-    EXPECT_EQ(EIO, errno);
-
-    EXPECT_EQ(0, ovs_ctx_destroy(ctx));
+    ASSERT_TRUE(ctx == nullptr);
     EXPECT_EQ(0,
               ovs_ctx_attr_destroy(ctx_attr));
 }
@@ -2625,7 +2620,7 @@ TEST_F(NetworkServerTest, unmount_while_doing_io)
             EXPECT_EQ(0,ovs_aio_read(ctx.get(), &aiocb));
             ovs_aio_suspend(ctx.get(), &aiocb, nullptr);
             auto ret = ovs_aio_return(ctx.get(), &aiocb);
-            if (ret < 0 && errno == EIO)
+            if (ret < 0 && errno == ESHUTDOWN)
             {
                 ovs_aio_finish(ctx.get(), &aiocb);
                 break;
