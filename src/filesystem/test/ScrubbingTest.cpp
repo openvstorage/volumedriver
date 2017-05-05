@@ -159,19 +159,19 @@ protected:
         return scrub_result;
     }
 
+    using Clock = bc::steady_clock;
+
+    template<typename Cond>
     void
-    wait_for_scrub_manager(const bc::seconds timeout = bc::seconds(60))
+    wait_for_scrub_manager(const bc::seconds timeout,
+                           Cond&& cond)
     {
         ScrubManager& sm = local_node(fs_->object_router())->scrub_manager();
-
-        using Clock = bc::steady_clock;
         const Clock::time_point end(Clock::now() + timeout);
 
         while (Clock::now() <= end)
         {
-            if (sm.get_parent_scrubs().empty() and
-                sm.get_clone_scrubs().empty() and
-                sm.per_node_garbage_().empty())
+            if (cond(sm))
             {
                 return;
             }
@@ -180,6 +180,30 @@ protected:
         }
 
         FAIL() << "timeout waiting for scrub manager to finish";
+    }
+
+    void
+    wait_for_scrub_manager(const bc::seconds timeout = bc::seconds(60))
+    {
+        wait_for_scrub_manager(timeout,
+                               [](ScrubManager& sm) -> bool
+                               {
+                                   return
+                                       sm.get_parent_scrubs().empty() and
+                                       sm.get_clone_scrubs().empty() and
+                                       sm.per_node_garbage_().empty();
+                               });
+    }
+
+    void
+    wait_for_scrub_manager_parent(const bc::seconds timeout = bc::seconds(60))
+    {
+        wait_for_scrub_manager(timeout,
+                               [](ScrubManager& sm) -> bool
+                               {
+                                   return sm.get_parent_scrubs().empty() and
+                                       not sm.get_clone_scrubs().empty();
+                               });
     }
 
     void
@@ -389,6 +413,57 @@ TEST_F(ScrubbingTest, fenced_parent)
 
     check_backend_before_gc(reps[0].ns_,
                             res);
+}
+
+TEST_F(ScrubbingTest, fenced_clone)
+{
+    ObjectId pid;
+    std::tie(pid, std::ignore) = create_volume();
+
+    write_data(pid);
+
+    const vd::SnapshotName snap("snap");
+    fs_->object_router().create_snapshot(pid,
+                                         snap,
+                                         0);
+
+    const std::vector<scrubbing::ScrubReply> reps(scrub(pid));
+    ASSERT_EQ(1, reps.size());
+
+    const scrubbing::ScrubberResult res(fetch_scrub_result(reps[0]));
+    ASSERT_EQ(snap,
+              res.snapshot_name);
+    ASSERT_LT(0,
+              res.relocNum);
+    ASSERT_FALSE(res.relocs.empty());
+
+    const FrontendPath cpath(make_volume_name("/clone"));
+    const ObjectId cid(fs_->create_clone(cpath,
+                                         make_metadata_backend_config(),
+                                         vd::VolumeId(pid.str()),
+                                         snap).str());
+
+    check_backend_before_gc(reps[0].ns_,
+                            res);
+
+    with_fenced_volume(cid,
+                       [&]
+                       {
+                           fs_->object_router().queue_scrub_reply_local(pid,
+                                                                        reps[0]);
+
+                           wait_for_scrub_manager_parent();
+                           check_backend_before_gc(reps[0].ns_,
+                                                   res);
+                       });
+
+    wait_for_scrub_manager();
+
+    check_data(pid);
+    check_data(cid);
+
+    check_backend_after_gc(reps[0],
+                           res);
 }
 
 }
