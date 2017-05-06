@@ -32,6 +32,7 @@
 #include <youtils/wall_timer.h>
 
 #include <volumedriver/Api.h>
+#include <volumedriver/CachedMetaDataPage.h>
 #include <volumedriver/Volume.h>
 
 #include <filesystem/ObjectRouter.h>
@@ -2191,7 +2192,7 @@ TEST_F(NetworkServerTest, get_page)
                        libovsvolumedriver::ClusterAddress(0),
                        clp);
 
-    ASSERT_EQ(256UL, clp.size());
+    ASSERT_EQ(vd::CachePage::capacity(), clp.size());
     for (const auto& e: clp)
     {
         EXPECT_TRUE(e == libovsvolumedriver::ClusterLocation(0));
@@ -2239,7 +2240,7 @@ TEST_F(NetworkServerTest, get_page)
                        libovsvolumedriver::ClusterAddress(0),
                        clp);
 
-    ASSERT_EQ(256UL, clp.size());
+    ASSERT_EQ(vd::CachePage::capacity(), clp.size());
     for (const auto& e: clp)
     {
         EXPECT_EQ(libovs::ClusterLocation(0),
@@ -2268,7 +2269,7 @@ TEST_F(NetworkServerTest, get_page)
                        libovs::ClusterAddress(0),
                        clp);
 
-    ASSERT_EQ(256UL, clp.size());
+    ASSERT_EQ(vd::CachePage::capacity(), clp.size());
     for (const auto& e: clp)
     {
         if (e == clp[0])
@@ -2295,7 +2296,7 @@ TEST_F(NetworkServerTest, get_page)
     const vd::ClusterAddress ca(0);
     std::vector<vd::ClusterLocation> cloc(api::GetPage(v, ca));
 
-    ASSERT_EQ(256UL, cloc.size());
+    ASSERT_EQ(vd::CachePage::capacity(), cloc.size());
     for (const auto& e: cloc)
     {
         if (e == cloc[0])

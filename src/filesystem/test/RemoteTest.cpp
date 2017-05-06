@@ -28,6 +28,7 @@
 #include <youtils/System.h>
 
 #include <volumedriver/Api.h>
+#include <volumedriver/CachedMetaDataPage.h>
 #include <volumedriver/Volume.h>
 
 #include <filesystem/ObjectRouter.h>
@@ -1922,7 +1923,7 @@ TEST_F(RemoteTest, locally_get_remote_page)
 
     auto cl(fs_->object_router().get_page(*maybe_id, vd::ClusterAddress(0)));
 
-    EXPECT_EQ(256UL, cl.size());
+    EXPECT_EQ(vd::CachePage::capacity(), cl.size());
     for (const auto& e: cl)
     {
         EXPECT_TRUE(e == vd::ClusterLocation(0));
