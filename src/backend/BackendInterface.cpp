@@ -389,6 +389,8 @@ BackendInterface::partial_read(const BackendConnectionInterface::PartialReads& p
                                InsistOnLatestVersion insist_on_latest,
                                const BackendRequestParameters& params)
 {
+    LOG_TRACE(partial_reads << ", " << insist_on_latest);
+
     size_t bytes = 0;
 
     for (const auto& p : partial_reads)
