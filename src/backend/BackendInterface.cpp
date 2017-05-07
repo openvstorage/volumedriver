@@ -397,6 +397,14 @@ BackendInterface::partial_read(const BackendConnectionInterface::PartialReads& p
     {
         for (const auto& slice : p.second)
         {
+            tracepoint(openvstorage_backend,
+                       backend_interface_partial_read_descriptor,
+                       nspace_.str().c_str(),
+                       p.first.c_str(),
+                       slice.offset,
+                       slice.size,
+                       slice.buf);
+
             bytes += slice.size;
         }
     }
