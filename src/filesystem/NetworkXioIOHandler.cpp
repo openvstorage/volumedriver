@@ -386,7 +386,6 @@ NetworkXioIOHandler::handle_create_volume(NetworkXioRequest *req,
                                           const std::string& volume_name,
                                           size_t size)
 {
-    VERIFY(not handle_);
     req->op = NetworkXioMsgOpcode::CreateVolumeRsp;
 
     const std::string root_("/");
@@ -420,7 +419,6 @@ void
 NetworkXioIOHandler::handle_remove_volume(NetworkXioRequest *req,
                                           const std::string& volume_name)
 {
-    VERIFY(not handle_);
     req->op = NetworkXioMsgOpcode::RemoveVolumeRsp;
 
     const std::string root_("/");
@@ -448,7 +446,6 @@ void
 NetworkXioIOHandler::handle_stat_volume(NetworkXioRequest *req,
                                         const std::string& volume_name)
 {
-    VERIFY(not handle_);
     req->op = NetworkXioMsgOpcode::StatVolumeRsp;
 
     const FrontendPath volume_path(make_volume_path(volume_name));
@@ -480,7 +477,6 @@ NetworkXioIOHandler::handle_truncate(NetworkXioRequest *req,
                                      const std::string& volume_name,
                                      const uint64_t offset)
 {
-    VERIFY(not handle_);
     req->op = NetworkXioMsgOpcode::TruncateRsp;
 
     const std::string root_("/");
@@ -521,7 +517,6 @@ NetworkXioIOHandler::handle_truncate(NetworkXioRequest *req,
 void
 NetworkXioIOHandler::handle_list_volumes(NetworkXioRequest *req)
 {
-    VERIFY(not handle_);
     req->op = NetworkXioMsgOpcode::ListVolumesRsp;
 
     uint64_t total_size = 0;
@@ -595,7 +590,6 @@ void
 NetworkXioIOHandler::handle_list_snapshots(NetworkXioRequest *req,
                                            const std::string& volume_name)
 {
-    VERIFY(not handle_);
     req->op = NetworkXioMsgOpcode::ListSnapshotsRsp;
 
     const FrontendPath volume_path(make_volume_path(volume_name));
@@ -671,7 +665,6 @@ NetworkXioIOHandler::handle_create_snapshot(NetworkXioRequest *req,
                                             const std::string& snap_name,
                                             const int64_t timeout)
 {
-    VERIFY(not handle_);
     req->op = NetworkXioMsgOpcode::CreateSnapshotRsp;
 
     const FrontendPath volume_path(make_volume_path(volume_name));
@@ -726,7 +719,6 @@ NetworkXioIOHandler::handle_delete_snapshot(NetworkXioRequest *req,
                                             const std::string& volume_name,
                                             const std::string& snap_name)
 {
-    VERIFY(not handle_);
     req->op = NetworkXioMsgOpcode::DeleteSnapshotRsp;
 
     const FrontendPath volume_path(make_volume_path(volume_name));
@@ -772,7 +764,6 @@ NetworkXioIOHandler::handle_rollback_snapshot(NetworkXioRequest *req,
                                               const std::string& volume_name,
                                               const std::string& snap_name)
 {
-    VERIFY(not handle_);
     req->op = NetworkXioMsgOpcode::RollbackSnapshotRsp;
 
     const FrontendPath volume_path(make_volume_path(volume_name));
@@ -812,7 +803,6 @@ NetworkXioIOHandler::handle_is_snapshot_synced(NetworkXioRequest *req,
                                                const std::string& volume_name,
                                                const std::string& snap_name)
 {
-    VERIFY(not handle_);
     req->op = NetworkXioMsgOpcode::IsSnapshotSyncedRsp;
 
     const FrontendPath volume_path(make_volume_path(volume_name));

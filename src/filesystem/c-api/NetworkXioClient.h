@@ -65,7 +65,7 @@ public:
         void *opaque = nullptr;
         NetworkXioMsg msg;
         std::string s_msg;
-        void *priv = nullptr;
+        void *priv[2] = {nullptr, nullptr};
 
         void
         set_opaque(ovs_aio_request *request)
@@ -90,16 +90,6 @@ public:
         {
             return reinterpret_cast<ovs_aio_request*>(opaque)->_op;
         }
-    };
-
-    struct xio_ctl_s
-    {
-        xio_msg_s xmsg;
-        session_data sdata;
-        std::vector<std::string> vec;
-        std::unique_ptr<uint8_t[]> data;
-        uint64_t size = 0;
-        bool serviced = false;
     };
 
     void
@@ -149,6 +139,56 @@ public:
                                 CloneNamespaceMap& cn,
                                 ovs_aio_request *request);
 
+    void
+    xio_create_volume(const char* volume_name,
+                      size_t size,
+                      ovs_aio_request *request);
+
+    void
+    xio_remove_volume(const char* volume_name,
+                      ovs_aio_request *request);
+
+    void
+    xio_truncate_volume(const char* volume_name,
+                        uint64_t offset,
+                        ovs_aio_request *request);
+
+    void
+    xio_stat_volume(const std::string& volume_name,
+                    uint64_t *size,
+                    ovs_aio_request *request);
+
+    void
+    xio_list_volumes(std::vector<std::string>& volumes,
+                     ovs_aio_request *request);
+
+    void
+    xio_list_snapshots(const char* volume_name,
+                       std::vector<std::string>& snapshots,
+                       uint64_t *size,
+                       ovs_aio_request *request);
+
+    void
+    xio_create_snapshot(const char* volume_name,
+                        const char* snap_name,
+                        int64_t timeout,
+                        ovs_aio_request *request);
+
+    void
+    xio_delete_snapshot(const char* volume_name,
+                        const char* snap_name,
+                        ovs_aio_request *request);
+
+    void
+    xio_rollback_snapshot(const char* volume_name,
+                          const char* snap_name,
+                          ovs_aio_request *request);
+
+    void
+    xio_is_snapshot_synced(const char* volume_name,
+                           const char* snap_name,
+                           ovs_aio_request *request);
+
     int
     on_session_event(xio_session *session,
                      xio_session_event_data *event_data);
@@ -187,66 +227,6 @@ public:
     {
         return dtl_in_sync_;
     }
-
-    static void
-    xio_create_volume(const std::string& uri,
-                      const char* volume_name,
-                      size_t size,
-                      ovs_aio_request *request);
-
-    static void
-    xio_remove_volume(const std::string& uri,
-                      const char* volume_name,
-                      ovs_aio_request *request);
-
-    static void
-    xio_stat_volume(const std::string& uri,
-                    const std::string& volume_name,
-                    uint64_t *size,
-                    ovs_aio_request *request);
-
-    static void
-    xio_truncate_volume(const std::string& uri,
-                        const char* volume_name,
-                        uint64_t offset,
-                        ovs_aio_request *request);
-
-    static void
-    xio_list_volumes(const std::string& uri,
-                     std::vector<std::string>& volumes,
-                     ovs_aio_request *request);
-
-    static void
-    xio_list_snapshots(const std::string& uri,
-                       const char* volume_name,
-                       std::vector<std::string>& snapshots,
-                       uint64_t *size,
-                       ovs_aio_request *request);
-
-    static void
-    xio_create_snapshot(const std::string& uri,
-                        const char* volume_name,
-                        const char* snap_name,
-                        int64_t timeout,
-                        ovs_aio_request *request);
-
-    static void
-    xio_delete_snapshot(const std::string& uri,
-                        const char* volume_name,
-                        const char* snap_name,
-                        ovs_aio_request *request);
-
-    static void
-    xio_rollback_snapshot(const std::string& uri,
-                          const char* volume_name,
-                          const char* snap_name,
-                          ovs_aio_request *request);
-
-    static void
-    xio_is_snapshot_synced(const std::string& uri,
-                           const char* volume_name,
-                           const char* snap_name,
-                           ovs_aio_request *request);
 
     static void
     xio_destroy_ctx_shutdown(xio_context *ctx);
@@ -309,61 +289,28 @@ private:
     handle_get_clone_namespace_map(xio_msg_s *xmsg,
                                    xio_iovec_ex *sglist);
 
-    static xio_connection*
-    create_connection_control(session_data *sdata,
-                              const std::string& uri);
+    void
+    handle_stat(xio_msg_s *xio_msg,
+                uint64_t volsize);
 
-    static int
-    on_msg_control(xio_session *session,
-                   xio_msg *reply,
-                   int last_in_rqx,
-                   void *cb_user_context);
-
-    static int
-    on_msg_error_control(xio_session *session,
-                         xio_status error,
-                         xio_msg_direction direction,
-                         xio_msg *msg,
-                         void *cb_user_context);
-
-    static int
-    on_session_event_control(xio_session *session,
-                             xio_session_event_data *event_data,
-                             void *cb_user_context);
-
-    static int
-    on_session_established_control(xio_session *session,
-                                   xio_new_session_rsp *rsp,
-                                   void *cb_user_context);
-
-    static void
-    xio_submit_request(const std::string& uri,
-                       xio_ctl_s *xctl,
-                       ovs_aio_request *request,
-                       int timeout_ms_);
-
-    static void
+    void
     xio_msg_prepare(xio_msg_s *xmsg);
 
-    static void
-    handle_list_volumes(xio_ctl_s *xctl,
+    void
+    handle_list_volumes(xio_msg_s *xmsg,
                         xio_iovec_ex *sglist,
                         int vec_size);
 
-    static void
-    handle_list_snapshots(xio_ctl_s *xctl,
+    void
+    handle_list_snapshots(xio_msg_s *xmsg,
                           xio_iovec_ex *sglist,
                           int vec_size,
                           size_t size);
 
-    static void
-    create_vec_from_buf(xio_ctl_s *xctl,
+    void
+    create_vec_from_buf(xio_msg_s *xmsg,
                         xio_iovec_ex *sglist,
                         int vec_size);
-
-    static void
-    copy_sglist_buffer(xio_ctl_s *xctl,
-                       xio_iovec_ex *sglist);
 
     msgpack::object_handle
     msgpack_obj_handle(xio_iovec_ex *sglist);
@@ -432,14 +379,12 @@ private:
     {
         switch (op)
         {
-        case NetworkXioMsgOpcode::GetVolumeURIRsp:
-        case NetworkXioMsgOpcode::ListClusterNodeURIRsp:
-        case NetworkXioMsgOpcode::GetClusterMultiplierRsp:
-        case NetworkXioMsgOpcode::GetPageRsp:
-        case NetworkXioMsgOpcode::GetCloneNamespaceMapRsp:
-            return true;
-        default:
+        case NetworkXioMsgOpcode::ReadRsp:
+        case NetworkXioMsgOpcode::WriteRsp:
+        case NetworkXioMsgOpcode::FlushRsp:
             return false;
+        default:
+            return true;
         }
     }
 
