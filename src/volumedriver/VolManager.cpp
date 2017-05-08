@@ -493,7 +493,7 @@ VolManager::getCurrentVolumesTLogRequirements()
 #if defined(__GNUC__) &&                        \
     (__GNUC__ <= 4 ||                           \
      (__GNUC__ == 5 && GNUC_MINOR__ <= 4))
-        PRAGMA_IGNORE_WARNING_END("-Wmaybe-uninitialized");
+        PRAGMA_IGNORE_WARNING_END
 #endif
     }
 

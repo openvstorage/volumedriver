@@ -26,7 +26,7 @@ libfawlty_sk_a_SOURCES = \
 	fawltySK.cc
 
 libfawlty_sk_a_CXXFLAGS = \
-	$(BUILDTOOLS_CFLAGS) -Wno-unused-variables
+	$(BUILDTOOLS_CFLAGS) -Wno-unused-variable
 
 corba_server_SOURCES = \
 	corba_server.cpp \

@@ -23,8 +23,8 @@ ShmIdlInterface.cpp : ShmIdlInterface.idl
 noinst_LTLIBRARIES = \
 	libshmidlinterface.la
 
-libshmidlinterface_a_CXXFLAGS = \
-	$(BUILDTOOLS_CFLAGS) -D_FILE_OFFSET_BITS=64 -Wno-unused-variables
+libshmidlinterface_la_CXXFLAGS = \
+	$(BUILDTOOLS_CFLAGS) -D_FILE_OFFSET_BITS=64 -Wno-unused-variable
 
 libshmidlinterface_la_SOURCES = ShmIdlInterface.cpp
 
@@ -40,6 +40,15 @@ libvolumedriverfs_la_LIBADD = libshmidlinterface.la
 %.pb.cc %.pb.h %_pb2.py: %.proto
 	$(PROTOC) -I$(abs_top_srcdir) -I$(abs_top_srcdir)/../volumedriver --cpp_out=$(builddir) $^
 	$(PROTOC) -I$(abs_top_srcdir) -I$(abs_top_srcdir)/../volumedriver --python_out=$(builddir) $^
+
+BUILT_SOURCES = \
+	FileSystemEvents.pb.cc \
+	FileSystemEvents.pb.h \
+	Messages.pb.h \
+	ShmIdlInterface.cpp \
+	ShmIdlInterface.h \
+	TracePoints_tp.c \
+	TracePoints_tp.h
 
 volumedriverfsdir=@prefix@/share/volumedriverfs
 volumedriverfs_DATA = \
@@ -128,13 +137,6 @@ volumedriverfs_pythondir = @prefix@/lib/python@PYTHON_VERSION@/dist-packages/vol
 
 volumedriverfs_python_PYTHON = \
 	$(abs_builddir)/FileSystemEvents_pb2.py
-
-BUILT_SOURCES = \
-	FileSystemEvents.pb.h \
-	FileSystemEvents_pb2.py \
-	Messages.pb.h \
-	TracePoints_tp.h \
-	TracePoints_tp.c
 
 bin_PROGRAMS = volumedriver_fs
 
