@@ -756,7 +756,7 @@ public:
                       ovs_create_volume(ctx.get(),
                                         "local_volume",
                                         volume_size));
-            EXPECT_EQ(ENOTCONN, errno);
+            EXPECT_EQ(ESHUTDOWN, errno);
         }
     }
 
