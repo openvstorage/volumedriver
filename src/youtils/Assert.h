@@ -107,7 +107,7 @@
     PRAGMA__(GCC diagnostic ignored d)
 
 #define PRAGMA_IGNORE_WARNING_END               \
-    PRAGMA__(GCC diagnostic pop)                \
+    PRAGMA__(GCC diagnostic pop)
 
 #define PRAGMA_WARNING(w)
 
