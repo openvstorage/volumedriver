@@ -103,12 +103,27 @@ PythonClient::redirected_xmlrpc(const std::string& addr,
     }
 
     XmlRpc::XmlRpcClient xclient(addr.c_str(), port);
+
+    // g++ emits a false positive warning:
+    // "'*((void*)(& t)+8).boost::chrono::duration::rep_' may be used uninitialized in this function [-Wmaybe-uninitialized]"
+#if defined(__GNUC__) &&                        \
+    (__GNUC__ <= 4 ||                           \
+     (__GNUC__ == 5 && GNUC_MINOR__ <= 4))
+    PRAGMA_IGNORE_WARNING_BEGIN("-Wmaybe-uninitialized");
+#endif
+
     const bool res = xclient.execute(method,
                                      req,
                                      rsp,
                                      t ?
                                      t->count() :
                                      -1.0);
+#if defined(__GNUC__) &&                        \
+    (__GNUC__ <= 4 ||                           \
+     (__GNUC__ == 5 && GNUC_MINOR__ <= 4))
+    PRAGMA_IGNORE_WARNING_END("-Wmaybe-uninitialized");
+#endif
+
     if (not res)
     {
         // Bummer, there does not seem to be a way to get at a precise error message.
