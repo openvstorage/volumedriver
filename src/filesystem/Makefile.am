@@ -17,12 +17,24 @@ OMNIIDL=@omniidl@
 ShmIdlInterface.cpp : ShmIdlInterface.idl
 	$(OMNIIDL) -bcxx -Wbh=.h -Wbs=.cpp -Wbtp $<
 
+# this convenience lib is a pretty convoluted way of
+# shutting up this warning (g++ 5.4, Ubuntu 16.04):
+# '_0RL_library_version' defined but not used [-Wunused-variable]
+noinst_LTLIBRARIES = \
+	libshmidlinterface.la
+
+libshmidlinterface_a_CXXFLAGS = \
+	$(BUILDTOOLS_CFLAGS) -D_FILE_OFFSET_BITS=64 -Wno-unused-variables
+
+libshmidlinterface_la_SOURCES = ShmIdlInterface.cpp
+
 libvolumedriverfs_la_CXXFLAGS = \
 	$(BUILDTOOLS_CFLAGS) -D_FILE_OFFSET_BITS=64 \
 	-I@abs_top_srcdir@/../msgpack-c/include
 libvolumedriverfs_la_CFLAGS = $(BUILDTOOLS_CFLAGS) -D_FILE_OFFSET_BITS=64
 libvolumedriverfs_la_CPPFLAGS = -I@abs_top_srcdir@/.. -I@abs_top_builddir@/../volumedriver
 libvolumedriverfs_la_LDFLAGS = -static
+libvolumedriverfs_la_LIBADD = libshmidlinterface.la
 
 # this path trickery is necessary as protobuf imports need to start at the same root
 %.pb.cc %.pb.h %_pb2.py: %.proto
@@ -99,7 +111,6 @@ libvolumedriverfs_la_SOURCES = \
 		RemoteNode.cpp \
 		ScrubManager.cpp \
 		ScrubTreeBuilder.cpp \
-		ShmIdlInterface.cpp \
 		ShmInterface.cpp \
 		ShmOrbInterface.cpp \
 		ShmServer.cpp \
