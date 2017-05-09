@@ -370,6 +370,7 @@ Connection::partial_read_(const Namespace& ns,
 
             prc.fast += rora_counter.fast_path;
             prc.slow += rora_counter.slow_path;
+            prc.block_cache += rora_counter.block_path;
         });
 
     return true;
