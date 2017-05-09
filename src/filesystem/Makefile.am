@@ -14,7 +14,7 @@ lib_LTLIBRARIES = libvolumedriverfs.la
 
 OMNIIDL=@omniidl@
 
-ShmIdlInterface.cpp : ShmIdlInterface.idl
+ShmIdlInterface.cpp ShmIdlInterface.h: ShmIdlInterface.idl
 	$(OMNIIDL) -bcxx -Wbh=.h -Wbs=.cpp -Wbtp $<
 
 # this convenience lib is a pretty convoluted way of
