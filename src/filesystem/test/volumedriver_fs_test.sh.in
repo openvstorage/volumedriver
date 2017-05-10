@@ -8,9 +8,11 @@ set -ux
 
 ARAKOON_PORT_BASE=${ARAKOON_PORT_BASE:-12345}
 ARAKOON_BINARY=${ARAKOON_BINARY:-/usr/bin/arakoon}
+VOLUMEDRIVERFS_TEST_EXTRA_ARGS=${VOLUMEDRIVERFS_TEST_EXTRA_ARGS:-""}
 
 cpp_test_with_backend volumedriver_fs_test  \
 	--volumedriverfs-binary-path=@prefix@/bin/volumedriver_fs \
 	--arakoon-binary-path=${ARAKOON_BINARY} \
 	--arakoon-port=${ARAKOON_PORT_BASE} \
+	${VOLUMEDRIVERFS_TEST_EXTRA_ARGS} \
 	"$@"

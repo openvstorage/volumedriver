@@ -23,7 +23,7 @@ mkdir -p ${GTEST_REPORT_DIR}
 volumedriver_fs_test \
     --volumedriverfs-binary-path=${VDC_DIR}/build/bin/volumedriver_fs \
     --disable-logging \
-    --gtest_filter=-RemoteTest.*dreaded_threaded*:RemoteTest.*remove_while_migrating:RemoteTest.*migrate_while_removing \
+    --gtest_filter=-RemoteTest.*dreaded_threaded*:RemoteTest.*remove_while_migrating:RemoteTest.*migrate_while_removing:*chown* \
     --gtest_output=xml:${GTEST_REPORT}
 
 exit 0

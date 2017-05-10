@@ -28,6 +28,7 @@ export VFS_PORT_BASE=${VFS_PORT_BASE:-$((FOC_PORT_BASE + 20))}
 export MDS_PORT_BASE=${MDS_PORT_BASE:-$((VFS_PORT_BASE + 20))}
 export CXX_WARNINGS="-Wall -Wextra -Wno-unknown-pragmas -Wsign-promo -Woverloaded-virtual -Wnon-virtual-dtor"
 export SUPPRESS_WARNINGS=yes
+export VOLUMEDRIVERFS_TEST_EXTRA_ARGS="--gtest_filter=-*chown*"
 
 #oooh this is dangerous...
 rm -rf ${TEMP}

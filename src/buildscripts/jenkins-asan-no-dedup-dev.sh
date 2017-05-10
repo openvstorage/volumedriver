@@ -30,6 +30,7 @@ export USE_CLANG=no
 export VD_EXTRA_VERSION=`get_debug_extra_version $VOLUMEDRIVER_DIR`
 export SUPRESS_WARNINGS=yes
 export USE_ASAN=yes
+export VOLUMEDRIVERFS_TEST_EXTRA_ARGS="--gtest_filter=-*chown*"
 
 # adds
 # * -Wno-mismatched-tags to disable "class X was previously declared as struct"
