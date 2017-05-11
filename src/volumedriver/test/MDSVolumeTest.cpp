@@ -1307,6 +1307,10 @@ TEST_P(MDSVolumeTest, scrub_with_slave_out_to_lunch)
 
 TEST_P(MDSVolumeTest, scrub_id_mismatch)
 {
+    mds_manager_ = mds_test_setup_->make_manager(cm_,
+                                                 2,
+                                                 std::chrono::seconds(3600));
+
     const auto wrns(make_random_namespace());
     SharedVolumePtr v = make_volume(*wrns);
 
@@ -1651,6 +1655,10 @@ TEST_P(MDSVolumeTest, local_restart_of_pristine_clone_with_empty_mds)
 // of a slave, leading to a full rebuild instead of a cheaper incremental update.
 TEST_P(MDSVolumeTest, incremental_update_and_snapshots)
 {
+    mds_manager_ = mds_test_setup_->make_manager(cm_,
+                                                 2,
+                                                 std::chrono::seconds(3600));
+
     const auto wrns(make_random_namespace());
     SharedVolumePtr v = make_volume(*wrns);
 
@@ -1707,6 +1715,10 @@ TEST_P(MDSVolumeTest, incremental_update_and_snapshots)
 
 TEST_P(MDSVolumeTest, table_counters)
 {
+    mds_manager_ = mds_test_setup_->make_manager(cm_,
+                                                 2,
+                                                 std::chrono::seconds(3600));
+
     const auto wrns(make_random_namespace());
     SharedVolumePtr v = make_volume(*wrns);
 
