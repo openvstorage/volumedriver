@@ -229,37 +229,38 @@ FileSystemTestSetup::make_registry_config_(bpt::ptree& pt) const
 bpt::ptree&
 FileSystemTestSetup::make_mdstore_config_(bpt::ptree& pt) const
 {
-    VERIFY(mdstore_test_setup_ != nullptr);
-
-    const ip::PARAMETER_TYPE(fs_metadata_backend_type)
-        backend_type(mdstore_test_setup_->backend_type_);
-    backend_type.persist(pt);
-
-    switch (backend_type.value())
+    if (mdstore_test_setup_ != nullptr)
     {
-    case vd::MetaDataBackendType::Arakoon:
-        {
-            const std::string cluster_id(arakoon_test_setup_->clusterID().str());
-            ip::PARAMETER_TYPE(fs_metadata_backend_arakoon_cluster_id)(cluster_id).persist(pt);
+        const ip::PARAMETER_TYPE(fs_metadata_backend_type)
+            backend_type(mdstore_test_setup_->backend_type_);
+        backend_type.persist(pt);
 
-            const auto ara_nodel(arakoon_test_setup_->node_configs());
-            const ip::PARAMETER_TYPE(fs_metadata_backend_arakoon_cluster_nodes)::ValueType
-                ara_nodev(ara_nodel.begin(),
-                          ara_nodel.end());
-            ip::PARAMETER_TYPE(fs_metadata_backend_arakoon_cluster_nodes)(ara_nodev).persist(pt);
-            break;
-        }
-    case vd::MetaDataBackendType::MDS:
+        switch (backend_type.value())
         {
-            VERIFY(mds_server_config_ != nullptr);
-            const ip::PARAMETER_TYPE(fs_metadata_backend_mds_nodes)::ValueType
-                mds_nodev({ mds_server_config_->node_config });
-            ip::PARAMETER_TYPE(fs_metadata_backend_mds_nodes)(mds_nodev).persist(pt);
+        case vd::MetaDataBackendType::Arakoon:
+            {
+                const std::string cluster_id(arakoon_test_setup_->clusterID().str());
+                ip::PARAMETER_TYPE(fs_metadata_backend_arakoon_cluster_id)(cluster_id).persist(pt);
+
+                const auto ara_nodel(arakoon_test_setup_->node_configs());
+                const ip::PARAMETER_TYPE(fs_metadata_backend_arakoon_cluster_nodes)::ValueType
+                    ara_nodev(ara_nodel.begin(),
+                              ara_nodel.end());
+                ip::PARAMETER_TYPE(fs_metadata_backend_arakoon_cluster_nodes)(ara_nodev).persist(pt);
+                break;
+            }
+        case vd::MetaDataBackendType::MDS:
+            {
+                VERIFY(mds_server_config_ != nullptr);
+                const ip::PARAMETER_TYPE(fs_metadata_backend_mds_nodes)::ValueType
+                    mds_nodev({ mds_server_config_->node_config });
+                ip::PARAMETER_TYPE(fs_metadata_backend_mds_nodes)(mds_nodev).persist(pt);
+                break;
+            }
+        case vd::MetaDataBackendType::RocksDB:
+        case vd::MetaDataBackendType::TCBT:
             break;
         }
-    case vd::MetaDataBackendType::RocksDB:
-    case vd::MetaDataBackendType::TCBT:
-        break;
     }
 
     return pt;
