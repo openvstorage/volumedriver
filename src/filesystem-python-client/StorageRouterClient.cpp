@@ -489,7 +489,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
           "Create a client interface to a volumedriverfs cluster\n"
           "@param vrouter_cluster_id: string, cluster_id \n"
           "@param cluster_contacts: [ClusterContact] contact points to the cluster\n"
-          "@param client_timeout: unsigned, optional client timeout (seconds)"))
+          "@param client_timeout_secs: unsigned, optional client timeout (seconds)"))
         .def("create_volume",
              &vfs::PythonClient::create_volume,
              (bpy::args("target_path"),
@@ -786,7 +786,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
               bpy::args("force_restart"),
               bpy::args("req_timeout_secs") = MaybeSeconds()),
              "Migrate an object (volume or file) to another node.\n"
-             "@param volume_id: string, object identifier\n"
+             "@param object_id: string, object identifier\n"
              "@param node_id: string, node to move the object to\n"
              "@param force_restart: boolean, whether to forcibly restart on the new node even if that means data loss (e.g. if the FOC is not available)\n"
              "@param req_timeout_secs: optional timeout in seconds for this request\n")
