@@ -14,7 +14,6 @@ libovsvolumedriver_LTLIBRARIES = libovsvolumedriver.la
 
 libovsvolumedriver_la_SOURCES = \
 	AioCompletion.cpp \
-	../ShmIdlInterface.cpp \
 	ShmControlChannelClient.cpp \
 	ShmContext.cpp \
 	ShmClient.cpp \
@@ -32,7 +31,9 @@ libovsvolumedriver_la_CXXFLAGS = ${BUILDTOOLS_CFLAGS} \
 	-DBOOST_DATE_TIME_POSIX_TIME_STD_CONFIG \
 	-I@abs_top_srcdir@/../msgpack-c/include
 
-libovsvolumedriver_la_LIBADD = ../../youtils/libyoutils.la \
+libovsvolumedriver_la_LIBADD = \
+	../libshmidlinterface.la \
+	../../youtils/libyoutils.la \
 	${BUILDTOOLS_LIBS} \
 	-lxio -lgcc
 

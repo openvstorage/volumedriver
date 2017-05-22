@@ -47,6 +47,18 @@ public:
     {}
 
     void
+    SetUp() override final
+    {
+        VolManagerTestSetup::SetUp();
+
+        ClusterCache& ccache = VolManager::get()->getClusterCache();
+        ASSERT_EQ(0, ccache.totalSizeInEntries());
+        ClusterCache::ManagerType::Info ccache_info;
+        ccache.deviceInfo(ccache_info);
+        ASSERT_TRUE(ccache_info.empty());
+    }
+
+    void
     setBackendType(ScrubberArgs& args)
     {
         args.backend_config = VolManager::get()->getBackendConfig().clone();
@@ -141,13 +153,10 @@ TEST_P(ScrubberTest, DeletedSnap)
     VolumeId vid("volume1");
 
     auto ns_ptr = make_random_namespace();
-
     const backend::Namespace& ns = ns_ptr->ns();
 
-    //    backend::Namespace ns;
-
     SharedVolumePtr v1 = newVolume(vid,
-    			   ns);
+                                   ns);
 
     std::string what;
 
@@ -222,9 +231,7 @@ TEST_P(ScrubberTest, DeletedSnap2)
 
     const std::list<std::string> objs_before(list_objs());
 
-    scrubbing::ScrubReply result;
-
-    ASSERT_NO_THROW(result = do_scrub(scrub_work_units.front()));
+    const scrubbing::ScrubReply reply(do_scrub(scrub_work_units.front()));
 
     std::list<std::string> objs_scrubbed;
     EXPECT_LT(objs_before.size(),
@@ -233,7 +240,7 @@ TEST_P(ScrubberTest, DeletedSnap2)
     v1->deleteSnapshot(snap1);
     {
         EXPECT_THROW(apply_scrubbing(vid,
-                                     result),
+                                     reply),
                      fungi::IOException);
     }
     waitForThisBackendWrite(*v1);
@@ -304,12 +311,10 @@ TEST_P(ScrubberTest, GetWork)
     persistXVals(v1->getName());
     waitForThisBackendWrite(*v1);
 
-    scrubbing::ScrubReply scrub_result;
-
-    ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
+    const scrubbing::ScrubReply scrub_reply(do_scrub(scrub_work_units.front()));
 
     ASSERT_NO_THROW(apply_scrubbing(vid,
-                                    scrub_result));
+                                    scrub_reply));
 
     {
         auto scrub_work_units = getScrubbingWork(vid);
@@ -440,7 +445,7 @@ TEST_P(ScrubberTest, Serialization)
     const backend::Namespace& ns = ns_ptr->ns();
 
     SharedVolumePtr v1 = newVolume(vid,
-                           ns);
+                                   ns);
 
     std::string what;
 
@@ -464,12 +469,10 @@ TEST_P(ScrubberTest, Serialization)
     waitForThisBackendWrite(*v1);
     auto scrub_work_units = getScrubbingWork(vid);
     ASSERT_EQ(1U, scrub_work_units.size());
-    scrubbing::ScrubReply scrub_result;
 
-    ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
-
+    const scrubbing::ScrubReply scrub_reply(do_scrub(scrub_work_units.front()));
     ASSERT_NO_THROW(apply_scrubbing(vid,
-                                    scrub_result));
+                                    scrub_reply));
 
     checkVolume(*v1, Lba(0), default_cluster_size(),what);
     checkVolume(*v1, Lba(1ULL << 10), default_cluster_size(), what + "-");
@@ -492,12 +495,14 @@ TEST_P(ScrubberTest, ScrubNothing)
     auto scrub_work_units = getScrubbingWork(vid);
     ASSERT_EQ(1U, scrub_work_units.size());
 
-    scrubbing::ScrubReply scrub_result;
+    const scrubbing::ScrubReply scrub_reply(do_scrub(scrub_work_units.front()));
 
-    ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
+    ASSERT_TRUE(build_reloc_map(*v1->getBackendInterface(),
+                                get_scrub_result(*v1->getBackendInterface(),
+                                                 scrub_reply)).empty());
 
     ASSERT_NO_THROW(apply_scrubbing(vid,
-                                    scrub_result));
+                                    scrub_reply));
 
     {
         auto scrub_work_units = getScrubbingWork(vid);
@@ -520,7 +525,7 @@ TEST_P(ScrubberTest, SimpleScrub2)
 
     const VolumeId vid("volume1");
     SharedVolumePtr v1 = newVolume("volume1",
-                           ns);
+                                   ns);
 
     std::string what;
 
@@ -539,10 +544,9 @@ TEST_P(ScrubberTest, SimpleScrub2)
 
     auto scrub_work_units = getScrubbingWork(vid);
     ASSERT_EQ(1U, scrub_work_units.size());
-    scrubbing::ScrubReply scrub_result;
-    ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
+    const scrubbing::ScrubReply scrub_reply(do_scrub(scrub_work_units.front()));
     ASSERT_NO_THROW(apply_scrubbing(vid,
-                                    scrub_result));
+                                    scrub_reply));
     checkVolume(*v1, Lba(0), default_cluster_size(),what);
 }
 
@@ -577,12 +581,10 @@ TEST_P(ScrubberTest, SimpleScrub3)
     auto scrub_work_units = getScrubbingWork(vid);
     ASSERT_EQ(1U, scrub_work_units.size());
 
-    scrubbing::ScrubReply scrub_result;
-
-    ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
+    const scrubbing::ScrubReply scrub_reply(do_scrub(scrub_work_units.front()));
 
     ASSERT_NO_THROW(apply_scrubbing(vid,
-                                    scrub_result,
+                                    scrub_reply,
                                     ScrubbingCleanup::OnError));
 
     checkVolume(*v1, Lba(0), default_cluster_size(),what);
@@ -625,11 +627,10 @@ TEST_P(ScrubberTest, SimpleScrub4)
     const auto scrub_work_units = getScrubbingWork(vid);
     ASSERT_EQ(1U, scrub_work_units.size());
 
-    scrubbing::ScrubReply scrub_result;
-    ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
+    const scrubbing::ScrubReply scrub_reply(do_scrub(scrub_work_units.front()));
 
     ASSERT_NO_THROW(apply_scrubbing(vid,
-                                    scrub_result,
+                                    scrub_reply,
                                     ScrubbingCleanup::OnError));
     checkVolume(*v1, Lba(0), default_cluster_size(),what);
     checkVolume(*v1, Lba(1ULL << 10), default_cluster_size(), what + "-");
@@ -668,13 +669,15 @@ TEST_P(ScrubberTest, SmallRegionScrub1)
     persistXVals(v1->getName());
     waitForThisBackendWrite(*v1);
 
-    auto scrub_work_units = getScrubbingWork(vid);
+    const auto scrub_work_units = getScrubbingWork(vid);
+    const scrubbing::ScrubReply scrub_reply(do_scrub(scrub_work_units.front()));
 
-    scrubbing::ScrubReply scrub_result;
-    ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
+    ASSERT_FALSE(build_reloc_map(*v1->getBackendInterface(),
+                                 get_scrub_result(*v1->getBackendInterface(),
+                                                  scrub_reply)).empty());
 
     ASSERT_NO_THROW(apply_scrubbing(vid,
-                                    scrub_result,
+                                    scrub_reply,
                                     ScrubbingCleanup::OnError));
 
     for(int i = 0; i < 512; ++i)
@@ -734,9 +737,9 @@ TEST_P(ScrubberTest, CloneScrubbin)
     const VolumeId clone1("clone1");
 
     SharedVolumePtr c1 = createClone(clone1,
-                             ns1,
-                             ns,
-                             v1_snap1);
+                                     ns1,
+                                     ns,
+                                     v1_snap1);
 
     for(int i = 0; i < num_writes; ++i)
     {
@@ -824,12 +827,23 @@ TEST_P(ScrubberTest, CloneScrubbin)
     auto scrub_work_units = getScrubbingWork(vid);
     ASSERT_EQ(1U, scrub_work_units.size());
 
-    scrubbing::ScrubReply scrub_result;
+    scrubbing::ScrubReply scrub_reply(do_scrub(scrub_work_units.front()));
 
-    ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
+    {
+        const scrubbing::ScrubberResult
+            res(get_scrub_result(*v1->getBackendInterface(),
+                                 scrub_reply));
+        EXPECT_FALSE(res.sconames_to_be_deleted.empty());
+        // this test does not generate relocations - cf. clones_and_relocations
+        EXPECT_FALSE(res.tlog_names_in.empty());
+        EXPECT_FALSE(res.tlogs_out.empty());
+        EXPECT_TRUE(res.new_sconames.empty());
+        EXPECT_EQ(0,
+                  res.relocNum);
+    }
 
     ASSERT_NO_THROW(apply_scrubbing(clone1,
-                                    scrub_result,
+                                    scrub_reply,
                                     ScrubbingCleanup::Never));
 
     check_volumes();
@@ -837,7 +851,7 @@ TEST_P(ScrubberTest, CloneScrubbin)
     check_consistency(*c1);
 
     ASSERT_NO_THROW(apply_scrubbing(clone2,
-                                    scrub_result,
+                                    scrub_reply,
                                     ScrubbingCleanup::OnError));
 
     check_volumes();
@@ -845,7 +859,7 @@ TEST_P(ScrubberTest, CloneScrubbin)
     check_consistency(*c2);
 
     ASSERT_NO_THROW(apply_scrubbing(vid,
-                                    scrub_result,
+                                    scrub_reply,
                                     ScrubbingCleanup::OnError));
 
     check_consistency(*v1);
@@ -860,9 +874,9 @@ TEST_P(ScrubberTest, CloneScrubbin)
     ASSERT_EQ(c1_snap1,
               scrub_work_units[0].snapshot_name_);
 
-    ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
+    ASSERT_NO_THROW(scrub_reply = do_scrub(scrub_work_units.front()));
     ASSERT_NO_THROW(apply_scrubbing(clone2,
-                                    scrub_result,
+                                    scrub_reply,
                                     ScrubbingCleanup::OnError));
 
     check_volumes();
@@ -873,7 +887,7 @@ TEST_P(ScrubberTest, CloneScrubbin)
     }
 
     ASSERT_NO_THROW(apply_scrubbing(clone1,
-                                    scrub_result,
+                                    scrub_reply,
                                     ScrubbingCleanup::OnError));
 
     check_volumes();
@@ -886,9 +900,9 @@ TEST_P(ScrubberTest, CloneScrubbin)
     ASSERT_EQ(c2_snap1,
               scrub_work_units[0].snapshot_name_);
 
-    ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
+    ASSERT_NO_THROW(scrub_reply = do_scrub(scrub_work_units.front()));
     ASSERT_NO_THROW(apply_scrubbing(clone2,
-                                    scrub_result,
+                                    scrub_reply,
                                     ScrubbingCleanup::OnError));
 
     check_volumes();
@@ -947,33 +961,32 @@ TEST_P(ScrubberTest, idempotent_scrub_result_application)
 
     auto scrub_work_units = getScrubbingWork(vid);
     ASSERT_EQ(1U, scrub_work_units.size());
-    scrubbing::ScrubReply scrub_result;
-    ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
+    const scrubbing::ScrubReply scrub_reply(do_scrub(scrub_work_units.front()));
 
     EXPECT_NO_THROW(apply_scrubbing(vid,
-                                    scrub_result,
+                                    scrub_reply,
                                     ScrubbingCleanup::OnError,
                                     CollectScrubGarbage::F));
 
     waitForThisBackendWrite(*v1);
 
     EXPECT_NO_THROW(apply_scrubbing(cid,
-                                    scrub_result,
+                                    scrub_reply,
                                     ScrubbingCleanup::OnError,
                                     CollectScrubGarbage::F));
 
     EXPECT_NO_THROW(apply_scrubbing(cid,
-                                    scrub_result,
+                                    scrub_reply,
                                     ScrubbingCleanup::OnError,
                                     CollectScrubGarbage::F));
 
     EXPECT_NO_THROW(apply_scrubbing(vid,
-                                    scrub_result,
+                                    scrub_reply,
                                     ScrubbingCleanup::Always,
                                     CollectScrubGarbage::T));
 
     EXPECT_THROW(apply_scrubbing(vid,
-                                 scrub_result),
+                                 scrub_reply),
                  std::exception);
 
     waitForThisBackendWrite(*v1);
@@ -1027,14 +1040,13 @@ TEST_P(ScrubberTest, consistency)
     ASSERT_EQ(v1_snap1,
               scrub_work_units[0].snapshot_name_);
 
-    scrubbing::ScrubReply scrub_result;
-    ASSERT_NO_THROW(scrub_result = do_scrub(scrub_work_units.front()));
+    const scrubbing::ScrubReply scrub_reply(do_scrub(scrub_work_units.front()));
     ASSERT_NO_THROW(apply_scrubbing(clone1,
-                                    scrub_result,
+                                    scrub_reply,
                                     ScrubbingCleanup::OnError));
 
     ASSERT_NO_THROW(apply_scrubbing(volume1,
-                                    scrub_result,
+                                    scrub_reply,
                                     ScrubbingCleanup::OnError));
 
     checkVolume(*c1,Lba(0),default_cluster_size(),"xxx");
@@ -1079,16 +1091,11 @@ TEST_P(ScrubberTest, backend_error_while_fetching_relocations)
     ASSERT_EQ(1, work.size());
 
     const scrubbing::ScrubReply reply(do_scrub(work[0]));
-    scrubbing::ScrubberResult res;
-
-    be::BackendInterfacePtr bi(v->getBackendInterface()->clone());
-    bi->fillObject<decltype(res),
-                   boost::archive::text_iarchive>(res,
-                                                  reply.scrub_result_name_,
-                                                  InsistOnLatestVersion::T);
+    const scrubbing::ScrubberResult res(get_scrub_result(*v->getBackendInterface(),
+                                                         reply));
 
     ASSERT_FALSE(res.relocs.empty());
-    bi->remove(res.relocs.back());
+    v->getBackendInterface()->remove(res.relocs.back());
 
     EXPECT_THROW(v->applyScrubbingWork(reply),
                  TransientException);
@@ -1106,20 +1113,109 @@ TEST_P(ScrubberTest, backend_error_while_fetching_relocations)
                 boost::lexical_cast<std::string>(overwrites));
 }
 
+TEST_P(ScrubberTest, clones_and_relocations)
+{
+    auto pns(make_random_namespace());
+    SharedVolumePtr parent(newVolume(*pns));
+
+    const size_t count = 512;
+    const Lba lba(count * default_cluster_multiplier());
+
+    for (size_t i = 0; i < count; ++i)
+    {
+        writeToVolume(*parent,
+                      Lba(i * default_cluster_multiplier()),
+                      default_cluster_size(),
+                      boost::lexical_cast<std::string>(i));
+        writeToVolume(*parent,
+                      lba,
+                      default_cluster_size(),
+                      pns->ns().str());
+    }
+
+    const SnapshotName snap("snap");
+    parent->createSnapshot(snap);
+    waitForThisBackendWrite(*parent);
+
+    auto cns(make_random_namespace());
+    SharedVolumePtr clone(createClone(VolumeId(cns->ns().str()),
+                                      cns->ns(),
+                                      pns->ns(),
+                                      snap));
+
+    writeToVolume(*clone,
+                  lba,
+                  default_cluster_size(),
+                  cns->ns().str());
+
+    const std::vector<scrubbing::ScrubWork> works(getScrubbingWork(parent->getName()));
+    ASSERT_EQ(1,
+              works.size());
+
+    const scrubbing::ScrubReply reply(do_scrub(works[0]));
+    const scrubbing::ScrubberResult result(get_scrub_result(*parent->getBackendInterface(),
+                                                            reply));
+    ASSERT_LT(0,
+              result.relocNum);
+    const RelocMap reloc_map(build_reloc_map(*parent->getBackendInterface(),
+                                             result));
+    ASSERT_FALSE(reloc_map.empty());
+    ASSERT_FALSE(result.sconames_to_be_deleted.empty());
+
+    for (const auto& sco : result.sconames_to_be_deleted)
+    {
+        ASSERT_TRUE(parent->getBackendInterface()->objectExists(boost::lexical_cast<std::string>(sco)));
+    }
+
+    apply_scrubbing(clone->getName(),
+                    reply,
+                    ScrubbingCleanup::OnError);
+    apply_scrubbing(parent->getName(),
+                    reply);
+
+    for (const auto& sco : result.sconames_to_be_deleted)
+    {
+        ASSERT_FALSE(parent->getBackendInterface()->objectExists(boost::lexical_cast<std::string>(sco)));
+    }
+
+    auto check([&](Volume& v)
+               {
+                   for (size_t i = 0; i < count; ++i)
+                   {
+                       checkVolume(v,
+                                   Lba(i * default_cluster_multiplier()),
+                                   default_cluster_size(),
+                                   boost::lexical_cast<std::string>(i));
+                   }
+
+                   checkVolume(v,
+                               lba,
+                               default_cluster_size(),
+                               v.getNamespace().str());
+               });
+
+    check(*parent);
+    check(*clone);
+}
+
 namespace
 {
 
 const ClusterMultiplier
 big_cluster_multiplier(VolManagerTestSetup::default_test_config().cluster_multiplier() * 2);
 
+const auto default_config = VolManagerTestSetup::default_test_config()
+    .use_cluster_cache(false);
+
 const auto big_clusters_config = VolManagerTestSetup::default_test_config()
+    .use_cluster_cache(false)
     .cluster_multiplier(big_cluster_multiplier);
 
 }
 
 INSTANTIATE_TEST_CASE_P(ScrubberTests,
                         ScrubberTest,
-                        ::testing::Values(volumedriver::VolManagerTestSetup::default_test_config(),
+                        ::testing::Values(default_config,
                                           big_clusters_config));
 
 }

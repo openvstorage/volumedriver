@@ -208,7 +208,7 @@ MDSClient::registerize()
         .def("_get_page",
              &mds::PythonClient::get_page,
              (bpy::args("nspace"),
-              bpy::args("cluster_address")),
+              bpy::args("page_address")),
              "Retrieve the metadata page for the given cluster address.\n"
              "@param: nspace: string, namespace name\n"
              "@param: page address\n"

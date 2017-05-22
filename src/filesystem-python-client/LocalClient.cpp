@@ -107,7 +107,7 @@ LocalClient::registerize()
            bpy::args("client_timeout") = MaybeSeconds()),
           "Create a maintenance client interface to a volumedriverfs cluster\n"
           "@param config_location: string, URI of the instance's configuration\n"
-          "@param client_timeout_secs: unsigned, optional client timeout (seconds)"))
+          "@param client_timeout: unsigned, optional client timeout (seconds)"))
         .def("destroy_filesystem",
              &vfs::LocalPythonClient::destroy,
              (bpy::args("req_timeout_secs") = MaybeSeconds()),

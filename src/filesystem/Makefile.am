@@ -14,8 +14,19 @@ lib_LTLIBRARIES = libvolumedriverfs.la
 
 OMNIIDL=@omniidl@
 
-ShmIdlInterface.cpp : ShmIdlInterface.idl
+ShmIdlInterface.cpp ShmIdlInterface.h: ShmIdlInterface.idl
 	$(OMNIIDL) -bcxx -Wbh=.h -Wbs=.cpp -Wbtp $<
+
+# this convenience lib is a pretty convoluted way of
+# shutting up this warning (g++ 5.4, Ubuntu 16.04):
+# '_0RL_library_version' defined but not used [-Wunused-variable]
+noinst_LTLIBRARIES = \
+	libshmidlinterface.la
+
+libshmidlinterface_la_CXXFLAGS = \
+	$(BUILDTOOLS_CFLAGS) -D_FILE_OFFSET_BITS=64 -Wno-unused-variable
+
+libshmidlinterface_la_SOURCES = ShmIdlInterface.cpp
 
 libvolumedriverfs_la_CXXFLAGS = \
 	$(BUILDTOOLS_CFLAGS) -D_FILE_OFFSET_BITS=64 \
@@ -23,11 +34,21 @@ libvolumedriverfs_la_CXXFLAGS = \
 libvolumedriverfs_la_CFLAGS = $(BUILDTOOLS_CFLAGS) -D_FILE_OFFSET_BITS=64
 libvolumedriverfs_la_CPPFLAGS = -I@abs_top_srcdir@/.. -I@abs_top_builddir@/../volumedriver
 libvolumedriverfs_la_LDFLAGS = -static
+libvolumedriverfs_la_LIBADD = libshmidlinterface.la
 
 # this path trickery is necessary as protobuf imports need to start at the same root
 %.pb.cc %.pb.h %_pb2.py: %.proto
 	$(PROTOC) -I$(abs_top_srcdir) -I$(abs_top_srcdir)/../volumedriver --cpp_out=$(builddir) $^
 	$(PROTOC) -I$(abs_top_srcdir) -I$(abs_top_srcdir)/../volumedriver --python_out=$(builddir) $^
+
+BUILT_SOURCES = \
+	FileSystemEvents.pb.cc \
+	FileSystemEvents.pb.h \
+	Messages.pb.h \
+	ShmIdlInterface.cpp \
+	ShmIdlInterface.h \
+	TracePoints_tp.c \
+	TracePoints_tp.h
 
 volumedriverfsdir=@prefix@/share/volumedriverfs
 volumedriverfs_DATA = \
@@ -99,7 +120,6 @@ libvolumedriverfs_la_SOURCES = \
 		RemoteNode.cpp \
 		ScrubManager.cpp \
 		ScrubTreeBuilder.cpp \
-		ShmIdlInterface.cpp \
 		ShmInterface.cpp \
 		ShmOrbInterface.cpp \
 		ShmServer.cpp \
@@ -117,13 +137,6 @@ volumedriverfs_pythondir = @prefix@/lib/python@PYTHON_VERSION@/dist-packages/vol
 
 volumedriverfs_python_PYTHON = \
 	$(abs_builddir)/FileSystemEvents_pb2.py
-
-BUILT_SOURCES = \
-	FileSystemEvents.pb.h \
-	FileSystemEvents_pb2.py \
-	Messages.pb.h \
-	TracePoints_tp.h \
-	TracePoints_tp.c
 
 bin_PROGRAMS = volumedriver_fs
 

@@ -71,3 +71,18 @@ TRACEPOINT_EVENT(
 		  ctf_integer(size_t, total_size, total_size_arg)
 		  ctf_integer(int, status, status_arg))
 		)
+
+TRACEPOINT_EVENT(
+	openvstorage_backend,
+	backend_interface_partial_read_descriptor,
+	TP_ARGS(const char*, nspace_arg,
+		const char*, object_arg,
+		uint64_t, slice_offset_arg,
+		uint32_t, slice_size_arg,
+		const void*, slice_buf_arg),
+	TP_FIELDS(ctf_string(nspace, nspace_arg)
+		  ctf_string(object, object_arg)
+		  ctf_integer(uint64_t, slice_offset, slice_offset_arg)
+		  ctf_integer(uint32_t, slice_size, slice_size_arg)
+		  ctf_integer_hex(uintptr_t, slice_buf, slice_buf_arg))
+		)

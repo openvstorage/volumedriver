@@ -389,12 +389,22 @@ BackendInterface::partial_read(const BackendConnectionInterface::PartialReads& p
                                InsistOnLatestVersion insist_on_latest,
                                const BackendRequestParameters& params)
 {
+    LOG_TRACE(partial_reads << ", " << insist_on_latest);
+
     size_t bytes = 0;
 
     for (const auto& p : partial_reads)
     {
         for (const auto& slice : p.second)
         {
+            tracepoint(openvstorage_backend,
+                       backend_interface_partial_read_descriptor,
+                       nspace_.str().c_str(),
+                       p.first.c_str(),
+                       slice.offset,
+                       slice.size,
+                       slice.buf);
+
             bytes += slice.size;
         }
     }

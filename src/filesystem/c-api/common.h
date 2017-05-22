@@ -37,6 +37,16 @@ enum class RequestOp
     GetClusterMultiplier,
     GetPage,
     GetCloneNamespaceMap,
+    CreateVolume,
+    RemoveVolume,
+    TruncateVolume,
+    StatVolume,
+    ListSnapshots,
+    ListVolumes,
+    CreateSnapshot,
+    RemoveSnapshot,
+    RollbackSnapshot,
+    IsSnapshotSynced,
 };
 
 enum class TransportType

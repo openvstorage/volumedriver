@@ -138,11 +138,11 @@ int
 NetworkXioContext::create_volume(const char *volume_name,
                                  uint64_t size)
 {
-    int r;
+    int r = 0;
     std::shared_ptr<ovs_aio_request> request;
     try
     {
-        request = std::make_shared<ovs_aio_request>(RequestOp::Noop,
+        request = std::make_shared<ovs_aio_request>(RequestOp::CreateVolume,
                                                     nullptr,
                                                     nullptr);
     }
@@ -153,11 +153,9 @@ NetworkXioContext::create_volume(const char *volume_name,
     }
     try
     {
-        NetworkXioClient::xio_create_volume(uri_,
-                                            volume_name,
-                                            size,
-                                            request.get());
-        errno = request->_errno; r = request->_rv;
+        net_client_->xio_create_volume(volume_name,
+                                       size,
+                                       request.get());
     }
     catch (const std::bad_alloc&)
     {
@@ -167,18 +165,23 @@ NetworkXioContext::create_volume(const char *volume_name,
     {
         errno = EIO; r = -1;
     }
-    return r;
+
+    if (r < 0)
+    {
+        return r;
+    }
+    return wait_aio_request(request);
 }
 
 int
 NetworkXioContext::truncate_volume(const char *volume_name,
                                    uint64_t offset)
 {
-    int r;
+    int r = 0;
     std::shared_ptr<ovs_aio_request> request;
     try
     {
-        request = std::make_shared<ovs_aio_request>(RequestOp::Noop,
+        request = std::make_shared<ovs_aio_request>(RequestOp::TruncateVolume,
                                                     nullptr,
                                                     nullptr);
     }
@@ -189,11 +192,9 @@ NetworkXioContext::truncate_volume(const char *volume_name,
     }
     try
     {
-        NetworkXioClient::xio_truncate_volume(uri_,
-                                              volume_name,
-                                              offset,
-                                              request.get());
-        errno = request->_errno; r = request->_rv;
+        net_client_->xio_truncate_volume(volume_name,
+                                         offset,
+                                         request.get());
     }
     catch (const std::bad_alloc&)
     {
@@ -203,7 +204,12 @@ NetworkXioContext::truncate_volume(const char *volume_name,
     {
         errno = EIO; r = -1;
     }
-    return r;
+
+    if (r < 0)
+    {
+        return r;
+    }
+    return wait_aio_request(request);
 }
 
 int
@@ -215,11 +221,11 @@ NetworkXioContext::truncate(uint64_t offset)
 int
 NetworkXioContext::remove_volume(const char *volume_name)
 {
-    int r;
+    int r = 0;
     std::shared_ptr<ovs_aio_request> request;
     try
     {
-        request = std::make_shared<ovs_aio_request>(RequestOp::Noop,
+        request = std::make_shared<ovs_aio_request>(RequestOp::RemoveVolume,
                                                     nullptr,
                                                     nullptr);
     }
@@ -230,10 +236,8 @@ NetworkXioContext::remove_volume(const char *volume_name)
     }
     try
     {
-        NetworkXioClient::xio_remove_volume(uri_,
-                                            volume_name,
-                                            request.get());
-        errno = request->_errno; r = request->_rv;
+        net_client_->xio_remove_volume(volume_name,
+                                       request.get());
     }
     catch (const std::bad_alloc&)
     {
@@ -243,7 +247,12 @@ NetworkXioContext::remove_volume(const char *volume_name)
     {
         errno = EIO; r = -1;
     }
-    return r;
+
+    if (r < 0)
+    {
+        return r;
+    }
+    return wait_aio_request(request);
 }
 
 int
@@ -251,11 +260,11 @@ NetworkXioContext::snapshot_create(const char *volume_name,
                                    const char *snapshot_name,
                                    const uint64_t timeout)
 {
-    int r;
+    int r = 0;
     std::shared_ptr<ovs_aio_request> request;
     try
     {
-        request = std::make_shared<ovs_aio_request>(RequestOp::Noop,
+        request = std::make_shared<ovs_aio_request>(RequestOp::CreateSnapshot,
                                                     nullptr,
                                                     nullptr);
     }
@@ -266,12 +275,10 @@ NetworkXioContext::snapshot_create(const char *volume_name,
     }
     try
     {
-        NetworkXioClient::xio_create_snapshot(uri_,
-                                              volume_name,
-                                              snapshot_name,
-                                              timeout,
-                                              request.get());
-        errno = request->_errno; r = request->_rv;
+        net_client_->xio_create_snapshot(volume_name,
+                                         snapshot_name,
+                                         timeout,
+                                         request.get());
     }
     catch (const std::bad_alloc&)
     {
@@ -281,18 +288,23 @@ NetworkXioContext::snapshot_create(const char *volume_name,
     {
         errno = EIO; r = -1;
     }
-    return r;
+
+    if (r < 0)
+    {
+        return r;
+    }
+    return wait_aio_request(request);
 }
 
 int
 NetworkXioContext::snapshot_rollback(const char *volume_name,
                                      const char *snapshot_name)
 {
-    int r;
+    int r = 0;
     std::shared_ptr<ovs_aio_request> request;
     try
     {
-        request = std::make_shared<ovs_aio_request>(RequestOp::Noop,
+        request = std::make_shared<ovs_aio_request>(RequestOp::RollbackSnapshot,
                                                     nullptr,
                                                     nullptr);
     }
@@ -303,11 +315,9 @@ NetworkXioContext::snapshot_rollback(const char *volume_name,
     }
     try
     {
-        NetworkXioClient::xio_rollback_snapshot(uri_,
-                                                volume_name,
-                                                snapshot_name,
-                                                request.get());
-        errno = request->_errno; r = request->_rv;
+        net_client_->xio_rollback_snapshot(volume_name,
+                                           snapshot_name,
+                                           request.get());
     }
     catch (const std::bad_alloc&)
     {
@@ -317,18 +327,22 @@ NetworkXioContext::snapshot_rollback(const char *volume_name,
     {
         errno = EIO; r = -1;
     }
-    return r;
+    if (r < 0)
+    {
+        return r;
+    }
+    return wait_aio_request(request);
 }
 
 int
 NetworkXioContext::snapshot_remove(const char *volume_name,
                                    const char *snapshot_name)
 {
-    int r;
+    int r = 0;
     std::shared_ptr<ovs_aio_request> request;
     try
     {
-        request = std::make_shared<ovs_aio_request>(RequestOp::Noop,
+        request = std::make_shared<ovs_aio_request>(RequestOp::RemoveSnapshot,
                                                     nullptr,
                                                     nullptr);
     }
@@ -339,11 +353,9 @@ NetworkXioContext::snapshot_remove(const char *volume_name,
     }
     try
     {
-        NetworkXioClient::xio_delete_snapshot(uri_,
-                                              volume_name,
-                                              snapshot_name,
-                                              request.get());
-        errno = request->_errno; r = request->_rv;
+        net_client_->xio_delete_snapshot(volume_name,
+                                         snapshot_name,
+                                         request.get());
     }
     catch (const std::bad_alloc&)
     {
@@ -353,7 +365,12 @@ NetworkXioContext::snapshot_remove(const char *volume_name,
     {
         errno = EIO; r = -1;
     }
-    return r;
+
+    if (r < 0)
+    {
+        return r;
+    }
+    return wait_aio_request(request);
 }
 
 void
@@ -362,10 +379,11 @@ NetworkXioContext::list_snapshots(std::vector<std::string>& snaps,
                                   uint64_t *size,
                                   int *saved_errno)
 {
+    int r = 0;
     std::shared_ptr<ovs_aio_request> request;
     try
     {
-        request = std::make_shared<ovs_aio_request>(RequestOp::Noop,
+        request = std::make_shared<ovs_aio_request>(RequestOp::ListSnapshots,
                                                     nullptr,
                                                     nullptr);
     }
@@ -376,11 +394,10 @@ NetworkXioContext::list_snapshots(std::vector<std::string>& snaps,
     }
     try
     {
-        NetworkXioClient::xio_list_snapshots(uri_,
-                                             volume_name,
-                                             snaps,
-                                             size,
-                                             request.get());
+        net_client_->xio_list_snapshots(volume_name,
+                                        snaps,
+                                        size,
+                                        request.get());
         *saved_errno = request->_errno;
     }
     catch (const std::bad_alloc&)
@@ -391,17 +408,22 @@ NetworkXioContext::list_snapshots(std::vector<std::string>& snaps,
     {
         *saved_errno = EIO;
     }
+    r = wait_aio_request(request);
+    if (r < 0)
+    {
+        *saved_errno = errno;
+    }
 }
 
 int
 NetworkXioContext::is_snapshot_synced(const char *volume_name,
                                       const char *snapshot_name)
 {
-    int r;
+    int r = 0;
     std::shared_ptr<ovs_aio_request> request;
     try
     {
-        request = std::make_shared<ovs_aio_request>(RequestOp::Noop,
+        request = std::make_shared<ovs_aio_request>(RequestOp::IsSnapshotSynced,
                                                     nullptr,
                                                     nullptr);
     }
@@ -412,11 +434,9 @@ NetworkXioContext::is_snapshot_synced(const char *volume_name,
     }
     try
     {
-        NetworkXioClient::xio_is_snapshot_synced(uri_,
-                                                 volume_name,
-                                                 snapshot_name,
-                                                 request.get());
-        errno = request->_errno; r = request->_rv;
+        net_client_->xio_is_snapshot_synced(volume_name,
+                                            snapshot_name,
+                                            request.get());
     }
     catch (const std::bad_alloc&)
     {
@@ -426,17 +446,22 @@ NetworkXioContext::is_snapshot_synced(const char *volume_name,
     {
         errno = EIO; r = -1;
     }
-    return r;
+
+    if (r < 0)
+    {
+        return r;
+    }
+    return wait_aio_request(request);
 }
 
 int
 NetworkXioContext::list_volumes(std::vector<std::string>& volumes)
 {
-    int r;
+    int r = 0;
     std::shared_ptr<ovs_aio_request> request;
     try
     {
-        request = std::make_shared<ovs_aio_request>(RequestOp::Noop,
+        request = std::make_shared<ovs_aio_request>(RequestOp::ListVolumes,
                                                     nullptr,
                                                     nullptr);
     }
@@ -447,10 +472,8 @@ NetworkXioContext::list_volumes(std::vector<std::string>& volumes)
     }
     try
     {
-        NetworkXioClient::xio_list_volumes(uri_,
-                                           volumes,
-                                           request.get());
-        errno = request->_errno; r = request->_rv;
+        net_client_->xio_list_volumes(volumes,
+                                      request.get());
     }
     catch (const std::bad_alloc&)
     {
@@ -460,7 +483,12 @@ NetworkXioContext::list_volumes(std::vector<std::string>& volumes)
     {
         errno = EIO;
     }
-    return r;
+
+    if (r < 0)
+    {
+        return r;
+    }
+    return wait_aio_request(request);
 }
 
 int
@@ -721,12 +749,12 @@ NetworkXioContext::send_flush_request(ovs_aio_request *request)
 int
 NetworkXioContext::stat_volume(struct stat *st)
 {
-    int r;
+    int r = 0;
     uint64_t size = 0;
     std::shared_ptr<ovs_aio_request> request;
     try
     {
-        request = std::make_shared<ovs_aio_request>(RequestOp::Noop,
+        request = std::make_shared<ovs_aio_request>(RequestOp::StatVolume,
                                                     nullptr,
                                                     nullptr);
     }
@@ -737,17 +765,9 @@ NetworkXioContext::stat_volume(struct stat *st)
     }
     try
     {
-        NetworkXioClient::xio_stat_volume(uri_,
-                                          volname_,
-                                          &size,
-                                          request.get());
-        errno = request->_errno; r = request->_rv;
-        if (r == 0)
-        {
-            /* 512 for now */
-            st->st_blksize = 512;
-            st->st_size = size;
-        }
+        net_client_->xio_stat_volume(volname_,
+                                     &size,
+                                     request.get());
     }
     catch (const std::bad_alloc&)
     {
@@ -756,6 +776,13 @@ NetworkXioContext::stat_volume(struct stat *st)
     catch (...)
     {
         errno = EIO; r = -1;
+    }
+    r = wait_aio_request(request);
+    if (r == 0)
+    {
+        /* 512 for now */
+        st->st_blksize = 512;
+        st->st_size = size;
     }
     return r;
 }

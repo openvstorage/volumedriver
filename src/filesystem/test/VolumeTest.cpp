@@ -18,6 +18,7 @@
 #include <youtils/UpdateReport.h>
 
 #include <volumedriver/Api.h>
+#include <volumedriver/CachedMetaDataPage.h>
 #include <volumedriver/metadata-server/Manager.h>
 
 #include "../../volumedriver/test/MDSTestSetup.h"
@@ -1761,7 +1762,7 @@ TEST_F(VolumeTest, get_page)
     const vd::ClusterAddress ca(0);
     std::vector<vd::ClusterLocation> cloc(api::GetPage(v, ca));
 
-    EXPECT_EQ(256UL, cloc.size());
+    EXPECT_EQ(vd::CachePage::capacity(), cloc.size());
     for (const auto& e: cloc)
     {
         EXPECT_TRUE(e == vd::ClusterLocation(0));

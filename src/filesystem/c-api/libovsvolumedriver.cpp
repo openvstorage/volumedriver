@@ -19,6 +19,7 @@
 #include "context.h"
 #include "ShmContext.h"
 #include "NetworkHAContext.h"
+#include "NetworkXioClient.h"
 #include "Utils.h"
 #include "Logger.h"
 
@@ -193,6 +194,11 @@ ovs_ctx_new(const ovs_ctx_attr_t *attr)
         }
         ctx->transport = attr->transport;
         ctx->oflag = 0;
+    }
+    catch (const libvoldrv::XioClientCreateException& e)
+    {
+        errno = e.getErrorCode();
+        return NULL;
     }
     catch (const std::bad_alloc&)
     {

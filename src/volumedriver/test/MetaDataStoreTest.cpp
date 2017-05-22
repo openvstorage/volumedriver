@@ -1256,6 +1256,8 @@ TEST_P(MetaDataStoreTest, get_page)
 
                    for (size_t i = 0; i < max_pages; ++i)
                    {
+                       bool ok = false;
+
                        for (size_t j = 0; j < n; ++j)
                        {
                            ClusterLocationAndHash clh(ClusterLocation(sco_num++),
@@ -1263,10 +1265,17 @@ TEST_P(MetaDataStoreTest, get_page)
                            const ClusterAddress ca = i * page_size + j;
                            md->writeCluster(ca,
                                             clh);
-                           bool ok = false;
                            std::tie(std::ignore, ok) = corked_ones.insert(ca);
                            EXPECT_TRUE(ok);
                        }
+
+                       ClusterLocationAndHash clh(ClusterLocation(sco_num++),
+                                                  growWeed());
+                       const ClusterAddress ca = (i + 1) * page_size - 1;
+                       md->writeCluster(ca,
+                                        clh);
+                       std::tie(std::ignore, ok) = corked_ones.insert(ca);
+                       EXPECT_TRUE(ok);
                    }
 
                    return corked_ones;

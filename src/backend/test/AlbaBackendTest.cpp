@@ -52,12 +52,8 @@ TEST_F(AlbaBackendTest, proxy_gone)
     BackendConnectionManagerPtr cm(BackendConnectionManager::create(pt,
                                                                     RegisterComponent::F));
 
-    BackendConnectionInterfacePtr conn(cm->getConnection());
-
-    std::list<std::string> l;
-
-    EXPECT_THROW(conn->listNamespaces(l),
-                 BackendConnectFailureException);
+    EXPECT_THROW(cm->getConnection(),
+                 std::exception);
 }
 
 TEST_F(AlbaBackendTest, config)

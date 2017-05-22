@@ -79,6 +79,7 @@ volumedriver_fs_test_SOURCES = \
 	RegistryTestSetup.cpp \
 	RemoteTest.cpp \
 	RestartTest.cpp \
+	ScrubbingTest.cpp \
 	ScrubManagerTest.cpp \
 	ScrubTreeBuilderTest.cpp \
 	ShmServerTest.cpp \

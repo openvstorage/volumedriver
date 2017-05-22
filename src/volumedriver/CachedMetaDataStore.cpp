@@ -723,7 +723,7 @@ CachedMetaDataStore::get_page(const ClusterAddress ca)
         std::tie(page, std::ignore) = get_page_(ca);
 
         VERIFY(page);
-        memcpy(tmp.data(), page->data(), tmp.size());
+        memcpy(tmp.data(), page->data(), tmp.size() * sizeof(ClusterLocationAndHash));
 
         const ClusterAddress ca_start =
             CachePage::clusterAddress(CachePage::pageAddress(ca));

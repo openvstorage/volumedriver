@@ -91,6 +91,7 @@ struct FileSystemTestSetupParameters
         volumedriver::FailOverCacheMode::Asynchronous;
     PARAM(bool, use_fencing) = false;
     PARAM(bool, send_sync_response) = true;
+    PARAM(bool, use_cluster_cache) = true;
     PARAM(boost::chrono::seconds, keepalive_time) = boost::chrono::seconds(2);
     PARAM(boost::chrono::seconds, keepalive_interval) = boost::chrono::seconds(1);
     PARAM(size_t, keepalive_retries) = 3;
@@ -359,6 +360,7 @@ protected:
     uint64_t scrub_manager_interval_secs_;
     bool use_fencing_;
     bool send_sync_response_;
+    bool use_cluster_cache_;
     boost::chrono::seconds keepalive_time_;
     boost::chrono::seconds keepalive_interval_;
     size_t keepalive_retries_;

@@ -31,6 +31,7 @@ export MDS_PORT_BASE=${MDS_PORT_BASE:-$((VFS_PORT_BASE + 20))}
 export CXX_WARNINGS="-Wall -Wextra -Wno-unknown-pragmas -Wsign-promo -Woverloaded-virtual -Wnon-virtual-dtor"
 export VD_EXTRA_VERSION=`get_debug_extra_version $VOLUMEDRIVER_DIR`
 export SUPPRESS_WARNINGS=yes
+export VOLUMEDRIVERFS_TEST_EXTRA_ARGS="--gtest_filter=-*chown*"
 
 rm -rf ${TEMP}
 mkdir -p ${TEMP}

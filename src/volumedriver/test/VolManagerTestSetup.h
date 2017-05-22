@@ -48,6 +48,14 @@ class ServerConfig;
 
 }
 
+namespace scrubbing
+{
+
+class ScrubReply;
+class ScrubberResult;
+
+}
+
 namespace volumedriver
 {
 
@@ -634,13 +642,24 @@ public:
     SCOCache::NSMap&
     getSCOCacheNamespaceMap();
 
+    static youtils::Weed
+    growWeed();
+
     void
     apply_scrub_reply(Volume&,
                       const scrubbing::ScrubReply&,
                       const ScrubbingCleanup = ScrubbingCleanup::Always);
 
-    static youtils::Weed
-    growWeed();
+    scrubbing::ScrubberResult
+    get_scrub_result(backend::BackendInterface&,
+                     const scrubbing::ScrubReply&);
+
+    using RelocMap = std::map<volumedriver::ClusterAddress,
+                              volumedriver::ClusterLocationAndHash>;
+
+    RelocMap
+    build_reloc_map(backend::BackendInterface&,
+                    const scrubbing::ScrubberResult&);
 
     CORBA::ORB_var orb_;
     Fawlty::FileSystemFactory_var fawlty_ref_;

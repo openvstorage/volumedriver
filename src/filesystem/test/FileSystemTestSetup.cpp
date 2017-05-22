@@ -82,6 +82,7 @@ FileSystemTestSetup::FileSystemTestSetup(const FileSystemTestSetupParameters& pa
     , scrub_manager_interval_secs_(params.scrub_manager_interval_secs_)
     , use_fencing_(params.use_fencing_)
     , send_sync_response_(params.send_sync_response_)
+    , use_cluster_cache_(params.use_cluster_cache_)
     , keepalive_time_(params.keepalive_time_)
     , keepalive_interval_(params.keepalive_interval_)
     , keepalive_retries_(params.keepalive_retries_)
@@ -228,37 +229,38 @@ FileSystemTestSetup::make_registry_config_(bpt::ptree& pt) const
 bpt::ptree&
 FileSystemTestSetup::make_mdstore_config_(bpt::ptree& pt) const
 {
-    VERIFY(mdstore_test_setup_ != nullptr);
-
-    const ip::PARAMETER_TYPE(fs_metadata_backend_type)
-        backend_type(mdstore_test_setup_->backend_type_);
-    backend_type.persist(pt);
-
-    switch (backend_type.value())
+    if (mdstore_test_setup_ != nullptr)
     {
-    case vd::MetaDataBackendType::Arakoon:
-        {
-            const std::string cluster_id(arakoon_test_setup_->clusterID().str());
-            ip::PARAMETER_TYPE(fs_metadata_backend_arakoon_cluster_id)(cluster_id).persist(pt);
+        const ip::PARAMETER_TYPE(fs_metadata_backend_type)
+            backend_type(mdstore_test_setup_->backend_type_);
+        backend_type.persist(pt);
 
-            const auto ara_nodel(arakoon_test_setup_->node_configs());
-            const ip::PARAMETER_TYPE(fs_metadata_backend_arakoon_cluster_nodes)::ValueType
-                ara_nodev(ara_nodel.begin(),
-                          ara_nodel.end());
-            ip::PARAMETER_TYPE(fs_metadata_backend_arakoon_cluster_nodes)(ara_nodev).persist(pt);
-            break;
-        }
-    case vd::MetaDataBackendType::MDS:
+        switch (backend_type.value())
         {
-            VERIFY(mds_server_config_ != nullptr);
-            const ip::PARAMETER_TYPE(fs_metadata_backend_mds_nodes)::ValueType
-                mds_nodev({ mds_server_config_->node_config });
-            ip::PARAMETER_TYPE(fs_metadata_backend_mds_nodes)(mds_nodev).persist(pt);
+        case vd::MetaDataBackendType::Arakoon:
+            {
+                const std::string cluster_id(arakoon_test_setup_->clusterID().str());
+                ip::PARAMETER_TYPE(fs_metadata_backend_arakoon_cluster_id)(cluster_id).persist(pt);
+
+                const auto ara_nodel(arakoon_test_setup_->node_configs());
+                const ip::PARAMETER_TYPE(fs_metadata_backend_arakoon_cluster_nodes)::ValueType
+                    ara_nodev(ara_nodel.begin(),
+                              ara_nodel.end());
+                ip::PARAMETER_TYPE(fs_metadata_backend_arakoon_cluster_nodes)(ara_nodev).persist(pt);
+                break;
+            }
+        case vd::MetaDataBackendType::MDS:
+            {
+                VERIFY(mds_server_config_ != nullptr);
+                const ip::PARAMETER_TYPE(fs_metadata_backend_mds_nodes)::ValueType
+                    mds_nodev({ mds_server_config_->node_config });
+                ip::PARAMETER_TYPE(fs_metadata_backend_mds_nodes)(mds_nodev).persist(pt);
+                break;
+            }
+        case vd::MetaDataBackendType::RocksDB:
+        case vd::MetaDataBackendType::TCBT:
             break;
         }
-    case vd::MetaDataBackendType::RocksDB:
-    case vd::MetaDataBackendType::TCBT:
-        break;
     }
 
     return pt;
@@ -306,12 +308,14 @@ FileSystemTestSetup::make_config_(bpt::ptree& pt,
     {
         std::vector<vd::MountPointConfig> kfgs;
 
-        yt::DimensionedValue csize("20MiB");
-
-        const fs::path kdev(clustercache_mountpoint(topdir));
-        maybe_setup_clustercache_device(kdev, csize.getBytes());
-        vd::MountPointConfig mp(kdev, csize.getBytes());
-        kfgs.push_back(mp);
+        if (use_cluster_cache_)
+        {
+            yt::DimensionedValue csize("20MiB");
+            const fs::path kdev(clustercache_mountpoint(topdir));
+            maybe_setup_clustercache_device(kdev, csize.getBytes());
+            vd::MountPointConfig mp(kdev, csize.getBytes());
+            kfgs.push_back(mp);
+        }
 
         ip::PARAMETER_TYPE(clustercache_mount_points)(kfgs).persist(pt);
         ip::PARAMETER_TYPE(read_cache_serialization_path)(clustercache_serialization_path(topdir).string()).persist(pt);

@@ -26,6 +26,7 @@ export ARAKOON_PORT_BASE=${ARAKOON_PORT_BASE:-$((FOC_PORT_BASE + 10))}
 export VFS_PORT_BASE=${VFS_PORT_BASE:-$((FOC_PORT_BASE + 20))}
 export USE_CLANG=yes
 export VD_EXTRA_VERSION=`get_debug_extra_version $VOLUMEDRIVER_DIR`
+export VOLUMEDRIVERFS_TEST_EXTRA_ARGS="--gtest_filter=-*chown*"
 
 # adds
 # * -Wno-mismatched-tags to disable "class X was previously declared as struct"

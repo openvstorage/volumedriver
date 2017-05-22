@@ -21,6 +21,8 @@
 #include "Condition.h"
 #include "Namespace.h"
 
+#include <iosfwd>
+
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/intrusive/slist.hpp>
@@ -276,7 +278,17 @@ private:
     DECLARE_LOGGER("BackendConnectionInterface");
 };
 
+std::ostream&
+operator<<(std::ostream&,
+           const BackendConnectionInterface::ObjectSlice&);
 
+std::ostream&
+operator<<(std::ostream&,
+           const BackendConnectionInterface::ObjectSlices&);
+
+std::ostream&
+operator<<(std::ostream&,
+           const BackendConnectionInterface::PartialReads&);
 
 }
 

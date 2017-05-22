@@ -16,17 +16,22 @@
 #include "BackendConnectionInterface.h"
 #include "PartialReadCounter.h"
 
+#include <iostream>
+
 #include <boost/optional/optional_io.hpp>
 
 #include <youtils/FileDescriptor.h>
 #include <youtils/FileUtils.h>
 #include <youtils/ScopeExit.h>
+#include <youtils/StreamUtils.h>
 
 namespace backend
 {
 
-using namespace youtils;
 using namespace std::literals::string_literals;
+
+namespace fs = boost::filesystem;
+namespace yt = youtils;
 
 namespace
 {
@@ -200,7 +205,7 @@ BackendConnectionInterface::read(const Namespace& nspace,
     youtils::FileUtils::syncAndRename(temp_file, destination);
 }
 
-std::unique_ptr<UniqueObjectTag>
+std::unique_ptr<yt::UniqueObjectTag>
 BackendConnectionInterface::get_tag(const Namespace& nspace,
                                     const std::string& name)
 {
@@ -209,7 +214,7 @@ BackendConnectionInterface::get_tag(const Namespace& nspace,
              name);
 
     return get_tag_(nspace,
-                     name);
+                    name);
 }
 
 PartialReadCounter
@@ -272,11 +277,11 @@ BackendConnectionInterface::write(const Namespace& nspace,
     return write_(nspace, location, name, overwrite, chksum, cond);
 }
 
-std::unique_ptr<UniqueObjectTag>
+std::unique_ptr<yt::UniqueObjectTag>
 BackendConnectionInterface::write_tag(const Namespace& nspace,
                                       const fs::path& src,
                                       const std::string& name,
-                                      const UniqueObjectTag* prev_tag,
+                                      const yt::UniqueObjectTag* prev_tag,
                                       const OverwriteObject overwrite)
 {
     Logger l(__FUNCTION__, nspace, name);
@@ -290,7 +295,7 @@ BackendConnectionInterface::write_tag(const Namespace& nspace,
                       overwrite);
 }
 
-std::unique_ptr<UniqueObjectTag>
+std::unique_ptr<yt::UniqueObjectTag>
 BackendConnectionInterface::read_tag(const Namespace& nspace,
                                      const fs::path& src,
                                      const std::string& name)
@@ -352,7 +357,36 @@ BackendConnectionInterface::clearNamespace_(const Namespace& nspace)
     deleteNamespace_(nspace);
     invalidate_cache_(nspace);
     return createNamespace_(nspace);
+}
 
+std::ostream&
+operator<<(std::ostream& os,
+           const BackendConnectionInterface::ObjectSlice& s)
+{
+    return os <<
+        "ObjectSlice{off=" << s.offset <<
+        ",size=" << s.size <<
+        ",buf=" << static_cast<const void*>(s.buf) <<
+        "}";
+}
+
+std::ostream&
+operator<<(std::ostream& os,
+           const BackendConnectionInterface::ObjectSlices& s)
+{
+    return yt::StreamUtils::stream_out_sequence(os, s);
+}
+
+std::ostream&
+operator<<(std::ostream& os,
+           const BackendConnectionInterface::PartialReads& preads)
+{
+    for (auto& p : preads)
+    {
+        os << "{" << p.first << "," << p.second << "}";
+    }
+
+    return os;
 }
 
 }

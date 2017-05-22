@@ -328,8 +328,7 @@ RemoteNode::arm_keepalive_timer_(const bc::seconds& timeout)
 bc::seconds
 RemoteNode::check_keepalive_()
 {
-
-    bc::seconds timeout(vrouter_.keepalive_time());
+    bc::seconds timeout(vrouter_.keepalive_interval());
 
     if (keepalive_work_ and not keepalive_work_->future.is_ready())
     {
@@ -338,12 +337,10 @@ RemoteNode::check_keepalive_()
         LOG_WARN(node_id() << ": keepalive probe " <<
                  missing_keepalive_probes_ << " pending");
 
-        timeout = vrouter_.keepalive_interval();
-
         if (missing_keepalive_probes_ > vrouter_.keepalive_retries())
         {
             LOG_ERROR(node_id() << ": missing keepalive probes (" <<
-                      missing_keepalive_probes_ << ") >= max (" <<
+                      missing_keepalive_probes_ << ") > max (" <<
                       vrouter_.keepalive_retries() << ")");
 
             keepalive_work_ = nullptr;
@@ -379,6 +376,7 @@ RemoteNode::check_keepalive_()
     }
     else
     {
+        timeout = vrouter_.keepalive_time();
         missing_keepalive_probes_ = 0;
     }
 

@@ -25,6 +25,8 @@
 #include "../FailOverCacheClientInterface.h"
 #include "../PrefetchData.h"
 #include "../SCOCache.h"
+#include "../Scrubber.h"
+#include "../ScrubReply.h"
 #include "../TokyoCabinetMetaDataBackend.h"
 #include "../VolManager.h"
 #include "../failovercache/FailOverCacheAcceptor.h"
@@ -2021,6 +2023,60 @@ VolManagerTestSetup::claim_namespace(const be::Namespace& nspace,
 {
     return VolumeFactory::claim_namespace(nspace,
                                           owner_tag);
+}
+
+scrubbing::ScrubberResult
+VolManagerTestSetup::get_scrub_result(be::BackendInterface& bi,
+                                      const scrubbing::ScrubReply& scrub_reply)
+{
+    EXPECT_EQ(scrub_reply.ns_,
+              bi.getNS());
+
+    const fs::path p(FileUtils::temp_path() / scrub_reply.scrub_result_name_);
+    ALWAYS_CLEANUP_FILE(p);
+
+    bi.read(p,
+            scrub_reply.scrub_result_name_,
+            InsistOnLatestVersion::T);
+
+    scrubbing::ScrubberResult scrub_result;
+    fs::ifstream ifs(p);
+    scrubbing::ScrubberResult::IArchive ia(ifs);
+    ia >> scrub_result;
+
+    return scrub_result;
+}
+
+VolManagerTestSetup::RelocMap
+VolManagerTestSetup::build_reloc_map(be::BackendInterface& bi,
+                                     const scrubbing::ScrubberResult& scrub_result)
+{
+    const fs::path p(yt::FileUtils::temp_path(testName_));
+    ALWAYS_CLEANUP_FILE(p);
+
+    auto treader(CombinedTLogReader::create(p.string(),
+                                            scrub_result.relocs,
+                                            bi.clone()));
+
+    RelocMap relocmap;
+
+    const Entry* e = nullptr;
+    while ((e = treader->nextLocation()))
+    {
+        const Entry* f = treader->nextLocation();
+
+        EXPECT_TRUE(f != nullptr);
+        EXPECT_EQ(e->clusterAddress(),
+                  f->clusterAddress());
+        EXPECT_EQ(e->clusterLocationAndHash().weed(),
+                  f->clusterLocationAndHash().weed());
+
+        auto r(relocmap.insert(std::make_pair(f->clusterAddress(),
+                                              f->clusterLocationAndHash())));
+        EXPECT_TRUE(r.second);
+    }
+
+    return relocmap;
 }
 
 }
