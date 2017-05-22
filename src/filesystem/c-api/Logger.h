@@ -13,6 +13,9 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#ifndef __LOGGER_H
+#define __LOGGER_H
+
 #include <youtils/Logger.h>
 #include <boost/type_index.hpp>
 
@@ -75,3 +78,5 @@ public:
 #define LIBLOGID_ERROR(msg)  LIBLOG_ID_(::youtils::Severity::error, msg)
 #define LIBLOGID_FATAL(msg)  LIBLOG_ID_(::youtils::Severity::fatal, msg)
 #define LIBLOGID_NOTIFY(msg) LIBLOG_ID_(::youtils::Severity::notification, msg)
+
+#endif //__LOGGER_H
