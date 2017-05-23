@@ -1,4 +1,33 @@
 ACLOCAL_AMFLAGS = -I ../../m4
+PROTOC = @protoc@
+
+BUILDTOOLS_DIR = @buildtoolsdir@
+CAPNPC = ${BUILDTOOLS_DIR}/bin/capnpc
+PATH := ${BUILDTOOLS_DIR}/bin:${PATH}
+
+if CLANGPP
+PCH_SUFFIX = pch
+else
+PCH_SUFFIX = gch
+endif
+
+.NOTPARALLEL: CapnProtoTest-capnp.cpp CapnProtoTest-capnp.h
+
+CapnProtoTest-capnp.cpp CapnProtoTest-capnp.h: CapnProtoTest.capnp
+	$(CAPNPC) -I${BUILDTOOLS_DIR}/include -oc++:@abs_builddir@/ @abs_srcdir@/CapnProtoTest.capnp
+	sed -i 's/CapnProtoTest\.capnp\.h/CapnProtoTest-capnp\.h/g' @abs_srcdir@/CapnProtoTest.capnp.c++
+	mv @abs_srcdir@/CapnProtoTest.capnp.c++ @abs_builddir@/CapnProtoTest-capnp.cpp
+	mv @abs_srcdir@/CapnProtoTest.capnp.h @abs_builddir@/CapnProtoTest-capnp.h
+
+BUILT_SOURCES = \
+	CapnProtoTest-capnp.cpp \
+	CapnProtoTest-capnp.h \
+	YoutilsTestPrecompiledHeader.h.$(PCH_SUFFIX)
+
+MOSTLYCLEANFILES = \
+	CapnProtoTest-capnp.cpp \
+	CapnProtoTest-capnp.h
+
 bin_PROGRAMS = youtils_test mainhelpertest_executable testmainhelpertest_executable
 
 # if you want to disable precompiled headers drop
@@ -13,14 +42,6 @@ youtils_test_CXXFLAGS = $(BUILDTOOLS_CFLAGS) -Winvalid-pch
 youtils_test_LDFLAGS = -Wl,--as-needed
 youtils_test_LDADD = ../libyoutils.la $(BUILDTOOLS_LIBS)
 
-if CLANGPP
-PCH_SUFFIX = pch
-else
-PCH_SUFFIX = gch
-endif
-
-BUILT_SOURCES = YoutilsTestPrecompiledHeader.h.$(PCH_SUFFIX)
-
 YoutilsTestPrecompiledHeader.h.$(PCH_SUFFIX) : YoutilsTestPrecompiledHeader.h.hxx
 	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(CPPFLAGS) $(youtils_test_CPPFLAGS) $(youtils_test_CXXFLAGS) $(CXXFLAGS) -MT $@ -MD -MP -MF $(DEPDIR)/YoutilsTestPrecompiledHeader.Tpo -x c++-header -o $@ $<
 	$(am__mv) $(DEPDIR)/YoutilsTestPrecompiledHeader.Tpo $(DEPDIR)/YoutilsTestPrecompiledHeader.Po
@@ -32,6 +53,8 @@ youtils_test_SOURCES = \
 	ArakoonIniParserTest.cpp \
 	ArakoonLockStoreTest.cpp \
 	BooleanEnumTest.cpp \
+	CapnProtoTest.cpp \
+	CapnProtoTest-capnp.cpp \
 	CheckSumTest.cpp \
 	ChooserTest.cpp \
 	ChronoUtilsTest.cpp \

@@ -11,6 +11,8 @@ LT_INIT()
 
 m4_include([../m4/vd_macros.m4])
 DETECT_CLANGPP()
+PROTOC()
+BUILDTOOLS_DIR()
 VD_BUILDTOOLS()
 VD_SCRIPT_DIR()
 OMNIIDL()
