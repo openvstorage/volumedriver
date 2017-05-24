@@ -170,7 +170,7 @@ struct RemoteNode::WorkItem
     ExtraRecvFun extra_recv_fun;
 
     boost::promise<vfsprotocol::ResponseType> promise;
-    boost::unique_future<vfsprotocol::ResponseType> future;
+    boost::future<vfsprotocol::ResponseType> future;
 
     template<typename Request>
     WorkItem(const Request& req,

@@ -58,7 +58,7 @@ TEST_F(PeriodicActionPoolTest, basics)
     size_t count = 0;
 
     boost::promise<bool> promise;
-    boost::unique_future<bool> future(promise.get_future());
+    boost::future<bool> future(promise.get_future());
 
     auto fun([&]() -> PeriodicActionContinue
              {
@@ -86,7 +86,7 @@ TEST_F(PeriodicActionPoolTest, cancellation)
                                                             nthreads_));
 
     boost::promise<bool> promise;
-    boost::unique_future<bool> future(promise.get_future());
+    boost::future<bool> future(promise.get_future());
     bool running = false;
 
     auto fun([&]() -> PeriodicActionContinue
@@ -116,7 +116,7 @@ TEST_F(PeriodicActionPoolTest, lotsa)
                                                             nthreads_));
 
     boost::promise<bool> promise;
-    boost::unique_future<bool> future(promise.get_future());
+    boost::future<bool> future(promise.get_future());
 
     const uint64_t limit = 65536;
     const size_t ntasks = 1024;
@@ -154,7 +154,7 @@ TEST_F(PeriodicActionPoolTest, ramp_up)
                                                             nthreads_));
 
     boost::promise<bool> promise;
-    boost::unique_future<bool> future(promise.get_future());
+    boost::future<bool> future(promise.get_future());
     bool running = false;
 
     auto fun([&]() -> PeriodicActionContinue
