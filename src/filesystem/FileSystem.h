@@ -138,44 +138,97 @@ public:
     checkConfig(const boost::property_tree::ptree&,
                 youtils::ConfigurationReport&) const override final;
 
+    boost::future<size_t>
+    async_read(Handle&,
+               size_t size,
+               char* buf,
+               off_t off);
+
     void
-    read(Handle&,
+    read(Handle& h,
          size_t& size,
          char* buf,
          off_t off,
-         bool& eof);
+         bool& eof)
+    {
+        const size_t rsize = async_read(h,
+                                        size,
+                                        buf,
+                                        off).get();
+        eof = rsize < size;
+        size = rsize;
+    }
 
     void
     read(const FrontendPath&,
-         Handle&,
+         Handle& h,
          size_t& size,
          char* buf,
-         off_t off);
+         off_t off)
+    {
+        bool eof = false;
+        read(h,
+             size,
+             buf,
+             off,
+             eof);
+    }
+
+    using WriteResult = std::pair<size_t, volumedriver::DtlInSync>;
+
+    boost::future<WriteResult>
+    async_write(Handle&,
+                size_t,
+                const char* buf,
+                off_t off);
 
     void
-    write(Handle&,
+    write(Handle& h,
           size_t& size,
           const char* buf,
-          off_t off,
-          bool& sync,
-          volumedriver::DtlInSync* = nullptr);
+          off_t off)
+    {
+        size_t wsize = 0;
+        std::tie(wsize, std::ignore) = async_write(h,
+                                                   size,
+                                                   buf,
+                                                   off).get();
+        size = wsize;
+    }
 
     void
     write(const FrontendPath&,
-          Handle&,
+          Handle& h,
           size_t& size,
           const char* buf,
-          off_t off);
+          off_t off)
+    {
+        write(h,
+              size,
+              buf,
+              off);
+    }
+
+    boost::future<volumedriver::DtlInSync>
+    async_flush(Handle&,
+                bool datasync);
+
+    void
+    fsync(Handle& h,
+          bool datasync)
+    {
+        async_flush(h,
+                    datasync).get();
+    }
 
     void
     fsync(const FrontendPath&,
-          Handle&,
-          bool datasync);
-
-    void
-    fsync(Handle&,
-          bool datasync,
-          volumedriver::DtlInSync* = nullptr);
+          Handle& h,
+          bool datasync)
+    {
+        fsync(h,
+              datasync);
+    }
 
     template<typename T>
     void

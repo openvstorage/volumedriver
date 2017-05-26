@@ -21,10 +21,13 @@
 #include <youtils/Uri.h>
 #include <youtils/VolumeDriverComponent.h>
 
+#include <volumedriver/DtlInSync.h>
+
 namespace ganesha
 {
 
 namespace fs = boost::filesystem;
+namespace vd = volumedriver;
 namespace vfs = volumedriverfs;
 namespace yt = youtils;
 
@@ -438,7 +441,7 @@ FileSystemWrapper::write(const FSData& fsdata,
                          const uint64_t offset,
                          const size_t buffer_size,
                          const void* buffer,
-                         size_t& write_amount,
+                         size_t& write_size,
                          bool& fsal_stable)
 {
     /* Can we get a write without an open? */
@@ -448,12 +451,22 @@ FileSystemWrapper::write(const FSData& fsdata,
     }
     else
     {
-        write_amount = buffer_size;
-        fs_->write(*fsdata.handle_,
-                   write_amount,
-                   static_cast<const char*>(buffer),
-                   offset,
-                   fsal_stable);
+        write_size = buffer_size;
+        vd::DtlInSync dtl_in_sync;
+
+        std::tie(write_size, dtl_in_sync) =
+            fs_->async_write(*fsdata.handle_,
+                             write_size,
+                             static_cast<const char*>(buffer),
+                             offset).get();
+
+        if (fsal_stable and dtl_in_sync == vd::DtlInSync::F)
+        {
+            dtl_in_sync = fs_->async_flush(*fsdata.handle_,
+                                           false).get();
+        }
+
+        fsal_stable = dtl_in_sync == vd::DtlInSync::T;
     }
 }
 

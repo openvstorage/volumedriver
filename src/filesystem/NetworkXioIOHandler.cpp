@@ -178,7 +178,7 @@ NetworkXioIOHandler::handle_open(NetworkXioRequest *req,
         fs_.open(p, O_RDWR, handle_);
         // allow stealing the volume on the subsequent fsync
         fs_.set_dtl_in_sync(*handle_, vd::DtlInSync::T);
-        fs_.fsync(*handle_, true);
+        fs_.async_flush(*handle_, true).get();
 
         update_fs_client_info(volume_name);
         volume_name_ = volume_name;
@@ -259,12 +259,10 @@ NetworkXioIOHandler::handle_read(NetworkXioRequest *req,
     req->offset = offset;
     try
     {
-       bool eof = false;
-       fs_.read(*handle_,
-                req->size,
-                static_cast<char*>(req->data),
-                req->offset,
-                eof);
+       req->size = fs_.async_read(*handle_,
+                                  req->size,
+                                  static_cast<char*>(req->data),
+                                  req->offset).get();
        req->retval = req->size;
        req->errval = 0;
     }
@@ -322,16 +320,14 @@ NetworkXioIOHandler::handle_write(NetworkXioRequest *req,
 
     req->size = size;
     req->offset = offset;
-    bool sync = false;
+
     try
     {
-        vd::DtlInSync dtl_in_sync = vd::DtlInSync::F;
-        fs_.write(*handle_,
-                  req->size,
-                  static_cast<char*>(data),
-                  req->offset,
-                  sync,
-                  &dtl_in_sync);
+        vd::DtlInSync dtl_in_sync;
+        std::tie(req->size, dtl_in_sync) = fs_.async_write(*handle_,
+                                                           req->size,
+                                                           static_cast<char*>(data),
+                                                           req->offset).get();
         req->dtl_in_sync = (dtl_in_sync == vd::DtlInSync::T) ? true : false;
         req->retval = req->size;
         req->errval = 0;
@@ -365,10 +361,8 @@ NetworkXioIOHandler::handle_flush(NetworkXioRequest *req)
     LOG_TRACE("Flushing");
     try
     {
-        vd::DtlInSync dtl_in_sync = vd::DtlInSync::T;
-        fs_.fsync(*handle_,
-                  false,
-                  &dtl_in_sync);
+        const vd::DtlInSync dtl_in_sync(fs_.async_flush(*handle_,
+                                                        false).get());
         req->dtl_in_sync = (dtl_in_sync == vd::DtlInSync::T) ? true : false;
         req->retval = 0;
         req->errval = 0;

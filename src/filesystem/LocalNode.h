@@ -71,9 +71,9 @@ class LocalNode final
     friend class volumedriverfstest::LocalNodeTest;
 
 public:
-    LocalNode(ObjectRouter& vrouter,
-              const ClusterNodeConfig& cfg,
-              const boost::property_tree::ptree& pt);
+    LocalNode(ObjectRouter&,
+              const ClusterNodeConfig&,
+              const boost::property_tree::ptree&);
 
     virtual ~LocalNode();
 
@@ -83,63 +83,61 @@ public:
     operator=(const LocalNode&) = delete;
 
     static void
-    destroy(ObjectRegistry& reg,
-            const boost::property_tree::ptree& pt);
+    destroy(ObjectRegistry&,
+            const boost::property_tree::ptree&);
 
-    virtual void
-    read(const Object& id,
+    virtual ClusterNode::ReadFuture
+    read(const Object&,
          uint8_t* buf,
-         size_t* size,
+         size_t size,
          const off_t off) override final;
 
-    virtual void
-    write(const Object& obj,
+    virtual ClusterNode::WriteFuture
+    write(const Object&,
           const uint8_t* buf,
-          size_t* size,
-          const off_t off,
-          volumedriver::DtlInSync&) override final;
+          size_t size,
+          const off_t off) override final;
 
-    virtual void
-    sync(const Object&,
-         volumedriver::DtlInSync&) override final;
+    virtual ClusterNode::SyncFuture
+    sync(const Object&) override final;
 
     virtual uint64_t
-    get_size(const Object& obj) override final;
+    get_size(const Object&) override final;
 
     virtual volumedriver::ClusterMultiplier
-    get_cluster_multiplier(const Object& obj) override final;
+    get_cluster_multiplier(const Object&) override final;
 
     virtual volumedriver::CloneNamespaceMap
-    get_clone_namespace_map(const Object& obj) override final;
+    get_clone_namespace_map(const Object&) override final;
 
     virtual std::vector<volumedriver::ClusterLocation>
-    get_page(const Object& obj,
-             const volumedriver::ClusterAddress ca) override final;
+    get_page(const Object&,
+             const volumedriver::ClusterAddress) override final;
 
     virtual void
-    resize(const Object& obj,
-           uint64_t newsize) override final;
+    resize(const Object&,
+           uint64_t) override final;
 
     virtual void
-    unlink(const Object& obj) override final;
+    unlink(const Object&) override final;
 
     void
-    stop(const Object& obj,
+    stop(const Object&,
          volumedriver::DeleteLocalData = volumedriver::DeleteLocalData::T);
 
     void
-    create(const Object& obj,
+    create(const Object&,
            std::unique_ptr<volumedriver::MetaDataBackendConfig> mdb_config);
 
     void
     create_clone(const ObjectId& clone_id,
-                 std::unique_ptr<volumedriver::MetaDataBackendConfig> mdb_config,
+                 std::unique_ptr<volumedriver::MetaDataBackendConfig>,
                  const ObjectId& parent_id,
                  const MaybeSnapshotName& maybe_parent_snap);
 
     void
     clone_to_existing_volume(const ObjectId& clone_id,
-                             std::unique_ptr<volumedriver::MetaDataBackendConfig> mdb_config,
+                             std::unique_ptr<volumedriver::MetaDataBackendConfig>,
                              const ObjectId& parent_id,
                              const MaybeSnapshotName& maybe_parent_snap);
 
@@ -156,56 +154,56 @@ public:
                   const ObjectId& dst_id);
 
     void
-    remove_local_data(const Object& obj);
+    remove_local_data(const Object&);
 
     void
     local_restart(const ObjectRegistration&,
-                  ForceRestart force);
+                  ForceRestart);
 
     using PrepareRestartFun = std::function<void(const Object&)>;
 
     // `prep_restart_fun' is run with exclusive access to the volume.
     void
-    backend_restart(const Object& obj,
-                    ForceRestart force,
-                    PrepareRestartFun prep_restart_fun);
+    backend_restart(const Object&,
+                    ForceRestart,
+                    PrepareRestartFun);
 
     using MaybeSyncTimeoutMilliSeconds = boost::optional<boost::chrono::milliseconds>;
     using Clock = boost::chrono::steady_clock;
     using Deadline = Clock::time_point;
 
     void
-    transfer(const Object& obj,
-             const NodeId target_node,
+    transfer(const Object&,
+             const NodeId,
              MaybeSyncTimeoutMilliSeconds);
 
     void
-    create_snapshot(const ObjectId& id,
-                    const volumedriver::SnapshotName& snap_id,
+    create_snapshot(const ObjectId&,
+                    const volumedriver::SnapshotName&,
                     const int64_t timeout);
 
     void
-    rollback_volume(const ObjectId& volume_id,
-                    const volumedriver::SnapshotName& snap_id);
+    rollback_volume(const ObjectId&,
+                    const volumedriver::SnapshotName&);
 
     void
-    delete_snapshot(const ObjectId& volume_id,
-                    const volumedriver::SnapshotName& snap_id);
+    delete_snapshot(const ObjectId&,
+                    const volumedriver::SnapshotName&);
 
     std::list<volumedriver::SnapshotName>
-    list_snapshots(const ObjectId& id);
+    list_snapshots(const ObjectId&);
 
     bool
-    is_volume_synced_up_to(const ObjectId& id,
-                           const volumedriver::SnapshotName& snap_id);
+    is_volume_synced_up_to(const ObjectId&,
+                           const volumedriver::SnapshotName&);
 
     std::vector<scrubbing::ScrubWork>
-    get_scrub_work(const ObjectId& oid,
+    get_scrub_work(const ObjectId&,
                    const boost::optional<volumedriver::SnapshotName>& start_snap,
                    const boost::optional<volumedriver::SnapshotName>& end_snap);
 
     void
-    set_volume_as_template(const ObjectId& id);
+    set_volume_as_template(const ObjectId&);
 
     uint64_t
     volume_potential(const boost::optional<volumedriver::ClusterSize>&,
@@ -228,49 +226,47 @@ public:
     set_automatic_foc_config(const ObjectId&);
 
     FailOverCacheConfigMode
-    get_foc_config_mode(const ObjectId& oid);
+    get_foc_config_mode(const ObjectId&);
 
     MaybeFailOverCacheConfig
-    get_foc_config(const ObjectId& oid);
+    get_foc_config(const ObjectId&);
 
     void
-    queue_scrub_reply(const ObjectId& oid,
+    queue_scrub_reply(const ObjectId&,
                       const scrubbing::ScrubReply&);
 
     ScrubManager&
     scrub_manager();
 
-    FastPathCookie
+    std::pair<FastPathCookie, ClusterNode::ReadFuture>
     read(const FastPathCookie&,
          const ObjectId&,
          uint8_t* buf,
-         size_t* size,
+         size_t size,
          off_t off);
 
-    FastPathCookie
+    std::pair<FastPathCookie, ClusterNode::WriteFuture>
     write(const FastPathCookie&,
           const ObjectId&,
           const uint8_t* buf,
-          size_t* size,
-          off_t off,
-          volumedriver::DtlInSync&);
+          size_t size,
+          off_t off);
 
-    FastPathCookie
+    std::pair<FastPathCookie, ClusterNode::SyncFuture>
     sync(const FastPathCookie&,
-         const ObjectId&,
-         volumedriver::DtlInSync&);
+         const ObjectId&);
 
     FastPathCookie
     fast_path_cookie(const Object&);
 
     // This isn't a VolumeDriverComponent, only part of one.
     void
-    update_config(const boost::property_tree::ptree& pt,
-                  volumedriver::UpdateReport& rep);
+    update_config(const boost::property_tree::ptree&,
+                  volumedriver::UpdateReport&);
 
     void
-    persist_config(boost::property_tree::ptree& pt,
-                   const ReportDefault report_default) const;
+    persist_config(boost::property_tree::ptree&,
+                   const ReportDefault) const;
 
 private:
     DECLARE_LOGGER("VFSLocalNode");
@@ -367,30 +363,27 @@ private:
         }
     }
 
-    void
-    read_(volumedriver::WeakVolumePtr vol,
+    ClusterNode::ReadFuture
+    read_(volumedriver::WeakVolumePtr,
           uint8_t* buf,
-          size_t* size,
+          size_t size,
           off_t off);
 
-    FastPathCookie
+    std::pair<FastPathCookie, ClusterNode::WriteFuture>
     write_(const FastPathCookie&,
            const ObjectId&,
            const uint8_t* buf,
-           size_t* size,
-           off_t off,
-           volumedriver::DtlInSync&);
+           size_t size,
+           off_t off);
 
-    void
+    ClusterNode::WriteFuture
     write_(volumedriver::WeakVolumePtr,
            const uint8_t* buf,
            size_t size,
-           off_t off,
-           volumedriver::DtlInSync&);
+           off_t off);
 
-    void
-    sync_(volumedriver::WeakVolumePtr,
-          volumedriver::DtlInSync&);
+    ClusterNode::SyncFuture
+    sync_(volumedriver::WeakVolumePtr);
 
     uint64_t
     get_size_(volumedriver::WeakVolumePtr vol);

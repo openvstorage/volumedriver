@@ -79,14 +79,12 @@ public:
         reply->opaque = request->opaque;
         reply->size_in_bytes = request->size_in_bytes;
 
-        bool sync = false;
         try
         {
             fs_.write(*handle_,
                       reply->size_in_bytes,
                       data,
-                      request->offset_in_bytes,
-                      sync);
+                      request->offset_in_bytes);
             reply->failed = false;
         }
         CATCH_STD_ALL_EWHAT({
@@ -104,8 +102,8 @@ public:
 
         try
         {
-            fs_.fsync(*handle_,
-                      false);
+            fs_.async_flush(*handle_,
+                            false).get();
             return true;
         }
         CATCH_STD_ALL_EWHAT({

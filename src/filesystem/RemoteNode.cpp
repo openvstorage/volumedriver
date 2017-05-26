@@ -653,17 +653,19 @@ RemoteNode::recv_responses_()
     }
 }
 
-void
+ClusterNode::ReadFuture
 RemoteNode::read(const Object& obj,
                  uint8_t* buf,
-                 size_t* size,
+                 size_t size,
                  off_t off)
 {
     ASSERT(size);
 
-    LOG_TRACE(node_id() << ": obj " << obj.id << ", size " << *size << ", off " << off);
+    LOG_TRACE(node_id() << ": obj " << obj.id << ", size " << size << ", off " << off);
 
-    const auto req(vfsprotocol::MessageUtils::create_read_request(obj, *size, off));
+    const auto req(vfsprotocol::MessageUtils::create_read_request(obj, size, off));
+
+    size_t rsize = 0;
 
     ExtraRecvFun recv_data([&]
                            {
@@ -672,43 +674,47 @@ RemoteNode::read(const Object& obj,
                                zmq::message_t msg;
                                zock_->recv(&msg);
 
-                               if (msg.size() > *size)
+                               if (msg.size() > size)
                                {
                                    LOG_ERROR(node_id() << ": read " << msg.size() <<
-                                             " > expected " << *size << " from " << obj.id);
+                                             " > expected " << size << " from " << obj.id);
                                    throw fungi::IOException("Read size mismatch",
                                                             obj.id.str().c_str());
                                }
 
-                               *size = msg.size();
-                               memcpy(buf, msg.data(), *size);
+                               rsize = msg.size();
+                               memcpy(buf, msg.data(), rsize);
                            });
 
     handle_(req,
             vrouter_.redirect_timeout(),
             ExtraSendFun(),
             std::move(recv_data));
+
+    return boost::make_ready_future(rsize);
 }
 
-void
+ClusterNode::WriteFuture
 RemoteNode::write(const Object& obj,
                   const uint8_t* buf,
-                  size_t* size,
-                  off_t off,
-                  vd::DtlInSync& dtl_in_sync)
+                  size_t size,
+                  off_t off)
 {
     ASSERT(size);
 
-    LOG_TRACE(node_id() << ": obj " << obj.id << ", size " << *size << ", off " << off);
+    LOG_TRACE(node_id() << ": obj " << obj.id << ", size " << size << ", off " << off);
 
-    const auto req(vfsprotocol::MessageUtils::create_write_request(obj, *size, off));
+    const auto req(vfsprotocol::MessageUtils::create_write_request(obj, size, off));
 
     ExtraSendFun send_data([&]
                            {
-                               zmq::message_t msg(*size);
-                               memcpy(msg.data(), buf, *size);
+                               zmq::message_t msg(size);
+                               memcpy(msg.data(), buf, size);
                                zock_->send(msg, 0);
                            });
+
+    size_t wsize = 0;
+    auto dtl_in_sync = vd::DtlInSync::F;
 
     ExtraRecvFun get_rsp([&]
                          {
@@ -718,7 +724,7 @@ RemoteNode::write(const Object& obj,
                              ZUtils::deserialize_from_socket(*zock_, rsp);
 
                              rsp.CheckInitialized();
-                             *size = rsp.size();
+                             wsize = rsp.size();
                              dtl_in_sync = rsp.dtl_in_sync() ? vd::DtlInSync::T : vd::DtlInSync::F;
                          });
 
@@ -726,15 +732,19 @@ RemoteNode::write(const Object& obj,
             vrouter_.redirect_timeout(),
             std::move(send_data),
             std::move(get_rsp));
+
+    return boost::make_ready_future(std::make_pair(wsize,
+                                                   dtl_in_sync));
 }
 
-void
-RemoteNode::sync(const Object& obj,
-                 vd::DtlInSync& dtl_in_sync)
+ClusterNode::SyncFuture
+RemoteNode::sync(const Object& obj)
 {
     LOG_TRACE(node_id() << ": obj " << obj.id);
 
     const auto req(vfsprotocol::MessageUtils::create_sync_request(obj));
+
+    auto dtl_in_sync = vd::DtlInSync::F;
 
     ExtraRecvFun get_rsp([&]
                          {
@@ -757,6 +767,8 @@ RemoteNode::sync(const Object& obj,
             vrouter_.redirect_timeout(),
             ExtraSendFun(),
             std::move(get_rsp));
+
+    return boost::make_ready_future(dtl_in_sync);
 }
 
 uint64_t

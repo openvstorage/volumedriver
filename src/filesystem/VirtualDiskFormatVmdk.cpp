@@ -109,12 +109,10 @@ VirtualDiskFormatVmdk::create_volume(FileSystem& fs,
 
             const std::string wbuf(create_vmdk_contents(vpath, size));
             size_t size = wbuf.size();
-            bool sync = false;
             fs.write(*h,
                      size,
                      wbuf.c_str(),
-                     0,
-                     sync);
+                     0);
 
             if (size != wbuf.size())
             {

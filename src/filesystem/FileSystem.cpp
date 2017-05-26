@@ -35,6 +35,7 @@
 #include <boost/serialization/shared_ptr.hpp>
 
 #include <youtils/Assert.h>
+#include <youtils/InlineExecutor.h>
 #include <youtils/Logging.h>
 #include <youtils/ScopeExit.h>
 
@@ -1180,12 +1181,11 @@ FileSystem::release(Handle::Ptr h)
     LOG_TRACE("Handle " << h.get() << ", path " << h->path());
 }
 
-void
-FileSystem::read(Handle& h,
-                 size_t& size,
-                 char* buf,
-                 off_t off,
-                 bool& eof)
+boost::future<size_t>
+FileSystem::async_read(Handle& h,
+                       size_t size,
+                       char* buf,
+                       off_t off)
 {
     tracepoint(openvstorage_filesystem,
                object_read_start,
@@ -1193,176 +1193,165 @@ FileSystem::read(Handle& h,
                off,
                size);
 
-    auto on_exit(yt::make_scope_exit([&]
-                                     {
-                                         tracepoint(openvstorage_filesystem,
-                                                    object_read_end,
-                                                    h.dentry()->object_id().str().c_str(),
-                                                    off,
-                                                    size,
-                                                    std::uncaught_exception());
-                                     }));
+    auto on_exc(yt::make_scope_exit_on_exception([&]
+                                                 {
+                                                     tracepoint(openvstorage_filesystem,
+                                                                object_read_end,
+                                                                h.dentry()->object_id().str().c_str(),
+                                                                off,
+                                                                size,
+                                                                true);
+                                                 }));
 
     LOG_TRACE("size " << size << ", off " << off << ", path " << h.path());
 
+    ClusterNode::ReadFuture rf;
+
     if (fs_nullio.value())
     {
-        eof = false;
+        rf = boost::make_ready_future(size);
     }
     else
     {
-        size_t rsize = size;
-        h.update_cookie(router_.read(h.cookie(),
-                                     h.dentry()->object_id(),
-                                     reinterpret_cast<uint8_t*>(buf),
-                                     rsize,
-                                     off));
+        FastPathCookie ck;
 
-        eof = rsize < size;
-        size = rsize;
-    }
-}
-
-void
-FileSystem::read(const FrontendPath& path,
-                 Handle& h,
-                 size_t& size,
-                 char* buf,
-                 off_t off)
-{
-    LOG_TRACE(path << ": size " << size << ", off " << off);
-
-    bool eof = false;
-    read(h,
-         size,
-         buf,
-         off,
-         eof);
-}
-
-void
-FileSystem::write(Handle& h,
-                  size_t& size,
-                  const char* buf,
-                  off_t off,
-                  bool& sync,
-                  vd::DtlInSync* dtl_in_sync)
-{
-    vd::DtlInSync dummy = vd::DtlInSync::F;
-    if (dtl_in_sync == nullptr)
-    {
-        dtl_in_sync = &dummy;
+        std::tie(ck, rf) = router_.read(h.cookie(),
+                                        h.dentry()->object_id(),
+                                        reinterpret_cast<uint8_t*>(buf),
+                                        size,
+                                        off);
+        h.update_cookie(ck);
     }
 
+    return rf.then(yt::InlineExecutor::get(),
+                   [dentry = h.dentry(),
+                    off,
+                    size](ClusterNode::ReadFuture f) -> size_t
+                   {
+                       tracepoint(openvstorage_filesystem,
+                                  object_read_end,
+                                  dentry->object_id().str().c_str(),
+                                  off,
+                                  size,
+                                  f.has_exception());
+                       return f.get();
+                   });
+}
+
+boost::future<FileSystem::WriteResult>
+FileSystem::async_write(Handle& h,
+                        size_t size,
+                        const char* buf,
+                        off_t off)
+{
     tracepoint(openvstorage_filesystem,
                object_write_start,
                h.dentry()->object_id().str().c_str(),
                off,
                size,
-               sync);
+               false);
 
-    auto on_exit(yt::make_scope_exit([&]
-                                     {
-                                         tracepoint(openvstorage_filesystem,
-                                                    object_write_end,
-                                                    h.dentry()->object_id().str().c_str(),
-                                                    off,
-                                                    size,
-                                                    std::uncaught_exception());
-                                     }));
+    auto on_exc(yt::make_scope_exit_on_exception([&]
+                                                 {
+                                                     tracepoint(openvstorage_filesystem,
+                                                                object_write_end,
+                                                                h.dentry()->object_id().str().c_str(),
+                                                                off,
+                                                                size,
+                                                                true);
+                                                 }));
 
     LOG_TRACE("size " << size << ", off " << off <<
               ", handle " << &h << ", path " << h.path() << ", sync " << sync);
 
-    if (not fs_nullio.value())
-    {
-        h.update_cookie(router_.write(h.cookie(),
-                                      h.dentry()->object_id(),
-                                      reinterpret_cast<const uint8_t*>(buf),
-                                      size,
-                                      off,
-                                      *dtl_in_sync));
+    ClusterNode::WriteFuture wf;
 
-        if (sync and not fs_ignore_sync.value())
-        {
-            h.update_cookie(router_.sync(h.cookie(),
-                                         h.dentry()->object_id(),
-                                         *dtl_in_sync));
-        }
-        else
-        {
-            sync = false;
-        }
+    if (fs_nullio.value())
+    {
+        wf = boost::make_ready_future(std::make_pair(size, vd::DtlInSync::T));
+    }
+    else
+    {
+        FastPathCookie c;
+        std::tie(c, wf) = router_.write(h.cookie(),
+                                        h.dentry()->object_id(),
+                                        reinterpret_cast<const uint8_t*>(buf),
+                                        size,
+                                        off);
+
+        h.update_cookie(std::move(c));
 
         if (not is_volume(h.dentry()))
         {
-            // do that before the optional sync?
-            maybe_publish_file_event_(FileSystemCall::Write,
-                                      &FileSystemEvents::file_write,
-                                      h.path());
+            wf = wf.then(yt::InlineExecutor::get(),
+                         [path = h.path(),
+                          this](ClusterNode::WriteFuture f) -> WriteResult
+                         {
+                             maybe_publish_file_event_(FileSystemCall::Write,
+                                                       &FileSystemEvents::file_write,
+                                                       path);
+                             return f.get();
+                         });
         }
     }
+
+    return wf.then(yt::InlineExecutor::get(),
+                   [off,
+                    size,
+                    dentry = h.dentry()](ClusterNode::WriteFuture f) -> WriteResult
+                   {
+                       tracepoint(openvstorage_filesystem,
+                                  object_write_end,
+                                  dentry->object_id().str().c_str(),
+                                  off,
+                                  size,
+                                  f.has_exception());
+                       return f.get();
+                   });
 }
 
-void
-FileSystem::write(const FrontendPath& path,
-                  Handle& h,
-                  size_t& size,
-                  const char* buf,
-                  off_t off)
+boost::future<vd::DtlInSync>
+FileSystem::async_flush(Handle& h,
+                        bool datasync)
 {
-    LOG_TRACE(path << ": size " << size << ", off " << off);
-
-    bool sync = false;
-    write(h,
-          size,
-          buf,
-          off,
-          sync);
-}
-
-void
-FileSystem::fsync(Handle& h,
-                  bool datasync,
-                  vd::DtlInSync* dtl_in_sync)
-{
-    vd::DtlInSync dummy = vd::DtlInSync::F;
-    if (dtl_in_sync == nullptr)
-    {
-        dtl_in_sync = &dummy;
-    }
-
     tracepoint(openvstorage_filesystem,
                object_sync_start,
                h.dentry()->object_id().str().c_str(),
                datasync);
 
-    auto on_exit(yt::make_scope_exit([&]
-                                     {
-                                         tracepoint(openvstorage_filesystem,
-                                                    object_sync_end,
-                                                    h.dentry()->object_id().str().c_str(),
-                                                    std::uncaught_exception());
-                                     }));
+    auto on_exc(yt::make_scope_exit_on_exception([&]
+                                                 {
+                                                     tracepoint(openvstorage_filesystem,
+                                                                object_sync_end,
+                                                                h.dentry()->object_id().str().c_str(),
+                                                                true);
+                                                 }));
 
     LOG_TRACE("handle " << &h << ", path " << h.path());
 
-    if (not fs_nullio.value())
-    {
-        h.update_cookie(router_.sync(h.cookie(),
-                                     h.dentry()->object_id(),
-                                     *dtl_in_sync));
-    }
-}
+    ClusterNode::SyncFuture sf;
 
-void
-FileSystem::fsync(const FrontendPath& path,
-                  Handle& h,
-                  bool datasync)
-{
-    LOG_TRACE(path << ": datasync " << datasync);
-    fsync(h,
-          datasync);
+    if (fs_nullio.value())
+    {
+        sf = boost::make_ready_future(vd::DtlInSync::T);
+    }
+    else
+    {
+        FastPathCookie c;
+        std::tie(c, sf) = router_.sync(h.cookie(),
+                                       h.dentry()->object_id());
+        h.update_cookie(std::move(c));
+    }
+
+    return sf.then(yt::InlineExecutor::get(),
+                   [dentry = h.dentry()](ClusterNode::SyncFuture f) -> vd::DtlInSync
+                   {
+                       tracepoint(openvstorage_filesystem,
+                                  object_sync_end,
+                                  dentry->object_id().str().c_str(),
+                                  f.has_exception());
+                       return f.get();
+                   });
 }
 
 TODO("Phase out get_volume_id in favour of get_object_id");

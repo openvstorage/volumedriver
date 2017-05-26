@@ -618,20 +618,15 @@ FileSystemTestBase::write(Handle& h,
                           uint64_t size,
                           off_t off)
 {
-    bool sync = false;
     int ret = fs_convert_exceptions<Handle&,
                                     size_t&,
                                     decltype(buf),
-                                    decltype(off),
-                                    bool&,
-                                    vd::DtlInSync*>(*fs_,
-                                                    &FileSystem::write,
-                                                    h,
-                                                    size,
-                                                    buf,
-                                                    off,
-                                                    sync,
-                                                    nullptr);
+                                    decltype(off)>(*fs_,
+                                                   &FileSystem::write,
+                                                   h,
+                                                   size,
+                                                   buf,
+                                                   off);
     return ret ? ret : size;
 }
 
@@ -640,12 +635,10 @@ FileSystemTestBase::fsync(volumedriverfs::Handle& h,
                           bool datasync)
 {
     return fs_convert_exceptions<Handle&,
-                                 bool,
-                                 vd::DtlInSync*>(*fs_,
-                                                 &FileSystem::fsync,
-                                                 h,
-                                                 datasync,
-                                                 nullptr);
+                                 bool>(*fs_,
+                                       &FileSystem::fsync,
+                                       h,
+                                       datasync);
 }
 
 int
@@ -1233,16 +1226,13 @@ FileSystemTestBase::test_dtl_status(const FrontendPath& vname,
                            vd::DtlInSync::T :
                            vd::DtlInSync::F;
 
-                       bool sync = false;
-
                        const std::vector<char> buf(size, 'Q');
 
-                       fs_->write(*h,
-                                  size,
-                                  buf.data(),
-                                  0,
-                                  sync,
-                                  &dtl_in_sync);
+                       std::tie(std::ignore, dtl_in_sync) =
+                           fs_->async_write(*h,
+                                            size,
+                                            buf.data(),
+                                            0).get();
 
                        if (dtl_mode == vd::FailOverCacheMode::Synchronous)
                        {
@@ -1259,12 +1249,8 @@ FileSystemTestBase::test_dtl_status(const FrontendPath& vname,
     write_test(api::getDefaultClusterSize() / 2);
     write_test(api::getDefaultClusterSize());
 
-    vd::DtlInSync dtl_in_sync = vd::DtlInSync::F;
-
-    fs_->fsync(*h,
-               true,
-               &dtl_in_sync);
-
+    const vd::DtlInSync dtl_in_sync(fs_->async_flush(*h,
+                                                     true).get());
     EXPECT_EQ(vd::DtlInSync::T,
               dtl_in_sync);
 }

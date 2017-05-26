@@ -174,25 +174,29 @@ public:
     void
     ping(const NodeId& id);
 
-    FastPathCookie
+    using WriteResult = std::pair<FastPathCookie, ClusterNode::WriteFuture>;
+
+    WriteResult
     write(const FastPathCookie&,
           const ObjectId&,
           const uint8_t* buf,
           size_t size,
-          off_t off,
-          volumedriver::DtlInSync&);
+          off_t off);
 
-    FastPathCookie
+    using ReadResult = std::pair<FastPathCookie, ClusterNode::ReadFuture>;
+
+    ReadResult
     read(const FastPathCookie&,
          const ObjectId&,
          uint8_t* buf,
-         size_t& size,
+         size_t size,
          off_t off);
 
-    FastPathCookie
+    using SyncResult = std::pair<FastPathCookie, ClusterNode::SyncFuture>;
+
+    SyncResult
     sync(const FastPathCookie&,
-         const ObjectId&,
-         volumedriver::DtlInSync&);
+         const ObjectId&);
 
     uint64_t
     get_size(const ObjectId& id);
@@ -583,12 +587,14 @@ private:
     // We're not using a std::function here as that ends up allocating memory
     // which we want to avoid. We could pass function pointers / references but that
     // limits its flexibility.
-    template<typename MigratePred,
+    template<typename Ret,
+             typename MigratePred,
              typename... Args>
-    FastPathCookie
+    std::pair<FastPathCookie,
+              boost::future<Ret>>
     maybe_migrate_(MigratePred&&,
-                   void (ClusterNode::*fn)(const Object&,
-                                           Args...),
+                   boost::future<Ret> (ClusterNode::*fn)(const Object&,
+                                                         Args...),
                    const ObjectId&,
                    Args...);
 
@@ -646,29 +652,27 @@ private:
                      ForceRestart,
                      PrepareRestartFun);
 
-    FastPathCookie
+    WriteResult
     write_(const ObjectId&,
            const uint8_t* buf,
-           size_t* size,
-           off_t off,
-           volumedriver::DtlInSync&);
+           size_t size,
+           off_t off);
 
-    FastPathCookie
+    ReadResult
     read_(const ObjectId&,
           uint8_t* buf,
-          size_t* size,
+          size_t size,
           off_t off);
 
-    FastPathCookie
-    sync_(const ObjectId&,
-          volumedriver::DtlInSync&);
+    SyncResult
+    sync_(const ObjectId&);
 
-    template<typename... Args>
-    FastPathCookie
+    template<typename Ret, typename... Args>
+    Ret
     select_path_(const FastPathCookie&,
-                 FastPathCookie (ObjectRouter::*slow_fun)(Args...),
-                 FastPathCookie (LocalNode::*fast_fun)(const FastPathCookie&,
-                                                       Args...),
+                 Ret (ObjectRouter::*slow_fun)(Args...),
+                 Ret (LocalNode::*fast_fun)(const FastPathCookie&,
+                                            Args...),
                  Args...);
 
     bool

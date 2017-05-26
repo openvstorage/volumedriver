@@ -845,13 +845,13 @@ ObjectRouter::route_(Ret (ClusterNode::*fn)(const Object&,
                      std::forward<Args>(args)...);
 }
 
-// TODO: It'd be nice to make this work with arbitrary return types.
-template<typename Pred,
+template<typename Ret,
+         typename Pred,
          typename... Args>
-FastPathCookie
+std::pair<FastPathCookie, boost::future<Ret>>
 ObjectRouter::maybe_migrate_(Pred&& migrate_pred,
-                             void (ClusterNode::*fn)(const Object&,
-                                                     Args...),
+                             boost::future<Ret> (ClusterNode::*fn)(const Object&,
+                                                                   Args...),
                              const ObjectId& id,
                              Args... args)
 {
@@ -861,75 +861,96 @@ ObjectRouter::maybe_migrate_(Pred&& migrate_pred,
     IsRemoteNode remote = IsRemoteNode::F;
     FastPathCookie cookie;
 
-    do_route_(fn,
-              remote,
-              AttemptTheft::T,
-              reg,
-              cookie,
-              std::forward<Args>(args)...);
+    using RetFuture = typename boost::future<Ret>;
 
-    if (remote == IsRemoteNode::T and migrate_pred(reg->volume_id,
-                                                   reg->treeconfig.object_type))
+    RetFuture ret_future(do_route_(fn,
+                                   remote,
+                                   AttemptTheft::T,
+                                   reg,
+                                   cookie,
+                                   std::forward<Args>(args)...));
+
+    if (remote == IsRemoteNode::T)
     {
-        LOG_INFO(id << ": investigating auto migration");
+        auto fun([id,
+                  pred = std::move(migrate_pred),
+                  reg,
+                  remote,
+                  this](RetFuture rf) mutable -> Ret
+                 {
+                     const Ret ret = rf.get();
+                     if (pred(ret,
+                              reg->volume_id,
+                              reg->treeconfig.object_type))
+                     {
+                         LOG_INFO(id << ": investigating auto migration");
 
-        // Don't reuse the previously retrieved ObjectRegistration as it was cached
-        // and possibly outdated or could have changed in the mean time.
-        // Don't bother with possibly outdated registrations in the cache.
-        reg = object_registry_->find_throw(id,
-                                           IgnoreCache::T);
-        if (reg->node_id == node_id())
-        {
-            LOG_INFO(id <<
-                     ": already migrated here while we were trying remote");
-        }
-        else
-        {
-            LOG_INFO(id << ": attempting auto migration from " << reg->node_id);
+                         // Don't reuse the previously retrieved ObjectRegistration as it was cached
+                         // and possibly outdated or could have changed in the mean time.
+                         // Don't bother with possibly outdated registrations in the cache.
+                         reg = object_registry_->find_throw(id,
+                                                            IgnoreCache::T);
+                         if (reg->node_id == node_id())
+                         {
+                             LOG_INFO(id <<
+                                      ": already migrated here while we were trying remote");
+                         }
+                         else
+                         {
+                             LOG_INFO(id << ": attempting auto migration from " << reg->node_id);
 
-            try
-            {
-                // ForceRestart::T: it's ok to ignore the FOC in this case (and
-                // ForceRestart should probably be renamed to make its semantics
-                // clear(er)) as the remote first has to write out all pending data
-                // to the backend before we do a restart here, so the FOC will be
-                // empty anyway.
-                const bool permit_steal = permit_steal_(id);
-                migrate_(*reg,
-                         permit_steal ?
-                         OnlyStealFromOfflineNode::F :
-                         OnlyStealFromOfflineNode::T,
-                         permit_steal ?
-                         ForceRestart::F :
-                         ForceRestart::T);
-                LOG_INFO(id << ": auto migration from " << reg->node_id << " done");
-            }
-            catch (RemoteTimeoutException&)
-            {
-                LOG_WARN(id << ": remote node reported timeout");
-            }
-            CATCH_STD_ALL_EWHAT({
-                    reg = object_registry_->find(id,
-                                                 IgnoreCache::T);
-                    if (reg and reg->node_id == node_id())
-                    {
-                        LOG_INFO(id <<
-                                 ": already migrated here while we were trying to do that ourselves");
-                    }
-                    else
-                    {
-                        LOG_WARN("Failed to automigrate " <<
-                                 id << " from " <<
-                                 (reg ?
-                                  reg->node_id :
-                                  NodeId("(unknown source)")) <<
-                                  ": " << EWHAT);
-                    }
-                });
-        }
+                             try
+                             {
+                                 // ForceRestart::T: it's ok to ignore the FOC in this case (and
+                                 // ForceRestart should probably be renamed to make its semantics
+                                 // clear(er)) as the remote first has to write out all pending data
+                                 // to the backend before we do a restart here, so the FOC will be
+                                 // empty anyway.
+                                 const bool permit_steal = permit_steal_(id);
+                                 migrate_(*reg,
+                                          permit_steal ?
+                                          OnlyStealFromOfflineNode::F :
+                                          OnlyStealFromOfflineNode::T,
+                                          permit_steal ?
+                                          ForceRestart::F :
+                                          ForceRestart::T);
+                                 LOG_INFO(id << ": auto migration from " << reg->node_id << " done");
+                             }
+                             catch (RemoteTimeoutException&)
+                             {
+                                 LOG_WARN(id << ": remote node reported timeout");
+                             }
+                             CATCH_STD_ALL_EWHAT({
+                                     reg = object_registry_->find(id,
+                                                                  IgnoreCache::T);
+                                     if (reg and reg->node_id == node_id())
+                                     {
+                                         LOG_INFO(id <<
+                                                  ": already migrated here while we were trying to do that ourselves");
+                                     }
+                                     else
+                                     {
+                                         LOG_WARN("Failed to automigrate " <<
+                                                  id << " from " <<
+                                                  (reg ?
+                                                   reg->node_id :
+                                                   NodeId("(unknown source)")) <<
+                                                  ": " << EWHAT);
+                                     }
+                                 });
+                         }
+                     }
+
+                     return ret;
+                 });
+
+        // We don't want the inline executor.
+        // TODO: check locking!
+        ret_future = ret_future.then(std::move(fun));
     }
 
-    return cookie;
+    return std::make_pair(std::move(cookie),
+                          std::move(ret_future));
 }
 
 zmq::message_t
@@ -1012,12 +1033,12 @@ ObjectRouter::migrate_pred_helper_(const char* desc,
     }
 }
 
-template<typename... Args>
-FastPathCookie
+template<typename Ret, typename... Args>
+Ret
 ObjectRouter::select_path_(const FastPathCookie& cookie,
-                           FastPathCookie (ObjectRouter::*slow_fun)(Args...),
-                           FastPathCookie (LocalNode::*fast_fun)(const FastPathCookie&,
-                                                                 Args...),
+                           Ret (ObjectRouter::*slow_fun)(Args...),
+                           Ret (LocalNode::*fast_fun)(const FastPathCookie&,
+                                                      Args...),
                            Args... args)
 {
     if (cookie)
@@ -1032,54 +1053,50 @@ ObjectRouter::select_path_(const FastPathCookie& cookie,
         {}
     }
 
-    return (*this.*slow_fun)(std::forward<Args>(args)...);
+    return (*this.*slow_fun)(args...);
 }
 
-FastPathCookie
+ObjectRouter::WriteResult
 ObjectRouter::write(const FastPathCookie& cookie,
                     const ObjectId& id,
                     const uint8_t* buf,
                     size_t size,
-                    off_t off,
-                    vd::DtlInSync& dtl_in_sync)
+                    off_t off)
 {
-    using FastPathFun = FastPathCookie (LocalNode::*)(const FastPathCookie&,
-                                                      const ObjectId&,
-                                                      const uint8_t*,
-                                                      size_t*,
-                                                      off_t,
-                                                      vd::DtlInSync&);
-
-    return select_path_<decltype(id),
+    using FastPathFun = WriteResult (LocalNode::*)(const FastPathCookie&,
+                                                   const ObjectId&,
+                                                   const uint8_t*,
+                                                   size_t,
+                                                   off_t);
+    return select_path_<WriteResult,
+                        decltype(id),
                         decltype(buf),
-                        size_t*,
-                        decltype(off),
-                        decltype(dtl_in_sync)>(cookie,
-                                               &ObjectRouter::write_,
-                                               static_cast<FastPathFun>(&LocalNode::write),
-                                               id,
-                                               buf,
-                                               &size,
-                                               off,
-                                               dtl_in_sync);
+                        decltype(size),
+                        decltype(off)>(cookie,
+                                       &ObjectRouter::write_,
+                                       static_cast<FastPathFun>(&LocalNode::write),
+                                       id,
+                                       buf,
+                                       size,
+                                       off);
 }
 
-FastPathCookie
+ObjectRouter::WriteResult
 ObjectRouter::write_(const ObjectId& id,
                      const uint8_t* buf,
-                     size_t* size,
-                     off_t off,
-                     vd::DtlInSync& dtl_in_sync)
+                     size_t size,
+                     off_t off)
 {
-    LOG_TRACE(id << ": size " << *size << ", off " << off);
+    LOG_TRACE(id << ": size " << size << ", off " << off);
 
-    auto pred([this, &dtl_in_sync](const ObjectId& id,
-                                   const ObjectType tp)
+    auto pred([this](const ClusterNode::WriteResult& wr,
+                     const ObjectId& id,
+                     const ObjectType tp) -> bool
               {
                   LOCK_REDIRECTS();
 
                   RedirectCounter& counter = redirects_[id];
-                  counter.dtl_in_sync = dtl_in_sync;
+                  counter.dtl_in_sync = wr.second;
 
                   return migrate_pred_helper_("write",
                                               id,
@@ -1090,23 +1107,17 @@ ObjectRouter::write_(const ObjectId& id,
                                               counter.writes);
               });
 
-    using WriteFun = void (ClusterNode::*)(const Object&,
-                                           const uint8_t*,
-                                           size_t*,
-                                           const off_t,
-                                           vd::DtlInSync&);
+    using WriteFun = ClusterNode::WriteFuture (ClusterNode::*)(const Object&,
+                                                               const uint8_t*,
+                                                               size_t,
+                                                               off_t);
 
-    return maybe_migrate_<decltype(pred),
-                          decltype(buf),
-                          decltype(size),
-                          decltype(off),
-                          vd::DtlInSync&>(std::move(pred),
-                                          static_cast<WriteFun>(&ClusterNode::write),
-                                          id,
-                                          buf,
-                                          size,
-                                          off,
-                                          dtl_in_sync);
+    return maybe_migrate_(std::move(pred),
+                          static_cast<WriteFun>(&ClusterNode::write),
+                          id,
+                          buf,
+                          size,
+                          off);
 }
 
 namespace
@@ -1132,47 +1143,53 @@ ObjectRouter::handle_write_(const vfsprotocol::WriteRequest& req,
     LOG_TRACE(obj << ": size " << req.size() << ", off " << req.offset());
 
     vd::DtlInSync dtl_in_sync = vd::DtlInSync::F;
-
     size_t size = req.size();
-    local_node_()->write(obj,
-                         reinterpret_cast<const uint8_t*>(data.data()),
-                         &size,
-                         req.offset(),
-                         dtl_in_sync);
+    std::tie(size, dtl_in_sync) =
+        local_node_()->write(obj,
+                             reinterpret_cast<const uint8_t*>(data.data()),
+                             size,
+                             req.offset()).get();
 
     const auto rsp(vfsprotocol::MessageUtils::create_write_response(size, dtl_in_sync));
     return ZUtils::serialize_to_message(rsp);
 }
 
-FastPathCookie
+ObjectRouter::ReadResult
 ObjectRouter::read(const FastPathCookie& cookie,
                    const ObjectId& id,
                    uint8_t* buf,
-                   size_t& size,
+                   size_t size,
                    off_t off)
 {
-    return select_path_<decltype(id),
+    using FastPathFun = ReadResult (LocalNode::*)(const FastPathCookie&,
+                                                  const ObjectId&,
+                                                  uint8_t*,
+                                                  size_t,
+                                                  off_t);
+    return select_path_<ReadResult,
+                        decltype(id),
                         decltype(buf),
-                        size_t*,
+                        decltype(size),
                         decltype(off)>(cookie,
                                        &ObjectRouter::read_,
-                                       &LocalNode::read,
+                                       static_cast<FastPathFun>(&LocalNode::read),
                                        id,
                                        buf,
-                                       &size,
+                                       size,
                                        off);
 }
 
-FastPathCookie
+ObjectRouter::ReadResult
 ObjectRouter::read_(const ObjectId& id,
                     uint8_t* buf,
-                    size_t* size,
+                    size_t size,
                     off_t off)
 {
     LOG_TRACE(id << ": size " << size << ", off " << off);
 
-    auto pred([this](const ObjectId& id,
-                     const ObjectType tp)
+    auto pred([this](const size_t,
+                     const ObjectId& id,
+                     const ObjectType tp) -> bool
               {
                   LOCK_REDIRECTS();
 
@@ -1217,10 +1234,10 @@ ObjectRouter::handle_read_(const vfsprotocol::ReadRequest& req)
 
     LOG_TRACE(obj << ": size " << size << ", off " << req.offset());
 
-    local_node_()->read(obj,
-                        rbuf.get(),
-                        &size,
-                        req.offset());
+    size = local_node_()->read(obj,
+                               rbuf.get(),
+                               size,
+                               req.offset()).get();
 
     zmq::message_t data(rbuf.get(), size, delete_read_buf);
     rbuf.release();
@@ -1228,43 +1245,36 @@ ObjectRouter::handle_read_(const vfsprotocol::ReadRequest& req)
     return data;
 }
 
-FastPathCookie
+ObjectRouter::SyncResult
 ObjectRouter::sync(const FastPathCookie& cookie,
-                   const ObjectId& id,
-                   vd::DtlInSync& dtl_in_sync)
+                   const ObjectId& id)
 {
-    FastPathCookie
-        fpc(select_path_<decltype(id),
-                         decltype(dtl_in_sync)>(cookie,
-                                                &ObjectRouter::sync_,
-                                                &LocalNode::sync,
-                                                id,
-                                                dtl_in_sync));
-    if (not fpc)
-    {
-        LOCK_REDIRECTS();
-        redirects_[id].dtl_in_sync = dtl_in_sync;
-    }
-
-    return fpc;
+    return select_path_<SyncResult,
+                        decltype(id)>(cookie,
+                                      &ObjectRouter::sync_,
+                                      &LocalNode::sync,
+                                      id);
 }
 
-FastPathCookie
-ObjectRouter::sync_(const ObjectId& id,
-                    vd::DtlInSync& dtl_in_sync)
+ObjectRouter::SyncResult
+ObjectRouter::sync_(const ObjectId& id)
 {
     LOG_TRACE(id);
 
-    FastPathCookie cookie;
+    auto pred([this](vd::DtlInSync dtl_in_sync,
+                     const ObjectId& id,
+                     const ObjectType) -> bool
+              {
+                  LOCK_REDIRECTS();
 
-    route_<void,
-           decltype(dtl_in_sync)>(&ClusterNode::sync,
-                                  AttemptTheft::T,
-                                  id,
-                                  cookie,
-                                  dtl_in_sync);
+                  RedirectCounter& counter = redirects_[id];
+                  counter.dtl_in_sync = dtl_in_sync;
+                  return false;
+              });
 
-    return cookie;
+    return maybe_migrate_(std::move(pred),
+                          &ClusterNode::sync,
+                          id);
 }
 
 zmq::message_t
@@ -1272,9 +1282,8 @@ ObjectRouter::handle_sync_(const vfsprotocol::SyncRequest& req)
 {
     const Object obj(obj_from_msg(req));
     LOG_TRACE(obj);
-    vd::DtlInSync dtl_in_sync = vd::DtlInSync::F;
-    local_node_()->sync(obj,
-                        dtl_in_sync);
+    vd::DtlInSync dtl_in_sync = local_node_()->sync(obj).get();
+
     const auto rsp(vfsprotocol::MessageUtils::create_sync_response(dtl_in_sync));
     return ZUtils::serialize_to_message(rsp);
 }

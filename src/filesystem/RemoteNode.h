@@ -58,35 +58,33 @@ public:
     RemoteNode&
     operator=(const RemoteNode&) = delete;
 
-    virtual void
+    virtual ClusterNode::ReadFuture
     read(const Object&,
          uint8_t* buf,
-         size_t* size,
+         size_t size,
          off_t off) override final;
 
-    virtual void
+    virtual ClusterNode::WriteFuture
     write(const Object&,
           const uint8_t* buf,
-          size_t* size,
-          off_t off,
-          volumedriver::DtlInSync&) override final;
+          size_t size,
+          off_t off) override final;
 
-    virtual void
-    sync(const Object&,
-         volumedriver::DtlInSync&) override final;
+    virtual ClusterNode::SyncFuture
+    sync(const Object&) override final;
 
     virtual uint64_t
     get_size(const Object&) override final;
 
     virtual volumedriver::ClusterMultiplier
-    get_cluster_multiplier(const Object& obj) override final;
+    get_cluster_multiplier(const Object&) override final;
 
     virtual volumedriver::CloneNamespaceMap
-    get_clone_namespace_map(const Object& obj) override final;
+    get_clone_namespace_map(const Object&) override final;
 
     virtual std::vector<volumedriver::ClusterLocation>
-    get_page(const Object& obj,
-             const volumedriver::ClusterAddress ca) override final;
+    get_page(const Object&,
+             const volumedriver::ClusterAddress) override final;
 
     virtual void
     resize(const Object&,

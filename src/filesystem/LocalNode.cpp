@@ -30,6 +30,7 @@
 
 #include <youtils/Assert.h>
 #include <youtils/Catchers.h>
+#include <youtils/InlineExecutor.h>
 #include <youtils/ScopeExit.h>
 #include <youtils/Timer.h>
 #include <youtils/IOException.h>
@@ -317,81 +318,95 @@ LocalNode::convert_fdriver_exceptions_(ReturnType (fd::ContainerManager::*mem_fu
     }
 }
 
-void
+ClusterNode::ReadFuture
 LocalNode::read(const Object& obj,
                 uint8_t* buf,
-                size_t* size,
+                size_t size,
                 off_t off)
 {
     tracepoint(openvstorage_filesystem,
 	       local_object_read_start,
 	       obj.id.str().c_str(),
 	       off,
-	       *size);
+	       size);
 
-    auto on_exit(yt::make_scope_exit([&]
-				     {
-				       tracepoint(openvstorage_filesystem,
-						  local_object_read_end,
-						  obj.id.str().c_str(),
-						  off,
-						  *size,
-						  std::uncaught_exception());
-				     }));
+    auto on_exc(yt::make_scope_exit_on_exception([&]
+                                                 {
+                                                     tracepoint(openvstorage_filesystem,
+                                                                local_object_read_end,
+                                                                obj.id.str().c_str(),
+                                                                off,
+                                                                size,
+                                                                true);
+                                                 }));
 
-    ASSERT(size);
+    ReadFuture rfuture;
 
     RWLockPtr l(get_lock_(obj.id));
     fungi::ScopedReadLock rg(*l);
 
     if (is_file(obj))
     {
-        *size = convert_fdriver_exceptions_<size_t,
-                                            off_t,
-                                            void*,
-                                            size_t>(&fd::ContainerManager::read,
-                                                    obj,
-                                                    off,
-                                                    buf,
-                                                    *size);
+        size = convert_fdriver_exceptions_<size_t,
+                                           off_t,
+                                           void*,
+                                           size_t>(&fd::ContainerManager::read,
+                                                   obj,
+                                                   off,
+                                                   buf,
+                                                   size);
+        rfuture = boost::make_ready_future(size);
     }
     else
     {
-        with_volume_pointer_<void,
-                             uint8_t*,
-                             size_t*,
-                             off_t>(&LocalNode::read_,
-                                    obj.id,
-                                    buf,
-                                    size,
-                                    off);
+        rfuture = with_volume_pointer_<ReadFuture,
+                                       uint8_t*,
+                                       size_t,
+                                       off_t>(&LocalNode::read_,
+                                              obj.id,
+                                              buf,
+                                              size,
+                                              off);
     }
+
+    // XXX: move the tracepoint into the previous continuation?
+    return rfuture.then(yt::InlineExecutor::get(),
+                        [id = obj.id,
+                         off,
+                         size](ReadFuture r) -> size_t
+                        {
+                            tracepoint(openvstorage_filesystem,
+                                       local_object_read_end,
+                                       id.str().c_str(),
+                                       off,
+                                       size,
+                                       r.has_exception());
+                            return r.get();
+                        });
 }
 
-FastPathCookie
+std::pair<FastPathCookie, ClusterNode::ReadFuture>
 LocalNode::read(const FastPathCookie& cookie,
                 const ObjectId& id,
                 uint8_t* buf,
-                size_t* size,
+                size_t size,
                 off_t off)
 {
-    ASSERT(size);
-
     tracepoint(openvstorage_filesystem,
 	       local_object_read_start,
 	       id.str().c_str(),
 	       off,
-	       *size);
+	       size);
 
-    auto on_exit(yt::make_scope_exit([&]
-				     {
-				       tracepoint(openvstorage_filesystem,
-						  local_object_read_end,
-						  id.str().c_str(),
-						  off,
-						  *size,
-						  std::uncaught_exception());
-				     }));
+    auto on_exc(yt::make_scope_exit_on_exception([&]
+                                                 {
+                                                     tracepoint(openvstorage_filesystem,
+                                                                local_object_read_end,
+                                                                id.str().c_str(),
+                                                                off,
+                                                                size,
+                                                                true);
+                                                 }));
 
     RWLockPtr l(get_lock_(id));
     fungi::ScopedReadLock rg(*l);
@@ -400,12 +415,25 @@ LocalNode::read(const FastPathCookie& cookie,
 
     if (vol != nullptr)
     {
-        read_(vol,
-              buf,
-              size,
-              off);
+        ReadFuture rf(read_(vol,
+                            buf,
+                            size,
+                            off).then(yt::InlineExecutor::get(),
+                                      [id,
+                                       off,
+                                       size](ReadFuture r) -> size_t
+                                      {
+                                          tracepoint(openvstorage_filesystem,
+                                                     local_object_read_end,
+                                                     id.str().c_str(),
+                                                     off,
+                                                     size,
+                                                     r.has_exception());
+                                          return r.get();
+                                      }));
 
-        return cookie;
+        return std::make_pair(std::move(cookie),
+                              std::move(rf));
     }
     else
     {
@@ -414,42 +442,48 @@ LocalNode::read(const FastPathCookie& cookie,
     }
 }
 
-void
+ClusterNode::ReadFuture
 LocalNode::read_(vd::WeakVolumePtr vol,
                  uint8_t* buf,
-                 size_t* size,
+                 size_t size,
                  const off_t off)
 {
+    size_t to_read = 0;
     const uint64_t volume_size = api::GetSize(vol);
-    if (off >= static_cast<decltype(off)>(volume_size))
+    if (off < static_cast<decltype(off)>(volume_size))
     {
-        *size = 0;
-        return;
+        to_read = std::min(volume_size - off,
+                           size);
+
+        using Future = boost::future<void>;
+        using Reader = Future (*)(vd::WeakVolumePtr,
+                                  const uint64_t,
+                                  uint8_t*,
+                                  uint64_t);
+
+        return maybe_retry_<Future>(static_cast<Reader>(&api::async_read),
+                                    vol,
+                                    static_cast<const uint64_t>(off),
+                                    buf,
+                                    to_read)
+            .then(yt::InlineExecutor::get(),
+                  [to_read](Future f) -> size_t
+                  {
+                      f.get();
+                      return to_read;
+                  });
     }
-
-    const uint64_t to_read = std::min(volume_size - off,
-                                      *size);
-
-    using Reader = void (*)(vd::WeakVolumePtr,
-                            const uint64_t,
-                            uint8_t*,
-                            uint64_t);
-
-    maybe_retry_<void>(static_cast<Reader>(&api::Read),
-                       vol,
-                       static_cast<const uint64_t>(off),
-                       buf,
-                       to_read);
-
-    *size = to_read;
+    else
+    {
+        return boost::make_ready_future(to_read);
+    }
 }
 
-void
+ClusterNode::WriteFuture
 LocalNode::write(const Object& obj,
                  const uint8_t* buf,
-                 size_t* size,
-                 off_t off,
-                 vd::DtlInSync& dtl_in_sync)
+                 size_t size,
+                 off_t off)
 {
     ASSERT(size);
 
@@ -457,56 +491,71 @@ LocalNode::write(const Object& obj,
 	       local_object_write_start,
 	       obj.id.str().c_str(),
 	       off,
-	       *size);
+	       size);
 
-    auto on_exit(yt::make_scope_exit([&]
-				     {
-				       tracepoint(openvstorage_filesystem,
-						  local_object_write_end,
-						  obj.id.str().c_str(),
-						  off,
-						  *size,
-						  std::uncaught_exception());
-				     }));
+    auto on_exc(yt::make_scope_exit_on_exception([&]
+                                                 {
+                                                     tracepoint(openvstorage_filesystem,
+                                                                local_object_write_end,
+                                                                obj.id.str().c_str(),
+                                                                off,
+                                                                size,
+                                                                true);
+                                                 }));
+
+    WriteFuture wfuture;
 
     RWLockPtr l(get_lock_(obj.id));
 
     if (is_file(obj))
     {
         fungi::ScopedReadLock rg(*l);
-        *size = convert_fdriver_exceptions_<size_t,
+        size = convert_fdriver_exceptions_<size_t,
                                             off_t,
                                             const void*,
                                             size_t>(&fd::ContainerManager::write,
                                                     obj,
                                                     off,
                                                     buf,
-                                                    *size);
-        dtl_in_sync = vd::DtlInSync::T;
+                                                    size);
+        wfuture = boost::make_ready_future(std::make_pair(size,
+                                                          vd::DtlInSync::T));
     }
     else
     {
         fungi::ScopedReadLock rg(*l);
-        with_volume_pointer_<void,
-                             const uint8_t*,
-                             size_t,
-                             off_t,
-                             vd::DtlInSync&>(&LocalNode::write_,
-                                             obj.id,
-                                             buf,
-                                             *size,
-                                             off,
-                                             dtl_in_sync);
+        wfuture = with_volume_pointer_<WriteFuture,
+                                       const uint8_t*,
+                                       size_t,
+                                       off_t>(&LocalNode::write_,
+                                              obj.id,
+                                              buf,
+                                              size,
+                                              off);
     }
+
+    // XXX: move the tracepoint into the previous continuation?
+    return wfuture.then(yt::InlineExecutor::get(),
+                        [id = obj.id,
+                         off,
+                         size](WriteFuture f) -> WriteResult
+                        {
+                            tracepoint(openvstorage_filesystem,
+                                       local_object_write_end,
+                                       id.str().c_str(),
+                                       off,
+                                       size,
+                                       f.has_exception());
+                            return f.get();
+                        });
 }
 
-FastPathCookie
+std::pair<FastPathCookie, ClusterNode::WriteFuture>
 LocalNode::write(const FastPathCookie& cookie,
                  const ObjectId& id,
                  const uint8_t* buf,
-                 size_t* size,
-                 off_t off,
-                 vd::DtlInSync& dtl_in_sync)
+                 size_t size,
+                 off_t off)
 {
     ASSERT(size);
 
@@ -514,46 +563,60 @@ LocalNode::write(const FastPathCookie& cookie,
 	       local_object_write_start,
 	       id.str().c_str(),
 	       off,
-	       *size);
+	       size);
 
-    auto on_exit(yt::make_scope_exit([&]
-				     {
-				       tracepoint(openvstorage_filesystem,
-						  local_object_write_end,
-						  id.str().c_str(),
-						  off,
-						  *size,
-						  std::uncaught_exception());
-				     }));
+    auto on_exc(yt::make_scope_exit_on_exception([&]
+                                                 {
+                                                     tracepoint(openvstorage_filesystem,
+                                                                local_object_write_end,
+                                                                id.str().c_str(),
+                                                                off,
+                                                                size,
+                                                                true);
+                                                 }));
+
+    WriteFuture wf;
+    FastPathCookie ck;
 
     RWLockPtr l(get_lock_(id));
-
     fungi::ScopedReadLock rg(*l);
-    return write_(cookie,
-                  id,
-                  buf,
-                  size,
-                  off,
-                  dtl_in_sync);
+    std::tie(ck, wf) = write_(cookie,
+                              id,
+                              buf,
+                              size,
+                              off);
+
+    return std::make_pair(ck,
+                          wf.then(yt::InlineExecutor::get(),
+                                  [id,
+                                   off,
+                                   size](WriteFuture f) -> WriteResult
+                                  {
+                                      tracepoint(openvstorage_filesystem,
+                                                 local_object_write_end,
+                                                 id.str().c_str(),
+                                                 off,
+                                                 size,
+                                                 f.has_exception());
+                                      return f.get();
+                                  }));
 }
 
-FastPathCookie
+std::pair<FastPathCookie, ClusterNode::WriteFuture>
 LocalNode::write_(const FastPathCookie& cookie,
                   const ObjectId& id,
                   const uint8_t* buf,
-                  size_t* size,
-                  off_t off,
-                  vd::DtlInSync& dtl_in_sync)
+                  size_t size,
+                  off_t off)
 {
     vd::SharedVolumePtr vol(cookie->volume.lock());
     if (vol != nullptr)
     {
-        write_(vol,
-               buf,
-               *size,
-               off,
-               dtl_in_sync);
-        return cookie;
+        return std::make_pair(cookie,
+                              write_(vol,
+                                     buf,
+                                     size,
+                                     off));
     }
     else
     {
@@ -562,40 +625,47 @@ LocalNode::write_(const FastPathCookie& cookie,
     }
 }
 
-void
+ClusterNode::WriteFuture
 LocalNode::write_(vd::WeakVolumePtr vol,
                   const uint8_t* buf,
                   const size_t size,
-                  const off_t off,
-                  vd::DtlInSync& dtl_in_sync)
+                  const off_t off)
 {
-    using Writer = vd::DtlInSync (*)(vd::WeakVolumePtr,
-                                     const uint64_t,
-                                     const uint8_t*,
-                                     uint64_t);
+    using Future = boost::future<vd::DtlInSync>;
+    using Writer = Future (*)(vd::WeakVolumePtr,
+                               const uint64_t,
+                               const uint8_t*,
+                               uint64_t);
 
-    dtl_in_sync = maybe_retry_<vd::DtlInSync>(static_cast<Writer>(&api::Write),
-                                              vol,
-                                              static_cast<const uint64_t>(off),
-                                              buf,
-                                              size);
+    Future df(maybe_retry_<Future>(static_cast<Writer>(&api::async_write),
+                                   vol,
+                                   static_cast<const uint64_t>(off),
+                                   buf,
+                                   size));
+
+    return df.then(yt::InlineExecutor::get(),
+                   [size](Future f) -> WriteResult
+                   {
+                       return std::make_pair(size, f.get());
+                   });
 }
 
-void
-LocalNode::sync(const Object& obj,
-                vd::DtlInSync& dtl_in_sync)
+ClusterNode::SyncFuture
+LocalNode::sync(const Object& obj)
 {
     tracepoint(openvstorage_filesystem,
 	       local_object_sync_start,
 	       obj.id.str().c_str());
 
-    auto on_exit(yt::make_scope_exit([&]
-				     {
-				       tracepoint(openvstorage_filesystem,
-						  local_object_sync_end,
-						  obj.id.str().c_str(),
-						  std::uncaught_exception());
-				     }));
+    auto on_exception(yt::make_scope_exit_on_exception([&]
+                                                       {
+                                                           tracepoint(openvstorage_filesystem,
+                                                                      local_object_sync_end,
+                                                                      obj.id.str().c_str(),
+                                                                      1);
+                                                       }));
+
+    SyncFuture dtl_in_sync;
 
     RWLockPtr l(get_lock_(obj.id));
     fungi::ScopedReadLock rg(*l);
@@ -604,45 +674,58 @@ LocalNode::sync(const Object& obj,
     {
         convert_fdriver_exceptions_<void>(&fd::ContainerManager::sync,
                                           obj);
-        dtl_in_sync = vd::DtlInSync::T;
+        dtl_in_sync = boost::make_ready_future(vd::DtlInSync::T);
     }
     else
     {
-        with_volume_pointer_<void,
-                             vd::DtlInSync&>(&LocalNode::sync_,
-                                             obj.id,
-                                             dtl_in_sync);
+        dtl_in_sync = with_volume_pointer_<SyncFuture>(&LocalNode::sync_,
+                                                       obj.id);
     }
+
+    return dtl_in_sync.then(yt::InlineExecutor::get(),
+                            [id = obj.id](SyncFuture sf) -> vd::DtlInSync
+                            {
+                                tracepoint(openvstorage_filesystem,
+                                           local_object_sync_end,
+                                           id.str().c_str(),
+                                           sf.has_exception());
+                                return sf.get();
+                            });
 }
 
-FastPathCookie
+std::pair<FastPathCookie, ClusterNode::SyncFuture>
 LocalNode::sync(const FastPathCookie& cookie,
-                const ObjectId& id,
-                vd::DtlInSync& dtl_in_sync)
+                const ObjectId& id)
 {
     tracepoint(openvstorage_filesystem,
 	       local_object_sync_start,
 	       id.str().c_str());
 
-    auto on_exit(yt::make_scope_exit([&]
-				     {
-				       tracepoint(openvstorage_filesystem,
-						  local_object_sync_end,
-						  id.str().c_str(),
-						  std::uncaught_exception());
-				     }));
+    auto on_exc(yt::make_scope_exit_on_exception([&]
+                                                 {
+                                                     tracepoint(openvstorage_filesystem,
+                                                                local_object_sync_end,
+                                                                id.str().c_str(),
+                                                                true);
+                                                 }));
 
     RWLockPtr l(get_lock_(id));
     fungi::ScopedReadLock rg(*l);
 
     vd::SharedVolumePtr vol(cookie->volume.lock());
-
     if (vol != nullptr)
     {
-        sync_(vol,
-              dtl_in_sync);
-
-        return cookie;
+        SyncFuture sf(api::async_flush(vol));
+        return std::make_pair(cookie,
+                              sf.then(yt::InlineExecutor::get(),
+                                      [id](SyncFuture f) -> vd::DtlInSync
+                                      {
+                                          tracepoint(openvstorage_filesystem,
+                                                     local_object_sync_end,
+                                                     id.str().c_str(),
+                                                     f.has_exception());
+                                          return f.get();
+                                      }));
     }
     else
     {
@@ -651,11 +734,10 @@ LocalNode::sync(const FastPathCookie& cookie,
     }
 }
 
-void
-LocalNode::sync_(vd::WeakVolumePtr vol,
-                 vd::DtlInSync& dtl_in_sync)
+ClusterNode::SyncFuture
+LocalNode::sync_(vd::WeakVolumePtr vol)
 {
-    dtl_in_sync = api::Sync(vol);
+    return api::async_flush(vol);
 }
 
 uint64_t
@@ -1330,26 +1412,22 @@ LocalNode::vaai_filecopy(const ObjectId& src_id,
     const Object dst_obj(ObjectType::File,
                          dst_id);
     uint64_t bytes_to_copy = get_size(src_obj);
-    size_t buf_size = 1024;
+
+    // XXX: use a bigger buffer
+    std::vector<uint8_t> buf(4096);
     off_t offset = 0;
+
     while (bytes_to_copy > 0)
     {
-        uint8_t buf[buf_size];
-        size_t read_size = buf_size;
+        const size_t read_size = read(src_obj,
+                                      buf.data(),
+                                      buf.size(),
+                                      offset).get();
 
-        read(src_obj,
-             buf,
-             &read_size,
-             offset);
-
-        vd::DtlInSync dtl_in_sync = vd::DtlInSync::F;
-
-        size_t write_size = read_size;
-        write(dst_obj,
-              buf,
-              &write_size,
-              offset,
-              dtl_in_sync);
+        const size_t write_size = write(dst_obj,
+                                        buf.data(),
+                                        read_size,
+                                        offset).get().first;
         if (write_size != read_size)
         {
             throw fungi::IOException("Couldn't write whole buffer");
