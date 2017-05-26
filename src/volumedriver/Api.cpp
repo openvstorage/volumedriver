@@ -90,48 +90,48 @@ api::updateMetaDataBackendConfig(const vd::VolumeId& volume_id,
                                 mdb);
 }
 
-vd::DtlInSync
-api::Write(WeakVolumePtr vol,
-           const vd::Lba lba,
-           const uint8_t* buf,
-           const uint64_t buflen)
+boost::future<vd::DtlInSync>
+api::async_write(WeakVolumePtr vol,
+                 const Lba lba,
+                 const uint8_t* buf,
+                 const uint64_t buflen)
 {
-    return SharedVolumePtr(vol)->write(lba,
-                                       buf,
-                                       buflen);
+    return SharedVolumePtr(vol)->async_write(lba,
+                                             buf,
+                                             buflen);
 }
 
-vd::DtlInSync
-api::Write(WeakVolumePtr vol,
-           const uint64_t off,
-           const uint8_t* buf,
-           const uint64_t buflen)
+boost::future<vd::DtlInSync>
+api::async_write(WeakVolumePtr vol,
+                 const uint64_t off,
+                 const uint8_t* buf,
+                 const uint64_t buflen)
 {
-    return SharedVolumePtr(vol)->write(off,
-                                       buf,
-                                       buflen);
+    return SharedVolumePtr(vol)->async_write(off,
+                                             buf,
+                                             buflen);
 }
 
-void
-api::Read(WeakVolumePtr vol,
-          const vd::Lba lba,
-          uint8_t* buf,
-          const uint64_t buflen)
+boost::future<void>
+api::async_read(WeakVolumePtr vol,
+                const Lba lba,
+                uint8_t* buf,
+                const uint64_t buflen)
 {
-    SharedVolumePtr(vol)->read(lba,
-                               buf,
-                               buflen);
+    return SharedVolumePtr(vol)->async_read(lba,
+                                            buf,
+                                            buflen);
 }
 
-void
-api::Read(WeakVolumePtr vol,
-          const uint64_t off,
-          uint8_t* buf,
-          const uint64_t buflen)
+boost::future<void>
+api::async_read(WeakVolumePtr vol,
+                const uint64_t off,
+                uint8_t* buf,
+                const uint64_t buflen)
 {
-    SharedVolumePtr(vol)->read(off,
-                               buf,
-                               buflen);
+    return SharedVolumePtr(vol)->async_read(off,
+                                            buf,
+                                            buflen);
 }
 
 void
@@ -146,10 +146,10 @@ api::Write(WriteOnlyVolume* vol,
                buflen);
 }
 
-vd::DtlInSync
-api::Sync(vd::WeakVolumePtr vol)
+boost::future<vd::DtlInSync>
+api::async_flush(vd::WeakVolumePtr vol)
 {
-    return SharedVolumePtr(vol)->sync();
+    return SharedVolumePtr(vol)->async_flush();
 }
 
 uint64_t

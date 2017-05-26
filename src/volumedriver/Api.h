@@ -111,16 +111,40 @@ public:
     getVolumeId(volumedriver::WeakVolumePtr);
 
     static volumedriver::DtlInSync
-    Write(volumedriver::WeakVolumePtr,
-          const volumedriver::Lba,
+    Write(volumedriver::WeakVolumePtr vol,
+          const volumedriver::Lba lba,
           const uint8_t *buf,
-          uint64_t buflen);
+          uint64_t buflen)
+    {
+        return async_write(vol,
+                           lba,
+                           buf,
+                           buflen).get();
+    }
 
     static volumedriver::DtlInSync
-    Write(volumedriver::WeakVolumePtr,
+    Write(volumedriver::WeakVolumePtr vol,
           const uint64_t off,
           const uint8_t* buf,
-          uint64_t buflen);
+          uint64_t buflen)
+    {
+        return async_write(vol,
+                           off,
+                           buf,
+                           buflen).get();
+    }
+
+    static boost::future<volumedriver::DtlInSync>
+    async_write(volumedriver::WeakVolumePtr,
+                const volumedriver::Lba,
+                const uint8_t* buf,
+                size_t buflen);
+
+    static boost::future<volumedriver::DtlInSync>
+    async_write(volumedriver::WeakVolumePtr,
+                const uint64_t off,
+                const uint8_t* buf,
+                size_t buflen);
 
     static void
     Write(volumedriver::WriteOnlyVolume*,
@@ -130,18 +154,48 @@ public:
 
     static void
     Read(volumedriver::WeakVolumePtr vol,
-         const volumedriver::Lba,
+         const volumedriver::Lba lba,
          uint8_t *buf,
-         const uint64_t buflen);
+         const uint64_t buflen)
+    {
+        async_read(vol,
+                   lba,
+                   buf,
+                   buflen).get();
+    }
 
     static void
     Read(volumedriver::WeakVolumePtr vol,
          const uint64_t off,
          uint8_t *buf,
-         const uint64_t buflen);
+         const uint64_t buflen)
+    {
+        async_read(vol,
+                   off,
+                   buf,
+                   buflen).get();
+    }
+
+    static boost::future<void>
+    async_read(volumedriver::WeakVolumePtr,
+               const volumedriver::Lba,
+               uint8_t *buf,
+               const uint64_t buflen);
+
+    static boost::future<void>
+    async_read(volumedriver::WeakVolumePtr,
+               const uint64_t off,
+               uint8_t *buf,
+               const uint64_t buflen);
 
     static volumedriver::DtlInSync
-    Sync(volumedriver::WeakVolumePtr);
+    Sync(volumedriver::WeakVolumePtr vol)
+    {
+        return async_flush(vol).get();
+    }
+
+    static boost::future<volumedriver::DtlInSync>
+    async_flush(volumedriver::WeakVolumePtr);
 
     static void
     Resize(volumedriver::WeakVolumePtr,

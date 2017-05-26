@@ -56,6 +56,7 @@
 #include <youtils/Assert.h>
 #include <youtils/Catchers.h>
 #include <youtils/FileUtils.h>
+#include <youtils/InlineExecutor.h>
 #include <youtils/IOException.h>
 #include <youtils/MainEvent.h>
 #include <youtils/ScopeExit.h>
@@ -809,20 +810,10 @@ Volume::writeClustersToFailOverCache_(const std::vector<ClusterLocation>& locs,
     return dtl_in_sync;
 }
 
-DtlInSync
-Volume::write(const Lba lba,
-              const uint8_t *buf,
-              uint64_t buflen)
-{
-    return write(lba.t * getLBASize(),
-                 buf,
-                 buflen);
-}
-
-DtlInSync
-Volume::write(const uint64_t off,
-              const uint8_t *buf,
-              uint64_t len)
+boost::future<DtlInSync>
+Volume::async_write(const uint64_t off,
+                    const uint8_t *buf,
+                    uint64_t len)
 {
     tracepoint(openvstorage_volumedriver,
                volume_write_start,
@@ -830,15 +821,15 @@ Volume::write(const uint64_t off,
                off,
                len);
 
-    auto on_exit(yt::make_scope_exit([&]
-                                     {
-                                         tracepoint(openvstorage_volumedriver,
-                                                    volume_write_end,
-                                                    config_.id_.str().c_str(),
-                                                    off,
-                                                    len,
-                                                    std::uncaught_exception());
-                                     }));
+    auto on_exc(yt::make_scope_exit_on_exception([&]
+                                                 {
+                                                     tracepoint(openvstorage_volumedriver,
+                                                                volume_write_end,
+                                                                config_.id_.str().c_str(),
+                                                                off,
+                                                                len,
+                                                                1);
+                                                 }));
 
     LOG_VTRACE("off " << off << ", len " << len);
 
@@ -846,7 +837,7 @@ Volume::write(const uint64_t off,
 
     if (VolManager::get()->volume_nullio.value())
     {
-        return DtlInSync::T;
+        return boost::make_ready_future(DtlInSync::T);
     }
 
     yt::SteadyTimer t;
@@ -866,7 +857,8 @@ Volume::write(const uint64_t off,
     const size_t nclusters = (coff + len) / clusterSize_ + (((coff + len) % clusterSize_) ? 1 : 0);
     const uint64_t aligned_len = nclusters * clusterSize_;
     const uint64_t aligned_off = ca * clusterSize_;
-    DtlInSync dtl_in_sync = DtlInSync::F;
+
+    boost::future<DtlInSync> dtl_in_sync;
 
     if (aligned_off != off or
         aligned_len != len)
@@ -905,10 +897,23 @@ Volume::write(const uint64_t off,
     const auto duration_us(bc::duration_cast<bc::microseconds>(t.elapsed()));
     performance_counters().write_request_usecs.count(duration_us.count());
 
-    return dtl_in_sync;
+    return dtl_in_sync.then(yt::InlineExecutor::get(),
+                            [id = config_.id_,
+                             len,
+                             off](boost::future<DtlInSync> dtl_in_sync) -> DtlInSync
+                            {
+                                tracepoint(openvstorage_volumedriver,
+                                           volume_write_end,
+                                           id.str().c_str(),
+                                           off,
+                                           len,
+                                           dtl_in_sync.has_exception());
+
+                                return dtl_in_sync.get();
+                            });
 }
 
-DtlInSync
+boost::future<DtlInSync>
 Volume::write_aligned_(const uint64_t off,
                        const uint8_t* buf,
                        uint64_t len)
@@ -962,7 +967,7 @@ Volume::write_aligned_(const uint64_t off,
     VERIFY(write_off == len);
     VERIFY(write_len == 0);
 
-    return dtl_in_sync;
+    return boost::make_ready_future(dtl_in_sync);
 }
 
 namespace
@@ -1081,20 +1086,10 @@ Volume::writeClusters_(uint64_t addr,
     return dtl_in_sync;
 }
 
-void
-Volume::read(const Lba lba,
-             uint8_t *buf,
-             uint64_t buflen)
-{
-    read(lba.t * getLBASize(),
-         buf,
-         buflen);
-}
-
-void
-Volume::read(const uint64_t off,
-             uint8_t *buf,
-             uint64_t len)
+boost::future<void>
+Volume::async_read(const uint64_t off,
+                   uint8_t *buf,
+                   uint64_t len)
 {
     tracepoint(openvstorage_volumedriver,
                volume_read_start,
@@ -1118,7 +1113,7 @@ Volume::read(const uint64_t off,
 
     if (VolManager::get()->volume_nullio.value())
     {
-        return;
+        return boost::make_ready_future();
     }
 
     yt::SteadyTimer t;
@@ -1166,6 +1161,8 @@ Volume::read(const uint64_t off,
 
     const auto duration_us(bc::duration_cast<bc::microseconds>(t.elapsed()));
     performance_counters().read_request_usecs.count(duration_us.count());
+
+    return boost::make_ready_future();
 }
 
 void
@@ -2503,24 +2500,24 @@ Volume::setFOCTimeout(const boost::chrono::seconds timeout)
     failover_->setRequestTimeout(timeout);
 }
 
-DtlInSync
-Volume::sync()
+boost::future<DtlInSync>
+Volume::async_flush()
 {
     tracepoint(openvstorage_volumedriver,
                volume_sync_start,
                config_.id_.str().c_str());
 
-    auto on_exit(yt::make_scope_exit([&]
-                                     {
-                                         tracepoint(openvstorage_volumedriver,
-                                                    volume_sync_end,
-                                                    config_.id_.str().c_str(),
-                                                    std::uncaught_exception());
-                                     }));
+    auto on_exception(yt::make_scope_exit_on_exception([&]
+                                                       {
+                                                           tracepoint(openvstorage_volumedriver,
+                                                                      volume_sync_end,
+                                                                      config_.id_.str().c_str(),
+                                                                      true);
+                                                       }));
 
     if (VolManager::get()->volume_nullio.value())
     {
-        return DtlInSync::T;
+        return boost::make_ready_future(DtlInSync::T);
     }
 
     yt::SteadyTimer t;
@@ -2532,7 +2529,7 @@ Volume::sync()
 
     ++total_number_of_syncs_;
 
-    DtlInSync dtl_in_sync = DtlInSync::F;
+    boost::future<DtlInSync> dtl_in_sync;
 
     if((++number_of_syncs_ > number_of_syncs_to_ignore) or
        (sync_wall_timer_.elapsed_in_seconds() > maximum_time_to_ignore_syncs_in_seconds))
@@ -2541,14 +2538,27 @@ Volume::sync()
         sync_wall_timer_.restart();
         dtl_in_sync = sync_(AppendCheckSum::F);
     }
+    else
+    {
+        dtl_in_sync = boost::make_ready_future(DtlInSync::T);
+    }
 
     const auto duration_us(bc::duration_cast<bc::microseconds>(t.elapsed()));
     performance_counters().sync_request_usecs.count(duration_us.count());
 
-    return dtl_in_sync;
+    return dtl_in_sync.then(yt::InlineExecutor::get(),
+                            [id = config_.id_](boost::future<DtlInSync> dtl_in_sync) -> DtlInSync
+                            {
+                                tracepoint(openvstorage_volumedriver,
+                                           volume_sync_end,
+                                           id.str().c_str(),
+                                           dtl_in_sync.has_exception());
+
+                                return dtl_in_sync.get();
+                            });
 }
 
-DtlInSync
+boost::future<DtlInSync>
 Volume::sync_(AppendCheckSum append_chksum)
 {
     ASSERT_WLOCKED();
@@ -2569,11 +2579,11 @@ Volume::sync_(AppendCheckSum append_chksum)
     if (failover_->backup() and
         getVolumeFailOverState() == VolumeFailOverState::OK_SYNC)
     {
-        return DtlInSync::T;
+        return boost::make_ready_future(DtlInSync::T);
     }
     else
     {
-        return DtlInSync::F;
+        return boost::make_ready_future(DtlInSync::F);
     }
 }
 

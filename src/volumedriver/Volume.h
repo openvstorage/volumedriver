@@ -162,29 +162,65 @@ public:
 
     /** @exception IOException, MetaDataStoreException */
     DtlInSync
-    write(const Lba,
+    write(const Lba lba,
           const uint8_t *buf,
-          uint64_t len);
+          uint64_t len)
+    {
+        return async_write(lba.t * getLBASize(),
+                           buf,
+                           len).get();
+    }
 
     DtlInSync
     write(const uint64_t off,
           const uint8_t *buf,
-          uint64_t len);
+          uint64_t len)
+    {
+        return async_write(off,
+                           buf,
+                           len).get();
+    }
 
-   /** @exception IOException, MetaDataStoreException */
+    boost::future<DtlInSync>
+    async_write(const uint64_t off,
+                const uint8_t *buf,
+                uint64_t len);
+
+    /** @exception IOException, MetaDataStoreException */
     void
-    read(const Lba,
+    read(const Lba lba,
          uint8_t *buf,
-         uint64_t len);
+         uint64_t len)
+    {
+        async_read(lba.t * getLBASize(),
+                   buf,
+                   len).get();
+    }
 
     void
     read(const uint64_t off,
          uint8_t *buf,
-         uint64_t len);
+         uint64_t len)
+    {
+        async_read(off,
+                   buf,
+                   len).get();
+    }
+
+    boost::future<void>
+    async_read(const uint64_t off,
+               uint8_t *buf,
+               uint64_t len);
 
     /** @exception IOException */
+    boost::future<DtlInSync>
+    async_flush();
+
     DtlInSync
-    sync();
+    sync()
+    {
+        return async_flush().get();
+    }
 
     void
     resize(uint64_t clusters);
@@ -683,7 +719,7 @@ private:
     void
     writeFailOverCacheConfigToBackend_();
 
-    DtlInSync
+    boost::future<DtlInSync>
     sync_(AppendCheckSum append_chksum);
 
     void
@@ -765,7 +801,7 @@ private:
     PrefetchData&
     get_prefetch_data_();
 
-    DtlInSync
+    boost::future<DtlInSync>
     write_aligned_(const uint64_t off,
                    const uint8_t *buf,
                    uint64_t len);
