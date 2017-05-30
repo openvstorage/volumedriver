@@ -22,6 +22,7 @@
 
 #include <youtils/Assert.h>
 #include <youtils/Catchers.h>
+#include <youtils/InlineExecutor.h>
 #include <youtils/SocketAddress.h>
 #include <youtils/SourceOfUncertainty.h>
 
@@ -226,7 +227,7 @@ NetworkXioIOHandler::handle_close(NetworkXioRequest *req)
     pack_ctrl_msg(req);
 }
 
-void
+boost::future<NetworkXioRequest&>
 NetworkXioIOHandler::handle_read(NetworkXioRequest *req,
                                  size_t size,
                                  uint64_t offset)
@@ -237,7 +238,7 @@ NetworkXioIOHandler::handle_read(NetworkXioRequest *req,
         req->retval = -1;
         req->errval = EIO;
         pack_msg(req);
-        return;
+        return boost::make_ready_future<NetworkXioRequest&>(*req);
     }
 
     slab_mem_block *block = req->cd->mpool->alloc(size);
@@ -248,7 +249,7 @@ NetworkXioIOHandler::handle_read(NetworkXioRequest *req,
         req->retval = -1;
         req->errval = ENOMEM;
         pack_msg(req);
-        return;
+        return boost::make_ready_future<NetworkXioRequest&>(*req);
     }
 
     req->from_pool = true;
@@ -257,24 +258,42 @@ NetworkXioIOHandler::handle_read(NetworkXioRequest *req,
     req->data_len = size;
     req->size = size;
     req->offset = offset;
+
     try
     {
-       req->size = fs_.async_read(*handle_,
-                                  req->size,
-                                  static_cast<char*>(req->data),
-                                  req->offset).get();
-       req->retval = req->size;
-       req->errval = 0;
+        return fs_.async_read(*handle_,
+                              req->size,
+                              static_cast<char*>(req->data),
+                              req->offset)
+            .then(yt::InlineExecutor::get(),
+                  [req,
+                   this](boost::future<size_t> f) -> NetworkXioRequest&
+                  {
+                      try
+                      {
+                          req->size = f.get();
+                          req->retval = req->size;
+                          req->errval = 0;
+                      }
+                      CATCH_STD_ALL_EWHAT({
+                              LOG_ERROR("callback reported read I/O error: " << EWHAT);
+                              req->retval = -1;
+                              req->errval = EIO;
+                          });
+                      pack_msg(req);
+                      return *req;
+                  });
     }
     CATCH_STD_ALL_EWHAT({
        LOG_ERROR("read I/O error: " << EWHAT);
        req->retval = -1;
        req->errval = EIO;
+       pack_msg(req);
+       return boost::make_ready_future<NetworkXioRequest&>(*req);
     });
-    pack_msg(req);
 }
 
-void
+boost::future<NetworkXioRequest&>
 NetworkXioIOHandler::handle_write(NetworkXioRequest *req,
                                   size_t size,
                                   uint64_t offset)
@@ -287,7 +306,7 @@ NetworkXioIOHandler::handle_write(NetworkXioRequest *req,
         req->retval = -1;
         req->errval = EIO;
         pack_msg(req);
-        return;
+        return boost::make_ready_future<NetworkXioRequest&>(*req);
     }
 
     xio_msg *xio_req = req->xio_req;
@@ -305,7 +324,7 @@ NetworkXioIOHandler::handle_write(NetworkXioRequest *req,
         req->retval = -1;
         req->errval = EIO;
         pack_msg(req);
-        return;
+        return boost::make_ready_future<NetworkXioRequest&>(*req);
     }
 
     if (data_len < size)
@@ -315,7 +334,7 @@ NetworkXioIOHandler::handle_write(NetworkXioRequest *req,
        req->retval = -1;
        req->errval = EIO;
        pack_msg(req);
-       return;
+       return boost::make_ready_future<NetworkXioRequest&>(*req);
     }
 
     req->size = size;
@@ -323,14 +342,37 @@ NetworkXioIOHandler::handle_write(NetworkXioRequest *req,
 
     try
     {
-        vd::DtlInSync dtl_in_sync;
-        std::tie(req->size, dtl_in_sync) = fs_.async_write(*handle_,
-                                                           req->size,
-                                                           static_cast<char*>(data),
-                                                           req->offset).get();
-        req->dtl_in_sync = (dtl_in_sync == vd::DtlInSync::T) ? true : false;
-        req->retval = req->size;
-        req->errval = 0;
+        return fs_.async_write(*handle_,
+                               req->size,
+                               static_cast<char*>(data),
+                               req->offset)
+            .then(yt::InlineExecutor::get(),
+                  [req,
+                   this](boost::future<FileSystem::WriteResult> f) -> NetworkXioRequest&
+                  {
+                      try
+                      {
+                          vd::DtlInSync dtl_in_sync;
+                          std::tie(req->size, dtl_in_sync) = f.get();
+                          req->dtl_in_sync = (dtl_in_sync == vd::DtlInSync::T) ? true : false;
+                          req->retval = req->size;
+                          req->errval = 0;
+                      }
+                      catch (const vd::AccessBeyondEndOfVolumeException& e)
+                      {
+                          LOG_ERROR("callback reported write I/O error: " << e.what());
+                          req->retval = -1;
+                          req->errval = EFBIG;
+                      }
+                      CATCH_STD_ALL_EWHAT({
+                              LOG_ERROR("callback reported write I/O error: " << EWHAT);
+                              req->retval = -1;
+                              req->errval = EIO;
+                          });
+
+                      pack_msg(req);
+                      return *req;
+                  });
     }
     catch (const vd::AccessBeyondEndOfVolumeException& e)
     {
@@ -344,9 +386,10 @@ NetworkXioIOHandler::handle_write(NetworkXioRequest *req,
        req->errval = EIO;
     });
     pack_msg(req);
+    return boost::make_ready_future<NetworkXioRequest&>(*req);
 }
 
-void
+boost::future<NetworkXioRequest&>
 NetworkXioIOHandler::handle_flush(NetworkXioRequest *req)
 {
     req->op = NetworkXioMsgOpcode::FlushRsp;
@@ -355,24 +398,43 @@ NetworkXioIOHandler::handle_flush(NetworkXioRequest *req)
         req->retval = -1;
         req->errval = EIO;
         pack_msg(req);
-        return;
+        return boost::make_ready_future<NetworkXioRequest&>(*req);
     }
 
     LOG_TRACE("Flushing");
     try
     {
-        const vd::DtlInSync dtl_in_sync(fs_.async_flush(*handle_,
-                                                        false).get());
-        req->dtl_in_sync = (dtl_in_sync == vd::DtlInSync::T) ? true : false;
-        req->retval = 0;
-        req->errval = 0;
+        return fs_.async_flush(*handle_,
+                               false)
+            .then(yt::InlineExecutor::get(),
+                  [req,
+                   this](boost::future<vd::DtlInSync> f) -> NetworkXioRequest&
+                  {
+                      try
+                      {
+                          const vd::DtlInSync dtl_in_sync(f.get());
+                          req->dtl_in_sync = (dtl_in_sync == vd::DtlInSync::T) ? true : false;
+                          req->retval = 0;
+                          req->errval = 0;
+                      }
+                      CATCH_STD_ALL_EWHAT({
+                              LOG_ERROR("callback reported flush I/O error: " << EWHAT);
+                              req->retval = -1;
+                              req->errval = EIO;
+                          });
+
+                      pack_msg(req);
+                      return *req;
+                  });
     }
     CATCH_STD_ALL_EWHAT({
        LOG_ERROR("flush I/O error: " << EWHAT);
        req->retval = -1;
        req->errval = EIO;
     });
+
     pack_msg(req);
+    return boost::make_ready_future<NetworkXioRequest&>(*req);
 }
 
 void
@@ -1117,7 +1179,7 @@ NetworkXioIOHandler::handle_error(NetworkXioRequest *req,
     pack_msg(req);
 }
 
-void
+boost::future<NetworkXioRequest&>
 NetworkXioIOHandler::process_ctrl_request(NetworkXioRequest *req)
 {
     xio_msg *xio_req = req->xio_req;
@@ -1134,7 +1196,7 @@ NetworkXioIOHandler::process_ctrl_request(NetworkXioRequest *req)
         handle_error(req,
                      NetworkXioMsgOpcode::ErrorRsp,
                      EBADMSG);
-        return;
+        return boost::make_ready_future<NetworkXioRequest&>(*req);
     }
 
     switch (i_msg.opcode())
@@ -1251,11 +1313,12 @@ NetworkXioIOHandler::process_ctrl_request(NetworkXioRequest *req)
         handle_error(req,
                      NetworkXioMsgOpcode::ErrorRsp,
                      EIO);
-        return;
     };
+
+    return boost::make_ready_future<NetworkXioRequest&>(*req);
 }
 
-void
+boost::future<NetworkXioRequest&>
 NetworkXioIOHandler::process_request(NetworkXioRequest *req)
 {
     xio_msg *xio_req = req->xio_req;
@@ -1272,7 +1335,7 @@ NetworkXioIOHandler::process_request(NetworkXioRequest *req)
         handle_error(req,
                      NetworkXioMsgOpcode::ErrorRsp,
                      EBADMSG);
-        return;
+        return boost::make_ready_future<NetworkXioRequest&>(*req);
     }
 
     req->opaque = i_msg.opaque();
@@ -1280,26 +1343,25 @@ NetworkXioIOHandler::process_request(NetworkXioRequest *req)
     {
     case NetworkXioMsgOpcode::ReadReq:
     {
-        handle_read(req,
-                    i_msg.size(),
-                    i_msg.offset());
-        break;
+        return handle_read(req,
+                           i_msg.size(),
+                           i_msg.offset());
     }
     case NetworkXioMsgOpcode::WriteReq:
     {
-        handle_write(req,
-                     i_msg.size(),
-                     i_msg.offset());
-        break;
+        return handle_write(req,
+                            i_msg.size(),
+                            i_msg.offset());
     }
     case NetworkXioMsgOpcode::FlushReq:
     {
-        handle_flush(req);
-        break;
+        return handle_flush(req);
     }
     default:
         prepare_ctrl_request(req);
-        return;
+        // Return an invalid future as the request has to be
+        // rescheduled to the Control WQ
+        return boost::future<NetworkXioRequest&>();
     };
 }
 

@@ -19,8 +19,10 @@
 #include "NetworkXioRequest.h"
 
 #include <boost/thread/lock_guard.hpp>
-#include <youtils/SpinLock.h>
+
+#include <youtils/InlineExecutor.h>
 #include <youtils/IOException.h>
+#include <youtils/SpinLock.h>
 
 #include <mutex>
 #include <condition_variable>
@@ -261,23 +263,50 @@ retry:
             inflight_queue.pop();
             lock_.unlock();
             queued_work_dec();
+
+            boost::future<NetworkXioRequest&> future;
+
             if (not req->work.is_ctrl and req->work.func)
             {
-                req->work.func(&req->work);
+                future = req->work.func();
                 if (req->work.is_ctrl)
                 {
-                    req->work.dispatch_ctrl_request(&req->work);
+                    ASSERT(not future.valid());
+                    req->work.dispatch_ctrl_request();
                     continue;
                 }
             }
             if (req->work.is_ctrl and req->work.func_ctrl)
             {
-                req->work.func_ctrl(&req->work);
+                ASSERT(not future.valid());
+                future = req->work.func_ctrl();
             }
-            finished_lock.lock();
-            finished_list.push_back(*req);
-            finished_lock.unlock();
-            xstop_loop();
+
+            ASSERT(future.valid());
+
+            // TODO: don't 'get()' the future but put it aside and collect/finalize
+            // it (again, without blocking by checking 'is_ready()') elsewhere
+            future.then(youtils::InlineExecutor::get(),
+                        [this](boost::future<NetworkXioRequest&> f) -> void
+                        {
+                            ASSERT(not f.has_exception());
+                            ASSERT(f.is_ready());
+
+                            NetworkXioRequest& req = f.get();
+
+                            bool wakeup = false;
+                            {
+                                boost::lock_guard<decltype(finished_lock)>
+                                    g(finished_lock);
+                                wakeup = finished_list.empty();
+                                finished_list.push_back(req);
+                            }
+
+                            if (wakeup)
+                            {
+                                xstop_loop();
+                            }
+                        }).get();
         }
     }
 };

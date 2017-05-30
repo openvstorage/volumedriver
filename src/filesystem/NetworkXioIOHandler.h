@@ -20,6 +20,7 @@
 #include "ClusterRegistry.h"
 
 #include "NetworkXioRequest.h"
+#include "NetworkXioWork.h"
 #include "NetworkXioWorkQueue.h"
 
 #include <volumedriver/ClusterLocation.h>
@@ -56,10 +57,10 @@ public:
     NetworkXioIOHandler&
     operator=(const NetworkXioIOHandler&) = delete;
 
-    void
+    boost::future<NetworkXioRequest&>
     process_request(NetworkXioRequest *req);
 
-    void
+    boost::future<NetworkXioRequest&>
     process_ctrl_request(NetworkXioRequest *req);
 
     void
@@ -83,15 +84,18 @@ private:
 
     void handle_close(NetworkXioRequest *req);
 
-    void handle_read(NetworkXioRequest *req,
-                     size_t size,
-                     uint64_t offset);
+    boost::future<NetworkXioRequest&>
+    handle_read(NetworkXioRequest *req,
+                size_t size,
+                uint64_t offset);
 
-    void handle_write(NetworkXioRequest *req,
-                      size_t size,
-                      uint64_t offset);
+    boost::future<NetworkXioRequest&>
+    handle_write(NetworkXioRequest *req,
+                 size_t size,
+                 uint64_t offset);
 
-    void handle_flush(NetworkXioRequest *req);
+    boost::future<NetworkXioRequest&>
+    handle_flush(NetworkXioRequest *req);
 
     void handle_create_volume(NetworkXioRequest *req,
                               const std::string& volume_name,

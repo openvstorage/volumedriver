@@ -17,20 +17,21 @@
 #define NETWORK_XIO_WORK_H_
 
 #include <functional>
-#include <libxio.h>
+
+#include <boost/thread/future.hpp>
 
 namespace volumedriverfs
 {
 
-struct Work;
-
-typedef std::function<void(Work*)> workitem_func_t;
+struct NetworkXioRequest;
 
 struct Work
 {
+    typedef std::function<boost::future<NetworkXioRequest&>()> workitem_func_t;
+
     workitem_func_t func = nullptr;
     workitem_func_t func_ctrl = nullptr;
-    workitem_func_t dispatch_ctrl_request = nullptr;
+    std::function<void()> dispatch_ctrl_request = nullptr;
     bool is_ctrl = false;
 };
 
