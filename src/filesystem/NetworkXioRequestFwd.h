@@ -13,28 +13,22 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef NETWORK_XIO_WORK_H_
-#define NETWORK_XIO_WORK_H_
+#ifndef NETWORK_XIO_REQUEST_FWD_H_
+#define NETWORK_XIO_REQUEST_FWD_H_
 
-#include "NetworkXioRequestFwd.h"
-
-#include <functional>
-
-#include <boost/thread/future.hpp>
+#include <boost/intrusive_ptr.hpp>
 
 namespace volumedriverfs
 {
 
-struct Work
-{
-    typedef std::function<boost::future<NetworkXioRequest&>()> workitem_func_t;
+struct NetworkXioRequest;
 
-    workitem_func_t func = nullptr;
-    workitem_func_t func_ctrl = nullptr;
-    std::function<void(const NetworkXioRequestPtr&)> dispatch_ctrl_request = nullptr;
-    bool is_ctrl = false;
-};
+// intrusive_ptr to manage the lifetimes of NetworkXioRequest objects
+// as shared_ptr doesn't mix well with intrusive containers or plain C
+// interfaces (don't forget to bump the ref count manually (e.g.
+// intrusive_add_ref) when doing so).
+using NetworkXioRequestPtr = boost::intrusive_ptr<NetworkXioRequest>;
 
-} //namespace
+}
 
-#endif //NETWORK_XIO_WORK_H_
+#endif // !NETWORK_XIO_REQUEST_FWD_H_

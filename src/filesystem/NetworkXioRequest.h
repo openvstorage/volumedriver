@@ -21,8 +21,10 @@
 #include "NetworkXioWork.h"
 #include "NetworkXioCommon.h"
 #include "NetworkXioMempool.h"
+#include "NetworkXioRequestFwd.h"
 
 #include <boost/intrusive/list.hpp>
+#include <boost/intrusive_ptr.hpp>
 
 namespace volumedriverfs
 {
@@ -32,9 +34,11 @@ struct NetworkXioClientData;
 struct NetworkXioRequest
     : public boost::intrusive::list_base_hook<>
 {
-    explicit NetworkXioRequest(NetworkXioClientData *cdata,
-                               xio_msg *xreq)
-        : op(NetworkXioMsgOpcode::Noop)
+private:
+    NetworkXioRequest(NetworkXioClientData *cdata,
+                      xio_msg *xreq)
+        : refcnt(0)
+        , op(NetworkXioMsgOpcode::Noop)
         , data(nullptr)
         , data_len(0)
         , size(0)
@@ -51,6 +55,11 @@ struct NetworkXioRequest
         memset(&xio_reply, 0, sizeof(xio_reply));
     }
 
+    ~NetworkXioRequest() = default;
+
+    std::atomic<uint64_t> refcnt;
+
+public:
     NetworkXioMsgOpcode op;
 
     void *data;
@@ -79,6 +88,33 @@ struct NetworkXioRequest
     NetworkXioClientData *cd;
 
     std::string s_msg;
+    boost::future<void> future;
+
+    static NetworkXioRequestPtr
+    create(NetworkXioClientData *cdata,
+           xio_msg *xreq)
+    {
+        NetworkXioRequestPtr req(new NetworkXioRequest(cdata,
+                                                      xreq));
+        ASSERT(req->refcnt == 1);
+        return req;
+    }
+
+    friend inline void
+    intrusive_ptr_add_ref(NetworkXioRequest* req)
+    {
+        ASSERT(req);
+        ++req->refcnt;
+    }
+
+    friend inline void
+    intrusive_ptr_release(NetworkXioRequest* req)
+    {
+        if (req and --req->refcnt == 0)
+        {
+            delete req;
+        }
+    }
 };
 
 class NetworkXioServer;

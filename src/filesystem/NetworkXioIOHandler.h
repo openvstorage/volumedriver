@@ -64,10 +64,10 @@ public:
     process_ctrl_request(NetworkXioRequest *req);
 
     void
-    handle_request(NetworkXioRequest *req);
+    handle_request(const NetworkXioRequestPtr& req);
 
     void
-    dispatch_ctrl_request(NetworkXioRequest *req);
+    dispatch_ctrl_request(const NetworkXioRequestPtr& req);
 
     void
     update_fs_client_info(const std::string& volume_name);

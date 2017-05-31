@@ -88,7 +88,7 @@ public:
     shutdown();
 
     void
-    xio_send_reply(NetworkXioRequest *req);
+    xio_send_reply(const NetworkXioRequestPtr& req);
 
     void
     evfd_stop_loop(int fd, int events, void *data);
@@ -127,20 +127,20 @@ private:
     destroy_session_connection(xio_session *session,
                                xio_session_event_data *event_data);
 
-    NetworkXioRequest*
+    NetworkXioRequestPtr
     allocate_request(NetworkXioClientData *cd, xio_msg *xio_req);
 
     void
-    deallocate_request(NetworkXioRequest *req);
+    deallocate_request(const NetworkXioRequestPtr& req);
 
     void
-    free_request(NetworkXioRequest *req);
+    free_request(const NetworkXioRequestPtr& req);
 
     NetworkXioClientData*
     allocate_client_data();
 
     void
-    prepare_msg_reply(NetworkXioRequest *req);
+    prepare_msg_reply(const NetworkXioRequestPtr& req);
 };
 
 } //namespace

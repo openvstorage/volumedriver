@@ -1375,22 +1375,22 @@ NetworkXioIOHandler::prepare_ctrl_request(NetworkXioRequest *req)
     req->work.dispatch_ctrl_request =
         std::bind(&NetworkXioIOHandler::dispatch_ctrl_request,
                   this,
-                  req);
+                  std::placeholders::_1);
     req->work.is_ctrl = true;
 }
 
 void
-NetworkXioIOHandler::dispatch_ctrl_request(NetworkXioRequest *req)
+NetworkXioIOHandler::dispatch_ctrl_request(const NetworkXioRequestPtr& req)
 {
     wq_ctrl_->work_schedule(req);
 }
 
 void
-NetworkXioIOHandler::handle_request(NetworkXioRequest *req)
+NetworkXioIOHandler::handle_request(const NetworkXioRequestPtr& req)
 {
     req->work.func = std::bind(&NetworkXioIOHandler::process_request,
                                this,
-                               req);
+                               req.get());
     wq_->work_schedule(req);
 }
 

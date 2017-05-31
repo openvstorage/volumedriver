@@ -84,7 +84,7 @@ public:
     }
 
     void
-    work_schedule(NetworkXioRequest *req)
+    work_schedule(const NetworkXioRequestPtr& req)
     {
         queued_work_inc();
         inflight_lock.lock();
@@ -110,13 +110,16 @@ public:
         nr_queued_work--;
     }
 
-    NetworkXioRequest*
+    NetworkXioRequestPtr
     get_finished()
     {
         boost::lock_guard<decltype(finished_lock)> lock_(finished_lock);
         if (not finished_list.empty())
         {
-            NetworkXioRequest *req = &finished_list.front();
+            // Don't bump the refcount, that is done before pushing
+            // to the list.
+            auto req(NetworkXioRequestPtr(&finished_list.front(),
+                                          false));
             finished_list.pop_front();
             return req;
         }
@@ -140,7 +143,7 @@ private:
 
     std::condition_variable inflight_cond;
     std::mutex inflight_lock;
-    std::queue<NetworkXioRequest*> inflight_queue;
+    std::queue<NetworkXioRequestPtr> inflight_queue;
 
     fungi::SpinLock& finished_lock;
     boost::intrusive::list<NetworkXioRequest>& finished_list;
@@ -238,9 +241,9 @@ private:
     void
     worker_routine()
     {
-        NetworkXioRequest *req;
         while (true)
         {
+            NetworkXioRequestPtr req;
             std::unique_lock<std::mutex> lock_(inflight_lock);
             if (need_to_shrink())
             {
@@ -272,7 +275,7 @@ retry:
                 if (req->work.is_ctrl)
                 {
                     ASSERT(not future.valid());
-                    req->work.dispatch_ctrl_request();
+                    req->work.dispatch_ctrl_request(req);
                     continue;
                 }
             }
@@ -283,30 +286,42 @@ retry:
             }
 
             ASSERT(future.valid());
+            ASSERT(not req->future.valid());
 
-            // TODO: don't 'get()' the future but put it aside and collect/finalize
-            // it (again, without blocking by checking 'is_ready()') elsewhere
-            future.then(youtils::InlineExecutor::get(),
-                        [this](boost::future<NetworkXioRequest&> f) -> void
-                        {
-                            ASSERT(not f.has_exception());
-                            ASSERT(f.is_ready());
+            // Lifetime:
+            // The object behind `req' is kept alive by capturing a(n owning)
+            // reference in the closure and `req' itself.
+            // Since the closure outlives its invocation (it's captured by the
+            // member future), the reference is released explicitly in the lambda
+            // by resetting the intrusive_ptr.
+            req->future = future.then(youtils::InlineExecutor::get(),
+                                      [r = req,
+                                       this](boost::future<NetworkXioRequest&> f) mutable -> void
+                                      {
+                                          ASSERT(not f.has_exception());
+                                          ASSERT(f.is_ready());
 
-                            NetworkXioRequest& req = f.get();
+                                          NetworkXioRequest& req = f.get();
+                                          ASSERT(&req == r.get());
 
-                            bool wakeup = false;
-                            {
-                                boost::lock_guard<decltype(finished_lock)>
-                                    g(finished_lock);
-                                wakeup = finished_list.empty();
-                                finished_list.push_back(req);
-                            }
+                                          // Bump the refcount before appending it to the
+                                          // finished_list.
+                                          intrusive_ptr_add_ref(&req);
+                                          r = nullptr;
 
-                            if (wakeup)
-                            {
-                                xstop_loop();
-                            }
-                        }).get();
+                                          bool wakeup = false;
+                                          {
+                                              boost::lock_guard<decltype(finished_lock)>
+                                                  g(finished_lock);
+                                              wakeup = finished_list.empty();
+                                              finished_list.push_back(req);
+                                          }
+
+                                          if (wakeup)
+                                          {
+                                              xstop_loop();
+                                          }
+                                      });
         }
     }
 };

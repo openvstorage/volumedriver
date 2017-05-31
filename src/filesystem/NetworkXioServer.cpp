@@ -370,7 +370,7 @@ NetworkXioServer::run(std::promise<void> promise)
     {
         int ret = xio_context_run_loop(ctx.get(), XIO_INFINITE);
         VERIFY(ret == 0);
-        NetworkXioRequest *req = nullptr;
+        NetworkXioRequestPtr req = nullptr;
         while ((req = wq_->get_finished()))
         {
             xio_send_reply(req);
@@ -499,24 +499,24 @@ NetworkXioServer::on_session_event(xio_session *session,
     return 0;
 }
 
-NetworkXioRequest*
+NetworkXioRequestPtr
 NetworkXioServer::allocate_request(NetworkXioClientData *cd,
                                    xio_msg *xio_req)
 {
     try
     {
-        NetworkXioRequest *req = new NetworkXioRequest(cd, xio_req);
+        NetworkXioRequestPtr req(NetworkXioRequest::create(cd, xio_req));
         cd->refcnt++;
         return req;
     }
     catch (const std::bad_alloc&)
     {
-        return NULL;
+        return nullptr;
     }
 }
 
 void
-NetworkXioServer::deallocate_request(NetworkXioRequest *req)
+NetworkXioServer::deallocate_request(const NetworkXioRequestPtr& req)
 {
     if (req->data)
     {
@@ -533,7 +533,7 @@ NetworkXioServer::deallocate_request(NetworkXioRequest *req)
 }
 
 void
-NetworkXioServer::free_request(NetworkXioRequest *req)
+NetworkXioServer::free_request(const NetworkXioRequestPtr& req)
 {
    NetworkXioClientData *cd = req->cd;
    cd->refcnt--;
@@ -543,7 +543,6 @@ NetworkXioServer::free_request(NetworkXioRequest *req)
        delete cd->ioh;
        delete cd;
    }
-   delete req;
 }
 
 int
@@ -551,8 +550,9 @@ NetworkXioServer::on_msg_send_complete(xio_session *session ATTR_UNUSED,
                                        xio_msg *msg,
                                        void *cb_user_ctx ATTR_UNUSED)
 {
-    NetworkXioRequest *req =
-        reinterpret_cast<NetworkXioRequest*>(msg->user_context);
+    NetworkXioRequestPtr
+        req(reinterpret_cast<NetworkXioRequest*>(msg->user_context),
+            false);
     deallocate_request(req);
     return 0;
 }
@@ -571,8 +571,9 @@ NetworkXioServer::on_msg_error(xio_session *session,
 
     if (direction == XIO_MSG_DIRECTION_OUT)
     {
-        NetworkXioRequest *req =
-            reinterpret_cast<NetworkXioRequest*>(msg->user_context);
+        NetworkXioRequestPtr
+            req(reinterpret_cast<NetworkXioRequest*>(msg->user_context),
+                false);
         deallocate_request(req);
     }
     else
@@ -585,7 +586,7 @@ NetworkXioServer::on_msg_error(xio_session *session,
 }
 
 void
-NetworkXioServer::prepare_msg_reply(NetworkXioRequest *req)
+NetworkXioServer::prepare_msg_reply(const NetworkXioRequestPtr& req)
 {
     xio_msg *xio_req = req->xio_req;
 
@@ -624,11 +625,12 @@ NetworkXioServer::prepare_msg_reply(NetworkXioRequest *req)
         break;
     }
     req->xio_reply.flags = XIO_MSG_FLAG_IMM_SEND_COMP;
-    req->xio_reply.user_context = reinterpret_cast<void*>(req);
+    req->xio_reply.user_context = reinterpret_cast<void*>(req.get());
+    intrusive_ptr_add_ref(req.get());
 }
 
 void
-NetworkXioServer::xio_send_reply(NetworkXioRequest *req)
+NetworkXioServer::xio_send_reply(const NetworkXioRequestPtr& req)
 {
     prepare_msg_reply(req);
     int ret = xio_send_response(&req->xio_reply);
@@ -646,7 +648,7 @@ NetworkXioServer::on_request(xio_session *session ATTR_UNUSED,
                              void *cb_user_ctx)
 {
     auto cd = static_cast<NetworkXioClientData*>(cb_user_ctx);
-    NetworkXioRequest *req = allocate_request(cd, xio_req);
+    NetworkXioRequestPtr req(allocate_request(cd, xio_req));
     if (req)
     {
         cd->ioh->handle_request(req);
