@@ -22,6 +22,8 @@
 
 #include "SCOProcessorInterface.h"
 
+#include <boost/thread/future.hpp>
+
 #include <youtils/Logging.h>
 
 namespace volumedriver
@@ -50,9 +52,8 @@ public:
     virtual void
     destroy(SyncFailOverToBackend) = 0;
 
-    virtual bool
-    addEntries(const std::vector<ClusterLocation>& locs,
-               size_t num_locs,
+    virtual boost::future<void>
+    addEntries(const std::vector<ClusterLocation>&,
                uint64_t start_address,
                const uint8_t* data) = 0;
 
@@ -77,7 +78,7 @@ public:
     virtual void
     removeUpTo(const SCO& sconame) = 0;
 
-    virtual void
+    virtual boost::future<void>
     Flush() = 0;
 
     virtual void

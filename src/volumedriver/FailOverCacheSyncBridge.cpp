@@ -107,9 +107,8 @@ FailOverCacheSyncBridge::setBusyLoopDuration(const boost::chrono::microseconds u
     }
 }
 
-bool
+boost::future<void>
 FailOverCacheSyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
-                                    size_t num_locs,
                                     uint64_t start_address,
                                     const uint8_t* data)
 {
@@ -122,9 +121,9 @@ FailOverCacheSyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
             static_cast<size_t>(cache_->cluster_multiplier());
 
         std::vector<FailOverCacheEntry> entries;
-        entries.reserve(num_locs);
+        entries.reserve(locs.size());
         uint64_t lba = start_address;
-        for (size_t i = 0; i < num_locs; i++)
+        for (size_t i = 0; i < locs.size(); i++)
         {
             entries.emplace_back(locs[i],
                                  lba, data + i * cluster_size,
@@ -141,10 +140,11 @@ FailOverCacheSyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
             handleException(e, "addEntries");
         }
     }
-    return true;
+
+    return boost::make_ready_future();
 }
 
-void
+boost::future<void>
 FailOverCacheSyncBridge::Flush()
 {
     LOCK();
@@ -160,6 +160,8 @@ FailOverCacheSyncBridge::Flush()
             handleException(e, "Flush");
         }
     }
+
+    return boost::make_ready_future();
 }
 
 void

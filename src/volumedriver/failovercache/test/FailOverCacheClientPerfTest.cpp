@@ -150,12 +150,18 @@ public:
     addEntry(FailOverCacheClientInterface& foc,
              const FailOverCacheEntry& e)
     {
-        std::vector<ClusterLocation> locs;
-        locs.emplace_back(e.cli_);
-        return foc.addEntries(locs,
-                              1,
-                              e.lba_,
-                              e.buffer_);
+        boost::future<void> f(foc.addEntries({ e.cli_ },
+                                             e.lba_,
+                                             e.buffer_));
+        if (f.valid())
+        {
+            f.get();
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
 
     virtual int

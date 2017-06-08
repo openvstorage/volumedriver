@@ -54,9 +54,8 @@ public:
     virtual void
     destroy(SyncFailOverToBackend) override;
 
-    virtual bool
-    addEntries(const std::vector<ClusterLocation>& locs,
-               size_t num_locs,
+    virtual boost::future<void>
+    addEntries(const std::vector<ClusterLocation>&,
                uint64_t start_address,
                const uint8_t* data) override;
 
@@ -79,7 +78,7 @@ public:
     getSCOFromFailOver(SCO sconame,
                        SCOProcessorFun processor) override;
 
-    virtual void
+    virtual boost::future<void>
     Flush() override;
 
     virtual void

@@ -1515,7 +1515,7 @@ VolManagerTestSetup::flushFailOverCache(Volume& v)
 {
     if (v.failover_.get())
     {
-        v.failover_->Flush();
+        v.failover_->Flush().get();
     }
 }
 

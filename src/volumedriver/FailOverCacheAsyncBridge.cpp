@@ -303,20 +303,19 @@ FailOverCacheAsyncBridge::addEntry(ClusterLocation loc,
     newOnes.emplace_back(loc, lba, ptr, cluster_size_());
 }
 
-bool
+boost::future<void>
 FailOverCacheAsyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
-                                     size_t num_locs,
                                      uint64_t start_address,
                                      const uint8_t* data)
 {
-    VERIFY(num_locs <= max_entries());
+    VERIFY(locs.size() <= max_entries());
 
     LOCK_NEW_ONES();
 
     // Needs improvement!!!
     if (stop_)
     {
-        return true;
+        return boost::make_ready_future();
     }
 
     TODO("AR: revisit the batching of entries");
@@ -327,24 +326,28 @@ FailOverCacheAsyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
         (not locs.empty()) and
         (newOnes.back().cli_.sco() != locs.front().sco());
 
-    setThrottling((newOnes.size() + num_locs > max_entries()) or
+    setThrottling((newOnes.size() + locs.size() > max_entries()) or
                   new_sco);
+
+    boost::future<void> future;
 
     if (not throttling)
     {
         // Otherwise work the batch
-        for (size_t i = 0; i < num_locs; ++i)
+        for (size_t i = 0; i < locs.size(); ++i)
         {
             addEntry(locs[i],
                      start_address + i * cluster_multiplier_,
                      data + i * cluster_size_(),
                      cluster_size_());
         }
+
+        future = boost::make_ready_future();
     }
 
     maybe_swap_(new_sco);
 
-    return not throttling;
+    return future;
 }
 
 void
@@ -368,10 +371,12 @@ FailOverCacheAsyncBridge::maybe_swap_(bool new_sco)
     }
 }
 
-void FailOverCacheAsyncBridge::Flush()
+boost::future<void>
+FailOverCacheAsyncBridge::Flush()
 {
     LOCK();
     flush_();
+    return boost::make_ready_future();
 }
 
 void

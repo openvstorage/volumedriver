@@ -631,7 +631,6 @@ private:
     double read_activity_;
 
     // volume_readcache_id_t read_cache_id_;
-    std::vector<ClusterLocation> cluster_locations_;
 
     fungi::SpinLock volumeStateSpinLock_;
 
@@ -658,7 +657,7 @@ private:
     void
     executeDeletions_(TLogReader &);
 
-    DtlInSync
+    boost::future<DtlInSync>
     writeClusters_(uint64_t addr,
                    const uint8_t* buf,
                    uint64_t bufsize);
@@ -707,9 +706,8 @@ private:
                                     const ClusterLocation& loc,
                                     const uint8_t* buf);
 
-    DtlInSync
-    writeClustersToFailOverCache_(const std::vector<ClusterLocation>& locs,
-                                  size_t num_locs,
+    boost::future<DtlInSync>
+    writeClustersToFailOverCache_(std::vector<ClusterLocation>,
                                   uint64_t start_address,
                                   const uint8_t* buf);
 
@@ -727,8 +725,12 @@ private:
                              const scrubbing::ScrubberResult&,
                              const std::string&);
 
-    void
-    throttle_(unsigned throttle_usecs) const;
+    boost::future<void>
+    throttle_(const boost::chrono::microseconds) const;
+
+    boost::future<DtlInSync>
+    maybe_throttle_(boost::future<DtlInSync>,
+                    boost::chrono::microseconds) const;
 
     fs::path
     ensureDebugDataDirectory_();

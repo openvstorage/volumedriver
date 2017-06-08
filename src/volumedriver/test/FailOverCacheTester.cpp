@@ -376,7 +376,7 @@ TEST_P(FailOverCacheTester, ClearCacheServer)
                       "xyz");
     }
 
-    getFailOverWriter(*v)->Flush();
+    getFailOverWriter(*v)->Flush().get();
 
     check_num_entries(*v, numwrites);
 
@@ -574,7 +574,7 @@ TEST_P(FailOverCacheTester, TLogsAreRemoved)
 
     waitForThisBackendWrite(*v);
 
-    getFailOverWriter(*v)->Flush();
+    getFailOverWriter(*v)->Flush().get();
 
     auto empty([&]() -> bool
                {
@@ -596,7 +596,7 @@ TEST_P(FailOverCacheTester, TLogsAreRemoved)
     createSnapshot(*v,"boomboom");
     waitForThisBackendWrite(*v);
 
-    getFailOverWriter(*v)->Flush();
+    getFailOverWriter(*v)->Flush().get();
 
     EXPECT_TRUE(empty());
 
@@ -684,7 +684,7 @@ TEST_P(FailOverCacheTester, adding_and_flushing)
                            {
                                while (not stop)
                                {
-                                   foc.Flush();
+                                   foc.Flush().get();
                                    ++flushes;
                                    boost::this_thread::sleep_for(bc::milliseconds(5));
                                }
@@ -705,12 +705,20 @@ TEST_P(FailOverCacheTester, adding_and_flushing)
         locs[0] = ClusterLocation(i / entries_per_sco + 1,
                                   i % entries_per_sco);
 
-        while (not foc.addEntries(locs,
-                                  locs.size(),
-                                  i,
-                                  buf.data()))
+        while (true)
         {
-            boost::this_thread::sleep_for(bc::milliseconds(5));
+            boost::future<void> f(foc.addEntries(locs,
+                                                 i,
+                                                 buf.data()));
+            if (f.valid())
+            {
+                f.get();
+                break;
+            }
+            else
+            {
+                boost::this_thread::sleep_for(bc::milliseconds(5));
+            }
         }
     }
 
@@ -720,7 +728,7 @@ TEST_P(FailOverCacheTester, adding_and_flushing)
 
     future.wait();
 
-    foc.Flush();
+    foc.Flush().get();
 
     size_t count = 0;
 
@@ -810,7 +818,7 @@ TEST_P(FailOverCacheTester, non_standard_cluster_size)
                       make_pattern(i));
     }
 
-    v->getFailOver()->Flush();
+    v->getFailOver()->Flush().get();
 
     FailOverCacheProxy proxy(foc_ctx->config(GetParam().foc_mode()),
                              wrns->ns(),
@@ -869,7 +877,7 @@ TEST_P(FailOverCacheTester, wrong_cluster_size)
                   csize,
                   pattern);
 
-    v->getFailOver()->Flush();
+    v->getFailOver()->Flush().get();
 
     EXPECT_THROW(FailOverCacheProxy(foc_ctx->config(GetParam().foc_mode()),
                                     wrns->ns(),

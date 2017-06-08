@@ -49,19 +49,23 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <boost/asio.hpp>
+#include <boost/asio/steady_timer.hpp>
 #include <boost/chrono.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/scope_exit.hpp>
 
+#include <youtils/AsioServiceManager.h>
 #include <youtils/Assert.h>
 #include <youtils/Catchers.h>
 #include <youtils/FileUtils.h>
+#include <youtils/FutureUtils.h>
 #include <youtils/InlineExecutor.h>
 #include <youtils/IOException.h>
 #include <youtils/MainEvent.h>
 #include <youtils/ScopeExit.h>
-#include <youtils/Timer.h>
 #include <youtils/System.h>
+#include <youtils/Timer.h>
 #include <youtils/UUID.h>
 
 #include <backend/BackendInterface.h>
@@ -115,8 +119,10 @@ namespace volumedriver
 {
 using youtils::BarrierTask;
 
+namespace ba = boost::asio;
 namespace bc = boost::chrono;
 namespace be = backend;
+namespace bs = boost::system;
 namespace yt = youtils;
 
 Volume::Volume(const VolumeConfig& vCfg,
@@ -150,7 +156,6 @@ Volume::Volume(const VolumeConfig& vCfg,
     , failoverstate_(VolumeFailOverState::DEGRADED)
     , readcounter_(0)
     , read_activity_(0)
-    , cluster_locations_(vCfg.sco_mult_)
     , volumeStateSpinLock_()
     , readOnlyMode(readOnlyMode)
     , datastore_throttle_usecs_(VolManager::get()->getSCOCache()->datastore_throttle_usecs.value())
@@ -246,7 +251,6 @@ Volume::setSCOMultiplier(SCOMultiplier sco_mult)
                                                   tlog_mult,
                                                   tlog_mult);
 
-    cluster_locations_.resize(sco_mult);
     dataStore_->setSCOMultiplier(sco_mult);
     snapshotManagement_->set_max_tlog_entries(tlog_mult,
                                               sco_mult);
@@ -741,7 +745,7 @@ Volume::setAsTemplate()
 
     const VolumeConfig cfg(get_config());
 
-    sync_(AppendCheckSum::F);
+    sync_(AppendCheckSum::F).get();
 
     const MaybeCheckSum maybe_sco_crc(dataStore_->finalizeCurrentSCO());
 
@@ -752,7 +756,7 @@ Volume::setAsTemplate()
                        cfg.setAsTemplate();
                    });
 
-    sync_(AppendCheckSum::T);
+    sync_(AppendCheckSum::T).get();
 
     while (not VolManager::get()->backend_thread_pool()->noTasksPresent(this))
     {
@@ -760,16 +764,17 @@ Volume::setAsTemplate()
     }
 }
 
-DtlInSync
-Volume::writeClustersToFailOverCache_(const std::vector<ClusterLocation>& locs,
-                                      size_t num_locs,
+boost::future<DtlInSync>
+Volume::writeClustersToFailOverCache_(std::vector<ClusterLocation> locs,
                                       uint64_t start_address,
                                       const uint8_t* buf)
 {
     ASSERT_WRITES_SERIALIZED();
     ASSERT_RLOCKED();
 
-    DtlInSync dtl_in_sync = DtlInSync::F;
+    VERIFY(not locs.empty());
+
+    boost::future<DtlInSync> dtl_in_sync;
 
     if (failover_->backup())
     {
@@ -779,32 +784,58 @@ Volume::writeClustersToFailOverCache_(const std::vector<ClusterLocation>& locs,
                    start_address,
                    reinterpret_cast<const uint64_t&>(locs[0]));
 
-        auto on_exit(yt::make_scope_exit([&]
-        {
-            tracepoint(openvstorage_volumedriver,
-                       volume_foc_write_end,
-                       config_.id_.str().c_str(),
-                       start_address,
-                       reinterpret_cast<const uint64_t&>(locs[0]),
-                       std::uncaught_exception());
-        }));
+        const ClusterLocation start_loc(locs[0]);
 
-        LOG_VTRACE("sending TLog " << snapshotManagement_->getCurrentTLogId() <<
-                   ", start address " << start_address);
-
-        while (not failover_->addEntries(locs,
-                                         num_locs,
-                                         start_address,
-                                         buf))
+        auto on_exc(yt::make_scope_exit_on_exception([&]
+                                                     {
+                                                         tracepoint(openvstorage_volumedriver,
+                                                                    volume_foc_write_end,
+                                                                    config_.id_.str().c_str(),
+                                                                    start_address,
+                                                                    reinterpret_cast<const uint64_t&>(start_loc),
+                                                                    true);
+                                                     }));
+        while (true)
         {
-            throttle_(foc_throttle_usecs_);
+            boost::future<void> f(failover_->addEntries(locs,
+                                                        start_address,
+                                                        buf));
+            if (f.valid())
+            {
+                dtl_in_sync = f.then(yt::InlineExecutor::get(),
+                                     [this,
+                                      start_address,
+                                      start_loc](boost::future<void> f) -> DtlInSync
+                                     {
+                                         tracepoint(openvstorage_volumedriver,
+                                                    volume_foc_write_end,
+                                                    config_.id_.str().c_str(),
+                                                    start_address,
+                                                    reinterpret_cast<const uint64_t&>(start_loc),
+                                                    f.has_exception());
+
+                                         f.get();
+                                         if (failover_->mode() == FailOverCacheMode::Synchronous and
+                                             getVolumeFailOverState() == VolumeFailOverState::OK_SYNC)
+                                         {
+                                             return DtlInSync::T;
+                                         }
+                                         else
+                                         {
+                                             return DtlInSync::F;
+                                         }
+                                     });
+                break;
+            }
+            else
+            {
+                throttle_(bc::microseconds(foc_throttle_usecs_)).get();
+            }
         }
-
-        if (failover_->mode() == FailOverCacheMode::Synchronous and
-            getVolumeFailOverState() == VolumeFailOverState::OK_SYNC)
-        {
-            dtl_in_sync = DtlInSync::T;
-        }
+    }
+    else
+    {
+        dtl_in_sync = boost::make_ready_future(DtlInSync::F);
     }
 
     return dtl_in_sync;
@@ -860,6 +891,8 @@ Volume::async_write(const uint64_t off,
 
     boost::future<DtlInSync> dtl_in_sync;
 
+    std::vector<uint8_t> bounce_buf;
+
     if (aligned_off != off or
         aligned_len != len)
     {
@@ -867,7 +900,7 @@ Volume::async_write(const uint64_t off,
 
         performance_counters().unaligned_write_request_size.count(len);
 
-        std::vector<uint8_t> bounce_buf(aligned_len);
+        bounce_buf.resize(aligned_len);
 
         read(aligned_off,
              bounce_buf.data(),
@@ -898,7 +931,8 @@ Volume::async_write(const uint64_t off,
     performance_counters().write_request_usecs.count(duration_us.count());
 
     return dtl_in_sync.then(yt::InlineExecutor::get(),
-                            [id = config_.id_,
+                            [bounce_buf = std::move(bounce_buf),
+                             id = config_.id_,
                              len,
                              off](boost::future<DtlInSync> dtl_in_sync) -> DtlInSync
                             {
@@ -922,9 +956,14 @@ Volume::write_aligned_(const uint64_t off,
 
     validateIOAlignment(off, len);
 
-    DtlInSync dtl_in_sync = DtlInSync::T;
     size_t write_off = 0;
     size_t write_len = len;
+
+    using Future = boost::future<DtlInSync>;
+    using Futures = std::vector<Future>;
+
+    Futures futures;
+    // TODO: futures.reserve()
 
     while (write_off < len)
     {
@@ -952,13 +991,9 @@ Volume::write_aligned_(const uint64_t off,
                       dtl_cap,
                       static_cast<size_t>(sco_cap)});
 
-        const DtlInSync in_sync = writeClusters_(off + write_off,
-                                                 buf + write_off,
-                                                 chunksize);
-        if (in_sync == DtlInSync::F)
-        {
-            dtl_in_sync = DtlInSync::F;
-        }
+        futures.push_back(writeClusters_(off + write_off,
+                                         buf + write_off,
+                                         chunksize));
 
         write_off += chunksize;
         write_len -= chunksize;
@@ -967,7 +1002,23 @@ Volume::write_aligned_(const uint64_t off,
     VERIFY(write_off == len);
     VERIFY(write_len == 0);
 
-    return boost::make_ready_future(dtl_in_sync);
+    return yt::FutureUtils::when_all(yt::InlineExecutor::get(),
+                                     futures.begin(),
+                                     futures.end())
+        .then(yt::InlineExecutor::get(),
+              [](boost::future<std::vector<DtlInSync>> f) -> DtlInSync
+              {
+                  DtlInSync dtl_in_sync = DtlInSync::T;
+                  for (const auto& in_sync : f.get())
+                  {
+                      if (in_sync == DtlInSync::F)
+                      {
+                          dtl_in_sync = DtlInSync::F;
+                      }
+                  }
+
+                  return dtl_in_sync;
+              });
 }
 
 namespace
@@ -993,7 +1044,7 @@ make_cluster_location_and_hash(const ClusterLocation& loc,
 
 }
 
-DtlInSync
+boost::future<DtlInSync>
 Volume::writeClusters_(uint64_t addr,
                        const uint8_t* buf,
                        uint64_t bufsize)
@@ -1004,21 +1055,24 @@ Volume::writeClusters_(uint64_t addr,
     VERIFY(bufsize % clusterSize_ == 0);
 
     size_t num_locs = bufsize / clusterSize_;
-    unsigned throttle_usecs = 0;
     uint32_t ds_throttle = 0;
+    bc::microseconds throttle_us(0);
 
-    DtlInSync dtl_in_sync = DtlInSync::F;
+    boost::future<DtlInSync> dtl_in_sync;
+    std::vector<ClusterLocation> cluster_locations(num_locs);
+
+    yt::SteadyTimer t;
 
     {
         // prevent tlog rollover interfering with snapshotting and friends
         RLOCK();
 
-        TODO("ArneT: reserve/clear vector \"cluster_locations\" so the nr of clusters can be derived in the failover_->addEntries call");
-
         dataStore_->writeClusters(buf,
-                                  cluster_locations_,
+                                  cluster_locations,
                                   num_locs,
                                   ds_throttle);
+
+        yt::SteadyTimer t;
 
         const ClusterCacheMode ccmode = effective_cluster_cache_mode();
 
@@ -1028,7 +1082,7 @@ Volume::writeClusters_(uint64_t addr,
             uint64_t clusteraddr = addr + i * clusterSize_;
             ClusterAddress ca = addr2CA(clusteraddr);
             ClusterLocationAndHash
-                loc_and_hash(make_cluster_location_and_hash(cluster_locations_[i],
+                loc_and_hash(make_cluster_location_and_hash(cluster_locations[i],
                                                             ccmode,
                                                             data,
                                                             clusterSize_));
@@ -1050,13 +1104,10 @@ Volume::writeClusters_(uint64_t addr,
             }
         }
 
-        yt::SteadyTimer t;
-        dtl_in_sync = writeClustersToFailOverCache_(cluster_locations_,
-                                                    num_locs,
+
+        dtl_in_sync = writeClustersToFailOverCache_(std::move(cluster_locations),
                                                     addr >> volOffset_,
                                                     buf);
-
-        throttle_usecs += bc::duration_cast<bc::microseconds>(t.elapsed()).count();
 
         const ssize_t sco_cap = dataStore_->getRemainingSCOCapacity();
         VERIFY(sco_cap >= 0);
@@ -1068,19 +1119,55 @@ Volume::writeClusters_(uint64_t addr,
             VERIFY(cs);
             snapshotManagement_->addSCOCRC(*cs);
         }
+
+        const auto elapsed(bc::duration_cast<bc::microseconds>(t.elapsed()));
+        if (static_cast<int64_t>(ds_throttle * num_locs) > elapsed.count())
+        {
+            throttle_us = bc::microseconds(ds_throttle * num_locs) - elapsed;
+        }
     }
 
-    LOG_VTRACE("start_address " << addr <<
-               " CA " << cluster_locations_[0]);
+    return maybe_throttle_(std::move(dtl_in_sync),
+                           throttle_us);
+}
 
-    if (ds_throttle > 0)
+boost::future<DtlInSync>
+Volume::maybe_throttle_(boost::future<DtlInSync> dtl_in_sync,
+                        bc::microseconds throttle_us) const
+{
+    if (throttle_us.count() > 0)
     {
-        const unsigned ds_throttle_usecs = ds_throttle * num_locs;
-        throttle_usecs =
-            ds_throttle_usecs - std::min(ds_throttle_usecs,
-                                         throttle_usecs);
+        // TODO: reconsider error handling: in case of an exception from the
+        // 'dtl_in_sync' future it would be nice to abort throttling
+        std::vector<boost::future<DtlInSync>> futures;
+        futures.reserve(2);
 
-        throttle_(throttle_usecs);
+        futures.push_back(throttle_(throttle_us)
+                          .then(yt::InlineExecutor::get(),
+                                [](boost::future<void> f) -> DtlInSync
+                                {
+                                    f.get();
+                                    return DtlInSync::T;
+                                }));
+        futures.push_back(std::move(dtl_in_sync));
+
+        dtl_in_sync = yt::FutureUtils::when_all(yt::InlineExecutor::get(),
+                                                futures.begin(),
+                                                futures.end())
+            .then(yt::InlineExecutor::get(),
+                  [](boost::future<std::vector<DtlInSync>> f) -> DtlInSync
+                  {
+                      auto in_sync = DtlInSync::T;
+                      for (const auto& nsync : f.get())
+                      {
+                          if (nsync == DtlInSync::F)
+                          {
+                              in_sync = DtlInSync::F;
+                          }
+                      }
+
+                      return in_sync;
+                  });
     }
 
     return dtl_in_sync;
@@ -1327,7 +1414,7 @@ Volume::createSnapshot(const SnapshotName& name,
     }
 
     // TODO: halt the volume in case of non-recoverable errors
-    sync_(AppendCheckSum::F);
+    sync_(AppendCheckSum::F).get();
 
     const auto maybe_sco_crc(dataStore_->finalizeCurrentSCO());
     snapshotManagement_->createSnapshot(name,
@@ -1436,7 +1523,7 @@ Volume::restoreSnapshot(const SnapshotName& name)
         throw fungi::IOException("Not restoring snapshot because it is not in the backend yet");
     }
 
-    sync_(AppendCheckSum::F); // the TLog will be thrown away anyway.
+    sync_(AppendCheckSum::F).get(); // the TLog will be thrown away anyway.
 
     LOG_VINFO("Removing all tasks from the threadpool for this volume");
     try
@@ -1523,7 +1610,7 @@ Volume::restoreSnapshot(const SnapshotName& name)
         {
             try
             {
-                failover_->Flush();
+                failover_->Flush().get();
                 failover_->Clear();
                 setVolumeFailOverState(VolumeFailOverState::OK_SYNC);
             }
@@ -1653,7 +1740,7 @@ Volume::destroy(DeleteLocalData delete_local_data,
     {
         try
          {
-             sync_(AppendCheckSum::T);
+             sync_(AppendCheckSum::T).get();
          }
          catch (std::exception& e)
          {
@@ -2116,7 +2203,7 @@ Volume::removeUpToFromFailOverCache(const SCO sconame)
     {
         LOG_VINFO("removing up to sconame " << sconame <<
                   " from the FOC");
-        failover_->Flush();
+        failover_->Flush().get();
         failover_->removeUpTo(sconame);
         LOG_VINFO("done removing up to sconame " << sconame <<
                   " from the FOC");
@@ -2167,7 +2254,7 @@ Volume::replayClusterFromFailOverCache_(ClusterAddress ca,
 
     if(throttle > 0)
     {
-        throttle_(throttle);
+        throttle_(bc::microseconds(throttle)).get();
     }
 }
 
@@ -2273,7 +2360,7 @@ TLogId
 Volume::scheduleBackendSync_()
 {
     // TODO: halt the volume in case of non-recoverable errors
-    sync_(AppendCheckSum::F);
+    sync_(AppendCheckSum::F).get();
 
     const auto maybe_sco_crc(dataStore_->finalizeCurrentSCO());
     return snapshotManagement_->scheduleBackendSync(maybe_sco_crc);
@@ -2574,17 +2661,21 @@ Volume::sync_(AppendCheckSum append_chksum)
                               maybe_sco_crc :
                               boost::none);
 
-    failover_->Flush();
-
-    if (failover_->backup() and
-        getVolumeFailOverState() == VolumeFailOverState::OK_SYNC)
-    {
-        return boost::make_ready_future(DtlInSync::T);
-    }
-    else
-    {
-        return boost::make_ready_future(DtlInSync::F);
-    }
+    return failover_->Flush()
+        .then(yt::InlineExecutor::get(),
+              [this](boost::future<void> f) -> DtlInSync
+              {
+                  f.get();
+                  if (failover_->backup() and
+                      getVolumeFailOverState() == VolumeFailOverState::OK_SYNC)
+                  {
+                      return DtlInSync::T;
+                  }
+                  else
+                  {
+                      return DtlInSync::F;
+                  }
+              });
 }
 
 bool
@@ -3063,31 +3154,35 @@ Volume::getClusterCacheVolumeInfo() const
     return ClusterCacheVolumeInfo(readCacheHits_, readCacheMisses_);
 }
 
-void
-Volume::throttle_(unsigned throttle_usecs) const
+boost::future<void>
+Volume::throttle_(bc::microseconds throttle_usecs) const
 {
-    // not needed but desired, otherwise the throttling will be pointless
-    ASSERT_WRITES_SERIALIZED();
+    tracepoint(openvstorage_volumedriver,
+               volume_throttle_start,
+               config_.id_.str().c_str(),
+               throttle_usecs.count());
 
-    if (throttle_usecs != 0)
-    {
-        tracepoint(openvstorage_volumedriver,
-                   volume_throttle_start,
-                   config_.id_.str().c_str(),
-                   throttle_usecs);
+    auto promise(std::make_shared<boost::promise<void>>());
+    boost::future<void> future(promise->get_future());
+    std::shared_ptr<yt::AsioServiceManager>
+        mgr(VolManager::get()->asio_service_manager());
 
-        auto on_exit(yt::make_scope_exit([&]
-                                         {
-                                             tracepoint(openvstorage_volumedriver,
-                                                        volume_throttle_end,
-                                                        config_.id_.str().c_str(),
-                                                        throttle_usecs);
-                                         }));
+    auto t(std::make_shared<ba::steady_timer>(mgr->get_service(getNamespace().str())));
+    t->expires_from_now(std::chrono::microseconds(throttle_usecs.count()));
+    t->async_wait([promise,
+                   t,
+                   this,
+                   throttle_usecs](const bs::error_code& /* e */)
+                  {
+                      tracepoint(openvstorage_volumedriver,
+                                 volume_throttle_end,
+                                 config_.id_.str().c_str(),
+                                 throttle_usecs.count());
 
-        LOG_VDEBUG("throttling writes for " << throttle_usecs <<
-                   " us");
-        usleep(throttle_usecs);
-    }
+                      promise->set_value();
+                  });
+
+    return future;
 }
 
 bool
