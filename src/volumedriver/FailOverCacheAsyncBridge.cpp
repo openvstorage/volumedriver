@@ -154,7 +154,7 @@ FailOverCacheAsyncBridge::destroy(SyncFailOverToBackend sync)
                 {
                     try
                     {
-                        cache_->addEntries(oldOnes);
+                        cache_->addEntries(oldOnes).get();
                     }
                     // Z42: std::exception?
                     catch(fungi::IOException& e)
@@ -176,7 +176,7 @@ FailOverCacheAsyncBridge::destroy(SyncFailOverToBackend sync)
                 {
                     try
                     {
-                        cache_->addEntries(newOnes);
+                        cache_->addEntries(newOnes).get();
                     }
                     // Z42: std::exception?
                     catch(fungi::IOException& e)
@@ -231,7 +231,7 @@ FailOverCacheAsyncBridge::run()
             if (not oldOnes.empty())
             {
                 LOG_DEBUG("Writing " << oldOnes.size() << " entries to the failover cache");
-                cache_->addEntries(oldOnes);
+                cache_->addEntries(oldOnes).get();
                 oldOnes.clear();
                 LOG_DEBUG("Written");
             }
@@ -398,7 +398,7 @@ FailOverCacheAsyncBridge::flush_()
 
         try
         {
-            cache_->addEntries(std::move(oldOnes));
+            cache_->addEntries(std::move(oldOnes)).get();
             oldOnes.clear();
             cache_->flush();
         }

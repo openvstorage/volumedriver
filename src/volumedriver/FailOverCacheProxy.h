@@ -26,6 +26,7 @@
 
 #include <boost/ptr_container/ptr_vector.hpp>
 #include <boost/scoped_array.hpp>
+#include <boost/thread/future.hpp>
 
 namespace volumedriver
 {
@@ -50,8 +51,13 @@ public:
 
     ~FailOverCacheProxy();
 
-    void
+    boost::future<void>
     addEntries(std::vector<FailOverCacheEntry>);
+
+    boost::future<void>
+    addEntries(const std::vector<ClusterLocation>&,
+               uint64_t addr,
+               const uint8_t*);
 
     // returns the SCO size - 0 indicates a problem.
     // Z42: throw instead!
@@ -66,7 +72,7 @@ public:
     void
     clear();
 
-    void
+    boost::future<void>
     flush();
 
     void

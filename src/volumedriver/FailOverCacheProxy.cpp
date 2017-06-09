@@ -143,7 +143,7 @@ FailOverCacheProxy::setBusyLoopDuration(const bc::microseconds usecs)
     socket_->setBusyLoopDuration(usecs);
 }
 
-void
+boost::future<void>
 FailOverCacheProxy::addEntries(std::vector<FailOverCacheEntry> entries)
 {
 #ifndef NDEBUG
@@ -159,12 +159,39 @@ FailOverCacheProxy::addEntries(std::vector<FailOverCacheEntry> entries)
 
     const CommandData<AddEntries> comd(std::move(entries));
     stream_ << comd;
+
+    return boost::make_ready_future();
 }
 
-void
+boost::future<void>
+FailOverCacheProxy::addEntries(const std::vector<ClusterLocation>& locs,
+                               uint64_t start_address,
+                               const uint8_t* data)
+{
+    const size_t cluster_size =
+        static_cast<size_t>(lba_size()) *
+        static_cast<size_t>(cluster_multiplier());
+
+    std::vector<FailOverCacheEntry> entries;
+    entries.reserve(locs.size());
+    uint64_t lba = start_address;
+    for (size_t i = 0; i < locs.size(); i++)
+    {
+        entries.emplace_back(locs[i],
+                             lba, data + i * cluster_size,
+                             cluster_size);
+
+        lba += cluster_multiplier();
+    }
+
+    return addEntries(std::move(entries));
+}
+
+boost::future<void>
 FailOverCacheProxy::flush()
 {
     stream_ << CommandData<Flush>();
+    return boost::make_ready_future();
 }
 
 void

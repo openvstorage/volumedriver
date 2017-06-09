@@ -774,7 +774,7 @@ TEST_P(FailOverCacheTester, clear)
                                                                  0,
                                                                  buf.data(),
                                                                  buf.size()) };
-    proxy.addEntries(std::move(entries));
+    proxy.addEntries(std::move(entries)).get();
 
     EXPECT_NO_THROW(proxy.clear());
 

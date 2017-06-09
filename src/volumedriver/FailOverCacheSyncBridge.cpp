@@ -116,24 +116,11 @@ FailOverCacheSyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
 
     if(cache_)
     {
-        const size_t cluster_size =
-            static_cast<size_t>(cache_->lba_size()) *
-            static_cast<size_t>(cache_->cluster_multiplier());
-
-        std::vector<FailOverCacheEntry> entries;
-        entries.reserve(locs.size());
-        uint64_t lba = start_address;
-        for (size_t i = 0; i < locs.size(); i++)
-        {
-            entries.emplace_back(locs[i],
-                                 lba, data + i * cluster_size,
-                                 cluster_size);
-
-            lba += cache_->cluster_multiplier();
-        }
         try
         {
-            cache_->addEntries(std::move(entries));
+            return cache_->addEntries(locs,
+                                      start_address,
+                                      data);
         }
         catch (std::exception& e)
         {
@@ -153,7 +140,7 @@ FailOverCacheSyncBridge::Flush()
     {
         try
         {
-            cache_->flush();
+            return cache_->flush();
         }
         catch (std::exception& e)
         {

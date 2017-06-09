@@ -68,7 +68,6 @@ public:
     destroy(SyncFailOverToBackend) override;
 
     virtual boost::future<void>
-
     addEntries(const std::vector<ClusterLocation>&,
                uint64_t start_address,
                const uint8_t* data) override;

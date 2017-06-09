@@ -198,7 +198,7 @@ TEST_F(FailOverCacheTest, put_and_retrieve)
             vec.emplace_back(factory(next_location,
                                      "bart"));
         }
-        cache.addEntries(vec);
+        cache.addEntries(vec).get();
         auto end = vec.end();
         for (auto it = vec.begin(); it != end; it++)
         {
@@ -277,7 +277,7 @@ TEST_F(FailOverCacheTest, GetSCORange)
                                          "bart"));
             }
         }
-        cache.addEntries(vec);
+        cache.addEntries(vec).get();
         auto end = vec.end();
         for (auto it = vec.begin(); it != end; it++)
         {
@@ -349,7 +349,7 @@ TEST_F(FailOverCacheTest, GetOneSCO)
                                          "bart"));
             }
         }
-        cache.addEntries(vec);
+        cache.addEntries(vec).get();
         auto end = vec.end();
         for (auto it = vec.begin(); it != end; it++)
         {
@@ -501,7 +501,7 @@ public:
                                           FailOverCacheTestMain::ns().str()));
             }
 
-            cache_.addEntries(vec);
+            cache_.addEntries(vec).get();
             auto end = vec.end();
             for (auto it = vec.begin(); it != end; it++)
             {
@@ -691,7 +691,7 @@ TEST_F(FailOverCacheTest, get_entries_xxl)
         delete[] e.buffer_;
         e.buffer_ = buf.data();
 
-        cache.addEntries({std::move(e)});
+        cache.addEntries({std::move(e)}).get();
     }
 
     size_t seen = 0;
