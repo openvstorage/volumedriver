@@ -48,9 +48,6 @@ public:
     virtual void
     initialize(DegradedFun) override;
 
-    virtual const char*
-    getName() const override;
-
     virtual void
     destroy(SyncFailOverToBackend) override;
 

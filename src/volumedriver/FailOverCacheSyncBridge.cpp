@@ -38,12 +38,6 @@ FailOverCacheSyncBridge::initialize(DegradedFun fun)
     degraded_fun_ = std::move(fun);
 }
 
-const char*
-FailOverCacheSyncBridge::getName() const
-{
-    return "FailOverCacheSyncBridge";
-}
-
 bool
 FailOverCacheSyncBridge::backup()
 {

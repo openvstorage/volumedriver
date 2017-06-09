@@ -61,9 +61,6 @@ public:
     virtual void
     run() override;
 
-    virtual const char*
-    getName() const override;
-
     virtual void
     destroy(SyncFailOverToBackend) override;
 
@@ -99,6 +96,10 @@ public:
 
     virtual FailOverCacheMode
     mode() const override;
+
+    // fungi::Runnable
+    virtual const char*
+    getName() const override;
 
 private:
     DECLARE_LOGGER("FailOverCacheAsyncBridge");

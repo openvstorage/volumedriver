@@ -46,9 +46,6 @@ public:
     virtual void
     initialize(DegradedFun) = 0;
 
-    virtual const char*
-    getName() const = 0;
-
     virtual void
     destroy(SyncFailOverToBackend) = 0;
 
