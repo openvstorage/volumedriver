@@ -16,17 +16,18 @@
 #ifndef FAILOVERCACHEPROTOCOL_H
 #define FAILOVERCACHEPROTOCOL_H
 
+#include "../ClusterLocation.h"
+#include "../FailOverCacheCommand.h"
+
 #include "fungilib/Protocol.h"
 #include "fungilib/Socket.h"
 #include "fungilib/SocketServer.h"
 #include "fungilib/Thread.h"
 #include "fungilib/IOBaseStream.h"
-#include <youtils/IOException.h>
-#include "../Types.h"
-#include "../ClusterLocation.h"
 
 namespace failovercache
 {
+
 class FailOverCacheAcceptor;
 class Backend;
 
@@ -110,7 +111,7 @@ private:
                                bool cork);
 
     bool
-    poll_(int32_t& cmd);
+    poll_(volumedriver::FailOverCacheCommand& cmd);
 };
 
 }

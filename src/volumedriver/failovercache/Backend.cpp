@@ -15,6 +15,8 @@
 
 #include "Backend.h"
 
+#include "../FailOverCacheEntry.h"
+
 #include <youtils/Assert.h>
 
 namespace failovercache

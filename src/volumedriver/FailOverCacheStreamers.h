@@ -16,47 +16,76 @@
 #ifndef FAILOVERCACHESTREAMERS_H
 #define FAILOVERCACHESTREAMERS_H
 
-#include "failovercache/fungilib/IOBaseStream.h"
-#include <youtils/IOException.h>
+#include "FailOverCacheCommand.h"
+// a fwd declaration doesn't cut it even though we only
+// deal with vector<FailOverCacheEntry>
+#include "FailOverCacheEntry.h"
 #include "Types.h"
-#include <boost/ptr_container/ptr_vector.hpp>
-#include <boost/scoped_array.hpp>
-#include "ClusterLocation.h"
+
+#include <vector>
+
+namespace fungi
+{
+
+class IOBaseStream;
+
+}
 
 namespace volumedriver
 {
 
-enum FailOverCacheCommand
-{
-    RemoveUpTo     =  0x1,
-    GetSCO         =  0x2,
-    Register       =  0x3,
-    AddEntries     =  0x4,
-    GetEntries     =  0x5,
-    Flush          =  0x6,
-    Ok             =  0x7,
-    NotOk          =  0x8,
-    Unregister     =  0x9,
-    Clear          =  0xA,
-    GetSCORange    =  0xB
-    //    Bye            =  0xff
-};
+fungi::IOBaseStream&
+operator<<(fungi::IOBaseStream&,
+           FailOverCacheCommand);
 
-#define OUT_ENUM(stream, val)                   \
-    {                                           \
-        const uint32_t com = val;               \
-        stream << com;                          \
-    }                                           \
+fungi::IOBaseStream&
+operator>>(fungi::IOBaseStream&,
+           FailOverCacheCommand&);
 
-
-template<FailOverCacheCommand val>
+template<FailOverCacheCommand cmd>
 struct CommandData;
 
 template<>
-struct CommandData<Register>
+struct CommandData<FailOverCacheCommand::RemoveUpTo>
 {
-    CommandData(const std::string& ns = "",
-                volumedriver::ClusterSize clustersize = ClusterSize(0))
+    SCO sco;
+
+    explicit CommandData(const SCO s)
+        : sco(s)
+    {}
+};
+
+fungi::IOBaseStream&
+operator<<(fungi::IOBaseStream&,
+           const CommandData<FailOverCacheCommand::RemoveUpTo>&);
+
+fungi::IOBaseStream&
+operator>>(fungi::IOBaseStream&,
+           CommandData<FailOverCacheCommand::RemoveUpTo>&);
+
+template<>
+struct CommandData<FailOverCacheCommand::GetSCO>
+{
+    SCO sco;
+
+    explicit CommandData(const SCO s)
+        : sco(s)
+    {}
+};
+
+fungi::IOBaseStream&
+operator<<(fungi::IOBaseStream&,
+           const CommandData<FailOverCacheCommand::GetSCO>&);
+
+fungi::IOBaseStream&
+operator>>(fungi::IOBaseStream&,
+           CommandData<FailOverCacheCommand::GetSCO>&);
+
+template<>
+struct CommandData<FailOverCacheCommand::Register>
+{
+    explicit CommandData(const std::string& ns = "",
+                         ClusterSize clustersize = ClusterSize(0))
         : ns_(ns)
         , clustersize_(clustersize)
     {}
@@ -66,35 +95,15 @@ struct CommandData<Register>
 };
 
 fungi::IOBaseStream&
-checkStreamOK(fungi::IOBaseStream& stream,
-              const std::string& ex);
-
-
-fungi::IOBaseStream&
-operator<<(fungi::IOBaseStream& stream, const CommandData<Register>& data);
-
+operator<<(fungi::IOBaseStream&,
+           const CommandData<FailOverCacheCommand::Register>&);
 
 fungi::IOBaseStream&
-operator>>(fungi::IOBaseStream& stream, CommandData<Register>& data);
-
-struct FailOverCacheEntry
-{
-
-    FailOverCacheEntry(ClusterLocation cli,
-                       uint64_t lba,
-                       const uint8_t* buffer,
-                       uint32_t size);
-
-    ClusterLocation cli_;
-    uint64_t lba_;
-    uint32_t size_;
-    const uint8_t* buffer_;
-};
-
+operator>>(fungi::IOBaseStream&,
+           CommandData<FailOverCacheCommand::Register>&);
 
 template<>
-struct CommandData<AddEntries>
-
+struct CommandData<FailOverCacheCommand::AddEntries>
 {
     using EntryVector = std::vector<FailOverCacheEntry>;
 
@@ -113,30 +122,12 @@ struct CommandData<AddEntries>
 };
 
 fungi::IOBaseStream&
-operator<<(fungi::IOBaseStream& stream, const CommandData<AddEntries>& data);
-
-
-fungi::IOBaseStream&
-operator>>(fungi::IOBaseStream& stream, CommandData<AddEntries>& data);
-
-
-template<>
-struct CommandData<Flush>
-{};
+operator<<(fungi::IOBaseStream&,
+           const CommandData<FailOverCacheCommand::AddEntries>&);
 
 fungi::IOBaseStream&
-operator<<(fungi::IOBaseStream& stream, const CommandData<Flush>& /*data*/);
-
-fungi::IOBaseStream&
-operator>>(fungi::IOBaseStream& stream, CommandData<Flush>& /*data*/);
-
-template<>
-struct CommandData<Clear>
-{};
-
-fungi::IOBaseStream&
-operator<<(fungi::IOBaseStream& stream, const CommandData<Clear>& /*data*/);
-
+operator>>(fungi::IOBaseStream&,
+           CommandData<FailOverCacheCommand::AddEntries>&);
 
 }
 

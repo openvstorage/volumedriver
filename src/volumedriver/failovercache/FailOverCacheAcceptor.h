@@ -67,7 +67,7 @@ public:
     using BackendPtr = std::shared_ptr<Backend>;
 
     BackendPtr
-    lookup(const volumedriver::CommandData<volumedriver::Register>&);
+    lookup(const volumedriver::CommandData<volumedriver::FailOverCacheCommand::Register>&);
 
     void
     removeProtocol(FailOverCacheProtocol* prot)

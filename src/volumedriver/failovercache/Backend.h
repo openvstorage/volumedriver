@@ -20,8 +20,15 @@
 #include <deque>
 
 #include "../ClusterLocation.h"
-#include "../FailOverCacheStreamers.h"
+#include "../FailOverCacheCommand.h"
 #include "../Types.h"
+
+namespace volumedriver
+{
+
+class FailOverCacheEntry;
+
+}
 
 namespace failovercache
 {

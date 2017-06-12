@@ -1,4 +1,4 @@
-// Copyright (C) 2016 iNuron NV
+// Copyright (C) 2017 iNuron NV
 //
 // This file is part of Open vStorage Open Source Edition (OSE),
 // as available from
@@ -13,30 +13,32 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef VD_FAILOVER_CACHE_BRIDGE_COMMON_H
-#define VD_FAILOVER_CACHE_BRIDGE_COMMON_H
+#ifndef VD_FAILOVER_CACHE_ENTRY_H_
+#define VD_FAILOVER_CACHE_ENTRY_H_
 
 #include "ClusterLocation.h"
-#include "FailOverCacheProxy.h"
-#include "Types.h"
-
-#include <youtils/IOException.h>
 
 namespace volumedriver
 {
 
-VD_BOOLEAN_ENUM(SyncFailOverToBackend);
-
-// Z42: we want an exception hierarchy here.
-class FailOverCacheNotConfiguredException
-    : public fungi::IOException
+struct FailOverCacheEntry
 {
-public:
-    FailOverCacheNotConfiguredException()
-        : fungi::IOException("FailOverCache not configured")
+    FailOverCacheEntry(ClusterLocation cli,
+                       uint64_t lba,
+                       const uint8_t* buffer,
+                       uint32_t size)
+        : cli_(cli)
+        , lba_(lba)
+        , size_(size)
+        , buffer_(buffer)
     {}
+
+    ClusterLocation cli_;
+    uint64_t lba_;
+    uint32_t size_;
+    const uint8_t* buffer_;
 };
 
-} // namespace volumedriver
+}
 
-#endif // VD_FAILOVER_CACHE_BRIDGE_COMMON_H
+#endif // !VD_FAILOVER_CACHE_ENTRY_H_

@@ -14,6 +14,8 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "FailOverCacheAsyncBridge.h"
+#include "FailOverCacheBridgeCommon.h"
+#include "FailOverCacheEntry.h"
 #include "Volume.h"
 
 #include <algorithm>

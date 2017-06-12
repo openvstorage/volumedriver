@@ -16,8 +16,11 @@
 #include "FailOverCacheStreamers.h"
 #include "VolumeConfig.h"
 
+#include "failovercache/fungilib/IOBaseStream.h"
 #include "failovercache/fungilib/WrapByteArray.h"
 #include "failovercache/fungilib/Socket.h"
+
+#include <iostream>
 
 namespace
 {
@@ -30,33 +33,58 @@ namespace volumedriver
 {
 
 fungi::IOBaseStream&
-checkStreamOK(fungi::IOBaseStream& stream,
-              const std::string& ex)
+operator<<(fungi::IOBaseStream& stream,
+           FailOverCacheCommand cmd)
 {
-    stream >> fungi::IOBaseStream::cork;
-    uint32_t res;
-    stream >> res;
-    if(res != volumedriver::Ok)
-    {
-        LOG_ERROR("Protocol Error: *Not* Ok returned in " << ex);
-        throw fungi::IOException(ex.c_str());
-    }
-    return stream;
+    return stream << static_cast<uint32_t>(cmd);
 }
 
 fungi::IOBaseStream&
-operator<<(fungi::IOBaseStream& stream, const CommandData<Register>& data)
+operator>>(fungi::IOBaseStream& stream,
+           FailOverCacheCommand& cmd)
 {
-    stream << fungi::IOBaseStream::cork;
-    OUT_ENUM(stream, Register);
+    return stream >> reinterpret_cast<uint32_t&>(cmd);
+}
+
+fungi::IOBaseStream&
+operator<<(fungi::IOBaseStream& stream,
+           const CommandData<FailOverCacheCommand::RemoveUpTo>& data)
+{
+    return stream << data.sco;
+}
+
+fungi::IOBaseStream&
+operator>>(fungi::IOBaseStream& stream,
+           CommandData<FailOverCacheCommand::RemoveUpTo>& data)
+{
+    return stream >> data.sco;
+}
+
+fungi::IOBaseStream&
+operator<<(fungi::IOBaseStream& stream,
+           const CommandData<FailOverCacheCommand::GetSCO>& data)
+{
+    return stream << data.sco;
+}
+
+fungi::IOBaseStream&
+operator>>(fungi::IOBaseStream& stream,
+           CommandData<FailOverCacheCommand::GetSCO>& data)
+{
+    return stream >> data.sco;
+}
+
+fungi::IOBaseStream&
+operator<<(fungi::IOBaseStream& stream,
+           const CommandData<FailOverCacheCommand::Register>& data)
+{
     stream << data.ns_;
-    stream << static_cast<uint32_t>(data.clustersize_);
-    stream << fungi::IOBaseStream::uncork;
-    return checkStreamOK(stream, "Register");
+    return stream << static_cast<uint32_t>(data.clustersize_);
 }
 
 fungi::IOBaseStream&
-operator>>(fungi::IOBaseStream& stream, CommandData<Register>& data)
+operator>>(fungi::IOBaseStream& stream,
+           CommandData<FailOverCacheCommand::Register>& data)
 {
     stream >> data.ns_;
     stream >> data.clustersize_;
@@ -64,16 +92,17 @@ operator>>(fungi::IOBaseStream& stream, CommandData<Register>& data)
 }
 
 fungi::IOBaseStream&
-operator<<(fungi::IOBaseStream& stream, const CommandData<AddEntries>& data)
+operator<<(fungi::IOBaseStream& stream,
+           const CommandData<FailOverCacheCommand::AddEntries>& data)
 {
     if (not data.entries_.empty())
     {
         VERIFY(data.entries_.front().cli_.sco() == data.entries_.back().cli_.sco());
     }
 
+    // TODO: AR: try to get rid of this and the corking business
     bool isRDMA = stream.isRdma();
-    stream << fungi::IOBaseStream::cork;
-    OUT_ENUM(stream, AddEntries);
+
     const size_t wsize = data.entries_.size();
     stream << wsize;
 
@@ -82,29 +111,28 @@ operator<<(fungi::IOBaseStream& stream, const CommandData<AddEntries>& data)
         stream << fungi::IOBaseStream::uncork;
     }
 
-    for (std::vector<FailOverCacheEntry>::const_iterator it = data.entries_.begin();
-        it!= data.entries_.end();
-        ++it)
+    for (const auto& entry : data.entries_)
     {
         if (isRDMA) // make small but finished packets with RDMA
         {
             stream << fungi::IOBaseStream::cork;
         }
-        stream << it->cli_;
-        stream << it->lba_;
+        stream << entry.cli_;
+        stream << entry.lba_;
         TODO("ArneT: funky cast...");
-        stream << fungi::WrapByteArray((byte*) it->buffer_, it->size_);
+        stream << fungi::WrapByteArray((byte*) entry.buffer_, entry.size_);
         if (isRDMA) // make small but finished packets with RDMA
         {
             stream << fungi::IOBaseStream::uncork;
         }
     }
-    stream << fungi::IOBaseStream::uncork;
-    return checkStreamOK(stream, "AddEntries");
+
+    return stream;
 }
 
 fungi::IOBaseStream&
-operator>>(fungi::IOBaseStream& stream, CommandData<AddEntries>& data)
+operator>>(fungi::IOBaseStream& stream,
+           CommandData<FailOverCacheCommand::AddEntries>& data)
 {
     size_t count = 0;
     stream >> count;
@@ -155,41 +183,6 @@ operator>>(fungi::IOBaseStream& stream, CommandData<AddEntries>& data)
     }
 
     return stream;
-}
-
-fungi::IOBaseStream&
-operator<<(fungi::IOBaseStream& stream, const CommandData<Flush>& /*data*/)
-{
-    stream << fungi::IOBaseStream::cork;
-    OUT_ENUM(stream, Flush);
-    stream << fungi::IOBaseStream::uncork;
-    return checkStreamOK(stream,"Flush");
-}
-
-fungi::IOBaseStream&
-operator>>(fungi::IOBaseStream& stream, CommandData<Flush>& /*data*/)
-{
-    return stream;
-}
-
-fungi::IOBaseStream&
-operator<<(fungi::IOBaseStream& stream, const CommandData<Clear>& /*data*/)
-{
-    stream << fungi::IOBaseStream::cork;
-    OUT_ENUM(stream, Clear);
-    stream << fungi::IOBaseStream::uncork;
-    return checkStreamOK(stream, "Clear");
-}
-
-FailOverCacheEntry::FailOverCacheEntry(ClusterLocation cli,
-                                       uint64_t lba,
-                                       const uint8_t* buffer,
-                                       uint32_t size)
-    : cli_(cli)
-    , lba_(lba)
-    , size_(size)
-    , buffer_(buffer)
-{
 }
 
 }

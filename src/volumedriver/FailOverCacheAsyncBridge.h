@@ -16,9 +16,7 @@
 #ifndef VD_FAILOVER_CACHE_ASYNCBRIDGE_H
 #define VD_FAILOVER_CACHE_ASYNCBRIDGE_H
 
-#include "FailOverCacheBridgeCommon.h"
-#include "FailOverCacheStreamers.h"
-#include "FailOverCacheProxy.h"
+#include "FailOverCacheCommand.h"
 #include "FailOverCacheClientInterface.h"
 #include "SCO.h"
 
@@ -34,6 +32,7 @@
 namespace volumedriver
 {
 
+class FailOverCacheProxy;
 class FailOverCacheTester;
 
 class FailOverCacheAsyncBridge

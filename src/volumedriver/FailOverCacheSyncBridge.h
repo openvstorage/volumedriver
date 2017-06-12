@@ -16,18 +16,15 @@
 #ifndef VD_FAILOVER_CACHE_SYNCBRIDGE_H
 #define VD_FAILOVER_CACHE_SYNCBRIDGE_H
 
-#include "FailOverCacheBridgeCommon.h"
-#include "FailOverCacheStreamers.h"
-#include "FailOverCacheProxy.h"
 #include "FailOverCacheClientInterface.h"
 #include "SCO.h"
 
 #include <youtils/FileDescriptor.h>
-#include <youtils/IOException.h>
 
 namespace volumedriver
 {
 
+class FailOverCacheProxy;
 class FailOverCacheTester;
 
 class FailOverCacheSyncBridge

@@ -13,16 +13,18 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include <youtils/wall_timer.h>
-#include <boost/program_options.hpp>
-#include <youtils/Logger.h>
 #include <fstream>
 
+#include <boost/program_options.hpp>
+
 #include <youtils/BuildInfoString.h>
+#include <youtils/Logger.h>
 #include <youtils/Main.h>
+#include <youtils/wall_timer.h>
 
 #include "volumedriver/FailOverCacheConfig.h"
 #include "volumedriver/FailOverCacheClientInterface.h"
+#include "volumedriver/FailOverCacheEntry.h"
 #include "volumedriver/Types.h"
 
 namespace

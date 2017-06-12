@@ -96,7 +96,7 @@ void FailOverCacheProtocol::stop()
 }
 
 bool
-FailOverCacheProtocol::poll_(int32_t& cmd)
+FailOverCacheProtocol::poll_(FailOverCacheCommand& cmd)
 {
     struct pollfd fds[2];
     fds[0].fd = sock_->fileno();
@@ -165,7 +165,7 @@ FailOverCacheProtocol::run()
         LOG_INFO("Connected");
         while (true)
         {
-            int32_t com = 0;
+            FailOverCacheCommand com;
 
             try
             {
@@ -179,63 +179,46 @@ FailOverCacheProtocol::run()
                     break;
                 });
 
+            LOG_TRACE("Executing " << com);
+
             switch (com)
             {
-            case volumedriver::Register:
-                LOG_TRACE("Executing Register");
+#define CASE(x) case FailOverCacheCommand::x
+
+            CASE(Register):
                 register_();
-                LOG_TRACE("Finished Register");
                 break;
-
-            case volumedriver::Unregister:
-                LOG_TRACE("Executing Unregister");
+            CASE(Unregister):
                 unregister_();
-                LOG_TRACE("Finished Unregister");
                 break;
-
-            case volumedriver::AddEntries:
-                LOG_TRACE("Executing AddEntries");
+            CASE(AddEntries):
                 addEntries_();
-                LOG_TRACE("Finished AddEntries");
                 break;
-            case volumedriver::GetEntries:
-                LOG_TRACE("Executing GetEntries");
+            CASE(GetEntries):
                 getEntries_();
-                LOG_TRACE("Finished GetEntries");
                 break;
-            case volumedriver::Flush:
-                LOG_TRACE("Executing Flush");
+            CASE(Flush):
                 Flush_();
-                LOG_TRACE("Finished Flush");
                 break;
-
-            case volumedriver::Clear:
-                LOG_TRACE("Executing Clear");
+            CASE(Clear):
                 Clear_();
-                LOG_TRACE("Finished Clear");
                 break;
-
-            case volumedriver::GetSCORange:
-                LOG_TRACE("Executing GetSCORange");
+            CASE(GetSCORange):
                 getSCORange_();
-                LOG_TRACE("Finished GetSCORange");
                 break;
-
-            case volumedriver::GetSCO:
-                LOG_TRACE("Executing GetSCO");
+            CASE(GetSCO):
                 getSCO_();
-                LOG_TRACE("Finished GetSCO");
                 break;
-            case volumedriver::RemoveUpTo:
-                LOG_TRACE("Executing RemoveUpTo");
+            CASE(RemoveUpTo):
                 removeUpTo_();
-                LOG_TRACE("Finished RemoveUpTo");
-
                 break;
+#undef CASE
             default:
                 LOG_ERROR("DEFAULT BRANCH IN SWITCH...");
                 throw fungi :: IOException("no valid command");
             }
+
+            LOG_TRACE("Finished " << com);
         }
     }
     CATCH_STD_ALL_EWHAT({
@@ -256,7 +239,7 @@ FailOverCacheProtocol::run()
 void
 FailOverCacheProtocol::register_()
 {
-    volumedriver::CommandData<volumedriver::Register> data;
+    volumedriver::CommandData<FailOverCacheCommand::Register> data;
     stream_ >> data;
 
     LOG_INFO("Registering namespace " << data.ns_);
@@ -282,17 +265,12 @@ FailOverCacheProtocol::unregister_()
         // cache_->unregister_();
         fact_.remove(*cache_);
         cache_ = nullptr;
-        stream_ << fungi::IOBaseStream::cork;
-        OUT_ENUM(stream_,volumedriver::Ok);
-        stream_ << fungi::IOBaseStream::uncork;
+        returnOk();
     }
-    catch(...)
-    {
-        stream_ << fungi::IOBaseStream::cork;
-        OUT_ENUM(stream_, volumedriver::NotOk);
-        stream_ << fungi::IOBaseStream::uncork;
-    }
-
+    CATCH_STD_ALL_EWHAT({
+            LOG_ERROR("Error unregistering: " << EWHAT);
+            returnNotOk();
+        });
 }
 
 void
@@ -300,7 +278,7 @@ FailOverCacheProtocol::addEntries_()
 {
     VERIFY(cache_);
 
-    volumedriver::CommandData<volumedriver::AddEntries> data;
+    volumedriver::CommandData<FailOverCacheCommand::AddEntries> data;
     stream_ >> data;
 
     // TODO: consider preventing empty AddEntries requests
@@ -322,7 +300,7 @@ void
 FailOverCacheProtocol::returnOk()
 {
     stream_ << fungi::IOBaseStream::cork;
-    OUT_ENUM(stream_, volumedriver::Ok);
+    stream_ << FailOverCacheCommand::Ok;
     stream_ << fungi::IOBaseStream::uncork;
 }
 
@@ -330,7 +308,7 @@ void
 FailOverCacheProtocol::returnNotOk()
 {
     stream_ << fungi::IOBaseStream::cork;
-    OUT_ENUM(stream_, volumedriver::NotOk);
+    stream_ << FailOverCacheCommand::NotOk;
     stream_ << fungi::IOBaseStream::uncork;
 }
 

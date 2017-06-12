@@ -14,6 +14,9 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "FileBackend.h"
+
+#include "../FailOverCacheEntry.h"
+
 #include "fungilib/WrapByteArray.h"
 
 #include <boost/scoped_array.hpp>

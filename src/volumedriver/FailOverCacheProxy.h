@@ -16,13 +16,15 @@
 #ifndef FAILOVERCACHEPROXY_H
 #define FAILOVERCACHEPROXY_H
 
-#include "FailOverCacheStreamers.h"
+#include "FailOverCacheCommand.h"
 #include "SCOProcessorInterface.h"
 #include "SCO.h"
 
 #include "failovercache/fungilib/Socket.h"
 #include "failovercache/fungilib/IOBaseStream.h"
 #include "failovercache/fungilib/Buffer.h"
+
+#include <vector>
 
 #include <boost/ptr_container/ptr_vector.hpp>
 #include <boost/scoped_array.hpp>
@@ -32,6 +34,7 @@ namespace volumedriver
 {
 
 class FailOverCacheConfig;
+class FailOverCacheEntry;
 class Volume;
 
 class FailOverCacheProxy
@@ -109,6 +112,13 @@ public:
 private:
     DECLARE_LOGGER("FailOverCacheProxy");
 
+    std::unique_ptr<fungi::Socket> socket_;
+    fungi::IOBaseStream stream_;
+    const Namespace ns_;
+    const LBASize lba_size_;
+    const ClusterMultiplier cluster_mult_;
+    bool delete_failover_dir_;
+
     void
     register_();
 
@@ -116,18 +126,20 @@ private:
     unregister_();
 
     void
-    checkStreamOK(const std::string& ex);
+    check_(const char* desc);
 
     uint64_t
     getObject_(SCOProcessorFun,
                bool cork_per_cluster);
 
-    std::unique_ptr<fungi::Socket> socket_;
-    fungi::IOBaseStream stream_;
-    const Namespace ns_;
-    const LBASize lba_size_;
-    const ClusterMultiplier cluster_mult_;
-    bool delete_failover_dir_;
+    template<FailOverCacheCommand,
+             typename... Args>
+    void
+    send_(Args&&...);
+
+    template<FailOverCacheCommand>
+    void
+    send_();
 };
 
 }

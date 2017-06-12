@@ -87,7 +87,7 @@ FailOverCacheAcceptor::remove(Backend& w)
 }
 
 FailOverCacheAcceptor::BackendPtr
-FailOverCacheAcceptor::lookup(const CommandData<Register>& reg)
+FailOverCacheAcceptor::lookup(const CommandData<FailOverCacheCommand::Register>& reg)
 {
     LOCK();
 
@@ -111,7 +111,7 @@ FailOverCacheAcceptor::lookup(const CommandData<Register>& reg)
     else
     {
         w = factory_.make_backend(reg.ns_,
-                                 reg.clustersize_);
+                                  reg.clustersize_);
 
         auto res(map_.emplace(std::make_pair(reg.ns_,
                                              w)));
