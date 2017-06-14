@@ -13,6 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "../ExceptionUtils.h"
 #include "../FutureUtils.h"
 #include "../InlineExecutor.h"
 
@@ -115,16 +116,7 @@ TEST(FutureTest, continuation_of_pending_future_in_callback_thread)
 TEST(FutureTest, exceptional_continuation)
 {
     boost::promise<void> p;
-
-    // there's no boost::make_exception_ptr
-    try
-    {
-        throw std::logic_error("only kidding");
-    }
-    catch (...)
-    {
-        p.set_exception(boost::current_exception());
-    }
+    p.set_exception(make_boost_exception_ptr(std::logic_error("just kidding")));
 
     boost::future<void> f(p.get_future());
     boost::future<void> g(f.then(InlineExecutor::get(),
