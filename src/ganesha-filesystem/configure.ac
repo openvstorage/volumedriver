@@ -8,8 +8,8 @@ AC_CONFIG_SRCDIR([./FileSystemWrapper.cpp])
 AC_CONFIG_MACRO_DIR([../m4])
 AC_CONFIG_AUX_DIR([../])
 AM_INIT_AUTOMAKE(m4_esyscmd([case `automake --version | head -n 1` in
-                             *1.11*) echo foreign;;
-                             *) echo "foreign serial-tests";;
+                             *1.11*) echo "subdir-objects foreign";;
+                             *) echo "subdir-objects foreign serial-tests";;
                              esac]))
 dnl AM_INIT_AUTOMAKE([foreign])
 LT_INIT(disable-static)
