@@ -20,6 +20,9 @@
 #include <memory>
 #include <unordered_map>
 
+namespace volumedriver
+{
+
 namespace failovercache
 {
 
@@ -84,6 +87,8 @@ private:
     // capacity / increment used when adding to SCOEntries
     static constexpr size_t sco_entries_slab_size_ = 4096;
 };
+
+}
 
 }
 

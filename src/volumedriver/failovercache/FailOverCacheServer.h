@@ -69,7 +69,7 @@ private:
     static youtils::Logger::logger_type* logger_;
 
     std::unique_ptr<fungi::SocketServer> s;
-    std::unique_ptr<failovercache::FailOverCacheAcceptor> acceptor;
+    std::unique_ptr<volumedriver::failovercache::FailOverCacheAcceptor> acceptor;
 
     boost::program_options::options_description desc_;
 

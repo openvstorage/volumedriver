@@ -19,13 +19,15 @@
 
 #include <youtils/FileDescriptor.h>
 
+namespace volumedriver
+{
+
 namespace failovercache
 {
 
 namespace fs = boost::filesystem;
 namespace yt = youtils;
 
-using namespace volumedriver;
 using namespace fungi;
 
 #define LOCK()                                  \
@@ -140,6 +142,8 @@ FailOverCacheAcceptor::find_backend_(const std::string& ns)
     {
         return nullptr;
     }
+}
+
 }
 
 }

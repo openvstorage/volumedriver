@@ -28,8 +28,6 @@ namespace volumedriver
 
 class FailOverCacheEntry;
 
-}
-
 namespace failovercache
 {
 
@@ -140,6 +138,9 @@ private:
 };
 
 }
+
+}
+
 #endif // !DTL_BACKEND_H_
 
 // Local Variables: **

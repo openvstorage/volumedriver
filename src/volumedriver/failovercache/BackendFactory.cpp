@@ -17,6 +17,9 @@
 #include "FileBackend.h"
 #include "MemoryBackend.h"
 
+namespace volumedriver
+{
+
 namespace failovercache
 {
 
@@ -120,6 +123,8 @@ BackendFactory::make_backend(const std::string& nspace,
         return std::make_unique<MemoryBackend>(nspace,
                                                csize);
     }
+}
+
 }
 
 }

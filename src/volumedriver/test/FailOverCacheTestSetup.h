@@ -57,7 +57,7 @@ private:
     FailOverCacheTestSetup& setup_;
     const boost::optional<std::string> addr_;
     const uint16_t port_;
-    failovercache::FailOverCacheAcceptor acceptor_;
+    volumedriver::failovercache::FailOverCacheAcceptor acceptor_;
     std::unique_ptr<fungi::SocketServer> server_;
 
 public:
@@ -72,7 +72,7 @@ public:
     volumedriver::FailOverCacheConfig
     config(const volumedriver::FailOverCacheMode) const;
 
-    std::shared_ptr<failovercache::Backend>
+    std::shared_ptr<volumedriver::failovercache::Backend>
     backend(const backend::Namespace&);
 };
 

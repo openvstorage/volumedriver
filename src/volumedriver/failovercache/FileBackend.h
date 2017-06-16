@@ -23,6 +23,9 @@
 
 #include <boost/filesystem.hpp>
 
+namespace volumedriver
+{
+
 namespace failovercache
 {
 
@@ -81,6 +84,8 @@ private:
     boost::filesystem::path
     make_path_(const volumedriver::SCO) const;
 };
+
+}
 
 }
 

@@ -25,6 +25,9 @@
 #include "fungilib/Thread.h"
 #include "fungilib/IOBaseStream.h"
 
+namespace volumedriver
+{
+
 namespace failovercache
 {
 
@@ -116,6 +119,7 @@ private:
 
 }
 
+}
 
 #endif // FAILOVERCACHEPROTOCOL_H
 

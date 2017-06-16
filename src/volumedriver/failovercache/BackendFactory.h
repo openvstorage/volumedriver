@@ -20,6 +20,9 @@
 #include <youtils/FileDescriptor.h>
 #include <youtils/Logging.h>
 
+namespace volumedriver
+{
+
 namespace failovercache
 {
 
@@ -49,5 +52,7 @@ private:
     const boost::optional<boost::filesystem::path> root_;
     const boost::optional<size_t> file_backend_buffer_size_;
 };
+
+}
 
 }

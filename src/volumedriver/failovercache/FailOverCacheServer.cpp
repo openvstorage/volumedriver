@@ -32,7 +32,7 @@ FailOverCacheServer::FailOverCacheServer(const constructor_type& c)
     , desc_("Required Options")
     , transport_(vd::FailOverCacheTransport::TCP)
     , busy_loop_usecs_(0)
-    , file_backend_buffer_size_(failovercache::FileBackend::default_stream_buffer_size())
+    , file_backend_buffer_size_(vd::failovercache::FileBackend::default_stream_buffer_size())
     , running_(false)
 {
     logger_ = &MainHelper::getLogger__();
@@ -132,9 +132,9 @@ FailOverCacheServer::run()
               ", busy-loop usecs: " << busy_loop_usecs_ <<
               ", file backend stream buffer size: " << file_backend_buffer_size_);
 
-    acceptor = std::make_unique<failovercache::FailOverCacheAcceptor>(path,
-                                                                      file_backend_buffer_size_,
-                                                                      boost::chrono::microseconds(busy_loop_usecs_));
+    acceptor = std::make_unique<vd::failovercache::FailOverCacheAcceptor>(path,
+                                                                          file_backend_buffer_size_,
+                                                                          boost::chrono::microseconds(busy_loop_usecs_));
 
     LOG_INFO("Running the SocketServer");
 

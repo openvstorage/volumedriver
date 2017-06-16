@@ -24,6 +24,9 @@
 #include <youtils/Assert.h>
 #include <youtils/ScopeExit.h>
 
+namespace volumedriver
+{
+
 namespace failovercache
 {
 
@@ -170,6 +173,8 @@ size_t
 FileBackend::default_stream_buffer_size()
 {
     return 128ULL * 1024;
+}
+
 }
 
 }

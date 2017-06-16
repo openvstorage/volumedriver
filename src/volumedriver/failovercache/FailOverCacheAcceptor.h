@@ -36,6 +36,9 @@ class FailOverCacheTestContext;
 
 }
 
+namespace volumedriver
+{
+
 namespace failovercache
 {
 
@@ -93,6 +96,8 @@ private:
     BackendPtr
     find_backend_(const std::string&);
 };
+
+}
 
 }
 #endif // FAILOVERCACHEACCEPTOR_H

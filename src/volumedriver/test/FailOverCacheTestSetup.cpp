@@ -25,9 +25,9 @@ namespace volumedrivertest
 
 namespace be = backend;
 namespace fs = boost::filesystem;
-namespace vd = volumedriver;
 
 using namespace std::literals::string_literals;
+using namespace volumedriver;
 
 namespace
 {
@@ -65,7 +65,7 @@ FailOverCacheTestContext::FailOverCacheTestContext(FailOverCacheTestSetup& setup
     , server_(fungi::SocketServer::createSocketServer(acceptor_,
                                                       addr_,
                                                       port_,
-                                                      setup.transport() == vd::FailOverCacheTransport::RSocket))
+                                                      setup.transport() == FailOverCacheTransport::RSocket))
 {}
 
 FailOverCacheTestContext::~FailOverCacheTestContext()
@@ -76,10 +76,10 @@ FailOverCacheTestContext::~FailOverCacheTestContext()
     setup_.release_port_(port_);
 }
 
-vd::FailOverCacheConfig
-FailOverCacheTestContext::config(const vd::FailOverCacheMode mode) const
+FailOverCacheConfig
+FailOverCacheTestContext::config(const FailOverCacheMode mode) const
 {
-    return vd::FailOverCacheConfig(FailOverCacheTestSetup::host(),
+    return FailOverCacheConfig(FailOverCacheTestSetup::host(),
                                    port(),
                                    mode);
 }
@@ -97,8 +97,8 @@ uint16_t
 FailOverCacheTestSetup::port_base_ =
     youtils::System::get_env_with_default<uint16_t>("FOC_PORT_BASE", 17071);
 
-vd::FailOverCacheTransport
-FailOverCacheTestSetup::transport_(vd::FailOverCacheTransport::TCP);
+FailOverCacheTransport
+FailOverCacheTestSetup::transport_(FailOverCacheTransport::TCP);
 
 boost::chrono::microseconds
 FailOverCacheTestSetup::busy_retry_duration_(0);

@@ -16,6 +16,9 @@
 #include "MemoryBackend.h"
 #include "../FailOverCacheEntry.h"
 
+namespace volumedriver
+{
+
 namespace failovercache
 {
 
@@ -96,6 +99,8 @@ MemoryBackend::get_entries(const volumedriver::SCO sco,
             }
         }
     }
+}
+
 }
 
 }

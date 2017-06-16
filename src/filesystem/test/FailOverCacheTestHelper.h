@@ -60,7 +60,7 @@ public:
     const uint16_t port;
 
 private:
-    failovercache::FailOverCacheAcceptor acceptor_;
+    volumedriver::failovercache::FailOverCacheAcceptor acceptor_;
     std::unique_ptr<fungi::SocketServer> server_;
 };
 

@@ -19,10 +19,12 @@
 
 #include <youtils/Assert.h>
 
+namespace volumedriver
+{
+
 namespace failovercache
 {
 
-using namespace volumedriver;
 using namespace fungi;
 
 namespace be = backend;
@@ -191,6 +193,8 @@ Backend::getSCO(SCO sconame,
         get_entries(*it,
                     fun);
     }
+}
+
 }
 
 }

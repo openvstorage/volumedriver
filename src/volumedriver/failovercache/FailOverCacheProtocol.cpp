@@ -33,11 +33,13 @@
 #include <youtils/ScopeExit.h>
 #include <youtils/Timer.h>
 
+namespace volumedriver
+{
+
 namespace failovercache
 {
 
 namespace yt = youtils;
-using namespace volumedriver;
 
 FailOverCacheProtocol::FailOverCacheProtocol(std::unique_ptr<fungi::Socket> sock,
                                              fungi::SocketServer& /*parentServer*/,
@@ -450,6 +452,8 @@ FailOverCacheProtocol::getSCORange_()
     stream_ << youngest;
 
     stream_ << fungi::IOBaseStream::uncork;
+}
+
 }
 
 }
