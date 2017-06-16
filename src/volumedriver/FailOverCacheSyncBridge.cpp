@@ -16,6 +16,8 @@
 #include "FailOverCacheSyncBridge.h"
 #include "Volume.h"
 
+#include "failovercache/ClientInterface.h"
+
 #include <algorithm>
 #include <cerrno>
 
@@ -47,7 +49,7 @@ FailOverCacheSyncBridge::backup()
 }
 
 void
-FailOverCacheSyncBridge::newCache(std::unique_ptr<FailOverCacheProxy> cache)
+FailOverCacheSyncBridge::newCache(std::unique_ptr<failovercache::ClientInterface> cache)
 {
     LOCK();
 

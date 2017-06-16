@@ -17,7 +17,6 @@
 #define VD_FAILOVER_CACHE_BRIDGE_COMMON_H
 
 #include "ClusterLocation.h"
-#include "FailOverCacheProxy.h"
 #include "Types.h"
 
 #include <youtils/IOException.h>

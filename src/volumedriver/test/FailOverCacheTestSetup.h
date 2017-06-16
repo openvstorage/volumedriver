@@ -25,7 +25,6 @@
 #include <youtils/Logging.h>
 
 #include "../FailOverCacheConfig.h"
-#include "../FailOverCacheProxy.h"
 #include "../FailOverCacheTransport.h"
 #include "../failovercache/Backend.h"
 #include "../failovercache/FailOverCacheAcceptor.h"

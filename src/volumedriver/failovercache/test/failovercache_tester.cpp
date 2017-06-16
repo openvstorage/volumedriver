@@ -16,17 +16,18 @@
 #include "FailOverCacheEnvironment.h"
 #include "FailOverCacheTestMain.h"
 
+#include "../ClientInterface.h"
 #include "../FailOverCacheServer.h"
 
 #include "../../ClusterLocation.h"
 #include "../../FailOverCacheConfig.h"
-#include "../../FailOverCacheProxy.h"
 
 #include <stdlib.h>
 #include <memory>
 
 #include <gtest/gtest.h>
 
+#include <boost/chrono.hpp>
 #include <boost/program_options.hpp>
 #include <boost/random/discrete_distribution.hpp>
 #include <boost/thread.hpp>
@@ -39,14 +40,16 @@
 namespace failovercachetest
 {
 
+namespace bc = boost::chrono;
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 namespace yt = youtils;
 
 using namespace volumedriver;
+using namespace volumedriver::failovercache;
 using namespace std::literals::string_literals;
 
-#define BIND_SCO_PROCESSOR(proc) \
+#define BIND_SCO_PROCESSOR(proc)                                        \
     SCOProcessorFun(boost::bind(&decltype(proc)::operator(), &proc, _1, _2, _3, _4))
 
 class FailOverCacheEntryFactory
@@ -102,6 +105,9 @@ private:
     ClusterLocation cluster_loc;
 };
 
+namespace
+{
+
 class FailOverCacheEntryProcessor
 {
 public:
@@ -148,6 +154,8 @@ public:
     const ClusterSize cluster_size_;
 };
 
+}
+
 class FailOverCacheTest
     : public testing::Test
 {
@@ -179,13 +187,13 @@ TEST_F(FailOverCacheTest, put_and_retrieve)
     const uint32_t num_clusters_per_sco = 32;
     const uint32_t num_scos_to_produce = 20;
 
-    FailOverCacheProxy
-        cache(FailOverCacheTestMain::failovercache_config(),
-              FailOverCacheTestMain::ns(),
-              LBASize(512),
-              ClusterMultiplier(8),
-              boost::chrono::seconds(8),
-              boost::none);
+    std::unique_ptr<ClientInterface>
+        cache(ClientInterface::create(FailOverCacheTestMain::failovercache_config(),
+                                      FailOverCacheTestMain::ns(),
+                                      LBASize(512),
+                                      ClusterMultiplier(8),
+                                      bc::milliseconds(8000),
+                                      boost::none));
 
     FailOverCacheEntryFactory factory(cluster_size,
                                       num_clusters_per_sco);
@@ -198,7 +206,7 @@ TEST_F(FailOverCacheTest, put_and_retrieve)
             vec.emplace_back(factory(next_location,
                                      "bart"));
         }
-        cache.addEntries(vec).get();
+        cache->addEntries(vec).get();
         auto end = vec.end();
         for (auto it = vec.begin(); it != end; it++)
         {
@@ -210,16 +218,16 @@ TEST_F(FailOverCacheTest, put_and_retrieve)
     {
         FailOverCacheEntryProcessor processor("bart",
                                               cluster_size);
-        cache.getEntries(BIND_SCO_PROCESSOR(processor));
+        cache->getEntries(BIND_SCO_PROCESSOR(processor));
 
         EXPECT_EQ(processor.sco_count, num_scos_to_produce);
         EXPECT_EQ(processor.cluster_count, num_clusters_per_sco * num_scos_to_produce);
     }
 
-    cache.clear();
+    cache->clear();
     FailOverCacheEntryProcessor processor("bart",
                                           cluster_size);
-    cache.getEntries(BIND_SCO_PROCESSOR(processor));
+    cache->getEntries(BIND_SCO_PROCESSOR(processor));
     EXPECT_EQ(processor.sco_count, 0);
     EXPECT_EQ(processor.cluster_count, 0);
 }
@@ -235,13 +243,13 @@ TEST_F(FailOverCacheTest, GetSCORange)
 
     const uint32_t num_scos_to_produce = 13;
 
-    FailOverCacheProxy
-        cache(FailOverCacheTestMain::failovercache_config(),
-              FailOverCacheTestMain::ns(),
-              LBASize(512),
-              ClusterMultiplier(8),
-              boost::chrono::seconds(8),
-              boost::none);
+    std::unique_ptr<ClientInterface>
+        cache(ClientInterface::create(FailOverCacheTestMain::failovercache_config(),
+                                      FailOverCacheTestMain::ns(),
+                                      LBASize(512),
+                                      ClusterMultiplier(8),
+                                      bc::milliseconds(8000),
+                                      boost::none));
 
     FailOverCacheEntryFactory factory(cluster_size,
                                       num_clusters_per_sco);
@@ -249,7 +257,7 @@ TEST_F(FailOverCacheTest, GetSCORange)
     ClusterLocation next_location(1);
     bool stopping = false;
     SCO oldest , youngest ;
-    cache.getSCORange(oldest,youngest);
+    cache->getSCORange(oldest,youngest);
     EXPECT_TRUE(oldest.number() <= youngest.number());
     EXPECT_EQ(oldest, SCO(0));
     EXPECT_EQ(youngest,SCO(0));
@@ -277,7 +285,7 @@ TEST_F(FailOverCacheTest, GetSCORange)
                                          "bart"));
             }
         }
-        cache.addEntries(vec).get();
+        cache->addEntries(vec).get();
         auto end = vec.end();
         for (auto it = vec.begin(); it != end; it++)
         {
@@ -285,18 +293,18 @@ TEST_F(FailOverCacheTest, GetSCORange)
         }
     }
 
-    cache.getSCORange(oldest, youngest);
+    cache->getSCORange(oldest, youngest);
     EXPECT_TRUE(oldest.number() <= youngest.number());
     EXPECT_EQ(oldest, ClusterLocation(1).sco());
     EXPECT_EQ(youngest, ClusterLocation(13).sco());
     SCO l = ClusterLocation(7).sco();
-    cache.removeUpTo(SCO(l));
-    cache.getSCORange(oldest, youngest);
+    cache->removeUpTo(SCO(l));
+    cache->getSCORange(oldest, youngest);
     EXPECT_TRUE(oldest.number() <= youngest.number());
     EXPECT_EQ(oldest, ClusterLocation(8).sco());
     EXPECT_EQ(youngest, ClusterLocation(13).sco());
-    cache.clear();
-    cache.getSCORange(oldest, youngest);
+    cache->clear();
+    cache->getSCORange(oldest, youngest);
     EXPECT_TRUE(oldest.number() <= youngest.number());
     EXPECT_EQ(oldest, SCO());
     EXPECT_EQ(youngest,SCO());
@@ -312,13 +320,13 @@ TEST_F(FailOverCacheTest, GetOneSCO)
 
     const uint32_t num_scos_to_produce = 13;
 
-    FailOverCacheProxy
-        cache(FailOverCacheTestMain::failovercache_config(),
-              FailOverCacheTestMain::ns(),
-              LBASize(512),
-              ClusterMultiplier(8),
-              boost::chrono::seconds(8),
-              boost::none);
+    std::unique_ptr<ClientInterface>
+        cache(ClientInterface::create(FailOverCacheTestMain::failovercache_config(),
+                                      FailOverCacheTestMain::ns(),
+                                      LBASize(512),
+                                      ClusterMultiplier(8),
+                                      bc::milliseconds(8000),
+                                      boost::none));
 
     FailOverCacheEntryFactory factory(cluster_size,
                                       num_clusters_per_sco);
@@ -349,7 +357,7 @@ TEST_F(FailOverCacheTest, GetOneSCO)
                                          "bart"));
             }
         }
-        cache.addEntries(vec).get();
+        cache->addEntries(vec).get();
         auto end = vec.end();
         for (auto it = vec.begin(); it != end; it++)
         {
@@ -361,8 +369,8 @@ TEST_F(FailOverCacheTest, GetOneSCO)
         FailOverCacheEntryProcessor processor("arne",
                                               cluster_size);
 
-        cache.getSCOFromFailOver(ClusterLocation(4).sco(),
-                                 BIND_SCO_PROCESSOR(processor));
+        cache->getSCOFromFailOver(ClusterLocation(4).sco(),
+                                  BIND_SCO_PROCESSOR(processor));
         EXPECT_EQ(processor.sco_count, 1);
         EXPECT_EQ(processor.cluster_count, num_clusters_per_sco);
     }
@@ -371,16 +379,16 @@ TEST_F(FailOverCacheTest, GetOneSCO)
         FailOverCacheEntryProcessor processor("bart",
                                               cluster_size);
 
-        cache.getSCOFromFailOver(ClusterLocation(7).sco(),
-                                 BIND_SCO_PROCESSOR(processor));
+        cache->getSCOFromFailOver(ClusterLocation(7).sco(),
+                                  BIND_SCO_PROCESSOR(processor));
         EXPECT_EQ(processor.sco_count, 1);
         EXPECT_EQ(processor.cluster_count, num_clusters_per_sco);
     }
 
-    cache.clear();
+    cache->clear();
     FailOverCacheEntryProcessor processor("bart",
                                           cluster_size);
-    cache.getEntries(BIND_SCO_PROCESSOR(processor));
+    cache->getEntries(BIND_SCO_PROCESSOR(processor));
     EXPECT_EQ(processor.sco_count, 0);
     EXPECT_EQ(processor.cluster_count, 0);
 }
@@ -388,14 +396,17 @@ TEST_F(FailOverCacheTest, GetOneSCO)
 TEST_F(FailOverCacheTest, DISABLED_DoubleRegister)
 {
     // Y42 apparantly not a or my problem
-    FailOverCacheProxy
-        cache1(FailOverCacheTestMain::failovercache_config(),
-               FailOverCacheTestMain::ns(),
-               LBASize(512),
-               ClusterMultiplier(8),
-               boost::chrono::seconds(8),
-               boost::none);
+    std::unique_ptr<ClientInterface>
+        cache1(ClientInterface::create(FailOverCacheTestMain::failovercache_config(),
+                                       FailOverCacheTestMain::ns(),
+                                       LBASize(512),
+                                       ClusterMultiplier(8),
+                                       bc::milliseconds(8000),
+                                       boost::none));
 }
+
+namespace
+{
 
 struct FailOverCacheOneProcessor
 {
@@ -454,12 +465,12 @@ public:
     explicit FailOverCacheTestThread(const std::string& content,
                                      const unsigned test_size = 100000)
         : content_(content)
-        , cache_(FailOverCacheTestMain::failovercache_config(),
-                 backend::Namespace(content),
-                 LBASize(512),
-                 ClusterMultiplier(8),
-                 boost::chrono::seconds(30),
-                 boost::none)
+        , cache_(failovercache::ClientInterface::create(FailOverCacheTestMain::failovercache_config(),
+                                                        backend::Namespace(content),
+                                                        LBASize(512),
+                                                        ClusterMultiplier(8),
+                                                        bc::milliseconds(30000),
+                                                        boost::none))
         , factory_(cluster_size_,
                    num_clusters_per_sco_)
         , next_location_(1)
@@ -501,7 +512,7 @@ public:
                                           FailOverCacheTestMain::ns().str()));
             }
 
-            cache_.addEntries(vec).get();
+            cache_->addEntries(vec).get();
             auto end = vec.end();
             for (auto it = vec.begin(); it != end; it++)
             {
@@ -513,13 +524,13 @@ public:
                 {
                     LOG_INFO("Test 0");
 
-                    cache_.clear();
+                    cache_->clear();
                     cluster_count_ = 0;
                     latestSCONotOnFailOver = latestSCOOnFailOver;
 
                     FailOverCacheEntryProcessor processor(FailOverCacheTestMain::ns().str(),
                                                           cluster_size_);
-                    cache_.getEntries(BIND_SCO_PROCESSOR(processor));
+                    cache_->getEntries(BIND_SCO_PROCESSOR(processor));
                     EXPECT_EQ(processor.sco_count, 0);
                     EXPECT_EQ(processor.cluster_count, cluster_count_);
                 }
@@ -530,7 +541,7 @@ public:
 
                     FailOverCacheEntryProcessor processor(FailOverCacheTestMain::ns().str(),
                                                           cluster_size_);
-                    cache_.getEntries(BIND_SCO_PROCESSOR(processor));
+                    cache_->getEntries(BIND_SCO_PROCESSOR(processor));
                     EXPECT_EQ(processor.cluster_count, cluster_count_);
                 }
                 break;
@@ -539,7 +550,7 @@ public:
                     LOG_INFO("Test 2");
                     SCO oldest;
                     SCO youngest;
-                    cache_.getSCORange(oldest, youngest);
+                    cache_->getSCORange(oldest, youngest);
                     EXPECT_TRUE(oldest.number() <= youngest.number());
                     ClusterLocation next = latestSCONotOnFailOver;
                     next.incrementNumber(1);
@@ -584,17 +595,17 @@ public:
                                                    sconame,
                                                    clusters_in_sco);
 
-                    cache_.getSCOFromFailOver(sconame,
+                    cache_->getSCOFromFailOver(sconame,
                                               BIND_SCO_PROCESSOR(proc));
                 }
                 break;
             case 4:
                 LOG_INFO("Just flushing");
 
-                cache_.flush();
+                cache_->flush();
                 break;
             default:
-            LOG_FATAL("How did you get here");
+                LOG_FATAL("How did you get here");
             }
         }
         LOG_INFO("Exiting test for " << content_);
@@ -602,7 +613,7 @@ public:
 
     const std::string content_;
 
-    FailOverCacheProxy cache_;
+    std::unique_ptr<failovercache::ClientInterface> cache_;
     FailOverCacheEntryFactory factory_;
 
     static const ClusterSize cluster_size_;
@@ -622,6 +633,8 @@ public:
 
 const ClusterSize
 FailOverCacheTestThread::cluster_size_(4096);
+
+}
 
 TEST_F(FailOverCacheTest, Stress)
 {
@@ -663,13 +676,13 @@ TEST_F(FailOverCacheTest, get_entries_xxl)
     const ClusterMultiplier cmult(8);
     const ClusterSize csize(lba_size * cmult);
 
-    FailOverCacheProxy
-        cache(FailOverCacheTestMain::failovercache_config(),
-              FailOverCacheTestMain::ns(),
-              lba_size,
-              cmult,
-              boost::chrono::seconds(8),
-              boost::none);
+    std::unique_ptr<failovercache::ClientInterface>
+        cache(failovercache::ClientInterface::create(FailOverCacheTestMain::failovercache_config(),
+                                                     FailOverCacheTestMain::ns(),
+                                                     lba_size,
+                                                     cmult,
+                                                     bc::milliseconds(8000),
+                                                     boost::none));
 
     const SCOMultiplier smult(4096);
 
@@ -691,17 +704,17 @@ TEST_F(FailOverCacheTest, get_entries_xxl)
         delete[] e.buffer_;
         e.buffer_ = buf.data();
 
-        cache.addEntries({std::move(e)}).get();
+        cache->addEntries({std::move(e)}).get();
     }
 
     size_t seen = 0;
-    cache.getEntries([&](ClusterLocation,
-                         uint64_t,
-                         const uint8_t*,
-                         size_t)
-                     {
-                         ++seen;
-                     });
+    cache->getEntries([&](ClusterLocation,
+                          uint64_t,
+                          const uint8_t*,
+                          size_t)
+                      {
+                          ++seen;
+                      });
 
     EXPECT_EQ(count,
               seen);

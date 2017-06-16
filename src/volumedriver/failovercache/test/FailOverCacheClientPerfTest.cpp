@@ -26,12 +26,15 @@
 #include "volumedriver/FailOverCacheClientInterface.h"
 #include "volumedriver/FailOverCacheEntry.h"
 #include "volumedriver/Types.h"
+#include "volumedriver/failovercache/ClientInterface.h"
 
 namespace
 {
+
 using namespace volumedriver;
 using namespace scrubbing;
 namespace yt = youtils;
+namespace bc = boost::chrono;
 namespace be = backend;
 namespace po = boost::program_options;
 
@@ -187,14 +190,14 @@ public:
                                         LOG_WARN("Got a DEGRADED event");
                                     });
 
-        failover_bridge->newCache(std::make_unique<FailOverCacheProxy>(FailOverCacheConfig(host_,
-                                                                                           port_,
-                                                                                           mode_),
-                                                                       *ns_,
-                                                                       lba_size,
-                                                                       cmult,
-                                                                       failover_bridge->getDefaultRequestTimeout(),
-                                                                       boost::none));
+        failover_bridge->newCache(failovercache::ClientInterface::create(FailOverCacheConfig(host_,
+                                                                                             port_,
+                                                                                             mode_),
+                                                                         *ns_,
+                                                                         lba_size,
+                                                                         cmult,
+                                                                         bc::duration_cast<bc::milliseconds>(failover_bridge->getDefaultRequestTimeout()),
+                                                                         boost::none));
         failover_bridge->Clear();
 
         ClusterFactory source(ClusterSize(lba_size * cmult),

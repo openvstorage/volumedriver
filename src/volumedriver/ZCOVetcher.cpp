@@ -20,6 +20,8 @@
 #include "VolumeConfig.h"
 #include "ZCOVetcher.h"
 
+#include "failovercache/ClientInterface.h"
+
 namespace volumedriver
 {
 

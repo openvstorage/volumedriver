@@ -17,7 +17,6 @@
 #define SCO_FETCHER_H_
 
 #include "ClusterLocation.h"
-#include "FailOverCacheProxy.h"
 #include "SCO.h"
 #include "Types.h"
 #include "VolumeInterface.h"
@@ -34,6 +33,11 @@ namespace volumedriver
 
 class FailOverCacheConfig;
 class Volume;
+
+namespace failovercache
+{
+class ClientInterface;
+}
 
 class SCOFetcher
 {
@@ -133,7 +137,7 @@ private:
 
     SCO sconame_;
     CheckSum calc_;
-    std::unique_ptr<FailOverCacheProxy> foc;
+    std::unique_ptr<failovercache::ClientInterface> foc;
     std::unique_ptr<youtils::FileDescriptor> sio_;
 };
 

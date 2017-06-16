@@ -29,6 +29,11 @@
 namespace volumedriver
 {
 
+namespace failovercache
+{
+class ClientInterface;
+}
+
 class FailOverCacheClientInterface
 {
 public:
@@ -58,7 +63,7 @@ public:
     backup() = 0;
 
     virtual void
-    newCache(std::unique_ptr<FailOverCacheProxy>) = 0;
+    newCache(std::unique_ptr<failovercache::ClientInterface>) = 0;
 
     virtual boost::chrono::milliseconds
     getDefaultRequestTimeout() const

@@ -35,6 +35,7 @@
 #include <volumedriver/VolumeConfig.h>
 #include <volumedriver/VolumeConfigPersistor.h>
 #include <volumedriver/VolumeThreadPool.h>
+#include <volumedriver/failovercache/ClientInterface.h>
 
 namespace volumedrivertest
 {
@@ -2297,7 +2298,7 @@ TEST_P(SimpleVolumeTest, no_clone_if_snapshot_is_not_yet_in_the_backend)
 }
 
 // OVS-2659: an assertion in ClusterCache::add is triggered when called from a clone
-// caused by the clone not being registered with the ClusterCache.
+// caused by the clone not being registered with the ClusterCache->
 TEST_P(SimpleVolumeTest, clones_and_location_based_caching)
 {
     const ClusterCacheMode ccmode = ClusterCacheMode::LocationBased;
@@ -2537,16 +2538,17 @@ TEST_P(SimpleVolumeTest, synchronous_foc)
     ASSERT_EQ(VolumeFailOverState::OK_SYNC,
               v->getVolumeFailOverState());
 
-    FailOverCacheProxy proxy(foc_config,
-                             wrns->ns(),
-                             LBASize(v->getLBASize()),
-                             v->getClusterMultiplier(),
-                             boost::chrono::seconds(10),
-                             boost::none);
+    std::unique_ptr<failovercache::ClientInterface>
+        cache(failovercache::ClientInterface::create(foc_config,
+                                                     wrns->ns(),
+                                                     LBASize(v->getLBASize()),
+                                                     v->getClusterMultiplier(),
+                                                     boost::chrono::milliseconds(10000),
+                                                     boost::none));
 
     size_t count = 0;
 
-    proxy.getEntries([&](ClusterLocation loc,
+    cache->getEntries([&](ClusterLocation loc,
                          uint64_t lba,
                          const byte* buf,
                          size_t bufsize)

@@ -41,7 +41,8 @@ class Volume;
 class FailOverCacheProxy
     : public failovercache::ClientInterface
 {
-public:
+    friend class failovercache::ClientInterface;
+
     FailOverCacheProxy(const FailOverCacheConfig&,
                        const Namespace&,
                        const LBASize,
@@ -49,6 +50,7 @@ public:
                        const failovercache::ClientInterface::MaybeMilliSeconds& request_timeout,
                        const failovercache::ClientInterface::MaybeMilliSeconds& connect_timeout);
 
+public:
     FailOverCacheProxy(const FailOverCacheProxy&) = delete;
 
     FailOverCacheProxy&

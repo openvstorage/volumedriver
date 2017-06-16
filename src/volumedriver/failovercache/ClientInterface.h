@@ -37,6 +37,9 @@ class FailOverCacheEntry;
 namespace failovercache
 {
 
+// TODO: there's potential for confusion with
+// volumedriver::FailOverCacheClientInterface - rename either one (probably
+// the latter?)
 class ClientInterface
 {
 public:
@@ -141,6 +144,14 @@ public:
     {
         return cluster_mult_;
     }
+
+    static std::unique_ptr<ClientInterface>
+    create(const FailOverCacheConfig&,
+           const backend::Namespace&,
+           const LBASize,
+           const ClusterMultiplier,
+           const MaybeMilliSeconds& request_timeout,
+           const MaybeMilliSeconds& connect_timeout);
 
 protected:
     const FailOverCacheConfig config_;

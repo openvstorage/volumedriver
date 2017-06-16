@@ -21,6 +21,8 @@
 #include "Volume.h"
 #include "VolumeDriverError.h"
 
+#include "failovercache/ClientInterface.h"
+
 #include <youtils/FileDescriptor.h>
 #include <youtils/FileUtils.h>
 #include <youtils/IOException.h>
@@ -218,14 +220,14 @@ RawFailOverCacheSCOFetcher::RawFailOverCacheSCOFetcher(SCO sconame,
     VERIFY(sconame.cloneID() == 0);
     try
     {
-        foc = std::make_unique<FailOverCacheProxy>(cfg,
-                                                   ns,
-                                                   lba_size,
-                                                   cmult,
-                                                   req_timeout,
-                                                   connect_timeout);
+        foc = failovercache::ClientInterface::create(cfg,
+                                                     ns,
+                                                     lba_size,
+                                                     cmult,
+                                                     req_timeout,
+                                                     connect_timeout);
     }
-    CATCH_STD_ALL_LOG_IGNORE("Failed to instantiate FailOverCacheProxy");
+    CATCH_STD_ALL_LOG_IGNORE("Failed to instantiate ClientInterface");
 }
 
 void

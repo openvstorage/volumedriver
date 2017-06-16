@@ -20,7 +20,6 @@
 #include "ClusterCacheHandle.h"
 #include "DtlInSync.h"
 #include "FailOverCacheConfigWrapper.h"
-#include "FailOverCacheProxy.h"
 #include "Lba.h"
 #include "NSIDMap.h"
 #include "PerformanceCounters.h"
@@ -75,6 +74,11 @@ class PrefetchData;
 class ScrubberResult;
 class SnapshotManagement;
 class SnapshotPersistor;
+
+namespace failovercache
+{
+class ClientInterface;
+}
 
 struct ClusterCacheVolumeInfo
 {
@@ -677,7 +681,7 @@ private:
     checkTLogsConsistency_(CloneTLogs& ctl) const;
 
     void
-    replayFOC_(FailOverCacheProxy&);
+    replayFOC_(failovercache::ClientInterface&);
 
     void
     normalizeSAPs_(SCOAccessData::VectorType& sadv);

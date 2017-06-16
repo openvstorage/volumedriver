@@ -24,8 +24,12 @@
 namespace volumedriver
 {
 
-class FailOverCacheProxy;
 class FailOverCacheTester;
+
+namespace failovercache
+{
+class ClientInterface;
+}
 
 class FailOverCacheSyncBridge
     : public FailOverCacheClientInterface
@@ -57,7 +61,7 @@ public:
     backup() override;
 
     virtual void
-    newCache(std::unique_ptr<FailOverCacheProxy>) override;
+    newCache(std::unique_ptr<failovercache::ClientInterface>) override;
 
     virtual void
     setRequestTimeout(const boost::chrono::seconds) override;
@@ -85,7 +89,7 @@ private:
     DECLARE_LOGGER("FailOverCacheSyncBridge");
 
     boost::mutex mutex_;
-    std::unique_ptr<FailOverCacheProxy> cache_;
+    std::unique_ptr<failovercache::ClientInterface> cache_;
     DegradedFun degraded_fun_;
 
     void

@@ -108,6 +108,7 @@ libvolumedriver_la_SOURCES = \
 	FilePool.cpp \
 	failovercache/Backend.cpp \
 	failovercache/BackendFactory.cpp \
+	failovercache/ClientInterface.cpp \
 	failovercache/FailOverCacheAcceptor.cpp \
 	failovercache/FailOverCacheProtocol.cpp \
 	failovercache/FileBackend.cpp \

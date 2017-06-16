@@ -32,8 +32,13 @@
 namespace volumedriver
 {
 
-class FailOverCacheProxy;
+class FailOverCacheEntry;
 class FailOverCacheTester;
+
+namespace failovercache
+{
+class ClientInterface;
+}
 
 class FailOverCacheAsyncBridge
     : public fungi::Runnable
@@ -72,7 +77,7 @@ public:
     backup() override;
 
     virtual void
-    newCache(std::unique_ptr<FailOverCacheProxy> cache) override;
+    newCache(std::unique_ptr<failovercache::ClientInterface> cache) override;
 
     virtual void
     setRequestTimeout(const boost::chrono::seconds) override;
@@ -127,7 +132,7 @@ private:
         return ClusterSize(cluster_multiplier_ * lba_size_);
     }
 
-    std::unique_ptr<FailOverCacheProxy> cache_;
+    std::unique_ptr<failovercache::ClientInterface> cache_;
 
     // mutex_: protects stop_ and cache_
     // new_ones_mutex_: protects newOnes / oldOnes + buffers

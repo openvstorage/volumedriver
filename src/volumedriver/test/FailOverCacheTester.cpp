@@ -19,6 +19,7 @@
 #include "../Api.h"
 #include "../FailOverCacheAsyncBridge.h"
 #include "../FailOverCacheSyncBridge.h"
+#include "../failovercache/ClientInterface.h"
 #include "../failovercache/FileBackend.h"
 
 #include <stdlib.h>
@@ -90,7 +91,7 @@ TEST_P(FailOverCacheTester, empty_flush)
     const backend::Namespace& ns = ns_ptr->ns();
 
     SharedVolumePtr v = newVolume(vid,
-                          ns);
+                                  ns);
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
     v->sync();
 }
@@ -759,14 +760,15 @@ TEST_P(FailOverCacheTester, clear)
     auto wrns(make_random_namespace());
     auto foc_ctx(start_one_foc());
 
-    FailOverCacheProxy proxy(foc_ctx->config(GetParam().foc_mode()),
-                             wrns->ns(),
-                             default_lba_size(),
-                             default_cluster_multiplier(),
-                             boost::chrono::seconds(60),
-                             boost::none);
+    std::unique_ptr<failovercache::ClientInterface>
+        cache(failovercache::ClientInterface::create(foc_ctx->config(GetParam().foc_mode()),
+                                                     wrns->ns(),
+                                                     default_lba_size(),
+                                                     default_cluster_multiplier(),
+                                                     boost::chrono::milliseconds(60000),
+                                                     boost::none));
 
-    EXPECT_NO_THROW(proxy.clear());
+    EXPECT_NO_THROW(cache->clear());
 
     const size_t csize = default_cluster_size();
     const std::vector<uint8_t> buf(csize);
@@ -774,13 +776,13 @@ TEST_P(FailOverCacheTester, clear)
                                                                  0,
                                                                  buf.data(),
                                                                  buf.size()) };
-    proxy.addEntries(std::move(entries)).get();
+    cache->addEntries(std::move(entries)).get();
 
-    EXPECT_NO_THROW(proxy.clear());
+    EXPECT_NO_THROW(cache->clear());
 
     foc_ctx.reset();
 
-    EXPECT_THROW(proxy.clear(),
+    EXPECT_THROW(cache->clear(),
                  std::exception);
 }
 
@@ -820,33 +822,34 @@ TEST_P(FailOverCacheTester, non_standard_cluster_size)
 
     v->getFailOver()->Flush().get();
 
-    FailOverCacheProxy proxy(foc_ctx->config(GetParam().foc_mode()),
-                             wrns->ns(),
-                             default_lba_size(),
-                             cmult,
-                             boost::chrono::seconds(60),
-                             boost::none);
+    std::unique_ptr<failovercache::ClientInterface>
+        cache(failovercache::ClientInterface::create(foc_ctx->config(GetParam().foc_mode()),
+                                                     wrns->ns(),
+                                                     default_lba_size(),
+                                                     cmult,
+                                                     bc::milliseconds(60000),
+                                                     boost::none));
 
     size_t count = 0;
 
-    proxy.getEntries([&](ClusterLocation /* loc */,
-                         uint64_t lba,
-                         const uint8_t* buf,
-                         size_t bufsize)
-                     {
-                         ASSERT_EQ(csize,
-                                   bufsize);
-                         ASSERT_EQ(count * cmult,
+    cache->getEntries([&](ClusterLocation /* loc */,
+                          uint64_t lba,
+                          const uint8_t* buf,
+                          size_t bufsize)
+                      {
+                          ASSERT_EQ(csize,
+                                    bufsize);
+                          ASSERT_EQ(count * cmult,
                                    lba);
-                         const std::string p(make_pattern(count));
+                          const std::string p(make_pattern(count));
 
-                         for (size_t i = 0; i < bufsize; ++i)
-                         {
-                             ASSERT_EQ(p[i % p.size()],
-                                       buf[i]);
-                         }
+                          for (size_t i = 0; i < bufsize; ++i)
+                          {
+                              ASSERT_EQ(p[i % p.size()],
+                                        buf[i]);
+                          }
 
-                         ++count;
+                          ++count;
                      });
 
     EXPECT_EQ(num_clusters,
@@ -879,12 +882,12 @@ TEST_P(FailOverCacheTester, wrong_cluster_size)
 
     v->getFailOver()->Flush().get();
 
-    EXPECT_THROW(FailOverCacheProxy(foc_ctx->config(GetParam().foc_mode()),
-                                    wrns->ns(),
-                                    LBASize(default_lba_size()),
-                                    ClusterMultiplier(default_cluster_multiplier()),
-                                    bc::milliseconds(60000),
-                                    boost::none),
+    EXPECT_THROW(failovercache::ClientInterface::create(foc_ctx->config(GetParam().foc_mode()),
+                                                        wrns->ns(),
+                                                        LBASize(default_lba_size()),
+                                                        ClusterMultiplier(default_cluster_multiplier()),
+                                                        bc::milliseconds(60000),
+                                                        boost::none),
                  std::exception);
 }
 
@@ -900,12 +903,12 @@ TEST_P(FailOverCacheTester, DISABLED_connect_timeout)
               {
                   yt::SteadyTimer t;
 
-                  EXPECT_THROW(FailOverCacheProxy(cfg,
-                                                  wrns->ns(),
-                                                  default_lba_size(),
-                                                  default_cluster_multiplier(),
-                                                  bc::milliseconds(1000),
-                                                  connect_timeout),
+                  EXPECT_THROW(failovercache::ClientInterface::create(cfg,
+                                                                      wrns->ns(),
+                                                                      default_lba_size(),
+                                                                      default_cluster_multiplier(),
+                                                                      bc::milliseconds(1000),
+                                                                      connect_timeout),
                                std::exception);
 
                   std::cout << "connection attempt with connect timeout of " <<
@@ -925,20 +928,20 @@ TEST_P(FailOverCacheTester, DISABLED_a_whole_lotta_clients)
     std::vector<std::unique_ptr<be::BackendTestSetup::WithRandomNamespace>> wrns;
     wrns.reserve(count);
 
-    std::vector<std::unique_ptr<FailOverCacheProxy>> proxies;
-    proxies.reserve(count);
+    std::vector<std::unique_ptr<failovercache::ClientInterface>> clients;
+    clients.reserve(count);
 
     try
     {
         for (size_t i = 0; i < 512; ++i)
         {
             wrns.emplace_back(make_random_namespace());
-            proxies.emplace_back(std::make_unique<FailOverCacheProxy>(foc_ctx->config(GetParam().foc_mode()),
-                                                                      wrns.back()->ns(),
-                                                                      default_lba_size(),
-                                                                      default_cluster_multiplier(),
-                                                                      bc::milliseconds(1000),
-                                                                      boost::none));
+            clients.emplace_back(failovercache::ClientInterface::create(foc_ctx->config(GetParam().foc_mode()),
+                                                                        wrns.back()->ns(),
+                                                                        default_lba_size(),
+                                                                        default_cluster_multiplier(),
+                                                                        bc::milliseconds(1000),
+                                                                        boost::none));
         }
 
         FAIL() << "eventually the DTL should've run out of FDs";
