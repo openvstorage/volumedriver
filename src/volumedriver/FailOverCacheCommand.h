@@ -25,6 +25,22 @@ namespace volumedriver
 enum class FailOverCacheCommand
     : uint32_t
 {
+    // The old protocol, reverse engineered from the code:
+    // - client sends one of the request opcodes (!= Ok / != NotOk)
+    // - server side responds either with
+    //   - Ok (successful RemoveUpTo, Register, AddEntries, Flush, Unregister,
+    //     Clear)
+    //   - NotOk (unsuccessful Register, Unregister, RemoveUpTo)
+    //   - NotOk + connection termination (all unsuccessful requests other than
+    //     the ones mentioned above)
+    //   - Response data:
+    //     - sequence of FailOverCacheEntry's terminated by ClusterLocation(0)
+    //       in response to GetSCO and GetEntries
+    //     - a pair of SCO names in response to GetSCORange
+    // .
+    // The serialization of the data is based on fungilib and is geared towards
+    // streaming (strings or containers are prefixed with the number of chars or
+    // items, for example).
     RemoveUpTo     =  0x1,
     GetSCO         =  0x2,
     Register       =  0x3,
