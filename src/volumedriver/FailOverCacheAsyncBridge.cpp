@@ -24,13 +24,15 @@
 namespace volumedriver
 {
 
+namespace bc = boost::chrono;
+
 #define LOCK()                                                          \
     boost::lock_guard<decltype(mutex_)> lg__(mutex_)
 
 #define LOCK_NEW_ONES()                                                 \
     boost::lock_guard<decltype(new_ones_mutex_)> nolg__(new_ones_mutex_)
 
-const boost::chrono::seconds
+const bc::seconds
 FailOverCacheAsyncBridge::timeout_(1);
 
 // Passing LBASize and ClusterMultiplier here is ugly as sin as the underlying
@@ -200,18 +202,18 @@ FailOverCacheAsyncBridge::destroy(SyncFailOverToBackend sync)
 }
 
 void
-FailOverCacheAsyncBridge::setRequestTimeout(const boost::chrono::seconds seconds)
+FailOverCacheAsyncBridge::setRequestTimeout(const bc::seconds seconds)
 {
     LOCK();
 
     if(cache_)
     {
-        cache_->setRequestTimeout(seconds);
+        cache_->setRequestTimeout(bc::duration_cast<bc::milliseconds>(seconds));
     }
 }
 
 void
-FailOverCacheAsyncBridge::setBusyLoopDuration(const boost::chrono::microseconds usecs)
+FailOverCacheAsyncBridge::setBusyLoopDuration(const bc::microseconds usecs)
 {
     LOCK();
 

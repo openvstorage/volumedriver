@@ -20,6 +20,7 @@
 #include "SCOProcessorInterface.h"
 #include "SCO.h"
 
+#include "failovercache/ClientInterface.h"
 #include "failovercache/fungilib/Socket.h"
 #include "failovercache/fungilib/IOBaseStream.h"
 #include "failovercache/fungilib/Buffer.h"
@@ -38,86 +39,64 @@ class FailOverCacheEntry;
 class Volume;
 
 class FailOverCacheProxy
+    : public failovercache::ClientInterface
 {
 public:
     FailOverCacheProxy(const FailOverCacheConfig&,
                        const Namespace&,
                        const LBASize,
                        const ClusterMultiplier,
-                       const boost::chrono::milliseconds request_timeout,
-                       const boost::optional<boost::chrono::milliseconds>& connect_timeout);
+                       const failovercache::ClientInterface::MaybeMilliSeconds& request_timeout,
+                       const failovercache::ClientInterface::MaybeMilliSeconds& connect_timeout);
 
     FailOverCacheProxy(const FailOverCacheProxy&) = delete;
 
     FailOverCacheProxy&
     operator=(const FailOverCacheProxy&) = delete;
 
-    ~FailOverCacheProxy();
+    virtual ~FailOverCacheProxy();
 
     boost::future<void>
-    addEntries(std::vector<FailOverCacheEntry>);
+    addEntries(std::vector<FailOverCacheEntry>) override final;
 
     boost::future<void>
     addEntries(const std::vector<ClusterLocation>&,
                uint64_t addr,
-               const uint8_t*);
+               const uint8_t*) override final;
 
     // returns the SCO size - 0 indicates a problem.
     // Z42: throw instead!
     uint64_t
     getSCOFromFailOver(SCO,
-                       SCOProcessorFun);
+                       SCOProcessorFun) override final;
 
     void
     getSCORange(SCO& oldest,
-                SCO& youngest);
+                SCO& youngest) override final;
 
     void
-    clear();
+    clear() override final;
 
     boost::future<void>
-    flush();
+    flush() override final;
 
     void
-    removeUpTo(const SCO) throw ();
+    removeUpTo(const SCO) noexcept override final;
 
     void
-    setRequestTimeout(const boost::chrono::milliseconds);
+    getEntries(SCOProcessorFun) override final;
 
     void
-    setBusyLoopDuration(const boost::chrono::microseconds);
+    setRequestTimeout(const failovercache::ClientInterface::MaybeMilliSeconds&) override final;
 
     void
-    getEntries(SCOProcessorFun);
-
-    void
-    delete_failover_dir()
-    {
-        LOG_INFO("Setting delete_failover_dir_ to true");
-        delete_failover_dir_ = true;
-    }
-
-    LBASize
-    lba_size() const
-    {
-        return lba_size_;
-    }
-
-    ClusterMultiplier
-    cluster_multiplier() const
-    {
-        return cluster_mult_;
-    }
+    setBusyLoopDuration(const boost::chrono::microseconds&) override final;
 
 private:
     DECLARE_LOGGER("FailOverCacheProxy");
 
     std::unique_ptr<fungi::Socket> socket_;
     fungi::IOBaseStream stream_;
-    const Namespace ns_;
-    const LBASize lba_size_;
-    const ClusterMultiplier cluster_mult_;
-    bool delete_failover_dir_;
 
     void
     register_();

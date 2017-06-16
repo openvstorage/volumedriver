@@ -22,6 +22,8 @@
 namespace volumedriver
 {
 
+namespace bc = boost::chrono;
+
 #define LOCK()                                          \
     boost::lock_guard<decltype(mutex_)> lg__(mutex_)
 
@@ -74,7 +76,7 @@ FailOverCacheSyncBridge::setRequestTimeout(const boost::chrono::seconds seconds)
     {
         try
         {
-            cache_->setRequestTimeout(seconds);
+            cache_->setRequestTimeout(bc::duration_cast<bc::milliseconds>(seconds));
         }
         catch (std::exception& e)
         {

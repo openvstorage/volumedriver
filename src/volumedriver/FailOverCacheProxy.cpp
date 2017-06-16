@@ -31,21 +31,21 @@ FailOverCacheProxy::FailOverCacheProxy(const FailOverCacheConfig& cfg,
                                        const Namespace& ns,
                                        const LBASize lba_size,
                                        const ClusterMultiplier cluster_mult,
-                                       const bc::milliseconds request_timeout,
+                                       const boost::optional<bc::milliseconds>& request_timeout,
                                        const boost::optional<bc::milliseconds>& connect_timeout)
-    : socket_(fungi::Socket::createClientSocket(cfg.host,
+    : failovercache::ClientInterface(cfg,
+                                     ns,
+                                     lba_size,
+                                     cluster_mult,
+                                     request_timeout,
+                                     connect_timeout)
+    , socket_(fungi::Socket::createClientSocket(cfg.host,
                                                 cfg.port,
                                                 connect_timeout))
     , stream_(*socket_)
-    , ns_(ns)
-    , lba_size_(lba_size)
-    , cluster_mult_(cluster_mult)
-    , delete_failover_dir_(false)
 {
     socket_->setNonBlocking();
-    //        stream_ << fungi::IOBaseStream::cork; --AT-- removed because this command is never sent over the wire
-    stream_ << fungi::IOBaseStream::RequestTimeout(request_timeout.count() / 1000.0);
-    //        stream_ << fungi::IOBaseStream::uncork;
+    setRequestTimeout(request_timeout);
     register_();
 }
 
@@ -107,7 +107,7 @@ FailOverCacheProxy::register_()
 {
     const ClusterSize csize(static_cast<size_t>(cluster_mult_) *
                             static_cast<size_t>(lba_size_));
-    send_<FailOverCacheCommand::Register>(ns_.str(),
+    send_<FailOverCacheCommand::Register>(nspace_.str(),
                                           csize);
     check_(__FUNCTION__);
 }
@@ -117,37 +117,36 @@ FailOverCacheProxy::unregister_()
 {
     if(delete_failover_dir_)
     {
-        LOG_INFO(ns_ << ": deleting failover data");
+        LOG_INFO(nspace_ << ": deleting failover data");
         send_<FailOverCacheCommand::Unregister>();
         check_(__FUNCTION__);
     }
     else
     {
-        LOG_INFO(ns_ << ": not deleting failover data");
+        LOG_INFO(nspace_ << ": not deleting failover data");
     }
 }
 
 void
-FailOverCacheProxy::removeUpTo(const SCO sconame) throw ()
+FailOverCacheProxy::removeUpTo(const SCO sconame) noexcept
 {
     try
     {
         send_<FailOverCacheCommand::RemoveUpTo>(sconame);
         check_(__FUNCTION__);
     }
-    CATCH_STD_ALL_LOG_IGNORE(ns_ << ": failed to remove SCOs up to " << sconame);
+    CATCH_STD_ALL_LOG_IGNORE(nspace_ << ": failed to remove SCOs up to " << sconame);
 }
 
 void
-FailOverCacheProxy::setRequestTimeout(const bc::milliseconds msecs)
+FailOverCacheProxy::setRequestTimeout(const failovercache::ClientInterface::MaybeMilliSeconds& t)
 {
-    stream_ << fungi::IOBaseStream::cork;
-    stream_ << fungi::IOBaseStream::RequestTimeout(msecs.count() / 1000);
-    stream_ << fungi::IOBaseStream::uncork;
+    stream_ << fungi::IOBaseStream::RequestTimeout(t ? t->count() / 1000 : 0);
+    failovercache::ClientInterface::setRequestTimeout(t);
 }
 
 void
-FailOverCacheProxy::setBusyLoopDuration(const bc::microseconds usecs)
+FailOverCacheProxy::setBusyLoopDuration(const bc::microseconds& usecs)
 {
     socket_->setBusyLoopDuration(usecs);
 }
