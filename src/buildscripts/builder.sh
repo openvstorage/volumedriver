@@ -35,7 +35,10 @@ export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig:$BUILDTOOLS/lib/pkgconfig
 PYTHON_VERSION=$(pkg-config --variable=python_version buildtools)
 export PYTHON=${PYTHON:-/usr/bin/python${PYTHON_VERSION}}
 
-if [ "x${USE_CLANG}" == "xyes" ]
+if [ ! -z ${CC} ] && [ ! -z ${CXX} ]
+then
+    echo "CC=${CC}, CXX=${CXX}"
+elif [ "x${USE_CLANG}" == "xyes" ]
 then
     CXX=/usr/bin/clang++
     CC=/usr/bin/clang
