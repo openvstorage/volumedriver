@@ -17,8 +17,10 @@
 
 #include <boost/chrono.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/property_tree/ptree.hpp>
 #include <boost/thread.hpp>
 
+#include <youtils/ConfigFetcher.h>
 #include <youtils/FileUtils.h>
 
 #include <backend/BackendConfig.h>
@@ -38,6 +40,7 @@ using namespace std::literals::string_literals;
 
 namespace bc = boost::chrono;
 namespace be = backend;
+namespace bpt = boost::property_tree;
 namespace fs = boost::filesystem;
 namespace vd = volumedriver;
 namespace yt = youtils;
@@ -128,14 +131,17 @@ protected:
         std::vector<ScrubReply> reps;
         reps.reserve(works.size());
 
-        const yt::Uri uri(configuration_.string());
+        auto fetcher(yt::ConfigFetcher::create(yt::Uri(configuration_.string())));
+        const bpt::ptree pt((*fetcher)(VerifyConfig::F));
 
         for (const auto& w : works)
         {
             const fs::path p(yt::FileUtils::temp_path("scrubber"));
             ALWAYS_CLEANUP_DIRECTORY(p);
 
-            reps.push_back(ScrubberAdapter::scrub(be::BackendConfig::makeBackendConfig(uri),
+
+            reps.push_back(ScrubberAdapter::scrub(be::BackendConfig::makeBackendConfig(pt),
+                                                  be::ConnectionManagerParameters(pt),
                                                   w,
                                                   p.string()));
         }

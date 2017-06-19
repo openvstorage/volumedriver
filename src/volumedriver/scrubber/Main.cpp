@@ -19,6 +19,9 @@
 
 #include <sys/prctl.h>
 
+#include <boost/property_tree/ptree.hpp>
+
+#include <youtils/ConfigFetcher.h>
 #include <youtils/Logging.h>
 #include <youtils/Main.h>
 #include <youtils/SignalBlocker.h>
@@ -29,6 +32,7 @@ namespace
 {
 
 namespace be = backend;
+namespace bpt = boost::property_tree;
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 namespace sc = scrubbing;
@@ -120,12 +124,18 @@ public:
         }
 
         std::unique_ptr<be::BackendConfig> bcfg;
+        be::ConnectionManagerParameters cm_params;
+
         if (yt::MainHelper::backend_config_uri())
         {
-            bcfg = be::BackendConfig::makeBackendConfig(*yt::MainHelper::backend_config_uri());
+            auto fetcher(yt::ConfigFetcher::create(*yt::MainHelper::backend_config_uri()));
+            const bpt::ptree pt((*fetcher)(VerifyConfig::F));
+            bcfg = be::BackendConfig::makeBackendConfig(pt);
+            cm_params = be::ConnectionManagerParameters(pt);
         }
 
         const ScrubReply reply(ScrubberAdapter::scrub(std::move(bcfg),
+                                                      cm_params,
                                                       ScrubWork(scrub_work_str_),
                                                       scratch_dir_,
                                                       region_size_exponent_,

@@ -453,7 +453,10 @@ protected:
     scrub(const scrubbing::ScrubWork& work,
           double fill_ratio = 1.0)
     {
-        return scrubbing::ScrubberAdapter::scrub(VolManager::get()->getBackendConfig().clone(),
+        be::BackendConnectionManagerPtr
+            cm(VolManager::get()->getBackendConnectionManager());
+        return scrubbing::ScrubberAdapter::scrub(cm->config().clone(),
+                                                 cm->connection_manager_parameters(),
                                                  work,
                                                  yt::FileUtils::temp_path(testName_),
                                                  5, // region_size_exponent

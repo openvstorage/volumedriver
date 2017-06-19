@@ -84,7 +84,10 @@ public:
              bool apply_immediately = false,
              bool verbose_scrubbing = true)
     {
-        return ScrubberAdapter::scrub(VolManager::get()->getBackendConfig().clone(),
+        be::BackendConnectionManagerPtr
+            cm(VolManager::get()->getBackendConnectionManager());
+        return ScrubberAdapter::scrub(cm->config().clone(),
+                                      cm->connection_manager_parameters(),
                                       scrub_work,
                                       yt::FileUtils::temp_path(testName_),
                                       region_size_exponent,

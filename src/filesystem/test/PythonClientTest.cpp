@@ -25,6 +25,7 @@
 #include <xmlrpc++0.7/src/XmlRpcClient.h>
 
 #include <youtils/Catchers.h>
+#include <youtils/ConfigFetcher.h>
 #include <youtils/IOException.h>
 #include <youtils/InitializedParam.h>
 #include <youtils/FileDescriptor.h>
@@ -215,8 +216,11 @@ protected:
         using namespace scrubbing;
 
         const ScrubWork work(work_str);
-        const yt::Uri loc(configuration_.string());
-        const ScrubReply reply(ScrubberAdapter::scrub(be::BackendConfig::makeBackendConfig(loc),
+        auto fetcher(yt::ConfigFetcher::create(yt::Uri(configuration_.string())));
+        const bpt::ptree pt((*fetcher)(VerifyConfig::F));
+
+        const ScrubReply reply(ScrubberAdapter::scrub(be::BackendConfig::makeBackendConfig(pt),
+                                                      be::ConnectionManagerParameters(pt),
                                                       work,
                                                       yt::FileUtils::temp_path().string()));
         return bpy::make_tuple(work.id_.str(),

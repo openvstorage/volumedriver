@@ -18,10 +18,13 @@
 #include "ScrubWork.h"
 #include "ScrubReply.h"
 
+#include <backend/ConnectionManagerParameters.h>
+
 namespace scrubbing
 {
 
 using namespace volumedriver;
+namespace be = backend;
 namespace fs = boost::filesystem;
 
 const uint64_t
@@ -39,6 +42,7 @@ ScrubberAdapter::verbose_scrubbing_default = true;
 
 ScrubReply
 ScrubberAdapter::scrub(std::unique_ptr<BackendConfig> backend_config,
+                       const be::ConnectionManagerParameters& cm_params,
                        const ScrubWork& scrub_work,
                        const fs::path& scratch_dir,
                        const uint64_t region_size_exponent,
@@ -53,6 +57,7 @@ ScrubberAdapter::scrub(std::unique_ptr<BackendConfig> backend_config,
         std::move(backend_config) :
         scrub_work.backend_config_->clone();
 
+    scrubber_args.connection_manager_parameters = cm_params;
     scrubber_args.name_space = scrub_work.ns_.str();
     scrubber_args.scratch_dir = scratch_dir;
     scrubber_args.snapshot_name = scrub_work.snapshot_name_;
