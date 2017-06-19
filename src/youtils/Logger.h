@@ -19,6 +19,8 @@
 #include "BooleanEnum.h"
 #include "IOException.h"
 
+#include <vector>
+
 #include <boost/log/sources/severity_logger.hpp>
 
 namespace boost
