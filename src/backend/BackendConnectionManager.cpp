@@ -27,6 +27,8 @@
 #include "MultiConfig.h"
 #include "S3_Connection.h"
 
+#include <numeric>
+
 #include <boost/iostreams/stream.hpp>
 #include <boost/thread/thread.hpp>
 
@@ -45,12 +47,7 @@ BackendConnectionManager::BackendConnectionManager(const bpt::ptree& pt,
                                                    const RegisterComponent registerize)
     : VolumeDriverComponent(registerize,
                             pt)
-    , backend_connection_pool_capacity(pt)
-    , backend_connection_pool_blacklist_secs(pt)
-    , backend_interface_retries_on_error(pt)
-    , backend_interface_retry_interval_secs(pt)
-    , backend_interface_retry_backoff_multiplier(pt)
-    , backend_interface_partial_read_nullio(pt)
+    , params_(pt)
     , config_(BackendConfig::makeBackendConfig(pt))
 {
     THROW_UNLESS(config_);
@@ -62,13 +59,13 @@ BackendConnectionManager::BackendConnectionManager(const bpt::ptree& pt,
         for (const auto& c : cfg.configs_)
         {
             connection_pools_.push_back(ConnectionPool::create(c->clone(),
-                                                               backend_connection_pool_capacity.value()));
+                                                               params_.backend_connection_pool_capacity.value()));
         }
     }
     else
     {
         connection_pools_.push_back(ConnectionPool::create(config_->clone(),
-                                                           backend_connection_pool_capacity.value()));
+                                                           params_.backend_connection_pool_capacity.value()));
     }
 
     THROW_WHEN(connection_pools_.empty());
@@ -89,7 +86,7 @@ BackendConnectionManager::pool_(const Namespace& nspace)
     const size_t h = std::hash<std::string>()(nspace.str());
     const size_t idx = h % connection_pools_.size();
     size_t i = idx;
-    const bc::seconds timeout(backend_connection_pool_blacklist_secs.value());
+    const bc::seconds timeout(params_.backend_connection_pool_blacklist_secs.value());
     const auto now(ConnectionPool::Clock::now());
 
     while (true)
@@ -264,19 +261,8 @@ BackendConnectionManager::persist(bpt::ptree& pt,
 {
     config_->persist_internal(pt,
                               report_default);
-
-#define P(x)                                    \
-    x.persist(pt,                               \
-              report_default)
-
-    P(backend_connection_pool_capacity);
-    P(backend_connection_pool_blacklist_secs);
-    P(backend_interface_retries_on_error);
-    P(backend_interface_retry_interval_secs);
-    P(backend_interface_retry_backoff_multiplier);
-    P(backend_interface_partial_read_nullio);
-
-#undef P
+    params_.persist(pt,
+                    report_default);
 }
 
 void
@@ -285,25 +271,15 @@ BackendConnectionManager::update(const bpt::ptree& pt,
 {
     config_->update_internal(pt, report);
 
-    const decltype(backend_connection_pool_capacity) new_cap(pt);
+    const decltype(params_.backend_connection_pool_capacity) new_cap(pt);
 
     for (auto& p : connection_pools_)
     {
         p->capacity(new_cap.value());
     }
 
-#define U(x)                                    \
-    x.update(pt,                                \
-             report)
-
-    U(backend_connection_pool_capacity);
-    U(backend_connection_pool_blacklist_secs);
-    U(backend_interface_retries_on_error);
-    U(backend_interface_retry_interval_secs);
-    U(backend_interface_retry_backoff_multiplier);
-    U(backend_interface_partial_read_nullio);
-
-#undef U
+    params_.update(pt,
+                   report);
 }
 
 bool
