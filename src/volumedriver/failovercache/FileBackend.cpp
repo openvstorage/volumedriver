@@ -116,18 +116,30 @@ FileBackend::add_entries(std::vector<vd::FailOverCacheEntry> entries,
         VERIFY(loc.version() == 0);
         VERIFY(loc.cloneID() == 0);
 
+        if (entry_size_ == 0)
+        {
+            VERIFY(file_->tell() == 0);
+        }
+
         fungi::IOBaseStream os(*file_);
         // TODO: fix WrapByteArray or better yet get rid of it.
         os << loc << e.lba_ << fungi::WrapByteArray(const_cast<uint8_t*>(e.buffer_),
                                                     e.size_);
+
+        if (entry_size_ == 0)
+        {
+            entry_size_ = file_->tell();
+        }
     }
 }
 
-void
+size_t
 FileBackend::get_entries(const vd::SCO sco,
+                         const SCOOffset off,
+                         const size_t max,
                          Backend::EntryProcessorFun& fun)
 {
-    LOG_INFO(getNamespace() << ": processing SCO " << sco);
+    LOG_TRACE(getNamespace() << ": processing SCO " << sco << ", off  " << off << ", max " << max);
 
     const fs::path filename(make_path_(sco));
     VERIFY(fs::exists(filename));
@@ -135,6 +147,13 @@ FileBackend::get_entries(const vd::SCO sco,
     fungi::File f(filename.string(),
                   fungi::File::Read);
     f.open(stream_buffer_size_);
+
+    VERIFY(entry_size_);
+    if (off)
+    {
+        f.seek(off * entry_size_);
+    }
+
     fungi::IOBaseStream fstream(f);
 
     // TODO: IOBaseStream should do that itself. Get rid of it.
@@ -143,9 +162,11 @@ FileBackend::get_entries(const vd::SCO sco,
                                          fstream.close();
                                      }));
 
+    size_t count = 0;
+
     boost::scoped_array<byte> buf(new byte[cluster_size()]);
 
-    while (!f.eof())
+    while (!f.eof() and count < max)
     {
         vd::ClusterLocation cl;
         fstream >> cl;
@@ -166,7 +187,11 @@ FileBackend::get_entries(const vd::SCO sco,
             lba,
             buf.get(),
             len);
+
+        ++count;
     }
+
+    return count;
 }
 
 size_t

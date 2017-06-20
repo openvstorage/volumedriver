@@ -78,11 +78,17 @@ MemoryBackend::remove(const volumedriver::SCO sco)
     entries_.erase(sco);
 }
 
-void
+size_t
 MemoryBackend::get_entries(const volumedriver::SCO sco,
+                           const SCOOffset off,
+                           const size_t max,
                            Backend::EntryProcessorFun& fun)
 {
     LOG_INFO(getNamespace() << ": processing " << sco);
+
+    size_t count = 0;
+
+    const ClusterLocation start(sco, off);
 
     const auto it = entries_.find(sco);
     if (it != entries_.end())
@@ -92,13 +98,27 @@ MemoryBackend::get_entries(const volumedriver::SCO sco,
         {
             for (const auto& e : entries.first)
             {
-                fun(e.cli_,
-                    e.lba_,
-                    e.buffer_,
-                    e.size_);
+                if (((e.cli_.number() == start.number() and
+                      e.cli_.offset() >= start.offset()) or
+                     (e.cli_.number() > start.number())) and
+                    count < max)
+                {
+                    fun(e.cli_,
+                        e.lba_,
+                        e.buffer_,
+                        e.size_);
+                    ++count;
+                }
+
+                if (count >= max)
+                {
+                    return count;
+                }
             }
         }
     }
+
+    return count;
 }
 
 }

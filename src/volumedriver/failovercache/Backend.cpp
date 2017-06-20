@@ -35,8 +35,8 @@ Backend::Backend(const std::string& nspace,
     : registered_(false)
     , first_command_must_be_getEntries(false)
     , ns_(nspace)
+    , last_loc_(0)
     , cluster_size_(cluster_size)
-    , check_offset_(0)
 {
 }
 
@@ -45,13 +45,14 @@ Backend::clear_cache_()
 {
     LOG_INFO(ns_ << ": clearing");
 
-    for (auto sco : scosdeque_)
+    for (auto loc : scosdeque_)
     {
-        remove(sco);
+        remove(loc.sco());
     }
 
     close();
     scosdeque_.clear();
+    last_loc_ = ClusterLocation(0);
 }
 
 void
@@ -65,7 +66,7 @@ Backend::removeUpTo(const SCO sconame)
     if(!scosdeque_.empty())
     {
         SCONumber sconum = sconame.number();
-        SCONumber oldest = scosdeque_.front().number();
+        SCONumber oldest = scosdeque_.front().sco().number();
 
         LOG_DEBUG("Oldest SCONUmber in cache " << oldest <<
                   " sconumber passed: " << sconum <<
@@ -77,16 +78,17 @@ Backend::removeUpTo(const SCO sconame)
             return;
         }
 
-        if (sconame == scosdeque_.back())
+        if (sconame == scosdeque_.back().sco())
         {
             LOG_DEBUG("Closing sco" << sconame);
             close();
+            last_loc_ = ClusterLocation(0);
         }
 
         while(not scosdeque_.empty() and
               sconum >= scosdeque_.front().number())
         {
-            remove(scosdeque_.front());
+            remove(scosdeque_.front().sco());
             scosdeque_.pop_front();
         }
     }
@@ -100,37 +102,37 @@ Backend::addEntries(std::vector<FailOverCacheEntry> entries,
 
     const ClusterLocation& loc = entries.front().cli_;
     const SCO sco = loc.sco();
-    const SCOOffset offset = loc.offset();
     const size_t count = entries.size();
 
     VERIFY(sco == entries.back().cli_.sco());
 
     if (first_command_must_be_getEntries)
     {
+        LOG_INFO(ns_ << ": first command must be get_entries, clearing!");
         clear_cache_();
         first_command_must_be_getEntries = false;
     }
 
     if (scosdeque_.empty() or
-        scosdeque_.back() != sco)
+        scosdeque_.back().sco() != sco)
     {
         close();
 
-        LOG_INFO(getNamespace() << ": opening new sco: " << sco);
+        LOG_INFO(getNamespace() << ": opening new sco: " << sco  << " for " << loc);
         open(sco);
 
-        scosdeque_.push_back(sco);
-        check_offset_ = offset;
+        scosdeque_.push_back(loc);
     }
     else
     {
-        VERIFY(offset == check_offset_);
+        VERIFY(last_loc_.offset() + 1 == loc.offset());
     }
+
+    last_loc_ = loc;
+    last_loc_.offset(last_loc_.offset() + count - 1);
 
     add_entries(std::move(entries),
                 std::move(buf));
-
-    check_offset_ += count;
 }
 
 void
@@ -142,38 +144,82 @@ Backend::clear()
     first_command_must_be_getEntries = false;
 }
 
+size_t
+Backend::get_entries(ClusterLocation start,
+                     size_t max,
+                     EntryProcessorFun fun)
+{
+    LOG_INFO(ns_ << ": [" << start << ", +" << max << ")");
+
+    flush();
+
+    size_t count = 0;
+    if (start == ClusterLocation(0) and not scosdeque_.empty())
+    {
+        start = scosdeque_.front();
+    }
+
+    for (const auto& loc : scosdeque_)
+    {
+        if (loc.sco() < start.sco())
+        {
+            continue;
+        }
+
+        SCOOffset off = 0;
+
+        if (loc.sco() == start.sco() and
+            start.offset() >= loc.offset())
+        {
+            off = start.offset() - loc.offset();
+        }
+
+        count += get_entries(loc.sco(),
+                             off,
+                             max - count,
+                             fun);
+
+        start = loc;
+        if (count >= max)
+        {
+            break;
+        }
+    }
+
+    return count;
+}
+
 void
 Backend::getEntries(EntryProcessorFun fun)
 {
     LOG_INFO(ns_ << ": getting all entries");
-
-    flush();
-
-    for (const auto& sco : scosdeque_)
-    {
-        get_entries(sco,
-                    fun);
-    }
-
+    get_entries(ClusterLocation(0),
+                std::numeric_limits<size_t>::max(),
+                std::move(fun));
     first_command_must_be_getEntries = false;
 }
 
-void
-Backend::getSCORange(SCO& oldest,
-                     SCO& youngest) const
+std::pair<ClusterLocation, ClusterLocation>
+Backend::range() const
 {
-    LOG_DEBUG(ns_);
+    ClusterLocation oldest(0);
+    ClusterLocation youngest(0);
 
-    if(not scosdeque_.empty())
+    if (not scosdeque_.empty())
     {
-        oldest= scosdeque_.front();
-        youngest = scosdeque_.back();
+        VERIFY(last_loc_ != ClusterLocation(0));
+        oldest = scosdeque_.front();
+        youngest = last_loc_;
     }
     else
     {
-        oldest = SCO();
-        youngest = SCO();
+        VERIFY(last_loc_ == ClusterLocation(0));
     }
+
+    LOG_INFO(ns_ << ": [" << oldest << ", " << youngest << "]");
+
+    return std::make_pair(oldest,
+                          youngest);
 }
 
 void
@@ -182,7 +228,9 @@ Backend::getSCO(SCO sconame,
 {
     LOG_INFO(ns_ << ": getting SCO " << std::hex << sconame);
 
-    const auto it = std::find(scosdeque_.begin(), scosdeque_.end(),sconame);
+    const auto it = std::find(scosdeque_.begin(),
+                              scosdeque_.end(),
+                              ClusterLocation(sconame, 0));
     if(it == scosdeque_.end())
     {
         return;
@@ -190,7 +238,9 @@ Backend::getSCO(SCO sconame,
     else
     {
         flush();
-        get_entries(*it,
+        get_entries(it->sco(),
+                    it->offset(),
+                    std::numeric_limits<size_t>::max(),
                     fun);
     }
 }

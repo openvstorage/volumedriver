@@ -409,7 +409,7 @@ void
 FailOverCacheProtocol::getSCO_()
 {
     VERIFY(cache_);
-    LOG_INFO("Namespace" << cache_->getNamespace());
+    LOG_INFO("Namespace " << cache_->getNamespace());
     SCO scoName;
 
     stream_ >> scoName;
@@ -442,14 +442,13 @@ FailOverCacheProtocol::getSCORange_()
 {
     VERIFY(cache_);
     LOG_INFO("Namespace" << cache_->getNamespace());
-    SCO oldest;
-    SCO youngest;
-    cache_->getSCORange(oldest,
-                        youngest);
+    ClusterLocation oldest;
+    ClusterLocation youngest;
+    std::tie(oldest, youngest) = cache_->range();
 
     stream_ << fungi::IOBaseStream::cork;
-    stream_ << oldest;
-    stream_ << youngest;
+    stream_ << oldest.sco();
+    stream_ << youngest.sco();
 
     stream_ << fungi::IOBaseStream::uncork;
 }

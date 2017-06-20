@@ -56,6 +56,11 @@ public:
     void
     getEntries(EntryProcessorFun);
 
+    size_t
+    get_entries(ClusterLocation,
+                size_t max,
+                EntryProcessorFun);
+
     void
     getSCO(volumedriver::SCO,
            EntryProcessorFun);
@@ -88,9 +93,8 @@ public:
         first_command_must_be_getEntries = true;
     }
 
-    void
-    getSCORange(volumedriver::SCO& oldest,
-                volumedriver::SCO& youngest) const;
+    std::pair<ClusterLocation, ClusterLocation>
+    range() const;
 
     volumedriver::ClusterSize
     cluster_size() const
@@ -115,8 +119,10 @@ protected:
     add_entries(std::vector<volumedriver::FailOverCacheEntry>,
                 std::unique_ptr<uint8_t[]>) = 0;
 
-    virtual void
+    virtual size_t
     get_entries(const volumedriver::SCO,
+                const SCOOffset,
+                size_t max,
                 EntryProcessorFun&) = 0;
 
     virtual void
@@ -128,13 +134,12 @@ private:
     bool registered_;
     bool first_command_must_be_getEntries;
     const std::string ns_;
-    std::deque<volumedriver::SCO> scosdeque_;
+    std::deque<ClusterLocation> scosdeque_;
+    ClusterLocation last_loc_;
     const volumedriver::ClusterSize cluster_size_;
 
     void
     clear_cache_();
-
-    size_t check_offset_;
 };
 
 }

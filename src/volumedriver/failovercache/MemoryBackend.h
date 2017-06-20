@@ -56,8 +56,10 @@ public:
     virtual void
     remove(const volumedriver::SCO) override final;
 
-    virtual void
+    virtual size_t
     get_entries(const volumedriver::SCO,
+                const SCOOffset,
+                const size_t max,
                 Backend::EntryProcessorFun&) override final;
 
 private:

@@ -61,8 +61,10 @@ public:
     virtual void
     remove(const volumedriver::SCO) override final;
 
-    virtual void
+    virtual size_t
     get_entries(const volumedriver::SCO,
+                const SCOOffset,
+                const size_t max,
                 Backend::EntryProcessorFun&) override final;
 
     const boost::filesystem::path&
@@ -80,6 +82,7 @@ private:
     std::unique_ptr<fungi::File> file_;
     const boost::filesystem::path root_;
     const size_t stream_buffer_size_;
+    size_t entry_size_ = 0;
 
     boost::filesystem::path
     make_path_(const volumedriver::SCO) const;
