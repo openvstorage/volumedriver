@@ -22,7 +22,7 @@
 #include "CombinedTLogReader.h"
 #include "DataStoreNG.h"
 #include "failovercache/ClientInterface.h"
-#include "FailOverCacheClientInterface.h"
+#include "FailOverCacheBridgeInterface.h"
 #include "MDSMetaDataStore.h"
 #include "MetaDataStoreInterface.h"
 #include "PrefetchData.h"
@@ -143,7 +143,7 @@ Volume::Volume(const VolumeConfig& vCfg,
     , unaligned_lock_("unaligned-lock-" + vCfg.id_.str())
     , halted_(false)
     , dataStore_(datastore.release())
-    , failover_(FailOverCacheClientInterface::create(FailOverCacheMode::Asynchronous,
+    , failover_(FailOverCacheBridgeInterface::create(FailOverCacheMode::Asynchronous,
                                                      LBASize(vCfg.lba_size_),
                                                      vCfg.cluster_mult_,
                                                      VolManager::get()->dtl_queue_depth.value(),
@@ -2404,7 +2404,7 @@ Volume::setFailOverCacheMode_(const FailOverCacheMode mode)
     if (mode != failover_->mode())
     {
         failover_->destroy(SyncFailOverToBackend::T);
-        failover_ = FailOverCacheClientInterface::create(mode,
+        failover_ = FailOverCacheBridgeInterface::create(mode,
                                                          LBASize(getLBASize()),
                                                          getClusterMultiplier(),
                                                          VolManager::get()->dtl_queue_depth.value(),

@@ -595,7 +595,7 @@ public:
     void
     flushFailOverCache(Volume&);
 
-    FailOverCacheClientInterface*
+    FailOverCacheBridgeInterface*
     getFailOverWriter(Volume& vol);
 
     bool

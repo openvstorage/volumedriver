@@ -36,7 +36,7 @@ namespace volumedriver
 {
 
 class DataStoreNG;
-class FailOverCacheClientInterface;
+class FailOverCacheBridgeInterface;
 class MetaDataBackendConfig;
 class SnapshotManagement;
 class Volume;
@@ -101,7 +101,7 @@ public:
     virtual DataStoreNG*
     getDataStore() = 0;
 
-    virtual FailOverCacheClientInterface*
+    virtual FailOverCacheBridgeInterface*
     getFailOver() = 0;
 
     // virtual VolumeFailOverState

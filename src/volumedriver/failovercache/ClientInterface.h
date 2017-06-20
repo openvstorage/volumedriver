@@ -37,9 +37,6 @@ class FailOverCacheEntry;
 namespace failovercache
 {
 
-// TODO: there's potential for confusion with
-// volumedriver::FailOverCacheClientInterface - rename either one (probably
-// the latter?)
 class ClientInterface
 {
 public:

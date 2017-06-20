@@ -33,7 +33,7 @@ namespace yt = youtils;
     boost::lock_guard<decltype(mutex_)> lg__(mutex_)
 
 FailOverCacheSyncBridge::FailOverCacheSyncBridge(const size_t max_entries)
-    : FailOverCacheClientInterface(max_entries)
+    : FailOverCacheBridgeInterface(max_entries)
 {}
 
 void

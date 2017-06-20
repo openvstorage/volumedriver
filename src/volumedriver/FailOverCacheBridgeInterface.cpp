@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "FailOverCacheClientInterface.h"
+#include "FailOverCacheBridgeInterface.h"
 #include "FailOverCacheAsyncBridge.h"
 #include "FailOverCacheSyncBridge.h"
 
@@ -22,10 +22,10 @@
 namespace volumedriver
 {
 
-using Ptr = std::unique_ptr<FailOverCacheClientInterface>;
+using Ptr = std::unique_ptr<FailOverCacheBridgeInterface>;
 
 Ptr
-FailOverCacheClientInterface::create(const FailOverCacheMode mode,
+FailOverCacheBridgeInterface::create(const FailOverCacheMode mode,
                                      const LBASize lba_size,
                                      const ClusterMultiplier cluster_multiplier,
                                      const size_t max_entries,

@@ -23,7 +23,7 @@
 #include <youtils/wall_timer.h>
 
 #include "volumedriver/FailOverCacheConfig.h"
-#include "volumedriver/FailOverCacheClientInterface.h"
+#include "volumedriver/FailOverCacheBridgeInterface.h"
 #include "volumedriver/FailOverCacheEntry.h"
 #include "volumedriver/Types.h"
 #include "volumedriver/failovercache/ClientInterface.h"
@@ -152,7 +152,7 @@ public:
     }
 
     bool
-    addEntry(FailOverCacheClientInterface& foc,
+    addEntry(FailOverCacheBridgeInterface& foc,
              const FailOverCacheEntry& e)
     {
         boost::future<void> f(foc.addEntries({ e.cli_ },
@@ -178,8 +178,8 @@ public:
         const LBASize lba_size(512);
         const ClusterMultiplier cmult(8);
 
-        std::unique_ptr<FailOverCacheClientInterface>
-            failover_bridge(FailOverCacheClientInterface::create(mode_,
+        std::unique_ptr<FailOverCacheBridgeInterface>
+            failover_bridge(FailOverCacheBridgeInterface::create(mode_,
                                                                  lba_size,
                                                                  cmult,
                                                                  max_entries_,

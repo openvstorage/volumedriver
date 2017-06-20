@@ -17,7 +17,7 @@
 #define VD_FAILOVER_CACHE_ASYNCBRIDGE_H
 
 #include "FailOverCacheCommand.h"
-#include "FailOverCacheClientInterface.h"
+#include "FailOverCacheBridgeInterface.h"
 #include "SCO.h"
 
 #include "failovercache/fungilib/Runnable.h"
@@ -42,7 +42,7 @@ class ClientInterface;
 
 class FailOverCacheAsyncBridge
     : public fungi::Runnable
-    , public FailOverCacheClientInterface
+    , public FailOverCacheBridgeInterface
 {
     friend class FailOverCacheTester;
 

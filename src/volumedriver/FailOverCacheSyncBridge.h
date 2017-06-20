@@ -16,7 +16,7 @@
 #ifndef VD_FAILOVER_CACHE_SYNCBRIDGE_H
 #define VD_FAILOVER_CACHE_SYNCBRIDGE_H
 
-#include "FailOverCacheClientInterface.h"
+#include "FailOverCacheBridgeInterface.h"
 #include "SCO.h"
 
 #include <youtils/FileDescriptor.h>
@@ -32,7 +32,7 @@ class ClientInterface;
 }
 
 class FailOverCacheSyncBridge
-    : public FailOverCacheClientInterface
+    : public FailOverCacheBridgeInterface
 {
     friend class FailOverCacheTester;
 

@@ -64,7 +64,7 @@ public:
     check_num_entries(Volume& v,
                       uint64_t expected)
     {
-        FailOverCacheClientInterface* bridge = getFailOverWriter(v);
+        FailOverCacheBridgeInterface* bridge = getFailOverWriter(v);
         uint64_t entries = 0;
 
         switch (bridge->mode())
@@ -675,7 +675,7 @@ TEST_P(FailOverCacheTester, adding_and_flushing)
     SharedVolumePtr v = newVolume(*wrns);
     v->setFailOverCacheConfig(foc_ctx->config(GetParam().foc_mode()));
 
-    FailOverCacheClientInterface& foc = *v->getFailOver();
+    FailOverCacheBridgeInterface& foc = *v->getFailOver();
 
     std::atomic<bool> stop(false);
     size_t flushes = 0;

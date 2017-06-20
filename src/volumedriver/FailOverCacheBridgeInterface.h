@@ -13,8 +13,8 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef VD_FAILOVER_CACHE_CLIENTINTERFACE_H
-#define VD_FAILOVER_CACHE_CLIENTINTERFACE_H
+#ifndef VD_FAILOVER_CACHE_BRIDGE_INTERFACE_H
+#define VD_FAILOVER_CACHE_BRIDGE_INTERFACE_H
 
 #include "FailOverCacheBridgeCommon.h"
 #include "FailOverCacheMode.h"
@@ -34,17 +34,17 @@ namespace failovercache
 class ClientInterface;
 }
 
-class FailOverCacheClientInterface
+class FailOverCacheBridgeInterface
 {
 public:
-    static std::unique_ptr<FailOverCacheClientInterface>
+    static std::unique_ptr<FailOverCacheBridgeInterface>
     create(const FailOverCacheMode mode,
            const LBASize lba_size,
            const ClusterMultiplier cluster_multiplier,
            const size_t max_entries,
            const std::atomic<unsigned>& write_trigger);
 
-    virtual ~FailOverCacheClientInterface() = default;
+    virtual ~FailOverCacheBridgeInterface() = default;
 
     using DegradedFun = std::function<void() noexcept>;
 
@@ -100,16 +100,16 @@ public:
     }
 
 protected:
-    explicit FailOverCacheClientInterface(const size_t max_entries)
+    explicit FailOverCacheBridgeInterface(const size_t max_entries)
         : max_entries_(max_entries)
     {}
 
 private:
-    DECLARE_LOGGER("FailOverCacheClientInterface");
+    DECLARE_LOGGER("FailOverCacheBridgeInterface");
 
     const size_t max_entries_ ;
 };
 
 } // namespace volumedriver
 
-#endif // VD_FAILOVER_CACHE_CLIENTINTERFACE_H
+#endif // VD_FAILOVER_CACHE_BRIDGE_INTERFACE_H
