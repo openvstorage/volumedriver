@@ -162,7 +162,7 @@ TEST_P(FailOverCacheTester, VolumeWithoutFOC)
     ASSERT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
                                                                5610,
                                                                GetParam().foc_mode())),
-                 fungi::IOException);
+                 std::exception);
 
 
     for(int i =0; i < 128; ++i)
@@ -334,7 +334,7 @@ TEST_P(FailOverCacheTester, ResetCacheServer)
     ASSERT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
                                                                port,
                                                                GetParam().foc_mode())),
-                  fungi::IOException);
+                 std::exception);
 
     auto foc_ctx(start_one_foc());
     for(int i = 0; i < 4; ++i)

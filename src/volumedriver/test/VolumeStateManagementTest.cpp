@@ -65,7 +65,7 @@ TEST_P(VolumeStateManagementTest, NoCache)
     ASSERT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
                                                                FailOverCacheTestSetup::port_base(),
                                                                GetParam().foc_mode())),
-                 fungi::IOException);
+                 std::exception);
 
     ASSERT_EQ(VolumeFailOverState::DEGRADED,
               v->getVolumeFailOverState());
@@ -148,7 +148,7 @@ TEST_P(VolumeStateManagementTest, CreateVolumeWithRemoteCache)
     ASSERT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
                                                                FailOverCacheTestSetup::port_base(),
                                                                GetParam().foc_mode())),
-                 fungi::IOException);
+                 std::exception);
 
     EXPECT_EQ(VolumeFailOverState::DEGRADED,
               v->getVolumeFailOverState());
@@ -156,7 +156,7 @@ TEST_P(VolumeStateManagementTest, CreateVolumeWithRemoteCache)
     ASSERT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
                                                                FailOverCacheTestSetup::port_base(),
                                                                GetParam().foc_mode())),
-                 fungi::IOException);
+                 std::exception);
 
     EXPECT_EQ(VolumeFailOverState::DEGRADED,
               v->getVolumeFailOverState());
@@ -169,7 +169,7 @@ TEST_P(VolumeStateManagementTest, CreateVolumeWithRemoteCache)
     ASSERT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
                                                                FailOverCacheTestSetup::port_base(),
                                                                GetParam().foc_mode())),
-                 fungi::IOException);
+                 std::exception);
 
     EXPECT_EQ(VolumeFailOverState::DEGRADED,
               v->getVolumeFailOverState());
@@ -214,7 +214,7 @@ TEST_P(VolumeStateManagementTest, CreateVolumeStandalone)
     EXPECT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
                                                                FailOverCacheTestSetup::port_base(),
                                                                GetParam().foc_mode())),
-                 fungi::IOException);
+                 std::exception);
 
     EXPECT_EQ(VolumeFailOverState::DEGRADED,
               v->getVolumeFailOverState());
@@ -441,7 +441,7 @@ TEST_P(VolumeStateManagementTest, CreateVolumeStandaloneLocalRestartWithFailOver
     ASSERT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
                                                                FailOverCacheTestSetup::port_base(),
                                                                GetParam().foc_mode())),
-                 fungi::IOException);
+                 std::exception);
 
     EXPECT_EQ(VolumeFailOverState::DEGRADED,
               v->getVolumeFailOverState());
@@ -463,7 +463,7 @@ TEST_P(VolumeStateManagementTest, CreateVolumeNonLocalRestart1)
     ASSERT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
                                                                FailOverCacheTestSetup::port_base(),
                                                                GetParam().foc_mode())),
-                 fungi::IOException);
+                 std::exception);
 
     EXPECT_EQ(VolumeFailOverState::DEGRADED,
               v->getVolumeFailOverState());
@@ -475,7 +475,7 @@ TEST_P(VolumeStateManagementTest, CreateVolumeNonLocalRestart1)
                   DeleteLocalData::T,
                   RemoveVolumeCompletely::F);
     EXPECT_THROW(restartVolume(cfg),
-                 fungi::IOException);
+                 std::exception);
     EXPECT_NO_THROW(restartVolume(cfg,
                                PrefetchVolumeData::F,
                                CheckVolumeNameForRestart::T,
@@ -556,7 +556,7 @@ TEST_P(VolumeStateManagementTest, CreateVolumeNonLocalRestart3)
     foc_ctx.reset();
 
     EXPECT_THROW(restartVolume(cfg),
-                 fungi::IOException);
+                 std::exception);
 }
 
 TEST_P(VolumeStateManagementTest, events)

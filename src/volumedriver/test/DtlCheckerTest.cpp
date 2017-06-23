@@ -43,7 +43,7 @@ TEST_P(DtlCheckerTest, auto_recovery)
     ASSERT_THROW(v->setFailOverCacheConfig(FailOverCacheConfig(FailOverCacheTestSetup::host(),
                                                                port,
                                                                GetParam().foc_mode())),
-                 fungi::IOException);
+                 std::exception);
 
     ASSERT_EQ(VolumeFailOverState::DEGRADED,
               v->getVolumeFailOverState());
