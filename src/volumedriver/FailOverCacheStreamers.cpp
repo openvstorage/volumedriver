@@ -185,7 +185,19 @@ operator>>(fungi::IOBaseStream& stream,
     return stream;
 }
 
+fungi::IOBaseStream&
+operator>>(fungi::IOBaseStream& stream,
+           CommandData<FailOverCacheCommand::TunnelCapnProto>& data)
+{
+    stream >> data.hdr.tag;
+    stream >> data.hdr.capnp_size;
+    stream >> data.hdr.data_size;
+
+    return stream;
 }
+
+}
+
 
 // Local Variables: **
 // mode: c++ **

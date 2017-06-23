@@ -18,6 +18,7 @@
 
 #include "../ClusterLocation.h"
 #include "../FailOverCacheCommand.h"
+#include "../OwnerTag.h"
 
 #include "fungilib/Protocol.h"
 #include "fungilib/Socket.h"
@@ -28,9 +29,12 @@
 namespace volumedriver
 {
 
+class FailOverCacheEntry;
+
 namespace failovercache
 {
 
+class CapnProtoDispatcher;
 class FailOverCacheAcceptor;
 class Backend;
 
@@ -63,15 +67,24 @@ public:
 private:
     DECLARE_LOGGER("FailOverCacheProtocol");
 
+    friend class CapnProtoDispatcher;
+
     std::shared_ptr<Backend> cache_;
     std::unique_ptr<fungi::Socket> sock_;
     fungi::IOBaseStream stream_;
+    OwnerTag owner_tag_;
     fungi::Thread* thread_;
     FailOverCacheAcceptor& fact_;
     bool use_rs_;
     std::atomic<bool> stop_;
     int pipes_[2];
     boost::chrono::microseconds busy_loop_duration_;
+
+    std::unique_ptr<CapnProtoDispatcher> capnp_dispatcher_;
+
+    void
+    do_add_entries_(std::vector<FailOverCacheEntry>,
+                    std::unique_ptr<uint8_t[]>);
 
     void
     addEntries_();
@@ -80,19 +93,38 @@ private:
     getEntries_();
 
     void
+    do_flush_();
+
+    void
     Flush_();
 
     void
     register_();
 
+    // TODO: use backend::Namespace instead of std::string
+    // (this will be a viral change in this corner of the code base)
+    void
+    do_register_(const std::string& nspace,
+                 const ClusterSize,
+                 const OwnerTag);
+
     void
     unregister_();
 
     void
+    do_unregister_();
+
+    void
     getSCO_();
+
+    std::pair<ClusterLocation, ClusterLocation>
+    do_get_range_();
 
     void
     getSCORange_();
+
+    void
+    do_clear_();
 
     void
     Clear_();
@@ -102,6 +134,9 @@ private:
 
     void
     returnNotOk();
+
+    void
+    do_remove_up_to_(SCO);
 
     void
     removeUpTo_();
@@ -115,6 +150,17 @@ private:
 
     bool
     poll_(volumedriver::FailOverCacheCommand& cmd);
+
+    void
+    capnp_request_();
+
+    void
+    raw_cork_(bool);
+
+    template<typename... Args>
+    void
+    handle_fungi_(void (FailOverCacheProtocol::*)(Args...),
+                  Args...);
 };
 
 }

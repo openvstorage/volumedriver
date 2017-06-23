@@ -25,6 +25,7 @@
 #include <boost/optional.hpp>
 #include <boost/thread/future.hpp>
 
+#include <youtils/AsioServiceManager.h>
 #include <youtils/Logging.h>
 
 namespace volumedriver
@@ -33,6 +34,7 @@ namespace volumedriver
 class ClusterLocation;
 class FailOverCacheConfig;
 class FailOverCacheEntry;
+class OwnerTag;
 
 namespace failovercache
 {
@@ -142,9 +144,13 @@ public:
         return cluster_mult_;
     }
 
+    // move out to a ClientInterfaceFactory!?
     static std::unique_ptr<ClientInterface>
-    create(const FailOverCacheConfig&,
+    create(boost::asio::io_service&,
+           const youtils::ImplicitStrand,
+           const FailOverCacheConfig&,
            const backend::Namespace&,
+           const OwnerTag,
            const LBASize,
            const ClusterMultiplier,
            const MaybeMilliSeconds& request_timeout,

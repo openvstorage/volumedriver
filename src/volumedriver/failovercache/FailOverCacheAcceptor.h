@@ -18,8 +18,7 @@
 
 #include "FailOverCacheProtocol.h"
 #include "BackendFactory.h"
-
-#include "../FailOverCacheStreamers.h"
+#include "ProtocolFeature.h"
 
 #include <unordered_map>
 
@@ -50,7 +49,8 @@ class FailOverCacheAcceptor
 public:
     FailOverCacheAcceptor(const boost::optional<boost::filesystem::path>& root,
                           const boost::optional<size_t> file_backend_buffer_size,
-                          const boost::chrono::microseconds busy_loop_duration);
+                          const boost::chrono::microseconds busy_loop_duration,
+                          const ProtocolFeatures = ProtocolFeatures(ProtocolFeature::TunnelCapnProto));
 
     virtual ~FailOverCacheAcceptor();
 
@@ -70,7 +70,9 @@ public:
     using BackendPtr = std::shared_ptr<Backend>;
 
     BackendPtr
-    lookup(const volumedriver::CommandData<volumedriver::FailOverCacheCommand::Register>&);
+    lookup(const std::string& nspace,
+           const ClusterSize,
+           const OwnerTag);
 
     void
     removeProtocol(FailOverCacheProtocol* prot)
@@ -78,6 +80,8 @@ public:
         boost::lock_guard<decltype(mutex_)> g(mutex_);
         protocols.remove(prot);
     }
+
+    const ProtocolFeatures protocol_features;
 
 private:
     DECLARE_LOGGER("FailOverCacheAcceptor");

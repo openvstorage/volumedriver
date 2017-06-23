@@ -129,6 +129,19 @@ fungi::IOBaseStream&
 operator>>(fungi::IOBaseStream&,
            CommandData<FailOverCacheCommand::AddEntries>&);
 
+template<>
+struct CommandData<FailOverCacheCommand::TunnelCapnProto>
+{
+    CommandData(TunnelCapnProtoHeader& h)
+        : hdr(h)
+    {}
+
+    TunnelCapnProtoHeader& hdr;
+};
+
+fungi::IOBaseStream&
+operator>>(fungi::IOBaseStream&,
+           CommandData<FailOverCacheCommand::TunnelCapnProto>&);
 }
 
 #endif // FAILOVERCACHESTREAMERS_H

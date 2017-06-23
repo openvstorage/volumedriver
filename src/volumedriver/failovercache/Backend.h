@@ -21,6 +21,7 @@
 
 #include "../ClusterLocation.h"
 #include "../FailOverCacheCommand.h"
+#include "../OwnerTag.h"
 #include "../Types.h"
 
 namespace volumedriver
@@ -48,10 +49,12 @@ public:
 
     void
     addEntries(std::vector<volumedriver::FailOverCacheEntry>,
-               std::unique_ptr<uint8_t[]>);
+               std::unique_ptr<uint8_t[]>,
+               const OwnerTag);
 
     void
-    removeUpTo(const volumedriver::SCO);
+    removeUpTo(const SCO,
+               const OwnerTag);
 
     void
     getEntries(EntryProcessorFun);
@@ -66,12 +69,13 @@ public:
            EntryProcessorFun);
 
     void
-    clear();
+    clear(const OwnerTag);
 
     void
-    register_()
+    register_(const OwnerTag owner_tag)
     {
-        LOG_DEBUG("Registering for namespace " << ns_);
+        LOG_INFO(ns_ << ": owner tag " << owner_tag);
+        owner_tag_ = owner_tag;
         registered_ = true;
     }
 
@@ -79,6 +83,12 @@ public:
     registered() const
     {
         return registered_;
+    }
+
+    OwnerTag
+    owner_tag() const
+    {
+        return owner_tag_;
     }
 
     const std::string&
@@ -102,8 +112,12 @@ public:
         return cluster_size_;
     }
 
-    virtual void
-    flush() = 0;
+    void
+    flush(const OwnerTag owner_tag)
+    {
+        check_owner_(owner_tag);
+        flush();
+    }
 
 protected:
     Backend(const std::string&,
@@ -128,9 +142,13 @@ protected:
     virtual void
     remove(const volumedriver::SCO) = 0;
 
+    virtual void
+    flush() = 0;
+
 private:
     DECLARE_LOGGER("Backend");
 
+    OwnerTag owner_tag_;
     bool registered_;
     bool first_command_must_be_getEntries;
     const std::string ns_;
@@ -140,6 +158,9 @@ private:
 
     void
     clear_cache_();
+
+    void
+    check_owner_(const OwnerTag) const;
 };
 
 }

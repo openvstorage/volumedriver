@@ -15,16 +15,20 @@
 
 #include <fstream>
 
+#include <boost/asio.hpp>
 #include <boost/program_options.hpp>
 
+#include <youtils/AsioServiceManager.h>
 #include <youtils/BuildInfoString.h>
 #include <youtils/Logger.h>
 #include <youtils/Main.h>
+#include <youtils/ScopeExit.h>
 #include <youtils/wall_timer.h>
 
 #include "volumedriver/FailOverCacheConfig.h"
 #include "volumedriver/FailOverCacheBridgeInterface.h"
 #include "volumedriver/FailOverCacheEntry.h"
+#include "volumedriver/OwnerTag.h"
 #include "volumedriver/Types.h"
 #include "volumedriver/failovercache/ClientInterface.h"
 
@@ -33,7 +37,9 @@ namespace
 
 using namespace volumedriver;
 using namespace scrubbing;
+
 namespace yt = youtils;
+namespace ba = boost::asio;
 namespace bc = boost::chrono;
 namespace be = backend;
 namespace po = boost::program_options;
@@ -112,21 +118,25 @@ public:
         , desc_("Required Options")
     {
         desc_.add_options()
-                ("host",
-                 po::value<std::string>(&host_)->required(),
-                 "host of the failovercache server")
-                ("port",
-                 po::value<uint16_t>(&port_)->required(),
-                 "port of the failovercache server")
-                ("mode",
-                 po::value<volumedriver::FailOverCacheMode>(&mode_)->default_value(FailOverCacheMode::Asynchronous),
-                 "mode of the failovercache server (Asynchronous|Synchronous)")
-                ("namespace",
-                 po::value<std::string>(&ns_tmp_)->required(),
-                 "namespace to use for testing")
-                 ("sleep_micro",
-                  po::value<uint64_t>(&sleep_micro_)->default_value(1000),
-                  "amount to sleep in microseconds when failovercache can't follow");
+            ("asio-threads",
+             po::value<size_t>(&asio_threads_)->default_value(1),
+             "number of asio threads")
+            ("host",
+             po::value<std::string>(&host_)->required(),
+             "host of the failovercache server")
+            ("port",
+             po::value<uint16_t>(&port_)->required(),
+             "port of the failovercache server")
+            ("mode",
+             po::value<volumedriver::FailOverCacheMode>(&mode_)->default_value(FailOverCacheMode::Asynchronous),
+             "mode of the failovercache server (Asynchronous|Synchronous)")
+            ("namespace",
+             po::value<std::string>(&ns_tmp_)->required(),
+             "namespace to use for testing")
+            ("sleep_micro",
+             po::value<uint64_t>(&sleep_micro_)->default_value(1000),
+             "amount to sleep in microseconds when failovercache can't follow")
+            ;
     }
 
     virtual void
@@ -172,7 +182,13 @@ public:
     virtual int
     run()
     {
-        LOG_INFO("Run with host " << host_ << " port " << port_ << " mode " << mode_ << " namespace " << *ns_ << " sleep micro " << sleep_micro_);
+        LOG_INFO("Run with host " << host_ << " port " << port_ <<
+                 " mode " << mode_ << " namespace " << *ns_ <<
+                 " sleep micro " << sleep_micro_ <<
+                 " asio threads " << asio_threads_);
+
+        yt::AsioServiceManager mgr(asio_threads_);
+
         max_entries_ = 1024;
         write_trigger_ = 8;
         const LBASize lba_size(512);
@@ -190,10 +206,13 @@ public:
                                         LOG_WARN("Got a DEGRADED event");
                                     });
 
-        failover_bridge->newCache(failovercache::ClientInterface::create(FailOverCacheConfig(host_,
+        failover_bridge->newCache(failovercache::ClientInterface::create(mgr.get_service(ns_->str()),
+                                                                         mgr.implicit_strand(),
+                                                                         FailOverCacheConfig(host_,
                                                                                              port_,
                                                                                              mode_),
                                                                          *ns_,
+                                                                         OwnerTag(1),
                                                                          lba_size,
                                                                          cmult,
                                                                          bc::duration_cast<bc::milliseconds>(failover_bridge->getDefaultRequestTimeout()),
@@ -254,6 +273,7 @@ public:
         return 0;
     }
 
+    size_t asio_threads_;
     std::atomic<unsigned> max_entries_;
     std::atomic<unsigned> write_trigger_;
     std::string host_;
@@ -266,6 +286,7 @@ public:
 
     po::options_description desc_;
 };
+
 }
 
 MAIN(FailoverCacheClientPerfTestMain)

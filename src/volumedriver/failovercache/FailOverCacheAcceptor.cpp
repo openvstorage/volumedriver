@@ -35,8 +35,10 @@ using namespace fungi;
 
 FailOverCacheAcceptor::FailOverCacheAcceptor(const boost::optional<fs::path>& path,
                                              const boost::optional<size_t> file_backend_buffer_size,
-                                             const boost::chrono::microseconds busy_loop_duration)
-    : factory_(path, file_backend_buffer_size)
+                                             const boost::chrono::microseconds busy_loop_duration,
+                                             const ProtocolFeatures features)
+    : protocol_features(features)
+    , factory_(path, file_backend_buffer_size)
     , busy_loop_duration_(busy_loop_duration)
 {}
 
@@ -89,40 +91,42 @@ FailOverCacheAcceptor::remove(Backend& w)
 }
 
 FailOverCacheAcceptor::BackendPtr
-FailOverCacheAcceptor::lookup(const CommandData<FailOverCacheCommand::Register>& reg)
+FailOverCacheAcceptor::lookup(const std::string& nspace,
+                              const ClusterSize csize,
+                              const OwnerTag owner_tag)
 {
     LOCK();
 
     BackendPtr w;
 
-    auto it = map_.find(reg.ns_);
+    auto it = map_.find(nspace);
     if (it != map_.end())
     {
-        if (it->second->cluster_size() == reg.clustersize_)
+        if (it->second->cluster_size() == csize)
         {
             w = it->second;
             w->setFirstCommandMustBeGetEntries();
         }
         else
         {
-            LOG_ERROR(reg.ns_ << ": refusing registration with cluster size " <<
-                      reg.clustersize_ << " - we're already using " <<
+            LOG_ERROR(nspace << ": refusing registration with cluster size " <<
+                      csize << " - we're already using " <<
                       it->second->cluster_size());
         }
     }
     else
     {
-        w = factory_.make_backend(reg.ns_,
-                                  reg.clustersize_);
+        w = factory_.make_backend(nspace,
+                                  csize);
 
-        auto res(map_.emplace(std::make_pair(reg.ns_,
+        auto res(map_.emplace(std::make_pair(nspace,
                                              w)));
         VERIFY(res.second);
     }
 
     if (w)
     {
-        w->register_();
+        w->register_(owner_tag);
     }
 
     return w;

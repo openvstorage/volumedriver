@@ -811,6 +811,9 @@ private:
     write_aligned_(const uint64_t off,
                    const uint8_t *buf,
                    uint64_t len);
+
+    std::unique_ptr<failovercache::ClientInterface>
+    create_dtl_client_(const FailOverCacheConfig&) const;
 };
 
 using SharedVolumePtr = std::shared_ptr<Volume>;

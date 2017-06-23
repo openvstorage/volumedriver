@@ -18,6 +18,7 @@
 #include "../VolumeConfig.h"
 #include "../Api.h"
 #include "../FailOverCacheAsyncBridge.h"
+#include "../FailOverCacheEntry.h"
 #include "../FailOverCacheSyncBridge.h"
 #include "../failovercache/ClientInterface.h"
 #include "../failovercache/FileBackend.h"
@@ -26,11 +27,13 @@
 
 #include <future>
 
+#include <youtils/AsioServiceManager.h>
 #include <youtils/Timer.h>
 
 namespace volumedriver
 {
 
+namespace ba = boost::asio;
 namespace bc = boost::chrono;
 namespace yt = youtils;
 
@@ -760,9 +763,14 @@ TEST_P(FailOverCacheTester, clear)
     auto wrns(make_random_namespace());
     auto foc_ctx(start_one_foc());
 
+    std::shared_ptr<yt::AsioServiceManager>
+        mgr(VolManager::get()->asio_service_manager());
     std::unique_ptr<failovercache::ClientInterface>
-        cache(failovercache::ClientInterface::create(foc_ctx->config(GetParam().foc_mode()),
+        cache(failovercache::ClientInterface::create(mgr->get_service(wrns->ns().str()),
+                                                     mgr->implicit_strand(),
+                                                     foc_ctx->config(GetParam().foc_mode()),
                                                      wrns->ns(),
+                                                     OwnerTag(1),
                                                      default_lba_size(),
                                                      default_cluster_multiplier(),
                                                      boost::chrono::milliseconds(60000),
@@ -822,9 +830,13 @@ TEST_P(FailOverCacheTester, non_standard_cluster_size)
 
     v->getFailOver()->Flush().get();
 
+    std::shared_ptr<yt::AsioServiceManager> mgr(VolManager::get()->asio_service_manager());
     std::unique_ptr<failovercache::ClientInterface>
-        cache(failovercache::ClientInterface::create(foc_ctx->config(GetParam().foc_mode()),
+        cache(failovercache::ClientInterface::create(mgr->get_service(wrns->ns().str()),
+                                                     mgr->implicit_strand(),
+                                                     foc_ctx->config(GetParam().foc_mode()),
                                                      wrns->ns(),
+                                                     v->getOwnerTag(),
                                                      default_lba_size(),
                                                      cmult,
                                                      bc::milliseconds(60000),
@@ -882,8 +894,13 @@ TEST_P(FailOverCacheTester, wrong_cluster_size)
 
     v->getFailOver()->Flush().get();
 
-    EXPECT_THROW(failovercache::ClientInterface::create(foc_ctx->config(GetParam().foc_mode()),
+    std::shared_ptr<yt::AsioServiceManager>
+        mgr(VolManager::get()->asio_service_manager());
+    EXPECT_THROW(failovercache::ClientInterface::create(mgr->get_service(wrns->ns().str()),
+                                                        mgr->implicit_strand(),
+                                                        foc_ctx->config(GetParam().foc_mode()),
                                                         wrns->ns(),
+                                                        v->getOwnerTag(),
                                                         LBASize(default_lba_size()),
                                                         ClusterMultiplier(default_cluster_multiplier()),
                                                         bc::milliseconds(60000),
@@ -899,12 +916,18 @@ TEST_P(FailOverCacheTester, DISABLED_connect_timeout)
                                   23000,
                                   GetParam().foc_mode());
 
+    std::shared_ptr<yt::AsioServiceManager>
+        mgr(VolManager::get()->asio_service_manager());
+
     auto test([&](const boost::optional<bc::milliseconds>& connect_timeout)
               {
                   yt::SteadyTimer t;
 
-                  EXPECT_THROW(failovercache::ClientInterface::create(cfg,
+                  EXPECT_THROW(failovercache::ClientInterface::create(mgr->get_service(wrns->ns().str()),
+                                                                      mgr->implicit_strand(),
+                                                                      cfg,
                                                                       wrns->ns(),
+                                                                      OwnerTag(1),
                                                                       default_lba_size(),
                                                                       default_cluster_multiplier(),
                                                                       bc::milliseconds(1000),
@@ -931,13 +954,20 @@ TEST_P(FailOverCacheTester, DISABLED_a_whole_lotta_clients)
     std::vector<std::unique_ptr<failovercache::ClientInterface>> clients;
     clients.reserve(count);
 
+    std::shared_ptr<yt::AsioServiceManager>
+        mgr(VolManager::get()->asio_service_manager());
     try
     {
         for (size_t i = 0; i < 512; ++i)
         {
             wrns.emplace_back(make_random_namespace());
-            clients.emplace_back(failovercache::ClientInterface::create(foc_ctx->config(GetParam().foc_mode()),
+            ba::io_service& svc = mgr->get_service(wrns.back()->ns().str());
+
+            clients.emplace_back(failovercache::ClientInterface::create(svc,
+                                                                        mgr->implicit_strand(),
+                                                                        foc_ctx->config(GetParam().foc_mode()),
                                                                         wrns.back()->ns(),
+                                                                        OwnerTag(1),
                                                                         default_lba_size(),
                                                                         default_cluster_multiplier(),
                                                                         bc::milliseconds(1000),

@@ -444,6 +444,24 @@ Volume::localRestartDataStore_(SCONumber last_sco_num_in_backend,
     }
 }
 
+std::unique_ptr<failovercache::ClientInterface>
+Volume::create_dtl_client_(const FailOverCacheConfig& cfg) const
+{
+    using namespace failovercache;
+    VolManager& vm = *VolManager::get();
+
+    return ClientInterface::create(vm.asio_service_manager()->get_service(getNamespace().str()),
+                                   vm.asio_service_manager()->implicit_strand(),
+                                   cfg,
+                                   getNamespace(),
+                                   getOwnerTag(),
+                                   TODO("AR: fix getLBASize instead")
+                                   LBASize(getLBASize()),
+                                   getClusterMultiplier(),
+                                   vm.dtl_request_timeout(),
+                                   vm.dtl_connect_timeout());
+}
+
 void
 Volume::localRestart()
 {
@@ -474,13 +492,7 @@ Volume::localRestart()
 
         try
         {
-            cache = failovercache::ClientInterface::create(foc_cfg,
-                                                           cfg.getNS(),
-                                                           TODO("AR: fix getLBASize instead")
-                                                           LBASize(getLBASize()),
-                                                           getClusterMultiplier(),
-                                                           VolManager::get()->dtl_request_timeout(),
-                                                           VolManager::get()->dtl_connect_timeout());
+            cache = create_dtl_client_(foc_cfg);
         }
         CATCH_STD_ALL_EWHAT({
                 LOG_VINFO("Could not start with previous failover settings: " << EWHAT);
@@ -596,12 +608,7 @@ Volume::backend_restart(const CloneTLogs& restartTLogs,
 
         try
         {
-            cache = failovercache::ClientInterface::create(foc_cfg,
-                                                           cfg.getNS(),
-                                                           LBASize(getLBASize()),
-                                                           getClusterMultiplier(),
-                                                           VolManager::get()->dtl_request_timeout(),
-                                                           VolManager::get()->dtl_connect_timeout());
+            cache = create_dtl_client_(foc_cfg);
         }
         CATCH_STD_ALL_EWHAT({
                 if (ignoreFOCIfUnreachable == IgnoreFOCIfUnreachable::T)
@@ -2428,12 +2435,7 @@ Volume::setFailOverCacheConfig_(const FailOverCacheConfig& config)
 
     LOG_VINFO("Setting the failover cache to " << config);
     setFailOverCacheMode_(config.mode);
-    failover_->newCache(failovercache::ClientInterface::create(config,
-                                                               getNamespace(),
-                                                               LBASize(getLBASize()),
-                                                               getClusterMultiplier(),
-                                                               VolManager::get()->dtl_request_timeout(),
-                                                               VolManager::get()->dtl_connect_timeout()));
+    failover_->newCache(create_dtl_client_(config));
     failover_->Clear();
 
     MaybeCheckSum cs = dataStore_->finalizeCurrentSCO();

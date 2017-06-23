@@ -22,6 +22,7 @@
 #include <boost/filesystem/fstream.hpp>
 #include <boost/scope_exit.hpp>
 
+#include <youtils/AsioServiceManager.h>
 #include <youtils/Assert.h>
 #include <youtils/FileUtils.h>
 #include <youtils/System.h>
@@ -2538,9 +2539,14 @@ TEST_P(SimpleVolumeTest, synchronous_foc)
     ASSERT_EQ(VolumeFailOverState::OK_SYNC,
               v->getVolumeFailOverState());
 
+    std::shared_ptr<yt::AsioServiceManager>
+        mgr(VolManager::get()->asio_service_manager());
     std::unique_ptr<failovercache::ClientInterface>
-        cache(failovercache::ClientInterface::create(foc_config,
+        cache(failovercache::ClientInterface::create(mgr->get_service(wrns->ns().str()),
+                                                     mgr->implicit_strand(),
+                                                     foc_config,
                                                      wrns->ns(),
+                                                     v->getOwnerTag(),
                                                      LBASize(v->getLBASize()),
                                                      v->getClusterMultiplier(),
                                                      boost::chrono::milliseconds(10000),

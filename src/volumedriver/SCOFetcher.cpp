@@ -17,12 +17,15 @@
 #include "DataStoreNG.h"
 #include "FailOverCacheBridgeInterface.h"
 #include "FailOverCacheConfig.h"
+#include "OwnerTag.h"
 #include "SCOFetcher.h"
+#include "VolManager.h"
 #include "Volume.h"
 #include "VolumeDriverError.h"
 
 #include "failovercache/ClientInterface.h"
 
+#include <youtils/AsioServiceManager.h>
 #include <youtils/FileDescriptor.h>
 #include <youtils/FileUtils.h>
 #include <youtils/IOException.h>
@@ -35,6 +38,7 @@ namespace volumedriver
 
 namespace bc = boost::chrono;
 namespace fs = boost::filesystem;
+namespace yt = youtils;
 
 BackendSCOFetcher::BackendSCOFetcher(SCO sconame,
                                      VolumeInterface* vol,
@@ -218,10 +222,17 @@ RawFailOverCacheSCOFetcher::RawFailOverCacheSCOFetcher(SCO sconame,
     : sconame_(sconame)
 {
     VERIFY(sconame.cloneID() == 0);
+
+    std::shared_ptr<yt::AsioServiceManager>
+        mgr(VolManager::get()->asio_service_manager());
+
     try
     {
-        foc = failovercache::ClientInterface::create(cfg,
+        foc = failovercache::ClientInterface::create(mgr->get_service(ns.str()),
+                                                     mgr->implicit_strand(),
+                                                     cfg,
                                                      ns,
+                                                     OwnerTag(0),
                                                      lba_size,
                                                      cmult,
                                                      req_timeout,
@@ -270,7 +281,6 @@ RawFailOverCacheSCOFetcher::operator()(const fs::path& dst)
     {
         throw fungi::IOException("FOC not available");
     }
-
 }
 
 bool

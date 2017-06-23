@@ -13,6 +13,12 @@ CAPNPC = ${BUILDTOOLS_DIR}/bin/capnpc
 PATH := ${BUILDTOOLS_DIR}/bin:${PATH}
 LTTNG_GEN_TP = @lttng_gen_tp@
 
+.NOTPARALLEL: \
+	failovercache/Protocol-capnp.cpp \
+	failovercache/Protocol-capnp.h \
+	metadata-server/Protocol-capnp.cpp \
+	metadata-server/Protocol.capnp.h
+
 %_tp.h: %.tp
 	echo "generating $@ from $<"
 	$(LTTNG_GEN_TP) $< -o $@
@@ -45,8 +51,10 @@ MOSTLYCLEANFILES = \
 	VolumeDriverEvents.pb.cc \
 	VolumeDriverEvents.pb.h \
 	VolumeDriverEvents_pb2.py \
-	metadata-server/Protocol.capnp.h \
-	metadata-server/Protocol-capnp.cpp
+	failovercache/Protocol-capnp.cpp \
+	failovercache/Protocol-capnp.h \
+	metadata-server/Protocol-capnp.cpp \
+	metadata-server/Protocol.capnp.h
 
 BUILT_SOURCES = \
 	Events.pb.h \
@@ -55,9 +63,19 @@ BUILT_SOURCES = \
 	TracePoints_tp.c \
 	VolumeDriverEvents.pb.h \
 	VolumeDriverEvents_pb2.py \
+	failovercache/Protocol-capnp.cpp \
+	failovercache/Protocol-capnp.h \
+	metadata-server/Protocol.capnp.h \
 	metadata-server/Protocol-capnp.cpp
 
-metadata-server/Protocol-capnp.cpp: metadata-server/Protocol.capnp
+failovercache/Protocol-capnp.cpp failovercache/Protocol-capnp.h: failovercache/Protocol.capnp
+	-mkdir -p @abs_builddir@/dtl
+	$(CAPNPC) -I${BUILDTOOLS_DIR}/include -oc++:@abs_builddir@/ @abs_srcdir@/failovercache/Protocol.capnp
+	sed -i 's/Protocol\.capnp\.h/Protocol-capnp\.h/g' @abs_srcdir@/failovercache/Protocol.capnp.c++
+	mv @abs_srcdir@/failovercache/Protocol.capnp.c++ @abs_builddir@/failovercache/Protocol-capnp.cpp
+	mv @abs_srcdir@/failovercache/Protocol.capnp.h @abs_builddir@/failovercache/Protocol-capnp.h
+
+metadata-server/Protocol-capnp.cpp metadata-server/Protocol.capnp.h: metadata-server/Protocol.capnp
 	-mkdir -p @abs_builddir@/metadata-server
 	$(CAPNPC) -I${BUILDTOOLS_DIR}/include -oc++:@abs_builddir@/metadata-server/ @abs_srcdir@/metadata-server/Protocol.capnp
 	mv @abs_srcdir@/metadata-server/Protocol.capnp.c++ @abs_builddir@/metadata-server/Protocol-capnp.cpp
@@ -108,11 +126,15 @@ libvolumedriver_la_SOURCES = \
 	FilePool.cpp \
 	failovercache/Backend.cpp \
 	failovercache/BackendFactory.cpp \
+	failovercache/CapnProtoClient.cpp \
+	failovercache/CapnProtoDispatcher.cpp \
 	failovercache/ClientInterface.cpp \
 	failovercache/FailOverCacheAcceptor.cpp \
 	failovercache/FailOverCacheProtocol.cpp \
 	failovercache/FileBackend.cpp \
 	failovercache/MemoryBackend.cpp \
+	failovercache/Protocol-capnp.cpp \
+	failovercache/ProtocolFeature.cpp \
 	failovercache/fungilib/Buffer.cpp \
 	failovercache/fungilib/ByteArray.cpp \
 	failovercache/fungilib/CondVar.cpp \

@@ -21,25 +21,33 @@
 
 #include "../../ClusterLocation.h"
 #include "../../FailOverCacheConfig.h"
+#include "../../FailOverCacheEntry.h"
+#include "../../OwnerTag.h"
 
 #include <stdlib.h>
+
 #include <memory>
+#include <queue>
 
 #include <gtest/gtest.h>
 
+#include <boost/asio.hpp>
 #include <boost/chrono.hpp>
 #include <boost/program_options.hpp>
 #include <boost/random/discrete_distribution.hpp>
 #include <boost/thread.hpp>
 
-#include <youtils/Logger.h>
+#include <youtils/AsioServiceManager.h>
+#include <youtils/Catchers.h>
+#include <youtils/Logging.h>
 #include <youtils/ScopeExit.h>
 #include <youtils/System.h>
-#include <gtest/gtest.h>
+#include <youtils/wall_timer.h>
 
 namespace failovercachetest
 {
 
+namespace ba = boost::asio;
 namespace bc = boost::chrono;
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
@@ -154,29 +162,52 @@ public:
     const ClusterSize cluster_size_;
 };
 
+size_t
+asio_thread_count()
+{
+    return yt::System::get_env_with_default("FAILOVERCACHE_STRESS_NUM_THREADS",
+                                            4);
+}
+
+bool
+asio_service_per_thread()
+{
+    return yt::System::get_env_with_default("FAILOVERCACHE_STRESS_IO_SERVICE_PER_THREAD",
+                                            1);
+}
+
 }
 
 class FailOverCacheTest
     : public testing::Test
 {
+protected:
+    FailOverCacheTest()
+        : manager_(asio_thread_count(),
+                   asio_service_per_thread())
+        , service_(manager_.get_service(0U))
+    {}
 
-    virtual void
-    SetUp()
+    void
+    SetUp() override final
     {
         v.reset(new FailOverCacheEnvironment(FailOverCacheTestMain::host(),
                                              FailOverCacheTestMain::port(),
                                              FailOverCacheTestMain::transport()));
         v->SetUp();
-
     }
 
-    virtual void
-    TearDown()
+    void
+    TearDown() override final
     {
         v->TearDown();
-
         v.reset();
     }
+
+    DECLARE_LOGGER("FailOverCacheTest");
+
+    yt::AsioServiceManager manager_;
+    ba::io_service& service_;
 
     std::unique_ptr<FailOverCacheEnvironment> v;
 };
@@ -188,8 +219,11 @@ TEST_F(FailOverCacheTest, put_and_retrieve)
     const uint32_t num_scos_to_produce = 20;
 
     std::unique_ptr<ClientInterface>
-        cache(ClientInterface::create(FailOverCacheTestMain::failovercache_config(),
+        cache(ClientInterface::create(service_,
+                                      manager_.implicit_strand(),
+                                      FailOverCacheTestMain::failovercache_config(),
                                       FailOverCacheTestMain::ns(),
+                                      OwnerTag(1),
                                       LBASize(512),
                                       ClusterMultiplier(8),
                                       bc::milliseconds(8000),
@@ -244,8 +278,11 @@ TEST_F(FailOverCacheTest, GetSCORange)
     const uint32_t num_scos_to_produce = 13;
 
     std::unique_ptr<ClientInterface>
-        cache(ClientInterface::create(FailOverCacheTestMain::failovercache_config(),
+        cache(ClientInterface::create(service_,
+                                      manager_.implicit_strand(),
+                                      FailOverCacheTestMain::failovercache_config(),
                                       FailOverCacheTestMain::ns(),
+                                      OwnerTag(1),
                                       LBASize(512),
                                       ClusterMultiplier(8),
                                       bc::milliseconds(8000),
@@ -321,8 +358,11 @@ TEST_F(FailOverCacheTest, GetOneSCO)
     const uint32_t num_scos_to_produce = 13;
 
     std::unique_ptr<ClientInterface>
-        cache(ClientInterface::create(FailOverCacheTestMain::failovercache_config(),
+        cache(ClientInterface::create(service_,
+                                      manager_.implicit_strand(),
+                                      FailOverCacheTestMain::failovercache_config(),
                                       FailOverCacheTestMain::ns(),
+                                      OwnerTag(1),
                                       LBASize(512),
                                       ClusterMultiplier(8),
                                       bc::milliseconds(8000),
@@ -397,8 +437,11 @@ TEST_F(FailOverCacheTest, DISABLED_DoubleRegister)
 {
     // Y42 apparantly not a or my problem
     std::unique_ptr<ClientInterface>
-        cache1(ClientInterface::create(FailOverCacheTestMain::failovercache_config(),
+        cache1(ClientInterface::create(service_,
+                                       manager_.implicit_strand(),
+                                       FailOverCacheTestMain::failovercache_config(),
                                        FailOverCacheTestMain::ns(),
+                                       OwnerTag(1),
                                        LBASize(512),
                                        ClusterMultiplier(8),
                                        bc::milliseconds(8000),
@@ -462,11 +505,16 @@ struct FailOverCacheOneProcessor
 class FailOverCacheTestThread
 {
 public:
-    explicit FailOverCacheTestThread(const std::string& content,
+    explicit FailOverCacheTestThread(ba::io_service& io_service,
+                                     yt::ImplicitStrand implicit_strand,
+                                     const std::string& content,
                                      const unsigned test_size = 100000)
         : content_(content)
-        , cache_(failovercache::ClientInterface::create(FailOverCacheTestMain::failovercache_config(),
+        , cache_(failovercache::ClientInterface::create(io_service,
+                                                        implicit_strand,
+                                                        FailOverCacheTestMain::failovercache_config(),
                                                         backend::Namespace(content),
+                                                        OwnerTag(1),
                                                         LBASize(512),
                                                         ClusterMultiplier(8),
                                                         bc::milliseconds(30000),
@@ -482,7 +530,8 @@ public:
 
     DECLARE_LOGGER("FailOverCacheTestThread");
 
-    void operator()()
+    void
+    operator()()
     {
         unsigned i = 0;
         double probabilities[] = {
@@ -531,8 +580,10 @@ public:
                     FailOverCacheEntryProcessor processor(FailOverCacheTestMain::ns().str(),
                                                           cluster_size_);
                     cache_->getEntries(BIND_SCO_PROCESSOR(processor));
-                    EXPECT_EQ(processor.sco_count, 0);
-                    EXPECT_EQ(processor.cluster_count, cluster_count_);
+                    EXPECT_EQ(0,
+                              processor.sco_count);
+                    EXPECT_EQ(cluster_count_,
+                              processor.cluster_count);
                 }
                 break;
             case 1:
@@ -542,7 +593,8 @@ public:
                     FailOverCacheEntryProcessor processor(FailOverCacheTestMain::ns().str(),
                                                           cluster_size_);
                     cache_->getEntries(BIND_SCO_PROCESSOR(processor));
-                    EXPECT_EQ(processor.cluster_count, cluster_count_);
+                    EXPECT_EQ(cluster_count_,
+                              processor.cluster_count);
                 }
                 break;
             case 2:
@@ -602,7 +654,7 @@ public:
             case 4:
                 LOG_INFO("Just flushing");
 
-                cache_->flush();
+                cache_->flush().get();
                 break;
             default:
                 LOG_FATAL("How did you get here");
@@ -659,7 +711,9 @@ TEST_F(FailOverCacheTest, Stress)
     for(unsigned i = 0; i < num_clients; ++i)
     {
         const std::string content("namespace-" + boost::lexical_cast<std::string>(i));
-        auto t(std::make_unique<FailOverCacheTestThread>(content,
+        auto t(std::make_unique<FailOverCacheTestThread>(service_,
+                                                         manager_.implicit_strand(),
+                                                         content,
                                                          test_size));
         test_threads.emplace_back(std::move(t));
         threads.emplace_back(boost::thread(boost::ref(*test_threads[i])));
@@ -677,11 +731,14 @@ TEST_F(FailOverCacheTest, get_entries_xxl)
     const ClusterSize csize(lba_size * cmult);
 
     std::unique_ptr<failovercache::ClientInterface>
-        cache(failovercache::ClientInterface::create(FailOverCacheTestMain::failovercache_config(),
+        cache(failovercache::ClientInterface::create(service_,
+                                                     manager_.implicit_strand(),
+                                                     FailOverCacheTestMain::failovercache_config(),
                                                      FailOverCacheTestMain::ns(),
+                                                     OwnerTag(1),
                                                      lba_size,
                                                      cmult,
-                                                     bc::milliseconds(8000),
+                                                     bc::milliseconds(30000),
                                                      boost::none));
 
     const SCOMultiplier smult(4096);

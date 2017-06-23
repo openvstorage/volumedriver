@@ -32,7 +32,8 @@ namespace fs = boost::filesystem;
 
 Backend::Backend(const std::string& nspace,
                  const ClusterSize cluster_size)
-    : registered_(false)
+    : owner_tag_(0)
+    , registered_(false)
     , first_command_must_be_getEntries(false)
     , ns_(nspace)
     , last_loc_(0)
@@ -56,9 +57,25 @@ Backend::clear_cache_()
 }
 
 void
-Backend::removeUpTo(const SCO sconame)
+Backend::check_owner_(const OwnerTag owner_tag) const
+{
+    if (owner_tag != owner_tag_)
+    {
+        LOG_ERROR(ns_ << ": update request with wrong OwnerTag " << owner_tag <<
+                  " (current OwnerTag: " << owner_tag_ << ")");
+        throw OwnerTagMismatchException("OwnerTag mismatch",
+                                        "DTLBackend",
+                                        EPERM);
+    }
+}
+
+void
+Backend::removeUpTo(const SCO sconame,
+                    const OwnerTag owner_tag)
 {
     LOG_INFO(ns_ << ": removing up to " << sconame);
+
+    check_owner_(owner_tag);
 
     VERIFY(sconame.version() == 0);
     VERIFY(sconame.cloneID() == 0);
@@ -96,8 +113,10 @@ Backend::removeUpTo(const SCO sconame)
 
 void
 Backend::addEntries(std::vector<FailOverCacheEntry> entries,
-                    std::unique_ptr<uint8_t[]> buf)
+                    std::unique_ptr<uint8_t[]> buf,
+                    const OwnerTag owner_tag)
 {
+    check_owner_(owner_tag);
     VERIFY(not entries.empty());
 
     const ClusterLocation& loc = entries.front().cli_;
@@ -136,10 +155,10 @@ Backend::addEntries(std::vector<FailOverCacheEntry> entries,
 }
 
 void
-Backend::clear()
+Backend::clear(const OwnerTag owner_tag)
 {
     LOG_INFO(ns_ << ": clearing");
-
+    check_owner_(owner_tag);
     clear_cache_();
     first_command_must_be_getEntries = false;
 }

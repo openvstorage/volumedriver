@@ -24,6 +24,9 @@
 namespace volumedriver
 {
 
+static_assert(sizeof(TunnelCapnProtoHeader) == 24,
+              "unexpected size of TunnelCapnProtoHeader!");
+
 std::ostream&
 operator<<(std::ostream& os,
            FailOverCacheCommand cmd)
@@ -45,6 +48,7 @@ operator<<(std::ostream& os,
         CASE(Unregister);
         CASE(Clear);
         CASE(GetSCORange);
+        CASE(TunnelCapnProto);
 
 #undef CASE
 
