@@ -16,6 +16,13 @@
 #ifndef FAILOVER_CACHE_TEST_SETUP_H_
 #define FAILOVER_CACHE_TEST_SETUP_H_
 
+#include "../FailOverCacheConfig.h"
+#include "../FailOverCacheTransport.h"
+#include "../failovercache/Backend.h"
+#include "../failovercache/FailOverCacheAcceptor.h"
+#include "../failovercache/FailOverCacheProtocol.h"
+#include "../failovercache/ProtocolFeature.h"
+
 #include <memory>
 #include <set>
 
@@ -23,12 +30,6 @@
 #include <boost/optional.hpp>
 
 #include <youtils/Logging.h>
-
-#include "../FailOverCacheConfig.h"
-#include "../FailOverCacheTransport.h"
-#include "../failovercache/Backend.h"
-#include "../failovercache/FailOverCacheAcceptor.h"
-#include "../failovercache/FailOverCacheProtocol.h"
 
 class VolumeDriverTest;
 
@@ -83,7 +84,8 @@ class FailOverCacheTestSetup
     friend class ::VolumeDriverTest;
 
 public:
-    explicit FailOverCacheTestSetup(const boost::optional<boost::filesystem::path>&);
+    FailOverCacheTestSetup(const boost::optional<boost::filesystem::path>&,
+                           const volumedriver::failovercache::ProtocolFeatures);
 
     ~FailOverCacheTestSetup();
 
@@ -117,6 +119,7 @@ public:
     }
 
     const boost::optional<boost::filesystem::path> path;
+    const volumedriver::failovercache::ProtocolFeatures protocol_features;
 
 private:
     DECLARE_LOGGER("FailOverCacheTestSetup");

@@ -19,6 +19,7 @@
 #include "../FailOverCacheMode.h"
 #include "../Types.h"
 #include "../VolumeConfig.h"
+#include "../failovercache/ProtocolFeature.h"
 
 #include <iosfwd>
 #include <stdexcept>
@@ -57,6 +58,8 @@ struct VolumeDriverTestConfig
     PARAM(FailOverCacheMode, foc_mode) = FailOverCacheMode::Asynchronous;
     PARAM(ClusterMultiplier, cluster_multiplier) =
         VolumeConfig::default_cluster_multiplier();
+    PARAM(failovercache::ProtocolFeatures, dtl_protocol_features) =
+        failovercache::ProtocolFeatures(failovercache::ProtocolFeature::TunnelCapnProto);
 
 #undef PARAM
 };

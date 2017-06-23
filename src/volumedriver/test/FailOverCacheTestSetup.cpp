@@ -61,7 +61,8 @@ FailOverCacheTestContext::FailOverCacheTestContext(FailOverCacheTestSetup& setup
     , acceptor_(make_directory(setup_.path,
                                port_),
                 file_backend_buffer_size,
-                busy_retry_duration)
+                busy_retry_duration,
+                setup.protocol_features)
     , server_(fungi::SocketServer::createSocketServer(acceptor_,
                                                       addr_,
                                                       port_,
@@ -103,14 +104,17 @@ FailOverCacheTestSetup::transport_(FailOverCacheTransport::TCP);
 boost::chrono::microseconds
 FailOverCacheTestSetup::busy_retry_duration_(0);
 
-FailOverCacheTestSetup::FailOverCacheTestSetup(const boost::optional<fs::path>& p)
+FailOverCacheTestSetup::FailOverCacheTestSetup(const boost::optional<fs::path>& p,
+                                               failovercache::ProtocolFeatures features)
         : path(p)
+        , protocol_features(features)
 {
     if (path)
     {
         fs::create_directories(*path);
     }
-    LOG_INFO("path " << path << ", port base " << port_base_);
+    LOG_INFO("path " << path << ", port base " << port_base_ <<
+             ", features: " << std::hex << features.t);
 }
 
 FailOverCacheTestSetup::~FailOverCacheTestSetup()

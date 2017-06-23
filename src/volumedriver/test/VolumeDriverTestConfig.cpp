@@ -17,6 +17,8 @@
 
 #include <iostream>
 
+#include <boost/io/ios_state.hpp>
+
 namespace volumedriver
 {
 
@@ -24,11 +26,14 @@ std::ostream&
 operator<<(std::ostream& os,
            const VolumeDriverTestConfig& c)
 {
+    boost::io::ios_all_saver g(os);
+
     return os <<
         "VolumeDriverTestConfig{use_cluster_cache=" << c.use_cluster_cache() <<
         ", foc_in_memory=" << c.foc_in_memory() <<
         ", foc_mode=" << c.foc_mode() <<
         ", cluster_multiplier=" << c.cluster_multiplier() <<
+        ", dtl_protocol_features=" << std::hex << c.dtl_protocol_features() <<
         "}";
 }
 
