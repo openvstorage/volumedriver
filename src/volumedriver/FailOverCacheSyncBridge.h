@@ -94,7 +94,21 @@ private:
 
     void
     handleException(std::exception& e,
+                    const char* where)
+    {
+        return handleException(e.what(),
+                               where);
+    }
+
+    void
+    handleException(const char* what,
                     const char* where);
+
+    template<typename... Args>
+    boost::future<void>
+    wrap_(const char* desc,
+          boost::future<void> (failovercache::ClientInterface::*)(Args...),
+          Args...);
 };
 
 }

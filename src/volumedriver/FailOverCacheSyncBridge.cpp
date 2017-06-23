@@ -21,10 +21,13 @@
 #include <algorithm>
 #include <cerrno>
 
+#include <youtils/InlineExecutor.h>
+
 namespace volumedriver
 {
 
 namespace bc = boost::chrono;
+namespace yt = youtils;
 
 #define LOCK()                                          \
     boost::lock_guard<decltype(mutex_)> lg__(mutex_)
@@ -105,48 +108,70 @@ FailOverCacheSyncBridge::setBusyLoopDuration(const boost::chrono::microseconds u
     }
 }
 
+template<typename... Args>
+boost::future<void>
+FailOverCacheSyncBridge::wrap_(const char* desc,
+                               boost::future<void> (failovercache::ClientInterface::*fn)(Args...),
+                               Args... args)
+{
+    boost::future<void> f;
+
+    {
+        LOCK();
+        if(cache_)
+        {
+            try
+            {
+                f = (cache_.get()->*fn)(std::forward<Args>(args)...);
+            }
+            CATCH_STD_ALL_EWHAT({
+                    handleException(EWHAT,
+                                    desc);
+                    return boost::make_ready_future();
+                });
+        }
+        else
+        {
+            return boost::make_ready_future();
+        }
+    }
+
+    ASSERT(f.valid());
+    return f.then(yt::InlineExecutor::get(),
+                  [desc,
+                   this](boost::future<void> f)
+                  {
+                      try
+                      {
+                          f.get();
+                      }
+                      CATCH_STD_ALL_EWHAT({
+                              LOCK();
+                              handleException(EWHAT,
+                                              desc);
+                          });
+                  });
+}
+
 boost::future<void>
 FailOverCacheSyncBridge::addEntries(const std::vector<ClusterLocation>& locs,
                                     uint64_t start_address,
                                     const uint8_t* data)
 {
-    LOCK();
-
-    if(cache_)
-    {
-        try
-        {
-            return cache_->addEntries(locs,
-                                      start_address,
-                                      data);
-        }
-        catch (std::exception& e)
-        {
-            handleException(e, "addEntries");
-        }
-    }
-
-    return boost::make_ready_future();
+    return wrap_<decltype(locs),
+                 decltype(start_address),
+                 decltype(data)>("add entries",
+                                 &failovercache::ClientInterface::addEntries,
+                                 locs,
+                                 start_address,
+                                 data);
 }
 
 boost::future<void>
 FailOverCacheSyncBridge::Flush()
 {
-    LOCK();
-
-    if(cache_)
-    {
-        try
-        {
-            return cache_->flush();
-        }
-        catch (std::exception& e)
-        {
-            handleException(e, "Flush");
-        }
-    }
-
-    return boost::make_ready_future();
+    return wrap_("flush",
+                 &failovercache::ClientInterface::flush);
 }
 
 void
@@ -218,10 +243,12 @@ FailOverCacheSyncBridge::mode() const
 }
 
 void
-FailOverCacheSyncBridge::handleException(std::exception& e,
+FailOverCacheSyncBridge::handleException(const char* what,
                                          const char* where)
 {
-    LOG_ERROR("Exception in FailOverCacheSyncBridge::" << where << " : " << e.what());
+    ASSERT_LOCKABLE_LOCKED(mutex_);
+
+    LOG_ERROR("Exception in " << where << ": " << what);
     if(degraded_fun_)
     {
         degraded_fun_();
