@@ -23,6 +23,11 @@
 
 #include <boost/filesystem.hpp>
 
+namespace backend
+{
+struct ConnectionManagerParameters;
+}
+
 namespace scrubbing
 {
 
@@ -47,6 +52,7 @@ struct ScrubberAdapter
 
     static ScrubReply
     scrub(std::unique_ptr<backend::BackendConfig>,
+          const backend::ConnectionManagerParameters&,
           const ScrubWork&,
           const boost::filesystem::path& workdir,
           const uint64_t region_size_exponent = region_size_exponent_default,

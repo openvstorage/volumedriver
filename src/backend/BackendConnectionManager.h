@@ -19,6 +19,7 @@
 #include "BackendConnectionInterface.h"
 #include "BackendParameters.h"
 #include "ConnectionPool.h"
+#include "ConnectionManagerParameters.h"
 #include "Namespace.h"
 
 #include <boost/chrono.hpp>
@@ -87,6 +88,12 @@ public:
         return *config_;
     }
 
+    const ConnectionManagerParameters&
+    connection_manager_parameters() const
+    {
+        return params_;
+    }
+
     std::unique_ptr<BackendSinkInterface>
     newBackendSink(const Namespace&,
                    const std::string& name);
@@ -134,26 +141,26 @@ public:
     uint32_t
     retries_on_error() const
     {
-        return backend_interface_retries_on_error.value();
+        return params_.backend_interface_retries_on_error.value();
     }
 
     boost::chrono::milliseconds
     retry_interval() const
     {
         return
-            boost::chrono::milliseconds(backend_interface_retry_interval_secs.value() * 1000);
+            boost::chrono::milliseconds(params_.backend_interface_retry_interval_secs.value() * 1000);
     }
 
     double
     retry_backoff_multiplier() const
     {
-        return backend_interface_retry_backoff_multiplier.value();
+        return params_.backend_interface_retry_backoff_multiplier.value();
     }
 
     bool
     partial_read_nullio() const
     {
-        return backend_interface_partial_read_nullio.value();
+        return params_.backend_interface_partial_read_nullio.value();
     }
 
     // REVISIT (pun intended): I don't like offering this - it might
@@ -178,13 +185,7 @@ public:
 private:
     DECLARE_LOGGER("BackendConnectionManager");
 
-    DECLARE_PARAMETER(backend_connection_pool_capacity);
-    DECLARE_PARAMETER(backend_connection_pool_blacklist_secs);
-    DECLARE_PARAMETER(backend_interface_retries_on_error);
-    DECLARE_PARAMETER(backend_interface_retry_interval_secs);
-    DECLARE_PARAMETER(backend_interface_retry_backoff_multiplier);
-    DECLARE_PARAMETER(backend_interface_partial_read_nullio);
-
+    ConnectionManagerParameters params_;
     std::vector<std::shared_ptr<ConnectionPool>> connection_pools_;
     std::unique_ptr<BackendConfig> config_;
     youtils::SourceOfUncertainty rand_;
