@@ -78,7 +78,7 @@ public:
         , cluster_mult_(t.get_cluster_multiplier())
         , sco_mult_(t.get_sco_multiplier())
         , tlog_mult_(t.get_tlog_multiplier())
-		, max_non_disposable_factor_(t.get_max_non_disposable_factor())
+        , max_non_disposable_factor_(t.get_max_non_disposable_factor())
         , readCacheEnabled_(t.get_cluster_cache_enabled())
         , wan_backup_volume_role_(t.get_volume_role() ?
                                   *t.get_volume_role() :
@@ -174,8 +174,8 @@ public:
     SCOMultiplier sco_mult_;
     /* Number of SCO's in a TLOG typically 1024 */
     boost::optional<TLogMultiplier> tlog_mult_;
-	/* Amount of non-disposable data */
-	boost::optional<SCOCacheNonDisposableFactor> max_non_disposable_factor_;
+    /* Amount of non-disposable data */
+    boost::optional<SCOCacheNonDisposableFactor> max_non_disposable_factor_;
 
     bool readCacheEnabled_;
 

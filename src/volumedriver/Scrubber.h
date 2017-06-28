@@ -35,6 +35,7 @@
 #include <youtils/Serialization.h>
 
 #include <backend/BackendConfig.h>
+#include <backend/ConnectionManagerParameters.h>
 #include <backend/Namespace.h>
 
 namespace scrubbing
@@ -91,6 +92,8 @@ struct ScrubberArgs
 
     std::unique_ptr<const backend::BackendConfig> backend_config;
 
+    backend::ConnectionManagerParameters connection_manager_parameters;
+
     const backend::Namespace
     getNS() const
     {
@@ -122,6 +125,7 @@ private:
     clone(const ScrubberArgs& other)
     {
         backend_config = other.backend_config->clone();
+        connection_manager_parameters = other.connection_manager_parameters;
         name_space = other.name_space;
         scratch_dir = other.scratch_dir;
         snapshot_name = other.snapshot_name;

@@ -28,6 +28,7 @@
 #include <exception>
 #include <iosfwd>
 #include <list>
+#include <type_traits>
 
 #include <boost/lexical_cast.hpp>
 #include <boost/optional.hpp>
@@ -174,12 +175,21 @@ template<typename T,
          const char* param_name>
 class InitializedParam
 {
+    static constexpr bool has_default_value_ = HasDefaultValue<InitializedParam<T, param_name>>::value;
+
 public:
     using ValueType = typename Value<T>::type;
     using MaybeType = boost::optional<ValueType>;
 
     using Accessor = ValueAccessor<T>;
     using PTreeAccessor = PropertyTreeAccessor<ValueType>;
+
+    template<typename U = T,
+             typename = std::enable_if_t<has_default_value_, U>>
+    InitializedParam()
+        : value_(*default_value_)
+        , was_defaulted_(true)
+    {}
 
     explicit InitializedParam(const boost::property_tree::ptree& pt)
     try
@@ -204,7 +214,16 @@ public:
     ~InitializedParam() = default;
 
     InitializedParam&
-    operator=(const InitializedParam& other) = delete;
+    operator=(const InitializedParam& other)
+    {
+        if (this != &other)
+        {
+            value_ = Accessor::get(other.value_);
+            was_defaulted_ = other.was_defaulted_;
+        }
+
+        return *this;
+    }
 
     void
     persist(boost::property_tree::ptree& pt,
@@ -377,7 +396,7 @@ public:
     static bool
     has_default_value()
     {
-        return HasDefaultValue<InitializedParam>::value;
+        return has_default_value_;
     }
 
     bool

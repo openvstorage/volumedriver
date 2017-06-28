@@ -547,4 +547,22 @@ TEST_F(InitializedParamTest, empty_vector)
     ASSERT_FALSE(p.was_defaulted());
 }
 
+TEST_F(InitializedParamTest, default_ctor)
+{
+    ip::PARAMETER_TYPE(defaulted_non_resettable_string) s;
+    EXPECT_TRUE(s.was_defaulted());
+    EXPECT_TRUE(s.has_default_value());
+    EXPECT_EQ(default_string,
+              s.value());
+}
+
+// this should obviously fail to compile
+#if 0
+TEST_F(InitializedParamTest, default_ctor_again)
+{
+    ip::PARAMETER_TYPE(non_defaulted_non_resettable_string) s;
+    EXPECT_FALSE(s.has_default_value());
+}
+#endif
+
 }

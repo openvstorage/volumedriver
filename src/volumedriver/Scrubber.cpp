@@ -77,7 +77,10 @@ void
 Scrubber::SetupBackend()
 {
     boost::property_tree::ptree pt;
-    args_.backend_config->persist_internal(pt, ReportDefault::T);
+    args_.backend_config->persist_internal(pt,
+                                           ReportDefault::T);
+    args_.connection_manager_parameters.persist(pt,
+                                                ReportDefault::T);
     pt.put("version",1);
 
     auto cm(backend::BackendConnectionManager::create(pt));

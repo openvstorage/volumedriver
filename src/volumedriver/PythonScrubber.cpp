@@ -21,11 +21,14 @@
 #include <string>
 #include <vector>
 
+#include <boost/property_tree/ptree.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/enum.hpp>
 
+#include <youtils/ConfigFetcher.h>
 #include <youtils/OptionValidators.h>
+#include <youtils/Uri.h>
 
 namespace scrubbing
 {
@@ -34,6 +37,7 @@ namespace python
 {
 
 namespace be = backend;
+namespace bpt = boost::property_tree;
 namespace bpy = boost::python;
 namespace yt = youtils;
 
@@ -51,12 +55,18 @@ Scrubber::scrub(const std::string& scrub_work_str,
     const ScrubWork work(scrub_work_str);
 
     std::unique_ptr<be::BackendConfig> bcfg;
+    be::ConnectionManagerParameters cm_params;
+
     if (backend_config)
     {
-        bcfg = be::BackendConfig::makeBackendConfig(yt::Uri(*backend_config));
+        auto fetcher(yt::ConfigFetcher::create(yt::Uri(*backend_config)));
+        const bpt::ptree pt((*fetcher)(VerifyConfig::F));
+        bcfg = be::BackendConfig::makeBackendConfig(pt);
+        cm_params = be::ConnectionManagerParameters(pt);
     }
 
     const ScrubReply reply(ScrubberAdapter::scrub(std::move(bcfg),
+                                                  cm_params,
                                                   work,
                                                   scratch_dir,
                                                   region_size_exponent,
