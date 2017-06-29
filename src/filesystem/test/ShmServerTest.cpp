@@ -83,10 +83,14 @@ public:
     virtual void
     TearDown()
     {
-        shm_orb_server_->stop_all_and_exit();
-        shm_orb_thread_.join();
-        shm_orb_server_ = nullptr;
-        libvoldrv::ShmClient::fini();
+        if (shm_orb_server_)
+        {
+            shm_orb_server_->stop_all_and_exit();
+            shm_orb_thread_.join();
+            shm_orb_server_ = nullptr;
+            libvoldrv::ShmClient::fini();
+        }
+
         FileSystemTestBase::TearDown();
     }
 
