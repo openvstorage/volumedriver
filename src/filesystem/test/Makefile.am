@@ -77,6 +77,7 @@ volumedriver_fs_test_SOURCES = \
 	PythonClientTest.cpp \
 	RegistryTest.cpp \
 	RegistryTestSetup.cpp \
+	RemoteMount.cpp \
 	RemoteTest.cpp \
 	RestartTest.cpp \
 	ScrubbingTest.cpp \
