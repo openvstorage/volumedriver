@@ -65,6 +65,8 @@ using namespace volumedriverfs;
 namespace
 {
 
+using Clock = bc::steady_clock;
+
 VD_BOOLEAN_ENUM(EnableHa);
 
 struct CtxAttrDeleter
@@ -193,26 +195,35 @@ public:
                                        enable_ha,
                                        port));
 
-        CtxPtr ctx(ovs_ctx_new(attrs.get()));
-        EXPECT_TRUE(ctx != nullptr);
-
-        const size_t max = port == FileSystemTestSetup::local_edge_port() ? 0 : 10;
-        size_t count = 0;
+        const Clock::time_point deadline(Clock::now() +
+                                         bc::seconds(port == FileSystemTestSetup::local_edge_port() ? 0 : 5));
+        CtxPtr ctx;
 
         // TODO: there's a race with the startup of the network server on
         // the remote instance and a proper fix is out of scope for the moment
-        while (ovs_create_volume(ctx.get(),
-                                 vname.c_str(),
-                                 vsize) == -1)
+        while (true)
         {
-            // What we *actually* want here is ASSERT_GT but that doesn't work here.
-            // Hence throw an exception to end the misery quickly.
-            EXPECT_GT(max, ++count) <<
-                "failed to create volume after " << count <<
-                " attempts: " << strerror(errno);
-            if (max <= count)
+            if (ctx == nullptr)
             {
-                throw std::runtime_error("volume creation retries exceeded, aborting test");
+                ctx.reset(ovs_ctx_new(attrs.get()));
+            }
+
+            const int ret = ctx == nullptr ?
+                -273 :
+                ovs_create_volume(ctx.get(),
+                                  vname.c_str(),
+                                  vsize);
+            if (ret == 0)
+            {
+                break;
+            }
+
+            if (Clock::now() > deadline)
+            {
+                // What we *actually* want here is ASSERT_* but that doesn't work here.
+                // Hence throw an exception to end the misery quickly.
+                EXPECT_EQ(0, ret) << "failed to create volume: " << strerror(errno);
+                throw std::runtime_error("volume creation timed out, aborting test");
             }
 
             boost::this_thread::sleep_for(bc::milliseconds(250));
@@ -1814,7 +1825,6 @@ TEST_F(NetworkServerTest, get_volume_uri_stress)
     const size_t duration_secs = yt::System::get_env_with_default("EDGE_STRESS_DURATION_SECS",
                                                                   10ULL);
 
-    using Clock = bc::steady_clock;
     const Clock::time_point deadline = Clock::now() + bc::seconds(duration_secs);
 
     const std::string exp_uri(boost::lexical_cast<std::string>(network_server_uri(local_node_id())));
