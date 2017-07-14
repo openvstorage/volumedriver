@@ -1050,12 +1050,17 @@ VolManager::createNewVolume(const VanillaVolumeConfigParameters& params,
     const VolumeConfig cfg(params);
     ensureResourceLimits(cfg);
 
-    SharedVolumePtr vol = VolumeFactory::createNewVolume(cfg);
-    ASSERT(vol);
+    auto fun([this](const Namespace&,
+                    const VolumeConfig& cfg) -> SharedVolumePtr
+             {
+                 SharedVolumePtr vol(VolumeFactory::createNewVolume(cfg));
+                 ASSERT(vol);
+                 return vol;
+             });
 
-    volMap_[vol->getName()] = vol;
-
-    return vol;
+    return with_restart_map_and_unlocked_mgmt_vol_(fun,
+                                                   params.get_nspace(),
+                                                   cfg);
 }
 
 void
