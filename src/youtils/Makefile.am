@@ -50,6 +50,7 @@ libyoutils_la_SOURCES = \
 	ArakoonLockStore.cpp \
 	ArakoonNodeConfig.cpp \
 	ArakoonTestSetup.cpp \
+	AsioServiceManager.cpp \
 	BuildInfo.cpp \
 	BuildInfoString.cpp \
 	Catchers.cpp \
