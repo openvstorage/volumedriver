@@ -56,10 +56,23 @@ struct Logger
         LOG_INFO("Entering " << function << " " << nspace);
     }
 
+    boost::optional<const Namespace&>
+    extract_nspace_(const boost::optional<Namespace>& ns)
+    {
+        if (ns)
+        {
+            return *ns;
+        }
+        else
+        {
+            return boost::none;
+        }
+    }
+
     Logger(const char* function,
            const boost::optional<Namespace>& nspace)
         : function_(function)
-        , nspace_(nspace)
+        , nspace_(extract_nspace_(nspace))
     {
         LOG_INFO("Entering " << function << " " << nspace);
     }

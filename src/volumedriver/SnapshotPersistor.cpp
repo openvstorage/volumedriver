@@ -327,12 +327,12 @@ SnapshotPersistor::snapshot(const SnapshotName& name,
         throw SnapshotNameAlreadyExists(name.c_str());
     }
 
-    if (metadata.size() > max_snapshot_metadata_size)
+    const size_t max = max_snapshot_metadata_size;
+    if (metadata.size() > max)
     {
         LOG_ERROR("Refusing to create snapshot " << name <<
                   " as the attached metadata exceeds the limit of " <<
-                  max_snapshot_metadata_size <<
-                  "bytes");
+                  max << "bytes");
         throw ExcessiveMetaDataException("Metadata size exceeds limit",
                                          name.c_str());
     }
