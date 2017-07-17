@@ -118,6 +118,8 @@ try
           , read_activity_time_(::time(0))
           , scoCache_(pt)
           , readOnlyMode_(false)
+          , asio_svc_mgr_component_(pt,
+                                    RegisterComponent::T)
           , backend_conn_manager_(be::BackendConnectionManager::create(pt))
           , backend_garbage_collector_(std::make_shared<be::GarbageCollector>(backend_conn_manager_,
                                                                               pt,

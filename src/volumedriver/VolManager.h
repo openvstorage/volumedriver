@@ -16,6 +16,7 @@
 #ifndef VOLMANAGER_H_
 #define VOLMANAGER_H_
 
+#include "AsioServiceManagerComponent.h"
 #include "ClusterCache.h"
 #include "DataStoreCallBack.h"
 #include "Events.h"
@@ -388,6 +389,12 @@ public:
         }
     }
 
+    std::shared_ptr<youtils::AsioServiceManager>
+    asio_service_manager()
+    {
+        return asio_svc_mgr_component_.asio_service_manager();
+    }
+
     const backend::BackendConnectionManagerPtr
     getBackendConnectionManager()
     {
@@ -540,6 +547,8 @@ private:
     boost::ptr_vector<youtils::PeriodicAction> periodicActions_;
 
     bool readOnlyMode_;
+
+    AsioServiceManagerComponent asio_svc_mgr_component_;
 
     backend::BackendConnectionManagerPtr backend_conn_manager_;
     backend::GarbageCollectorPtr backend_garbage_collector_;
