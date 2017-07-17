@@ -749,27 +749,75 @@ TEST_F(FailOverCacheTest, get_entries_xxl)
     const size_t test_size = 2ULL << 30;
     const size_t count = test_size / csize;
 
-    const std::vector<uint8_t> buf(csize);
+    // Big batch sizes are more likely to expose issues caused by inadvertently
+    // overlapping asio async_write operations.
+    const size_t batch_size =
+        yt::System::get_env_with_default("FAILOVERCACHE_STRESS_BATCH_SIZE",
+                                         1024);
+    ASSERT_EQ(0,
+              count % batch_size);
 
-    for (size_t i = 0; i < count; ++i)
+    auto fill_buf([csize](uint8_t* buf,
+                          uint32_t num)
+                  {
+                      for (size_t i = 0; i < csize.t; i += sizeof(num))
+                      {
+                          *reinterpret_cast<uint32_t*>(buf + i) = num;
+                      }
+                  });
+
+    for (size_t i = 0; i < count / batch_size; ++i)
     {
-        ClusterLocation loc;
-        FailOverCacheEntry e(factory(loc));
-        ASSERT_EQ(e.size_,
-                  buf.size());
+        std::vector<boost::future<void>> futures;
+        std::vector<std::unique_ptr<uint8_t[]>> bufs;
 
-        delete[] e.buffer_;
-        e.buffer_ = buf.data();
+        futures.reserve(batch_size);
+        bufs.reserve(batch_size);
 
-        cache->addEntries({std::move(e)}).get();
+        for (size_t j = 0; j < batch_size; ++j)
+        {
+            ClusterLocation loc;
+            FailOverCacheEntry e(factory(loc));
+            ASSERT_EQ(csize,
+                      e.size_);
+
+            bufs.emplace_back(const_cast<uint8_t*>(e.buffer_));
+            fill_buf(bufs.back().get(),
+                     i * batch_size + j);
+
+            futures.push_back(cache->addEntries({std::move(e)}));
+        }
+
+        for (size_t j = 0; j < futures.size(); ++j)
+        {
+            try
+            {
+                futures[j].get();
+            }
+            catch (std::exception& e)
+            {
+                FAIL() << "future[" << i << "][" << j << "]: " << e.what();
+            }
+        }
     }
 
     size_t seen = 0;
+    std::vector<uint8_t> buf(csize);
+
     cache->getEntries([&](ClusterLocation,
                           uint64_t,
-                          const uint8_t*,
-                          size_t)
+                          const uint8_t* b,
+                          size_t s)
                       {
+                          fill_buf(buf.data(),
+                                   seen);
+
+                          EXPECT_EQ(buf.size(),
+                                    s);
+                          EXPECT_EQ(0,
+                                    memcmp(b,
+                                           buf.data(),
+                                           s)) << "mismatch @ " << seen;
                           ++seen;
                       });
 
