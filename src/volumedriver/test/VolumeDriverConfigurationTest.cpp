@@ -186,7 +186,7 @@ TEST_P(VolumeDriverConfigurationTest, componentTest)
     ComponentCounter counter;
     VolManager::get()->for_each_components(counter);
     // Maintain a list of expected components here?
-    ASSERT_EQ(8U, counter.count_);
+    ASSERT_EQ(9U, counter.count_);
 }
 
 TEST_P(VolumeDriverConfigurationTest, mount_points)

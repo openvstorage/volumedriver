@@ -71,6 +71,7 @@ libvolumedriver_la_SOURCES = \
 	Api.cpp \
 	ArakoonLockStoreBuilder.cpp \
 	ArakoonMetaDataBackend.cpp \
+	AsioServiceManagerComponent.cpp \
 	BackendNamesFilter.cpp \
 	BackendRestartAccumulator.cpp \
 	Backup.cpp \

@@ -13,6 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "AsioServiceManagerComponent.h"
 #include "LockStoreFactory.h"
 #include "VolumeDriverParameters.h"
 
@@ -321,6 +322,20 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(dls_arakoon_cluster_nodes,
                                       "an array of arakoon cluster node configurations for the distributed lock store, each containing node_id, host and port",
                                       ShowDocumentation::T,
                                       ara::ArakoonNodeConfigs());
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(asio_service_manager_threads,
+                                      vd::AsioServiceManagerComponent::name(),
+                                      "asio_service_manager_threads",
+                                      "number of threads handling async backend operations (0 -> one per CPU)",
+                                      ShowDocumentation::T,
+                                      0U);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(asio_service_manager_io_service_per_thread,
+                                      vd::AsioServiceManagerComponent::name(),
+                                      "asio_service_manager_io_service_per_thread",
+                                      "whether to use an I/O service per thread",
+                                      ShowDocumentation::T,
+                                      true);
 
 }
 

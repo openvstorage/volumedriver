@@ -120,6 +120,9 @@ DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(dls_arakoon_cluster_nodes,
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(dls_arakoon_cluster_id, std::string);
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(dls_arakoon_timeout_ms, uint32_t);
 
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(asio_service_manager_threads, uint32_t);
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(asio_service_manager_io_service_per_thread, bool);
+
 }
 
 #endif // VOLUME_DRIVER_PARAMETERS_H
