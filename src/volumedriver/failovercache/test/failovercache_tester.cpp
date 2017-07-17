@@ -825,4 +825,74 @@ TEST_F(FailOverCacheTest, get_entries_xxl)
               seen);
 }
 
+TEST_F(FailOverCacheTest, performance)
+{
+    const LBASize lba_size(512);
+    const ClusterMultiplier cmult(8);
+    const ClusterSize csize(lba_size * cmult);
+
+    std::unique_ptr<failovercache::ClientInterface>
+        cache(failovercache::ClientInterface::create(service_,
+                                                     manager_.implicit_strand(),
+                                                     FailOverCacheTestMain::failovercache_config(),
+                                                     FailOverCacheTestMain::ns(),
+                                                     OwnerTag(1),
+                                                     lba_size,
+                                                     cmult,
+                                                     bc::milliseconds(30000),
+                                                     boost::none));
+
+    const SCOMultiplier smult(4096);
+    FailOverCacheEntryFactory factory(csize,
+                                      smult);
+
+    const size_t test_size =
+        yt::System::get_env_with_default("FAILOVERCACHE_STRESS_TEST_SIZE",
+                                         1ULL << 15);
+
+    const size_t batch_size =
+        yt::System::get_env_with_default("FAILOVERCACHE_STRESS_BATCH_SIZE",
+                                         16);
+
+    std::vector<uint8_t> buf(csize);
+    yt::wall_timer t;
+
+    std::queue<boost::future<void>> queue;
+
+    for (size_t i = 0; i < test_size; ++i)
+    {
+        if (queue.size() == batch_size)
+        {
+            EXPECT_NO_THROW(queue.front().get());
+            queue.pop();
+
+            while (not queue.empty() and queue.front().is_ready())
+            {
+                queue.front().get();
+                queue.pop();
+            }
+        }
+
+        ASSERT_GT(batch_size,
+                  queue.size());
+
+        ClusterLocation loc;
+        FailOverCacheEntry e(factory(loc));
+        delete[] e.buffer_;
+        e.buffer_ = buf.data();
+
+        queue.push(cache->addEntries({ std::move(e) }));
+    }
+
+    while (not queue.empty())
+    {
+        EXPECT_NO_THROW(queue.front().get());
+        queue.pop();
+    }
+
+    std::cout << "done writing " << test_size << " entries, batch size " <<
+        batch_size << " after " << t.elapsed() << " seconds -> " <<
+        test_size / t.elapsed() << " IOPS" << std::endl;
+}
+
 }
