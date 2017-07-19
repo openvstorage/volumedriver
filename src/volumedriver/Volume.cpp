@@ -84,6 +84,9 @@ static_assert(FLT_RADIX == 2, "Need to check code for non conforming FLT_RADIX")
 #define SERIALIZE_WRITES()                              \
     boost::lock_guard<lock_type> gwl__(write_lock_)
 
+#define LOCK_CONFIG_UPDATES()                                           \
+    std::lock_guard<decltype(config_update_lock_)> gcfguplck__(config_update_lock_)
+
 #define LOCK_CONFIG()                           \
     std::lock_guard<decltype(config_lock_)> gcfglck__(config_lock_)
 
@@ -343,17 +346,15 @@ Volume::metaDataBackendConfigHasChanged(const MetaDataBackendConfig& mcfg)
 void
 Volume::update_config_(const UpdateFun& fun)
 {
-    VolumeConfig cfg;
+    LOCK_CONFIG_UPDATES();
 
-    {
-        LOCK_CONFIG();
-        TODO("AR: revisit: might be too expensive for a spinlock?");
-        // ... OTOH: do we care?
-        fun(config_);
-        cfg = config_;
-    }
+    VolumeConfig cfg(config_);
+    fun(cfg);
 
     writeConfigToBackend_(cfg);
+
+    LOCK_CONFIG();
+    config_ = cfg;
 }
 
 // called from mgmt thread
