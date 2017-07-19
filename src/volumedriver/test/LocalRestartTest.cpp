@@ -16,8 +16,7 @@
 #include "VolManagerTestSetup.h"
 
 #include <algorithm>
-#include <boost/foreach.hpp>
-#include <boost/scope_exit.hpp>
+#include <boost/lexical_cast.hpp>
 #include <boost/functional.hpp>
 
 #include <youtils/Assert.h>
@@ -25,13 +24,17 @@
 #include <volumedriver/DataStoreNG.h>
 #include <volumedriver/CachedMetaDataPage.h>
 #include <volumedriver/CombinedTLogReader.h>
+#include <volumedriver/LocalTLogScanner.h>
 #include <volumedriver/MetaDataStoreInterface.h>
 #include <volumedriver/TLogWriter.h>
 #include <volumedriver/VolManager.h>
-#include <volumedriver/LocalTLogScanner.h>
 
 namespace volumedriver
 {
+
+using namespace std::literals::string_literals;
+
+namespace yt = youtils;
 
 namespace
 {
@@ -3187,6 +3190,109 @@ TEST_P(LocalRestartTest, mdstore_running_ahead)
                 Lba(off),
                 cluster_size,
                 snd);
+}
+
+// Cf. https://github.com/openvstorage/volumedriver/issues/329 :
+// The node crashed after creating the first snapshot which only partially made
+// it to the backend (last tlog wasn't uploaded yet). This tripped over an
+// assertion in the local restart code as the SnapshotPersistor reported the
+// lastCork() as boost::none while at the same time
+// getTLogsOnBackendSinceLastCork() returned a non-empty list of tlogs.
+TEST_P(LocalRestartTest, partial_first_snapshot_with_mdstore_running_behind)
+{
+    auto wrns(make_random_namespace());
+    SharedVolumePtr v = newVolume(*wrns);
+
+    const size_t cluster_size = v->getClusterSize();
+
+    auto fun([&](const std::string& pattern,
+                 const Lba lba,
+                 const size_t nclusters) -> TLogId
+             {
+                 writeToVolume(*v,
+                               lba,
+                               cluster_size * nclusters,
+                               pattern);
+
+                 const TLogId tlog(v->scheduleBackendSync());
+                 waitForThisBackendWrite(*v);
+                 EXPECT_TRUE(v->isSyncedToBackendUpTo(tlog));
+                 return tlog;
+             });
+
+    const std::string pattern1("first write");
+    const TLogId tlog1(fun(pattern1,
+                           Lba(0),
+                           3));
+
+    const std::string pattern2("second write");
+    fun(pattern2,
+        Lba(default_cluster_multiplier()),
+        2);
+
+    const std::string pattern3("third write");
+    const SnapshotName snap("snap");
+
+    {
+        SCOPED_DESTROY_VOLUME_UNBLOCK_BACKEND(v,
+                                              2,
+                                              DeleteLocalData::F,
+                                              RemoveVolumeCompletely::F);
+
+        // Blank out the metadata written the second time - the restart code
+        // should notice that the tlogs starting with the second write iteration
+        // need to be applied. For that the current cork needs to be removed
+        // and afterwards put in place again.
+        MetaDataStoreInterface* md = v->getMetaDataStore();
+        const boost::optional<yt::UUID> cork(md->lastCork());
+        ASSERT_NE(boost::none,
+                  cork);
+
+        md->cork(static_cast<yt::UUID>(tlog1));
+        md->unCork();
+        md->writeCluster(1,
+                         ClusterLocationAndHash::discarded_location_and_hash());
+        md->writeCluster(2,
+                         ClusterLocationAndHash::discarded_location_and_hash());
+        md->cork(*cork);
+        md->unCork();
+
+        checkVolume(*v,
+                    Lba(0),
+                    cluster_size,
+                    pattern1);
+
+        checkVolume(*v,
+                    Lba(default_cluster_multiplier()),
+                    2 * cluster_size,
+                    "\0"s);
+
+        writeToVolume(*v,
+                      Lba(2 * default_cluster_multiplier()),
+                      cluster_size,
+                      pattern3);
+
+        createSnapshot(*v,
+                       snap);
+
+        ASSERT_FALSE(v->isSyncedToBackendUpTo(snap));
+        v = nullptr;
+    }
+
+    ASSERT_NO_THROW(v = localRestart(wrns->ns()));
+
+    checkVolume(*v,
+                Lba(0),
+                cluster_size,
+                pattern1);
+    checkVolume(*v,
+                Lba(default_cluster_multiplier()),
+                cluster_size,
+                pattern2);
+    checkVolume(*v,
+                Lba(2 * default_cluster_multiplier()),
+                cluster_size,
+                pattern3);
 }
 
 namespace
