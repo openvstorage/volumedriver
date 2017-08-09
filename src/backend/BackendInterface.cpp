@@ -62,12 +62,9 @@ BackendInterface::do_wrap_(ConnFetcher& get_conn,
 
     while (true)
     {
-        BackendConnectionInterfacePtr conn(get_conn(*conn_manager_,
-                                                    nspace_,
-                                                    retries));
         if (retries != 0)
         {
-            LOG_WARN("Retrying with new connection (retry: " <<
+            LOG_WARN(nspace_ << ": retrying with new connection (retry: " <<
                      retries << ", sleep before retry: " << msecs << ")");
             boost::this_thread::sleep_for(msecs);
             msecs *= params.retry_backoff_multiplier_ ?
@@ -75,10 +72,12 @@ BackendInterface::do_wrap_(ConnFetcher& get_conn,
                 conn_manager_->retry_backoff_multiplier();
         }
 
-        LOG_TRACE("Got connection handle " << conn.get());
-
         try
         {
+            BackendConnectionInterfacePtr conn(get_conn(*conn_manager_,
+                                                        nspace_,
+                                                        retries));
+
             return ((conn.get())->*mem_fun)(std::forward<Args>(args)...);
         }
         catch (BackendAssertionFailedException&)
@@ -95,22 +94,20 @@ BackendInterface::do_wrap_(ConnFetcher& get_conn,
         }
         catch (std::exception& e)
         {
-            LOG_ERROR("Problem with connection " << conn.get() <<
-                      ": " << e.what());
+            LOG_ERROR(nspace_ << ": problem with connection: " << e.what());
             const uint32_t r = params.retries_on_error_ ?
                 *params.retries_on_error_ :
                 conn_manager_->retries_on_error();
 
             if (retries++ >= r)
             {
-                LOG_ERROR("Giving up connection " << conn.get());
+                LOG_ERROR(nspace_ << ": giving up");
                 throw;
             }
         }
         catch (...)
         {
-            LOG_ERROR("Unknown problem with connection " <<
-                      conn.get() << " - giving up");
+            LOG_ERROR(nspace_ << ": unknown problem with connection, giving up");
             throw;
         }
     }
