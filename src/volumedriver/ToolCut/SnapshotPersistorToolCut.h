@@ -138,6 +138,9 @@ public:
     getScrubbingWork(boost::python::object start_snap = boost::python::object(),
                      boost::python::object end_snap = boost::python::object());
 
+    std::string
+    lastCork() const;
+
 protected:
     boost::shared_ptr<volumedriver::SnapshotPersistor> snapshot_persistor_;
 };

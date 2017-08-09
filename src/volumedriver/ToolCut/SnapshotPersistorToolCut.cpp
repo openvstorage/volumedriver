@@ -13,13 +13,17 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include <boost/python.hpp>
 #include "SnapshotPersistorToolCut.h"
 #include "SnapshotToolCut.h"
 
-#include <youtils/FileUtils.h>
-
 #include "../SnapshotManagement.h"
+
+#include <boost/lexical_cast.hpp>
+#include <boost/optional/optional_io.hpp>
+#include <boost/python.hpp>
+
+#include <youtils/FileUtils.h>
+#include <youtils/UUID.h>
 
 #include <backend-python/ConnectionInterface.h>
 
@@ -29,6 +33,9 @@ namespace toolcut
 namespace bpy = boost::python;
 namespace fs = boost::filesystem;
 namespace vd = volumedriver;
+namespace yt = youtils;
+
+using namespace std::literals::string_literals;
 
 void
 SnapshotPersistorToolCut::forEach(const bpy::object& obj) const
@@ -418,6 +425,13 @@ std::string
 SnapshotPersistorToolCut::repr() const
 {
     return std::string("< SnapshotPersistor \n") + str() + "\n>";
+}
+
+std::string
+SnapshotPersistorToolCut::lastCork() const
+{
+    boost::optional<yt::UUID> cork(snapshot_persistor_->lastCork());
+    return cork ? boost::lexical_cast<std::string>(*cork) : ""s;
 }
 
 }

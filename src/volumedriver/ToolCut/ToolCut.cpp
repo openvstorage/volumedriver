@@ -261,7 +261,6 @@ BOOST_PYTHON_MODULE(ToolCut)
         .def("stored", & SnapshotPersistorToolCut::stored,
              "Gives the total amount of data stored for the volume.\n"
              "@returns a number")
-
         .def("getAllTLogs", &SnapshotPersistorToolCut::getAllTLogs,
              "Returns a list of all TLogs.\n"
              "@param a bool, whether to get the current tlogs too\n"
@@ -331,6 +330,10 @@ BOOST_PYTHON_MODULE(ToolCut)
                                        "@param startSnapshot a string or None, the name of the start snapshot (non-inclusive)\n"
                                        "@param endSnapshot a string or None, the name of the end snapshot (inclusive)\n"
                                        "@result a list of strings, the snapshots that can be scrubbed"))
+        .def("lastCork",
+             &SnapshotPersistorToolCut::lastCork,
+             "Get the last cork",
+             "returns a string (empty string if there is no cork)")
         ;
 
     class_<EntryToolCut>("Entry",
