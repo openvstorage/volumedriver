@@ -235,6 +235,7 @@ ConnectionPool::error_()
 {
     LOCK();
     last_error_ = Clock::now();
+    clear_(connections_);
 }
 
 }
