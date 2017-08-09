@@ -55,17 +55,20 @@ BackendInterface::do_wrap_(ConnFetcher& get_conn,
                            (BackendConnectionInterface::*mem_fun)(Args...),
                            Args... args)
 {
-    unsigned retries = 0;
+    unsigned attempt = 0;
+    const uint32_t retries_on_error =  params.retries_on_error_ ?
+        *params.retries_on_error_ :
+        conn_manager_->retries_on_error();
     boost::chrono::milliseconds msecs = params.retry_interval_ ?
         *params.retry_interval_ :
         conn_manager_->retry_interval();
 
     while (true)
     {
-        if (retries != 0)
+        if (attempt != 0)
         {
             LOG_WARN(nspace_ << ": retrying with new connection (retry: " <<
-                     retries << ", sleep before retry: " << msecs << ")");
+                     attempt << ", sleep before retry: " << msecs << ")");
             boost::this_thread::sleep_for(msecs);
             msecs *= params.retry_backoff_multiplier_ ?
                 *params.retry_backoff_multiplier_ :
@@ -76,7 +79,7 @@ BackendInterface::do_wrap_(ConnFetcher& get_conn,
         {
             BackendConnectionInterfacePtr conn(get_conn(*conn_manager_,
                                                         nspace_,
-                                                        retries));
+                                                        attempt));
 
             return ((conn.get())->*mem_fun)(std::forward<Args>(args)...);
         }
@@ -92,14 +95,22 @@ BackendInterface::do_wrap_(ConnFetcher& get_conn,
         {
             throw; /* ... no need to retry. */
         }
+        catch (BackendConnectFailureException& e)
+        {
+            LOG_ERROR(nspace_ << ": connection failure");
+            get_conn.error();
+
+            if (attempt++ >= retries_on_error)
+            {
+                LOG_ERROR(nspace_ << ": giving up");
+                throw;
+            }
+        }
         catch (std::exception& e)
         {
             LOG_ERROR(nspace_ << ": problem with connection: " << e.what());
-            const uint32_t r = params.retries_on_error_ ?
-                *params.retries_on_error_ :
-                conn_manager_->retries_on_error();
 
-            if (retries++ >= r)
+            if (attempt++ >= retries_on_error)
             {
                 LOG_ERROR(nspace_ << ": giving up");
                 throw;
@@ -118,15 +129,29 @@ namespace
 
 struct NamespaceConnFetcher
 {
+    DECLARE_LOGGER("NamespaceConnFetcher");
+
+    std::shared_ptr<ConnectionPool> pool;
+
     BackendConnectionInterfacePtr
     operator()(BackendConnectionManager& cm,
                const Namespace& nspace,
                const uint32_t attempt)
     {
-        return cm.getConnection(attempt == 0 ?
-                                ForceNewConnection::F :
-                                ForceNewConnection::T,
-                                nspace);
+        pool = cm.pool(nspace);
+        VERIFY(pool);
+        return pool->get_connection(attempt == 0 ?
+                                    ForceNewConnection::F :
+                                    ForceNewConnection::T);
+    }
+
+    void
+    error()
+    {
+        if (pool)
+        {
+            pool->error();
+        }
     }
 };
 
@@ -146,6 +171,12 @@ struct PoolConnFetcher
         return pool->get_connection(attempt == 0 ?
                                     ForceNewConnection::F :
                                     ForceNewConnection::T);
+    }
+
+    void
+    error()
+    {
+        pool->error();
     }
 };
 
