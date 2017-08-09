@@ -20,7 +20,9 @@
 
 #include <mutex>
 
+#include <boost/asio/error.hpp>
 #include <boost/optional/optional_io.hpp>
+#include <boost/system/system_error.hpp>
 
 #include <alba/proxy_protocol.h>
 #include <alba/checksum.h>
@@ -35,6 +37,8 @@ using namespace std;
 namespace al = alba::logger;
 namespace app = alba::proxy_protocol;
 namespace apc = alba::proxy_client;
+namespace ba = boost::asio;
+namespace bs = boost::system;
 namespace fs = boost::filesystem;
 namespace yt = youtils;
 
@@ -169,11 +173,16 @@ Connection::Connection(const string& host,
         }
     }
 
-    client_ = apc::make_proxy_client(host,
-                                     boost::lexical_cast<string>(port),
-                                     std::chrono::seconds(timeout),
-                                     transport,
-                                     rora_config);
+    client_ =
+        convert_exceptions_<decltype(client_)>("make proxy client",
+                                               [&]() -> decltype(client_)
+            {
+                return apc::make_proxy_client(host,
+                                              boost::lexical_cast<string>(port),
+                                              std::chrono::seconds(timeout),
+                                              transport,
+                                              rora_config);
+            });
 }
 
 TODO("Y42: Better would be to specify the exceptions for each call")
@@ -217,6 +226,27 @@ Connection::convert_exceptions_(const char* desc,
                   " - assuming we failed to connect to the proxy");
         healthy_ = false;
         throw BackendConnectFailureException();
+    }
+    catch (bs::system_error& e)
+    {
+        LOG_ERROR(desc << ": caught boost system_error: " << e.what());
+        healthy_ = false;
+        const bs::error_code& ec = e.code();
+
+        switch (ec.value())
+        {
+        case ba::error::broken_pipe:
+        case ba::error::connection_aborted:
+        case ba::error::connection_reset:
+        case ba::error::connection_refused:
+        case ba::error::eof:
+            {
+                LOG_ERROR("assuming proxy connection failure");
+                throw BackendConnectFailureException();
+            }
+        default:
+            throw;
+        }
     }
     CATCH_STD_ALL_EWHAT({
             LOG_ERROR(desc << ": caught exception: " << EWHAT);
