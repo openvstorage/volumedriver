@@ -36,6 +36,7 @@ BackendInterface::BackendInterface(const Namespace& nspace,
                                    BackendConnectionManagerPtr conn_manager)
     : nspace_(nspace)
     , conn_manager_(conn_manager)
+    , retry_counter_(0)
 {}
 
 const BackendRequestParameters&
@@ -67,6 +68,7 @@ BackendInterface::do_wrap_(ConnFetcher& get_conn,
     {
         if (attempt != 0)
         {
+            ++retry_counter_;
             LOG_WARN(nspace_ << ": retrying with new connection (retry: " <<
                      attempt << ", sleep before retry: " << msecs << ")");
             boost::this_thread::sleep_for(msecs);
