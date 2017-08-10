@@ -158,7 +158,7 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_connection_pool_blacklist_secs,
                                       "backend_connection_pool_blacklist_secs",
                                       "Duration (in seconds) in which to skip a connection pool after an error",
                                       ShowDocumentation::T,
-                                      60U);
+                                      15U);
 
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_retries_on_error,
                                       backend_connection_manager_name,
