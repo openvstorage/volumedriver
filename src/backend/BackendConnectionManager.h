@@ -191,7 +191,8 @@ private:
     youtils::SourceOfUncertainty rand_;
 
     using Clock = ConnectionPool::Clock;
-    std::atomic<Clock::time_point> blacklist_last_logged_;
+    fungi::SpinLock blacklist_log_lock_;
+    Clock::time_point blacklist_last_logged_;
 
     explicit BackendConnectionManager(const boost::property_tree::ptree&,
                                       const RegisterComponent = RegisterComponent::T);

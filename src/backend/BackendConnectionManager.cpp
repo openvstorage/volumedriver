@@ -107,11 +107,19 @@ BackendConnectionManager::pool_(const Namespace& nspace)
 
             if (i == idx)
             {
-                // Limit logging noise. There's a race window between test and set but
-                // that's ok (!?)
-                if (blacklist_last_logged_.load() + timeout < now)
+                // Limit logging noise.
+                bool log = false;
                 {
-                    blacklist_last_logged_.store(now);
+                    boost::lock_guard<decltype(blacklist_log_lock_)> g(blacklist_log_lock_);
+                    if (blacklist_last_logged_ + timeout < now)
+                    {
+                        blacklist_last_logged_ = now;
+                        log = true;
+                    }
+                }
+
+                if (log)
+                {
                     LOG_ERROR("all pools are blacklisted, picking a random one");
                 }
 
