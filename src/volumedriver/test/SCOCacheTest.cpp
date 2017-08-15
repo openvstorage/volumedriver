@@ -30,9 +30,11 @@
 #include <backend/BackendConfig.h>
 #include <backend/BackendInterface.h>
 #include <backend/BackendConnectionManager.h>
+#include <backend/Namespace.h>
 
 #include <youtils/Assert.h>
 #include <youtils/FileUtils.h>
+#include <youtils/ScopeExit.h>
 #include <youtils/SourceOfUncertainty.h>
 
 namespace volumedriver
@@ -278,13 +280,27 @@ protected:
 
         for (const auto& c : mptestcfgs)
         {
-            addMountPoint(c.first,
-                          c.second * scoSize_);
+            EXPECT_NO_THROW(addMountPoint(c.first,
+                                          c.second * scoSize_));
             sco_count += c.second;
         }
 
+        auto mp_exit(yt::make_scope_exit([&]
+                                         {
+                                             for (const auto& p : mptestcfgs)
+                                             {
+                                                 EXPECT_NO_THROW(scoCache_->removeMountPoint(p.first));
+                                                 EXPECT_NO_THROW(fs::remove_all(p.first));
+                                             }
+                                         }));
+
         const backend::Namespace nspace;
         addNamespace(nspace);
+
+        auto ns_exit(yt::make_scope_exit([&]
+                                         {
+                                             removeNamespace(nspace);
+                                         }));
 
         for (unsigned i = 0; i < sco_count; ++i)
         {
@@ -297,8 +313,7 @@ protected:
             scoCache_->cleanup();
         }
 
-        SCOCacheMountPointList mps(getMountPointList());
-
+        SCOCacheMountPointList& mps(getMountPointList());
         typedef std::map<SCOCacheMountPointPtr, std::list<CachedSCOPtr> > MPSCOs;
         MPSCOs mpscos;
 
@@ -329,14 +344,6 @@ protected:
         }
 
         EXPECT_EQ(0U, mpscos.size());
-
-        removeNamespace(nspace);
-
-        for (const auto& p : mptestcfgs)
-        {
-            scoCache_->removeMountPoint(p.first);
-            fs::remove_all(p.first);
-        }
     }
 
     void
