@@ -275,8 +275,11 @@ public:
     SCOWrittenToBackendCallback(uint64_t file_size,
                                 boost::chrono::microseconds write_time) override final;
 
-    virtual fs::path
-    saveSnapshotToTempFile() override final;
+    virtual SnapshotManagement&
+    getSnapshotManagement() override final;
+
+    virtual const SnapshotManagement&
+    getSnapshotManagement() const override final;
 
     virtual void
     tlogWrittenToBackendCallback(const TLogId& tid,
@@ -350,9 +353,6 @@ public:
     void
     cloneFromParentSnapshot(const youtils::UUID& parent_snap_uuid,
                             const CloneTLogs& clone_tlogs);
-
-    const SnapshotManagement&
-    getSnapshotManagement() const;
 
     uint64_t
     getSnapshotBackendSize(const SnapshotName&);

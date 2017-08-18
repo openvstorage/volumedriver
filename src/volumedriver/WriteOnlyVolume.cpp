@@ -1019,12 +1019,6 @@ WriteOnlyVolume::getCurrentTLogPath() const
     return snapshotManagement_->getTLogsPath();
 }
 
-const SnapshotManagement&
-WriteOnlyVolume::getSnapshotManagement() const
-{
-    return *snapshotManagement_;
-}
-
 void
 WriteOnlyVolume::halt()
 {
@@ -1066,10 +1060,18 @@ WriteOnlyVolume::is_halted() const
     return halted_;
 }
 
-fs::path
-WriteOnlyVolume::saveSnapshotToTempFile()
+SnapshotManagement&
+WriteOnlyVolume::getSnapshotManagement()
 {
-    return snapshotManagement_->saveSnapshotToTempFile();
+    ASSERT(snapshotManagement_);
+    return *snapshotManagement_;
+}
+
+const SnapshotManagement&
+WriteOnlyVolume::getSnapshotManagement() const
+{
+    ASSERT(snapshotManagement_);
+    return *snapshotManagement_;
 }
 
 void

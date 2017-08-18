@@ -2974,12 +2974,6 @@ Volume::getCurrentTLogPath_() const
     return snapshotManagement_->getTLogsPath();
 }
 
-const SnapshotManagement&
-Volume::getSnapshotManagement() const
-{
-    return *snapshotManagement_;
-}
-
 void
 Volume::halt()
 {
@@ -3021,10 +3015,18 @@ Volume::is_halted() const
     return halted_;
 }
 
-fs::path
-Volume::saveSnapshotToTempFile()
+SnapshotManagement&
+Volume::getSnapshotManagement()
 {
-    return snapshotManagement_->saveSnapshotToTempFile();
+    ASSERT(snapshotManagement_);
+    return *snapshotManagement_;
+}
+
+const SnapshotManagement&
+Volume::getSnapshotManagement() const
+{
+    ASSERT(snapshotManagement_);
+    return *snapshotManagement_;
 }
 
 void
