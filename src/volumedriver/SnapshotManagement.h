@@ -163,6 +163,8 @@ public:
          const SnapshotName& snap_name = SnapshotName(),
          SCOCloneID start = SCOCloneID(0)) const
     {
+        boost::lock_guard<decltype(snapshot_lock_)> g(snapshot_lock_);
+
         return sp->vold(accumulator,
                         std::move(bi),
                         snap_name,
