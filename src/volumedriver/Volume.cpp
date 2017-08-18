@@ -1452,16 +1452,15 @@ Volume::restoreSnapshot(const SnapshotName& name)
         // 1) update metadata store
         {
             NSIDMap nsid;
-            const SnapshotPersistor& sp(snapshotManagement_->getSnapshotPersistor());
-            const yt::UUID cork(sp.getSnapshotCork(name));
+            const yt::UUID cork(snapshotManagement_->getSnapshotCork(name));
 
             BackendRestartAccumulator acc(nsid,
                                           boost::none,
                                           cork);
 
-            sp.vold(acc,
-                    nsidmap_.get(0)->clone(),
-                    name);
+            snapshotManagement_->vold(acc,
+                                      nsidmap_.get(0)->clone(),
+                                      name);
 
             metaDataStore_->clear_all_keys();
             metaDataStore_->processCloneTLogs(acc.clone_tlogs(),

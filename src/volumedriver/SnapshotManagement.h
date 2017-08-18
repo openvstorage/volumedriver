@@ -66,7 +66,7 @@ public:
     friend class SnapshotWriter;
 
     static bool
-    exists(const boost::filesystem::path& dir);
+    exists(const boost::filesystem::path&);
 
     SnapshotManagement(const VolumeConfig&,
                        const RestartContext);
@@ -76,7 +76,7 @@ public:
     SnapshotManagement& operator=(const SnapshotManagement&) = delete;
 
     void
-    initialize(VolumeInterface* v);
+    initialize(VolumeInterface*);
 
     ~SnapshotManagement();
 
@@ -88,7 +88,7 @@ public:
     }
 
     void
-    listSnapshots(std::list<SnapshotName>& snapshots) const;
+    listSnapshots(std::list<SnapshotName>&) const;
 
     void
     deleteSnapshot(const SnapshotName&);
@@ -122,7 +122,7 @@ public:
     }
 
     void
-    getTLogsWrittenToBackend(OrderedTLogIds& out) const;
+    getTLogsWrittenToBackend(OrderedTLogIds&) const;
 
     OrderedTLogIds
     getTLogsWrittenToBackend() const
@@ -133,19 +133,19 @@ public:
     }
 
     bool
-    isTLogWrittenToBackend(const TLogId& name) const;
+    isTLogWrittenToBackend(const TLogId&) const;
 
     bool
-    snapshotExists(SnapshotNum num) const;
+    snapshotExists(SnapshotNum) const;
 
     bool
-    snapshotExists(const SnapshotName& name) const;
+    snapshotExists(const SnapshotName&) const;
 
     void
-    eraseSnapshotsAndTLogsAfterSnapshot(SnapshotNum num);
+    eraseSnapshotsAndTLogsAfterSnapshot(SnapshotNum);
 
     uint64_t
-    getSnapshotBackendSize(const SnapshotName& name) const;
+    getSnapshotBackendSize(const SnapshotName&) const;
 
     uint64_t
     getCurrentBackendSize() const;
@@ -170,10 +170,11 @@ public:
     }
 
     static std::unique_ptr<SnapshotPersistor>
-    createSnapshotPersistor(BackendInterfacePtr bi);
+    createSnapshotPersistor(BackendInterfacePtr);
 
     static void
-    writeSnapshotPersistor(const SnapshotPersistor&, BackendInterfacePtr bi);
+    writeSnapshotPersistor(const SnapshotPersistor&,
+                           BackendInterfacePtr);
 
     void
     destroy(const DeleteLocalData delete_snaps);
@@ -185,20 +186,20 @@ public:
     sync(const MaybeCheckSum& maybe_sco_crc);
 
     void
-    addClusterEntry(const ClusterAddress address,
-                    const ClusterLocationAndHash& location_and_hash);
+    addClusterEntry(const ClusterAddress,
+                    const ClusterLocationAndHash&);
 
     void
     addSCOCRC(const CheckSum& t);
 
     ScrubId
-    replaceTLogsWithScrubbedOnes(const OrderedTLogIds& /*in*/,
-                                 const std::vector<TLog>& /*out*/,
-                                 SnapshotNum /*relatedSnapshot*/);
+    replaceTLogsWithScrubbedOnes(const OrderedTLogIds& in,
+                                 const std::vector<TLog>& out,
+                                 SnapshotNum);
 
     void
     tlogWrittenToBackendCallback(const TLogId& tlogcounter,
-                             const SCO sconame);
+                                 const SCO sconame);
 
     const MaybeParentConfig&
     parent() const
@@ -207,7 +208,7 @@ public:
     }
 
     bool
-    isSnapshotInBackend(const SnapshotNum num) const;
+    isSnapshotInBackend(const SnapshotNum) const;
 
     bool
     lastSnapshotOnBackend() const;
@@ -242,12 +243,8 @@ public:
     OrderedTLogIds
     getTLogsAfterSnapshot(SnapshotNum) const;
 
-    // Don't use this. You probably want to enrich the snapshotmanagement api
-    const SnapshotPersistor&
-    getSnapshotPersistor() const
-    {
-        return *sp;
-    }
+    SnapshotPersistor
+    cloneSnapshotPersistor() const;
 
     boost::filesystem::path
     saveSnapshotToTempFile();
@@ -255,7 +252,7 @@ public:
     void
     getSnapshotScrubbingWork(const boost::optional<SnapshotName>& start_snap,
                              const boost::optional<SnapshotName>& end_snap,
-                             SnapshotWork& out) const;
+                             SnapshotWork&) const;
 
     void
     scheduleWriteSnapshotToBackend();
@@ -279,7 +276,7 @@ public:
     }
 
     const youtils::UUID&
-    getSnapshotCork(const SnapshotName& snapshot_name) const;
+    getSnapshotCork(const SnapshotName&) const;
 
     void
     setAsTemplate(const MaybeCheckSum& maybe_sco_crc);
@@ -330,7 +327,7 @@ private:
     syncTLog_(const MaybeCheckSum& maybe_sco_crc);
 
     CheckSum
-    closeTLog_(const boost::filesystem::path* pth = 0);
+    closeTLog_(const boost::filesystem::path* = 0);
 
     void
     maybeCloseTLog_();
@@ -351,9 +348,9 @@ private:
     getTLogSizes(const OrderedTLogIds&);
 
     void
-    createSnapshot(const SnapshotName& name,
+    createSnapshot(const SnapshotName&,
                    const MaybeCheckSum& maybe_sco_crc,
-                   const SnapshotMetaData& metadata = SnapshotMetaData(),
+                   const SnapshotMetaData& = SnapshotMetaData(),
                    const UUID& = UUID(),
                    const bool set_scrubbed = false);
 
@@ -372,8 +369,8 @@ private:
     maybe_switch_tlog_();
 
     void
-    set_max_tlog_entries(const boost::optional<TLogMultiplier>& tm,
-                         SCOMultiplier sm);
+    set_max_tlog_entries(const boost::optional<TLogMultiplier>&,
+                         SCOMultiplier);
 };
 
 }
