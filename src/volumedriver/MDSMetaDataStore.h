@@ -44,12 +44,17 @@ class MDSMetaDataStore
 public:
     MAKE_EXCEPTION(DeadAndGoneException,
                    MetaDataStoreException);
+    MAKE_EXCEPTION(SlaveTooFarBehindException,
+                   MetaDataStoreException);
+
+    using DefaultMaxTLogsBehindFun = std::function<boost::optional<uint32_t>()>;
 
     MDSMetaDataStore(const MDSMetaDataBackendConfig&,
                      backend::BackendInterfacePtr,
                      const boost::filesystem::path& home,
                      const OwnerTag,
-                     uint64_t num_pages_cached);
+                     uint64_t num_pages_cached,
+                     DefaultMaxTLogsBehindFun = []() -> boost::optional<uint32_t> { return boost::none; });
 
     ~MDSMetaDataStore() = default;
 
@@ -132,7 +137,7 @@ public:
     get_page(const ClusterAddress) override final;
 
     void
-    set_config(const MDSMetaDataBackendConfig& cfg);
+    set_config(const MDSMetaDataBackendConfig&);
 
     MDSMetaDataBackendConfig
     get_config() const;
@@ -167,6 +172,8 @@ private:
     std::vector<MDSNodeConfig> node_configs_;
     ApplyRelocationsToSlaves apply_relocations_to_slaves_;
     std::chrono::seconds timeout_;
+    boost::optional<uint32_t> max_tlogs_behind_;
+    DefaultMaxTLogsBehindFun default_max_tlogs_behind_fun_;
 
     const uint64_t num_pages_cached_;
     const boost::filesystem::path home_;
@@ -177,11 +184,15 @@ private:
 
     using MetaDataStorePtr = std::shared_ptr<CachedMetaDataStore>;
 
+    size_t
+    tlogs_behind_(const MDSNodeConfig&) const;
+
     MetaDataStorePtr
     connect_(const MDSNodeConfig& ncfg) const;
 
     MetaDataStorePtr
-    build_new_one_(const MDSNodeConfig& ncfg,
+    build_new_one_(const MDSNodeConfig&,
+                   boost::optional<uint32_t> max_tlogs_behind,
                    bool startup);
 
     void
