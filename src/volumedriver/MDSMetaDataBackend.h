@@ -24,6 +24,7 @@
 
 #include <boost/optional.hpp>
 
+#include <youtils/BooleanEnum.h>
 #include <youtils/Logging.h>
 
 #include <backend/Namespace.h>
@@ -35,6 +36,8 @@ class MDSVolumeTest;
 
 namespace volumedriver
 {
+
+VD_BOOLEAN_ENUM(UseDirectInterface);
 
 class MDSNodeConfig;
 class VolumeConfig;
@@ -50,7 +53,8 @@ public:
     MDSMetaDataBackend(const MDSNodeConfig&,
                        const backend::Namespace&,
                        const boost::optional<OwnerTag>&,
-                       const boost::optional<std::chrono::seconds>& timeout);
+                       const boost::optional<std::chrono::seconds>& timeout,
+                       const UseDirectInterface = UseDirectInterface::T);
 
     MDSMetaDataBackend(metadata_server::DataBaseInterfacePtr,
                        const backend::Namespace&,
