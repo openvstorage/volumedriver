@@ -70,6 +70,8 @@ DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(max_volume_size,
                                                   std::atomic<uint64_t>);
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(allow_inconsistent_partial_reads,
                                                   std::atomic<bool>);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(metadata_mds_slave_max_tlogs_behind,
+                                                  uint32_t);
 
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(number_of_scos_in_tlog,
                                        uint32_t);

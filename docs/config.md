@@ -96,6 +96,7 @@ service ovs-volumedriver-vpool_name restart
 | volume_manager | non_disposable_scos_factor | "1.5" | no | Factor to multiply number_of_scos_in_tlog with to determine the amount of non-disposable data permitted per volume |
 | volume_manager | default_cluster_size | "4096" | no | size of a cluster in bytes |
 | volume_manager | metadata_cache_capacity | "8192" | no | number of metadata pages to keep cached |
+| volume_manager | metadata_mds_slave_max_tlogs_behind | "4294967295" | yes | max number of TLogs a slave is allowed to run behind to still permit a failover to it |
 | volume_manager | debug_metadata_path | "/opt/OpenvStorage/var/lib/volumedriver/evidence" | no | place to store evidence when a volume is halted. |
 | volume_manager | arakoon_metadata_sequence_size | "10" | no | Size of Arakoon sequences used to send metadata pages to Arakoon |
 | scocache | trigger_gap | --- | no | scocache-mountpoint freespace threshold below which scocache-cleaner is triggered |
