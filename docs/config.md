@@ -50,6 +50,7 @@ service ovs-volumedriver-vpool_name restart
 | filesystem | fs_metadata_backend_mds_nodes | "[]" | yes | an array of MDS node configurations for the volume metadata, each containing host and port |
 | filesystem | fs_metadata_backend_mds_apply_relocations_to_slaves | "1" | yes | an bool indicating whether to apply relocations to slave MDS tables |
 | filesystem | fs_metadata_backend_mds_timeout_secs | "20" | yes | timeout (in seconds) for calls to MDS servers |
+| filesystem | fs_metadata_backend_mds_slave_max_tlogs_behind | "4294967295" | yes | max number of TLogs a slave is allowed to run behind to still permit a failover to it |
 | filesystem | fs_cache_dentries | "0" | no | whether to cache directory entries locally |
 | filesystem | fs_dtl_config_mode | "Automatic" | no | Configuration mode : Automatic | Manual |
 | filesystem | fs_dtl_host | "" | yes | DTL host |
