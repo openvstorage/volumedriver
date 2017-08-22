@@ -360,6 +360,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(fs_metadata_backend_mds_timeout_secs,
                                       ShowDocumentation::T,
                                       vd::MDSMetaDataBackendConfig::default_timeout_secs_);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(fs_metadata_backend_mds_slave_max_tlogs_behind,
+                                      filesystem_component_name,
+                                      "fs_metadata_backend_mds_slave_max_tlogs_behind",
+                                      "max number of TLogs a slave is allowed to run behind to still permit a failover to it",
+                                      ShowDocumentation::T,
+                                      std::numeric_limits<uint32_t>::max());
+
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(fs_cache_dentries,
                                       filesystem_component_name,
                                       "fs_cache_dentries",

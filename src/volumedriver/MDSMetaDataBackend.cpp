@@ -68,17 +68,21 @@ DECLARE_LOGGER("MDSMetaDataBackendHelpers");
 mds::DataBaseInterfacePtr
 make_db(const MDSNodeConfig& cfg,
         size_t shmem_size,
-        const boost::optional<std::chrono::seconds>& timeout)
+        const boost::optional<std::chrono::seconds>& timeout,
+        const UseDirectInterface use_direct)
 {
     mds::DataBaseInterfacePtr db;
 
-    try
+    if (use_direct == UseDirectInterface::T)
     {
-        db = VolManager::get()->metadata_server_manager()->find(cfg);
-    }
-    catch (std::logic_error&)
-    {
-        LOG_WARN("VolManager not running - this should only happen in a test!");
+        try
+        {
+            db = VolManager::get()->metadata_server_manager()->find(cfg);
+        }
+        catch (std::logic_error&)
+        {
+            LOG_WARN("VolManager not running - this should only happen in a test!");
+        }
     }
 
     if (not db)
@@ -104,11 +108,13 @@ TODO("AR: expose shmem size!?");
 MDSMetaDataBackend::MDSMetaDataBackend(const MDSNodeConfig& config,
                                        const be::Namespace& nspace,
                                        const boost::optional<OwnerTag>& owner_tag,
-                                       const boost::optional<std::chrono::seconds>& timeout)
+                                       const boost::optional<std::chrono::seconds>& timeout,
+                                       const UseDirectInterface use_direct)
 try
     : db_(make_db(config,
                   64ULL << 10,
-                  timeout))
+                  timeout,
+                  use_direct))
     , table_(db_->open(nspace.str()))
     , used_clusters_(0)
     , owner_tag_(owner_tag)

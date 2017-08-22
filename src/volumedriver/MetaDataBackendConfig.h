@@ -25,6 +25,7 @@
 
 #include <boost/serialization/export.hpp>
 #include <boost/serialization/nvp.hpp>
+#include <boost/serialization/optional.hpp>
 #include <boost/serialization/utility.hpp>
 #include <boost/serialization/vector.hpp>
 
@@ -287,12 +288,14 @@ struct MDSMetaDataBackendConfig
     template<typename T>
     MDSMetaDataBackendConfig(const T& cfgs,
                              ApplyRelocationsToSlaves apply_scrub,
-                             unsigned timeout_secs = default_timeout_secs_)
+                             unsigned timeout_secs = default_timeout_secs_,
+                             const boost::optional<uint32_t>& max_tlogs_behind = boost::none)
         : MetaDataBackendConfig(MetaDataBackendType::MDS)
         , node_configs_(cfgs.begin(),
                         cfgs.end())
         , apply_relocations_to_slaves_(apply_scrub)
         , timeout_(timeout_secs)
+        , max_tlogs_behind_(max_tlogs_behind)
     {
         if (timeout_secs == 0)
         {
@@ -329,12 +332,19 @@ struct MDSMetaDataBackendConfig
         return timeout_;
     }
 
+    boost::optional<uint32_t>
+    max_tlogs_behind() const
+    {
+        return max_tlogs_behind_;
+    }
+
     virtual std::unique_ptr<MetaDataBackendConfig>
     clone() const override final
     {
         return std::unique_ptr<MetaDataBackendConfig>(new MDSMetaDataBackendConfig(node_configs(),
                                                                                    apply_relocations_to_slaves(),
-                                                                                   timeout_.count()));
+                                                                                   timeout_.count(),
+                                                                                   max_tlogs_behind()));
     }
 
 protected:
@@ -345,7 +355,8 @@ protected:
         return o != nullptr and
             node_configs_ == o->node_configs_ and
             apply_relocations_to_slaves_ == o->apply_relocations_to_slaves_ and
-            timeout_ == o->timeout_;
+            timeout_ == o->timeout_ and
+            max_tlogs_behind_ == o->max_tlogs_behind_;
     }
 
 private:
@@ -354,6 +365,7 @@ private:
     NodeConfigs node_configs_;
     ApplyRelocationsToSlaves apply_relocations_to_slaves_;
     std::chrono::seconds timeout_;
+    boost::optional<uint32_t> max_tlogs_behind_;
 
     friend class boost::serialization::access;
 
@@ -395,6 +407,15 @@ private:
         {
             timeout_ = std::chrono::seconds(default_timeout_secs_);
         }
+
+        if (version > 3)
+        {
+            ar & BOOST_SERIALIZATION_NVP(max_tlogs_behind_);
+        }
+        else
+        {
+            max_tlogs_behind_ = boost::none;
+        }
     }
 
     template<typename A>
@@ -402,7 +423,7 @@ private:
     save(A& ar,
          const unsigned version) const
     {
-        CHECK_VERSION(version, 3);
+        CHECK_VERSION(version, 4);
 
         boost::serialization::void_cast_register<MDSMetaDataBackendConfig,
                                                  MetaDataBackendConfig>();
@@ -412,6 +433,7 @@ private:
         uint64_t t = timeout_.count();
         ar & boost::serialization::make_nvp("timeout_secs",
                                             t);
+        ar & BOOST_SERIALIZATION_NVP(max_tlogs_behind_);
     }
 };
 
@@ -429,7 +451,7 @@ BOOST_CLASS_EXPORT_KEY(volumedriver::RocksDBMetaDataBackendConfig);
 BOOST_CLASS_VERSION(volumedriver::ArakoonMetaDataBackendConfig, 1);
 BOOST_CLASS_EXPORT_KEY(volumedriver::ArakoonMetaDataBackendConfig);
 
-BOOST_CLASS_VERSION(volumedriver::MDSMetaDataBackendConfig, 3);
+BOOST_CLASS_VERSION(volumedriver::MDSMetaDataBackendConfig, 4);
 BOOST_CLASS_EXPORT_KEY(volumedriver::MDSMetaDataBackendConfig);
 
 #endif // !VD_META_DATA_BACKEND_CONFIG_H_

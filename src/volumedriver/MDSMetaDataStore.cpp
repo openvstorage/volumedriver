@@ -13,6 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "BackendRestartAccumulator.h"
 #include "CachedMetaDataStore.h"
 #include "BackendTasks.h"
 #include "MDSMetaDataBackend.h"
@@ -47,13 +48,16 @@ MDSMetaDataStore::MDSMetaDataStore(const MDSMetaDataBackendConfig& cfg,
                                    be::BackendInterfacePtr bi,
                                    const fs::path& home,
                                    const OwnerTag owner_tag,
-                                   uint64_t num_pages_cached)
+                                   uint64_t num_pages_cached,
+                                   DefaultMaxTLogsBehindFun default_max_tlogs_behind_fun)
     : VolumeBackPointer(getLogger__())
     , rwlock_("mdsmdstore-" + bi->getNS().str())
     , bi_(std::move(bi))
     , node_configs_(cfg.node_configs())
     , apply_relocations_to_slaves_(cfg.apply_relocations_to_slaves())
     , timeout_(cfg.timeout())
+    , max_tlogs_behind_(cfg.max_tlogs_behind())
+    , default_max_tlogs_behind_fun_(std::move(default_max_tlogs_behind_fun))
     , num_pages_cached_(num_pages_cached)
     , home_(home)
     , owner_tag_(owner_tag)
@@ -230,6 +234,7 @@ MDSMetaDataStore::do_failover_(bool startup)
         try
         {
             MetaDataStorePtr md(build_new_one_(node_configs_[0],
+                                               max_tlogs_behind_,
                                                startup));
             std::stringstream ss;
             ss << node_configs_[0];
@@ -256,6 +261,46 @@ MDSMetaDataStore::do_failover_(bool startup)
     throw fungi::IOException("All failover attempts failed - giving up");
 }
 
+size_t
+MDSMetaDataStore::tlogs_behind_(const MDSNodeConfig& ncfg) const
+{
+    MDSMetaDataBackend mdb(ncfg,
+                           bi_->getNS(),
+                           owner_tag_,
+                           timeout_,
+                           UseDirectInterface::F);
+
+    boost::optional<yt::UUID> md_cork(mdb.lastCorkUUID());
+    MaybeScrubId md_scrub_id(mdb.scrub_id());
+
+    const SnapshotManagement& sm = getVolume()->getSnapshotManagement();
+    const ScrubId sm_scrub_id(sm.scrub_id());
+    if (not md_scrub_id or
+        *md_scrub_id != sm_scrub_id)
+    {
+        LOG_INFO(bi_->getNS() << ": scrub ID mismatch, SnapshotManagement says " <<
+                 sm_scrub_id << ", slave has " << md_scrub_id);
+        md_cork = boost::none;
+    }
+
+    NSIDMap nsid_map;
+    BackendRestartAccumulator acc(nsid_map,
+                                  md_cork,
+                                  sm.lastCork());
+
+    sm.vold(acc,
+            bi_->clone());
+
+    size_t count = 0;
+    for (const auto& p : acc.clone_tlogs())
+    {
+        count += p.second.size();
+    }
+
+    LOG_INFO(bi_->getNS() << ": " << ncfg << " is " << count << " tlogs behind");
+    return count;
+}
+
 MDSMetaDataStore::MetaDataStorePtr
 MDSMetaDataStore::connect_(const MDSNodeConfig& ncfg) const
 {
@@ -277,11 +322,26 @@ MDSMetaDataStore::connect_(const MDSNodeConfig& ncfg) const
 
 MDSMetaDataStore::MetaDataStorePtr
 MDSMetaDataStore::build_new_one_(const MDSNodeConfig& ncfg,
+                                 boost::optional<uint32_t> max_tlogs_behind,
                                  bool startup)
 {
     ASSERT_WLOCKED();
 
-    LOG_INFO(bi_->getNS() << ": attempting failover to " << ncfg);
+    max_tlogs_behind =
+        max_tlogs_behind ?
+        max_tlogs_behind :
+        default_max_tlogs_behind_fun_();
+
+    LOG_INFO(bi_->getNS() << ": attempting failover to " << ncfg <<
+             ", max tlogs behind: " << max_tlogs_behind);
+
+    if (max_tlogs_behind and
+        *max_tlogs_behind < tlogs_behind_(ncfg))
+    {
+        LOG_ERROR(bi_->getNS() << ": " << ncfg << " is running too far behind");
+        throw SlaveTooFarBehindException("MDS slave is running too far behind",
+                                         bi_->getNS().str().c_str());
+    }
 
     auto md(connect_(ncfg));
 
@@ -568,6 +628,7 @@ MDSMetaDataStore::set_config(const MDSMetaDataBackendConfig& cfg)
                  " is currently in use, failover to " << new_configs[0] <<
                  " requested");
         mdstore_ = build_new_one_(new_configs[0],
+                                  cfg.max_tlogs_behind(),
                                   false);
     }
     else
@@ -578,6 +639,8 @@ MDSMetaDataStore::set_config(const MDSMetaDataBackendConfig& cfg)
 
     node_configs_ = new_configs;
     apply_relocations_to_slaves_ = cfg.apply_relocations_to_slaves();
+    timeout_ = cfg.timeout();
+    max_tlogs_behind_ = cfg.max_tlogs_behind();
 
 #ifndef NDEBUG
     LOG_INFO(bi_->getNS() << ": active config: ");
@@ -602,7 +665,8 @@ MDSMetaDataStore::get_config_() const
 {
     return MDSMetaDataBackendConfig(node_configs_,
                                     apply_relocations_to_slaves_,
-                                    timeout_.count());
+                                    timeout_.count(),
+                                    max_tlogs_behind_);
 }
 
 MDSNodeConfig

@@ -137,6 +137,9 @@ DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(fs_metadata_backend_mds_apply_
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(fs_metadata_backend_mds_timeout_secs,
                                                   uint32_t);
 
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(fs_metadata_backend_mds_slave_max_tlogs_behind,
+                                                  uint32_t);
+
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(fs_cache_dentries,
                                        bool);
 

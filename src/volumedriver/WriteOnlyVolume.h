@@ -225,8 +225,11 @@ public:
     tlogWrittenToBackendCallback(const TLogId& tid,
                                  const SCO sconame) override final;
 
-    virtual fs::path
-    saveSnapshotToTempFile() override final;
+    virtual SnapshotManagement&
+    getSnapshotManagement() override final;
+
+    virtual const SnapshotManagement&
+    getSnapshotManagement() const override final;
 
     backend::Namespace
     getNamespace() const override final;
@@ -253,9 +256,6 @@ public:
 
     void
     restoreSnapshot(const SnapshotName&);
-
-    const SnapshotManagement&
-    getSnapshotManagement() const;
 
     uint64_t
     getSnapshotBackendSize(const SnapshotName&);

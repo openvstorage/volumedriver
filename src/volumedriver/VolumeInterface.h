@@ -35,11 +35,12 @@
 namespace volumedriver
 {
 
+class DataStoreNG;
+class FailOverCacheClientInterface;
+class MetaDataBackendConfig;
+class SnapshotManagement;
 class Volume;
 class VolumeConfig;
-class FailOverCacheClientInterface;
-class DataStoreNG;
-class MetaDataBackendConfig;
 
 VD_BOOLEAN_ENUM(AppendCheckSum);
 
@@ -91,8 +92,11 @@ public:
     virtual boost::optional<SCOCacheNonDisposableFactor>
     getSCOCacheMaxNonDisposableFactor() const = 0;
 
-    virtual fs::path
-    saveSnapshotToTempFile() = 0;
+    virtual SnapshotManagement&
+    getSnapshotManagement() = 0;
+
+    virtual const SnapshotManagement&
+    getSnapshotManagement() const = 0;
 
     virtual DataStoreNG*
     getDataStore() = 0;

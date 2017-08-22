@@ -47,6 +47,8 @@ protected:
 
         const std::string addr("127.0.0.1");
         const uint16_t port = 12345;
+        const uint32_t max_tlogs_behind = 123;
+        const unsigned mds_timeout_secs = 10;
 
         {
             OArchive oa(ss);
@@ -66,7 +68,9 @@ protected:
             oa << mdb;
 
             mdb.reset(new vd::MDSMetaDataBackendConfig(nodes,
-                                                       vd::ApplyRelocationsToSlaves::F));
+                                                       vd::ApplyRelocationsToSlaves::F,
+                                                       mds_timeout_secs,
+                                                       max_tlogs_behind));
             oa << mdb;
         }
 
@@ -106,6 +110,8 @@ protected:
                       mdscfg->node_configs()[0].port());
             ASSERT_EQ(vd::ApplyRelocationsToSlaves::T,
                       mdscfg->apply_relocations_to_slaves());
+            ASSERT_EQ(boost::none,
+                      mdscfg->max_tlogs_behind());
             mdb.reset();
         }
 
@@ -124,6 +130,13 @@ protected:
                       mdscfg->node_configs()[0].port());
             ASSERT_EQ(vd::ApplyRelocationsToSlaves::F,
                       mdscfg->apply_relocations_to_slaves());
+            ASSERT_EQ(std::chrono::seconds(mds_timeout_secs),
+                      mdscfg->timeout());
+            ASSERT_NE(boost::none,
+                      mdscfg->max_tlogs_behind());
+            ASSERT_EQ(max_tlogs_behind,
+                      *mdscfg->max_tlogs_behind());
+
             mdb.reset();
         }
     }

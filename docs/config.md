@@ -50,6 +50,7 @@ service ovs-volumedriver-vpool_name restart
 | filesystem | fs_metadata_backend_mds_nodes | "[]" | yes | an array of MDS node configurations for the volume metadata, each containing host and port |
 | filesystem | fs_metadata_backend_mds_apply_relocations_to_slaves | "1" | yes | an bool indicating whether to apply relocations to slave MDS tables |
 | filesystem | fs_metadata_backend_mds_timeout_secs | "20" | yes | timeout (in seconds) for calls to MDS servers |
+| filesystem | fs_metadata_backend_mds_slave_max_tlogs_behind | "4294967295" | yes | max number of TLogs a slave is allowed to run behind to still permit a failover to it |
 | filesystem | fs_cache_dentries | "0" | no | whether to cache directory entries locally |
 | filesystem | fs_dtl_config_mode | "Automatic" | no | Configuration mode : Automatic | Manual |
 | filesystem | fs_dtl_host | "" | yes | DTL host |
@@ -96,6 +97,7 @@ service ovs-volumedriver-vpool_name restart
 | volume_manager | non_disposable_scos_factor | "1.5" | no | Factor to multiply number_of_scos_in_tlog with to determine the amount of non-disposable data permitted per volume |
 | volume_manager | default_cluster_size | "4096" | no | size of a cluster in bytes |
 | volume_manager | metadata_cache_capacity | "8192" | no | number of metadata pages to keep cached |
+| volume_manager | metadata_mds_slave_max_tlogs_behind | "4294967295" | yes | max number of TLogs a slave is allowed to run behind to still permit a failover to it |
 | volume_manager | debug_metadata_path | "/opt/OpenvStorage/var/lib/volumedriver/evidence" | no | place to store evidence when a volume is halted. |
 | volume_manager | arakoon_metadata_sequence_size | "10" | no | Size of Arakoon sequences used to send metadata pages to Arakoon |
 | scocache | trigger_gap | --- | no | scocache-mountpoint freespace threshold below which scocache-cleaner is triggered |

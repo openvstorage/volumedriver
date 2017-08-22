@@ -313,8 +313,8 @@ TEST_P(SimpleBackupRestoreTest, rollback_to_previous_snap_if_snapshot_didnt_make
         SCOPED_DESTROY_WRITE_ONLY_VOLUME_UNBLOCK_BACKEND_FOR_BACKEND_RESTART(wov, 3);
         wov->createSnapshot(SnapshotName("snap2"));
 
-        const SnapshotPersistor& sp =
-            wov->getSnapshotManagement().getSnapshotPersistor();
+        const SnapshotPersistor sp =
+            wov->getSnapshotManagement().cloneSnapshotPersistor();
         SnapshotManagement::writeSnapshotPersistor(sp,
                                                    cm_->newBackendInterface(nspace));
     }
@@ -379,8 +379,8 @@ TEST_P(SimpleBackupRestoreTest,
         writeToVolume(*wov, Lba(0), size, pattern3);
         wov->scheduleBackendSync();
 
-        const SnapshotPersistor& sp =
-            wov->getSnapshotManagement().getSnapshotPersistor();
+        const SnapshotPersistor sp =
+            wov->getSnapshotManagement().cloneSnapshotPersistor();
         SnapshotManagement::writeSnapshotPersistor(sp,
                                                    cm_->newBackendInterface(nspace));
     }

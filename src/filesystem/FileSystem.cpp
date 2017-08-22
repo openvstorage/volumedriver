@@ -152,6 +152,7 @@ FileSystem::FileSystem(const bpt::ptree& pt,
     , fs_metadata_backend_mds_nodes(pt)
     , fs_metadata_backend_mds_apply_relocations_to_slaves(pt)
     , fs_metadata_backend_mds_timeout_secs(pt)
+    , fs_metadata_backend_mds_slave_max_tlogs_behind(pt)
     , fs_cache_dentries(pt)
     , fs_nullio(pt)
     , fs_dtl_config_mode(pt)
@@ -284,6 +285,7 @@ FileSystem::update(const bpt::ptree& pt,
     U(fs_metadata_backend_mds_nodes);
     U(fs_metadata_backend_mds_apply_relocations_to_slaves);
     U(fs_metadata_backend_mds_timeout_secs);
+    U(fs_metadata_backend_mds_slave_max_tlogs_behind);
     U(fs_cache_dentries);
     U(fs_nullio);
 
@@ -313,6 +315,7 @@ FileSystem::persist(bpt::ptree& pt,
     P(fs_metadata_backend_mds_nodes);
     P(fs_metadata_backend_mds_apply_relocations_to_slaves);
     P(fs_metadata_backend_mds_timeout_secs);
+    P(fs_metadata_backend_mds_slave_max_tlogs_behind);
     P(fs_cache_dentries);
     P(fs_nullio);
     P(fs_dtl_config_mode);
@@ -716,9 +719,16 @@ FileSystem::make_metadata_backend_config()
                 apply_relocs(fs_metadata_backend_mds_apply_relocations_to_slaves.value() ?
                              vd::ApplyRelocationsToSlaves::T :
                              vd::ApplyRelocationsToSlaves::F);
+            boost::optional<uint32_t> max_tlogs_behind;
+            if (fs_metadata_backend_mds_slave_max_tlogs_behind.value() != std::numeric_limits<uint32_t>::max())
+            {
+                max_tlogs_behind = fs_metadata_backend_mds_slave_max_tlogs_behind.value();
+            }
+
             mdb.reset(new vd::MDSMetaDataBackendConfig(configv,
                                                        apply_relocs,
-                                                       fs_metadata_backend_mds_timeout_secs.value()));
+                                                       fs_metadata_backend_mds_timeout_secs.value(),
+                                                       max_tlogs_behind));
             break;
         }
     case vd::MetaDataBackendType::RocksDB:
