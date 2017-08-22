@@ -37,7 +37,6 @@ namespace backend
 
 class BackendConfig;
 class BackendInterface;
-class BackendTestBase;
 class Namespace;
 
 using BackendConnectionInterfacePtr = std::unique_ptr<BackendConnectionInterface,
@@ -89,6 +88,9 @@ public:
 
     using Clock = boost::chrono::steady_clock;
 
+    void
+    error();
+
     Clock::time_point
     last_error() const;
 
@@ -96,7 +98,6 @@ private:
     DECLARE_LOGGER("BackendConnectionPool");
 
     friend class youtils::EnableMakeShared<ConnectionPool>;
-    friend class BackendTestBase;
     friend class ConnectionDeleter;
 
     ConnectionPool(std::unique_ptr<BackendConfig>,
@@ -114,9 +115,6 @@ private:
 
     std::unique_ptr<BackendConnectionInterface>
     make_one_();
-
-    void
-    error_();
 
     static std::unique_ptr<BackendConnectionInterface>
     pop_(Connections&);

@@ -14,6 +14,8 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "BackendTestBase.h"
+#include "../AlbaConfig.h"
+#include "../BackendRequestParameters.h"
 
 #include <boost/filesystem.hpp>
 #include <boost/make_shared.hpp>
@@ -30,6 +32,8 @@ namespace bpt = boost::property_tree;
 namespace fs = boost::filesystem;
 namespace ip = initialized_params;
 namespace yt = youtils;
+
+using namespace std::literals::string_literals;
 
 class BackendInterfaceTest
     : public BackendTestBase
@@ -264,6 +268,46 @@ TEST_F(BackendInterfaceTest, conditional_operations)
                cond);
 
     EXPECT_FALSE(bi->objectExists(oname));
+}
+
+// https://github.com/openvstorage/volumedriver/issues/336
+TEST_F(BackendInterfaceTest, retry_on_connection_errors)
+{
+    // TODO: it'd be nicer to check that no-one's listening
+    // on that port.
+    const AlbaConfig cfg("127.0.0.1",
+                         23456,
+                         1000);
+
+    bpt::ptree pt;
+    cfg.persist_internal(pt,
+                         ReportDefault::F);
+
+    BackendConnectionManagerPtr cm(BackendConnectionManager::create(pt,
+                                                                    RegisterComponent::F));
+
+    const Namespace nspace("nspace"s);
+    std::shared_ptr<ConnectionPool> pool(cm->pool(nspace));
+    const ConnectionPool::Clock::time_point t(ConnectionPool::Clock::now());
+
+    EXPECT_LT(pool->last_error(),
+              t);
+
+    BackendInterfacePtr bi(cm->newBackendInterface(nspace));
+    EXPECT_EQ(0,
+              bi->retry_counter());
+
+    const size_t retries = 3;
+    BackendRequestParameters params(BackendInterface::default_request_parameters());
+    params.retries_on_error(retries);
+
+    EXPECT_THROW(bi->namespaceExists(params),
+                 BackendConnectFailureException);
+
+    EXPECT_GT(pool->last_error(),
+              t);
+    EXPECT_EQ(retries,
+              bi->retry_counter());
 }
 
 }

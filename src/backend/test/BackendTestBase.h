@@ -90,7 +90,7 @@ protected:
     static void
     inject_error_into_connection_pool(ConnectionPool& p)
     {
-        p.error_();
+        p.error();
     }
 };
 

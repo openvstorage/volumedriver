@@ -49,6 +49,7 @@ BackendConnectionManager::BackendConnectionManager(const bpt::ptree& pt,
                             pt)
     , params_(pt)
     , config_(BackendConfig::makeBackendConfig(pt))
+    , blacklist_last_logged_(Clock::time_point::min())
 {
     THROW_UNLESS(config_);
 
@@ -87,7 +88,7 @@ BackendConnectionManager::pool_(const Namespace& nspace)
     const size_t idx = h % connection_pools_.size();
     size_t i = idx;
     const bc::seconds timeout(params_.backend_connection_pool_blacklist_secs.value());
-    const auto now(ConnectionPool::Clock::now());
+    const auto now(Clock::now());
 
     while (true)
     {
@@ -106,7 +107,22 @@ BackendConnectionManager::pool_(const Namespace& nspace)
 
             if (i == idx)
             {
-                LOG_ERROR("all pools are blacklisted, picking a random one");
+                // Limit logging noise.
+                bool log = false;
+                {
+                    boost::lock_guard<decltype(blacklist_log_lock_)> g(blacklist_log_lock_);
+                    if (blacklist_last_logged_ + timeout < now)
+                    {
+                        blacklist_last_logged_ = now;
+                        log = true;
+                    }
+                }
+
+                if (log)
+                {
+                    LOG_ERROR("all pools are blacklisted, picking a random one");
+                }
+
                 i = rand_(connection_pools_.size() - 1);
                 break;
             }
