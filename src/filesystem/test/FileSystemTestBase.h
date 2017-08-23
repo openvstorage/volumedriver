@@ -18,6 +18,7 @@
 #define FILE_SYSTEM_TEST_SETUP_H_
 
 #include "FileSystemTestSetup.h"
+#include "RemoteMount.h"
 
 #include "../ClusterNodeConfig.h"
 #include "../DirectoryEntry.h"
@@ -43,6 +44,8 @@ VD_BOOLEAN_ENUM(PutClusterNodeConfigsInRegistry);
 class FileSystemTestBase
     : public FileSystemTestSetup
 {
+    friend class RemoteMount;
+
 public:
     static void
     set_binary_path(const boost::filesystem::path& p)
@@ -411,14 +414,11 @@ protected:
         return is_mounted(remote_dir(topdir_));
     }
 
-    void
-    mount_remote();
-
-    bool
-    fork_and_exec_umount_(const boost::filesystem::path& mntpoint);
-
-    void
-    umount_remote(bool ignore_remote_errors = false);
+    RemoteMount
+    make_remote_mount()
+    {
+        return RemoteMount(*this);
+    }
 
     void
     wait_for_remote_();
@@ -599,6 +599,15 @@ protected:
 
 private:
     DECLARE_LOGGER("FileSystemTestBase");
+
+    void
+    mount_remote();
+
+    bool
+    fork_and_exec_umount_(const boost::filesystem::path& mntpoint);
+
+    void
+    umount_remote(bool ignore_remote_errors = false);
 
     template<typename... Args>
     static int

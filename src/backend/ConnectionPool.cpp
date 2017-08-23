@@ -111,7 +111,7 @@ try
 }
 CATCH_STD_ALL_EWHAT({
         LOG_ERROR(*config_ << ": failed to create new connection:"  << EWHAT);
-        error_();
+        error();
         throw;
     })
 
@@ -231,10 +231,11 @@ ConnectionPool::last_error() const
 }
 
 void
-ConnectionPool::error_()
+ConnectionPool::error()
 {
     LOCK();
     last_error_ = Clock::now();
+    clear_(connections_);
 }
 
 }

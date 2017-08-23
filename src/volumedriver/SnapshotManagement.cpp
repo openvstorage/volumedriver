@@ -649,6 +649,14 @@ SnapshotManagement::getLastSnapshotName() const
     return SnapshotName();
 }
 
+SnapshotPersistor
+SnapshotManagement::cloneSnapshotPersistor() const
+{
+    LOCKSNAP;
+    ASSERT(sp);
+    return *sp;
+}
+
 fs::path
 SnapshotManagement::saveSnapshotToTempFile()
 {

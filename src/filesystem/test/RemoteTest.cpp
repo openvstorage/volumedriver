@@ -91,13 +91,13 @@ public:
     {
         FileSystemTestBase::SetUp();
         start_failovercache_for_remote_node();
-        mount_remote();
+        mnt_ = std::make_unique<RemoteMount>(make_remote_mount());
     }
 
     virtual void
     TearDown()
     {
-        umount_remote();
+        mnt_ = nullptr;
         stop_failovercache_for_remote_node();
         FileSystemTestBase::TearDown();
     }
@@ -230,7 +230,7 @@ public:
                              pattern,
                              off);
 
-        umount_remote();
+        mnt_ = nullptr;
 
         std::shared_ptr<ClusterRegistry> reg(cluster_registry(fs_->object_router()));
         reg->set_node_state(remote_node_id(),
@@ -658,18 +658,19 @@ public:
     }
 
     const fs::path remote_root_;
+    std::unique_ptr<RemoteMount> mnt_;
 };
 
 TEST_F(RemoteTest, ping)
 {
     ObjectRouter& vrouter = fs_->object_router();
     EXPECT_NO_THROW(vrouter.ping(remote_node_id()));
-    umount_remote();
 
+    mnt_->umount();
     EXPECT_THROW(vrouter.ping(remote_node_id()),
                  ClusterNodeNotReachableException);
 
-    mount_remote();
+    mnt_->mount();
     EXPECT_NO_THROW(vrouter.ping(remote_node_id()));
 }
 
@@ -815,7 +816,7 @@ TEST_F(RemoteTest, remote_temporarily_out_of_service)
 
     EXPECT_EQ(0, open(fname, h, O_RDONLY));
 
-    umount_remote();
+    mnt_->umount();
 
     std::vector<char> buf(pattern.size());
     EXPECT_GT(0, read(fname,
@@ -824,7 +825,7 @@ TEST_F(RemoteTest, remote_temporarily_out_of_service)
                       off,
                       *h));
 
-    mount_remote();
+    mnt_->mount();
 
     EXPECT_EQ(static_cast<ssize_t>(pattern.size()),
               read(fname,
@@ -863,7 +864,7 @@ TEST_F(RemoteTest, remote_gone_and_offlined_after_a_while)
 
     EXPECT_EQ(0, open(fname, h, O_RDONLY));
 
-    umount_remote();
+    mnt_ = nullptr;
 
     {
         const fs::path p(yt::FileUtils::create_temp_file(topdir_,
@@ -1230,7 +1231,7 @@ TEST_F(RemoteTest, clone_from_unavailable_template)
     ASSERT_TRUE(static_cast<bool>(maybe_tname));
     client_.set_volume_as_template(*maybe_tname);
 
-    umount_remote();
+    mnt_ = nullptr;
 
     const FrontendPath cpath("/clone");
     client_.create_clone_from_template(cpath.str(),
@@ -1256,7 +1257,7 @@ TEST_F(RemoteTest, destruction)
     const be::Namespace vnspace(find_registration(*maybe_vid)->getNS());
     const be::Namespace fnspace(PARAMETER_VALUE_FROM_PROPERTY_TREE(fd_namespace, pt));
 
-    umount_remote();
+    mnt_ = nullptr;
     stop_fs();
 
     auto cm(be::BackendConnectionManager::create(pt, RegisterComponent::F));
@@ -1590,7 +1591,7 @@ TEST_F(RemoteTest, only_steal_from_offlined_node)
                          pattern,
                          off);
 
-    umount_remote();
+    mnt_ = nullptr;
 
     std::shared_ptr<ClusterRegistry> reg(cluster_registry(fs_->object_router()));
     EXPECT_EQ(ClusterNodeStatus::State::Online,
@@ -1609,9 +1610,9 @@ TEST_F(RemoteTest, only_steal_from_offlined_node)
 
 TEST_F(RemoteTest, stealing_and_fencing)
 {
-    umount_remote();
+    mnt_->umount();
     set_use_fencing(true);
-    mount_remote();
+    mnt_->mount();
 
     const FrontendPath vpath(make_volume_name("/some-volume"));
     const uint64_t vsize = 10ULL << 20;
@@ -1668,7 +1669,7 @@ TEST_F(RemoteTest, back_to_life)
                          off);
 
     set_redirect_timeout(bc::milliseconds(500));
-    umount_remote();
+    mnt_->umount();
 
     std::vector<char> buf(pattern.size());
 
@@ -1714,7 +1715,7 @@ TEST_F(RemoteTest, back_to_life)
         t.join();
     }
 
-    mount_remote();
+    mnt_->mount();
 
     threads.clear();
 
@@ -1858,7 +1859,7 @@ TEST_F(RemoteTest, forceful_migration_with_fencing_enabled)
     ASSERT_NE(boost::none,
               maybe_id);
 
-    umount_remote();
+    mnt_ = nullptr;
 
     EXPECT_THROW(client_.migrate(maybe_id->str(),
                                  local_node_id(),

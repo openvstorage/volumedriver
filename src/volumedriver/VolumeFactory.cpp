@@ -136,11 +136,18 @@ make_metadata_store(const VolumeConfig& config,
             const be::Namespace nspace(config.ns_);
             be::BackendInterfacePtr bi(vm.createBackendInterface(nspace));
             const fs::path home(vm.getMetaDataPath(nspace));
+
+            auto fun([]() -> boost::optional<uint32_t>
+                     {
+                         return VolManager::get()->mds_slave_max_tlogs_behind();
+                     });
+
             return std::unique_ptr<MetaDataStoreInterface>(new MDSMetaDataStore(mcfg,
                                                                                 std::move(bi),
                                                                                 home,
                                                                                 owner_tag,
-                                                                                num_pages_cached));
+                                                                                num_pages_cached,
+                                                                                std::move(fun)));
         }
     }
 
@@ -449,8 +456,6 @@ try
 
         if (not tlogs_to_replay_now.empty())
         {
-            VERIFY(sp_cork != boost::none);
-
             CloneTLogs clone_tlogs_to_replay;
             clone_tlogs_to_replay.emplace_back(SCOCloneID(0),
                                                tlogs_to_replay_now);

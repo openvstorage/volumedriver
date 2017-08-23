@@ -14,6 +14,7 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "FileSystemTestBase.h"
+#include "RemoteMount.h"
 
 #include <type_traits>
 

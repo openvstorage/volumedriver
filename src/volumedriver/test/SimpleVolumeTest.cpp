@@ -84,8 +84,8 @@ public:
             p(yt::FileUtils::create_temp_file_in_temp_dir("spanhosts.mlx"));
         ALWAYS_CLEANUP_FILE(p);
 
-        sm.getSnapshotPersistor().saveToFile(p,
-                                             SyncAndRename::T);
+        sm.cloneSnapshotPersistor().saveToFile(p,
+                                               SyncAndRename::T);
         v->getBackendInterface()->clone()->write(p,
                                                  snapshotFilename(),
                                                  OverwriteObject::T);

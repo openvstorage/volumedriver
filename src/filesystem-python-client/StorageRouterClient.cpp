@@ -1433,6 +1433,8 @@ BOOST_PYTHON_MODULE(storagerouterclient)
         .value("T", vd::ApplyRelocationsToSlaves::T)
         ;
 
+    using MaybeUInt32T = boost::optional<uint32_t>;
+
     bpy::class_<vd::MDSMetaDataBackendConfig,
                 bpy::bases<vd::MetaDataBackendConfig>,
                 boost::shared_ptr<vd::MDSMetaDataBackendConfig>>
@@ -1440,13 +1442,16 @@ BOOST_PYTHON_MODULE(storagerouterclient)
          "MDS metadata backend configuration",
          bpy::init<const std::vector<vd::MDSNodeConfig>&,
                    vd::ApplyRelocationsToSlaves,
-                   unsigned>((bpy::args("mds_node_configs"),
-                              bpy::args("apply_relocations_to_slaves") = vd::ApplyRelocationsToSlaves::T,
-                              bpy::args("timeout_secs") = vd::MDSMetaDataBackendConfig::default_timeout_secs_),
-                             "Create an MDSMetaDataBackendConfig\n"
-                             "@param mds_node_configs: list of MDSNodeConfigs\n"
-                             "@param apply_relocations_to_slaves: ApplyRelocationsToSlaves boolean enum\n"
-                             "@param timeout_secs: unsigned, timeout for remote MDS calls in seconds"))
+                   unsigned,
+                   MaybeUInt32T>((bpy::args("mds_node_configs"),
+                                  bpy::args("apply_relocations_to_slaves") = vd::ApplyRelocationsToSlaves::T,
+                                  bpy::args("timeout_secs") = vd::MDSMetaDataBackendConfig::default_timeout_secs_,
+                                  bpy::args("max_tlogs_behind") = MaybeUInt32T()),
+                                 "Create an MDSMetaDataBackendConfig\n"
+                                 "@param mds_node_configs: list of MDSNodeConfigs\n"
+                                 "@param apply_relocations_to_slaves: ApplyRelocationsToSlaves boolean enum\n"
+                                 "@param timeout_secs: unsigned, timeout for remote MDS calls in seconds\n"
+                                 "@param max_tlogs_behind: optional uint32, max number of TLogs a slave might be behind\n"))
         .def("node_configs",
              &vd::MDSMetaDataBackendConfig::node_configs,
              bpy::return_value_policy<bpy::copy_const_reference>())
@@ -1454,6 +1459,8 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              &vd::MDSMetaDataBackendConfig::apply_relocations_to_slaves)
         .def("timeout_secs",
              &mds_mdb_config_timeout_secs)
+        .def("max_tlogs_behind",
+             &vd::MDSMetaDataBackendConfig::max_tlogs_behind)
         ;
 
     REGISTER_ITERABLE_CONVERTER(std::vector<std::string>);

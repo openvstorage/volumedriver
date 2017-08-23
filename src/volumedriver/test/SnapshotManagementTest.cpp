@@ -131,7 +131,7 @@ TEST_P(SnapshotManagementTest, getTLogsBetweenSnapshots)
     vol_->deleteSnapshot(third);
 
     OrderedTLogIds out;
-    const SnapshotPersistor& pers = getSnapshotManagement(*vol_)->getSnapshotPersistor();
+    const SnapshotPersistor pers = getSnapshotManagement(*vol_)->cloneSnapshotPersistor();
     ASSERT_THROW(pers.getTLogsBetweenSnapshots(thirdn,
                                                fourthn,
                                                out,
@@ -263,18 +263,18 @@ TEST_P(SnapshotManagementTest, backendSizeBetweenSnapshots)
     }
 
     SnapshotManagement* c = getSnapshotManagement(*vol_);
-
+    const SnapshotPersistor sp(c->cloneSnapshotPersistor());
     ASSERT_EQ(10U *4096U,
-              c->getSnapshotPersistor().getBackendSize(SnapshotName("9"),
-                                                       boost::none));
+              sp.getBackendSize(SnapshotName("9"),
+                                boost::none));
 
     for(size_t j = 0; j < 9; j++)
     {
         for (size_t i = 0; i < j; ++i)
         {
             ASSERT_EQ((j-i) * 4096U,
-                      c->getSnapshotPersistor().getBackendSize(boost::lexical_cast<SnapshotName>(j),
-                                                               boost::lexical_cast<SnapshotName>(i)));
+                      sp.getBackendSize(boost::lexical_cast<SnapshotName>(j),
+                                        boost::lexical_cast<SnapshotName>(i)));
         }
     }
 }
@@ -355,9 +355,10 @@ TEST_P(SnapshotManagementTest, test2)
 
     ASSERT_TRUE(tlognames.size() > 0);
 
+    const SnapshotPersistor sp(c->cloneSnapshotPersistor());
     for (const std::string& tlogname : tlognames)
     {
-        EXPECT_TRUE(c->getSnapshotPersistor().isTLogWrittenToBackend(boost::lexical_cast<TLogId>(tlogname)));
+        EXPECT_TRUE(sp.isTLogWrittenToBackend(boost::lexical_cast<TLogId>(tlogname)));
     }
 
     OrderedTLogIds writtentobackend;

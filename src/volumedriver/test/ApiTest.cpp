@@ -24,12 +24,16 @@
 #include "../SnapshotPersistor.h"
 #include "../VolumeConfigParameters.h"
 
+#include <future>
+
 #include <fstream>
 
 #include <youtils/Assert.h>
 
 namespace volumedriver
 {
+
+namespace be = backend;
 
 #define LOCK_MGMT()                                             \
     fungi::ScopedLock __l(api::getManagementMutex())
@@ -1066,6 +1070,57 @@ TEST_P(ApiTest, snapshot_restoration)
     }
 
     checkVolume(*SharedVolumePtr(vol), before);
+}
+
+// A reliable test that volumes are indeed created concurrently and not sequentially
+// is tricky, so this test is only concerned with the creation of multiple volumes
+// being correct.
+TEST_P(ApiTest, concurrent_volume_creation)
+{
+    const size_t count = 3;
+
+    using WrnsPtr = std::unique_ptr<be::BackendTestSetup::WithRandomNamespace>;
+    std::vector<WrnsPtr> nspaces;
+    nspaces.reserve(count);
+
+    std::vector<std::future<void>> futures;
+    futures.reserve(count);
+
+    for (size_t i = 0; i < count; ++i)
+    {
+        nspaces.push_back(make_random_namespace());
+        futures.push_back(std::async(std::launch::async,
+                                     [i,
+                                      &nspaces,
+                                      this]
+                                     {
+                                         const be::Namespace& ns(nspaces[i]->ns());
+                                         const VolumeId id(ns.str());
+                                         const VolumeSize vsize(1ULL << 20);
+
+                                         const VanillaVolumeConfigParameters
+                                             params(id,
+                                                    ns,
+                                                    vsize,
+                                                    new_owner_tag());
+
+                                         LOCK_MGMT();
+                                         api::createNewVolume(params);
+                                     }));
+    }
+
+    for (auto& f : futures)
+    {
+        EXPECT_NO_THROW(f.get());
+    }
+
+    for (auto& wrns : nspaces)
+    {
+        const VolumeId id(wrns->ns().str());
+
+        LOCK_MGMT();
+        EXPECT_NO_THROW(SharedVolumePtr(api::getVolumePointer(id)));
+    }
 }
 
 INSTANTIATE_TEST(ApiTest);

@@ -1102,6 +1102,11 @@ TEST_P(MDSVolumeTest, master_gone_and_no_slaves)
                                                        stop),
                                                 std::exception);
                                    EXPECT_TRUE(v->is_halted());
+                                   EXPECT_NO_THROW(v->get_config());
+
+                                   MetaDataStoreStats stats;
+                                   EXPECT_THROW(v->getMetaDataStore()->getStats(stats),
+                                                std::exception);
                                }));
 
         const uint64_t msecs = rand(500ULL, 5000ULL);
@@ -1902,6 +1907,59 @@ TEST_P(MDSVolumeTest, slave_has_nsidmap_after_restart)
 
     apply_scrub_reply(*v,
                       scrub_reply);
+}
+
+TEST_P(MDSVolumeTest, config_update_with_slave_too_far_behind)
+{
+    const auto wrns(make_random_namespace());
+    SharedVolumePtr v = make_volume(*wrns);
+
+    const auto ncfgs(node_configs());
+
+    ASSERT_EQ(2,
+              ncfgs.size());
+
+    check_config(*v,
+                 ncfgs,
+                 false);
+
+    catch_up(ncfgs[1],
+             wrns->ns().str(),
+             DryRun::F);
+
+    scheduleBackendSync(*v);
+    waitForThisBackendWrite(*v);
+
+    scheduleBackendSync(*v);
+    waitForThisBackendWrite(*v);
+
+    EXPECT_EQ(2,
+              catch_up(ncfgs[1],
+                       wrns->ns().str(),
+                       DryRun::T));
+
+    std::vector<MDSNodeConfig> ncfgs2(ncfgs);
+    std::rotate(ncfgs2.begin(),
+                ncfgs2.begin() + 1,
+                ncfgs2.end());
+
+    EXPECT_THROW(v->updateMetaDataBackendConfig(MDSMetaDataBackendConfig(ncfgs2,
+                                                                         ApplyRelocationsToSlaves::T,
+                                                                         13,
+                                                                         1)),
+                 UpdateMetaDataBackendConfigException);
+
+    check_config(*v,
+                 ncfgs,
+                 false);
+
+    v->updateMetaDataBackendConfig(MDSMetaDataBackendConfig(ncfgs2,
+                                                            ApplyRelocationsToSlaves::T,
+                                                            13,
+                                                            2));
+    check_config(*v,
+                 ncfgs2,
+                 false);
 }
 
 namespace

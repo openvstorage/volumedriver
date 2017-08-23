@@ -468,6 +468,9 @@ public:
     size_t
     effective_metadata_cache_capacity(const VolumeConfig&) const;
 
+    boost::optional<uint32_t>
+    mds_slave_max_tlogs_behind() const;
+
     boost::optional<boost::chrono::milliseconds>
     dtl_connect_timeout() const
     {
@@ -580,6 +583,9 @@ public:
     DECLARE_PARAMETER(non_disposable_scos_factor);
     DECLARE_PARAMETER(default_cluster_size);
     DECLARE_PARAMETER(metadata_cache_capacity);
+private:
+    DECLARE_PARAMETER(metadata_mds_slave_max_tlogs_behind);
+public:
     DECLARE_PARAMETER(debug_metadata_path);
     DECLARE_PARAMETER(arakoon_metadata_sequence_size);
     DECLARE_PARAMETER(allow_inconsistent_partial_reads);

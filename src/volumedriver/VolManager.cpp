@@ -154,6 +154,7 @@ try
           , non_disposable_scos_factor(pt)
           , default_cluster_size(pt)
           , metadata_cache_capacity(pt)
+          , metadata_mds_slave_max_tlogs_behind(pt)
           , debug_metadata_path(pt)
           , arakoon_metadata_sequence_size(pt)
           , allow_inconsistent_partial_reads(pt)
@@ -1050,12 +1051,17 @@ VolManager::createNewVolume(const VanillaVolumeConfigParameters& params,
     const VolumeConfig cfg(params);
     ensureResourceLimits(cfg);
 
-    SharedVolumePtr vol = VolumeFactory::createNewVolume(cfg);
-    ASSERT(vol);
+    auto fun([this](const Namespace&,
+                    const VolumeConfig& cfg) -> SharedVolumePtr
+             {
+                 SharedVolumePtr vol(VolumeFactory::createNewVolume(cfg));
+                 ASSERT(vol);
+                 return vol;
+             });
 
-    volMap_[vol->getName()] = vol;
-
-    return vol;
+    return with_restart_map_and_unlocked_mgmt_vol_(fun,
+                                                   params.get_nspace(),
+                                                   cfg);
 }
 
 void
@@ -1789,6 +1795,7 @@ VolManager::update(const boost::property_tree::ptree& pt,
     non_disposable_scos_factor.update(pt, report);
     default_cluster_size.update(pt, report);
     metadata_cache_capacity.update(pt, report);
+    metadata_mds_slave_max_tlogs_behind.update(pt, report);
     debug_metadata_path.update(pt, report);
     arakoon_metadata_sequence_size.update(pt, report);
     allow_inconsistent_partial_reads.update(pt, report);
@@ -1823,6 +1830,7 @@ VolManager::persist(boost::property_tree::ptree& pt,
     non_disposable_scos_factor.persist(pt, reportDefault);
     default_cluster_size.persist(pt, reportDefault);
     metadata_cache_capacity.persist(pt, reportDefault);
+    metadata_mds_slave_max_tlogs_behind.persist(pt, reportDefault);
     debug_metadata_path.persist(pt, reportDefault);
     arakoon_metadata_sequence_size.persist(pt, reportDefault);
     allow_inconsistent_partial_reads.persist(pt, reportDefault);
@@ -1859,6 +1867,20 @@ SCOWrittenToBackendAction
 VolManager::get_sco_written_to_backend_action() const
 {
     return sco_written_to_backend_action.value();
+}
+
+boost::optional<uint32_t>
+VolManager::mds_slave_max_tlogs_behind() const
+{
+    size_t v = metadata_mds_slave_max_tlogs_behind.value();
+    if (v == std::numeric_limits<uint32_t>::max())
+    {
+        return boost::none;
+    }
+    else
+    {
+        return v;
+    }
 }
 
 }

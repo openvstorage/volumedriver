@@ -92,19 +92,19 @@ NetworkHAContext::NetworkHAContext(const std::string& uri,
     (void) xio_mempool_add_slab(mpool.get(),
                                 4096,
                                 0,
-                                qd_,
+                                2048,
                                 32,
                                 0);
     (void) xio_mempool_add_slab(mpool.get(),
                                 32768,
                                 0,
-                                32,
+                                2048,
                                 32,
                                 0);
     (void) xio_mempool_add_slab(mpool.get(),
                                 131072,
                                 0,
-                                8,
+                                1024,
                                 32,
                                 0);
 
@@ -708,12 +708,9 @@ NetworkHAContext::allocate(size_t size)
     int r = xio_mempool_alloc(mpool.get(), size, &buf->mem);
     if (r < 0)
     {
-        void *ptr;
-        /* try to be in the safe side with 4k alignment */
-        int ret = posix_memalign(&ptr, 4096, size);
-        if (ret != 0)
+        void *ptr = malloc(size);
+        if (ptr == nullptr)
         {
-            errno = ret;
             delete buf;
             return NULL;
         }

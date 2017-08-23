@@ -65,6 +65,8 @@ using namespace volumedriverfs;
 namespace
 {
 
+using Clock = bc::steady_clock;
+
 VD_BOOLEAN_ENUM(EnableHa);
 
 struct CtxAttrDeleter
@@ -193,26 +195,35 @@ public:
                                        enable_ha,
                                        port));
 
-        CtxPtr ctx(ovs_ctx_new(attrs.get()));
-        EXPECT_TRUE(ctx != nullptr);
-
-        const size_t max = port == FileSystemTestSetup::local_edge_port() ? 0 : 10;
-        size_t count = 0;
+        const Clock::time_point deadline(Clock::now() +
+                                         bc::seconds(port == FileSystemTestSetup::local_edge_port() ? 0 : 5));
+        CtxPtr ctx;
 
         // TODO: there's a race with the startup of the network server on
         // the remote instance and a proper fix is out of scope for the moment
-        while (ovs_create_volume(ctx.get(),
-                                 vname.c_str(),
-                                 vsize) == -1)
+        while (true)
         {
-            // What we *actually* want here is ASSERT_GT but that doesn't work here.
-            // Hence throw an exception to end the misery quickly.
-            EXPECT_GT(max, ++count) <<
-                "failed to create volume after " << count <<
-                " attempts: " << strerror(errno);
-            if (max <= count)
+            if (ctx == nullptr)
             {
-                throw std::runtime_error("volume creation retries exceeded, aborting test");
+                ctx.reset(ovs_ctx_new(attrs.get()));
+            }
+
+            const int ret = ctx == nullptr ?
+                -273 :
+                ovs_create_volume(ctx.get(),
+                                  vname.c_str(),
+                                  vsize);
+            if (ret == 0)
+            {
+                break;
+            }
+
+            if (Clock::now() > deadline)
+            {
+                // What we *actually* want here is ASSERT_* but that doesn't work here.
+                // Hence throw an exception to end the misery quickly.
+                EXPECT_EQ(0, ret) << "failed to create volume: " << strerror(errno);
+                throw std::runtime_error("volume creation timed out, aborting test");
             }
 
             boost::this_thread::sleep_for(bc::milliseconds(250));
@@ -558,11 +569,7 @@ public:
     {
         set_use_fencing(true);
 
-        mount_remote();
-        auto on_exit(yt::make_scope_exit([&]
-                                         {
-                                             umount_remote();
-                                         }));
+        RemoteMount mnt(make_remote_mount());
 
         const std::string vname("volume");
         const size_t vsize = 1ULL << 20;
@@ -602,7 +609,7 @@ public:
         ASSERT_EQ(0,
                   ovs_flush(ctx.get()));
 
-        umount_remote();
+        mnt.umount();
 
         std::vector<char> rbuf(pattern.size());
         const ssize_t ret = ovs_read(ctx.get(),
@@ -638,11 +645,7 @@ public:
         const uint64_t volume_size = 1 << 20;
 
         {
-            mount_remote();
-            auto on_exit(yt::make_scope_exit([&]
-                                             {
-                                                 umount_remote();
-                                             }));
+            RemoteMount mnt(make_remote_mount());
 
             const std::string vname("volume");
 
@@ -1485,13 +1488,7 @@ TEST_F(NetworkServerTest, create_rollback_list_remove_snapshot_local)
 
 TEST_F(NetworkServerTest, create_rollback_list_remove_snapshot_remote)
 {
-    mount_remote();
-
-    auto on_exit(yt::make_scope_exit([&]
-                                     {
-                                         umount_remote();
-                                     }));
-
+    RemoteMount mnt(make_remote_mount());
     test_snapshot_ops(true);
 }
 
@@ -1796,12 +1793,7 @@ TEST_F(NetworkServerTest, get_volume_uri_errors)
     const std::string vname("volume");
 
     {
-        mount_remote();
-        auto on_exit(yt::make_scope_exit([&]
-                                         {
-                                             umount_remote();
-                                         }));
-
+        RemoteMount mnt(make_remote_mount());
         const size_t vsize = 1ULL << 20;
 
         ctx = make_volume(vname,
@@ -1833,7 +1825,6 @@ TEST_F(NetworkServerTest, get_volume_uri_stress)
     const size_t duration_secs = yt::System::get_env_with_default("EDGE_STRESS_DURATION_SECS",
                                                                   10ULL);
 
-    using Clock = bc::steady_clock;
     const Clock::time_point deadline = Clock::now() + bc::seconds(duration_secs);
 
     const std::string exp_uri(boost::lexical_cast<std::string>(network_server_uri(local_node_id())));
@@ -1875,11 +1866,7 @@ TEST_F(NetworkServerTest, get_volume_uri_stress)
 
 TEST_F(NetworkServerTest, redirect_uri)
 {
-    mount_remote();
-    auto on_exit(yt::make_scope_exit([&]
-                                     {
-                                         umount_remote();
-                                     }));
+    RemoteMount mnt(make_remote_mount());
 
     const std::string vname("some-volume");
     const size_t vsize = 1ULL << 20;
@@ -1914,7 +1901,7 @@ TEST_F(NetworkServerTest, redirect_uri)
 TEST_F(NetworkServerTest, ha_stress)
 {
     set_use_fencing(true);
-    mount_remote();
+    RemoteMount mnt(make_remote_mount());
 
     const int hard_kill = yt::System::get_env_with_default("EDGE_HA_STRESS_KILL_REMOTE",
                                                            1);
@@ -1936,7 +1923,7 @@ TEST_F(NetworkServerTest, ha_stress)
                         ::kill(remote_pid_, SIGKILL);
                     }
 
-                    umount_remote(hard_kill);
+                    mnt.umount(hard_kill);
                 });
 }
 
@@ -2315,7 +2302,7 @@ TEST_F(NetworkServerTest, DISABLED_remote_going_away_during_ctrl_request)
     const int hard_kill = yt::System::get_env_with_default("EDGE_HA_STRESS_KILL_REMOTE",
                                                            1);
 
-    mount_remote();
+    RemoteMount mnt(make_remote_mount());
 
     std::atomic<bool> stop(false);
     CtxAttrPtr attrs(make_ctx_attr(1024,
@@ -2345,7 +2332,7 @@ TEST_F(NetworkServerTest, DISABLED_remote_going_away_during_ctrl_request)
         ::kill(remote_pid_, SIGKILL);
     }
 
-    umount_remote(hard_kill);
+    mnt.umount(hard_kill);
     stop = true;
 
     f.wait();
@@ -2397,12 +2384,7 @@ TEST_F(NetworkServerTest, write_beyond_volume_boundaries)
 
 TEST_F(NetworkServerTest, remote_write_beyond_volume_boundaries)
 {
-    mount_remote();
-
-    auto on_exit(yt::make_scope_exit([&]
-                                     {
-                                        umount_remote();
-                                     }));
+    RemoteMount mnt(make_remote_mount());
 
     const std::string vname("volume");
     off_t offset = 2147483648;
@@ -2477,12 +2459,7 @@ TEST_F(NetworkServerTest, fail_shrink_volume)
 
 TEST_F(NetworkServerTest, remote_fail_shrink_volume)
 {
-    mount_remote();
-
-    auto on_exit(yt::make_scope_exit([&]
-                                     {
-                                        umount_remote();
-                                     }));
+    RemoteMount mnt(make_remote_mount());
 
     const std::string vname("volume");
     uint64_t volume_size = 1ULL << 30;
@@ -2556,12 +2533,7 @@ TEST_F(NetworkServerTest, fail_grow_volume_beyond_limit)
 
 TEST_F(NetworkServerTest, remote_fail_grow_volume_beyond_limit)
 {
-    mount_remote();
-
-    auto on_exit(yt::make_scope_exit([&]
-                                     {
-                                        umount_remote();
-                                     }));
+    RemoteMount mnt(make_remote_mount());
 
     const std::string vname("volume");
     uint64_t volume_size = 1ULL << 20;
@@ -2594,7 +2566,7 @@ TEST_F(NetworkServerTest, remote_fail_grow_volume_beyond_limit)
 
 TEST_F(NetworkServerTest, unmount_while_doing_io)
 {
-    mount_remote();
+    RemoteMount mnt(make_remote_mount());
 
     const std::string vname("volume");
     uint64_t volume_size = 1ULL << 20;
@@ -2635,7 +2607,7 @@ TEST_F(NetworkServerTest, unmount_while_doing_io)
     const bc::seconds duration(5);
     boost::this_thread::sleep_for(duration);
 
-    umount_remote();
+    mnt.umount();
 
     io_thread.join();
 }
@@ -2645,7 +2617,7 @@ TEST_F(NetworkServerTest, unmount_while_having_many_open_connections)
     const size_t nconns = yt::System::get_env_with_default("EDGE_NCONS",
                                                            12ULL);
 
-    mount_remote();
+    RemoteMount mnt(make_remote_mount());
 
     const std::string vname("volume");
     uint64_t volume_size = 1ULL << 20;
@@ -2667,7 +2639,7 @@ TEST_F(NetworkServerTest, unmount_while_having_many_open_connections)
 
     const bc::seconds duration(1);
     boost::this_thread::sleep_for(duration);
-    umount_remote();
+    mnt.umount();
     boost::this_thread::sleep_for(duration);
 }
 

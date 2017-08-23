@@ -224,7 +224,7 @@ WriteSnapshot::run(int /*threadID*/)
 {
     try
     {
-        const fs::path tmpfile = volume_->saveSnapshotToTempFile();
+        const fs::path tmpfile = volume_->getSnapshotManagement().saveSnapshotToTempFile();
         CheckSum chk = FileUtils::calculate_checksum(tmpfile);
         ALWAYS_CLEANUP_FILE(tmpfile);
 

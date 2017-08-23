@@ -391,11 +391,7 @@ TEST_F(PythonClientTest, list_volumes_by_path)
 
 TEST_F(PythonClientTest, list_volumes_by_node)
 {
-    mount_remote();
-    auto on_exit(yt::make_scope_exit([&]
-                                     {
-                                         umount_remote();
-                                     }));
+    RemoteMount mnt(make_remote_mount());
 
     const uint64_t vsize = 1ULL << 20;
     const FrontendPath fname(make_volume_name("/some-volume"));
@@ -584,12 +580,7 @@ struct PerfCounterExpectBucketsNotEmpty
 
 TEST_F(PythonClientTest, performance_counters)
 {
-    mount_remote();
-
-    auto on_exit(yt::make_scope_exit([&]
-                                     {
-                                         umount_remote();
-                                     }));
+    RemoteMount mnt(make_remote_mount());
 
     const FrontendPath vpath(make_volume_name("/testing_info"));
     const std::string vname(create_file(vpath, 10 << 20));
@@ -664,12 +655,7 @@ TEST_F(PythonClientTest, performance_counters)
 
 TEST_F(PythonClientTest, redirect)
 {
-    mount_remote();
-
-    auto on_exit(yt::make_scope_exit([&]
-                                     {
-                                         umount_remote();
-                                     }));
+    RemoteMount mnt(make_remote_mount());
 
     const uint64_t vsize = 1ULL << 20;
     const FrontendPath fname(make_volume_name("/some-volume"));
@@ -1382,12 +1368,7 @@ TEST_F(PythonClientTest, no_clone_from_template_with_snapshot)
 
 TEST_F(PythonClientTest, remote_clone)
 {
-    mount_remote();
-
-    auto on_exit(yt::make_scope_exit([&]
-                                     {
-                                         umount_remote();
-                                     }));
+    RemoteMount mnt(make_remote_mount());
 
     const FrontendPath tpath(make_volume_name("/template"));
     const ObjectId tname(create_file(tpath));
@@ -1506,6 +1487,40 @@ TEST_F(PythonClientTest, mds_management)
                                            mcfg2);
 
     check(ncfgs2);
+}
+
+// cf. https://github.com/openvstorage/volumedriver/issues/335
+TEST_F(PythonClientTest, mds_kaputt)
+{
+    const mds::ServerConfig scfg(mds_test_setup_->next_server_config());
+    mds_manager_->start_one(scfg);
+
+    const FrontendPath vpath("/volume");
+    const yt::DimensionedValue size("1GiB");
+
+    const vd::MDSNodeConfigs ncfgs{ scfg.node_config };
+    boost::shared_ptr<vd::MDSMetaDataBackendConfig>
+        mcfg(new vd::MDSMetaDataBackendConfig(ncfgs,
+                                              vd::ApplyRelocationsToSlaves::T));
+
+    const ObjectId vname(client_.create_volume(vpath.str(),
+                                               mcfg,
+                                               size));
+
+    mds_manager_->stop_one(scfg.node_config);
+
+    std::vector<char> buf(512);
+    EXPECT_GT(0,
+              read_from_file(vname,
+                             buf.data(),
+                             buf.size(),
+                             0));
+
+    const XMLRPCVolumeInfo info(client_.info_volume(vname.str(),
+                                                    boost::none,
+                                                    false));
+
+    EXPECT_TRUE(info.halted);
 }
 
 TEST_F(PythonClientTest, sync_ignore)
@@ -2128,12 +2143,7 @@ TEST_F(PythonClientTest, metadata_cache_capacity)
 
 TEST_F(PythonClientTest, restart_volume)
 {
-    mount_remote();
-
-    auto on_exit(yt::make_scope_exit([&]
-                                     {
-                                         umount_remote();
-                                     }));
+    RemoteMount mnt(make_remote_mount());
 
     const FrontendPath vname(make_volume_name("/volume"));
     const ObjectId oid(create_file(vname,
@@ -2184,11 +2194,7 @@ TEST_F(PythonClientTest, restart_volume)
 TEST_F(PythonClientTest, list_snapshots_while_migrating)
 {
     start_failovercache_for_remote_node();
-    mount_remote();
-    auto on_exit(yt::make_scope_exit([&]
-                                     {
-                                         umount_remote();
-                                     }));
+    RemoteMount mnt(make_remote_mount());
 
     const uint64_t vsize = 1ULL << 20;
     const FrontendPath vname(make_volume_name("/some-volume"));
@@ -2279,11 +2285,7 @@ TEST_F(PythonClientTest, sco_cache_mount_point_info)
 
 TEST_F(PythonClientTest, fenced_volume_info)
 {
-    mount_remote();
-    auto on_exit(yt::make_scope_exit([&]
-                                     {
-                                         umount_remote();
-                                     }));
+    RemoteMount mnt(make_remote_mount());
 
     const FrontendPath path(make_volume_name("/volume"));
     const ObjectId oid(create_file(path));
@@ -2312,11 +2314,7 @@ TEST_F(PythonClientTest, fenced_volume_info)
 
 TEST_F(PythonClientTest, redirection_on_fencing)
 {
-    mount_remote();
-    auto on_exit(yt::make_scope_exit([&]
-                                     {
-                                         umount_remote();
-                                     }));
+    RemoteMount mnt(make_remote_mount());
 
     const FrontendPath path(make_volume_name("/volume"));
     const ObjectId oid(create_file(path));
@@ -2361,11 +2359,7 @@ TEST_F(PythonClientTest, halted_volume_exception)
 
 TEST_F(PythonClientTest, stop_fenced_instance)
 {
-    mount_remote();
-    auto on_exit(yt::make_scope_exit([&]
-                                     {
-                                         umount_remote();
-                                     }));
+    RemoteMount mnt(make_remote_mount());
 
     const FrontendPath path(make_volume_name("/volume"));
     const ObjectId oid(create_file(path));

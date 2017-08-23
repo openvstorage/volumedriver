@@ -84,6 +84,9 @@ static_assert(FLT_RADIX == 2, "Need to check code for non conforming FLT_RADIX")
 #define SERIALIZE_WRITES()                              \
     boost::lock_guard<lock_type> gwl__(write_lock_)
 
+#define LOCK_CONFIG_UPDATES()                                           \
+    std::lock_guard<decltype(config_update_lock_)> gcfguplck__(config_update_lock_)
+
 #define LOCK_CONFIG()                           \
     std::lock_guard<decltype(config_lock_)> gcfglck__(config_lock_)
 
@@ -343,17 +346,15 @@ Volume::metaDataBackendConfigHasChanged(const MetaDataBackendConfig& mcfg)
 void
 Volume::update_config_(const UpdateFun& fun)
 {
-    VolumeConfig cfg;
+    LOCK_CONFIG_UPDATES();
 
-    {
-        LOCK_CONFIG();
-        TODO("AR: revisit: might be too expensive for a spinlock?");
-        // ... OTOH: do we care?
-        fun(config_);
-        cfg = config_;
-    }
+    VolumeConfig cfg(config_);
+    fun(cfg);
 
     writeConfigToBackend_(cfg);
+
+    LOCK_CONFIG();
+    config_ = cfg;
 }
 
 // called from mgmt thread
@@ -1451,16 +1452,15 @@ Volume::restoreSnapshot(const SnapshotName& name)
         // 1) update metadata store
         {
             NSIDMap nsid;
-            const SnapshotPersistor& sp(snapshotManagement_->getSnapshotPersistor());
-            const yt::UUID cork(sp.getSnapshotCork(name));
+            const yt::UUID cork(snapshotManagement_->getSnapshotCork(name));
 
             BackendRestartAccumulator acc(nsid,
                                           boost::none,
                                           cork);
 
-            sp.vold(acc,
-                    nsidmap_.get(0)->clone(),
-                    name);
+            snapshotManagement_->vold(acc,
+                                      nsidmap_.get(0)->clone(),
+                                      name);
 
             metaDataStore_->clear_all_keys();
             metaDataStore_->processCloneTLogs(acc.clone_tlogs(),
@@ -2973,12 +2973,6 @@ Volume::getCurrentTLogPath_() const
     return snapshotManagement_->getTLogsPath();
 }
 
-const SnapshotManagement&
-Volume::getSnapshotManagement() const
-{
-    return *snapshotManagement_;
-}
-
 void
 Volume::halt()
 {
@@ -3020,10 +3014,18 @@ Volume::is_halted() const
     return halted_;
 }
 
-fs::path
-Volume::saveSnapshotToTempFile()
+SnapshotManagement&
+Volume::getSnapshotManagement()
 {
-    return snapshotManagement_->saveSnapshotToTempFile();
+    ASSERT(snapshotManagement_);
+    return *snapshotManagement_;
+}
+
+const SnapshotManagement&
+Volume::getSnapshotManagement() const
+{
+    ASSERT(snapshotManagement_);
+    return *snapshotManagement_;
 }
 
 void

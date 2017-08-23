@@ -276,11 +276,18 @@ public:
                                   getNS());
     }
 
+    uint64_t
+    retry_counter() const
+    {
+        return retry_counter_;
+    }
+
 private:
     DECLARE_LOGGER("BackendInterface");
 
     const Namespace nspace_;
     BackendConnectionManagerPtr conn_manager_;
+    uint64_t retry_counter_;
 
     // only the BackendConnectionManager is allowed to create it - everyone else needs to
     // use BackendInterfacePtrs obtained from the BackendConnectionManager.

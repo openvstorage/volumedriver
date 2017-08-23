@@ -275,8 +275,11 @@ public:
     SCOWrittenToBackendCallback(uint64_t file_size,
                                 boost::chrono::microseconds write_time) override final;
 
-    virtual fs::path
-    saveSnapshotToTempFile() override final;
+    virtual SnapshotManagement&
+    getSnapshotManagement() override final;
+
+    virtual const SnapshotManagement&
+    getSnapshotManagement() const override final;
 
     virtual void
     tlogWrittenToBackendCallback(const TLogId& tid,
@@ -350,9 +353,6 @@ public:
     void
     cloneFromParentSnapshot(const youtils::UUID& parent_snap_uuid,
                             const CloneTLogs& clone_tlogs);
-
-    const SnapshotManagement&
-    getSnapshotManagement() const;
 
     uint64_t
     getSnapshotBackendSize(const SnapshotName&);
@@ -532,6 +532,8 @@ private:
     // Modifications to it are typically done under the rwlock but some are done
     // while holding it in shared mode and read accesses happen outside the rwlock,
     // hence the need for another lock.
+    // Note that there is a mutex that serializes config updates to the backend.
+    // Order: config_update_lock_ > config_lock_
     mutable fungi::SpinLock config_lock_;
 
     void
@@ -560,6 +562,9 @@ private:
     // does not perform as well in the absence of writers).
     mutable fungi::RWLock rwlock_;
     mutable fungi::RWLock unaligned_lock_;
+
+    // serialize config updates to the backend.
+    mutable lock_type config_update_lock_;
 
     bool halted_;
 
