@@ -208,7 +208,7 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(metadata_mds_slave_max_tlogs_behind,
                                       "metadata_mds_slave_max_tlogs_behind",
                                       "max number of TLogs a slave is allowed to run behind to still permit a failover to it",
                                       ShowDocumentation::T,
-                                      std::numeric_limits<uint32_t>::max());
+                                      50);
 
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(debug_metadata_path,
                                       volmanager_component_name,
