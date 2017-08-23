@@ -456,8 +456,6 @@ try
 
         if (not tlogs_to_replay_now.empty())
         {
-            VERIFY(sp_cork != boost::none);
-
             CloneTLogs clone_tlogs_to_replay;
             clone_tlogs_to_replay.emplace_back(SCOCloneID(0),
                                                tlogs_to_replay_now);
