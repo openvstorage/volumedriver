@@ -956,7 +956,13 @@ VolumeInfo::execute_internal(::XmlRpc::XmlRpcValue& params,
         const vd::VolumeConfig& cfg = api::getVolumeConfig(vol_id);
         const boost::optional<vd::FailOverCacheConfig>&
             maybe_focconfig = api::getFailOverCacheConfig(vol_id);
-        vd::MetaDataStoreStats stats = api::getMetaDataStoreStats(vol_id);
+        vd::MetaDataStoreStats stats;
+
+        try
+        {
+            stats = api::getMetaDataStoreStats(vol_id);
+        }
+        CATCH_STD_ALL_LOG_IGNORE("Failed to retrieve metadata store stats");
 
         volume_info.volume_id = cfg.id_;
         volume_info._namespace_ = cfg.getNS().str();

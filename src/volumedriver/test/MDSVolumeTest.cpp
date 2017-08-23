@@ -1102,6 +1102,11 @@ TEST_P(MDSVolumeTest, master_gone_and_no_slaves)
                                                        stop),
                                                 std::exception);
                                    EXPECT_TRUE(v->is_halted());
+                                   EXPECT_NO_THROW(v->get_config());
+
+                                   MetaDataStoreStats stats;
+                                   EXPECT_THROW(v->getMetaDataStore()->getStats(stats),
+                                                std::exception);
                                }));
 
         const uint64_t msecs = rand(500ULL, 5000ULL);

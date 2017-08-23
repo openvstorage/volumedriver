@@ -1489,6 +1489,40 @@ TEST_F(PythonClientTest, mds_management)
     check(ncfgs2);
 }
 
+// cf. https://github.com/openvstorage/volumedriver/issues/335
+TEST_F(PythonClientTest, mds_kaputt)
+{
+    const mds::ServerConfig scfg(mds_test_setup_->next_server_config());
+    mds_manager_->start_one(scfg);
+
+    const FrontendPath vpath("/volume");
+    const yt::DimensionedValue size("1GiB");
+
+    const vd::MDSNodeConfigs ncfgs{ scfg.node_config };
+    boost::shared_ptr<vd::MDSMetaDataBackendConfig>
+        mcfg(new vd::MDSMetaDataBackendConfig(ncfgs,
+                                              vd::ApplyRelocationsToSlaves::T));
+
+    const ObjectId vname(client_.create_volume(vpath.str(),
+                                               mcfg,
+                                               size));
+
+    mds_manager_->stop_one(scfg.node_config);
+
+    std::vector<char> buf(512);
+    EXPECT_GT(0,
+              read_from_file(vname,
+                             buf.data(),
+                             buf.size(),
+                             0));
+
+    const XMLRPCVolumeInfo info(client_.info_volume(vname.str(),
+                                                    boost::none,
+                                                    false));
+
+    EXPECT_TRUE(info.halted);
+}
+
 TEST_F(PythonClientTest, sync_ignore)
 {
     const FrontendPath vpath(make_volume_name("/syncignore-test"));
