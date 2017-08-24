@@ -27,6 +27,8 @@
 
 #include <metadata-server/ClientNG.h>
 
+#include <backend/BackendException.h>
+
 namespace volumedriver
 {
 
@@ -273,28 +275,54 @@ MDSMetaDataStore::tlogs_behind_(const MDSNodeConfig& ncfg) const
     boost::optional<yt::UUID> md_cork(mdb.lastCorkUUID());
     MaybeScrubId md_scrub_id(mdb.scrub_id());
 
-    const SnapshotManagement& sm = getVolume()->getSnapshotManagement();
-    const ScrubId sm_scrub_id(sm.scrub_id());
-    if (not md_scrub_id or
-        *md_scrub_id != sm_scrub_id)
+    BackendInterfacePtr bi(bi_->clone());
+    std::unique_ptr<SnapshotPersistor> sp;
+
+    try
     {
-        LOG_INFO(bi_->getNS() << ": scrub ID mismatch, SnapshotManagement says " <<
-                 sm_scrub_id << ", slave has " << md_scrub_id);
+        sp = std::make_unique<SnapshotPersistor>(bi);
+    }
+    catch (be::BackendObjectDoesNotExistException&)
+    {
+        LOG_WARN(bi_->getNS() <<
+                 ": failed to instantiate SnapshotPersistor from the backend." <<
+                 " Assuming this is a newly created volume.");
+        return 0;
+    }
+
+    const ScrubId sp_scrub_id(sp->scrub_id());
+    if (not md_scrub_id or
+        *md_scrub_id != sp_scrub_id)
+    {
+        LOG_INFO(bi_->getNS() << ": scrub ID mismatch, SnapshotPersistor says " <<
+                 sp_scrub_id << ", slave has " << md_scrub_id);
         md_cork = boost::none;
     }
 
-    NSIDMap nsid_map;
-    BackendRestartAccumulator acc(nsid_map,
-                                  md_cork,
-                                  sm.lastCork());
-
-    sm.vold(acc,
-            bi_->clone());
-
     size_t count = 0;
-    for (const auto& p : acc.clone_tlogs())
+
+    if (md_cork and
+        md_cork == sp->lastCork())
     {
-        count += p.second.size();
+        // TODO: BackendRestartAccumulator VERIFYs that start_cork != end_cork -
+        // reason to be investigated. Irrespective of that, taking this shortcut
+        // here makes sense.
+        LOG_INFO(bi_->getNS() << ": " << ncfg << " is up to date");
+    }
+    else
+    {
+        NSIDMap nsid_map;
+        BackendRestartAccumulator acc(nsid_map,
+                                      md_cork,
+                                      sp->lastCork());
+
+        sp->vold(acc,
+                 std::move(bi));
+
+        for (const auto& p : acc.clone_tlogs())
+        {
+            count += p.second.size();
+        }
     }
 
     LOG_INFO(bi_->getNS() << ": " << ncfg << " is " << count << " tlogs behind");
