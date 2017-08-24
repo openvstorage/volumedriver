@@ -38,6 +38,7 @@ BackendRestartAccumulator::BackendRestartAccumulator(NSIDMap& nsid,
 
     VERIFY(nsid_.empty());
 
+    // TODO: Why is this here?
     VERIFY(not (start_cork != boost::none and
                 start_cork == end_cork));
 }
