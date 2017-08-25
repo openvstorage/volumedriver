@@ -24,6 +24,7 @@
 #include "Local_Source.h"
 #include "ManagedBackendSink.h"
 #include "ManagedBackendSource.h"
+#include "NamespacePoolSelector.h"
 #include "MultiConfig.h"
 #include "S3_Connection.h"
 
@@ -84,38 +85,11 @@ BackendConnectionManager::create(const boost::property_tree::ptree& pt,
                                                                             registrate);
 }
 
-const BackendConnectionManager::ConnectionPoolPtr&
-BackendConnectionManager::pool_(const Namespace& nspace)
+BackendConnectionManager::ConnectionPoolPtr
+BackendConnectionManager::pool(const Namespace& nspace) const
 {
-    ASSERT(not connection_pools_.empty());
-    const size_t h = std::hash<std::string>()(nspace.str());
-    const size_t idx = h % connection_pools_.size();
-    size_t i = idx;
-
-    while (true)
-    {
-        ASSERT(i < connection_pools_.size());
-        if (not connection_pools_[i]->blacklisted())
-        {
-            break;
-        }
-        else
-        {
-            ++i;
-            if (i == connection_pools_.size())
-            {
-                i = 0;
-            }
-
-            if (i == idx)
-            {
-                i = rand_(connection_pools_.size() - 1);
-                break;
-            }
-        }
-    }
-
-    return connection_pools_[i];
+    return NamespacePoolSelector(*this,
+                                 nspace).pool();
 }
 
 BackendConnectionInterfacePtr
@@ -123,13 +97,14 @@ BackendConnectionManager::getConnection(const ForceNewConnection force_new,
                                         const boost::optional<Namespace>& nspace)
 {
     ASSERT(not connection_pools_.empty());
+
     if (nspace)
     {
-        return pool_(*nspace)->get_connection(force_new);
+        return pool(*nspace)->get_connection(force_new);
     }
     else
     {
-        return connection_pools_[0]->get_connection(force_new);
+        return pools()[0]->get_connection(force_new);
     }
 }
 

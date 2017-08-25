@@ -28,7 +28,6 @@
 #include <youtils/ConfigurationReport.h>
 #include <youtils/EnableMakeShared.h>
 #include <youtils/IOException.h>
-#include <youtils/SourceOfUncertainty.h>
 #include <youtils/StrongTypedString.h>
 #include <youtils/VolumeDriverComponent.h>
 
@@ -119,6 +118,10 @@ public:
     size() const;
 
     using ConnectionPoolPtr = std::shared_ptr<ConnectionPool>;
+
+    ConnectionPoolPtr
+    pool(const Namespace&) const;
+
     using ConnectionPools = std::vector<ConnectionPoolPtr>;
 
     const ConnectionPools&
@@ -182,25 +185,15 @@ public:
         }
     }
 
-    ConnectionPoolPtr
-    pool(const Namespace& nspace)
-    {
-        return pool_(nspace);
-    }
-
 private:
     DECLARE_LOGGER("BackendConnectionManager");
 
     ConnectionManagerParameters params_;
     ConnectionPools connection_pools_;
     std::unique_ptr<BackendConfig> config_;
-    youtils::SourceOfUncertainty rand_;
 
     explicit BackendConnectionManager(const boost::property_tree::ptree&,
                                       const RegisterComponent = RegisterComponent::T);
-
-    const ConnectionPoolPtr&
-    pool_(const Namespace& nspace);
 
     friend class toolcut::BackendToolCut;
     friend class toolcut::BackendConnectionToolCut;
