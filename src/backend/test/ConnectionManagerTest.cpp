@@ -72,7 +72,7 @@ TEST_F(ConnectionManagerTest, limited_pool)
                [&]
                {
                    const size_t cap = cm_->capacity();
-                   const size_t pools = cm_->pools();
+                   const size_t pools = cm_->pools().size();
 
                    ASSERT_LT(0U, cap);
 
@@ -128,7 +128,7 @@ TEST_F(ConnectionManagerTest, limited_pool_on_errors)
                                     BackendInputException);
                    }
 
-                   ASSERT_EQ(cm_->capacity() * cm_->pools(),
+                   ASSERT_EQ(cm_->capacity() * cm_->pools().size(),
                              cm_->size());
                }).wait();
 }

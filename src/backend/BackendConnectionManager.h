@@ -118,8 +118,14 @@ public:
     size_t
     size() const;
 
-    size_t
-    pools() const;
+    using ConnectionPoolPtr = std::shared_ptr<ConnectionPool>;
+    using ConnectionPools = std::vector<ConnectionPoolPtr>;
+
+    const ConnectionPools&
+    pools() const
+    {
+        return connection_pools_;
+    }
 
     // VolumeDriverComponent Interface
     virtual void
@@ -176,7 +182,7 @@ public:
         }
     }
 
-    std::shared_ptr<ConnectionPool>
+    ConnectionPoolPtr
     pool(const Namespace& nspace)
     {
         return pool_(nspace);
@@ -186,18 +192,14 @@ private:
     DECLARE_LOGGER("BackendConnectionManager");
 
     ConnectionManagerParameters params_;
-    std::vector<std::shared_ptr<ConnectionPool>> connection_pools_;
+    ConnectionPools connection_pools_;
     std::unique_ptr<BackendConfig> config_;
     youtils::SourceOfUncertainty rand_;
-
-    using Clock = ConnectionPool::Clock;
-    fungi::SpinLock blacklist_log_lock_;
-    Clock::time_point blacklist_last_logged_;
 
     explicit BackendConnectionManager(const boost::property_tree::ptree&,
                                       const RegisterComponent = RegisterComponent::T);
 
-    const std::shared_ptr<ConnectionPool>&
+    const ConnectionPoolPtr&
     pool_(const Namespace& nspace);
 
     friend class toolcut::BackendToolCut;

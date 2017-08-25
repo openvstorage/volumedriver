@@ -49,9 +49,11 @@ BackendConnectionManager::BackendConnectionManager(const bpt::ptree& pt,
                             pt)
     , params_(pt)
     , config_(BackendConfig::makeBackendConfig(pt))
-    , blacklist_last_logged_(Clock::time_point::min())
 {
     THROW_UNLESS(config_);
+
+    const size_t pool_capacity = params_.backend_connection_pool_capacity.value();
+    const std::atomic<uint32_t>& blacklist_secs = params_.backend_connection_pool_blacklist_secs.value();
 
     if (config_->backend_type.value() == BackendType::MULTI)
     {
@@ -60,13 +62,15 @@ BackendConnectionManager::BackendConnectionManager(const bpt::ptree& pt,
         for (const auto& c : cfg.configs_)
         {
             connection_pools_.push_back(ConnectionPool::create(c->clone(),
-                                                               params_.backend_connection_pool_capacity.value()));
+                                                               pool_capacity,
+                                                               blacklist_secs));
         }
     }
     else
     {
         connection_pools_.push_back(ConnectionPool::create(config_->clone(),
-                                                           params_.backend_connection_pool_capacity.value()));
+                                                           pool_capacity,
+                                                           blacklist_secs));
     }
 
     THROW_WHEN(connection_pools_.empty());
@@ -80,20 +84,18 @@ BackendConnectionManager::create(const boost::property_tree::ptree& pt,
                                                                             registrate);
 }
 
-const std::shared_ptr<ConnectionPool>&
+const BackendConnectionManager::ConnectionPoolPtr&
 BackendConnectionManager::pool_(const Namespace& nspace)
 {
     ASSERT(not connection_pools_.empty());
     const size_t h = std::hash<std::string>()(nspace.str());
     const size_t idx = h % connection_pools_.size();
     size_t i = idx;
-    const bc::seconds timeout(params_.backend_connection_pool_blacklist_secs.value());
-    const auto now(Clock::now());
 
     while (true)
     {
         ASSERT(i < connection_pools_.size());
-        if (connection_pools_[i]->last_error() + timeout < now)
+        if (not connection_pools_[i]->blacklisted())
         {
             break;
         }
@@ -107,22 +109,6 @@ BackendConnectionManager::pool_(const Namespace& nspace)
 
             if (i == idx)
             {
-                // Limit logging noise.
-                bool log = false;
-                {
-                    boost::lock_guard<decltype(blacklist_log_lock_)> g(blacklist_log_lock_);
-                    if (blacklist_last_logged_ + timeout < now)
-                    {
-                        blacklist_last_logged_ = now;
-                        log = true;
-                    }
-                }
-
-                if (log)
-                {
-                    LOG_ERROR("all pools are blacklisted, picking a random one");
-                }
-
                 i = rand_(connection_pools_.size() - 1);
                 break;
             }
@@ -169,12 +155,6 @@ BackendConnectionManager::size() const
                            {
                                return n + p->size();
                            });
-}
-
-size_t
-BackendConnectionManager::pools() const
-{
-    return connection_pools_.size();
 }
 
 BackendInterfacePtr

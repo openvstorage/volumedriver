@@ -31,16 +31,20 @@
 namespace backend
 {
 
+namespace bc = boost::chrono;
+
 #define LOCK()                                                          \
     boost::lock_guard<decltype(lock_)> lg__(lock_)
 
 namespace yt = youtils;
 
 ConnectionPool::ConnectionPool(std::unique_ptr<BackendConfig> config,
-                               size_t capacity)
+                               size_t capacity,
+                               const std::atomic<uint32_t>& blacklist_secs)
     : config_(std::move(config))
     , capacity_(capacity)
-    , last_error_(Clock::time_point::min())
+    , blacklist_secs_(blacklist_secs)
+    , blacklisted_until_(Clock::time_point::min())
 {
     VERIFY(config_->backend_type.value() != BackendType::MULTI);
     LOG_INFO("Created pool for " << *config_ << ", capacity " << capacity);
@@ -53,10 +57,12 @@ ConnectionPool::~ConnectionPool()
 
 std::shared_ptr<ConnectionPool>
 ConnectionPool::create(std::unique_ptr<BackendConfig> config,
-                       size_t capacity)
+                       size_t capacity,
+                       const std::atomic<uint32_t>& blacklist_secs)
 {
     return std::make_shared<yt::EnableMakeShared<ConnectionPool>>(std::move(config),
-                                                                  capacity);
+                                                                  capacity,
+                                                                  blacklist_secs);
 }
 
 std::unique_ptr<BackendConnectionInterface>
@@ -223,19 +229,38 @@ operator<<(std::ostream& os,
         ",puts_to_pool=" << c.puts_to_pool;
 }
 
-ConnectionPool::Clock::time_point
-ConnectionPool::last_error() const
-{
-    LOCK();
-    return last_error_;
-}
-
 void
 ConnectionPool::error()
 {
+    const Clock::time_point now(Clock::now());
+    const Clock::duration duration(bc::seconds(blacklist_secs_.load()));
+    bool log = false;
+
+    {
+        LOCK();
+
+        log = now > blacklisted_until_;
+        blacklisted_until_ = now + duration;
+        clear_(connections_);
+    }
+
+    if (log)
+    {
+        LOG_WARN(*config_ << ": blacklisted for " << duration);
+    }
+}
+
+ConnectionPool::Clock::time_point
+ConnectionPool::blacklisted_until() const
+{
     LOCK();
-    last_error_ = Clock::now();
-    clear_(connections_);
+    return blacklisted_until_;
+}
+
+bool
+ConnectionPool::blacklisted() const
+{
+    return Clock::now() <= blacklisted_until();
 }
 
 }

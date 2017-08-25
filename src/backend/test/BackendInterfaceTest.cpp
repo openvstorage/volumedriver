@@ -290,7 +290,8 @@ TEST_F(BackendInterfaceTest, retry_on_connection_errors)
     std::shared_ptr<ConnectionPool> pool(cm->pool(nspace));
     const ConnectionPool::Clock::time_point t(ConnectionPool::Clock::now());
 
-    EXPECT_LT(pool->last_error(),
+    EXPECT_FALSE(pool->blacklisted());
+    EXPECT_LT(pool->blacklisted_until(),
               t);
 
     BackendInterfacePtr bi(cm->newBackendInterface(nspace));
@@ -304,7 +305,8 @@ TEST_F(BackendInterfaceTest, retry_on_connection_errors)
     EXPECT_THROW(bi->namespaceExists(params),
                  BackendConnectFailureException);
 
-    EXPECT_GT(pool->last_error(),
+    EXPECT_TRUE(pool->blacklisted());
+    EXPECT_GT(pool->blacklisted_until(),
               t);
     EXPECT_EQ(retries,
               bi->retry_counter());
