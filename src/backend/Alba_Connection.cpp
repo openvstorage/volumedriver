@@ -244,6 +244,11 @@ Connection::convert_exceptions_(const char* desc,
                 LOG_ERROR("assuming proxy connection failure");
                 throw BackendConnectFailureException();
             }
+        case bs::errc::operation_canceled:
+            {
+                LOG_ERROR("assuming proxy client timeout");
+                throw BackendConnectionTimeoutException();
+            }
         default:
             throw;
         }
