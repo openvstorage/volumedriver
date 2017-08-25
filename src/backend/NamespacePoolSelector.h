@@ -46,6 +46,9 @@ public:
     void
     connection_error();
 
+    void
+    backend_error();
+
 private:
     DECLARE_LOGGER("NamespacePoolSelector");
 
@@ -53,6 +56,7 @@ private:
     const Namespace& nspace_;
     const size_t idx_;
     size_t last_idx_;
+    bool start_from_last_;
 };
 
 }

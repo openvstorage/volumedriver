@@ -99,6 +99,15 @@ BackendInterface::do_wrap_(PoolSelector& selector,
         {
             throw; /* ... no need to retry. */
         }
+        catch (BackendConnectionTimeoutException& e)
+        {
+            LOG_ERROR(nspace_ << ": connection timeout");
+            if (attempt++ >= retries_on_error)
+            {
+                LOG_ERROR(nspace_ << ": giving up");
+                throw;
+            }
+        }
         catch (BackendConnectFailureException& e)
         {
             LOG_ERROR(nspace_ << ": connection failure");
@@ -110,21 +119,16 @@ BackendInterface::do_wrap_(PoolSelector& selector,
                 throw;
             }
         }
-        catch (std::exception& e)
-        {
-            LOG_ERROR(nspace_ << ": problem with connection: " << e.what());
+        CATCH_STD_ALL_EWHAT({
+                LOG_ERROR(nspace_ << ": problem with connection: " << EWHAT);
+                selector.backend_error();
 
-            if (attempt++ >= retries_on_error)
-            {
-                LOG_ERROR(nspace_ << ": giving up");
-                throw;
-            }
-        }
-        catch (...)
-        {
-            LOG_ERROR(nspace_ << ": unknown problem with connection, giving up");
-            throw;
-        }
+                if (attempt++ >= retries_on_error)
+                {
+                    LOG_ERROR(nspace_ << ": giving up");
+                    throw;
+                }
+            });
     }
 }
 
@@ -150,6 +154,10 @@ struct FixedPoolSelector
     {
         pool_->error();
     }
+
+    void
+    backend_error()
+    {}
 };
 
 }

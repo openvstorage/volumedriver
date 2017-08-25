@@ -47,6 +47,7 @@ NamespacePoolSelector::NamespacePoolSelector(const BackendConnectionManager& cm,
     , nspace_(ns)
     , idx_(std::hash<std::string>()(nspace_.str()) % cm_.pools().size())
     , last_idx_(idx_)
+    , start_from_last_(false)
 {}
 
 const std::shared_ptr<ConnectionPool>&
@@ -55,7 +56,8 @@ NamespacePoolSelector::pool()
     const BackendConnectionManager::ConnectionPools& pools = cm_.pools();
     ASSERT(not pools.empty());
 
-    size_t i = idx_;
+    const size_t idx = start_from_last_ ? last_idx_ : idx_;
+    size_t i = idx;
 
     while (true)
     {
@@ -72,7 +74,7 @@ NamespacePoolSelector::pool()
                 i = 0;
             }
 
-            if (i == idx_)
+            if (i == idx)
             {
                 // all pools are blacklisted
                 i = random_idx(pools.size() - 1);
@@ -90,6 +92,16 @@ NamespacePoolSelector::connection_error()
 {
     VERIFY(cm_.pools().size() > last_idx_);
     cm_.pools()[last_idx_]->error();
+}
+
+void
+NamespacePoolSelector::backend_error()
+{
+    if (cm_.connection_manager_parameters().backend_interface_switch_connection_pool_on_error.value())
+    {
+        start_from_last_ = true;
+        last_idx_ = (last_idx_ + 1) % cm_.pools().size();
+    }
 }
 
 }

@@ -35,6 +35,7 @@ struct ConnectionManagerParameters
         , backend_interface_retry_interval_secs(pt)
         , backend_interface_retry_backoff_multiplier(pt)
         , backend_interface_partial_read_nullio(pt)
+        , backend_interface_switch_connection_pool_on_error(pt)
     {}
 
     ~ConnectionManagerParameters() = default;
@@ -54,6 +55,7 @@ struct ConnectionManagerParameters
         backend_interface_retry_interval_secs.update(pt, rep);
         backend_interface_retry_backoff_multiplier.update(pt, rep);
         backend_interface_partial_read_nullio.update(pt, rep);
+        backend_interface_switch_connection_pool_on_error.update(pt, rep);
     }
 
     void
@@ -66,6 +68,7 @@ struct ConnectionManagerParameters
         backend_interface_retry_interval_secs.persist(pt, rep);
         backend_interface_retry_backoff_multiplier.persist(pt, rep);
         backend_interface_partial_read_nullio.persist(pt, rep);
+        backend_interface_switch_connection_pool_on_error.persist(pt, rep);
     }
 
     DECLARE_PARAMETER(backend_connection_pool_capacity);
@@ -74,6 +77,7 @@ struct ConnectionManagerParameters
     DECLARE_PARAMETER(backend_interface_retry_interval_secs);
     DECLARE_PARAMETER(backend_interface_retry_backoff_multiplier);
     DECLARE_PARAMETER(backend_interface_partial_read_nullio);
+    DECLARE_PARAMETER(backend_interface_switch_connection_pool_on_error);
 };
 
 }
