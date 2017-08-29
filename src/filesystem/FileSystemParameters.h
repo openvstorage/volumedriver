@@ -22,6 +22,7 @@
 #include "FileSystemCall.h"
 #include "NodeId.h"
 #include "FailOverCacheConfigMode.h"
+#include "NetworkXioSlabConfig.h"
 
 #include <atomic>
 #include <thread>
@@ -195,6 +196,9 @@ DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(network_workqueue_ctrl_max_threads,
 
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(network_max_neighbour_distance,
                                                   std::atomic<uint32_t>);
+
+DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(network_xio_slab_config,
+                                       volumedriverfs::NetworkXioSlabConfigs);
 
 // EventPublisher:
 extern const char events_component_name[];

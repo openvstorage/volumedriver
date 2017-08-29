@@ -274,6 +274,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(network_max_neighbour_distance,
                                       ShowDocumentation::T,
                                       std::numeric_limits<uint32_t>::max());
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(network_xio_slab_config,
+                                      network_interface_component_name,
+                                      "network_xio_slab_config",
+                                      "Accelio's mempool profile configuration, maximum number of slabs is XIO_MAX_SLABS_NR(=6)",
+                                      ShowDocumentation::T,
+                                      vfs::NetworkXioSlabConfig::DefaultSlabsConfig());
+
 // FileSystem:
 const char filesystem_component_name[] = "filesystem";
 
