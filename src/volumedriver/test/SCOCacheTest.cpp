@@ -354,6 +354,26 @@ protected:
                            report_default);
     }
 
+
+    void
+    check_used(const size_t exp)
+    {
+        SCOCacheMountPointsInfo info;
+        scoCache_->getMountPointsInfo(info);
+
+        EXPECT_LT(0,
+                  info.size());
+
+        size_t s = 0;
+        for (const auto& p : info)
+        {
+            s += p.second.used;
+        }
+
+        EXPECT_EQ(exp,
+                  s);
+    }
+
     MountPointConfigs mpcfgs_;
 
     uint64_t mpSize_;
@@ -1957,21 +1977,7 @@ TEST_F(SCOCacheTest, accounting_of_disabled_namespaces)
     const backend::Namespace ns1("nspace-1"s);
     addNamespace(ns1);
 
-    auto check_size([&](size_t exp)
-                    {
-                        size_t size = 0;
-
-                        SCOCacheMountPointsInfo info;
-                        scoCache_->getMountPointsInfo(info);
-                        for (const auto& i : info)
-                        {
-                            size += i.second.used;
-                        }
-
-                        EXPECT_EQ(exp, size);
-                    });
-
-    check_size(0);
+    check_used(0);
 
     const size_t ns1_sco_count = mpSizeSCO_ - 1;
 
@@ -1983,7 +1989,7 @@ TEST_F(SCOCacheTest, accounting_of_disabled_namespaces)
                           ns1.str() + boost::lexical_cast<std::string>(i));
     }
 
-    check_size(ns1_sco_count * scoSize_);
+    check_used(ns1_sco_count * scoSize_);
 
     bpt::ptree pt;
     persist_configuration(pt,
@@ -1992,7 +1998,7 @@ TEST_F(SCOCacheTest, accounting_of_disabled_namespaces)
     scoCache_.reset();
     scoCache_ = std::make_unique<SCOCache>(pt);
 
-    check_size(ns1_sco_count * scoSize_);
+    check_used(ns1_sco_count * scoSize_);
 
     const backend::Namespace ns2("nspace-2"s);
     addNamespace(ns2);
@@ -2002,14 +2008,14 @@ TEST_F(SCOCacheTest, accounting_of_disabled_namespaces)
                       scoSize_,
                       ns1.str() + "1"s);
 
-    check_size(mpSizeSCO_ * scoSize_);
+    check_used(mpSizeSCO_ * scoSize_);
 
     EXPECT_THROW(scoCache_->createSCO(ns2,
                                       SCO(2),
                                       scoSize_),
                  fungi::IOException);
 
-    check_size(mpSizeSCO_ * scoSize_);
+    check_used(mpSizeSCO_ * scoSize_);
 
     SCOAccessData emptySad(ns1);
 
@@ -2018,11 +2024,92 @@ TEST_F(SCOCacheTest, accounting_of_disabled_namespaces)
                                                std::numeric_limits<uint64_t>::max(),
                                                emptySad));
 
-    check_size(mpSizeSCO_ * scoSize_);
+    check_used(mpSizeSCO_ * scoSize_);
 
     EXPECT_NO_THROW(scoCache_->disableNamespace(ns1));
 
-    check_size(mpSizeSCO_ * scoSize_);
+    check_used(mpSizeSCO_ * scoSize_);
+}
+
+// cf. https://github.com/openvstorage/volumedriver/issues/318 :
+TEST_F(SCOCacheTest, remove_disabled_namespace_size_accounting)
+{
+    const backend::Namespace ns;
+    scoCache_->addNamespace(ns, 0, std::numeric_limits<uint64_t>::max());
+
+    const size_t scosize = 1 << 10;
+    const size_t count = 100;
+
+    check_used(0);
+
+    for (size_t i = 0; i < count; ++i)
+    {
+        const SCO sco(i + 1);
+        createAndWriteSCO(ns,
+                          sco,
+                          scosize,
+                          sco.str());
+    }
+
+    check_used(scosize * count);
+
+    bpt::ptree pt;
+    persist_configuration(pt,
+                          ReportDefault::T);
+    scoCache_ = nullptr;
+    scoCache_ = std::make_unique<SCOCache>(pt);
+
+    EXPECT_TRUE(scoCache_->hasDisabledNamespace(ns));
+    check_used(scosize * count);
+
+    scoCache_->removeDisabledNamespace(ns);
+
+    check_used(0);
+}
+
+TEST_F(SCOCacheTest, remove_enabled_namespace_size_accounting)
+{
+    const backend::Namespace ns;
+    scoCache_->addNamespace(ns,
+                            0,
+                            std::numeric_limits<uint64_t>::max());
+
+    const size_t scosize = 1 << 10;
+    const size_t count = 100;
+
+    check_used(0);
+
+    for (size_t i = 0; i < count; ++i)
+    {
+        const SCO sco(i + 1);
+        createAndWriteSCO(ns,
+                          sco,
+                          scosize,
+                          sco.str());
+    }
+
+    check_used(scosize * count);
+
+    bpt::ptree pt;
+    persist_configuration(pt,
+                          ReportDefault::T);
+    scoCache_ = nullptr;
+    scoCache_ = std::make_unique<SCOCache>(pt);
+
+    EXPECT_TRUE(scoCache_->hasDisabledNamespace(ns));
+    check_used(scosize * count);
+
+    const SCOAccessData sad(ns);
+
+    scoCache_->enableNamespace(ns,
+                               0,
+                               std::numeric_limits<uint64_t>::max(),
+                               sad);
+
+    check_used(scosize * count);
+
+    scoCache_->removeNamespace(ns);
+    check_used(0);
 }
 
 }
