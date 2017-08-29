@@ -107,6 +107,7 @@ libvolumedriverfs_la_SOURCES = \
 		NetworkXioIOHandler.cpp \
 		NetworkXioMempool.cpp \
 		NetworkXioMempoolSlab.cpp \
+		NetworkXioSlabConfig.cpp \
 		NetworkXioServer.cpp \
 		NetworkXioInterface.cpp \
 		Object.cpp \

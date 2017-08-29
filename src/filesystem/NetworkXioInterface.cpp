@@ -61,6 +61,7 @@ NetworkXioInterface::update(const bpt::ptree& pt,
     U(network_workqueue_max_threads);
     U(network_workqueue_ctrl_max_threads);
     U(network_max_neighbour_distance);
+    U(network_xio_slab_config);
 #undef U
 }
 
@@ -75,6 +76,7 @@ NetworkXioInterface::persist(bpt::ptree& pt,
     P(network_workqueue_max_threads);
     P(network_workqueue_ctrl_max_threads);
     P(network_max_neighbour_distance);
+    P(network_xio_slab_config);
 #undef P
 }
 

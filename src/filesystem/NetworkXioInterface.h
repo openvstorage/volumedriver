@@ -16,6 +16,7 @@
 #ifndef __NETWORK_XIO_INTERFACE_H_
 #define __NETWORK_XIO_INTERFACE_H_
 
+#include "NetworkXioSlabConfig.h"
 #include "NetworkXioServer.h"
 
 #include <boost/property_tree/ptree_fwd.hpp>
@@ -41,13 +42,15 @@ public:
     , network_workqueue_max_threads(pt)
     , network_workqueue_ctrl_max_threads(pt)
     , network_max_neighbour_distance(pt)
+    , network_xio_slab_config(pt)
     , fs_(fs)
     , xio_server_(fs_,
                   uri(),
                   snd_rcv_queue_depth(),
                   wq_max_threads(),
                   wq_ctrl_max_threads(),
-                  max_neighbour_distance())
+                  max_neighbour_distance(),
+                  xio_mpool_slab_config())
     {}
 
     ~NetworkXioInterface()
@@ -108,6 +111,11 @@ public:
         return network_max_neighbour_distance.value();
     }
 
+    const NetworkXioSlabConfigs&
+    xio_mpool_slab_config() const
+    {
+        return network_xio_slab_config.value();
+    }
 private:
     DECLARE_LOGGER("NetworkXioInterface");
 
@@ -116,6 +124,7 @@ private:
     DECLARE_PARAMETER(network_workqueue_max_threads);
     DECLARE_PARAMETER(network_workqueue_ctrl_max_threads);
     DECLARE_PARAMETER(network_max_neighbour_distance);
+    DECLARE_PARAMETER(network_xio_slab_config);
 
     FileSystem& fs_;
     NetworkXioServer xio_server_;

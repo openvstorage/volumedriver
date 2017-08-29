@@ -131,7 +131,8 @@ NetworkXioServer::NetworkXioServer(FileSystem& fs,
                                    size_t snd_rcv_queue_depth,
                                    unsigned int workqueue_max_threads,
                                    unsigned int workqueue_ctrl_max_threads,
-                                   const std::atomic<uint32_t>& max_neigh_dist)
+                                   const std::atomic<uint32_t>& max_neigh_dist,
+                                   const NetworkXioSlabConfigs& cfg)
     : fs_(fs)
     , uri_(uri)
     , stopping(false)
@@ -141,6 +142,7 @@ NetworkXioServer::NetworkXioServer(FileSystem& fs,
     , wq_max_threads(workqueue_max_threads)
     , wq_ctrl_max_threads(workqueue_ctrl_max_threads)
     , max_neighbour_distance(max_neigh_dist)
+    , xio_mpool_cfg(cfg)
 {}
 
 NetworkXioServer::~NetworkXioServer()
@@ -225,17 +227,20 @@ NetworkXioServer::run(std::promise<void> promise)
                 XIO_OPTNAME_DISABLE_HUGETBL,
                 &xopt, sizeof(xopt));
 
-    xio_mempool_config mempool_config = {
-    6,
+    THROW_UNLESS(xio_mpool_cfg.size() != 0 and xio_mpool_cfg.size() <= 6);
+
+    xio_mempool_config mempool_config;
+    mempool_config.slabs_nr = xio_mpool_cfg.size();
+
+    int i = 0;
+    for(auto& slab: xio_mpool_cfg)
     {
-      {1024,  queue_depth,  16384,  524288},
-      {4096,  queue_depth,  16384,  524288},
-      {16384, queue_depth,  16384,  524288},
-      {65536, queue_depth,  128,  65536},
-      {262144, 0,  32,  16384},
-      {1048576, 0, 8,  8192}
+        mempool_config.slab_cfg[i].block_sz = slab.block_sz;
+        mempool_config.slab_cfg[i].init_blocks_nr = slab.init_blocks_nr;
+        mempool_config.slab_cfg[i].grow_blocks_nr = slab.grow_blocks_nr;
+        mempool_config.slab_cfg[i].max_blocks_nr = slab.max_blocks_nr;
+        i++;
     }
-    };
     xio_set_opt(NULL,
                 XIO_OPTLEVEL_ACCELIO, XIO_OPTNAME_CONFIG_MEMPOOL,
                 &mempool_config, sizeof(mempool_config));

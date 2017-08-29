@@ -104,7 +104,7 @@ struct slab_mem_block
     xio_reg_mem reg_mem;
 };
 
-} //namespace
+} //namespace volumedriverfs
 
 enum class NetworkXioMsgOpcode
 {
