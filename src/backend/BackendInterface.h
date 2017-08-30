@@ -302,11 +302,11 @@ private:
                                                            Args...),
           Args... args);
 
-    template<typename ConnFetcher,
+    template<typename PoolSelector,
              typename ReturnType,
              typename... Args>
     ReturnType
-    do_wrap_(ConnFetcher&,
+    do_wrap_(PoolSelector&,
              const BackendRequestParameters&,
              ReturnType(BackendConnectionInterface::*mem_fun)(Args...),
              Args... args);

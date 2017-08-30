@@ -17,6 +17,7 @@
 
 #include "../ConnectionPool.h"
 #include "../MultiConfig.h"
+#include "../NamespacePoolSelector.h"
 
 #include <set>
 
@@ -328,6 +329,45 @@ public:
         return res;
     }
 
+    void
+    test_namespace_pool_selector_backend_error(bool switch_pool)
+    {
+        const size_t path_count = 2;
+        bpt::ptree pt(make_local_config(path_count));
+        ip::PARAMETER_TYPE(backend_interface_switch_connection_pool_on_error)(switch_pool).persist(pt);
+
+        BackendConnectionManagerPtr cm(BackendConnectionManager::create(pt));
+        const Namespace nspace(yt::UUID().str());
+
+        NamespacePoolSelector selector(*cm,
+                                       nspace);
+
+        std::shared_ptr<ConnectionPool> orig_pool(selector.pool());
+
+        EXPECT_EQ(orig_pool,
+                  selector.pool());
+
+        selector.backend_error();
+
+        std::shared_ptr<ConnectionPool> fallback_pool(selector.pool());
+        if (switch_pool)
+        {
+            EXPECT_NE(orig_pool,
+                      fallback_pool);
+        }
+        else
+        {
+            EXPECT_EQ(orig_pool,
+                      fallback_pool);
+        }
+
+        EXPECT_EQ(fallback_pool,
+                  selector.pool());
+
+        EXPECT_FALSE(orig_pool->blacklisted());
+        EXPECT_FALSE(fallback_pool->blacklisted());
+    }
+
     using ConnectionPoolSet = std::set<std::shared_ptr<ConnectionPool>>;
 
     static ConnectionPoolSet
@@ -498,6 +538,71 @@ TEST_F(MultiBackendTest, failover)
 
     EXPECT_EQ(orig_pool,
               get_pool());
+}
+
+TEST_F(MultiBackendTest, namespace_pool_selector_happy_path)
+{
+    const size_t path_count = 2;
+    bpt::ptree pt(make_local_config(path_count));
+
+    const size_t blacklist_secs = 1;
+    ip::PARAMETER_TYPE(backend_connection_pool_blacklist_secs)(blacklist_secs).persist(pt);
+
+    BackendConnectionManagerPtr cm(BackendConnectionManager::create(pt));
+    const Namespace nspace(yt::UUID().str());
+
+    NamespacePoolSelector selector(*cm,
+                                   nspace);
+
+    EXPECT_EQ(selector.pool(),
+              selector.pool());
+}
+
+TEST_F(MultiBackendTest, namespace_pool_selector_conn_error)
+{
+    const size_t path_count = 2;
+    bpt::ptree pt(make_local_config(path_count));
+
+    const size_t blacklist_secs = 1;
+    ip::PARAMETER_TYPE(backend_connection_pool_blacklist_secs)(blacklist_secs).persist(pt);
+
+    BackendConnectionManagerPtr cm(BackendConnectionManager::create(pt));
+    const Namespace nspace(yt::UUID().str());
+
+    NamespacePoolSelector selector(*cm,
+                                   nspace);
+
+    std::shared_ptr<ConnectionPool> orig_pool(selector.pool());
+
+    EXPECT_EQ(orig_pool,
+              selector.pool());
+
+    selector.connection_error();
+
+    std::shared_ptr<ConnectionPool> fallback_pool(selector.pool());
+    EXPECT_NE(orig_pool,
+              fallback_pool);
+    EXPECT_EQ(fallback_pool,
+              selector.pool());
+
+    EXPECT_TRUE(orig_pool->blacklisted());
+    EXPECT_FALSE(fallback_pool->blacklisted());
+
+    boost::this_thread::sleep_for(bc::seconds(blacklist_secs));
+
+    EXPECT_FALSE(orig_pool->blacklisted());
+    EXPECT_EQ(orig_pool,
+              selector.pool());
+}
+
+TEST_F(MultiBackendTest, namespace_pool_selector_backend_error_1)
+{
+    test_namespace_pool_selector_backend_error(true);
+}
+
+TEST_F(MultiBackendTest, namespace_pool_selector_backend_error_2)
+{
+    test_namespace_pool_selector_backend_error(false);
 }
 
 TEST_F(MultiBackendTest, DISABLED_stress)

@@ -19,6 +19,7 @@
 #include "BackendInterface.h"
 #include "BackendRequestParameters.h"
 #include "BackendTracePoints_tp.h"
+#include "NamespacePoolSelector.h"
 #include "PartialReadCounter.h"
 
 #include <boost/chrono.hpp>
@@ -46,11 +47,11 @@ BackendInterface::default_request_parameters()
     return params;
 }
 
-template<typename ConnFetcher,
+template<typename PoolSelector,
          typename ReturnType,
          typename... Args>
 ReturnType
-BackendInterface::do_wrap_(ConnFetcher& get_conn,
+BackendInterface::do_wrap_(PoolSelector& selector,
                            const BackendRequestParameters& params,
                            ReturnType
                            (BackendConnectionInterface::*mem_fun)(Args...),
@@ -79,9 +80,10 @@ BackendInterface::do_wrap_(ConnFetcher& get_conn,
 
         try
         {
-            BackendConnectionInterfacePtr conn(get_conn(*conn_manager_,
-                                                        nspace_,
-                                                        attempt));
+            BackendConnectionInterfacePtr
+                conn(selector.pool()->get_connection(attempt == 0 ?
+                                                     ForceNewConnection::F :
+                                                     ForceNewConnection::T));
 
             return ((conn.get())->*mem_fun)(std::forward<Args>(args)...);
         }
@@ -97,10 +99,19 @@ BackendInterface::do_wrap_(ConnFetcher& get_conn,
         {
             throw; /* ... no need to retry. */
         }
+        catch (BackendConnectionTimeoutException& e)
+        {
+            LOG_ERROR(nspace_ << ": connection timeout");
+            if (attempt++ >= retries_on_error)
+            {
+                LOG_ERROR(nspace_ << ": giving up");
+                throw;
+            }
+        }
         catch (BackendConnectFailureException& e)
         {
             LOG_ERROR(nspace_ << ": connection failure");
-            get_conn.error();
+            selector.connection_error();
 
             if (attempt++ >= retries_on_error)
             {
@@ -108,78 +119,45 @@ BackendInterface::do_wrap_(ConnFetcher& get_conn,
                 throw;
             }
         }
-        catch (std::exception& e)
-        {
-            LOG_ERROR(nspace_ << ": problem with connection: " << e.what());
+        CATCH_STD_ALL_EWHAT({
+                LOG_ERROR(nspace_ << ": problem with connection: " << EWHAT);
+                selector.backend_error();
 
-            if (attempt++ >= retries_on_error)
-            {
-                LOG_ERROR(nspace_ << ": giving up");
-                throw;
-            }
-        }
-        catch (...)
-        {
-            LOG_ERROR(nspace_ << ": unknown problem with connection, giving up");
-            throw;
-        }
+                if (attempt++ >= retries_on_error)
+                {
+                    LOG_ERROR(nspace_ << ": giving up");
+                    throw;
+                }
+            });
     }
 }
 
 namespace
 {
 
-struct NamespaceConnFetcher
+struct FixedPoolSelector
 {
-    DECLARE_LOGGER("NamespaceConnFetcher");
+    std::shared_ptr<ConnectionPool> pool_;
 
-    std::shared_ptr<ConnectionPool> pool;
-
-    BackendConnectionInterfacePtr
-    operator()(BackendConnectionManager& cm,
-               const Namespace& nspace,
-               const uint32_t attempt)
-    {
-        pool = cm.pool(nspace);
-        VERIFY(pool);
-        return pool->get_connection(attempt == 0 ?
-                                    ForceNewConnection::F :
-                                    ForceNewConnection::T);
-    }
-
-    void
-    error()
-    {
-        if (pool)
-        {
-            pool->error();
-        }
-    }
-};
-
-struct PoolConnFetcher
-{
-    std::shared_ptr<ConnectionPool> pool;
-
-    PoolConnFetcher(const std::shared_ptr<ConnectionPool>& p)
-        : pool(p)
+    FixedPoolSelector(const std::shared_ptr<ConnectionPool>& p)
+        : pool_(p)
     {}
 
-    BackendConnectionInterfacePtr
-    operator()(BackendConnectionManager&,
-               const Namespace&,
-               const uint32_t attempt)
+    const std::shared_ptr<ConnectionPool>&
+    pool() const
     {
-        return pool->get_connection(attempt == 0 ?
-                                    ForceNewConnection::F :
-                                    ForceNewConnection::T);
+        return pool_;
     }
 
     void
-    error()
+    connection_error()
     {
-        pool->error();
+        pool_->error();
     }
+
+    void
+    backend_error()
+    {}
 };
 
 }
@@ -193,12 +171,13 @@ BackendInterface::wrap_(const BackendRequestParameters& params,
                                                                Args...),
                         Args... args)
 {
-    NamespaceConnFetcher fetcher;
+    NamespacePoolSelector selector(*conn_manager_,
+                                   nspace_);
 
-    return do_wrap_<NamespaceConnFetcher,
+    return do_wrap_<NamespacePoolSelector,
                     ReturnType,
                     const Namespace&,
-                    Args...>(fetcher,
+                    Args...>(selector,
                              params,
                              mem_fun,
                              nspace_,
@@ -376,11 +355,11 @@ BackendInterface::invalidate_cache(const BackendRequestParameters& params)
 {
     conn_manager_->visit_pools([&](std::shared_ptr<ConnectionPool> pool)
     {
-        PoolConnFetcher fetcher(pool);
+        FixedPoolSelector selector(pool);
 
-        do_wrap_<PoolConnFetcher,
+        do_wrap_<FixedPoolSelector,
                  void,
-                 const boost::optional<Namespace>&>(fetcher,
+                 const boost::optional<Namespace>&>(selector,
                                                     params,
                                                     &BackendConnectionInterface::invalidate_cache,
                                                     nspace_);

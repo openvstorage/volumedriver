@@ -24,6 +24,7 @@
 #include "Local_Source.h"
 #include "ManagedBackendSink.h"
 #include "ManagedBackendSource.h"
+#include "NamespacePoolSelector.h"
 #include "MultiConfig.h"
 #include "S3_Connection.h"
 
@@ -49,9 +50,11 @@ BackendConnectionManager::BackendConnectionManager(const bpt::ptree& pt,
                             pt)
     , params_(pt)
     , config_(BackendConfig::makeBackendConfig(pt))
-    , blacklist_last_logged_(Clock::time_point::min())
 {
     THROW_UNLESS(config_);
+
+    const size_t pool_capacity = params_.backend_connection_pool_capacity.value();
+    const std::atomic<uint32_t>& blacklist_secs = params_.backend_connection_pool_blacklist_secs.value();
 
     if (config_->backend_type.value() == BackendType::MULTI)
     {
@@ -60,13 +63,15 @@ BackendConnectionManager::BackendConnectionManager(const bpt::ptree& pt,
         for (const auto& c : cfg.configs_)
         {
             connection_pools_.push_back(ConnectionPool::create(c->clone(),
-                                                               params_.backend_connection_pool_capacity.value()));
+                                                               pool_capacity,
+                                                               blacklist_secs));
         }
     }
     else
     {
         connection_pools_.push_back(ConnectionPool::create(config_->clone(),
-                                                           params_.backend_connection_pool_capacity.value()));
+                                                           pool_capacity,
+                                                           blacklist_secs));
     }
 
     THROW_WHEN(connection_pools_.empty());
@@ -80,56 +85,11 @@ BackendConnectionManager::create(const boost::property_tree::ptree& pt,
                                                                             registrate);
 }
 
-const std::shared_ptr<ConnectionPool>&
-BackendConnectionManager::pool_(const Namespace& nspace)
+BackendConnectionManager::ConnectionPoolPtr
+BackendConnectionManager::pool(const Namespace& nspace) const
 {
-    ASSERT(not connection_pools_.empty());
-    const size_t h = std::hash<std::string>()(nspace.str());
-    const size_t idx = h % connection_pools_.size();
-    size_t i = idx;
-    const bc::seconds timeout(params_.backend_connection_pool_blacklist_secs.value());
-    const auto now(Clock::now());
-
-    while (true)
-    {
-        ASSERT(i < connection_pools_.size());
-        if (connection_pools_[i]->last_error() + timeout < now)
-        {
-            break;
-        }
-        else
-        {
-            ++i;
-            if (i == connection_pools_.size())
-            {
-                i = 0;
-            }
-
-            if (i == idx)
-            {
-                // Limit logging noise.
-                bool log = false;
-                {
-                    boost::lock_guard<decltype(blacklist_log_lock_)> g(blacklist_log_lock_);
-                    if (blacklist_last_logged_ + timeout < now)
-                    {
-                        blacklist_last_logged_ = now;
-                        log = true;
-                    }
-                }
-
-                if (log)
-                {
-                    LOG_ERROR("all pools are blacklisted, picking a random one");
-                }
-
-                i = rand_(connection_pools_.size() - 1);
-                break;
-            }
-        }
-    }
-
-    return connection_pools_[i];
+    return NamespacePoolSelector(*this,
+                                 nspace).pool();
 }
 
 BackendConnectionInterfacePtr
@@ -137,13 +97,14 @@ BackendConnectionManager::getConnection(const ForceNewConnection force_new,
                                         const boost::optional<Namespace>& nspace)
 {
     ASSERT(not connection_pools_.empty());
+
     if (nspace)
     {
-        return pool_(*nspace)->get_connection(force_new);
+        return pool(*nspace)->get_connection(force_new);
     }
     else
     {
-        return connection_pools_[0]->get_connection(force_new);
+        return pools()[0]->get_connection(force_new);
     }
 }
 
@@ -169,12 +130,6 @@ BackendConnectionManager::size() const
                            {
                                return n + p->size();
                            });
-}
-
-size_t
-BackendConnectionManager::pools() const
-{
-    return connection_pools_.size();
 }
 
 BackendInterfacePtr

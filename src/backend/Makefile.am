@@ -53,6 +53,7 @@ libbackend_la_SOURCES = \
 	ManagedBackendSource.cpp \
 	MultiConfig.cpp \
 	Namespace.cpp \
+	NamespacePoolSelector.cpp \
 	S3Config.cpp \
 	S3_Connection.cpp \
 	SimpleFetcher.cpp \

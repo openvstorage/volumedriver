@@ -187,6 +187,12 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_partial_read_nullio,
                                       "nullio for partial reads: immediately return instead of actually reading data",
                                       ShowDocumentation::F,
                                       false);
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_switch_connection_pool_on_error,
+                                      backend_connection_manager_name,
+                                      "backend_interface_switch_connection_pool_on_error",
+                                      "whether to switch to another connection pool after a backend error was reported",
+                                      ShowDocumentation::F,
+                                      true);
 
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_type,
                                       backend_connection_manager_name,

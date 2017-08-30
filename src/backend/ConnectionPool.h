@@ -48,7 +48,8 @@ class ConnectionPool
 public:
     static std::shared_ptr<ConnectionPool>
     create(std::unique_ptr<BackendConfig>,
-           size_t capacity);
+           size_t capacity,
+           const std::atomic<uint32_t>& blacklist_secs);
 
     ~ConnectionPool();
 
@@ -92,7 +93,11 @@ public:
     error();
 
     Clock::time_point
-    last_error() const;
+    blacklisted_until() const;
+
+    bool
+    blacklisted() const;
+
 
 private:
     DECLARE_LOGGER("BackendConnectionPool");
@@ -101,7 +106,8 @@ private:
     friend class ConnectionDeleter;
 
     ConnectionPool(std::unique_ptr<BackendConfig>,
-                   size_t);
+                   size_t,
+                   const std::atomic<uint32_t>& blacklist_secs);
 
     mutable fungi::SpinLock lock_;
 
@@ -111,7 +117,8 @@ private:
     std::unique_ptr<BackendConfig> config_;
     size_t capacity_;
     Counters counters_;
-    Clock::time_point last_error_;
+    const std::atomic<uint32_t>& blacklist_secs_;
+    Clock::time_point blacklisted_until_;
 
     std::unique_ptr<BackendConnectionInterface>
     make_one_();
