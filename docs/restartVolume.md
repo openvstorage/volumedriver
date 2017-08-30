@@ -25,17 +25,12 @@ for disk in VDiskList.get_vdisks():
 `import volumedriver.storagerouter.storagerouterclient as src`
 
 ### Get the vpool configuration file
-#### For Eugene-updates
-```
-!ps auxf | grep volumedriver_fs | grep -v grep
-root      7099  1.0 14.5 17089396 4777244 ?    Ssl  Jun08  73:23 volumedriver_fs -f --config-file=/opt/OpenvStorage/config/storagedriver/storagedriver/myvpool.json
-```
 
-#### For Fargo and Unstable (ETCD)
 ```
-!ps auxf | grep volumedriver_fs | grep -v grep
-root      68391 11.9  4.9 4570448 1603728 ?     Ssl  May20 4141:20 volumedriver_fs -f --config etcd://127.0.0.1:2379/ovs/vpools/9380e4b4-5be5-4b33-bb52-2e053f1ce2f3/hosts/myvpoolu7lSr0ANgbo68o0O/config
+ pgrep -a volumedriver
+66484 volumedriver_fs -f --config arakoon://config/ovs/vpools/de499fc9-decd-4e38-83a5-ba43f77f80b4/hosts/myvpool013K6zCllKaoL5gXUY/config?ini=%2Fopt%2FOpenvStorage%2Fconfig%2Farakoon_cacc.ini --lock-file /opt/OpenvStorage/run/storagedriver_myvpool01.lock --logrotation --mountpoint /mnt/myvpool01 --logsink console: -o big_writes -o sync_read -o allow_other -o use_ino -o default_permissions -o uid=1001 -o gid=1001 -o umask=0002
 ```
+ In the above example the config file is `arakoon://config/ovs/vpools/de499fc9-decd-4e38-83a5-ba43f77f80b4/hosts/myvpool013K6zCllKaoL5gXUY/config?ini=%2Fopt%2FOpenvStorage%2Fconfig%2Farakoon_cacc.ini`
 
 ### Restart the volume
 ```
@@ -47,7 +42,7 @@ client.restart_object("insert_the_volumeid_between_the_double_quotes", False)
 ```
 ovs
 import volumedriver.storagerouter.storagerouterclient as src
-client = src.LocalStorageRouterClient("etcd://127.0.0.1:2379/ovs/vpools/9380e4b4-5be5-4b33-bb52-2e053f1ce2f3/hosts/myvpoolu7lSr0ANgbo68o0O/config")
+client = src.LocalStorageRouterClient("arakoon://config/ovs/vpools/de499fc9-decd-4e38-83a5-ba43f77f80b4/hosts/myvpool013K6zCllKaoL5gXUY/config?ini=%2Fopt%2FOpenvStorage%2Fconfig%2Farakoon_cacc.ini")
 client.restart_object("4a0a30de-4914-4abd-be73-e5740e3f14a9", False)
 ```
 
