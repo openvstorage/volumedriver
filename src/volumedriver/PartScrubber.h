@@ -26,10 +26,9 @@ class PartScrubber
 {
 public:
     PartScrubber(TLogSplitter::MapType::const_iterator&,
-                 scrubbing::ScrubbingSCODataVector& scodata,
-                 volumedriver::FilePool& filepool,
-                 RegionExponent regionsize,
-                 volumedriver::ClusterExponent clustersize);
+                 scrubbing::ScrubbingSCODataVector&,
+                 volumedriver::FilePool&,
+                 RegionExponent);
 
     void
     operator()(std::vector<fs::path>& tlogs);
@@ -40,19 +39,17 @@ private:
     ScrubbingSCODataVector::reverse_iterator scodata_iterator;
 
     TLogSplitter::MapType::const_iterator& iterator_;
-    // What the F?
-    const uint16_t clustersize_;
-    RegionExponent regionsize_;
+    RegionExponent region_exponent_;
     scrubbing::ScrubbingSCODataVector& scodata_;
 
     volumedriver::FilePool& filepool_;
     volumedriver::ClusterAddress cluster_begin_;
 
     void
-    updateIterator(const volumedriver::SCO sconame);
+    updateIterator(const volumedriver::SCO);
 
     bool
-    EntryNeedsWork(const volumedriver::Entry* e);
+    EntryNeedsWork(const volumedriver::Entry*);
 };
 }
 

@@ -180,8 +180,7 @@ Scrubber::operator()()
         PartScrubber part_scrubber(it,
                                    scrubbing_data_vector,
                                    filepool,
-                                   args_.region_size_exponent,
-                                   args_.cluster_size_exponent);
+                                   args_.region_size_exponent);
         boost::this_thread::interruption_point();
         part_scrubber(tlogs);
         boost::this_thread::interruption_point();

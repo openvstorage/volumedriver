@@ -30,15 +30,14 @@ using namespace volumedriver;
 PartScrubber::PartScrubber(TLogSplitter::MapType::const_iterator& iterator,
                            scrubbing::ScrubbingSCODataVector& scodata,
                            FilePool& filepool,
-                           RegionExponent regionsize,
-                           ClusterExponent clustersize)
+                           RegionExponent region_exponent)
     : iterator_(iterator)
-    , clustersize_(clustersize)
-    , regionsize_(regionsize)
+    , region_exponent_(region_exponent)
     , scodata_(scodata)
     , filepool_(filepool)
 {
-    cluster_begin_ = (iterator_->first << regionsize_);
+    VERIFY(region_exponent_ < (sizeof(unsigned long) * 8));
+    cluster_begin_ = (iterator_->first << region_exponent_);
 }
 
 void
@@ -70,7 +69,7 @@ PartScrubber::operator()(std::vector<fs::path>& tlogs)
 
     // Y42 TODO check stack size influence on this...!
     // Do we want to alloc this on the heap???
-    bitset_type bitset(1 << regionsize_);
+    bitset_type bitset(1UL << region_exponent_);
 
     static_assert(sizeof(bitset_type::block_type) == 8,
                   "strange size for block type");
@@ -93,7 +92,7 @@ PartScrubber::operator()(std::vector<fs::path>& tlogs)
         // switch(e->getType())
         // {
         // case Entry::LOC:
-        VERIFY(e->clusterAddress() - cluster_begin_ < (1UL<<regionsize_));
+        VERIFY(e->clusterAddress() - cluster_begin_ < (1UL<<region_exponent_));
 
         if(not bitset[e->clusterAddress() - cluster_begin_])
         {
