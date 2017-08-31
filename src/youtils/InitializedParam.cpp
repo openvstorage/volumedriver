@@ -32,8 +32,8 @@ ParameterInfo::get_parameter_info_list()
     return parameter_infos;
 }
 
-void
-ParameterInfo::verify_property_tree(const bpt::ptree& ptree)
+bpt::ptree
+ParameterInfo::unknown_property_tree_entries(const bpt::ptree& ptree)
 {
     bpt::ptree pt(ptree);
     std::set<std::string> components;
@@ -41,7 +41,6 @@ ParameterInfo::verify_property_tree(const bpt::ptree& ptree)
     // We need 2 passes as removing nested.keys is not supported:
     // (1) drop all known keys from the components
     // (2) drop all empty components
-    // . If anything's left we yell.o
     for (const auto info : get_parameter_info_list())
     {
         components.insert(info->section_name);
@@ -62,6 +61,13 @@ ParameterInfo::verify_property_tree(const bpt::ptree& ptree)
         }
     }
 
+    return pt;
+}
+
+void
+ParameterInfo::verify_property_tree(const bpt::ptree& ptree)
+{
+    const bpt::ptree pt(unknown_property_tree_entries(ptree));
     if (not pt.empty())
     {
         LOG_ERROR("property tree contains unknown entries - JSON dump of them follows");

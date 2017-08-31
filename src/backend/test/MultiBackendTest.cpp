@@ -28,6 +28,7 @@
 
 #include <youtils/Chooser.h>
 #include <youtils/FileUtils.h>
+#include <youtils/InitializedParam.h>
 #include <youtils/System.h>
 #include <youtils/UUID.h>
 
@@ -603,6 +604,23 @@ TEST_F(MultiBackendTest, namespace_pool_selector_backend_error_1)
 TEST_F(MultiBackendTest, namespace_pool_selector_backend_error_2)
 {
     test_namespace_pool_selector_backend_error(false);
+}
+
+TEST_F(MultiBackendTest, config_ptree_validation)
+{
+    auto dump([](const bpt::ptree& pt) -> std::string
+              {
+                  std::stringstream ss;
+                  bpt::json_parser::write_json(ss,
+                                               pt);
+                  return ss.str();
+              });
+
+    const bpt::ptree pt(make_local_config(7));
+    const bpt::ptree unknown(ip::ParameterInfo::unknown_property_tree_entries(pt));
+    EXPECT_TRUE(unknown.empty()) <<
+        "config\n" << dump(pt) <<
+        "unknown\n" << dump(unknown);
 }
 
 TEST_F(MultiBackendTest, DISABLED_stress)

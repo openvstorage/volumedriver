@@ -518,8 +518,11 @@ struct ParameterInfo
     static std::list<ParameterInfo*>&
     get_parameter_info_list();
 
+    static boost::property_tree::ptree
+    unknown_property_tree_entries(const boost::property_tree::ptree&);
+
     static void
-    verify_property_tree(const boost::property_tree::ptree& pt);
+    verify_property_tree(const boost::property_tree::ptree&);
 
     MAKE_EXCEPTION(UnknownParameterException, fungi::IOException);
 
