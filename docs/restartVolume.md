@@ -1,7 +1,8 @@
 <a name="restart volume"></a>
 # Restart volume
-To restart a halted volume, you'll need to get the volume-id from the volume you want to restart and the configuration file from the volumedriver.
-When the volume is halted, you'll get the following message:
+To start a volume that failed to restart, you'll need to get the volume-id from the volume and the configuration file from the volumedriver.
+
+When the volume failed to start, you'll get the following message:
 ```
 root@ovs03:~# ls /mnt/myvpool/* -alh
 ls: cannot access /mnt/myvpool/DISK_2688.raw: No such file or directory
@@ -11,7 +12,7 @@ ls: cannot access /mnt/myvpool/DISK_2688.raw: No such file or directory
 ## Open the ipython shell
 `ovs`
 
-### Get the volume-id from the halted volume
+### Get the volume-id from the volume
 ```
 from ovs.dal.lists.vdisklist import VDiskList
 for disk in VDiskList.get_vdisks():
