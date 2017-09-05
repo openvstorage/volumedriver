@@ -766,36 +766,43 @@ SCOCache::addNamespace(const backend::Namespace& nsname,
     createAndInsertNamespace_(nsname, min, max_non_disposable);
 }
 
+// TODO: the previous incarnation used to have a bug with the mountpoints'
+// size accounting. To address this the rather inefficient approach of enabling
+// the namespace only to remove it again is taken. To be revisited.
 void
 SCOCache::removeDisabledNamespace(const backend::Namespace& nsname)
 {
     LOCK_NSPACE_MGMT();
 
-    SCOCacheMountPointList mplist;
-
     {
-        RLOCK_CACHE();
-        if (findNamespace_(nsname) != 0)
-        {
-            LOG_ERROR("namespace " << nsname <<
-                      " is active, not removing it");
-            throw fungi::IOException("namespace is active, not removing it",
-                                     nsname.c_str());
-        }
-
-        mplist = mountPoints_;
+        const SCOAccessData sad;
+        WLOCK_CACHE();
+        enableNamespace_(nsname,
+                         0,
+                         std::numeric_limits<uint64_t>::max(),
+                         sad);
     }
 
-    removeNamespaceFromMountPointsInList_(nsname, mplist);
+    LOCK_CLEANUP();
+    removeNamespace_(nsname);
 }
 
 void
 SCOCache::removeNamespace(const backend::Namespace& nsname)
 {
-    // Z42: LOCK_NSPACE_MGMT is probably not needed here, but will
-    // not harm
     LOCK_NSPACE_MGMT();
     LOCK_CLEANUP();
+
+    removeNamespace_(nsname);
+}
+
+void
+SCOCache::removeNamespace_(const backend::Namespace& nsname)
+{
+    // Z42: LOCK_NSPACE_MGMT is probably not needed here, but will
+    // not harm
+    ASSERT_NSPACE_MGMT_LOCKED();
+    ASSERT_CLEANUP_LOCKED();
 
     SCOCacheNamespace* ns = 0;
 
@@ -853,6 +860,21 @@ SCOCache::enableNamespace(const backend::Namespace& nsname,
 {
     LOCK_NSPACE_MGMT();
     WLOCK_CACHE();
+
+    enableNamespace_(nsname,
+                     min,
+                     max_non_disposable,
+                     sad);
+}
+
+void
+SCOCache::enableNamespace_(const backend::Namespace& nsname,
+                           uint64_t min,
+                           uint64_t max_non_disposable,
+                           const SCOAccessData& sad)
+{
+    ASSERT_NSPACE_MGMT_LOCKED();
+    ASSERT_RWLOCKED();
 
     LOG_DEBUG(nsname << ": enabling");
 

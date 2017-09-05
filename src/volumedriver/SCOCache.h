@@ -422,6 +422,15 @@ private:
     void
     bumpMountPointErrorCount_();
 
+    void
+    enableNamespace_(const backend::Namespace&,
+                     uint64_t min,
+                     uint64_t max_non_disposable,
+                     const SCOAccessData& sad);
+
+    void
+    removeNamespace_(const backend::Namespace&);
+
     DECLARE_PARAMETER(trigger_gap);
     DECLARE_PARAMETER(backoff_gap);
     DECLARE_PARAMETER(discount_factor);
