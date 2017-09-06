@@ -50,12 +50,14 @@ namespace yt = youtils;
 
 class ScrubbingTest
     : public FileSystemTestBase
+    , public testing::WithParamInterface<vd::ClusterMultiplier>
 {
 protected:
     ScrubbingTest()
         : FileSystemTestBase(FileSystemTestSetupParameters("ScrubbingTest")
                              .scrub_manager_interval_secs(1)
-                             .use_cluster_cache(false))
+                             .use_cluster_cache(false)
+                             .cluster_multiplier(GetParam()))
     {}
 
     std::tuple<ObjectId, FrontendPath>
@@ -63,8 +65,10 @@ protected:
     {
         const FrontendPath path(make_volume_name("/some-volume"));
         const ObjectId id(create_file(path));
-        const size_t vsize = 2 * max_clusters_ * get_cluster_size(id);
+        EXPECT_EQ(GetParam(),
+                  fs_->object_router().get_cluster_multiplier(id));
 
+        const size_t vsize = 2 * max_clusters_ * get_cluster_size(id);
         EXPECT_EQ(0,
                   truncate(id, vsize));
 
@@ -280,7 +284,7 @@ protected:
     const size_t max_clusters_ = 1024;
 };
 
-TEST_F(ScrubbingTest, simple)
+TEST_P(ScrubbingTest, simple)
 {
     ObjectId id;
     std::tie(id, std::ignore) = create_volume();
@@ -323,7 +327,7 @@ TEST_F(ScrubbingTest, simple)
                            res);
 }
 
-TEST_F(ScrubbingTest, clones)
+TEST_P(ScrubbingTest, clones)
 {
     ObjectId pid;
     std::tie(pid, std::ignore) = create_volume();
@@ -378,7 +382,7 @@ TEST_F(ScrubbingTest, clones)
                            res);
 }
 
-TEST_F(ScrubbingTest, fenced_parent)
+TEST_P(ScrubbingTest, fenced_parent)
 {
     ObjectId id;
     std::tie(id, std::ignore) = create_volume();
@@ -421,7 +425,7 @@ TEST_F(ScrubbingTest, fenced_parent)
                             res);
 }
 
-TEST_F(ScrubbingTest, fenced_clone)
+TEST_P(ScrubbingTest, fenced_clone)
 {
     ObjectId pid;
     std::tie(pid, std::ignore) = create_volume();
@@ -471,5 +475,10 @@ TEST_F(ScrubbingTest, fenced_clone)
     check_backend_after_gc(reps[0],
                            res);
 }
+
+INSTANTIATE_TEST_CASE_P(ScrubbingTests,
+                        ScrubbingTest,
+                        ::testing::Values(vd::ClusterMultiplier(8),
+                                          vd::ClusterMultiplier(16)));
 
 }
