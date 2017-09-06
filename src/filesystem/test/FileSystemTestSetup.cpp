@@ -86,6 +86,7 @@ FileSystemTestSetup::FileSystemTestSetup(const FileSystemTestSetupParameters& pa
     , keepalive_time_(params.keepalive_time_)
     , keepalive_interval_(params.keepalive_interval_)
     , keepalive_retries_(params.keepalive_retries_)
+    , cluster_multiplier_(params.cluster_multiplier_)
     , dtl_config_mode_(params.dtl_config_mode_)
     , dtl_mode_(params.dtl_mode_)
     , fdriver_namespace_("ovs-fdnspc-fstest-"s + yt::UUID().str())
@@ -333,6 +334,10 @@ FileSystemTestSetup::make_config_(bpt::ptree& pt,
 
         // (backend)threadpool
         ip::PARAMETER_TYPE(num_threads)(num_threads_).persist(pt);
+
+        const uint32_t csize =
+            cluster_multiplier_.t * vd::VolumeConfig::default_lba_size();
+        ip::PARAMETER_TYPE(default_cluster_size)(csize).persist(pt);
     }
 
     // metadata_server - we run it outside volmanager, hence empty ServerConfigs here.

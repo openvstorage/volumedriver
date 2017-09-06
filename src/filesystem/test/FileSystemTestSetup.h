@@ -95,6 +95,7 @@ struct FileSystemTestSetupParameters
     PARAM(boost::chrono::seconds, keepalive_time) = boost::chrono::seconds(2);
     PARAM(boost::chrono::seconds, keepalive_interval) = boost::chrono::seconds(1);
     PARAM(size_t, keepalive_retries) = 3;
+    PARAM(volumedriver::ClusterMultiplier, cluster_multiplier) = volumedriver::ClusterMultiplier(8);
 
 #undef PARAM
 };
@@ -364,6 +365,7 @@ protected:
     boost::chrono::seconds keepalive_time_;
     boost::chrono::seconds keepalive_interval_;
     size_t keepalive_retries_;
+    volumedriver::ClusterMultiplier cluster_multiplier_;
 
     volumedriverfs::FailOverCacheConfigMode dtl_config_mode_;
     volumedriver::FailOverCacheMode dtl_mode_;
