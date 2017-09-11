@@ -364,7 +364,7 @@ protected:
             }
             else
             {
-                boost::this_thread::sleep_for(boost::chrono::milliseconds(sleep_msecs));
+                boost::this_thread::sleep_for(bc::milliseconds(sleep_msecs));
             }
         }
 
@@ -420,7 +420,7 @@ protected:
     using MonkeyFun = std::function<void(Volume&, std::atomic<bool>&)>;
 
     void
-    monkey_business(const boost::chrono::seconds& duration,
+    monkey_business(const bc::seconds& duration,
                     MonkeyFun monkey)
     {
         const auto wrns(make_random_namespace());
@@ -992,7 +992,7 @@ TEST_P(MDSVolumeTest, failover_monkey_business)
                        EXPECT_EQ(scfg1.node_config,
                                  ncfgs[1]);
 
-                       boost::this_thread::sleep_for(boost::chrono::seconds(1));
+                       boost::this_thread::sleep_for(bc::seconds(1));
                    }
                    else
                    {
@@ -1005,7 +1005,7 @@ TEST_P(MDSVolumeTest, failover_monkey_business)
                        LOG_INFO("new slave: " << scfg);
 
                        const uint64_t msecs = rand(0ULL, 2000ULL);
-                       boost::this_thread::sleep_for(boost::chrono::milliseconds(msecs));
+                       boost::this_thread::sleep_for(bc::milliseconds(msecs));
 
                        const std::vector<MDSNodeConfig> cfgs{ scfg1.node_config,
                                scfg.node_config };
@@ -1026,7 +1026,7 @@ TEST_P(MDSVolumeTest, failover_monkey_business)
                          failovers);
            });
 
-    monkey_business(boost::chrono::seconds(30),
+    monkey_business(bc::seconds(30),
                     std::move(f));
 }
 
@@ -1041,7 +1041,7 @@ TEST_P(MDSVolumeTest, migration_monkey_business)
                while (not stop)
                {
                    const uint64_t msecs = rand(500ULL, 2500ULL);
-                   boost::this_thread::sleep_for(boost::chrono::milliseconds(msecs));
+                   boost::this_thread::sleep_for(bc::milliseconds(msecs));
 
                    const auto cfg(v.getMetaDataStore()->getBackendConfig());
                    const auto
@@ -1064,7 +1064,7 @@ TEST_P(MDSVolumeTest, migration_monkey_business)
                         " iterations");
            });
 
-    monkey_business(boost::chrono::seconds(30),
+    monkey_business(bc::seconds(30),
                     std::move(f));
 }
 
@@ -1110,7 +1110,7 @@ TEST_P(MDSVolumeTest, master_gone_and_no_slaves)
                                }));
 
         const uint64_t msecs = rand(500ULL, 5000ULL);
-        boost::this_thread::sleep_for(boost::chrono::milliseconds(msecs));
+        boost::this_thread::sleep_for(bc::milliseconds(msecs));
 
         LOG_INFO("Shooting down " << scfg.node_config);
 
@@ -1960,6 +1960,51 @@ TEST_P(MDSVolumeTest, config_update_with_slave_too_far_behind)
     check_config(*v,
                  ncfgs2,
                  false);
+}
+
+// It's been observed that a slave had to be rebuilt from scratch because it did
+// not have a scrub ID. According to this test this should not happen (the test
+// shows that the slave has a scrub ID after updating itself), so it must be something
+// else ...
+// https://github.com/openvstorage/volumedriver/issues/353
+TEST_P(MDSVolumeTest, slave_from_scratch_has_scrub_id)
+{
+    const auto wrns(make_random_namespace());
+    SharedVolumePtr v = make_volume(*wrns);
+
+    const MDSNodeConfigs ncfgs(node_configs());
+    ASSERT_LT(1U,
+              ncfgs.size());
+
+    check_config(*v,
+                 ncfgs,
+                 false);
+
+    const TLogId tlog_id(v->scheduleBackendSync());
+    waitForThisBackendWrite(*v);
+
+    mds::ClientNG::Ptr client(mds::ClientNG::create(ncfgs[1]));
+    {
+        MDSMetaDataBackend mdb(client,
+                               wrns->ns(),
+                               OwnerTag(0));
+
+        boost::this_thread::sleep_for(bc::seconds(mds_manager_->poll_interval().count() * 2));
+
+        EXPECT_NE(boost::none,
+                  mdb.lastCorkUUID());
+        EXPECT_EQ(static_cast<yt::UUID>(tlog_id),
+                  *mdb.lastCorkUUID());
+        EXPECT_NE(boost::none,
+                  mdb.scrub_id());
+    }
+
+    mds::TableInterfacePtr t(client->open(wrns->ns().str()));
+    const mds::TableCounters c(t->get_counters(Reset::F));
+    EXPECT_EQ(0,
+              c.full_rebuilds);
+    EXPECT_LT(0,
+              c.incremental_updates);
 }
 
 namespace
