@@ -57,6 +57,7 @@ libbackend_la_SOURCES = \
 	S3Config.cpp \
 	S3_Connection.cpp \
 	SimpleFetcher.cpp \
+	SwitchConnectionPoolPolicy.cpp \
 	TestWithBackendMainHelper.cpp
 
 pkgconfigdir = @pkgconfigdir@
