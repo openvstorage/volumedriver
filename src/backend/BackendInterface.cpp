@@ -102,6 +102,8 @@ BackendInterface::do_wrap_(PoolSelector& selector,
         catch (BackendConnectionTimeoutException& e)
         {
             LOG_ERROR(nspace_ << ": connection timeout");
+            selector.request_timeout();
+
             if (attempt++ >= retries_on_error)
             {
                 LOG_ERROR(nspace_ << ": giving up");
@@ -157,6 +159,10 @@ struct FixedPoolSelector
 
     void
     backend_error()
+    {}
+
+    void
+    request_timeout()
     {}
 };
 

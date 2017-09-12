@@ -146,6 +146,8 @@ operator>>(std::istream& is,
 namespace initialized_params
 {
 
+namespace be = backend;
+
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_connection_pool_capacity,
                                       backend_connection_manager_name,
                                       "backend_connection_pool_capacity",
@@ -187,19 +189,27 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_partial_read_nullio,
                                       "nullio for partial reads: immediately return instead of actually reading data",
                                       ShowDocumentation::F,
                                       false);
-DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_switch_connection_pool_on_error,
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_switch_connection_pool_policy,
                                       backend_connection_manager_name,
-                                      "backend_interface_switch_connection_pool_on_error",
-                                      "whether to switch to another connection pool after a backend error was reported",
+                                      "backend_interface_switch_connection_pool_policy",
+                                      "when to switch to another proxy: \'SwitchOnError\' or \'RoundRobin\'",
                                       ShowDocumentation::F,
-                                      true);
+                                      be::SwitchConnectionPoolPolicy::RoundRobin);
+
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_switch_connection_pool_on_error_policy,
+                                      backend_connection_manager_name,
+                                      "backend_interface_switch_connection_pool_on_error_policy",
+                                      "when using the \'SwitchOnError\' policy: on which errors to switch",
+                                      ShowDocumentation::F,
+                                      be::SwitchConnectionPoolOnErrorPolicy::OnBackendError);
 
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_type,
                                       backend_connection_manager_name,
                                       "backend_type",
                                       "Type of backend connection one of ALBA, LOCAL, MULTI or S3, the other parameters in this section are only used when their correct backendtype is set",
                                       ShowDocumentation::T,
-                                      backend::BackendType::LOCAL);
+                                      be::BackendType::LOCAL);
 
 // Local Backend Parameters
 DEFINE_INITIALIZED_PARAM(local_connection_path,
@@ -299,7 +309,7 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(s3_connection_flavour,
                                       "s3_connection_flavour",
                                       "S3 backend flavour: S3 (default), GCS, WALRUS or SWIFT",
                                       ShowDocumentation::T,
-                                      backend::S3Flavour::S3);
+                                      be::S3Flavour::S3);
 
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(s3_connection_strict_consistency,
                                       backend_connection_manager_name,
@@ -379,7 +389,7 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_rora_timeout_msecs,
                                       25);
 
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(bgc_threads,
-                                      backend::GarbageCollector::name(),
+                                      be::GarbageCollector::name(),
                                       "bgc_threads",
                                       "Number of threads employed by the BackendGarbageCollector",
                                       ShowDocumentation::T,

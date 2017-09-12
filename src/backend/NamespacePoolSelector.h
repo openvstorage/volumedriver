@@ -44,6 +44,9 @@ public:
     pool();
 
     void
+    request_timeout();
+
+    void
     connection_error();
 
     void
