@@ -21,6 +21,7 @@
 #include "BackendTracePoints_tp.h"
 #include "NamespacePoolSelector.h"
 #include "PartialReadCounter.h"
+#include "RoundRobinPoolSelector.h"
 
 #include <boost/chrono.hpp>
 #include <boost/thread.hpp>
@@ -177,17 +178,44 @@ BackendInterface::wrap_(const BackendRequestParameters& params,
                                                                Args...),
                         Args... args)
 {
-    NamespacePoolSelector selector(*conn_manager_,
-                                   nspace_);
+    const SwitchConnectionPoolPolicy policy =
+        conn_manager_->connection_manager_parameters().backend_interface_switch_connection_pool_policy.value();
+    switch (policy)
+    {
+    case SwitchConnectionPoolPolicy::OnError:
+        {
+            NamespacePoolSelector selector(*conn_manager_,
+                                           nspace_);
 
-    return do_wrap_<NamespacePoolSelector,
-                    ReturnType,
-                    const Namespace&,
-                    Args...>(selector,
-                             params,
-                             mem_fun,
-                             nspace_,
-                             std::forward<Args>(args)...);
+            return do_wrap_<NamespacePoolSelector,
+                            ReturnType,
+                            const Namespace&,
+                            Args...>(selector,
+                                     params,
+                                     mem_fun,
+                                     nspace_,
+                                     std::forward<Args>(args)...);
+        }
+    case SwitchConnectionPoolPolicy::RoundRobin:
+        {
+            RoundRobinPoolSelector selector(*conn_manager_);
+
+            return do_wrap_<RoundRobinPoolSelector,
+                            ReturnType,
+                            const Namespace&,
+                            Args...>(selector,
+                                     params,
+                                     mem_fun,
+                                     nspace_,
+                                     std::forward<Args>(args)...);
+        }
+    }
+
+    ASSERT(0 == "unknown SwitchConnectionPoolPolicy");
+
+    std::stringstream ss;
+    ss << "Unknown SwitchConnectionPoolPolicy " << policy;
+    throw fungi::IOException(ss.str());
 }
 
 // XXX: The incoming and outgoing values for "InsistOnLatestVersion" might be confusing -

@@ -50,6 +50,7 @@ namespace backend
 class BackendConnectionManager;
 class BackendSinkInterface;
 class BackendSourceInterface;
+class RoundRobinPoolSelector;
 
 using BackendConnectionManagerPtr = std::shared_ptr<BackendConnectionManager>;
 using BackendInterfacePtr = std::unique_ptr<BackendInterface>;
@@ -191,6 +192,7 @@ private:
     ConnectionManagerParameters params_;
     ConnectionPools connection_pools_;
     std::unique_ptr<BackendConfig> config_;
+    std::atomic<uint64_t> next_pool_;
 
     explicit BackendConnectionManager(const boost::property_tree::ptree&,
                                       const RegisterComponent = RegisterComponent::T);
@@ -198,6 +200,16 @@ private:
     friend class toolcut::BackendToolCut;
     friend class toolcut::BackendConnectionToolCut;
     friend class youtils::EnableMakeShared<BackendConnectionManager>;
+    friend class RoundRobinPoolSelector;
+
+    // TODO: I don't like this (and consequently the next_pool_ member) being here ...
+    ConnectionPoolPtr&
+    round_robin_select_()
+    {
+        const size_t n = connection_pools_.size();
+        ASSERT(n > 0);
+        return connection_pools_[next_pool_++ % n];
+    }
 };
 
 }

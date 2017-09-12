@@ -18,6 +18,7 @@
 #include "../ConnectionPool.h"
 #include "../MultiConfig.h"
 #include "../NamespacePoolSelector.h"
+#include "../RoundRobinPoolSelector.h"
 
 #include <set>
 
@@ -330,11 +331,31 @@ public:
     }
 
     void
+    configure_namespace_selector(bpt::ptree& pt,
+                                 uint32_t error_policy = SwitchConnectionPoolOnErrorPolicy::OnBackendError)
+    {
+        const SwitchConnectionPoolPolicy policy = SwitchConnectionPoolPolicy::OnError;
+        ip::PARAMETER_TYPE(backend_interface_switch_connection_pool_policy)(policy).persist(pt);
+        ip::PARAMETER_TYPE(backend_interface_switch_connection_pool_on_error_policy)(error_policy).persist(pt);
+    }
+
+    void
+    configure_round_robin_selector(bpt::ptree& pt)
+    {
+        const SwitchConnectionPoolPolicy policy = SwitchConnectionPoolPolicy::RoundRobin;
+        ip::PARAMETER_TYPE(backend_interface_switch_connection_pool_policy)(policy).persist(pt);
+    }
+
+    void
     test_namespace_pool_selector_backend_error(bool switch_pool)
     {
         const size_t path_count = 2;
         bpt::ptree pt(make_local_config(path_count));
-        ip::PARAMETER_TYPE(backend_interface_switch_connection_pool_on_error)(switch_pool).persist(pt);
+
+        configure_namespace_selector(pt,
+                                     switch_pool ?
+                                     SwitchConnectionPoolOnErrorPolicy::OnBackendError :
+                                     0);
 
         BackendConnectionManagerPtr cm(BackendConnectionManager::create(pt));
         const Namespace nspace(yt::UUID().str());
@@ -544,6 +565,7 @@ TEST_F(MultiBackendTest, namespace_pool_selector_happy_path)
 {
     const size_t path_count = 2;
     bpt::ptree pt(make_local_config(path_count));
+    configure_namespace_selector(pt);
 
     const size_t blacklist_secs = 1;
     ip::PARAMETER_TYPE(backend_connection_pool_blacklist_secs)(blacklist_secs).persist(pt);
@@ -562,6 +584,7 @@ TEST_F(MultiBackendTest, namespace_pool_selector_conn_error)
 {
     const size_t path_count = 2;
     bpt::ptree pt(make_local_config(path_count));
+    configure_namespace_selector(pt);
 
     const size_t blacklist_secs = 1;
     ip::PARAMETER_TYPE(backend_connection_pool_blacklist_secs)(blacklist_secs).persist(pt);
@@ -603,6 +626,71 @@ TEST_F(MultiBackendTest, namespace_pool_selector_backend_error_1)
 TEST_F(MultiBackendTest, namespace_pool_selector_backend_error_2)
 {
     test_namespace_pool_selector_backend_error(false);
+}
+
+namespace
+{
+
+using PoolSet = std::set<std::shared_ptr<ConnectionPool>>;
+
+}
+
+TEST_F(MultiBackendTest, round_robin_selector_happy_path)
+{
+    const size_t path_count = 4;
+    bpt::ptree pt(make_local_config(path_count));
+    configure_round_robin_selector(pt);
+
+    const size_t blacklist_secs = 1;
+    ip::PARAMETER_TYPE(backend_connection_pool_blacklist_secs)(blacklist_secs).persist(pt);
+    BackendConnectionManagerPtr cm(BackendConnectionManager::create(pt));
+
+    ASSERT_EQ(path_count,
+              cm->pools().size());
+
+    RoundRobinPoolSelector selector(*cm);
+
+    PoolSet pools;
+
+    for (size_t i = 0; i < path_count; ++i)
+    {
+        bool ok = false;
+        std::tie(std::ignore, ok) = pools.insert(selector.pool());
+        EXPECT_TRUE(ok);
+    }
+
+    EXPECT_EQ(path_count,
+              pools.size());
+}
+
+TEST_F(MultiBackendTest, round_robin_selector_pool_blacklisted)
+{
+    const size_t path_count = 4;
+    bpt::ptree pt(make_local_config(path_count));
+    configure_round_robin_selector(pt);
+
+    const size_t blacklist_secs = 1;
+    ip::PARAMETER_TYPE(backend_connection_pool_blacklist_secs)(blacklist_secs).persist(pt);
+
+    BackendConnectionManagerPtr cm(BackendConnectionManager::create(pt));
+
+    ASSERT_EQ(path_count,
+              cm->pools().size());
+
+    RoundRobinPoolSelector selector(*cm);
+
+    cm->pools().front()->error();
+    cm->pools().back()->error();
+
+    PoolSet pools;
+
+    for (size_t i = 0; i < path_count; ++i)
+    {
+        pools.insert(selector.pool());
+    }
+
+    EXPECT_EQ(path_count - 2,
+              pools.size());
 }
 
 TEST_F(MultiBackendTest, DISABLED_stress)
