@@ -19,6 +19,7 @@
 #include "BackendConnectionManager.h"
 #include "BackendPolicyConfig.h"
 #include "Condition.h"
+#include "SwitchConnectionPoolPolicy.h"
 
 #include <functional>
 
@@ -294,6 +295,15 @@ private:
     // use BackendInterfacePtrs obtained from the BackendConnectionManager.
     BackendInterface(const Namespace&,
                      BackendConnectionManagerPtr);
+
+    template<typename ReturnType,
+             typename... Args>
+    ReturnType
+    wrap_selector_(const BackendRequestParameters&,
+                   const SwitchConnectionPoolPolicy,
+                   ReturnType(BackendConnectionInterface::*mem_fun)(const Namespace&,
+                                                                    Args...),
+                   Args... args);
 
     template<typename ReturnType,
              typename... Args>

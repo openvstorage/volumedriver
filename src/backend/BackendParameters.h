@@ -78,6 +78,8 @@ DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_partial_read_nullio,
                                        bool);
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_switch_connection_pool_policy,
                                                   std::atomic<backend::SwitchConnectionPoolPolicy>);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_switch_connection_pool_partial_read_policy,
+                                                  std::atomic<backend::SwitchConnectionPoolPolicy>);
 
 DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_switch_connection_pool_on_error_policy,
                                                   std::atomic<uint32_t>);

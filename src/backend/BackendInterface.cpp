@@ -172,14 +172,13 @@ struct FixedPoolSelector
 template<typename ReturnType,
          typename... Args>
 ReturnType
-BackendInterface::wrap_(const BackendRequestParameters& params,
-                        ReturnType
-                        (BackendConnectionInterface::*mem_fun)(const Namespace&,
-                                                               Args...),
-                        Args... args)
+BackendInterface::wrap_selector_(const BackendRequestParameters& params,
+                                 const SwitchConnectionPoolPolicy policy,
+                                 ReturnType
+                                 (BackendConnectionInterface::*mem_fun)(const Namespace&,
+                                                                        Args...),
+                                 Args... args)
 {
-    const SwitchConnectionPoolPolicy policy =
-        conn_manager_->connection_manager_parameters().backend_interface_switch_connection_pool_policy.value();
     switch (policy)
     {
     case SwitchConnectionPoolPolicy::OnError:
@@ -214,6 +213,27 @@ BackendInterface::wrap_(const BackendRequestParameters& params,
     std::stringstream ss;
     ss << "Unknown SwitchConnectionPoolPolicy " << policy;
     throw fungi::IOException(ss.str());
+}
+
+template<typename ReturnType,
+         typename... Args>
+ReturnType
+BackendInterface::wrap_(const BackendRequestParameters& params,
+                        ReturnType
+                        (BackendConnectionInterface::*mem_fun)(const Namespace&,
+                                                               Args...),
+                        Args... args)
+{
+    const ConnectionManagerParameters& cm_params =
+        conn_manager_->connection_manager_parameters();
+    const SwitchConnectionPoolPolicy policy =
+        cm_params.backend_interface_switch_connection_pool_policy.value();
+
+    return wrap_selector_<ReturnType,
+                          Args...>(params,
+                                   policy,
+                                   mem_fun,
+                                   std::forward<Args>(args)...);
 }
 
 // XXX: The incoming and outgoing values for "InsistOnLatestVersion" might be confusing -
@@ -466,16 +486,22 @@ BackendInterface::partial_read(const BackendConnectionInterface::PartialReads& p
                                                  std::uncaught_exception());
                                   }));
 
+    const ConnectionManagerParameters& cm_params =
+        conn_manager_->connection_manager_parameters();
+    const SwitchConnectionPoolPolicy policy =
+        cm_params.backend_interface_switch_connection_pool_partial_read_policy.value();
+
     auto fun([&](InsistOnLatestVersion insist) -> PartialReadCounter
              {
-                 return wrap_<PartialReadCounter,
-                              decltype(partial_reads),
-                              decltype(insist),
-                              decltype(fallback_fun)>(params,
-                                                      &BackendConnectionInterface::partial_read,
-                                                      partial_reads,
-                                                      insist,
-                                                      fallback_fun);
+                 return wrap_selector_<PartialReadCounter,
+                                       decltype(partial_reads),
+                                       decltype(insist),
+                                       decltype(fallback_fun)>(params,
+                                                               policy,
+                                                               &BackendConnectionInterface::partial_read,
+                                                               partial_reads,
+                                                               insist,
+                                                               fallback_fun);
              });
 
     if (not conn_manager_->partial_read_nullio())

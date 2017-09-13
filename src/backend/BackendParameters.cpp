@@ -197,6 +197,13 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_switch_connection_pool_p
                                       ShowDocumentation::F,
                                       be::SwitchConnectionPoolPolicy::RoundRobin);
 
+DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_switch_connection_pool_partial_read_policy,
+                                      backend_connection_manager_name,
+                                      "backend_interface_switch_connection_pool_partial_read_policy",
+                                      "when to switch to another proxy for partial reads: \'SwitchOnError\' or \'RoundRobin\'",
+                                      ShowDocumentation::F,
+                                      be::SwitchConnectionPoolPolicy::OnError);
+
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_switch_connection_pool_on_error_policy,
                                       backend_connection_manager_name,
                                       "backend_interface_switch_connection_pool_on_error_policy",
