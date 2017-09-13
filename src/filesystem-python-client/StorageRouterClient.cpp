@@ -145,6 +145,7 @@ createExceptionClass(const char* name, PyObject* baseTypeObj = PyExc_Exception)
 }
 
 DEFINE_EXCEPTION_TRANSLATOR(MaxRedirectsExceededException);
+DEFINE_EXCEPTION_TRANSLATOR(NodeNotReachableException);
 DEFINE_EXCEPTION_TRANSLATOR(ClusterNotReachableException);
 DEFINE_EXCEPTION_TRANSLATOR(ObjectNotFoundException);
 DEFINE_EXCEPTION_TRANSLATOR(InvalidOperationException);
@@ -316,6 +317,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
 
     REGISTER_EXCEPTION_TRANSLATOR(MaxRedirectsExceededException);
     REGISTER_EXCEPTION_TRANSLATOR(ClusterNotReachableException);
+    REGISTER_EXCEPTION_TRANSLATOR(NodeNotReachableException);
     REGISTER_EXCEPTION_TRANSLATOR(ObjectNotFoundException);
     REGISTER_EXCEPTION_TRANSLATOR(InvalidOperationException);
     REGISTER_EXCEPTION_TRANSLATOR(SnapshotNotFoundException);
