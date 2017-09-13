@@ -16,6 +16,8 @@
 #ifndef BACKEND_NAMESPACE_POOL_SELECTOR_H_
 #define BACKEND_NAMESPACE_POOL_SELECTOR_H_
 
+#include "ConnectionPoolSelectorInterface.h"
+
 #include <memory>
 
 #include <youtils/Logging.h>
@@ -28,6 +30,7 @@ class Namespace;
 class ConnectionPool;
 
 class NamespacePoolSelector
+    : public ConnectionPoolSelectorInterface
 {
 public:
     NamespacePoolSelector(const BackendConnectionManager&,
@@ -41,16 +44,16 @@ public:
     operator=(const NamespacePoolSelector&) = delete;
 
     const std::shared_ptr<ConnectionPool>&
-    pool();
+    pool() override final;
 
     void
-    request_timeout();
+    request_timeout() override final;
 
     void
-    connection_error();
+    connection_error() override final;
 
     void
-    backend_error();
+    backend_error() override final;
 
 private:
     DECLARE_LOGGER("NamespacePoolSelector");

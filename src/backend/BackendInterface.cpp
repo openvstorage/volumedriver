@@ -48,11 +48,10 @@ BackendInterface::default_request_parameters()
     return params;
 }
 
-template<typename PoolSelector,
-         typename ReturnType,
+template<typename ReturnType,
          typename... Args>
 ReturnType
-BackendInterface::do_wrap_(PoolSelector& selector,
+BackendInterface::do_wrap_(ConnectionPoolSelectorInterface& selector,
                            const BackendRequestParameters& params,
                            ReturnType
                            (BackendConnectionInterface::*mem_fun)(Args...),
@@ -139,6 +138,7 @@ namespace
 {
 
 struct FixedPoolSelector
+    : public ConnectionPoolSelectorInterface
 {
     std::shared_ptr<ConnectionPool> pool_;
 
@@ -147,23 +147,23 @@ struct FixedPoolSelector
     {}
 
     const std::shared_ptr<ConnectionPool>&
-    pool() const
+    pool() override final
     {
         return pool_;
     }
 
     void
-    connection_error()
+    connection_error() override final
     {
         pool_->error();
     }
 
     void
-    backend_error()
+    backend_error() override final
     {}
 
     void
-    request_timeout()
+    request_timeout() override final
     {}
 };
 
@@ -187,8 +187,7 @@ BackendInterface::wrap_(const BackendRequestParameters& params,
             NamespacePoolSelector selector(*conn_manager_,
                                            nspace_);
 
-            return do_wrap_<NamespacePoolSelector,
-                            ReturnType,
+            return do_wrap_<ReturnType,
                             const Namespace&,
                             Args...>(selector,
                                      params,
@@ -200,8 +199,7 @@ BackendInterface::wrap_(const BackendRequestParameters& params,
         {
             RoundRobinPoolSelector selector(*conn_manager_);
 
-            return do_wrap_<RoundRobinPoolSelector,
-                            ReturnType,
+            return do_wrap_<ReturnType,
                             const Namespace&,
                             Args...>(selector,
                                      params,
@@ -391,8 +389,7 @@ BackendInterface::invalidate_cache(const BackendRequestParameters& params)
     {
         FixedPoolSelector selector(pool);
 
-        do_wrap_<FixedPoolSelector,
-                 void,
+        do_wrap_<void,
                  const boost::optional<Namespace>&>(selector,
                                                     params,
                                                     &BackendConnectionInterface::invalidate_cache,

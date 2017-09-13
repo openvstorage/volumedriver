@@ -16,9 +16,9 @@
 #ifndef BACKEND_ROUND_ROBIN_POOL_SELECTOR_H_
 #define BACKEND_ROUND_ROBIN_POOL_SELECTOR_H_
 
-#include <memory>
+#include "ConnectionPoolSelectorInterface.h"
 
-#include <youtils/Logging.h>
+#include <memory>
 
 namespace backend
 {
@@ -27,6 +27,7 @@ class BackendConnectionManager;
 class ConnectionPool;
 
 class RoundRobinPoolSelector
+    : public ConnectionPoolSelectorInterface
 {
 public:
     explicit RoundRobinPoolSelector(BackendConnectionManager&);
@@ -39,17 +40,17 @@ public:
     operator=(const RoundRobinPoolSelector&) = delete;
 
     const std::shared_ptr<ConnectionPool>&
-    pool();
+    pool() override final;
 
     void
-    connection_error();
+    connection_error() override final;
 
     void
-    backend_error()
+    backend_error() override final
     {}
 
     void
-    request_timeout()
+    request_timeout() override final
     {}
 
 private:

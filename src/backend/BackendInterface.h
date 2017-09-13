@@ -37,6 +37,7 @@ namespace backend
 
 class BackendConnectionInterface;
 class BackendRequestParameters;
+class ConnectionPoolSelectorInterface;
 
 // not a interface in terms of polymorphism anymore - rename?
 class BackendInterface
@@ -302,11 +303,10 @@ private:
                                                            Args...),
           Args... args);
 
-    template<typename PoolSelector,
-             typename ReturnType,
+    template<typename ReturnType,
              typename... Args>
     ReturnType
-    do_wrap_(PoolSelector&,
+    do_wrap_(ConnectionPoolSelectorInterface&,
              const BackendRequestParameters&,
              ReturnType(BackendConnectionInterface::*mem_fun)(Args...),
              Args... args);
