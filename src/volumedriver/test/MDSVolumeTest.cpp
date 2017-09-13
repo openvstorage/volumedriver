@@ -626,7 +626,7 @@ protected:
             table->catch_up(DryRun::F,
                             CheckScrubId::F);
 
-            const MaybeScrubId snd_slave_scrub_id();
+            const MaybeScrubId snd_slave_scrub_id;
             EXPECT_EQ(slave_scrub_id,
                       slave_mdb->scrub_id());
             EXPECT_NE(slave_scrub_id,
@@ -655,7 +655,7 @@ protected:
                                                          wrns->ns(),
                                                          owner_tag,
                                                          boost::none));
-            dynamic_cast<MDSMetaDataBackend&>(*mdb).clear_scrub_id_();
+            dynamic_cast<MDSMetaDataBackend&>(*mdb).clear_scrub_id();
             EXPECT_EQ(boost::none,
                       mdb->scrub_id());
         }
@@ -1983,28 +1983,37 @@ TEST_P(MDSVolumeTest, slave_from_scratch_has_scrub_id)
     const TLogId tlog_id(v->scheduleBackendSync());
     waitForThisBackendWrite(*v);
 
-    mds::ClientNG::Ptr client(mds::ClientNG::create(ncfgs[1]));
-    {
-        MDSMetaDataBackend mdb(client,
-                               wrns->ns(),
-                               OwnerTag(0));
+    auto check([&]
+               {
+                   mds::ClientNG::Ptr client(mds::ClientNG::create(ncfgs[1]));
 
-        boost::this_thread::sleep_for(bc::seconds(mds_manager_->poll_interval().count() * 2));
+                   MDSMetaDataBackend mdb(client,
+                                          wrns->ns(),
+                                          OwnerTag(0));
 
-        EXPECT_NE(boost::none,
-                  mdb.lastCorkUUID());
-        EXPECT_EQ(static_cast<yt::UUID>(tlog_id),
-                  *mdb.lastCorkUUID());
-        EXPECT_NE(boost::none,
-                  mdb.scrub_id());
-    }
+                   boost::this_thread::sleep_for(bc::seconds(mds_manager_->poll_interval().count() * 2));
 
-    mds::TableInterfacePtr t(client->open(wrns->ns().str()));
-    const mds::TableCounters c(t->get_counters(Reset::F));
-    EXPECT_EQ(0,
-              c.full_rebuilds);
-    EXPECT_LT(0,
-              c.incremental_updates);
+                   EXPECT_NE(boost::none,
+                             mdb.lastCorkUUID());
+                   EXPECT_EQ(static_cast<yt::UUID>(tlog_id),
+                             *mdb.lastCorkUUID());
+                   EXPECT_NE(boost::none,
+                             mdb.scrub_id());
+
+                   mds::TableInterfacePtr t(client->open(wrns->ns().str()));
+                   const mds::TableCounters c(t->get_counters(Reset::F));
+                   EXPECT_EQ(0,
+                             c.full_rebuilds);
+                   EXPECT_LT(0,
+                             c.incremental_updates);
+
+                   client->drop(wrns->ns().str());
+               });
+    // the table exists (it was created during volume creation)
+    check();
+
+    // the table is recreated as part of 'check'
+    check();
 }
 
 namespace

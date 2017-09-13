@@ -213,6 +213,22 @@ MDSClient::registerize()
              "@param: nspace: string, namespace name\n"
              "@param: page address\n"
              "@returns: [ ClusterLocationAndHash ]\n")
+        .def("_set_cork_id",
+             &mds::PythonClient::set_cork_id,
+             (bpy::args("nspace"),
+              bpy::args("cork_id")),
+             "Set the cork ID for the given namespace.\n"
+             "@param: nspace: string, namespace name\n"
+             "@param: cork_id: optional string, cork ID (UUID), \'None\' clears it\n"
+             "@returns: eventually\n")
+        .def("_set_scrub_id",
+             &mds::PythonClient::set_scrub_id,
+             (bpy::args("nspace"),
+              bpy::args("scrub_id")),
+             "Set the scrub ID for the given namespace.\n"
+             "@param: nspace: string, namespace name\n"
+             "@param: scrub_id: optional string, scrub ID (UUID), \'None\' clears it\n"
+             "@returns: eventually\n")
         ;
 }
 

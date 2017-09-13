@@ -72,8 +72,16 @@ public:
     boost::optional<std::string>
     get_cork_id(const std::string& nspace) const;
 
+    void
+    set_cork_id(const std::string& nspace,
+                const boost::optional<std::string>& cork_id);
+
     boost::optional<std::string>
     get_scrub_id(const std::string& nspace) const;
+
+    void
+    set_scrub_id(const std::string& nspace,
+                 const boost::optional<std::string>& scrub_id);
 
     size_t
     catch_up(const std::string& nspace,

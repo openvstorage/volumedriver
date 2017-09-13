@@ -18,6 +18,7 @@
 
 #include "../ClusterLocationAndHash.h"
 #include "../MDSMetaDataBackend.h"
+#include "../ScrubId.h"
 
 #include <youtils/Assert.h>
 
@@ -141,6 +142,25 @@ PythonClient::get_cork_id(const std::string& nspace) const
     }
 }
 
+void
+PythonClient::set_cork_id(const std::string& nspace,
+                          const boost::optional<std::string>& cork_id)
+{
+    vd::MDSMetaDataBackend backend(config_,
+                                   be::Namespace(nspace),
+                                   owner_tag(nspace),
+                                   timeout_);
+
+    if (cork_id)
+    {
+        backend.setCork(yt::UUID(*cork_id));
+    }
+    else
+    {
+        backend.clear_cork();
+    }
+}
+
 boost::optional<std::string>
 PythonClient::get_scrub_id(const std::string& nspace) const
 {
@@ -159,6 +179,25 @@ PythonClient::get_scrub_id(const std::string& nspace) const
     else
     {
         return boost::none;
+    }
+}
+
+void
+PythonClient::set_scrub_id(const std::string& nspace,
+                           const boost::optional<std::string>& scrub_id)
+{
+    vd::MDSMetaDataBackend backend(config_,
+                                   be::Namespace(nspace),
+                                   owner_tag(nspace),
+                                   timeout_);
+
+    if (scrub_id)
+    {
+        backend.set_scrub_id(vd::ScrubId(yt::UUID(*scrub_id)));
+    }
+    else
+    {
+        backend.clear_scrub_id();
     }
 }
 

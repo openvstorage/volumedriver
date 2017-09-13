@@ -156,6 +156,12 @@ public:
                          *owner_tag_);
     }
 
+    void
+    clear_cork();
+
+    void
+    clear_scrub_id();
+
 private:
     DECLARE_LOGGER("MDSMetaDataBackend");
 
@@ -167,9 +173,6 @@ private:
 
     void
     init_();
-
-    void
-    clear_scrub_id_();
 };
 
 }

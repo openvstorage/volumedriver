@@ -300,6 +300,19 @@ MDSMetaDataBackend::lastCorkUUID()
 }
 
 void
+MDSMetaDataBackend::clear_cork()
+{
+    LOG_INFO(table_->nspace() << ": clearing cork");
+
+    const mds::TableInterface::Records recs{ mds::Record(mds::Key(cork_key),
+                                                         mds::None()) };
+    VERIFY(owner_tag_);
+    table_->multiset(recs,
+                     Barrier::T,
+                     *owner_tag_);
+}
+
+void
 MDSMetaDataBackend::set_scrub_id(const ScrubId& scrub_id)
 {
     LOG_INFO(table_->nspace() << ": setting scrub ID " << scrub_id);
@@ -314,7 +327,7 @@ MDSMetaDataBackend::set_scrub_id(const ScrubId& scrub_id)
 }
 
 void
-MDSMetaDataBackend::clear_scrub_id_()
+MDSMetaDataBackend::clear_scrub_id()
 {
     LOG_INFO(table_->nspace() << ": clearing scrub ID");
 
