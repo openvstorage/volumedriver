@@ -86,9 +86,10 @@ public:
     {
         queued_work_inc();
         inflight_lock.lock();
-        if (need_to_grow())
+        size_t new_nr_threads = need_to_grow();
+        if (new_nr_threads > 0)
         {
-            create_workqueue_threads(nr_threads_ * 2);
+            create_workqueue_threads(new_nr_threads);
         }
         inflight_queue.push(req);
         inflight_lock.unlock();
@@ -176,17 +177,23 @@ private:
         }
     }
 
-    bool
+    size_t
     need_to_grow()
     {
-        if ((nr_threads_ < nr_queued_work) &&
-                (nr_threads_ * 2 <= get_max_wq_depth()))
+        if (nr_threads_ >= nr_queued_work)
         {
-            thread_life_period_ = get_time_point() +
-                std::chrono::milliseconds(protection_period_);
-            return true;
+            return 0;
         }
-        return false;
+
+        size_t roof = get_max_wq_depth();
+        if (nr_threads_ >= roof)
+        {
+            return 0;
+        }
+
+        thread_life_period_ = get_time_point() +
+            std::chrono::milliseconds(protection_period_);
+        return std::min(nr_threads_ * 2, roof);
     }
 
     bool
@@ -217,9 +224,9 @@ private:
                 thr.detach();
                 nr_threads_++;
             }
-            catch (const std::system_error&)
+            catch (const std::system_error& e)
             {
-                LOG_ERROR("cannot create worker thread");
+                LOG_ERROR("cannot create worker thread: " << e.what());
                 return -1;
             }
         }
