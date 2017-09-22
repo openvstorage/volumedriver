@@ -370,7 +370,7 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(fs_metadata_backend_mds_timeout_secs,
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(fs_metadata_backend_mds_slave_max_tlogs_behind,
                                       filesystem_component_name,
                                       "fs_metadata_backend_mds_slave_max_tlogs_behind",
-                                      "max number of TLogs a slave is allowed to run behind to still permit a failover to it",
+                                      "max number of TLogs a slave is allowed to run behind to still permit a failover to it (std::numeric_limits<uint32_t>::max() (= 4^32-1) -> no limit)",
                                       ShowDocumentation::T,
                                       std::numeric_limits<uint32_t>::max());
 
