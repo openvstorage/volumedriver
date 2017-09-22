@@ -47,8 +47,8 @@ class WithMDS;
 class MetaDataStoreTestSetup
 {
 public:
-    MetaDataStoreTestSetup(std::shared_ptr<arakoon::ArakoonTestSetup> ara_test_setup,
-                           const volumedriver::MDSNodeConfig& mds_node_config);
+    MetaDataStoreTestSetup(std::shared_ptr<arakoon::ArakoonTestSetup>,
+                           const volumedriver::MDSNodeConfigs&);
 
     ~MetaDataStoreTestSetup() = default;
 
@@ -68,7 +68,7 @@ private:
     const boost::filesystem::path root_;
 
     std::shared_ptr<arakoon::ArakoonTestSetup> arakoon_test_setup_;
-    const volumedriver::MDSNodeConfig mds_node_config_;
+    const volumedriver::MDSNodeConfigs mds_node_configs_;
 };
 
 class ArakoonMDStoreOptions

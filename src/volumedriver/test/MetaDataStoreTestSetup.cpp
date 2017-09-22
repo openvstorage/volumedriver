@@ -62,9 +62,9 @@ MetaDataStoreTestSetup::backend_type_ =
                                                               vd::MetaDataBackendType::MDS);
 
 MetaDataStoreTestSetup::MetaDataStoreTestSetup(std::shared_ptr<ara::ArakoonTestSetup> ara_test_setup,
-                                               const vd::MDSNodeConfig& mds_node_config)
+                                               const vd::MDSNodeConfigs& mds_node_configs)
     : arakoon_test_setup_(ara_test_setup)
-    , mds_node_config_(mds_node_config)
+    , mds_node_configs_(mds_node_configs)
 {}
 
 std::unique_ptr<vd::MetaDataBackendConfig>
@@ -76,21 +76,21 @@ MetaDataStoreTestSetup::make_config()
     {
     case vd::MetaDataBackendType::Arakoon:
         VERIFY(arakoon_test_setup_ != nullptr);
-        cfg.reset(new vd::ArakoonMetaDataBackendConfig(arakoon_test_setup_->clusterID(),
-                                                       arakoon_test_setup_->node_configs()));
+        cfg =
+            std::make_unique<vd::ArakoonMetaDataBackendConfig>(arakoon_test_setup_->clusterID(),
+                                                               arakoon_test_setup_->node_configs());
         break;
     case vd::MetaDataBackendType::MDS:
-        {
-            const vd::MDSNodeConfigs ncfgs{ mds_node_config_ };
-            cfg.reset(new vd::MDSMetaDataBackendConfig(ncfgs,
-                                                       vd::ApplyRelocationsToSlaves::T));
-            break;
-        }
+        VERIFY(not mds_node_configs_.empty());
+        cfg =
+            std::make_unique<vd::MDSMetaDataBackendConfig>(mds_node_configs_,
+                                                           vd::ApplyRelocationsToSlaves::T);
+        break;
     case vd::MetaDataBackendType::RocksDB:
-        cfg.reset(new vd::RocksDBMetaDataBackendConfig());
+        cfg = std::make_unique<vd::RocksDBMetaDataBackendConfig>();
         break;
     case vd::MetaDataBackendType::TCBT:
-        cfg.reset(new vd::TCBTMetaDataBackendConfig());
+        cfg = std::make_unique<vd::TCBTMetaDataBackendConfig>();
         break;
     }
 

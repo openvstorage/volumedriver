@@ -96,6 +96,7 @@ struct FileSystemTestSetupParameters
     PARAM(boost::chrono::seconds, keepalive_interval) = boost::chrono::seconds(1);
     PARAM(size_t, keepalive_retries) = 3;
     PARAM(volumedriver::ClusterMultiplier, cluster_multiplier) = volumedriver::ClusterMultiplier(8);
+    PARAM(size_t, mds_count) = 1;
 
 #undef PARAM
 };
@@ -352,7 +353,7 @@ protected:
 
     std::shared_ptr<arakoon::ArakoonTestSetup> arakoon_test_setup_;
     std::shared_ptr<volumedrivertest::MDSTestSetup> mds_test_setup_;
-    std::unique_ptr<metadata_server::ServerConfig> mds_server_config_;
+    std::vector<metadata_server::ServerConfig> mds_server_configs_;
     std::unique_ptr<volumedrivertest::MetaDataStoreTestSetup> mdstore_test_setup_;
     std::unique_ptr<metadata_server::Manager> mds_manager_;
 

@@ -699,7 +699,7 @@ VolManagerTestSetup::setup_md_backend_()
         std::make_unique<mds::ServerConfig>(mds_test_setup_->next_server_config());
     mdstore_test_setup_ =
         std::make_unique<vdt::MetaDataStoreTestSetup>(arakoon_test_setup_,
-                                                      mds_server_config_->node_config);
+                                                      MDSNodeConfigs{ mds_server_config_->node_config });
 }
 
 void

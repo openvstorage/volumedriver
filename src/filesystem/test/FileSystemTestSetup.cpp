@@ -231,9 +231,15 @@ FileSystemTestSetup::make_mdstore_config_(bpt::ptree& pt) const
             }
         case vd::MetaDataBackendType::MDS:
             {
-                VERIFY(mds_server_config_ != nullptr);
-                const ip::PARAMETER_TYPE(fs_metadata_backend_mds_nodes)::ValueType
-                    mds_nodev({ mds_server_config_->node_config });
+                VERIFY(not mds_server_configs_.empty());
+                ip::PARAMETER_TYPE(fs_metadata_backend_mds_nodes)::ValueType
+                    mds_nodev;
+
+                mds_nodev.reserve(mds_server_configs_.size());
+                for (const auto& c : mds_server_configs_)
+                {
+                    mds_nodev.push_back(c.node_config);
+                }
                 ip::PARAMETER_TYPE(fs_metadata_backend_mds_nodes)(mds_nodev).persist(pt);
                 break;
             }
@@ -446,16 +452,22 @@ FileSystemTestSetup::SetUp()
     arakoon_test_setup_->setUpArakoon();
 
     mds_test_setup_ = std::make_shared<vdt::MDSTestSetup>(mds_dir(topdir_));
-    mds_manager_ = mds_test_setup_->make_manager(cm_);
-    const mds::ServerConfigs scfgs(mds_manager_->server_configs());
+    mds_manager_ = mds_test_setup_->make_manager(cm_,
+                                                 params_.mds_count_);
+    mds_server_configs_ = mds_manager_->server_configs();
+    ASSERT_EQ(params_.mds_count_,
+              mds_server_configs_.size());
 
-    ASSERT_EQ(1U,
-              scfgs.size());
+    vd::MDSNodeConfigs ncfgs;
+    ncfgs.reserve(params_.mds_count_);
+    for (const auto& c : mds_server_configs_)
+    {
+        ncfgs.push_back(c.node_config);
+    }
 
-    mds_server_config_ = std::make_unique<mds::ServerConfig>(scfgs[0]);
     mdstore_test_setup_ =
         std::make_unique<vdt::MetaDataStoreTestSetup>(arakoon_test_setup_,
-                                                      mds_server_config_->node_config);
+                                                      ncfgs);
 
     start_failovercache_for_local_node();
 }
@@ -474,8 +486,8 @@ FileSystemTestSetup::TearDown()
     stop_failovercache_for_local_node();
 
     mdstore_test_setup_.reset();
-    mds_server_config_.reset();
-    mds_manager_.reset();
+    mds_server_configs_.clear();
+    mds_manager_ = nullptr;
     mds_test_setup_ = nullptr;
 
     try
