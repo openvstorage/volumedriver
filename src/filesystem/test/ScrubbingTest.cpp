@@ -27,8 +27,11 @@
 #include <backend/BackendInterface.h>
 
 #include <volumedriver/Api.h>
+#include <volumedriver/MDSMetaDataBackend.h>
+#include <volumedriver/MetaDataBackendConfig.h>
 #include <volumedriver/Scrubber.h>
 #include <volumedriver/ScrubberAdapter.h>
+#include <volumedriver/ScrubId.h>
 #include <volumedriver/ScrubReply.h>
 #include <volumedriver/ScrubWork.h>
 
@@ -57,6 +60,7 @@ protected:
         : FileSystemTestBase(FileSystemTestSetupParameters("ScrubbingTest")
                              .scrub_manager_interval_secs(1)
                              .use_cluster_cache(false)
+                             .mds_count(2)
                              .cluster_multiplier(GetParam()))
     {}
 
@@ -117,6 +121,46 @@ protected:
                        s,
                        s.size(),
                        i * csize);
+        }
+    }
+
+    std::vector<vd::MaybeScrubId>
+    scrub_ids(const ObjectId& id)
+    {
+        LOCKVD();
+        const vd::VolumeConfig vcfg(api::getVolumeConfig(vd::VolumeId(id.str())));
+        const auto& mdb_cfg =
+            dynamic_cast<const vd::MDSMetaDataBackendConfig&>(*vcfg.metadata_backend_config_);
+
+        const vd::MDSMetaDataBackendConfig::NodeConfigs& ncfgs = mdb_cfg.node_configs();
+        std::vector<vd::MaybeScrubId> scrub_ids;
+        scrub_ids.reserve(ncfgs.size());
+
+        for (const auto& c : ncfgs)
+        {
+            vd::MDSMetaDataBackend mdb(c,
+                                       be::Namespace(id.str()),
+                                       vd::OwnerTag(1),
+                                       boost::none);
+            scrub_ids.push_back(mdb.scrub_id());
+        }
+
+        return scrub_ids;
+    }
+
+    void
+    check_scrub_ids(const std::vector<vd::MaybeScrubId>& scrub_ids)
+    {
+        EXPECT_TRUE(not scrub_ids.empty());
+        EXPECT_LE(2,
+                  scrub_ids.size());
+
+        const vd::MaybeScrubId master(scrub_ids.front());
+
+        for (size_t i = 1; i < scrub_ids.size(); ++i)
+        {
+            EXPECT_EQ(master,
+                      scrub_ids[i]) << "MDS slave: " << i;
         }
     }
 
@@ -316,6 +360,8 @@ TEST_P(ScrubbingTest, simple)
     check_backend_before_gc(reps[0].ns_,
                             res);
 
+    const std::vector<vd::MaybeScrubId> scrub_ids_before(scrub_ids(id));
+
     fs_->object_router().queue_scrub_reply_local(id,
                                                  reps[0]);
 
@@ -325,6 +371,13 @@ TEST_P(ScrubbingTest, simple)
 
     check_backend_after_gc(reps[0],
                            res);
+
+    const std::vector<vd::MaybeScrubId> scrub_ids_after(scrub_ids(id));
+
+    EXPECT_NE(scrub_ids_before,
+              scrub_ids_after);
+
+    check_scrub_ids(scrub_ids_after);
 }
 
 TEST_P(ScrubbingTest, clones)
@@ -376,10 +429,13 @@ TEST_P(ScrubbingTest, clones)
     for (auto& cid : clones)
     {
         check_data(cid);
+        check_scrub_ids(scrub_ids(cid));
     }
 
     check_backend_after_gc(reps[0],
                            res);
+
+    check_scrub_ids(scrub_ids(pid));
 }
 
 TEST_P(ScrubbingTest, fenced_parent)
@@ -411,6 +467,10 @@ TEST_P(ScrubbingTest, fenced_parent)
     ASSERT_FALSE(res.tlogs_out.empty());
     ASSERT_FALSE(res.sconames_to_be_deleted.empty());
 
+    const std::vector<vd::MaybeScrubId> scrub_ids_before(scrub_ids(id));
+    ASSERT_LT(1,
+              scrub_ids_before.size());
+
     with_fenced_volume(id,
                        [&]
                        {
@@ -423,6 +483,20 @@ TEST_P(ScrubbingTest, fenced_parent)
 
     check_backend_before_gc(reps[0].ns_,
                             res);
+
+    const std::vector<vd::MaybeScrubId> scrub_ids_after(scrub_ids(id));
+
+    ASSERT_LT(1,
+              scrub_ids_after.size());
+    EXPECT_EQ(scrub_ids_before[0],
+              scrub_ids(id)[0]);
+    if (scrub_ids_before[1])
+    {
+        EXPECT_EQ(scrub_ids_before[1],
+                  scrub_ids_after[1]);
+        EXPECT_EQ(scrub_ids_before[0],
+                  scrub_ids_after[1]);
+    }
 }
 
 TEST_P(ScrubbingTest, fenced_clone)
@@ -474,6 +548,9 @@ TEST_P(ScrubbingTest, fenced_clone)
 
     check_backend_after_gc(reps[0],
                            res);
+
+    check_scrub_ids(scrub_ids(pid));
+    check_scrub_ids(scrub_ids(cid));
 }
 
 INSTANTIATE_TEST_CASE_P(ScrubbingTests,
