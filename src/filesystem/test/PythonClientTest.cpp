@@ -894,7 +894,7 @@ TEST_F(PythonClientTest, scrubbing)
 
         while (not sm.get_parent_scrubs().empty())
         {
-            boost::this_thread::sleep_for(boost::chrono::seconds(scrub_manager_interval_secs_));
+            boost::this_thread::sleep_for(boost::chrono::seconds(params_.scrub_manager_interval_secs_));
         }
 
         EXPECT_EQ(1,
@@ -1244,7 +1244,7 @@ TEST_F(PythonClientTest, family_scrubbing)
     while (not sm.get_parent_scrubs().empty() or
            not sm.get_clone_scrubs().empty())
     {
-        boost::this_thread::sleep_for(boost::chrono::seconds(scrub_manager_interval_secs_));
+        boost::this_thread::sleep_for(boost::chrono::seconds(params_.scrub_manager_interval_secs_));
     }
 
     const ScrubManager::Counters c(sm.get_counters());
@@ -1303,7 +1303,7 @@ TEST_F(PythonClientTest, templates_and_scrubbing)
     while (not sm.get_parent_scrubs().empty() or
            not sm.get_clone_scrubs().empty())
     {
-        boost::this_thread::sleep_for(boost::chrono::seconds(scrub_manager_interval_secs_));
+        boost::this_thread::sleep_for(boost::chrono::seconds(params_.scrub_manager_interval_secs_));
     }
 
     const ScrubManager::Counters c(sm.get_counters());

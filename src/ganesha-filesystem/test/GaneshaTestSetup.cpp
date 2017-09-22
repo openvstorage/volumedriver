@@ -51,7 +51,7 @@ Setup::nfs_server() const
 fs::path
 Setup::nfs_export() const
 {
-    return fs::path("/") / fs::path(test_name_);
+    return fs::path("/") / fs::path(params_.name_);
 }
 
 void

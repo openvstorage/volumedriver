@@ -887,7 +887,7 @@ TEST_F(RemoteTest, remote_gone_and_offlined_after_a_while)
 
     std::thread t([&]()
                   {
-                      std::this_thread::sleep_for(std::chrono::milliseconds(redirect_timeout_ms_ * retries));
+                      std::this_thread::sleep_for(std::chrono::milliseconds(params_.redirect_timeout_ms_ * retries));
                       std::shared_ptr<ClusterRegistry>
                           reg(cluster_registry(fs_->object_router()));
                       reg->set_node_state(remote_node_id(),
@@ -905,7 +905,7 @@ TEST_F(RemoteTest, remote_gone_and_offlined_after_a_while)
                    off,
                    *h));
 
-    EXPECT_LT(retries * redirect_timeout_ms_ / 1000, w.elapsed());
+    EXPECT_LT(retries * params_.redirect_timeout_ms_ / 1000, w.elapsed());
 
     t.join();
 
@@ -1366,7 +1366,7 @@ TEST_F(RemoteTest, volume_migrate_timeout)
     EXPECT_THROW(fs_->object_router().migrate(*maybe_id),
                  RemoteTimeoutException);
 
-    boost::this_thread::sleep_for(boost::chrono::milliseconds(migrate_timeout_ms_ + 1));
+    boost::this_thread::sleep_for(boost::chrono::milliseconds(params_.migrate_timeout_ms_ + 1));
 
     verify_registration(*maybe_id,
                         remote_node_id());
@@ -1842,7 +1842,7 @@ TEST_F(RemoteTest, dtl_status)
     EXPECT_TRUE(fs::exists(rpath));
 
     test_dtl_status(vname,
-                    dtl_mode_);
+                    params_.dtl_mode_);
 }
 
 TEST_F(RemoteTest, forceful_migration_with_fencing_enabled)

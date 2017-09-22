@@ -63,40 +63,19 @@ FileSystemTestSetup::edge_transport_("tcp");
 
 FileSystemTestSetup::FileSystemTestSetup(const FileSystemTestSetupParameters& params)
     : be::BackendTestSetup()
-    , test_name_(params.name_)
-    , topdir_(yt::FileUtils::temp_path(test_name_))
+    , params_(params)
+    , topdir_(yt::FileUtils::temp_path(params_.name_))
     , configuration_(topdir_ / "configuration")
-    , scache_size_(yt::DimensionedValue(params.scocache_size_).getBytes())
-    , scache_trigger_gap_(yt::DimensionedValue(params.scocache_trigger_gap_).getBytes())
-    , scache_backoff_gap_(yt::DimensionedValue(params.scocache_backoff_gap_).getBytes())
-    , scache_clean_interval_(params.scocache_clean_interval_)
-    , open_scos_per_volume_(params.open_scos_per_volume_)
-    , dstore_throttle_usecs_(params.datastore_throttle_usecs_)
-    , foc_throttle_usecs_(params.failovercache_throttle_usecs_)
-    , num_threads_(params.num_threads_)
-    , num_scos_in_tlog_(params.scos_per_tlog_)
-    , backend_sync_timeout_ms_(params.backend_sync_timeout_ms_)
-    , migrate_timeout_ms_(params.migrate_timeout_ms_)
-    , redirect_timeout_ms_(params.redirect_timeout_ms_)
-    , redirect_retries_(params.redirect_retries_)
-    , scrub_manager_interval_secs_(params.scrub_manager_interval_secs_)
-    , use_fencing_(params.use_fencing_)
-    , send_sync_response_(params.send_sync_response_)
-    , use_cluster_cache_(params.use_cluster_cache_)
-    , keepalive_time_(params.keepalive_time_)
-    , keepalive_interval_(params.keepalive_interval_)
-    , keepalive_retries_(params.keepalive_retries_)
-    , cluster_multiplier_(params.cluster_multiplier_)
-    , dtl_config_mode_(params.dtl_config_mode_)
-    , dtl_mode_(params.dtl_mode_)
     , fdriver_namespace_("ovs-fdnspc-fstest-"s + yt::UUID().str())
     , arakoon_test_setup_(std::make_shared<ara::ArakoonTestSetup>(topdir_ / "arakoon"))
     , client_(vrouter_cluster_id(),
               {{address(), local_config().xmlrpc_port}} )
 {
-    EXPECT_LE(scache_trigger_gap_, scache_backoff_gap_) <<
+    EXPECT_LE(params_.scocache_trigger_gap_,
+              params_.scocache_backoff_gap_) <<
         "invalid trigger gap + backoff gap for the SCO cache specified, fix your test!";
-    EXPECT_LT(scache_backoff_gap_, scache_size_) <<
+    EXPECT_LT(params_.scocache_backoff_gap_,
+              params_.scocache_size_) <<
         "invalid backoff gap specified for the SCO cache, fix your test!";
 }
 
@@ -271,8 +250,8 @@ bpt::ptree&
 FileSystemTestSetup::make_dtl_config_(const vfs::NodeId& vrouter_id,
                                       bpt::ptree& pt) const
 {
-    ip::PARAMETER_TYPE(fs_dtl_config_mode)(dtl_config_mode_).persist(pt);
-    if (dtl_config_mode_ == vfs::FailOverCacheConfigMode::Manual)
+    ip::PARAMETER_TYPE(fs_dtl_config_mode)(params_.dtl_config_mode_).persist(pt);
+    if (params_.dtl_config_mode_ == vfs::FailOverCacheConfigMode::Manual)
     {
         const vfs::ClusterNodeConfig cfg(vrouter_id == local_node_id() ?
                                          local_config() :
@@ -280,7 +259,7 @@ FileSystemTestSetup::make_dtl_config_(const vfs::NodeId& vrouter_id,
 
         ip::PARAMETER_TYPE(fs_dtl_host)(cfg.failovercache_host).persist(pt);
         ip::PARAMETER_TYPE(fs_dtl_port)(cfg.failovercache_port).persist(pt);
-        ip::PARAMETER_TYPE(fs_dtl_mode)(dtl_mode_).persist(pt);
+        ip::PARAMETER_TYPE(fs_dtl_mode)(params_.dtl_mode_).persist(pt);
     }
 
     return pt;
@@ -298,18 +277,18 @@ FileSystemTestSetup::make_config_(bpt::ptree& pt,
         vd::MountPointConfigs mp_configs;
 
         mp_configs.push_back(vd::MountPointConfig(scocache_mountpoint(topdir).string(),
-                                                  scache_size_));
+                                                  params_.scocache_size_));
 
         ip::PARAMETER_TYPE(scocache_mount_points)(mp_configs).persist(pt);
-        ip::PARAMETER_TYPE(trigger_gap)(yt::DimensionedValue(scache_trigger_gap_)).persist(pt);
-        ip::PARAMETER_TYPE(backoff_gap)(yt::DimensionedValue(scache_backoff_gap_)).persist(pt);
+        ip::PARAMETER_TYPE(trigger_gap)(yt::DimensionedValue(params_.scocache_trigger_gap_)).persist(pt);
+        ip::PARAMETER_TYPE(backoff_gap)(yt::DimensionedValue(params_.scocache_backoff_gap_)).persist(pt);
     }
 
     // clustercache
     {
         std::vector<vd::MountPointConfig> kfgs;
 
-        if (use_cluster_cache_)
+        if (params_.use_cluster_cache_)
         {
             yt::DimensionedValue csize("20MiB");
             const fs::path kdev(clustercache_mountpoint(topdir));
@@ -326,17 +305,17 @@ FileSystemTestSetup::make_config_(bpt::ptree& pt,
     {
         ip::PARAMETER_TYPE(tlog_path)(tlog_dir(topdir).string()).persist(pt);
         ip::PARAMETER_TYPE(metadata_path)(mdstore_dir(topdir).string()).persist(pt);
-        ip::PARAMETER_TYPE(open_scos_per_volume)(open_scos_per_volume_).persist(pt);
-        ip::PARAMETER_TYPE(datastore_throttle_usecs)(dstore_throttle_usecs_).persist(pt);
-        ip::PARAMETER_TYPE(clean_interval)(scache_clean_interval_).persist(pt);
-        ip::PARAMETER_TYPE(number_of_scos_in_tlog)(num_scos_in_tlog_).persist(pt);
+        ip::PARAMETER_TYPE(open_scos_per_volume)(params_.open_scos_per_volume_).persist(pt);
+        ip::PARAMETER_TYPE(datastore_throttle_usecs)(params_.datastore_throttle_usecs_).persist(pt);
+        ip::PARAMETER_TYPE(clean_interval)(params_.scocache_clean_interval_).persist(pt);
+        ip::PARAMETER_TYPE(number_of_scos_in_tlog)(params_.scos_per_tlog_).persist(pt);
         ip::PARAMETER_TYPE(debug_metadata_path)(dump_on_halt_dir(topdir).string()).persist(pt);
 
         // (backend)threadpool
-        ip::PARAMETER_TYPE(num_threads)(num_threads_).persist(pt);
+        ip::PARAMETER_TYPE(num_threads)(params_.num_threads_).persist(pt);
 
         const uint32_t csize =
-            cluster_multiplier_.t * vd::VolumeConfig::default_lba_size();
+            params_.cluster_multiplier_.t * vd::VolumeConfig::default_lba_size();
         ip::PARAMETER_TYPE(default_cluster_size)(csize).persist(pt);
     }
 
@@ -388,17 +367,17 @@ FileSystemTestSetup::make_config_(bpt::ptree& pt,
 
     // volume_router
     {
-        ip::PARAMETER_TYPE(vrouter_backend_sync_timeout_ms)(backend_sync_timeout_ms_).persist(pt);
-        ip::PARAMETER_TYPE(vrouter_migrate_timeout_ms)(migrate_timeout_ms_).persist(pt);
-        ip::PARAMETER_TYPE(vrouter_redirect_timeout_ms)(redirect_timeout_ms_).persist(pt);
-        ip::PARAMETER_TYPE(vrouter_redirect_retries)(redirect_retries_).persist(pt);
+        ip::PARAMETER_TYPE(vrouter_backend_sync_timeout_ms)(params_.backend_sync_timeout_ms_).persist(pt);
+        ip::PARAMETER_TYPE(vrouter_migrate_timeout_ms)(params_.migrate_timeout_ms_).persist(pt);
+        ip::PARAMETER_TYPE(vrouter_redirect_timeout_ms)(params_.redirect_timeout_ms_).persist(pt);
+        ip::PARAMETER_TYPE(vrouter_redirect_retries)(params_.redirect_retries_).persist(pt);
         ip::PARAMETER_TYPE(vrouter_id)(vrouter_id).persist(pt);
-        ip::PARAMETER_TYPE(scrub_manager_interval)(scrub_manager_interval_secs_).persist(pt);
-        ip::PARAMETER_TYPE(vrouter_use_fencing)(use_fencing_).persist(pt);
-        ip::PARAMETER_TYPE(vrouter_send_sync_response)(send_sync_response_).persist(pt);
-        ip::PARAMETER_TYPE(vrouter_keepalive_time_secs)(keepalive_time_.count()).persist(pt);
-        ip::PARAMETER_TYPE(vrouter_keepalive_interval_secs)(keepalive_interval_.count()).persist(pt);
-        ip::PARAMETER_TYPE(vrouter_keepalive_retries)(keepalive_retries_).persist(pt);
+        ip::PARAMETER_TYPE(scrub_manager_interval)(params_.scrub_manager_interval_secs_).persist(pt);
+        ip::PARAMETER_TYPE(vrouter_use_fencing)(params_.use_fencing_).persist(pt);
+        ip::PARAMETER_TYPE(vrouter_send_sync_response)(params_.send_sync_response_).persist(pt);
+        ip::PARAMETER_TYPE(vrouter_keepalive_time_secs)(params_.keepalive_time_.count()).persist(pt);
+        ip::PARAMETER_TYPE(vrouter_keepalive_interval_secs)(params_.keepalive_interval_.count()).persist(pt);
+        ip::PARAMETER_TYPE(vrouter_keepalive_retries)(params_.keepalive_retries_).persist(pt);
     }
 
     // volume_router_cluster

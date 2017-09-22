@@ -61,7 +61,7 @@ TEST_F(ManualDtlConfigModeTest, reconfiguration)
               fcfg->host);
     EXPECT_EQ(ncfg.failovercache_port,
               fcfg->port);
-    EXPECT_EQ(dtl_mode_,
+    EXPECT_EQ(params_.dtl_mode_,
               fcfg->mode);
 
     {

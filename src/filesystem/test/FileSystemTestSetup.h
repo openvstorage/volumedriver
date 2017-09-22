@@ -72,9 +72,9 @@ struct FileSystemTestSetupParameters
     typ name ## _
 
     PARAM(unsigned, num_threads) = 4;
-    PARAM(std::string, scocache_size) = "1GiB";
-    PARAM(std::string, scocache_trigger_gap) = "250MiB";
-    PARAM(std::string, scocache_backoff_gap) = "500MiB";
+    PARAM(uint64_t, scocache_size) = youtils::DimensionedValue("1GiB").getBytes();
+    PARAM(uint64_t, scocache_trigger_gap) = youtils::DimensionedValue("250MiB").getBytes();
+    PARAM(uint64_t, scocache_backoff_gap) = youtils::DimensionedValue("500MiB").getBytes();
     PARAM(uint32_t, scocache_clean_interval) = 60;
     PARAM(unsigned, open_scos_per_volume) = 32;
     PARAM(unsigned, datastore_throttle_usecs) = 4000;
@@ -336,39 +336,14 @@ protected:
     volumedriver::VolumeConfig::MetaDataBackendConfigPtr
     make_metadata_backend_config();
 
+    FileSystemTestSetupParameters params_;
+
     static std::unique_ptr<volumedriverfs::VirtualDiskFormat> vdisk_format_;
 
-    const std::string test_name_;
     const boost::filesystem::path topdir_;
     const boost::filesystem::path configuration_;
 
-    const uint64_t scache_size_;
-    const uint64_t scache_trigger_gap_;
-    const uint64_t scache_backoff_gap_;
-    const uint32_t scache_clean_interval_;
-
-    unsigned open_scos_per_volume_;
-    unsigned dstore_throttle_usecs_;
-    unsigned foc_throttle_usecs_;
-
     const static uint tlog_max_entries_ = 58254;
-    const unsigned num_threads_;
-    const uint32_t num_scos_in_tlog_;
-    uint64_t backend_sync_timeout_ms_;
-    uint64_t migrate_timeout_ms_;
-    uint64_t redirect_timeout_ms_;
-    uint32_t redirect_retries_;
-    uint64_t scrub_manager_interval_secs_;
-    bool use_fencing_;
-    bool send_sync_response_;
-    bool use_cluster_cache_;
-    boost::chrono::seconds keepalive_time_;
-    boost::chrono::seconds keepalive_interval_;
-    size_t keepalive_retries_;
-    volumedriver::ClusterMultiplier cluster_multiplier_;
-
-    volumedriverfs::FailOverCacheConfigMode dtl_config_mode_;
-    volumedriver::FailOverCacheMode dtl_mode_;
 
     const backend::Namespace fdriver_namespace_;
 

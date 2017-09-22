@@ -1063,7 +1063,7 @@ FileSystemTestBase::set_redirect_timeout(const boost::chrono::milliseconds& ms)
 void
 FileSystemTestBase::set_use_fencing(bool use_fencing)
 {
-    use_fencing_ = use_fencing;
+    params_.use_fencing_ = use_fencing;
     set_object_router_param_(ip::PARAMETER_TYPE(vrouter_use_fencing)(use_fencing));
 }
 
