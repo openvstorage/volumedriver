@@ -144,6 +144,21 @@ public:
         ASSERT_NE(sp_scrub_id,
                   sp_scrub_id2);
     }
+
+    void
+    restart_volume(SharedVolumePtr& v)
+    {
+        v->scheduleBackendSync();
+        waitForThisBackendWrite(*v);
+
+        VERIFY(v != nullptr);
+        const VolumeConfig cfg(v->get_config());
+        destroyVolume(v,
+                      DeleteLocalData::T,
+                      RemoveVolumeCompletely::F);
+        restartVolume(cfg);
+        v = getVolume(cfg.id_);
+    }
 };
 
 TEST_P(ScrubberTest, isScrubResultString)
@@ -477,6 +492,8 @@ TEST_P(ScrubberTest, Serialization)
     ASSERT_NO_THROW(apply_scrubbing(vid,
                                     scrub_reply));
 
+    restart_volume(v1);
+
     checkVolume(*v1, Lba(0), default_cluster_size(),what);
     checkVolume(*v1, Lba(1ULL << 10), default_cluster_size(), what + "-");
     EXPECT_EQ(default_cluster_size() * 2,
@@ -511,6 +528,8 @@ TEST_P(ScrubberTest, ScrubNothing)
         auto scrub_work_units = getScrubbingWork(vid);
         ASSERT_EQ(0U, scrub_work_units.size());
     }
+
+    restart_volume(v1);
 
     writeToVolume(*v1, Lba(0), default_cluster_size(), "arner");
     checkVolume(*v1, Lba(0), default_cluster_size(), "arner");
@@ -550,6 +569,8 @@ TEST_P(ScrubberTest, SimpleScrub2)
     const scrubbing::ScrubReply scrub_reply(do_scrub(scrub_work_units.front()));
     ASSERT_NO_THROW(apply_scrubbing(vid,
                                     scrub_reply));
+    restart_volume(v1);
+
     checkVolume(*v1, Lba(0), default_cluster_size(),what);
 }
 
@@ -589,6 +610,8 @@ TEST_P(ScrubberTest, SimpleScrub3)
     ASSERT_NO_THROW(apply_scrubbing(vid,
                                     scrub_reply,
                                     ScrubbingCleanup::OnError));
+
+    restart_volume(v1);
 
     checkVolume(*v1, Lba(0), default_cluster_size(),what);
     checkVolume(*v1, Lba(1ULL << 10), default_cluster_size(), what + "-");
@@ -635,6 +658,9 @@ TEST_P(ScrubberTest, SimpleScrub4)
     ASSERT_NO_THROW(apply_scrubbing(vid,
                                     scrub_reply,
                                     ScrubbingCleanup::OnError));
+
+    restart_volume(v1);
+
     checkVolume(*v1, Lba(0), default_cluster_size(),what);
     checkVolume(*v1, Lba(1ULL << 10), default_cluster_size(), what + "-");
     checkVolume(*v1, Lba(1ULL << 15), default_cluster_size(), what + "--");
@@ -682,6 +708,8 @@ TEST_P(ScrubberTest, SmallRegionScrub1)
     ASSERT_NO_THROW(apply_scrubbing(vid,
                                     scrub_reply,
                                     ScrubbingCleanup::OnError));
+
+    restart_volume(v1);
 
     for(int i = 0; i < 512; ++i)
     {
@@ -1052,6 +1080,9 @@ TEST_P(ScrubberTest, consistency)
                                     scrub_reply,
                                     ScrubbingCleanup::OnError));
 
+    restart_volume(c1);
+    restart_volume(v1);
+
     checkVolume(*c1,Lba(0),default_cluster_size(),"xxx");
     checkVolume(*v1,Lba(0),default_cluster_size(),"xxx");
 
@@ -1104,6 +1135,8 @@ TEST_P(ScrubberTest, backend_error_while_fetching_relocations)
                  TransientException);
 
     EXPECT_FALSE(v->is_halted());
+
+    restart_volume(v);
 
     checkVolume(*v,
                 Lba(0),
@@ -1196,6 +1229,9 @@ TEST_P(ScrubberTest, clones_and_relocations)
                                default_cluster_size(),
                                v.getNamespace().str());
                });
+
+    restart_volume(parent);
+    restart_volume(clone);
 
     check(*parent);
     check(*clone);
