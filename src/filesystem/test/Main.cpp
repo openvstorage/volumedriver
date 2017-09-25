@@ -123,6 +123,9 @@ public:
         // vdisk_format_options_->options_description(desc);
         youtils::print_doc<volumedrivertest::metadata_options_t>::go(os);
         os << desc_ << std::endl;
+        log_backend_setup_help(os);
+        os << std::endl;
+
         log_google_test_help(os);
     }
 
