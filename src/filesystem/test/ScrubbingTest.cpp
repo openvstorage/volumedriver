@@ -325,6 +325,16 @@ protected:
                                      ForceRestart::F);
     }
 
+    void
+    restart_volume(const ObjectId& id)
+    {
+        fs_->object_router().stop(id,
+                                  vd::DeleteLocalData::T,
+                                  CheckOwner::F);
+        fs_->object_router().restart(id,
+                                     ForceRestart::F);
+    }
+
     const size_t max_clusters_ = 1024;
 };
 
@@ -366,6 +376,8 @@ TEST_P(ScrubbingTest, simple)
                                                  reps[0]);
 
     wait_for_scrub_manager();
+
+    restart_volume(id);
 
     check_data(id);
 
@@ -424,10 +436,12 @@ TEST_P(ScrubbingTest, clones)
 
     wait_for_scrub_manager();
 
+    restart_volume(pid);
     check_data(pid);
 
     for (auto& cid : clones)
     {
+        restart_volume(cid);
         check_data(cid);
         check_scrub_ids(scrub_ids(cid));
     }
@@ -543,7 +557,10 @@ TEST_P(ScrubbingTest, fenced_clone)
 
     wait_for_scrub_manager();
 
+    restart_volume(pid);
     check_data(pid);
+
+    restart_volume(cid);
     check_data(cid);
 
     check_backend_after_gc(reps[0],
