@@ -27,6 +27,7 @@
 #include "Piccalilli.h"
 #include "PythonTestHelpers.h"
 #include "ScrubManagerClient.h"
+#include "ScrubWork.h"
 #include "StringyConverter.h"
 #include "StrongArithmeticTypedefConverter.h"
 
@@ -214,6 +215,7 @@ export_debug_module()
     scope.attr("__doc__") = "debugging helpers - this ain't no stable public API!";
 
     vfspy::ScrubManagerClient::registerize();
+    vfspy::ScrubWork::registerize();
 }
 
 template<typename T>

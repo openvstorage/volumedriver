@@ -14,6 +14,7 @@ storagerouterclient_la_SOURCES = \
 	MDSClient.cpp \
 	ObjectRegistryClient.cpp \
 	ScrubManagerClient.cpp \
+	ScrubWork.cpp \
 	StorageRouterClient.cpp \
 	PythonTestHelpers.cpp
 
