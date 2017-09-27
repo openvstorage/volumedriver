@@ -84,7 +84,8 @@ struct FileSystemTestSetupParameters
     PARAM(uint64_t, migrate_timeout_ms) = 0;
     PARAM(uint64_t, redirect_timeout_ms) = 0;
     PARAM(uint64_t, redirect_retries) = 2;
-    PARAM(uint64_t, scrub_manager_interval_secs) = 1;
+    PARAM(boost::chrono::seconds, scrub_manager_interval_secs) = boost::chrono::seconds(1);
+    PARAM(boost::chrono::seconds, scrub_manager_sync_wait_secs) = boost::chrono::seconds(300);
     PARAM(volumedriverfs::FailOverCacheConfigMode, dtl_config_mode) =
         volumedriverfs::FailOverCacheConfigMode::Automatic;
     PARAM(volumedriver::FailOverCacheMode, dtl_mode) =

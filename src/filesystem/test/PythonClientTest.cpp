@@ -56,6 +56,7 @@
 namespace volumedriverfstest
 {
 
+namespace bc = boost::chrono;
 namespace be = backend;
 namespace bpt = boost::property_tree;
 namespace bpy = boost::python;
@@ -118,7 +119,7 @@ protected:
     PythonClientTest()
         : FileSystemTestBase(FileSystemTestSetupParameters("PythonClientTest")
                              .migrate_timeout_ms(5000)
-                             .scrub_manager_interval_secs(1))
+                             .scrub_manager_interval_secs(bc::seconds(1)))
         , client_(vrouter_cluster_id(),
                   {{address(), local_config().xmlrpc_port}})
     {

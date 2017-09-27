@@ -455,6 +455,9 @@ protected:
     set_redirect_timeout(const boost::chrono::milliseconds&);
 
     void
+    set_scrub_manager_sync_wait_secs(const boost::chrono::seconds&);
+
+    void
     check_snapshots(const volumedriverfs::ObjectId& volume_id,
                     const std::vector<std::string>& expected_snapshots);
 

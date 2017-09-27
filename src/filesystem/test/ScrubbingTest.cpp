@@ -59,7 +59,7 @@ class ScrubbingTest
 protected:
     ScrubbingTest()
         : FileSystemTestBase(FileSystemTestSetupParameters("ScrubbingTest")
-                             .scrub_manager_interval_secs(1)
+                             .scrub_manager_interval_secs(bc::seconds(1))
                              .use_cluster_cache(false)
                              .mds_count(2)
                              .cluster_multiplier(GetParam()))

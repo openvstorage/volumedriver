@@ -1074,6 +1074,12 @@ FileSystemTestBase::set_max_parent_scrubs(uint32_t max)
 }
 
 void
+FileSystemTestBase::set_scrub_manager_sync_wait_secs(const boost::chrono::seconds& secs)
+{
+    set_object_router_param_(ip::PARAMETER_TYPE(scrub_manager_sync_wait_secs)(secs.count()));
+}
+
+void
 FileSystemTestBase::check_file_path_sanity(const FrontendPath& fp)
 {
     FileSystem::verify_file_path_(fp);

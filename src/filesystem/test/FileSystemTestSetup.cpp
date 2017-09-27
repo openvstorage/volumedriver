@@ -378,7 +378,8 @@ FileSystemTestSetup::make_config_(bpt::ptree& pt,
         ip::PARAMETER_TYPE(vrouter_redirect_timeout_ms)(params_.redirect_timeout_ms_).persist(pt);
         ip::PARAMETER_TYPE(vrouter_redirect_retries)(params_.redirect_retries_).persist(pt);
         ip::PARAMETER_TYPE(vrouter_id)(vrouter_id).persist(pt);
-        ip::PARAMETER_TYPE(scrub_manager_interval)(params_.scrub_manager_interval_secs_).persist(pt);
+        ip::PARAMETER_TYPE(scrub_manager_interval)(params_.scrub_manager_interval_secs_.count()).persist(pt);
+        ip::PARAMETER_TYPE(scrub_manager_sync_wait_secs)(params_.scrub_manager_sync_wait_secs_.count()).persist(pt);
         ip::PARAMETER_TYPE(vrouter_use_fencing)(params_.use_fencing_).persist(pt);
         ip::PARAMETER_TYPE(vrouter_send_sync_response)(params_.send_sync_response_).persist(pt);
         ip::PARAMETER_TYPE(vrouter_keepalive_time_secs)(params_.keepalive_time_.count()).persist(pt);
