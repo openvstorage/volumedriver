@@ -34,6 +34,7 @@
 #include <volumedriver/ScrubId.h>
 #include <volumedriver/ScrubReply.h>
 #include <volumedriver/ScrubWork.h>
+#include <volumedriver/metadata-server/Manager.h>
 
 namespace volumedriverfstest
 {
@@ -146,6 +147,20 @@ protected:
         }
 
         return scrub_ids;
+    }
+
+    void
+    check_scrub_result(const scrubbing::ScrubberResult& res,
+                       const vd::SnapshotName& snap)
+    {
+        ASSERT_EQ(snap,
+                  res.snapshot_name);
+        ASSERT_LT(0,
+                  res.relocNum);
+        ASSERT_FALSE(res.relocs.empty());
+        ASSERT_FALSE(res.tlog_names_in.empty());
+        ASSERT_FALSE(res.tlogs_out.empty());
+        ASSERT_FALSE(res.sconames_to_be_deleted.empty());
     }
 
     void
@@ -358,15 +373,8 @@ TEST_P(ScrubbingTest, simple)
               reps[0].snapshot_name_);
 
     const scrubbing::ScrubberResult res(fetch_scrub_result(reps[0]));
-    ASSERT_EQ(snap,
-              res.snapshot_name);
-    ASSERT_LT(0,
-              res.relocNum);
-    ASSERT_FALSE(res.relocs.empty());
-    ASSERT_FALSE(res.tlog_names_in.empty());
-    ASSERT_FALSE(res.tlogs_out.empty());
-    ASSERT_FALSE(res.sconames_to_be_deleted.empty());
-
+    check_scrub_result(res,
+                       snap);
     check_backend_before_gc(reps[0].ns_,
                             res);
 
@@ -568,6 +576,51 @@ TEST_P(ScrubbingTest, fenced_clone)
 
     check_scrub_ids(scrub_ids(pid));
     check_scrub_ids(scrub_ids(cid));
+}
+
+TEST_P(ScrubbingTest, mds_slave_awol)
+{
+    ObjectId id;
+    std::tie(id, std::ignore) = create_volume();
+
+    write_data(id);
+
+    const vd::SnapshotName snap("snap");
+    fs_->object_router().create_snapshot(id,
+                                         snap,
+                                         0);
+
+    const std::vector<scrubbing::ScrubReply> reps(scrub(id));
+    ASSERT_EQ(1, reps.size());
+
+    const scrubbing::ScrubberResult res(fetch_scrub_result(reps[0]));
+
+    check_scrub_result(res,
+                       snap);
+    check_backend_before_gc(reps[0].ns_,
+                            res);
+
+    {
+        LOCKVD();
+        const vd::VolumeConfig vcfg(api::getVolumeConfig(vd::VolumeId(id.str())));
+        const auto& mdb_cfg =
+            dynamic_cast<const vd::MDSMetaDataBackendConfig&>(*vcfg.metadata_backend_config_);
+
+        const vd::MDSMetaDataBackendConfig::NodeConfigs& ncfgs = mdb_cfg.node_configs();
+        ASSERT_LT(1,
+                  ncfgs.size());
+        mds_manager_->stop_one(ncfgs[1]);
+    }
+
+    fs_->object_router().queue_scrub_reply_local(id,
+                                                 reps[0]);
+
+    wait_for_scrub_manager();
+    restart_volume(id);
+    check_data(id);
+
+    check_backend_after_gc(reps[0],
+                           res);
 }
 
 INSTANTIATE_TEST_CASE_P(ScrubbingTests,
