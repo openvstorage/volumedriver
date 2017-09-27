@@ -27,6 +27,7 @@
 #include <backend/BackendInterface.h>
 
 #include <volumedriver/Api.h>
+#include <volumedriver/BackendTasks.h>
 #include <volumedriver/MDSMetaDataBackend.h>
 #include <volumedriver/MetaDataBackendConfig.h>
 #include <volumedriver/Scrubber.h>
@@ -621,6 +622,81 @@ TEST_P(ScrubbingTest, mds_slave_awol)
 
     check_backend_after_gc(reps[0],
                            res);
+}
+
+TEST_P(ScrubbingTest, application_times_out)
+{
+    ObjectId id;
+    std::tie(id, std::ignore) = create_volume();
+
+    write_data(id);
+
+    const vd::SnapshotName snap("snap");
+    fs_->object_router().create_snapshot(id,
+                                         snap,
+                                         0);
+
+    const std::vector<scrubbing::ScrubReply> reps(scrub(id));
+    ASSERT_EQ(1, reps.size());
+
+    const scrubbing::ScrubberResult res(fetch_scrub_result(reps[0]));
+
+    check_scrub_result(res,
+                       snap);
+    check_backend_before_gc(reps[0].ns_,
+                            res);
+
+    set_scrub_manager_sync_wait_secs(bc::seconds(1));
+
+    std::mutex mutex;
+
+
+    {
+        std::lock_guard<decltype(mutex)> g(mutex);
+        vd::SharedVolumePtr vol;
+
+        {
+            LOCKVD();
+            vol = vd::SharedVolumePtr(api::getVolumePointer(vd::VolumeId(id.str())));
+        }
+
+        auto fun([&mutex]
+                 {
+                     auto g(std::make_unique<std::lock_guard<decltype(mutex)>>(mutex));
+                 });
+
+        auto funtask(std::make_unique<vd::backend_task::FunTask>(*vol,
+                                                                 std::move(fun),
+                                                                 yt::BarrierTask::T));
+
+
+        vd::VolManager::get()->scheduleTask(funtask.release());
+
+        fs_->object_router().queue_scrub_reply_local(id,
+                                                     reps[0]);
+
+        wait_for_scrub_manager();
+    }
+
+    restart_volume(id);
+    check_data(id);
+
+    be::BackendInterfacePtr bi(api::backend_connection_manager()->newBackendInterface(reps[0].ns_));
+
+    for (auto& tlog_id : res.tlog_names_in)
+    {
+        EXPECT_TRUE(bi->objectExists(boost::lexical_cast<std::string>(tlog_id))) << tlog_id;
+    }
+
+    for (auto& tlog : res.tlogs_out)
+    {
+        EXPECT_TRUE(bi->objectExists(tlog.getName())) << tlog.getName();
+    }
+
+    for (auto& sco : res.sconames_to_be_deleted)
+    {
+        EXPECT_TRUE(bi->objectExists(boost::lexical_cast<std::string>(sco)));
+    }
 }
 
 INSTANTIATE_TEST_CASE_P(ScrubbingTests,
