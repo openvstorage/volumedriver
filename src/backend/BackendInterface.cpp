@@ -21,6 +21,7 @@
 #include "BackendTracePoints_tp.h"
 #include "NamespacePoolSelector.h"
 #include "PartialReadCounter.h"
+#include "RoundRobinPoolSelector.h"
 
 #include <boost/chrono.hpp>
 #include <boost/thread.hpp>
@@ -47,11 +48,10 @@ BackendInterface::default_request_parameters()
     return params;
 }
 
-template<typename PoolSelector,
-         typename ReturnType,
+template<typename ReturnType,
          typename... Args>
 ReturnType
-BackendInterface::do_wrap_(PoolSelector& selector,
+BackendInterface::do_wrap_(ConnectionPoolSelectorInterface& selector,
                            const BackendRequestParameters& params,
                            ReturnType
                            (BackendConnectionInterface::*mem_fun)(Args...),
@@ -102,6 +102,8 @@ BackendInterface::do_wrap_(PoolSelector& selector,
         catch (BackendConnectionTimeoutException& e)
         {
             LOG_ERROR(nspace_ << ": connection timeout");
+            selector.request_timeout();
+
             if (attempt++ >= retries_on_error)
             {
                 LOG_ERROR(nspace_ << ": giving up");
@@ -136,6 +138,7 @@ namespace
 {
 
 struct FixedPoolSelector
+    : public ConnectionPoolSelectorInterface
 {
     std::shared_ptr<ConnectionPool> pool_;
 
@@ -144,22 +147,72 @@ struct FixedPoolSelector
     {}
 
     const std::shared_ptr<ConnectionPool>&
-    pool() const
+    pool() override final
     {
         return pool_;
     }
 
     void
-    connection_error()
+    connection_error() override final
     {
         pool_->error();
     }
 
     void
-    backend_error()
+    backend_error() override final
+    {}
+
+    void
+    request_timeout() override final
     {}
 };
 
+}
+
+template<typename ReturnType,
+         typename... Args>
+ReturnType
+BackendInterface::wrap_selector_(const BackendRequestParameters& params,
+                                 const SwitchConnectionPoolPolicy policy,
+                                 ReturnType
+                                 (BackendConnectionInterface::*mem_fun)(const Namespace&,
+                                                                        Args...),
+                                 Args... args)
+{
+    switch (policy)
+    {
+    case SwitchConnectionPoolPolicy::OnError:
+        {
+            NamespacePoolSelector selector(*conn_manager_,
+                                           nspace_);
+
+            return do_wrap_<ReturnType,
+                            const Namespace&,
+                            Args...>(selector,
+                                     params,
+                                     mem_fun,
+                                     nspace_,
+                                     std::forward<Args>(args)...);
+        }
+    case SwitchConnectionPoolPolicy::RoundRobin:
+        {
+            RoundRobinPoolSelector selector(*conn_manager_);
+
+            return do_wrap_<ReturnType,
+                            const Namespace&,
+                            Args...>(selector,
+                                     params,
+                                     mem_fun,
+                                     nspace_,
+                                     std::forward<Args>(args)...);
+        }
+    }
+
+    ASSERT(0 == "unknown SwitchConnectionPoolPolicy");
+
+    std::stringstream ss;
+    ss << "Unknown SwitchConnectionPoolPolicy " << policy;
+    throw fungi::IOException(ss.str());
 }
 
 template<typename ReturnType,
@@ -171,17 +224,16 @@ BackendInterface::wrap_(const BackendRequestParameters& params,
                                                                Args...),
                         Args... args)
 {
-    NamespacePoolSelector selector(*conn_manager_,
-                                   nspace_);
+    const ConnectionManagerParameters& cm_params =
+        conn_manager_->connection_manager_parameters();
+    const SwitchConnectionPoolPolicy policy =
+        cm_params.backend_interface_switch_connection_pool_policy.value();
 
-    return do_wrap_<NamespacePoolSelector,
-                    ReturnType,
-                    const Namespace&,
-                    Args...>(selector,
-                             params,
-                             mem_fun,
-                             nspace_,
-                             std::forward<Args>(args)...);
+    return wrap_selector_<ReturnType,
+                          Args...>(params,
+                                   policy,
+                                   mem_fun,
+                                   std::forward<Args>(args)...);
 }
 
 // XXX: The incoming and outgoing values for "InsistOnLatestVersion" might be confusing -
@@ -357,8 +409,7 @@ BackendInterface::invalidate_cache(const BackendRequestParameters& params)
     {
         FixedPoolSelector selector(pool);
 
-        do_wrap_<FixedPoolSelector,
-                 void,
+        do_wrap_<void,
                  const boost::optional<Namespace>&>(selector,
                                                     params,
                                                     &BackendConnectionInterface::invalidate_cache,
@@ -435,16 +486,22 @@ BackendInterface::partial_read(const BackendConnectionInterface::PartialReads& p
                                                  std::uncaught_exception());
                                   }));
 
+    const ConnectionManagerParameters& cm_params =
+        conn_manager_->connection_manager_parameters();
+    const SwitchConnectionPoolPolicy policy =
+        cm_params.backend_interface_switch_connection_pool_partial_read_policy.value();
+
     auto fun([&](InsistOnLatestVersion insist) -> PartialReadCounter
              {
-                 return wrap_<PartialReadCounter,
-                              decltype(partial_reads),
-                              decltype(insist),
-                              decltype(fallback_fun)>(params,
-                                                      &BackendConnectionInterface::partial_read,
-                                                      partial_reads,
-                                                      insist,
-                                                      fallback_fun);
+                 return wrap_selector_<PartialReadCounter,
+                                       decltype(partial_reads),
+                                       decltype(insist),
+                                       decltype(fallback_fun)>(params,
+                                                               policy,
+                                                               &BackendConnectionInterface::partial_read,
+                                                               partial_reads,
+                                                               insist,
+                                                               fallback_fun);
              });
 
     if (not conn_manager_->partial_read_nullio())

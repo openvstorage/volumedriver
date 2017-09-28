@@ -13,58 +13,53 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef BACKEND_NAMESPACE_POOL_SELECTOR_H_
-#define BACKEND_NAMESPACE_POOL_SELECTOR_H_
+#ifndef BACKEND_ROUND_ROBIN_POOL_SELECTOR_H_
+#define BACKEND_ROUND_ROBIN_POOL_SELECTOR_H_
 
 #include "ConnectionPoolSelectorInterface.h"
 
 #include <memory>
 
-#include <youtils/Logging.h>
-
 namespace backend
 {
 
 class BackendConnectionManager;
-class Namespace;
 class ConnectionPool;
 
-class NamespacePoolSelector
+class RoundRobinPoolSelector
     : public ConnectionPoolSelectorInterface
 {
 public:
-    NamespacePoolSelector(const BackendConnectionManager&,
-                          const Namespace&);
+    explicit RoundRobinPoolSelector(BackendConnectionManager&);
 
-    ~NamespacePoolSelector() = default;
+    ~RoundRobinPoolSelector() = default;
 
-    NamespacePoolSelector(const NamespacePoolSelector&) = delete;
+    RoundRobinPoolSelector(const RoundRobinPoolSelector&) = delete;
 
-    NamespacePoolSelector&
-    operator=(const NamespacePoolSelector&) = delete;
+    RoundRobinPoolSelector&
+    operator=(const RoundRobinPoolSelector&) = delete;
 
     const std::shared_ptr<ConnectionPool>&
     pool() override final;
 
     void
-    request_timeout() override final;
-
-    void
     connection_error() override final;
 
     void
-    backend_error() override final;
+    backend_error() override final
+    {}
+
+    void
+    request_timeout() override final
+    {}
 
 private:
-    DECLARE_LOGGER("NamespacePoolSelector");
+    DECLARE_LOGGER("RoundRobinPoolSelector");
 
-    const BackendConnectionManager& cm_;
-    const Namespace& nspace_;
-    const size_t idx_;
-    size_t last_idx_;
-    bool start_from_last_;
+    BackendConnectionManager& cm_;
+    std::shared_ptr<ConnectionPool> pool_;
 };
 
 }
 
-#endif //!BACKEND_NAMESPACE_POOL_SELECTOR_H_
+#endif // !BACKEND_ROUND_ROBIN_POOL_SELECTOR_H_

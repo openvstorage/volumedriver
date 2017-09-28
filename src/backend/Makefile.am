@@ -54,9 +54,11 @@ libbackend_la_SOURCES = \
 	MultiConfig.cpp \
 	Namespace.cpp \
 	NamespacePoolSelector.cpp \
+	RoundRobinPoolSelector.cpp \
 	S3Config.cpp \
 	S3_Connection.cpp \
 	SimpleFetcher.cpp \
+	SwitchConnectionPoolPolicy.cpp \
 	TestWithBackendMainHelper.cpp
 
 pkgconfigdir = @pkgconfigdir@

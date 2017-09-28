@@ -19,6 +19,7 @@
 #include "BackendConnectionManager.h"
 #include "BackendPolicyConfig.h"
 #include "Condition.h"
+#include "SwitchConnectionPoolPolicy.h"
 
 #include <functional>
 
@@ -37,6 +38,7 @@ namespace backend
 
 class BackendConnectionInterface;
 class BackendRequestParameters;
+class ConnectionPoolSelectorInterface;
 
 // not a interface in terms of polymorphism anymore - rename?
 class BackendInterface
@@ -297,16 +299,24 @@ private:
     template<typename ReturnType,
              typename... Args>
     ReturnType
+    wrap_selector_(const BackendRequestParameters&,
+                   const SwitchConnectionPoolPolicy,
+                   ReturnType(BackendConnectionInterface::*mem_fun)(const Namespace&,
+                                                                    Args...),
+                   Args... args);
+
+    template<typename ReturnType,
+             typename... Args>
+    ReturnType
     wrap_(const BackendRequestParameters&,
           ReturnType(BackendConnectionInterface::*mem_fun)(const Namespace&,
                                                            Args...),
           Args... args);
 
-    template<typename PoolSelector,
-             typename ReturnType,
+    template<typename ReturnType,
              typename... Args>
     ReturnType
-    do_wrap_(PoolSelector&,
+    do_wrap_(ConnectionPoolSelectorInterface&,
              const BackendRequestParameters&,
              ReturnType(BackendConnectionInterface::*mem_fun)(Args...),
              Args... args);

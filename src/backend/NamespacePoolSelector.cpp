@@ -16,6 +16,7 @@
 #include "ConnectionPool.h"
 #include "BackendConnectionManager.h"
 #include "NamespacePoolSelector.h"
+#include "SwitchConnectionPoolPolicy.h"
 
 #include <boost/thread/lock_guard.hpp>
 #include <boost/thread/mutex.hpp>
@@ -97,7 +98,23 @@ NamespacePoolSelector::connection_error()
 void
 NamespacePoolSelector::backend_error()
 {
-    if (cm_.connection_manager_parameters().backend_interface_switch_connection_pool_on_error.value())
+    const uint32_t policy =
+        cm_.connection_manager_parameters().backend_interface_switch_connection_pool_on_error_policy.value();
+
+    if ((policy bitand SwitchConnectionPoolOnErrorPolicy::OnBackendError))
+    {
+        start_from_last_ = true;
+        last_idx_ = (last_idx_ + 1) % cm_.pools().size();
+    }
+}
+
+void
+NamespacePoolSelector::request_timeout()
+{
+    const uint32_t policy =
+        cm_.connection_manager_parameters().backend_interface_switch_connection_pool_on_error_policy.value();
+
+    if ((policy bitand SwitchConnectionPoolOnErrorPolicy::OnTimeout))
     {
         start_from_last_ = true;
         last_idx_ = (last_idx_ + 1) % cm_.pools().size();

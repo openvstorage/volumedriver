@@ -25,6 +25,7 @@
 #include "ManagedBackendSink.h"
 #include "ManagedBackendSource.h"
 #include "NamespacePoolSelector.h"
+#include "RoundRobinPoolSelector.h"
 #include "MultiConfig.h"
 #include "S3_Connection.h"
 
@@ -50,6 +51,7 @@ BackendConnectionManager::BackendConnectionManager(const bpt::ptree& pt,
                             pt)
     , params_(pt)
     , config_(BackendConfig::makeBackendConfig(pt))
+    , next_pool_(0)
 {
     THROW_UNLESS(config_);
 

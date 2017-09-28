@@ -16,6 +16,8 @@
 #ifndef BACKENDPARAMETERS_H_
 #define BACKENDPARAMETERS_H_
 
+#include "SwitchConnectionPoolPolicy.h"
+
 #include <alba/proxy_client.h>
 
 #include <youtils/InitializedParam.h>
@@ -74,8 +76,13 @@ DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_retry_backof
                                                   std::atomic<double>);
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_partial_read_nullio,
                                        bool);
-DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_switch_connection_pool_on_error,
-                                                  std::atomic<bool>);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_switch_connection_pool_policy,
+                                                  std::atomic<backend::SwitchConnectionPoolPolicy>);
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_switch_connection_pool_partial_read_policy,
+                                                  std::atomic<backend::SwitchConnectionPoolPolicy>);
+
+DECLARE_RESETTABLE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_switch_connection_pool_on_error_policy,
+                                                  std::atomic<uint32_t>);
 
 DECLARE_INITIALIZED_PARAM_WITH_DEFAULT(backend_type, backend::BackendType);
 DECLARE_INITIALIZED_PARAM(local_connection_path, std::string);
