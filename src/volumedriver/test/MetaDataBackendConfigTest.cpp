@@ -21,10 +21,13 @@
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/xml_iarchive.hpp>
+#include <boost/archive/xml_oarchive.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/serialization/shared_ptr.hpp>
 #include <boost/serialization/unique_ptr.hpp>
 
+#include <youtils/ArchiveTraits.h>
 #include <youtils/Serialization.h>
 #include <gtest/gtest.h>
 
@@ -33,6 +36,7 @@ namespace volumedrivertest
 
 namespace ba = boost::archive;
 namespace vd = volumedriver;
+namespace yt = youtils;
 
 class MetaDataBackendConfigTest
     : public testing::Test
@@ -56,28 +60,28 @@ protected:
             boost::shared_ptr<vd::MetaDataBackendConfig> mdb;
 
             mdb.reset(new vd::TCBTMetaDataBackendConfig());
-            oa << mdb;
+            oa << BOOST_SERIALIZATION_NVP(mdb);
 
             mdb.reset(new vd::RocksDBMetaDataBackendConfig());
-            oa << mdb;
+            oa << BOOST_SERIALIZATION_NVP(mdb);
 
             std::vector<vd::MDSNodeConfig> nodes{ vd::MDSNodeConfig(addr,
                                                                     port) };
             mdb.reset(new vd::MDSMetaDataBackendConfig(nodes,
                                                        vd::ApplyRelocationsToSlaves::T));
-            oa << mdb;
+            oa << BOOST_SERIALIZATION_NVP(mdb);
 
             mdb.reset(new vd::MDSMetaDataBackendConfig(nodes,
                                                        vd::ApplyRelocationsToSlaves::F,
                                                        mds_timeout_secs,
                                                        max_tlogs_behind));
-            oa << mdb;
+            oa << BOOST_SERIALIZATION_NVP(mdb);
         }
 
         IArchive ia(ss);
 
         boost::shared_ptr<vd::MetaDataBackendConfig> mdb;
-        ia >> mdb;
+        ia >> BOOST_SERIALIZATION_NVP(mdb);
 
         {
             ASSERT_EQ(vd::MetaDataBackendType::TCBT,
@@ -86,7 +90,7 @@ protected:
             mdb.reset();
         }
 
-        ia >> mdb;
+        ia >> BOOST_SERIALIZATION_NVP(mdb);
 
         {
             ASSERT_EQ(vd::MetaDataBackendType::RocksDB,
@@ -95,7 +99,7 @@ protected:
             mdb.reset();
         }
 
-        ia >> mdb;
+        ia >> BOOST_SERIALIZATION_NVP(mdb);
 
         {
             ASSERT_EQ(vd::MetaDataBackendType::MDS,
@@ -115,7 +119,7 @@ protected:
             mdb.reset();
         }
 
-        ia >> mdb;
+        ia >> BOOST_SERIALIZATION_NVP(mdb);
 
         {
             ASSERT_EQ(vd::MetaDataBackendType::MDS,
@@ -132,10 +136,20 @@ protected:
                       mdscfg->apply_relocations_to_slaves());
             ASSERT_EQ(std::chrono::seconds(mds_timeout_secs),
                       mdscfg->timeout());
-            ASSERT_NE(boost::none,
-                      mdscfg->max_tlogs_behind());
-            ASSERT_EQ(max_tlogs_behind,
-                      *mdscfg->max_tlogs_behind());
+            if (yt::IsForwardCompatibleArchive<OArchive>::value)
+            {
+                ASSERT_TRUE(yt::IsForwardCompatibleArchive<IArchive>::value);
+                ASSERT_NE(boost::none,
+                          mdscfg->max_tlogs_behind());
+                ASSERT_EQ(max_tlogs_behind,
+                          *mdscfg->max_tlogs_behind());
+            }
+            else
+            {
+                ASSERT_FALSE(yt::IsForwardCompatibleArchive<IArchive>::value);
+                ASSERT_EQ(boost::none,
+                          mdscfg->max_tlogs_behind());
+            }
 
             mdb.reset();
         }
@@ -152,6 +166,12 @@ TEST_F(MetaDataBackendConfigTest, binary_serialization)
 {
     test_serialization<ba::binary_iarchive,
                        ba::binary_oarchive>();
+}
+
+TEST_F(MetaDataBackendConfigTest, xml_serialization)
+{
+    test_serialization<ba::xml_iarchive,
+                       ba::xml_oarchive>();
 }
 
 TEST_F(MetaDataBackendConfigTest, unique_ptr_serialization)

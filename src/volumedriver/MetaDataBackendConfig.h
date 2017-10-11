@@ -30,6 +30,7 @@
 #include <boost/serialization/vector.hpp>
 
 #include <youtils/ArakoonNodeConfig.h>
+#include <youtils/ArchiveTraits.h>
 #include <youtils/Serialization.h>
 
 namespace volumedriver
@@ -423,7 +424,7 @@ private:
     save(A& ar,
          const unsigned version) const
     {
-        CHECK_VERSION(version, 4);
+        CHECK_VERSION(version, 5);
 
         boost::serialization::void_cast_register<MDSMetaDataBackendConfig,
                                                  MetaDataBackendConfig>();
@@ -451,7 +452,7 @@ BOOST_CLASS_EXPORT_KEY(volumedriver::RocksDBMetaDataBackendConfig);
 BOOST_CLASS_VERSION(volumedriver::ArakoonMetaDataBackendConfig, 1);
 BOOST_CLASS_EXPORT_KEY(volumedriver::ArakoonMetaDataBackendConfig);
 
-BOOST_CLASS_VERSION(volumedriver::MDSMetaDataBackendConfig, 4);
+BOOST_CLASS_VERSION(volumedriver::MDSMetaDataBackendConfig, 5);
 BOOST_CLASS_EXPORT_KEY(volumedriver::MDSMetaDataBackendConfig);
 
 #endif // !VD_META_DATA_BACKEND_CONFIG_H_
