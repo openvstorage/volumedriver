@@ -148,20 +148,20 @@ public:
     operator=(const VolumeConfig&);
 
     /* Name of this volume, superflous since each volume now has a unique namespace */
-    const VolumeId id_;
+    VolumeId id_;
 
     /* Namespace of the volume, unique for each volume */
     std::string ns_;
 
     /* If the volume is a clone this holds the namespace of the clone */
-    const boost::optional<std::string> parent_ns_;
+    boost::optional<std::string> parent_ns_;
 
 public:
     /* If the volume is a clone this holds the snapshot that was cloned */
-    const SnapshotName parent_snapshot_;
+    SnapshotName parent_snapshot_;
 
     /* Size of an LBA typically 512 bytes */
-    const LBASize lba_size_;
+    LBASize lba_size_;
 
 private:
     /* Number of LBA's in this Volume */
@@ -169,7 +169,7 @@ private:
 
 public:
     /* Number of LBA's in a cluster typically 8 */
-    const ClusterMultiplier cluster_mult_;
+    ClusterMultiplier cluster_mult_;
     /* Number of clusters in a SCO typically 1024 */
     SCOMultiplier sco_mult_;
     /* Number of SCO's in a TLOG typically 1024 */
@@ -179,7 +179,7 @@ public:
 
     bool readCacheEnabled_;
 
-    const WanBackupVolumeRole wan_backup_volume_role_;
+    WanBackupVolumeRole wan_backup_volume_role_;
 
     boost::optional<ClusterCacheBehaviour> cluster_cache_behaviour_;
     boost::optional<ClusterCacheMode> cluster_cache_mode_;
@@ -312,6 +312,8 @@ private:
     void
     load(Archive& ar, const unsigned int version)
     {
+        using namespace boost::serialization;
+
         if (version <= 11)
         {
             // No backward compatibility for now.
@@ -326,25 +328,26 @@ private:
             THROW_SERIALIZATION_ERROR(version, 9, 5);
         }
 
-        ar & const_cast<VolumeId&>(id_);
-        ar & ns_;
-        ar & const_cast<boost::optional<std::string>& >(parent_ns_);
+        ar & BOOST_SERIALIZATION_NVP(id_);
+        ar & BOOST_SERIALIZATION_NVP(ns_);
+        ar & BOOST_SERIALIZATION_NVP(parent_ns_);
 
         {
             std::string psnap;
-            ar & psnap;
-            const_cast<SnapshotName&>(parent_snapshot_) = SnapshotName(psnap);
+            ar & make_nvp("parent_snapshot_",
+                          psnap);
+            parent_snapshot_ = SnapshotName(psnap);
         }
 
-        ar & const_cast<LBASize&>(lba_size_);
-        ar & lba_count_;
-        ar & const_cast<ClusterMultiplier&>(cluster_mult_);
-        ar & const_cast<SCOMultiplier&>(sco_mult_);
+        ar & BOOST_SERIALIZATION_NVP(lba_size_);
+        ar & BOOST_SERIALIZATION_NVP(lba_count_);
+        ar & BOOST_SERIALIZATION_NVP(cluster_mult_);
+        ar & BOOST_SERIALIZATION_NVP(sco_mult_);
 
         if (version >= 14)
         {
-            ar & const_cast<boost::optional<TLogMultiplier>& >(tlog_mult_);
-            ar & const_cast<boost::optional<SCOCacheNonDisposableFactor>& >(max_non_disposable_factor_);
+            ar & BOOST_SERIALIZATION_NVP(tlog_mult_);
+            ar & BOOST_SERIALIZATION_NVP(max_non_disposable_factor_);
         }
 
         if (version < 10)
@@ -352,32 +355,34 @@ private:
             uint64_t sco_cache_min; // min size reserved for the volume in sco cache
             uint64_t sco_cache_max; // max size the volume can use in sco cache
 
-            ar & const_cast<uint64_t&>(sco_cache_min);
-            ar & const_cast<uint64_t&>(sco_cache_max);
+            ar & BOOST_SERIALIZATION_NVP(sco_cache_min);
+            ar & BOOST_SERIALIZATION_NVP(sco_cache_max);
         }
 
         if (version >= 1)
         {
-            ar & const_cast<bool&>(readCacheEnabled_);
+            ar & BOOST_SERIALIZATION_NVP(readCacheEnabled_);
         }
 
         if(version >= 5)
         {
-            ar & const_cast<WanBackupVolumeRole&>(wan_backup_volume_role_);
+            ar & BOOST_SERIALIZATION_NVP(wan_backup_volume_role_);
         }
 
         if(version >= 6)
         {
-            ar & cluster_cache_behaviour_;
+            ar & BOOST_SERIALIZATION_NVP(cluster_cache_behaviour_);
         }
 
         if(version >= 7 and version < 11)
         {
             arakoon::ClusterID cid;
-            ar & cid;
+            ar & make_nvp("arakoon_cluster_id",
+                          cid);
 
             std::list<arakoon::ArakoonNodeConfig> nodel;
-            ar & nodel;
+            ar & make_nvp("arakoon_node_configs",
+                          nodel);
 
             MetaDataBackendConfigPtr cfg;
 
@@ -386,31 +391,31 @@ private:
                 const std::vector<arakoon::ArakoonNodeConfig> nodev(nodel.begin(),
                                                                     nodel.end());
 
-                const_cast<MetaDataBackendConfigPtr&>(metadata_backend_config_) =
-                    MetaDataBackendConfigPtr(new ArakoonMetaDataBackendConfig(cid,
-                                                                              nodev));
+                metadata_backend_config_ =
+                    std::make_unique<ArakoonMetaDataBackendConfig>(cid,
+                                                                   nodev);
             }
         }
 
         if (version >= 8)
         {
-            ar & is_volume_template_;
+            ar & BOOST_SERIALIZATION_NVP(is_volume_template_);
         }
 
         if (version >= 11)
         {
-            ar & const_cast<MetaDataBackendConfigPtr&>(metadata_backend_config_);
+            ar & BOOST_SERIALIZATION_NVP(metadata_backend_config_);
         }
         if (version >= 12)
         {
-            ar & number_of_syncs_to_ignore_;
-            ar & maximum_time_to_ignore_syncs_in_seconds_;
+            ar & BOOST_SERIALIZATION_NVP(number_of_syncs_to_ignore_);
+            ar & BOOST_SERIALIZATION_NVP(maximum_time_to_ignore_syncs_in_seconds_);
         }
 
         if (version >= 13)
         {
-            ar & cluster_cache_mode_;
-            ar & owner_tag_;
+            ar & BOOST_SERIALIZATION_NVP(cluster_cache_mode_);
+            ar & BOOST_SERIALIZATION_NVP(owner_tag_);
         }
         else
         {
@@ -419,16 +424,15 @@ private:
 
         if (version >= 14)
         {
-            ar & cluster_cache_limit_;
+            ar & BOOST_SERIALIZATION_NVP(cluster_cache_limit_);
         }
 
         if (version >= 15)
         {
-            ar & metadata_cache_capacity_;
+            ar & BOOST_SERIALIZATION_NVP(metadata_cache_capacity_);
         }
 
         // cf. comment in constructor.
-
         Namespace tmp = backend::Namespace(ns_);
     }
 
@@ -436,32 +440,35 @@ private:
     void
     save(Archive& ar, const unsigned int version) const
     {
+        using namespace boost::serialization;
+
         if (version != 15)
         {
             THROW_SERIALIZATION_ERROR(version, 15, 15);
         }
 
-        ar & id_;
-        ar & ns_;
-        ar & parent_ns_;
-        ar & static_cast<const std::string>(parent_snapshot_);
-        ar & lba_size_;
-        ar & lba_count_;
-        ar & cluster_mult_;
-        ar & sco_mult_;
-        ar & tlog_mult_;
-        ar & max_non_disposable_factor_;
-        ar & readCacheEnabled_;
-        ar & wan_backup_volume_role_;
-        ar & cluster_cache_behaviour_;
-        ar & is_volume_template_;
-        ar & metadata_backend_config_;
-        ar & number_of_syncs_to_ignore_;
-        ar & maximum_time_to_ignore_syncs_in_seconds_;
-        ar & cluster_cache_mode_;
-        ar & owner_tag_;
-        ar & cluster_cache_limit_;
-        ar & metadata_cache_capacity_;
+        ar & BOOST_SERIALIZATION_NVP(id_);
+        ar & BOOST_SERIALIZATION_NVP(ns_);
+        ar & BOOST_SERIALIZATION_NVP(parent_ns_);
+        ar & make_nvp("parent_snapshot_",
+                      static_cast<const std::string>(parent_snapshot_));
+        ar & BOOST_SERIALIZATION_NVP(lba_size_);
+        ar & BOOST_SERIALIZATION_NVP(lba_count_);
+        ar & BOOST_SERIALIZATION_NVP(cluster_mult_);
+        ar & BOOST_SERIALIZATION_NVP(sco_mult_);
+        ar & BOOST_SERIALIZATION_NVP(tlog_mult_);
+        ar & BOOST_SERIALIZATION_NVP(max_non_disposable_factor_);
+        ar & BOOST_SERIALIZATION_NVP(readCacheEnabled_);
+        ar & BOOST_SERIALIZATION_NVP(wan_backup_volume_role_);
+        ar & BOOST_SERIALIZATION_NVP(cluster_cache_behaviour_);
+        ar & BOOST_SERIALIZATION_NVP(is_volume_template_);
+        ar & BOOST_SERIALIZATION_NVP(metadata_backend_config_);
+        ar & BOOST_SERIALIZATION_NVP(number_of_syncs_to_ignore_);
+        ar & BOOST_SERIALIZATION_NVP(maximum_time_to_ignore_syncs_in_seconds_);
+        ar & BOOST_SERIALIZATION_NVP(cluster_cache_mode_);
+        ar & BOOST_SERIALIZATION_NVP(owner_tag_);
+        ar & BOOST_SERIALIZATION_NVP(cluster_cache_limit_);
+        ar & BOOST_SERIALIZATION_NVP(metadata_cache_capacity_);
     }
 };
 

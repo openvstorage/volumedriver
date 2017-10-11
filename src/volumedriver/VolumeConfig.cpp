@@ -133,35 +133,28 @@ VolumeConfig::operator=(const VolumeConfig& other)
 {
     if(this != & other)
     {
-        const_cast<VolumeId&>(id_) = other.id_;
+        id_ = other.id_;
         ns_ = other.ns_;
-        const_cast<boost::optional<std::string>&>(parent_ns_) = other.parent_ns_;
-        const_cast<SnapshotName&>(parent_snapshot_) = other.parent_snapshot_;
-        const_cast<LBASize&>(lba_size_) = other.lba_size_;
-        const_cast<std::atomic<uint64_t>&>(lba_count_) = other.lba_count_.load();
-        const_cast<ClusterMultiplier&>(cluster_mult_) = other.cluster_mult_;
-        const_cast<SCOMultiplier&>(sco_mult_) = other.sco_mult_;
-        const_cast<boost::optional<TLogMultiplier>&>(tlog_mult_) = other.tlog_mult_;
-        const_cast<boost::optional<SCOCacheNonDisposableFactor>&>(max_non_disposable_factor_) = other.max_non_disposable_factor_;
-        const_cast<bool&>(readCacheEnabled_) = other.readCacheEnabled_;
-        const_cast<WanBackupVolumeRole&>(wan_backup_volume_role_) =
-            other.wan_backup_volume_role_;
-        const_cast<boost::optional<ClusterCacheBehaviour>& >(cluster_cache_behaviour_) =
-            other.cluster_cache_behaviour_;
-        const_cast<boost::optional<ClusterCacheMode>& >(cluster_cache_mode_) =
-            other.cluster_cache_mode_;
-        const_cast<boost::optional<ClusterCount>& >(cluster_cache_limit_) =
-            other.cluster_cache_limit_;
-        const_cast<boost::optional<size_t>& >(metadata_cache_capacity_) =
-            other.metadata_cache_capacity_;
-        const_cast<MetaDataBackendConfigPtr&>(metadata_backend_config_) =
-            other.metadata_backend_config_->clone();
-        const_cast<IsVolumeTemplate&>(is_volume_template_) = other.is_volume_template_;
-        number_of_syncs_to_ignore_ =
-            other.number_of_syncs_to_ignore_;
+        parent_ns_ = other.parent_ns_;
+        parent_snapshot_ = other.parent_snapshot_;
+        lba_size_ = other.lba_size_;
+        lba_count_ = other.lba_count_.load();
+        cluster_mult_ = other.cluster_mult_;
+        sco_mult_ = other.sco_mult_;
+        tlog_mult_ = other.tlog_mult_;
+        max_non_disposable_factor_ = other.max_non_disposable_factor_;
+        readCacheEnabled_ = other.readCacheEnabled_;
+        wan_backup_volume_role_ = other.wan_backup_volume_role_;
+        cluster_cache_behaviour_ = other.cluster_cache_behaviour_;
+        cluster_cache_mode_ = other.cluster_cache_mode_;
+        cluster_cache_limit_ = other.cluster_cache_limit_;
+        metadata_cache_capacity_ = other.metadata_cache_capacity_;
+        metadata_backend_config_ = other.metadata_backend_config_->clone();
+        is_volume_template_ = other.is_volume_template_;
+        number_of_syncs_to_ignore_ = other.number_of_syncs_to_ignore_;
         maximum_time_to_ignore_syncs_in_seconds_ =
             other.maximum_time_to_ignore_syncs_in_seconds_;
-        const_cast<OwnerTag&>(owner_tag_) = other.owner_tag_;
+        owner_tag_ = other.owner_tag_;
     }
 
     return *this;
