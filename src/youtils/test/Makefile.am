@@ -59,6 +59,7 @@ youtils_test_SOURCES = \
 	main.cpp \
 	MainHelperTest.cpp \
 	MTThreadPoolTest.cpp \
+	MultiArchivePersistorTest.cpp \
 	OurStrongTypedefTest.cpp \
 	PathTest.cpp \
 	PeriodicActionTest.cpp \

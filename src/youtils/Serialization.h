@@ -16,18 +16,22 @@
 #ifndef _SERIALIZATION_H_
 #define _SERIALIZATION_H_
 
+#include "Logging.h"
+
 #include <atomic>
 #include <exception>
 #include <map>
 #include <sstream>
 
-#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
-#include <boost/serialization/nvp.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/xml_iarchive.hpp>
+#include <boost/archive/xml_oarchive.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
-
-#include "Logging.h"
+#include <boost/serialization/nvp.hpp>
 
 namespace youtils
 {
@@ -166,6 +170,7 @@ struct Serialization
         serializeAndFlush<OArchiveT>(ofs, obj);
         ofs.close();
     }
+
     DECLARE_LOGGER("Serialization");
 };
 
