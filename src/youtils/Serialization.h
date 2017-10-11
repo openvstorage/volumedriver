@@ -192,7 +192,7 @@ save(Archive& ar,
      const int unsigned /* version */)
 {
     const T value = t.load();
-    ar << value;
+    ar << BOOST_SERIALIZATION_NVP(value);
 }
 
 template<typename Archive, typename T>
@@ -202,7 +202,7 @@ load(Archive& ar,
      const int unsigned /* version */)
 {
     T value;
-    ar >> value;
+    ar >> BOOST_SERIALIZATION_NVP(value);
     t = value;
 }
 
