@@ -14,17 +14,20 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "DeleteSnapshot.h"
-#include "SnapshotPersistor.h"
 #include "FilePool.h"
-#include "backend/BackendConnectionManager.h"
 #include "SnapshotManagement.h"
-#include <boost/foreach.hpp>
-#include <boost/property_tree/info_parser.hpp>
+#include "SnapshotPersistor.h"
 #include "Types.h"
+#include "VolumeConfigPersistor.h"
+
+#include <boost/property_tree/info_parser.hpp>
+
+#include <backend/BackendConnectionManager.h>
 
 namespace volumedriver_backup
 {
 using namespace volumedriver;
+
 namespace be = backend;
 
 DeleteSnapshot::DeleteSnapshot(const bpt::ptree& config_ptree,
@@ -52,7 +55,7 @@ DeleteSnapshot::operator()()
     std::stringstream ss;
     bpt::write_info(ss, configuration_ptree_);
     LOG_TRACE("Parameters passed : \n" << ss.str());
-    BOOST_FOREACH(const auto& snap, snapshots_)
+    for (const auto& snap : snapshots_)
     {
         LOG_TRACE("snapshot " << snap << " deletion requested");
     }
@@ -77,10 +80,8 @@ DeleteSnapshot::operator()()
                         VolumeConfig::config_backend_name,
                         InsistOnLatestVersion::T);
 
-        fs::ifstream ifs(p);
-        VolumeConfig::iarchive_type ia(ifs);
-        ia & vc;
-        ifs.close();
+        VolumeConfigPersistor::load(p,
+                                    vc);
         if(vc.wan_backup_volume_role_ ==
            VolumeConfig::WanBackupVolumeRole::WanBackupNormal)
         {
@@ -105,7 +106,7 @@ DeleteSnapshot::operator()()
         return;
     }
 
-    BOOST_FOREACH(const auto& snapshot, snapshots_)
+    for (const auto& snapshot : snapshots_)
     {
         LOG_INFO("trying to get snapshot_num for " << snapshot);
         const SnapshotNum s_num = target_snapshot_persistor.getSnapshotNum(snapshot);
@@ -134,7 +135,7 @@ DeleteSnapshot::operator()()
         }
     }
 
-    BOOST_FOREACH(const SnapshotNum s_num, snapshot_nums)
+    for (const SnapshotNum s_num : snapshot_nums)
     {
         LOG_INFO("Deleting snapshot number " << s_num);
         target_snapshot_persistor.deleteSnapshot(s_num);

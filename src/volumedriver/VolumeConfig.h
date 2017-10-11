@@ -125,8 +125,6 @@ public:
         verify_();
     }
 
-    typedef boost::archive::text_iarchive iarchive_type;
-    typedef boost::archive::text_oarchive oarchive_type;
     static const std::string config_backend_name;
 
     enum class WanBackupVolumeRole

@@ -29,6 +29,7 @@
 #include "../ScrubReply.h"
 #include "../TokyoCabinetMetaDataBackend.h"
 #include "../VolManager.h"
+#include "../VolumeConfigPersistor.h"
 #include "../failovercache/FailOverCacheAcceptor.h"
 #include "../metadata-server/Manager.h"
 #include "../metadata-server/ServerConfig.h"
@@ -1066,20 +1067,10 @@ VolManagerTestSetup::setVolumeRole(const Namespace ns,
                                    VolumeConfig::WanBackupVolumeRole role)
 {
     BackendInterfacePtr bi(VolManager::get()->createBackendInterface(ns));
-    const fs::path
-        p(FileUtils::create_temp_file_in_temp_dir(VolumeConfig::config_backend_name));
-    bi->read(p, VolumeConfig::config_backend_name, InsistOnLatestVersion::T);
-    VolumeConfig vol_config;
-    fs::ifstream ifs(p);
-    VolumeConfig::iarchive_type ia(ifs);
-    ia & vol_config;
-    ifs.close();
-    const_cast<VolumeConfig::WanBackupVolumeRole&>(vol_config.wan_backup_volume_role_) = role;
-    fs::remove(p);
-
-    Serialization::serializeAndFlush<VolumeConfig::oarchive_type>(p, vol_config);
-
-    bi->write(p, VolumeConfig::config_backend_name, OverwriteObject::T);
+    VolumeConfig vol_config(VolumeConfigPersistor::load(*bi));
+    vol_config.wan_backup_volume_role_ = role;
+    VolumeConfigPersistor::save(*bi,
+                                vol_config);
 }
 
 void
@@ -1303,11 +1294,7 @@ VolManagerTestSetup::localRestart(const be::Namespace& ns,
     fs::create_directories(VolManager::get()->getMetaDataPath() / ns.str());
     fs::create_directories(VolManager::get()->getTLogPath() / ns.str());
 
-    VolumeConfig cfg;
-    VolManager::get()->createBackendInterface(ns)->fillObject(cfg,
-                                                              VolumeConfig::config_backend_name,
-                                                              InsistOnLatestVersion::T);
-
+    const VolumeConfig cfg(VolumeConfigPersistor::load(*VolManager::get()->createBackendInterface(ns)));
     fungi::ScopedLock m(vm->getLock_());
     SharedVolumePtr v = vm->local_restart(ns,
                                   cfg.owner_tag_,

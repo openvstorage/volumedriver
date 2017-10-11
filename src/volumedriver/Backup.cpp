@@ -21,6 +21,8 @@
 
 #include "failovercache/fungilib/Mutex.h"
 
+#include <youtils/Catchers.h>
+
 #include <backend/BackendConnectionManager.h>
 
 #include <volumedriver/Api.h>
@@ -32,9 +34,9 @@
 #include <volumedriver/Types.h>
 #include <volumedriver/VolManager.h>
 #include <volumedriver/VolumeConfig.h>
+#include <volumedriver/VolumeConfigPersistor.h>
 #include <volumedriver/VolumeThreadPool.h>
 #include <volumedriver/WriteOnlyVolume.h>
-#include <youtils/Catchers.h>
 
 namespace volumedriver_backup
 {
@@ -188,10 +190,8 @@ Backup::get_source_volume_info()
         nsid.get(0)->read(p,
                           VolumeConfig::config_backend_name,
                           InsistOnLatestVersion::T);
-        fs::ifstream ifs(p);
-        VolumeConfig::iarchive_type ia(ifs);
-        ia & *source_volume_config;
-        ifs.close();
+        VolumeConfigPersistor::load(p,
+                                    *source_volume_config);
     }
     catch(std::exception& e)
     {
@@ -211,18 +211,15 @@ Backup::get_target_volume_info()
     LOG_INFO(__FUNCTION__);
     try
     {
-        target_volume_config.reset(new VolumeConfig());
+        target_volume_config = std::make_unique<VolumeConfig>();
         const fs::path p = file_pool->newFile("target_volume_config");
-        BackendInterfacePtr bip = VolManager::get()->createBackendInterface(backend::Namespace(target_namespace));
-
+        BackendInterfacePtr
+            bip(VolManager::get()->createBackendInterface(backend::Namespace(target_namespace)));
         bip->read(p,
                   VolumeConfig::config_backend_name,
                   InsistOnLatestVersion::T);
-        fs::ifstream ifs(p);
-        VolumeConfig::iarchive_type ia(ifs);
-        ia & *target_volume_config;
-        ifs.close();
-    }
+        VolumeConfigPersistor::load(p,
+                                    *target_volume_config);    }
     catch(std::exception& e)
     {
         LOG_FATAL("Could not get source volume info from it's backend, " << e.what());

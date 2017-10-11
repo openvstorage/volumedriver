@@ -31,6 +31,7 @@
 #include <volumedriver/DataStoreNG.h>
 #include <volumedriver/VolManager.h>
 #include <volumedriver/VolumeConfig.h>
+#include <volumedriver/VolumeConfigPersistor.h>
 #include <volumedriver/VolumeThreadPool.h>
 
 namespace volumedrivertest
@@ -1756,19 +1757,21 @@ TEST_P(SimpleVolumeTest, writeConfigToBackend)
     SharedVolumePtr v1 = newVolume("v1",
 			   ns1);
 
-    std::unique_ptr<VolumeConfig> f;
-    ASSERT_NO_THROW(f = VolManager::get()->get_config_from_backend<VolumeConfig>(ns1));
+    be::BackendInterfacePtr bi(VolManager::get()->createBackendInterface(ns1));
+    ASSERT_NO_THROW(VolumeConfigPersistor::load(*bi));
     ASSERT_NO_THROW(writeVolumeConfigToBackend(*v1));
-    ASSERT_NO_THROW(f = VolManager::get()->get_config_from_backend<VolumeConfig>(ns1));
+
+    const VolumeConfig f(VolumeConfigPersistor::load(*bi));
+
     const VolumeConfig cf1 = v1->get_config();
-    EXPECT_TRUE(cf1.id_ == f->id_);
-    EXPECT_TRUE(cf1.getNS() == f->getNS());
-    EXPECT_TRUE(cf1.parent_ns_ ==  f->parent_ns_);
-    EXPECT_EQ(cf1.parent_snapshot_, f->parent_snapshot_);
-    EXPECT_TRUE(cf1.lba_size_ == f->lba_size_);
-    EXPECT_EQ(cf1.lba_count(), f->lba_count());
-    EXPECT_TRUE(cf1.cluster_mult_ == f->cluster_mult_);
-    EXPECT_TRUE(cf1.sco_mult_ == f->sco_mult_);
+    EXPECT_TRUE(cf1.id_ == f.id_);
+    EXPECT_TRUE(cf1.getNS() == f.getNS());
+    EXPECT_TRUE(cf1.parent_ns_ ==  f.parent_ns_);
+    EXPECT_EQ(cf1.parent_snapshot_, f.parent_snapshot_);
+    EXPECT_TRUE(cf1.lba_size_ == f.lba_size_);
+    EXPECT_EQ(cf1.lba_count(), f.lba_count());
+    EXPECT_TRUE(cf1.cluster_mult_ == f.cluster_mult_);
+    EXPECT_TRUE(cf1.sco_mult_ == f.sco_mult_);
 }
 
 TEST_P(SimpleVolumeTest, readActivity)

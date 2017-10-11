@@ -17,8 +17,10 @@
 #include "VolumeInfo.h"
 
 #include <boost/filesystem/fstream.hpp>
-#include <backend-python/ConnectionInterface.h>
+
 #include <youtils/FileUtils.h>
+#include <backend-python/ConnectionInterface.h>
+#include <volumedriver/VolumeConfigPersistor.h>
 
 namespace toolcut
 {
@@ -35,10 +37,8 @@ VolumeInfo::VolumeInfo(boost::python::object& backend,
                              p.string(),
                              VolumeConfig::config_backend_name,
                              true);
-        fs::ifstream ifs(p);
-        VolumeConfig::iarchive_type ia(ifs);
-        ia & volume_config_;
-        ifs.close();
+        VolumeConfigPersistor::load(p,
+                                    volume_config_);
     }
 
     {
@@ -48,10 +48,8 @@ VolumeInfo::VolumeInfo(boost::python::object& backend,
                              p.string(),
                              FailOverCacheConfigWrapper::config_backend_name,
                              true);
-        fs::ifstream ifs(p);
-        FailOverCacheConfigWrapper::iarchive_type ia(ifs);
-        ia & foc_config_wrapper_;
-        ifs.close();
+        VolumeConfigPersistor::load(p,
+                                    volume_config_);
     }
 }
 
@@ -61,9 +59,8 @@ VolumeInfo::VolumeInfo(const std::string& volume_config,
     if(not volume_config.empty())
     {
         fs::ifstream ifs(volume_config);
-        VolumeConfig::iarchive_type ia(ifs);
-        ia & volume_config_;
-        ifs.close();
+        VolumeConfigPersistor::load(ifs,
+                                    volume_config_);
     }
 
     if(not failover_config.empty())

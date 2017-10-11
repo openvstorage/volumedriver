@@ -24,6 +24,7 @@
 #include "TLogReader.h"
 #include "TransientException.h"
 #include "VolManager.h"
+#include "VolumeConfigPersistor.h"
 #include "WriteOnlyVolume.h"
 
 #include <float.h>
@@ -979,25 +980,17 @@ WriteOnlyVolume::normalizeSAPs_(SCOAccessData::VectorType& sadv)
 void
 WriteOnlyVolume::writeConfigToBackend_()
 {
-    fs::path tmp = VolManager::get()->getMetaDataPath(*this) / VolumeConfig::config_backend_name;
-    FileUtils::removeFileNoThrow(tmp);
-    VERIFY(not fs::exists(tmp));
-
-    ALWAYS_CLEANUP_FILE(tmp);
-    youtils::Serialization::serializeAndFlush<VolumeConfig::oarchive_type>(tmp, cfg_);
+    checkNotHalted_();
 
     try
     {
-        getBackendInterface()->write(tmp,
-                                     VolumeConfig::config_backend_name,
-                                     OverwriteObject::T,
-                                     nullptr,
-                                     backend_write_condition());
+        VolumeConfigPersistor::save(*getBackendInterface(),
+                                    cfg_,
+                                    backend_write_condition());
     }
     catch (be::BackendAssertionFailedException&)
     {
-        LOG_WARN(getName() << ": conditional write of " <<
-                 VolumeConfig::config_backend_name << " failed");
+        LOG_WARN(getName() << ": conditional write of VolumeConfig failed");
         halt();
         throw;
     }

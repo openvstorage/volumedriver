@@ -25,6 +25,7 @@
 #include <volumedriver/SnapshotPersistor.h>
 #include <volumedriver/SnapshotManagement.h>
 #include <volumedriver/TLogReader.h>
+#include <volumedriver/VolumeConfigPersistor.h>
 
 namespace volumedriver_backup
 {
@@ -100,14 +101,17 @@ Restore::operator()()
 
         LOG_INFO("Retrieving volume config from source namespace " <<
                  source_bi->getNS());
-        source_bi->fillObject(vol_config, InsistOnLatestVersion::T);
+        vd::VolumeConfigPersistor::load(*source_bi,
+                                        vol_config);
+
         vol_config.changeNamespace(backend::Namespace(target_nspace));
     }
     else
     {
         LOG_INFO("Retrieving volume config from target namespace " <<
                  target_bi->getNS());
-        target_bi->fillObject(vol_config, InsistOnLatestVersion::T);
+        vd::VolumeConfigPersistor::load(*target_bi,
+                                        vol_config);
     }
 
     const boost::optional<std::string>
@@ -128,9 +132,8 @@ Restore::operator()()
         promote_(*maybe_new_role, target_bi->clone(), vol_config);
     }
 
-    target_bi->writeObject(vol_config,
-                           vd::VolumeConfig::config_backend_name,
-                           OverwriteObject::T);
+    vd::VolumeConfigPersistor::save(*target_bi,
+                                    vol_config);
 }
 
 void

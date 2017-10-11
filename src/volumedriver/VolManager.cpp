@@ -21,6 +21,7 @@
 #include "SnapshotManagement.h"
 #include "Types.h"
 #include "VolManager.h"
+#include "VolumeConfigPersistor.h"
 
 #include "metadata-server/Manager.h"
 
@@ -659,10 +660,10 @@ VolManager::volumePotential(const ClusterSize c,
 uint64_t
 VolManager::volumePotential(const be::Namespace& nspace)
 {
-    auto cfg(get_config_from_backend<VolumeConfig>(nspace));
-    return volumePotential(ClusterSize(cfg->getClusterSize()),
-                           cfg->sco_mult_,
-                           cfg->tlog_mult_);
+    const VolumeConfig cfg(VolumeConfigPersistor::load(*createBackendInterface(nspace)));
+    return volumePotential(ClusterSize(cfg.getClusterSize()),
+                           cfg.sco_mult_,
+                           cfg.tlog_mult_);
 }
 
 void
@@ -871,10 +872,9 @@ VolManager::createClone(const CloneVolumeConfigParameters& clone_params,
 
     std::unique_ptr<VolumeConfig> volume_config;
 
-    std::unique_ptr<VolumeConfig>
-        cfg_old(get_config_from_backend<VolumeConfig>(parent_ns));
+    const VolumeConfig cfg_old(VolumeConfigPersistor::load(*createBackendInterface(parent_ns)));
 
-    if (cfg_old->wan_backup_volume_role_ ==
+    if (cfg_old.wan_backup_volume_role_ ==
         VolumeConfig::WanBackupVolumeRole::WanBackupIncremental)
     {
         LOG_ERROR("Namespace " << ns <<
@@ -889,7 +889,7 @@ VolManager::createClone(const CloneVolumeConfigParameters& clone_params,
 
     if(not params.get_parent_snapshot())
     {
-        if(F(cfg_old->isVolumeTemplate()))
+        if(F(cfg_old.isVolumeTemplate()))
         {
             LOG_ERROR("No snapshot specified, but volume is not a template volume");
             throw VolumeNotTemplatedButNoSnapshotSpecifiedException("No snapshot specified, but volume is not a template volume");
@@ -911,17 +911,17 @@ VolManager::createClone(const CloneVolumeConfigParameters& clone_params,
 
     if (not params.get_cluster_cache_mode())
     {
-        params.cluster_cache_mode(cfg_old->cluster_cache_mode_);
+        params.cluster_cache_mode(cfg_old.cluster_cache_mode_);
     }
     else if (*params.get_cluster_cache_mode() == ClusterCacheMode::ContentBased)
     {
         TODO("AR: I don't like this being here and a similar one in Volume::setClusterCacheMode - unify!");
-        if (cfg_old->cluster_cache_mode_ and
-            cfg_old->cluster_cache_mode_ == ClusterCacheMode::LocationBased)
+        if (cfg_old.cluster_cache_mode_ and
+            cfg_old.cluster_cache_mode_ == ClusterCacheMode::LocationBased)
         {
             LOG_ERROR(id << ": setting the cluster cache mode of a clone to " <<
                       ClusterCacheMode::ContentBased <<
-                      " while the parent's " << cfg_old->id_ << " mode is " <<
+                      " while the parent's " << cfg_old.id_ << " mode is " <<
                       ClusterCacheMode::LocationBased <<
                       " is not supported");
             throw fungi::IOException("Changing the cluster cache mode from LocationBased (parent) to ContentBased (clone) is not supported");
@@ -929,7 +929,7 @@ VolManager::createClone(const CloneVolumeConfigParameters& clone_params,
     }
 
     const VolumeConfig config(params,
-                              *cfg_old);
+                              cfg_old);
 
     const youtils::UUID
         parent_snap_uuid(sp->getSnapshotCork(*params.get_parent_snapshot()));
@@ -1135,15 +1135,15 @@ VolManager::local_restart(const Namespace& ns,
     MAIN_EVENT("Local Restart, Namespace " << ns << ", owner tag " << owner_tag);
     ensureVolumeNotPresent(ns);
 
-    std::unique_ptr<VolumeConfig> config(get_config_from_backend<VolumeConfig>(ns));
-    ensureVolumeNotPresent(config->id_);
+    const VolumeConfig config(VolumeConfigPersistor::load(*createBackendInterface(ns)));
+    ensureVolumeNotPresent(config.id_);
 
     THROW_WHEN(fallback == FallBackToBackendRestart::T and
-               config->wan_backup_volume_role_ !=
+               config.wan_backup_volume_role_ !=
                VolumeConfig::WanBackupVolumeRole::WanBackupNormal);
 
-    ensureResourceLimits(*config);
-    ensure_metadata_freespace_meticulously_(*config);
+    ensureResourceLimits(config);
+    ensure_metadata_freespace_meticulously_(config);
 
     auto fun([fallback,
               ignoreFOCIfUnreachable,
@@ -1158,7 +1158,7 @@ VolManager::local_restart(const Namespace& ns,
 
     return with_restart_map_and_unlocked_mgmt_vol_(fun,
                                                    ns,
-                                                   *config);
+                                                   config);
 }
 
 void
@@ -1191,12 +1191,11 @@ VolManager::backend_restart(const Namespace& ns,
     createBackendInterface(ns)->invalidate_cache();
 
     //to get info about scosize already on restarting volumes we need to get volconfig here
-    std::unique_ptr<VolumeConfig>
-        config(get_config_from_backend<VolumeConfig>(ns));
+    const VolumeConfig config(VolumeConfigPersistor::load(*createBackendInterface(ns)));
 
-    ensureVolumeNotPresent(config->id_);
+    ensureVolumeNotPresent(config.id_);
 
-    if(config->wan_backup_volume_role_ !=
+    if(config.wan_backup_volume_role_ !=
        VolumeConfig::WanBackupVolumeRole::WanBackupNormal)
     {
         LOG_ERROR("Trying to restart " << ns <<
@@ -1204,8 +1203,8 @@ VolManager::backend_restart(const Namespace& ns,
         throw VolumeDoesNotHaveCorrectRole("Volume does not have normal role, you are restarting a backup");
     }
 
-    ensureResourceLimits(*config);
-    ensure_metadata_freespace_meticulously_(*config);
+    ensureResourceLimits(config);
+    ensure_metadata_freespace_meticulously_(config);
 
     auto fun([prefetch,
               ignore_foc,
@@ -1217,7 +1216,7 @@ VolManager::backend_restart(const Namespace& ns,
                                                        ignore_foc);
              });
 
-    return with_restart_map_and_unlocked_mgmt_vol_(fun, ns, *config);
+    return with_restart_map_and_unlocked_mgmt_vol_(fun, ns, config);
 }
 
 WriteOnlyVolume*
@@ -1231,18 +1230,17 @@ VolManager::restartWriteOnlyVolume(const Namespace& ns,
     ensureVolumeNotPresent(ns);
 
     //to get info about scosize already on restarting volumes we need to get volconfig here
-    std::unique_ptr<VolumeConfig>
-        volume_config(get_config_from_backend<VolumeConfig>(ns));
+    const VolumeConfig volume_config(VolumeConfigPersistor::load(*createBackendInterface(ns)));
 
     // If this is removed you might want to do explicit checking in Backup.cpp for volume role
-    if(volume_config->wan_backup_volume_role_ ==
+    if(volume_config.wan_backup_volume_role_ ==
        VolumeConfig::WanBackupVolumeRole::WanBackupNormal)
     {
         LOG_ERROR("Trying to restart " << ns << " as WriteOnlyVolume the volume there doesn't have VolumeRole::Normal");
         throw VolumeDoesNotHaveCorrectRole("Volume does not have Backup role, you are restarting a normal volume as readonly");
     }
 
-    ensureResourceLimits(*volume_config);
+    ensureResourceLimits(volume_config);
 
     auto fun([owner_tag](const Namespace&,
                          const VolumeConfig& cfg) -> WriteOnlyVolume*
@@ -1251,7 +1249,7 @@ VolManager::restartWriteOnlyVolume(const Namespace& ns,
                                                                          owner_tag).release();
              });
 
-    return with_restart_map_and_unlocked_mgmt_<WriteOnlyVolume*>(fun, ns, *volume_config);
+    return with_restart_map_and_unlocked_mgmt_<WriteOnlyVolume*>(fun, ns, volume_config);
 }
 
 void

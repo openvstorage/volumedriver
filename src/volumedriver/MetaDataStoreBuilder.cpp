@@ -17,6 +17,7 @@
 #include "MetaDataStoreBuilder.h"
 #include "SnapshotPersistor.h"
 #include "VolumeConfig.h"
+#include "VolumeConfigPersistor.h"
 
 #include <youtils/Catchers.h>
 
@@ -174,8 +175,8 @@ MetaDataStoreBuilder::update_metadata_store_(const boost::optional<yt::UUID>& fr
         ASSERT(not res.full_rebuild or from_scratch);
 
         VolumeConfig cfg;
-        bi_->fillObject(cfg,
-                        InsistOnLatestVersion::T);
+        VolumeConfigPersistor::load(*bi_,
+                                    cfg);
 
         LOG_INFO(bi_->getNS() << ": determining the TLogs to replay");
 

@@ -34,6 +34,7 @@
 #include "TLogReader.h"
 #include "VolManager.h"
 #include "Volume.h"
+#include "VolumeConfigPersistor.h"
 #include "ScrubReply.h"
 #include "ScrubWork.h"
 
@@ -2888,14 +2889,13 @@ Volume::writeConfigToBackend_(const VolumeConfig& cfg)
 
     try
     {
-        getBackendInterface()->writeObject(cfg,
-                                           VolumeConfig::config_backend_name,
-                                           OverwriteObject::T,
-                                           backend_write_condition());
+        VolumeConfigPersistor::save(*getBackendInterface(),
+                                    cfg,
+                                    backend_write_condition());
     }
     catch (be::BackendAssertionFailedException&)
     {
-        LOG_VWARN("conditional write of " << VolumeConfig::config_backend_name << " failed");
+        LOG_VWARN("conditional write of VolumeConfig failed");
         halt();
         throw;
     }
@@ -2915,7 +2915,7 @@ Volume::writeFailOverCacheConfigToBackend_()
     }
     catch (be::BackendAssertionFailedException&)
     {
-        LOG_VWARN("conditional write of " << VolumeConfig::config_backend_name << " failed");
+        LOG_VWARN("conditional write of FailOverCacheConfig failed");
         halt();
         throw;
     }
