@@ -171,13 +171,13 @@ public:
                                   getNS());
     }
 
-    template<typename ObjectType,
-             typename iarchive_type = typename ObjectType::iarchive_type>
+    template<typename T,
+             typename DeserializeFun>
     void
-    fillObject(ObjectType& obj,
-               const std::string& nameOnBackend,
-               const char* nvp_name,
+    fillObject(T& t,
+               const std::string& backend_name,
                InsistOnLatestVersion insist_on_latest,
+               DeserializeFun&& deserialize,
                const BackendRequestParameters& params = default_request_parameters())
     {
         try
@@ -185,39 +185,49 @@ public:
             const boost::filesystem::path
                 p(youtils::FileUtils::create_temp_file_in_temp_dir(getNS().str() +
                                                                    "-" +
-                                                                   nameOnBackend));
+                                                                   backend_name));
             ALWAYS_CLEANUP_FILE_TPL(p);
             read(p,
-                 nameOnBackend,
+                 backend_name,
                  insist_on_latest,
                  params);
             boost::filesystem::ifstream ifs(p);
-            iarchive_type ia(ifs);
-            ia & boost::serialization::make_nvp(nvp_name, obj);
-
-            ifs.close();
+            deserialize(ifs,
+                        t);
         }
-        CATCH_STD_ALL_LOG_RETHROW("Problem getting " << nameOnBackend << " from " <<
-                                  getNS())
-            }
+        CATCH_STD_ALL_LOG_RETHROW("Problem getting " << backend_name << " from " <<
+                                  getNS());
 
-    template<typename ObjectType>
+    }
+
+    template<typename T,
+             typename iarchive_type = typename T::iarchive_type>
     void
-    fillObject(ObjectType& obj,
+    fillObject(T& t,
+               const std::string& backend_name,
+               const char* nvp_name,
                InsistOnLatestVersion insist_on_latest,
                const BackendRequestParameters& params = default_request_parameters())
     {
-        fillObject(obj,
-                   ObjectType::config_backend_name,
+        fillObject(t,
+                   backend_name,
                    insist_on_latest,
+                   [nvp_name](std::istream& is,
+                              T& t)
+                   {
+                       iarchive_type ia(is);
+                       ia & boost::serialization::make_nvp(nvp_name,
+                                                           t);
+                   },
                    params);
     }
 
-    template<typename ObjectType,
-             typename oarchive_t = typename ObjectType::oarchive_type>
+    template<typename T,
+             typename SerializeFun>
     void
-    writeObject(const ObjectType& obj,
-                const std::string& nameOnBackend,
+    writeObject(const T& t,
+                const std::string& backend_name,
+                SerializeFun&& serialize,
                 const OverwriteObject overwrite = OverwriteObject::F,
                 const boost::shared_ptr<Condition>& cond = nullptr,
                 const BackendRequestParameters& params = default_request_parameters())
@@ -226,33 +236,43 @@ public:
         {
             const boost::filesystem::path
                 p(youtils::FileUtils::create_temp_file_in_temp_dir(getNS().str() + "-" +
-                                                                   nameOnBackend));
+                                                                   backend_name));
             ALWAYS_CLEANUP_FILE_TPL(p);
-            youtils::Serialization::serializeAndFlush<oarchive_t, ObjectType>(p, obj);
+
+            boost::filesystem::ofstream ofs(p);
+            serialize(ofs,
+                      t);
             write(p,
-                  nameOnBackend,
+                  backend_name,
                   overwrite,
                   nullptr,
                   cond,
                   params);
         }
-        CATCH_STD_ALL_LOG_RETHROW("Problem writing " << nameOnBackend << " to " <<
+        CATCH_STD_ALL_LOG_RETHROW("Problem writing " << backend_name << " to " <<
                                   getNS());
     }
 
-    template<typename ObjectType,
-             typename oarchive_t = typename ObjectType::oarchive_type>
+    template<typename T,
+             typename oarchive_t = typename T::oarchive_type>
     void
-    writeObject(const ObjectType& obj,
+    writeObject(const T& t,
+                const std::string& backend_name,
                 const OverwriteObject overwrite = OverwriteObject::F,
                 const boost::shared_ptr<Condition>& cond = nullptr,
                 const BackendRequestParameters& params = default_request_parameters())
     {
-        return writeObject(obj,
-                           ObjectType::config_backend_name,
-                           overwrite,
-                           cond,
-                           params);
+        writeObject(t,
+                    backend_name,
+                    [](std::ostream& os,
+                       const T& t)
+                    {
+                        youtils::Serialization::serializeAndFlush<oarchive_t>(os,
+                                                                              t);
+                    },
+                    overwrite,
+                    cond,
+                    params);
     }
 
     template<typename ObjectType>
