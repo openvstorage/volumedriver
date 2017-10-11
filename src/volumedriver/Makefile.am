@@ -198,6 +198,7 @@ libvolumedriver_la_SOURCES = \
 	VolManager.cpp \
 	VolumeConfig.cpp \
 	VolumeConfigParameters.cpp \
+	VolumeConfigPersistor.cpp \
 	Volume.cpp \
 	VolumeDriverParameters.cpp \
 	VolumeDriverError.cpp \
