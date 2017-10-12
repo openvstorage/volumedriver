@@ -27,6 +27,7 @@
 #include <boost/serialization/unique_ptr.hpp>
 #include <boost/variant.hpp>
 
+#include <youtils/MultiArchivePersistor.h>
 #include <youtils/Serialization.h>
 
 #include <xmlrpc++0.7/src/XmlRpcValue.h>
@@ -93,7 +94,7 @@ struct SerializationName<std::map<NodeId, ClusterNodeStatus>>
     }
 };
 
-template<typename iarchive_type, typename oarchive_type>
+template<typename IArchiveList>
 struct XMLRPCStructsT
 {
     template<typename T, typename SerName = SerializationName<T>>
@@ -101,9 +102,9 @@ struct XMLRPCStructsT
     serialize_to_xmlrpc_value(const T& t)
     {
         std::stringstream ss;
-        oarchive_type oa(ss);
-        oa & boost::serialization::make_nvp(SerName::name(),
-                                            t);
+        youtils::MultiArchivePersistor<IArchiveList>::save(ss,
+                                                           SerName::name(),
+                                                           t);
         return ::XmlRpc::XmlRpcValue(static_cast<const void*>(ss.str().c_str()),
                                      ss.str().size());
     }
@@ -112,26 +113,31 @@ struct XMLRPCStructsT
     static T
     deserialize_from_xmlrpc_value(XmlRpc::XmlRpcValue& xval)
     {
-        T t;
         std::stringstream ss;
-        XmlRpc::XmlRpcValue::BinaryData data = xval;
+        const XmlRpc::XmlRpcValue::BinaryData data = xval;
         ss.str(std::string(data.begin(), data.end()));
 
-        iarchive_type ia(ss);
-        ia & boost::serialization::make_nvp(SerName::name(),
-                                            t);
+        T t;
+        youtils::MultiArchivePersistor<IArchiveList>::load(ss,
+                                                           SerName::name(),
+                                                           t);
         return t;
     }
 };
 
-// The old flavour - it uses binary archive which are not future-proof. Phase out their
-// use as-needed.
-using XMLRPCStructsBinary = XMLRPCStructsT<boost::archive::binary_iarchive,
-                                           boost::archive::binary_oarchive>;
+// The old flavour - it uses binary archive which are not future-proof. Phase
+// out their use as-needed.
+using XMLRPCStructsBinary =
+    XMLRPCStructsT<LOKI_TYPELIST_1(boost::archive::binary_iarchive)>;
 
 // Use this for new code.
-using XMLRPCStructsXML = XMLRPCStructsT<boost::archive::xml_iarchive,
-                                        boost::archive::xml_oarchive>;
+using XMLRPCStructsXML =
+    XMLRPCStructsT<LOKI_TYPELIST_1(boost::archive::xml_iarchive)>;
+
+// Use this for fwd compatible code.
+using XMLRPCStructsBinaryAndXML =
+    XMLRPCStructsT<LOKI_TYPELIST_2(boost::archive::binary_iarchive,
+                                   boost::archive::xml_iarchive)>;
 
 //Just borrowing boost's semi human readable xml serialization to support printing these objects in python.
 //This is only intended for interactive python sessions (debugging/operations).
