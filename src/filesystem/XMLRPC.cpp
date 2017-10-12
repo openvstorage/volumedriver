@@ -1019,7 +1019,7 @@ VolumeInfo::execute_internal(::XmlRpc::XmlRpcValue& params,
         std::string("");
     volume_info.vrouter_id = reg->node_id;
 
-    result = XMLRPCStructsBinary::serialize_to_xmlrpc_value(volume_info);
+    result = XMLRPCStructsBinaryAndXML::serialize_to_xmlrpc_value(volume_info);
 }
 
 void
@@ -1053,7 +1053,7 @@ UpdateMetaDataBackendConfig::execute_internal(::XmlRpc::XmlRpcValue& params,
     {
         const vd::VolumeId volume_id(getID(params[0]));
         vd::VolumeConfig::MetaDataBackendConfigPtr mdb_config;
-        mdb_config = XMLRPCStructsBinary::deserialize_from_xmlrpc_value<decltype(mdb_config)>(params[0][XMLRPCKeys::metadata_backend_config]);
+        mdb_config = XMLRPCStructsBinaryAndXML::deserialize_from_xmlrpc_value<decltype(mdb_config)>(params[0][XMLRPCKeys::metadata_backend_config]);
 
         api::updateMetaDataBackendConfig(volume_id,
                                          *mdb_config);
@@ -1122,7 +1122,7 @@ VolumeCreate::execute_internal(::XmlRpc::XmlRpcValue& params,
     if (params[0].hasMember(XMLRPCKeys::metadata_backend_config))
     {
         mdb_config =
-            XMLRPCStructsBinary::deserialize_from_xmlrpc_value<decltype(mdb_config)>(params[0][XMLRPCKeys::metadata_backend_config]);
+            XMLRPCStructsBinaryAndXML::deserialize_from_xmlrpc_value<decltype(mdb_config)>(params[0][XMLRPCKeys::metadata_backend_config]);
     }
 
     const ObjectId id(fs_.create_volume(path,
@@ -1168,7 +1168,7 @@ VolumeClone::execute_internal(::XmlRpc::XmlRpcValue& params,
     if (params[0].hasMember(XMLRPCKeys::metadata_backend_config))
     {
         mdb_config =
-            XMLRPCStructsBinary::deserialize_from_xmlrpc_value<decltype(mdb_config)>(params[0][XMLRPCKeys::metadata_backend_config]);
+            XMLRPCStructsBinaryAndXML::deserialize_from_xmlrpc_value<decltype(mdb_config)>(params[0][XMLRPCKeys::metadata_backend_config]);
     }
 
     const ObjectId id(fs_.create_clone(path,
