@@ -394,7 +394,7 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(alba_connection_rora_timeout_msecs,
                                       "alba_connection_rora_timeout_msecs",
                                       "Timeout for RORA (fast path) partial reads (milliseconds)",
                                       ShowDocumentation::T,
-                                      25);
+                                      100);
 
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(bgc_threads,
                                       be::GarbageCollector::name(),
