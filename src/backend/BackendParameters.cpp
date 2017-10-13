@@ -209,7 +209,8 @@ DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_interface_switch_connection_pool_o
                                       "backend_interface_switch_connection_pool_on_error_policy",
                                       "when using the \'SwitchOnError\' policy: on which errors to switch",
                                       ShowDocumentation::F,
-                                      be::SwitchConnectionPoolOnErrorPolicy::OnBackendError);
+                                      be::SwitchConnectionPoolOnErrorPolicy::OnBackendError bitor
+                                      be::SwitchConnectionPoolOnErrorPolicy::OnTimeout);
 
 DEFINE_INITIALIZED_PARAM_WITH_DEFAULT(backend_type,
                                       backend_connection_manager_name,
