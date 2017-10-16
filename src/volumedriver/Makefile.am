@@ -162,6 +162,7 @@ libvolumedriver_la_SOURCES = \
 	python/ClusterLocationAndHashAdapter.cpp \
 	python/EntryToolCut.cpp \
 	python/MetadataStoreToolCut.cpp \
+	python/RocksDataBaseClient.cpp \
 	python/SCOAccessDataInfo.cpp \
 	python/SCOAdapter.cpp \
 	python/ScrubberAdapter.cpp \

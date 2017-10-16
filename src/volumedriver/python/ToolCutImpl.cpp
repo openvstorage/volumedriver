@@ -16,6 +16,7 @@
 #include "ClusterLocationAndHashAdapter.h"
 #include "EntryToolCut.h"
 #include "MetadataStoreToolCut.h"
+#include "RocksDataBaseClient.h"
 #include "SCOAccessDataInfo.h"
 #include "SCOAdapter.h"
 #include "ScrubbingResultToolCut.h"
@@ -454,6 +455,7 @@ DEFINE_PYTHON_WRAPPER(ToolCutImpl)
 
     ypy::register_once<SCOAdapter>();
     ypy::register_once<ClusterLocationAndHashAdapter>();
+    ypy::register_once<RocksDataBaseClient>();
 }
 
 }
