@@ -365,6 +365,24 @@ NetworkXioClient::~NetworkXioClient()
     shutdown();
 }
 
+int
+NetworkXioClient::xio2posix_error(int error)
+{
+    if (error < XIO_BASE_STATUS)
+    {
+        return error;
+    }
+
+    if (error >= XIO_E_NOT_SUPPORTED and error < XIO_E_LAST_STATUS)
+    {
+        LIBLOGID_ERROR("xio error: " << xio_strerror(error));
+        return EIO;
+    }
+
+    LIBLOGID_ERROR("unknown error: " << error << ", returning EIO");
+    return EIO;
+}
+
 void
 NetworkXioClient::xio_destroy_ctx_shutdown(xio_context *ctx)
 {
@@ -421,9 +439,9 @@ NetworkXioClient::xio_run_loop_worker()
                 if (maybe_fail_request(req))
                 {
                     ovs_aio_request::handle_xio_request(req->get_request(),
-                                                        -1,
-                                                        xio_errno(),
-                                                        true);
+                                                -1,
+                                                xio2posix_error(xio_errno()),
+                                                true);
                 }
                 delete req;
             }
@@ -493,7 +511,7 @@ NetworkXioClient::on_response(xio_session *session __attribute__((unused)),
 
 int
 NetworkXioClient::on_msg_error(xio_session *session __attribute__((unused)),
-                               xio_status error __attribute__((unused)),
+                               xio_status error,
                                xio_msg_direction direction,
                                xio_msg *msg)
 {
@@ -540,7 +558,7 @@ NetworkXioClient::on_msg_error(xio_session *session __attribute__((unused)),
     {
         ovs_aio_request::handle_xio_request(xio_msg->get_request(),
                                             -1,
-                                            xio_errno(),
+                                            xio2posix_error(error),
                                             true);
     }
     delete xio_msg;

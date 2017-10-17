@@ -409,6 +409,9 @@ private:
             }
         }
     }
+
+    int
+    xio2posix_error(int error);
 };
 
 typedef std::shared_ptr<NetworkXioClient> NetworkXioClientPtr;
