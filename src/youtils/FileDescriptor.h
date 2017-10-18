@@ -16,12 +16,14 @@
 #ifndef FILEDESCRIPTOR_H_
 #define FILEDESCRIPTOR_H_
 
-#include <boost/filesystem.hpp>
 #include "BooleanEnum.h"
+#include "CreateIfNecessary.h"
 #include "Logging.h"
 
-VD_BOOLEAN_ENUM(CreateIfNecessary);
+#include <boost/filesystem.hpp>
+
 VD_BOOLEAN_ENUM(SyncOnCloseAndDestructor);
+
 struct statvfs;
 struct stat;
 
