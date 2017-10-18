@@ -27,6 +27,7 @@
 
 #include <rocksdb/options.h>
 
+#include <youtils/CreateIfNecessary.h>
 #include <youtils/Logging.h>
 
 namespace metadata_server
@@ -46,14 +47,22 @@ public:
     RocksDataBase&
     operator=(const RocksDataBase&) = delete;
 
-    virtual TableInterfacePtr
-    open(const std::string& nspace);
+    TableInterfacePtr
+    open(const std::string& nspace) override final
+    {
+        return open(nspace,
+                    CreateIfNecessary::T);
+    }
 
-    virtual std::vector<std::string>
-    list_namespaces();
+    RocksTablePtr
+    open(const std::string& nspace,
+         CreateIfNecessary);
 
-    virtual void
-    drop(const std::string& nspace);
+    std::vector<std::string>
+    list_namespaces() override final;
+
+    void
+    drop(const std::string& nspace) override final;
 
 private:
     DECLARE_LOGGER("MetaDataServerRocksDataBase");

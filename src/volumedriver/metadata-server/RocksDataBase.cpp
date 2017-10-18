@@ -149,8 +149,9 @@ RocksDataBase::~RocksDataBase()
     tables_.clear();
 }
 
-TableInterfacePtr
-RocksDataBase::open(const std::string& nspace)
+RocksTablePtr
+RocksDataBase::open(const std::string& nspace,
+                    CreateIfNecessary create_if_necessary)
 {
     LOCK();
 
@@ -166,7 +167,7 @@ RocksDataBase::open(const std::string& nspace)
     {
         return it->second;
     }
-    else
+    else if (create_if_necessary == CreateIfNecessary::T)
     {
         rdb::ColumnFamilyHandle* h;
 
@@ -176,6 +177,10 @@ RocksDataBase::open(const std::string& nspace)
 
         return make_table_(nspace,
                            h);
+    }
+    else
+    {
+        return nullptr;
     }
 }
 
