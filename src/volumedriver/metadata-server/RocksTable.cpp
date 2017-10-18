@@ -213,4 +213,17 @@ RocksTable::get_counters(vd::Reset)
     VERIFY(0 == "RocksTable::get_table_counters shouldn't be invoked");
 }
 
+rocksdb::ColumnFamilyMetaData
+RocksTable::column_family_metadata()
+{
+    LOCKR();
+
+    VERIFY(column_family_ != nullptr);
+    rocksdb::ColumnFamilyMetaData cfmd;
+    db_->GetColumnFamilyMetaData(column_family_.get(),
+                                 &cfmd);
+
+    return cfmd;
+}
+
 }

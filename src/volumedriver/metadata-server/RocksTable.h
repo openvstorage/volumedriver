@@ -83,6 +83,10 @@ public:
 
     virtual TableCounters
     get_counters(volumedriver::Reset) override final;
+
+    rocksdb::ColumnFamilyMetaData
+    column_family_metadata();
+
 private:
     DECLARE_LOGGER("MetaDataServerRocksTable");
 
