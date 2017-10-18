@@ -226,4 +226,17 @@ RocksTable::column_family_metadata()
     return cfmd;
 }
 
+void
+RocksTable::compact(bool reduce_level,
+                    int target_level)
+{
+    LOCKR();
+    VERIFY(column_family_ != nullptr);
+    HANDLE(db_->CompactRange(column_family_.get(),
+                             nullptr,
+                             nullptr,
+                             reduce_level,
+                             target_level));
+}
+
 }

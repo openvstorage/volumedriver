@@ -87,6 +87,10 @@ public:
     rocksdb::ColumnFamilyMetaData
     column_family_metadata();
 
+    void
+    compact(bool reduce_level = false,
+            int target_level = -1);
+
 private:
     DECLARE_LOGGER("MetaDataServerRocksTable");
 
