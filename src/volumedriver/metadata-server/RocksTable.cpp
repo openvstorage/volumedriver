@@ -239,4 +239,22 @@ RocksTable::compact(bool reduce_level,
                              target_level));
 }
 
+boost::optional<std::string>
+RocksTable::get_property(const std::string& prop)
+{
+    LOCKR();
+    VERIFY(column_family_ != nullptr);
+    std::string val;
+    const bool res = db_->GetProperty(rocksdb::Slice(prop),
+                                      &val);
+    if (res)
+    {
+        return val;
+    }
+    else
+    {
+        return boost::none;
+    }
+}
+
 }

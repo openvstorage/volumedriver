@@ -91,6 +91,9 @@ public:
     compact(bool reduce_level = false,
             int target_level = -1);
 
+    boost::optional<std::string>
+    get_property(const std::string&);
+
 private:
     DECLARE_LOGGER("MetaDataServerRocksTable");
 
