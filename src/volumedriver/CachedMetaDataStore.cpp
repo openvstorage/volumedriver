@@ -28,6 +28,7 @@
 
 #include <youtils/Assert.h>
 #include <youtils/ScopeExit.h>
+#include <youtils/System.h>
 
 namespace volumedriver
 {
@@ -65,8 +66,13 @@ namespace yt = youtils;
 #define ASSERT_BACKEND_LOCKED                   \
     ASSERT(not backend_lock_.try_lock());
 
-uint64_t CachedMetaDataStore::replayClustersCached = 8000000;
-const uint32_t CachedMetaDataStore::replayPagesQueued = 5;
+uint64_t CachedMetaDataStore::replayClustersCached =
+    yt::System::get_env_with_default<uint64_t>("METADATASTORE_REPLAY_CLUSTERS_CACHED",
+                                               1ULL << 20);
+
+const uint32_t CachedMetaDataStore::replayPagesQueued =
+    yt::System::get_env_with_default("METADATASTORE_REPLAY_PAGES_QUEUED",
+                                     5);
 
 CachedMetaDataStore::CachedMetaDataStore(const MetaDataBackendInterfacePtr& backend,
                                          const std::string& id,
@@ -600,7 +606,7 @@ CachedMetaDataStore::applyRelocs(RelocationReaderFactory& factory,
             ClusterLocationAndHash l_new = e_new->clusterLocationAndHash();
             l_new.clusterLocation.cloneID(scid);
             get_cluster_location_unlocked_(a_old,
-                                           const_cast<ClusterLocationAndHash&>(l_new),
+                                           l_new,
                                            true);
         }
         relocNum++;
