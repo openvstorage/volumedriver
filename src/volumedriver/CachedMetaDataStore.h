@@ -201,7 +201,7 @@ public:
 
     // not const as VolManagerRestartTest.testAllTlogEntriesAreReplayed messes with it
     static uint64_t replayClustersCached;
-    static const uint32_t replayPagesQueued = 5;
+    static const uint32_t replayPagesQueued;
 
 private:
     DECLARE_LOGGER("CachedMetaDataStore");

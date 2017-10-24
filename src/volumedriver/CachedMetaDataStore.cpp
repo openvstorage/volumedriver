@@ -16,7 +16,7 @@
 #include "CachedMetaDataStore.h"
 #include "ClusterLocationAndHash.h"
 #include "CombinedTLogReader.h"
-#include "PageSortingGenerator.h"
+#include "PageGenerator.h"
 #include "RelocationReaderFactory.h"
 #include "TLog.h"
 #include "TracePoints_tp.h"
@@ -66,6 +66,7 @@ namespace yt = youtils;
     ASSERT(not backend_lock_.try_lock());
 
 uint64_t CachedMetaDataStore::replayClustersCached = 8000000;
+const uint32_t CachedMetaDataStore::replayPagesQueued = 5;
 
 CachedMetaDataStore::CachedMetaDataStore(const MetaDataBackendInterfacePtr& backend,
                                          const std::string& id,
@@ -464,14 +465,13 @@ uint64_t
 CachedMetaDataStore::processTLogReaderInterface(std::shared_ptr<TLogReaderInterface> r,
                                                 SCOCloneID cloneid)
 {
-    std::unique_ptr<PageSortingGenerator_>
-        psg(new PageSortingGenerator_(replayClustersCached, r));
+    auto pg(std::make_unique<PageGenerator>(replayClustersCached,
+                                            r));
+    auto g(std::make_unique<yt::ThreadedGenerator<PageDataPtr>>(std::move(pg),
+                                                                replayPagesQueued));
 
-    std::unique_ptr<yt::Generator<PageDataPtr>>
-        g(new yt::ThreadedGenerator<PageDataPtr>(std::move(psg),
-                                                 replayPagesQueued));
-
-    return processPages(std::move(g), cloneid);
+    return processPages(std::move(g),
+                        cloneid);
 }
 
 void
