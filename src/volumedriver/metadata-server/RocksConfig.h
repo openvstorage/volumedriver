@@ -47,8 +47,8 @@ struct RocksConfig
     {
         Level,
         Universal,
-        Fifo
-            // None is not exposed for now while we don't invoke compaction ourselves
+        Fifo,
+        None,
     };
 
     boost::optional<DbThreads> db_threads;

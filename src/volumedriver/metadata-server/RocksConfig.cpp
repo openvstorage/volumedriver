@@ -119,6 +119,9 @@ RocksConfig::column_family_options() const
         case RocksConfig::CompactionStyle::Fifo:
             opts.compaction_style = rdb::CompactionStyle::kCompactionStyleFIFO;
             break;
+        case RocksConfig::CompactionStyle::None:
+            opts.compaction_style = rdb::CompactionStyle::kCompactionStyleNone;
+            break;
         }
     }
 
@@ -162,6 +165,7 @@ reminder(RocksConfig::CompactionStyle m)
     case RocksConfig::CompactionStyle::Level:
     case RocksConfig::CompactionStyle::Universal:
     case RocksConfig::CompactionStyle::Fifo:
+    case RocksConfig::CompactionStyle::None:
         // If the compiler yells at you that you've forgotten dealing with an enum
         // value here chances are that it's also missing from the translations map
         // below. If so add it NOW.
@@ -178,6 +182,7 @@ init_translations()
         { RocksConfig::CompactionStyle::Level, "Level" },
         { RocksConfig::CompactionStyle::Universal, "Universal" },
         { RocksConfig::CompactionStyle::Fifo, "Fifo" },
+        { RocksConfig::CompactionStyle::None, "None" },
     };
 
     return TranslationsMap(initv.begin(),
