@@ -13,6 +13,8 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "../PageSortingGenerator.h"
+
 #include "LBAGenerator.h"
 #include "VolumeDriverTestConfig.h"
 
@@ -22,19 +24,20 @@
 #include <youtils/System.h>
 #include <youtils/wall_timer.h>
 
-#include "../PageSortingGenerator.h"
-
 namespace volumedrivertest
 {
 
 namespace yt = youtils;
 using namespace volumedriver;
 
-class PageSortingGeneratorTest
+template<typename T>
+class PageGeneratorTest
     : public testing::TestWithParam<VolumeDriverTestConfig>
 {};
 
-TEST_F(PageSortingGeneratorTest, performance)
+TYPED_TEST_CASE_P(PageGeneratorTest);
+
+TYPED_TEST_P(PageGeneratorTest, performance)
 {
     const uint32_t num_tlogs = yt::System::get_env_with_default("NUM_TLOGS",
                                                                 32U);
@@ -49,9 +52,13 @@ TEST_F(PageSortingGeneratorTest, performance)
     const uint64_t backend_delay = yt::System::get_env_with_default("BACKEND_DELAY_US",
                                                                     0ULL);
 
+    const uint64_t offset = yt::System::get_env_with_default("OFFSET",
+                                                             0ULL);
+
     LBAGenGen lgg(entries_per_tlog,
                   vsize,
-                  randomness);
+                  randomness,
+                  offset);
 
     std::unique_ptr<TLogGen>
         rg(new yt::RepeatGenerator<TLogGenItem, LBAGenGen>(lgg,
@@ -63,36 +70,66 @@ TEST_F(PageSortingGeneratorTest, performance)
 
     auto ctr = std::make_shared<CombinedTLogReader>(std::move(dg));
 
-    PageSortingGenerator_ psg(cached, ctr);
-
     yt::wall_timer wt;
+
+    TypeParam pg(cached,
+                 ctr);
+
+    const double t1 = wt.elapsed();
 
     uint64_t pages = 0;
     uint64_t entries = 0;
 
-    while (not psg.finished())
+    while (not pg.finished())
     {
         ++pages;
-        PageData& d = *(psg.current());
+        PageData& d = *(pg.current());
         for (const auto& e : d)
         {
             (void)e;
             ++entries;
         }
 
-        psg.next();
+        pg.next();
     }
+
+    const double t2 = wt.elapsed();
 
     std::cout <<
         "TLog replay (volume size " << vsize <<
+        ", offset " << offset <<
         ", randomness " << randomness <<
         ", backend delay " << backend_delay <<
         "us, " << num_tlogs << " TLogs of " << entries_per_tlog <<
         " entries each, pages " << pages <<
         ", entries " << entries <<
-        ") took " << wt.elapsed() << " seconds" << std::endl;
+        ") took " << t2 << " seconds " <<
+        "(page generator instantiation: " << t1 << " seconds)" <<
+        std::endl;
+
+    std::vector<char> buf(4096);
+    fs::ifstream ifs("/proc/self/status");
+
+    while (ifs.good())
+    {
+        ifs.read(buf.data(),
+                 buf.size());
+        std::cout << std::string(buf.data(),
+                                 ifs.gcount());
+    }
+
+    std::cout << std::endl;
+
 }
 
+REGISTER_TYPED_TEST_CASE_P(PageGeneratorTest,
+                           performance);
+
+using PageGeneratorTypes = testing::Types<PageSortingGenerator_>;
+
+INSTANTIATE_TYPED_TEST_CASE_P(PageGeneratorTests,
+                              PageGeneratorTest,
+                              PageGeneratorTypes);
 }
 
 // Local Variables: **

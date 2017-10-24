@@ -57,7 +57,7 @@ public:
     {
         if(clusters_written_ >= clusters_to_write_)
         {
-            return 0;
+            return nullptr;
         }
 
         ++clusters_written_;
@@ -96,10 +96,12 @@ class LBAGenGen
 public:
     explicit LBAGenGen(uint64_t clusters,
                        uint64_t vsize = 1ULL << 40,
-                       float random = 0.0)
+                       float random = 0.0,
+                       uint64_t offset = 0)
         : clusters_(clusters)
         , vsize_(vsize)
         , random_(random)
+        , offset_(offset)
     {}
 
     volumedriver::TLogGenItem
@@ -107,13 +109,16 @@ public:
     {
         volumedriver::TLogGenItem t(new LBAGenerator(random_,
                                                      clusters_ * 4096,
-                                                     vsize_));
+                                                     vsize_,
+                                                     offset_));
         return t;
     }
 
+private:
     const uint64_t clusters_;
     const uint64_t vsize_;
     const float random_;
+    const uint64_t offset_;
 };
 
 }

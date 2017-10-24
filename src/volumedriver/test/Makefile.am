@@ -77,7 +77,7 @@ volumedriver_test_SOURCES = \
 	MetaDataStoreBuilderTest.cpp \
 	MTVolumeTester.cpp \
 	OwnerTagTest.cpp \
-	PageSortingGeneratorTest.cpp \
+	PageGeneratorTest.cpp \
 	PrefetchThreadTest.cpp \
 	ProducerConsumerTest.cpp \
 	ReadParallelismTest.cpp \
