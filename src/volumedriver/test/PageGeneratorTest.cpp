@@ -13,6 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "../PageGenerator.h"
 #include "../PageSortingGenerator.h"
 
 #include "LBAGenerator.h"
@@ -125,7 +126,8 @@ TYPED_TEST_P(PageGeneratorTest, performance)
 REGISTER_TYPED_TEST_CASE_P(PageGeneratorTest,
                            performance);
 
-using PageGeneratorTypes = testing::Types<PageSortingGenerator_>;
+using PageGeneratorTypes = testing::Types<PageSortingGenerator_,
+                                          PageGenerator>;
 
 INSTANTIATE_TYPED_TEST_CASE_P(PageGeneratorTests,
                               PageGeneratorTest,

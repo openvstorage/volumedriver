@@ -155,6 +155,7 @@ libvolumedriver_la_SOURCES = \
 	NSIDMap.cpp \
 	OneFileTLogReader.cpp \
 	OpenSCO.cpp \
+	PageGenerator.cpp \
 	PartScrubber.cpp \
 	PerformanceCounters.cpp \
 	PrefetchData.cpp \
