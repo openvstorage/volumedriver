@@ -249,6 +249,49 @@ TEST_F(PrefetchGeneratorTest, not_empty)
               count);
 }
 
+struct RepeatGeneratorTest
+    : public testing::Test
+{
+    void
+    test(size_t n)
+    {
+        int count = 0;
+        auto fun([&count]() -> int
+                 {
+                     return count++;
+                 });
+
+        RepeatGenerator<decltype(fun)> rg(std::move(fun),
+                                          n);
+
+        while (not rg.finished())
+        {
+            int i = rg.current();
+            EXPECT_EQ(count - 1,
+                      i);
+            rg.next();
+        }
+
+        EXPECT_EQ(n,
+                  count - 1);
+    }
+};
+
+TEST_F(RepeatGeneratorTest, empty)
+{
+    test(0);
+}
+
+TEST_F(RepeatGeneratorTest, single)
+{
+    test(1);
+}
+
+TEST_F(RepeatGeneratorTest, fourtytwo)
+{
+    test(42);
+}
+
 }
 
 // Local Variables: **

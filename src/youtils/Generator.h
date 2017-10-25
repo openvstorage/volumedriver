@@ -317,24 +317,18 @@ private:
     uint64_t usecs_;
 };
 
-template <typename T, typename Callable>
+template <typename Callable>
 class RepeatGenerator
-    : public Generator<T>
+    : public Generator<std::result_of_t<Callable()>>
 {
 public:
-    RepeatGenerator(Callable c)
-        : i(0)
-        , maxCount_(-1)
-        , call(c)
-    {
-        next();
-    }
+    using Item = std::result_of_t<Callable()>;
 
-    RepeatGenerator(Callable c,
-                    uint64_t maxCount)
+    explicit RepeatGenerator(Callable c,
+                             uint64_t maxCount = -1)
         : i(0)
         , maxCount_(maxCount)
-        , call(c)
+        , call(std::move(c))
     {
         next();
     }
@@ -349,23 +343,24 @@ public:
     bool
     finished() override final
     {
-        return not unlimited() and i >= maxCount_;
+        return not unlimited_() and i > maxCount_;
     }
 
-    T&
+    Item&
     current() override final
     {
         return current_;
     }
 
 private:
-    bool unlimited()
+    bool
+    unlimited_()
     {
         return maxCount_ < 0;
     }
 
-    T current_;
-    int i;
+    Item current_;
+    int i = 0;
     int maxCount_;
     Callable call;
 };

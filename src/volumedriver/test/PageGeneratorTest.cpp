@@ -61,15 +61,15 @@ TYPED_TEST_P(PageGeneratorTest, performance)
                   randomness,
                   offset);
 
-    std::unique_ptr<TLogGen>
-        rg(new yt::RepeatGenerator<TLogGenItem, LBAGenGen>(lgg,
-                                                           num_tlogs));
+    using RepeatGenerator = yt::RepeatGenerator<decltype(lgg)>;
+    auto rg(std::make_unique<RepeatGenerator>(lgg,
+                                              num_tlogs));
 
-    std::unique_ptr<TLogGen>
-        dg(new yt::DelayedGenerator<TLogGenItem>(std::move(rg),
-                                                 backend_delay));
+    using DelayGenerator = yt::DelayedGenerator<TLogGenItem>;
+    auto dg(std::make_unique<DelayGenerator>(std::move(rg),
+                                             backend_delay));
 
-    auto ctr = std::make_shared<CombinedTLogReader>(std::move(dg));
+    auto ctr(std::make_shared<CombinedTLogReader>(std::move(dg)));
 
     yt::wall_timer wt;
 
@@ -93,6 +93,9 @@ TYPED_TEST_P(PageGeneratorTest, performance)
 
         pg.next();
     }
+
+    EXPECT_EQ(num_tlogs * entries_per_tlog,
+              entries);
 
     const double t2 = wt.elapsed();
 
@@ -120,7 +123,6 @@ TYPED_TEST_P(PageGeneratorTest, performance)
     }
 
     std::cout << std::endl;
-
 }
 
 REGISTER_TYPED_TEST_CASE_P(PageGeneratorTest,

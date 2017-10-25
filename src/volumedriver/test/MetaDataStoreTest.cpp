@@ -149,6 +149,10 @@ protected:
         }
     }
 
+    using RepeatGenerator = yt::RepeatGenerator<LBAGenGen>;
+    using DelayGenerator = yt::DelayedGenerator<TLogGenItem>;
+    using ThreadedGenerator = yt::ThreadedGenerator<TLogGenItem>;
+
     void
     replay_perf_test(uint64_t vsize,
                      uint32_t num_tlogs,
@@ -185,13 +189,12 @@ protected:
         LBAGenGen lgg(entries_per_tlog,
                       vsize,
                       randomness);
-        std::unique_ptr<TLogGen>
-            rg(new yt::RepeatGenerator<TLogGenItem, LBAGenGen>(lgg,
-                                                               num_tlogs));
 
-        std::unique_ptr<TLogGen>
-            dg(new yt::DelayedGenerator<TLogGenItem>(std::move(rg),
-                                                     backend_delay_us));
+        auto rg(std::make_unique<RepeatGenerator>(lgg,
+                                                  num_tlogs));
+
+        auto dg(std::make_unique<DelayGenerator>(std::move(rg),
+                                                 backend_delay_us));
 
         auto ctr = std::make_shared<CombinedTLogReader>(std::move(dg));
 
@@ -236,17 +239,14 @@ protected:
                       vsize,
                       randomness);
 
-        std::unique_ptr<TLogGen>
-            rg(new yt::RepeatGenerator<TLogGenItem, LBAGenGen>(lgg,
-                                                               num_tlogs));
+        auto rg(std::make_unique<RepeatGenerator>(lgg,
+                                                  num_tlogs));
 
-        std::unique_ptr<TLogGen>
-            dg(new yt::DelayedGenerator<TLogGenItem>(std::move(rg),
-                                                     backend_delay_us));
+        auto dg(std::make_unique<DelayGenerator>(std::move(rg),
+                                                 backend_delay_us));
 
-        std::unique_ptr<TLogGen>
-            tg(new yt::ThreadedGenerator<TLogGenItem>(std::move(dg),
-                                                      10));
+        auto tg(std::make_unique<ThreadedGenerator>(std::move(dg),
+                                                    10));
 
         CombinedTLogReader ctr(std::move(tg));
 

@@ -218,6 +218,10 @@ timeRead(std::unique_ptr<TLogGen> gen,
 //[BDV] to be moved to performancetesters
 TEST_F(TLogTest, prefetchSpeedTest)
 {
+    using RepeatGenerator = yt::RepeatGenerator<LBAGenGen>;
+    using DelayedGenerator = yt::DelayedGenerator<TLogGenItem>;
+    using ThreadedGenerator = yt::ThreadedGenerator<TLogGenItem>;
+
     const uint64_t backend_delay = yt::System::get_env_with_default("BACKEND_DELAY_US",
                                                                     80000ULL);
     const uint32_t tlogs = yt::System::get_env_with_default("NUM_TLOGS",
@@ -227,46 +231,39 @@ TEST_F(TLogTest, prefetchSpeedTest)
     LBAGenGen defaultg(entries_per_tlog);
     LBAGenGen emptyg(0);
 
-    timeRead(std::unique_ptr<TLogGen>(new yt::RepeatGenerator<TLogGenItem,
-                                                              LBAGenGen>(defaultg,
-                                                                         tlogs)),
+    timeRead(std::make_unique<RepeatGenerator>(defaultg,
+                                               tlogs),
              "No backend delay");
 
     {
-        std::unique_ptr<TLogGen> rg(new yt::RepeatGenerator<TLogGenItem, LBAGenGen>(emptyg,
-                                                                                    tlogs));
-        std::unique_ptr<TLogGen> dg(new yt::DelayedGenerator<TLogGenItem>(std::move(rg),
-                                                                          backend_delay));
-
+        auto rg(std::make_unique<RepeatGenerator>(emptyg,
+                                                  tlogs));
+        auto dg(std::make_unique<DelayedGenerator>(std::move(rg),
+                                                   backend_delay));
         timeRead(std::move(dg),
                  "No processing: only backend");
     }
 
     {
-        std::unique_ptr<TLogGen> rg(new yt::RepeatGenerator<TLogGenItem,
-                                                            LBAGenGen>(defaultg,
-                                                                       tlogs));
-        std::unique_ptr<TLogGen> dg(new yt::DelayedGenerator<TLogGenItem>(std::move(rg),
-                                                                          backend_delay));
-
+        auto rg(std::make_unique<RepeatGenerator>(defaultg,
+                                                  tlogs));
+        auto dg(std::make_unique<DelayedGenerator>(std::move(rg),
+                                                   tlogs));
         timeRead(std::move(dg),
                  "Combined");
     }
 
     {
-        std::unique_ptr<TLogGen> rg(new yt::RepeatGenerator<TLogGenItem,
-                                                            LBAGenGen>(defaultg,
-                                                                       tlogs));
-        std::unique_ptr<TLogGen> dg(new yt::DelayedGenerator<TLogGenItem>(std::move(rg),
-                                                                          backend_delay));
-
-        std::unique_ptr<TLogGen> tg(new yt::ThreadedGenerator<TLogGenItem>(std::move(dg),
-                                                                           10));
+        auto rg(std::make_unique<RepeatGenerator>(defaultg,
+                                                  tlogs));
+        auto dg(std::make_unique<DelayedGenerator>(std::move(rg),
+                                                   tlogs));
+        auto tg(std::make_unique<ThreadedGenerator>(std::move(dg),
+                                                    10));
         timeRead(std::move(tg),
                  "With Prefetch");
     }
 }
-
 
 TEST_F(TLogTest, sync)
 {
