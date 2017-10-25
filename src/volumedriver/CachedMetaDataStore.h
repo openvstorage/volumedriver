@@ -257,7 +257,7 @@ private:
     corks_t corks_;
 
     uint64_t
-    processPages(std::unique_ptr<youtils::Generator<PageDataPtr>> r,
+    processPages(std::unique_ptr<youtils::Generator<PageData>> r,
                  SCOCloneID cloneid);
 
     void

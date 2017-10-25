@@ -28,15 +28,14 @@
 namespace volumedriver
 {
 
-typedef std::vector<Entry> PageData;
-typedef boost::shared_ptr<PageData> PageDataPtr;
+using PageData = std::vector<Entry>;
 
 // XXX: get rid of this.
 using namespace boost::bimaps;
 using namespace boost;
 
 class PageSortingGenerator_
-    : public youtils::Generator< PageDataPtr >
+    : public youtils::Generator<PageData>
 {
     // Generator that gives out entries sorted per page for fast processing.
     // The entries read from the tlog are sorted into the cachedPages_ vector.
@@ -54,25 +53,23 @@ class PageSortingGenerator_
 public:
     PageSortingGenerator_(uint64_t cachedMax,
                           std::shared_ptr<TLogReaderInterface> reader)
-        : tlogfinished_(false),
-          max_(cachedMax),
-          cached_(0),
-          reader_(reader)
+        : max_(cachedMax)
+        , reader_(reader)
     {
         VERIFY(max_ > 0); // convert to throw
-        update();
+        update_();
     }
 
     void
     next()
     {
         //will throw if next() is called when already finished
-        cached_ -= current_->size();
-        current_.reset();
-        update();
+        cached_ -= current_size_;
+        current_size_ = 0;
+        update_();
     }
 
-    PageDataPtr&
+    PageData&
     current()
     {
         return current_;
@@ -89,7 +86,7 @@ private:
 
     //factoring out common code between construction and next()
     void
-    update()
+    update_()
     {
         getMoreData_();
         updateCurrent_();
@@ -107,12 +104,12 @@ private:
             {
                 PageAddress pageAddress = CachePage::pageAddress(e->clusterAddress());
                 makePagesUpTo_(pageAddress);
-                cachedPages_[pageAddress]->push_back(*e);
+                cachedPages_[pageAddress].push_back(*e);
 
                 auto it = sizesMap_.left.find(pageAddress);
                 VERIFY(it != sizesMap_.left.end());
 
-                size_t sz = cachedPages_[pageAddress]->size();
+                size_t sz = cachedPages_[pageAddress].size();
                 sizesMap_.left.replace_data(it, sz);
 
                 if (++cached_ >= max_)
@@ -145,8 +142,10 @@ private:
 
             sizesMap_.right.replace_key(iter, 0);
 
-            current_ = cachedPages_[maxindex];
-            cachedPages_[maxindex].reset(new PageData());
+            current_ = PageData();
+            std::swap(current_,
+                      cachedPages_[maxindex]);
+            current_size_ = current_.size();
         }
     }
 
@@ -154,17 +153,18 @@ private:
     {
         for (uint64_t addr = cachedPages_.size(); addr <= p_addr; addr++)
         {
-            cachedPages_.push_back(PageDataPtr(new PageData()));
+            cachedPages_.emplace_back();
             sizesMap_.right.insert(std::pair<size_t, uint32_t>( 0, addr));
         }
     }
 
-    bool tlogfinished_;
+    bool tlogfinished_ = false;
     const uint64_t max_;
-    uint64_t cached_;
+    uint64_t cached_ = 0;
     std::shared_ptr<TLogReaderInterface> reader_;
-    PageDataPtr current_;
-    std::vector<PageDataPtr > cachedPages_;
+    PageData current_;
+    size_t current_size_ = 0;
+    std::vector<PageData> cachedPages_;
     bimap< uint32_t, multiset_of<size_t> > sizesMap_;
 };
 }

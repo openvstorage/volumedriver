@@ -34,11 +34,10 @@ PageGenerator::get_more_data_()
             auto it = pages_.find(pa);
             if (it == pages_.end())
             {
-                std::tie(it, std::ignore) = pages_.emplace(pa,
-                                                           boost::make_shared<PageData>());
+                std::tie(it, std::ignore) = pages_.emplace(pa, PageData());
             }
 
-            it->second->push_back(*e);
+            it->second.push_back(*e);
 
             if (++cached_ >= cached_max_)
             {

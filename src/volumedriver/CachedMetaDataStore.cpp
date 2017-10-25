@@ -437,7 +437,7 @@ CachedMetaDataStore::processCloneTLogs(const CloneTLogs& ctl,
 }
 
 uint64_t
-CachedMetaDataStore::processPages(std::unique_ptr<yt::Generator<PageDataPtr>> r,
+CachedMetaDataStore::processPages(std::unique_ptr<yt::Generator<PageData>> r,
                                   SCOCloneID cloneid)
 {
     uint64_t pages = 0;
@@ -448,13 +448,13 @@ CachedMetaDataStore::processPages(std::unique_ptr<yt::Generator<PageDataPtr>> r,
 
     while(not r->finished())
     {
-        PageData& m = *(r->current());
-        for (const Entry& e : m)
+        const PageData pd(std::move(r->current()));
+        for (const Entry& e : pd)
         {
             ClusterLocationAndHash loc = e.clusterLocationAndHash();
             loc.clusterLocation.cloneID(cloneid);
             get_cluster_location_(e.clusterAddress(),
-                                  const_cast<ClusterLocationAndHash&>(loc),
+                                  loc,
                                   true);
             entries++;
         }
@@ -473,8 +473,8 @@ CachedMetaDataStore::processTLogReaderInterface(std::shared_ptr<TLogReaderInterf
 {
     auto pg(std::make_unique<PageGenerator>(replayClustersCached,
                                             r));
-    auto g(std::make_unique<yt::ThreadedGenerator<PageDataPtr>>(std::move(pg),
-                                                                replayPagesQueued));
+    auto g(std::make_unique<yt::ThreadedGenerator<PageData>>(std::move(pg),
+                                                             replayPagesQueued));
 
     return processPages(std::move(g),
                         cloneid);

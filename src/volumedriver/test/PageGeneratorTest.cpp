@@ -84,8 +84,8 @@ TYPED_TEST_P(PageGeneratorTest, performance)
     while (not pg.finished())
     {
         ++pages;
-        PageData& d = *(pg.current());
-        for (const auto& e : d)
+        const PageData pd(std::move(pg.current()));
+        for (const auto& e : pd)
         {
             (void)e;
             ++entries;

@@ -22,8 +22,6 @@
 #include <memory>
 #include <unordered_map>
 
-#include <boost/shared_ptr.hpp>
-
 #include <youtils/Generator.h>
 #include <youtils/Logging.h>
 
@@ -34,10 +32,9 @@ struct Entry;
 struct TLogReaderInterface;
 
 using PageData = std::vector<Entry>;
-using PageDataPtr = boost::shared_ptr<PageData>;
 
 class PageGenerator
-    : public youtils::Generator<PageDataPtr>
+    : public youtils::Generator<PageData>
 {
     // Generator that groups entries in pages, which are however not sorted
     // (opposed to PageSortingGenerator_).
@@ -61,13 +58,13 @@ public:
     void
     next() override final
     {
-        VERIFY(current_);
-        cached_ -= current_->size();
-        current_ = nullptr;
+        cached_ -= current_size_;
+        current_size_ = 0;
+
         update_();
     }
 
-    PageDataPtr&
+    PageData&
     current() override final
     {
         return current_;
@@ -82,12 +79,13 @@ public:
 private:
     DECLARE_LOGGER("PageGenerator");
 
-    std::unordered_map<PageAddress, PageDataPtr> pages_;
+    std::unordered_map<PageAddress, PageData> pages_;
     bool tlog_finished_ = false;
     const uint64_t cached_max_;
     uint64_t cached_ = 0;
     std::shared_ptr<TLogReaderInterface> reader_;
-    PageDataPtr current_;
+    PageData current_;
+    size_t current_size_ = 0;
 
     void
     update_()
@@ -107,15 +105,16 @@ private:
             VERIFY(not pages_.empty());
             auto it = pages_.begin();
 
-            current_ = it->second;
-            VERIFY(not current_->empty());
-
+            current_ = std::move(it->second);
+            VERIFY(not current_.empty());
+            current_size_ = current_.size();
             pages_.erase(it);
         }
         else
         {
             VERIFY(pages_.empty());
-            current_ = nullptr;
+            current_.resize(0);
+            current_size_ = 0;
         }
     }
 };
