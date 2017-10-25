@@ -37,35 +37,86 @@ public:
 namespace
 {
 
+template<typename Generator>
+std::vector<typename Generator::Item>
+into_vector(Generator& gen)
+{
+    std::vector<typename Generator::Item> vec;
+    while (not gen.finished())
+    {
+        vec.push_back(std::move(gen.current()));
+        gen.next();
+    }
+
+    return vec;
+}
+
 class IntGen
     : public Generator<int>
 {
 public:
-    IntGen(int maxCount): maxCount_(maxCount), i_(0) {}
-    void next()     { i_++; }
-    bool finished() { return i_ >= maxCount_;}
-    int& current()  { return i_;}
+    explicit IntGen(int maxCount)
+        : maxCount_(maxCount)
+        , i_(0)
+    {}
+
+    void
+    next() override final
+    {
+        i_++;
+    }
+
+    bool
+    finished() override final
+    {
+        return i_ >= maxCount_;
+    }
+
+    int&
+    current() override final
+    {
+        return i_;
+    }
 
 private:
     int maxCount_;
     int i_;
 };
 
-typedef boost::shared_ptr<int> intptr;
+using IntPtr = std::unique_ptr<int>;
 
 class IntPtrGen
-    : public Generator<intptr>
+    : public Generator<IntPtr>
 {
 public:
-    IntPtrGen(int maxCount): maxCount_(maxCount), i_(new int(0)) {}
+    explicit IntPtrGen(int maxCount)
+        : maxCount_(maxCount)
+        , pi_(std::make_unique<int>(i_))
+    {}
 
-    void    next()        { (*i_)++; }
-    bool    finished()    { return (*i_) >= maxCount_;}
-    intptr& current()     { return i_;}
+    void
+    next() override final
+    {
+        i_ += 1;
+        pi_ = std::make_unique<int>(i_);
+    }
+
+    bool
+    finished() override final
+    {
+        return i_ >= maxCount_;
+    }
+
+    IntPtr&
+    current() override final
+    {
+        return pi_;
+    }
 
 private:
+    int i_ = 0;
     int maxCount_;
-    intptr i_;
+    IntPtr pi_;
 };
 
 class IntGenException
@@ -83,18 +134,40 @@ class ThrowingIntGen
     : public Generator<int>
 {
 public:
-    ThrowingIntGen(float prob = 0.05): prob_(prob), i_(0) {}
+    explicit ThrowingIntGen(float prob = 0.05)
+        : prob_(prob)
+        , i_(0)
+    {}
 
-    void next()     { maybeThrow();     i_++;   }
-    bool finished() { maybeThrow();     return false;}
-    int& current()  { maybeThrow();     return i_; }
+    void
+    next() override final
+    {
+        maybeThrow();
+        i_++;
+    }
+
+    bool
+    finished() override final
+    {
+        maybeThrow();
+        return false;
+    }
+
+    int& current() override final
+    {
+        maybeThrow();
+        return i_;
+    }
 
 private:
-    void maybeThrow(){
-        if(drand48() < prob_) {
+    void maybeThrow()
+    {
+        if(drand48() < prob_)
+        {
             throw IntGenException();
         }
     }
+
     float prob_;
     int i_;
 };
@@ -104,8 +177,8 @@ private:
 TEST_F(ThreadedGeneratorTest, templatedTypes)
 {
     const int n = 100;
-    ThreadedGenerator<intptr> g2(std::unique_ptr<IntPtrGen>(new IntPtrGen(n)), 10);
-    const int g2_size = g2.toList()->size();
+    ThreadedGenerator<IntPtr> g2(std::unique_ptr<IntPtrGen>(new IntPtrGen(n)), 10);
+    const int g2_size = into_vector(g2).size();
     EXPECT_EQ(n, g2_size);
 }
 
@@ -114,10 +187,11 @@ TEST_F(ThreadedGeneratorTest, test1)
     const unsigned n = 100;
     IntGen g1(n);
     ThreadedGenerator<int> g2(std::unique_ptr<IntGen>(new IntGen(n)), 10);
-    std::unique_ptr<std::vector<int>> g1_list(g1.toList());
+    std::vector<int> g1_vec(into_vector(g1));
 
-    //EXPECT_EQ(*g1_list, *(g2.toList()));
-    EXPECT_EQ(n, g1_list->size());
+    EXPECT_EQ(n, g1_vec.size());
+    EXPECT_EQ(g1_vec,
+              into_vector(g2));
 }
 
 TEST_F(ThreadedGeneratorTest, test2)
@@ -125,10 +199,11 @@ TEST_F(ThreadedGeneratorTest, test2)
     const unsigned n = 100;
     IntGen g1(n);
     ThreadedGenerator<int> g2(std::unique_ptr<IntGen>(new IntGen(n)), 10);
-    std::unique_ptr<std::vector<int>> g1_list(g1.toList());
+    std::vector<int> g1_vec(into_vector(g1));
 
-    //EXPECT_EQ(*g1_list, *(g2.toList()));
-    EXPECT_EQ(n, g1_list->size());
+    EXPECT_EQ(n, g1_vec.size());
+    EXPECT_EQ(g1_vec,
+              into_vector(g2));
 }
 
 TEST_F(ThreadedGeneratorTest, testThrowingProducer)
@@ -136,7 +211,7 @@ TEST_F(ThreadedGeneratorTest, testThrowingProducer)
     EXPECT_THROW({
             ThreadedGenerator<int>
                 g(std::unique_ptr<ThrowingIntGen>(new ThrowingIntGen(1.0)), 10);
-            g.toList();
+            into_vector(g);
         },
         std::exception);
 }

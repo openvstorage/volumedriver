@@ -29,6 +29,8 @@ template <typename T>
 class Generator
 {
 public:
+    using Item = T;
+
     Generator() = default;
 
     virtual ~Generator() = default;
@@ -38,26 +40,28 @@ public:
     Generator&
     operator=(const Generator&) = delete;
 
+    // TODO:
+    // consider a `T pop()` method instead of current() and next(). The naive
+    // approach
+    //
+    // T
+    // pop()
+    // {
+    //     T t(std::move(current));
+    //     next();
+    //     return t;
+    // }
+    //
+    // will not work in the general case however unless next() does not
+    // throw / losing `t` is acceptable if next() throws.
+    virtual T&
+    current() = 0;
+
     virtual void
     next() = 0;
 
     virtual bool
     finished() = 0;
-
-    virtual T&
-    current() = 0;
-
-    std::unique_ptr<std::vector<T>>
-    toList()
-    {
-        std::unique_ptr<std::vector<T> > lst(new std::vector<T>);
-        while (not finished())
-        {
-            lst->push_back(current());
-            next();
-        }
-        return lst;
-    }
 };
 
 class UnknownGeneratorException
@@ -99,7 +103,7 @@ protected:
     {
         try
         {
-            T tmp = generator_->current();
+            T tmp = std::move(generator_->current());
             generator_->next();
             return tmp;
         }

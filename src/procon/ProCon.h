@@ -186,13 +186,16 @@ public:
             throw pc_exception("consumer to end");
 
         // pop back
-        _Tp item = pop();
+        _Tp item = std::move(pop());
         bufferNotFull_.notify_one();
         return item;
     }
 
     // for producer thread...
-    bool offer(_Tp item, long /*msecs*/ = -1) // ignore msecs for now
+    // XXX: I don't like passing in the item by reference and moving from it
+    // inside the method but at the moment it's not clear to me whether it's ok
+    // to destruct item if bMayStop_ == true.
+    bool offer(_Tp& item, long /*msecs*/ = -1) // ignore msecs for now
     {
         Lock lk(monitor_);
         while (!bMayStop_ && maxSize_ == ((_queueTp *)this)->size())
@@ -205,7 +208,7 @@ public:
             throw pc_exception("producer may end");
 
         // push front
-        push(item);
+        push(std::move(item));
         bufferNotEmpty_.notify_one();
         return true;
     }
@@ -231,14 +234,15 @@ public:
 protected:
     virtual _Tp pop() // retrieve from end
     {
-        _Tp item = ((_queueTp *)this)->back();
+        _Tp item = std::move(((_queueTp *)this)->back());
         ((_queueTp *)this)->pop_back();
         return item;
     }
 
-    virtual void push(const _Tp item) // insert at head...
+    virtual void push(_Tp item) // insert at head...
     {
-        ((_queueTp *)this)->insert(((_queueTp *)this)->begin(), item);
+        ((_queueTp *)this)->insert(((_queueTp *)this)->begin(),
+                                   std::move(item));
     }
 };
 
@@ -392,8 +396,7 @@ public:
       {
           try
           {
-              _Tp o = produce();
-              channel_.put(o);
+              channel_.put(produce());
           }
           catch (pc_exception&)
           {
