@@ -26,8 +26,8 @@
 #include <youtils/Gcrypt.h>
 #include <youtils/Logger.h>
 
-#include <youtils/PythonLogging.h>
-#include <youtils/PythonBuildInfo.h>
+#include <youtils/python/BuildInfo.h>
+#include <youtils/python/LoggingAdapter.h>
 
 #include <backend/AlbaConfig.h>
 #include <backend/BackendConfig.h>
@@ -40,6 +40,7 @@
     .value("F", name::F)                        \
     .value("T", name::T);
 
+namespace ypy = youtils::python;
 namespace yt = youtils;
 
 BOOST_PYTHON_MODULE(Backend)
@@ -75,60 +76,11 @@ BOOST_PYTHON_MODULE(Backend)
 #undef EXN
 
     youtils::Logger::disableLogging();
+    ypy::register_once<ypy::LoggingAdapter>();
     yt::Gcrypt::init_gcrypt();
 
-    using youtils::Severity;
-
-    enum_<Severity>("Severity",
-                   "What should be logged, one of trace, debug, periodic, info, warning, error, fatal or notification")
-        .value("trace", Severity::trace)
-        .value("debug", Severity::debug)
-        .value("periodic", Severity::periodic)
-        .value("info", Severity::info)
-        .value("warning", Severity::warning)
-        .value("error", Severity::error)
-        .value("fatal", Severity::fatal)
-        .value("notification", Severity::notification);
-
-    using pythonyoutils::Logging;
-
-    class_<pythonyoutils::Logging, boost::noncopyable>("Logging",
-                                                      "Configure the logging",
-                                                      no_init)
-        .def("disableLogging",
-             &Logging::disableLogging,
-             "Disable the logging")
-        .staticmethod("disableLogging")
-        .def("enableLogging",
-             &Logging::enableLogging,
-             "Enable the logging")
-        .staticmethod("enableLogging")
-        .def("loggingEnabled",
-             &Logging::loggingEnabled,
-             "Check whether logging is enabled"
-             "@returns a bool")
-        .staticmethod("loggingEnabled")
-        .def("setupConsoleLogging",
-             &Logging::setupConsoleLogging,
-             (args("severity") = yt::Severity::info,
-              args("progname") = std::string("PythonLogger")),
-             "Setup logging to the console\n"
-             "@param severity, a Severity,  what to log\n"
-             "param progname, String, program name to use for logging\n")
-        .staticmethod("setupConsoleLogging")
-        .def("setupFileLogging",
-             &Logging::setupFileLogging,
-             (args("path"),
-              args("severity") = yt::Severity::info,
-              args("progname") = std::string("PythonLogger")),
-             "Setup logging to a file\n",
-             "@param path, String, path to the output file\n"
-             "@param severity, a Severity, what to log\n"
-             "param progname, String, program name to use for logging\n")
-        .staticmethod("setupFileLogging");
-
     MAKE_PYTHON_VD_BOOLEAN_ENUM(OverwriteObject,
-                             "Whether to overwrite an existing object in the backend, values are T and F");
+                                "Whether to overwrite an existing object in the backend, values are T and F");
 
     enum_<backend::BackendType>("BackendType",
                                 "Type of backend connection.\n"
