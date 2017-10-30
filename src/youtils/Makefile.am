@@ -93,6 +93,7 @@ libyoutils_la_SOURCES = \
 	OrbParameters.cpp \
 	PeriodicAction.cpp \
 	PeriodicActionPool.cpp \
+	python/ArakoonClient.cpp \
 	PythonLogging.cpp \
 	PythonBuildInfo.cpp \
 	RedisQueue.cpp \

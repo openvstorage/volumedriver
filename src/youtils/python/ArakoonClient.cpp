@@ -29,7 +29,7 @@
 #include <youtils/python/IterableConverter.h>
 #include <youtils/python/StringyConverter.h>
 
-namespace volumedriverfs
+namespace youtils
 {
 
 namespace python
@@ -37,10 +37,8 @@ namespace python
 
 namespace ara = arakoon;
 namespace bpy = boost::python;
-namespace yt = youtils;
 
-void
-ArakoonClient::registerize()
+DEFINE_PYTHON_WRAPPER(ArakoonClient)
 {
     REGISTER_STRINGY_CONVERTER(ara::ClusterID);
     REGISTER_STRINGY_CONVERTER(ara::NodeID);

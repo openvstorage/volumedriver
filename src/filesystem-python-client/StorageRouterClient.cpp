@@ -13,7 +13,6 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "ArakoonClient.h"
 #include "FileSystemMetaDataClient.h"
 #include "LocalClient.h"
 #include "LockedClient.h"
@@ -55,6 +54,7 @@
 #include <youtils/LoggingToolCut.h>
 #include <youtils/PythonBuildInfo.h>
 #include <youtils/UpdateReport.h>
+#include <youtils/python/ArakoonClient.h>
 #include <youtils/python/ChronoDurationConverter.h>
 #include <youtils/python/DictConverter.h>
 #include <youtils/python/IterableConverter.h>
@@ -88,6 +88,7 @@ namespace fs = boost::filesystem;
 namespace vd = volumedriver;
 namespace vfs = volumedriverfs;
 namespace vfspy = volumedriverfs::python;
+namespace ypy = youtils::python;
 namespace yt = youtils;
 
 using namespace std::literals::string_literals;
@@ -1081,7 +1082,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "@returns: a list of SCOCacheMountPointInfos\n")
         ;
 
-    vfspy::ArakoonClient::registerize();
+    ypy::register_once<ypy::ArakoonClient>();
     vfspy::FileSystemMetaDataClient::registerize();
     vfspy::LocalClient::registerize();
 

@@ -7,7 +7,6 @@ storagerouterclient_LTLIBRARIES = storagerouterclient.la
 noinst_DATA = runpython.sh
 
 storagerouterclient_la_SOURCES = \
-	ArakoonClient.cpp \
 	FileSystemMetaDataClient.cpp \
 	LocalClient.cpp \
 	LockedClient.cpp \

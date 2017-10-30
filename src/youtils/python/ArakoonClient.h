@@ -13,23 +13,21 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef VFSPY_ARAKOON_CLIENT_H_
-#define VFSPY_ARAKOON_CLIENT_H_
+#ifndef YPY_ARAKOON_CLIENT_H_
+#define YPY_ARAKOON_CLIENT_H_
 
-namespace volumedriverfs
+#include "Wrapper.h"
+
+namespace youtils
 {
 
 namespace python
 {
 
-struct ArakoonClient
-{
-    static void
-    registerize();
-};
+DECLARE_PYTHON_WRAPPER(ArakoonClient);
 
 }
 
 }
 
-#endif //!VFSPY_ARAKOON_CLIENT_H_
+#endif //!YPY_ARAKOON_CLIENT_H_
