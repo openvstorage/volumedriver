@@ -44,14 +44,15 @@
 
 #include <youtils/Gcrypt.h>
 #include <youtils/Logger.h>
-#include <youtils/LoggerToolCut.h>
-#include <youtils/LoggingToolCut.h>
 #include <youtils/PythonBuildInfo.h>
+#include <youtils/python/LoggingAdapter.h>
 
 #define MAKE_PYTHON_VD_BOOLEAN_ENUM(name, doc)  \
     enum_<name>(#name, doc)                     \
     .value("F", name::F)                        \
     .value("T", name::T);
+
+namespace ypy = youtils::python;
 
 BOOST_PYTHON_MODULE(ToolCut)
 {
@@ -60,6 +61,8 @@ BOOST_PYTHON_MODULE(ToolCut)
 
     youtils::Logger::disableLogging();
     youtils::Gcrypt::init_gcrypt();
+    ypy::register_once<ypy::LoggingAdapter>();
+    ypy::BuildInfo::registerize();
 
     MAKE_PYTHON_VD_BOOLEAN_ENUM(OverwriteObject, "Whether to overwrite an existing object in the backend, values are T and F")
 
@@ -101,10 +104,6 @@ BOOST_PYTHON_MODULE(ToolCut)
         .value("TLogCRC", volumedriver::Entry::Type::TLogCRC)
         .value("SCOCRC", volumedriver::Entry::Type::SCOCRC)
         .value("CLoc", volumedriver::Entry::Type::LOC);
-
-#include <youtils/LoggerToolCut.incl>
-
-    youtils::python::BuildInfo::registerize();
 
     class_<SnapshotToolCut>("Snapshot",
                             "Represents a snapshot as it is stored in the snapshots.xml",

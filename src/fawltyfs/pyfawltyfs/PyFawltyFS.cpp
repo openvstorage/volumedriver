@@ -37,11 +37,12 @@
 
 #include <youtils/Assert.h>
 #include <youtils/Logger.h>
-#include <youtils/LoggerToolCut.h>
-#include <youtils/LoggingToolCut.h>
+#include <youtils/python/LoggingAdapter.h>
 #include <youtils/PythonBuildInfo.h>
 
 namespace bpy = boost::python;
+namespace yt = youtils;
+namespace ypy = youtils::python;
 
 namespace pyfawltyfs
 {
@@ -283,9 +284,8 @@ private:
 // XXX: document params
 BOOST_PYTHON_MODULE(PyFawltyFS)
 {
-
-    youtils::Logger::disableLogging();
-#include <youtils/LoggerToolCut.incl>
+    yt::Logger::disableLogging();
+    ypy::register_once<ypy::LoggingAdapter>();
 
     bpy::enum_<fawltyfs::FileSystemCall>("FileSystemCall",
                                          "Type of calls on the filesystem.")
@@ -416,10 +416,9 @@ BOOST_PYTHON_MODULE(PyFawltyFS)
              &pyfawltyfs::PyFawltyFS::exit,
              "with-stmt context management - exit\n");
 
-    youtils::python::BuildInfo::registerize();
+    yt::python::BuildInfo::registerize();
 }
 
 // Local Variables: **
-// compile-command: "scons -D -j 4" **
 // mode: c++ **
 // End: **

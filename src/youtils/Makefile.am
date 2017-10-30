@@ -81,8 +81,6 @@ libyoutils_la_SOURCES = \
 	LocORemConnection.cpp \
 	LocORemServer.cpp \
 	Logger.cpp \
-	LoggerToolCut.cpp \
-	LoggingToolCut.cpp \
 	LRUCache.cpp \
 	MainEvent.cpp \
 	MainHelper.cpp \
@@ -94,6 +92,7 @@ libyoutils_la_SOURCES = \
 	PeriodicAction.cpp \
 	PeriodicActionPool.cpp \
 	python/ArakoonClient.cpp \
+	python/LoggingAdapter.cpp \
 	PythonLogging.cpp \
 	PythonBuildInfo.cpp \
 	RedisQueue.cpp \

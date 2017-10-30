@@ -1,4 +1,4 @@
-// Copyright (C) 2016 iNuron NV
+// Copyright (C) 2017 iNuron NV
 //
 // This file is part of Open vStorage Open Source Edition (OSE),
 // as available from
@@ -13,32 +13,21 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef _LOGGING_TOOLCUT_H
-#define _LOGGING_TOOLCUT_H
-#include "Logger.h"
+#ifndef YPY_LOGGING_ADAPTER_H_
+#define YPY_LOGGING_ADAPTER_H_
 
-namespace toolcut
+#include "Wrapper.h"
+
+namespace youtils
 {
-class LoggingToolCut
+
+namespace python
 {
-public:
-    LoggingToolCut(const std::string& name)
-        :severity_logger(new youtils::SeverityLoggerWithName(name))
-        , name_(name)
-    {}
 
-    void
-    operator()(const youtils::Severity,
-               const std::string&);
-
-    const std::string&
-    name() const;
-
-private:
-    std::shared_ptr<youtils::SeverityLoggerWithName> severity_logger;
-    const std::string name_;
-};
+DECLARE_PYTHON_WRAPPER(LoggingAdapter);
 
 }
 
-#endif // _LOGGING_TOOLCUT_H
+}
+
+#endif // !YPY_LOGGING_H_

@@ -50,14 +50,13 @@
 #include <youtils/DimensionedValue.h>
 #include <youtils/Gcrypt.h>
 #include <youtils/Logger.h>
-#include <youtils/LoggerToolCut.h>
-#include <youtils/LoggingToolCut.h>
 #include <youtils/PythonBuildInfo.h>
 #include <youtils/UpdateReport.h>
 #include <youtils/python/ArakoonClient.h>
 #include <youtils/python/ChronoDurationConverter.h>
 #include <youtils/python/DictConverter.h>
 #include <youtils/python/IterableConverter.h>
+#include <youtils/python/LoggingAdapter.h>
 #include <youtils/python/OptionalConverter.h>
 #include <youtils/python/PairConverter.h>
 #include <youtils/python/StringyConverter.h>
@@ -312,8 +311,7 @@ TODO("AR: this is a bit of a mess - split into smaller, logical pieces");
 BOOST_PYTHON_MODULE(storagerouterclient)
 {
     youtils::Logger::disableLogging();
-
-#include <youtils/LoggerToolCut.incl>
+    ypy::register_once<ypy::LoggingAdapter>();
 
     bpy::scope().attr("__doc__") = "configuration and monitoring of volumedriverfs";
     bpy::scope().attr("__path__") = "storagerouterclient";
