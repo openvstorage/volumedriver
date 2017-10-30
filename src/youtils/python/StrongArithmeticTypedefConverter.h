@@ -1,5 +1,7 @@
-#ifndef VFS_STRONG_ARITHMETIC_TYPEDEF_CONVERTER_H_
-#define VFS_STRONG_ARITHMETIC_TYPEDEF_CONVERTER_H_
+#ifndef YPY_STRONG_ARITHMETIC_TYPEDEF_CONVERTER_H_
+#define YPY_STRONG_ARITHMETIC_TYPEDEF_CONVERTER_H_
+
+#include "Wrapper.h"
 
 #include <typeinfo>
 #include <type_traits>
@@ -13,11 +15,7 @@
 
 #include <youtils/Logging.h>
 
-// TODO:
-// - Move to another namespace / location. youtils? youtils::pyconverters?
-//   Or move into OurStrongTypedef?
-
-namespace volumedriverfs
+namespace youtils
 {
 
 template<typename T>
@@ -119,7 +117,7 @@ struct StrongArithmeticTypedefConverter
 
 }
 
-#define REGISTER_STRONG_ARITHMETIC_TYPEDEF_CONVERTER(t) \
-    volumedriverfs::StrongArithmeticTypedefConverter<t>::registerize()
+#define REGISTER_STRONG_ARITHMETIC_TYPEDEF_CONVERTER(T) \
+    youtils::python::register_once<youtils::StrongArithmeticTypedefConverter<T>>()
 
-#endif // !VFS_STRONG_ARITHMETIC_TYPEDEF_CONVERTER_H_
+#endif // !YPY_STRONG_ARITHMETIC_TYPEDEF_CONVERTER_H_

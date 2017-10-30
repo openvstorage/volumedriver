@@ -1,5 +1,7 @@
-#ifndef VFS_ITERABLE_CONVERTER_H_
-#define VFS_ITERABLE_CONVERTER_H_
+#ifndef YPY_ITERABLE_CONVERTER_H_
+#define YPY_ITERABLE_CONVERTER_H_
+
+#include "Wrapper.h"
 
 #include <list>
 #include <vector>
@@ -10,7 +12,7 @@
 // Gotten from
 // http://stackoverflow.com/questions/15842126/
 
-namespace volumedriverfs
+namespace youtils
 {
 
 namespace python
@@ -95,7 +97,7 @@ struct IterableConverter
 
 }
 
-#define REGISTER_ITERABLE_CONVERTER(t)                  \
-    volumedriverfs::python::IterableConverter<t>::registerize()
+#define REGISTER_ITERABLE_CONVERTER(T)                                  \
+    youtils::python::register_once<youtils::python::IterableConverter<T>>()
 
-#endif //VFS_ITERABLE_CONVERTER_H_
+#endif //YPY_ITERABLE_CONVERTER_H_

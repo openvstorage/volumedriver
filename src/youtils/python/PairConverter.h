@@ -1,5 +1,7 @@
-#ifndef VFSPY_PAIR_CONVERTER_H_
-#define VFSPY_PAIR_CONVERTER_H_
+#ifndef YPY_PAIR_CONVERTER_H_
+#define YPY_PAIR_CONVERTER_H_
+
+#include "Wrapper.h"
 
 #include <utility>
 #include <type_traits>
@@ -13,7 +15,7 @@
 #include <youtils/Assert.h>
 #include <youtils/Logging.h>
 
-namespace volumedriverfs
+namespace youtils
 {
 
 namespace python
@@ -73,7 +75,7 @@ struct PairConverter
 
 }
 
-#define REGISTER_PAIR_CONVERTER(f, s)                           \
-    volumedriverfs::python::PairConverter<f, s>::registerize()
+#define REGISTER_PAIR_CONVERTER(F, S)                                   \
+    youtils::python::register_once<youtils::python::PairConverter<F, S>>()
 
-#endif // !VFSPY_PAIR_CONVERTER_H_
+#endif // !YPY_PAIR_CONVERTER_H_

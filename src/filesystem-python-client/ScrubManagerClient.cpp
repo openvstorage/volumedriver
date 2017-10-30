@@ -13,7 +13,6 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "IterableConverter.h"
 #include "ScrubManagerClient.h"
 
 #include <boost/lexical_cast.hpp>
@@ -22,6 +21,7 @@
 #include <boost/python/return_value_policy.hpp>
 
 #include <youtils/LockedArakoon.h>
+#include <youtils/python/IterableConverter.h>
 
 #include <volumedriver/ScrubReply.h>
 

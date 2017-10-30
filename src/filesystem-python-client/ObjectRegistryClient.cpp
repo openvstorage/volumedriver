@@ -15,10 +15,6 @@
 
 #include "ObjectRegistryClient.h"
 
-#include "IntegerConverter.h"
-#include "IterableConverter.h"
-#include "StringyConverter.h"
-
 #include <list>
 
 #include <boost/make_shared.hpp>
@@ -31,6 +27,9 @@
 
 #include <youtils/LockedArakoon.h>
 #include <youtils/Logger.h>
+#include <youtils/python/IntegerConverter.h>
+#include <youtils/python/IterableConverter.h>
+#include <youtils/python/StringyConverter.h>
 
 #include <volumedriver/OwnerTag.h>
 

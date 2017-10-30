@@ -1,5 +1,7 @@
-#ifndef VFS_INTEGER_CONVERTER_H_
-#define VFS_INTEGER_CONVERTER_H_
+#ifndef YPY_INTEGER_CONVERTER_H_
+#define YPY_INTEGER_CONVERTER_H_
+
+#include "Wrapper.h"
 
 #include <type_traits>
 #include <typeinfo>
@@ -10,7 +12,7 @@
 
 #include <youtils/Assert.h>
 
-namespace volumedriverfs
+namespace youtils
 {
 
 namespace python
@@ -63,7 +65,7 @@ struct IntegerConverter
 
 }
 
-#define REGISTER_INTEGER_CONVERTER(t)                   \
-    volumedriverfs::python::IntegerConverter<t>::registerize()
+#define REGISTER_INTEGER_CONVERTER(T)                   \
+    youtils::python::register_once<youtils::python::IntegerConverter<T>>()
 
-#endif //!VFS_INTEGER_CONVERTER_H_
+#endif //!YPY_INTEGER_CONVERTER_H_

@@ -1,5 +1,7 @@
-#ifndef VFSPY_OPTIONAL_CONVERTER_H_
-#define VFSPY_OPTIONAL_CONVERTER_H_
+#ifndef YPY_OPTIONAL_CONVERTER_H_
+#define YPY_OPTIONAL_CONVERTER_H_
+
+#include "Wrapper.h"
 
 #include <boost/optional.hpp>
 #include <boost/python.hpp>
@@ -9,7 +11,7 @@
 
 #include <youtils/Logging.h>
 
-namespace volumedriverfs
+namespace youtils
 {
 
 namespace python
@@ -82,7 +84,7 @@ struct OptionalConverter
 
 }
 
-#define REGISTER_OPTIONAL_CONVERTER(t)          \
-    volumedriverfs::python::OptionalConverter<t>::registerize()
+#define REGISTER_OPTIONAL_CONVERTER(T)                                  \
+    youtils::python::register_once<youtils::python::OptionalConverter<T>>()
 
-#endif // !VFSPY_OPTIONAL_CONVERTER_H_
+#endif // !YPY_OPTIONAL_CONVERTER_H_

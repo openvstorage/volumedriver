@@ -14,8 +14,6 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "FileSystemMetaDataClient.h"
-#include "IntegerConverter.h"
-#include "StringyConverter.h"
 
 #include <boost/make_shared.hpp>
 #include <boost/python/class.hpp>
@@ -27,6 +25,8 @@
 
 #include <youtils/LockedArakoon.h>
 #include <youtils/Logger.h>
+#include <youtils/python/IntegerConverter.h>
+#include <youtils/python/StringyConverter.h>
 
 #include <filesystem/DirectoryEntry.h>
 #include <filesystem/FrontendPath.h>

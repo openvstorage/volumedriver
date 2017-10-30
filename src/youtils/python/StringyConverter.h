@@ -1,5 +1,7 @@
-#ifndef VFS_STRINGY_CONVERTER_H_
-#define VFS_STRINGY_CONVERTER_H_
+#ifndef YPY_STRINGY_CONVERTER_H_
+#define YPY_STRINGY_CONVERTER_H_
+
+#include "Wrapper.h"
 
 #include <typeinfo>
 
@@ -16,8 +18,7 @@
 #include <youtils/Logging.h>
 #include <youtils/Uri.h>
 
-// TODO: move to another namespace / location. youtils? youtils::pyconverters?
-namespace volumedriverfs
+namespace youtils
 {
 
 namespace python
@@ -131,7 +132,7 @@ struct StringyConverter
 
 }
 
-#define REGISTER_STRINGY_CONVERTER(t)                   \
-    volumedriverfs::python::StringyConverter<t>::registerize()
+#define REGISTER_STRINGY_CONVERTER(T)                                   \
+    youtils::python::register_once<youtils::python::StringyConverter<T>>()
 
-#endif // !VFS_STRINGY_CONVERTER_H_
+#endif // !YPY_STRINGY_CONVERTER_H_

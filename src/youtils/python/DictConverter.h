@@ -13,10 +13,11 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef VFS_DICT_CONVERTER_H_
-#define VFS_DICT_CONVERTER_H_
+#ifndef YPY_DICT_CONVERTER_H_
+#define YPY_DICT_CONVERTER_H_
 
 #include "PairConverter.h"
+#include "Wrapper.h"
 
 #include <type_traits>
 
@@ -26,7 +27,7 @@
 #include <boost/python/stl_iterator.hpp>
 #include <boost/python/to_python_converter.hpp>
 
-namespace volumedriverfs
+namespace youtils
 {
 
 namespace python
@@ -92,11 +93,11 @@ struct DictConverter
 
 }
 
-#define REGISTER_DICT_CONVERTER_(Map)                           \
-    volumedriverfs::python::DictConverter<Map>::registerize()
+#define REGISTER_DICT_CONVERTER_(Map)                                   \
+    youtils::python::register_once<youtils::python::DictConverter<Map>>()
 
 #define REGISTER_DICT_CONVERTER(Map)                                    \
     REGISTER_PAIR_CONVERTER(std::add_const<Map::key_type>::type, Map::mapped_type); \
     REGISTER_DICT_CONVERTER_(Map)
 
-#endif // !VFS_DICT_CONVERTER_H_
+#endif // !YPY_DICT_CONVERTER_H_

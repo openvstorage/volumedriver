@@ -14,8 +14,6 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "ArakoonClient.h"
-#include "IterableConverter.h"
-#include "StringyConverter.h"
 
 #include <boost/python/class.hpp>
 #include <boost/python/copy_const_reference.hpp>
@@ -28,6 +26,8 @@
 #include <boost/python/return_value_policy.hpp>
 
 #include <youtils/ArakoonNodeConfig.h>
+#include <youtils/python/IterableConverter.h>
+#include <youtils/python/StringyConverter.h>
 
 namespace volumedriverfs
 {

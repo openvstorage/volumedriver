@@ -13,8 +13,10 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef VFS_CHRONO_CONVERTER_H_
-#define VFS_CHRONO_CONVERTER_H_
+#ifndef YPY_CHRONO_CONVERTER_H_
+#define YPY_CHRONO_CONVERTER_H_
+
+#include "Wrapper.h"
 
 #include <boost/python/object.hpp>
 #include <boost/python/to_python_converter.hpp>
@@ -25,9 +27,11 @@
 #include <youtils/Logging.h>
 
 // TODO:
-// - Move to another namespace / location. youtils? youtils::pyconverters?
 // - Try to unify with StrongArithmeticTypedefConverter
-namespace volumedriverfs
+namespace youtils
+{
+
+namespace python
 {
 
 template<typename T>
@@ -115,7 +119,9 @@ struct ChronoDurationConverter
 
 }
 
-#define REGISTER_CHRONO_DURATION_CONVERTER(t) \
-    volumedriverfs::ChronoDurationConverter<t>::registerize()
+}
 
-#endif // !VFS_CHRONO_DURATION_CONVERTER_H_
+#define REGISTER_CHRONO_DURATION_CONVERTER(T) \
+    youtils::python::register_once<youtils::python::ChronoDurationConverter<T>>()
+
+#endif // !YPY_CHRONO_DURATION_CONVERTER_H_

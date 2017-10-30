@@ -14,22 +14,15 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "ArakoonClient.h"
-#include "ChronoDurationConverter.h"
-#include "DictConverter.h"
 #include "FileSystemMetaDataClient.h"
-#include "IterableConverter.h"
 #include "LocalClient.h"
 #include "LockedClient.h"
 #include "MDSClient.h"
 #include "ObjectRegistryClient.h"
-#include "OptionalConverter.h"
-#include "PairConverter.h"
 #include "Piccalilli.h"
 #include "PythonTestHelpers.h"
 #include "ScrubManagerClient.h"
 #include "ScrubWork.h"
-#include "StringyConverter.h"
-#include "StrongArithmeticTypedefConverter.h"
 
 #include <iostream>
 
@@ -62,6 +55,13 @@
 #include <youtils/LoggingToolCut.h>
 #include <youtils/PythonBuildInfo.h>
 #include <youtils/UpdateReport.h>
+#include <youtils/python/ChronoDurationConverter.h>
+#include <youtils/python/DictConverter.h>
+#include <youtils/python/IterableConverter.h>
+#include <youtils/python/OptionalConverter.h>
+#include <youtils/python/PairConverter.h>
+#include <youtils/python/StringyConverter.h>
+#include <youtils/python/StrongArithmeticTypedefConverter.h>
 
 #include <volumedriver/ClusterCount.h>
 #include <volumedriver/MDSNodeConfig.h>
