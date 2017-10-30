@@ -11,8 +11,7 @@ Backend_la_SOURCES = \
 	Backend.cpp \
 	ConnectionErrors.cpp \
 	ConnectionInterface.cpp \
-	ConnectionManager.cpp \
-	PythonBuildInfo.cpp
+	ConnectionManager.cpp
 
 Backend_la_LDFLAGS = -module -shared
 

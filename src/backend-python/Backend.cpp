@@ -16,7 +16,6 @@
 #include "ConnectionErrors.h"
 #include "ConnectionInterface.h"
 #include "ConnectionManager.h"
-#include "PythonBuildInfo.h"
 
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
@@ -96,23 +95,6 @@ BOOST_PYTHON_MODULE(Backend)
         .value("S3", backend::S3Flavour::S3)
         .value("SWIFT", backend::S3Flavour::SWIFT)
         .value("WALRUS", backend::S3Flavour::WALRUS)
-        ;
-
-    class_<PythonBuildInfo, boost::noncopyable>("BuildInfo",
-                                                 "Holds information about this build",
-                                                 no_init)
-        .def("revision", &PythonBuildInfo::revision,
-             "Get the revision of this build"
-             "@result the revision of this build, a string")
-        .staticmethod("revision")
-        .def("branch", &PythonBuildInfo::branch,
-             "Get the branch of this build"
-             "@result the branch of this build, a string")
-        .staticmethod("branch")
-        .def("buildTime", &PythonBuildInfo::buildTime,
-             "Get the build time version of this build"
-             "@result the build time version of this build, a string")
-        .staticmethod("buildTime")
         ;
 
     class_<ConnectionManager,
