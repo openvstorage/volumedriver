@@ -10,7 +10,9 @@ LTTNG_GEN_TP = @lttng_gen_tp@
 	echo "generating $@ from $<"
 	$(LTTNG_GEN_TP) $< -o $@
 
-lib_LTLIBRARIES = libvolumedriverfs.la
+lib_LTLIBRARIES = \
+	libvolumedriverfs.la \
+	libovsvoldrvfs_tracepoints.la
 
 OMNIIDL=@omniidl@
 
@@ -125,7 +127,7 @@ libvolumedriverfs_la_SOURCES = \
 		ShmOrbInterface.cpp \
 		ShmServer.cpp \
 		StatsCollectorComponent.cpp \
-		TracePoints_tp.c \
+		TracePointDefinitions.cpp \
 		VirtualDiskFormat.cpp \
 		VirtualDiskFormatVmdk.cpp \
 		VirtualDiskFormatRaw.cpp \
@@ -133,6 +135,15 @@ libvolumedriverfs_la_SOURCES = \
 		XMLRPCKeys.cpp \
 		XMLRPCUtils.cpp \
 		ZWorkerPool.cpp
+
+libovsvoldrvfs_tracepoints_la_CXXFLAGS = $(BUILDTOOLS_CFLAGS)
+libovsvoldrvfs_tracepoints_la_CFLAGS = $(BUILDTOOLS_CFLAGS)
+libovsvoldrvfs_tracepoints_la_CPPFLAGS = -I@abs_top_srcdir@/..
+libovsvoldrvfs_tracepoints_la_LDFLAGS = -shared
+libovsvoldrvfs_tracepoints_la_LIBADD = -llttng-ust
+
+libovsvoldrvfs_tracepoints_la_SOURCES = \
+	TracePoints_tp.c
 
 volumedriverfs_pythondir = @prefix@/lib/python@PYTHON_VERSION@/dist-packages/volumedriver/storagerouter
 

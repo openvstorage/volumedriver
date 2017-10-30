@@ -3,7 +3,10 @@ BUILDTOOLS_DIR=@buildtoolsdir@
 
 bin_SCRIPTS = delete-test-namespace.sh alba-start-script.sh alba-stop-script.sh arakoon_cfg_template.ini
 
-lib_LTLIBRARIES = libbackend.la
+lib_LTLIBRARIES = \
+	libbackend.la \
+	libovsbackend_tracepoints.la
+
 
 libbackend_la_CXXFLAGS = $(BUILDTOOLS_CFLAGS)
 libbackend_la_CFLAGS = $(BUILDTOOLS_CFLAGS)
@@ -38,7 +41,6 @@ libbackend_la_SOURCES = \
 	BackendConnectionManager.cpp \
 	BackendConnectionInterface.cpp \
 	BackendInterface.cpp \
-	BackendTracePoints_tp.c \
 	BackendParameters.cpp \
 	BackendTestSetup.cpp \
 	ConnectionDeleter.cpp \
@@ -59,7 +61,17 @@ libbackend_la_SOURCES = \
 	S3_Connection.cpp \
 	SimpleFetcher.cpp \
 	SwitchConnectionPoolPolicy.cpp \
-	TestWithBackendMainHelper.cpp
+	TestWithBackendMainHelper.cpp \
+	TracePointDefinitions.cpp
+
+libovsbackend_tracepoints_la_CXXFLAGS = $(BUILDTOOLS_CFLAGS)
+libovsbackend_tracepoints_la_CFLAGS = $(BUILDTOOLS_CFLAGS)
+libovsbackend_tracepoints_la_CPPFLAGS = -I@abs_top_srcdir@/..
+libovsbackend_tracepoints_la_LDFLAGS = -shared
+libovsbackend_tracepoints_la_LIBADD = -llttng-ust
+
+libovsbackend_tracepoints_la_SOURCES = \
+	BackendTracePoints_tp.c
 
 pkgconfigdir = @pkgconfigdir@
 pkgconfig_DATA = backend.pc

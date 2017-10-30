@@ -1,7 +1,10 @@
 ACLOCAL_AMFLAGS = -I ../m4
 PROTOC = @protoc@
 
-lib_LTLIBRARIES = libvolumedriver.la
+lib_LTLIBRARIES = \
+	libvolumedriver.la \
+	libovsvoldrv_tracepoints.la
+
 
 libvolumedriver_la_CXXFLAGS = $(BUILDTOOLS_CFLAGS)
 libvolumedriver_la_CFLAGS = $(BUILDTOOLS_CFLAGS)
@@ -193,7 +196,7 @@ libvolumedriver_la_SOURCES = \
 	TLogSplitter.cpp \
 	TLogWriter.cpp \
 	TokyoCabinetMetaDataBackend.cpp \
-	TracePoints_tp.c \
+	TracePointDefinitions.cpp \
 	TransientException.cpp \
 	VolManager.cpp \
 	VolumeConfig.cpp \
@@ -213,6 +216,15 @@ libvolumedriver_la_SOURCES = \
 
 pkgconfigdir = @pkgconfigdir@
 pkgconfig_DATA = volumedriver.pc
+
+libovsvoldrv_tracepoints_la_CXXFLAGS = $(BUILDTOOLS_CFLAGS)
+libovsvoldrv_tracepoints_la_CFLAGS = $(BUILDTOOLS_CFLAGS)
+libovsvoldrv_tracepoints_la_CPPFLAGS = -I@abs_top_srcdir@/..
+libovsvoldrv_tracepoints_la_LDFLAGS = -shared
+libovsvoldrv_tracepoints_la_LIBADD = -llttng-ust
+
+libovsvoldrv_tracepoints_la_SOURCES = \
+	TracePoints_tp.c
 
 SUBDIRS = \
 	. \

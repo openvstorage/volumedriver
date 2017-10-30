@@ -28,6 +28,12 @@ else
     echo "${PFX}: No officially blessed alternative allocator found, using libc's allocator"
 fi
 
+TRACEPOINT_DSOS="libovsbackend_tracepoints.so libovsvoldrv_tracepoints.so libovsvoldrvfs_tracepoints.so"
+for DSO in ${TRACEPOINT_DSOS}
+do
+    _LD_PRELOAD=${LD_PRELOAD}:"/usr/lib/${DSO}"
+done
+
 echo "${PFX}: args: $@"
 export LD_PRELOAD=${_LD_PRELOAD}
 exec volumedriver_fs $@
