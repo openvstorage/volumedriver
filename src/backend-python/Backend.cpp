@@ -26,7 +26,7 @@
 #include <youtils/Gcrypt.h>
 #include <youtils/Logger.h>
 
-#include <youtils/python/BuildInfo.h>
+#include <youtils/python/BuildInfoAdapter.h>
 #include <youtils/python/LoggingAdapter.h>
 
 #include <backend/AlbaConfig.h>
@@ -74,10 +74,10 @@ BOOST_PYTHON_MODULE(Backend)
     EXN(backend::BackendNotImplementedException);
 
 #undef EXN
-
-    youtils::Logger::disableLogging();
-    ypy::register_once<ypy::LoggingAdapter>();
     yt::Gcrypt::init_gcrypt();
+    yt::Logger::disableLogging();
+    ypy::register_once<ypy::LoggingAdapter>();
+    ypy::register_once<ypy::BuildInfoAdapter>();
 
     MAKE_PYTHON_VD_BOOLEAN_ENUM(OverwriteObject,
                                 "Whether to overwrite an existing object in the backend, values are T and F");
@@ -191,8 +191,6 @@ BOOST_PYTHON_MODULE(Backend)
              &ConnectionInterface::str)
         .def("__repr__",
              &ConnectionInterface::str);
-
-    youtils::python::BuildInfo::registerize();
 }
 
 // Local Variables: **

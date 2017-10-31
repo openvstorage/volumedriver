@@ -44,7 +44,7 @@
 
 #include <youtils/Gcrypt.h>
 #include <youtils/Logger.h>
-#include <youtils/PythonBuildInfo.h>
+#include <youtils/python/BuildInfoAdapter.h>
 #include <youtils/python/LoggingAdapter.h>
 
 #define MAKE_PYTHON_VD_BOOLEAN_ENUM(name, doc)  \
@@ -62,7 +62,7 @@ BOOST_PYTHON_MODULE(ToolCut)
     youtils::Logger::disableLogging();
     youtils::Gcrypt::init_gcrypt();
     ypy::register_once<ypy::LoggingAdapter>();
-    ypy::BuildInfo::registerize();
+    ypy::register_once<ypy::BuildInfoAdapter>();
 
     MAKE_PYTHON_VD_BOOLEAN_ENUM(OverwriteObject, "Whether to overwrite an existing object in the backend, values are T and F")
 

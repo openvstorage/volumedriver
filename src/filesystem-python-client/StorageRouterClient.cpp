@@ -50,9 +50,9 @@
 #include <youtils/DimensionedValue.h>
 #include <youtils/Gcrypt.h>
 #include <youtils/Logger.h>
-#include <youtils/PythonBuildInfo.h>
 #include <youtils/UpdateReport.h>
 #include <youtils/python/ArakoonClient.h>
+#include <youtils/python/BuildInfoAdapter.h>
 #include <youtils/python/ChronoDurationConverter.h>
 #include <youtils/python/DictConverter.h>
 #include <youtils/python/IterableConverter.h>
@@ -310,8 +310,11 @@ TODO("AR: this is a bit of a mess - split into smaller, logical pieces");
 // Piccalilli.h.
 BOOST_PYTHON_MODULE(storagerouterclient)
 {
-    youtils::Logger::disableLogging();
+    yt::Gcrypt::init_gcrypt();
+
+    yt::Logger::disableLogging();
     ypy::register_once<ypy::LoggingAdapter>();
+    ypy::register_once<ypy::BuildInfoAdapter>();
 
     bpy::scope().attr("__doc__") = "configuration and monitoring of volumedriverfs";
     bpy::scope().attr("__path__") = "storagerouterclient";
@@ -329,8 +332,6 @@ BOOST_PYTHON_MODULE(storagerouterclient)
     REGISTER_EXCEPTION_TRANSLATOR(SnapshotNameAlreadyExistsException);
     REGISTER_EXCEPTION_TRANSLATOR(VolumeRestartInProgressException);
     REGISTER_EXCEPTION_TRANSLATOR(VolumeHaltedException);
-
-    yt::Gcrypt::init_gcrypt();
 
     REGISTER_STRINGY_CONVERTER(vfs::ObjectId);
     REGISTER_STRINGY_CONVERTER(vd::VolumeId);
@@ -1471,7 +1472,6 @@ BOOST_PYTHON_MODULE(storagerouterclient)
 
     vfspy::LockedClient::registerize();
     vfspy::MDSClient::registerize();
-    youtils::python::BuildInfo::registerize();
     scrubbing::python::Scrubber::registerize();
 
     vfspy::ObjectRegistryClient::registerize();

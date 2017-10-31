@@ -20,17 +20,17 @@
 #include <boost/python/module.hpp>
 
 #include <youtils/Gcrypt.h>
-#include <youtils/PythonBuildInfo.h>
+#include <youtils/python/BuildInfoAdapter.h>
 #include <youtils/python/LoggingAdapter.h>
 
 namespace ypy = youtils::python;
 
 BOOST_PYTHON_MODULE(scrubber)
 {
+    youtils::Gcrypt::init_gcrypt();
+
     youtils::Logger::disableLogging();
     ypy::register_once<ypy::LoggingAdapter>();
-    youtils::Gcrypt::init_gcrypt();
-    ypy::BuildInfo::registerize();
-
+    ypy::register_once<ypy::BuildInfoAdapter>();
     scrubbing::python::Scrubber::registerize();
 };

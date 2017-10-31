@@ -13,8 +13,8 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "BuildInfo.h"
-#include "PythonBuildInfo.h"
+#include "BuildInfoAdapter.h"
+#include "../BuildInfo.h"
 
 #include <string>
 
@@ -28,43 +28,72 @@ namespace python
 
 namespace bpy = boost::python;
 
-std::string
-BuildInfo::revision()
+namespace
 {
-    return ::BuildInfo::revision;
+
+std::string
+revision()
+{
+    return BuildInfo::revision;
 }
 
 std::string
-BuildInfo::branch()
+branch()
 {
-    return ::BuildInfo::branch;
+    return BuildInfo::branch;
 }
 
 std::string
-BuildInfo::timestamp()
+timestamp()
 {
-    return ::BuildInfo::buildTime;
+    return BuildInfo::buildTime;
 }
 
-void
-BuildInfo::registerize()
+std::string
+repository_url()
+{
+    return BuildInfo::repository_url;
+}
+
+std::string
+version_revision()
+{
+    return BuildInfo::version_revision;
+}
+
+}
+
+DEFINE_PYTHON_WRAPPER(BuildInfoAdapter)
 {
     bpy::class_<BuildInfo,
                 boost::noncopyable>("BuildInfo",
                                     "Holds information about this build",
                                     bpy::no_init)
-        .def("revision", &BuildInfo::revision,
+        .def("revision",
+             &revision,
              "Get the revision of this build"
              "@result the revision of this build, a string")
         .staticmethod("revision")
-        .def("branch", &BuildInfo::branch,
+        .def("version_revision",
+             &version_revision,
+             "Get the version revision of this build"
+             "@result the version revision of this build, a string")
+        .staticmethod("version_revision")
+        .def("branch",
+             &branch,
              "Get the branch of this build"
              "@result the branch of this build, a string")
         .staticmethod("branch")
-        .def("timestamp", &BuildInfo::timestamp,
+        .def("timestamp",
+             &timestamp,
              "Get the build time version of this build"
              "@result the build time version of this build, a string")
         .staticmethod("timestamp")
+        .def("repository_url",
+             &repository_url,
+             "Get the URL of the repository the code was taken from"
+             "@result the repository URL, a string")
+        .staticmethod("repository_url")
         ;
 }
 

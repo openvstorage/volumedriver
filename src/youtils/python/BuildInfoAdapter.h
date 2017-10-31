@@ -13,10 +13,10 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef YT_PYTHON_BUILDINFO_H_
-#define YT_PYTHON_BUILDINFO_H_
+#ifndef YT_PYTHON_BUILDINFO_ADAPTER_H_
+#define YT_PYTHON_BUILDINFO_ADAPTER_H_
 
-#include <string>
+#include "Wrapper.h"
 
 namespace youtils
 {
@@ -24,23 +24,10 @@ namespace youtils
 namespace python
 {
 
-struct BuildInfo
-{
-    static void
-    registerize();
-
-    static std::string
-    revision();
-
-    static std::string
-    branch();
-
-    static std::string
-    timestamp();
-};
+DECLARE_PYTHON_WRAPPER(BuildInfoAdapter);
 
 }
 
 }
 
-#endif // !YT_PYTHON_BUILDINFO_H_
+#endif // !YT_PYTHON_BUILDINFO_ADAPTER_H_
