@@ -15,7 +15,10 @@
 
 #include "TLogToolCut.h"
 
-namespace toolcut
+namespace volumedriver
+{
+
+namespace python
 {
 
 namespace fs = boost::filesystem;
@@ -73,6 +76,7 @@ TLogToolCut::repr() const
 
 }
 
+}
 // Local Variables: **
 // mode: c++ **
 // End: **

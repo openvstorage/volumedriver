@@ -21,7 +21,10 @@
 #include "../VolumeConfig.h"
 #include "../FailOverCacheConfigWrapper.h"
 
-namespace toolcut
+namespace volumedriver
+{
+
+namespace python
 {
 
 namespace vd = volumedriver;
@@ -152,6 +155,8 @@ private:
     vd::VolumeConfig volume_config_;
     vd::FailOverCacheConfigWrapper foc_config_wrapper_;
 };
+
+}
 
 }
 

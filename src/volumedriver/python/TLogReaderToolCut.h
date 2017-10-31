@@ -21,10 +21,12 @@
 #include <backend-python/ConnectionInterface.h>
 #include "../TLogReaderInterface.h"
 
-
-
-namespace toolcut
+namespace volumedriver
 {
+
+namespace python
+{
+
 namespace vd = volumedriver;
 namespace fs = boost::filesystem;
 namespace bpy = boost::python;
@@ -78,8 +80,10 @@ private:
 
 
 };
+
 }
 
+}
 #endif // TLOG_INFO_H
 
 // Local Variables: **

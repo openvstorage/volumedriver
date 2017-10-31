@@ -20,7 +20,10 @@
 
 #include <boost/python/tuple.hpp>
 
-namespace toolcut
+namespace volumedriver
+{
+
+namespace python
 {
 
 using namespace volumedriver;
@@ -74,6 +77,8 @@ MetadataStoreToolCut::getStats()
 {
     boost::python::dict result;
     return result;
+}
+
 }
 
 }

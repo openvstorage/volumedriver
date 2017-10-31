@@ -22,10 +22,11 @@
 #include <backend-python/ConnectionInterface.h>
 #include <volumedriver/VolumeConfigPersistor.h>
 
-namespace toolcut
+namespace volumedriver
 {
-using namespace volumedriver;
 
+namespace python
+{
 
 VolumeInfo::VolumeInfo(boost::python::object& backend,
                        const std::string& ns)
@@ -102,6 +103,8 @@ std::string
 VolumeInfo::repr() const
 {
     return std::string("< ") + str() + std::string(" >");
+}
+
 }
 
 }

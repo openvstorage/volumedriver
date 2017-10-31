@@ -16,7 +16,11 @@
 #include "ClusterLocationToolCut.h"
 #include "SCOToolCut.h"
 #include <iostream>
-namespace toolcut
+
+namespace volumedriver
+{
+
+namespace python
 {
 
 ClusterLocationToolCut::ClusterLocationToolCut(const volumedriver::ClusterLocation& loc)
@@ -76,6 +80,7 @@ ClusterLocationToolCut::repr() const
     return str();
 }
 
+}
 
 }
 

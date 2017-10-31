@@ -23,7 +23,10 @@
 
 #include <backend-python/ConnectionInterface.h>
 
-namespace toolcut
+namespace volumedriver
+{
+
+namespace python
 {
 
 namespace bpy = boost::python;
@@ -418,6 +421,8 @@ std::string
 SnapshotPersistorToolCut::repr() const
 {
     return std::string("< SnapshotPersistor \n") + str() + "\n>";
+}
+
 }
 
 }

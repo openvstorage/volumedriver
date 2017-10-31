@@ -16,7 +16,10 @@
 #include "SnapshotToolCut.h"
 #include "TLogToolCut.h"
 
-namespace toolcut
+namespace volumedriver
+{
+
+namespace python
 {
 
 SnapshotToolCut::SnapshotToolCut(const vd::Snapshot& snapshot)
@@ -91,6 +94,8 @@ bool
 SnapshotToolCut::inBackend() const
 {
     return snapshot_.inBackend();
+}
+
 }
 
 }

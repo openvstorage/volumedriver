@@ -13,44 +13,42 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef ENTRY_TOOLCUT_H_
-#define ENTRY_TOOLCUT_H_
-#include "../Entry.h"
-#include "ClusterLocationToolCut.h"
-#include <youtils/Logging.h>
-namespace toolcut
+#ifndef _METADATASTORE_TOOLCUT_H_
+#define _METADATASTORE_TOOLCUT_H_
+
+#include "../MetaDataStoreInterface.h"
+#include "../Types.h"
+
+#include <boost/python/list.hpp>
+#include <boost/python/dict.hpp>
+#include <boost/python/object.hpp>
+
+namespace volumedriver
 {
-class EntryToolCut
+
+namespace python
 {
-    DECLARE_LOGGER("EntryToolCut")
+
+class MetadataStoreToolCut
+{
 public:
-    EntryToolCut(const volumedriver::Entry* entry)
-        :entry_(entry)
-    {
-        VERIFY(entry_);
-    }
+    MetadataStoreToolCut(const std::string file);
 
-    volumedriver::Entry::Type
-    type() const;
+    const std::string
+    readCluster(const volumedriver::ClusterAddress i_addr);
 
-    volumedriver::CheckSum::value_type
-    getCheckSum() const;
+    void
+    forEach(boost::python::object&,
+            const volumedriver::ClusterAddress max_address);
 
-    volumedriver::ClusterAddress
-    clusterAddress() const;
-
-    ClusterLocationToolCut
-    clusterLocation() const;
-
-    std::string
-    str() const;
-
-    std::string
-    repr() const;
+    boost::python::dict
+    getStats();
 
 private:
-    const volumedriver::Entry* entry_;
+    volumedriver::MetaDataStoreInterface* md_store_;
 };
+
+}
 
 }
 

@@ -22,7 +22,10 @@
 #include "../SCOAccessData.h"
 
 
-namespace toolcut
+namespace volumedriver
+{
+
+namespace python
 {
 
 namespace bpy = boost::python;
@@ -59,9 +62,11 @@ private:
 };
 
 }
+
+}
+
 #endif //! SCO_ACCESS_DATA_INFO_H_
 
 // Local Variables: **
-// compile-command: "scons -D --kernel_version=system --ignore-buildinfo -j 5" **
 // mode: c++ **
 // End: **

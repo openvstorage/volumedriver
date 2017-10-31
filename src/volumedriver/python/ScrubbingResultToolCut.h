@@ -18,8 +18,13 @@
 #include <boost/python/list.hpp>
 #define SCRUBRESULT_NO_THROW_ON_DIFFERENT_VERSION
 #include "../Scrubber.h"
-namespace toolcut
+
+namespace volumedriver
 {
+
+namespace python
+{
+
 class ScrubbingResultToolCut
 {
 public:
@@ -81,9 +86,9 @@ private:
 
 };
 
-
 }
 
+}
 
 #endif // SCRUBBING_RESULT_TOOLCUT_H_
 

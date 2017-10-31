@@ -17,17 +17,17 @@
 // Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
-#include "VolumeInfo.h"
-#include "SnapshotToolCut.h"
-#include "TLogToolCut.h"
-#include "SnapshotPersistorToolCut.h"
-#include "TLogReaderToolCut.h"
-#include "SCOAccessDataInfo.h"
-#include "ScrubbingResultToolCut.h"
-#include "MetadataStoreToolCut.h"
-#include "ClusterLocationToolCut.h"
-#include "SCOToolCut.h"
-#include "EntryToolCut.h"
+#include"../python/VolumeInfo.h"
+#include"../python/SnapshotToolCut.h"
+#include"../python/TLogToolCut.h"
+#include"../python/SnapshotPersistorToolCut.h"
+#include"../python/TLogReaderToolCut.h"
+#include"../python/SCOAccessDataInfo.h"
+#include"../python/ScrubbingResultToolCut.h"
+#include"../python/MetadataStoreToolCut.h"
+#include"../python/ClusterLocationToolCut.h"
+#include"../python/SCOToolCut.h"
+#include"../python/EntryToolCut.h"
 
 #include "../FailOverCacheConfig.h"
 
@@ -57,7 +57,7 @@ namespace ypy = youtils::python;
 BOOST_PYTHON_MODULE(ToolCut)
 {
     using namespace boost::python;
-    using namespace toolcut;
+    using namespace volumedriver::python;
 
     youtils::Logger::disableLogging();
     youtils::Gcrypt::init_gcrypt();

@@ -17,8 +17,12 @@
 #define SCO_TOOL_CUT_H
 #include "../SCO.h"
 
-namespace toolcut
+namespace volumedriver
 {
+
+namespace python
+{
+
 class SCOToolCut
 {
 public:
@@ -49,6 +53,8 @@ private:
     volumedriver::SCO sco_;
 
 };
+
+}
 
 }
 

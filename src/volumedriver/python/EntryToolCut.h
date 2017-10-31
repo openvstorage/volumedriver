@@ -13,52 +13,55 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef CLUSTER_LOCATION_TOOLCUT_H_
-#define CLUSTER_LOCATION_TOOLCUT_H_
+#ifndef ENTRY_TOOLCUT_H_
+#define ENTRY_TOOLCUT_H_
 
-#include "../ClusterLocation.h"
-namespace toolcut
+#include "../Entry.h"
+#include "ClusterLocationToolCut.h"
+
+#include <youtils/Logging.h>
+
+namespace volumedriver
 {
 
-class SCOToolCut;
-
-class ClusterLocationToolCut
+namespace python
 {
+
+class EntryToolCut
+{
+    DECLARE_LOGGER("EntryToolCut")
 public:
-    ClusterLocationToolCut(const volumedriver::ClusterLocation& loc);
+    EntryToolCut(const volumedriver::Entry* entry)
+        :entry_(entry)
+    {
+        VERIFY(entry_);
+    }
 
-    ClusterLocationToolCut(const std::string& name);
+    volumedriver::Entry::Type
+    type() const;
 
-    static bool
-    isClusterLocationString(const std::string& str);
+    volumedriver::CheckSum::value_type
+    getCheckSum() const;
 
-    uint16_t
-    offset();
+    volumedriver::ClusterAddress
+    clusterAddress() const;
 
-    uint8_t
-    version();
-
-    uint8_t
-    cloneID();
-
-    volumedriver::SCONumber
-    number();
+    ClusterLocationToolCut
+    clusterLocation() const;
 
     std::string
     str() const;
 
-    SCOToolCut*
-    sco();
-
     std::string
     repr() const;
 
-
 private:
-    volumedriver::ClusterLocation loc_;
+    const volumedriver::Entry* entry_;
 };
+
 }
 
+}
 
 #endif
 

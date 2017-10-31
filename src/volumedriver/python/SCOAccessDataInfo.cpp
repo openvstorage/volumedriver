@@ -20,7 +20,10 @@
 
 #include "SCOAccessDataInfo.h"
 
-namespace toolcut
+namespace volumedriver
+{
+
+namespace python
 {
 
 SCOAccessDataInfo::SCOAccessDataInfo(const fs::path& p)
@@ -64,6 +67,8 @@ SCOAccessDataInfo::getEntries() const
     }
 
     return res;
+}
+
 }
 
 }

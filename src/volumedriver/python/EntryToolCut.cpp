@@ -15,8 +15,12 @@
 
 #include "EntryToolCut.h"
 
-namespace toolcut
+namespace volumedriver
 {
+
+namespace python
+{
+
 volumedriver::Entry::Type
 EntryToolCut::type() const
 {
@@ -71,7 +75,7 @@ EntryToolCut::repr() const
     return std::string("< Entry \n") + str() + "\n>";
 }
 
-
+}
 
 }
 

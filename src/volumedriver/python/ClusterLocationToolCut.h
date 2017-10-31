@@ -13,39 +13,58 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef _METADATASTORE_TOOLCUT_H_
-#define _METADATASTORE_TOOLCUT_H_
+#ifndef CLUSTER_LOCATION_TOOLCUT_H_
+#define CLUSTER_LOCATION_TOOLCUT_H_
 
-#include "../MetaDataStoreInterface.h"
-#include "../Types.h"
+#include "../ClusterLocation.h"
 
-#include <boost/python/list.hpp>
-#include <boost/python/dict.hpp>
-#include <boost/python/object.hpp>
-
-namespace toolcut
+namespace volumedriver
 {
 
-class MetadataStoreToolCut
+namespace python
+{
+
+class SCOToolCut;
+
+class ClusterLocationToolCut
 {
 public:
-    MetadataStoreToolCut(const std::string file);
+    ClusterLocationToolCut(const volumedriver::ClusterLocation& loc);
 
-    const std::string
-    readCluster(const volumedriver::ClusterAddress i_addr);
+    ClusterLocationToolCut(const std::string& name);
 
-    void
-    forEach(boost::python::object&,
-            const volumedriver::ClusterAddress max_address);
+    static bool
+    isClusterLocationString(const std::string& str);
 
-    boost::python::dict
-    getStats();
+    uint16_t
+    offset();
+
+    uint8_t
+    version();
+
+    uint8_t
+    cloneID();
+
+    volumedriver::SCONumber
+    number();
+
+    std::string
+    str() const;
+
+    SCOToolCut*
+    sco();
+
+    std::string
+    repr() const;
+
 
 private:
-    volumedriver::MetaDataStoreInterface* md_store_;
+    volumedriver::ClusterLocation loc_;
 };
+
 }
 
+}
 
 #endif
 

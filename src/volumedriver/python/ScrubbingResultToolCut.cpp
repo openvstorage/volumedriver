@@ -25,7 +25,10 @@
 
 #include <volumedriver/Types.h>
 
-namespace toolcut
+namespace volumedriver
+{
+
+namespace python
 {
 
 namespace fs = boost::filesystem;
@@ -186,6 +189,8 @@ std::string
 ScrubbingResultToolCut::repr() const
 {
     return "< ToolCut.ScrubbingResult " + str() + ">";
+}
+
 }
 
 }

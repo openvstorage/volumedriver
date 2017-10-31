@@ -29,7 +29,10 @@
 #include <volumedriver/SnapshotPersistor.h>
 #include <volumedriver/TLog.h>
 
-namespace toolcut
+namespace volumedriver
+{
+
+namespace python
 {
 
 class SnapshotPersistorToolCut
@@ -146,6 +149,8 @@ BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(GetScrubbingWorkOverloads,
                                        getScrubbingWork,
                                        0,
                                        2);
+
+}
 
 }
 

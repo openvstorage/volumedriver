@@ -193,6 +193,17 @@ libvolumedriver_la_SOURCES = \
 	TLogSplitter.cpp \
 	TLogWriter.cpp \
 	TokyoCabinetMetaDataBackend.cpp \
+	python/ClusterLocationToolCut.cpp \
+	python/EntryToolCut.cpp \
+	python/MetadataStoreToolCut.cpp \
+	python/SCOAccessDataInfo.cpp \
+	python/SCOToolCut.cpp \
+	python/ScrubbingResultToolCut.cpp \
+	python/SnapshotPersistorToolCut.cpp \
+	python/SnapshotToolCut.cpp \
+	python/TLogReaderToolCut.cpp \
+	python/TLogToolCut.cpp \
+	python/VolumeInfo.cpp \
 	TracePoints_tp.c \
 	TransientException.cpp \
 	VolManager.cpp \

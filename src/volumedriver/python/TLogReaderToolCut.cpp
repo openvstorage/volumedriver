@@ -26,8 +26,13 @@
 #include "ClusterLocationToolCut.h"
 #include "EntryToolCut.h"
 // #include <backend-python/ConnectionInterface.h>
-namespace toolcut
+
+namespace volumedriver
 {
+
+namespace python
+{
+
 boost::python::object
 TLogReaderToolCut::object_;
 
@@ -203,9 +208,9 @@ TLogReaderToolCut::repr() const
 
 }
 
-
 }
 
+}
 // Local Variables: **
 // mode: c++ **
 // End: **

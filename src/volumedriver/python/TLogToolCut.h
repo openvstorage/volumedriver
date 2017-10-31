@@ -13,59 +13,54 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "SCOToolCut.h"
+#ifndef TLOG_TOOLCUT_H
+#define TLOG_TOOLCUT_H
 
-namespace toolcut
+#include "../TLog.h"
+
+namespace volumedriver
 {
-SCOToolCut::SCOToolCut(const volumedriver::SCO& sco)
-    :sco_(sco)
-{}
 
-SCOToolCut::SCOToolCut(const std::string& i_str)
-    :sco_(i_str)
-{}
-
-std::string
-SCOToolCut::str() const
+namespace python
 {
-    return sco_.str();
+
+namespace vd = volumedriver;
+
+class TLogToolCut
+{
+public:
+    explicit TLogToolCut(const vd::TLog& i_tlog);
+
+    bool
+    writtenToBackend() const;
+
+    std::string
+    getName() const;
+
+    std::string
+    getUUID() const;
+
+    static bool
+    isTLogString(const std::string& in);
+
+    static std::string
+    getUUIDFromTLogName(const std::string& tlogName);
+
+    std::string
+    str() const;
+
+    std::string
+    repr() const;
+
+private:
+    const vd::TLog tlog_;
+};
+
 }
 
-uint8_t
-SCOToolCut::version() const
-{
-    return sco_.version();
 }
 
-
-uint8_t
-SCOToolCut::cloneID() const
-{
-    return sco_.cloneID();
-}
-
-
-volumedriver::SCONumber
-SCOToolCut::number() const
-{
-    return sco_.number();
-}
-
-
-bool
-SCOToolCut::isSCOString(const std::string& str)
-{
-    return volumedriver::SCO::isSCOString(str);
-}
-
-
-bool
-SCOToolCut::asBool() const
-{
-    return sco_.asBool();
-}
-}
+#endif // TLOG_TOOLCUT_H
 
 // Local Variables: **
-// mode: c++ **
 // End: **

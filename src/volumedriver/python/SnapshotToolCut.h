@@ -19,8 +19,12 @@
 #include <boost/python/list.hpp>
 #include <volumedriver/Snapshot.h>
 
-namespace toolcut
+namespace volumedriver
 {
+
+namespace python
+{
+
 namespace vd = volumedriver;
 namespace bpy = boost::python;
 
@@ -69,8 +73,10 @@ public:
 private:
     const vd::Snapshot snapshot_;
 };
+
 }
 
+}
 #endif // SNAPSHOT_TOOLCUT_H
 
 
