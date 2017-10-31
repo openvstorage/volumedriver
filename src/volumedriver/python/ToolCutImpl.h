@@ -1,4 +1,4 @@
-// Copyright (C) 2016 iNuron NV
+// Copyright (C) 2017 iNuron NV
 //
 // This file is part of Open vStorage Open Source Edition (OSE),
 // as available from
@@ -13,22 +13,21 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "../python/ToolCutImpl.h"
+#ifndef VDPY_TOOLCUT_IMPL_H_
+#define VDPY_TOOLCUT_IMPL_H_
 
-#include <boost/python/module.hpp>
+#include <youtils/python/Wrapper.h>
 
-#include <youtils/Logger.h>
-
-namespace ypy = youtils::python;
-namespace yt = youtils;
-namespace vpy = volumedriver::python;
-
-BOOST_PYTHON_MODULE(ToolCut)
+namespace volumedriver
 {
-    yt::Logger::disableLogging();
-    ypy::register_once<vpy::ToolCutImpl>();
+
+namespace python
+{
+
+DECLARE_PYTHON_WRAPPER(ToolCutImpl);
+
 }
 
-// Local Variables: **
-// mode: c++ **
-// End: **
+}
+
+#endif // !VDPY_TOOLCUT_IMPL_H_

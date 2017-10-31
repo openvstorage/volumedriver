@@ -203,6 +203,7 @@ libvolumedriver_la_SOURCES = \
 	python/SnapshotToolCut.cpp \
 	python/TLogReaderToolCut.cpp \
 	python/TLogToolCut.cpp \
+	python/ToolCutImpl.cpp \
 	python/VolumeInfo.cpp \
 	TracePoints_tp.c \
 	TransientException.cpp \
