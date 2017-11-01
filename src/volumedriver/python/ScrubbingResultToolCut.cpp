@@ -13,8 +13,10 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include <boost/python.hpp>
 #include "ScrubbingResultToolCut.h"
+#include "TLogToolCut.h"
+
+#include <boost/python.hpp>
 #include <fstream>
 #include <boost/python/tuple.hpp>
 
@@ -62,7 +64,7 @@ ScrubbingResultToolCut::getTLogsOut() const
     boost::python::list result;
     for (const auto& tlog : scrub_result.tlogs_out)
     {
-        result.append(tlog.getName());
+        result.append(TLogToolCut(tlog));
     }
     return result;
 }

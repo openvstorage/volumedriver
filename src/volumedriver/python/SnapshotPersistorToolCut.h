@@ -71,7 +71,7 @@ public:
     std::string
     getParentSnapshot() const;
 
-    std::string
+    volumedriver::TLogId
     getCurrentTLog() const;
 
     boost::python::list
@@ -102,10 +102,10 @@ public:
     trimToBackend();
 
     void
-    setTLogWrittenToBackend(const std::string& file);
+    setTLogWrittenToBackend(const volumedriver::TLogId&);
 
     bool
-    isTLogWrittenToBackend(const std::string& tlog) const;
+    isTLogWrittenToBackend(const volumedriver::TLogId&) const;
 
     boost::python::list
     getTLogsNotWrittenToBackend() const;
@@ -121,7 +121,7 @@ public:
     saveToFile(const std::string& file) const;
 
     void
-    snip(const std::string& tlogname);
+    snip(const volumedriver::TLogId&);
 
     void
     replace(const boost::python::list& new_ones,

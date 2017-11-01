@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "ClusterLocationAdapter.h"
+#include "ClusterLocationAndHashAdapter.h"
 #include "EntryToolCut.h"
 #include "MetadataStoreToolCut.h"
 #include "SCOAccessDataInfo.h"
@@ -32,6 +32,7 @@
 #include <string>
 #include <vector>
 
+#include <boost/lexical_cast.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/enum.hpp>
@@ -41,6 +42,7 @@
 #include <youtils/Logger.h>
 #include <youtils/python/BuildInfoAdapter.h>
 #include <youtils/python/LoggingAdapter.h>
+#include <youtils/python/StringyConverter.h>
 
 // TODO: split this up into smaller pieces, removing xToolCut wrappers and
 // binding directly the wrapped classes instead using e.g. converters from
@@ -107,6 +109,8 @@ DEFINE_PYTHON_WRAPPER(ToolCutImpl)
         .value("TLogCRC", vd::Entry::Type::TLogCRC)
         .value("SCOCRC", vd::Entry::Type::SCOCRC)
         .value("CLoc", vd::Entry::Type::LOC);
+
+    REGISTER_STRINGY_CONVERTER(SnapshotName);
 
     bpy::class_<SnapshotToolCut>("Snapshot",
                                  "Represents a snapshot as it is stored in the snapshots.xml",
@@ -317,8 +321,9 @@ DEFINE_PYTHON_WRAPPER(ToolCutImpl)
              "save the snapshot persistor to a file."
              "@param a string, the path to save the snapshot persistor to")
         .def("snip", &SnapshotPersistorToolCut::snip,
+             bpy::args("tlog_id"),
              "remove all tlogs after the given one.\n"
-             "@param a string, the tlog name")
+             "@param tlog_id, TLogId")
         .def("getScrubbingWork",
              &SnapshotPersistorToolCut::getScrubbingWork,
              GetScrubbingWorkOverloads(bpy::args("startSnapshot",

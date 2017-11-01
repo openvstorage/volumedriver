@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<!DOCTYPE boost_serialization>
+<boost_serialization signature="serialization::archive" version="14">
+<snapshots class_id="0" tracking_level="0" version="4">
+	<parent class_id="1" tracking_level="0" version="0">
+		<initialized>0</initialized>
+	</parent>
+	<current class_id="2" tracking_level="0" version="0">
+		<tlogs class_id="3" tracking_level="0" version="0">
+			<count>1</count>
+			<item_version>2</item_version>
+			<item class_id="4" tracking_level="0" version="2">
+				<uuid class_id="5" tracking_level="0" version="0">
+					<uuid>bbd403af-1408-4c49-84bc-f64ce334ea7d</uuid>
+				</uuid>
+				<written_to_backend>0</written_to_backend>
+				<size>0</size>
+			</item>
+		</tlogs>
+	</current>
+	<snapshots class_id="6" tracking_level="0" version="0">
+		<snapshots class_id="7" tracking_level="0" version="0">
+			<count>3</count>
+			<item_version>5</item_version>
+			<item class_id="8" tracking_level="0" version="5">
+				<tlogs>
+					<tlogs>
+						<count>7</count>
+						<item_version>2</item_version>
+						<item>
+							<uuid>
+								<uuid>d4f04477-3da2-418f-aba4-d853087d830e</uuid>
+							</uuid>
+							<written_to_backend>1</written_to_backend>
+							<size>0</size>
+						</item>
+						<item>
+							<uuid>
+								<uuid>e4e36540-b138-4fe8-8629-083c55fdaf67</uuid>
+							</uuid>
+							<written_to_backend>1</written_to_backend>
+							<size>83886080</size>
+						</item>
+						<item>
+							<uuid>
+								<uuid>331c19c5-1ba2-4857-a248-0c143f78a56c</uuid>
+							</uuid>
+							<written_to_backend>1</written_to_backend>
+							<size>83886080</size>
+						</item>
+						<item>
+							<uuid>
+								<uuid>03e8a8c5-2c50-4a12-ac50-d2cbe525bfb9</uuid>
+							</uuid>
+							<written_to_backend>1</written_to_backend>
+							<size>83886080</size>
+						</item>
+						<item>
+							<uuid>
+								<uuid>49251493-7d9f-40cb-a858-5a0ee0fc6748</uuid>
+							</uuid>
+							<written_to_backend>1</written_to_backend>
+							<size>83886080</size>
+						</item>
+						<item>
+							<uuid>
+								<uuid>4b51bcac-ef4a-460a-badf-6b299792e22c</uuid>
+							</uuid>
+							<written_to_backend>1</written_to_backend>
+							<size>83886080</size>
+						</item>
+						<item>
+							<uuid>
+								<uuid>7759a373-e41b-4e2f-a3cf-b1200a63262b</uuid>
+							</uuid>
+							<written_to_backend>1</written_to_backend>
+							<size>2097152</size>
+						</item>
+					</tlogs>
+				</tlogs>
+				<num>0</num>
+				<name>A</name>
+				<scrubbed>0</scrubbed>
+				<date>Wed Nov  1 17:10:09 2017
+</date>
+				<snapshot-uuid>
+					<uuid>edf740c8-bfb2-467e-965d-7f0b25c03f82</uuid>
+				</snapshot-uuid>
+				<cork_uuid>
+					<uuid>7759a373-e41b-4e2f-a3cf-b1200a63262b</uuid>
+				</cork_uuid>
+				<metadata>
+					<count>0</count>
+					<item_version>0</item_version>
+				</metadata>
+			</item>
+			<item>
+				<tlogs>
+					<tlogs>
+						<count>1</count>
+						<item_version>2</item_version>
+						<item>
+							<uuid>
+								<uuid>667d4a2b-e264-4ae7-b670-23d6d961d15e</uuid>
+							</uuid>
+							<written_to_backend>1</written_to_backend>
+							<size>0</size>
+						</item>
+					</tlogs>
+				</tlogs>
+				<num>1</num>
+				<name>B</name>
+				<scrubbed>0</scrubbed>
+				<date>Wed Nov  1 17:10:15 2017
+</date>
+				<snapshot-uuid>
+					<uuid>f8fcd77d-e312-4725-a4b7-22d6954ffdc9</uuid>
+				</snapshot-uuid>
+				<cork_uuid>
+					<uuid>667d4a2b-e264-4ae7-b670-23d6d961d15e</uuid>
+				</cork_uuid>
+				<metadata>
+					<count>0</count>
+					<item_version>0</item_version>
+				</metadata>
+			</item>
+			<item>
+				<tlogs>
+					<tlogs>
+						<count>1</count>
+						<item_version>2</item_version>
+						<item>
+							<uuid>
+								<uuid>94e5eb30-8732-4693-99e8-1dcbce22f45c</uuid>
+							</uuid>
+							<written_to_backend>1</written_to_backend>
+							<size>0</size>
+						</item>
+					</tlogs>
+				</tlogs>
+				<num>2</num>
+				<name>C</name>
+				<scrubbed>0</scrubbed>
+				<date>Wed Nov  1 17:10:19 2017
+</date>
+				<snapshot-uuid>
+					<uuid>01d9ab40-002d-4457-9f12-5b88d39f205f</uuid>
+				</snapshot-uuid>
+				<cork_uuid>
+					<uuid>94e5eb30-8732-4693-99e8-1dcbce22f45c</uuid>
+				</cork_uuid>
+				<metadata>
+					<count>0</count>
+					<item_version>0</item_version>
+				</metadata>
+			</item>
+		</snapshots>
+	</snapshots>
+	<scrub_id class_id="10" tracking_level="0" version="0">
+		<ScrubId>
+			<uuid>e85a108e-7739-401d-a3e0-ac131f1fb020</uuid>
+		</ScrubId>
+	</scrub_id>
+	<use_hash>1</use_hash>
+</snapshots>
+</boost_serialization>
+

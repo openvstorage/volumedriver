@@ -176,10 +176,10 @@ SnapshotPersistorToolCut::getParentSnapshot() const
     }
 }
 
-std::string
+vd::TLogId
 SnapshotPersistorToolCut::getCurrentTLog() const
 {
-    return boost::lexical_cast<std::string>(snapshot_persistor_->getCurrentTLog());
+    return snapshot_persistor_->getCurrentTLog();
 }
 
 bpy::list
@@ -251,17 +251,15 @@ SnapshotPersistorToolCut::trimToBackend()
 }
 
 void
-SnapshotPersistorToolCut::setTLogWrittenToBackend(const std::string& tlog)
+SnapshotPersistorToolCut::setTLogWrittenToBackend(const vd::TLogId& tlog)
 {
-    const auto id(boost::lexical_cast<vd::TLogId>(tlog));
-    snapshot_persistor_->setTLogWrittenToBackend(id);
+    snapshot_persistor_->setTLogWrittenToBackend(tlog);
 }
 
 bool
-SnapshotPersistorToolCut::isTLogWrittenToBackend(const std::string& tlog) const
+SnapshotPersistorToolCut::isTLogWrittenToBackend(const vd::TLogId& tlog) const
 {
-    const auto id(boost::lexical_cast<vd::TLogId>(tlog));
-    return snapshot_persistor_->isTLogWrittenToBackend(id);
+    return snapshot_persistor_->isTLogWrittenToBackend(tlog);
 }
 
 bpy::list
@@ -305,9 +303,9 @@ SnapshotPersistorToolCut::saveToFile(const std::string& p) const
 }
 
 void
-SnapshotPersistorToolCut::snip(const std::string& tlogname)
+SnapshotPersistorToolCut::snip(const vd::TLogId& tlog_id)
 {
-    snapshot_persistor_->snip(boost::lexical_cast<vd::TLogId>(tlogname),
+    snapshot_persistor_->snip(tlog_id,
                               boost::none);
 }
 
