@@ -316,7 +316,6 @@ BOOST_PYTHON_MODULE(storagerouterclient)
 {
     yt::Gcrypt::init_gcrypt();
 
-    yt::Logger::disableLogging();
     ypy::register_once<ypy::LoggingAdapter>();
     ypy::register_once<ypy::BuildInfoAdapter>();
 

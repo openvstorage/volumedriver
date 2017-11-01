@@ -29,7 +29,6 @@ BOOST_PYTHON_MODULE(scrubber)
 {
     youtils::Gcrypt::init_gcrypt();
 
-    youtils::Logger::disableLogging();
     ypy::register_once<ypy::LoggingAdapter>();
     ypy::register_once<ypy::BuildInfoAdapter>();
     scrubbing::python::Scrubber::registerize();

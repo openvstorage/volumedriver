@@ -74,7 +74,6 @@ BOOST_PYTHON_MODULE(Backend)
 
 #undef EXN
     yt::Gcrypt::init_gcrypt();
-    yt::Logger::disableLogging();
     ypy::register_once<ypy::LoggingAdapter>();
     ypy::register_once<ypy::BuildInfoAdapter>();
 

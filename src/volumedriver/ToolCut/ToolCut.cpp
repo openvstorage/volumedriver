@@ -17,15 +17,11 @@
 
 #include <boost/python/module.hpp>
 
-#include <youtils/Logger.h>
-
 namespace ypy = youtils::python;
-namespace yt = youtils;
 namespace vpy = volumedriver::python;
 
 BOOST_PYTHON_MODULE(ToolCut)
 {
-    yt::Logger::disableLogging();
     ypy::register_once<vpy::ToolCutImpl>();
 }
 

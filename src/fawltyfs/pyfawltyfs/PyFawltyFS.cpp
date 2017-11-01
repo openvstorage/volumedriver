@@ -285,7 +285,6 @@ private:
 // XXX: document params
 BOOST_PYTHON_MODULE(PyFawltyFS)
 {
-    yt::Logger::disableLogging();
     ypy::register_once<ypy::LoggingAdapter>();
     ypy::register_once<ypy::BuildInfoAdapter>();
 

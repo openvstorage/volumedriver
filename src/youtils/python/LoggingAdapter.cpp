@@ -124,6 +124,8 @@ private:
 
 DEFINE_PYTHON_WRAPPER(LoggingAdapter)
 {
+    Logger::disableLogging();
+
     bpy::enum_<Severity>("Severity",
                          "Severity levels of logging\n"
                          "Values are trace, debug, info, warning, error, fatal and notification")
