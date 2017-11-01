@@ -1,4 +1,4 @@
-// Copyright (C) 2016 iNuron NV
+// Copyright (C) 2017 iNuron NV
 //
 // This file is part of Open vStorage Open Source Edition (OSE),
 // as available from
@@ -13,9 +13,10 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef SCO_TOOL_CUT_H
-#define SCO_TOOL_CUT_H
-#include "../SCO.h"
+#ifndef VD_PY_SCO_ADAPTER_H_
+#define VD_PY_SCO_ADAPTER_H_
+
+#include <youtils/python/Wrapper.h>
 
 namespace volumedriver
 {
@@ -23,43 +24,10 @@ namespace volumedriver
 namespace python
 {
 
-class SCOToolCut
-{
-public:
-    SCOToolCut(const volumedriver::SCO& sco);
-
-    SCOToolCut(const std::string& i_str);
-
-    std::string
-    str() const;
-
-    uint8_t
-    version() const;
-
-
-    uint8_t
-    cloneID() const;
-
-    volumedriver::SCONumber
-    number() const;
-
-    static bool
-    isSCOString(const std::string& str);
-
-    bool
-    asBool() const;
-
-private:
-    volumedriver::SCO sco_;
-
-};
+DECLARE_PYTHON_WRAPPER(SCOAdapter);
 
 }
 
 }
 
-#endif // SCO_TOOL_CUT_H
-
-// Local Variables: **
-// mode: c++ **
-// End: **
+#endif //!VD_PY_SCO_ADAPTER_H_

@@ -16,15 +16,18 @@
 #include <boost/foreach.hpp>
 #include <boost/python/dict.hpp>
 
-#include "../EntryProcessor.h"
-#include "TLogReaderToolCut.h"
-#include "../TLogReader.h"
-#include "../TLog.h"
-#include <youtils/CheckSum.h>
-#include "../ClusterLocation.h"
-#include "SCOToolCut.h"
 #include "ClusterLocationToolCut.h"
 #include "EntryToolCut.h"
+#include "TLogReaderToolCut.h"
+
+#include "../ClusterLocation.h"
+#include "../EntryProcessor.h"
+#include "../SCO.h"
+#include "../TLog.h"
+#include "../TLogReader.h"
+
+#include <youtils/CheckSum.h>
+
 // #include <backend-python/ConnectionInterface.h>
 
 namespace volumedriver
@@ -65,7 +68,7 @@ TLogReaderToolCut::SCONames() const
     tlog_reader_->SCONames(scos);
     BOOST_FOREACH(vd::SCO sco, scos)
     {
-        result.append(SCOToolCut(sco));
+        result.append(sco);
     }
     return result;
 }

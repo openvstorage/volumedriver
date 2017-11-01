@@ -197,7 +197,7 @@ libvolumedriver_la_SOURCES = \
 	python/EntryToolCut.cpp \
 	python/MetadataStoreToolCut.cpp \
 	python/SCOAccessDataInfo.cpp \
-	python/SCOToolCut.cpp \
+	python/SCOAdapter.cpp \
 	python/ScrubbingResultToolCut.cpp \
 	python/SnapshotPersistorToolCut.cpp \
 	python/SnapshotToolCut.cpp \

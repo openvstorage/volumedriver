@@ -17,7 +17,7 @@
 #include "EntryToolCut.h"
 #include "MetadataStoreToolCut.h"
 #include "SCOAccessDataInfo.h"
-#include "SCOToolCut.h"
+#include "SCOAdapter.h"
 #include "ScrubbingResultToolCut.h"
 #include "SnapshotToolCut.h"
 #include "SnapshotPersistorToolCut.h"
@@ -36,7 +36,6 @@
 #include <boost/python/def.hpp>
 #include <boost/python/enum.hpp>
 #include <boost/python/import.hpp>
-#include <boost/python/manage_new_object.hpp>
 
 #include <youtils/Gcrypt.h>
 #include <youtils/Logger.h>
@@ -68,9 +67,9 @@ DEFINE_PYTHON_WRAPPER(ToolCutImpl)
     ypy::register_once<ypy::LoggingAdapter>();
     ypy::register_once<ypy::BuildInfoAdapter>();
 
-    MAKE_PYTHON_VD_BOOLEAN_ENUM(OverwriteObject, "Whether to overwrite an existing object in the backend, values are T and F")
+    MAKE_PYTHON_VD_BOOLEAN_ENUM(OverwriteObject, "Whether to overwrite an existing object in the backend, values are T and F");
 
-        bpy::scope().attr("__doc__") = "Access the basic building blocks of VolumeDriver\n"
+    bpy::scope().attr("__doc__") = "Access the basic building blocks of VolumeDriver\n"
         "such as SCO, ClusterLocation, TLog, TLogReader, Snapshot, VolumeInfo, ScrubbingResult...";
 
     bpy::class_<vd::TLogId>("TLogId",
@@ -490,30 +489,12 @@ DEFINE_PYTHON_WRAPPER(ToolCutImpl)
         .def("str", &ClusterLocationToolCut::str,
              "Get the stringified form of the clusterlocation")
         .def("sco", &ClusterLocationToolCut::sco,
-             bpy::return_value_policy<bpy::manage_new_object>(),
              "Get the SCO associated with this clusterlocation")
         .def("isClusterLocationString", &ClusterLocationToolCut::isClusterLocationString,
              "Test whether the string is the standard representation of a clusterlocation")
         .staticmethod("isClusterLocationString");
 
-    bpy::class_<SCOToolCut>("SCO",
-                            "Interface to SCO which is a a container that is a storage unit",
-                            bpy::init<const std::string&>("Construct on the basis of a string (XX_XXXXXXXX_XX"))
-        .def("__str__", &SCOToolCut::str)
-        .def("__repr__", &SCOToolCut::str)
-        .def("version", &SCOToolCut::version,
-             "Get the version of the sco")
-        .def("cloneID", &SCOToolCut::cloneID,
-             "Get the cloneID of the sco")
-        .def("number", &SCOToolCut::number,
-             "Get the number of the sco")
-        .def("str", &SCOToolCut::str,
-             "Get the stringified form of the SCO")
-        .def("asBool", &SCOToolCut::asBool,
-             "SCO 0 is never used as a storage unit")
-        .def("isSCOString", &SCOToolCut::isSCOString,
-             "test whether a string can be interpreted as a sco string")
-        .staticmethod("isSCOString");
+    ypy::register_once<SCOAdapter>();
 }
 
 }

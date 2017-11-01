@@ -467,7 +467,7 @@ class SCOTest(unittest.TestCase):
         self.assertEqual(sco.version(), 0)
         self.assertEqual(sco.cloneID(), 0)
         self.assertTrue(sco.asBool())
-        self.assertEqual(sco.str(), '00_0000003d_00')
+        self.assertEqual(str(sco), '00_0000003d_00')
         sco = ToolCut.SCO('00_00000000_00')
         self.assertFalse(sco.asBool())
 

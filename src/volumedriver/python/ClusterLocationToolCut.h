@@ -24,8 +24,6 @@ namespace volumedriver
 namespace python
 {
 
-class SCOToolCut;
-
 class ClusterLocationToolCut
 {
 public:
@@ -51,7 +49,7 @@ public:
     std::string
     str() const;
 
-    SCOToolCut*
+    volumedriver::SCO
     sco();
 
     std::string

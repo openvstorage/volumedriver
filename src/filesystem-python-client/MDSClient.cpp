@@ -26,11 +26,13 @@
 #include <volumedriver/OwnerTag.h>
 #include <volumedriver/metadata-server/Interface.h>
 #include <volumedriver/metadata-server/PythonClient.h>
-#include <volumedriver/SCO.h>
+#include <volumedriver/python/SCOAdapter.h>
 
 namespace bpy = boost::python;
 namespace mds = metadata_server;
 namespace vd = volumedriver;
+namespace vpy = volumedriver::python;
+namespace ypy = youtils::python;
 namespace yt = youtils;
 
 namespace volumedriverfs
@@ -54,7 +56,9 @@ repr(T* t)
 void
 MDSClient::registerize()
 {
-    bpy::enum_<mds::Role>("Role")
+    ypy::register_once<vpy::SCOAdapter>();
+
+        bpy::enum_<mds::Role>("Role")
         .value("Master", mds::Role::Master)
         .value("Slave", mds::Role::Slave)
         ;
@@ -76,29 +80,6 @@ MDSClient::registerize()
         DEF_READONLY(full_rebuilds)
 
 #undef DEF_READONLY
-        ;
-
-    vd::SCOCloneID (vd::SCO::*get_sco_clone_id)() const = &vd::SCO::cloneID;
-    vd::SCONumber (vd::SCO::*get_sco_number)() const = &vd::SCO::number;
-    vd::SCOVersion (vd::SCO::*get_sco_version)() const = &vd::SCO::version;
-
-    bpy::class_<vd::SCO,
-                boost::noncopyable>("SCO",
-                                    "A volumedriver SCO",
-                                    bpy::no_init)
-        .def("__repr__",
-             &repr<vd::SCO>)
-        .def("__str__",
-             &repr<vd::SCO>)
-        .def("clone_id",
-             get_sco_clone_id,
-             "SCO clone ID")
-        .def("number",
-             get_sco_number,
-             "SCO number")
-        .def("version",
-             get_sco_version,
-             "SCO version")
         ;
 
     vd::SCOOffset (vd::ClusterLocation::*get_loc_offset)() const = &vd::ClusterLocation::offset;

@@ -14,7 +14,6 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "ClusterLocationToolCut.h"
-#include "SCOToolCut.h"
 #include <iostream>
 
 namespace volumedriver
@@ -68,10 +67,10 @@ ClusterLocationToolCut::str() const
     return loc_.str();
 }
 
-SCOToolCut*
+volumedriver::SCO
 ClusterLocationToolCut::sco()
 {
-    return new SCOToolCut(loc_.sco());
+    return loc_.sco();
 }
 
 std::string
