@@ -17,7 +17,7 @@
 #define ENTRY_TOOLCUT_H_
 
 #include "../Entry.h"
-#include "ClusterLocationToolCut.h"
+#include "../ClusterLocation.h"
 
 #include <youtils/Logging.h>
 
@@ -46,7 +46,7 @@ public:
     volumedriver::ClusterAddress
     clusterAddress() const;
 
-    ClusterLocationToolCut
+    volumedriver::ClusterLocation
     clusterLocation() const;
 
     std::string

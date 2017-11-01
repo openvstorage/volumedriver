@@ -494,7 +494,7 @@ class ClusterLocationTest(unittest.TestCase):
         self.assertEqual(cl.version(), 0)
         self.assertEqual(cl.cloneID(), 0)
         self.assertEqual(cl.offset(), 1)
-        self.assertEqual(cl.str(), '00_0000003d_00:0001')
+        self.assertEqual(str(cl), '00_0000003d_00:0001')
 
 
 class TLogReaderTest(unittest.TestCase):

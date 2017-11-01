@@ -14,7 +14,6 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include "MetadataStoreToolCut.h"
-#include "ClusterLocationToolCut.h"
 
 #include "../ClusterLocationAndHash.h"
 
@@ -39,7 +38,7 @@ public:
     virtual void
     operator()(ClusterAddress addr, const ClusterLocationAndHash& hsh)
     {
-        obj_(addr, ClusterLocationToolCut(hsh.clusterLocation));
+        obj_(addr, hsh.clusterLocation);
     }
 
 private:

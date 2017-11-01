@@ -16,7 +16,6 @@
 #include <boost/foreach.hpp>
 #include <boost/python/dict.hpp>
 
-#include "ClusterLocationToolCut.h"
 #include "EntryToolCut.h"
 #include "TLogReaderToolCut.h"
 
@@ -97,7 +96,7 @@ struct TLogCallBacker : public BasicDispatchProcessor
         {
             // Do we wanna pass the weeds here... will be slow??
             ClusterEntry_(ca,
-                          ClusterLocationToolCut(lh.clusterLocation));
+                          lh.clusterLocation);
         }
     }
 

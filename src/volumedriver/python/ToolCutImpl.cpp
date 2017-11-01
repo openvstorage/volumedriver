@@ -13,7 +13,7 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "ClusterLocationToolCut.h"
+#include "ClusterLocationAdapter.h"
 #include "EntryToolCut.h"
 #include "MetadataStoreToolCut.h"
 #include "SCOAccessDataInfo.h"
@@ -473,28 +473,8 @@ DEFINE_PYTHON_WRAPPER(ToolCutImpl)
         .def("forEach", & MetadataStoreToolCut::forEach,
              "Apply a function to each entry in the metadatastore");
 
-    bpy::class_<ClusterLocationToolCut>("ClusterLocation",
-                                        "Interface to clusterlocation i.e. a sco and an offset in that sco",
-                                        bpy::init<const std::string&>("Construct from a string (XX_XXXXXXXX_XX:XXXX)"))
-        .def("__str__", &ClusterLocationToolCut::str)
-        .def("__repr__", &ClusterLocationToolCut::repr)
-        .def("offset", &ClusterLocationToolCut::offset,
-             "Get the offset in the sco")
-        .def("version", &ClusterLocationToolCut::version,
-             "Get the version of the sco")
-        .def("cloneID", &ClusterLocationToolCut::cloneID,
-             "Get the cloneID of the sco")
-        .def("number", &ClusterLocationToolCut::number,
-             "Get the number of the sco")
-        .def("str", &ClusterLocationToolCut::str,
-             "Get the stringified form of the clusterlocation")
-        .def("sco", &ClusterLocationToolCut::sco,
-             "Get the SCO associated with this clusterlocation")
-        .def("isClusterLocationString", &ClusterLocationToolCut::isClusterLocationString,
-             "Test whether the string is the standard representation of a clusterlocation")
-        .staticmethod("isClusterLocationString");
-
     ypy::register_once<SCOAdapter>();
+    ypy::register_once<ClusterLocationAdapter>();
 }
 
 }

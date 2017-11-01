@@ -39,10 +39,10 @@ EntryToolCut::clusterAddress() const
     return entry_->clusterAddress();
 }
 
-ClusterLocationToolCut
+volumedriver::ClusterLocation
 EntryToolCut::clusterLocation() const
 {
-    return ClusterLocationToolCut(entry_->clusterLocation());
+    return entry_->clusterLocation();
 }
 
 std::string

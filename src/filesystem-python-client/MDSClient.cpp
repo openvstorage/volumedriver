@@ -26,6 +26,7 @@
 #include <volumedriver/OwnerTag.h>
 #include <volumedriver/metadata-server/Interface.h>
 #include <volumedriver/metadata-server/PythonClient.h>
+#include <volumedriver/python/ClusterLocationAdapter.h>
 #include <volumedriver/python/SCOAdapter.h>
 
 namespace bpy = boost::python;
@@ -57,6 +58,7 @@ void
 MDSClient::registerize()
 {
     ypy::register_once<vpy::SCOAdapter>();
+    ypy::register_once<vpy::ClusterLocationAdapter>();
 
         bpy::enum_<mds::Role>("Role")
         .value("Master", mds::Role::Master)
@@ -80,23 +82,6 @@ MDSClient::registerize()
         DEF_READONLY(full_rebuilds)
 
 #undef DEF_READONLY
-        ;
-
-    vd::SCOOffset (vd::ClusterLocation::*get_loc_offset)() const = &vd::ClusterLocation::offset;
-
-    bpy::class_<vd::ClusterLocation>("ClusterLocation",
-                                     "A volumedriver ClusterLocation",
-                                     bpy::no_init)
-        .def("__repr__",
-             &repr<vd::ClusterLocation>)
-        .def("__str__",
-             &repr<vd::ClusterLocation>)
-        .def("offset",
-             get_loc_offset,
-             "offset")
-        .def("sco",
-             &vd::ClusterLocation::sco,
-             "SCO")
         ;
 
     bpy::class_<vd::ClusterLocationAndHash>("ClusterLocationAndHash",
