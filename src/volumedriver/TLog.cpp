@@ -30,6 +30,12 @@ TLog::TLog()
     , size(0)
 {}
 
+TLog::TLog(const TLogId& tlog_id)
+    : uuid(tlog_id.t)
+    , written_to_backend(false)
+    , size(0)
+{}
+
 void
 TLog::writtenToBackend(bool in_backend)
 {
