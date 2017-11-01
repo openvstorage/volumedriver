@@ -68,6 +68,8 @@
 #include <volumedriver/PythonScrubber.h>
 #include <volumedriver/SCOCacheInfo.h>
 
+#include <volumedriver/python/ToolCutImpl.h>
+
 #include <filesystem/ClusterId.h>
 #include <filesystem/ClusterRegistry.h>
 #include <filesystem/FailOverCacheConfigMode.h>
@@ -85,6 +87,7 @@ namespace ara = arakoon;
 namespace bpy = boost::python;
 namespace fs = boost::filesystem;
 namespace vd = volumedriver;
+namespace vpy = volumedriver::python;
 namespace vfs = volumedriverfs;
 namespace vfspy = volumedriverfs::python;
 namespace ypy = youtils::python;
@@ -216,6 +219,7 @@ export_debug_module()
 
     vfspy::ScrubManagerClient::registerize();
     vfspy::ScrubWork::registerize();
+    ypy::register_once<vpy::ToolCutImpl>();
 }
 
 template<typename T>

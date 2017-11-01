@@ -12,10 +12,10 @@ storagerouterclient_la_SOURCES = \
 	LockedClient.cpp \
 	MDSClient.cpp \
 	ObjectRegistryClient.cpp \
+	PythonTestHelpers.cpp \
 	ScrubManagerClient.cpp \
 	ScrubWork.cpp \
-	StorageRouterClient.cpp \
-	PythonTestHelpers.cpp
+	StorageRouterClient.cpp
 
 storagerouterclient_la_LDFLAGS = -module -shared
 
