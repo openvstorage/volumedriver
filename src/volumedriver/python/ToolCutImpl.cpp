@@ -167,14 +167,12 @@ DEFINE_PYTHON_WRAPPER(ToolCutImpl)
     bpy::class_<VolumeInfo,
                 boost::noncopyable>("VolumeInfo",
                                     "Information about a volume",
-                                    bpy::init<bpy::object&,
-                                    const std::string&>("Creation from a backend and a namespace.\n"
-                                                        "@param a backend\n"
-                                                        "@param a string, the namespace to connect to"))
-        .def(bpy::init<const std::string&,
-             const std::string&>("Creation from a VolumeConfig file and a FailOverCacheConfig file (as they are stored on the backend).\n"
-                                 "@param a string, the path to the VolumeConfig file\n"
-                                 "@param a string, the path to the FailoverCacheConfig file"))
+                                    bpy::init<const std::string&,
+                                              const std::string&>((bpy::args("volume_config_path"),
+                                                                   bpy::args("failovercache_config_path")),
+                                                                  "Constructor from a VolumeConfig file and a FailOverCacheConfig file (as they are stored on the backend).\n"
+                                                                  "@param volume_config_path, the path to the VolumeConfig file\n"
+                                                                  "@param failovercache_config_path, the path to the FailoverCacheConfig file"))
         .def("__str__", &VolumeInfo::str)
         .def("__repr__", &VolumeInfo::repr)
         .def("volumeID", &VolumeInfo::volumeID,
@@ -221,12 +219,9 @@ DEFINE_PYTHON_WRAPPER(ToolCutImpl)
              "@returns the failover cache port");
 
     bpy::class_<SnapshotPersistorToolCut>("SnapshotPersistor",
-                                          bpy::init<bpy::object&,
-                                          const std::string&>("Creation from a backend and a namespace.\n"
-                                                              "@param a backend\n"
-                                                              "@param a string, the namespace to connect to"))
-        .def(bpy::init<const std::string&>("Creation from a snapshots xml file.\n"
-                                           "@param a string, path to the snapshots file"))
+                                          bpy::init<const std::string&>(bpy::args("path"),
+                                                                        "Constructor from a snapshots.xml file\n"
+                                                                        "@param path, path to the snapshots file\n"))
         .def("__str__", &SnapshotPersistorToolCut::str)
         .def("__repr__", &SnapshotPersistorToolCut::repr)
         .def("forEach", &SnapshotPersistorToolCut::forEach,
@@ -252,7 +247,6 @@ DEFINE_PYTHON_WRAPPER(ToolCutImpl)
              "Shows all the snapshots after a given snapshot.\n"
              "@param a string, the snapshot name\n"
              "@return a list of strings, the snapshots after the given snapshot")
-
         .def("currentStored", & SnapshotPersistorToolCut::currentStored,
              "Gives the amount of data stored beyond the last snapshot.\n"
              "@returns a number")
@@ -263,7 +257,6 @@ DEFINE_PYTHON_WRAPPER(ToolCutImpl)
         .def("stored", & SnapshotPersistorToolCut::stored,
              "Gives the total amount of data stored for the volume.\n"
              "@returns a number")
-
         .def("getAllTLogs", &SnapshotPersistorToolCut::getAllTLogs,
              "Returns a list of all TLogs.\n"
              "@param a bool, whether to get the current tlogs too\n"
@@ -362,15 +355,8 @@ DEFINE_PYTHON_WRAPPER(ToolCutImpl)
     bpy::class_<TLogReaderToolCut,
                 boost::noncopyable>("TLogReader",
                                     "Process the contents of a TLog",
-                                    bpy::init<const std::string&>("Construct based on a local tlog file.\n"))
-        .def(bpy::init<bpy::object&,
-             const std::string&,
-             const std::string&,
-             const std::string&>("Constructor from a backend. the file the tlog is written to won't be removed.\n"
-                                 "@param a  backend\n"
-                                 "@param a string, the namespace to connect to\n"
-                                 "@param a string, the tlog name\n"
-                                 "@param a string, the path to write the tlog too"))
+                                    bpy::init<const std::string&>(bpy::args("path"),
+                                                                  "Constructor from a TLog file\n"))
         .def("__str__", &TLogReaderToolCut::str)
         .def("__repr__", &TLogReaderToolCut::repr)
         .def("SCONames", &TLogReaderToolCut::SCONames,
@@ -402,10 +388,8 @@ DEFINE_PYTHON_WRAPPER(ToolCutImpl)
 
     bpy::class_<SCOAccessDataInfo, boost::noncopyable>("SCOAccessDataInfo",
                                                        "Get SCOAccessData content",
-                                                       bpy::init<std::string>())
-        .def(bpy::init<const std::string&,
-             bpy::object&,
-             const std::string&>())
+                                                       bpy::init<std::string>(bpy::args("path"),
+                                                                              "Constructor from a file\n"))
         .def("namespace", &SCOAccessDataInfo::getNamespace,
              "Get namespace this SCOAccessData applies to")
         .def("readActivity", &SCOAccessDataInfo::getReadActivity,
@@ -416,13 +400,8 @@ DEFINE_PYTHON_WRAPPER(ToolCutImpl)
     bpy::class_<ScrubbingResultToolCut,
                 boost::noncopyable>("ScrubbingResult",
                                     "Shows the information related to a scrubbing run",
-                                    bpy::init<std::string>())
-        .def(bpy::init<bpy::object&,
-             const std::string&,
-             const std::string&>("Takes a backend, a namespace and a filename.\n"
-                                 "@param a backend\n"
-                                 "@param a string, the namespace to get the scrubbing from\n"
-                                 "@param a string, the scrubbing result object name"))
+                                    bpy::init<std::string>(bpy::args("path"),
+                                                           "Constructor from a file\n"))
         .def("snapshotName",
              &ScrubbingResultToolCut::getSnapshotName,
              "Name of the snapshot that was scrubbed")
@@ -463,9 +442,11 @@ DEFINE_PYTHON_WRAPPER(ToolCutImpl)
              "@returns a bool, whether the string is a scrubbing_result")
         .staticmethod("isScrubbingResultString");
 
-    bpy::class_<MetadataStoreToolCut, boost::noncopyable>("MetadataStore",
-                                                          "Interface to the tokyo cabinet metadastore",
-                                                          bpy::init<std::string>())
+    bpy::class_<MetadataStoreToolCut,
+                boost::noncopyable>("MetadataStore",
+                                    "Interface to the tokyo cabinet metadastore",
+                                    bpy::init<std::string>(bpy::args("path"),
+                                                           "Constructor from a file\n"))
         .def("readCluster", &MetadataStoreToolCut::readCluster,
              "Read the sco location of a particular cluster.\n"
              "@param a number, the clusteraddress of the cluster"

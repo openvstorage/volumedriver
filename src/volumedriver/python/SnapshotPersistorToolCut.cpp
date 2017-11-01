@@ -55,7 +55,6 @@ SnapshotPersistorToolCut::getSnapshots() const
     return result;
 }
 
-
 vd::SnapshotNum
 SnapshotPersistorToolCut::getSnapshotNum(const std::string& snapshot) const
 {
@@ -292,19 +291,6 @@ SnapshotPersistorToolCut::setSnapshotScrubbed(const std::string& snap_name,
 {
     vd::SnapshotNum snum = snapshot_persistor_->getSnapshotNum(vd::SnapshotName(snap_name));
     snapshot_persistor_->setSnapshotScrubbed(snum, scrubbed);
-}
-
-SnapshotPersistorToolCut::SnapshotPersistorToolCut(bpy::object& backend,
-                                                   const std::string& nspace)
-{
-    fs::path p(vd::FileUtils::create_temp_file_in_temp_dir(std::string("snapshots")));
-    ALWAYS_CLEANUP_FILE(p);
-
-    backend.attr("read")(nspace,
-                         p.string(),
-                         vd::snapshotFilename(),
-                         true);
-    snapshot_persistor_.reset(new vd::SnapshotPersistor(p));
 }
 
 SnapshotPersistorToolCut::SnapshotPersistorToolCut(const std::string& p)

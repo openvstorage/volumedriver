@@ -31,19 +31,6 @@ SCOAccessDataInfo::SCOAccessDataInfo(const fs::path& p)
 {
 }
 
-SCOAccessDataInfo::SCOAccessDataInfo(const fs::path& dst_path,
-                                     bpy::object& backend,
-                                     const std::string& nspace)
-    : sad_(nullptr)
-{
-
-    backend.attr("read")(nspace,
-                         dst_path.string(),
-                         vd::SCOAccessDataPersistor::backend_name,
-                         true);
-    sad_ = vd::SCOAccessDataPersistor::deserialize(dst_path);
-}
-
 std::string
 SCOAccessDataInfo::getNamespace() const
 {

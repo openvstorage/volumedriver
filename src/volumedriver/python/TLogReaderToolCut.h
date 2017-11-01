@@ -35,16 +35,10 @@ class TLogReaderToolCut
 {
 public:
     // More constructor -- e.g list of tlogs...
-
     explicit TLogReaderToolCut(const fs::path& path);
 
-    TLogReaderToolCut(boost::python::object& backend_config,
-                      const std::string& nspace,
-                      const std::string& name,
-                      const fs::path& dst_path);
-
-
     TLogReaderToolCut(const TLogReaderToolCut&) = delete;
+
     TLogReaderToolCut& operator=(const TLogReaderToolCut&) = delete;
 
     bpy::list

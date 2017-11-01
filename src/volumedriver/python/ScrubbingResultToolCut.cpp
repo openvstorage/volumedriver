@@ -21,8 +21,6 @@
 #include <youtils/Assert.h>
 #include <youtils/FileUtils.h>
 
-#include <backend-python/ConnectionInterface.h>
-
 #include <volumedriver/Types.h>
 
 namespace volumedriver
@@ -40,24 +38,6 @@ ScrubbingResultToolCut::ScrubbingResultToolCut(const std::string& filename)
     boost::archive::text_iarchive ia(ifs);
     ia >> scrub_result;
 }
-
-TODO("AR: drop filename argument");
-
-ScrubbingResultToolCut::ScrubbingResultToolCut(boost::python::object& backend,
-                                               const std::string& nspace,
-                                               const std::string& /* filename */)
-{
-    fs::path p(vd::FileUtils::create_temp_file_in_temp_dir("scrubber_result"));
-    ALWAYS_CLEANUP_FILE(p);
-    backend.attr("read")(nspace,
-                         p.string(),
-                         vd::snapshotFilename());
-
-    std::ifstream ifs(p.string());
-    boost::archive::text_iarchive ia(ifs);
-    ia >> scrub_result;
-}
-
 
 std::string
 ScrubbingResultToolCut::getSnapshotName() const

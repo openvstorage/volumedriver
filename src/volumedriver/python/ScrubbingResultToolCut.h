@@ -28,11 +28,7 @@ namespace python
 class ScrubbingResultToolCut
 {
 public:
-    ScrubbingResultToolCut(const std::string& name);
-
-    ScrubbingResultToolCut(boost::python::object& backend,
-                           const std::string& nspace,
-                           const std::string& filename);
+    explicit ScrubbingResultToolCut(const std::string& name);
 
     ScrubbingResultToolCut(const ScrubbingResultToolCut&) = delete;
 

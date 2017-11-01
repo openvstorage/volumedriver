@@ -44,21 +44,6 @@ TLogReaderToolCut::TLogReaderToolCut(const fs::path& path)
     tlog_reader_.reset(new vd::TLogReader(path));
 }
 
-
-TLogReaderToolCut::TLogReaderToolCut(boost::python::object& backend,
-                                     const std::string& nspace,
-                                     const std::string& tlog_name,
-                                     const fs::path& path)
-    : path_(path)
-{
-    backend.attr("read")(nspace,
-                         path.string(),
-                         tlog_name,
-                         true);
-    tlog_reader_.reset(new vd::TLogReader(path));
-}
-
-
 bpy::list
 TLogReaderToolCut::SCONames() const
 {

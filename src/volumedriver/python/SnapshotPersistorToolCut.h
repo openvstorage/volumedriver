@@ -38,11 +38,7 @@ namespace python
 class SnapshotPersistorToolCut
 {
 public:
-    SnapshotPersistorToolCut(boost::python::object& backend,
-                             const std::string& nspace);
-
     explicit SnapshotPersistorToolCut(const std::string& file);
-
 
     boost::python::list
     getSnapshots() const;

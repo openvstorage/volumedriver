@@ -37,10 +37,6 @@ class SCOAccessDataInfo
 public:
     explicit SCOAccessDataInfo(const fs::path& p);
 
-    SCOAccessDataInfo(const fs::path& dst_path,
-                      bpy::object& backend_config,
-                      const std::string& nspace);
-
     SCOAccessDataInfo(const SCOAccessDataInfo&) = delete;
 
     SCOAccessDataInfo&
