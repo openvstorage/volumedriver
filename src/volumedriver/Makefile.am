@@ -194,6 +194,7 @@ libvolumedriver_la_SOURCES = \
 	TLogWriter.cpp \
 	TokyoCabinetMetaDataBackend.cpp \
 	python/ClusterLocationAdapter.cpp \
+	python/ClusterLocationAndHashAdapter.cpp \
 	python/EntryToolCut.cpp \
 	python/MetadataStoreToolCut.cpp \
 	python/SCOAccessDataInfo.cpp \

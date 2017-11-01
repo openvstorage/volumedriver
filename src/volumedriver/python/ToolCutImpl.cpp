@@ -474,7 +474,7 @@ DEFINE_PYTHON_WRAPPER(ToolCutImpl)
              "Apply a function to each entry in the metadatastore");
 
     ypy::register_once<SCOAdapter>();
-    ypy::register_once<ClusterLocationAdapter>();
+    ypy::register_once<ClusterLocationAndHashAdapter>();
 }
 
 }

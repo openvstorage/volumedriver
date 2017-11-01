@@ -26,8 +26,7 @@
 #include <volumedriver/OwnerTag.h>
 #include <volumedriver/metadata-server/Interface.h>
 #include <volumedriver/metadata-server/PythonClient.h>
-#include <volumedriver/python/ClusterLocationAdapter.h>
-#include <volumedriver/python/SCOAdapter.h>
+#include <volumedriver/python/ClusterLocationAndHashAdapter.h>
 
 namespace bpy = boost::python;
 namespace mds = metadata_server;
@@ -57,10 +56,11 @@ repr(T* t)
 void
 MDSClient::registerize()
 {
-    ypy::register_once<vpy::SCOAdapter>();
-    ypy::register_once<vpy::ClusterLocationAdapter>();
+    ypy::register_once<vpy::ClusterLocationAndHashAdapter>();
 
-        bpy::enum_<mds::Role>("Role")
+    REGISTER_ITERABLE_CONVERTER(std::vector<vd::ClusterLocationAndHash>);
+
+    bpy::enum_<mds::Role>("Role")
         .value("Master", mds::Role::Master)
         .value("Slave", mds::Role::Slave)
         ;
@@ -83,20 +83,6 @@ MDSClient::registerize()
 
 #undef DEF_READONLY
         ;
-
-    bpy::class_<vd::ClusterLocationAndHash>("ClusterLocationAndHash",
-                                            "A volumedriver ClusterLocationAndHash",
-                                            bpy::no_init)
-        .def("__repr__",
-             &repr<vd::ClusterLocationAndHash>)
-        .def("__str__",
-             &repr<vd::ClusterLocationAndHash>)
-        .add_property("location",
-                      bpy::make_getter(&vd::ClusterLocationAndHash::clusterLocation,
-                                       bpy::return_value_policy<bpy::return_by_value>()))
-        ;
-
-    REGISTER_ITERABLE_CONVERTER(std::vector<vd::ClusterLocationAndHash>);
 
     bpy::class_<mds::PythonClient>("MDSClient",
                                    "management and monitoring of MetaDataServer (MDS)",
