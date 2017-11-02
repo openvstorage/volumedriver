@@ -136,20 +136,11 @@ protected:
                       mdscfg->apply_relocations_to_slaves());
             ASSERT_EQ(std::chrono::seconds(mds_timeout_secs),
                       mdscfg->timeout());
-            if (yt::IsForwardCompatibleArchive<OArchive>::value)
-            {
-                ASSERT_TRUE(yt::IsForwardCompatibleArchive<IArchive>::value);
-                ASSERT_NE(boost::none,
-                          mdscfg->max_tlogs_behind());
-                ASSERT_EQ(max_tlogs_behind,
-                          *mdscfg->max_tlogs_behind());
-            }
-            else
-            {
-                ASSERT_FALSE(yt::IsForwardCompatibleArchive<IArchive>::value);
-                ASSERT_EQ(boost::none,
-                          mdscfg->max_tlogs_behind());
-            }
+
+            ASSERT_NE(boost::none,
+                      mdscfg->max_tlogs_behind());
+            ASSERT_EQ(max_tlogs_behind,
+                      *mdscfg->max_tlogs_behind());
 
             mdb.reset();
         }
