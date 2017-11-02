@@ -13,9 +13,9 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
+#include "ScrubberAdapter.h"
 #include "ScrubReply.h"
 #include "ScrubWork.h"
-#include "PythonScrubber.h"
 
 #include <iostream>
 #include <string>
@@ -25,10 +25,13 @@
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/enum.hpp>
+#include <boost/python/tuple.hpp>
 
 #include <youtils/ConfigFetcher.h>
 #include <youtils/OptionValidators.h>
 #include <youtils/Uri.h>
+
+#include <volumedriver/ScrubberAdapter.h>
 
 namespace scrubbing
 {
@@ -41,17 +44,18 @@ namespace bpt = boost::property_tree;
 namespace bpy = boost::python;
 namespace yt = youtils;
 
-bpy::tuple
-Scrubber::scrub(const std::string& scrub_work_str,
-                const std::string& scratch_dir,
-                const uint64_t region_size_exponent,
-                const float fill_ratio,
-                const bool apply_immediately,
-                const bool verbose_scrubbing,
-                const boost::optional<std::string>& backend_config)
+namespace
 {
-    using namespace scrubbing;
 
+bpy::tuple
+scrub(const std::string& scrub_work_str,
+      const std::string& scratch_dir,
+      const uint64_t region_size_exponent,
+      const float fill_ratio,
+      const bool apply_immediately,
+      const bool verbose_scrubbing,
+      const boost::optional<std::string>& backend_config)
+{
     const ScrubWork work(scrub_work_str);
 
     std::unique_ptr<be::BackendConfig> bcfg;
@@ -65,37 +69,39 @@ Scrubber::scrub(const std::string& scrub_work_str,
         cm_params = be::ConnectionManagerParameters(pt);
     }
 
-    const ScrubReply reply(ScrubberAdapter::scrub(std::move(bcfg),
-                                                  cm_params,
-                                                  work,
-                                                  scratch_dir,
-                                                  region_size_exponent,
-                                                  fill_ratio,
-                                                  apply_immediately,
-                                                  verbose_scrubbing));
+    const ScrubReply reply(scrubbing::ScrubberAdapter::scrub(std::move(bcfg),
+                                                             cm_params,
+                                                             work,
+                                                             scratch_dir,
+                                                             region_size_exponent,
+                                                             fill_ratio,
+                                                             apply_immediately,
+                                                             verbose_scrubbing));
 
     return bpy::make_tuple(work.id_.str(),
                            reply.str());
 }
 
-void
-Scrubber::registerize()
+}
+
+DEFINE_PYTHON_WRAPPER(ScrubberAdapter)
 {
     using namespace boost::python;
 
-    class_<Scrubber, boost::noncopyable>("Scrubber",
-                                         "Scrubbing functionality for python",
-                                         init<>(""))
+    class_<ScrubberAdapter,
+           boost::noncopyable>("Scrubber",
+                               "Scrubbing functionality for Python",
+                               init<>(""))
         .def("scrub",
-             &Scrubber::scrub,
+             &scrub,
              (args("work_unit"),
               args("scratch_dir"),
-              args("region_size_exponent") = ScrubberAdapter::region_size_exponent_default,
-              args("fill_ratio") = ScrubberAdapter::fill_ratio_default,
-              args("apply_immediately") = ScrubberAdapter::apply_immediately_default,
-              args("verbose_scrubbing") = ScrubberAdapter::verbose_scrubbing_default,
+              args("region_size_exponent") = scrubbing::ScrubberAdapter::region_size_exponent_default,
+              args("fill_ratio") = scrubbing::ScrubberAdapter::fill_ratio_default,
+              args("apply_immediately") = scrubbing::ScrubberAdapter::apply_immediately_default,
+              args("verbose_scrubbing") = scrubbing::ScrubberAdapter::verbose_scrubbing_default,
               args("backend_config") = boost::optional<std::string>()),
-              "Scrubs a work unit and returns a scrub_result\n",
+             "Scrubs a work unit and returns a scrub_result\n",
              "@param work_unit: a string, a opaque string that encodes the scrub work\n"
              "@param region_size_exponent: a number, "
              "region_size_exponent don't change from default if you don't know what you're doing, default 25\n"
@@ -103,7 +109,7 @@ Scrubber::registerize()
              "@param fill_ratio: a number, giving the sco fill ratio, default 0.9\n"
              "@param apply_immediately: a boolean, "
              "should be set to true only for scrubbing with PIT replicated volumes, default False\n"
-             "@parm verbose_scrubbing: a boolean, whether the scrubbing should print it's intermediate result, default True\n"
+             "@param verbose_scrubbing: a boolean, whether the scrubbing should print it's intermediate result, default True\n"
              "@param backend_config: optional string, backend config location (file, etcd url, ...)\n"
              "@result a tuple of volume_id and a string that encodes the scrub result to apply")
         .staticmethod("scrub");

@@ -158,7 +158,20 @@ libvolumedriver_la_SOURCES = \
 	PartScrubber.cpp \
 	PerformanceCounters.cpp \
 	PrefetchData.cpp \
-	PythonScrubber.cpp \
+	python/ClusterLocationAdapter.cpp \
+	python/ClusterLocationAndHashAdapter.cpp \
+	python/EntryToolCut.cpp \
+	python/MetadataStoreToolCut.cpp \
+	python/SCOAccessDataInfo.cpp \
+	python/SCOAdapter.cpp \
+	python/ScrubberAdapter.cpp \
+	python/ScrubbingResultToolCut.cpp \
+	python/SnapshotPersistorToolCut.cpp \
+	python/SnapshotToolCut.cpp \
+	python/TLogReaderToolCut.cpp \
+	python/TLogToolCut.cpp \
+	python/ToolCutImpl.cpp \
+	python/VolumeInfo.cpp \
 	RelocationReaderFactory.cpp \
 	RocksDBMetaDataBackend.cpp \
 	RestartContext.cpp \
@@ -193,19 +206,6 @@ libvolumedriver_la_SOURCES = \
 	TLogSplitter.cpp \
 	TLogWriter.cpp \
 	TokyoCabinetMetaDataBackend.cpp \
-	python/ClusterLocationAdapter.cpp \
-	python/ClusterLocationAndHashAdapter.cpp \
-	python/EntryToolCut.cpp \
-	python/MetadataStoreToolCut.cpp \
-	python/SCOAccessDataInfo.cpp \
-	python/SCOAdapter.cpp \
-	python/ScrubbingResultToolCut.cpp \
-	python/SnapshotPersistorToolCut.cpp \
-	python/SnapshotToolCut.cpp \
-	python/TLogReaderToolCut.cpp \
-	python/TLogToolCut.cpp \
-	python/ToolCutImpl.cpp \
-	python/VolumeInfo.cpp \
 	TracePoints_tp.c \
 	TransientException.cpp \
 	VolManager.cpp \

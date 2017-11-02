@@ -65,9 +65,9 @@
 #include <volumedriver/ClusterCount.h>
 #include <volumedriver/MDSNodeConfig.h>
 #include <volumedriver/MetaDataBackendConfig.h>
-#include <volumedriver/PythonScrubber.h>
 #include <volumedriver/SCOCacheInfo.h>
 
+#include <volumedriver/python/ScrubberAdapter.h>
 #include <volumedriver/python/ToolCutImpl.h>
 
 #include <filesystem/ClusterId.h>
@@ -1475,7 +1475,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
 
     vfspy::LockedClient::registerize();
     vfspy::MDSClient::registerize();
-    scrubbing::python::Scrubber::registerize();
+    ypy::register_once<scrubbing::python::ScrubberAdapter>();
 
     vfspy::ObjectRegistryClient::registerize();
 

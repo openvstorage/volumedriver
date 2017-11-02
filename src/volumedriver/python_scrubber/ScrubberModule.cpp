@@ -13,8 +13,6 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "../PythonScrubber.h"
-
 #include <boost/python/class.hpp>
 #include <boost/python/enum.hpp>
 #include <boost/python/module.hpp>
@@ -22,6 +20,8 @@
 #include <youtils/Gcrypt.h>
 #include <youtils/python/BuildInfoAdapter.h>
 #include <youtils/python/LoggingAdapter.h>
+
+#include <volumedriver/python/ScrubberAdapter.h>
 
 namespace ypy = youtils::python;
 
@@ -31,5 +31,5 @@ BOOST_PYTHON_MODULE(scrubber)
 
     ypy::register_once<ypy::LoggingAdapter>();
     ypy::register_once<ypy::BuildInfoAdapter>();
-    scrubbing::python::Scrubber::registerize();
+    ypy::register_once<scrubbing::python::ScrubberAdapter>();
 };
