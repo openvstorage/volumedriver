@@ -13,8 +13,6 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "ConnectionErrors.h"
-#include "ConnectionInterface.h"
 #include "ConnectionManager.h"
 
 #include <boost/python/class.hpp>
@@ -47,32 +45,6 @@ BOOST_PYTHON_MODULE(Backend)
     using namespace boost::python;
     using namespace pythonbackend;
 
-#define EXN(ex)                                                         \
-    {                                                                   \
-        void (*tmp)(const ex&) = translate;                             \
-        register_exception_translator<ex>(tmp); \
-    }
-
-    EXN(backend::BackendClientException);
-    EXN(backend::BackendBackendException);
-    EXN(backend::BackendStoreException);
-    EXN(backend::BackendRestoreException);
-    EXN(backend::BackendAssertionFailedException);
-    EXN(backend::BackendRestoreException);
-    EXN(backend::BackendAssertionFailedException);
-    EXN(backend::BackendObjectDoesNotExistException);
-    EXN(backend::BackendObjectExistsException);
-    EXN(backend::BackendInputException);
-    EXN(backend::BackendCouldNotCreateNamespaceException);
-    EXN(backend::BackendCouldNotDeleteNamespaceException);
-    EXN(backend::BackendNamespaceAlreadyExistsException);
-    EXN(backend::BackendNamespaceDoesNotExistException);
-    EXN(backend::BackendConnectFailureException);
-    EXN(backend::BackendConnectionTimeoutException);
-    EXN(backend::BackendStreamClosedException);
-    EXN(backend::BackendNotImplementedException);
-
-#undef EXN
     yt::Gcrypt::init_gcrypt();
     ypy::register_once<ypy::LoggingAdapter>();
     ypy::register_once<ypy::BuildInfoAdapter>();
@@ -172,6 +144,7 @@ BOOST_PYTHON_MODULE(Backend)
              &ConnectionInterface::str)
         .def("__repr__",
              &ConnectionInterface::str);
+    ypy::register_once<bepy::Exceptions>();
 }
 
 // Local Variables: **
