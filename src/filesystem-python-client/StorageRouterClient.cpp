@@ -13,23 +13,15 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "ArakoonClient.h"
-#include "ChronoDurationConverter.h"
-#include "DictConverter.h"
 #include "FileSystemMetaDataClient.h"
-#include "IterableConverter.h"
 #include "LocalClient.h"
 #include "LockedClient.h"
 #include "MDSClient.h"
 #include "ObjectRegistryClient.h"
-#include "OptionalConverter.h"
-#include "PairConverter.h"
 #include "Piccalilli.h"
 #include "PythonTestHelpers.h"
 #include "ScrubManagerClient.h"
 #include "ScrubWork.h"
-#include "StringyConverter.h"
-#include "StrongArithmeticTypedefConverter.h"
 
 #include <iostream>
 
@@ -58,16 +50,25 @@
 #include <youtils/DimensionedValue.h>
 #include <youtils/Gcrypt.h>
 #include <youtils/Logger.h>
-#include <youtils/LoggerToolCut.h>
-#include <youtils/LoggingToolCut.h>
-#include <youtils/PythonBuildInfo.h>
 #include <youtils/UpdateReport.h>
+#include <youtils/python/ArakoonClient.h>
+#include <youtils/python/BuildInfoAdapter.h>
+#include <youtils/python/ChronoDurationConverter.h>
+#include <youtils/python/DictConverter.h>
+#include <youtils/python/IterableConverter.h>
+#include <youtils/python/LoggingAdapter.h>
+#include <youtils/python/OptionalConverter.h>
+#include <youtils/python/PairConverter.h>
+#include <youtils/python/StringyConverter.h>
+#include <youtils/python/StrongArithmeticTypedefConverter.h>
 
 #include <volumedriver/ClusterCount.h>
 #include <volumedriver/MDSNodeConfig.h>
 #include <volumedriver/MetaDataBackendConfig.h>
-#include <volumedriver/PythonScrubber.h>
 #include <volumedriver/SCOCacheInfo.h>
+
+#include <volumedriver/python/ScrubberAdapter.h>
+#include <volumedriver/python/ToolCutImpl.h>
 
 #include <filesystem/ClusterId.h>
 #include <filesystem/ClusterRegistry.h>
@@ -86,8 +87,10 @@ namespace ara = arakoon;
 namespace bpy = boost::python;
 namespace fs = boost::filesystem;
 namespace vd = volumedriver;
+namespace vpy = volumedriver::python;
 namespace vfs = volumedriverfs;
 namespace vfspy = volumedriverfs::python;
+namespace ypy = youtils::python;
 namespace yt = youtils;
 
 using namespace std::literals::string_literals;
@@ -216,6 +219,7 @@ export_debug_module()
 
     vfspy::ScrubManagerClient::registerize();
     vfspy::ScrubWork::registerize();
+    ypy::register_once<vpy::ToolCutImpl>();
 }
 
 template<typename T>
@@ -310,9 +314,10 @@ TODO("AR: this is a bit of a mess - split into smaller, logical pieces");
 // Piccalilli.h.
 BOOST_PYTHON_MODULE(storagerouterclient)
 {
-    youtils::Logger::disableLogging();
+    yt::Gcrypt::init_gcrypt();
 
-#include <youtils/LoggerToolCut.incl>
+    ypy::register_once<ypy::LoggingAdapter>();
+    ypy::register_once<ypy::BuildInfoAdapter>();
 
     bpy::scope().attr("__doc__") = "configuration and monitoring of volumedriverfs";
     bpy::scope().attr("__path__") = "storagerouterclient";
@@ -330,8 +335,6 @@ BOOST_PYTHON_MODULE(storagerouterclient)
     REGISTER_EXCEPTION_TRANSLATOR(SnapshotNameAlreadyExistsException);
     REGISTER_EXCEPTION_TRANSLATOR(VolumeRestartInProgressException);
     REGISTER_EXCEPTION_TRANSLATOR(VolumeHaltedException);
-
-    yt::Gcrypt::init_gcrypt();
 
     REGISTER_STRINGY_CONVERTER(vfs::ObjectId);
     REGISTER_STRINGY_CONVERTER(vd::VolumeId);
@@ -1081,7 +1084,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
              "@returns: a list of SCOCacheMountPointInfos\n")
         ;
 
-    vfspy::ArakoonClient::registerize();
+    ypy::register_once<ypy::ArakoonClient>();
     vfspy::FileSystemMetaDataClient::registerize();
     vfspy::LocalClient::registerize();
 
@@ -1472,8 +1475,7 @@ BOOST_PYTHON_MODULE(storagerouterclient)
 
     vfspy::LockedClient::registerize();
     vfspy::MDSClient::registerize();
-    youtils::python::BuildInfo::registerize();
-    scrubbing::python::Scrubber::registerize();
+    ypy::register_once<scrubbing::python::ScrubberAdapter>();
 
     vfspy::ObjectRegistryClient::registerize();
 

@@ -7,16 +7,15 @@ storagerouterclient_LTLIBRARIES = storagerouterclient.la
 noinst_DATA = runpython.sh
 
 storagerouterclient_la_SOURCES = \
-	ArakoonClient.cpp \
 	FileSystemMetaDataClient.cpp \
 	LocalClient.cpp \
 	LockedClient.cpp \
 	MDSClient.cpp \
 	ObjectRegistryClient.cpp \
+	PythonTestHelpers.cpp \
 	ScrubManagerClient.cpp \
 	ScrubWork.cpp \
-	StorageRouterClient.cpp \
-	PythonTestHelpers.cpp
+	StorageRouterClient.cpp
 
 storagerouterclient_la_LDFLAGS = -module -shared
 

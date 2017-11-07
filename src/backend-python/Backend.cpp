@@ -16,7 +16,6 @@
 #include "ConnectionErrors.h"
 #include "ConnectionInterface.h"
 #include "ConnectionManager.h"
-#include "PythonBuildInfo.h"
 
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
@@ -26,8 +25,8 @@
 #include <youtils/Gcrypt.h>
 #include <youtils/Logger.h>
 
-#include <youtils/PythonLogging.h>
-#include <youtils/PythonBuildInfo.h>
+#include <youtils/python/BuildInfoAdapter.h>
+#include <youtils/python/LoggingAdapter.h>
 
 #include <backend/AlbaConfig.h>
 #include <backend/BackendConfig.h>
@@ -40,6 +39,7 @@
     .value("F", name::F)                        \
     .value("T", name::T);
 
+namespace ypy = youtils::python;
 namespace yt = youtils;
 
 BOOST_PYTHON_MODULE(Backend)
@@ -73,62 +73,12 @@ BOOST_PYTHON_MODULE(Backend)
     EXN(backend::BackendNotImplementedException);
 
 #undef EXN
-
-    youtils::Logger::disableLogging();
     yt::Gcrypt::init_gcrypt();
-
-    using youtils::Severity;
-
-    enum_<Severity>("Severity",
-                   "What should be logged, one of trace, debug, periodic, info, warning, error, fatal or notification")
-        .value("trace", Severity::trace)
-        .value("debug", Severity::debug)
-        .value("periodic", Severity::periodic)
-        .value("info", Severity::info)
-        .value("warning", Severity::warning)
-        .value("error", Severity::error)
-        .value("fatal", Severity::fatal)
-        .value("notification", Severity::notification);
-
-    using pythonyoutils::Logging;
-
-    class_<pythonyoutils::Logging, boost::noncopyable>("Logging",
-                                                      "Configure the logging",
-                                                      no_init)
-        .def("disableLogging",
-             &Logging::disableLogging,
-             "Disable the logging")
-        .staticmethod("disableLogging")
-        .def("enableLogging",
-             &Logging::enableLogging,
-             "Enable the logging")
-        .staticmethod("enableLogging")
-        .def("loggingEnabled",
-             &Logging::loggingEnabled,
-             "Check whether logging is enabled"
-             "@returns a bool")
-        .staticmethod("loggingEnabled")
-        .def("setupConsoleLogging",
-             &Logging::setupConsoleLogging,
-             (args("severity") = yt::Severity::info,
-              args("progname") = std::string("PythonLogger")),
-             "Setup logging to the console\n"
-             "@param severity, a Severity,  what to log\n"
-             "param progname, String, program name to use for logging\n")
-        .staticmethod("setupConsoleLogging")
-        .def("setupFileLogging",
-             &Logging::setupFileLogging,
-             (args("path"),
-              args("severity") = yt::Severity::info,
-              args("progname") = std::string("PythonLogger")),
-             "Setup logging to a file\n",
-             "@param path, String, path to the output file\n"
-             "@param severity, a Severity, what to log\n"
-             "param progname, String, program name to use for logging\n")
-        .staticmethod("setupFileLogging");
+    ypy::register_once<ypy::LoggingAdapter>();
+    ypy::register_once<ypy::BuildInfoAdapter>();
 
     MAKE_PYTHON_VD_BOOLEAN_ENUM(OverwriteObject,
-                             "Whether to overwrite an existing object in the backend, values are T and F");
+                                "Whether to overwrite an existing object in the backend, values are T and F");
 
     enum_<backend::BackendType>("BackendType",
                                 "Type of backend connection.\n"
@@ -144,23 +94,6 @@ BOOST_PYTHON_MODULE(Backend)
         .value("S3", backend::S3Flavour::S3)
         .value("SWIFT", backend::S3Flavour::SWIFT)
         .value("WALRUS", backend::S3Flavour::WALRUS)
-        ;
-
-    class_<PythonBuildInfo, boost::noncopyable>("BuildInfo",
-                                                 "Holds information about this build",
-                                                 no_init)
-        .def("revision", &PythonBuildInfo::revision,
-             "Get the revision of this build"
-             "@result the revision of this build, a string")
-        .staticmethod("revision")
-        .def("branch", &PythonBuildInfo::branch,
-             "Get the branch of this build"
-             "@result the branch of this build, a string")
-        .staticmethod("branch")
-        .def("buildTime", &PythonBuildInfo::buildTime,
-             "Get the build time version of this build"
-             "@result the build time version of this build, a string")
-        .staticmethod("buildTime")
         ;
 
     class_<ConnectionManager,
@@ -239,8 +172,6 @@ BOOST_PYTHON_MODULE(Backend)
              &ConnectionInterface::str)
         .def("__repr__",
              &ConnectionInterface::str);
-
-    youtils::python::BuildInfo::registerize();
 }
 
 // Local Variables: **

@@ -13,17 +13,17 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include "IterableConverter.h"
 #include "LocalClient.h"
-#include "OptionalConverter.h"
-#include "PairConverter.h"
 #include "Piccalilli.h"
-#include "StrongArithmeticTypedefConverter.h"
 
 #include <boost/python/class.hpp>
 #include <boost/python/enum.hpp>
 
 #include <youtils/Logger.h>
+#include <youtils/python/IterableConverter.h>
+#include <youtils/python/OptionalConverter.h>
+#include <youtils/python/PairConverter.h>
+#include <youtils/python/StrongArithmeticTypedefConverter.h>
 
 #include <volumedriver/ClusterCount.h>
 

@@ -18,6 +18,7 @@
 #include "../Api.h"
 #include "../CachedMetaDataPage.h"
 #include "../DataStoreNG.h"
+#include "../Scrubber.h"
 #include "../VolManager.h"
 
 #include <cerrno>
@@ -26,6 +27,7 @@
 #include <limits>
 #include <regex>
 
+#include <boost/archive/text_oarchive.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
@@ -1495,6 +1497,54 @@ TEST_P(cases, DISABLED_future_interruption)
     boost::this_thread::sleep_for(boost::chrono::seconds(5));
     t.interrupt();
     t.join();
+}
+
+TEST_P(cases, DISABLED_generate_scrub_result)
+{
+    static const auto path(yt::System::get_env_with_default("TOOLCUT_SCRUB_RESULT_PATH",
+                                                            "/tmp/toolcut_scrub_result"s));
+    scrubbing::ScrubberResult res;
+    res.snapshot_name = SnapshotName("snap-6");
+    const std::vector<std::string> tlogs_in{"tlog_270abbfe-44ae-457d-b3a2-d5e04a714ea2",
+            "tlog_17477856-02db-492f-8621-8cc9b6633441",
+            "tlog_66340352-2f75-44f7-bf4e-3559d3178c84",
+            "tlog_c7e7f131-1ca7-42d5-89d3-74909b4e3f9d"};
+
+    for (const auto& t : tlogs_in)
+    {
+        res.tlog_names_in.push_back(boost::lexical_cast<TLogId>(t));
+    }
+
+    const std::vector<std::string> tlogs_out{"tlog_c91fa223-5787-4ffe-9d72-4bd2f2ead12f"};
+
+    for (const auto& t : tlogs_out)
+    {
+        TLog tlog(boost::lexical_cast<TLogId>(t));
+        tlog.add_to_backend_size(10 << 20);
+        tlog.writtenToBackend(true);
+        res.tlogs_out.push_back(tlog);
+    }
+
+    res.relocNum = 0;
+
+    const std::vector<std::string> doomed_scos{"00_0000000a_00",
+            "00_0000000b_00",
+            "00_0000000c_00",
+            "00_0000000d_00",
+            "00_0000000e_00",
+            "00_0000000f_00",
+            "00_00000010_00",
+            "00_00000011_00",
+            "00_00000012_00"};
+
+    for (const auto& s : doomed_scos)
+    {
+        res.sconames_to_be_deleted.emplace_back(s);
+    }
+
+    fs::ofstream ofs(path);
+    boost::archive::text_oarchive oa(ofs);
+    oa << res;
 }
 
 INSTANTIATE_TEST(cases);

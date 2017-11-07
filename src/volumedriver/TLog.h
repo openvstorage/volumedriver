@@ -40,6 +40,8 @@ public:
 
     TLog();
 
+    explicit TLog(const TLogId&);
+
     ~TLog() = default;
 
     TLog(const TLog&) = default;

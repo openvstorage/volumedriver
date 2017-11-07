@@ -6,18 +6,7 @@ toolcut_LTLIBRARIES = ToolCut.la
 noinst_DATA=runpython.sh
 
 ToolCut_la_SOURCES = \
-	ClusterLocationToolCut.cpp \
-	EntryToolCut.cpp \
-	MetadataStoreToolCut.cpp \
-	SCOAccessDataInfo.cpp \
-	SCOToolCut.cpp \
-	ScrubbingResultToolCut.cpp \
-	SnapshotPersistorToolCut.cpp \
-	SnapshotToolCut.cpp \
-	TLogReaderToolCut.cpp \
-	TLogToolCut.cpp \
-	ToolCut.cpp \
-	VolumeInfo.cpp
+	ToolCut.cpp
 
 ToolCut_la_LDFLAGS = -module -shared
 

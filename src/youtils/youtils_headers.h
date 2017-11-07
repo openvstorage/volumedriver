@@ -45,7 +45,6 @@
 #include "Logger.h"
 #include "Logging.h"
 #include "LoggingMacros.h"
-#include "LoggingToolCut.h"
 #include "LRUCache.h"
 #include "MainCorba.h"
 #include "MainEvent.h"
