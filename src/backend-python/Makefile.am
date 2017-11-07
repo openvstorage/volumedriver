@@ -8,8 +8,7 @@ Backend_LTLIBRARIES = Backend.la
 noinst_DATA=runpython.sh
 
 Backend_la_SOURCES = \
-	Backend.cpp \
-	ConnectionManager.cpp
+	Backend.cpp
 
 Backend_la_LDFLAGS = -module -shared
 

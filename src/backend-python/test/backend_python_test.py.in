@@ -39,54 +39,43 @@ class BackendTest(unittest.TestCase):
         shutil.rmtree(self.backend_path)
         os.unlink(self.configuration_file)
 
-    def test1(self):
-        connection_manager = Backend.ConnectionManager(self.configuration_file)
-        connection = connection_manager.getConnection()
-        self.assertFalse(connection.namespaceExists("a-namespace"))
+    def test_namespace_existence(self):
+        connection_manager = Backend.BackendConnectionManager(self.configuration_file)
+        bi = connection_manager.create_backend_interface("a-namespace")
+        self.assertFalse(bi.namespace_exists())
 
-    def test2(self):
-        connection_manager = Backend.ConnectionManager(self.configuration_file)
-        connection = connection_manager.getConnection()
-
-    def test3(self):
-        connection_manager = Backend.ConnectionManager(self.configuration_file)
-        connection = connection_manager.getConnection()
+    def test_namespace_creation_and_removal(self):
+        connection_manager = Backend.BackendConnectionManager(self.configuration_file)
         ns = "a-namespace"
-        self.assertFalse(connection.namespaceExists(ns))
-        connection.createNamespace(ns)
-        self.assertTrue(connection.namespaceExists(ns))
-        connection.deleteNamespace(ns)
-        self.assertFalse(connection.namespaceExists(ns))
+        bi = connection_manager.create_backend_interface(ns)
+        self.assertFalse(bi.namespace_exists())
+        bi.create_namespace()
+        self.assertTrue(bi.namespace_exists())
+        bi.remove_namespace()
+        self.assertFalse(bi.namespace_exists())
 
-    def test4(self):
-        connection_manager = Backend.ConnectionManager(self.configuration_file)
+    def test_upload(self):
+        connection_manager = Backend.BackendConnectionManager(self.configuration_file)
         ns = "a-namespace"
-        connection_manager.getConnection().createNamespace(ns)
-        connection = connection_manager.getConnection()
+        bi = connection_manager.create_backend_interface(ns)
+        bi.create_namespace()
         object_name = "an-object"
-        self.assertFalse(connection.objectExists(ns,
-                                                 object_name))
-        connection.write(ns,
-                         self.configuration_file,
-                         object_name,
-                         Backend.OverwriteObject.F)
-        self.assertTrue(connection.objectExists(ns,
-                                                object_name))
+        self.assertFalse(bi.object_exists(object_name))
+        bi.write(self.configuration_file,
+                 object_name,
+                 Backend.OverwriteObject.F)
+        self.assertTrue(bi.object_exists(object_name))
         self.assertRaises(RuntimeError,
-                          connection.write,
-                          ns,
+                          bi.write,
                           self.configuration_file,
                           object_name,
                           Backend.OverwriteObject.F)
-        connection.write(ns,
-                         self.configuration_file,
-                         object_name,
-                         Backend.OverwriteObject.T)
-        connection.remove(ns,
-                          object_name,
-                          False)
-        self.assertFalse(connection.objectExists(ns,
-                                                 object_name))
+        bi.write(self.configuration_file,
+                 object_name,
+                 Backend.OverwriteObject.T)
+        bi.remove(object_name,
+                  False)
+        self.assertFalse(bi.object_exists(object_name))
 
 
 # Local Variables: **

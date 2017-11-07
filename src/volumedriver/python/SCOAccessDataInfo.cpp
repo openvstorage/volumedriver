@@ -14,7 +14,6 @@
 // but WITHOUT ANY WARRANTY of any kind.
 
 #include <boost/python.hpp>
-#include <backend-python/ConnectionInterface.h>
 #include <boost/python/tuple.hpp>
 #include <boost/foreach.hpp>
 
