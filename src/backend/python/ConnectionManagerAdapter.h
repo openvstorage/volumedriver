@@ -1,4 +1,4 @@
-// Copyright (C) 2016 iNuron NV
+// Copyright (C) 2017 iNuron NV
 //
 // This file is part of Open vStorage Open Source Edition (OSE),
 // as available from
@@ -13,27 +13,21 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef BUG_TWO_H
-#define BUG_TWO_H
-#include "Bug1.h"
+#ifndef BEPY_CONNECTION_MANAGER_ADAPTER_H_
+#define BEPY_CONNECTION_MANAGER_ADAPTER_H_
 
-class Bug2
+#include <youtils/python/Wrapper.h>
+
+namespace backend
 {
-public:
-    Bug2() = default;
 
-    std::string
-    call(const Bug1&)
-    {
-        //        print "Bug2::call";
-    }
+namespace python
+{
 
-    std::string
-    str()
-    {
-        return "Bug2";
-    }
+DECLARE_PYTHON_WRAPPER(ConnectionManagerAdapter);
 
-};
+}
 
-#endif // BUG_TWO_H
+}
+
+#endif // !BEPY_CONNECTION_MANAGER_H_

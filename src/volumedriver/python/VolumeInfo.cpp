@@ -19,7 +19,7 @@
 #include <boost/filesystem/fstream.hpp>
 
 #include <youtils/FileUtils.h>
-#include <backend-python/ConnectionInterface.h>
+
 #include <volumedriver/VolumeConfigPersistor.h>
 
 namespace volumedriver

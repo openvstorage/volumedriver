@@ -1,4 +1,4 @@
-// Copyright (C) 2016 iNuron NV
+// Copyright (C) 2017 iNuron NV
 //
 // This file is part of Open vStorage Open Source Edition (OSE),
 // as available from
@@ -13,18 +13,21 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#ifndef BUG_ONE_H
-#define BUG_ONE_H
-class Bug1
+#ifndef BEPY_EXCEPTIONS_H_
+#define BEPY_EXCEPTIONS_H_
+
+#include <youtils/python/Wrapper.h>
+
+namespace backend
 {
-public:
-    Bug1() = default;
 
-    const std::string
-    str()
-    {
-        return "Bug1";
-    }
-};
+namespace python
+{
 
-#endif // BUG_ONE_H
+DECLARE_PYTHON_WRAPPER(Exceptions);
+
+}
+
+}
+
+#endif // !BEPY_EXCEPTIONS_H_

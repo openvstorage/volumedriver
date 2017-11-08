@@ -18,7 +18,6 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/python/list.hpp>
-#include <backend-python/ConnectionInterface.h>
 #include "../TLogReaderInterface.h"
 
 namespace volumedriver

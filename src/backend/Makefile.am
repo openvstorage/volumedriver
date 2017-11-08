@@ -54,6 +54,9 @@ libbackend_la_SOURCES = \
 	MultiConfig.cpp \
 	Namespace.cpp \
 	NamespacePoolSelector.cpp \
+	python/ConnectionManagerAdapter.cpp \
+	python/Exceptions.cpp \
+	python/InterfaceAdapter.cpp \
 	RoundRobinPoolSelector.cpp \
 	S3Config.cpp \
 	S3_Connection.cpp \

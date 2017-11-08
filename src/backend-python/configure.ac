@@ -24,7 +24,6 @@ AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([__init__.py])
 AC_CONFIG_FILES([.gdbinit])
 AC_CONFIG_FILES([runpython.sh], [chmod +x runpython.sh])
-AC_CONFIG_FILES([bug/Makefile])
 
 AC_CONFIG_FILES([test/Makefile])
 AC_CONFIG_FILES([test/backend_python_test.py])

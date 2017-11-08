@@ -62,6 +62,10 @@
 #include <youtils/python/StringyConverter.h>
 #include <youtils/python/StrongArithmeticTypedefConverter.h>
 
+#include <backend/python/ConnectionManagerAdapter.h>
+#include <backend/python/Exceptions.h>
+#include <backend/python/InterfaceAdapter.h>
+
 #include <volumedriver/ClusterCount.h>
 #include <volumedriver/MDSNodeConfig.h>
 #include <volumedriver/MetaDataBackendConfig.h>
@@ -84,6 +88,7 @@
 // - find a better name before it's becoming too entrenched / while renaming is still cheap.
 
 namespace ara = arakoon;
+namespace bepy = backend::python;
 namespace bpy = boost::python;
 namespace fs = boost::filesystem;
 namespace vd = volumedriver;
@@ -220,6 +225,9 @@ export_debug_module()
     vfspy::ScrubManagerClient::registerize();
     vfspy::ScrubWork::registerize();
     ypy::register_once<vpy::ToolCutImpl>();
+    ypy::register_once<bepy::Exceptions>();
+    ypy::register_once<bepy::InterfaceAdapter>();
+    ypy::register_once<bepy::ConnectionManagerAdapter>();
 }
 
 template<typename T>

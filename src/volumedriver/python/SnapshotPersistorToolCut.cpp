@@ -21,8 +21,6 @@
 
 #include "../SnapshotManagement.h"
 
-#include <backend-python/ConnectionInterface.h>
-
 namespace volumedriver
 {
 

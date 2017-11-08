@@ -1,4 +1,4 @@
-// Copyright (C) 2016 iNuron NV
+// Copyright (C) 2017 iNuron NV
 //
 // This file is part of Open vStorage Open Source Edition (OSE),
 // as available from
@@ -13,25 +13,21 @@
 // Open vStorage is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY of any kind.
 
-#include <boost/python/class.hpp>
-#include <boost/python/def.hpp>
-#include <boost/python/enum.hpp>
-#include <boost/python/module.hpp>
-#include <Bug1.h>
+#ifndef BEPY_INTERFACE_ADAPTER_H_
+#define BEPY_INTERFACE_ADAPTER_H_
 
-BOOST_PYTHON_MODULE(Bug1)
+#include <youtils/python/Wrapper.h>
+
+namespace backend
 {
-    using namespace boost::python;
 
+namespace python
+{
 
-    class_<Bug1,
-           boost::noncopyable>("Bug1",
-                               init<>
-                               ("Creates a Bug1"))
-        .def("__str__",  &Bug1::str)
-        .def("__repr__", &Bug1::str)
-        ;
+DECLARE_PYTHON_WRAPPER(InterfaceAdapter);
+
 }
 
-// Local Variables: **
-// End: **
+}
+
+#endif // !BEPY_INTERFACE_ADAPTER_H_
