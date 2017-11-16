@@ -24,10 +24,12 @@
 
 #include <youtils/Assert.h>
 #include <youtils/FileUtils.h>
+#include <youtils/System.h>
 
 #include <backend/BackendInterface.h>
 
 #include <volumedriver/Api.h>
+#include <volumedriver/CachedMetaDataPage.h>
 #include <volumedriver/DataStoreNG.h>
 #include <volumedriver/VolManager.h>
 #include <volumedriver/VolumeConfig.h>
@@ -37,8 +39,10 @@
 namespace volumedrivertest
 {
 
+using namespace std::literals::string_literals;
 using namespace initialized_params;
 using namespace volumedriver;
+
 namespace bpt = boost::property_tree;
 namespace yt = youtils;
 
@@ -2762,6 +2766,50 @@ TEST_P(SimpleVolumeTest, bytewise)
     check(second, first.size());
     check(third, first.size() + second.size());
     check("\0\0\0\0", first.size() + second.size() + third.size());
+}
+
+TEST_P(SimpleVolumeTest, get_page)
+{
+    static const size_t vsize = yt::System::get_env_with_default("SIMPLE_TEST_VOLUME_SIZE",
+                                                                 128ULL << 20);
+
+    auto wrns(make_random_namespace());
+    SharedVolumePtr v = newVolume(*wrns,
+                                  VolumeSize(vsize));
+
+    const size_t pcap = CachePage::capacity();
+    const size_t csize = v->getClusterSize();
+
+    ASSERT_EQ(0,
+              vsize % csize);
+
+    writeToVolume(*v,
+                  "some irrelevant data"s);
+
+    const TLogId tlog_id = v->scheduleBackendSync();
+    waitForThisBackendWrite(*v);
+
+    ASSERT_TRUE(v->isSyncedToBackendUpTo(tlog_id));
+
+    size_t count = 0;
+    for (ClusterAddress ca = 0; ca < vsize / csize; ca += pcap)
+    {
+        const std::vector<ClusterLocation> locs(v->getMetaDataStore()->get_page(ca));
+        EXPECT_EQ(pcap,
+                  locs.size());
+        for (const auto& loc : locs)
+        {
+            EXPECT_NE(ClusterLocation(0),
+                      loc);
+        }
+
+        ++count;
+    }
+
+    std::cout << "volume size: " << vsize <<
+        ", page capacity " << pcap <<
+        ", cluster size " << csize <<
+        ", pages retrieved " << count << std::endl;
 }
 
 namespace
