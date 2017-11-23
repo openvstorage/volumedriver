@@ -181,9 +181,10 @@ extract_logger_id(const std::string& s)
 const std::string&
 extract_logger_id(const bl::attribute_value_set& avs)
 {
+    static const std::string def;
     return bl::extract_or_default<LoggerAttrType>(logger_attr_key,
                                                   avs,
-                                                  ""s);
+                                                  def);
 }
 
 // delay the extraction of the logger id until it's really necessary.
