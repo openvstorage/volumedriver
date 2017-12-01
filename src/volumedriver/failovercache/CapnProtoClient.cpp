@@ -827,6 +827,8 @@ CapnProtoClient::AsioClient::send_request(kj::Array<capnp::word> capnp_msg,
         VERIFY(ok);
     }
 
+    info->start_deadline(timeout);
+
     post([info,
           self = shared_from_this(),
           this]()
@@ -837,7 +839,7 @@ CapnProtoClient::AsioClient::send_request(kj::Array<capnp::word> capnp_msg,
                  send_one_();
              }
          });
-    info->start_deadline(timeout);
+
     return info->future();
 }
 
