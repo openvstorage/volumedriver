@@ -22,7 +22,7 @@
 #include "Events.h"
 #include "SCOCache.h"
 #include "SnapshotManagement.h"
-#include "Volume.h"
+#include "VolumeFwd.h"
 #include "VolumeConfigParameters.h"
 #include "VolumeDriverParameters.h"
 #include "VolumeDriverEvents.pb.h"
@@ -68,7 +68,6 @@ namespace volumedriver
 class ClusterClusterCache;
 class LockStoreFactory;
 class PeriodicAction;
-class Volume;
 
 namespace utils
 {
@@ -269,10 +268,7 @@ public:
     }
 
     fs::path
-    getMetaDataPath(const Volume& v) const
-    {
-        return fs::path(metadata_path.value()) / v.getNamespace().str();
-    }
+    getMetaDataPath(const Volume& v) const;
 
     fs::path
     getMetaDataDBFilePath(const VolumeConfig& conf) const
@@ -317,10 +313,7 @@ public:
     }
 
     fs::path
-    getTLogPath(const Volume& v) const
-    {
-        return fs::path(tlog_path.value()) / v.getNamespace().str();
-    }
+    getTLogPath(const Volume& v) const;
 
     fs::path
     getTLogPath(const WriteOnlyVolume& v) const

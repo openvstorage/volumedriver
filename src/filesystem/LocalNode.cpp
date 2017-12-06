@@ -42,6 +42,7 @@
 #include <volumedriver/ScrubWork.h>
 #include <volumedriver/Snapshot.h>
 #include <volumedriver/VolManager.h>
+#include <volumedriver/Volume.h>
 #include <volumedriver/VolumeConfig.h>
 
 namespace volumedriverfs

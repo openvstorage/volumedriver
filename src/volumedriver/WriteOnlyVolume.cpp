@@ -17,6 +17,7 @@
 #include "DataStoreNG.h"
 #include "BackendTasks.h"
 #include "FailOverCacheConfig.h"
+#include "FailOverCacheConfigWrapper.h"
 #include "SCOAccessData.h"
 #include "Scrubber.h"
 #include "ScrubWork.h"

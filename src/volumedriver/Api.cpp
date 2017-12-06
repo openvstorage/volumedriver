@@ -21,6 +21,7 @@
 #include "ScrubWork.h"
 #include "SnapshotManagement.h"
 #include "TransientException.h"
+#include "Volume.h"
 #include "VolManager.h"
 
 #include <youtils/BuildInfoString.h>

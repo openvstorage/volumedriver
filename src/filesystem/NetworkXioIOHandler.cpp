@@ -28,6 +28,7 @@
 
 #include <volumedriver/ClusterLocation.h>
 #include <volumedriver/DtlInSync.h>
+#include <volumedriver/Volume.h>
 
 namespace volumedriverfs
 {

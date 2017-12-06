@@ -17,6 +17,7 @@
 #include "SCOCache.h"
 #include "SCOFetcher.h"
 #include "VolManager.h"
+#include "Volume.h"
 
 #include <youtils/Catchers.h>
 

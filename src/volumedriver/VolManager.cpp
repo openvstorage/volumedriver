@@ -21,6 +21,7 @@
 #include "SnapshotManagement.h"
 #include "Types.h"
 #include "VolManager.h"
+#include "Volume.h"
 #include "VolumeConfigPersistor.h"
 
 #include "metadata-server/Manager.h"
@@ -1881,6 +1882,18 @@ VolManager::mds_slave_max_tlogs_behind() const
     {
         return v;
     }
+}
+
+fs::path
+VolManager::getTLogPath(const Volume& v) const
+{
+    return fs::path(tlog_path.value()) / v.getNamespace().str();
+}
+
+fs::path
+VolManager::getMetaDataPath(const Volume& v) const
+{
+    return fs::path(metadata_path.value()) / v.getNamespace().str();
 }
 
 }

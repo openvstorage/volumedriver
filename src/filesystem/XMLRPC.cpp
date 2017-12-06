@@ -50,6 +50,7 @@
 #include <volumedriver/ScrubWork.h>
 #include <volumedriver/Types.h>
 #include <volumedriver/VolManager.h>
+#include <volumedriver/Volume.h>
 #include <volumedriver/VolumeDriverError.h>
 #include <volumedriver/VolumeFailOverState.h>
 #include <volumedriver/VolumeOverview.h>

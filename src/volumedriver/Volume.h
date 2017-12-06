@@ -16,6 +16,7 @@
 #ifndef VOLUME_H_
 #define VOLUME_H_
 
+#include "ApplyRelocsResult.h"
 #include "BackendTasks.h"
 #include "ClusterCacheHandle.h"
 #include "DtlInSync.h"
@@ -31,8 +32,8 @@
 #include "SnapshotName.h"
 #include "TLogReader.h"
 #include "VolumeConfig.h"
+#include "VolumeFwd.h"
 #include "VolumeInterface.h"
-#include "VolumeFactory.h"
 #include "VolumeException.h"
 
 #include <atomic>
@@ -74,6 +75,7 @@ class PrefetchData;
 class ScrubberResult;
 class SnapshotManagement;
 class SnapshotPersistor;
+class VolumeFactory;
 
 namespace failovercache
 {
@@ -83,7 +85,7 @@ class ClientInterface;
 struct ClusterCacheVolumeInfo
 {
     ClusterCacheVolumeInfo(uint64_t hits,
-                        uint64_t misses)
+                           uint64_t misses)
         : num_hits(hits)
         , num_misses(misses)
     {}
@@ -815,9 +817,6 @@ private:
     std::unique_ptr<failovercache::ClientInterface>
     create_dtl_client_(const FailOverCacheConfig&) const;
 };
-
-using SharedVolumePtr = std::shared_ptr<Volume>;
-using WeakVolumePtr = std::weak_ptr<Volume>;
 
 } // namespace volumedriver
 

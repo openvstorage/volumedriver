@@ -21,6 +21,7 @@
 #include "RestartContext.h"
 #include "Types.h"
 #include "VolumeConfig.h"
+#include "VolumeFwd.h"
 
 #include <list>
 

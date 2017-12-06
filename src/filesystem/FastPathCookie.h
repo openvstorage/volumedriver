@@ -16,16 +16,7 @@
 #ifndef VFS_FAST_PATH_COOKIE_H_
 #define VFS_FAST_PATH_COOKIE_H_
 
-#include <boost/optional.hpp>
-#include <boost/smart_ptr/shared_ptr.hpp>
-#include <boost/smart_ptr/weak_ptr.hpp>
-
-namespace volumedriver
-{
-
-class Volume;
-
-}
+#include <volumedriver/VolumeFwd.h>
 
 namespace volumedriverfs
 {
@@ -34,9 +25,9 @@ namespace volumedriverfs
 // No support for local files for now. Look into boost::variant when going there.
 struct LocalVolumeCookie
 {
-    std::weak_ptr<volumedriver::Volume> volume;
+    volumedriver::WeakVolumePtr volume;
 
-    explicit LocalVolumeCookie(std::weak_ptr<volumedriver::Volume> v)
+    explicit LocalVolumeCookie(const volumedriver::WeakVolumePtr& v)
         : volume(v)
     {}
 };

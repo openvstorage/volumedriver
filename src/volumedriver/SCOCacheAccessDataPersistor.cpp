@@ -16,6 +16,7 @@
 #include "SCOAccessData.h"
 #include "SCOCacheAccessDataPersistor.h"
 #include "VolManager.h"
+#include "Volume.h"
 
 namespace volumedriver
 {

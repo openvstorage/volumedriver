@@ -39,6 +39,7 @@
 #include <volumedriver/ScrubWork.h>
 #include <volumedriver/TransientException.h>
 #include <volumedriver/VolManager.h>
+#include <volumedriver/Volume.h>
 #include <volumedriver/VolumeConfig.h>
 #include <volumedriver/failovercache/fungilib/Mutex.h>
 

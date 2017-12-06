@@ -15,7 +15,6 @@
 
 #include "BackendRestartAccumulator.h"
 #include "NSIDMap.h"
-#include "VolumeFactory.h"
 
 #include <youtils/Assert.h>
 

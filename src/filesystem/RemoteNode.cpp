@@ -38,6 +38,7 @@
 // This needs to be redone, we don't want to know about VolManager
 // at this level
 #include <volumedriver/VolManager.h>
+#include <volumedriver/Volume.h>
 
 namespace volumedriverfs
 {

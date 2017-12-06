@@ -36,6 +36,7 @@
 #include <volumedriver/ScrubReply.h>
 #include <volumedriver/ScrubWork.h>
 #include <volumedriver/metadata-server/Manager.h>
+#include <volumedriver/Volume.h>
 
 namespace volumedriverfstest
 {

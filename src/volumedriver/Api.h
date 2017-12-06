@@ -35,9 +35,9 @@
 #include "Snapshot.h"
 #include "SnapshotName.h"
 #include "Types.h"
-#include "Volume.h"
 #include "VolumeConfig.h"
 #include "VolumeConfigParameters.h"
+#include "VolumeFwd.h"
 #include "VolumeOverview.h"
 #include "failovercache/fungilib/Mutex.h" // <-- kill it!
 
@@ -47,6 +47,7 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/property_tree/ptree_fwd.hpp>
+#include <boost/thread/future.hpp>
 #include <boost/variant.hpp>
 
 #include <youtils/ArakoonNodeConfig.h>
@@ -63,10 +64,15 @@ namespace backend
 class PartialReadCounter;
 }
 
+namespace scrubbing
+{
+class ScrubReply;
+}
+
 namespace volumedriver
 {
 
-class Volume;
+class ClusterCacheVolumeInfo;
 class WriteOnlyVolume;
 class MetaDataBackendConfig;
 
