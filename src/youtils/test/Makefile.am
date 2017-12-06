@@ -96,6 +96,7 @@ youtils_test_SOURCES = \
 	SerializationTest.cpp \
 	SignalHandlingTest.cpp \
 	SpinLockTest.cpp \
+	SteadyTimerTest.cpp \
 	StrongTypedPathTest.cpp \
 	StrongTypedStringTest.cpp \
 	SystemTest.cpp \

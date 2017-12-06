@@ -31,6 +31,13 @@ public:
         : start_(Clock::now())
     {}
 
+    ~Timer() = default;
+
+    Timer(const Timer&) = default;
+
+    Timer&
+    operator=(const Timer&) = default;
+
     typename Clock::duration
     elapsed() const
     {
