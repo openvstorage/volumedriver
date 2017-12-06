@@ -806,13 +806,14 @@ Volume::writeClustersToFailOverCache_(std::vector<ClusterLocation> locs,
             if (f.valid())
             {
                 dtl_in_sync = f.then(yt::InlineExecutor::get(),
-                                     [this,
+                                     [self = shared_from_this(),
                                       start_address,
-                                      start_loc](boost::future<void> f) -> DtlInSync
+                                      start_loc,
+                                      this](boost::future<void> f) -> DtlInSync
                                      {
                                          tracepoint(openvstorage_volumedriver,
                                                     volume_foc_write_end,
-                                                    config_.id_.str().c_str(),
+                                                    self->getName().str().c_str(),
                                                     start_address,
                                                     reinterpret_cast<const uint64_t&>(start_loc),
                                                     f.has_exception());
@@ -874,7 +875,7 @@ Volume::async_write(const uint64_t off,
         return boost::make_ready_future(DtlInSync::T);
     }
 
-    yt::SteadyTimer t;
+    yt::SteadyTimer timer;
 
     if (T(isVolumeTemplate()))
     {
@@ -930,21 +931,22 @@ Volume::async_write(const uint64_t off,
                                      aligned_len);
     }
 
-    const auto duration_us(bc::duration_cast<bc::microseconds>(t.elapsed()));
-    performance_counters().write_request_usecs.count(duration_us.count());
-
     return dtl_in_sync.then(yt::InlineExecutor::get(),
                             [bounce_buf = std::move(bounce_buf),
-                             id = config_.id_,
+                             self = shared_from_this(),
                              len,
-                             off](boost::future<DtlInSync> dtl_in_sync) -> DtlInSync
+                             off,
+                             timer](boost::future<DtlInSync> dtl_in_sync) -> DtlInSync
                             {
                                 tracepoint(openvstorage_volumedriver,
                                            volume_write_end,
-                                           id.str().c_str(),
+                                           self->getName().str().c_str(),
                                            off,
                                            len,
                                            dtl_in_sync.has_exception());
+
+                                const auto duration_us(bc::duration_cast<bc::microseconds>(timer.elapsed()));
+                                self->performance_counters().write_request_usecs.count(duration_us.count());
 
                                 return dtl_in_sync.get();
                             });
@@ -2604,7 +2606,7 @@ Volume::async_flush()
         return boost::make_ready_future(DtlInSync::T);
     }
 
-    yt::SteadyTimer t;
+    yt::SteadyTimer timer;
 
     uint64_t number_of_syncs_to_ignore, maximum_time_to_ignore_syncs_in_seconds;
     std::tie(number_of_syncs_to_ignore, maximum_time_to_ignore_syncs_in_seconds) = getSyncSettings();
@@ -2627,16 +2629,17 @@ Volume::async_flush()
         dtl_in_sync = boost::make_ready_future(DtlInSync::T);
     }
 
-    const auto duration_us(bc::duration_cast<bc::microseconds>(t.elapsed()));
-    performance_counters().sync_request_usecs.count(duration_us.count());
-
     return dtl_in_sync.then(yt::InlineExecutor::get(),
-                            [id = config_.id_](boost::future<DtlInSync> dtl_in_sync) -> DtlInSync
+                            [self = shared_from_this(),
+                             timer](boost::future<DtlInSync> dtl_in_sync) -> DtlInSync
                             {
                                 tracepoint(openvstorage_volumedriver,
                                            volume_sync_end,
-                                           id.str().c_str(),
+                                           self->getName().str().c_str(),
                                            dtl_in_sync.has_exception());
+
+                                const auto duration_us(bc::duration_cast<bc::microseconds>(timer.elapsed()));
+                                self->performance_counters().sync_request_usecs.count(duration_us.count());
 
                                 return dtl_in_sync.get();
                             });
