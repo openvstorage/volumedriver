@@ -145,7 +145,7 @@ WriteOnlyVolume::tlogWrittenToBackendCallback(const TLogId& tid,
 }
 
 // called from mgmt thread
-WriteOnlyVolume*
+void
 WriteOnlyVolume::newWriteOnlyVolume()
 {
     WLOCK();
@@ -182,12 +182,10 @@ WriteOnlyVolume::newWriteOnlyVolume()
         halt();
         throw;
     }
-
-    return this;
 }
 
 // called from mgmt thread
-WriteOnlyVolume*
+void
 WriteOnlyVolume::backend_restart(const SCONumber lastSCOInBackend)
 {
 
@@ -202,7 +200,6 @@ WriteOnlyVolume::backend_restart(const SCONumber lastSCOInBackend)
                                 max_non_disposable);
 
     snapshotManagement_->scheduleWriteSnapshotToBackend();
-    return this;
 }
 
 WriteOnlyVolume::~WriteOnlyVolume()

@@ -539,7 +539,7 @@ Volume::check_cork_match_()
 }
 
 // called from mgmt thread
-Volume*
+void
 Volume::newVolume()
 {
     WLOCK();
@@ -560,11 +560,10 @@ Volume::newVolume()
     setVolumeFailOverState(VolumeFailOverState::OK_STANDALONE);
 
     register_with_cluster_cache_(getOwnerTag());
-    return this;
 }
 
 // called from mgmt thread
-Volume*
+void
 Volume::backend_restart(const CloneTLogs& restartTLogs,
                         const SCONumber lastSCOInBackend,
                         const IgnoreFOCIfUnreachable ignoreFOCIfUnreachable,
@@ -681,8 +680,6 @@ Volume::backend_restart(const CloneTLogs& restartTLogs,
     setVolumeFailOverState(foc_state);
     snapshotManagement_->scheduleWriteSnapshotToBackend();
     register_with_cluster_cache_(getOwnerTag());
-
-    return this;
 }
 
 // Y42 redo these, they should just be a right shift of lba by an amount
@@ -1109,7 +1106,6 @@ Volume::writeClusters_(uint64_t addr,
                                           loc_and_hash.weed());
             }
         }
-
 
         dtl_in_sync = writeClustersToFailOverCache_(std::move(cluster_locations),
                                                     addr >> volOffset_,

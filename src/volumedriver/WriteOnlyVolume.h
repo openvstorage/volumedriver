@@ -138,10 +138,10 @@ public:
     void
     scheduleBackendSync();
 
-    WriteOnlyVolume*
+    void
     newWriteOnlyVolume();
 
-    WriteOnlyVolume*
+    void
     backend_restart(SCONumber restartSCO);
 
     void

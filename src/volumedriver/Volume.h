@@ -96,8 +96,10 @@ struct ClusterCacheVolumeInfo
 
 class Volume
     : public VolumeInterface
+    , public std::enable_shared_from_this<Volume>
 {
     friend class VolumeTestSetup;
+    friend class VolumeFactory;
     friend class VolManagerTestSetup;
     friend class ErrorHandlingTest;
     friend class ::volumedrivertest::MetaDataStoreTest;
@@ -109,16 +111,6 @@ public:
     {
         return failoverstate_;
     }
-
-    Volume(const VolumeConfig&,
-           const OwnerTag,
-           const boost::shared_ptr<backend::Condition>&,
-           std::unique_ptr<SnapshotManagement>,
-           std::unique_ptr<DataStoreNG>,
-           std::unique_ptr<MetaDataStoreInterface>,
-           NSIDMap nsidmap,
-           const std::atomic<unsigned>& foc_throttle_usecs,
-           bool& readOnlymode);
 
     Volume(const Volume&) = delete;
 
@@ -237,10 +229,10 @@ public:
     void
     localRestart();
 
-    Volume*
+    void
     newVolume();
 
-    Volume*
+    void
     backend_restart(const CloneTLogs& restartTLogs,
                     const SCONumber restartSCO,
                     const IgnoreFOCIfUnreachable,
@@ -578,9 +570,6 @@ private:
     // Order: config_update_lock_ > config_lock_
     mutable fungi::SpinLock config_lock_;
 
-    void
-    setVolumeFailOverState(VolumeFailOverState);
-
     // LOCKING:
     // - rwlock allows concurrent reads / writes (R) vs. snapshotting etc (W)
     // - write_lock_ is required to prevent write throttling from delaying reads,
@@ -591,11 +580,6 @@ private:
     // -> lock order: unaligned_lock_ > write_lock_ > rwlock_
     typedef boost::mutex lock_type;
     mutable lock_type write_lock_;
-
-    uint64_t intCeiling(uint64_t x, uint64_t y) {
-        //rounds x up to nearest multiple of y
-        return x % y ?  (x / y + 1) * y : x;
-    }
 
     // youtils_test, RWLockTest shows that the fungi::RWLock prefers readers and
     // offers performance benefits in the absence of writers. Since the rwlock is
@@ -656,6 +640,19 @@ private:
     youtils::wall_timer2 sync_wall_timer_;
 
     std::unique_ptr<PrefetchData> prefetch_data_;
+
+    Volume(const VolumeConfig&,
+           const OwnerTag,
+           const boost::shared_ptr<backend::Condition>&,
+           std::unique_ptr<SnapshotManagement>,
+           std::unique_ptr<DataStoreNG>,
+           std::unique_ptr<MetaDataStoreInterface>,
+           NSIDMap nsidmap,
+           const std::atomic<unsigned>& foc_throttle_usecs,
+           bool& readOnlymode);
+
+    void
+    setVolumeFailOverState(VolumeFailOverState);
 
     void
     processReloc_(const TLogName &relocName, bool deletions);

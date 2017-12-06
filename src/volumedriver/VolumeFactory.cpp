@@ -60,45 +60,6 @@ namespace
 
 DECLARE_LOGGER("VolumeFactory");
 
-template<DeleteLocalData delete_local_meta_data,
-         RemoveVolumeCompletely remove_volume_completely>
-struct FreshVolumeDestroyer
-{
-    DECLARE_LOGGER("FreshVolumeDestroyer");
-
-    void
-    operator()(Volume* vol)
-    {
-        if(vol != nullptr)
-        {
-            try
-            {
-                vol->destroy(delete_local_meta_data,
-                             remove_volume_completely,
-                             ForceVolumeDeletion::T);
-                delete vol;
-            }
-            CATCH_STD_ALL_LOG_IGNORE("Failed to destroy volume " <<
-                                     vol->getName());
-        }
-    }
-
-    void
-    operator()(WriteOnlyVolume* vol)
-    {
-        if (vol != nullptr)
-        {
-            try
-            {
-                vol->destroy(remove_volume_completely);
-                delete vol;
-            }
-            CATCH_STD_ALL_LOG_IGNORE("Failed to destroy write-only volume " <<
-                                     vol->getName());
-        }
-    }
-};
-
 DataStoreNG*
 make_data_store(const VolumeConfig& config)
 {
@@ -185,16 +146,122 @@ make_metadata_store(const VolumeConfig& config,
     return md;
 }
 
-template<DeleteLocalData delete_local_data,
-         RemoveVolumeCompletely remove_volume_completely>
-std::unique_ptr<Volume, FreshVolumeDestroyer<delete_local_data,
-                                             remove_volume_completely> >
-create_volume_stage_1(const VolumeConfig& config,
-                      const OwnerTag owner_tag,
-                      const boost::shared_ptr<be::Condition>& backend_write_cond,
-                      const RestartContext context,
-                      NSIDMap nsid,
-                      std::unique_ptr<MetaDataStoreInterface> md)
+std::unique_ptr<WriteOnlyVolume>
+instantiate_write_only_volume(const VolumeConfig& config,
+                              const OwnerTag owner_tag,
+                              const boost::shared_ptr<be::Condition>& backend_write_cond,
+                              const RestartContext context,
+                              NSIDMap nsid)
+{
+    std::unique_ptr<SnapshotManagement> sm(new SnapshotManagement(config,
+                                                                  context));
+    std::unique_ptr<DataStoreNG> ds(make_data_store(config));
+
+    return std::make_unique<WriteOnlyVolume>(config,
+                                             owner_tag,
+                                             backend_write_cond,
+                                             std::move(sm),
+                                             std::move(ds),
+                                             std::move(nsid));
+}
+
+// use 2 parameter packs to help the compiler overcome
+// "inconsistent parameter pack deduction with 'unsigned int' and 'unsigned int&'
+template<typename... InArgs,
+         typename... OutArgs>
+std::unique_ptr<WriteOnlyVolume>
+create_write_only_volume(const VolumeConfig& config,
+                         const OwnerTag owner_tag,
+                         const boost::shared_ptr<be::Condition>& backend_write_cond,
+                         const RestartContext context,
+                         NSIDMap nsid,
+                         void (WriteOnlyVolume::*init)(OutArgs...),
+                         InArgs&&... args)
+{
+    std::unique_ptr<WriteOnlyVolume> vol(instantiate_write_only_volume(config,
+                                                                       owner_tag,
+                                                                       backend_write_cond,
+                                                                       context,
+                                                                       std::move(nsid)));
+
+    try
+    {
+        ((*vol).*init)(std::forward<InArgs>(args)...);
+        return vol;
+    }
+    CATCH_STD_ALL_EWHAT({
+            LOG_ERROR("write-only volume instantiation failed: " << EWHAT);
+
+            RemoveVolumeCompletely remove_volume_completely = RemoveVolumeCompletely::F;
+
+            switch (context)
+            {
+            case RestartContext::Creation:
+                remove_volume_completely = RemoveVolumeCompletely::T;
+                break;
+            case RestartContext::Cloning:
+                VERIFY(0 == "write-only volumes are not cloned!");
+                break;
+            case RestartContext::LocalRestart:
+                VERIFY(0 == "write-only volumes are not locally restarted!");
+                break;
+            case RestartContext::BackendRestart:
+                remove_volume_completely = RemoveVolumeCompletely::F;
+                break;
+            }
+
+            try
+            {
+                vol->destroy(remove_volume_completely);
+            }
+            CATCH_STD_ALL_LOG_IGNORE("Failed to destroy newly instantiated volume " <<
+                                     vol->getName());
+
+            throw;
+        });
+
+}
+
+void
+verify_absence_from_sco_cache(const VolumeConfig& config)
+{
+    SCOCache *scocache = VolManager::get()->getSCOCache();
+    if (scocache->hasNamespace(config.getNS()))
+    {
+        LOG_WARN("Volume with namespace " << config.getNS() <<
+                 " already exists in SCO cache");
+        throw fungi::IOException("Volume (or part of it) already exists");
+    }
+}
+
+void
+verify_absence_from_metadata_path(const VolumeConfig& config)
+{
+    const fs::path mdpath(VolManager::get()->getMetaDataPath(config.getNS()));
+    if (SnapshotManagement::exists(mdpath))
+    {
+        LOG_WARN("MetaDataStore already exists and is not empty under dir " <<
+                 mdpath);
+        throw fungi::IOException("Volume (or part of it) already exists");
+    }
+}
+
+void
+new_volume_prechecks(const VolumeConfig& config)
+{
+    verify_absence_from_metadata_path(config);
+    verify_absence_from_sco_cache(config);
+}
+
+} // anon namespace
+
+SharedVolumePtr
+VolumeFactory::instantiate_volume_(const VolumeConfig& config,
+                                   const OwnerTag owner_tag,
+                                   const boost::shared_ptr<be::Condition>& backend_write_cond,
+                                   const RestartContext context,
+                                   NSIDMap nsid,
+                                   std::unique_ptr<MetaDataStoreInterface> md)
 {
     std::unique_ptr<SnapshotManagement> sm(new SnapshotManagement(config,
                                                                   context));
@@ -238,75 +305,77 @@ create_volume_stage_1(const VolumeConfig& config,
     VERIFY(nsid.get(0));
 #endif
 
-    return std::unique_ptr<Volume, FreshVolumeDestroyer<delete_local_data,
-                                                        remove_volume_completely> >
-        (new Volume(config,
-                    owner_tag,
-                    backend_write_cond,
-                    std::move(sm),
-                    std::move(ds),
-                    std::move(md),
-                    std::move(nsid),
-                    VolManager::get()->dtl_throttle_usecs.value(),
-                    VolManager::get()->readOnlyMode()));
+    return std::shared_ptr<Volume>(new Volume(config,
+                                              owner_tag,
+                                              backend_write_cond,
+                                              std::move(sm),
+                                              std::move(ds),
+                                              std::move(md),
+                                              std::move(nsid),
+                                              VolManager::get()->dtl_throttle_usecs.value(),
+                                              VolManager::get()->readOnlyMode()));
 }
 
-template<DeleteLocalData delete_local_data,
-         RemoveVolumeCompletely remove_volume_completely>
-std::unique_ptr<WriteOnlyVolume, FreshVolumeDestroyer<delete_local_data,
-                                                      remove_volume_completely> >
-create_write_only_volume_stage_1(const VolumeConfig& config,
-                                 const OwnerTag owner_tag,
-                                 const boost::shared_ptr<be::Condition>& backend_write_cond,
-                                 const RestartContext context,
-                                 NSIDMap nsid)
+template<typename... InArgs,
+         typename... OutArgs>
+SharedVolumePtr
+VolumeFactory::create_volume_(const VolumeConfig& config,
+                              const OwnerTag owner_tag,
+                              const boost::shared_ptr<be::Condition>& backend_write_cond,
+                              const RestartContext context,
+                              NSIDMap nsid,
+                              std::unique_ptr<MetaDataStoreInterface> md,
+                              void (Volume::*init_fun)(OutArgs...),
+                              InArgs&&... args)
 {
-    std::unique_ptr<SnapshotManagement> sm(new SnapshotManagement(config,
-                                                                  context));
-    std::unique_ptr<DataStoreNG> ds(make_data_store(config));
+    SharedVolumePtr vol(instantiate_volume_(config,
+                                            owner_tag,
+                                            backend_write_cond,
+                                            context,
+                                            std::move(nsid),
+                                            std::move(md)));
 
-    return std::unique_ptr<WriteOnlyVolume,
-                           FreshVolumeDestroyer<delete_local_data,
-                                                remove_volume_completely> >(new WriteOnlyVolume(config,
-                                                                                                owner_tag,
-                                                                                                backend_write_cond,
-                                                                                                std::move(sm),
-                                                                                                std::move(ds),
-                                                                                                std::move(nsid)));
-}
-
-void
-verify_absence_from_sco_cache(const VolumeConfig& config)
-{
-    SCOCache *scocache = VolManager::get()->getSCOCache();
-    if (scocache->hasNamespace(config.getNS()))
+    try
     {
-        LOG_WARN("Volume with namespace " << config.getNS() <<
-                 " already exists in SCO cache");
-        throw fungi::IOException("Volume (or part of it) already exists");
+        ((*vol).*init_fun)(std::forward<InArgs>(args)...);
     }
-}
+    CATCH_STD_ALL_EWHAT({
+            LOG_ERROR("volume instantiation failed: " << EWHAT);
 
-void
-verify_absence_from_metadata_path(const VolumeConfig& config)
-{
-    const fs::path mdpath(VolManager::get()->getMetaDataPath(config.getNS()));
-    if (SnapshotManagement::exists(mdpath))
-    {
-        LOG_WARN("MetaDataStore already exists and is not empty under dir " <<
-                 mdpath);
-        throw fungi::IOException("Volume (or part of it) already exists");
-    }
-}
+            DeleteLocalData delete_local_data = DeleteLocalData::F;
+            RemoveVolumeCompletely remove_volume_completely = RemoveVolumeCompletely::F;
 
-void
-new_volume_prechecks(const VolumeConfig& config)
-{
-    verify_absence_from_metadata_path(config);
-    verify_absence_from_sco_cache(config);
-}
+            switch (context)
+            {
+            case RestartContext::Creation:
+            case RestartContext::Cloning:
+                delete_local_data = DeleteLocalData::T;
+                remove_volume_completely = RemoveVolumeCompletely::T;
+                break;
+            case RestartContext::LocalRestart:
+                delete_local_data = DeleteLocalData::F;
+                remove_volume_completely = RemoveVolumeCompletely::F;
+                break;
+            case RestartContext::BackendRestart:
+                delete_local_data = DeleteLocalData::T;
+                remove_volume_completely = RemoveVolumeCompletely::F;
+                break;
+            }
 
-} // anon namespace
+            try
+            {
+                vol->destroy(delete_local_data,
+                            remove_volume_completely,
+                            ForceVolumeDeletion::T);
+            }
+            CATCH_STD_ALL_LOG_IGNORE("Failed to destroy newly instantiated volume " <<
+                                     vol->getName());
+
+            throw;
+        });
+
+    return vol;
+}
 
 boost::shared_ptr<be::Condition>
 VolumeFactory::claim_namespace(const be::Namespace& nspace,
@@ -334,7 +403,7 @@ VolumeFactory::claim_namespace(const be::Namespace& nspace,
     }
 }
 
-std::unique_ptr<Volume>
+SharedVolumePtr
 VolumeFactory::createNewVolume(const VolumeConfig& config)
 {
     new_volume_prechecks(config);
@@ -342,18 +411,14 @@ VolumeFactory::createNewVolume(const VolumeConfig& config)
     NSIDMap nsid;
     nsid.set(0, VolManager::get()->createBackendInterface(config.getNS()));
 
-    auto vol(create_volume_stage_1<DeleteLocalData::T,
-                                   RemoveVolumeCompletely::T>(config,
-                                                              config.owner_tag_,
-                                                              claim_namespace(config.getNS(),
-                                                                              config.owner_tag_),
-                                                              RestartContext::Creation,
-                                                              std::move(nsid),
-                                                              nullptr));
-
-    vol->newVolume();
-
-    return std::unique_ptr<Volume>(vol.release());
+    return create_volume_(config,
+                          config.owner_tag_,
+                          claim_namespace(config.getNS(),
+                                          config.owner_tag_),
+                          RestartContext::Creation,
+                          std::move(nsid),
+                          nullptr,
+                          &Volume::newVolume);
 }
 
 std::unique_ptr<WriteOnlyVolume>
@@ -364,16 +429,13 @@ VolumeFactory::createWriteOnlyVolume(const VolumeConfig& config)
     NSIDMap nsid;
     nsid.set(0, VolManager::get()->createBackendInterface(config.getNS()));
 
-    auto vol(create_write_only_volume_stage_1<DeleteLocalData::T,
-                                              RemoveVolumeCompletely::T>(config,
-                                                                         config.owner_tag_,
-                                                                         claim_namespace(config.getNS(),
-                                                                                         config.owner_tag_),
-                                                                         RestartContext::Creation,
-                                                                         std::move(nsid)));
-    vol->newWriteOnlyVolume();
-
-    return std::unique_ptr<WriteOnlyVolume>(vol.release());
+    return create_write_only_volume(config,
+                                    config.owner_tag_,
+                                    claim_namespace(config.getNS(),
+                                                    config.owner_tag_),
+                                    RestartContext::Creation,
+                                    std::move(nsid),
+                                    &WriteOnlyVolume::newWriteOnlyVolume);
 }
 
 namespace
@@ -612,7 +674,7 @@ local_restart_metadata_store(const VolumeConfig& config,
 
 }
 
-std::unique_ptr<Volume>
+SharedVolumePtr
 VolumeFactory::local_restart_volume(const VolumeConfig& config,
                                     const OwnerTag owner_tag,
                                     const IgnoreFOCIfUnreachable)
@@ -631,15 +693,13 @@ try
     sp.vold(builder,
             VolManager::get()->createBackendInterface(config.getNS()));
 
-    auto vol(create_volume_stage_1<DeleteLocalData::F,
-                                   RemoveVolumeCompletely::F>(config,
-                                                              owner_tag,
-                                                              backend_write_cond,
-                                                              RestartContext::LocalRestart,
-                                                              std::move(nsid),
-                                                              std::move(mdstore)));
-    vol->localRestart();
-    return std::unique_ptr<Volume>(vol.release());
+    return create_volume_(config,
+                          owner_tag,
+                          backend_write_cond,
+                          RestartContext::LocalRestart,
+                          std::move(nsid),
+                          std::move(mdstore),
+                          &Volume::localRestart);
 }
 CATCH_STD_ALL_LOGLEVEL_RETHROW("Cannot restart volume for namespace " <<
                                config.getNS() <<
@@ -649,7 +709,7 @@ CATCH_STD_ALL_LOGLEVEL_RETHROW("Cannot restart volume for namespace " <<
 namespace
 {
 
-std::unique_ptr<Volume>
+SharedVolumePtr
 fall_back_to_backend_restart(const VolumeConfig& config,
                              const OwnerTag owner_tag,
                              const IgnoreFOCIfUnreachable ignore_foc)
@@ -681,7 +741,7 @@ fall_back_to_backend_restart(const VolumeConfig& config,
 
 }
 
-std::unique_ptr<Volume>
+SharedVolumePtr
 VolumeFactory::local_restart(const VolumeConfig& config,
                              const OwnerTag owner_tag,
                              const FallBackToBackendRestart fallback,
@@ -706,7 +766,7 @@ VolumeFactory::local_restart(const VolumeConfig& config,
     }
 }
 
-std::unique_ptr<Volume>
+SharedVolumePtr
 VolumeFactory::backend_restart(const VolumeConfig& config,
                                const OwnerTag owner_tag,
                                const PrefetchVolumeData prefetch,
@@ -799,31 +859,28 @@ VolumeFactory::backend_restart(const VolumeConfig& config,
             LOG_WARN("Could not find a SCO, restarting datastore from 0");
         }
 
-        auto vol(create_volume_stage_1<DeleteLocalData::T,
-                                       RemoveVolumeCompletely::F>(config,
-                                                                  owner_tag,
-                                                                  backend_write_cond,
-                                                                  RestartContext::BackendRestart,
-                                                                  std::move(nsid),
-                                                                  std::move(mdstore)));
-        vol->backend_restart(restartTLogs,
-                             restart_sco_num,
-                             ignoreFOCIfUnreachable,
-                             sp.lastCork());
+        SharedVolumePtr vol(create_volume_(config,
+                                           owner_tag,
+                                           backend_write_cond,
+                                           RestartContext::BackendRestart,
+                                           std::move(nsid),
+                                           std::move(mdstore),
+                                           &Volume::backend_restart,
+                                           restartTLogs,
+                                           restart_sco_num,
+                                           ignoreFOCIfUnreachable,
+                                           sp.lastCork()));
         if (T(prefetch))
         {
             try
             {
                 vol->startPrefetch(restart_sco_num);
             }
-            catch (std::exception& e)
-            {
-                LOG_WARN(vol->getName() <<
-                         ": starting prefetching failed: " << e.what());
-                // swallow exception
-            }
+            CATCH_STD_ALL_LOG_IGNORE(vol->getName() <<
+                                     ": starting prefetching failed");
         }
-        return std::unique_ptr<Volume>(vol.release());
+
+        return vol;
     }
     catch (...)
     {
@@ -903,14 +960,13 @@ VolumeFactory::backend_restart_write_only_volume(const VolumeConfig& config,
         LOG_WARN("Could not find a SCO, restarting datastore from 0");
     }
 
-    auto v(create_write_only_volume_stage_1<DeleteLocalData::T,
-                                            RemoveVolumeCompletely::F>(config,
-                                                                       owner_tag,
-                                                                       backend_write_cond,
-                                                                       RestartContext::BackendRestart,
-                                                                       std::move(nsid)));
-    v->backend_restart(restart_sco_num);
-    return std::unique_ptr<WriteOnlyVolume>(v.release());
+    return create_write_only_volume(config,
+                                    owner_tag,
+                                    backend_write_cond,
+                                    RestartContext::BackendRestart,
+                                    std::move(nsid),
+                                    &WriteOnlyVolume::backend_restart,
+                                    restart_sco_num);
 }
 
 namespace
@@ -959,7 +1015,7 @@ struct CloneFromParentSnapshotAcc
 
 }
 
-std::unique_ptr<Volume>
+SharedVolumePtr
 VolumeFactory::createClone(const VolumeConfig& config,
                            const PrefetchVolumeData prefetch,
                            const yt::UUID& parent_snap_uuid)
@@ -975,17 +1031,16 @@ VolumeFactory::createClone(const VolumeConfig& config,
 
     VERIFY(ctbrf.size() == nsid.size());
 
-    auto vol(create_volume_stage_1<DeleteLocalData::T,
-                                   RemoveVolumeCompletely::T>(config,
-                                                              config.owner_tag_,
-                                                              claim_namespace(config.getNS(),
-                                                                              config.owner_tag_),
-                                                              RestartContext::Cloning,
-                                                              std::move(nsid),
-                                                              nullptr));
-
-    vol->cloneFromParentSnapshot(parent_snap_uuid,
-                                 ctbrf);
+    SharedVolumePtr vol(create_volume_(config,
+                                       config.owner_tag_,
+                                       claim_namespace(config.getNS(),
+                                                       config.owner_tag_),
+                                       RestartContext::Cloning,
+                                       std::move(nsid),
+                                       nullptr,
+                                       &Volume::cloneFromParentSnapshot,
+                                       parent_snap_uuid,
+                                       ctbrf));
 
     if (T(prefetch))
     {
@@ -993,15 +1048,10 @@ VolumeFactory::createClone(const VolumeConfig& config,
         {
             vol->startPrefetch(0);
         }
-        catch (std::exception& e)
-        {
-            LOG_WARN("" << vol->getName() << ": starting prefetching failed: " <<
-                     e.what());
-            // swallow exception
-        }
+        CATCH_STD_ALL_LOG_IGNORE(vol->getName() << ": starting prefetching failed");
     }
 
-    return std::unique_ptr<Volume>(vol.release());
+    return vol;
 }
 
 uint64_t

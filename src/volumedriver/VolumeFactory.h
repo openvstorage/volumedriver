@@ -48,24 +48,24 @@ class SnapshotPersistor;
 
 struct VolumeFactory
 {
-    static std::unique_ptr<Volume>
+    static SharedVolumePtr
     createNewVolume(const VolumeConfig&);
 
     static std::unique_ptr<WriteOnlyVolume>
     createWriteOnlyVolume(const VolumeConfig&);
 
-    static std::unique_ptr<Volume>
+    static SharedVolumePtr
     createClone(const VolumeConfig&,
                 const PrefetchVolumeData,
                 const youtils::UUID& parent_snap_uuid);
 
-    static std::unique_ptr<Volume>
+    static SharedVolumePtr
     local_restart(const VolumeConfig&,
                   const OwnerTag,
                   const FallBackToBackendRestart,
                   const IgnoreFOCIfUnreachable);
 
-    static std::unique_ptr<Volume>
+    static SharedVolumePtr
     backend_restart(const VolumeConfig&,
                     const OwnerTag,
                     const PrefetchVolumeData,
@@ -95,7 +95,7 @@ struct VolumeFactory
 private:
     friend class VolManagerTestSetup;
 
-    static std::unique_ptr<Volume>
+    static SharedVolumePtr
     local_restart_volume(const VolumeConfig&,
                          const OwnerTag,
                          const IgnoreFOCIfUnreachable);
@@ -103,6 +103,28 @@ private:
     static boost::shared_ptr<backend::Condition>
     claim_namespace(const backend::Namespace&,
                     const OwnerTag);
+
+    static SharedVolumePtr
+    instantiate_volume_(const VolumeConfig&,
+                        const OwnerTag,
+                        const boost::shared_ptr<backend::Condition>&,
+                        const RestartContext,
+                        NSIDMap,
+                        std::unique_ptr<MetaDataStoreInterface>);
+
+    // use 2 parameter packs to help the compiler overcome
+    // "inconsistent parameter pack deduction with 'unsigned int' and 'unsigned int&'
+    template<typename... InArgs,
+             typename... OutArgs>
+    static SharedVolumePtr
+    create_volume_(const VolumeConfig&,
+                   const OwnerTag,
+                   const boost::shared_ptr<backend::Condition>&,
+                   const RestartContext,
+                   NSIDMap,
+                   std::unique_ptr<MetaDataStoreInterface>,
+                   void (Volume::*init_fun)(OutArgs...),
+                   InArgs&&... args);
 };
 
 } // namespace volumedriver
